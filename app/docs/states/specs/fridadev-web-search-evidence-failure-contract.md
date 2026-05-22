@@ -49,6 +49,16 @@ Ce bloc:
 - rappelle qu'une demande d'URL n'est pas le reflexe par defaut;
 - confirme qu'aucun fallback OpenRouter, Exa ou Parallel n'a ete utilise.
 
+## Hard guards hermeneutiques
+
+`app/core/hermeneutic_node/validation/hard_guards.py` doit respecter le contrat Phase 7:
+
+- si `web_evidence_can_answer` vaut `true`, les gardes web ne doivent pas produire `answer_forbidden`;
+- si `web_evidence_requires_caveat` vaut `true`, les gardes web peuvent produire `hard_guard_effect=caveat_required`;
+- `caveat_required` laisse `answer` dans les postures autorisees, mais rend la prudence non optionnelle pour le validateur;
+- une URL explicite non lue peut donc etre commentee avec du materiau fallback/snippet, mais Frida ne doit jamais pretendre avoir lu directement la page;
+- si le contrat de preuve web ne permet pas de repondre, les gardes `explicit_url_not_read` et `external_verification_missing` peuvent encore produire `answer_forbidden`.
+
 ## Observabilite
 
 Les champs `web_evidence_*` sont propages dans:

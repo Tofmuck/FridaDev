@@ -727,6 +727,7 @@ Statut: livre applicatif/runtime, sans modification plateforme.
 - [x] Le prompt recoit `[GARDE DE PREUVE WEB]` seulement quand le statut est `partial` ou `insufficient`; ce bloc donne des consignes, pas une phrase finale scriptée.
 - [x] `web_evidence_external_fallback_used` reste toujours `false`; OpenRouter / Exa / Parallel restent hors runtime.
 - [x] Observabilite propagee dans le payload web, l'input canonique, le noeud hermeneutique, le read model pipeline et la checklist.
+- [x] Correctif P2: les hard guards web respectent `web_evidence_can_answer`; ils peuvent exiger `caveat_required` sans interdire `answer`, tout en conservant `answer_forbidden` quand le contrat de preuve ne permet pas de repondre.
 
 Risques/effets de bord:
 

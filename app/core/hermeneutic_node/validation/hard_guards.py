@@ -13,6 +13,7 @@ from core.web_read_state import (
 HARD_GUARD_EXPLICIT_URL_NOT_READ = "explicit_url_not_read"
 HARD_GUARD_EXTERNAL_VERIFICATION_MISSING = "external_verification_missing"
 HARD_GUARD_EFFECT_ANSWER_FORBIDDEN = "answer_forbidden"
+HARD_GUARD_EFFECT_CAVEAT_REQUIRED = "caveat_required"
 
 _NOT_READ_EXPLICIT_URL_STATES = {
     READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK,
@@ -64,6 +65,19 @@ def _web_evidence_available(web_input: Mapping[str, Any]) -> bool:
     return any(_web_source_materially_used(source) for source in _sequence(web_input.get("sources")))
 
 
+def _web_evidence_contract(web_input: Mapping[str, Any]) -> Mapping[str, Any]:
+    nested = _mapping(web_input.get("web_evidence"))
+    return nested if nested else web_input
+
+
+def _web_evidence_can_answer(web_input: Mapping[str, Any]) -> bool:
+    return bool(_web_evidence_contract(web_input).get("web_evidence_can_answer", False))
+
+
+def _web_evidence_requires_caveat(web_input: Mapping[str, Any]) -> bool:
+    return bool(_web_evidence_contract(web_input).get("web_evidence_requires_caveat", False))
+
+
 @dataclass(frozen=True)
 class HardGuardDecision:
     applied_hard_guards: tuple[str, ...] = ()
@@ -111,7 +125,13 @@ def evaluate_hard_guards(
         applied_hard_guards.append(HARD_GUARD_EXTERNAL_VERIFICATION_MISSING)
 
     stable_guards = _stable_unique(applied_hard_guards)
+    effect = None
+    if stable_guards:
+        if _web_evidence_can_answer(web_input):
+            effect = HARD_GUARD_EFFECT_CAVEAT_REQUIRED if _web_evidence_requires_caveat(web_input) else None
+        else:
+            effect = HARD_GUARD_EFFECT_ANSWER_FORBIDDEN
     return HardGuardDecision(
         applied_hard_guards=stable_guards,
-        effect=HARD_GUARD_EFFECT_ANSWER_FORBIDDEN if stable_guards else None,
+        effect=effect,
     )

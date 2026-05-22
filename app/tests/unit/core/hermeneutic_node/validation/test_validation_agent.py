@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import sys
 import types
 import unittest
@@ -17,6 +18,14 @@ def _resolve_app_dir() -> Path:
 APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
+
+if importlib.util.find_spec("psycopg") is None:
+    psycopg_module = types.ModuleType("psycopg")
+    psycopg_rows_module = types.ModuleType("psycopg.rows")
+    psycopg_rows_module.dict_row = object()
+    psycopg_module.rows = psycopg_rows_module
+    sys.modules.setdefault("psycopg", psycopg_module)
+    sys.modules.setdefault("psycopg.rows", psycopg_rows_module)
 
 from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
 from core.hermeneutic_node.inputs import time_input as canonical_time_input
@@ -121,14 +130,42 @@ def _web_input(
     explicit_url: str | None = None,
     read_state: str | None = None,
     sources: list[dict[str, object]] | None = None,
+    web_evidence: dict[str, object] | None = None,
 ) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "status": status,
         "results_count": results_count,
         "explicit_url_detected": explicit_url_detected,
         "explicit_url": explicit_url,
         "read_state": read_state,
         "sources": list(sources or []),
+    }
+    if web_evidence is not None:
+        payload["web_evidence"] = dict(web_evidence)
+    return payload
+
+
+def _web_evidence(
+    *,
+    can_answer: bool,
+    requires_caveat: bool = True,
+    status: str = "partial",
+    reason_codes: list[str] | None = None,
+) -> dict[str, object]:
+    return {
+        "web_evidence_policy_kind": "local_web_evidence_failure_contract_v0",
+        "web_evidence_status": status,
+        "web_evidence_reason_codes": list(reason_codes or ["snippet_only_material"]),
+        "web_evidence_guidance_codes": [
+            "state_evidence_limits_naturally",
+            "can_answer_with_caveat",
+            "no_external_fallback",
+        ],
+        "web_evidence_can_answer": can_answer,
+        "web_evidence_requires_caveat": requires_caveat,
+        "web_evidence_can_suggest_reformulation": requires_caveat,
+        "web_evidence_url_request_policy": "only_if_relevant_not_default",
+        "web_evidence_external_fallback_used": False,
     }
 
 
@@ -757,7 +794,7 @@ class ValidationAgentTests(unittest.TestCase):
                 ),
             },
             {
-                "name": "hard_guard_clarify_without_meta",
+                "name": "phase7_explicit_url_not_read_allows_answer_with_caveat",
                 "primary_verdict": _primary_verdict(),
                 "canonical_inputs": _canonical_inputs(
                     web_input=_web_input(
@@ -773,23 +810,31 @@ class ValidationAgentTests(unittest.TestCase):
                                 "content_used": "resume court",
                             }
                         ],
+                        web_evidence=_web_evidence(
+                            can_answer=True,
+                            requires_caveat=True,
+                            reason_codes=["explicit_url_not_read_snippet_fallback"],
+                        ),
                     )
                 ),
                 "response": _arbiter_json(
-                    final_judgment_posture="clarify",
+                    final_judgment_posture="answer",
                     final_output_regime="simple",
                     arbiter_reason="je peux cadrer sans pretendre avoir lu la page",
                 ),
                 "expected": _expected_validated_output(
-                    validation_decision="clarify",
-                    final_judgment_posture="clarify",
+                    validation_decision="confirm",
+                    final_judgment_posture="answer",
                     final_output_regime="simple",
-                    arbiter_followed_upstream=False,
-                    advisory_recommendations_followed=["upstream_output_regime_proposed"],
-                    advisory_recommendations_overridden=["upstream_recommendation_posture"],
+                    arbiter_followed_upstream=True,
+                    advisory_recommendations_followed=[
+                        "upstream_recommendation_posture",
+                        "upstream_output_regime_proposed",
+                    ],
+                    advisory_recommendations_overridden=[],
                     arbiter_reason="je peux cadrer sans pretendre avoir lu la page",
                     applied_hard_guards=[hard_guards.HARD_GUARD_EXPLICIT_URL_NOT_READ],
-                    hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN,
+                    hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_CAVEAT_REQUIRED,
                 ),
             },
             {
@@ -1009,12 +1054,12 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(suspend_result.validated_output["final_judgment_posture"], "suspend")
         self.assertEqual(suspend_result.validated_output["final_output_regime"], "simple")
 
-    def test_build_validated_output_hard_guard_blocks_answer_for_explicit_url_not_read_without_forcing_meta(self) -> None:
+    def test_build_validated_output_phase7_allows_answer_for_explicit_url_not_read_with_caveat(self) -> None:
         requests_module = _FakeRequests(
             [
                 _FakeResponse(
                     _arbiter_json(
-                        final_judgment_posture="clarify",
+                        final_judgment_posture="answer",
                         final_output_regime="simple",
                         arbiter_reason="je peux cadrer sans pretendre avoir lu la page",
                     )
@@ -1038,26 +1083,42 @@ class ValidationAgentTests(unittest.TestCase):
                             "used_in_prompt": True,
                             "used_content_kind": "search_snippet",
                             "content_used": "resume court",
-                        }
-                    ],
-                )
-            ),
+                            }
+                        ],
+                        web_evidence=_web_evidence(
+                            can_answer=True,
+                            requires_caveat=True,
+                            reason_codes=["explicit_url_not_read_snippet_fallback"],
+                        ),
+                    )
+                ),
             requests_module=requests_module,
         )
 
         self.assertEqual(
             result.validated_output,
             _expected_validated_output(
-                validation_decision="clarify",
-                final_judgment_posture="clarify",
+                validation_decision="confirm",
+                final_judgment_posture="answer",
                 final_output_regime="simple",
-                arbiter_followed_upstream=False,
-                advisory_recommendations_followed=["upstream_output_regime_proposed"],
-                advisory_recommendations_overridden=["upstream_recommendation_posture"],
+                arbiter_followed_upstream=True,
+                advisory_recommendations_followed=[
+                    "upstream_recommendation_posture",
+                    "upstream_output_regime_proposed",
+                ],
+                advisory_recommendations_overridden=[],
                 arbiter_reason="je peux cadrer sans pretendre avoir lu la page",
                 applied_hard_guards=[hard_guards.HARD_GUARD_EXPLICIT_URL_NOT_READ],
-                hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN,
+                hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_CAVEAT_REQUIRED,
             ),
+        )
+        self.assertIn(
+            '"allowed_postures":["answer","clarify","suspend"]',
+            requests_module.calls[0]["json"]["messages"][1]["content"],
+        )
+        self.assertIn(
+            '"hard_guard_effect":"caveat_required"',
+            requests_module.calls[0]["json"]["messages"][1]["content"],
         )
 
     def test_build_validated_output_hard_guard_blocks_answer_for_missing_external_verification_with_suspend_choice(self) -> None:
@@ -1100,6 +1161,71 @@ class ValidationAgentTests(unittest.TestCase):
                 applied_hard_guards=[hard_guards.HARD_GUARD_EXTERNAL_VERIFICATION_MISSING],
                 hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN,
             ),
+        )
+
+    def test_build_validated_output_phase7_allows_answer_when_web_evidence_can_answer(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="preuve partielle formulee prudemment",
+                    )
+                ),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(
+                epistemic_regime="a_verifier",
+                proof_regime="verification_externe_requise",
+                uncertainty_posture="explicite",
+            ),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(
+                web_input=_web_input(
+                    status="skipped",
+                    results_count=0,
+                    sources=[],
+                    web_evidence=_web_evidence(
+                        can_answer=True,
+                        requires_caveat=True,
+                        status="insufficient",
+                        reason_codes=["no_results"],
+                    ),
+                ),
+            ),
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.decision_source, "primary")
+        self.assertEqual(
+            result.validated_output,
+            _expected_validated_output(
+                validation_decision="confirm",
+                final_judgment_posture="answer",
+                final_output_regime="simple",
+                arbiter_followed_upstream=True,
+                advisory_recommendations_followed=[
+                    "upstream_recommendation_posture",
+                    "upstream_output_regime_proposed",
+                ],
+                advisory_recommendations_overridden=[],
+                arbiter_reason="preuve partielle formulee prudemment",
+                applied_hard_guards=[hard_guards.HARD_GUARD_EXTERNAL_VERIFICATION_MISSING],
+                hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_CAVEAT_REQUIRED,
+            ),
+        )
+        self.assertIn(
+            '"allowed_postures":["answer","clarify","suspend"]',
+            requests_module.calls[0]["json"]["messages"][1]["content"],
+        )
+        self.assertIn(
+            '"hard_guard_effect":"caveat_required"',
+            requests_module.calls[0]["json"]["messages"][1]["content"],
         )
 
     def test_build_validated_output_retries_when_primary_answer_violates_hard_guard(self) -> None:
