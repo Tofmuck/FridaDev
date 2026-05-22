@@ -289,6 +289,40 @@ class WebSearchRerankTests(unittest.TestCase):
 
         self.assertEqual(reranked[0]["url"], "https://helpx.adobe.com/photoshop/user-guide.html")
         self.assertIn("source_first_authority_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertIn("source_first_expected_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+
+    def test_documentation_officielle_phase5_expected_domain_reason_is_not_vendor_overfit(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "OpenRouter API Reference",
+                    "url": "https://docs.openrouter.ai/api-reference/overview",
+                    "content": "official API docs",
+                },
+                {
+                    "title": "Stripe Checkout documentation",
+                    "url": "https://docs.stripe.com/payments/checkout",
+                    "content": "Stripe Checkout official docs payments",
+                },
+            ],
+            user_msg="documentation officielle Stripe checkout",
+            primary_query="Stripe checkout documentation officielle",
+            search_profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+            max_results=5,
+            enabled=True,
+            source_first_plan={
+                "source_first_active": True,
+                "source_first_authority": "Stripe",
+                "source_first_product": "Checkout",
+                "source_first_probable_domains": ["docs.stripe.com"],
+                "source_first_authority_terms": ["stripe", "checkout"],
+            },
+        )
+
+        self.assertEqual(reranked[0]["url"], "https://docs.stripe.com/payments/checkout")
+        self.assertIn("profile_expected_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertIn("source_first_expected_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertNotIn("profile_expected_domain_soft_bonus", reranked[1]["rerank_reason_codes"])
 
     def test_documentation_officielle_generic_request_does_not_promote_openrouter_fixture(self) -> None:
         reranked, _observability = web_search_rerank.rerank_results(
@@ -378,6 +412,34 @@ class WebSearchRerankTests(unittest.TestCase):
         self.assertIn("essential_terms_soft_bonus", reranked[0]["rerank_reason_codes"])
         self.assertNotIn("essential_terms_soft_bonus", reranked[1]["rerank_reason_codes"])
 
+    def test_actualite_institutional_aligned_source_can_beat_reuters(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "Reuters world news",
+                    "url": "https://www.reuters.com/world/",
+                    "content": "international news",
+                },
+                {
+                    "title": "Ukraine - Ministere de l'Europe et des Affaires etrangeres",
+                    "url": "https://www.diplomatie.gouv.fr/fr/dossiers-pays/ukraine/actualites/",
+                    "content": "Ukraine diplomatie dernieres nouvelles communique officiel",
+                },
+            ],
+            user_msg="Ukraine diplomatie dernieres nouvelles institutionnelles",
+            primary_query="Ukraine diplomatie dernieres nouvelles source institutionnelle",
+            search_profile=web_search_profile.PROFILE_ACTUALITE,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(
+            reranked[0]["url"],
+            "https://www.diplomatie.gouv.fr/fr/dossiers-pays/ukraine/actualites/",
+        )
+        self.assertIn("profile_expected_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertNotIn("profile_expected_domain_soft_bonus", reranked[1]["rerank_reason_codes"])
+
     def test_academique_philosophique_promotes_academic_source_and_downranks_homonym(self) -> None:
         reranked, observability = web_search_rerank.rerank_results(
             [
@@ -434,6 +496,30 @@ class WebSearchRerankTests(unittest.TestCase):
         self.assertIn("essential_terms_soft_bonus", reranked[0]["rerank_reason_codes"])
         self.assertNotIn("essential_terms_soft_bonus", reranked[1]["rerank_reason_codes"])
 
+    def test_academique_large_promotes_pubmed_for_medical_science(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "CRISPR - Larousse",
+                    "url": "https://www.larousse.fr/encyclopedie/divers/CRISPR/188172",
+                    "content": "definition generale",
+                },
+                {
+                    "title": "CRISPR gene editing review",
+                    "url": "https://pubmed.ncbi.nlm.nih.gov/12345678/",
+                    "content": "CRISPR gene editing medical science publication review",
+                },
+            ],
+            user_msg="CRISPR article scientifique medical PubMed",
+            primary_query="CRISPR article scientifique medical PubMed",
+            search_profile=web_search_profile.PROFILE_ACADEMIQUE,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(reranked[0]["url"], "https://pubmed.ncbi.nlm.nih.gov/12345678/")
+        self.assertIn("academic_source_soft_bonus", reranked[0]["rerank_reason_codes"])
+
     def test_domain_diversity_keeps_plausible_off_domain_source(self) -> None:
         results = [
             {"title": "Doc A", "url": "https://openrouter.ai/docs/a", "content": "official docs api"},
@@ -457,6 +543,86 @@ class WebSearchRerankTests(unittest.TestCase):
         self.assertEqual(len(reranked), 4)
         self.assertTrue(observability["rerank_applied"])
         self.assertIn("domain_concentration_soft_downrank", observability["rerank_reason_counts"])
+        self.assertIn("domain_diversity_soft_adjustment", observability["rerank_reason_counts"])
+
+    def test_administratif_syndical_source_stays_visible_but_not_authority_for_rights(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "SUD education - conditions de travail",
+                    "url": "https://www.sudeducation.org/communique-conditions-travail",
+                    "content": "lecture syndicale conditions de travail enseignants",
+                },
+                {
+                    "title": "Education nationale - obligation de service",
+                    "url": "https://www.education.gouv.fr/obligations-de-service",
+                    "content": "regle officielle droit positif procedure enseignants",
+                },
+            ],
+            user_msg="regle officielle obligation de service enseignants education nationale",
+            primary_query="regle officielle obligation service enseignants education nationale",
+            search_profile=web_search_profile.PROFILE_ADMINISTRATIF_FRANCAIS,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(reranked[0]["url"], "https://www.education.gouv.fr/obligations-de-service")
+        self.assertIn("official_source_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertIn("profile_situated_secondary_visible_not_authority", reranked[1]["rerank_reason_codes"])
+
+    def test_administratif_education_does_not_overfit_non_education_subject(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "Education nationale - carte scolaire",
+                    "url": "https://www.education.gouv.fr/carte-scolaire",
+                    "content": "education nationale carte scolaire",
+                },
+                {
+                    "title": "CAF allocation logement",
+                    "url": "https://www.caf.fr/allocataires/aides-et-demarches/droits-et-prestations/logement",
+                    "content": "CAF allocation logement aide logement demarche officielle",
+                },
+            ],
+            user_msg="CAF allocation logement demarche officielle",
+            primary_query="CAF allocation logement aide demarche officielle",
+            search_profile=web_search_profile.PROFILE_ADMINISTRATIF_FRANCAIS,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(
+            reranked[0]["url"],
+            "https://www.caf.fr/allocataires/aides-et-demarches/droits-et-prestations/logement",
+        )
+        self.assertIn("official_source_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertNotIn("profile_expected_domain_soft_bonus", reranked[1]["rerank_reason_codes"])
+
+    def test_general_divers_softly_downranks_accidental_conjugator_without_drop(self) -> None:
+        reranked, observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "Conjugaison jaguarer",
+                    "url": "https://leconjugueur.lefigaro.fr/conjugaison/verbe/jaguarer.html",
+                    "content": "conjugaison",
+                },
+                {
+                    "title": "Jaguar animal et voiture",
+                    "url": "https://example.org/jaguar-ambigu",
+                    "content": "Jaguar animal voiture marque ambigu",
+                },
+            ],
+            user_msg="Jaguar ambigu animal voiture",
+            primary_query="Jaguar ambigu animal voiture",
+            search_profile=web_search_profile.PROFILE_GENERAL_DIVERS,
+            max_results=5,
+            enabled=True,
+        )
+
+        urls = [item["url"] for item in reranked]
+        self.assertEqual(urls[0], "https://example.org/jaguar-ambigu")
+        self.assertIn("https://leconjugueur.lefigaro.fr/conjugaison/verbe/jaguarer.html", urls)
+        self.assertIn("conjugator_soft_downrank", observability["rerank_reason_counts"])
 
     def test_reason_codes_are_fixed_codes_not_raw_content(self) -> None:
         secret_snippet = "snippet ultra sensible"

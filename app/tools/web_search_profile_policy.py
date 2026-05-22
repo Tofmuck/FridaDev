@@ -367,6 +367,10 @@ def evaluate_profile_evidence(
     }
 
 
+def classify_source_against_policy(source: Mapping[str, Any], policy: WebSearchProfilePolicy) -> str:
+    return _classify_source(source, policy)
+
+
 def _policy_from_fields(search_profile: str, fields: Mapping[str, Any] | None) -> WebSearchProfilePolicy:
     data = fields if isinstance(fields, Mapping) else {}
     if data.get('profile_policy_kind'):

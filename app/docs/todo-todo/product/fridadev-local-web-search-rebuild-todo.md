@@ -1,6 +1,6 @@
 # FridaDev - reconstruction locale de la recherche web - TODO A-Z
 
-Statut: actif, reconstruction applicative locale en cours; Phases 2 a 5 livrees sans modification plateforme.
+Statut: actif, reconstruction applicative locale en cours; Phases 2 a 6 livrees sans modification plateforme.
 
 Ce document devient la source-of-truth operatoire pour reconstruire la recherche web locale FridaDev de A a Z, apres le durcissement V0 SearXNG + Crawl4AI et le benchmark Lot 8 du 2026-05-22.
 
@@ -36,7 +36,7 @@ References a relire avant toute phase:
   - [x] Paniers applicatifs par regime, sans modification plateforme.
   - [ ] Reconfig globale SearXNG optionnelle, seulement avec GO utilisateur Sauron.
 - [x] Phase 5 — Parametres FridaDev par profil
-- [ ] Phase 6 — Reranking explicable
+- [x] Phase 6 — Reranking explicable
 - [ ] Phase 7 — Comportement d'echec
 - [ ] Phase 8 — Benchmark final
 - [ ] Phase 9 — Deploiement
@@ -585,23 +585,23 @@ Objectif: ordonner un bon panier de resultats, pas sauver un mauvais panier ni c
 
 Regles a couvrir:
 
-- [ ] Source officielle devant SEO quand l'autorite est alignee avec la demande.
-- [ ] Source primaire devant resume.
-- [ ] Institution devant forum quand le profil le demande.
-- [ ] Academique devant dictionnaire quand le profil est academique.
-- [ ] Dictionnaire possible comme appoint definitionnel, pas autorite finale.
-- [ ] Reason codes lisibles.
-- [ ] Aucun bannissement invisible.
-- [ ] Diversite minimale de domaines.
+- [x] Source officielle devant SEO quand l'autorite est alignee avec la demande.
+- [x] Source primaire devant resume.
+- [x] Institution devant forum quand le profil le demande.
+- [x] Academique devant dictionnaire quand le profil est academique.
+- [x] Dictionnaire possible comme appoint definitionnel, pas autorite finale.
+- [x] Reason codes lisibles.
+- [x] Aucun bannissement invisible.
+- [x] Diversite minimale de domaines.
 
 Livrables:
 
-- [ ] Reranking explicable par profil.
-- [ ] Reason codes content-free.
-- [ ] Tests positifs par profil.
-- [ ] Tests negatifs anti-overfit.
-- [ ] Tests de preservation de la diversite.
-- [ ] Observabilite avant/apres rerank.
+- [x] Reranking explicable par profil.
+- [x] Reason codes content-free.
+- [x] Tests positifs par profil.
+- [x] Tests negatifs anti-overfit.
+- [x] Tests de preservation de la diversite.
+- [x] Observabilite avant/apres rerank.
 
 Fichiers ou zones concernes:
 
@@ -613,9 +613,9 @@ Fichiers ou zones concernes:
 
 Decisions utilisateur requises avant patch:
 
-- [ ] Valider les domaines a declasser par profil.
-- [ ] Valider les sources qui peuvent rester comme appoint.
-- [ ] Valider les reason codes exposables.
+- [x] Valider les domaines a declasser par profil.
+- [x] Valider les sources qui peuvent rester comme appoint.
+- [x] Valider les reason codes exposables.
 
 Hors-scope:
 
@@ -626,18 +626,32 @@ Hors-scope:
 
 Tests/preuves attendus:
 
-- [ ] Documentation officielle alignee promue devant tutoriel SEO.
-- [ ] CNI/CAF institutionnel promu devant conjugueur/dictionnaire hors sujet.
-- [ ] Source academique alignee promue devant dictionnaire generaliste.
-- [ ] Dictionnaire conserve quand la demande est definitionnelle.
-- [ ] Aucun domaine unique impose.
-- [ ] Reason codes sans contenu brut.
+- [x] Documentation officielle alignee promue devant tutoriel SEO.
+- [x] CNI/CAF institutionnel promu devant conjugueur/dictionnaire hors sujet.
+- [x] Source academique alignee promue devant dictionnaire generaliste.
+- [x] Dictionnaire conserve comme appoint inspectable, pas autorite finale.
+- [x] Aucun domaine unique impose.
+- [x] Reason codes sans contenu brut.
 
 Criteres de fin:
 
-- [ ] Le reranking explique le mouvement des sources.
-- [ ] Les sources declassees restent inspectables.
-- [ ] Le comportement ne depend pas de fixtures cachees.
+- [x] Le reranking explique le mouvement des sources.
+- [x] Les sources declassees restent inspectables.
+- [x] Le comportement ne depend pas de fixtures cachees.
+
+### Phase 6 - livraison Celebrimbor 2026-05-22
+
+Statut: livre applicatif/runtime, sans modification plateforme.
+
+- [x] Spec creee: `app/docs/states/specs/fridadev-web-search-reranking-contract.md`.
+- [x] Le reranker utilise la politique Phase 5: domaines attendus, secondaires, situes et declasses.
+- [x] Documentation officielle: source-first et domaines attendus ne promeuvent que l'autorite nommee; OpenRouter ne bat pas Adobe/Microsoft/Stripe hors alignement.
+- [x] Administratif francais: sources officielles et Education nationale sont promues quand alignees; SUD/CGT/Solidaires restent visibles comme sources situees, pas autorite administrative.
+- [x] Academique: profil large confirme; PubMed/arXiv/OpenAIRE/HAL/OpenEdition/Cairn/Persee/DOI peuvent etre promus selon sujet.
+- [x] Actualite: fraicheur et source institutionnelle alignee peuvent passer devant une news generique; Reuters reste utile mais non souverain.
+- [x] `general_divers`: downrank leger des conjugueurs/dictionnaires accidentels et preservation de diversite, sans source imposee.
+- [x] Reason codes ajoutes ou stabilises: `profile_expected_domain_soft_bonus`, `profile_secondary_domain_soft_bonus`, `profile_situated_secondary_visible_not_authority`, `profile_downrank_domain_soft_penalty`, `source_first_expected_domain_soft_bonus`, `official_source_soft_bonus`, `academic_source_soft_bonus`, `freshness_soft_bonus`, `qa_soft_downrank`, `domain_diversity_soft_adjustment`.
+- [x] Le reranking reste sans suppression dure, sans fallback externe et sans score de confiance actionnable.
 
 Risques/effets de bord:
 

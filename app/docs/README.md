@@ -108,6 +108,7 @@ Lire d'abord:
 - `states/specs/fridadev-web-search-regimes-source-first-contract.md` pour le contrat Phase 2/3: regimes canoniques, source-first, anti-overfit et observabilite content-free.
 - `states/specs/fridadev-web-search-searxng-engine-baskets-contract.md` pour le contrat Phase 4: paniers moteurs SearXNG applicatifs par regime, statut Mojeek et frontiere avec la reconfiguration plateforme.
 - `states/specs/fridadev-web-search-profile-policy-contract.md` pour le contrat Phase 5: domaines attendus/secondaires/declasses, budgets crawl, latence cible et signal de preuve insuffisante.
+- `states/specs/fridadev-web-search-reranking-contract.md` pour le contrat Phase 6: reranking explicable par profil, reason codes, diversite et non-censure.
 - `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md` pour comparer SearXNG, Crawl4AI, configuration OVH, pipeline FridaDev et benchmark local/Exa/Parallel avant tout lot runtime.
 - `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md` pour la decision Lot 8 recadree: runtime web `local only`, Exa/Parallel uniquement comme benchmarks externes, aucune activation runtime OpenRouter.
 - `todo-done/notes/web-reading-truth-todo.md` pour le contrat archive de lecture URL explicite, `read_state`, `fit` puis `raw` et observabilite content-free.
