@@ -730,7 +730,12 @@ def _profile_policy_event_fields(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _empty_query_plan(kind: str, *, search_profile: str = '') -> dict[str, Any]:
+def _empty_query_plan(
+    kind: str,
+    *,
+    search_profile: str = '',
+    discovery_provider: str | None = None,
+) -> dict[str, Any]:
     profile_policy = web_search_profile_policy.build_profile_policy(
         search_profile,
     ) if search_profile else None
@@ -750,7 +755,10 @@ def _empty_query_plan(kind: str, *, search_profile: str = '') -> dict[str, Any]:
             else web_search_profile_policy.empty_observability_fields()
         ),
         **web_search_searxng_params.empty_observability_fields(kind='none'),
-        **web_search_discovery.plan_observability_fields(search_profile=search_profile),
+        **web_search_discovery.plan_observability_fields(
+            search_profile=search_profile,
+            requested_provider=discovery_provider,
+        ),
         **web_search_rerank.empty_observability_fields(applied=False),
     }
 
@@ -1747,7 +1755,11 @@ def _build_payload_from_collection(
     now_iso: str | None = None,
 ) -> dict[str, Any]:
     if explicit_url:
-        direct_query_plan = _empty_query_plan('explicit_url_direct', search_profile=search_profile)
+        direct_query_plan = _empty_query_plan(
+            'explicit_url_direct',
+            search_profile=search_profile,
+            discovery_provider=discovery_provider,
+        )
         primary_crawl = _crawl_explicit_url_primary_with_status(explicit_url)
         primary_read_status = str(primary_crawl.get('status') or 'error')
         primary_read_filter = str(primary_crawl.get('filter') or CRAWL4AI_FILTER_FIT)
@@ -2021,7 +2033,13 @@ def build_context_payload(
             'reason_code': 'upstream_error',
             'original_user_message': str(user_msg or ''),
             'search_profile': str(search_profile or ''),
-            **_query_plan_observability_fields(_empty_query_plan('error', search_profile=search_profile)),
+            **_query_plan_observability_fields(
+                _empty_query_plan(
+                    'error',
+                    search_profile=search_profile,
+                    discovery_provider=discovery_provider,
+                )
+            ),
             'query': str(user_msg or ''),
             'results_count': 0,
             'runtime': _runtime_collection_settings(),
@@ -2210,7 +2228,11 @@ def build_context(
         return ctx, query, len(results)
     except Exception as exc:
         query_plan_event_kwargs, query_plan_fields = _query_plan_event_kwargs(
-            _empty_query_plan('error', search_profile=search_profile)
+            _empty_query_plan(
+                'error',
+                search_profile=search_profile,
+                discovery_provider=discovery_provider,
+            )
         )
         _emit_web_search_runtime_event(
             enabled=True,
