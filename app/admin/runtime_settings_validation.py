@@ -87,6 +87,7 @@ def validate_runtime_section(
         referer = _runtime_text_value(view, 'referer')
         referer_llm = _runtime_text_value(view, 'referer_llm')
         referer_web_reformulation = _runtime_text_value(view, 'referer_web_reformulation')
+        referer_web_discovery = _runtime_text_value(view, 'referer_web_discovery')
         referer_arbiter = _runtime_text_value(view, 'referer_arbiter')
         referer_identity_extractor = _runtime_text_value(view, 'referer_identity_extractor')
         referer_identity_periodic = _runtime_text_value(view, 'referer_identity_periodic')
@@ -122,6 +123,14 @@ def validate_runtime_section(
                     (
                         'referer_web_reformulation='
                         f'{referer_web_reformulation or "missing"}; shared_referer={referer or "missing"}'
+                    ),
+                ),
+                _validation_check(
+                    'referer_web_discovery',
+                    _component_referer_valid_or_shared_fallback(referer_web_discovery, referer),
+                    (
+                        'referer_web_discovery='
+                        f'{referer_web_discovery or "missing"}; shared_referer={referer or "missing"}'
                     ),
                 ),
                 _validation_check(

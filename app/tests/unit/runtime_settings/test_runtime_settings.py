@@ -202,6 +202,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         expected_env_vars = {
             'referer_llm': 'OPENROUTER_REFERER_LLM',
             'referer_web_reformulation': 'OPENROUTER_REFERER_WEB_REFORMULATION',
+            'referer_web_discovery': 'OPENROUTER_REFERER_WEB_DISCOVERY',
             'referer_arbiter': 'OPENROUTER_REFERER_ARBITER',
             'referer_identity_extractor': 'OPENROUTER_REFERER_IDENTITY_EXTRACTOR',
             'referer_resumer': 'OPENROUTER_REFERER_RESUMER',

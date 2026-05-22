@@ -78,6 +78,7 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         self.assertTrue(checks['model']['ok'])
         self.assertTrue(checks['referer_llm']['ok'])
         self.assertTrue(checks['referer_web_reformulation']['ok'])
+        self.assertTrue(checks['referer_web_discovery']['ok'])
         self.assertTrue(checks['referer_validation_agent']['ok'])
         self.assertTrue(checks['temperature']['ok'])
         self.assertTrue(checks['top_p']['ok'])
