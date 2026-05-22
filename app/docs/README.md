@@ -22,9 +22,10 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Baseline consolidee Phase 0 recherche web locale 2026-05-22: `states/audits/fridadev-local-web-search-phase-0-baseline-2026-05-22.md`
 - Benchmark final Phase 8 recherche web locale 2026-05-22: `states/audits/fridadev-web-search-phase-8-final-benchmark-2026-05-22.md`
 - Validation live Phase 9 Exa discovery 2026-05-22: `states/audits/fridadev-web-search-phase-9-live-validation-2026-05-22.md`
+- Validation finale Phase 9 Exa discovery 2026-05-22: `states/audits/fridadev-web-search-phase-9-final-validation-2026-05-22.md`
 - Decision produit OpenRouter/Exa comme provider de decouverte web ouverte 2026-05-22: `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 - Archive du renforcement web local V0 SearXNG/Crawl4AI: `todo-done/product/fridadev-local-web-search-hardening-todo.md`
-- TODO actif A-Z web discovery local-first + Exa: `todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
+- Archive A-Z web discovery local-first + Exa: `todo-done/product/fridadev-local-web-search-rebuild-todo.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
 - Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
@@ -106,7 +107,7 @@ Archives utiles:
 
 Lire d'abord:
 - `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md` pour la decision active: FridaDev reste local-first pour lire/qualifier/auditer, mais la recherche ouverte peut utiliser OpenRouter/Exa comme provider de decouverte URL configure.
-- `todo-todo/product/fridadev-local-web-search-rebuild-todo.md` pour piloter la reconstruction A-Z web discovery local-first + Exa: historique SearXNG local, decision Exa discovery, Phase 9 de validation/deploiement.
+- `todo-done/product/fridadev-local-web-search-rebuild-todo.md` pour relire l'archive A-Z web discovery local-first + Exa: historique SearXNG local, decision Exa discovery, Phase 9 de validation/deploiement et rollback.
 - `todo-done/product/fridadev-local-web-search-hardening-todo.md` pour l'archive du contrat V0, les lots d'implementation et le bras benchmark `local_profiled`; ce document ne porte plus la doctrine active.
 - `states/audits/fridadev-local-web-search-phase-0-baseline-2026-05-22.md` pour la consolidation Phase 0: cas deja couverts, complement local-only borne et passage vers l'inventaire moteur SearXNG.
 - `states/specs/fridadev-web-search-regimes-source-first-contract.md` pour le contrat Phase 2/3: regimes canoniques, source-first, anti-overfit et observabilite content-free.
@@ -116,6 +117,7 @@ Lire d'abord:
 - `states/specs/fridadev-web-search-evidence-failure-contract.md` pour le contrat Phase 7: preuve web insuffisante, garde-fou prompt naturel, observabilite content-free et absence de fallback externe.
 - `states/audits/fridadev-web-search-phase-8-final-benchmark-2026-05-22.md` pour le benchmark final local vs local_profiled: gains, regressions, confiance trop optimiste et blocage avant cloture Phase 9.
 - `states/audits/fridadev-web-search-phase-9-live-validation-2026-05-22.md` pour la validation live bornee: web off sans appel, URL explicite locale directe, recherche ouverte Exa discovery puis Crawl4AI, cout/latence et limites restantes.
+- `states/audits/fridadev-web-search-phase-9-final-validation-2026-05-22.md` pour la validation finale Phase 9: calibration confiance/evidence, corpus final, cout/latence, rollback et cloture du chantier.
 - `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md` pour comparer SearXNG, Crawl4AI, configuration OVH, pipeline FridaDev et benchmark local/Exa/Parallel avant tout lot runtime.
 - `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md` pour l'ancien benchmark comparatif Lot 8 et sa decision initiale maintenant supersedee par la policy OpenRouter/Exa.
 - `todo-done/notes/web-reading-truth-todo.md` pour le contrat archive de lecture URL explicite, `read_state`, `fit` puis `raw` et observabilite content-free.

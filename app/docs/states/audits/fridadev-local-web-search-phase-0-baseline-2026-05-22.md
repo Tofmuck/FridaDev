@@ -19,7 +19,7 @@ Conclusion: la Phase 0 est consolidee pour passer au travail Sauron de Phase 1 s
 
 ## Sources relues
 
-- `app/docs/todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
+- `app/docs/todo-done/product/fridadev-local-web-search-rebuild-todo.md`
 - `app/docs/states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
 - `app/docs/states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`
 - `benchmark/web-search/README.md`

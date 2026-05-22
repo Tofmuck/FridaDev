@@ -1,8 +1,8 @@
 # FridaDev - reconstruction web discovery local-first + Exa - TODO A-Z
 
-Statut: actif, reconstruction applicative web en cours; Phases 2 a 8 livrees sans modification plateforme. Decision produit du 2026-05-22: la decouverte web ouverte bascule vers OpenRouter/Exa quand configure, tout en gardant Crawl4AI, evidence, confiance, source-first, reranking et observabilite sous controle FridaDev.
+Statut: clos le 2026-05-22, reconstruction applicative web discovery local-first + Exa livree sans modification plateforme globale. Decision produit du 2026-05-22: la decouverte web ouverte bascule vers OpenRouter/Exa quand configure, tout en gardant Crawl4AI, evidence, confiance, source-first, reranking et observabilite sous controle FridaDev.
 
-Ce document est la source-of-truth operatoire du chantier web discovery local-first + Exa. Il conserve l'histoire du diagnostic local/SearXNG, mais la doctrine active n'est plus une reconstruction locale pure: SearXNG ne suffit pas seul a la recherche ouverte, et OpenRouter/Exa est devenu le provider de decouverte URL configure.
+Ce document est l'archive source-of-truth operatoire du chantier web discovery local-first + Exa. Il conserve l'histoire du diagnostic local/SearXNG, mais la doctrine active n'est plus une reconstruction locale pure: SearXNG ne suffit pas seul a la recherche ouverte, et OpenRouter/Exa est devenu le provider de decouverte URL configure.
 
 References a relire avant toute phase:
 
@@ -41,10 +41,11 @@ References a relire avant toute phase:
 - [x] Phase 6 — Reranking explicable
 - [x] Phase 7 — Comportement d'echec
 - [x] Phase 8 — Benchmark final
-- [ ] Phase 9 — Validation et deploiement Exa discovery
+- [x] Phase 9 — Validation et deploiement Exa discovery
   - [x] Premier branchement provider de decouverte `local|openrouter_exa`.
   - [x] Validation live bornee du provider `openrouter_exa`.
-  - [ ] Decision operateur sur variable runtime OVH si le defaut doit etre force cote plateforme.
+  - [x] Validation finale du corpus borne, calibration confiance/evidence, rollback documente.
+  - [x] Decision operateur sur variable runtime OVH: defaut applicatif `openrouter_exa`; rollback explicite vers `local`.
 
 ## Regles de pilotage
 
@@ -96,7 +97,7 @@ Frida ne doit pas transformer un ranking opaque en verite. La contestabilite doi
 
 - Phases 0 a 8: diagnostic et reconstruction locale/SearXNG, utiles pour comprendre ce qui a ete livre et pourquoi SearXNG seul reste fragile.
 - Decision post-Phase 8: OpenRouter/Exa devient provider de decouverte URL pour la recherche ouverte quand configure.
-- Phase 9: phase active de validation et de deploiement de cette decision, pas relance d'un nouveau chantier local-only.
+- Phase 9: validation et deploiement de cette decision livres; le chantier est archive avec rollback connu.
 - L'ancien TODO hardening V0 est archive comme preuve technique; il ne porte plus la doctrine active.
 
 ## Phase 0 — Etat des lieux reel
@@ -847,15 +848,15 @@ Livrables:
 - [x] Validation: recherche ouverte = Exa discovery puis Crawl4AI local.
 - [x] Mesure: nombre d'appels Exa par tour via `query_count`, `secondary_query_count` et `provider_caller=web_discovery`.
 - [x] Mesure: latence et cout sur corpus borne.
-- [ ] Verification corpus: Adobe Photoshop / Illustrator, CNI, actualite institutionnelle Europe, OpenRouter docs, cas academique.
-- [ ] Documentation des limites restantes: cout Exa, latence proche du plafond, Crawl4AI parfois faible sur PDF ou pages institutionnelles.
-- [ ] Decision operateur sur la variable runtime OVH si le defaut doit etre force cote plateforme.
-- [ ] Rapport final de validation Phase 9.
-- [ ] Rollback connu: revenir a `WEB_SEARCH_DISCOVERY_PROVIDER=local`.
+- [x] Verification corpus: Adobe Photoshop / Illustrator, CNI, actualite institutionnelle Europe, OpenRouter docs, cas academique SHS et sciences.
+- [x] Documentation des limites restantes: cout Exa, latence proche du plafond, Crawl4AI parfois faible sur PDF ou pages institutionnelles.
+- [x] Decision operateur sur la variable runtime OVH: defaut applicatif `openrouter_exa`, rollback explicite vers `local`.
+- [x] Rapport final de validation Phase 9.
+- [x] Rollback connu: revenir a `WEB_SEARCH_DISCOVERY_PROVIDER=local`.
 
 ### Phase 9 - validation live bornee 2026-05-22
 
-Statut: preuve live minimale livree, Phase 9 globale encore ouverte.
+Statut historique au moment du premier smoke: preuve live minimale livree, Phase 9 globale encore ouverte avant la validation finale ci-dessous.
 
 - [x] Note versionnee: `app/docs/states/audits/fridadev-web-search-phase-9-live-validation-2026-05-22.md`.
 - [x] Artefacts temporaires: `/tmp/fridadev-web-search-phase9-live-validation/phase9-live.json` et `/tmp/fridadev-web-search-phase9-live-validation/phase9-live.md`.
@@ -868,11 +869,32 @@ Statut: preuve live minimale livree, Phase 9 globale encore ouverte.
 - [x] Latence observee: environ 1,6 s pour URL explicite, 16,4 a 21,9 s pour recherches ouvertes du smoke.
 - [x] Grep securite des artefacts `/tmp` vide pour cles, tokens, headers sensibles, fichier environnement, data URL et base64.
 
-Restent ouverts:
+Limites identifiees par le premier smoke:
 
-- [ ] Adobe Illustrator et cas academique non relances dans ce micro-smoke.
-- [ ] Limites Crawl4AI PDF/pages institutionnelles: une erreur Crawl4AI 500 est apparue sur une page Parlement europeen pendant le run.
-- [ ] Calibration confiance: dans ce run, le cas actualite institutionnelle garde `web_confidence_level=high` malgre `crawl_empty_or_error_present`; ne pas traiter cette calibration comme cloturee.
+- [x] Adobe Illustrator et cas academiques etaient absents du premier micro-smoke; ils sont couverts par la validation finale.
+- [x] Limites Crawl4AI PDF/pages institutionnelles documentees: une page ou PDF peut rester non lu, ce qui exige caveat si son snippet est injecte.
+- [x] Calibration confiance corrigee: `crawl_failed_prompt_material_used` force evidence `partial` et confiance au plus `medium`; une erreur non utilisee reste observable sans punition aveugle.
+
+### Phase 9 - validation finale 2026-05-22
+
+Statut: corpus final borne valide, rollback documente, Phase 9 cloturee.
+
+- [x] Commit code de calibration: `Calibrate web confidence for partial crawl failures`.
+- [x] Note versionnee: `app/docs/states/audits/fridadev-web-search-phase-9-final-validation-2026-05-22.md`.
+- [x] Artefacts temporaires: `/tmp/fridadev-web-search-phase9-final-validation/phase9-final.json` et `/tmp/fridadev-web-search-phase9-final-validation/phase9-final.md`.
+- [x] Web desactive: aucun appel provider.
+- [x] URL explicite OpenRouter docs: provider effectif `local`, aucun appel `web_discovery`, `read_state=page_read`.
+- [x] Adobe Photoshop docs: provider `openrouter_exa`, 3 appels `web_discovery`, domaines Adobe attendus, evidence `partial`, confiance `medium`.
+- [x] Adobe Illustrator docs: provider `openrouter_exa`, 3 appels `web_discovery`, domaines Adobe attendus, evidence `partial`, confiance `medium`.
+- [x] Renouvellement CNI: provider `openrouter_exa`, 3 appels `web_discovery`, Service Public / ANTS, evidence `partial`, confiance `medium`.
+- [x] Actualite institutionnelle IA Europe: provider `openrouter_exa`, 3 appels `web_discovery`, sources institutionnelles europeennes lues, evidence `sufficient`, confiance `high`.
+- [x] OpenRouter docs: provider `openrouter_exa`, 3 appels `web_discovery`, domaine `openrouter.ai`, evidence `partial`, confiance `medium`.
+- [x] Bourdieu / sociologie: provider `openrouter_exa`, 3 appels `web_discovery`, sources SHS, evidence `partial`, confiance `medium`.
+- [x] CRISPR / PubMed: provider `openrouter_exa`, 3 appels `web_discovery`, sources scientifiques, evidence `partial`, confiance `medium`.
+- [x] Couts observes: environ `0.264846` USD pour 21 appels `web_discovery` sur le corpus final.
+- [x] Latences observees: environ 1,7 s pour URL explicite; 19,1 a 32,2 s pour recherches ouvertes du corpus final.
+- [x] Grep securite des artefacts `/tmp` et notes Phase 9 vide pour cles, tokens, cookies, headers sensibles, fichiers environnement, data URL et base64.
+- [x] Rollback operateur documente: revenir a `WEB_SEARCH_DISCOVERY_PROVIDER=local`, puis redeployer uniquement l'app si l'environnement change.
 
 Fichiers ou zones concernes:
 
@@ -884,9 +906,9 @@ Fichiers ou zones concernes:
 Decisions utilisateur requises avant patch:
 
 - [x] Valider la decision produit: OpenRouter/Exa comme provider de decouverte URL configure pour la recherche ouverte.
-- [ ] Valider fenetre de deploiement si changement runtime OVH.
-- [ ] Valider rollback operateur vers `local`.
-- [ ] Valider si le chantier actif peut etre archive apres preuves.
+- [x] Valider fenetre de deploiement applicatif: rebuild `fridadev` uniquement apres patch runtime.
+- [x] Valider rollback operateur vers `local`.
+- [x] Valider si le chantier actif peut etre archive apres preuves.
 
 Hors-scope:
 
@@ -899,23 +921,23 @@ Hors-scope:
 
 Tests/preuves attendus:
 
-- [ ] `git status --short --branch`
-- [ ] `git diff --check`
-- [ ] Tests applicatifs pertinents.
-- [ ] `docker compose up -d --build fridadev` seulement si runtime modifie.
-- [ ] `docker ps --filter name=platform-fridadev --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`
-- [ ] `curl --max-time 12 -sSI https://fridadev.frida-system.fr/admin | sed -n '1,12p'`
-- [ ] Smoke web manuel borne si recherche runtime modifiee.
-- [ ] Grep securite sur artefacts de validation: pas de cle, token, temoin de session, fichier environnement, header d'autorisation ou dump de contenu.
+- [x] `git status --short --branch`
+- [x] `git diff --check`
+- [x] Tests applicatifs pertinents.
+- [x] `docker compose up -d --build fridadev` apres patch runtime.
+- [x] `docker ps --filter name=platform-fridadev --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`
+- [x] `curl --max-time 12 -sSI https://fridadev.frida-system.fr/admin | grep -vi "set-cookie" | sed -n '1,12p'`
+- [x] Smoke web manuel borne apres calibration confiance/evidence.
+- [x] Grep securite sur artefacts de validation: pas de cle, token, temoin de session, fichier environnement, header d'autorisation ou dump de contenu.
 
 Criteres de fin:
 
-- [ ] Le provider de decouverte effectif est lisible.
-- [ ] Les validations web desactive / URL explicite / recherche ouverte sont lisibles.
-- [ ] Les couts et latences Exa sont mesures sur corpus borne.
-- [ ] Les preuves live sont lisibles.
-- [ ] Le rollback est documente.
-- [ ] Le TODO est archive ou laisse ouvert avec prochain lot explicite.
+- [x] Le provider de decouverte effectif est lisible.
+- [x] Les validations web desactive / URL explicite / recherche ouverte sont lisibles.
+- [x] Les couts et latences Exa sont mesures sur corpus borne.
+- [x] Les preuves live sont lisibles.
+- [x] Le rollback est documente.
+- [x] Le TODO est archive comme chantier produit clos.
 
 Risques/effets de bord:
 
