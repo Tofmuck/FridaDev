@@ -107,6 +107,13 @@ def _input_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         if bool(item.get('used_in_prompt', False))
         and str(item.get('used_content_kind') or '') == 'search_snippet'
     )
+    crawl_failed_used_source_count = sum(
+        1
+        for item in source_material
+        if bool(item.get('used_in_prompt', False))
+        and str(item.get('used_content_kind') or 'none') != 'none'
+        and str(item.get('crawl_status') or '') in {'empty', 'error'}
+    )
     return {
         'status': str(payload.get('status') or ''),
         'reason_code_present': bool(str(payload.get('reason_code') or '').strip()),
@@ -125,6 +132,7 @@ def _input_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         'crawl_success_count': crawl_success_count,
         'crawl_empty_count': crawl_empty_count,
         'crawl_error_count': crawl_error_count,
+        'crawl_failed_used_source_count': crawl_failed_used_source_count,
         'snippet_only_count': snippet_only_count,
         'rerank_applied': bool(payload.get('rerank_applied', False)),
         'rerank_reason_code_count': sum(
@@ -174,6 +182,7 @@ def _score_search(summary: Mapping[str, Any]) -> tuple[float, list[str]]:
     used_content_kinds = set(summary.get('used_content_kinds') or [])
     injected_chars = int(summary.get('injected_chars') or 0)
     crawl_success_count = int(summary.get('crawl_success_count') or 0)
+    crawl_failed_used_source_count = int(summary.get('crawl_failed_used_source_count') or 0)
     used_domain_count = int(summary.get('used_domain_count') or 0)
 
     if int(summary.get('used_source_count') or 0) > 0:
@@ -223,6 +232,11 @@ def _score_search(summary: Mapping[str, Any]) -> tuple[float, list[str]]:
 
     if (int(summary.get('crawl_empty_count') or 0) + int(summary.get('crawl_error_count') or 0)) > 0:
         reasons.append('crawl_empty_or_error_present')
+        if crawl_failed_used_source_count > 0:
+            score = min(score, 0.74)
+            reasons.append('crawl_failed_prompt_material_used')
+            if crawl_success_count > 0:
+                reasons.append('crawl_partial_failure_limits_confidence')
         if crawl_success_count == 0:
             score -= 0.12
 

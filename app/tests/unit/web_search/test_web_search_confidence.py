@@ -106,6 +106,104 @@ class WebSearchConfidenceTests(unittest.TestCase):
         self.assertIn("rerank_signal_present", fields["web_confidence_reason_codes"])
         self.assertFalse(fields["openrouter_fallback_used"])
 
+    def test_crawl_failure_used_as_prompt_material_caps_confidence(self) -> None:
+        fields = web_search_confidence.evaluate_web_confidence(
+            {
+                "enabled": True,
+                "status": "ok",
+                "explicit_url_detected": False,
+                "results_count": 2,
+                "query_count": 3,
+                "deduped_result_count": 2,
+                "source_material_summary": [
+                    {
+                        "rank": 1,
+                        "url": "https://institution.example/policy",
+                        "used_in_prompt": True,
+                        "used_content_kind": "crawl_markdown",
+                        "crawl_status": "success",
+                        "content_chars": 1200,
+                    },
+                    {
+                        "rank": 2,
+                        "url": "https://document.example/official.pdf",
+                        "used_in_prompt": True,
+                        "used_content_kind": "search_snippet",
+                        "crawl_status": "error",
+                        "content_chars": 180,
+                    },
+                ],
+                "crawl4ai_extraction_summary": [
+                    {"url": "https://institution.example/policy", "crawl_status": "success"},
+                    {"url": "https://document.example/official.pdf", "crawl_status": "error"},
+                ],
+                "used_content_kinds": ["crawl_markdown", "search_snippet"],
+                "injected_chars": 1380,
+                "context_chars": 1600,
+                "rerank_applied": True,
+            }
+        )
+
+        self.assertEqual(fields["web_confidence_level"], "medium")
+        self.assertLess(fields["web_confidence_score"], 0.78)
+        self.assertEqual(fields["web_confidence_inputs_summary"]["crawl_failed_used_source_count"], 1)
+        self.assertIn("crawl_empty_or_error_present", fields["web_confidence_reason_codes"])
+        self.assertIn("crawl_failed_prompt_material_used", fields["web_confidence_reason_codes"])
+        self.assertIn("crawl_partial_failure_limits_confidence", fields["web_confidence_reason_codes"])
+        self.assertFalse(fields["openrouter_fallback_used"])
+
+    def test_unused_crawl_failure_does_not_cap_high_confidence(self) -> None:
+        fields = web_search_confidence.evaluate_web_confidence(
+            {
+                "enabled": True,
+                "status": "ok",
+                "explicit_url_detected": False,
+                "results_count": 3,
+                "query_count": 3,
+                "deduped_result_count": 3,
+                "source_material_summary": [
+                    {
+                        "rank": 1,
+                        "url": "https://institution.example/policy",
+                        "used_in_prompt": True,
+                        "used_content_kind": "crawl_markdown",
+                        "crawl_status": "success",
+                        "content_chars": 1100,
+                    },
+                    {
+                        "rank": 2,
+                        "url": "https://analysis.example/report",
+                        "used_in_prompt": True,
+                        "used_content_kind": "crawl_markdown",
+                        "crawl_status": "success",
+                        "content_chars": 900,
+                    },
+                    {
+                        "rank": 3,
+                        "url": "https://failed.example/pdf",
+                        "used_in_prompt": False,
+                        "used_content_kind": "none",
+                        "crawl_status": "error",
+                        "content_chars": 0,
+                    },
+                ],
+                "crawl4ai_extraction_summary": [
+                    {"url": "https://institution.example/policy", "crawl_status": "success"},
+                    {"url": "https://analysis.example/report", "crawl_status": "success"},
+                    {"url": "https://failed.example/pdf", "crawl_status": "error"},
+                ],
+                "used_content_kinds": ["crawl_markdown"],
+                "injected_chars": 2000,
+                "context_chars": 2300,
+                "rerank_applied": True,
+            }
+        )
+
+        self.assertEqual(fields["web_confidence_level"], "high")
+        self.assertEqual(fields["web_confidence_inputs_summary"]["crawl_failed_used_source_count"], 0)
+        self.assertIn("crawl_empty_or_error_present", fields["web_confidence_reason_codes"])
+        self.assertNotIn("crawl_failed_prompt_material_used", fields["web_confidence_reason_codes"])
+
     def test_unused_result_domain_does_not_create_multi_domain_confidence(self) -> None:
         base_payload = {
             "enabled": True,

@@ -123,6 +123,47 @@ class WebSearchEvidenceTests(unittest.TestCase):
         self.assertIn("expected_source_material_missing", fields["web_evidence_reason_codes"])
         self.assertIn("state_evidence_limits_naturally", fields["web_evidence_guidance_codes"])
 
+    def test_crawl_failure_used_as_prompt_material_requires_caveat(self) -> None:
+        fields = web_search_evidence.evaluate_web_evidence(
+            {
+                "enabled": True,
+                "status": "ok",
+                "results_count": 2,
+                "source_material_summary": [
+                    {
+                        "rank": 1,
+                        "url": "https://institution.example/policy",
+                        "used_in_prompt": True,
+                        "used_content_kind": "crawl_markdown",
+                        "crawl_status": "success",
+                        "content_chars": 1200,
+                    },
+                    {
+                        "rank": 2,
+                        "url": "https://document.example/official.pdf",
+                        "used_in_prompt": True,
+                        "used_content_kind": "search_snippet",
+                        "crawl_status": "error",
+                        "content_chars": 180,
+                    },
+                ],
+                "crawl4ai_extraction_summary": [
+                    {"url": "https://institution.example/policy", "crawl_status": "success"},
+                    {"url": "https://document.example/official.pdf", "crawl_status": "error"},
+                ],
+                "used_content_kinds": ["crawl_markdown", "search_snippet"],
+                "injected_chars": 1380,
+            }
+        )
+
+        self.assertEqual(fields["web_evidence_status"], "partial")
+        self.assertIn("crawl_empty_or_error_present", fields["web_evidence_reason_codes"])
+        self.assertIn("crawl_failed_prompt_material_used", fields["web_evidence_reason_codes"])
+        self.assertTrue(fields["web_evidence_can_answer"])
+        self.assertTrue(fields["web_evidence_requires_caveat"])
+        self.assertIn("state_evidence_limits_naturally", fields["web_evidence_guidance_codes"])
+        self.assertFalse(fields["web_evidence_external_fallback_used"])
+
     def test_situated_secondary_without_official_material_is_visible(self) -> None:
         fields = web_search_evidence.evaluate_web_evidence(
             {

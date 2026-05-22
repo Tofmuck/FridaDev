@@ -79,6 +79,15 @@ def _input_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
             if bool(item.get('used_in_prompt', False))
             and str(item.get('used_content_kind') or '') == 'search_snippet'
         )
+    crawl_failed_used_source_count = _to_int(confidence_summary.get('crawl_failed_used_source_count'))
+    if crawl_failed_used_source_count == 0:
+        crawl_failed_used_source_count = sum(
+            1
+            for item in source_material
+            if bool(item.get('used_in_prompt', False))
+            and str(item.get('used_content_kind') or 'none') != 'none'
+            and str(item.get('crawl_status') or '') in {'empty', 'error'}
+        )
     return {
         'status': str(payload.get('status') or confidence_summary.get('status') or ''),
         'reason_code': str(payload.get('reason_code') or ''),
@@ -93,6 +102,7 @@ def _input_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         'crawl_success_count': crawl_success_count,
         'crawl_empty_count': crawl_empty_count,
         'crawl_error_count': crawl_error_count,
+        'crawl_failed_used_source_count': crawl_failed_used_source_count,
         'snippet_only_count': snippet_only_count,
         'profile_insufficient_evidence': bool(payload.get('profile_insufficient_evidence', False)),
         'profile_expected_material_used': bool(payload.get('profile_expected_material_used', False)),
@@ -159,6 +169,8 @@ def _search_status(payload: Mapping[str, Any], summary: Mapping[str, Any]) -> tu
         reasons.append('snippet_only_material')
     if crawl_empty_or_error:
         reasons.append('crawl_empty_or_error_present')
+        if _to_int(summary.get('crawl_failed_used_source_count')) > 0:
+            reasons.append('crawl_failed_prompt_material_used')
         if _to_int(summary.get('crawl_success_count')) == 0:
             reasons.append('crawl_poor_or_absent')
     if bool(summary.get('profile_insufficient_evidence', False)):
@@ -180,6 +192,7 @@ def _search_status(payload: Mapping[str, Any], summary: Mapping[str, Any]) -> tu
             'situated_secondary_without_official_material',
             'no_prompt_material',
             'snippet_only_material',
+            'crawl_failed_prompt_material_used',
             'crawl_poor_or_absent',
         )
     ):
