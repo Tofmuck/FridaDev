@@ -81,6 +81,34 @@ class WebSearchRerankTests(unittest.TestCase):
         self.assertIn("conjugator_soft_downrank", observability["rerank_reason_counts"])
         self.assertTrue(observability["rerank_applied"])
 
+    def test_institutionnel_francais_uses_request_terms_not_cni_fixture_terms(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "Carte d'identite",
+                    "url": "https://www.service-public.fr/particuliers/vosdroits/N358",
+                    "content": "procedure carte identite cni renouvellement",
+                },
+                {
+                    "title": "CAF allocation logement",
+                    "url": "https://www.caf.fr/allocataires/aides-et-demarches/droits-et-prestations/logement",
+                    "content": "CAF allocation logement aide personnalisee au logement demarche officielle",
+                },
+            ],
+            user_msg="CAF allocation logement demarche officielle",
+            primary_query="CAF allocation logement aide demarche officielle",
+            search_profile=web_search_profile.PROFILE_INSTITUTIONNEL_FRANCAIS,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(
+            reranked[0]["url"],
+            "https://www.caf.fr/allocataires/aides-et-demarches/droits-et-prestations/logement",
+        )
+        self.assertIn("essential_terms_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertNotIn("essential_terms_soft_bonus", reranked[1]["rerank_reason_codes"])
+
     def test_technique_officielle_promotes_official_documentation(self) -> None:
         reranked, observability = web_search_rerank.rerank_results(
             [
@@ -139,6 +167,34 @@ class WebSearchRerankTests(unittest.TestCase):
         self.assertIn("generic_encyclopedia_soft_downrank", observability["rerank_reason_counts"])
         self.assertIn("dictionary_soft_downrank", observability["rerank_reason_counts"])
 
+    def test_actualite_uses_request_terms_not_ai_europe_fixture_terms(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "Artificial intelligence - European Commission",
+                    "url": "https://digital-strategy.ec.europa.eu/en/policies/artificial-intelligence",
+                    "content": "AI Act Europe 2026 recent European Commission regulation",
+                },
+                {
+                    "title": "Ukraine diplomatie - dernieres nouvelles",
+                    "url": "https://www.diplomatie.gouv.fr/fr/dossiers-pays/ukraine/actualites/",
+                    "content": "Ukraine diplomatie dernieres nouvelles news negotiations paix",
+                },
+            ],
+            user_msg="Ukraine diplomatie dernieres nouvelles",
+            primary_query="Ukraine diplomatie dernieres nouvelles",
+            search_profile=web_search_profile.PROFILE_ACTUALITE,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(
+            reranked[0]["url"],
+            "https://www.diplomatie.gouv.fr/fr/dossiers-pays/ukraine/actualites/",
+        )
+        self.assertIn("essential_terms_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertNotIn("essential_terms_soft_bonus", reranked[1]["rerank_reason_codes"])
+
     def test_academique_philosophique_promotes_academic_source_and_downranks_homonym(self) -> None:
         reranked, observability = web_search_rerank.rerank_results(
             [
@@ -169,6 +225,31 @@ class WebSearchRerankTests(unittest.TestCase):
         self.assertIn("profile_academic_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
         self.assertIn("homonym_soft_downrank", observability["rerank_reason_counts"])
         self.assertEqual(len(reranked), 3)
+
+    def test_academique_philosophique_uses_request_terms_not_derrida_trace_fixture_terms(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "Derrida et la trace",
+                    "url": "https://journals.openedition.org/noesis/1693",
+                    "content": "philosophie Derrida trace deconstruction",
+                },
+                {
+                    "title": "Kant and reflective judgment",
+                    "url": "https://plato.stanford.edu/entries/kant-judgment/",
+                    "content": "Kant jugement reflechissant critique faculte juger philosophie universitaire",
+                },
+            ],
+            user_msg="Kant jugement reflechissant source academique",
+            primary_query="Kant jugement reflechissant source academique",
+            search_profile=web_search_profile.PROFILE_ACADEMIQUE_PHILOSOPHIQUE,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(reranked[0]["url"], "https://plato.stanford.edu/entries/kant-judgment/")
+        self.assertIn("essential_terms_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertNotIn("essential_terms_soft_bonus", reranked[1]["rerank_reason_codes"])
 
     def test_domain_diversity_keeps_plausible_off_domain_source(self) -> None:
         results = [
@@ -211,6 +292,33 @@ class WebSearchRerankTests(unittest.TestCase):
         reason_blob = str(observability["rerank_reason_counts"]) + str(reranked[0]["rerank_reason_codes"])
         self.assertNotIn(secret_snippet, reason_blob)
         self.assertIn("profile_academic_domain_soft_bonus", reason_blob)
+
+    def test_essential_terms_are_not_injected_from_profile_fixtures(self) -> None:
+        institutionnel_terms = web_search_rerank._essential_terms(
+            "CAF allocation logement",
+            "CAF aide logement",
+            web_search_profile.PROFILE_INSTITUTIONNEL_FRANCAIS,
+        )
+        actualite_terms = web_search_rerank._essential_terms(
+            "Ukraine diplomatie dernieres nouvelles",
+            "Ukraine diplomatie news",
+            web_search_profile.PROFILE_ACTUALITE,
+        )
+        academique_terms = web_search_rerank._essential_terms(
+            "Kant jugement reflechissant",
+            "Kant jugement critique",
+            web_search_profile.PROFILE_ACADEMIQUE_PHILOSOPHIQUE,
+        )
+        cni_terms = web_search_rerank._essential_terms(
+            "renouveler une carte nationale d'identite",
+            "procedure carte identite",
+            web_search_profile.PROFILE_INSTITUTIONNEL_FRANCAIS,
+        )
+
+        self.assertFalse({"cni", "carte", "identite"} & institutionnel_terms)
+        self.assertFalse({"ai", "europe", "intelligence", "artificial"} & actualite_terms)
+        self.assertFalse({"derrida", "trace"} & academique_terms)
+        self.assertIn("cni", cni_terms)
 
 
 if __name__ == "__main__":

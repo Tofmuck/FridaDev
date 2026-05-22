@@ -313,6 +313,8 @@ Regles implementees:
 
 - bonus souple pour domaines officiels ou academiques attendus selon profil;
 - bonus souple de co-presence des termes essentiels;
+- termes essentiels derives de la demande utilisateur et de la requete reformulee, sans mots-cles de fixtures injectes par profil;
+- bonus fort de domaine officiel/academique conditionne par au moins un terme essentiel issu de la demande reelle; sinon le domaine ne recoit qu'un signal contextuel faible;
 - bonus souple de fraicheur pour actualite quand des marqueurs recents existent;
 - malus souple dictionnaires/conjugueurs hors profil definitionnel;
 - malus souple homonymes evidents, notamment `Trace Colmar` sur Derrida/trace;
@@ -326,6 +328,7 @@ Garde-fous politiques source:
 
 - le reranking reordonne, mais ne censure pas;
 - les bonus/malus sont explicites et souples;
+- les fixtures de benchmark ne deviennent pas des normes cachees de legitimite;
 - aucun domaine, moteur ou type de source unique n'est impose;
 - Wikipedia, dictionnaires et conjugueurs ne sont pas bannis globalement;
 - la diversite est un garde-fou de pluralite, pas un filtre dur;
@@ -354,6 +357,7 @@ Definition of done Lot 5:
 - [x] Source academique promue dans `academique_philosophique`.
 - [x] Diversite minimale de domaines preservee sans imposer un domaine unique.
 - [x] Resultats hors profil non supprimes brutalement.
+- [x] Tests anti-overfit: CAF/logement, Ukraine/diplomatie et Kant/jugement reflechissant ne sont pas ecrases par les fixtures CNI, AI Act Europe ou Derrida/trace.
 - [x] Reason codes observables sans contenu brut.
 - [x] URL explicite directe inchangee.
 - [x] Benchmark `local` reste baseline; `local_profiled` porte le reranking.

@@ -64,6 +64,7 @@ _GENERIC_ENCYCLOPEDIA_DOMAINS = {
     "www.wikipedia.org",
 }
 _INSTITUTIONNEL_FR_DOMAINS = {
+    "caf.fr",
     "service-public.fr",
     "www.service-public.fr",
     "ants.gouv.fr",
@@ -239,6 +240,7 @@ def _score_candidate(
         url=url,
         title=title,
         searchable=searchable,
+        has_essential_match=bool(matched_terms),
         score=score,
         reasons=reasons,
     )
@@ -258,20 +260,29 @@ def _apply_profile_score(
     url: str,
     title: str,
     searchable: str,
+    has_essential_match: bool,
     score: float,
     reasons: list[str],
 ) -> tuple[float, list[str]]:
     if profile == web_search_profile.PROFILE_INSTITUTIONNEL_FRANCAIS:
         if _domain_in(domain, _INSTITUTIONNEL_FR_DOMAINS) or domain.endswith(".gouv.fr"):
-            score += 105.0
-            reasons.append("profile_official_domain_soft_bonus")
+            if has_essential_match:
+                score += 105.0
+                reasons.append("profile_official_domain_soft_bonus")
+            else:
+                score += 20.0
+                reasons.append("profile_official_domain_context_soft_bonus")
         score, reasons = _dictionary_or_conjugator_downrank(domain, title, score, reasons)
         return score, reasons
 
     if profile == web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE:
         if _domain_in(domain, _TECHNICAL_OFFICIAL_DOMAINS):
-            score += 105.0
-            reasons.append("profile_official_domain_soft_bonus")
+            if has_essential_match:
+                score += 105.0
+                reasons.append("profile_official_domain_soft_bonus")
+            else:
+                score += 20.0
+                reasons.append("profile_official_domain_context_soft_bonus")
         if "/docs" in url.lower() or "documentation" in searchable or "api" in searchable:
             score += 24.0
             reasons.append("technical_documentation_soft_bonus")
@@ -280,8 +291,12 @@ def _apply_profile_score(
 
     if profile == web_search_profile.PROFILE_ACTUALITE:
         if _is_eu_official_domain(domain):
-            score += 100.0
-            reasons.append("profile_official_domain_soft_bonus")
+            if has_essential_match:
+                score += 100.0
+                reasons.append("profile_official_domain_soft_bonus")
+            else:
+                score += 20.0
+                reasons.append("profile_official_domain_context_soft_bonus")
         if any(marker in searchable for marker in ("2026", "recent", "actuel", "actualite", "news", "press", "communique")):
             score += 22.0
             reasons.append("freshness_hint_soft_bonus")
@@ -293,9 +308,28 @@ def _apply_profile_score(
 
     if profile == web_search_profile.PROFILE_ACADEMIQUE_PHILOSOPHIQUE:
         if _domain_in(domain, _ACADEMIC_DOMAINS):
-            score += 105.0
-            reasons.append("profile_academic_domain_soft_bonus")
-        if any(marker in searchable for marker in ("derrida", "philosophie", "philosophy", "trace", "deconstruction")):
+            if has_essential_match:
+                score += 105.0
+                reasons.append("profile_academic_domain_soft_bonus")
+            else:
+                score += 25.0
+                reasons.append("profile_academic_domain_context_soft_bonus")
+        if any(
+            marker in searchable
+            for marker in (
+                "academique",
+                "academic",
+                "article",
+                "concept",
+                "critique",
+                "journal",
+                "notion",
+                "philosophie",
+                "philosophy",
+                "universitaire",
+                "university",
+            )
+        ):
             score += 20.0
             reasons.append("academic_concept_soft_bonus")
         if "trace-colmar" in domain or "trace colmar" in searchable:
@@ -376,19 +410,15 @@ def _with_reason(candidate: _Candidate, reason: str, *, score_delta: float) -> _
 
 
 def _essential_terms(user_msg: str, primary_query: str, profile: str) -> set[str]:
+    _ = profile
+    normalized = _normalize_text(" ".join([user_msg, primary_query]))
     terms = {
         token
-        for token in _TOKEN_RE.findall(_normalize_text(" ".join([user_msg, primary_query])))
+        for token in _TOKEN_RE.findall(normalized)
         if token not in _STOPWORDS and len(token) > 2
     }
-    if profile == web_search_profile.PROFILE_ACTUALITE:
-        terms.update({"2026", "act", "ai", "europe", "intelligence", "artificial"})
-    elif profile == web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE:
-        terms.update({"api", "docs", "documentation", "official", "officielle"})
-    elif profile == web_search_profile.PROFILE_INSTITUTIONNEL_FRANCAIS:
-        terms.update({"cni", "carte", "identite", "renouvellement", "procedure"})
-    elif profile == web_search_profile.PROFILE_ACADEMIQUE_PHILOSOPHIQUE:
-        terms.update({"derrida", "trace", "philosophie", "philosophy", "academique"})
+    if "carte" in terms and "identite" in terms:
+        terms.add("cni")
     return terms
 
 
