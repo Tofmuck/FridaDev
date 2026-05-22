@@ -854,6 +854,16 @@ def _query_plan_observability_fields(query_plan: dict[str, Any] | None) -> dict[
     }
 
 
+def _query_plan_event_kwargs(query_plan: dict[str, Any] | None) -> tuple[dict[str, Any], dict[str, Any]]:
+    fields = _query_plan_observability_fields(query_plan)
+    event_kwargs = {
+        key: value
+        for key, value in fields.items()
+        if not key.startswith('profile_')
+    }
+    return event_kwargs, fields
+
+
 def _with_query_source(result: dict[str, Any], query_entry: dict[str, Any]) -> dict[str, Any]:
     enriched = dict(result or {})
     enriched['query_source_kind'] = str(query_entry.get('query_source_kind') or 'primary')
@@ -2036,6 +2046,7 @@ def build_context(
                 ctx_parts.append(_format_context(query, results))
         ctx = "\n\n".join(ctx_parts)
         has_results = len(results) > 0
+        query_plan_event_kwargs, query_plan_fields = _query_plan_event_kwargs(query_plan)
         _emit_web_search_runtime_event(
             enabled=True,
             status='ok' if has_results else 'skipped',
@@ -2055,10 +2066,14 @@ def build_context(
             fallback_used=False,
             collection_path='search_only',
             search_profile=search_profile,
-            **_query_plan_observability_fields(query_plan),
+            profile_policy_fields=query_plan_fields,
+            **query_plan_event_kwargs,
         )
         return ctx, query, len(results)
     except Exception as exc:
+        query_plan_event_kwargs, query_plan_fields = _query_plan_event_kwargs(
+            _empty_query_plan('error', search_profile=search_profile)
+        )
         _emit_web_search_runtime_event(
             enabled=True,
             status='error',
@@ -2079,6 +2094,7 @@ def build_context(
             fallback_used=False,
             collection_path='search_only',
             search_profile=search_profile,
-            **_query_plan_observability_fields(_empty_query_plan('error')),
+            profile_policy_fields=query_plan_fields,
+            **query_plan_event_kwargs,
         )
         return '', str(user_msg or ''), 0
