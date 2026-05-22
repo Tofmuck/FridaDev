@@ -865,6 +865,9 @@ def _build_explicit_url_fallback_source(
     crawl4ai_top_n: int,
     crawl4ai_max_chars: int,
     preloaded_crawl_results: dict[str, dict[str, Any]] | None = None,
+    search_profile: str = web_search_profile.PROFILE_EXPLICIT_URL,
+    primary_query: str = '',
+    enable_profiled_crawl4ai_policy: bool = True,
 ) -> dict[str, Any]:
     base_result = dict(matching_result or {})
     base_result['title'] = str(base_result.get('title') or 'URL explicite utilisateur')
