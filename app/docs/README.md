@@ -20,6 +20,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit stack locale SearXNG/Crawl4AI vs benchmark web 2026-05-21: `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
 - Benchmark final Lot 8 web local vs OpenRouter Exa/Parallel 2026-05-22: `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`
 - Baseline consolidee Phase 0 recherche web locale 2026-05-22: `states/audits/fridadev-local-web-search-phase-0-baseline-2026-05-22.md`
+- Benchmark final Phase 8 recherche web locale 2026-05-22: `states/audits/fridadev-web-search-phase-8-final-benchmark-2026-05-22.md`
 - TODO actif de renforcement web local SearXNG/Crawl4AI: `todo-todo/product/fridadev-local-web-search-hardening-todo.md`
 - TODO actif A-Z de reconstruction locale de la recherche web: `todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
@@ -110,6 +111,7 @@ Lire d'abord:
 - `states/specs/fridadev-web-search-profile-policy-contract.md` pour le contrat Phase 5: domaines attendus/secondaires/declasses, budgets crawl, latence cible et signal de preuve insuffisante.
 - `states/specs/fridadev-web-search-reranking-contract.md` pour le contrat Phase 6: reranking explicable par profil, reason codes, diversite et non-censure.
 - `states/specs/fridadev-web-search-evidence-failure-contract.md` pour le contrat Phase 7: preuve web insuffisante, garde-fou prompt naturel, observabilite content-free et absence de fallback externe.
+- `states/audits/fridadev-web-search-phase-8-final-benchmark-2026-05-22.md` pour le benchmark final local vs local_profiled: gains, regressions, confiance trop optimiste et blocage avant cloture Phase 9.
 - `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md` pour comparer SearXNG, Crawl4AI, configuration OVH, pipeline FridaDev et benchmark local/Exa/Parallel avant tout lot runtime.
 - `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md` pour la decision Lot 8 recadree: runtime web `local only`, Exa/Parallel uniquement comme benchmarks externes, aucune activation runtime OpenRouter.
 - `todo-done/notes/web-reading-truth-todo.md` pour le contrat archive de lecture URL explicite, `read_state`, `fit` puis `raw` et observabilite content-free.

@@ -1,6 +1,6 @@
 # FridaDev - reconstruction locale de la recherche web - TODO A-Z
 
-Statut: actif, reconstruction applicative locale en cours; Phases 2 a 6 livrees sans modification plateforme.
+Statut: actif, reconstruction applicative locale en cours; Phases 2 a 8 livrees sans modification plateforme. Phase 8 bloque une cloture Phase 9 directe tant que les corrections qualite/confiance ne sont pas traitees.
 
 Ce document devient la source-of-truth operatoire pour reconstruire la recherche web locale FridaDev de A a Z, apres le durcissement V0 SearXNG + Crawl4AI et le benchmark Lot 8 du 2026-05-22.
 
@@ -38,7 +38,7 @@ References a relire avant toute phase:
 - [x] Phase 5 — Parametres FridaDev par profil
 - [x] Phase 6 — Reranking explicable
 - [x] Phase 7 — Comportement d'echec
-- [ ] Phase 8 — Benchmark final
+- [x] Phase 8 — Benchmark final
 - [ ] Phase 9 — Deploiement
 
 ## Regles de pilotage
@@ -743,24 +743,26 @@ Objectif: comparer l'ancien local et le nouveau local pour decider si la reconst
 
 Cas obligatoires:
 
-- [ ] Documentation officielle Adobe Photoshop.
-- [ ] Documentation officielle Adobe Illustrator.
-- [ ] Renouvellement CNI.
-- [ ] Actualite IA Europe.
-- [ ] OpenRouter docs.
-- [ ] Derrida / trace.
-- [ ] Bourdieu / sociologie.
-- [ ] Sciences exactes.
-- [ ] Documentation technique.
-- [ ] Divers volontairement ambigu.
+- [x] Documentation officielle Adobe Photoshop.
+- [x] Documentation officielle Adobe Illustrator.
+- [x] Renouvellement CNI.
+- [x] Education nationale / obligation administrative.
+- [x] Actualite IA Europe.
+- [x] OpenRouter docs.
+- [x] Derrida / trace.
+- [x] Bourdieu / sociologie.
+- [x] Sciences exactes / medical: CRISPR / PubMed.
+- [x] Documentation technique: Microsoft Graph API.
+- [x] Divers volontairement ambigu: Jaguar.
+- [x] URL explicite / lecture directe.
 
 Livrables:
 
-- [ ] Rapport ancien local vs nouveau local.
-- [ ] Analyse par cas: qualite sources, autorite, bruit, crawl, extraits, latence.
-- [ ] Analyse des echecs restants.
-- [ ] Comparaison facultative avec OpenRouter / Exa / Parallel comme temoins externes seulement.
-- [ ] Decision produit explicite: continuer local, ajuster SearXNG, ajuster FridaDev, ou demander une nouvelle decision humaine.
+- [x] Rapport ancien local vs nouveau local.
+- [x] Analyse par cas: qualite sources, autorite, bruit, crawl, extraits, latence.
+- [x] Analyse des echecs restants.
+- [x] Comparaison facultative avec OpenRouter / Exa / Parallel comme temoins externes seulement: non relances dans cette Phase 8; les artefacts Lot 8/same-query restent les temoins externes.
+- [x] Decision produit explicite: continuer local only, ne pas activer de fallback externe, corriger qualite/confiance avant cloture Phase 9.
 
 Fichiers ou zones concernes:
 
@@ -771,9 +773,9 @@ Fichiers ou zones concernes:
 
 Decisions utilisateur requises avant patch:
 
-- [ ] Valider si les temoins externes OpenRouter / Exa / Parallel sont relances.
-- [ ] Valider le budget cout/latence pour le benchmark.
-- [ ] Valider le seuil qualitatif de passage.
+- [x] Valider si les temoins externes OpenRouter / Exa / Parallel sont relances: non pour cette Phase 8 locale, afin de mesurer l'ancien local vs le nouveau local sans cout externe.
+- [x] Valider le budget cout/latence pour le benchmark: local-only, latence observee sous la cible 20-25 secondes.
+- [x] Valider le seuil qualitatif de passage: non atteint pour cloture Phase 9 directe.
 
 Hors-scope:
 
@@ -783,17 +785,34 @@ Hors-scope:
 
 Tests/preuves attendus:
 
-- [ ] Dry-run benchmark.
-- [ ] Run live local borne.
-- [ ] Grep securite sur artefacts.
-- [ ] Rapport versionne ou artefacts `/tmp` references explicitement.
-- [ ] `git diff --check` si documentation versionnee.
+- [x] Dry-run benchmark.
+- [x] Run live local borne.
+- [x] Grep securite sur artefacts.
+- [x] Rapport versionne ou artefacts `/tmp` references explicitement.
+- [x] `git diff --check` si documentation versionnee.
 
 Criteres de fin:
 
-- [ ] Le nouveau local est compare a l'ancien local.
-- [ ] Les gains et pertes sont nommes.
-- [ ] Les limites restantes ne sont pas deguisees en succes.
+- [x] Le nouveau local est compare a l'ancien local.
+- [x] Les gains et pertes sont nommes.
+- [x] Les limites restantes ne sont pas deguisees en succes.
+- [x] Le nouveau local n'est pas declare pret: Phase 9 reste ouverte avec correctifs qualite/confiance requis.
+
+### Phase 8 - livraison Celebrimbor 2026-05-22
+
+Statut: benchmark final livre, sans modification runtime ni plateforme; cloture Phase 9 non autorisee en l'etat.
+
+- [x] Artefacts crees:
+  - `/tmp/fridadev-web-search-phase8-final/local.md`
+  - `/tmp/fridadev-web-search-phase8-final/local-profiled.md`
+  - `/tmp/fridadev-web-search-phase8-final/comparison.md`
+  - `/tmp/fridadev-web-search-phase8-final/phase8-final.json`
+- [x] Note versionnee: `app/docs/states/audits/fridadev-web-search-phase-8-final-benchmark-2026-05-22.md`.
+- [x] Gains observes: URL explicite stable, CNI mieux ordonne, Microsoft Graph atteint `learn.microsoft.com`, OpenRouter docs stable.
+- [x] Echecs bloquants: Adobe Illustrator, actualite IA Europe, Bourdieu / sociologie, CRISPR / PubMed, Derrida / trace.
+- [x] Finding qualite: certains paniers/requetes `local_profiled` produisent du bruit hors sujet.
+- [x] Finding confiance: `web_confidence_level=high` reste possible sur des paniers manifestement mauvais.
+- [x] Decision: garder local only, ne pas activer OpenRouter / Exa / Parallel, ouvrir un correctif local avant cloture Phase 9.
 
 Risques/effets de bord:
 
