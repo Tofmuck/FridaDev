@@ -168,6 +168,8 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     query_plan = _mapping(data.get('query_plan'))
     searxng_params = _mapping(data.get('searxng_profile_params'))
     reranking = _mapping(data.get('reranking'))
+    web_confidence = _mapping(data.get('web_confidence'))
+    openrouter_fallback = _mapping(data.get('openrouter_fallback'))
     source_material_summary = []
     for item in _sequence(data.get('source_material_summary')):
         source = _mapping(item)
@@ -300,6 +302,47 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         'crawl4ai_cache_modes': dict(_mapping(data.get('crawl4ai_cache_modes'))),
         'crawl4ai_fallback_used_count': int(data.get('crawl4ai_fallback_used_count') or 0),
         'crawl4ai_query_sha256_12': [str(value) for value in _sequence(data.get('crawl4ai_query_sha256_12')) if str(value)],
+        'web_confidence_policy_kind': str(
+            data.get('web_confidence_policy_kind')
+            or web_confidence.get('web_confidence_policy_kind')
+            or ''
+        ),
+        'web_confidence_level': str(
+            data.get('web_confidence_level')
+            or web_confidence.get('web_confidence_level')
+            or ''
+        ),
+        'web_confidence_score': data.get('web_confidence_score', web_confidence.get('web_confidence_score')),
+        'web_confidence_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('web_confidence_reason_codes')
+                or web_confidence.get('web_confidence_reason_codes')
+            )
+            if str(value)
+        ],
+        'web_confidence_inputs_summary': dict(
+            _mapping(
+                data.get('web_confidence_inputs_summary')
+                or web_confidence.get('web_confidence_inputs_summary')
+            )
+        ),
+        'openrouter_fallback_state': str(
+            data.get('openrouter_fallback_state')
+            or openrouter_fallback.get('openrouter_fallback_state')
+            or ''
+        ),
+        'openrouter_fallback_used': bool(
+            data.get('openrouter_fallback_used', openrouter_fallback.get('openrouter_fallback_used', False))
+        ),
+        'openrouter_fallback_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('openrouter_fallback_reason_codes')
+                or openrouter_fallback.get('openrouter_fallback_reason_codes')
+            )
+            if str(value)
+        ],
     }
 
 

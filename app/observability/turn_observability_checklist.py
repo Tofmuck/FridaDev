@@ -406,6 +406,21 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
         'crawl4ai_filter_counts': dict(payload.get('crawl4ai_filter_counts') or {}),
         'crawl4ai_cache_modes': dict(payload.get('crawl4ai_cache_modes') or {}),
         'crawl4ai_fallback_used_count': _to_int(payload.get('crawl4ai_fallback_used_count')),
+        'web_confidence_policy_kind': _payload_text(payload, 'web_confidence_policy_kind'),
+        'web_confidence_level': _payload_text(payload, 'web_confidence_level'),
+        'web_confidence_score': payload.get('web_confidence_score'),
+        'web_confidence_reason_codes': [
+            str(value)
+            for value in payload.get('web_confidence_reason_codes') or []
+            if str(value or '')
+        ],
+        'openrouter_fallback_state': _payload_text(payload, 'openrouter_fallback_state'),
+        'openrouter_fallback_used': bool(payload.get('openrouter_fallback_used', False)),
+        'openrouter_fallback_reason_codes': [
+            str(value)
+            for value in payload.get('openrouter_fallback_reason_codes') or []
+            if str(value or '')
+        ],
         'results_count': _to_int(payload.get('results_count')),
         'read_state': _payload_text(payload, 'read_state'),
     }

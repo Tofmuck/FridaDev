@@ -710,6 +710,22 @@ def _web_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             }
             for source in (_mapping(item) for item in _sequence(payload.get('crawl4ai_extraction_summary')))
         ],
+        'web_confidence_policy_kind': _text(payload.get('web_confidence_policy_kind')),
+        'web_confidence_level': _text(payload.get('web_confidence_level')),
+        'web_confidence_score': payload.get('web_confidence_score'),
+        'web_confidence_reason_codes': [
+            _text(value)
+            for value in payload.get('web_confidence_reason_codes') or []
+            if _text(value)
+        ],
+        'web_confidence_inputs_summary': dict(_mapping(payload.get('web_confidence_inputs_summary'))),
+        'openrouter_fallback_state': _text(payload.get('openrouter_fallback_state')),
+        'openrouter_fallback_used': bool(payload.get('openrouter_fallback_used', False)),
+        'openrouter_fallback_reason_codes': [
+            _text(value)
+            for value in payload.get('openrouter_fallback_reason_codes') or []
+            if _text(value)
+        ],
         'results_count': _to_int(payload.get('results_count')),
         'injected': bool(payload.get('context_injected')) or injected_chars > 0,
         'injected_chars': injected_chars,

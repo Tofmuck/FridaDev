@@ -23,6 +23,7 @@ from core.web_read_state import (
 from observability import chat_turn_logger
 from tools import (
     web_reformulation_settings,
+    web_search_confidence,
     web_search_profile,
     web_search_query_plan,
     web_search_crawl_policy,
@@ -651,7 +652,21 @@ def _augment_payload_observability(payload: dict[str, Any]) -> dict[str, Any]:
     payload['used_content_kinds'] = _derive_used_content_kinds(source_material_summary)
     payload['injected_chars'] = _derive_injected_chars(source_material_summary)
     payload['context_chars'] = len(str(payload.get('context_block') or ''))
+    payload.update(web_search_confidence.evaluate_web_confidence(payload))
     return payload
+
+
+def _web_confidence_event_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'web_confidence_policy_kind': str(payload.get('web_confidence_policy_kind') or ''),
+        'web_confidence_level': str(payload.get('web_confidence_level') or 'unknown'),
+        'web_confidence_score': float(payload.get('web_confidence_score') or 0.0),
+        'web_confidence_reason_codes': list(payload.get('web_confidence_reason_codes') or []),
+        'web_confidence_inputs_summary': dict(payload.get('web_confidence_inputs_summary') or {}),
+        'openrouter_fallback_state': str(payload.get('openrouter_fallback_state') or 'future_only'),
+        'openrouter_fallback_used': bool(payload.get('openrouter_fallback_used', False)),
+        'openrouter_fallback_reason_codes': list(payload.get('openrouter_fallback_reason_codes') or []),
+    }
 
 
 def _empty_query_plan(kind: str) -> dict[str, Any]:
@@ -1349,6 +1364,14 @@ def _emit_web_search_runtime_event(
     crawl4ai_cache_modes: dict[str, int] | None = None,
     crawl4ai_fallback_used_count: int | None = None,
     crawl4ai_query_sha256_12: list[str] | None = None,
+    web_confidence_policy_kind: str | None = None,
+    web_confidence_level: str | None = None,
+    web_confidence_score: float | None = None,
+    web_confidence_reason_codes: list[str] | None = None,
+    web_confidence_inputs_summary: dict[str, Any] | None = None,
+    openrouter_fallback_state: str | None = None,
+    openrouter_fallback_used: bool = False,
+    openrouter_fallback_reason_codes: list[str] | None = None,
 ) -> None:
     query_text = str(query_preview or '')
     if truncated is None:
@@ -1434,6 +1457,21 @@ def _emit_web_search_runtime_event(
         'crawl4ai_fallback_used_count': int(crawl4ai_fallback_used_count or 0),
         'crawl4ai_query_sha256_12': list(crawl4ai_query_sha256_12 or []),
     }
+    if web_confidence_policy_kind is None:
+        payload.update(web_search_confidence.evaluate_web_confidence(payload))
+    else:
+        payload.update(
+            {
+                'web_confidence_policy_kind': str(web_confidence_policy_kind or ''),
+                'web_confidence_level': str(web_confidence_level or 'unknown'),
+                'web_confidence_score': float(web_confidence_score or 0.0),
+                'web_confidence_reason_codes': list(web_confidence_reason_codes or []),
+                'web_confidence_inputs_summary': dict(web_confidence_inputs_summary or {}),
+                'openrouter_fallback_state': str(openrouter_fallback_state or 'future_only'),
+                'openrouter_fallback_used': bool(openrouter_fallback_used),
+                'openrouter_fallback_reason_codes': list(openrouter_fallback_reason_codes or []),
+            }
+        )
     if error_class:
         payload['error_class'] = error_class
     chat_turn_logger.emit(
@@ -1710,6 +1748,7 @@ def build_context_payload(
             crawl4ai_cache_modes=dict(payload.get('crawl4ai_cache_modes') or {}),
             crawl4ai_fallback_used_count=int(payload.get('crawl4ai_fallback_used_count') or 0),
             crawl4ai_query_sha256_12=list(payload.get('crawl4ai_query_sha256_12') or []),
+            **_web_confidence_event_fields(payload),
         )
         return payload
     except Exception as exc:
@@ -1793,6 +1832,7 @@ def build_context_payload(
             crawl4ai_cache_modes=dict(error_payload.get('crawl4ai_cache_modes') or {}),
             crawl4ai_fallback_used_count=int(error_payload.get('crawl4ai_fallback_used_count') or 0),
             crawl4ai_query_sha256_12=list(error_payload.get('crawl4ai_query_sha256_12') or []),
+            **_web_confidence_event_fields(error_payload),
         )
         return error_payload
 

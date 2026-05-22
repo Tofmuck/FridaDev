@@ -108,6 +108,13 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
             self.assertIn('results_count', payload)
             self.assertIn('context_injected', payload)
             self.assertIn('truncated', payload)
+            self.assertIn('web_confidence_policy_kind', payload)
+            self.assertIn('web_confidence_level', payload)
+            self.assertIn('web_confidence_score', payload)
+            self.assertIn('web_confidence_reason_codes', payload)
+            self.assertIn('openrouter_fallback_state', payload)
+            self.assertIn('openrouter_fallback_used', payload)
+            self.assertFalse(payload.get('openrouter_fallback_used'))
             self.assertNotIn('context', payload)
             self.assertNotIn('results', payload)
 
@@ -303,6 +310,8 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
             web_event['payload_json']['source_material_summary'],
             payload['source_material_summary'],
         )
+        self.assertEqual(web_event['payload_json']['web_confidence_level'], payload['web_confidence_level'])
+        self.assertFalse(web_event['payload_json']['openrouter_fallback_used'])
         self.assertNotIn('context_block', web_event['payload_json'])
         self.assertNotIn('sources', web_event['payload_json'])
         self.assertNotIn('content_used', str(web_event['payload_json']))
@@ -385,6 +394,9 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
             web_event['payload_json']['source_material_summary'],
             payload['source_material_summary'],
         )
+        self.assertEqual(web_event['payload_json']['web_confidence_level'], 'high')
+        self.assertEqual(web_event['payload_json']['openrouter_fallback_state'], 'future_only')
+        self.assertFalse(web_event['payload_json']['openrouter_fallback_used'])
         self.assertNotIn('context_block', web_event['payload_json'])
         self.assertNotIn('sources', web_event['payload_json'])
         self.assertNotIn('content_used', str(web_event['payload_json']))
@@ -475,6 +487,9 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
                 },
             ],
         )
+        self.assertEqual(web_event['payload_json']['web_confidence_level'], 'low')
+        self.assertEqual(web_event['payload_json']['openrouter_fallback_state'], 'human_review_candidate')
+        self.assertFalse(web_event['payload_json']['openrouter_fallback_used'])
         self.assertNotIn('context_block', web_event['payload_json'])
         self.assertNotIn('sources', web_event['payload_json'])
         self.assertNotIn('content_used', str(web_event['payload_json']))
@@ -514,6 +529,8 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         self.assertEqual(payload.get('query_preview'), '')
         self.assertEqual(payload.get('query_chars'), len('message source'))
         self.assertRegex(payload.get('query_sha256_12'), r'^[0-9a-f]{12}$')
+        self.assertEqual(payload.get('web_confidence_level'), 'low')
+        self.assertFalse(payload.get('openrouter_fallback_used'))
         self.assertNotIn('context', payload)
         self.assertNotIn('results', payload)
         logger_error_event = next(event for event in observed if event['stage'] == 'error' and event['status'] == 'error')

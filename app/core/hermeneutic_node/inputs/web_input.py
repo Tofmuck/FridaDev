@@ -237,6 +237,37 @@ def _canonical_crawl4ai_extraction_summary(
     ]
 
 
+def _canonical_web_confidence(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    inputs_summary = data.get('web_confidence_inputs_summary')
+    if not isinstance(inputs_summary, Mapping):
+        inputs_summary = {}
+    return {
+        'web_confidence_policy_kind': _optional_str(data.get('web_confidence_policy_kind')),
+        'web_confidence_level': _optional_str(data.get('web_confidence_level')),
+        'web_confidence_score': data.get('web_confidence_score'),
+        'web_confidence_reason_codes': [
+            str(value)
+            for value in data.get('web_confidence_reason_codes') or []
+            if str(value or '')
+        ],
+        'web_confidence_inputs_summary': dict(inputs_summary),
+    }
+
+
+def _canonical_openrouter_fallback(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    return {
+        'openrouter_fallback_state': _optional_str(data.get('openrouter_fallback_state')),
+        'openrouter_fallback_used': bool(data.get('openrouter_fallback_used', False)),
+        'openrouter_fallback_reason_codes': [
+            str(value)
+            for value in data.get('openrouter_fallback_reason_codes') or []
+            if str(value or '')
+        ],
+    }
+
+
 def _canonical_used_content_kinds(
     used_content_kinds: Sequence[Any] | None,
     *,
@@ -307,6 +338,8 @@ def build_web_input(
     crawl4ai_cache_modes: Mapping[str, Any] | None = None,
     crawl4ai_fallback_used_count: int | None = None,
     crawl4ai_query_sha256_12: Sequence[Any] | None = None,
+    web_confidence: Mapping[str, Any] | None = None,
+    openrouter_fallback: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     canonical_sources = [
         _canonical_source(source)
@@ -380,6 +413,8 @@ def build_web_input(
             for value in crawl4ai_query_sha256_12 or []
             if str(value or '')
         ],
+        'web_confidence': _canonical_web_confidence(web_confidence),
+        'openrouter_fallback': _canonical_openrouter_fallback(openrouter_fallback),
         'sources': canonical_sources,
         'context_block': canonical_context_block,
     }
@@ -434,4 +469,6 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
         crawl4ai_query_sha256_12=payload.get('crawl4ai_query_sha256_12')
         if isinstance(payload.get('crawl4ai_query_sha256_12'), Sequence)
         else (),
+        web_confidence=payload,
+        openrouter_fallback=payload,
     )

@@ -143,6 +143,8 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
             self.assertIn("search_profile", system_markdowns["local_profiled"])
             self.assertIn("query_plan_kind", system_markdowns["local_profiled"])
             self.assertIn("searxng_profile_params_kind", system_markdowns["local_profiled"])
+            self.assertIn("web_confidence_level", system_markdowns["local_profiled"])
+            self.assertIn("openrouter_fallback_used", system_markdowns["local_profiled"])
             self.assertIn("Requêtes web OpenRouter", system_markdowns["openrouter_exa"])
             self.assertIn("Requêtes web OpenRouter", system_markdowns["openrouter_parallel"])
             for forbidden in (
@@ -160,7 +162,7 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             web_adapter.normalize_arms(["local", "plugins_web"])
 
-    def test_local_profiled_arm_exposes_lot6_query_searxng_rerank_and_crawl_shape(self) -> None:
+    def test_local_profiled_arm_exposes_lot7_query_searxng_rerank_crawl_and_confidence_shape(self) -> None:
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             config = CampaignConfig(
@@ -183,8 +185,14 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         first_case_arms = campaign["results"][0]["arms"]
         self.assertEqual([result["arm"] for result in first_case_arms], ["local", "local_profiled"])
         profiled = first_case_arms[1]
-        self.assertEqual(profiled["mode"], "local_profiled_specialized_queries_searxng_params_rerank_crawl4ai_policy")
-        self.assertEqual(profiled["engine"], "searxng_crawl4ai_profiled_queries_params_rerank_crawl_policy")
+        self.assertEqual(
+            profiled["mode"],
+            "local_profiled_specialized_queries_searxng_params_rerank_crawl4ai_policy_confidence_observability",
+        )
+        self.assertEqual(
+            profiled["engine"],
+            "searxng_crawl4ai_profiled_queries_params_rerank_crawl_policy_confidence",
+        )
         self.assertFalse(profiled["local"]["local_profiled_stub"])
         self.assertEqual(profiled["local"]["search_profile"], "stub_not_implemented")
         self.assertEqual(profiled["local"]["query_plan_kind"], "dry_run")
@@ -200,6 +208,14 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         self.assertEqual(profiled["local"]["crawl4ai_filter_counts"], {})
         self.assertEqual(profiled["local"]["crawl4ai_cache_modes"], {})
         self.assertEqual(profiled["local"]["crawl4ai_fallback_used_count"], 0)
+        self.assertEqual(profiled["local"]["web_confidence_policy_kind"], "dry_run")
+        self.assertEqual(profiled["local"]["web_confidence_level"], "unknown")
+        self.assertEqual(profiled["local"]["web_confidence_score"], 0.0)
+        self.assertEqual(profiled["local"]["web_confidence_reason_codes"], [])
+        self.assertEqual(profiled["local"]["web_confidence_inputs_summary"], {})
+        self.assertEqual(profiled["local"]["openrouter_fallback_state"], "not_applicable")
+        self.assertFalse(profiled["local"]["openrouter_fallback_used"])
+        self.assertEqual(profiled["local"]["openrouter_fallback_reason_codes"], [])
         self.assertTrue(profiled["profiled_stub"]["runtime_changed"])
         self.assertEqual(
             profiled["profiled_stub"]["fixture_path"],
@@ -247,6 +263,14 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
                 "crawl4ai_cache_modes": {"1": 1} if enabled_rerank else {"0": 1},
                 "crawl4ai_fallback_used_count": 0,
                 "crawl4ai_query_sha256_12": ["abc123def456"] if enabled_rerank else [],
+                "web_confidence_policy_kind": "local_web_confidence_observable_v0",
+                "web_confidence_level": "high" if enabled_rerank else "medium",
+                "web_confidence_score": 0.89 if enabled_rerank else 0.61,
+                "web_confidence_reason_codes": ["confidence_signal_only", "crawl_markdown_used"],
+                "web_confidence_inputs_summary": {"source_count": 2, "domain_count": 2},
+                "openrouter_fallback_state": "future_only",
+                "openrouter_fallback_used": False,
+                "openrouter_fallback_reason_codes": ["external_fallback_disabled_lot7"],
                 "used_content_kinds": [],
                 "injected_chars": 0,
                 "context_chars": 0,
@@ -303,6 +327,9 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         )
         self.assertEqual(profiled["local"]["crawl4ai_filter_counts"], {"bm25": 1})
         self.assertEqual(profiled["local"]["crawl4ai_cache_modes"], {"1": 1})
+        self.assertEqual(profiled["local"]["web_confidence_level"], "high")
+        self.assertEqual(profiled["local"]["openrouter_fallback_state"], "future_only")
+        self.assertFalse(profiled["local"]["openrouter_fallback_used"])
 
     def test_local_bad_order_fixtures_capture_live_local_failures(self) -> None:
         fixtures = web_adapter.load_local_bad_order_fixtures(REPO_ROOT)

@@ -391,6 +391,10 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['context_chars'], len(payload['context_block']))
         self.assertEqual(payload['source_material_summary'][0]['used_content_kind'], 'crawl_markdown')
         self.assertEqual(payload['source_material_summary'][0]['content_chars'], len(payload['sources'][0]['content_used']))
+        self.assertEqual(payload['web_confidence_level'], 'high')
+        self.assertIn('explicit_url_page_read', payload['web_confidence_reason_codes'])
+        self.assertEqual(payload['openrouter_fallback_state'], 'future_only')
+        self.assertFalse(payload['openrouter_fallback_used'])
         self.assertIn('URL explicite fournie par l\'utilisateur', payload['context_block'])
 
     def test_build_context_payload_marks_explicit_url_as_partially_read_when_direct_content_is_truncated(self) -> None:
@@ -804,6 +808,10 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['used_content_kinds'], [])
         self.assertEqual(payload['injected_chars'], 0)
         self.assertEqual(payload['context_chars'], len(payload['context_block']))
+        self.assertEqual(payload['web_confidence_level'], 'low')
+        self.assertIn('no_data', payload['web_confidence_reason_codes'])
+        self.assertEqual(payload['openrouter_fallback_state'], 'human_review_candidate')
+        self.assertFalse(payload['openrouter_fallback_used'])
         self.assertEqual(
             payload['source_material_summary'],
             [
@@ -958,6 +966,8 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['crawl4ai_cache_modes'], {'1': 1})
         self.assertEqual(payload['crawl4ai_fallback_used_count'], 0)
         self.assertEqual(payload['crawl4ai_query_sha256_12'], [payload['sources'][0]['crawl_query_sha256_12']])
+        self.assertIn('web_confidence_level', payload)
+        self.assertFalse(payload['openrouter_fallback_used'])
         self.assertEqual(observed_event['search_profile'], 'technique_officielle')
         self.assertEqual(observed_event['collection_path'], 'search_only')
         self.assertEqual(observed_event['query_plan_kind'], 'profiled_bounded')
@@ -974,6 +984,8 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(observed_event['searxng_language'], 'all')
         self.assertEqual(observed_event['crawl4ai_policy_kinds'], ['profile_query_aware_bm25_with_fit_fallback'])
         self.assertEqual(observed_event['crawl4ai_filter_counts'], {'bm25': 1})
+        self.assertIn('web_confidence_level', observed_event)
+        self.assertFalse(observed_event['openrouter_fallback_used'])
 
     def test_build_context_payload_can_keep_local_baseline_crawl_policy_historical(self) -> None:
         observed_calls: list[tuple[str, str, str | None]] = []
@@ -1092,10 +1104,15 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['crawl4ai_filter_counts'], {'fit': 1})
         self.assertEqual(payload['crawl4ai_cache_modes'], {'1': 1})
         self.assertEqual(payload['crawl4ai_fallback_used_count'], 1)
+        self.assertIn('bm25_fit_fallback_used', payload['web_confidence_reason_codes'])
+        self.assertFalse(payload['openrouter_fallback_used'])
         self.assertEqual(observed_event['crawl4ai_fallback_used_count'], 1)
+        self.assertIn('bm25_fit_fallback_used', observed_event['web_confidence_reason_codes'])
+        self.assertFalse(observed_event['openrouter_fallback_used'])
         dumped_extraction_summary = str(observed_event['crawl4ai_extraction_summary'])
         self.assertNotIn('PASSAGE UTILE CONSERVE', dumped_extraction_summary)
         self.assertNotIn('documentation officielle API exemple', dumped_extraction_summary)
+        self.assertNotIn('documentation officielle API exemple', str(observed_event.get('web_confidence_inputs_summary')))
 
     def test_build_context_payload_general_profile_keeps_historical_fit_policy(self) -> None:
         observed_calls: list[tuple[str, str, str | None]] = []
@@ -1224,6 +1241,8 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(observed_event['rerank_policy'], 'soft_reorder_no_drop_v0')
         self.assertIn('conjugator_soft_downrank', observed_event['rerank_reason_counts'])
         self.assertNotIn('secondary_queries', observed_event)
+        self.assertIn('web_confidence_level', observed_event)
+        self.assertFalse(observed_event['openrouter_fallback_used'])
 
 
 if __name__ == '__main__':

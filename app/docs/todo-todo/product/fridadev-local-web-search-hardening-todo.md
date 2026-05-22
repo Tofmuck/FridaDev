@@ -23,7 +23,7 @@ OpenRouter Exa/Parallel restent des soupapes futures a evaluer apres renforcemen
 - [x] Lot 4 - Parametres SearXNG par profil
 - [x] Lot 5 - Reranking avant crawl
 - [x] Lot 6 - Crawl4AI oriente profil
-- [ ] Lot 7 - Observabilite + confiance + fallback futur
+- [x] Lot 7 - Observabilite + confiance + fallback futur
 - [ ] Lot 8 - Benchmark final et decision Exa/Parallel
 
 Lecture rapide:
@@ -34,8 +34,9 @@ Lecture rapide:
 - Lot 4 est livre: `local_profiled` applique des parametres SearXNG applicatifs par profil, sans modifier la config globale SearXNG.
 - Lot 5 est livre: `local_profiled` rerank les resultats SearXNG de facon souple avant Crawl4AI, sans suppression dure.
 - Lot 6 est livre: `local_profiled` applique une politique Crawl4AI profilee, avec `bm25` + `q` borne pour certains profils et repli `fit` si l'extraction est vide ou pauvre.
-- Lots 7 et 8 restent a implementer.
-- Aucun score de confiance actionnable ou fallback OpenRouter runtime n'est encore livre.
+- Lot 7 est livre: les signaux locaux sont exposes avec une confiance finale visible, non souveraine et non actionnable.
+- Lot 8 reste a implementer.
+- Aucun score de confiance actionnable ou fallback OpenRouter runtime n'est livre.
 
 ## Question prealable: existe-t-il un meilleur plan ?
 
@@ -119,12 +120,14 @@ Champs attendus a terme, sans contenu brut:
 
 ### Confiance et fallback futur
 
-Le score de confiance local doit pouvoir dire:
+Le score de confiance local doit pouvoir dire, en lecture produit:
 
 - `strong`: sources attendues et contenu utile trouves;
 - `medium`: sources plausibles mais couverture incomplete;
 - `weak`: bruit lexical, domaines attendus absents ou contenu insuffisant;
 - `failed`: pas de source exploitable.
+
+Le runtime Lot 7 expose cette lecture sous une echelle operatoire sobre `high` / `medium` / `low` / `unknown`, avec `web_confidence_reason_codes` pour garder le signal contestable.
 
 OpenRouter ne doit pas etre appele par ce TODO. Le futur fallback pourra seulement etre etudie si le local profile produit `weak` ou `failed`, et avec une decision produit explicite.
 
@@ -398,9 +401,9 @@ Definition of done Lot 6:
 
 ## Lot 7 - Observabilite + confiance + fallback futur
 
-Statut: a faire.
+Statut: livre.
 
-Ajouter les signaux:
+Signaux exposes:
 
 - `search_profile`;
 - nombre de requetes;
@@ -409,10 +412,32 @@ Ajouter les signaux:
 - raisons de downrank/drop;
 - choix Crawl4AI;
 - cache mode;
-- confiance finale;
-- fallback OpenRouter propose ou utilise.
+- fallback BM25 -> `fit`;
+- `used_content_kinds`;
+- `injected_chars`;
+- `context_chars`;
+- `read_state`;
+- confiance finale via `web_confidence_policy_kind`, `web_confidence_level`, `web_confidence_score`, `web_confidence_reason_codes` et `web_confidence_inputs_summary`;
+- fallback OpenRouter futur via `openrouter_fallback_state`, `openrouter_fallback_used` et `openrouter_fallback_reason_codes`.
 
-Regle: OpenRouter peut etre mentionne comme fallback futur, pas branche dans le runtime par ce lot.
+Regles livrees:
+
+- la confiance est une heuristique d'audit visible, pas une decision;
+- elle ne modifie pas l'ordre des sources;
+- elle ne supprime aucune source;
+- elle ne change pas le contenu injecte;
+- `openrouter_fallback_used` reste toujours `false`;
+- OpenRouter, Exa et Parallel peuvent etre mentionnes comme fallback futur ou candidat de revue humaine, mais ne sont pas appeles dans le runtime.
+
+Definition of done Lot 7:
+
+- [x] Politique de confiance isolee dans `app/tools/web_search_confidence.py`.
+- [x] Signaux ajoutes au payload web runtime et aux evenements `web_search` sans contenu brut.
+- [x] Signaux visibles dans les read models / checklist d'observabilite.
+- [x] Benchmark local/local_profiled expose la confiance et l'etat de fallback futur.
+- [x] Tests: confiance haute sur contenu crawle lu, confiance basse sur no-data/snippets, URL explicite preserve son `read_state`.
+- [x] `openrouter_fallback_used` reste faux; aucun appel OpenRouter, Exa ou Parallel n'est ajoute.
+- [x] Aucun changement SearXNG, reranking, Crawl4AI policy, auto-web, Memory, Identity, Summary, Biblio/RAG ou Docker.
 
 ## Lot 8 - Benchmark final et decision Exa/Parallel
 

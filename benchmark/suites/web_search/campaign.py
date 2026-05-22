@@ -115,10 +115,10 @@ def build_web_search_campaign(
             "deprecated_paths_forbidden": ["plugins:[{id:web}]", ":online"],
         },
         "local_pipeline": {
-            "mode": "local keeps the single-query historical SearXNG baseline; local_profiled uses Lot 6 bounded queries, profiled SearXNG params, soft reranking and profiled Crawl4AI extraction",
+            "mode": "local keeps the single-query historical SearXNG baseline; local_profiled uses Lot 7 bounded queries, profiled SearXNG params, soft reranking, profiled Crawl4AI extraction and confidence observability",
             "runtime_changed": True,
             "chat_pipeline_changed": False,
-            "local_profiled_stub": "false_after_lot6_crawl4ai_policy",
+            "local_profiled_stub": "false_after_lot7_confidence_observability",
         },
         "evaluation_grid": _evaluation_grid(),
         "secrets_written": False,
@@ -187,6 +187,14 @@ def _run_local_arm(
                 "crawl4ai_cache_modes": {},
                 "crawl4ai_fallback_used_count": 0,
                 "crawl4ai_query_sha256_12": [],
+                "web_confidence_policy_kind": "dry_run",
+                "web_confidence_level": "unknown",
+                "web_confidence_score": 0.0,
+                "web_confidence_reason_codes": [],
+                "web_confidence_inputs_summary": {},
+                "openrouter_fallback_state": "not_applicable",
+                "openrouter_fallback_used": False,
+                "openrouter_fallback_reason_codes": [],
             },
             "sources": [source],
             "answer_preview": "Dry-run local: aucun appel SearXNG, Crawl4AI ou OpenRouter.",
@@ -259,6 +267,14 @@ def _run_local_arm(
                 "results_count": int(payload.get("results_count") or 0),
                 "primary_read_status": payload.get("primary_read_status"),
                 "fallback_used": bool(payload.get("fallback_used", False)),
+                "web_confidence_policy_kind": payload.get("web_confidence_policy_kind"),
+                "web_confidence_level": payload.get("web_confidence_level"),
+                "web_confidence_score": payload.get("web_confidence_score"),
+                "web_confidence_reason_codes": list(payload.get("web_confidence_reason_codes") or []),
+                "web_confidence_inputs_summary": dict(payload.get("web_confidence_inputs_summary") or {}),
+                "openrouter_fallback_state": payload.get("openrouter_fallback_state"),
+                "openrouter_fallback_used": bool(payload.get("openrouter_fallback_used", False)),
+                "openrouter_fallback_reason_codes": list(payload.get("openrouter_fallback_reason_codes") or []),
             },
             "sources": sources,
             "answer_preview": _bounded_preview(payload.get("context_block"), max_chars=ANSWER_PREVIEW_CHARS),
@@ -294,8 +310,8 @@ def _run_local_profiled_arm(*, config: CampaignConfig, case: dict[str, Any]) -> 
         config=config,
         case=case,
         arm="local_profiled",
-        mode="local_profiled_specialized_queries_searxng_params_rerank_crawl4ai_policy",
-        engine="searxng_crawl4ai_profiled_queries_params_rerank_crawl_policy",
+        mode="local_profiled_specialized_queries_searxng_params_rerank_crawl4ai_policy_confidence_observability",
+        engine="searxng_crawl4ai_profiled_queries_params_rerank_crawl_policy_confidence",
         enable_specialized_queries=True,
         enable_profiled_searxng_params=True,
         enable_reranking=True,
@@ -311,12 +327,12 @@ def _run_local_profiled_arm(*, config: CampaignConfig, case: dict[str, Any]) -> 
     )
     result["local"] = local
     result["profiled_stub"] = {
-        "status": "crawl4ai_policy_lot6",
+        "status": "confidence_observability_lot7",
         "runtime_changed": True,
         "fixture_path": str(adapter.local_bad_order_fixture_path(config.repo_root).relative_to(config.repo_root)),
     }
     if config.dry_run:
-        result["answer_preview"] = "Dry-run local_profiled: Lot 6 shape only, no SearXNG, Crawl4AI or OpenRouter call."
+        result["answer_preview"] = "Dry-run local_profiled: Lot 7 shape only, no SearXNG, Crawl4AI or OpenRouter call."
     return result
 
 
@@ -653,6 +669,18 @@ def _result_markdown_block(result: dict[str, Any]) -> list[str]:
                 f"  - `crawl4ai_cache_modes`: `{json.dumps(local.get('crawl4ai_cache_modes') or {}, ensure_ascii=False, sort_keys=True)}`"
             )
             lines.append(f"  - `crawl4ai_fallback_used_count`: `{local.get('crawl4ai_fallback_used_count')}`")
+        if "web_confidence_level" in local:
+            lines.append(f"  - `web_confidence_policy_kind`: `{local.get('web_confidence_policy_kind') or ''}`")
+            lines.append(f"  - `web_confidence_level`: `{local.get('web_confidence_level') or ''}`")
+            lines.append(f"  - `web_confidence_score`: `{local.get('web_confidence_score')}`")
+            lines.append(
+                f"  - `web_confidence_reason_codes`: `{','.join(local.get('web_confidence_reason_codes') or [])}`"
+            )
+            lines.append(f"  - `openrouter_fallback_state`: `{local.get('openrouter_fallback_state') or ''}`")
+            lines.append(f"  - `openrouter_fallback_used`: `{bool(local.get('openrouter_fallback_used', False))}`")
+            lines.append(
+                f"  - `openrouter_fallback_reason_codes`: `{','.join(local.get('openrouter_fallback_reason_codes') or [])}`"
+            )
         if bool(local.get("local_profiled_stub", False)):
             lines.append("  - `local_profiled_stub`: `True`")
     lines.extend(
@@ -968,6 +996,10 @@ def _local_signal_summary(result: dict[str, Any]) -> str:
         bits.append(f"crawl4ai={','.join(local.get('crawl4ai_policy_kinds') or [])}")
     if local.get("crawl4ai_fallback_used_count"):
         bits.append(f"crawl4ai_fallbacks={local.get('crawl4ai_fallback_used_count')}")
+    if local.get("web_confidence_level"):
+        bits.append(f"confidence={local.get('web_confidence_level')}:{local.get('web_confidence_score')}")
+    if local.get("openrouter_fallback_state"):
+        bits.append(f"openrouter_fallback={local.get('openrouter_fallback_state')}")
     if local.get("local_profiled_stub"):
         bits.append("stub=true")
     return _markdown_cell("; ".join(bits))

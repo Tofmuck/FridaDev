@@ -266,6 +266,8 @@ def _empty_web_metrics() -> dict[str, Any]:
         'injected_turns': 0,
         'injected_chars_total': 0,
         'read_state_counts': {},
+        'confidence_level_counts': {},
+        'openrouter_fallback_used_count': 0,
     }
 
 
@@ -296,6 +298,11 @@ def _add_web_metrics(metrics: dict[str, Any], events: Sequence[Mapping[str, Any]
         read_state = _text(payload.get('read_state'))
         if read_state:
             _inc(metrics['read_state_counts'], read_state)
+        confidence_level = _text(payload.get('web_confidence_level'))
+        if confidence_level:
+            _inc(metrics['confidence_level_counts'], confidence_level)
+        if bool(payload.get('openrouter_fallback_used', False)):
+            metrics['openrouter_fallback_used_count'] += 1
     if injected_this_turn:
         metrics['injected_turns'] += 1
 
