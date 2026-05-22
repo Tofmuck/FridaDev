@@ -229,6 +229,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                 for caller in (
                     'llm',
                     'web_reformulation',
+                    'web_discovery',
                     'arbiter',
                     'identity_extractor',
                     'identity_periodic_agent',
@@ -246,6 +247,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             {
                 'llm': config.OR_REFERER_LLM,
                 'web_reformulation': config.OR_REFERER_WEB_REFORMULATION,
+                'web_discovery': config.OR_REFERER_WEB_DISCOVERY,
                 'arbiter': config.OR_REFERER_ARBITER,
                 'identity_extractor': config.OR_REFERER_IDENTITY_EXTRACTOR,
                 'identity_periodic_agent': config.OR_REFERER_IDENTITY_PERIODIC,
@@ -347,6 +349,18 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             'identity_periodic_agent',
         )
         self.assertEqual(
+            llm_client.resolve_provider_caller_from_headers(
+                {llm_client.INTERNAL_PROVIDER_CALLER_HEADER: 'web_discovery'}
+            ),
+            'web_discovery',
+        )
+        self.assertEqual(
+            llm_client.resolve_provider_caller_from_headers(
+                {'X-Title': config.OR_TITLE_WEB_DISCOVERY}
+            ),
+            'web_discovery',
+        )
+        self.assertEqual(
             llm_client.strip_internal_provider_headers(
                 {
                     llm_client.INTERNAL_PROVIDER_CALLER_HEADER: 'validation_agent',
@@ -362,6 +376,10 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             'web_reformulation': (
                 'web_reformulation',
                 'web_reformulation_model',
+            ),
+            'web_discovery': (
+                'web_discovery',
+                'web_search_discovery',
             ),
             'arbiter': ('memory_arbiter', 'memory_arbiter_model'),
             'identity_extractor': (

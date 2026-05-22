@@ -195,6 +195,30 @@ class WebSearchObservabilityTests(unittest.TestCase):
         self.assertEqual(checklist_web['evidence']['web_evidence_status'], 'sufficient')
         self.assertFalse(checklist_web['evidence']['web_evidence_requires_caveat'])
 
+    def test_web_discovery_provider_caller_is_known_downstream(self) -> None:
+        events = [
+            _event(
+                'llm_call',
+                payload={
+                    'provider_caller': 'web_discovery',
+                    'provider_title': 'FridaDev / Web Discovery',
+                    'response_chars': 0,
+                },
+            )
+        ]
+
+        providers = turn_pipeline_read_model._providers_summary(events)
+        self.assertEqual(providers['unknown_llm_call_count'], 0)
+        self.assertTrue(providers['secondary']['web_discovery']['llm_call_present'])
+        self.assertEqual(providers['secondary']['web_discovery']['status'], 'ok')
+
+        checklist = turn_observability_checklist.build_turn_observability_checklist(events)
+        main_item = next(item for item in checklist['items'] if item['key'] == 'llm_call_main')
+        self.assertEqual(main_item['evidence']['unknown_llm_call_count'], 0)
+        discovery_item = next(item for item in checklist['items'] if item['key'] == 'web_discovery')
+        self.assertEqual(discovery_item['status'], 'ok')
+        self.assertEqual(discovery_item['evidence']['llm_call_count'], 1)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -8,6 +8,7 @@ INTERNAL_PROVIDER_CALLER_HEADER = 'X-Frida-Caller'
 _KNOWN_PROVIDER_CALLERS = (
     'llm',
     'web_reformulation',
+    'web_discovery',
     'arbiter',
     'identity_extractor',
     'identity_periodic_agent',
@@ -18,6 +19,7 @@ _KNOWN_PROVIDER_CALLERS = (
 _PROVIDER_TITLE_FIELD_MAP = {
     'llm': 'title_llm',
     'web_reformulation': 'title_web_reformulation',
+    'web_discovery': 'title_web_discovery',
     'arbiter': 'title_arbiter',
     'identity_extractor': 'title_identity_extractor',
     'identity_periodic_agent': 'title_identity_periodic',
@@ -28,6 +30,7 @@ _PROVIDER_TITLE_FIELD_MAP = {
 _PROVIDER_DEFAULT_TITLE_MAP = {
     'llm': config.OR_TITLE_LLM,
     'web_reformulation': config.OR_TITLE_WEB_REFORMULATION,
+    'web_discovery': config.OR_TITLE_WEB_DISCOVERY,
     'arbiter': config.OR_TITLE_ARBITER,
     'identity_extractor': config.OR_TITLE_IDENTITY_EXTRACTOR,
     'identity_periodic_agent': config.OR_TITLE_IDENTITY_PERIODIC,
@@ -38,6 +41,7 @@ _PROVIDER_DEFAULT_TITLE_MAP = {
 _PROVIDER_REFERER_FIELD_MAP = {
     'llm': 'referer_llm',
     'web_reformulation': 'referer_web_reformulation',
+    'web_discovery': 'referer_web_discovery',
     'arbiter': 'referer_arbiter',
     'identity_extractor': 'referer_identity_extractor',
     'identity_periodic_agent': 'referer_identity_periodic',
@@ -48,6 +52,7 @@ _PROVIDER_REFERER_FIELD_MAP = {
 _PROVIDER_DEFAULT_REFERER_MAP = {
     'llm': config.OR_REFERER_LLM,
     'web_reformulation': config.OR_REFERER_WEB_REFORMULATION,
+    'web_discovery': config.OR_REFERER_WEB_DISCOVERY,
     'arbiter': config.OR_REFERER_ARBITER,
     'identity_extractor': config.OR_REFERER_IDENTITY_EXTRACTOR,
     'identity_periodic_agent': config.OR_REFERER_IDENTITY_PERIODIC,
@@ -58,6 +63,7 @@ _PROVIDER_DEFAULT_REFERER_MAP = {
 _PROVIDER_ATTRIBUTION_MAP = {
     'llm': ('main_chat', 'main_model'),
     'web_reformulation': ('web_reformulation', 'web_reformulation_model'),
+    'web_discovery': ('web_discovery', 'web_search_discovery'),
     'arbiter': ('memory_arbiter', 'memory_arbiter_model'),
     'identity_extractor': ('identity_extractor', 'identity_extractor_model'),
     'identity_periodic_agent': ('identity_periodic', 'identity_periodic_model'),
@@ -328,6 +334,7 @@ def _caller_from_provider_event_name(event_name: str) -> str:
     event_key = str(event_name or '').strip().lower()
     return {
         'llm_provider_response': 'llm',
+        'web_discovery_provider_response': 'web_discovery',
         'arbiter_provider_response': 'arbiter',
         'identity_extractor_provider_response': 'identity_extractor',
         'identity_periodic_agent_provider_response': 'identity_periodic_agent',

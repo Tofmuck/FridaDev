@@ -965,6 +965,8 @@ def _call_discovery_with_profile_params(
     searxng_params: dict[str, str] | None,
     max_results: int,
     discovery_provider: str | None,
+    requests_module: Any = requests,
+    llm_module: Any | None = None,
 ) -> web_search_discovery.DiscoveryResponse:
     return web_search_discovery.discover_urls(
         query,
@@ -973,6 +975,8 @@ def _call_discovery_with_profile_params(
         max_results=max_results,
         requested_provider=discovery_provider,
         local_search=_call_search_with_profile_params,
+        requests_module=requests_module,
+        llm_module=llm_module,
     )
 
 
@@ -984,6 +988,8 @@ def _run_search_query_plan(
     search_profile: str,
     enable_reranking: bool,
     discovery_provider: str | None,
+    requests_module: Any = requests,
+    llm_module: Any | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     queries = list(query_plan.get('queries') or [])
     if not queries:
@@ -1011,6 +1017,8 @@ def _run_search_query_plan(
             searxng_params=searxng_params,
             max_results=max_results,
             discovery_provider=discovery_provider,
+            requests_module=requests_module,
+            llm_module=llm_module,
         )
         discovery_observability.append(discovery_response.observability)
         query_result_groups.append((query_entry, discovery_response.results))
@@ -1822,6 +1830,8 @@ def _build_payload_from_collection(
             search_profile=search_profile,
             enable_reranking=enable_reranking,
             discovery_provider=discovery_provider,
+            requests_module=requests_module,
+            llm_module=llm_module,
         )
         material = _build_search_context_material(
             query,
@@ -1885,6 +1895,8 @@ def _build_payload_from_collection(
         search_profile=search_profile,
         enable_reranking=enable_reranking,
         discovery_provider=discovery_provider,
+        requests_module=requests_module,
+        llm_module=llm_module,
     )
     material = _build_search_context_material(
         query,
@@ -2193,6 +2205,8 @@ def build_context(
             search_profile=search_profile,
             enable_reranking=enable_reranking,
             discovery_provider=discovery_provider,
+            requests_module=requests_module,
+            llm_module=llm_module,
         )
         ctx_parts = []
         if results:

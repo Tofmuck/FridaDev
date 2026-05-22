@@ -8,6 +8,7 @@ _LLM_CALL_SECONDARY_PROVIDER_CALLERS = (
     'stimmung_agent',
     'validation_agent',
     'web_reformulation',
+    'web_discovery',
 )
 _LLM_CALL_KNOWN_PROVIDER_CALLERS = (
     _LLM_CALL_MAIN_PROVIDER_CALLER,
@@ -556,6 +557,7 @@ def _secondary_provider_item(
     result_stage: str,
     expected: bool,
     provider_caller: str,
+    require_prepared: bool = True,
 ) -> dict[str, Any]:
     prepared_events = list(grouped.get(prepared_stage) or [])
     result_events = list(grouped.get(result_stage) or [])
@@ -573,7 +575,7 @@ def _secondary_provider_item(
             'not_called',
             evidence={'prepared_count': 0, 'result_count': 0, 'llm_call_count': 0},
         )
-    if not prepared_events:
+    if require_prepared and not prepared_events:
         return _checklist_item(
             key,
             'secondary_providers',
@@ -811,6 +813,15 @@ def build_turn_observability_checklist(events: Sequence[Mapping[str, Any]]) -> d
             result_stage='web_reformulation',
             expected=False,
             provider_caller='web_reformulation',
+        ),
+        _secondary_provider_item(
+            grouped,
+            key='web_discovery',
+            prepared_stage='web_discovery_prompt_prepared',
+            result_stage='web_discovery',
+            expected=False,
+            provider_caller='web_discovery',
+            require_prepared=False,
         ),
         _web_observability_item(grouped),
         _node_state_item(grouped, expected=hermeneutic_expected),

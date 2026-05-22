@@ -12,12 +12,14 @@ _SECONDARY_PROVIDER_CALLERS = (
     ('stimmung', 'stimmung_agent', 'stimmung_prompt_prepared', 'stimmung_agent'),
     ('validation', 'validation_agent', 'validation_prompt_prepared', 'validation_agent'),
     ('web_reformulation', 'web_reformulation', 'web_reformulation_prompt_prepared', 'web_reformulation'),
+    ('web_discovery', 'web_discovery', 'web_discovery_prompt_prepared', 'web_discovery'),
 )
 _KNOWN_PROVIDER_CALLERS = {
     _MAIN_PROVIDER_CALLER,
     'stimmung_agent',
     'validation_agent',
     'web_reformulation',
+    'web_discovery',
 }
 
 

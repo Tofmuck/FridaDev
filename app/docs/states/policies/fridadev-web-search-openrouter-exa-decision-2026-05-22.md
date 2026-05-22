@@ -43,6 +43,8 @@ Le defaut applicatif est `openrouter_exa`, conformement a la decision produit. L
 
 Le secret OpenRouter n'est pas duplique: le provider de decouverte utilise le transport partage `main_model.api_key` via les helpers OpenRouter existants. Si `openrouter_exa` est choisi sans configuration OpenRouter valide, le systeme doit echouer proprement avec un signal observable, sans fuite de secret.
 
+Point cout/latence: le plan de recherche borne reste applique avant la decouverte. En mode `openrouter_exa`, chaque requete du plan peut produire un appel OpenRouter distinct. Le comportement courant est donc borne par le contrat existant: requete principale + 0 a 2 requetes secondaires, soit au plus 3 appels de decouverte externe par tour web manuel. `query_count`, `secondary_query_count` et les metriques `provider_caller=web_discovery` doivent rendre ce cout visible avant tout test live.
+
 ## Observabilite
 
 Champs content-free attendus:
