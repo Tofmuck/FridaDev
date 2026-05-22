@@ -260,7 +260,7 @@ def _openrouter_headers(llm_module: Any) -> dict[str, Any]:
             referer=getattr(config, 'OR_REFERER_WEB_DISCOVERY', ''),
             title=getattr(config, 'OR_TITLE_WEB_DISCOVERY', 'FridaDev / Web Discovery'),
         )
-    return llm_module.or_headers(caller='web_reformulation')
+    return llm_module.or_headers(caller='web_discovery')
 
 
 def _build_openrouter_exa_payload(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import sys
 import types
 import unittest
@@ -18,7 +19,13 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-sys.modules.setdefault('psycopg', types.SimpleNamespace())
+if 'psycopg' not in sys.modules and importlib.util.find_spec('psycopg') is None:
+    psycopg_module = types.ModuleType('psycopg')
+    psycopg_rows_module = types.ModuleType('psycopg.rows')
+    psycopg_rows_module.dict_row = object()
+    psycopg_module.rows = psycopg_rows_module
+    sys.modules['psycopg'] = psycopg_module
+    sys.modules['psycopg.rows'] = psycopg_rows_module
 
 from core.hermeneutic_node.inputs import web_input
 from observability import hermeneutic_node_logger

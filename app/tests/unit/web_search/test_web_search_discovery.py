@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import importlib.util
 import sys
+import types
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,7 +19,13 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-sys.modules.setdefault('psycopg', SimpleNamespace())
+if 'psycopg' not in sys.modules and importlib.util.find_spec('psycopg') is None:
+    psycopg_module = types.ModuleType('psycopg')
+    psycopg_rows_module = types.ModuleType('psycopg.rows')
+    psycopg_rows_module.dict_row = object()
+    psycopg_module.rows = psycopg_rows_module
+    sys.modules['psycopg'] = psycopg_module
+    sys.modules['psycopg.rows'] = psycopg_rows_module
 
 from tools import web_search
 from tools import web_search_discovery
@@ -119,6 +127,22 @@ class WebSearchDiscoveryTests(unittest.TestCase):
         self.assertEqual(observed['headers']['X-Frida-Caller'], 'web_discovery')
         self.assertTrue(response.observability['web_discovery_external_used'])
         self.assertEqual(response.observability['web_discovery_external_provider'], 'openrouter_exa')
+
+    def test_openrouter_headers_fallback_uses_web_discovery_caller(self) -> None:
+        observed: dict[str, str] = {}
+
+        def fake_or_headers(*, caller='llm'):
+            observed['caller'] = caller
+            return {'X-Frida-Caller': caller}
+
+        fake_llm_module = SimpleNamespace(
+            or_headers=fake_or_headers,
+        )
+
+        headers = web_search_discovery._openrouter_headers(fake_llm_module)
+
+        self.assertEqual(observed['caller'], 'web_discovery')
+        self.assertEqual(headers['X-Frida-Caller'], 'web_discovery')
 
     def test_openrouter_exa_missing_config_returns_clean_observable_error(self) -> None:
         fake_llm_module = SimpleNamespace(
