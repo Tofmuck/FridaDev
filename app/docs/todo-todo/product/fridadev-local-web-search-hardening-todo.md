@@ -316,6 +316,7 @@ Regles implementees:
 - termes essentiels derives de la demande utilisateur et de la requete reformulee, sans mots-cles de fixtures injectes par profil;
 - bonus fort de domaine officiel/academique conditionne par au moins un terme essentiel issu de la demande reelle; sinon le domaine ne recoit qu'un signal contextuel faible;
 - pour `technique_officielle`, le bonus fort de documentation officielle depend de l'alignement marque/outil/API demande avec le domaine, le titre ou l'URL; `openrouter.ai` n'est pas une whitelist dominante hors requete OpenRouter;
+- les surfaces techniques docs-like restent generiques et prudentes: prefixes `docs.`, `developer.`, `dev.`, `learn.` et chemins comme `/api/`, `/docs`, `/guide`, `/learn`, `/reference`, toujours conditionnes par l'alignement avec la demande;
 - bonus souple de fraicheur pour actualite quand des marqueurs recents existent;
 - malus souple dictionnaires/conjugueurs hors profil definitionnel;
 - malus souple homonymes evidents, notamment `Trace Colmar` sur Derrida/trace;
@@ -360,6 +361,7 @@ Definition of done Lot 5:
 - [x] Resultats hors profil non supprimes brutalement.
 - [x] Tests anti-overfit: CAF/logement, Ukraine/diplomatie et Kant/jugement reflechissant ne sont pas ecrases par les fixtures CNI, AI Act Europe ou Derrida/trace.
 - [x] Tests anti-overfit technique: Stripe Checkout et une doc generique alignee battent une documentation OpenRouter officielle mais hors demande.
+- [x] Tests docs-like techniques: Microsoft Graph sur `learn.microsoft.com`, React `reference` et Vue `guide` restent promus seulement quand ils sont alignes avec la demande.
 - [x] Reason codes observables sans contenu brut.
 - [x] URL explicite directe inchangee.
 - [x] Benchmark `local` reste baseline; `local_profiled` porte le reranking.

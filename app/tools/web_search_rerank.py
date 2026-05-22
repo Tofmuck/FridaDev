@@ -109,13 +109,18 @@ _TECHNICAL_DOC_DOMAIN_PREFIXES = (
     "developers.",
     "dev.",
     "docs.",
+    "learn.",
 )
 _TECHNICAL_DOC_PATH_MARKERS = (
+    "/api/",
     "/api-reference",
     "/developer",
     "/developers",
     "/docs",
     "/documentation",
+    "/guide",
+    "/guides",
+    "/learn",
     "/reference",
 )
 _ACADEMIC_DOMAINS = {

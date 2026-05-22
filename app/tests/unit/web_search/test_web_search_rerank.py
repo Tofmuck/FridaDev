@@ -186,6 +186,79 @@ class WebSearchRerankTests(unittest.TestCase):
         self.assertIn("technical_aligned_docs_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
         self.assertNotIn("profile_official_domain_soft_bonus", reranked[1]["rerank_reason_codes"])
 
+    def test_technique_officielle_recognizes_learn_api_docs_when_aligned(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "OpenRouter API Reference",
+                    "url": "https://docs.openrouter.ai/api-reference/overview",
+                    "content": "official API docs",
+                },
+                {
+                    "title": "Microsoft Graph API overview",
+                    "url": "https://learn.microsoft.com/en-us/graph/api/overview",
+                    "content": "Microsoft Graph REST API",
+                },
+            ],
+            user_msg="documentation officielle Microsoft Graph API",
+            primary_query="Microsoft Graph API documentation officielle",
+            search_profile=web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(reranked[0]["url"], "https://learn.microsoft.com/en-us/graph/api/overview")
+        self.assertIn("technical_aligned_docs_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertNotIn("profile_official_domain_soft_bonus", reranked[1]["rerank_reason_codes"])
+
+    def test_technique_officielle_preserves_react_reference_docs_alignment(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "OpenRouter API Reference",
+                    "url": "https://docs.openrouter.ai/api-reference/overview",
+                    "content": "official API docs",
+                },
+                {
+                    "title": "useEffect - React",
+                    "url": "https://react.dev/reference/react/useEffect",
+                    "content": "React useEffect reference documentation",
+                },
+            ],
+            user_msg="documentation officielle React useEffect",
+            primary_query="React useEffect documentation officielle",
+            search_profile=web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(reranked[0]["url"], "https://react.dev/reference/react/useEffect")
+        self.assertIn("technical_aligned_docs_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+
+    def test_technique_officielle_recognizes_generic_guide_docs_when_aligned(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "OpenRouter API Reference",
+                    "url": "https://docs.openrouter.ai/api-reference/overview",
+                    "content": "official API docs",
+                },
+                {
+                    "title": "Vue Composition API guide",
+                    "url": "https://vuejs.org/guide/extras/composition-api-faq.html",
+                    "content": "Vue Composition API official guide",
+                },
+            ],
+            user_msg="documentation officielle Vue Composition API",
+            primary_query="Vue Composition API documentation officielle",
+            search_profile=web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(reranked[0]["url"], "https://vuejs.org/guide/extras/composition-api-faq.html")
+        self.assertIn("technical_aligned_docs_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+
     def test_actualite_promotes_eu_official_source_without_wikipedia_ban(self) -> None:
         reranked, observability = web_search_rerank.rerank_results(
             [
