@@ -62,11 +62,11 @@ Reference d'audit ouverte pour ce chantier:
 
 - `app/docs/states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
 
-TODO actif de renforcement local SearXNG/Crawl4AI, avec bras benchmark `local_profiled`:
+Archive de renforcement local SearXNG/Crawl4AI V0, avec bras benchmark `local_profiled`:
 
-- `app/docs/todo-todo/product/fridadev-local-web-search-hardening-todo.md`
+- `app/docs/todo-done/product/fridadev-local-web-search-hardening-todo.md`
 
-TODO source-of-truth pour reconstruire la recherche web local-first de A a Z, avec OpenRouter/Exa comme provider de decouverte URL configure et sans fallback automatique:
+TODO source-of-truth pour reconstruire la recherche web discovery local-first + Exa de A a Z, avec OpenRouter/Exa comme provider de decouverte URL configure et sans fallback automatique:
 
 - `app/docs/todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
 - Decision produit associee: `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`

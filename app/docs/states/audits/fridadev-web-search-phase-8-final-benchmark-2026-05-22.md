@@ -4,7 +4,7 @@ Statut: Phase 8 livree comme preuve benchmark locale, sans modification runtime 
 
 Perimetre: comparaison finale entre l'ancien local historique et le nouveau local profile reconstruit par les Phases 2 a 7. OpenRouter, Exa et Parallel n'ont pas ete relances dans cette Phase 8.
 
-Addendum decision produit 2026-05-22: ce benchmark a finalement conduit a abandonner la doctrine `local only` pour la recherche ouverte. La decision active est documentee dans `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`: FridaDev reste local-first pour lire, qualifier et auditer, mais OpenRouter/Exa devient provider de decouverte URL quand configure.
+Addendum decision produit 2026-05-22: ce benchmark a finalement conduit a abandonner la doctrine de recherche ouverte exclusivement locale. La decision active est documentee dans `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`: FridaDev reste local-first pour lire, qualifier et auditer, mais OpenRouter/Exa devient provider de decouverte URL quand configure.
 
 ## Artefacts
 
@@ -97,16 +97,16 @@ Causes probables:
 - la confiance locale valorise encore trop le volume de materiau lu au lieu de l'alignement avec les domaines attendus et les termes essentiels;
 - l'evidence Phase 7 sait parfois dire `insufficient`, mais pas encore assez souvent quand les domaines visibles sont manifestement hors sujet.
 
-## Decision recommandee initiale
+## Decision recommandee initiale, supersedee
 
 Ne pas clore Phase 9 comme deploiement final sans correctif.
 
-Garder la doctrine runtime:
+Recommandation initiale apres lecture du benchmark:
 
-- FridaDev web runtime = local only;
-- aucun fallback OpenRouter / Exa / Parallel;
-- aucun hybride runtime;
-- Exa/Parallel restent des temoins externes de benchmark seulement.
+- garder un runtime web exclusivement local;
+- ne pas ajouter de fallback OpenRouter / Exa / Parallel;
+- ne pas ajouter d'hybride runtime;
+- garder Exa/Parallel comme temoins externes de benchmark seulement.
 
 Cette recommandation est remplacee par la decision produit du 2026-05-22: OpenRouter/Exa devient provider de decouverte configure pour la recherche ouverte. Les garde-fous restent: URL explicite locale, Crawl4AI local pour la lecture, pas de fallback automatique declenche par la confiance, pas de Parallel runtime.
 
@@ -132,4 +132,4 @@ Avant cloture Phase 9, ouvrir un correctif borne:
 
 Phase 8 est livree comme benchmark et diagnostic. Elle ne valide pas encore la cloture produit de la reconstruction locale.
 
-Le nouveau local est meilleur sur certains cas d'autorite explicite et sur l'observabilite, mais il reste trop fragile sur actualite, academique et Adobe. Le prochain geste doit etre un correctif local de qualite et de confiance, pas une hybridation externe.
+Le nouveau local est meilleur sur certains cas d'autorite explicite et sur l'observabilite, mais il reste trop fragile sur actualite, academique et Adobe. Cette conclusion a ete supersedee par la decision produit du 2026-05-22: la suite active n'est plus une hybridation floue, mais un provider OpenRouter/Exa de decouverte URL configure pour la recherche ouverte, avec lecture locale Crawl4AI et garde-fous FridaDev.

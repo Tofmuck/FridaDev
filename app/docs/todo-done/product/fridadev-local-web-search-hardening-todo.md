@@ -1,18 +1,18 @@
-# FridaDev local web search hardening - TODO
+# FridaDev local web search hardening - TODO archive
 
-Statut: actif.
+Statut: livre puis superseded par la decision OpenRouter/Exa du 2026-05-22.
 
-Classement: `app/docs/todo-todo/product/`.
+Classement: `app/docs/todo-done/product/`.
 
 Reference d'audit: `app/docs/states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`.
 
 ## Intention
 
-Renforcer la recherche web locale FridaDev avant toute integration OpenRouter runtime.
+Ce chantier a livre le durcissement local V0 de FridaDev: profils, requetes specialisees, parametres SearXNG applicatifs, reranking, politique Crawl4AI, confiance visible, evidence et benchmark `local_profiled`.
 
-Le chemin par defaut reste SearXNG pour chercher, Crawl4AI pour lire, et FridaDev pour profiler, filtrer, scorer, observer et injecter prudemment.
+Il reste utile comme archive technique des Lots 0 a 8, pas comme doctrine produit active.
 
-OpenRouter Exa/Parallel restent uniquement des bras de benchmark externe et de comparaison. Ils ne sont pas une strategie produit et ne doivent jamais appeler `/api/chat`.
+Doctrine supersedee: pendant ce chantier, OpenRouter Exa et Parallel etaient traites comme bras de benchmark externe seulement. Cette doctrine est remplacee par `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`: la recherche ouverte peut utiliser OpenRouter/Exa comme provider de decouverte URL configure, tandis que `explicit_url` reste local direct et que Crawl4AI reste la couche locale de lecture. Parallel reste benchmark externe.
 
 ## Avancement
 
@@ -36,7 +36,7 @@ Lecture rapide:
 - Lot 6 est livre: `local_profiled` applique une politique Crawl4AI profilee, avec `bm25` + `q` borne pour certains profils et repli `fit` si l'extraction est vide ou pauvre.
 - Lot 7 est livre: les signaux locaux sont exposes avec une confiance finale visible, non souveraine et non actionnable.
 - Lot 8 est livre: le benchmark final local / `local_profiled` / Exa / Parallel est produit et documente dans `app/docs/states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`.
-- Aucun score de confiance actionnable et aucune passerelle OpenRouter runtime n'est livree.
+- Aucun score de confiance actionnable n'est livre. Depuis la decision du 2026-05-22, Exa n'est pas une passerelle declenchee par la confiance: c'est un provider de decouverte configure pour la recherche ouverte.
 
 ## Question prealable: existe-t-il un meilleur plan ?
 
@@ -52,7 +52,8 @@ Ce plan est meilleur parce que les echecs observes viennent surtout de l'orchest
 - `raw` reste interdit sur les resultats search-only.
 - Memory, Identity, Summary, Biblio/RAG et documents actifs ne sont pas alimentes par le web de ce chantier.
 - Pas de modification globale de SearXNG ou Crawl4AI au depart.
-- Pas d'OpenRouter web runtime dans ce chantier; la decision produit actuelle est `local only`.
+- Dans le perimetre historique de ce chantier, aucun provider externe n'etait branche au runtime.
+- Doctrine active depuis le 2026-05-22: OpenRouter/Exa peut etre provider de decouverte URL configure pour la recherche ouverte, sans changer le chemin URL explicite local ni rendre la confiance actionnable.
 - Pas de reouverture de l'auto-web lexical.
 - Pas de ban global de Wikipedia, dictionnaires ou conjugueurs.
 
@@ -457,13 +458,18 @@ Bras relances:
 - `openrouter_exa`;
 - `openrouter_parallel`.
 
-Decision produite:
+Decision produite puis supersedee:
 
-- chemin par defaut: local FridaDev;
+- decision initiale du Lot 8: chemin par defaut local FridaDev;
 - URL explicite: local direct prioritaire, sans fallback externe;
-- doctrine runtime: `local only`, sans hybride web search;
-- Exa et Parallel: comparateurs de benchmark externe uniquement;
-- aucune passerelle OpenRouter/Exa/Parallel runtime active, ni automatique ni semi-automatique.
+- Exa et Parallel etaient alors traites comme comparateurs de benchmark externe uniquement.
+
+Decision active depuis le 2026-05-22:
+
+- recherche ouverte: OpenRouter/Exa peut devenir provider de decouverte URL configure;
+- SearXNG reste provider `local`, baseline historique, fallback operateur explicite et objet d'audit plateforme;
+- Parallel reste benchmark externe;
+- aucune confiance web ne declenche automatiquement un provider externe.
 
 Findings a garder pour un chantier ulterieur:
 
@@ -478,7 +484,7 @@ Definition of done Lot 8:
 - [x] Artefacts par bras disponibles dans `/tmp/fridadev-web-search-lot8-live`.
 - [x] Grep securite vide apres redaction des apercus d'artefacts.
 - [x] Note de decision versionnee: `app/docs/states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`.
-- [x] Aucune passerelle OpenRouter/Exa/Parallel runtime active.
+- [x] Aucune confiance actionnable ni fallback automatique OpenRouter/Exa/Parallel livre dans ce cycle.
 
 ## Preuves de ce cycle
 
@@ -488,8 +494,8 @@ Commandes minimales:
 git status --short
 git diff --check
 git diff --cached --check
-test -f app/docs/todo-todo/product/fridadev-local-web-search-hardening-todo.md
-grep -RIn "local_profiled\|search_profile\|reranking\|Crawl4AI\|SearXNG\|Exa\|Parallel" app/docs/todo-todo/product/fridadev-local-web-search-hardening-todo.md app/docs/README.md app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md
+test -f app/docs/todo-done/product/fridadev-local-web-search-hardening-todo.md
+grep -RIn "local_profiled\|search_profile\|reranking\|Crawl4AI\|SearXNG\|Exa\|Parallel" app/docs/todo-done/product/fridadev-local-web-search-hardening-todo.md app/docs/README.md app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md
 ```
 
 Si benchmark touche:

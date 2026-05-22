@@ -1,14 +1,15 @@
-# FridaDev - reconstruction locale de la recherche web - TODO A-Z
+# FridaDev - reconstruction web discovery local-first + Exa - TODO A-Z
 
 Statut: actif, reconstruction applicative web en cours; Phases 2 a 8 livrees sans modification plateforme. Decision produit du 2026-05-22: la decouverte web ouverte bascule vers OpenRouter/Exa quand configure, tout en gardant Crawl4AI, evidence, confiance, source-first, reranking et observabilite sous controle FridaDev.
 
-Ce document devient la source-of-truth operatoire pour reconstruire la recherche web locale FridaDev de A a Z, apres le durcissement V0 SearXNG + Crawl4AI et le benchmark Lot 8 du 2026-05-22.
+Ce document est la source-of-truth operatoire du chantier web discovery local-first + Exa. Il conserve l'histoire du diagnostic local/SearXNG, mais la doctrine active n'est plus une reconstruction locale pure: SearXNG ne suffit pas seul a la recherche ouverte, et OpenRouter/Exa est devenu le provider de decouverte URL configure.
 
 References a relire avant toute phase:
 
 - Audit stack locale web: `app/docs/states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
 - Benchmark final Lot 8: `app/docs/states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`
-- TODO hardening V0 terminee: `app/docs/todo-todo/product/fridadev-local-web-search-hardening-todo.md`
+- TODO hardening V0 terminee et archivee: `app/docs/todo-done/product/fridadev-local-web-search-hardening-todo.md`
+- Decision produit active OpenRouter/Exa discovery: `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 - Benchmark web: `benchmark/web-search/README.md`
 
 ## Doctrine produit
@@ -90,6 +91,13 @@ La recherche n'est pas neutre. Choisir des moteurs, sources, domaines, categorie
 - ce qui releve d'une decision humaine explicite.
 
 Frida ne doit pas transformer un ranking opaque en verite. La contestabilite doit rester possible: sources visibles, raisons lisibles, echec dicible, aucun fallback externe automatique. Quand Exa est utilise, il decouvre des URLs; FridaDev lit, qualifie et signale les limites.
+
+## Lecture historique du chantier
+
+- Phases 0 a 8: diagnostic et reconstruction locale/SearXNG, utiles pour comprendre ce qui a ete livre et pourquoi SearXNG seul reste fragile.
+- Decision post-Phase 8: OpenRouter/Exa devient provider de decouverte URL pour la recherche ouverte quand configure.
+- Phase 9: phase active de validation et de deploiement de cette decision, pas relance d'un nouveau chantier local-only.
+- L'ancien TODO hardening V0 est archive comme preuve technique; il ne porte plus la doctrine active.
 
 ## Phase 0 — Etat des lieux reel
 
@@ -765,8 +773,8 @@ Livrables:
 - [x] Rapport ancien local vs nouveau local.
 - [x] Analyse par cas: qualite sources, autorite, bruit, crawl, extraits, latence.
 - [x] Analyse des echecs restants.
-- [x] Comparaison facultative avec OpenRouter / Exa / Parallel comme temoins externes seulement: non relances dans cette Phase 8; les artefacts Lot 8/same-query restent les temoins externes.
-- [x] Decision produit initiale Phase 8: continuer local only et corriger qualite/confiance avant cloture Phase 9.
+- [x] Comparaison facultative avec OpenRouter / Exa / Parallel comme temoins externes pendant la mesure Phase 8 locale; les artefacts Lot 8/same-query restent les preuves externes.
+- [x] Decision produit initiale Phase 8: continuer en runtime exclusivement local et corriger qualite/confiance avant cloture Phase 9.
 - [x] Decision produit remplacee le 2026-05-22: basculer la decouverte ouverte vers OpenRouter/Exa quand configure, sans fallback automatique et sans changer la lecture Crawl4AI locale.
 
 Fichiers ou zones concernes:
@@ -817,7 +825,7 @@ Statut: benchmark final livre, sans modification runtime ni plateforme; cloture 
 - [x] Echecs bloquants: Adobe Illustrator, actualite IA Europe, Bourdieu / sociologie, CRISPR / PubMed, Derrida / trace.
 - [x] Finding qualite: certains paniers/requetes `local_profiled` produisent du bruit hors sujet.
 - [x] Finding confiance: `web_confidence_level=high` reste possible sur des paniers manifestement mauvais.
-- [x] Decision initiale, desormais remplacee: garder local only, ne pas activer OpenRouter / Exa / Parallel, ouvrir un correctif local avant cloture Phase 9.
+- [x] Decision initiale, desormais remplacee: garder un runtime exclusivement local, ne pas activer OpenRouter / Exa / Parallel, ouvrir un correctif local avant cloture Phase 9.
 - [x] Decision remplacee: OpenRouter/Exa devient provider de decouverte ouverte; Parallel reste hors runtime; SearXNG reste provider local/baseline/fallback operateur.
 
 Risques/effets de bord:
@@ -826,35 +834,37 @@ Risques/effets de bord:
 - Confondre qualite d'index externe et doctrine produit.
 - Masquer la dependance opaque des temoins externes.
 
-## Phase 9 — Deploiement
+## Phase 9 — Validation et deploiement Exa discovery
 
 Proprietaire: Sauron + Celebrimbor.
 
-Objectif: deployer proprement les modifications decidees, avec rollback connu et preuves live.
+Objectif: valider puis deployer proprement la decision produit active: web manuel seulement, URL explicite locale directe, recherche ouverte via OpenRouter/Exa discovery quand configure, lecture Crawl4AI locale et signaux FridaDev inchanges.
 
 Livrables:
 
-- [ ] Backup config SearXNG si la plateforme change.
-- [ ] Patch plateforme Sauron si decide.
-- [ ] Patch FridaDev Celebrimbor si runtime applicatif modifie.
-- [ ] Tests unitaires et integration adaptes.
-- [ ] Rebuild app si runtime FridaDev modifie.
-- [ ] Restart SearXNG seulement si configuration plateforme modifiee.
-- [ ] Verifications live.
-- [ ] Rapport final.
-- [ ] Rollback connu.
+- [ ] Validation: web desactive = aucun appel web.
+- [ ] Validation: URL explicite = lecture locale directe, Exa non appele.
+- [ ] Validation: recherche ouverte = Exa discovery puis Crawl4AI local.
+- [ ] Mesure: nombre d'appels Exa par tour via `query_count`, `secondary_query_count` et `provider_caller=web_discovery`.
+- [ ] Mesure: latence et cout sur corpus borne.
+- [ ] Verification corpus: Adobe Photoshop / Illustrator, CNI, actualite institutionnelle Europe, OpenRouter docs, cas academique.
+- [ ] Documentation des limites restantes: cout Exa, latence proche du plafond, Crawl4AI parfois faible sur PDF ou pages institutionnelles.
+- [ ] Decision operateur sur la variable runtime OVH si le defaut doit etre force cote plateforme.
+- [ ] Rapport final de validation Phase 9.
+- [ ] Rollback connu: revenir a `WEB_SEARCH_DISCOVERY_PROVIDER=local`.
 
 Fichiers ou zones concernes:
 
-- `/opt/platform/searxng/`
 - `/opt/platform/fridadev/`
 - `/opt/platform/fridadev-app/`
+- settings/runtime applicatifs lies a `WEB_SEARCH_DISCOVERY_PROVIDER`
 - Documentation de suivi dans `app/docs/states/` ou `app/docs/todo-done/` selon cloture.
 
 Decisions utilisateur requises avant patch:
 
-- [ ] Valider fenetre de deploiement.
-- [ ] Valider rollback.
+- [x] Valider la decision produit: OpenRouter/Exa comme provider de decouverte URL configure pour la recherche ouverte.
+- [ ] Valider fenetre de deploiement si changement runtime OVH.
+- [ ] Valider rollback operateur vers `local`.
 - [ ] Valider si le chantier actif peut etre archive apres preuves.
 
 Hors-scope:
@@ -862,6 +872,9 @@ Hors-scope:
 - Redemarrer Caddy, Authelia, Homepage ou DB sans necessite explicite.
 - Afficher secrets, `.env`, tokens, DSN complets ou cookies.
 - Lancer un nouveau chantier produit dans le meme commit.
+- Modifier SearXNG global ou Crawl4AI global.
+- Activer Parallel dans le runtime.
+- Transformer Exa en fallback declenche par la confiance.
 
 Tests/preuves attendus:
 
@@ -871,18 +884,22 @@ Tests/preuves attendus:
 - [ ] `docker compose up -d --build fridadev` seulement si runtime modifie.
 - [ ] `docker ps --filter name=platform-fridadev --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`
 - [ ] `curl --max-time 12 -sSI https://fridadev.frida-system.fr/admin | sed -n '1,12p'`
-- [ ] Smoke web local si recherche runtime modifiee.
+- [ ] Smoke web manuel borne si recherche runtime modifiee.
+- [ ] Grep securite sur artefacts de validation: pas de cle, token, cookie, `.env`, header d'autorisation ou dump de contenu.
 
 Criteres de fin:
 
-- [ ] Les changements sont deployes ou explicitement non deployes.
+- [ ] Le provider de decouverte effectif est lisible.
+- [ ] Les validations web desactive / URL explicite / recherche ouverte sont lisibles.
+- [ ] Les couts et latences Exa sont mesures sur corpus borne.
 - [ ] Les preuves live sont lisibles.
 - [ ] Le rollback est documente.
 - [ ] Le TODO est archive ou laisse ouvert avec prochain lot explicite.
 
 Risques/effets de bord:
 
+- Confondre provider configure et fallback automatique.
+- Masquer le cout Exa sous l'observabilite locale.
 - Melanger patch applicatif et patch plateforme sans coordination.
-- Oublier le restart SearXNG apres une config plateforme.
 - Rebuild inutile sur docs-only.
 - Perdre la frontiere entre diagnostic benchmark et strategie produit.
