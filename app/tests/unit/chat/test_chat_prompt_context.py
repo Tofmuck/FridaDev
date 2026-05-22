@@ -377,6 +377,55 @@ class ChatPromptContextTests(unittest.TestCase):
         self.assertIn('[GARDE DE LECTURE WEB]', augmented)
         self.assertLess(augmented.index('BASE SYSTEM'), augmented.index('[GARDE DE LECTURE WEB]'))
 
+    def test_build_web_evidence_guard_block_for_insufficient_evidence_is_not_scripted_failure(self) -> None:
+        block = chat_prompt_context.build_web_evidence_guard_block(
+            web_input={
+                'web_evidence': {
+                    'web_evidence_status': 'insufficient',
+                    'web_evidence_reason_codes': ['no_results'],
+                    'web_evidence_guidance_codes': [
+                        'state_evidence_limits_naturally',
+                        'can_answer_with_caveat',
+                        'may_propose_reformulation_if_useful',
+                        'url_request_only_if_relevant',
+                        'no_external_fallback',
+                    ],
+                    'web_evidence_requires_caveat': True,
+                    'web_evidence_external_fallback_used': False,
+                },
+            }
+        )
+
+        self.assertIn('[GARDE DE PREUVE WEB]', block)
+        self.assertIn('evidence_status: insufficient.', block)
+        self.assertIn('reason_codes: no_results.', block)
+        self.assertIn("pas une reponse d'echec prefabriquee", block)
+        self.assertIn('formuler naturellement les limites', block)
+        self.assertIn('Aucun fallback externe OpenRouter, Exa ou Parallel', block)
+        self.assertNotIn("Je n'ai pas trouve de source suffisamment fiable", block)
+
+    def test_build_web_evidence_guard_block_for_sufficient_evidence_is_empty(self) -> None:
+        block = chat_prompt_context.build_web_evidence_guard_block(
+            web_input={
+                'web_evidence': {
+                    'web_evidence_status': 'sufficient',
+                    'web_evidence_reason_codes': ['usable_web_material'],
+                },
+            }
+        )
+
+        self.assertEqual(block, '')
+
+    def test_inject_web_evidence_guard_block_appends_after_augmented_system(self) -> None:
+        augmented = chat_prompt_context.inject_web_evidence_guard_block(
+            'BASE SYSTEM',
+            '[GARDE DE PREUVE WEB]\nevidence_status: partial.',
+        )
+
+        self.assertTrue(augmented.startswith('BASE SYSTEM'))
+        self.assertIn('[GARDE DE PREUVE WEB]', augmented)
+        self.assertLess(augmented.index('BASE SYSTEM'), augmented.index('[GARDE DE PREUVE WEB]'))
+
     def test_apply_augmented_system_overwrites_first_system_message_only(self) -> None:
         conversation = {
             'messages': [

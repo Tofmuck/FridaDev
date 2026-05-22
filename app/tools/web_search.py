@@ -24,6 +24,7 @@ from observability import chat_turn_logger
 from tools import (
     web_reformulation_settings,
     web_search_confidence,
+    web_search_evidence,
     web_search_profile,
     web_search_query_plan,
     web_search_source_first,
@@ -662,6 +663,7 @@ def _augment_payload_observability(payload: dict[str, Any]) -> dict[str, Any]:
         )
     )
     payload.update(web_search_confidence.evaluate_web_confidence(payload))
+    payload.update(web_search_evidence.evaluate_web_evidence(payload))
     return payload
 
 
@@ -675,6 +677,23 @@ def _web_confidence_event_fields(payload: dict[str, Any]) -> dict[str, Any]:
         'openrouter_fallback_state': str(payload.get('openrouter_fallback_state') or 'future_only'),
         'openrouter_fallback_used': bool(payload.get('openrouter_fallback_used', False)),
         'openrouter_fallback_reason_codes': list(payload.get('openrouter_fallback_reason_codes') or []),
+    }
+
+
+def _web_evidence_event_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'web_evidence_policy_kind': str(payload.get('web_evidence_policy_kind') or ''),
+        'web_evidence_status': str(payload.get('web_evidence_status') or 'not_applicable'),
+        'web_evidence_reason_codes': list(payload.get('web_evidence_reason_codes') or []),
+        'web_evidence_guidance_codes': list(payload.get('web_evidence_guidance_codes') or []),
+        'web_evidence_inputs_summary': dict(payload.get('web_evidence_inputs_summary') or {}),
+        'web_evidence_can_answer': bool(payload.get('web_evidence_can_answer', False)),
+        'web_evidence_requires_caveat': bool(payload.get('web_evidence_requires_caveat', False)),
+        'web_evidence_can_suggest_reformulation': bool(
+            payload.get('web_evidence_can_suggest_reformulation', False)
+        ),
+        'web_evidence_url_request_policy': str(payload.get('web_evidence_url_request_policy') or ''),
+        'web_evidence_external_fallback_used': bool(payload.get('web_evidence_external_fallback_used', False)),
     }
 
 
@@ -1489,6 +1508,16 @@ def _emit_web_search_runtime_event(
     openrouter_fallback_state: str | None = None,
     openrouter_fallback_used: bool = False,
     openrouter_fallback_reason_codes: list[str] | None = None,
+    web_evidence_policy_kind: str | None = None,
+    web_evidence_status: str | None = None,
+    web_evidence_reason_codes: list[str] | None = None,
+    web_evidence_guidance_codes: list[str] | None = None,
+    web_evidence_inputs_summary: dict[str, Any] | None = None,
+    web_evidence_can_answer: bool | None = None,
+    web_evidence_requires_caveat: bool | None = None,
+    web_evidence_can_suggest_reformulation: bool | None = None,
+    web_evidence_url_request_policy: str | None = None,
+    web_evidence_external_fallback_used: bool = False,
 ) -> None:
     query_text = str(query_preview or '')
     if truncated is None:
@@ -1521,6 +1550,8 @@ def _emit_web_search_runtime_event(
         context_chars = len(str(context_block or ''))
     payload = {
         'enabled': bool(enabled),
+        'status': str(status or ''),
+        'reason_code': str(reason_code or ''),
         'query_preview': '',
         'query_present': bool(query_text.strip()),
         'query_chars': len(query_text),
@@ -1597,6 +1628,23 @@ def _emit_web_search_runtime_event(
                 'openrouter_fallback_state': str(openrouter_fallback_state or 'future_only'),
                 'openrouter_fallback_used': bool(openrouter_fallback_used),
                 'openrouter_fallback_reason_codes': list(openrouter_fallback_reason_codes or []),
+            }
+        )
+    if web_evidence_policy_kind is None:
+        payload.update(web_search_evidence.evaluate_web_evidence(payload))
+    else:
+        payload.update(
+            {
+                'web_evidence_policy_kind': str(web_evidence_policy_kind or ''),
+                'web_evidence_status': str(web_evidence_status or 'not_applicable'),
+                'web_evidence_reason_codes': list(web_evidence_reason_codes or []),
+                'web_evidence_guidance_codes': list(web_evidence_guidance_codes or []),
+                'web_evidence_inputs_summary': dict(web_evidence_inputs_summary or {}),
+                'web_evidence_can_answer': bool(web_evidence_can_answer),
+                'web_evidence_requires_caveat': bool(web_evidence_requires_caveat),
+                'web_evidence_can_suggest_reformulation': bool(web_evidence_can_suggest_reformulation),
+                'web_evidence_url_request_policy': str(web_evidence_url_request_policy or ''),
+                'web_evidence_external_fallback_used': bool(web_evidence_external_fallback_used),
             }
         )
     if error_class:
@@ -1886,6 +1934,7 @@ def build_context_payload(
             crawl4ai_fallback_used_count=int(payload.get('crawl4ai_fallback_used_count') or 0),
             crawl4ai_query_sha256_12=list(payload.get('crawl4ai_query_sha256_12') or []),
             **_web_confidence_event_fields(payload),
+            **_web_evidence_event_fields(payload),
         )
         return payload
     except Exception as exc:
@@ -1980,6 +2029,7 @@ def build_context_payload(
             crawl4ai_fallback_used_count=int(error_payload.get('crawl4ai_fallback_used_count') or 0),
             crawl4ai_query_sha256_12=list(error_payload.get('crawl4ai_query_sha256_12') or []),
             **_web_confidence_event_fields(error_payload),
+            **_web_evidence_event_fields(error_payload),
         )
         return error_payload
 

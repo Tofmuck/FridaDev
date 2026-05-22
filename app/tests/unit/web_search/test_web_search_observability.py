@@ -80,6 +80,16 @@ def _phase4_searxng_payload() -> dict[str, Any]:
         'profile_insufficient_evidence': False,
         'profile_insufficient_evidence_reason_codes': [],
         'profile_source_domain_counts': {'expected_seen': 1, 'expected_used': 1},
+        'web_evidence_policy_kind': 'local_web_evidence_failure_contract_v0',
+        'web_evidence_status': 'sufficient',
+        'web_evidence_reason_codes': ['usable_web_material'],
+        'web_evidence_guidance_codes': ['can_answer_normally_with_sources', 'no_external_fallback'],
+        'web_evidence_inputs_summary': {'used_source_count': 1, 'used_domain_count': 1},
+        'web_evidence_can_answer': True,
+        'web_evidence_requires_caveat': False,
+        'web_evidence_can_suggest_reformulation': False,
+        'web_evidence_url_request_policy': 'only_if_relevant_not_default',
+        'web_evidence_external_fallback_used': False,
         'results_count': 5,
         'context_injected': True,
         'read_state': 'page_read',
@@ -106,6 +116,8 @@ class WebSearchObservabilityTests(unittest.TestCase):
         self.assertEqual(canonical_web['profile_policy']['profile_expected_domains'], ['learn.microsoft.com'])
         self.assertEqual(canonical_web['profile_policy']['profile_crawl_top_n_budget'], 3)
         self.assertTrue(canonical_web['profile_policy']['profile_expected_material_used'])
+        self.assertEqual(canonical_web['web_evidence']['web_evidence_status'], 'sufficient')
+        self.assertFalse(canonical_web['web_evidence']['web_evidence_requires_caveat'])
 
         node_payload = hermeneutic_node_logger.build_hermeneutic_node_insertion_payload(
             current_mode='shadow',
@@ -120,6 +132,8 @@ class WebSearchObservabilityTests(unittest.TestCase):
         self.assertEqual(node_web['searxng_soft_signal_policy'], 'source_first_domains_plus_rerank')
         self.assertEqual(node_web['profile_expected_domains'], ['learn.microsoft.com'])
         self.assertTrue(node_web['profile_expected_material_used'])
+        self.assertEqual(node_web['web_evidence_status'], 'sufficient')
+        self.assertFalse(node_web['web_evidence_requires_caveat'])
 
         events = [
             _event('turn_start', payload={'web_search_enabled': True}),
@@ -134,6 +148,8 @@ class WebSearchObservabilityTests(unittest.TestCase):
         self.assertEqual(pipeline_web['searxng_soft_signal_policy'], 'source_first_domains_plus_rerank')
         self.assertEqual(pipeline_web['profile_expected_domains'], ['learn.microsoft.com'])
         self.assertTrue(pipeline_web['profile_expected_material_used'])
+        self.assertEqual(pipeline_web['web_evidence_status'], 'sufficient')
+        self.assertFalse(pipeline_web['web_evidence_requires_caveat'])
 
         checklist = turn_observability_checklist.build_turn_observability_checklist(events)
         checklist_web = next(item for item in checklist['items'] if item['key'] == 'web_search')
@@ -151,6 +167,8 @@ class WebSearchObservabilityTests(unittest.TestCase):
         )
         self.assertEqual(checklist_web['evidence']['profile_expected_domains'], ['learn.microsoft.com'])
         self.assertTrue(checklist_web['evidence']['profile_expected_material_used'])
+        self.assertEqual(checklist_web['evidence']['web_evidence_status'], 'sufficient')
+        self.assertFalse(checklist_web['evidence']['web_evidence_requires_caveat'])
 
 
 if __name__ == '__main__':

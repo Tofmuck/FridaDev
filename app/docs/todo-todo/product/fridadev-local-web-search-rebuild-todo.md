@@ -37,7 +37,7 @@ References a relire avant toute phase:
   - [ ] Reconfig globale SearXNG optionnelle, seulement avec GO utilisateur Sauron.
 - [x] Phase 5 — Parametres FridaDev par profil
 - [x] Phase 6 — Reranking explicable
-- [ ] Phase 7 — Comportement d'echec
+- [x] Phase 7 — Comportement d'echec
 - [ ] Phase 8 — Benchmark final
 - [ ] Phase 9 — Deploiement
 
@@ -674,14 +674,15 @@ Comportement attendu:
 
 Livrables:
 
-- [ ] Contrat de formulation d'echec.
-- [ ] Signal de confiance visible, non souverain, non actionnable automatiquement.
-- [ ] Distinction entre aucun resultat, resultats non lus, crawl pauvre, sources peu fiables et conflit de sources.
-- [ ] Tests de non-fallback externe.
-- [ ] Observabilite content-free de l'echec.
+- [x] Contrat de formulation d'echec.
+- [x] Signal de confiance visible, non souverain, non actionnable automatiquement.
+- [x] Distinction entre aucun resultat, resultats non lus, crawl pauvre, sources peu fiables et conflit de sources.
+- [x] Tests de non-fallback externe.
+- [x] Observabilite content-free de l'echec.
 
 Fichiers ou zones concernes:
 
+- `app/tools/web_search_evidence.py`
 - `app/tools/web_search_confidence.py`
 - `app/core/chat_service.py`
 - `app/core/chat_prompt_context.py`
@@ -691,9 +692,9 @@ Fichiers ou zones concernes:
 
 Decisions utilisateur requises avant patch:
 
-- [ ] Choisir le comportement prioritaire: demander URL, elargir, ou dire non prouve.
-- [ ] Valider le ton de la phrase d'echec.
-- [ ] Valider si l'elargissement demande confirmation utilisateur.
+- [x] Choisir le comportement prioritaire: repondre avec prudence quand c'est possible, dire les preuves insuffisantes ou fragiles, proposer une reformulation si pertinent.
+- [x] Valider que la formulation reste naturelle et produite par le LLM, sans phrase d'echec figee ni generique.
+- [x] Valider que la demande d'URL reste seulement contextuelle et non reflexe par defaut.
 
 Hors-scope:
 
@@ -704,17 +705,28 @@ Hors-scope:
 
 Tests/preuves attendus:
 
-- [ ] Echec web visible sans hallucination de source.
-- [ ] URL explicite echouee conserve son `read_state`.
-- [ ] Aucun appel externe n'est declenche.
-- [ ] La phrase d'echec n'injecte pas de contenu brut.
-- [ ] Logs sans requete brute si le contrat l'interdit.
+- [x] Echec web visible sans hallucination de source.
+- [x] URL explicite echouee conserve son `read_state`.
+- [x] Aucun appel externe n'est declenche.
+- [x] La formulation d'echec n'est pas hardcodee dans le runtime.
+- [x] Logs sans requete brute si le contrat l'interdit.
 
 Criteres de fin:
 
-- [ ] Frida sait dire qu'elle n'a pas prouve.
-- [ ] L'utilisateur voit les options suivantes.
-- [ ] La confiance ne gouverne pas automatiquement le systeme.
+- [x] Frida sait dire qu'elle n'a pas prouve.
+- [x] L'utilisateur peut recevoir une proposition de reformulation ou relance quand utile.
+- [x] La confiance ne gouverne pas automatiquement le systeme.
+
+### Phase 7 - livraison Celebrimbor 2026-05-22
+
+Statut: livre applicatif/runtime, sans modification plateforme.
+
+- [x] Module dedie cree: `app/tools/web_search_evidence.py`.
+- [x] Spec creee: `app/docs/states/specs/fridadev-web-search-evidence-failure-contract.md`.
+- [x] Le signal distingue `no_results`, `results_found_but_not_read`, `snippet_only_material`, `crawl_poor_or_absent`, `expected_source_material_missing`, `situated_secondary_without_official_material`, `mixed_source_signals_visible` et les `read_state` explicites non lus.
+- [x] Le prompt recoit `[GARDE DE PREUVE WEB]` seulement quand le statut est `partial` ou `insufficient`; ce bloc donne des consignes, pas une phrase finale scriptée.
+- [x] `web_evidence_external_fallback_used` reste toujours `false`; OpenRouter / Exa / Parallel restent hors runtime.
+- [x] Observabilite propagee dans le payload web, l'input canonique, le noeud hermeneutique, le read model pipeline et la checklist.
 
 Risques/effets de bord:
 

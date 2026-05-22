@@ -171,6 +171,7 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     searxng_params = _mapping(data.get('searxng_profile_params'))
     reranking = _mapping(data.get('reranking'))
     web_confidence = _mapping(data.get('web_confidence'))
+    web_evidence = _mapping(data.get('web_evidence'))
     openrouter_fallback = _mapping(data.get('openrouter_fallback'))
     source_material_summary = []
     for item in _sequence(data.get('source_material_summary')):
@@ -471,6 +472,61 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
             _mapping(
                 data.get('web_confidence_inputs_summary')
                 or web_confidence.get('web_confidence_inputs_summary')
+            )
+        ),
+        'web_evidence_policy_kind': str(
+            data.get('web_evidence_policy_kind')
+            or web_evidence.get('web_evidence_policy_kind')
+            or ''
+        ),
+        'web_evidence_status': str(
+            data.get('web_evidence_status')
+            or web_evidence.get('web_evidence_status')
+            or ''
+        ),
+        'web_evidence_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('web_evidence_reason_codes')
+                or web_evidence.get('web_evidence_reason_codes')
+            )
+            if str(value)
+        ],
+        'web_evidence_guidance_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('web_evidence_guidance_codes')
+                or web_evidence.get('web_evidence_guidance_codes')
+            )
+            if str(value)
+        ],
+        'web_evidence_inputs_summary': dict(
+            _mapping(
+                data.get('web_evidence_inputs_summary')
+                or web_evidence.get('web_evidence_inputs_summary')
+            )
+        ),
+        'web_evidence_can_answer': bool(
+            data.get('web_evidence_can_answer', web_evidence.get('web_evidence_can_answer', False))
+        ),
+        'web_evidence_requires_caveat': bool(
+            data.get('web_evidence_requires_caveat', web_evidence.get('web_evidence_requires_caveat', False))
+        ),
+        'web_evidence_can_suggest_reformulation': bool(
+            data.get(
+                'web_evidence_can_suggest_reformulation',
+                web_evidence.get('web_evidence_can_suggest_reformulation', False),
+            )
+        ),
+        'web_evidence_url_request_policy': str(
+            data.get('web_evidence_url_request_policy')
+            or web_evidence.get('web_evidence_url_request_policy')
+            or ''
+        ),
+        'web_evidence_external_fallback_used': bool(
+            data.get(
+                'web_evidence_external_fallback_used',
+                web_evidence.get('web_evidence_external_fallback_used', False),
             )
         ),
         'openrouter_fallback_state': str(

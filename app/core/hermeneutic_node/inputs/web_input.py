@@ -345,6 +345,35 @@ def _canonical_web_confidence(payload: Mapping[str, Any] | None) -> dict[str, An
     }
 
 
+def _canonical_web_evidence(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    inputs_summary = data.get('web_evidence_inputs_summary')
+    if not isinstance(inputs_summary, Mapping):
+        inputs_summary = {}
+    return {
+        'web_evidence_policy_kind': _optional_str(data.get('web_evidence_policy_kind')),
+        'web_evidence_status': _optional_str(data.get('web_evidence_status')),
+        'web_evidence_reason_codes': [
+            str(value)
+            for value in data.get('web_evidence_reason_codes') or []
+            if str(value or '')
+        ],
+        'web_evidence_guidance_codes': [
+            str(value)
+            for value in data.get('web_evidence_guidance_codes') or []
+            if str(value or '')
+        ],
+        'web_evidence_inputs_summary': dict(inputs_summary),
+        'web_evidence_can_answer': bool(data.get('web_evidence_can_answer', False)),
+        'web_evidence_requires_caveat': bool(data.get('web_evidence_requires_caveat', False)),
+        'web_evidence_can_suggest_reformulation': bool(
+            data.get('web_evidence_can_suggest_reformulation', False)
+        ),
+        'web_evidence_url_request_policy': _optional_str(data.get('web_evidence_url_request_policy')),
+        'web_evidence_external_fallback_used': bool(data.get('web_evidence_external_fallback_used', False)),
+    }
+
+
 def _canonical_openrouter_fallback(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = payload if isinstance(payload, Mapping) else {}
     return {
@@ -431,6 +460,7 @@ def build_web_input(
     crawl4ai_fallback_used_count: int | None = None,
     crawl4ai_query_sha256_12: Sequence[Any] | None = None,
     web_confidence: Mapping[str, Any] | None = None,
+    web_evidence: Mapping[str, Any] | None = None,
     openrouter_fallback: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     canonical_sources = [
@@ -508,6 +538,7 @@ def build_web_input(
             if str(value or '')
         ],
         'web_confidence': _canonical_web_confidence(web_confidence),
+        'web_evidence': _canonical_web_evidence(web_evidence),
         'openrouter_fallback': _canonical_openrouter_fallback(openrouter_fallback),
         'sources': canonical_sources,
         'context_block': canonical_context_block,
@@ -566,5 +597,6 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
         if isinstance(payload.get('crawl4ai_query_sha256_12'), Sequence)
         else (),
         web_confidence=payload,
+        web_evidence=payload,
         openrouter_fallback=payload,
     )

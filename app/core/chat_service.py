@@ -699,6 +699,13 @@ def chat_response(
         augmented_system,
         web_reading_guard_block,
     )
+    web_evidence_guard_block = chat_prompt_context.build_web_evidence_guard_block(
+        web_input=web_payload,
+    )
+    augmented_system = chat_prompt_context.inject_web_evidence_guard_block(
+        augmented_system,
+        web_evidence_guard_block,
+    )
     assistant_output_policy = assistant_output_contract.resolve_assistant_output_policy(user_msg)
     plain_text_guard_block = chat_prompt_context.build_plain_text_guard_block(
         user_msg=user_msg,

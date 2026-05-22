@@ -485,6 +485,25 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
             for value in payload.get('web_confidence_reason_codes') or []
             if str(value or '')
         ],
+        'web_evidence_policy_kind': _payload_text(payload, 'web_evidence_policy_kind'),
+        'web_evidence_status': _payload_text(payload, 'web_evidence_status'),
+        'web_evidence_reason_codes': [
+            str(value)
+            for value in payload.get('web_evidence_reason_codes') or []
+            if str(value or '')
+        ],
+        'web_evidence_guidance_codes': [
+            str(value)
+            for value in payload.get('web_evidence_guidance_codes') or []
+            if str(value or '')
+        ],
+        'web_evidence_can_answer': bool(payload.get('web_evidence_can_answer', False)),
+        'web_evidence_requires_caveat': bool(payload.get('web_evidence_requires_caveat', False)),
+        'web_evidence_can_suggest_reformulation': bool(
+            payload.get('web_evidence_can_suggest_reformulation', False)
+        ),
+        'web_evidence_url_request_policy': _payload_text(payload, 'web_evidence_url_request_policy'),
+        'web_evidence_external_fallback_used': bool(payload.get('web_evidence_external_fallback_used', False)),
         'openrouter_fallback_state': _payload_text(payload, 'openrouter_fallback_state'),
         'openrouter_fallback_used': bool(payload.get('openrouter_fallback_used', False)),
         'openrouter_fallback_reason_codes': [
