@@ -79,6 +79,45 @@ _TECHNICAL_OFFICIAL_DOMAINS = {
     "docs.github.com",
     "developer.mozilla.org",
 }
+_TECHNICAL_GENERIC_TERMS = {
+    "api",
+    "apis",
+    "dev",
+    "developer",
+    "developers",
+    "doc",
+    "docs",
+    "documentation",
+    "exemple",
+    "exemples",
+    "guide",
+    "guides",
+    "officiel",
+    "officielle",
+    "official",
+    "overview",
+    "reference",
+    "references",
+    "sdk",
+    "source",
+    "sources",
+    "tutoriel",
+    "tutorial",
+}
+_TECHNICAL_DOC_DOMAIN_PREFIXES = (
+    "developer.",
+    "developers.",
+    "dev.",
+    "docs.",
+)
+_TECHNICAL_DOC_PATH_MARKERS = (
+    "/api-reference",
+    "/developer",
+    "/developers",
+    "/docs",
+    "/documentation",
+    "/reference",
+)
 _ACADEMIC_DOMAINS = {
     "journals.openedition.org",
     "openedition.org",
@@ -229,6 +268,8 @@ def _score_candidate(
     if matched_terms:
         score += min(45.0, 7.0 * len(matched_terms))
         reasons.append("essential_terms_soft_bonus")
+    technical_terms = _technical_request_terms(essential_terms)
+    has_technical_alignment = any(term in searchable for term in technical_terms)
 
     if not title.strip() and not content.strip():
         score -= 25.0
@@ -241,6 +282,7 @@ def _score_candidate(
         title=title,
         searchable=searchable,
         has_essential_match=bool(matched_terms),
+        has_technical_alignment=has_technical_alignment,
         score=score,
         reasons=reasons,
     )
@@ -261,6 +303,7 @@ def _apply_profile_score(
     title: str,
     searchable: str,
     has_essential_match: bool,
+    has_technical_alignment: bool,
     score: float,
     reasons: list[str],
 ) -> tuple[float, list[str]]:
@@ -276,13 +319,18 @@ def _apply_profile_score(
         return score, reasons
 
     if profile == web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE:
-        if _domain_in(domain, _TECHNICAL_OFFICIAL_DOMAINS):
-            if has_essential_match:
+        docs_like = _is_technical_docs_like(domain, url)
+        known_official = _domain_in(domain, _TECHNICAL_OFFICIAL_DOMAINS)
+        if known_official:
+            if has_technical_alignment:
                 score += 105.0
                 reasons.append("profile_official_domain_soft_bonus")
             else:
                 score += 20.0
                 reasons.append("profile_official_domain_context_soft_bonus")
+        elif docs_like and has_technical_alignment:
+            score += 105.0
+            reasons.append("technical_aligned_docs_domain_soft_bonus")
         if "/docs" in url.lower() or "documentation" in searchable or "api" in searchable:
             score += 24.0
             reasons.append("technical_documentation_soft_bonus")
@@ -420,6 +468,21 @@ def _essential_terms(user_msg: str, primary_query: str, profile: str) -> set[str
     if "carte" in terms and "identite" in terms:
         terms.add("cni")
     return terms
+
+
+def _technical_request_terms(essential_terms: set[str]) -> set[str]:
+    return {
+        term
+        for term in essential_terms
+        if term not in _TECHNICAL_GENERIC_TERMS and len(term) > 2
+    }
+
+
+def _is_technical_docs_like(domain: str, url: str) -> bool:
+    if any(domain.startswith(prefix) for prefix in _TECHNICAL_DOC_DOMAIN_PREFIXES):
+        return True
+    url_n = str(url or "").lower()
+    return any(marker in url_n for marker in _TECHNICAL_DOC_PATH_MARKERS)
 
 
 def _normalize_text(value: Any) -> str:

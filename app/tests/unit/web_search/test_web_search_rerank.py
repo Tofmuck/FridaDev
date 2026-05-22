@@ -135,6 +135,57 @@ class WebSearchRerankTests(unittest.TestCase):
         self.assertIn("technical_documentation_soft_bonus", reranked[0]["rerank_reason_codes"])
         self.assertEqual(observability["rerank_promoted_count"], 1)
 
+    def test_technique_officielle_uses_requested_product_not_openrouter_fixture_domain(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "OpenRouter Documentation",
+                    "url": "https://openrouter.ai/docs/api-reference/overview",
+                    "content": "official API documentation",
+                },
+                {
+                    "title": "Stripe Checkout documentation",
+                    "url": "https://docs.stripe.com/payments/checkout",
+                    "content": "Stripe Checkout official docs payments",
+                },
+            ],
+            user_msg="documentation officielle Stripe checkout",
+            primary_query="Stripe checkout documentation officielle",
+            search_profile=web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(reranked[0]["url"], "https://docs.stripe.com/payments/checkout")
+        self.assertIn("technical_aligned_docs_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertNotIn("profile_official_domain_soft_bonus", reranked[1]["rerank_reason_codes"])
+        self.assertIn("profile_official_domain_context_soft_bonus", reranked[1]["rerank_reason_codes"])
+
+    def test_technique_officielle_aligned_docs_domain_beats_unaligned_known_official_domain(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "OpenRouter API Reference",
+                    "url": "https://docs.openrouter.ai/api-reference/overview",
+                    "content": "official API docs",
+                },
+                {
+                    "title": "AcmeDB vector search documentation",
+                    "url": "https://docs.acmedb.dev/vector-search",
+                    "content": "AcmeDB vector search official documentation",
+                },
+            ],
+            user_msg="documentation officielle AcmeDB vector search",
+            primary_query="AcmeDB vector search documentation officielle",
+            search_profile=web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE,
+            max_results=5,
+            enabled=True,
+        )
+
+        self.assertEqual(reranked[0]["url"], "https://docs.acmedb.dev/vector-search")
+        self.assertIn("technical_aligned_docs_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertNotIn("profile_official_domain_soft_bonus", reranked[1]["rerank_reason_codes"])
+
     def test_actualite_promotes_eu_official_source_without_wikipedia_ban(self) -> None:
         reranked, observability = web_search_rerank.rerank_results(
             [
