@@ -25,6 +25,10 @@ References a relire avant toute phase:
 ## Avancement global
 
 - [ ] Phase 0 — Etat des lieux reel
+  - [x] Consolidation des preuves existantes
+  - [x] Complement local-only des cas manquants
+  - [ ] Validation utilisateur du corpus borne
+  - [ ] Passage Phase 1 Sauron
 - [ ] Phase 1 — Inventaire des moteurs SearXNG
 - [ ] Phase 2 — Definir les regimes de recherche
 - [ ] Phase 3 — Source-first
