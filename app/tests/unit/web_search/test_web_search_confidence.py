@@ -101,8 +101,75 @@ class WebSearchConfidenceTests(unittest.TestCase):
 
         self.assertEqual(fields["web_confidence_level"], "high")
         self.assertIn("multi_domain_material", fields["web_confidence_reason_codes"])
+        self.assertEqual(fields["web_confidence_inputs_summary"]["domain_count"], 2)
+        self.assertEqual(fields["web_confidence_inputs_summary"]["used_domain_count"], 2)
         self.assertIn("rerank_signal_present", fields["web_confidence_reason_codes"])
         self.assertFalse(fields["openrouter_fallback_used"])
+
+    def test_unused_result_domain_does_not_create_multi_domain_confidence(self) -> None:
+        base_payload = {
+            "enabled": True,
+            "status": "ok",
+            "explicit_url_detected": False,
+            "results_count": 2,
+            "query_count": 1,
+            "deduped_result_count": 2,
+            "source_material_summary": [
+                {
+                    "rank": 1,
+                    "url": "https://docs.example/api",
+                    "used_in_prompt": True,
+                    "used_content_kind": "crawl_markdown",
+                    "crawl_status": "success",
+                    "content_chars": 900,
+                },
+                {
+                    "rank": 2,
+                    "url": "https://unused.example/article",
+                    "used_in_prompt": False,
+                    "used_content_kind": "none",
+                    "crawl_status": "not_attempted",
+                    "content_chars": 0,
+                },
+            ],
+            "crawl4ai_extraction_summary": [
+                {"url": "https://docs.example/api", "crawl_status": "success"}
+            ],
+            "used_content_kinds": ["crawl_markdown"],
+            "injected_chars": 900,
+            "context_chars": 1200,
+        }
+        one_used_domain = web_search_confidence.evaluate_web_confidence(base_payload)
+        two_used_domains_payload = dict(base_payload)
+        two_used_domains_payload["source_material_summary"] = [
+            dict(base_payload["source_material_summary"][0]),
+            {
+                "rank": 2,
+                "url": "https://unused.example/article",
+                "used_in_prompt": True,
+                "used_content_kind": "crawl_markdown",
+                "crawl_status": "success",
+                "content_chars": 700,
+            },
+        ]
+        two_used_domains_payload["crawl4ai_extraction_summary"] = [
+            {"url": "https://docs.example/api", "crawl_status": "success"},
+            {"url": "https://unused.example/article", "crawl_status": "success"},
+        ]
+        two_used_domains_payload["injected_chars"] = 1600
+        two_used_domains_payload["context_chars"] = 1900
+        two_used_domains = web_search_confidence.evaluate_web_confidence(two_used_domains_payload)
+
+        self.assertEqual(one_used_domain["web_confidence_inputs_summary"]["domain_count"], 2)
+        self.assertEqual(one_used_domain["web_confidence_inputs_summary"]["used_domain_count"], 1)
+        self.assertNotIn("multi_domain_material", one_used_domain["web_confidence_reason_codes"])
+        self.assertIn("single_domain_material", one_used_domain["web_confidence_reason_codes"])
+        self.assertEqual(two_used_domains["web_confidence_inputs_summary"]["used_domain_count"], 2)
+        self.assertIn("multi_domain_material", two_used_domains["web_confidence_reason_codes"])
+        self.assertLess(
+            one_used_domain["web_confidence_score"],
+            two_used_domains["web_confidence_score"],
+        )
 
     def test_no_data_is_low_and_human_review_candidate_only(self) -> None:
         fields = web_search_confidence.evaluate_web_confidence(

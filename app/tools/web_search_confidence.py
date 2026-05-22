@@ -70,6 +70,16 @@ def _unique_domains(summary: Sequence[Mapping[str, Any]]) -> list[str]:
     return domains
 
 
+def _used_source_items(summary: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+    return [
+        item
+        for item in summary
+        if bool(item.get('used_in_prompt', False))
+        and str(item.get('used_content_kind') or 'none') != 'none'
+        and _to_int(item.get('content_chars')) > 0
+    ]
+
+
 def _input_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
     source_material = [
         _mapping(item)
@@ -85,7 +95,9 @@ def _input_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         if str(value or '')
     ]
     domains = _unique_domains(source_material)
-    used_source_count = sum(1 for item in source_material if bool(item.get('used_in_prompt', False)))
+    used_source_items = _used_source_items(source_material)
+    used_domains = _unique_domains(used_source_items)
+    used_source_count = len(used_source_items)
     crawl_success_count = sum(1 for item in crawl_summary if str(item.get('crawl_status') or '') == 'success')
     crawl_empty_count = sum(1 for item in crawl_summary if str(item.get('crawl_status') or '') == 'empty')
     crawl_error_count = sum(1 for item in crawl_summary if str(item.get('crawl_status') or '') == 'error')
@@ -106,6 +118,7 @@ def _input_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         'source_count': len(source_material),
         'used_source_count': used_source_count,
         'domain_count': len(domains),
+        'used_domain_count': len(used_domains),
         'used_content_kinds': used_content_kinds,
         'injected_chars': _to_int(payload.get('injected_chars')),
         'context_chars': _to_int(payload.get('context_chars')),
@@ -157,7 +170,7 @@ def _score_search(summary: Mapping[str, Any]) -> tuple[float, list[str]]:
     used_content_kinds = set(summary.get('used_content_kinds') or [])
     injected_chars = int(summary.get('injected_chars') or 0)
     crawl_success_count = int(summary.get('crawl_success_count') or 0)
-    domain_count = int(summary.get('domain_count') or 0)
+    used_domain_count = int(summary.get('used_domain_count') or 0)
 
     if int(summary.get('used_source_count') or 0) > 0:
         score += 0.1
@@ -183,10 +196,10 @@ def _score_search(summary: Mapping[str, Any]) -> tuple[float, list[str]]:
         score -= 0.12
         reasons.append('no_injected_material')
 
-    if domain_count >= 2:
+    if used_domain_count >= 2:
         score += 0.08
         reasons.append('multi_domain_material')
-    elif domain_count == 1:
+    elif used_domain_count == 1:
         reasons.append('single_domain_material')
 
     if bool(summary.get('rerank_applied', False)):
