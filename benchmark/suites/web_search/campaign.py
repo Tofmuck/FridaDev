@@ -195,6 +195,13 @@ def _run_local_arm(
                 "openrouter_fallback_state": "not_applicable",
                 "openrouter_fallback_used": False,
                 "openrouter_fallback_reason_codes": [],
+                "web_discovery_provider": "local",
+                "web_discovery_provider_requested": "local",
+                "web_discovery_provider_effective": "local",
+                "web_discovery_external_used": False,
+                "web_discovery_external_provider": "",
+                "web_discovery_external_error_kind": "",
+                "web_discovery_reason_codes": ["dry_run"],
             },
             "sources": [source],
             "answer_preview": "Dry-run local: aucun appel SearXNG, Crawl4AI ou OpenRouter.",
@@ -216,6 +223,7 @@ def _run_local_arm(
             enable_profiled_searxng_params=enable_profiled_searxng_params,
             enable_reranking=enable_reranking,
             enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
+            discovery_provider="local" if arm == "local" else None,
         )
         elapsed_ms = (time.perf_counter() - start) * 1000
         sources = [_local_source(source) for source in payload.get("sources") or []]
@@ -275,6 +283,13 @@ def _run_local_arm(
                 "openrouter_fallback_state": payload.get("openrouter_fallback_state"),
                 "openrouter_fallback_used": bool(payload.get("openrouter_fallback_used", False)),
                 "openrouter_fallback_reason_codes": list(payload.get("openrouter_fallback_reason_codes") or []),
+                "web_discovery_provider": payload.get("web_discovery_provider"),
+                "web_discovery_provider_requested": payload.get("web_discovery_provider_requested"),
+                "web_discovery_provider_effective": payload.get("web_discovery_provider_effective"),
+                "web_discovery_external_used": bool(payload.get("web_discovery_external_used", False)),
+                "web_discovery_external_provider": payload.get("web_discovery_external_provider"),
+                "web_discovery_external_error_kind": payload.get("web_discovery_external_error_kind"),
+                "web_discovery_reason_codes": list(payload.get("web_discovery_reason_codes") or []),
             },
             "sources": sources,
             "answer_preview": _bounded_preview(payload.get("context_block"), max_chars=ANSWER_PREVIEW_CHARS),
@@ -1005,6 +1020,13 @@ def _local_signal_summary(result: dict[str, Any]) -> str:
         bits.append(f"secondary={local.get('secondary_query_count')}")
     if local.get("searxng_profile_params_kind"):
         bits.append(f"searxng={local.get('searxng_profile_params_kind')}")
+    if local.get("web_discovery_provider_effective"):
+        discovery = str(local.get("web_discovery_provider_effective") or "")
+        if local.get("web_discovery_external_used"):
+            discovery += ":external"
+        if local.get("web_discovery_external_error_kind"):
+            discovery += f":{local.get('web_discovery_external_error_kind')}"
+        bits.append(f"discovery={discovery}")
     if "rerank_applied" in local:
         bits.append(f"rerank={bool(local.get('rerank_applied', False))}")
         if local.get("rerank_policy"):

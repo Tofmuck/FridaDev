@@ -143,6 +143,24 @@ WEB_REFORMULATION_TIMEOUT_S = _env_int('WEB_REFORMULATION_TIMEOUT_S', 10)
 SEARXNG_URL = os.environ.get('SEARXNG_URL', 'http://127.0.0.1:8092')
 SEARXNG_RESULTS = _env_int('SEARXNG_RESULTS', 5)
 
+# Web discovery
+WEB_SEARCH_DISCOVERY_PROVIDER = os.environ.get('WEB_SEARCH_DISCOVERY_PROVIDER', 'openrouter_exa').strip().lower() or 'openrouter_exa'
+WEB_SEARCH_DISCOVERY_MODEL = os.environ.get('WEB_SEARCH_DISCOVERY_MODEL', OR_MODEL).strip() or OR_MODEL
+WEB_SEARCH_DISCOVERY_TIMEOUT_S = _env_int('WEB_SEARCH_DISCOVERY_TIMEOUT_S', 20)
+WEB_SEARCH_DISCOVERY_SEARCH_CONTEXT_SIZE = (
+    os.environ.get('WEB_SEARCH_DISCOVERY_SEARCH_CONTEXT_SIZE', 'low').strip().lower() or 'low'
+)
+WEB_SEARCH_DISCOVERY_MAX_RESULTS = _env_int('WEB_SEARCH_DISCOVERY_MAX_RESULTS', 5)
+WEB_SEARCH_DISCOVERY_MAX_TOTAL_RESULTS = _env_int('WEB_SEARCH_DISCOVERY_MAX_TOTAL_RESULTS', 5)
+OR_REFERER_WEB_DISCOVERY = os.environ.get(
+    'OPENROUTER_REFERER_WEB_DISCOVERY',
+    _default_openrouter_component_referer('web-discovery'),
+).strip() or _default_openrouter_component_referer('web-discovery')
+OR_TITLE_WEB_DISCOVERY = os.environ.get(
+    'OPENROUTER_TITLE_WEB_DISCOVERY',
+    f'{OR_TITLE_BASE} / Web Discovery',
+).strip() or f'{OR_TITLE_BASE} / Web Discovery'
+
 # Crawl4AI
 CRAWL4AI_URL = os.environ.get('CRAWL4AI_URL', 'http://127.0.0.1:11235')
 CRAWL4AI_TOKEN = os.environ.get('CRAWL4AI_TOKEN', '')

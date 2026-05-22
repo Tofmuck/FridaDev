@@ -22,7 +22,7 @@ Le benchmark final compare les quatre bras prevus:
 - `openrouter_exa`: OpenRouter `openrouter:web_search` avec `engine=exa`;
 - `openrouter_parallel`: OpenRouter `openrouter:web_search` avec `engine=parallel`.
 
-Decision produit actee apres lecture du benchmark: FridaDev web runtime reste local only. SearXNG reste le point de recherche local, Crawl4AI le point de lecture/crawl local, et Exa/Parallel/OpenRouter restent des outils de benchmark externe, jamais une voie produit automatique ou semi-automatique.
+Decision produit initiale actee apres lecture du benchmark: FridaDev web runtime reste local only. Cette decision est remplacee par la decision produit du 2026-05-22 documentee dans `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`: FridaDev reste local-first pour lire/qualifier/auditer, mais OpenRouter/Exa devient provider de decouverte URL pour la recherche ouverte quand configure.
 
 La conclusion importante n'est pas que le local profile est termine: il progresse nettement sur l'institutionnel francais et conserve le tres bon chemin URL explicite, mais il regresse fortement sur le cas actualite IA 2026 et la confiance locale y reste trop optimiste. Le signal de confiance doit donc rester visible, contestable et non actionnable.
 

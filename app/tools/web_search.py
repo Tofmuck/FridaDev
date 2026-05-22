@@ -32,6 +32,7 @@ from tools import (
     web_search_profile_policy,
     web_search_rerank,
     web_search_searxng_params,
+    web_search_discovery,
 )
 
 logger = logging.getLogger("frida.web_search")
@@ -749,6 +750,7 @@ def _empty_query_plan(kind: str, *, search_profile: str = '') -> dict[str, Any]:
             else web_search_profile_policy.empty_observability_fields()
         ),
         **web_search_searxng_params.empty_observability_fields(kind='none'),
+        **web_search_discovery.plan_observability_fields(search_profile=search_profile),
         **web_search_rerank.empty_observability_fields(applied=False),
     }
 
@@ -760,6 +762,7 @@ def _build_query_plan(
     search_profile: str,
     enable_specialized_queries: bool,
     enable_profiled_searxng_params: bool,
+    discovery_provider: str | None,
 ) -> dict[str, Any]:
     primary = str(primary_query or '').strip()
     source_first_plan = web_search_source_first.build_source_first_plan(
@@ -821,6 +824,10 @@ def _build_query_plan(
         **profile_policy.as_observability_fields(),
         'searxng_request_params': searxng_profile_params.as_request_params(),
         **searxng_profile_params.as_observability_fields(),
+        **web_search_discovery.plan_observability_fields(
+            search_profile=search_profile,
+            requested_provider=discovery_provider,
+        ),
     }
 
 
@@ -860,6 +867,13 @@ def _query_plan_observability_fields(query_plan: dict[str, Any] | None) -> dict[
         'searxng_params_reason_codes': list(plan.get('searxng_params_reason_codes') or []),
         'searxng_hard_parameters': list(plan.get('searxng_hard_parameters') or []),
         'searxng_soft_signal_policy': str(plan.get('searxng_soft_signal_policy') or ''),
+        'web_discovery_provider': str(plan.get('web_discovery_provider') or ''),
+        'web_discovery_provider_requested': str(plan.get('web_discovery_provider_requested') or ''),
+        'web_discovery_provider_effective': str(plan.get('web_discovery_provider_effective') or ''),
+        'web_discovery_external_used': bool(plan.get('web_discovery_external_used', False)),
+        'web_discovery_external_provider': str(plan.get('web_discovery_external_provider') or ''),
+        'web_discovery_external_error_kind': str(plan.get('web_discovery_external_error_kind') or ''),
+        'web_discovery_reason_codes': list(plan.get('web_discovery_reason_codes') or []),
         'rerank_applied': bool(plan.get('rerank_applied', False)),
         'rerank_policy': str(plan.get('rerank_policy') or 'none'),
         'rerank_input_count': int(plan.get('rerank_input_count') or 0),
@@ -936,6 +950,24 @@ def _call_search_with_profile_params(
     return search(query)
 
 
+def _call_discovery_with_profile_params(
+    query: str,
+    *,
+    search_profile: str,
+    searxng_params: dict[str, str] | None,
+    max_results: int,
+    discovery_provider: str | None,
+) -> web_search_discovery.DiscoveryResponse:
+    return web_search_discovery.discover_urls(
+        query,
+        search_profile=search_profile,
+        searxng_params=searxng_params,
+        max_results=max_results,
+        requested_provider=discovery_provider,
+        local_search=_call_search_with_profile_params,
+    )
+
+
 def _run_search_query_plan(
     query_plan: dict[str, Any],
     *,
@@ -943,21 +975,37 @@ def _run_search_query_plan(
     primary_query: str,
     search_profile: str,
     enable_reranking: bool,
+    discovery_provider: str | None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     queries = list(query_plan.get('queries') or [])
     if not queries:
         plan = dict(query_plan)
         plan['raw_result_count'] = 0
         plan['deduped_result_count'] = 0
+        plan.update(
+            web_search_discovery.plan_observability_fields(
+                search_profile=search_profile,
+                requested_provider=discovery_provider,
+            )
+        )
         plan.update(web_search_rerank.empty_observability_fields(applied=False))
         return [], plan
 
     max_results = int(_safe_runtime_services_value('searxng_results') or 0)
     searxng_params = dict(query_plan.get('searxng_request_params') or {})
     query_result_groups: list[tuple[dict[str, Any], list[dict[str, str]]]] = []
+    discovery_observability: list[dict[str, Any]] = []
     for query_entry in queries:
         query = str(query_entry.get('query') or '')
-        query_result_groups.append((query_entry, _call_search_with_profile_params(query, searxng_params)))
+        discovery_response = _call_discovery_with_profile_params(
+            query,
+            search_profile=search_profile,
+            searxng_params=searxng_params,
+            max_results=max_results,
+            discovery_provider=discovery_provider,
+        )
+        discovery_observability.append(discovery_response.observability)
+        query_result_groups.append((query_entry, discovery_response.results))
 
     merged_results, raw_result_count = _interleave_and_dedupe_query_results(
         query_result_groups,
@@ -966,6 +1014,7 @@ def _run_search_query_plan(
     plan = dict(query_plan)
     plan['raw_result_count'] = raw_result_count
     plan['deduped_result_count'] = len(merged_results)
+    plan.update(web_search_discovery.merge_observability_fields(discovery_observability))
     reranked_results, rerank_observability = web_search_rerank.rerank_results(
         merged_results,
         user_msg=user_msg,
@@ -1480,6 +1529,13 @@ def _emit_web_search_runtime_event(
     searxng_params_reason_codes: list[str] | None = None,
     searxng_hard_parameters: list[str] | None = None,
     searxng_soft_signal_policy: str = '',
+    web_discovery_provider: str = '',
+    web_discovery_provider_requested: str = '',
+    web_discovery_provider_effective: str = '',
+    web_discovery_external_used: bool = False,
+    web_discovery_external_provider: str = '',
+    web_discovery_external_error_kind: str = '',
+    web_discovery_reason_codes: list[str] | None = None,
     rerank_applied: bool = False,
     rerank_policy: str = 'none',
     rerank_input_count: int = 0,
@@ -1594,6 +1650,13 @@ def _emit_web_search_runtime_event(
         'searxng_params_reason_codes': list(searxng_params_reason_codes or []),
         'searxng_hard_parameters': list(searxng_hard_parameters or []),
         'searxng_soft_signal_policy': str(searxng_soft_signal_policy or ''),
+        'web_discovery_provider': str(web_discovery_provider or ''),
+        'web_discovery_provider_requested': str(web_discovery_provider_requested or ''),
+        'web_discovery_provider_effective': str(web_discovery_provider_effective or ''),
+        'web_discovery_external_used': bool(web_discovery_external_used),
+        'web_discovery_external_provider': str(web_discovery_external_provider or ''),
+        'web_discovery_external_error_kind': str(web_discovery_external_error_kind or ''),
+        'web_discovery_reason_codes': list(web_discovery_reason_codes or []),
         'rerank_applied': bool(rerank_applied),
         'rerank_policy': str(rerank_policy or 'none'),
         'rerank_input_count': int(rerank_input_count or 0),
@@ -1678,6 +1741,7 @@ def _build_payload_from_collection(
     enable_profiled_searxng_params: bool = True,
     enable_reranking: bool = True,
     enable_profiled_crawl4ai_policy: bool = True,
+    discovery_provider: str | None = None,
     requests_module: Any = requests,
     llm_module: Any | None = None,
     now_iso: str | None = None,
@@ -1737,6 +1801,7 @@ def _build_payload_from_collection(
             search_profile=search_profile,
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
+            discovery_provider=discovery_provider,
         )
         results, query_plan = _run_search_query_plan(
             query_plan,
@@ -1744,6 +1809,7 @@ def _build_payload_from_collection(
             primary_query=query,
             search_profile=search_profile,
             enable_reranking=enable_reranking,
+            discovery_provider=discovery_provider,
         )
         material = _build_search_context_material(
             query,
@@ -1798,6 +1864,7 @@ def _build_payload_from_collection(
         search_profile=search_profile,
         enable_specialized_queries=enable_specialized_queries,
         enable_profiled_searxng_params=enable_profiled_searxng_params,
+        discovery_provider=discovery_provider,
     )
     results, query_plan = _run_search_query_plan(
         query_plan,
@@ -1805,6 +1872,7 @@ def _build_payload_from_collection(
         primary_query=query,
         search_profile=search_profile,
         enable_reranking=enable_reranking,
+        discovery_provider=discovery_provider,
     )
     material = _build_search_context_material(
         query,
@@ -1850,6 +1918,7 @@ def build_context_payload(
     enable_profiled_searxng_params: bool = True,
     enable_reranking: bool = True,
     enable_profiled_crawl4ai_policy: bool = True,
+    discovery_provider: str | None = None,
 ) -> dict[str, Any]:
     explicit_url = _extract_explicit_url(user_msg)
     search_profile = web_search_profile.classify_search_profile(
@@ -1865,6 +1934,7 @@ def build_context_payload(
             enable_profiled_searxng_params=enable_profiled_searxng_params,
             enable_reranking=enable_reranking,
             enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
+            discovery_provider=discovery_provider,
             requests_module=requests_module,
             llm_module=llm_module,
             now_iso=now_iso,
@@ -1913,6 +1983,13 @@ def build_context_payload(
             searxng_params_reason_codes=list(payload.get('searxng_params_reason_codes') or []),
             searxng_hard_parameters=list(payload.get('searxng_hard_parameters') or []),
             searxng_soft_signal_policy=str(payload.get('searxng_soft_signal_policy') or ''),
+            web_discovery_provider=str(payload.get('web_discovery_provider') or ''),
+            web_discovery_provider_requested=str(payload.get('web_discovery_provider_requested') or ''),
+            web_discovery_provider_effective=str(payload.get('web_discovery_provider_effective') or ''),
+            web_discovery_external_used=bool(payload.get('web_discovery_external_used', False)),
+            web_discovery_external_provider=str(payload.get('web_discovery_external_provider') or ''),
+            web_discovery_external_error_kind=str(payload.get('web_discovery_external_error_kind') or ''),
+            web_discovery_reason_codes=list(payload.get('web_discovery_reason_codes') or []),
             rerank_applied=bool(payload.get('rerank_applied', False)),
             rerank_policy=str(payload.get('rerank_policy') or 'none'),
             rerank_input_count=int(payload.get('rerank_input_count') or 0),
@@ -2008,6 +2085,13 @@ def build_context_payload(
             searxng_params_reason_codes=list(error_payload.get('searxng_params_reason_codes') or []),
             searxng_hard_parameters=list(error_payload.get('searxng_hard_parameters') or []),
             searxng_soft_signal_policy=str(error_payload.get('searxng_soft_signal_policy') or ''),
+            web_discovery_provider=str(error_payload.get('web_discovery_provider') or ''),
+            web_discovery_provider_requested=str(error_payload.get('web_discovery_provider_requested') or ''),
+            web_discovery_provider_effective=str(error_payload.get('web_discovery_provider_effective') or ''),
+            web_discovery_external_used=bool(error_payload.get('web_discovery_external_used', False)),
+            web_discovery_external_provider=str(error_payload.get('web_discovery_external_provider') or ''),
+            web_discovery_external_error_kind=str(error_payload.get('web_discovery_external_error_kind') or ''),
+            web_discovery_reason_codes=list(error_payload.get('web_discovery_reason_codes') or []),
             rerank_applied=bool(error_payload.get('rerank_applied', False)),
             rerank_policy=str(error_payload.get('rerank_policy') or 'none'),
             rerank_input_count=int(error_payload.get('rerank_input_count') or 0),
@@ -2044,6 +2128,7 @@ def build_context(
     enable_profiled_searxng_params: bool = True,
     enable_reranking: bool = True,
     enable_profiled_crawl4ai_policy: bool = True,
+    discovery_provider: str | None = None,
 ) -> tuple[str, str, int]:
     """
     Pipeline complet : reformulation → SearXNG/Crawl4AI.
@@ -2064,6 +2149,7 @@ def build_context(
             enable_profiled_searxng_params=enable_profiled_searxng_params,
             enable_reranking=enable_reranking,
             enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
+            discovery_provider=discovery_provider,
         )
         query = str(payload.get('query') or payload.get('explicit_url') or user_msg or '')
         return str(payload.get('context_block') or ''), query, int(payload.get('results_count') or 0)
@@ -2080,6 +2166,7 @@ def build_context(
             search_profile=search_profile,
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
+            discovery_provider=discovery_provider,
         )
         results, query_plan = _run_search_query_plan(
             query_plan,
@@ -2087,6 +2174,7 @@ def build_context(
             primary_query=query,
             search_profile=search_profile,
             enable_reranking=enable_reranking,
+            discovery_provider=discovery_provider,
         )
         ctx_parts = []
         if results:

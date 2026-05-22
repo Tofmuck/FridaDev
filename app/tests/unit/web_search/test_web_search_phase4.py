@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import os
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -24,7 +25,15 @@ import config
 
 class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
     def setUp(self) -> None:
+        self._old_web_search_discovery_provider = os.environ.get('WEB_SEARCH_DISCOVERY_PROVIDER')
+        os.environ['WEB_SEARCH_DISCOVERY_PROVIDER'] = 'local'
         runtime_settings.invalidate_runtime_settings_cache()
+
+    def tearDown(self) -> None:
+        if self._old_web_search_discovery_provider is None:
+            os.environ.pop('WEB_SEARCH_DISCOVERY_PROVIDER', None)
+        else:
+            os.environ['WEB_SEARCH_DISCOVERY_PROVIDER'] = self._old_web_search_discovery_provider
 
     def test_reformulate_uses_runtime_web_reformulation_model_from_db_when_present(self) -> None:
         observed = {'model': None, 'temperature': None, 'max_tokens': None, 'timeout': None, 'metadata': None, 'trace': None}
@@ -354,7 +363,10 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         web_search.search = fail_search
         web_search._emit_web_search_runtime_event = lambda **_kwargs: None
         try:
-            payload = web_search.build_context_payload(f'Tu peux lire ceci : {url}')
+            payload = web_search.build_context_payload(
+                f'Tu peux lire ceci : {url}',
+                discovery_provider='openrouter_exa',
+            )
         finally:
             web_search._runtime_services_value = original_runtime_services_value
             web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
@@ -372,6 +384,10 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['searxng_profile_params_kind'], 'none')
         self.assertEqual(payload['searxng_profile_params_policy'], 'none')
         self.assertEqual(payload['searxng_categories'], [])
+        self.assertEqual(payload['web_discovery_provider_requested'], 'openrouter_exa')
+        self.assertEqual(payload['web_discovery_provider_effective'], 'local')
+        self.assertFalse(payload['web_discovery_external_used'])
+        self.assertIn('explicit_url_forces_local_discovery', payload['web_discovery_reason_codes'])
         self.assertEqual(payload['primary_source_kind'], 'explicit_url')
         self.assertTrue(payload['primary_read_attempted'])
         self.assertEqual(payload['primary_read_status'], 'success')

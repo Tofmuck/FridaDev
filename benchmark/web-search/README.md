@@ -1,15 +1,15 @@
 # Benchmark recherche web FridaDev
 
-Ce banc compare le pipeline web local FridaDev avec les server tools OpenRouter, sans modifier le runtime `/api/chat`.
+Ce banc compare le pipeline web FridaDev et les server tools OpenRouter. Il sert aussi a verifier la bascule produit: FridaDev reste local-first pour lire/qualifier/auditer, mais la recherche ouverte peut utiliser OpenRouter/Exa comme provider de decouverte URL.
 
-Doctrine produit actuelle: FridaDev web runtime reste local only. OpenRouter/Exa/Parallel sont des outils de benchmark externe et de comparaison, jamais une strategie produit.
+Doctrine produit actuelle: `explicit_url` reste local direct, Crawl4AI lit les URLs, OpenRouter/Exa decouvre les URLs en recherche ouverte par defaut applicatif (`WEB_SEARCH_DISCOVERY_PROVIDER=openrouter_exa`), et Parallel reste benchmark externe. Exa n'est pas un fallback automatique declenche par la confiance.
 
 ## Bras comparés
 
 Par défaut:
 
 - `local`: baseline locale à requête unique, c'est-à-dire SearXNG + Crawl4AI + reformulation web existante sans requêtes spécialisées;
-- `local_profiled`: bras profilé qui utilise le profil runtime, les requêtes spécialisées bornées, les paniers moteurs SearXNG gouvernés par régime, le reranking local souple avant crawl, la politique Crawl4AI profilée et les signaux de confiance avec état externe désactivé;
+- `local_profiled`: bras profilé qui utilise le profil runtime, les requêtes spécialisées bornées, le provider de decouverte configure, le reranking local souple avant crawl, la politique Crawl4AI profilée et les signaux de confiance avec fallback externe désactivé;
 - `openrouter_exa`: `openrouter:web_search` avec `engine=exa`;
 - `openrouter_parallel`: `openrouter:web_search` avec `engine=parallel`.
 
@@ -141,9 +141,9 @@ Pour chaque cas et chaque bras, le JSON/Markdown garde:
 - tokens d'entrée/sortie quand disponibles;
 - URLs et domaines cités;
 - aperçu borné des extraits, jamais le dump complet;
-- pour le local: `read_state`, `collection_path`, `search_profile`, `query_plan_kind`, `query_count`, `secondary_query_count`, `deduped_result_count`, `searxng_profile_params_kind`, `searxng_profile_params_policy`, `searxng_categories`, `searxng_engines`, `searxng_time_range`, `searxng_language`, `searxng_safesearch`, `rerank_applied`, `rerank_policy`, `rerank_top_domains_before`, `rerank_top_domains_after`, `rerank_reason_counts`, `crawl4ai_policy_kinds`, `crawl4ai_filter_counts`, `crawl4ai_cache_modes`, `crawl4ai_fallback_used_count`, `web_confidence_policy_kind`, `web_confidence_level`, `web_confidence_score`, `web_confidence_reason_codes`, `openrouter_fallback_state`, `openrouter_fallback_used`, `openrouter_fallback_reason_codes`, `used_content_kinds`, `injected_chars`, `context_chars`.
+- pour le local: `read_state`, `collection_path`, `search_profile`, `query_plan_kind`, `query_count`, `secondary_query_count`, `deduped_result_count`, `searxng_profile_params_kind`, `searxng_profile_params_policy`, `searxng_categories`, `searxng_engines`, `searxng_time_range`, `searxng_language`, `searxng_safesearch`, `web_discovery_provider`, `web_discovery_provider_requested`, `web_discovery_provider_effective`, `web_discovery_external_used`, `web_discovery_external_provider`, `web_discovery_external_error_kind`, `web_discovery_reason_codes`, `rerank_applied`, `rerank_policy`, `rerank_top_domains_before`, `rerank_top_domains_after`, `rerank_reason_counts`, `crawl4ai_policy_kinds`, `crawl4ai_filter_counts`, `crawl4ai_cache_modes`, `crawl4ai_fallback_used_count`, `web_confidence_policy_kind`, `web_confidence_level`, `web_confidence_score`, `web_confidence_reason_codes`, `openrouter_fallback_state`, `openrouter_fallback_used`, `openrouter_fallback_reason_codes`, `used_content_kinds`, `injected_chars`, `context_chars`.
 
-`web_confidence_*` est un signal heuristique visible pour audit humain. Il ne modifie pas l'ordre des sources, ne supprime rien et ne déclenche jamais OpenRouter/Exa/Parallel. `openrouter_fallback_used` doit rester `False` dans ce chantier.
+`web_confidence_*` est un signal heuristique visible pour audit humain. Il ne modifie pas l'ordre des sources, ne supprime rien et ne déclenche jamais OpenRouter/Exa/Parallel. Si Exa est utilise, il doit apparaitre via `web_discovery_*`, pas via `openrouter_fallback_*`. `openrouter_fallback_used` doit rester `False`.
 
 Les résultats ne doivent jamais contenir:
 
@@ -170,12 +170,13 @@ Le rapport Markdown contient une grille simple:
 - intégrabilité dans FridaDev;
 - observabilité et vérité de lecture.
 
-La décision produit est fixée pour le runtime: local only. Les sorties servent à diagnostiquer SearXNG/Crawl4AI et à comparer des index externes, pas à choisir une passerelle runtime.
+La decision produit post Phase 8 est fixee: local-first + OpenRouter/Exa comme provider de decouverte URL configure pour la recherche ouverte.
 
-- SearXNG reste le point de recherche local;
+- SearXNG reste le provider `local`, baseline historique et fallback operateur explicite;
 - Crawl4AI reste le point de lecture/crawl local;
-- Exa et Parallel restent des comparateurs externes;
-- le prochain chantier pertinent est l'audit critique de SearXNG, cote plateforme et documentation officielle.
+- Exa peut devenir la decouverte prioritaire quand configure;
+- Parallel reste comparateur externe;
+- le chantier critique SearXNG reste utile, mais ne bloque plus la bascule de decouverte ouverte.
 
 ## Lecture Lot 8 du 2026-05-22
 
@@ -188,7 +189,7 @@ Artefacts live:
 - `/tmp/fridadev-web-search-lot8-live/openrouter-exa.md`;
 - `/tmp/fridadev-web-search-lot8-live/openrouter-parallel.md`.
 
-Decision Lot 8 recadree: garder le runtime web local only, ne pas activer OpenRouter runtime, et ne pas definir Exa/Parallel comme voie produit. Exa/Parallel restent des outils de comparaison externe pour objectiver les limites de SearXNG.
+Decision Lot 8 supersedee le 2026-05-22: le benchmark Phase 8 a montre que SearXNG ne suffit pas pour la decouverte ouverte. La decision active est documentee dans `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`.
 
 ## Diagnostic same-query
 

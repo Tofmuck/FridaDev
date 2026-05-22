@@ -165,6 +165,23 @@ def _canonical_searxng_profile_params(payload: Mapping[str, Any] | None) -> dict
     }
 
 
+def _canonical_web_discovery(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    return {
+        'web_discovery_provider': _optional_str(data.get('web_discovery_provider')),
+        'web_discovery_provider_requested': _optional_str(data.get('web_discovery_provider_requested')),
+        'web_discovery_provider_effective': _optional_str(data.get('web_discovery_provider_effective')),
+        'web_discovery_external_used': bool(data.get('web_discovery_external_used', False)),
+        'web_discovery_external_provider': _optional_str(data.get('web_discovery_external_provider')),
+        'web_discovery_external_error_kind': _optional_str(data.get('web_discovery_external_error_kind')),
+        'web_discovery_reason_codes': [
+            str(value)
+            for value in data.get('web_discovery_reason_codes') or []
+            if str(value or '')
+        ],
+    }
+
+
 def _canonical_reranking(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = payload if isinstance(payload, Mapping) else {}
     reason_counts = data.get('rerank_reason_counts')
@@ -446,6 +463,7 @@ def build_web_input(
     source_first: Mapping[str, Any] | None = None,
     profile_policy: Mapping[str, Any] | None = None,
     searxng_profile_params: Mapping[str, Any] | None = None,
+    web_discovery: Mapping[str, Any] | None = None,
     reranking: Mapping[str, Any] | None = None,
     sources: Sequence[Mapping[str, Any]] = (),
     context_block: str = '',
@@ -510,6 +528,7 @@ def build_web_input(
         'source_first': _canonical_source_first(source_first),
         'profile_policy': _canonical_profile_policy(profile_policy),
         'searxng_profile_params': _canonical_searxng_profile_params(searxng_profile_params),
+        'web_discovery': _canonical_web_discovery(web_discovery),
         'reranking': _canonical_reranking(reranking),
         'used_content_kinds': canonical_used_content_kinds,
         'injected_chars': canonical_injected_chars,
@@ -571,6 +590,7 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
         source_first=payload,
         profile_policy=payload,
         searxng_profile_params=payload,
+        web_discovery=payload,
         reranking=payload,
         sources=payload.get('sources') if isinstance(payload.get('sources'), Sequence) else (),
         context_block=str(payload.get('context_block') or ''),

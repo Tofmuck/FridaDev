@@ -1,6 +1,6 @@
 # FridaDev - reconstruction locale de la recherche web - TODO A-Z
 
-Statut: actif, reconstruction applicative locale en cours; Phases 2 a 8 livrees sans modification plateforme. Phase 8 bloque une cloture Phase 9 directe tant que les corrections qualite/confiance ne sont pas traitees.
+Statut: actif, reconstruction applicative web en cours; Phases 2 a 8 livrees sans modification plateforme. Decision produit du 2026-05-22: la decouverte web ouverte bascule vers OpenRouter/Exa quand configure, tout en gardant Crawl4AI, evidence, confiance, source-first, reranking et observabilite sous controle FridaDev.
 
 Ce document devient la source-of-truth operatoire pour reconstruire la recherche web locale FridaDev de A a Z, apres le durcissement V0 SearXNG + Crawl4AI et le benchmark Lot 8 du 2026-05-22.
 
@@ -13,12 +13,13 @@ References a relire avant toute phase:
 
 ## Doctrine produit
 
-- FridaDev web runtime reste local uniquement.
-- Pas d'hybride runtime.
-- Pas de fallback OpenRouter / Exa / Parallel dans FridaDev.
-- SearXNG sert a decouvrir des URLs.
+- FridaDev reste local-first pour lire, crawler, qualifier, contextualiser et auditer.
+- Recherche ouverte: OpenRouter/Exa devient le moteur prioritaire de decouverte URL; le defaut applicatif est `WEB_SEARCH_DISCOVERY_PROVIDER=openrouter_exa`.
+- URL explicite: lecture directe locale inchangee, sans passage par Exa.
+- Pas de fallback automatique OpenRouter / Exa / Parallel: Exa est un provider de decouverte configure, pas une soupape appelee par la confiance.
+- SearXNG reste disponible comme provider `local`, baseline historique, fallback operateur explicite ou objet d'audit plateforme.
 - Crawl4AI sert a lire et crawler les URLs.
-- OpenRouter / Exa / Parallel peuvent rester des temoins externes de benchmark, jamais une strategie produit runtime.
+- Parallel reste benchmark externe seulement.
 - La recherche doit devenir source-first, gouvernee, explicable et contestable.
 - La confiance reste visible, non souveraine et non actionnable automatiquement.
 
@@ -40,6 +41,9 @@ References a relire avant toute phase:
 - [x] Phase 7 — Comportement d'echec
 - [x] Phase 8 — Benchmark final
 - [ ] Phase 9 — Deploiement
+  - [x] Premier branchement provider de decouverte `local|openrouter_exa`.
+  - [ ] Validation live du provider `openrouter_exa` sur corpus borne.
+  - [ ] Decision operateur sur variable runtime OVH si le defaut doit etre force cote plateforme.
 
 ## Regles de pilotage
 
@@ -85,7 +89,7 @@ La recherche n'est pas neutre. Choisir des moteurs, sources, domaines, categorie
 - ce qui vient du code applicatif FridaDev;
 - ce qui releve d'une decision humaine explicite.
 
-Frida ne doit pas transformer un ranking opaque en verite. La contestabilite doit rester possible: sources visibles, raisons lisibles, echec dicible, aucun fallback externe automatique.
+Frida ne doit pas transformer un ranking opaque en verite. La contestabilite doit rester possible: sources visibles, raisons lisibles, echec dicible, aucun fallback externe automatique. Quand Exa est utilise, il decouvre des URLs; FridaDev lit, qualifie et signale les limites.
 
 ## Phase 0 — Etat des lieux reel
 
@@ -279,7 +283,7 @@ Hors-scope:
 
 - Ajouter des sous-profils fins prematurement.
 - Modifier SearXNG global.
-- Activer OpenRouter / Exa / Parallel.
+- Activer un fallback OpenRouter / Exa / Parallel dans cette phase.
 - Relancer l'auto-web lexical.
 
 Tests/preuves attendus:
@@ -435,7 +439,7 @@ Hors-scope:
 - Afficher des secrets.
 - Changer Caddy, Authelia ou les reseaux sans demande explicite.
 - Remplacer SearXNG.
-- Activer OpenRouter / Exa / Parallel.
+- Activer un fallback OpenRouter / Exa / Parallel dans cette phase.
 
 Tests/preuves attendus:
 
@@ -538,7 +542,7 @@ Hors-scope:
 
 - Modifier SearXNG global.
 - Ajouter BM25 ou cache policy.
-- Activer OpenRouter / Exa / Parallel.
+- Activer un fallback OpenRouter / Exa / Parallel dans cette phase.
 - Faire du reranking fort sans Phase 6.
 
 Tests/preuves attendus:
@@ -621,7 +625,7 @@ Hors-scope:
 
 - Supprimer brutalement tous les resultats hors profil.
 - Faire du score de confiance un declencheur.
-- Appeler OpenRouter / Exa / Parallel.
+- Appeler OpenRouter / Exa / Parallel comme fallback ou decision de reranking.
 - Corriger par reranking un panier SearXNG manifestement mauvais sans le dire.
 
 Tests/preuves attendus:
@@ -725,7 +729,7 @@ Statut: livre applicatif/runtime, sans modification plateforme.
 - [x] Spec creee: `app/docs/states/specs/fridadev-web-search-evidence-failure-contract.md`.
 - [x] Le signal distingue `no_results`, `results_found_but_not_read`, `snippet_only_material`, `crawl_poor_or_absent`, `expected_source_material_missing`, `situated_secondary_without_official_material`, `mixed_source_signals_visible` et les `read_state` explicites non lus.
 - [x] Le prompt recoit `[GARDE DE PREUVE WEB]` seulement quand le statut est `partial` ou `insufficient`; ce bloc donne des consignes, pas une phrase finale scriptée.
-- [x] `web_evidence_external_fallback_used` reste toujours `false`; OpenRouter / Exa / Parallel restent hors runtime.
+- [x] `web_evidence_external_fallback_used` reste toujours `false`; la confiance ne declenche aucun fallback OpenRouter / Exa / Parallel. Depuis la decision produit du 2026-05-22, Exa peut etre provider de decouverte configure, expose via `web_discovery_*`.
 - [x] Observabilite propagee dans le payload web, l'input canonique, le noeud hermeneutique, le read model pipeline et la checklist.
 - [x] Correctif P2: les hard guards web respectent `web_evidence_can_answer`; ils peuvent exiger `caveat_required` sans interdire `answer`, tout en conservant `answer_forbidden` quand le contrat de preuve ne permet pas de repondre.
 
@@ -762,7 +766,8 @@ Livrables:
 - [x] Analyse par cas: qualite sources, autorite, bruit, crawl, extraits, latence.
 - [x] Analyse des echecs restants.
 - [x] Comparaison facultative avec OpenRouter / Exa / Parallel comme temoins externes seulement: non relances dans cette Phase 8; les artefacts Lot 8/same-query restent les temoins externes.
-- [x] Decision produit explicite: continuer local only, ne pas activer de fallback externe, corriger qualite/confiance avant cloture Phase 9.
+- [x] Decision produit initiale Phase 8: continuer local only et corriger qualite/confiance avant cloture Phase 9.
+- [x] Decision produit remplacee le 2026-05-22: basculer la decouverte ouverte vers OpenRouter/Exa quand configure, sans fallback automatique et sans changer la lecture Crawl4AI locale.
 
 Fichiers ou zones concernes:
 
@@ -774,12 +779,12 @@ Fichiers ou zones concernes:
 Decisions utilisateur requises avant patch:
 
 - [x] Valider si les temoins externes OpenRouter / Exa / Parallel sont relances: non pour cette Phase 8 locale, afin de mesurer l'ancien local vs le nouveau local sans cout externe.
-- [x] Valider le budget cout/latence pour le benchmark: local-only, latence observee sous la cible 20-25 secondes.
+- [x] Valider le budget cout/latence pour le benchmark Phase 8 initial: local-only, latence observee sous la cible 20-25 secondes.
 - [x] Valider le seuil qualitatif de passage: non atteint pour cloture Phase 9 directe.
 
-Hors-scope:
+Hors-scope historique de la mesure Phase 8:
 
-- Activer OpenRouter / Exa / Parallel dans le runtime.
+- Activer OpenRouter / Exa / Parallel dans le runtime pendant la mesure.
 - Modifier la recherche pendant la mesure.
 - Transformer un temoin externe en option produit.
 
@@ -812,7 +817,8 @@ Statut: benchmark final livre, sans modification runtime ni plateforme; cloture 
 - [x] Echecs bloquants: Adobe Illustrator, actualite IA Europe, Bourdieu / sociologie, CRISPR / PubMed, Derrida / trace.
 - [x] Finding qualite: certains paniers/requetes `local_profiled` produisent du bruit hors sujet.
 - [x] Finding confiance: `web_confidence_level=high` reste possible sur des paniers manifestement mauvais.
-- [x] Decision: garder local only, ne pas activer OpenRouter / Exa / Parallel, ouvrir un correctif local avant cloture Phase 9.
+- [x] Decision initiale, desormais remplacee: garder local only, ne pas activer OpenRouter / Exa / Parallel, ouvrir un correctif local avant cloture Phase 9.
+- [x] Decision remplacee: OpenRouter/Exa devient provider de decouverte ouverte; Parallel reste hors runtime; SearXNG reste provider local/baseline/fallback operateur.
 
 Risques/effets de bord:
 

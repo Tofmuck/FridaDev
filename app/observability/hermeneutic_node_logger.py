@@ -169,6 +169,7 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     source_first = _mapping(data.get('source_first'))
     profile_policy = _mapping(data.get('profile_policy'))
     searxng_params = _mapping(data.get('searxng_profile_params'))
+    web_discovery = _mapping(data.get('web_discovery'))
     reranking = _mapping(data.get('reranking'))
     web_confidence = _mapping(data.get('web_confidence'))
     web_evidence = _mapping(data.get('web_evidence'))
@@ -404,6 +405,42 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
             or searxng_params.get('searxng_soft_signal_policy')
             or ''
         ),
+        'web_discovery_provider': str(
+            data.get('web_discovery_provider')
+            or web_discovery.get('web_discovery_provider')
+            or ''
+        ),
+        'web_discovery_provider_requested': str(
+            data.get('web_discovery_provider_requested')
+            or web_discovery.get('web_discovery_provider_requested')
+            or ''
+        ),
+        'web_discovery_provider_effective': str(
+            data.get('web_discovery_provider_effective')
+            or web_discovery.get('web_discovery_provider_effective')
+            or ''
+        ),
+        'web_discovery_external_used': bool(
+            data.get('web_discovery_external_used', web_discovery.get('web_discovery_external_used', False))
+        ),
+        'web_discovery_external_provider': str(
+            data.get('web_discovery_external_provider')
+            or web_discovery.get('web_discovery_external_provider')
+            or ''
+        ),
+        'web_discovery_external_error_kind': str(
+            data.get('web_discovery_external_error_kind')
+            or web_discovery.get('web_discovery_external_error_kind')
+            or ''
+        ),
+        'web_discovery_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('web_discovery_reason_codes')
+                or web_discovery.get('web_discovery_reason_codes')
+            )
+            if str(value)
+        ],
         'rerank_applied': bool(data.get('rerank_applied', reranking.get('rerank_applied', False))),
         'rerank_policy': str(data.get('rerank_policy') or reranking.get('rerank_policy') or ''),
         'rerank_input_count': int(data.get('rerank_input_count') or reranking.get('rerank_input_count') or 0),

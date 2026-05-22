@@ -725,6 +725,17 @@ def _web_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             if _text(value)
         ],
         'searxng_soft_signal_policy': _text(payload.get('searxng_soft_signal_policy')),
+        'web_discovery_provider': _text(payload.get('web_discovery_provider')),
+        'web_discovery_provider_requested': _text(payload.get('web_discovery_provider_requested')),
+        'web_discovery_provider_effective': _text(payload.get('web_discovery_provider_effective')),
+        'web_discovery_external_used': bool(payload.get('web_discovery_external_used', False)),
+        'web_discovery_external_provider': _text(payload.get('web_discovery_external_provider')),
+        'web_discovery_external_error_kind': _text(payload.get('web_discovery_external_error_kind')),
+        'web_discovery_reason_codes': [
+            _text(value)
+            for value in payload.get('web_discovery_reason_codes') or []
+            if _text(value)
+        ],
         'rerank_applied': bool(payload.get('rerank_applied', False)),
         'rerank_policy': _text(payload.get('rerank_policy')),
         'rerank_input_count': _to_int(payload.get('rerank_input_count')),

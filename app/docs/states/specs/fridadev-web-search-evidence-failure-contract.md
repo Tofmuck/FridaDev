@@ -4,7 +4,9 @@ Date: 2026-05-22
 
 ## Doctrine
 
-Le runtime web FridaDev reste local only: SearXNG decouvre les URLs, Crawl4AI lit les URLs, FridaDev profile, rerank et observe. OpenRouter, Exa et Parallel restent hors runtime.
+Le runtime web FridaDev est local-first: OpenRouter/Exa peut decouvrir les URLs en recherche ouverte quand il est configure, SearXNG reste provider `local`, Crawl4AI lit les URLs, FridaDev profile, rerank et observe. Parallel reste hors runtime.
+
+OpenRouter/Exa comme provider de decouverte n'est pas un fallback automatique: la confiance ne declenche aucun appel externe.
 
 La preuve insuffisante n'est pas une reponse d'echec codee en dur. C'est un signal content-free transmis au modele principal pour qu'il formule naturellement le bon degre de prudence.
 
@@ -47,7 +49,7 @@ Ce bloc:
 - evite le refus automatique ou le mutisme;
 - autorise une reformulation ou relance seulement si utile;
 - rappelle qu'une demande d'URL n'est pas le reflexe par defaut;
-- confirme qu'aucun fallback OpenRouter, Exa ou Parallel n'a ete utilise.
+- confirme qu'aucun fallback OpenRouter, Exa ou Parallel n'a ete utilise; un eventuel provider Exa de decouverte doit etre visible via `web_discovery_*`.
 
 ## Hard guards hermeneutiques
 

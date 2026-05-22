@@ -58,6 +58,13 @@ def _phase4_searxng_payload() -> dict[str, Any]:
         ],
         'searxng_hard_parameters': ['engines', 'categories', 'language'],
         'searxng_soft_signal_policy': 'source_first_domains_plus_rerank',
+        'web_discovery_provider': 'openrouter_exa',
+        'web_discovery_provider_requested': 'openrouter_exa',
+        'web_discovery_provider_effective': 'openrouter_exa',
+        'web_discovery_external_used': True,
+        'web_discovery_external_provider': 'openrouter_exa',
+        'web_discovery_external_error_kind': '',
+        'web_discovery_reason_codes': ['openrouter_exa_discovery_used'],
         'profile_policy_kind': 'local_web_profile_policy_v0',
         'profile_policy_mode': 'source_first_strict_when_authority_named',
         'profile_expected_domains': ['learn.microsoft.com'],
@@ -116,6 +123,12 @@ class WebSearchObservabilityTests(unittest.TestCase):
         self.assertEqual(canonical_web['profile_policy']['profile_expected_domains'], ['learn.microsoft.com'])
         self.assertEqual(canonical_web['profile_policy']['profile_crawl_top_n_budget'], 3)
         self.assertTrue(canonical_web['profile_policy']['profile_expected_material_used'])
+        self.assertEqual(canonical_web['web_discovery']['web_discovery_provider_effective'], 'openrouter_exa')
+        self.assertTrue(canonical_web['web_discovery']['web_discovery_external_used'])
+        self.assertEqual(
+            canonical_web['web_discovery']['web_discovery_reason_codes'],
+            ['openrouter_exa_discovery_used'],
+        )
         self.assertEqual(canonical_web['web_evidence']['web_evidence_status'], 'sufficient')
         self.assertFalse(canonical_web['web_evidence']['web_evidence_requires_caveat'])
 
@@ -132,6 +145,9 @@ class WebSearchObservabilityTests(unittest.TestCase):
         self.assertEqual(node_web['searxng_soft_signal_policy'], 'source_first_domains_plus_rerank')
         self.assertEqual(node_web['profile_expected_domains'], ['learn.microsoft.com'])
         self.assertTrue(node_web['profile_expected_material_used'])
+        self.assertEqual(node_web['web_discovery_provider_effective'], 'openrouter_exa')
+        self.assertTrue(node_web['web_discovery_external_used'])
+        self.assertEqual(node_web['web_discovery_reason_codes'], ['openrouter_exa_discovery_used'])
         self.assertEqual(node_web['web_evidence_status'], 'sufficient')
         self.assertFalse(node_web['web_evidence_requires_caveat'])
 
@@ -148,6 +164,9 @@ class WebSearchObservabilityTests(unittest.TestCase):
         self.assertEqual(pipeline_web['searxng_soft_signal_policy'], 'source_first_domains_plus_rerank')
         self.assertEqual(pipeline_web['profile_expected_domains'], ['learn.microsoft.com'])
         self.assertTrue(pipeline_web['profile_expected_material_used'])
+        self.assertEqual(pipeline_web['web_discovery_provider_effective'], 'openrouter_exa')
+        self.assertTrue(pipeline_web['web_discovery_external_used'])
+        self.assertEqual(pipeline_web['web_discovery_reason_codes'], ['openrouter_exa_discovery_used'])
         self.assertEqual(pipeline_web['web_evidence_status'], 'sufficient')
         self.assertFalse(pipeline_web['web_evidence_requires_caveat'])
 
@@ -167,6 +186,12 @@ class WebSearchObservabilityTests(unittest.TestCase):
         )
         self.assertEqual(checklist_web['evidence']['profile_expected_domains'], ['learn.microsoft.com'])
         self.assertTrue(checklist_web['evidence']['profile_expected_material_used'])
+        self.assertEqual(checklist_web['evidence']['web_discovery_provider_effective'], 'openrouter_exa')
+        self.assertTrue(checklist_web['evidence']['web_discovery_external_used'])
+        self.assertEqual(
+            checklist_web['evidence']['web_discovery_reason_codes'],
+            ['openrouter_exa_discovery_used'],
+        )
         self.assertEqual(checklist_web['evidence']['web_evidence_status'], 'sufficient')
         self.assertFalse(checklist_web['evidence']['web_evidence_requires_caveat'])
 

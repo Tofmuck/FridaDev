@@ -8,7 +8,7 @@ Statut: spec Phase 6 du chantier `fridadev-local-web-search-rebuild`.
 
 Le reranking FridaDev reste un reordonnancement souple:
 
-- il reordonne un panier deja decouvert par SearXNG;
+- il reordonne un panier deja decouvert par le provider actif (`local` SearXNG ou `openrouter_exa`);
 - il explique les mouvements par reason codes content-free;
 - il ne supprime pas les resultats;
 - il ne bannit pas de source;
@@ -16,7 +16,7 @@ Le reranking FridaDev reste un reordonnancement souple:
 - il ne transforme pas une source officielle en verite absolue;
 - il ne transforme pas une source situee en source illegitime.
 
-Le reranking ne doit pas pretendre sauver une recherche SearXNG fondamentalement mauvaise. Si le panier initial est pauvre, les phases suivantes doivent rendre cet etat dicible plutot que le masquer.
+Le reranking ne doit pas pretendre sauver une decouverte fondamentalement mauvaise. Si le panier initial est pauvre, les phases suivantes doivent rendre cet etat dicible plutot que le masquer.
 
 ## Signaux utilises
 

@@ -462,6 +462,17 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
             if str(value or '')
         ],
         'searxng_soft_signal_policy': _payload_text(payload, 'searxng_soft_signal_policy'),
+        'web_discovery_provider': _payload_text(payload, 'web_discovery_provider'),
+        'web_discovery_provider_requested': _payload_text(payload, 'web_discovery_provider_requested'),
+        'web_discovery_provider_effective': _payload_text(payload, 'web_discovery_provider_effective'),
+        'web_discovery_external_used': bool(payload.get('web_discovery_external_used', False)),
+        'web_discovery_external_provider': _payload_text(payload, 'web_discovery_external_provider'),
+        'web_discovery_external_error_kind': _payload_text(payload, 'web_discovery_external_error_kind'),
+        'web_discovery_reason_codes': [
+            str(value)
+            for value in payload.get('web_discovery_reason_codes') or []
+            if str(value or '')
+        ],
         'rerank_applied': bool(payload.get('rerank_applied', False)),
         'rerank_policy': _payload_text(payload, 'rerank_policy'),
         'rerank_input_count': _to_int(payload.get('rerank_input_count')),

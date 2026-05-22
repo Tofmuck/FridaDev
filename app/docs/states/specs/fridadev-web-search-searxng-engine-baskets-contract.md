@@ -6,14 +6,16 @@ Statut: spec Phase 4 du chantier `fridadev-local-web-search-rebuild`.
 
 ## Doctrine
 
-Le runtime web FridaDev reste local only:
+Le runtime web FridaDev est local-first avec provider de decouverte configurable:
 
-- SearXNG decouvre les URLs;
+- OpenRouter/Exa peut decouvrir les URLs en recherche ouverte quand `WEB_SEARCH_DISCOVERY_PROVIDER=openrouter_exa`;
+- SearXNG reste provider `local`, baseline historique, fallback operateur explicite et objet d'audit plateforme;
 - Crawl4AI lit les URLs;
 - FridaDev classe, source-first, rerank et observe localement;
-- OpenRouter / Exa / Parallel restent hors runtime.
+- Parallel reste hors runtime;
+- aucun fallback externe automatique n'est declenche par la confiance.
 
-Cette phase ne modifie pas la configuration globale SearXNG. Les paniers sont applicatifs: FridaDev envoie `categories`, `engines`, `language`, `time_range` et `safesearch` par regime quand le comportement profile est actif. Le bras benchmark `local` garde la baseline historique via les flags `enable_profiled_* = False`; le bras `local_profiled` porte les paniers gouvernes.
+Cette phase ne modifie pas la configuration globale SearXNG. Les paniers sont applicatifs pour le provider `local`: FridaDev envoie `categories`, `engines`, `language`, `time_range` et `safesearch` par regime quand le comportement profile est actif. Le bras benchmark `local` garde la baseline historique via les flags `enable_profiled_* = False`; le bras `local_profiled` peut mesurer le provider de decouverte configure.
 
 ## Parametres durs et signaux souples
 

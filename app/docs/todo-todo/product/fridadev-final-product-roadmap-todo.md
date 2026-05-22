@@ -66,9 +66,10 @@ TODO actif de renforcement local SearXNG/Crawl4AI, avec bras benchmark `local_pr
 
 - `app/docs/todo-todo/product/fridadev-local-web-search-hardening-todo.md`
 
-TODO source-of-truth pour reconstruire la recherche web locale de A a Z, sans hybride runtime et sans fallback OpenRouter / Exa / Parallel:
+TODO source-of-truth pour reconstruire la recherche web local-first de A a Z, avec OpenRouter/Exa comme provider de decouverte URL configure et sans fallback automatique:
 
 - `app/docs/todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
+- Decision produit associee: `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 
 Piste produit a garder pour Amandine:
 
