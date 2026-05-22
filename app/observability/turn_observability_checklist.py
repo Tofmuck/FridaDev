@@ -376,6 +376,20 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
         'query_count': _to_int(payload.get('query_count')),
         'secondary_query_count': _to_int(payload.get('secondary_query_count')),
         'deduped_result_count': _to_int(payload.get('deduped_result_count')),
+        'source_first_policy_kind': _payload_text(payload, 'source_first_policy_kind'),
+        'source_first_active': bool(payload.get('source_first_active', False)),
+        'source_first_authority': _payload_text(payload, 'source_first_authority'),
+        'source_first_product': _payload_text(payload, 'source_first_product'),
+        'source_first_probable_domains': [
+            str(value)
+            for value in payload.get('source_first_probable_domains') or []
+            if str(value or '')
+        ],
+        'source_first_reason_codes': [
+            str(value)
+            for value in payload.get('source_first_reason_codes') or []
+            if str(value or '')
+        ],
         'searxng_profile_params_kind': _payload_text(payload, 'searxng_profile_params_kind'),
         'searxng_profile_params_policy': _payload_text(payload, 'searxng_profile_params_policy'),
         'searxng_categories': [

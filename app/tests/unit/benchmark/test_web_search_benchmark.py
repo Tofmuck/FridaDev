@@ -402,9 +402,9 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
             {fixture["target_profile"] for fixture in fixtures},
             {
                 "actualite",
-                "technique_officielle",
-                "academique_philosophique",
-                "institutionnel_francais",
+                "documentation_officielle",
+                "academique",
+                "administratif_francais",
             },
         )
         problem_labels = {

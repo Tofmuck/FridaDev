@@ -45,33 +45,33 @@ class WebSearchSearxngProfileParamsTests(unittest.TestCase):
         self.assertEqual(params.time_range, 'year')
         self.assertEqual(params.language, 'fr-FR')
 
-    def test_technique_officielle_allows_multilingual_official_docs(self) -> None:
+    def test_documentation_officielle_allows_multilingual_official_docs(self) -> None:
         params = web_search_searxng_params.build_profile_params(
-            web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE
+            web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE
         )
 
-        self.assertEqual(params.kind, 'profiled_technique_officielle_general_all')
+        self.assertEqual(params.kind, 'profiled_documentation_officielle_general_all')
         self.assertEqual(params.policy, 'soft_broad_hints')
         self.assertEqual(params.as_request_params()['categories'], 'general')
         self.assertEqual(params.language, 'all')
         self.assertNotIn('engines', params.as_request_params())
 
-    def test_institutionnel_francais_stays_french_general(self) -> None:
+    def test_administratif_francais_stays_french_general(self) -> None:
         params = web_search_searxng_params.build_profile_params(
-            web_search_profile.PROFILE_INSTITUTIONNEL_FRANCAIS
+            web_search_profile.PROFILE_ADMINISTRATIF_FRANCAIS
         )
 
-        self.assertEqual(params.kind, 'profiled_institutionnel_francais_general_fr')
+        self.assertEqual(params.kind, 'profiled_administratif_francais_general_fr')
         self.assertEqual(params.categories, ('general',))
         self.assertEqual(params.language, 'fr-FR')
         self.assertEqual(params.engines, ())
 
-    def test_academique_philosophique_allows_multilingual_sources(self) -> None:
+    def test_academique_allows_multilingual_sources(self) -> None:
         params = web_search_searxng_params.build_profile_params(
-            web_search_profile.PROFILE_ACADEMIQUE_PHILOSOPHIQUE
+            web_search_profile.PROFILE_ACADEMIQUE
         )
 
-        self.assertEqual(params.kind, 'profiled_academique_philosophique_general_all')
+        self.assertEqual(params.kind, 'profiled_academique_general_all')
         self.assertEqual(params.categories, ('general',))
         self.assertEqual(params.language, 'all')
 

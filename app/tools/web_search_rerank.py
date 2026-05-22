@@ -7,7 +7,7 @@ import unicodedata
 from typing import Any
 from urllib.parse import urlparse
 
-from tools import web_search_profile
+from tools import web_search_profile, web_search_source_first
 
 
 RERANK_POLICY = "soft_reorder_no_drop_v0"
@@ -182,8 +182,13 @@ def rerank_results(
     search_profile: str,
     max_results: int,
     enabled: bool = True,
+    source_first_plan: dict[str, Any] | web_search_source_first.SourceFirstPlan | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     profile = str(search_profile or web_search_profile.PROFILE_GENERAL)
+    if isinstance(source_first_plan, web_search_source_first.SourceFirstPlan):
+        source_plan = source_first_plan
+    else:
+        source_plan = web_search_source_first.plan_from_mapping(source_first_plan)
     original_results = [dict(result or {}) for result in results or []]
     if not enabled or profile not in RERANK_PROFILES or len(original_results) <= 1:
         return original_results, {
@@ -203,6 +208,7 @@ def rerank_results(
             raw_rank=index,
             profile=profile,
             essential_terms=essential_terms,
+            source_first_plan=source_plan,
         )
         for index, result in enumerate(original_results, 1)
     ]
@@ -256,6 +262,7 @@ def _score_candidate(
     raw_rank: int,
     profile: str,
     essential_terms: set[str],
+    source_first_plan: web_search_source_first.SourceFirstPlan,
 ) -> _Candidate:
     url = str(result.get("url") or "")
     domain = _domain(url)
@@ -288,6 +295,7 @@ def _score_candidate(
         searchable=searchable,
         has_essential_match=bool(matched_terms),
         has_technical_alignment=has_technical_alignment,
+        source_first_plan=source_first_plan,
         score=score,
         reasons=reasons,
     )
@@ -309,6 +317,7 @@ def _apply_profile_score(
     searchable: str,
     has_essential_match: bool,
     has_technical_alignment: bool,
+    source_first_plan: web_search_source_first.SourceFirstPlan,
     score: float,
     reasons: list[str],
 ) -> tuple[float, list[str]]:
@@ -323,7 +332,14 @@ def _apply_profile_score(
         score, reasons = _dictionary_or_conjugator_downrank(domain, title, score, reasons)
         return score, reasons
 
-    if profile == web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE:
+    if profile == web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE:
+        if _source_first_domain_matches(domain, url, source_first_plan) and _source_first_authority_aligned(
+            domain,
+            searchable,
+            source_first_plan,
+        ):
+            score += 130.0
+            reasons.append("source_first_authority_domain_soft_bonus")
         docs_like = _is_technical_docs_like(domain, url)
         known_official = _domain_in(domain, _TECHNICAL_OFFICIAL_DOMAINS)
         if known_official:
@@ -359,7 +375,7 @@ def _apply_profile_score(
         score, reasons = _dictionary_or_conjugator_downrank(domain, title, score, reasons)
         return score, reasons
 
-    if profile == web_search_profile.PROFILE_ACADEMIQUE_PHILOSOPHIQUE:
+    if profile == web_search_profile.PROFILE_ACADEMIQUE:
         if _domain_in(domain, _ACADEMIC_DOMAINS):
             if has_essential_match:
                 score += 105.0
@@ -488,6 +504,40 @@ def _is_technical_docs_like(domain: str, url: str) -> bool:
         return True
     url_n = str(url or "").lower()
     return any(marker in url_n for marker in _TECHNICAL_DOC_PATH_MARKERS)
+
+
+def _source_first_domain_matches(
+    domain: str,
+    url: str,
+    source_first_plan: web_search_source_first.SourceFirstPlan,
+) -> bool:
+    if not source_first_plan.active:
+        return False
+    url_n = str(url or "").lower()
+    for probable in source_first_plan.probable_domains:
+        expected = str(probable or "").strip().lower()
+        if not expected:
+            continue
+        expected_domain = expected.split("/", 1)[0]
+        if domain == expected_domain or domain.endswith(f".{expected_domain}"):
+            return True
+        if expected in url_n:
+            return True
+    return False
+
+
+def _source_first_authority_aligned(
+    domain: str,
+    searchable: str,
+    source_first_plan: web_search_source_first.SourceFirstPlan,
+) -> bool:
+    if not source_first_plan.active:
+        return False
+    authority_terms = [str(term or "").lower() for term in source_first_plan.authority_terms if str(term or "")]
+    if not authority_terms:
+        return False
+    domain_n = _normalize_text(domain)
+    return any(term in searchable or term in domain_n for term in authority_terms)
 
 
 def _normalize_text(value: Any) -> str:

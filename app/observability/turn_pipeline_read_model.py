@@ -639,6 +639,20 @@ def _web_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         'query_count': _to_int(payload.get('query_count')),
         'secondary_query_count': _to_int(payload.get('secondary_query_count')),
         'deduped_result_count': _to_int(payload.get('deduped_result_count')),
+        'source_first_policy_kind': _text(payload.get('source_first_policy_kind')),
+        'source_first_active': bool(payload.get('source_first_active', False)),
+        'source_first_authority': _text(payload.get('source_first_authority')),
+        'source_first_product': _text(payload.get('source_first_product')),
+        'source_first_probable_domains': [
+            _text(value)
+            for value in payload.get('source_first_probable_domains') or []
+            if _text(value)
+        ],
+        'source_first_reason_codes': [
+            _text(value)
+            for value in payload.get('source_first_reason_codes') or []
+            if _text(value)
+        ],
         'searxng_profile_params_kind': _text(payload.get('searxng_profile_params_kind')),
         'searxng_profile_params_policy': _text(payload.get('searxng_profile_params_policy')),
         'searxng_categories': [

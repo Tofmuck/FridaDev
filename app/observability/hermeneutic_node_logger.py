@@ -166,6 +166,7 @@ def _summarize_stimmung(payload: Mapping[str, Any] | None) -> dict[str, Any]:
 def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = _mapping(payload)
     query_plan = _mapping(data.get('query_plan'))
+    source_first = _mapping(data.get('source_first'))
     searxng_params = _mapping(data.get('searxng_profile_params'))
     reranking = _mapping(data.get('reranking'))
     web_confidence = _mapping(data.get('web_confidence'))
@@ -230,6 +231,40 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
             data.get('secondary_query_count') or query_plan.get('secondary_query_count') or 0
         ),
         'deduped_result_count': int(data.get('deduped_result_count') or query_plan.get('deduped_result_count') or 0),
+        'source_first_policy_kind': str(
+            data.get('source_first_policy_kind')
+            or source_first.get('source_first_policy_kind')
+            or ''
+        ),
+        'source_first_active': bool(
+            data.get('source_first_active', source_first.get('source_first_active', False))
+        ),
+        'source_first_authority': str(
+            data.get('source_first_authority')
+            or source_first.get('source_first_authority')
+            or ''
+        ),
+        'source_first_product': str(
+            data.get('source_first_product')
+            or source_first.get('source_first_product')
+            or ''
+        ),
+        'source_first_probable_domains': [
+            str(value)
+            for value in _sequence(
+                data.get('source_first_probable_domains')
+                or source_first.get('source_first_probable_domains')
+            )
+            if str(value)
+        ],
+        'source_first_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('source_first_reason_codes')
+                or source_first.get('source_first_reason_codes')
+            )
+            if str(value)
+        ],
         'searxng_profile_params_kind': str(
             data.get('searxng_profile_params_kind')
             or searxng_params.get('searxng_profile_params_kind')

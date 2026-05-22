@@ -16,16 +16,16 @@ CACHE_ENABLED = '1'
 BM25_MIN_MARKDOWN_CHARS = 120
 
 BM25_SEARCH_PROFILES = {
-    web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE,
-    web_search_profile.PROFILE_INSTITUTIONNEL_FRANCAIS,
-    web_search_profile.PROFILE_ACADEMIQUE_PHILOSOPHIQUE,
+    web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+    web_search_profile.PROFILE_ADMINISTRATIF_FRANCAIS,
+    web_search_profile.PROFILE_ACADEMIQUE,
 }
 
 PROFILE_MAX_CHARS = {
     web_search_profile.PROFILE_ACTUALITE: 4500,
-    web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE: 7000,
-    web_search_profile.PROFILE_INSTITUTIONNEL_FRANCAIS: 6500,
-    web_search_profile.PROFILE_ACADEMIQUE_PHILOSOPHIQUE: 8000,
+    web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE: 7000,
+    web_search_profile.PROFILE_ADMINISTRATIF_FRANCAIS: 6500,
+    web_search_profile.PROFILE_ACADEMIQUE: 8000,
     web_search_profile.PROFILE_GENERAL: 5000,
     web_search_profile.PROFILE_EXPLICIT_URL: 5000,
 }

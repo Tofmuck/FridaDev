@@ -59,25 +59,25 @@ def build_profile_params(search_profile: str, *, enabled: bool = True) -> Searxn
             language='fr-FR',
             safesearch='0',
         )
-    if profile == web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE:
+    if profile == web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE:
         return SearxngProfileParams(
-            kind='profiled_technique_officielle_general_all',
+            kind='profiled_documentation_officielle_general_all',
             policy='soft_broad_hints',
             categories=('general',),
             language='all',
             safesearch='0',
         )
-    if profile == web_search_profile.PROFILE_INSTITUTIONNEL_FRANCAIS:
+    if profile == web_search_profile.PROFILE_ADMINISTRATIF_FRANCAIS:
         return SearxngProfileParams(
-            kind='profiled_institutionnel_francais_general_fr',
+            kind='profiled_administratif_francais_general_fr',
             policy='soft_broad_hints',
             categories=('general',),
             language='fr-FR',
             safesearch='0',
         )
-    if profile == web_search_profile.PROFILE_ACADEMIQUE_PHILOSOPHIQUE:
+    if profile == web_search_profile.PROFILE_ACADEMIQUE:
         return SearxngProfileParams(
-            kind='profiled_academique_philosophique_general_all',
+            kind='profiled_academique_general_all',
             policy='soft_broad_hints',
             categories=('general',),
             language='all',

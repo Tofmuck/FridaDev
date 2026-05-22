@@ -259,6 +259,65 @@ class WebSearchRerankTests(unittest.TestCase):
         self.assertEqual(reranked[0]["url"], "https://vuejs.org/guide/extras/composition-api-faq.html")
         self.assertIn("technical_aligned_docs_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
 
+    def test_documentation_officielle_source_first_promotes_adobe_authority(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "OpenRouter API Reference",
+                    "url": "https://docs.openrouter.ai/api-reference/overview",
+                    "content": "official API docs",
+                },
+                {
+                    "title": "Photoshop User Guide",
+                    "url": "https://helpx.adobe.com/photoshop/user-guide.html",
+                    "content": "Adobe Photoshop official help documentation",
+                },
+            ],
+            user_msg="documentation officielle Adobe Photoshop",
+            primary_query="Adobe Photoshop documentation officielle",
+            search_profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+            max_results=5,
+            enabled=True,
+            source_first_plan={
+                "source_first_active": True,
+                "source_first_authority": "Adobe",
+                "source_first_product": "Photoshop",
+                "source_first_probable_domains": ["helpx.adobe.com", "developer.adobe.com", "adobe.com"],
+                "source_first_authority_terms": ["adobe", "photoshop"],
+            },
+        )
+
+        self.assertEqual(reranked[0]["url"], "https://helpx.adobe.com/photoshop/user-guide.html")
+        self.assertIn("source_first_authority_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+
+    def test_documentation_officielle_generic_request_does_not_promote_openrouter_fixture(self) -> None:
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "OpenRouter API Reference",
+                    "url": "https://docs.openrouter.ai/api-reference/overview",
+                    "content": "official API docs",
+                },
+                {
+                    "title": "Neutral API documentation",
+                    "url": "https://docs.neutral.example/reference",
+                    "content": "API documentation reference",
+                },
+            ],
+            user_msg="documentation officielle",
+            primary_query="documentation officielle",
+            search_profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+            max_results=5,
+            enabled=True,
+            source_first_plan={
+                "source_first_active": False,
+                "source_first_reason_codes": ["generic_documentation_request_without_authority"],
+            },
+        )
+
+        self.assertNotIn("source_first_authority_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
+        self.assertNotIn("source_first_authority_domain_soft_bonus", reranked[1]["rerank_reason_codes"])
+
     def test_actualite_promotes_eu_official_source_without_wikipedia_ban(self) -> None:
         reranked, observability = web_search_rerank.rerank_results(
             [

@@ -30,8 +30,8 @@ References a relire avant toute phase:
   - [x] Validation utilisateur du corpus borne
   - [x] Passage Phase 1 Sauron
 - [x] Phase 1 — Inventaire des moteurs SearXNG
-- [ ] Phase 2 — Definir les regimes de recherche
-- [ ] Phase 3 — Source-first
+- [x] Phase 2 — Definir les regimes de recherche
+- [x] Phase 3 — Source-first
 - [ ] Phase 4 — Reconfig SearXNG gouvernee
 - [ ] Phase 5 — Parametres FridaDev par profil
 - [ ] Phase 6 — Reranking explicable
@@ -242,34 +242,36 @@ Objectif: remplacer les profils trop generiques par des regimes de recherche exp
 
 Profils initiaux:
 
-- [ ] `explicit_url`
-- [ ] `documentation_officielle`
-- [ ] `administratif_francais`
-- [ ] `academique`
-- [ ] `actualite`
-- [ ] `general_divers`
+- [x] `explicit_url`
+- [x] `documentation_officielle`
+- [x] `administratif_francais`
+- [x] `academique`
+- [x] `actualite`
+- [x] `general_divers`
 
 Livrables:
 
-- [ ] Contrat de classification deterministe.
-- [ ] Tests de classification par profil.
-- [ ] Documentation des limites de chaque profil.
-- [ ] Matrice profil -> intention -> sources probables -> erreurs typiques.
-- [ ] Regle claire: le profil ne declenche jamais le web seul.
+- [x] Contrat de classification deterministe.
+- [x] Tests de classification par profil.
+- [x] Documentation des limites de chaque profil.
+- [x] Matrice profil -> intention -> sources probables -> erreurs typiques.
+- [x] Regle claire: le profil ne declenche jamais le web seul.
 
 Fichiers ou zones concernes:
 
 - `app/tools/web_search_profile.py`
 - `app/tools/web_search_query_plan.py`
 - `app/tools/web_search.py`
+- `app/tools/web_search_source_first.py`
+- `app/docs/states/specs/fridadev-web-search-regimes-source-first-contract.md`
 - Tests unitaires web search.
 - Documentation active de ce TODO.
 
 Decisions utilisateur requises avant patch:
 
-- [ ] Valider que `academique` reste large: philosophie, SHS, droit, sciences exactes, medecine, informatique, etc.
-- [ ] Valider que les sous-profils academiques ne sont pas crees trop tot.
-- [ ] Valider les termes utilisateur qui doivent orienter vers `documentation_officielle` plutot que `general_divers`.
+- [x] Valider que `academique` reste large: philosophie, SHS, droit, sciences exactes, medecine, informatique, etc.
+- [x] Valider que les sous-profils academiques ne sont pas crees trop tot.
+- [x] Valider les termes utilisateur qui doivent orienter vers `documentation_officielle` plutot que `general_divers`.
 
 Hors-scope:
 
@@ -280,18 +282,27 @@ Hors-scope:
 
 Tests/preuves attendus:
 
-- [ ] URL explicite classee `explicit_url`.
-- [ ] Adobe/Microsoft/Stripe/OpenRouter docs classes `documentation_officielle`.
-- [ ] CNI/CAF/droit administratif classes `administratif_francais`.
-- [ ] Derrida/Bourdieu/sciences exactes/classes universitaires classes `academique`.
-- [ ] Nouvelles recentes/aujourd'hui/2026 classes `actualite`.
-- [ ] Ambigu et quotidien classes `general_divers`.
+- [x] URL explicite classee `explicit_url`.
+- [x] Adobe/Microsoft/Stripe/OpenRouter docs classes `documentation_officielle`.
+- [x] CNI/CAF/droit administratif classes `administratif_francais`.
+- [x] Derrida/Bourdieu/sciences exactes/classes universitaires classes `academique`.
+- [x] Nouvelles recentes/aujourd'hui/2026 classes `actualite`.
+- [x] Ambigu et quotidien classes `general_divers`.
 
 Criteres de fin:
 
-- [ ] Les profils sont stables, lisibles et testes.
-- [ ] Aucun profil ne declenche une recherche sans demande web existante.
-- [ ] `explicit_url` reste prioritaire.
+- [x] Les profils sont stables, lisibles et testes.
+- [x] Aucun profil ne declenche une recherche sans demande web existante.
+- [x] `explicit_url` reste prioritaire.
+
+### Phase 2 - livraison Celebrimbor 2026-05-22
+
+Statut: livre applicatif/docs, sans modification plateforme.
+
+- [x] Profils canoniques ajoutes dans `app/tools/web_search_profile.py`.
+- [x] Anciens symboles Lot 2-7 conserves comme alias applicatifs pour eviter une casse diffuse, mais les valeurs observees sont les regimes Phase 2.
+- [x] Tests ajoutes/actualises pour URL explicite, documentation officielle, administratif francais, academique large, actualite, general ambigu et Q&A technique.
+- [x] Spec creee: `app/docs/states/specs/fridadev-web-search-regimes-source-first-contract.md`.
 
 Risques/effets de bord:
 
@@ -307,30 +318,34 @@ Objectif: extraire l'autorite cible et orienter la recherche vers les lieux prob
 
 Exemples obligatoires:
 
-- [ ] `documentation officielle Adobe Photoshop` -> autorite `Adobe`, produit `Photoshop`, domaines probables `helpx.adobe.com`, `developer.adobe.com`, `adobe.com`.
-- [ ] `documentation officielle Adobe Illustrator` -> autorite `Adobe`, produit `Illustrator`, domaines probables `helpx.adobe.com`, `developer.adobe.com`, `adobe.com`.
-- [ ] `documentation officielle Microsoft Graph API` -> autorite `Microsoft`, produit `Graph API`, domaine probable `learn.microsoft.com`.
-- [ ] `documentation officielle Stripe Checkout` -> autorite `Stripe`, produit `Checkout`, domaine probable `docs.stripe.com`.
-- [ ] `documentation officielle OpenRouter web search` -> autorite `OpenRouter`, produit `web search`, domaine probable `openrouter.ai/docs`.
+- [x] `documentation officielle Adobe Photoshop` -> autorite `Adobe`, produit `Photoshop`, domaines probables `helpx.adobe.com`, `developer.adobe.com`, `adobe.com`.
+- [x] `documentation officielle Adobe Illustrator` -> autorite `Adobe`, produit `Illustrator`, domaines probables `helpx.adobe.com`, `developer.adobe.com`, `adobe.com`.
+- [x] `documentation officielle Microsoft Graph API` -> autorite `Microsoft`, produit `Graph API`, domaine probable `learn.microsoft.com`.
+- [x] `documentation officielle Stripe Checkout` -> autorite `Stripe`, produit `Checkout`, domaine probable `docs.stripe.com`.
+- [x] `documentation officielle OpenRouter web search` -> autorite `OpenRouter`, produit `web search`, domaine probable `openrouter.ai/docs`.
 
 Livrables:
 
-- [ ] Extracteur deterministe d'autorite/produit pour `documentation_officielle`.
-- [ ] Source map souple et testable, limitee aux cas valides; elle sert d'appoint, pas de verite.
-- [ ] Regle generique obligatoire: extraire l'autorite cible depuis la requete, distinguer les termes generiques (`documentation`, `officiel`, `api`, `guide`) des termes d'autorite (`Adobe`, `Microsoft`, `Stripe`, etc.), et appliquer une promotion forte seulement si domaine et autorite cible sont alignes.
-- [ ] Tests negatifs montrant qu'OpenRouter, Adobe ou Stripe ne sont pas promus seulement parce que le mot `documentation` est present.
-- [ ] Observabilite content-free des autorites detectees, hashee ou enumeree sans prompt brut si necessaire.
+- [x] Extracteur deterministe d'autorite/produit pour `documentation_officielle`.
+- [x] Source map souple et testable, limitee aux cas valides; elle sert d'appoint, pas de verite.
+- [x] Regle generique obligatoire: extraire l'autorite cible depuis la requete, distinguer les termes generiques (`documentation`, `officiel`, `api`, `guide`) des termes d'autorite (`Adobe`, `Microsoft`, `Stripe`, etc.), et appliquer une promotion forte seulement si domaine et autorite cible sont alignes.
+- [x] Tests negatifs montrant qu'OpenRouter, Adobe ou Stripe ne sont pas promus seulement parce que le mot `documentation` est present.
+- [x] Observabilite content-free des autorites detectees, hashee ou enumeree sans prompt brut si necessaire.
 
 Fichiers ou zones concernes:
 
 - `app/tools/web_search_profile.py`
 - `app/tools/web_search_query_plan.py`
 - `app/tools/web_search_rerank.py`
+- `app/tools/web_search_source_first.py`
+- `app/observability/hermeneutic_node_logger.py`
+- `app/observability/turn_pipeline_read_model.py`
+- `app/observability/turn_observability_checklist.py`
 - Tests web search.
 
 Decisions utilisateur requises avant patch:
 
-- [ ] Valider si une source map explicite par fournisseur est acceptable.
+- [x] Valider si une source map explicite par fournisseur est acceptable.
 - [ ] Valider si la source map doit etre editable par configuration future ou rester codee en V1.
 
 Hors-scope:
@@ -343,20 +358,29 @@ Hors-scope:
 
 Tests/preuves attendus:
 
-- [ ] Adobe Photoshop oriente Adobe, pas OpenRouter.
-- [ ] Adobe Illustrator oriente Adobe, pas OpenRouter.
-- [ ] Microsoft Graph oriente Microsoft Learn.
-- [ ] Stripe Checkout oriente Stripe docs.
-- [ ] OpenRouter web search oriente OpenRouter docs.
-- [ ] Requete documentation generique ne promeut aucun vendor fixture.
-- [ ] Les cas Adobe/Microsoft/Stripe/OpenRouter restent des tests de garde-fou contre l'overfit, pas des normes cachees.
+- [x] Adobe Photoshop oriente Adobe, pas OpenRouter.
+- [x] Adobe Illustrator oriente Adobe, pas OpenRouter.
+- [x] Microsoft Graph oriente Microsoft Learn.
+- [x] Stripe Checkout oriente Stripe docs.
+- [x] OpenRouter web search oriente OpenRouter docs.
+- [x] Requete documentation generique ne promeut aucun vendor fixture.
+- [x] Les cas Adobe/Microsoft/Stripe/OpenRouter restent des tests de garde-fou contre l'overfit, pas des normes cachees.
 
 Criteres de fin:
 
-- [ ] Le bonus fort depend de l'autorite nommee dans la requete.
-- [ ] Les termes generiques de documentation ne suffisent jamais a promouvoir fortement un domaine.
-- [ ] Les sources probables restent des signaux souples.
-- [ ] Les sources non officielles restent visibles si elles sont pertinentes.
+- [x] Le bonus fort depend de l'autorite nommee dans la requete.
+- [x] Les termes generiques de documentation ne suffisent jamais a promouvoir fortement un domaine.
+- [x] Les sources probables restent des signaux souples.
+- [x] Les sources non officielles restent visibles si elles sont pertinentes.
+
+### Phase 3 - livraison Celebrimbor 2026-05-22
+
+Statut: livre applicatif/docs, sans modification plateforme.
+
+- [x] Module dedie cree: `app/tools/web_search_source_first.py`.
+- [x] Source-first branche dans le plan de requetes bornees et le reranking souple.
+- [x] Observabilite ajoutee: `source_first_policy_kind`, `source_first_active`, `source_first_authority`, `source_first_product`, `source_first_probable_domains`, `source_first_reason_codes`.
+- [x] Tests negatifs anti-overfit ajoutes pour demandes generiques `documentation officielle` / `API documentation`.
 
 Risques/effets de bord:
 

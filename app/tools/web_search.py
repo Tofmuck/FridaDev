@@ -26,6 +26,7 @@ from tools import (
     web_search_confidence,
     web_search_profile,
     web_search_query_plan,
+    web_search_source_first,
     web_search_crawl_policy,
     web_search_rerank,
     web_search_searxng_params,
@@ -679,6 +680,7 @@ def _empty_query_plan(kind: str) -> dict[str, Any]:
         'secondary_query_sha256_12': [],
         'raw_result_count': 0,
         'deduped_result_count': 0,
+        **web_search_source_first.empty_observability_fields(),
         **web_search_searxng_params.empty_observability_fields(kind='none'),
         **web_search_rerank.empty_observability_fields(applied=False),
     }
@@ -693,8 +695,18 @@ def _build_query_plan(
     enable_profiled_searxng_params: bool,
 ) -> dict[str, Any]:
     primary = str(primary_query or '').strip()
+    source_first_plan = web_search_source_first.build_source_first_plan(
+        user_msg,
+        primary,
+        search_profile,
+    )
     secondary_queries = (
-        web_search_query_plan.build_specialized_queries(user_msg, primary, search_profile)
+        web_search_query_plan.build_specialized_queries(
+            user_msg,
+            primary,
+            search_profile,
+            source_first_plan=source_first_plan,
+        )
         if enable_specialized_queries
         else []
     )
@@ -732,6 +744,8 @@ def _build_query_plan(
         'secondary_query_sha256_12': secondary_hashes,
         'raw_result_count': 0,
         'deduped_result_count': 0,
+        'source_first': source_first_plan.as_dict(),
+        **source_first_plan.as_observability_fields(),
         'searxng_request_params': searxng_profile_params.as_request_params(),
         **searxng_profile_params.as_observability_fields(),
     }
@@ -747,6 +761,12 @@ def _query_plan_observability_fields(query_plan: dict[str, Any] | None) -> dict[
         'secondary_query_sha256_12': list(plan.get('secondary_query_sha256_12') or []),
         'raw_result_count': int(plan.get('raw_result_count') or 0),
         'deduped_result_count': int(plan.get('deduped_result_count') or 0),
+        'source_first_policy_kind': str(plan.get('source_first_policy_kind') or 'none'),
+        'source_first_active': bool(plan.get('source_first_active', False)),
+        'source_first_authority': str(plan.get('source_first_authority') or ''),
+        'source_first_product': str(plan.get('source_first_product') or ''),
+        'source_first_probable_domains': list(plan.get('source_first_probable_domains') or []),
+        'source_first_reason_codes': list(plan.get('source_first_reason_codes') or []),
         'searxng_profile_params_kind': str(plan.get('searxng_profile_params_kind') or 'none'),
         'searxng_profile_params_policy': str(plan.get('searxng_profile_params_policy') or 'none'),
         'searxng_categories': list(plan.get('searxng_categories') or []),
@@ -857,6 +877,7 @@ def _run_search_query_plan(
         search_profile=search_profile,
         max_results=max_results,
         enabled=enable_reranking,
+        source_first_plan=query_plan.get('source_first'),
     )
     plan.update(rerank_observability)
     return reranked_results, plan
@@ -1337,6 +1358,12 @@ def _emit_web_search_runtime_event(
     secondary_query_sha256_12: list[str] | None = None,
     raw_result_count: int = 0,
     deduped_result_count: int = 0,
+    source_first_policy_kind: str = 'none',
+    source_first_active: bool = False,
+    source_first_authority: str = '',
+    source_first_product: str = '',
+    source_first_probable_domains: list[str] | None = None,
+    source_first_reason_codes: list[str] | None = None,
     searxng_profile_params_kind: str = 'none',
     searxng_profile_params_policy: str = 'none',
     searxng_categories: list[str] | None = None,
@@ -1429,6 +1456,12 @@ def _emit_web_search_runtime_event(
         'secondary_query_sha256_12': list(secondary_query_sha256_12 or []),
         'raw_result_count': int(raw_result_count or 0),
         'deduped_result_count': int(deduped_result_count or 0),
+        'source_first_policy_kind': str(source_first_policy_kind or 'none'),
+        'source_first_active': bool(source_first_active),
+        'source_first_authority': str(source_first_authority or ''),
+        'source_first_product': str(source_first_product or ''),
+        'source_first_probable_domains': list(source_first_probable_domains or []),
+        'source_first_reason_codes': list(source_first_reason_codes or []),
         'searxng_profile_params_kind': str(searxng_profile_params_kind or 'none'),
         'searxng_profile_params_policy': str(searxng_profile_params_policy or 'none'),
         'searxng_categories': list(searxng_categories or []),
@@ -1721,6 +1754,12 @@ def build_context_payload(
             secondary_query_sha256_12=list(payload.get('secondary_query_sha256_12') or []),
             raw_result_count=int(payload.get('raw_result_count') or 0),
             deduped_result_count=int(payload.get('deduped_result_count') or 0),
+            source_first_policy_kind=str(payload.get('source_first_policy_kind') or 'none'),
+            source_first_active=bool(payload.get('source_first_active', False)),
+            source_first_authority=str(payload.get('source_first_authority') or ''),
+            source_first_product=str(payload.get('source_first_product') or ''),
+            source_first_probable_domains=list(payload.get('source_first_probable_domains') or []),
+            source_first_reason_codes=list(payload.get('source_first_reason_codes') or []),
             searxng_profile_params_kind=str(payload.get('searxng_profile_params_kind') or 'none'),
             searxng_profile_params_policy=str(payload.get('searxng_profile_params_policy') or 'none'),
             searxng_categories=list(payload.get('searxng_categories') or []),
@@ -1805,6 +1844,12 @@ def build_context_payload(
             secondary_query_sha256_12=list(error_payload.get('secondary_query_sha256_12') or []),
             raw_result_count=int(error_payload.get('raw_result_count') or 0),
             deduped_result_count=int(error_payload.get('deduped_result_count') or 0),
+            source_first_policy_kind=str(error_payload.get('source_first_policy_kind') or 'none'),
+            source_first_active=bool(error_payload.get('source_first_active', False)),
+            source_first_authority=str(error_payload.get('source_first_authority') or ''),
+            source_first_product=str(error_payload.get('source_first_product') or ''),
+            source_first_probable_domains=list(error_payload.get('source_first_probable_domains') or []),
+            source_first_reason_codes=list(error_payload.get('source_first_reason_codes') or []),
             searxng_profile_params_kind=str(error_payload.get('searxng_profile_params_kind') or 'none'),
             searxng_profile_params_policy=str(error_payload.get('searxng_profile_params_policy') or 'none'),
             searxng_categories=list(error_payload.get('searxng_categories') or []),
