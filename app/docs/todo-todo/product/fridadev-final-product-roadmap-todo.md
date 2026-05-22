@@ -66,6 +66,11 @@ TODO actif de renforcement local SearXNG/Crawl4AI, avec bras benchmark `local_pr
 
 - `app/docs/todo-todo/product/fridadev-local-web-search-hardening-todo.md`
 
+Piste produit a garder pour Amandine:
+
+- etudier un mode/connecteur Adobe Docs dedie, expose eventuellement comme bouton ou profil explicite `Adobe`, pour envoyer les requetes Photoshop/Illustrator directement vers les documentations officielles Adobe ou leurs APIs publiques si elles sont exploitables;
+- ce point ne doit pas bloquer le renforcement web local en cours: il faudra l'auditer comme sous-chantier specialise, avec cout, API disponibles, conditions d'usage, fallback local et non-contamination.
+
 ## 3. Biblio native / catalogue Tulu
 
 Objectif principal pour l'instance Tof: construire une Biblio native / catalogue Tulu comme fonds durable, classe, consultable.
@@ -109,6 +114,10 @@ Principe:
 - projet OpenRouter separe;
 - adaptation utilisateur/personnalisation;
 - separation nette des donnees.
+
+Besoin specialise a conserver pour Amandine:
+
+- acces fiable aux documentations Adobe Photoshop / Illustrator, idealement via un mode ou connecteur explicite Adobe Docs plutot que par une recherche web generale fragile.
 
 Responsabilites:
 
