@@ -158,6 +158,24 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
             ):
                 self.assertNotIn(forbidden, combined)
 
+    def test_benchmark_previews_redact_secret_placeholders_from_sources(self) -> None:
+        preview = web_campaign._bounded_preview(
+            "headers: Authorization: Bearer <OPENROUTER_API_KEY> sk-or-demo api_key data:image/png;base64,",
+            max_chars=240,
+        )
+
+        for forbidden in (
+            "OPENROUTER_API_KEY",
+            "Authorization",
+            "Bearer ",
+            "sk-or-",
+            "api_key",
+            "data:image",
+            ";base64,",
+        ):
+            self.assertNotIn(forbidden, preview)
+        self.assertIn("OPENROUTER_KEY_REDACTED", preview)
+
     def test_unknown_arm_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             web_adapter.normalize_arms(["local", "plugins_web"])

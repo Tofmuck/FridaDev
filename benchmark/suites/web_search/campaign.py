@@ -945,10 +945,27 @@ def _domain(url: str) -> str | None:
 
 
 def _bounded_preview(value: Any, *, max_chars: int) -> str:
-    text = " ".join(str(value or "").split())
+    text = _redact_artifact_text(" ".join(str(value or "").split()))
     if len(text) <= max_chars:
         return text
     return text[: max_chars - 1].rstrip() + "…"
+
+
+def _redact_artifact_text(value: str) -> str:
+    text = str(value or "")
+    replacements = {
+        "OPENROUTER_API_KEY": "OPENROUTER_KEY_REDACTED",
+        "Authorization": "Auth header",
+        "Bearer": "Token scheme",
+        "sk-or-": "openrouter-key-prefix-redacted-",
+        "api_key": "api-key",
+        "data:image": "data-image",
+        "data:application/pdf": "data-application-pdf",
+        ";base64,": ";base64-redacted,",
+    }
+    for needle, replacement in replacements.items():
+        text = text.replace(needle, replacement)
+    return text
 
 
 def _sha256_text(value: str) -> str:

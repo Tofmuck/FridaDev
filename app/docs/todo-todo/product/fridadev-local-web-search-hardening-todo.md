@@ -24,7 +24,7 @@ OpenRouter Exa/Parallel restent des soupapes futures a evaluer apres renforcemen
 - [x] Lot 5 - Reranking avant crawl
 - [x] Lot 6 - Crawl4AI oriente profil
 - [x] Lot 7 - Observabilite + confiance + fallback futur
-- [ ] Lot 8 - Benchmark final et decision Exa/Parallel
+- [x] Lot 8 - Benchmark final et decision Exa/Parallel
 
 Lecture rapide:
 
@@ -35,7 +35,7 @@ Lecture rapide:
 - Lot 5 est livre: `local_profiled` rerank les resultats SearXNG de facon souple avant Crawl4AI, sans suppression dure.
 - Lot 6 est livre: `local_profiled` applique une politique Crawl4AI profilee, avec `bm25` + `q` borne pour certains profils et repli `fit` si l'extraction est vide ou pauvre.
 - Lot 7 est livre: les signaux locaux sont exposes avec une confiance finale visible, non souveraine et non actionnable.
-- Lot 8 reste a implementer.
+- Lot 8 est livre: le benchmark final local / `local_profiled` / Exa / Parallel est produit et documente dans `app/docs/states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`.
 - Aucun score de confiance actionnable ou fallback OpenRouter runtime n'est livre.
 
 ## Question prealable: existe-t-il un meilleur plan ?
@@ -441,21 +441,44 @@ Definition of done Lot 7:
 
 ## Lot 8 - Benchmark final et decision Exa/Parallel
 
-Statut: a faire.
+Statut: livre.
 
-Relancer:
+Artefacts live a lire:
+
+- `/tmp/fridadev-web-search-lot8-live/local.md`;
+- `/tmp/fridadev-web-search-lot8-live/local-profiled.md`;
+- `/tmp/fridadev-web-search-lot8-live/openrouter-exa.md`;
+- `/tmp/fridadev-web-search-lot8-live/openrouter-parallel.md`.
+
+Bras relances:
 
 - `local`;
 - `local_profiled`;
 - `openrouter_exa`;
 - `openrouter_parallel`.
 
-Decision attendue:
+Decision produite:
 
-- local seul;
-- local + Exa en fallback;
-- local + Parallel en fallback compact;
-- autre politique explicite.
+- chemin par defaut: local FridaDev;
+- URL explicite: local direct prioritaire, sans fallback externe;
+- fallback futur recommande: Exa seulement comme soupape explicite et auditable pour certaines recherches ouvertes a enjeu;
+- Parallel: option compacte possible, mais trop inegale pour devenir fallback prioritaire;
+- aucun fallback OpenRouter runtime active.
+
+Findings a garder pour un chantier ulterieur:
+
+- `local_profiled` regresse fortement sur `recent_ai_policy_news` dans le run Lot 8 alors que le local baseline retrouve des sources UE / AI Act;
+- `web_confidence_level=high` reste possible sur un corpus actualite hors sujet, donc la confiance demeure visible et non actionnable;
+- le profil academique/philosophique reste fragile pour obtenir une cartographie primaire / encyclopedique / academique.
+
+Definition of done Lot 8:
+
+- [x] Dry-run complet produit.
+- [x] Run live borne produit avec les quatre bras.
+- [x] Artefacts par bras disponibles dans `/tmp/fridadev-web-search-lot8-live`.
+- [x] Grep securite vide apres redaction des apercus d'artefacts.
+- [x] Note de decision versionnee: `app/docs/states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`.
+- [x] Aucun fallback OpenRouter/Exa/Parallel runtime active.
 
 ## Preuves de ce cycle
 

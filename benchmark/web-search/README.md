@@ -154,6 +154,8 @@ Les résultats ne doivent jamais contenir:
 - contenu privé;
 - secret ou token.
 
+Les aperçus bornés des sources et réponses sont expurges avant écriture des artefacts pour éviter qu'une documentation publique contenant un exemple de header ou de clé fictive déclenche les greps sécurité du banc.
+
 ## Lecture humaine
 
 Le rapport Markdown contient une grille simple:
@@ -175,6 +177,19 @@ La décision produit reste humaine. Les sorties doivent aider à choisir plus ta
 - OpenRouter Parallel en fallback;
 - hybride borné;
 - aucun changement.
+
+## Lecture Lot 8 du 2026-05-22
+
+Note persistante: `app/docs/states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`.
+
+Artefacts live:
+
+- `/tmp/fridadev-web-search-lot8-live/local.md`;
+- `/tmp/fridadev-web-search-lot8-live/local-profiled.md`;
+- `/tmp/fridadev-web-search-lot8-live/openrouter-exa.md`;
+- `/tmp/fridadev-web-search-lot8-live/openrouter-parallel.md`.
+
+Decision Lot 8: garder le local par defaut, ne pas activer OpenRouter runtime, et considerer Exa seulement comme fallback futur explicite et auditable pour les recherches ouvertes ou le local rate les domaines d'autorite. Parallel reste une option compacte mais plus inegale.
 
 ## Limites connues
 

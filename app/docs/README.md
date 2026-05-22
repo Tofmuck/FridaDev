@@ -18,6 +18,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit stack locale SearXNG/Crawl4AI vs benchmark web 2026-05-21: `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
+- Benchmark final Lot 8 web local vs OpenRouter Exa/Parallel 2026-05-22: `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`
 - TODO actif de renforcement web local SearXNG/Crawl4AI: `todo-todo/product/fridadev-local-web-search-hardening-todo.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
@@ -101,6 +102,7 @@ Archives utiles:
 Lire d'abord:
 - `todo-todo/product/fridadev-local-web-search-hardening-todo.md` pour le contrat V0, les lots d'implementation et le bras benchmark `local_profiled`.
 - `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md` pour comparer SearXNG, Crawl4AI, configuration OVH, pipeline FridaDev et benchmark local/Exa/Parallel avant tout lot runtime.
+- `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md` pour la decision Lot 8: local par defaut, Exa seulement comme fallback futur explicite, et aucune activation runtime OpenRouter.
 - `todo-done/notes/web-reading-truth-todo.md` pour le contrat archive de lecture URL explicite, `read_state`, `fit` puis `raw` et observabilite content-free.
 - `todo-done/refactors/hermeneutic-suspension-auto-web-todo.md` pour la decision archivee de suspension de l'auto-web lexical.
 - `benchmark/web-search/README.md` pour relancer le benchmark comparatif local / OpenRouter Exa / OpenRouter Parallel.
