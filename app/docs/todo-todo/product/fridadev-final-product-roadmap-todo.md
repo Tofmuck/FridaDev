@@ -66,6 +66,10 @@ TODO actif de renforcement local SearXNG/Crawl4AI, avec bras benchmark `local_pr
 
 - `app/docs/todo-todo/product/fridadev-local-web-search-hardening-todo.md`
 
+TODO source-of-truth pour reconstruire la recherche web locale de A a Z, sans hybride runtime et sans fallback OpenRouter / Exa / Parallel:
+
+- `app/docs/todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
+
 Piste produit a garder pour Amandine:
 
 - etudier un mode/connecteur Adobe Docs dedie, expose eventuellement comme bouton ou profil explicite `Adobe`, pour envoyer les requetes Photoshop/Illustrator directement vers les documentations officielles Adobe ou leurs APIs publiques si elles sont exploitables;
