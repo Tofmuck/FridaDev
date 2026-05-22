@@ -112,6 +112,12 @@
     chatEl.scrollTo({ top: chatEl.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
   };
 
+  const isChatNearBottom = (threshold = 96) => {
+    if (!chatEl) return true;
+    const distance = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight;
+    return distance <= threshold;
+  };
+
   const extractErrorMessage = (err) => {
     return getObservableStreamErrorMeta(err).bubbleMessage;
   };
@@ -433,12 +439,15 @@
     try {
       const response = await sendToServer(text, (chunk) => {
         if (!chunk) return;
+        const shouldStickToBottom = isChatNearBottom();
         assistantText += chunk;
         assistantNode.bubble.textContent = assistantText;
         if (hasVisibleAssistantContent(assistantText)) {
           applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_VISIBLE_CONTENT);
         }
-        scrollToBottom(false);
+        if (shouldStickToBottom) {
+          scrollToBottom(false);
+        }
       }, requestThreadId, inputMode, {
         onStreamEvent(event) {
           applyAssistantStreamingUiEvent(assistantNode, event);
@@ -447,6 +456,7 @@
       const reply = response && typeof response.text === "string" ? response.text : "";
       const replyTerminal = response && response.terminal ? response.terminal : null;
       const hasReplyUpdatedAt = hasTerminalUpdatedAt(replyTerminal);
+      const shouldStickToBottom = isChatNearBottom();
 
       assistantText = reply || assistantText;
       assistantNode.bubble.textContent = assistantText || "(vide)";
@@ -468,7 +478,7 @@
       updateExportConversationButton();
       if (!hasReplyUpdatedAt && requestThreadId && getCurrentId() === requestThreadId) {
         await loadThread(requestThreadId);
-      } else {
+      } else if (shouldStickToBottom) {
         scrollToBottom(true);
       }
     } catch (err) {
@@ -625,7 +635,10 @@
     }
 
     emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);
-    return { text: finalText, terminal };
+    const terminalFinalText = terminal && typeof terminal.final_text === "string"
+      ? terminal.final_text
+      : "";
+    return { text: terminalFinalText || finalText, terminal };
   }
 
   // ---- Init

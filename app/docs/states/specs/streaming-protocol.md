@@ -95,12 +95,14 @@ Le terminal de controle DOIT etre un JSON objet avec:
 Champs optionnels:
 - `error_code`: optionnel; utile seulement quand `event="error"`;
 - `updated_at`: optionnel; timestamp ISO du tour persiste, uniquement quand la sauvegarde canonique atomique catalog/messages est prouvee.
+- `final_text`: optionnel; utile seulement quand `event="done"` et quand le texte visible diffuse pendant la generation doit etre remplace par le texte assistant canonique final.
 
 Contraintes:
 - `done` et `error` sont mutuellement exclusifs;
 - un `error_code` absent sur un terminal `error` reste defensivement acceptable cote parseur, mais le backend Frida courant vise un `error_code` explicite pour les terminaux d'erreur qu'il emet;
 - `updated_at` appartient au terminal; il ne doit pas etre suppose disponible ailleurs dans le corps du stream;
 - un terminal `conversation_persist_failed` ne DOIT PAS porter `updated_at`.
+- `final_text` est du texte final assistant destine a l'utilisateur, jamais un contenu de raisonnement interne, ni `reasoning`, ni `reasoning_details`.
 
 ## 5. Invariants
 
@@ -109,6 +111,7 @@ Les invariants suivants sont normatifs:
 - aucun contenu visible ne DOIT suivre un terminal valide;
 - le terminal valide DOIT etre le dernier element logique du flux;
 - le controle ne DOIT jamais entrer dans la prose rendue a l'utilisateur;
+- le frontend DOIT utiliser `terminal.final_text`, quand il est present, pour remplacer le brouillon visible sans dupliquer le message final;
 - l'absence de terminal valide DOIT etre traitee comme une erreur protocolaire;
 - `done` et `error` sont mutuellement exclusifs pour un meme flux;
 - `updated_at` est une metadata terminale post-stream, pas un signal inline pre-body;
@@ -201,6 +204,7 @@ Le frontend navigateur DOIT:
 - traiter `done` et `error` comme terminaux exclusifs;
 - traiter l'absence de terminal, les terminaux multiples ou le contenu apres terminal comme erreurs protocolaires locales;
 - utiliser `terminal.updated_at` quand il est present pour horodater le message assistant et le thread;
+- utiliser `terminal.final_text` quand il est present pour finaliser le texte affiche et le cache local;
 - forcer une rehydratation serveur si `updated_at` manque;
 - ne pas ajouter au cache local un marqueur assistant canonique a partir d'un terminal `error` sans `updated_at`.
 
@@ -228,6 +232,7 @@ Metadata terminales actuelles utiles:
 - `event`
 - `error_code`
 - `updated_at`
+- `final_text`
 
 Semantique de `updated_at`:
 - sur `done`, il represente le timestamp canonique du tour assistant persiste;
@@ -239,6 +244,12 @@ Relation headers / terminal:
 - `X-Conversation-Id` et `X-Conversation-Created-At` sont disponibles avant le corps;
 - `updated_at` pertinent pour la fin du stream vit dans le terminal;
 - le frontend privilegie donc `terminal.updated_at` avant toute rehydratation forcee.
+
+Semantique de `final_text`:
+- il est reserve au terminal `done`;
+- il porte le texte assistant canonique final quand le brouillon visible diffuse au fil de l'eau n'est pas exactement ce texte final;
+- il permet au frontend de remplacer la bulle live sans afficher un doublon;
+- il ne transporte jamais de raisonnement interne du modele.
 
 ## 10. Regle de persistance
 

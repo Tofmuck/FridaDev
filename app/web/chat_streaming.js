@@ -221,6 +221,9 @@ function parseStreamControlFrame(frameText) {
   if (updatedAt) {
     terminal.updated_at = updatedAt;
   }
+  if (event === "done" && typeof payload.final_text === "string") {
+    terminal.final_text = payload.final_text;
+  }
   return terminal;
 }
 

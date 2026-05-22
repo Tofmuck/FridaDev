@@ -30,6 +30,46 @@ test('createStreamControlParser keeps visible prose clean and returns done termi
   assert.equal(visibleText.includes(STREAM_CONTROL_PREFIX), false);
 });
 
+test('createStreamControlParser preserves terminal final_text without exposing reasoning fields', () => {
+  let visibleText = '';
+  const parser = createStreamControlParser({
+    onContent(chunk) {
+      visibleText += chunk;
+    },
+  });
+
+  parser.push('## Brouillon');
+  parser.push(`${STREAM_CONTROL_PREFIX}{"kind":"frida-stream-control","event":"done",`);
+  parser.push('"final_text":"Brouillon final","reasoning":"hidden","reasoning_details":[{"text":"secret"}]}\n');
+
+  const terminal = parser.finish();
+  assert.equal(visibleText, '## Brouillon');
+  assert.deepEqual(terminal, {
+    event: 'done',
+    final_text: 'Brouillon final',
+  });
+  assert.equal(Object.hasOwn(terminal, 'reasoning'), false);
+  assert.equal(Object.hasOwn(terminal, 'reasoning_details'), false);
+});
+
+test('createStreamControlParser allows streamed draft text to be replaced by final terminal text', () => {
+  let finalText = '';
+  const parser = createStreamControlParser({
+    onContent(chunk) {
+      finalText += chunk;
+    },
+  });
+
+  parser.push('**Bo');
+  parser.push('ld**');
+  parser.push(`${STREAM_CONTROL_PREFIX}{"kind":"frida-stream-control","event":"done","final_text":"Bold"}\n`);
+
+  const terminal = parser.finish();
+  const renderedText = typeof terminal.final_text === 'string' ? terminal.final_text : finalText;
+  assert.equal(finalText, '**Bold**');
+  assert.equal(renderedText, 'Bold');
+});
+
 test('createStreamControlParser keeps error terminal out of visible prose and preserves the error payload', () => {
   let visibleText = '';
   const parser = createStreamControlParser({

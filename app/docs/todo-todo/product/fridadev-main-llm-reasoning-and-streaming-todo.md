@@ -1,6 +1,6 @@
 # FridaDev - raisonnement du LLM principal et streaming visuel du chat - TODO
 
-Statut: actif
+Statut: livre en runtime applicatif; archive documentaire a faire dans un lot separe si souhaite
 Date de creation: 2026-05-22
 Classement: `app/docs/todo-todo/product/`
 Nature: TODO source-of-truth A-Z, docs-only au moment de creation
@@ -102,7 +102,7 @@ Objectif: rendre modulable le niveau de raisonnement du LLM principal GPT-5.1 vi
 
 ### Livraison Objet 1 - 2026-05-22
 
-Statut: livre en runtime applicatif; l'objet 2 streaming visuel reste ouvert.
+Statut: livre en runtime applicatif.
 
 - [x] Niveaux GPT-5.1 revalides et bornes a `none`, `low`, `medium`, `high`.
 - [x] Reglage global `main_model.reasoning_effort` ajoute aux runtime settings / DB avec defaut `high`.
@@ -220,59 +220,61 @@ Les cases detaillees ci-dessous conservent le plan A-Z initial. Pour l'objet 1, 
 
 Objectif: obtenir un affichage progressif reel du message assistant cote UI quand le backend fournit des chunks visibles.
 
+Statut 2026-05-22: livre en runtime applicatif. Le point de buffering etait le buffering plain text de `chat_llm_flow` / `assistant_output_contract`, pas le `ReadableStream` frontend. Le backend diffuse maintenant un brouillon visible normalise au fil de l'eau et le terminal `done` peut porter `final_text` quand le texte canonique final doit remplacer ce brouillon. `final_text` est du texte assistant final visible, jamais du raisonnement interne.
+
 ### Lot 0 - Audit court du flux actuel
 
-- [ ] Cartographier le chemin complet: OpenRouter stream -> `chat_llm_flow.event_stream()` -> `/api/chat` -> `fetch` -> `ReadableStream` -> parser frontend -> state thread -> rendu message.
-- [ ] Distinguer streaming technique et streaming visible.
-- [ ] Verifier quels modes sont bufferises par `assistant_output_contract.should_buffer_plain_text_stream()`.
-- [ ] Identifier pourquoi l'utilisateur voit encore un bloc dans certains cas:
+- [x] Cartographier le chemin complet: OpenRouter stream -> `chat_llm_flow.event_stream()` -> `/api/chat` -> `fetch` -> `ReadableStream` -> parser frontend -> state thread -> rendu message.
+- [x] Distinguer streaming technique et streaming visible.
+- [x] Verifier quels modes sont bufferises par `assistant_output_contract.should_buffer_plain_text_stream()`.
+- [x] Identifier pourquoi l'utilisateur voit encore un bloc dans certains cas:
   - chunks provider eux-memes tardifs;
   - buffering backend pour plain text;
   - parser frontend;
   - store/thread hydration;
   - rendu DOM;
   - rechargement final qui remplace le message live.
-- [ ] Ne pas supposer un bug frontend avant preuve.
-- [ ] Relire l'archive `app/docs/todo-done/product/frida-response-streaming-todo.md` avant tout patch.
+- [x] Ne pas supposer un bug frontend avant preuve.
+- [x] Relire l'archive `app/docs/todo-done/product/frida-response-streaming-todo.md` avant tout patch.
 
 ### Lot 1 - Contrat UX
 
-- [ ] Le message assistant doit etre visible des les premiers tokens/chunks de contenu destines a l'utilisateur.
-- [ ] Afficher un etat `reponse en cours` ou equivalent pendant la generation.
-- [ ] Ne pas dupliquer le message final.
-- [ ] Le contenu final persiste doit rester identique au texte affiche.
-- [ ] En cas d'erreur ou d'interruption, conserver un statut clair et ne pas presenter un fragment comme reponse complete.
-- [ ] Le comportement mobile et desktop doit rester propre.
-- [ ] Les chunks de raisonnement ne doivent jamais etre rendus, meme si un futur payload reasoning les fait apparaitre cote provider.
+- [x] Le message assistant doit etre visible des les premiers tokens/chunks de contenu destines a l'utilisateur.
+- [x] Afficher un etat `reponse en cours` ou equivalent pendant la generation.
+- [x] Ne pas dupliquer le message final.
+- [x] Le contenu final persiste doit rester identique au texte affiche.
+- [x] En cas d'erreur ou d'interruption, conserver un statut clair et ne pas presenter un fragment comme reponse complete.
+- [x] Le comportement mobile et desktop doit rester propre.
+- [x] Les chunks de raisonnement ne doivent jamais etre rendus, meme si un futur payload reasoning les fait apparaitre cote provider.
 
 ### Lot 2 - Implementation frontend
 
-- [ ] Adapter le store / reducer / composant message seulement apres l'audit.
-- [ ] Concatener les chunks de contenu utilisateur-visible proprement.
-- [ ] Eviter les reflows lourds: throttling leger si necessaire.
-- [ ] Preserver byline, bouton de copie, export, thread sidebar, scroll et etats d'interruption.
-- [ ] Ne pas remplacer le message live par une rehydratation qui annule l'effet progressif sauf necessite.
-- [ ] Tester les cas long message, court message, erreur, interruption reseau.
+- [x] Adapter le store / reducer / composant message seulement apres l'audit.
+- [x] Concatener les chunks de contenu utilisateur-visible proprement.
+- [x] Eviter les reflows lourds: pas de nouveau throttling necessaire; le scroll ne colle au bas que si l'utilisateur est deja proche du bas.
+- [x] Preserver byline, bouton de copie, export, thread sidebar, scroll et etats d'interruption.
+- [x] Ne pas remplacer le message live par une rehydratation qui annule l'effet progressif sauf necessite.
+- [x] Tester les cas long message, court message, erreur, interruption reseau.
 
 ### Lot 3 - Backend si necessaire
 
-- [ ] Ne toucher au backend que si le streaming n'est pas deja exploitable par le frontend.
-- [ ] Conserver les appels non-stream.
-- [ ] Conserver `stream_options.include_usage` si utile.
-- [ ] Conserver le protocole terminal existant ou documenter tout changement.
-- [ ] Si le buffering plain text est la cause du bloc final, proposer explicitement une evolution de `assistant_output_contract` avant patch.
-- [ ] Verifier que la normalisation de sortie assistant reste compatible avec le streaming visible.
+- [x] Ne toucher au backend que si le streaming n'est pas deja exploitable par le frontend.
+- [x] Conserver les appels non-stream.
+- [x] Conserver `stream_options.include_usage` si utile.
+- [x] Conserver le protocole terminal existant ou documenter tout changement.
+- [x] Si le buffering plain text est la cause du bloc final, proposer explicitement une evolution de `assistant_output_contract` avant patch.
+- [x] Verifier que la normalisation de sortie assistant reste compatible avec le streaming visible.
 
 ### Lot 4 - Tests et validation
 
-- [ ] Test unitaire frontend du state streaming si possible.
-- [ ] Test integration frontend si l'infrastructure existante le permet.
-- [ ] Test serveur streaming si le backend est modifie.
-- [ ] Test manuel navigateur: long message visible progressivement.
-- [ ] Test manuel navigateur: message court propre.
-- [ ] Test erreur/interruption.
-- [ ] Verifier l'absence de raisonnement rendu, stocke ou exporte.
-- [ ] Rebuild applicatif seulement si runtime/UI modifie.
+- [x] Test unitaire frontend du state streaming si possible.
+- [x] Test integration frontend si l'infrastructure existante le permet.
+- [x] Test serveur streaming si le backend est modifie.
+- [x] Test navigateur/harness: long message visible progressivement.
+- [x] Test navigateur/harness: message court propre.
+- [x] Test erreur/interruption.
+- [x] Verifier l'absence de raisonnement rendu, stocke ou exporte.
+- [x] Rebuild applicatif seulement si runtime/UI modifie.
 
 ## 7. Decisions utilisateur a prendre avant implementation
 
@@ -282,8 +284,8 @@ Objectif: obtenir un affichage progressif reel du message assistant cote UI quan
 - [x] Emplacement precis du controle dans la fenetre de chat: pres de la zone de saisie, comme raccourci global compact.
 - [x] Strategie si `temperature` / `top_p` deviennent incompatibles avec certains niveaux de reasoning: smoke live 2026-05-22 OK, conserver les champs; reouvrir seulement sur erreur provider prouvee.
 - [x] Comportement si le modele principal n'est plus GPT-5.1 ou ne supporte pas reasoning: ne pas envoyer le champ, exposer un signal content-free, ne pas planter.
-- [ ] Niveau de tests visuels attendu pour le streaming.
-- [ ] Comportement streaming en cas d'interruption.
+- [x] Niveau de tests visuels attendu pour le streaming: tests unitaires parser/state, tests serveur, validation Playwright/harness et verification live app.
+- [x] Comportement streaming en cas d'interruption: terminal `error` ou erreur reseau conserve le statut interrompu et ne canonise pas le fragment visible.
 
 ## 8. Hors-scope global
 

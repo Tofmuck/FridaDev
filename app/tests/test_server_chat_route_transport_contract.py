@@ -152,8 +152,8 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
         self.assertIsNone(response.headers.get('X-Conversation-Updated-At'))
-        self.assertNotIn('\n- ', text)
-        self.assertNotIn('\n1) ', text)
+        self.assertIn('\n- Lisible.', text)
+        self.assertIn('\n1) Portable.', text)
         self.assertIn('Lisible.', text)
         self.assertIn('Portable.', text)
         self.assertEqual(
@@ -330,7 +330,7 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         text, terminal = self._split_stream_body(response)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
-        self.assertEqual(text, '')
+        self.assertEqual(text, 'Bon')
         self.assertEqual(
             terminal,
             {
@@ -410,7 +410,7 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         text, terminal = self._split_stream_body(response)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
-        self.assertEqual(text, '')
+        self.assertEqual(text, 'Bon')
         self.assertEqual(
             terminal,
             {
@@ -485,7 +485,7 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
 
         text, terminal = self._split_stream_body(response)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(text, '')
+        self.assertEqual(text, 'Bonjour')
         self.assertEqual(
             terminal,
             {
