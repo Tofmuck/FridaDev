@@ -41,9 +41,9 @@ References a relire avant toute phase:
 - [x] Phase 6 — Reranking explicable
 - [x] Phase 7 — Comportement d'echec
 - [x] Phase 8 — Benchmark final
-- [ ] Phase 9 — Deploiement
+- [ ] Phase 9 — Validation et deploiement Exa discovery
   - [x] Premier branchement provider de decouverte `local|openrouter_exa`.
-  - [ ] Validation live du provider `openrouter_exa` sur corpus borne.
+  - [x] Validation live bornee du provider `openrouter_exa`.
   - [ ] Decision operateur sur variable runtime OVH si le defaut doit etre force cote plateforme.
 
 ## Regles de pilotage
@@ -842,16 +842,37 @@ Objectif: valider puis deployer proprement la decision produit active: web manue
 
 Livrables:
 
-- [ ] Validation: web desactive = aucun appel web.
-- [ ] Validation: URL explicite = lecture locale directe, Exa non appele.
-- [ ] Validation: recherche ouverte = Exa discovery puis Crawl4AI local.
-- [ ] Mesure: nombre d'appels Exa par tour via `query_count`, `secondary_query_count` et `provider_caller=web_discovery`.
-- [ ] Mesure: latence et cout sur corpus borne.
+- [x] Validation: web desactive = aucun appel web.
+- [x] Validation: URL explicite = lecture locale directe, Exa non appele.
+- [x] Validation: recherche ouverte = Exa discovery puis Crawl4AI local.
+- [x] Mesure: nombre d'appels Exa par tour via `query_count`, `secondary_query_count` et `provider_caller=web_discovery`.
+- [x] Mesure: latence et cout sur corpus borne.
 - [ ] Verification corpus: Adobe Photoshop / Illustrator, CNI, actualite institutionnelle Europe, OpenRouter docs, cas academique.
 - [ ] Documentation des limites restantes: cout Exa, latence proche du plafond, Crawl4AI parfois faible sur PDF ou pages institutionnelles.
 - [ ] Decision operateur sur la variable runtime OVH si le defaut doit etre force cote plateforme.
 - [ ] Rapport final de validation Phase 9.
 - [ ] Rollback connu: revenir a `WEB_SEARCH_DISCOVERY_PROVIDER=local`.
+
+### Phase 9 - validation live bornee 2026-05-22
+
+Statut: preuve live minimale livree, Phase 9 globale encore ouverte.
+
+- [x] Note versionnee: `app/docs/states/audits/fridadev-web-search-phase-9-live-validation-2026-05-22.md`.
+- [x] Artefacts temporaires: `/tmp/fridadev-web-search-phase9-live-validation/phase9-live.json` et `/tmp/fridadev-web-search-phase9-live-validation/phase9-live.md`.
+- [x] Web desactive: `status=skipped`, `query_count=0`, aucun appel `web_discovery`.
+- [x] URL explicite OpenRouter docs: `collection_path=explicit_url_direct`, `read_state=page_read`, provider effectif `local`, Exa non appele.
+- [x] Recherche ouverte Adobe Photoshop: provider effectif `openrouter_exa`, 3 appels `provider_caller=web_discovery`, domaines Adobe attendus en tete.
+- [x] Recherche ouverte CNI: provider effectif `openrouter_exa`, 3 appels `provider_caller=web_discovery`, Service Public et ANTS en tete.
+- [x] Recherche ouverte actualite institutionnelle IA Europe: provider effectif `openrouter_exa`, 3 appels `provider_caller=web_discovery`, domaines institutionnels europeens en tete.
+- [x] Cout observe sur les appels discovery quand renvoye par OpenRouter: environ `0.0323275` USD pour Adobe Photoshop, `0.030591` USD pour CNI, `0.04451625` USD pour actualite IA Europe.
+- [x] Latence observee: environ 1,6 s pour URL explicite, 16,4 a 21,9 s pour recherches ouvertes du smoke.
+- [x] Grep securite des artefacts `/tmp` vide pour cles, tokens, headers sensibles, fichier environnement, data URL et base64.
+
+Restent ouverts:
+
+- [ ] Adobe Illustrator et cas academique non relances dans ce micro-smoke.
+- [ ] Limites Crawl4AI PDF/pages institutionnelles: une erreur Crawl4AI 500 est apparue sur une page Parlement europeen pendant le run.
+- [ ] Calibration confiance: dans ce run, le cas actualite institutionnelle garde `web_confidence_level=high` malgre `crawl_empty_or_error_present`; ne pas traiter cette calibration comme cloturee.
 
 Fichiers ou zones concernes:
 
@@ -870,7 +891,7 @@ Decisions utilisateur requises avant patch:
 Hors-scope:
 
 - Redemarrer Caddy, Authelia, Homepage ou DB sans necessite explicite.
-- Afficher secrets, `.env`, tokens, DSN complets ou cookies.
+- Afficher secrets, fichiers environnement, tokens, DSN complets ou temoins de session.
 - Lancer un nouveau chantier produit dans le meme commit.
 - Modifier SearXNG global ou Crawl4AI global.
 - Activer Parallel dans le runtime.
@@ -885,7 +906,7 @@ Tests/preuves attendus:
 - [ ] `docker ps --filter name=platform-fridadev --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`
 - [ ] `curl --max-time 12 -sSI https://fridadev.frida-system.fr/admin | sed -n '1,12p'`
 - [ ] Smoke web manuel borne si recherche runtime modifiee.
-- [ ] Grep securite sur artefacts de validation: pas de cle, token, cookie, `.env`, header d'autorisation ou dump de contenu.
+- [ ] Grep securite sur artefacts de validation: pas de cle, token, temoin de session, fichier environnement, header d'autorisation ou dump de contenu.
 
 Criteres de fin:
 

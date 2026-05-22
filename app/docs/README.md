@@ -21,6 +21,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Benchmark final Lot 8 web local vs OpenRouter Exa/Parallel 2026-05-22: `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`
 - Baseline consolidee Phase 0 recherche web locale 2026-05-22: `states/audits/fridadev-local-web-search-phase-0-baseline-2026-05-22.md`
 - Benchmark final Phase 8 recherche web locale 2026-05-22: `states/audits/fridadev-web-search-phase-8-final-benchmark-2026-05-22.md`
+- Validation live Phase 9 Exa discovery 2026-05-22: `states/audits/fridadev-web-search-phase-9-live-validation-2026-05-22.md`
 - Decision produit OpenRouter/Exa comme provider de decouverte web ouverte 2026-05-22: `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 - Archive du renforcement web local V0 SearXNG/Crawl4AI: `todo-done/product/fridadev-local-web-search-hardening-todo.md`
 - TODO actif A-Z web discovery local-first + Exa: `todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
@@ -114,6 +115,7 @@ Lire d'abord:
 - `states/specs/fridadev-web-search-reranking-contract.md` pour le contrat Phase 6: reranking explicable par profil, reason codes, diversite et non-censure.
 - `states/specs/fridadev-web-search-evidence-failure-contract.md` pour le contrat Phase 7: preuve web insuffisante, garde-fou prompt naturel, observabilite content-free et absence de fallback externe.
 - `states/audits/fridadev-web-search-phase-8-final-benchmark-2026-05-22.md` pour le benchmark final local vs local_profiled: gains, regressions, confiance trop optimiste et blocage avant cloture Phase 9.
+- `states/audits/fridadev-web-search-phase-9-live-validation-2026-05-22.md` pour la validation live bornee: web off sans appel, URL explicite locale directe, recherche ouverte Exa discovery puis Crawl4AI, cout/latence et limites restantes.
 - `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md` pour comparer SearXNG, Crawl4AI, configuration OVH, pipeline FridaDev et benchmark local/Exa/Parallel avant tout lot runtime.
 - `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md` pour l'ancien benchmark comparatif Lot 8 et sa decision initiale maintenant supersedee par la policy OpenRouter/Exa.
 - `todo-done/notes/web-reading-truth-todo.md` pour le contrat archive de lecture URL explicite, `read_state`, `fit` puis `raw` et observabilite content-free.
