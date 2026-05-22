@@ -4,6 +4,23 @@ Statut: clos le 2026-05-22, reconstruction applicative web discovery local-first
 
 Ce document est l'archive source-of-truth operatoire du chantier web discovery local-first + Exa. Il conserve l'histoire du diagnostic local/SearXNG, mais la doctrine active n'est plus une reconstruction locale pure: SearXNG ne suffit pas seul a la recherche ouverte, et OpenRouter/Exa est devenu le provider de decouverte URL configure.
 
+## Lecture de l'archive
+
+Ce document est une archive de chantier, pas une TODO active.
+
+Certaines sections historiques conservent des cases `[ ]` issues du plan initial. Elles ne signifient pas que le chantier est encore ouvert. Le statut de cloture est donne par:
+
+- les blocs `Phase X - livraison/consolidation`;
+- la section `Avancement global`;
+- la validation finale Phase 9;
+- la note `app/docs/states/audits/fridadev-web-search-phase-9-final-validation-2026-05-22.md`.
+
+Les cases restees ouvertes relevent de trois categories:
+
+- options explicitement non lancees, comme la reconfiguration globale SearXNG (categorie: option future);
+- decisions futures hors cloture, comme rendre une source map editable;
+- traces du plan initial superseded par les blocs de consolidation/livraison.
+
 References a relire avant toute phase:
 
 - Audit stack locale web: `app/docs/states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
@@ -105,6 +122,8 @@ Frida ne doit pas transformer un ranking opaque en verite. La contestabilite doi
 Proprietaire: Sauron + Celebrimbor.
 
 Objectif: figer l'etat actuel avant toute nouvelle reconstruction, pour ne pas corriger une image fantasmee de la stack. La Phase 0 doit produire un diagnostic suffisant pour agir, pas une cartographie exhaustive du web.
+
+Note d'archive: les cases ouvertes de cette section appartiennent au plan Phase 0 initial. Elles sont superseded par le bloc `Phase 0 - consolidation 2026-05-22`, la note `app/docs/states/audits/fridadev-local-web-search-phase-0-baseline-2026-05-22.md` et l'avancement global coche.
 
 Livrables:
 
@@ -411,6 +430,8 @@ Proprietaire: Celebrimbor pour le panier applicatif; Sauron uniquement pour une 
 Objectif: gouverner les moteurs demandes a SearXNG par regime depuis FridaDev, sans modifier la configuration globale SearXNG. La reconfiguration plateforme `use_default_settings` / `remove` / `keep_only` reste un lot Sauron optionnel, non lance ici.
 
 Gate obligatoire: aucune modification plateforme ne peut etre lancee sans GO utilisateur explicite.
+
+Note d'archive: les cases ouvertes liees a `use_default_settings`, backup, `docker compose config --quiet`, restart SearXNG et rollback plateforme relevent d'une option future hors cloture. La Phase 4 livree ici est strictement applicative; elle n'a pas modifie SearXNG global.
 
 Livrables:
 
@@ -840,6 +861,8 @@ Risques/effets de bord:
 Proprietaire: Sauron + Celebrimbor.
 
 Objectif: valider puis deployer proprement la decision produit active: web manuel seulement, URL explicite locale directe, recherche ouverte via OpenRouter/Exa discovery quand configure, lecture Crawl4AI locale et signaux FridaDev inchanges.
+
+Note d'archive: cette phase est close par la validation finale ci-dessous. Les limites connues restent documentees, mais ne sont pas des cases actives de ce chantier.
 
 Livrables:
 
