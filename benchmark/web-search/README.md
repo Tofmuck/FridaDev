@@ -191,6 +191,31 @@ Artefacts live:
 
 Decision Lot 8: garder le local par defaut, ne pas activer OpenRouter runtime, et considerer Exa seulement comme fallback futur explicite et auditable pour les recherches ouvertes ou le local rate les domaines d'autorite. Parallel reste une option compacte mais plus inegale.
 
+## Diagnostic same-query
+
+Pour isoler l'effet requete/index/ranking, le diagnostic same-query envoie une requete fixe aux trois systemes de recherche:
+
+- SearXNG local, avec la chaine dans le parametre strict `q`;
+- OpenRouter Exa, via une consigne demandant d'utiliser exactement cette chaine;
+- OpenRouter Parallel, avec la meme consigne.
+
+Limite importante: OpenRouter ne renvoie pas la requete effectivement deleguee a Exa/Parallel. La parite est donc stricte pour SearXNG, mais seulement contrainte par prompt pour OpenRouter.
+
+Commande type dans l'environnement applicatif:
+
+```bash
+python3 -m benchmark.suites.web_search.same_query_diagnostic \
+  --output-dir /tmp/fridadev-web-search-same-query-diagnostic \
+  --searxng-url "$SEARXNG_URL"
+```
+
+Artefacts:
+
+- `/tmp/fridadev-web-search-same-query-diagnostic/searxng.md`;
+- `/tmp/fridadev-web-search-same-query-diagnostic/openrouter-exa.md`;
+- `/tmp/fridadev-web-search-same-query-diagnostic/openrouter-parallel.md`;
+- `/tmp/fridadev-web-search-same-query-diagnostic/comparison.md`.
+
 ## Limites connues
 
 - `openrouter:web_search` laisse le modèle décider s'il cherche; le rapport expose donc le nombre réel de requêtes web.

@@ -23,6 +23,7 @@ from benchmark.core.campaign import CampaignConfig
 from benchmark.run_benchmark import DEFAULT_WEB_SEARCH_MODELS
 from benchmark.suites.web_search import adapter as web_adapter
 from benchmark.suites.web_search import campaign as web_campaign
+from benchmark.suites.web_search import same_query_diagnostic
 
 
 class WebSearchBenchmarkSuiteTests(unittest.TestCase):
@@ -175,6 +176,43 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, preview)
         self.assertIn("OPENROUTER_KEY_REDACTED", preview)
+
+    def test_same_query_diagnostic_cases_are_search_only_and_fixed(self) -> None:
+        case_ids = {case["id"] for case in same_query_diagnostic.DIAGNOSTIC_CASES}
+
+        self.assertEqual(
+            case_ids,
+            {
+                "recent_ai_policy_news",
+                "official_openrouter_server_tools",
+                "conceptual_philosophy_search",
+                "french_admin_service_public",
+            },
+        )
+        self.assertNotIn("explicit_url_reading_contract", case_ids)
+        for case in same_query_diagnostic.DIAGNOSTIC_CASES:
+            self.assertTrue(case["query"])
+            self.assertTrue(case["expected_domains"])
+
+    def test_same_query_openrouter_payload_locks_query_without_domain_allowlist(self) -> None:
+        case = next(
+            case
+            for case in same_query_diagnostic.DIAGNOSTIC_CASES
+            if case["id"] == "french_admin_service_public"
+        )
+
+        payload = same_query_diagnostic.build_same_query_openrouter_payload(
+            case=case,
+            model="openai/gpt-5.1",
+            engine="exa",
+        )
+        dumped = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertIn(case["query"], dumped)
+        self.assertIn("without rewriting", dumped)
+        self.assertEqual(payload["tools"][0]["type"], "openrouter:web_search")
+        self.assertEqual(payload["tools"][0]["parameters"]["engine"], "exa")
+        self.assertNotIn("allowed_domains", payload["tools"][0]["parameters"])
 
     def test_unknown_arm_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

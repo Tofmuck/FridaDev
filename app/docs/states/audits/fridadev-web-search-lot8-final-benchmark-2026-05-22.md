@@ -131,6 +131,27 @@ Action future: Lot post-7 de calibration confiance, toujours non actionnable.
 
 Action future: renforcer les signaux academiques sans transformer OpenEdition/Cairn/SEP en police invisible.
 
+## Complement same-query du 2026-05-22
+
+Un diagnostic benchmark-only a ete ajoute apres le Lot 8 pour isoler la cause entre requete FridaDev, parametres locaux et index/ranking.
+
+Artefacts:
+
+- `/tmp/fridadev-web-search-same-query-diagnostic/searxng.md`;
+- `/tmp/fridadev-web-search-same-query-diagnostic/openrouter-exa.md`;
+- `/tmp/fridadev-web-search-same-query-diagnostic/openrouter-parallel.md`;
+- `/tmp/fridadev-web-search-same-query-diagnostic/comparison.md`.
+
+Lecture:
+
+- SearXNG recoit exactement la chaine diagnostique via le parametre `q`;
+- OpenRouter Exa/Parallel recoivent une consigne verrouillee, mais l'API n'expose pas la requete effectivement deleguee au moteur;
+- sur `actualite IA`, `Derrida/trace` et `CNI`, SearXNG manque les domaines attendus ou remonte le bruit lexical avec la meme requete;
+- sur ces memes cas, au moins un moteur OpenRouter retrouve des domaines attendus que SearXNG ne remonte pas dans le top 5;
+- sur `OpenRouter web_search`, SearXNG trouve le domaine officiel, mais Exa/Parallel trouvent mieux les pages de documentation.
+
+Conclusion diagnostique: le probleme n'est pas seulement la reformulation FridaDev ni le reranking `local_profiled`. Une part importante vient du ranking/index SearXNG sur ces requetes ouvertes, avec un residu local specifique sur la strategie `actualite` et la calibration de confiance. Cela ne justifie toujours aucun fallback automatique.
+
 ## Preuves
 
 Commandes de verification executees pendant le lot:
