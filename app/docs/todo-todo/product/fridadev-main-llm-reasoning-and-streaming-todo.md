@@ -45,6 +45,14 @@ Code FridaDev relu:
 - `app/tests/unit/frontend_chat/test_streaming_ui_state_module.js`
 - `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 
+Decision utilisateur post-creation:
+
+- le niveau de reasoning du LLM principal est un reglage global runtime settings / DB;
+- le controle pres de la fenetre de chat est un raccourci ergonomique vers ce reglage global;
+- changer ce controle modifie le defaut global des prochains tours;
+- la valeur par defaut cible doit pouvoir etre `high`, sous reserve de confirmation au lot d'implementation;
+- un override par conversation ou par tour pourra etre etudie plus tard, mais il est hors scope de ce chantier.
+
 Constats utiles:
 
 - `llm_client.build_payload()` envoie aujourd'hui `model`, `messages`, `temperature`, `top_p`, `max_tokens`, `stop`, puis `metadata` / `trace`; en streaming il ajoute `stream=true` et `stream_options.include_usage=true`.
@@ -62,6 +70,8 @@ Constats utiles:
 - Le streaming visuel affiche uniquement le texte final destine a l'utilisateur, jamais un contenu de raisonnement cache.
 - Les changements doivent rester bornes, observables, reversibles et testes.
 - Les autres callers OpenRouter ne doivent pas etre contamines par le reglage du LLM principal: web discovery, web reformulation, arbiter, identity, summary, stimmung et validation gardent leurs contrats propres.
+- Le niveau reasoning du LLM principal est global par defaut: runtime settings / DB est la source de verite.
+- Le controle chat est un raccourci ergonomique vers ce reglage global, pas un override local.
 
 ## 4. Contrainte dure - raisonnement non visible
 
@@ -104,7 +114,7 @@ Objectif: rendre modulable le niveau de raisonnement du LLM principal GPT-5.1 vi
   - `low` -> `faible`;
   - `medium` -> `moyen`;
   - `high` -> `eleve`.
-- [ ] Definir la valeur par defaut proposee pour FridaDev.
+- [ ] Confirmer la valeur par defaut cible pour FridaDev, qui doit pouvoir etre `high` si les tests cout/latence/qualite le valident.
 - [ ] Definir le comportement si le modele principal courant ne supporte pas reasoning: ne pas envoyer le champ, exposer un signal content-free, ne pas planter.
 - [ ] Documenter que les niveaux generiques OpenRouter ne suffisent pas: le contrat actif est l'intersection modele-specifique.
 
@@ -132,16 +142,14 @@ Objectif: rendre modulable le niveau de raisonnement du LLM principal GPT-5.1 vi
 ### Lot 3 - Controle pres de la fenetre de chat
 
 - [ ] Ajouter un controle accessible pres de la zone de saisie du chat.
-- [ ] Proposer avant implementation le meilleur choix de portee:
-  - global runtime;
-  - conversation courante;
-  - session navigateur;
-  - prochain tour seulement.
-- [ ] Recommandation initiale a evaluer: `prochain tour` ou `conversation courante`, pour eviter qu'un geste rapide modifie silencieusement le runtime global.
+- [ ] Acter la portee: le controle modifie le reglage global `main_model.reasoning_effort` en runtime settings / DB.
+- [ ] Traiter ce controle comme un raccourci ergonomique vers les settings globaux, pas comme un override de tour, session ou conversation.
+- [ ] Quand l'utilisateur change ce controle, appliquer la nouvelle valeur comme defaut global des prochains tours.
 - [ ] Definir le libelle UI et les tooltips.
 - [ ] Garder le controle compact et clair, par exemple `Raisonnement: moyen`.
 - [ ] Afficher uniquement le niveau choisi, jamais le raisonnement interne.
-- [ ] Decider la persistance UI: localStorage, meta conversation, parametre de requete ou runtime settings.
+- [ ] Persister par runtime settings / DB, avec retour UI clair sur la valeur active.
+- [ ] Garder les overrides conversation ou prochain tour hors scope; ils pourront devenir un chantier futur separe si le besoin est confirme.
 - [ ] Tester clavier, mobile, desktop et interaction avec web/manual/documents actifs.
 
 ### Lot 4 - Payload OpenRouter du LLM principal
@@ -252,8 +260,7 @@ Objectif: obtenir un affichage progressif reel du message assistant cote UI quan
 ## 7. Decisions utilisateur a prendre avant implementation
 
 - [ ] Niveaux exacts de reasoning valides apres relecture finale des docs officielles.
-- [ ] Valeur par defaut du reasoning FridaDev.
-- [ ] Portee du controle chat: global, conversation, session ou prochain tour.
+- [ ] Valeur par defaut du reasoning FridaDev, avec `high` comme cible possible sous reserve de confirmation au lot d'implementation.
 - [ ] Libelles UI francais definitifs.
 - [ ] Emplacement precis du controle dans la fenetre de chat.
 - [ ] Strategie si `temperature` / `top_p` deviennent incompatibles avec certains niveaux de reasoning.
