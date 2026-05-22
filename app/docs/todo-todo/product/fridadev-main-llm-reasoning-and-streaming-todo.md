@@ -1,22 +1,24 @@
-# FridaDev - raisonnement du LLM principal et streaming visuel du chat - TODO
+# FridaDev - raisonnement du LLM principal, streaming visuel et dictee longue - TODO
 
-Statut: livre en runtime applicatif; archive documentaire a faire dans un lot separe si souhaite
+Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue ajoute en diagnostic/TODO actif
 Date de creation: 2026-05-22
 Classement: `app/docs/todo-todo/product/`
 Nature: TODO source-of-truth A-Z, docs-only au moment de creation
-Portee: LLM principal OpenRouter `openai/gpt-5.1`, runtime settings, admin, controle chat, payload, observabilite, UI de streaming visuel
+Portee: LLM principal OpenRouter `openai/gpt-5.1`, runtime settings, admin, controle chat, payload, observabilite, UI de streaming visuel, dictee Whisper locale longue
 Hors-scope du commit de creation: runtime, DB, migration, frontend, backend, tests applicatifs, changement de modele, rebuild
 
 ## 1. Intention
 
-Ce TODO ouvre deux objets distincts mais proches dans l'experience de conversation:
+Ce TODO ouvre trois objets distincts mais proches dans l'experience de conversation:
 
 1. ajouter un reglage avance borne du niveau de reasoning du LLM principal;
-2. corriger le streaming visuel du texte assistant dans la fenetre de chat.
+2. corriger le streaming visuel du texte assistant dans la fenetre de chat;
+3. diagnostiquer et corriger la dictee Whisper locale longue, cible minimum 2 minutes.
 
 Le premier objet controle le niveau de raisonnement demande au modele principal. Le second objet rend la generation visible progressivement dans l'interface, quand le backend streame deja des chunks exploitables.
+Le troisieme objet vise la capture vocale locale: la dictee ne doit pas s'interrompre prematurement au bout de 20 a 40 secondes, et doit rester fiable sur une cible produit d'au moins 2 minutes.
 
-Ces deux chantiers ne doivent pas etre melanges dans un patch unique de runtime. Ils partagent seulement le fait qu'ils touchent l'appel principal `/api/chat` et l'experience de reponse.
+Ces trois chantiers ne doivent pas etre melanges dans un patch unique de runtime. Ils partagent seulement le fait qu'ils touchent l'experience de conversation. Les objets 1 et 2 sont livres; l'objet 3 reste a implementer dans un lot separe.
 
 ## 2. Sources consultees avant creation
 
@@ -40,10 +42,19 @@ Code FridaDev relu:
 - `app/web/app.js`
 - `app/web/chat_streaming.js`
 - `app/web/admin_section_main_model.js`
+- `app/web/whisper/whisper_dictation.js`
+- `app/server.py`
+- `app/core/whisper_transcription_service.py`
+- `app/config.py`
 - `app/tests/unit/chat/test_chat_llm_flow.py`
 - `app/tests/test_llm_client.py`
 - `app/tests/unit/frontend_chat/test_streaming_ui_state_module.js`
+- `app/tests/unit/frontend_chat/test_whisper_dictation_module.js`
+- `app/tests/unit/chat/test_whisper_transcription_service.py`
+- `app/tests/integration/chat/test_chat_transcription_route.py`
+- `app/tests/integration/frontend_chat/test_frontend_whisper_contract.py`
 - `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
+- `app/docs/todo-done/notes/whisper-transcription-indisponible-diagnostic-2026-05-05.md`
 
 Decision utilisateur post-creation:
 
@@ -62,12 +73,18 @@ Constats utiles:
 - OpenRouter documente des champs de sortie `reasoning` / `reasoning_details`; ce chantier interdit de les rendre visibles, de les persister en conversation visible ou de les injecter dans d'autres sous-systemes.
 - Le frontend envoie deja `stream: true` a `/api/chat`, lit `ReadableStream`, parse un terminal de controle, et concatene des chunks dans `app/web/app.js`.
 - L'archive `app/docs/todo-done/product/frida-response-streaming-todo.md` indique que certains modes plain text peuvent etre bufferises par la politique de sortie assistant; le diagnostic du nouvel objet streaming doit donc distinguer streaming technique et streaming reellement visible.
+- Diagnostic Objet 3, 2026-05-22: `app/web/whisper/whisper_dictation.js` impose `DEFAULT_MAX_RECORDING_MS = 60_000` et arrete automatiquement `MediaRecorder` via `recorder.stop()`. Ce plafond rend la cible 2 minutes impossible dans l'etat courant.
+- Diagnostic Objet 3, 2026-05-22: le frontend n'utilise pas de `timeslice` dans `recorder.start()`, donc il accumule un blob unique jusqu'a l'arret. Les longs enregistrements peuvent donc peser sur le navigateur, l'upload et le service aval.
+- Diagnostic Objet 3, 2026-05-22: aucune detection de silence, de `blur`, de changement de thread ou de busy state qui stopperait explicitement un enregistrement actif n'a ete trouvee dans le code relu.
+- Diagnostic Objet 3, 2026-05-22: `/api/chat/transcribe` ne porte pas de limite de duree explicite; `whisper_transcription_service` lit le fichier complet en memoire et poste vers `WHISPER_API_URL` avec `WHISPER_API_TIMEOUT_S=120`.
+- Diagnostic Objet 3, 2026-05-22: l'ancien diagnostic `whisper-transcription-indisponible-diagnostic-2026-05-05.md` a observe un `exit code -9` et un conteneur Whisper aval `oom_killed=true`; les longs blobs peuvent donc reveiller une limite ressources cote service local.
 
 ## 3. Doctrine commune
 
 - Le modele principal reste `openai/gpt-5.1` tant qu'une decision separee ne change pas le modele.
 - Le reglage reasoning controle un parametre de generation, pas une autorisation d'afficher le raisonnement interne.
 - Le streaming visuel affiche uniquement le texte final destine a l'utilisateur, jamais un contenu de raisonnement cache.
+- La dictee Whisper locale ne doit jamais logger d'audio brut ni de transcription sensible; les diagnostics doivent rester content-free: duree, taille, raison d'arret, statut et erreur bornee.
 - Les changements doivent rester bornes, observables, reversibles et testes.
 - Les autres callers OpenRouter ne doivent pas etre contamines par le reglage du LLM principal: web discovery, web reformulation, arbiter, identity, summary, stimmung et validation gardent leurs contrats propres.
 - Le niveau reasoning du LLM principal est global par defaut: runtime settings / DB est la source de verite.
@@ -276,7 +293,99 @@ Statut 2026-05-22: livre en runtime applicatif. Le point de buffering etait le b
 - [x] Verifier l'absence de raisonnement rendu, stocke ou exporte.
 - [x] Rebuild applicatif seulement si runtime/UI modifie.
 
-## 7. Decisions utilisateur a prendre avant implementation
+## 7. Objet 3 - Dictee Whisper longue
+
+Objectif: permettre une dictee Whisper locale fluide d'au moins 2 minutes, sans rupture prematuree, sans perte du texte deja dicte et sans log d'audio brut ou de transcription sensible.
+
+### Diagnostic lecture seule - 2026-05-22
+
+Symptome utilisateur: la dictee demarre, puis s'arrete seule apres environ 20, 30 ou 40 secondes. Ce comportement casse le flux de parole et bloque l'usage naturel.
+
+Constats confirmes par lecture:
+
+- [x] Le frontend possede un plafond dur: `DEFAULT_MAX_RECORDING_MS = 60_000` dans `app/web/whisper/whisper_dictation.js`.
+- [x] Ce plafond declenche un arret automatique par `recorder.stop()` via `setTimeout`.
+- [x] La cible produit 2 minutes est donc impossible sans changement frontend, meme si le backend et Whisper aval fonctionnent parfaitement.
+- [x] `MediaRecorder.start()` est appele sans `timeslice`; le code accumule un blob unique dans `pendingChunks` puis l'envoie en une seule fois a `/api/chat/transcribe`.
+- [x] Aucun arret automatique par silence n'a ete trouve dans le frontend.
+- [x] Aucun arret automatique par `blur`, changement de thread, submit chat ou busy state n'a ete trouve pour un enregistrement deja actif.
+- [x] Le bouton micro est desactive quand une requete chat est deja en cours, mais ce signal ne semble pas stopper une capture deja lancee.
+- [x] `/api/chat/transcribe` delegue a `whisper_transcription_service.transcribe_http_request()` sans limite explicite de duree.
+- [x] `whisper_transcription_service.prepare_upload()` lit le fichier complet en memoire.
+- [x] Le timeout applicatif Whisper est `WHISPER_API_TIMEOUT_S=120`; cela concerne surtout la transcription apres arret, pas l'arret de capture lui-meme.
+- [x] L'ancien diagnostic du 2026-05-05 a deja observe `platform-whisper-api` en echec `exit code -9` avec indice OOM; cela reste une hypothese serieuse pour les longs blobs ou les transcriptions longues.
+
+Hypotheses classees:
+
+1. Cause certaine pour la cible 2 minutes: plafond frontend `60_000 ms`.
+2. Cause probable des coupures ou echecs percus a 20-40 secondes: pression ressource du service Whisper local ou du blob unique, a revalider par smoke audio non sensible et logs content-free.
+3. Cause possible: absence de `timeslice` MediaRecorder, donc pas de flux par chunks et un gros blob unique a tenir en memoire puis uploader.
+4. Cause possible mais secondaire: timeout backend `120 s` trop court pour un audio de 2 minutes selon modele, CPU et charge; il devrait produire une erreur transcription, pas stopper la capture.
+5. Causes non etayees par lecture: detection de silence, arret sur blur, arret sur busy state apres demarrage, limite client explicite de taille blob.
+
+### Lot 0 - Reproduction et observabilite content-free
+
+- [ ] Ajouter une preuve reproductible avec audio non sensible ou silence synthetique: 20 s, 60 s, 120 s.
+- [ ] Mesurer sans contenu brut: duree capturee, taille blob, raison d'arret (`manual`, `auto_limit`, `recorder_error`, `transcription_error`), statut HTTP, temps de transcription.
+- [ ] Verifier que l'erreur affichee a l'utilisateur distingue arret automatique, erreur MediaRecorder, timeout backend et service Whisper indisponible.
+- [ ] Ne jamais logger audio brut, transcription complete sensible, token, cookie ou header d'autorisation.
+
+### Lot 1 - Frontend: plafond de duree et arret volontaire
+
+- [ ] Porter le plafond de capture a au moins 2 minutes, ou rendre la limite explicitement configuree par constante bornee.
+- [ ] Tester que la dictee ne s'arrete pas avant 120 secondes en fonctionnement normal.
+- [ ] Conserver l'arret volontaire immediat.
+- [ ] Conserver la preservation du brouillon si la transcription echoue.
+- [ ] Afficher un etat clair pendant l'enregistrement et pendant la transcription, sans pedagogie lourde dans l'UI.
+
+### Lot 2 - Frontend: chunks MediaRecorder
+
+- [ ] Evaluer l'ajout d'un `timeslice` a `MediaRecorder.start()` pour recevoir des `dataavailable` periodiques.
+- [ ] Conserver la construction finale du fichier audio si l'endpoint reste non-streaming.
+- [ ] Eviter qu'un long enregistrement repose sur un unique blob tardif si le navigateur ou le device est instable.
+- [ ] Tester interruption, erreur recorder, permissions micro et changement d'etat.
+
+### Lot 3 - Backend: limites et erreurs transcription
+
+- [ ] Verifier si `WHISPER_API_TIMEOUT_S=120` suffit pour 2 minutes d'audio sur OVH.
+- [ ] Si necessaire, proposer une valeur bornee plus sure sans toucher a la plateforme dans le meme lot applicatif.
+- [ ] Verifier les limites de taille upload applicatives et proxy sans afficher de config sensible.
+- [ ] Garder les erreurs mappees proprement: 400 fichier absent/vide, 502 indisponible, 504 timeout.
+- [ ] Ne pas lire ni persister plus de contenu audio que necessaire.
+
+### Lot 4 - Service Whisper local et discipline Sauron
+
+- [ ] Si les preuves pointent vers `platform-whisper-api`, ouvrir un micro-lot sous discipline Sauron pour verifier memoire, OOM, modele charge, threads et duree de transcription.
+- [ ] Ne pas modifier Docker, ressources, modele Whisper ou plateforme depuis un lot applicatif Celebrimbor sans GO utilisateur explicite.
+- [ ] Rejouer ensuite la preuve FridaDev `/api/chat/transcribe` avec audio synthetique non prive.
+
+### Lot 5 - Tests et validation live
+
+- [ ] Tests frontend: pas d'auto-stop avant 120 s, auto-stop borne si limite atteinte, arret volontaire, erreur recorder, brouillon preserve.
+- [ ] Tests endpoint/service: timeout, erreur upstream, fichier vide, fichier long synthetique si possible.
+- [ ] Test integration contrat frontend: bouton micro, endpoint, input_mode voice inchanges.
+- [ ] Validation navigateur: dictee courte toujours OK, dictee longue cible 2 minutes OK, arret volontaire OK.
+- [ ] Verifier que le texte deja dicte reste conserve meme si la transcription longue echoue.
+- [ ] Verifier qu'aucun audio brut ni transcription sensible ne sort dans logs, read-models, exports ou docs.
+
+### Hors-scope Objet 3
+
+- Ne pas changer le modele Whisper sans lot separe.
+- Ne pas modifier Docker, ressources conteneur ou reseau plateforme sans discipline Sauron et GO utilisateur.
+- Ne pas brancher une transcription streaming temps reel dans ce lot initial.
+- Ne pas toucher au reasoning, au streaming assistant, au web search, a Memory, Identity, Summary, Biblio/RAG ou documents actifs.
+
+### Critere de cloture Objet 3
+
+- [ ] Dictee courte toujours OK.
+- [ ] Dictee longue cible 2 minutes OK.
+- [ ] Arret volontaire OK.
+- [ ] Erreur transcription visible et non silencieuse.
+- [ ] Pas de perte du texte deja dicte.
+- [ ] Pas de log audio brut ni transcription sensible.
+- [ ] Validation live bornee documentee.
+
+## 8. Decisions utilisateur a prendre avant implementation
 
 - [x] Niveaux exacts de reasoning valides apres relecture finale des docs officielles: `none`, `low`, `medium`, `high`.
 - [x] Valeur par defaut du reasoning FridaDev: `high`.
@@ -286,8 +395,11 @@ Statut 2026-05-22: livre en runtime applicatif. Le point de buffering etait le b
 - [x] Comportement si le modele principal n'est plus GPT-5.1 ou ne supporte pas reasoning: ne pas envoyer le champ, exposer un signal content-free, ne pas planter.
 - [x] Niveau de tests visuels attendu pour le streaming: tests unitaires parser/state, tests serveur, validation Playwright/harness et verification live app.
 - [x] Comportement streaming en cas d'interruption: terminal `error` ou erreur reseau conserve le statut interrompu et ne canonise pas le fragment visible.
+- [x] Cible produit dictee longue: au moins 2 minutes.
+- [ ] Limite exacte de capture apres correctif initial: 2 minutes strictes, marge 150 s, ou limite configurable par settings.
+- [ ] Niveau de diagnostic live accepte pour le service Whisper aval si la cause reste cote plateforme.
 
-## 8. Hors-scope global
+## 9. Hors-scope global
 
 - Ne pas implementer dans le commit de creation de ce TODO.
 - Ne pas modifier runtime, DB, UI ou backend sans lot dedie.
@@ -298,9 +410,10 @@ Statut 2026-05-22: livre en runtime applicatif. Le point de buffering etait le b
 - Ne pas streamer, stocker, persister, exporter ou injecter de `reasoning_details`.
 - Ne pas ouvrir le chantier `reasoning conversationnel conserve`: c'est un chantier futur separe.
 - Ne pas injecter le raisonnement dans Memory, Identity, Summary, Biblio/RAG ou documents actifs.
+- Ne pas logger d'audio brut ni de transcription sensible pour l'objet 3.
 - Ne pas afficher secret, `.env`, token, DSN, cookie ou header sensible.
 
-## 9. Criteres de cloture
+## 10. Criteres de cloture
 
 Le chantier pourra etre clos seulement si:
 
@@ -313,7 +426,11 @@ Le chantier pourra etre clos seulement si:
 - les champs provider `reasoning` / `reasoning_details` sont ignores ou filtres;
 - le streaming visuel affiche vraiment les chunks utilisateur-visibles quand ils existent;
 - les erreurs/interruption restent propres;
+- la dictee Whisper locale atteint la cible 2 minutes sans rupture prematuree;
+- les erreurs de transcription longues sont visibles et non silencieuses;
+- le texte deja dicte n'est pas perdu en cas d'echec;
 - les tests runtime, frontend et docs sont passes;
 - aucune contamination Memory / Identity / Summary / Biblio/RAG / documents actifs / exports n'est observee;
+- aucun audio brut ni transcription sensible n'est loggue, exporte ou documente;
 - une validation live bornee est documentee;
 - le TODO est archive dans `app/docs/todo-done/product/`.
