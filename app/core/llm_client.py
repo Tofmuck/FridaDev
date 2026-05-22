@@ -275,7 +275,19 @@ def read_openrouter_response_payload(response: Any) -> dict[str, Any]:
     payload = response.json()
     if not isinstance(payload, Mapping):
         raise TypeError('provider response payload must be a mapping')
-    return dict(payload)
+    return strip_provider_reasoning_fields(payload)
+
+
+def strip_provider_reasoning_fields(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {
+            key: strip_provider_reasoning_fields(item)
+            for key, item in value.items()
+            if str(key) not in {'reasoning', 'reasoning_details'}
+        }
+    if isinstance(value, list):
+        return [strip_provider_reasoning_fields(item) for item in value]
+    return value
 
 
 def extract_openrouter_text(payload: Any) -> str:

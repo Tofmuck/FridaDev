@@ -620,6 +620,37 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         self.assertTrue(fields['main_llm_reasoning_hidden'])
         self.assertNotIn('SHOULD NOT LEAK', str(fields))
 
+    def test_read_openrouter_response_payload_strips_provider_reasoning_fields(self) -> None:
+        class FakeResponse:
+            def json(self):
+                return {
+                    'id': 'gen-with-reasoning',
+                    'reasoning': 'top-level-hidden',
+                    'choices': [
+                        {
+                            'message': {
+                                'role': 'assistant',
+                                'content': 'OK',
+                                'reasoning_details': [{'text': 'SHOULD NOT LEAK'}],
+                                'reasoning': 'message-hidden',
+                            },
+                        },
+                    ],
+                    'usage': {
+                        'completion_tokens_details': {
+                            'reasoning_tokens': 12,
+                        },
+                    },
+                }
+
+        payload = llm_client.read_openrouter_response_payload(FakeResponse())
+
+        self.assertEqual(payload['choices'][0]['message']['content'], 'OK')
+        self.assertNotIn('reasoning', payload)
+        self.assertNotIn('reasoning', payload['choices'][0]['message'])
+        self.assertNotIn('reasoning_details', payload['choices'][0]['message'])
+        self.assertNotIn('SHOULD NOT LEAK', str(payload))
+
     def test_extract_openrouter_provider_metadata_reads_post_call_usage_and_generation_id(self) -> None:
         metadata = llm_client.extract_openrouter_provider_metadata(
             {

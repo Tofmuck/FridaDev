@@ -47,7 +47,9 @@ Le niveau selectionne peut etre affiche et journalise de facon content-free. Le 
 - injecte dans Memory, Identity, Summary, Biblio/RAG ou documents actifs;
 - expose dans les logs, read-models ou observabilite.
 
-Les champs provider `reasoning`, `reasoning_details` ou equivalents, s'ils apparaissent dans des reponses OpenRouter, sont ignores par les chemins de lecture et de streaming utilisateur. Le streaming visible ne lit que `delta.content`.
+Les champs provider `reasoning`, `reasoning_details` ou equivalents, s'ils apparaissent dans des reponses OpenRouter, sont filtres par les chemins de lecture et ignores par le streaming utilisateur. Le streaming visible ne lit que `delta.content`.
+
+Validation live du 2026-05-22: OpenRouter accepte `reasoning.effort=high`, `none` et `medium` avec les `temperature` / `top_p` historiques du LLM principal. Le provider peut toutefois renvoyer une cle `reasoning_details` dans le message pour `high` / `medium` malgre `exclude=true`; FridaDev filtre donc explicitement les champs `reasoning` et `reasoning_details` des payloads de reponse lus par `llm_client.read_openrouter_response_payload()`.
 
 ## Observabilite
 

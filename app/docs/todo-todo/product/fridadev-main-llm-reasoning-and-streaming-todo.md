@@ -112,7 +112,8 @@ Statut: livre en runtime applicatif; l'objet 2 streaming visuel reste ouvert.
 - [x] Observabilite content-free du niveau demande/effectif ajoutee aux evenements LLM principaux.
 - [x] Garde-fou documente: niveau visible, contenu interne du raisonnement jamais affiche, streame, persiste, exporte ou injecte.
 - [x] Tests settings, payload, frontend contract, controle chat et observabilite ajoutes ou adaptes.
-- [ ] Smoke live couteux avec vrai appel OpenRouter sur plusieurs niveaux, a lancer seulement si decide separement.
+- [x] Smoke live borne OpenRouter effectue sur `high`, `none`, `medium`; pas d'incompatibilite `temperature` / `top_p` observee.
+- [x] Correctif post-smoke: filtrage explicite des champs provider `reasoning` / `reasoning_details` au read path.
 
 Les cases detaillees ci-dessous conservent le plan A-Z initial. Pour l'objet 1, le statut effectif est porte par le bloc de livraison ci-dessus et par la spec `app/docs/states/specs/fridadev-main-llm-reasoning-contract.md`.
 
@@ -123,7 +124,7 @@ Les cases detaillees ci-dessous conservent le plan A-Z initial. Pour l'objet 1, 
 - [x] Partir de la preuve actuelle: GPT-5.1 annonce `none`, `low`, `medium`, `high`.
 - [x] Ne pas ajouter `minimal`, `xhigh` ou tout autre niveau sauf preuve officielle GPT-5.1 via OpenRouter / OpenAI.
 - [x] Verifier la forme exacte attendue par OpenRouter Chat Completions: `reasoning: {"effort": value}` et option d'exclusion.
-- [x] Decider si le payload doit envoyer `reasoning.exclude=true` pour garantir que le raisonnement ne revient pas dans la reponse.
+- [x] Decider si le payload doit envoyer `reasoning.exclude=true`; le smoke live a montre que le provider peut encore renvoyer `reasoning_details`, donc FridaDev filtre aussi cote read path.
 - [x] Verifier la compatibilite avec `temperature` et `top_p`, notamment si GPT-5.1 impose des restrictions selon le niveau de reasoning.
 - [x] Definir le mapping UI francais:
   - `none` -> `aucun` ou `rapide`;
@@ -176,7 +177,7 @@ Les cases detaillees ci-dessous conservent le plan A-Z initial. Pour l'objet 1, 
 - [x] Envoyer une forme compatible OpenRouter: `reasoning: {"effort": "medium", "exclude": true}`.
 - [x] Ne pas perturber `temperature`, `top_p`, `max_tokens`, `stop`, `metadata`, `trace`, `stream`, `stream_options.include_usage`.
 - [x] Aucune incompatibilite officielle bloquante `temperature` / `top_p` n'a ete confirmee pour ce lot.
-- [x] Verifier que `reasoning_details` renvoyes en streaming ou non-streaming sont ignores / ecartes.
+- [x] Verifier que `reasoning_details` renvoyes en streaming ou non-streaming sont ignores / ecartes; un smoke live a confirme la presence possible de la cle en JSON provider.
 - [x] Ne pas transmettre de raisonnement a Memory, Identity, Summary, Biblio/RAG, documents actifs ou exports.
 
 ### Lot 5 - Observabilite
@@ -189,7 +190,7 @@ Les cases detaillees ci-dessous conservent le plan A-Z initial. Pour l'objet 1, 
   - `main_llm_reasoning_policy_kind`;
   - `main_llm_reasoning_hidden=true` ou equivalent.
 - [x] Ne jamais logger le contenu de raisonnement.
-- [x] Ne jamais stocker `reasoning_details`.
+- [x] Ne jamais stocker `reasoning_details`; filtrage explicite dans `llm_client.read_openrouter_response_payload()`.
 - [x] Observer cout, latence, tokens, modele et caller via les surfaces deja existantes.
 - [x] Verifier que les exports utilisateur ne contiennent que le niveau selectionne, pas le raisonnement.
 
@@ -209,7 +210,7 @@ Les cases detaillees ci-dessous conservent le plan A-Z initial. Pour l'objet 1, 
 - [x] Mettre a jour le catalogue des appels modeles.
 - [x] Mettre a jour la doc runtime/admin si comportement operateur nouveau.
 - [x] Documenter les niveaux retenus, la valeur par defaut, la portee du controle chat et les limites.
-- [ ] Smoke test borne: un tour sans reasoning explicite, un tour `none`, un tour `medium` ou `high` selon cout acceptable.
+- [x] Smoke test borne: `high`, `none`, `medium` avec appel OpenRouter reel; controle budget supplementaire `high` / `medium` a `max_tokens=64`.
 - [x] Verifier dans l'observabilite que le niveau est visible content-free.
 - [x] Verifier que le raisonnement interne n'apparait pas dans l'UI, les logs user-facing, Memory, Identity, Summary, exports ou documents actifs.
 - [x] Rebuild applicatif seulement quand le runtime/UI a ete modifie.
@@ -279,7 +280,7 @@ Objectif: obtenir un affichage progressif reel du message assistant cote UI quan
 - [x] Valeur par defaut du reasoning FridaDev: `high`.
 - [x] Libelles UI francais definitifs pour l'objet 1: `aucun`, `faible`, `moyen`, `eleve`.
 - [x] Emplacement precis du controle dans la fenetre de chat: pres de la zone de saisie, comme raccourci global compact.
-- [ ] Strategie si `temperature` / `top_p` deviennent incompatibles avec certains niveaux de reasoning.
+- [x] Strategie si `temperature` / `top_p` deviennent incompatibles avec certains niveaux de reasoning: smoke live 2026-05-22 OK, conserver les champs; reouvrir seulement sur erreur provider prouvee.
 - [x] Comportement si le modele principal n'est plus GPT-5.1 ou ne supporte pas reasoning: ne pas envoyer le champ, exposer un signal content-free, ne pas planter.
 - [ ] Niveau de tests visuels attendu pour le streaming.
 - [ ] Comportement streaming en cas d'interruption.
