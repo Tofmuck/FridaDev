@@ -2,14 +2,14 @@
 
 Ce banc compare le pipeline web local FridaDev avec les server tools OpenRouter, sans modifier le runtime `/api/chat`.
 
-Il sert à préparer le chantier produit "Recherche internet" de la roadmap finale. Il ne décide pas encore si FridaDev doit rester local, basculer vers OpenRouter, ou devenir hybride.
+Doctrine produit actuelle: FridaDev web runtime reste local only. OpenRouter/Exa/Parallel sont des outils de benchmark externe et de comparaison, jamais une strategie produit.
 
 ## Bras comparés
 
 Par défaut:
 
 - `local`: baseline locale à requête unique, c'est-à-dire SearXNG + Crawl4AI + reformulation web existante sans requêtes spécialisées;
-- `local_profiled`: bras Lot 7 qui utilise le profil runtime, les requêtes spécialisées bornées, les paramètres SearXNG applicatifs par profil, le reranking local souple avant crawl, la politique Crawl4AI profilée et les signaux de confiance/fallback futur non actionnables;
+- `local_profiled`: bras Lot 7 qui utilise le profil runtime, les requêtes spécialisées bornées, les paramètres SearXNG applicatifs par profil, le reranking local souple avant crawl, la politique Crawl4AI profilée et les signaux de confiance avec état externe désactivé;
 - `openrouter_exa`: `openrouter:web_search` avec `engine=exa`;
 - `openrouter_parallel`: `openrouter:web_search` avec `engine=parallel`.
 
@@ -170,13 +170,12 @@ Le rapport Markdown contient une grille simple:
 - intégrabilité dans FridaDev;
 - observabilité et vérité de lecture.
 
-La décision produit reste humaine. Les sorties doivent aider à choisir plus tard entre:
+La décision produit est fixée pour le runtime: local only. Les sorties servent à diagnostiquer SearXNG/Crawl4AI et à comparer des index externes, pas à choisir une passerelle runtime.
 
-- local seul;
-- OpenRouter Exa en fallback;
-- OpenRouter Parallel en fallback;
-- hybride borné;
-- aucun changement.
+- SearXNG reste le point de recherche local;
+- Crawl4AI reste le point de lecture/crawl local;
+- Exa et Parallel restent des comparateurs externes;
+- le prochain chantier pertinent est l'audit critique de SearXNG, cote plateforme et documentation officielle.
 
 ## Lecture Lot 8 du 2026-05-22
 
@@ -189,7 +188,7 @@ Artefacts live:
 - `/tmp/fridadev-web-search-lot8-live/openrouter-exa.md`;
 - `/tmp/fridadev-web-search-lot8-live/openrouter-parallel.md`.
 
-Decision Lot 8: garder le local par defaut, ne pas activer OpenRouter runtime, et considerer Exa seulement comme fallback futur explicite et auditable pour les recherches ouvertes ou le local rate les domaines d'autorite. Parallel reste une option compacte mais plus inegale.
+Decision Lot 8 recadree: garder le runtime web local only, ne pas activer OpenRouter runtime, et ne pas definir Exa/Parallel comme voie produit. Exa/Parallel restent des outils de comparaison externe pour objectiver les limites de SearXNG.
 
 ## Diagnostic same-query
 

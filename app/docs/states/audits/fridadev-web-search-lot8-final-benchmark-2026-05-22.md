@@ -22,7 +22,7 @@ Le benchmark final compare les quatre bras prevus:
 - `openrouter_exa`: OpenRouter `openrouter:web_search` avec `engine=exa`;
 - `openrouter_parallel`: OpenRouter `openrouter:web_search` avec `engine=parallel`.
 
-Decision recommandee: garder FridaDev local comme chemin par defaut, ne pas activer OpenRouter runtime, et etudier seulement un fallback futur explicite vers Exa pour certaines recherches ouvertes si une decision humaine le valide. Parallel reste une option compacte mais trop inegale pour devenir le fallback prioritaire.
+Decision produit actee apres lecture du benchmark: FridaDev web runtime reste local only. SearXNG reste le point de recherche local, Crawl4AI le point de lecture/crawl local, et Exa/Parallel/OpenRouter restent des outils de benchmark externe, jamais une voie produit automatique ou semi-automatique.
 
 La conclusion importante n'est pas que le local profile est termine: il progresse nettement sur l'institutionnel francais et conserve le tres bon chemin URL explicite, mais il regresse fortement sur le cas actualite IA 2026 et la confiance locale y reste trop optimiste. Le signal de confiance doit donc rester visible, contestable et non actionnable.
 
@@ -87,24 +87,24 @@ Points positifs:
 
 Point critique:
 
-- sur `recent_ai_policy_news`, `local_profiled` donne `web_confidence_level=high` malgre des sources manifestement hors sujet. La confiance reste donc utile comme signal d'audit, mais pas assez calibree pour piloter un fallback ou une decision automatique.
+- sur `recent_ai_policy_news`, `local_profiled` donne `web_confidence_level=high` malgre des sources manifestement hors sujet. La confiance reste donc utile comme signal d'audit, mais pas comme mecanisme de decision automatique.
 
 ## Decision recommandee
 
-Politique recommandee: hybride borne futur, mais aucun changement runtime maintenant.
+Politique recommandee: local only. Pas d'hybride web search.
 
 Concretement:
 
 - garder le local par defaut;
 - garder l'URL explicite en local direct, qui est le meilleur chemin du benchmark;
-- ne pas appeler Exa/Parallel automatiquement;
-- considerer Exa comme fallback futur, explicite et auditable, pour recherches ouvertes a enjeu quand le local rate les domaines d'autorite;
-- ne pas choisir Parallel comme fallback prioritaire, sauf besoin de reponse compacte et cout plus bas;
-- corriger d'abord la calibration `actualite` / confiance locale avant toute automatisation.
+- ne jamais appeler Exa/Parallel/OpenRouter depuis le runtime web FridaDev;
+- utiliser Exa/Parallel seulement comme outils de benchmark externe pour comprendre les faiblesses locales;
+- ouvrir ensuite un audit critique de SearXNG lui-meme, cote plateforme et documentation officielle;
+- corriger la calibration `actualite` / confiance locale sans creer de passerelle externe.
 
 ## Ce qui n'a pas ete active
 
-- Aucun fallback OpenRouter runtime;
+- Aucune passerelle OpenRouter runtime;
 - aucun appel Exa/Parallel depuis `/api/chat`;
 - aucun auto-web;
 - aucune modification SearXNG ou Crawl4AI globale;
@@ -150,7 +150,7 @@ Lecture:
 - sur ces memes cas, au moins un moteur OpenRouter retrouve des domaines attendus que SearXNG ne remonte pas dans le top 5;
 - sur `OpenRouter web_search`, SearXNG trouve le domaine officiel, mais Exa/Parallel trouvent mieux les pages de documentation.
 
-Conclusion diagnostique: le probleme n'est pas seulement la reformulation FridaDev ni le reranking `local_profiled`. Une part importante vient du ranking/index SearXNG sur ces requetes ouvertes, avec un residu local specifique sur la strategie `actualite` et la calibration de confiance. Cela ne justifie toujours aucun fallback automatique.
+Conclusion diagnostique: le probleme n'est pas seulement la reformulation FridaDev ni le reranking `local_profiled`. Une part importante vient du ranking/index SearXNG sur ces requetes ouvertes, avec un residu local specifique sur la strategie `actualite` et la calibration de confiance. Cela oriente le prochain chantier vers un audit critique SearXNG, pas vers une passerelle runtime.
 
 ## Preuves
 

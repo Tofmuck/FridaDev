@@ -12,7 +12,7 @@ Renforcer la recherche web locale FridaDev avant toute integration OpenRouter ru
 
 Le chemin par defaut reste SearXNG pour chercher, Crawl4AI pour lire, et FridaDev pour profiler, filtrer, scorer, observer et injecter prudemment.
 
-OpenRouter Exa/Parallel restent des soupapes futures a evaluer apres renforcement local. Ce TODO ne les branche pas dans `/api/chat`.
+OpenRouter Exa/Parallel restent uniquement des bras de benchmark externe et de comparaison. Ils ne sont pas une strategie produit et ne doivent jamais appeler `/api/chat`.
 
 ## Avancement
 
@@ -23,7 +23,7 @@ OpenRouter Exa/Parallel restent des soupapes futures a evaluer apres renforcemen
 - [x] Lot 4 - Parametres SearXNG par profil
 - [x] Lot 5 - Reranking avant crawl
 - [x] Lot 6 - Crawl4AI oriente profil
-- [x] Lot 7 - Observabilite + confiance + fallback futur
+- [x] Lot 7 - Observabilite + confiance + etat externe desactive
 - [x] Lot 8 - Benchmark final et decision Exa/Parallel
 
 Lecture rapide:
@@ -36,7 +36,7 @@ Lecture rapide:
 - Lot 6 est livre: `local_profiled` applique une politique Crawl4AI profilee, avec `bm25` + `q` borne pour certains profils et repli `fit` si l'extraction est vide ou pauvre.
 - Lot 7 est livre: les signaux locaux sont exposes avec une confiance finale visible, non souveraine et non actionnable.
 - Lot 8 est livre: le benchmark final local / `local_profiled` / Exa / Parallel est produit et documente dans `app/docs/states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`.
-- Aucun score de confiance actionnable ou fallback OpenRouter runtime n'est livre.
+- Aucun score de confiance actionnable et aucune passerelle OpenRouter runtime n'est livree.
 
 ## Question prealable: existe-t-il un meilleur plan ?
 
@@ -52,7 +52,7 @@ Ce plan est meilleur parce que les echecs observes viennent surtout de l'orchest
 - `raw` reste interdit sur les resultats search-only.
 - Memory, Identity, Summary, Biblio/RAG et documents actifs ne sont pas alimentes par le web de ce chantier.
 - Pas de modification globale de SearXNG ou Crawl4AI au depart.
-- Pas d'OpenRouter web runtime dans ce chantier sans decision explicite future.
+- Pas d'OpenRouter web runtime dans ce chantier; la decision produit actuelle est `local only`.
 - Pas de reouverture de l'auto-web lexical.
 - Pas de ban global de Wikipedia, dictionnaires ou conjugueurs.
 
@@ -116,9 +116,9 @@ Champs attendus a terme, sans contenu brut:
 - choix Crawl4AI `fit` / `bm25` / `raw`;
 - cache mode;
 - confiance finale;
-- fallback OpenRouter propose ou utilise.
+- etat externe OpenRouter visible uniquement comme `non utilise`.
 
-### Confiance et fallback futur
+### Confiance visible et non-actionnable
 
 Le score de confiance local doit pouvoir dire, en lecture produit:
 
@@ -129,7 +129,7 @@ Le score de confiance local doit pouvoir dire, en lecture produit:
 
 Le runtime Lot 7 expose cette lecture sous une echelle operatoire sobre `high` / `medium` / `low` / `unknown`, avec `web_confidence_reason_codes` pour garder le signal contestable.
 
-OpenRouter ne doit pas etre appele par ce TODO. Le futur fallback pourra seulement etre etudie si le local profile produit `weak` ou `failed`, et avec une decision produit explicite.
+OpenRouter ne doit pas etre appele par ce TODO. Exa et Parallel restent des comparateurs de benchmark externe; un score `weak` ou `failed` doit declencher une amelioration locale, pas une passerelle runtime.
 
 ### Definition of done Lot 0
 
@@ -138,7 +138,7 @@ OpenRouter ne doit pas etre appele par ce TODO. Le futur fallback pourra seuleme
 - [x] Priorite URL explicite confirmee.
 - [x] Non-contamination Memory/Identity/Summary confirmee.
 - [x] Observabilite cible listee.
-- [x] Critere de confiance/fallback cible liste.
+- [x] Critere de confiance locale cible liste.
 
 ## Lot 1 - Fixtures et benchmark `local_profiled`
 
@@ -238,7 +238,7 @@ Non-objectifs confirmes:
 - pas de categories, engines ou `time_range` SearXNG par profil;
 - pas de reranking par score;
 - pas de BM25 Crawl4AI;
-- pas de fallback OpenRouter runtime;
+- pas de passerelle OpenRouter runtime;
 - pas d'auto-web.
 
 Definition of done Lot 3:
@@ -277,7 +277,7 @@ Garde-fous politiques source:
 - aucune source, domaine ou moteur unique n'est impose dans ce lot;
 - aucune nouvelle contrainte `site:` n'est ajoutee ici, pour eviter un enfermement de domaine;
 - la diversite minimale reste preservee par l'aggregation et la deduplication URL du Lot 3; le Lot 5 devra reranker sans censurer;
-- la confiance future devra rester visible et explicable, sans pouvoir automatique d'appeler Exa, Parallel ou OpenRouter.
+- la confiance devra rester visible et explicable, sans pouvoir d'appeler Exa, Parallel ou OpenRouter.
 
 Observabilite content-free livree:
 
@@ -296,7 +296,7 @@ Definition of done Lot 4:
 - [x] `local_profiled` porte requetes specialisees + params SearXNG par profil.
 - [x] URL explicite directe ne lance aucune recherche et n'applique aucun parametre SearXNG.
 - [x] Aucun `site:` nouveau n'est introduit dans ce lot; les domaines restent dans les requetes secondaires Lot 3.
-- [x] Aucun reranking, BM25 Crawl4AI ou fallback OpenRouter runtime n'est livre.
+- [x] Aucun reranking, BM25 Crawl4AI ou passerelle OpenRouter runtime n'est livre.
 
 Regle: ne pas modifier globalement `/opt/platform/searxng/settings.yml` dans ce lot.
 
@@ -399,7 +399,7 @@ Definition of done Lot 6:
 - [x] Benchmark `local_profiled` expose les signaux Crawl4AI du Lot 6.
 - [x] Aucun score de confiance actionnable, OpenRouter, Exa, Parallel, auto-web, BM25 global ou modification SearXNG/Crawl4AI globale.
 
-## Lot 7 - Observabilite + confiance + fallback futur
+## Lot 7 - Observabilite + confiance + etat externe desactive
 
 Statut: livre.
 
@@ -418,7 +418,7 @@ Signaux exposes:
 - `context_chars`;
 - `read_state`;
 - confiance finale via `web_confidence_policy_kind`, `web_confidence_level`, `web_confidence_score`, `web_confidence_reason_codes` et `web_confidence_inputs_summary`;
-- fallback OpenRouter futur via `openrouter_fallback_state`, `openrouter_fallback_used` et `openrouter_fallback_reason_codes`.
+- etat externe OpenRouter desactive via les champs historiques `openrouter_fallback_state`, `openrouter_fallback_used` et `openrouter_fallback_reason_codes`.
 
 Regles livrees:
 
@@ -427,14 +427,14 @@ Regles livrees:
 - elle ne supprime aucune source;
 - elle ne change pas le contenu injecte;
 - `openrouter_fallback_used` reste toujours `false`;
-- OpenRouter, Exa et Parallel peuvent etre mentionnes comme fallback futur ou candidat de revue humaine, mais ne sont pas appeles dans le runtime.
+- OpenRouter, Exa et Parallel peuvent etre mentionnes comme bras de benchmark externe, mais ne sont pas des candidats de revue humaine runtime et ne sont jamais appeles dans `/api/chat`.
 
 Definition of done Lot 7:
 
 - [x] Politique de confiance isolee dans `app/tools/web_search_confidence.py`.
 - [x] Signaux ajoutes au payload web runtime et aux evenements `web_search` sans contenu brut.
 - [x] Signaux visibles dans les read models / checklist d'observabilite.
-- [x] Benchmark local/local_profiled expose la confiance et l'etat de fallback futur.
+- [x] Benchmark local/local_profiled expose la confiance et l'etat externe desactive.
 - [x] Tests: confiance haute sur contenu crawle lu, confiance basse sur no-data/snippets, URL explicite preserve son `read_state`.
 - [x] `openrouter_fallback_used` reste faux; aucun appel OpenRouter, Exa ou Parallel n'est ajoute.
 - [x] Aucun changement SearXNG, reranking, Crawl4AI policy, auto-web, Memory, Identity, Summary, Biblio/RAG ou Docker.
@@ -461,9 +461,9 @@ Decision produite:
 
 - chemin par defaut: local FridaDev;
 - URL explicite: local direct prioritaire, sans fallback externe;
-- fallback futur recommande: Exa seulement comme soupape explicite et auditable pour certaines recherches ouvertes a enjeu;
-- Parallel: option compacte possible, mais trop inegale pour devenir fallback prioritaire;
-- aucun fallback OpenRouter runtime active.
+- doctrine runtime: `local only`, sans hybride web search;
+- Exa et Parallel: comparateurs de benchmark externe uniquement;
+- aucune passerelle OpenRouter/Exa/Parallel runtime active, ni automatique ni semi-automatique.
 
 Findings a garder pour un chantier ulterieur:
 
@@ -478,7 +478,7 @@ Definition of done Lot 8:
 - [x] Artefacts par bras disponibles dans `/tmp/fridadev-web-search-lot8-live`.
 - [x] Grep securite vide apres redaction des apercus d'artefacts.
 - [x] Note de decision versionnee: `app/docs/states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`.
-- [x] Aucun fallback OpenRouter/Exa/Parallel runtime active.
+- [x] Aucune passerelle OpenRouter/Exa/Parallel runtime active.
 
 ## Preuves de ce cycle
 

@@ -6,6 +6,8 @@ Perimetre: comparer la documentation officielle SearXNG/Crawl4AI, la configurati
 
 Hors scope respecte: aucun changement runtime, prompt, memoire, identity, summary, Docker, SearXNG, Crawl4AI, settings live ou integration OpenRouter.
 
+Note de supersession 2026-05-22: les hypotheses de passerelle OpenRouter/Exa/Parallel formulees dans cet audit sont remplacees par la decision produit `local only` actee apres le Lot 8. OpenRouter/Exa/Parallel restent des outils de benchmark externe; ils ne constituent plus une strategie produit automatique, semi-automatique ou hybride pour le runtime web FridaDev.
+
 ## Question prealable: existe-t-il un meilleur plan ?
 
 Oui: le meilleur plan n'est pas de patcher directement le runtime local ni de basculer vers OpenRouter, mais de separer quatre couches avant toute implementation:
@@ -27,9 +29,9 @@ SearXNG n'est pas exploite a son niveau documentaire. L'API supporte `categories
 
 Crawl4AI est plus capable que ce que FridaDev consomme. Le endpoint local `/md` expose `fit`, `raw`, `bm25` et `llm`, un parametre `q` et un mode cache. FridaDev utilise correctement `fit` puis `raw` uniquement pour URL explicite, ce qui est une bonne borne. En revanche, FridaDev n'utilise pas le filtrage query-aware BM25 pour les pages issues d'une recherche, et lit le cache en mode frais/ecriture seulement.
 
-Le local peut raisonnablement etre renforce avant tout fallback OpenRouter. Le meilleur ordre est: profil de recherche, multi-requetes specialisees, parametres SearXNG par profil, reranking local avant crawl, crawl query-aware apres reranking, puis politique de confiance/fallback.
+Le local peut raisonnablement etre renforce sans passerelle OpenRouter. Le meilleur ordre est: profil de recherche, multi-requetes specialisees, parametres SearXNG par profil, reranking local avant crawl, crawl query-aware apres reranking, puis politique de confiance visible et non-actionnable.
 
-OpenRouter Exa/Parallel doit rester un complement borne. Exa est le meilleur bras qualite du benchmark, mais il est plus couteux et injecte beaucoup plus de tokens. Parallel est plus compact, mais plus inegal. Apres renforcement local, leur place naturelle est le fallback explicite ou conditionnel sur faible confiance, pas le remplacement global du pipeline local.
+OpenRouter Exa/Parallel doivent rester hors runtime FridaDev. Exa et Parallel sont utiles comme comparateurs de benchmark externe pour objectiver les faiblesses de SearXNG, mais ils ne sont pas un complement produit, une voie de confiance ou un chemin hybride.
 
 ## Etat actuel FridaDev
 
@@ -149,7 +151,7 @@ Cas live:
 
 Exa donne la meilleure qualite globale du run, avec davantage de sources pertinentes et de meilleurs contenus officiels. Le cout et le volume de tokens sont nettement superieurs au local et a Parallel.
 
-Conclusion: Exa est une bonne soupape haute qualite quand le local ne trouve pas de sources fiables, pas un bon remplacement permanent si l'objectif est souverainete, cout bas et observabilite locale.
+Conclusion supersedee par le Lot 8: Exa est un comparateur externe utile, pas une soupape runtime. Ses resultats orientent l'audit critique de SearXNG, sans integration produit.
 
 ### OpenRouter Parallel
 
@@ -159,7 +161,7 @@ Parallel est plus compact et moins cher qu'Exa dans le run. Il est aussi plus in
 - fragile sur philosophie academique;
 - moins strict sur URL explicite quand le bon outil serait une lecture de page plutot qu'une recherche ouverte.
 
-Conclusion: Parallel peut etre un fallback economique ou un comparateur, mais il ne doit pas etre traite comme oracle.
+Conclusion supersedee par le Lot 8: Parallel peut rester un comparateur compact, mais pas une voie runtime ni un oracle.
 
 ## Bonnes pratiques SearXNG pertinentes
 
@@ -504,15 +506,13 @@ Tester:
 - collecte fraiche pour actualite;
 - budgets de caracteres par profil.
 
-### Lot 6 - Politique de confiance et fallback OpenRouter
+### Lot 6 - Politique de confiance sans passerelle OpenRouter
 
-Apres renforcement local, definir une decision explicite:
+Apres renforcement local, definir une decision explicite local only:
 
-- local seul si confiance forte;
-- proposer fallback si confiance faible;
-- Exa pour haute qualite quand sources officielles/locales manquent;
-- Parallel pour fallback compact si le besoin est moins critique;
-- OpenRouter web_fetch eventuel pour URL explicite seulement si le lecteur local echoue et que l'utilisateur accepte une dependance externe.
+- confiance forte: utiliser le materiau local;
+- confiance faible: ameliorer SearXNG, Crawl4AI, requetes, profils ou observabilite locale;
+- Exa/Parallel/OpenRouter: benchmark externe uniquement, sans appel runtime.
 
 ## Ce qu'il ne faut pas faire
 
@@ -530,19 +530,14 @@ Ne pas creer un RAG web permanent. Le besoin est une lecture web du tour courant
 
 Ne pas rouvrir l'auto-web lexical sans decision explicite.
 
-## Place eventuelle d'OpenRouter Exa/Parallel apres renforcement local
+## Place d'OpenRouter Exa/Parallel apres decision Lot 8
 
-Exa:
+Exa et Parallel:
 
-- meilleur candidat fallback qualite;
-- utile quand le local ne trouve pas de source officielle, quand l'actualite est exigeante ou quand plusieurs sources fiables doivent etre recoupees;
-- a reserver aux demandes ou la valeur justifie cout et tokens.
-
-Parallel:
-
-- meilleur candidat fallback compact/economique;
-- utile pour une seconde opinion rapide;
-- moins fiable sur les sujets academiques ou ambigus d'apres le run live.
+- restent des outils de benchmark externe;
+- servent a comparer index, ranking, fraicheur et qualite des extraits;
+- ne doivent pas etre branches dans `/api/chat`;
+- ne doivent pas devenir une voie automatique, semi-automatique ou hybride.
 
 Local:
 
@@ -551,7 +546,7 @@ Local:
 - ameliorable sur recherche ouverte avec les lots ci-dessus;
 - plus observable et plus controlable.
 
-Decision cible: OpenRouter doit devenir une soupape de confiance, pas une nouvelle base de souverainete.
+Decision cible recadree: la souverainete de FridaDev web passe par SearXNG, Crawl4AI et une logique applicative locale. Le prochain vrai chantier est l'audit critique de SearXNG en tant que tel, cote plateforme et documentation officielle.
 
 ## Tests et preuves recommandes pour le futur lot d'implementation
 
