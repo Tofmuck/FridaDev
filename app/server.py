@@ -501,6 +501,12 @@ class _LlmChatLogProxy:
     ) -> dict[str, Any]:
         payload = self._base.build_payload(messages, temperature, top_p, max_tokens, stream=stream)
         model = str(payload.get('model') or '')
+        reasoning_fields_builder = getattr(self._base, 'main_llm_reasoning_observability_from_payload', None)
+        reasoning_fields = (
+            reasoning_fields_builder(payload)
+            if callable(reasoning_fields_builder)
+            else {}
+        )
         try:
             estimated_prompt_tokens = int(self._token_utils.estimate_tokens(messages, model))
         except Exception:
@@ -537,6 +543,7 @@ class _LlmChatLogProxy:
                 'identity_prompt_injection': dict(identity_prompt_injection),
                 'hermeneutic_prompt_injection': dict(hermeneutic_prompt_injection),
                 'memory_retrieval': dict(memory_retrieval),
+                **reasoning_fields,
             },
         )
         return payload
@@ -568,6 +575,12 @@ class _RequestsChatLogProxy:
             'provider_caller': provider_caller,
             'provider_title': provider_title,
         }
+        reasoning_fields_builder = getattr(llm, 'main_llm_reasoning_observability_from_payload', None)
+        reasoning_fields = (
+            reasoning_fields_builder(payload)
+            if callable(reasoning_fields_builder) and provider_caller == 'llm'
+            else {}
+        )
         request_kwargs = kwargs
         sanitized_headers = llm.strip_internal_provider_headers(headers)
         if sanitized_headers != headers:
@@ -592,6 +605,7 @@ class _RequestsChatLogProxy:
                         'response_chars': 0,
                         'error_class': exc.__class__.__name__,
                         **provider_identity_payload,
+                        **reasoning_fields,
                     },
                 )
                 chat_turn_logger.emit_error(
@@ -610,6 +624,7 @@ class _RequestsChatLogProxy:
                         'timeout_s': timeout_s,
                         'started_at': started_at,
                         **provider_identity_payload,
+                        **reasoning_fields,
                     },
                 )
             else:
@@ -642,6 +657,7 @@ class _RequestsChatLogProxy:
                         'timeout_s': timeout_s,
                         'response_chars': response_chars,
                         **provider_fields,
+                        **reasoning_fields,
                     },
                 )
         return response

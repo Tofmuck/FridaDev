@@ -101,6 +101,7 @@ SECTION_SPECS: dict[str, SectionSpec] = {
             FieldSpec('temperature', 'float', seed_from_env=False, seed_default=0.4),
             FieldSpec('top_p', 'float', seed_from_env=False, seed_default=1.0),
             FieldSpec('response_max_tokens', 'int', seed_from_env=False, seed_default=8192),
+            FieldSpec('reasoning_effort', 'text', seed_from_env=False, seed_default='high'),
         ),
     ),
     'arbiter_model': SectionSpec(

@@ -213,6 +213,7 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
                 payload.pop('title_web_reformulation', None)
                 payload.pop('title_web_discovery', None)
                 payload.pop('title_identity_periodic', None)
+                payload.pop('reasoning_effort', None)
             if section == 'summary_model':
                 payload = dict(payload)
                 payload.pop('max_tokens', None)
@@ -280,6 +281,7 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
                 'main_model.title_web_discovery',
                 'main_model.title_identity_periodic',
                 'main_model.response_max_tokens',
+                'main_model.reasoning_effort',
                 'summary_model.max_tokens',
                 'summary_model.timeout_s',
             ),
@@ -302,6 +304,8 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
         self.assertEqual(updated_payloads[0]['title_web_discovery']['value'], config.OR_TITLE_WEB_DISCOVERY)
         self.assertEqual(updated_payloads[0]['response_max_tokens']['value'], 8192)
         self.assertEqual(updated_payloads[0]['response_max_tokens']['origin'], 'db_seed')
+        self.assertEqual(updated_payloads[0]['reasoning_effort']['value'], 'high')
+        self.assertEqual(updated_payloads[0]['reasoning_effort']['origin'], 'db_seed')
         self.assertEqual(updated_payloads[1]['max_tokens']['value'], config.SUMMARY_TARGET_TOKENS)
         self.assertEqual(updated_payloads[1]['max_tokens']['origin'], 'db_seed')
         self.assertEqual(updated_payloads[1]['timeout_s']['value'], config.SUMMARY_TIMEOUT_S)

@@ -128,6 +128,12 @@ def run_llm_exchange(
     payload = llm_module.build_payload(prompt_messages, temperature, top_p, max_tokens, stream=stream_req)
     call_model = str(payload['model'])
     provider_title = llm_module.resolve_provider_title('llm')
+    reasoning_observability_builder = getattr(llm_module, 'main_llm_reasoning_observability_from_payload', None)
+    reasoning_observability = (
+        reasoning_observability_builder(payload)
+        if callable(reasoning_observability_builder)
+        else {}
+    )
     url = f'{config_module.OR_BASE}/chat/completions'
 
     admin_logs_module.log_event(
@@ -141,6 +147,7 @@ def run_llm_exchange(
         message_count=len(prompt_messages),
         provider_caller='llm',
         provider_title=provider_title,
+        **reasoning_observability,
     )
 
     try:
@@ -154,6 +161,7 @@ def run_llm_exchange(
                 stream=False,
                 provider_caller='llm',
                 provider_title=provider_title,
+                **reasoning_observability,
             )
             response = requests_module.post(url, json=payload, headers=headers, timeout=config_module.TIMEOUT_S)
             response.raise_for_status()
@@ -548,6 +556,7 @@ def run_llm_exchange(
             stream=True,
             provider_caller='llm',
             provider_title=provider_title,
+            **reasoning_observability,
         )
         return _stream_result(
             event_stream(),

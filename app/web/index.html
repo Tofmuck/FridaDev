@@ -89,6 +89,16 @@
           <div id="activeDocumentsList" class="active-documents-list"></div>
           <div id="activeDocumentsStatus" class="active-documents-status" aria-live="polite"></div>
         </div>
+        <label class="main-reasoning-control" for="mainReasoningLevel">
+          <span>Raisonnement</span>
+          <select id="mainReasoningLevel" aria-label="Niveau de raisonnement global">
+            <option value="none">aucun</option>
+            <option value="low">faible</option>
+            <option value="medium">moyen</option>
+            <option value="high">eleve</option>
+          </select>
+          <small id="mainReasoningStatus" aria-live="polite"></small>
+        </label>
         <textarea id="message" rows="3" placeholder="Écris ton message…"></textarea>
         <input
           id="activeDocumentFileInput"
@@ -183,6 +193,7 @@
   <script src="chat_threads_sidebar.js"></script>
   <script src="chat_active_documents.js"></script>
   <script src="chat_copy_export.js"></script>
+  <script src="main_reasoning_control.js"></script>
   <script src="chat_image_generation.js"></script>
   <script src="app.js"></script>
 </body>

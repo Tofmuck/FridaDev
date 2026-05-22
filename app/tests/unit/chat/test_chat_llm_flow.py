@@ -144,6 +144,11 @@ class ChatLlmFlowTests(unittest.TestCase):
             log_provider_metadata=lambda _logger, event, provider_metadata: observed['provider_log_calls'].append((event, dict(provider_metadata))),
             extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
             sanitize_provider_text=lambda text: observed['sanitize_calls'].append(text) or text,
+            main_llm_reasoning_observability_from_payload=lambda _payload: {
+                'main_llm_reasoning_effort_requested': 'high',
+                'main_llm_reasoning_effort_effective': 'high',
+                'main_llm_reasoning_hidden': True,
+            },
         )
         requests_module = SimpleNamespace(
             post=fake_post,
@@ -220,7 +225,10 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['model'], 'openrouter/runtime-main-model')
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['provider_caller'], 'llm')
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['provider_title'], 'FridaDev/llm')
+        self.assertEqual(_event_payloads(events, 'llm_payload')[0]['main_llm_reasoning_effort_effective'], 'high')
+        self.assertTrue(_event_payloads(events, 'llm_payload')[0]['main_llm_reasoning_hidden'])
         self.assertFalse(_event_payloads(events, 'llm_call')[0]['stream'])
+        self.assertEqual(_event_payloads(events, 'llm_call')[0]['main_llm_reasoning_effort_requested'], 'high')
         self.assertEqual(
             _event_payloads(events, 'llm_provider_response'),
             [

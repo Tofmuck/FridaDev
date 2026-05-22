@@ -145,6 +145,16 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn('id="system"', source)
         self.assertIn("Le prompt systeme global est maintenant porte par le backend et visible dans l'admin.", source)
 
+    def test_chat_surface_exposes_global_reasoning_shortcut_only(self) -> None:
+        index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="mainReasoningLevel"', index_source)
+        self.assertIn('main_reasoning_control.js', index_source)
+        self.assertIn('createMainReasoningControl', app_source)
+        self.assertNotIn('reasoning_details', index_source)
+        self.assertNotIn('reasoning_details', app_source)
+
     def test_admin_ui_keeps_max_tokens_and_system_prompt_out_of_v1(self) -> None:
         source = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
 

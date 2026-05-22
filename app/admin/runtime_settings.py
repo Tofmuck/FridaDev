@@ -177,6 +177,7 @@ def _seed_value(section: str, field: str) -> Any:
         ('main_model', 'temperature'): 0.4,
         ('main_model', 'top_p'): 1.0,
         ('main_model', 'response_max_tokens'): 8192,
+        ('main_model', 'reasoning_effort'): 'high',
         ('arbiter_model', 'model'): config.ARBITER_MODEL,
         ('arbiter_model', 'temperature'): 0.0,
         ('arbiter_model', 'top_p'): 1.0,

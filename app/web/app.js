@@ -16,6 +16,10 @@
   if (!chatCopyExport) {
     throw new Error("FridaChatCopyExport module missing");
   }
+  const mainReasoningControl = window.FridaMainReasoningControl;
+  if (!mainReasoningControl) {
+    throw new Error("FridaMainReasoningControl module missing");
+  }
   const imageGeneration = window.FridaImageGeneration;
   if (!imageGeneration) {
     throw new Error("FridaImageGeneration module missing");
@@ -68,6 +72,8 @@
   const imageGenerationPreview = $("#imageGenerationPreview");
   const imageGenerationMeta = $("#imageGenerationMeta");
   const imageGenerationDownload = $("#imageGenerationDownload");
+  const mainReasoningLevel = $("#mainReasoningLevel");
+  const mainReasoningStatus = $("#mainReasoningStatus");
   const newChatBtn = $("#newChat");
   const threadsUl = $("#threads");
   // Mobile sidebar
@@ -353,6 +359,13 @@
     resultEl: imageGenerationResult,
     metaEl: imageGenerationMeta,
     downloadButtonEl: imageGenerationDownload,
+    fetchFn: fetch,
+    consoleObj: console,
+  });
+
+  mainReasoningControl.createMainReasoningControl({
+    selectEl: mainReasoningLevel,
+    statusEl: mainReasoningStatus,
     fetchFn: fetch,
     consoleObj: console,
   });

@@ -100,103 +100,119 @@ Si OpenRouter / OpenAI renvoie des champs `reasoning`, `reasoning_details` ou eq
 
 Objectif: rendre modulable le niveau de raisonnement du LLM principal GPT-5.1 via OpenRouter, de bout en bout.
 
+### Livraison Objet 1 - 2026-05-22
+
+Statut: livre en runtime applicatif; l'objet 2 streaming visuel reste ouvert.
+
+- [x] Niveaux GPT-5.1 revalides et bornes a `none`, `low`, `medium`, `high`.
+- [x] Reglage global `main_model.reasoning_effort` ajoute aux runtime settings / DB avec defaut `high`.
+- [x] Controle admin borne ajoute au modele principal.
+- [x] Controle compact pres du chat ajoute comme raccourci vers le reglage global, applicable aux prochains tours.
+- [x] Payload OpenRouter du LLM principal branche via `reasoning.effort` avec exclusion du raisonnement detaille.
+- [x] Observabilite content-free du niveau demande/effectif ajoutee aux evenements LLM principaux.
+- [x] Garde-fou documente: niveau visible, contenu interne du raisonnement jamais affiche, streame, persiste, exporte ou injecte.
+- [x] Tests settings, payload, frontend contract, controle chat et observabilite ajoutes ou adaptes.
+- [ ] Smoke live couteux avec vrai appel OpenRouter sur plusieurs niveaux, a lancer seulement si decide separement.
+
+Les cases detaillees ci-dessous conservent le plan A-Z initial. Pour l'objet 1, le statut effectif est porte par le bloc de livraison ci-dessus et par la spec `app/docs/states/specs/fridadev-main-llm-reasoning-contract.md`.
+
 ### Lot 0 - Contrat et niveaux officiels
 
-- [ ] Revalider la documentation officielle OpenAI GPT-5.1 et OpenRouter au moment du patch.
-- [ ] Verifier les niveaux officiellement supportes pour `openai/gpt-5.1` via OpenRouter.
-- [ ] Partir de la preuve actuelle: GPT-5.1 annonce `none`, `low`, `medium`, `high`.
-- [ ] Ne pas ajouter `minimal`, `xhigh` ou tout autre niveau sauf preuve officielle GPT-5.1 via OpenRouter / OpenAI.
-- [ ] Verifier la forme exacte attendue par OpenRouter Chat Completions: `reasoning: {"effort": value}` et option d'exclusion.
-- [ ] Decider si le payload doit envoyer `reasoning.exclude=true` pour garantir que le raisonnement ne revient pas dans la reponse.
-- [ ] Verifier la compatibilite avec `temperature` et `top_p`, notamment si GPT-5.1 impose des restrictions selon le niveau de reasoning.
-- [ ] Definir le mapping UI francais:
+- [x] Revalider la documentation officielle OpenAI GPT-5.1 et OpenRouter au moment du patch.
+- [x] Verifier les niveaux officiellement supportes pour `openai/gpt-5.1` via OpenRouter.
+- [x] Partir de la preuve actuelle: GPT-5.1 annonce `none`, `low`, `medium`, `high`.
+- [x] Ne pas ajouter `minimal`, `xhigh` ou tout autre niveau sauf preuve officielle GPT-5.1 via OpenRouter / OpenAI.
+- [x] Verifier la forme exacte attendue par OpenRouter Chat Completions: `reasoning: {"effort": value}` et option d'exclusion.
+- [x] Decider si le payload doit envoyer `reasoning.exclude=true` pour garantir que le raisonnement ne revient pas dans la reponse.
+- [x] Verifier la compatibilite avec `temperature` et `top_p`, notamment si GPT-5.1 impose des restrictions selon le niveau de reasoning.
+- [x] Definir le mapping UI francais:
   - `none` -> `aucun` ou `rapide`;
   - `low` -> `faible`;
   - `medium` -> `moyen`;
   - `high` -> `eleve`.
-- [ ] Confirmer la valeur par defaut cible pour FridaDev, qui doit pouvoir etre `high` si les tests cout/latence/qualite le valident.
-- [ ] Definir le comportement si le modele principal courant ne supporte pas reasoning: ne pas envoyer le champ, exposer un signal content-free, ne pas planter.
-- [ ] Documenter que les niveaux generiques OpenRouter ne suffisent pas: le contrat actif est l'intersection modele-specifique.
+- [x] Confirmer la valeur par defaut cible pour FridaDev: `high`.
+- [x] Definir le comportement si le modele principal courant ne supporte pas reasoning: ne pas envoyer le champ, exposer un signal content-free, ne pas planter.
+- [x] Documenter que les niveaux generiques OpenRouter ne suffisent pas: le contrat actif est l'intersection modele-specifique.
 
 ### Lot 1 - DB / runtime settings
 
-- [ ] Ajouter un champ runtime settings borne pour `main_model.reasoning_effort` ou nom equivalent.
-- [ ] Choisir le type: enum stricte, pas texte libre.
-- [ ] Prevoir migration / bootstrap si necessaire.
-- [ ] Definir une valeur par defaut sure.
-- [ ] Garantir compatibilite avec les settings existants `model`, `temperature`, `top_p`, `response_max_tokens`, headers et secrets.
-- [ ] Ne pas stocker de secret.
-- [ ] Ajouter validation backend: valeur absente, inconnue, modele incompatible.
-- [ ] Verifier que les anciennes installations sans champ reasoning continuent a fonctionner.
+- [x] Ajouter un champ runtime settings borne pour `main_model.reasoning_effort`.
+- [x] Choisir le type: texte valide par liste fermee cote serveur, pas JSON libre.
+- [x] Prevoir bootstrap/backfill DB pour les installations existantes.
+- [x] Definir une valeur par defaut sure: `high`.
+- [x] Garantir compatibilite avec les settings existants `model`, `temperature`, `top_p`, `response_max_tokens`, headers et secrets.
+- [x] Ne pas stocker de secret.
+- [x] Ajouter validation backend: valeur absente, inconnue, modele incompatible.
+- [x] Verifier que les anciennes installations sans champ reasoning continuent a fonctionner.
 
 ### Lot 2 - Admin settings
 
-- [ ] Exposer le champ dans les reglages avances du modele principal.
-- [ ] Utiliser un controle borne: select/segmented control, pas JSON libre.
-- [ ] Montrer la valeur active et sa source runtime.
-- [ ] Indiquer clairement que le niveau controle l'effort demande, pas un affichage de pensee.
-- [ ] Ajouter erreurs de validation lisibles si valeur inconnue.
-- [ ] Conserver la gestion actuelle de `api_key` sans affichage de secret.
-- [ ] Tester la sauvegarde, le reload et les erreurs.
+- [x] Exposer le champ dans les reglages avances du modele principal.
+- [x] Utiliser un controle borne: select, pas JSON libre.
+- [x] Montrer la valeur active et sa source runtime via le mecanisme admin existant.
+- [x] Indiquer clairement que le niveau controle l'effort demande, pas un affichage de pensee.
+- [x] Ajouter erreurs de validation lisibles si valeur inconnue.
+- [x] Conserver la gestion actuelle de `api_key` sans affichage de secret.
+- [x] Tester la sauvegarde, le reload et les erreurs via contrats admin/runtime.
 
 ### Lot 3 - Controle pres de la fenetre de chat
 
-- [ ] Ajouter un controle accessible pres de la zone de saisie du chat.
-- [ ] Acter la portee: le controle modifie le reglage global `main_model.reasoning_effort` en runtime settings / DB.
-- [ ] Traiter ce controle comme un raccourci ergonomique vers les settings globaux, pas comme un override de tour, session ou conversation.
-- [ ] Quand l'utilisateur change ce controle, appliquer la nouvelle valeur comme defaut global des prochains tours.
-- [ ] Definir le libelle UI et les tooltips.
-- [ ] Garder le controle compact et clair, par exemple `Raisonnement: moyen`.
-- [ ] Afficher uniquement le niveau choisi, jamais le raisonnement interne.
-- [ ] Persister par runtime settings / DB, avec retour UI clair sur la valeur active.
-- [ ] Garder les overrides conversation ou prochain tour hors scope; ils pourront devenir un chantier futur separe si le besoin est confirme.
-- [ ] Tester clavier, mobile, desktop et interaction avec web/manual/documents actifs.
+- [x] Ajouter un controle accessible pres de la zone de saisie du chat.
+- [x] Acter la portee: le controle modifie le reglage global `main_model.reasoning_effort` en runtime settings / DB.
+- [x] Traiter ce controle comme un raccourci ergonomique vers les settings globaux, pas comme un override de tour, session ou conversation.
+- [x] Quand l'utilisateur change ce controle, appliquer la nouvelle valeur comme defaut global des prochains tours.
+- [x] Definir le libelle UI et le titre compact.
+- [x] Garder le controle compact et clair.
+- [x] Afficher uniquement le niveau choisi, jamais le raisonnement interne.
+- [x] Persister par runtime settings / DB, avec retour UI clair sur la valeur active.
+- [x] Garder les overrides conversation ou prochain tour hors scope; ils pourront devenir un chantier futur separe si le besoin est confirme.
+- [x] Tester le contrat frontend chat/admin; validation visuelle navigateur approfondie hors de ce lot.
 
 ### Lot 4 - Payload OpenRouter du LLM principal
 
-- [ ] Brancher le reasoning dans le chemin du LLM principal uniquement.
-- [ ] Revalider le meilleur emplacement exact: probablement `chat_service.py` pour resolution de valeur, puis `chat_llm_flow.py` / `llm_client.build_payload()` pour le payload.
-- [ ] N'envoyer le champ `reasoning` que si la valeur est valide et applicable au modele courant.
-- [ ] Envoyer une forme compatible OpenRouter, par exemple a verifier: `reasoning: {"effort": "medium", "exclude": true}`.
-- [ ] Ne pas perturber `temperature`, `top_p`, `max_tokens`, `stop`, `metadata`, `trace`, `stream`, `stream_options.include_usage`.
-- [ ] Si la documentation officielle confirme une incompatibilite entre certains niveaux de reasoning et `temperature` / `top_p`, ajouter une strategie explicite et testee au lieu de laisser une erreur provider opaque.
-- [ ] Verifier que `reasoning_details` renvoyes en streaming ou non-streaming sont ignores / ecartes.
-- [ ] Ne pas transmettre de raisonnement a Memory, Identity, Summary, Biblio/RAG, documents actifs ou exports.
+- [x] Brancher le reasoning dans le chemin du LLM principal uniquement.
+- [x] Revalider le meilleur emplacement exact: resolution dans `llm_client.build_payload()` depuis runtime settings, observabilite dans `chat_llm_flow.py` / proxy serveur.
+- [x] N'envoyer le champ `reasoning` que si la valeur est valide et applicable au modele courant.
+- [x] Envoyer une forme compatible OpenRouter: `reasoning: {"effort": "medium", "exclude": true}`.
+- [x] Ne pas perturber `temperature`, `top_p`, `max_tokens`, `stop`, `metadata`, `trace`, `stream`, `stream_options.include_usage`.
+- [x] Aucune incompatibilite officielle bloquante `temperature` / `top_p` n'a ete confirmee pour ce lot.
+- [x] Verifier que `reasoning_details` renvoyes en streaming ou non-streaming sont ignores / ecartes.
+- [x] Ne pas transmettre de raisonnement a Memory, Identity, Summary, Biblio/RAG, documents actifs ou exports.
 
 ### Lot 5 - Observabilite
 
-- [ ] Journaliser content-free le niveau de reasoning demande.
-- [ ] Journaliser le niveau effectivement envoye, ou `not_sent` si modele incompatible / valeur absente.
-- [ ] Ajouter les champs utiles au read-model / checklist si pertinent:
+- [x] Journaliser content-free le niveau de reasoning demande.
+- [x] Journaliser le niveau effectivement envoye, ou `not_sent` si modele incompatible / valeur absente.
+- [x] Ajouter les champs utiles aux evenements LLM principaux:
   - `main_llm_reasoning_effort_requested`;
   - `main_llm_reasoning_effort_effective`;
   - `main_llm_reasoning_policy_kind`;
   - `main_llm_reasoning_hidden=true` ou equivalent.
-- [ ] Ne jamais logger le contenu de raisonnement.
-- [ ] Ne jamais stocker `reasoning_details`.
-- [ ] Observer cout, latence, tokens, modele et caller via les surfaces deja existantes.
-- [ ] Verifier que les exports utilisateur ne contiennent que le niveau selectionne, pas le raisonnement.
+- [x] Ne jamais logger le contenu de raisonnement.
+- [x] Ne jamais stocker `reasoning_details`.
+- [x] Observer cout, latence, tokens, modele et caller via les surfaces deja existantes.
+- [x] Verifier que les exports utilisateur ne contiennent que le niveau selectionne, pas le raisonnement.
 
 ### Lot 6 - Tests
 
-- [ ] Tests runtime settings: seed, migration, enum, valeur absente, valeur invalide.
-- [ ] Tests admin settings: champ visible, sauvegarde, validation.
-- [ ] Tests payload: aucun champ absent par defaut si contrat le decide, champ present si niveau choisi, champ absent si modele incompatible.
-- [ ] Tests non-regression: `temperature`, `top_p`, `max_tokens`, `stream_options`, `metadata`, `trace` conserves.
-- [ ] Tests de non-contamination: autres callers OpenRouter inchanges.
-- [ ] Tests de filtrage: `reasoning`, `reasoning_details` ou equivalents provider ne sont ni affiches, ni persistes, ni injectes.
-- [ ] Tests chat control si le controle pres du chat envoie un parametre de tour.
-- [ ] Tests serveur runtime contract si `/api/chat` accepte une nouvelle option de tour.
+- [x] Tests runtime settings: seed, bootstrap/backfill, valeur absente, valeur invalide.
+- [x] Tests admin settings: champ visible, sauvegarde, validation.
+- [x] Tests payload: champ present par defaut compatible, champ present si niveau choisi, champ absent si modele incompatible.
+- [x] Tests non-regression: `temperature`, `top_p`, `max_tokens`, `stream_options`, `metadata`, `trace` conserves.
+- [x] Tests de non-contamination: autres callers OpenRouter inchanges.
+- [x] Tests de filtrage: `reasoning`, `reasoning_details` ou equivalents provider ne sont ni affiches, ni persistes, ni injectes.
+- [x] Tests chat control: le controle pres du chat modifie le reglage global et n'envoie pas de parametre de tour.
+- [x] Tests serveur runtime contract: `/api/chat` ne recoit pas de nouvelle option de tour.
 
 ### Lot 7 - Documentation / validation live
 
-- [ ] Mettre a jour le catalogue des appels modeles.
-- [ ] Mettre a jour la doc runtime/admin si comportement operateur nouveau.
-- [ ] Documenter les niveaux retenus, la valeur par defaut, la portee du controle chat et les limites.
+- [x] Mettre a jour le catalogue des appels modeles.
+- [x] Mettre a jour la doc runtime/admin si comportement operateur nouveau.
+- [x] Documenter les niveaux retenus, la valeur par defaut, la portee du controle chat et les limites.
 - [ ] Smoke test borne: un tour sans reasoning explicite, un tour `none`, un tour `medium` ou `high` selon cout acceptable.
-- [ ] Verifier dans l'observabilite que le niveau est visible content-free.
-- [ ] Verifier que le raisonnement interne n'apparait pas dans l'UI, les logs user-facing, Memory, Identity, Summary, exports ou documents actifs.
-- [ ] Rebuild applicatif seulement quand le runtime/UI a ete modifie.
+- [x] Verifier dans l'observabilite que le niveau est visible content-free.
+- [x] Verifier que le raisonnement interne n'apparait pas dans l'UI, les logs user-facing, Memory, Identity, Summary, exports ou documents actifs.
+- [x] Rebuild applicatif seulement quand le runtime/UI a ete modifie.
 - [ ] Archiver le TODO quand tous les lots sont fermes.
 
 ## 6. Objet 2 - Streaming visuel du texte dans la fenetre de chat
@@ -259,12 +275,12 @@ Objectif: obtenir un affichage progressif reel du message assistant cote UI quan
 
 ## 7. Decisions utilisateur a prendre avant implementation
 
-- [ ] Niveaux exacts de reasoning valides apres relecture finale des docs officielles.
-- [ ] Valeur par defaut du reasoning FridaDev, avec `high` comme cible possible sous reserve de confirmation au lot d'implementation.
-- [ ] Libelles UI francais definitifs.
-- [ ] Emplacement precis du controle dans la fenetre de chat.
+- [x] Niveaux exacts de reasoning valides apres relecture finale des docs officielles: `none`, `low`, `medium`, `high`.
+- [x] Valeur par defaut du reasoning FridaDev: `high`.
+- [x] Libelles UI francais definitifs pour l'objet 1: `aucun`, `faible`, `moyen`, `eleve`.
+- [x] Emplacement precis du controle dans la fenetre de chat: pres de la zone de saisie, comme raccourci global compact.
 - [ ] Strategie si `temperature` / `top_p` deviennent incompatibles avec certains niveaux de reasoning.
-- [ ] Comportement si le modele principal n'est plus GPT-5.1 ou ne supporte pas reasoning.
+- [x] Comportement si le modele principal n'est plus GPT-5.1 ou ne supporte pas reasoning: ne pas envoyer le champ, exposer un signal content-free, ne pas planter.
 - [ ] Niveau de tests visuels attendu pour le streaming.
 - [ ] Comportement streaming en cas d'interruption.
 

@@ -61,7 +61,7 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
             result = runtime_settings.validate_runtime_section(
                 'main_model',
                 {
-                    'model': {'value': 'openrouter/validate-main'},
+                    'model': {'value': 'openai/gpt-5.1'},
                     'temperature': {'value': 0.5},
                     'top_p': {'value': 0.8},
                 },
@@ -82,8 +82,50 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         self.assertTrue(checks['referer_validation_agent']['ok'])
         self.assertTrue(checks['temperature']['ok'])
         self.assertTrue(checks['top_p']['ok'])
+        self.assertTrue(checks['reasoning_effort']['ok'])
+        self.assertIn('model_supported=True', checks['reasoning_effort']['detail'])
         self.assertTrue(checks['api_key_runtime']['ok'])
         self.assertIn('env_fallback', checks['api_key_runtime']['detail'])
+
+    def test_validate_runtime_section_rejects_unknown_reasoning_effort(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-validation'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'main_model',
+                {
+                    'model': {'value': 'openai/gpt-5.1'},
+                    'reasoning_effort': {'value': 'xhigh'},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertFalse(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertFalse(checks['reasoning_effort']['ok'])
+        self.assertIn('allowed=none,low,medium,high', checks['reasoning_effort']['detail'])
+
+    def test_validate_runtime_section_allows_reasoning_setting_with_non_gpt51_model(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-validation'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'main_model',
+                {
+                    'model': {'value': 'openai/gpt-5.4-mini'},
+                    'reasoning_effort': {'value': 'high'},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertTrue(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['reasoning_effort']['ok'])
+        self.assertIn('model_supported=False', checks['reasoning_effort']['detail'])
 
     def test_validate_runtime_section_rejects_invalid_component_referer(self) -> None:
         original_api_key = config.OR_KEY

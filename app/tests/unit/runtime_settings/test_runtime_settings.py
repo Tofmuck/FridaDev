@@ -115,6 +115,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         spec = runtime_settings.get_section_spec('main_model')
         self.assertIn('temperature', spec.field_names())
         self.assertIn('top_p', spec.field_names())
+        self.assertIn('reasoning_effort', spec.field_names())
 
     def test_main_model_includes_response_max_tokens_field(self) -> None:
         spec = runtime_settings.get_field_spec('main_model', 'response_max_tokens')
@@ -122,6 +123,13 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertFalse(spec.is_secret)
         self.assertFalse(spec.seed_from_env)
         self.assertEqual(spec.seed_default, 8192)
+
+    def test_main_model_includes_reasoning_effort_field(self) -> None:
+        spec = runtime_settings.get_field_spec('main_model', 'reasoning_effort')
+        self.assertEqual(spec.value_type, 'text')
+        self.assertFalse(spec.is_secret)
+        self.assertFalse(spec.seed_from_env)
+        self.assertEqual(spec.seed_default, 'high')
 
     def test_web_reformulation_model_has_dedicated_runtime_section(self) -> None:
         spec = runtime_settings.get_section_spec('web_reformulation_model')

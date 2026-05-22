@@ -46,7 +46,7 @@ html, body { height: 100%; }
 
   /* Hauteurs */
   --topbar-h: 46px;
-  --ask-h:    76px;
+  --ask-h:    112px;
 }
 
 /* ===== Body ===== */
@@ -1118,6 +1118,36 @@ body {
 .active-document-remove:hover {
   color: var(--fg);
   background: var(--surface-hover);
+}
+
+.main-reasoning-control {
+  grid-column: 1 / -1;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+  max-width: 100%;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--fg-muted);
+}
+
+.main-reasoning-control select {
+  min-width: 88px;
+  max-width: 120px;
+  height: 26px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+  color: var(--fg);
+  font: inherit;
+  padding: 2px 7px;
+}
+
+.main-reasoning-control small {
+  min-width: 0;
+  color: var(--fg-subtle);
 }
 
 .ask textarea {

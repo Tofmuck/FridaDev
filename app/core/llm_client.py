@@ -3,6 +3,7 @@ from typing import Any, Mapping
 
 import config
 from admin import runtime_settings
+from core import main_llm_reasoning
 
 INTERNAL_PROVIDER_CALLER_HEADER = 'X-Frida-Caller'
 _KNOWN_PROVIDER_CALLERS = (
@@ -387,18 +388,48 @@ def _runtime_main_model_name() -> str:
     return str(view.payload['model']['value'])
 
 
+def _runtime_main_reasoning_resolution(model: str) -> main_llm_reasoning.MainLlmReasoningResolution:
+    view = runtime_settings.get_main_model_settings()
+    return main_llm_reasoning.resolve_main_llm_reasoning(
+        model=model,
+        runtime_payload=view.payload,
+    )
+
+
 def build_payload(messages: list, temperature: float, top_p: float,
                   max_tokens: int, stream: bool = False) -> dict:
     """Construit le payload pour l'API OpenRouter."""
+    model = _runtime_main_model_name()
+    reasoning_resolution = _runtime_main_reasoning_resolution(model)
     payload = {
-        "model": _runtime_main_model_name(),
+        "model": model,
         "messages": messages,
         "temperature": temperature,
         "top_p": top_p,
         "max_tokens": max_tokens,
         "stop": ["<|endoftext|>", "<|return|>", "<|call|>"],
     }
+    reasoning_payload = main_llm_reasoning.reasoning_request_payload(reasoning_resolution)
+    if reasoning_payload is not None:
+        payload["reasoning"] = reasoning_payload
     if stream:
         payload["stream"] = True
         payload["stream_options"] = {"include_usage": True}
     return with_provider_attribution(payload, caller='llm')
+
+
+def main_llm_reasoning_observability_from_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    model = str(_mapping(payload).get('model') or '')
+    reasoning_payload = _mapping(_mapping(payload).get('reasoning'))
+    if reasoning_payload:
+        effort = main_llm_reasoning.normalize_reasoning_effort(reasoning_payload.get('effort'))
+        resolution = main_llm_reasoning.MainLlmReasoningResolution(
+            requested_effort=effort,
+            effective_effort=effort,
+            supported=main_llm_reasoning.model_supports_reasoning_effort(model),
+            sent=True,
+        )
+        return main_llm_reasoning.reasoning_observability_fields(resolution)
+
+    resolution = _runtime_main_reasoning_resolution(model)
+    return main_llm_reasoning.reasoning_observability_fields(resolution)

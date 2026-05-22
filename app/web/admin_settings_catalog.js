@@ -231,6 +231,19 @@
       min: "1",
       autocomplete: "off",
     },
+    {
+      key: "reasoning_effort",
+      label: "Raisonnement",
+      hint: "Effort de raisonnement global du LLM principal; le raisonnement interne reste masque.",
+      inputType: "select",
+      options: [
+        { value: "none", label: "aucun" },
+        { value: "low", label: "faible" },
+        { value: "medium", label: "moyen" },
+        { value: "high", label: "eleve" },
+      ],
+      autocomplete: "off",
+    },
   ];
   const mainModelCheckFieldMap = {
     api_key_runtime: "api_key",
