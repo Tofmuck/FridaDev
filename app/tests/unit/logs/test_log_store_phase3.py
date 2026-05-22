@@ -300,6 +300,10 @@ class LogStorePhase3Tests(unittest.TestCase):
                     'context_injected': True,
                     'injected_chars': 77,
                     'read_state': 'page_read',
+                    'web_confidence_level': 'high',
+                    'web_confidence_score': 0.91,
+                    'openrouter_fallback_state': 'future_only',
+                    'openrouter_fallback_used': False,
                     'query': 'RAW QUERY MUST NOT LEAK',
                     'context_block': 'RAW WEB CONTEXT MUST NOT LEAK',
                 },
@@ -361,6 +365,8 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertEqual(metrics['web']['successful_count'], 1)
         self.assertEqual(metrics['web']['injected_chars_total'], 77)
         self.assertEqual(metrics['web']['read_state_counts']['page_read'], 1)
+        self.assertEqual(metrics['web']['confidence_level_counts']['high'], 1)
+        self.assertEqual(metrics['web']['openrouter_fallback_used_count'], 0)
         self.assertEqual(metrics['fallback_fail_open']['by_reason_code']['validation_fail_open'], 1)
         self.assertEqual(metrics['errors_by_stage']['embedding'], 1)
 
@@ -393,6 +399,10 @@ class LogStorePhase3Tests(unittest.TestCase):
                     'context_injected': True,
                     'injected_chars': 77,
                     'read_state': 'page_read',
+                    'web_confidence_level': 'high',
+                    'web_confidence_score': 0.91,
+                    'openrouter_fallback_state': 'future_only',
+                    'openrouter_fallback_used': False,
                     'context_block': 'RAW WEB CONTEXT MUST NOT LEAK',
                 },
                 event_id='evt-web-search',
@@ -439,6 +449,8 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertTrue(item['web']['requested'])
         self.assertTrue(item['web']['injected'])
         self.assertEqual(item['web']['query_sha256_12'], 'c' * 12)
+        self.assertEqual(item['web']['web_confidence_level'], 'high')
+        self.assertFalse(item['web']['openrouter_fallback_used'])
         self.assertFalse(item['flags']['raw_event_payloads_included'])
         self.assertFalse(item['source']['events_truncated'])
 
@@ -710,6 +722,10 @@ class LogStorePhase3Tests(unittest.TestCase):
                     'results_count': 0,
                     'context_injected': False,
                     'read_state': 'no_results',
+                    'web_confidence_level': 'low',
+                    'web_confidence_score': 0.12,
+                    'openrouter_fallback_state': 'human_review_candidate',
+                    'openrouter_fallback_used': False,
                     'query': 'RAW QUERY MUST NOT LEAK',
                 },
             ),
@@ -722,6 +738,8 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertEqual(web_item['status'], 'ok')
         self.assertEqual(web_item['reason_code'], 'observed_skipped')
         self.assertEqual(web_item['evidence']['read_state'], 'no_results')
+        self.assertEqual(web_item['evidence']['web_confidence_level'], 'low')
+        self.assertFalse(web_item['evidence']['openrouter_fallback_used'])
         self.assertNotIn('RAW QUERY MUST NOT LEAK', json.dumps(checklist, sort_keys=True))
 
     def test_build_turn_observability_checklist_detects_secondary_llm_call_provider(self) -> None:

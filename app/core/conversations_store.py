@@ -315,6 +315,7 @@ def conversation_metadata(
         "updated_at": updated_at,
         "message_count": int(message_count),
         "last_message_preview": last_preview,
+        "workspace_folder_id": str(conversation.get("workspace_folder_id") or "").strip() or None,
     }
 
 
@@ -332,6 +333,7 @@ def serialize_catalog_row(
         "updated_at": ts_to_iso_func(row.get("updated_at")),
         "message_count": int(row.get("message_count") or 0),
         "last_message_preview": str(row.get("last_message_preview") or ""),
+        "workspace_folder_id": str(row.get("workspace_folder_id") or "").strip() or None,
         "deleted_at": ts_to_iso_func(row.get("deleted_at")) if row.get("deleted_at") else None,
     }
 
@@ -472,6 +474,7 @@ def build_conversation_from_catalog(
         "title": summary.get("title") or default_title,
         "created_at": summary.get("created_at") or now_iso_func(),
         "updated_at": summary.get("updated_at") or summary.get("created_at") or now_iso_func(),
+        "workspace_folder_id": summary.get("workspace_folder_id") or None,
         "messages": messages,
     }
     return normalize_conversation_func(data, str(summary.get("id") or ""), system_prompt)
@@ -505,9 +508,10 @@ def upsert_conversation_catalog(
                         updated_at,
                         message_count,
                         last_message_preview,
+                        workspace_folder_id,
                         deleted_at
                     )
-                    VALUES (%s::uuid, %s, %s, %s, %s, %s, NULL)
+                    VALUES (%s::uuid, %s, %s, %s, %s, %s, %s::uuid, NULL)
                     ON CONFLICT (id) DO UPDATE
                     SET
                         title = EXCLUDED.title,
@@ -515,8 +519,9 @@ def upsert_conversation_catalog(
                         updated_at = GREATEST(conversations.updated_at, EXCLUDED.updated_at),
                         message_count = EXCLUDED.message_count,
                         last_message_preview = EXCLUDED.last_message_preview,
+                        workspace_folder_id = COALESCE(EXCLUDED.workspace_folder_id, conversations.workspace_folder_id),
                         deleted_at = CASE WHEN %s THEN conversations.deleted_at ELSE NULL END
-                    RETURNING id, title, created_at, updated_at, message_count, last_message_preview, deleted_at
+                    RETURNING id, title, created_at, updated_at, message_count, last_message_preview, workspace_folder_id, deleted_at
                     """,
                     (
                         conv_id,
@@ -525,6 +530,7 @@ def upsert_conversation_catalog(
                         parse_iso_to_dt_func(meta["updated_at"]),
                         meta["message_count"],
                         meta["last_message_preview"],
+                        meta.get("workspace_folder_id"),
                         bool(preserve_deleted),
                     ),
                 )
@@ -568,9 +574,10 @@ def save_conversation_catalog_and_messages_atomic(
                         updated_at,
                         message_count,
                         last_message_preview,
+                        workspace_folder_id,
                         deleted_at
                     )
-                    VALUES (%s::uuid, %s, %s, %s, %s, %s, NULL)
+                    VALUES (%s::uuid, %s, %s, %s, %s, %s, %s::uuid, NULL)
                     ON CONFLICT (id) DO UPDATE
                     SET
                         title = EXCLUDED.title,
@@ -578,6 +585,7 @@ def save_conversation_catalog_and_messages_atomic(
                         updated_at = GREATEST(conversations.updated_at, EXCLUDED.updated_at),
                         message_count = EXCLUDED.message_count,
                         last_message_preview = EXCLUDED.last_message_preview,
+                        workspace_folder_id = COALESCE(EXCLUDED.workspace_folder_id, conversations.workspace_folder_id),
                         deleted_at = CASE WHEN %s THEN conversations.deleted_at ELSE NULL END
                     RETURNING id
                     """,
@@ -588,6 +596,7 @@ def save_conversation_catalog_and_messages_atomic(
                         parse_iso_to_dt_func(meta["updated_at"]),
                         meta["message_count"],
                         meta["last_message_preview"],
+                        meta.get("workspace_folder_id"),
                         bool(preserve_deleted),
                     ),
                 )
@@ -653,7 +662,7 @@ def get_conversation_summary(
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
                     f"""
-                    SELECT id, title, created_at, updated_at, message_count, last_message_preview, deleted_at
+                    SELECT id, title, created_at, updated_at, message_count, last_message_preview, workspace_folder_id, deleted_at
                     FROM conversations
                     WHERE id = %s::uuid {where}
                     LIMIT 1
@@ -814,7 +823,7 @@ def list_conversations(
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
                     f"""
-                    SELECT id, title, created_at, updated_at, message_count, last_message_preview, deleted_at
+                    SELECT id, title, created_at, updated_at, message_count, last_message_preview, workspace_folder_id, deleted_at
                     FROM conversations
                     {where}
                     ORDER BY updated_at DESC
@@ -900,7 +909,7 @@ def rename_conversation(
                     SET title = %s,
                         updated_at = GREATEST(updated_at, now())
                     WHERE id = %s::uuid
-                    RETURNING id, title, created_at, updated_at, message_count, last_message_preview, deleted_at
+                    RETURNING id, title, created_at, updated_at, message_count, last_message_preview, workspace_folder_id, deleted_at
                     """,
                     (safe, conv_id),
                 )
@@ -909,6 +918,41 @@ def rename_conversation(
         return serialize_catalog_row_func(row) if row else None
     except Exception as exc:
         logger.warning("conv_catalog_rename_failed id=%s err=%s", conv_id, exc)
+        return None
+
+
+def set_conversation_workspace_folder(
+    conversation_id: str,
+    workspace_folder_id: Optional[str],
+    *,
+    normalize_conversation_id_func: Callable[[Optional[str]], Optional[str]],
+    db_conn_func: Callable[[], Any],
+    serialize_catalog_row_func: Callable[[dict[str, Any]], dict[str, Any]],
+    logger: Any,
+) -> Optional[dict[str, Any]]:
+    conv_id = normalize_conversation_id_func(conversation_id)
+    if not conv_id:
+        return None
+    folder_id = str(workspace_folder_id or "").strip() or None
+
+    try:
+        with db_conn_func() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    UPDATE conversations
+                    SET workspace_folder_id = %s::uuid,
+                        updated_at = GREATEST(updated_at, now())
+                    WHERE id = %s::uuid
+                    RETURNING id, title, created_at, updated_at, message_count, last_message_preview, workspace_folder_id, deleted_at
+                    """,
+                    (folder_id, conv_id),
+                )
+                row = cur.fetchone()
+            conn.commit()
+        return serialize_catalog_row_func(row) if row else None
+    except Exception as exc:
+        logger.warning("conv_catalog_workspace_folder_update_failed id=%s err=%s", conv_id, exc)
         return None
 
 

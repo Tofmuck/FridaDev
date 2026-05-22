@@ -28,6 +28,13 @@ from core import active_document_upload_service
 from core import chat_service
 from core import conversations_prompt_window
 from core import conversations_service
+from core import workspace_files
+from core import workspace_file_ocr_service
+from core import workspace_files_service
+from core import workspace_file_selections
+from core import workspace_file_selections_service
+from core import workspace_folders
+from core import workspace_folders_service
 from core import whisper_transcription_service
 from admin import (
     admin_hermeneutics_routes,
@@ -719,6 +726,7 @@ def api_chat():
             web_search_module=ws,
             config_module=config,
             logger=logger,
+            workspace_file_selections_module=workspace_file_selections,
         )
     except Exception as exc:
         chat_turn_logger.emit_error(
@@ -1186,6 +1194,122 @@ admin_hermeneutics_routes.register_admin_hermeneutics_routes(
     config_module=config,
 )
 
+# ── /api/workspace-folders* ───────────────────────────────────────────────────
+
+@app.get('/api/workspace-folders')
+def api_list_workspace_folders():
+    payload = workspace_folders_service.list_workspace_folders(
+        request.args,
+        workspace_folders_module=workspace_folders,
+    )
+    return jsonify(payload)
+
+
+@app.post('/api/workspace-folders')
+def api_create_workspace_folder():
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_folders_service.create_workspace_folder(
+        data,
+        workspace_folders_module=workspace_folders,
+    )
+    return jsonify(payload), status
+
+
+@app.patch('/api/workspace-folders/<folder_id>')
+def api_patch_workspace_folder(folder_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_folders_service.patch_workspace_folder(
+        folder_id,
+        data,
+        workspace_folders_module=workspace_folders,
+    )
+    return jsonify(payload), status
+
+
+@app.delete('/api/workspace-folders/<folder_id>')
+def api_delete_workspace_folder(folder_id: str):
+    payload, status = workspace_folders_service.delete_workspace_folder(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+# ── /api/workspace-folders/<id>/files* ───────────────────────────────────────
+
+@app.get('/api/workspace-folders/<folder_id>/files')
+def api_list_workspace_folder_files(folder_id: str):
+    payload, status = workspace_files_service.list_workspace_files_response(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/workspace-folders/<folder_id>/files')
+def api_upload_workspace_folder_file(folder_id: str):
+    body_guard = workspace_files_service.upload_body_size_guard_response(request.content_length)
+    if body_guard:
+        payload, status = body_guard
+        return jsonify(payload), status
+
+    payload, status = workspace_files_service.upload_workspace_file_response(
+        folder_id,
+        request.files,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+@app.delete('/api/workspace-folders/<folder_id>/files/<file_id>')
+def api_delete_workspace_folder_file(folder_id: str, file_id: str):
+    payload, status = workspace_files_service.delete_workspace_file_response(
+        folder_id,
+        file_id,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/workspace-folders/<folder_id>/files/<file_id>/ocr')
+def api_ocr_workspace_folder_file(folder_id: str, file_id: str):
+    payload, status = workspace_file_ocr_service.ocr_workspace_file_response(
+        folder_id,
+        file_id,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/files/<file_id>/ocr-markdown')
+def api_get_workspace_folder_file_ocr_markdown(folder_id: str, file_id: str):
+    payload, status = workspace_file_ocr_service.get_ocr_markdown_response(
+        folder_id,
+        file_id,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+@app.patch('/api/workspace-folders/<folder_id>/files/<file_id>/ocr-markdown')
+def api_patch_workspace_folder_file_ocr_markdown(folder_id: str, file_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_file_ocr_service.patch_ocr_markdown_response(
+        folder_id,
+        file_id,
+        data,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
 # ── /api/conversations* ───────────────────────────────────────────────────────
 
 @app.get('/api/conversations')
@@ -1238,6 +1362,8 @@ def api_patch_conversation(conversation_id: str):
         conversation_id,
         data,
         conv_store_module=conv_store,
+        workspace_folders_module=workspace_folders,
+        workspace_file_selections_module=workspace_file_selections,
     )
     return jsonify(payload), status
 
@@ -1247,6 +1373,41 @@ def api_delete_conversation(conversation_id: str):
     payload, status = conversations_service.delete_conversation(
         conversation_id,
         conv_store_module=conv_store,
+    )
+    return jsonify(payload), status
+
+
+# ── /api/conversations/<id>/workspace-file-selections* ───────────────────────
+
+@app.get('/api/conversations/<conversation_id>/workspace-file-selections')
+def api_list_workspace_file_selections(conversation_id: str):
+    payload, status = workspace_file_selections_service.list_workspace_file_selections_response(
+        conversation_id,
+        conv_store_module=conv_store,
+        workspace_file_selections_module=workspace_file_selections,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/conversations/<conversation_id>/workspace-file-selections')
+def api_select_workspace_file(conversation_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_file_selections_service.select_workspace_file_response(
+        conversation_id,
+        data,
+        conv_store_module=conv_store,
+        workspace_file_selections_module=workspace_file_selections,
+    )
+    return jsonify(payload), status
+
+
+@app.delete('/api/conversations/<conversation_id>/workspace-file-selections/<file_id>')
+def api_deselect_workspace_file(conversation_id: str, file_id: str):
+    payload, status = workspace_file_selections_service.deselect_workspace_file_response(
+        conversation_id,
+        file_id,
+        conv_store_module=conv_store,
+        workspace_file_selections_module=workspace_file_selections,
     )
     return jsonify(payload), status
 

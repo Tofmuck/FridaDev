@@ -1,5 +1,16 @@
 const THREADS_PAGE_SIZE = 200;
 const MAX_TITLE_LENGTH = 120;
+const WorkspaceFolders = (
+  typeof window !== "undefined" && window.FridaWorkspaceFolders
+    ? window.FridaWorkspaceFolders
+    : (typeof require !== "undefined" ? require("./chat_workspace_folders.js") : null)
+);
+const WorkspaceFoldersSidebar = (
+  typeof window !== "undefined" && window.FridaWorkspaceFoldersSidebar
+    ? window.FridaWorkspaceFoldersSidebar
+    : (typeof require !== "undefined" ? require("./chat_workspace_folders_sidebar.js") : null)
+);
+const WORKSPACE_CONVERSATION_DRAG_MIME = "application/x-fridadev-conversation-id";
 
 function clampThreadTitle(value, fallback = "Nouvelle conversation") {
   const normalized = String(value || "").replace(/\s+/g, " ").trim();
@@ -19,6 +30,7 @@ function normalizeThreadItem(item, cachedMessages = null) {
     updated_at: item?.updated_at || item?.created_at || null,
     message_count: Number(item?.message_count || 0),
     last_message_preview: String(item?.last_message_preview || ""),
+    workspace_folder_id: WorkspaceFolders?.normalizeWorkspaceFolderId(item?.workspace_folder_id) || null,
     deleted_at: item?.deleted_at || null,
   };
 }
@@ -37,6 +49,9 @@ function createChatThreadsSidebar({
   const logger = consoleObj || (typeof console !== "undefined" ? console : { warn() {} });
   let editingThreadId = null;
   let threadsState = [];
+  let foldersState = [];
+  let workspaceFilesState = new Map();
+  let workspaceFileSelectionsState = new Map();
   let currentThreadId = null;
   const messageCache = new Map();
 
@@ -72,6 +87,16 @@ function createChatThreadsSidebar({
   const getThreads = () => threadsState;
   const saveThreads = (arr) => {
     threadsState = Array.isArray(arr) ? arr : [];
+  };
+  const getWorkspaceFolders = () => foldersState;
+  const saveWorkspaceFolders = (arr) => {
+    foldersState = Array.isArray(arr) ? arr : [];
+  };
+  const getWorkspaceFiles = (folderId) => workspaceFilesState.get(String(folderId || "")) || [];
+  const getWorkspaceFileSelections = (conversationId) =>
+    workspaceFileSelectionsState.get(String(conversationId || "")) || [];
+  const saveWorkspaceFilesEntries = (entries) => {
+    workspaceFilesState = new Map(Array.isArray(entries) ? entries : []);
   };
   const getCurrentId = () => currentThreadId;
   const setCurrentId = (id) => {
@@ -124,6 +149,24 @@ function createChatThreadsSidebar({
     return Array.isArray(data.items) ? data.items : [];
   }
 
+  async function listWorkspaceFoldersFromServer() {
+    const res = await httpFetch("/api/workspace-folders");
+    const data = await parseServerResponse(res);
+    return WorkspaceFolders?.normalizeWorkspaceFoldersPayload(data) || [];
+  }
+
+  async function listWorkspaceFilesFromServer(folderId) {
+    const res = await httpFetch(`/api/workspace-folders/${encodeURIComponent(folderId)}/files`);
+    const data = await parseServerResponse(res);
+    return WorkspaceFolders?.normalizeWorkspaceFilesPayload(data) || [];
+  }
+
+  async function listWorkspaceFileSelectionsFromServer(conversationId) {
+    const res = await httpFetch(`/api/conversations/${encodeURIComponent(conversationId)}/workspace-file-selections`);
+    const data = await parseServerResponse(res);
+    return WorkspaceFolders?.normalizeWorkspaceFileSelectionsPayload(data) || [];
+  }
+
   async function createConversationOnServer(title = "Nouvelle conversation") {
     const res = await httpFetch("/api/conversations", {
       method: "POST",
@@ -142,6 +185,113 @@ function createChatThreadsSidebar({
     });
     const data = await parseServerResponse(res);
     return data.conversation || null;
+  }
+
+  async function moveConversationToWorkspaceFolderOnServer(conversationId, folderId) {
+    const res = await httpFetch(`/api/conversations/${encodeURIComponent(conversationId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspace_folder_id: folderId || null }),
+    });
+    const data = await parseServerResponse(res);
+    return data.conversation || null;
+  }
+
+  async function createWorkspaceFolderOnServer(displayName, iconKey = "folder") {
+    const res = await httpFetch("/api/workspace-folders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ display_name: displayName, icon_key: iconKey || "folder" }),
+    });
+    const data = await parseServerResponse(res);
+    return data.folder || null;
+  }
+
+  async function updateWorkspaceFolderOnServer(folderId, patch) {
+    const res = await httpFetch(`/api/workspace-folders/${encodeURIComponent(folderId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch || {}),
+    });
+    const data = await parseServerResponse(res);
+    return data.folder || null;
+  }
+
+  async function deleteWorkspaceFolderOnServer(folderId) {
+    const res = await httpFetch(`/api/workspace-folders/${encodeURIComponent(folderId)}`, {
+      method: "DELETE",
+    });
+    const data = await parseServerResponse(res);
+    return data.folder || null;
+  }
+
+  async function uploadWorkspaceFileOnServer(folderId, file) {
+    const formData = new FormData();
+    formData.append("file", file, file?.name || "fichier");
+    const res = await httpFetch(`/api/workspace-folders/${encodeURIComponent(folderId)}/files`, {
+      method: "POST",
+      body: formData,
+    });
+    const data = await parseServerResponse(res);
+    return data.file || null;
+  }
+
+  async function deleteWorkspaceFileOnServer(folderId, fileId) {
+    const res = await httpFetch(
+      `/api/workspace-folders/${encodeURIComponent(folderId)}/files/${encodeURIComponent(fileId)}`,
+      { method: "DELETE" },
+    );
+    const data = await parseServerResponse(res);
+    return data.file || null;
+  }
+
+  async function ocrWorkspaceFileOnServer(folderId, fileId) {
+    const res = await httpFetch(
+      `/api/workspace-folders/${encodeURIComponent(folderId)}/files/${encodeURIComponent(fileId)}/ocr`,
+      { method: "POST" },
+    );
+    const data = await parseServerResponse(res);
+    return data.file || null;
+  }
+
+  async function readWorkspaceOcrMarkdownOnServer(folderId, fileId) {
+    const res = await httpFetch(
+      `/api/workspace-folders/${encodeURIComponent(folderId)}/files/${encodeURIComponent(fileId)}/ocr-markdown`,
+    );
+    const data = await parseServerResponse(res);
+    return data;
+  }
+
+  async function saveWorkspaceOcrMarkdownOnServer(folderId, fileId, content) {
+    const res = await httpFetch(
+      `/api/workspace-folders/${encodeURIComponent(folderId)}/files/${encodeURIComponent(fileId)}/ocr-markdown`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: String(content || "") }),
+      },
+    );
+    const data = await parseServerResponse(res);
+    return data.file || null;
+  }
+
+  async function selectWorkspaceFileOnServer(conversationId, fileId) {
+    const res = await httpFetch(`/api/conversations/${encodeURIComponent(conversationId)}/workspace-file-selections`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_id: fileId }),
+    });
+    const data = await parseServerResponse(res);
+    return data.selection || null;
+  }
+
+  async function deselectWorkspaceFileOnServer(conversationId, fileId) {
+    const res = await httpFetch(
+      `/api/conversations/${encodeURIComponent(conversationId)}/workspace-file-selections/${encodeURIComponent(fileId)}`,
+      { method: "DELETE" },
+    );
+    await parseServerResponse(res);
+    return true;
   }
 
   async function deleteConversationOnServer(conversationId) {
@@ -181,17 +331,36 @@ function createChatThreadsSidebar({
   const refreshThreadsFromServer = async ({ keepSelection = true } = {}) => {
     const previousCurrent = keepSelection ? getCurrentId() : null;
     try {
-      const items = await listConversationsFromServer();
+      const [items, folders] = await Promise.all([
+        listConversationsFromServer(),
+        listWorkspaceFoldersFromServer().catch((err) => {
+          logger.warn("Impossible de charger les répertoires", err);
+          return [];
+        }),
+      ]);
       const mapped = [];
       for (const item of items) {
         const normalized = normalizeThread(item);
         if (normalized) mapped.push(normalized);
       }
       saveThreads(mapped);
+      saveWorkspaceFolders(folders);
+      const fileEntries = await Promise.all(folders.map(async (folder) => {
+        try {
+          return [folder.id, await listWorkspaceFilesFromServer(folder.id)];
+        } catch (err) {
+          logger.warn("Impossible de charger les fichiers du répertoire", err);
+          return [folder.id, []];
+        }
+      }));
+      saveWorkspaceFilesEntries(fileEntries);
       if (previousCurrent && mapped.some((x) => x.id === previousCurrent)) {
         setCurrentId(previousCurrent);
       } else {
         setCurrentId(mapped[0]?.id || null);
+      }
+      if (getCurrentId()) {
+        await refreshWorkspaceFileSelections(getCurrentId());
       }
       setThreadStatus("");
       return true;
@@ -202,17 +371,132 @@ function createChatThreadsSidebar({
     }
   };
 
+  const moveThreadToWorkspaceFolder = async (threadOrId, folderId) => {
+    const thread = typeof threadOrId === "string" ? getThreadById(threadOrId) : threadOrId;
+    if (!thread?.id) return;
+    const nextFolderId = folderId || null;
+    if ((thread.workspace_folder_id || null) === nextFolderId) return;
+    try {
+      const updated = await moveConversationToWorkspaceFolderOnServer(thread.id, nextFolderId);
+      if (updated) syncThreadFromServer(updated);
+      await refreshWorkspaceFileSelections(thread.id);
+      await refreshThreadsFromServer({ keepSelection: true });
+      renderThreads();
+    } catch (err) {
+      logger.warn("Déplacement conversation échoué", err);
+      setThreadStatus("Déplacement non synchronisé.", true);
+      renderThreads();
+    }
+  };
+
+  const clearConversationDropTargets = () => {
+    if (!threadsUl) return;
+    threadsUl.querySelectorAll(".workspace-folder-drop-target, .dragging").forEach((node) => {
+      node.classList.remove("workspace-folder-drop-target", "dragging");
+    });
+  };
+
+  const hasConversationDrag = (event) => {
+    if (!event?.dataTransfer) return "";
+    const types = Array.from(event.dataTransfer.types || []);
+    return types.includes(WORKSPACE_CONVERSATION_DRAG_MIME) || types.includes("text/plain");
+  };
+
+  const draggedConversationId = (event) => {
+    if (!event?.dataTransfer || !hasConversationDrag(event)) return "";
+    return event.dataTransfer.getData(WORKSPACE_CONVERSATION_DRAG_MIME)
+      || event.dataTransfer.getData("text/plain")
+      || "";
+  };
+
+  const bindConversationDropTarget = (node, folderId) => {
+    if (!node) return;
+    node.addEventListener("dragenter", (event) => {
+      if (!hasConversationDrag(event)) return;
+      event.preventDefault();
+      node.classList.add("workspace-folder-drop-target");
+    });
+    node.addEventListener("dragover", (event) => {
+      if (!hasConversationDrag(event)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      node.classList.add("workspace-folder-drop-target");
+    });
+    node.addEventListener("dragleave", () => {
+      node.classList.remove("workspace-folder-drop-target");
+    });
+    node.addEventListener("drop", (event) => {
+      const conversationId = draggedConversationId(event);
+      if (!conversationId) return;
+      event.preventDefault();
+      clearConversationDropTargets();
+      void moveThreadToWorkspaceFolder(conversationId, folderId || null);
+    });
+  };
+
+  const refreshWorkspaceFiles = async (folderId) => {
+    const normalized = WorkspaceFolders?.normalizeWorkspaceFolderId(folderId);
+    if (!normalized) return [];
+    const files = await listWorkspaceFilesFromServer(normalized);
+    workspaceFilesState.set(normalized, files);
+    return files;
+  };
+
+  const refreshWorkspaceFileSelections = async (conversationId) => {
+    const normalized = String(conversationId || "").trim();
+    if (!normalized) return [];
+    try {
+      const selections = await listWorkspaceFileSelectionsFromServer(normalized);
+      workspaceFileSelectionsState.set(normalized, selections);
+      return selections;
+    } catch (err) {
+      logger.warn("Impossible de charger les sélections de fichiers", err);
+      workspaceFileSelectionsState.set(normalized, []);
+      return [];
+    }
+  };
+
+  const workspaceFolderRenderer = WorkspaceFoldersSidebar?.createWorkspaceFolderSidebarRenderer({
+    threadsUl,
+    getWorkspaceFolders,
+    getWorkspaceFiles,
+    refreshThreadsFromServer,
+    refreshWorkspaceFiles,
+    renderThreads: () => renderThreads(),
+    setThreadStatus,
+    createWorkspaceFolderOnServer,
+    updateWorkspaceFolderOnServer,
+    deleteWorkspaceFolderOnServer,
+    uploadWorkspaceFileOnServer,
+    deleteWorkspaceFileOnServer,
+    ocrWorkspaceFileOnServer,
+    readWorkspaceOcrMarkdownOnServer,
+    saveWorkspaceOcrMarkdownOnServer,
+    getCurrentThread: () => getThreadById(getCurrentId()),
+    getWorkspaceFileSelections,
+    selectWorkspaceFileOnServer,
+    deselectWorkspaceFileOnServer,
+    refreshWorkspaceFileSelections,
+    bindConversationDropTarget,
+    consoleObj: logger,
+  });
+
   const renderThreads = () => {
     threadsUl.innerHTML = "";
     const threads = getThreads();
+    const folders = getWorkspaceFolders();
     const current = getCurrentId();
+    const grouped = WorkspaceFolders?.groupThreadsByWorkspaceFolder(threads, folders) || { byFolder: new Map(), outside: threads };
 
-    threads.forEach((t) => {
+    const appendThreadRow = (t, nested = false) => {
       const li = document.createElement("li");
+      if (nested) li.classList.add("in-workspace-folder");
       if (t.id === current) li.classList.add("active");
       li.tabIndex = 0;
+      li.draggable = true;
       li.setAttribute("role", "button");
       li.setAttribute("aria-label", t.title || "Conversation");
+      li.dataset.conversationId = t.id;
 
       const main = document.createElement("div");
       main.className = "thread-main";
@@ -276,6 +560,7 @@ function createChatThreadsSidebar({
 
       li.appendChild(main);
 
+
       const ts = t.updated_at || t.created_at;
       if (ts) {
         const timeSpan = document.createElement("span");
@@ -289,6 +574,13 @@ function createChatThreadsSidebar({
         startInlineRename(li, t.id);
       });
 
+      li.addEventListener("dblclick", (ev) => {
+        const interactiveTarget = ev.target?.closest?.("button, input, textarea, select, a");
+        if (interactiveTarget) return;
+        ev.stopPropagation();
+        startInlineRename(li, t.id);
+      });
+
       li.addEventListener("click", async () => {
         if (editingThreadId) return;
         setCurrentId(t.id);
@@ -296,9 +588,37 @@ function createChatThreadsSidebar({
         renderThreads();
         closeSidebar();
       });
+      li.addEventListener("dragstart", (event) => {
+        const interactiveTarget = event.target?.closest?.("button, input, textarea, select, a");
+        if (editingThreadId || interactiveTarget) {
+          event.preventDefault();
+          return;
+        }
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData(WORKSPACE_CONVERSATION_DRAG_MIME, t.id);
+        event.dataTransfer.setData("text/plain", t.id);
+        li.classList.add("dragging");
+      });
+      li.addEventListener("dragend", clearConversationDropTargets);
 
       threadsUl.appendChild(li);
+    };
+
+    workspaceFolderRenderer?.appendToolbar();
+    if (!folders.length) {
+      workspaceFolderRenderer?.appendNoFoldersEmpty?.();
+    }
+    folders.forEach((folder, index) => {
+      workspaceFolderRenderer?.appendFolderRow(folder, grouped.byFolder.get(folder.id) || [], index, appendThreadRow);
     });
+    if (folders.length) {
+      const separator = document.createElement("li");
+      separator.className = "workspace-folder-separator";
+      separator.textContent = "Conversations hors répertoire";
+      bindConversationDropTarget(separator, null);
+      threadsUl.appendChild(separator);
+    }
+    (grouped.outside || []).forEach((thread) => appendThreadRow(thread, false));
   };
 
   async function startInlineRename(li, threadId) {
@@ -461,6 +781,7 @@ function createChatThreadsSidebar({
 
     try {
       await hydrateThreadMessages(id);
+      await refreshWorkspaceFileSelections(id);
       setThreadStatus("");
     } catch (err) {
       logger.warn("Chargement conversation échoué", err);
@@ -507,18 +828,37 @@ function createChatThreadsSidebar({
   return Object.freeze({
     getThreads,
     saveThreads,
+    getWorkspaceFolders,
+    saveWorkspaceFolders,
+    getWorkspaceFiles,
+    getWorkspaceFileSelections,
     getCurrentId,
     setCurrentId,
     getThreadById,
     setThreadMeta,
     applyConversationTerminalMeta,
     listConversationsFromServer,
+    listWorkspaceFoldersFromServer,
+    listWorkspaceFileSelectionsFromServer,
     createConversationOnServer,
+    createWorkspaceFolderOnServer,
+    updateWorkspaceFolderOnServer,
+    deleteWorkspaceFolderOnServer,
+    listWorkspaceFilesFromServer,
+    uploadWorkspaceFileOnServer,
+    deleteWorkspaceFileOnServer,
+    ocrWorkspaceFileOnServer,
+    readWorkspaceOcrMarkdownOnServer,
+    saveWorkspaceOcrMarkdownOnServer,
+    selectWorkspaceFileOnServer,
+    deselectWorkspaceFileOnServer,
     renameConversationOnServer,
+    moveConversationToWorkspaceFolderOnServer,
     deleteConversationOnServer,
     fetchConversationMessagesFromServer,
     syncThreadFromServer,
     refreshThreadsFromServer,
+    refreshWorkspaceFileSelections,
     renderThreads,
     startInlineRename,
     newThread,
@@ -532,6 +872,7 @@ function createChatThreadsSidebar({
 const FridaChatThreadsSidebar = Object.freeze({
   THREADS_PAGE_SIZE,
   MAX_TITLE_LENGTH,
+  WORKSPACE_CONVERSATION_DRAG_MIME,
   clampThreadTitle,
   normalizeThreadItem,
   createChatThreadsSidebar,

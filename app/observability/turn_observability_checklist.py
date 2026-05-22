@@ -371,6 +371,56 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
         'web_requested': web_requested,
         'web_event_count': len(web_events),
         'context_injected': bool(payload.get('context_injected')),
+        'search_profile': _payload_text(payload, 'search_profile'),
+        'query_plan_kind': _payload_text(payload, 'query_plan_kind'),
+        'query_count': _to_int(payload.get('query_count')),
+        'secondary_query_count': _to_int(payload.get('secondary_query_count')),
+        'deduped_result_count': _to_int(payload.get('deduped_result_count')),
+        'searxng_profile_params_kind': _payload_text(payload, 'searxng_profile_params_kind'),
+        'searxng_profile_params_policy': _payload_text(payload, 'searxng_profile_params_policy'),
+        'searxng_categories': [
+            str(value)
+            for value in payload.get('searxng_categories') or []
+            if str(value or '')
+        ],
+        'searxng_engines': [
+            str(value)
+            for value in payload.get('searxng_engines') or []
+            if str(value or '')
+        ],
+        'searxng_time_range': _payload_text(payload, 'searxng_time_range'),
+        'searxng_language': _payload_text(payload, 'searxng_language'),
+        'searxng_safesearch': _payload_text(payload, 'searxng_safesearch'),
+        'rerank_applied': bool(payload.get('rerank_applied', False)),
+        'rerank_policy': _payload_text(payload, 'rerank_policy'),
+        'rerank_input_count': _to_int(payload.get('rerank_input_count')),
+        'rerank_output_count': _to_int(payload.get('rerank_output_count')),
+        'rerank_profile': _payload_text(payload, 'rerank_profile'),
+        'rerank_promoted_count': _to_int(payload.get('rerank_promoted_count')),
+        'rerank_downranked_count': _to_int(payload.get('rerank_downranked_count')),
+        'crawl4ai_policy_kinds': [
+            str(value)
+            for value in payload.get('crawl4ai_policy_kinds') or []
+            if str(value or '')
+        ],
+        'crawl4ai_filter_counts': dict(payload.get('crawl4ai_filter_counts') or {}),
+        'crawl4ai_cache_modes': dict(payload.get('crawl4ai_cache_modes') or {}),
+        'crawl4ai_fallback_used_count': _to_int(payload.get('crawl4ai_fallback_used_count')),
+        'web_confidence_policy_kind': _payload_text(payload, 'web_confidence_policy_kind'),
+        'web_confidence_level': _payload_text(payload, 'web_confidence_level'),
+        'web_confidence_score': payload.get('web_confidence_score'),
+        'web_confidence_reason_codes': [
+            str(value)
+            for value in payload.get('web_confidence_reason_codes') or []
+            if str(value or '')
+        ],
+        'openrouter_fallback_state': _payload_text(payload, 'openrouter_fallback_state'),
+        'openrouter_fallback_used': bool(payload.get('openrouter_fallback_used', False)),
+        'openrouter_fallback_reason_codes': [
+            str(value)
+            for value in payload.get('openrouter_fallback_reason_codes') or []
+            if str(value or '')
+        ],
         'results_count': _to_int(payload.get('results_count')),
         'read_state': _payload_text(payload, 'read_state'),
     }

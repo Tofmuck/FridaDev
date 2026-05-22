@@ -23,6 +23,8 @@ from benchmark.suites.summary import adapter as summary_adapter
 from benchmark.suites.summary import campaign as summary_campaign
 from benchmark.suites.validation_agent import adapter as validation_agent_adapter
 from benchmark.suites.validation_agent import campaign as validation_agent_campaign
+from benchmark.suites.web_search import adapter as web_search_adapter
+from benchmark.suites.web_search import campaign as web_search_campaign
 
 
 DEFAULT_ARBITER_MODELS = [
@@ -66,6 +68,10 @@ DEFAULT_VALIDATION_AGENT_MODELS = [
     "anthropic/claude-haiku-4.5",
 ]
 
+DEFAULT_WEB_SEARCH_MODELS = [
+    "openai/gpt-5.1",
+]
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run FridaDev model caller benchmarks.")
@@ -76,6 +82,7 @@ def main() -> int:
         "identity_periodic",
         "stimmung",
         "validation_agent",
+        "web_search",
     ]
     parser.add_argument("suite_positional", nargs="?", choices=suite_choices)
     parser.add_argument("--suite", choices=suite_choices, default=None)
@@ -88,6 +95,10 @@ def main() -> int:
     parser.add_argument("--summary-max-tokens", type=int, default=None)
     parser.add_argument("--validation-agent-max-tokens", type=int, default=None)
     parser.add_argument("--validation-agent-compare-with", default=None)
+    parser.add_argument("--web-search-arms", nargs="*", default=None)
+    parser.add_argument("--web-search-max-results", type=int, default=web_search_adapter.DEFAULT_MAX_RESULTS)
+    parser.add_argument("--web-search-max-total-results", type=int, default=web_search_adapter.DEFAULT_MAX_TOTAL_RESULTS)
+    parser.add_argument("--web-search-context-size", default=web_search_adapter.DEFAULT_SEARCH_CONTEXT_SIZE)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--timeout-s", type=int, default=90)
     parser.add_argument("--base-url", default=None)
@@ -112,6 +123,8 @@ def main() -> int:
         default_models = DEFAULT_STIMMUNG_MODELS
     elif suite == "validation_agent":
         default_models = DEFAULT_VALIDATION_AGENT_MODELS
+    elif suite == "web_search":
+        default_models = DEFAULT_WEB_SEARCH_MODELS
     else:
         default_models = DEFAULT_ARBITER_MODELS
     if args.models is None:
@@ -134,7 +147,17 @@ def main() -> int:
         timeout_s=int(args.timeout_s),
     )
 
-    client = None if config.dry_run else OpenRouterClient.from_env(
+    web_search_arms_for_client: list[str] | None = None
+    if suite == "web_search":
+        try:
+            web_search_arms_for_client = web_search_adapter.normalize_arms(args.web_search_arms)
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+    needs_openrouter_client = not config.dry_run and (
+        suite != "web_search"
+        or any(str(arm).startswith("openrouter_") for arm in (web_search_arms_for_client or []))
+    )
+    client = None if not needs_openrouter_client else OpenRouterClient.from_env(
         base_url=args.base_url,
         title=f"FridaDev/Benchmark/{suite.title()}",
     )
@@ -204,6 +227,21 @@ def main() -> int:
             comparison_path=(Path(args.validation_agent_compare_with) if args.validation_agent_compare_with else None),
         )
         print(f"wrote {result['json_path']}")
+        print(f"wrote {result['markdown_path']}")
+        return 0
+
+    if suite == "web_search":
+        arms = web_search_arms_for_client or web_search_adapter.normalize_arms(args.web_search_arms)
+        result = web_search_campaign.run_web_search_campaign(
+            config=config,
+            client=client,
+            arms=arms,
+            max_results=args.web_search_max_results,
+            max_total_results=args.web_search_max_total_results,
+            search_context_size=args.web_search_context_size,
+        )
+        print(f"wrote {result['json_path']}")
+        print(f"wrote {result['jsonl_path']}")
         print(f"wrote {result['markdown_path']}")
         return 0
 

@@ -45,7 +45,7 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
         )
 
     def test_search_uses_runtime_services_settings(self) -> None:
-        observed = {'url': None}
+        observed = {'url': None, 'params': None}
         original_get_settings = web_search.runtime_settings.get_services_settings
         original_get = web_search.requests.get
 
@@ -64,6 +64,7 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
 
         def fake_get(url, params, timeout):
             observed['url'] = url
+            observed['params'] = dict(params)
             return FakeResponse()
 
         web_search.runtime_settings.get_services_settings = self._db_services_view
@@ -75,7 +76,58 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
             web_search.requests.get = original_get
 
         self.assertEqual(observed['url'], 'https://search.override.example/search')
+        self.assertEqual(
+            observed['params'],
+            {'q': 'frida', 'format': 'json', 'language': 'fr-FR', 'safesearch': '0'},
+        )
         self.assertEqual(len(results), 2)
+
+    def test_search_merges_profiled_searxng_params_without_unknown_fields(self) -> None:
+        observed = {'params': None}
+        original_get_settings = web_search.runtime_settings.get_services_settings
+        original_get = web_search.requests.get
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {'results': [{'title': 'A', 'url': 'https://a.example', 'content': 'a'}]}
+
+        def fake_get(_url, params, timeout):
+            del timeout
+            observed['params'] = dict(params)
+            return FakeResponse()
+
+        web_search.runtime_settings.get_services_settings = self._db_services_view
+        web_search.requests.get = fake_get
+        try:
+            results = web_search.search(
+                'frida',
+                searxng_params={
+                    'categories': 'general',
+                    'language': 'all',
+                    'safesearch': '0',
+                    'time_range': 'year',
+                },
+            )
+        finally:
+            web_search.runtime_settings.get_services_settings = original_get_settings
+            web_search.requests.get = original_get
+
+        self.assertEqual(results[0]['url'], 'https://a.example')
+        self.assertEqual(
+            observed['params'],
+            {
+                'q': 'frida',
+                'format': 'json',
+                'language': 'all',
+                'safesearch': '0',
+                'categories': 'general',
+                'time_range': 'year',
+            },
+        )
+        self.assertNotIn('api_key', observed['params'])
 
     def test_crawl_uses_runtime_services_settings_and_env_token_fallback(self) -> None:
         observed = {'url': None, 'auth': None, 'json': None}

@@ -58,6 +58,23 @@ Le chantier doit d'abord comprendre le contrat actuel:
 
 Le but n'est pas de refondre par principe. Si l'existant est correct, le bon resultat peut etre une clarification, quelques garde-fous, de meilleures preuves et une observabilite plus lisible.
 
+Reference d'audit ouverte pour ce chantier:
+
+- `app/docs/states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
+
+TODO actif de renforcement local SearXNG/Crawl4AI, avec bras benchmark `local_profiled`:
+
+- `app/docs/todo-todo/product/fridadev-local-web-search-hardening-todo.md`
+
+TODO source-of-truth pour reconstruire la recherche web locale de A a Z, sans hybride runtime et sans fallback OpenRouter / Exa / Parallel:
+
+- `app/docs/todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
+
+Piste produit a garder pour Amandine:
+
+- etudier un mode/connecteur Adobe Docs dedie, expose eventuellement comme bouton ou profil explicite `Adobe`, pour envoyer les requetes Photoshop/Illustrator directement vers les documentations officielles Adobe ou leurs APIs publiques si elles sont exploitables;
+- ce point ne doit pas bloquer le renforcement web local en cours: il faudra l'auditer comme sous-chantier specialise, avec cout, API disponibles, conditions d'usage, fallback local et non-contamination.
+
 ## 3. Biblio native / catalogue Tulu
 
 Objectif principal pour l'instance Tof: construire une Biblio native / catalogue Tulu comme fonds durable, classe, consultable.
@@ -101,6 +118,10 @@ Principe:
 - projet OpenRouter separe;
 - adaptation utilisateur/personnalisation;
 - separation nette des donnees.
+
+Besoin specialise a conserver pour Amandine:
+
+- acces fiable aux documentations Adobe Photoshop / Illustrator, idealement via un mode ou connecteur explicite Adobe Docs plutot que par une recherche web generale fragile.
 
 Responsabilites:
 

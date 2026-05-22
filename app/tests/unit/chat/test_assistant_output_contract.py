@@ -51,7 +51,7 @@ class AssistantOutputContractTests(unittest.TestCase):
         self.assertFalse(policy.allow_structure)
         self.assertTrue(policy.allow_code)
 
-    def test_normalize_assistant_output_flattens_bullets_and_numbering_for_ordinary_turns(self) -> None:
+    def test_normalize_assistant_output_keeps_simple_lists_but_removes_markdown_decoration(self) -> None:
         text = (
             'JSON est un format.\n\n'
             '- Il est lisible.\n'
@@ -67,8 +67,8 @@ class AssistantOutputContractTests(unittest.TestCase):
             assistant_output_contract.AssistantOutputPolicy(),
         )
 
-        self.assertNotIn('\n- ', normalized)
-        self.assertNotIn('\n1) ', normalized)
+        self.assertIn('\n- Il est lisible.', normalized)
+        self.assertIn('\n1) Il est portable.', normalized)
         self.assertNotIn('##', normalized)
         self.assertNotIn('\n>\n', normalized)
         self.assertNotIn('---', normalized)

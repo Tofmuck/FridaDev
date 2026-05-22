@@ -63,6 +63,7 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
                 'status': 'ok',
                 'reason_code': None,
                 'original_user_message': 'Bonjour',
+                'search_profile': 'explicit_url',
                 'query': 'query test',
                 'results_count': 1,
                 'explicit_url_detected': True,
@@ -137,6 +138,7 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
         self.assertTrue(observed['web_input']['enabled'])
         self.assertEqual(observed['web_input']['status'], 'ok')
         self.assertEqual(observed['web_input']['activation_mode'], 'manual')
+        self.assertEqual(observed['web_input']['search_profile'], 'explicit_url')
         self.assertEqual(observed['web_input']['query'], 'query test')
         self.assertEqual(observed['web_input']['results_count'], 1)
         self.assertTrue(observed['web_input']['explicit_url_detected'])
@@ -708,8 +710,8 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
         self.assertEqual(prompt_messages[0]['role'], 'system')
         self.assertIn('[GARDE DE LECTURE WEB]', prompt_messages[0]['content'])
         self.assertIn('[CONTRAT TEXTE BRUT]', prompt_messages[0]['content'])
-        self.assertIn("n'utilise ni puces, ni listes numérotées", prompt_messages[0]['content'])
-        self.assertIn("n'utilise pas de code fences", prompt_messages[0]['content'])
+        self.assertIn('forme sobre et lisible', prompt_messages[0]['content'])
+        self.assertIn("N'utilise pas de code fences", prompt_messages[0]['content'])
         self.assertIn('read_state: page_not_read_snippet_fallback.', prompt_messages[0]['content'])
         self.assertIn("La page cible n'a pas ete lue directement.", prompt_messages[0]['content'])
         self.assertIn("je l'ai sous les yeux", prompt_messages[0]['content'])

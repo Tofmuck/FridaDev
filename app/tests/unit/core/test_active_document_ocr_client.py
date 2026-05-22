@@ -13,7 +13,9 @@ class ActiveDocumentOcrClientTest(unittest.TestCase):
         config = ocr.get_active_document_ocr_config(SimpleNamespace())
 
         self.assertEqual(config.url, "http://platform-stirling-pdf:8080/pdf/api/v1/misc/ocr-pdf")
+        self.assertEqual(config.image_to_pdf_url, "http://platform-stirling-pdf:8080/pdf/api/v1/convert/img/pdf")
         self.assertIn("/pdf/api/v1/misc/ocr-pdf", config.url)
+        self.assertIn("/pdf/api/v1/convert/img/pdf", config.image_to_pdf_url)
         self.assertEqual(config.timeout_s, 180)
         self.assertEqual(config.languages, "fra+eng+deu")
         self.assertEqual(config.max_pages, 25)
@@ -90,6 +92,42 @@ class ActiveDocumentOcrClientTest(unittest.TestCase):
         self.assertEqual(result.reason_code, "document_ocr_too_many_pages")
         self.assertEqual(result.page_count, 3)
         self.assertEqual(requests_module.calls, [])
+
+    def test_image_ocr_converts_to_pdf_then_reuses_pdf_ocr(self):
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    status_code=200,
+                    headers={"Content-Type": "application/pdf"},
+                    content=b"%PDF converted",
+                ),
+                _FakeResponse(
+                    status_code=200,
+                    headers={"Content-Type": "application/pdf"},
+                    content=b"%PDF OCR",
+                ),
+            ]
+        )
+
+        result = ocr.ocr_image_with_stirling(
+            b"\x89PNG image",
+            filename="../capture.png",
+            media_type="image/png",
+            config_module=_config(),
+            requests_module=requests_module,
+            pdf_reader_factory=_reader_factory(1),
+            monotonic=_monotonic(10.0, 10.100, 10.200, 10.450),
+        )
+
+        self.assertEqual(result.status, "complete")
+        self.assertEqual(result.ocr_pdf, b"%PDF OCR")
+        self.assertEqual(result.source_bytes, len(b"\x89PNG image"))
+        self.assertEqual(result.page_count, 1)
+        self.assertEqual(result.ocr_duration_ms, 350)
+        self.assertEqual(len(requests_module.calls), 2)
+        self.assertEqual(requests_module.calls[0]["url"], "http://ocr.example/api/v1/convert/img/pdf")
+        self.assertEqual(requests_module.calls[0]["files"]["fileInput"][0], "capture.png")
+        self.assertEqual(requests_module.calls[1]["files"]["fileInput"][0], "capture.pdf")
 
     def test_timeout_is_content_free_failure(self):
         requests_module = _FakeRequests(requests.exceptions.Timeout("too slow"))
@@ -191,14 +229,17 @@ class _FakeRequests:
     exceptions = requests.exceptions
 
     def __init__(self, outcome):
-        self.outcome = outcome
+        self.outcomes = list(outcome) if isinstance(outcome, list) else [outcome]
         self.calls: list[dict] = []
 
     def post(self, url, *, files, data, timeout):
         self.calls.append({"url": url, "files": files, "data": data, "timeout": timeout})
-        if isinstance(self.outcome, BaseException):
-            raise self.outcome
-        return self.outcome
+        if not self.outcomes:
+            raise AssertionError("unexpected request")
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
 
 
 class _FakeResponse:
@@ -211,6 +252,7 @@ class _FakeResponse:
 def _config(**overrides):
     values = {
         "ACTIVE_DOCUMENT_OCR_URL": "http://ocr.example/pdf/api/v1/misc/ocr-pdf",
+        "ACTIVE_DOCUMENT_IMAGE_TO_PDF_URL": "http://ocr.example/api/v1/convert/img/pdf",
         "ACTIVE_DOCUMENT_OCR_TIMEOUT_S": 180,
         "ACTIVE_DOCUMENT_OCR_LANGUAGES": "fra+eng+deu",
         "ACTIVE_DOCUMENT_OCR_MAX_PAGES": 25,

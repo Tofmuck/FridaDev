@@ -161,6 +161,7 @@ Lot 2 livre le client OCR borne dans:
 Configuration runtime:
 
 - `ACTIVE_DOCUMENT_OCR_URL`, defaut `http://platform-stirling-pdf:8080/pdf/api/v1/misc/ocr-pdf`;
+- `ACTIVE_DOCUMENT_IMAGE_TO_PDF_URL`, defaut `http://platform-stirling-pdf:8080/pdf/api/v1/convert/img/pdf`;
 - `ACTIVE_DOCUMENT_OCR_TIMEOUT_S`, defaut `180`;
 - `ACTIVE_DOCUMENT_OCR_LANGUAGES`, defaut `fra+eng+deu`;
 - `ACTIVE_DOCUMENT_OCR_MAX_PAGES`, defaut `25`;
@@ -249,6 +250,16 @@ Contrat OpenRouter:
 - si le modele/provider ne peut pas traiter l'image, le tour recoit un signal compact d'exclusion;
 - Frida ne doit jamais pretendre avoir vu une image qui n'a pas ete injectee.
 
+Extension PDF visuel workspace:
+
+- un PDF de repertoire en statut `ocr_required` reste non visible tant qu'il n'est pas explicitement selectionne dans la conversation;
+- s'il est selectionne, la lane peut tenter une injection multimodale fichier PDF au moment provider, sans OCR automatique et sans creer de `.ocr.md`;
+- l'ordre obligatoire est `text` puis `file`;
+- le content part PDF utilise `type=file` et un champ `file.file_data` au format data URL PDF uniquement dans le payload provider;
+- le meme plafond V0 `8 MiB` s'applique avant encodage; au-dela, exclusion entiere avec reason code compact;
+- si le modele/provider ne peut pas traiter le fichier PDF, exclusion entiere; Frida ne doit jamais pretendre avoir lu un PDF non injecte;
+- ce chemin ne promet pas une extraction textuelle complete: il donne au modele un support visuel/documentaire, distinct du chemin OCR durable.
+
 Exemple brut minimal du message provider:
 
 ```json
@@ -274,6 +285,10 @@ Reason codes Lot 2:
 - `image_model_unsupported` si le modele principal courant n'est pas compatible image;
 - `image_bytes_missing` si l'etat actif image existe mais que les bytes ne sont plus disponibles;
 - `image_too_large_for_provider_payload` si l'image active depasse le plafond d'injection provider V0;
+- `file_model_unsupported` si le modele principal courant n'est pas compatible fichier multimodal;
+- `file_bytes_missing` si l'etat fichier visuel existe mais que les bytes ne sont plus disponibles;
+- `file_too_large_for_provider_payload` si le fichier visuel depasse le plafond d'injection provider V0;
+- `workspace_file_pdf_visual_model_unsupported`, `workspace_file_pdf_visual_bytes_missing`, `workspace_file_pdf_visual_too_large` pour les variantes workspace selectionnees;
 - `document_too_large_for_turn` reste reserve aux documents texte exclus par budget prompt.
 
 Observabilite Lot 2:
@@ -281,7 +296,8 @@ Observabilite Lot 2:
 - l'evenement de tour `active_documents` indique si chaque image a ete `injected` ou `excluded`;
 - le `conversation_id` et le `turn_id` sont portes par l'evenement de tour;
 - le payload document contient `document_id`, `media_kind=image`, `media_type`, `byte_size`, `image_width`, `image_height`, `content_sha256_12`, `provider_model`, `payload_order=text_then_image_url` et `reason_code` si exclusion;
-- le payload ne contient ni base64, ni data URL, ni contenu visuel, ni prompt utilisateur brut.
+- pour un PDF visuel, le payload document content-free contient `media_kind=file`, `media_type`, `byte_size`, `content_sha256_12`, `provider_model`, `payload_order=text_then_file` et `reason_code` si exclusion;
+- le payload d'observabilite ne contient ni base64, ni data URL, ni contenu visuel/fichier, ni prompt utilisateur brut.
 
 Frontend Lot 3:
 

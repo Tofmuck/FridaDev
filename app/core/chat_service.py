@@ -7,6 +7,7 @@ from typing import Any, Mapping
 from core import assistant_output_contract
 from core import active_conversation_documents
 from core import active_document_prompt_lane
+from core import workspace_file_selections
 from core import chat_llm_flow
 from core import chat_memory_flow
 from core import chat_prompt_context
@@ -97,6 +98,64 @@ def _active_documents_for_prompt(
     return ActiveDocumentsPromptRead(status='ok', documents=tuple(documents))
 
 
+def _workspace_files_for_prompt(
+    *,
+    conversation: Mapping[str, Any],
+    workspace_file_selections_module: Any = workspace_file_selections,
+    logger: Any = None,
+) -> ActiveDocumentsPromptRead:
+    conversation_id = _text(conversation.get('id'))
+    if not conversation_id:
+        return ActiveDocumentsPromptRead(status='empty')
+    if not _text(conversation.get('workspace_folder_id')):
+        return ActiveDocumentsPromptRead(status='empty')
+    reader = getattr(workspace_file_selections_module, 'list_selected_files_for_prompt', None)
+    if not callable(reader):
+        return ActiveDocumentsPromptRead(
+            status='error',
+            reason_code='workspace_file_selection_reader_unavailable',
+        )
+    try:
+        raw_documents = reader(conversation_id)
+    except Exception as exc:
+        if logger is not None:
+            logger.warning('workspace_files_prompt_read_failed id=%s err=%s', conversation_id, exc)
+        return ActiveDocumentsPromptRead(
+            status='error',
+            reason_code='workspace_files_read_error',
+            error_class=exc.__class__.__name__,
+        )
+    documents: list[dict[str, Any]] = []
+    for item in raw_documents or []:
+        if isinstance(item, Mapping):
+            documents.append(dict(item))
+    if not documents:
+        return ActiveDocumentsPromptRead(status='empty')
+    return ActiveDocumentsPromptRead(status='ok', documents=tuple(documents))
+
+
+def _merge_document_prompt_reads(
+    active_read: ActiveDocumentsPromptRead,
+    workspace_read: ActiveDocumentsPromptRead,
+) -> ActiveDocumentsPromptRead:
+    documents = tuple([*active_read.documents, *workspace_read.documents])
+    if active_read.status == 'error':
+        return ActiveDocumentsPromptRead(
+            status='error',
+            documents=documents,
+            reason_code=active_read.reason_code or 'active_documents_read_error',
+        )
+    if workspace_read.status == 'error':
+        return ActiveDocumentsPromptRead(
+            status='error',
+            documents=documents,
+            reason_code=workspace_read.reason_code or 'workspace_files_read_error',
+        )
+    if documents:
+        return ActiveDocumentsPromptRead(status='ok', documents=documents)
+    return ActiveDocumentsPromptRead(status='empty')
+
+
 def _prompt_token_counter(token_utils_module: Any):
     counter = getattr(token_utils_module, 'estimate_tokens', None)
     if callable(counter):
@@ -118,6 +177,7 @@ def _record_active_document_prompt_decisions(
     lane: Any,
     turn_id: str,
     active_documents_module: Any = active_conversation_documents,
+    workspace_file_selections_module: Any = workspace_file_selections,
     logger: Any = None,
 ) -> None:
     conversation_id = _text(conversation.get('id'))
@@ -129,11 +189,27 @@ def _record_active_document_prompt_decisions(
 
     injected_writer = getattr(active_documents_module, 'record_document_injected', None)
     excluded_writer = getattr(active_documents_module, 'record_document_excluded', None)
+    workspace_injected_writer = getattr(workspace_file_selections_module, 'record_selection_injected', None)
+    workspace_excluded_writer = getattr(workspace_file_selections_module, 'record_selection_excluded', None)
     for decision in decisions:
         document_id = _text(getattr(decision, 'document_id', ''))
         if not document_id:
             continue
         try:
+            if _text(getattr(decision, 'source', '')) == 'workspace_file_selection':
+                file_id = _text(getattr(decision, 'workspace_file_id', '')) or document_id
+                if bool(getattr(decision, 'injected', False)):
+                    if callable(workspace_injected_writer):
+                        workspace_injected_writer(conversation_id, file_id, turn_id=turn_id)
+                    continue
+                if callable(workspace_excluded_writer):
+                    workspace_excluded_writer(
+                        conversation_id,
+                        file_id,
+                        turn_id=turn_id,
+                        reason_code=_text(getattr(decision, 'reason_code', '')) or 'workspace_file_unreadable',
+                    )
+                continue
             if bool(getattr(decision, 'injected', False)):
                 if callable(injected_writer):
                     injected_writer(conversation_id, document_id, turn_id=turn_id)
@@ -446,6 +522,7 @@ def chat_response(
     web_search_module: Any,
     config_module: Any,
     logger: Any,
+    workspace_file_selections_module: Any = workspace_file_selections,
 ) -> dict[str, Any]:
     system_prompt, hermeneutical_prompt = chat_prompt_context.resolve_backend_prompts(prompt_loader_module)
     session, session_error = chat_session_flow.resolve_chat_session(
@@ -637,6 +714,15 @@ def chat_response(
         conversation=conversation,
         logger=logger,
     )
+    workspace_files_read = _workspace_files_for_prompt(
+        conversation=conversation,
+        workspace_file_selections_module=workspace_file_selections_module,
+        logger=logger,
+    )
+    document_prompt_read = _merge_document_prompt_reads(
+        active_documents_read,
+        workspace_files_read,
+    )
     prompt_messages = conv_store_module.build_prompt_messages(
         conversation,
         runtime_main_model,
@@ -656,17 +742,18 @@ def chat_response(
         )
     active_document_lane = active_document_prompt_lane.inject_active_document_prompt_lane(
         prompt_messages,
-        active_documents_read.documents,
+        document_prompt_read.documents,
         model=runtime_main_model,
         count_tokens_func=_prompt_token_counter(token_utils_module),
         max_tokens=_active_document_prompt_max_tokens(config_module),
-        read_status=active_documents_read.status,
-        read_reason_code=active_documents_read.reason_code,
+        read_status=document_prompt_read.status,
+        read_reason_code=document_prompt_read.reason_code,
     )
     _record_active_document_prompt_decisions(
         conversation=conversation,
         lane=active_document_lane,
         turn_id=chat_turn_logger.current_turn_id(),
+        workspace_file_selections_module=workspace_file_selections_module,
         logger=logger,
     )
     active_documents_observability.emit_prompt_decision_event(

@@ -17,10 +17,16 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
+- Audit stack locale SearXNG/Crawl4AI vs benchmark web 2026-05-21: `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
+- Benchmark final Lot 8 web local vs OpenRouter Exa/Parallel 2026-05-22: `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`
+- TODO actif de renforcement web local SearXNG/Crawl4AI: `todo-todo/product/fridadev-local-web-search-hardening-todo.md`
+- TODO actif A-Z de reconstruction locale de la recherche web: `todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
 - Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
 - Boussole produit finale des cinq derniers gros chantiers FridaDev: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Archive atelier documentaire / répertoires de travail: `todo-done/product/fridadev-workspace-folders-todo.md`
+- Contrat source-of-truth atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
 - Audit court du contrat courant `identity_periodic_agent` 2026-05-19: `states/audits/identity-periodic-current-contract-audit-2026-05-19.md`
 - Audit global de verite temporelle 2026-05-18: `states/audits/fridadev-temporal-system-audit-2026-05-18.md`
 - Remediation archivee de comprehension temporelle modele: `todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
@@ -39,6 +45,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
 - Protocole streaming public: `states/specs/streaming-protocol.md`
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
+- Contrat atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
 - Extension OCR archivee des documents actifs de conversation: `todo-done/product/active-conversation-documents-ocr-todo.md`
 - Copie de bulle et export Markdown du chat: `states/specs/chat-copy-export-contract.md`
 - Contrat du dashboard long terme: `states/specs/dashboard-long-term-observability-contract.md`
@@ -75,6 +82,7 @@ Lire d'abord:
 - `todo-done/refactors/fridadev-main-model-gpt51-switch-todo.md` pour l'archive de bascule runtime vers `openai/gpt-5.1`.
 - `todo-done/refactors/fridadev-main-model-gpt51-switch-plan.md` pour relire le plan de bascule du modele principal vers `openai/gpt-5.1`, cout, compatibilite images actives, smoke live et rollback.
 - `states/architecture/fridadev-full-pipeline-overview-2026-05-19.md` pour une synthese francaise lisible du pipeline complet, du navigateur aux derives apres reponse.
+- `states/operations/main-prompt-payload-audit.md` pour cartographier le prompt effectif du modele principal et exporter un payload synthetique expurge.
 - `states/architecture/fridadev-current-runtime-pipeline.md`
 - `states/audits/fridadev-model-call-catalog-2026-05-17.md` pour cartographier les modeles OpenRouter, embeddings, Whisper, OCR, tokens et contrats de sortie avant tout raffinage provider.
 - `todo-done/refactors/fridadev-model-caller-benchmark-todo.md` pour relire le chantier clos de benchmark, decision et decouplage caller par caller.
@@ -90,9 +98,24 @@ Archives utiles:
 - `todo-done/product/frida-response-streaming-todo.md`
 - `todo-done/notes/chat-enunciation-gap-validation-todo.md`
 
+### Recherche internet
+
+Lire d'abord:
+- `todo-todo/product/fridadev-local-web-search-rebuild-todo.md` pour piloter la reconstruction A-Z locale, source-first, gouvernee et sans hybride runtime.
+- `todo-todo/product/fridadev-local-web-search-hardening-todo.md` pour le contrat V0, les lots d'implementation et le bras benchmark `local_profiled`.
+- `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md` pour comparer SearXNG, Crawl4AI, configuration OVH, pipeline FridaDev et benchmark local/Exa/Parallel avant tout lot runtime.
+- `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md` pour la decision Lot 8 recadree: runtime web `local only`, Exa/Parallel uniquement comme benchmarks externes, aucune activation runtime OpenRouter.
+- `todo-done/notes/web-reading-truth-todo.md` pour le contrat archive de lecture URL explicite, `read_state`, `fit` puis `raw` et observabilite content-free.
+- `todo-done/refactors/hermeneutic-suspension-auto-web-todo.md` pour la decision archivee de suspension de l'auto-web lexical.
+- `benchmark/web-search/README.md` pour relancer le benchmark comparatif local / OpenRouter Exa / OpenRouter Parallel.
+
+But: renforcer la recherche locale sans rouvrir l'auto-web, sans remplacer la stack par OpenRouter par defaut, et sans contaminer Memory/Identity/Summary.
+
 ### Documents actifs de conversation
 
 Lire d'abord:
+- `states/specs/workspace-folders-contract.md` pour le contrat source-of-truth de l'atelier documentaire / répertoires de travail, fichiers persistants, sélection conversation-scoped et non-contamination.
+- `todo-done/product/fridadev-workspace-folders-todo.md` pour l'archive du chantier atelier documentaire / répertoires de travail, qui organise fichiers persistants et conversations sans les injecter automatiquement.
 - `states/specs/active-conversation-documents-contract.md`
 - `todo-done/product/fridadev-active-image-documents-todo.md` pour l'archive de lecture d'images comme pieces actives de conversation.
 - `todo-done/product/active-conversation-documents-audit-plan.md`

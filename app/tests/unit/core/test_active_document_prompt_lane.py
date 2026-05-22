@@ -64,6 +64,32 @@ def _image_doc(
     }
 
 
+def _pdf_file_doc(
+    document_id: str = "pdf-1",
+    *,
+    file_content: bytes = b"%PDF scanned",
+    media_type: str = "application/pdf",
+    created_at: str = "2026-05-16T12:00:00Z",
+) -> dict[str, object]:
+    return {
+        "document_id": document_id,
+        "conversation_id": "11111111-1111-1111-1111-111111111111",
+        "filename": "scan.pdf",
+        "media_type": media_type,
+        "source_extension": ".pdf",
+        "byte_size": len(file_content),
+        "text_chars": 0,
+        "text_sha256_12": "",
+        "media_kind": "file",
+        "content_sha256_12": "pdf123abcdef",
+        "token_estimate": 0,
+        "status": "active",
+        "active": True,
+        "created_at": created_at,
+        "file_content": file_content,
+    }
+
+
 class ActiveDocumentPromptLaneTest(unittest.TestCase):
     def test_document_that_fits_is_injected_in_full_with_interpretation_contract(self):
         full_text = "Texte complet du document actif.\nDeuxieme ligne intacte."
@@ -248,6 +274,34 @@ class ActiveDocumentPromptLaneTest(unittest.TestCase):
         self.assertIn("active_documents_read_error", prompt_text)
         self.assertIn("ne pretends pas t'appuyer sur un document actif", prompt_text)
         self.assertIn("Travaille sur le document.", prompt_text)
+
+    def test_read_error_with_injected_documents_keeps_partial_error_signal(self):
+        raw_text = "Document actif lisible malgre une erreur workspace."
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "Travaille sur les fichiers selectionnes."},
+        ]
+
+        lane = prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [_doc("doc-1", "note.txt", raw_text)],
+            model="model",
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+            read_status="error",
+            read_reason_code="workspace_files_read_error",
+        )
+
+        self.assertEqual(lane.read_status, "error")
+        self.assertEqual(lane.read_reason_code, "workspace_files_read_error")
+        self.assertEqual(lane.injected_count, 1)
+        self.assertEqual(lane.not_injected_count, 0)
+        self.assertEqual(len(lane.messages), 2)
+        prompt_text = "\n".join(str(message.get("content") or "") for message in prompt_messages)
+        self.assertIn(raw_text, prompt_text)
+        self.assertIn("workspace_files_read_error", prompt_text)
+        self.assertIn("document_lane_read_error", prompt_text)
+        self.assertIn("ne pretends pas t'appuyer sur un document actif ou fichier selectionne", prompt_text)
 
     def test_empty_read_state_stays_distinct_from_error_without_prompt_noise(self):
         lane = prompt_lane.build_active_document_prompt_lane(
@@ -440,6 +494,115 @@ class ActiveDocumentPromptLaneTest(unittest.TestCase):
         self.assertTrue(seen_contents)
         self.assertNotIn("data:image", seen_contents[-1])
         self.assertIn("[image active multimodale]", seen_contents[-1])
+
+    def test_pdf_file_builds_openrouter_multimodal_payload_text_then_file(self):
+        for model in ("anthropic/claude-sonnet-4.6", "openai/gpt-5.1"):
+            with self.subTest(model=model):
+                prompt_messages = [
+                    {"role": "system", "content": "SYSTEM"},
+                    {"role": "user", "content": "Peux-tu lire le PDF ?"},
+                ]
+
+                lane = prompt_lane.inject_active_document_prompt_lane(
+                    prompt_messages,
+                    [_pdf_file_doc(file_content=b"%PDF scanned")],
+                    model=model,
+                    count_tokens_func=lambda _messages, _model: 1,
+                    max_tokens=5000,
+                )
+
+                self.assertEqual(lane.injected_count, 1)
+                self.assertEqual(lane.not_injected_count, 0)
+                self.assertEqual(lane.decisions[0].media_kind, "file")
+                self.assertEqual(lane.decisions[0].payload_order, "text_then_file")
+                self.assertEqual(lane.decisions[0].provider_model, model)
+                content = lane.content_message["content"]
+                self.assertIsInstance(content, list)
+                self.assertEqual(content[0]["type"], "text")
+                self.assertEqual(content[1]["type"], "file")
+                self.assertEqual(content[1]["file"]["filename"], "scan.pdf")
+                self.assertEqual(
+                    content[1]["file"]["file_data"],
+                    "data:application/pdf;base64,JVBERiBzY2FubmVk",
+                )
+                self.assertNotIn("data:application/pdf", content[0]["text"])
+                self.assertIn("payload_order: text_then_file", content[0]["text"])
+
+    def test_pdf_file_is_excluded_when_main_model_is_not_file_capable(self):
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "Peux-tu lire le PDF ?"},
+        ]
+
+        lane = prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [_pdf_file_doc(file_content=b"%PDF scanned")],
+            model="openai/text-only-model",
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+        )
+
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+        self.assertEqual(lane.decisions[0].reason_code, "file_model_unsupported")
+        serialized_prompt = str(prompt_messages)
+        self.assertIn("reason_code=file_model_unsupported", serialized_prompt)
+        self.assertNotIn("file_data", serialized_prompt)
+        self.assertNotIn("data:application/pdf", serialized_prompt)
+
+    def test_pdf_file_over_provider_payload_cap_is_excluded_before_data_url(self):
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "Peux-tu lire le PDF ?"},
+        ]
+
+        with (
+            mock.patch.object(prompt_lane, "ACTIVE_FILE_PROVIDER_MAX_BYTES", 4),
+            mock.patch.object(prompt_lane, "_file_data_url", side_effect=AssertionError("_file_data_url must not run")),
+        ):
+            lane = prompt_lane.inject_active_document_prompt_lane(
+                prompt_messages,
+                [_pdf_file_doc(file_content=b"%PDF scanned")],
+                model="openai/gpt-5.1",
+                count_tokens_func=lambda _messages, _model: 1,
+                max_tokens=5000,
+            )
+
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+        self.assertEqual(lane.decisions[0].reason_code, "file_too_large_for_provider_payload")
+        serialized_prompt = str(prompt_messages)
+        self.assertIn("reason_code=file_too_large_for_provider_payload", serialized_prompt)
+        self.assertNotIn("file_data", serialized_prompt)
+        self.assertNotIn("data:application/pdf", serialized_prompt)
+
+    def test_text_budget_count_does_not_include_pdf_file_base64(self):
+        seen_contents: list[str] = []
+
+        def count_tokens(messages, _model):
+            seen_contents.append("\n".join(str(message.get("content") or "") for message in messages))
+            return 1
+
+        lane = prompt_lane.build_active_document_prompt_lane(
+            [
+                _pdf_file_doc(file_content=b"%PDF scanned"),
+                _doc(
+                    "doc-1",
+                    "note.txt",
+                    "Texte complet du document actif.",
+                    created_at="2026-05-16T12:01:00Z",
+                ),
+            ],
+            model="openai/gpt-5.1",
+            base_messages=[{"role": "system", "content": "SYSTEM"}],
+            count_tokens_func=count_tokens,
+            max_tokens=5000,
+        )
+
+        self.assertEqual(lane.injected_count, 2)
+        self.assertTrue(seen_contents)
+        self.assertNotIn("data:application/pdf", seen_contents[-1])
+        self.assertIn("[fichier PDF multimodal]", seen_contents[-1])
 
 
 if __name__ == "__main__":

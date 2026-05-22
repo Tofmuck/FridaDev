@@ -154,6 +154,44 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
         self.assertNotIn('image_content', encoded)
         self.assertNotIn('data:image', encoded)
 
+    def test_file_prompt_decision_payload_records_injection_without_base64(self) -> None:
+        lane = SimpleNamespace(
+            decisions=(
+                SimpleNamespace(
+                    document_id='pdf-1',
+                    filename='scan.pdf',
+                    media_type='application/pdf',
+                    source_extension='.pdf',
+                    byte_size=1234,
+                    text_chars=0,
+                    token_estimate=0,
+                    text_sha256_12='',
+                    media_kind='file',
+                    content_sha256_12='pdf456abcdef',
+                    injected=True,
+                    reason_code='',
+                    payload_order='text_then_file',
+                    provider_model='openai/gpt-5.1',
+                    file_content=b'RAW PDF BYTES MUST NOT LEAK',
+                ),
+            )
+        )
+
+        payload = active_documents_observability.build_prompt_decision_payload(lane)
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+        document = payload['documents'][0]
+        self.assertEqual(document['media_kind'], 'file')
+        self.assertEqual(document['media_type'], 'application/pdf')
+        self.assertEqual(document['content_sha256_12'], 'pdf456abcdef')
+        self.assertEqual(document['decision'], 'injected')
+        self.assertEqual(document['payload_order'], 'text_then_file')
+        self.assertEqual(document['provider_model'], 'openai/gpt-5.1')
+        self.assertNotIn('RAW PDF BYTES MUST NOT LEAK', encoded)
+        self.assertNotIn('file_content', encoded)
+        self.assertNotIn('file_data', encoded)
+        self.assertNotIn('data:application/pdf', encoded)
+
     def test_image_prompt_decision_payload_records_exclusion_without_base64(self) -> None:
         lane = SimpleNamespace(
             decisions=(
@@ -236,6 +274,40 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
         )
         self.assertEqual(events[0]['stage'], 'active_documents')
         self.assertEqual(events[0]['status'], 'error')
+
+    def test_prompt_read_error_with_injected_document_is_reported_as_partial(self) -> None:
+        lane = SimpleNamespace(
+            decisions=(
+                SimpleNamespace(
+                    document_id='doc-injected',
+                    filename='note.txt',
+                    media_type='text/plain',
+                    source_extension='.txt',
+                    byte_size=42,
+                    text_chars=31,
+                    token_estimate=8,
+                    text_sha256_12='hashtext1234',
+                    injected=True,
+                    reason_code='',
+                    text_content='RAW DOCUMENT TEXT MUST NOT LEAK',
+                ),
+            ),
+            read_status='error',
+            read_reason_code='workspace_files_read_error',
+        )
+
+        payload = active_documents_observability.build_prompt_decision_payload(lane)
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(payload['status'], 'partial')
+        self.assertEqual(payload['read_status'], 'error')
+        self.assertEqual(payload['read_reason_code'], 'workspace_files_read_error')
+        self.assertEqual(payload['active_count'], 1)
+        self.assertEqual(payload['injected_count'], 1)
+        self.assertEqual(payload['not_injected_count'], 0)
+        self.assertEqual(payload['reason_code_counts'], {'workspace_files_read_error': 1})
+        self.assertNotIn('RAW DOCUMENT TEXT MUST NOT LEAK', encoded)
+        self.assertNotIn('text_content', encoded)
 
     def test_admin_activation_and_remove_events_are_content_free(self) -> None:
         events: list[tuple[str, dict[str, object]]] = []

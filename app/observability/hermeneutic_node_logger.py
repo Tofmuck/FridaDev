@@ -165,6 +165,11 @@ def _summarize_stimmung(payload: Mapping[str, Any] | None) -> dict[str, Any]:
 
 def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = _mapping(payload)
+    query_plan = _mapping(data.get('query_plan'))
+    searxng_params = _mapping(data.get('searxng_profile_params'))
+    reranking = _mapping(data.get('reranking'))
+    web_confidence = _mapping(data.get('web_confidence'))
+    openrouter_fallback = _mapping(data.get('openrouter_fallback'))
     source_material_summary = []
     for item in _sequence(data.get('source_material_summary')):
         source = _mapping(item)
@@ -181,6 +186,34 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
                 'truncated': bool(source.get('truncated', False)),
             }
         )
+    crawl4ai_extraction_summary = []
+    for item in _sequence(data.get('crawl4ai_extraction_summary')):
+        source = _mapping(item)
+        crawl4ai_extraction_summary.append(
+            {
+                'rank': int(source.get('rank') or 0),
+                'url': str(source.get('url') or ''),
+                'source_origin': str(source.get('source_origin') or 'search_result'),
+                'is_primary_source': bool(source.get('is_primary_source', False)),
+                'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
+                'crawl_filter': str(source.get('crawl_filter') or ''),
+                'crawl_filter_requested': str(source.get('crawl_filter_requested') or ''),
+                'crawl_policy_kind': str(source.get('crawl_policy_kind') or ''),
+                'crawl_policy_reason': str(source.get('crawl_policy_reason') or ''),
+                'crawl_cache_mode': str(source.get('crawl_cache_mode') or ''),
+                'crawl_query_sha256_12': str(source.get('crawl_query_sha256_12') or ''),
+                'crawl_query_chars': int(source.get('crawl_query_chars') or 0),
+                'crawl_fallback_used': bool(source.get('crawl_fallback_used', False)),
+                'crawl_fallback_reason': str(source.get('crawl_fallback_reason') or ''),
+                'crawl_primary_status': str(source.get('crawl_primary_status') or ''),
+                'crawl_fallback_status': str(source.get('crawl_fallback_status') or ''),
+                'crawl_markdown_chars': int(source.get('crawl_markdown_chars') or 0),
+                'crawl_max_chars': int(source.get('crawl_max_chars') or 0),
+                'used_content_kind': str(source.get('used_content_kind') or 'none'),
+                'content_chars': int(source.get('content_chars') or 0),
+                'truncated': bool(source.get('truncated', False)),
+            }
+        )
     return {
         'present': bool(data),
         'enabled': bool(data.get('enabled', False)),
@@ -190,6 +223,64 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
             or ('manual' if bool(data.get('enabled', False)) else 'not_requested')
         ),
         'reason_code': str(data.get('reason_code') or ''),
+        'search_profile': str(data.get('search_profile') or ''),
+        'query_plan_kind': str(data.get('query_plan_kind') or query_plan.get('query_plan_kind') or ''),
+        'query_count': int(data.get('query_count') or query_plan.get('query_count') or 0),
+        'secondary_query_count': int(
+            data.get('secondary_query_count') or query_plan.get('secondary_query_count') or 0
+        ),
+        'deduped_result_count': int(data.get('deduped_result_count') or query_plan.get('deduped_result_count') or 0),
+        'searxng_profile_params_kind': str(
+            data.get('searxng_profile_params_kind')
+            or searxng_params.get('searxng_profile_params_kind')
+            or ''
+        ),
+        'searxng_profile_params_policy': str(
+            data.get('searxng_profile_params_policy')
+            or searxng_params.get('searxng_profile_params_policy')
+            or ''
+        ),
+        'searxng_categories': [
+            str(value)
+            for value in _sequence(data.get('searxng_categories') or searxng_params.get('searxng_categories'))
+            if str(value)
+        ],
+        'searxng_engines': [
+            str(value)
+            for value in _sequence(data.get('searxng_engines') or searxng_params.get('searxng_engines'))
+            if str(value)
+        ],
+        'searxng_time_range': str(
+            data.get('searxng_time_range') or searxng_params.get('searxng_time_range') or ''
+        ),
+        'searxng_language': str(data.get('searxng_language') or searxng_params.get('searxng_language') or ''),
+        'searxng_safesearch': str(
+            data.get('searxng_safesearch') or searxng_params.get('searxng_safesearch') or ''
+        ),
+        'rerank_applied': bool(data.get('rerank_applied', reranking.get('rerank_applied', False))),
+        'rerank_policy': str(data.get('rerank_policy') or reranking.get('rerank_policy') or ''),
+        'rerank_input_count': int(data.get('rerank_input_count') or reranking.get('rerank_input_count') or 0),
+        'rerank_output_count': int(data.get('rerank_output_count') or reranking.get('rerank_output_count') or 0),
+        'rerank_profile': str(data.get('rerank_profile') or reranking.get('rerank_profile') or ''),
+        'rerank_top_domains_before': [
+            str(value)
+            for value in _sequence(data.get('rerank_top_domains_before') or reranking.get('rerank_top_domains_before'))
+            if str(value)
+        ],
+        'rerank_top_domains_after': [
+            str(value)
+            for value in _sequence(data.get('rerank_top_domains_after') or reranking.get('rerank_top_domains_after'))
+            if str(value)
+        ],
+        'rerank_reason_counts': dict(
+            _mapping(data.get('rerank_reason_counts') or reranking.get('rerank_reason_counts'))
+        ),
+        'rerank_promoted_count': int(
+            data.get('rerank_promoted_count') or reranking.get('rerank_promoted_count') or 0
+        ),
+        'rerank_downranked_count': int(
+            data.get('rerank_downranked_count') or reranking.get('rerank_downranked_count') or 0
+        ),
         'results_count': int(data.get('results_count') or 0),
         'explicit_url_detected': bool(data.get('explicit_url_detected', False)),
         'explicit_url': str(data.get('explicit_url') or ''),
@@ -205,6 +296,53 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         'injected_chars': int(data.get('injected_chars') or 0),
         'context_chars': int(data.get('context_chars') or 0),
         'source_material_summary': source_material_summary,
+        'crawl4ai_extraction_summary': crawl4ai_extraction_summary,
+        'crawl4ai_policy_kinds': [str(value) for value in _sequence(data.get('crawl4ai_policy_kinds')) if str(value)],
+        'crawl4ai_filter_counts': dict(_mapping(data.get('crawl4ai_filter_counts'))),
+        'crawl4ai_cache_modes': dict(_mapping(data.get('crawl4ai_cache_modes'))),
+        'crawl4ai_fallback_used_count': int(data.get('crawl4ai_fallback_used_count') or 0),
+        'crawl4ai_query_sha256_12': [str(value) for value in _sequence(data.get('crawl4ai_query_sha256_12')) if str(value)],
+        'web_confidence_policy_kind': str(
+            data.get('web_confidence_policy_kind')
+            or web_confidence.get('web_confidence_policy_kind')
+            or ''
+        ),
+        'web_confidence_level': str(
+            data.get('web_confidence_level')
+            or web_confidence.get('web_confidence_level')
+            or ''
+        ),
+        'web_confidence_score': data.get('web_confidence_score', web_confidence.get('web_confidence_score')),
+        'web_confidence_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('web_confidence_reason_codes')
+                or web_confidence.get('web_confidence_reason_codes')
+            )
+            if str(value)
+        ],
+        'web_confidence_inputs_summary': dict(
+            _mapping(
+                data.get('web_confidence_inputs_summary')
+                or web_confidence.get('web_confidence_inputs_summary')
+            )
+        ),
+        'openrouter_fallback_state': str(
+            data.get('openrouter_fallback_state')
+            or openrouter_fallback.get('openrouter_fallback_state')
+            or ''
+        ),
+        'openrouter_fallback_used': bool(
+            data.get('openrouter_fallback_used', openrouter_fallback.get('openrouter_fallback_used', False))
+        ),
+        'openrouter_fallback_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('openrouter_fallback_reason_codes')
+                or openrouter_fallback.get('openrouter_fallback_reason_codes')
+            )
+            if str(value)
+        ],
     }
 
 

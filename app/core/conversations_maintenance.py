@@ -29,10 +29,107 @@ def init_catalog_db(
                         updated_at           TIMESTAMPTZ NOT NULL,
                         message_count        INTEGER     NOT NULL DEFAULT 0,
                         last_message_preview TEXT        NOT NULL DEFAULT '',
+                        workspace_folder_id  UUID,
                         deleted_at           TIMESTAMPTZ
                     );
                     """
                 )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS workspace_folders (
+                        id           UUID PRIMARY KEY,
+                        display_name TEXT        NOT NULL,
+                        icon_key     TEXT        NOT NULL DEFAULT 'folder',
+                        description  TEXT        NOT NULL DEFAULT '',
+                        sort_order   INTEGER     NOT NULL DEFAULT 0,
+                        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        deleted_at   TIMESTAMPTZ
+                    );
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS workspace_files (
+                        id                  UUID PRIMARY KEY,
+                        workspace_folder_id UUID        NOT NULL REFERENCES workspace_folders(id) ON DELETE CASCADE,
+                        display_name        TEXT        NOT NULL,
+                        original_filename   TEXT        NOT NULL DEFAULT '',
+                        storage_key         TEXT        NOT NULL UNIQUE,
+                        content_kind        TEXT        NOT NULL DEFAULT 'document',
+                        media_kind          TEXT        NOT NULL DEFAULT 'text',
+                        mime_type           TEXT        NOT NULL DEFAULT '',
+                        source_extension    TEXT        NOT NULL DEFAULT '',
+                        byte_size           BIGINT      NOT NULL DEFAULT 0,
+                        sha256              TEXT        NOT NULL DEFAULT '',
+                        sha256_12           TEXT        NOT NULL DEFAULT '',
+                        text_chars          INTEGER     NOT NULL DEFAULT 0,
+                        text_sha256_12      TEXT        NOT NULL DEFAULT '',
+                        image_width         INTEGER     NOT NULL DEFAULT 0,
+                        image_height        INTEGER     NOT NULL DEFAULT 0,
+                        status              TEXT        NOT NULL DEFAULT 'active',
+                        reason_code         TEXT        NOT NULL DEFAULT '',
+                        source_kind         TEXT        NOT NULL DEFAULT 'upload',
+                        source_file_id      UUID,
+                        created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        deleted_at          TIMESTAMPTZ
+                    );
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS workspace_file_selections (
+                        conversation_id           UUID        NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                        workspace_file_id         UUID        NOT NULL REFERENCES workspace_files(id) ON DELETE CASCADE,
+                        selected_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        updated_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        deleted_at                TIMESTAMPTZ,
+                        last_injected_turn_id     TEXT        NOT NULL DEFAULT '',
+                        last_excluded_turn_id     TEXT        NOT NULL DEFAULT '',
+                        last_excluded_reason_code TEXT        NOT NULL DEFAULT '',
+                        PRIMARY KEY (conversation_id, workspace_file_id)
+                    );
+                    """
+                )
+                cur.execute(
+                    """
+                    ALTER TABLE conversations
+                    ADD COLUMN IF NOT EXISTS workspace_folder_id UUID;
+                    """
+                )
+                for column_sql in (
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS selected_at TIMESTAMPTZ NOT NULL DEFAULT now();",
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();",
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;",
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS last_injected_turn_id TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS last_excluded_turn_id TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS last_excluded_reason_code TEXT NOT NULL DEFAULT '';",
+                ):
+                    cur.execute(column_sql)
+                for column_sql in (
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS original_filename TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS storage_key TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS content_kind TEXT NOT NULL DEFAULT 'document';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS media_kind TEXT NOT NULL DEFAULT 'text';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS mime_type TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS source_extension TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS byte_size BIGINT NOT NULL DEFAULT 0;",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS sha256 TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS sha256_12 TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS text_chars INTEGER NOT NULL DEFAULT 0;",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS text_sha256_12 TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS image_width INTEGER NOT NULL DEFAULT 0;",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS image_height INTEGER NOT NULL DEFAULT 0;",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS reason_code TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS source_kind TEXT NOT NULL DEFAULT 'upload';",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS source_file_id UUID;",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();",
+                    "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;",
+                ):
+                    cur.execute(column_sql)
                 cur.execute(
                     """
                     CREATE INDEX IF NOT EXISTS conversations_updated_idx
@@ -43,6 +140,73 @@ def init_catalog_db(
                     """
                     CREATE INDEX IF NOT EXISTS conversations_deleted_idx
                     ON conversations (deleted_at);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS conversations_workspace_folder_idx
+                    ON conversations (workspace_folder_id);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS workspace_folders_active_sort_idx
+                    ON workspace_folders (deleted_at, sort_order, created_at);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS workspace_files_folder_active_idx
+                    ON workspace_files (workspace_folder_id, deleted_at, created_at DESC);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS workspace_files_storage_key_idx
+                    ON workspace_files (storage_key);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS workspace_files_status_idx
+                    ON workspace_files (status, deleted_at);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS workspace_files_source_file_idx
+                    ON workspace_files (source_file_id);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS workspace_file_selections_conversation_active_idx
+                    ON workspace_file_selections (conversation_id, deleted_at, selected_at DESC);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS workspace_file_selections_file_active_idx
+                    ON workspace_file_selections (workspace_file_id, deleted_at);
+                    """
+                )
+                cur.execute(
+                    """
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1
+                            FROM pg_constraint
+                            WHERE conname = 'conversations_workspace_folder_id_fkey'
+                        ) THEN
+                            ALTER TABLE conversations
+                            ADD CONSTRAINT conversations_workspace_folder_id_fkey
+                            FOREIGN KEY (workspace_folder_id)
+                            REFERENCES workspace_folders(id)
+                            ON DELETE SET NULL;
+                        END IF;
+                    END
+                    $$;
                     """
                 )
             conn.commit()

@@ -30,6 +30,7 @@ REASON_OCR_TOO_LARGE = "document_ocr_too_large"
 REASON_OCR_TOO_MANY_PAGES = "document_ocr_too_many_pages"
 
 DEFAULT_OCR_URL = "http://platform-stirling-pdf:8080/pdf/api/v1/misc/ocr-pdf"
+DEFAULT_IMAGE_TO_PDF_URL = "http://platform-stirling-pdf:8080/pdf/api/v1/convert/img/pdf"
 DEFAULT_TIMEOUT_S = 180
 DEFAULT_LANGUAGES = "fra+eng+deu"
 DEFAULT_MAX_PAGES = 25
@@ -40,6 +41,7 @@ OCR_ENGINE = "stirling-pdf"
 @dataclass(frozen=True)
 class ActiveDocumentOcrConfig:
     url: str
+    image_to_pdf_url: str
     timeout_s: int
     languages: str
     max_pages: int
@@ -78,11 +80,121 @@ def get_active_document_ocr_config(config_module: Any = None) -> ActiveDocumentO
     source = config_module if config_module is not None else default_config
     return ActiveDocumentOcrConfig(
         url=str(getattr(source, "ACTIVE_DOCUMENT_OCR_URL", DEFAULT_OCR_URL) or DEFAULT_OCR_URL).strip(),
+        image_to_pdf_url=str(
+            getattr(source, "ACTIVE_DOCUMENT_IMAGE_TO_PDF_URL", DEFAULT_IMAGE_TO_PDF_URL) or DEFAULT_IMAGE_TO_PDF_URL
+        ).strip(),
         timeout_s=_positive_int(getattr(source, "ACTIVE_DOCUMENT_OCR_TIMEOUT_S", DEFAULT_TIMEOUT_S), DEFAULT_TIMEOUT_S),
         languages=str(getattr(source, "ACTIVE_DOCUMENT_OCR_LANGUAGES", DEFAULT_LANGUAGES) or DEFAULT_LANGUAGES).strip()
         or DEFAULT_LANGUAGES,
         max_pages=_positive_int(getattr(source, "ACTIVE_DOCUMENT_OCR_MAX_PAGES", DEFAULT_MAX_PAGES), DEFAULT_MAX_PAGES),
         max_bytes=_positive_int(getattr(source, "ACTIVE_DOCUMENT_OCR_MAX_BYTES", DEFAULT_MAX_BYTES), DEFAULT_MAX_BYTES),
+    )
+
+
+def ocr_image_with_stirling(
+    content: bytes,
+    *,
+    filename: str = "image.png",
+    media_type: str = "image/png",
+    config_module: Any = None,
+    requests_module: Any = requests,
+    pdf_reader_factory: Optional[Callable[[io.BytesIO], Any]] = None,
+    monotonic: Callable[[], float] = time.monotonic,
+) -> ActiveDocumentOcrResult:
+    """Convert an image to a one-document PDF, then reuse the existing OCR PDF path."""
+
+    data = bytes(content or b"")
+    settings = get_active_document_ocr_config(config_module)
+    if len(data) > settings.max_bytes:
+        return _failure(
+            reason_code=REASON_OCR_TOO_LARGE,
+            source_bytes=len(data),
+            page_count=0,
+            settings=settings,
+            warnings=(f"max_bytes={settings.max_bytes}",),
+        )
+
+    started = monotonic()
+    try:
+        response = requests_module.post(
+            settings.image_to_pdf_url,
+            files={"fileInput": (_safe_filename(filename), data, _safe_media_type(media_type))},
+            data=[
+                ("colorType", "color"),
+                ("fitOption", "maintainAspectRatio"),
+            ],
+            timeout=settings.timeout_s,
+        )
+    except _timeout_exception(requests_module):
+        return _failure(
+            reason_code=REASON_OCR_TIMEOUT,
+            source_bytes=len(data),
+            page_count=0,
+            settings=settings,
+            duration_ms=_duration_ms(started, monotonic),
+        )
+    except _request_exception(requests_module) as exc:
+        return _failure(
+            reason_code=REASON_OCR_FAILED,
+            source_bytes=len(data),
+            page_count=0,
+            settings=settings,
+            duration_ms=_duration_ms(started, monotonic),
+            warnings=(type(exc).__name__,),
+        )
+
+    conversion_duration = _duration_ms(started, monotonic)
+    status_code = int(getattr(response, "status_code", 0) or 0)
+    if status_code >= 400 or status_code <= 0:
+        return _failure(
+            reason_code=REASON_OCR_FAILED,
+            source_bytes=len(data),
+            page_count=0,
+            settings=settings,
+            duration_ms=conversion_duration,
+            warnings=(f"http_status={status_code}",),
+        )
+    content_type = _response_content_type(response)
+    if content_type != "application/pdf":
+        return _failure(
+            reason_code=REASON_OCR_FAILED,
+            source_bytes=len(data),
+            page_count=0,
+            settings=settings,
+            duration_ms=conversion_duration,
+            content_type=content_type,
+            warnings=("image_to_pdf_non_pdf_response",),
+        )
+    converted_pdf = bytes(getattr(response, "content", b"") or b"")
+    if not converted_pdf:
+        return _failure(
+            reason_code=REASON_OCR_EMPTY,
+            source_bytes=len(data),
+            page_count=0,
+            settings=settings,
+            duration_ms=conversion_duration,
+            content_type=content_type,
+        )
+
+    ocr_result = ocr_pdf_with_stirling(
+        converted_pdf,
+        filename=_pdf_filename(filename),
+        config_module=config_module,
+        requests_module=requests_module,
+        pdf_reader_factory=pdf_reader_factory,
+        monotonic=monotonic,
+    )
+    return ActiveDocumentOcrResult(
+        status=ocr_result.status,
+        reason_code=ocr_result.reason_code,
+        ocr_pdf=ocr_result.ocr_pdf,
+        source_bytes=len(data),
+        page_count=ocr_result.page_count,
+        ocr_engine=ocr_result.ocr_engine,
+        ocr_languages=ocr_result.ocr_languages,
+        ocr_duration_ms=conversion_duration + ocr_result.ocr_duration_ms,
+        content_type=ocr_result.content_type,
+        warnings=ocr_result.warnings,
     )
 
 
@@ -260,6 +372,16 @@ def _positive_int(value: Any, default: int) -> int:
 def _safe_filename(filename: str) -> str:
     cleaned = str(filename or "document.pdf").strip().split("/")[-1].split("\\")[-1]
     return cleaned or "document.pdf"
+
+
+def _safe_media_type(value: str) -> str:
+    return str(value or "").split(";", 1)[0].strip().lower() or "application/octet-stream"
+
+
+def _pdf_filename(filename: str) -> str:
+    safe = _safe_filename(filename)
+    stem = safe.rsplit(".", 1)[0] if "." in safe else safe
+    return f"{stem or 'image'}.pdf"
 
 
 def _stirling_form_data(languages: str) -> list[tuple[str, str]]:

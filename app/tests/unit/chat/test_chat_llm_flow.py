@@ -577,7 +577,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             ],
         )
 
-    def test_run_llm_exchange_stream_buffers_and_normalizes_ordinary_turn_output(self) -> None:
+    def test_run_llm_exchange_stream_buffers_and_keeps_simple_lists_for_ordinary_turn_output(self) -> None:
         conversation = {
             'id': 'conv-stream-plain-text',
             'created_at': '2026-03-26T00:00:00Z',
@@ -684,8 +684,8 @@ class ChatLlmFlowTests(unittest.TestCase):
         )
 
         streamed, terminal = _collect_stream_output(result['stream'])
-        self.assertNotIn('\n- ', streamed)
-        self.assertNotIn('\n1) ', streamed)
+        self.assertIn('\n- Lisible.', streamed)
+        self.assertIn('\n1) Portable.', streamed)
         self.assertIn('Lisible.', streamed)
         self.assertIn('Portable.', streamed)
         self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-03-26T00:11:00Z'})

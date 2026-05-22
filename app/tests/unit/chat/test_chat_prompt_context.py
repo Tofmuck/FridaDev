@@ -231,24 +231,25 @@ class ChatPromptContextTests(unittest.TestCase):
         self.assertIn('[GARDE DE LECTURE VOCALE]', augmented)
         self.assertLess(augmented.index('BASE SYSTEM'), augmented.index('[GARDE DE LECTURE VOCALE]'))
 
-    def test_build_plain_text_guard_block_for_default_turn_forbids_markdown_lists_and_code_fences(self) -> None:
+    def test_build_plain_text_guard_block_for_default_turn_prefers_sober_readable_form(self) -> None:
         block = chat_prompt_context.build_plain_text_guard_block(
             user_msg='Explique simplement la différence entre la mémoire vive et le disque dur.',
         )
 
         self.assertIn('[CONTRAT TEXTE BRUT]', block)
-        self.assertIn('texte brut strict', block)
-        self.assertIn("n'utilise ni puces, ni listes numérotées", block)
-        self.assertIn('Réponds en courts paragraphes continus.', block)
-        self.assertIn("n'utilise pas de code fences", block)
+        self.assertIn('forme sobre et lisible', block)
+        self.assertIn('paragraphes clairs', block)
+        self.assertIn('titres sobres, des listes simples ou un tableau', block)
+        self.assertIn("N'ajoute pas de structure gratuite", block)
+        self.assertIn("N'utilise pas de code fences", block)
 
     def test_build_plain_text_guard_block_does_not_treat_plan_marshall_as_explicit_format_request(self) -> None:
         block = chat_prompt_context.build_plain_text_guard_block(
             user_msg='Explique le plan Marshall.',
         )
 
-        self.assertIn("n'utilise ni puces, ni listes numérotées", block)
-        self.assertIn("n'utilise pas de code fences", block)
+        self.assertIn("N'ajoute pas de structure gratuite", block)
+        self.assertIn("N'utilise pas de code fences", block)
         self.assertNotIn("demande explicitement un plan, des étapes ou une liste", block)
 
     def test_build_plain_text_guard_block_does_not_treat_topic_points_as_explicit_format_request(self) -> None:
@@ -256,8 +257,8 @@ class ChatPromptContextTests(unittest.TestCase):
             user_msg='Parle-moi des points communs entre Platon et Aristote.',
         )
 
-        self.assertIn("n'utilise ni puces, ni listes numérotées", block)
-        self.assertIn("n'utilise pas de code fences", block)
+        self.assertIn("N'ajoute pas de structure gratuite", block)
+        self.assertIn("N'utilise pas de code fences", block)
         self.assertNotIn("demande explicitement un plan, des étapes ou une liste", block)
 
     def test_build_plain_text_guard_block_does_not_treat_json_topic_as_explicit_code_request(self) -> None:
@@ -265,8 +266,8 @@ class ChatPromptContextTests(unittest.TestCase):
             user_msg="Explique simplement ce qu'est JSON.",
         )
 
-        self.assertIn("n'utilise ni puces, ni listes numérotées", block)
-        self.assertIn("n'utilise pas de code fences", block)
+        self.assertIn("N'ajoute pas de structure gratuite", block)
+        self.assertIn("N'utilise pas de code fences", block)
         self.assertNotIn("demande explicitement du code", block)
 
     def test_build_plain_text_guard_block_does_not_treat_math_function_topic_as_explicit_code_request(self) -> None:
@@ -274,8 +275,8 @@ class ChatPromptContextTests(unittest.TestCase):
             user_msg="Explique ce qu'est une fonction continue en maths.",
         )
 
-        self.assertIn("n'utilise ni puces, ni listes numérotées", block)
-        self.assertIn("n'utilise pas de code fences", block)
+        self.assertIn("N'ajoute pas de structure gratuite", block)
+        self.assertIn("N'utilise pas de code fences", block)
         self.assertNotIn("demande explicitement du code", block)
 
     def test_build_plain_text_guard_block_allows_minimal_structure_when_user_explicitly_requests_steps(self) -> None:
@@ -284,8 +285,8 @@ class ChatPromptContextTests(unittest.TestCase):
         )
 
         self.assertIn("demande explicitement un plan, des étapes ou une liste", block)
-        self.assertNotIn("n'utilise ni puces, ni listes numérotées", block)
-        self.assertIn("n'utilise pas de code fences", block)
+        self.assertNotIn("N'ajoute pas de structure gratuite", block)
+        self.assertIn("N'utilise pas de code fences", block)
 
     def test_build_plain_text_guard_block_allows_code_only_when_user_explicitly_requests_it(self) -> None:
         block = chat_prompt_context.build_plain_text_guard_block(
@@ -306,7 +307,7 @@ class ChatPromptContextTests(unittest.TestCase):
     def test_inject_plain_text_guard_block_appends_after_augmented_system(self) -> None:
         augmented = chat_prompt_context.inject_plain_text_guard_block(
             'BASE SYSTEM',
-            '[CONTRAT TEXTE BRUT]\nRéponds en texte brut strict.',
+            '[CONTRAT TEXTE BRUT]\nPrivilégie une forme sobre et lisible.',
         )
 
         self.assertTrue(augmented.startswith('BASE SYSTEM'))
