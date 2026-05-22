@@ -24,12 +24,12 @@ References a relire avant toute phase:
 
 ## Avancement global
 
-- [ ] Phase 0 — Etat des lieux reel
+- [x] Phase 0 — Etat des lieux reel
   - [x] Consolidation des preuves existantes
   - [x] Complement local-only des cas manquants
   - [x] Validation utilisateur du corpus borne
-  - [ ] Passage Phase 1 Sauron
-- [ ] Phase 1 — Inventaire des moteurs SearXNG
+  - [x] Passage Phase 1 Sauron
+- [x] Phase 1 — Inventaire des moteurs SearXNG
 - [ ] Phase 2 — Definir les regimes de recherche
 - [ ] Phase 3 — Source-first
 - [ ] Phase 4 — Reconfig SearXNG gouvernee
@@ -54,14 +54,23 @@ References a relire avant toute phase:
 ## Decisions utilisateur requises avant runtime
 
 - [ ] Choisir par profil entre recherche ouverte assistee et source-first stricte.
-- [ ] Valider les moteurs SearXNG acceptes politiquement et techniquement.
-- [ ] Valider les sources legitimes pour l'actualite.
-- [ ] Valider les sources legitimes pour l'administratif francais.
-- [ ] Valider les sources legitimes pour l'academique.
-- [ ] Valider les sources legitimes pour la documentation officielle.
+- [x] Valider les moteurs SearXNG acceptes politiquement et techniquement, au moins partiellement apres Phase 1.
+- [x] Valider les sources legitimes pour l'actualite.
+- [x] Valider les sources legitimes pour l'administratif francais.
+- [x] Valider les sources legitimes pour l'academique.
+- [x] Valider les sources legitimes pour la documentation officielle.
 - [ ] Accepter ou refuser des listes de domaines par profil.
 - [ ] Fixer une latence maximale cible pour un tour web manuel.
 - [ ] Fixer le comportement d'echec: demander une URL, elargir la recherche, ou dire non prouve.
+
+## Decisions actees apres Phase 1 Sauron
+
+- Documentation officielle: Microsoft Learn est valide comme candidat fort; les docs officielles restent source-first par autorite cible; les Q&A techniques ne sont pas autorite documentaire premiere.
+- Actualite: Bing News peut etre etudie ou active comme candidat borne; Reuters est accepte comme source fiable surtout internationale, sans devenir source unique; les sources institutionnelles restent prioritaires pour l'actualite institutionnelle.
+- Administratif francais: sources validees `service-public.fr`, `ants.gouv.fr`, `legifrance.gouv.fr`, domaines `.gouv.fr`, `education.gouv.fr`, `eduscol.education.fr`, `enseignementsup-recherche.gouv.fr`, `onisep.fr` et sites academiques officiels `ac-*.fr` avec prudence.
+- Academique: profil large valide, couvrant philosophie, SHS, droit, sciences exactes, medecine et informatique; sous-signaux oui, sous-profils prematurement non.
+- Q&A techniques: StackOverflow, GitHub issues, AskUbuntu et SuperUser restent visibles mais declasses hors demande explicite.
+- Moteurs externes tokenises: non, sauf DuckDuckGo officiel complet; pas de SERP API tierce qui scrape DuckDuckGo, pas de Brave Search API, pas de Google API, pas de Bing API.
 
 ## Angle critique et politique
 
@@ -149,7 +158,7 @@ Risques/effets de bord:
 
 ### Phase 0 - consolidation 2026-05-22
 
-Statut: consolidation Celebrimbor livree, Phase 0 globale non cochee.
+Statut: consolidation Celebrimbor livree, Phase 0 globale cochee.
 
 - [x] Note consolidee creee: `app/docs/states/audits/fridadev-local-web-search-phase-0-baseline-2026-05-22.md`.
 - [x] Artefacts Lot 8 reutilises: `/tmp/fridadev-web-search-lot8-live/local.md` et `/tmp/fridadev-web-search-lot8-live/local-profiled.md`.
@@ -157,7 +166,7 @@ Statut: consolidation Celebrimbor livree, Phase 0 globale non cochee.
 - [x] Complement local-only lance pour Adobe Photoshop, Adobe Illustrator, Bourdieu / sociologie, sciences exactes, Microsoft Graph et Jaguar ambigu: `/tmp/fridadev-web-search-phase0-missing-local/phase0-missing-local.md`.
 - [x] Hypothese confirmee: actualite IA Europe, OpenRouter docs, Derrida / trace, CNI, URL explicite, local vs local_profiled, same-query et audit stack sont deja largement couverts.
 - [x] Validation utilisateur du corpus borne.
-- [ ] Passage Phase 1: Sauron doit qualifier les moteurs SearXNG pertinents par profil, sans transformer Phase 0 en audit interminable.
+- [x] Passage Phase 1: Sauron a qualifie les moteurs SearXNG pertinents par profil, sans transformer Phase 0 en audit interminable.
 
 Decision utilisateur: le corpus Phase 0 est valide comme baseline bornee; tout ajout ulterieur exigera une decision explicite.
 
@@ -171,13 +180,13 @@ Objectif: savoir quels moteurs SearXNG sont reellement utilisables depuis l'inst
 
 Livrables:
 
-- [ ] Tableau `moteur -> utilisable / instable / a eviter / profil pertinent`.
-- [ ] Signalement des moteurs qui CAPTCHA.
-- [ ] Signalement des moteurs qui 429.
-- [ ] Signalement des moteurs qui repondent mais produisent du bruit dominant.
-- [ ] Signalement des moteurs utiles mais lents.
-- [ ] Recommandation de configuration gouvernee: conserver, limiter, declasser ou tester plus tard.
-- [ ] Justification explicite si un moteur hors profils cibles doit etre audite.
+- [x] Tableau `moteur -> utilisable / instable / a eviter / profil pertinent`.
+- [x] Signalement des moteurs qui CAPTCHA.
+- [x] Signalement des moteurs qui 429.
+- [x] Signalement des moteurs qui repondent mais produisent du bruit dominant.
+- [x] Signalement des moteurs utiles mais lents.
+- [x] Recommandation de configuration gouvernee: conserver, limiter, declasser ou tester plus tard.
+- [x] Justification explicite si un moteur hors profils cibles doit etre audite.
 
 Fichiers ou zones concernes:
 
@@ -200,15 +209,24 @@ Hors-scope:
 
 Tests/preuves attendus:
 
-- [ ] Tests de requetes representatifs par moteur.
-- [ ] Distinction entre panne temporaire et moteur structurellement impropre.
-- [ ] Preuve que les erreurs, CAPTCHA et 429 ne contiennent aucun secret.
+- [x] Tests de requetes representatifs par moteur.
+- [x] Distinction entre panne temporaire et moteur structurellement impropre.
+- [x] Preuve que les erreurs, CAPTCHA et 429 ne contiennent aucun secret.
 
 Criteres de fin:
 
-- [ ] Chaque moteur pertinent a un statut.
-- [ ] Chaque profil cible a au moins un panier moteur plausible ou un manque explicite.
-- [ ] Les moteurs problematiques sont documentes avant toute reconfiguration.
+- [x] Chaque moteur pertinent a un statut.
+- [x] Chaque profil cible a au moins un panier moteur plausible ou un manque explicite.
+- [x] Les moteurs problematiques sont documentes avant toute reconfiguration.
+
+### Phase 1 - inventaire Sauron 2026-05-22
+
+Statut: livre et archive.
+
+- [x] Note audit creee: `app/docs/states/audits/fridadev-searxng-engine-inventory-phase-1-2026-05-22.md`.
+- [x] Artefacts Sauron lus: `/tmp/fridadev-searxng-engine-inventory-phase1-20260522/bang-probes.tsv`, `engine-only-probes.tsv`, `engine-probes.tsv`.
+- [x] Nuance actee: les sondes `engine-probes` peuvent agreger plus large que le moteur seul; Phase 4 doit privilegier `bang-probes` et `engine-only-probes`.
+- [x] Phase 1 suffisante pour passer a Phase 2/3 cote Celebrimbor et preparer une Phase 4 Sauron separee, avec GO utilisateur explicite.
 
 Risques/effets de bord:
 
