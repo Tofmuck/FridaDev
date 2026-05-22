@@ -16,6 +16,16 @@ Les cinq chantiers produit majeurs restants sont:
 
 L'ordre peut etre ajuste par decision explicite, mais le perimetre produit majeur reste fige a ces cinq chantiers.
 
+## Chantier transversal actif hors perimetre majeur
+
+Un chantier transversal court est ouvert sans etendre la liste des cinq gros chantiers produit:
+
+- `app/docs/todo-todo/product/fridadev-main-llm-reasoning-and-streaming-todo.md`
+
+Portee: reglage avance borne du reasoning du LLM principal GPT-5.1 et correction du streaming visuel dans la fenetre de chat.
+
+Garde-fou: ce chantier ne doit jamais rendre visible, streamer, stocker, persister, exporter ou injecter le raisonnement interne du modele (`reasoning_details` ou equivalent). Il controle uniquement le niveau de reasoning demande et l'affichage progressif du texte final destine a l'utilisateur.
+
 ## Ordre provisoire recommande
 
 1. Atelier documentaire / repertoire de travail.
