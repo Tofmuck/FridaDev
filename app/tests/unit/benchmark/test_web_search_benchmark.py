@@ -160,7 +160,7 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             web_adapter.normalize_arms(["local", "plugins_web"])
 
-    def test_local_profiled_arm_exposes_lot5_query_searxng_and_rerank_shape(self) -> None:
+    def test_local_profiled_arm_exposes_lot6_query_searxng_rerank_and_crawl_shape(self) -> None:
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             config = CampaignConfig(
@@ -183,8 +183,8 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         first_case_arms = campaign["results"][0]["arms"]
         self.assertEqual([result["arm"] for result in first_case_arms], ["local", "local_profiled"])
         profiled = first_case_arms[1]
-        self.assertEqual(profiled["mode"], "local_profiled_specialized_queries_searxng_params_rerank")
-        self.assertEqual(profiled["engine"], "searxng_crawl4ai_profiled_queries_params_rerank")
+        self.assertEqual(profiled["mode"], "local_profiled_specialized_queries_searxng_params_rerank_crawl4ai_policy")
+        self.assertEqual(profiled["engine"], "searxng_crawl4ai_profiled_queries_params_rerank_crawl_policy")
         self.assertFalse(profiled["local"]["local_profiled_stub"])
         self.assertEqual(profiled["local"]["search_profile"], "stub_not_implemented")
         self.assertEqual(profiled["local"]["query_plan_kind"], "dry_run")
@@ -196,6 +196,10 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         self.assertFalse(profiled["local"]["rerank_applied"])
         self.assertEqual(profiled["local"]["rerank_policy"], "dry_run")
         self.assertEqual(profiled["local"]["rerank_reason_counts"], {})
+        self.assertEqual(profiled["local"]["crawl4ai_policy_kinds"], [])
+        self.assertEqual(profiled["local"]["crawl4ai_filter_counts"], {})
+        self.assertEqual(profiled["local"]["crawl4ai_cache_modes"], {})
+        self.assertEqual(profiled["local"]["crawl4ai_fallback_used_count"], 0)
         self.assertTrue(profiled["profiled_stub"]["runtime_changed"])
         self.assertEqual(
             profiled["profiled_stub"]["fixture_path"],
@@ -238,6 +242,11 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
                 "rerank_reason_counts": {"profile_official_domain_soft_bonus": 1} if enabled_rerank else {},
                 "rerank_promoted_count": 1 if enabled_rerank else 0,
                 "rerank_downranked_count": 1 if enabled_rerank else 0,
+                "crawl4ai_policy_kinds": ["profile_query_aware_bm25_with_fit_fallback"] if enabled_rerank else ["historical_fit"],
+                "crawl4ai_filter_counts": {"bm25": 1} if enabled_rerank else {"fit": 1},
+                "crawl4ai_cache_modes": {"1": 1} if enabled_rerank else {"0": 1},
+                "crawl4ai_fallback_used_count": 0,
+                "crawl4ai_query_sha256_12": ["abc123def456"] if enabled_rerank else [],
                 "used_content_kinds": [],
                 "injected_chars": 0,
                 "context_chars": 0,
@@ -272,9 +281,11 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         self.assertFalse(observed_kwargs[0]["enable_specialized_queries"])
         self.assertFalse(observed_kwargs[0]["enable_profiled_searxng_params"])
         self.assertFalse(observed_kwargs[0]["enable_reranking"])
+        self.assertFalse(observed_kwargs[0]["enable_profiled_crawl4ai_policy"])
         self.assertTrue(observed_kwargs[1]["enable_specialized_queries"])
         self.assertTrue(observed_kwargs[1]["enable_profiled_searxng_params"])
         self.assertTrue(observed_kwargs[1]["enable_reranking"])
+        self.assertTrue(observed_kwargs[1]["enable_profiled_crawl4ai_policy"])
         self.assertEqual(local["local"]["searxng_profile_params_kind"], "historical")
         self.assertEqual(profiled["local"]["searxng_profile_params_kind"], "profiled_actualite_year_general")
         self.assertEqual(profiled["local"]["searxng_profile_params_policy"], "soft_broad_hints")
@@ -286,6 +297,12 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
             profiled["local"]["rerank_reason_counts"],
             {"profile_official_domain_soft_bonus": 1},
         )
+        self.assertEqual(
+            profiled["local"]["crawl4ai_policy_kinds"],
+            ["profile_query_aware_bm25_with_fit_fallback"],
+        )
+        self.assertEqual(profiled["local"]["crawl4ai_filter_counts"], {"bm25": 1})
+        self.assertEqual(profiled["local"]["crawl4ai_cache_modes"], {"1": 1})
 
     def test_local_bad_order_fixtures_capture_live_local_failures(self) -> None:
         fixtures = web_adapter.load_local_bad_order_fixtures(REPO_ROOT)

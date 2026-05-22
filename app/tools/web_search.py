@@ -25,6 +25,7 @@ from tools import (
     web_reformulation_settings,
     web_search_profile,
     web_search_query_plan,
+    web_search_crawl_policy,
     web_search_rerank,
     web_search_searxng_params,
 )
@@ -188,8 +189,12 @@ def _crawl_markdown_with_status(
     *,
     filter_type: str = CRAWL4AI_FILTER_FIT,
     query: str | None = None,
+    cache_mode: str = web_search_crawl_policy.CACHE_FRESH_WRITE,
 ) -> dict[str, Any]:
     """Récupère le markdown via /md avec le contrat OpenAPI Crawl4AI."""
+    normalized_query = str(query or '').strip()
+    normalized_filter = str(filter_type or CRAWL4AI_FILTER_FIT)
+    normalized_cache_mode = str(cache_mode or web_search_crawl_policy.CACHE_FRESH_WRITE)
     try:
         crawl4ai_url = str(_runtime_services_value('crawl4ai_url')).rstrip('/')
         headers = {
@@ -198,9 +203,9 @@ def _crawl_markdown_with_status(
         }
         payload = _build_crawl4ai_md_payload(
             url,
-            filter_type=filter_type,
-            query=query,
-            cache_mode='0',
+            filter_type=normalized_filter,
+            query=normalized_query or None,
+            cache_mode=normalized_cache_mode,
         )
         resp = requests.post(
             f"{crawl4ai_url}/md",
@@ -217,6 +222,9 @@ def _crawl_markdown_with_status(
                 'markdown': '',
                 'error_class': 'crawl_unsuccessful',
                 'filter': actual_filter,
+                'cache_mode': normalized_cache_mode,
+                'query_sha256_12': _sha256_12(normalized_query),
+                'query_chars': _safe_len(normalized_query),
             }
         markdown = (data.get("markdown") or "").strip()
         if not markdown:
@@ -225,33 +233,166 @@ def _crawl_markdown_with_status(
                 'markdown': '',
                 'error_class': None,
                 'filter': actual_filter,
+                'cache_mode': normalized_cache_mode,
+                'query_sha256_12': _sha256_12(normalized_query),
+                'query_chars': _safe_len(normalized_query),
             }
         return {
             'status': 'success',
             'markdown': markdown,
             'error_class': None,
             'filter': actual_filter,
+            'cache_mode': normalized_cache_mode,
+            'query_sha256_12': _sha256_12(normalized_query),
+            'query_chars': _safe_len(normalized_query),
         }
     except Exception as e:
-        logger.warning("crawl_error url=%s filter=%s err=%s", url, filter_type, e)
+        logger.warning("crawl_error url=%s filter=%s err=%s", url, normalized_filter, e)
         return {
             'status': 'error',
             'markdown': '',
             'error_class': e.__class__.__name__,
-            'filter': str(filter_type or CRAWL4AI_FILTER_FIT),
+            'filter': normalized_filter,
+            'cache_mode': normalized_cache_mode,
+            'query_sha256_12': _sha256_12(normalized_query),
+            'query_chars': _safe_len(normalized_query),
         }
+
+
+def _call_crawl_markdown_with_status(
+    url: str,
+    *,
+    filter_type: str = CRAWL4AI_FILTER_FIT,
+    query: str | None = None,
+    cache_mode: str = web_search_crawl_policy.CACHE_FRESH_WRITE,
+) -> dict[str, Any]:
+    crawl_func = _crawl_markdown_with_status
+    try:
+        signature = inspect.signature(crawl_func)
+        params = signature.parameters
+        supports_kwargs = any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in params.values()
+        )
+        kwargs: dict[str, Any] = {'filter_type': filter_type}
+        if supports_kwargs or 'query' in params:
+            kwargs['query'] = query
+        if supports_kwargs or 'cache_mode' in params:
+            kwargs['cache_mode'] = cache_mode
+        result = crawl_func(url, **kwargs)
+    except (TypeError, ValueError):
+        result = crawl_func(url, filter_type=filter_type, query=query)
+    normalized = dict(result or {})
+    normalized.setdefault('filter', str(filter_type or CRAWL4AI_FILTER_FIT))
+    normalized.setdefault('cache_mode', str(cache_mode or web_search_crawl_policy.CACHE_FRESH_WRITE))
+    normalized.setdefault('query_sha256_12', _sha256_12(query))
+    normalized.setdefault('query_chars', _safe_len(query))
+    return normalized
 
 
 def _crawl_explicit_url_primary_with_status(url: str) -> dict[str, Any]:
     """Lecture primaire d'une URL explicite: fit d'abord, raw seulement si fit est vide."""
-    fit_result = _crawl_markdown_with_status(url, filter_type=CRAWL4AI_FILTER_FIT)
+    fit_result = _call_crawl_markdown_with_status(url, filter_type=CRAWL4AI_FILTER_FIT)
     fit_result['raw_fallback_used'] = False
+    fit_result['crawl_policy_kind'] = 'explicit_url_direct_fit_then_raw'
+    fit_result['crawl_policy_reason'] = 'explicit_url_fit_primary'
+    fit_result['crawl_filter_requested'] = CRAWL4AI_FILTER_FIT
+    fit_result['crawl_primary_filter'] = CRAWL4AI_FILTER_FIT
+    fit_result['crawl_fallback_filter'] = CRAWL4AI_FILTER_RAW
+    fit_result['crawl_fallback_used'] = False
+    fit_result['crawl_fallback_reason'] = ''
+    fit_result['crawl_primary_status'] = str(fit_result.get('status') or '')
+    fit_result['crawl_fallback_status'] = ''
     if str(fit_result.get('status') or '') != 'empty':
         return fit_result
 
-    raw_result = _crawl_markdown_with_status(url, filter_type=CRAWL4AI_FILTER_RAW)
+    raw_result = _call_crawl_markdown_with_status(url, filter_type=CRAWL4AI_FILTER_RAW)
     raw_result['raw_fallback_used'] = True
+    raw_result['crawl_policy_kind'] = 'explicit_url_direct_fit_then_raw'
+    raw_result['crawl_policy_reason'] = 'explicit_url_raw_only_after_empty_fit'
+    raw_result['crawl_filter_requested'] = CRAWL4AI_FILTER_RAW
+    raw_result['crawl_primary_filter'] = CRAWL4AI_FILTER_FIT
+    raw_result['crawl_fallback_filter'] = CRAWL4AI_FILTER_RAW
+    raw_result['crawl_fallback_used'] = True
+    raw_result['crawl_fallback_reason'] = 'fit_empty_raw_fallback'
+    raw_result['crawl_primary_status'] = str(fit_result.get('status') or '')
+    raw_result['crawl_fallback_status'] = str(raw_result.get('status') or '')
     return raw_result
+
+
+def _annotate_crawl_result(
+    crawl_result: dict[str, Any],
+    *,
+    policy: web_search_crawl_policy.Crawl4AIExtractionPolicy,
+    requested_filter: str,
+    used_filter: str | None = None,
+    fallback_used: bool = False,
+    fallback_reason: str = '',
+    primary_status: str = '',
+    fallback_status: str = '',
+) -> dict[str, Any]:
+    result = dict(crawl_result or {})
+    query = str(policy.query or '')
+    result['crawl_policy_kind'] = str(policy.kind or '')
+    result['crawl_policy_reason'] = str(policy.reason_code or '')
+    result['crawl_filter_requested'] = str(requested_filter or policy.primary_filter or CRAWL4AI_FILTER_FIT)
+    result['crawl_primary_filter'] = str(policy.primary_filter or CRAWL4AI_FILTER_FIT)
+    result['crawl_fallback_filter'] = str(policy.fallback_filter or '')
+    result['crawl_filter_used'] = str(used_filter or result.get('filter') or requested_filter or CRAWL4AI_FILTER_FIT)
+    result['crawl_cache_mode'] = str(policy.cache_mode or web_search_crawl_policy.CACHE_FRESH_WRITE)
+    result['crawl_query_sha256_12'] = _sha256_12(query)
+    result['crawl_query_chars'] = _safe_len(query)
+    result['crawl_fallback_used'] = bool(fallback_used)
+    result['crawl_fallback_reason'] = str(fallback_reason or '')
+    result['crawl_primary_status'] = str(primary_status or result.get('status') or '')
+    result['crawl_fallback_status'] = str(fallback_status or '')
+    result['crawl_markdown_chars'] = len(str(result.get('markdown') or ''))
+    result['crawl_max_chars'] = int(policy.max_chars or 0)
+    return result
+
+
+def _crawl_search_result_with_policy(
+    url: str,
+    policy: web_search_crawl_policy.Crawl4AIExtractionPolicy,
+) -> dict[str, Any]:
+    primary = _call_crawl_markdown_with_status(
+        url,
+        filter_type=policy.primary_filter,
+        query=policy.query or None,
+        cache_mode=policy.cache_mode,
+    )
+    should_fallback, fallback_reason = web_search_crawl_policy.should_fallback_from_primary(policy, primary)
+    primary_status = str(primary.get('status') or '')
+    if not should_fallback:
+        return _annotate_crawl_result(
+            primary,
+            policy=policy,
+            requested_filter=policy.primary_filter,
+            used_filter=str(primary.get('filter') or policy.primary_filter),
+            primary_status=primary_status,
+        )
+
+    fallback = _call_crawl_markdown_with_status(
+        url,
+        filter_type=policy.fallback_filter,
+        query=None,
+        cache_mode=policy.cache_mode,
+    )
+    fallback_status = str(fallback.get('status') or '')
+    fallback_markdown = str(fallback.get('markdown') or '')
+    selected = fallback if fallback_markdown else primary
+    selected_filter = str(selected.get('filter') or policy.fallback_filter or policy.primary_filter)
+    selected_is_fallback = selected is fallback
+    return _annotate_crawl_result(
+        selected,
+        policy=policy,
+        requested_filter=policy.primary_filter,
+        used_filter=selected_filter,
+        fallback_used=selected_is_fallback,
+        fallback_reason=fallback_reason,
+        primary_status=primary_status,
+        fallback_status=fallback_status,
+    )
 
 
 def _build_source_payload(
@@ -263,6 +404,9 @@ def _build_source_payload(
     preloaded_crawl_results: dict[str, dict[str, Any]] | None = None,
     source_origin: str = 'search_result',
     is_primary_source: bool = False,
+    search_profile: str = web_search_profile.PROFILE_GENERAL,
+    primary_query: str = '',
+    enable_profiled_crawl4ai_policy: bool = True,
 ) -> dict[str, Any]:
     title = str(result.get('title') or '')
     url = str(result.get('url') or '')
@@ -282,17 +426,41 @@ def _build_source_payload(
     content_used = ''
     truncated = False
     crawl_status = 'not_attempted'
+    crawl_result: dict[str, Any] = {}
 
     if rank <= crawl4ai_top_n:
-        crawl_result = (
-            dict(preloaded_crawl_results[url])
-            if preloaded_crawl_results and url in preloaded_crawl_results
-            else crawl_with_status(url)
-        )
+        if preloaded_crawl_results and url in preloaded_crawl_results:
+            crawl_result = dict(preloaded_crawl_results[url])
+        else:
+            if enable_profiled_crawl4ai_policy:
+                policy = web_search_crawl_policy.build_search_result_policy(
+                    search_profile,
+                    primary_query=primary_query,
+                    runtime_max_chars=crawl4ai_max_chars,
+                )
+            else:
+                policy = web_search_crawl_policy.Crawl4AIExtractionPolicy(
+                    kind='historical_fit',
+                    reason_code='profiled_crawl4ai_policy_disabled',
+                    primary_filter=CRAWL4AI_FILTER_FIT,
+                    cache_mode=web_search_crawl_policy.CACHE_FRESH_WRITE,
+                    max_chars=int(crawl4ai_max_chars or 0),
+                )
+            if web_search_crawl_policy.is_historical_fit(policy):
+                crawl_result = _annotate_crawl_result(
+                    crawl_with_status(url),
+                    policy=policy,
+                    requested_filter=policy.primary_filter,
+                    used_filter=policy.primary_filter,
+                    primary_status='',
+                )
+            else:
+                crawl_result = _crawl_search_result_with_policy(url, policy)
         crawled_markdown = str(crawl_result.get('markdown') or '')
         crawl_status = str(crawl_result.get('status') or 'error')
         if crawled_markdown:
-            content_used, truncated = _truncate_crawl_markdown(crawled_markdown, crawl4ai_max_chars)
+            max_chars_for_source = int(crawl_result.get('crawl_max_chars') or crawl4ai_max_chars)
+            content_used, truncated = _truncate_crawl_markdown(crawled_markdown, max_chars_for_source)
             used_in_prompt = True
             used_content_kind = 'crawl_markdown'
         elif search_snippet:
@@ -317,6 +485,27 @@ def _build_source_payload(
         'source_origin': str(source_origin or 'search_result'),
         'is_primary_source': bool(is_primary_source),
         'crawl_status': crawl_status,
+        'crawl_filter': str(crawl_result.get('crawl_filter_used') or crawl_result.get('filter') or ''),
+        'crawl_filter_requested': str(crawl_result.get('crawl_filter_requested') or ''),
+        'crawl_policy_kind': str(crawl_result.get('crawl_policy_kind') or ''),
+        'crawl_policy_reason': str(crawl_result.get('crawl_policy_reason') or ''),
+        'crawl_cache_mode': str(
+            crawl_result.get('crawl_cache_mode')
+            or crawl_result.get('cache_mode')
+            or ''
+        ),
+        'crawl_query_sha256_12': str(
+            crawl_result.get('crawl_query_sha256_12')
+            or crawl_result.get('query_sha256_12')
+            or ''
+        ),
+        'crawl_query_chars': int(crawl_result.get('crawl_query_chars') or crawl_result.get('query_chars') or 0),
+        'crawl_fallback_used': bool(crawl_result.get('crawl_fallback_used', False)),
+        'crawl_fallback_reason': str(crawl_result.get('crawl_fallback_reason') or ''),
+        'crawl_primary_status': str(crawl_result.get('crawl_primary_status') or crawl_status or ''),
+        'crawl_fallback_status': str(crawl_result.get('crawl_fallback_status') or ''),
+        'crawl_markdown_chars': int(crawl_result.get('crawl_markdown_chars') or len(str(crawl_result.get('markdown') or ''))),
+        'crawl_max_chars': int(crawl_result.get('crawl_max_chars') or crawl4ai_max_chars or 0),
         'query_source_kind': query_source_kind,
         'query_source_index': query_source_index,
         'query_source_sha256_12': query_source_sha256_12,
@@ -355,6 +544,41 @@ def _build_source_material_summary(sources: list[dict[str, Any]] | None) -> list
     return summary
 
 
+def _build_crawl4ai_extraction_summary(sources: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    summary: list[dict[str, Any]] = []
+    for source in sources or []:
+        try:
+            rank = int(source.get('rank') or 0)
+        except (TypeError, ValueError):
+            rank = 0
+        summary.append(
+            {
+                'rank': rank,
+                'url': str(source.get('url') or ''),
+                'source_origin': str(source.get('source_origin') or 'search_result'),
+                'is_primary_source': bool(source.get('is_primary_source', False)),
+                'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
+                'crawl_filter': str(source.get('crawl_filter') or ''),
+                'crawl_filter_requested': str(source.get('crawl_filter_requested') or ''),
+                'crawl_policy_kind': str(source.get('crawl_policy_kind') or ''),
+                'crawl_policy_reason': str(source.get('crawl_policy_reason') or ''),
+                'crawl_cache_mode': str(source.get('crawl_cache_mode') or ''),
+                'crawl_query_sha256_12': str(source.get('crawl_query_sha256_12') or ''),
+                'crawl_query_chars': int(source.get('crawl_query_chars') or 0),
+                'crawl_fallback_used': bool(source.get('crawl_fallback_used', False)),
+                'crawl_fallback_reason': str(source.get('crawl_fallback_reason') or ''),
+                'crawl_primary_status': str(source.get('crawl_primary_status') or ''),
+                'crawl_fallback_status': str(source.get('crawl_fallback_status') or ''),
+                'crawl_markdown_chars': int(source.get('crawl_markdown_chars') or 0),
+                'crawl_max_chars': int(source.get('crawl_max_chars') or 0),
+                'used_content_kind': str(source.get('used_content_kind') or 'none'),
+                'content_chars': _source_content_chars(source),
+                'truncated': bool(source.get('truncated', False)),
+            }
+        )
+    return summary
+
+
 def _derive_used_content_kinds(source_material_summary: list[dict[str, Any]] | None) -> list[str]:
     kinds: list[str] = []
     for source in source_material_summary or []:
@@ -379,9 +603,51 @@ def _derive_injected_chars(source_material_summary: list[dict[str, Any]] | None)
     return total
 
 
+def _count_crawl4ai_extraction_field(
+    crawl4ai_extraction_summary: list[dict[str, Any]] | None,
+    field: str,
+) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in crawl4ai_extraction_summary or []:
+        value = str(item.get(field) or '').strip()
+        if not value:
+            continue
+        counts[value] = counts.get(value, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _crawl4ai_policy_kinds(crawl4ai_extraction_summary: list[dict[str, Any]] | None) -> list[str]:
+    kinds: list[str] = []
+    for item in crawl4ai_extraction_summary or []:
+        value = str(item.get('crawl_policy_kind') or '').strip()
+        if value and value not in kinds:
+            kinds.append(value)
+    return kinds
+
+
+def _crawl4ai_query_hashes(crawl4ai_extraction_summary: list[dict[str, Any]] | None) -> list[str]:
+    hashes: list[str] = []
+    for item in crawl4ai_extraction_summary or []:
+        value = str(item.get('crawl_query_sha256_12') or '').strip()
+        if value and value not in hashes:
+            hashes.append(value)
+    return hashes
+
+
 def _augment_payload_observability(payload: dict[str, Any]) -> dict[str, Any]:
     source_material_summary = _build_source_material_summary(list(payload.get('sources') or []))
+    crawl4ai_extraction_summary = _build_crawl4ai_extraction_summary(list(payload.get('sources') or []))
     payload['source_material_summary'] = source_material_summary
+    payload['crawl4ai_extraction_summary'] = crawl4ai_extraction_summary
+    payload['crawl4ai_policy_kinds'] = _crawl4ai_policy_kinds(crawl4ai_extraction_summary)
+    payload['crawl4ai_filter_counts'] = _count_crawl4ai_extraction_field(crawl4ai_extraction_summary, 'crawl_filter')
+    payload['crawl4ai_cache_modes'] = _count_crawl4ai_extraction_field(crawl4ai_extraction_summary, 'crawl_cache_mode')
+    payload['crawl4ai_fallback_used_count'] = sum(
+        1
+        for item in crawl4ai_extraction_summary
+        if bool(item.get('crawl_fallback_used', False))
+    )
+    payload['crawl4ai_query_sha256_12'] = _crawl4ai_query_hashes(crawl4ai_extraction_summary)
     payload['used_content_kinds'] = _derive_used_content_kinds(source_material_summary)
     payload['injected_chars'] = _derive_injected_chars(source_material_summary)
     payload['context_chars'] = len(str(payload.get('context_block') or ''))
@@ -586,8 +852,9 @@ def _build_context_material(
     results: list[dict[str, Any]],
     *,
     now_iso: str | None = None,
+    search_profile: str = web_search_profile.PROFILE_GENERAL,
 ) -> dict[str, Any]:
-    return _build_search_context_material(query, results, now_iso=now_iso)
+    return _build_search_context_material(query, results, now_iso=now_iso, search_profile=search_profile)
 
 
 def _build_explicit_url_fallback_source(
@@ -610,6 +877,8 @@ def _build_explicit_url_fallback_source(
         preloaded_crawl_results=preloaded_crawl_results,
         source_origin='explicit_url',
         is_primary_source=True,
+        search_profile=web_search_profile.PROFILE_EXPLICIT_URL,
+        primary_query='',
     )
     source['title'] = str(base_result.get('title') or 'URL explicite utilisateur')
     source['url'] = str(explicit_url or '')
@@ -624,12 +893,14 @@ def _build_explicit_url_context_material(
     url: str,
     crawled_markdown: str,
     *,
+    crawl_result: dict[str, Any] | None = None,
     now_iso: str | None = None,
 ) -> dict[str, Any]:
     runtime = _runtime_collection_settings()
     crawl4ai_max_chars = _explicit_url_max_chars(runtime)
     today = _web_temporal_label(now_iso=now_iso)
     content_used, truncated = _truncate_crawl_markdown(crawled_markdown, crawl4ai_max_chars)
+    crawl_payload = dict(crawl_result or {})
     source = {
         'rank': 1,
         'title': 'URL explicite utilisateur',
@@ -643,6 +914,23 @@ def _build_explicit_url_context_material(
         'source_origin': 'explicit_url',
         'is_primary_source': True,
         'crawl_status': 'success',
+        'crawl_filter': str(crawl_payload.get('crawl_filter_used') or crawl_payload.get('filter') or CRAWL4AI_FILTER_FIT),
+        'crawl_filter_requested': str(crawl_payload.get('crawl_filter_requested') or crawl_payload.get('filter') or CRAWL4AI_FILTER_FIT),
+        'crawl_policy_kind': str(crawl_payload.get('crawl_policy_kind') or 'explicit_url_direct_fit_then_raw'),
+        'crawl_policy_reason': str(crawl_payload.get('crawl_policy_reason') or 'explicit_url_direct_success'),
+        'crawl_cache_mode': str(
+            crawl_payload.get('crawl_cache_mode')
+            or crawl_payload.get('cache_mode')
+            or web_search_crawl_policy.CACHE_FRESH_WRITE
+        ),
+        'crawl_query_sha256_12': str(crawl_payload.get('crawl_query_sha256_12') or crawl_payload.get('query_sha256_12') or ''),
+        'crawl_query_chars': int(crawl_payload.get('crawl_query_chars') or crawl_payload.get('query_chars') or 0),
+        'crawl_fallback_used': bool(crawl_payload.get('crawl_fallback_used', False)),
+        'crawl_fallback_reason': str(crawl_payload.get('crawl_fallback_reason') or ''),
+        'crawl_primary_status': str(crawl_payload.get('crawl_primary_status') or 'success'),
+        'crawl_fallback_status': str(crawl_payload.get('crawl_fallback_status') or ''),
+        'crawl_markdown_chars': len(str(crawled_markdown or '')),
+        'crawl_max_chars': crawl4ai_max_chars,
     }
     lines = [
         f"[RECHERCHE WEB — {today}]",
@@ -700,6 +988,8 @@ def _build_search_context_material(
     primary_read_status: str = 'not_attempted',
     preloaded_crawl_results: dict[str, dict[str, Any]] | None = None,
     now_iso: str | None = None,
+    search_profile: str = web_search_profile.PROFILE_GENERAL,
+    enable_profiled_crawl4ai_policy: bool = True,
 ) -> dict[str, Any]:
     runtime = _runtime_collection_settings()
     crawl4ai_top_n = int(runtime.get('crawl4ai_top_n') or 0)
@@ -724,6 +1014,9 @@ def _build_search_context_material(
             crawl4ai_top_n=crawl4ai_top_n,
             crawl4ai_max_chars=crawl4ai_max_chars,
             preloaded_crawl_results=preloaded_crawl_results,
+            search_profile=web_search_profile.PROFILE_EXPLICIT_URL,
+            primary_query=query,
+            enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
         )
         fallback_results = deduped_results
 
@@ -755,6 +1048,9 @@ def _build_search_context_material(
             crawl4ai_top_n=crawl4ai_top_n,
             crawl4ai_max_chars=crawl4ai_max_chars,
             preloaded_crawl_results=preloaded_crawl_results,
+            search_profile=search_profile,
+            primary_query=query,
+            enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
         )
         for index, result in enumerate(fallback_results, 2 if primary_source else 1)
     ]
@@ -1044,6 +1340,12 @@ def _emit_web_search_runtime_event(
     injected_chars: int | None = None,
     context_chars: int | None = None,
     source_material_summary: list[dict[str, Any]] | None = None,
+    crawl4ai_extraction_summary: list[dict[str, Any]] | None = None,
+    crawl4ai_policy_kinds: list[str] | None = None,
+    crawl4ai_filter_counts: dict[str, int] | None = None,
+    crawl4ai_cache_modes: dict[str, int] | None = None,
+    crawl4ai_fallback_used_count: int | None = None,
+    crawl4ai_query_sha256_12: list[str] | None = None,
 ) -> None:
     query_text = str(query_preview or '')
     if truncated is None:
@@ -1052,6 +1354,22 @@ def _emit_web_search_runtime_event(
             truncated = '[...contenu tronqué]' in str(context_block)
     if source_material_summary is None:
         source_material_summary = _build_source_material_summary(list(sources or []))
+    if crawl4ai_extraction_summary is None:
+        crawl4ai_extraction_summary = _build_crawl4ai_extraction_summary(list(sources or []))
+    if crawl4ai_policy_kinds is None:
+        crawl4ai_policy_kinds = _crawl4ai_policy_kinds(crawl4ai_extraction_summary)
+    if crawl4ai_filter_counts is None:
+        crawl4ai_filter_counts = _count_crawl4ai_extraction_field(crawl4ai_extraction_summary, 'crawl_filter')
+    if crawl4ai_cache_modes is None:
+        crawl4ai_cache_modes = _count_crawl4ai_extraction_field(crawl4ai_extraction_summary, 'crawl_cache_mode')
+    if crawl4ai_fallback_used_count is None:
+        crawl4ai_fallback_used_count = sum(
+            1
+            for item in crawl4ai_extraction_summary
+            if bool(item.get('crawl_fallback_used', False))
+        )
+    if crawl4ai_query_sha256_12 is None:
+        crawl4ai_query_sha256_12 = _crawl4ai_query_hashes(crawl4ai_extraction_summary)
     if used_content_kinds is None:
         used_content_kinds = _derive_used_content_kinds(source_material_summary)
     if injected_chars is None:
@@ -1106,6 +1424,12 @@ def _emit_web_search_runtime_event(
         'injected_chars': int(injected_chars or 0),
         'context_chars': int(context_chars or 0),
         'source_material_summary': list(source_material_summary or []),
+        'crawl4ai_extraction_summary': list(crawl4ai_extraction_summary or []),
+        'crawl4ai_policy_kinds': list(crawl4ai_policy_kinds or []),
+        'crawl4ai_filter_counts': dict(crawl4ai_filter_counts or {}),
+        'crawl4ai_cache_modes': dict(crawl4ai_cache_modes or {}),
+        'crawl4ai_fallback_used_count': int(crawl4ai_fallback_used_count or 0),
+        'crawl4ai_query_sha256_12': list(crawl4ai_query_sha256_12 or []),
     }
     if error_class:
         payload['error_class'] = error_class
@@ -1137,6 +1461,7 @@ def _build_payload_from_collection(
     enable_specialized_queries: bool = True,
     enable_profiled_searxng_params: bool = True,
     enable_reranking: bool = True,
+    enable_profiled_crawl4ai_policy: bool = True,
     requests_module: Any = requests,
     llm_module: Any | None = None,
     now_iso: str | None = None,
@@ -1151,6 +1476,7 @@ def _build_payload_from_collection(
             material = _build_explicit_url_context_material(
                 explicit_url,
                 str(primary_crawl.get('markdown') or ''),
+                crawl_result=primary_crawl,
                 now_iso=now_iso,
             )
             read_state = _derive_read_state(
@@ -1210,6 +1536,8 @@ def _build_payload_from_collection(
             primary_read_status=primary_read_status,
             preloaded_crawl_results={explicit_url: primary_crawl},
             now_iso=now_iso,
+            search_profile=search_profile,
+            enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
         )
         has_results = int(material['results_count']) > 0
         read_state = _derive_read_state(
@@ -1262,7 +1590,13 @@ def _build_payload_from_collection(
         search_profile=search_profile,
         enable_reranking=enable_reranking,
     )
-    material = _build_search_context_material(query, results, now_iso=now_iso)
+    material = _build_search_context_material(
+        query,
+        results,
+        now_iso=now_iso,
+        search_profile=search_profile,
+        enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
+    )
     has_results = int(material['results_count']) > 0
     return {
         'enabled': True,
@@ -1299,6 +1633,7 @@ def build_context_payload(
     enable_specialized_queries: bool = True,
     enable_profiled_searxng_params: bool = True,
     enable_reranking: bool = True,
+    enable_profiled_crawl4ai_policy: bool = True,
 ) -> dict[str, Any]:
     explicit_url = _extract_explicit_url(user_msg)
     search_profile = web_search_profile.classify_search_profile(
@@ -1313,6 +1648,7 @@ def build_context_payload(
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
             enable_reranking=enable_reranking,
+            enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
             requests_module=requests_module,
             llm_module=llm_module,
             now_iso=now_iso,
@@ -1365,6 +1701,12 @@ def build_context_payload(
             injected_chars=int(payload.get('injected_chars') or 0),
             context_chars=int(payload.get('context_chars') or 0),
             source_material_summary=list(payload.get('source_material_summary') or []),
+            crawl4ai_extraction_summary=list(payload.get('crawl4ai_extraction_summary') or []),
+            crawl4ai_policy_kinds=list(payload.get('crawl4ai_policy_kinds') or []),
+            crawl4ai_filter_counts=dict(payload.get('crawl4ai_filter_counts') or {}),
+            crawl4ai_cache_modes=dict(payload.get('crawl4ai_cache_modes') or {}),
+            crawl4ai_fallback_used_count=int(payload.get('crawl4ai_fallback_used_count') or 0),
+            crawl4ai_query_sha256_12=list(payload.get('crawl4ai_query_sha256_12') or []),
         )
         return payload
     except Exception as exc:
@@ -1442,6 +1784,12 @@ def build_context_payload(
             injected_chars=int(error_payload.get('injected_chars') or 0),
             context_chars=int(error_payload.get('context_chars') or 0),
             source_material_summary=list(error_payload.get('source_material_summary') or []),
+            crawl4ai_extraction_summary=list(error_payload.get('crawl4ai_extraction_summary') or []),
+            crawl4ai_policy_kinds=list(error_payload.get('crawl4ai_policy_kinds') or []),
+            crawl4ai_filter_counts=dict(error_payload.get('crawl4ai_filter_counts') or {}),
+            crawl4ai_cache_modes=dict(error_payload.get('crawl4ai_cache_modes') or {}),
+            crawl4ai_fallback_used_count=int(error_payload.get('crawl4ai_fallback_used_count') or 0),
+            crawl4ai_query_sha256_12=list(error_payload.get('crawl4ai_query_sha256_12') or []),
         )
         return error_payload
 
@@ -1455,6 +1803,7 @@ def build_context(
     enable_specialized_queries: bool = True,
     enable_profiled_searxng_params: bool = True,
     enable_reranking: bool = True,
+    enable_profiled_crawl4ai_policy: bool = True,
 ) -> tuple[str, str, int]:
     """
     Pipeline complet : reformulation → SearXNG/Crawl4AI.
@@ -1474,6 +1823,7 @@ def build_context(
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
             enable_reranking=enable_reranking,
+            enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
         )
         query = str(payload.get('query') or payload.get('explicit_url') or user_msg or '')
         return str(payload.get('context_block') or ''), query, int(payload.get('results_count') or 0)

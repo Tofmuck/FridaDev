@@ -398,6 +398,14 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
         'rerank_profile': _payload_text(payload, 'rerank_profile'),
         'rerank_promoted_count': _to_int(payload.get('rerank_promoted_count')),
         'rerank_downranked_count': _to_int(payload.get('rerank_downranked_count')),
+        'crawl4ai_policy_kinds': [
+            str(value)
+            for value in payload.get('crawl4ai_policy_kinds') or []
+            if str(value or '')
+        ],
+        'crawl4ai_filter_counts': dict(payload.get('crawl4ai_filter_counts') or {}),
+        'crawl4ai_cache_modes': dict(payload.get('crawl4ai_cache_modes') or {}),
+        'crawl4ai_fallback_used_count': _to_int(payload.get('crawl4ai_fallback_used_count')),
         'results_count': _to_int(payload.get('results_count')),
         'read_state': _payload_text(payload, 'read_state'),
     }

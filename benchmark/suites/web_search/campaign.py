@@ -115,10 +115,10 @@ def build_web_search_campaign(
             "deprecated_paths_forbidden": ["plugins:[{id:web}]", ":online"],
         },
         "local_pipeline": {
-            "mode": "local keeps the single-query historical SearXNG baseline; local_profiled uses Lot 5 bounded queries, profiled SearXNG params and soft reranking",
+            "mode": "local keeps the single-query historical SearXNG baseline; local_profiled uses Lot 6 bounded queries, profiled SearXNG params, soft reranking and profiled Crawl4AI extraction",
             "runtime_changed": True,
             "chat_pipeline_changed": False,
-            "local_profiled_stub": "false_after_lot5_soft_reranking",
+            "local_profiled_stub": "false_after_lot6_crawl4ai_policy",
         },
         "evaluation_grid": _evaluation_grid(),
         "secrets_written": False,
@@ -138,6 +138,7 @@ def _run_local_arm(
     enable_specialized_queries: bool = False,
     enable_profiled_searxng_params: bool = False,
     enable_reranking: bool = False,
+    enable_profiled_crawl4ai_policy: bool = False,
 ) -> dict[str, Any]:
     if config.dry_run:
         source = adapter.dry_run_source(case, arm=arm)
@@ -181,6 +182,11 @@ def _run_local_arm(
                 "rerank_reason_counts": {},
                 "rerank_promoted_count": 0,
                 "rerank_downranked_count": 0,
+                "crawl4ai_policy_kinds": [],
+                "crawl4ai_filter_counts": {},
+                "crawl4ai_cache_modes": {},
+                "crawl4ai_fallback_used_count": 0,
+                "crawl4ai_query_sha256_12": [],
             },
             "sources": [source],
             "answer_preview": "Dry-run local: aucun appel SearXNG, Crawl4AI ou OpenRouter.",
@@ -201,6 +207,7 @@ def _run_local_arm(
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
             enable_reranking=enable_reranking,
+            enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
         )
         elapsed_ms = (time.perf_counter() - start) * 1000
         sources = [_local_source(source) for source in payload.get("sources") or []]
@@ -241,6 +248,11 @@ def _run_local_arm(
                 "rerank_reason_counts": dict(payload.get("rerank_reason_counts") or {}),
                 "rerank_promoted_count": int(payload.get("rerank_promoted_count") or 0),
                 "rerank_downranked_count": int(payload.get("rerank_downranked_count") or 0),
+                "crawl4ai_policy_kinds": list(payload.get("crawl4ai_policy_kinds") or []),
+                "crawl4ai_filter_counts": dict(payload.get("crawl4ai_filter_counts") or {}),
+                "crawl4ai_cache_modes": dict(payload.get("crawl4ai_cache_modes") or {}),
+                "crawl4ai_fallback_used_count": int(payload.get("crawl4ai_fallback_used_count") or 0),
+                "crawl4ai_query_sha256_12": list(payload.get("crawl4ai_query_sha256_12") or []),
                 "used_content_kinds": list(payload.get("used_content_kinds") or []),
                 "injected_chars": int(payload.get("injected_chars") or 0),
                 "context_chars": int(payload.get("context_chars") or 0),
@@ -282,11 +294,12 @@ def _run_local_profiled_arm(*, config: CampaignConfig, case: dict[str, Any]) -> 
         config=config,
         case=case,
         arm="local_profiled",
-        mode="local_profiled_specialized_queries_searxng_params_rerank",
-        engine="searxng_crawl4ai_profiled_queries_params_rerank",
+        mode="local_profiled_specialized_queries_searxng_params_rerank_crawl4ai_policy",
+        engine="searxng_crawl4ai_profiled_queries_params_rerank_crawl_policy",
         enable_specialized_queries=True,
         enable_profiled_searxng_params=True,
         enable_reranking=True,
+        enable_profiled_crawl4ai_policy=True,
     )
     local = dict(result.get("local") or {})
     runtime_profile = str(local.get("search_profile") or "").strip()
@@ -298,12 +311,12 @@ def _run_local_profiled_arm(*, config: CampaignConfig, case: dict[str, Any]) -> 
     )
     result["local"] = local
     result["profiled_stub"] = {
-        "status": "soft_reranking_lot5",
+        "status": "crawl4ai_policy_lot6",
         "runtime_changed": True,
         "fixture_path": str(adapter.local_bad_order_fixture_path(config.repo_root).relative_to(config.repo_root)),
     }
     if config.dry_run:
-        result["answer_preview"] = "Dry-run local_profiled: Lot 5 shape only, no SearXNG, Crawl4AI or OpenRouter call."
+        result["answer_preview"] = "Dry-run local_profiled: Lot 6 shape only, no SearXNG, Crawl4AI or OpenRouter call."
     return result
 
 
@@ -631,6 +644,15 @@ def _result_markdown_block(result: dict[str, Any]) -> list[str]:
             lines.append(
                 f"  - `rerank_reason_counts`: `{json.dumps(local.get('rerank_reason_counts') or {}, ensure_ascii=False, sort_keys=True)}`"
             )
+        if "crawl4ai_policy_kinds" in local:
+            lines.append(f"  - `crawl4ai_policy_kinds`: `{','.join(local.get('crawl4ai_policy_kinds') or [])}`")
+            lines.append(
+                f"  - `crawl4ai_filter_counts`: `{json.dumps(local.get('crawl4ai_filter_counts') or {}, ensure_ascii=False, sort_keys=True)}`"
+            )
+            lines.append(
+                f"  - `crawl4ai_cache_modes`: `{json.dumps(local.get('crawl4ai_cache_modes') or {}, ensure_ascii=False, sort_keys=True)}`"
+            )
+            lines.append(f"  - `crawl4ai_fallback_used_count`: `{local.get('crawl4ai_fallback_used_count')}`")
         if bool(local.get("local_profiled_stub", False)):
             lines.append("  - `local_profiled_stub`: `True`")
     lines.extend(
@@ -662,6 +684,11 @@ def _sources_markdown_lines(sources: list[dict[str, Any]]) -> list[str]:
             bits.append(f"rerank={source.get('rerank_bucket')}")
         if source.get("rerank_reason_codes"):
             bits.append(f"reasons={','.join(source.get('rerank_reason_codes') or [])}")
+        if source.get("crawl_policy_kind"):
+            bits.append(f"crawl={source.get('crawl_filter') or 'n/a'}")
+            bits.append(f"crawl_policy={source.get('crawl_policy_kind')}")
+            if source.get("crawl_fallback_used"):
+                bits.append(f"crawl_fallback={source.get('crawl_fallback_reason') or 'true'}")
         if preview:
             bits.append(f"extrait: {preview}")
         lines.append(f"  - {title}: " + " ; ".join(bits))
@@ -705,6 +732,19 @@ def _local_source(source: dict[str, Any]) -> dict[str, Any]:
         "source_origin": str(source.get("source_origin") or ""),
         "used_content_kind": str(source.get("used_content_kind") or ""),
         "crawl_status": str(source.get("crawl_status") or ""),
+        "crawl_filter": str(source.get("crawl_filter") or ""),
+        "crawl_filter_requested": str(source.get("crawl_filter_requested") or ""),
+        "crawl_policy_kind": str(source.get("crawl_policy_kind") or ""),
+        "crawl_policy_reason": str(source.get("crawl_policy_reason") or ""),
+        "crawl_cache_mode": str(source.get("crawl_cache_mode") or ""),
+        "crawl_query_sha256_12": str(source.get("crawl_query_sha256_12") or ""),
+        "crawl_query_chars": int(source.get("crawl_query_chars") or 0),
+        "crawl_fallback_used": bool(source.get("crawl_fallback_used", False)),
+        "crawl_fallback_reason": str(source.get("crawl_fallback_reason") or ""),
+        "crawl_primary_status": str(source.get("crawl_primary_status") or ""),
+        "crawl_fallback_status": str(source.get("crawl_fallback_status") or ""),
+        "crawl_markdown_chars": int(source.get("crawl_markdown_chars") or 0),
+        "crawl_max_chars": int(source.get("crawl_max_chars") or 0),
         "content_chars": len(content),
         "content_sha256_12": _sha256_text(content)[:12] if content else "",
         "content_preview": _bounded_preview(content, max_chars=SNIPPET_MAX_CHARS),
@@ -924,6 +964,10 @@ def _local_signal_summary(result: dict[str, Any]) -> str:
         bits.append(f"rerank={bool(local.get('rerank_applied', False))}")
         if local.get("rerank_policy"):
             bits.append(f"rerank_policy={local.get('rerank_policy')}")
+    if local.get("crawl4ai_policy_kinds"):
+        bits.append(f"crawl4ai={','.join(local.get('crawl4ai_policy_kinds') or [])}")
+    if local.get("crawl4ai_fallback_used_count"):
+        bits.append(f"crawl4ai_fallbacks={local.get('crawl4ai_fallback_used_count')}")
     if local.get("local_profiled_stub"):
         bits.append("stub=true")
     return _markdown_cell("; ".join(bits))

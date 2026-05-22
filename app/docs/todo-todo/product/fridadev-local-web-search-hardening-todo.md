@@ -22,7 +22,7 @@ OpenRouter Exa/Parallel restent des soupapes futures a evaluer apres renforcemen
 - [x] Lot 3 - Requetes specialisees bornees
 - [x] Lot 4 - Parametres SearXNG par profil
 - [x] Lot 5 - Reranking avant crawl
-- [ ] Lot 6 - Crawl4AI oriente profil
+- [x] Lot 6 - Crawl4AI oriente profil
 - [ ] Lot 7 - Observabilite + confiance + fallback futur
 - [ ] Lot 8 - Benchmark final et decision Exa/Parallel
 
@@ -33,8 +33,9 @@ Lecture rapide:
 - Lot 3 est livre: les profils non URL peuvent ajouter 0 a 2 requetes secondaires, avec aggregation bornee et deduplication URL.
 - Lot 4 est livre: `local_profiled` applique des parametres SearXNG applicatifs par profil, sans modifier la config globale SearXNG.
 - Lot 5 est livre: `local_profiled` rerank les resultats SearXNG de facon souple avant Crawl4AI, sans suppression dure.
-- Lots 6 a 8 restent a implementer.
-- Aucun BM25 runtime, score de confiance actionnable ou fallback OpenRouter runtime n'est encore livre.
+- Lot 6 est livre: `local_profiled` applique une politique Crawl4AI profilee, avec `bm25` + `q` borne pour certains profils et repli `fit` si l'extraction est vide ou pauvre.
+- Lots 7 et 8 restent a implementer.
+- Aucun score de confiance actionnable ou fallback OpenRouter runtime n'est encore livre.
 
 ## Question prealable: existe-t-il un meilleur plan ?
 
@@ -369,17 +370,31 @@ Definition of done Lot 5:
 
 ## Lot 6 - Crawl4AI oriente profil
 
-Statut: a faire.
+Statut: livre.
 
-Tester puis brancher:
+Politique livree:
 
-- `fit` par defaut;
-- `bm25` + `q` pour pages longues issues de recherche;
-- `raw` uniquement pour URL explicite si `fit` est vide;
-- cache selon profil;
-- budgets de caracteres par profil.
+- `fit` reste le defaut pour `general` et `actualite`;
+- `bm25` + `q` est active uniquement sur les resultats search-only des profils `technique_officielle`, `institutionnel_francais` et `academique_philosophique`;
+- si `bm25` retourne une extraction vide, en erreur ou trop pauvre, le pipeline se replie vers `fit`;
+- `raw` reste reserve au chemin URL explicite direct, uniquement quand `fit` est vide;
+- cache `c=1` est utilise pour les extractions BM25 profilees; le chemin historique et l'actualite restent en lecture fraiche/write-through `c=0`;
+- budgets de caracteres bornes par profil: actualite 4500, technique 7000, institutionnel 6500, academique 8000, general/explicit fallback 5000 sous le plafond runtime;
+- observabilite content-free ajoute `crawl4ai_policy_kinds`, `crawl4ai_filter_counts`, `crawl4ai_cache_modes`, `crawl4ai_fallback_used_count`, hash de query Crawl4AI et resume d'extraction par source.
 
 Regle: toute activation BM25 doit conserver une preuve que les bons passages ne sont pas perdus.
+
+Definition of done Lot 6:
+
+- [x] Politique isolee dans `app/tools/web_search_crawl_policy.py`.
+- [x] URL explicite directe conserve `fit` puis `raw` seulement si `fit` est vide.
+- [x] Search-only n'utilise jamais `raw`.
+- [x] BM25 + `q` est borne aux profils utiles et conserve `fit` comme repli non-censeur.
+- [x] Tests de non-perte: si BM25 est pauvre, le passage utile du `fit` est conserve dans le contexte.
+- [x] `general` garde un comportement historique sobre.
+- [x] Signaux Crawl4AI exposes sans contenu brut, sans prompt brut et sans secret.
+- [x] Benchmark `local_profiled` expose les signaux Crawl4AI du Lot 6.
+- [x] Aucun score de confiance actionnable, OpenRouter, Exa, Parallel, auto-web, BM25 global ou modification SearXNG/Crawl4AI globale.
 
 ## Lot 7 - Observabilite + confiance + fallback futur
 

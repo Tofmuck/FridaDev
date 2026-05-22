@@ -184,6 +184,34 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
                 'truncated': bool(source.get('truncated', False)),
             }
         )
+    crawl4ai_extraction_summary = []
+    for item in _sequence(data.get('crawl4ai_extraction_summary')):
+        source = _mapping(item)
+        crawl4ai_extraction_summary.append(
+            {
+                'rank': int(source.get('rank') or 0),
+                'url': str(source.get('url') or ''),
+                'source_origin': str(source.get('source_origin') or 'search_result'),
+                'is_primary_source': bool(source.get('is_primary_source', False)),
+                'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
+                'crawl_filter': str(source.get('crawl_filter') or ''),
+                'crawl_filter_requested': str(source.get('crawl_filter_requested') or ''),
+                'crawl_policy_kind': str(source.get('crawl_policy_kind') or ''),
+                'crawl_policy_reason': str(source.get('crawl_policy_reason') or ''),
+                'crawl_cache_mode': str(source.get('crawl_cache_mode') or ''),
+                'crawl_query_sha256_12': str(source.get('crawl_query_sha256_12') or ''),
+                'crawl_query_chars': int(source.get('crawl_query_chars') or 0),
+                'crawl_fallback_used': bool(source.get('crawl_fallback_used', False)),
+                'crawl_fallback_reason': str(source.get('crawl_fallback_reason') or ''),
+                'crawl_primary_status': str(source.get('crawl_primary_status') or ''),
+                'crawl_fallback_status': str(source.get('crawl_fallback_status') or ''),
+                'crawl_markdown_chars': int(source.get('crawl_markdown_chars') or 0),
+                'crawl_max_chars': int(source.get('crawl_max_chars') or 0),
+                'used_content_kind': str(source.get('used_content_kind') or 'none'),
+                'content_chars': int(source.get('content_chars') or 0),
+                'truncated': bool(source.get('truncated', False)),
+            }
+        )
     return {
         'present': bool(data),
         'enabled': bool(data.get('enabled', False)),
@@ -266,6 +294,12 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         'injected_chars': int(data.get('injected_chars') or 0),
         'context_chars': int(data.get('context_chars') or 0),
         'source_material_summary': source_material_summary,
+        'crawl4ai_extraction_summary': crawl4ai_extraction_summary,
+        'crawl4ai_policy_kinds': [str(value) for value in _sequence(data.get('crawl4ai_policy_kinds')) if str(value)],
+        'crawl4ai_filter_counts': dict(_mapping(data.get('crawl4ai_filter_counts'))),
+        'crawl4ai_cache_modes': dict(_mapping(data.get('crawl4ai_cache_modes'))),
+        'crawl4ai_fallback_used_count': int(data.get('crawl4ai_fallback_used_count') or 0),
+        'crawl4ai_query_sha256_12': [str(value) for value in _sequence(data.get('crawl4ai_query_sha256_12')) if str(value)],
     }
 
 

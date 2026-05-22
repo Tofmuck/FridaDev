@@ -865,8 +865,8 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['used_content_kinds'], [])
         self.assertEqual(payload['injected_chars'], 0)
 
-    def test_build_context_payload_search_only_keeps_fit_crawl_without_raw_fallback(self) -> None:
-        observed_calls: list[tuple[str, str]] = []
+    def test_build_context_payload_search_only_uses_profiled_bm25_without_raw_fallback(self) -> None:
+        observed_calls: list[tuple[str, str, str | None]] = []
         observed_search_queries: list[str] = []
         observed_search_params: list[dict[str, str] | None] = []
         observed_event: dict[str, object] = {}
@@ -884,7 +884,7 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         }[field]
 
         def fake_crawl_markdown_with_status(url: str, *, filter_type: str = 'fit', query: str | None = None):
-            observed_calls.append((filter_type, url))
+            observed_calls.append((filter_type, url, query))
             return {
                 'status': 'success',
                 'markdown': 'contenu search only ' * 10,
@@ -915,7 +915,7 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
             web_search.search = original_search
             web_search._emit_web_search_runtime_event = original_emit
 
-        self.assertEqual(observed_calls, [('fit', 'https://result.example/article')])
+        self.assertEqual(observed_calls, [('bm25', 'https://result.example/article', 'requete search only')])
         self.assertEqual(len(observed_search_queries), 3)
         self.assertEqual(
             observed_search_params,
@@ -943,8 +943,21 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertIsNone(payload['primary_read_filter'])
         self.assertFalse(payload['primary_read_raw_fallback_used'])
         self.assertTrue(payload['sources'][0]['truncated'])
+        self.assertEqual(payload['sources'][0]['crawl_filter'], 'bm25')
+        self.assertEqual(payload['sources'][0]['crawl_filter_requested'], 'bm25')
+        self.assertEqual(payload['sources'][0]['crawl_policy_kind'], 'profile_query_aware_bm25_with_fit_fallback')
+        self.assertEqual(payload['sources'][0]['crawl_policy_reason'], 'profile_query_aware_long_page_candidate')
+        self.assertEqual(payload['sources'][0]['crawl_cache_mode'], '1')
+        self.assertEqual(payload['sources'][0]['crawl_query_chars'], len('requete search only'))
+        self.assertRegex(payload['sources'][0]['crawl_query_sha256_12'], r'^[0-9a-f]{12}$')
+        self.assertFalse(payload['sources'][0]['crawl_fallback_used'])
         self.assertEqual(payload['read_state'], None)
         self.assertEqual(payload['context_chars'], len(payload['context_block']))
+        self.assertEqual(payload['crawl4ai_policy_kinds'], ['profile_query_aware_bm25_with_fit_fallback'])
+        self.assertEqual(payload['crawl4ai_filter_counts'], {'bm25': 1})
+        self.assertEqual(payload['crawl4ai_cache_modes'], {'1': 1})
+        self.assertEqual(payload['crawl4ai_fallback_used_count'], 0)
+        self.assertEqual(payload['crawl4ai_query_sha256_12'], [payload['sources'][0]['crawl_query_sha256_12']])
         self.assertEqual(observed_event['search_profile'], 'technique_officielle')
         self.assertEqual(observed_event['collection_path'], 'search_only')
         self.assertEqual(observed_event['query_plan_kind'], 'profiled_bounded')
@@ -959,6 +972,175 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(observed_event['searxng_categories'], ['general'])
         self.assertEqual(observed_event['searxng_engines'], [])
         self.assertEqual(observed_event['searxng_language'], 'all')
+        self.assertEqual(observed_event['crawl4ai_policy_kinds'], ['profile_query_aware_bm25_with_fit_fallback'])
+        self.assertEqual(observed_event['crawl4ai_filter_counts'], {'bm25': 1})
+
+    def test_build_context_payload_can_keep_local_baseline_crawl_policy_historical(self) -> None:
+        observed_calls: list[tuple[str, str, str | None]] = []
+        original_runtime_services_value = web_search._runtime_services_value
+        original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 1,
+            'crawl4ai_max_chars': 1000,
+            'crawl4ai_explicit_url_max_chars': 25000,
+        }[field]
+        web_search._crawl_markdown_with_status = lambda url, *, filter_type='fit', query=None: (
+            observed_calls.append((filter_type, url, query))
+            or {
+                'status': 'success',
+                'markdown': 'contenu historique ' * 12,
+                'error_class': None,
+                'filter': filter_type,
+            }
+        )
+        web_search.reformulate = lambda _msg: 'documentation officielle API'
+        web_search.search = lambda _query, *, searxng_params=None: [
+            {'title': 'Doc', 'url': 'https://docs.example/api', 'content': 'snippet'},
+        ]
+        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        try:
+            payload = web_search.build_context_payload(
+                'Dans la documentation officielle Example API',
+                enable_specialized_queries=False,
+                enable_profiled_searxng_params=False,
+                enable_reranking=False,
+                enable_profiled_crawl4ai_policy=False,
+            )
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(payload['search_profile'], 'technique_officielle')
+        self.assertEqual(observed_calls, [('fit', 'https://docs.example/api', None)])
+        self.assertEqual(payload['sources'][0]['crawl_policy_kind'], 'historical_fit')
+        self.assertEqual(payload['sources'][0]['crawl_filter'], 'fit')
+        self.assertEqual(payload['crawl4ai_filter_counts'], {'fit': 1})
+
+    def test_build_context_payload_bm25_poor_result_falls_back_to_fit_without_losing_passage(self) -> None:
+        observed_calls: list[tuple[str, str, str | None]] = []
+        observed_event: dict[str, object] = {}
+        original_runtime_services_value = web_search._runtime_services_value
+        original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 1,
+            'crawl4ai_max_chars': 1000,
+            'crawl4ai_explicit_url_max_chars': 25000,
+        }[field]
+
+        def fake_crawl_markdown_with_status(url: str, *, filter_type: str = 'fit', query: str | None = None):
+            observed_calls.append((filter_type, url, query))
+            if filter_type == 'bm25':
+                return {
+                    'status': 'success',
+                    'markdown': 'trop court',
+                    'error_class': None,
+                    'filter': 'bm25',
+                }
+            return {
+                'status': 'success',
+                'markdown': 'intro longue PASSAGE UTILE CONSERVE ' * 12,
+                'error_class': None,
+                'filter': 'fit',
+            }
+
+        web_search._crawl_markdown_with_status = fake_crawl_markdown_with_status
+        web_search.reformulate = lambda _msg: 'documentation officielle API exemple'
+        web_search.search = lambda _query, *, searxng_params=None: [
+            {'title': 'Doc officielle', 'url': 'https://docs.example/api', 'content': 'snippet'},
+        ]
+        web_search._emit_web_search_runtime_event = lambda **kwargs: observed_event.update(kwargs)
+        try:
+            payload = web_search.build_context_payload(
+                'Dans la documentation officielle de Example API, retrouve le passage utile'
+            )
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(
+            observed_calls,
+            [
+                ('bm25', 'https://docs.example/api', 'documentation officielle API exemple'),
+                ('fit', 'https://docs.example/api', None),
+            ],
+        )
+        self.assertNotIn('raw', [call[0] for call in observed_calls])
+        self.assertIn('PASSAGE UTILE CONSERVE', payload['context_block'])
+        self.assertEqual(payload['sources'][0]['crawl_filter'], 'fit')
+        self.assertEqual(payload['sources'][0]['crawl_filter_requested'], 'bm25')
+        self.assertEqual(payload['sources'][0]['crawl_policy_kind'], 'profile_query_aware_bm25_with_fit_fallback')
+        self.assertTrue(payload['sources'][0]['crawl_fallback_used'])
+        self.assertEqual(payload['sources'][0]['crawl_fallback_reason'], 'bm25_poor_fit_fallback')
+        self.assertEqual(payload['sources'][0]['crawl_primary_status'], 'success')
+        self.assertEqual(payload['sources'][0]['crawl_fallback_status'], 'success')
+        self.assertEqual(payload['crawl4ai_filter_counts'], {'fit': 1})
+        self.assertEqual(payload['crawl4ai_cache_modes'], {'1': 1})
+        self.assertEqual(payload['crawl4ai_fallback_used_count'], 1)
+        self.assertEqual(observed_event['crawl4ai_fallback_used_count'], 1)
+        dumped_extraction_summary = str(observed_event['crawl4ai_extraction_summary'])
+        self.assertNotIn('PASSAGE UTILE CONSERVE', dumped_extraction_summary)
+        self.assertNotIn('documentation officielle API exemple', dumped_extraction_summary)
+
+    def test_build_context_payload_general_profile_keeps_historical_fit_policy(self) -> None:
+        observed_calls: list[tuple[str, str, str | None]] = []
+        original_runtime_services_value = web_search._runtime_services_value
+        original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 1,
+            'crawl4ai_max_chars': 9000,
+            'crawl4ai_explicit_url_max_chars': 25000,
+        }[field]
+        web_search._crawl_markdown_with_status = lambda url, *, filter_type='fit', query=None: (
+            observed_calls.append((filter_type, url, query))
+            or {
+                'status': 'success',
+                'markdown': 'contenu general ' * 20,
+                'error_class': None,
+                'filter': filter_type,
+            }
+        )
+        web_search.reformulate = lambda _msg: 'recherche generale'
+        web_search.search = lambda _query, *, searxng_params=None: [
+            {'title': 'General', 'url': 'https://general.example/article', 'content': 'snippet'},
+        ]
+        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        try:
+            payload = web_search.build_context_payload('Cherche des informations generales sur ce sujet')
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(payload['search_profile'], 'general')
+        self.assertEqual(observed_calls, [('fit', 'https://general.example/article', None)])
+        self.assertEqual(payload['sources'][0]['crawl_filter'], 'fit')
+        self.assertEqual(payload['sources'][0]['crawl_policy_kind'], 'historical_fit')
+        self.assertEqual(payload['sources'][0]['crawl_cache_mode'], '0')
+        self.assertEqual(payload['sources'][0]['crawl_query_chars'], 0)
+        self.assertEqual(payload['crawl4ai_policy_kinds'], ['historical_fit'])
 
     def test_build_context_payload_aggregates_specialized_queries_with_stable_deduped_order(self) -> None:
         observed_search_queries: list[str] = []

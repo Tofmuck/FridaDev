@@ -120,6 +120,19 @@ def _canonical_source(source: Mapping[str, Any]) -> dict[str, Any]:
         'source_origin': str(source.get('source_origin') or 'search_result'),
         'is_primary_source': bool(source.get('is_primary_source', False)),
         'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
+        'crawl_filter': _optional_str(source.get('crawl_filter')),
+        'crawl_filter_requested': _optional_str(source.get('crawl_filter_requested')),
+        'crawl_policy_kind': _optional_str(source.get('crawl_policy_kind')),
+        'crawl_policy_reason': _optional_str(source.get('crawl_policy_reason')),
+        'crawl_cache_mode': _optional_str(source.get('crawl_cache_mode')),
+        'crawl_query_sha256_12': _optional_str(source.get('crawl_query_sha256_12')),
+        'crawl_query_chars': _optional_int(source.get('crawl_query_chars')) or 0,
+        'crawl_fallback_used': bool(source.get('crawl_fallback_used', False)),
+        'crawl_fallback_reason': _optional_str(source.get('crawl_fallback_reason')),
+        'crawl_primary_status': _optional_str(source.get('crawl_primary_status')),
+        'crawl_fallback_status': _optional_str(source.get('crawl_fallback_status')),
+        'crawl_markdown_chars': _optional_int(source.get('crawl_markdown_chars')) or 0,
+        'crawl_max_chars': _optional_int(source.get('crawl_max_chars')) or 0,
         'raw_rank': _optional_int(source.get('raw_rank')),
         'reranked_rank': _optional_int(source.get('reranked_rank')),
         'rerank_score': source.get('rerank_score'),
@@ -181,6 +194,47 @@ def _canonical_source_material_summary(
         if summary:
             return summary
     return _derive_source_material_summary(sources)
+
+
+def _canonical_crawl4ai_extraction_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        'rank': _optional_int(entry.get('rank')) or 0,
+        'url': str(entry.get('url') or ''),
+        'source_origin': str(entry.get('source_origin') or 'search_result'),
+        'is_primary_source': bool(entry.get('is_primary_source', False)),
+        'crawl_status': str(entry.get('crawl_status') or 'not_attempted'),
+        'crawl_filter': _optional_str(entry.get('crawl_filter')),
+        'crawl_filter_requested': _optional_str(entry.get('crawl_filter_requested')),
+        'crawl_policy_kind': _optional_str(entry.get('crawl_policy_kind')),
+        'crawl_policy_reason': _optional_str(entry.get('crawl_policy_reason')),
+        'crawl_cache_mode': _optional_str(entry.get('crawl_cache_mode')),
+        'crawl_query_sha256_12': _optional_str(entry.get('crawl_query_sha256_12')),
+        'crawl_query_chars': _optional_int(entry.get('crawl_query_chars')) or 0,
+        'crawl_fallback_used': bool(entry.get('crawl_fallback_used', False)),
+        'crawl_fallback_reason': _optional_str(entry.get('crawl_fallback_reason')),
+        'crawl_primary_status': _optional_str(entry.get('crawl_primary_status')),
+        'crawl_fallback_status': _optional_str(entry.get('crawl_fallback_status')),
+        'crawl_markdown_chars': _optional_int(entry.get('crawl_markdown_chars')) or 0,
+        'crawl_max_chars': _optional_int(entry.get('crawl_max_chars')) or 0,
+        'used_content_kind': str(entry.get('used_content_kind') or 'none'),
+        'content_chars': _optional_int(entry.get('content_chars')) or 0,
+        'truncated': bool(entry.get('truncated', False)),
+    }
+
+
+def _canonical_crawl4ai_extraction_summary(
+    crawl4ai_extraction_summary: Sequence[Mapping[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    if not (
+        isinstance(crawl4ai_extraction_summary, Sequence)
+        and not isinstance(crawl4ai_extraction_summary, (str, bytes, bytearray))
+    ):
+        return []
+    return [
+        _canonical_crawl4ai_extraction_entry(entry)
+        for entry in crawl4ai_extraction_summary
+        if isinstance(entry, Mapping)
+    ]
 
 
 def _canonical_used_content_kinds(
@@ -247,6 +301,12 @@ def build_web_input(
     injected_chars: int | None = None,
     context_chars: int | None = None,
     source_material_summary: Sequence[Mapping[str, Any]] | None = None,
+    crawl4ai_extraction_summary: Sequence[Mapping[str, Any]] | None = None,
+    crawl4ai_policy_kinds: Sequence[Any] | None = None,
+    crawl4ai_filter_counts: Mapping[str, Any] | None = None,
+    crawl4ai_cache_modes: Mapping[str, Any] | None = None,
+    crawl4ai_fallback_used_count: int | None = None,
+    crawl4ai_query_sha256_12: Sequence[Any] | None = None,
 ) -> dict[str, Any]:
     canonical_sources = [
         _canonical_source(source)
@@ -268,6 +328,7 @@ def build_web_input(
     canonical_context_chars = _optional_int(context_chars)
     if canonical_context_chars is None:
         canonical_context_chars = len(canonical_context_block)
+    canonical_crawl4ai_extraction_summary = _canonical_crawl4ai_extraction_summary(crawl4ai_extraction_summary)
     canonical_enabled = bool(enabled)
     return {
         'schema_version': SCHEMA_VERSION,
@@ -297,6 +358,28 @@ def build_web_input(
         'injected_chars': canonical_injected_chars,
         'context_chars': canonical_context_chars,
         'source_material_summary': canonical_source_material_summary,
+        'crawl4ai_extraction_summary': canonical_crawl4ai_extraction_summary,
+        'crawl4ai_policy_kinds': [
+            str(value)
+            for value in crawl4ai_policy_kinds or []
+            if str(value or '')
+        ],
+        'crawl4ai_filter_counts': {
+            str(key): _optional_int(value) or 0
+            for key, value in dict(crawl4ai_filter_counts or {}).items()
+            if str(key or '')
+        },
+        'crawl4ai_cache_modes': {
+            str(key): _optional_int(value) or 0
+            for key, value in dict(crawl4ai_cache_modes or {}).items()
+            if str(key or '')
+        },
+        'crawl4ai_fallback_used_count': _optional_int(crawl4ai_fallback_used_count) or 0,
+        'crawl4ai_query_sha256_12': [
+            str(value)
+            for value in crawl4ai_query_sha256_12 or []
+            if str(value or '')
+        ],
         'sources': canonical_sources,
         'context_block': canonical_context_block,
     }
@@ -334,5 +417,21 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
         context_chars=_optional_int(payload.get('context_chars')),
         source_material_summary=payload.get('source_material_summary')
         if isinstance(payload.get('source_material_summary'), Sequence)
+        else (),
+        crawl4ai_extraction_summary=payload.get('crawl4ai_extraction_summary')
+        if isinstance(payload.get('crawl4ai_extraction_summary'), Sequence)
+        else (),
+        crawl4ai_policy_kinds=payload.get('crawl4ai_policy_kinds')
+        if isinstance(payload.get('crawl4ai_policy_kinds'), Sequence)
+        else (),
+        crawl4ai_filter_counts=payload.get('crawl4ai_filter_counts')
+        if isinstance(payload.get('crawl4ai_filter_counts'), Mapping)
+        else {},
+        crawl4ai_cache_modes=payload.get('crawl4ai_cache_modes')
+        if isinstance(payload.get('crawl4ai_cache_modes'), Mapping)
+        else {},
+        crawl4ai_fallback_used_count=_optional_int(payload.get('crawl4ai_fallback_used_count')),
+        crawl4ai_query_sha256_12=payload.get('crawl4ai_query_sha256_12')
+        if isinstance(payload.get('crawl4ai_query_sha256_12'), Sequence)
         else (),
     )

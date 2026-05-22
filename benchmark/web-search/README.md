@@ -9,7 +9,7 @@ Il sert à préparer le chantier produit "Recherche internet" de la roadmap fina
 Par défaut:
 
 - `local`: baseline locale à requête unique, c'est-à-dire SearXNG + Crawl4AI + reformulation web existante sans requêtes spécialisées;
-- `local_profiled`: bras Lot 5 qui utilise le profil runtime, les requêtes spécialisées bornées, les paramètres SearXNG applicatifs par profil et le reranking local souple avant crawl;
+- `local_profiled`: bras Lot 6 qui utilise le profil runtime, les requêtes spécialisées bornées, les paramètres SearXNG applicatifs par profil, le reranking local souple avant crawl et la politique Crawl4AI profilée;
 - `openrouter_exa`: `openrouter:web_search` avec `engine=exa`;
 - `openrouter_parallel`: `openrouter:web_search` avec `engine=parallel`.
 
@@ -114,7 +114,7 @@ python3 benchmark/run_benchmark.py \
   --output-dir /tmp/fridadev-web-search-local
 ```
 
-Le bras local peut tout de même utiliser la reformulation web FridaDev selon les settings runtime existants. Depuis le Lot 5, il désactive les requêtes spécialisées, les paramètres SearXNG profilés et le reranking pour conserver une baseline historique face à `local_profiled`.
+Le bras local peut tout de même utiliser la reformulation web FridaDev selon les settings runtime existants. Depuis le Lot 6, il désactive les requêtes spécialisées, les paramètres SearXNG profilés, le reranking et la politique Crawl4AI profilée pour conserver une baseline historique face à `local_profiled`.
 
 Pour préparer la comparaison du futur pipeline profilé sans appeler OpenRouter:
 
@@ -127,7 +127,7 @@ python3 benchmark/run_benchmark.py \
   --output-dir /tmp/fridadev-web-search-local-profiled-dry-run
 ```
 
-Depuis le Lot 5, `local_profiled` n'est plus un simple stub qualité: il active le plan de requêtes spécialisées bornées, les paramètres SearXNG par profil et le reranking local souple dans les runs live locaux. En dry-run, il ne lance toujours aucun appel SearXNG/Crawl4AI et expose seulement la forme du bras.
+Depuis le Lot 6, `local_profiled` n'est plus un simple stub qualité: il active le plan de requêtes spécialisées bornées, les paramètres SearXNG par profil, le reranking local souple et la politique Crawl4AI profilée dans les runs live locaux. En dry-run, il ne lance toujours aucun appel SearXNG/Crawl4AI et expose seulement la forme du bras.
 
 ## Sorties et métriques
 
@@ -141,7 +141,7 @@ Pour chaque cas et chaque bras, le JSON/Markdown garde:
 - tokens d'entrée/sortie quand disponibles;
 - URLs et domaines cités;
 - aperçu borné des extraits, jamais le dump complet;
-- pour le local: `read_state`, `collection_path`, `search_profile`, `query_plan_kind`, `query_count`, `secondary_query_count`, `deduped_result_count`, `searxng_profile_params_kind`, `searxng_profile_params_policy`, `searxng_categories`, `searxng_engines`, `searxng_time_range`, `searxng_language`, `searxng_safesearch`, `rerank_applied`, `rerank_policy`, `rerank_top_domains_before`, `rerank_top_domains_after`, `rerank_reason_counts`, `used_content_kinds`, `injected_chars`, `context_chars`.
+- pour le local: `read_state`, `collection_path`, `search_profile`, `query_plan_kind`, `query_count`, `secondary_query_count`, `deduped_result_count`, `searxng_profile_params_kind`, `searxng_profile_params_policy`, `searxng_categories`, `searxng_engines`, `searxng_time_range`, `searxng_language`, `searxng_safesearch`, `rerank_applied`, `rerank_policy`, `rerank_top_domains_before`, `rerank_top_domains_after`, `rerank_reason_counts`, `crawl4ai_policy_kinds`, `crawl4ai_filter_counts`, `crawl4ai_cache_modes`, `crawl4ai_fallback_used_count`, `used_content_kinds`, `injected_chars`, `context_chars`.
 
 Les résultats ne doivent jamais contenir:
 
@@ -180,4 +180,4 @@ La décision produit reste humaine. Les sorties doivent aider à choisir plus ta
 - Exa et Parallel ajoutent un coût serveur en plus des tokens du modèle.
 - Le bras local dépend de l'état runtime SearXNG/Crawl4AI et des settings services de l'instance.
 - Le benchmark ne teste pas encore `openrouter:web_fetch` par défaut, pour ne pas mélanger recherche et lecture d'URL dans le premier banc.
-- `local_profiled` porte les requêtes spécialisées bornées, les paramètres SearXNG applicatifs par profil et le reranking local souple, mais pas encore BM25 Crawl4AI ou la confiance finale.
+- `local_profiled` porte les requêtes spécialisées bornées, les paramètres SearXNG applicatifs par profil, le reranking local souple et la politique BM25 Crawl4AI bornée; la confiance finale reste hors benchmark.
