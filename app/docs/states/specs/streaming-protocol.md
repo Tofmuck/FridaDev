@@ -248,6 +248,7 @@ Relation headers / terminal:
 Semantique de `final_text`:
 - il est reserve au terminal `done`;
 - il porte le texte assistant canonique final quand le brouillon visible diffuse au fil de l'eau n'est pas exactement ce texte final;
+- sa presence doit etre respectee meme si sa valeur est la chaine vide;
 - il permet au frontend de remplacer la bulle live sans afficher un doublon;
 - il ne transporte jamais de raisonnement interne du modele.
 

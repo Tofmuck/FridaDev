@@ -8,6 +8,7 @@ const {
   createStreamControlParser,
   createStreamTerminalError,
   getObservableStreamErrorMeta,
+  resolveStreamedAssistantText,
 } = require('../../../web/chat_streaming.js');
 
 test('createStreamControlParser keeps visible prose clean and returns done terminal across chunk boundaries', () => {
@@ -68,6 +69,46 @@ test('createStreamControlParser allows streamed draft text to be replaced by fin
   const renderedText = typeof terminal.final_text === 'string' ? terminal.final_text : finalText;
   assert.equal(finalText, '**Bold**');
   assert.equal(renderedText, 'Bold');
+});
+
+test('resolveStreamedAssistantText honors present empty final_text over streamed draft', () => {
+  assert.equal(
+    resolveStreamedAssistantText('Brouillon visible', {
+      event: 'done',
+      final_text: '',
+    }),
+    '',
+  );
+  assert.equal(
+    resolveStreamedAssistantText('Brouillon visible', {
+      event: 'done',
+      final_text: 'Texte final',
+    }),
+    'Texte final',
+  );
+  assert.equal(
+    resolveStreamedAssistantText('Brouillon visible', {
+      event: 'done',
+    }),
+    'Brouillon visible',
+  );
+});
+
+test('createStreamControlParser supports empty final_text as a canonical final value', () => {
+  let finalText = '';
+  const parser = createStreamControlParser({
+    onContent(chunk) {
+      finalText += chunk;
+    },
+  });
+
+  parser.push('Brouillon visible');
+  parser.push(`${STREAM_CONTROL_PREFIX}{"kind":"frida-stream-control","event":"done","final_text":""}\n`);
+
+  const terminal = parser.finish();
+  assert.deepEqual(terminal, { event: 'done', final_text: '' });
+  assert.equal(finalText, 'Brouillon visible');
+  assert.equal(resolveStreamedAssistantText(finalText, terminal), '');
 });
 
 test('createStreamControlParser keeps error terminal out of visible prose and preserves the error payload', () => {

@@ -39,6 +39,7 @@
     reduceStreamingUiState,
     getStreamingUiStateMeta,
     hasVisibleAssistantContent,
+    resolveStreamedAssistantText,
   } = chatStreaming;
   const $ = (sel) => document.querySelector(sel);
 
@@ -635,10 +636,7 @@
     }
 
     emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);
-    const terminalFinalText = terminal && typeof terminal.final_text === "string"
-      ? terminal.final_text
-      : "";
-    return { text: terminalFinalText || finalText, terminal };
+    return { text: resolveStreamedAssistantText(finalText, terminal), terminal };
   }
 
   // ---- Init

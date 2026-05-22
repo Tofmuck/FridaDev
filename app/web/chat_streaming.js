@@ -114,6 +114,18 @@ function hasVisibleAssistantContent(text) {
   return /\S/u.test(String(text || ""));
 }
 
+function resolveStreamedAssistantText(streamedText, terminal) {
+  if (
+    terminal
+    && typeof terminal === "object"
+    && Object.prototype.hasOwnProperty.call(terminal, "final_text")
+    && typeof terminal.final_text === "string"
+  ) {
+    return terminal.final_text;
+  }
+  return String(streamedText || "");
+}
+
 function parseStructuredErrorPayload(err) {
   if (!err) return null;
   const raw = err && typeof err === "object" ? err.message || String(err) : String(err);
@@ -362,6 +374,7 @@ const FridaChatStreaming = Object.freeze({
   reduceStreamingUiState,
   getStreamingUiStateMeta,
   hasVisibleAssistantContent,
+  resolveStreamedAssistantText,
 });
 
 if (typeof module !== "undefined" && module.exports) {
