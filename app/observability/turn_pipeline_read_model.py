@@ -668,6 +668,17 @@ def _web_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         'searxng_time_range': _text(payload.get('searxng_time_range')),
         'searxng_language': _text(payload.get('searxng_language')),
         'searxng_safesearch': _text(payload.get('searxng_safesearch')),
+        'searxng_params_reason_codes': [
+            _text(value)
+            for value in payload.get('searxng_params_reason_codes') or []
+            if _text(value)
+        ],
+        'searxng_hard_parameters': [
+            _text(value)
+            for value in payload.get('searxng_hard_parameters') or []
+            if _text(value)
+        ],
+        'searxng_soft_signal_policy': _text(payload.get('searxng_soft_signal_policy')),
         'rerank_applied': bool(payload.get('rerank_applied', False)),
         'rerank_policy': _text(payload.get('rerank_policy')),
         'rerank_input_count': _to_int(payload.get('rerank_input_count')),

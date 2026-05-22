@@ -405,6 +405,17 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
         'searxng_time_range': _payload_text(payload, 'searxng_time_range'),
         'searxng_language': _payload_text(payload, 'searxng_language'),
         'searxng_safesearch': _payload_text(payload, 'searxng_safesearch'),
+        'searxng_params_reason_codes': [
+            str(value)
+            for value in payload.get('searxng_params_reason_codes') or []
+            if str(value or '')
+        ],
+        'searxng_hard_parameters': [
+            str(value)
+            for value in payload.get('searxng_hard_parameters') or []
+            if str(value or '')
+        ],
+        'searxng_soft_signal_policy': _payload_text(payload, 'searxng_soft_signal_policy'),
         'rerank_applied': bool(payload.get('rerank_applied', False)),
         'rerank_policy': _payload_text(payload, 'rerank_policy'),
         'rerank_input_count': _to_int(payload.get('rerank_input_count')),

@@ -292,6 +292,27 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         'searxng_safesearch': str(
             data.get('searxng_safesearch') or searxng_params.get('searxng_safesearch') or ''
         ),
+        'searxng_params_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('searxng_params_reason_codes')
+                or searxng_params.get('searxng_params_reason_codes')
+            )
+            if str(value)
+        ],
+        'searxng_hard_parameters': [
+            str(value)
+            for value in _sequence(
+                data.get('searxng_hard_parameters')
+                or searxng_params.get('searxng_hard_parameters')
+            )
+            if str(value)
+        ],
+        'searxng_soft_signal_policy': str(
+            data.get('searxng_soft_signal_policy')
+            or searxng_params.get('searxng_soft_signal_policy')
+            or ''
+        ),
         'rerank_applied': bool(data.get('rerank_applied', reranking.get('rerank_applied', False))),
         'rerank_policy': str(data.get('rerank_policy') or reranking.get('rerank_policy') or ''),
         'rerank_input_count': int(data.get('rerank_input_count') or reranking.get('rerank_input_count') or 0),

@@ -92,6 +92,17 @@ def _canonical_searxng_profile_params(payload: Mapping[str, Any] | None) -> dict
         'searxng_time_range': _optional_str(data.get('searxng_time_range')),
         'searxng_language': _optional_str(data.get('searxng_language')),
         'searxng_safesearch': _optional_str(data.get('searxng_safesearch')),
+        'searxng_params_reason_codes': [
+            str(value)
+            for value in data.get('searxng_params_reason_codes') or []
+            if str(value or '')
+        ],
+        'searxng_hard_parameters': [
+            str(value)
+            for value in data.get('searxng_hard_parameters') or []
+            if str(value or '')
+        ],
+        'searxng_soft_signal_policy': _optional_str(data.get('searxng_soft_signal_policy')),
     }
 
 
