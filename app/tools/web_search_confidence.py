@@ -133,6 +133,10 @@ def _input_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         ),
         'crawl4ai_fallback_used_count': _to_int(payload.get('crawl4ai_fallback_used_count')),
         'crawl4ai_query_hash_count': len(_sequence(payload.get('crawl4ai_query_sha256_12'))),
+        'profile_insufficient_evidence': bool(payload.get('profile_insufficient_evidence', False)),
+        'profile_insufficient_reason_count': len(_sequence(payload.get('profile_insufficient_evidence_reason_codes'))),
+        'profile_expected_material_used': bool(payload.get('profile_expected_material_used', False)),
+        'profile_situated_material_used': bool(payload.get('profile_situated_material_used', False)),
     }
 
 
@@ -221,6 +225,10 @@ def _score_search(summary: Mapping[str, Any]) -> tuple[float, list[str]]:
         reasons.append('crawl_empty_or_error_present')
         if crawl_success_count == 0:
             score -= 0.12
+
+    if bool(summary.get('profile_insufficient_evidence', False)):
+        score = min(score, 0.49)
+        reasons.append('profile_insufficient_evidence_signal')
 
     return score, reasons
 

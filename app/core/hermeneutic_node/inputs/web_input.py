@@ -74,6 +74,65 @@ def _canonical_source_first(payload: Mapping[str, Any] | None) -> dict[str, Any]
     }
 
 
+def _canonical_profile_policy(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    counts = data.get('profile_source_domain_counts')
+    if not isinstance(counts, Mapping):
+        counts = {}
+    return {
+        'profile_policy_kind': _optional_str(data.get('profile_policy_kind')),
+        'profile_policy_mode': _optional_str(data.get('profile_policy_mode')),
+        'profile_expected_domains': [
+            str(value)
+            for value in data.get('profile_expected_domains') or []
+            if str(value or '')
+        ],
+        'profile_secondary_domains': [
+            str(value)
+            for value in data.get('profile_secondary_domains') or []
+            if str(value or '')
+        ],
+        'profile_downrank_domains': [
+            str(value)
+            for value in data.get('profile_downrank_domains') or []
+            if str(value or '')
+        ],
+        'profile_situated_secondary_domains': [
+            str(value)
+            for value in data.get('profile_situated_secondary_domains') or []
+            if str(value or '')
+        ],
+        'profile_policy_reason_codes': [
+            str(value)
+            for value in data.get('profile_policy_reason_codes') or []
+            if str(value or '')
+        ],
+        'profile_crawl_top_n_budget': _optional_int(data.get('profile_crawl_top_n_budget')) or 0,
+        'profile_crawl_max_chars_budget': _optional_int(data.get('profile_crawl_max_chars_budget')) or 0,
+        'profile_manual_latency_target_s': _optional_int(data.get('profile_manual_latency_target_s')) or 0,
+        'profile_source_evidence_policy_kind': _optional_str(data.get('profile_source_evidence_policy_kind')),
+        'profile_expected_source_present': bool(data.get('profile_expected_source_present', False)),
+        'profile_expected_material_used': bool(data.get('profile_expected_material_used', False)),
+        'profile_secondary_source_present': bool(data.get('profile_secondary_source_present', False)),
+        'profile_secondary_material_used': bool(data.get('profile_secondary_material_used', False)),
+        'profile_situated_source_present': bool(data.get('profile_situated_source_present', False)),
+        'profile_situated_material_used': bool(data.get('profile_situated_material_used', False)),
+        'profile_downrank_source_present': bool(data.get('profile_downrank_source_present', False)),
+        'profile_downrank_material_used': bool(data.get('profile_downrank_material_used', False)),
+        'profile_insufficient_evidence': bool(data.get('profile_insufficient_evidence', False)),
+        'profile_insufficient_evidence_reason_codes': [
+            str(value)
+            for value in data.get('profile_insufficient_evidence_reason_codes') or []
+            if str(value or '')
+        ],
+        'profile_source_domain_counts': {
+            str(key): _optional_int(value) or 0
+            for key, value in dict(counts).items()
+            if str(key or '')
+        },
+    }
+
+
 def _canonical_searxng_profile_params(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = payload if isinstance(payload, Mapping) else {}
     return {
@@ -356,6 +415,7 @@ def build_web_input(
     runtime: Mapping[str, Any] | None = None,
     query_plan: Mapping[str, Any] | None = None,
     source_first: Mapping[str, Any] | None = None,
+    profile_policy: Mapping[str, Any] | None = None,
     searxng_profile_params: Mapping[str, Any] | None = None,
     reranking: Mapping[str, Any] | None = None,
     sources: Sequence[Mapping[str, Any]] = (),
@@ -418,6 +478,7 @@ def build_web_input(
         'runtime': _canonical_runtime(runtime),
         'query_plan': _canonical_query_plan(query_plan),
         'source_first': _canonical_source_first(source_first),
+        'profile_policy': _canonical_profile_policy(profile_policy),
         'searxng_profile_params': _canonical_searxng_profile_params(searxng_profile_params),
         'reranking': _canonical_reranking(reranking),
         'used_content_kinds': canonical_used_content_kinds,
@@ -477,6 +538,7 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
         runtime=payload.get('runtime') if isinstance(payload.get('runtime'), Mapping) else None,
         query_plan=payload,
         source_first=payload,
+        profile_policy=payload,
         searxng_profile_params=payload,
         reranking=payload,
         sources=payload.get('sources') if isinstance(payload.get('sources'), Sequence) else (),

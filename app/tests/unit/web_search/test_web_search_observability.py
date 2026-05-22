@@ -58,6 +58,28 @@ def _phase4_searxng_payload() -> dict[str, Any]:
         ],
         'searxng_hard_parameters': ['engines', 'categories', 'language'],
         'searxng_soft_signal_policy': 'source_first_domains_plus_rerank',
+        'profile_policy_kind': 'local_web_profile_policy_v0',
+        'profile_policy_mode': 'source_first_strict_when_authority_named',
+        'profile_expected_domains': ['learn.microsoft.com'],
+        'profile_secondary_domains': ['developer.mozilla.org'],
+        'profile_downrank_domains': ['stackoverflow.com'],
+        'profile_situated_secondary_domains': [],
+        'profile_policy_reason_codes': ['source_first_authority_named_strict'],
+        'profile_crawl_top_n_budget': 3,
+        'profile_crawl_max_chars_budget': 7000,
+        'profile_manual_latency_target_s': 25,
+        'profile_source_evidence_policy_kind': 'local_web_profile_source_evidence_v0',
+        'profile_expected_source_present': True,
+        'profile_expected_material_used': True,
+        'profile_secondary_source_present': False,
+        'profile_secondary_material_used': False,
+        'profile_situated_source_present': False,
+        'profile_situated_material_used': False,
+        'profile_downrank_source_present': False,
+        'profile_downrank_material_used': False,
+        'profile_insufficient_evidence': False,
+        'profile_insufficient_evidence_reason_codes': [],
+        'profile_source_domain_counts': {'expected_seen': 1, 'expected_used': 1},
         'results_count': 5,
         'context_injected': True,
         'read_state': 'page_read',
@@ -81,6 +103,9 @@ class WebSearchObservabilityTests(unittest.TestCase):
             canonical_web['searxng_profile_params']['searxng_soft_signal_policy'],
             'source_first_domains_plus_rerank',
         )
+        self.assertEqual(canonical_web['profile_policy']['profile_expected_domains'], ['learn.microsoft.com'])
+        self.assertEqual(canonical_web['profile_policy']['profile_crawl_top_n_budget'], 3)
+        self.assertTrue(canonical_web['profile_policy']['profile_expected_material_used'])
 
         node_payload = hermeneutic_node_logger.build_hermeneutic_node_insertion_payload(
             current_mode='shadow',
@@ -93,6 +118,8 @@ class WebSearchObservabilityTests(unittest.TestCase):
         )
         self.assertEqual(node_web['searxng_hard_parameters'], ['engines', 'categories', 'language'])
         self.assertEqual(node_web['searxng_soft_signal_policy'], 'source_first_domains_plus_rerank')
+        self.assertEqual(node_web['profile_expected_domains'], ['learn.microsoft.com'])
+        self.assertTrue(node_web['profile_expected_material_used'])
 
         events = [
             _event('turn_start', payload={'web_search_enabled': True}),
@@ -105,6 +132,8 @@ class WebSearchObservabilityTests(unittest.TestCase):
         )
         self.assertEqual(pipeline_web['searxng_hard_parameters'], ['engines', 'categories', 'language'])
         self.assertEqual(pipeline_web['searxng_soft_signal_policy'], 'source_first_domains_plus_rerank')
+        self.assertEqual(pipeline_web['profile_expected_domains'], ['learn.microsoft.com'])
+        self.assertTrue(pipeline_web['profile_expected_material_used'])
 
         checklist = turn_observability_checklist.build_turn_observability_checklist(events)
         checklist_web = next(item for item in checklist['items'] if item['key'] == 'web_search')
@@ -120,6 +149,8 @@ class WebSearchObservabilityTests(unittest.TestCase):
             checklist_web['evidence']['searxng_soft_signal_policy'],
             'source_first_domains_plus_rerank',
         )
+        self.assertEqual(checklist_web['evidence']['profile_expected_domains'], ['learn.microsoft.com'])
+        self.assertTrue(checklist_web['evidence']['profile_expected_material_used'])
 
 
 if __name__ == '__main__':

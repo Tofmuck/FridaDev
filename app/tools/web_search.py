@@ -28,6 +28,7 @@ from tools import (
     web_search_query_plan,
     web_search_source_first,
     web_search_crawl_policy,
+    web_search_profile_policy,
     web_search_rerank,
     web_search_searxng_params,
 )
@@ -653,6 +654,13 @@ def _augment_payload_observability(payload: dict[str, Any]) -> dict[str, Any]:
     payload['used_content_kinds'] = _derive_used_content_kinds(source_material_summary)
     payload['injected_chars'] = _derive_injected_chars(source_material_summary)
     payload['context_chars'] = len(str(payload.get('context_block') or ''))
+    payload.update(
+        web_search_profile_policy.evaluate_profile_evidence(
+            str(payload.get('search_profile') or web_search_profile.PROFILE_GENERAL),
+            sources=list(payload.get('sources') or []),
+            policy_fields=payload,
+        )
+    )
     payload.update(web_search_confidence.evaluate_web_confidence(payload))
     return payload
 
@@ -670,7 +678,42 @@ def _web_confidence_event_fields(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _empty_query_plan(kind: str) -> dict[str, Any]:
+def _profile_policy_event_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'profile_policy_kind': str(payload.get('profile_policy_kind') or 'none'),
+        'profile_policy_mode': str(payload.get('profile_policy_mode') or 'none'),
+        'profile_expected_domains': list(payload.get('profile_expected_domains') or []),
+        'profile_secondary_domains': list(payload.get('profile_secondary_domains') or []),
+        'profile_downrank_domains': list(payload.get('profile_downrank_domains') or []),
+        'profile_situated_secondary_domains': list(payload.get('profile_situated_secondary_domains') or []),
+        'profile_policy_reason_codes': list(payload.get('profile_policy_reason_codes') or []),
+        'profile_crawl_top_n_budget': int(payload.get('profile_crawl_top_n_budget') or 0),
+        'profile_crawl_max_chars_budget': int(payload.get('profile_crawl_max_chars_budget') or 0),
+        'profile_manual_latency_target_s': int(payload.get('profile_manual_latency_target_s') or 0),
+        'profile_source_evidence_policy_kind': str(
+            payload.get('profile_source_evidence_policy_kind')
+            or web_search_profile_policy.SOURCE_EVIDENCE_POLICY_KIND
+        ),
+        'profile_expected_source_present': bool(payload.get('profile_expected_source_present', False)),
+        'profile_expected_material_used': bool(payload.get('profile_expected_material_used', False)),
+        'profile_secondary_source_present': bool(payload.get('profile_secondary_source_present', False)),
+        'profile_secondary_material_used': bool(payload.get('profile_secondary_material_used', False)),
+        'profile_situated_source_present': bool(payload.get('profile_situated_source_present', False)),
+        'profile_situated_material_used': bool(payload.get('profile_situated_material_used', False)),
+        'profile_downrank_source_present': bool(payload.get('profile_downrank_source_present', False)),
+        'profile_downrank_material_used': bool(payload.get('profile_downrank_material_used', False)),
+        'profile_insufficient_evidence': bool(payload.get('profile_insufficient_evidence', False)),
+        'profile_insufficient_evidence_reason_codes': list(
+            payload.get('profile_insufficient_evidence_reason_codes') or []
+        ),
+        'profile_source_domain_counts': dict(payload.get('profile_source_domain_counts') or {}),
+    }
+
+
+def _empty_query_plan(kind: str, *, search_profile: str = '') -> dict[str, Any]:
+    profile_policy = web_search_profile_policy.build_profile_policy(
+        search_profile,
+    ) if search_profile else None
     return {
         'query_plan_kind': str(kind or 'none'),
         'queries': [],
@@ -681,6 +724,11 @@ def _empty_query_plan(kind: str) -> dict[str, Any]:
         'raw_result_count': 0,
         'deduped_result_count': 0,
         **web_search_source_first.empty_observability_fields(),
+        **(
+            profile_policy.as_observability_fields()
+            if profile_policy is not None
+            else web_search_profile_policy.empty_observability_fields()
+        ),
         **web_search_searxng_params.empty_observability_fields(kind='none'),
         **web_search_rerank.empty_observability_fields(applied=False),
     }
@@ -699,6 +747,10 @@ def _build_query_plan(
         user_msg,
         primary,
         search_profile,
+    )
+    profile_policy = web_search_profile_policy.build_profile_policy(
+        search_profile,
+        source_first_plan=source_first_plan,
     )
     secondary_queries = (
         web_search_query_plan.build_specialized_queries(
@@ -746,6 +798,8 @@ def _build_query_plan(
         'deduped_result_count': 0,
         'source_first': source_first_plan.as_dict(),
         **source_first_plan.as_observability_fields(),
+        'profile_policy': profile_policy.as_dict(),
+        **profile_policy.as_observability_fields(),
         'searxng_request_params': searxng_profile_params.as_request_params(),
         **searxng_profile_params.as_observability_fields(),
     }
@@ -767,6 +821,16 @@ def _query_plan_observability_fields(query_plan: dict[str, Any] | None) -> dict[
         'source_first_product': str(plan.get('source_first_product') or ''),
         'source_first_probable_domains': list(plan.get('source_first_probable_domains') or []),
         'source_first_reason_codes': list(plan.get('source_first_reason_codes') or []),
+        'profile_policy_kind': str(plan.get('profile_policy_kind') or 'none'),
+        'profile_policy_mode': str(plan.get('profile_policy_mode') or 'none'),
+        'profile_expected_domains': list(plan.get('profile_expected_domains') or []),
+        'profile_secondary_domains': list(plan.get('profile_secondary_domains') or []),
+        'profile_downrank_domains': list(plan.get('profile_downrank_domains') or []),
+        'profile_situated_secondary_domains': list(plan.get('profile_situated_secondary_domains') or []),
+        'profile_policy_reason_codes': list(plan.get('profile_policy_reason_codes') or []),
+        'profile_crawl_top_n_budget': int(plan.get('profile_crawl_top_n_budget') or 0),
+        'profile_crawl_max_chars_budget': int(plan.get('profile_crawl_max_chars_budget') or 0),
+        'profile_manual_latency_target_s': int(plan.get('profile_manual_latency_target_s') or 0),
         'searxng_profile_params_kind': str(plan.get('searxng_profile_params_kind') or 'none'),
         'searxng_profile_params_policy': str(plan.get('searxng_profile_params_policy') or 'none'),
         'searxng_categories': list(plan.get('searxng_categories') or []),
@@ -1034,8 +1098,17 @@ def _build_search_context_material(
     enable_profiled_crawl4ai_policy: bool = True,
 ) -> dict[str, Any]:
     runtime = _runtime_collection_settings()
-    crawl4ai_top_n = int(runtime.get('crawl4ai_top_n') or 0)
-    crawl4ai_max_chars = int(runtime.get('crawl4ai_max_chars') or 0)
+    crawl4ai_top_n = web_search_profile_policy.effective_crawl_top_n(
+        search_profile,
+        int(runtime.get('crawl4ai_top_n') or 0),
+    )
+    crawl4ai_max_chars = web_search_profile_policy.effective_crawl_max_chars(
+        search_profile,
+        int(runtime.get('crawl4ai_max_chars') or 0),
+    )
+    runtime = dict(runtime)
+    runtime['crawl4ai_effective_top_n'] = crawl4ai_top_n
+    runtime['crawl4ai_effective_max_chars'] = crawl4ai_max_chars
     today = _web_temporal_label(now_iso=now_iso)
     primary_source: dict[str, Any] | None = None
     fallback_results = list(results or [])
@@ -1367,6 +1440,7 @@ def _emit_web_search_runtime_event(
     source_first_product: str = '',
     source_first_probable_domains: list[str] | None = None,
     source_first_reason_codes: list[str] | None = None,
+    profile_policy_fields: dict[str, Any] | None = None,
     searxng_profile_params_kind: str = 'none',
     searxng_profile_params_policy: str = 'none',
     searxng_categories: list[str] | None = None,
@@ -1468,6 +1542,7 @@ def _emit_web_search_runtime_event(
         'source_first_product': str(source_first_product or ''),
         'source_first_probable_domains': list(source_first_probable_domains or []),
         'source_first_reason_codes': list(source_first_reason_codes or []),
+        **_profile_policy_event_fields(profile_policy_fields or {}),
         'searxng_profile_params_kind': str(searxng_profile_params_kind or 'none'),
         'searxng_profile_params_policy': str(searxng_profile_params_policy or 'none'),
         'searxng_categories': list(searxng_categories or []),
@@ -1550,7 +1625,7 @@ def _build_payload_from_collection(
     now_iso: str | None = None,
 ) -> dict[str, Any]:
     if explicit_url:
-        direct_query_plan = _empty_query_plan('explicit_url_direct')
+        direct_query_plan = _empty_query_plan('explicit_url_direct', search_profile=search_profile)
         primary_crawl = _crawl_explicit_url_primary_with_status(explicit_url)
         primary_read_status = str(primary_crawl.get('status') or 'error')
         primary_read_filter = str(primary_crawl.get('filter') or CRAWL4AI_FILTER_FIT)
@@ -1769,6 +1844,7 @@ def build_context_payload(
             source_first_product=str(payload.get('source_first_product') or ''),
             source_first_probable_domains=list(payload.get('source_first_probable_domains') or []),
             source_first_reason_codes=list(payload.get('source_first_reason_codes') or []),
+            profile_policy_fields=_profile_policy_event_fields(payload),
             searxng_profile_params_kind=str(payload.get('searxng_profile_params_kind') or 'none'),
             searxng_profile_params_policy=str(payload.get('searxng_profile_params_policy') or 'none'),
             searxng_categories=list(payload.get('searxng_categories') or []),
@@ -1809,7 +1885,7 @@ def build_context_payload(
             'reason_code': 'upstream_error',
             'original_user_message': str(user_msg or ''),
             'search_profile': str(search_profile or ''),
-            **_query_plan_observability_fields(_empty_query_plan('error')),
+            **_query_plan_observability_fields(_empty_query_plan('error', search_profile=search_profile)),
             'query': str(user_msg or ''),
             'results_count': 0,
             'runtime': _runtime_collection_settings(),
@@ -1862,6 +1938,7 @@ def build_context_payload(
             source_first_product=str(error_payload.get('source_first_product') or ''),
             source_first_probable_domains=list(error_payload.get('source_first_probable_domains') or []),
             source_first_reason_codes=list(error_payload.get('source_first_reason_codes') or []),
+            profile_policy_fields=_profile_policy_event_fields(error_payload),
             searxng_profile_params_kind=str(error_payload.get('searxng_profile_params_kind') or 'none'),
             searxng_profile_params_policy=str(error_payload.get('searxng_profile_params_policy') or 'none'),
             searxng_categories=list(error_payload.get('searxng_categories') or []),

@@ -1,6 +1,6 @@
 # FridaDev - reconstruction locale de la recherche web - TODO A-Z
 
-Statut: actif, non lance runtime.
+Statut: actif, reconstruction applicative locale en cours; Phases 2 a 5 livrees sans modification plateforme.
 
 Ce document devient la source-of-truth operatoire pour reconstruire la recherche web locale FridaDev de A a Z, apres le durcissement V0 SearXNG + Crawl4AI et le benchmark Lot 8 du 2026-05-22.
 
@@ -35,7 +35,7 @@ References a relire avant toute phase:
 - [x] Phase 4 — Paniers moteurs SearXNG gouvernes
   - [x] Paniers applicatifs par regime, sans modification plateforme.
   - [ ] Reconfig globale SearXNG optionnelle, seulement avec GO utilisateur Sauron.
-- [ ] Phase 5 — Parametres FridaDev par profil
+- [x] Phase 5 — Parametres FridaDev par profil
 - [ ] Phase 6 — Reranking explicable
 - [ ] Phase 7 — Comportement d'echec
 - [ ] Phase 8 — Benchmark final
@@ -55,15 +55,15 @@ References a relire avant toute phase:
 
 ## Decisions utilisateur requises avant runtime
 
-- [ ] Choisir par profil entre recherche ouverte assistee et source-first stricte.
+- [x] Choisir par profil entre recherche ouverte assistee et source-first stricte.
 - [x] Valider les moteurs SearXNG acceptes politiquement et techniquement, au moins partiellement apres Phase 1.
 - [x] Valider les sources legitimes pour l'actualite.
 - [x] Valider les sources legitimes pour l'administratif francais.
 - [x] Valider les sources legitimes pour l'academique.
 - [x] Valider les sources legitimes pour la documentation officielle.
-- [ ] Accepter ou refuser des listes de domaines par profil.
-- [ ] Fixer une latence maximale cible pour un tour web manuel.
-- [ ] Fixer le comportement d'echec: demander une URL, elargir la recherche, ou dire non prouve.
+- [x] Accepter ou refuser des listes de domaines par profil.
+- [x] Fixer une latence maximale cible pour un tour web manuel.
+- [x] Fixer le comportement d'echec: dire les preuves insuffisantes ou fragiles, proposer une reformulation si pertinent, demander une URL seulement si cela a du sens.
 
 ## Decisions actees apres Phase 1 Sauron
 
@@ -490,31 +490,33 @@ Note 2026-05-22: la Phase 4 applicative a deja livre les paniers `categories` / 
 
 Profils a couvrir:
 
-- [ ] `explicit_url`
-- [ ] `documentation_officielle`
-- [ ] `administratif_francais`
-- [ ] `academique`
-- [ ] `actualite`
-- [ ] `general_divers`
+- [x] `explicit_url`
+- [x] `documentation_officielle`
+- [x] `administratif_francais`
+- [x] `academique`
+- [x] `actualite`
+- [x] `general_divers`
 
 Pour chaque profil, preciser:
 
-- [ ] `categories`
-- [ ] `engines`
-- [ ] `language`
-- [ ] `time_range`
-- [ ] domaines attendus
-- [ ] domaines a declasser
-- [ ] budget crawl
-- [ ] observabilite
+- [x] `categories`
+- [x] `engines`
+- [x] `language`
+- [x] `time_range`
+- [x] domaines attendus
+- [x] domaines secondaires
+- [x] domaines a declasser
+- [x] budget crawl
+- [x] latence cible
+- [x] observabilite
 
 Livrables:
 
-- [ ] Politique applicative par profil.
-- [ ] Tests des parametres effectifs.
-- [ ] Observabilite content-free des parametres envoyes.
-- [ ] Preuve que `explicit_url` ne passe pas par les parametres de recherche ouverte.
-- [ ] Preuve que `general_divers` reste sobre et pluraliste.
+- [x] Politique applicative par profil.
+- [x] Tests des parametres effectifs.
+- [x] Observabilite content-free des parametres envoyes.
+- [x] Preuve que `explicit_url` ne passe pas par les parametres de recherche ouverte.
+- [x] Preuve que `general_divers` reste sobre et pluraliste.
 
 Fichiers ou zones concernes:
 
@@ -526,9 +528,11 @@ Fichiers ou zones concernes:
 
 Decisions utilisateur requises avant patch:
 
-- [ ] Valider les couples profil -> categories.
-- [ ] Valider les moteurs autorises par profil si Sauron les a qualifies.
-- [ ] Valider les budgets crawl et latence cible.
+- [x] Valider les couples profil -> categories.
+- [x] Valider les moteurs autorises par profil si Sauron les a qualifies.
+- [x] Valider les budgets crawl et latence cible.
+- [x] Acter que SUD/CGT/Solidaires sont des sources situees secondaires, jamais autorite administrative souveraine.
+- [x] Acter que l'insuffisance de preuve est un signal applicatif, pas une reponse scriptee ni un fallback externe.
 
 Hors-scope:
 
@@ -539,18 +543,33 @@ Hors-scope:
 
 Tests/preuves attendus:
 
-- [ ] `documentation_officielle` cible docs/source primaire sans vendor fixture.
-- [ ] `administratif_francais` garde langue francaise et sources institutionnelles probables.
-- [ ] `academique` ne se limite pas a la philosophie.
-- [ ] `actualite` garde fraicheur sans exclure les sources officielles.
-- [ ] `general_divers` conserve un comportement historique ou quasi historique.
-- [ ] Observabilite sans requete brute, prompt brut, secret ou contenu crawle.
+- [x] `documentation_officielle` cible docs/source primaire sans vendor fixture.
+- [x] `administratif_francais` garde langue francaise et sources institutionnelles probables.
+- [x] `academique` ne se limite pas a la philosophie.
+- [x] `actualite` garde fraicheur sans exclure les sources officielles.
+- [x] `general_divers` conserve un comportement historique ou quasi historique.
+- [x] Observabilite sans requete brute, prompt brut, secret ou contenu crawle.
 
 Criteres de fin:
 
-- [ ] Les profils ont des parametres lisibles et reversibles.
-- [ ] Les parametres durs sont justifies.
-- [ ] Les signaux souples sont distingues.
+- [x] Les profils ont des parametres lisibles et reversibles.
+- [x] Les parametres durs sont justifies.
+- [x] Les signaux souples sont distingues.
+
+### Phase 5 - livraison Celebrimbor 2026-05-22
+
+Statut: livre applicatif/runtime, sans modification plateforme.
+
+- [x] Module dedie cree: `app/tools/web_search_profile_policy.py`.
+- [x] Spec creee: `app/docs/states/specs/fridadev-web-search-profile-policy-contract.md`.
+- [x] Documentation officielle: source-first strict quand une autorite nommee expose des domaines probables; ouverte assistee sans domaine invente quand l'autorite est inconnue ou floue.
+- [x] Administratif francais: sources officielles et Education nationale attendues; SUD, CGT et Solidaires visibles comme contrepoints situes secondaires, jamais preuve administrative souveraine.
+- [x] Academique: profil large confirme pour SHS, philosophie, droit, sciences exactes, medical/sciences du vivant et informatique.
+- [x] Budgets web manuel appliques: `actualite` et `general_divers` capes a 2 resultats crawles; profils specialises capes a 3; chars par profil capes entre 4500 et 8000 selon le regime.
+- [x] Cible latence normale actee: 20 a 25 secondes; une recherche plus longue devra devenir un mode explicite futur.
+- [x] Signal de preuve insuffisante ajoute: `profile_insufficient_evidence`, reason codes, presence de source attendue, presence de source situee, compteurs domaines.
+- [x] La confiance locale peut refleter ce signal, mais ne declenche aucun fallback OpenRouter / Exa / Parallel.
+- [x] Observabilite propagee dans le payload web, le noeud hermeneutique, le read model pipeline et la checklist.
 
 Risques/effets de bord:
 
@@ -634,7 +653,10 @@ Objectif: quand Frida ne trouve pas de source solide, elle doit le dire claireme
 
 Comportement attendu:
 
-> Je n'ai pas trouve de source suffisamment fiable avec le profil demande. Tu peux me donner une URL, ou je peux elargir la recherche.
+- Frida doit pouvoir repondre meme si la recherche est fragile, mais en disant clairement que les preuves sont insuffisantes, partielles ou non concluantes.
+- La formulation finale reste naturelle et produite par le LLM; pas de phrase d'echec figee ni generique.
+- Frida peut proposer de reformuler ou relancer la recherche si cela aide.
+- Frida peut demander une URL seulement quand cela a vraiment du sens, sans en faire le reflexe par defaut.
 
 Livrables:
 

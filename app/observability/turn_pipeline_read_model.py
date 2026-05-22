@@ -653,6 +653,52 @@ def _web_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             for value in payload.get('source_first_reason_codes') or []
             if _text(value)
         ],
+        'profile_policy_kind': _text(payload.get('profile_policy_kind')),
+        'profile_policy_mode': _text(payload.get('profile_policy_mode')),
+        'profile_expected_domains': [
+            _text(value)
+            for value in payload.get('profile_expected_domains') or []
+            if _text(value)
+        ],
+        'profile_secondary_domains': [
+            _text(value)
+            for value in payload.get('profile_secondary_domains') or []
+            if _text(value)
+        ],
+        'profile_downrank_domains': [
+            _text(value)
+            for value in payload.get('profile_downrank_domains') or []
+            if _text(value)
+        ],
+        'profile_situated_secondary_domains': [
+            _text(value)
+            for value in payload.get('profile_situated_secondary_domains') or []
+            if _text(value)
+        ],
+        'profile_policy_reason_codes': [
+            _text(value)
+            for value in payload.get('profile_policy_reason_codes') or []
+            if _text(value)
+        ],
+        'profile_crawl_top_n_budget': _to_int(payload.get('profile_crawl_top_n_budget')),
+        'profile_crawl_max_chars_budget': _to_int(payload.get('profile_crawl_max_chars_budget')),
+        'profile_manual_latency_target_s': _to_int(payload.get('profile_manual_latency_target_s')),
+        'profile_source_evidence_policy_kind': _text(payload.get('profile_source_evidence_policy_kind')),
+        'profile_expected_source_present': bool(payload.get('profile_expected_source_present', False)),
+        'profile_expected_material_used': bool(payload.get('profile_expected_material_used', False)),
+        'profile_secondary_source_present': bool(payload.get('profile_secondary_source_present', False)),
+        'profile_secondary_material_used': bool(payload.get('profile_secondary_material_used', False)),
+        'profile_situated_source_present': bool(payload.get('profile_situated_source_present', False)),
+        'profile_situated_material_used': bool(payload.get('profile_situated_material_used', False)),
+        'profile_downrank_source_present': bool(payload.get('profile_downrank_source_present', False)),
+        'profile_downrank_material_used': bool(payload.get('profile_downrank_material_used', False)),
+        'profile_insufficient_evidence': bool(payload.get('profile_insufficient_evidence', False)),
+        'profile_insufficient_evidence_reason_codes': [
+            _text(value)
+            for value in payload.get('profile_insufficient_evidence_reason_codes') or []
+            if _text(value)
+        ],
+        'profile_source_domain_counts': dict(_mapping(payload.get('profile_source_domain_counts'))),
         'searxng_profile_params_kind': _text(payload.get('searxng_profile_params_kind')),
         'searxng_profile_params_policy': _text(payload.get('searxng_profile_params_policy')),
         'searxng_categories': [

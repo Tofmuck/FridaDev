@@ -167,6 +167,7 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = _mapping(payload)
     query_plan = _mapping(data.get('query_plan'))
     source_first = _mapping(data.get('source_first'))
+    profile_policy = _mapping(data.get('profile_policy'))
     searxng_params = _mapping(data.get('searxng_profile_params'))
     reranking = _mapping(data.get('reranking'))
     web_confidence = _mapping(data.get('web_confidence'))
@@ -265,6 +266,95 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
             )
             if str(value)
         ],
+        'profile_policy_kind': str(
+            data.get('profile_policy_kind') or profile_policy.get('profile_policy_kind') or ''
+        ),
+        'profile_policy_mode': str(
+            data.get('profile_policy_mode') or profile_policy.get('profile_policy_mode') or ''
+        ),
+        'profile_expected_domains': [
+            str(value)
+            for value in _sequence(data.get('profile_expected_domains') or profile_policy.get('profile_expected_domains'))
+            if str(value)
+        ],
+        'profile_secondary_domains': [
+            str(value)
+            for value in _sequence(data.get('profile_secondary_domains') or profile_policy.get('profile_secondary_domains'))
+            if str(value)
+        ],
+        'profile_downrank_domains': [
+            str(value)
+            for value in _sequence(data.get('profile_downrank_domains') or profile_policy.get('profile_downrank_domains'))
+            if str(value)
+        ],
+        'profile_situated_secondary_domains': [
+            str(value)
+            for value in _sequence(
+                data.get('profile_situated_secondary_domains')
+                or profile_policy.get('profile_situated_secondary_domains')
+            )
+            if str(value)
+        ],
+        'profile_policy_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('profile_policy_reason_codes')
+                or profile_policy.get('profile_policy_reason_codes')
+            )
+            if str(value)
+        ],
+        'profile_crawl_top_n_budget': int(
+            data.get('profile_crawl_top_n_budget') or profile_policy.get('profile_crawl_top_n_budget') or 0
+        ),
+        'profile_crawl_max_chars_budget': int(
+            data.get('profile_crawl_max_chars_budget') or profile_policy.get('profile_crawl_max_chars_budget') or 0
+        ),
+        'profile_manual_latency_target_s': int(
+            data.get('profile_manual_latency_target_s') or profile_policy.get('profile_manual_latency_target_s') or 0
+        ),
+        'profile_source_evidence_policy_kind': str(
+            data.get('profile_source_evidence_policy_kind')
+            or profile_policy.get('profile_source_evidence_policy_kind')
+            or ''
+        ),
+        'profile_expected_source_present': bool(
+            data.get('profile_expected_source_present', profile_policy.get('profile_expected_source_present', False))
+        ),
+        'profile_expected_material_used': bool(
+            data.get('profile_expected_material_used', profile_policy.get('profile_expected_material_used', False))
+        ),
+        'profile_secondary_source_present': bool(
+            data.get('profile_secondary_source_present', profile_policy.get('profile_secondary_source_present', False))
+        ),
+        'profile_secondary_material_used': bool(
+            data.get('profile_secondary_material_used', profile_policy.get('profile_secondary_material_used', False))
+        ),
+        'profile_situated_source_present': bool(
+            data.get('profile_situated_source_present', profile_policy.get('profile_situated_source_present', False))
+        ),
+        'profile_situated_material_used': bool(
+            data.get('profile_situated_material_used', profile_policy.get('profile_situated_material_used', False))
+        ),
+        'profile_downrank_source_present': bool(
+            data.get('profile_downrank_source_present', profile_policy.get('profile_downrank_source_present', False))
+        ),
+        'profile_downrank_material_used': bool(
+            data.get('profile_downrank_material_used', profile_policy.get('profile_downrank_material_used', False))
+        ),
+        'profile_insufficient_evidence': bool(
+            data.get('profile_insufficient_evidence', profile_policy.get('profile_insufficient_evidence', False))
+        ),
+        'profile_insufficient_evidence_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('profile_insufficient_evidence_reason_codes')
+                or profile_policy.get('profile_insufficient_evidence_reason_codes')
+            )
+            if str(value)
+        ],
+        'profile_source_domain_counts': dict(
+            _mapping(data.get('profile_source_domain_counts') or profile_policy.get('profile_source_domain_counts'))
+        ),
         'searxng_profile_params_kind': str(
             data.get('searxng_profile_params_kind')
             or searxng_params.get('searxng_profile_params_kind')
