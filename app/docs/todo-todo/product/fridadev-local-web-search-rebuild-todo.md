@@ -32,7 +32,9 @@ References a relire avant toute phase:
 - [x] Phase 1 — Inventaire des moteurs SearXNG
 - [x] Phase 2 — Definir les regimes de recherche
 - [x] Phase 3 — Source-first
-- [ ] Phase 4 — Reconfig SearXNG gouvernee
+- [x] Phase 4 — Paniers moteurs SearXNG gouvernes
+  - [x] Paniers applicatifs par regime, sans modification plateforme.
+  - [ ] Reconfig globale SearXNG optionnelle, seulement avec GO utilisateur Sauron.
 - [ ] Phase 5 — Parametres FridaDev par profil
 - [ ] Phase 6 — Reranking explicable
 - [ ] Phase 7 — Comportement d'echec
@@ -389,70 +391,102 @@ Risques/effets de bord:
 - Faire d'une source officielle une verite absolue.
 - Rater les produits dont l'autorite est implicite ou ambigue.
 
-## Phase 4 — Reconfig SearXNG gouvernee
+## Phase 4 — Paniers moteurs SearXNG gouvernes
 
-Proprietaire: Sauron.
+Proprietaire: Celebrimbor pour le panier applicatif; Sauron uniquement pour une reconfiguration plateforme future.
 
-Objectif: sortir d'un heritage SearXNG incontrole si l'etat des lieux prouve qu'il penalise la recherche locale.
+Objectif: gouverner les moteurs demandes a SearXNG par regime depuis FridaDev, sans modifier la configuration globale SearXNG. La reconfiguration plateforme `use_default_settings` / `remove` / `keep_only` reste un lot Sauron optionnel, non lance ici.
 
-Gate obligatoire: cette phase ne peut pas etre lancee sans GO utilisateur explicite.
+Gate obligatoire: aucune modification plateforme ne peut etre lancee sans GO utilisateur explicite.
 
 Livrables:
 
-- [ ] Audit de `use_default_settings: true`.
-- [ ] Proposition `remove` / `keep_only` selon la documentation officielle SearXNG.
-- [ ] Proposition Sauron avant modification: config actuelle, config cible, diff attendu, risques, rollback et fenetre de restart.
-- [ ] Backup obligatoire avant toute modification.
-- [ ] Plan de rollback documente.
-- [ ] Validation `docker compose config --quiet` quand applicable.
+- [x] Paniers applicatifs par regime: `documentation_officielle`, `administratif_francais`, `academique`, `actualite`, `general_divers`, `explicit_url`.
+- [x] Distinction parametres durs (`engines`, `categories`, `language`, `time_range`, `safesearch`) / signaux souples (source-first, reranking, downrank).
+- [x] Observabilite content-free: `searxng_profile_params_kind`, `searxng_profile_params_policy`, `searxng_categories`, `searxng_engines`, `searxng_time_range`, `searxng_language`, `searxng_safesearch`, `searxng_params_reason_codes`, `searxng_hard_parameters`, `searxng_soft_signal_policy`.
+- [x] Sondage Mojeek en lecture seule.
+- [x] Spec Phase 4 creee: `app/docs/states/specs/fridadev-web-search-searxng-engine-baskets-contract.md`.
+- [ ] Audit plateforme de `use_default_settings: true` si l'utilisateur demande explicitement une reconfiguration globale.
+- [ ] Proposition Sauron avant toute modification plateforme: config actuelle, config cible, diff attendu, risques, rollback et fenetre de restart.
+- [ ] Backup obligatoire avant toute modification plateforme.
+- [ ] Validation `docker compose config --quiet` uniquement si Compose est touche.
 - [ ] Restart SearXNG uniquement apres decision utilisateur explicite.
-- [ ] Rapport de comparaison avant/apres.
 
 Fichiers ou zones concernes:
 
-- `/opt/platform/searxng/settings.yml`
-- `/opt/platform/searxng/limiter.toml`
-- `/opt/platform/docker-compose.yml`
+- `app/tools/web_search_searxng_params.py`
+- `app/tools/web_search.py`
+- Tests web search.
+- `app/docs/states/specs/fridadev-web-search-searxng-engine-baskets-contract.md`
+- Plateforme SearXNG seulement en lecture/sonde sous discipline Sauron.
+- `/opt/platform/searxng/settings.yml`, `/opt/platform/searxng/limiter.toml`, `/opt/platform/docker-compose.yml` restent hors patch sans GO utilisateur.
 - Documentation operatoire versionnee cote FridaDev si les attentes produit changent.
 
 Decisions utilisateur requises avant patch:
 
-- [ ] Decider si cette phase est lancee.
-- [ ] Valider la liste de moteurs a conserver, retirer ou garder en observation.
-- [ ] Valider la fenetre de restart.
+- [x] Valider une Phase 4 applicative avant reconfiguration plateforme.
+- [ ] Decider si une reconfiguration globale SearXNG doit etre lancee plus tard.
+- [ ] Valider la fenetre de restart si et seulement si Sauron modifie la plateforme.
 
 Hors-scope:
 
-- Lancer cette phase automatiquement depuis ce TODO.
+- Modifier la configuration globale SearXNG.
 - Embarquer un changement de configuration plateforme dans un lot applicatif Celebrimbor.
 - Afficher des secrets.
 - Changer Caddy, Authelia ou les reseaux sans demande explicite.
 - Remplacer SearXNG.
+- Activer OpenRouter / Exa / Parallel.
 
 Tests/preuves attendus:
 
-- [ ] Backup reference sans contenu secret expose.
-- [ ] `docker compose config --quiet` si Compose est touche.
-- [ ] Requetes de smoke SearXNG apres restart.
-- [ ] Baseline courte avant/apres.
+- [x] `/config` SearXNG lu en lecture seule pour confirmer Mojeek.
+- [x] Sondes Mojeek bornees via `engines=mojeek` et `!mjk`, sans secret: `/tmp/fridadev-mojeek-probe-phase4/mojeek-probe.md`.
+- [x] Tests unitaires des paniers applicatifs.
+- [x] Preuve que `explicit_url` garde le comportement historique.
+- [ ] Backup plateforme, `docker compose config --quiet`, smoke SearXNG apres restart: uniquement si une Phase 4 plateforme future est decidee.
 
 Criteres de fin:
 
-- [ ] La configuration effective est gouvernee et rollbackable.
-- [ ] Les changements sont documentes.
-- [ ] Sauron confirme la sante plateforme.
+- [x] Les paniers moteurs par regime sont explicites, testes et observables.
+- [x] Les changements applicatifs sont documentes.
+- [x] `local` benchmark peut garder la baseline historique via flags; `local_profiled` porte les paniers gouvernes.
+- [ ] Une configuration SearXNG globale gouvernee et rollbackable reste optionnelle, sous Sauron.
 
 Risques/effets de bord:
 
 - Casser la disponibilite SearXNG.
 - Reduire trop fortement la diversite de sources.
 - Confondre reconfiguration technique et doctrine documentaire.
+- Surestimer un moteur desactive globalement mais appelable explicitement.
+
+### Phase 4 - livraison Celebrimbor 2026-05-22
+
+Statut: livre applicatif/runtime, sans modification plateforme.
+
+Paniers retenus:
+
+- `explicit_url`: historique; pas de recherche ouverte sur lecture directe.
+- `documentation_officielle`: `categories=general,it`, `engines=microsoft learn,mdn,docker hub,bing,brave,mojeek`, `language=all`.
+- `administratif_francais`: `categories=general`, `engines=bing,brave`, `language=fr-FR`.
+- `academique`: `categories=general,science`, `engines=arxiv,openairepublications,pubmed,bing,brave`, `language=all`.
+- `actualite`: `categories=general,news`, `engines=bing news,reuters,bing,duckduckgo news`, `language=fr-FR`, `time_range=year`.
+- `general_divers`: `categories=general`, `engines=bing,brave,mojeek`, `language=fr-FR`.
+
+Mojeek:
+
+- [x] Expose par `/config` sous les noms `mojeek`, `mojeek images`, `mojeek news`, mais desactive globalement.
+- [x] `engines=mojeek` repond sur sondes bornees general/documentation.
+- [x] `!mjk` est instable: une sonde a retourne `acces refuse`.
+- [x] Retenu comme candidat secondaire `documentation_officielle` et `general_divers`.
+- [x] Non retenu pour `actualite`, `administratif_francais` ou `academique` en V1.
 
 ## Phase 5 — Parametres FridaDev par profil
 
 Proprietaire: Celebrimbor.
 
 Objectif: ne plus envoyer tous les profils dans un comportement equivalent a `categories=general`, et aligner les parametres applicatifs sur les regimes de recherche.
+
+Note 2026-05-22: la Phase 4 applicative a deja livre les paniers `categories` / `engines` / `language` / `time_range` par regime. La Phase 5 reste ouverte pour les ajustements fins: domaines attendus/declasses, budgets crawl, latence cible, observabilite supplementaire et arbitrages utilisateur qui ne doivent pas etre melanges au patch moteur Phase 4.
 
 Profils a couvrir:
 

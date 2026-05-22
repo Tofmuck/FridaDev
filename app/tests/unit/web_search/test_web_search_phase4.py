@@ -928,9 +928,24 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(
             observed_search_params,
             [
-                {'language': 'all', 'safesearch': '0', 'categories': 'general'},
-                {'language': 'all', 'safesearch': '0', 'categories': 'general'},
-                {'language': 'all', 'safesearch': '0', 'categories': 'general'},
+                {
+                    'language': 'all',
+                    'safesearch': '0',
+                    'categories': 'general,it',
+                    'engines': 'microsoft learn,mdn,docker hub,bing,brave,mojeek',
+                },
+                {
+                    'language': 'all',
+                    'safesearch': '0',
+                    'categories': 'general,it',
+                    'engines': 'microsoft learn,mdn,docker hub,bing,brave,mojeek',
+                },
+                {
+                    'language': 'all',
+                    'safesearch': '0',
+                    'categories': 'general,it',
+                    'engines': 'microsoft learn,mdn,docker hub,bing,brave,mojeek',
+                },
             ],
         )
         self.assertFalse(payload['explicit_url_detected'])
@@ -944,12 +959,17 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertTrue(payload['source_first_active'])
         self.assertEqual(payload['source_first_authority'], 'OpenRouter')
         self.assertIn('openrouter.ai/docs', payload['source_first_probable_domains'])
-        self.assertEqual(payload['searxng_profile_params_kind'], 'profiled_documentation_officielle_general_all')
-        self.assertEqual(payload['searxng_profile_params_policy'], 'soft_broad_hints')
-        self.assertEqual(payload['searxng_categories'], ['general'])
-        self.assertEqual(payload['searxng_engines'], [])
+        self.assertEqual(payload['searxng_profile_params_kind'], 'governed_documentation_officielle_it_general')
+        self.assertEqual(payload['searxng_profile_params_policy'], 'governed_engine_basket_v0')
+        self.assertEqual(payload['searxng_categories'], ['general', 'it'])
+        self.assertEqual(
+            payload['searxng_engines'],
+            ['microsoft learn', 'mdn', 'docker hub', 'bing', 'brave', 'mojeek'],
+        )
         self.assertEqual(payload['searxng_language'], 'all')
         self.assertEqual(payload['searxng_safesearch'], '0')
+        self.assertIn('engines', payload['searxng_hard_parameters'])
+        self.assertIn('qa_not_primary_authority', payload['searxng_params_reason_codes'])
         self.assertEqual(payload['collection_path'], 'search_only')
         self.assertIsNone(payload['primary_read_filter'])
         self.assertFalse(payload['primary_read_raw_fallback_used'])
@@ -979,14 +999,19 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(observed_event['deduped_result_count'], 1)
         self.assertEqual(
             observed_event['searxng_profile_params_kind'],
-            'profiled_documentation_officielle_general_all',
+            'governed_documentation_officielle_it_general',
         )
         self.assertTrue(observed_event['source_first_active'])
         self.assertEqual(observed_event['source_first_authority'], 'OpenRouter')
-        self.assertEqual(observed_event['searxng_profile_params_policy'], 'soft_broad_hints')
-        self.assertEqual(observed_event['searxng_categories'], ['general'])
-        self.assertEqual(observed_event['searxng_engines'], [])
+        self.assertEqual(observed_event['searxng_profile_params_policy'], 'governed_engine_basket_v0')
+        self.assertEqual(observed_event['searxng_categories'], ['general', 'it'])
+        self.assertEqual(
+            observed_event['searxng_engines'],
+            ['microsoft learn', 'mdn', 'docker hub', 'bing', 'brave', 'mojeek'],
+        )
         self.assertEqual(observed_event['searxng_language'], 'all')
+        self.assertIn('engines', observed_event['searxng_hard_parameters'])
+        self.assertIn('qa_not_primary_authority', observed_event['searxng_params_reason_codes'])
         self.assertEqual(observed_event['crawl4ai_policy_kinds'], ['profile_query_aware_bm25_with_fit_fallback'])
         self.assertEqual(observed_event['crawl4ai_filter_counts'], {'bm25': 1})
         self.assertIn('web_confidence_level', observed_event)
@@ -1219,10 +1244,11 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertIn('conjugator_soft_downrank', payload['rerank_reason_counts'])
         self.assertEqual(
             payload['searxng_profile_params_kind'],
-            'profiled_administratif_francais_general_fr',
+            'governed_administratif_francais_general',
         )
-        self.assertEqual(payload['searxng_profile_params_policy'], 'soft_broad_hints')
+        self.assertEqual(payload['searxng_profile_params_policy'], 'governed_engine_basket_v0')
         self.assertEqual(payload['searxng_categories'], ['general'])
+        self.assertEqual(payload['searxng_engines'], ['bing', 'brave'])
         self.assertEqual(payload['searxng_time_range'], '')
         self.assertEqual(payload['searxng_language'], 'fr-FR')
         self.assertEqual(payload['results_count'], 3)
