@@ -381,6 +381,7 @@ Statut: livre applicatif/docs, sans modification plateforme.
 - [x] Source-first branche dans le plan de requetes bornees et le reranking souple.
 - [x] Observabilite ajoutee: `source_first_policy_kind`, `source_first_active`, `source_first_authority`, `source_first_product`, `source_first_probable_domains`, `source_first_reason_codes`.
 - [x] Tests negatifs anti-overfit ajoutes pour demandes generiques `documentation officielle` / `API documentation`.
+- [x] Correctif P2: l'extraction d'autorite inconnue ignore les verbes/formules de demande (`trouve`, `peux-tu`, `cherche`, `official docs for`) et reste inactive si la cible est trop floue.
 
 Risques/effets de bord:
 

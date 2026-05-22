@@ -64,6 +64,8 @@ Exemples normatifs:
 
 La source map est un appoint, pas une verite. Si une autorite inconnue est extraite sans domaine mappe, FridaDev peut utiliser l'autorite pour orienter une requete, mais ne fabrique pas de domaine probable.
 
+Pour les autorites inconnues, l'extraction doit partir du segment cible apres `documentation officielle`, `docs officielles`, `official docs for`, `documentation for`, etc. Les verbes ou formules de demande (`trouve`, `peux-tu`, `cherche`, `find`, `please`) ne doivent jamais devenir autorite. Si aucun segment cible fiable n'existe, source-first reste inactif.
+
 ## Anti-overfit
 
 Les termes generiques `documentation`, `officiel`, `api`, `guide`, `support`, `help`, `reference` ne suffisent jamais a promouvoir une source forte.
@@ -106,6 +108,7 @@ Les tests unitaires doivent couvrir:
 
 - classification URL, docs officielles, administratif francais, academique large, actualite, general ambigu;
 - extraction source-first Adobe Photoshop / Illustrator, Microsoft Graph, Stripe Checkout, OpenRouter web search, MDN fetch API, Docker compose;
+- extraction d'autorite inconnue dans des formulations naturelles sans promouvoir les mots de commande;
 - absence de vendor fixture sur demandes generiques;
 - Q&A technique explicite non assimile a documentation officielle;
 - reranking source-first comme bonus souple, pas censure.

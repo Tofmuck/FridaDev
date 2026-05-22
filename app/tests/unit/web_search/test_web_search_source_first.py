@@ -106,6 +106,37 @@ class WebSearchSourceFirstTests(unittest.TestCase):
         self.assertEqual(plan.probable_domains, ())
         self.assertIn("authority_extracted_without_domain_map", plan.reason_codes)
 
+    def test_unknown_authority_ignores_french_command_before_documentation(self) -> None:
+        plan = self._plan("trouve la documentation officielle AcmeDB vector search")
+
+        self.assertTrue(plan.active)
+        self.assertEqual(plan.authority, "AcmeDB")
+        self.assertNotEqual(plan.authority.lower(), "trouve")
+        self.assertEqual(plan.product, "vector")
+
+    def test_unknown_authority_ignores_polite_french_command_and_de_marker(self) -> None:
+        plan = self._plan("peux-tu trouver la documentation officielle de AcmeDB vector search")
+
+        self.assertTrue(plan.active)
+        self.assertEqual(plan.authority, "AcmeDB")
+        self.assertNotIn(plan.authority.lower(), {"peux-tu", "peux", "trouver"})
+        self.assertEqual(plan.product, "vector")
+
+    def test_unknown_authority_ignores_search_command_before_docs(self) -> None:
+        plan = self._plan("cherche les docs officielles de FooBar API")
+
+        self.assertTrue(plan.active)
+        self.assertEqual(plan.authority, "FooBar")
+        self.assertNotEqual(plan.authority.lower(), "cherche")
+        self.assertEqual(plan.product, "")
+
+    def test_unknown_authority_supports_english_for_marker(self) -> None:
+        plan = self._plan("official docs for FooBar API")
+
+        self.assertTrue(plan.active)
+        self.assertEqual(plan.authority, "FooBar")
+        self.assertEqual(plan.product, "")
+
     def test_non_documentation_profile_is_not_source_first(self) -> None:
         plan = web_search_source_first.build_source_first_plan(
             "actualité IA Europe 2026",

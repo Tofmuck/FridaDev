@@ -63,6 +63,17 @@ class WebSearchQueryPlanTests(unittest.TestCase):
         self.assertTrue(any("site:helpx.adobe.com" in query for query in queries))
         self.assertTrue(any("site:developer.adobe.com" in query for query in queries))
 
+    def test_documentation_officielle_unknown_authority_queries_ignore_command_words(self) -> None:
+        queries = web_search_query_plan.build_specialized_queries(
+            "peux-tu trouver la documentation officielle de AcmeDB vector search",
+            "AcmeDB vector search documentation officielle",
+            web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+        )
+
+        self.assertLessEqual(len(queries), 2)
+        self.assertTrue(any(query.startswith("AcmeDB vector documentation officielle") for query in queries))
+        self.assertFalse(any(query.lower().startswith(("peux", "trouve", "trouver", "cherche")) for query in queries))
+
     def test_administratif_francais_orients_to_french_institutions(self) -> None:
         queries = web_search_query_plan.build_specialized_queries(
             "Procédure officielle pour renouveler une carte nationale d'identité.",

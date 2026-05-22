@@ -12,27 +12,52 @@ SOURCE_FIRST_POLICY_KIND = 'source_first_authority_map_v0'
 SOURCE_FIRST_DISABLED_POLICY_KIND = 'none'
 
 _WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9_.:-]*")
+_DOCUMENTATION_TAIL_RE = re.compile(
+    r"\b(?:documentation officielle|docs officielles?|doc officielle|official docs|official documentation|documentation|docs)\b"
+    r"(?:\s+(?:de|du|des|d'|pour|for|of))?\s+(?P<tail>.+)",
+    re.IGNORECASE,
+)
 _GENERIC_TERMS = {
     'api',
     'apis',
     'centre',
+    'cherche',
     'checkout',
     'compose',
+    'could',
+    'de',
+    'des',
     'documentation',
     'docs',
     'doc',
+    'du',
     'fetch',
+    'find',
+    'for',
     'guide',
     'help',
+    'la',
+    'le',
+    'les',
     'manuel',
+    'of',
     'official',
     'officiel',
     'officielle',
+    'officielles',
+    'peux',
+    'peux-tu',
+    'please',
+    'pour',
     'reference',
     'references',
     'search',
     'support',
+    'trouve',
+    'trouver',
+    'tu',
     'web',
+    'you',
 }
 
 
@@ -164,7 +189,9 @@ def build_source_first_plan(
             authority_terms=terms,
         )
 
-    authority, product = _extract_generic_authority_and_product(combined)
+    authority, product = _extract_generic_authority_and_product(user_msg)
+    if not authority:
+        authority, product = _extract_generic_authority_and_product(primary_query)
     if not authority:
         return SourceFirstPlan(
             policy_kind=SOURCE_FIRST_POLICY_KIND,
@@ -222,7 +249,8 @@ def _product_for_rule(rule: _AuthorityRule, normalized: str) -> str:
 
 
 def _extract_generic_authority_and_product(value: str) -> tuple[str, str]:
-    words = [word.strip('.,;:!?()[]{}') for word in _WORD_RE.findall(str(value or ''))]
+    relevant = _documentation_target_segment(value)
+    words = [word.strip('.,;:!?()[]{}') for word in _WORD_RE.findall(str(relevant or ''))]
     candidates: list[str] = []
     seen: set[str] = set()
     for word in words:
@@ -241,6 +269,16 @@ def _extract_generic_authority_and_product(value: str) -> tuple[str, str]:
             continue
         product_terms.append(word.replace('_', ' '))
     return authority, ' '.join(product_terms).strip()
+
+
+def _documentation_target_segment(value: str) -> str:
+    text = str(value or '').strip()
+    if not text:
+        return ''
+    match = _DOCUMENTATION_TAIL_RE.search(text)
+    if match:
+        return str(match.group('tail') or '').strip()
+    return text
 
 
 def _authority_terms(authority: str, product: str) -> tuple[str, ...]:
