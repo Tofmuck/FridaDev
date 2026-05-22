@@ -76,7 +76,7 @@ Frida ne doit pas transformer un ranking opaque en verite. La contestabilite doi
 
 Proprietaire: Sauron + Celebrimbor.
 
-Objectif: figer l'etat actuel avant toute nouvelle reconstruction, pour ne pas corriger une image fantasmee de la stack.
+Objectif: figer l'etat actuel avant toute nouvelle reconstruction, pour ne pas corriger une image fantasmee de la stack. La Phase 0 doit produire un diagnostic suffisant pour agir, pas une cartographie exhaustive du web.
 
 Livrables:
 
@@ -84,9 +84,10 @@ Livrables:
 - [ ] Liste des categories SearXNG disponibles et testees.
 - [ ] Liste des moteurs actifs, des moteurs reellement utilisables, des moteurs instables et des moteurs a eviter.
 - [ ] Inventaire des parametres FridaDev actuels par profil web.
-- [ ] Baseline ancienne locale sur 10 a 15 requetes.
+- [ ] Baseline ancienne locale sur 10 a 15 requetes maximum.
 - [ ] Baseline locale profilee actuelle sur les memes requetes.
 - [ ] Rapport court distinguant probleme de requete, probleme de moteur, probleme de ranking, probleme de crawl et probleme d'injection.
+- [ ] Regle de non-prolongation: ne pas enrichir indefiniment le corpus avant de passer aux phases suivantes; tout ajout au-dela de 15 requetes exige une decision explicite.
 
 Fichiers ou zones concernes:
 
@@ -134,6 +135,7 @@ Criteres de fin:
 - [ ] L'etat reel est documente.
 - [ ] Les limites observees sont reliees a des causes probables.
 - [ ] Les phases suivantes peuvent partir d'un diagnostic partage.
+- [ ] Le diagnostic est suffisant pour prioriser la suite sans devenir un audit general du web.
 
 Risques/effets de bord:
 
@@ -145,7 +147,7 @@ Risques/effets de bord:
 
 Proprietaire: Sauron.
 
-Objectif: savoir quels moteurs SearXNG sont reellement utilisables depuis l'instance OVH, pas seulement declares dans la configuration.
+Objectif: savoir quels moteurs SearXNG sont reellement utilisables depuis l'instance OVH, pas seulement declares dans la configuration. L'inventaire reste borne aux moteurs pertinents pour les profils decides: `documentation_officielle`, `administratif_francais`, `academique`, `actualite` et `general_divers`.
 
 Livrables:
 
@@ -155,6 +157,7 @@ Livrables:
 - [ ] Signalement des moteurs qui repondent mais produisent du bruit dominant.
 - [ ] Signalement des moteurs utiles mais lents.
 - [ ] Recommandation de configuration gouvernee: conserver, limiter, declasser ou tester plus tard.
+- [ ] Justification explicite si un moteur hors profils cibles doit etre audite.
 
 Fichiers ou zones concernes:
 
@@ -171,6 +174,7 @@ Decisions utilisateur requises avant patch:
 Hors-scope:
 
 - Modifier la configuration SearXNG sans decision explicite.
+- Auditer les 200+ moteurs SearXNG un par un sauf necessite justifiee.
 - Remplacer SearXNG.
 - Ajouter OpenRouter comme compensation runtime.
 
@@ -274,7 +278,8 @@ Exemples obligatoires:
 Livrables:
 
 - [ ] Extracteur deterministe d'autorite/produit pour `documentation_officielle`.
-- [ ] Source map souple et testable, limitee aux cas valides.
+- [ ] Source map souple et testable, limitee aux cas valides; elle sert d'appoint, pas de verite.
+- [ ] Regle generique obligatoire: extraire l'autorite cible depuis la requete, distinguer les termes generiques (`documentation`, `officiel`, `api`, `guide`) des termes d'autorite (`Adobe`, `Microsoft`, `Stripe`, etc.), et appliquer une promotion forte seulement si domaine et autorite cible sont alignes.
 - [ ] Tests negatifs montrant qu'OpenRouter, Adobe ou Stripe ne sont pas promus seulement parce que le mot `documentation` est present.
 - [ ] Observabilite content-free des autorites detectees, hashee ou enumeree sans prompt brut si necessaire.
 
@@ -306,10 +311,12 @@ Tests/preuves attendus:
 - [ ] Stripe Checkout oriente Stripe docs.
 - [ ] OpenRouter web search oriente OpenRouter docs.
 - [ ] Requete documentation generique ne promeut aucun vendor fixture.
+- [ ] Les cas Adobe/Microsoft/Stripe/OpenRouter restent des tests de garde-fou contre l'overfit, pas des normes cachees.
 
 Criteres de fin:
 
 - [ ] Le bonus fort depend de l'autorite nommee dans la requete.
+- [ ] Les termes generiques de documentation ne suffisent jamais a promouvoir fortement un domaine.
 - [ ] Les sources probables restent des signaux souples.
 - [ ] Les sources non officielles restent visibles si elles sont pertinentes.
 
@@ -325,10 +332,13 @@ Proprietaire: Sauron.
 
 Objectif: sortir d'un heritage SearXNG incontrole si l'etat des lieux prouve qu'il penalise la recherche locale.
 
+Gate obligatoire: cette phase ne peut pas etre lancee sans GO utilisateur explicite.
+
 Livrables:
 
 - [ ] Audit de `use_default_settings: true`.
 - [ ] Proposition `remove` / `keep_only` selon la documentation officielle SearXNG.
+- [ ] Proposition Sauron avant modification: config actuelle, config cible, diff attendu, risques, rollback et fenetre de restart.
 - [ ] Backup obligatoire avant toute modification.
 - [ ] Plan de rollback documente.
 - [ ] Validation `docker compose config --quiet` quand applicable.
@@ -351,6 +361,7 @@ Decisions utilisateur requises avant patch:
 Hors-scope:
 
 - Lancer cette phase automatiquement depuis ce TODO.
+- Embarquer un changement de configuration plateforme dans un lot applicatif Celebrimbor.
 - Afficher des secrets.
 - Changer Caddy, Authelia ou les reseaux sans demande explicite.
 - Remplacer SearXNG.
