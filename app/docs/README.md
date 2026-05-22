@@ -19,6 +19,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit stack locale SearXNG/Crawl4AI vs benchmark web 2026-05-21: `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
 - Benchmark final Lot 8 web local vs OpenRouter Exa/Parallel 2026-05-22: `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`
+- Baseline consolidee Phase 0 recherche web locale 2026-05-22: `states/audits/fridadev-local-web-search-phase-0-baseline-2026-05-22.md`
 - TODO actif de renforcement web local SearXNG/Crawl4AI: `todo-todo/product/fridadev-local-web-search-hardening-todo.md`
 - TODO actif A-Z de reconstruction locale de la recherche web: `todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
@@ -103,6 +104,7 @@ Archives utiles:
 Lire d'abord:
 - `todo-todo/product/fridadev-local-web-search-rebuild-todo.md` pour piloter la reconstruction A-Z locale, source-first, gouvernee et sans hybride runtime.
 - `todo-todo/product/fridadev-local-web-search-hardening-todo.md` pour le contrat V0, les lots d'implementation et le bras benchmark `local_profiled`.
+- `states/audits/fridadev-local-web-search-phase-0-baseline-2026-05-22.md` pour la consolidation Phase 0: cas deja couverts, complement local-only borne et passage vers l'inventaire moteur SearXNG.
 - `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md` pour comparer SearXNG, Crawl4AI, configuration OVH, pipeline FridaDev et benchmark local/Exa/Parallel avant tout lot runtime.
 - `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md` pour la decision Lot 8 recadree: runtime web `local only`, Exa/Parallel uniquement comme benchmarks externes, aucune activation runtime OpenRouter.
 - `todo-done/notes/web-reading-truth-todo.md` pour le contrat archive de lecture URL explicite, `read_state`, `fit` puis `raw` et observabilite content-free.

@@ -143,6 +143,20 @@ Risques/effets de bord:
 - Tirer une conclusion a partir d'une seule requete.
 - Masquer un probleme SearXNG sous un patch applicatif.
 
+### Phase 0 - consolidation 2026-05-22
+
+Statut: consolidation Celebrimbor livree, Phase 0 globale non cochee.
+
+- [x] Note consolidee creee: `app/docs/states/audits/fridadev-local-web-search-phase-0-baseline-2026-05-22.md`.
+- [x] Artefacts Lot 8 reutilises: `/tmp/fridadev-web-search-lot8-live/local.md` et `/tmp/fridadev-web-search-lot8-live/local-profiled.md`.
+- [x] Diagnostic same-query reutilise: `/tmp/fridadev-web-search-same-query-diagnostic/comparison.md` et `/tmp/fridadev-web-search-same-query-diagnostic/searxng.md`.
+- [x] Complement local-only lance pour Adobe Photoshop, Adobe Illustrator, Bourdieu / sociologie, sciences exactes, Microsoft Graph et Jaguar ambigu: `/tmp/fridadev-web-search-phase0-missing-local/phase0-missing-local.md`.
+- [x] Hypothese confirmee: actualite IA Europe, OpenRouter docs, Derrida / trace, CNI, URL explicite, local vs local_profiled, same-query et audit stack sont deja largement couverts.
+- [ ] Decision utilisateur restante: accepter ce corpus borne comme baseline Phase 0 et ne pas l'etendre sans raison explicite.
+- [ ] Passage Phase 1: Sauron doit qualifier les moteurs SearXNG pertinents par profil, sans transformer Phase 0 en audit interminable.
+
+Critere de passage vers Phase 1: le corpus baseline reste borne, la note consolidee sert de diagnostic unique, et les manques restants sont traites comme inventaire moteur SearXNG plutot que comme nouveau benchmark general.
+
 ## Phase 1 — Inventaire des moteurs SearXNG
 
 Proprietaire: Sauron.
