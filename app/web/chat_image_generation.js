@@ -180,6 +180,11 @@ function createImageGenerationController({
     if (statusEl) {
       statusEl.textContent = state.status;
       statusEl.classList.toggle('is-error', state.isError);
+      if (state.busy) {
+        statusEl.dataset.imageGenerationState = 'generating';
+      } else {
+        delete statusEl.dataset.imageGenerationState;
+      }
     }
     if (previewEl) {
       previewEl.hidden = !state.imageDataUrl;

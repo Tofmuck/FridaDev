@@ -127,6 +127,7 @@ function chatMockScript({ streamMode, imageMode = 'success' }) {
             requestPayload = {};
           }
           state.imageRequests.push(requestPayload);
+          await new Promise((resolve) => setTimeout(resolve, 80));
           if (state.imageMode === "error") {
             return new Response(JSON.stringify({
               ok: false,
@@ -204,6 +205,9 @@ test('image generation tool opens, validates, calls its own route and keeps chat
 
     await page.fill('#imageGenerationPrompt', 'cercle bleu sur fond blanc');
     await page.click('#imageGenerationSubmit');
+    await page.waitForFunction(() =>
+      document.querySelector('#imageGenerationStatus')?.dataset.imageGenerationState === 'generating');
+    await assertTextContains(page.locator('#imageGenerationStatus'), 'Génération en cours.');
     await page.waitForSelector('#imageGenerationPreview:not([hidden])');
     await page.waitForFunction(() => {
       const img = document.querySelector('#imageGenerationPreview');

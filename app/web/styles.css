@@ -1260,7 +1260,7 @@ body {
   background: transparent;
   cursor: pointer;
   color: var(--fg-subtle);
-  transition: color 130ms ease, border-color 130ms ease, background 130ms ease;
+  transition: color 130ms ease, border-color 130ms ease, background 130ms ease, box-shadow 130ms ease;
 }
 
 .btn-dictation:hover,
@@ -1308,25 +1308,29 @@ body {
 .btn-active-document.active {
   color: var(--fg);
   border-color: var(--border-strong);
-  background: var(--surface);
+  background: var(--surface-active);
+  box-shadow: inset 0 0 0 1px rgba(25, 23, 20, 0.035);
 }
 
 .btn-image-generation.active {
   color: var(--fg);
   border-color: var(--border-strong);
-  background: var(--surface);
+  background: var(--surface-active);
+  box-shadow: inset 0 0 0 1px rgba(25, 23, 20, 0.035);
 }
 
 .btn-adobe-mode.active {
   color: var(--fg);
   border-color: var(--border-strong);
-  background: var(--surface);
+  background: var(--surface-active);
+  box-shadow: inset 0 0 0 1px rgba(25, 23, 20, 0.035);
 }
 
 .btn-web-search.active {
   color: var(--fg);
   border-color: var(--border-strong);
-  background: var(--surface);
+  background: var(--surface-active);
+  box-shadow: inset 0 0 0 1px rgba(25, 23, 20, 0.035);
 }
 
 .dictation-status {
@@ -1339,6 +1343,7 @@ body {
 
 .dictation-status[data-dictation-state="recording"]::after,
 .dictation-status[data-dictation-state="transcribing"]::after,
+.image-generation-status[data-image-generation-state="generating"]::after,
 .msg.assistant-loader::after {
   content: "";
   display: inline-block;
@@ -1378,6 +1383,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .dictation-status[data-dictation-state="recording"]::after,
   .dictation-status[data-dictation-state="transcribing"]::after,
+  .image-generation-status[data-image-generation-state="generating"]::after,
   .msg.assistant-loader::after {
     animation: none;
     background-position: 1px 6px, 9px 6px, 17px 6px;

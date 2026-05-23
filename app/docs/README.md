@@ -31,6 +31,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Archive A-Z web discovery local-first + Exa: `todo-done/product/fridadev-local-web-search-rebuild-todo.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
 - TODO actif jobs divers produit: `todo-todo/product/job-divers-todo.md`
+- TODO actif polish UI chat: `todo-todo/product/Polish to do.md`
 - TODO actif Adobe Photoshop / Illustrator: `todo-todo/product/Adobe to do.md`
 - Contrat actif du mode Adobe Photoshop / Illustrator: `states/specs/fridadev-adobe-docs-mode-contract.md`
 - Contrat actif du reglage global reasoning du LLM principal: `states/specs/fridadev-main-llm-reasoning-contract.md`
