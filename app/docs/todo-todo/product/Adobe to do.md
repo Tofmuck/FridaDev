@@ -315,43 +315,49 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 
 ### PLAN
 
-- [ ] Extraire les liens depuis Markdown Crawl4AI.
-- [ ] Canonicaliser chaque URL.
-- [ ] Filtrer par produit explicite.
-- [ ] Dedupliquer.
-- [ ] Classer les liens par type probable: release, known issue, help page, troubleshooting, feature.
-- [ ] Prioriser selon la question utilisateur.
+- [x] Extraire les liens depuis Markdown Crawl4AI.
+- [x] Canonicaliser chaque URL.
+- [x] Filtrer par produit explicite.
+- [x] Dedupliquer.
+- [x] Classer les liens par type probable: release_notes, known_issues, help_page, hub.
+- [x] Prioriser selon la question utilisateur.
 
 ### PATCH
 
-- [ ] Ajouter `extract_adobe_links(markdown, base_url, product)`.
-- [ ] Ajouter `rank_adobe_links(question, links, product)`.
-- [ ] Ajouter borne `follow_link_limit`.
-- [ ] Ajouter reason codes de filtrage.
+- [x] Ajouter `extract_adobe_links(markdown, base_url, product)`.
+- [x] Ajouter `rank_adobe_links(question, links, product)`.
+- [x] Ajouter borne `follow_link_limit`.
+- [x] Ajouter reason codes de filtrage.
 
 ### TEST
 
-- [ ] Test: liens relatifs resolus.
-- [ ] Test: fragments supprimes.
-- [ ] Test: doublons dedupes.
-- [ ] Test: liens autre produit refuses.
-- [ ] Test: liens non HelpX refuses.
-- [ ] Test: liens PDF/media refuses.
-- [ ] Test: ranking favorise release notes pour question version.
-- [ ] Test: ranking favorise troubleshooting pour question bug/erreur.
+- [x] Test: liens relatifs resolus.
+- [x] Test: fragments supprimes.
+- [x] Test: query string supprimee avec reason code.
+- [x] Test: doublons dedupes.
+- [x] Test: liens autre produit refuses.
+- [x] Test: liens non HelpX refuses.
+- [x] Test: liens PDF/media refuses.
+- [x] Test: Community/Learn refuses.
+- [x] Test: classification release notes, known issues et help page.
+- [x] Test: ranking favorise release notes pour question version.
+- [x] Test: ranking favorise troubleshooting pour question bug/erreur.
+- [x] Test: ranking favorise help page pour question d'usage.
+- [x] Test: limite `follow_link_limit` respectee.
+- [x] Test: aucun Markdown complet ni texte d'ancre dans `repr` / export content-free.
 
 ### RISQUES
 
-- [ ] Trop de liens candidats.
-- [ ] Liens marketing ou navigation en tete.
+- [x] Trop de liens candidats.
+- [x] Liens marketing ou navigation en tete.
 - [ ] Liens utiles caches loin dans la page.
 
 ### REDUCTION DES RISQUES
 
-- [ ] Borne stricte.
-- [ ] Scoring simple et explicable.
-- [ ] Seeds release/known issues toujours disponibles.
-- [ ] Fallback: si liens insuffisants, rester sur les seeds.
+- [x] Borne stricte.
+- [x] Scoring simple et explicable.
+- [x] Seeds release/known issues toujours disponibles.
+- [x] Fallback: si liens insuffisants, rester sur les seeds.
 
 ## Lot 4 - Selection de passages
 

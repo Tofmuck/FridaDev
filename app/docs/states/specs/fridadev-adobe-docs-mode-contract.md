@@ -144,6 +144,18 @@ Reader Crawl4AI Lot 2:
 - le Lot 2 n'implemente pas de fallback `fit`; un futur fallback devra rester explicite et ne pourra jamais devenir preuve unique;
 - le reader ne cree pas de fichier temporaire et n'ecrit pas le markdown dans un cache applicatif.
 
+Extraction de liens Lot 3:
+
+- l'extracteur lit seulement du Markdown deja present en memoire et ne declenche aucun crawl;
+- les liens Markdown sont resolus contre l'URL source, canonicalises et revalides par le registre Lot 1;
+- les liens acceptes restent limites a `helpx.adobe.com` et au produit explicite;
+- les fragments et query strings sont retires avec reason codes;
+- les liens Learn, Community, marketing, comptes, PDF, images, videos, archives et autre produit sont exclus;
+- les objets lien et ranking peuvent contenir l'URL canonique pour le futur reader, mais leurs `repr` et exports content-free ne contiennent ni Markdown ni texte d'ancre;
+- le ranking est deterministe: questions version/nouveaute vers release notes, questions bug/erreur vers known issues, questions d'usage vers help pages;
+- les seeds release notes et known issues du registre restent disponibles si peu de liens utiles sont extraits;
+- la limite de suivi par tour reste stricte et par defaut bornee autour de 4 a 8 liens.
+
 Cache:
 
 - cache applicatif interdit;
