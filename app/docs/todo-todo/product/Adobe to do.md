@@ -5,23 +5,23 @@ Statut: actif, non lance runtime.
 Date d'ouverture: 2026-05-23.
 Besoin produit: rendre Frida utile pour Amandine sur Photoshop et Illustrator via une lecture officielle Adobe a la demande, sans index durable Adobe et sans casser la recherche web generale.
 
-## Decisions deja prises
+## Invariants deja actes
 
-- [ ] Garder ce chantier separe de `job-divers-todo.md`; `job-divers-todo.md` reste actif pour les petits jobs produit/hiver.
-- [ ] Ne pas creer de mode `auto`: Amandine choisit explicitement Photoshop ou Illustrator.
-- [ ] Ne pas vendre ce chantier comme une base de connaissance Adobe persistante.
-- [ ] Ne pas demander a Amandine de documenter chaque geste ou effet pendant son travail.
-- [ ] Construire une specialisation par protocole de lecture sourcee: doc Adobe officielle + cas concret utilisateur.
-- [ ] Utiliser HelpX officiel en lecture a la demande pour le MVP.
-- [ ] Ne pas indexer durablement HelpX, Learn, Community ou PDF Adobe.
-- [ ] Ne pas utiliser OpenRouter/Exa comme discovery nominale du MVP Adobe.
-- [ ] Ne pas faire reposer le MVP sur SearXNG: le diagnostic local n'a pas trouve HelpX de facon fiable.
-- [ ] Demarrer depuis un registre tres court d'URLs officielles connues.
-- [ ] Suivre seulement des liens internes HelpX officiels, bornes et filtrables.
-- [ ] Lire large avec Crawl4AI `raw`, puis reduire en passages courts.
-- [ ] Jeter le texte Adobe lu a la demande apres le tour.
-- [ ] Ne jamais envoyer les passages Adobe vers Memory, Identity, Summary, Biblio, Active Documents ou historique persistant.
-- [ ] Repondre en francais, avec prudence si la source est anglaise ou si le libelle UI localise n'est pas confirme.
+- Garder ce chantier separe de `job-divers-todo.md`; `job-divers-todo.md` reste actif pour les petits jobs produit/hiver.
+- Ne pas creer de mode `auto`: Amandine choisit explicitement Photoshop ou Illustrator.
+- Ne pas vendre ce chantier comme une base de connaissance Adobe persistante.
+- Ne pas demander a Amandine de documenter chaque geste ou effet pendant son travail.
+- Construire une specialisation par protocole de lecture sourcee: doc Adobe officielle + cas concret utilisateur.
+- Utiliser HelpX officiel en lecture a la demande pour le MVP.
+- Ne pas indexer durablement HelpX, Learn, Community ou PDF Adobe.
+- Ne pas utiliser OpenRouter/Exa comme discovery nominale du MVP Adobe.
+- Ne pas faire reposer le MVP sur SearXNG: le diagnostic local n'a pas trouve HelpX de facon fiable.
+- Demarrer depuis un registre tres court d'URLs officielles connues.
+- Suivre seulement des liens internes HelpX officiels, bornes et filtrables.
+- Lire large avec Crawl4AI `raw`, puis reduire en passages courts.
+- Jeter le texte Adobe lu a la demande apres le tour.
+- Ne jamais envoyer les passages Adobe vers Memory, Identity, Summary, Biblio, Active Documents ou historique persistant.
+- Repondre en francais, avec prudence si la source est anglaise ou si le libelle UI localise n'est pas confirme.
 
 ## Diagnostic technique du 2026-05-23
 
@@ -123,7 +123,7 @@ Valeurs indicatives a confirmer au patch:
 - [ ] `adobe_passage_count`: `3` a `8` passages injectes maximum.
 - [ ] `adobe_prompt_budget_chars`: borne dediee, inferieure au brut Adobe.
 - [ ] `adobe_timeout_s`: borne courte par page et borne globale par tour.
-- [ ] `adobe_cache_policy`: cache technique Crawl4AI autorise, mais pas stockage applicatif du texte Adobe.
+- [ ] `adobe_cache_policy`: cache applicatif interdit; cache Crawl4AI desactive ou explicitement borne/ephemere, sauf preuve technique documentee qu'il ne conserve pas le contenu brut.
 - [ ] `adobe_language_preference`: FR si disponible, EN sinon avec caveat.
 - [ ] `adobe_min_evidence_threshold`: seuil minimal avant reponse affirmative sourcee.
 
