@@ -330,7 +330,36 @@ Prompt/persistence:
 - payload d'observabilite sans texte Adobe;
 - Memory/Identity/Summary/Biblio/Active Documents ne recoivent pas la lane Adobe.
 
-## 11. Decisions utilisateur restantes avant code
+## 11. Contrat evaluation metier Lot 8
+
+L'evaluation metier du mode Adobe doit tester la valeur pour une illustratrice, pas seulement le branchement technique.
+
+Perimetre automatise:
+
+- fixtures synthetiques uniquement: aucun contenu Adobe reel ne doit etre ajoute au depot;
+- tests deterministes des cas Photoshop: detourage/masque, calques, Remove Tool/release notes, disque de travail, export;
+- tests deterministes des cas Illustrator: plume, traces, logo vectoriel, import PSD, PDF print;
+- tests version/release notes et bug/known issues avec source type attendu;
+- test piege ou la preuve Adobe est insuffisante;
+- comparaison minimale Adobe actif vs inactif: les sources/passage n'existent que lorsque le mode Adobe est demande;
+- exports et `repr` restent content-free.
+
+Ce que ces tests prouvent:
+
+- le mini-pipeline sait selectionner le bon type de source et un passage pertinent quand une preuve synthetique existe;
+- les alias metier FR/EN bornes couvrent les demandes francaises probables d'Amandine face a des docs anglaises;
+- le mode Adobe ne se confond pas avec une reponse par connaissance generale: les tests regardent les sources et l'evidence, pas seulement le texte final du modele.
+
+Ce que ces tests ne prouvent pas:
+
+- qualite finale de la reponse LLM sur un cas reel d'atelier;
+- exhaustivite HelpX;
+- exactitude des libelles de menu localises;
+- validation metier par Amandine.
+
+La validation Amandine reste necessaire avant cloture produit forte: au moins un cas Photoshop reel et un cas Illustrator reel doivent etre verifies avec sources visibles ou insuffisance clairement signalee.
+
+## 12. Decisions utilisateur restantes avant code
 
 Le code peut commencer sans reouvrir la doctrine. Les seules decisions produit encore utiles avant UI sont:
 

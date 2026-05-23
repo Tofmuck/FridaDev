@@ -555,38 +555,39 @@ Statut: clos le 2026-05-23 par validation live bornee. Note: `app/docs/states/au
 
 ### PLAN
 
-- [ ] Construire un petit jeu de questions Photoshop.
-- [ ] Construire un petit jeu de questions Illustrator.
-- [ ] Inclure questions version/bug/release notes.
-- [ ] Inclure questions ambiguës a traiter sans Auto: l'utilisateur doit choisir le produit.
-- [ ] Inclure cas ou Frida doit dire que la preuve est insuffisante.
+- [x] Construire un petit jeu de questions Photoshop.
+- [x] Construire un petit jeu de questions Illustrator.
+- [x] Inclure questions version/bug/release notes.
+- [x] Inclure questions ambiguës a traiter sans Auto: l'utilisateur doit choisir le produit.
+- [x] Inclure cas ou Frida doit dire que la preuve est insuffisante.
 
 ### PATCH
 
-- [ ] Ajouter fixtures/evals si le framework existant le justifie.
-- [ ] Sinon documenter un protocole manuel de validation.
-- [ ] Ajouter snapshots content-free de preuves.
+- [x] Ajouter fixtures/evals si le framework existant le justifie.
+- [x] Documenter le protocole manuel restant pour validation Amandine.
+- [x] Ajouter snapshots content-free de preuves.
+- [x] Renforcer les alias metier FR/EN bornes exposes par l'evaluation: detourage, disque, vectoriel, impression, import/export, suppression.
 
 ### TEST
 
-- [ ] Photoshop: detourage/masque, calques, remove tool, disque de travail, export.
-- [ ] Illustrator: plume, tracés, logo vectoriel, import PSD, PDF print.
-- [ ] Version: release notes lues pour questions recentes.
-- [ ] Bugs: known/fixed issues lues avant affirmation.
-- [ ] Refus: fonctionnalite inventee non confirmee.
-- [ ] Non-regression: chat normal sans Adobe.
+- [x] Photoshop: detourage/masque, calques, remove tool, disque de travail, export.
+- [x] Illustrator: plume, tracés, logo vectoriel, import PSD, PDF print.
+- [x] Version: release notes lues pour questions recentes.
+- [x] Bugs: known/fixed issues lues avant affirmation.
+- [x] Refus: fonctionnalite inventee non confirmee.
+- [x] Non-regression: chat normal sans Adobe.
 
 ### RISQUES
 
-- [ ] Eval trop facile.
-- [ ] Le modele repond par connaissance generale sans utiliser les sources.
-- [ ] Sources Adobe lues mais mal exploitees.
+- [x] Eval trop facile.
+- [x] Le modele repond par connaissance generale sans utiliser les sources.
+- [x] Sources Adobe lues mais mal exploitees.
 
 ### REDUCTION DES RISQUES
 
-- [ ] Exiger citations/metadonnees de source.
-- [ ] Comparer mode Adobe actif vs inactif sur quelques cas.
-- [ ] Inclure questions pieges.
+- [x] Exiger citations/metadonnees de source.
+- [x] Comparer mode Adobe actif vs inactif sur quelques cas.
+- [x] Inclure questions pieges.
 - [ ] Valider avec Amandine sur cas reels.
 
 ## Lot 9 - Rebuild, validation live et cloture provisoire
