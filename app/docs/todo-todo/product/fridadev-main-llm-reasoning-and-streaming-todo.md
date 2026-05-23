@@ -342,6 +342,7 @@ Statut: correctif applicatif livre; pas de modification plateforme/Docker ni de 
 - [x] Blob unique conserve pour le premier patch; `MediaRecorder.start()` reste sans `timeslice`.
 - [x] Mesures content-free envoyees avec l'upload: duree approx, taille blob, nombre de chunks, raison d'arret.
 - [x] Backend: logs content-free de reception upload, statut transcription, latence et erreur bornee; pas d'audio brut, pas de transcript, pas de nom de fichier utilisateur.
+- [x] Observabilite incident 2026-05-23: correlation `request_id` FridaDev -> `platform-whisper-api`, `transcript_chars` cote FridaDev, durees ffprobe entree/normalisee, tailles et latences ffmpeg/whisper cote service aval, sans contenu audio ni transcript.
 - [x] Timeout applicatif Whisper par defaut porte a `180 s`.
 - [x] Brouillon texte existant preserve en cas d'erreur recorder, upstream ou timeout.
 - [x] Tests frontend/backend ajoutes pour limite 150 s, raison d'arret, brouillon preserve, gros blob simule et logs content-free.

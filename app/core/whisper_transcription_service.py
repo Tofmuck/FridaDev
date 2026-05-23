@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 import time
+import uuid
 from typing import Any, Mapping
 
 import requests
@@ -114,6 +115,10 @@ def _error_code(error: str) -> str:
     return 'transcription_error'
 
 
+def _new_request_id() -> str:
+    return uuid.uuid4().hex[:16]
+
+
 def _api_url(config_module: Any) -> str:
     return _text(getattr(config_module, 'WHISPER_API_URL', '')).rstrip('/')
 
@@ -123,6 +128,12 @@ def _auth_headers(config_module: Any) -> dict[str, str]:
     if not api_key:
         return {}
     return {'Authorization': f'Bearer {api_key}'}
+
+
+def _request_headers(config_module: Any, request_id: str) -> dict[str, str]:
+    headers = _auth_headers(config_module)
+    headers['X-Frida-Request-Id'] = request_id
+    return headers
 
 
 def _request_error_classes(requests_module: Any) -> tuple[type[Any] | None, type[Any] | None]:
@@ -194,6 +205,7 @@ def transcribe_upload(
     requests_module: Any = requests,
     config_module: Any,
     logger_obj: Any = logger,
+    request_id: str,
 ) -> str:
     api_url = _api_url(config_module)
     if not api_url:
@@ -218,7 +230,7 @@ def transcribe_upload(
                 'model': _DEFAULT_MODEL,
                 'response_format': _DEFAULT_RESPONSE_FORMAT,
             },
-            headers=_auth_headers(config_module),
+            headers=_request_headers(config_module, request_id),
             timeout=timeout_s,
         )
     except Exception as exc:
@@ -231,7 +243,8 @@ def transcribe_upload(
             _log(
                 logger_obj,
                 'warning',
-                'whisper_upstream_request_failed timeout_s=%s err=%s',
+                'whisper_upstream_request_failed request_id=%s timeout_s=%s err=%s',
+                request_id,
                 timeout_s,
                 exc.__class__.__name__,
             )
@@ -246,7 +259,8 @@ def transcribe_upload(
         _log(
             logger_obj,
             'warning',
-            'whisper_upstream_timeout_response timeout_s=%s status=%s',
+            'whisper_upstream_timeout_response request_id=%s timeout_s=%s status=%s',
+            request_id,
             timeout_s,
             status_code,
         )
@@ -258,7 +272,8 @@ def transcribe_upload(
         _log(
             logger_obj,
             'warning',
-            'whisper_upstream_bad_status status=%s timeout_s=%s',
+            'whisper_upstream_bad_status request_id=%s status=%s timeout_s=%s',
+            request_id,
             status_code,
             timeout_s,
         )
@@ -272,7 +287,8 @@ def transcribe_upload(
         _log(
             logger_obj,
             'warning',
-            'whisper_upstream_invalid_payload keys=%s',
+            'whisper_upstream_invalid_payload request_id=%s keys=%s',
+            request_id,
             ','.join(sorted(str(key) for key in payload.keys())),
         )
         raise WhisperTranscriptionServiceError(
@@ -291,6 +307,7 @@ def transcribe_http_request(
     config_module: Any,
     logger_obj: Any = logger,
 ) -> tuple[dict[str, Any], int]:
+    request_id = _new_request_id()
     metadata = _request_metadata(form)
     upload = prepare_upload(
         content_type=content_type,
@@ -301,9 +318,10 @@ def transcribe_http_request(
         logger_obj,
         'info',
         (
-            'whisper_upload_received upload_bytes=%s client_blob_bytes=%s '
+            'whisper_upload_received request_id=%s upload_bytes=%s client_blob_bytes=%s '
             'recording_duration_ms=%s stop_reason=%s chunk_count=%s content_type=%s'
         ),
+        request_id,
         upload_bytes,
         metadata['recording_blob_size_bytes'],
         metadata['recording_duration_ms'],
@@ -318,6 +336,7 @@ def transcribe_http_request(
             requests_module=requests_module,
             config_module=config_module,
             logger_obj=logger_obj,
+            request_id=request_id,
         )
     except WhisperTranscriptionServiceError as exc:
         latency_ms = int(round((time.monotonic() - started_at) * 1000))
@@ -325,9 +344,10 @@ def transcribe_http_request(
             logger_obj,
             'warning',
             (
-                'whisper_transcription_failed status=%s error_code=%s upload_bytes=%s '
+                'whisper_transcription_failed request_id=%s status=%s error_code=%s upload_bytes=%s '
                 'recording_duration_ms=%s stop_reason=%s latency_ms=%s'
             ),
+            request_id,
             exc.status_code,
             _error_code(exc.error),
             upload_bytes,
@@ -341,13 +361,15 @@ def transcribe_http_request(
         logger_obj,
         'info',
         (
-            'whisper_transcription_completed upload_bytes=%s recording_duration_ms=%s '
-            'stop_reason=%s latency_ms=%s'
+            'whisper_transcription_completed request_id=%s upload_bytes=%s recording_duration_ms=%s '
+            'stop_reason=%s latency_ms=%s transcript_chars=%s'
         ),
+        request_id,
         upload_bytes,
         metadata['recording_duration_ms'],
         metadata['recording_stop_reason'],
         latency_ms,
+        len(text),
     )
     return (
         {

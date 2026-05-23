@@ -76,6 +76,7 @@ class WhisperTranscriptionServiceTests(unittest.TestCase):
             requests_module=requests_module,
             config_module=config_module,
             logger_obj=SimpleNamespace(warning=lambda *_args, **_kwargs: None),
+            request_id='req-test',
         )
 
         self.assertEqual(text, 'bonjour')
@@ -95,7 +96,10 @@ class WhisperTranscriptionServiceTests(unittest.TestCase):
         )
         self.assertEqual(
             observed['headers'],
-            {'Authorization': 'Bearer whisper-secret'},
+            {
+                'Authorization': 'Bearer whisper-secret',
+                'X-Frida-Request-Id': 'req-test',
+            },
         )
         self.assertEqual(observed['timeout'], 42)
 
@@ -124,6 +128,7 @@ class WhisperTranscriptionServiceTests(unittest.TestCase):
                 requests_module=requests_module,
                 config_module=config_module,
                 logger_obj=SimpleNamespace(warning=lambda *_args, **_kwargs: None),
+                request_id='req-test',
             )
 
         self.assertEqual(ctx.exception.status_code, 502)
@@ -153,6 +158,7 @@ class WhisperTranscriptionServiceTests(unittest.TestCase):
                 requests_module=requests_module,
                 config_module=config_module,
                 logger_obj=SimpleNamespace(warning=lambda *_args, **_kwargs: None),
+                request_id='req-test',
             )
 
         self.assertEqual(ctx.exception.status_code, 504)
@@ -183,6 +189,7 @@ class WhisperTranscriptionServiceTests(unittest.TestCase):
             requests_module=requests_module,
             config_module=config_module,
             logger_obj=_FakeLogger(),
+            request_id='req-test',
         )
 
         self.assertEqual(observed['timeout'], 180)
@@ -229,8 +236,10 @@ class WhisperTranscriptionServiceTests(unittest.TestCase):
         self.assertEqual(observed['file_bytes'], b'audio-bytes')
         logs = '\n'.join(logger.lines)
         self.assertIn('upload_bytes=11', logs)
+        self.assertRegex(logs, r'request_id=[0-9a-f]{16}')
         self.assertIn('recording_duration_ms=150000', logs)
         self.assertIn('stop_reason=auto_limit', logs)
+        self.assertIn('transcript_chars=17', logs)
         self.assertNotIn('audio-bytes', logs)
         self.assertNotIn('secret transcript', logs)
         self.assertNotIn('private-filename', logs)
@@ -262,10 +271,11 @@ class WhisperTranscriptionServiceTests(unittest.TestCase):
                 requests_module=requests_module,
                 config_module=config_module,
                 logger_obj=logger,
+                request_id='req-test',
             )
 
         logs = '\n'.join(logger.lines)
-        self.assertIn('whisper_upstream_bad_status status=500 timeout_s=180', logs)
+        self.assertIn('whisper_upstream_bad_status request_id=req-test status=500 timeout_s=180', logs)
         self.assertNotIn('private upstream detail', logs)
         self.assertNotIn('audio-bytes', logs)
         self.assertNotIn('private.webm', logs)

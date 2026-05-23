@@ -121,7 +121,7 @@ class ChatTranscriptionRouteTests(unittest.TestCase):
                 'response_format': 'json',
             },
         )
-        self.assertEqual(observed['headers'], {})
+        self.assertRegex(observed['headers'].get('X-Frida-Request-Id', ''), r'^[0-9a-f]{16}$')
         self.assertEqual(observed['timeout'], 30)
 
     def test_api_chat_transcribe_forwards_large_blob_with_safe_metadata(self) -> None:
