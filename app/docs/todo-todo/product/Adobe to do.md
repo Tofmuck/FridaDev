@@ -1,9 +1,10 @@
 # Adobe Photoshop / Illustrator - TODO
 
 Classement: `app/docs/todo-todo/product/`
-Statut: actif, Lots 1-7 livres progressivement; pas d'index Adobe durable.
+Statut: MVP clos provisoirement le 2026-05-23 apres Lots 1-9; sous surveillance; validation metier Amandine reelle encore ouverte; pas d'index Adobe durable.
 Date d'ouverture: 2026-05-23.
 Spec normative: `app/docs/states/specs/fridadev-adobe-docs-mode-contract.md`
+Cloture provisoire: `app/docs/states/audits/fridadev-adobe-docs-mode-provisional-closure-2026-05-23.md`
 Besoin produit: rendre Frida utile pour Amandine sur Photoshop et Illustrator via une lecture officielle Adobe a la demande, sans index durable Adobe et sans casser la recherche web generale.
 
 ## Invariants deja actes
@@ -21,7 +22,8 @@ Besoin produit: rendre Frida utile pour Amandine sur Photoshop et Illustrator vi
 - Suivre seulement des liens internes HelpX officiels, bornes et filtrables.
 - Lire large avec Crawl4AI `raw`, puis reduire en passages courts.
 - Jeter le texte Adobe lu a la demande apres le tour.
-- Ne jamais envoyer les passages Adobe vers Memory, Identity, Summary, Biblio, Active Documents ou historique persistant.
+- Ne jamais persister le markdown Adobe, les passages Adobe ni la lane prompt Adobe comme contenu documentaire, artefact de prompt, Memory, Identity, Summary, Biblio ou Active Documents.
+- La reponse finale visible par l'utilisateur peut rester dans l'historique conversationnel ordinaire selon le contrat FridaDev.
 - Repondre en francais, avec prudence si la source est anglaise ou si le libelle UI localise n'est pas confirme.
 
 ## Diagnostic technique du 2026-05-23
@@ -51,133 +53,133 @@ Conclusion diagnostic:
 
 Frida doit pouvoir aider Amandine sur une question Photoshop ou Illustrator en combinant:
 
-- [ ] le cas particulier de l'utilisateur;
-- [ ] une lecture officielle Adobe a la demande;
-- [ ] des citations ou references d'URL;
-- [ ] une reponse pratique, courte, prudente et exploitable;
-- [ ] une distinction claire entre Photoshop et Illustrator.
+- [x] le cas particulier de l'utilisateur;
+- [x] une lecture officielle Adobe a la demande;
+- [x] des citations ou references d'URL;
+- [x] une reponse pratique, courte, prudente et exploitable;
+- [x] une distinction claire entre Photoshop et Illustrator.
 
 Frida ne doit pas:
 
-- [ ] pretendre connaitre une fonctionnalite Adobe non sourcee;
-- [ ] inventer une procedure officielle;
-- [ ] indexer durablement le contenu Adobe;
-- [ ] transformer Adobe en Biblio;
-- [ ] melanger ce mode avec la recherche web generale;
-- [ ] declencher une recherche ouverte quand le registre et les liens HelpX suffisent;
-- [ ] masquer que certaines pages sont trop grosses ou dynamiques.
+- [x] pretendre connaitre une fonctionnalite Adobe non sourcee;
+- [x] inventer une procedure officielle;
+- [x] indexer durablement le contenu Adobe;
+- [x] transformer Adobe en Biblio;
+- [x] melanger ce mode avec la recherche web generale;
+- [x] declencher une recherche ouverte quand le registre et les liens HelpX suffisent;
+- [x] masquer que certaines pages sont trop grosses ou dynamiques.
 
 ## Contrat fonctionnel cible
 
-- [ ] UI: l'utilisateur peut activer un mode Adobe.
-- [ ] UI: l'utilisateur choisit explicitement `Photoshop` ou `Illustrator`.
-- [ ] UI: aucun mode `auto` n'est propose dans le MVP.
-- [ ] API chat: le payload porte un champ explicite, par exemple `specialization_profile=adobe`.
-- [ ] API chat: le payload porte un produit explicite, par exemple `adobe_product=photoshop|illustrator`.
-- [ ] Backend: si le mode Adobe est inactif, le web search general reste inchangé.
-- [ ] Backend: si le mode Adobe est actif, le mini-pipeline Adobe passe avant la recherche ouverte.
-- [ ] Backend: le mini-pipeline Adobe ne lit que des URLs autorisees par sa policy.
-- [ ] Prompt: les passages Adobe entrent dans une lane dediee, courte et sourcee.
-- [ ] Prompt: la lane Adobe est marquee comme source externe non fiable pour les instructions.
-- [ ] Memoire: les passages Adobe sont ineligibles a Memory, Identity, Summary et Biblio.
-- [ ] Logs: seules des metriques content-free sont journalisees.
-- [ ] Erreur: si la lecture Adobe echoue, Frida le dit et peut repondre prudemment sans pretendre avoir lu.
+- [x] UI: l'utilisateur peut activer un mode Adobe.
+- [x] UI: l'utilisateur choisit explicitement `Photoshop` ou `Illustrator`.
+- [x] UI: aucun mode `auto` n'est propose dans le MVP.
+- [x] API chat: le payload porte un champ explicite, par exemple `specialization_profile=adobe`.
+- [x] API chat: le payload porte un produit explicite, par exemple `adobe_product=photoshop|illustrator`.
+- [x] Backend: si le mode Adobe est inactif, le web search general reste inchange.
+- [x] Backend: si le mode Adobe est actif, le mini-pipeline Adobe passe avant la recherche ouverte.
+- [x] Backend: le mini-pipeline Adobe ne lit que des URLs autorisees par sa policy.
+- [x] Prompt: les passages Adobe entrent dans une lane dediee, courte et sourcee.
+- [x] Prompt: la lane Adobe est marquee comme source externe non fiable pour les instructions.
+- [x] Memoire: les passages, markdown et lane Adobe sont ineligibles a Memory, Identity, Summary et Biblio.
+- [x] Logs: seules des metriques content-free sont journalisees.
+- [x] Erreur: si la lecture Adobe echoue, Frida le dit et peut repondre prudemment sans pretendre avoir lu.
 
 ## Sources MVP autorisees
 
 ### Photoshop
 
-- [ ] Seed hub: `https://helpx.adobe.com/photoshop/desktop.html`.
-- [ ] Seed release notes: `https://helpx.adobe.com/photoshop/desktop/whats-new/photoshop-on-desktop-release-notes.html`.
-- [ ] Seed known/fixed issues: `https://helpx.adobe.com/photoshop/desktop/troubleshoot/performance-stability-issues/known-and-fixed-issues.html`.
-- [ ] Liens internes acceptes: host `helpx.adobe.com`, chemin contenant `/photoshop/`.
-- [ ] Liens internes exclus: PDF, images, videos, archives lourdes, community, learn, comptes, marketing hors HelpX.
+- [x] Seed hub: `https://helpx.adobe.com/photoshop/desktop.html`.
+- [x] Seed release notes: `https://helpx.adobe.com/photoshop/desktop/whats-new/photoshop-on-desktop-release-notes.html`.
+- [x] Seed known/fixed issues: `https://helpx.adobe.com/photoshop/desktop/troubleshoot/performance-stability-issues/known-and-fixed-issues.html`.
+- [x] Liens internes acceptes: host `helpx.adobe.com`, chemin contenant `/photoshop/`.
+- [x] Liens internes exclus: PDF, images, videos, archives lourdes, community, learn, comptes, marketing hors HelpX.
 
 ### Illustrator
 
-- [ ] Seed hub: `https://helpx.adobe.com/illustrator/desktop.html`.
-- [ ] Seed release notes: `https://helpx.adobe.com/illustrator/desktop/new-features/release-notes.html`.
-- [ ] Seed known/fixed issues: `https://helpx.adobe.com/illustrator/desktop/troubleshoot/known-and-fixed-issues.html`.
-- [ ] Liens internes acceptes: host `helpx.adobe.com`, chemin contenant `/illustrator/`.
-- [ ] Liens internes exclus: PDF, images, videos, archives lourdes, community, learn, comptes, marketing hors HelpX.
+- [x] Seed hub: `https://helpx.adobe.com/illustrator/desktop.html`.
+- [x] Seed release notes: `https://helpx.adobe.com/illustrator/desktop/new-features/release-notes.html`.
+- [x] Seed known/fixed issues: `https://helpx.adobe.com/illustrator/desktop/troubleshoot/known-and-fixed-issues.html`.
+- [x] Liens internes acceptes: host `helpx.adobe.com`, chemin contenant `/illustrator/`.
+- [x] Liens internes exclus: PDF, images, videos, archives lourdes, community, learn, comptes, marketing hors HelpX.
 
 ### Sources explicitement non MVP
 
-- [ ] Adobe Learn: hors MVP, sauf decision explicite ulterieure.
-- [ ] Adobe Community: hors MVP comme preuve principale.
-- [ ] PDF Adobe: hors MVP.
-- [ ] Sites tiers, blogs, cours, YouTube: hors MVP.
-- [ ] AdobeDocs GitHub / UXP: hors MVP general, possible sous-chantier technique separe si besoin scripts/UXP.
+- [x] Adobe Learn: hors MVP, sauf decision explicite ulterieure.
+- [x] Adobe Community: hors MVP comme preuve principale.
+- [x] PDF Adobe: hors MVP.
+- [x] Sites tiers, blogs, cours, YouTube: hors MVP.
+- [x] AdobeDocs GitHub / UXP: hors MVP general, possible sous-chantier technique separe si besoin scripts/UXP.
 
 ## Parametrages cibles
 
-Valeurs indicatives a confirmer au patch:
+Valeurs livrees ou cadre confirme:
 
-- [ ] `adobe_product`: `photoshop` ou `illustrator`.
-- [ ] `adobe_seed_url_limit`: `3` URLs maximum par produit au depart.
-- [ ] `adobe_follow_link_limit`: `4` a `8` liens internes maximum par tour.
-- [ ] `adobe_crawl_page_limit`: `3` a `5` pages Crawl4AI maximum par tour.
-- [ ] `adobe_crawl_filter`: `raw` en lecture primaire.
-- [ ] `adobe_fit_allowed`: seulement comme optimisation ou fallback, pas comme preuve unique.
-- [ ] `adobe_max_raw_chars_per_page`: borne defensive a definir apres mesure.
-- [ ] `adobe_passage_chars`: environ `800` a `1500` caracteres par passage.
-- [ ] `adobe_passage_count`: `3` a `8` passages injectes maximum.
-- [ ] `adobe_prompt_budget_chars`: borne dediee, inferieure au brut Adobe.
-- [ ] `adobe_timeout_s`: borne courte par page et borne globale par tour.
-- [ ] `adobe_cache_policy`: cache applicatif interdit; cache Crawl4AI desactive ou explicitement borne/ephemere, sauf preuve technique documentee qu'il ne conserve pas le contenu brut.
-- [ ] `adobe_language_preference`: FR si disponible, EN sinon avec caveat.
-- [ ] `adobe_min_evidence_threshold`: seuil minimal avant reponse affirmative sourcee.
+- [x] `adobe_product`: `photoshop` ou `illustrator`.
+- [x] `adobe_seed_url_limit`: `3` URLs maximum par produit au depart.
+- [x] `adobe_follow_link_limit`: `4` liens internes classes par defaut, borne haute `8`.
+- [x] `adobe_crawl_page_limit`: `5` pages Crawl4AI maximum par tour par defaut.
+- [x] `adobe_crawl_filter`: `raw` en lecture primaire.
+- [x] `adobe_fit_allowed`: non implemente au MVP; ne peut pas devenir preuve unique.
+- [x] `adobe_max_raw_chars_per_page`: `300_000` caracteres par page avant reduction.
+- [x] `adobe_passage_chars`: `1200` caracteres par passage par defaut.
+- [x] `adobe_passage_count`: `6` passages injectes maximum par defaut.
+- [x] `adobe_prompt_budget_chars`: `5000` caracteres dedies par defaut.
+- [x] `adobe_timeout_s`: `20` secondes par page; borne globale effective par nombre de pages.
+- [x] `adobe_cache_policy`: cache applicatif interdit; cache Crawl4AI desactive (`c=0`).
+- [x] `adobe_language_preference`: FR si disponible, EN sinon avec caveat et alias metier FR/EN bornes.
+- [x] `adobe_min_evidence_threshold`: evidence `sufficient`, `partial` ou `insufficient` transmise au prompt.
 
 ## Observabilite privacy-safe
 
 A journaliser:
 
-- [ ] mode Adobe actif/inactif;
-- [ ] produit choisi;
-- [ ] nombre d'URLs seed candidates;
-- [ ] nombre de liens internes extraits;
-- [ ] nombre de pages crawlees;
-- [ ] host;
-- [ ] hash court URL;
-- [ ] type de source: hub, release_notes, known_issues, help_page;
-- [ ] filtre Crawl4AI utilise: `raw`, `fit`, fallback;
-- [ ] statut crawl;
-- [ ] caracteres markdown bruts;
-- [ ] nombre de headings;
-- [ ] nombre de liens;
-- [ ] nombre de passages candidats;
-- [ ] nombre de passages injectes;
-- [ ] chars injectes;
-- [ ] latence par page;
-- [ ] latence totale;
-- [ ] decision evidence: suffisante, partielle, insuffisante;
-- [ ] code d'erreur si echec.
+- [x] mode Adobe actif/inactif;
+- [x] produit choisi;
+- [x] nombre d'URLs seed candidates;
+- [x] nombre de liens internes extraits;
+- [x] nombre de pages crawlees;
+- [x] host via policy HelpX et references source;
+- [x] hash court URL;
+- [x] type de source: hub, release_notes, known_issues, help_page;
+- [x] filtre Crawl4AI utilise: `raw`;
+- [x] statut crawl;
+- [x] caracteres markdown bruts;
+- [x] nombre de headings;
+- [x] nombre de liens;
+- [x] nombre de passages candidats;
+- [x] nombre de passages injectes;
+- [x] chars injectes;
+- [x] latence par page;
+- [x] latence totale;
+- [x] decision evidence: suffisante, partielle, insuffisante;
+- [x] code d'erreur si echec.
 
 A ne jamais journaliser:
 
-- [ ] texte Adobe extrait;
-- [ ] passage Adobe complet;
-- [ ] transcription ou contenu utilisateur sensible;
-- [ ] prompt final complet si passages Adobe inclus;
-- [ ] cookies, tokens, `.env`, DSN, secrets;
-- [ ] fichiers temporaires de pages;
-- [ ] screenshots;
-- [ ] OCR/PDF brut.
+- [x] texte Adobe extrait;
+- [x] passage Adobe complet;
+- [x] transcription ou contenu utilisateur sensible;
+- [x] prompt final complet si passages Adobe inclus;
+- [x] cookies, tokens, `.env`, DSN, secrets;
+- [x] fichiers temporaires de pages;
+- [x] screenshots;
+- [x] OCR/PDF brut.
 
 ## Architecture cible
 
 Le mini-pipeline Adobe est une capacite a cote du web search general.
 
-- [ ] Ne pas remplacer `tools/web_search.py`.
-- [ ] Ne pas transformer la recherche web generale en pipeline Adobe.
-- [ ] Ajouter un module dedie, par exemple `app/tools/adobe_docs.py` ou `app/core/adobe_docs_*`, selon les frontieres existantes.
-- [ ] Garder `app/server.py` comme entree HTTP/orchestration seulement.
-- [ ] Garder la selection des sources Adobe dans un registre lisible.
-- [ ] Garder l'extraction et le filtrage dans le module Adobe, pas dans le prompt.
-- [ ] Injecter une lane dediee via le contexte de chat existant.
-- [ ] Ajouter un garde-fou anti-contamination dans le flux Memory/Summary si necessaire.
-- [ ] Ne pas creer de dependance AnythingLLM.
-- [ ] Ne pas creer de Biblio Adobe persistante.
+- [x] Ne pas remplacer `tools/web_search.py`.
+- [x] Ne pas transformer la recherche web generale en pipeline Adobe.
+- [x] Ajouter des modules dedies `app/tools/adobe_docs_*` et `app/core/adobe_docs_prompt_lane.py`.
+- [x] Garder `app/server.py` comme entree HTTP/orchestration seulement.
+- [x] Garder la selection des sources Adobe dans un registre lisible.
+- [x] Garder l'extraction et le filtrage dans le module Adobe, pas dans le prompt.
+- [x] Injecter une lane dediee via le contexte de chat existant.
+- [x] Ajouter/verifier un garde-fou anti-contamination dans les flux Memory/Summary.
+- [x] Ne pas creer de dependance AnythingLLM.
+- [x] Ne pas creer de Biblio Adobe persistante.
 
 ## Lot 0 - Cadrage final avant patch runtime
 
@@ -296,20 +298,20 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 - [x] Test unitaire: erreur HTTP propre.
 - [x] Test unitaire: aucun log ne contient le markdown.
 - [x] Test unitaire: pas de fichier temporaire.
-- [ ] Preuve runtime manuelle bornee sur une URL HelpX si environnement disponible.
+- [x] Preuve runtime manuelle bornee sur une URL HelpX si environnement disponible.
 
 ### RISQUES
 
 - [x] Latence excessive sur pages Adobe.
-- [ ] Extraction `raw` bruitee par navigation.
+- [x] Extraction `raw` bruitee par navigation.
 - [x] Page tres grosse depassant le budget memoire ou prompt.
 
 ### REDUCTION DES RISQUES
 
-- [ ] Limite de pages par tour.
+- [x] Limite de pages par tour.
 - [x] Limite de chars retenus apres extraction.
 - [x] Timeout par page.
-- [ ] Selection de passages avant injection.
+- [x] Selection de passages avant injection.
 
 ## Lot 3 - Extraction de liens internes HelpX
 
@@ -592,50 +594,52 @@ Statut: clos le 2026-05-23 par validation live bornee. Note: `app/docs/states/au
 
 ## Lot 9 - Rebuild, validation live et cloture provisoire
 
+Statut: clos provisoirement le 2026-05-23. Note: `app/docs/states/audits/fridadev-adobe-docs-mode-provisional-closure-2026-05-23.md`.
+
 ### PLAN
 
-- [ ] Rebuild seulement si runtime frontend/backend touche.
-- [ ] Preparer un smoke test live sans secrets.
-- [ ] Preparer rollback simple.
-- [ ] Definir criteres de cloture provisoire.
+- [x] Rebuild seulement si runtime frontend/backend touche.
+- [x] Preparer un smoke test live sans secrets.
+- [x] Preparer rollback simple.
+- [x] Definir criteres de cloture provisoire.
 
 ### PATCH
 
-- [ ] Aucun patch supplementaire dans ce lot sauf correction de bug trouvee.
-- [ ] Mettre a jour ce TODO avec preuves finales.
-- [ ] Archiver uniquement quand le mode est livre et stabilise.
+- [x] Aucun patch supplementaire runtime dans ce lot.
+- [x] Mettre a jour ce TODO avec preuves finales.
+- [x] Ne pas archiver en `todo-done` tant que la validation Amandine reelle reste ouverte.
 
 ### TEST
 
-- [ ] `git status --short --branch`.
-- [ ] `git diff --check`.
-- [ ] `git diff --cached --check`.
-- [ ] Tests unitaires modules Adobe.
-- [ ] Tests frontend si UI touchee.
-- [ ] Tests backend `/api/chat` si payload touche.
-- [ ] Rebuild app si runtime touche.
-- [ ] `docker ps --filter name=platform-fridadev --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"`.
-- [ ] `curl --max-time 12 -sSI https://fridadev.frida-system.fr/admin | sed -n '1,12p'`.
+- [x] `git status --short --branch`.
+- [x] `git diff --check`.
+- [x] `git diff --cached --check`.
+- [x] Tests unitaires modules Adobe.
+- [x] Tests frontend si UI touchee.
+- [x] Tests backend `/api/chat` si payload touche.
+- [x] Pas de rebuild app dans ce lot docs-only.
+- [x] `docker ps --filter name=platform-fridadev --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"`.
+- [x] `curl --max-time 12 -sSI https://fridadev.frida-system.fr/admin | sed -n '1,12p'` sans affichage de cookies.
 - [x] Test live Photoshop court.
 - [x] Test live Illustrator court.
 
 ### RISQUES
 
-- [ ] Une correction tardive elargit le chantier.
-- [ ] Live OK sur une question mais fragile sur pages longues.
-- [ ] Latence trop haute pour l'usage reel.
+- [x] Une correction tardive elargit le chantier.
+- [x] Live OK sur une question mais fragile sur pages longues.
+- [x] Latence trop haute pour l'usage reel.
 
 ### REDUCTION DES RISQUES
 
-- [ ] Garder le MVP petit.
-- [ ] Fermer provisoirement sous surveillance.
-- [ ] Journaliser latence et evidence.
-- [ ] Ajouter une decision explicite avant tout Learn/Community/PDF/index durable.
+- [x] Garder le MVP petit.
+- [x] Fermer provisoirement sous surveillance.
+- [x] Journaliser latence et evidence.
+- [x] Ajouter une decision explicite avant tout Learn/Community/PDF/index durable.
 
 ## Criteres de fermeture provisoire
 
-- [ ] Le mode Adobe n'a pas de choix Auto.
-- [ ] Photoshop et Illustrator sont selectionnables explicitement.
+- [x] Le mode Adobe n'a pas de choix Auto.
+- [x] Photoshop et Illustrator sont selectionnables explicitement.
 - [x] Le chat normal sans Adobe est inchangé.
 - [x] Le web search general est inchangé sur le chemin UI streaming.
 - [x] Crawl4AI `raw` lit les pages HelpX cibles.
@@ -643,35 +647,41 @@ Statut: clos le 2026-05-23 par validation live bornee. Note: `app/docs/states/au
 - [x] Le nombre de pages lues par tour est borne.
 - [x] Les passages injectes sont courts et sources.
 - [x] Les grosses pages ne sont jamais injectees brutes.
-- [ ] La reponse cite les sources ou signale l'insuffisance de preuve.
-- [ ] Aucun contenu Adobe n'est stocke durablement.
-- [ ] Aucun contenu Adobe n'entre en Memory/Identity/Summary/Biblio/Active Documents.
+- [x] La reponse cite les sources ou signale l'insuffisance de preuve.
+- [x] Aucun markdown ni passage Adobe n'est stocke durablement.
+- [x] Aucun markdown, passage ou lane prompt Adobe n'entre en Memory/Identity/Summary/Biblio/Active Documents.
 - [x] Les logs restent content-free.
 - [x] Les tests couvrent non-regression chat/web normal.
 - [ ] Amandine valide au moins un cas Photoshop reel et un cas Illustrator reel.
 
-## Questions a trancher avant implementation
+## Decisions tranchees pendant le MVP
 
-- [ ] Nom exact du bouton UI: `Adobe`, `Docs Adobe`, `Photoshop / Illustrator`, autre.
-- [ ] Emplacement UI du controle.
-- [ ] Produit actif persistant par conversation ou reset a chaque nouvelle conversation.
-- [ ] Budget prompt Adobe cible.
-- [ ] Nombre maximal de pages par tour.
-- [ ] Strategy FR/EN: preferer FR quand disponible ou rester sur pages EN plus fraiches.
-- [ ] Affichage utilisateur des sources consultees: URL visibles, titres, ou badge minimal.
-- [ ] Niveau de citation attendu dans les reponses.
-- [ ] Faut-il une spec vivante dediee avant runtime ou ce TODO suffit-il pour MVP.
+- [x] Nom du bouton UI: bouton compact `A`, sans faux logo officiel Adobe.
+- [x] Emplacement UI: ligne d'actions sous la zone de saisie.
+- [x] Produit actif: etat UI local courant, non persiste durablement par conversation.
+- [x] Budget prompt Adobe cible: `5000` caracteres par defaut.
+- [x] Nombre maximal de pages par tour: `5` par defaut.
+- [x] Strategy FR/EN: HelpX lu a la demande; alias metier FR/EN bornes; caveat si source anglaise ou libelle localise incertain.
+- [x] Affichage utilisateur des sources consultees: dans la reponse/lane, pas de panneau UI separe au MVP.
+- [x] Niveau de citation attendu: source ou caveat d'insuffisance, sans pretendre a l'exhaustivite.
+- [x] Spec vivante creee: `app/docs/states/specs/fridadev-adobe-docs-mode-contract.md`.
+
+## Reste ouvert hors cloture provisoire
+
+- [ ] Amandine valide au moins un cas Photoshop reel.
+- [ ] Amandine valide au moins un cas Illustrator reel.
+- [ ] Decider explicitement avant tout ajout Learn, Community, PDF, GitHub AdobeDocs, index durable ou Biblio Adobe.
 
 ## Hors-scope strict MVP
 
-- [ ] Pas de mode Auto.
-- [ ] Pas d'index durable Adobe.
-- [ ] Pas de Biblio Adobe.
-- [ ] Pas d'AnythingLLM.
-- [ ] Pas de fine-tuning.
-- [ ] Pas d'ingestion PDF.
-- [ ] Pas d'Adobe Learn sans decision explicite.
-- [ ] Pas d'Adobe Community comme source principale.
-- [ ] Pas de recherche web ouverte nominale.
-- [ ] Pas de modification plateforme/Docker hors rebuild applicatif si runtime touche.
-- [ ] Pas de changement Memory/Identity/Summary hors garde-fou strictement necessaire.
+- [x] Pas de mode Auto.
+- [x] Pas d'index durable Adobe.
+- [x] Pas de Biblio Adobe.
+- [x] Pas d'AnythingLLM.
+- [x] Pas de fine-tuning.
+- [x] Pas d'ingestion PDF.
+- [x] Pas d'Adobe Learn sans decision explicite.
+- [x] Pas d'Adobe Community comme source principale.
+- [x] Pas de recherche web ouverte nominale.
+- [x] Pas de modification plateforme/Docker hors rebuild applicatif si runtime touche.
+- [x] Pas de changement Memory/Identity/Summary hors garde-fou strictement necessaire.

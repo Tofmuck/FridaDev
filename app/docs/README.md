@@ -25,6 +25,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Validation finale Phase 9 Exa discovery 2026-05-22: `states/audits/fridadev-web-search-phase-9-final-validation-2026-05-22.md`
 - Validation live Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-live-validation-2026-05-23.md`
 - Evaluation metier Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-business-evaluation-2026-05-23.md`
+- Cloture provisoire MVP Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-provisional-closure-2026-05-23.md`
 - Decision produit OpenRouter/Exa comme provider de decouverte web ouverte 2026-05-22: `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 - Archive du renforcement web local V0 SearXNG/Crawl4AI: `todo-done/product/fridadev-local-web-search-hardening-todo.md`
 - Archive A-Z web discovery local-first + Exa: `todo-done/product/fridadev-local-web-search-rebuild-todo.md`
