@@ -363,44 +363,49 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 
 ### PLAN
 
-- [ ] Segmenter les pages Adobe en sections/passages.
-- [ ] Retirer navigation/footer quand identifiable.
-- [ ] Scorer les passages contre la question utilisateur.
-- [ ] Garder peu de passages.
-- [ ] Conserver URL, titre/section si disponible, source type et produit.
-- [ ] Ne pas stocker les passages apres le tour.
+- [x] Segmenter les pages Adobe en sections/passages.
+- [x] Retirer navigation/footer quand identifiable.
+- [x] Scorer les passages contre la question utilisateur.
+- [x] Garder peu de passages.
+- [x] Conserver URL, titre/section si disponible, source type et produit.
+- [x] Ne pas stocker les passages apres le tour.
 
 ### PATCH
 
-- [ ] Ajouter un splitter Markdown borne.
-- [ ] Ajouter un score lexical simple ou BM25 local si deja disponible.
-- [ ] Ajouter un seuil minimal.
-- [ ] Ajouter une limite de passages injectes.
-- [ ] Ajouter une limite de chars par passage.
-- [ ] Ajouter metadonnees de citation.
+- [x] Ajouter un splitter Markdown borne.
+- [x] Ajouter un score lexical simple ou BM25 local si deja disponible.
+- [x] Ajouter un seuil minimal.
+- [x] Ajouter une limite de passages injectes.
+- [x] Ajouter une limite de chars par passage.
+- [x] Ajouter metadonnees de citation.
 
 ### TEST
 
-- [ ] Test: une page longue produit plusieurs passages bornes.
-- [ ] Test: les passages ne depassent pas `adobe_passage_chars`.
-- [ ] Test: le total injecte ne depasse pas `adobe_prompt_budget_chars`.
-- [ ] Test: ranking retrouve un passage contenant les termes de la question.
-- [ ] Test: absence de passage pertinent donne evidence insuffisante.
-- [ ] Test: les passages ne sont pas persistes.
+- [x] Test: une page longue produit plusieurs passages bornes.
+- [x] Test: les passages ne depassent pas `adobe_passage_chars`.
+- [x] Test: le total injecte ne depasse pas `adobe_prompt_budget_chars`.
+- [x] Test: ranking retrouve un passage contenant les termes de la question.
+- [x] Test: question version favorise release notes.
+- [x] Test: question bug favorise known/fixed issues.
+- [x] Test: navigation/footer est exclu ou declasse.
+- [x] Test: absence de passage pertinent donne evidence insuffisante.
+- [x] Test: les passages ne sont pas persistes.
+- [x] Test: `repr` / export content-free ne contiennent pas le texte Adobe complet.
+- [x] Test: metadonnees de citation conservees.
 
 ### RISQUES
 
-- [ ] Passage trop court donc inutilisable.
-- [ ] Passage trop long donc bruit/prompt cher.
-- [ ] Navigation retenue comme preuve.
-- [ ] Mauvaise section citee.
+- [x] Passage trop court donc inutilisable.
+- [x] Passage trop long donc bruit/prompt cher.
+- [x] Navigation retenue comme preuve.
+- [x] Mauvaise section citee.
 
 ### REDUCTION DES RISQUES
 
-- [ ] Garder section/titre quand possible.
-- [ ] Exclure patterns de navigation repetitifs.
-- [ ] Exiger score minimal.
-- [ ] Afficher une limite de confiance si preuve faible.
+- [x] Garder section/titre quand possible.
+- [x] Exclure patterns de navigation repetitifs.
+- [x] Exiger score minimal.
+- [x] Afficher une limite de confiance si preuve faible.
 
 ## Lot 5 - Integration chat backend
 

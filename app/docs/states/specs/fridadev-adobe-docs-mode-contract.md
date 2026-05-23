@@ -156,6 +156,17 @@ Extraction de liens Lot 3:
 - les seeds release notes et known issues du registre restent disponibles si peu de liens utiles sont extraits;
 - la limite de suivi par tour reste stricte et par defaut bornee autour de 4 a 8 liens.
 
+Selection de passages Lot 4:
+
+- le selecteur segmente seulement du Markdown deja present en memoire et ne declenche aucun crawl;
+- les passages peuvent conserver texte, heading, section, source type, produit et URL canonique dans l'objet en memoire du tour;
+- les `repr` et exports content-free des passages et selections ne contiennent jamais le texte du passage;
+- les passages sont bornes par chars par passage, nombre de passages et budget total;
+- le scoring est deterministe: recouvrement lexical question/passage, bonus heading, bonus source_type selon question version, bug ou usage;
+- les sections de navigation/footer identifiables sont exclues ou penalisees;
+- le resultat expose `sufficient`, `partial` ou `insufficient` avec reason codes content-free;
+- le Lot 4 ne stocke aucun passage et n'ajoute pas de lane prompt runtime.
+
 Cache:
 
 - cache applicatif interdit;
