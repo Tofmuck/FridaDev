@@ -92,7 +92,7 @@ Schema global de base a date (lecture rapide):
 - impact si indisponible: enrichissement web degrade.
 
 4. Dictation vocale Whisper
-- source: `WHISPER_API_URL`, `WHISPER_API_TIMEOUT_S`
+- source: `WHISPER_API_URL`, `WHISPER_API_TIMEOUT_S` (defaut applicatif `180 s` pour couvrir une dictee cible de 2 minutes avec marge)
 - si le service Whisper amont active une authentification par cle, `FridaDev` doit recevoir la meme `WHISPER_API_KEY` pour que `/api/chat/transcribe` reste utilisable.
 
 ## 4.3 Point reseau critique en mode Docker

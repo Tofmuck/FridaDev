@@ -34,6 +34,17 @@ class _FakeResponse:
         return self._payload
 
 
+class _FakeLogger:
+    def __init__(self) -> None:
+        self.lines: list[str] = []
+
+    def info(self, message, *args) -> None:
+        self.lines.append(message % args)
+
+    def warning(self, message, *args) -> None:
+        self.lines.append(message % args)
+
+
 class WhisperTranscriptionServiceTests(unittest.TestCase):
     def test_transcribe_upload_calls_whisper_api_with_expected_contract(self) -> None:
         observed = {}
@@ -146,6 +157,118 @@ class WhisperTranscriptionServiceTests(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 504)
         self.assertEqual(ctx.exception.error, 'transcription timeout')
+
+    def test_transcribe_upload_default_timeout_allows_long_dictation_margin(self) -> None:
+        observed = {}
+
+        def fake_post(_url, files=None, data=None, headers=None, timeout=None):
+            observed['timeout'] = timeout
+            return _FakeResponse(status_code=200, payload={'text': 'bonjour'})
+
+        requests_module = SimpleNamespace(
+            post=fake_post,
+            exceptions=requests.exceptions,
+        )
+        config_module = SimpleNamespace(
+            WHISPER_API_URL='http://platform-whisper-api:9001',
+            WHISPER_API_KEY='',
+        )
+
+        whisper_transcription_service.transcribe_upload(
+            whisper_transcription_service.TranscriptionUpload(
+                filename='clip.webm',
+                content_type='audio/webm',
+                data=b'audio-bytes',
+            ),
+            requests_module=requests_module,
+            config_module=config_module,
+            logger_obj=_FakeLogger(),
+        )
+
+        self.assertEqual(observed['timeout'], 180)
+
+    def test_transcribe_http_request_logs_content_free_metadata_only(self) -> None:
+        observed = {}
+
+        def fake_post(url, files=None, data=None, headers=None, timeout=None):
+            observed['file_bytes'] = dict(files or {})['file'][1]
+            return _FakeResponse(status_code=200, payload={'text': 'secret transcript'})
+
+        requests_module = SimpleNamespace(
+            post=fake_post,
+            exceptions=requests.exceptions,
+        )
+        config_module = SimpleNamespace(
+            WHISPER_API_URL='http://platform-whisper-api:9001',
+            WHISPER_API_TIMEOUT_S=180,
+            WHISPER_API_KEY='whisper-secret',
+        )
+        logger = _FakeLogger()
+        file_storage = SimpleNamespace(
+            filename='private-filename.webm',
+            mimetype='audio/webm',
+            read=lambda: b'audio-bytes',
+        )
+
+        payload, status = whisper_transcription_service.transcribe_http_request(
+            content_type='multipart/form-data; boundary=x',
+            files={'file': file_storage},
+            form={
+                'recording_duration_ms': '150000',
+                'recording_blob_size_bytes': '11',
+                'recording_chunk_count': '1',
+                'recording_stop_reason': 'auto_limit',
+            },
+            requests_module=requests_module,
+            config_module=config_module,
+            logger_obj=logger,
+        )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(payload['text'], 'secret transcript')
+        self.assertEqual(observed['file_bytes'], b'audio-bytes')
+        logs = '\n'.join(logger.lines)
+        self.assertIn('upload_bytes=11', logs)
+        self.assertIn('recording_duration_ms=150000', logs)
+        self.assertIn('stop_reason=auto_limit', logs)
+        self.assertNotIn('audio-bytes', logs)
+        self.assertNotIn('secret transcript', logs)
+        self.assertNotIn('private-filename', logs)
+        self.assertNotIn('whisper-secret', logs)
+
+    def test_transcribe_upload_logs_upstream_status_without_detail_body(self) -> None:
+        logger = _FakeLogger()
+        requests_module = SimpleNamespace(
+            post=lambda *_args, **_kwargs: _FakeResponse(
+                status_code=500,
+                payload={'detail': 'private upstream detail'},
+                text='private upstream detail',
+            ),
+            exceptions=requests.exceptions,
+        )
+        config_module = SimpleNamespace(
+            WHISPER_API_URL='http://platform-whisper-api:9001',
+            WHISPER_API_TIMEOUT_S=180,
+            WHISPER_API_KEY='',
+        )
+
+        with self.assertRaises(whisper_transcription_service.WhisperTranscriptionServiceError):
+            whisper_transcription_service.transcribe_upload(
+                whisper_transcription_service.TranscriptionUpload(
+                    filename='private.webm',
+                    content_type='audio/webm',
+                    data=b'audio-bytes',
+                ),
+                requests_module=requests_module,
+                config_module=config_module,
+                logger_obj=logger,
+            )
+
+        logs = '\n'.join(logger.lines)
+        self.assertIn('whisper_upstream_bad_status status=500 timeout_s=180', logs)
+        self.assertNotIn('private upstream detail', logs)
+        self.assertNotIn('audio-bytes', logs)
+        self.assertNotIn('private.webm', logs)
 
 
 if __name__ == '__main__':

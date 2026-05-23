@@ -85,7 +85,7 @@ Chemins explicitement absents ou retires:
 | Validation agent primaire | `validation_agent.run_validation_agent()` | `prompts/validation_agent.txt` | OpenRouter | `google/gemini-3.1-flash-lite` | `PRIMARY_MODEL=google/gemini-3.1-flash-lite` | `validation_agent_model.primary_model` runtime DB | `main_model.api_key`, caller `validation_agent` | `0.0` | `1.0` | `140`, borne | `10` | aucun | non | JSON verdict compact v1 | oui: primary/fallback/temp/top_p/max/timeout; decision conservee sous `benchmark/results/validation_agent/2026-05-19-validation-agent-decision.md` | provider log; validation stage; projection compacte dans `[JUGEMENT HERMENEUTIQUE]` |
 | Validation agent fallback | meme | meme | OpenRouter | `openai/gpt-5.4-nano` | `FALLBACK_MODEL=openai/gpt-5.4-nano` | `validation_agent_model.fallback_model` | meme | `0.0` | `1.0` | `140`, borne | `10` | aucun | non | meme; fail-open controle si echec | oui | meme |
 | Embeddings Memory/RAG | `memory_store_infra.embed()` | pas de prompt; prefixe `query:` ou `passage:` | Service embedding HTTP | `intfloat/multilingual-e5-small`, dim `384` | `EMBED_BASE_URL=https://embed.example.com`, `EMBED_DIM=384` | section runtime `embedding` | `embedding.token` resolu `db_encrypted`, header `X-Embed-Token` | n/a | n/a | n/a | `(5,120)` connect/read | n/a | n/a | `list[float]` depuis `response.json()[0]` | oui: endpoint/model/token/dim/top_k | memory traces, summaries, retrieval diagnostics; pas de provider OpenRouter |
-| Transcription vocale | `/api/chat/transcribe` -> `whisper_transcription_service` | pas de prompt | Service Whisper HTTP | payload `model=whisper-1` | constant `whisper-1` | `WHISPER_API_URL`, `WHISPER_API_TIMEOUT_S`, `WHISPER_API_KEY` dans `config.py` | bearer optionnel `WHISPER_API_KEY`; OVH `set=True` | n/a | n/a | n/a | `120` | n/a | n/a | JSON avec `text`; Frida renvoie `{ok,text,input_mode:"voice"}` | non admin runtime | route HTTP; erreurs mappees 400/502/504 |
+| Transcription vocale | `/api/chat/transcribe` -> `whisper_transcription_service` | pas de prompt | Service Whisper HTTP | payload `model=whisper-1` | constant `whisper-1` | `WHISPER_API_URL`, `WHISPER_API_TIMEOUT_S`, `WHISPER_API_KEY` dans `config.py` | bearer optionnel `WHISPER_API_KEY`; OVH `set=True` | n/a | n/a | n/a | `180` | n/a | n/a | JSON avec `text`; Frida renvoie `{ok,text,input_mode:"voice"}` | non admin runtime | route HTTP; erreurs mappees 400/502/504; observabilite content-free taille/duree/raison/latence |
 | OCR documents actifs | `active_document_ocr_client.ocr_pdf_with_stirling()` | pas de prompt | Stirling PDF HTTP | `platform-stirling-pdf` endpoint `/pdf/api/v1/misc/ocr-pdf` | meme defaut | `ACTIVE_DOCUMENT_OCR_*` dans `config.py` | pas d'auth cote FridaDev | n/a | n/a | n/a | `180` | n/a | n/a | PDF OCRise + meta compacte; activation seulement apres extraction finale `complete` | non admin runtime | active document events; metadata content-free |
 
 ## Payloads sortants et parametres fixes
@@ -450,7 +450,7 @@ Constantes runtime `config.py` relevees dans le conteneur:
 - `SUMMARY_TARGET_TOKENS=2000`;
 - `SUMMARY_TIMEOUT_S=90`;
 - `WHISPER_API_URL='http://platform-whisper-api:9001'`;
-- `WHISPER_API_TIMEOUT_S=120`;
+- `WHISPER_API_TIMEOUT_S=180`;
 - `WHISPER_API_KEY` present;
 - `ACTIVE_DOCUMENT_OCR_URL='http://platform-stirling-pdf:8080/pdf/api/v1/misc/ocr-pdf'`;
 - `ACTIVE_DOCUMENT_IMAGE_TO_PDF_URL='http://platform-stirling-pdf:8080/pdf/api/v1/convert/img/pdf'`;

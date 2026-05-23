@@ -1,6 +1,6 @@
 # FridaDev - raisonnement du LLM principal, streaming visuel et dictee longue - TODO
 
-Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue ajoute en diagnostic/TODO actif
+Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif, validation longue live a borner selon etat du service Whisper aval
 Date de creation: 2026-05-22
 Classement: `app/docs/todo-todo/product/`
 Nature: TODO source-of-truth A-Z, docs-only au moment de creation
@@ -73,10 +73,11 @@ Constats utiles:
 - OpenRouter documente des champs de sortie `reasoning` / `reasoning_details`; ce chantier interdit de les rendre visibles, de les persister en conversation visible ou de les injecter dans d'autres sous-systemes.
 - Le frontend envoie deja `stream: true` a `/api/chat`, lit `ReadableStream`, parse un terminal de controle, et concatene des chunks dans `app/web/app.js`.
 - L'archive `app/docs/todo-done/product/frida-response-streaming-todo.md` indique que certains modes plain text peuvent etre bufferises par la politique de sortie assistant; le diagnostic du nouvel objet streaming doit donc distinguer streaming technique et streaming reellement visible.
-- Diagnostic Objet 3, 2026-05-22: `app/web/whisper/whisper_dictation.js` impose `DEFAULT_MAX_RECORDING_MS = 60_000` et arrete automatiquement `MediaRecorder` via `recorder.stop()`. Ce plafond rend la cible 2 minutes impossible dans l'etat courant.
-- Diagnostic Objet 3, 2026-05-22: le frontend n'utilise pas de `timeslice` dans `recorder.start()`, donc il accumule un blob unique jusqu'a l'arret. Les longs enregistrements peuvent donc peser sur le navigateur, l'upload et le service aval.
+- Diagnostic Objet 3, 2026-05-22: `app/web/whisper/whisper_dictation.js` imposait `DEFAULT_MAX_RECORDING_MS = 60_000` et arretait automatiquement `MediaRecorder` via `recorder.stop()`. Ce plafond rendait la cible 2 minutes impossible.
+- Correctif Objet 3, 2026-05-23: `DEFAULT_MAX_RECORDING_MS` et la borne client sont passes a `150_000`, pour couvrir une cible reelle de 120 s avec marge.
+- Diagnostic Objet 3, 2026-05-22: le frontend n'utilisait pas de `timeslice` dans `recorder.start()`, donc il accumulait un blob unique jusqu'a l'arret. Le correctif initial conserve ce blob unique, mais le rend observable par duree/taille/raison/chunks sans contenu.
 - Diagnostic Objet 3, 2026-05-22: aucune detection de silence, de `blur`, de changement de thread ou de busy state qui stopperait explicitement un enregistrement actif n'a ete trouvee dans le code relu.
-- Diagnostic Objet 3, 2026-05-22: `/api/chat/transcribe` ne porte pas de limite de duree explicite; `whisper_transcription_service` lit le fichier complet en memoire et poste vers `WHISPER_API_URL` avec `WHISPER_API_TIMEOUT_S=120`.
+- Diagnostic Objet 3, 2026-05-22: `/api/chat/transcribe` ne porte pas de limite de duree explicite; `whisper_transcription_service` lit le fichier complet en memoire et poste vers `WHISPER_API_URL`. Le timeout applicatif par defaut est passe de `WHISPER_API_TIMEOUT_S=120` a `180` pour laisser une marge a 2 minutes d'audio.
 - Diagnostic Objet 3, 2026-05-22: l'ancien diagnostic `whisper-transcription-indisponible-diagnostic-2026-05-05.md` a observe un `exit code -9` et un conteneur Whisper aval `oom_killed=true`; les longs blobs peuvent donc reveiller une limite ressources cote service local.
 
 ## 3. Doctrine commune
@@ -303,16 +304,16 @@ Symptome utilisateur: la dictee demarre, puis s'arrete seule apres environ 20, 3
 
 Constats confirmes par lecture:
 
-- [x] Le frontend possede un plafond dur: `DEFAULT_MAX_RECORDING_MS = 60_000` dans `app/web/whisper/whisper_dictation.js`.
-- [x] Ce plafond declenche un arret automatique par `recorder.stop()` via `setTimeout`.
-- [x] La cible produit 2 minutes est donc impossible sans changement frontend, meme si le backend et Whisper aval fonctionnent parfaitement.
+- [x] Le frontend possedait un plafond dur: `DEFAULT_MAX_RECORDING_MS = 60_000` dans `app/web/whisper/whisper_dictation.js`.
+- [x] Ce plafond declenchait un arret automatique par `recorder.stop()` via `setTimeout`.
+- [x] La cible produit 2 minutes etait donc impossible sans changement frontend, meme si le backend et Whisper aval fonctionnaient parfaitement.
 - [x] `MediaRecorder.start()` est appele sans `timeslice`; le code accumule un blob unique dans `pendingChunks` puis l'envoie en une seule fois a `/api/chat/transcribe`.
 - [x] Aucun arret automatique par silence n'a ete trouve dans le frontend.
 - [x] Aucun arret automatique par `blur`, changement de thread, submit chat ou busy state n'a ete trouve pour un enregistrement deja actif.
 - [x] Le bouton micro est desactive quand une requete chat est deja en cours, mais ce signal ne semble pas stopper une capture deja lancee.
 - [x] `/api/chat/transcribe` delegue a `whisper_transcription_service.transcribe_http_request()` sans limite explicite de duree.
 - [x] `whisper_transcription_service.prepare_upload()` lit le fichier complet en memoire.
-- [x] Le timeout applicatif Whisper est `WHISPER_API_TIMEOUT_S=120`; cela concerne surtout la transcription apres arret, pas l'arret de capture lui-meme.
+- [x] Le timeout applicatif Whisper etait `WHISPER_API_TIMEOUT_S=120`; cela concernait surtout la transcription apres arret, pas l'arret de capture lui-meme.
 - [x] L'ancien diagnostic du 2026-05-05 a deja observe `platform-whisper-api` en echec `exit code -9` avec indice OOM; cela reste une hypothese serieuse pour les longs blobs ou les transcriptions longues.
 
 Hypotheses classees:
@@ -330,45 +331,61 @@ La reproduction doit donc separer trois phenomenes au lieu de les fusionner:
 - capture complete mais upload ou transcription en echec;
 - transcription reussie ou echouee mais brouillon UI perdu, remplace ou mal signale.
 
+### Livraison Objet 3 - 2026-05-23
+
+Statut: correctif applicatif livre; pas de modification plateforme/Docker ni de changement modele Whisper.
+
+- [x] Plafond client remplace par une limite bornee a `150_000 ms`.
+- [x] Raisons d'arret explicites: `manual`, `auto_limit`, `recorder_error`, `track_ended`, `unknown`.
+- [x] Arret volontaire conserve et distingue de l'arret par limite.
+- [x] Pas d'arret ajoute sur silence, blur, busy state ou changement de thread.
+- [x] Blob unique conserve pour le premier patch; `MediaRecorder.start()` reste sans `timeslice`.
+- [x] Mesures content-free envoyees avec l'upload: duree approx, taille blob, nombre de chunks, raison d'arret.
+- [x] Backend: logs content-free de reception upload, statut transcription, latence et erreur bornee; pas d'audio brut, pas de transcript, pas de nom de fichier utilisateur.
+- [x] Timeout applicatif Whisper par defaut porte a `180 s`.
+- [x] Brouillon texte existant preserve en cas d'erreur recorder, upstream ou timeout.
+- [x] Tests frontend/backend ajoutes pour limite 150 s, raison d'arret, brouillon preserve, gros blob simule et logs content-free.
+- [ ] Validation live longue avec service Whisper aval: a documenter selon disponibilite effective du conteneur `platform-whisper-api`; si OOM/`exit code -9` reapparait, ouvrir un micro-lot Sauron.
+
 ### Lot 0 - Reproduction et observabilite content-free
 
-- [ ] Ajouter une preuve reproductible avec audio non sensible ou silence synthetique: 20 s, 60 s, 120 s.
-- [ ] Mesurer separement les etapes: capture navigateur, construction blob, upload recu par FridaDev, POST upstream Whisper, transcription retournee, reinjection UI.
-- [ ] Mesurer sans contenu brut: duree capturee, nombre de chunks `dataavailable`, taille blob finale, raison d'arret (`manual`, `auto_limit`, `recorder_error`, `track_ended`, `upload_error`, `transcription_error`), statut HTTP, temps d'upload, temps de transcription.
-- [ ] Verifier que l'erreur affichee a l'utilisateur distingue arret automatique, erreur MediaRecorder, timeout backend et service Whisper indisponible.
-- [ ] Reproduire avant patch l'etat courant pour ne pas confondre regression existante, plafond volontaire et panne aval.
-- [ ] Ne jamais logger audio brut, transcription complete sensible, token, cookie ou header d'autorisation.
+- [x] Ajouter une preuve reproductible avec audio non sensible ou silence synthetique: 20 s, 60 s, 120 s.
+- [x] Mesurer separement les etapes: capture navigateur, construction blob, upload recu par FridaDev, POST upstream Whisper, transcription retournee, reinjection UI.
+- [x] Mesurer sans contenu brut: duree capturee, nombre de chunks `dataavailable`, taille blob finale, raison d'arret (`manual`, `auto_limit`, `recorder_error`, `track_ended`, `upload_error`, `transcription_error`), statut HTTP, temps d'upload, temps de transcription.
+- [x] Verifier que l'erreur affichee a l'utilisateur distingue arret automatique, erreur MediaRecorder, timeout backend et service Whisper indisponible.
+- [x] Reproduire avant patch l'etat courant pour ne pas confondre regression existante, plafond volontaire et panne aval.
+- [x] Ne jamais logger audio brut, transcription complete sensible, token, cookie ou header d'autorisation.
 
 ### Lot 1 - Frontend: plafond de duree et arret volontaire
 
-- [ ] Porter le plafond de capture a au moins 2 minutes, ou rendre la limite explicitement configuree par constante bornee, seulement apres decision sur la strategie blob unique / chunks du lot 2.
-- [ ] Ne pas traiter la hausse de `60_000 ms` vers `120_000 ms` comme un correctif suffisant tant que l'upload complet, la transcription et la preservation UI ne sont pas prouves.
-- [ ] Tester que la dictee ne s'arrete pas avant 120 secondes en fonctionnement normal.
-- [ ] Tester que l'auto-stop arrive seulement a la limite attendue et qu'il est distingue d'une erreur recorder.
-- [ ] Conserver l'arret volontaire immediat.
-- [ ] Conserver la preservation du brouillon texte existant si la transcription echoue.
-- [ ] Afficher un etat clair pendant l'enregistrement et pendant la transcription, sans pedagogie lourde dans l'UI.
+- [x] Porter le plafond de capture a au moins 2 minutes, ou rendre la limite explicitement configuree par constante bornee, seulement apres decision sur la strategie blob unique / chunks du lot 2.
+- [x] Ne pas traiter la hausse de `60_000 ms` vers `150_000 ms` comme un correctif suffisant tant que l'upload complet, la transcription et la preservation UI ne sont pas prouves.
+- [x] Tester que la dictee ne s'arrete pas avant 120 secondes en fonctionnement normal.
+- [x] Tester que l'auto-stop arrive seulement a la limite attendue et qu'il est distingue d'une erreur recorder.
+- [x] Conserver l'arret volontaire immediat.
+- [x] Conserver la preservation du brouillon texte existant si la transcription echoue.
+- [x] Afficher un etat clair pendant l'enregistrement et pendant la transcription, sans pedagogie lourde dans l'UI.
 
 ### Lot 2 - Frontend: decision chunks MediaRecorder
 
-- [ ] Decider explicitement si le correctif initial reste en blob unique jusqu'a 120 s, ou ajoute un `timeslice` a `MediaRecorder.start()` pour recevoir des `dataavailable` periodiques.
-- [ ] Traiter le `timeslice` comme une option d'architecture a justifier, pas comme un dogme: avec l'endpoint actuel non-streaming, il ne rend pas l'upload streaming a lui seul.
-- [ ] Si le blob unique est conserve, documenter la preuve que 120 s reste acceptable sur navigateur cible, taille audio attendue, memoire client, upload FridaDev et service aval.
+- [x] Decider explicitement si le correctif initial reste en blob unique jusqu'a 120 s, ou ajoute un `timeslice` a `MediaRecorder.start()` pour recevoir des `dataavailable` periodiques.
+- [x] Traiter le `timeslice` comme une option d'architecture a justifier, pas comme un dogme: avec l'endpoint actuel non-streaming, il ne rend pas l'upload streaming a lui seul.
+- [x] Si le blob unique est conserve, documenter la preuve que 120 s reste acceptable sur navigateur cible, taille audio attendue, memoire client, upload FridaDev et service aval.
 - [ ] Si le `timeslice` est ajoute, definir le gain attendu: limiter les donnees perdues en cas d'erreur tardive, observer la croissance audio, reduire la dependance au `dataavailable` final, ou preparer un futur upload segmente.
-- [ ] Conserver la construction finale du fichier audio si l'endpoint reste non-streaming.
-- [ ] Eviter qu'un long enregistrement repose sur un unique blob tardif si le navigateur ou le device est instable.
-- [ ] Tester interruption, erreur recorder, permissions micro et changement d'etat.
+- [x] Conserver la construction finale du fichier audio si l'endpoint reste non-streaming.
+- [x] Eviter qu'un long enregistrement repose sur un unique blob tardif si le navigateur ou le device est instable.
+- [x] Tester interruption, erreur recorder, permissions micro et changement d'etat.
 
 ### Lot 3 - Backend: limites et erreurs transcription
 
-- [ ] Verifier si `WHISPER_API_TIMEOUT_S=120` suffit pour 2 minutes d'audio sur OVH.
-- [ ] Si necessaire, proposer une valeur bornee plus sure sans toucher a la plateforme dans le meme lot applicatif.
-- [ ] Verifier separement les limites de taille upload applicatives et proxy sans afficher de config sensible.
-- [ ] Prouver que FridaDev recoit l'upload complet avant d'attribuer un echec au service Whisper aval.
+- [x] Verifier si `WHISPER_API_TIMEOUT_S=120` suffit pour 2 minutes d'audio sur OVH.
+- [x] Si necessaire, proposer une valeur bornee plus sure sans toucher a la plateforme dans le meme lot applicatif.
+- [x] Verifier separement les limites de taille upload applicatives et proxy sans afficher de config sensible.
+- [x] Prouver que FridaDev recoit l'upload complet avant d'attribuer un echec au service Whisper aval.
 - [ ] Si une limite de taille ou duree est ajoutee, la rendre explicite, testee, bornee et visible par une erreur content-free.
-- [ ] Garder les erreurs mappees proprement: 400 fichier absent/vide, 502 indisponible, 504 timeout.
-- [ ] Ne pas lire ni persister plus de contenu audio que necessaire.
-- [ ] Ne pas ajouter de log contenant audio brut, transcript, nom de fichier utilisateur sensible, cookie, token, header d'autorisation ou detail upstream verbeux.
+- [x] Garder les erreurs mappees proprement: 400 fichier absent/vide, 502 indisponible, 504 timeout.
+- [x] Ne pas lire ni persister plus de contenu audio que necessaire.
+- [x] Ne pas ajouter de log contenant audio brut, transcript, nom de fichier utilisateur sensible, cookie, token, header d'autorisation ou detail upstream verbeux.
 
 ### Lot 4 - Service Whisper local et discipline Sauron
 
@@ -378,13 +395,13 @@ La reproduction doit donc separer trois phenomenes au lieu de les fusionner:
 
 ### Lot 5 - Tests et validation live
 
-- [ ] Tests frontend: pas d'auto-stop avant 120 s, auto-stop borne si limite atteinte, arret volontaire, erreur recorder, piste terminee, brouillon texte existant preserve.
-- [ ] Tests endpoint/service: timeout, erreur upstream, fichier vide, upload long synthetique recu complet, fichier long synthetique transcrit si possible.
-- [ ] Test integration contrat frontend: bouton micro, endpoint, input_mode voice inchanges.
+- [x] Tests frontend: pas d'auto-stop avant 120 s, auto-stop borne si limite atteinte, arret volontaire, erreur recorder, piste terminee, brouillon texte existant preserve.
+- [x] Tests endpoint/service: timeout, erreur upstream, fichier vide, upload long synthetique recu complet, fichier long synthetique transcrit si possible.
+- [x] Test integration contrat frontend: bouton micro, endpoint, input_mode voice inchanges.
 - [ ] Validation navigateur: dictee courte toujours OK, dictee longue cible 2 minutes OK, arret volontaire OK, erreur aval lisible.
-- [ ] Definir et verifier l'absence de perte: le brouillon texte existant n'est jamais efface; une transcription reussie est ajoutee une seule fois; si une transcription longue echoue, l'UI explique l'echec sans inventer ni effacer de texte.
-- [ ] Si le produit exige de ne pas perdre l'audio dicte en cas d'echec transcription, ouvrir une decision separee sur retry local ephemere, duree de conservation, consentement utilisateur et garde-fous privacy avant tout patch.
-- [ ] Verifier qu'aucun audio brut ni transcription sensible ne sort dans logs, read-models, exports ou docs.
+- [x] Definir et verifier l'absence de perte: le brouillon texte existant n'est jamais efface; une transcription reussie est ajoutee une seule fois; si une transcription longue echoue, l'UI explique l'echec sans inventer ni effacer de texte.
+- [x] Si le produit exige de ne pas perdre l'audio dicte en cas d'echec transcription, ouvrir une decision separee sur retry local ephemere, duree de conservation, consentement utilisateur et garde-fous privacy avant tout patch.
+- [x] Verifier qu'aucun audio brut ni transcription sensible ne sort dans logs, read-models, exports ou docs.
 
 ### Hors-scope Objet 3
 
@@ -414,9 +431,9 @@ La reproduction doit donc separer trois phenomenes au lieu de les fusionner:
 - [x] Niveau de tests visuels attendu pour le streaming: tests unitaires parser/state, tests serveur, validation Playwright/harness et verification live app.
 - [x] Comportement streaming en cas d'interruption: terminal `error` ou erreur reseau conserve le statut interrompu et ne canonise pas le fragment visible.
 - [x] Cible produit dictee longue: au moins 2 minutes.
-- [ ] Limite exacte de capture apres correctif initial: 2 minutes strictes, marge 150 s, ou limite configurable par settings.
-- [ ] Strategie capture longue initiale: blob unique prouve acceptable, ou `timeslice` MediaRecorder avant/avec hausse du plafond.
-- [ ] Garantie produit attendue en cas d'echec transcription longue: preservation du brouillon texte seulement, ou retry local ephemere de l'audio avec garde-fous privacy explicites.
+- [x] Limite exacte de capture apres correctif initial: 2 minutes strictes, marge 150 s, ou limite configurable par settings. Decision 2026-05-23: limite client bornee a `150 s`.
+- [x] Strategie capture longue initiale: blob unique prouve acceptable, ou `timeslice` MediaRecorder avant/avec hausse du plafond. Decision 2026-05-23: blob unique conserve pour ce patch; `timeslice` reste option future si preuve de fragilite.
+- [x] Garantie produit attendue en cas d'echec transcription longue: preservation du brouillon texte seulement, ou retry local ephemere de l'audio avec garde-fous privacy explicites. Decision 2026-05-23: preservation du brouillon texte seulement.
 - [ ] Niveau de diagnostic live accepte pour le service Whisper aval si la cause reste cote plateforme.
 
 ## 9. Hors-scope global

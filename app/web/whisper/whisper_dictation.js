@@ -14,7 +14,16 @@
   };
 
   const DEFAULT_ENDPOINT = "/api/chat/transcribe";
-  const DEFAULT_MAX_RECORDING_MS = 60_000;
+  const DEFAULT_MAX_RECORDING_MS = 150_000;
+  const MAX_RECORDING_MS_LIMIT = 150_000;
+  const STOP_REASONS = {
+    MANUAL: "manual",
+    AUTO_LIMIT: "auto_limit",
+    RECORDER_ERROR: "recorder_error",
+    TRACK_ENDED: "track_ended",
+    UNKNOWN: "unknown",
+  };
+  const SAFE_STOP_REASONS = new Set(Object.values(STOP_REASONS));
   const PREFERRED_MIME_TYPES = [
     "audio/webm;codecs=opus",
     "audio/webm",
@@ -48,6 +57,44 @@
       }
     }
     return "";
+  }
+
+  function normalizeMaxRecordingMs(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) return DEFAULT_MAX_RECORDING_MS;
+    return Math.min(Math.round(numeric), MAX_RECORDING_MS_LIMIT);
+  }
+
+  function normalizeStopReason(value) {
+    const reason = text(value);
+    if (SAFE_STOP_REASONS.has(reason)) return reason;
+    return STOP_REASONS.UNKNOWN;
+  }
+
+  function nowMs(rootValue) {
+    const performanceNow = rootValue && rootValue.performance && rootValue.performance.now;
+    if (typeof performanceNow === "function") {
+      return Number(performanceNow.call(rootValue.performance)) || 0;
+    }
+    return Date.now();
+  }
+
+  function appendMetadataField(formData, name, value) {
+    if (!formData || typeof formData.append !== "function") return;
+    if (value === null || value === undefined || value === "") return;
+    formData.append(name, String(value));
+  }
+
+  function buildTranscriptionMetadata(metadata) {
+    const durationMs = Math.max(0, Math.round(Number(metadata && metadata.durationMs) || 0));
+    const blobSizeBytes = Math.max(0, Math.round(Number(metadata && metadata.blobSizeBytes) || 0));
+    const chunkCount = Math.max(0, Math.round(Number(metadata && metadata.chunkCount) || 0));
+    return {
+      recording_duration_ms: durationMs,
+      recording_blob_size_bytes: blobSizeBytes,
+      recording_chunk_count: chunkCount,
+      recording_stop_reason: normalizeStopReason(metadata && metadata.stopReason),
+    };
   }
 
   function buildUploadFilename(mimeType) {
@@ -153,6 +200,14 @@
     const mimeType = text((options && options.mimeType) || audioBlob.type);
     const formData = new FormDataCtor();
     formData.append("file", audioBlob, buildUploadFilename(mimeType));
+    const metadata = buildTranscriptionMetadata({
+      ...(options && options.metadata ? options.metadata : {}),
+      blobSizeBytes: audioBlob.size,
+    });
+    appendMetadataField(formData, "recording_duration_ms", metadata.recording_duration_ms);
+    appendMetadataField(formData, "recording_blob_size_bytes", metadata.recording_blob_size_bytes);
+    appendMetadataField(formData, "recording_chunk_count", metadata.recording_chunk_count);
+    appendMetadataField(formData, "recording_stop_reason", metadata.recording_stop_reason);
 
     const response = await fetchImpl(endpoint, {
       method: "POST",
@@ -195,8 +250,10 @@
     });
     const isBusy = (options && options.isBusy) || (() => false);
     const endpoint = (options && options.endpoint) || DEFAULT_ENDPOINT;
-    const maxRecordingMs = Number((options && options.maxRecordingMs) || DEFAULT_MAX_RECORDING_MS);
+    const maxRecordingMs = normalizeMaxRecordingMs(options && options.maxRecordingMs);
     const onDraftInputMode = (options && options.onDraftInputMode) || (() => {});
+    const onTelemetry = (options && options.onTelemetry) || (() => {});
+    const nowFn = (options && options.nowFn) || (() => nowMs(root));
 
     let state = STATES.IDLE;
     let recorder = null;
@@ -205,6 +262,17 @@
     let autoStopTimer = null;
     let selectedMimeType = "";
     let errorMessage = "";
+    let recordingStartedAtMs = 0;
+    let lastStopReason = STOP_REASONS.UNKNOWN;
+    let chunkCount = 0;
+    let ignoreNextStopEvent = false;
+
+    function emitTelemetry(eventName, payload) {
+      if (typeof onTelemetry !== "function") return;
+      try {
+        onTelemetry(eventName, payload || {});
+      } catch {}
+    }
 
     function supported() {
       return Boolean(
@@ -243,6 +311,28 @@
       mediaStream = null;
     }
 
+    function bindTrackEndedHandlers(stream, handler) {
+      if (!stream || typeof stream.getTracks !== "function") return;
+      for (const track of stream.getTracks()) {
+        if (!track) continue;
+        if (typeof track.addEventListener === "function") {
+          track.addEventListener("ended", handler);
+        } else if (!track.onended) {
+          track.onended = handler;
+        }
+      }
+    }
+
+    function transcriptionMessage() {
+      if (lastStopReason === STOP_REASONS.AUTO_LIMIT) {
+        return "Limite de dictée atteinte. Transcription en cours.";
+      }
+      if (lastStopReason === STOP_REASONS.TRACK_ENDED) {
+        return "Micro interrompu. Transcription en cours.";
+      }
+      return "Transcription en cours.";
+    }
+
     function render(messageOverride) {
       const activeState = visualState();
       const available = supported();
@@ -252,7 +342,7 @@
         : activeState === STATES.RECORDING
           ? "Enregistrement en cours."
           : activeState === STATES.TRANSCRIBING
-            ? "Transcription en cours."
+            ? transcriptionMessage()
             : activeState === STATES.BUSY
               ? "Réponse assistant en cours."
               : activeState === STATES.ERROR
@@ -285,20 +375,34 @@
     }
 
     async function finalizeRecording() {
+      const durationMs = Math.max(0, Math.round(Number(nowFn()) - recordingStartedAtMs));
       const blobType = text((recorder && recorder.mimeType) || selectedMimeType);
       const audioBlob = new BlobCtor(pendingChunks, blobType ? { type: blobType } : undefined);
+      const finalChunkCount = chunkCount;
       pendingChunks = [];
+      chunkCount = 0;
       stopTracks();
 
       if (!audioBlob || Number(audioBlob.size || 0) <= 0) {
         state = STATES.ERROR;
         errorMessage = "Aucun audio détecté";
+        emitTelemetry("dictation_recording_empty", {
+          recording_duration_ms: durationMs,
+          recording_stop_reason: normalizeStopReason(lastStopReason),
+          recording_chunk_count: finalChunkCount,
+        });
         render();
         return;
       }
 
       state = STATES.TRANSCRIBING;
       errorMessage = "";
+      emitTelemetry("dictation_recording_ready", {
+        recording_duration_ms: durationMs,
+        recording_blob_size_bytes: Number(audioBlob.size || 0),
+        recording_chunk_count: finalChunkCount,
+        recording_stop_reason: normalizeStopReason(lastStopReason),
+      });
       render();
 
       try {
@@ -308,6 +412,11 @@
           endpoint,
           fetchImpl,
           FormDataCtor,
+          metadata: {
+            durationMs,
+            chunkCount: finalChunkCount,
+            stopReason: lastStopReason,
+          },
         });
         const nextDraft = joinTranscriptToDraft(getDraftValue(), transcript);
         setDraftValue(nextDraft);
@@ -316,10 +425,23 @@
         focusDraft();
         state = STATES.IDLE;
         errorMessage = "";
+        emitTelemetry("dictation_transcription_ok", {
+          recording_duration_ms: durationMs,
+          recording_blob_size_bytes: Number(audioBlob.size || 0),
+          recording_chunk_count: finalChunkCount,
+          recording_stop_reason: normalizeStopReason(lastStopReason),
+        });
         render("");
       } catch (error) {
         state = STATES.ERROR;
         errorMessage = text(error && error.message) || "Transcription indisponible";
+        emitTelemetry("dictation_transcription_error", {
+          recording_duration_ms: durationMs,
+          recording_blob_size_bytes: Number(audioBlob.size || 0),
+          recording_chunk_count: finalChunkCount,
+          recording_stop_reason: normalizeStopReason(lastStopReason),
+          error_name: text(error && error.name) || "Error",
+        });
         render();
       } finally {
         recorder = null;
@@ -350,7 +472,11 @@
       }
 
       pendingChunks = [];
+      chunkCount = 0;
       selectedMimeType = pickSupportedMimeType(MediaRecorderCtor);
+      lastStopReason = STOP_REASONS.UNKNOWN;
+      ignoreNextStopEvent = false;
+      recordingStartedAtMs = Number(nowFn()) || 0;
 
       try {
         recorder = selectedMimeType ? new MediaRecorderCtor(mediaStream, { mimeType: selectedMimeType }) : new MediaRecorderCtor(mediaStream);
@@ -366,6 +492,7 @@
       bindRecorderEvent(recorder, "dataavailable", (event) => {
         const chunk = event && event.data;
         if (chunk && Number(chunk.size || 0) > 0) {
+          chunkCount += 1;
           pendingChunks.push(chunk);
         }
       });
@@ -374,32 +501,50 @@
         stopTracks();
         recorder = null;
         pendingChunks = [];
+        chunkCount = 0;
+        lastStopReason = STOP_REASONS.RECORDER_ERROR;
+        ignoreNextStopEvent = true;
         state = STATES.ERROR;
         errorMessage = "Enregistrement audio interrompu";
+        emitTelemetry("dictation_recorder_error", {
+          recording_stop_reason: STOP_REASONS.RECORDER_ERROR,
+        });
         render();
       });
       bindRecorderEvent(recorder, "stop", () => {
+        if (ignoreNextStopEvent) {
+          ignoreNextStopEvent = false;
+          return;
+        }
         void finalizeRecording();
+      });
+      bindTrackEndedHandlers(mediaStream, () => {
+        stopRecording(STOP_REASONS.TRACK_ENDED);
       });
 
       recorder.start();
       state = STATES.RECORDING;
       errorMessage = "";
+      emitTelemetry("dictation_recording_started", {
+        max_recording_ms: maxRecordingMs,
+      });
       render();
 
       if (typeof setTimeoutFn === "function") {
         autoStopTimer = setTimeoutFn(() => {
           if (!recorder || recorder.state !== "recording") return;
+          lastStopReason = STOP_REASONS.AUTO_LIMIT;
           state = STATES.TRANSCRIBING;
           render();
           recorder.stop();
-        }, Number.isFinite(maxRecordingMs) ? maxRecordingMs : DEFAULT_MAX_RECORDING_MS);
+        }, maxRecordingMs);
       }
     }
 
-    function stopRecording() {
+    function stopRecording(reason) {
       if (!recorder || recorder.state !== "recording") return;
       clearTimer();
+      lastStopReason = normalizeStopReason(reason || STOP_REASONS.MANUAL);
       state = STATES.TRANSCRIBING;
       render();
       recorder.stop();
@@ -426,9 +571,9 @@
     render();
 
     return {
-      getState() {
-        return state;
-      },
+      getState() { return state; },
+      getMaxRecordingMs() { return maxRecordingMs; },
+      getLastStopReason() { return lastStopReason; },
       refreshUi() {
         render();
       },
@@ -438,9 +583,14 @@
 
   return {
     STATES,
+    STOP_REASONS,
+    DEFAULT_MAX_RECORDING_MS,
+    MAX_RECORDING_MS_LIMIT,
+    buildTranscriptionMetadata,
     buildUploadFilename,
     createWhisperDictation,
     joinTranscriptToDraft,
+    normalizeMaxRecordingMs,
     pickSupportedMimeType,
     transcribeBlob,
   };

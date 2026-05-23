@@ -697,6 +697,7 @@ def api_chat_transcribe():
         payload, status = whisper_transcription_service.transcribe_http_request(
             content_type=request.content_type,
             files=request.files,
+            form=request.form,
             requests_module=requests,
             config_module=config,
             logger_obj=logger,
