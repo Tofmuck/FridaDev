@@ -120,7 +120,7 @@ Interdits:
 
 Autorise:
 
-- afficher le niveau selectionne, par exemple `raisonnement: aucun / faible / moyen / eleve`;
+- afficher le niveau selectionne, par exemple `raisonnement: aucun / faible / moyen / élevé`;
 - journaliser de facon content-free le niveau utilise;
 - observer cout, latence, tokens, modele, caller;
 - garder une trace technique du parametre envoye, sans contenu de raisonnement.
@@ -161,7 +161,7 @@ Les cases detaillees ci-dessous conservent le plan A-Z initial. Pour l'objet 1, 
   - `none` -> `aucun` ou `rapide`;
   - `low` -> `faible`;
   - `medium` -> `moyen`;
-  - `high` -> `eleve`.
+  - `high` -> `élevé`.
 - [x] Confirmer la valeur par defaut cible pour FridaDev: `high`.
 - [x] Definir le comportement si le modele principal courant ne supporte pas reasoning: ne pas envoyer le champ, exposer un signal content-free, ne pas planter.
 - [x] Documenter que les niveaux generiques OpenRouter ne suffisent pas: le contrat actif est l'intersection modele-specifique.
@@ -572,7 +572,7 @@ Objectif: remplacer les points statiques de la bulle assistant d'attente par le 
 
 - [x] Niveaux exacts de reasoning valides apres relecture finale des docs officielles: `none`, `low`, `medium`, `high`.
 - [x] Valeur par defaut du reasoning FridaDev: `high`.
-- [x] Libelles UI francais definitifs pour l'objet 1: `aucun`, `faible`, `moyen`, `eleve`.
+- [x] Libelles UI francais definitifs pour l'objet 1: `aucun`, `faible`, `moyen`, `élevé`.
 - [x] Emplacement precis du controle dans la fenetre de chat: pres de la zone de saisie, comme raccourci global compact.
 - [x] Strategie si `temperature` / `top_p` deviennent incompatibles avec certains niveaux de reasoning: smoke live 2026-05-22 OK, conserver les champs; reouvrir seulement sur erreur provider prouvee.
 - [x] Comportement si le modele principal n'est plus GPT-5.1 ou ne supporte pas reasoning: ne pas envoyer le champ, exposer un signal content-free, ne pas planter.

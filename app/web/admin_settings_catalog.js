@@ -240,7 +240,7 @@
         { value: "none", label: "aucun" },
         { value: "low", label: "faible" },
         { value: "medium", label: "moyen" },
-        { value: "high", label: "eleve" },
+        { value: "high", label: "élevé" },
       ],
       autocomplete: "off",
     },

@@ -12,6 +12,7 @@ test('main reasoning control exposes GPT-5.1 levels only', () => {
   );
   assert.equal(reasoningControl.normalizeReasoningLevel('xhigh'), 'high');
   assert.equal(reasoningControl.normalizeReasoningLevel('minimal'), 'high');
+  assert.equal(reasoningControl.reasoningLabel('high'), 'élevé');
 });
 
 test('main reasoning control reads runtime settings and builds a global patch', () => {

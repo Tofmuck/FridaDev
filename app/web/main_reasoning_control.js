@@ -4,7 +4,7 @@ const MAIN_REASONING_LEVELS = Object.freeze([
   Object.freeze({ value: 'none', label: 'aucun' }),
   Object.freeze({ value: 'low', label: 'faible' }),
   Object.freeze({ value: 'medium', label: 'moyen' }),
-  Object.freeze({ value: 'high', label: 'eleve' }),
+  Object.freeze({ value: 'high', label: 'élevé' }),
 ]);
 
 const DEFAULT_MAIN_REASONING_LEVEL = 'high';
