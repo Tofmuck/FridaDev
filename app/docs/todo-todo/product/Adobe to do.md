@@ -207,15 +207,15 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 
 ### RISQUES
 
-- [ ] Risque de melanger Adobe avec le web search general.
-- [ ] Risque de rouvrir Biblio/native Catalogue par accident.
-- [ ] Risque de creer un mode `auto` malgre la decision utilisateur.
+- [x] Risque de melanger Adobe avec le web search general.
+- [x] Risque de rouvrir Biblio/native Catalogue par accident.
+- [x] Risque de creer un mode `auto` malgre la decision utilisateur.
 
 ### REDUCTION DES RISQUES
 
-- [ ] Nommer clairement le module Adobe.
-- [ ] Garder le mode produit explicite.
-- [ ] Refuser tout stockage durable Adobe au MVP.
+- [x] Nommer clairement le module Adobe.
+- [x] Garder le mode produit explicite.
+- [x] Refuser tout stockage durable Adobe au MVP.
 
 ## Lot 1 - Registre de sources Adobe
 
