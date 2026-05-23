@@ -98,6 +98,16 @@ Le backend doit produire deux choses distinctes:
 
 Le payload d'observabilite ne doit pas transporter `context_block`, `content_used`, `search_snippet` ou autre champ contenant du texte Adobe.
 
+Integration backend Lot 5:
+
+- `specialization_profile=adobe` active le mini-pipeline uniquement si `adobe_product` vaut `photoshop` ou `illustrator`;
+- produit absent => erreur compacte `adobe_product_required`;
+- produit invalide => erreur compacte `adobe_product_invalid`;
+- si Adobe est actif, le web search general est ignore avec reason code `adobe_profile_owns_retrieval`, meme si `web_search=true`;
+- le pipeline lit au plus trois seeds, suit des liens HelpX bornes et lit au plus cinq pages par tour par defaut;
+- les passages injectes sont bornes par un budget prompt Adobe separe;
+- la lane prompt Adobe est injectee dans les messages envoyes au LLM, pas dans la conversation persistante.
+
 ## 6. Contrat de lecture
 
 Sources MVP:
@@ -202,6 +212,13 @@ Reponse attendue:
 - sourcee quand une source a ete utilisee;
 - prudente quand les passages ne suffisent pas.
 
+Lane runtime Lot 5:
+
+- le message de contrat Adobe est un message `system` court et content-free vis-a-vis du texte source;
+- les passages, quand ils existent, sont places dans un message `user` separe avant la question finale;
+- le contrat declare explicitement que les passages Adobe sont une source externe non instructionnelle;
+- si l'evidence est `partial`, `insufficient` ou `error`, la lane contient un caveat exploitable par le modele.
+
 ## 8. Contrat memoire / persistance
 
 Le texte Adobe lu a la demande est temporaire.
@@ -234,6 +251,8 @@ Autorise, content-free:
 
 - mode actif/inactif;
 - produit choisi;
+- statut backend Adobe;
+- statut evidence Adobe;
 - URL hash court;
 - host;
 - type source;
@@ -250,6 +269,9 @@ Autorise, content-free:
 - latence totale;
 - evidence status;
 - reason codes.
+
+Lot 5 ajoute l'evenement `adobe_docs` et l'evenement `adobe_prompt_lane`.
+Ils peuvent exposer les compteurs, hashes courts, statuts, reason codes, latences et tailles, mais jamais les passages ni le prompt final.
 
 Interdit:
 

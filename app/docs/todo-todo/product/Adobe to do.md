@@ -417,45 +417,48 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 
 ### PLAN
 
-- [ ] Ajouter le champ mode Adobe au contrat payload.
-- [ ] Ajouter le produit explicite au contrat payload.
-- [ ] Brancher le mini-pipeline avant l'assemblage prompt.
-- [ ] Garantir que le web search general reste inchangé hors mode Adobe.
-- [ ] Ajouter une lane prompt dediee.
-- [ ] Ajouter hard guard contre prompt injection web.
+- [x] Ajouter le champ mode Adobe au contrat payload.
+- [x] Ajouter le produit explicite au contrat payload.
+- [x] Brancher le mini-pipeline avant l'assemblage prompt.
+- [x] Garantir que le web search general reste inchange hors mode Adobe.
+- [x] Ajouter une lane prompt dediee.
+- [x] Ajouter hard guard contre prompt injection web.
 
 ### PATCH
 
-- [ ] Etendre le parsing `/api/chat` sans casser les clients existants.
-- [ ] Ajouter `adobe_context_payload` ou equivalent.
-- [ ] Injecter les passages dans le contexte chat avec metadonnees.
-- [ ] Marquer la lane comme source externe non instructionnelle.
-- [ ] Ajouter etats: not_requested, success, partial, insufficient, error.
-- [ ] Ajouter observabilite content-free.
+- [x] Etendre le parsing `/api/chat` sans casser les clients existants.
+- [x] Ajouter `adobe_context_payload` ou equivalent.
+- [x] Injecter les passages dans le contexte chat avec metadonnees.
+- [x] Marquer la lane comme source externe non instructionnelle.
+- [x] Ajouter etats: not_requested, success, partial, insufficient, error.
+- [x] Ajouter observabilite content-free.
 
 ### TEST
 
-- [ ] Test: mode absent ne change pas le payload existant.
-- [ ] Test: mode Photoshop appelle le pipeline Photoshop.
-- [ ] Test: mode Illustrator appelle le pipeline Illustrator.
-- [ ] Test: produit manquant refuse ou ignore proprement selon contrat.
-- [ ] Test: evidence insuffisante ajoute caveat.
-- [ ] Test: erreur Crawl4AI n'ecrase pas la reponse utilisateur.
-- [ ] Test: lane Adobe ne part pas en Memory/Identity/Summary.
+- [x] Test: mode absent ne change pas le payload existant.
+- [x] Test: mode Photoshop appelle le pipeline Photoshop.
+- [x] Test: mode Illustrator appelle le pipeline Illustrator.
+- [x] Test: produit manquant refuse selon contrat.
+- [x] Test: produit invalide refuse selon contrat.
+- [x] Test: `specialization_profile=adobe` + `web_search=true` ne lance pas le web search general.
+- [x] Test: evidence insuffisante ajoute caveat.
+- [x] Test: erreur Crawl4AI n'ecrase pas la reponse utilisateur.
+- [x] Test: lane Adobe ne part pas en Memory/Identity/Summary.
+- [x] Test: observabilite Adobe reste content-free.
 
 ### RISQUES
 
-- [ ] Regression du chat normal.
-- [ ] Contamination de la memoire.
-- [ ] Prompt trop gros.
-- [ ] Confusion entre web search et Adobe docs.
+- [x] Regression du chat normal.
+- [x] Contamination de la memoire.
+- [x] Prompt trop gros.
+- [x] Confusion entre web search et Adobe docs.
 
 ### REDUCTION DES RISQUES
 
-- [ ] Tests de non-regression web off/web search normal.
-- [ ] Budget prompt dedie.
-- [ ] Garde-fous de non-contamination.
-- [ ] Feature flag ou champ explicite uniquement.
+- [x] Tests de non-regression web off/web search normal.
+- [x] Budget prompt dedie.
+- [x] Garde-fous de non-contamination.
+- [x] Feature flag ou champ explicite uniquement.
 
 ## Lot 6 - UI bouton Adobe
 

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any, Mapping
 
 from core import assistant_output_contract
+from core import adobe_docs_prompt_lane
 from core import active_conversation_documents
 from core import active_document_prompt_lane
 from core import workspace_file_selections
@@ -23,6 +24,7 @@ from core.hermeneutic_node.inputs import web_input as canonical_web_input
 from observability import active_documents_observability
 from observability import chat_turn_logger
 from observability import hermeneutic_node_logger
+from tools import adobe_docs_pipeline
 
 
 # Phase 4 bis - Cartographie locale des responsabilités de ce module:
@@ -383,9 +385,53 @@ _resolve_recent_window_input = chat_turn_runtime_inputs.resolve_recent_window_in
 _resolve_user_turn_runtime_inputs = chat_turn_runtime_inputs.resolve_user_turn_runtime_inputs
 _store_latest_user_affective_turn_signal = chat_turn_runtime_inputs.store_latest_user_affective_turn_signal
 _resolve_web_runtime_payload = chat_turn_runtime_inputs.resolve_web_runtime_payload
+_resolve_web_runtime_payload_skipped_by_adobe = chat_turn_runtime_inputs.resolve_web_runtime_payload_skipped_by_adobe
 _run_stimmung_agent_stage = chat_turn_runtime_inputs.run_stimmung_agent_stage
 _build_stimmung_input = chat_turn_runtime_inputs.build_stimmung_input
 _build_web_input_from_runtime_payload = chat_turn_runtime_inputs.build_web_input_from_runtime_payload
+
+
+def _emit_adobe_docs_observability(
+    *,
+    conversation_id: str,
+    adobe_context: Any,
+    admin_logs_module: Any,
+) -> None:
+    payload_builder = getattr(adobe_context, 'as_content_free_dict', None)
+    payload = payload_builder() if callable(payload_builder) else {}
+    if not isinstance(payload, Mapping):
+        payload = {}
+    status = str(payload.get('status') or getattr(adobe_context, 'status', '') or 'error')
+    reason_codes = payload.get('reason_codes') if isinstance(payload.get('reason_codes'), list) else []
+    reason_code = str(reason_codes[0]) if reason_codes else ''
+    chat_turn_logger.set_state('adobe_docs', dict(payload))
+    chat_turn_logger.emit(
+        'adobe_docs',
+        status=status,
+        reason_code=reason_code or None,
+        payload=dict(payload),
+    )
+    try:
+        admin_logs_module.log_event(
+            'adobe_docs',
+            conversation_id=conversation_id,
+            **dict(payload),
+        )
+    except Exception:
+        return
+
+
+def _emit_adobe_prompt_lane_observability(lane: Any) -> None:
+    payload_builder = getattr(lane, 'as_content_free_dict', None)
+    payload = payload_builder() if callable(payload_builder) else {}
+    if not isinstance(payload, Mapping):
+        payload = {}
+    chat_turn_logger.set_state('adobe_prompt_lane', dict(payload))
+    chat_turn_logger.emit(
+        'adobe_prompt_lane',
+        status=str(payload.get('status') or 'not_requested'),
+        payload=dict(payload),
+    )
 
 
 def _run_hermeneutic_node_insertion_point(
@@ -524,6 +570,16 @@ def chat_response(
     logger: Any,
     workspace_file_selections_module: Any = workspace_file_selections,
 ) -> dict[str, Any]:
+    adobe_request = adobe_docs_pipeline.resolve_adobe_request(data)
+    if adobe_request.error_code:
+        chat_turn_logger.emit(
+            'adobe_docs',
+            status='error',
+            reason_code=adobe_request.error_code,
+            payload=adobe_request.as_content_free_dict(),
+        )
+        return _json_result({'ok': False, 'error': adobe_request.error_code}, 400)
+
     system_prompt, hermeneutical_prompt = chat_prompt_context.resolve_backend_prompts(prompt_loader_module)
     session, session_error = chat_session_flow.resolve_chat_session(
         data,
@@ -627,15 +683,41 @@ def chat_response(
         signal=affective_turn_signal,
     )
     stimmung_payload = _build_stimmung_input(conversation=conversation)
-    web_runtime_payload = _resolve_web_runtime_payload(
-        user_msg=user_msg,
-        web_search_on=web_search_on,
-        web_search_module=web_search_module,
-        requests_module=requests_module,
-        llm_module=llm_module,
-        now_iso=now_iso_value,
-    )
+    if adobe_request.active:
+        web_runtime_payload = _resolve_web_runtime_payload_skipped_by_adobe(
+            user_msg=user_msg,
+            web_search_requested=web_search_on,
+        )
+    else:
+        web_runtime_payload = _resolve_web_runtime_payload(
+            user_msg=user_msg,
+            web_search_on=web_search_on,
+            web_search_module=web_search_module,
+            requests_module=requests_module,
+            llm_module=llm_module,
+            now_iso=now_iso_value,
+        )
     web_payload = _build_web_input_from_runtime_payload(web_runtime_payload)
+
+    adobe_context = adobe_docs_pipeline.not_requested_context()
+    if adobe_request.active:
+        try:
+            adobe_context = adobe_docs_pipeline.build_adobe_context(
+                user_msg,
+                adobe_request.product,
+                requests_module=requests_module,
+            )
+        except Exception as exc:
+            adobe_context = adobe_docs_pipeline.error_context(
+                product=adobe_request.product,
+                reason_code=adobe_docs_pipeline.REASON_ADOBE_PIPELINE_EXCEPTION,
+                error_class=exc.__class__.__name__,
+            )
+        _emit_adobe_docs_observability(
+            conversation_id=conversation['id'],
+            adobe_context=adobe_context,
+            admin_logs_module=admin_logs_module,
+        )
 
     hermeneutic_node_runtime = _run_hermeneutic_node_insertion_point(
         conversation=conversation,
@@ -767,6 +849,12 @@ def chat_response(
         active_document_lane,
         chat_turn_logger_module=chat_turn_logger,
     )
+    adobe_lane = adobe_docs_prompt_lane.inject_adobe_prompt_lane(
+        prompt_messages,
+        adobe_context,
+    )
+    if adobe_request.active:
+        _emit_adobe_prompt_lane_observability(adobe_lane)
     return chat_llm_flow.run_llm_exchange(
         conversation=conversation,
         prompt_messages=prompt_messages,
