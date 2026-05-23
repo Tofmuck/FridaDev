@@ -54,7 +54,7 @@ class FrontendWhisperContractTests(unittest.TestCase):
         self.assertIn('activeState,', dictation_source)
         self.assertIn('.dictation-status[data-dictation-state="recording"]::after', styles_source)
         self.assertIn('.dictation-status[data-dictation-state="transcribing"]::after', styles_source)
-        self.assertIn('@keyframes dictation-dots-wave', styles_source)
+        self.assertIn('@keyframes frida-dots-wave', styles_source)
         self.assertIn('@media (prefers-reduced-motion: reduce)', styles_source)
 
 

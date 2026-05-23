@@ -283,9 +283,16 @@ class AppPhase8Tests(unittest.TestCase):
 
         self.assertIn('status.className = "msg-stream-status";', app_source)
         self.assertIn('status.setAttribute("aria-live", "polite");', app_source)
+        self.assertIn('const setAssistantLoader = (assistantNode, enabled) => {', app_source)
+        self.assertIn('assistantNode.bubble.classList.toggle("assistant-loader", Boolean(enabled));', app_source)
+        self.assertIn('setAssistantLoader(assistantNode, true);', app_source)
+        self.assertIn('setAssistantLoader(assistantNode, false);', app_source)
         self.assertIn('.msg-stream-status {', styles_source)
         self.assertIn('.msg-stream-status[data-state="streaming"] {', styles_source)
         self.assertIn('.msg-stream-status[data-state="interrupted"] {', styles_source)
+        self.assertIn('.msg.assistant-loader::after', styles_source)
+        self.assertIn('@keyframes frida-dots-wave', styles_source)
+        self.assertIn('@media (prefers-reduced-motion: reduce)', styles_source)
 
     def test_streaming_front_uses_terminal_updated_at_before_falling_back_to_force_rehydration(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")

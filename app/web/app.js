@@ -227,6 +227,16 @@
     return addMsg(role, String(messageRecord && messageRecord.content || ""), timestamp);
   };
 
+  const setAssistantLoader = (assistantNode, enabled) => {
+    if (!assistantNode || !assistantNode.bubble || !assistantNode.bubble.classList) return;
+    assistantNode.bubble.classList.toggle("assistant-loader", Boolean(enabled));
+    if (enabled) {
+      assistantNode.bubble.setAttribute("aria-label", "Réponse en préparation");
+    } else {
+      assistantNode.bubble.removeAttribute("aria-label");
+    }
+  };
+
   const renderAssistantStreamingUiState = (assistantNode, state) => {
     if (!assistantNode || !assistantNode.status) return;
     const meta = getStreamingUiStateMeta(state, assistantNode.streamingErrorMeta || null);
@@ -459,7 +469,8 @@
     message.value = "";
     setCurrentDraftInputMode("keyboard");
 
-    const assistantNode = createMessageNode("assistant", "…");
+    const assistantNode = createMessageNode("assistant", "");
+    setAssistantLoader(assistantNode, true);
     let assistantText = "";
 
     applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_REQUEST_STARTED);
@@ -472,6 +483,7 @@
         assistantText += chunk;
         assistantNode.bubble.textContent = assistantText;
         if (hasVisibleAssistantContent(assistantText)) {
+          setAssistantLoader(assistantNode, false);
           applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_VISIBLE_CONTENT);
         }
         if (shouldStickToBottom) {
@@ -488,6 +500,7 @@
       const shouldStickToBottom = isChatNearBottom();
 
       assistantText = reply || assistantText;
+      setAssistantLoader(assistantNode, false);
       assistantNode.bubble.textContent = assistantText || "(vide)";
       if (hasReplyUpdatedAt) {
         setMessageNodeTimestamp(assistantNode, "assistant", replyTerminal.updated_at);
@@ -544,6 +557,7 @@
       const visibleAssistantNode = rehydratedAfterUnpersistedTerminalError && !assistantNode.wrapper.isConnected
         ? createMessageNode("assistant", "")
         : assistantNode;
+      setAssistantLoader(visibleAssistantNode, false);
       applyAssistantStreamingFailure(visibleAssistantNode, errorMeta);
       visibleAssistantNode.bubble.textContent = extractErrorMessage(err);
       console.error(err);

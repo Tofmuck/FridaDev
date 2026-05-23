@@ -918,6 +918,15 @@ body {
   padding: 12px 15px;
 }
 
+.msg.assistant-loader {
+  min-width: 54px;
+  color: var(--fg-subtle);
+}
+
+.msg.assistant-loader::after {
+  margin-left: 0;
+}
+
 /* Bulle utilisateur */
 .msg.me {
   background: transparent;
@@ -1329,7 +1338,8 @@ body {
 }
 
 .dictation-status[data-dictation-state="recording"]::after,
-.dictation-status[data-dictation-state="transcribing"]::after {
+.dictation-status[data-dictation-state="transcribing"]::after,
+.msg.assistant-loader::after {
   content: "";
   display: inline-block;
   width: 22px;
@@ -1341,14 +1351,14 @@ body {
     radial-gradient(circle 2px at center, currentColor 98%, transparent) 1px 6px / 4px 4px no-repeat,
     radial-gradient(circle 2px at center, currentColor 98%, transparent) 9px 6px / 4px 4px no-repeat,
     radial-gradient(circle 2px at center, currentColor 98%, transparent) 17px 6px / 4px 4px no-repeat;
-  animation: dictation-dots-wave 1.15s ease-in-out infinite;
+  animation: frida-dots-wave 1.15s ease-in-out infinite;
 }
 
 .dictation-status.is-error {
   color: #b85050;
 }
 
-@keyframes dictation-dots-wave {
+@keyframes frida-dots-wave {
   0%,
   72%,
   100% {
@@ -1367,7 +1377,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .dictation-status[data-dictation-state="recording"]::after,
-  .dictation-status[data-dictation-state="transcribing"]::after {
+  .dictation-status[data-dictation-state="transcribing"]::after,
+  .msg.assistant-loader::after {
     animation: none;
     background-position: 1px 6px, 9px 6px, 17px 6px;
   }

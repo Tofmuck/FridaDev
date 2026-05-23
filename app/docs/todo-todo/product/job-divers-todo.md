@@ -1,10 +1,10 @@
 # FridaDev - jobs divers produit - TODO
 
-Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif et cloture provisoirement sous surveillance apres validation live navigateur 99 s; objet 4 repertoires de travail fermes par defaut livre; objet 5 composer actions en grille droite livre; objet 6 animation des statuts Whisper livre
+Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif et cloture provisoirement sous surveillance apres validation live navigateur 99 s; objet 4 repertoires de travail fermes par defaut livre; objet 5 composer actions en grille droite livre; objet 6 animation des statuts Whisper livre; objet 7 loader assistant anime livre
 Date de creation: 2026-05-22
 Classement: `app/docs/todo-todo/product/`
 Nature: TODO source-of-truth pour jobs produit courts et bornes, docs-only au moment de creation
-Portee: LLM principal OpenRouter `openai/gpt-5.1`, runtime settings, admin, controle chat, payload, observabilite, UI de streaming visuel, dictee Whisper locale longue, polish UI des repertoires de travail, ergonomie du composer de chat, retour visuel actif de la dictee Whisper
+Portee: LLM principal OpenRouter `openai/gpt-5.1`, runtime settings, admin, controle chat, payload, observabilite, UI de streaming visuel, dictee Whisper locale longue, polish UI des repertoires de travail, ergonomie du composer de chat, retour visuel actif de la dictee Whisper, loader assistant anime
 Hors-scope du commit de creation: runtime, DB, migration, frontend, backend, tests applicatifs, changement de modele, rebuild
 
 ## 1. Intention
@@ -22,14 +22,16 @@ Depuis le renommage du 2026-05-23, il sert aussi de TODO general pour petits job
 4. fermer les repertoires de travail par defaut au chargement initial, sans casser l'ouverture manuelle ni l'etat actif des conversations/fichiers.
 5. ranger les actions du composer en grille compacte a droite de la zone de saisie, avec le bouton envoyer prioritaire.
 6. animer discretement les statuts actifs Whisper pendant l'enregistrement et la transcription.
+7. animer le loader assistant avec le meme langage visuel que Whisper.
 
 Le premier objet controle le niveau de raisonnement demande au modele principal. Le second objet rend la generation visible progressivement dans l'interface, quand le backend streame deja des chunks exploitables.
 Le troisieme objet vise la capture vocale locale: la dictee ne doit pas s'interrompre prematurement au bout de 20 a 40 secondes, et doit rester fiable sur une cible produit d'au moins 2 minutes.
 Le quatrieme objet est un polish UI des repertoires de travail: les dossiers doivent demarrer replies, puis rester ouvrables a la demande pendant la session.
 Le cinquieme objet est un polish UI du composer: les actions ne doivent plus s'etirer en ligne horizontale sous la saisie, mais former un bloc droit compact et stable.
 Le sixieme objet est un polish du retour Whisper: les statuts actifs doivent montrer une activite en cours sans bruit visuel ni changement backend.
+Le septieme objet aligne le loader assistant du chat sur ce meme langage visuel, sans changer le protocole streaming.
 
-Ces chantiers ne doivent pas etre melanges dans un patch unique de runtime. Ils partagent seulement le fait qu'ils touchent l'experience de conversation. Les objets 1 et 2 sont livres; l'objet 3 est clos provisoirement sous surveillance; l'objet 4 est livre comme petit lot UI/docs; l'objet 5 est livre comme petit lot ergonomie frontend/docs; l'objet 6 est livre comme petit lot frontend/docs.
+Ces chantiers ne doivent pas etre melanges dans un patch unique de runtime. Ils partagent seulement le fait qu'ils touchent l'experience de conversation. Les objets 1 et 2 sont livres; l'objet 3 est clos provisoirement sous surveillance; l'objet 4 est livre comme petit lot UI/docs; l'objet 5 est livre comme petit lot ergonomie frontend/docs; l'objet 6 est livre comme petit lot frontend/docs; l'objet 7 est livre comme petit lot frontend/docs.
 
 ## 2. Sources consultees avant creation
 
@@ -533,7 +535,40 @@ Objectif: rendre les etats actifs de dictee et de transcription plus vivants, sa
 - Ne pas changer `whisper_transcription_service.py` ni les timeouts Whisper.
 - Ne pas changer le pipeline chat, Adobe, web search, reasoning, Docker ou plateforme.
 
-## 11. Decisions utilisateur a prendre avant implementation
+## 11. Objet 7 - Chat: loader assistant anime
+
+Objectif: remplacer les points statiques de la bulle assistant d'attente par le meme langage visuel discret que l'animation Whisper.
+
+### Diagnostic lecture - 2026-05-23
+
+- [x] A l'envoi d'un message, `app/web/app.js` creait une bulle assistant initiale avec le texte statique `…`.
+- [x] Le streaming visuel progressif etait deja pilote par `chat_streaming.js`; le loader ne devait donc pas toucher au protocole.
+- [x] L'animation Whisper venait d'ajouter trois points ondulants avec garde-fou `prefers-reduced-motion`.
+- [x] Decision: factoriser l'animation CSS et piloter seulement une classe de loader sur la bulle assistant jusqu'au premier texte visible.
+
+### Livraison Objet 7 - 2026-05-23
+
+- [x] La bulle assistant d'attente demarre vide avec la classe `assistant-loader`.
+- [x] `assistant-loader` utilise les memes trois points ondulants que les statuts actifs Whisper.
+- [x] La classe loader est retiree des que du texte assistant visible arrive.
+- [x] La classe loader est retiree en fin de stream, reponse vide ou erreur.
+- [x] `prefers-reduced-motion: reduce` coupe aussi l'animation du loader assistant.
+- [x] Aucun changement du protocole streaming, du backend chat, de Memory/Identity/Summary ou des providers.
+
+### Tests attendus Objet 7
+
+- [x] En attente de stream: bulle assistant avec `assistant-loader` et points animes.
+- [x] Debut du stream: texte assistant visible, loader retire.
+- [x] Fin du stream: pas de loader residuel.
+- [x] Erreur: bulle d'erreur sans loader anime.
+- [x] Reduced motion: points fixes, animation coupee.
+
+### Hors-scope Objet 7
+
+- Ne pas changer le backend chat ni le protocole streaming.
+- Ne pas changer reasoning, Whisper backend, Adobe, web search, Memory, Identity, Summary, Docker ou plateforme.
+
+## 12. Decisions utilisateur a prendre avant implementation
 
 - [x] Niveaux exacts de reasoning valides apres relecture finale des docs officielles: `none`, `low`, `medium`, `high`.
 - [x] Valeur par defaut du reasoning FridaDev: `high`.
@@ -549,7 +584,7 @@ Objectif: rendre les etats actifs de dictee et de transcription plus vivants, sa
 - [x] Garantie produit attendue en cas d'echec transcription longue: preservation du brouillon texte seulement, ou retry local ephemere de l'audio avec garde-fous privacy explicites. Decision 2026-05-23: preservation du brouillon texte seulement.
 - [x] Niveau de diagnostic live accepte pour le service Whisper aval si la cause reste cote plateforme. Decision 2026-05-23: observabilite content-free actuelle suffisante pour surveillance provisoire; ouvrir un micro-lot Sauron seulement si `recording_duration_ms`, `normalized_duration_s`, `text_chars`, taille blob, `stop_reason` ou latence pointent de nouveau vers l'aval.
 
-## 12. Hors-scope global
+## 13. Hors-scope global
 
 - Ne pas implementer dans le commit de creation de ce TODO.
 - Ne pas modifier runtime, DB, UI ou backend sans lot dedie.
@@ -563,7 +598,7 @@ Objectif: rendre les etats actifs de dictee et de transcription plus vivants, sa
 - Ne pas logger d'audio brut ni de transcription sensible pour l'objet 3.
 - Ne pas afficher secret, `.env`, token, DSN, cookie ou header sensible.
 
-## 13. Criteres de cloture
+## 14. Criteres de cloture
 
 Le chantier pourra etre clos seulement si:
 
@@ -586,5 +621,6 @@ Le chantier pourra etre clos seulement si:
 - les repertoires de travail sont replies par defaut au chargement initial et ouvrables manuellement;
 - les actions du composer sont en grille droite compacte `3 x 2`, avec envoyer en haut a droite et sans regression des actions existantes;
 - les statuts actifs Whisper affichent une animation sobre et compatible reduced motion sans toucher au backend;
+- le loader assistant du chat utilise la meme animation sobre, disparait au premier contenu visible et reste compatible reduced motion;
 - le renommage en `job-divers-todo.md` est propage aux index et roadmaps actives;
 - le TODO est archive dans `app/docs/todo-done/product/`.
