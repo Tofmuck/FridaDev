@@ -1,7 +1,7 @@
 # Adobe Photoshop / Illustrator - TODO
 
 Classement: `app/docs/todo-todo/product/`
-Statut: actif, Lots 1-6 livres progressivement; pas d'index Adobe durable.
+Statut: actif, Lots 1-7 livres progressivement; pas d'index Adobe durable.
 Date d'ouverture: 2026-05-23.
 Spec normative: `app/docs/states/specs/fridadev-adobe-docs-mode-contract.md`
 Besoin produit: rendre Frida utile pour Amandine sur Photoshop et Illustrator via une lecture officielle Adobe a la demande, sans index durable Adobe et sans casser la recherche web generale.
@@ -508,41 +508,48 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 
 ## Lot 7 - Observabilite et privacy
 
+Statut: clos le 2026-05-23 par validation live bornee. Note: `app/docs/states/audits/fridadev-adobe-docs-mode-live-validation-2026-05-23.md`.
+
 ### PLAN
 
-- [ ] Definir un evenement content-free pour chaque tour Adobe.
-- [ ] Definir une synthese par source consultee sans texte.
-- [ ] Definir des codes d'echec lisibles.
-- [ ] Verifier que les logs existants ne capturent pas les passages.
+- [x] Definir un evenement content-free pour chaque tour Adobe.
+- [x] Definir une synthese par source consultee sans texte.
+- [x] Definir des codes d'echec lisibles.
+- [x] Verifier que les logs existants ne capturent pas les passages.
 
 ### PATCH
 
-- [ ] Ajouter logs content-free du pipeline Adobe.
-- [ ] Ajouter compteurs sources/passages/latences.
-- [ ] Ajouter hashes courts d'URLs si utile.
-- [ ] Ajouter signal evidence.
-- [ ] Ajouter tests anti-fuite.
+- [x] Ajouter logs content-free du pipeline Adobe.
+- [x] Ajouter compteurs sources/passages/latences.
+- [x] Ajouter hashes courts d'URLs si utile.
+- [x] Ajouter signal evidence.
+- [x] Ajouter tests anti-fuite.
 
 ### TEST
 
-- [ ] Test logs: pas de texte Adobe.
-- [ ] Test logs: pas de contenu utilisateur sensible.
-- [ ] Test logs: pas de prompt avec passages.
-- [ ] Test logs: metriques presentes.
-- [ ] Test erreur: code d'echec present.
+- [x] Test logs: pas de texte Adobe.
+- [x] Test logs: pas de contenu utilisateur sensible.
+- [x] Test logs: pas de prompt avec passages.
+- [x] Test logs: metriques presentes.
+- [x] Test erreur: code d'echec present.
+- [x] Test live UI: mode inactif sans champs Adobe.
+- [x] Test live UI: Photoshop envoie `specialization_profile=adobe`, `adobe_product=photoshop`, `web_search=false`.
+- [x] Test live UI: Illustrator envoie `specialization_profile=adobe`, `adobe_product=illustrator`, `web_search=false`.
+- [x] Test live Crawl4AI: HelpX lu en `raw` avec pages bornees.
+- [x] Test live web + Adobe: reason code `adobe_profile_owns_retrieval`.
 
 ### RISQUES
 
-- [ ] Fuite de contenu Adobe dans les logs.
-- [ ] Fuite de contenu utilisateur.
-- [ ] Logs inutilisables car trop pauvres.
+- [x] Fuite de contenu Adobe dans les logs.
+- [x] Fuite de contenu utilisateur.
+- [x] Logs inutilisables car trop pauvres.
 
 ### REDUCTION DES RISQUES
 
-- [ ] Tests explicitement negatifs.
-- [ ] Champs content-free seulement.
-- [ ] Hash URL court au lieu de contenu.
-- [ ] Pas de markdown en log.
+- [x] Tests explicitement negatifs.
+- [x] Champs content-free seulement.
+- [x] Hash URL court au lieu de contenu.
+- [x] Pas de markdown en log.
 
 ## Lot 8 - Evaluation metier Amandine
 
@@ -608,8 +615,8 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 - [ ] Rebuild app si runtime touche.
 - [ ] `docker ps --filter name=platform-fridadev --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"`.
 - [ ] `curl --max-time 12 -sSI https://fridadev.frida-system.fr/admin | sed -n '1,12p'`.
-- [ ] Test live Photoshop court.
-- [ ] Test live Illustrator court.
+- [x] Test live Photoshop court.
+- [x] Test live Illustrator court.
 
 ### RISQUES
 
@@ -628,18 +635,18 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 
 - [ ] Le mode Adobe n'a pas de choix Auto.
 - [ ] Photoshop et Illustrator sont selectionnables explicitement.
-- [ ] Le chat normal sans Adobe est inchangé.
-- [ ] Le web search general est inchangé.
-- [ ] Crawl4AI `raw` lit les pages HelpX cibles.
-- [ ] Les liens internes HelpX sont suivis seulement dans le produit choisi.
-- [ ] Le nombre de pages lues par tour est borne.
-- [ ] Les passages injectes sont courts et sources.
-- [ ] Les grosses pages ne sont jamais injectees brutes.
+- [x] Le chat normal sans Adobe est inchangé.
+- [x] Le web search general est inchangé sur le chemin UI streaming.
+- [x] Crawl4AI `raw` lit les pages HelpX cibles.
+- [x] Les liens internes HelpX sont suivis seulement dans le produit choisi.
+- [x] Le nombre de pages lues par tour est borne.
+- [x] Les passages injectes sont courts et sources.
+- [x] Les grosses pages ne sont jamais injectees brutes.
 - [ ] La reponse cite les sources ou signale l'insuffisance de preuve.
 - [ ] Aucun contenu Adobe n'est stocke durablement.
 - [ ] Aucun contenu Adobe n'entre en Memory/Identity/Summary/Biblio/Active Documents.
-- [ ] Les logs restent content-free.
-- [ ] Les tests couvrent non-regression chat/web normal.
+- [x] Les logs restent content-free.
+- [x] Les tests couvrent non-regression chat/web normal.
 - [ ] Amandine valide au moins un cas Photoshop reel et un cas Illustrator reel.
 
 ## Questions a trancher avant implementation
