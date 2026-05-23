@@ -36,34 +36,64 @@ class WebSearchProfileTests(unittest.TestCase):
             "actualite",
         )
 
-    def test_technique_officielle_profile(self) -> None:
+    def test_documentation_officielle_profile(self) -> None:
         self.assertEqual(
             web_search_profile.classify_search_profile(
                 "Dans la documentation officielle OpenRouter API, comment utiliser openrouter:web_search ?",
             ),
-            "technique_officielle",
+            "documentation_officielle",
         )
 
-    def test_institutionnel_francais_profile(self) -> None:
+    def test_documentation_officielle_generic_still_profiles_without_vendor(self) -> None:
+        self.assertEqual(
+            web_search_profile.classify_search_profile("Trouve la documentation officielle."),
+            "documentation_officielle",
+        )
+
+    def test_administratif_francais_profile(self) -> None:
         self.assertEqual(
             web_search_profile.classify_search_profile(
                 "Quelle est la procédure officielle service public pour renouveler une carte nationale d'identité ?",
             ),
-            "institutionnel_francais",
+            "administratif_francais",
         )
 
-    def test_academique_philosophique_profile(self) -> None:
+    def test_education_institutionnelle_profile(self) -> None:
+        self.assertEqual(
+            web_search_profile.classify_search_profile("eduscol programme philosophie terminale"),
+            "administratif_francais",
+        )
+
+    def test_academique_profile(self) -> None:
         self.assertEqual(
             web_search_profile.classify_search_profile(
                 "Trouve des sources universitaires sur la notion de trace chez Derrida.",
             ),
-            "academique_philosophique",
+            "academique",
+        )
+
+    def test_academique_large_sciences_profile(self) -> None:
+        self.assertEqual(
+            web_search_profile.classify_search_profile("Article scientifique CRISPR PubMed arXiv"),
+            "academique",
         )
 
     def test_general_fallback_profile(self) -> None:
         self.assertEqual(
             web_search_profile.classify_search_profile("Cherche des idées de randonnée autour de Lyon."),
-            "general",
+            "general_divers",
+        )
+
+    def test_qna_technical_request_does_not_become_official_docs(self) -> None:
+        self.assertEqual(
+            web_search_profile.classify_search_profile("Trouve une réponse StackOverflow sur cette erreur Python."),
+            "general_divers",
+        )
+
+    def test_ambiguous_jaguar_stays_general_divers(self) -> None:
+        self.assertEqual(
+            web_search_profile.classify_search_profile("Jaguar vitesse comparaison habitat modèle électrique"),
+            "general_divers",
         )
 
 

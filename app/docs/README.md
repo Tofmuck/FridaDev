@@ -19,9 +19,21 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit stack locale SearXNG/Crawl4AI vs benchmark web 2026-05-21: `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
 - Benchmark final Lot 8 web local vs OpenRouter Exa/Parallel 2026-05-22: `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md`
-- TODO actif de renforcement web local SearXNG/Crawl4AI: `todo-todo/product/fridadev-local-web-search-hardening-todo.md`
-- TODO actif A-Z de reconstruction locale de la recherche web: `todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
+- Baseline consolidee Phase 0 recherche web locale 2026-05-22: `states/audits/fridadev-local-web-search-phase-0-baseline-2026-05-22.md`
+- Benchmark final Phase 8 recherche web locale 2026-05-22: `states/audits/fridadev-web-search-phase-8-final-benchmark-2026-05-22.md`
+- Validation live Phase 9 Exa discovery 2026-05-22: `states/audits/fridadev-web-search-phase-9-live-validation-2026-05-22.md`
+- Validation finale Phase 9 Exa discovery 2026-05-22: `states/audits/fridadev-web-search-phase-9-final-validation-2026-05-22.md`
+- Validation live Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-live-validation-2026-05-23.md`
+- Evaluation metier Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-business-evaluation-2026-05-23.md`
+- Cloture provisoire MVP Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-provisional-closure-2026-05-23.md`
+- Decision produit OpenRouter/Exa comme provider de decouverte web ouverte 2026-05-22: `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
+- Archive du renforcement web local V0 SearXNG/Crawl4AI: `todo-done/product/fridadev-local-web-search-hardening-todo.md`
+- Archive A-Z web discovery local-first + Exa: `todo-done/product/fridadev-local-web-search-rebuild-todo.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
+- TODO actif jobs divers produit: `todo-todo/product/job-divers-todo.md`
+- TODO actif Adobe Photoshop / Illustrator: `todo-todo/product/Adobe to do.md`
+- Contrat actif du mode Adobe Photoshop / Illustrator: `states/specs/fridadev-adobe-docs-mode-contract.md`
+- Contrat actif du reglage global reasoning du LLM principal: `states/specs/fridadev-main-llm-reasoning-contract.md`
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
 - Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
 - Boussole produit finale des cinq derniers gros chantiers FridaDev: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
@@ -46,6 +58,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Protocole streaming public: `states/specs/streaming-protocol.md`
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
 - Contrat atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
+- Contrat du mode Adobe Photoshop / Illustrator: `states/specs/fridadev-adobe-docs-mode-contract.md`
 - Extension OCR archivee des documents actifs de conversation: `todo-done/product/active-conversation-documents-ocr-todo.md`
 - Copie de bulle et export Markdown du chat: `states/specs/chat-copy-export-contract.md`
 - Contrat du dashboard long terme: `states/specs/dashboard-long-term-observability-contract.md`
@@ -79,6 +92,8 @@ But: relire le cleanup priorise livre et les decisions de sortie sans reouvrir u
 ### Runtime courant / chat
 
 Lire d'abord:
+- `todo-todo/product/job-divers-todo.md` pour les jobs produit courts actifs: historique livre du reglage borne du reasoning GPT-5.1, interdiction stricte d'afficher/persister `reasoning_details`, correction du streaming visuel, dictee Whisper longue sous surveillance et petits ajustements UI bornes.
+- `states/specs/fridadev-main-llm-reasoning-contract.md` pour le comportement livre du reglage global `main_model.reasoning_effort`, le payload OpenRouter `reasoning.exclude=true`, l'observabilite content-free et l'interdiction d'exposer le raisonnement interne.
 - `todo-done/refactors/fridadev-main-model-gpt51-switch-todo.md` pour l'archive de bascule runtime vers `openai/gpt-5.1`.
 - `todo-done/refactors/fridadev-main-model-gpt51-switch-plan.md` pour relire le plan de bascule du modele principal vers `openai/gpt-5.1`, cout, compatibilite images actives, smoke live et rollback.
 - `states/architecture/fridadev-full-pipeline-overview-2026-05-19.md` pour une synthese francaise lisible du pipeline complet, du navigateur aux derives apres reponse.
@@ -101,15 +116,27 @@ Archives utiles:
 ### Recherche internet
 
 Lire d'abord:
-- `todo-todo/product/fridadev-local-web-search-rebuild-todo.md` pour piloter la reconstruction A-Z locale, source-first, gouvernee et sans hybride runtime.
-- `todo-todo/product/fridadev-local-web-search-hardening-todo.md` pour le contrat V0, les lots d'implementation et le bras benchmark `local_profiled`.
+- `states/specs/fridadev-adobe-docs-mode-contract.md` pour le contrat normatif du mode Adobe Photoshop / Illustrator: payload explicite, separation du web search general, lecture HelpX `raw`, cache restrictif, lane prompt dediee et observabilite content-free.
+- `todo-todo/product/Adobe to do.md` pour le mini-pipeline Adobe Photoshop / Illustrator dedie a Amandine: pas de mode Auto, pas d'index durable, lecture HelpX a la demande via Crawl4AI `raw`, registre d'URLs officielles et non-contamination.
+- `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md` pour la decision active: FridaDev reste local-first pour lire/qualifier/auditer, mais la recherche ouverte peut utiliser OpenRouter/Exa comme provider de decouverte URL configure.
+- `todo-done/product/fridadev-local-web-search-rebuild-todo.md` pour relire l'archive A-Z web discovery local-first + Exa: historique SearXNG local, decision Exa discovery, Phase 9 de validation/deploiement et rollback.
+- `todo-done/product/fridadev-local-web-search-hardening-todo.md` pour l'archive du contrat V0, les lots d'implementation et le bras benchmark `local_profiled`; ce document ne porte plus la doctrine active.
+- `states/audits/fridadev-local-web-search-phase-0-baseline-2026-05-22.md` pour la consolidation Phase 0: cas deja couverts, complement local-only borne et passage vers l'inventaire moteur SearXNG.
+- `states/specs/fridadev-web-search-regimes-source-first-contract.md` pour le contrat Phase 2/3: regimes canoniques, source-first, anti-overfit et observabilite content-free.
+- `states/specs/fridadev-web-search-searxng-engine-baskets-contract.md` pour le contrat Phase 4: paniers moteurs SearXNG applicatifs par regime, statut Mojeek et frontiere avec la reconfiguration plateforme.
+- `states/specs/fridadev-web-search-profile-policy-contract.md` pour le contrat Phase 5: domaines attendus/secondaires/declasses, budgets crawl, latence cible et signal de preuve insuffisante.
+- `states/specs/fridadev-web-search-reranking-contract.md` pour le contrat Phase 6: reranking explicable par profil, reason codes, diversite et non-censure.
+- `states/specs/fridadev-web-search-evidence-failure-contract.md` pour le contrat Phase 7: preuve web insuffisante, garde-fou prompt naturel, observabilite content-free et absence de fallback externe.
+- `states/audits/fridadev-web-search-phase-8-final-benchmark-2026-05-22.md` pour le benchmark final local vs local_profiled: gains, regressions, confiance trop optimiste et blocage avant cloture Phase 9.
+- `states/audits/fridadev-web-search-phase-9-live-validation-2026-05-22.md` pour la validation live bornee: web off sans appel, URL explicite locale directe, recherche ouverte Exa discovery puis Crawl4AI, cout/latence et limites restantes.
+- `states/audits/fridadev-web-search-phase-9-final-validation-2026-05-22.md` pour la validation finale Phase 9: calibration confiance/evidence, corpus final, cout/latence, rollback et cloture du chantier.
 - `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md` pour comparer SearXNG, Crawl4AI, configuration OVH, pipeline FridaDev et benchmark local/Exa/Parallel avant tout lot runtime.
-- `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md` pour la decision Lot 8 recadree: runtime web `local only`, Exa/Parallel uniquement comme benchmarks externes, aucune activation runtime OpenRouter.
+- `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md` pour l'ancien benchmark comparatif Lot 8 et sa decision initiale maintenant supersedee par la policy OpenRouter/Exa.
 - `todo-done/notes/web-reading-truth-todo.md` pour le contrat archive de lecture URL explicite, `read_state`, `fit` puis `raw` et observabilite content-free.
 - `todo-done/refactors/hermeneutic-suspension-auto-web-todo.md` pour la decision archivee de suspension de l'auto-web lexical.
 - `benchmark/web-search/README.md` pour relancer le benchmark comparatif local / OpenRouter Exa / OpenRouter Parallel.
 
-But: renforcer la recherche locale sans rouvrir l'auto-web, sans remplacer la stack par OpenRouter par defaut, et sans contaminer Memory/Identity/Summary.
+But: renforcer la recherche web sans rouvrir l'auto-web, en separant decouverte URL OpenRouter/Exa configuree, lecture Crawl4AI locale, evidence/confiance FridaDev et absence de fallback automatique vers un provider externe.
 
 ### Documents actifs de conversation
 

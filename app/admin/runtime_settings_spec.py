@@ -81,6 +81,7 @@ SECTION_SPECS: dict[str, SectionSpec] = {
             FieldSpec('referer', 'text', env_var='OPENROUTER_REFERER'),
             FieldSpec('referer_llm', 'text', env_var='OPENROUTER_REFERER_LLM'),
             FieldSpec('referer_web_reformulation', 'text', env_var='OPENROUTER_REFERER_WEB_REFORMULATION'),
+            FieldSpec('referer_web_discovery', 'text', env_var='OPENROUTER_REFERER_WEB_DISCOVERY'),
             FieldSpec('referer_arbiter', 'text', env_var='OPENROUTER_REFERER_ARBITER'),
             FieldSpec('referer_identity_extractor', 'text', env_var='OPENROUTER_REFERER_IDENTITY_EXTRACTOR'),
             FieldSpec('referer_identity_periodic', 'text', env_var='OPENROUTER_REFERER_IDENTITY_PERIODIC'),
@@ -90,6 +91,7 @@ SECTION_SPECS: dict[str, SectionSpec] = {
             FieldSpec('app_name', 'text', env_var='OPENROUTER_APP_NAME'),
             FieldSpec('title_llm', 'text', env_var='OPENROUTER_TITLE_LLM'),
             FieldSpec('title_web_reformulation', 'text', env_var='OPENROUTER_TITLE_WEB_REFORMULATION'),
+            FieldSpec('title_web_discovery', 'text', env_var='OPENROUTER_TITLE_WEB_DISCOVERY'),
             FieldSpec('title_arbiter', 'text', env_var='OPENROUTER_TITLE_ARBITER'),
             FieldSpec('title_identity_extractor', 'text', env_var='OPENROUTER_TITLE_IDENTITY_EXTRACTOR'),
             FieldSpec('title_identity_periodic', 'text', env_var='OPENROUTER_TITLE_IDENTITY_PERIODIC'),
@@ -99,6 +101,7 @@ SECTION_SPECS: dict[str, SectionSpec] = {
             FieldSpec('temperature', 'float', seed_from_env=False, seed_default=0.4),
             FieldSpec('top_p', 'float', seed_from_env=False, seed_default=1.0),
             FieldSpec('response_max_tokens', 'int', seed_from_env=False, seed_default=8192),
+            FieldSpec('reasoning_effort', 'text', seed_from_env=False, seed_default='high'),
         ),
     ),
     'arbiter_model': SectionSpec(

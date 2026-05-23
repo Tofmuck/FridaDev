@@ -259,6 +259,53 @@ def inject_web_reading_guard_block(
     return '\n\n'.join(part for part in [str(augmented_system or ''), block] if part)
 
 
+def build_web_evidence_guard_block(
+    *,
+    web_input: Mapping[str, Any] | None,
+) -> str:
+    payload = web_input if isinstance(web_input, Mapping) else {}
+    evidence = payload.get('web_evidence')
+    evidence_payload = evidence if isinstance(evidence, Mapping) else {}
+    status = _text(evidence_payload.get('web_evidence_status'))
+    if not status or status in {'not_applicable', 'sufficient'}:
+        return ''
+    reason_codes = _stable_string_list(evidence_payload.get('web_evidence_reason_codes'))
+    guidance_codes = _stable_string_list(evidence_payload.get('web_evidence_guidance_codes'))
+    if not reason_codes and not bool(evidence_payload.get('web_evidence_requires_caveat', False)):
+        return ''
+
+    lines = [
+        '[GARDE DE PREUVE WEB]',
+        f'evidence_status: {status}.',
+    ]
+    if reason_codes:
+        lines.append(f"reason_codes: {', '.join(reason_codes)}.")
+    if guidance_codes:
+        lines.append(f"guidance_codes: {', '.join(guidance_codes)}.")
+    lines.extend(
+        [
+            "Ce signal est un contrat de prudence, pas une reponse d'echec prefabriquee.",
+            "Tu peux repondre avec le materiau disponible, mais tu dois formuler naturellement les limites qui touchent la conclusion.",
+            "N'invente pas une solidite documentaire que le runtime web ne montre pas.",
+            "Ne transforme pas ce signal en refus automatique ou en mutisme.",
+            "Tu peux proposer une reformulation ou une relance si cela aide vraiment.",
+            "Ne demande une URL que si elle est vraiment pertinente; ce n'est pas le reflexe par defaut.",
+            "Aucun fallback externe OpenRouter, Exa ou Parallel n'a ete utilise.",
+        ]
+    )
+    return '\n'.join(lines)
+
+
+def inject_web_evidence_guard_block(
+    augmented_system: str,
+    web_evidence_guard_block: str,
+) -> str:
+    block = _text(web_evidence_guard_block)
+    if not block:
+        return str(augmented_system or '')
+    return '\n\n'.join(part for part in [str(augmented_system or ''), block] if part)
+
+
 def apply_augmented_system(conversation: dict[str, Any], augmented_system: str) -> None:
     if conversation['messages'] and conversation['messages'][0]['role'] == 'system':
         conversation['messages'][0]['content'] = augmented_system
@@ -325,6 +372,13 @@ def inject_web_context(
         searxng_time_range=str(web_context_payload.get('searxng_time_range') or ''),
         searxng_language=str(web_context_payload.get('searxng_language') or ''),
         searxng_safesearch=str(web_context_payload.get('searxng_safesearch') or ''),
+        web_discovery_provider=str(web_context_payload.get('web_discovery_provider') or ''),
+        web_discovery_provider_requested=str(web_context_payload.get('web_discovery_provider_requested') or ''),
+        web_discovery_provider_effective=str(web_context_payload.get('web_discovery_provider_effective') or ''),
+        web_discovery_external_used=bool(web_context_payload.get('web_discovery_external_used', False)),
+        web_discovery_external_provider=str(web_context_payload.get('web_discovery_external_provider') or ''),
+        web_discovery_external_error_kind=str(web_context_payload.get('web_discovery_external_error_kind') or ''),
+        web_discovery_reason_codes=list(web_context_payload.get('web_discovery_reason_codes') or []),
         rerank_applied=bool(web_context_payload.get('rerank_applied', False)),
         rerank_policy=str(web_context_payload.get('rerank_policy') or ''),
         rerank_input_count=web_context_payload.get('rerank_input_count'),

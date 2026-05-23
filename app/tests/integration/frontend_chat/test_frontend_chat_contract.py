@@ -145,6 +145,38 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn('id="system"', source)
         self.assertIn("Le prompt systeme global est maintenant porte par le backend et visible dans l'admin.", source)
 
+    def test_chat_surface_exposes_global_reasoning_shortcut_only(self) -> None:
+        index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="mainReasoningLevel"', index_source)
+        self.assertIn('main_reasoning_control.js', index_source)
+        self.assertIn('createMainReasoningControl', app_source)
+        self.assertNotIn('reasoning_details', index_source)
+        self.assertNotIn('reasoning_details', app_source)
+
+    def test_chat_surface_exposes_explicit_adobe_mode_without_auto_product(self) -> None:
+        index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        adobe_source = (APP_DIR / "web" / "chat_adobe_mode.js").read_text(encoding="utf-8")
+
+        self.assertIn('<script src="chat_adobe_mode.js"></script>', index_source)
+        self.assertLess(
+            index_source.index('<script src="chat_adobe_mode.js"></script>'),
+            index_source.index('<script src="app.js"></script>'),
+        )
+        self.assertIn('id="btnAdobeMode"', index_source)
+        self.assertIn('id="adobeProductChoices"', index_source)
+        self.assertIn('data-adobe-product="photoshop"', index_source)
+        self.assertIn('data-adobe-product="illustrator"', index_source)
+        self.assertNotIn('data-adobe-product="auto"', index_source)
+        self.assertIn('const adobePayload = adobeModeController ? adobeModeController.getPayload() : {};', app_source)
+        self.assertIn('web_search: adobeActive ? false : webSearchEnabled,', app_source)
+        self.assertIn('...adobePayload,', app_source)
+        self.assertIn("specialization_profile: ADOBE_SPECIALIZATION_PROFILE", adobe_source)
+        self.assertIn("adobe_product: normalized", adobe_source)
+        self.assertNotIn("'auto'", adobe_source)
+
     def test_admin_ui_keeps_max_tokens_and_system_prompt_out_of_v1(self) -> None:
         source = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
 
@@ -218,7 +250,7 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_RESPONSE_OPENED);', send_block)
         self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);', send_block)
         self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_ERROR);', send_block)
-        self.assertIn('return { text: finalText, terminal };', send_block)
+        self.assertIn('return { text: resolveStreamedAssistantText(finalText, terminal), terminal };', send_block)
         self.assertIn('return { text, terminal };', send_block)
 
     def test_streaming_front_exposes_a_small_observable_error_taxonomy(self) -> None:
@@ -251,9 +283,16 @@ class AppPhase8Tests(unittest.TestCase):
 
         self.assertIn('status.className = "msg-stream-status";', app_source)
         self.assertIn('status.setAttribute("aria-live", "polite");', app_source)
+        self.assertIn('const setAssistantLoader = (assistantNode, enabled) => {', app_source)
+        self.assertIn('assistantNode.bubble.classList.toggle("assistant-loader", Boolean(enabled));', app_source)
+        self.assertIn('setAssistantLoader(assistantNode, true);', app_source)
+        self.assertIn('setAssistantLoader(assistantNode, false);', app_source)
         self.assertIn('.msg-stream-status {', styles_source)
         self.assertIn('.msg-stream-status[data-state="streaming"] {', styles_source)
         self.assertIn('.msg-stream-status[data-state="interrupted"] {', styles_source)
+        self.assertIn('.msg.assistant-loader::after', styles_source)
+        self.assertIn('@keyframes frida-dots-wave', styles_source)
+        self.assertIn('@media (prefers-reduced-motion: reduce)', styles_source)
 
     def test_streaming_front_uses_terminal_updated_at_before_falling_back_to_force_rehydration(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")

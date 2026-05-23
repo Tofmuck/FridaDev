@@ -24,6 +24,7 @@ _LLM_CALL_SECONDARY_PROVIDER_CALLERS = (
     'stimmung_agent',
     'validation_agent',
     'web_reformulation',
+    'web_discovery',
 )
 _LLM_CALL_KNOWN_PROVIDER_CALLERS = (
     _LLM_CALL_MAIN_PROVIDER_CALLER,

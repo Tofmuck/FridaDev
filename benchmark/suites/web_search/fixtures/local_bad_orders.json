@@ -31,7 +31,7 @@
   },
   {
     "case_id": "official_openrouter_server_tools",
-    "target_profile": "technique_officielle",
+    "target_profile": "documentation_officielle",
     "observed_query": "OpenRouter web_search usage et paramètres coût documentation actuelle",
     "symptom": "Un article tiers remonte avant la documentation officielle OpenRouter.",
     "expected_better_domains": ["openrouter.ai"],
@@ -54,7 +54,7 @@
   },
   {
     "case_id": "conceptual_philosophy_search",
-    "target_profile": "academique_philosophique",
+    "target_profile": "academique",
     "observed_query": "trace Derrida sources primaires encyclopédie commentaires académiques",
     "symptom": "Dictionnaires et homonymes remontent avant les sources philosophiques utiles.",
     "expected_better_domains": ["plato.stanford.edu", "openedition.org", "jstor.org", "wikipedia.org"],
@@ -84,7 +84,7 @@
   },
   {
     "case_id": "french_admin_service_public",
-    "target_profile": "institutionnel_francais",
+    "target_profile": "administratif_francais",
     "observed_query": "renouveler carte nationale d’identité française procédure officielle source administrative 2026",
     "symptom": "Les conjugueurs remontent avant les sources administratives.",
     "expected_better_domains": ["service-public.fr", "ants.gouv.fr"],

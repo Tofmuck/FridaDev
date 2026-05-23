@@ -40,6 +40,16 @@ def _collect_stream_output(stream) -> tuple[str, dict[str, str] | None]:
     return chat_stream_control.split_text_and_terminal(b''.join(parts))
 
 
+def _collect_stream_parts(stream) -> list[str]:
+    parts: list[str] = []
+    for part in stream:
+        if isinstance(part, (bytes, bytearray)):
+            parts.append(bytes(part).decode('utf-8', errors='ignore'))
+        else:
+            parts.append(str(part or ''))
+    return parts
+
+
 class ChatLlmFlowTests(unittest.TestCase):
     def test_run_llm_exchange_sync_success_keeps_json_contract(self) -> None:
         events = []
@@ -144,6 +154,11 @@ class ChatLlmFlowTests(unittest.TestCase):
             log_provider_metadata=lambda _logger, event, provider_metadata: observed['provider_log_calls'].append((event, dict(provider_metadata))),
             extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
             sanitize_provider_text=lambda text: observed['sanitize_calls'].append(text) or text,
+            main_llm_reasoning_observability_from_payload=lambda _payload: {
+                'main_llm_reasoning_effort_requested': 'high',
+                'main_llm_reasoning_effort_effective': 'high',
+                'main_llm_reasoning_hidden': True,
+            },
         )
         requests_module = SimpleNamespace(
             post=fake_post,
@@ -220,7 +235,10 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['model'], 'openrouter/runtime-main-model')
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['provider_caller'], 'llm')
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['provider_title'], 'FridaDev/llm')
+        self.assertEqual(_event_payloads(events, 'llm_payload')[0]['main_llm_reasoning_effort_effective'], 'high')
+        self.assertTrue(_event_payloads(events, 'llm_payload')[0]['main_llm_reasoning_hidden'])
         self.assertFalse(_event_payloads(events, 'llm_call')[0]['stream'])
+        self.assertEqual(_event_payloads(events, 'llm_call')[0]['main_llm_reasoning_effort_requested'], 'high')
         self.assertEqual(
             _event_payloads(events, 'llm_provider_response'),
             [
@@ -600,6 +618,8 @@ class ChatLlmFlowTests(unittest.TestCase):
                 yield 'data: {"choices":[{"delta":{"content":"JSON est un format.\\n\\n"}}]}'
                 yield 'data: {"choices":[{"delta":{"content":"- Lisible.\\n"}}]}'
                 yield 'data: {"choices":[{"delta":{"content":"1) Portable."}}]}'
+                yield 'data: {"choices":[{"delta":{"content":" **Bo"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"ld**"}}]}'
                 yield 'data: [DONE]'
 
         def fake_post(_url, *, json, headers, timeout, stream=False):
@@ -683,13 +703,25 @@ class ChatLlmFlowTests(unittest.TestCase):
             conversation_headers_func=lambda _conversation, updated_at: {'X-Conversation-Updated-At': updated_at},
         )
 
-        streamed, terminal = _collect_stream_output(result['stream'])
+        parts = _collect_stream_parts(result['stream'])
+        streamed, terminal = chat_stream_control.split_text_and_terminal(''.join(parts))
+        visible_parts = [part for part in parts if not part.startswith(chat_stream_control.STREAM_CONTROL_PREFIX)]
+        self.assertGreaterEqual(len(visible_parts), 2)
+        self.assertEqual(visible_parts[0], 'JSON est un format.')
         self.assertIn('\n- Lisible.', streamed)
         self.assertIn('\n1) Portable.', streamed)
         self.assertIn('Lisible.', streamed)
         self.assertIn('Portable.', streamed)
-        self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-03-26T00:11:00Z'})
-        self.assertEqual(conversation['messages'][-1]['content'], streamed)
+        self.assertIn('**Bo', streamed)
+        self.assertEqual(
+            terminal,
+            {
+                'event': 'done',
+                'updated_at': '2026-03-26T00:11:00Z',
+                'final_text': 'JSON est un format.\n\n- Lisible.\n1) Portable. Bold',
+            },
+        )
+        self.assertEqual(conversation['messages'][-1]['content'], terminal['final_text'])
 
     def test_run_llm_exchange_stream_preserves_structure_for_explicit_plan_requests(self) -> None:
         conversation = {
@@ -1005,7 +1037,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         )
 
         streamed, terminal = _collect_stream_output(result['stream'])
-        self.assertEqual(streamed, '')
+        self.assertEqual(streamed, 'Bonjour')
         self.assertEqual(
             terminal,
             {
@@ -1124,7 +1156,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         )
 
         streamed, terminal = _collect_stream_output(result['stream'])
-        self.assertEqual(streamed, '')
+        self.assertEqual(streamed, 'Bon')
         self.assertEqual(
             terminal,
             {
@@ -1275,7 +1307,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         )
 
         streamed, terminal = _collect_stream_output(result['stream'])
-        self.assertEqual(streamed, '')
+        self.assertEqual(streamed, 'Bon')
         self.assertEqual(
             terminal,
             {

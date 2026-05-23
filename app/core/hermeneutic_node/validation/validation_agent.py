@@ -926,6 +926,7 @@ def _build_messages(
                 "- si answer reste possible, privilegie final_output_regime = simple\n"
                 "- reserve meta aux cas ou une reprise meta est reellement necessaire\n"
                 "- si un hard guard interdit answer, choisis entre clarify et suspend\n"
+                "- si hard_guard_effect = caveat_required, answer reste possible mais la prudence indiquee est obligatoire\n"
                 "- un hard guard ne force pas a lui seul meta\n"
                 "- validation_decision legacy sera derivee downstream: ne l'invente pas\n"
                 "- reponds en JSON strict uniquement\n"

@@ -16,6 +16,16 @@ Les cinq chantiers produit majeurs restants sont:
 
 L'ordre peut etre ajuste par decision explicite, mais le perimetre produit majeur reste fige a ces cinq chantiers.
 
+## Chantier transversal actif hors perimetre majeur
+
+Un chantier transversal court est ouvert sans etendre la liste des cinq gros chantiers produit:
+
+- `app/docs/todo-todo/product/job-divers-todo.md`
+
+Portee: jobs produit courts hors perimetre majeur, avec historique livre du reglage avance borne du reasoning GPT-5.1, du streaming visuel, de la dictee Whisper longue sous surveillance et des petits ajustements UI bornes.
+
+Garde-fou: ce chantier ne doit jamais rendre visible, streamer, stocker, persister, exporter ou injecter le raisonnement interne du modele (`reasoning_details` ou equivalent). Les nouveaux jobs doivent rester petits, explicites et ne pas elargir la liste des cinq gros chantiers produit.
+
 ## Ordre provisoire recommande
 
 1. Atelier documentaire / repertoire de travail.
@@ -62,18 +72,20 @@ Reference d'audit ouverte pour ce chantier:
 
 - `app/docs/states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
 
-TODO actif de renforcement local SearXNG/Crawl4AI, avec bras benchmark `local_profiled`:
+Archive de renforcement local SearXNG/Crawl4AI V0, avec bras benchmark `local_profiled`:
 
-- `app/docs/todo-todo/product/fridadev-local-web-search-hardening-todo.md`
+- `app/docs/todo-done/product/fridadev-local-web-search-hardening-todo.md`
 
-TODO source-of-truth pour reconstruire la recherche web locale de A a Z, sans hybride runtime et sans fallback OpenRouter / Exa / Parallel:
+Archive source-of-truth du chantier de reconstruction web discovery local-first + Exa de A a Z, avec OpenRouter/Exa comme provider de decouverte URL configure et sans fallback automatique:
 
-- `app/docs/todo-todo/product/fridadev-local-web-search-rebuild-todo.md`
+- `app/docs/todo-done/product/fridadev-local-web-search-rebuild-todo.md`
+- Decision produit associee: `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 
 Piste produit a garder pour Amandine:
 
-- etudier un mode/connecteur Adobe Docs dedie, expose eventuellement comme bouton ou profil explicite `Adobe`, pour envoyer les requetes Photoshop/Illustrator directement vers les documentations officielles Adobe ou leurs APIs publiques si elles sont exploitables;
-- ce point ne doit pas bloquer le renforcement web local en cours: il faudra l'auditer comme sous-chantier specialise, avec cout, API disponibles, conditions d'usage, fallback local et non-contamination.
+- le sous-chantier specialise Adobe Photoshop / Illustrator est ouvert dans `app/docs/todo-todo/product/Adobe to do.md`;
+- il cible un mini-pipeline dedie pour Amandine, sans mode Auto, sans index durable Adobe, sans Biblio, avec lecture HelpX a la demande via Crawl4AI `raw`, registre d'URLs officielles et non-contamination;
+- ce sous-chantier ne remplace pas la recherche web generale et ne doit pas rouvrir le perimetre produit majeur sans decision explicite.
 
 ## 3. Biblio native / catalogue Tulu
 

@@ -2,7 +2,7 @@
 
 Statut: benchmark final Lot 8 produit.
 
-Chantier source: `app/docs/todo-todo/product/fridadev-local-web-search-hardening-todo.md`.
+Chantier source archive: `app/docs/todo-done/product/fridadev-local-web-search-hardening-todo.md`.
 
 Audit source: `app/docs/states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`.
 
@@ -22,7 +22,7 @@ Le benchmark final compare les quatre bras prevus:
 - `openrouter_exa`: OpenRouter `openrouter:web_search` avec `engine=exa`;
 - `openrouter_parallel`: OpenRouter `openrouter:web_search` avec `engine=parallel`.
 
-Decision produit actee apres lecture du benchmark: FridaDev web runtime reste local only. SearXNG reste le point de recherche local, Crawl4AI le point de lecture/crawl local, et Exa/Parallel/OpenRouter restent des outils de benchmark externe, jamais une voie produit automatique ou semi-automatique.
+Decision produit initiale actee apres lecture du benchmark: FridaDev web runtime reste exclusivement local. Cette decision est remplacee par la decision produit du 2026-05-22 documentee dans `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`: FridaDev reste local-first pour lire/qualifier/auditer, mais OpenRouter/Exa devient provider de decouverte URL pour la recherche ouverte quand configure.
 
 La conclusion importante n'est pas que le local profile est termine: il progresse nettement sur l'institutionnel francais et conserve le tres bon chemin URL explicite, mais il regresse fortement sur le cas actualite IA 2026 et la confiance locale y reste trop optimiste. Le signal de confiance doit donc rester visible, contestable et non actionnable.
 
@@ -89,9 +89,9 @@ Point critique:
 
 - sur `recent_ai_policy_news`, `local_profiled` donne `web_confidence_level=high` malgre des sources manifestement hors sujet. La confiance reste donc utile comme signal d'audit, mais pas comme mecanisme de decision automatique.
 
-## Decision recommandee
+## Decision recommandee initiale, supersedee
 
-Politique recommandee: local only. Pas d'hybride web search.
+Politique recommandee a chaud apres ce benchmark: runtime web exclusivement local, sans hybride web search.
 
 Concretement:
 
@@ -101,6 +101,8 @@ Concretement:
 - utiliser Exa/Parallel seulement comme outils de benchmark externe pour comprendre les faiblesses locales;
 - ouvrir ensuite un audit critique de SearXNG lui-meme, cote plateforme et documentation officielle;
 - corriger la calibration `actualite` / confiance locale sans creer de passerelle externe.
+
+Cette recommandation est remplacee par la decision produit du 2026-05-22: OpenRouter/Exa devient provider de decouverte URL configure pour la recherche ouverte. Les garde-fous restent: web manuel seulement, URL explicite locale directe, Crawl4AI local pour lire/crawler, source-first/reranking/evidence/confiance sous controle FridaDev, aucune confiance actionnable et Parallel hors runtime.
 
 ## Ce qui n'a pas ete active
 
@@ -150,7 +152,7 @@ Lecture:
 - sur ces memes cas, au moins un moteur OpenRouter retrouve des domaines attendus que SearXNG ne remonte pas dans le top 5;
 - sur `OpenRouter web_search`, SearXNG trouve le domaine officiel, mais Exa/Parallel trouvent mieux les pages de documentation.
 
-Conclusion diagnostique: le probleme n'est pas seulement la reformulation FridaDev ni le reranking `local_profiled`. Une part importante vient du ranking/index SearXNG sur ces requetes ouvertes, avec un residu local specifique sur la strategie `actualite` et la calibration de confiance. Cela oriente le prochain chantier vers un audit critique SearXNG, pas vers une passerelle runtime.
+Conclusion diagnostique: le probleme n'est pas seulement la reformulation FridaDev ni le reranking `local_profiled`. Une part importante vient du ranking/index SearXNG sur ces requetes ouvertes, avec un residu local specifique sur la strategie `actualite` et la calibration de confiance. Ce constat a ensuite motive la decision active: utiliser OpenRouter/Exa comme provider de decouverte URL configure pour la recherche ouverte, tout en gardant SearXNG comme provider `local`, baseline historique, fallback operateur explicite et objet d'audit plateforme.
 
 ## Preuves
 

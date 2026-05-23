@@ -16,9 +16,17 @@
   if (!chatCopyExport) {
     throw new Error("FridaChatCopyExport module missing");
   }
+  const mainReasoningControl = window.FridaMainReasoningControl;
+  if (!mainReasoningControl) {
+    throw new Error("FridaMainReasoningControl module missing");
+  }
   const imageGeneration = window.FridaImageGeneration;
   if (!imageGeneration) {
     throw new Error("FridaImageGeneration module missing");
+  }
+  const adobeMode = window.FridaAdobeMode;
+  if (!adobeMode) {
+    throw new Error("FridaAdobeMode module missing");
   }
   const {
     STREAMING_UI_STATE_INTERRUPTED,
@@ -35,6 +43,7 @@
     reduceStreamingUiState,
     getStreamingUiStateMeta,
     hasVisibleAssistantContent,
+    resolveStreamedAssistantText,
   } = chatStreaming;
   const $ = (sel) => document.querySelector(sel);
 
@@ -47,6 +56,8 @@
   const btnMic = $("#btnMic");
   const btnActiveDocument = $("#btnActiveDocument");
   const btnImageGeneration = $("#btnImageGeneration");
+  const btnAdobeMode = $("#btnAdobeMode");
+  const adobeProductChoices = $("#adobeProductChoices");
   const btnExportConversation = $("#btnExportConversation");
   const activeDocumentFileInput = $("#activeDocumentFileInput");
   const activeDocumentsBar = $("#activeDocumentsBar");
@@ -68,6 +79,8 @@
   const imageGenerationPreview = $("#imageGenerationPreview");
   const imageGenerationMeta = $("#imageGenerationMeta");
   const imageGenerationDownload = $("#imageGenerationDownload");
+  const mainReasoningLevel = $("#mainReasoningLevel");
+  const mainReasoningStatus = $("#mainReasoningStatus");
   const newChatBtn = $("#newChat");
   const threadsUl = $("#threads");
   // Mobile sidebar
@@ -81,14 +94,22 @@
 
   // ---- Web search toggle
   let webSearchEnabled = localStorage.getItem("frida.webSearch") === "1";
+  let adobeModeController = null;
+  const isAdobeModeActive = () => Boolean(adobeModeController && adobeModeController.isActive());
   const updateWebSearchBtn = () => {
     if (!btnWebSearch) return;
+    const adobeActive = isAdobeModeActive();
+    btnWebSearch.disabled = adobeActive;
     btnWebSearch.classList.toggle("active", webSearchEnabled);
-    btnWebSearch.title = webSearchEnabled ? "Recherche web : activée" : "Recherche web : désactivée";
+    btnWebSearch.title = adobeActive
+      ? "Recherche web indisponible en mode Adobe"
+      : (webSearchEnabled ? "Recherche web : activée" : "Recherche web : désactivée");
+    btnWebSearch.setAttribute("aria-pressed", webSearchEnabled && !adobeActive ? "true" : "false");
   };
   if (btnWebSearch) {
     updateWebSearchBtn();
     btnWebSearch.addEventListener("click", () => {
+      if (isAdobeModeActive()) return;
       webSearchEnabled = !webSearchEnabled;
       localStorage.setItem("frida.webSearch", webSearchEnabled ? "1" : "0");
       updateWebSearchBtn();
@@ -104,6 +125,12 @@
   const scrollToBottom = (smooth = true) => {
     if (!chatEl) return;
     chatEl.scrollTo({ top: chatEl.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  };
+
+  const isChatNearBottom = (threshold = 96) => {
+    if (!chatEl) return true;
+    const distance = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight;
+    return distance <= threshold;
   };
 
   const extractErrorMessage = (err) => {
@@ -198,6 +225,16 @@
       return assistantNode;
     }
     return addMsg(role, String(messageRecord && messageRecord.content || ""), timestamp);
+  };
+
+  const setAssistantLoader = (assistantNode, enabled) => {
+    if (!assistantNode || !assistantNode.bubble || !assistantNode.bubble.classList) return;
+    assistantNode.bubble.classList.toggle("assistant-loader", Boolean(enabled));
+    if (enabled) {
+      assistantNode.bubble.setAttribute("aria-label", "Réponse en préparation");
+    } else {
+      assistantNode.bubble.removeAttribute("aria-label");
+    }
   };
 
   const renderAssistantStreamingUiState = (assistantNode, state) => {
@@ -357,6 +394,27 @@
     consoleObj: console,
   });
 
+  mainReasoningControl.createMainReasoningControl({
+    selectEl: mainReasoningLevel,
+    statusEl: mainReasoningStatus,
+    fetchFn: fetch,
+    consoleObj: console,
+  });
+
+  adobeModeController = adobeMode.createAdobeModeController({
+    buttonEl: btnAdobeMode,
+    choicesEl: adobeProductChoices,
+    composerEl: ask,
+    onActiveChange(active) {
+      if (active && webSearchEnabled) {
+        webSearchEnabled = false;
+        localStorage.setItem("frida.webSearch", "0");
+      }
+      updateWebSearchBtn();
+    },
+  });
+  updateWebSearchBtn();
+
   // ---- Nouveau chat
   newChatBtn.addEventListener("click", async () => {
     await newThread();
@@ -411,7 +469,8 @@
     message.value = "";
     setCurrentDraftInputMode("keyboard");
 
-    const assistantNode = createMessageNode("assistant", "…");
+    const assistantNode = createMessageNode("assistant", "");
+    setAssistantLoader(assistantNode, true);
     let assistantText = "";
 
     applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_REQUEST_STARTED);
@@ -420,12 +479,16 @@
     try {
       const response = await sendToServer(text, (chunk) => {
         if (!chunk) return;
+        const shouldStickToBottom = isChatNearBottom();
         assistantText += chunk;
         assistantNode.bubble.textContent = assistantText;
         if (hasVisibleAssistantContent(assistantText)) {
+          setAssistantLoader(assistantNode, false);
           applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_VISIBLE_CONTENT);
         }
-        scrollToBottom(false);
+        if (shouldStickToBottom) {
+          scrollToBottom(false);
+        }
       }, requestThreadId, inputMode, {
         onStreamEvent(event) {
           applyAssistantStreamingUiEvent(assistantNode, event);
@@ -434,8 +497,10 @@
       const reply = response && typeof response.text === "string" ? response.text : "";
       const replyTerminal = response && response.terminal ? response.terminal : null;
       const hasReplyUpdatedAt = hasTerminalUpdatedAt(replyTerminal);
+      const shouldStickToBottom = isChatNearBottom();
 
       assistantText = reply || assistantText;
+      setAssistantLoader(assistantNode, false);
       assistantNode.bubble.textContent = assistantText || "(vide)";
       if (hasReplyUpdatedAt) {
         setMessageNodeTimestamp(assistantNode, "assistant", replyTerminal.updated_at);
@@ -455,7 +520,7 @@
       updateExportConversationButton();
       if (!hasReplyUpdatedAt && requestThreadId && getCurrentId() === requestThreadId) {
         await loadThread(requestThreadId);
-      } else {
+      } else if (shouldStickToBottom) {
         scrollToBottom(true);
       }
     } catch (err) {
@@ -492,6 +557,7 @@
       const visibleAssistantNode = rehydratedAfterUnpersistedTerminalError && !assistantNode.wrapper.isConnected
         ? createMessageNode("assistant", "")
         : assistantNode;
+      setAssistantLoader(visibleAssistantNode, false);
       applyAssistantStreamingFailure(visibleAssistantNode, errorMeta);
       visibleAssistantNode.bubble.textContent = extractErrorMessage(err);
       console.error(err);
@@ -505,6 +571,8 @@
   // ---- Endpoint réseau
   async function sendToServer(userText, onChunk, threadId, inputMode = "keyboard", options = {}){
     const thread = threadId ? getThreadById(threadId) : null;
+    const adobePayload = adobeModeController ? adobeModeController.getPayload() : {};
+    const adobeActive = Boolean(adobePayload.specialization_profile);
     const emitStreamEvent = (event) => {
       if (typeof options?.onStreamEvent === "function") {
         options.onStreamEvent(event);
@@ -517,8 +585,9 @@
         message: userText,
         conversation_id: thread ? thread.conversation_id : null,
         stream: true,
-        web_search: webSearchEnabled,
+        web_search: adobeActive ? false : webSearchEnabled,
         input_mode: inputMode === "voice" ? "voice" : "keyboard",
+        ...adobePayload,
       })
     });
 
@@ -612,7 +681,7 @@
     }
 
     emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);
-    return { text: finalText, terminal };
+    return { text: resolveStreamedAssistantText(finalText, terminal), terminal };
   }
 
   // ---- Init

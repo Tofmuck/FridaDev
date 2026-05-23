@@ -166,9 +166,13 @@ def _summarize_stimmung(payload: Mapping[str, Any] | None) -> dict[str, Any]:
 def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = _mapping(payload)
     query_plan = _mapping(data.get('query_plan'))
+    source_first = _mapping(data.get('source_first'))
+    profile_policy = _mapping(data.get('profile_policy'))
     searxng_params = _mapping(data.get('searxng_profile_params'))
+    web_discovery = _mapping(data.get('web_discovery'))
     reranking = _mapping(data.get('reranking'))
     web_confidence = _mapping(data.get('web_confidence'))
+    web_evidence = _mapping(data.get('web_evidence'))
     openrouter_fallback = _mapping(data.get('openrouter_fallback'))
     source_material_summary = []
     for item in _sequence(data.get('source_material_summary')):
@@ -230,6 +234,129 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
             data.get('secondary_query_count') or query_plan.get('secondary_query_count') or 0
         ),
         'deduped_result_count': int(data.get('deduped_result_count') or query_plan.get('deduped_result_count') or 0),
+        'source_first_policy_kind': str(
+            data.get('source_first_policy_kind')
+            or source_first.get('source_first_policy_kind')
+            or ''
+        ),
+        'source_first_active': bool(
+            data.get('source_first_active', source_first.get('source_first_active', False))
+        ),
+        'source_first_authority': str(
+            data.get('source_first_authority')
+            or source_first.get('source_first_authority')
+            or ''
+        ),
+        'source_first_product': str(
+            data.get('source_first_product')
+            or source_first.get('source_first_product')
+            or ''
+        ),
+        'source_first_probable_domains': [
+            str(value)
+            for value in _sequence(
+                data.get('source_first_probable_domains')
+                or source_first.get('source_first_probable_domains')
+            )
+            if str(value)
+        ],
+        'source_first_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('source_first_reason_codes')
+                or source_first.get('source_first_reason_codes')
+            )
+            if str(value)
+        ],
+        'profile_policy_kind': str(
+            data.get('profile_policy_kind') or profile_policy.get('profile_policy_kind') or ''
+        ),
+        'profile_policy_mode': str(
+            data.get('profile_policy_mode') or profile_policy.get('profile_policy_mode') or ''
+        ),
+        'profile_expected_domains': [
+            str(value)
+            for value in _sequence(data.get('profile_expected_domains') or profile_policy.get('profile_expected_domains'))
+            if str(value)
+        ],
+        'profile_secondary_domains': [
+            str(value)
+            for value in _sequence(data.get('profile_secondary_domains') or profile_policy.get('profile_secondary_domains'))
+            if str(value)
+        ],
+        'profile_downrank_domains': [
+            str(value)
+            for value in _sequence(data.get('profile_downrank_domains') or profile_policy.get('profile_downrank_domains'))
+            if str(value)
+        ],
+        'profile_situated_secondary_domains': [
+            str(value)
+            for value in _sequence(
+                data.get('profile_situated_secondary_domains')
+                or profile_policy.get('profile_situated_secondary_domains')
+            )
+            if str(value)
+        ],
+        'profile_policy_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('profile_policy_reason_codes')
+                or profile_policy.get('profile_policy_reason_codes')
+            )
+            if str(value)
+        ],
+        'profile_crawl_top_n_budget': int(
+            data.get('profile_crawl_top_n_budget') or profile_policy.get('profile_crawl_top_n_budget') or 0
+        ),
+        'profile_crawl_max_chars_budget': int(
+            data.get('profile_crawl_max_chars_budget') or profile_policy.get('profile_crawl_max_chars_budget') or 0
+        ),
+        'profile_manual_latency_target_s': int(
+            data.get('profile_manual_latency_target_s') or profile_policy.get('profile_manual_latency_target_s') or 0
+        ),
+        'profile_source_evidence_policy_kind': str(
+            data.get('profile_source_evidence_policy_kind')
+            or profile_policy.get('profile_source_evidence_policy_kind')
+            or ''
+        ),
+        'profile_expected_source_present': bool(
+            data.get('profile_expected_source_present', profile_policy.get('profile_expected_source_present', False))
+        ),
+        'profile_expected_material_used': bool(
+            data.get('profile_expected_material_used', profile_policy.get('profile_expected_material_used', False))
+        ),
+        'profile_secondary_source_present': bool(
+            data.get('profile_secondary_source_present', profile_policy.get('profile_secondary_source_present', False))
+        ),
+        'profile_secondary_material_used': bool(
+            data.get('profile_secondary_material_used', profile_policy.get('profile_secondary_material_used', False))
+        ),
+        'profile_situated_source_present': bool(
+            data.get('profile_situated_source_present', profile_policy.get('profile_situated_source_present', False))
+        ),
+        'profile_situated_material_used': bool(
+            data.get('profile_situated_material_used', profile_policy.get('profile_situated_material_used', False))
+        ),
+        'profile_downrank_source_present': bool(
+            data.get('profile_downrank_source_present', profile_policy.get('profile_downrank_source_present', False))
+        ),
+        'profile_downrank_material_used': bool(
+            data.get('profile_downrank_material_used', profile_policy.get('profile_downrank_material_used', False))
+        ),
+        'profile_insufficient_evidence': bool(
+            data.get('profile_insufficient_evidence', profile_policy.get('profile_insufficient_evidence', False))
+        ),
+        'profile_insufficient_evidence_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('profile_insufficient_evidence_reason_codes')
+                or profile_policy.get('profile_insufficient_evidence_reason_codes')
+            )
+            if str(value)
+        ],
+        'profile_source_domain_counts': dict(
+            _mapping(data.get('profile_source_domain_counts') or profile_policy.get('profile_source_domain_counts'))
+        ),
         'searxng_profile_params_kind': str(
             data.get('searxng_profile_params_kind')
             or searxng_params.get('searxng_profile_params_kind')
@@ -257,6 +384,63 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         'searxng_safesearch': str(
             data.get('searxng_safesearch') or searxng_params.get('searxng_safesearch') or ''
         ),
+        'searxng_params_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('searxng_params_reason_codes')
+                or searxng_params.get('searxng_params_reason_codes')
+            )
+            if str(value)
+        ],
+        'searxng_hard_parameters': [
+            str(value)
+            for value in _sequence(
+                data.get('searxng_hard_parameters')
+                or searxng_params.get('searxng_hard_parameters')
+            )
+            if str(value)
+        ],
+        'searxng_soft_signal_policy': str(
+            data.get('searxng_soft_signal_policy')
+            or searxng_params.get('searxng_soft_signal_policy')
+            or ''
+        ),
+        'web_discovery_provider': str(
+            data.get('web_discovery_provider')
+            or web_discovery.get('web_discovery_provider')
+            or ''
+        ),
+        'web_discovery_provider_requested': str(
+            data.get('web_discovery_provider_requested')
+            or web_discovery.get('web_discovery_provider_requested')
+            or ''
+        ),
+        'web_discovery_provider_effective': str(
+            data.get('web_discovery_provider_effective')
+            or web_discovery.get('web_discovery_provider_effective')
+            or ''
+        ),
+        'web_discovery_external_used': bool(
+            data.get('web_discovery_external_used', web_discovery.get('web_discovery_external_used', False))
+        ),
+        'web_discovery_external_provider': str(
+            data.get('web_discovery_external_provider')
+            or web_discovery.get('web_discovery_external_provider')
+            or ''
+        ),
+        'web_discovery_external_error_kind': str(
+            data.get('web_discovery_external_error_kind')
+            or web_discovery.get('web_discovery_external_error_kind')
+            or ''
+        ),
+        'web_discovery_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('web_discovery_reason_codes')
+                or web_discovery.get('web_discovery_reason_codes')
+            )
+            if str(value)
+        ],
         'rerank_applied': bool(data.get('rerank_applied', reranking.get('rerank_applied', False))),
         'rerank_policy': str(data.get('rerank_policy') or reranking.get('rerank_policy') or ''),
         'rerank_input_count': int(data.get('rerank_input_count') or reranking.get('rerank_input_count') or 0),
@@ -325,6 +509,61 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
             _mapping(
                 data.get('web_confidence_inputs_summary')
                 or web_confidence.get('web_confidence_inputs_summary')
+            )
+        ),
+        'web_evidence_policy_kind': str(
+            data.get('web_evidence_policy_kind')
+            or web_evidence.get('web_evidence_policy_kind')
+            or ''
+        ),
+        'web_evidence_status': str(
+            data.get('web_evidence_status')
+            or web_evidence.get('web_evidence_status')
+            or ''
+        ),
+        'web_evidence_reason_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('web_evidence_reason_codes')
+                or web_evidence.get('web_evidence_reason_codes')
+            )
+            if str(value)
+        ],
+        'web_evidence_guidance_codes': [
+            str(value)
+            for value in _sequence(
+                data.get('web_evidence_guidance_codes')
+                or web_evidence.get('web_evidence_guidance_codes')
+            )
+            if str(value)
+        ],
+        'web_evidence_inputs_summary': dict(
+            _mapping(
+                data.get('web_evidence_inputs_summary')
+                or web_evidence.get('web_evidence_inputs_summary')
+            )
+        ),
+        'web_evidence_can_answer': bool(
+            data.get('web_evidence_can_answer', web_evidence.get('web_evidence_can_answer', False))
+        ),
+        'web_evidence_requires_caveat': bool(
+            data.get('web_evidence_requires_caveat', web_evidence.get('web_evidence_requires_caveat', False))
+        ),
+        'web_evidence_can_suggest_reformulation': bool(
+            data.get(
+                'web_evidence_can_suggest_reformulation',
+                web_evidence.get('web_evidence_can_suggest_reformulation', False),
+            )
+        ),
+        'web_evidence_url_request_policy': str(
+            data.get('web_evidence_url_request_policy')
+            or web_evidence.get('web_evidence_url_request_policy')
+            or ''
+        ),
+        'web_evidence_external_fallback_used': bool(
+            data.get(
+                'web_evidence_external_fallback_used',
+                web_evidence.get('web_evidence_external_fallback_used', False),
             )
         ),
         'openrouter_fallback_state': str(

@@ -174,6 +174,15 @@ class LogStorePhase3Tests(unittest.TestCase):
                     'latest_ts': datetime(2026, 5, 14, 10, 3, tzinfo=timezone.utc),
                 },
                 {
+                    'provider_caller': 'web_discovery',
+                    'status': 'ok',
+                    'calls_count': 1,
+                    'duration_ms_total': 30,
+                    'duration_ms_count': 1,
+                    'response_chars_total': 0,
+                    'latest_ts': datetime(2026, 5, 14, 10, 3, 30, tzinfo=timezone.utc),
+                },
+                {
                     'provider_caller': '',
                     'status': 'ok',
                     'calls_count': 1,
@@ -197,12 +206,12 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertEqual(metrics['main_provider_caller'], 'llm')
         self.assertEqual(
             metrics['secondary_provider_callers'],
-            ['stimmung_agent', 'validation_agent', 'web_reformulation'],
+            ['stimmung_agent', 'validation_agent', 'web_reformulation', 'web_discovery'],
         )
         self.assertEqual(metrics['main_llm_call_count'], 2)
-        self.assertEqual(metrics['secondary_llm_call_count'], 3)
+        self.assertEqual(metrics['secondary_llm_call_count'], 4)
         self.assertEqual(metrics['unknown_llm_call_count'], 2)
-        self.assertEqual(metrics['total_llm_call_count'], 7)
+        self.assertEqual(metrics['total_llm_call_count'], 8)
 
         by_caller = metrics['by_provider_caller']
         self.assertEqual(by_caller['llm']['total_count'], 2)
@@ -210,6 +219,8 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertEqual(by_caller['stimmung_agent']['total_count'], 1)
         self.assertEqual(by_caller['validation_agent']['error_count'], 1)
         self.assertEqual(by_caller['web_reformulation']['response_chars_total'], 12)
+        self.assertEqual(by_caller['web_discovery']['total_count'], 1)
+        self.assertEqual(by_caller['web_discovery']['avg_duration_ms'], 30.0)
         self.assertEqual(by_caller['unknown']['total_count'], 2)
         self.assertEqual(by_caller['unknown']['ok_count'], 2)
         self.assertNotIn('legacy_sidecar', by_caller)
@@ -773,6 +784,38 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertEqual(web_reformulation_item['status'], 'ok')
         self.assertEqual(web_reformulation_item['evidence']['prepared_count'], 1)
         self.assertEqual(web_reformulation_item['evidence']['llm_call_count'], 1)
+
+    def test_web_discovery_provider_is_not_counted_as_main_or_unknown(self) -> None:
+        events = self._complete_turn_events(web_search_enabled=True)
+        events.insert(
+            -2,
+            self._event(
+                'llm_call',
+                payload={
+                    'provider_caller': 'web_discovery',
+                    'provider_title': 'FridaDev / Web Discovery',
+                    'response_chars': 0,
+                },
+                event_id='evt-web-discovery-llm',
+            ),
+        )
+
+        pipeline_item = log_store.build_turn_pipeline_item(events)
+        providers = pipeline_item['providers']
+        self.assertEqual(providers['unknown_llm_call_count'], 0)
+        self.assertEqual(providers['main']['provider_caller'], 'llm')
+        self.assertTrue(providers['main']['present'])
+        self.assertEqual(providers['main']['response_chars'], 17)
+        self.assertTrue(providers['secondary']['web_discovery']['llm_call_present'])
+        self.assertEqual(providers['secondary']['web_discovery']['status'], 'ok')
+
+        checklist = log_store.build_turn_observability_checklist(events)
+        main_item = self._find_item(checklist, 'llm_call_main')
+        self.assertEqual(main_item['status'], 'ok')
+        self.assertEqual(main_item['evidence']['main_llm_call_count'], 1)
+        discovery_item = self._find_item(checklist, 'web_discovery')
+        self.assertEqual(discovery_item['status'], 'ok')
+        self.assertEqual(discovery_item['evidence']['llm_call_count'], 1)
 
     def test_build_turn_observability_checklist_degrades_empty_identity_fingerprint(self) -> None:
         events = self._complete_turn_events(web_search_enabled=False)

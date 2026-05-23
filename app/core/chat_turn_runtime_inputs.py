@@ -252,6 +252,47 @@ def resolve_web_runtime_payload(
     }
 
 
+def resolve_web_runtime_payload_skipped_by_adobe(
+    *,
+    user_msg: str,
+    web_search_requested: bool,
+) -> dict[str, Any]:
+    reason_code = 'adobe_profile_owns_retrieval'
+    chat_turn_logger.emit(
+        'web_search',
+        status='skipped',
+        reason_code=reason_code,
+        payload={
+            'enabled': False,
+            'activation_mode': 'not_requested',
+            'query_preview': '',
+            'results_count': 0,
+            'context_injected': False,
+            'truncated': False,
+            'web_search_requested': bool(web_search_requested),
+            'adobe_mode_active': True,
+        },
+    )
+    chat_turn_logger.emit_branch_skipped(
+        reason_code=reason_code,
+        reason_short='adobe_profile_owns_retrieval',
+    )
+    return {
+        'enabled': False,
+        'status': 'skipped',
+        'activation_mode': 'not_requested',
+        'reason_code': reason_code,
+        'original_user_message': str(user_msg or ''),
+        'query': None,
+        'results_count': 0,
+        'runtime': {},
+        'sources': [],
+        'context_block': '',
+        'adobe_profile_owns_retrieval': True,
+        'web_search_requested': bool(web_search_requested),
+    }
+
+
 def _web_search_call_kwargs(
     func: Any,
     *,

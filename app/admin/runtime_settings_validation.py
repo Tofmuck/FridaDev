@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 from urllib.parse import urlparse
 
+from core import main_llm_reasoning
 from identity import static_identity_paths
 
 
@@ -87,6 +88,7 @@ def validate_runtime_section(
         referer = _runtime_text_value(view, 'referer')
         referer_llm = _runtime_text_value(view, 'referer_llm')
         referer_web_reformulation = _runtime_text_value(view, 'referer_web_reformulation')
+        referer_web_discovery = _runtime_text_value(view, 'referer_web_discovery')
         referer_arbiter = _runtime_text_value(view, 'referer_arbiter')
         referer_identity_extractor = _runtime_text_value(view, 'referer_identity_extractor')
         referer_identity_periodic = _runtime_text_value(view, 'referer_identity_periodic')
@@ -95,6 +97,10 @@ def validate_runtime_section(
         referer_validation_agent = _runtime_text_value(view, 'referer_validation_agent')
         temperature = _runtime_float_value(view, 'temperature')
         top_p = _runtime_float_value(view, 'top_p')
+        reasoning_effort = main_llm_reasoning.runtime_payload_reasoning_effort(view.payload)
+        raw_reasoning_effort = _runtime_text_value(view, 'reasoning_effort')
+        reasoning_effort_valid = raw_reasoning_effort in main_llm_reasoning.SUPPORTED_REASONING_EFFORTS
+        reasoning_effort_supported = main_llm_reasoning.model_supports_reasoning_effort(model)
         try:
             api_key_secret = resolve_runtime_secret_from_view(view, 'api_key')
             api_key_ok = bool(str(api_key_secret.value).strip())
@@ -122,6 +128,14 @@ def validate_runtime_section(
                     (
                         'referer_web_reformulation='
                         f'{referer_web_reformulation or "missing"}; shared_referer={referer or "missing"}'
+                    ),
+                ),
+                _validation_check(
+                    'referer_web_discovery',
+                    _component_referer_valid_or_shared_fallback(referer_web_discovery, referer),
+                    (
+                        'referer_web_discovery='
+                        f'{referer_web_discovery or "missing"}; shared_referer={referer or "missing"}'
                     ),
                 ),
                 _validation_check(
@@ -175,6 +189,17 @@ def validate_runtime_section(
                     'top_p',
                     top_p is not None and 0.0 < top_p <= 1.0,
                     f'top_p={top_p!r}',
+                ),
+                _validation_check(
+                    'reasoning_effort',
+                    reasoning_effort_valid,
+                    (
+                        f'reasoning_effort={raw_reasoning_effort or "missing"}; '
+                        f'allowed={",".join(main_llm_reasoning.SUPPORTED_REASONING_EFFORTS)}; '
+                        f'model={model or "missing"}; '
+                        f'effective={reasoning_effort}; '
+                        f'model_supported={reasoning_effort_supported}'
+                    ),
                 ),
                 _validation_check('api_key_runtime', api_key_ok, api_key_detail),
             )

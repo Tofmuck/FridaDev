@@ -121,7 +121,38 @@ class ChatTranscriptionRouteTests(unittest.TestCase):
                 'response_format': 'json',
             },
         )
-        self.assertEqual(observed['headers'], {})
+        self.assertRegex(observed['headers'].get('X-Frida-Request-Id', ''), r'^[0-9a-f]{16}$')
+        self.assertEqual(observed['timeout'], 30)
+
+    def test_api_chat_transcribe_forwards_large_blob_with_safe_metadata(self) -> None:
+        observed = {}
+        large_audio = b'a' * (2 * 1024 * 1024)
+
+        def fake_post(url, files=None, data=None, headers=None, timeout=None):
+            observed['files'] = dict(files or {})
+            observed['timeout'] = timeout
+            return _FakeResponse(status_code=200, payload={'text': 'bonjour'})
+
+        restore = self._patch_runtime(fake_post)
+        try:
+            response = self.client.post(
+                '/api/chat/transcribe',
+                data={
+                    'recording_duration_ms': '150000',
+                    'recording_blob_size_bytes': str(len(large_audio)),
+                    'recording_chunk_count': '1',
+                    'recording_stop_reason': 'auto_limit',
+                    'file': (io.BytesIO(large_audio), 'long.webm', 'audio/webm'),
+                },
+                content_type='multipart/form-data',
+            )
+        finally:
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['input_mode'], 'voice')
+        self.assertEqual(len(observed['files']['file'][1]), len(large_audio))
+        self.assertEqual(observed['files']['file'][2], 'audio/webm')
         self.assertEqual(observed['timeout'], 30)
 
     def test_api_chat_transcribe_returns_400_when_file_is_missing(self) -> None:

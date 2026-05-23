@@ -6,7 +6,7 @@ Perimetre: comparer la documentation officielle SearXNG/Crawl4AI, la configurati
 
 Hors scope respecte: aucun changement runtime, prompt, memoire, identity, summary, Docker, SearXNG, Crawl4AI, settings live ou integration OpenRouter.
 
-Note de supersession 2026-05-22: les hypotheses de passerelle OpenRouter/Exa/Parallel formulees dans cet audit sont remplacees par la decision produit `local only` actee apres le Lot 8. OpenRouter/Exa/Parallel restent des outils de benchmark externe; ils ne constituent plus une strategie produit automatique, semi-automatique ou hybride pour le runtime web FridaDev.
+Note de supersession 2026-05-22: les hypotheses de passerelle OpenRouter/Exa/Parallel formulees dans cet audit ont d'abord ete recadrees par une decision de runtime exclusivement local apres le Lot 8, puis remplacees par la decision active `OpenRouter/Exa discovery`. Doctrine actuelle: web manuel seulement, URL explicite locale directe, recherche ouverte via provider OpenRouter/Exa quand configure, Crawl4AI local pour lire, SearXNG comme provider `local`/baseline/fallback operateur explicite, Parallel benchmark externe.
 
 ## Question prealable: existe-t-il un meilleur plan ?
 
@@ -29,9 +29,9 @@ SearXNG n'est pas exploite a son niveau documentaire. L'API supporte `categories
 
 Crawl4AI est plus capable que ce que FridaDev consomme. Le endpoint local `/md` expose `fit`, `raw`, `bm25` et `llm`, un parametre `q` et un mode cache. FridaDev utilise correctement `fit` puis `raw` uniquement pour URL explicite, ce qui est une bonne borne. En revanche, FridaDev n'utilise pas le filtrage query-aware BM25 pour les pages issues d'une recherche, et lit le cache en mode frais/ecriture seulement.
 
-Le local peut raisonnablement etre renforce sans passerelle OpenRouter. Le meilleur ordre est: profil de recherche, multi-requetes specialisees, parametres SearXNG par profil, reranking local avant crawl, crawl query-aware apres reranking, puis politique de confiance visible et non-actionnable.
+Le local pouvait raisonnablement etre renforce avant decision Exa. Cet audit a donc lance l'ordre suivant: profil de recherche, multi-requetes specialisees, parametres SearXNG par profil, reranking local avant crawl, crawl query-aware apres reranking, puis politique de confiance visible et non-actionnable.
 
-OpenRouter Exa/Parallel doivent rester hors runtime FridaDev. Exa et Parallel sont utiles comme comparateurs de benchmark externe pour objectiver les faiblesses de SearXNG, mais ils ne sont pas un complement produit, une voie de confiance ou un chemin hybride.
+Cette recommandation a ete supersedee apres la Phase 8: OpenRouter/Exa devient provider de decouverte URL configure pour la recherche ouverte. Il ne devient pas fallback automatique ni voie de confiance; Parallel reste temoin externe.
 
 ## Etat actuel FridaDev
 
@@ -506,13 +506,14 @@ Tester:
 - collecte fraiche pour actualite;
 - budgets de caracteres par profil.
 
-### Lot 6 - Politique de confiance sans passerelle OpenRouter
+### Lot 6 - Politique de confiance sans fallback automatique
 
-Apres renforcement local, definir une decision explicite local only:
+Apres renforcement local, definir une decision explicite de confiance non actionnable:
 
 - confiance forte: utiliser le materiau local;
 - confiance faible: ameliorer SearXNG, Crawl4AI, requetes, profils ou observabilite locale;
-- Exa/Parallel/OpenRouter: benchmark externe uniquement, sans appel runtime.
+- Exa/OpenRouter: jamais appele par la confiance; depuis la decision active, Exa peut seulement etre provider de decouverte configure pour la recherche ouverte.
+- Parallel: benchmark externe uniquement, sans appel runtime.
 
 ## Ce qu'il ne faut pas faire
 

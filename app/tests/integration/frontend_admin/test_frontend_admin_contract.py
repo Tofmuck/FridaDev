@@ -550,6 +550,16 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('hint: "Budget de generation par defaut envoye au modele principal."', catalog_source)
         self.assertIn('integerFields: ["response_max_tokens"]', source_all)
 
+    def test_admin_js_exposes_bounded_main_model_reasoning_effort(self) -> None:
+        catalog_source = (APP_DIR / "web" / "admin_settings_catalog.js").read_text(encoding="utf-8")
+        main_model_source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
+
+        self.assertIn('key: "reasoning_effort"', catalog_source)
+        self.assertIn('inputType: "select"', catalog_source)
+        for value in ("none", "low", "medium", "high"):
+            self.assertIn(f'value: "{value}"', catalog_source)
+        self.assertIn('document.createElement("select")', main_model_source)
+
     def test_admin_js_exposes_complete_summary_model_runtime_fields(self) -> None:
         catalog_source = (APP_DIR / "web" / "admin_settings_catalog.js").read_text(encoding="utf-8")
         summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")

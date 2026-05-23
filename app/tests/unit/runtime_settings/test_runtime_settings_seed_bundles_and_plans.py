@@ -30,10 +30,13 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
         self.assertEqual(bundle.payload['base_url']['value'], config.OR_BASE)
         self.assertEqual(bundle.payload['referer_llm']['value'], config.OR_REFERER_LLM)
         self.assertEqual(bundle.payload['referer_web_reformulation']['value'], config.OR_REFERER_WEB_REFORMULATION)
+        self.assertEqual(bundle.payload['referer_web_discovery']['value'], config.OR_REFERER_WEB_DISCOVERY)
         self.assertEqual(bundle.payload['referer_validation_agent']['value'], config.OR_REFERER_VALIDATION_AGENT)
         self.assertEqual(bundle.payload['title_web_reformulation']['value'], config.OR_TITLE_WEB_REFORMULATION)
+        self.assertEqual(bundle.payload['title_web_discovery']['value'], config.OR_TITLE_WEB_DISCOVERY)
         self.assertEqual(bundle.payload['title_identity_extractor']['value'], config.OR_TITLE_IDENTITY_EXTRACTOR)
         self.assertEqual(bundle.payload['temperature']['value'], 0.4)
+        self.assertEqual(bundle.payload['reasoning_effort']['value'], 'high')
         self.assertEqual(bundle.payload['api_key']['is_secret'], True)
         self.assertEqual(bundle.payload['api_key']['is_set'], bool(config.OR_KEY))
         self.assertNotIn('value', bundle.payload['api_key'])
@@ -103,8 +106,10 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
         self.assertEqual(main_model_bundle.payload['temperature']['origin'], 'seed_default')
         self.assertEqual(main_model_bundle.payload['top_p']['origin'], 'seed_default')
         self.assertEqual(main_model_bundle.payload['response_max_tokens']['origin'], 'seed_default')
+        self.assertEqual(main_model_bundle.payload['reasoning_effort']['origin'], 'seed_default')
         self.assertEqual(main_model_bundle.payload['referer_llm']['origin'], 'env_seed')
         self.assertEqual(main_model_bundle.payload['referer_web_reformulation']['origin'], 'env_seed')
+        self.assertEqual(main_model_bundle.payload['referer_web_discovery']['origin'], 'env_seed')
         self.assertEqual(main_model_bundle.payload['referer_validation_agent']['origin'], 'env_seed')
 
         stimmung_bundle = runtime_settings.build_env_seed_bundle('stimmung_agent_model')
@@ -142,6 +147,8 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
         self.assertEqual(bundle.payload['temperature']['origin'], 'db_seed')
         self.assertEqual(bundle.payload['response_max_tokens']['origin'], 'db_seed')
         self.assertEqual(bundle.payload['response_max_tokens']['value'], 8192)
+        self.assertEqual(bundle.payload['reasoning_effort']['origin'], 'db_seed')
+        self.assertEqual(bundle.payload['reasoning_effort']['value'], 'high')
         self.assertEqual(bundle.payload['api_key']['origin'], 'env_seed')
 
     def test_get_unseeded_sections_uses_missing_rows_as_signal(self) -> None:

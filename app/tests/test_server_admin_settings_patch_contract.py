@@ -490,6 +490,48 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
+    def test_patch_admin_settings_main_model_updates_reasoning_effort(self) -> None:
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'model': {'value': 'openai/gpt-5.1', 'is_secret': False, 'origin': 'db'},
+                    'reasoning_effort': {'value': 'medium', 'is_secret': False, 'origin': 'admin_ui'},
+                    'api_key': {'is_secret': True, 'is_set': True, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/main-model',
+                json={
+                    'updated_by': 'chat_reasoning_control',
+                    'payload': {
+                        'reasoning_effort': {'value': 'medium'},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'main_model')
+        self.assertEqual(observed['updated_by'], 'chat_reasoning_control')
+        self.assertEqual(observed['payload'], {'reasoning_effort': {'value': 'medium'}})
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['payload']['reasoning_effort']['value'], 'medium')
+        self.assertEqual(data['payload']['reasoning_effort']['origin'], 'admin_ui')
+
     def test_patch_admin_settings_web_reformulation_model_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
         original_update = self.server.runtime_settings.update_runtime_section

@@ -54,6 +54,85 @@ def _canonical_query_plan(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _canonical_source_first(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    return {
+        'source_first_policy_kind': _optional_str(data.get('source_first_policy_kind')),
+        'source_first_active': bool(data.get('source_first_active', False)),
+        'source_first_authority': _optional_str(data.get('source_first_authority')),
+        'source_first_product': _optional_str(data.get('source_first_product')),
+        'source_first_probable_domains': [
+            str(value)
+            for value in data.get('source_first_probable_domains') or []
+            if str(value or '')
+        ],
+        'source_first_reason_codes': [
+            str(value)
+            for value in data.get('source_first_reason_codes') or []
+            if str(value or '')
+        ],
+    }
+
+
+def _canonical_profile_policy(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    counts = data.get('profile_source_domain_counts')
+    if not isinstance(counts, Mapping):
+        counts = {}
+    return {
+        'profile_policy_kind': _optional_str(data.get('profile_policy_kind')),
+        'profile_policy_mode': _optional_str(data.get('profile_policy_mode')),
+        'profile_expected_domains': [
+            str(value)
+            for value in data.get('profile_expected_domains') or []
+            if str(value or '')
+        ],
+        'profile_secondary_domains': [
+            str(value)
+            for value in data.get('profile_secondary_domains') or []
+            if str(value or '')
+        ],
+        'profile_downrank_domains': [
+            str(value)
+            for value in data.get('profile_downrank_domains') or []
+            if str(value or '')
+        ],
+        'profile_situated_secondary_domains': [
+            str(value)
+            for value in data.get('profile_situated_secondary_domains') or []
+            if str(value or '')
+        ],
+        'profile_policy_reason_codes': [
+            str(value)
+            for value in data.get('profile_policy_reason_codes') or []
+            if str(value or '')
+        ],
+        'profile_crawl_top_n_budget': _optional_int(data.get('profile_crawl_top_n_budget')) or 0,
+        'profile_crawl_max_chars_budget': _optional_int(data.get('profile_crawl_max_chars_budget')) or 0,
+        'profile_manual_latency_target_s': _optional_int(data.get('profile_manual_latency_target_s')) or 0,
+        'profile_source_evidence_policy_kind': _optional_str(data.get('profile_source_evidence_policy_kind')),
+        'profile_expected_source_present': bool(data.get('profile_expected_source_present', False)),
+        'profile_expected_material_used': bool(data.get('profile_expected_material_used', False)),
+        'profile_secondary_source_present': bool(data.get('profile_secondary_source_present', False)),
+        'profile_secondary_material_used': bool(data.get('profile_secondary_material_used', False)),
+        'profile_situated_source_present': bool(data.get('profile_situated_source_present', False)),
+        'profile_situated_material_used': bool(data.get('profile_situated_material_used', False)),
+        'profile_downrank_source_present': bool(data.get('profile_downrank_source_present', False)),
+        'profile_downrank_material_used': bool(data.get('profile_downrank_material_used', False)),
+        'profile_insufficient_evidence': bool(data.get('profile_insufficient_evidence', False)),
+        'profile_insufficient_evidence_reason_codes': [
+            str(value)
+            for value in data.get('profile_insufficient_evidence_reason_codes') or []
+            if str(value or '')
+        ],
+        'profile_source_domain_counts': {
+            str(key): _optional_int(value) or 0
+            for key, value in dict(counts).items()
+            if str(key or '')
+        },
+    }
+
+
 def _canonical_searxng_profile_params(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = payload if isinstance(payload, Mapping) else {}
     return {
@@ -72,6 +151,34 @@ def _canonical_searxng_profile_params(payload: Mapping[str, Any] | None) -> dict
         'searxng_time_range': _optional_str(data.get('searxng_time_range')),
         'searxng_language': _optional_str(data.get('searxng_language')),
         'searxng_safesearch': _optional_str(data.get('searxng_safesearch')),
+        'searxng_params_reason_codes': [
+            str(value)
+            for value in data.get('searxng_params_reason_codes') or []
+            if str(value or '')
+        ],
+        'searxng_hard_parameters': [
+            str(value)
+            for value in data.get('searxng_hard_parameters') or []
+            if str(value or '')
+        ],
+        'searxng_soft_signal_policy': _optional_str(data.get('searxng_soft_signal_policy')),
+    }
+
+
+def _canonical_web_discovery(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    return {
+        'web_discovery_provider': _optional_str(data.get('web_discovery_provider')),
+        'web_discovery_provider_requested': _optional_str(data.get('web_discovery_provider_requested')),
+        'web_discovery_provider_effective': _optional_str(data.get('web_discovery_provider_effective')),
+        'web_discovery_external_used': bool(data.get('web_discovery_external_used', False)),
+        'web_discovery_external_provider': _optional_str(data.get('web_discovery_external_provider')),
+        'web_discovery_external_error_kind': _optional_str(data.get('web_discovery_external_error_kind')),
+        'web_discovery_reason_codes': [
+            str(value)
+            for value in data.get('web_discovery_reason_codes') or []
+            if str(value or '')
+        ],
     }
 
 
@@ -255,6 +362,35 @@ def _canonical_web_confidence(payload: Mapping[str, Any] | None) -> dict[str, An
     }
 
 
+def _canonical_web_evidence(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    inputs_summary = data.get('web_evidence_inputs_summary')
+    if not isinstance(inputs_summary, Mapping):
+        inputs_summary = {}
+    return {
+        'web_evidence_policy_kind': _optional_str(data.get('web_evidence_policy_kind')),
+        'web_evidence_status': _optional_str(data.get('web_evidence_status')),
+        'web_evidence_reason_codes': [
+            str(value)
+            for value in data.get('web_evidence_reason_codes') or []
+            if str(value or '')
+        ],
+        'web_evidence_guidance_codes': [
+            str(value)
+            for value in data.get('web_evidence_guidance_codes') or []
+            if str(value or '')
+        ],
+        'web_evidence_inputs_summary': dict(inputs_summary),
+        'web_evidence_can_answer': bool(data.get('web_evidence_can_answer', False)),
+        'web_evidence_requires_caveat': bool(data.get('web_evidence_requires_caveat', False)),
+        'web_evidence_can_suggest_reformulation': bool(
+            data.get('web_evidence_can_suggest_reformulation', False)
+        ),
+        'web_evidence_url_request_policy': _optional_str(data.get('web_evidence_url_request_policy')),
+        'web_evidence_external_fallback_used': bool(data.get('web_evidence_external_fallback_used', False)),
+    }
+
+
 def _canonical_openrouter_fallback(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = payload if isinstance(payload, Mapping) else {}
     return {
@@ -324,7 +460,10 @@ def build_web_input(
     collection_path: str | None = None,
     runtime: Mapping[str, Any] | None = None,
     query_plan: Mapping[str, Any] | None = None,
+    source_first: Mapping[str, Any] | None = None,
+    profile_policy: Mapping[str, Any] | None = None,
     searxng_profile_params: Mapping[str, Any] | None = None,
+    web_discovery: Mapping[str, Any] | None = None,
     reranking: Mapping[str, Any] | None = None,
     sources: Sequence[Mapping[str, Any]] = (),
     context_block: str = '',
@@ -339,6 +478,7 @@ def build_web_input(
     crawl4ai_fallback_used_count: int | None = None,
     crawl4ai_query_sha256_12: Sequence[Any] | None = None,
     web_confidence: Mapping[str, Any] | None = None,
+    web_evidence: Mapping[str, Any] | None = None,
     openrouter_fallback: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     canonical_sources = [
@@ -385,7 +525,10 @@ def build_web_input(
         'collection_path': _optional_str(collection_path),
         'runtime': _canonical_runtime(runtime),
         'query_plan': _canonical_query_plan(query_plan),
+        'source_first': _canonical_source_first(source_first),
+        'profile_policy': _canonical_profile_policy(profile_policy),
         'searxng_profile_params': _canonical_searxng_profile_params(searxng_profile_params),
+        'web_discovery': _canonical_web_discovery(web_discovery),
         'reranking': _canonical_reranking(reranking),
         'used_content_kinds': canonical_used_content_kinds,
         'injected_chars': canonical_injected_chars,
@@ -414,6 +557,7 @@ def build_web_input(
             if str(value or '')
         ],
         'web_confidence': _canonical_web_confidence(web_confidence),
+        'web_evidence': _canonical_web_evidence(web_evidence),
         'openrouter_fallback': _canonical_openrouter_fallback(openrouter_fallback),
         'sources': canonical_sources,
         'context_block': canonical_context_block,
@@ -443,7 +587,10 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
         collection_path=_optional_str(payload.get('collection_path')),
         runtime=payload.get('runtime') if isinstance(payload.get('runtime'), Mapping) else None,
         query_plan=payload,
+        source_first=payload,
+        profile_policy=payload,
         searxng_profile_params=payload,
+        web_discovery=payload,
         reranking=payload,
         sources=payload.get('sources') if isinstance(payload.get('sources'), Sequence) else (),
         context_block=str(payload.get('context_block') or ''),
@@ -470,5 +617,6 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
         if isinstance(payload.get('crawl4ai_query_sha256_12'), Sequence)
         else (),
         web_confidence=payload,
+        web_evidence=payload,
         openrouter_fallback=payload,
     )

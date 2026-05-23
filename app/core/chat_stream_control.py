@@ -17,6 +17,7 @@ def build_terminal_chunk(
     *,
     error_code: str | None = None,
     updated_at: str | None = None,
+    final_text: str | None = None,
 ) -> str:
     event_norm = str(event or '').strip().lower()
     if event_norm not in STREAM_TERMINAL_EVENTS:
@@ -31,6 +32,8 @@ def build_terminal_chunk(
     updated_at_norm = str(updated_at or '').strip()
     if updated_at_norm:
         payload['updated_at'] = updated_at_norm
+    if event_norm == STREAM_TERMINAL_DONE and final_text is not None:
+        payload['final_text'] = str(final_text)
     return f'{STREAM_CONTROL_PREFIX}{json.dumps(payload, ensure_ascii=True, separators=(",", ":"))}\n'
 
 
@@ -61,6 +64,8 @@ def parse_terminal_chunk(chunk: str | bytes | bytearray | None) -> dict[str, str
     updated_at = str(payload.get('updated_at') or '').strip()
     if updated_at:
         terminal['updated_at'] = updated_at
+    if event == STREAM_TERMINAL_DONE and isinstance(payload.get('final_text'), str):
+        terminal['final_text'] = payload.get('final_text', '')
     return terminal
 
 

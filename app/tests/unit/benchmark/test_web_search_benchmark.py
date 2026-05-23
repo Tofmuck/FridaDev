@@ -243,11 +243,11 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         profiled = first_case_arms[1]
         self.assertEqual(
             profiled["mode"],
-            "local_profiled_specialized_queries_searxng_params_rerank_crawl4ai_policy_confidence_observability",
+            "local_profiled_specialized_queries_governed_searxng_baskets_rerank_crawl4ai_policy_confidence_observability",
         )
         self.assertEqual(
             profiled["engine"],
-            "searxng_crawl4ai_profiled_queries_params_rerank_crawl_policy_confidence",
+            "searxng_crawl4ai_profiled_queries_governed_baskets_rerank_crawl_policy_confidence",
         )
         self.assertFalse(profiled["local"]["local_profiled_stub"])
         self.assertEqual(profiled["local"]["search_profile"], "stub_not_implemented")
@@ -297,10 +297,10 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
                 "query_count": 3 if bool(kwargs.get("enable_specialized_queries")) else 1,
                 "secondary_query_count": 2 if bool(kwargs.get("enable_specialized_queries")) else 0,
                 "deduped_result_count": 0,
-                "searxng_profile_params_kind": "profiled_actualite_year_general" if enabled_params else "historical",
-                "searxng_profile_params_policy": "soft_broad_hints" if enabled_params else "historical_baseline",
-                "searxng_categories": ["general"] if enabled_params else [],
-                "searxng_engines": [],
+                "searxng_profile_params_kind": "governed_actualite_news_general" if enabled_params else "historical",
+                "searxng_profile_params_policy": "governed_engine_basket_v0" if enabled_params else "historical_baseline",
+                "searxng_categories": ["general", "news"] if enabled_params else [],
+                "searxng_engines": ["bing news", "reuters", "bing", "duckduckgo news"] if enabled_params else [],
                 "searxng_time_range": "year" if enabled_params else "",
                 "searxng_language": "fr-FR",
                 "searxng_safesearch": "0",
@@ -367,8 +367,8 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         self.assertTrue(observed_kwargs[1]["enable_reranking"])
         self.assertTrue(observed_kwargs[1]["enable_profiled_crawl4ai_policy"])
         self.assertEqual(local["local"]["searxng_profile_params_kind"], "historical")
-        self.assertEqual(profiled["local"]["searxng_profile_params_kind"], "profiled_actualite_year_general")
-        self.assertEqual(profiled["local"]["searxng_profile_params_policy"], "soft_broad_hints")
+        self.assertEqual(profiled["local"]["searxng_profile_params_kind"], "governed_actualite_news_general")
+        self.assertEqual(profiled["local"]["searxng_profile_params_policy"], "governed_engine_basket_v0")
         self.assertEqual(profiled["local"]["searxng_time_range"], "year")
         self.assertFalse(local["local"]["rerank_applied"])
         self.assertTrue(profiled["local"]["rerank_applied"])
@@ -402,9 +402,9 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
             {fixture["target_profile"] for fixture in fixtures},
             {
                 "actualite",
-                "technique_officielle",
-                "academique_philosophique",
-                "institutionnel_francais",
+                "documentation_officielle",
+                "academique",
+                "administratif_francais",
             },
         )
         problem_labels = {

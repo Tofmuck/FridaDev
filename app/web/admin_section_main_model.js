@@ -77,14 +77,26 @@
         const label = document.createElement("span");
         label.textContent = spec.label;
 
-        const input = document.createElement("input");
+        const input = spec.inputType === "select"
+          ? document.createElement("select")
+          : document.createElement("input");
         input.id = `adminMainModel-${spec.key}`;
         input.name = spec.key;
-        input.type = spec.inputType;
-        input.autocomplete = spec.autocomplete || "off";
-        if (spec.step) input.step = spec.step;
-        if (spec.min) input.min = spec.min;
-        if (spec.max) input.max = spec.max;
+        if (input instanceof HTMLInputElement) {
+          input.type = spec.inputType;
+          input.autocomplete = spec.autocomplete || "off";
+          if (spec.step) input.step = spec.step;
+          if (spec.min) input.min = spec.min;
+          if (spec.max) input.max = spec.max;
+        }
+        if (input instanceof HTMLSelectElement && Array.isArray(spec.options)) {
+          spec.options.forEach((optionSpec) => {
+            const option = document.createElement("option");
+            option.value = optionSpec.value;
+            option.textContent = optionSpec.label;
+            input.appendChild(option);
+          });
+        }
 
         const meta = document.createElement("div");
         meta.className = "admin-field-meta";
@@ -412,7 +424,7 @@
       elements.mainModelForm?.addEventListener("input", (event) => {
         if (!state.mainModel.draft) return;
         const target = event.target;
-        if (!(target instanceof HTMLInputElement)) return;
+        if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return;
 
         if (target.id === "adminMainModelApiKeyReplace") {
           state.mainModel.draft.api_key = target.value;

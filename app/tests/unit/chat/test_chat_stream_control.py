@@ -24,6 +24,7 @@ class ChatStreamControlTests(unittest.TestCase):
         chunk = chat_stream_control.build_terminal_chunk(
             "done",
             updated_at="2026-04-15T17:30:00Z",
+            final_text="Bonjour final",
         )
 
         self.assertEqual(
@@ -31,6 +32,7 @@ class ChatStreamControlTests(unittest.TestCase):
             {
                 "event": "done",
                 "updated_at": "2026-04-15T17:30:00Z",
+                "final_text": "Bonjour final",
             },
         )
 

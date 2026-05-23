@@ -24,11 +24,15 @@ from observability import chat_turn_logger
 from tools import (
     web_reformulation_settings,
     web_search_confidence,
+    web_search_evidence,
     web_search_profile,
     web_search_query_plan,
+    web_search_source_first,
     web_search_crawl_policy,
+    web_search_profile_policy,
     web_search_rerank,
     web_search_searxng_params,
+    web_search_discovery,
 )
 
 logger = logging.getLogger("frida.web_search")
@@ -652,7 +656,15 @@ def _augment_payload_observability(payload: dict[str, Any]) -> dict[str, Any]:
     payload['used_content_kinds'] = _derive_used_content_kinds(source_material_summary)
     payload['injected_chars'] = _derive_injected_chars(source_material_summary)
     payload['context_chars'] = len(str(payload.get('context_block') or ''))
+    payload.update(
+        web_search_profile_policy.evaluate_profile_evidence(
+            str(payload.get('search_profile') or web_search_profile.PROFILE_GENERAL),
+            sources=list(payload.get('sources') or []),
+            policy_fields=payload,
+        )
+    )
     payload.update(web_search_confidence.evaluate_web_confidence(payload))
+    payload.update(web_search_evidence.evaluate_web_evidence(payload))
     return payload
 
 
@@ -669,7 +681,64 @@ def _web_confidence_event_fields(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _empty_query_plan(kind: str) -> dict[str, Any]:
+def _web_evidence_event_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'web_evidence_policy_kind': str(payload.get('web_evidence_policy_kind') or ''),
+        'web_evidence_status': str(payload.get('web_evidence_status') or 'not_applicable'),
+        'web_evidence_reason_codes': list(payload.get('web_evidence_reason_codes') or []),
+        'web_evidence_guidance_codes': list(payload.get('web_evidence_guidance_codes') or []),
+        'web_evidence_inputs_summary': dict(payload.get('web_evidence_inputs_summary') or {}),
+        'web_evidence_can_answer': bool(payload.get('web_evidence_can_answer', False)),
+        'web_evidence_requires_caveat': bool(payload.get('web_evidence_requires_caveat', False)),
+        'web_evidence_can_suggest_reformulation': bool(
+            payload.get('web_evidence_can_suggest_reformulation', False)
+        ),
+        'web_evidence_url_request_policy': str(payload.get('web_evidence_url_request_policy') or ''),
+        'web_evidence_external_fallback_used': bool(payload.get('web_evidence_external_fallback_used', False)),
+    }
+
+
+def _profile_policy_event_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'profile_policy_kind': str(payload.get('profile_policy_kind') or 'none'),
+        'profile_policy_mode': str(payload.get('profile_policy_mode') or 'none'),
+        'profile_expected_domains': list(payload.get('profile_expected_domains') or []),
+        'profile_secondary_domains': list(payload.get('profile_secondary_domains') or []),
+        'profile_downrank_domains': list(payload.get('profile_downrank_domains') or []),
+        'profile_situated_secondary_domains': list(payload.get('profile_situated_secondary_domains') or []),
+        'profile_policy_reason_codes': list(payload.get('profile_policy_reason_codes') or []),
+        'profile_crawl_top_n_budget': int(payload.get('profile_crawl_top_n_budget') or 0),
+        'profile_crawl_max_chars_budget': int(payload.get('profile_crawl_max_chars_budget') or 0),
+        'profile_manual_latency_target_s': int(payload.get('profile_manual_latency_target_s') or 0),
+        'profile_source_evidence_policy_kind': str(
+            payload.get('profile_source_evidence_policy_kind')
+            or web_search_profile_policy.SOURCE_EVIDENCE_POLICY_KIND
+        ),
+        'profile_expected_source_present': bool(payload.get('profile_expected_source_present', False)),
+        'profile_expected_material_used': bool(payload.get('profile_expected_material_used', False)),
+        'profile_secondary_source_present': bool(payload.get('profile_secondary_source_present', False)),
+        'profile_secondary_material_used': bool(payload.get('profile_secondary_material_used', False)),
+        'profile_situated_source_present': bool(payload.get('profile_situated_source_present', False)),
+        'profile_situated_material_used': bool(payload.get('profile_situated_material_used', False)),
+        'profile_downrank_source_present': bool(payload.get('profile_downrank_source_present', False)),
+        'profile_downrank_material_used': bool(payload.get('profile_downrank_material_used', False)),
+        'profile_insufficient_evidence': bool(payload.get('profile_insufficient_evidence', False)),
+        'profile_insufficient_evidence_reason_codes': list(
+            payload.get('profile_insufficient_evidence_reason_codes') or []
+        ),
+        'profile_source_domain_counts': dict(payload.get('profile_source_domain_counts') or {}),
+    }
+
+
+def _empty_query_plan(
+    kind: str,
+    *,
+    search_profile: str = '',
+    discovery_provider: str | None = None,
+) -> dict[str, Any]:
+    profile_policy = web_search_profile_policy.build_profile_policy(
+        search_profile,
+    ) if search_profile else None
     return {
         'query_plan_kind': str(kind or 'none'),
         'queries': [],
@@ -679,7 +748,17 @@ def _empty_query_plan(kind: str) -> dict[str, Any]:
         'secondary_query_sha256_12': [],
         'raw_result_count': 0,
         'deduped_result_count': 0,
+        **web_search_source_first.empty_observability_fields(),
+        **(
+            profile_policy.as_observability_fields()
+            if profile_policy is not None
+            else web_search_profile_policy.empty_observability_fields()
+        ),
         **web_search_searxng_params.empty_observability_fields(kind='none'),
+        **web_search_discovery.plan_observability_fields(
+            search_profile=search_profile,
+            requested_provider=discovery_provider,
+        ),
         **web_search_rerank.empty_observability_fields(applied=False),
     }
 
@@ -691,10 +770,25 @@ def _build_query_plan(
     search_profile: str,
     enable_specialized_queries: bool,
     enable_profiled_searxng_params: bool,
+    discovery_provider: str | None,
 ) -> dict[str, Any]:
     primary = str(primary_query or '').strip()
+    source_first_plan = web_search_source_first.build_source_first_plan(
+        user_msg,
+        primary,
+        search_profile,
+    )
+    profile_policy = web_search_profile_policy.build_profile_policy(
+        search_profile,
+        source_first_plan=source_first_plan,
+    )
     secondary_queries = (
-        web_search_query_plan.build_specialized_queries(user_msg, primary, search_profile)
+        web_search_query_plan.build_specialized_queries(
+            user_msg,
+            primary,
+            search_profile,
+            source_first_plan=source_first_plan,
+        )
         if enable_specialized_queries
         else []
     )
@@ -732,8 +826,16 @@ def _build_query_plan(
         'secondary_query_sha256_12': secondary_hashes,
         'raw_result_count': 0,
         'deduped_result_count': 0,
+        'source_first': source_first_plan.as_dict(),
+        **source_first_plan.as_observability_fields(),
+        'profile_policy': profile_policy.as_dict(),
+        **profile_policy.as_observability_fields(),
         'searxng_request_params': searxng_profile_params.as_request_params(),
         **searxng_profile_params.as_observability_fields(),
+        **web_search_discovery.plan_observability_fields(
+            search_profile=search_profile,
+            requested_provider=discovery_provider,
+        ),
     }
 
 
@@ -747,6 +849,22 @@ def _query_plan_observability_fields(query_plan: dict[str, Any] | None) -> dict[
         'secondary_query_sha256_12': list(plan.get('secondary_query_sha256_12') or []),
         'raw_result_count': int(plan.get('raw_result_count') or 0),
         'deduped_result_count': int(plan.get('deduped_result_count') or 0),
+        'source_first_policy_kind': str(plan.get('source_first_policy_kind') or 'none'),
+        'source_first_active': bool(plan.get('source_first_active', False)),
+        'source_first_authority': str(plan.get('source_first_authority') or ''),
+        'source_first_product': str(plan.get('source_first_product') or ''),
+        'source_first_probable_domains': list(plan.get('source_first_probable_domains') or []),
+        'source_first_reason_codes': list(plan.get('source_first_reason_codes') or []),
+        'profile_policy_kind': str(plan.get('profile_policy_kind') or 'none'),
+        'profile_policy_mode': str(plan.get('profile_policy_mode') or 'none'),
+        'profile_expected_domains': list(plan.get('profile_expected_domains') or []),
+        'profile_secondary_domains': list(plan.get('profile_secondary_domains') or []),
+        'profile_downrank_domains': list(plan.get('profile_downrank_domains') or []),
+        'profile_situated_secondary_domains': list(plan.get('profile_situated_secondary_domains') or []),
+        'profile_policy_reason_codes': list(plan.get('profile_policy_reason_codes') or []),
+        'profile_crawl_top_n_budget': int(plan.get('profile_crawl_top_n_budget') or 0),
+        'profile_crawl_max_chars_budget': int(plan.get('profile_crawl_max_chars_budget') or 0),
+        'profile_manual_latency_target_s': int(plan.get('profile_manual_latency_target_s') or 0),
         'searxng_profile_params_kind': str(plan.get('searxng_profile_params_kind') or 'none'),
         'searxng_profile_params_policy': str(plan.get('searxng_profile_params_policy') or 'none'),
         'searxng_categories': list(plan.get('searxng_categories') or []),
@@ -754,6 +872,16 @@ def _query_plan_observability_fields(query_plan: dict[str, Any] | None) -> dict[
         'searxng_time_range': str(plan.get('searxng_time_range') or ''),
         'searxng_language': str(plan.get('searxng_language') or ''),
         'searxng_safesearch': str(plan.get('searxng_safesearch') or ''),
+        'searxng_params_reason_codes': list(plan.get('searxng_params_reason_codes') or []),
+        'searxng_hard_parameters': list(plan.get('searxng_hard_parameters') or []),
+        'searxng_soft_signal_policy': str(plan.get('searxng_soft_signal_policy') or ''),
+        'web_discovery_provider': str(plan.get('web_discovery_provider') or ''),
+        'web_discovery_provider_requested': str(plan.get('web_discovery_provider_requested') or ''),
+        'web_discovery_provider_effective': str(plan.get('web_discovery_provider_effective') or ''),
+        'web_discovery_external_used': bool(plan.get('web_discovery_external_used', False)),
+        'web_discovery_external_provider': str(plan.get('web_discovery_external_provider') or ''),
+        'web_discovery_external_error_kind': str(plan.get('web_discovery_external_error_kind') or ''),
+        'web_discovery_reason_codes': list(plan.get('web_discovery_reason_codes') or []),
         'rerank_applied': bool(plan.get('rerank_applied', False)),
         'rerank_policy': str(plan.get('rerank_policy') or 'none'),
         'rerank_input_count': int(plan.get('rerank_input_count') or 0),
@@ -765,6 +893,16 @@ def _query_plan_observability_fields(query_plan: dict[str, Any] | None) -> dict[
         'rerank_promoted_count': int(plan.get('rerank_promoted_count') or 0),
         'rerank_downranked_count': int(plan.get('rerank_downranked_count') or 0),
     }
+
+
+def _query_plan_event_kwargs(query_plan: dict[str, Any] | None) -> tuple[dict[str, Any], dict[str, Any]]:
+    fields = _query_plan_observability_fields(query_plan)
+    event_kwargs = {
+        key: value
+        for key, value in fields.items()
+        if not key.startswith('profile_')
+    }
+    return event_kwargs, fields
 
 
 def _with_query_source(result: dict[str, Any], query_entry: dict[str, Any]) -> dict[str, Any]:
@@ -820,6 +958,28 @@ def _call_search_with_profile_params(
     return search(query)
 
 
+def _call_discovery_with_profile_params(
+    query: str,
+    *,
+    search_profile: str,
+    searxng_params: dict[str, str] | None,
+    max_results: int,
+    discovery_provider: str | None,
+    requests_module: Any = requests,
+    llm_module: Any | None = None,
+) -> web_search_discovery.DiscoveryResponse:
+    return web_search_discovery.discover_urls(
+        query,
+        search_profile=search_profile,
+        searxng_params=searxng_params,
+        max_results=max_results,
+        requested_provider=discovery_provider,
+        local_search=_call_search_with_profile_params,
+        requests_module=requests_module,
+        llm_module=llm_module,
+    )
+
+
 def _run_search_query_plan(
     query_plan: dict[str, Any],
     *,
@@ -827,21 +987,41 @@ def _run_search_query_plan(
     primary_query: str,
     search_profile: str,
     enable_reranking: bool,
+    discovery_provider: str | None,
+    requests_module: Any = requests,
+    llm_module: Any | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     queries = list(query_plan.get('queries') or [])
     if not queries:
         plan = dict(query_plan)
         plan['raw_result_count'] = 0
         plan['deduped_result_count'] = 0
+        plan.update(
+            web_search_discovery.plan_observability_fields(
+                search_profile=search_profile,
+                requested_provider=discovery_provider,
+            )
+        )
         plan.update(web_search_rerank.empty_observability_fields(applied=False))
         return [], plan
 
     max_results = int(_safe_runtime_services_value('searxng_results') or 0)
     searxng_params = dict(query_plan.get('searxng_request_params') or {})
     query_result_groups: list[tuple[dict[str, Any], list[dict[str, str]]]] = []
+    discovery_observability: list[dict[str, Any]] = []
     for query_entry in queries:
         query = str(query_entry.get('query') or '')
-        query_result_groups.append((query_entry, _call_search_with_profile_params(query, searxng_params)))
+        discovery_response = _call_discovery_with_profile_params(
+            query,
+            search_profile=search_profile,
+            searxng_params=searxng_params,
+            max_results=max_results,
+            discovery_provider=discovery_provider,
+            requests_module=requests_module,
+            llm_module=llm_module,
+        )
+        discovery_observability.append(discovery_response.observability)
+        query_result_groups.append((query_entry, discovery_response.results))
 
     merged_results, raw_result_count = _interleave_and_dedupe_query_results(
         query_result_groups,
@@ -850,6 +1030,7 @@ def _run_search_query_plan(
     plan = dict(query_plan)
     plan['raw_result_count'] = raw_result_count
     plan['deduped_result_count'] = len(merged_results)
+    plan.update(web_search_discovery.merge_observability_fields(discovery_observability))
     reranked_results, rerank_observability = web_search_rerank.rerank_results(
         merged_results,
         user_msg=user_msg,
@@ -857,6 +1038,7 @@ def _run_search_query_plan(
         search_profile=search_profile,
         max_results=max_results,
         enabled=enable_reranking,
+        source_first_plan=query_plan.get('source_first'),
     )
     plan.update(rerank_observability)
     return reranked_results, plan
@@ -1010,8 +1192,17 @@ def _build_search_context_material(
     enable_profiled_crawl4ai_policy: bool = True,
 ) -> dict[str, Any]:
     runtime = _runtime_collection_settings()
-    crawl4ai_top_n = int(runtime.get('crawl4ai_top_n') or 0)
-    crawl4ai_max_chars = int(runtime.get('crawl4ai_max_chars') or 0)
+    crawl4ai_top_n = web_search_profile_policy.effective_crawl_top_n(
+        search_profile,
+        int(runtime.get('crawl4ai_top_n') or 0),
+    )
+    crawl4ai_max_chars = web_search_profile_policy.effective_crawl_max_chars(
+        search_profile,
+        int(runtime.get('crawl4ai_max_chars') or 0),
+    )
+    runtime = dict(runtime)
+    runtime['crawl4ai_effective_top_n'] = crawl4ai_top_n
+    runtime['crawl4ai_effective_max_chars'] = crawl4ai_max_chars
     today = _web_temporal_label(now_iso=now_iso)
     primary_source: dict[str, Any] | None = None
     fallback_results = list(results or [])
@@ -1337,6 +1528,13 @@ def _emit_web_search_runtime_event(
     secondary_query_sha256_12: list[str] | None = None,
     raw_result_count: int = 0,
     deduped_result_count: int = 0,
+    source_first_policy_kind: str = 'none',
+    source_first_active: bool = False,
+    source_first_authority: str = '',
+    source_first_product: str = '',
+    source_first_probable_domains: list[str] | None = None,
+    source_first_reason_codes: list[str] | None = None,
+    profile_policy_fields: dict[str, Any] | None = None,
     searxng_profile_params_kind: str = 'none',
     searxng_profile_params_policy: str = 'none',
     searxng_categories: list[str] | None = None,
@@ -1344,6 +1542,16 @@ def _emit_web_search_runtime_event(
     searxng_time_range: str = '',
     searxng_language: str = '',
     searxng_safesearch: str = '',
+    searxng_params_reason_codes: list[str] | None = None,
+    searxng_hard_parameters: list[str] | None = None,
+    searxng_soft_signal_policy: str = '',
+    web_discovery_provider: str = '',
+    web_discovery_provider_requested: str = '',
+    web_discovery_provider_effective: str = '',
+    web_discovery_external_used: bool = False,
+    web_discovery_external_provider: str = '',
+    web_discovery_external_error_kind: str = '',
+    web_discovery_reason_codes: list[str] | None = None,
     rerank_applied: bool = False,
     rerank_policy: str = 'none',
     rerank_input_count: int = 0,
@@ -1372,6 +1580,16 @@ def _emit_web_search_runtime_event(
     openrouter_fallback_state: str | None = None,
     openrouter_fallback_used: bool = False,
     openrouter_fallback_reason_codes: list[str] | None = None,
+    web_evidence_policy_kind: str | None = None,
+    web_evidence_status: str | None = None,
+    web_evidence_reason_codes: list[str] | None = None,
+    web_evidence_guidance_codes: list[str] | None = None,
+    web_evidence_inputs_summary: dict[str, Any] | None = None,
+    web_evidence_can_answer: bool | None = None,
+    web_evidence_requires_caveat: bool | None = None,
+    web_evidence_can_suggest_reformulation: bool | None = None,
+    web_evidence_url_request_policy: str | None = None,
+    web_evidence_external_fallback_used: bool = False,
 ) -> None:
     query_text = str(query_preview or '')
     if truncated is None:
@@ -1404,6 +1622,8 @@ def _emit_web_search_runtime_event(
         context_chars = len(str(context_block or ''))
     payload = {
         'enabled': bool(enabled),
+        'status': str(status or ''),
+        'reason_code': str(reason_code or ''),
         'query_preview': '',
         'query_present': bool(query_text.strip()),
         'query_chars': len(query_text),
@@ -1429,6 +1649,13 @@ def _emit_web_search_runtime_event(
         'secondary_query_sha256_12': list(secondary_query_sha256_12 or []),
         'raw_result_count': int(raw_result_count or 0),
         'deduped_result_count': int(deduped_result_count or 0),
+        'source_first_policy_kind': str(source_first_policy_kind or 'none'),
+        'source_first_active': bool(source_first_active),
+        'source_first_authority': str(source_first_authority or ''),
+        'source_first_product': str(source_first_product or ''),
+        'source_first_probable_domains': list(source_first_probable_domains or []),
+        'source_first_reason_codes': list(source_first_reason_codes or []),
+        **_profile_policy_event_fields(profile_policy_fields or {}),
         'searxng_profile_params_kind': str(searxng_profile_params_kind or 'none'),
         'searxng_profile_params_policy': str(searxng_profile_params_policy or 'none'),
         'searxng_categories': list(searxng_categories or []),
@@ -1436,6 +1663,16 @@ def _emit_web_search_runtime_event(
         'searxng_time_range': str(searxng_time_range or ''),
         'searxng_language': str(searxng_language or ''),
         'searxng_safesearch': str(searxng_safesearch or ''),
+        'searxng_params_reason_codes': list(searxng_params_reason_codes or []),
+        'searxng_hard_parameters': list(searxng_hard_parameters or []),
+        'searxng_soft_signal_policy': str(searxng_soft_signal_policy or ''),
+        'web_discovery_provider': str(web_discovery_provider or ''),
+        'web_discovery_provider_requested': str(web_discovery_provider_requested or ''),
+        'web_discovery_provider_effective': str(web_discovery_provider_effective or ''),
+        'web_discovery_external_used': bool(web_discovery_external_used),
+        'web_discovery_external_provider': str(web_discovery_external_provider or ''),
+        'web_discovery_external_error_kind': str(web_discovery_external_error_kind or ''),
+        'web_discovery_reason_codes': list(web_discovery_reason_codes or []),
         'rerank_applied': bool(rerank_applied),
         'rerank_policy': str(rerank_policy or 'none'),
         'rerank_input_count': int(rerank_input_count or 0),
@@ -1472,6 +1709,23 @@ def _emit_web_search_runtime_event(
                 'openrouter_fallback_reason_codes': list(openrouter_fallback_reason_codes or []),
             }
         )
+    if web_evidence_policy_kind is None:
+        payload.update(web_search_evidence.evaluate_web_evidence(payload))
+    else:
+        payload.update(
+            {
+                'web_evidence_policy_kind': str(web_evidence_policy_kind or ''),
+                'web_evidence_status': str(web_evidence_status or 'not_applicable'),
+                'web_evidence_reason_codes': list(web_evidence_reason_codes or []),
+                'web_evidence_guidance_codes': list(web_evidence_guidance_codes or []),
+                'web_evidence_inputs_summary': dict(web_evidence_inputs_summary or {}),
+                'web_evidence_can_answer': bool(web_evidence_can_answer),
+                'web_evidence_requires_caveat': bool(web_evidence_requires_caveat),
+                'web_evidence_can_suggest_reformulation': bool(web_evidence_can_suggest_reformulation),
+                'web_evidence_url_request_policy': str(web_evidence_url_request_policy or ''),
+                'web_evidence_external_fallback_used': bool(web_evidence_external_fallback_used),
+            }
+        )
     if error_class:
         payload['error_class'] = error_class
     chat_turn_logger.emit(
@@ -1503,12 +1757,17 @@ def _build_payload_from_collection(
     enable_profiled_searxng_params: bool = True,
     enable_reranking: bool = True,
     enable_profiled_crawl4ai_policy: bool = True,
+    discovery_provider: str | None = None,
     requests_module: Any = requests,
     llm_module: Any | None = None,
     now_iso: str | None = None,
 ) -> dict[str, Any]:
     if explicit_url:
-        direct_query_plan = _empty_query_plan('explicit_url_direct')
+        direct_query_plan = _empty_query_plan(
+            'explicit_url_direct',
+            search_profile=search_profile,
+            discovery_provider=discovery_provider,
+        )
         primary_crawl = _crawl_explicit_url_primary_with_status(explicit_url)
         primary_read_status = str(primary_crawl.get('status') or 'error')
         primary_read_filter = str(primary_crawl.get('filter') or CRAWL4AI_FILTER_FIT)
@@ -1562,6 +1821,7 @@ def _build_payload_from_collection(
             search_profile=search_profile,
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
+            discovery_provider=discovery_provider,
         )
         results, query_plan = _run_search_query_plan(
             query_plan,
@@ -1569,6 +1829,9 @@ def _build_payload_from_collection(
             primary_query=query,
             search_profile=search_profile,
             enable_reranking=enable_reranking,
+            discovery_provider=discovery_provider,
+            requests_module=requests_module,
+            llm_module=llm_module,
         )
         material = _build_search_context_material(
             query,
@@ -1623,6 +1886,7 @@ def _build_payload_from_collection(
         search_profile=search_profile,
         enable_specialized_queries=enable_specialized_queries,
         enable_profiled_searxng_params=enable_profiled_searxng_params,
+        discovery_provider=discovery_provider,
     )
     results, query_plan = _run_search_query_plan(
         query_plan,
@@ -1630,6 +1894,9 @@ def _build_payload_from_collection(
         primary_query=query,
         search_profile=search_profile,
         enable_reranking=enable_reranking,
+        discovery_provider=discovery_provider,
+        requests_module=requests_module,
+        llm_module=llm_module,
     )
     material = _build_search_context_material(
         query,
@@ -1675,6 +1942,7 @@ def build_context_payload(
     enable_profiled_searxng_params: bool = True,
     enable_reranking: bool = True,
     enable_profiled_crawl4ai_policy: bool = True,
+    discovery_provider: str | None = None,
 ) -> dict[str, Any]:
     explicit_url = _extract_explicit_url(user_msg)
     search_profile = web_search_profile.classify_search_profile(
@@ -1690,6 +1958,7 @@ def build_context_payload(
             enable_profiled_searxng_params=enable_profiled_searxng_params,
             enable_reranking=enable_reranking,
             enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
+            discovery_provider=discovery_provider,
             requests_module=requests_module,
             llm_module=llm_module,
             now_iso=now_iso,
@@ -1721,6 +1990,13 @@ def build_context_payload(
             secondary_query_sha256_12=list(payload.get('secondary_query_sha256_12') or []),
             raw_result_count=int(payload.get('raw_result_count') or 0),
             deduped_result_count=int(payload.get('deduped_result_count') or 0),
+            source_first_policy_kind=str(payload.get('source_first_policy_kind') or 'none'),
+            source_first_active=bool(payload.get('source_first_active', False)),
+            source_first_authority=str(payload.get('source_first_authority') or ''),
+            source_first_product=str(payload.get('source_first_product') or ''),
+            source_first_probable_domains=list(payload.get('source_first_probable_domains') or []),
+            source_first_reason_codes=list(payload.get('source_first_reason_codes') or []),
+            profile_policy_fields=_profile_policy_event_fields(payload),
             searxng_profile_params_kind=str(payload.get('searxng_profile_params_kind') or 'none'),
             searxng_profile_params_policy=str(payload.get('searxng_profile_params_policy') or 'none'),
             searxng_categories=list(payload.get('searxng_categories') or []),
@@ -1728,6 +2004,16 @@ def build_context_payload(
             searxng_time_range=str(payload.get('searxng_time_range') or ''),
             searxng_language=str(payload.get('searxng_language') or ''),
             searxng_safesearch=str(payload.get('searxng_safesearch') or ''),
+            searxng_params_reason_codes=list(payload.get('searxng_params_reason_codes') or []),
+            searxng_hard_parameters=list(payload.get('searxng_hard_parameters') or []),
+            searxng_soft_signal_policy=str(payload.get('searxng_soft_signal_policy') or ''),
+            web_discovery_provider=str(payload.get('web_discovery_provider') or ''),
+            web_discovery_provider_requested=str(payload.get('web_discovery_provider_requested') or ''),
+            web_discovery_provider_effective=str(payload.get('web_discovery_provider_effective') or ''),
+            web_discovery_external_used=bool(payload.get('web_discovery_external_used', False)),
+            web_discovery_external_provider=str(payload.get('web_discovery_external_provider') or ''),
+            web_discovery_external_error_kind=str(payload.get('web_discovery_external_error_kind') or ''),
+            web_discovery_reason_codes=list(payload.get('web_discovery_reason_codes') or []),
             rerank_applied=bool(payload.get('rerank_applied', False)),
             rerank_policy=str(payload.get('rerank_policy') or 'none'),
             rerank_input_count=int(payload.get('rerank_input_count') or 0),
@@ -1749,6 +2035,7 @@ def build_context_payload(
             crawl4ai_fallback_used_count=int(payload.get('crawl4ai_fallback_used_count') or 0),
             crawl4ai_query_sha256_12=list(payload.get('crawl4ai_query_sha256_12') or []),
             **_web_confidence_event_fields(payload),
+            **_web_evidence_event_fields(payload),
         )
         return payload
     except Exception as exc:
@@ -1758,7 +2045,13 @@ def build_context_payload(
             'reason_code': 'upstream_error',
             'original_user_message': str(user_msg or ''),
             'search_profile': str(search_profile or ''),
-            **_query_plan_observability_fields(_empty_query_plan('error')),
+            **_query_plan_observability_fields(
+                _empty_query_plan(
+                    'error',
+                    search_profile=search_profile,
+                    discovery_provider=discovery_provider,
+                )
+            ),
             'query': str(user_msg or ''),
             'results_count': 0,
             'runtime': _runtime_collection_settings(),
@@ -1805,6 +2098,13 @@ def build_context_payload(
             secondary_query_sha256_12=list(error_payload.get('secondary_query_sha256_12') or []),
             raw_result_count=int(error_payload.get('raw_result_count') or 0),
             deduped_result_count=int(error_payload.get('deduped_result_count') or 0),
+            source_first_policy_kind=str(error_payload.get('source_first_policy_kind') or 'none'),
+            source_first_active=bool(error_payload.get('source_first_active', False)),
+            source_first_authority=str(error_payload.get('source_first_authority') or ''),
+            source_first_product=str(error_payload.get('source_first_product') or ''),
+            source_first_probable_domains=list(error_payload.get('source_first_probable_domains') or []),
+            source_first_reason_codes=list(error_payload.get('source_first_reason_codes') or []),
+            profile_policy_fields=_profile_policy_event_fields(error_payload),
             searxng_profile_params_kind=str(error_payload.get('searxng_profile_params_kind') or 'none'),
             searxng_profile_params_policy=str(error_payload.get('searxng_profile_params_policy') or 'none'),
             searxng_categories=list(error_payload.get('searxng_categories') or []),
@@ -1812,6 +2112,16 @@ def build_context_payload(
             searxng_time_range=str(error_payload.get('searxng_time_range') or ''),
             searxng_language=str(error_payload.get('searxng_language') or ''),
             searxng_safesearch=str(error_payload.get('searxng_safesearch') or ''),
+            searxng_params_reason_codes=list(error_payload.get('searxng_params_reason_codes') or []),
+            searxng_hard_parameters=list(error_payload.get('searxng_hard_parameters') or []),
+            searxng_soft_signal_policy=str(error_payload.get('searxng_soft_signal_policy') or ''),
+            web_discovery_provider=str(error_payload.get('web_discovery_provider') or ''),
+            web_discovery_provider_requested=str(error_payload.get('web_discovery_provider_requested') or ''),
+            web_discovery_provider_effective=str(error_payload.get('web_discovery_provider_effective') or ''),
+            web_discovery_external_used=bool(error_payload.get('web_discovery_external_used', False)),
+            web_discovery_external_provider=str(error_payload.get('web_discovery_external_provider') or ''),
+            web_discovery_external_error_kind=str(error_payload.get('web_discovery_external_error_kind') or ''),
+            web_discovery_reason_codes=list(error_payload.get('web_discovery_reason_codes') or []),
             rerank_applied=bool(error_payload.get('rerank_applied', False)),
             rerank_policy=str(error_payload.get('rerank_policy') or 'none'),
             rerank_input_count=int(error_payload.get('rerank_input_count') or 0),
@@ -1833,6 +2143,7 @@ def build_context_payload(
             crawl4ai_fallback_used_count=int(error_payload.get('crawl4ai_fallback_used_count') or 0),
             crawl4ai_query_sha256_12=list(error_payload.get('crawl4ai_query_sha256_12') or []),
             **_web_confidence_event_fields(error_payload),
+            **_web_evidence_event_fields(error_payload),
         )
         return error_payload
 
@@ -1847,6 +2158,7 @@ def build_context(
     enable_profiled_searxng_params: bool = True,
     enable_reranking: bool = True,
     enable_profiled_crawl4ai_policy: bool = True,
+    discovery_provider: str | None = None,
 ) -> tuple[str, str, int]:
     """
     Pipeline complet : reformulation → SearXNG/Crawl4AI.
@@ -1867,6 +2179,7 @@ def build_context(
             enable_profiled_searxng_params=enable_profiled_searxng_params,
             enable_reranking=enable_reranking,
             enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
+            discovery_provider=discovery_provider,
         )
         query = str(payload.get('query') or payload.get('explicit_url') or user_msg or '')
         return str(payload.get('context_block') or ''), query, int(payload.get('results_count') or 0)
@@ -1883,6 +2196,7 @@ def build_context(
             search_profile=search_profile,
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
+            discovery_provider=discovery_provider,
         )
         results, query_plan = _run_search_query_plan(
             query_plan,
@@ -1890,6 +2204,9 @@ def build_context(
             primary_query=query,
             search_profile=search_profile,
             enable_reranking=enable_reranking,
+            discovery_provider=discovery_provider,
+            requests_module=requests_module,
+            llm_module=llm_module,
         )
         ctx_parts = []
         if results:
@@ -1899,6 +2216,7 @@ def build_context(
                 ctx_parts.append(_format_context(query, results))
         ctx = "\n\n".join(ctx_parts)
         has_results = len(results) > 0
+        query_plan_event_kwargs, query_plan_fields = _query_plan_event_kwargs(query_plan)
         _emit_web_search_runtime_event(
             enabled=True,
             status='ok' if has_results else 'skipped',
@@ -1918,10 +2236,18 @@ def build_context(
             fallback_used=False,
             collection_path='search_only',
             search_profile=search_profile,
-            **_query_plan_observability_fields(query_plan),
+            profile_policy_fields=query_plan_fields,
+            **query_plan_event_kwargs,
         )
         return ctx, query, len(results)
     except Exception as exc:
+        query_plan_event_kwargs, query_plan_fields = _query_plan_event_kwargs(
+            _empty_query_plan(
+                'error',
+                search_profile=search_profile,
+                discovery_provider=discovery_provider,
+            )
+        )
         _emit_web_search_runtime_event(
             enabled=True,
             status='error',
@@ -1942,6 +2268,7 @@ def build_context(
             fallback_used=False,
             collection_path='search_only',
             search_profile=search_profile,
-            **_query_plan_observability_fields(_empty_query_plan('error')),
+            profile_policy_fields=query_plan_fields,
+            **query_plan_event_kwargs,
         )
         return '', str(user_msg or ''), 0

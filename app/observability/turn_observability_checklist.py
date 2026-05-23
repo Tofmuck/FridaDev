@@ -8,6 +8,7 @@ _LLM_CALL_SECONDARY_PROVIDER_CALLERS = (
     'stimmung_agent',
     'validation_agent',
     'web_reformulation',
+    'web_discovery',
 )
 _LLM_CALL_KNOWN_PROVIDER_CALLERS = (
     _LLM_CALL_MAIN_PROVIDER_CALLER,
@@ -376,6 +377,66 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
         'query_count': _to_int(payload.get('query_count')),
         'secondary_query_count': _to_int(payload.get('secondary_query_count')),
         'deduped_result_count': _to_int(payload.get('deduped_result_count')),
+        'source_first_policy_kind': _payload_text(payload, 'source_first_policy_kind'),
+        'source_first_active': bool(payload.get('source_first_active', False)),
+        'source_first_authority': _payload_text(payload, 'source_first_authority'),
+        'source_first_product': _payload_text(payload, 'source_first_product'),
+        'source_first_probable_domains': [
+            str(value)
+            for value in payload.get('source_first_probable_domains') or []
+            if str(value or '')
+        ],
+        'source_first_reason_codes': [
+            str(value)
+            for value in payload.get('source_first_reason_codes') or []
+            if str(value or '')
+        ],
+        'profile_policy_kind': _payload_text(payload, 'profile_policy_kind'),
+        'profile_policy_mode': _payload_text(payload, 'profile_policy_mode'),
+        'profile_expected_domains': [
+            str(value)
+            for value in payload.get('profile_expected_domains') or []
+            if str(value or '')
+        ],
+        'profile_secondary_domains': [
+            str(value)
+            for value in payload.get('profile_secondary_domains') or []
+            if str(value or '')
+        ],
+        'profile_downrank_domains': [
+            str(value)
+            for value in payload.get('profile_downrank_domains') or []
+            if str(value or '')
+        ],
+        'profile_situated_secondary_domains': [
+            str(value)
+            for value in payload.get('profile_situated_secondary_domains') or []
+            if str(value or '')
+        ],
+        'profile_policy_reason_codes': [
+            str(value)
+            for value in payload.get('profile_policy_reason_codes') or []
+            if str(value or '')
+        ],
+        'profile_crawl_top_n_budget': _to_int(payload.get('profile_crawl_top_n_budget')),
+        'profile_crawl_max_chars_budget': _to_int(payload.get('profile_crawl_max_chars_budget')),
+        'profile_manual_latency_target_s': _to_int(payload.get('profile_manual_latency_target_s')),
+        'profile_source_evidence_policy_kind': _payload_text(payload, 'profile_source_evidence_policy_kind'),
+        'profile_expected_source_present': bool(payload.get('profile_expected_source_present', False)),
+        'profile_expected_material_used': bool(payload.get('profile_expected_material_used', False)),
+        'profile_secondary_source_present': bool(payload.get('profile_secondary_source_present', False)),
+        'profile_secondary_material_used': bool(payload.get('profile_secondary_material_used', False)),
+        'profile_situated_source_present': bool(payload.get('profile_situated_source_present', False)),
+        'profile_situated_material_used': bool(payload.get('profile_situated_material_used', False)),
+        'profile_downrank_source_present': bool(payload.get('profile_downrank_source_present', False)),
+        'profile_downrank_material_used': bool(payload.get('profile_downrank_material_used', False)),
+        'profile_insufficient_evidence': bool(payload.get('profile_insufficient_evidence', False)),
+        'profile_insufficient_evidence_reason_codes': [
+            str(value)
+            for value in payload.get('profile_insufficient_evidence_reason_codes') or []
+            if str(value or '')
+        ],
+        'profile_source_domain_counts': dict(payload.get('profile_source_domain_counts') or {}),
         'searxng_profile_params_kind': _payload_text(payload, 'searxng_profile_params_kind'),
         'searxng_profile_params_policy': _payload_text(payload, 'searxng_profile_params_policy'),
         'searxng_categories': [
@@ -391,6 +452,28 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
         'searxng_time_range': _payload_text(payload, 'searxng_time_range'),
         'searxng_language': _payload_text(payload, 'searxng_language'),
         'searxng_safesearch': _payload_text(payload, 'searxng_safesearch'),
+        'searxng_params_reason_codes': [
+            str(value)
+            for value in payload.get('searxng_params_reason_codes') or []
+            if str(value or '')
+        ],
+        'searxng_hard_parameters': [
+            str(value)
+            for value in payload.get('searxng_hard_parameters') or []
+            if str(value or '')
+        ],
+        'searxng_soft_signal_policy': _payload_text(payload, 'searxng_soft_signal_policy'),
+        'web_discovery_provider': _payload_text(payload, 'web_discovery_provider'),
+        'web_discovery_provider_requested': _payload_text(payload, 'web_discovery_provider_requested'),
+        'web_discovery_provider_effective': _payload_text(payload, 'web_discovery_provider_effective'),
+        'web_discovery_external_used': bool(payload.get('web_discovery_external_used', False)),
+        'web_discovery_external_provider': _payload_text(payload, 'web_discovery_external_provider'),
+        'web_discovery_external_error_kind': _payload_text(payload, 'web_discovery_external_error_kind'),
+        'web_discovery_reason_codes': [
+            str(value)
+            for value in payload.get('web_discovery_reason_codes') or []
+            if str(value or '')
+        ],
         'rerank_applied': bool(payload.get('rerank_applied', False)),
         'rerank_policy': _payload_text(payload, 'rerank_policy'),
         'rerank_input_count': _to_int(payload.get('rerank_input_count')),
@@ -414,6 +497,25 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
             for value in payload.get('web_confidence_reason_codes') or []
             if str(value or '')
         ],
+        'web_evidence_policy_kind': _payload_text(payload, 'web_evidence_policy_kind'),
+        'web_evidence_status': _payload_text(payload, 'web_evidence_status'),
+        'web_evidence_reason_codes': [
+            str(value)
+            for value in payload.get('web_evidence_reason_codes') or []
+            if str(value or '')
+        ],
+        'web_evidence_guidance_codes': [
+            str(value)
+            for value in payload.get('web_evidence_guidance_codes') or []
+            if str(value or '')
+        ],
+        'web_evidence_can_answer': bool(payload.get('web_evidence_can_answer', False)),
+        'web_evidence_requires_caveat': bool(payload.get('web_evidence_requires_caveat', False)),
+        'web_evidence_can_suggest_reformulation': bool(
+            payload.get('web_evidence_can_suggest_reformulation', False)
+        ),
+        'web_evidence_url_request_policy': _payload_text(payload, 'web_evidence_url_request_policy'),
+        'web_evidence_external_fallback_used': bool(payload.get('web_evidence_external_fallback_used', False)),
         'openrouter_fallback_state': _payload_text(payload, 'openrouter_fallback_state'),
         'openrouter_fallback_used': bool(payload.get('openrouter_fallback_used', False)),
         'openrouter_fallback_reason_codes': [
@@ -455,6 +557,7 @@ def _secondary_provider_item(
     result_stage: str,
     expected: bool,
     provider_caller: str,
+    require_prepared: bool = True,
 ) -> dict[str, Any]:
     prepared_events = list(grouped.get(prepared_stage) or [])
     result_events = list(grouped.get(result_stage) or [])
@@ -472,7 +575,7 @@ def _secondary_provider_item(
             'not_called',
             evidence={'prepared_count': 0, 'result_count': 0, 'llm_call_count': 0},
         )
-    if not prepared_events:
+    if require_prepared and not prepared_events:
         return _checklist_item(
             key,
             'secondary_providers',
@@ -710,6 +813,15 @@ def build_turn_observability_checklist(events: Sequence[Mapping[str, Any]]) -> d
             result_stage='web_reformulation',
             expected=False,
             provider_caller='web_reformulation',
+        ),
+        _secondary_provider_item(
+            grouped,
+            key='web_discovery',
+            prepared_stage='web_discovery_prompt_prepared',
+            result_stage='web_discovery',
+            expected=False,
+            provider_caller='web_discovery',
+            require_prepared=False,
         ),
         _web_observability_item(grouped),
         _node_state_item(grouped, expected=hermeneutic_expected),

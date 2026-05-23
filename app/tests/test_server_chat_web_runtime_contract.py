@@ -666,6 +666,19 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
             'primary_read_raw_fallback_used': True,
             'fallback_used': True,
             'collection_path': 'explicit_url_fallback_search',
+            'web_evidence_policy_kind': 'local_web_evidence_failure_contract_v0',
+            'web_evidence_status': 'insufficient',
+            'web_evidence_reason_codes': ['explicit_url_not_read_snippet_fallback'],
+            'web_evidence_guidance_codes': [
+                'do_not_claim_direct_read',
+                'can_answer_with_caveat',
+                'no_external_fallback',
+            ],
+            'web_evidence_can_answer': True,
+            'web_evidence_requires_caveat': True,
+            'web_evidence_can_suggest_reformulation': True,
+            'web_evidence_url_request_policy': 'only_if_relevant_not_default',
+            'web_evidence_external_fallback_used': False,
             'runtime': {
                 'searxng_results': 5,
                 'crawl4ai_top_n': 2,
@@ -715,6 +728,11 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
         self.assertIn('read_state: page_not_read_snippet_fallback.', prompt_messages[0]['content'])
         self.assertIn("La page cible n'a pas ete lue directement.", prompt_messages[0]['content'])
         self.assertIn("je l'ai sous les yeux", prompt_messages[0]['content'])
+        self.assertIn('[GARDE DE PREUVE WEB]', prompt_messages[0]['content'])
+        self.assertIn('evidence_status: insufficient.', prompt_messages[0]['content'])
+        self.assertIn("pas une reponse d'echec prefabriquee", prompt_messages[0]['content'])
+        self.assertIn('Aucun fallback externe OpenRouter, Exa ou Parallel', prompt_messages[0]['content'])
+        self.assertNotIn("Je n'ai pas trouve de source suffisamment fiable", prompt_messages[0]['content'])
         self.assertEqual(prompt_messages[1]['role'], 'user')
         self.assertEqual(prompt_messages[1]['content'], 'WEB CONTEXT\n\nQuestion : Bonjour')
 

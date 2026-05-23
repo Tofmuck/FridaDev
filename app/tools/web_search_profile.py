@@ -6,19 +6,27 @@ from urllib.parse import urlparse
 
 
 PROFILE_EXPLICIT_URL = 'explicit_url'
+PROFILE_DOCUMENTATION_OFFICIELLE = 'documentation_officielle'
 PROFILE_ACTUALITE = 'actualite'
-PROFILE_TECHNIQUE_OFFICIELLE = 'technique_officielle'
-PROFILE_INSTITUTIONNEL_FRANCAIS = 'institutionnel_francais'
-PROFILE_ACADEMIQUE_PHILOSOPHIQUE = 'academique_philosophique'
-PROFILE_GENERAL = 'general'
+PROFILE_ADMINISTRATIF_FRANCAIS = 'administratif_francais'
+PROFILE_ACADEMIQUE = 'academique'
+PROFILE_GENERAL_DIVERS = 'general_divers'
+
+# Backward-compatible symbols for the Lot 2-7 implementation. Their values are
+# now the Phase 2 canonical regimes, so runtime observability emits the new
+# vocabulary while older call sites keep working.
+PROFILE_TECHNIQUE_OFFICIELLE = PROFILE_DOCUMENTATION_OFFICIELLE
+PROFILE_INSTITUTIONNEL_FRANCAIS = PROFILE_ADMINISTRATIF_FRANCAIS
+PROFILE_ACADEMIQUE_PHILOSOPHIQUE = PROFILE_ACADEMIQUE
+PROFILE_GENERAL = PROFILE_GENERAL_DIVERS
 
 SEARCH_PROFILES = {
     PROFILE_EXPLICIT_URL,
+    PROFILE_DOCUMENTATION_OFFICIELLE,
     PROFILE_ACTUALITE,
-    PROFILE_TECHNIQUE_OFFICIELLE,
-    PROFILE_INSTITUTIONNEL_FRANCAIS,
-    PROFILE_ACADEMIQUE_PHILOSOPHIQUE,
-    PROFILE_GENERAL,
+    PROFILE_ADMINISTRATIF_FRANCAIS,
+    PROFILE_ACADEMIQUE,
+    PROFILE_GENERAL_DIVERS,
 }
 
 _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
@@ -39,10 +47,15 @@ _ACTUALITE_MARKERS = (
     'recentement',
     'nouveautes',
     'news',
+    'annonce recente',
+    'communique recent',
+    'decision recente',
+    'evolution en cours',
 )
 
-_TECHNICAL_MARKERS = (
+_DOCUMENTATION_OBJECT_MARKERS = (
     'api',
+    'api reference',
     'sdk',
     'librairie',
     'library',
@@ -54,6 +67,10 @@ _TECHNICAL_MARKERS = (
     'web_search',
     'web fetch',
     'endpoint',
+    'compose',
+    'checkout',
+    'fetch api',
+    'graph api',
 )
 _OFFICIAL_DOC_MARKERS = (
     'documentation officielle',
@@ -63,6 +80,12 @@ _OFFICIAL_DOC_MARKERS = (
     'official documentation',
     'dans la documentation',
     'selon la documentation',
+    'api reference',
+    'guide officiel',
+    'help center officiel',
+    'centre d aide officiel',
+    'manuel officiel',
+    'support officiel',
     'docs ',
 )
 
@@ -74,6 +97,7 @@ _INSTITUTION_FR_MARKERS = (
     'ministere',
     'prefecture',
     'ants',
+    'caf',
     'legifrance',
     'bulletin officiel',
     'bo ',
@@ -87,11 +111,21 @@ _INSTITUTION_FR_MARKERS = (
     'cerfa',
     'impots',
     'securite sociale',
+    'ameli',
+    'education nationale',
+    'education gouv',
+    'eduscol',
+    'enseignement superieur',
+    'enseignementsup recherche',
+    'onisep',
+    'rectorat',
+    'academie de ',
+    'ac ',
     'renouvellement de carte',
     'renouveler ma carte',
 )
 
-_ACADEMIC_PHILOSOPHY_MARKERS = (
+_ACADEMIC_MARKERS = (
     'academique',
     'universitaire',
     'article scientifique',
@@ -99,8 +133,23 @@ _ACADEMIC_PHILOSOPHY_MARKERS = (
     'revue scientifique',
     'source universitaire',
     'sources universitaires',
+    'publication scientifique',
+    'doi',
+    'hal',
+    'arxiv',
+    'pubmed',
+    'openaire',
     'philosophie',
     'philosophique',
+    'sociologie',
+    'bourdieu',
+    'histoire',
+    'sciences exactes',
+    'mathematique',
+    'physique',
+    'crispr',
+    'medecine',
+    'informatique',
     'derrida',
     'heidegger',
     'kant',
@@ -116,6 +165,17 @@ _ACADEMIC_PHILOSOPHY_MARKERS = (
     'cairn',
     'persee',
     'stanford encyclopedia',
+)
+
+_TECHNICAL_QA_MARKERS = (
+    'stackoverflow',
+    'stack overflow',
+    'github issue',
+    'github issues',
+    'askubuntu',
+    'ask ubuntu',
+    'superuser',
+    'super user',
 )
 
 
@@ -139,8 +199,13 @@ def _contains_any(text: str, markers: tuple[str, ...]) -> bool:
     return any(marker in text for marker in markers)
 
 
-def _contains_official_technical_request(text: str) -> bool:
-    return _contains_any(text, _OFFICIAL_DOC_MARKERS) and _contains_any(text, _TECHNICAL_MARKERS)
+def _contains_documentation_request(text: str) -> bool:
+    if _contains_any(text, _TECHNICAL_QA_MARKERS):
+        return False
+    return _contains_any(text, _OFFICIAL_DOC_MARKERS) or (
+        _contains_any(text, ('documentation', 'docs', 'doc ', 'guide', 'reference'))
+        and _contains_any(text, _DOCUMENTATION_OBJECT_MARKERS)
+    )
 
 
 def classify_search_profile(user_msg: str, *, explicit_url: str | None = None) -> str:
@@ -151,12 +216,12 @@ def classify_search_profile(user_msg: str, *, explicit_url: str | None = None) -
     if not text:
         return PROFILE_GENERAL
 
+    if _contains_any(text, _INSTITUTION_FR_MARKERS):
+        return PROFILE_ADMINISTRATIF_FRANCAIS
     if _contains_any(text, _ACTUALITE_MARKERS):
         return PROFILE_ACTUALITE
-    if _contains_official_technical_request(text):
-        return PROFILE_TECHNIQUE_OFFICIELLE
-    if _contains_any(text, _INSTITUTION_FR_MARKERS):
-        return PROFILE_INSTITUTIONNEL_FRANCAIS
-    if _contains_any(text, _ACADEMIC_PHILOSOPHY_MARKERS):
-        return PROFILE_ACADEMIQUE_PHILOSOPHIQUE
+    if _contains_documentation_request(text):
+        return PROFILE_DOCUMENTATION_OFFICIELLE
+    if _contains_any(text, _ACADEMIC_MARKERS):
+        return PROFILE_ACADEMIQUE
     return PROFILE_GENERAL

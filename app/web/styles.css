@@ -46,7 +46,7 @@ html, body { height: 100%; }
 
   /* Hauteurs */
   --topbar-h: 46px;
-  --ask-h:    76px;
+  --ask-h:    112px;
 }
 
 /* ===== Body ===== */
@@ -918,6 +918,15 @@ body {
   padding: 12px 15px;
 }
 
+.msg.assistant-loader {
+  min-width: 54px;
+  color: var(--fg-subtle);
+}
+
+.msg.assistant-loader::after {
+  margin-left: 0;
+}
+
 /* Bulle utilisateur */
 .msg.me {
   background: transparent;
@@ -1010,8 +1019,8 @@ body {
   border-top: 1px solid var(--border-muted);
   z-index: 20;
   display: grid;
-  grid-template-columns: 1fr auto auto auto auto auto;
-  align-items: end;
+  grid-template-columns: 1fr;
+  align-items: stretch;
   gap: 7px;
 }
 
@@ -1120,6 +1129,85 @@ body {
   background: var(--surface-hover);
 }
 
+.main-reasoning-control {
+  grid-column: 1 / -1;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+  max-width: 100%;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--fg-muted);
+}
+
+.main-reasoning-control select {
+  min-width: 88px;
+  max-width: 120px;
+  height: 26px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+  color: var(--fg);
+  font: inherit;
+  padding: 2px 7px;
+}
+
+.main-reasoning-control small {
+  min-width: 0;
+  color: var(--fg-subtle);
+}
+
+.adobe-product-choices {
+  grid-column: 1 / -1;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-height: 26px;
+}
+
+.adobe-product-choices[hidden] {
+  display: none;
+}
+
+.adobe-product-choice {
+  min-width: 86px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 130ms ease, border-color 130ms ease, background 130ms ease;
+}
+
+.adobe-product-choice:hover {
+  color: var(--fg);
+  background: var(--surface);
+}
+
+.adobe-product-choice.active {
+  color: var(--fg);
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.composer-input-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+
 .ask textarea {
   width: 100%;
   resize: none;
@@ -1145,10 +1233,21 @@ body {
   border-color: var(--border-strong);
 }
 
+.composer-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 38px);
+  grid-auto-rows: 38px;
+  align-content: center;
+  justify-content: end;
+  gap: 7px;
+  min-width: 0;
+}
+
 /* Boutons utilitaires du composer */
 .btn-dictation,
 .btn-active-document,
 .btn-image-generation,
+.btn-adobe-mode,
 .btn-web-search {
   display: flex;
   align-items: center;
@@ -1167,8 +1266,15 @@ body {
 .btn-dictation:hover,
 .btn-active-document:hover,
 .btn-image-generation:hover,
+.btn-adobe-mode:hover,
 .btn-web-search:hover {
   color: var(--fg-muted);
+}
+
+.btn-adobe-mode {
+  font-weight: 650;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .btn-dictation[data-dictation-state="recording"] {
@@ -1193,6 +1299,7 @@ body {
 .btn-dictation:disabled,
 .btn-active-document:disabled,
 .btn-image-generation:disabled,
+.btn-adobe-mode:disabled,
 .btn-web-search:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -1205,6 +1312,12 @@ body {
 }
 
 .btn-image-generation.active {
+  color: var(--fg);
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.btn-adobe-mode.active {
   color: var(--fg);
   border-color: var(--border-strong);
   background: var(--surface);
@@ -1224,8 +1337,51 @@ body {
   color: var(--fg-subtle);
 }
 
+.dictation-status[data-dictation-state="recording"]::after,
+.dictation-status[data-dictation-state="transcribing"]::after,
+.msg.assistant-loader::after {
+  content: "";
+  display: inline-block;
+  width: 22px;
+  height: 10px;
+  margin-left: 6px;
+  vertical-align: -1px;
+  opacity: 0.72;
+  background:
+    radial-gradient(circle 2px at center, currentColor 98%, transparent) 1px 6px / 4px 4px no-repeat,
+    radial-gradient(circle 2px at center, currentColor 98%, transparent) 9px 6px / 4px 4px no-repeat,
+    radial-gradient(circle 2px at center, currentColor 98%, transparent) 17px 6px / 4px 4px no-repeat;
+  animation: frida-dots-wave 1.15s ease-in-out infinite;
+}
+
 .dictation-status.is-error {
   color: #b85050;
+}
+
+@keyframes frida-dots-wave {
+  0%,
+  72%,
+  100% {
+    background-position: 1px 6px, 9px 6px, 17px 6px;
+  }
+  16% {
+    background-position: 1px 1px, 9px 6px, 17px 6px;
+  }
+  32% {
+    background-position: 1px 6px, 9px 1px, 17px 6px;
+  }
+  48% {
+    background-position: 1px 6px, 9px 6px, 17px 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dictation-status[data-dictation-state="recording"]::after,
+  .dictation-status[data-dictation-state="transcribing"]::after,
+  .msg.assistant-loader::after {
+    animation: none;
+    background-position: 1px 6px, 9px 6px, 17px 6px;
+  }
 }
 
 /* Bouton envoyer (réutilise .primary) */
@@ -1457,10 +1613,21 @@ body {
   .btn-dictation,
   .btn-active-document,
   .btn-image-generation,
+  .btn-adobe-mode,
   .btn-web-search {
     width: 36px;
     min-width: 36px;
     height: 36px;
+  }
+
+  .composer-input-row {
+    gap: 7px;
+  }
+
+  .composer-actions {
+    grid-template-columns: repeat(3, 36px);
+    grid-auto-rows: 36px;
+    gap: 6px;
   }
 
   .active-documents-bar {

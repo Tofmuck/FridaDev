@@ -128,6 +128,12 @@ def run_llm_exchange(
     payload = llm_module.build_payload(prompt_messages, temperature, top_p, max_tokens, stream=stream_req)
     call_model = str(payload['model'])
     provider_title = llm_module.resolve_provider_title('llm')
+    reasoning_observability_builder = getattr(llm_module, 'main_llm_reasoning_observability_from_payload', None)
+    reasoning_observability = (
+        reasoning_observability_builder(payload)
+        if callable(reasoning_observability_builder)
+        else {}
+    )
     url = f'{config_module.OR_BASE}/chat/completions'
 
     admin_logs_module.log_event(
@@ -141,6 +147,7 @@ def run_llm_exchange(
         message_count=len(prompt_messages),
         provider_caller='llm',
         provider_title=provider_title,
+        **reasoning_observability,
     )
 
     try:
@@ -154,6 +161,7 @@ def run_llm_exchange(
                 stream=False,
                 provider_caller='llm',
                 provider_title=provider_title,
+                **reasoning_observability,
             )
             response = requests_module.post(url, json=payload, headers=headers, timeout=config_module.TIMEOUT_S)
             response.raise_for_status()
@@ -220,7 +228,8 @@ def run_llm_exchange(
             assistant_chunks: list[str] = []
             provider_metadata: dict[str, object] = {}
             provider_response_open = False
-            buffered_output = ''
+            stream_visible_output = ''
+            terminal_final_text: str | None = None
             terminal_event = chat_stream_control.STREAM_TERMINAL_DONE
             terminal_error_code: str | None = None
             assistant_appended = False
@@ -232,7 +241,7 @@ def run_llm_exchange(
             )
 
             def _rollback_appended_assistant() -> None:
-                nonlocal assistant_appended, buffered_output
+                nonlocal assistant_appended, terminal_final_text
                 nonlocal appended_assistant_content, appended_assistant_timestamp, appended_assistant_meta
                 if not assistant_appended:
                     return
@@ -254,10 +263,23 @@ def run_llm_exchange(
                     ):
                         messages.pop()
                 assistant_appended = False
-                buffered_output = ''
+                terminal_final_text = None
                 appended_assistant_content = ''
                 appended_assistant_timestamp = None
                 appended_assistant_meta = None
+
+            def _stream_plain_text_draft() -> str:
+                nonlocal stream_visible_output
+                draft_text = assistant_output_contract.normalize_assistant_output(
+                    ''.join(assistant_chunks),
+                    assistant_output_policy,
+                )
+                if not draft_text.startswith(stream_visible_output):
+                    return ''
+                delta = draft_text[len(stream_visible_output):]
+                if delta:
+                    stream_visible_output = draft_text
+                return delta
 
             def _append_persisted_assistant_message(
                 content: str,
@@ -371,6 +393,10 @@ def run_llm_exchange(
                             assistant_chunks.append(sanitized_content)
                             if not buffer_stream_output:
                                 yield sanitized_content
+                            else:
+                                draft_delta = _stream_plain_text_draft()
+                                if draft_delta:
+                                    yield draft_delta
             except requests_module.exceptions.RequestException as exc:
                 terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
                 terminal_error_code = 'upstream_error'
@@ -406,8 +432,9 @@ def run_llm_exchange(
                             assistant_text,
                             assistant_output_policy,
                         )
+                        if assistant_text != stream_visible_output:
+                            terminal_final_text = assistant_text
                     if assistant_text:
-                        buffered_output = assistant_text if buffer_stream_output else ''
                         _append_persisted_assistant_message(
                             assistant_text,
                             timestamp=final_updated_at,
@@ -436,7 +463,7 @@ def run_llm_exchange(
                     terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
                     terminal_error_code = CONVERSATION_PERSIST_ERROR_CODE
                     final_updated_at = None
-                    buffered_output = ''
+                    terminal_final_text = None
                     logger.error(
                         'llm_stream_finalize_persist_error id=%s reason=%s',
                         conversation['id'],
@@ -531,12 +558,11 @@ def run_llm_exchange(
                 _record_identity_entries_safely()
                 _reactivate_identities_safely()
                 _save_new_traces_safely()
-            if buffered_output and persistence_ok and terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
-                yield buffered_output
             yield chat_stream_control.build_terminal_chunk(
                 terminal_event,
                 error_code=terminal_error_code,
                 updated_at=persisted_updated_at if persistence_ok else None,
+                final_text=terminal_final_text if persistence_ok else None,
             )
 
         logger.info('llm_call id=%s model=%s messages=%s stream=true', conversation['id'], call_model, len(prompt_messages))
@@ -548,6 +574,7 @@ def run_llm_exchange(
             stream=True,
             provider_caller='llm',
             provider_title=provider_title,
+            **reasoning_observability,
         )
         return _stream_result(
             event_stream(),

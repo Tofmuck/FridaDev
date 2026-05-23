@@ -20,11 +20,11 @@ from tools import web_search_crawl_policy, web_search_profile
 
 
 class WebSearchCrawlPolicyTests(unittest.TestCase):
-    def test_technical_institutional_and_academic_use_bm25_with_fit_fallback(self) -> None:
+    def test_documentation_admin_and_academic_use_bm25_with_fit_fallback(self) -> None:
         for profile in (
-            web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE,
-            web_search_profile.PROFILE_INSTITUTIONNEL_FRANCAIS,
-            web_search_profile.PROFILE_ACADEMIQUE_PHILOSOPHIQUE,
+            web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+            web_search_profile.PROFILE_ADMINISTRATIF_FRANCAIS,
+            web_search_profile.PROFILE_ACADEMIQUE,
         ):
             with self.subTest(profile=profile):
                 policy = web_search_crawl_policy.build_search_result_policy(
@@ -65,7 +65,7 @@ class WebSearchCrawlPolicyTests(unittest.TestCase):
 
     def test_bm25_falls_back_when_empty_error_or_poor(self) -> None:
         policy = web_search_crawl_policy.build_search_result_policy(
-            web_search_profile.PROFILE_TECHNIQUE_OFFICIELLE,
+            web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
             primary_query="documentation officielle API",
             runtime_max_chars=7000,
         )
@@ -85,7 +85,7 @@ class WebSearchCrawlPolicyTests(unittest.TestCase):
 
     def test_bm25_does_not_fallback_when_markdown_is_substantial(self) -> None:
         policy = web_search_crawl_policy.build_search_result_policy(
-            web_search_profile.PROFILE_ACADEMIQUE_PHILOSOPHIQUE,
+            web_search_profile.PROFILE_ACADEMIQUE,
             primary_query="article academique",
             runtime_max_chars=8000,
         )
