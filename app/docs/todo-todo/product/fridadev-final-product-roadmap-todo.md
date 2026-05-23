@@ -83,8 +83,9 @@ Archive source-of-truth du chantier de reconstruction web discovery local-first 
 
 Piste produit a garder pour Amandine:
 
-- etudier un mode/connecteur Adobe Docs dedie, expose eventuellement comme bouton ou profil explicite `Adobe`, pour envoyer les requetes Photoshop/Illustrator directement vers les documentations officielles Adobe ou leurs APIs publiques si elles sont exploitables;
-- ce point ne doit pas bloquer le renforcement web local en cours: il faudra l'auditer comme sous-chantier specialise, avec cout, API disponibles, conditions d'usage, fallback local et non-contamination.
+- le sous-chantier specialise Adobe Photoshop / Illustrator est ouvert dans `app/docs/todo-todo/product/Adobe to do.md`;
+- il cible un mini-pipeline dedie pour Amandine, sans mode Auto, sans index durable Adobe, sans Biblio, avec lecture HelpX a la demande via Crawl4AI `raw`, registre d'URLs officielles et non-contamination;
+- ce sous-chantier ne remplace pas la recherche web generale et ne doit pas rouvrir le perimetre produit majeur sans decision explicite.
 
 ## 3. Biblio native / catalogue Tulu
 
