@@ -193,10 +193,19 @@
       <div id="imageGenerationStatus" class="image-generation-status" aria-live="polite"></div>
       <button type="submit" id="imageGenerationSubmit" class="primary">Générer</button>
 
+      <div id="imageGenerationEmpty" class="image-generation-empty">
+        <span class="image-generation-empty-mark" aria-hidden="true"></span>
+        <span>Aucune image</span>
+      </div>
+
       <div id="imageGenerationResult" class="image-generation-result" hidden>
-        <img id="imageGenerationPreview" class="image-generation-preview" alt="Image générée" hidden />
-        <div id="imageGenerationMeta" class="image-generation-meta"></div>
-        <button type="button" id="imageGenerationDownload" class="image-generation-secondary" disabled>Télécharger</button>
+        <div class="image-generation-preview-frame">
+          <img id="imageGenerationPreview" class="image-generation-preview" alt="Image générée" hidden />
+        </div>
+        <div id="imageGenerationResultFooter" class="image-generation-result-footer">
+          <div id="imageGenerationMeta" class="image-generation-meta"></div>
+          <button type="button" id="imageGenerationDownload" class="image-generation-secondary" disabled>Télécharger</button>
+        </div>
       </div>
     </form>
   </section>

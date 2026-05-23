@@ -1,7 +1,7 @@
 # FridaDev - Polish UI chat - TODO
 
 Classement: `app/docs/todo-todo/product/`
-Statut: actif, mini-lots bornes; Lots 1-3 livres le 2026-05-23
+Statut: actif, mini-lots bornes; Lots 1-4 livres le 2026-05-23
 Date de creation: 2026-05-23
 
 ## Intention
@@ -46,9 +46,9 @@ Regle de conduite: avancer point par point, cocher seulement ce qui est livre, g
 
 ### 5. Panneau generation image
 
-- [ ] Polir l'etat vide et l'etat resultat.
-- [ ] Verifier le rendu mobile apres generation.
-- [ ] Garder le panneau utilitaire, pas marketing.
+- [x] Polir l'etat vide et l'etat resultat.
+- [x] Verifier le rendu mobile apres generation.
+- [x] Garder le panneau utilitaire, pas marketing.
 
 ### 6. Messages, byline et copie
 
@@ -160,3 +160,26 @@ Statut: livre le 2026-05-23.
 
 - [x] Contrats fonctionnels rouverts: aucun changement d'id, payload, endpoint ou logique JS.
 - [x] Ligne trop chargee: repli mobile et wrapping conserves.
+
+
+## Lot 4 - Panneau generation image
+
+Statut: livre le 2026-05-23.
+
+### PATCH
+
+- [x] `index.html`: ajoute un etat vide discret `Aucune image` dans le panneau image.
+- [x] `index.html` / `styles.css`: cadre le resultat image avec une frame preview et un footer meta/telechargement.
+- [x] `chat_image_generation.js` / `app.js`: masque l'etat vide pendant la generation et apres resultat sans changer le payload.
+
+### TESTS
+
+- [x] Test navigateur couvrant etat vide, generation, resultat et masquage de l'etat vide.
+- [x] Test navigateur desktop/mobile apres generation avec controles dans les bornes du panneau.
+- [x] Tests frontend unitaires existants.
+- [x] Verification live apres rebuild.
+
+### RISQUES
+
+- [x] Panneau trop narratif: texte limite a `Aucune image`, pas de marketing ni d'aide longue.
+- [x] Regression runtime: aucun changement backend, endpoint image ou contrat de requete.

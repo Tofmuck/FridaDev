@@ -1549,9 +1549,38 @@ body {
   color: #b85050;
 }
 
+.image-generation-empty {
+  min-height: 112px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 18px;
+  border: 1px dashed var(--border-muted);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--surface), transparent);
+  color: var(--fg-subtle);
+  font-size: 12px;
+  text-align: center;
+}
+
+.image-generation-empty[hidden] {
+  display: none;
+}
+
+.image-generation-empty-mark {
+  width: 34px;
+  height: 28px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  background:
+    radial-gradient(circle at 70% 35%, var(--border-strong) 0 3px, transparent 3.5px),
+    linear-gradient(135deg, transparent 0 48%, var(--border-muted) 49% 52%, transparent 53% 100%);
+  opacity: 0.72;
+}
+
 .image-generation-result {
   display: grid;
-  gap: 8px;
+  gap: 9px;
   min-width: 0;
 }
 
@@ -1559,17 +1588,38 @@ body {
   display: none;
 }
 
+.image-generation-preview-frame {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
 .image-generation-preview {
   display: block;
   width: 100%;
   max-height: min(28dvh, 190px);
   object-fit: contain;
-  border: 1px solid var(--border-muted);
-  border-radius: var(--radius);
-  background: var(--surface);
+}
+
+.image-generation-result-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.image-generation-result-footer .image-generation-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .image-generation-secondary {
+  flex-shrink: 0;
   justify-self: start;
   padding: 7px 10px;
   border: 1px solid var(--border);
@@ -1713,6 +1763,22 @@ body {
 
   .image-generation-controls {
     grid-template-columns: 1fr;
+  }
+
+  .image-generation-empty {
+    min-height: 92px;
+    padding: 14px;
+  }
+
+  .image-generation-result-footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .image-generation-secondary {
+    justify-self: stretch;
+    width: 100%;
   }
 }
 

@@ -75,6 +75,7 @@
   const imageGenerationPricing = $("#imageGenerationPricing");
   const imageGenerationStatus = $("#imageGenerationStatus");
   const imageGenerationSubmit = $("#imageGenerationSubmit");
+  const imageGenerationEmpty = $("#imageGenerationEmpty");
   const imageGenerationResult = $("#imageGenerationResult");
   const imageGenerationPreview = $("#imageGenerationPreview");
   const imageGenerationMeta = $("#imageGenerationMeta");
@@ -386,6 +387,7 @@
     pricingEl: imageGenerationPricing,
     statusEl: imageGenerationStatus,
     submitButtonEl: imageGenerationSubmit,
+    emptyEl: imageGenerationEmpty,
     previewEl: imageGenerationPreview,
     resultEl: imageGenerationResult,
     metaEl: imageGenerationMeta,

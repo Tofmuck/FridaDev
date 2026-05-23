@@ -100,6 +100,7 @@ function createImageGenerationController({
   pricingEl,
   statusEl,
   submitButtonEl,
+  emptyEl,
   previewEl,
   resultEl,
   metaEl,
@@ -185,6 +186,10 @@ function createImageGenerationController({
       } else {
         delete statusEl.dataset.imageGenerationState;
       }
+    }
+    if (emptyEl) {
+      emptyEl.hidden = Boolean(state.imageDataUrl || state.busy);
+      emptyEl.setAttribute('aria-hidden', emptyEl.hidden ? 'true' : 'false');
     }
     if (previewEl) {
       previewEl.hidden = !state.imageDataUrl;

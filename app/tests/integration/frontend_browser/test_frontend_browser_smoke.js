@@ -204,6 +204,8 @@ test('image generation tool opens, validates, calls its own route and keeps chat
     await page.waitForSelector('#message:not([disabled])');
     await page.click('#btnImageGeneration');
     await page.waitForSelector('#imageGenerationPanel:not(.hidden)');
+    await page.waitForSelector('#imageGenerationEmpty:not([hidden])');
+    assert.equal(await page.locator('#imageGenerationResult:not([hidden])').count(), 0);
 
     assert.equal(await page.locator('#imageGenerationModel').inputValue(), 'image_generator_nano_banana');
     await assertTextContains(page.locator('#imageGenerationPricing'), 'image 0.0000003');
@@ -222,6 +224,7 @@ test('image generation tool opens, validates, calls its own route and keeps chat
     await page.waitForFunction(() =>
       document.querySelector('#imageGenerationStatus')?.dataset.imageGenerationState === 'generating');
     await assertTextContains(page.locator('#imageGenerationStatus'), 'Génération en cours.');
+    assert.equal(await page.locator('#imageGenerationEmpty:not([hidden])').count(), 0);
     await page.waitForSelector('#imageGenerationPreview:not([hidden])');
     await page.waitForFunction(() => {
       const img = document.querySelector('#imageGenerationPreview');
@@ -229,6 +232,7 @@ test('image generation tool opens, validates, calls its own route and keeps chat
     });
     await assertTextContains(page.locator('#imageGenerationStatus'), 'Image générée.');
     await assertTextContains(page.locator('#imageGenerationMeta'), 'Nano Banana');
+    assert.equal(await page.locator('#imageGenerationEmpty:not([hidden])').count(), 0);
     assert.equal(await page.locator('#imageGenerationDownload').isEnabled(), true);
 
     const imageDownloadPromise = page.waitForEvent('download');
@@ -288,6 +292,7 @@ test('image generation panel stays usable on desktop and mobile viewports', asyn
         const ask = rect('#ask');
         const submit = rect('#imageGenerationSubmit');
         const preview = rect('#imageGenerationPreview');
+        const footer = rect('#imageGenerationResultFooter');
         panel.scrollTop = panel.scrollHeight;
         const download = rect('#imageGenerationDownload');
         return {
@@ -295,6 +300,7 @@ test('image generation panel stays usable on desktop and mobile viewports', asyn
           ask,
           submit,
           preview,
+          footer,
           download,
           viewportWidth: window.innerWidth,
           viewportHeight: window.innerHeight,
@@ -312,6 +318,7 @@ test('image generation panel stays usable on desktop and mobile viewports', asyn
       assert.ok(layout.submit.left >= layout.panel.left && layout.submit.right <= layout.panel.right + 1, `${viewport.name} submit should stay inside panel`);
       assert.ok(layout.preview.width <= layout.panel.width + 1, `${viewport.name} preview should be constrained by panel`);
       assert.ok(layout.preview.height <= 200, `${viewport.name} preview should stay compact`);
+      assert.ok(layout.footer.left >= layout.panel.left && layout.footer.right <= layout.panel.right + 1, `${viewport.name} result footer should stay inside panel`);
       assert.ok(layout.download.top >= layout.panel.top && layout.download.bottom <= layout.panel.bottom + 1, `${viewport.name} download should be reachable by panel scroll`);
     });
   }
