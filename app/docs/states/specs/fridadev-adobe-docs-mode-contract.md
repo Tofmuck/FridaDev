@@ -162,7 +162,8 @@ Selection de passages Lot 4:
 - les passages peuvent conserver texte, heading, section, source type, produit et URL canonique dans l'objet en memoire du tour;
 - les `repr` et exports content-free des passages et selections ne contiennent jamais le texte du passage;
 - les passages sont bornes par chars par passage, nombre de passages et budget total;
-- le scoring est deterministe: recouvrement lexical question/passage, bonus heading, bonus source_type selon question version, bug ou usage;
+- le scoring est deterministe: recouvrement lexical question/passage, alias metier FR/EN bornes, bonus heading, bonus source_type selon question version, bug ou usage;
+- les alias metier servent seulement au scoring et ne modifient jamais le texte final des passages;
 - les sections de navigation/footer identifiables sont exclues ou penalisees;
 - le resultat expose `sufficient`, `partial` ou `insufficient` avec reason codes content-free;
 - le Lot 4 ne stocke aucun passage et n'ajoute pas de lane prompt runtime.

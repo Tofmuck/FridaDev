@@ -12,12 +12,18 @@ if str(APP_DIR) not in sys.path:
 from tools import adobe_docs_passages, adobe_docs_reader, adobe_docs_sources
 
 
-def _read_result(markdown: str, source_type: str = adobe_docs_sources.SOURCE_TYPE_HELP_PAGE) -> adobe_docs_reader.AdobeDocsReadResult:
+def _read_result(
+    markdown: str,
+    source_type: str = adobe_docs_sources.SOURCE_TYPE_HELP_PAGE,
+    *,
+    product: str = adobe_docs_sources.PRODUCT_PHOTOSHOP,
+    canonical_url: str = 'https://helpx.adobe.com/photoshop/using/layers.html',
+) -> adobe_docs_reader.AdobeDocsReadResult:
     return adobe_docs_reader.AdobeDocsReadResult(
         status=adobe_docs_reader.STATUS_SUCCESS,
-        product=adobe_docs_sources.PRODUCT_PHOTOSHOP,
+        product=product,
         source_type=source_type,
-        canonical_url='https://helpx.adobe.com/photoshop/using/layers.html',
+        canonical_url=canonical_url,
         markdown=markdown,
         chars=len(markdown),
         url_sha256_12='testhash',
@@ -101,6 +107,69 @@ Layer masks hide and reveal pixels without destructive editing.
 
         self.assertEqual(selection.passages[0].heading, 'Layer masks')
         self.assertIn('Layer masks', selection.passages[0].text)
+
+    def test_french_layer_mask_alias_finds_english_passage(self) -> None:
+        markdown = """
+# Layer masks
+Layer masks hide and reveal pixels without destructive editing.
+"""
+
+        selection = adobe_docs_passages.select_adobe_passages(
+            'Comment utiliser les masques de calque ?',
+            [_read_result(markdown)],
+        )
+
+        self.assertEqual(selection.passages[0].heading, 'Layer masks')
+        self.assertIn(adobe_docs_passages.REASON_SCORE_ALIAS_OVERLAP, selection.passages[0].reason_codes)
+
+    def test_french_layers_alias_finds_english_passage(self) -> None:
+        markdown = """
+# Layers
+Layers let you compose images and keep edits separate from original pixels.
+"""
+
+        selection = adobe_docs_passages.select_adobe_passages(
+            'Comment gerer les calques ?',
+            [_read_result(markdown)],
+        )
+
+        self.assertEqual(selection.passages[0].heading, 'Layers')
+        self.assertIn(adobe_docs_passages.REASON_SCORE_ALIAS_OVERLAP, selection.passages[0].reason_codes)
+
+    def test_illustrator_pen_alias_finds_pen_tool(self) -> None:
+        markdown = """
+# Pen tool
+The Pen tool draws straight and curved paths for precise vector artwork in Illustrator.
+"""
+
+        selection = adobe_docs_passages.select_adobe_passages(
+            'Comment utiliser l outil plume ?',
+            [
+                _read_result(
+                    markdown,
+                    product=adobe_docs_sources.PRODUCT_ILLUSTRATOR,
+                    canonical_url='https://helpx.adobe.com/illustrator/using/drawing-pen-tool.html',
+                )
+            ],
+        )
+
+        self.assertEqual(selection.passages[0].product, adobe_docs_sources.PRODUCT_ILLUSTRATOR)
+        self.assertEqual(selection.passages[0].heading, 'Pen tool')
+        self.assertIn(adobe_docs_passages.REASON_SCORE_ALIAS_OVERLAP, selection.passages[0].reason_codes)
+
+    def test_generic_tool_alias_does_not_promote_arbitrary_passage(self) -> None:
+        markdown = """
+# Crop tool
+The Crop tool changes image boundaries and trims a canvas for photo composition.
+"""
+
+        selection = adobe_docs_passages.select_adobe_passages(
+            'Quel outil pour gerer une facture ?',
+            [_read_result(markdown)],
+        )
+
+        self.assertEqual(selection.evidence, adobe_docs_passages.EVIDENCE_INSUFFICIENT)
+        self.assertEqual(selection.passages, ())
 
     def test_version_question_favors_release_notes(self) -> None:
         help_markdown = """

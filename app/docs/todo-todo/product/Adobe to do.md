@@ -378,6 +378,8 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 - [x] Ajouter une limite de passages injectes.
 - [x] Ajouter une limite de chars par passage.
 - [x] Ajouter metadonnees de citation.
+- [x] Ajouter alias metier FR/EN bornes pour le scoring uniquement.
+- [x] Supprimer le signal decoratif `_PROCEDURE_TERMS` non utilise.
 
 ### TEST
 
@@ -385,6 +387,10 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 - [x] Test: les passages ne depassent pas `adobe_passage_chars`.
 - [x] Test: le total injecte ne depasse pas `adobe_prompt_budget_chars`.
 - [x] Test: ranking retrouve un passage contenant les termes de la question.
+- [x] Test: question FR `masques de calque` retrouve `Layer masks`.
+- [x] Test: question FR `calques` retrouve `Layers`.
+- [x] Test: question Illustrator `outil plume` retrouve `Pen tool`.
+- [x] Test: alias generique `outil` seul ne promeut pas une section arbitraire.
 - [x] Test: question version favorise release notes.
 - [x] Test: question bug favorise known/fixed issues.
 - [x] Test: navigation/footer est exclu ou declasse.

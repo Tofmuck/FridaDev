@@ -22,6 +22,7 @@ REASON_SPLIT_CHUNK = 'split_chunk'
 REASON_NAVIGATION_EXCLUDED = 'navigation_excluded'
 REASON_SCORE_LEXICAL_OVERLAP = 'score_lexical_overlap'
 REASON_SCORE_HEADING_OVERLAP = 'score_heading_overlap'
+REASON_SCORE_ALIAS_OVERLAP = 'score_alias_overlap'
 REASON_SCORE_SOURCE_TYPE = 'score_source_type'
 REASON_SOURCE_RELEASE_QUERY = 'source_release_query'
 REASON_SOURCE_ISSUE_QUERY = 'source_issue_query'
@@ -33,14 +34,6 @@ REASON_NO_RELEVANT_PASSAGE = 'no_relevant_passage'
 _HEADING_RE = re.compile(r'^(#{1,6})\s+(.+?)\s*#*\s*$')
 _LINK_RE = re.compile(r'\[[^\]]+\]\([^)]+\)')
 _WORD_RE = re.compile(r'[a-z0-9]{3,}')
-_PROCEDURE_TERMS = {
-    'comment',
-    'creer',
-    'modifier',
-    'outil',
-    'utiliser',
-    'usage',
-}
 _RELEASE_TERMS = {
     'changelog',
     'maj',
@@ -108,6 +101,21 @@ _STOPWORDS = {
     'vous',
     'your',
 }
+_ADOBE_TERM_ALIASES = {
+    'calque': {'layer', 'layers'},
+    'calques': {'layer', 'layers'},
+    'exporter': {'export'},
+    'masque': {'mask', 'masks'},
+    'masques': {'mask', 'masks'},
+    'outil': {'tool', 'tools'},
+    'outils': {'tool', 'tools'},
+    'plume': {'pen', 'tool'},
+    'selection': {'selections'},
+    'selections': {'selection'},
+    'trace': {'path', 'paths'},
+    'traces': {'path', 'paths'},
+}
+_GENERIC_ALIAS_TOKENS = {'tool', 'tools'}
 
 
 @dataclass(frozen=True, repr=False)
@@ -241,10 +249,17 @@ def rank_adobe_passages(
     passages: Iterable[AdobePassage],
 ) -> tuple[AdobePassage, ...]:
     question_tokens = _tokens(question)
+    question_alias_tokens = _alias_tokens(question_tokens)
     query_kind, query_reason = _query_kind(question)
     ranked: list[tuple[int, int, AdobePassage]] = []
     for index, passage in enumerate(passages):
-        score, reason_codes = _score_passage(passage, question_tokens, query_kind, query_reason)
+        score, reason_codes = _score_passage(
+            passage,
+            question_tokens,
+            question_alias_tokens,
+            query_kind,
+            query_reason,
+        )
         if score <= 0:
             continue
         ranked.append((
@@ -314,6 +329,7 @@ def select_adobe_passages(
 def _score_passage(
     passage: AdobePassage,
     question_tokens: set[str],
+    question_alias_tokens: set[str],
     query_kind: str,
     query_reason: str,
 ) -> tuple[int, tuple[str, ...]]:
@@ -321,6 +337,12 @@ def _score_passage(
     heading_tokens = _tokens(passage.heading)
     overlap = question_tokens & passage_tokens
     heading_overlap = question_tokens & heading_tokens
+    alias_overlap = _alias_overlap(
+        question_tokens,
+        question_alias_tokens,
+        passage_tokens | heading_tokens,
+        overlap | heading_overlap,
+    )
     score = 0
     reason_codes: list[str] = [query_reason]
     if overlap:
@@ -329,8 +351,11 @@ def _score_passage(
     if heading_overlap:
         score += len(heading_overlap) * 10
         reason_codes.append(REASON_SCORE_HEADING_OVERLAP)
+    if alias_overlap:
+        score += len(alias_overlap) * 10
+        reason_codes.append(REASON_SCORE_ALIAS_OVERLAP)
     source_bonus = _source_type_bonus(passage.source_type, query_kind)
-    if source_bonus and (overlap or heading_overlap):
+    if source_bonus and (overlap or heading_overlap or alias_overlap):
         score += source_bonus
         reason_codes.append(REASON_SCORE_SOURCE_TYPE)
     if _looks_navigation_heavy(passage.text):
@@ -526,6 +551,29 @@ def _tokens(text: str) -> set[str]:
         for token in _WORD_RE.findall(normalized)
         if token not in _STOPWORDS and not token.isdigit()
     }
+
+
+def _alias_tokens(tokens: set[str]) -> set[str]:
+    aliases: set[str] = set()
+    for token in tokens:
+        aliases.update(_ADOBE_TERM_ALIASES.get(token, set()))
+    return aliases - tokens
+
+
+def _alias_overlap(
+    question_tokens: set[str],
+    question_alias_tokens: set[str],
+    passage_tokens: set[str],
+    direct_overlap: set[str],
+) -> set[str]:
+    overlap = question_alias_tokens & passage_tokens
+    if not overlap:
+        return set()
+    if overlap - _GENERIC_ALIAS_TOKENS:
+        return overlap
+    if direct_overlap and question_tokens - {'outil', 'outils'}:
+        return overlap
+    return set()
 
 
 def _normalize_text(text: str) -> str:
