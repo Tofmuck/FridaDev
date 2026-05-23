@@ -33,16 +33,19 @@ function createWorkspaceFolderSidebarRenderer({
   const logger = consoleObj || (typeof console !== 'undefined' ? console : { warn() {} });
   const iconKeys = WorkspaceFolderUiHelpers?.WORKSPACE_FOLDER_ICON_KEYS || ['folder'];
   const normalizeIconKey = WorkspaceFolderUiHelpers?.normalizeWorkspaceIconKey || ((value) => String(value || 'folder').trim() || 'folder');
-  const collapsedFolderIds = new Set();
+  const expandedFolderIds = new Set();
 
-  const isFolderCollapsed = (folderId) => collapsedFolderIds.has(String(folderId || ''));
+  const isFolderCollapsed = (folderId) => {
+    const normalized = String(folderId || '');
+    return normalized ? !expandedFolderIds.has(normalized) : false;
+  };
   const toggleFolderCollapsed = (folderId) => {
     const normalized = String(folderId || '');
     if (!normalized) return;
-    if (collapsedFolderIds.has(normalized)) {
-      collapsedFolderIds.delete(normalized);
+    if (expandedFolderIds.has(normalized)) {
+      expandedFolderIds.delete(normalized);
     } else {
-      collapsedFolderIds.add(normalized);
+      expandedFolderIds.add(normalized);
     }
     renderThreads();
   };

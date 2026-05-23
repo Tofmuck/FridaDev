@@ -245,13 +245,21 @@ function workspaceFoldersMockScript() {
   `;
 }
 
-test('workspace folders render above outside conversations, collapse and move by drag-and-drop', async () => {
+test('workspace folders start collapsed, expand on demand and move by drag-and-drop', async () => {
   await openBrowserPage({ mockScript: workspaceFoldersMockScript() }, async (page) => {
     await page.waitForSelector('.workspace-folder-row');
     await assertTextContains(page.locator('.workspace-folder-row'), 'Projet Tulu');
     assert.equal(await page.locator('.workspace-folder-svg').count(), 1);
     assert.equal(await page.locator('.workspace-folder-svg-front').count(), 1);
     assert.equal(await page.locator('.workspace-folder-icon').first().getAttribute('title'), 'Dossier');
+    assert.equal(await page.locator('.workspace-folder-row').first().getAttribute('class'), 'workspace-folder-row workspace-folder-collapsed');
+    assert.equal(await page.locator('.workspace-folder-toggle').first().getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.locator('.workspace-folder-files').count(), 0);
+    assert.equal(await page.locator('li.in-workspace-folder').count(), 0);
+
+    await page.locator('.workspace-folder-row').click({ position: { x: 92, y: 10 } });
+    await page.waitForSelector('.workspace-folder-files');
+    assert.equal(await page.locator('.workspace-folder-toggle').first().getAttribute('aria-expanded'), 'true');
     await assertTextContains(page.locator('.workspace-folder-files'), 'note.md');
     await assertTextContains(page.locator('.workspace-folder-files'), 'MD · 2 ko · 42 caractères');
     await assertTextContains(page.locator('.workspace-folder-files'), 'scan.pdf');

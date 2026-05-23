@@ -1,24 +1,31 @@
-# FridaDev - raisonnement du LLM principal, streaming visuel et dictee longue - TODO
+# FridaDev - jobs divers produit - TODO
 
-Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif et cloture provisoirement sous surveillance apres validation live navigateur 99 s
+Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif et cloture provisoirement sous surveillance apres validation live navigateur 99 s; objet 4 repertoires de travail fermes par defaut livre
 Date de creation: 2026-05-22
 Classement: `app/docs/todo-todo/product/`
-Nature: TODO source-of-truth A-Z, docs-only au moment de creation
-Portee: LLM principal OpenRouter `openai/gpt-5.1`, runtime settings, admin, controle chat, payload, observabilite, UI de streaming visuel, dictee Whisper locale longue
+Nature: TODO source-of-truth pour jobs produit courts et bornes, docs-only au moment de creation
+Portee: LLM principal OpenRouter `openai/gpt-5.1`, runtime settings, admin, controle chat, payload, observabilite, UI de streaming visuel, dictee Whisper locale longue, polish UI des repertoires de travail
 Hors-scope du commit de creation: runtime, DB, migration, frontend, backend, tests applicatifs, changement de modele, rebuild
 
 ## 1. Intention
 
-Ce TODO ouvre trois objets distincts mais proches dans l'experience de conversation:
+Ce TODO rassemble des jobs produit courts qui doivent rester bornes, testables et reversibles, sans perdre l'historique des objets deja livres.
+
+Il a d'abord ouvert trois objets distincts mais proches dans l'experience de conversation:
 
 1. ajouter un reglage avance borne du niveau de reasoning du LLM principal;
 2. corriger le streaming visuel du texte assistant dans la fenetre de chat;
 3. diagnostiquer et corriger la dictee Whisper locale longue, cible minimum 2 minutes.
 
+Depuis le renommage du 2026-05-23, il sert aussi de TODO general pour petits jobs produit explicites:
+
+4. fermer les repertoires de travail par defaut au chargement initial, sans casser l'ouverture manuelle ni l'etat actif des conversations/fichiers.
+
 Le premier objet controle le niveau de raisonnement demande au modele principal. Le second objet rend la generation visible progressivement dans l'interface, quand le backend streame deja des chunks exploitables.
 Le troisieme objet vise la capture vocale locale: la dictee ne doit pas s'interrompre prematurement au bout de 20 a 40 secondes, et doit rester fiable sur une cible produit d'au moins 2 minutes.
+Le quatrieme objet est un polish UI des repertoires de travail: les dossiers doivent demarrer replies, puis rester ouvrables a la demande pendant la session.
 
-Ces trois chantiers ne doivent pas etre melanges dans un patch unique de runtime. Ils partagent seulement le fait qu'ils touchent l'experience de conversation. Les objets 1 et 2 sont livres; l'objet 3 reste a implementer dans un lot separe.
+Ces chantiers ne doivent pas etre melanges dans un patch unique de runtime. Ils partagent seulement le fait qu'ils touchent l'experience de conversation. Les objets 1 et 2 sont livres; l'objet 3 est clos provisoirement sous surveillance; l'objet 4 est livre comme petit lot UI/docs.
 
 ## 2. Sources consultees avant creation
 
@@ -423,7 +430,32 @@ Statut: correctif applicatif livre; cloture provisoire sous surveillance; pas de
 - [x] Pas de log audio brut ni transcription sensible.
 - [x] Observabilite content-free maintenue pour diagnostic futur: `recording_duration_ms`, `normalized_duration_s`, `text_chars`, `stop_reason`, taille blob et latence transcription.
 
-## 8. Decisions utilisateur a prendre avant implementation
+## 8. Objet 4 - Repertoires de travail fermes par defaut
+
+Objectif: au chargement initial du frontend, afficher les repertoires de travail replies par defaut, tout en conservant l'ouverture manuelle et sans modifier la conversation active, les fichiers du repertoire ou les selections de fichiers.
+
+### Diagnostic lecture - 2026-05-23
+
+- [x] La surface UI concernee est `app/web/chat_workspace_folders_sidebar.js`.
+- [x] L'etat d'expansion etait uniquement local a la session: un `Set` JS initialise vide rendait les repertoires ouverts par defaut.
+- [x] Aucune persistance utilisateur explicite de l'etat ouvert/replie n'a ete trouvee dans cette surface: pas de `localStorage`, pas de champ API, pas de preference serveur.
+- [x] Decision produit: en absence d'etat utilisateur persiste, le defaut produit prime au chargement initial; l'ouverture/repli manuel reste conserve pendant la session courante.
+
+### Livraison Objet 4 - 2026-05-23
+
+- [x] Defaut UI inverse: les repertoires de travail demarrent replies au premier rendu.
+- [x] L'utilisateur peut toujours ouvrir/replier un repertoire par clic sur la ligne ou le bouton de toggle.
+- [x] La selection active n'est pas modifiee: le changement ne touche pas l'etat conversationnel, seulement le rendu des lignes enfant.
+- [x] Les fichiers et documents actifs ne sont pas modifies: les lignes de fichiers restent simplement masquees tant que le repertoire est replie.
+- [x] Test navigateur frontend adapte: premier rendu replie, ouverture manuelle, affichage des fichiers/conversations, selection de fichier, drag-and-drop et OCR de repertoire.
+
+### Hors-scope Objet 4
+
+- Ne pas ajouter de preference persistante sans decision produit separee.
+- Ne pas refondre la sidebar, les styles ou les APIs workspace folders.
+- Ne pas toucher au backend, a Memory, Identity, Summary, Biblio/RAG, documents actifs, reasoning, streaming chat ou Whisper.
+
+## 9. Decisions utilisateur a prendre avant implementation
 
 - [x] Niveaux exacts de reasoning valides apres relecture finale des docs officielles: `none`, `low`, `medium`, `high`.
 - [x] Valeur par defaut du reasoning FridaDev: `high`.
@@ -439,7 +471,7 @@ Statut: correctif applicatif livre; cloture provisoire sous surveillance; pas de
 - [x] Garantie produit attendue en cas d'echec transcription longue: preservation du brouillon texte seulement, ou retry local ephemere de l'audio avec garde-fous privacy explicites. Decision 2026-05-23: preservation du brouillon texte seulement.
 - [x] Niveau de diagnostic live accepte pour le service Whisper aval si la cause reste cote plateforme. Decision 2026-05-23: observabilite content-free actuelle suffisante pour surveillance provisoire; ouvrir un micro-lot Sauron seulement si `recording_duration_ms`, `normalized_duration_s`, `text_chars`, taille blob, `stop_reason` ou latence pointent de nouveau vers l'aval.
 
-## 9. Hors-scope global
+## 10. Hors-scope global
 
 - Ne pas implementer dans le commit de creation de ce TODO.
 - Ne pas modifier runtime, DB, UI ou backend sans lot dedie.
@@ -453,7 +485,7 @@ Statut: correctif applicatif livre; cloture provisoire sous surveillance; pas de
 - Ne pas logger d'audio brut ni de transcription sensible pour l'objet 3.
 - Ne pas afficher secret, `.env`, token, DSN, cookie ou header sensible.
 
-## 10. Criteres de cloture
+## 11. Criteres de cloture
 
 Le chantier pourra etre clos seulement si:
 
@@ -473,4 +505,6 @@ Le chantier pourra etre clos seulement si:
 - aucune contamination Memory / Identity / Summary / Biblio/RAG / documents actifs / exports n'est observee;
 - aucun audio brut ni transcription sensible n'est loggue, exporte ou documente;
 - une validation live bornee est documentee;
+- les repertoires de travail sont replies par defaut au chargement initial et ouvrables manuellement;
+- le renommage en `job-divers-todo.md` est propage aux index et roadmaps actives;
 - le TODO est archive dans `app/docs/todo-done/product/`.

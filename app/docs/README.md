@@ -27,7 +27,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Archive du renforcement web local V0 SearXNG/Crawl4AI: `todo-done/product/fridadev-local-web-search-hardening-todo.md`
 - Archive A-Z web discovery local-first + Exa: `todo-done/product/fridadev-local-web-search-rebuild-todo.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
-- TODO actif reasoning du LLM principal GPT-5.1 et streaming visuel du chat: `todo-todo/product/fridadev-main-llm-reasoning-and-streaming-todo.md`
+- TODO actif jobs divers produit: `todo-todo/product/job-divers-todo.md`
 - Contrat actif du reglage global reasoning du LLM principal: `states/specs/fridadev-main-llm-reasoning-contract.md`
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
 - Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
@@ -86,7 +86,7 @@ But: relire le cleanup priorise livre et les decisions de sortie sans reouvrir u
 ### Runtime courant / chat
 
 Lire d'abord:
-- `todo-todo/product/fridadev-main-llm-reasoning-and-streaming-todo.md` pour le chantier actif A-Z: reglage borne du reasoning du LLM principal GPT-5.1, interdiction stricte d'afficher/persister `reasoning_details`, et correction du streaming visuel dans la fenetre de chat.
+- `todo-todo/product/job-divers-todo.md` pour les jobs produit courts actifs: historique livre du reglage borne du reasoning GPT-5.1, interdiction stricte d'afficher/persister `reasoning_details`, correction du streaming visuel, dictee Whisper longue sous surveillance et petits ajustements UI bornes.
 - `states/specs/fridadev-main-llm-reasoning-contract.md` pour le comportement livre du reglage global `main_model.reasoning_effort`, le payload OpenRouter `reasoning.exclude=true`, l'observabilite content-free et l'interdiction d'exposer le raisonnement interne.
 - `todo-done/refactors/fridadev-main-model-gpt51-switch-todo.md` pour l'archive de bascule runtime vers `openai/gpt-5.1`.
 - `todo-done/refactors/fridadev-main-model-gpt51-switch-plan.md` pour relire le plan de bascule du modele principal vers `openai/gpt-5.1`, cout, compatibilite images actives, smoke live et rollback.
