@@ -156,6 +156,20 @@ function chatMockScript({ streamMode, imageMode = 'success' }) {
           });
         }
 
+        if (url.pathname === "/api/admin/settings/main-model" && method === "GET") {
+          return new Response(JSON.stringify({
+            ok: true,
+            payload: { reasoning_effort: { value: "high" } },
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/admin/settings/main-model" && method === "PATCH") {
+          const payload = JSON.parse(body || "{}").payload || {};
+          return new Response(JSON.stringify({ ok: true, payload }), {
+            status: 200, headers: { "Content-Type": "application/json" },
+          });
+        }
+
         if (url.pathname === "/api/chat" && method === "POST") {
           state.chatSubmitted = true;
           try {
@@ -434,6 +448,54 @@ test('chat composer keeps desktop textarea and action row from overlapping contr
     assert.ok(layout.submitRight <= layout.actionsRight + 1, 'submit should stay inside action row');
     assert.ok(layout.askLeft >= 0 && layout.askRight <= layout.viewportWidth, 'composer should stay inside the viewport');
   });
+});
+
+test('chat reasoning shortcut stays compact on desktop and mobile', async () => {
+  for (const viewport of [
+    { width: 1440, height: 900, name: 'desktop', maxWidth: 150 },
+    { width: 390, height: 780, name: 'mobile', maxWidth: 132 },
+  ]) {
+    await openBrowserPage({
+      mockScript: chatMockScript({ streamMode: 'done' }),
+      afterPage: (page) => page.setViewportSize({ width: viewport.width, height: viewport.height }),
+    }, async (page) => {
+      await page.waitForSelector('#message:not([disabled])');
+      await page.waitForSelector('#mainReasoningLevel:not([disabled])');
+
+      const layout = await page.evaluate(() => {
+        const rect = (selector) => {
+          const box = document.querySelector(selector).getBoundingClientRect();
+          return {
+            top: box.top,
+            right: box.right,
+            bottom: box.bottom,
+            left: box.left,
+            width: box.width,
+            height: box.height,
+          };
+        };
+        const label = document.querySelector('.main-reasoning-label');
+        return {
+          ask: rect('#ask'),
+          message: rect('#message'),
+          reasoning: rect('.main-reasoning-control'),
+          select: rect('#mainReasoningLevel'),
+          labelText: String(label?.textContent || '').trim(),
+          selectLabel: document.querySelector('#mainReasoningLevel')?.getAttribute('aria-label'),
+          viewportWidth: window.innerWidth,
+        };
+      });
+
+      assert.equal(layout.labelText, 'Rais.');
+      assert.equal(layout.selectLabel, 'Niveau de raisonnement global');
+      assert.ok(layout.reasoning.width <= viewport.maxWidth + 1, `${viewport.name} reasoning control too wide: ${layout.reasoning.width}px`);
+      assert.ok(layout.reasoning.left >= layout.ask.left - 1, `${viewport.name} reasoning control should stay inside composer`);
+      assert.ok(layout.reasoning.right <= layout.ask.right + 1, `${viewport.name} reasoning control should stay inside composer`);
+      assert.ok(layout.reasoning.bottom <= layout.message.top + 1, `${viewport.name} reasoning control should stay above textarea`);
+      assert.ok(layout.select.width <= 88 + 1, `${viewport.name} reasoning select should remain compact`);
+      assert.ok(layout.ask.left >= 0 && layout.ask.right <= layout.viewportWidth + 1, `${viewport.name} composer should stay inside viewport`);
+    });
+  }
 });
 
 test('chat stream error without updated_at rehydrates and avoids canonical optimistic assistant', async () => {

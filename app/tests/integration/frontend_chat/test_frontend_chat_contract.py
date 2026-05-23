@@ -150,6 +150,7 @@ class AppPhase8Tests(unittest.TestCase):
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
 
         self.assertIn('id="mainReasoningLevel"', index_source)
+        self.assertIn('class="main-reasoning-label" title="Raisonnement global">Rais.</span>', index_source)
         self.assertIn('main_reasoning_control.js', index_source)
         self.assertIn('createMainReasoningControl', app_source)
         self.assertNotIn('reasoning_details', index_source)

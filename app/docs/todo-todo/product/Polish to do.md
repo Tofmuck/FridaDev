@@ -1,7 +1,7 @@
 # FridaDev - Polish UI chat - TODO
 
 Classement: `app/docs/todo-todo/product/`
-Statut: actif, mini-lots bornes; Lot 1 livre le 2026-05-23
+Statut: actif, mini-lots bornes; Lots 1-2 livres le 2026-05-23
 Date de creation: 2026-05-23
 
 ## Intention
@@ -34,9 +34,9 @@ Regle de conduite: avancer point par point, cocher seulement ce qui est livre, g
 
 ### 3. Controle reasoning plus discret
 
-- [ ] Auditer le rendu actuel du controle `Raisonnement`.
-- [ ] Proposer un micro-ajustement sans cacher le reglage global.
-- [ ] Tester desktop/mobile.
+- [x] Auditer le rendu actuel du controle `Raisonnement`.
+- [x] Proposer un micro-ajustement sans cacher le reglage global.
+- [x] Tester desktop/mobile.
 
 ### 4. Ligne contexte au-dessus du champ
 
@@ -77,3 +77,25 @@ Statut: livre le 2026-05-23.
 
 - [x] Animation trop presente: reduite au meme langage visuel que Whisper/assistant.
 - [x] Etats actifs trop forts: ajustement volontairement leger.
+
+
+## Lot 2 - Controle reasoning plus discret
+
+Statut: livre le 2026-05-23.
+
+### PATCH
+
+- [x] `index.html`: label visible raccourci en `Rais.` avec titre complet et `aria-label` complet sur le select.
+- [x] `styles.css`: controle rendu plus compact, moins saillant, sans masquer le reglage global.
+- [x] `styles.css`: contraintes mobiles explicites pour eviter l'etalement horizontal.
+
+### TESTS
+
+- [x] Test navigateur desktop/mobile du controle compact.
+- [x] Tests frontend unitaires existants.
+- [x] Tests integration frontend chat existants.
+
+### RISQUES
+
+- [x] Reglage trop cache: conserve un libelle visible, un titre complet et l'aria-label complet.
+- [x] Regression fonctionnelle: aucun changement de payload, endpoint, valeurs ou persistance.

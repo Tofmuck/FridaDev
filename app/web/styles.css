@@ -1134,28 +1134,41 @@ body {
   justify-self: end;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 26px;
-  max-width: 100%;
-  font-size: 12px;
-  line-height: 1.2;
+  gap: 5px;
+  min-height: 24px;
+  max-width: min(100%, 150px);
+  font-size: 11px;
+  line-height: 1.15;
+  color: var(--fg-subtle);
+}
+
+.main-reasoning-label {
+  max-width: 42px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--fg-muted);
 }
 
 .main-reasoning-control select {
-  min-width: 88px;
-  max-width: 120px;
-  height: 26px;
+  min-width: 72px;
+  max-width: 88px;
+  height: 24px;
   border: 1px solid var(--border-muted);
   border-radius: var(--radius-sm);
-  background: var(--bg-base);
+  background: var(--surface);
   color: var(--fg);
   font: inherit;
-  padding: 2px 7px;
+  padding: 1px 20px 1px 6px;
+  box-shadow: inset 0 0 0 1px rgba(25, 23, 20, 0.015);
 }
 
 .main-reasoning-control small {
   min-width: 0;
+  max-width: 58px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--fg-subtle);
 }
 
@@ -1634,6 +1647,18 @@ body {
     grid-template-columns: repeat(3, 36px);
     grid-auto-rows: 36px;
     gap: 6px;
+  }
+
+  .main-reasoning-control {
+    gap: 4px;
+    max-width: 132px;
+    font-size: 10.5px;
+  }
+
+  .main-reasoning-control select {
+    min-width: 68px;
+    max-width: 76px;
+    padding-left: 5px;
   }
 
   .active-documents-bar {
