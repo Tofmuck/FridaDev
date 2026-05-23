@@ -206,6 +206,9 @@ class ServerChatAdobeDocsContractTests(unittest.TestCase):
         self.assertIn('adobe_docs', event_dump)
         self.assertNotIn(ADOBE_SECRET_PASSAGE, event_dump)
         self.assertNotIn('[ADOBE DOCS PASSAGES]', event_dump)
+        for event, kwargs in observed['events']:
+            if event in {'adobe_docs', 'adobe_prompt_lane'}:
+                self.assertIn(kwargs.get('status'), {'ok', 'error'})
 
     def test_illustrator_mode_calls_illustrator_pipeline(self) -> None:
         observed = {'product': None}

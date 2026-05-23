@@ -402,12 +402,13 @@ def _emit_adobe_docs_observability(
     if not isinstance(payload, Mapping):
         payload = {}
     status = str(payload.get('status') or getattr(adobe_context, 'status', '') or 'error')
+    event_status = 'error' if status == 'error' else 'ok'
     reason_codes = payload.get('reason_codes') if isinstance(payload.get('reason_codes'), list) else []
     reason_code = str(reason_codes[0]) if reason_codes else ''
     chat_turn_logger.set_state('adobe_docs', dict(payload))
     chat_turn_logger.emit(
         'adobe_docs',
-        status=status,
+        status=event_status,
         reason_code=reason_code or None,
         payload=dict(payload),
     )
@@ -427,9 +428,10 @@ def _emit_adobe_prompt_lane_observability(lane: Any) -> None:
     if not isinstance(payload, Mapping):
         payload = {}
     chat_turn_logger.set_state('adobe_prompt_lane', dict(payload))
+    status = str(payload.get('status') or 'not_requested')
     chat_turn_logger.emit(
         'adobe_prompt_lane',
-        status=str(payload.get('status') or 'not_requested'),
+        status='error' if status == 'error' else 'ok',
         payload=dict(payload),
     )
 
