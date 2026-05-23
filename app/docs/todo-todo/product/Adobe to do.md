@@ -3,6 +3,7 @@
 Classement: `app/docs/todo-todo/product/`
 Statut: actif, non lance runtime.
 Date d'ouverture: 2026-05-23.
+Spec normative: `app/docs/states/specs/fridadev-adobe-docs-mode-contract.md`
 Besoin produit: rendre Frida utile pour Amandine sur Photoshop et Illustrator via une lecture officielle Adobe a la demande, sans index durable Adobe et sans casser la recherche web generale.
 
 ## Invariants deja actes
@@ -180,27 +181,29 @@ Le mini-pipeline Adobe est une capacite a cote du web search general.
 
 ## Lot 0 - Cadrage final avant patch runtime
 
+Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/specs/fridadev-adobe-docs-mode-contract.md`.
+
 ### PLAN
 
-- [ ] Relire ce TODO.
-- [ ] Relire `AGENTS.md`.
-- [ ] Relire le pipeline web existant: `app/tools/web_search.py`, policies et tests.
-- [ ] Verifier les surfaces UI de boutons/modes chat.
-- [ ] Verifier les surfaces payload `/api/chat`.
-- [ ] Verifier les garde-fous Memory/Identity/Summary.
-- [ ] Confirmer que `job-divers-todo.md` reste actif et non archive.
+- [x] Relire ce TODO.
+- [x] Relire `AGENTS.md`.
+- [x] Relire le pipeline web existant: `app/tools/web_search.py`, policies et tests.
+- [x] Verifier les surfaces UI de boutons/modes chat.
+- [x] Verifier les surfaces payload `/api/chat`.
+- [x] Verifier les garde-fous Memory/Identity/Summary.
+- [x] Confirmer que `job-divers-todo.md` reste actif et non archive.
 
 ### PATCH
 
-- [ ] Aucun patch runtime dans ce lot.
-- [ ] Si une spec vivante est necessaire, creer une spec courte avant code.
-- [ ] Sinon, utiliser ce TODO comme contrat initial.
+- [x] Aucun patch runtime dans ce lot.
+- [x] Si une spec vivante est necessaire, creer une spec courte avant code.
+- [x] Conserver ce TODO comme feuille de route actionnable, adossee a la spec normative.
 
 ### TEST
 
-- [ ] `git status --short --branch`.
-- [ ] `rg "web_search|explicit_url|Crawl4AI|Memory|Summary|Identity" app`.
-- [ ] Relire les tests web existants avant design.
+- [x] `git status --short --branch`.
+- [x] `rg "web_search|explicit_url|Crawl4AI|Memory|Summary|Identity" app`.
+- [x] Relire les tests web existants avant design.
 
 ### RISQUES
 

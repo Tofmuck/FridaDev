@@ -29,6 +29,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
 - TODO actif jobs divers produit: `todo-todo/product/job-divers-todo.md`
 - TODO actif Adobe Photoshop / Illustrator: `todo-todo/product/Adobe to do.md`
+- Contrat actif du mode Adobe Photoshop / Illustrator: `states/specs/fridadev-adobe-docs-mode-contract.md`
 - Contrat actif du reglage global reasoning du LLM principal: `states/specs/fridadev-main-llm-reasoning-contract.md`
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
 - Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
@@ -54,6 +55,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Protocole streaming public: `states/specs/streaming-protocol.md`
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
 - Contrat atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
+- Contrat du mode Adobe Photoshop / Illustrator: `states/specs/fridadev-adobe-docs-mode-contract.md`
 - Extension OCR archivee des documents actifs de conversation: `todo-done/product/active-conversation-documents-ocr-todo.md`
 - Copie de bulle et export Markdown du chat: `states/specs/chat-copy-export-contract.md`
 - Contrat du dashboard long terme: `states/specs/dashboard-long-term-observability-contract.md`
@@ -111,6 +113,7 @@ Archives utiles:
 ### Recherche internet
 
 Lire d'abord:
+- `states/specs/fridadev-adobe-docs-mode-contract.md` pour le contrat normatif du mode Adobe Photoshop / Illustrator: payload explicite, separation du web search general, lecture HelpX `raw`, cache restrictif, lane prompt dediee et observabilite content-free.
 - `todo-todo/product/Adobe to do.md` pour le mini-pipeline Adobe Photoshop / Illustrator dedie a Amandine: pas de mode Auto, pas d'index durable, lecture HelpX a la demande via Crawl4AI `raw`, registre d'URLs officielles et non-contamination.
 - `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md` pour la decision active: FridaDev reste local-first pour lire/qualifier/auditer, mais la recherche ouverte peut utiliser OpenRouter/Exa comme provider de decouverte URL configure.
 - `todo-done/product/fridadev-local-web-search-rebuild-todo.md` pour relire l'archive A-Z web discovery local-first + Exa: historique SearXNG local, decision Exa discovery, Phase 9 de validation/deploiement et rollback.
