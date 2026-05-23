@@ -107,6 +107,15 @@ Sources MVP:
 - seeds courtes par produit: hub, release notes, known/fixed issues;
 - liens internes seulement, filtres par produit et par extension.
 
+Registre source Lot 1:
+
+- le registre source est content-free: produit, type, URL, titre court et politique langue seulement;
+- les produits valides sont seulement `photoshop` et `illustrator`;
+- les types sources valides sont `hub`, `release_notes`, `known_issues` et `help_page`;
+- la canonicalisation retire fragment et query string avec reason codes content-free;
+- la canonicalisation ne reecrit pas les chemins langue/region et n'invente pas d'URL;
+- la deduplication stable se fait sur URL canonique, en conservant le premier ordre observe.
+
 Interdits MVP:
 
 - `www.adobe.com/learn`;

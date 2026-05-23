@@ -221,45 +221,49 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 
 ### PLAN
 
-- [ ] Definir une structure de source Adobe content-free.
-- [ ] Declarer les seeds Photoshop.
-- [ ] Declarer les seeds Illustrator.
-- [ ] Declarer les types de source: hub, release_notes, known_issues, help_page.
-- [ ] Declarer les hosts et chemins autorises.
-- [ ] Declarer les extensions et chemins exclus.
-- [ ] Declarer une politique FR/EN.
+- [x] Definir une structure de source Adobe content-free.
+- [x] Declarer les seeds Photoshop.
+- [x] Declarer les seeds Illustrator.
+- [x] Declarer les types de source: hub, release_notes, known_issues, help_page.
+- [x] Declarer les hosts et chemins autorises.
+- [x] Declarer les extensions et chemins exclus.
+- [x] Declarer une politique FR/EN.
 
 ### PATCH
 
-- [ ] Ajouter le registre source dans un module dedie.
-- [ ] Ajouter une fonction `sources_for_product(product)`.
-- [ ] Ajouter une fonction de validation URL: host, produit, extension, scheme, fragment.
-- [ ] Ajouter une canonicalisation URL sans fragment.
-- [ ] Ajouter des reason codes d'exclusion.
+- [x] Ajouter le registre source dans un module dedie.
+- [x] Ajouter une fonction `sources_for_product(product)`.
+- [x] Ajouter une fonction de validation URL: host, produit, extension, scheme, fragment.
+- [x] Ajouter une canonicalisation URL sans fragment.
+- [x] Ajouter des reason codes d'exclusion.
 
 ### TEST
 
-- [ ] Test: `photoshop` retourne les trois seeds Photoshop.
-- [ ] Test: `illustrator` retourne les trois seeds Illustrator.
-- [ ] Test: une URL Photoshop est refusee en mode Illustrator.
-- [ ] Test: une URL Illustrator est refusee en mode Photoshop.
-- [ ] Test: `community.adobe.com` est refuse.
-- [ ] Test: `www.adobe.com/learn` est refuse.
-- [ ] Test: `.pdf`, image, video sont refuses.
-- [ ] Test: canonicalisation retire le fragment.
+- [x] Test: `photoshop` retourne les trois seeds Photoshop.
+- [x] Test: `illustrator` retourne les trois seeds Illustrator.
+- [x] Test: un produit inconnu est refuse.
+- [x] Test: une URL Photoshop est refusee en mode Illustrator.
+- [x] Test: une URL Illustrator est refusee en mode Photoshop.
+- [x] Test: `community.adobe.com` est refuse.
+- [x] Test: `www.adobe.com/learn` est refuse.
+- [x] Test: `.pdf`, image, video sont refuses.
+- [x] Test: scheme non-https refuse.
+- [x] Test: canonicalisation retire le fragment.
+- [x] Test: query string supprimee avec reason code.
+- [x] Test: deduplication stable.
 
 ### RISQUES
 
-- [ ] Sur-autorisation de domaines Adobe.
-- [ ] Confusion entre HelpX, Learn et Community.
+- [x] Sur-autorisation de domaines Adobe.
+- [x] Confusion entre HelpX, Learn et Community.
 - [ ] Liens region/langue dupliques.
 
 ### REDUCTION DES RISQUES
 
-- [ ] Allowlist stricte `helpx.adobe.com`.
-- [ ] Chemin produit obligatoire.
-- [ ] Tests d'exclusion explicites.
-- [ ] Pas de wildcard large `*.adobe.com`.
+- [x] Allowlist stricte `helpx.adobe.com`.
+- [x] Chemin produit obligatoire.
+- [x] Tests d'exclusion explicites.
+- [x] Pas de wildcard large `*.adobe.com`.
 
 ## Lot 2 - Client Crawl4AI Adobe `raw`
 
