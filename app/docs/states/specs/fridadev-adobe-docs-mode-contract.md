@@ -134,6 +134,16 @@ Crawl4AI:
 - timeout par page et timeout global bornes;
 - grosses pages jamais injectees brutes.
 
+Reader Crawl4AI Lot 2:
+
+- le reader lit une URL Adobe deja validee avec `/md`, filtre `raw` et cache Crawl4AI desactive (`c=0`);
+- le reader retourne le markdown seulement dans l'objet resultat en memoire du tour;
+- le `repr` et les exports content-free du resultat ne contiennent jamais le markdown;
+- les statuts du reader sont `success`, `empty`, `error`, `timeout` et `invalid_url`;
+- les metriques autorisees sont chars, headings, link_count, elapsed_ms, filter_used, cache_mode, source_type, produit, URL hash court et reason codes;
+- le Lot 2 n'implemente pas de fallback `fit`; un futur fallback devra rester explicite et ne pourra jamais devenir preuve unique;
+- le reader ne cree pas de fichier temporaire et n'ecrit pas le markdown dans un cache applicatif.
+
 Cache:
 
 - cache applicatif interdit;

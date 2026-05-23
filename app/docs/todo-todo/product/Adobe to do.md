@@ -269,42 +269,46 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 
 ### PLAN
 
-- [ ] Reutiliser la configuration Crawl4AI existante.
-- [ ] Appeler `/md` avec filtre `raw` comme lecture primaire Adobe.
-- [ ] Ne pas envoyer le texte brut dans les logs.
-- [ ] Definir timeout par page.
+- [x] Reutiliser la configuration Crawl4AI existante.
+- [x] Appeler `/md` avec filtre `raw` comme lecture primaire Adobe.
+- [x] Ne pas envoyer le texte brut dans les logs.
+- [x] Definir timeout par page.
 - [ ] Definir borne globale par tour.
-- [ ] Prevoir un fallback `fit` seulement si utile pour pages courtes, sans remplacer `raw` comme preuve.
+- [x] Prevoir un fallback `fit` seulement si utile pour pages courtes, sans remplacer `raw` comme preuve.
 
 ### PATCH
 
-- [ ] Ajouter une fonction `read_adobe_url(url, product, source_type)`.
-- [ ] Retourner metadonnees + markdown en memoire seulement.
-- [ ] Retourner statut `success`, `empty`, `error`, `timeout`.
-- [ ] Retourner chars, headings, link_count, elapsed_ms.
-- [ ] Retourner reason codes content-free.
-- [ ] Ne pas persister le markdown.
+- [x] Ajouter une fonction `read_adobe_url(url, product, source_type)`.
+- [x] Retourner metadonnees + markdown en memoire seulement.
+- [x] Retourner statut `success`, `empty`, `error`, `timeout`.
+- [x] Retourner statut `invalid_url`.
+- [x] Retourner chars, headings, link_count, elapsed_ms.
+- [x] Retourner reason codes content-free.
+- [x] Ne pas persister le markdown.
 
 ### TEST
 
-- [ ] Test unitaire avec faux client Crawl4AI: succes `raw`.
-- [ ] Test unitaire: timeout propre.
-- [ ] Test unitaire: empty propre.
-- [ ] Test unitaire: erreur HTTP propre.
-- [ ] Test unitaire: aucun log ne contient le markdown.
+- [x] Test unitaire avec faux client Crawl4AI: succes `raw`.
+- [x] Test unitaire: URL invalide refusee avant appel Crawl4AI.
+- [x] Test unitaire: mauvais produit refuse avant appel Crawl4AI.
+- [x] Test unitaire: timeout propre.
+- [x] Test unitaire: empty propre.
+- [x] Test unitaire: erreur HTTP propre.
+- [x] Test unitaire: aucun log ne contient le markdown.
+- [x] Test unitaire: pas de fichier temporaire.
 - [ ] Preuve runtime manuelle bornee sur une URL HelpX si environnement disponible.
 
 ### RISQUES
 
-- [ ] Latence excessive sur pages Adobe.
+- [x] Latence excessive sur pages Adobe.
 - [ ] Extraction `raw` bruitee par navigation.
-- [ ] Page tres grosse depassant le budget memoire ou prompt.
+- [x] Page tres grosse depassant le budget memoire ou prompt.
 
 ### REDUCTION DES RISQUES
 
 - [ ] Limite de pages par tour.
-- [ ] Limite de chars retenus apres extraction.
-- [ ] Timeout par page.
+- [x] Limite de chars retenus apres extraction.
+- [x] Timeout par page.
 - [ ] Selection de passages avant injection.
 
 ## Lot 3 - Extraction de liens internes HelpX
