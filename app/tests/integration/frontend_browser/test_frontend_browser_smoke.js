@@ -363,7 +363,7 @@ test('chat stream nominal handles done terminal, assistant bubble, timestamp and
   });
 });
 
-test('chat composer keeps desktop textarea wide without overlapping controls', async () => {
+test('chat composer keeps desktop textarea and action row from overlapping controls', async () => {
   await openBrowserPage({
     mockScript: chatMockScript({ streamMode: 'done' }),
     afterPage: (page) => page.setViewportSize({ width: 1440, height: 900 }),
@@ -374,30 +374,46 @@ test('chat composer keeps desktop textarea wide without overlapping controls', a
       const message = document.querySelector('#message').getBoundingClientRect();
       const imageGeneration = document.querySelector('#btnImageGeneration').getBoundingClientRect();
       const mic = document.querySelector('#btnMic').getBoundingClientRect();
+      const adobe = document.querySelector('#btnAdobeMode').getBoundingClientRect();
       const webSearch = document.querySelector('#btnWebSearch').getBoundingClientRect();
       const submit = document.querySelector('#ask button[type="submit"]').getBoundingClientRect();
+      const actions = document.querySelector('.composer-actions').getBoundingClientRect();
       const ask = document.querySelector('#ask').getBoundingClientRect();
       return {
         askLeft: ask.left,
         askRight: ask.right,
         messageWidth: message.width,
+        messageLeft: message.left,
         messageRight: message.right,
+        messageBottom: message.bottom,
+        actionsTop: actions.top,
+        actionsLeft: actions.left,
+        actionsRight: actions.right,
         imageGenerationLeft: imageGeneration.left,
         imageGenerationRight: imageGeneration.right,
         micLeft: mic.left,
         micRight: mic.right,
+        adobeLeft: adobe.left,
+        adobeRight: adobe.right,
         webSearchLeft: webSearch.left,
         webSearchRight: webSearch.right,
         submitLeft: submit.left,
+        submitRight: submit.right,
         viewportWidth: window.innerWidth,
       };
     });
 
-    assert.ok(layout.messageWidth >= 800, `desktop composer textarea too narrow: ${layout.messageWidth}px`);
-    assert.ok(layout.messageRight <= layout.imageGenerationLeft, 'textarea should not overlap the image button');
+    assert.ok(layout.messageWidth >= 900, `desktop composer textarea too narrow: ${layout.messageWidth}px`);
+    assert.ok(layout.messageLeft >= layout.askLeft, 'textarea should stay inside the composer');
+    assert.ok(layout.messageRight <= layout.askRight + 1, 'textarea should stay inside the composer');
+    assert.ok(layout.messageBottom <= layout.actionsTop + 1, 'action row should sit below the textarea');
+    assert.ok(layout.actionsLeft >= layout.askLeft, 'action row should stay inside the composer');
+    assert.ok(layout.actionsRight <= layout.askRight + 1, 'action row should stay inside the composer');
     assert.ok(layout.imageGenerationRight <= layout.micLeft, 'image button should not overlap the mic button');
-    assert.ok(layout.micRight <= layout.webSearchLeft, 'mic button should not overlap the web-search button');
+    assert.ok(layout.micRight <= layout.adobeLeft, 'mic button should not overlap the Adobe button');
+    assert.ok(layout.adobeRight <= layout.webSearchLeft, 'Adobe button should not overlap the web-search button');
     assert.ok(layout.webSearchRight <= layout.submitLeft, 'web-search button should not overlap the submit button');
+    assert.ok(layout.submitRight <= layout.actionsRight + 1, 'submit should stay inside action row');
     assert.ok(layout.askLeft >= 0 && layout.askRight <= layout.viewportWidth, 'composer should stay inside the viewport');
   });
 });

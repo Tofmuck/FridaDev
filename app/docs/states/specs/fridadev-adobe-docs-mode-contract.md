@@ -44,6 +44,16 @@ Controle:
 
 Si le mode Adobe est actif, l'UI doit rendre clair que Frida consulte des sources Adobe officielles bornees. Le controle ne doit pas suggerer que Frida possede toute la connaissance Adobe.
 
+Integration UI Lot 6:
+
+- le controle chat est un bouton compact `A`, sans faux logo Adobe officiel;
+- le clic ouvre deux choix visibles: `Photoshop` et `Illustrator`;
+- le mode n'est actif qu'apres choix explicite d'un produit;
+- un nouveau clic sur le bouton `A` desactive le mode et retire les champs Adobe du prochain payload;
+- l'etat n'est pas persiste durablement: il reste local a l'UI courante;
+- quand Adobe est actif, le bouton de recherche web generale est desactive cote UI et le prochain payload force `web_search=false`;
+- les petits controles du composer sont places sur une ligne d'actions separee sous la zone de saisie pour eviter le chevauchement.
+
 ## 4. Contrat payload
 
 Activation normative:

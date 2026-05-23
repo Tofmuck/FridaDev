@@ -1010,8 +1010,8 @@ body {
   border-top: 1px solid var(--border-muted);
   z-index: 20;
   display: grid;
-  grid-template-columns: 1fr auto auto auto auto auto;
-  align-items: end;
+  grid-template-columns: 1fr;
+  align-items: stretch;
   gap: 7px;
 }
 
@@ -1150,7 +1150,48 @@ body {
   color: var(--fg-subtle);
 }
 
+.adobe-product-choices {
+  grid-column: 1 / -1;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-height: 26px;
+}
+
+.adobe-product-choices[hidden] {
+  display: none;
+}
+
+.adobe-product-choice {
+  min-width: 86px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 130ms ease, border-color 130ms ease, background 130ms ease;
+}
+
+.adobe-product-choice:hover {
+  color: var(--fg);
+  background: var(--surface);
+}
+
+.adobe-product-choice.active {
+  color: var(--fg);
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
 .ask textarea {
+  grid-column: 1 / -1;
   width: 100%;
   resize: none;
   min-height: 44px;
@@ -1175,10 +1216,21 @@ body {
   border-color: var(--border-strong);
 }
 
+.composer-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
 /* Boutons utilitaires du composer */
 .btn-dictation,
 .btn-active-document,
 .btn-image-generation,
+.btn-adobe-mode,
 .btn-web-search {
   display: flex;
   align-items: center;
@@ -1197,8 +1249,15 @@ body {
 .btn-dictation:hover,
 .btn-active-document:hover,
 .btn-image-generation:hover,
+.btn-adobe-mode:hover,
 .btn-web-search:hover {
   color: var(--fg-muted);
+}
+
+.btn-adobe-mode {
+  font-weight: 650;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .btn-dictation[data-dictation-state="recording"] {
@@ -1223,6 +1282,7 @@ body {
 .btn-dictation:disabled,
 .btn-active-document:disabled,
 .btn-image-generation:disabled,
+.btn-adobe-mode:disabled,
 .btn-web-search:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -1235,6 +1295,12 @@ body {
 }
 
 .btn-image-generation.active {
+  color: var(--fg);
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.btn-adobe-mode.active {
   color: var(--fg);
   border-color: var(--border-strong);
   background: var(--surface);
@@ -1487,6 +1553,7 @@ body {
   .btn-dictation,
   .btn-active-document,
   .btn-image-generation,
+  .btn-adobe-mode,
   .btn-web-search {
     width: 36px;
     min-width: 36px;

@@ -1,7 +1,7 @@
 # Adobe Photoshop / Illustrator - TODO
 
 Classement: `app/docs/todo-todo/product/`
-Statut: actif, non lance runtime.
+Statut: actif, Lots 1-6 livres progressivement; pas d'index Adobe durable.
 Date d'ouverture: 2026-05-23.
 Spec normative: `app/docs/states/specs/fridadev-adobe-docs-mode-contract.md`
 Besoin produit: rendre Frida utile pour Amandine sur Photoshop et Illustrator via une lecture officielle Adobe a la demande, sans index durable Adobe et sans casser la recherche web generale.
@@ -464,43 +464,47 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 
 ### PLAN
 
-- [ ] Ajouter un controle visible mais sobre dans l'UI chat.
-- [ ] Proposer deux choix explicites: Photoshop, Illustrator.
-- [ ] Ne pas proposer `Auto`.
-- [ ] Afficher clairement le mode actif.
-- [ ] Permettre desactivation simple.
-- [ ] Ne pas transformer cela en landing page ou refonte UI.
+- [x] Ajouter un controle visible mais sobre dans l'UI chat.
+- [x] Proposer deux choix explicites: Photoshop, Illustrator.
+- [x] Ne pas proposer `Auto`.
+- [x] Afficher clairement le mode actif.
+- [x] Permettre desactivation simple.
+- [x] Ne pas transformer cela en landing page ou refonte UI.
 
 ### PATCH
 
-- [ ] Ajouter l'etat frontend `adobeModeEnabled`.
-- [ ] Ajouter l'etat frontend `adobeProduct`.
-- [ ] Ajouter boutons/chips Photoshop et Illustrator.
-- [ ] Ajouter le payload vers `/api/chat`.
+- [x] Ajouter l'etat frontend derive du produit Adobe actif.
+- [x] Ajouter l'etat frontend `adobeProduct`.
+- [x] Ajouter boutons/chips Photoshop et Illustrator.
+- [x] Ajouter le payload vers `/api/chat`.
 - [ ] Ajouter indication de sources Adobe consultees si le backend les expose content-free.
-- [ ] Garder les conversations normales inchangees.
+- [x] Garder les conversations normales inchangees.
+- [x] Desactiver le bouton web search pendant le mode Adobe actif.
+- [x] Reorganiser les petits boutons du composer sur une ligne d'actions sous la zone de saisie.
 
 ### TEST
 
-- [ ] Test frontend: mode inactif par defaut.
-- [ ] Test frontend: activation Photoshop.
-- [ ] Test frontend: activation Illustrator.
-- [ ] Test frontend: pas de mode Auto.
-- [ ] Test frontend: payload contient le produit explicite.
-- [ ] Test frontend: desactivation retire le mode.
-- [ ] Test navigateur si surface existante.
+- [x] Test frontend: mode inactif par defaut.
+- [x] Test frontend: activation Photoshop.
+- [x] Test frontend: activation Illustrator.
+- [x] Test frontend: pas de mode Auto.
+- [x] Test frontend: payload contient le produit explicite.
+- [x] Test frontend: desactivation retire le mode.
+- [x] Test frontend: web button + Adobe ne creent pas de double activation confuse.
+- [x] Test navigateur si surface existante.
+- [x] Test responsive desktop/mobile sans chevauchement.
 
 ### RISQUES
 
-- [ ] L'utilisateur croit que le bouton garantit une expertise absolue.
-- [ ] Le controle surcharge l'UI.
-- [ ] Le mode reste actif par accident.
+- [x] L'utilisateur croit que le bouton garantit une expertise absolue.
+- [x] Le controle surcharge l'UI.
+- [x] Le mode reste actif par accident.
 
 ### REDUCTION DES RISQUES
 
-- [ ] Badge clair du mode actif.
-- [ ] Desactivation accessible.
-- [ ] Reponses avec sources/caveats, pas promesse absolue.
+- [x] Badge clair du mode actif.
+- [x] Desactivation accessible.
+- [x] Reponses avec sources/caveats, pas promesse absolue.
 
 ## Lot 7 - Observabilite et privacy
 

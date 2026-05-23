@@ -24,6 +24,10 @@
   if (!imageGeneration) {
     throw new Error("FridaImageGeneration module missing");
   }
+  const adobeMode = window.FridaAdobeMode;
+  if (!adobeMode) {
+    throw new Error("FridaAdobeMode module missing");
+  }
   const {
     STREAMING_UI_STATE_INTERRUPTED,
     STREAMING_UI_EVENT_REQUEST_STARTED,
@@ -52,6 +56,8 @@
   const btnMic = $("#btnMic");
   const btnActiveDocument = $("#btnActiveDocument");
   const btnImageGeneration = $("#btnImageGeneration");
+  const btnAdobeMode = $("#btnAdobeMode");
+  const adobeProductChoices = $("#adobeProductChoices");
   const btnExportConversation = $("#btnExportConversation");
   const activeDocumentFileInput = $("#activeDocumentFileInput");
   const activeDocumentsBar = $("#activeDocumentsBar");
@@ -88,14 +94,22 @@
 
   // ---- Web search toggle
   let webSearchEnabled = localStorage.getItem("frida.webSearch") === "1";
+  let adobeModeController = null;
+  const isAdobeModeActive = () => Boolean(adobeModeController && adobeModeController.isActive());
   const updateWebSearchBtn = () => {
     if (!btnWebSearch) return;
+    const adobeActive = isAdobeModeActive();
+    btnWebSearch.disabled = adobeActive;
     btnWebSearch.classList.toggle("active", webSearchEnabled);
-    btnWebSearch.title = webSearchEnabled ? "Recherche web : activée" : "Recherche web : désactivée";
+    btnWebSearch.title = adobeActive
+      ? "Recherche web indisponible en mode Adobe"
+      : (webSearchEnabled ? "Recherche web : activée" : "Recherche web : désactivée");
+    btnWebSearch.setAttribute("aria-pressed", webSearchEnabled && !adobeActive ? "true" : "false");
   };
   if (btnWebSearch) {
     updateWebSearchBtn();
     btnWebSearch.addEventListener("click", () => {
+      if (isAdobeModeActive()) return;
       webSearchEnabled = !webSearchEnabled;
       localStorage.setItem("frida.webSearch", webSearchEnabled ? "1" : "0");
       updateWebSearchBtn();
@@ -377,6 +391,20 @@
     consoleObj: console,
   });
 
+  adobeModeController = adobeMode.createAdobeModeController({
+    buttonEl: btnAdobeMode,
+    choicesEl: adobeProductChoices,
+    composerEl: ask,
+    onActiveChange(active) {
+      if (active && webSearchEnabled) {
+        webSearchEnabled = false;
+        localStorage.setItem("frida.webSearch", "0");
+      }
+      updateWebSearchBtn();
+    },
+  });
+  updateWebSearchBtn();
+
   // ---- Nouveau chat
   newChatBtn.addEventListener("click", async () => {
     await newThread();
@@ -529,6 +557,8 @@
   // ---- Endpoint réseau
   async function sendToServer(userText, onChunk, threadId, inputMode = "keyboard", options = {}){
     const thread = threadId ? getThreadById(threadId) : null;
+    const adobePayload = adobeModeController ? adobeModeController.getPayload() : {};
+    const adobeActive = Boolean(adobePayload.specialization_profile);
     const emitStreamEvent = (event) => {
       if (typeof options?.onStreamEvent === "function") {
         options.onStreamEvent(event);
@@ -541,8 +571,9 @@
         message: userText,
         conversation_id: thread ? thread.conversation_id : null,
         stream: true,
-        web_search: webSearchEnabled,
+        web_search: adobeActive ? false : webSearchEnabled,
         input_mode: inputMode === "voice" ? "voice" : "keyboard",
+        ...adobePayload,
       })
     });
 
