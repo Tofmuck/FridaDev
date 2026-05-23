@@ -478,6 +478,8 @@ test('chat reasoning shortcut stays compact on desktop and mobile', async () => 
         return {
           ask: rect('#ask'),
           message: rect('#message'),
+          contextRow: rect('#composerContextRow'),
+          contextControls: rect('.composer-context-controls'),
           reasoning: rect('.main-reasoning-control'),
           select: rect('#mainReasoningLevel'),
           labelText: String(label?.textContent || '').trim(),
@@ -489,6 +491,11 @@ test('chat reasoning shortcut stays compact on desktop and mobile', async () => 
       assert.equal(layout.labelText, 'Rais.');
       assert.equal(layout.selectLabel, 'Niveau de raisonnement global');
       assert.ok(layout.reasoning.width <= viewport.maxWidth + 1, `${viewport.name} reasoning control too wide: ${layout.reasoning.width}px`);
+      assert.ok(layout.contextRow.left >= layout.ask.left - 1, `${viewport.name} context row should stay inside composer`);
+      assert.ok(layout.contextRow.right <= layout.ask.right + 1, `${viewport.name} context row should stay inside composer`);
+      assert.ok(layout.contextRow.bottom <= layout.message.top + 1, `${viewport.name} context row should stay above textarea`);
+      assert.ok(layout.contextControls.left >= layout.ask.left - 1, `${viewport.name} context controls should stay inside composer`);
+      assert.ok(layout.contextControls.right <= layout.ask.right + 1, `${viewport.name} context controls should stay inside composer`);
       assert.ok(layout.reasoning.left >= layout.ask.left - 1, `${viewport.name} reasoning control should stay inside composer`);
       assert.ok(layout.reasoning.right <= layout.ask.right + 1, `${viewport.name} reasoning control should stay inside composer`);
       assert.ok(layout.reasoning.bottom <= layout.message.top + 1, `${viewport.name} reasoning control should stay above textarea`);

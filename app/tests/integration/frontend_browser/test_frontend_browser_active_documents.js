@@ -204,9 +204,19 @@ test('chat active conversation documents upload, OCR states, reload and remove w
     assert.equal((await page.locator('#message').inputValue()).includes('capture.png'), false);
     assert.equal((await page.locator('#message').inputValue()).includes('data:image'), false);
     const imageBarBox = await page.locator('#activeDocumentsBar').boundingBox();
+    const contextRowBox = await page.locator('#composerContextRow').boundingBox();
+    const reasoningBox = await page.locator('.main-reasoning-control').boundingBox();
     assert.ok(
       imageBarBox && imageBarBox.x >= 0 && imageBarBox.x + imageBarBox.width <= 390,
       'active image bar should fit mobile viewport'
+    );
+    assert.ok(
+      contextRowBox && contextRowBox.x >= 0 && contextRowBox.x + contextRowBox.width <= 390,
+      'composer context row should fit mobile viewport'
+    );
+    assert.ok(
+      contextRowBox && imageBarBox && reasoningBox && imageBarBox.y < reasoningBox.y && contextRowBox.y <= imageBarBox.y,
+      'active documents and reasoning should share the context area without overlapping on mobile'
     );
 
     const callsAfterImageUpload = await page.evaluate(() => window.__fridaBrowserState.fetchCalls);

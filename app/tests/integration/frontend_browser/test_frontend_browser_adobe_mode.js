@@ -178,8 +178,11 @@ test('Adobe composer controls stay in bounds on desktop and mobile', async () =>
         return {
           viewportWidth: window.innerWidth,
           ask: rect('#ask'),
+          contextRow: rect('#composerContextRow'),
+          contextControls: rect('.composer-context-controls'),
           message: rect('#message'),
           choices: rect('#adobeProductChoices'),
+          reasoning: rect('.main-reasoning-control'),
           actions: rect('.composer-actions'),
           mic: rect('#btnMic'),
           webSearch: rect('#btnWebSearch'),
@@ -192,6 +195,12 @@ test('Adobe composer controls stay in bounds on desktop and mobile', async () =>
 
       assert.ok(layout.ask.left >= 0, `${viewport.name} composer should stay inside left viewport edge`);
       assert.ok(layout.ask.right <= layout.viewportWidth + 1, `${viewport.name} composer should stay inside right viewport edge`);
+      assert.ok(layout.contextRow.left >= layout.ask.left, `${viewport.name} context row should stay inside composer`);
+      assert.ok(layout.contextRow.right <= layout.ask.right + 1, `${viewport.name} context row should stay inside composer`);
+      assert.ok(layout.contextRow.bottom <= layout.message.top + 1, `${viewport.name} context row should stay above textarea`);
+      assert.ok(layout.contextControls.left >= layout.ask.left, `${viewport.name} context controls should stay inside composer`);
+      assert.ok(layout.contextControls.right <= layout.ask.right + 1, `${viewport.name} context controls should stay inside composer`);
+      assert.ok(layout.reasoning.right <= layout.choices.left || layout.reasoning.bottom <= layout.choices.top + 1, `${viewport.name} reasoning and Adobe choices should not overlap`);
       assert.ok(layout.message.left >= layout.ask.left, `${viewport.name} textarea should stay inside composer`);
       assert.ok(layout.message.right <= layout.ask.right + 1, `${viewport.name} textarea should stay inside composer`);
       assert.ok(layout.message.right <= layout.actions.left, `${viewport.name} action grid should sit to the right of textarea`);

@@ -84,24 +84,28 @@
       <div id="log" class="log"></div>
 
       <form id="ask" class="ask">
-        <div id="activeDocumentsBar" class="active-documents-bar" hidden>
-          <div class="active-documents-label">Documents actifs de conversation</div>
-          <div id="activeDocumentsList" class="active-documents-list"></div>
-          <div id="activeDocumentsStatus" class="active-documents-status" aria-live="polite"></div>
-        </div>
-        <label class="main-reasoning-control" for="mainReasoningLevel">
-          <span class="main-reasoning-label" title="Raisonnement global">Rais.</span>
-          <select id="mainReasoningLevel" aria-label="Niveau de raisonnement global">
-            <option value="none">aucun</option>
-            <option value="low">faible</option>
-            <option value="medium">moyen</option>
-            <option value="high">élevé</option>
-          </select>
-          <small id="mainReasoningStatus" aria-live="polite"></small>
-        </label>
-        <div id="adobeProductChoices" class="adobe-product-choices" role="radiogroup" aria-label="Produit Adobe" hidden>
-          <button type="button" class="adobe-product-choice" data-adobe-product="photoshop" role="radio" aria-checked="false">Photoshop</button>
-          <button type="button" class="adobe-product-choice" data-adobe-product="illustrator" role="radio" aria-checked="false">Illustrator</button>
+        <div id="composerContextRow" class="composer-context-row" aria-label="Contexte du message">
+          <div id="activeDocumentsBar" class="active-documents-bar" hidden>
+            <div class="active-documents-label">Documents actifs de conversation</div>
+            <div id="activeDocumentsList" class="active-documents-list"></div>
+            <div id="activeDocumentsStatus" class="active-documents-status" aria-live="polite"></div>
+          </div>
+          <div class="composer-context-controls">
+            <label class="main-reasoning-control" for="mainReasoningLevel">
+              <span class="main-reasoning-label" title="Raisonnement global">Rais.</span>
+              <select id="mainReasoningLevel" aria-label="Niveau de raisonnement global">
+                <option value="none">aucun</option>
+                <option value="low">faible</option>
+                <option value="medium">moyen</option>
+                <option value="high">élevé</option>
+              </select>
+              <small id="mainReasoningStatus" aria-live="polite"></small>
+            </label>
+            <div id="adobeProductChoices" class="adobe-product-choices" role="radiogroup" aria-label="Produit Adobe" hidden>
+              <button type="button" class="adobe-product-choice" data-adobe-product="photoshop" role="radio" aria-checked="false">Photoshop</button>
+              <button type="button" class="adobe-product-choice" data-adobe-product="illustrator" role="radio" aria-checked="false">Illustrator</button>
+            </div>
+          </div>
         </div>
         <div class="composer-input-row">
           <textarea id="message" rows="3" placeholder="Écris ton message…"></textarea>

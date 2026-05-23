@@ -1,7 +1,7 @@
 # FridaDev - Polish UI chat - TODO
 
 Classement: `app/docs/todo-todo/product/`
-Statut: actif, mini-lots bornes; Lots 1-2 livres le 2026-05-23
+Statut: actif, mini-lots bornes; Lots 1-3 livres le 2026-05-23
 Date de creation: 2026-05-23
 
 ## Intention
@@ -40,9 +40,9 @@ Regle de conduite: avancer point par point, cocher seulement ce qui est livre, g
 
 ### 4. Ligne contexte au-dessus du champ
 
-- [ ] Auditer l'empilement `documents actifs` / `Adobe` / `reasoning`.
-- [ ] Proposer une ligne contexte unique si le besoin est confirme.
-- [ ] Ne pas rouvrir les contrats fonctionnels.
+- [x] Auditer l'empilement `documents actifs` / `Adobe` / `reasoning`.
+- [x] Proposer une ligne contexte unique si le besoin est confirme.
+- [x] Ne pas rouvrir les contrats fonctionnels.
 
 ### 5. Panneau generation image
 
@@ -99,3 +99,26 @@ Statut: livre le 2026-05-23.
 
 - [x] Reglage trop cache: conserve un libelle visible, un titre complet et l'aria-label complet.
 - [x] Regression fonctionnelle: aucun changement de payload, endpoint, valeurs ou persistance.
+
+
+## Lot 3 - Ligne contexte au-dessus du champ
+
+Statut: livre le 2026-05-23.
+
+### PATCH
+
+- [x] `index.html`: regroupe documents actifs, reasoning et choix Adobe dans `composerContextRow`.
+- [x] `styles.css`: ligne contexte flex, avec documents a gauche et controles contexte a droite.
+- [x] `styles.css`: repli mobile explicite, documents au-dessus et controles contexte dessous quand l'espace manque.
+
+### TESTS
+
+- [x] Test navigateur reasoning desktop/mobile et bornes de la ligne contexte.
+- [x] Test navigateur Adobe avec choix produit dans la ligne contexte.
+- [x] Test navigateur documents actifs mobile avec absence de chevauchement.
+- [x] Tests integration frontend chat existants.
+
+### RISQUES
+
+- [x] Contrats fonctionnels rouverts: aucun changement d'id, payload, endpoint ou logique JS.
+- [x] Ligne trop chargee: repli mobile et wrapping conserves.

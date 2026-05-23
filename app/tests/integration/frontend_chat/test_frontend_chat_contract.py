@@ -149,6 +149,8 @@ class AppPhase8Tests(unittest.TestCase):
         index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
 
+        self.assertIn('id="composerContextRow"', index_source)
+        self.assertIn('class="composer-context-controls"', index_source)
         self.assertIn('id="mainReasoningLevel"', index_source)
         self.assertIn('class="main-reasoning-label" title="Raisonnement global">Rais.</span>', index_source)
         self.assertIn('main_reasoning_control.js', index_source)
