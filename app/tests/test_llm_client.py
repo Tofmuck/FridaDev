@@ -836,6 +836,19 @@ class LlmClientTextSanitizationTests(unittest.TestCase):
 
         self.assertEqual(llm_client.extract_openrouter_text(payload), 'Café')
 
+    def test_extract_openrouter_text_accepts_provider_null_content_as_empty_text(self) -> None:
+        payload = {
+            'choices': [
+                {
+                    'message': {
+                        'content': None,
+                    }
+                }
+            ]
+        }
+
+        self.assertEqual(llm_client.extract_openrouter_text(payload), '')
+
 
 if __name__ == '__main__':
     unittest.main()

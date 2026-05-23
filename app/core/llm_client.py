@@ -87,8 +87,12 @@ def _sanitize_encoding(text: str) -> str:
     return repaired
 
 
-def sanitize_provider_text(text: str) -> str:
+def sanitize_provider_text(text: Any) -> str:
     """API publique et stable pour la sanitation du texte provider."""
+    if text is None:
+        return ''
+    if not isinstance(text, str):
+        return str(text)
     return _sanitize_encoding(text)
 
 

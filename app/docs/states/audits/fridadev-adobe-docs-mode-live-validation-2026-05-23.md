@@ -102,7 +102,7 @@ Verifications effectuees:
 - les evenements `adobe_docs` et `adobe_prompt_lane` exposes sont content-free: produit, statuts, counts, hashes courts, source types, reason codes, latences/counts;
 - aucun markdown Adobe ni passage complet n'a ete affiche dans cette note.
 
-## Limite Hors Mode Adobe
+## Dette Hors Mode Adobe - /api/chat stream=false
 
 Deux probes directes `/api/chat` en JSON non-streaming, sans Adobe, ont retourne HTTP 500 avec l'erreur compacte `Erreur: 'NoneType' object has no attribute 'strip'`.
 
@@ -111,7 +111,15 @@ Requalification:
 - ce n'est pas un bug du pipeline Adobe;
 - ce n'est pas le chemin UI nominal, qui utilise le streaming et a retourne HTTP 200;
 - le web search general en UI streaming a ete observe en `ok`;
-- cela reste une dette separee de robustesse du chemin `/api/chat stream=false`.
+- cela a ete traite dans un lot separe de robustesse du chemin `/api/chat stream=false`.
+
+Statut post-correctif du 2026-05-23:
+
+- finding valide par reproduction live avant patch: HTTP 500, `NoneType.strip`;
+- cause racine: `message.content` provider peut etre `None` en non-streaming et `extract_openrouter_text()` appelait `.strip()` apres sanitation;
+- correction: `sanitize_provider_text(None)` retourne maintenant une chaine vide;
+- contrat retenu: une reponse provider vide est acceptee comme texte assistant vide, mais ne provoque plus d'exception brute ni de HTTP 500;
+- tests ajoutes: sanitation provider `None` et `/api/chat stream=false` avec faux provider `content=None`.
 
 ## Commandes / Preuves
 
@@ -126,4 +134,4 @@ Requalification:
 
 Le Lot 7 est clos pour le mode Adobe: validation live bornee reussie, sous surveillance.
 
-La dette `/api/chat stream=false` doit rester hors cloture Adobe et etre traitee dans un lot separe si un client non-streaming redevient important.
+La dette `/api/chat stream=false` observee pendant la validation Adobe a ete corrigee hors cloture Adobe, sans changer le chemin UI streaming nominal.

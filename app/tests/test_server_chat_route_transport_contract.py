@@ -498,6 +498,39 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
         self.assertEqual(observed_state['save_new_traces_calls'], [])
 
+    def test_api_chat_non_stream_accepts_provider_null_content_without_500(self) -> None:
+        conversation = {
+            'id': 'conv-non-stream-null-provider-content',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': None}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour', 'stream': False})
+        finally:
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(response.get_json()['text'], '')
+        self.assertEqual(conversation['messages'][-1]['role'], 'assistant')
+        self.assertEqual(conversation['messages'][-1]['content'], '')
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_rejects_empty_message_with_400_contract(self) -> None:
         response = self.client.post('/api/chat', json={'message': '   '})
 
