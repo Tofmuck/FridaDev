@@ -122,10 +122,10 @@
     }
   }
 
-  function setStatusMessage(statusEl, message, isError) {
+  function setStatusMessage(statusEl, message, isError, stateValue) {
     if (!statusEl) return;
     statusEl.textContent = message || "";
-    setDataState(statusEl, isError ? STATES.ERROR : STATES.IDLE);
+    setDataState(statusEl, isError ? STATES.ERROR : (stateValue || STATES.IDLE));
     toggleClass(statusEl, "is-visible", Boolean(message));
     toggleClass(statusEl, "is-error", Boolean(isError));
   }
@@ -362,7 +362,12 @@
         setDataState(buttonEl, activeState);
       }
 
-      setStatusMessage(statusEl, available ? message : "Dictée vocale indisponible sur ce navigateur", activeState === STATES.ERROR || !available);
+      setStatusMessage(
+        statusEl,
+        available ? message : "Dictée vocale indisponible sur ce navigateur",
+        activeState === STATES.ERROR || !available,
+        activeState,
+      );
     }
 
     function bindRecorderEvent(target, eventName, handler) {

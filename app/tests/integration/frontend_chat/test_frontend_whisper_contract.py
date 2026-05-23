@@ -29,6 +29,7 @@ class FrontendWhisperContractTests(unittest.TestCase):
     def test_frontend_chat_wires_dictation_transport_into_api_chat_payload(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
         dictation_source = (APP_DIR / "web" / "whisper" / "whisper_dictation.js").read_text(encoding="utf-8")
+        styles_source = (APP_DIR / "web" / "styles.css").read_text(encoding="utf-8")
 
         self.assertIn('window.FridaWhisperDictation.createWhisperDictation({', app_source)
         self.assertIn('endpoint: "/api/chat/transcribe"', app_source)
@@ -49,6 +50,12 @@ class FrontendWhisperContractTests(unittest.TestCase):
         self.assertIn('const MAX_RECORDING_MS_LIMIT = 150_000;', dictation_source)
         self.assertIn('recording_stop_reason', dictation_source)
         self.assertIn('onDraftInputMode("voice");', dictation_source)
+        self.assertIn('setStatusMessage(', dictation_source)
+        self.assertIn('activeState,', dictation_source)
+        self.assertIn('.dictation-status[data-dictation-state="recording"]::after', styles_source)
+        self.assertIn('.dictation-status[data-dictation-state="transcribing"]::after', styles_source)
+        self.assertIn('@keyframes dictation-dots-wave', styles_source)
+        self.assertIn('@media (prefers-reduced-motion: reduce)', styles_source)
 
 
 if __name__ == "__main__":

@@ -1328,8 +1328,49 @@ body {
   color: var(--fg-subtle);
 }
 
+.dictation-status[data-dictation-state="recording"]::after,
+.dictation-status[data-dictation-state="transcribing"]::after {
+  content: "";
+  display: inline-block;
+  width: 22px;
+  height: 10px;
+  margin-left: 6px;
+  vertical-align: -1px;
+  opacity: 0.72;
+  background:
+    radial-gradient(circle 2px at center, currentColor 98%, transparent) 1px 6px / 4px 4px no-repeat,
+    radial-gradient(circle 2px at center, currentColor 98%, transparent) 9px 6px / 4px 4px no-repeat,
+    radial-gradient(circle 2px at center, currentColor 98%, transparent) 17px 6px / 4px 4px no-repeat;
+  animation: dictation-dots-wave 1.15s ease-in-out infinite;
+}
+
 .dictation-status.is-error {
   color: #b85050;
+}
+
+@keyframes dictation-dots-wave {
+  0%,
+  72%,
+  100% {
+    background-position: 1px 6px, 9px 6px, 17px 6px;
+  }
+  16% {
+    background-position: 1px 1px, 9px 6px, 17px 6px;
+  }
+  32% {
+    background-position: 1px 6px, 9px 1px, 17px 6px;
+  }
+  48% {
+    background-position: 1px 6px, 9px 6px, 17px 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dictation-status[data-dictation-state="recording"]::after,
+  .dictation-status[data-dictation-state="transcribing"]::after {
+    animation: none;
+    background-position: 1px 6px, 9px 6px, 17px 6px;
+  }
 }
 
 /* Bouton envoyer (réutilise .primary) */

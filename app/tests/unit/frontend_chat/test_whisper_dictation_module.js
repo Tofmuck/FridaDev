@@ -258,12 +258,14 @@ test('createWhisperDictation reinjects the transcript into the existing draft', 
   assert.equal(controller.getState(), 'recording');
   assert.equal(buttonEl.dataset.dictationState, 'recording');
   assert.equal(statusEl.textContent, 'Enregistrement en cours.');
+  assert.equal(statusEl.dataset.dictationState, 'recording');
 
   buttonEl.click();
   await flushAsync();
   await flushAsync();
 
   assert.equal(controller.getState(), 'idle');
+  assert.equal(statusEl.dataset.dictationState, 'idle');
   assert.equal(textareaEl.value, 'Bonjour\n\nvoici le transcript');
   assert.equal(textareaEl.focusCount, 1);
   assert.deepEqual(textareaEl.selection, {
@@ -325,6 +327,7 @@ test('createWhisperDictation preserves the draft when transcription fails', asyn
   assert.equal(controller.getState(), 'error');
   assert.equal(textareaEl.value, 'Draft existant');
   assert.equal(statusEl.textContent, 'transcription timeout');
+  assert.equal(statusEl.dataset.dictationState, 'error');
   assert.equal(buttonEl.dataset.dictationState, 'error');
   assert.equal(stream.tracks[0].stopCount, 1);
 });
@@ -381,6 +384,7 @@ test('createWhisperDictation marks duration-limit stops distinctly', async () =>
   assert.equal(controller.getState(), 'transcribing');
   assert.equal(controller.getLastStopReason(), 'auto_limit');
   assert.equal(statusEl.textContent, 'Limite de dictée atteinte. Transcription en cours.');
+  assert.equal(statusEl.dataset.dictationState, 'transcribing');
   assert.equal(fetchCalls.length, 1);
   assert.deepEqual(
     fetchCalls[0].options.body.entries.slice(1),
@@ -441,6 +445,7 @@ test('createWhisperDictation marks track-ended interruption distinctly', async (
   assert.equal(controller.getState(), 'transcribing');
   assert.equal(controller.getLastStopReason(), 'track_ended');
   assert.equal(statusEl.textContent, 'Micro interrompu. Transcription en cours.');
+  assert.equal(statusEl.dataset.dictationState, 'transcribing');
 
   resolveFetch();
   await flushAsync();
@@ -487,6 +492,7 @@ test('createWhisperDictation keeps draft and reports recorder errors without upl
   assert.equal(controller.getState(), 'error');
   assert.equal(controller.getLastStopReason(), 'recorder_error');
   assert.equal(statusEl.textContent, 'Enregistrement audio interrompu');
+  assert.equal(statusEl.dataset.dictationState, 'error');
   assert.equal(textareaEl.value, 'Draft existant');
   assert.equal(fetchCalls, 0);
 });
@@ -517,6 +523,7 @@ test('createWhisperDictation disables the microphone while chat streaming is bus
 
   assert.equal(buttonEl.disabled, true);
   assert.equal(buttonEl.dataset.dictationState, 'busy');
+  assert.equal(statusEl.dataset.dictationState, 'busy');
   buttonEl.click();
   await flushAsync();
   assert.equal(getUserMediaCalls, 0);
