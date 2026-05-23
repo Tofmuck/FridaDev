@@ -232,7 +232,7 @@ Les cases detaillees ci-dessous conservent le plan A-Z initial. Pour l'objet 1, 
 - [x] Verifier dans l'observabilite que le niveau est visible content-free.
 - [x] Verifier que le raisonnement interne n'apparait pas dans l'UI, les logs user-facing, Memory, Identity, Summary, exports ou documents actifs.
 - [x] Rebuild applicatif seulement quand le runtime/UI a ete modifie.
-- [ ] Archiver le TODO quand tous les lots sont fermes.
+- [x] Archivage global differe: conserver ce TODO dans `todo-todo` tant que l'Objet 3 reste en cloture provisoire sous surveillance; archiver seulement apres decision explicite de fermeture globale.
 
 ## 6. Objet 2 - Streaming visuel du texte dans la fenetre de chat
 
@@ -373,7 +373,7 @@ Statut: correctif applicatif livre; cloture provisoire sous surveillance; pas de
 - [x] Decider explicitement si le correctif initial reste en blob unique jusqu'a 120 s, ou ajoute un `timeslice` a `MediaRecorder.start()` pour recevoir des `dataavailable` periodiques.
 - [x] Traiter le `timeslice` comme une option d'architecture a justifier, pas comme un dogme: avec l'endpoint actuel non-streaming, il ne rend pas l'upload streaming a lui seul.
 - [x] Si le blob unique est conserve, documenter la preuve que 120 s reste acceptable sur navigateur cible, taille audio attendue, memoire client, upload FridaDev et service aval.
-- [ ] Si le `timeslice` est ajoute, definir le gain attendu: limiter les donnees perdues en cas d'erreur tardive, observer la croissance audio, reduire la dependance au `dataavailable` final, ou preparer un futur upload segmente.
+- [x] Si le `timeslice` est ajoute plus tard, definir le gain attendu: limiter les donnees perdues en cas d'erreur tardive, observer la croissance audio, reduire la dependance au `dataavailable` final, ou preparer un futur upload segmente. Non applicable au patch clos: `timeslice` non retenu pour cette livraison.
 - [x] Conserver la construction finale du fichier audio si l'endpoint reste non-streaming.
 - [x] Eviter qu'un long enregistrement repose sur un unique blob tardif si le navigateur ou le device est instable.
 - [x] Tester interruption, erreur recorder, permissions micro et changement d'etat.
@@ -384,16 +384,16 @@ Statut: correctif applicatif livre; cloture provisoire sous surveillance; pas de
 - [x] Si necessaire, proposer une valeur bornee plus sure sans toucher a la plateforme dans le meme lot applicatif.
 - [x] Verifier separement les limites de taille upload applicatives et proxy sans afficher de config sensible.
 - [x] Prouver que FridaDev recoit l'upload complet avant d'attribuer un echec au service Whisper aval.
-- [ ] Si une limite de taille ou duree est ajoutee, la rendre explicite, testee, bornee et visible par une erreur content-free.
+- [x] Si une limite de taille ou duree est ajoutee plus tard, la rendre explicite, testee, bornee et visible par une erreur content-free. Non applicable au patch clos: aucune nouvelle limite serveur n'a ete ajoutee.
 - [x] Garder les erreurs mappees proprement: 400 fichier absent/vide, 502 indisponible, 504 timeout.
 - [x] Ne pas lire ni persister plus de contenu audio que necessaire.
 - [x] Ne pas ajouter de log contenant audio brut, transcript, nom de fichier utilisateur sensible, cookie, token, header d'autorisation ou detail upstream verbeux.
 
 ### Lot 4 - Service Whisper local et discipline Sauron
 
-- [ ] Si les preuves pointent vers `platform-whisper-api`, ouvrir un micro-lot sous discipline Sauron pour verifier memoire, OOM, modele charge, threads et duree de transcription.
-- [ ] Ne pas modifier Docker, ressources, modele Whisper ou plateforme depuis un lot applicatif Celebrimbor sans GO utilisateur explicite.
-- [ ] Rejouer ensuite la preuve FridaDev `/api/chat/transcribe` avec audio synthetique non prive.
+- [x] Si les preuves pointent vers `platform-whisper-api`, ouvrir un micro-lot sous discipline Sauron pour verifier memoire, OOM, modele charge, threads et duree de transcription. Non requis par la validation 99 s: aucune perte ni OOM detectes.
+- [x] Ne pas modifier Docker, ressources, modele Whisper ou plateforme depuis un lot applicatif Celebrimbor sans GO utilisateur explicite. Respecte: pas de Docker/ressources/modele; observabilite du service aval ajoutee avec GO explicite, backup et logs content-free.
+- [x] Rejouer ensuite la preuve FridaDev `/api/chat/transcribe` avec audio synthetique non prive. Fait apres observabilite: audio synthetique 12 s, correlation FridaDev -> `platform-whisper-api`, duree normalisee et `text_chars` observes sans contenu.
 
 ### Lot 5 - Tests et validation live
 
@@ -437,7 +437,7 @@ Statut: correctif applicatif livre; cloture provisoire sous surveillance; pas de
 - [x] Limite exacte de capture apres correctif initial: 2 minutes strictes, marge 150 s, ou limite configurable par settings. Decision 2026-05-23: limite client bornee a `150 s`.
 - [x] Strategie capture longue initiale: blob unique prouve acceptable, ou `timeslice` MediaRecorder avant/avec hausse du plafond. Decision 2026-05-23: blob unique conserve pour ce patch; `timeslice` reste option future si preuve de fragilite.
 - [x] Garantie produit attendue en cas d'echec transcription longue: preservation du brouillon texte seulement, ou retry local ephemere de l'audio avec garde-fous privacy explicites. Decision 2026-05-23: preservation du brouillon texte seulement.
-- [ ] Niveau de diagnostic live accepte pour le service Whisper aval si la cause reste cote plateforme.
+- [x] Niveau de diagnostic live accepte pour le service Whisper aval si la cause reste cote plateforme. Decision 2026-05-23: observabilite content-free actuelle suffisante pour surveillance provisoire; ouvrir un micro-lot Sauron seulement si `recording_duration_ms`, `normalized_duration_s`, `text_chars`, taille blob, `stop_reason` ou latence pointent de nouveau vers l'aval.
 
 ## 9. Hors-scope global
 
