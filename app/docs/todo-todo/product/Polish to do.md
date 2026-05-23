@@ -56,6 +56,44 @@ Regle de conduite: avancer point par point, cocher seulement ce qui est livre, g
 - [ ] Verifier hover/focus clavier.
 - [ ] Ne pas changer le rendu texte brut des messages.
 
+### 7. Manifest PWA Safari iPhone
+
+- [ ] Ajouter un manifeste PWA pour permettre `Ajouter a l'ecran d'accueil` depuis Safari iPhone.
+- [ ] Declarer `name`, `short_name`, `start_url`, `scope`, `display: standalone`, `theme_color` et `background_color`.
+- [ ] Utiliser l'icone Frida existante `app/web/fridalogo.png`, avec tailles/types adaptes si necessaire.
+- [ ] Ajouter les balises Safari/iOS utiles: `apple-touch-icon`, `apple-mobile-web-app-capable`, `apple-mobile-web-app-title`, et status bar si pertinent.
+- [ ] Verifier que la PWA respecte Authelia et ne contourne aucun flux d'authentification.
+
+## Lot futur - Manifest PWA Safari iPhone
+
+Statut: a faire, non implemente.
+
+### INTENTION
+
+Permettre a l'utilisateur d'installer FridaDev comme petite web app depuis Safari sur iPhone, avec l'icone Frida, un nom propre, une couleur d'habillage coherente et un affichage `standalone`.
+
+### PATCH A PREVOIR
+
+- [ ] Creer un manifeste PWA versionne, par exemple `app/web/manifest.webmanifest`.
+- [ ] Pointer le manifeste depuis `app/web/index.html`.
+- [ ] Declarer `name`, `short_name`, `description`, `start_url`, `scope`, `display: standalone`, `theme_color`, `background_color`.
+- [ ] Reutiliser `app/web/fridalogo.png` comme source d'icone; generer des variantes uniquement si les tailles Safari/PWA l'exigent.
+- [ ] Ajouter les meta tags iOS/Safari necessaires sans modifier la logique chat.
+
+### TESTS / PREUVES
+
+- [ ] Verifier que le manifeste est servi avec un contenu JSON/WebManifest valide.
+- [ ] Verifier que `index.html` reference bien le manifeste et l'icone Apple.
+- [ ] Verifier que `fridalogo.png` existe et que les tailles declarees sont coherentes.
+- [ ] Faire une validation manuelle Safari iPhone: ouvrir FridaDev, `Partager`, `Ajouter a l'ecran d'accueil`, lancer l'app installee.
+
+### RISQUES / REDUCTION
+
+- [ ] Ne pas ajouter de service worker ni de cache offline dans ce lot sans decision explicite: risque de confusion avec Authelia, sessions, assets stale et donnees sensibles.
+- [ ] Ne pas changer Caddy, Authelia, headers plateforme ou auth dans ce lot.
+- [ ] Ne pas stocker de donnees utilisateur cote client au pretexte de PWA.
+- [ ] Garder le manifest comme polish d'installation, pas comme refonte mobile.
+
 ## Lot 1 - Attentes image + etats actifs composer
 
 Statut: livre le 2026-05-23.
