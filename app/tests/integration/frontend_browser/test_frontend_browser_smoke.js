@@ -374,6 +374,7 @@ test('chat composer keeps desktop textarea and action row from overlapping contr
       const message = document.querySelector('#message').getBoundingClientRect();
       const imageGeneration = document.querySelector('#btnImageGeneration').getBoundingClientRect();
       const mic = document.querySelector('#btnMic').getBoundingClientRect();
+      const activeDocument = document.querySelector('#btnActiveDocument').getBoundingClientRect();
       const adobe = document.querySelector('#btnAdobeMode').getBoundingClientRect();
       const webSearch = document.querySelector('#btnWebSearch').getBoundingClientRect();
       const submit = document.querySelector('#ask button[type="submit"]').getBoundingClientRect();
@@ -385,20 +386,29 @@ test('chat composer keeps desktop textarea and action row from overlapping contr
         messageWidth: message.width,
         messageLeft: message.left,
         messageRight: message.right,
+        messageTop: message.top,
         messageBottom: message.bottom,
         actionsTop: actions.top,
+        actionsBottom: actions.bottom,
         actionsLeft: actions.left,
         actionsRight: actions.right,
         imageGenerationLeft: imageGeneration.left,
         imageGenerationRight: imageGeneration.right,
         micLeft: mic.left,
         micRight: mic.right,
+        micTop: mic.top,
+        micBottom: mic.bottom,
+        activeDocumentLeft: activeDocument.left,
+        activeDocumentRight: activeDocument.right,
+        activeDocumentTop: activeDocument.top,
         adobeLeft: adobe.left,
         adobeRight: adobe.right,
+        adobeTop: adobe.top,
         webSearchLeft: webSearch.left,
         webSearchRight: webSearch.right,
         submitLeft: submit.left,
         submitRight: submit.right,
+        submitTop: submit.top,
         viewportWidth: window.innerWidth,
       };
     });
@@ -406,13 +416,17 @@ test('chat composer keeps desktop textarea and action row from overlapping contr
     assert.ok(layout.messageWidth >= 900, `desktop composer textarea too narrow: ${layout.messageWidth}px`);
     assert.ok(layout.messageLeft >= layout.askLeft, 'textarea should stay inside the composer');
     assert.ok(layout.messageRight <= layout.askRight + 1, 'textarea should stay inside the composer');
-    assert.ok(layout.messageBottom <= layout.actionsTop + 1, 'action row should sit below the textarea');
+    assert.ok(layout.messageRight <= layout.actionsLeft, 'action grid should sit to the right of the textarea');
+    assert.ok(layout.actionsTop >= layout.messageTop - 1, 'action grid should align with the textarea top');
+    assert.ok(layout.actionsBottom <= layout.messageBottom + 1, 'action grid should stay within the textarea height');
     assert.ok(layout.actionsLeft >= layout.askLeft, 'action row should stay inside the composer');
     assert.ok(layout.actionsRight <= layout.askRight + 1, 'action row should stay inside the composer');
-    assert.ok(layout.imageGenerationRight <= layout.micLeft, 'image button should not overlap the mic button');
-    assert.ok(layout.micRight <= layout.adobeLeft, 'mic button should not overlap the Adobe button');
-    assert.ok(layout.adobeRight <= layout.webSearchLeft, 'Adobe button should not overlap the web-search button');
+    assert.ok(layout.micRight <= layout.webSearchLeft, 'mic button should sit before web-search on the first row');
     assert.ok(layout.webSearchRight <= layout.submitLeft, 'web-search button should not overlap the submit button');
+    assert.ok(layout.submitTop <= layout.micBottom, 'submit button should stay on the first row');
+    assert.ok(layout.activeDocumentRight <= layout.imageGenerationLeft, 'document button should sit before image on the second row');
+    assert.ok(layout.imageGenerationRight <= layout.adobeLeft, 'image button should sit before Adobe on the second row');
+    assert.ok(layout.adobeTop >= layout.activeDocumentTop - 1, 'Adobe button should stay on the second row');
     assert.ok(layout.submitRight <= layout.actionsRight + 1, 'submit should stay inside action row');
     assert.ok(layout.askLeft >= 0 && layout.askRight <= layout.viewportWidth, 'composer should stay inside the viewport');
   });

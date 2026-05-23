@@ -1,10 +1,10 @@
 # FridaDev - jobs divers produit - TODO
 
-Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif et cloture provisoirement sous surveillance apres validation live navigateur 99 s; objet 4 repertoires de travail fermes par defaut livre
+Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif et cloture provisoirement sous surveillance apres validation live navigateur 99 s; objet 4 repertoires de travail fermes par defaut livre; objet 5 composer actions en grille droite livre
 Date de creation: 2026-05-22
 Classement: `app/docs/todo-todo/product/`
 Nature: TODO source-of-truth pour jobs produit courts et bornes, docs-only au moment de creation
-Portee: LLM principal OpenRouter `openai/gpt-5.1`, runtime settings, admin, controle chat, payload, observabilite, UI de streaming visuel, dictee Whisper locale longue, polish UI des repertoires de travail
+Portee: LLM principal OpenRouter `openai/gpt-5.1`, runtime settings, admin, controle chat, payload, observabilite, UI de streaming visuel, dictee Whisper locale longue, polish UI des repertoires de travail, ergonomie du composer de chat
 Hors-scope du commit de creation: runtime, DB, migration, frontend, backend, tests applicatifs, changement de modele, rebuild
 
 ## 1. Intention
@@ -20,12 +20,14 @@ Il a d'abord ouvert trois objets distincts mais proches dans l'experience de con
 Depuis le renommage du 2026-05-23, il sert aussi de TODO general pour petits jobs produit explicites:
 
 4. fermer les repertoires de travail par defaut au chargement initial, sans casser l'ouverture manuelle ni l'etat actif des conversations/fichiers.
+5. ranger les actions du composer en grille compacte a droite de la zone de saisie, avec le bouton envoyer prioritaire.
 
 Le premier objet controle le niveau de raisonnement demande au modele principal. Le second objet rend la generation visible progressivement dans l'interface, quand le backend streame deja des chunks exploitables.
 Le troisieme objet vise la capture vocale locale: la dictee ne doit pas s'interrompre prematurement au bout de 20 a 40 secondes, et doit rester fiable sur une cible produit d'au moins 2 minutes.
 Le quatrieme objet est un polish UI des repertoires de travail: les dossiers doivent demarrer replies, puis rester ouvrables a la demande pendant la session.
+Le cinquieme objet est un polish UI du composer: les actions ne doivent plus s'etirer en ligne horizontale sous la saisie, mais former un bloc droit compact et stable.
 
-Ces chantiers ne doivent pas etre melanges dans un patch unique de runtime. Ils partagent seulement le fait qu'ils touchent l'experience de conversation. Les objets 1 et 2 sont livres; l'objet 3 est clos provisoirement sous surveillance; l'objet 4 est livre comme petit lot UI/docs.
+Ces chantiers ne doivent pas etre melanges dans un patch unique de runtime. Ils partagent seulement le fait qu'ils touchent l'experience de conversation. Les objets 1 et 2 sont livres; l'objet 3 est clos provisoirement sous surveillance; l'objet 4 est livre comme petit lot UI/docs; l'objet 5 est livre comme petit lot ergonomie frontend/docs.
 
 ## 2. Sources consultees avant creation
 
@@ -455,7 +457,46 @@ Objectif: au chargement initial du frontend, afficher les repertoires de travail
 - Ne pas refondre la sidebar, les styles ou les APIs workspace folders.
 - Ne pas toucher au backend, a Memory, Identity, Summary, Biblio/RAG, documents actifs, reasoning, streaming chat ou Whisper.
 
-## 9. Decisions utilisateur a prendre avant implementation
+## 9. Objet 5 - Composer chat: actions compactes a droite
+
+Objectif: reorganiser les boutons du composer de chat pour eviter une rangee horizontale trop longue avec les nouveaux modes, sans changer le comportement des actions existantes.
+
+### Diagnostic lecture - 2026-05-23
+
+- [x] Les boutons du composer etaient rendus dans `.composer-actions` sous la zone de saisie.
+- [x] Avec micro, web, envoyer, piece/document actif, image et Adobe, la rangee devenait trop longue et fragile sur petits ecrans.
+- [x] Les comportements fonctionnels etaient deja portes par les ids existants: `btnMic`, `btnWebSearch`, bouton `submit`, `btnActiveDocument`, `btnImageGeneration`, `btnAdobeMode`.
+- [x] Decision: conserver les memes ids/controleurs et changer seulement la structure/layout frontend.
+
+### Livraison Objet 5 - 2026-05-23
+
+- [x] Ajout d'une ligne de composition `textarea + actions` dans le composer.
+- [x] Actions placees a droite de la zone de saisie.
+- [x] Actions organisees en grille compacte `3 x 2`.
+- [x] Ordre visuel retenu: micro, web, envoyer en premiere ligne; piece/document actif, image, Adobe en seconde ligne.
+- [x] Priorite visuelle du bouton envoyer conservee: bouton plein, en haut a droite de la grille.
+- [x] Layout desktop et mobile borne: grille compacte, textarea conservee a gauche, pas de chevauchement attendu.
+- [x] Contrats fonctionnels inchanges: Whisper, document actif, image, web, Adobe et envoi gardent leurs ids, tooltips/labels et listeners.
+- [x] Adobe actif continue de forcer `web_search=false` dans le payload.
+- [x] Tests navigateur adaptes pour verifier le placement lateral et l'ordre de grille.
+
+### Tests attendus Objet 5
+
+- [x] Desktop: textarea et grille d'actions cote a cote, sans chevauchement.
+- [x] Mobile: grille d'actions lisible, composer dans le viewport, textarea non masquee.
+- [x] Payload normal sans Adobe inchange.
+- [x] Payload Adobe Photoshop/Illustrator inchange.
+- [x] Desactivation Adobe retire les champs Adobe du payload.
+- [x] Web + Adobe: UI claire, web desactive et payload `web_search=false`.
+
+### Hors-scope Objet 5
+
+- Ne pas changer `/api/chat`.
+- Ne pas changer le pipeline Adobe.
+- Ne pas changer web search, Whisper backend, generation image backend, reasoning, Memory, Identity, Summary, Docker ou plateforme.
+- Ne pas ajouter de nouvelle action au composer.
+
+## 10. Decisions utilisateur a prendre avant implementation
 
 - [x] Niveaux exacts de reasoning valides apres relecture finale des docs officielles: `none`, `low`, `medium`, `high`.
 - [x] Valeur par defaut du reasoning FridaDev: `high`.
@@ -471,7 +512,7 @@ Objectif: au chargement initial du frontend, afficher les repertoires de travail
 - [x] Garantie produit attendue en cas d'echec transcription longue: preservation du brouillon texte seulement, ou retry local ephemere de l'audio avec garde-fous privacy explicites. Decision 2026-05-23: preservation du brouillon texte seulement.
 - [x] Niveau de diagnostic live accepte pour le service Whisper aval si la cause reste cote plateforme. Decision 2026-05-23: observabilite content-free actuelle suffisante pour surveillance provisoire; ouvrir un micro-lot Sauron seulement si `recording_duration_ms`, `normalized_duration_s`, `text_chars`, taille blob, `stop_reason` ou latence pointent de nouveau vers l'aval.
 
-## 10. Hors-scope global
+## 11. Hors-scope global
 
 - Ne pas implementer dans le commit de creation de ce TODO.
 - Ne pas modifier runtime, DB, UI ou backend sans lot dedie.
@@ -485,7 +526,7 @@ Objectif: au chargement initial du frontend, afficher les repertoires de travail
 - Ne pas logger d'audio brut ni de transcription sensible pour l'objet 3.
 - Ne pas afficher secret, `.env`, token, DSN, cookie ou header sensible.
 
-## 11. Criteres de cloture
+## 12. Criteres de cloture
 
 Le chantier pourra etre clos seulement si:
 
@@ -506,5 +547,6 @@ Le chantier pourra etre clos seulement si:
 - aucun audio brut ni transcription sensible n'est loggue, exporte ou documente;
 - une validation live bornee est documentee;
 - les repertoires de travail sont replies par defaut au chargement initial et ouvrables manuellement;
+- les actions du composer sont en grille droite compacte `3 x 2`, avec envoyer en haut a droite et sans regression des actions existantes;
 - le renommage en `job-divers-todo.md` est propage aux index et roadmaps actives;
 - le TODO est archive dans `app/docs/todo-done/product/`.

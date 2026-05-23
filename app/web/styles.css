@@ -1190,8 +1190,16 @@ body {
   background: var(--surface);
 }
 
-.ask textarea {
+.composer-input-row {
   grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ask textarea {
   width: 100%;
   resize: none;
   min-height: 44px;
@@ -1217,11 +1225,11 @@ body {
 }
 
 .composer-actions {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 38px);
+  grid-auto-rows: 38px;
+  align-content: center;
+  justify-content: end;
   gap: 7px;
   min-width: 0;
 }
@@ -1558,6 +1566,16 @@ body {
     width: 36px;
     min-width: 36px;
     height: 36px;
+  }
+
+  .composer-input-row {
+    gap: 7px;
+  }
+
+  .composer-actions {
+    grid-template-columns: repeat(3, 36px);
+    grid-auto-rows: 36px;
+    gap: 6px;
   }
 
   .active-documents-bar {

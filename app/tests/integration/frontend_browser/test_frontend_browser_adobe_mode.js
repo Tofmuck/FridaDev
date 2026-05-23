@@ -181,6 +181,10 @@ test('Adobe composer controls stay in bounds on desktop and mobile', async () =>
           message: rect('#message'),
           choices: rect('#adobeProductChoices'),
           actions: rect('.composer-actions'),
+          mic: rect('#btnMic'),
+          webSearch: rect('#btnWebSearch'),
+          activeDocument: rect('#btnActiveDocument'),
+          imageGeneration: rect('#btnImageGeneration'),
           adobe: rect('#btnAdobeMode'),
           submit: rect('#ask button[type="submit"]'),
         };
@@ -190,11 +194,19 @@ test('Adobe composer controls stay in bounds on desktop and mobile', async () =>
       assert.ok(layout.ask.right <= layout.viewportWidth + 1, `${viewport.name} composer should stay inside right viewport edge`);
       assert.ok(layout.message.left >= layout.ask.left, `${viewport.name} textarea should stay inside composer`);
       assert.ok(layout.message.right <= layout.ask.right + 1, `${viewport.name} textarea should stay inside composer`);
-      assert.ok(layout.message.bottom <= layout.actions.top + 1, `${viewport.name} action row should sit below textarea`);
+      assert.ok(layout.message.right <= layout.actions.left, `${viewport.name} action grid should sit to the right of textarea`);
+      assert.ok(layout.actions.top >= layout.message.top - 1, `${viewport.name} action grid should align with textarea top`);
+      assert.ok(layout.actions.bottom <= layout.message.bottom + 1, `${viewport.name} action grid should stay within textarea height`);
       assert.ok(layout.choices.left >= layout.ask.left, `${viewport.name} Adobe choices should stay inside composer`);
       assert.ok(layout.choices.right <= layout.ask.right + 1, `${viewport.name} Adobe choices should stay inside composer`);
       assert.ok(layout.adobe.left >= layout.actions.left, `${viewport.name} Adobe button should stay inside action row`);
       assert.ok(layout.submit.right <= layout.actions.right + 1, `${viewport.name} submit should stay inside action row`);
+      assert.ok(layout.mic.right <= layout.webSearch.left, `${viewport.name} mic should sit before web on the first row`);
+      assert.ok(layout.webSearch.right <= layout.submit.left, `${viewport.name} web should sit before submit on the first row`);
+      assert.ok(layout.submit.top <= layout.mic.bottom, `${viewport.name} submit should be on the first row`);
+      assert.ok(layout.activeDocument.right <= layout.imageGeneration.left, `${viewport.name} document should sit before image on the second row`);
+      assert.ok(layout.imageGeneration.right <= layout.adobe.left, `${viewport.name} image should sit before Adobe on the second row`);
+      assert.ok(layout.adobe.top >= layout.activeDocument.top - 1, `${viewport.name} Adobe should be on the second row`);
     });
   }
 });
