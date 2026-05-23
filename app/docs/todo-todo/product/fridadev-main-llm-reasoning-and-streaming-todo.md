@@ -1,6 +1,6 @@
 # FridaDev - raisonnement du LLM principal, streaming visuel et dictee longue - TODO
 
-Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif, validation longue live a borner selon etat du service Whisper aval
+Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif et cloture provisoirement sous surveillance apres validation live navigateur 99 s
 Date de creation: 2026-05-22
 Classement: `app/docs/todo-todo/product/`
 Nature: TODO source-of-truth A-Z, docs-only au moment de creation
@@ -333,7 +333,7 @@ La reproduction doit donc separer trois phenomenes au lieu de les fusionner:
 
 ### Livraison Objet 3 - 2026-05-23
 
-Statut: correctif applicatif livre; pas de modification plateforme/Docker ni de changement modele Whisper.
+Statut: correctif applicatif livre; cloture provisoire sous surveillance; pas de modification Docker/ressources ni de changement modele Whisper.
 
 - [x] Plafond client remplace par une limite bornee a `150_000 ms`.
 - [x] Raisons d'arret explicites: `manual`, `auto_limit`, `recorder_error`, `track_ended`, `unknown`.
@@ -346,7 +346,8 @@ Statut: correctif applicatif livre; pas de modification plateforme/Docker ni de 
 - [x] Timeout applicatif Whisper par defaut porte a `180 s`.
 - [x] Brouillon texte existant preserve en cas d'erreur recorder, upstream ou timeout.
 - [x] Tests frontend/backend ajoutes pour limite 150 s, raison d'arret, brouillon preserve, gros blob simule et logs content-free.
-- [ ] Validation live longue avec service Whisper aval: a documenter selon disponibilite effective du conteneur `platform-whisper-api`; si OOM/`exit code -9` reapparait, ouvrir un micro-lot Sauron.
+- [x] Validation live longue 2026-05-23 avec service Whisper aval: test navigateur reel d'environ `99,4 s`, transcription HTTP 200, pas de troncature visible cote utilisateur, aucune perte detectee cote capture/upload/normalisation/transcription/UI sur cet essai.
+- [x] Observabilite conservee en surveillance: si une troncature reapparait, repartir des metadonnees content-free `recording_duration_ms`, `normalized_duration_s`, `text_chars`, `stop_reason`, taille blob et latence transcription.
 
 ### Lot 0 - Reproduction et observabilite content-free
 
@@ -399,7 +400,7 @@ Statut: correctif applicatif livre; pas de modification plateforme/Docker ni de 
 - [x] Tests frontend: pas d'auto-stop avant 120 s, auto-stop borne si limite atteinte, arret volontaire, erreur recorder, piste terminee, brouillon texte existant preserve.
 - [x] Tests endpoint/service: timeout, erreur upstream, fichier vide, upload long synthetique recu complet, fichier long synthetique transcrit si possible.
 - [x] Test integration contrat frontend: bouton micro, endpoint, input_mode voice inchanges.
-- [ ] Validation navigateur: dictee courte toujours OK, dictee longue cible 2 minutes OK, arret volontaire OK, erreur aval lisible.
+- [x] Validation navigateur provisoire: dictee longue reelle `99,4 s` OK, arret volontaire `manual` OK, transcription retournee sans troncature visible; cible produit 2 minutes gardee sous surveillance.
 - [x] Definir et verifier l'absence de perte: le brouillon texte existant n'est jamais efface; une transcription reussie est ajoutee une seule fois; si une transcription longue echoue, l'UI explique l'echec sans inventer ni effacer de texte.
 - [x] Si le produit exige de ne pas perdre l'audio dicte en cas d'echec transcription, ouvrir une decision separee sur retry local ephemere, duree de conservation, consentement utilisateur et garde-fous privacy avant tout patch.
 - [x] Verifier qu'aucun audio brut ni transcription sensible ne sort dans logs, read-models, exports ou docs.
@@ -411,15 +412,16 @@ Statut: correctif applicatif livre; pas de modification plateforme/Docker ni de 
 - Ne pas brancher une transcription streaming temps reel dans ce lot initial.
 - Ne pas toucher au reasoning, au streaming assistant, au web search, a Memory, Identity, Summary, Biblio/RAG ou documents actifs.
 
-### Critere de cloture Objet 3
+### Critere de cloture provisoire Objet 3
 
-- [ ] Dictee courte toujours OK.
-- [ ] Dictee longue cible 2 minutes OK, avec preuve distincte capture, upload, transcription et reinjection UI.
-- [ ] Arret volontaire OK.
-- [ ] Erreur transcription visible et non silencieuse.
-- [ ] Pas de perte du brouillon texte existant; statut explicite si l'audio dicte ne peut pas etre transcrit.
-- [ ] Pas de log audio brut ni transcription sensible.
-- [ ] Validation live bornee documentee.
+- [x] Blocage certain des `60_000 ms` corrige par limite client bornee a `150_000 ms`.
+- [x] Validation live bornee documentee: test navigateur reel `recording_duration_ms=99407`, blob recu `2728410` octets, `normalized_duration_s=99.365`, HTTP 200, latence environ `30,9 s`, texte retourne `1185` caracteres.
+- [x] Capture, upload, normalisation, transcription et reinjection UI sans perte detectee sur ce test.
+- [x] Arret volontaire OK sur le test live: `stop_reason=manual`.
+- [x] Erreur transcription visible et non silencieuse couverte par tests automatises.
+- [x] Pas de perte du brouillon texte existant; statut explicite si l'audio dicte ne peut pas etre transcrit.
+- [x] Pas de log audio brut ni transcription sensible.
+- [x] Observabilite content-free maintenue pour diagnostic futur: `recording_duration_ms`, `normalized_duration_s`, `text_chars`, `stop_reason`, taille blob et latence transcription.
 
 ## 8. Decisions utilisateur a prendre avant implementation
 
