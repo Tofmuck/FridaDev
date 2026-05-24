@@ -135,6 +135,7 @@ Lire d'abord:
 - `states/audits/fridadev-web-search-phase-9-final-validation-2026-05-22.md` pour la validation finale Phase 9: calibration confiance/evidence, corpus final, cout/latence, rollback et cloture du chantier.
 - `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md` pour comparer SearXNG, Crawl4AI, configuration OVH, pipeline FridaDev et benchmark local/Exa/Parallel avant tout lot runtime.
 - `states/audits/fridadev-web-search-lot8-final-benchmark-2026-05-22.md` pour l'ancien benchmark comparatif Lot 8 et sa decision initiale maintenant supersedee par la policy OpenRouter/Exa.
+- `todo-done/notes/web-pdf-reader-mini-patch-2026-05-24.md` pour le mini-patch PDF web: Crawl4AI ne lit pas les PDF directs, FridaDev intercepte les PDF et utilise un lecteur PDF interne borne, sans OCR ni stockage durable.
 - `todo-done/notes/web-reading-truth-todo.md` pour le contrat archive de lecture URL explicite, `read_state`, `fit` puis `raw` et observabilite content-free.
 - `todo-done/refactors/hermeneutic-suspension-auto-web-todo.md` pour la decision archivee de suspension de l'auto-web lexical.
 - `benchmark/web-search/README.md` pour relancer le benchmark comparatif local / OpenRouter Exa / OpenRouter Parallel.

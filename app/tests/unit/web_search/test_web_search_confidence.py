@@ -348,6 +348,44 @@ class WebSearchConfidenceTests(unittest.TestCase):
         self.assertIn("snippet_only_material", fields["web_confidence_reason_codes"])
         self.assertFalse(fields["openrouter_fallback_used"])
 
+    def test_pdf_text_material_counts_as_readable_web_material(self) -> None:
+        fields = web_search_confidence.evaluate_web_confidence(
+            {
+                "enabled": True,
+                "status": "ok",
+                "explicit_url_detected": False,
+                "results_count": 1,
+                "query_count": 1,
+                "deduped_result_count": 1,
+                "source_material_summary": [
+                    {
+                        "rank": 1,
+                        "url": "https://example.com/report.pdf",
+                        "used_in_prompt": True,
+                        "used_content_kind": "web_pdf_text",
+                        "crawl_status": "success",
+                        "content_chars": 1200,
+                    }
+                ],
+                "crawl4ai_extraction_summary": [
+                    {
+                        "rank": 1,
+                        "url": "https://example.com/report.pdf",
+                        "crawl_status": "success",
+                        "used_content_kind": "web_pdf_text",
+                    }
+                ],
+                "used_content_kinds": ["web_pdf_text"],
+                "injected_chars": 1200,
+                "context_chars": 1500,
+            }
+        )
+
+        self.assertEqual(fields["web_confidence_level"], "high")
+        self.assertIn("readable_web_material_used", fields["web_confidence_reason_codes"])
+        self.assertIn("web_pdf_text_used", fields["web_confidence_reason_codes"])
+        self.assertNotIn("snippet_only_material", fields["web_confidence_reason_codes"])
+
     def test_confidence_output_does_not_echo_raw_query_or_content(self) -> None:
         raw_query = "documentation privée avec détail sensible"
         raw_content = "PASSAGE DOCUMENTAIRE BRUT A NE PAS LOGGUER"

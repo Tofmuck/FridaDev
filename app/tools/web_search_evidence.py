@@ -4,6 +4,7 @@ from typing import Any, Mapping, Sequence
 
 
 POLICY_KIND = 'local_web_evidence_failure_contract_v0'
+READABLE_CONTENT_KINDS = {'crawl_markdown', 'web_pdf_text'}
 
 STATUS_NOT_APPLICABLE = 'not_applicable'
 STATUS_SUFFICIENT = 'sufficient'
@@ -164,7 +165,7 @@ def _search_status(payload: Mapping[str, Any], summary: Mapping[str, Any]) -> tu
     ) > 0
     if used_content_kinds == {'search_snippet'} or (
         _to_int(summary.get('snippet_only_count')) > 0
-        and 'crawl_markdown' not in used_content_kinds
+        and not (used_content_kinds & READABLE_CONTENT_KINDS)
     ):
         reasons.append('snippet_only_material')
     if crawl_empty_or_error:

@@ -33,6 +33,7 @@ from tools import (
     web_search_rerank,
     web_search_searxng_params,
     web_search_discovery,
+    web_pdf_reader,
 )
 
 logger = logging.getLogger("frida.web_search")
@@ -40,6 +41,7 @@ _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
 _URL_TRAILING_PUNCTUATION = '.,;:!?)]}\'"'
 CRAWL4AI_FILTER_FIT = 'fit'
 CRAWL4AI_FILTER_RAW = 'raw'
+WEB_PDF_CONTENT_KIND = 'web_pdf_text'
 
 
 def _sha256_12(value: Any) -> str:
@@ -400,6 +402,39 @@ def _crawl_search_result_with_policy(
     )
 
 
+def _read_web_pdf_as_crawl_result(
+    url: str,
+    *,
+    max_chars: int,
+    probe_content_type: bool,
+) -> dict[str, Any] | None:
+    result = web_pdf_reader.read_pdf_url(
+        url,
+        max_chars=int(max_chars or web_pdf_reader.DEFAULT_MAX_CHARS),
+        probe_content_type=probe_content_type,
+    )
+    if not result.detected:
+        return None
+    crawl_result = result.to_crawl_like_result()
+    crawl_result['crawl_max_chars'] = int(max_chars or web_pdf_reader.DEFAULT_MAX_CHARS)
+    return crawl_result
+
+
+def _web_pdf_source_fields(crawl_result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'web_pdf_read_attempted': bool(crawl_result.get('web_pdf_read_attempted', False)),
+        'web_pdf_read_detected': bool(crawl_result.get('web_pdf_read_detected', False)),
+        'web_pdf_read_status': str(crawl_result.get('web_pdf_read_status') or ''),
+        'web_pdf_read_reason_code': str(crawl_result.get('web_pdf_read_reason_code') or ''),
+        'web_pdf_read_pages': int(crawl_result.get('web_pdf_read_pages') or 0),
+        'web_pdf_read_bytes': int(crawl_result.get('web_pdf_read_bytes') or 0),
+        'web_pdf_read_chars': int(crawl_result.get('web_pdf_read_chars') or 0),
+        'web_pdf_read_elapsed_ms': int(crawl_result.get('web_pdf_read_elapsed_ms') or 0),
+        'web_pdf_read_truncated': bool(crawl_result.get('web_pdf_read_truncated', False)),
+        'web_pdf_read_error_class': str(crawl_result.get('web_pdf_read_error_class') or ''),
+    }
+
+
 def _build_source_payload(
     rank: int,
     result: dict[str, Any],
@@ -436,6 +471,12 @@ def _build_source_payload(
     if rank <= crawl4ai_top_n:
         if preloaded_crawl_results and url in preloaded_crawl_results:
             crawl_result = dict(preloaded_crawl_results[url])
+        elif web_pdf_reader.is_pdf_url_candidate(url):
+            crawl_result = _read_web_pdf_as_crawl_result(
+                url,
+                max_chars=crawl4ai_max_chars,
+                probe_content_type=False,
+            ) or {}
         else:
             if enable_profiled_crawl4ai_policy:
                 policy = web_search_crawl_policy.build_search_result_policy(
@@ -467,7 +508,10 @@ def _build_source_payload(
             max_chars_for_source = int(crawl_result.get('crawl_max_chars') or crawl4ai_max_chars)
             content_used, truncated = _truncate_crawl_markdown(crawled_markdown, max_chars_for_source)
             used_in_prompt = True
-            used_content_kind = 'crawl_markdown'
+            if bool(crawl_result.get('web_pdf_read_attempted', False)):
+                used_content_kind = WEB_PDF_CONTENT_KIND
+            else:
+                used_content_kind = 'crawl_markdown'
         elif search_snippet:
             content_used, truncated = _truncate_search_snippet(search_snippet)
             used_in_prompt = True
@@ -511,6 +555,7 @@ def _build_source_payload(
         'crawl_fallback_status': str(crawl_result.get('crawl_fallback_status') or ''),
         'crawl_markdown_chars': int(crawl_result.get('crawl_markdown_chars') or len(str(crawl_result.get('markdown') or ''))),
         'crawl_max_chars': int(crawl_result.get('crawl_max_chars') or crawl4ai_max_chars or 0),
+        **_web_pdf_source_fields(crawl_result),
         'query_source_kind': query_source_kind,
         'query_source_index': query_source_index,
         'query_source_sha256_12': query_source_sha256_12,
@@ -584,6 +629,54 @@ def _build_crawl4ai_extraction_summary(sources: list[dict[str, Any]] | None) -> 
     return summary
 
 
+def _build_web_pdf_read_summary(sources: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    summary: list[dict[str, Any]] = []
+    for source in sources or []:
+        if not bool(source.get('web_pdf_read_attempted', False)):
+            continue
+        try:
+            rank = int(source.get('rank') or 0)
+        except (TypeError, ValueError):
+            rank = 0
+        summary.append(
+            {
+                'rank': rank,
+                'url': str(source.get('url') or ''),
+                'source_origin': str(source.get('source_origin') or 'search_result'),
+                'is_primary_source': bool(source.get('is_primary_source', False)),
+                'web_pdf_read_status': str(source.get('web_pdf_read_status') or ''),
+                'web_pdf_read_reason_code': str(source.get('web_pdf_read_reason_code') or ''),
+                'web_pdf_read_pages': int(source.get('web_pdf_read_pages') or 0),
+                'web_pdf_read_bytes': int(source.get('web_pdf_read_bytes') or 0),
+                'web_pdf_read_chars': int(source.get('web_pdf_read_chars') or 0),
+                'web_pdf_read_elapsed_ms': int(source.get('web_pdf_read_elapsed_ms') or 0),
+                'web_pdf_read_truncated': bool(source.get('web_pdf_read_truncated', False)),
+                'used_in_prompt': bool(source.get('used_in_prompt', False)),
+                'used_content_kind': str(source.get('used_content_kind') or 'none'),
+            }
+        )
+    return summary
+
+
+def _count_web_pdf_statuses(web_pdf_summary: list[dict[str, Any]] | None) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in web_pdf_summary or []:
+        status = str(item.get('web_pdf_read_status') or '').strip()
+        if not status:
+            continue
+        counts[status] = counts.get(status, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _web_pdf_reason_codes(web_pdf_summary: list[dict[str, Any]] | None) -> list[str]:
+    codes: list[str] = []
+    for item in web_pdf_summary or []:
+        code = str(item.get('web_pdf_read_reason_code') or '').strip()
+        if code and code not in codes:
+            codes.append(code)
+    return codes
+
+
 def _derive_used_content_kinds(source_material_summary: list[dict[str, Any]] | None) -> list[str]:
     kinds: list[str] = []
     for source in source_material_summary or []:
@@ -642,8 +735,13 @@ def _crawl4ai_query_hashes(crawl4ai_extraction_summary: list[dict[str, Any]] | N
 def _augment_payload_observability(payload: dict[str, Any]) -> dict[str, Any]:
     source_material_summary = _build_source_material_summary(list(payload.get('sources') or []))
     crawl4ai_extraction_summary = _build_crawl4ai_extraction_summary(list(payload.get('sources') or []))
+    web_pdf_read_summary = _build_web_pdf_read_summary(list(payload.get('sources') or []))
     payload['source_material_summary'] = source_material_summary
     payload['crawl4ai_extraction_summary'] = crawl4ai_extraction_summary
+    payload['web_pdf_read_summary'] = web_pdf_read_summary
+    payload['web_pdf_read_attempted_count'] = len(web_pdf_read_summary)
+    payload['web_pdf_read_status_counts'] = _count_web_pdf_statuses(web_pdf_read_summary)
+    payload['web_pdf_read_reason_codes'] = _web_pdf_reason_codes(web_pdf_read_summary)
     payload['crawl4ai_policy_kinds'] = _crawl4ai_policy_kinds(crawl4ai_extraction_summary)
     payload['crawl4ai_filter_counts'] = _count_crawl4ai_extraction_field(crawl4ai_extraction_summary, 'crawl_filter')
     payload['crawl4ai_cache_modes'] = _count_crawl4ai_extraction_field(crawl4ai_extraction_summary, 'crawl_cache_mode')
@@ -1101,6 +1199,7 @@ def _build_explicit_url_context_material(
     today = _web_temporal_label(now_iso=now_iso)
     content_used, truncated = _truncate_crawl_markdown(crawled_markdown, crawl4ai_max_chars)
     crawl_payload = dict(crawl_result or {})
+    is_pdf_read = bool(crawl_payload.get('web_pdf_read_attempted', False))
     source = {
         'rank': 1,
         'title': 'URL explicite utilisateur',
@@ -1108,7 +1207,7 @@ def _build_explicit_url_context_material(
         'source_domain': _source_domain(url),
         'search_snippet': '',
         'used_in_prompt': True,
-        'used_content_kind': 'crawl_markdown',
+        'used_content_kind': WEB_PDF_CONTENT_KIND if is_pdf_read else 'crawl_markdown',
         'content_used': content_used,
         'truncated': truncated,
         'source_origin': 'explicit_url',
@@ -1131,11 +1230,17 @@ def _build_explicit_url_context_material(
         'crawl_fallback_status': str(crawl_payload.get('crawl_fallback_status') or ''),
         'crawl_markdown_chars': len(str(crawled_markdown or '')),
         'crawl_max_chars': crawl4ai_max_chars,
+        **_web_pdf_source_fields(crawl_payload),
     }
+    read_success_line = (
+        "Lecture directe PDF prioritaire reussie sur cette URL."
+        if is_pdf_read
+        else "Lecture directe prioritaire reussie sur cette URL."
+    )
     lines = [
         f"[RECHERCHE WEB — {today}]",
         f"URL explicite fournie par l'utilisateur : {url}",
-        "Lecture directe prioritaire reussie sur cette URL.",
+        read_success_line,
         "",
         f"--- Source {source['rank']} : {source['title']}",
         f"URL : {source['url']}",
@@ -1567,6 +1672,10 @@ def _emit_web_search_runtime_event(
     context_chars: int | None = None,
     source_material_summary: list[dict[str, Any]] | None = None,
     crawl4ai_extraction_summary: list[dict[str, Any]] | None = None,
+    web_pdf_read_summary: list[dict[str, Any]] | None = None,
+    web_pdf_read_attempted_count: int | None = None,
+    web_pdf_read_status_counts: dict[str, int] | None = None,
+    web_pdf_read_reason_codes: list[str] | None = None,
     crawl4ai_policy_kinds: list[str] | None = None,
     crawl4ai_filter_counts: dict[str, int] | None = None,
     crawl4ai_cache_modes: dict[str, int] | None = None,
@@ -1600,6 +1709,14 @@ def _emit_web_search_runtime_event(
         source_material_summary = _build_source_material_summary(list(sources or []))
     if crawl4ai_extraction_summary is None:
         crawl4ai_extraction_summary = _build_crawl4ai_extraction_summary(list(sources or []))
+    if web_pdf_read_summary is None:
+        web_pdf_read_summary = _build_web_pdf_read_summary(list(sources or []))
+    if web_pdf_read_attempted_count is None:
+        web_pdf_read_attempted_count = len(web_pdf_read_summary)
+    if web_pdf_read_status_counts is None:
+        web_pdf_read_status_counts = _count_web_pdf_statuses(web_pdf_read_summary)
+    if web_pdf_read_reason_codes is None:
+        web_pdf_read_reason_codes = _web_pdf_reason_codes(web_pdf_read_summary)
     if crawl4ai_policy_kinds is None:
         crawl4ai_policy_kinds = _crawl4ai_policy_kinds(crawl4ai_extraction_summary)
     if crawl4ai_filter_counts is None:
@@ -1688,6 +1805,10 @@ def _emit_web_search_runtime_event(
         'context_chars': int(context_chars or 0),
         'source_material_summary': list(source_material_summary or []),
         'crawl4ai_extraction_summary': list(crawl4ai_extraction_summary or []),
+        'web_pdf_read_summary': list(web_pdf_read_summary or []),
+        'web_pdf_read_attempted_count': int(web_pdf_read_attempted_count or 0),
+        'web_pdf_read_status_counts': dict(web_pdf_read_status_counts or {}),
+        'web_pdf_read_reason_codes': list(web_pdf_read_reason_codes or []),
         'crawl4ai_policy_kinds': list(crawl4ai_policy_kinds or []),
         'crawl4ai_filter_counts': dict(crawl4ai_filter_counts or {}),
         'crawl4ai_cache_modes': dict(crawl4ai_cache_modes or {}),
@@ -1768,7 +1889,15 @@ def _build_payload_from_collection(
             search_profile=search_profile,
             discovery_provider=discovery_provider,
         )
-        primary_crawl = _crawl_explicit_url_primary_with_status(explicit_url)
+        primary_crawl = None
+        if web_pdf_reader.is_pdf_url_candidate(explicit_url):
+            primary_crawl = _read_web_pdf_as_crawl_result(
+                explicit_url,
+                max_chars=_explicit_url_max_chars(_runtime_collection_settings()),
+                probe_content_type=True,
+            )
+        if primary_crawl is None:
+            primary_crawl = _crawl_explicit_url_primary_with_status(explicit_url)
         primary_read_status = str(primary_crawl.get('status') or 'error')
         primary_read_filter = str(primary_crawl.get('filter') or CRAWL4AI_FILTER_FIT)
         primary_read_raw_fallback_used = bool(primary_crawl.get('raw_fallback_used', False))
@@ -2029,6 +2158,10 @@ def build_context_payload(
             context_chars=int(payload.get('context_chars') or 0),
             source_material_summary=list(payload.get('source_material_summary') or []),
             crawl4ai_extraction_summary=list(payload.get('crawl4ai_extraction_summary') or []),
+            web_pdf_read_summary=list(payload.get('web_pdf_read_summary') or []),
+            web_pdf_read_attempted_count=int(payload.get('web_pdf_read_attempted_count') or 0),
+            web_pdf_read_status_counts=dict(payload.get('web_pdf_read_status_counts') or {}),
+            web_pdf_read_reason_codes=list(payload.get('web_pdf_read_reason_codes') or []),
             crawl4ai_policy_kinds=list(payload.get('crawl4ai_policy_kinds') or []),
             crawl4ai_filter_counts=dict(payload.get('crawl4ai_filter_counts') or {}),
             crawl4ai_cache_modes=dict(payload.get('crawl4ai_cache_modes') or {}),
@@ -2137,6 +2270,10 @@ def build_context_payload(
             context_chars=int(error_payload.get('context_chars') or 0),
             source_material_summary=list(error_payload.get('source_material_summary') or []),
             crawl4ai_extraction_summary=list(error_payload.get('crawl4ai_extraction_summary') or []),
+            web_pdf_read_summary=list(error_payload.get('web_pdf_read_summary') or []),
+            web_pdf_read_attempted_count=int(error_payload.get('web_pdf_read_attempted_count') or 0),
+            web_pdf_read_status_counts=dict(error_payload.get('web_pdf_read_status_counts') or {}),
+            web_pdf_read_reason_codes=list(error_payload.get('web_pdf_read_reason_codes') or []),
             crawl4ai_policy_kinds=list(error_payload.get('crawl4ai_policy_kinds') or []),
             crawl4ai_filter_counts=dict(error_payload.get('crawl4ai_filter_counts') or {}),
             crawl4ai_cache_modes=dict(error_payload.get('crawl4ai_cache_modes') or {}),

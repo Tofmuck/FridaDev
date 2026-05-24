@@ -95,6 +95,30 @@ class WebSearchEvidenceTests(unittest.TestCase):
         self.assertIn("snippet_only_material", fields["web_evidence_reason_codes"])
         self.assertTrue(fields["web_evidence_requires_caveat"])
 
+    def test_pdf_text_material_counts_as_read_web_material(self) -> None:
+        fields = web_search_evidence.evaluate_web_evidence(
+            {
+                "enabled": True,
+                "status": "ok",
+                "results_count": 1,
+                "source_material_summary": [
+                    {
+                        "rank": 1,
+                        "url": "https://example.com/report.pdf",
+                        "used_in_prompt": True,
+                        "used_content_kind": "web_pdf_text",
+                        "crawl_status": "success",
+                        "content_chars": 900,
+                    },
+                ],
+                "used_content_kinds": ["web_pdf_text"],
+                "injected_chars": 900,
+            }
+        )
+
+        self.assertEqual(fields["web_evidence_status"], "sufficient")
+        self.assertNotIn("snippet_only_material", fields["web_evidence_reason_codes"])
+
     def test_profile_expected_source_missing_is_partial_evidence(self) -> None:
         fields = web_search_evidence.evaluate_web_evidence(
             {

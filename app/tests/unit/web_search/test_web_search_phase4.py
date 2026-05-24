@@ -413,6 +413,130 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertFalse(payload['openrouter_fallback_used'])
         self.assertIn('URL explicite fournie par l\'utilisateur', payload['context_block'])
 
+    def test_build_context_payload_reads_explicit_pdf_without_crawl4ai(self) -> None:
+        url = 'https://example.com/report.pdf'
+        original_runtime_services_value = web_search._runtime_services_value
+        original_read_pdf_url = web_search.web_pdf_reader.read_pdf_url
+        original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 2,
+            'crawl4ai_max_chars': 400,
+            'crawl4ai_explicit_url_max_chars': 400,
+        }[field]
+
+        def fake_read_pdf_url(input_url: str, **kwargs):
+            self.assertEqual(input_url, url)
+            self.assertTrue(kwargs['probe_content_type'])
+            return web_search.web_pdf_reader.WebPdfReadResult(
+                url=input_url,
+                status='success',
+                reason_code='web_pdf_read_success',
+                attempted=True,
+                detected=True,
+                media_type='application/pdf',
+                text='texte pdf lu directement',
+                bytes_read=1234,
+                pages=2,
+                chars=len('texte pdf lu directement'),
+                elapsed_ms=17,
+            )
+
+        web_search.web_pdf_reader.read_pdf_url = fake_read_pdf_url
+        web_search._crawl_markdown_with_status = lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError('PDF direct should not be sent to Crawl4AI')
+        )
+        web_search.reformulate = lambda _msg: (_ for _ in ()).throw(
+            AssertionError('generic search should not run when explicit PDF succeeds')
+        )
+        web_search.search = lambda _query: (_ for _ in ()).throw(
+            AssertionError('search should not run when explicit PDF succeeds')
+        )
+        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        try:
+            payload = web_search.build_context_payload(f'Lis ce PDF : {url}')
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search.web_pdf_reader.read_pdf_url = original_read_pdf_url
+            web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(payload['collection_path'], 'explicit_url_direct')
+        self.assertEqual(payload['read_state'], 'page_read')
+        self.assertEqual(payload['primary_read_status'], 'success')
+        self.assertEqual(payload['primary_read_filter'], 'pdf')
+        self.assertEqual(payload['used_content_kinds'], ['web_pdf_text'])
+        self.assertEqual(payload['sources'][0]['used_content_kind'], 'web_pdf_text')
+        self.assertEqual(payload['sources'][0]['crawl_policy_kind'], 'web_pdf_reader')
+        self.assertEqual(payload['sources'][0]['web_pdf_read_status'], 'success')
+        self.assertEqual(payload['web_pdf_read_attempted_count'], 1)
+        self.assertEqual(payload['web_pdf_read_status_counts'], {'success': 1})
+        self.assertEqual(payload['web_pdf_read_summary'][0]['web_pdf_read_pages'], 2)
+        self.assertIn('web_pdf_text_used', payload['web_confidence_reason_codes'])
+        self.assertEqual(payload['web_evidence_status'], 'sufficient')
+        self.assertIn('Lecture directe PDF prioritaire reussie', payload['context_block'])
+
+    def test_build_context_payload_keeps_html_explicit_url_on_crawl4ai_path(self) -> None:
+        url = 'https://example.com/article.html'
+        observed_calls: list[tuple[str, str]] = []
+        original_runtime_services_value = web_search._runtime_services_value
+        original_read_pdf_url = web_search.web_pdf_reader.read_pdf_url
+        original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 2,
+            'crawl4ai_max_chars': 400,
+        }[field]
+        web_search.web_pdf_reader.read_pdf_url = lambda input_url, **_kwargs: web_search.web_pdf_reader.WebPdfReadResult(
+            url=input_url,
+            status='skipped',
+            reason_code='web_pdf_not_detected',
+            attempted=False,
+            detected=False,
+        )
+
+        def fake_crawl_markdown_with_status(input_url: str, *, filter_type: str = 'fit', query: str | None = None):
+            observed_calls.append((filter_type, input_url))
+            return {
+                'status': 'success',
+                'markdown': 'contenu html lu par crawl4ai',
+                'error_class': None,
+                'filter': filter_type,
+            }
+
+        web_search._crawl_markdown_with_status = fake_crawl_markdown_with_status
+        web_search.reformulate = lambda _msg: (_ for _ in ()).throw(
+            AssertionError('generic search should not run when explicit HTML crawl succeeds')
+        )
+        web_search.search = lambda _query: (_ for _ in ()).throw(
+            AssertionError('search should not run when explicit HTML crawl succeeds')
+        )
+        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        try:
+            payload = web_search.build_context_payload(f'Lis cette page : {url}')
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search.web_pdf_reader.read_pdf_url = original_read_pdf_url
+            web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(observed_calls, [('fit', url)])
+        self.assertEqual(payload['primary_read_filter'], 'fit')
+        self.assertEqual(payload['used_content_kinds'], ['crawl_markdown'])
+        self.assertEqual(payload['web_pdf_read_attempted_count'], 0)
+
     def test_build_context_payload_marks_explicit_url_as_partially_read_when_direct_content_is_truncated(self) -> None:
         url = 'https://example.com/article'
         original_runtime_services_value = web_search._runtime_services_value
@@ -888,6 +1012,80 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['sources'][0]['used_content_kind'], 'none')
         self.assertEqual(payload['used_content_kinds'], [])
         self.assertEqual(payload['injected_chars'], 0)
+
+    def test_build_context_payload_search_result_pdf_contributes_without_crawl4ai(self) -> None:
+        observed_calls: list[tuple[str, str]] = []
+        original_runtime_services_value = web_search._runtime_services_value
+        original_read_pdf_url = web_search.web_pdf_reader.read_pdf_url
+        original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        pdf_url = 'https://example.com/report.pdf'
+        html_url = 'https://example.com/article'
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 2,
+            'crawl4ai_max_chars': 500,
+        }[field]
+        web_search.reformulate = lambda _msg: 'requete pdf'
+        web_search.search = lambda _query: [
+            {'title': 'Rapport PDF', 'url': pdf_url, 'content': 'snippet pdf'},
+            {'title': 'Page HTML', 'url': html_url, 'content': 'snippet html'},
+        ]
+
+        def fake_read_pdf_url(input_url: str, **kwargs):
+            self.assertEqual(input_url, pdf_url)
+            self.assertFalse(kwargs['probe_content_type'])
+            return web_search.web_pdf_reader.WebPdfReadResult(
+                url=input_url,
+                status='success',
+                reason_code='web_pdf_read_success',
+                attempted=True,
+                detected=True,
+                media_type='application/pdf',
+                text='texte pdf resultat recherche',
+                bytes_read=2048,
+                pages=1,
+                chars=len('texte pdf resultat recherche'),
+                elapsed_ms=11,
+            )
+
+        def fake_crawl_markdown_with_status(input_url: str, *, filter_type: str = 'fit', query: str | None = None):
+            observed_calls.append((filter_type, input_url))
+            return {
+                'status': 'success',
+                'markdown': 'texte html crawl',
+                'error_class': None,
+                'filter': filter_type,
+            }
+
+        web_search.web_pdf_reader.read_pdf_url = fake_read_pdf_url
+        web_search._crawl_markdown_with_status = fake_crawl_markdown_with_status
+        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        try:
+            payload = web_search.build_context_payload('Cherche le rapport PDF')
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search.web_pdf_reader.read_pdf_url = original_read_pdf_url
+            web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(observed_calls, [('fit', html_url)])
+        self.assertIsNone(payload['read_state'])
+        self.assertEqual(payload['sources'][0]['url'], pdf_url)
+        self.assertEqual(payload['sources'][0]['used_content_kind'], 'web_pdf_text')
+        self.assertEqual(payload['sources'][0]['crawl_filter'], 'pdf')
+        self.assertEqual(payload['sources'][0]['web_pdf_read_status'], 'success')
+        self.assertEqual(payload['sources'][1]['used_content_kind'], 'crawl_markdown')
+        self.assertEqual(payload['used_content_kinds'], ['web_pdf_text', 'crawl_markdown'])
+        self.assertEqual(payload['web_pdf_read_attempted_count'], 1)
+        self.assertEqual(payload['web_pdf_read_reason_codes'], ['web_pdf_read_success'])
+        self.assertIn('web_pdf_text_used', payload['web_confidence_reason_codes'])
+        self.assertIn('texte pdf resultat recherche', payload['context_block'])
 
     def test_build_context_payload_search_only_uses_profiled_bm25_without_raw_fallback(self) -> None:
         observed_calls: list[tuple[str, str, str | None]] = []

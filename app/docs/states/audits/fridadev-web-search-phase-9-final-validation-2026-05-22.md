@@ -136,7 +136,8 @@ Raisons:
 
 Limites connues non bloquantes:
 
-- Crawl4AI reste fragile sur certaines pages institutionnelles/PDF;
+- Crawl4AI reste fragile sur certaines pages institutionnelles;
+- depuis le mini-patch du 2026-05-24, les URLs PDF directes clairement detectees ne passent plus par Crawl4AI: FridaDev tente un lecteur PDF interne borne, sans OCR ni stockage durable;
 - plusieurs cas doivent etre repondus avec caveat, ce qui est conforme au contrat Phase 7;
 - la latence CRISPR/PubMed depasse la cible normale et appelle un futur reglage de budget/crawl si ce cas devient frequent;
 - Exa reste un provider externe de decouverte et doit rester observable, pas naturalise comme verite.

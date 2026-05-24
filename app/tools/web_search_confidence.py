@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 
 POLICY_KIND = 'local_web_confidence_observable_v0'
+READABLE_CONTENT_KINDS = {'crawl_markdown', 'web_pdf_text'}
 FALLBACK_DISABLED_REASON = 'external_fallback_disabled_lot7'
 FALLBACK_STATE_FUTURE_ONLY = 'future_only'
 FALLBACK_STATE_HUMAN_REVIEW_CANDIDATE = 'human_review_candidate'
@@ -167,8 +168,12 @@ def _score_explicit_url(summary: Mapping[str, Any]) -> tuple[float, list[str]]:
     else:
         reasons.append('explicit_url_read_state_missing')
         score = 0.2
+    if used_content_kinds & READABLE_CONTENT_KINDS:
+        reasons.append('readable_web_material_used')
     if 'crawl_markdown' in used_content_kinds:
         reasons.append('crawl_markdown_used')
+    if 'web_pdf_text' in used_content_kinds:
+        reasons.append('web_pdf_text_used')
     if 'search_snippet' in used_content_kinds:
         reasons.append('snippet_material_used')
     if int(summary.get('crawl4ai_fallback_used_count') or 0) > 0:
@@ -195,9 +200,13 @@ def _score_search(summary: Mapping[str, Any]) -> tuple[float, list[str]]:
     if crawl_success_count > 0:
         score += 0.22
         reasons.append('crawl_success_present')
-    if 'crawl_markdown' in used_content_kinds:
+    if used_content_kinds & READABLE_CONTENT_KINDS:
         score += 0.18
+        reasons.append('readable_web_material_used')
+    if 'crawl_markdown' in used_content_kinds:
         reasons.append('crawl_markdown_used')
+    if 'web_pdf_text' in used_content_kinds:
+        reasons.append('web_pdf_text_used')
 
     if injected_chars >= 800:
         score += 0.12
@@ -224,7 +233,7 @@ def _score_search(summary: Mapping[str, Any]) -> tuple[float, list[str]]:
 
     snippet_only = used_content_kinds == {'search_snippet'} or (
         int(summary.get('snippet_only_count') or 0) > 0
-        and 'crawl_markdown' not in used_content_kinds
+        and not (used_content_kinds & READABLE_CONTENT_KINDS)
     )
     if snippet_only:
         score = min(score, 0.45)
