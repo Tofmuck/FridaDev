@@ -113,12 +113,14 @@ async function copyTextToClipboard(text, { navigatorObj, documentObj } = {}) {
 }
 
 function createCopyButton({ getText, copyText = copyTextToClipboard } = {}) {
+  const copyIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  const checkIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'msg-copy';
   button.title = 'Copier cette bulle';
   button.setAttribute('aria-label', 'Copier cette bulle');
-  button.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  button.innerHTML = copyIcon;
   button.addEventListener('click', async (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -127,13 +129,16 @@ function createCopyButton({ getText, copyText = copyTextToClipboard } = {}) {
       const copied = await copyText(String(text || ''));
       button.dataset.copied = copied ? 'true' : 'false';
       button.title = copied ? 'Copié' : 'Copie indisponible';
+      button.innerHTML = copied ? checkIcon : copyIcon;
       window.setTimeout(() => {
         delete button.dataset.copied;
         button.title = 'Copier cette bulle';
+        button.innerHTML = copyIcon;
       }, 1300);
     } catch {
       button.dataset.copied = 'false';
       button.title = 'Copie indisponible';
+      button.innerHTML = copyIcon;
     }
   });
   return button;

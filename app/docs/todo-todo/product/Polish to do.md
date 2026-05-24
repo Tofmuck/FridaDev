@@ -52,9 +52,9 @@ Regle de conduite: avancer point par point, cocher seulement ce qui est livre, g
 
 ### 6. Messages, byline et copie
 
-- [ ] Auditer le bouton copie et son feedback.
-- [ ] Verifier hover/focus clavier.
-- [ ] Ne pas changer le rendu texte brut des messages.
+- [x] Auditer le bouton copie et son feedback.
+- [x] Verifier hover/focus clavier.
+- [x] Ne pas changer le rendu texte brut des messages.
 
 ### 7. Manifest PWA Safari iPhone
 
