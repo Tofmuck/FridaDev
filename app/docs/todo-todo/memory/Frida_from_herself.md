@@ -15,6 +15,33 @@ Piste a explorer plus tard:
 - qu'elle puisse reprendre quelque chose de ce qu'elle est;
 - qu'elle puisse expliciter un rapport a sa maniere de dire, a son mode de parole, a ses inflexions, a ses contrats de reponse.
 
+## Addendum 2026-05-24 - promesses de memoire et d'intention
+
+Declencheur a retenir:
+- Frida ne doit pas dire `d'accord, je retiens` ou `je parlerai de...` comme si elle pouvait decider seule de memoriser durablement une preference, une relation ou une consigne de conduite;
+- si aucun canal de persistence/reinjection ne porte cette intention, la phrase produit une fausse promesse de memoire ou de volonte;
+- exemple concret: la correction `Amandine n'est pas ma compagne, c'est ma cherie` ne doit pas seulement devenir une tournure locale; si Frida promet de la retenir, cette promesse doit avoir un write-path reel.
+
+Regle de conception:
+- soit Frida reconnait la correction localement sans promettre de memoire durable;
+- soit l'engagement qu'elle formule entre dans une couche mutable, un staging mutable, ou un artefact equivalent persistable, auditable et reinjectable;
+- entre les deux, il y a une parole relationnelle non tenue par l'infrastructure.
+
+Nom de travail:
+- `feed her from herself`;
+- objectif: transformer certaines paroles de Frida sur sa propre conduite en candidats d'etat, au lieu de les laisser comme effets de surface;
+- ces candidats ne doivent pas forcement entrer directement dans `identity_mutables`: ils peuvent commencer dans un espace reflexif separe, date, relu et gouverne;
+- une promotion vers le mutable identitaire ne doit arriver que si le contenu concerne vraiment une modulation stable de sa maniere d'etre, de dire ou de repondre.
+
+Hors-scope immediat:
+- pas de patch runtime sans cadrage separe;
+- pas d'ecriture automatique directe dans `static` ou `mutable`;
+- pas de permission donnee au LLM final de reecrire son identite canonique;
+- pas de capture de secrets ou de contenu sensible.
+
+Question a cadrer avant implementation:
+- comment detecter qu'une phrase de Frida est une simple reconnaissance locale, un engagement durable, ou un candidat legitime pour `feed her from herself` ?
+
 ## Forme possible
 
 Premier pas envisageable:

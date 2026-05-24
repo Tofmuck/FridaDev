@@ -1,10 +1,10 @@
 # FridaDev - jobs divers produit - TODO
 
-Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif et cloture provisoirement sous surveillance apres validation live navigateur 99 s; objet 4 repertoires de travail fermes par defaut livre; objet 5 composer actions en grille droite livre; objet 6 animation des statuts Whisper livre; objet 7 loader assistant anime livre
+Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif et cloture provisoirement sous surveillance apres validation live navigateur 99 s; objet 4 repertoires de travail fermes par defaut livre; objet 5 composer actions en grille droite livre; objet 6 animation des statuts Whisper livre; objet 7 loader assistant anime livre; objet 8 memoire/intention de Frida ajoute en cadrage docs-only, non lance runtime
 Date de creation: 2026-05-22
 Classement: `app/docs/todo-todo/product/`
 Nature: TODO source-of-truth pour jobs produit courts et bornes, docs-only au moment de creation
-Portee: LLM principal OpenRouter `openai/gpt-5.1`, runtime settings, admin, controle chat, payload, observabilite, UI de streaming visuel, dictee Whisper locale longue, polish UI des repertoires de travail, ergonomie du composer de chat, retour visuel actif de la dictee Whisper, loader assistant anime
+Portee: LLM principal OpenRouter `openai/gpt-5.1`, runtime settings, admin, controle chat, payload, observabilite, UI de streaming visuel, dictee Whisper locale longue, polish UI des repertoires de travail, ergonomie du composer de chat, retour visuel actif de la dictee Whisper, loader assistant anime, cadrage memoire/intention `feed her from herself`
 Hors-scope du commit de creation: runtime, DB, migration, frontend, backend, tests applicatifs, changement de modele, rebuild
 
 ## 1. Intention
@@ -23,6 +23,7 @@ Depuis le renommage du 2026-05-23, il sert aussi de TODO general pour petits job
 5. ranger les actions du composer en grille compacte a droite de la zone de saisie, avec le bouton envoyer prioritaire.
 6. animer discretement les statuts actifs Whisper pendant l'enregistrement et la transcription.
 7. animer le loader assistant avec le meme langage visuel que Whisper.
+8. retenir le chantier memoire/intention `feed her from herself`: Frida ne doit pas promettre de retenir ou de vouloir durablement si aucune couche mutable/persistante/reinjectable ne porte cette promesse.
 
 Le premier objet controle le niveau de raisonnement demande au modele principal. Le second objet rend la generation visible progressivement dans l'interface, quand le backend streame deja des chunks exploitables.
 Le troisieme objet vise la capture vocale locale: la dictee ne doit pas s'interrompre prematurement au bout de 20 a 40 secondes, et doit rester fiable sur une cible produit d'au moins 2 minutes.
@@ -30,8 +31,9 @@ Le quatrieme objet est un polish UI des repertoires de travail: les dossiers doi
 Le cinquieme objet est un polish UI du composer: les actions ne doivent plus s'etirer en ligne horizontale sous la saisie, mais former un bloc droit compact et stable.
 Le sixieme objet est un polish du retour Whisper: les statuts actifs doivent montrer une activite en cours sans bruit visuel ni changement backend.
 Le septieme objet aligne le loader assistant du chat sur ce meme langage visuel, sans changer le protocole streaming.
+Le huitieme objet est seulement un cadrage docs-only: il ne lance pas encore de patch runtime, mais evite de perdre le sujet des fausses promesses de memoire/intention et renvoie au TODO memoire `app/docs/todo-todo/memory/Frida_from_herself.md`.
 
-Ces chantiers ne doivent pas etre melanges dans un patch unique de runtime. Ils partagent seulement le fait qu'ils touchent l'experience de conversation. Les objets 1 et 2 sont livres; l'objet 3 est clos provisoirement sous surveillance; l'objet 4 est livre comme petit lot UI/docs; l'objet 5 est livre comme petit lot ergonomie frontend/docs; l'objet 6 est livre comme petit lot frontend/docs; l'objet 7 est livre comme petit lot frontend/docs.
+Ces chantiers ne doivent pas etre melanges dans un patch unique de runtime. Ils partagent seulement le fait qu'ils touchent l'experience de conversation. Les objets 1 et 2 sont livres; l'objet 3 est clos provisoirement sous surveillance; l'objet 4 est livre comme petit lot UI/docs; l'objet 5 est livre comme petit lot ergonomie frontend/docs; l'objet 6 est livre comme petit lot frontend/docs; l'objet 7 est livre comme petit lot frontend/docs; l'objet 8 reste a cadrer avant toute implementation.
 
 ## 2. Sources consultees avant creation
 
@@ -568,7 +570,30 @@ Objectif: remplacer les points statiques de la bulle assistant d'attente par le 
 - Ne pas changer le backend chat ni le protocole streaming.
 - Ne pas changer reasoning, Whisper backend, Adobe, web search, Memory, Identity, Summary, Docker ou plateforme.
 
-## 12. Decisions utilisateur a prendre avant implementation
+## 12. Objet 8 - Memoire/intention: `feed her from herself`
+
+Objectif: retenir le chantier conceptuel selon lequel Frida ne doit pas produire de fausses promesses de memoire, de volonte ou d'intention durable.
+
+Reference active:
+- `app/docs/todo-todo/memory/Frida_from_herself.md`
+
+### Diagnostic initial - 2026-05-24
+
+- [ ] Distinguer une reconnaissance locale (`la formulation juste est...`) d'un engagement durable (`je retiens`, `je parlerai de...`).
+- [ ] Refuser les formulations ou Frida pretend memoriser durablement sans write-path reel.
+- [ ] Cadrer un module `feed her from herself`: certaines paroles de Frida sur sa propre conduite deviennent des candidats d'etat, et non de simples effets de surface.
+- [ ] Decider si ces candidats passent d'abord par un artefact reflexif separe, un staging mutable ou une extension de l'identity pipeline.
+- [ ] Definir les conditions eventuelles de promotion vers `identity_mutables`, sans confusion avec `static`.
+
+### Hors-scope Objet 8
+
+- Ne pas implementer dans ce TODO.
+- Ne pas ecrire directement dans `static` ou `identity_mutables` sans contrat separe.
+- Ne pas donner au LLM final un pouvoir direct de reecriture identitaire.
+- Ne pas transformer une preference relationnelle locale en verite identitaire sans validation.
+- Ne pas toucher a Docker, Caddy, Authelia, DB, web search, Whisper, Adobe ou frontend dans ce cadrage docs-only.
+
+## 13. Decisions utilisateur a prendre avant implementation
 
 - [x] Niveaux exacts de reasoning valides apres relecture finale des docs officielles: `none`, `low`, `medium`, `high`.
 - [x] Valeur par defaut du reasoning FridaDev: `high`.
@@ -584,7 +609,7 @@ Objectif: remplacer les points statiques de la bulle assistant d'attente par le 
 - [x] Garantie produit attendue en cas d'echec transcription longue: preservation du brouillon texte seulement, ou retry local ephemere de l'audio avec garde-fous privacy explicites. Decision 2026-05-23: preservation du brouillon texte seulement.
 - [x] Niveau de diagnostic live accepte pour le service Whisper aval si la cause reste cote plateforme. Decision 2026-05-23: observabilite content-free actuelle suffisante pour surveillance provisoire; ouvrir un micro-lot Sauron seulement si `recording_duration_ms`, `normalized_duration_s`, `text_chars`, taille blob, `stop_reason` ou latence pointent de nouveau vers l'aval.
 
-## 13. Hors-scope global
+## 14. Hors-scope global
 
 - Ne pas implementer dans le commit de creation de ce TODO.
 - Ne pas modifier runtime, DB, UI ou backend sans lot dedie.
@@ -598,7 +623,7 @@ Objectif: remplacer les points statiques de la bulle assistant d'attente par le 
 - Ne pas logger d'audio brut ni de transcription sensible pour l'objet 3.
 - Ne pas afficher secret, `.env`, token, DSN, cookie ou header sensible.
 
-## 14. Criteres de cloture
+## 15. Criteres de cloture
 
 Le chantier pourra etre clos seulement si:
 
@@ -622,5 +647,6 @@ Le chantier pourra etre clos seulement si:
 - les actions du composer sont en grille droite compacte `3 x 2`, avec envoyer en haut a droite et sans regression des actions existantes;
 - les statuts actifs Whisper affichent une animation sobre et compatible reduced motion sans toucher au backend;
 - le loader assistant du chat utilise la meme animation sobre, disparait au premier contenu visible et reste compatible reduced motion;
+- le chantier `feed her from herself` est soit extrait dans un TODO memoire dedie avec contrat, soit explicitement maintenu hors implementation;
 - le renommage en `job-divers-todo.md` est propage aux index et roadmaps actives;
 - le TODO est archive dans `app/docs/todo-done/product/`.
