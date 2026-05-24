@@ -1,14 +1,21 @@
 # FridaDev - Polish UI chat - TODO
 
-Classement: `app/docs/todo-todo/product/`
-Statut: actif, mini-lots bornes; Lots 1-4 livres le 2026-05-23; Lot 7 runtime PWA pret le 2026-05-24
+Classement: `app/docs/todo-done/product/`
+Statut: termine et archive le 2026-05-24
 Date de creation: 2026-05-23
+Date de cloture: 2026-05-24
 
 ## Intention
 
 Ce TODO regroupe les petits polishs du chat FridaDev. Il ne porte pas un redesign, un changement de theme global ni une refonte des workflows.
 
 Regle de conduite: avancer point par point, cocher seulement ce qui est livre, garder les patches petits, tester le rendu desktop/mobile quand une surface visible change.
+
+## Cloture 2026-05-24
+
+Chantier termine cote utilisateur. Les points de polish identifies sont livres, y compris le point 6 `Messages, byline et copie` et le lot PWA Safari iPhone.
+
+Validation utilisateur 2026-05-24: installation Safari iPhone reussie depuis Safari, icone Frida visible sur le telephone, lancement depuis l'ecran d'accueil OK.
 
 ## Hors-scope
 
@@ -66,7 +73,7 @@ Regle de conduite: avancer point par point, cocher seulement ce qui est livre, g
 
 ## Lot futur - Manifest PWA Safari iPhone
 
-Statut: runtime pret le 2026-05-24; validation Safari iPhone reelle a faire cote utilisateur.
+Statut: livre et valide utilisateur le 2026-05-24.
 
 ### INTENTION
 
@@ -85,9 +92,9 @@ Permettre a l'utilisateur d'installer FridaDev comme petite web app depuis Safar
 - [x] Verifier que le manifeste est servi avec un contenu JSON/WebManifest valide.
 - [x] Verifier que `index.html` reference bien le manifeste et l'icone Apple.
 - [x] Verifier que `fridalogo.png` existe et que les tailles declarees sont coherentes.
-- [ ] Faire une validation manuelle Safari iPhone: ouvrir FridaDev, `Partager`, `Ajouter a l'ecran d'accueil`, lancer l'app installee.
+- [x] Faire une validation manuelle Safari iPhone: ouvrir FridaDev, `Partager`, `Ajouter a l'ecran d'accueil`, lancer l'app installee.
 
-Note 2026-05-24: le runtime est pret pour l'installation Safari iPhone, sans service worker ni cache offline. La validation manuelle sur vrai Safari iPhone reste ouverte.
+Note 2026-05-24: le runtime est pret pour l'installation Safari iPhone, sans service worker ni cache offline. Validation utilisateur recue le 2026-05-24: installation Safari iPhone reussie, icone Frida visible, lancement depuis l'ecran d'accueil OK.
 
 ### RISQUES / REDUCTION
 
