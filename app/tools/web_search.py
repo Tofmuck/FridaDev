@@ -638,10 +638,12 @@ def _build_web_pdf_read_summary(sources: list[dict[str, Any]] | None) -> list[di
             rank = int(source.get('rank') or 0)
         except (TypeError, ValueError):
             rank = 0
+        source_url = str(source.get('url') or '')
         summary.append(
             {
                 'rank': rank,
-                'url': str(source.get('url') or ''),
+                'url_sha256_12': _sha256_12(source_url),
+                'source_domain': _source_domain(source_url) or '',
                 'source_origin': str(source.get('source_origin') or 'search_result'),
                 'is_primary_source': bool(source.get('is_primary_source', False)),
                 'web_pdf_read_status': str(source.get('web_pdf_read_status') or ''),

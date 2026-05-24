@@ -8,11 +8,13 @@ pipeline. It does not OCR, store, index, or cache downloaded files.
 """
 
 import io
+import ipaddress
+import socket
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -38,11 +40,27 @@ REASON_EMPTY_TEXT = "web_pdf_empty_text"
 REASON_EXTRACTION_FAILED = "web_pdf_extraction_failed"
 REASON_READ_SUCCESS = "web_pdf_read_success"
 REASON_READ_TRUNCATED = "web_pdf_read_truncated"
+REASON_URL_BLOCKED_INTERNAL = "web_pdf_url_blocked_internal"
+
+_ALLOWED_SCHEMES = {"http", "https"}
+_BLOCKED_HOSTS = {
+    "localhost",
+    "localhost.localdomain",
+    "host.docker.internal",
+    "gateway.docker.internal",
+}
+_BLOCKED_HOST_SUFFIXES = (
+    ".localhost",
+    ".local",
+    ".internal",
+    ".docker",
+)
+_REDIRECT_STATUSES = {301, 302, 303, 307, 308}
 
 
 @dataclass(frozen=True)
 class WebPdfReadResult:
-    url: str
+    url: str = field(repr=False)
     status: str
     reason_code: str
     attempted: bool
@@ -121,14 +139,37 @@ def read_pdf_url(
             start=start,
         )
 
+    blocked_reason = _blocked_url_reason(normalized_url)
+    if blocked_reason:
+        return _result(
+            normalized_url,
+            status=STATUS_ERROR,
+            reason_code=blocked_reason,
+            attempted=False,
+            detected=False,
+            start=start,
+        )
+
     url_candidate = is_pdf_url_candidate(normalized_url)
     head_media_type = ""
     head_length = 0
+    head_blocked_reason = ""
     if probe_content_type or url_candidate:
-        head_media_type, head_length = _probe_pdf_headers(
+        head_media_type, head_length, head_blocked_reason = _probe_pdf_headers(
             normalized_url,
             requests_module=requests_module,
             timeout_s=timeout_s,
+        )
+    if head_blocked_reason:
+        return _result(
+            normalized_url,
+            status=STATUS_ERROR,
+            reason_code=head_blocked_reason,
+            attempted=True,
+            detected=url_candidate,
+            media_type=head_media_type,
+            bytes_read=head_length,
+            start=start,
         )
 
     detected = url_candidate or _is_pdf_media_type(head_media_type)
@@ -269,18 +310,25 @@ def _probe_pdf_headers(
     *,
     requests_module: Any,
     timeout_s: int,
-) -> tuple[str, int]:
+) -> tuple[str, int, str]:
     head = getattr(requests_module, "head", None)
     if head is None:
-        return "", 0
+        return "", 0, ""
     try:
-        response = head(url, allow_redirects=True, timeout=timeout_s)
+        response = _request_public_url(
+            head,
+            url,
+            timeout_s=timeout_s,
+            max_redirects=3,
+        )
         if hasattr(response, "raise_for_status"):
             response.raise_for_status()
         headers = getattr(response, "headers", {}) or {}
-        return _media_type(headers), _content_length(headers)
+        return _media_type(headers), _content_length(headers), ""
+    except _WebPdfUrlBlocked as exc:
+        return "", 0, exc.reason_code
     except Exception:
-        return "", 0
+        return "", 0, ""
 
 
 def _download_pdf(
@@ -291,10 +339,12 @@ def _download_pdf(
     max_bytes: int,
 ) -> dict[str, Any]:
     try:
-        response = requests_module.get(
+        response = _request_public_url(
+            requests_module.get,
             url,
+            timeout_s=timeout_s,
+            max_redirects=3,
             headers={"Accept": "application/pdf"},
-            timeout=timeout_s,
             stream=True,
         )
         if hasattr(response, "raise_for_status"):
@@ -335,6 +385,13 @@ def _download_pdf(
             "media_type": media_type,
             "bytes_read": total,
             "content": b"".join(chunks),
+        }
+    except _WebPdfUrlBlocked as exc:
+        return {
+            "status": STATUS_ERROR,
+            "reason_code": exc.reason_code,
+            "bytes_read": 0,
+            "error_class": exc.__class__.__name__,
         }
     except Exception as exc:
         return {
@@ -377,6 +434,114 @@ def _content_length(headers: Any) -> int:
         return int(raw or 0)
     except (TypeError, ValueError, AttributeError):
         return 0
+
+
+class _WebPdfUrlBlocked(RuntimeError):
+    def __init__(self, reason_code: str) -> None:
+        super().__init__(reason_code)
+        self.reason_code = reason_code
+
+
+def _request_public_url(
+    request_callable: Any,
+    url: str,
+    *,
+    timeout_s: int,
+    max_redirects: int,
+    **kwargs: Any,
+) -> Any:
+    current_url = str(url or "")
+    redirects_remaining = max(0, int(max_redirects or 0))
+    while True:
+        blocked_reason = _blocked_url_reason(current_url)
+        if blocked_reason:
+            raise _WebPdfUrlBlocked(blocked_reason)
+        response = request_callable(
+            current_url,
+            allow_redirects=False,
+            timeout=timeout_s,
+            **kwargs,
+        )
+        redirect_url = _redirect_url(current_url, response)
+        if not redirect_url:
+            return response
+        if redirects_remaining <= 0:
+            raise requests.TooManyRedirects("web_pdf_redirect_limit")
+        redirects_remaining -= 1
+        current_url = redirect_url
+
+
+def _redirect_url(current_url: str, response: Any) -> str:
+    try:
+        status_code = int(getattr(response, "status_code", 0) or 0)
+    except (TypeError, ValueError):
+        status_code = 0
+    if status_code not in _REDIRECT_STATUSES:
+        return ""
+    headers = getattr(response, "headers", {}) or {}
+    try:
+        location = headers.get("Location") or headers.get("location") or ""
+    except AttributeError:
+        location = ""
+    if not str(location or "").strip():
+        return ""
+    return urljoin(str(current_url or ""), str(location or "").strip())
+
+
+def _blocked_url_reason(url: str) -> str:
+    parsed = urlparse(str(url or "").strip())
+    if parsed.scheme not in _ALLOWED_SCHEMES:
+        return REASON_URL_BLOCKED_INTERNAL
+
+    host = str(parsed.hostname or "").strip().lower().rstrip(".")
+    if not host:
+        return REASON_URL_BLOCKED_INTERNAL
+    if host in _BLOCKED_HOSTS or any(host.endswith(suffix) for suffix in _BLOCKED_HOST_SUFFIXES):
+        return REASON_URL_BLOCKED_INTERNAL
+
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        if "." not in host:
+            return REASON_URL_BLOCKED_INTERNAL
+        return _blocked_hostname_reason(host)
+    return REASON_URL_BLOCKED_INTERNAL if _is_blocked_ip(address) else ""
+
+
+def _blocked_hostname_reason(host: str) -> str:
+    try:
+        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        return ""
+    except Exception:
+        return REASON_URL_BLOCKED_INTERNAL
+    resolved: list[str] = []
+    for info in infos or []:
+        try:
+            resolved.append(str(info[4][0]))
+        except (IndexError, TypeError):
+            continue
+    if not resolved:
+        return REASON_URL_BLOCKED_INTERNAL
+    for value in resolved:
+        try:
+            if _is_blocked_ip(ipaddress.ip_address(value)):
+                return REASON_URL_BLOCKED_INTERNAL
+        except ValueError:
+            return REASON_URL_BLOCKED_INTERNAL
+    return ""
+
+
+def _is_blocked_ip(address: ipaddress._BaseAddress) -> bool:
+    return (
+        address.is_loopback
+        or address.is_private
+        or address.is_link_local
+        or address.is_multicast
+        or address.is_unspecified
+        or address.is_reserved
+        or not address.is_global
+    )
 
 
 def _is_pdf_media_type(media_type: str) -> bool:

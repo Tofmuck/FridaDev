@@ -54,9 +54,16 @@ def _tiny_pdf(text: str = "Frida web PDF reader fixture") -> bytes:
 
 
 class _FakeResponse:
-    def __init__(self, *, headers: dict[str, str] | None = None, content: bytes = b""):
+    def __init__(
+        self,
+        *,
+        headers: dict[str, str] | None = None,
+        content: bytes = b"",
+        status_code: int = 200,
+    ):
         self.headers = headers or {}
         self.content = content
+        self.status_code = status_code
 
     def raise_for_status(self) -> None:
         return None
@@ -64,6 +71,10 @@ class _FakeResponse:
     def iter_content(self, chunk_size: int = 65536):
         for index in range(0, len(self.content), chunk_size):
             yield self.content[index:index + chunk_size]
+
+
+def _public_getaddrinfo(*_args, **_kwargs):
+    return [(None, None, None, "", ("93.184.216.34", 0))]
 
 
 class _FakeRequests:
@@ -119,16 +130,89 @@ class WebPdfReaderTests(unittest.TestCase):
             head=_FakeResponse(headers={"Content-Type": "application/pdf", "Content-Length": "999"}),
             get=_FakeResponse(headers={"Content-Type": "application/pdf"}, content=b""),
         )
+        original_getaddrinfo = web_pdf_reader.socket.getaddrinfo
+        web_pdf_reader.socket.getaddrinfo = _public_getaddrinfo
 
-        result = web_pdf_reader.read_pdf_url(
-            "https://example.com/doc.pdf",
-            requests_module=fake,
-            max_bytes=10,
-        )
+        try:
+            result = web_pdf_reader.read_pdf_url(
+                "https://example.com/doc.pdf",
+                requests_module=fake,
+                max_bytes=10,
+            )
+        finally:
+            web_pdf_reader.socket.getaddrinfo = original_getaddrinfo
 
         self.assertEqual(result.status, "error")
         self.assertEqual(result.reason_code, "web_pdf_too_large")
         self.assertEqual(fake.calls, [("head", "https://example.com/doc.pdf")])
+
+    def test_blocks_internal_urls_before_network_requests(self) -> None:
+        blocked_urls = [
+            "file:///tmp/doc.pdf",
+            "http://localhost/doc.pdf",
+            "http://127.0.0.1/doc.pdf",
+            "http://10.0.0.4/doc.pdf",
+            "http://172.18.0.5/doc.pdf",
+            "http://192.168.1.10/doc.pdf",
+            "http://169.254.169.254/latest/meta-data/doc.pdf",
+            "http://224.0.0.1/doc.pdf",
+            "http://0.0.0.0/doc.pdf",
+            "http://crawl4ai/doc.pdf",
+            "http://service.internal/doc.pdf",
+            "http://host.docker.internal/doc.pdf",
+        ]
+        for url in blocked_urls:
+            with self.subTest(url=url):
+                fake = _FakeRequests(
+                    head=AssertionError("head should not be called"),
+                    get=AssertionError("get should not be called"),
+                )
+                result = web_pdf_reader.read_pdf_url(url, requests_module=fake)
+                self.assertEqual(result.status, "error")
+                self.assertEqual(result.reason_code, "web_pdf_url_blocked_internal")
+                self.assertFalse(result.attempted)
+                self.assertEqual(fake.calls, [])
+
+    def test_blocks_hostname_that_resolves_to_private_address(self) -> None:
+        fake = _FakeRequests(
+            head=AssertionError("head should not be called"),
+            get=AssertionError("get should not be called"),
+        )
+        original_getaddrinfo = web_pdf_reader.socket.getaddrinfo
+        web_pdf_reader.socket.getaddrinfo = lambda *_args, **_kwargs: [
+            (None, None, None, "", ("172.18.0.5", 0))
+        ]
+        try:
+            result = web_pdf_reader.read_pdf_url("https://public-looking.example/doc.pdf", requests_module=fake)
+        finally:
+            web_pdf_reader.socket.getaddrinfo = original_getaddrinfo
+
+        self.assertEqual(result.status, "error")
+        self.assertEqual(result.reason_code, "web_pdf_url_blocked_internal")
+        self.assertFalse(result.attempted)
+        self.assertEqual(fake.calls, [])
+
+    def test_blocks_redirect_to_internal_address(self) -> None:
+        fake = _FakeRequests(
+            head=_FakeResponse(headers={"Content-Type": "application/pdf", "Content-Length": "0"}),
+            get=_FakeResponse(
+                headers={"Location": "http://127.0.0.1/private.pdf"},
+                status_code=302,
+            ),
+        )
+        original_getaddrinfo = web_pdf_reader.socket.getaddrinfo
+        web_pdf_reader.socket.getaddrinfo = _public_getaddrinfo
+        try:
+            result = web_pdf_reader.read_pdf_url(
+                "https://example.com/doc.pdf",
+                requests_module=fake,
+            )
+        finally:
+            web_pdf_reader.socket.getaddrinfo = original_getaddrinfo
+
+        self.assertEqual(result.status, "error")
+        self.assertEqual(result.reason_code, "web_pdf_url_blocked_internal")
+        self.assertEqual(fake.calls, [("head", "https://example.com/doc.pdf"), ("get", "https://example.com/doc.pdf")])
 
     def test_page_limit_is_enforced_before_text_injection(self) -> None:
         original_page_count = web_pdf_reader._pdf_page_count
@@ -191,7 +275,9 @@ class WebPdfReaderTests(unittest.TestCase):
         )
         original_page_count = web_pdf_reader._pdf_page_count
         original_extract = web_pdf_reader.active_document_text_extraction.extract_active_document_text
+        original_getaddrinfo = web_pdf_reader.socket.getaddrinfo
         web_pdf_reader._pdf_page_count = lambda _data: 1
+        web_pdf_reader.socket.getaddrinfo = _public_getaddrinfo
         web_pdf_reader.active_document_text_extraction.extract_active_document_text = lambda *_args, **_kwargs: SimpleNamespace(
             status=web_pdf_reader.active_document_text_extraction.STATUS_COMPLETE,
             text="content type pdf",
@@ -206,6 +292,7 @@ class WebPdfReaderTests(unittest.TestCase):
             )
         finally:
             web_pdf_reader._pdf_page_count = original_page_count
+            web_pdf_reader.socket.getaddrinfo = original_getaddrinfo
             web_pdf_reader.active_document_text_extraction.extract_active_document_text = original_extract
 
         self.assertEqual(result.status, "success")

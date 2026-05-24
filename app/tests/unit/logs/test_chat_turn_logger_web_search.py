@@ -29,12 +29,23 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
         original_reformulate = web_search.reformulate
-        original_search = web_search.search
+        original_run_search_query_plan = web_search._run_search_query_plan
         original_format_context = web_search._format_context
 
         def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
             observed.append(event)
             return True
+
+        def fake_run_search_query_plan(query_plan: dict[str, Any], **kwargs: Any):
+            query = str(kwargs.get('primary_query') or '')
+            if query == 'query none':
+                results: list[dict[str, Any]] = []
+            else:
+                results = [{'title': 'A', 'url': 'https://a.example', 'content': 'x'}]
+            plan = dict(query_plan)
+            plan['raw_result_count'] = len(results)
+            plan['deduped_result_count'] = len(results)
+            return results, plan
 
         log_store.insert_chat_log_event = fake_insert
         try:
@@ -44,7 +55,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
                 web_search_enabled=True,
             )
             web_search.reformulate = lambda _msg: 'query ok'
-            web_search.search = lambda _query: [{'title': 'A', 'url': 'https://a', 'content': 'x'}]
+            web_search._run_search_query_plan = fake_run_search_query_plan
             web_search._format_context = lambda _query, _results: 'CTX OK'
             try:
                 ctx, query, count = web_search.build_context('bonjour')
@@ -52,7 +63,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
                 chat_turn_logger.end_turn(token_ok, final_status='ok')
             finally:
                 web_search.reformulate = original_reformulate
-                web_search.search = original_search
+                web_search._run_search_query_plan = original_run_search_query_plan
                 web_search._format_context = original_format_context
 
             token_skip = chat_turn_logger.begin_turn(
@@ -61,7 +72,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
                 web_search_enabled=True,
             )
             web_search.reformulate = lambda _msg: 'query none'
-            web_search.search = lambda _query: []
+            web_search._run_search_query_plan = fake_run_search_query_plan
             web_search._format_context = lambda _query, _results: ''
             try:
                 ctx, query, count = web_search.build_context('bonjour')
@@ -69,7 +80,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
                 chat_turn_logger.end_turn(token_skip, final_status='ok')
             finally:
                 web_search.reformulate = original_reformulate
-                web_search.search = original_search
+                web_search._run_search_query_plan = original_run_search_query_plan
                 web_search._format_context = original_format_context
 
             token_truncated = chat_turn_logger.begin_turn(
@@ -78,7 +89,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
                 web_search_enabled=True,
             )
             web_search.reformulate = lambda _msg: 'query truncated'
-            web_search.search = lambda _query: [{'title': 'A', 'url': 'https://a', 'content': 'x'}]
+            web_search._run_search_query_plan = fake_run_search_query_plan
             web_search._format_context = lambda _query, _results: 'CTX [...contenu tronqué]'
             try:
                 ctx, query, count = web_search.build_context('bonjour')
@@ -86,7 +97,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
                 chat_turn_logger.end_turn(token_truncated, final_status='ok')
             finally:
                 web_search.reformulate = original_reformulate
-                web_search.search = original_search
+                web_search._run_search_query_plan = original_run_search_query_plan
                 web_search._format_context = original_format_context
         finally:
             log_store.insert_chat_log_event = original_insert
@@ -236,7 +247,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
         original_reformulate = web_search.reformulate
-        original_search = web_search.search
+        original_run_search_query_plan = web_search._run_search_query_plan
         original_crawl_with_status = web_search.crawl_with_status
         original_runtime_services_value = web_search._runtime_services_value
 
@@ -244,12 +255,19 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
             observed.append(event)
             return True
 
+        def fake_run_search_query_plan(query_plan: dict[str, Any], **_kwargs: Any):
+            results = [
+                {'title': 'Source A', 'url': 'https://a.example/article', 'content': 'snippet a'},
+                {'title': 'Source B', 'url': 'https://b.example/article', 'content': 'snippet b' * 200},
+            ]
+            plan = dict(query_plan)
+            plan['raw_result_count'] = len(results)
+            plan['deduped_result_count'] = len(results)
+            return results, plan
+
         log_store.insert_chat_log_event = fake_insert
         web_search.reformulate = lambda _msg: 'query structuree'
-        web_search.search = lambda _query: [
-            {'title': 'Source A', 'url': 'https://a.example/article', 'content': 'snippet a'},
-            {'title': 'Source B', 'url': 'https://b.example/article', 'content': 'snippet b' * 200},
-        ]
+        web_search._run_search_query_plan = fake_run_search_query_plan
         web_search.crawl_with_status = (
             lambda url: {'status': 'success', 'markdown': 'markdown a', 'error_class': None}
             if 'a.example' in url
@@ -271,7 +289,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         finally:
             log_store.insert_chat_log_event = original_insert
             web_search.reformulate = original_reformulate
-            web_search.search = original_search
+            web_search._run_search_query_plan = original_run_search_query_plan
             web_search.crawl_with_status = original_crawl_with_status
             web_search._runtime_services_value = original_runtime_services_value
 
@@ -417,12 +435,25 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         original_insert = log_store.insert_chat_log_event
         original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
         original_reformulate = web_search.reformulate
-        original_search = web_search.search
+        original_run_search_query_plan = web_search._run_search_query_plan
         original_runtime_services_value = web_search._runtime_services_value
 
         def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
             observed.append(event)
             return True
+
+        def fake_run_search_query_plan(query_plan: dict[str, Any], **_kwargs: Any):
+            results = [
+                {
+                    'title': 'Source fallback',
+                    'url': 'https://fallback.example/article',
+                    'content': 'resume fallback',
+                }
+            ]
+            plan = dict(query_plan)
+            plan['raw_result_count'] = len(results)
+            plan['deduped_result_count'] = len(results)
+            return results, plan
 
         log_store.insert_chat_log_event = fake_insert
         web_search._crawl_markdown_with_status = lambda _url, *, filter_type='fit', query=None: {
@@ -432,13 +463,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
             'filter': filter_type,
         }
         web_search.reformulate = lambda _msg: 'requete fallback'
-        web_search.search = lambda _query: [
-            {
-                'title': 'Source fallback',
-                'url': 'https://fallback.example/article',
-                'content': 'resume fallback',
-            }
-        ]
+        web_search._run_search_query_plan = fake_run_search_query_plan
         web_search._runtime_services_value = lambda field: {
             'searxng_results': 5,
             'crawl4ai_top_n': 0,
@@ -456,7 +481,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
             log_store.insert_chat_log_event = original_insert
             web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
             web_search.reformulate = original_reformulate
-            web_search.search = original_search
+            web_search._run_search_query_plan = original_run_search_query_plan
             web_search._runtime_services_value = original_runtime_services_value
 
         web_event = next(event for event in observed if event['stage'] == 'web_search')

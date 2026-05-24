@@ -28,6 +28,8 @@ Le reader PDF utilise l'extracteur interne `app/core/active_document_text_extrac
 - timeout court;
 - fallback actuel conserve en cas d'echec.
 
+Contrat URL securite: avant tout `HEAD` ou `GET`, le reader refuse les schemas hors HTTP(S), `localhost`, les IP loopback/privees/link-local/multicast/unspecified/reserved/non globales, les hosts Docker internes evidents et les hostnames qui se resolvent vers ces plages. Les redirects HTTP sont suivis seulement de facon bornee et revalides avant chaque requete. Le reason code content-free associe est `web_pdf_url_blocked_internal`.
+
 Si un PDF est scanne, non extractible, trop gros, trop long ou invalide, FridaDev ne pretend pas l'avoir lu: le chemin retombe sur le statut web existant, avec caveat via evidence/confiance.
 
 ## Observabilite
@@ -39,6 +41,7 @@ L'observabilite reste content-free:
 - `web_pdf_read_status_counts`;
 - `web_pdf_read_reason_codes`;
 - pages, bytes, chars, elapsed_ms;
+- le resume PDF dedie journalise domaine + hash court d'URL, pas l'URL complete;
 - aucun texte PDF brut dans les logs ordinaires.
 
 ## Frontieres
