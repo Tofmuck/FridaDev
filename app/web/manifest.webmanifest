@@ -1,0 +1,20 @@
+{
+  "name": "FridaDev",
+  "short_name": "Frida",
+  "description": "Interface de chat FridaDev.",
+  "lang": "fr",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#f8f6f3",
+  "background_color": "#f8f6f3",
+  "icons": [
+    {
+      "src": "/fridalogo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

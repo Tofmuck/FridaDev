@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -28,6 +29,44 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn('href="admin.html"', html_source)
         self.assertNotIn('window.location.href = "/admin";', js_source)
         self.assertNotIn('window.location.href = "admin.html";', js_source)
+
+    def test_chat_surface_exposes_install_only_pwa_manifest_for_safari_ios(self) -> None:
+        html_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        manifest_path = APP_DIR / "web" / "manifest.webmanifest"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+        self.assertIn('<link rel="manifest" href="/manifest.webmanifest" />', html_source)
+        self.assertIn('<meta name="theme-color" content="#f8f6f3" />', html_source)
+        self.assertIn('<meta name="apple-mobile-web-app-capable" content="yes" />', html_source)
+        self.assertIn('<meta name="apple-mobile-web-app-title" content="Frida" />', html_source)
+        self.assertIn(
+            '<meta name="apple-mobile-web-app-status-bar-style" content="default" />',
+            html_source,
+        )
+        self.assertIn(
+            '<link rel="apple-touch-icon" href="/fridalogo.png" sizes="1024x1024" type="image/png" />',
+            html_source,
+        )
+
+        self.assertEqual(manifest["name"], "FridaDev")
+        self.assertEqual(manifest["short_name"], "Frida")
+        self.assertEqual(manifest["start_url"], "/")
+        self.assertEqual(manifest["scope"], "/")
+        self.assertEqual(manifest["display"], "standalone")
+        self.assertEqual(manifest["theme_color"], "#f8f6f3")
+        self.assertEqual(manifest["background_color"], "#f8f6f3")
+
+        icons = manifest.get("icons")
+        self.assertIsInstance(icons, list)
+        self.assertEqual(len(icons), 1)
+        self.assertEqual(icons[0]["src"], "/fridalogo.png")
+        self.assertEqual(icons[0]["sizes"], "1024x1024")
+        self.assertEqual(icons[0]["type"], "image/png")
+        self.assertTrue((APP_DIR / "web" / icons[0]["src"].lstrip("/")).is_file())
+
+        combined_source = html_source + manifest_path.read_text(encoding="utf-8")
+        self.assertNotIn("serviceWorker", combined_source)
+        self.assertNotIn("caches.", combined_source)
 
     def test_hermeneutic_admin_link_uses_global_navigation_from_chat_surface(self) -> None:
         html_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
