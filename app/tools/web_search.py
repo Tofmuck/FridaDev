@@ -42,6 +42,10 @@ _URL_TRAILING_PUNCTUATION = '.,;:!?)]}\'"'
 CRAWL4AI_FILTER_FIT = 'fit'
 CRAWL4AI_FILTER_RAW = 'raw'
 WEB_PDF_CONTENT_KIND = 'web_pdf_text'
+WEB_SEARCH_SOURCE_ATTRIBUTION_LINE = "Sources trouvées par Frida via la recherche web, non fournies par l'utilisateur."
+WEB_SEARCH_FALLBACK_SOURCE_ATTRIBUTION_LINE = (
+    "Sources de fallback trouvées par Frida via la recherche web, non fournies par l'utilisateur."
+)
 
 
 def _sha256_12(value: Any) -> str:
@@ -1379,6 +1383,7 @@ def _build_search_context_material(
                 f"URL explicite fournie par l'utilisateur : {explicit_url}",
                 f"Lecture directe tentee d'abord : {primary_read_status}.",
                 f"Recherche de fallback pour : « {query} ».",
+                WEB_SEARCH_FALLBACK_SOURCE_ATTRIBUTION_LINE,
                 "Voici ce que j'ai trouvé — je l'utilise pour répondre.",
                 "",
             ]
@@ -1387,6 +1392,7 @@ def _build_search_context_material(
         lines.extend(
             [
                 f"J'ai effectué une recherche pour : « {query} ».",
+                WEB_SEARCH_SOURCE_ATTRIBUTION_LINE,
                 "Voici ce que j'ai trouvé — je l'utilise pour répondre.",
                 "",
             ]

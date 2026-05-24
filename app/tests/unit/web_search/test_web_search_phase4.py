@@ -244,6 +244,13 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
                 [{'title': 'A', 'url': 'https://a.example', 'content': 'snippet'}],
                 now_iso='2026-05-17T22:05:00Z',
             )
+            fallback_material = web_search._build_search_context_material(
+                'requete fallback',
+                [{'title': 'B', 'url': 'https://b.example', 'content': 'snippet fallback'}],
+                explicit_url='https://a.example',
+                primary_read_status='empty',
+                now_iso='2026-05-17T22:05:00Z',
+            )
             explicit_material = web_search._build_explicit_url_context_material(
                 'https://a.example',
                 'contenu lu',
@@ -257,8 +264,29 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(explicit_material['context_block'].splitlines()[0], expected_header)
         self.assertNotIn('17 May 2026', search_material['context_block'])
         self.assertNotIn('17 mai 2026', search_material['context_block'])
+        self.assertIn(web_search.WEB_SEARCH_SOURCE_ATTRIBUTION_LINE, search_material['context_block'])
+        self.assertIn(web_search.WEB_SEARCH_FALLBACK_SOURCE_ATTRIBUTION_LINE, fallback_material['context_block'])
         self.assertNotIn('17 May 2026', explicit_material['context_block'])
         self.assertNotIn('17 mai 2026', explicit_material['context_block'])
+        for forbidden in [
+            'articles que tu as fournis',
+            'articles que tu as sortis',
+            'articles que tu as donnés',
+            'articles que tu as partagés',
+            'articles que tu as envoyés',
+            'sources que tu as fournies',
+            'sources que tu as sorties',
+            'sources que tu as données',
+            'sources que tu as partagées',
+            'sources que tu as envoyées',
+            'documents que tu as fournis',
+            'documents que tu as sortis',
+            'documents que tu as donnés',
+            'documents que tu as partagés',
+            'documents que tu as envoyés',
+        ]:
+            self.assertNotIn(forbidden, search_material['context_block'])
+            self.assertNotIn(forbidden, fallback_material['context_block'])
 
     def test_search_error_log_does_not_expose_raw_query(self) -> None:
         original_get = web_search.requests.get
