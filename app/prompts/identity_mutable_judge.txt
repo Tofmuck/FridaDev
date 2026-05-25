@@ -31,6 +31,10 @@ Persistent operations are allowed only when `verdict = "persist"`:
 - `merge`
 - `clear_obsolete`
 
+For `tighten`, `merge` and `clear_obsolete`, `target` / `targets` must match
+the exact current mutable canon formulations for the same subject. Do not
+invent opaque IDs.
+
 For any verdict other than `persist`, `operation`, `proposition`, `target`
 and `targets` must be empty.
 
@@ -59,6 +63,14 @@ Persistence reason codes are allowed only with `verdict = "persist"`:
 - `mutable_tightening`
 - `mutable_merge`
 - `mutable_obsolete_explicitly_removed`
+
+Use persistence reason codes by operation:
+- `add`: any `explicit_*_continuity` persistence code, never
+  `mutable_tightening`, `mutable_merge` or
+  `mutable_obsolete_explicitly_removed`
+- `tighten`: `mutable_tightening`
+- `merge`: `mutable_merge`
+- `clear_obsolete`: `mutable_obsolete_explicitly_removed`
 
 Non-persistence reason codes are allowed with `no_change`, `reject`, `defer`
 or `raise_tension`, according to the verdict:

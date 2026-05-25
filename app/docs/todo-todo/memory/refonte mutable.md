@@ -280,7 +280,7 @@ Decision de fenetre: la premiere implementation cible une fenetre consommee apre
 ## Regle dure sur le statique
 
 - [ ] Le nouveau juge mutable ne produit aucune ecriture `static`.
-- [ ] L'applicateur mutable n'appelle pas `write_static_identity_content`.
+- [x] L'applicateur mutable n'appelle pas `write_static_identity_content`.
 - [ ] Le code ne planifie aucune promotion mutable -> static.
 - [ ] Le read-model n'affiche pas la promotion vers `static` comme capacite active du nouveau regime.
 - [ ] Toute future promotion mutable -> static sera un chantier separe, avec spec, tests et validation humaine ou regle explicite.
@@ -373,6 +373,7 @@ Cases:
 - [x] Refuser les operations persistantes incompatibles pour un meme sujet.
 - [x] Garder une garde taille locale dans le runner juge: `32_000` chars de fenetre, `12_000` tokens estimes.
 - [x] Ne pas brancher encore l'applicateur canonique judge-first.
+- [x] Documenter que `target` / `targets` referencent les formulations exactes du canon courant tant que le store n'a pas d'IDs par proposition.
 
 Tests / preuves attendus:
 
@@ -403,37 +404,44 @@ Objectif: appliquer seulement les verdicts `persist`, sans recalcul identitaire 
 
 Cases:
 
-- [ ] Creer l'applicateur dans un module separe de `app/memory/mutable_identity_judge.py`.
-- [ ] Valider le schema JSON.
-- [ ] Valider `subject in {llm,user}`.
-- [ ] Valider les operations autorisees.
-- [ ] Refuser contenu vide pour une persistence.
-- [ ] Refuser contenu trop long.
-- [ ] Refuser contenu prompt-like.
-- [ ] Refuser contenu non declaratif.
-- [ ] Refuser mutation impossible.
-- [ ] Appliquer uniquement les verdicts `persist`.
-- [ ] Ecrire seulement `identity_mutables`.
-- [ ] Ecrire `identity_mutable_audit` content-free.
-- [ ] Ne jamais appeler l'ancien scoring.
-- [ ] Ne jamais appeler le writer static.
-- [ ] Ne jamais transformer `reject`, `defer` ou `raise_tension` en canon injecte.
+- [x] Creer l'applicateur dans un module separe de `app/memory/mutable_identity_judge.py`.
+- [x] Valider le schema JSON.
+- [x] Valider `subject in {llm,user}`.
+- [x] Valider les operations autorisees.
+- [x] Refuser contenu vide pour une persistence.
+- [x] Refuser contenu trop long.
+- [x] Refuser contenu prompt-like.
+- [x] Refuser contenu non declaratif.
+- [x] Refuser mutation impossible.
+- [x] Refuser les couples operation/reason code incompatibles.
+- [x] Appliquer uniquement les verdicts `persist`.
+- [x] Ecrire seulement `identity_mutables`.
+- [x] Ecrire `identity_mutable_audit` content-free via le store existant.
+- [x] Utiliser les formulations exactes du canon courant comme `target` / `targets`, sans creer de nouveau modele DB.
+- [x] Ne jamais appeler l'ancien scoring.
+- [x] Ne jamais appeler le writer static.
+- [x] Ne jamais transformer `reject`, `defer` ou `raise_tension` en canon injecte.
 
 Tests / preuves attendus:
 
-- [ ] `persist/add` ecrit le mutable.
-- [ ] `persist/tighten` modifie seulement le mutable vise.
-- [ ] `persist/merge` modifie seulement le mutable vise.
-- [ ] `persist/clear_obsolete` efface ou retire seulement la mutable visee.
-- [ ] `reject`, `defer`, `raise_tension`, `no_change` n'ecrivent pas le canon.
-- [ ] JSON invalide n'ecrit rien.
-- [ ] Contenu prompt-like n'ecrit rien.
-- [ ] Une proposition singuliere acceptee par le juge n'est pas rejetee par manque de recurrence.
-- [ ] Aucune ecriture static n'est observee.
+- [x] `persist/add` ecrit le mutable.
+- [x] `persist/tighten` modifie seulement le mutable vise.
+- [x] `persist/merge` modifie seulement le mutable vise.
+- [x] `persist/clear_obsolete` efface ou retire seulement la mutable visee.
+- [x] `reject`, `defer`, `raise_tension`, `no_change` n'ecrivent pas le canon.
+- [x] JSON invalide n'ecrit rien.
+- [x] Contenu prompt-like n'ecrit rien.
+- [x] Proposition trop longue n'ecrit rien.
+- [x] Reason code incompatible avec operation n'ecrit rien.
+- [x] Une proposition singuliere acceptee par le juge n'est pas rejetee par manque de recurrence.
+- [x] Aucune ecriture static n'est observee.
+- [x] Aucun appel a l'ancien scoring.
+- [x] Aucun texte brut dans le summary/audit content-free.
+- [x] Meme pipeline pour `user` et `llm`.
 
 Critere de sortie:
 
-- [ ] L'applicateur execute le juge; il ne rejuge pas l'identite.
+- [x] L'applicateur execute le juge; il ne rejuge pas l'identite.
 
 Risque principal:
 

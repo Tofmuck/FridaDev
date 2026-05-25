@@ -107,6 +107,15 @@ RAISE_TENSION_REASON_CODES = {
     'contradiction_open',
     'relation_tension_open',
 }
+ADD_REASON_CODES = {
+    'explicit_self_definition_continuity',
+    'explicit_self_value_continuity',
+    'explicit_self_limit_continuity',
+    'explicit_relation_continuity',
+    'explicit_frida_self_definition_continuity',
+    'explicit_frida_limit_continuity',
+    'explicit_posture_continuity',
+}
 MODEL_OUTPUT_REASON_CODES = PERSISTENCE_REASON_CODES | NON_PERSISTENCE_REASON_CODES
 _REASON_CODES_BY_VERDICT = {
     'persist': PERSISTENCE_REASON_CODES,
@@ -114,6 +123,12 @@ _REASON_CODES_BY_VERDICT = {
     'reject': REJECT_REASON_CODES,
     'defer': DEFER_REASON_CODES,
     'raise_tension': RAISE_TENSION_REASON_CODES,
+}
+_PERSISTENCE_REASON_CODES_BY_OPERATION = {
+    'add': ADD_REASON_CODES,
+    'tighten': {'mutable_tightening'},
+    'merge': {'mutable_merge'},
+    'clear_obsolete': {'mutable_obsolete_explicitly_removed'},
 }
 
 _TOP_LEVEL_KEYS = {'schema_version', 'meta', 'verdicts'}
@@ -296,6 +311,7 @@ def build_judge_input(
             'allowed_continuity_kinds': sorted(ALLOWED_CONTINUITY_KINDS),
             'model_output_reason_codes': {
                 'persistence': sorted(PERSISTENCE_REASON_CODES),
+                'add': sorted(ADD_REASON_CODES),
                 'no_change': sorted(NO_CHANGE_REASON_CODES),
                 'reject': sorted(REJECT_REASON_CODES),
                 'defer': sorted(DEFER_REASON_CODES),
@@ -487,6 +503,13 @@ def _validate_target(value: Any) -> tuple[str | None, str]:
     return target, ''
 
 
+def persist_reason_code_matches_operation(operation: str, reason_code: str) -> bool:
+    operation_key = _text(operation).lower()
+    reason_key = _text(reason_code)
+    allowed = _PERSISTENCE_REASON_CODES_BY_OPERATION.get(operation_key)
+    return bool(allowed and reason_key in allowed)
+
+
 def _empty_persistence_fields(item: Mapping[str, Any]) -> bool:
     return (
         _text(item.get('operation')) == ''
@@ -547,6 +570,8 @@ def _validate_verdict_item(
         }, ''
 
     if operation not in PERSIST_OPERATIONS:
+        return None, 'invalid_operation'
+    if not persist_reason_code_matches_operation(operation, reason_code):
         return None, 'invalid_operation'
 
     if operation == 'add':

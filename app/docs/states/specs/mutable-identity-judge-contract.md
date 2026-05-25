@@ -217,6 +217,11 @@ Quand `operation = clear_obsolete`:
 - `proposition` est vide;
 - `targets` est vide.
 
+Tant que `identity_mutables` stocke un contenu canonique par sujet sans
+identifiants stables par proposition, `target` et `targets` referencent les
+formulations exactes presentes dans le canon mutable courant du meme sujet.
+L'applicateur ne cree pas de nouveau modele DB pour ce lot.
+
 ## Reason Codes Canoniques
 
 Les reason codes sont content-free, stables et courts.
@@ -259,6 +264,11 @@ Codes de non-persistence:
 Compatibilite verdict / reason code de sortie modele:
 
 - `persist`: codes de persistence uniquement.
+- `persist/add`: codes `explicit_*_continuity` uniquement; `mutable_tightening`,
+  `mutable_merge` et `mutable_obsolete_explicitly_removed` sont interdits.
+- `persist/tighten`: `mutable_tightening`.
+- `persist/merge`: `mutable_merge`.
+- `persist/clear_obsolete`: `mutable_obsolete_explicitly_removed`.
 - `no_change`: `no_mutable_identity_signal`, `already_covered_by_static`,
   `already_covered_by_mutable`.
 - `reject`: `task_local_not_identity`,

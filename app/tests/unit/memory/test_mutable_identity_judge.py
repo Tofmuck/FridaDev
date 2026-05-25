@@ -319,6 +319,34 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertIsNone(validated)
         self.assertEqual(reason, 'schema_invalid')
 
+    def test_persistent_reason_code_must_match_operation(self) -> None:
+        cases = [
+            ('add_cannot_use_merge_reason', 'add', 'mutable_merge'),
+            ('add_cannot_use_tighten_reason', 'add', 'mutable_tightening'),
+            ('add_cannot_use_clear_reason', 'add', 'mutable_obsolete_explicitly_removed'),
+            ('tighten_requires_tighten_reason', 'tighten', 'explicit_self_limit_continuity'),
+            ('merge_requires_merge_reason', 'merge', 'explicit_self_limit_continuity'),
+            ('clear_requires_obsolete_reason', 'clear_obsolete', 'explicit_self_limit_continuity'),
+        ]
+        for label, operation, reason_code in cases:
+            with self.subTest(label=label):
+                payload = _valid_contract()
+                payload['verdicts'][0]['operation'] = operation
+                payload['verdicts'][0]['reason_code'] = reason_code
+                if operation == 'tighten':
+                    payload['verdicts'][0]['target'] = 'mut_user_01'
+                if operation == 'merge':
+                    payload['verdicts'][0]['target'] = ''
+                    payload['verdicts'][0]['targets'] = ['mut_user_01', 'mut_user_02']
+                if operation == 'clear_obsolete':
+                    payload['verdicts'][0]['proposition'] = ''
+                    payload['verdicts'][0]['target'] = 'mut_user_01'
+
+                validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+                self.assertIsNone(validated)
+                self.assertEqual(reason, 'invalid_operation')
+
     def test_non_persistent_verdict_cannot_use_persistence_reason_code(self) -> None:
         payload = _valid_contract()
         payload['verdicts'][0] = {
