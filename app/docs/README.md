@@ -37,7 +37,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat actif du reglage global reasoning du LLM principal: `states/specs/fridadev-main-llm-reasoning-contract.md`
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
 - Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
-- TODO actif memoire/intention `feed her from herself`: `todo-todo/memory/Frida_from_herself.md`
+- Note suspendue memoire/intention `feed her from herself`: `todo-todo/memory/Frida_from_herself.md`
 - TODO actif refonte des mutables identity: `todo-todo/memory/refonte mutable.md`
 - Boussole produit finale des cinq derniers gros chantiers FridaDev: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Archive atelier documentaire / répertoires de travail: `todo-done/product/fridadev-workspace-folders-todo.md`
@@ -173,8 +173,8 @@ But: cadrer le chantier separe permettant a Frida de consulter une bibliotheque 
 Lire d'abord:
 - `states/policies/identity-new-contract-plan.md`
 - `todo-done/refactors/identity-new-contract-todo.md`
-- `todo-todo/memory/refonte mutable.md` pour la refonte active du pipeline mutable vers `formulation -> juge LLM -> persistence`
-- `todo-todo/memory/Frida_from_herself.md` pour le cadrage ouvert `feed her from herself`: ne pas laisser Frida promettre une memoire/intention durable sans couche persistante, mutable ou reinjectable.
+- `todo-todo/memory/refonte mutable.md` pour la refonte active du pipeline mutable vers `fenetre complete de 5 paires -> juge LLM -> identity_mutables`
+- `todo-todo/memory/Frida_from_herself.md` comme note suspendue: l'intuition est probablement absorbee par la refonte mutable et ne doit pas devenir un chantier parallele avant reevaluation.
 
 Regle de lecture: garder ces deux references distinctes. Le plan reste doctrinal et actif; l'archive conserve la trace du chantier termine.
 
