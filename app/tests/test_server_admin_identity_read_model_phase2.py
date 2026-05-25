@@ -246,6 +246,20 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['active_runtime']['read_surface_stage'], 'lot_b5_identity_operator_truth')
         self.assertTrue(data['active_runtime']['identity_runtime_regime']['staging_not_injected'])
         self.assertEqual(data['active_runtime']['identity_runtime_regime']['mutable_budget']['target_chars'], 3000)
+        self.assertFalse(data['active_runtime']['identity_runtime_regime']['score_first_writer_enabled'])
+        self.assertEqual(
+            data['active_runtime']['identity_runtime_regime']['score_first_writer_status'],
+            'legacy_neutralized_in_active_path',
+        )
+        self.assertEqual(
+            data['active_runtime']['identity_runtime_regime']['scoring_thresholds_runtime_authority'],
+            'legacy_pre_refactor_only',
+        )
+        self.assertFalse(data['active_runtime']['identity_runtime_regime']['promotion_to_static_enabled'])
+        self.assertEqual(
+            data['active_runtime']['identity_runtime_regime']['promotion_to_static_runtime_authority'],
+            'legacy_pre_refactor_disabled_in_active_path',
+        )
         self.assertEqual(data['identity_staging']['storage_kind'], 'identity_mutable_staging')
         self.assertEqual(data['identity_staging']['scope_kind'], 'conversation_scoped_latest')
         self.assertFalse(data['identity_staging']['actively_injected'])

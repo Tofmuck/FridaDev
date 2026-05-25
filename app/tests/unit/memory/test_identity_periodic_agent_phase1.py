@@ -740,8 +740,8 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 'window_chars': 25000,
                 'payload_chars': 28000,
                 'estimated_prompt_tokens': 8500,
-                'max_window_chars': 24000,
-                'max_estimated_prompt_tokens': 8000,
+                'max_window_chars': 32000,
+                'max_estimated_prompt_tokens': 12000,
             }
         )
 
@@ -769,8 +769,8 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(summary['window_chars'], 25000)
         self.assertEqual(summary['payload_chars'], 28000)
         self.assertEqual(summary['estimated_prompt_tokens'], 8500)
-        self.assertEqual(summary['max_window_chars'], 24000)
-        self.assertEqual(summary['max_estimated_prompt_tokens'], 8000)
+        self.assertEqual(summary['max_window_chars'], 32000)
+        self.assertEqual(summary['max_estimated_prompt_tokens'], 12000)
         self.assertEqual(
             store.get_identity_staging_state('conv-window-too-large')['buffer_pairs_count'],
             memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,

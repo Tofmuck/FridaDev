@@ -1799,7 +1799,7 @@ function hermeneuticAdminMockScript() {
           used_identity_ids_count: 0,
           identity_runtime_regime: {
             mutable_budget: { target_chars: 3000, max_chars: 3300 },
-            staging_target_pairs: 15,
+            staging_target_pairs: 5,
             staging_not_injected: true,
           },
         },
@@ -1807,7 +1807,7 @@ function hermeneuticAdminMockScript() {
           present: false,
           actively_injected: false,
           buffer_pairs_count: 0,
-          buffer_target_pairs: 15,
+          buffer_target_pairs: 5,
           current_buffer: { status: "empty", reason_code: "below_threshold" },
           last_completed_agent: { present: false },
           latest_agent_activity: { present: false, promotion_count: 0, open_tension_count: 0 },

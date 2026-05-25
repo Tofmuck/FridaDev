@@ -393,8 +393,13 @@ def build_identity_runtime_regime() -> dict[str, Any]:
             'reject_below': float(memory_identity_periodic_scoring.REJECT_THRESHOLD),
             'accept_from': float(memory_identity_periodic_scoring.ACCEPT_THRESHOLD),
         },
-        'promotion_to_static_enabled': True,
-        'auto_canonization_suspends_on_double_saturation': True,
+        'score_first_writer_enabled': False,
+        'score_first_writer_status': 'legacy_neutralized_in_active_path',
+        'scoring_thresholds_runtime_authority': 'legacy_pre_refactor_only',
+        'promotion_to_static_enabled': False,
+        'promotion_to_static_runtime_authority': 'legacy_pre_refactor_disabled_in_active_path',
+        'auto_canonization_suspends_on_double_saturation': False,
+        'auto_canonization_suspension_runtime_authority': 'legacy_pre_refactor_disabled_in_active_path',
     }
 
 
