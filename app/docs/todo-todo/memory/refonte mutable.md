@@ -368,6 +368,10 @@ Cases:
 - [x] Demander les verdicts `no_change`, `reject`, `defer`, `raise_tension`, `persist`.
 - [x] Fail-closed sur timeout, parse error ou JSON invalide.
 - [x] Ne pas demander au juge de retourner un score.
+- [x] Exposer au juge les `continuity_kind` et reason codes canoniques.
+- [x] Refuser les reason codes techniques comme sortie de jugement LLM.
+- [x] Refuser les operations persistantes incompatibles pour un meme sujet.
+- [x] Garder une garde taille locale dans le runner juge: `32_000` chars de fenetre, `12_000` tokens estimes.
 - [x] Ne pas brancher encore l'applicateur canonique judge-first.
 
 Tests / preuves attendus:
@@ -381,6 +385,9 @@ Tests / preuves attendus:
 - [x] Mock timeout.
 - [x] Test que `user` et `llm` passent par le meme schema.
 - [x] Test que l'observabilite compacte ne contient pas les propositions brutes.
+- [x] Test que `window_too_large` ne fait pas d'appel provider.
+- [x] Test que `raise_tension` ne peut toujours pas porter d'operation persistante.
+- [x] Test que les conflicts `tighten` / `clear_obsolete` / `merge` sont refuses.
 
 Critere de sortie:
 
@@ -396,6 +403,7 @@ Objectif: appliquer seulement les verdicts `persist`, sans recalcul identitaire 
 
 Cases:
 
+- [ ] Creer l'applicateur dans un module separe de `app/memory/mutable_identity_judge.py`.
 - [ ] Valider le schema JSON.
 - [ ] Valider `subject in {llm,user}`.
 - [ ] Valider les operations autorisees.

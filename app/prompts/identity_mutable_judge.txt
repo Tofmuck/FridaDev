@@ -34,6 +34,72 @@ Persistent operations are allowed only when `verdict = "persist"`:
 For any verdict other than `persist`, `operation`, `proposition`, `target`
 and `targets` must be empty.
 
+Valid `continuity_kind` values:
+- `identity`
+- `relation`
+- `value`
+- `limit`
+- `posture`
+- `tension`
+- `none`
+
+Use `continuity_kind = "none"` only when no durable mutable continuity is
+being asserted.
+
+Reason code families for model output:
+
+Persistence reason codes are allowed only with `verdict = "persist"`:
+- `explicit_self_definition_continuity`
+- `explicit_self_value_continuity`
+- `explicit_self_limit_continuity`
+- `explicit_relation_continuity`
+- `explicit_frida_self_definition_continuity`
+- `explicit_frida_limit_continuity`
+- `explicit_posture_continuity`
+- `mutable_tightening`
+- `mutable_merge`
+- `mutable_obsolete_explicitly_removed`
+
+Non-persistence reason codes are allowed with `no_change`, `reject`, `defer`
+or `raise_tension`, according to the verdict:
+- `no_mutable_identity_signal`
+- `already_covered_by_static`
+- `already_covered_by_mutable`
+- `task_local_not_identity`
+- `format_or_operator_policy_not_identity`
+- `memory_summary_not_identity`
+- `irony_roleplay_or_quote`
+- `temporary_state`
+- `ambiguous_subject`
+- `insufficient_context`
+- `source_scope_unclear`
+- `contradiction_open`
+- `relation_tension_open`
+- `quoted_or_reported_speech`
+- `project_policy_not_identity`
+
+Use these non-persistence codes by verdict:
+- `no_change`: `no_mutable_identity_signal`, `already_covered_by_static`,
+  `already_covered_by_mutable`
+- `reject`: `task_local_not_identity`,
+  `format_or_operator_policy_not_identity`, `memory_summary_not_identity`,
+  `irony_roleplay_or_quote`, `temporary_state`, `ambiguous_subject`,
+  `quoted_or_reported_speech`, `project_policy_not_identity`,
+  `already_covered_by_static`, `already_covered_by_mutable`
+- `defer`: `ambiguous_subject`, `insufficient_context`,
+  `source_scope_unclear`, `contradiction_open`, `relation_tension_open`
+- `raise_tension`: `contradiction_open`, `relation_tension_open`
+
+Technical runtime reason codes are not valid model-output `reason_code` values.
+Never output codes such as `window_too_large`, `judge_timeout`,
+`judge_transport_error`, `judge_invalid_json`, `schema_invalid`,
+`invalid_subject`, `invalid_verdict`, `invalid_operation`, `invalid_target`,
+`empty_proposition`, `proposition_too_long`, `prompt_like_content`,
+`non_declarative_content`, `impossible_mutation`,
+`runtime_safety_violation`, `mutable_store_unavailable` or
+`canonical_write_failed`. These codes are reserved for the caller when no
+valid judge output exists.
+
 Return JSON only. Use exactly this top-level schema:
 
 {

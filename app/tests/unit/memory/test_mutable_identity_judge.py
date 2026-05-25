@@ -105,6 +105,22 @@ def _collect_keys(value: Any) -> set[str]:
 
 
 class MutableIdentityJudgeTests(unittest.TestCase):
+    def test_prompt_lists_canonical_continuity_and_reason_code_families(self) -> None:
+        prompt = mutable_identity_judge.load_prompt()
+
+        for continuity_kind in ('identity', 'relation', 'value', 'limit', 'posture', 'tension', 'none'):
+            self.assertIn(f'`{continuity_kind}`', prompt)
+        for reason_code in (
+            'explicit_self_limit_continuity',
+            'mutable_tightening',
+            'no_mutable_identity_signal',
+            'relation_tension_open',
+            'project_policy_not_identity',
+        ):
+            self.assertIn(f'`{reason_code}`', prompt)
+        self.assertIn('Technical runtime reason codes are not valid model-output', prompt)
+        self.assertIn('`judge_timeout`', prompt)
+
     def test_build_judge_input_contains_complete_window_identities_and_no_scores(self) -> None:
         judge_input = mutable_identity_judge.build_judge_input(
             window_pairs=_window_pairs(),
@@ -132,6 +148,8 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertEqual(judge_input['mutable_budget'], _budget())
         self.assertTrue(judge_input['judgment_rules']['python_must_not_score_identity'])
         self.assertTrue(judge_input['judgment_rules']['static_writes_forbidden'])
+        self.assertIn('persistence', judge_input['judgment_rules']['model_output_reason_codes'])
+        self.assertIn('window_too_large', judge_input['judgment_rules']['technical_reason_codes_not_model_output'])
         self.assertTrue({'strength', 'frequency_norm', 'recency_norm', 'support_pairs'}.isdisjoint(_collect_keys(judge_input)))
         self.assertTrue({'memories', 'summaries', 'identity_evidence', 'candidates'}.isdisjoint(_collect_keys(judge_input)))
         self.assertEqual(set(judge_input['source_annotations']['raw_note'].keys()), {'chars', 'sha256_12'})
@@ -292,6 +310,132 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertIsNone(validated)
         self.assertEqual(reason, 'invalid_operation')
 
+    def test_model_output_cannot_use_technical_reason_code(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'][0]['reason_code'] = 'judge_timeout'
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'schema_invalid')
+
+    def test_non_persistent_verdict_cannot_use_persistence_reason_code(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'][0] = {
+            'subject': 'user',
+            'verdict': 'reject',
+            'operation': '',
+            'proposition': '',
+            'target': '',
+            'targets': [],
+            'reason_code': 'explicit_self_limit_continuity',
+            'continuity_kind': 'limit',
+            'source_refs': ['pair_02'],
+            'guard_notes': ['not_persisted'],
+        }
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'schema_invalid')
+
+    def test_incompatible_persistent_operations_for_same_subject_are_rejected(self) -> None:
+        cases = []
+
+        payload = _valid_contract()
+        payload['verdicts'][0] = {
+            'subject': 'user',
+            'verdict': 'persist',
+            'operation': 'tighten',
+            'proposition': 'User keeps a sharper boundary.',
+            'target': 'mut_user_01',
+            'targets': [],
+            'reason_code': 'mutable_tightening',
+            'continuity_kind': 'limit',
+            'source_refs': ['pair_02'],
+            'guard_notes': ['not_task_local'],
+        }
+        payload['verdicts'].append(
+            {
+                'subject': 'user',
+                'verdict': 'persist',
+                'operation': 'tighten',
+                'proposition': 'User keeps the same sharper boundary.',
+                'target': 'mut_user_01',
+                'targets': [],
+                'reason_code': 'mutable_tightening',
+                'continuity_kind': 'limit',
+                'source_refs': ['pair_03'],
+                'guard_notes': ['not_task_local'],
+            }
+        )
+        cases.append(payload)
+
+        payload = _valid_contract()
+        payload['verdicts'][0] = {
+            'subject': 'user',
+            'verdict': 'persist',
+            'operation': 'tighten',
+            'proposition': 'User keeps a sharper boundary.',
+            'target': 'mut_user_02',
+            'targets': [],
+            'reason_code': 'mutable_tightening',
+            'continuity_kind': 'limit',
+            'source_refs': ['pair_02'],
+            'guard_notes': ['not_task_local'],
+        }
+        payload['verdicts'].append(
+            {
+                'subject': 'user',
+                'verdict': 'persist',
+                'operation': 'clear_obsolete',
+                'proposition': '',
+                'target': 'mut_user_02',
+                'targets': [],
+                'reason_code': 'mutable_obsolete_explicitly_removed',
+                'continuity_kind': 'limit',
+                'source_refs': ['pair_03'],
+                'guard_notes': ['explicitly_removed'],
+            }
+        )
+        cases.append(payload)
+
+        payload = _valid_contract()
+        payload['verdicts'][0] = {
+            'subject': 'user',
+            'verdict': 'persist',
+            'operation': 'merge',
+            'proposition': 'User keeps a merged relation posture.',
+            'target': '',
+            'targets': ['mut_user_03', 'mut_user_04'],
+            'reason_code': 'mutable_merge',
+            'continuity_kind': 'relation',
+            'source_refs': ['pair_02'],
+            'guard_notes': ['not_task_local'],
+        }
+        payload['verdicts'].append(
+            {
+                'subject': 'user',
+                'verdict': 'persist',
+                'operation': 'tighten',
+                'proposition': 'User keeps a sharper relation posture.',
+                'target': 'mut_user_04',
+                'targets': [],
+                'reason_code': 'mutable_tightening',
+                'continuity_kind': 'relation',
+                'source_refs': ['pair_03'],
+                'guard_notes': ['not_task_local'],
+            }
+        )
+        cases.append(payload)
+
+        for payload in cases:
+            with self.subTest(payload=payload['verdicts']):
+                validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+                self.assertIsNone(validated)
+                self.assertEqual(reason, 'impossible_mutation')
+
     def test_source_refs_and_guard_notes_must_be_content_free_codes(self) -> None:
         payload = _valid_contract()
         payload['verdicts'][0]['source_refs'] = ['je suis une source brute']
@@ -357,6 +501,55 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             mutable_identity_judge.llm_client.or_chat_completions_url = original_url
             mutable_identity_judge.llm_client.or_headers_custom = original_headers
             mutable_identity_judge.llm_client.log_provider_metadata = original_log_provider
+
+    def test_run_skips_window_too_large_before_provider_call_and_logs_no_text(self) -> None:
+        original_get_settings = mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings
+        original_load_prompt = mutable_identity_judge.load_prompt
+        original_post = mutable_identity_judge.requests.post
+
+        def fake_get_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='identity_periodic_model',
+                payload=runtime_settings.build_env_seed_bundle('identity_periodic_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        sensitive_text = 'SENSITIVEWINDOWTEXT-' * 7000
+        pairs = _window_pairs()
+        for pair in pairs:
+            pair['user']['content'] = sensitive_text
+            pair['assistant']['content'] = 'assistant answer'
+        judge_input = mutable_identity_judge.build_judge_input(
+            window_pairs=pairs,
+            identities=_identities(),
+            mutable_budget=_budget(),
+        )
+        called = {'post': False}
+
+        def forbidden_post(*_args, **_kwargs):
+            called['post'] = True
+            raise AssertionError('provider must not be called for oversized window')
+
+        mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings = fake_get_settings
+        mutable_identity_judge.load_prompt = lambda _prompt_path=None: 'judge prompt'
+        mutable_identity_judge.requests.post = forbidden_post
+        try:
+            result = mutable_identity_judge.run_mutable_identity_judge(judge_input)
+        finally:
+            mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings = original_get_settings
+            mutable_identity_judge.load_prompt = original_load_prompt
+            mutable_identity_judge.requests.post = original_post
+
+        self.assertFalse(called['post'])
+        self.assertEqual(result['status'], 'skipped')
+        self.assertEqual(result['reason_code'], 'window_too_large')
+        observability = result['observability']
+        self.assertGreater(observability['window_chars'], observability['max_window_chars'])
+        self.assertIn('payload_chars', observability)
+        self.assertIn('estimated_prompt_tokens', observability)
+        self.assertIn('max_estimated_prompt_tokens', observability)
+        self.assertNotIn('SENSITIVEWINDOWTEXT', repr(observability))
 
     def test_run_accepts_valid_model_contract(self) -> None:
         original_get_settings = mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings

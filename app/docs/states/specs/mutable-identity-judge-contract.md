@@ -221,6 +221,10 @@ Quand `operation = clear_obsolete`:
 
 Les reason codes sont content-free, stables et courts.
 
+Le juge LLM ne retourne que les codes de persistence ou de non-persistence.
+Les codes techniques sont reserves au runner, au validateur et au futur
+applicateur; ils ne sont jamais une raison ontologique produite par le modele.
+
 Codes de persistence:
 
 - `explicit_self_definition_continuity`
@@ -252,8 +256,23 @@ Codes de non-persistence:
 - `quoted_or_reported_speech`
 - `project_policy_not_identity`
 
+Compatibilite verdict / reason code de sortie modele:
+
+- `persist`: codes de persistence uniquement.
+- `no_change`: `no_mutable_identity_signal`, `already_covered_by_static`,
+  `already_covered_by_mutable`.
+- `reject`: `task_local_not_identity`,
+  `format_or_operator_policy_not_identity`, `memory_summary_not_identity`,
+  `irony_roleplay_or_quote`, `temporary_state`, `ambiguous_subject`,
+  `quoted_or_reported_speech`, `project_policy_not_identity`,
+  `already_covered_by_static`, `already_covered_by_mutable`.
+- `defer`: `ambiguous_subject`, `insufficient_context`,
+  `source_scope_unclear`, `contradiction_open`, `relation_tension_open`.
+- `raise_tension`: `contradiction_open`, `relation_tension_open`.
+
 Codes techniques:
 
+- `window_too_large`
 - `judge_timeout`
 - `judge_transport_error`
 - `judge_invalid_json`

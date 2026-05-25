@@ -23,12 +23,15 @@ WINDOW_PAIRS_COUNT = 5
 PROMPT_KIND = 'mutable_identity_judge'
 MODEL_SLOT = 'identity_periodic_model'
 CALLER = 'mutable_identity_judge'
+JUDGE_WINDOW_MAX_CHARS = 32_000
+JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT = 12_000
+_CHARS_PER_TOKEN_ESTIMATE = 4
 
 ALLOWED_SUBJECTS = {'llm', 'user'}
 ALLOWED_VERDICTS = {'no_change', 'reject', 'defer', 'raise_tension', 'persist'}
 PERSIST_OPERATIONS = {'add', 'tighten', 'merge', 'clear_obsolete'}
 ALLOWED_CONTINUITY_KINDS = {'identity', 'relation', 'value', 'limit', 'posture', 'tension', 'none'}
-ALLOWED_REASON_CODES = {
+PERSISTENCE_REASON_CODES = {
     'explicit_self_definition_continuity',
     'explicit_self_value_continuity',
     'explicit_self_limit_continuity',
@@ -39,6 +42,8 @@ ALLOWED_REASON_CODES = {
     'mutable_tightening',
     'mutable_merge',
     'mutable_obsolete_explicitly_removed',
+}
+NON_PERSISTENCE_REASON_CODES = {
     'no_mutable_identity_signal',
     'already_covered_by_static',
     'already_covered_by_mutable',
@@ -54,6 +59,9 @@ ALLOWED_REASON_CODES = {
     'relation_tension_open',
     'quoted_or_reported_speech',
     'project_policy_not_identity',
+}
+TECHNICAL_REASON_CODES = {
+    'window_too_large',
     'judge_timeout',
     'judge_transport_error',
     'judge_invalid_json',
@@ -70,6 +78,42 @@ ALLOWED_REASON_CODES = {
     'runtime_safety_violation',
     'mutable_store_unavailable',
     'canonical_write_failed',
+}
+NO_CHANGE_REASON_CODES = {
+    'no_mutable_identity_signal',
+    'already_covered_by_static',
+    'already_covered_by_mutable',
+}
+REJECT_REASON_CODES = {
+    'task_local_not_identity',
+    'format_or_operator_policy_not_identity',
+    'memory_summary_not_identity',
+    'irony_roleplay_or_quote',
+    'temporary_state',
+    'ambiguous_subject',
+    'quoted_or_reported_speech',
+    'project_policy_not_identity',
+    'already_covered_by_static',
+    'already_covered_by_mutable',
+}
+DEFER_REASON_CODES = {
+    'ambiguous_subject',
+    'insufficient_context',
+    'source_scope_unclear',
+    'contradiction_open',
+    'relation_tension_open',
+}
+RAISE_TENSION_REASON_CODES = {
+    'contradiction_open',
+    'relation_tension_open',
+}
+MODEL_OUTPUT_REASON_CODES = PERSISTENCE_REASON_CODES | NON_PERSISTENCE_REASON_CODES
+_REASON_CODES_BY_VERDICT = {
+    'persist': PERSISTENCE_REASON_CODES,
+    'no_change': NO_CHANGE_REASON_CODES,
+    'reject': REJECT_REASON_CODES,
+    'defer': DEFER_REASON_CODES,
+    'raise_tension': RAISE_TENSION_REASON_CODES,
 }
 
 _TOP_LEVEL_KEYS = {'schema_version', 'meta', 'verdicts'}
@@ -249,6 +293,15 @@ def build_judge_input(
             'static_writes_forbidden': True,
             'same_regime_for_subjects': ['llm', 'user'],
             'allowed_verdicts': sorted(ALLOWED_VERDICTS),
+            'allowed_continuity_kinds': sorted(ALLOWED_CONTINUITY_KINDS),
+            'model_output_reason_codes': {
+                'persistence': sorted(PERSISTENCE_REASON_CODES),
+                'no_change': sorted(NO_CHANGE_REASON_CODES),
+                'reject': sorted(REJECT_REASON_CODES),
+                'defer': sorted(DEFER_REASON_CODES),
+                'raise_tension': sorted(RAISE_TENSION_REASON_CODES),
+            },
+            'technical_reason_codes_not_model_output': sorted(TECHNICAL_REASON_CODES),
             'persistent_operations_only_for_persist': sorted(PERSIST_OPERATIONS),
             'raise_tension_persists_canon': False,
         },
@@ -267,8 +320,12 @@ def load_prompt(prompt_path: str | None = None) -> str:
 def build_judge_messages(judge_input: Mapping[str, Any], *, system_prompt: str) -> list[dict[str, str]]:
     return [
         {'role': 'system', 'content': str(system_prompt or '').strip()},
-        {'role': 'user', 'content': json.dumps(dict(judge_input), ensure_ascii=False, indent=2)},
+        {'role': 'user', 'content': _judge_input_json(judge_input)},
     ]
+
+
+def _judge_input_json(judge_input: Mapping[str, Any]) -> str:
+    return json.dumps(dict(judge_input), ensure_ascii=False, indent=2)
 
 
 def build_openrouter_payload(
@@ -335,16 +392,57 @@ def _safe_json_loads(raw: Any) -> Mapping[str, Any] | None:
     return parsed
 
 
-def _failure_result(reason_code: str) -> dict[str, Any]:
+def _failure_result(reason_code: str, observability_fields: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    observability = {
+        'status': 'skipped',
+        'reason_code': reason_code,
+        'prompt_kind': PROMPT_KIND,
+    }
+    observability.update(dict(_mapping(observability_fields)))
     return {
         'status': 'skipped',
         'reason_code': reason_code,
         'contract': None,
-        'observability': {
-            'status': 'skipped',
-            'reason_code': reason_code,
-            'prompt_kind': PROMPT_KIND,
-        },
+        'observability': observability,
+    }
+
+
+def _estimated_prompt_tokens(char_count: int) -> int:
+    if char_count <= 0:
+        return 0
+    return (int(char_count) + _CHARS_PER_TOKEN_ESTIMATE - 1) // _CHARS_PER_TOKEN_ESTIMATE
+
+
+def _judge_window_chars(judge_input: Mapping[str, Any]) -> int:
+    total = 0
+    for pair in _list(judge_input.get('window_pairs')):
+        pair_payload = _mapping(pair)
+        for role_key in ('user', 'assistant'):
+            message = _mapping(pair_payload.get(role_key))
+            total += len(str(message.get('content') or ''))
+    return total
+
+
+def _judge_size_guard(
+    *,
+    judge_input: Mapping[str, Any],
+    system_prompt: str,
+    model_input_json: str,
+) -> dict[str, Any]:
+    window_chars = _judge_window_chars(judge_input)
+    payload_chars = len(model_input_json)
+    estimated_prompt_tokens = _estimated_prompt_tokens(len(system_prompt or '') + payload_chars)
+    ok = (
+        window_chars <= JUDGE_WINDOW_MAX_CHARS
+        and estimated_prompt_tokens <= JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT
+    )
+    return {
+        'ok': ok,
+        'window_chars': window_chars,
+        'payload_chars': payload_chars,
+        'estimated_prompt_tokens': estimated_prompt_tokens,
+        'max_window_chars': JUDGE_WINDOW_MAX_CHARS,
+        'max_estimated_prompt_tokens': JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT,
     }
 
 
@@ -413,7 +511,8 @@ def _validate_verdict_item(
     if verdict not in ALLOWED_VERDICTS:
         return None, 'invalid_verdict'
     reason_code = _text(item.get('reason_code'))
-    if reason_code not in ALLOWED_REASON_CODES:
+    allowed_reason_codes = _REASON_CODES_BY_VERDICT.get(verdict, set())
+    if reason_code not in allowed_reason_codes:
         return None, 'schema_invalid'
     continuity_kind = _text(item.get('continuity_kind')).lower()
     if continuity_kind not in ALLOWED_CONTINUITY_KINDS:
@@ -469,7 +568,7 @@ def _validate_verdict_item(
             return None, reason
         canonical_targets = []
     elif operation == 'merge':
-        if target or len(targets) < 2 or any(not item for item in targets):
+        if target or len(targets) < 2 or any(not item for item in targets) or len(set(targets)) != len(targets):
             return None, 'invalid_target'
         proposition_value, reason = _validate_proposition(proposition, mutable_budget=mutable_budget)
         if reason:
@@ -497,6 +596,32 @@ def _validate_verdict_item(
         'source_refs': source_refs,
         'guard_notes': guard_notes,
     }, ''
+
+
+def _validate_persistent_operation_compatibility(subject_verdicts: Sequence[Mapping[str, Any]]) -> str:
+    tighten_targets: set[str] = set()
+    clear_targets: set[str] = set()
+    merge_targets: set[str] = set()
+    for item in subject_verdicts:
+        if _text(item.get('verdict')) != 'persist':
+            continue
+        operation = _text(item.get('operation'))
+        if operation == 'tighten':
+            target = _text(item.get('target'))
+            if target in tighten_targets or target in clear_targets or target in merge_targets:
+                return 'impossible_mutation'
+            tighten_targets.add(target)
+        elif operation == 'clear_obsolete':
+            target = _text(item.get('target'))
+            if target in clear_targets or target in tighten_targets or target in merge_targets:
+                return 'impossible_mutation'
+            clear_targets.add(target)
+        elif operation == 'merge':
+            targets = set(_text(target) for target in _list(item.get('targets')))
+            if targets & tighten_targets or targets & clear_targets or targets & merge_targets:
+                return 'impossible_mutation'
+            merge_targets.update(targets)
+    return ''
 
 
 def validate_mutable_judge_contract(
@@ -542,6 +667,9 @@ def validate_mutable_judge_contract(
     for subject, subject_verdicts in by_subject.items():
         if len(subject_verdicts) > 1 and any(item['verdict'] == 'no_change' for item in subject_verdicts):
             return None, 'schema_invalid'
+        compatibility_reason = _validate_persistent_operation_compatibility(subject_verdicts)
+        if compatibility_reason:
+            return None, compatibility_reason
 
     return {
         'schema_version': SCHEMA_VERSION,
@@ -614,6 +742,28 @@ def run_mutable_identity_judge(judge_input: Mapping[str, Any]) -> dict[str, Any]
         system_prompt = load_prompt()
     except Exception:
         return _failure_result('runtime_safety_violation')
+    model_input_json = _judge_input_json(judge_input)
+    size_guard = _judge_size_guard(
+        judge_input=judge_input,
+        system_prompt=system_prompt,
+        model_input_json=model_input_json,
+    )
+    if not size_guard['ok']:
+        logger.warning(
+            'mutable_identity_judge_window_too_large model=%s window_chars=%s payload_chars=%s estimated_prompt_tokens=%s',
+            settings['model'],
+            size_guard['window_chars'],
+            size_guard['payload_chars'],
+            size_guard['estimated_prompt_tokens'],
+        )
+        return _failure_result(
+            'window_too_large',
+            {
+                key: value
+                for key, value in size_guard.items()
+                if key != 'ok'
+            },
+        )
     model_payload = build_openrouter_payload(
         judge_input,
         model_settings=settings,
