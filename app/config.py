@@ -284,6 +284,10 @@ IDENTITY_PERIODIC_AGENT_PROMPT_PATH = os.environ.get(
     'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
     'prompts/identity_periodic_agent.txt',
 )
+IDENTITY_MUTABLE_JUDGE_PROMPT_PATH = os.environ.get(
+    'IDENTITY_MUTABLE_JUDGE_PROMPT_PATH',
+    'prompts/identity_mutable_judge.txt',
+)
 IDENTITY_PERIODIC_MODEL = os.environ.get(
     'IDENTITY_PERIODIC_MODEL',
     'anthropic/claude-haiku-4.5',

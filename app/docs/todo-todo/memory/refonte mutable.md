@@ -1,6 +1,6 @@
 # Refonte mutable identity - TODO operatoire
 
-Statut: chantier actif, docs-only pour ce lot.
+Statut: chantier actif.
 
 Spec source-of-truth Lot 0: `app/docs/states/specs/mutable-identity-judge-contract.md`.
 
@@ -96,7 +96,9 @@ Modules actifs constates:
 - `app/identity/identity_governance.py`
   - Expose encore staging, scoring et promotion automatique comme regime actif.
 - `app/admin/admin_identity_read_model_service.py`
-  - Expose `identity_staging`, les anciens seuils, `promotion_to_static_enabled` et les dernieres activites compactes.
+  - Avant correction Lot 1, exposait encore `promotion_to_static_enabled=true` comme si le writer score-first pouvait promouvoir le mutable vers le statique.
+  - Depuis correction pre-Lot 2, expose `promotion_to_static_enabled=false`, `score_first_writer_enabled=false` et des statuts legacy neutralises.
+  - Expose encore `identity_staging`, les anciens seuils comme metadata legacy et les dernieres activites compactes.
 
 Tables / structures persistantes:
 
@@ -356,31 +358,33 @@ Objectif: creer le juge comme autorite centrale de decision.
 
 Cases:
 
-- [ ] Creer ou remplacer le prompt par `identity_mutable_judge`.
-- [ ] Creer ou remplacer le caller/service juge.
-- [ ] Envoyer au juge les 5 paires completes.
-- [ ] Envoyer au juge les quatre canons courants: `llm.static`, `llm.mutable_current`, `user.static`, `user.mutable_current`.
-- [ ] Envoyer le budget mutable.
-- [ ] Envoyer les regles de jugement.
-- [ ] Couvrir les deux sujets dans le meme appel.
-- [ ] Demander les verdicts `no_change`, `reject`, `defer`, `raise_tension`, `persist`.
-- [ ] Fail-closed sur timeout, parse error ou JSON invalide.
-- [ ] Ne pas demander au juge de retourner un score.
+- [x] Creer le prompt `identity_mutable_judge`.
+- [x] Creer le caller/service juge isole dans `app/memory/mutable_identity_judge.py`.
+- [x] Envoyer au juge les 5 paires completes.
+- [x] Envoyer au juge les quatre canons courants: `llm.static`, `llm.mutable_current`, `user.static`, `user.mutable_current`.
+- [x] Envoyer le budget mutable.
+- [x] Envoyer les regles de jugement.
+- [x] Couvrir les deux sujets dans le meme appel.
+- [x] Demander les verdicts `no_change`, `reject`, `defer`, `raise_tension`, `persist`.
+- [x] Fail-closed sur timeout, parse error ou JSON invalide.
+- [x] Ne pas demander au juge de retourner un score.
+- [x] Ne pas brancher encore l'applicateur canonique judge-first.
 
 Tests / preuves attendus:
 
-- [ ] Mock `persist`.
-- [ ] Mock `reject`.
-- [ ] Mock `defer`.
-- [ ] Mock `raise_tension`.
-- [ ] Mock `no_change`.
-- [ ] Mock JSON invalide.
-- [ ] Mock timeout.
-- [ ] Test que `user` et `llm` passent par le meme schema.
+- [x] Mock `persist`.
+- [x] Mock `reject`.
+- [x] Mock `defer`.
+- [x] Mock `raise_tension`.
+- [x] Mock `no_change`.
+- [x] Mock JSON invalide.
+- [x] Mock timeout.
+- [x] Test que `user` et `llm` passent par le meme schema.
+- [x] Test que l'observabilite compacte ne contient pas les propositions brutes.
 
 Critere de sortie:
 
-- [ ] Le LLM juge, et lui seul, decide du statut mutable ontologique.
+- [x] Le module du LLM juge, isole du writer legacy, porte seul la decision mutable ontologique; l'application canonique reste pour Lot 3.
 
 Risque principal:
 

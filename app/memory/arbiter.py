@@ -13,6 +13,7 @@ from admin import runtime_settings
 from core import llm_client
 from core.hermeneutic_node.inputs import time_input
 from memory import identity_temporal_guard
+from memory import mutable_identity_judge
 
 logger = logging.getLogger('frida.arbiter')
 
@@ -959,3 +960,7 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
             parse_count,
         )
         return None
+
+
+def run_mutable_identity_judge(payload_input: Dict[str, Any]) -> Dict[str, Any]:
+    return mutable_identity_judge.run_mutable_identity_judge(payload_input)

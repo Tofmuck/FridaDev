@@ -1,0 +1,429 @@
+from __future__ import annotations
+
+import copy
+import json
+import sys
+import unittest
+from pathlib import Path
+from typing import Any
+
+
+def _resolve_app_dir() -> Path:
+    for parent in Path(__file__).resolve().parents:
+        if (parent / 'web').exists() and (parent / 'server.py').exists():
+            return parent
+    raise RuntimeError('Unable to resolve APP_DIR from test path')
+
+
+APP_DIR = _resolve_app_dir()
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+from admin import runtime_settings
+from memory import mutable_identity_judge
+
+
+def _window_pairs() -> list[dict[str, dict[str, str]]]:
+    return [
+        {
+            'user': {
+                'role': 'user',
+                'content': f'user full content {index}',
+                'timestamp': f'2026-05-25T13:0{index}:00Z',
+            },
+            'assistant': {
+                'role': 'assistant',
+                'content': f'assistant full content {index}',
+                'temporal_source_guard': 'weak_relative_temporal_claim_present' if index == 3 else '',
+            },
+        }
+        for index in range(1, 6)
+    ]
+
+
+def _identities() -> dict[str, dict[str, str]]:
+    return {
+        'llm': {'static': 'Frida static', 'mutable_current': 'Frida mutable current'},
+        'user': {'static': 'User static', 'mutable_current': 'User mutable current'},
+    }
+
+
+def _budget() -> dict[str, int]:
+    return {'target_chars': 3000, 'max_chars': 3300}
+
+
+def _valid_contract() -> dict[str, Any]:
+    return {
+        'schema_version': 'mutable_judge_v1',
+        'meta': {
+            'execution_status': 'complete',
+            'window_pairs_count': 5,
+            'window_complete': True,
+        },
+        'verdicts': [
+            {
+                'subject': 'user',
+                'verdict': 'persist',
+                'operation': 'add',
+                'proposition': 'User keeps a durable boundary.',
+                'target': '',
+                'targets': [],
+                'reason_code': 'explicit_self_limit_continuity',
+                'continuity_kind': 'limit',
+                'source_refs': ['pair_03'],
+                'guard_notes': ['not_task_local'],
+            },
+            {
+                'subject': 'llm',
+                'verdict': 'no_change',
+                'operation': '',
+                'proposition': '',
+                'target': '',
+                'targets': [],
+                'reason_code': 'no_mutable_identity_signal',
+                'continuity_kind': 'none',
+                'source_refs': [],
+                'guard_notes': [],
+            },
+        ],
+    }
+
+
+def _collect_keys(value: Any) -> set[str]:
+    if isinstance(value, dict):
+        keys: set[str] = set()
+        for key, item in value.items():
+            keys.add(str(key))
+            keys.update(_collect_keys(item))
+        return keys
+    if isinstance(value, list):
+        keys = set()
+        for item in value:
+            keys.update(_collect_keys(item))
+        return keys
+    return set()
+
+
+class MutableIdentityJudgeTests(unittest.TestCase):
+    def test_build_judge_input_contains_complete_window_identities_and_no_scores(self) -> None:
+        judge_input = mutable_identity_judge.build_judge_input(
+            window_pairs=_window_pairs(),
+            identities=_identities(),
+            mutable_budget=_budget(),
+            source_annotations={
+                'source_summary': {'user': {'weak_relative_source_count': 1}},
+                'raw_note': 'this annotation has raw words and must be hashed',
+            },
+        )
+
+        self.assertEqual(judge_input['schema_version'], 'mutable_identity_judge_input_v1')
+        self.assertEqual(len(judge_input['window_pairs']), 5)
+        self.assertEqual(judge_input['window_pairs'][2]['id'], 'pair_03')
+        self.assertEqual(judge_input['window_pairs'][2]['user']['content'], 'user full content 3')
+        self.assertEqual(judge_input['window_pairs'][2]['assistant']['content'], 'assistant full content 3')
+        self.assertEqual(
+            judge_input['window_pairs'][2]['assistant']['temporal_source_guard'],
+            'weak_relative_temporal_claim_present',
+        )
+        self.assertEqual(judge_input['identities']['llm']['static'], 'Frida static')
+        self.assertEqual(judge_input['identities']['llm']['mutable_current'], 'Frida mutable current')
+        self.assertEqual(judge_input['identities']['user']['static'], 'User static')
+        self.assertEqual(judge_input['identities']['user']['mutable_current'], 'User mutable current')
+        self.assertEqual(judge_input['mutable_budget'], _budget())
+        self.assertTrue(judge_input['judgment_rules']['python_must_not_score_identity'])
+        self.assertTrue(judge_input['judgment_rules']['static_writes_forbidden'])
+        self.assertTrue({'strength', 'frequency_norm', 'recency_norm', 'support_pairs'}.isdisjoint(_collect_keys(judge_input)))
+        self.assertTrue({'memories', 'summaries', 'identity_evidence', 'candidates'}.isdisjoint(_collect_keys(judge_input)))
+        self.assertEqual(set(judge_input['source_annotations']['raw_note'].keys()), {'chars', 'sha256_12'})
+
+    def test_build_openrouter_payload_uses_mutable_judge_metadata(self) -> None:
+        judge_input = mutable_identity_judge.build_judge_input(
+            window_pairs=_window_pairs(),
+            identities=_identities(),
+            mutable_budget=_budget(),
+        )
+        payload = mutable_identity_judge.build_openrouter_payload(
+            judge_input,
+            model_settings={
+                'model': 'anthropic/claude-haiku-4.5',
+                'temperature': 0.0,
+                'top_p': 1.0,
+                'max_tokens': 1400,
+            },
+            system_prompt='judge prompt',
+        )
+
+        self.assertEqual(payload['metadata']['frida_caller'], 'mutable_identity_judge')
+        self.assertEqual(payload['metadata']['frida_slot'], 'identity_periodic_model')
+        self.assertEqual(payload['trace']['generation_name'], 'FridaDev / Mutable Identity Judge')
+        user_payload = json.loads(payload['messages'][1]['content'])
+        self.assertEqual(user_payload['window_pairs'][0]['user']['content'], 'user full content 1')
+        self.assertTrue({'strength', 'frequency_norm', 'recency_norm', 'support_pairs'}.isdisjoint(_collect_keys(user_payload)))
+
+    def test_valid_contract_is_accepted_and_observability_is_content_free(self) -> None:
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(
+            _valid_contract(),
+            mutable_budget=_budget(),
+        )
+
+        self.assertEqual(reason, '')
+        self.assertIsNotNone(validated)
+        observability = mutable_identity_judge.build_judge_observability(validated)
+        self.assertEqual(observability['verdict_counts'], {'persist': 1, 'no_change': 1})
+        self.assertEqual(observability['subjects_seen'], ['llm', 'user'])
+        self.assertEqual(observability['subjects_touched'], ['user'])
+        self.assertEqual(observability['operation_kinds'], ['add'])
+        self.assertEqual(observability['source_refs_count'], 1)
+        self.assertEqual(observability['guard_notes_count'], 1)
+        self.assertNotIn('User keeps a durable boundary.', repr(observability))
+
+    def test_contract_without_user_or_llm_verdict_is_rejected(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'] = [payload['verdicts'][0]]
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'schema_invalid')
+
+    def test_no_change_cannot_coexist_with_other_verdict_for_same_subject(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'].append(
+            {
+                'subject': 'user',
+                'verdict': 'no_change',
+                'operation': '',
+                'proposition': '',
+                'target': '',
+                'targets': [],
+                'reason_code': 'no_mutable_identity_signal',
+                'continuity_kind': 'none',
+                'source_refs': [],
+                'guard_notes': [],
+            }
+        )
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'schema_invalid')
+
+    def test_raise_tension_cannot_carry_persistence_operation(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'][0] = {
+            'subject': 'user',
+            'verdict': 'raise_tension',
+            'operation': 'add',
+            'proposition': 'User has a tension.',
+            'target': '',
+            'targets': [],
+            'reason_code': 'relation_tension_open',
+            'continuity_kind': 'tension',
+            'source_refs': ['pair_02'],
+            'guard_notes': ['operator_surface_future'],
+        }
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'invalid_operation')
+
+    def test_raise_tension_valid_contract_has_no_persistent_operation_in_observability(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'][0] = {
+            'subject': 'user',
+            'verdict': 'raise_tension',
+            'operation': '',
+            'proposition': '',
+            'target': '',
+            'targets': [],
+            'reason_code': 'relation_tension_open',
+            'continuity_kind': 'tension',
+            'source_refs': ['pair_02'],
+            'guard_notes': ['operator_surface_future'],
+        }
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertEqual(reason, '')
+        observability = mutable_identity_judge.build_judge_observability(validated)
+        self.assertEqual(observability['operation_kinds'], [])
+        self.assertEqual(observability['persistent_operation_count'], 0)
+        self.assertEqual(observability['verdict_counts']['raise_tension'], 1)
+
+    def test_reject_defer_and_no_change_are_valid_without_persistence_fields(self) -> None:
+        cases = [
+            ('reject', 'task_local_not_identity', 'none'),
+            ('defer', 'insufficient_context', 'posture'),
+            ('no_change', 'no_mutable_identity_signal', 'none'),
+        ]
+        for verdict, reason_code, continuity_kind in cases:
+            with self.subTest(verdict=verdict):
+                payload = _valid_contract()
+                payload['verdicts'][0] = {
+                    'subject': 'user',
+                    'verdict': verdict,
+                    'operation': '',
+                    'proposition': '',
+                    'target': '',
+                    'targets': [],
+                    'reason_code': reason_code,
+                    'continuity_kind': continuity_kind,
+                    'source_refs': ['pair_01'] if verdict != 'no_change' else [],
+                    'guard_notes': ['not_persisted'] if verdict != 'no_change' else [],
+                }
+
+                validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+                self.assertEqual(reason, '')
+                self.assertIsNotNone(validated)
+                observability = mutable_identity_judge.build_judge_observability(validated)
+                self.assertEqual(observability['operation_kinds'], [])
+                self.assertEqual(observability['persistent_operation_count'], 0)
+                expected_count = 2 if verdict == 'no_change' else 1
+                self.assertEqual(observability['verdict_counts'][verdict], expected_count)
+
+    def test_persist_with_invalid_operation_is_rejected(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'][0]['operation'] = 'raise_tension'
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'invalid_operation')
+
+    def test_source_refs_and_guard_notes_must_be_content_free_codes(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'][0]['source_refs'] = ['je suis une source brute']
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'schema_invalid')
+
+    def test_run_returns_skipped_on_timeout_and_invalid_json(self) -> None:
+        original_get_settings = mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings
+        original_load_prompt = mutable_identity_judge.load_prompt
+        original_post = mutable_identity_judge.requests.post
+        original_url = mutable_identity_judge.llm_client.or_chat_completions_url
+        original_headers = mutable_identity_judge.llm_client.or_headers_custom
+        original_log_provider = mutable_identity_judge.llm_client.log_provider_metadata
+
+        def fake_get_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='identity_periodic_model',
+                payload=runtime_settings.build_env_seed_bundle('identity_periodic_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        judge_input = mutable_identity_judge.build_judge_input(
+            window_pairs=_window_pairs(),
+            identities=_identities(),
+            mutable_budget=_budget(),
+        )
+
+        mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings = fake_get_settings
+        mutable_identity_judge.load_prompt = lambda _prompt_path=None: 'judge prompt'
+        mutable_identity_judge.llm_client.or_chat_completions_url = lambda: 'https://openrouter.test/chat/completions'
+        mutable_identity_judge.llm_client.or_headers_custom = (
+            lambda *, caller, referer, title: {'Authorization': f'caller={caller}', 'X-Title': title}
+        )
+        try:
+            def timeout_post(*_args, **_kwargs):
+                raise mutable_identity_judge.requests.exceptions.Timeout()
+
+            mutable_identity_judge.requests.post = timeout_post
+            timeout_result = mutable_identity_judge.run_mutable_identity_judge(judge_input)
+            self.assertEqual(timeout_result['status'], 'skipped')
+            self.assertEqual(timeout_result['reason_code'], 'judge_timeout')
+
+            class FakeResponse:
+                def raise_for_status(self) -> None:
+                    return None
+
+                def json(self):
+                    return {'choices': [{'message': {'content': 'not json'}}]}
+
+            mutable_identity_judge.requests.post = lambda *_args, **_kwargs: FakeResponse()
+            mutable_identity_judge.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
+            invalid_result = mutable_identity_judge.run_mutable_identity_judge(judge_input)
+            self.assertEqual(invalid_result['status'], 'skipped')
+            self.assertEqual(invalid_result['reason_code'], 'judge_invalid_json')
+        finally:
+            mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings = original_get_settings
+            mutable_identity_judge.load_prompt = original_load_prompt
+            mutable_identity_judge.requests.post = original_post
+            mutable_identity_judge.llm_client.or_chat_completions_url = original_url
+            mutable_identity_judge.llm_client.or_headers_custom = original_headers
+            mutable_identity_judge.llm_client.log_provider_metadata = original_log_provider
+
+    def test_run_accepts_valid_model_contract(self) -> None:
+        original_get_settings = mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings
+        original_load_prompt = mutable_identity_judge.load_prompt
+        original_post = mutable_identity_judge.requests.post
+        original_url = mutable_identity_judge.llm_client.or_chat_completions_url
+        original_headers = mutable_identity_judge.llm_client.or_headers_custom
+        original_log_provider = mutable_identity_judge.llm_client.log_provider_metadata
+
+        observed = {'payload': None, 'headers': None, 'provider_metadata': None}
+
+        def fake_get_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='identity_periodic_model',
+                payload=runtime_settings.build_env_seed_bundle('identity_periodic_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': json.dumps(_valid_contract())}}]}
+
+        def fake_post(_url, json, headers, timeout):
+            observed['payload'] = copy.deepcopy(json)
+            observed['headers'] = dict(headers)
+            return FakeResponse()
+
+        judge_input = mutable_identity_judge.build_judge_input(
+            window_pairs=_window_pairs(),
+            identities=_identities(),
+            mutable_budget=_budget(),
+        )
+
+        mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings = fake_get_settings
+        mutable_identity_judge.load_prompt = lambda _prompt_path=None: 'judge prompt'
+        mutable_identity_judge.requests.post = fake_post
+        mutable_identity_judge.llm_client.or_chat_completions_url = lambda: 'https://openrouter.test/chat/completions'
+        mutable_identity_judge.llm_client.or_headers_custom = (
+            lambda *, caller, referer, title: {'Authorization': f'caller={caller}', 'X-Title': title}
+        )
+        def fake_log_provider(_logger, _event_name, provider_metadata):
+            observed['provider_metadata'] = dict(provider_metadata)
+
+        mutable_identity_judge.llm_client.log_provider_metadata = fake_log_provider
+        try:
+            result = mutable_identity_judge.run_mutable_identity_judge(judge_input)
+        finally:
+            mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings = original_get_settings
+            mutable_identity_judge.load_prompt = original_load_prompt
+            mutable_identity_judge.requests.post = original_post
+            mutable_identity_judge.llm_client.or_chat_completions_url = original_url
+            mutable_identity_judge.llm_client.or_headers_custom = original_headers
+            mutable_identity_judge.llm_client.log_provider_metadata = original_log_provider
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['reason_code'], 'judge_complete')
+        self.assertEqual(result['contract']['schema_version'], 'mutable_judge_v1')
+        self.assertEqual(observed['payload']['metadata']['frida_caller'], 'mutable_identity_judge')
+        self.assertEqual(observed['payload']['metadata']['frida_slot'], 'identity_periodic_model')
+        self.assertEqual(observed['headers']['Authorization'], 'caller=mutable_identity_judge')
+        self.assertEqual(observed['provider_metadata']['provider_caller'], 'mutable_identity_judge')
+        self.assertEqual(observed['provider_metadata']['provider_title'], 'FridaDev / Mutable Identity Judge')
+
+
+if __name__ == '__main__':
+    unittest.main()
