@@ -148,7 +148,7 @@
 
     target.appendChild(
       createNote(
-        "Cette vue montre une projection structuree compilee pour le jugement hermeneutique. La source canonique reste le statique et la mutable; le staging periodique reste separe et non injecte.",
+          "Cette vue montre une projection structuree compilee pour le jugement hermeneutique. La source canonique reste le statique et la mutable; la fenetre juge mutable reste separee et non injectee.",
       ),
     );
 
@@ -243,7 +243,7 @@
 
     target.appendChild(
       createNote(
-        "Ce texte est la forme runtime compilee de l'identite injectee pour la reponse finale. Il ne remplace ni la source canonique statique/mutable, ni le staging periodique distinct.",
+          "Ce texte est la forme runtime compilee de l'identite injectee pour la reponse finale. Il ne remplace ni la source canonique statique/mutable, ni la fenetre juge mutable distincte.",
       ),
     );
 
@@ -494,9 +494,9 @@
     );
     summaryTarget.appendChild(
       createSummaryCard({
-        title: "Staging periodique observe",
+        title: "Fenetre juge mutable observee",
         body:
-          `Repere compact du dernier snapshot conversationnel connu${stagingScope ? ` (${stagingScope})` : ""} hors canon actif: il alimente l'agent identitaire, n'est pas un etat global du systeme, et n'est injecte ni au jugement ni a la reponse finale.`,
+          `Repere compact du dernier snapshot conversationnel connu${stagingScope ? ` (${stagingScope})` : ""} hors canon actif: il alimente le juge mutable, n'est pas un etat global du systeme, et n'est injecte ni au jugement ni a la reponse finale.`,
         chips: [
           `buffer=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
           `scope=${stagingScope || "n/a"}`,
@@ -504,8 +504,9 @@
           `buffer_status=${toText(buffer.status) || "n/a"}`,
           `dernier_run=${toText(completedAgent.reason_code) || "n/a"}`,
           `suspendu=${Boolean(staging.auto_canonization_suspended)}`,
-          `promotions=${Number(activity.promotion_count) || 0}`,
+          `legacy_promotions=${Number(activity.promotion_count) || 0}`,
           `tensions=${Number(activity.open_tension_count) || 0}`,
+          `outcomes=${Number(activity.outcome_count) || 0}`,
         ],
       }),
     );

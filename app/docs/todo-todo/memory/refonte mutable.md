@@ -504,25 +504,25 @@ Cases:
 
 - [x] Remplacer les labels de staging/scoring actifs minimaux du chemin Lot 4.
 - [x] Exposer une activite `mutable_judge` content-free.
-- [ ] Exposer count, status, reason code, hashes courts, longueurs, timestamps.
-- [ ] Ne pas afficher la fenetre brute.
-- [ ] Ne pas afficher les formulations sensibles.
+- [x] Exposer count, status, reason code, hashes courts, longueurs, timestamps.
+- [x] Ne pas afficher la fenetre brute.
+- [x] Ne pas afficher les formulations sensibles.
 - [x] Ne plus presenter la promotion static comme active.
 - [x] Ne plus presenter les anciens seuils numeriques comme regime actif.
-- [ ] Garder `identity_mutables` et `identity_mutable_audit` comprehensibles.
-- [ ] Mettre a jour le frontend admin si ses labels racontent encore l'ancien regime.
+- [x] Garder `identity_mutables` et `identity_mutable_audit` comprehensibles.
+- [x] Mettre a jour le frontend admin si ses labels racontent encore l'ancien regime.
 
 Tests / preuves attendus:
 
-- [ ] Test read-model: regime affiche `window_target_pairs=5`.
-- [ ] Test read-model: pas de score local dans le regime actif.
-- [ ] Test read-model: `promotion_to_static_enabled=false` ou champ retire.
-- [ ] Test logs: aucun contenu de fenetre brute.
-- [ ] Test admin: les anciens termes ne sont plus presentes comme actifs.
+- [x] Test read-model: regime affiche `window_target_pairs=5`.
+- [x] Test read-model: pas de score local dans le regime actif.
+- [x] Test read-model: `promotion_to_static_enabled=false` ou champ retire.
+- [x] Test logs: aucun contenu de fenetre brute.
+- [x] Test admin: les anciens termes ne sont plus presentes comme actifs.
 
 Critere de sortie:
 
-- [ ] L'admin permet de comprendre le nouveau juge sans exposer de contenu sensible.
+- [x] L'admin permet de comprendre le nouveau juge sans exposer de contenu sensible.
 
 Risque principal:
 

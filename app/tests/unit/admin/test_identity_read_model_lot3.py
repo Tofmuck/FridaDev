@@ -47,7 +47,27 @@ class _LogStoreWithOkReasonCode:
                     'status': 'ok',
                     'payload': {
                         'reason_code': 'applied',
+                        'runtime_pipeline': 'mutable_identity_judge_first',
+                        'prompt_kind': 'mutable_identity_judge',
+                        'write_mode': 'enforced',
                         'writes_applied': True,
+                        'buffer_pairs_count': 5,
+                        'buffer_target_pairs': 5,
+                        'judge_status': 'ok',
+                        'apply_status': 'ok',
+                        'verdict_count': 1,
+                        'verdict_counts': {'persist': 1},
+                        'subjects_seen': ['llm', 'user'],
+                        'subjects_touched': ['user'],
+                        'operation_kinds': ['add'],
+                        'persistent_operation_count': 1,
+                        'continuity_kinds': ['limit'],
+                        'reason_codes': ['explicit_self_formulation'],
+                        'source_refs_count': 1,
+                        'guard_notes_count': 1,
+                        'applied_count': 1,
+                        'skipped_count': 0,
+                        'failed_count': 0,
                         'promotion_count': 0,
                         'promotions': [],
                         'outcomes': [
@@ -55,9 +75,12 @@ class _LogStoreWithOkReasonCode:
                                 'subject': 'user',
                                 'verdict': 'persist',
                                 'operation': 'add',
+                                'status': 'applied',
                                 'reason_code': 'add_applied',
-                                'old_len': 0,
-                                'new_len': 42,
+                                'old_chars': 0,
+                                'new_chars': 42,
+                                'old_sha256_12': None,
+                                'new_sha256_12': '123456789abc',
                                 'continuity_kind': 'limit',
                                 'source_refs_count': 1,
                                 'guard_notes_count': 1,
@@ -83,6 +106,16 @@ class IdentityReadModelLot3Tests(unittest.TestCase):
         self.assertEqual(activity['reason_code'], 'applied')
         self.assertTrue(activity['writes_applied'])
         self.assertEqual(activity['promotion_count'], 0)
+        self.assertEqual(activity['stage'], 'mutable_identity_judge')
+        self.assertEqual(activity['runtime_pipeline'], 'mutable_identity_judge_first')
+        self.assertEqual(activity['buffer_target_pairs'], 5)
+        self.assertEqual(activity['verdict_counts'], {'persist': 1})
+        self.assertEqual(activity['operation_kinds'], ['add'])
+        self.assertEqual(activity['outcome_count'], 1)
+        self.assertEqual(activity['outcome_summaries'][0]['new_chars'], 42)
+        self.assertEqual(activity['outcome_summaries'][0]['new_sha256_12'], '123456789abc')
+        self.assertNotIn('content', activity['outcome_summaries'][0])
+        self.assertNotIn('proposition', activity['outcome_summaries'][0])
         self.assertEqual(staging['last_completed_agent']['reason_code'], 'applied')
         self.assertNotIn('outcomes', activity)
         self.assertNotIn('buffer_pairs', activity)

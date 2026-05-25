@@ -173,13 +173,13 @@
     const head = document.createElement("div");
     head.className = "admin-readonly-group-head";
     const title = document.createElement("h4");
-    title.textContent = "Staging identitaire";
+    title.textContent = "Fenetre juge mutable";
     head.appendChild(title);
     group.appendChild(head);
 
     group.appendChild(
       createNote(
-        "Le staging periodique garde des paires user/assistant hors canon actif. Il alimente l'agent identitaire, mais n'est injecte ni dans `identity_input`, ni dans le bloc runtime final.",
+        "La fenetre judge-first garde 5 paires user/assistant hors canon actif. Elle alimente le juge mutable, mais n'est injectee ni dans `identity_input`, ni dans le bloc runtime final.",
       ),
     );
 
@@ -204,10 +204,16 @@
       meta.appendChild(createChip(`dernier_run=${toText(completedAgent.reason_code)}`));
     }
     if (Number(activity.promotion_count) > 0) {
-      meta.appendChild(createChip(`promotions=${Number(activity.promotion_count)}`));
+      meta.appendChild(createChip(`legacy_promotions=${Number(activity.promotion_count)}`));
     }
     if (Number(activity.open_tension_count) > 0) {
       meta.appendChild(createChip(`tensions=${Number(activity.open_tension_count)}`));
+    }
+    if (Number(activity.outcome_count) > 0) {
+      meta.appendChild(createChip(`outcomes=${Number(activity.outcome_count)}`));
+    }
+    if (toText(activity.runtime_pipeline)) {
+      meta.appendChild(createChip(`pipeline=${toText(activity.runtime_pipeline)}`));
     }
     group.appendChild(meta);
 

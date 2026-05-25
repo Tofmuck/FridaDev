@@ -123,7 +123,7 @@
         scopeKind,
         conversationId: "",
         note:
-          "Aucun staging conversationnel recent observe. Cette carte reste reservee a l'edition de la mutable canonique globale.",
+          "Aucune fenetre juge mutable recente observee. Cette carte reste reservee a l'edition de la mutable canonique globale.",
       };
     }
     const sourceSuffix = conversationId ? ` pour la conversation ${conversationId}` : "";
@@ -131,7 +131,7 @@
       scopeKind,
       conversationId,
       note:
-        `Le staging affiche a cote n'est pas un etat global: c'est le dernier snapshot conversationnel connu (${scopeKind})${sourceSuffix}. Il reste observe seulement et n'est pas edite ici.`,
+        `La fenetre juge mutable affichee a cote n'est pas un etat global: c'est le dernier snapshot conversationnel connu (${scopeKind})${sourceSuffix}. Elle reste observee seulement et n'est pas editee ici.`,
     };
   };
 
@@ -165,13 +165,13 @@
         createChip(`Injection: ${activelyInjected ? "Injecte" : "Non injecte"}`, {
           status: activelyInjected ? "ok" : "skipped",
         }),
-        createChip(`Staging observe: ${Boolean(staging.present) ? "Dernier snapshot conversationnel" : "Aucun"}`, {
+        createChip(`Fenetre observee: ${Boolean(staging.present) ? "Dernier snapshot conversationnel" : "Aucune"}`, {
           status: Boolean(staging.present) ? "ok" : "skipped",
         }),
-        createChip(`Portee staging: ${stagingObservation.scopeKind}`, {
+        createChip(`Portee fenetre: ${stagingObservation.scopeKind}`, {
           status: Boolean(staging.present) ? "ok" : "skipped",
         }),
-        createChip(`Conversation staging: ${stagingObservation.conversationId || "n/a"}`, {
+        createChip(`Conversation fenetre: ${stagingObservation.conversationId || "n/a"}`, {
           status: Boolean(staging.present) ? "ok" : "skipped",
         }),
         createChip(`Buffer courant: ${toText(buffer.status) || "n/a"}`, {
@@ -196,7 +196,7 @@
     const titleText = toText(options.title) || `${subject} mutable canonique`;
     const noteText =
       toText(options.noteText) ||
-      "Edition controlee de la mutable canonique injectee activement. Le staging periodique, la promotion vers le statique et la suspension automatique restent des coutures distinctes de cet editeur.";
+      "Edition controlee de la mutable canonique injectee activement. La fenetre juge mutable, la promotion static legacy inactive et la suspension legacy restent distinctes de cet editeur.";
 
     const card = document.createElement("section");
     card.className = "admin-readonly-group";
@@ -247,7 +247,7 @@
     );
     meta.appendChild(
       createChip(
-        `staging=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
+        `fenetre=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
       ),
     );
     meta.appendChild(createChip(`suspendu=${Boolean(staging.auto_canonization_suspended)}`));
@@ -273,7 +273,7 @@
           updated_by: toText(mutableLayer.updated_by),
           update_reason: toText(mutableLayer.update_reason),
           updated_ts: toText(mutableLayer.updated_ts),
-          staging_target_pairs: Number(regime.staging_target_pairs) || 0,
+          window_target_pairs: Number(regime.window_target_pairs || regime.staging_target_pairs) || 0,
           staging_scope_kind: toText(staging.scope_kind) || "n/a",
           staging_conversation_id: toText(staging.conversation_id) || "n/a",
           current_buffer_status: toText(buffer.status),
@@ -308,7 +308,7 @@
     contentField.appendChild(textarea);
     const contentMeta = document.createElement("small");
     contentMeta.textContent = budget.source_ready
-      ? `Cible ${budget.target_chars} caracteres, plafond dur ${budget.max_chars}, aucune troncature. Le staging periodique conversationnel le plus recent ${Number(staging.buffer_target_pairs) || 0} paires reste distinct et non edite ici.`
+      ? `Cible ${budget.target_chars} caracteres, plafond dur ${budget.max_chars}, aucune troncature. La fenetre juge mutable conversationnelle la plus recente ${Number(staging.buffer_target_pairs) || 0} paires reste distincte et non editee ici.`
       : "Budget mutable runtime indisponible dans le payload actif. Cette surface n'invente plus de caps locaux et attend la source canonique exposee par le regime identity.";
     contentField.appendChild(contentMeta);
     grid.appendChild(contentField);

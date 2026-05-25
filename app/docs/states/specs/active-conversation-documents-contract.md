@@ -314,7 +314,7 @@ Preuves Lot 4:
 
 - le payload multimodal image est autorise seulement dans `prompt_messages` au moment provider;
 - `conversation["messages"]`, le save conversationnel final et les traces memoire ne contiennent jamais `data:image`, `image_url`, `image_content` ou `binary_content`;
-- l'extracteur identity et l'agent periodic identity recoivent seulement le dernier couple user/assistant persistant, sans payload image;
+- les chemins identity persistants, dont la fenetre du juge mutable, lisent seulement le dialogue textuel persistant, sans payload image;
 - le summary conversationnel lit uniquement le dialogue persistant, donc aucune data URL image;
 - les embeddings de traces sont produits depuis les messages persistants user/assistant, pas depuis le payload multimodal;
 - aucun wiring Biblio actif ne relie l'image active a `library_document`, `catalogue_document` ou `passage documentaire`;

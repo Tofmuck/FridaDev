@@ -7,7 +7,7 @@ Lot ferme: `Lot 6`
 Transition refonte mutable 2026-05-25:
 - cette spec decrit la surface `/identity` livree avant refonte;
 - le contrat cible du writer mutable est desormais `mutable-identity-judge-contract.md`;
-- les mentions de staging periodique, seuils ou promotions doivent etre relues comme surface pre-refonte a realigner, pas comme doctrine future du mutable.
+- les mentions historiques de staging periodique, seuils ou promotions doivent etre relues comme surface pre-refonte; le read-model Lot 5 raconte maintenant la fenetre judge-first active.
 
 ## But
 
@@ -20,7 +20,7 @@ La page doit montrer, en francais clair:
 - `llm.static` vide comme etat degrade critique visible immediatement;
 - `llm.mutable` vide comme etat explicite `Absente`, sans la surqualifier comme la meme anomalie fondamentale;
 - la structure reelle du systeme identity;
-- le staging periodique comme espace distinct, non injecte;
+- la fenetre juge mutable comme espace conversationnel distinct, non injecte;
 - la difference entre source canonique, pilotage systeme distinct et formes runtime compilees;
 - l'etat courant par sujet comme synthese compacte, sans recopier exhaustivement les cartes canoniques;
 - un rappel compact des formes runtime compilees utile au pilotage immediat, plus le statut staging / suspension / promotions recentes;

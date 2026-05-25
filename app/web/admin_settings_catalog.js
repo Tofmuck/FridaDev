@@ -17,8 +17,8 @@
     },
     {
       key: "identity_periodic_model",
-      title: "Periodic identity",
-      description: "Consolidation identity periodique individualisee, modele Haiku et reglages propres.",
+      title: "Juge mutable",
+      description: "Slot de compatibilite identity_periodic_model: pilote le caller actif mutable_identity_judge.",
     },
     {
       key: "memory_arbiter_model",
@@ -113,8 +113,8 @@
     },
     {
       key: "referer_identity_periodic",
-      label: "Referer periodic identity",
-      hint: "Referer OpenRouter nominal du flux periodic identity.",
+      label: "Referer juge mutable",
+      hint: "Referer OpenRouter nominal du flux mutable_identity_judge via le slot identity_periodic_model.",
       inputType: "url",
       autocomplete: "url",
     },
@@ -176,8 +176,8 @@
     },
     {
       key: "title_identity_periodic",
-      label: "Titre periodic identity",
-      hint: "Titre OpenRouter du flux periodic identity.",
+      label: "Titre juge mutable",
+      hint: "Titre OpenRouter du flux mutable_identity_judge via le slot identity_periodic_model.",
       inputType: "text",
       autocomplete: "off",
     },

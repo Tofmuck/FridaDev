@@ -36,7 +36,7 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn("Repere runtime compile utile au pilotage", source)
         self.assertIn("Voir le detail diagnostique", source)
         self.assertIn('href="/hermeneutic-admin#hermeneutic-identity-runtime-title"', source)
-        self.assertIn("Seuils et limites", source)
+        self.assertIn("Caps, budgets et legacy", source)
         self.assertIn("Diagnostics / historique", source)
         self.assertIn("Ouvrir legacy, evidences, conflits et corrections", source)
         self.assertIn('id="identityDiagnosticsDisclosure"', source)
@@ -164,7 +164,7 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn("staging=separe", render_source)
         self.assertIn("Projection runtime compilee pour le jugement", render_source)
         self.assertIn("Forme runtime compilee injectee", render_source)
-        self.assertIn("Staging periodique observe", render_source)
+        self.assertIn("Fenetre juge mutable observee", render_source)
         self.assertIn("LEGACY_RAW_TEXT_KEYS", render_source)
         self.assertIn("mappingToEntries(item, \"identity_read_model\", LEGACY_RAW_TEXT_KEYS)", render_source)
         self.assertIn("dernier snapshot conversationnel connu", render_source)
@@ -184,7 +184,7 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
             "Le detail editable du statique et de la mutable reste dans Pilotage canonique actif.",
             read_model_source,
         )
-        self.assertIn("Staging identitaire", read_model_source)
+        self.assertIn("Fenetre juge mutable", read_model_source)
         self.assertIn("hors canon actif", read_model_source)
         self.assertIn("historiques visibles plus bas", read_model_source)
         self.assertIn('const viewMode = toText(options.viewMode).toLowerCase() === "summary"', read_model_source)
@@ -245,11 +245,11 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
             "La mutable reste editable sans signaler un degrade critique.",
             mutable_source,
         )
-        self.assertIn("staging periodique, la promotion vers le statique", mutable_source)
-        self.assertIn("Le staging affiche a cote n'est pas un etat global", mutable_source)
+        self.assertIn("fenetre juge mutable, la promotion static legacy inactive", mutable_source)
+        self.assertIn("La fenetre juge mutable affichee a cote n'est pas un etat global", mutable_source)
         self.assertIn("dernier snapshot conversationnel connu", mutable_source)
-        self.assertIn("Portee staging:", mutable_source)
-        self.assertIn("Conversation staging:", mutable_source)
+        self.assertIn("Portee fenetre:", mutable_source)
+        self.assertIn("Conversation fenetre:", mutable_source)
         self.assertIn("staging_scope_kind", mutable_source)
         self.assertIn("staging_conversation_id", mutable_source)
         self.assertIn('`Etat: ${hasContent ? "Presente" : "Absente"}`', mutable_source)

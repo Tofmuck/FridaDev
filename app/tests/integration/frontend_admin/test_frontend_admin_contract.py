@@ -224,9 +224,9 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('referer_identity_periodic', catalog_source)
         self.assertIn('referer_validation_agent', catalog_source)
         self.assertIn("Titre extracteur d'identite", catalog_source)
-        self.assertIn("Titre periodic identity", catalog_source)
+        self.assertIn("Titre juge mutable", catalog_source)
         self.assertIn("Referer extracteur d'identite", catalog_source)
-        self.assertIn("Referer periodic identity", catalog_source)
+        self.assertIn("Referer juge mutable", catalog_source)
         self.assertIn("Referer validation", catalog_source)
 
         dom_hook_ids = set(re.findall(r'document\.getElementById\("([^"]+)"\)', source_all))
@@ -588,7 +588,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('label: "Referer reformulation web"', source)
         self.assertIn('label: "Referer arbitre"', source)
         self.assertIn('label: "Referer extracteur d\'identite"', source)
-        self.assertIn('label: "Referer periodic identity"', source)
+        self.assertIn('label: "Referer juge mutable"', source)
         self.assertIn('label: "Referer validation"', source)
 
     def test_admin_state_module_uses_plain_object_slices_without_store_framework(self) -> None:

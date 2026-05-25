@@ -142,7 +142,7 @@ Notes:
 
 ### `arbiter_model`
 
-Slot legacy conserve pour compatibilite. Aucun caller modele actif ne lit plus `arbiter_model` comme source effective: l'arbitre memoire utilise `memory_arbiter_model`, l'extracteur identity utilise `identity_extractor_model`, et le periodic identity utilise `identity_periodic_model`.
+Slot legacy conserve pour compatibilite. Aucun caller modele actif ne lit plus `arbiter_model` comme source effective: l'arbitre memoire utilise `memory_arbiter_model`, l'extracteur identity utilise `identity_extractor_model`, et le juge mutable utilise le slot de compatibilite `identity_periodic_model`.
 
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |

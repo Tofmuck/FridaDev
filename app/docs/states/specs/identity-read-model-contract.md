@@ -2,13 +2,13 @@
 
 Statut: spec vivante  
 Portee: lecture operator-facing read-only reemployee par `/hermeneutic-admin` et `/identity`
-Lot ferme: `Lot 4`
+Lot ferme: `Lot 5`
 
 Transition refonte mutable 2026-05-25:
-- le read-model de cette spec decrit encore la surface runtime livree avant refonte;
-- le contrat source-of-truth cible du nouveau writer mutable est `mutable-identity-judge-contract.md`;
-- les champs de staging, seuils, promotion et agent periodique devront etre realignes dans un lot ulterieur pour raconter `5 paires completes -> juge LLM -> identity_mutables`;
-- cette spec ne doit plus etre lue comme doctrine cible du writer mutable.
+- le read-model expose maintenant le regime actif `mutable_identity_judge_first`;
+- le contrat source-of-truth du writer mutable reste `mutable-identity-judge-contract.md`;
+- les champs de fenetre, statut, reason code, longueurs et hash courts racontent `5 paires completes -> juge LLM -> identity_mutables`;
+- le scoring local et la promotion mutable -> static restent visibles seulement comme legacy pre-refonte inactive.
 
 ## But
 
@@ -50,7 +50,7 @@ Le read-model doit exposer explicitement:
 - `governance_read_via = "/api/admin/identity/governance"`
 - `governance_editable_via = "/api/admin/identity/governance"`
 - `runtime_representations_read_via = "/api/admin/identity/runtime-representations"`
-- `identity_runtime_regime` comme rappel compact du regime runtime expose; avant refonte il contient encore `mutable_budget`, staging, seuils, promotion et suspension, mais ces champs sont supersedes comme cible mutable par `mutable-identity-judge-contract.md`
+- `identity_runtime_regime` comme rappel compact du regime runtime actif: `runtime_pipeline`, `window_target_pairs=5`, budget mutable, stages actifs, writer score-first desactive et promotion static desactivee
 - `identity_staging` comme verite read-only distincte du canon actif injecte
 
 Le read-model ne doit pas:
@@ -110,11 +110,12 @@ Semantique:
 - ce bloc ne requalifie pas le staging en canon actif;
 - il separe explicitement l'etat du buffer courant (`current_buffer`) du dernier run agent termine (`last_completed_agent`) sans dump du buffer brut;
 - quand un nouveau buffer est en cours, `last_agent_reason` ne doit pas porter une ancienne raison terminale comme `completed_no_change`; cette raison reste lisible via `last_completed_agent.reason_code` quand disponible;
-- `latest_agent_activity` resume compactement le dernier verdict utile, les tensions ouvertes `raise_tension` et les eventuels evenements legacy compactes pour cette conversation;
+- `latest_agent_activity` resume compactement le dernier verdict utile, les tensions ouvertes `raise_tension`, les compteurs, statuts, reason codes, longueurs, hash courts, tailles de fenetre et eventuels evenements legacy compactes pour cette conversation;
 - `latest_agent_activity.reason_code` lit le `reason_code` compact de l'event actif `mutable_identity_judge`, avec fallback historique vers `identity_periodic_agent`;
 - quand un run se termine sans write canonique mais garde au moins une tension ouverte, son resume compact ne doit pas etre aplati en `completed_no_change` et utilise `completed_with_open_tension`;
 - les tensions ouvertes du nouvel agent y vivent seulement comme activite judge-first compacte conversation-scoped, avec `open_tension_count`, `open_tensions_storage_kind = "mutable_identity_judge_latest_activity"`, `open_tensions_scope_kind = "conversation_scoped_latest"` et `open_tensions_actively_injected = false`;
 - ces tensions ouvertes ne requalifient pas `identity_conflicts` en source active et ne rejoignent pas le canon injecte.
+- `latest_agent_activity.outcome_summaries` peut exposer seulement des summaries content-free: sujet, verdict, operation, statut, reason code, continuity kind, compteurs, longueurs, hash courts et target hashes; il ne contient jamais proposition brute, fenetre brute, prompt ou contenu mutable.
 
 ## Couches par sujet
 
@@ -169,7 +170,7 @@ Semantique:
 - cette couche reste une couche identitaire mouvante et non un sous-prompt operatoire;
 - `actively_injected` signifie seulement qu'elle participe a la forme compilee active;
 - `last_mutation_audit` resume la derniere mutation connue issue de `identity_mutable_audit` avec `present`, `storage_kind`, `actively_injected=false`, `subject`, `mutation_kind`, `actor`, `reason_code`, `old_chars`, `new_chars`, `old_sha256_12`, `new_sha256_12`, `source_trace_id` et `created_ts`;
-- `last_mutation_audit.reason_code` est un code compact et stable (`set_applied`, `clear_applied`, `periodic_agent`, `periodic_agent_promotion`, etc.), pas la raison humaine libre d'une edition admin;
+- `last_mutation_audit.reason_code` est un code compact et stable (`set_applied`, `clear_applied`, `mutable_judge_add`, `mutable_judge_tighten`, `mutable_judge_merge`, `mutable_judge_clear_obsolete`, ou codes legacy historiques), pas la raison humaine libre d'une edition admin;
 - `last_mutation_audit` ne contient jamais le contenu mutable brut et ne devient jamais une source d'injection;
 - si la mutable courante est absente, `last_mutation_audit.present=true` permet de distinguer une absence apres `clear`; `present=false` signifie seulement qu'aucun historique durable connu n'existe;
 - verite active: oui, si `content` est present.
@@ -213,7 +214,7 @@ Semantique:
 - couche legacy diagnostique/historique seulement;
 - hors injection active et hors staging;
 - expose `classification = "legacy_diagnostic_only"` et `runtime_authority = "historical_only"`;
-- ne sert pas de persistence aux tensions `raise_conflict` du regime periodique actif, qui restent dans `latest_agent_activity` seulement.
+- ne sert pas de persistence aux tensions `raise_tension` du regime judge-first actif, qui restent dans `latest_agent_activity` seulement.
 
 ### `conflicts`
 
@@ -234,7 +235,7 @@ Semantique:
 - couche legacy diagnostique/historique seulement;
 - hors injection active et hors staging;
 - expose `classification = "legacy_diagnostic_only"` et `runtime_authority = "historical_only"`;
-- ne sert pas de persistence aux tensions `raise_conflict` du regime periodique actif, qui restent dans `latest_agent_activity` seulement.
+- ne sert pas de persistence aux tensions `raise_tension` du regime judge-first actif, qui restent dans `latest_agent_activity` seulement.
 
 ## Affichage operateur
 
@@ -259,7 +260,7 @@ Depuis la fermeture du lot 5 de la surface `/identity`, cette page reemploie ce 
 
 Depuis `Lot 5`, cette meme surface peut aussi pointer vers une gouvernance identity distincte:
 - via `GET /api/admin/identity/governance` et `POST /api/admin/identity/governance`;
-- avec inventaire honnete des caps/seuils/budgets;
+- avec inventaire honnete des caps, budgets et legacy inactif;
 - sans surcharger le contrat read-only du read-model lui-meme.
 
 Depuis `Lot 3`, cette meme section peut aussi porter une edition controlee de la mutable canonique:

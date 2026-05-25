@@ -176,17 +176,51 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
                     'status': 'ok',
                     'payload': {
                         'reason_code': 'completed_with_open_tension',
+                        'runtime_pipeline': 'mutable_identity_judge_first',
+                        'prompt_kind': 'mutable_identity_judge',
+                        'write_mode': 'enforced',
                         'writes_applied': False,
+                        'buffer_pairs_count': 5,
+                        'buffer_target_pairs': 5,
+                        'buffer_cleared': True,
+                        'buffer_frozen': False,
+                        'judge_status': 'ok',
+                        'judge_reason_code': 'judge_complete',
+                        'apply_status': 'ok',
+                        'apply_reason_code': 'completed_no_change',
+                        'verdict_count': 2,
+                        'verdict_counts': {'raise_tension': 1, 'no_change': 1},
+                        'subjects_seen': ['llm', 'user'],
+                        'subjects_touched': ['user'],
+                        'operation_kinds': [],
+                        'persistent_operation_count': 0,
+                        'continuity_kinds': ['tension'],
+                        'reason_codes': ['relation_tension_open'],
+                        'source_refs_count': 1,
+                        'guard_notes_count': 1,
+                        'applied_count': 0,
+                        'skipped_count': 2,
+                        'failed_count': 0,
+                        'window_chars': 1200,
+                        'payload_chars': 1800,
+                        'estimated_prompt_tokens': 700,
+                        'max_window_chars': 32000,
+                        'max_estimated_prompt_tokens': 12000,
                         'promotion_count': 0,
                         'outcomes': [
                             {
                                 'subject': 'user',
                                 'verdict': 'raise_tension',
+                                'status': 'skipped',
                                 'operation': '',
                                 'reason_code': 'relation_tension_open',
                                 'continuity_kind': 'tension',
                                 'source_refs_count': 1,
                                 'guard_notes_count': 1,
+                                'old_chars': 128,
+                                'new_chars': 128,
+                                'old_sha256_12': 'aaaabbbbcccc',
+                                'new_sha256_12': 'aaaabbbbcccc',
                             }
                         ],
                         'promotions': [],
@@ -239,6 +273,11 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertFalse(data['active_runtime']['legacy_drives_active_injection'])
         self.assertEqual(data['active_runtime']['read_surface_stage'], 'lot_b5_identity_operator_truth')
         self.assertTrue(data['active_runtime']['identity_runtime_regime']['staging_not_injected'])
+        self.assertEqual(data['active_runtime']['identity_runtime_regime']['window_target_pairs'], 5)
+        self.assertEqual(
+            data['active_runtime']['identity_runtime_regime']['window_contract'],
+            'five_complete_pairs_to_llm_judge',
+        )
         self.assertEqual(data['active_runtime']['identity_runtime_regime']['mutable_budget']['target_chars'], 3000)
         self.assertFalse(data['active_runtime']['identity_runtime_regime']['score_first_writer_enabled'])
         self.assertEqual(
@@ -248,6 +287,12 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(
             data['active_runtime']['identity_runtime_regime']['scoring_thresholds_runtime_authority'],
             'legacy_pre_refactor_only',
+        )
+        self.assertNotIn('scoring_thresholds', data['active_runtime']['identity_runtime_regime'])
+        self.assertFalse(
+            data['active_runtime']['identity_runtime_regime']['legacy_score_first_writer'][
+                'thresholds_exposed_in_active_regime'
+            ]
         )
         self.assertFalse(data['active_runtime']['identity_runtime_regime']['promotion_to_static_enabled'])
         self.assertEqual(
@@ -281,10 +326,36 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             data['identity_staging']['latest_agent_activity']['reason_code'],
             'completed_with_open_tension',
         )
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['stage'], 'mutable_identity_judge')
+        self.assertEqual(
+            data['identity_staging']['latest_agent_activity']['activity_runtime_authority'],
+            'active_mutable_identity_judge_first',
+        )
+        self.assertEqual(
+            data['identity_staging']['latest_agent_activity']['runtime_pipeline'],
+            'mutable_identity_judge_first',
+        )
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['buffer_target_pairs'], 5)
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['verdict_count'], 2)
+        self.assertEqual(
+            data['identity_staging']['latest_agent_activity']['verdict_counts'],
+            {'raise_tension': 1, 'no_change': 1},
+        )
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['source_refs_count'], 1)
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['guard_notes_count'], 1)
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['window_chars'], 1200)
         self.assertEqual(data['identity_staging']['latest_agent_activity']['promotion_count'], 0)
         self.assertEqual(data['identity_staging']['latest_agent_activity']['open_tension_count'], 1)
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['outcome_count'], 1)
         self.assertNotIn('buffer_pairs', data['identity_staging']['latest_agent_activity'])
         self.assertNotIn('outcomes', data['identity_staging']['latest_agent_activity'])
+        self.assertNotIn('proposition', data['identity_staging']['latest_agent_activity'])
+        outcome_summary = data['identity_staging']['latest_agent_activity']['outcome_summaries'][0]
+        self.assertTrue(outcome_summary['content_minimized'])
+        self.assertEqual(outcome_summary['old_chars'], 128)
+        self.assertEqual(outcome_summary['old_sha256_12'], 'aaaabbbbcccc')
+        self.assertNotIn('content', outcome_summary)
+        self.assertNotIn('proposition', outcome_summary)
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['open_tensions_storage_kind'],
             'mutable_identity_judge_latest_activity',
@@ -300,6 +371,14 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         )
         self.assertNotIn(
             'content',
+            data['identity_staging']['latest_agent_activity']['open_tensions'][0],
+        )
+        self.assertNotIn(
+            'strength',
+            data['identity_staging']['latest_agent_activity']['open_tensions'][0],
+        )
+        self.assertNotIn(
+            'threshold_verdict',
             data['identity_staging']['latest_agent_activity']['open_tensions'][0],
         )
         self.assertEqual(

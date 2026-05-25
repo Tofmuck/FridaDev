@@ -118,7 +118,7 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
 
         self.assertIn('no active model caller', readonly_info['operator_warning']['value'])
         self.assertIn(
-            'identity_periodic_model drives periodic identity',
+            'identity_periodic_model drives mutable_identity_judge',
             readonly_info['active_replacements']['value'],
         )
         self.assertIn('not an effective source', readonly_info['legacy_scope']['value'])
@@ -139,24 +139,32 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             'benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-hermeneutic.md',
         )
         self.assertIn('extract_identities() uses identity_extractor_model', readonly_info['transition_note']['value'])
-        self.assertIn('identity_periodic_agent uses identity_periodic_model', readonly_info['transition_note']['value'])
+        self.assertIn('mutable_identity_judge uses identity_periodic_model', readonly_info['transition_note']['value'])
 
     def test_get_section_readonly_info_identity_periodic_model_exposes_prompt_transport_and_decision(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('identity_periodic_model')
 
         self.assertEqual(
             readonly_info['prompt_path']['label'],
-            'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
+            'IDENTITY_MUTABLE_JUDGE_PROMPT_PATH',
         )
-        self.assertEqual(readonly_info['prompt_path']['value'], config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH)
-        self.assertIn('You are a periodic identity agent.', readonly_info['system_prompt']['value'])
+        self.assertEqual(readonly_info['prompt_path']['value'], config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)
+        self.assertEqual(
+            readonly_info['prompt_loader']['value'],
+            'memory.mutable_identity_judge.load_prompt(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)',
+        )
+        self.assertEqual(
+            readonly_info['legacy_prompt_path']['value'],
+            config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH,
+        )
+        self.assertIn('mutable identity judge', readonly_info['system_prompt']['value'])
         self.assertIn('main_model.title_identity_periodic', readonly_info['shared_transport']['value'])
         self.assertIn('main_model.referer_identity_periodic', readonly_info['shared_transport']['value'])
         self.assertEqual(
             readonly_info['benchmark_decision']['value'],
             'benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md',
         )
-        self.assertIn('llm identity is what Frida durably says/carries', readonly_info['doctrine']['value'])
+        self.assertIn('compatibility model slot', readonly_info['doctrine']['value'])
 
     def test_get_section_readonly_info_summary_model_exposes_prompt_transport_and_benchmark_decision(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('summary_model')

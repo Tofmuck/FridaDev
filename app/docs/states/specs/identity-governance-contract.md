@@ -156,7 +156,7 @@ Important:
 `regime_sections` complete les `items` sans dupliquer le read-model:
 - `active_canon_contract`: rappelle que le canon actif injecte reste `static + mutable narrative`, distinct du staging;
 - `staging_contract`: rappelle la fenetre technique `conversation_scoped_latest`, sa cible a `5` paires completes et son statut non injecte / non editable;
-- `scoring_contract`: rappelle le scoring Python deterministe du runtime pre-refonte comme legacy a supprimer; depuis la correction Lot 1 il ne doit plus agir comme writer canonique score-first dans le chemin mutable actif;
+- `scoring_contract`: rappelle le scoring Python deterministe du runtime pre-refonte comme legacy a supprimer; il ne porte plus de seuil numerique actif et ne doit plus agir comme writer canonique score-first dans le chemin mutable actif;
 - `promotion_and_suspension_contract`: rappelle la promotion `mutable -> static` et la suspension automatique comme capacites pre-refonte neutralisees dans le chemin mutable actif; toute future promotion devra etre un chantier separe;
 - `mutable_budget_contract`: rappelle que `3000 / 3300` borne seulement la mutable canonique, doctrine verrouillee;
 - `legacy_identity_contract`: rappelle que `identities`, `identity_evidence` et `identity_conflicts` restent `legacy_diagnostic_only`, hors injection active.

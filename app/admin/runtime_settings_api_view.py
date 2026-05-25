@@ -287,7 +287,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'label': 'ARBITER_MODEL_TRANSITION_WARNING',
                 'value': (
                     'Legacy compatibility slot: no active model caller now reads arbiter_model as its '
-                    'source of truth. memory arbitration, identity extraction and periodic identity '
+                    'source of truth. memory arbitration, identity extraction and mutable identity judge '
                     'all use dedicated runtime sections.'
                 ),
                 'is_editable': False,

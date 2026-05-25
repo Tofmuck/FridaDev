@@ -4,8 +4,8 @@ import hashlib
 from typing import Any, Mapping, Tuple
 
 import config
+from admin import admin_identity_judge_activity_projection
 from memory import memory_identity_periodic_agent
-from memory import memory_identity_periodic_scoring
 
 
 READ_MODEL_VERSION = 'v2'
@@ -20,8 +20,6 @@ STAGING_STORAGE_KIND = 'identity_mutable_staging'
 LEGACY_IDENTITY_PIPELINE_STATUS = 'legacy_diagnostic_only'
 LEGACY_IDENTITY_PIPELINE_RECORDED_VIA = 'persist_identity_entries'
 LEGACY_IDENTITY_PIPELINE_STORAGE = 'identities + identity_evidence + identity_conflicts'
-OPEN_TENSIONS_STORAGE_KIND = 'mutable_identity_judge_latest_activity'
-OPEN_TENSIONS_SCOPE_KIND = 'conversation_scoped_latest'
 MUTABLE_AUDIT_STORAGE_KIND = 'identity_mutable_audit'
 TERMINAL_STAGING_REASONS = {
     'applied',
@@ -182,81 +180,6 @@ def _compact_legacy_items(storage_kind: str, items: list[Any]) -> list[dict[str,
     return [_without_legacy_raw_text(_mapping(item)) for item in items]
 
 
-def _compact_promotions(values: Any) -> list[dict[str, Any]]:
-    items = values if isinstance(values, list) else []
-    compact: list[dict[str, Any]] = []
-    for item in items:
-        payload = _mapping(item)
-        summary: dict[str, Any] = {}
-        for key in (
-            'subject',
-            'operation_kind',
-            'promotion_reason_code',
-            'threshold_verdict',
-        ):
-            text = _optional_text(payload.get(key))
-            if text:
-                summary[key] = text
-        try:
-            strength = float(payload.get('strength'))
-        except (TypeError, ValueError):
-            strength = None
-        if strength is not None:
-            summary['strength'] = round(strength, 4)
-        if summary:
-            compact.append(summary)
-    return compact
-
-
-def _compact_open_tensions(values: Any) -> list[dict[str, Any]]:
-    items = values if isinstance(values, list) else []
-    compact: list[dict[str, Any]] = []
-    for item in items:
-        payload = _mapping(item)
-        action = _optional_text(payload.get('action'))
-        verdict = _optional_text(payload.get('verdict'))
-        reason_code = _optional_text(payload.get('reason_code'))
-        if (
-            action != 'raise_conflict'
-            and verdict != 'raise_tension'
-            and reason_code not in {
-                'raise_conflict',
-                'raise_conflict_open',
-                'relation_tension_open',
-                'contradiction_open',
-            }
-        ):
-            continue
-        summary: dict[str, Any] = {}
-        for key in (
-            'subject',
-            'action',
-            'verdict',
-            'operation',
-            'reason_code',
-            'continuity_kind',
-            'threshold_verdict',
-        ):
-            text = _optional_text(payload.get(key))
-            if text:
-                summary[key] = text
-        for key in ('source_refs_count', 'guard_notes_count'):
-            if payload.get(key) is not None:
-                try:
-                    summary[key] = int(payload.get(key) or 0)
-                except (TypeError, ValueError):
-                    pass
-        try:
-            strength = float(payload.get('strength'))
-        except (TypeError, ValueError):
-            strength = None
-        if strength is not None:
-            summary['strength'] = round(strength, 4)
-        if summary:
-            compact.append(summary)
-    return compact
-
-
 def _latest_periodic_agent_event(
     *,
     log_store_module: Any,
@@ -289,45 +212,11 @@ def _build_latest_agent_activity(
         log_store_module=log_store_module,
         conversation_id=conversation_id,
     )
-    payload = _mapping(event.get('payload'))
-    open_tensions = _compact_open_tensions(payload.get('outcomes'))
-    return {
-        'present': bool(event),
-        'conversation_id': _optional_text(event.get('conversation_id')),
-        'turn_id': _optional_text(event.get('turn_id')),
-        'ts': _optional_text(event.get('ts')),
-        'status': _optional_text(event.get('status')),
-        'reason_code': _optional_text(payload.get('reason_code')),
-        'writes_applied': bool(payload.get('writes_applied')),
-        'promotion_count': int(payload.get('promotion_count') or 0),
-        'promotions': _compact_promotions(payload.get('promotions')),
-        'rejection_reasons': dict(payload.get('rejection_reasons') or {}),
-        'open_tension_count': len(open_tensions),
-        'open_tensions_storage_kind': OPEN_TENSIONS_STORAGE_KIND,
-        'open_tensions_scope_kind': OPEN_TENSIONS_SCOPE_KIND,
-        'open_tensions_actively_injected': False,
-        'open_tensions': open_tensions,
-    }
+    return admin_identity_judge_activity_projection.latest_agent_activity(event)
 
 
 def _empty_latest_agent_activity() -> dict[str, Any]:
-    return {
-        'present': False,
-        'conversation_id': None,
-        'turn_id': None,
-        'ts': None,
-        'status': None,
-        'reason_code': None,
-        'writes_applied': False,
-        'promotion_count': 0,
-        'promotions': [],
-        'rejection_reasons': {},
-        'open_tension_count': 0,
-        'open_tensions_storage_kind': OPEN_TENSIONS_STORAGE_KIND,
-        'open_tensions_scope_kind': OPEN_TENSIONS_SCOPE_KIND,
-        'open_tensions_actively_injected': False,
-        'open_tensions': [],
-    }
+    return admin_identity_judge_activity_projection.empty_latest_agent_activity()
 
 
 def _clean_current_agent_reason(staging_state: Mapping[str, Any]) -> str | None:
@@ -405,22 +294,31 @@ def _build_last_completed_agent(
 
 
 def build_identity_runtime_regime() -> dict[str, Any]:
+    target_pairs = int(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
     return {
+        'runtime_pipeline': 'mutable_identity_judge_first',
         'active_canon_layers': ['static', 'mutable'],
         'staging_storage_kind': STAGING_STORAGE_KIND,
-        'staging_target_pairs': int(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS),
+        'staging_target_pairs': target_pairs,
+        'window_target_pairs': target_pairs,
+        'window_contract': 'five_complete_pairs_to_llm_judge',
         'staging_not_injected': True,
+        'active_log_stages': ['mutable_identity_judge', 'mutable_identity_judge_apply'],
+        'legacy_log_stages': ['identity_periodic_agent', 'identity_periodic_agent_apply'],
+        'observability_contract': 'content_free_counts_status_reasons_lengths_hashes_timestamps',
         'mutable_budget': {
             'target_chars': int(config.IDENTITY_MUTABLE_TARGET_CHARS),
             'max_chars': int(config.IDENTITY_MUTABLE_MAX_CHARS),
         },
-        'scoring_thresholds': {
-            'reject_below': float(memory_identity_periodic_scoring.REJECT_THRESHOLD),
-            'accept_from': float(memory_identity_periodic_scoring.ACCEPT_THRESHOLD),
-        },
         'score_first_writer_enabled': False,
         'score_first_writer_status': 'legacy_neutralized_in_active_path',
         'scoring_thresholds_runtime_authority': 'legacy_pre_refactor_only',
+        'legacy_score_first_writer': {
+            'runtime_authority': 'legacy_pre_refactor_only',
+            'active_writer': False,
+            'thresholds_exposed_in_active_regime': False,
+            'delete_in_lot': 'Lot 6',
+        },
         'mutable_writer_pipeline': 'mutable_identity_judge_first',
         'mutable_judge_writer_enabled': True,
         'mutable_judge_writer_status': 'active_in_enforced_identity_modes',
