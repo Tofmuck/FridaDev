@@ -1,8 +1,8 @@
 # Identity New Contract - Plan doctrinal static et mutable
 
-Statut: plan doctrinal actif pour la definition `static` / `mutable`; le contrat d'admission runtime du mutable est supersede par `app/docs/states/specs/mutable-identity-judge-contract.md`
+Statut: plan doctrinal actif pour la definition `static` / `mutable`; le contrat runtime d'admission du mutable est supersede par `app/docs/states/specs/mutable-identity-judge-contract.md`
 Classement: `app/docs/states/policies/`
-Portee: contrat cible de `static`, de `mutable` et du contrat d'admission du `mutable`
+Portee: doctrine de sens, de forme recevable et de contenus irrecevables pour `static` et `mutable`; n'est plus le contrat runtime d'admission du mutable
 Etat runtime vise: aucun patch runtime dans ce document
 Contrainte dure: la future mise en oeuvre devra preserver le runtime actif `static + mutable narrative` et l'observabilite identity deja en place
 Decision de reclassement du 2026-04-18: ce plan quitte `todo-todo` et devient une reference doctrinale active sous `states/policies`; le chantier operatoire associe est maintenant archive dans `app/docs/todo-done/refactors/identity-new-contract-todo.md`.
@@ -12,20 +12,20 @@ References liees:
 - `app/docs/states/specs/identity-static-edit-contract.md`
 - `app/docs/states/specs/identity-mutable-edit-contract.md`
 - `app/docs/states/specs/identity-read-model-contract.md`
-- `app/memory/memory_identity_mutable_rewriter.py`
+- `app/memory/memory_identity_mutable_rewriter.py` (reference historique du regime pre-refonte)
 - `app/identity/active_identity_projection.py`
 
 Mise a jour du 2026-05-25:
 - les sections de ce document qui definissent le sens de `static`, de `mutable`, la forme textuelle recevable et les contenus irrecevables restent actives;
 - les sections historiques qui parlent d'agent periodique, de fenetre de 15 paires, de score local, de recurrence, de promotion automatique vers `static` ou de JSON ancien ne sont plus source-of-truth pour la refonte mutable;
-- le contrat actif de mise en oeuvre est maintenant `mutable-identity-judge-contract.md`: `5 paires completes -> juge LLM -> verdicts -> validation technique minimale -> identity_mutables`;
+- le seul contrat runtime d'admission mutable actif pour la refonte est maintenant `mutable-identity-judge-contract.md`: `5 paires completes -> juge LLM -> verdicts -> validation technique minimale -> identity_mutables`;
 - cette refonte interdit la preselection semantique, le scoring identitaire, la promotion automatique vers `static` et tout writer mutable parallele.
 
 ## 1. Objet du chantier
 
 Question centrale:
 
-Comment decide-t-on ce qui a le droit d'entrer dans `mutable` comme identite ?
+Quel type d'enonce a le sens d'une identite `mutable`, par difference avec une preference, une consigne locale ou une memoire de contexte ?
 
 Ce document ne traite pas d'abord:
 - d'une destination pour ce qui n'entre pas;
@@ -34,15 +34,15 @@ Ce document ne traite pas d'abord:
 - d'une refonte runtime.
 
 Il traite d'abord d'une seule chose:
-- fermer rigoureusement la porte d'entree du `mutable`.
+- definir rigoureusement le sens et la forme d'une proposition `mutable` recevable.
 
 Formule cle du lot:
 - rien ne doit sortir de `mutable` comme sujet principal de ce lot;
 - mais tout ne doit pas y entrer.
 
 Autrement dit:
-- le centre du chantier est le contrat d'admission de l'agent d'identite periodique qui intervient sur `mutable`;
-- si ce contrat est flou, le `mutable` devient vite un depot de preferences, de conforts locaux ou de pseudo-narration;
+- le centre doctrinal est la distinction entre identite mutable, preference, confort local et pseudo-narration;
+- si cette distinction est floue, le `mutable` devient vite un depot de preferences, de conforts locaux ou de pseudo-narration;
 - si ce contrat est ferme, `static` et `mutable` retrouvent chacun leur fonction propre.
 
 ## 2. Definition cible de `static`
@@ -159,15 +159,16 @@ Non recevable en principe:
 - une formulation qui ne vaut que comme preference de reponse;
 - une formulation qui n'est stable qu'en apparence parce qu'elle generalise une commodite locale.
 
-### 4.4 Condition d'admission
+### 4.4 Condition de recevabilite doctrinale
 
-Le contrat cible du rewriter doit donc etre:
+La ligne doctrinale de recevabilite est donc:
 - ne canoniser que ce qui peut etre soutenu comme verite identitaire forte;
 - rejeter ce qui est simplement utile, confortable, narratif ou circonstanciel;
 - preferer l'absence de canonisation a une canonisation floue.
 
-Regle de prudence:
-- en cas de doute, ne pas faire entrer.
+Regle de lecture:
+- cette prudence qualifie le jugement LLM et l'edition operateur;
+- elle ne cree pas de prefiltre Python avant lecture de la fenetre complete.
 
 ## 5. Entree identitaire explicitement irrecevable
 
@@ -282,13 +283,13 @@ Son travail cible:
 - comparer semantiquement chaque candidat au `static` et au `mutable` existants;
 - comparer aussi les candidats entre eux avant toute ecriture;
 - ponderer les candidats selon leur recence et leur frequence dans la fenetre travaillee;
-- refuser toute canonisation en cas de doute, de contradiction non resolue, de doublon, de reformulation faible ou de derive vers l'utile non identitaire.
+- refuser toute canonisation quand l'ancien cadre rencontrait une ambiguite, une contradiction non resolue, un doublon, une reformulation faible ou une derive vers l'utile non identitaire.
 
 Le point cle n'est plus seulement:
 - `rewrite` ou `no_change`.
 
 Le point cle devient:
-- selon quel contrat d'admission une proposition est jugee;
+- selon quelle regle doctrinale ancienne une proposition etait jugee;
 - et selon quelle operation locale le `mutable` est modifie sans etre integralement reecrit.
 
 Unite de travail retenue a ce stade:
@@ -381,7 +382,7 @@ Regles fermes:
 - si le JSON est invalide, rien n'est ecrit;
 - si une operation manque ses champs obligatoires, elle est rejetee;
 - si une proposition echoue aux garde-fous deterministes, elle n'est pas appliquee;
-- en cas de doute, l'application finale degrade vers `no_change`.
+- sur ambiguite technique ou doctrinale, l'application finale degradait vers `no_change`.
 
 ### 8.2 Cadence, buffer temporaire et contexte de travail
 

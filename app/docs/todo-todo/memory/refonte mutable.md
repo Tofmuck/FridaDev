@@ -203,11 +203,11 @@ Schema JSON cible:
 
 ```json
 {
+  "schema_version": "mutable_judge_v1",
   "meta": {
     "execution_status": "complete",
     "window_pairs_count": 5,
-    "window_complete": true,
-    "schema_version": "mutable_judge_v1"
+    "window_complete": true
   },
   "verdicts": [
     {
@@ -219,32 +219,30 @@ Schema JSON cible:
       "targets": [],
       "reason_code": "explicit_self_limit_continuity",
       "continuity_kind": "limit",
-      "source_window_ref": "window_5_pairs",
+      "source_refs": ["pair_03"],
       "guard_notes": ["not_task_local", "not_prompt_policy"]
+    },
+    {
+      "subject": "llm",
+      "verdict": "no_change",
+      "operation": "",
+      "proposition": "",
+      "target": "",
+      "targets": [],
+      "reason_code": "no_mutable_identity_signal",
+      "continuity_kind": "none",
+      "source_refs": [],
+      "guard_notes": []
     }
   ]
 }
 ```
 
-Reason codes cible, a stabiliser en Lot 0:
+Reason codes canoniques definis par la spec Lot 0:
 
-- `explicit_self_definition_continuity`
-- `explicit_self_value_continuity`
-- `explicit_self_limit_continuity`
-- `explicit_relation_continuity`
-- `explicit_frida_self_definition_continuity`
-- `already_covered_by_static`
-- `already_covered_by_mutable`
-- `task_local_not_identity`
-- `format_or_operator_policy_not_identity`
-- `irony_roleplay_or_quote`
-- `temporary_state`
-- `ambiguous_subject`
-- `contradiction_open`
-- `shape_guard_rejected`
-- `technical_apply_failed`
-- `judge_timeout`
-- `judge_invalid_json`
+- source-of-truth: `app/docs/states/specs/mutable-identity-judge-contract.md`;
+- familles: persistence, non-persistence, technique;
+- les lots code ne doivent pas recreer une liste locale divergente dans cette TODO.
 
 ## Frontiere entre capture et jugement
 
