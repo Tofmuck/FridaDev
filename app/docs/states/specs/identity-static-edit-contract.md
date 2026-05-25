@@ -49,7 +49,7 @@ Depuis le regime periodique identity pre-refonte, cette verite file-backed inclu
 - `.{nom-du-fichier}.identity-meta.json` a cote de la ressource statique active;
 - ce sidecar stocke `updated_by`, `update_reason` et `updated_ts`;
 - il reste file-backed, pas DB-backed, et ne cree pas une deuxieme verite canonique du statique;
-- il sert a distinguer un edit operateur recent d'une auto-promotion du `identity_periodic_agent`.
+- historiquement, il servait a distinguer un edit operateur recent d'une auto-promotion du writer `identity_periodic_agent`;
 - transition 2026-05-25: la refonte mutable cible interdit toute nouvelle promotion automatique mutable -> static; ce sidecar reste utile pour l'historique et les edits operateur, mais ne doit pas etre lu comme permission future d'ecrire le statique depuis le juge mutable.
 
 Sur OVH et dans le deploiement Docker standard actuellement retenu:
@@ -121,9 +121,10 @@ La route peut seulement:
 - y tracer `updated_by`, `update_reason` et `updated_ts` comme write-trace file-backed du statique;
 - emettre un audit admin compact.
 
-Cette write-trace file-backed sert aussi de source de verite operateur pour le garde `recent static operator edit`:
-- un edit `admin_identity_static_edit` recent peut suspendre une auto-promotion `mutable -> static`;
-- une auto-promotion `identity_periodic_agent` ne doit pas etre relue comme un edit operateur humain.
+Cette write-trace file-backed sert de source de verite operateur pour distinguer les edits humains recents:
+- un edit `admin_identity_static_edit` recent reste un signal operateur humain;
+- les anciennes traces d'auto-promotion `identity_periodic_agent`, si elles existent dans l'historique, ne doivent pas etre relues comme un edit operateur humain;
+- depuis le 2026-05-25, aucune auto-promotion `mutable -> static` n'est un comportement runtime actif de la refonte mutable.
 
 La route ne doit pas:
 - modifier `identity_mutables`;

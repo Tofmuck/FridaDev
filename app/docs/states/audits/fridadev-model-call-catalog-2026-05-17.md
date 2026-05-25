@@ -6,13 +6,15 @@ Cet audit cartographie les appels modele et services d'inference reellement pres
 
 Mise a jour du 2026-05-20: le chantier `feature/main-model-gpt51` bascule le modele principal quotidien vers `openai/gpt-5.1`, en conservant les autres slots modeles et le transport OpenRouter. Les valeurs historiques Claude Sonnet 4.6 ci-dessous sont a lire comme etat pre-bascule quand elles sont explicitement marquees precedentes.
 
+Mise a jour du 2026-05-25: le Lot 6 de la refonte mutable retire l'ancien writer score-first. L'ancien chemin **Agent periodic identity** est legacy disabled: `arbiter.run_identity_periodic_agent()` ne fait plus d'appel provider, `prompts/identity_periodic_agent.txt` est un artefact legacy, et `memory_identity_periodic_apply.py` / `memory_identity_periodic_scoring.py` ont ete supprimes. Le chemin modele actif est maintenant `mutable_identity_judge`, avec prompt `prompts/identity_mutable_judge.txt`, contrat `mutable_judge_v1`, et slot runtime provisoire `identity_periodic_model`.
+
 Verdict court:
 
 - FridaDev expose **11 chemins fonctionnels d'inference**, correspondant a **13 slots modele/service** si l'on compte separement les modeles primaire/fallback du `stimmung_agent` et du `validation_agent`.
 - Les chemins OpenRouter partagent aujourd'hui **un seul secret applicatif**: `main_model.api_key`.
 - Sur OVH, ce secret est configure et resolu via les runtime settings chiffrés (`db_encrypted`), avec origine historique `env_backfill`. Le repo ne prouve pas a lui seul la separation ou non des projets cote console OpenRouter.
 - Le systeme est fonctionnel mais heterogene: certains callers utilisent `llm_client.or_chat_completions_url()` et donc `main_model.base_url` runtime; d'autres utilisent encore `config.OR_BASE`.
-- L'arbitre memoire, l'extracteur identity au tour et l'agent periodic identity sont maintenant individualises: `memory_arbiter_model`, `identity_extractor_model` et `identity_periodic_model` portent leurs modeles, parametres et timeouts propres. Le slot legacy `arbiter_model` ne pilote plus aucun caller actif.
+- L'arbitre memoire, l'extracteur identity au tour et le juge mutable sont maintenant individualises: `memory_arbiter_model`, `identity_extractor_model` et `identity_periodic_model` portent leurs modeles, parametres et timeouts propres. Le slot `identity_periodic_model` garde un nom de compatibilite mais pilote le caller actif `mutable_identity_judge`. Le slot legacy `arbiter_model` ne pilote plus aucun caller actif.
 
 ## Perimetre et methode
 
@@ -44,7 +46,7 @@ Ce que l'audit ne prouve pas:
 
 ### Synthese des slots actifs
 
-La table ci-dessous liste les **slots modele/service** observables. Les **11 chemins fonctionnels** regroupent `stimmung_agent` primary/fallback en un seul chemin et `validation_agent` primary/fallback en un seul chemin: chat principal, reformulation web, arbitre memoire, resume, extracteur identity, agent periodic identity, stimmung, validation, embeddings, Whisper, OCR.
+La table ci-dessous liste les **slots modele/service** observables. Les **11 chemins fonctionnels** regroupent `stimmung_agent` primary/fallback en un seul chemin et `validation_agent` primary/fallback en un seul chemin: chat principal, reformulation web, arbitre memoire, resume, extracteur identity, juge mutable, stimmung, validation, embeddings, Whisper, OCR.
 
 | # | Slot modele/service | Type | Caller / fichier principal | Modele ou service runtime OVH | Statut |
 |---|---|---|---|---|---|
@@ -53,7 +55,7 @@ La table ci-dessous liste les **slots modele/service** observables. Les **11 che
 | 3 | Arbitre memoire | OpenRouter chat completion | `app/memory/arbiter.py` | `mistralai/mistral-small-2603` | actif, individualise |
 | 4 | Resume conversationnel | OpenRouter chat completion | `app/memory/summarizer.py` | `openai/gpt-5.4-mini` | actif au seuil de summary |
 | 5 | Extracteur identity | OpenRouter chat completion | `app/memory/arbiter.py` | `openai/gpt-5.4-mini` | actif apres tour assistant |
-| 6 | Agent periodic identity | OpenRouter chat completion | `app/memory/arbiter.py` via `memory_identity_periodic_agent.py` | `anthropic/claude-haiku-4.5` | actif quand buffer atteint le seuil, individualise |
+| 6 | Mutable identity judge | OpenRouter chat completion | `app/memory/mutable_identity_judge.py` via `memory_identity_periodic_agent.py` / `mutable_identity_runtime.py` | `anthropic/claude-haiku-4.5` via le slot de compatibilite `identity_periodic_model` | actif quand la fenetre mutable atteint 5 paires completes |
 | 7 | Stimmung agent primaire | OpenRouter chat completion | `app/core/stimmung_agent.py` | `google/gemini-3.1-flash-lite` | actif avant noeud hermeneutique |
 | 8 | Stimmung agent fallback | OpenRouter chat completion | `app/core/stimmung_agent.py` | `openai/gpt-5.4-nano` | fallback |
 | 9 | Validation agent primaire | OpenRouter chat completion | `app/core/hermeneutic_node/validation/validation_agent.py` | `google/gemini-3.1-flash-lite` | actif dans noeud hermeneutique, decision 2026-05-19 |
@@ -66,6 +68,7 @@ Chemins explicitement absents ou retires:
 
 - **Reranker Memory/RAG**: absent; decision documentaire `no-go for now` dans `app/docs/states/project/memory-rag-reranker-decision-2026-04-11.md`.
 - **Identity mutable rewriter LLM**: retire; `app/memory/memory_identity_mutable_rewriter.py` et `rewrite_identity_mutables()` ne declenchent plus d'appel modele.
+- **Agent periodic identity score-first**: legacy disabled depuis le 2026-05-25; `arbiter.run_identity_periodic_agent()` retourne un resume compact sans appel provider, et le prompt `identity_periodic_agent.txt` n'est plus actif.
 - **Biblio native / Catalogue**: chantier actif documentaire, aucun call modele Biblio nominal dans FridaDev.
 
 ## Tableau exhaustif principal
@@ -79,7 +82,7 @@ Chemins explicitement absents ou retires:
 | Arbitre memoire | `arbiter.filter_traces_with_diagnostics()` | `prompts/arbiter.txt` | OpenRouter | `mistralai/mistral-small-2603` | `MEMORY_ARBITER_MODEL=mistralai/mistral-small-2603` | `memory_arbiter_model` runtime DB: model/temp/top_p/max_tokens/timeout | `main_model.api_key`, caller `arbiter`, transport `llm_client.or_chat_completions_url()` | `0.0` | `1.0` | `600` | `10` | aucun | non | JSON `decisions[]`, puis post-filtrage deterministe | oui: section dediee `memory_arbiter_model`; benchmark final conserve sous `benchmark/results/arbiter/` | provider logs, metrics, `record_arbiter_decisions()` avec modele effectif |
 | Resume conversationnel | `summarizer.summarize_conversation()` | `prompts/summary_system.txt` | OpenRouter | `openai/gpt-5.4-mini` | `SUMMARY_MODEL=openai/gpt-5.4-mini` | `summary_model` runtime DB: model/temp/top_p/max_tokens/timeout | `main_model.api_key`, caller `resumer`, transport `llm_client.or_chat_completions_url()` | `0.3` | `1.0` | `2000` | `90` | aucun | non | texte libre de resume; persiste en summary actif | oui: section dediee `summary_model`; decision humaine conservee sous `benchmark/results/summary/` | provider metadata log; summary persistence |
 | Extracteur identity | `arbiter.extract_identities()` | `prompts/identity_extractor.txt` | OpenRouter | `openai/gpt-5.4-mini` | `IDENTITY_EXTRACTOR_MODEL=openai/gpt-5.4-mini` | `identity_extractor_model` runtime DB: model/temp/top_p/max_tokens/timeout | `main_model.api_key`, caller `identity_extractor`, transport `llm_client.or_chat_completions_url()` | `0.0` | `1.0` | `700` | `10` | aucun | non | JSON `entries[]`; invalides skips; erreur => `[]` | oui: section dediee `identity_extractor_model`; benchmark humain conserve sous `benchmark/results/identity_extractor/` | provider log, metrics parse/call; staging identity |
-| Agent periodic identity | `arbiter.run_identity_periodic_agent()` | `prompts/identity_periodic_agent.txt` | OpenRouter | `anthropic/claude-haiku-4.5` | `IDENTITY_PERIODIC_MODEL=anthropic/claude-haiku-4.5` | `identity_periodic_model` runtime DB: model/temp/top_p/max_tokens/timeout | `main_model.api_key`, caller `identity_periodic_agent`, transport `llm_client.or_chat_completions_url()` | `0.0` | `1.0` | `1400` | `10` | aucun | non | JSON `llm/user/meta`; validation stricte dans `memory_identity_periodic_apply.py`; erreur => `None` | oui: section dediee `identity_periodic_model`; decision Haiku conservee sous `benchmark/results/identity_periodic/` | provider log sous caller/title periodic dedies; events periodic agent |
+| Mutable identity judge | `mutable_identity_judge.run_mutable_identity_judge()` via `mutable_identity_runtime.run_mutable_identity_window()` | `prompts/identity_mutable_judge.txt` | OpenRouter | `anthropic/claude-haiku-4.5` | `IDENTITY_PERIODIC_MODEL=anthropic/claude-haiku-4.5` | `identity_periodic_model` runtime DB: model/temp/top_p/max_tokens/timeout, nom conserve par compatibilite | `main_model.api_key`, caller `mutable_identity_judge`, transport `llm_client.or_chat_completions_url()` | `0.0` | `1.0` | `1400` | `10` | aucun | non | JSON `mutable_judge_v1`; validation stricte dans `mutable_identity_judge.py`; erreur => `skipped` content-free et fenetre preservee | oui: section dediee `identity_periodic_model`; decision Haiku conservee sous `benchmark/results/identity_periodic/` | provider log `mutable_identity_judge_provider_response`; events `mutable_identity_judge` / `mutable_judge_apply` content-free |
 | Stimmung agent primaire | `chat_turn_runtime_inputs.run_stimmung_agent_stage()` -> `stimmung_agent.build_affective_turn_signal()` | `prompts/stimmung_agent.txt` | OpenRouter | `google/gemini-3.1-flash-lite` | `PRIMARY_MODEL=google/gemini-3.1-flash-lite` | `stimmung_agent_model.primary_model` runtime DB | `main_model.api_key`, caller `stimmung_agent` | `0.1` | `1.0` | `220` | `10` | aucun | non | JSON affectif strict v1 | oui: primary/fallback/temp/top_p/max/timeout | provider log; `stimmung_agent` stage |
 | Stimmung agent fallback | meme | meme | OpenRouter | `openai/gpt-5.4-nano` | `FALLBACK_MODEL=openai/gpt-5.4-nano` | `stimmung_agent_model.fallback_model` | meme | `0.1` | `1.0` | `220` | `10` | aucun | non | meme; fail-open si echec | oui | meme |
 | Validation agent primaire | `validation_agent.run_validation_agent()` | `prompts/validation_agent.txt` | OpenRouter | `google/gemini-3.1-flash-lite` | `PRIMARY_MODEL=google/gemini-3.1-flash-lite` | `validation_agent_model.primary_model` runtime DB | `main_model.api_key`, caller `validation_agent` | `0.0` | `1.0` | `140`, borne | `10` | aucun | non | JSON verdict compact v1 | oui: primary/fallback/temp/top_p/max/timeout; decision conservee sous `benchmark/results/validation_agent/2026-05-19-validation-agent-decision.md` | provider log; validation stage; projection compacte dans `[JUGEMENT HERMENEUTIQUE]` |
@@ -98,7 +101,7 @@ Cette section rend explicites les champs envoyes qui ne sont pas tous visibles d
 | Reformulation web | JSON OpenRouter dans `web_search.reformulate()` | `model` depuis `web_reformulation_model.model`, `messages` system/user, `max_tokens` depuis `web_reformulation_model.max_tokens`, `temperature` depuis `web_reformulation_model.temperature` | defauts `openai/gpt-5.4-mini`, `40`, `0.2`, timeout `10`; pas de `top_p`, pas de `stop`, pas de streaming, pas de `response_format` |
 | Arbitre memoire | JSON OpenRouter dans `arbiter.filter_traces_with_diagnostics()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` depuis `memory_arbiter_model` | defaut benchmarke `mistralai/mistral-small-2603`, `0.0`, `1.0`, `600`, timeout `10`; pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
 | Extracteur identity | JSON OpenRouter dans `arbiter.extract_identities()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` depuis `identity_extractor_model` | defaut benchmarke/conserve `openai/gpt-5.4-mini`, `0.0`, `1.0`, `700`, timeout `10`; pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
-| Agent periodic identity | JSON OpenRouter dans `arbiter.run_identity_periodic_agent()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` depuis `identity_periodic_model` | defaut decide `anthropic/claude-haiku-4.5`, `0.0`, `1.0`, `1400`, timeout `10`; pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
+| Mutable identity judge | JSON OpenRouter dans `mutable_identity_judge.run_mutable_identity_judge()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` depuis `identity_periodic_model` | defaut decide `anthropic/claude-haiku-4.5`, `0.0`, `1.0`, `1400`, timeout `10`; pas de `stop`, pas de streaming, pas de `response_format`; JSON `mutable_judge_v1` impose par prompt |
 | Resume conversationnel | JSON OpenRouter dans `summarizer.summarize_conversation()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` depuis `summary_model` | defaut benchmarke `openai/gpt-5.4-mini`, `0.3`, `1.0`, `2000`, timeout `90`; la fonction ne prend plus de modele en argument; pas de `stop`, pas de streaming, pas de `response_format`; texte libre attendu |
 | Stimmung agent | JSON OpenRouter dans `stimmung_agent._call_model()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` | primary/fallback partagent la meme forme; pas de `stop`, pas de streaming, pas de `response_format` |
 | Validation agent | JSON OpenRouter dans `validation_agent._call_model()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens=_bounded_response_max_tokens(max_tokens)` | primary/fallback partagent la meme forme; borne serveur `140` apres decision benchmark du 2026-05-19; pas de `stop`, pas de streaming, pas de `response_format` |
@@ -177,7 +180,7 @@ Pour une separation par projets OpenRouter, il faudra verifier dans l'interface 
 | Arbitre memoire | JSON `{"decisions":[...]}` | `_safe_json_loads()`, `_validate_arbiter_output()`, completion deterministe des candidats manquants | fallback deterministe sur timeout/parse/runtime | decisions persistees dans audit arbitre; traces gardees injectees |
 | Summary | texte libre resume | extraction texte provider seulement | exception remontee dans `maybe_summarize()` et log; pas de summary si echec | resume persiste, messages couverts marques `summarized_by`, embedding du summary |
 | Identity extractor | JSON `{"entries":[...]}` | `_validate_identity_output()` filtre enums/champs invalides | erreur => `[]`, donc pas de staging | entrees valides stagees/appliquees dans identity pipeline |
-| Identity periodic agent | JSON `{llm:{operations}, user:{operations}, meta}` | `validate_periodic_agent_contract()` exige top-level exact, operations exactes, meta complete | erreur provider => `None`; contrat invalide => skipped/error dans agent periodique | operations appliquees par `memory_identity_periodic_apply`; events periodiques |
+| Mutable identity judge | JSON `mutable_judge_v1` avec `schema_version`, `verdicts[]`, `meta` | `validate_mutable_judge_contract()` exige sujets `llm` et `user`, verdicts canoniques, operations compatibles et `source_refs` bornees a `pair_01..pair_05` | timeout/transport/JSON invalide/contrat invalide => `skipped` content-free et fenetre preservee | verdicts `persist` appliques par `mutable_identity_apply`; events content-free `mutable_identity_judge` / `mutable_judge_apply` |
 | Stimmung agent | JSON strict v1 | validation enums, strengths, confidence, dominant tone | fail-open signal avec raison, pas de blocage | signal dans meta du tour et stage observabilite |
 | Validation agent | JSON strict v1 | `_validated_model_verdict()` + hard guards | fail-open controle vers posture/regime sur echec | `validated_output`, projection compacte dans `[JUGEMENT HERMENEUTIQUE]` |
 | Embeddings | `list[float]` | `response.json()[0]`; dimension attendue `384` par schema DB/settings | exceptions gerees au niveau appelant selon retrieval/save | vectors traces, summaries, identity conflicts |
@@ -240,37 +243,46 @@ Enums autorises:
 - `scope`: `user`, `llm`, `situation`, `mixed`, `unknown`;
 - `evidence_kind`: `explicit`, `inferred`, `weak`.
 
-#### Identity periodic agent
+#### Mutable identity judge
 
 ```json
 {
-  "llm": {
-    "operations": [
-      {
-        "kind": "no_change",
-        "proposition": "",
-        "reason": "no durable identity change"
-      }
-    ]
-  },
-  "user": {
-    "operations": [
-      {
-        "kind": "add",
-        "proposition": "One compact identity proposition.",
-        "reason": "durable identity signal"
-      }
-    ]
-  },
+  "schema_version": "mutable_judge_v1",
+  "verdicts": [
+    {
+      "subject": "llm",
+      "verdict": "no_change",
+      "operation": "",
+      "proposition": "",
+      "target": "",
+      "targets": [],
+      "reason_code": "no_mutable_identity_signal",
+      "continuity_kind": "none",
+      "source_refs": [],
+      "guard_notes": []
+    },
+    {
+      "subject": "user",
+      "verdict": "persist",
+      "operation": "add",
+      "proposition": "One compact mutable identity proposition.",
+      "target": "",
+      "targets": [],
+      "reason_code": "explicit_self_definition_continuity",
+      "continuity_kind": "posture",
+      "source_refs": ["pair_01"],
+      "guard_notes": []
+    }
+  ],
   "meta": {
     "execution_status": "complete",
-    "buffer_pairs_count": 15,
+    "window_pairs_count": 5,
     "window_complete": true
   }
 }
 ```
 
-Operations autorisees: `no_change`, `add`, `tighten`, `merge`, `raise_conflict`. Le validateur refuse les top-level keys inattendues, les shapes incorrectes, le melange `no_change` + operation et les metadonnees incoherentes.
+Verdicts autorises: `no_change`, `reject`, `defer`, `raise_tension`, `persist`. Operations persistantes autorisees seulement sous `verdict=persist`: `add`, `tighten`, `merge`, `clear_obsolete`. `raise_tension` ne cree pas de mutable canonique. Le validateur refuse les top-level keys inattendues, les shapes incorrectes, les reason codes techniques comme verdict modele, les operations incompatibles et les `source_refs` hors `pair_01..pair_05`.
 
 #### Stimmung agent
 
