@@ -374,7 +374,12 @@ def _check_prompt_files() -> Dict[str, Any]:
         "web_reformulation_prompt": _resolve_app_path(config.WEB_REFORMULATION_PROMPT_PATH),
         "arbiter_prompt": _resolve_app_path(config.ARBITER_PROMPT_PATH),
         "identity_extractor_prompt": _resolve_app_path(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
-        "identity_periodic_agent_prompt": _resolve_app_path(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
+        "identity_mutable_judge_prompt": _resolve_app_path(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH),
+        "identity_periodic_agent_prompt_legacy": _resolve_app_path(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
+    }
+    required_file_roles = {
+        "identity_mutable_judge_prompt": "active_runtime_mutable_judge",
+        "identity_periodic_agent_prompt_legacy": "legacy_pre_refactor_periodic_agent",
     }
 
     app_js = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
@@ -436,6 +441,8 @@ def _check_prompt_files() -> Dict[str, Any]:
         if len(content) < 20:
             raise RuntimeError(f"fichier trop court ou vide: {path}")
         details[name] = {"path": str(path), "chars": len(content)}
+        if name in required_file_roles:
+            details[name]["role"] = required_file_roles[name]
 
     return details
 

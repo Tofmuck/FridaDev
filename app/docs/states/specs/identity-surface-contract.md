@@ -2,7 +2,7 @@
 
 Statut: spec vivante
 Portee: page `/identity`, navigation globale `Identity` et articulation avec la lecture diagnostique runtime sur `/hermeneutic-admin`
-Lot ferme: `Lot 5`
+Lot ferme: `Lot 6`
 
 Transition refonte mutable 2026-05-25:
 - cette spec decrit la surface `/identity` livree avant refonte;

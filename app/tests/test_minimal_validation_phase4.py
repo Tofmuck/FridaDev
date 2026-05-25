@@ -79,8 +79,17 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
             str(APP_DIR / config.WEB_REFORMULATION_PROMPT_PATH),
         )
         self.assertEqual(
-            details['identity_periodic_agent_prompt']['path'],
+            details['identity_mutable_judge_prompt']['path'],
+            str(APP_DIR / config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH),
+        )
+        self.assertEqual(details['identity_mutable_judge_prompt']['role'], 'active_runtime_mutable_judge')
+        self.assertEqual(
+            details['identity_periodic_agent_prompt_legacy']['path'],
             str(APP_DIR / config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
+        )
+        self.assertEqual(
+            details['identity_periodic_agent_prompt_legacy']['role'],
+            'legacy_pre_refactor_periodic_agent',
         )
         self.assertIn('const SYSTEM_PROMPT =', details['forbidden_inline_markers']['app_js'])
         self.assertIn('cfg.system', details['forbidden_inline_markers']['app_js'])
@@ -154,8 +163,17 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
             str(APP_DIR / config.WEB_REFORMULATION_PROMPT_PATH),
         )
         self.assertEqual(
-            details['identity_periodic_agent_prompt']['path'],
+            details['identity_mutable_judge_prompt']['path'],
+            str(APP_DIR / config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH),
+        )
+        self.assertEqual(details['identity_mutable_judge_prompt']['role'], 'active_runtime_mutable_judge')
+        self.assertEqual(
+            details['identity_periodic_agent_prompt_legacy']['path'],
             str(APP_DIR / config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
+        )
+        self.assertEqual(
+            details['identity_periodic_agent_prompt_legacy']['role'],
+            'legacy_pre_refactor_periodic_agent',
         )
 
     def test_check_prompt_files_rejects_identity_resource_outside_allowed_roots(self) -> None:
@@ -242,8 +260,17 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
         self.assertEqual(details['llm_identity']['resolution'], 'host_state_mirror')
         self.assertEqual(details['user_identity']['resolution'], 'host_state_mirror')
         self.assertEqual(
-            details['identity_periodic_agent_prompt']['path'],
+            details['identity_mutable_judge_prompt']['path'],
+            str(APP_DIR / config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH),
+        )
+        self.assertEqual(details['identity_mutable_judge_prompt']['role'], 'active_runtime_mutable_judge')
+        self.assertEqual(
+            details['identity_periodic_agent_prompt_legacy']['path'],
             str(APP_DIR / config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
+        )
+        self.assertEqual(
+            details['identity_periodic_agent_prompt_legacy']['role'],
+            'legacy_pre_refactor_periodic_agent',
         )
 
 

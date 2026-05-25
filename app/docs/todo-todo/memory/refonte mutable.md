@@ -70,8 +70,9 @@ Modules actifs constates:
   - Construit l'input juge avec les 5 paires completes, les canons static/mutable courants et le budget mutable.
   - En `shadow`, appelle le juge mais ne lance pas l'applicateur.
   - En `enforced`, applique seulement un contrat juge valide; preserve le buffer si le juge ou l'applicateur echoue.
-- `app/memory/arbiter.py`
+- `app/memory/mutable_identity_judge.py`
   - `run_mutable_identity_judge(...)` charge `app/prompts/identity_mutable_judge.txt` pour le chemin actif Lot 4.
+- `app/memory/arbiter.py`
   - `run_identity_periodic_agent(...)` et `app/prompts/identity_periodic_agent.txt` restent legacy pre-refonte jusqu'au nettoyage Lot 6.
   - Modele et parametres viennent de `identity_periodic_model`: `temperature=0.0`, `top_p=1.0`, `max_tokens=1400`, timeout court, sauf override runtime.
   - Le temporal guard annote les signaux relatifs faibles dans la fenetre, mais ne retire plus le texte avant lecture du modele.

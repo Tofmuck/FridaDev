@@ -239,7 +239,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             },
             'prompt_loader': {
                 'label': 'IDENTITY_MUTABLE_JUDGE_PROMPT_RUNTIME_SOURCE',
-                'value': 'memory.arbiter._load_prompt(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH, "mutable_identity_judge")',
+                'value': 'memory.mutable_identity_judge.load_prompt(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)',
                 'is_editable': False,
                 'source': 'backend_loader',
             },

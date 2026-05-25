@@ -406,9 +406,9 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             'prompts/identity_periodic_agent.txt',
         )
         self.assertIn('mutable identity judge', data['readonly_info']['system_prompt']['value'])
-        self.assertIn(
-            'mutable_identity_judge',
+        self.assertEqual(
             data['readonly_info']['prompt_loader']['value'],
+            'memory.mutable_identity_judge.load_prompt(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)',
         )
         self.assertIn('main_model.title_identity_periodic', data['readonly_info']['shared_transport']['value'])
         self.assertIn(
