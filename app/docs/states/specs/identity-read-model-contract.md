@@ -96,6 +96,11 @@ Champs minimaux:
 - `conversation_id`
 - `buffer_pairs_count`
 - `buffer_target_pairs`
+- `buffer_target_pairs_authority`
+- `stored_buffer_target_pairs`
+- `stored_buffer_target_pairs_authority`
+- `stale_pre_refactor_target_pairs`
+- `legacy_stored_buffer_target_pairs`
 - `buffer_frozen`
 - `last_agent_status`
 - `last_agent_reason`
@@ -108,6 +113,7 @@ Champs minimaux:
 
 Semantique:
 - ce bloc ne requalifie pas le staging en canon actif;
+- `buffer_target_pairs` designe toujours la cible runtime active de la fenetre judge-first; une ancienne valeur stockee en DB peut rester visible seulement via `stored_buffer_target_pairs` / `legacy_stored_buffer_target_pairs`, non autoritatifs;
 - il separe explicitement l'etat du buffer courant (`current_buffer`) du dernier run agent termine (`last_completed_agent`) sans dump du buffer brut;
 - quand un nouveau buffer est en cours, `last_agent_reason` ne doit pas porter une ancienne raison terminale comme `completed_no_change`; cette raison reste lisible via `last_completed_agent.reason_code` quand disponible;
 - `latest_agent_activity` resume compactement le dernier verdict utile, les tensions ouvertes `raise_tension`, les compteurs, statuts, reason codes, longueurs, hash courts, tailles de fenetre et eventuels evenements legacy compactes pour cette conversation;

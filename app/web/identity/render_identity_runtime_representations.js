@@ -496,7 +496,7 @@
       createSummaryCard({
         title: "Fenetre juge mutable observee",
         body:
-          `Repere compact du dernier snapshot conversationnel connu${stagingScope ? ` (${stagingScope})` : ""} hors canon actif: il alimente le juge mutable, n'est pas un etat global du systeme, et n'est injecte ni au jugement ni a la reponse finale.`,
+          `Repere compact du dernier snapshot conversationnel connu${stagingScope ? ` (${stagingScope})` : ""} hors canon actif: il alimente le juge mutable, mais n'est pas un etat global du systeme et n'est injecte ni dans identity_input, ni dans la reponse finale.`,
         chips: [
           `buffer=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
           `scope=${stagingScope || "n/a"}`,

@@ -148,7 +148,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             'conversation_id': 'conv-stage-1',
             'buffer_pairs': [],
             'buffer_pairs_count': 4,
-            'buffer_target_pairs': 5,
+            'buffer_target_pairs': 15,
             'buffer_frozen': False,
             'auto_canonization_suspended': False,
             'last_agent_status': 'buffering',
@@ -304,12 +304,26 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertFalse(data['identity_staging']['actively_injected'])
         self.assertEqual(data['identity_staging']['buffer_pairs_count'], 4)
         self.assertEqual(data['identity_staging']['buffer_target_pairs'], 5)
+        self.assertEqual(data['identity_staging']['buffer_target_pairs_authority'], 'runtime_active_judge_window')
+        self.assertEqual(data['identity_staging']['stored_buffer_target_pairs'], 15)
+        self.assertEqual(
+            data['identity_staging']['stored_buffer_target_pairs_authority'],
+            'legacy_stored_non_authoritative',
+        )
+        self.assertEqual(data['identity_staging']['stale_pre_refactor_target_pairs'], 15)
+        self.assertEqual(data['identity_staging']['legacy_stored_buffer_target_pairs'], 15)
         self.assertEqual(data['identity_staging']['last_agent_status'], 'buffering')
         self.assertIsNone(data['identity_staging']['last_agent_reason'])
         self.assertEqual(data['identity_staging']['current_buffer']['status'], 'buffering')
         self.assertEqual(data['identity_staging']['current_buffer']['reason_code'], 'below_threshold')
         self.assertEqual(data['identity_staging']['current_buffer']['pairs_count'], 4)
         self.assertEqual(data['identity_staging']['current_buffer']['target_pairs'], 5)
+        self.assertEqual(
+            data['identity_staging']['current_buffer']['target_pairs_authority'],
+            'runtime_active_judge_window',
+        )
+        self.assertEqual(data['identity_staging']['current_buffer']['stored_target_pairs'], 15)
+        self.assertEqual(data['identity_staging']['current_buffer']['stale_pre_refactor_target_pairs'], 15)
         self.assertFalse(data['identity_staging']['current_buffer']['frozen'])
         self.assertTrue(data['identity_staging']['last_completed_agent']['present'])
         self.assertEqual(data['identity_staging']['last_completed_agent']['status'], 'ok')

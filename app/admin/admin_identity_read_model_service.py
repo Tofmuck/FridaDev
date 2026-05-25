@@ -33,6 +33,15 @@ def _optional_text(value: Any) -> str | None:
     return text or None
 
 
+def _optional_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _normalize_limit(raw_value: Any) -> int:
     try:
         limit = int(raw_value)
@@ -227,7 +236,27 @@ def _clean_current_agent_reason(staging_state: Mapping[str, Any]) -> str | None:
     return reason
 
 
-def _build_current_buffer_state(staging_state: Mapping[str, Any]) -> dict[str, Any]:
+def _stored_target_authority(stored_target_pairs: int | None, active_target_pairs: int) -> str | None:
+    if stored_target_pairs is None:
+        return None
+    if stored_target_pairs == active_target_pairs:
+        return 'stored_matches_active_runtime'
+    return 'legacy_stored_non_authoritative'
+
+
+def _stale_pre_refactor_target_pairs(stored_target_pairs: int | None, active_target_pairs: int) -> int | None:
+    if stored_target_pairs is None or stored_target_pairs == active_target_pairs:
+        return None
+    return stored_target_pairs
+
+
+def _build_current_buffer_state(
+    staging_state: Mapping[str, Any],
+    *,
+    active_target_pairs: int,
+    stored_target_pairs: int | None,
+) -> dict[str, Any]:
+    stale_target_pairs = _stale_pre_refactor_target_pairs(stored_target_pairs, active_target_pairs)
     if not staging_state:
         return {
             'present': False,
@@ -235,14 +264,17 @@ def _build_current_buffer_state(staging_state: Mapping[str, Any]) -> dict[str, A
             'status': None,
             'reason_code': None,
             'pairs_count': 0,
-            'target_pairs': int(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS),
+            'target_pairs': active_target_pairs,
+            'target_pairs_authority': 'runtime_active_judge_window',
+            'stored_target_pairs': None,
+            'stored_target_pairs_authority': None,
+            'stale_pre_refactor_target_pairs': None,
             'frozen': False,
             'updated_ts': None,
             'auto_canonization_suspended': False,
         }
 
     pairs_count = int(staging_state.get('buffer_pairs_count') or 0)
-    target_pairs = int(staging_state.get('buffer_target_pairs') or memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
     frozen = bool(staging_state.get('buffer_frozen'))
     status = _optional_text(staging_state.get('last_agent_status'))
     reason = _clean_current_agent_reason(staging_state)
@@ -254,7 +286,11 @@ def _build_current_buffer_state(staging_state: Mapping[str, Any]) -> dict[str, A
         'status': status or ('frozen' if frozen else 'buffering' if pairs_count else 'empty'),
         'reason_code': reason,
         'pairs_count': pairs_count,
-        'target_pairs': target_pairs,
+        'target_pairs': active_target_pairs,
+        'target_pairs_authority': 'runtime_active_judge_window',
+        'stored_target_pairs': stored_target_pairs,
+        'stored_target_pairs_authority': _stored_target_authority(stored_target_pairs, active_target_pairs),
+        'stale_pre_refactor_target_pairs': stale_target_pairs,
         'frozen': frozen,
         'updated_ts': _optional_text(staging_state.get('updated_ts')),
         'auto_canonization_suspended': bool(staging_state.get('auto_canonization_suspended')),
@@ -339,8 +375,11 @@ def build_identity_staging_block(
     get_latest_state = getattr(memory_store_module, 'get_latest_identity_staging_state', None)
     staging_state = _mapping(get_latest_state()) if callable(get_latest_state) else {}
     conversation_id = _optional_text(staging_state.get('conversation_id'))
-    buffer_target_pairs = int(
-        staging_state.get('buffer_target_pairs') or memory_identity_periodic_agent.BUFFER_TARGET_PAIRS
+    active_buffer_target_pairs = int(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
+    stored_buffer_target_pairs = _optional_int(staging_state.get('buffer_target_pairs'))
+    stale_buffer_target_pairs = _stale_pre_refactor_target_pairs(
+        stored_buffer_target_pairs,
+        active_buffer_target_pairs,
     )
     latest_activity = (
         _build_latest_agent_activity(
@@ -350,7 +389,11 @@ def build_identity_staging_block(
         if conversation_id
         else _empty_latest_agent_activity()
     )
-    current_buffer = _build_current_buffer_state(staging_state)
+    current_buffer = _build_current_buffer_state(
+        staging_state,
+        active_target_pairs=active_buffer_target_pairs,
+        stored_target_pairs=stored_buffer_target_pairs,
+    )
     last_completed_agent = _build_last_completed_agent(
         staging_state=staging_state,
         latest_activity=latest_activity,
@@ -362,7 +405,15 @@ def build_identity_staging_block(
         'actively_injected': False,
         'conversation_id': conversation_id,
         'buffer_pairs_count': int(staging_state.get('buffer_pairs_count') or 0),
-        'buffer_target_pairs': buffer_target_pairs,
+        'buffer_target_pairs': active_buffer_target_pairs,
+        'buffer_target_pairs_authority': 'runtime_active_judge_window',
+        'stored_buffer_target_pairs': stored_buffer_target_pairs,
+        'stored_buffer_target_pairs_authority': _stored_target_authority(
+            stored_buffer_target_pairs,
+            active_buffer_target_pairs,
+        ),
+        'stale_pre_refactor_target_pairs': stale_buffer_target_pairs,
+        'legacy_stored_buffer_target_pairs': stale_buffer_target_pairs,
         'buffer_frozen': bool(staging_state.get('buffer_frozen')),
         'last_agent_status': _optional_text(staging_state.get('last_agent_status')),
         'last_agent_reason': _clean_current_agent_reason(staging_state),
