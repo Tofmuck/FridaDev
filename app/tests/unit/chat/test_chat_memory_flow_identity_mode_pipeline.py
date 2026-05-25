@@ -69,7 +69,7 @@ class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
         self.assertEqual(_event_payloads(events, "identity_mode_apply")[0]["action"], "skip_mode_off")
         self.assertEqual(
             _event_payloads(events, "identity_mode_apply")[1]["action"],
-            "record_legacy_identity_diagnostics_and_stage",
+            "record_legacy_identity_diagnostics_and_mutable_judge",
         )
 
     def test_record_identity_entries_for_mode_enforced_runs_periodic_identity_staging_after_legacy_persist(self) -> None:
@@ -92,6 +92,7 @@ class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
 
         def fake_stage(conversation_id, turn_pair, **_kwargs):
             order.append(f"stage:{conversation_id}")
+            self.assertTrue(_kwargs["enforce_writes"])
             observed["turn_pair"] = list(turn_pair)
             return {
                 "status": "buffering",
@@ -137,13 +138,13 @@ class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
                 {"role": "assistant", "content": "y"},
             ],
         )
-        stage_event = _event_payloads(events, "identity_periodic_agent_apply")[0]
+        stage_event = _event_payloads(events, "mutable_identity_judge_apply")[0]
         self.assertEqual(stage_event["status"], "buffering")
         self.assertEqual(stage_event["reason_code"], "below_threshold")
         self.assertEqual(stage_event["buffer_pairs_count"], 1)
         self.assertEqual(
             _event_payloads(events, "identity_mode_apply")[0]["action"],
-            "record_legacy_identity_diagnostics_and_stage",
+            "record_legacy_identity_diagnostics_and_mutable_judge",
         )
 
     def test_record_identity_entries_for_mode_enforced_keeps_fail_open_when_periodic_agent_raises(self) -> None:
@@ -183,12 +184,12 @@ class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
             chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = original_stage
 
         self.assertEqual(observed["persisted"], ("conv-identity-enforced", [{"identity_id": "id-1"}]))
-        stage_event = _event_payloads(events, "identity_periodic_agent_apply")[0]
+        stage_event = _event_payloads(events, "mutable_identity_judge_apply")[0]
         self.assertEqual(stage_event["status"], "skipped")
-        self.assertEqual(stage_event["reason_code"], "periodic_agent_flow_error")
+        self.assertEqual(stage_event["reason_code"], "mutable_judge_flow_error")
         self.assertEqual(
             _event_payloads(events, "identity_mode_apply")[0]["action"],
-            "record_legacy_identity_diagnostics_and_stage",
+            "record_legacy_identity_diagnostics_and_mutable_judge",
         )
 
     def test_record_identity_entries_for_mode_passes_complete_pair_to_identity_buffer_after_guarding_diagnostics(self) -> None:
@@ -223,6 +224,7 @@ class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
 
         def fake_stage(_conversation_id, turn_pair, **_kwargs):
+            self.assertTrue(_kwargs["enforce_writes"])
             observed["buffered_turn_pair"] = list(turn_pair)
             return {
                 "status": "buffering",
@@ -269,7 +271,7 @@ class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
                 {"role": "assistant", "content": "Claims to have read the full article in detail"},
             ],
         )
-        stage_event = _event_payloads(events, "identity_periodic_agent_apply")[0]
+        stage_event = _event_payloads(events, "mutable_identity_judge_apply")[0]
         self.assertEqual(stage_event["status"], "buffering")
         self.assertEqual(stage_event["reason_code"], "below_threshold")
         self.assertEqual(_event_payloads(events, "identity_mode_apply")[0]["guard_filtered_count"], 1)
@@ -346,8 +348,10 @@ class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
         self.assertEqual(branch_events, [("not_applicable", "identity_write_shadow_mode")])
         self.assertEqual(
             _event_payloads(events, "identity_mode_apply")[0]["action"],
-            "record_legacy_identity_evidence_shadow",
+            "record_legacy_identity_evidence_and_shadow_mutable_judge",
         )
+        self.assertEqual(_event_payloads(events, "identity_mode_apply")[0]["write_mode"], "shadow")
+        self.assertFalse(_event_payloads(events, "identity_mode_apply")[0]["canonical_write_applied"])
 
 
 if __name__ == "__main__":

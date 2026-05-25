@@ -83,23 +83,25 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
                     'conversation_id': 'conv-stage-2',
                     'turn_id': 'turn-30',
                     'ts': '2026-04-16T11:00:01Z',
-                    'stage': 'identity_periodic_agent',
+                    'stage': 'mutable_identity_judge',
                     'status': 'skipped',
                     'payload': {
-                        'reason_code': 'double_saturation',
+                        'reason_code': 'completed_with_open_tension',
                         'writes_applied': False,
                         'promotion_count': 0,
                         'promotions': [],
                         'outcomes': [
                             {
                                 'subject': 'user',
-                                'action': 'raise_conflict',
-                                'reason_code': 'raise_conflict_open',
-                                'threshold_verdict': 'deferred',
-                                'strength': 0.5,
+                                'verdict': 'raise_tension',
+                                'operation': '',
+                                'reason_code': 'relation_tension_open',
+                                'continuity_kind': 'tension',
+                                'source_refs_count': 1,
+                                'guard_notes_count': 1,
                             }
                         ],
-                        'rejection_reasons': {'llm': 'double_saturation'},
+                        'rejection_reasons': {},
                     },
                 }
             ],
@@ -129,13 +131,16 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertNotIn('buffer_pairs', payload['identity_staging'])
         self.assertNotIn('buffer_pairs_json', payload['identity_staging'])
         self.assertTrue(payload['identity_staging']['auto_canonization_suspended'])
-        self.assertEqual(payload['identity_staging']['latest_agent_activity']['reason_code'], 'double_saturation')
+        self.assertEqual(
+            payload['identity_staging']['latest_agent_activity']['reason_code'],
+            'completed_with_open_tension',
+        )
         self.assertEqual(payload['identity_staging']['latest_agent_activity']['open_tension_count'], 1)
         self.assertNotIn('buffer_pairs', payload['identity_staging']['latest_agent_activity'])
         self.assertNotIn('outcomes', payload['identity_staging']['latest_agent_activity'])
         self.assertEqual(
             payload['identity_staging']['latest_agent_activity']['open_tensions_storage_kind'],
-            'identity_periodic_agent_latest_activity',
+            'mutable_identity_judge_latest_activity',
         )
         self.assertNotIn(
             'content',

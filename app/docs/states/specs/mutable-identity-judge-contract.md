@@ -3,7 +3,7 @@
 Statut: spec normative active
 Date: 2026-05-25
 Portee: contrat source-of-truth de la refonte mutable `user` et `llm`
-Hors-scope: patch runtime, migration DB, prompt runtime live, rebuild, test modele live
+Hors-scope de cette spec: migration DB lourde, test modele live, benchmark modele, promotion mutable -> static
 
 ## Decision
 
@@ -54,6 +54,30 @@ Cadence:
 - les tours suivants ne remplacent pas silencieusement une fenetre bloquee.
 
 Cette fenetre est une capture technique, pas un staging semantique.
+
+## Branchement Runtime Actif
+
+Depuis le Lot 4, le chemin actif est:
+
+```text
+record_identity_entries_for_mode(...)
+-> memory_identity_periodic_agent.stage_identity_turn_pair(...)
+-> mutable_identity_runtime.run_mutable_identity_window(...)
+-> run_mutable_identity_judge(...)
+-> apply_mutable_judge_contract(...) seulement en mode enforced
+```
+
+Regles runtime:
+
+- le nom historique `memory_identity_periodic_agent` ne designe plus un writer score-first actif; il sert de wrapper de fenetre jusqu'au nettoyage legacy;
+- `arbiter.run_identity_periodic_agent(...)` et `app/prompts/identity_periodic_agent.txt` restent legacy pre-refonte et ne sont plus le chemin actif;
+- en `shadow`, le juge peut etre appele et observe, mais l'applicateur n'est pas lance et `identity_mutables` ne change pas;
+- en `enforced`, un contrat `mutable_judge_v1` valide peut etre applique dans `identity_mutables`;
+- si le juge echoue, timeout, renvoie JSON/schema invalide ou `window_too_large`, la fenetre est preservee;
+- si l'applicateur echoue, la fenetre est preservee;
+- si le run se termine proprement par `no_change`, `reject`, `defer`, `raise_tension` ou par persistence appliquee, la fenetre est consommee;
+- aucun chemin actif n'appelle `memory_identity_periodic_apply.apply_periodic_agent_contract(...)` ni `memory_identity_periodic_scoring.score_operation(...)`;
+- aucun chemin actif n'ecrit `static`.
 
 ## Entrees Du Juge
 
@@ -396,6 +420,7 @@ Autorise:
 - `window_pairs_count`;
 - `window_complete`;
 - timeout / parse error / apply error.
+- stages actifs `mutable_identity_judge` et `mutable_identity_judge_apply`.
 
 Interdit:
 
@@ -405,6 +430,7 @@ Interdit:
 - prompt complet du juge dans un event de tour;
 - score identitaire;
 - justification longue du juge dans l'observabilite compacte.
+- presenter `identity_periodic_agent` ou ses seuils score-first comme writer mutable actif.
 
 ## Contrat De Sortie Du Lot 0
 

@@ -86,6 +86,11 @@ class _HpsIdentityStore:
         self.clear_calls.append(subject)
         return copy.deepcopy(self.mutable.pop(subject, None))
 
+    def apply_mutable_identity_subject_updates(self, updates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if updates:
+            raise AssertionError("role-play fixture must not write mutable canon")
+        return []
+
     def persist_identity_entries(self, conversation_id: str, entries: list[dict[str, Any]]) -> None:
         self.persisted_legacy.append((conversation_id, copy.deepcopy(list(entries))))
 
@@ -359,47 +364,72 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
         events: list[tuple[str, dict[str, Any]]] = []
         observed_payloads: list[dict[str, Any]] = []
 
-        def fake_run_identity_periodic_agent(payload: dict[str, Any]) -> dict[str, Any]:
+        def fake_run_mutable_identity_judge(payload: dict[str, Any]) -> dict[str, Any]:
             observed_payloads.append(copy.deepcopy(payload))
             return {
-                "llm": {
-                    "operations": [
-                        {"kind": "no_change", "proposition": "", "reason": "stable canon"},
-                    ]
+                "status": "ok",
+                "reason_code": "judge_complete",
+                "contract": {
+                    "schema_version": "mutable_judge_v1",
+                    "meta": {
+                        "execution_status": "complete",
+                        "window_pairs_count": chat_memory_flow.memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+                        "window_complete": True,
+                    },
+                    "verdicts": [
+                        {
+                            "subject": "llm",
+                            "verdict": "no_change",
+                            "operation": "",
+                            "proposition": "",
+                            "target": "",
+                            "targets": [],
+                            "reason_code": "no_mutable_identity_signal",
+                            "continuity_kind": "none",
+                            "source_refs": [],
+                            "guard_notes": [],
+                        },
+                        {
+                            "subject": "user",
+                            "verdict": "reject",
+                            "operation": "",
+                            "proposition": "",
+                            "target": "",
+                            "targets": [],
+                            "reason_code": "irony_roleplay_or_quote",
+                            "continuity_kind": "none",
+                            "source_refs": ["pair_05"],
+                            "guard_notes": ["not_persisted"],
+                        },
+                    ],
                 },
-                "user": {
-                    "operations": [
-                        {"kind": "add", "proposition": proposition, "reason": "role-play should not canonize"},
-                    ]
-                },
-                "meta": {
-                    "execution_status": "complete",
-                    "buffer_pairs_count": chat_memory_flow.memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+                "observability": {
+                    "status": "ok",
+                    "reason_code": "judge_complete",
+                    "schema_version": "mutable_judge_v1",
+                    "prompt_kind": "mutable_identity_judge",
+                    "window_pairs_count": chat_memory_flow.memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
                     "window_complete": True,
+                    "verdict_count": 2,
+                    "verdict_counts": {"no_change": 1, "reject": 1},
+                    "subjects_seen": ["llm", "user"],
+                    "subjects_touched": ["user"],
+                    "operation_kinds": [],
+                    "persistent_operation_count": 0,
+                    "continuity_kinds": ["none"],
+                    "reason_codes": ["irony_roleplay_or_quote", "no_mutable_identity_signal"],
+                    "source_refs_count": 1,
+                    "guard_notes_count": 1,
                 },
             }
 
-        original_load_llm = chat_memory_flow.memory_identity_periodic_agent.identity.load_llm_identity
-        original_load_user = chat_memory_flow.memory_identity_periodic_agent.identity.load_user_identity
-        original_read_static_snapshot = (
-            chat_memory_flow.memory_identity_periodic_agent.static_identity_content.read_static_identity_snapshot
+        original_load_llm = chat_memory_flow.memory_identity_periodic_agent.mutable_identity_runtime.identity.load_llm_identity
+        original_load_user = chat_memory_flow.memory_identity_periodic_agent.mutable_identity_runtime.identity.load_user_identity
+        chat_memory_flow.memory_identity_periodic_agent.mutable_identity_runtime.identity.load_llm_identity = (
+            lambda: "Frida garde une tenue sobre."
         )
-        original_write_static_content = (
-            chat_memory_flow.memory_identity_periodic_agent.static_identity_content.write_static_identity_content
-        )
-        chat_memory_flow.memory_identity_periodic_agent.identity.load_llm_identity = lambda: "Frida garde une tenue sobre."
-        chat_memory_flow.memory_identity_periodic_agent.identity.load_user_identity = (
+        chat_memory_flow.memory_identity_periodic_agent.mutable_identity_runtime.identity.load_user_identity = (
             lambda: "Tof garde une orientation stable."
-        )
-        chat_memory_flow.memory_identity_periodic_agent.static_identity_content.read_static_identity_snapshot = (
-            lambda subject: SimpleNamespace(
-                content="Frida garde une tenue sobre." if subject == "llm" else "Tof garde une orientation stable.",
-                raw_content="Frida garde une tenue sobre." if subject == "llm" else "Tof garde une orientation stable.",
-                resolved_path=None,
-            )
-        )
-        chat_memory_flow.memory_identity_periodic_agent.static_identity_content.write_static_identity_content = (
-            lambda *_args, **_kwargs: None
         )
 
         try:
@@ -419,7 +449,7 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
                             "evidence_kind": "explicit",
                         }
                     ],
-                    run_identity_periodic_agent=fake_run_identity_periodic_agent,
+                    run_mutable_identity_judge=fake_run_mutable_identity_judge,
                 )
                 chat_memory_flow.record_identity_entries_for_mode(
                     "conv-hps-l2-role-play",
@@ -437,31 +467,29 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
                 if index < chat_memory_flow.memory_identity_periodic_agent.BUFFER_TARGET_PAIRS:
                     self.assertEqual(store.get_identity_staging_state("conv-hps-l2-role-play")["buffer_pairs_count"], index)
         finally:
-            chat_memory_flow.memory_identity_periodic_agent.identity.load_llm_identity = original_load_llm
-            chat_memory_flow.memory_identity_periodic_agent.identity.load_user_identity = original_load_user
-            chat_memory_flow.memory_identity_periodic_agent.static_identity_content.read_static_identity_snapshot = (
-                original_read_static_snapshot
+            chat_memory_flow.memory_identity_periodic_agent.mutable_identity_runtime.identity.load_llm_identity = (
+                original_load_llm
             )
-            chat_memory_flow.memory_identity_periodic_agent.static_identity_content.write_static_identity_content = (
-                original_write_static_content
+            chat_memory_flow.memory_identity_periodic_agent.mutable_identity_runtime.identity.load_user_identity = (
+                original_load_user
             )
 
         self.assertEqual(len(observed_payloads), 1)
         self.assertEqual(
-            [pair["user"]["content"] for pair in observed_payloads[0]["buffer_pairs"]],
+            [pair["user"]["content"] for pair in observed_payloads[0]["window_pairs"]],
             [pair["user"] for pair in role_play_window["pairs"][: chat_memory_flow.memory_identity_periodic_agent.BUFFER_TARGET_PAIRS]],
         )
-        stage_event = [payload for event, payload in events if event == "identity_periodic_agent_apply"][-1]
+        stage_event = [payload for event, payload in events if event == "mutable_identity_judge_apply"][-1]
         mode_event = [payload for event, payload in events if event == "identity_mode_apply"][-1]
         self.assertEqual(stage_event["status"], "ok")
-        self.assertEqual(stage_event["reason_code"], "legacy_writer_disabled")
+        self.assertEqual(stage_event["reason_code"], "completed_no_change")
         self.assertFalse(stage_event["writes_applied"])
         self.assertTrue(stage_event["legacy_writer_disabled"])
         self.assertTrue(stage_event["buffer_cleared"])
         self.assertEqual(store.upsert_calls, [])
         self.assertEqual(store.mutable, {})
         self.assertFalse(mode_event["canonical_write_applied"])
-        self.assertEqual(mode_event["staging_reason_code"], "legacy_writer_disabled")
+        self.assertEqual(mode_event["staging_reason_code"], "completed_no_change")
 
     def test_l2_memory_corpus_links_retrieval_basket_arbitration_and_prompt_injection(self) -> None:
         corpus = _load_l2_corpus()

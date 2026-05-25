@@ -20,7 +20,7 @@ STAGING_STORAGE_KIND = 'identity_mutable_staging'
 LEGACY_IDENTITY_PIPELINE_STATUS = 'legacy_diagnostic_only'
 LEGACY_IDENTITY_PIPELINE_RECORDED_VIA = 'persist_identity_entries'
 LEGACY_IDENTITY_PIPELINE_STORAGE = 'identities + identity_evidence + identity_conflicts'
-OPEN_TENSIONS_STORAGE_KIND = 'identity_periodic_agent_latest_activity'
+OPEN_TENSIONS_STORAGE_KIND = 'mutable_identity_judge_latest_activity'
 OPEN_TENSIONS_SCOPE_KIND = 'conversation_scoped_latest'
 MUTABLE_AUDIT_STORAGE_KIND = 'identity_mutable_audit'
 TERMINAL_STAGING_REASONS = {
@@ -214,14 +214,38 @@ def _compact_open_tensions(values: Any) -> list[dict[str, Any]]:
     for item in items:
         payload = _mapping(item)
         action = _optional_text(payload.get('action'))
+        verdict = _optional_text(payload.get('verdict'))
         reason_code = _optional_text(payload.get('reason_code'))
-        if action != 'raise_conflict' and reason_code not in {'raise_conflict', 'raise_conflict_open'}:
+        if (
+            action != 'raise_conflict'
+            and verdict != 'raise_tension'
+            and reason_code not in {
+                'raise_conflict',
+                'raise_conflict_open',
+                'relation_tension_open',
+                'contradiction_open',
+            }
+        ):
             continue
         summary: dict[str, Any] = {}
-        for key in ('subject', 'action', 'reason_code', 'threshold_verdict'):
+        for key in (
+            'subject',
+            'action',
+            'verdict',
+            'operation',
+            'reason_code',
+            'continuity_kind',
+            'threshold_verdict',
+        ):
             text = _optional_text(payload.get(key))
             if text:
                 summary[key] = text
+        for key in ('source_refs_count', 'guard_notes_count'):
+            if payload.get(key) is not None:
+                try:
+                    summary[key] = int(payload.get(key) or 0)
+                except (TypeError, ValueError):
+                    pass
         try:
             strength = float(payload.get('strength'))
         except (TypeError, ValueError):
@@ -241,18 +265,19 @@ def _latest_periodic_agent_event(
     read_chat_log_events = getattr(log_store_module, 'read_chat_log_events', None)
     if not callable(read_chat_log_events):
         return {}
-    try:
-        payload = read_chat_log_events(
-            limit=1,
-            conversation_id=conversation_id,
-            stage='identity_periodic_agent',
-        )
-    except Exception:
-        return {}
-    items = payload.get('items') if isinstance(payload, Mapping) else []
-    if not isinstance(items, list) or not items:
-        return {}
-    return _mapping(items[0])
+    for stage in ('mutable_identity_judge', 'identity_periodic_agent'):
+        try:
+            payload = read_chat_log_events(
+                limit=1,
+                conversation_id=conversation_id,
+                stage=stage,
+            )
+        except Exception:
+            continue
+        items = payload.get('items') if isinstance(payload, Mapping) else []
+        if isinstance(items, list) and items:
+            return _mapping(items[0])
+    return {}
 
 
 def _build_latest_agent_activity(
@@ -396,6 +421,11 @@ def build_identity_runtime_regime() -> dict[str, Any]:
         'score_first_writer_enabled': False,
         'score_first_writer_status': 'legacy_neutralized_in_active_path',
         'scoring_thresholds_runtime_authority': 'legacy_pre_refactor_only',
+        'mutable_writer_pipeline': 'mutable_identity_judge_first',
+        'mutable_judge_writer_enabled': True,
+        'mutable_judge_writer_status': 'active_in_enforced_identity_modes',
+        'shadow_runs_judge_without_canonical_write': True,
+        'legacy_periodic_agent_runtime_authority': 'legacy_pre_refactor_only',
         'promotion_to_static_enabled': False,
         'promotion_to_static_runtime_authority': 'legacy_pre_refactor_disabled_in_active_path',
         'auto_canonization_suspends_on_double_saturation': False,

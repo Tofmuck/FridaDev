@@ -477,12 +477,14 @@ Forbidden by default:
 - embedding vectors
 
 Identity exception:
-- `identities_read`, `identity_write`, `identity_periodic_agent`, `identity_periodic_agent_apply`, and identity admin/runtime summaries such as `identity_mode_apply` must stay compact-only
-- transition 2026-05-25: `identity_periodic_agent` / `identity_periodic_agent_apply` fields are pre-refactor observability. The future mutable judge must stay compact-only too, but must not expose identity scores and must follow `mutable-identity-judge-contract.md`.
-- legacy `identity_mutable_rewrite*` observability is retired in B6; the live regime is described through `identity_write`, `identity_mode_apply`, `identity_periodic_agent` and `identity_periodic_agent_apply`
+- `identities_read`, `identity_write`, `mutable_identity_judge`, `mutable_identity_judge_apply`, legacy `identity_periodic_agent`, legacy `identity_periodic_agent_apply`, and identity admin/runtime summaries such as `identity_mode_apply` must stay compact-only
+- transition 2026-05-25: `mutable_identity_judge` / `mutable_identity_judge_apply` are the active mutable judge-first stages. `identity_periodic_agent` / `identity_periodic_agent_apply` are pre-refactor observability labels only and must not be presented as the active writer.
+- legacy `identity_mutable_rewrite*` observability is retired in B6; the live regime is described through `identity_write`, `identity_mode_apply`, `mutable_identity_judge` and `mutable_identity_judge_apply`
 - allowed for identity: counts, presence/absence, char lengths, update flags, reason codes, budget/shape validation flags
-- `identity_periodic_agent` and `identity_periodic_agent_apply` may also expose compact staging/governance fields such as `buffer_pairs_count`, `buffer_target_pairs`, `buffer_frozen`, `buffer_cleared`, `auto_canonization_suspended`, `legacy_writer_disabled`, compact `rejection_reasons`, compact size guard fields (`window_chars`, `payload_chars`, `estimated_prompt_tokens`, `max_window_chars`, `max_estimated_prompt_tokens`) and, for historical pre-refactor events only, promotion/score summaries without raw proposition text
-- when present, `raise_conflict` remains a compact latest-activity seam only; it is allowed through compact `outcomes` summaries but must not be presented as a write into legacy `identity_conflicts`
+- `mutable_identity_judge` and `mutable_identity_judge_apply` may also expose compact staging/governance fields such as `runtime_pipeline`, `write_mode`, `buffer_pairs_count`, `buffer_target_pairs`, `buffer_frozen`, `buffer_cleared`, `auto_canonization_suspended`, `legacy_writer_disabled`, `score_first_writer_enabled=false`, `verdict_counts`, `persistent_operation_count`, `operation_kinds`, `continuity_kinds`, compact `rejection_reasons`, compact size guard fields (`window_chars`, `payload_chars`, `estimated_prompt_tokens`, `max_window_chars`, `max_estimated_prompt_tokens`) and compact apply counts; they must not expose scores or raw propositions
+- legacy `identity_periodic_agent` and `identity_periodic_agent_apply` may only remain as historical/pre-refactor events
+- when present, `raise_tension` remains a compact latest-activity signal only; it is allowed through compact `outcomes` summaries but must not be presented as a write into canonical `identity_mutables`
+- when present in legacy events, `raise_conflict` remains a compact latest-activity signal only; it is allowed through compact `outcomes` summaries but must not be presented as a write into legacy `identity_conflicts`
 - forbidden for identity: `preview`, `keys`, `guard_filtered_preview`, raw identity text, raw filtered excerpts
 
 `preview` contract (all events):

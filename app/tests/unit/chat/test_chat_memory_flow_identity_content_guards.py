@@ -65,7 +65,7 @@ class ChatMemoryFlowIdentityContentGuardsTests(unittest.TestCase):
 
         self.assertEqual(observed['persisted'], ('conv-identity-guard-enforced', []))
         event = _event_payloads(events, 'identity_mode_apply')[0]
-        self.assertEqual(event['action'], 'record_legacy_identity_diagnostics_and_stage')
+        self.assertEqual(event['action'], 'record_legacy_identity_diagnostics_and_mutable_judge')
         self.assertEqual(event['entries'], 0)
         self.assertEqual(event['extracted_entries'], 1)
         self.assertEqual(event['guard_filtered_count'], 1)

@@ -43,7 +43,7 @@ class _LogStoreWithOkReasonCode:
                     'conversation_id': 'conv-stage-lot3',
                     'turn_id': 'turn-lot3',
                     'ts': '2026-05-13T12:00:01+00:00',
-                    'stage': 'identity_periodic_agent',
+                    'stage': 'mutable_identity_judge',
                     'status': 'ok',
                     'payload': {
                         'reason_code': 'applied',
@@ -53,12 +53,14 @@ class _LogStoreWithOkReasonCode:
                         'outcomes': [
                             {
                                 'subject': 'user',
-                                'action': 'add',
+                                'verdict': 'persist',
+                                'operation': 'add',
                                 'reason_code': 'add_applied',
                                 'old_len': 0,
                                 'new_len': 42,
-                                'threshold_verdict': 'accepted',
-                                'strength': 0.91,
+                                'continuity_kind': 'limit',
+                                'source_refs_count': 1,
+                                'guard_notes_count': 1,
                             }
                         ],
                         'rejection_reasons': {},

@@ -172,30 +172,24 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
                     'conversation_id': 'conv-stage-1',
                     'turn_id': 'turn-15',
                     'ts': '2026-04-16T10:00:31Z',
-                    'stage': 'identity_periodic_agent',
+                    'stage': 'mutable_identity_judge',
                     'status': 'ok',
                     'payload': {
                         'reason_code': 'completed_with_open_tension',
                         'writes_applied': False,
-                        'promotion_count': 1,
+                        'promotion_count': 0,
                         'outcomes': [
                             {
                                 'subject': 'user',
-                                'action': 'raise_conflict',
-                                'reason_code': 'raise_conflict',
-                                'threshold_verdict': 'accepted',
-                                'strength': 0.7333,
+                                'verdict': 'raise_tension',
+                                'operation': '',
+                                'reason_code': 'relation_tension_open',
+                                'continuity_kind': 'tension',
+                                'source_refs_count': 1,
+                                'guard_notes_count': 1,
                             }
                         ],
-                        'promotions': [
-                            {
-                                'subject': 'llm',
-                                'operation_kind': 'add',
-                                'promotion_reason_code': 'promoted_to_static',
-                                'threshold_verdict': 'accepted',
-                                'strength': 0.9,
-                            }
-                        ],
+                        'promotions': [],
                         'rejection_reasons': {},
                     },
                 }
@@ -287,13 +281,13 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             data['identity_staging']['latest_agent_activity']['reason_code'],
             'completed_with_open_tension',
         )
-        self.assertEqual(data['identity_staging']['latest_agent_activity']['promotion_count'], 1)
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['promotion_count'], 0)
         self.assertEqual(data['identity_staging']['latest_agent_activity']['open_tension_count'], 1)
         self.assertNotIn('buffer_pairs', data['identity_staging']['latest_agent_activity'])
         self.assertNotIn('outcomes', data['identity_staging']['latest_agent_activity'])
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['open_tensions_storage_kind'],
-            'identity_periodic_agent_latest_activity',
+            'mutable_identity_judge_latest_activity',
         )
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['open_tensions_scope_kind'],
@@ -301,8 +295,8 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         )
         self.assertFalse(data['identity_staging']['latest_agent_activity']['open_tensions_actively_injected'])
         self.assertEqual(
-            data['identity_staging']['latest_agent_activity']['open_tensions'][0]['action'],
-            'raise_conflict',
+            data['identity_staging']['latest_agent_activity']['open_tensions'][0]['verdict'],
+            'raise_tension',
         )
         self.assertNotIn(
             'content',
@@ -310,7 +304,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         )
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['open_tensions'][0]['reason_code'],
-            'raise_conflict',
+            'relation_tension_open',
         )
         self.assertEqual(observed['fragments'], [('llm', 20), ('user', 20)])
         self.assertEqual(observed['evidence'], [('llm', 20), ('user', 20)])

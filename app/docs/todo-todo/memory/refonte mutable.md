@@ -29,8 +29,8 @@ Pipeline cible:
 - [ ] Garantir que la refonte mutable n'ecrit que dans `identity_mutables`.
 - [ ] Interdire toute ecriture automatique de `static` dans ce chantier.
 - [ ] Conserver le canon mutable existant comme canon herite initial, sans migration automatique.
-- [ ] Retirer le writer mutable score-first du runtime actif.
-- [ ] Remplacer les surfaces admin/read-model/logs qui presentent le staging long, les scores et les promotions comme regime actif.
+- [x] Retirer le writer mutable score-first du runtime actif.
+- [x] Remplacer les surfaces admin/read-model/logs qui presentent le staging long, les scores et les promotions comme regime actif.
 - [ ] Prouver que l'observabilite finale reste content-free.
 - [ ] Prouver que `Frida_from_herself.md` n'est pas un chantier concurrent actif.
 - [ ] Mettre a jour docs/tests/specs pour qu'il ne reste pas de couche morte.
@@ -56,24 +56,35 @@ Modules actifs constates:
 
 - `app/core/chat_memory_flow.py`
   - `record_identity_entries_for_mode(...)` extrait encore des fragments legacy via `arbiter.extract_identities(turn_pair)`.
-  - En mode enforced, il persiste les diagnostics legacy puis appelle `_run_periodic_identity_agent(...)`.
-  - `_run_periodic_identity_agent(...)` appelle `memory_identity_periodic_agent.stage_identity_turn_pair(...)` et journalise `identity_periodic_agent_apply`.
+  - En mode enforced, il persiste les diagnostics legacy hors canon mutable puis appelle `_run_periodic_identity_agent(...)` comme wrapper de runtime judge-first.
+  - `_run_periodic_identity_agent(...)` appelle `memory_identity_periodic_agent.stage_identity_turn_pair(...)` avec `enforce_writes=True` et journalise `mutable_identity_judge_apply`.
+  - En mode shadow, il peut observer le juge mais passe `enforce_writes=False`; aucune ecriture canonique mutable n'est autorisee.
 - `app/memory/memory_identity_periodic_agent.py`
-  - Avant Lot 1, `BUFFER_TARGET_PAIRS = 15`; depuis Lot 1, la cible runtime transitoire est `5`.
+  - Avant Lot 1, `BUFFER_TARGET_PAIRS = 15`; depuis Lot 1, la cible runtime est `5`.
   - Accumule un buffer dans `identity_mutable_staging`.
-  - Appelle `arbiter.run_identity_periodic_agent(...)` quand le buffer atteint la cible.
-  - En Lot 1 corrige, valide encore la forme du contrat legacy transitoire mais neutralise les ecritures canoniques score-first: `apply_periodic_agent_contract(...)` n'est plus appele dans le chemin actif tant que le juge Lot 2 n'existe pas.
+  - Depuis Lot 4, appelle `mutable_identity_runtime.run_mutable_identity_window(...)` quand le buffer atteint la cible.
+  - Ne depend plus de `memory_identity_periodic_apply.py` et n'appelle plus `apply_periodic_agent_contract(...)` dans le chemin actif.
   - Nettoie le buffer apres retour techniquement termine et valide; preserve le buffer en cas d'erreur transport, JSON/contrat invalide ou fenetre trop grosse.
+- `app/memory/mutable_identity_runtime.py`
+  - Orchestre `5 paires -> mutable_identity_judge -> mutable_identity_apply`.
+  - Construit l'input juge avec les 5 paires completes, les canons static/mutable courants et le budget mutable.
+  - En `shadow`, appelle le juge mais ne lance pas l'applicateur.
+  - En `enforced`, applique seulement un contrat juge valide; preserve le buffer si le juge ou l'applicateur echoue.
 - `app/memory/arbiter.py`
-  - `run_identity_periodic_agent(...)` charge `app/prompts/identity_periodic_agent.txt`.
+  - `run_mutable_identity_judge(...)` charge `app/prompts/identity_mutable_judge.txt` pour le chemin actif Lot 4.
+  - `run_identity_periodic_agent(...)` et `app/prompts/identity_periodic_agent.txt` restent legacy pre-refonte jusqu'au nettoyage Lot 6.
   - Modele et parametres viennent de `identity_periodic_model`: `temperature=0.0`, `top_p=1.0`, `max_tokens=1400`, timeout court, sauf override runtime.
   - Le temporal guard annote les signaux relatifs faibles dans la fenetre, mais ne retire plus le texte avant lecture du modele.
-  - Ajoute une garde content-free de taille: si la fenetre depasse les limites configurees dans le code transitoire, pas d'appel modele, pas d'ecriture mutable, buffer preserve.
+  - Ajoute une garde content-free de taille: si la fenetre depasse les limites configurees, pas d'appel modele, pas d'ecriture mutable, buffer preserve.
 - `app/prompts/identity_periodic_agent.txt`
+  - Prompt legacy pre-refonte, hors chemin actif Lot 4.
   - Demande des operations locales par sujet.
   - Demande explicitement une grande prudence.
   - Rappelle que Python calcule ensuite des champs de force locale.
   - Exemple meta encore cale sur l'ancienne fenetre longue.
+- `app/prompts/identity_mutable_judge.txt`
+  - Prompt actif du juge mutable.
+  - Declare les verdicts, operations, continuity kinds et reason codes du contrat `mutable_judge_v1`.
 - `app/memory/memory_identity_periodic_scoring.py`
   - Calcule une force locale a partir du support lexical, de la recurrence et de la distance dans la fenetre.
   - Donne un verdict deterministe utilise avant application.
@@ -98,7 +109,7 @@ Modules actifs constates:
 - `app/admin/admin_identity_read_model_service.py`
   - Avant correction Lot 1, exposait encore `promotion_to_static_enabled=true` comme si le writer score-first pouvait promouvoir le mutable vers le statique.
   - Depuis correction pre-Lot 2, expose `promotion_to_static_enabled=false`, `score_first_writer_enabled=false` et des statuts legacy neutralises.
-  - Expose encore `identity_staging`, les anciens seuils comme metadata legacy et les dernieres activites compactes.
+  - Depuis Lot 4, expose `mutable_writer_pipeline=mutable_identity_judge_first`, `mutable_judge_writer_enabled=true`, `promotion_to_static_enabled=false`, `score_first_writer_enabled=false` et les dernieres activites `mutable_identity_judge` compactes.
 
 Tables / structures persistantes:
 
@@ -279,10 +290,10 @@ Decision de fenetre: la premiere implementation cible une fenetre consommee apre
 
 ## Regle dure sur le statique
 
-- [ ] Le nouveau juge mutable ne produit aucune ecriture `static`.
+- [x] Le nouveau juge mutable ne produit aucune ecriture `static`.
 - [x] L'applicateur mutable n'appelle pas `write_static_identity_content`.
-- [ ] Le code ne planifie aucune promotion mutable -> static.
-- [ ] Le read-model n'affiche pas la promotion vers `static` comme capacite active du nouveau regime.
+- [x] Le code ne planifie aucune promotion mutable -> static.
+- [x] Le read-model n'affiche pas la promotion vers `static` comme capacite active du nouveau regime.
 - [ ] Toute future promotion mutable -> static sera un chantier separe, avec spec, tests et validation humaine ou regle explicite.
 
 ## Lots
@@ -333,7 +344,7 @@ Cases:
 - [x] Documenter la fenetre comme consommee apres run termine.
 - [x] Preserver la fenetre en cas de timeout, JSON invalide ou erreur transport.
 - [x] Eviter un gros staging historique ou multi-run.
-- [ ] Renommer les fonctions et payloads pour ne plus raconter `periodic_agent` si le code change de contrat.
+- [x] Renommer les events/payloads actifs pour raconter `mutable_identity_judge`; les noms de fonctions legacy restants sont reserves au nettoyage Lot 6.
 
 Tests / preuves attendus:
 
@@ -459,26 +470,26 @@ Objectif: brancher le nouveau pipeline et retirer l'ancien writer actif.
 
 Cases:
 
-- [ ] Brancher le nouveau pipeline dans `record_identity_entries_for_mode(...)`.
-- [ ] Garder les diagnostics legacy seulement s'ils restent explicitement hors canon.
-- [ ] Retirer le writer automatique `memory_identity_periodic_agent` du chemin actif.
-- [ ] Remplacer ou renommer `arbiter.run_identity_periodic_agent`.
-- [ ] Remplacer le prompt periodic actif par le prompt judge-first.
-- [ ] Ne pas laisser deux writers mutables actifs.
-- [ ] Garantir que shadow/enforced modes gardent une semantique claire.
-- [ ] Garder l'observabilite content-free existante.
+- [x] Brancher le nouveau pipeline dans `record_identity_entries_for_mode(...)`.
+- [x] Garder les diagnostics legacy seulement s'ils restent explicitement hors canon.
+- [x] Retirer le writer score-first automatique du chemin actif.
+- [ ] Remplacer ou renommer completement `arbiter.run_identity_periodic_agent` legacy.
+- [x] Remplacer le prompt periodic actif par le prompt judge-first.
+- [x] Ne pas laisser deux writers mutables actifs.
+- [x] Garantir que shadow/enforced modes gardent une semantique claire.
+- [x] Garder l'observabilite content-free existante.
 
 Tests / preuves attendus:
 
-- [ ] En mode enforced, le nouveau juge est appele apres 5 paires completes.
-- [ ] En mode shadow, aucune ecriture canonique n'est faite.
-- [ ] L'ancien writer n'est plus appele.
-- [ ] Les logs disent `mutable_judge` ou un nom equivalent, pas l'ancien regime comme verite active.
-- [ ] Les evenements ne contiennent pas de texte brut de fenetre.
+- [x] En mode enforced, le nouveau juge est appele apres 5 paires completes.
+- [x] En mode shadow, aucune ecriture canonique n'est faite.
+- [x] L'ancien writer n'est plus appele.
+- [x] Les logs disent `mutable_judge` ou un nom equivalent, pas l'ancien regime comme verite active.
+- [x] Les evenements ne contiennent pas de texte brut de fenetre.
 
 Critere de sortie:
 
-- [ ] Un seul writer mutable canonique reste actif.
+- [x] Un seul writer mutable canonique reste actif.
 
 Risque principal:
 
@@ -490,13 +501,13 @@ Objectif: aligner les surfaces d'observabilite sur le nouveau regime.
 
 Cases:
 
-- [ ] Remplacer les labels de staging/scoring actifs.
-- [ ] Exposer une activite `mutable_judge` content-free.
+- [x] Remplacer les labels de staging/scoring actifs minimaux du chemin Lot 4.
+- [x] Exposer une activite `mutable_judge` content-free.
 - [ ] Exposer count, status, reason code, hashes courts, longueurs, timestamps.
 - [ ] Ne pas afficher la fenetre brute.
 - [ ] Ne pas afficher les formulations sensibles.
-- [ ] Ne plus presenter la promotion static comme active.
-- [ ] Ne plus presenter les anciens seuils numeriques comme regime actif.
+- [x] Ne plus presenter la promotion static comme active.
+- [x] Ne plus presenter les anciens seuils numeriques comme regime actif.
 - [ ] Garder `identity_mutables` et `identity_mutable_audit` comprehensibles.
 - [ ] Mettre a jour le frontend admin si ses labels racontent encore l'ancien regime.
 

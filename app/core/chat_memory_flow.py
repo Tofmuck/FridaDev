@@ -158,6 +158,7 @@ def _run_periodic_identity_agent(
     arbiter_module: Any,
     memory_store_module: Any,
     admin_logs_module: Any,
+    enforce_writes: bool,
 ) -> dict[str, Any]:
     staging_t0 = time.perf_counter()
     try:
@@ -166,14 +167,15 @@ def _run_periodic_identity_agent(
             turn_pair,
             arbiter_module=arbiter_module,
             memory_store_module=memory_store_module,
+            enforce_writes=enforce_writes,
         )
     except Exception as exc:
         summary = {
             'status': 'skipped',
-            'reason_code': 'periodic_agent_flow_error',
+            'reason_code': 'mutable_judge_flow_error',
             'buffer_pairs_count': 0,
             'buffer_target_pairs': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
-            'last_agent_status': 'periodic_agent_flow_error',
+            'last_agent_status': 'mutable_judge_flow_error',
             'buffer_cleared': False,
             'buffer_frozen': False,
             'auto_canonization_suspended': False,
@@ -185,10 +187,10 @@ def _run_periodic_identity_agent(
             'legacy_writer_disabled': False,
         }
         admin_logs_module.log_event(
-            'identity_periodic_agent_apply',
+            'mutable_identity_judge_apply',
             conversation_id=conversation_id,
             status='skipped',
-            reason_code='periodic_agent_flow_error',
+            reason_code='mutable_judge_flow_error',
             buffer_pairs_count=0,
             buffer_target_pairs=memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
             buffer_cleared=False,
@@ -201,6 +203,8 @@ def _run_periodic_identity_agent(
             outcomes=[],
             error_class=exc.__class__.__name__,
             legacy_writer_disabled=False,
+            runtime_pipeline='mutable_identity_judge_first',
+            write_mode='enforced' if enforce_writes else 'shadow',
         )
     else:
         size_fields = {
@@ -215,7 +219,7 @@ def _run_periodic_identity_agent(
             if summary.get(key) is not None
         }
         admin_logs_module.log_event(
-            'identity_periodic_agent_apply',
+            'mutable_identity_judge_apply',
             conversation_id=conversation_id,
             status=str(summary.get('status') or 'ok'),
             reason_code=str(summary.get('reason_code') or ''),
@@ -233,11 +237,20 @@ def _run_periodic_identity_agent(
             last_agent_status=str(summary.get('last_agent_status') or ''),
             outcomes=list(summary.get('outcomes') or []),
             legacy_writer_disabled=bool(summary.get('legacy_writer_disabled')),
+            runtime_pipeline=str(summary.get('runtime_pipeline') or 'mutable_identity_judge_first'),
+            write_mode=str(summary.get('write_mode') or ('enforced' if enforce_writes else 'shadow')),
+            judge_status=str(summary.get('judge_status') or ''),
+            judge_reason_code=str(summary.get('judge_reason_code') or ''),
+            apply_status=str(summary.get('apply_status') or ''),
+            apply_reason_code=str(summary.get('apply_reason_code') or ''),
+            score_first_writer_enabled=bool(summary.get('score_first_writer_enabled')),
+            verdict_counts=dict(summary.get('verdict_counts') or {}),
+            persistent_operation_count=int(summary.get('persistent_operation_count') or 0),
             **size_fields,
         )
     _log_stage_latency(
         conversation_id,
-        'identity_periodic_agent',
+        'mutable_identity_judge_runtime',
         staging_t0,
         admin_logs_module=admin_logs_module,
     )
@@ -661,8 +674,8 @@ def record_identity_entries_for_mode(
     buffered_turn_pair = [dict(turn or {}) for turn in list(turn_pair or [])]
 
     if mode_enforces_identity(mode):
-        # This legacy pipeline remains diagnostic/history only; active canon writes
-        # still happen exclusively through the periodic staging -> apply path.
+        # This legacy extractor path remains diagnostic/history only; mutable canon
+        # writes happen exclusively through the judge-first staging runtime.
         memory_store_module.persist_identity_entries(conversation_id, filtered_entries)
         periodic_summary = _run_periodic_identity_agent(
             conversation_id,
@@ -670,12 +683,13 @@ def record_identity_entries_for_mode(
             arbiter_module=arbiter_module,
             memory_store_module=memory_store_module,
             admin_logs_module=admin_logs_module,
+            enforce_writes=True,
         )
         admin_logs_module.log_event(
             'identity_mode_apply',
             conversation_id=conversation_id,
             mode=mode,
-            action='record_legacy_identity_diagnostics_and_stage',
+            action='record_legacy_identity_diagnostics_and_mutable_judge',
             entries=len(filtered_entries),
             extracted_entries=len(id_entries),
             guard_filtered_count=guard_filtered_count,
@@ -695,6 +709,8 @@ def record_identity_entries_for_mode(
             promotions=list(periodic_summary.get('promotions') or []),
             rejection_reasons=dict(periodic_summary.get('rejection_reasons') or {}),
             legacy_writer_disabled=bool(periodic_summary.get('legacy_writer_disabled')),
+            runtime_pipeline=str(periodic_summary.get('runtime_pipeline') or 'mutable_identity_judge_first'),
+            write_mode=str(periodic_summary.get('write_mode') or 'enforced'),
         )
         return
 
@@ -715,14 +731,35 @@ def record_identity_entries_for_mode(
         write_effect='evidence_only',
         side_entry_counts=side_counts,
     )
+    periodic_summary = _run_periodic_identity_agent(
+        conversation_id,
+        buffered_turn_pair,
+        arbiter_module=arbiter_module,
+        memory_store_module=memory_store_module,
+        admin_logs_module=admin_logs_module,
+        enforce_writes=False,
+    )
     admin_logs_module.log_event(
         'identity_mode_apply',
         conversation_id=conversation_id,
         mode=mode,
-        action='record_legacy_identity_evidence_shadow',
+        action='record_legacy_identity_evidence_and_shadow_mutable_judge',
         entries=len(preview_entries),
         extracted_entries=len(id_entries),
         guard_filtered_count=guard_filtered_count,
         guard_filtered_by_side=guard_counts_by_side,
         guard_reason_codes_by_side=guard_reason_codes_by_side,
+        staging_status=str(periodic_summary.get('status') or ''),
+        staging_reason_code=str(periodic_summary.get('reason_code') or ''),
+        buffer_pairs_count=int(periodic_summary.get('buffer_pairs_count') or 0),
+        buffer_target_pairs=int(
+            periodic_summary.get('buffer_target_pairs') or memory_identity_periodic_agent.BUFFER_TARGET_PAIRS
+        ),
+        canonical_write_applied=False,
+        buffer_cleared=bool(periodic_summary.get('buffer_cleared')),
+        buffer_frozen=bool(periodic_summary.get('buffer_frozen')),
+        auto_canonization_suspended=bool(periodic_summary.get('auto_canonization_suspended')),
+        legacy_writer_disabled=bool(periodic_summary.get('legacy_writer_disabled')),
+        runtime_pipeline=str(periodic_summary.get('runtime_pipeline') or 'mutable_identity_judge_first'),
+        write_mode='shadow',
     )

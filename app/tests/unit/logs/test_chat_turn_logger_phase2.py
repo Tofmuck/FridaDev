@@ -24,7 +24,7 @@ from memory import memory_arbiter_audit
 
 
 class ChatTurnLoggerPhase2Tests(unittest.TestCase):
-    def test_identity_periodic_agent_event_stays_compact_without_content_preview(self) -> None:
+    def test_mutable_identity_judge_event_stays_compact_without_content_preview(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
 
@@ -40,7 +40,7 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         )
         try:
             chat_turn_logger.emit(
-                'identity_periodic_agent',
+                'mutable_identity_judge',
                 status='ok',
                 payload={
                     'buffer_pairs_count': 5,
@@ -48,23 +48,28 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                     'buffer_cleared': True,
                     'writes_applied': False,
                     'legacy_writer_disabled': True,
+                    'runtime_pipeline': 'mutable_identity_judge_first',
+                    'verdict_counts': {'no_change': 2},
                     'window_chars': 1200,
                     'payload_chars': 1800,
                     'estimated_prompt_tokens': 700,
                     'promotions': [],
                     'outcomes': [],
                 },
-                prompt_kind='identity_periodic_agent',
+                prompt_kind='mutable_identity_judge',
             )
             chat_turn_logger.end_turn(token, final_status='ok')
         finally:
             log_store.insert_chat_log_event = original_insert
 
-        periodic_event = next(event for event in observed if event['stage'] == 'identity_periodic_agent')
+        periodic_event = next(event for event in observed if event['stage'] == 'mutable_identity_judge')
         payload = periodic_event['payload_json']
-        self.assertEqual(payload['prompt_kind'], 'identity_periodic_agent')
+        self.assertEqual(payload['prompt_kind'], 'mutable_identity_judge')
+        self.assertEqual(payload['runtime_pipeline'], 'mutable_identity_judge_first')
         self.assertNotIn('preview', payload)
         self.assertNotIn('buffer_pairs', payload)
+        self.assertNotIn('messages', payload)
+        self.assertNotIn('proposition', payload)
         self.assertNotIn('candidates', payload)
         self.assertEqual(payload['outcomes'], [])
         self.assertEqual(payload['promotions'], [])

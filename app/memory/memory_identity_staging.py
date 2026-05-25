@@ -9,6 +9,7 @@ _TERMINAL_AGENT_STATUSES_RESET_ON_NEW_BUFFER = {
     'applied',
     'completed_no_change',
     'completed_with_open_tension',
+    'shadow_completed',
     'not_run',
 }
 
