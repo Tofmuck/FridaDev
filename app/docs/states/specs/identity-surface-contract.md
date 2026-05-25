@@ -4,6 +4,11 @@ Statut: spec vivante
 Portee: page `/identity`, navigation globale `Identity` et articulation avec la lecture diagnostique runtime sur `/hermeneutic-admin`
 Lot ferme: `Lot 5`
 
+Transition refonte mutable 2026-05-25:
+- cette spec decrit la surface `/identity` livree avant refonte;
+- le contrat cible du writer mutable est desormais `mutable-identity-judge-contract.md`;
+- les mentions de staging periodique, seuils ou promotions doivent etre relues comme surface pre-refonte a realigner, pas comme doctrine future du mutable.
+
 ## But
 
 Ce contrat ferme la surface `Identity` dediee en reemployant les contrats deja stabilises des Lots 2 a 5.

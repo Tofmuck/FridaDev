@@ -4,6 +4,11 @@ Statut: spec vivante
 Portee: edition operateur controlee de la mutable canonique, exposee dans `/hermeneutic-admin` puis reemployee dans `/identity`
 Chantier archive relie: `app/docs/todo-done/refactors/identity-vs-prompt-separation-todo.md` (`Lot 4` pour le durcissement prompt-like)
 
+Transition refonte mutable 2026-05-25:
+- cette spec reste source pour l'edition operateur directe de `identity_mutables`;
+- hors edition admin, le contrat cible du writer mutable est maintenant `mutable-identity-judge-contract.md`;
+- les references au regime periodique actif de B6 decrivent l'ancien runtime livre, pas la doctrine de la refonte.
+
 ## But
 
 Ce contrat ouvre une edition controlee de la mutable canonique active, sans rouvrir:
@@ -21,7 +26,7 @@ Donc:
 - la mutable editee ici ne doit pas devenir une zone d'instructions de methode, de securite, de format, d'outils ou de contraintes runtime;
 - elle ne doit pas non plus devenir un depot de preferences de conversation, de conforts relationnels, de formulations utilitaires ou de petits reglages de reponse;
 - le fait qu'elle soit ensuite injectee dans le runtime n'en fait pas une source de prompt canonique.
-- depuis B6, l'ancien `identity_mutable_rewriter` est retire du runtime actif; hors edition admin, la mutable canonique n'est plus mise a jour que par le regime periodique actif et son applicateur deterministe.
+- depuis B6, l'ancien `identity_mutable_rewriter` est retire du runtime actif; hors edition admin, la mutable canonique pre-refonte est mise a jour par le regime periodique livre, qui est supersede comme cible par le juge LLM mutable.
 
 ## Route
 
@@ -71,7 +76,7 @@ La mutable canonique editee par l'operateur suit la meme discipline doctrinale q
 - plafond dur: `3300` caracteres
 - aucune troncature cachee
 - si `content > 3300`: rejet, aucune ecriture
-- le meme validateur canonique est applique a l'edition admin et a l'applicateur du `identity_periodic_agent`
+- le meme validateur canonique est applique a l'edition admin et, dans le runtime pre-refonte, a l'applicateur du `identity_periodic_agent`
 - tout contenu prompt-like ou identitairement trop faible est rejete fail-closed avant ecriture
 
 Ligne d'admission retenue:
@@ -156,7 +161,7 @@ Reponse compacte attendue:
 
 Semantique:
 - `mutable_budget` continue de borner uniquement la mutable canonique (`3000 / 3300`);
-- `identity_runtime_regime` recontextualise cette couture en rappelant que le regime actif inclut aussi staging separe, promotion vers le statique et suspension automatique;
+- `identity_runtime_regime` recontextualise cette couture en rappelant le regime runtime expose; les mentions staging/promotion/suspension appartiennent au regime pre-refonte et devront etre realignees avec le juge mutable;
 - cette route continue a agir seulement sur le canon mutable actif, jamais sur le staging.
 
 ## Audit compact

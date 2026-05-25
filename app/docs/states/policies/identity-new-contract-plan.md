@@ -1,6 +1,6 @@
 # Identity New Contract - Plan doctrinal static et mutable
 
-Statut: plan doctrinal actif
+Statut: plan doctrinal actif pour la definition `static` / `mutable`; le contrat d'admission runtime du mutable est supersede par `app/docs/states/specs/mutable-identity-judge-contract.md`
 Classement: `app/docs/states/policies/`
 Portee: contrat cible de `static`, de `mutable` et du contrat d'admission du `mutable`
 Etat runtime vise: aucun patch runtime dans ce document
@@ -8,11 +8,18 @@ Contrainte dure: la future mise en oeuvre devra preserver le runtime actif `stat
 Decision de reclassement du 2026-04-18: ce plan quitte `todo-todo` et devient une reference doctrinale active sous `states/policies`; le chantier operatoire associe est maintenant archive dans `app/docs/todo-done/refactors/identity-new-contract-todo.md`.
 
 References liees:
+- `app/docs/states/specs/mutable-identity-judge-contract.md`
 - `app/docs/states/specs/identity-static-edit-contract.md`
 - `app/docs/states/specs/identity-mutable-edit-contract.md`
 - `app/docs/states/specs/identity-read-model-contract.md`
 - `app/memory/memory_identity_mutable_rewriter.py`
 - `app/identity/active_identity_projection.py`
+
+Mise a jour du 2026-05-25:
+- les sections de ce document qui definissent le sens de `static`, de `mutable`, la forme textuelle recevable et les contenus irrecevables restent actives;
+- les sections historiques qui parlent d'agent periodique, de fenetre de 15 paires, de score local, de recurrence, de promotion automatique vers `static` ou de JSON ancien ne sont plus source-of-truth pour la refonte mutable;
+- le contrat actif de mise en oeuvre est maintenant `mutable-identity-judge-contract.md`: `5 paires completes -> juge LLM -> verdicts -> validation technique minimale -> identity_mutables`;
+- cette refonte interdit la preselection semantique, le scoring identitaire, la promotion automatique vers `static` et tout writer mutable parallele.
 
 ## 1. Objet du chantier
 
@@ -254,9 +261,9 @@ Donc:
 Regle de prudence:
 - mieux vaut laisser une proposition hors `mutable` que casser la coherence interne du texte canonique.
 
-## 8. Contraintes de mise en oeuvre futures
+## 8. Historique supersede - anciennes contraintes de mise en oeuvre
 
-Ce document n'ouvre pas encore l'implementation, mais il fixe les contraintes minimales de la future mise en oeuvre.
+Cette section conserve l'ancien cadrage operatoire pour memoire doctrinale. Elle est supersedee pour la refonte mutable par `app/docs/states/specs/mutable-identity-judge-contract.md` et ne doit plus etre utilisee comme contrat d'implementation.
 
 ### 8.1 Contrat de l'agent d'identite pour `mutable`
 
@@ -533,9 +540,9 @@ Ces sujets peuvent revenir plus tard.
 Ils ne doivent pas piloter la premiere decision, qui est plus simple:
 - qu'est-ce qui entre dans `mutable` ?
 
-## 10. Plan de travail suivant
+## 10. Historique supersede - ancien plan de travail suivant
 
-Ordre de travail recommande:
+Ordre de travail anciennement recommande, conserve pour trace. Pour la refonte mutable, suivre `app/docs/states/specs/mutable-identity-judge-contract.md` et `app/docs/todo-todo/memory/refonte mutable.md`.
 
 1. figer ce contrat doctrinal `static` / `mutable`;
 2. remplacer le schema binaire `rewrite/no_change` par un contrat d'operations locales: `no_change`, `add`, `tighten`, `merge`, `raise_conflict`;

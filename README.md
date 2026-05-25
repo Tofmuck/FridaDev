@@ -117,6 +117,7 @@ Frontend rehydration and operator observability
 - Archived long-term dashboard roadmap: `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`
 - Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
 - Chat enunciation / identity / time-gap doctrine: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Mutable identity judge source contract: `app/docs/states/specs/mutable-identity-judge-contract.md`
 - Active identity doctrine plan: `app/docs/states/policies/identity-new-contract-plan.md`
 - Archived identity implementation roadmap: `app/docs/todo-done/refactors/identity-new-contract-todo.md`
 - Memory Admin surface contract: `app/docs/states/specs/memory-admin-surface-contract.md`
@@ -286,6 +287,7 @@ Rehydratation frontend et observabilite operateur
 - Roadmap archivee dashboard long terme: `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`
 - Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`
 - Doctrine voix / identite / gap temporel: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Contrat source-of-truth juge mutable: `app/docs/states/specs/mutable-identity-judge-contract.md`
 - Plan doctrinal actif identity: `app/docs/states/policies/identity-new-contract-plan.md`
 - Roadmap implementation identity archivee: `app/docs/todo-done/refactors/identity-new-contract-todo.md`
 - Contrat Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`

@@ -45,11 +45,12 @@ Le perimetre autorise reste borne aux racines identity canoniques:
 - un chemin absolu n'est accepte que s'il resolve dans une de ces racines;
 - tout fichier existant hors de ce perimetre est refuse fail-closed.
 
-Depuis le regime periodique identity, cette verite file-backed inclut aussi un fichier compagnon de metadata d'ecriture:
+Depuis le regime periodique identity pre-refonte, cette verite file-backed inclut aussi un fichier compagnon de metadata d'ecriture:
 - `.{nom-du-fichier}.identity-meta.json` a cote de la ressource statique active;
 - ce sidecar stocke `updated_by`, `update_reason` et `updated_ts`;
 - il reste file-backed, pas DB-backed, et ne cree pas une deuxieme verite canonique du statique;
 - il sert a distinguer un edit operateur recent d'une auto-promotion du `identity_periodic_agent`.
+- transition 2026-05-25: la refonte mutable cible interdit toute nouvelle promotion automatique mutable -> static; ce sidecar reste utile pour l'historique et les edits operateur, mais ne doit pas etre lu comme permission future d'ecrire le statique depuis le juge mutable.
 
 Sur OVH et dans le deploiement Docker standard actuellement retenu:
 - la source canonique de `llm.static` est le fichier operateur local `state/data/identity/llm_identity.txt`, non versionne dans Git;

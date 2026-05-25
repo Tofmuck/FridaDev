@@ -157,6 +157,7 @@ Minimum event-specific details:
   - forbidden for identity: `preview`, textual excerpts, fragment dumps
 
 - `identity_periodic_agent`
+  - transition 2026-05-25: this event describes the pre-refactor runtime seam; the target mutable writer observability is defined by `mutable-identity-judge-contract.md`
   - payload must include the terminal `reason_code` even when top-level `status = ok`
   - `outcomes` may include `action = "raise_conflict"` with compact scoring fields when the agent keeps an unresolved tension open instead of canonizing it
   - these open tensions remain conversation-scoped latest activity only; they do not write `identity_conflicts` and do not become active canon
@@ -478,6 +479,7 @@ Forbidden by default:
 
 Identity exception:
 - `identities_read`, `identity_write`, `identity_periodic_agent`, `identity_periodic_agent_apply`, and identity admin/runtime summaries such as `identity_mode_apply` must stay compact-only
+- transition 2026-05-25: `identity_periodic_agent` / `identity_periodic_agent_apply` fields are pre-refactor observability. The future mutable judge must stay compact-only too, but must not expose identity scores and must follow `mutable-identity-judge-contract.md`.
 - legacy `identity_mutable_rewrite*` observability is retired in B6; the live regime is described through `identity_write`, `identity_mode_apply`, `identity_periodic_agent` and `identity_periodic_agent_apply`
 - allowed for identity: counts, presence/absence, char lengths, update flags, reason codes, budget/shape validation flags
 - `identity_periodic_agent` and `identity_periodic_agent_apply` may also expose compact staging/governance fields such as `buffer_pairs_count`, `buffer_target_pairs`, `buffer_frozen`, `buffer_cleared`, `auto_canonization_suspended`, compact `rejection_reasons`, compact per-operation score fields (`support_pairs`, `last_occurrence_distance`, `frequency_norm`, `recency_norm`, `strength`, `threshold_verdict`) and promotion summaries without raw proposition text

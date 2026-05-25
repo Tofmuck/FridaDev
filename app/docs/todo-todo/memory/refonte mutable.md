@@ -2,6 +2,8 @@
 
 Statut: chantier actif, docs-only pour ce lot.
 
+Spec source-of-truth Lot 0: `app/docs/states/specs/mutable-identity-judge-contract.md`.
+
 Decision source-of-truth du 2026-05-25: le nouveau pipeline mutable ne doit plus scorer l'identite, ne doit plus selectionner des formulations avant le juge et ne doit plus promouvoir implicitement du mutable vers le statique. Le juge LLM lit une fenetre complete de dialogue et decide lui-meme ce qui engage une continuite mutable.
 
 Pipeline cible:
@@ -290,26 +292,26 @@ Objectif: figer le contrat exact du nouveau mutable avant code.
 
 Cases:
 
-- [ ] Specifier le contrat `5 paires completes -> juge LLM -> mutable`.
-- [ ] Retirer du plan toute cible de preselection semantique.
-- [ ] Definir le schema JSON `mutable_judge_v1`.
-- [ ] Definir les reason codes canoniques.
-- [ ] Verrouiller `pas d'ecriture static`.
-- [ ] Verrouiller `pas de scoring identitaire`.
-- [ ] Decrire les refus techniques autorises.
-- [ ] Decrire les refus techniques interdits.
-- [ ] Requalifier le temporal guard comme annotation ou garde technique, jamais comme tri identitaire avant lecture.
-- [ ] Mettre a jour docs/specs source-of-truth si necessaire.
+- [x] Specifier le contrat `5 paires completes -> juge LLM -> mutable`.
+- [x] Retirer du plan toute cible de preselection semantique.
+- [x] Definir le schema JSON `mutable_judge_v1`.
+- [x] Definir les reason codes canoniques.
+- [x] Verrouiller `pas d'ecriture static`.
+- [x] Verrouiller `pas de scoring identitaire`.
+- [x] Decrire les refus techniques autorises.
+- [x] Decrire les refus techniques interdits.
+- [x] Requalifier le temporal guard comme annotation ou garde technique, jamais comme tri identitaire avant lecture.
+- [x] Mettre a jour docs/specs source-of-truth si necessaire.
 
 Tests / preuves attendus:
 
-- [ ] Grep docs: aucune cible active ne decrit un pipeline de preselection avant juge.
-- [ ] Grep docs: les anciens scores ne sont decrits que comme legacy a supprimer.
-- [ ] Relecture manuelle du schema JSON.
+- [x] Grep docs: aucune cible active ne decrit un pipeline de preselection avant juge.
+- [x] Grep docs: les anciens scores ne sont decrits que comme legacy a supprimer.
+- [x] Relecture manuelle du schema JSON.
 
 Critere de sortie:
 
-- [ ] Un implementateur peut coder le pipeline sans inventer de decision conceptuelle.
+- [x] Un implementateur peut coder le pipeline sans inventer de decision conceptuelle.
 
 Risque principal:
 

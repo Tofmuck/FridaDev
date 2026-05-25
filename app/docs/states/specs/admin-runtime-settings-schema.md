@@ -167,6 +167,8 @@ Slot individualise de l'extracteur identity au tour (`extract_identities()`). Il
 
 Slot individualise de `identity_periodic_agent` (`run_identity_periodic_agent()`). Il partage le transport OpenRouter de `main_model` (`base_url`, `api_key`, `referer_identity_periodic`, `title_identity_periodic`) mais possede son propre modele, son propre echantillonnage, son budget de sortie et son timeout. La decision humaine du 2026-05-19 passe ce caller a `anthropic/claude-haiku-4.5` apres validation du prompt ontologique + registre.
 
+Transition refonte mutable 2026-05-25: ce slot decrit le caller runtime pre-refonte. Le contrat cible du futur juge mutable est `mutable-identity-judge-contract.md`; un lot ulterieur devra renommer ou requalifier cette section sans reintroduire de scoring identitaire.
+
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
 | `model` | `text` | non | `IDENTITY_PERIODIC_MODEL`, defaut `anthropic/claude-haiku-4.5` |

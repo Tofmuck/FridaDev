@@ -39,6 +39,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
 - Note suspendue memoire/intention `feed her from herself`: `todo-todo/memory/Frida_from_herself.md`
 - TODO actif refonte des mutables identity: `todo-todo/memory/refonte mutable.md`
+- Contrat source-of-truth juge mutable: `states/specs/mutable-identity-judge-contract.md`
 - Boussole produit finale des cinq derniers gros chantiers FridaDev: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Archive atelier documentaire / répertoires de travail: `todo-done/product/fridadev-workspace-folders-todo.md`
 - Contrat source-of-truth atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
@@ -56,6 +57,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 - Pouvoir de l'arbitre de reponse: `states/specs/response-arbiter-power-contract.md`
 - Voix / identite / reprise apres ecart temporel: `states/specs/chat-enunciation-and-gap-contract.md`
+- Contrat source-of-truth du juge mutable: `states/specs/mutable-identity-judge-contract.md`
 - Plan doctrinal identity `static` / `mutable`: `states/policies/identity-new-contract-plan.md`
 - Contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
 - Protocole streaming public: `states/specs/streaming-protocol.md`
@@ -171,14 +173,16 @@ But: cadrer le chantier separe permettant a Frida de consulter une bibliotheque 
 ### Identity / doctrine
 
 Lire d'abord:
+- `states/specs/mutable-identity-judge-contract.md`
 - `states/policies/identity-new-contract-plan.md`
 - `todo-done/refactors/identity-new-contract-todo.md`
 - `todo-todo/memory/refonte mutable.md` pour la refonte active du pipeline mutable vers `fenetre complete de 5 paires -> juge LLM -> identity_mutables`
 - `todo-todo/memory/Frida_from_herself.md` comme note suspendue: l'intuition est probablement absorbee par la refonte mutable et ne doit pas devenir un chantier parallele avant reevaluation.
 
-Regle de lecture: garder ces deux references distinctes. Le plan reste doctrinal et actif; l'archive conserve la trace du chantier termine.
+Regle de lecture: garder ces trois references distinctes. La spec juge mutable porte le contrat source-of-truth de la refonte; le plan reste doctrinal pour `static` / `mutable`; l'archive conserve la trace du chantier termine.
 
 Specs liees:
+- `states/specs/mutable-identity-judge-contract.md`
 - `states/specs/identity-read-model-contract.md`
 - `states/specs/identity-surface-contract.md`
 - `states/specs/identity-static-edit-contract.md`

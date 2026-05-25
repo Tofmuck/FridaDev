@@ -148,14 +148,15 @@ Important:
 - `identity_extractor_max_tokens` est une lecture readonly de `identity_extractor_model.max_tokens`; l'edition reste dans les runtime settings du caller;
 - le statique n'introduit pas de cap caracteres Lot 5 distinct;
 - la mutable garde sa doctrine `3000 / 3300`, visible mais verrouillee;
-- ces caps ne racontent pas a eux seuls tout le regime actif: la gouvernance expose aussi des sections readonly pour le staging a 15 paires, le scoring Python deterministe, la promotion vers le statique et la suspension automatique.
+- ces caps ne racontent pas a eux seuls tout le regime runtime expose avant refonte: la gouvernance expose aussi des sections readonly pour le staging a 15 paires, le scoring Python deterministe, la promotion vers le statique et la suspension automatique.
+- transition 2026-05-25: ces sections pre-refonte restent des lectures du runtime livre, mais ne sont plus doctrine cible du writer mutable. Le contrat cible est `mutable-identity-judge-contract.md`.
 
 ## Sections readonly du regime actif
 
 `regime_sections` complete les `items` sans dupliquer le read-model:
 - `active_canon_contract`: rappelle que le canon actif injecte reste `static + mutable narrative`, distinct du staging;
 - `staging_contract`: rappelle le staging `conversation_scoped_latest`, sa cible a `15` paires et son statut non injecte / non editable;
-- `scoring_contract`: rappelle le scoring Python deterministe, les operations `add|tighten|merge|raise_conflict`, les seuils de force locale `0.35/0.60` et les seuils de durabilite operator-gouvernables;
+- `scoring_contract`: rappelle le scoring Python deterministe du runtime pre-refonte; il devra disparaitre du regime actif cible au profit du juge LLM mutable;
 - `promotion_and_suspension_contract`: rappelle la promotion `mutable -> static` et la suspension automatique sur `double_saturation` ou `static_recent_operator_edit_guard`;
 - `mutable_budget_contract`: rappelle que `3000 / 3300` borne seulement la mutable canonique, doctrine verrouillee;
 - `legacy_identity_contract`: rappelle que `identities`, `identity_evidence` et `identity_conflicts` restent `legacy_diagnostic_only`, hors injection active.

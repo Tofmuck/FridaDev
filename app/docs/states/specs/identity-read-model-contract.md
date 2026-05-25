@@ -4,6 +4,12 @@ Statut: spec vivante
 Portee: lecture operator-facing read-only reemployee par `/hermeneutic-admin` et `/identity`
 Lot ferme: `Lot 4`
 
+Transition refonte mutable 2026-05-25:
+- le read-model de cette spec decrit encore la surface runtime livree avant refonte;
+- le contrat source-of-truth cible du nouveau writer mutable est `mutable-identity-judge-contract.md`;
+- les champs de staging, seuils, promotion et agent periodique devront etre realignes dans un lot ulterieur pour raconter `5 paires completes -> juge LLM -> identity_mutables`;
+- cette spec ne doit plus etre lue comme doctrine cible du writer mutable.
+
 ## But
 
 Ce contrat definit une lecture unifiee et honnete du systeme identity reel, y compris le regime periodique `staging -> agent -> canon`, sans rouvrir le canon injecte lui-meme.
@@ -44,7 +50,7 @@ Le read-model doit exposer explicitement:
 - `governance_read_via = "/api/admin/identity/governance"`
 - `governance_editable_via = "/api/admin/identity/governance"`
 - `runtime_representations_read_via = "/api/admin/identity/runtime-representations"`
-- `identity_runtime_regime` comme rappel compact des caps/seuils actifs (`mutable_budget`, `staging_target_pairs`, seuils `0.35 / 0.60`, promotion et suspension)
+- `identity_runtime_regime` comme rappel compact du regime runtime expose; avant refonte il contient encore `mutable_budget`, staging, seuils, promotion et suspension, mais ces champs sont supersedes comme cible mutable par `mutable-identity-judge-contract.md`
 - `identity_staging` comme verite read-only distincte du canon actif injecte
 
 Le read-model ne doit pas:
