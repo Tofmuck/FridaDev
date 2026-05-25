@@ -20,20 +20,20 @@ Pipeline cible:
 
 ## Checklist globale
 
-- [ ] Remplacer le contrat actif par `5 paires completes -> juge LLM -> mutable`.
-- [ ] Supprimer toute cible de preselection semantique avant le juge.
-- [ ] Supprimer le scoring identitaire comme critere d'admission mutable.
-- [ ] Garantir un pipeline commun pour `user` et `llm`.
-- [ ] Garantir que le juge recoit toute la fenetre de 5 paires, pas seulement des extraits.
-- [ ] Garantir que le nouveau juge recoit `user.static`, `user.mutable_current`, `llm.static` et `llm.mutable_current`.
-- [ ] Garantir que la refonte mutable n'ecrit que dans `identity_mutables`.
-- [ ] Interdire toute ecriture automatique de `static` dans ce chantier.
-- [ ] Conserver le canon mutable existant comme canon herite initial, sans migration automatique.
+- [x] Remplacer le contrat actif par `5 paires completes -> juge LLM -> mutable`.
+- [x] Supprimer toute cible de preselection semantique avant le juge.
+- [x] Supprimer le scoring identitaire comme critere d'admission mutable.
+- [x] Garantir un pipeline commun pour `user` et `llm`.
+- [x] Garantir que le juge recoit toute la fenetre de 5 paires, pas seulement des extraits.
+- [x] Garantir que le nouveau juge recoit `user.static`, `user.mutable_current`, `llm.static` et `llm.mutable_current`.
+- [x] Garantir que la refonte mutable n'ecrit que dans `identity_mutables`.
+- [x] Interdire toute ecriture automatique de `static` dans ce chantier.
+- [x] Conserver le canon mutable existant comme canon herite initial, sans migration automatique.
 - [x] Retirer le writer mutable score-first du runtime actif.
 - [x] Remplacer les surfaces admin/read-model/logs qui presentent le staging long, les scores et les promotions comme regime actif.
-- [ ] Prouver que l'observabilite finale reste content-free.
-- [ ] Prouver que `Frida_from_herself.md` n'est pas un chantier concurrent actif.
-- [ ] Mettre a jour docs/tests/specs pour qu'il ne reste pas de couche morte.
+- [x] Prouver que l'observabilite finale reste content-free.
+- [x] Prouver que `Frida_from_herself.md` n'est pas un chantier concurrent actif.
+- [x] Mettre a jour docs/tests/specs pour qu'il ne reste pas de couche morte.
 
 ## Existe-t-il un meilleur plan ?
 
@@ -139,13 +139,13 @@ Tests et docs actuels a requalifier:
 
 Ce qui doit disparaitre a la fin:
 
-- [ ] Scoring local comme juge d'admission mutable.
-- [ ] Fenetre longue comme contrat cible.
-- [ ] Writer score-first actif.
-- [ ] Promotion automatique vers `static`.
-- [ ] Labels admin/read-model qui presentent scores et seuils comme regime actif.
-- [ ] Tests qui prouvent l'ancien scoring comme comportement attendu.
-- [ ] Prompt periodic presente comme source de verite active si son contrat n'est pas remplace.
+- [x] Scoring local comme juge d'admission mutable.
+- [x] Fenetre longue comme contrat cible.
+- [x] Writer score-first actif.
+- [x] Promotion automatique vers `static`.
+- [x] Labels admin/read-model qui presentent scores et seuils comme regime actif.
+- [x] Tests qui prouvent l'ancien scoring comme comportement attendu.
+- [x] Prompt periodic presente comme source de verite active si son contrat n'est pas remplace.
 
 ## Architecture cible
 
@@ -558,33 +558,33 @@ Objectif: prouver que la refonte est terminee, pas seulement ajoutee.
 
 Cases:
 
-- [ ] Prouver qu'il n'existe plus de writer mutable score-first actif.
-- [ ] Prouver que `user` et `llm` passent par le meme pipeline.
-- [ ] Prouver que le juge recoit toute la fenetre de 5 paires.
-- [ ] Prouver que le statique n'est pas modifie.
-- [ ] Prouver que `identity_mutables` reste le canon mutable relu.
-- [ ] Prouver que les mutables sont reinjectees via `static + mutable`.
-- [ ] Prouver l'absence de fuite de texte sensible dans logs/admin.
-- [ ] Prouver que `Frida_from_herself.md` reste suspendu ou a ete absorbe.
-- [ ] Prouver que docs et tests racontent le meme runtime.
-- [ ] Prouver que les anciennes tables/buffers ne pilotent plus le canon.
+- [x] Prouver qu'il n'existe plus de writer mutable score-first actif.
+- [x] Prouver que `user` et `llm` passent par le meme pipeline.
+- [x] Prouver que le juge recoit toute la fenetre de 5 paires.
+- [x] Prouver que le statique n'est pas modifie.
+- [x] Prouver que `identity_mutables` reste le canon mutable relu.
+- [x] Prouver que les mutables sont reinjectees via `static + mutable`.
+- [x] Prouver l'absence de fuite de texte sensible dans logs/admin.
+- [x] Prouver que `Frida_from_herself.md` reste suspendu ou a ete absorbe.
+- [x] Prouver que docs et tests racontent le meme runtime.
+- [x] Prouver que les anciennes tables/buffers ne pilotent plus le canon.
 
 Tests / preuves attendus:
 
-- [ ] Tests unitaires cible complets.
-- [ ] Tests admin/read-model/logs.
-- [ ] Greps de non-regression.
-- [ ] Relecture docs.
-- [ ] Smoke applicatif si un lot runtime le justifie.
+- [x] Tests unitaires cible complets.
+- [x] Tests admin/read-model/logs.
+- [x] Greps de non-regression.
+- [x] Relecture docs.
+- [x] Smoke applicatif evalue : non requis pour ce lot tests/docs-only.
 
 Critere de sortie:
 
-- [ ] Plus d'ancien systeme mutable actif.
-- [ ] Plus de scoring deterministe comme critere central.
-- [ ] Mutable humain et mutable Frida fonctionnent selon le meme principe.
-- [ ] Le LLM juge est l'autorite de decision.
-- [ ] Observabilite, docs et tests sont alignes.
-- [ ] Repo propre, pas de couche morte.
+- [x] Plus d'ancien systeme mutable actif.
+- [x] Plus de scoring deterministe comme critere central.
+- [x] Mutable humain et mutable Frida fonctionnent selon le meme principe.
+- [x] Le LLM juge est l'autorite de decision.
+- [x] Observabilite, docs et tests sont alignes.
+- [x] Repo propre, pas de couche morte.
 
 Risque principal:
 

@@ -40,6 +40,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Note suspendue memoire/intention `feed her from herself`: `todo-todo/memory/Frida_from_herself.md`
 - TODO actif refonte des mutables identity: `todo-todo/memory/refonte mutable.md`
 - Contrat source-of-truth juge mutable: `states/specs/mutable-identity-judge-contract.md`
+- Validation finale refonte mutable judge-first 2026-05-25: `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`
 - Boussole produit finale des cinq derniers gros chantiers FridaDev: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Archive atelier documentaire / répertoires de travail: `todo-done/product/fridadev-workspace-folders-todo.md`
 - Contrat source-of-truth atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
@@ -183,6 +184,7 @@ Regle de lecture: garder ces trois references distinctes. La spec juge mutable p
 
 Specs liees:
 - `states/specs/mutable-identity-judge-contract.md`
+- `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`
 - `states/specs/identity-read-model-contract.md`
 - `states/specs/identity-surface-contract.md`
 - `states/specs/identity-static-edit-contract.md`
