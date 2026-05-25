@@ -122,6 +122,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertIn('`judge_timeout`', prompt)
         self.assertIn('`mutable_content_too_long`', prompt)
         self.assertIn('`pair_05`', prompt)
+        self.assertIn('return at least one verdict for `user` and at least one verdict for `llm`', prompt)
+        self.assertIn('every item must be a short code', prompt)
+        self.assertIn('never write phrases', prompt)
 
     def test_build_judge_input_contains_complete_window_identities_and_no_scores(self) -> None:
         judge_input = mutable_identity_judge.build_judge_input(
@@ -543,6 +546,29 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             invalid_result = mutable_identity_judge.run_mutable_identity_judge(judge_input)
             self.assertEqual(invalid_result['status'], 'skipped')
             self.assertEqual(invalid_result['reason_code'], 'judge_invalid_json')
+
+            class FencedJsonResponse:
+                def raise_for_status(self) -> None:
+                    return None
+
+                def json(self):
+                    return {
+                        'choices': [
+                            {
+                                'message': {
+                                    'content': '```json\n'
+                                    + json.dumps(_valid_contract(), ensure_ascii=False)
+                                    + '\n```'
+                                }
+                            }
+                        ]
+                    }
+
+            mutable_identity_judge.requests.post = lambda *_args, **_kwargs: FencedJsonResponse()
+            fenced_result = mutable_identity_judge.run_mutable_identity_judge(judge_input)
+            self.assertEqual(fenced_result['status'], 'ok')
+            self.assertEqual(fenced_result['reason_code'], 'judge_complete')
+            self.assertEqual(fenced_result['contract']['schema_version'], 'mutable_judge_v1')
         finally:
             mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings = original_get_settings
             mutable_identity_judge.load_prompt = original_load_prompt

@@ -543,7 +543,7 @@ Ils ne doivent pas piloter la premiere decision, qui est plus simple:
 
 ## 10. Historique supersede - ancien plan de travail suivant
 
-Ordre de travail anciennement recommande, conserve pour trace. Pour la refonte mutable, suivre `app/docs/states/specs/mutable-identity-judge-contract.md` et `app/docs/todo-todo/memory/refonte mutable.md`.
+Ordre de travail anciennement recommande, conserve pour trace. Pour le regime mutable actif, suivre `app/docs/states/specs/mutable-identity-judge-contract.md`; l'execution de la refonte est archivee dans `app/docs/todo-done/refactors/mutable-identity-judge-refactor-todo.md`.
 
 1. figer ce contrat doctrinal `static` / `mutable`;
 2. remplacer le schema binaire `rewrite/no_change` par un contrat d'operations locales: `no_change`, `add`, `tighten`, `merge`, `raise_conflict`;

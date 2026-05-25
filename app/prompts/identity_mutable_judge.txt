@@ -118,6 +118,14 @@ list when no specific pair applies. Never invent refs outside that window.
 
 Return JSON only. Use exactly this top-level schema:
 
+Hard output rules:
+- begin directly with `{` and end directly with `}`;
+- do not wrap the JSON in Markdown fences such as ```json;
+- return at least one verdict for `user` and at least one verdict for `llm`;
+- `guard_notes` may be `[]`; if you use it, every item must be a short code
+  token only, with letters, digits, `_`, `:` or `-`; never write phrases,
+  spaces, quotes, excerpts or explanations in `guard_notes`.
+
 {
   "schema_version": "mutable_judge_v1",
   "meta": {

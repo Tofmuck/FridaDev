@@ -1,15 +1,15 @@
 # Frida from herself - suspendu
 
-Statut: suspendu le 2026-05-25, en attente de la refonte mutable.
+Statut: suspendu le 2026-05-25; reevalue apres la refonte mutable judge-first, sans chantier parallele ouvert.
 
 Decision: ce fichier ne doit pas devenir un chantier actif parallele. L'intuition `feed her from herself` est probablement absorbee par la refonte mutable: les auto-formulations de Frida doivent etre lues par le meme juge mutable que les formulations utilisateur, dans une fenetre complete de 5 paires, avec `llm.static`, `llm.mutable`, `user.static` et `user.mutable`.
 
-Regle avant fin de refonte:
+Regle apres cloture de la refonte:
 
-- [ ] Ne pas implementer un artefact reflexif separe.
-- [ ] Ne pas ouvrir un second writer identitaire.
-- [ ] Ne pas faire persister des auto-formulations de Frida hors du juge mutable commun.
-- [ ] Reevaluer ce document seulement apres la refonte mutable, si un artefact distinct reste necessaire.
+- [x] Ne pas implementer un artefact reflexif separe dans la refonte mutable.
+- [x] Ne pas ouvrir un second writer identitaire.
+- [x] Ne pas faire persister des auto-formulations de Frida hors du juge mutable commun.
+- [x] Reevaluer ce document apres la refonte mutable: il reste suspendu; aucun artefact distinct n'est necessaire sans decision produit separee.
 
 ## Brouillon rapide
 

@@ -1,6 +1,6 @@
 # Mutable identity judge-first - final validation - 2026-05-25
 
-Statut: validation finale Lot 7.
+Statut: validation finale Lot 7, corrigee par smoke reel LLM du juge mutable.
 
 Branche validee: `feature/mutable-refonte`
 
@@ -52,6 +52,44 @@ Preuves du test:
 - l'observabilite collectee reste content-free: pas de fenetre brute, pas de proposition brute, pas de texte conversationnel sensible;
 - `identity_input` et le bloc prompt relisent bien `static + mutable`.
 
+## Smoke Reel Juge LLM
+
+Correction finale du 2026-05-25:
+
+- le crash test pipeline reste deterministe et in-memory;
+- un smoke manuel borne appelle maintenant le vrai `mutable_identity_judge` avec le modele runtime du slot `identity_periodic_model`;
+- la persistence reste desactivee: aucun write DB live, aucun `identity_mutables` de production modifie;
+- le smoke utilise une fenetre synthetique de 5 paires envoyees au juge et conserve une 6e paire hors fenetre pour prouver que la preuve n'exige pas de rejouer le pipeline live.
+
+Bug trouve par le smoke et corrige:
+
+- le modele peut renvoyer un JSON valide entoure d'un fence Markdown complet;
+- le runner accepte maintenant ce cas strictement borne, sans accepter de texte libre autour;
+- le prompt actif precise que le modele doit rendre un objet JSON brut, inclure au moins un verdict `user` et un verdict `llm`, et garder `guard_notes` sous forme de codes courts content-free.
+
+Commande de smoke executee:
+
+```bash
+docker exec -i -w /app platform-fridadev python - < app/scripts/smoke_mutable_identity_judge_llm.py
+```
+
+Resultat content-free:
+
+- modele: `anthropic/claude-haiku-4.5`;
+- slot: `identity_periodic_model`;
+- prompt kind: `mutable_identity_judge`;
+- status: `ok`;
+- reason_code: `judge_complete`;
+- schema: `mutable_judge_v1`;
+- verdict_counts: `{"persist": 2}`;
+- subjects_touched: `["llm", "user"]`;
+- operation_kinds: `["add"]`;
+- source_refs valides: oui, bornes a `pair_01..pair_05`;
+- bruit persiste: `0`;
+- all_no_change: `false`;
+- persistence live: `false`;
+- fingerprints propositions: hashes courts et longueurs seulement, sans texte brut.
+
 ## Non-Concurrence Legacy
 
 Preuves attendues et verifiees:
@@ -94,7 +132,9 @@ docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app
   tests.test_server_admin_settings_read_contract
 
 git grep -n "memory_identity_periodic_apply\|memory_identity_periodic_scoring\|apply_periodic_agent_contract\|score_operation\|threshold_verdict\|frequency_norm\|recency_norm\|strength_below_threshold" \
-  app/core app/memory app/admin app/tests app/docs/states app/docs/todo-todo
+  app/core app/memory app/admin app/tests app/docs/states app/docs/todo-todo app/docs/todo-done/refactors
+
+docker exec -i -w /app platform-fridadev python - < app/scripts/smoke_mutable_identity_judge_llm.py
 ```
 
 Les hits restants du grep sont des tests d'absence, des docs historiques, ou des references explicites de non-concurrence.

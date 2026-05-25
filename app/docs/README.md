@@ -38,7 +38,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
 - Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
 - Note suspendue memoire/intention `feed her from herself`: `todo-todo/memory/Frida_from_herself.md`
-- TODO actif refonte des mutables identity: `todo-todo/memory/refonte mutable.md`
+- Archive refonte des mutables identity judge-first: `todo-done/refactors/mutable-identity-judge-refactor-todo.md`
 - Contrat source-of-truth juge mutable: `states/specs/mutable-identity-judge-contract.md`
 - Validation finale refonte mutable judge-first 2026-05-25: `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`
 - Boussole produit finale des cinq derniers gros chantiers FridaDev: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
@@ -177,7 +177,7 @@ Lire d'abord:
 - `states/specs/mutable-identity-judge-contract.md`
 - `states/policies/identity-new-contract-plan.md`
 - `todo-done/refactors/identity-new-contract-todo.md`
-- `todo-todo/memory/refonte mutable.md` pour la refonte active du pipeline mutable vers `fenetre complete de 5 paires -> juge LLM -> identity_mutables`
+- `todo-done/refactors/mutable-identity-judge-refactor-todo.md` pour l'archive de la refonte du pipeline mutable vers `fenetre complete de 5 paires -> juge LLM -> identity_mutables`
 - `todo-todo/memory/Frida_from_herself.md` comme note suspendue: l'intuition est probablement absorbee par la refonte mutable et ne doit pas devenir un chantier parallele avant reevaluation.
 
 Regle de lecture: garder ces trois references distinctes. La spec juge mutable porte le contrat source-of-truth de la refonte; le plan reste doctrinal pour `static` / `mutable`; l'archive conserve la trace du chantier termine.

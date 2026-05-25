@@ -153,6 +153,7 @@ _PROMPT_LIKE_RE = re.compile(
     r'tu\s+dois\s+repondre|tu\s+dois\s+répondre|reponds\s+comme|réponds\s+comme)',
     re.IGNORECASE,
 )
+_JSON_FENCE_RE = re.compile(r'^\s*```(?:json)?\s*(?P<body>.*?)\s*```\s*$', re.IGNORECASE | re.DOTALL)
 _RAW_ANNOTATION_KEYS = {
     'content',
     'text',
@@ -401,13 +402,19 @@ def _headers() -> dict[str, Any]:
 
 
 def _safe_json_loads(raw: Any) -> Mapping[str, Any] | None:
-    try:
-        parsed = json.loads(_text(raw))
-    except Exception:
-        return None
-    if not isinstance(parsed, Mapping):
-        return None
-    return parsed
+    text = _text(raw)
+    candidates = [text]
+    fenced = _JSON_FENCE_RE.fullmatch(text)
+    if fenced:
+        candidates.append(_text(fenced.group('body')))
+    for candidate in candidates:
+        try:
+            parsed = json.loads(candidate)
+        except Exception:
+            continue
+        if isinstance(parsed, Mapping):
+            return parsed
+    return None
 
 
 def _failure_result(reason_code: str, observability_fields: Mapping[str, Any] | None = None) -> dict[str, Any]:

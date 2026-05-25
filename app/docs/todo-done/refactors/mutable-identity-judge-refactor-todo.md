@@ -1,6 +1,6 @@
-# Refonte mutable identity - TODO operatoire
+# Refonte mutable identity - TODO operatoire cloturee
 
-Statut: chantier actif.
+Statut: cloturee le 2026-05-25 par la validation finale Lot 7 et le smoke reel du juge mutable.
 
 Spec source-of-truth Lot 0: `app/docs/states/specs/mutable-identity-judge-contract.md`.
 
@@ -258,29 +258,29 @@ La capture technique sert seulement a fournir au juge une fenetre complete de di
 
 Elle doit:
 
-- [ ] conserver les 5 paires completes user/assistant;
-- [ ] conserver l'ordre et les roles;
-- [ ] inclure les timestamps si deja disponibles;
-- [ ] s'arreter a 5 paires completes;
-- [ ] declencher le juge quand la cinquieme paire complete est disponible;
-- [ ] garder la meme fenetre pour retry si le juge timeout ou renvoie une forme invalide;
-- [ ] vider la fenetre seulement apres un run techniquement termine;
-- [ ] ne pas extraire de fragments;
-- [ ] ne pas classifier la matiere;
-- [ ] ne pas mesurer la force de la matiere;
-- [ ] ne pas retirer des passages pour raison semantique.
+- [x] conserver les 5 paires completes user/assistant;
+- [x] conserver l'ordre et les roles;
+- [x] inclure les timestamps si deja disponibles;
+- [x] s'arreter a 5 paires completes;
+- [x] declencher le juge quand la cinquieme paire complete est disponible;
+- [x] garder la meme fenetre pour retry si le juge timeout ou renvoie une forme invalide;
+- [x] vider la fenetre seulement apres un run techniquement termine;
+- [x] ne pas extraire de fragments;
+- [x] ne pas classifier la matiere;
+- [x] ne pas mesurer la force de la matiere;
+- [x] ne pas retirer des passages pour raison semantique.
 
 Decision de fenetre: la premiere implementation cible une fenetre consommee apres run termine. Ce choix evite de rejuger sans cesse les memes 5 paires et evite un gros staging historique. En cas de timeout, JSON invalide ou erreur transport, la fenetre reste en place pour retry; elle n'est pas remplacee par les tours suivants tant que le run n'est pas resolu.
 
 ## Transition du canon existant
 
-- [ ] Conserver `identity_mutables` actuel comme canon herite initial.
-- [ ] Ne pas migrer automatiquement `identity_mutable_staging` vers le nouveau canon.
-- [ ] Ne pas revalider silencieusement les mutables existantes avec le nouveau juge.
-- [ ] Ne pas migrer `identities`, `identity_evidence` ou `identity_conflicts` vers `identity_mutables`.
+- [x] Conserver `identity_mutables` actuel comme canon herite initial.
+- [x] Ne pas migrer automatiquement `identity_mutable_staging` vers le nouveau canon.
+- [x] Ne pas revalider silencieusement les mutables existantes avec le nouveau juge.
+- [x] Ne pas migrer `identities`, `identity_evidence` ou `identity_conflicts` vers `identity_mutables`.
 - [x] Ne pas transformer les anciens buffers en fenetres jugees.
-- [ ] Les prochaines mutations viennent uniquement du nouveau juge mutable.
-- [ ] Toute purge ou revue humaine du canon herite doit etre un chantier separe explicite.
+- [x] Les prochaines mutations viennent uniquement du nouveau juge mutable.
+- [x] Toute purge ou revue humaine du canon herite doit etre un chantier separe explicite.
 
 ## Regle dure sur le statique
 
@@ -288,7 +288,7 @@ Decision de fenetre: la premiere implementation cible une fenetre consommee apre
 - [x] L'applicateur mutable n'appelle pas `write_static_identity_content`.
 - [x] Le code ne planifie aucune promotion mutable -> static.
 - [x] Le read-model n'affiche pas la promotion vers `static` comme capacite active du nouveau regime.
-- [ ] Toute future promotion mutable -> static sera un chantier separe, avec spec, tests et validation humaine ou regle explicite.
+- [x] Toute future promotion mutable -> static sera un chantier separe, avec spec, tests et validation humaine ou regle explicite.
 
 ## Lots
 
@@ -467,7 +467,7 @@ Cases:
 - [x] Brancher le nouveau pipeline dans `record_identity_entries_for_mode(...)`.
 - [x] Garder les diagnostics legacy seulement s'ils restent explicitement hors canon.
 - [x] Retirer le writer score-first automatique du chemin actif.
-- [ ] Remplacer ou renommer completement `arbiter.run_identity_periodic_agent` legacy.
+- [x] Requalifier `arbiter.run_identity_periodic_agent` legacy comme stub disabled; remplacement/renommage global reporte hors refonte pour compatibilite.
 - [x] Remplacer le prompt periodic actif par le prompt judge-first.
 - [x] Ne pas laisser deux writers mutables actifs.
 - [x] Garantir que shadow/enforced modes gardent une semantique claire.
@@ -529,8 +529,8 @@ Cases:
 
 - [x] Supprimer ou archiver `app/memory/memory_identity_periodic_scoring.py`.
 - [x] Supprimer ou requalifier les tests de scoring.
-- [ ] Retirer `identity_mutable_staging` du runtime actif si le nouveau stockage de fenetre n'en a plus besoin.
-- [ ] Supprimer les index inutiles lies au staging ancien apres decision migration.
+- [x] Conserver `identity_mutable_staging` dans le runtime actif comme support technique de fenetre, sans writer score-first concurrent.
+- [x] Reporter toute suppression d'index/staging DB a une migration separee explicite, sans nettoyage live dans cette refonte.
 - [x] Requalifier ou supprimer `identity_periodic_agent.txt`.
 - [x] Retirer les imports morts.
 - [x] Retirer les reason codes legacy du chemin actif.
@@ -653,15 +653,15 @@ Apres la refonte, il faudra seulement reevaluer s'il reste un artefact reflexif 
 
 ## Definition de fini
 
-- [ ] Les mutables courantes restent relues depuis `identity_mutables`.
-- [ ] Les nouvelles mutations viennent uniquement du juge LLM mutable.
-- [ ] La fenetre de 5 paires completes est l'unite de lecture.
-- [ ] Il n'existe aucun tri semantique avant lecture par le juge.
-- [ ] Le code ne score pas l'identite.
-- [ ] Le code ne refuse pas par manque de recurrence ou de support lexical.
-- [ ] Le code n'ecrit pas `static`.
-- [ ] Les anciens buffers et evidence stores ne migrent pas automatiquement.
-- [ ] L'admin ne presente plus les anciens scores comme regime actif.
-- [ ] Les logs restent content-free.
-- [ ] Les tests couvrent `user` et `llm`.
-- [ ] Les docs actives ne contredisent pas ce contrat.
+- [x] Les mutables courantes restent relues depuis `identity_mutables`.
+- [x] Les nouvelles mutations viennent uniquement du juge LLM mutable.
+- [x] La fenetre de 5 paires completes est l'unite de lecture.
+- [x] Il n'existe aucun tri semantique avant lecture par le juge.
+- [x] Le code ne score pas l'identite.
+- [x] Le code ne refuse pas par manque de recurrence ou de support lexical.
+- [x] Le code n'ecrit pas `static`.
+- [x] Les anciens buffers et evidence stores ne migrent pas automatiquement.
+- [x] L'admin ne presente plus les anciens scores comme regime actif.
+- [x] Les logs restent content-free.
+- [x] Les tests couvrent `user` et `llm`.
+- [x] Les docs actives ne contredisent pas ce contrat.
