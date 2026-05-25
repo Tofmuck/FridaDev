@@ -67,8 +67,8 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
         )
         self.server.memory_store.get_latest_identity_staging_state = lambda: {
             'conversation_id': 'conv-stage-2',
-            'buffer_pairs_count': 15,
-            'buffer_target_pairs': 15,
+            'buffer_pairs_count': 5,
+            'buffer_target_pairs': 5,
             'buffer_frozen': True,
             'auto_canonization_suspended': True,
             'last_agent_status': 'auto_canonization_suspended',

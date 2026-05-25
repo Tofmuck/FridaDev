@@ -168,7 +168,7 @@ def init_db(
                         conversation_id             TEXT PRIMARY KEY,
                         buffer_pairs_json           JSONB       NOT NULL DEFAULT '[]'::jsonb,
                         buffer_pairs_count          INTEGER     NOT NULL DEFAULT 0,
-                        buffer_target_pairs         INTEGER     NOT NULL DEFAULT 15,
+                        buffer_target_pairs         INTEGER     NOT NULL DEFAULT 5,
                         auto_canonization_suspended BOOLEAN     NOT NULL DEFAULT FALSE,
                         last_agent_status           TEXT,
                         last_agent_reason           TEXT,
@@ -182,6 +182,12 @@ def init_db(
                     '''
                     ALTER TABLE identity_mutable_staging
                     ALTER COLUMN buffer_pairs_json SET DEFAULT '[]'::jsonb
+                    '''
+                )
+                cur.execute(
+                    '''
+                    ALTER TABLE identity_mutable_staging
+                    ALTER COLUMN buffer_target_pairs SET DEFAULT 5
                     '''
                 )
                 cur.execute(

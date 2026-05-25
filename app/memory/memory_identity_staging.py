@@ -4,7 +4,7 @@ import json
 from typing import Any, Callable, Mapping, Sequence
 
 
-DEFAULT_BUFFER_TARGET_PAIRS = 15
+DEFAULT_BUFFER_TARGET_PAIRS = 5
 _TERMINAL_AGENT_STATUSES_RESET_ON_NEW_BUFFER = {
     'applied',
     'completed_no_change',
@@ -196,6 +196,10 @@ def append_identity_staging_pair(
                 )
                 current_state = _row_to_staging_state(cur.fetchone())
                 current_pairs = list((current_state or {}).get('buffer_pairs') or [])
+                current_target = int((current_state or {}).get('buffer_target_pairs') or buffer_target)
+                target_changed = bool(current_state) and current_target != buffer_target
+                if target_changed:
+                    current_pairs = []
                 buffer_already_frozen = len(current_pairs) >= buffer_target
                 next_pairs = (
                     list(current_pairs[:buffer_target])
@@ -205,7 +209,10 @@ def append_identity_staging_pair(
                 buffer_frozen = len(next_pairs) >= buffer_target
                 next_status = _text((current_state or {}).get('last_agent_status')) or 'buffering'
                 next_reason = _text((current_state or {}).get('last_agent_reason')) or None
-                if len(current_pairs) == 0 and next_status in _TERMINAL_AGENT_STATUSES_RESET_ON_NEW_BUFFER:
+                if target_changed:
+                    next_status = 'buffering'
+                    next_reason = None
+                elif len(current_pairs) == 0 and next_status in _TERMINAL_AGENT_STATUSES_RESET_ON_NEW_BUFFER:
                     next_status = 'buffering'
                     next_reason = None
                 cur.execute(

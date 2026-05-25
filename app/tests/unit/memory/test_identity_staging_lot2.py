@@ -96,7 +96,7 @@ class IdentityStagingLot2Tests(unittest.TestCase):
             'conv-stage-lot2',
             [],
             0,
-            15,
+            memory_identity_staging.DEFAULT_BUFFER_TARGET_PAIRS,
             False,
             'completed_no_change',
             'completed_no_change',
@@ -112,20 +112,59 @@ class IdentityStagingLot2Tests(unittest.TestCase):
                 {'role': 'user', 'content': 'message utilisateur redacted'},
                 {'role': 'assistant', 'content': 'message assistant redacted'},
             ],
-            target_pairs=15,
+            target_pairs=memory_identity_staging.DEFAULT_BUFFER_TARGET_PAIRS,
             conn_factory=lambda: conn,
             logger=_NoopLogger(),
         )
 
         self.assertIsNotNone(state)
         self.assertEqual(state['buffer_pairs_count'], 1)
-        self.assertEqual(state['buffer_target_pairs'], 15)
+        self.assertEqual(state['buffer_target_pairs'], memory_identity_staging.DEFAULT_BUFFER_TARGET_PAIRS)
         self.assertFalse(state['buffer_frozen'])
         self.assertEqual(state['last_agent_status'], 'buffering')
         self.assertIsNone(state['last_agent_reason'])
         self.assertEqual(state['last_agent_run_ts'], '2026-05-13T12:00:00+00:00')
         self.assertTrue(state['pair_appended'])
         self.assertTrue(conn.committed)
+
+    def test_append_pair_resets_legacy_target_buffer_without_reusing_old_window(self) -> None:
+        existing_row = (
+            'conv-stage-lot2-retarget',
+            [
+                {
+                    'user': {'role': 'user', 'content': 'ancien utilisateur'},
+                    'assistant': {'role': 'assistant', 'content': 'ancien assistant'},
+                }
+            ],
+            1,
+            15,
+            False,
+            'buffering',
+            'below_threshold',
+            None,
+            '2026-05-13T11:00:00+00:00',
+            '2026-05-13T12:00:00+00:00',
+        )
+        conn = _FakeConn(existing_row)
+
+        state = memory_identity_staging.append_identity_staging_pair(
+            'conv-stage-lot2-retarget',
+            [
+                {'role': 'user', 'content': 'nouvel utilisateur'},
+                {'role': 'assistant', 'content': 'nouvel assistant'},
+            ],
+            target_pairs=memory_identity_staging.DEFAULT_BUFFER_TARGET_PAIRS,
+            conn_factory=lambda: conn,
+            logger=_NoopLogger(),
+        )
+
+        self.assertIsNotNone(state)
+        self.assertEqual(state['buffer_pairs_count'], 1)
+        self.assertEqual(state['buffer_target_pairs'], memory_identity_staging.DEFAULT_BUFFER_TARGET_PAIRS)
+        self.assertEqual(state['buffer_pairs'][0]['user']['content'], 'nouvel utilisateur')
+        self.assertEqual(state['buffer_pairs'][0]['assistant']['content'], 'nouvel assistant')
+        self.assertEqual(state['last_agent_status'], 'buffering')
+        self.assertIsNone(state['last_agent_reason'])
 
 
 if __name__ == '__main__':

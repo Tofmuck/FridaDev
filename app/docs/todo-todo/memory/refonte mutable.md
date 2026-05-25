@@ -59,7 +59,7 @@ Modules actifs constates:
   - En mode enforced, il persiste les diagnostics legacy puis appelle `_run_periodic_identity_agent(...)`.
   - `_run_periodic_identity_agent(...)` appelle `memory_identity_periodic_agent.stage_identity_turn_pair(...)` et journalise `identity_periodic_agent_apply`.
 - `app/memory/memory_identity_periodic_agent.py`
-  - `BUFFER_TARGET_PAIRS = 15`.
+  - Avant Lot 1, `BUFFER_TARGET_PAIRS = 15`; depuis Lot 1, la cible runtime transitoire est `5`.
   - Accumule un buffer dans `identity_mutable_staging`.
   - Appelle `arbiter.run_identity_periodic_agent(...)` quand le buffer atteint la cible.
   - Appelle `memory_identity_periodic_apply.validate_periodic_agent_contract(...)` puis `apply_periodic_agent_contract(...)`.
@@ -270,7 +270,7 @@ Decision de fenetre: la premiere implementation cible une fenetre consommee apre
 - [ ] Ne pas migrer automatiquement `identity_mutable_staging` vers le nouveau canon.
 - [ ] Ne pas revalider silencieusement les mutables existantes avec le nouveau juge.
 - [ ] Ne pas migrer `identities`, `identity_evidence` ou `identity_conflicts` vers `identity_mutables`.
-- [ ] Ne pas transformer les anciens buffers en fenetres jugees.
+- [x] Ne pas transformer les anciens buffers en fenetres jugees.
 - [ ] Les prochaines mutations viennent uniquement du nouveau juge mutable.
 - [ ] Toute purge ou revue humaine du canon herite doit etre un chantier separe explicite.
 
@@ -321,26 +321,26 @@ Objectif: remplacer le staging ancien par une fenetre courte complete.
 
 Cases:
 
-- [ ] Remplacer la cible de buffer par 5 paires completes.
-- [ ] Garantir que chaque paire contient exactement un message user et un message assistant.
-- [ ] Garantir que la fenetre envoyee au juge contient tout le texte utile des 5 paires.
-- [ ] Ne pas faire de preselection semantique.
-- [ ] Documenter la fenetre comme consommee apres run termine.
-- [ ] Preserver la fenetre en cas de timeout, JSON invalide ou erreur transport.
-- [ ] Eviter un gros staging historique ou multi-run.
+- [x] Remplacer la cible de buffer par 5 paires completes.
+- [x] Garantir que chaque paire contient exactement un message user et un message assistant.
+- [x] Garantir que la fenetre envoyee au juge contient tout le texte utile des 5 paires.
+- [x] Ne pas faire de preselection semantique.
+- [x] Documenter la fenetre comme consommee apres run termine.
+- [x] Preserver la fenetre en cas de timeout, JSON invalide ou erreur transport.
+- [x] Eviter un gros staging historique ou multi-run.
 - [ ] Renommer les fonctions et payloads pour ne plus raconter `periodic_agent` si le code change de contrat.
 
 Tests / preuves attendus:
 
-- [ ] Fenetre incomplete: pas d'appel juge.
-- [ ] Cinquieme paire complete: appel juge avec les 5 paires entieres.
-- [ ] Run termine: fenetre videe.
-- [ ] Timeout ou JSON invalide: fenetre conservee pour retry.
-- [ ] Le payload juge ne contient aucun champ de score.
+- [x] Fenetre incomplete: pas d'appel juge.
+- [x] Cinquieme paire complete: appel juge avec les 5 paires entieres.
+- [x] Run termine: fenetre videe.
+- [x] Timeout ou JSON invalide: fenetre conservee pour retry.
+- [x] Le payload juge ne contient aucun champ de score.
 
 Critere de sortie:
 
-- [ ] Le juge recoit toujours une fenetre complete de 5 paires ou rien.
+- [x] Le juge recoit toujours une fenetre complete de 5 paires ou rien.
 
 Risque principal:
 

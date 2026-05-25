@@ -25,7 +25,7 @@ class _MemoryStore:
             'conversation_id': 'conv-stage-lot3',
             'buffer_pairs': [],
             'buffer_pairs_count': 0,
-            'buffer_target_pairs': 15,
+            'buffer_target_pairs': 5,
             'buffer_frozen': False,
             'auto_canonization_suspended': False,
             'last_agent_status': 'applied',

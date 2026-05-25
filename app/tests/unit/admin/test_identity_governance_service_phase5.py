@@ -174,7 +174,7 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertEqual(items_by_key['IDENTITY_TOP_N']['category'], 'legacy_inactive_readonly')
         self.assertEqual(items_by_key['IDENTITY_MAX_TOKENS']['category'], 'legacy_inactive_readonly')
         self.assertEqual(sections_by_key['staging_contract']['classification'], 'active_readonly')
-        self.assertEqual(sections_by_key['staging_contract']['details']['buffer_target_pairs'], 15)
+        self.assertEqual(sections_by_key['staging_contract']['details']['buffer_target_pairs'], 5)
         self.assertFalse(sections_by_key['staging_contract']['details']['actively_injected'])
         self.assertEqual(sections_by_key['scoring_contract']['details']['engine'], 'python_deterministic')
         self.assertEqual(sections_by_key['scoring_contract']['details']['local_strength_accept_from'], 0.6)

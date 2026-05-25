@@ -6,7 +6,7 @@ import unicodedata
 from typing import Any, Mapping, Sequence
 
 
-BUFFER_TARGET_PAIRS = 15
+BUFFER_TARGET_PAIRS = 5
 REJECT_THRESHOLD = 0.35
 ACCEPT_THRESHOLD = 0.60
 

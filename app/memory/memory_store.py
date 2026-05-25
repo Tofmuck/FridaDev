@@ -418,7 +418,7 @@ def append_identity_staging_pair(
     conversation_id: str,
     pair: Any,
     *,
-    target_pairs: int = 15,
+    target_pairs: int = memory_identity_staging.DEFAULT_BUFFER_TARGET_PAIRS,
 ) -> dict[str, Any] | None:
     return memory_identity_staging.append_identity_staging_pair(
         conversation_id,

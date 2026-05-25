@@ -25,7 +25,7 @@ class _MemoryStore:
             'conversation_id': 'conv-stage-lot2',
             'buffer_pairs': [],
             'buffer_pairs_count': 4,
-            'buffer_target_pairs': 15,
+            'buffer_target_pairs': 5,
             'buffer_frozen': False,
             'auto_canonization_suspended': False,
             'last_agent_status': 'buffering',
@@ -52,7 +52,7 @@ class IdentityReadModelLot2Tests(unittest.TestCase):
         self.assertEqual(staging['current_buffer']['status'], 'buffering')
         self.assertEqual(staging['current_buffer']['reason_code'], 'below_threshold')
         self.assertEqual(staging['current_buffer']['pairs_count'], 4)
-        self.assertEqual(staging['current_buffer']['target_pairs'], 15)
+        self.assertEqual(staging['current_buffer']['target_pairs'], 5)
         self.assertFalse(staging['current_buffer']['frozen'])
         self.assertTrue(staging['last_completed_agent']['present'])
         self.assertEqual(staging['last_completed_agent']['status'], 'ok')

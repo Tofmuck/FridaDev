@@ -148,7 +148,7 @@ Important:
 - `identity_extractor_max_tokens` est une lecture readonly de `identity_extractor_model.max_tokens`; l'edition reste dans les runtime settings du caller;
 - le statique n'introduit pas de cap caracteres Lot 5 distinct;
 - la mutable garde sa doctrine `3000 / 3300`, visible mais verrouillee;
-- ces caps ne racontent pas a eux seuls tout le regime runtime expose avant refonte: la gouvernance expose aussi des sections readonly pour le staging a 15 paires, le scoring Python deterministe, la promotion vers le statique et la suspension automatique.
+- ces caps ne racontent pas a eux seuls tout le regime runtime expose avant refonte: la gouvernance expose aussi des sections readonly pour la fenetre technique de 5 paires, le scoring Python deterministe transitoire, la promotion vers le statique et la suspension automatique.
 - transition 2026-05-25: ces sections pre-refonte restent des lectures du runtime livre, mais ne sont plus doctrine cible du writer mutable. Le contrat cible est `mutable-identity-judge-contract.md`.
 
 ## Sections readonly du regime actif

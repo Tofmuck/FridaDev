@@ -429,7 +429,7 @@ class IdentityPeriodicBenchmarkSuiteTests(unittest.TestCase):
         self.assertEqual(DEFAULT_IDENTITY_PERIODIC_MODELS, ["anthropic/claude-haiku-4.5"])
 
     def test_periodic_threshold_is_read_from_runtime_source(self) -> None:
-        self.assertEqual(periodic_adapter.buffer_target_pairs(REPO_ROOT), 15)
+        self.assertEqual(periodic_adapter.buffer_target_pairs(REPO_ROOT), 5)
 
     def test_periodic_fixture_is_exactly_fifteen_complete_pairs(self) -> None:
         fixture = periodic_adapter.load_fixture(REPO_ROOT)
@@ -456,7 +456,7 @@ class IdentityPeriodicBenchmarkSuiteTests(unittest.TestCase):
         self.assertEqual(payload["messages"][0]["content"], prompt)
         self.assertEqual(payload["model"], "anthropic/claude-haiku-4.5")
         self.assertEqual(payload_for_model["buffer_pairs_count"], 15)
-        self.assertEqual(payload_for_model["buffer_target_pairs"], 15)
+        self.assertEqual(payload_for_model["buffer_target_pairs"], 5)
         source_summary = payload_for_model["identity_temporal_policy"]["source_summary"]
         self.assertGreater(source_summary["user"]["weak_relative_source_count"], 0)
         self.assertIn("temporal_source_guard", json.dumps(payload_for_model, ensure_ascii=False))
@@ -486,7 +486,7 @@ class IdentityPeriodicBenchmarkSuiteTests(unittest.TestCase):
             json_payload = json.loads(Path(result["json_path"]).read_text(encoding="utf-8"))
             markdown = Path(result["markdown_path"]).read_text(encoding="utf-8")
             self.assertFalse(json_payload["production_runtime_changed"])
-            self.assertEqual(json_payload["threshold"]["value"], 15)
+            self.assertEqual(json_payload["threshold"]["value"], 5)
             self.assertTrue(json_payload["json_valid"])
             self.assertTrue(json_payload["schema_valid"])
             self.assertIn("Seuil réel vérifié", markdown)

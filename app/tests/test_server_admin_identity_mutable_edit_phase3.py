@@ -285,8 +285,8 @@ class ServerAdminIdentityMutableEditPhase3Tests(unittest.TestCase):
                     'assistant': {'role': 'assistant', 'content': 'Salut'},
                 }
             ],
-            'buffer_pairs_count': 7,
-            'buffer_target_pairs': 15,
+            'buffer_pairs_count': 4,
+            'buffer_target_pairs': 5,
             'buffer_frozen': False,
             'auto_canonization_suspended': False,
             'last_agent_status': 'buffering',
@@ -416,8 +416,8 @@ class ServerAdminIdentityMutableEditPhase3Tests(unittest.TestCase):
         self.assertEqual(read_model['subjects']['llm']['mutable']['content'], updated_content)
         self.assertTrue(read_model['subjects']['llm']['mutable']['actively_injected'])
         self.assertEqual(read_model['identity_staging']['conversation_id'], 'conv-stage-preserved')
-        self.assertEqual(read_model['identity_staging']['buffer_pairs_count'], 7)
-        self.assertEqual(read_model['identity_staging']['buffer_target_pairs'], 15)
+        self.assertEqual(read_model['identity_staging']['buffer_pairs_count'], 4)
+        self.assertEqual(read_model['identity_staging']['buffer_target_pairs'], 5)
         self.assertEqual(read_model['identity_staging']['last_agent_status'], 'buffering')
         self.assertFalse(read_model['identity_staging']['actively_injected'])
         self.assertNotIn('buffer_pairs', read_model['identity_staging'])

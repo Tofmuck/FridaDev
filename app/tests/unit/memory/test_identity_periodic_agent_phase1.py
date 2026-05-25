@@ -105,7 +105,7 @@ class _InMemoryIdentityStore:
         conversation_id: str,
         pair: list[dict[str, Any]],
         *,
-        target_pairs: int = 15,
+        target_pairs: int = memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
     ) -> dict[str, Any] | None:
         state = copy.deepcopy(
             self.staging.get(
@@ -213,7 +213,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         arbiter_module: Any,
     ) -> tuple[_InMemoryIdentityStore, dict[str, Any], dict[str, Any]]:
         store = _InMemoryIdentityStore()
-        for index in range(1, 15):
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 conversation_id,
                 _support_pair(index, proposition),
@@ -237,7 +237,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         try:
             summary = memory_identity_periodic_agent.stage_identity_turn_pair(
                 conversation_id,
-                _support_pair(15, proposition),
+                _support_pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS, proposition),
                 arbiter_module=arbiter_module,
                 memory_store_module=store,
             )
@@ -289,7 +289,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 'user': {'operations': [{'kind': 'no_change', 'proposition': '', 'reason': 'stable canon'}]},
                 'meta': {
                     'execution_status': 'complete',
-                    'buffer_pairs_count': 15,
+                    'buffer_pairs_count': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
                     'window_complete': True,
                 },
             }
@@ -311,7 +311,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertTrue(payload['outcomes'])
         self.assertTrue(all('reason_code' in outcome for outcome in payload['outcomes']))
         self.assertTrue(all('strength' in outcome for outcome in payload['outcomes']))
-        self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'utilisateur 15', 'assistant 15'])
+        self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'utilisateur 5', 'assistant 5'])
 
     def test_periodic_agent_event_preserves_applied_reason_code_for_ok_write(self) -> None:
         proposition = 'Tof maintient une attention durable aux details stables.'
@@ -329,7 +329,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 },
                 'meta': {
                     'execution_status': 'complete',
-                    'buffer_pairs_count': 15,
+                    'buffer_pairs_count': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
                     'window_complete': True,
                 },
             }
@@ -367,7 +367,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 },
                 'meta': {
                     'execution_status': 'complete',
-                    'buffer_pairs_count': 15,
+                    'buffer_pairs_count': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
                     'window_complete': True,
                 },
             }
@@ -387,14 +387,14 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertTrue(any(outcome['action'] == 'raise_conflict' for outcome in payload['outcomes']))
         self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'osciller'])
 
-    def test_does_not_call_agent_before_fifteen_pairs(self) -> None:
+    def test_does_not_call_agent_before_five_pairs(self) -> None:
         store = _InMemoryIdentityStore()
         calls: list[dict[str, Any]] = []
         arbiter_module = SimpleNamespace(
             run_identity_periodic_agent=lambda payload: calls.append(copy.deepcopy(payload)) or {}
         )
 
-        for index in range(1, 15):
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
             summary = memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-before-threshold',
                 _pair(index),
@@ -404,7 +404,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             self.assertEqual(summary['status'], 'buffering')
             self.assertEqual(summary['reason_code'], 'below_threshold')
             self.assertEqual(summary['buffer_pairs_count'], index)
-            self.assertEqual(summary['buffer_target_pairs'], 15)
+            self.assertEqual(summary['buffer_target_pairs'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
             self.assertFalse(summary['buffer_cleared'])
             self.assertFalse(summary['writes_applied'])
             self.assertEqual(
@@ -414,9 +414,33 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(summary['status'], 'buffering')
         self.assertEqual(summary['reason_code'], 'below_threshold')
-        self.assertEqual(summary['buffer_pairs_count'], 14)
+        self.assertEqual(summary['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS - 1)
         self.assertEqual(calls, [])
-        self.assertEqual(store.get_identity_staging_state('conv-before-threshold')['buffer_pairs_count'], 14)
+        self.assertEqual(
+            store.get_identity_staging_state('conv-before-threshold')['buffer_pairs_count'],
+            memory_identity_periodic_agent.BUFFER_TARGET_PAIRS - 1,
+        )
+
+    def test_incomplete_turn_pair_does_not_call_agent_or_append_window(self) -> None:
+        store = _InMemoryIdentityStore()
+        calls: list[dict[str, Any]] = []
+        arbiter_module = SimpleNamespace(
+            run_identity_periodic_agent=lambda payload: calls.append(copy.deepcopy(payload)) or {}
+        )
+
+        summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-incomplete-pair',
+            [{'role': 'user', 'content': 'utilisateur seul'}],
+            arbiter_module=arbiter_module,
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'incomplete_turn_pair')
+        self.assertEqual(summary['buffer_pairs_count'], 0)
+        self.assertEqual(summary['buffer_target_pairs'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
+        self.assertEqual(calls, [])
+        self.assertIsNone(store.get_identity_staging_state('conv-incomplete-pair'))
 
     def test_calls_agent_at_exact_threshold_and_clears_buffer_only_after_clean_completion(self) -> None:
         store = _InMemoryIdentityStore()
@@ -442,13 +466,13 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 },
                 'meta': {
                     'execution_status': 'complete',
-                    'buffer_pairs_count': 15,
+                    'buffer_pairs_count': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
                     'window_complete': True,
                 },
             }
 
         arbiter_module = SimpleNamespace(run_identity_periodic_agent=fake_run_identity_periodic_agent)
-        for index in range(1, 15):
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-threshold',
                 _support_pair(index, proposition),
@@ -458,13 +482,21 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-threshold',
-            _support_pair(15, proposition),
+            _support_pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS, proposition),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
 
         self.assertEqual(len(observed_payloads), 1)
-        self.assertEqual(observed_payloads[0]['buffer_pairs_count'], 15)
+        self.assertEqual(observed_payloads[0]['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
+        self.assertEqual(len(observed_payloads[0]['buffer_pairs']), memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
+        for expected_index, pair in enumerate(observed_payloads[0]['buffer_pairs'], start=1):
+            self.assertEqual(pair['user']['role'], 'user')
+            self.assertEqual(pair['assistant']['role'], 'assistant')
+            self.assertIn(f'utilisateur {expected_index}', pair['user']['content'])
+            self.assertIn(f'assistant {expected_index}', pair['assistant']['content'])
+        score_fields = {'strength', 'frequency_norm', 'recency_norm', 'threshold_verdict'}
+        self.assertTrue(score_fields.isdisjoint(_collect_keys(observed_payloads[0])))
         self.assertEqual(summary['status'], 'ok')
         self.assertEqual(summary['reason_code'], 'applied')
         self.assertTrue(summary['buffer_cleared'])
@@ -495,13 +527,13 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 },
                 'meta': {
                     'execution_status': 'complete',
-                    'buffer_pairs_count': 15,
+                    'buffer_pairs_count': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
                     'window_complete': True,
                 },
             }
         )
 
-        for index in range(1, 15):
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-open-tension',
                 _support_pair(index, proposition),
@@ -511,7 +543,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-open-tension',
-            _support_pair(15, proposition),
+            _support_pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS, proposition),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
@@ -573,13 +605,13 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 },
                 'meta': {
                     'execution_status': 'complete',
-                    'buffer_pairs_count': 15,
+                    'buffer_pairs_count': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
                     'window_complete': True,
                 },
             }
 
         arbiter_module = SimpleNamespace(run_identity_periodic_agent=fake_run_identity_periodic_agent)
-        for index in range(1, 15):
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-all-or-nothing',
                 _support_pair(index, f'{llm_proposition} {user_proposition}'),
@@ -589,7 +621,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-all-or-nothing',
-            _support_pair(15, f'{llm_proposition} {user_proposition}'),
+            _support_pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS, f'{llm_proposition} {user_proposition}'),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
@@ -603,7 +635,10 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(store.upsert_calls, [])
         self.assertEqual(store.mutable['llm']['content'], existing_llm_content)
         self.assertNotIn('user', store.mutable)
-        self.assertEqual(store.get_identity_staging_state('conv-all-or-nothing')['buffer_pairs_count'], 15)
+        self.assertEqual(
+            store.get_identity_staging_state('conv-all-or-nothing')['buffer_pairs_count'],
+            memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+        )
         user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
         self.assertEqual(user_outcome['action'], 'no_change')
         self.assertEqual(user_outcome['reason_code'], 'not_committed_due_to_peer_rejection')
@@ -619,7 +654,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             }
         )
 
-        for index in range(1, 15):
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-invalid-contract',
                 _pair(index),
@@ -629,7 +664,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-invalid-contract',
-            _pair(15),
+            _pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
@@ -639,7 +674,10 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertFalse(summary['buffer_cleared'])
         self.assertTrue(summary['buffer_frozen'])
         self.assertFalse(summary['writes_applied'])
-        self.assertEqual(store.get_identity_staging_state('conv-invalid-contract')['buffer_pairs_count'], 15)
+        self.assertEqual(
+            store.get_identity_staging_state('conv-invalid-contract')['buffer_pairs_count'],
+            memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+        )
         self.assertEqual(store.upsert_calls, [])
 
     def test_preserves_buffer_when_agent_returns_contradictory_no_change_mix(self) -> None:
@@ -660,13 +698,13 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 },
                 'meta': {
                     'execution_status': 'complete',
-                    'buffer_pairs_count': 15,
+                    'buffer_pairs_count': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
                     'window_complete': True,
                 },
             }
         )
 
-        for index in range(1, 15):
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-no-change-mixed',
                 _support_pair(index, proposition),
@@ -676,7 +714,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-no-change-mixed',
-            _support_pair(15, proposition),
+            _support_pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS, proposition),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
@@ -687,10 +725,13 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertFalse(summary['buffer_cleared'])
         self.assertTrue(summary['buffer_frozen'])
         self.assertFalse(summary['writes_applied'])
-        self.assertEqual(store.get_identity_staging_state('conv-no-change-mixed')['buffer_pairs_count'], 15)
+        self.assertEqual(
+            store.get_identity_staging_state('conv-no-change-mixed')['buffer_pairs_count'],
+            memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+        )
         self.assertEqual(store.upsert_calls, [])
 
-    def test_retry_reuses_exact_same_fifteen_pair_window_after_failed_attempt(self) -> None:
+    def test_retry_reuses_exact_same_five_pair_window_after_failed_attempt(self) -> None:
         store = _InMemoryIdentityStore()
         observed_payloads: list[dict[str, Any]] = []
         proposition = 'Tof maintient une attention stable.'
@@ -716,7 +757,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 },
                 'meta': {
                     'execution_status': 'complete',
-                    'buffer_pairs_count': 15,
+                    'buffer_pairs_count': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
                     'window_complete': True,
                 },
             },
@@ -727,7 +768,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             return copy.deepcopy(responses.pop(0))
 
         arbiter_module = SimpleNamespace(run_identity_periodic_agent=fake_run_identity_periodic_agent)
-        for index in range(1, 15):
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-retry-frozen',
                 _support_pair(index, proposition),
@@ -737,7 +778,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         first_summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-retry-frozen',
-            _support_pair(15, proposition),
+            _support_pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS, proposition),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
@@ -752,12 +793,12 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(first_summary['last_agent_status'], 'contract_invalid')
         self.assertFalse(first_summary['buffer_cleared'])
         self.assertEqual(len(observed_payloads), 2)
-        self.assertEqual(observed_payloads[0]['buffer_pairs_count'], 15)
-        self.assertEqual(observed_payloads[1]['buffer_pairs_count'], 15)
+        self.assertEqual(observed_payloads[0]['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
+        self.assertEqual(observed_payloads[1]['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
         self.assertEqual(observed_payloads[0]['buffer_pairs'], observed_payloads[1]['buffer_pairs'])
         self.assertEqual(
             observed_payloads[1]['buffer_pairs'][-1]['user']['content'],
-            f'utilisateur 15 {proposition}',
+            f'utilisateur {memory_identity_periodic_agent.BUFFER_TARGET_PAIRS} {proposition}',
         )
         self.assertTrue(second_summary['buffer_frozen'])
         self.assertTrue(second_summary['buffer_cleared'])
@@ -815,13 +856,13 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                     },
                     'meta': {
                         'execution_status': 'complete',
-                        'buffer_pairs_count': 15,
+                        'buffer_pairs_count': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
                         'window_complete': True,
                     },
                 }
             )
 
-            for index in range(1, 15):
+            for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
                 memory_identity_periodic_agent.stage_identity_turn_pair(
                     'conv-double-saturation',
                     _support_pair(index, proposition),
@@ -831,7 +872,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
             summary = memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-double-saturation',
-                _support_pair(15, proposition),
+                _support_pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS, proposition),
                 arbiter_module=arbiter_module,
                 memory_store_module=store,
             )
@@ -844,7 +885,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertTrue(summary['auto_canonization_suspended'])
         self.assertFalse(summary['writes_applied'])
         staging_state = store.get_identity_staging_state('conv-double-saturation')
-        self.assertEqual(staging_state['buffer_pairs_count'], 15)
+        self.assertEqual(staging_state['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
         self.assertTrue(staging_state['auto_canonization_suspended'])
 
     def test_preserves_buffer_when_agent_raises_timeout(self) -> None:
@@ -854,7 +895,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             raise TimeoutError('timeout')
 
         arbiter_module = SimpleNamespace(run_identity_periodic_agent=boom)
-        for index in range(1, 15):
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-timeout',
                 _pair(index),
@@ -864,7 +905,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-timeout',
-            _pair(15),
+            _pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
@@ -873,7 +914,10 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(summary['reason_code'], 'agent_call_error')
         self.assertEqual(summary['last_agent_status'], 'agent_call_error')
         self.assertFalse(summary['buffer_cleared'])
-        self.assertEqual(store.get_identity_staging_state('conv-timeout')['buffer_pairs_count'], 15)
+        self.assertEqual(
+            store.get_identity_staging_state('conv-timeout')['buffer_pairs_count'],
+            memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+        )
         self.assertEqual(store.upsert_calls, [])
 
     def test_preserves_buffer_when_agent_raises_runtime_error(self) -> None:
@@ -883,7 +927,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             raise RuntimeError('provider blew up')
 
         arbiter_module = SimpleNamespace(run_identity_periodic_agent=boom)
-        for index in range(1, 15):
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-runtime-error',
                 _pair(index),
@@ -893,7 +937,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-runtime-error',
-            _pair(15),
+            _pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
@@ -903,7 +947,10 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(summary['last_agent_status'], 'agent_call_error')
         self.assertFalse(summary['buffer_cleared'])
         self.assertTrue(summary['buffer_frozen'])
-        self.assertEqual(store.get_identity_staging_state('conv-runtime-error')['buffer_pairs_count'], 15)
+        self.assertEqual(
+            store.get_identity_staging_state('conv-runtime-error')['buffer_pairs_count'],
+            memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+        )
         self.assertEqual(store.upsert_calls, [])
 
 

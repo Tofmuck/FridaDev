@@ -60,7 +60,7 @@ Return this exact top-level structure:
   },
   "meta": {
     "execution_status": "complete",
-    "buffer_pairs_count": 15,
+    "buffer_pairs_count": 5,
     "window_complete": true
   }
 }

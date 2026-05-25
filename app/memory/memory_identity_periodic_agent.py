@@ -9,7 +9,8 @@ from memory import memory_identity_periodic_apply
 from observability import chat_turn_logger
 
 
-BUFFER_TARGET_PAIRS = 15
+WINDOW_TARGET_PAIRS = 5
+BUFFER_TARGET_PAIRS = 5
 
 
 def _text(value: Any) -> str:
@@ -20,6 +21,34 @@ def _mapping(value: Any) -> Mapping[str, Any]:
     if isinstance(value, Mapping):
         return value
     return {}
+
+
+def _normalize_message(value: Any, *, expected_role: str) -> dict[str, Any] | None:
+    payload = _mapping(value)
+    role = _text(payload.get('role')).lower()
+    if role != expected_role:
+        return None
+    normalized = {
+        'role': expected_role,
+        'content': _text(payload.get('content')),
+    }
+    timestamp = _text(payload.get('timestamp'))
+    if timestamp:
+        normalized['timestamp'] = timestamp
+    return normalized
+
+
+def _normalize_complete_turn_pair(turn_pair: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]] | None:
+    if isinstance(turn_pair, (str, bytes, bytearray)):
+        return None
+    items = list(turn_pair or [])
+    if len(items) != 2:
+        return None
+    user = _normalize_message(items[0], expected_role='user')
+    assistant = _normalize_message(items[1], expected_role='assistant')
+    if user is None or assistant is None:
+        return None
+    return [user, assistant]
 
 
 def _completed_summary_state(apply_summary: Mapping[str, Any]) -> tuple[str, str]:
@@ -134,9 +163,29 @@ def stage_identity_turn_pair(
         _emit_periodic_agent_event(status='skipped', reason_code='staging_store_unavailable', summary=summary)
         return summary
 
+    normalized_turn_pair = _normalize_complete_turn_pair(turn_pair)
+    if normalized_turn_pair is None:
+        summary = {
+            'status': 'skipped',
+            'reason_code': 'incomplete_turn_pair',
+            'buffer_pairs_count': 0,
+            'buffer_target_pairs': BUFFER_TARGET_PAIRS,
+            'last_agent_status': 'incomplete_turn_pair',
+            'buffer_cleared': False,
+            'buffer_frozen': False,
+            'auto_canonization_suspended': False,
+            'writes_applied': False,
+            'promotion_count': 0,
+            'promotions': [],
+            'outcomes': [],
+            'rejection_reasons': {},
+        }
+        _emit_periodic_agent_event(status='skipped', reason_code='incomplete_turn_pair', summary=summary)
+        return summary
+
     staging_state = append_pair(
         conversation_id,
-        turn_pair,
+        normalized_turn_pair,
         target_pairs=BUFFER_TARGET_PAIRS,
     )
     if not isinstance(staging_state, Mapping):
