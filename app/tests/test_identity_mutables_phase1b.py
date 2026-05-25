@@ -276,6 +276,50 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
         self.assertTrue(query_log)
         self.assertTrue(all(('identity_mutables' in query or 'identity_mutable_audit' in query) for query in query_log))
 
+    def test_mutable_identity_batch_updates_multiple_subjects_in_one_transaction(self) -> None:
+        state: dict[str, dict[str, object]] = {}
+        audit_state: list[dict[str, object]] = []
+        query_log: list[str] = []
+        connections: list[_MutableIdentityConnection] = []
+        original_conn = memory_store._conn
+
+        def fake_conn():
+            connection = _MutableIdentityConnection(state, audit_state, query_log)
+            connections.append(connection)
+            return connection
+
+        memory_store._conn = fake_conn
+        try:
+            result = memory_store.apply_mutable_identity_subject_updates(
+                [
+                    {
+                        'subject': 'llm',
+                        'mutation_kind': 'set',
+                        'content': 'Frida garde une posture stable.',
+                        'updated_by': 'mutable_identity_judge_apply',
+                        'update_reason': 'mutable_judge_persist',
+                        'audit_reason_code': 'mutable_judge_add',
+                    },
+                    {
+                        'subject': 'user',
+                        'mutation_kind': 'set',
+                        'content': 'L utilisateur garde une limite stable.',
+                        'updated_by': 'mutable_identity_judge_apply',
+                        'update_reason': 'mutable_judge_persist',
+                        'audit_reason_code': 'mutable_judge_add',
+                    },
+                ]
+            )
+        finally:
+            memory_store._conn = original_conn
+
+        self.assertIsNotNone(result)
+        self.assertEqual(sorted(state), ['llm', 'user'])
+        self.assertEqual(len(audit_state), 2)
+        self.assertEqual(len(connections), 1)
+        self.assertTrue(connections[0].committed)
+        self.assertEqual(len([query for query in query_log if query.startswith('insert into identity_mutables')]), 2)
+
     def test_mutable_identity_audit_records_set_and_clear_without_raw_content(self) -> None:
         state: dict[str, dict[str, object]] = {}
         audit_state: list[dict[str, object]] = []

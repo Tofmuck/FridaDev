@@ -75,6 +75,7 @@ TECHNICAL_REASON_CODES = {
     'prompt_like_content',
     'non_declarative_content',
     'impossible_mutation',
+    'mutable_content_too_long',
     'runtime_safety_violation',
     'mutable_store_unavailable',
     'canonical_write_failed',
@@ -146,6 +147,7 @@ _VERDICT_KEYS = {
     'guard_notes',
 }
 _CODE_RE = re.compile(r'^[A-Za-z0-9_:-]{1,80}$')
+_ALLOWED_SOURCE_REFS = {f'pair_{index:02d}' for index in range(1, WINDOW_PAIRS_COUNT + 1)}
 _PROMPT_LIKE_RE = re.compile(
     r'(ignore\s+previous|system\s+prompt|developer\s+message|follow\s+these\s+instructions|'
     r'tu\s+dois\s+repondre|tu\s+dois\s+répondre|reponds\s+comme|réponds\s+comme)',
@@ -483,6 +485,15 @@ def _validate_code_list(value: Any) -> list[str] | None:
     return codes
 
 
+def _validate_source_refs(value: Any) -> list[str] | None:
+    refs = _validate_code_list(value)
+    if refs is None:
+        return None
+    if any(ref not in _ALLOWED_SOURCE_REFS for ref in refs):
+        return None
+    return refs
+
+
 def _validate_proposition(value: Any, *, mutable_budget: Mapping[str, Any] | None = None) -> tuple[str | None, str]:
     proposition = _text(value)
     if not proposition:
@@ -541,7 +552,7 @@ def _validate_verdict_item(
     if continuity_kind not in ALLOWED_CONTINUITY_KINDS:
         return None, 'schema_invalid'
 
-    source_refs = _validate_code_list(item.get('source_refs'))
+    source_refs = _validate_source_refs(item.get('source_refs'))
     if source_refs is None:
         return None, 'schema_invalid'
     guard_notes = _validate_code_list(item.get('guard_notes'))

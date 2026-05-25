@@ -21,6 +21,7 @@ if str(APP_DIR) not in sys.path:
 
 from memory import memory_identity_periodic_scoring
 from memory import mutable_identity_apply
+import config
 
 
 def _hash(value: str) -> str | None:
@@ -101,10 +102,92 @@ class _MutableStore:
         self.upsert_calls: list[dict[str, Any]] = []
         self.clear_calls: list[dict[str, Any]] = []
         self.audit: list[dict[str, Any]] = []
+        self.fail_on_subject: str | None = None
 
     def get_mutable_identity(self, subject: str) -> dict[str, Any] | None:
         item = self.mutable.get(subject)
         return copy.deepcopy(item) if item is not None else None
+
+    def apply_mutable_identity_subject_updates(self, updates: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
+        next_mutable = copy.deepcopy(self.mutable)
+        upsert_calls: list[dict[str, Any]] = []
+        clear_calls: list[dict[str, Any]] = []
+        audit: list[dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
+        for update in updates:
+            subject = str(update.get('subject') or '')
+            mutation_kind = str(update.get('mutation_kind') or '')
+            if subject == self.fail_on_subject:
+                return None
+            if mutation_kind == 'set':
+                content = str(update.get('content') or '').strip()
+                if not subject or not content:
+                    return None
+                old_content = str((next_mutable.get(subject) or {}).get('content') or '')
+                payload = {
+                    'subject': subject,
+                    'content': content,
+                    'source_trace_id': update.get('source_trace_id'),
+                    'updated_by': update.get('updated_by') or 'system',
+                    'update_reason': update.get('update_reason') or '',
+                }
+                next_mutable[subject] = payload
+                upsert_calls.append(
+                    {
+                        'subject': subject,
+                        'content': content,
+                        'updated_by': payload['updated_by'],
+                        'update_reason': payload['update_reason'],
+                        'audit_reason_code': update.get('audit_reason_code'),
+                    }
+                )
+                audit.append(
+                    {
+                        'subject': subject,
+                        'mutation_kind': 'set',
+                        'actor': payload['updated_by'],
+                        'reason_code': update.get('audit_reason_code'),
+                        'old_chars': len(old_content),
+                        'new_chars': len(content),
+                        'old_sha256_12': _hash(old_content),
+                        'new_sha256_12': _hash(content),
+                    }
+                )
+                results.append(copy.deepcopy(payload))
+                continue
+            if mutation_kind == 'clear':
+                if subject not in next_mutable:
+                    return None
+                old = next_mutable.pop(subject)
+                old_content = str((old or {}).get('content') or '')
+                clear_calls.append(
+                    {
+                        'subject': subject,
+                        'updated_by': update.get('updated_by') or 'system',
+                        'update_reason': update.get('update_reason') or 'clear',
+                        'audit_reason_code': update.get('audit_reason_code'),
+                    }
+                )
+                audit.append(
+                    {
+                        'subject': subject,
+                        'mutation_kind': 'clear',
+                        'actor': update.get('updated_by') or 'system',
+                        'reason_code': update.get('audit_reason_code'),
+                        'old_chars': len(old_content),
+                        'new_chars': 0,
+                        'old_sha256_12': _hash(old_content),
+                        'new_sha256_12': None,
+                    }
+                )
+                results.append(copy.deepcopy(old))
+                continue
+            return None
+        self.mutable = next_mutable
+        self.upsert_calls.extend(upsert_calls)
+        self.clear_calls.extend(clear_calls)
+        self.audit.extend(audit)
+        return results
 
     def upsert_mutable_identity(
         self,
@@ -371,6 +454,64 @@ class MutableIdentityApplyTests(unittest.TestCase):
                 self.assertFalse(store.upsert_calls)
                 self.assertFalse(store.clear_calls)
 
+    def test_final_content_too_long_after_multiple_adds_does_not_write(self) -> None:
+        max_chars = int(config.IDENTITY_MUTABLE_MAX_CHARS)
+        chunk_len = (max_chars // 2) + 10
+        prefix = 'User keeps '
+        first = prefix + ('a' * (chunk_len - len(prefix) - 1)) + '.'
+        second = prefix + ('b' * (chunk_len - len(prefix) - 1)) + '.'
+        self.assertLessEqual(len(first), max_chars)
+        self.assertLessEqual(len(second), max_chars)
+        self.assertGreater(len(f'{first}\n{second}'), max_chars)
+        store = _MutableStore()
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(
+                _persist(proposition=first),
+                _persist(proposition=second, reason_code='explicit_self_definition_continuity', continuity_kind='identity'),
+            ),
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'mutable_content_too_long')
+        self.assertFalse(summary['writes_applied'])
+        self.assertFalse(store.mutable)
+        self.assertFalse(store.upsert_calls)
+        self.assertNotIn(first, repr(summary))
+        self.assertNotIn(second, repr(summary))
+
+    def test_final_content_too_long_after_tighten_does_not_write(self) -> None:
+        max_chars = int(config.IDENTITY_MUTABLE_MAX_CHARS)
+        target = 'User keeps an older boundary.'
+        other = 'User keeps ' + ('c' * 1000) + '.'
+        replacement_len = max_chars - 450
+        replacement = 'User keeps ' + ('d' * (replacement_len - len('User keeps ') - 1)) + '.'
+        original = f'{target}\n{other}'
+        self.assertLessEqual(len(replacement), max_chars)
+        self.assertLessEqual(len(original), max_chars)
+        self.assertGreater(len(f'{replacement}\n{other}'), max_chars)
+        store = _MutableStore({'user': original})
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(
+                _persist(
+                    operation='tighten',
+                    proposition=replacement,
+                    target=target,
+                    reason_code='mutable_tightening',
+                )
+            ),
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'mutable_content_too_long')
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], original)
+        self.assertFalse(store.upsert_calls)
+        self.assertNotIn(replacement, repr(summary))
+
     def test_singular_judged_add_is_not_rejected_for_lack_of_recurrence_or_score(self) -> None:
         store = _MutableStore()
         original_score_operation = memory_identity_periodic_scoring.score_operation
@@ -440,6 +581,38 @@ class MutableIdentityApplyTests(unittest.TestCase):
         self.assertFalse(summary['writes_applied'])
         self.assertFalse(store.upsert_calls)
         self.assertEqual(store.mutable, {'llm': {'subject': 'llm', 'content': 'Frida keeps a stable posture.', 'source_trace_id': None, 'updated_by': 'seed', 'update_reason': 'seed'}})
+
+    def test_batch_write_failure_does_not_partially_write_between_subjects(self) -> None:
+        store = _MutableStore()
+        store.fail_on_subject = 'user'
+        llm_proposition = 'Frida keeps a stable relation posture.'
+        user_proposition = 'User keeps a durable boundary.'
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(
+                _persist(
+                    subject='llm',
+                    proposition=llm_proposition,
+                    reason_code='explicit_frida_self_definition_continuity',
+                    continuity_kind='posture',
+                ),
+                _persist(
+                    subject='user',
+                    proposition=user_proposition,
+                    reason_code='explicit_self_limit_continuity',
+                    continuity_kind='limit',
+                ),
+            ),
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'canonical_write_failed')
+        self.assertFalse(summary['writes_applied'])
+        self.assertFalse(store.mutable)
+        self.assertFalse(store.upsert_calls)
+        self.assertNotIn(llm_proposition, repr(summary))
+        self.assertNotIn(user_proposition, repr(summary))
 
 
 if __name__ == '__main__':

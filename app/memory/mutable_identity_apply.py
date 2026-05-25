@@ -408,26 +408,6 @@ def _subject_plan(
     return _joined_content(lines), outcomes
 
 
-def _call_upsert(upsert_mutable_identity: Any, subject: str, content: str, *, operation_kinds: Sequence[str]) -> Any:
-    return upsert_mutable_identity(
-        subject,
-        content,
-        source_trace_id=None,
-        updated_by=ACTOR,
-        update_reason=UPDATE_REASON,
-        audit_reason_code=_operation_audit_reason(operation_kinds),
-    )
-
-
-def _call_clear(clear_mutable_identity: Any, subject: str, *, operation_kinds: Sequence[str]) -> Any:
-    return clear_mutable_identity(
-        subject,
-        updated_by=ACTOR,
-        update_reason=UPDATE_REASON,
-        audit_reason_code=_operation_audit_reason(operation_kinds),
-    )
-
-
 def apply_mutable_judge_contract(
     contract: Mapping[str, Any],
     *,
@@ -449,9 +429,8 @@ def apply_mutable_judge_contract(
         }
 
     get_mutable_identity = getattr(memory_store_module, 'get_mutable_identity', None)
-    upsert_mutable_identity = getattr(memory_store_module, 'upsert_mutable_identity', None)
-    clear_mutable_identity = getattr(memory_store_module, 'clear_mutable_identity', None)
-    if not callable(get_mutable_identity) or not callable(upsert_mutable_identity):
+    apply_subject_updates = getattr(memory_store_module, 'apply_mutable_identity_subject_updates', None)
+    if not callable(get_mutable_identity) or not callable(apply_subject_updates):
         return {
             'status': 'skipped',
             'reason_code': 'mutable_store_unavailable',
@@ -474,6 +453,7 @@ def apply_mutable_judge_contract(
     next_by_subject: dict[str, str] = {}
     outcomes: list[dict[str, Any]] = []
     operations_by_subject: dict[str, list[str]] = {subject: [] for subject in sorted(_ALLOWED_SUBJECTS)}
+    max_content_chars = int(config.IDENTITY_MUTABLE_MAX_CHARS)
 
     for subject in sorted(_ALLOWED_SUBJECTS):
         current_item = _mapping(get_mutable_identity(subject))
@@ -503,32 +483,71 @@ def apply_mutable_judge_contract(
                 'operation_kinds': sorted({str(item.get('operation') or '') for item in outcomes if item.get('operation')}),
                 'audit_storage': 'identity_mutable_audit',
             }
+        if len(next_content) > max_content_chars:
+            outcomes.append(
+                _outcome(
+                    subject=subject,
+                    verdict='persist',
+                    operation='',
+                    status='failed',
+                    reason_code='mutable_content_too_long',
+                    continuity_kind='none',
+                    old_content=current_content,
+                    new_content=next_content,
+                    source_refs_count=0,
+                    guard_notes_count=0,
+                    max_chars=max_content_chars,
+                )
+            )
+            return {
+                'status': 'skipped',
+                'reason_code': 'mutable_content_too_long',
+                'writes_applied': False,
+                'applied_count': 0,
+                'skipped_count': len([item for item in outcomes if item.get('status') == 'skipped']),
+                'failed_count': len([item for item in outcomes if item.get('status') == 'failed']),
+                'outcomes': outcomes,
+                'subjects_touched': [subject],
+                'operation_kinds': sorted({operation for values in operations_by_subject.values() for operation in values}),
+                'audit_storage': 'identity_mutable_audit',
+            }
         next_by_subject[subject] = next_content
 
-    writes_applied = False
+    subject_updates: list[dict[str, Any]] = []
+    for subject in sorted(_ALLOWED_SUBJECTS):
+        if next_by_subject.get(subject, '') == current_by_subject.get(subject, ''):
+            continue
+        operation_kinds = operations_by_subject.get(subject) or ['persist']
+        if next_by_subject.get(subject):
+            subject_updates.append(
+                {
+                    'subject': subject,
+                    'mutation_kind': 'set',
+                    'content': next_by_subject[subject],
+                    'source_trace_id': None,
+                    'updated_by': ACTOR,
+                    'update_reason': UPDATE_REASON,
+                    'audit_reason_code': _operation_audit_reason(operation_kinds),
+                }
+            )
+        else:
+            subject_updates.append(
+                {
+                    'subject': subject,
+                    'mutation_kind': 'clear',
+                    'content': '',
+                    'source_trace_id': None,
+                    'updated_by': ACTOR,
+                    'update_reason': UPDATE_REASON,
+                    'audit_reason_code': _operation_audit_reason(operation_kinds),
+                }
+            )
+
     try:
-        for subject in sorted(_ALLOWED_SUBJECTS):
-            if next_by_subject.get(subject, '') == current_by_subject.get(subject, ''):
-                continue
-            operation_kinds = operations_by_subject.get(subject) or ['persist']
-            if next_by_subject.get(subject):
-                result = _call_upsert(
-                    upsert_mutable_identity,
-                    subject,
-                    next_by_subject[subject],
-                    operation_kinds=operation_kinds,
-                )
-            else:
-                if not callable(clear_mutable_identity):
-                    raise RuntimeError('clear_mutable_identity_unavailable')
-                result = _call_clear(
-                    clear_mutable_identity,
-                    subject,
-                    operation_kinds=operation_kinds,
-                )
-            if result is None:
-                raise RuntimeError('canonical_write_failed')
-            writes_applied = True
+        result = apply_subject_updates(subject_updates)
+        if result is None or len(result) != len(subject_updates) or any(item is None for item in result):
+            raise RuntimeError('canonical_write_failed')
+        writes_applied = bool(subject_updates)
     except Exception:
         return {
             'status': 'skipped',

@@ -52,6 +52,7 @@ __all__ = [
     'get_latest_mutable_identity_audit',
     'upsert_mutable_identity',
     'clear_mutable_identity',
+    'apply_mutable_identity_subject_updates',
     'get_identity_staging_state',
     'get_latest_identity_staging_state',
     'append_identity_staging_pair',
@@ -394,6 +395,14 @@ def clear_mutable_identity(
         updated_by=updated_by,
         update_reason=update_reason,
         audit_reason_code=audit_reason_code,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def apply_mutable_identity_subject_updates(updates: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]] | None:
+    return memory_identity_mutables.apply_mutable_identity_subject_updates(
+        updates,
         conn_factory=_conn,
         logger=logger,
     )

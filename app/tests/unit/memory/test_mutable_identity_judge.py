@@ -120,6 +120,8 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             self.assertIn(f'`{reason_code}`', prompt)
         self.assertIn('Technical runtime reason codes are not valid model-output', prompt)
         self.assertIn('`judge_timeout`', prompt)
+        self.assertIn('`mutable_content_too_long`', prompt)
+        self.assertIn('`pair_05`', prompt)
 
     def test_build_judge_input_contains_complete_window_identities_and_no_scores(self) -> None:
         judge_input = mutable_identity_judge.build_judge_input(
@@ -472,6 +474,25 @@ class MutableIdentityJudgeTests(unittest.TestCase):
 
         self.assertIsNone(validated)
         self.assertEqual(reason, 'schema_invalid')
+
+    def test_source_refs_are_limited_to_the_five_pair_window(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'][0]['source_refs'] = ['pair_99']
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'schema_invalid')
+
+    def test_source_refs_accept_only_pair_01_to_pair_05(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'][0]['source_refs'] = ['pair_01', 'pair_02', 'pair_03', 'pair_04', 'pair_05']
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertEqual(reason, '')
+        self.assertIsNotNone(validated)
+        self.assertEqual(validated['verdicts'][0]['source_refs'], ['pair_01', 'pair_02', 'pair_03', 'pair_04', 'pair_05'])
 
     def test_run_returns_skipped_on_timeout_and_invalid_json(self) -> None:
         original_get_settings = mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings

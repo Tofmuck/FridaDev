@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Callable
+from typing import Any, Callable, Mapping, Sequence
 
 _ALLOWED_SUBJECTS = {'llm', 'user'}
 _ALLOWED_MUTATION_KINDS = {'set', 'clear'}
@@ -219,6 +219,160 @@ def get_latest_mutable_identity_audit(
                 return _row_to_mutable_identity_audit(cur.fetchone())
     except Exception as exc:
         logger.error('get_latest_mutable_identity_audit_error subject=%s err=%s', canonical_subject, exc)
+        return None
+
+
+def apply_mutable_identity_subject_updates(
+    updates: Sequence[Mapping[str, Any]],
+    *,
+    conn_factory: Callable[[], Any],
+    logger: Any,
+) -> list[dict[str, Any]] | None:
+    normalized_updates: list[dict[str, Any]] = []
+    for raw_update in list(updates or []):
+        payload = raw_update if isinstance(raw_update, Mapping) else {}
+        subject = _canonical_subject(str(payload.get('subject') or ''))
+        mutation_kind = str(payload.get('mutation_kind') or '').strip().lower()
+        content = str(payload.get('content') or '').strip()
+        raw_source_trace_id = str(payload.get('source_trace_id') or '').strip()
+        source_trace_id = raw_source_trace_id or None
+        updated_by = str(payload.get('updated_by') or 'system')[:120]
+        update_reason = str(payload.get('update_reason') or '')[:500] or None
+        audit_reason_code = str(payload.get('audit_reason_code') or update_reason or mutation_kind)
+
+        if not subject or mutation_kind not in _ALLOWED_MUTATION_KINDS:
+            return None
+        if mutation_kind == 'set' and not content:
+            return None
+        normalized_updates.append(
+            {
+                'subject': subject,
+                'mutation_kind': mutation_kind,
+                'content': content,
+                'source_trace_id': source_trace_id,
+                'updated_by': updated_by,
+                'update_reason': update_reason,
+                'audit_reason_code': audit_reason_code,
+            }
+        )
+
+    if not normalized_updates:
+        return []
+
+    try:
+        with conn_factory() as conn:
+            results: list[dict[str, Any]] = []
+            with conn.cursor() as cur:
+                for update in normalized_updates:
+                    subject = update['subject']
+                    mutation_kind = update['mutation_kind']
+                    source_trace_id = update['source_trace_id']
+                    updated_by = update['updated_by']
+                    update_reason = update['update_reason']
+                    audit_reason_code = update['audit_reason_code']
+
+                    cur.execute(
+                        '''
+                        SELECT content
+                        FROM identity_mutables
+                        WHERE subject = %s
+                        LIMIT 1
+                        ''',
+                        (subject,),
+                    )
+                    previous_row = cur.fetchone()
+                    old_content = str(previous_row[0] or '') if previous_row else ''
+
+                    if mutation_kind == 'set':
+                        content = update['content']
+                        cur.execute(
+                            '''
+                            INSERT INTO identity_mutables (
+                                subject,
+                                content,
+                                source_trace_id,
+                                updated_by,
+                                update_reason
+                            )
+                            VALUES (%s, %s, %s::uuid, %s, %s)
+                            ON CONFLICT (subject) DO UPDATE
+                            SET
+                                content = EXCLUDED.content,
+                                source_trace_id = EXCLUDED.source_trace_id,
+                                updated_by = EXCLUDED.updated_by,
+                                update_reason = EXCLUDED.update_reason,
+                                updated_ts = now()
+                            RETURNING
+                                subject,
+                                content,
+                                source_trace_id,
+                                updated_by,
+                                update_reason,
+                                created_ts,
+                                updated_ts
+                            ''',
+                            (
+                                subject,
+                                content,
+                                source_trace_id,
+                                updated_by,
+                                update_reason,
+                            ),
+                        )
+                        row = cur.fetchone()
+                        _record_mutable_identity_audit(
+                            cur,
+                            subject=subject,
+                            mutation_kind='set',
+                            actor=updated_by,
+                            reason_code=audit_reason_code,
+                            old_content=old_content,
+                            new_content=content,
+                            source_trace_id=source_trace_id,
+                        )
+                        normalized_row = _row_to_mutable_identity(row)
+                        if normalized_row is None:
+                            raise RuntimeError('mutable_set_return_missing')
+                        results.append(normalized_row)
+                        continue
+
+                    cur.execute(
+                        '''
+                        DELETE FROM identity_mutables
+                        WHERE subject = %s
+                        RETURNING
+                            subject,
+                            content,
+                            source_trace_id,
+                            updated_by,
+                            update_reason,
+                            created_ts,
+                            updated_ts
+                        ''',
+                        (subject,),
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        raise RuntimeError('mutable_clear_target_missing')
+                    old_content = str(row[1] or '')
+                    _record_mutable_identity_audit(
+                        cur,
+                        subject=subject,
+                        mutation_kind='clear',
+                        actor=updated_by,
+                        reason_code=audit_reason_code,
+                        old_content=old_content,
+                        new_content='',
+                        source_trace_id=str(row[2]) if row[2] is not None else None,
+                    )
+                    normalized_row = _row_to_mutable_identity(row)
+                    if normalized_row is None:
+                        raise RuntimeError('mutable_clear_return_missing')
+                    results.append(normalized_row)
+            conn.commit()
+            return results
+    except Exception as exc:
+        logger.error('apply_mutable_identity_subject_updates_error count=%s err=%s', len(normalized_updates), exc)
         return None
 
 

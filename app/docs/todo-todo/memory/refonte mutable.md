@@ -410,6 +410,7 @@ Cases:
 - [x] Valider les operations autorisees.
 - [x] Refuser contenu vide pour une persistence.
 - [x] Refuser contenu trop long.
+- [x] Refuser un contenu canonique final au-dela de `IDENTITY_MUTABLE_MAX_CHARS`, meme si chaque operation prise seule est sous la limite.
 - [x] Refuser contenu prompt-like.
 - [x] Refuser contenu non declaratif.
 - [x] Refuser mutation impossible.
@@ -417,6 +418,7 @@ Cases:
 - [x] Appliquer uniquement les verdicts `persist`.
 - [x] Ecrire seulement `identity_mutables`.
 - [x] Ecrire `identity_mutable_audit` content-free via le store existant.
+- [x] Persister les changements `llm` / `user` en batch all-or-nothing, sans ecriture canonique partielle entre sujets.
 - [x] Utiliser les formulations exactes du canon courant comme `target` / `targets`, sans creer de nouveau modele DB.
 - [x] Ne jamais appeler l'ancien scoring.
 - [x] Ne jamais appeler le writer static.
@@ -432,7 +434,11 @@ Tests / preuves attendus:
 - [x] JSON invalide n'ecrit rien.
 - [x] Contenu prompt-like n'ecrit rien.
 - [x] Proposition trop longue n'ecrit rien.
+- [x] Contenu final trop long apres plusieurs operations n'ecrit rien.
+- [x] Contenu final trop long apres `tighten` n'ecrit rien.
 - [x] Reason code incompatible avec operation n'ecrit rien.
+- [x] Echec d'ecriture d'un second sujet ne laisse aucune ecriture partielle observable.
+- [x] `source_refs=["pair_99"]` est refuse, seules `pair_01` a `pair_05` sont valides.
 - [x] Une proposition singuliere acceptee par le juge n'est pas rejetee par manque de recurrence.
 - [x] Aucune ecriture static n'est observee.
 - [x] Aucun appel a l'ancien scoring.

@@ -108,9 +108,13 @@ Never output codes such as `window_too_large`, `judge_timeout`,
 `invalid_subject`, `invalid_verdict`, `invalid_operation`, `invalid_target`,
 `empty_proposition`, `proposition_too_long`, `prompt_like_content`,
 `non_declarative_content`, `impossible_mutation`,
-`runtime_safety_violation`, `mutable_store_unavailable` or
+`mutable_content_too_long`, `runtime_safety_violation`, `mutable_store_unavailable` or
 `canonical_write_failed`. These codes are reserved for the caller when no
 valid judge output exists.
+
+`source_refs` must contain only window pair ids from the current five-pair
+window: `pair_01`, `pair_02`, `pair_03`, `pair_04`, `pair_05`. Use an empty
+list when no specific pair applies. Never invent refs outside that window.
 
 Return JSON only. Use exactly this top-level schema:
 

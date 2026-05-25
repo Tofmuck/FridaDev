@@ -161,7 +161,7 @@ Regles de schema:
 - Si un sujet ne demande aucune persistence, tension, rejection ou deferral, il porte un verdict explicite `no_change`.
 - Un sujet peut avoir plusieurs verdicts seulement si les operations persistantes restent compatibles entre elles.
 - `no_change` ne coexiste pas avec un autre verdict du meme sujet dans le meme run.
-- `source_refs` reference des indices de fenetre ou ids courts, jamais un extrait brut.
+- `source_refs` reference uniquement la fenetre courante: `pair_01`, `pair_02`, `pair_03`, `pair_04`, `pair_05`. Toute autre reference, dont `pair_99`, est invalide.
 - `guard_notes` contient des codes courts, jamais une justification longue.
 - `continuity_kind` vaut `identity`, `relation`, `value`, `limit`, `posture`, `tension` ou `none`.
 
@@ -296,6 +296,7 @@ Codes techniques:
 - `prompt_like_content`
 - `non_declarative_content`
 - `impossible_mutation`
+- `mutable_content_too_long`
 - `runtime_safety_violation`
 - `mutable_store_unavailable`
 - `canonical_write_failed`
@@ -311,6 +312,7 @@ Le code peut refuser seulement pour:
 - operation invalide;
 - cible inexistante ou ambigue;
 - taille excessive;
+- contenu canonique final au-dela de `IDENTITY_MUTABLE_MAX_CHARS`;
 - contenu vide quand une proposition est obligatoire;
 - contenu dangereux, prompt-like ou non declaratif;
 - mutation impossible a appliquer;
@@ -341,6 +343,8 @@ Seul `verdict = persist` avec operation valide peut modifier `identity_mutables`
 Le nouveau pipeline:
 
 - ecrit seulement le canon mutable dans `identity_mutables`;
+- borne le contenu canonique final de chaque sujet a `IDENTITY_MUTABLE_MAX_CHARS`, apres composition de toutes les operations du run;
+- persiste les mutations `llm` / `user` d'un meme contrat en transaction batch all-or-nothing: si un sujet echoue, aucun sujet n'est ecrit;
 - ecrit un audit compact content-free dans `identity_mutable_audit` ou dans la surface d'audit finale retenue;
 - ne stocke pas la fenetre brute dans l'audit;
 - ne reinjecte pas `reject`, `defer` ou `raise_tension`;
