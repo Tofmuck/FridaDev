@@ -168,13 +168,14 @@ Le juge produit uniquement ces verdicts:
 - `raise_tension`: le juge signale une tension non injectee.
 - `persist`: le juge autorise une mutation mutable.
 
-Operations cible pour `persist`:
+Operations autorisees uniquement quand `verdict = persist`:
 
 - `add`;
 - `tighten`;
 - `merge`;
-- `clear_obsolete`, seulement quand une mutable existante est explicitement retiree ou devenue fausse;
-- `raise_tension`, hors canon mutable injecte.
+- `clear_obsolete`, seulement quand une mutable existante est explicitement retiree ou devenue fausse.
+
+Regle dure: `raise_tension` n'est pas une operation de persistence. Ce verdict peut produire une trace content-free, un reason code ou une future surface operateur, mais il ne cree pas, ne modifie pas et ne supprime pas de mutable canonique dans `identity_mutables`.
 
 Le code peut refuser seulement:
 
