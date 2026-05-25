@@ -222,7 +222,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'label': 'IDENTITY_EXTRACTOR_DECOUPLING',
                 'value': (
                     'extract_identities() uses identity_extractor_model. '
-                    'identity_periodic_agent uses identity_periodic_model; arbiter_model is no longer an '
+                    'mutable_identity_judge uses identity_periodic_model; arbiter_model is no longer an '
                     'effective source for active model callers.'
                 ),
                 'is_editable': False,
@@ -232,22 +232,28 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
     if section == 'identity_periodic_model':
         return {
             'prompt_path': {
-                'label': 'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
-                'value': str(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
+                'label': 'IDENTITY_MUTABLE_JUDGE_PROMPT_PATH',
+                'value': str(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH),
                 'is_editable': False,
                 'source': 'config_py',
             },
             'prompt_loader': {
-                'label': 'IDENTITY_PERIODIC_PROMPT_RUNTIME_SOURCE',
-                'value': 'memory.arbiter._load_prompt(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH, "identity_periodic_agent")',
+                'label': 'IDENTITY_MUTABLE_JUDGE_PROMPT_RUNTIME_SOURCE',
+                'value': 'memory.arbiter._load_prompt(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH, "mutable_identity_judge")',
                 'is_editable': False,
                 'source': 'backend_loader',
             },
             'system_prompt': {
-                'label': 'identity_periodic_agent_prompt',
-                'value': prompt_loader.read_prompt_text(str(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH)),
+                'label': 'identity_mutable_judge_prompt',
+                'value': prompt_loader.read_prompt_text(str(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)),
                 'is_editable': False,
                 'source': 'app_prompt_file',
+            },
+            'legacy_prompt_path': {
+                'label': 'IDENTITY_PERIODIC_AGENT_PROMPT_PATH_LEGACY',
+                'value': str(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
+                'is_editable': False,
+                'source': 'legacy_pre_refactor',
             },
             'shared_transport': {
                 'label': 'OPENROUTER_SHARED_TRANSPORT',
@@ -265,11 +271,11 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'source': 'benchmark_artifact',
             },
             'doctrine': {
-                'label': 'IDENTITY_PERIODIC_DOCTRINE',
+                'label': 'IDENTITY_MUTABLE_JUDGE_DOCTRINE',
                 'value': (
-                    'llm identity is what Frida durably says/carries of herself. '
-                    'A durable Tof expectation toward Frida may remain user identity when it describes '
-                    "Tof's stable disposition toward dialogue, not Frida's self-identity."
+                    'identity_periodic_model is the compatibility model slot for the active '
+                    'mutable_identity_judge caller. The active prompt is identity_mutable_judge; '
+                    'identity_periodic_agent is legacy pre-refactor.'
                 ),
                 'is_editable': False,
                 'source': 'runtime_contract',
@@ -291,7 +297,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'label': 'ARBITER_MODEL_ACTIVE_REPLACEMENTS',
                 'value': (
                     'memory_arbiter_model drives memory arbitration; identity_extractor_model drives '
-                    'per-turn identity extraction; identity_periodic_model drives periodic identity.'
+                    'per-turn identity extraction; identity_periodic_model drives mutable_identity_judge.'
                 ),
                 'is_editable': False,
                 'source': 'runtime_contract',

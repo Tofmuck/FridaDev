@@ -314,7 +314,7 @@
         target,
         REGIME_CLASSIFICATION_LABELS[classification] || classification,
         classification === "active_readonly"
-          ? "Contrat du regime identity actif: staging, scoring, promotion et suspension restent visibles ici sans etre edites comme de simples knobs."
+          ? "Contrat du regime identity actif: canon, fenetre juge-first et budgets visibles sans exposer de contenu sensible."
           : classification === "doctrine_locked"
             ? "Doctrine visible, bornee et volontairement non editable."
             : "Legacy conserve pour diagnostic seulement.",

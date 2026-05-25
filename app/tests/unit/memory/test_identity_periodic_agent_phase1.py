@@ -754,6 +754,58 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         )
         self.assertGreater(summary['failed_count'], 0)
 
+    def test_preserves_buffer_when_new_applicator_raises_unexpected_error(self) -> None:
+        store = _InMemoryIdentityStore()
+        proposition = 'Tof maintient une limite durable sur les promesses intenables.'
+        arbiter_module = SimpleNamespace(
+            run_mutable_identity_judge=lambda _payload: _judge_ok(_contract(_persist_add('user', proposition)))
+        )
+        original_apply = (
+            memory_identity_periodic_agent.mutable_identity_runtime
+            .mutable_identity_apply
+            .apply_mutable_judge_contract
+        )
+
+        def boom(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+            raise RuntimeError('unexpected apply failure')
+
+        memory_identity_periodic_agent.mutable_identity_runtime.mutable_identity_apply.apply_mutable_judge_contract = boom
+        try:
+            for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
+                memory_identity_periodic_agent.stage_identity_turn_pair(
+                    'conv-apply-raises',
+                    _support_pair(index, proposition),
+                    arbiter_module=arbiter_module,
+                    memory_store_module=store,
+                )
+
+            summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+                'conv-apply-raises',
+                _support_pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS, proposition),
+                arbiter_module=arbiter_module,
+                memory_store_module=store,
+            )
+        finally:
+            (
+                memory_identity_periodic_agent.mutable_identity_runtime
+                .mutable_identity_apply
+                .apply_mutable_judge_contract
+            ) = original_apply
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'canonical_write_failed')
+        self.assertEqual(summary['last_agent_status'], 'apply_failed')
+        self.assertFalse(summary['buffer_cleared'])
+        self.assertTrue(summary['buffer_frozen'])
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(summary['failed_count'], 1)
+        staging = store.get_identity_staging_state('conv-apply-raises')
+        self.assertEqual(staging['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
+        self.assertEqual(staging['last_agent_status'], 'apply_failed')
+        self.assertEqual(staging['last_agent_reason'], 'canonical_write_failed')
+        self.assertEqual(store.mutable, {})
+        self.assertEqual(store.upsert_calls, [])
+
     def test_preserves_buffer_when_agent_returns_invalid_contract(self) -> None:
         store = _InMemoryIdentityStore()
         arbiter_module = SimpleNamespace(

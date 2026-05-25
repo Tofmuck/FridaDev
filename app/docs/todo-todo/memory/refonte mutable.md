@@ -105,7 +105,7 @@ Modules actifs constates:
   - Reinjection runtime: `static + mutable`.
   - Les mutables sont relues depuis `identity_mutables`.
 - `app/identity/identity_governance.py`
-  - Expose encore staging, scoring et promotion automatique comme regime actif.
+  - Depuis micro-correctif Lot 4, expose la fenetre judge-first comme active et requalifie scoring / promotion static comme legacy pre-refonte inactive.
 - `app/admin/admin_identity_read_model_service.py`
   - Avant correction Lot 1, exposait encore `promotion_to_static_enabled=true` comme si le writer score-first pouvait promouvoir le mutable vers le statique.
   - Depuis correction pre-Lot 2, expose `promotion_to_static_enabled=false`, `score_first_writer_enabled=false` et des statuts legacy neutralises.

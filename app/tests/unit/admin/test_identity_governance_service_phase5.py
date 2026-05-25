@@ -174,13 +174,23 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertEqual(items_by_key['IDENTITY_TOP_N']['category'], 'legacy_inactive_readonly')
         self.assertEqual(items_by_key['IDENTITY_MAX_TOKENS']['category'], 'legacy_inactive_readonly')
         self.assertEqual(sections_by_key['staging_contract']['classification'], 'active_readonly')
+        self.assertEqual(sections_by_key['staging_contract']['active_scope'], 'mutable_identity_judge_first')
         self.assertEqual(sections_by_key['staging_contract']['details']['buffer_target_pairs'], 5)
         self.assertFalse(sections_by_key['staging_contract']['details']['actively_injected'])
-        self.assertEqual(sections_by_key['scoring_contract']['details']['engine'], 'python_deterministic')
-        self.assertEqual(sections_by_key['scoring_contract']['details']['local_strength_accept_from'], 0.6)
+        self.assertEqual(sections_by_key['scoring_contract']['classification'], 'legacy_inactive')
+        self.assertEqual(sections_by_key['scoring_contract']['active_scope'], 'inactive_legacy')
+        self.assertEqual(
+            sections_by_key['scoring_contract']['details']['runtime_authority'],
+            'inactive_superseded_by_mutable_identity_judge_first',
+        )
+        self.assertFalse(sections_by_key['scoring_contract']['details']['admission_by_local_score'])
+        self.assertEqual(sections_by_key['promotion_and_suspension_contract']['classification'], 'legacy_inactive')
+        self.assertFalse(
+            sections_by_key['promotion_and_suspension_contract']['details']['promotion_to_static_enabled']
+        )
         self.assertEqual(sections_by_key['promotion_and_suspension_contract']['details']['promotion_to_layer'], 'static')
         self.assertEqual(
-            sections_by_key['promotion_and_suspension_contract']['details']['auto_suspension_reason_codes'],
+            sections_by_key['promotion_and_suspension_contract']['details']['legacy_auto_suspension_reason_codes'],
             ['double_saturation', 'static_recent_operator_edit_guard'],
         )
         self.assertEqual(sections_by_key['mutable_budget_contract']['classification'], 'doctrine_locked')

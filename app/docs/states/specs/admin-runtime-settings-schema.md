@@ -165,9 +165,9 @@ Slot individualise de l'extracteur identity au tour (`extract_identities()`). Il
 
 ### `identity_periodic_model`
 
-Slot individualise de `identity_periodic_agent` (`run_identity_periodic_agent()`). Il partage le transport OpenRouter de `main_model` (`base_url`, `api_key`, `referer_identity_periodic`, `title_identity_periodic`) mais possede son propre modele, son propre echantillonnage, son budget de sortie et son timeout. La decision humaine du 2026-05-19 passe ce caller a `anthropic/claude-haiku-4.5` apres validation du prompt ontologique + registre.
+Slot de compatibilite conserve sous le nom `identity_periodic_model`, mais depuis le Lot 4 mutable il pilote le caller actif `mutable_identity_judge`. Il partage le transport OpenRouter de `main_model` (`base_url`, `api_key`, `referer_identity_periodic`, `title_identity_periodic`) mais possede son propre modele, son propre echantillonnage, son budget de sortie et son timeout. La decision humaine du 2026-05-19 passe ce slot a `anthropic/claude-haiku-4.5` apres validation du prompt ontologique + registre.
 
-Transition refonte mutable 2026-05-25: ce slot decrit le caller runtime pre-refonte. Le contrat cible du futur juge mutable est `mutable-identity-judge-contract.md`; un lot ulterieur devra renommer ou requalifier cette section sans reintroduire de scoring identitaire.
+Transition refonte mutable 2026-05-25: le prompt actif expose a l'operateur est `prompts/identity_mutable_judge.txt` via `IDENTITY_MUTABLE_JUDGE_PROMPT_PATH`. `prompts/identity_periodic_agent.txt` reste un prompt legacy pre-refonte, pas le prompt runtime actif.
 
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |

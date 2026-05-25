@@ -236,10 +236,28 @@ def run_mutable_identity_window(
             enforce_writes=False,
         )
 
-    apply_summary = mutable_identity_apply.apply_mutable_judge_contract(
-        contract,
-        memory_store_module=memory_store_module,
-    )
+    try:
+        apply_summary = mutable_identity_apply.apply_mutable_judge_contract(
+            contract,
+            memory_store_module=memory_store_module,
+        )
+    except Exception:
+        return _summary(
+            status='skipped',
+            reason_code='canonical_write_failed',
+            last_agent_status='apply_failed',
+            judge_observability=judge_observability,
+            apply_summary={
+                'status': 'skipped',
+                'reason_code': 'canonical_write_failed',
+                'writes_applied': False,
+                'applied_count': 0,
+                'skipped_count': 0,
+                'failed_count': 1,
+                'outcomes': [],
+            },
+            enforce_writes=True,
+        )
     if _text(apply_summary.get('status')) != 'ok':
         return _summary(
             status='skipped',

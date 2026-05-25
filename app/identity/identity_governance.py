@@ -5,7 +5,6 @@ from typing import Any, Mapping
 
 import config
 from memory import memory_identity_periodic_agent
-from memory import memory_identity_periodic_scoring
 
 
 GOVERNANCE_VERSION = 'v1'
@@ -187,11 +186,11 @@ _READONLY_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
         unit='chars',
         source_kind='config_py',
         source_ref='config.IDENTITY_MUTABLE_TARGET_CHARS',
-        active_scope='identity_periodic_agent',
+        active_scope='mutable_identity_judge_first',
         editable=False,
         editable_via=None,
         validation={'target': 3000},
-        operator_note='Cible utile du mutable canonique dans le regime periodique, visible seulement.',
+        operator_note='Cible utile du mutable canonique dans le regime judge-first, visible seulement.',
     ),
     GovernanceItemSpec(
         key='IDENTITY_MUTABLE_MAX_CHARS',
@@ -201,11 +200,11 @@ _READONLY_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
         unit='chars',
         source_kind='config_py',
         source_ref='config.IDENTITY_MUTABLE_MAX_CHARS',
-        active_scope='identity_periodic_agent',
+        active_scope='mutable_identity_judge_first',
         editable=False,
         editable_via=None,
         validation={'max': 3300},
-        operator_note='Plafond dur du mutable canonique dans le regime periodique, non reouvert a l edition.',
+        operator_note='Plafond dur du mutable canonique dans le regime judge-first, non reouvert a l edition.',
     ),
     GovernanceItemSpec(
         key='identity_extractor_max_tokens',
@@ -376,8 +375,6 @@ def build_regime_section_payloads(
     runtime_settings_module: Any = None,
     fetcher: Any = None,
 ) -> list[dict[str, Any]]:
-    view = _runtime_section_view(runtime_settings_module=runtime_settings_module, fetcher=fetcher)
-    runtime_values = editable_values_from_view(view)
     return [
         {
             'key': 'active_canon_contract',
@@ -403,15 +400,15 @@ def build_regime_section_payloads(
         },
         {
             'key': 'staging_contract',
-            'label': 'Staging conversation-scoped',
+            'label': 'Fenetre juge mutable conversation-scoped',
             'classification': 'active_readonly',
-            'active_scope': 'identity_periodic_agent',
-            'source_kind': 'periodic_agent_contract',
+            'active_scope': 'mutable_identity_judge_first',
+            'source_kind': 'mutable_judge_window_contract',
             'source_ref': 'memory_identity_periodic_agent.BUFFER_TARGET_PAIRS',
             'editable': False,
             'operator_note': (
-                'Le staging actif reste un snapshot conversationnel recent, observe seulement. '
-                'Il ne constitue ni un canon global ni un espace editable depuis cette surface.'
+                'La fenetre active reste une capture technique de 5 paires completes, observee seulement. '
+                'Elle ne constitue ni un canon global, ni un espace editable depuis cette surface, ni un tri identitaire.'
             ),
             'details': {
                 'storage_kind': STAGING_STORAGE_KIND,
@@ -419,67 +416,64 @@ def build_regime_section_payloads(
                 'buffer_target_pairs': int(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS),
                 'actively_injected': False,
                 'editable_via_governance': False,
+                'pipeline': 'mutable_identity_judge_first',
+                'semantic_preselection': False,
             },
         },
         {
             'key': 'scoring_contract',
-            'label': 'Scoring et verdicts actifs',
-            'classification': 'active_readonly',
-            'active_scope': 'identity_periodic_scoring',
-            'source_kind': 'python_contract',
+            'label': 'Scoring legacy pre-refonte',
+            'classification': 'legacy_inactive',
+            'active_scope': 'inactive_legacy',
+            'source_kind': 'legacy_python_contract',
             'source_ref': 'memory_identity_periodic_scoring',
             'editable': False,
             'operator_note': (
-                'Le scoring local reste Python deterministe. Les seuils de force locale et les seuils de durabilite '
-                'sont visibles ici sans etre reduits a de simples caps caracteres.'
+                'Le scoring local Python deterministe est supersede dans le chemin mutable actif. '
+                'Le writer canonique actif est mutable_identity_judge_first; ces informations restent historiques.'
             ),
             'details': {
-                'engine': 'python_deterministic',
-                'operation_kinds': ['add', 'tighten', 'merge', 'raise_conflict'],
-                'local_strength_reject_below': float(memory_identity_periodic_scoring.REJECT_THRESHOLD),
-                'local_strength_accept_from': float(memory_identity_periodic_scoring.ACCEPT_THRESHOLD),
-                'durable_defer_from': float(runtime_values['IDENTITY_DEFER_MIN_CONFIDENCE']),
-                'durable_accept_from': float(runtime_values['IDENTITY_MIN_CONFIDENCE']),
+                'engine': 'python_deterministic_legacy',
+                'runtime_authority': 'inactive_superseded_by_mutable_identity_judge_first',
+                'active_writer_pipeline': 'mutable_identity_judge_first',
+                'admission_by_local_score': False,
+                'operation_kinds_legacy': ['add', 'tighten', 'merge', 'raise_conflict'],
             },
         },
         {
             'key': 'promotion_and_suspension_contract',
-            'label': 'Promotion et suspension automatiques',
-            'classification': 'active_readonly',
-            'active_scope': 'identity_periodic_apply',
-            'source_kind': 'periodic_apply_contract',
+            'label': 'Promotion static legacy pre-refonte',
+            'classification': 'legacy_inactive',
+            'active_scope': 'inactive_legacy',
+            'source_kind': 'legacy_periodic_apply_contract',
             'source_ref': 'memory_identity_periodic_apply.apply_periodic_agent_contract',
             'editable': False,
             'operator_note': (
-                'Les propositions acceptees peuvent promouvoir la mutable vers le statique. '
-                'La suspension automatique bloque la canonisation quand la saturation ou un edit operateur recent du statique l imposent.'
+                'La promotion automatique mutable -> static est inactive dans le regime mutable judge-first. '
+                'Toute future promotion static devra etre un chantier separe explicite.'
             ),
             'details': {
+                'runtime_authority': 'inactive_superseded_by_mutable_identity_judge_first',
+                'active_writer_pipeline': 'mutable_identity_judge_first',
+                'promotion_to_static_enabled': False,
                 'promotion_from_layer': 'mutable',
                 'promotion_to_layer': 'static',
-                'promotion_requires_min_recurrence': int(runtime_values['IDENTITY_MIN_RECURRENCE_FOR_DURABLE']),
-                'promotion_requires_distinct_conversations': int(
-                    runtime_values['IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS']
-                ),
-                'promotion_requires_time_gap_hours': int(
-                    runtime_values['IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS']
-                ),
-                'promotion_reason_code': 'promoted_to_static',
-                'auto_suspension_flag': 'auto_canonization_suspended',
-                'auto_suspension_reason_codes': ['double_saturation', 'static_recent_operator_edit_guard'],
+                'legacy_promotion_reason_code': 'promoted_to_static',
+                'legacy_auto_suspension_flag': 'auto_canonization_suspended',
+                'legacy_auto_suspension_reason_codes': ['double_saturation', 'static_recent_operator_edit_guard'],
             },
         },
         {
             'key': 'mutable_budget_contract',
             'label': 'Budget mutable doctrinal verrouille',
             'classification': 'doctrine_locked',
-            'active_scope': 'identity_periodic_agent',
+            'active_scope': 'mutable_identity_judge_first',
             'source_kind': 'config_py',
             'source_ref': 'config.IDENTITY_MUTABLE_TARGET_CHARS + config.IDENTITY_MUTABLE_MAX_CHARS',
             'editable': False,
             'operator_note': (
                 'Les caps 3000/3300 bornent seulement la mutable canonique. '
-                'Ils ne resumant ni le staging, ni le scoring, ni la promotion, ni la suspension.'
+                'Ils ne resumant ni la fenetre, ni le jugement LLM, ni une promotion static.'
             ),
             'details': {
                 'target_chars': int(config.IDENTITY_MUTABLE_TARGET_CHARS),
