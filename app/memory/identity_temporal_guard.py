@@ -91,22 +91,19 @@ def sanitized_buffer_pairs_with_source_summary(
     buffer_pairs: Sequence[Mapping[str, Any]],
 ) -> tuple[list[dict[str, Any]], dict[str, dict[str, int]]]:
     summary = empty_source_summary()
-    sanitized_pairs: list[dict[str, Any]] = []
+    annotated_pairs: list[dict[str, Any]] = []
     for pair in list(buffer_pairs or []):
         pair_payload = _mapping(pair)
-        sanitized_pair: dict[str, Any] = {}
+        annotated_pair: dict[str, Any] = {}
         for role_key, subject in (('user', 'user'), ('assistant', 'llm')):
             message = dict(_mapping(pair_payload.get(role_key)))
             content = _text(message.get('content'))
-            if _record_source(summary, subject=subject, content=content):
-                sanitized_pair[role_key] = message
-                continue
-            if content:
-                message['content'] = ''
-                message['temporal_source_guard'] = 'weak_relative_temporal_claim_removed'
-            sanitized_pair[role_key] = message
-        sanitized_pairs.append(sanitized_pair)
-    return sanitized_pairs, summary
+            admissible = _record_source(summary, subject=subject, content=content)
+            if content and not admissible:
+                message['temporal_source_guard'] = 'weak_relative_temporal_claim_present'
+            annotated_pair[role_key] = message
+        annotated_pairs.append(annotated_pair)
+    return annotated_pairs, summary
 
 
 def subject_has_admissible_source(

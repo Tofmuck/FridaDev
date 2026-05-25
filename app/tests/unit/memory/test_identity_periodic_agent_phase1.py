@@ -281,7 +281,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(status, 'completed_with_open_tension')
         self.assertEqual(reason, 'completed_with_open_tension')
 
-    def test_periodic_agent_event_preserves_completed_no_change_reason_code_for_ok_run(self) -> None:
+    def test_periodic_agent_event_marks_legacy_writer_disabled_for_valid_no_change_run(self) -> None:
         proposition = 'Tof maintient une observation stable sans nouvelle canonisation.'
         arbiter_module = SimpleNamespace(
             run_identity_periodic_agent=lambda _payload: {
@@ -303,17 +303,16 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         payload = event['payload_json']
 
         self.assertEqual(event['status'], 'ok')
-        self.assertEqual(summary['reason_code'], 'completed_no_change')
-        self.assertEqual(payload['reason_code'], 'completed_no_change')
+        self.assertEqual(summary['reason_code'], 'legacy_writer_disabled')
+        self.assertEqual(payload['reason_code'], 'legacy_writer_disabled')
         self.assertFalse(payload['writes_applied'])
+        self.assertTrue(payload['legacy_writer_disabled'])
         self.assertEqual(payload['promotion_count'], 0)
         self.assertEqual(payload['rejection_reasons'], {})
-        self.assertTrue(payload['outcomes'])
-        self.assertTrue(all('reason_code' in outcome for outcome in payload['outcomes']))
-        self.assertTrue(all('strength' in outcome for outcome in payload['outcomes']))
+        self.assertEqual(payload['outcomes'], [])
         self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'utilisateur 5', 'assistant 5'])
 
-    def test_periodic_agent_event_preserves_applied_reason_code_for_ok_write(self) -> None:
+    def test_periodic_agent_event_neutralizes_valid_legacy_write_contract(self) -> None:
         proposition = 'Tof maintient une attention durable aux details stables.'
         arbiter_module = SimpleNamespace(
             run_identity_periodic_agent=lambda _payload: {
@@ -343,15 +342,17 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         payload = event['payload_json']
 
         self.assertEqual(event['status'], 'ok')
-        self.assertEqual(summary['reason_code'], 'applied')
-        self.assertEqual(payload['reason_code'], 'applied')
-        self.assertTrue(payload['writes_applied'])
+        self.assertEqual(summary['reason_code'], 'legacy_writer_disabled')
+        self.assertEqual(payload['reason_code'], 'legacy_writer_disabled')
+        self.assertFalse(payload['writes_applied'])
+        self.assertTrue(payload['legacy_writer_disabled'])
         self.assertEqual(payload['promotion_count'], 0)
-        self.assertIn('attention durable', store.mutable['user']['content'])
-        self.assertTrue(any(outcome['reason_code'].endswith('_applied') for outcome in payload['outcomes']))
+        self.assertEqual(store.mutable, {})
+        self.assertEqual(store.upsert_calls, [])
+        self.assertEqual(payload['outcomes'], [])
         self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'attention durable'])
 
-    def test_periodic_agent_event_preserves_open_tension_reason_code_for_ok_run(self) -> None:
+    def test_periodic_agent_event_neutralizes_valid_legacy_tension_contract(self) -> None:
         proposition = 'Tof semble osciller entre retrait durable et besoin d exposition.'
         arbiter_module = SimpleNamespace(
             run_identity_periodic_agent=lambda _payload: {
@@ -381,10 +382,11 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         payload = event['payload_json']
 
         self.assertEqual(event['status'], 'ok')
-        self.assertEqual(summary['reason_code'], 'completed_with_open_tension')
-        self.assertEqual(payload['reason_code'], 'completed_with_open_tension')
+        self.assertEqual(summary['reason_code'], 'legacy_writer_disabled')
+        self.assertEqual(payload['reason_code'], 'legacy_writer_disabled')
         self.assertFalse(payload['writes_applied'])
-        self.assertTrue(any(outcome['action'] == 'raise_conflict' for outcome in payload['outcomes']))
+        self.assertTrue(payload['legacy_writer_disabled'])
+        self.assertEqual(payload['outcomes'], [])
         self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'osciller'])
 
     def test_does_not_call_agent_before_five_pairs(self) -> None:
@@ -442,7 +444,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(calls, [])
         self.assertIsNone(store.get_identity_staging_state('conv-incomplete-pair'))
 
-    def test_calls_agent_at_exact_threshold_and_clears_buffer_only_after_clean_completion(self) -> None:
+    def test_calls_agent_at_exact_threshold_and_clears_buffer_after_valid_transitional_run(self) -> None:
         store = _InMemoryIdentityStore()
         observed_payloads: list[dict[str, Any]] = []
         proposition = 'Tof maintient une attention durable aux details stables.'
@@ -498,14 +500,15 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         score_fields = {'strength', 'frequency_norm', 'recency_norm', 'threshold_verdict'}
         self.assertTrue(score_fields.isdisjoint(_collect_keys(observed_payloads[0])))
         self.assertEqual(summary['status'], 'ok')
-        self.assertEqual(summary['reason_code'], 'applied')
+        self.assertEqual(summary['reason_code'], 'legacy_writer_disabled')
         self.assertTrue(summary['buffer_cleared'])
-        self.assertTrue(summary['writes_applied'])
+        self.assertFalse(summary['writes_applied'])
+        self.assertTrue(summary['legacy_writer_disabled'])
         self.assertEqual(store.get_identity_staging_state('conv-threshold')['buffer_pairs_count'], 0)
-        self.assertIn('attention durable', store.mutable['user']['content'])
-        self.assertEqual(store.upsert_calls[0][2], 'identity_periodic_agent')
+        self.assertEqual(store.mutable, {})
+        self.assertEqual(store.upsert_calls, [])
 
-    def test_marks_open_tension_without_flattening_it_to_completed_no_change(self) -> None:
+    def test_valid_legacy_tension_contract_is_neutralized_without_canonical_write(self) -> None:
         store = _InMemoryIdentityStore()
         proposition = 'Tof semble osciller entre retrait durable et besoin d exposition.'
 
@@ -549,16 +552,16 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         )
 
         self.assertEqual(summary['status'], 'ok')
-        self.assertEqual(summary['reason_code'], 'completed_with_open_tension')
-        self.assertEqual(summary['last_agent_status'], 'completed_with_open_tension')
+        self.assertEqual(summary['reason_code'], 'legacy_writer_disabled')
+        self.assertEqual(summary['last_agent_status'], 'completed_no_change')
         self.assertTrue(summary['buffer_cleared'])
         self.assertFalse(summary['writes_applied'])
-        user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
-        self.assertEqual(user_outcome['action'], 'raise_conflict')
+        self.assertTrue(summary['legacy_writer_disabled'])
+        self.assertEqual(summary['outcomes'], [])
         staging_state = store.get_identity_staging_state('conv-open-tension')
         self.assertEqual(staging_state['buffer_pairs_count'], 0)
-        self.assertEqual(staging_state['last_agent_status'], 'completed_with_open_tension')
-        self.assertEqual(staging_state['last_agent_reason'], 'completed_with_open_tension')
+        self.assertEqual(staging_state['last_agent_status'], 'completed_no_change')
+        self.assertEqual(staging_state['last_agent_reason'], 'legacy_writer_disabled')
 
         next_summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-open-tension',
@@ -571,7 +574,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(next_summary['last_agent_status'], 'buffering')
         self.assertIsNone(store.get_identity_staging_state('conv-open-tension')['last_agent_reason'])
 
-    def test_does_not_partially_commit_when_one_subject_is_terminally_rejected(self) -> None:
+    def test_valid_legacy_contract_does_not_enter_old_all_or_nothing_applicator(self) -> None:
         store = _InMemoryIdentityStore()
         existing_llm_content = _build_large_identity_block('Frida', min_length=3290)
         store.mutable['llm'] = {
@@ -626,24 +629,21 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             memory_store_module=store,
         )
 
-        self.assertEqual(summary['status'], 'skipped')
-        self.assertEqual(summary['reason_code'], 'all_or_nothing_rejected')
-        self.assertEqual(summary['last_agent_status'], 'apply_failed')
-        self.assertFalse(summary['buffer_cleared'])
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'legacy_writer_disabled')
+        self.assertEqual(summary['last_agent_status'], 'completed_no_change')
+        self.assertTrue(summary['buffer_cleared'])
         self.assertFalse(summary['writes_applied'])
-        self.assertEqual(summary['rejection_reasons'], {'llm': 'mutable_content_too_long'})
+        self.assertTrue(summary['legacy_writer_disabled'])
+        self.assertEqual(summary['rejection_reasons'], {})
         self.assertEqual(store.upsert_calls, [])
         self.assertEqual(store.mutable['llm']['content'], existing_llm_content)
         self.assertNotIn('user', store.mutable)
         self.assertEqual(
             store.get_identity_staging_state('conv-all-or-nothing')['buffer_pairs_count'],
-            memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+            0,
         )
-        user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
-        self.assertEqual(user_outcome['action'], 'no_change')
-        self.assertEqual(user_outcome['reason_code'], 'not_committed_due_to_peer_rejection')
-        self.assertEqual(user_outcome['old_len'], 0)
-        self.assertEqual(user_outcome['new_len'], 0)
+        self.assertEqual(summary['outcomes'], [])
 
     def test_preserves_buffer_when_agent_returns_invalid_contract(self) -> None:
         store = _InMemoryIdentityStore()
@@ -731,6 +731,52 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         )
         self.assertEqual(store.upsert_calls, [])
 
+    def test_preserves_buffer_when_agent_skips_window_too_large(self) -> None:
+        store = _InMemoryIdentityStore()
+        arbiter_module = SimpleNamespace(
+            run_identity_periodic_agent=lambda _payload: {
+                'status': 'skipped',
+                'reason_code': 'window_too_large',
+                'window_chars': 25000,
+                'payload_chars': 28000,
+                'estimated_prompt_tokens': 8500,
+                'max_window_chars': 24000,
+                'max_estimated_prompt_tokens': 8000,
+            }
+        )
+
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
+            memory_identity_periodic_agent.stage_identity_turn_pair(
+                'conv-window-too-large',
+                _pair(index),
+                arbiter_module=arbiter_module,
+                memory_store_module=store,
+            )
+
+        summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-window-too-large',
+            _pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS),
+            arbiter_module=arbiter_module,
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'window_too_large')
+        self.assertEqual(summary['last_agent_status'], 'window_too_large')
+        self.assertFalse(summary['buffer_cleared'])
+        self.assertTrue(summary['buffer_frozen'])
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(summary['window_chars'], 25000)
+        self.assertEqual(summary['payload_chars'], 28000)
+        self.assertEqual(summary['estimated_prompt_tokens'], 8500)
+        self.assertEqual(summary['max_window_chars'], 24000)
+        self.assertEqual(summary['max_estimated_prompt_tokens'], 8000)
+        self.assertEqual(
+            store.get_identity_staging_state('conv-window-too-large')['buffer_pairs_count'],
+            memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+        )
+        self.assertEqual(store.upsert_calls, [])
+
     def test_retry_reuses_exact_same_five_pair_window_after_failed_attempt(self) -> None:
         store = _InMemoryIdentityStore()
         observed_payloads: list[dict[str, Any]] = []
@@ -802,10 +848,12 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         )
         self.assertTrue(second_summary['buffer_frozen'])
         self.assertTrue(second_summary['buffer_cleared'])
+        self.assertEqual(second_summary['reason_code'], 'legacy_writer_disabled')
+        self.assertFalse(second_summary['writes_applied'])
         self.assertEqual(store.get_identity_staging_state('conv-retry-frozen')['buffer_pairs_count'], 0)
-        self.assertIn('attention stable', store.mutable['user']['content'])
+        self.assertEqual(store.mutable, {})
 
-    def test_marks_auto_canonization_suspension_and_preserves_buffer_when_double_saturation_blocks_promotion(self) -> None:
+    def test_valid_legacy_contract_does_not_enter_double_saturation_static_promotion(self) -> None:
         store = _InMemoryIdentityStore()
         proposition = 'Tof maintient une orientation stable et ritualisee.'
         filler = _build_large_identity_block('Tof', min_length=2980)
@@ -877,16 +925,18 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 memory_store_module=store,
             )
 
-        self.assertEqual(summary['status'], 'skipped')
-        self.assertEqual(summary['reason_code'], 'double_saturation')
-        self.assertEqual(summary['last_agent_status'], 'auto_canonization_suspended')
-        self.assertFalse(summary['buffer_cleared'])
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'legacy_writer_disabled')
+        self.assertEqual(summary['last_agent_status'], 'completed_no_change')
+        self.assertTrue(summary['buffer_cleared'])
         self.assertTrue(summary['buffer_frozen'])
-        self.assertTrue(summary['auto_canonization_suspended'])
+        self.assertFalse(summary['auto_canonization_suspended'])
         self.assertFalse(summary['writes_applied'])
+        self.assertTrue(summary['legacy_writer_disabled'])
         staging_state = store.get_identity_staging_state('conv-double-saturation')
-        self.assertEqual(staging_state['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
-        self.assertTrue(staging_state['auto_canonization_suspended'])
+        self.assertEqual(staging_state['buffer_pairs_count'], 0)
+        self.assertFalse(staging_state['auto_canonization_suspended'])
+        self.assertEqual(store.mutable['user']['content'], filler)
 
     def test_preserves_buffer_when_agent_raises_timeout(self) -> None:
         store = _InMemoryIdentityStore()

@@ -104,7 +104,7 @@ class _HpsIdentityStore:
         conversation_id: str,
         pair: list[dict[str, Any]],
         *,
-        target_pairs: int = 15,
+        target_pairs: int = chat_memory_flow.memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
     ) -> dict[str, Any] | None:
         state = copy.deepcopy(
             self.staging.get(
@@ -374,7 +374,7 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
                 },
                 "meta": {
                     "execution_status": "complete",
-                    "buffer_pairs_count": 15,
+                    "buffer_pairs_count": chat_memory_flow.memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
                     "window_complete": True,
                 },
             }
@@ -403,7 +403,8 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
         )
 
         try:
-            for index, pair in enumerate(role_play_window["pairs"], start=1):
+            target_pairs = chat_memory_flow.memory_identity_periodic_agent.BUFFER_TARGET_PAIRS
+            for index, pair in enumerate(role_play_window["pairs"][:target_pairs], start=1):
                 utterance_mode = str(pair["utterance_mode"])
                 arbiter_module = SimpleNamespace(
                     extract_identities=lambda _turns, mode=utterance_mode: [
@@ -433,7 +434,7 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
                         log_event=lambda event, **kwargs: events.append((event, dict(kwargs)))
                     ),
                 )
-                if index < 15:
+                if index < chat_memory_flow.memory_identity_periodic_agent.BUFFER_TARGET_PAIRS:
                     self.assertEqual(store.get_identity_staging_state("conv-hps-l2-role-play")["buffer_pairs_count"], index)
         finally:
             chat_memory_flow.memory_identity_periodic_agent.identity.load_llm_identity = original_load_llm
@@ -446,17 +447,21 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
             )
 
         self.assertEqual(len(observed_payloads), 1)
-        self.assertTrue(all(pair["user"]["content"] == "" for pair in observed_payloads[0]["buffer_pairs"]))
+        self.assertEqual(
+            [pair["user"]["content"] for pair in observed_payloads[0]["buffer_pairs"]],
+            [pair["user"] for pair in role_play_window["pairs"][: chat_memory_flow.memory_identity_periodic_agent.BUFFER_TARGET_PAIRS]],
+        )
         stage_event = [payload for event, payload in events if event == "identity_periodic_agent_apply"][-1]
         mode_event = [payload for event, payload in events if event == "identity_mode_apply"][-1]
         self.assertEqual(stage_event["status"], "ok")
-        self.assertEqual(stage_event["reason_code"], "completed_no_change")
+        self.assertEqual(stage_event["reason_code"], "legacy_writer_disabled")
         self.assertFalse(stage_event["writes_applied"])
+        self.assertTrue(stage_event["legacy_writer_disabled"])
         self.assertTrue(stage_event["buffer_cleared"])
         self.assertEqual(store.upsert_calls, [])
         self.assertEqual(store.mutable, {})
         self.assertFalse(mode_event["canonical_write_applied"])
-        self.assertEqual(mode_event["staging_reason_code"], "completed_no_change")
+        self.assertEqual(mode_event["staging_reason_code"], "legacy_writer_disabled")
 
     def test_l2_memory_corpus_links_retrieval_basket_arbitration_and_prompt_injection(self) -> None:
         corpus = _load_l2_corpus()

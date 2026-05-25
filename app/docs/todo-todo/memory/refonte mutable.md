@@ -62,12 +62,13 @@ Modules actifs constates:
   - Avant Lot 1, `BUFFER_TARGET_PAIRS = 15`; depuis Lot 1, la cible runtime transitoire est `5`.
   - Accumule un buffer dans `identity_mutable_staging`.
   - Appelle `arbiter.run_identity_periodic_agent(...)` quand le buffer atteint la cible.
-  - Appelle `memory_identity_periodic_apply.validate_periodic_agent_contract(...)` puis `apply_periodic_agent_contract(...)`.
-  - Nettoie le buffer seulement apres completion propre.
+  - En Lot 1 corrige, valide encore la forme du contrat legacy transitoire mais neutralise les ecritures canoniques score-first: `apply_periodic_agent_contract(...)` n'est plus appele dans le chemin actif tant que le juge Lot 2 n'existe pas.
+  - Nettoie le buffer apres retour techniquement termine et valide; preserve le buffer en cas d'erreur transport, JSON/contrat invalide ou fenetre trop grosse.
 - `app/memory/arbiter.py`
   - `run_identity_periodic_agent(...)` charge `app/prompts/identity_periodic_agent.txt`.
   - Modele et parametres viennent de `identity_periodic_model`: `temperature=0.0`, `top_p=1.0`, `max_tokens=1400`, timeout court, sauf override runtime.
-  - Le temporal guard actuel peut remplacer ou retirer des operations apres sortie modele; la cible doit le requalifier pour ne pas filtrer la matiere avant lecture.
+  - Le temporal guard annote les signaux relatifs faibles dans la fenetre, mais ne retire plus le texte avant lecture du modele.
+  - Ajoute une garde content-free de taille: si la fenetre depasse les limites configurees dans le code transitoire, pas d'appel modele, pas d'ecriture mutable, buffer preserve.
 - `app/prompts/identity_periodic_agent.txt`
   - Demande des operations locales par sujet.
   - Demande explicitement une grande prudence.
@@ -325,6 +326,8 @@ Cases:
 - [x] Garantir que chaque paire contient exactement un message user et un message assistant.
 - [x] Garantir que la fenetre envoyee au juge contient tout le texte utile des 5 paires.
 - [x] Ne pas faire de preselection semantique.
+- [x] Neutraliser les ecritures canoniques score-first pendant la transition Lot 1.
+- [x] Ajouter une garde taille content-free sans tronquer silencieusement la fenetre.
 - [x] Documenter la fenetre comme consommee apres run termine.
 - [x] Preserver la fenetre en cas de timeout, JSON invalide ou erreur transport.
 - [x] Eviter un gros staging historique ou multi-run.
@@ -336,6 +339,7 @@ Tests / preuves attendus:
 - [x] Cinquieme paire complete: appel juge avec les 5 paires entieres.
 - [x] Run termine: fenetre videe.
 - [x] Timeout ou JSON invalide: fenetre conservee pour retry.
+- [x] Fenetre trop grosse: pas d'appel modele, pas d'ecriture mutable, fenetre conservee.
 - [x] Le payload juge ne contient aucun champ de score.
 
 Critere de sortie:

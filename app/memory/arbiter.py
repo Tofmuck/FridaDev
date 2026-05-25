@@ -17,6 +17,11 @@ from memory import identity_temporal_guard
 logger = logging.getLogger('frida.arbiter')
 
 
+IDENTITY_PERIODIC_WINDOW_MAX_CHARS = 24_000
+IDENTITY_PERIODIC_ESTIMATED_PROMPT_TOKEN_LIMIT = 8_000
+_IDENTITY_PERIODIC_CHARS_PER_TOKEN_ESTIMATE = 4
+
+
 def _runtime_payload_value(payload: Mapping[str, Any], field: str, default: Any) -> Any:
     field_payload = payload.get(field)
     if not isinstance(field_payload, Mapping):
@@ -815,6 +820,47 @@ def _sanitize_identity_periodic_temporal_claims(
     return sanitized
 
 
+def _identity_periodic_window_chars(buffer_pairs: Sequence[Mapping[str, Any]]) -> int:
+    total = 0
+    for pair in list(buffer_pairs or []):
+        pair_payload = pair if isinstance(pair, Mapping) else {}
+        for role_key in ('user', 'assistant'):
+            message = pair_payload.get(role_key)
+            if isinstance(message, Mapping):
+                total += len(str(message.get('content') or ''))
+    return total
+
+
+def _identity_periodic_estimated_tokens(char_count: int) -> int:
+    if char_count <= 0:
+        return 0
+    return (int(char_count) + _IDENTITY_PERIODIC_CHARS_PER_TOKEN_ESTIMATE - 1) // _IDENTITY_PERIODIC_CHARS_PER_TOKEN_ESTIMATE
+
+
+def _identity_periodic_size_guard(
+    *,
+    buffer_pairs: Sequence[Mapping[str, Any]],
+    system_prompt: str,
+    model_input_json: str,
+) -> dict[str, Any]:
+    window_chars = _identity_periodic_window_chars(buffer_pairs)
+    payload_chars = len(model_input_json)
+    estimated_prompt_tokens = _identity_periodic_estimated_tokens(len(system_prompt) + payload_chars)
+    ok = (
+        window_chars <= IDENTITY_PERIODIC_WINDOW_MAX_CHARS
+        and estimated_prompt_tokens <= IDENTITY_PERIODIC_ESTIMATED_PROMPT_TOKEN_LIMIT
+    )
+    return {
+        'ok': ok,
+        'reason_code': '' if ok else 'window_too_large',
+        'window_chars': window_chars,
+        'payload_chars': payload_chars,
+        'estimated_prompt_tokens': estimated_prompt_tokens,
+        'max_window_chars': IDENTITY_PERIODIC_WINDOW_MAX_CHARS,
+        'max_estimated_prompt_tokens': IDENTITY_PERIODIC_ESTIMATED_PROMPT_TOKEN_LIMIT,
+    }
+
+
 def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any] | None:
     _inc_metric('identity_periodic_agent_call_count')
     if not isinstance(payload_input, dict):
@@ -829,20 +875,39 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
     if not system_prompt:
         return None
 
-    sanitized_buffer_pairs, source_summary = identity_temporal_guard.sanitized_buffer_pairs_with_source_summary(
+    annotated_buffer_pairs, source_summary = identity_temporal_guard.sanitized_buffer_pairs_with_source_summary(
         list(payload_input.get('buffer_pairs') or [])
     )
     payload_for_model = dict(payload_input)
-    payload_for_model['buffer_pairs'] = sanitized_buffer_pairs
+    payload_for_model['buffer_pairs'] = annotated_buffer_pairs
     payload_for_model['identity_temporal_policy'] = {
         'relative_claims_are_non_durable': True,
         'reject_markers': list(identity_temporal_guard.WEAK_RELATIVE_TEMPORAL_IDENTITY_MARKERS),
         'source_summary': source_summary,
         'instruction': (
-            'Reject weak relative temporal source claims instead of promoting them to mutable identity. '
-            'Only propose an operation for a subject when that subject has admissible non-relative source content.'
+            'Read the full buffer. Weak relative temporal markers are annotations, not removed source text. '
+            'Do not promote them to mutable identity.'
         ),
     }
+    model_input_json = json.dumps(payload_for_model, ensure_ascii=False, indent=2)
+    size_guard = _identity_periodic_size_guard(
+        buffer_pairs=annotated_buffer_pairs,
+        system_prompt=system_prompt,
+        model_input_json=model_input_json,
+    )
+    if not size_guard['ok']:
+        logger.warning(
+            'identity_periodic_agent_window_too_large model=%s window_chars=%s payload_chars=%s estimated_prompt_tokens=%s',
+            periodic_model,
+            size_guard['window_chars'],
+            size_guard['payload_chars'],
+            size_guard['estimated_prompt_tokens'],
+        )
+        return {
+            'status': 'skipped',
+            'reason_code': 'window_too_large',
+            **size_guard,
+        }
 
     payload = {
         'model': periodic_model,
@@ -850,7 +915,7 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
             {'role': 'system', 'content': system_prompt},
             {
                 'role': 'user',
-                'content': json.dumps(payload_for_model, ensure_ascii=False, indent=2),
+                'content': model_input_json,
             },
         ],
         'temperature': periodic_settings['temperature'],

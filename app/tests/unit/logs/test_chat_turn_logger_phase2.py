@@ -43,37 +43,16 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                 'identity_periodic_agent',
                 status='ok',
                 payload={
-                    'buffer_pairs_count': 15,
-                    'buffer_target_pairs': 15,
+                    'buffer_pairs_count': 5,
+                    'buffer_target_pairs': 5,
                     'buffer_cleared': True,
-                    'writes_applied': True,
-                    'promotions': [
-                        {
-                            'subject': 'llm',
-                            'operation_kind': 'add',
-                            'promotion_reason_code': 'promoted_to_static',
-                            'threshold_verdict': 'accepted',
-                            'strength': 0.91,
-                        }
-                    ],
-                    'outcomes': [
-                        {
-                            'subject': 'llm',
-                            'action': 'tighten',
-                            'old_len': 10,
-                            'new_len': 42,
-                            'validation_ok': True,
-                            'reason_code': 'tighten_applied',
-                        },
-                        {
-                            'subject': 'user',
-                            'action': 'raise_conflict',
-                            'old_len': 20,
-                            'new_len': 20,
-                            'validation_ok': True,
-                            'reason_code': 'raise_conflict',
-                        },
-                    ],
+                    'writes_applied': False,
+                    'legacy_writer_disabled': True,
+                    'window_chars': 1200,
+                    'payload_chars': 1800,
+                    'estimated_prompt_tokens': 700,
+                    'promotions': [],
+                    'outcomes': [],
                 },
                 prompt_kind='identity_periodic_agent',
             )
@@ -87,12 +66,10 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertNotIn('preview', payload)
         self.assertNotIn('buffer_pairs', payload)
         self.assertNotIn('candidates', payload)
-        self.assertEqual(len(payload['outcomes']), 2)
-        self.assertTrue(all('content' not in outcome for outcome in payload['outcomes']))
-        self.assertTrue(all(outcome['action'] != 'rewrite' for outcome in payload['outcomes']))
-        self.assertTrue(all(outcome['reason_code'] != 'rewrite_applied' for outcome in payload['outcomes']))
-        self.assertEqual(len(payload['promotions']), 1)
-        self.assertTrue(all('content' not in promotion for promotion in payload['promotions']))
+        self.assertEqual(payload['outcomes'], [])
+        self.assertEqual(payload['promotions'], [])
+        self.assertTrue(payload['legacy_writer_disabled'])
+        self.assertEqual(payload['buffer_target_pairs'], 5)
 
 class ChatInstrumentationPhase2Tests(unittest.TestCase):
     def test_record_arbiter_decisions_emits_compact_arbiter_reasons_and_fallback(self) -> None:

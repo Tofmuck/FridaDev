@@ -364,7 +364,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                                     '{"llm":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
                                     '"user":{"operations":[{"kind":"add","proposition":"En ce moment l utilisateur est anxieux",'
                                     '"reason":"current state"}]},'
-                                    '"meta":{"execution_status":"complete","buffer_pairs_count":15,"window_complete":true}}'
+                                    '"meta":{"execution_status":"complete","buffer_pairs_count":5,"window_complete":true}}'
                                 )
                             }
                         }
@@ -384,8 +384,8 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             result = arbiter.run_identity_periodic_agent(
                 {
                     'buffer_pairs': [],
-                    'buffer_pairs_count': 15,
-                    'buffer_target_pairs': 15,
+                    'buffer_pairs_count': 5,
+                    'buffer_target_pairs': 5,
                     'identities': {
                         'llm': {'static': 'Frida statique', 'mutable_current': ''},
                         'user': {'static': 'Utilisateur statique', 'mutable_current': ''},
@@ -511,7 +511,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             return FakeResponse(
                 '{"llm":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
                 '"user":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
-                '"meta":{"execution_status":"complete","buffer_pairs_count":15,"window_complete":true}}',
+                '"meta":{"execution_status":"complete","buffer_pairs_count":5,"window_complete":true}}',
                 generation_id='gen-3',
                 model='anthropic/claude-haiku-4.5-periodic',
             )
@@ -542,8 +542,8 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                             'assistant': {'role': 'assistant', 'content': 'salut'},
                         }
                     ],
-                    'buffer_pairs_count': 15,
-                    'buffer_target_pairs': 15,
+                    'buffer_pairs_count': 5,
+                    'buffer_target_pairs': 5,
                     'identities': {
                         'llm': {'static': 'Frida statique', 'mutable_current': ''},
                         'user': {'static': 'Utilisateur statique', 'mutable_current': ''},
@@ -579,7 +579,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 },
                 'meta': {
                     'execution_status': 'complete',
-                    'buffer_pairs_count': 15,
+                    'buffer_pairs_count': 5,
                     'window_complete': True,
                 },
             },
@@ -650,6 +650,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         original_get_memory_settings = arbiter.runtime_settings.get_memory_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
+        original_or_headers = arbiter.llm_client.or_headers
         original_or_url = arbiter.llm_client.or_chat_completions_url
 
         def fake_get_identity_periodic_model_settings():
@@ -697,7 +698,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             return FakeResponse(
                 '{"llm":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
                 '"user":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
-                '"meta":{"execution_status":"complete","buffer_pairs_count":15,"window_complete":true}}'
+                '"meta":{"execution_status":"complete","buffer_pairs_count":5,"window_complete":true}}'
             )
 
         arbiter.runtime_settings.get_identity_extractor_model_settings = fake_get_identity_extractor_model_settings
@@ -705,6 +706,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         arbiter.runtime_settings.get_memory_arbiter_model_settings = fake_get_memory_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
+        arbiter.llm_client.or_headers = lambda caller='llm': {'Authorization': f'caller={caller}'}
         arbiter.llm_client.or_chat_completions_url = lambda: 'https://openrouter.test/chat/completions'
         try:
             arbiter.filter_traces_with_diagnostics(
@@ -722,8 +724,8 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                             'assistant': {'role': 'assistant', 'content': 'salut'},
                         }
                     ],
-                    'buffer_pairs_count': 15,
-                    'buffer_target_pairs': 15,
+                    'buffer_pairs_count': 5,
+                    'buffer_target_pairs': 5,
                     'identities': {
                         'llm': {'static': 'Frida statique', 'mutable_current': ''},
                         'user': {'static': 'Utilisateur statique', 'mutable_current': ''},
@@ -737,6 +739,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             arbiter.runtime_settings.get_memory_arbiter_model_settings = original_get_memory_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
+            arbiter.llm_client.or_headers = original_or_headers
             arbiter.llm_client.or_chat_completions_url = original_or_url
 
         self.assertEqual(

@@ -11,6 +11,9 @@ from observability import chat_turn_logger
 
 WINDOW_TARGET_PAIRS = 5
 BUFFER_TARGET_PAIRS = 5
+LEGACY_CANONICAL_WRITES_ENABLED = False
+LEGACY_WRITER_DISABLED_REASON = 'legacy_writer_disabled'
+_AGENT_PREFLIGHT_SKIP_REASONS = {'window_too_large'}
 
 
 def _text(value: Any) -> str:
@@ -128,9 +131,60 @@ def _emit_periodic_agent_event(
             'last_agent_status': _text(summary.get('last_agent_status')),
             'outcomes': list(summary.get('outcomes') or []),
             'rejection_reasons': dict(summary.get('rejection_reasons') or {}),
+            'legacy_writer_disabled': bool(summary.get('legacy_writer_disabled')),
+            **{
+                key: summary.get(key)
+                for key in (
+                    'window_chars',
+                    'payload_chars',
+                    'estimated_prompt_tokens',
+                    'max_window_chars',
+                    'max_estimated_prompt_tokens',
+                )
+                if summary.get(key) is not None
+            },
         },
         prompt_kind='identity_periodic_agent',
     )
+
+
+def _size_guard_fields(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        key: payload.get(key)
+        for key in (
+            'window_chars',
+            'payload_chars',
+            'estimated_prompt_tokens',
+            'max_window_chars',
+            'max_estimated_prompt_tokens',
+        )
+        if payload.get(key) is not None
+    }
+
+
+def _legacy_writer_disabled_summary(
+    *,
+    buffer_pairs_count: int,
+    buffer_target_pairs: int,
+    buffer_frozen: bool,
+    auto_canonization_suspended: bool,
+) -> dict[str, Any]:
+    return {
+        'status': 'ok',
+        'reason_code': LEGACY_WRITER_DISABLED_REASON,
+        'buffer_pairs_count': buffer_pairs_count,
+        'buffer_target_pairs': buffer_target_pairs,
+        'last_agent_status': 'completed_no_change',
+        'buffer_cleared': True,
+        'buffer_frozen': buffer_frozen,
+        'auto_canonization_suspended': auto_canonization_suspended,
+        'writes_applied': False,
+        'promotion_count': 0,
+        'promotions': [],
+        'outcomes': [],
+        'rejection_reasons': {},
+        'legacy_writer_disabled': True,
+    }
 
 
 def stage_identity_turn_pair(
@@ -159,6 +213,7 @@ def stage_identity_turn_pair(
             'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
+            'legacy_writer_disabled': False,
         }
         _emit_periodic_agent_event(status='skipped', reason_code='staging_store_unavailable', summary=summary)
         return summary
@@ -179,6 +234,7 @@ def stage_identity_turn_pair(
             'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
+            'legacy_writer_disabled': False,
         }
         _emit_periodic_agent_event(status='skipped', reason_code='incomplete_turn_pair', summary=summary)
         return summary
@@ -203,6 +259,7 @@ def stage_identity_turn_pair(
             'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
+            'legacy_writer_disabled': False,
         }
         _emit_periodic_agent_event(status='error', reason_code='staging_append_failed', summary=summary)
         return summary
@@ -226,6 +283,7 @@ def stage_identity_turn_pair(
             'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
+            'legacy_writer_disabled': False,
         }
 
     mark_status(
@@ -256,6 +314,7 @@ def stage_identity_turn_pair(
             'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
+            'legacy_writer_disabled': False,
         }
         _emit_periodic_agent_event(status='skipped', reason_code='agent_unavailable', summary=summary)
         return summary
@@ -278,6 +337,7 @@ def stage_identity_turn_pair(
             'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
+            'legacy_writer_disabled': False,
         }
         _emit_periodic_agent_event(status='error', reason_code='agent_call_error', summary=summary)
         return summary
@@ -298,8 +358,38 @@ def stage_identity_turn_pair(
             'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
+            'legacy_writer_disabled': False,
         }
         _emit_periodic_agent_event(status='skipped', reason_code='agent_call_failed', summary=summary)
+        return summary
+
+    agent_status = _text(contract_payload.get('status'))
+    agent_reason = _text(contract_payload.get('reason_code'))
+    if agent_status == 'skipped' and agent_reason in _AGENT_PREFLIGHT_SKIP_REASONS:
+        mark_status(
+            conversation_id,
+            status=agent_reason,
+            reason=agent_reason,
+            touch_run_ts=False,
+        )
+        summary = {
+            'status': 'skipped',
+            'reason_code': agent_reason,
+            'buffer_pairs_count': buffer_pairs_count,
+            'buffer_target_pairs': buffer_target_pairs,
+            'last_agent_status': agent_reason,
+            'buffer_cleared': False,
+            'buffer_frozen': buffer_frozen,
+            'auto_canonization_suspended': auto_canonization_suspended,
+            'writes_applied': False,
+            'promotion_count': 0,
+            'promotions': [],
+            'outcomes': [],
+            'rejection_reasons': {},
+            'legacy_writer_disabled': False,
+            **_size_guard_fields(contract_payload),
+        }
+        _emit_periodic_agent_event(status='skipped', reason_code=agent_reason, summary=summary)
         return summary
 
     validated_contract, validation_reason = memory_identity_periodic_apply.validate_periodic_agent_contract(
@@ -323,8 +413,25 @@ def stage_identity_turn_pair(
             'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
+            'legacy_writer_disabled': False,
         }
         _emit_periodic_agent_event(status='skipped', reason_code=validation_reason or 'contract_invalid', summary=summary)
+        return summary
+
+    if not LEGACY_CANONICAL_WRITES_ENABLED:
+        clear_buffer(
+            conversation_id,
+            status='completed_no_change',
+            reason=LEGACY_WRITER_DISABLED_REASON,
+            auto_canonization_suspended=auto_canonization_suspended,
+        )
+        summary = _legacy_writer_disabled_summary(
+            buffer_pairs_count=buffer_pairs_count,
+            buffer_target_pairs=buffer_target_pairs,
+            buffer_frozen=buffer_frozen,
+            auto_canonization_suspended=auto_canonization_suspended,
+        )
+        _emit_periodic_agent_event(status='ok', reason_code=LEGACY_WRITER_DISABLED_REASON, summary=summary)
         return summary
 
     apply_summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
@@ -359,6 +466,7 @@ def stage_identity_turn_pair(
             'promotions': list(apply_summary.get('promotions') or []),
             'outcomes': list(apply_summary.get('outcomes') or []),
             'rejection_reasons': dict(apply_summary.get('rejection_reasons') or {}),
+            'legacy_writer_disabled': False,
         }
         _emit_periodic_agent_event(
             status='skipped' if suspended else 'error',
@@ -388,6 +496,7 @@ def stage_identity_turn_pair(
         'promotions': list(apply_summary.get('promotions') or []),
         'outcomes': list(apply_summary.get('outcomes') or []),
         'rejection_reasons': dict(apply_summary.get('rejection_reasons') or {}),
+        'legacy_writer_disabled': False,
     }
     _emit_periodic_agent_event(status='ok', reason_code=str(summary['reason_code']), summary=summary)
     return summary

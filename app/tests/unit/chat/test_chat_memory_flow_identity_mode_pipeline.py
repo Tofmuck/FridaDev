@@ -191,7 +191,7 @@ class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
             "record_legacy_identity_diagnostics_and_stage",
         )
 
-    def test_record_identity_entries_for_mode_does_not_pass_partial_read_overclaim_to_identity_buffer(self) -> None:
+    def test_record_identity_entries_for_mode_passes_complete_pair_to_identity_buffer_after_guarding_diagnostics(self) -> None:
         events = []
         observed = {
             "persisted": None,
@@ -266,7 +266,7 @@ class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
             observed["buffered_turn_pair"],
             [
                 {"role": "user", "content": "Peux-tu le lire ?"},
-                {"role": "assistant", "content": ""},
+                {"role": "assistant", "content": "Claims to have read the full article in detail"},
             ],
         )
         stage_event = _event_payloads(events, "identity_periodic_agent_apply")[0]

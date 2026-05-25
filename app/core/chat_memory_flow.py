@@ -21,7 +21,6 @@ _HERMENEUTIC_MODE_OFF = 'off'
 _HERMENEUTIC_MODE_SHADOW = 'shadow'
 _HERMENEUTIC_MODE_ENFORCED_IDENTITIES = 'enforced_identities'
 _HERMENEUTIC_MODE_ENFORCED_ALL = 'enforced_all'
-_IDENTITY_BUFFER_EPHEMERAL_MODES = {'irony', 'role_play'}
 
 
 def resolve_hermeneutic_mode(config_module: Any) -> str:
@@ -113,48 +112,6 @@ def _guard_filtered_summary(
     return identity_observability.summarize_guard_filtered_entries(filtered_entries)
 
 
-def _ephemeral_identity_buffer_roles(identity_entries: Sequence[Mapping[str, Any]]) -> set[str]:
-    roles: set[str] = set()
-    for entry in identity_entries:
-        payload = dict(entry or {})
-        utterance_mode = str(payload.get('utterance_mode') or '').strip().lower()
-        if utterance_mode not in _IDENTITY_BUFFER_EPHEMERAL_MODES:
-            continue
-        subject = str(payload.get('subject') or '').strip().lower()
-        if subject == 'user':
-            roles.add('user')
-        elif subject == 'llm':
-            roles.add('assistant')
-    return roles
-
-
-def _sanitize_turn_pair_for_identity_buffer(
-    turn_pair: Sequence[Mapping[str, Any]],
-    *,
-    web_input: Mapping[str, Any] | None,
-    identity_entries: Sequence[Mapping[str, Any]] | None = None,
-) -> list[dict[str, Any]]:
-    sanitized: list[dict[str, Any]] = []
-    ephemeral_roles = _ephemeral_identity_buffer_roles(identity_entries or [])
-    for turn in list(turn_pair)[:2]:
-        canonical_turn = dict(turn or {})
-        role = str(canonical_turn.get('role') or '').strip().lower()
-        content = str(canonical_turn.get('content') or '').strip()
-        if role in ephemeral_roles and content:
-            canonical_turn['content'] = ''
-            sanitized.append(canonical_turn)
-            continue
-        if role == 'assistant' and content:
-            reason = hermeneutics_policy.unsupported_web_reading_claim_reason(
-                {'subject': 'llm', 'content': content},
-                web_input=web_input,
-            )
-            if reason:
-                canonical_turn['content'] = ''
-        sanitized.append(canonical_turn)
-    return sanitized
-
-
 def _log_stage_latency(
     conversation_id: str,
     stage: str,
@@ -225,6 +182,7 @@ def _run_periodic_identity_agent(
             'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
+            'legacy_writer_disabled': False,
         }
         admin_logs_module.log_event(
             'identity_periodic_agent_apply',
@@ -242,8 +200,20 @@ def _run_periodic_identity_agent(
             rejection_reasons={},
             outcomes=[],
             error_class=exc.__class__.__name__,
+            legacy_writer_disabled=False,
         )
     else:
+        size_fields = {
+            key: summary.get(key)
+            for key in (
+                'window_chars',
+                'payload_chars',
+                'estimated_prompt_tokens',
+                'max_window_chars',
+                'max_estimated_prompt_tokens',
+            )
+            if summary.get(key) is not None
+        }
         admin_logs_module.log_event(
             'identity_periodic_agent_apply',
             conversation_id=conversation_id,
@@ -262,6 +232,8 @@ def _run_periodic_identity_agent(
             rejection_reasons=dict(summary.get('rejection_reasons') or {}),
             last_agent_status=str(summary.get('last_agent_status') or ''),
             outcomes=list(summary.get('outcomes') or []),
+            legacy_writer_disabled=bool(summary.get('legacy_writer_disabled')),
+            **size_fields,
         )
     _log_stage_latency(
         conversation_id,
@@ -686,11 +658,7 @@ def record_identity_entries_for_mode(
     )
     guard_filtered_count = len(guard_filtered_entries)
     guard_counts_by_side, guard_reason_codes_by_side = _guard_filtered_summary(guard_filtered_entries)
-    buffered_turn_pair = _sanitize_turn_pair_for_identity_buffer(
-        turn_pair,
-        web_input=web_input,
-        identity_entries=filtered_entries,
-    )
+    buffered_turn_pair = [dict(turn or {}) for turn in list(turn_pair or [])]
 
     if mode_enforces_identity(mode):
         # This legacy pipeline remains diagnostic/history only; active canon writes
@@ -726,6 +694,7 @@ def record_identity_entries_for_mode(
             promotion_count=int(periodic_summary.get('promotion_count') or 0),
             promotions=list(periodic_summary.get('promotions') or []),
             rejection_reasons=dict(periodic_summary.get('rejection_reasons') or {}),
+            legacy_writer_disabled=bool(periodic_summary.get('legacy_writer_disabled')),
         )
         return
 

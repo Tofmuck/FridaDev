@@ -141,9 +141,9 @@ class IdentityTemporalGuardTests(unittest.TestCase):
                     'assistant': {'role': 'assistant', 'content': 'Je note ce point.'},
                 }
             ]
-            * 15,
-            'buffer_pairs_count': 15,
-            'buffer_target_pairs': 15,
+            * 5,
+            'buffer_pairs_count': 5,
+            'buffer_target_pairs': 5,
             'identities': {
                 'llm': {'static': 'Frida statique', 'mutable_current': ''},
                 'user': {'static': 'Utilisateur statique', 'mutable_current': ''},
@@ -156,7 +156,7 @@ class IdentityTemporalGuardTests(unittest.TestCase):
             {
                 'llm': {'operations': [{'kind': 'no_change', 'proposition': '', 'reason': 'no update'}]},
                 'user': {'operations': [{'kind': 'add', 'proposition': proposition, 'reason': reason}]},
-                'meta': {'execution_status': 'complete', 'buffer_pairs_count': 15, 'window_complete': True},
+                'meta': {'execution_status': 'complete', 'buffer_pairs_count': 5, 'window_complete': True},
             },
             ensure_ascii=False,
         )
@@ -174,14 +174,14 @@ class IdentityTemporalGuardTests(unittest.TestCase):
             [{'kind': 'no_change', 'proposition': '', 'reason': 'weak relative temporal identity source rejected'}],
         )
         payload = json_lib.loads(user_content)
-        self.assertEqual(payload['buffer_pairs'][0]['user']['content'], '')
+        self.assertEqual(payload['buffer_pairs'][0]['user']['content'], "Aujourd'hui je suis anxieux.")
         self.assertEqual(
             payload['buffer_pairs'][0]['user']['temporal_source_guard'],
-            'weak_relative_temporal_claim_removed',
+            'weak_relative_temporal_claim_present',
         )
         self.assertEqual(
             payload['identity_temporal_policy']['source_summary']['user']['weak_relative_source_count'],
-            15,
+            5,
         )
 
     def test_periodic_keeps_non_relative_operation_from_admissible_source(self) -> None:
@@ -200,8 +200,45 @@ class IdentityTemporalGuardTests(unittest.TestCase):
         self.assertEqual(payload['buffer_pairs'][0]['user']['content'], 'Je garde une attention durable.')
         self.assertEqual(
             payload['identity_temporal_policy']['source_summary']['user']['admissible_source_count'],
-            15,
+            5,
         )
+
+    def test_periodic_skips_without_provider_call_when_window_is_too_large(self) -> None:
+        originals = (
+            arbiter.runtime_settings.get_identity_periodic_model_settings,
+            arbiter._load_prompt,
+            arbiter.requests.post,
+        )
+
+        def fake_get_identity_periodic_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='identity_periodic_model',
+                payload=runtime_settings.build_env_seed_bundle('identity_periodic_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        def forbidden_post(*_args, **_kwargs):
+            raise AssertionError('provider call must not happen for an oversized window')
+
+        arbiter.runtime_settings.get_identity_periodic_model_settings = fake_get_identity_periodic_model_settings
+        arbiter._load_prompt = lambda path, label: 'prompt'
+        arbiter.requests.post = forbidden_post
+        try:
+            result = arbiter.run_identity_periodic_agent(
+                self._periodic_payload('x' * (arbiter.IDENTITY_PERIODIC_WINDOW_MAX_CHARS + 1))
+            )
+        finally:
+            (
+                arbiter.runtime_settings.get_identity_periodic_model_settings,
+                arbiter._load_prompt,
+                arbiter.requests.post,
+            ) = originals
+
+        self.assertEqual(result['status'], 'skipped')
+        self.assertEqual(result['reason_code'], 'window_too_large')
+        self.assertGreater(result['window_chars'], arbiter.IDENTITY_PERIODIC_WINDOW_MAX_CHARS)
+        self.assertEqual(result['max_window_chars'], arbiter.IDENTITY_PERIODIC_WINDOW_MAX_CHARS)
 
 
 if __name__ == '__main__':

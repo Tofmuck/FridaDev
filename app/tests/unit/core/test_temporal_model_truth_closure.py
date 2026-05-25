@@ -374,7 +374,7 @@ class TemporalModelTruthClosureTests(unittest.TestCase):
             [],
         )
 
-        sanitized_pairs, periodic_summary = identity_temporal_guard.sanitized_buffer_pairs_with_source_summary(
+        annotated_pairs, periodic_summary = identity_temporal_guard.sanitized_buffer_pairs_with_source_summary(
             [
                 {
                     "user": {"role": "user", "content": "Aujourd'hui je suis anxieux."},
@@ -382,7 +382,11 @@ class TemporalModelTruthClosureTests(unittest.TestCase):
                 }
             ]
         )
-        self.assertEqual(sanitized_pairs[0]["user"]["content"], "")
+        self.assertEqual(annotated_pairs[0]["user"]["content"], "Aujourd'hui je suis anxieux.")
+        self.assertEqual(
+            annotated_pairs[0]["user"]["temporal_source_guard"],
+            "weak_relative_temporal_claim_present",
+        )
         periodic_result = arbiter._sanitize_identity_periodic_temporal_claims(
             {
                 "user": {
