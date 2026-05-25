@@ -17,7 +17,7 @@ from admin import runtime_settings
 from core import chat_prompt_context
 from core import llm_client
 from identity import identity, static_identity_content, static_identity_paths
-from memory import memory_identity_periodic_apply
+from memory import mutable_identity_apply
 import config
 
 
@@ -452,7 +452,7 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(used_ids, [])
         self.assertEqual(identity_ids, [])
 
-    def test_llm_mutable_accepted_by_periodic_apply_reaches_identity_input_block_and_prompt_payload(self) -> None:
+    def test_llm_mutable_accepted_by_judge_apply_reaches_identity_input_block_and_prompt_payload(self) -> None:
         class MutableStore:
             def __init__(self) -> None:
                 self.mutable: dict[str, dict[str, str | None]] = {}
@@ -486,20 +486,45 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
             def clear_mutable_identity(self, subject: str, **_kwargs):
                 return self.mutable.pop(subject, None)
 
-        def support_buffer(proposition: str, sentinel: str) -> list[dict[str, dict[str, str]]]:
-            return [
-                {
-                    'user': {
-                        'role': 'user',
-                        'content': f'utilisateur confirme {proposition}. {sentinel}-{index}',
-                    },
-                    'assistant': {
-                        'role': 'assistant',
-                        'content': f'assistant reformule {proposition}. {sentinel}-{index}',
-                    },
-                }
-                for index in range(15)
-            ]
+            def apply_mutable_identity_subject_updates(self, updates):
+                results = []
+                for item in updates:
+                    if item.get('mutation_kind') == 'clear':
+                        results.append(self.clear_mutable_identity(item.get('subject'), updated_by=item.get('updated_by')))
+                        continue
+                    results.append(
+                        self.upsert_mutable_identity(
+                            item.get('subject'),
+                            item.get('content'),
+                            item.get('source_trace_id'),
+                            updated_by=item.get('updated_by'),
+                            update_reason=item.get('update_reason'),
+                            audit_reason_code=item.get('audit_reason_code'),
+                        )
+                    )
+                return results
+
+        def verdict(
+            *,
+            subject: str,
+            verdict_kind: str,
+            operation: str = '',
+            proposition: str = '',
+            reason_code: str,
+            continuity_kind: str = 'none',
+        ) -> dict[str, object]:
+            return {
+                'subject': subject,
+                'verdict': verdict_kind,
+                'operation': operation,
+                'proposition': proposition,
+                'target': '',
+                'targets': [],
+                'reason_code': reason_code,
+                'continuity_kind': continuity_kind,
+                'source_refs': ['pair_01'] if verdict_kind == 'persist' else [],
+                'guard_notes': [],
+            }
 
         original_get_resources = identity.runtime_settings.get_resources_settings
         original_app_root = static_identity_paths.APP_ROOT
@@ -515,23 +540,25 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         staging_sentinel = 'TRACE_BUFFER_NE_DOIT_PAS_ETRE_INJECTEE'
 
         contract = {
-            'llm': {
-                'operations': [
-                    {
-                        'kind': 'add',
-                        'proposition': llm_mutable,
-                        'reason': 'signal identitaire stable observe',
-                    }
-                ]
-            },
-            'user': {
-                'operations': [
-                    {'kind': 'no_change', 'proposition': '', 'reason': 'aucune mutation user durable'},
-                ]
-            },
+            'schema_version': 'mutable_judge_v1',
+            'verdicts': [
+                verdict(
+                    subject='llm',
+                    verdict_kind='persist',
+                    operation='add',
+                    proposition=llm_mutable,
+                    reason_code='explicit_frida_self_definition_continuity',
+                    continuity_kind='posture',
+                ),
+                verdict(
+                    subject='user',
+                    verdict_kind='no_change',
+                    reason_code='no_mutable_identity_signal',
+                ),
+            ],
             'meta': {
                 'execution_status': 'complete',
-                'buffer_pairs_count': 15,
+                'window_pairs_count': 5,
                 'window_complete': True,
             },
         }
@@ -557,14 +584,6 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                     source_reason='db_row',
                 )
 
-            def read_static_snapshot(subject: str) -> SimpleNamespace:
-                content = llm_static if subject == 'llm' else user_static
-                return SimpleNamespace(
-                    content=content,
-                    raw_content=content,
-                    resolved_path=identity_dir / ('llm_identity.txt' if subject == 'llm' else 'user_identity.txt'),
-                )
-
             identity.runtime_settings.get_resources_settings = fake_get_resources_settings
             static_identity_paths.APP_ROOT = tmp_path / 'app'
             static_identity_paths.REPO_ROOT = tmp_path
@@ -574,13 +593,9 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                 payload={'model': {'value': 'openrouter/test-no-network'}}
             )
             try:
-                summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+                summary = mutable_identity_apply.apply_mutable_judge_contract(
                     contract,
-                    buffer_pairs=support_buffer(llm_mutable, staging_sentinel),
                     memory_store_module=store,
-                    load_llm_identity_fn=lambda: llm_static,
-                    load_user_identity_fn=lambda: user_static,
-                    read_static_identity_snapshot_fn=read_static_snapshot,
                 )
                 payload = identity.build_identity_input()
                 block, used_ids = identity.build_identity_block()
@@ -609,13 +624,13 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(summary['reason_code'], 'applied')
         self.assertTrue(summary['writes_applied'])
         self.assertEqual(store.mutable['llm']['content'], llm_mutable)
-        self.assertEqual(store.mutable['llm']['updated_by'], 'identity_periodic_agent')
-        self.assertEqual(store.mutable['llm']['update_reason'], 'periodic_agent')
-        self.assertEqual(store.upsert_calls, [('llm', llm_mutable, 'identity_periodic_agent', 'periodic_agent')])
+        self.assertEqual(store.mutable['llm']['updated_by'], 'mutable_identity_judge_apply')
+        self.assertEqual(store.mutable['llm']['update_reason'], 'mutable_judge_persist')
+        self.assertEqual(store.upsert_calls, [('llm', llm_mutable, 'mutable_identity_judge_apply', 'mutable_judge_persist')])
 
         self.assertEqual(payload['schema_version'], 'v2')
         self.assertEqual(payload['frida']['mutable']['content'], llm_mutable)
-        self.assertEqual(payload['frida']['mutable']['updated_by'], 'identity_periodic_agent')
+        self.assertEqual(payload['frida']['mutable']['updated_by'], 'mutable_identity_judge_apply')
         self.assertEqual(payload['user']['mutable']['content'], '')
 
         model_section = block.split("[IDENTITÉ DE L'UTILISATEUR]")[0]

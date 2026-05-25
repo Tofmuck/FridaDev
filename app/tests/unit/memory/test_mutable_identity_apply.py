@@ -19,7 +19,6 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from memory import memory_identity_periodic_scoring
 from memory import mutable_identity_apply
 import config
 
@@ -514,20 +513,15 @@ class MutableIdentityApplyTests(unittest.TestCase):
 
     def test_singular_judged_add_is_not_rejected_for_lack_of_recurrence_or_score(self) -> None:
         store = _MutableStore()
-        original_score_operation = memory_identity_periodic_scoring.score_operation
-        memory_identity_periodic_scoring.score_operation = lambda *_args, **_kwargs: self.fail('legacy scoring must not be called')
-        try:
-            summary = mutable_identity_apply.apply_mutable_judge_contract(
-                _contract(
-                    _persist(
-                        proposition='User recognizes a singular durable limit.',
-                        reason_code='explicit_self_limit_continuity',
-                    )
-                ),
-                memory_store_module=store,
-            )
-        finally:
-            memory_identity_periodic_scoring.score_operation = original_score_operation
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(
+                _persist(
+                    proposition='User recognizes a singular durable limit.',
+                    reason_code='explicit_self_limit_continuity',
+                )
+            ),
+            memory_store_module=store,
+        )
 
         self.assertEqual(summary['status'], 'ok')
         self.assertTrue(summary['writes_applied'])

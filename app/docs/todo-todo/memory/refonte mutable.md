@@ -73,28 +73,21 @@ Modules actifs constates:
 - `app/memory/mutable_identity_judge.py`
   - `run_mutable_identity_judge(...)` charge `app/prompts/identity_mutable_judge.txt` pour le chemin actif Lot 4.
 - `app/memory/arbiter.py`
-  - `run_identity_periodic_agent(...)` et `app/prompts/identity_periodic_agent.txt` restent legacy pre-refonte jusqu'au nettoyage Lot 6.
-  - Modele et parametres viennent de `identity_periodic_model`: `temperature=0.0`, `top_p=1.0`, `max_tokens=1400`, timeout court, sauf override runtime.
-  - Le temporal guard annote les signaux relatifs faibles dans la fenetre, mais ne retire plus le texte avant lecture du modele.
-  - Ajoute une garde content-free de taille: si la fenetre depasse les limites configurees, pas d'appel modele, pas d'ecriture mutable, buffer preserve.
+  - `run_identity_periodic_agent(...)` est desactive depuis Lot 6: il retourne un resume compact `legacy_identity_periodic_agent_disabled` et ne fait plus d'appel provider.
+  - Le slot runtime `identity_periodic_model` reste une compatibilite de nom pour piloter le juge mutable actif, jusqu'a un renommage separe.
+  - `run_mutable_identity_judge(...)` delegue au module actif `mutable_identity_judge.py`.
 - `app/prompts/identity_periodic_agent.txt`
-  - Prompt legacy pre-refonte, hors chemin actif Lot 4.
-  - Demande des operations locales par sujet.
-  - Demande explicitement une grande prudence.
-  - Rappelle que Python calcule ensuite des champs de force locale.
-  - Exemple meta encore cale sur l'ancienne fenetre longue.
+  - Artefact legacy desactive depuis Lot 6, conserve pour compatibilite documentaire/admin et tests de chargement de prompt.
+  - N'est pas le prompt runtime actif et ne doit pas redevenir un writer score-first.
 - `app/prompts/identity_mutable_judge.txt`
   - Prompt actif du juge mutable.
   - Declare les verdicts, operations, continuity kinds et reason codes du contrat `mutable_judge_v1`.
 - `app/memory/memory_identity_periodic_scoring.py`
-  - Calcule une force locale a partir du support lexical, de la recurrence et de la distance dans la fenetre.
-  - Donne un verdict deterministe utilise avant application.
+  - Supprime en Lot 6.
+  - L'ancien scoring lexical/frequence/recence n'existe plus comme module runtime.
 - `app/memory/memory_identity_periodic_apply.py`
-  - Valide le JSON de l'agent.
-  - Recalcule un score par operation.
-  - Rejette ou reporte selon verdict local.
-  - Peut planifier une promotion du mutable vers le statique.
-  - Ecrit `identity_mutables` et peut aussi ecrire le statique avec rollback.
+  - Supprime en Lot 6.
+  - L'ancien applicateur score-first ne peut plus ecrire `identity_mutables` ni promouvoir vers le statique.
 - `app/memory/memory_identity_staging.py`
   - Stocke une fenetre conversationnelle par `conversation_id` dans `identity_mutable_staging`.
   - Fige la fenetre quand la cible est atteinte.
@@ -108,7 +101,7 @@ Modules actifs constates:
 - `app/identity/identity_governance.py`
   - Depuis micro-correctif Lot 4, expose la fenetre judge-first comme active et requalifie scoring / promotion static comme legacy pre-refonte inactive.
 - `app/admin/admin_identity_read_model_service.py`
-  - Avant correction Lot 1, exposait encore `promotion_to_static_enabled=true` comme si le writer score-first pouvait promouvoir le mutable vers le statique.
+  - Avant correction Lot 1, exposait encore la promotion mutable-vers-statique comme active alors que le writer score-first devait etre neutralise.
   - Depuis correction pre-Lot 2, expose `promotion_to_static_enabled=false`, `score_first_writer_enabled=false` et des statuts legacy neutralises.
   - Depuis Lot 4, expose `mutable_writer_pipeline=mutable_identity_judge_first`, `mutable_judge_writer_enabled=true`, `promotion_to_static_enabled=false`, `score_first_writer_enabled=false` et les dernieres activites `mutable_identity_judge` compactes.
 
@@ -123,8 +116,8 @@ Tables / structures persistantes:
 Tests et docs actuels a requalifier:
 
 - `app/tests/unit/memory/test_identity_periodic_agent_phase1.py`
-- `app/tests/unit/memory/test_identity_periodic_apply_phase2.py`
-- `app/tests/unit/memory/test_identity_periodic_scoring_phase2.py`
+- `app/tests/unit/memory/test_identity_periodic_apply_phase2.py` supprime en Lot 6.
+- `app/tests/unit/memory/test_identity_periodic_scoring_phase2.py` supprime en Lot 6.
 - `app/tests/unit/chat/test_chat_memory_flow_identity_mode_pipeline.py`
 - `app/tests/test_server_admin_identity_read_model_phase2.py`
 - `app/tests/unit/logs/test_chat_turn_logger_phase2.py`
@@ -534,26 +527,26 @@ Objectif: retirer la couche morte et les tests qui valident l'ancien modele.
 
 Cases:
 
-- [ ] Supprimer ou archiver `app/memory/memory_identity_periodic_scoring.py`.
-- [ ] Supprimer ou requalifier les tests de scoring.
+- [x] Supprimer ou archiver `app/memory/memory_identity_periodic_scoring.py`.
+- [x] Supprimer ou requalifier les tests de scoring.
 - [ ] Retirer `identity_mutable_staging` du runtime actif si le nouveau stockage de fenetre n'en a plus besoin.
 - [ ] Supprimer les index inutiles lies au staging ancien apres decision migration.
-- [ ] Requalifier ou supprimer `identity_periodic_agent.txt`.
-- [ ] Retirer les imports morts.
-- [ ] Retirer les reason codes legacy du chemin actif.
-- [ ] Nettoyer docs/specs/README qui presentent l'ancien modele comme vivant.
-- [ ] Garder les archives dans `todo-done/` comme archives, pas comme specs actives.
+- [x] Requalifier ou supprimer `identity_periodic_agent.txt`.
+- [x] Retirer les imports morts.
+- [x] Retirer les reason codes legacy du chemin actif.
+- [x] Nettoyer docs/specs/README qui presentent l'ancien modele comme vivant.
+- [x] Garder les archives dans `todo-done/` comme archives, pas comme specs actives.
 
 Tests / preuves attendus:
 
-- [ ] Grep code: aucun appel actif a l'ancien scoring.
-- [ ] Grep code: aucun writer mutable ancien dans le chemin enforced.
-- [ ] Grep docs actives: l'ancien modele est seulement legacy.
-- [ ] Suite identity/memory adaptee.
+- [x] Grep code: aucun appel actif a l'ancien scoring.
+- [x] Grep code: aucun writer mutable ancien dans le chemin enforced.
+- [x] Grep docs actives: l'ancien modele est seulement legacy.
+- [x] Suite identity/memory adaptee.
 
 Critere de sortie:
 
-- [ ] Il ne reste pas deux systemes mutables concurrents.
+- [x] Il ne reste pas deux systemes mutables concurrents.
 
 Risque principal:
 

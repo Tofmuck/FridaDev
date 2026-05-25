@@ -151,94 +151,20 @@ class IdentityTemporalGuardTests(unittest.TestCase):
             'mutable_budget': {'target_chars': 3000, 'max_chars': 3300},
         }
 
-    def _periodic_response(self, proposition: str, reason: str) -> str:
-        return json_lib.dumps(
-            {
-                'llm': {'operations': [{'kind': 'no_change', 'proposition': '', 'reason': 'no update'}]},
-                'user': {'operations': [{'kind': 'add', 'proposition': proposition, 'reason': reason}]},
-                'meta': {'execution_status': 'complete', 'buffer_pairs_count': 5, 'window_complete': True},
-            },
-            ensure_ascii=False,
-        )
-
-    def test_periodic_rejects_paraphrased_operation_from_weak_source_buffer(self) -> None:
-        result, user_content = self._run_with_fake_llm(
-            self._periodic_response('L utilisateur est anxieux', 'paraphrased weak source'),
-            lambda: arbiter.run_identity_periodic_agent(
-                self._periodic_payload("Aujourd'hui je suis anxieux.")
-            ),
-        )
-
-        self.assertEqual(
-            result['user']['operations'],
-            [{'kind': 'no_change', 'proposition': '', 'reason': 'weak relative temporal identity source rejected'}],
-        )
-        payload = json_lib.loads(user_content)
-        self.assertEqual(payload['buffer_pairs'][0]['user']['content'], "Aujourd'hui je suis anxieux.")
-        self.assertEqual(
-            payload['buffer_pairs'][0]['user']['temporal_source_guard'],
-            'weak_relative_temporal_claim_present',
-        )
-        self.assertEqual(
-            payload['identity_temporal_policy']['source_summary']['user']['weak_relative_source_count'],
-            5,
-        )
-
-    def test_periodic_keeps_non_relative_operation_from_admissible_source(self) -> None:
-        result, user_content = self._run_with_fake_llm(
-            self._periodic_response('L utilisateur garde une attention durable', 'durable repeated source'),
-            lambda: arbiter.run_identity_periodic_agent(
-                self._periodic_payload('Je garde une attention durable.')
-            ),
-        )
-
-        self.assertEqual(
-            result['user']['operations'][0]['proposition'],
-            'L utilisateur garde une attention durable',
-        )
-        payload = json_lib.loads(user_content)
-        self.assertEqual(payload['buffer_pairs'][0]['user']['content'], 'Je garde une attention durable.')
-        self.assertEqual(
-            payload['identity_temporal_policy']['source_summary']['user']['admissible_source_count'],
-            5,
-        )
-
-    def test_periodic_skips_without_provider_call_when_window_is_too_large(self) -> None:
-        originals = (
-            arbiter.runtime_settings.get_identity_periodic_model_settings,
-            arbiter._load_prompt,
-            arbiter.requests.post,
-        )
-
-        def fake_get_identity_periodic_model_settings():
-            return runtime_settings.RuntimeSectionView(
-                section='identity_periodic_model',
-                payload=runtime_settings.build_env_seed_bundle('identity_periodic_model').payload,
-                source='env',
-                source_reason='empty_table',
-            )
-
-        def forbidden_post(*_args, **_kwargs):
-            raise AssertionError('provider call must not happen for an oversized window')
-
-        arbiter.runtime_settings.get_identity_periodic_model_settings = fake_get_identity_periodic_model_settings
-        arbiter._load_prompt = lambda path, label: 'prompt'
-        arbiter.requests.post = forbidden_post
+    def test_periodic_agent_compatibility_entrypoint_is_disabled_without_provider_call(self) -> None:
+        original_post = arbiter.requests.post
+        arbiter.requests.post = lambda *_args, **_kwargs: self.fail('legacy periodic provider call must not happen')
         try:
             result = arbiter.run_identity_periodic_agent(
-                self._periodic_payload('x' * (arbiter.IDENTITY_PERIODIC_WINDOW_MAX_CHARS + 1))
+                self._periodic_payload("Aujourd'hui je suis anxieux.")
             )
         finally:
-            (
-                arbiter.runtime_settings.get_identity_periodic_model_settings,
-                arbiter._load_prompt,
-                arbiter.requests.post,
-            ) = originals
+            arbiter.requests.post = original_post
 
         self.assertEqual(result['status'], 'skipped')
-        self.assertEqual(result['reason_code'], 'window_too_large')
-        self.assertGreater(result['window_chars'], arbiter.IDENTITY_PERIODIC_WINDOW_MAX_CHARS)
-        self.assertEqual(result['max_window_chars'], arbiter.IDENTITY_PERIODIC_WINDOW_MAX_CHARS)
+        self.assertEqual(result['reason_code'], 'legacy_identity_periodic_agent_disabled')
+        self.assertTrue(result['legacy_writer_disabled'])
+        self.assertFalse(result['writes_applied'])
 
 
 if __name__ == '__main__':

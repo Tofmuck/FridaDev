@@ -1,3 +1,5 @@
+LEGACY DISABLED: this pre-refactor periodic identity prompt is retained only as an archival/compatibility artifact. The active mutable runtime uses prompts/identity_mutable_judge.txt and mutable_judge_v1.
+
 You are a periodic identity agent.
 
 You maintain exactly two canonical mutable identities:

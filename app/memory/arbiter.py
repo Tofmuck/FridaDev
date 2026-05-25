@@ -18,11 +18,6 @@ from memory import mutable_identity_judge
 logger = logging.getLogger('frida.arbiter')
 
 
-IDENTITY_PERIODIC_WINDOW_MAX_CHARS = 32_000
-IDENTITY_PERIODIC_ESTIMATED_PROMPT_TOKEN_LIMIT = 12_000
-_IDENTITY_PERIODIC_CHARS_PER_TOKEN_ESTIMATE = 4
-
-
 def _runtime_payload_value(payload: Mapping[str, Any], field: str, default: Any) -> Any:
     field_payload = payload.get(field)
     if not isinstance(field_payload, Mapping):
@@ -60,19 +55,6 @@ def _runtime_identity_extractor_settings() -> dict[str, Any]:
     }
 
 
-def _runtime_identity_periodic_settings() -> dict[str, Any]:
-    view = runtime_settings.get_identity_periodic_model_settings()
-    payload = view.payload
-    return {
-        'model': str(_runtime_payload_value(payload, 'model', config.IDENTITY_PERIODIC_MODEL)).strip()
-        or config.IDENTITY_PERIODIC_MODEL,
-        'temperature': float(_runtime_payload_value(payload, 'temperature', config.IDENTITY_PERIODIC_TEMPERATURE)),
-        'top_p': float(_runtime_payload_value(payload, 'top_p', config.IDENTITY_PERIODIC_TOP_P)),
-        'max_tokens': int(_runtime_payload_value(payload, 'max_tokens', config.IDENTITY_PERIODIC_MAX_TOKENS)),
-        'timeout_s': int(_runtime_payload_value(payload, 'timeout_s', config.IDENTITY_PERIODIC_TIMEOUT_S)),
-    }
-
-
 _ALLOWED_STABILITY = {'durable', 'episodic', 'unknown'}
 _ALLOWED_UTTERANCE_MODE = {
     'self_description',
@@ -90,10 +72,8 @@ _METRICS: Dict[str, int] = {
     'arbiter_call_count': 0,
     'identity_extractor_call_count': 0,
     'identity_legacy_rewriter_disabled_count': 0,
-    'identity_periodic_agent_call_count': 0,
     'arbiter_parse_error_count': 0,
     'identity_parse_error_count': 0,
-    'identity_periodic_agent_parse_error_count': 0,
     'arbiter_fallback_count': 0,
 }
 
@@ -767,199 +747,24 @@ def rewrite_identity_mutables(payload_input: Dict[str, Any]) -> Dict[str, Any] |
     return None
 
 
-def _sanitize_identity_periodic_temporal_claims(
-    result: Dict[str, Any],
-    *,
-    source_summary: Mapping[str, Any] | None = None,
-) -> Dict[str, Any]:
-    sanitized = dict(result)
-    for subject in ('llm', 'user'):
-        subject_payload = sanitized.get(subject)
-        if not isinstance(subject_payload, dict):
-            continue
-        raw_operations = subject_payload.get('operations')
-        if not isinstance(raw_operations, list):
-            continue
-
-        retained_operations: list[dict[str, Any]] = []
-        rejected_count = 0
-        rejection_reason = ''
-        for operation in raw_operations:
-            if not isinstance(operation, dict):
-                continue
-            operation_payload = dict(operation)
-            proposition = str(operation_payload.get('proposition') or '')
-            kind = str(operation_payload.get('kind') or '')
-            if kind == 'no_change':
-                retained_operations.append(operation_payload)
-                continue
-            if identity_temporal_guard.has_weak_relative_temporal_marker(proposition):
-                rejected_count += 1
-                rejection_reason = rejection_reason or 'relative temporal identity signal rejected'
-                continue
-            if not identity_temporal_guard.subject_has_admissible_source(source_summary, subject):
-                rejected_count += 1
-                rejection_reason = rejection_reason or identity_temporal_guard.rejection_reason_for_subject(
-                    source_summary,
-                    subject,
-                )
-                continue
-            retained_operations.append(operation_payload)
-
-        if rejected_count and not retained_operations:
-            retained_operations = [
-                {
-                    'kind': 'no_change',
-                    'proposition': '',
-                    'reason': rejection_reason or identity_temporal_guard.rejection_reason_for_subject(
-                        source_summary,
-                        subject,
-                    ),
-                }
-            ]
-        subject_payload['operations'] = retained_operations
-    return sanitized
-
-
-def _identity_periodic_window_chars(buffer_pairs: Sequence[Mapping[str, Any]]) -> int:
-    total = 0
-    for pair in list(buffer_pairs or []):
-        pair_payload = pair if isinstance(pair, Mapping) else {}
-        for role_key in ('user', 'assistant'):
-            message = pair_payload.get(role_key)
-            if isinstance(message, Mapping):
-                total += len(str(message.get('content') or ''))
-    return total
-
-
-def _identity_periodic_estimated_tokens(char_count: int) -> int:
-    if char_count <= 0:
-        return 0
-    return (int(char_count) + _IDENTITY_PERIODIC_CHARS_PER_TOKEN_ESTIMATE - 1) // _IDENTITY_PERIODIC_CHARS_PER_TOKEN_ESTIMATE
-
-
-def _identity_periodic_size_guard(
-    *,
-    buffer_pairs: Sequence[Mapping[str, Any]],
-    system_prompt: str,
-    model_input_json: str,
-) -> dict[str, Any]:
-    window_chars = _identity_periodic_window_chars(buffer_pairs)
-    payload_chars = len(model_input_json)
-    estimated_prompt_tokens = _identity_periodic_estimated_tokens(len(system_prompt) + payload_chars)
-    ok = (
-        window_chars <= IDENTITY_PERIODIC_WINDOW_MAX_CHARS
-        and estimated_prompt_tokens <= IDENTITY_PERIODIC_ESTIMATED_PROMPT_TOKEN_LIMIT
+def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]:
+    logger.info(
+        'identity_periodic_agent_disabled reason=legacy_pre_refactor_removed payload_type=%s',
+        payload_input.__class__.__name__,
     )
     return {
-        'ok': ok,
-        'reason_code': '' if ok else 'window_too_large',
-        'window_chars': window_chars,
-        'payload_chars': payload_chars,
-        'estimated_prompt_tokens': estimated_prompt_tokens,
-        'max_window_chars': IDENTITY_PERIODIC_WINDOW_MAX_CHARS,
-        'max_estimated_prompt_tokens': IDENTITY_PERIODIC_ESTIMATED_PROMPT_TOKEN_LIMIT,
+        'status': 'skipped',
+        'reason_code': 'legacy_identity_periodic_agent_disabled',
+        'runtime_pipeline': 'mutable_identity_judge_first',
+        'prompt_kind': 'identity_periodic_agent_legacy_disabled',
+        'legacy_writer_disabled': True,
+        'legacy_writer_disabled_reason': 'score_first_writer_removed_in_lot6',
+        'writes_applied': False,
+        'promotion_count': 0,
+        'promotions': [],
+        'outcomes': [],
+        'rejection_reasons': {},
     }
-
-
-def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any] | None:
-    _inc_metric('identity_periodic_agent_call_count')
-    if not isinstance(payload_input, dict):
-        return None
-
-    periodic_settings = _runtime_identity_periodic_settings()
-    periodic_model = periodic_settings['model']
-    system_prompt = _load_prompt(
-        config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH,
-        'identity_periodic_agent',
-    )
-    if not system_prompt:
-        return None
-
-    annotated_buffer_pairs, source_summary = identity_temporal_guard.sanitized_buffer_pairs_with_source_summary(
-        list(payload_input.get('buffer_pairs') or [])
-    )
-    payload_for_model = dict(payload_input)
-    payload_for_model['buffer_pairs'] = annotated_buffer_pairs
-    payload_for_model['identity_temporal_policy'] = {
-        'relative_claims_are_non_durable': True,
-        'reject_markers': list(identity_temporal_guard.WEAK_RELATIVE_TEMPORAL_IDENTITY_MARKERS),
-        'source_summary': source_summary,
-        'instruction': (
-            'Read the full buffer. Weak relative temporal markers are annotations, not removed source text. '
-            'Do not promote them to mutable identity.'
-        ),
-    }
-    model_input_json = json.dumps(payload_for_model, ensure_ascii=False, indent=2)
-    size_guard = _identity_periodic_size_guard(
-        buffer_pairs=annotated_buffer_pairs,
-        system_prompt=system_prompt,
-        model_input_json=model_input_json,
-    )
-    if not size_guard['ok']:
-        logger.warning(
-            'identity_periodic_agent_window_too_large model=%s window_chars=%s payload_chars=%s estimated_prompt_tokens=%s',
-            periodic_model,
-            size_guard['window_chars'],
-            size_guard['payload_chars'],
-            size_guard['estimated_prompt_tokens'],
-        )
-        return {
-            'status': 'skipped',
-            'reason_code': 'window_too_large',
-            **size_guard,
-        }
-
-    payload = {
-        'model': periodic_model,
-        'messages': [
-            {'role': 'system', 'content': system_prompt},
-            {
-                'role': 'user',
-                'content': model_input_json,
-            },
-        ],
-        'temperature': periodic_settings['temperature'],
-        'top_p': periodic_settings['top_p'],
-        'max_tokens': periodic_settings['max_tokens'],
-    }
-    payload = llm_client.with_provider_attribution(payload, caller='identity_periodic_agent')
-
-    try:
-        response = requests.post(
-            llm_client.or_chat_completions_url(),
-            json=payload,
-            headers=llm_client.or_headers(caller='identity_periodic_agent'),
-            timeout=periodic_settings['timeout_s'],
-        )
-        response.raise_for_status()
-        response_payload = llm_client.read_openrouter_response_payload(response)
-        llm_client.log_provider_metadata(
-            logger,
-            'identity_periodic_agent_provider_response',
-            llm_client.extract_openrouter_provider_metadata(
-                response_payload,
-                requested_model=periodic_model,
-            ),
-        )
-        raw = llm_client.extract_openrouter_text(response_payload)
-        result = _sanitize_identity_periodic_temporal_claims(
-            _safe_json_loads(raw),
-            source_summary=source_summary,
-        )
-        logger.info('identity_periodic_agent_result keys=%s', sorted(result.keys()))
-        return result
-    except requests.exceptions.Timeout:
-        logger.warning('identity_periodic_agent_timeout model=%s', periodic_model)
-        return None
-    except Exception as exc:
-        parse_count = _inc_metric('identity_periodic_agent_parse_error_count')
-        logger.error(
-            'identity_periodic_agent_error err=%s parse_error_count=%s',
-            exc,
-            parse_count,
-        )
-        return None
 
 
 def run_mutable_identity_judge(payload_input: Dict[str, Any]) -> Dict[str, Any]:

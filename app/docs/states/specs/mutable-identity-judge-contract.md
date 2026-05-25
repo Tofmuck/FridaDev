@@ -69,14 +69,15 @@ record_identity_entries_for_mode(...)
 
 Regles runtime:
 
-- le nom historique `memory_identity_periodic_agent` ne designe plus un writer score-first actif; il sert de wrapper de fenetre jusqu'au nettoyage legacy;
-- `arbiter.run_identity_periodic_agent(...)` et `app/prompts/identity_periodic_agent.txt` restent legacy pre-refonte et ne sont plus le chemin actif;
+- le nom historique `memory_identity_periodic_agent` ne designe plus un writer score-first actif; il sert de wrapper de fenetre tant que le stockage technique reste `identity_mutable_staging`;
+- `arbiter.run_identity_periodic_agent(...)` est une entree de compatibilite desactivee depuis Lot 6: pas d'appel provider, pas d'ecriture canonique, retour content-free `legacy_identity_periodic_agent_disabled`;
+- `app/prompts/identity_periodic_agent.txt` est un artefact legacy desactive, conserve pour compatibilite documentaire/admin, pas un prompt runtime actif;
 - en `shadow`, le juge peut etre appele et observe, mais l'applicateur n'est pas lance et `identity_mutables` ne change pas;
 - en `enforced`, un contrat `mutable_judge_v1` valide peut etre applique dans `identity_mutables`;
 - si le juge echoue, timeout, renvoie JSON/schema invalide ou `window_too_large`, la fenetre est preservee;
 - si l'applicateur echoue, la fenetre est preservee;
 - si le run se termine proprement par `no_change`, `reject`, `defer`, `raise_tension` ou par persistence appliquee, la fenetre est consommee;
-- aucun chemin actif n'appelle `memory_identity_periodic_apply.apply_periodic_agent_contract(...)` ni `memory_identity_periodic_scoring.score_operation(...)`;
+- aucun chemin actif n'appelle `memory_identity_periodic_apply.apply_periodic_agent_contract(...)` ni `memory_identity_periodic_scoring.score_operation(...)`; les modules legacy correspondants ont ete retires en Lot 6;
 - aucun chemin actif n'ecrit `static`.
 
 ## Entrees Du Juge

@@ -335,51 +335,9 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         self.assertEqual(observed['payload']['max_tokens'], 321)
         self.assertEqual(observed['timeout'], 17)
 
-    def test_identity_periodic_agent_rejects_weak_relative_temporal_operations(self) -> None:
-        observed = {'user_content': ''}
-        original_get_periodic_settings = arbiter.runtime_settings.get_identity_periodic_model_settings
-        original_load_prompt = arbiter._load_prompt
+    def test_identity_periodic_agent_compatibility_entrypoint_is_disabled(self) -> None:
         original_post = arbiter.requests.post
-        original_or_headers = arbiter.llm_client.or_headers
-        original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
-
-        def fake_get_identity_periodic_model_settings():
-            return runtime_settings.RuntimeSectionView(
-                section='identity_periodic_model',
-                payload=runtime_settings.build_env_seed_bundle('identity_periodic_model').payload,
-                source='env',
-                source_reason='empty_table',
-            )
-
-        class FakeResponse:
-            def raise_for_status(self) -> None:
-                return None
-
-            def json(self):
-                return {
-                    'choices': [
-                        {
-                            'message': {
-                                'content': (
-                                    '{"llm":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
-                                    '"user":{"operations":[{"kind":"add","proposition":"En ce moment l utilisateur est anxieux",'
-                                    '"reason":"current state"}]},'
-                                    '"meta":{"execution_status":"complete","buffer_pairs_count":5,"window_complete":true}}'
-                                )
-                            }
-                        }
-                    ]
-                }
-
-        def fake_post(_url, json, headers, timeout):
-            observed['user_content'] = json['messages'][1]['content']
-            return FakeResponse()
-
-        arbiter.runtime_settings.get_identity_periodic_model_settings = fake_get_identity_periodic_model_settings
-        arbiter._load_prompt = lambda path, label: 'prompt'
-        arbiter.requests.post = fake_post
-        arbiter.llm_client.or_headers = lambda caller='identity_periodic_agent': {'Authorization': f'caller={caller}'}
-        arbiter.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
+        arbiter.requests.post = lambda *_args, **_kwargs: self.fail('legacy periodic provider call must not happen')
         try:
             result = arbiter.run_identity_periodic_agent(
                 {
@@ -394,23 +352,12 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 }
             )
         finally:
-            arbiter.runtime_settings.get_identity_periodic_model_settings = original_get_periodic_settings
-            arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
-            arbiter.llm_client.or_headers = original_or_headers
-            arbiter.llm_client.log_provider_metadata = original_log_provider_metadata
 
-        self.assertEqual(
-            result['user']['operations'],
-            [
-                {
-                    'kind': 'no_change',
-                    'proposition': '',
-                    'reason': 'relative temporal identity signal rejected',
-                }
-            ],
-        )
-        self.assertIn('identity_temporal_policy', observed['user_content'])
+        self.assertEqual(result['status'], 'skipped')
+        self.assertEqual(result['reason_code'], 'legacy_identity_periodic_agent_disabled')
+        self.assertTrue(result['legacy_writer_disabled'])
+        self.assertFalse(result['writes_applied'])
 
     def test_arbiter_calls_use_runtime_model_from_db_when_present(self) -> None:
         observed_models = []
@@ -506,15 +453,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                     generation_id='gen-1',
                     model='mistralai/mistral-small-2603',
                 )
-            if len(observed_models) == 2:
-                return FakeResponse('{"entries":[]}', generation_id='gen-2')
-            return FakeResponse(
-                '{"llm":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
-                '"user":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
-                '"meta":{"execution_status":"complete","buffer_pairs_count":5,"window_complete":true}}',
-                generation_id='gen-3',
-                model='anthropic/claude-haiku-4.5-periodic',
-            )
+            return FakeResponse('{"entries":[]}', generation_id='gen-2')
 
         arbiter.runtime_settings.get_identity_extractor_model_settings = fake_get_identity_extractor_model_settings
         arbiter.runtime_settings.get_identity_periodic_model_settings = fake_get_identity_periodic_model_settings
@@ -564,47 +503,22 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         self.assertEqual(kept, [])
         self.assertEqual(len(decisions), 1)
         self.assertEqual(entries, [])
-        self.assertEqual(
-            periodic,
-            {
-                'llm': {
-                    'operations': [
-                        {'kind': 'no_change', 'proposition': '', 'reason': 'no update'},
-                    ],
-                },
-                'user': {
-                    'operations': [
-                        {'kind': 'no_change', 'proposition': '', 'reason': 'no update'},
-                    ],
-                },
-                'meta': {
-                    'execution_status': 'complete',
-                    'buffer_pairs_count': 5,
-                    'window_complete': True,
-                },
-            },
-        )
+        self.assertEqual(periodic['status'], 'skipped')
+        self.assertEqual(periodic['reason_code'], 'legacy_identity_periodic_agent_disabled')
         self.assertEqual(
             observed_models,
-            ['mistralai/mistral-small-2603', 'openai/gpt-5.4-mini', 'anthropic/claude-haiku-4.5-periodic'],
+            ['mistralai/mistral-small-2603', 'openai/gpt-5.4-mini'],
         )
-        self.assertEqual(observed_payloads[2]['temperature'], 0.0)
-        self.assertEqual(observed_payloads[2]['top_p'], 1.0)
-        self.assertEqual(observed_payloads[2]['max_tokens'], 1400)
         self.assertEqual(observed_payloads[0]['metadata']['frida_caller'], 'memory_arbiter')
         self.assertEqual(observed_payloads[0]['metadata']['frida_slot'], 'memory_arbiter_model')
         self.assertEqual(observed_payloads[1]['metadata']['frida_caller'], 'identity_extractor')
         self.assertEqual(observed_payloads[1]['metadata']['frida_slot'], 'identity_extractor_model')
-        self.assertEqual(observed_payloads[2]['metadata']['frida_caller'], 'identity_periodic')
-        self.assertEqual(observed_payloads[2]['metadata']['frida_slot'], 'identity_periodic_model')
-        self.assertEqual(observed_payloads[2]['trace']['trace_name'], 'FridaDev')
-        self.assertEqual(observed_timeouts[2], 45)
+        self.assertEqual(observed_timeouts, [45, 44])
         self.assertEqual(
             observed_headers,
             [
                 {'Authorization': 'caller=arbiter'},
                 {'Authorization': 'caller=identity_extractor'},
-                {'Authorization': 'caller=identity_periodic_agent'},
             ],
         )
         self.assertEqual(
@@ -625,16 +539,6 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                     {
                         'provider_generation_id': 'gen-2',
                         'provider_model': 'openai/gpt-5.4-mini',
-                        'provider_prompt_tokens': 10,
-                        'provider_completion_tokens': 3,
-                        'provider_total_tokens': 13,
-                    },
-                ),
-                (
-                    'identity_periodic_agent_provider_response',
-                    {
-                        'provider_generation_id': 'gen-3',
-                        'provider_model': 'anthropic/claude-haiku-4.5-periodic',
                         'provider_prompt_tokens': 10,
                         'provider_completion_tokens': 3,
                         'provider_total_tokens': 13,
@@ -693,13 +597,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 return FakeResponse(
                     '{"decisions":[{"candidate_id":"0","keep":false,"semantic_relevance":0.1,"contextual_gain":0.1,"redundant_with_recent":false,"reason":"noop"}]}'
                 )
-            if len(observed_models) == 2:
-                return FakeResponse('{"entries":[]}')
-            return FakeResponse(
-                '{"llm":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
-                '"user":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
-                '"meta":{"execution_status":"complete","buffer_pairs_count":5,"window_complete":true}}'
-            )
+            return FakeResponse('{"entries":[]}')
 
         arbiter.runtime_settings.get_identity_extractor_model_settings = fake_get_identity_extractor_model_settings
         arbiter.runtime_settings.get_identity_periodic_model_settings = fake_get_identity_periodic_model_settings
@@ -744,7 +642,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
         self.assertEqual(
             observed_models,
-            [config.MEMORY_ARBITER_MODEL, config.IDENTITY_EXTRACTOR_MODEL, config.IDENTITY_PERIODIC_MODEL],
+            [config.MEMORY_ARBITER_MODEL, config.IDENTITY_EXTRACTOR_MODEL],
         )
 
 

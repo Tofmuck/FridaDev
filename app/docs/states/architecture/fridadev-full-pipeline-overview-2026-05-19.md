@@ -301,13 +301,13 @@ L'extracteur identity travaille apres le tour assistant sur le dernier couple ut
 
 En mode shadow, les resultats peuvent rester evidence/diagnostic. En mode enforced identity, l'ancien chemin de persistance legacy reste diagnostic et le vrai chemin canonique passe par le buffer periodic.
 
-### Periodic identity agent
+### Mutable identity judge
 
-L'agent periodic identity ne fait pas le meme travail que l'extracteur au tour.
+Le chemin mutable actif ne passe plus par l'ancien agent periodic score-first.
 
-L'extracteur repere des signaux immediats dans un couple de messages. Le periodic agent attend que plusieurs paires soient accumulees dans un buffer, relit l'identite statique/mutable existante et propose des operations plus canonisantes. Son contrat est valide strictement avant application.
+L'extracteur repere encore des signaux immediats dans un couple de messages comme diagnostics hors canon. Le chemin mutable canonique attend une fenetre technique de 5 paires completes, relit les identites `static` et `mutable_current`, puis appelle le juge `mutable_judge_v1`.
 
-Si la validation echoue, si l'appel echoue ou si l'auto-canonisation est suspendue, le systeme logue et saute l'application. Les operations appliquees passent par `memory_identity_periodic_apply`.
+Si le juge echoue, timeout, renvoie un contrat invalide ou si l'applicateur echoue, la fenetre est preservee. Les seules operations canoniques passent par `mutable_identity_apply.apply_mutable_judge_contract(...)`; l'ancien applicateur `memory_identity_periodic_apply` a ete retire.
 
 ### Resume conversationnel
 

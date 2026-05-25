@@ -22,7 +22,6 @@ if str(APP_DIR) not in sys.path:
 from observability import chat_turn_logger
 from observability import log_store
 from memory import memory_identity_periodic_agent
-from memory import memory_identity_periodic_scoring
 from identity import static_identity_content
 
 
@@ -994,13 +993,8 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
     def test_new_runtime_does_not_call_legacy_scoring_or_static_writer(self) -> None:
         store = _InMemoryIdentityStore()
         proposition = 'Tof maintient une limite durable sur les promesses intenables.'
-        original_score_operation = memory_identity_periodic_scoring.score_operation
         original_write_static = static_identity_content.write_static_identity_content
-        calls = {'score': 0, 'static': 0}
-
-        def forbidden_score(*_args: Any, **_kwargs: Any) -> Any:
-            calls['score'] += 1
-            raise AssertionError('legacy score_operation must not run')
+        calls = {'static': 0}
 
         def forbidden_static(*_args: Any, **_kwargs: Any) -> Any:
             calls['static'] += 1
@@ -1009,7 +1003,6 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         arbiter_module = SimpleNamespace(
             run_mutable_identity_judge=lambda _payload: _judge_ok(_contract(_persist_add('user', proposition)))
         )
-        memory_identity_periodic_scoring.score_operation = forbidden_score
         static_identity_content.write_static_identity_content = forbidden_static
         try:
             for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
@@ -1027,24 +1020,23 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 memory_store_module=store,
             )
         finally:
-            memory_identity_periodic_scoring.score_operation = original_score_operation
             static_identity_content.write_static_identity_content = original_write_static
 
         self.assertEqual(summary['status'], 'ok')
         self.assertEqual(summary['reason_code'], 'applied')
         self.assertTrue(summary['writes_applied'])
-        self.assertEqual(calls, {'score': 0, 'static': 0})
+        self.assertEqual(calls, {'static': 0})
         self.assertEqual(store.mutable['user']['content'], proposition)
 
-    def test_valid_legacy_contract_does_not_enter_double_saturation_static_promotion(self) -> None:
+    def test_judge_first_contract_does_not_enter_double_saturation_static_promotion(self) -> None:
         store = _InMemoryIdentityStore()
         proposition = 'Tof maintient une orientation stable et ritualisee.'
         filler = _build_large_identity_block('Tof', min_length=2980)
         store.mutable['user'] = {
             'subject': 'user',
             'content': filler,
-            'updated_by': 'identity_periodic_agent',
-            'update_reason': 'periodic_agent',
+            'updated_by': 'legacy_fixture',
+            'update_reason': 'pre_refactor_fixture',
         }
 
         arbiter_module = SimpleNamespace(
