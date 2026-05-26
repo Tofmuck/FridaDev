@@ -1,24 +1,88 @@
 # Mutable identity judge-first - final validation - 2026-05-25
 
-Statut: validation finale Lot 7, corrigee par smoke reel LLM du juge mutable.
+Statut: validation historique Lot 7, mise a jour apres le cutover add-only
+ontologique `mutable_judge_v2` et le smoke reel Lot D.
 
 Branche validee: `feature/mutable-refonte`
 
 ## Conclusion
 
-La refonte mutable judge-first est validee comme pipeline actif:
+La refonte mutable judge-first est maintenant validee comme pipeline actif
+add-only ontologique:
 
 ```text
 5 paires completes user/assistant
--> mutable_identity_judge
--> mutable_judge_v1
--> mutable_identity_judge_apply
+-> mutable_identity_judge_v2
+-> mutable_judge_v2
+-> mutable_identity_judge_apply append-only
 -> identity_mutables
 -> identity_mutable_audit content-free
 -> reinjection static + mutable
 ```
 
 L'ancien writer mutable score-first n'est plus un systeme actif. Les modules `memory_identity_periodic_apply.py` et `memory_identity_periodic_scoring.py` ont ete retires. `arbiter.run_identity_periodic_agent()` reste une entree de compatibilite desactivee et ne fait pas d'appel provider.
+
+Les sections historiques ci-dessous qui parlent de `mutable_judge_v1`,
+`persist`, `tighten`, `merge`, `clear_obsolete`, `target_ref` ou `target_refs`
+documentent les etapes pre-Lot B. Le contrat actif automatique depuis Lot B est
+`mutable_judge_v2`: verdicts `add` / `no_change` uniquement, sans operation ni
+maintenance automatique du canon existant.
+
+## Smoke Reel Lot D Add-Only v2 - 2026-05-26
+
+Le smoke reel Lot D a ete adapte pour appeler le vrai juge `mutable_judge_v2`
+sans applicateur et sans ecriture DB live.
+
+Script:
+
+- `app/scripts/smoke_mutable_identity_judge_llm.py`
+
+Commande:
+
+```bash
+docker exec -i -w /app platform-fridadev python app/scripts/smoke_mutable_identity_judge_llm.py
+```
+
+Scenario synthetique:
+
+- 5 paires completes envoyees au juge, une 6e paire gardee hors fenetre;
+- formulation ontologique explicite cote Frida;
+- formulation ontologique explicite cote Tof;
+- bruit local: reformulation, fatigue du jour, meteo, demande de liste;
+- idees deja couvertes par `static` ou `mutable_current`;
+- aucun appel applicateur, aucune persistence, aucune modification de
+  `identity_mutables` ou `identity_mutable_staging`.
+
+Resultat observe, content-free:
+
+- modele demande: `anthropic/claude-haiku-4.5`;
+- modele provider observe: `anthropic/claude-4.5-haiku-20251001`;
+- slot runtime: `identity_periodic_model`;
+- prompt actif: `prompts/identity_mutable_judge_v2.txt` via
+  `IDENTITY_MUTABLE_JUDGE_PROMPT_PATH`;
+- structured output: `response_format.type=json_schema`,
+  `json_schema.name=mutable_judge_v2`, `strict=true`;
+- `provider.require_parameters=true`;
+- `provider.order=["anthropic"]`;
+- appel provider reel effectue;
+- tokens provider observes: `prompt=3459`, `completion=390`, `total=3849`;
+- `status=skipped`;
+- `reason_code=invalid_verdict`;
+- `validation_reason=invalid_verdict`;
+- `verdict_counts={}` faute de contrat complet;
+- `live_db_write=false`;
+- `applicator_called=false`;
+- aucun contenu brut de fenetre, prompt complet, secret ou cookie affiche.
+
+Decision modele:
+
+- Haiku n'est pas valide comme suffisant pour ce role dans la configuration
+  actuelle: il repond au smoke synthetique borne, mais la sortie structuree est
+  rejetee par le validateur metier `mutable_judge_v2`.
+- Lot D ne change pas le modele runtime.
+- Prochain micro-lot recommande: comparer un modele plus fort pour
+  `mutable_judge_v2` ou ajuster explicitement le timeout du slot juge, puis
+  rejouer le meme smoke sans ecriture DB.
 
 ## Crash Test Conversationnel
 

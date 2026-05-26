@@ -7,6 +7,7 @@
 - [x] Lot A dormant livre: schema, prompt et tests v2 prepares sans activation runtime.
 - [x] Lot B livre: cutover runtime coherent vers `mutable_judge_v2` + applicateur append-only.
 - [x] Lot C livre: tests unitaires et crash test conversationnel add-only ontologique.
+- [x] Lot D livre: smoke reel v2 execute sans DB live; Haiku retourne une reponse provider mais echoue au validateur (`invalid_verdict`) et doit etre considere fragile pour ce role tant qu'un micro-lot modele/timeout n'a pas tranche.
 - [ ] A executer en lots courts, testes, commites et pushes separement.
 
 ## Contexte
@@ -222,29 +223,40 @@ Critere de sortie:
 
 Objectif: verifier le comportement du modele effectif sur le nouveau prompt avant toute decision de changement modele.
 
-- [ ] Adapter ou creer un smoke non lance par defaut pour `mutable_judge_v2`.
-- [ ] Le smoke appelle reellement OpenRouter avec le slot `identity_periodic_model`.
-- [ ] Le smoke n'appelle pas l'applicateur.
-- [ ] Le smoke n'ecrit pas en DB live.
-- [ ] Cas add user: formulation ontologique explicite de Tof.
-- [ ] Cas add llm: formulation ontologique explicite de Frida.
-- [ ] Cas no_change bruit: tache locale / meteo / etat temporaire.
-- [ ] Cas no_change deja couvert par `static`.
-- [ ] Cas no_change deja couvert par `mutable_current`.
-- [ ] Reporter modele effectif, prompt tokens, completion tokens, status, reason_code, verdict counts, subjects touched, sans texte brut sensible.
-- [ ] Noter si structured output strict est accepte.
-- [ ] Decider si `anthropic/claude-haiku-4.5` suffit.
-- [ ] Si Haiku est insuffisant, proposer un modele plus fort dans une note separee, sans changer immediatement le runtime.
+- [x] Adapter ou creer un smoke non lance par defaut pour `mutable_judge_v2`.
+- [x] Le smoke appelle reellement OpenRouter avec le slot `identity_periodic_model`.
+- [x] Le smoke n'appelle pas l'applicateur.
+- [x] Le smoke n'ecrit pas en DB live.
+- [x] Cas add user: formulation ontologique explicite de Tof.
+- [x] Cas add llm: formulation ontologique explicite de Frida.
+- [x] Cas no_change bruit: tache locale / meteo / etat temporaire.
+- [x] Cas no_change deja couvert par `static`.
+- [x] Cas no_change deja couvert par `mutable_current`.
+- [x] Reporter modele effectif, prompt tokens, completion tokens, status, reason_code, verdict counts, subjects touched, sans texte brut sensible.
+- [x] Noter si structured output strict est accepte.
+- [x] Decider si `anthropic/claude-haiku-4.5` suffit.
+- [x] Si Haiku est insuffisant, proposer un modele plus fort dans une note separee, sans changer immediatement le runtime.
+
+Resultat Lot D:
+
+- Smoke reel execute avec `app/scripts/smoke_mutable_identity_judge_llm.py`.
+- Prompt actif: `prompts/identity_mutable_judge_v2.txt` via `IDENTITY_MUTABLE_JUDGE_PROMPT_PATH`.
+- Structured output construit: `response_format.type=json_schema`, `json_schema.name=mutable_judge_v2`, `strict=true`, `provider.require_parameters=true`, `provider.order=["anthropic"]`.
+- Resultat observe: l'appel reel OpenRouter au modele `anthropic/claude-haiku-4.5` retourne via provider `anthropic/claude-4.5-haiku-20251001`, mais le validateur rejette la sortie (`status=skipped`, `reason_code=invalid_verdict`, `validation_reason=invalid_verdict`).
+- Token counts provider observes: `prompt=3459`, `completion=390`, `total=3849`.
+- Verdict counts: `{}` faute de contrat valide; aucune proposition acceptee.
+- `live_db_write=false`, `applicator_called=false`.
+- Decision: Haiku est trop fragile pour ce role dans la configuration actuelle; ne pas changer le modele dans Lot D, ouvrir un micro-lot separe pour comparer un modele plus fort ou ajuster le timeout du slot juge.
 
 Tests/preuves:
 
-- [ ] Commande smoke exacte documentee.
-- [ ] Resultats content-free colles dans la note de lot.
-- [ ] Aucun write DB live prouve.
+- [x] Commande smoke exacte documentee.
+- [x] Resultats content-free colles dans la note de lot.
+- [x] Aucun write DB live prouve.
 
 Critere de sortie:
 
-- [ ] Decision explicite: garder Haiku, retester, ou preparer un changement modele separe.
+- [x] Decision explicite: preparer un changement modele ou timeout separe; Haiku n'est pas valide comme suffisant sur ce smoke.
 
 ## Lot E - Nettoyage final compat/legacy/docs
 

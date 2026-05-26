@@ -21,8 +21,9 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from memory import mutable_identity_judge  # noqa: E402
+import config  # noqa: E402
 from memory import mutable_identity_judge_schema  # noqa: E402
+from memory import mutable_identity_judge_v2  # noqa: E402
 
 
 def _short_hash(text: str) -> str:
@@ -46,148 +47,232 @@ def _window_pairs() -> list[list[dict[str, str]]]:
         [
             {
                 "role": "user",
-                "content": "Je suis quelqu'un qui veut que les systemes disent clairement ce qu'ils peuvent reellement tenir.",
+                "content": "Je traite la frontière entre ma pensée et ta voix propre comme un objet central du travail.",
             },
             {
                 "role": "assistant",
-                "content": "Je suis une voix qui prefere eclairer plutot que contester par reflexe.",
+                "content": "Je tiens une voix propre sans me confondre avec Tof.",
             },
         ],
         [
             {"role": "user", "content": "Peux-tu reformuler ce paragraphe localement ?"},
-            {"role": "assistant", "content": "Oui, je peux le reformuler sans en faire une identite."},
+            {"role": "assistant", "content": "Oui, je peux le reformuler sans en faire une identité."},
         ],
         [
-            {"role": "user", "content": "Aujourd'hui je suis fatigue, donc allons doucement."},
+            {"role": "user", "content": "Aujourd'hui je suis fatigué, donc allons doucement."},
             {
                 "role": "assistant",
-                "content": "Je le traite comme un etat du jour, pas comme une continuite durable.",
+                "content": "Je le traite comme un état du jour, pas comme une continuité durable.",
             },
         ],
         [
-            {"role": "user", "content": "Quelle est la meteo abstraite de ce test ?"},
-            {"role": "assistant", "content": "C'est seulement un bruit contextuel dans la conversation."},
+            {"role": "user", "content": "Quelle est la météo abstraite de ce test ?"},
+            {
+                "role": "assistant",
+                "content": "Je refuse de confondre une tâche locale avec mon identité durable.",
+            },
         ],
         [
             {
                 "role": "user",
-                "content": "Je veux que tu distingues toujours ce que tu peux tenir de ce que tu supposes.",
+                "content": "Je refuse de transformer un état de fatigue en identité durable.",
             },
-            {
-                "role": "assistant",
-                "content": "Je ne dois pas promettre une memoire durable sans mecanisme qui la porte.",
-            },
+            {"role": "assistant", "content": "C'est déjà couvert par le mutable courant du test."},
         ],
         [
-            {"role": "user", "content": "Sixieme tour: fais juste une liste courte de deux points."},
+            {"role": "user", "content": "Sixième tour: fais juste une liste courte de deux points."},
             {"role": "assistant", "content": "Premier point, puis second point. Rien de canonique ici."},
         ],
     ]
 
 
-def _content_free_contract_summary(contract: Mapping[str, Any]) -> dict[str, Any]:
+def _added_propositions(contract: Mapping[str, Any]) -> list[dict[str, Any]]:
+    propositions: list[dict[str, Any]] = []
+    for item in _list(contract.get("verdicts")):
+        payload = _mapping(item)
+        if str(payload.get("verdict") or "") != "add":
+            continue
+        proposition = str(payload.get("proposition") or "").strip()
+        propositions.append(
+            {
+                "subject": str(payload.get("subject") or ""),
+                "proposition": proposition,
+                "chars": len(proposition),
+                "sha256_12": _short_hash(proposition),
+                "reason_code": str(payload.get("reason_code") or ""),
+                "continuity_kind": str(payload.get("continuity_kind") or ""),
+                "source_refs": list(_list(payload.get("source_refs"))),
+            }
+        )
+    return propositions
+
+
+def _contract_summary(contract: Mapping[str, Any]) -> dict[str, Any]:
     verdicts = [_mapping(item) for item in _list(contract.get("verdicts"))]
-    allowed_refs = {f"pair_{index:02d}" for index in range(1, mutable_identity_judge.WINDOW_PAIRS_COUNT + 1)}
-    noise_terms = ("fatigue", "meteo", "reformuler", "sixieme")
-    persist_subjects = sorted(
-        {
-            str(item.get("subject") or "")
-            for item in verdicts
-            if str(item.get("verdict") or "") == "persist"
-        }
+    allowed_refs = {f"pair_{index:02d}" for index in range(1, 6)}
+    forbidden_keys = {
+        "operation",
+        "target",
+        "targets",
+        "target_ref",
+        "target_refs",
+    }
+    forbidden_values = {"persist", "tighten", "merge", "clear_obsolete"}
+    noise_terms = (
+        "fatigu",
+        "météo",
+        "meteo",
+        "reformul",
+        "sixième",
+        "sixieme",
+        "liste courte",
     )
-    proposition_fingerprints = [
-        {
-            "subject": str(item.get("subject") or ""),
-            "operation": str(item.get("operation") or ""),
-            "chars": len(str(item.get("proposition") or "")),
-            "sha256_12": _short_hash(str(item.get("proposition") or "")),
-        }
-        for item in verdicts
-        if str(item.get("verdict") or "") == "persist"
-    ]
+    additions = _added_propositions(contract)
+    serialized = json.dumps(contract, ensure_ascii=False)
     return {
+        "schema_version": str(contract.get("schema_version") or ""),
         "verdict_count": len(verdicts),
-        "all_no_change": bool(verdicts) and all(str(item.get("verdict") or "") == "no_change" for item in verdicts),
-        "persist_subjects": persist_subjects,
-        "llm_persist": "llm" in persist_subjects,
-        "user_persist": "user" in persist_subjects,
+        "verdict_counts": {
+            verdict: sum(1 for item in verdicts if str(item.get("verdict") or "") == verdict)
+            for verdict in sorted({str(item.get("verdict") or "") for item in verdicts if str(item.get("verdict") or "")})
+        },
+        "subjects_seen": sorted({str(item.get("subject") or "") for item in verdicts if str(item.get("subject") or "")}),
+        "subjects_added": sorted({item["subject"] for item in additions}),
+        "llm_add": any(item["subject"] == "llm" for item in additions),
+        "user_add": any(item["subject"] == "user" for item in additions),
+        "all_verdicts_add_or_no_change": all(
+            str(item.get("verdict") or "") in {"add", "no_change"}
+            for item in verdicts
+        ),
+        "no_forbidden_manager_keys": all(
+            forbidden_keys.isdisjoint(set(item.keys()))
+            for item in verdicts
+        ),
+        "no_forbidden_manager_values": not any(value in serialized for value in forbidden_values),
         "source_refs_valid": all(
             ref in allowed_refs
             for item in verdicts
             for ref in _list(item.get("source_refs"))
         ),
-        "noise_persisted_count": sum(
+        "noise_add_count": sum(
             1
-            for item in verdicts
-            if str(item.get("verdict") or "") == "persist"
-            and any(term in str(item.get("proposition") or "").lower() for term in noise_terms)
+            for item in additions
+            if any(term in item["proposition"].lower() for term in noise_terms)
         ),
-        "proposition_fingerprints": proposition_fingerprints,
+        "additions": additions,
+    }
+
+
+def _provider_summary(provider_metadata: Mapping[str, Any]) -> dict[str, Any]:
+    allowed = (
+        "provider_model",
+        "provider_prompt_tokens",
+        "provider_completion_tokens",
+        "provider_total_tokens",
+        "provider_caller",
+        "provider_title",
+        "provider_contract",
+    )
+    return {
+        key: provider_metadata[key]
+        for key in allowed
+        if key in provider_metadata
     }
 
 
 def main() -> int:
     synthetic_pairs = _window_pairs()
-    judge_input = mutable_identity_judge.build_judge_input(
-        window_pairs=synthetic_pairs[: mutable_identity_judge.WINDOW_PAIRS_COUNT],
+    judge_input = mutable_identity_judge_v2.build_judge_input(
+        window_pairs=synthetic_pairs[:5],
         identities={
             "llm": {
                 "static": "Frida est une assistante de developpement attentive aux limites reelles du systeme.",
-                "mutable_current": "",
+                "mutable_current": "Frida refuse de confondre une tache locale avec son identite durable.",
             },
             "user": {
-                "static": "Utilisateur synthetique de validation Lot 7.",
-                "mutable_current": "",
+                "static": "Tof est un utilisateur synthetique de validation Lot D.",
+                "mutable_current": "Tof refuse de transformer un etat de fatigue en identite durable.",
             },
         },
         mutable_budget={"target_chars": 1200, "max_chars": 3300},
         source_annotations={
             "smoke": {
-                "kind": "synthetic_lot7_real_llm",
+                "kind": "synthetic_lot_d_real_llm_v2",
                 "live_db_write": False,
-                "persistence": "disabled",
-                "held_back_pairs_count": len(synthetic_pairs) - mutable_identity_judge.WINDOW_PAIRS_COUNT,
+                "applicator_called": False,
+                "held_back_pairs_count": len(synthetic_pairs) - 5,
             }
         },
     )
-    settings = mutable_identity_judge.runtime_model_settings()
-    prompt = mutable_identity_judge.load_prompt()
-    request_payload = mutable_identity_judge.build_openrouter_payload(
+    settings = mutable_identity_judge_v2.mutable_identity_judge.runtime_model_settings()
+    prompt = mutable_identity_judge_v2.load_prompt_v2(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)
+    request_payload = mutable_identity_judge_v2.build_openrouter_payload_v2(
         judge_input,
         model_settings=settings,
         system_prompt=prompt,
     )
-    result = mutable_identity_judge.run_mutable_identity_judge(judge_input)
+
+    captured_provider: dict[str, Any] = {}
+    original_log_provider = mutable_identity_judge_v2.llm_client.log_provider_metadata
+
+    def capture_provider(_logger: Any, _event_name: str, provider_metadata: Any) -> None:
+        captured_provider.update(dict(_mapping(provider_metadata)))
+        original_log_provider(_logger, _event_name, provider_metadata)
+
+    mutable_identity_judge_v2.llm_client.log_provider_metadata = capture_provider
+    try:
+        result = mutable_identity_judge_v2.run_mutable_identity_judge_v2(judge_input)
+    finally:
+        mutable_identity_judge_v2.llm_client.log_provider_metadata = original_log_provider
+
     contract = _mapping(result.get("contract"))
+    contract_summary = _contract_summary(contract)
     summary = {
-        "smoke": "mutable_identity_judge_real_llm",
-        "model": settings.get("model"),
-        "slot": mutable_identity_judge.MODEL_SLOT,
-        "prompt_kind": mutable_identity_judge.PROMPT_KIND,
+        "smoke": "mutable_identity_judge_v2_real_llm",
+        "slot": mutable_identity_judge_v2.MODEL_SLOT,
+        "requested_model": settings.get("model"),
+        "prompt_kind": mutable_identity_judge_v2.PROMPT_KIND,
+        "prompt_path": str(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH),
         "status": result.get("status"),
         "reason_code": result.get("reason_code"),
         "live_db_write": False,
-        "window_pairs_sent": mutable_identity_judge.WINDOW_PAIRS_COUNT,
-        "held_back_pairs_count": len(synthetic_pairs) - mutable_identity_judge.WINDOW_PAIRS_COUNT,
+        "applicator_called": False,
+        "window_pairs_sent": 5,
+        "held_back_pairs_count": len(synthetic_pairs) - 5,
         "structured_output": mutable_identity_judge_schema.response_format_summary(request_payload),
         "provider_require_parameters": bool(_mapping(request_payload.get("provider")).get("require_parameters")),
         "provider_order": list(_mapping(request_payload.get("provider")).get("order") or []),
+        "provider": _provider_summary(captured_provider),
         "observability": result.get("observability"),
-        "contract": _content_free_contract_summary(contract),
+        "contract": contract_summary,
+        "model_decision": "acceptable_for_now"
+        if (
+            result.get("status") == "ok"
+            and contract_summary.get("llm_add")
+            and contract_summary.get("user_add")
+            and contract_summary.get("noise_add_count") == 0
+            and contract_summary.get("all_verdicts_add_or_no_change")
+            and contract_summary.get("no_forbidden_manager_keys")
+            and contract_summary.get("no_forbidden_manager_values")
+        )
+        else "fragile_or_failed",
     }
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+
     if result.get("status") != "ok":
         return 2
-    contract_summary = summary["contract"]
-    if contract_summary["all_no_change"]:
+    if contract_summary["schema_version"] != "mutable_judge_v2":
         return 3
-    if not contract_summary["llm_persist"] or not contract_summary["user_persist"]:
+    if not contract_summary["all_verdicts_add_or_no_change"]:
         return 4
-    if not contract_summary["source_refs_valid"]:
+    if not contract_summary["llm_add"] or not contract_summary["user_add"]:
         return 5
-    if contract_summary["noise_persisted_count"]:
+    if not contract_summary["source_refs_valid"]:
         return 6
+    if not contract_summary["no_forbidden_manager_keys"] or not contract_summary["no_forbidden_manager_values"]:
+        return 7
+    if contract_summary["noise_add_count"]:
+        return 8
     return 0
 
 
