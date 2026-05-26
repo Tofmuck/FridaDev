@@ -21,10 +21,11 @@ INPUT_SCHEMA_VERSION = 'mutable_identity_judge_input_v2'
 PROMPT_KIND = 'mutable_identity_judge_v2'
 PROMPT_PATH = 'prompts/identity_mutable_judge_v2.txt'
 CONTRACT_STATUS = 'active_add_only_lot_b'
-MODEL_SLOT = mutable_identity_judge.MODEL_SLOT
-CALLER = mutable_identity_judge.CALLER
-JUDGE_WINDOW_MAX_CHARS = mutable_identity_judge.JUDGE_WINDOW_MAX_CHARS
-JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT = mutable_identity_judge.JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT
+MODEL_SLOT = 'identity_periodic_model'
+CALLER = 'mutable_identity_judge'
+WINDOW_PAIRS_COUNT = 5
+JUDGE_WINDOW_MAX_CHARS = 32_000
+JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT = 12_000
 
 ALLOWED_SUBJECTS = {'llm', 'user'}
 ALLOWED_VERDICTS = {'no_change', 'add'}
@@ -63,7 +64,7 @@ _VERDICT_KEYS = {
     'source_refs',
     'guard_notes',
 }
-_ALLOWED_SOURCE_REFS = {f'pair_{index:02d}' for index in range(1, mutable_identity_judge.WINDOW_PAIRS_COUNT + 1)}
+_ALLOWED_SOURCE_REFS = {f'pair_{index:02d}' for index in range(1, WINDOW_PAIRS_COUNT + 1)}
 _CODE_RE = re.compile(r'^[A-Za-z0-9_:-]{1,80}$')
 _PROMPT_LIKE_RE = re.compile(
     r'(ignore\s+previous|system\s+prompt|developer\s+message|follow\s+these\s+instructions|'
@@ -319,7 +320,7 @@ def _validation_failure_observability(payload: Mapping[str, Any], *, reason_code
                 'schema_version': SCHEMA_VERSION,
                 'meta': {
                     'execution_status': 'complete',
-                    'window_pairs_count': mutable_identity_judge.WINDOW_PAIRS_COUNT,
+                    'window_pairs_count': WINDOW_PAIRS_COUNT,
                     'window_complete': True,
                 },
                 'verdicts': [item, _minimal_no_change('llm' if _text(item.get('subject')) == 'user' else 'user')],
@@ -378,7 +379,7 @@ def validate_mutable_judge_contract_v2(payload: Mapping[str, Any]) -> tuple[dict
         return None, 'schema_invalid'
     if _text(meta.get('execution_status')) != 'complete':
         return None, 'schema_invalid'
-    if int(meta.get('window_pairs_count') or 0) != mutable_identity_judge.WINDOW_PAIRS_COUNT:
+    if int(meta.get('window_pairs_count') or 0) != WINDOW_PAIRS_COUNT:
         return None, 'schema_invalid'
     if meta.get('window_complete') is not True:
         return None, 'schema_invalid'
@@ -465,7 +466,7 @@ def validate_mutable_judge_contract_v2(payload: Mapping[str, Any]) -> tuple[dict
         'schema_version': SCHEMA_VERSION,
         'meta': {
             'execution_status': 'complete',
-            'window_pairs_count': mutable_identity_judge.WINDOW_PAIRS_COUNT,
+            'window_pairs_count': WINDOW_PAIRS_COUNT,
             'window_complete': True,
         },
         'verdicts': normalized_verdicts,

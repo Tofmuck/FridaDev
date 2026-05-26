@@ -219,6 +219,40 @@ Decision:
 - Le runtime persistant n'est pas modifie; une bascule du slot
   `identity_periodic_model` doit rester un micro-lot separe avec GO explicite.
 
+## Bascule Modele Runtime - GPT 5.2 - 2026-05-26
+
+Decision operateur:
+
+- conserver le nom de slot de compatibilite `identity_periodic_model`;
+- basculer uniquement `identity_periodic_model.model` vers `openai/gpt-5.2`;
+- ne pas changer le contrat `mutable_judge_v2`, le prompt, le schema,
+  l'applicateur add-only ou les mutables live.
+
+Preuve pre-bascule:
+
+- ancien modele effectif du slot: `anthropic/claude-haiku-4.5`;
+- `openai/gpt-5.2` passe le smoke strict 3/3 avec le meme prompt et le meme
+  schema.
+
+Commande de bascule:
+
+```python
+runtime_settings.update_runtime_section(
+    'identity_periodic_model',
+    {'model': {'value': 'openai/gpt-5.2'}},
+    updated_by='celebrimbor_mutable_judge_model_cutover',
+)
+```
+
+Resultat:
+
+- nouveau modele effectif du slot: `openai/gpt-5.2`;
+- DB runtime modifiee: oui, uniquement le champ non secret
+  `identity_periodic_model.model`;
+- aucun secret affiche;
+- aucun write static;
+- aucune mutation de contrat ou de prompt.
+
 ## Crash Test Conversationnel
 
 Test ajoute:

@@ -10,6 +10,7 @@
 - [x] Lot D livre: smoke reel v2 execute sans DB live; Haiku retourne une reponse provider mais echoue au validateur (`invalid_verdict`) et doit etre considere fragile pour ce role tant qu'un micro-lot modele/timeout n'a pas tranche.
 - [x] Lot D bis livre: smoke candidat `openai/gpt-5.4-mini` execute sans DB live; apres retrait des parametres non supportes `temperature` / `top_p`, le modele route, mais il ne passe pas encore le smoke stabilite 3 runs.
 - [x] Smoke modele frontiere livre: `openai/gpt-5.5` passe le smoke reel 3/3 sans DB live ni applicateur; le runtime persistant reste inchange.
+- [x] Bascule modele runtime livre: `identity_periodic_model.model` pointe vers `openai/gpt-5.2` pour le juge mutable v2 add-only.
 - [ ] A executer en lots courts, testes, commites et pushes separement.
 
 ## Contexte
@@ -280,6 +281,15 @@ Resultat smoke modele frontiere:
 - Runs observes: run 1 `{"add": 2}`, run 2 `{"add": 2}`, run 3 `{"add": 2}`.
 - Add llm oui et add user oui sur les trois runs; bruit ajoute `0`; aucun champ v1; `live_db_write=false`; `applicator_called=false`.
 - Decision: `openai/gpt-5.5` est un candidat valide pour une bascule modele separee; ne pas changer le runtime sans GO explicite.
+
+Resultat bascule modele runtime:
+
+- Decision operateur: choisir `openai/gpt-5.2` plutot que `openai/gpt-5.5`.
+- Ancien modele effectif du slot `identity_periodic_model`: `anthropic/claude-haiku-4.5`.
+- Nouveau modele effectif du slot `identity_periodic_model`: `openai/gpt-5.2`.
+- Le slot garde son nom de compatibilite mais pilote le caller actif `mutable_identity_judge_v2`.
+- Changement applique via `runtime_settings.update_runtime_section(...)` sur le champ non secret `model` uniquement.
+- Aucun changement de prompt, schema, contrat, applicateur, static ou DB live identitaire.
 
 Tests/preuves:
 
