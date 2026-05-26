@@ -1,0 +1,289 @@
+# Refonte mutable add-only ontologique
+
+## Statut
+
+- [ ] Actif sur `feature/mutable-refonte`.
+- [ ] Docs-only initial: aucun patch runtime, DB, prompt runtime ou rebuild dans ce lot de cadrage.
+- [ ] Source de travail pour recadrer le juge mutable automatique apres la refonte judge-first.
+- [ ] A executer en lots courts, testes, commites et pushes separement.
+
+## Contexte
+
+Le systeme mutable doit etre recadre.
+
+Le juge mutable est un editeur automatique de l'identite, mais son geste editorial est l'admission d'un nouvel enonce ontologique dans le canon, pas la maintenance du canon existant.
+
+Pipeline cible:
+
+```text
+5 paires completes
+-> juge LLM
+-> mutable_judge_v2
+-> applicateur add-only
+-> identity_mutables
+-> audit content-free
+-> reinjection
+```
+
+Le juge recoit:
+
+- les 5 paires completes `user` / `assistant`;
+- `user.static`;
+- `llm.static`;
+- `user.mutable_current`;
+- `llm.mutable_current`.
+
+Il decide seulement:
+
+- `no_change`;
+- `add`.
+
+Critere central:
+
+> Un participant formule-t-il quelque chose de lui-meme qui a une valeur ontologique durable ?
+
+Formes attendues:
+
+- `Frida est...`
+- `Frida tient...`
+- `Frida refuse...`
+- `Frida reconnait...`
+- `Tof est...`
+- `Tof tient...`
+- `Tof refuse...`
+- `Tof reconnait...`
+- `Tof traite... comme...`
+
+Le systeme automatique ne doit plus faire:
+
+- `tighten`;
+- `merge`;
+- `clear_obsolete`;
+- `target_ref`;
+- `target_refs`;
+- `target`;
+- `targets`;
+- reecriture automatique du canon existant;
+- nettoyage automatique du canon;
+- maintenance de base de connaissances.
+
+## Contrat cible
+
+- Le juge lit toute la fenetre, sans preselection Python.
+- Le juge ne score pas, ne compte pas les repetitions et ne demande aucun support lexical local.
+- Le juge ne resume pas, ne psychologise pas et ne maintient pas une base documentaire.
+- Le juge ajoute uniquement des enonces ontologiques courts, en francais.
+- Si une idee est deja couverte par `static` ou `mutable_current`, le verdict est `no_change`.
+- Si la formulation est locale, temporaire, narrative, psychologique, operationnelle, conversationnelle ou trop molle, le verdict est `no_change`.
+- Si le juge ne peut pas produire une phrase ontologique courte, le verdict est `no_change`.
+- Le code valide la forme, la securite, la taille, la duplication exacte normalisee et la persistence; il ne rejuge pas l'identite.
+- L'applicateur automatique ecrit seulement dans `identity_mutables`.
+- Aucune ecriture `static`.
+- Aucune promotion mutable -> static.
+- Observabilite content-free uniquement.
+
+## Hors-scope
+
+- Pas de migration DB live sans GO explicite.
+- Pas de nettoyage manuel des mutables actuelles dans ce chantier.
+- Pas de changement de modele runtime avant le smoke Lot D.
+- Pas de rename global du slot `identity_periodic_model` sans decision separee.
+- Pas de refactor esthetique des gros fichiers hors necessite de lot.
+- Pas de modification plateforme, Caddy, Authelia, DB schema ou secrets.
+- Pas de purge de `identity_mutable_staging`.
+- Pas de resurrection du writer score-first legacy.
+- Pas de scoring, regex canonisante ou prefiltre semantique avant juge.
+
+## Lot A - Contrat `mutable_judge_v2`, prompt ontologique, schema add-only
+
+Objectif: remplacer le contrat gestionnaire `add/tighten/merge/clear_obsolete` par un contrat automatique add-only ontologique.
+
+- [ ] Choisir explicitement entre `mutable_judge_v2` nouveau schema ou migration controlee de `mutable_judge_v1`; preference: `mutable_judge_v2`.
+- [ ] Definir `schema_version = mutable_judge_v2`.
+- [ ] Limiter les verdicts actifs a `no_change` et `add`.
+- [ ] Retirer du schema actif `operation`, `target`, `targets`, `target_ref`, `target_refs`.
+- [ ] Remplacer `persist` par `add` comme verdict ou conserver `verdict=add` explicitement; ne pas garder `persist` comme conteneur multi-operation.
+- [ ] Limiter les reason codes persistants aux raisons compatibles avec admission add-only: `explicit_self_definition_continuity`, `explicit_self_value_continuity`, `explicit_self_limit_continuity`, `explicit_relation_continuity`, `explicit_frida_self_definition_continuity`, `explicit_frida_limit_continuity`, `explicit_posture_continuity`.
+- [ ] Retirer du contrat modele les reason codes `mutable_tightening`, `mutable_merge`, `mutable_obsolete_explicitly_removed`.
+- [ ] Garder les reason codes de non-admission utiles: `no_mutable_identity_signal`, `already_covered_by_static`, `already_covered_by_mutable`, `task_local_not_identity`, `temporary_state`, `ambiguous_subject`, `insufficient_context`, `source_scope_unclear`, `quoted_or_reported_speech`, `project_policy_not_identity`.
+- [ ] Reecrire `app/prompts/identity_mutable_judge.txt` autour des etats d'etre.
+- [ ] Dire explicitement dans le prompt: tu ne resumes pas, tu ne psychologises pas, tu ne maintiens pas une base de connaissances, tu ne nettoies pas le canon, tu ne reformules pas le canon existant.
+- [ ] Imposer les propositions en francais, courtes, ontologiques et declaratives.
+- [ ] Donner des exemples acceptables: `Frida tient la dignite et l'egalite reelle comme principes non negociables.`, `Tof traite la frontiere entre sa pensee et la voix de Frida comme un objet central.`
+- [ ] Donner des exemples interdits: `Frida travaille cette posture...`, `Tof observe...`, `Frida essaie de...`, `Tof semble...`, `Dans cette conversation...`
+- [ ] Imposer `no_change` si deja couvert par `static` ou `mutable_current`.
+- [ ] Garder `response_format.type=json_schema`.
+- [ ] Garder `response_format.json_schema.strict=true`.
+- [ ] Garder `provider.require_parameters=true`.
+- [ ] Garder `provider.order=["anthropic"]` sauf decision explicite documentee.
+- [ ] Garder la garde taille 32_000 chars / 12_000 tokens estimes sauf preuve contraire.
+
+Tests/preuves:
+
+- [ ] `python3 -m py_compile app/memory/mutable_identity_judge.py app/memory/mutable_identity_judge_schema.py`.
+- [ ] Tests unitaires du schema: aucune operation autre que `add` / `no_change`.
+- [ ] Tests unitaires du payload OpenRouter: structured output strict et `provider.require_parameters=true`.
+- [ ] Grep prouvant que `target_ref` / `target_refs` ne sont plus dans le schema actif.
+
+Critere de sortie:
+
+- [ ] Un developpeur peut implementer le juge add-only sans inventer de decision conceptuelle.
+- [ ] Le prompt ne raconte plus le juge comme mainteneur du canon existant.
+
+## Lot B - Applicateur append-only, retrait du runtime cible/refs/ops
+
+Objectif: rendre l'applicateur automatique incapable de modifier, fusionner ou supprimer le canon mutable existant.
+
+- [ ] Rendre l'applicateur automatique add-only.
+- [ ] Refuser tout contrat actif contenant `tighten`, `merge` ou `clear_obsolete`.
+- [ ] Retirer du chemin actif la resolution `target_ref` / `target_refs`.
+- [ ] Retirer du chemin actif `target` / `targets`.
+- [ ] Supprimer ou neutraliser les branches d'application `tighten`, `merge`, `clear_obsolete`.
+- [ ] Garder la deduplication exacte normalisee contre `mutable_current`.
+- [ ] Ajouter une verification de couverture exacte normalisee contre `static` si localement fiable; sinon documenter que le juge porte d'abord cette decision et que le code ne fait qu'une garde anti-duplication simple.
+- [ ] Garder la borne finale `IDENTITY_MUTABLE_MAX_CHARS`.
+- [ ] Garder le batch atomique entre `llm` et `user`.
+- [ ] Garder `updated_by=mutable_identity_judge_apply` ou nom equivalent stable.
+- [ ] Garder l'audit compact content-free: status, subject, verdict, reason_code, continuity_kind, counts, lengths, hashes courts.
+- [ ] Ne jamais ecrire `static`.
+- [ ] Ne pas appeler de scoring, threshold ou ancien writer.
+- [ ] Conserver shadow/enforced: en shadow, aucune ecriture canonique.
+
+Tests/preuves:
+
+- [ ] Test add user ecrit seulement `identity_mutables.user`.
+- [ ] Test add llm ecrit seulement `identity_mutables.llm`.
+- [ ] Test no_change n'ecrit rien.
+- [ ] Test duplicate exact normalise n'ecrit rien ou resulte en no-op content-free.
+- [ ] Test proposition trop longue n'ecrit rien.
+- [ ] Test prompt-like n'ecrit rien.
+- [ ] Test batch all-or-nothing entre user et llm.
+- [ ] Test aucun appel `write_static_identity_content`.
+- [ ] Test aucun appel scoring / legacy writer.
+
+Critere de sortie:
+
+- [ ] Le runtime automatique ne peut plus modifier, fusionner ou supprimer une mutable existante.
+- [ ] `identity_mutables` reste le seul canon mutable ecrit.
+
+## Lot C - Tests unitaires + crash test conversationnel
+
+Objectif: prouver le nouveau sens du mutable, pas seulement la forme JSON.
+
+- [ ] Test Frida: `Je tiens la dignite et l'egalite reelle comme non negociables.` -> `add` canonique attendu: `Frida tient la dignite et l'egalite reelle comme principes non negociables.`
+- [ ] Test Tof: `Je traite la frontiere entre ma pensee et ta voix propre comme un objet central.` -> `add` canonique attendu: `Tof traite la frontiere entre sa pensee et la voix de Frida comme un objet central.`
+- [ ] Test bruit / tache locale / meteo / reformulation / etat du jour -> `no_change`.
+- [ ] Test idee deja couverte par `static` -> `no_change`.
+- [ ] Test idee deja couverte par `mutable_current` -> `no_change`.
+- [ ] Test sortie narrative molle mockee -> rejet validation ou `no_change` selon le contrat choisi.
+- [ ] Test `tighten` refuse.
+- [ ] Test `merge` refuse.
+- [ ] Test `clear_obsolete` refuse.
+- [ ] Test aucune cible/ref dans payload/schema/observabilite active.
+- [ ] Reajuster `test_mutable_identity_judge_final_validation` pour verifier le crash test conversationnel add-only.
+- [ ] Verifier que les 5 premieres paires declenchent une seule fenetre et que la 6e repart sur un buffer 1/5.
+- [ ] Verifier que le bruit present dans la fenetre ne se retrouve pas dans les mutables.
+- [ ] Verifier que l'observabilite ne contient ni fenetre brute ni proposition brute.
+
+Tests/preuves:
+
+- [ ] `python3 -m unittest tests.unit.memory.test_mutable_identity_judge`.
+- [ ] `python3 -m unittest tests.unit.memory.test_mutable_identity_apply`.
+- [ ] `python3 -m unittest tests.unit.chat.test_mutable_identity_judge_final_validation`.
+- [ ] Suite conteneur runtime equivalente si l'hote manque de dependances.
+
+Critere de sortie:
+
+- [ ] Les tests documentent la difference entre enonce ontologique et narration molle.
+- [ ] Le crash test valide le pipeline proche runtime sans DB live.
+
+## Lot D - Smoke réel Haiku + decision modele
+
+Objectif: verifier le comportement du modele effectif sur le nouveau prompt avant toute decision de changement modele.
+
+- [ ] Adapter ou creer un smoke non lance par defaut pour `mutable_judge_v2`.
+- [ ] Le smoke appelle reellement OpenRouter avec le slot `identity_periodic_model`.
+- [ ] Le smoke n'appelle pas l'applicateur.
+- [ ] Le smoke n'ecrit pas en DB live.
+- [ ] Cas add user: formulation ontologique explicite de Tof.
+- [ ] Cas add llm: formulation ontologique explicite de Frida.
+- [ ] Cas no_change bruit: tache locale / meteo / etat temporaire.
+- [ ] Cas no_change deja couvert par `static`.
+- [ ] Cas no_change deja couvert par `mutable_current`.
+- [ ] Reporter modele effectif, prompt tokens, completion tokens, status, reason_code, verdict counts, subjects touched, sans texte brut sensible.
+- [ ] Noter si structured output strict est accepte.
+- [ ] Decider si `anthropic/claude-haiku-4.5` suffit.
+- [ ] Si Haiku est insuffisant, proposer un modele plus fort dans une note separee, sans changer immediatement le runtime.
+
+Tests/preuves:
+
+- [ ] Commande smoke exacte documentee.
+- [ ] Resultats content-free colles dans la note de lot.
+- [ ] Aucun write DB live prouve.
+
+Critere de sortie:
+
+- [ ] Decision explicite: garder Haiku, retester, ou preparer un changement modele separe.
+
+## Lot E - Nettoyage final compat/legacy/docs
+
+Objectif: ne laisser aucun deuxieme regime mutable automatique actif.
+
+- [ ] Retirer ou requalifier proprement `app/memory/mutable_identity_refs.py` si plus utilise.
+- [ ] Supprimer ou requalifier les tests morts de refs, `merge`, `tighten`, `clear_obsolete`.
+- [ ] Retirer des docs actives le regime gestionnaire comme cible actuelle.
+- [ ] Garder les mentions historiques seulement dans archives ou notes de validation clairement datees.
+- [ ] Verifier les hits runtime actifs pour `tighten`.
+- [ ] Verifier les hits runtime actifs pour `merge`.
+- [ ] Verifier les hits runtime actifs pour `clear_obsolete`.
+- [ ] Verifier les hits runtime actifs pour `target_ref`.
+- [ ] Verifier les hits runtime actifs pour `target_refs`.
+- [ ] Verifier les hits runtime actifs pour `mutable_tightening`.
+- [ ] Verifier les hits runtime actifs pour `mutable_merge`.
+- [ ] Verifier les hits runtime actifs pour `mutable_obsolete_explicitly_removed`.
+- [ ] Distinguer hits interdits en runtime actif et hits acceptables dans archives `todo-done`.
+- [ ] Verifier admin/read-model/logs: le regime actif raconte `mutable_judge_v2` add-only, pas le gestionnaire de canon.
+- [ ] Verifier `app/docs/README.md`.
+- [ ] Verifier `README.md` si les chantiers actifs identity y sont indexes.
+- [ ] Decider explicitement si `mutable_judge_v1` reste compat ou disparait.
+- [ ] Ne pas laisser deux schemas actifs pour le chemin automatique.
+
+Tests/preuves:
+
+- [ ] `grep -RIn "tighten\\|merge\\|clear_obsolete\\|target_ref\\|target_refs\\|mutable_tightening\\|mutable_merge\\|mutable_obsolete_explicitly_removed" app/core app/memory app/admin app/tests app/docs/states app/docs/todo-todo | head -200`.
+- [ ] Suite tests ciblee juge/apply/runtime/read-model.
+- [ ] `git diff --check`.
+- [ ] Rebuild applicatif si runtime/prompt charge modifie.
+
+Critere de sortie:
+
+- [ ] Aucun chemin automatique actif ne sait modifier, fusionner ou supprimer une mutable existante.
+- [ ] Les seuls restes du regime gestionnaire sont historiques, archives ou explicitement compat non active.
+
+## Risques
+
+- Haiku peut continuer a produire des phrases narratives molles malgre le prompt.
+- Un validateur trop syntaxique pourrait remplacer le jugement ontologique par une regex pauvre.
+- Le canon existant herite du regime gestionnaire peut rester imparfait tant qu'un nettoyage manuel separe n'est pas ouvert.
+- Le passage a `mutable_judge_v2` peut demander une migration soigneuse des tests/admin/read-model qui exposent encore `operation_kinds`.
+- Le slot runtime `identity_periodic_model` reste un nom de compatibilite et peut continuer a troubler l'operateur si la surface admin n'est pas claire.
+
+## Définition de fini
+
+- [ ] Le pipeline automatique est:
+
+```text
+5 paires completes -> juge LLM -> mutable_judge_v2 -> applicateur add-only -> identity_mutables -> audit content-free -> reinjection
+```
+
+- [ ] Le juge decide seulement `no_change` ou `add`.
+- [ ] Le schema actif ne contient plus `operation`, `target`, `targets`, `target_ref` ou `target_refs`.
+- [ ] Le runtime automatique ne contient plus `tighten`, `merge` ou `clear_obsolete`.
+- [ ] Aucun scoring identitaire n'est introduit.
+- [ ] Aucune ecriture `static`.
+- [ ] Aucun writer mutable legacy actif.
+- [ ] `user` et `llm` passent par le meme regime.
+- [ ] Les tests couvrent les enonces ontologiques, le bruit, le deja-couvert et les sorties narratives molles.
+- [ ] Le smoke Haiku est documente et tranche la question du modele.
+- [ ] Les docs actives racontent le regime add-only ontologique.
+- [ ] Les archives peuvent garder l'ancien vocabulaire, mais rien ne le presente comme regime automatique actif.
