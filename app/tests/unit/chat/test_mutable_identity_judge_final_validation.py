@@ -254,18 +254,20 @@ class _ConversationCrashStore:
 
 class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
     def test_conversation_crash_test_runs_judge_first_pipeline_without_live_db_pollution(self) -> None:
-        conversation_id = "conv-lot7-mutable-crash-test"
-        llm_proposition = "Frida prefere eclairer plutot que contester par reflexe."
-        user_proposition = "Tof exige que les systemes disent clairement ce qu'ils peuvent reellement tenir."
+        conversation_id = "conv-lot-c-mutable-add-only-crash-test"
+        existing_llm_mutable = "Frida refuse de confondre une tache locale avec son identite durable."
+        existing_user_mutable = "Tof refuse de transformer un etat de fatigue en identite durable."
+        llm_proposition = "Frida tient une voix propre sans se confondre avec Tof."
+        user_proposition = "Tof traite la frontiere entre sa pensee et la voix propre de Frida comme un objet central du travail."
         conversation = [
             [
                 {
                     "role": "user",
-                    "content": "Je suis quelqu'un qui veut que les systemes disent clairement ce qu'ils peuvent reellement tenir.",
+                    "content": "Je traite la frontiere entre ma pensee et ta voix propre comme un objet central du travail.",
                 },
                 {
                     "role": "assistant",
-                    "content": "Je suis une voix qui prefere eclairer plutot que contester par reflexe.",
+                    "content": "Je tiens une voix propre sans me confondre avec toi.",
                 },
             ],
             [
@@ -273,19 +275,19 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
                 {"role": "assistant", "content": "Oui, je peux le reformuler sans en faire une identite."},
             ],
             [
-                {"role": "user", "content": "Aujourd'hui je suis fatigue, donc allons doucement."},
-                {"role": "assistant", "content": "Je le traite comme un etat du jour, pas comme une continuite durable."},
+                {"role": "user", "content": "Je refuse de transformer un etat de fatigue en identite durable."},
+                {"role": "assistant", "content": "C'est deja couvert par le mutable utilisateur de ce test."},
             ],
             [
                 {"role": "user", "content": "Quelle est la meteo abstraite de ce test ?"},
-                {"role": "assistant", "content": "C'est seulement un bruit contextuel dans la conversation."},
-            ],
-            [
-                {"role": "user", "content": "Je veux que tu distingues toujours ce que tu peux tenir de ce que tu supposes."},
                 {
                     "role": "assistant",
-                    "content": "Je ne dois pas promettre une memoire durable sans mecanisme qui la porte.",
+                    "content": "Je refuse de confondre une tache locale avec mon identite durable.",
                 },
+            ],
+            [
+                {"role": "user", "content": "Aujourd'hui je suis fatigue, donc allons doucement."},
+                {"role": "assistant", "content": "Je le traite comme un etat du jour, pas comme une continuite durable."},
             ],
             [
                 {"role": "user", "content": "Sixieme tour: fais juste une liste courte de deux points."},
@@ -341,12 +343,26 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
         original_get_mutable = identity._get_mutable_identity
         original_static_source = identity._safe_static_identity_source
         original_write_static = static_identity_content.write_static_identity_content
+        store.mutable["llm"] = {
+            "subject": "llm",
+            "content": existing_llm_mutable,
+            "source_trace_id": None,
+            "updated_by": "seed",
+            "update_reason": "seed",
+        }
+        store.mutable["user"] = {
+            "subject": "user",
+            "content": existing_user_mutable,
+            "source_trace_id": None,
+            "updated_by": "seed",
+            "update_reason": "seed",
+        }
         chat_memory_flow.chat_turn_logger.emit = lambda stage, **kwargs: chat_events.append((stage, kwargs)) or True
         chat_memory_flow.chat_turn_logger.emit_branch_skipped = (
             lambda *, reason_code, reason_short: branch_events.append((reason_code, reason_short)) or True
         )
-        identity.load_llm_identity = lambda: "Frida statique de validation Lot 7."
-        identity.load_user_identity = lambda: "Utilisateur statique de validation Lot 7."
+        identity.load_llm_identity = lambda: "Frida statique de validation Lot C."
+        identity.load_user_identity = lambda: "Utilisateur statique de validation Lot C."
         identity._get_mutable_identity = store.get_mutable_identity
         identity._safe_static_identity_source = lambda field: f"test://{field}"
         static_identity_content.write_static_identity_content = (
@@ -376,10 +392,10 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
         self.assertEqual(len(judge_inputs), 1)
         judge_input = judge_inputs[0]
         self.assertEqual(judge_input["schema_version"], "mutable_identity_judge_input_v2")
-        self.assertEqual(judge_input["identities"]["llm"]["static"], "Frida statique de validation Lot 7.")
-        self.assertEqual(judge_input["identities"]["user"]["static"], "Utilisateur statique de validation Lot 7.")
-        self.assertEqual(judge_input["identities"]["llm"]["mutable_current"], "")
-        self.assertEqual(judge_input["identities"]["user"]["mutable_current"], "")
+        self.assertEqual(judge_input["identities"]["llm"]["static"], "Frida statique de validation Lot C.")
+        self.assertEqual(judge_input["identities"]["user"]["static"], "Utilisateur statique de validation Lot C.")
+        self.assertEqual(judge_input["identities"]["llm"]["mutable_current"], existing_llm_mutable)
+        self.assertEqual(judge_input["identities"]["user"]["mutable_current"], existing_user_mutable)
         self.assertTrue(judge_input["judgment_rules"]["judge_reads_full_window"])
         self.assertTrue(judge_input["judgment_rules"]["python_must_not_score_identity"])
         self.assertTrue(judge_input["judgment_rules"]["static_writes_forbidden"])
@@ -396,21 +412,27 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
         )
         self.assertIn("Aujourd'hui je suis fatigue", repr(judge_input))
         self.assertIn("meteo abstraite", repr(judge_input))
+        self.assertIn(existing_llm_mutable, repr(judge_input))
+        self.assertIn(existing_user_mutable, repr(judge_input))
         self.assertNotIn(conversation[5][0]["content"], repr(judge_input))
 
-        self.assertEqual(store.mutable["llm"]["content"], llm_proposition)
-        self.assertEqual(store.mutable["user"]["content"], user_proposition)
+        self.assertEqual(store.mutable["llm"]["content"], f"{existing_llm_mutable}\n{llm_proposition}")
+        self.assertEqual(store.mutable["user"]["content"], f"{existing_user_mutable}\n{user_proposition}")
+        self.assertEqual(store.mutable["llm"]["content"].count(existing_llm_mutable), 1)
+        self.assertEqual(store.mutable["user"]["content"].count(existing_user_mutable), 1)
         self.assertEqual(
             store.upsert_calls,
             [
-                ("llm", llm_proposition, "mutable_identity_judge_apply", "mutable_judge_add"),
-                ("user", user_proposition, "mutable_identity_judge_apply", "mutable_judge_add"),
+                ("llm", f"{existing_llm_mutable}\n{llm_proposition}", "mutable_identity_judge_apply", "mutable_judge_add"),
+                ("user", f"{existing_user_mutable}\n{user_proposition}", "mutable_identity_judge_apply", "mutable_judge_add"),
             ],
         )
         self.assertEqual(len(store.audit), 2)
         self.assertTrue(all(item["actor"] == "mutable_identity_judge_apply" for item in store.audit))
         self.assertNotIn("fatigue", store.mutable["llm"]["content"])
         self.assertNotIn("meteo", store.mutable["user"]["content"])
+        self.assertNotIn("reformuler", store.mutable["llm"]["content"])
+        self.assertNotIn("liste courte", store.mutable["user"]["content"])
 
         staging_state = store.get_identity_staging_state(conversation_id)
         self.assertIsNotNone(staging_state)
@@ -436,6 +458,8 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
         self.assertEqual(mutable_judge_event["verdict_counts"], {"add": 2})
         self.assertNotIn("operation_kinds", mutable_judge_event)
         self.assertNotIn("persistent_operation_count", mutable_judge_event)
+        self.assertNotIn("target_ref", mutable_judge_event)
+        self.assertNotIn("target_refs", mutable_judge_event)
         self.assertEqual(mutable_judge_event["subjects_seen"], ["llm", "user"])
         self.assertEqual(mutable_judge_event["subjects_touched"], ["llm", "user"])
         self.assertEqual(mutable_judge_event["promotion_count"], 0)
@@ -464,10 +488,10 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
         for text in sensitive_payloads.values():
             self.assertNotIn(text, serialized_observability)
 
-        self.assertEqual(identity_input["frida"]["static"]["content"], "Frida statique de validation Lot 7.")
-        self.assertEqual(identity_input["user"]["static"]["content"], "Utilisateur statique de validation Lot 7.")
-        self.assertEqual(identity_input["frida"]["mutable"]["content"], llm_proposition)
-        self.assertEqual(identity_input["user"]["mutable"]["content"], user_proposition)
+        self.assertEqual(identity_input["frida"]["static"]["content"], "Frida statique de validation Lot C.")
+        self.assertEqual(identity_input["user"]["static"]["content"], "Utilisateur statique de validation Lot C.")
+        self.assertEqual(identity_input["frida"]["mutable"]["content"], f"{existing_llm_mutable}\n{llm_proposition}")
+        self.assertEqual(identity_input["user"]["mutable"]["content"], f"{existing_user_mutable}\n{user_proposition}")
         self.assertIn(llm_proposition, identity_block)
         self.assertIn(user_proposition, identity_block)
         self.assertEqual(used_identity_ids, [])

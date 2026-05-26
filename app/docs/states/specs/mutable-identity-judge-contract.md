@@ -281,6 +281,11 @@ Regles v2:
   `clear_obsolete`;
 - `persist` disparait comme conteneur multi-operation;
 - `add` exige une `proposition` francaise, courte, ontologique et declarative;
+- la validation locale du contrat borne la forme canonique de sortie, sans lire
+  ni filtrer la fenetre: une `proposition` ajoutee doit commencer par `Frida`
+  ou `Tof`, employer une forme du type `est`, `tient`, `refuse`, `reconnait`,
+  `traite`, `exige`, se terminer par un point, et `traite` doit porter un
+  `comme`;
 - `no_change` exige une `proposition=""`;
 - si l'idee est deja couverte par `static` ou `mutable_current`, le verdict est
   `no_change`;

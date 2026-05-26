@@ -965,7 +965,7 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertEqual(observed['provider_metadata']['provider_title'], 'FridaDev / Mutable Identity Judge')
 
 
-class MutableIdentityJudgeV2DormantTests(unittest.TestCase):
+class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
     def test_v2_contract_accepts_add_only_and_is_content_free(self) -> None:
         validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(_valid_v2_contract())
 
@@ -978,6 +978,38 @@ class MutableIdentityJudgeV2DormantTests(unittest.TestCase):
         self.assertEqual(observability['subjects_touched'], ['user'])
         self.assertNotIn('operation_kinds', observability)
         self.assertNotIn('frontiere nette', repr(observability))
+
+    def test_v2_accepts_canonical_frida_and_tof_ontological_examples(self) -> None:
+        payload = _valid_v2_contract()
+        payload['verdicts'] = [
+            {
+                'subject': 'llm',
+                'verdict': 'add',
+                'proposition': "Frida tient la dignite et l'egalite reelle comme principes non negociables.",
+                'reason_code': 'explicit_frida_self_definition_continuity',
+                'continuity_kind': 'value',
+                'source_refs': ['pair_01'],
+                'guard_notes': ['not_task_local'],
+            },
+            {
+                'subject': 'user',
+                'verdict': 'add',
+                'proposition': 'Tof traite la frontiere entre sa pensee et la voix de Frida comme un objet central.',
+                'reason_code': 'explicit_relation_continuity',
+                'continuity_kind': 'relation',
+                'source_refs': ['pair_02'],
+                'guard_notes': ['not_task_local'],
+            },
+        ]
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertEqual(reason, '')
+        self.assertIsNotNone(validated)
+        self.assertEqual(
+            [item['verdict'] for item in validated['verdicts']],
+            ['add', 'add'],
+        )
 
     def test_v2_refuses_verdicts_outside_no_change_and_add(self) -> None:
         for verdict in ('persist', 'reject', 'defer', 'raise_tension'):
@@ -1024,6 +1056,60 @@ class MutableIdentityJudgeV2DormantTests(unittest.TestCase):
 
                 self.assertIsNone(validated)
                 self.assertEqual(reason, 'prompt_like_content')
+
+    def test_v2_refuses_non_ontological_soft_or_non_french_propositions(self) -> None:
+        cases = [
+            ('english', 'User keeps a durable boundary.'),
+            ('narrative_soft', "Frida travaille cette posture dans l'echange avec Tof comme une ligne vivante."),
+            ('psychologizing_soft', 'Tof semble tenir cette frontiere.'),
+            ('tendency_soft', 'Frida a tendance a tenir une voix propre.'),
+            ('treat_without_as', 'Tof traite la frontiere centrale du travail.'),
+            ('missing_period', 'Frida tient une voix propre'),
+        ]
+        for label, proposition in cases:
+            with self.subTest(label=label):
+                payload = _valid_v2_contract()
+                payload['verdicts'][0]['proposition'] = proposition
+
+                validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+                self.assertIsNone(validated)
+                self.assertEqual(reason, 'non_ontological_proposition')
+
+    def test_v2_no_change_requires_empty_proposition_and_add_requires_source_refs(self) -> None:
+        payload = _valid_v2_contract()
+        payload['verdicts'][1]['proposition'] = 'Frida tient une voix propre.'
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'invalid_verdict')
+
+        payload = _valid_v2_contract()
+        payload['verdicts'][0]['source_refs'] = []
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'schema_invalid')
+
+    def test_v2_source_refs_are_bounded_to_pair_01_through_pair_05(self) -> None:
+        payload = _valid_v2_contract()
+        payload['verdicts'][0]['source_refs'] = ['pair_01', 'pair_05']
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertEqual(reason, '')
+        self.assertIsNotNone(validated)
+        self.assertEqual(validated['verdicts'][0]['source_refs'], ['pair_01', 'pair_05'])
+
+        payload = _valid_v2_contract()
+        payload['verdicts'][0]['source_refs'] = ['pair_99']
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'schema_invalid')
 
     def test_v2_refuses_manager_fields_and_schema_omits_them(self) -> None:
         manager_fields = {'operation', 'target', 'targets', 'target_ref', 'target_refs'}

@@ -70,6 +70,9 @@ _PROMPT_LIKE_RE = re.compile(
     r'tu\s+dois\s+repondre|tu\s+dois\s+répondre|reponds\s+comme|réponds\s+comme)',
     re.IGNORECASE,
 )
+_ONTOLOGICAL_PROPOSITION_RE = re.compile(
+    r'^(Frida|Tof)\s+(est|tient|refuse|reconna(?:i|î)t|traite|exige)\b.+\.$'
+)
 _JSON_FENCE_RE = re.compile(r'^\s*```(?:json)?\s*(?P<body>.*?)\s*```\s*$', re.IGNORECASE | re.DOTALL)
 
 
@@ -338,6 +341,10 @@ def _validate_proposition(proposition: str) -> str:
         return 'prompt_like_content'
     if proposition.endswith('?'):
         return 'non_declarative_content'
+    if not _ONTOLOGICAL_PROPOSITION_RE.fullmatch(proposition):
+        return 'non_ontological_proposition'
+    if ' traite ' in proposition and ' comme ' not in proposition:
+        return 'non_ontological_proposition'
     return ''
 
 

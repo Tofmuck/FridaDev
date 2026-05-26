@@ -6,6 +6,7 @@
 - [x] Source de travail pour recadrer le juge mutable automatique apres la refonte judge-first.
 - [x] Lot A dormant livre: schema, prompt et tests v2 prepares sans activation runtime.
 - [x] Lot B livre: cutover runtime coherent vers `mutable_judge_v2` + applicateur append-only.
+- [x] Lot C livre: tests unitaires et crash test conversationnel add-only ontologique.
 - [ ] A executer en lots courts, testes, commites et pushes separement.
 
 ## Contexte
@@ -190,32 +191,32 @@ Critere de sortie:
 
 Objectif: prouver le nouveau sens du mutable, pas seulement la forme JSON.
 
-- [ ] Test Frida: `Je tiens la dignite et l'egalite reelle comme non negociables.` -> `add` canonique attendu: `Frida tient la dignite et l'egalite reelle comme principes non negociables.`
-- [ ] Test Tof: `Je traite la frontiere entre ma pensee et ta voix propre comme un objet central.` -> `add` canonique attendu: `Tof traite la frontiere entre sa pensee et la voix de Frida comme un objet central.`
-- [ ] Test bruit / tache locale / meteo / reformulation / etat du jour -> `no_change`.
-- [ ] Test idee deja couverte par `static` -> `no_change`.
-- [ ] Test idee deja couverte par `mutable_current` -> `no_change`.
-- [ ] Test sortie narrative molle mockee -> rejet validation ou `no_change` selon le contrat choisi.
-- [ ] Test `tighten` refuse.
-- [ ] Test `merge` refuse.
-- [ ] Test `clear_obsolete` refuse.
-- [ ] Test aucune cible/ref dans payload/schema/observabilite active.
-- [ ] Reajuster `test_mutable_identity_judge_final_validation` pour verifier le crash test conversationnel add-only.
-- [ ] Verifier que les 5 premieres paires declenchent une seule fenetre et que la 6e repart sur un buffer 1/5.
-- [ ] Verifier que le bruit present dans la fenetre ne se retrouve pas dans les mutables.
-- [ ] Verifier que l'observabilite ne contient ni fenetre brute ni proposition brute.
+- [x] Test Frida: `Je tiens la dignite et l'egalite reelle comme non negociables.` -> `add` canonique attendu: `Frida tient la dignite et l'egalite reelle comme principes non negociables.`
+- [x] Test Tof: `Je traite la frontiere entre ma pensee et ta voix propre comme un objet central.` -> `add` canonique attendu: `Tof traite la frontiere entre sa pensee et la voix de Frida comme un objet central.`
+- [x] Test bruit / tache locale / meteo / reformulation / etat du jour -> `no_change`.
+- [x] Test idee deja couverte par `static` -> `no_change`.
+- [x] Test idee deja couverte par `mutable_current` -> `no_change`.
+- [x] Test sortie narrative molle mockee -> rejet validation ou `no_change` selon le contrat choisi.
+- [x] Test `tighten` refuse.
+- [x] Test `merge` refuse.
+- [x] Test `clear_obsolete` refuse.
+- [x] Test aucune cible/ref dans payload/schema/observabilite active.
+- [x] Reajuster `test_mutable_identity_judge_final_validation` pour verifier le crash test conversationnel add-only.
+- [x] Verifier que les 5 premieres paires declenchent une seule fenetre et que la 6e repart sur un buffer 1/5.
+- [x] Verifier que le bruit present dans la fenetre ne se retrouve pas dans les mutables.
+- [x] Verifier que l'observabilite ne contient ni fenetre brute ni proposition brute.
 
 Tests/preuves:
 
-- [ ] `python3 -m unittest tests.unit.memory.test_mutable_identity_judge`.
-- [ ] `python3 -m unittest tests.unit.memory.test_mutable_identity_apply`.
-- [ ] `python3 -m unittest tests.unit.chat.test_mutable_identity_judge_final_validation`.
-- [ ] Suite conteneur runtime equivalente si l'hote manque de dependances.
+- [x] `python3 -m unittest tests.unit.memory.test_mutable_identity_judge`.
+- [x] `python3 -m unittest tests.unit.memory.test_mutable_identity_apply`.
+- [x] `python3 -m unittest tests.unit.chat.test_mutable_identity_judge_final_validation`.
+- [x] Suite conteneur runtime equivalente si l'hote manque de dependances.
 
 Critere de sortie:
 
-- [ ] Les tests documentent la difference entre enonce ontologique et narration molle.
-- [ ] Le crash test valide le pipeline proche runtime sans DB live.
+- [x] Les tests documentent la difference entre enonce ontologique et narration molle.
+- [x] Le crash test valide le pipeline proche runtime sans DB live.
 
 ## Lot D - Smoke réel Haiku + decision modele
 
