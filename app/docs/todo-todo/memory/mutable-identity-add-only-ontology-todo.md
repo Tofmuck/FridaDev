@@ -243,7 +243,7 @@ Resultat Lot D:
 - Prompt actif: `prompts/identity_mutable_judge_v2.txt` via `IDENTITY_MUTABLE_JUDGE_PROMPT_PATH`.
 - Structured output construit: `response_format.type=json_schema`, `json_schema.name=mutable_judge_v2`, `strict=true`, `provider.require_parameters=true`, `provider.order=["anthropic"]`.
 - Resultat observe: l'appel reel OpenRouter au modele `anthropic/claude-haiku-4.5` retourne via provider `anthropic/claude-4.5-haiku-20251001`, mais le validateur rejette la sortie (`status=skipped`, `reason_code=invalid_verdict`, `validation_reason=invalid_verdict`).
-- Token counts provider observes: `prompt=3459`, `completion=390`, `total=3849`.
+- Token counts provider observes apres rebuild: `prompt=3459`, `completion=316`, `total=3775`.
 - Verdict counts: `{}` faute de contrat valide; aucune proposition acceptee.
 - `live_db_write=false`, `applicator_called=false`.
 - Decision: Haiku est trop fragile pour ce role dans la configuration actuelle; ne pas changer le modele dans Lot D, ouvrir un micro-lot separe pour comparer un modele plus fort ou ajuster le timeout du slot juge.

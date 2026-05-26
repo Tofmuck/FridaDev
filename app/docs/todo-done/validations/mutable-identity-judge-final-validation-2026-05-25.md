@@ -40,7 +40,7 @@ Script:
 Commande:
 
 ```bash
-docker exec -i -w /app platform-fridadev python app/scripts/smoke_mutable_identity_judge_llm.py
+docker exec -i -w /app platform-fridadev python scripts/smoke_mutable_identity_judge_llm.py
 ```
 
 Scenario synthetique:
@@ -65,7 +65,7 @@ Resultat observe, content-free:
 - `provider.require_parameters=true`;
 - `provider.order=["anthropic"]`;
 - appel provider reel effectue;
-- tokens provider observes: `prompt=3459`, `completion=390`, `total=3849`;
+- tokens provider observes apres rebuild: `prompt=3459`, `completion=316`, `total=3775`;
 - `status=skipped`;
 - `reason_code=invalid_verdict`;
 - `validation_reason=invalid_verdict`;
