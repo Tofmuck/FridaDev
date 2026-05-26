@@ -5,6 +5,14 @@ Date: 2026-05-25
 Portee: contrat source-of-truth de la refonte mutable `user` et `llm`
 Hors-scope de cette spec: migration DB lourde, test modele live, benchmark modele, promotion mutable -> static
 
+Mise a jour 2026-05-26: le caller OpenRouter du juge envoie un
+`response_format` JSON Schema strict pour `mutable_judge_v1` et
+`provider.require_parameters=true`. Il privilegie aussi `provider.order=["anthropic"]`
+pour eviter la latence observee via Amazon Bedrock, sans desactiver les
+fallbacks OpenRouter. Ce verrou amont ne remplace pas le validateur metier
+FridaDev: la validation locale reste souveraine pour les contraintes
+conditionnelles, les tailles, les cibles et la persistence.
+
 ## Decision
 
 Le nouveau systeme mutable est judge-first.
@@ -244,10 +252,39 @@ Quand `operation = clear_obsolete`:
 - `proposition` est vide;
 - `targets` est vide.
 
+Le juge ne doit jamais produire un `persist` incomplet. Si `add`, `tighten` ou
+`merge` ne peuvent pas fournir de `proposition` non vide, le verdict attendu
+est `no_change`, `reject` ou `defer` avec un reason code de non-persistence
+compatible, par exemple `already_covered_by_mutable`, `already_covered_by_static`,
+`insufficient_context` ou `source_scope_unclear`. `clear_obsolete` est le seul
+cas ou `proposition` vide est normal, et seulement avec `target` non vide.
+
 Tant que `identity_mutables` stocke un contenu canonique par sujet sans
 identifiants stables par proposition, `target` et `targets` referencent les
 formulations exactes presentes dans le canon mutable courant du meme sujet.
 L'applicateur ne cree pas de nouveau modele DB pour ce lot.
+
+## Structured Output OpenRouter
+
+Le payload OpenRouter du caller `mutable_identity_judge` contient:
+
+- `response_format.type = json_schema`;
+- `response_format.json_schema.name = mutable_judge_v1`;
+- `response_format.json_schema.strict = true`;
+- `response_format.json_schema.schema.additionalProperties = false`;
+- enums de forme pour `subject`, `verdict`, `operation`, `reason_code`,
+  `continuity_kind` et `source_refs`;
+- `provider.require_parameters = true`, afin d'eviter un routage vers un
+  provider qui ignorerait `response_format`.
+- `provider.order = ["anthropic"]`, afin de privilegier le provider Anthropic
+  direct observe compatible et plus rapide que le routage Bedrock pour ce
+  schema, sans mettre `allow_fallbacks=false`.
+
+Le JSON Schema couvre la forme structurelle. Il ne porte pas toute la logique
+conditionnelle metier: compatibilite verdict/reason code, obligation de
+`proposition` pour `add`/`tighten`/`merge`, `clear_obsolete` sans proposition,
+operations incompatibles et bornes applicatives restent validees par
+`validate_mutable_judge_contract(...)`.
 
 ## Reason Codes Canoniques
 
@@ -424,6 +461,11 @@ Autorise:
 - `window_complete`;
 - timeout / parse error / apply error.
 - stages actifs `mutable_identity_judge` et `mutable_identity_judge_apply`.
+- diagnostics d'invalidation content-free: `validation_reason`,
+  `invalid_verdict_index`, `invalid_subject`, `invalid_verdict`,
+  `invalid_operation`, `invalid_reason_code`, `invalid_proposition_chars`,
+  `invalid_target_chars`, `invalid_targets_count`, `invalid_source_refs_count`,
+  `invalid_guard_notes_count`.
 
 Interdit:
 
@@ -434,6 +476,12 @@ Interdit:
 - score identitaire;
 - justification longue du juge dans l'observabilite compacte.
 - presenter `identity_periodic_agent` ou ses seuils score-first comme writer mutable actif.
+
+Une invalidation `empty_proposition` conserve la fenetre pour retry et expose
+le verdict/operation fautif sous forme de compteurs et codes seulement. La
+spec ne vide pas automatiquement le buffer apres N echecs identiques; une
+suspension operateur explicite reste un futur durcissement possible si les
+retries repetes deviennent trop bruyants.
 
 ## Contrat De Sortie Du Lot 0
 

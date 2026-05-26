@@ -169,6 +169,17 @@ def empty_latest_agent_activity() -> dict[str, Any]:
         'buffer_frozen': False,
         'judge_status': None,
         'judge_reason_code': None,
+        'validation_reason': None,
+        'invalid_verdict_index': None,
+        'invalid_subject': None,
+        'invalid_verdict': None,
+        'invalid_operation': None,
+        'invalid_reason_code': None,
+        'invalid_proposition_chars': None,
+        'invalid_target_chars': None,
+        'invalid_targets_count': None,
+        'invalid_source_refs_count': None,
+        'invalid_guard_notes_count': None,
         'apply_status': None,
         'apply_reason_code': None,
         'verdict_count': 0,
@@ -258,8 +269,26 @@ def latest_agent_activity(event: Mapping[str, Any]) -> dict[str, Any]:
         'estimated_prompt_tokens',
         'max_window_chars',
         'max_estimated_prompt_tokens',
+        'invalid_verdict_index',
+        'invalid_proposition_chars',
+        'invalid_target_chars',
+        'invalid_targets_count',
+        'invalid_source_refs_count',
+        'invalid_guard_notes_count',
+        'http_status',
     ):
         value = _optional_int(payload.get(key))
         if value is not None:
             activity[key] = value
+    for key in (
+        'validation_reason',
+        'invalid_subject',
+        'invalid_verdict',
+        'invalid_operation',
+        'invalid_reason_code',
+        'error_class',
+    ):
+        text = _optional_text(payload.get(key))
+        if text:
+            activity[key] = text
     return activity

@@ -38,6 +38,14 @@ invent opaque IDs.
 For any verdict other than `persist`, `operation`, `proposition`, `target`
 and `targets` must be empty.
 
+Never produce an incomplete `persist` verdict. If you cannot provide a
+non-empty `proposition` for `add`, `tighten` or `merge`, choose `no_change`,
+`reject` or `defer` with a compatible non-persistence reason code such as
+`already_covered_by_mutable`, `already_covered_by_static`,
+`insufficient_context` or `source_scope_unclear`. `clear_obsolete` is the only
+persistent operation where `proposition = ""` is normal, and it still requires
+a non-empty `target`.
+
 Valid `continuity_kind` values:
 - `identity`
 - `relation`

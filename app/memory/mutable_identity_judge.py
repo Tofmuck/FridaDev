@@ -12,6 +12,7 @@ import requests
 import config
 from admin import runtime_settings
 from core import llm_client
+from memory import mutable_identity_judge_schema
 
 
 logger = logging.getLogger('frida.mutable_identity_judge')
@@ -359,6 +360,19 @@ def build_openrouter_payload(
         'temperature': float(model_settings.get('temperature')),
         'top_p': float(model_settings.get('top_p')),
         'max_tokens': int(model_settings.get('max_tokens')),
+        'response_format': mutable_identity_judge_schema.build_mutable_judge_response_format(
+            schema_version=SCHEMA_VERSION,
+            subjects=ALLOWED_SUBJECTS,
+            verdicts=ALLOWED_VERDICTS,
+            operations=PERSIST_OPERATIONS,
+            reason_codes=MODEL_OUTPUT_REASON_CODES,
+            continuity_kinds=ALLOWED_CONTINUITY_KINDS,
+            source_refs=_ALLOWED_SOURCE_REFS,
+        ),
+        'provider': {
+            'require_parameters': True,
+            'order': ['anthropic'],
+        },
         'metadata': {
             'frida_caller': CALLER,
             'frida_slot': MODEL_SLOT,
@@ -430,6 +444,58 @@ def _failure_result(reason_code: str, observability_fields: Mapping[str, Any] | 
         'contract': None,
         'observability': observability,
     }
+
+
+def _verdict_failure_observability(item: Mapping[str, Any], *, reason_code: str, index: int) -> dict[str, Any]:
+    targets = _list(item.get('targets'))
+    source_refs = _list(item.get('source_refs'))
+    guard_notes = _list(item.get('guard_notes'))
+    return {
+        'validation_reason': reason_code,
+        'invalid_verdict_index': index,
+        'invalid_subject': _text(item.get('subject')).lower(),
+        'invalid_verdict': _text(item.get('verdict')).lower(),
+        'invalid_operation': _text(item.get('operation')).lower(),
+        'invalid_reason_code': _text(item.get('reason_code')),
+        'invalid_proposition_chars': len(_text(item.get('proposition'))),
+        'invalid_target_chars': len(_text(item.get('target'))),
+        'invalid_targets_count': len(targets),
+        'invalid_source_refs_count': len(source_refs),
+        'invalid_guard_notes_count': len(guard_notes),
+    }
+
+
+def _validation_failure_observability(
+    payload: Mapping[str, Any],
+    *,
+    reason_code: str,
+    mutable_budget: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    observability: dict[str, Any] = {'validation_reason': reason_code}
+    verdicts = payload.get('verdicts')
+    if not isinstance(verdicts, list):
+        return observability
+    for index, raw_item in enumerate(verdicts, start=1):
+        item = _mapping(raw_item)
+        if not item:
+            return {**observability, 'invalid_verdict_index': index}
+        validated, item_reason = _validate_verdict_item(item, mutable_budget=mutable_budget)
+        if validated is None:
+            return _verdict_failure_observability(
+                item,
+                reason_code=item_reason or reason_code or 'schema_invalid',
+                index=index,
+            )
+    return observability
+
+
+def _request_exception_observability(exc: BaseException) -> dict[str, Any]:
+    response = getattr(exc, 'response', None)
+    status_code = getattr(response, 'status_code', None)
+    payload: dict[str, Any] = {'error_class': exc.__class__.__name__}
+    if status_code is not None:
+        payload['http_status'] = int(status_code)
+    return payload
 
 
 def _estimated_prompt_tokens(char_count: int) -> int:
@@ -839,7 +905,7 @@ def run_mutable_identity_judge(judge_input: Mapping[str, Any]) -> dict[str, Any]
         return _failure_result('judge_timeout')
     except requests.exceptions.RequestException as exc:
         logger.warning('mutable_identity_judge_transport_error model=%s err=%s', settings['model'], exc.__class__.__name__)
-        return _failure_result('judge_transport_error')
+        return _failure_result('judge_transport_error', _request_exception_observability(exc))
     except Exception as exc:
         logger.error('mutable_identity_judge_transport_error err=%s', exc.__class__.__name__)
         return _failure_result('judge_transport_error')
@@ -853,7 +919,15 @@ def run_mutable_identity_judge(judge_input: Mapping[str, Any]) -> dict[str, Any]
         mutable_budget=_mapping(judge_input.get('mutable_budget')),
     )
     if validated is None:
-        return _failure_result(reason or 'schema_invalid')
+        failure_reason = reason or 'schema_invalid'
+        return _failure_result(
+            failure_reason,
+            _validation_failure_observability(
+                parsed,
+                reason_code=failure_reason,
+                mutable_budget=_mapping(judge_input.get('mutable_budget')),
+            ),
+        )
     return {
         'status': 'ok',
         'reason_code': 'judge_complete',

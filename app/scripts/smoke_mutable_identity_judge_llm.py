@@ -22,6 +22,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from memory import mutable_identity_judge  # noqa: E402
+from memory import mutable_identity_judge_schema  # noqa: E402
 
 
 def _short_hash(text: str) -> str:
@@ -151,6 +152,12 @@ def main() -> int:
         },
     )
     settings = mutable_identity_judge.runtime_model_settings()
+    prompt = mutable_identity_judge.load_prompt()
+    request_payload = mutable_identity_judge.build_openrouter_payload(
+        judge_input,
+        model_settings=settings,
+        system_prompt=prompt,
+    )
     result = mutable_identity_judge.run_mutable_identity_judge(judge_input)
     contract = _mapping(result.get("contract"))
     summary = {
@@ -163,6 +170,9 @@ def main() -> int:
         "live_db_write": False,
         "window_pairs_sent": mutable_identity_judge.WINDOW_PAIRS_COUNT,
         "held_back_pairs_count": len(synthetic_pairs) - mutable_identity_judge.WINDOW_PAIRS_COUNT,
+        "structured_output": mutable_identity_judge_schema.response_format_summary(request_payload),
+        "provider_require_parameters": bool(_mapping(request_payload.get("provider")).get("require_parameters")),
+        "provider_order": list(_mapping(request_payload.get("provider")).get("order") or []),
         "observability": result.get("observability"),
         "contract": _content_free_contract_summary(contract),
     }

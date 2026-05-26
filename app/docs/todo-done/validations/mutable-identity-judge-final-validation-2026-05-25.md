@@ -90,6 +90,48 @@ Resultat content-free:
 - persistence live: `false`;
 - fingerprints propositions: hashes courts et longueurs seulement, sans texte brut.
 
+## Durcissement Structured Output - 2026-05-26
+
+Apres le blocage live `empty_proposition`, le juge mutable a ete durci sans
+relacher le validateur metier:
+
+- le payload OpenRouter du caller `mutable_identity_judge` contient maintenant
+  `response_format.type=json_schema`, `response_format.json_schema.name=mutable_judge_v1`,
+  `response_format.json_schema.strict=true`, `provider.require_parameters=true`
+  et `provider.order=["anthropic"]`;
+- le premier essai strict via routage OpenRouter par defaut a expose deux
+  contraintes provider content-free: Bedrock refuse `minItems=2` sur un array,
+  puis depasse le timeout runtime de 10s; le schema utilise donc `minItems=1`
+  et le routage privilegie Anthropic direct sans desactiver les fallbacks;
+- le prompt interdit explicitement un `persist` incomplet: `add`, `tighten` et
+  `merge` doivent porter une `proposition` non vide, tandis que
+  `clear_obsolete` reste le seul cas normal de `proposition=""` avec `target`
+  non vide;
+- les invalidations du validateur exposent un diagnostic content-free
+  (`validation_reason`, verdict/operation/reason code, longueurs et compteurs)
+  sans proposition, target, fenetre, prompt ou reponse brute;
+- le validateur FridaDev reste souverain apres structured output;
+- la fenetre bloquee reste preservee en cas d'invalidation. La suspension
+  operateur apres N echecs identiques reste un durcissement futur possible, pas
+  une action automatique de ce correctif.
+
+Smoke reel apres patch:
+
+- commande: `docker exec -i -w /app platform-fridadev python - < app/scripts/smoke_mutable_identity_judge_llm.py`;
+- modele slot: `anthropic/claude-haiku-4.5`;
+- modele provider observe: compatible avec le schema strict via routage
+  `provider.order=["anthropic"]`;
+- status: `ok`;
+- reason_code: `judge_complete`;
+- `structured_output.response_format_type`: `json_schema`;
+- `structured_output.json_schema_strict`: `true`;
+- `provider_require_parameters`: `true`;
+- `verdict_counts`: `{"persist": 2}`;
+- sujets persistants: `["llm", "user"]`;
+- bruit persiste: `0`;
+- persistence live: `false`;
+- contenu affiche: uniquement compteurs, statuts, longueurs et hashes courts.
+
 ## Non-Concurrence Legacy
 
 Preuves attendues et verifiees:

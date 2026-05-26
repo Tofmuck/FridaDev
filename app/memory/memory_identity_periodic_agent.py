@@ -124,6 +124,25 @@ def _emit_periodic_agent_event(
                 )
                 if summary.get(key) is not None
             },
+            **{
+                key: summary.get(key)
+                for key in (
+                    'validation_reason',
+                    'invalid_verdict_index',
+                    'invalid_subject',
+                    'invalid_verdict',
+                    'invalid_operation',
+                    'invalid_reason_code',
+                    'invalid_proposition_chars',
+                    'invalid_target_chars',
+                    'invalid_targets_count',
+                    'invalid_source_refs_count',
+                    'invalid_guard_notes_count',
+                    'http_status',
+                    'error_class',
+                )
+                if summary.get(key) is not None
+            },
         },
         prompt_kind='mutable_identity_judge',
     )

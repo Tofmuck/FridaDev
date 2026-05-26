@@ -128,6 +128,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertIn('canonical code form', prompt)
         self.assertIn('every item must be a short code', prompt)
         self.assertIn('never write phrases', prompt)
+        self.assertIn('Never produce an incomplete `persist` verdict', prompt)
+        self.assertIn('`clear_obsolete` is the only', prompt)
+        self.assertIn('`proposition = ""` is normal', prompt)
 
     def test_build_judge_input_contains_complete_window_identities_and_no_scores(self) -> None:
         judge_input = mutable_identity_judge.build_judge_input(
@@ -182,6 +185,22 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertEqual(payload['metadata']['frida_caller'], 'mutable_identity_judge')
         self.assertEqual(payload['metadata']['frida_slot'], 'identity_periodic_model')
         self.assertEqual(payload['trace']['generation_name'], 'FridaDev / Mutable Identity Judge')
+        self.assertEqual(payload['response_format']['type'], 'json_schema')
+        self.assertTrue(payload['response_format']['json_schema']['strict'])
+        self.assertEqual(payload['response_format']['json_schema']['name'], 'mutable_judge_v1')
+        self.assertFalse(payload['response_format']['json_schema']['schema']['additionalProperties'])
+        self.assertEqual(payload['provider']['require_parameters'], True)
+        verdict_schema = payload['response_format']['json_schema']['schema']['properties']['verdicts']['items']
+        self.assertEqual(payload['response_format']['json_schema']['schema']['properties']['verdicts']['minItems'], 1)
+        self.assertEqual(payload['provider']['order'], ['anthropic'])
+        self.assertFalse(verdict_schema['additionalProperties'])
+        self.assertIn('persist', verdict_schema['properties']['verdict']['enum'])
+        self.assertIn('raise_tension', verdict_schema['properties']['verdict']['enum'])
+        self.assertIn('clear_obsolete', verdict_schema['properties']['operation']['enum'])
+        self.assertIn('', verdict_schema['properties']['operation']['enum'])
+        self.assertIn('pair_05', verdict_schema['properties']['source_refs']['items']['enum'])
+        self.assertIn('explicit_self_limit_continuity', verdict_schema['properties']['reason_code']['enum'])
+        self.assertNotIn('empty_proposition', verdict_schema['properties']['reason_code']['enum'])
         user_payload = json.loads(payload['messages'][1]['content'])
         self.assertEqual(user_payload['window_pairs'][0]['user']['content'], 'user full content 1')
         self.assertTrue({'strength', 'frequency_norm', 'recency_norm', 'support_pairs'}.isdisjoint(_collect_keys(user_payload)))
@@ -354,6 +373,28 @@ class MutableIdentityJudgeTests(unittest.TestCase):
 
                 self.assertIsNone(validated)
                 self.assertEqual(reason, 'invalid_operation')
+
+    def test_clear_obsolete_allows_empty_proposition_with_target(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'][0] = {
+            'subject': 'user',
+            'verdict': 'persist',
+            'operation': 'clear_obsolete',
+            'proposition': '',
+            'target': 'User keeps a durable boundary.',
+            'targets': [],
+            'reason_code': 'mutable_obsolete_explicitly_removed',
+            'continuity_kind': 'limit',
+            'source_refs': ['pair_03'],
+            'guard_notes': ['explicitly_removed'],
+        }
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertEqual(reason, '')
+        self.assertIsNotNone(validated)
+        self.assertEqual(validated['verdicts'][0]['operation'], 'clear_obsolete')
+        self.assertEqual(validated['verdicts'][0]['proposition'], '')
 
     def test_non_persistent_verdict_cannot_use_persistence_reason_code(self) -> None:
         payload = _valid_contract()
@@ -580,6 +621,87 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             mutable_identity_judge.llm_client.or_headers_custom = original_headers
             mutable_identity_judge.llm_client.log_provider_metadata = original_log_provider
 
+    def test_run_validation_failure_reports_content_free_empty_proposition_details(self) -> None:
+        original_get_settings = mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings
+        original_load_prompt = mutable_identity_judge.load_prompt
+        original_post = mutable_identity_judge.requests.post
+        original_url = mutable_identity_judge.llm_client.or_chat_completions_url
+        original_headers = mutable_identity_judge.llm_client.or_headers_custom
+        original_log_provider = mutable_identity_judge.llm_client.log_provider_metadata
+
+        def fake_get_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='identity_periodic_model',
+                payload=runtime_settings.build_env_seed_bundle('identity_periodic_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        invalid_contract = copy.deepcopy(_valid_contract())
+        sensitive_target = 'Mutable cible sensible qui ne doit pas sortir dans observability.'
+        invalid_contract['verdicts'][0] = {
+            'subject': 'user',
+            'verdict': 'persist',
+            'operation': 'tighten',
+            'proposition': '',
+            'target': sensitive_target,
+            'targets': [],
+            'reason_code': 'mutable_tightening',
+            'continuity_kind': 'limit',
+            'source_refs': ['pair_02'],
+            'guard_notes': ['not_task_local'],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': json.dumps(invalid_contract)}}]}
+
+        judge_input = mutable_identity_judge.build_judge_input(
+            window_pairs=_window_pairs(),
+            identities=_identities(),
+            mutable_budget=_budget(),
+        )
+
+        mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings = fake_get_settings
+        mutable_identity_judge.load_prompt = lambda _prompt_path=None: 'judge prompt'
+        mutable_identity_judge.requests.post = lambda *_args, **_kwargs: FakeResponse()
+        mutable_identity_judge.llm_client.or_chat_completions_url = lambda: 'https://openrouter.test/chat/completions'
+        mutable_identity_judge.llm_client.or_headers_custom = (
+            lambda *, caller, referer, title: {'Authorization': f'caller={caller}', 'X-Title': title}
+        )
+        mutable_identity_judge.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
+        try:
+            result = mutable_identity_judge.run_mutable_identity_judge(judge_input)
+        finally:
+            mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings = original_get_settings
+            mutable_identity_judge.load_prompt = original_load_prompt
+            mutable_identity_judge.requests.post = original_post
+            mutable_identity_judge.llm_client.or_chat_completions_url = original_url
+            mutable_identity_judge.llm_client.or_headers_custom = original_headers
+            mutable_identity_judge.llm_client.log_provider_metadata = original_log_provider
+
+        self.assertEqual(result['status'], 'skipped')
+        self.assertEqual(result['reason_code'], 'empty_proposition')
+        observability = result['observability']
+        self.assertEqual(observability['validation_reason'], 'empty_proposition')
+        self.assertEqual(observability['invalid_verdict_index'], 1)
+        self.assertEqual(observability['invalid_subject'], 'user')
+        self.assertEqual(observability['invalid_verdict'], 'persist')
+        self.assertEqual(observability['invalid_operation'], 'tighten')
+        self.assertEqual(observability['invalid_reason_code'], 'mutable_tightening')
+        self.assertEqual(observability['invalid_proposition_chars'], 0)
+        self.assertEqual(observability['invalid_target_chars'], len(sensitive_target))
+        self.assertEqual(observability['invalid_targets_count'], 0)
+        self.assertEqual(observability['invalid_source_refs_count'], 1)
+        self.assertEqual(observability['invalid_guard_notes_count'], 1)
+        self.assertNotIn(sensitive_target, repr(observability))
+        self.assertNotIn('proposition', set(observability.keys()))
+        self.assertNotIn('target', set(observability.keys()))
+        self.assertNotIn('targets', set(observability.keys()))
+
     def test_run_skips_window_too_large_before_provider_call_and_logs_no_text(self) -> None:
         original_get_settings = mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings
         original_load_prompt = mutable_identity_judge.load_prompt
@@ -691,6 +813,10 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertEqual(result['contract']['schema_version'], 'mutable_judge_v1')
         self.assertEqual(observed['payload']['metadata']['frida_caller'], 'mutable_identity_judge')
         self.assertEqual(observed['payload']['metadata']['frida_slot'], 'identity_periodic_model')
+        self.assertEqual(observed['payload']['response_format']['type'], 'json_schema')
+        self.assertTrue(observed['payload']['response_format']['json_schema']['strict'])
+        self.assertEqual(observed['payload']['provider']['require_parameters'], True)
+        self.assertEqual(observed['payload']['provider']['order'], ['anthropic'])
         self.assertEqual(observed['headers']['Authorization'], 'caller=mutable_identity_judge')
         self.assertEqual(observed['provider_metadata']['provider_caller'], 'mutable_identity_judge')
         self.assertEqual(observed['provider_metadata']['provider_title'], 'FridaDev / Mutable Identity Judge')

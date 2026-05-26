@@ -120,6 +120,28 @@ def _size_fields(observability: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _validation_fields(observability: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        key: observability.get(key)
+        for key in (
+            'validation_reason',
+            'invalid_verdict_index',
+            'invalid_subject',
+            'invalid_verdict',
+            'invalid_operation',
+            'invalid_reason_code',
+            'invalid_proposition_chars',
+            'invalid_target_chars',
+            'invalid_targets_count',
+            'invalid_source_refs_count',
+            'invalid_guard_notes_count',
+            'http_status',
+            'error_class',
+        )
+        if observability.get(key) is not None
+    }
+
+
 def _summary(
     *,
     status: str,
@@ -164,6 +186,7 @@ def _summary(
         'skipped_count': int(apply_payload.get('skipped_count') or 0),
         'failed_count': int(apply_payload.get('failed_count') or 0),
         **_size_fields(judge_observability),
+        **_validation_fields(judge_observability),
     }
 
 
