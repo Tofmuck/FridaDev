@@ -8,7 +8,7 @@
 - [x] Lot B livre: cutover runtime coherent vers `mutable_judge_v2` + applicateur append-only.
 - [x] Lot C livre: tests unitaires et crash test conversationnel add-only ontologique.
 - [x] Lot D livre: smoke reel v2 execute sans DB live; Haiku retourne une reponse provider mais echoue au validateur (`invalid_verdict`) et doit etre considere fragile pour ce role tant qu'un micro-lot modele/timeout n'a pas tranche.
-- [x] Lot D bis livre: smoke candidat `openai/gpt-5.4-mini` execute sans DB live; apres retrait des parametres non supportes `temperature` / `top_p`, le modele route et passe le contrat v2.
+- [x] Lot D bis livre: smoke candidat `openai/gpt-5.4-mini` execute sans DB live; apres retrait des parametres non supportes `temperature` / `top_p`, le modele route, mais il ne passe pas encore le smoke stabilite 3 runs.
 - [ ] A executer en lots courts, testes, commites et pushes separement.
 
 ## Contexte
@@ -257,12 +257,18 @@ Resultat Lot D bis:
 - Le smoke conserve le meme prompt actif, le meme schema strict, le meme scenario synthetique, aucun applicateur et aucune DB live.
 - Cause du 404 initial: le payload envoyait `temperature` et `top_p` avec `provider.require_parameters=true`; les endpoints `openai/gpt-5.4-mini` ne supportent pas ces parametres.
 - Pour les modeles `openai/gpt-5*`, le payload v2 omet `temperature` et `top_p`, ne force pas `provider.order=["anthropic"]`, et conserve `response_format` strict + `provider.require_parameters=true`.
-- Resultat observe pour `openai/gpt-5.4-mini`: `status=ok`, `reason_code=judge_complete`.
+- Resultat initial observe pour `openai/gpt-5.4-mini`: `status=ok`, `reason_code=judge_complete`.
 - Provider effectif: `openai/gpt-5.4-mini-20260317`.
 - Token counts provider observes: `prompt=2273`, `completion=168`, `total=2441`.
 - Verdict counts: `{"add": 2}`; add `llm=true`; add `user=true`; bruit ajoute `0`.
 - Propositions synthetiques acceptees: `Frida tient une voix propre sans se confondre avec Tof.` et `Tof traite la frontière entre sa pensée et la voix de Frida comme un objet central.`
-- Decision: `openai/gpt-5.4-mini` est un candidat valide pour un micro-lot de bascule modele separe; ne pas changer le modele actif sans GO explicite.
+- Durcissement suivant: le schema v2 discrimine maintenant structurellement `add` et `no_change`.
+- Pour `add`, le schema impose proposition non vide, source_refs non vide, reason code add et continuity_kind different de `none`.
+- Pour `no_change`, le schema impose proposition vide, `source_refs=[]`, `guard_notes=[]`, reason code no_change et `continuity_kind="none"`.
+- Le prompt interdit explicitement toute explication de `no_change` dans `proposition` ou `guard_notes`, et demande exactement un verdict par sujet.
+- Smoke 3 runs apres durcissement: OpenRouter route bien vers `openai/gpt-5.4-mini-20260317`, mais le critere de smoke echoue (`exit_code=5`, `runs_ok=0/3`).
+- Runs observes: run 1 `{"no_change": 2}`, run 2 `{"no_change": 2}`, run 3 `{"add": 1, "no_change": 1}`; aucun bruit ajoute; aucun `no_change` pollue.
+- Decision: `openai/gpt-5.4-mini` respecte maintenant la forme stricte, mais ne doit pas etre bascule comme juge mutable tant qu'il ne reconnait pas regulierement les adds attendus en smoke 3 runs.
 
 Tests/preuves:
 

@@ -42,6 +42,12 @@ def _parse_args() -> argparse.Namespace:
             "runtime settings."
         ),
     )
+    parser.add_argument(
+        "--runs",
+        type=int,
+        default=1,
+        help="Number of consecutive real-provider smoke runs. All runs must pass.",
+    )
     return parser.parse_args()
 
 
@@ -59,6 +65,17 @@ def _list(value: Any) -> list[Any]:
     if isinstance(value, list):
         return value
     return []
+
+
+_NOISE_TERMS = (
+    "fatigu",
+    "météo",
+    "meteo",
+    "reformul",
+    "sixième",
+    "sixieme",
+    "liste courte",
+)
 
 
 def _window_pairs() -> list[list[dict[str, str]]]:
@@ -115,12 +132,12 @@ def _added_propositions(contract: Mapping[str, Any]) -> list[dict[str, Any]]:
         propositions.append(
             {
                 "subject": str(payload.get("subject") or ""),
-                "proposition": proposition,
                 "chars": len(proposition),
                 "sha256_12": _short_hash(proposition),
                 "reason_code": str(payload.get("reason_code") or ""),
                 "continuity_kind": str(payload.get("continuity_kind") or ""),
                 "source_refs": list(_list(payload.get("source_refs"))),
+                "noise_match": any(term in proposition.lower() for term in _NOISE_TERMS),
             }
         )
     return propositions
@@ -137,15 +154,6 @@ def _contract_summary(contract: Mapping[str, Any]) -> dict[str, Any]:
         "target_refs",
     }
     forbidden_values = {"persist", "tighten", "merge", "clear_obsolete"}
-    noise_terms = (
-        "fatigu",
-        "météo",
-        "meteo",
-        "reformul",
-        "sixième",
-        "sixieme",
-        "liste courte",
-    )
     additions = _added_propositions(contract)
     serialized = json.dumps(contract, ensure_ascii=False)
     return {
@@ -176,7 +184,7 @@ def _contract_summary(contract: Mapping[str, Any]) -> dict[str, Any]:
         "noise_add_count": sum(
             1
             for item in additions
-            if any(term in item["proposition"].lower() for term in noise_terms)
+            if item.get("noise_match")
         ),
         "additions": additions,
     }
@@ -224,9 +232,25 @@ def _smoke_payload_for_model(
     return next_payload
 
 
-def main() -> int:
-    args = _parse_args()
-    model_override = str(args.model or "").strip()
+def _exit_code_for_result(result: Mapping[str, Any], contract_summary: Mapping[str, Any]) -> int:
+    if result.get("status") != "ok":
+        return 2
+    if contract_summary["schema_version"] != "mutable_judge_v2":
+        return 3
+    if not contract_summary["all_verdicts_add_or_no_change"]:
+        return 4
+    if not contract_summary["llm_add"] or not contract_summary["user_add"]:
+        return 5
+    if not contract_summary["source_refs_valid"]:
+        return 6
+    if not contract_summary["no_forbidden_manager_keys"] or not contract_summary["no_forbidden_manager_values"]:
+        return 7
+    if contract_summary["noise_add_count"]:
+        return 8
+    return 0
+
+
+def _run_once(*, model_override: str, run_index: int, runs_requested: int) -> int:
     synthetic_pairs = _window_pairs()
     judge_input = mutable_identity_judge_v2.build_judge_input(
         window_pairs=synthetic_pairs[:5],
@@ -247,6 +271,8 @@ def main() -> int:
                 "live_db_write": False,
                 "applicator_called": False,
                 "held_back_pairs_count": len(synthetic_pairs) - 5,
+                "run_index": run_index,
+                "runs_requested": runs_requested,
             }
         },
     )
@@ -310,6 +336,8 @@ def main() -> int:
     contract_summary = _contract_summary(contract)
     summary = {
         "smoke": "mutable_identity_judge_v2_real_llm",
+        "run_index": run_index,
+        "runs_requested": runs_requested,
         "slot": mutable_identity_judge_v2.MODEL_SLOT,
         "runtime_model": runtime_model,
         "requested_model": settings.get("model"),
@@ -342,22 +370,38 @@ def main() -> int:
         else "fragile_or_failed",
     }
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    return _exit_code_for_result(result, contract_summary)
 
-    if result.get("status") != "ok":
-        return 2
-    if contract_summary["schema_version"] != "mutable_judge_v2":
-        return 3
-    if not contract_summary["all_verdicts_add_or_no_change"]:
-        return 4
-    if not contract_summary["llm_add"] or not contract_summary["user_add"]:
-        return 5
-    if not contract_summary["source_refs_valid"]:
-        return 6
-    if not contract_summary["no_forbidden_manager_keys"] or not contract_summary["no_forbidden_manager_values"]:
-        return 7
-    if contract_summary["noise_add_count"]:
-        return 8
-    return 0
+
+def main() -> int:
+    args = _parse_args()
+    model_override = str(args.model or "").strip()
+    runs_requested = max(1, int(args.runs or 1))
+    exit_codes = [
+        _run_once(
+            model_override=model_override,
+            run_index=run_index,
+            runs_requested=runs_requested,
+        )
+        for run_index in range(1, runs_requested + 1)
+    ]
+    final_exit_code = 0 if all(code == 0 for code in exit_codes) else next(code for code in exit_codes if code != 0)
+    print(
+        json.dumps(
+            {
+                "smoke": "mutable_identity_judge_v2_real_llm_aggregate",
+                "runs_requested": runs_requested,
+                "runs_ok": sum(1 for code in exit_codes if code == 0),
+                "exit_codes": exit_codes,
+                "exit_code": final_exit_code,
+                "live_db_write": False,
+                "applicator_called": False,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    return final_exit_code
 
 
 if __name__ == "__main__":

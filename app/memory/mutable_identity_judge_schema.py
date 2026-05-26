@@ -103,12 +103,71 @@ def build_mutable_judge_v2_response_format(
     *,
     schema_version: str,
     subjects: Iterable[str],
-    verdicts: Iterable[str],
-    reason_codes: Iterable[str],
+    add_reason_codes: Iterable[str],
+    no_change_reason_codes: Iterable[str],
     continuity_kinds: Iterable[str],
     source_refs: Iterable[str],
 ) -> dict[str, Any]:
     """Return the active OpenRouter strict JSON Schema envelope for mutable_judge_v2."""
+    base_required = [
+        'subject',
+        'verdict',
+        'proposition',
+        'reason_code',
+        'continuity_kind',
+        'source_refs',
+        'guard_notes',
+    ]
+    code_string_schema = {
+        'type': 'string',
+        'minLength': 1,
+        'maxLength': 80,
+        'pattern': '^[A-Za-z0-9_:-]{1,80}$',
+    }
+    add_continuity_kinds = [value for value in _sorted(continuity_kinds) if value != 'none']
+    add_item_schema = {
+        'type': 'object',
+        'additionalProperties': False,
+        'required': base_required,
+        'properties': {
+            'subject': {'type': 'string', 'enum': _sorted(subjects)},
+            'verdict': {'type': 'string', 'enum': ['add']},
+            'proposition': {'type': 'string', 'minLength': 1, 'maxLength': 600},
+            'reason_code': {'type': 'string', 'enum': _sorted(add_reason_codes)},
+            'continuity_kind': {'type': 'string', 'enum': add_continuity_kinds},
+            'source_refs': {
+                'type': 'array',
+                'minItems': 1,
+                'items': {'type': 'string', 'enum': _sorted(source_refs)},
+            },
+            'guard_notes': {
+                'type': 'array',
+                'items': code_string_schema,
+            },
+        },
+    }
+    no_change_item_schema = {
+        'type': 'object',
+        'additionalProperties': False,
+        'required': base_required,
+        'properties': {
+            'subject': {'type': 'string', 'enum': _sorted(subjects)},
+            'verdict': {'type': 'string', 'enum': ['no_change']},
+            'proposition': {'type': 'string', 'enum': ['']},
+            'reason_code': {'type': 'string', 'enum': _sorted(no_change_reason_codes)},
+            'continuity_kind': {'type': 'string', 'enum': ['none']},
+            'source_refs': {
+                'type': 'array',
+                'maxItems': 0,
+                'items': {'type': 'string', 'enum': _sorted(source_refs)},
+            },
+            'guard_notes': {
+                'type': 'array',
+                'maxItems': 0,
+                'items': code_string_schema,
+            },
+        },
+    }
     return {
         'type': 'json_schema',
         'json_schema': {
@@ -134,37 +193,7 @@ def build_mutable_judge_v2_response_format(
                         'type': 'array',
                         'minItems': 1,
                         'items': {
-                            'type': 'object',
-                            'additionalProperties': False,
-                            'required': [
-                                'subject',
-                                'verdict',
-                                'proposition',
-                                'reason_code',
-                                'continuity_kind',
-                                'source_refs',
-                                'guard_notes',
-                            ],
-                            'properties': {
-                                'subject': {'type': 'string', 'enum': _sorted(subjects)},
-                                'verdict': {'type': 'string', 'enum': _sorted(verdicts)},
-                                'proposition': {'type': 'string'},
-                                'reason_code': {'type': 'string', 'enum': _sorted(reason_codes)},
-                                'continuity_kind': {'type': 'string', 'enum': _sorted(continuity_kinds)},
-                                'source_refs': {
-                                    'type': 'array',
-                                    'items': {'type': 'string', 'enum': _sorted(source_refs)},
-                                },
-                                'guard_notes': {
-                                    'type': 'array',
-                                    'items': {
-                                        'type': 'string',
-                                        'minLength': 1,
-                                        'maxLength': 80,
-                                        'pattern': '^[A-Za-z0-9_:-]{1,80}$',
-                                    },
-                                },
-                            },
+                            'anyOf': [add_item_schema, no_change_item_schema],
                         },
                     },
                 },

@@ -71,6 +71,11 @@ Use `add` only when all of these are true:
 - it is not already covered by static identity;
 - it is not already covered by mutable_current.
 
+If a subject has at least one new durable ontological statement that is not
+already covered, return `add` for that subject. Do not return `no_change` for
+that subject merely because another sentence in the same window is already
+covered or task-local.
+
 Use `no_change` when:
 
 - the matter is already covered by static or mutable_current;
@@ -78,6 +83,14 @@ Use `no_change` when:
   conversational, task-local, quoted, reported, or too soft;
 - the subject is ambiguous;
 - you cannot produce a short ontological French proposition.
+
+For `no_change`, the contract is empty by design:
+
+- `proposition` MUST be exactly `""`.
+- `source_refs` MUST be exactly `[]`.
+- `guard_notes` MUST be exactly `[]`.
+- `continuity_kind` MUST be exactly `"none"`.
+- Never explain a `no_change` verdict inside `proposition` or `guard_notes`.
 
 Allowed add reason codes:
 
@@ -112,7 +125,11 @@ Allowed continuity_kind values:
 - `none`
 
 Return exactly one JSON object matching `mutable_judge_v2`.
-Return at least one verdict for `user` and at least one verdict for `llm`.
+Return exactly one verdict for `user` and exactly one verdict for `llm`.
+Never return more than one verdict for the same subject.
+Never return both `add` and `no_change` for the same subject.
+If one subject has several possible durable ontological additions, choose the
+single clearest one and return only that one `add` verdict for the subject.
 Use source_refs only from `pair_01` to `pair_05`.
 Use guard_notes only as short content-free code strings.
 Keep JSON keys and enum values in canonical code form.

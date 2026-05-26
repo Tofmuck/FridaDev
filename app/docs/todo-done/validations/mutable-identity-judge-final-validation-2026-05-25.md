@@ -132,11 +132,54 @@ Decision:
 - Le 404 precedent ne venait pas d'un modele absent, mais d'un payload non
   routable avec `provider.require_parameters=true` et des parametres non
   supportes (`temperature` / `top_p`).
-- `openai/gpt-5.4-mini` passe le smoke synthetique `mutable_judge_v2` avec
-  schema strict et validateur metier souverain.
+- Le premier smoke compatible a prouve que `openai/gpt-5.4-mini` pouvait
+  produire un contrat valide, mais il a aussi expose une instabilite de contrat
+  sur les sorties `no_change`.
 - Ne pas changer le modele actif.
-- Prochain micro-lot possible: proposer explicitement la bascule du slot
-  `identity_periodic_model` vers ce modele, avec validation live bornee.
+- Le schema `mutable_judge_v2` a ensuite ete durci pour discriminer
+  structurellement `add` et `no_change`.
+
+### Durcissement no_change - 2026-05-26
+
+Le schema v2 impose maintenant:
+
+- `add`: proposition non vide, `source_refs` non vide, reason code add,
+  `continuity_kind` different de `none`;
+- `no_change`: `proposition=""`, `source_refs=[]`, `guard_notes=[]`,
+  reason code no_change, `continuity_kind="none"`.
+
+Le prompt ajoute:
+
+- `For no_change, proposition MUST be empty, source_refs MUST be empty,
+  guard_notes MUST be empty, continuity_kind MUST be "none".`
+- `Never explain a no_change verdict inside proposition or guard_notes.`
+- exactement un verdict pour `user` et exactement un verdict pour `llm`.
+
+Smoke 3 runs apres durcissement:
+
+```bash
+docker exec -i -w /app platform-fridadev sh -c 'python scripts/smoke_mutable_identity_judge_llm.py --model openai/gpt-5.4-mini --runs 3; printf "\nexit_code=%s\n" "$?"'
+```
+
+Resultat content-free:
+
+- provider effectif: `openai/gpt-5.4-mini-20260317`;
+- structured output: oui, schema strict discriminant;
+- run 1: `status=ok`, `verdict_counts={"no_change": 2}`, add llm non, add user non;
+- run 2: `status=ok`, `verdict_counts={"no_change": 2}`, add llm non, add user non;
+- run 3: `status=ok`, `verdict_counts={"add": 1, "no_change": 1}`, add llm oui, add user non;
+- `noise_add_count=0` sur les trois runs;
+- `source_refs_count=0` et `guard_notes_count=0` sur les no_change;
+- `live_db_write=false`;
+- `applicator_called=false`;
+- aggregate: `runs_ok=0/3`, `exit_code=5`.
+
+Conclusion:
+
+- Le verrou structurel `no_change` fonctionne: plus de proposition, refs ou
+  guard notes dans les `no_change`.
+- `openai/gpt-5.4-mini` n'est pas encore valide pour une bascule runtime: il
+  rate les adds attendus sur le smoke 3 runs.
 
 ## Crash Test Conversationnel
 

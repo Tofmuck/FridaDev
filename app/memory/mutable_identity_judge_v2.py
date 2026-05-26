@@ -181,8 +181,8 @@ def build_openrouter_payload_v2(
         'response_format': mutable_identity_judge_schema.build_mutable_judge_v2_response_format(
             schema_version=SCHEMA_VERSION,
             subjects=ALLOWED_SUBJECTS,
-            verdicts=ALLOWED_VERDICTS,
-            reason_codes=MODEL_OUTPUT_REASON_CODES,
+            add_reason_codes=ADD_REASON_CODES,
+            no_change_reason_codes=NO_CHANGE_REASON_CODES,
             continuity_kinds=ALLOWED_CONTINUITY_KINDS,
             source_refs=_ALLOWED_SOURCE_REFS,
         ),
@@ -418,6 +418,8 @@ def validate_mutable_judge_contract_v2(payload: Mapping[str, Any]) -> tuple[dict
         if verdict == 'add':
             if reason_code not in ADD_REASON_CODES:
                 return None, 'schema_invalid'
+            if continuity_kind == 'none':
+                return None, 'schema_invalid'
             proposition_reason = _validate_proposition(proposition)
             if proposition_reason:
                 return None, proposition_reason
@@ -426,7 +428,13 @@ def validate_mutable_judge_contract_v2(payload: Mapping[str, Any]) -> tuple[dict
         else:
             if reason_code not in NO_CHANGE_REASON_CODES:
                 return None, 'schema_invalid'
+            if continuity_kind != 'none':
+                return None, 'invalid_verdict'
             if proposition:
+                return None, 'invalid_verdict'
+            if source_refs:
+                return None, 'invalid_verdict'
+            if guard_notes:
                 return None, 'invalid_verdict'
 
         seen_subjects.add(subject)

@@ -1093,6 +1093,38 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
         self.assertIsNone(validated)
         self.assertEqual(reason, 'schema_invalid')
 
+        payload = _valid_v2_contract()
+        payload['verdicts'][1]['source_refs'] = ['pair_01']
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'invalid_verdict')
+
+        payload = _valid_v2_contract()
+        payload['verdicts'][1]['guard_notes'] = ['explaining_no_change']
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'invalid_verdict')
+
+        payload = _valid_v2_contract()
+        payload['verdicts'][1]['continuity_kind'] = 'identity'
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'invalid_verdict')
+
+        payload = _valid_v2_contract()
+        payload['verdicts'][0]['continuity_kind'] = 'none'
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'schema_invalid')
+
     def test_v2_source_refs_are_bounded_to_pair_01_through_pair_05(self) -> None:
         payload = _valid_v2_contract()
         payload['verdicts'][0]['source_refs'] = ['pair_01', 'pair_05']
@@ -1164,10 +1196,31 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
         self.assertEqual(payload['top_p'], 1.0)
         self.assertEqual(payload['metadata']['frida_contract_status'], 'active_add_only_lot_b')
         verdict_schema = payload['response_format']['json_schema']['schema']['properties']['verdicts']['items']
-        self.assertEqual(set(verdict_schema['properties']['verdict']['enum']), {'add', 'no_change'})
-        self.assertNotIn('operation', verdict_schema['properties'])
-        self.assertIn('explicit_frida_limit_continuity', verdict_schema['properties']['reason_code']['enum'])
-        self.assertNotIn('mutable_tightening', verdict_schema['properties']['reason_code']['enum'])
+        self.assertEqual(len(verdict_schema['anyOf']), 2)
+        add_schema = next(
+            schema
+            for schema in verdict_schema['anyOf']
+            if schema['properties']['verdict']['enum'] == ['add']
+        )
+        no_change_schema = next(
+            schema
+            for schema in verdict_schema['anyOf']
+            if schema['properties']['verdict']['enum'] == ['no_change']
+        )
+        self.assertNotIn('operation', add_schema['properties'])
+        self.assertNotIn('operation', no_change_schema['properties'])
+        self.assertIn('explicit_frida_limit_continuity', add_schema['properties']['reason_code']['enum'])
+        self.assertNotIn('mutable_tightening', add_schema['properties']['reason_code']['enum'])
+        self.assertNotIn('no_mutable_identity_signal', add_schema['properties']['reason_code']['enum'])
+        self.assertIn('no_mutable_identity_signal', no_change_schema['properties']['reason_code']['enum'])
+        self.assertNotIn('explicit_frida_limit_continuity', no_change_schema['properties']['reason_code']['enum'])
+        self.assertEqual(add_schema['properties']['proposition']['minLength'], 1)
+        self.assertEqual(add_schema['properties']['source_refs']['minItems'], 1)
+        self.assertNotIn('none', add_schema['properties']['continuity_kind']['enum'])
+        self.assertEqual(no_change_schema['properties']['proposition']['enum'], [''])
+        self.assertEqual(no_change_schema['properties']['source_refs']['maxItems'], 0)
+        self.assertEqual(no_change_schema['properties']['guard_notes']['maxItems'], 0)
+        self.assertEqual(no_change_schema['properties']['continuity_kind']['enum'], ['none'])
         self.assertEqual(mutable_identity_judge_v2.JUDGE_WINDOW_MAX_CHARS, 32_000)
         self.assertEqual(mutable_identity_judge_v2.JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT, 12_000)
 
@@ -1277,6 +1330,16 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
             self.assertIn(phrase, prompt)
         self.assertIn('Never output `operation`.', prompt)
         self.assertIn('Never output `target`, `targets`, `target_ref`, or `target_refs`.', prompt)
+        self.assertIn('For `no_change`, the contract is empty by design', prompt)
+        self.assertIn('If a subject has at least one new durable ontological statement', prompt)
+        self.assertIn('Do not return `no_change` for', prompt)
+        self.assertIn('`proposition` MUST be exactly `""`.', prompt)
+        self.assertIn('`source_refs` MUST be exactly `[]`.', prompt)
+        self.assertIn('`guard_notes` MUST be exactly `[]`.', prompt)
+        self.assertIn('Never explain a `no_change` verdict inside `proposition` or `guard_notes`.', prompt)
+        self.assertIn('Return exactly one verdict for `user` and exactly one verdict for `llm`.', prompt)
+        self.assertIn('Never return more than one verdict for the same subject.', prompt)
+        self.assertIn('Never return both `add` and `no_change` for the same subject.', prompt)
 
     def test_v2_is_ready_for_active_runtime_without_mutating_v1_helpers(self) -> None:
         judge_input = mutable_identity_judge.build_judge_input(
