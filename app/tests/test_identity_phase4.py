@@ -478,6 +478,7 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                     'source_trace_id': source_trace_id,
                     'updated_by': updated_by,
                     'update_reason': update_reason,
+                    'audit_reason_code': audit_reason_code,
                 }
                 self.mutable[subject] = payload
                 self.upsert_calls.append((subject, content, updated_by, update_reason))
@@ -508,7 +509,6 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
             *,
             subject: str,
             verdict_kind: str,
-            operation: str = '',
             proposition: str = '',
             reason_code: str,
             continuity_kind: str = 'none',
@@ -516,13 +516,10 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
             return {
                 'subject': subject,
                 'verdict': verdict_kind,
-                'operation': operation,
                 'proposition': proposition,
-                'target': '',
-                'targets': [],
                 'reason_code': reason_code,
                 'continuity_kind': continuity_kind,
-                'source_refs': ['pair_01'] if verdict_kind == 'persist' else [],
+                'source_refs': ['pair_01'] if verdict_kind == 'add' else [],
                 'guard_notes': [],
             }
 
@@ -536,16 +533,15 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         store = MutableStore()
         llm_static = 'Frida garde une presence claire et stable.'
         user_static = 'Utilisateur de test sans mutable canonique.'
-        llm_mutable = 'Frida maintient une voix stable, attentive et sobre.'
+        llm_mutable = 'Frida tient une voix stable, attentive et sobre.'
         staging_sentinel = 'TRACE_BUFFER_NE_DOIT_PAS_ETRE_INJECTEE'
 
         contract = {
-            'schema_version': 'mutable_judge_v1',
+            'schema_version': 'mutable_judge_v2',
             'verdicts': [
                 verdict(
                     subject='llm',
-                    verdict_kind='persist',
-                    operation='add',
+                    verdict_kind='add',
                     proposition=llm_mutable,
                     reason_code='explicit_frida_self_definition_continuity',
                     continuity_kind='posture',
@@ -625,8 +621,9 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         self.assertTrue(summary['writes_applied'])
         self.assertEqual(store.mutable['llm']['content'], llm_mutable)
         self.assertEqual(store.mutable['llm']['updated_by'], 'mutable_identity_judge_apply')
-        self.assertEqual(store.mutable['llm']['update_reason'], 'mutable_judge_persist')
-        self.assertEqual(store.upsert_calls, [('llm', llm_mutable, 'mutable_identity_judge_apply', 'mutable_judge_persist')])
+        self.assertEqual(store.mutable['llm']['update_reason'], 'mutable_judge_add')
+        self.assertEqual(store.mutable['llm']['audit_reason_code'], 'mutable_judge_add')
+        self.assertEqual(store.upsert_calls, [('llm', llm_mutable, 'mutable_identity_judge_apply', 'mutable_judge_add')])
 
         self.assertEqual(payload['schema_version'], 'v2')
         self.assertEqual(payload['frida']['mutable']['content'], llm_mutable)
