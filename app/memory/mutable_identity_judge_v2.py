@@ -10,7 +10,7 @@ import requests
 
 import config
 from core import llm_client
-from memory import mutable_identity_judge
+from memory import mutable_identity_judge_common as judge_common
 from memory import mutable_identity_judge_schema
 
 
@@ -21,11 +21,11 @@ INPUT_SCHEMA_VERSION = 'mutable_identity_judge_input_v2'
 PROMPT_KIND = 'mutable_identity_judge_v2'
 PROMPT_PATH = 'prompts/identity_mutable_judge_v2.txt'
 CONTRACT_STATUS = 'active_add_only_lot_b'
-MODEL_SLOT = 'identity_periodic_model'
-CALLER = 'mutable_identity_judge'
-WINDOW_PAIRS_COUNT = 5
-JUDGE_WINDOW_MAX_CHARS = 32_000
-JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT = 12_000
+MODEL_SLOT = judge_common.MODEL_SLOT
+CALLER = judge_common.CALLER
+WINDOW_PAIRS_COUNT = judge_common.WINDOW_PAIRS_COUNT
+JUDGE_WINDOW_MAX_CHARS = judge_common.JUDGE_WINDOW_MAX_CHARS
+JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT = judge_common.JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT
 
 ALLOWED_SUBJECTS = {'llm', 'user'}
 ALLOWED_VERDICTS = {'no_change', 'add'}
@@ -104,9 +104,9 @@ def build_judge_input(
 ) -> dict[str, Any]:
     return {
         'schema_version': INPUT_SCHEMA_VERSION,
-        'window_pairs': mutable_identity_judge._normalize_window_pairs(window_pairs),
-        'identities': mutable_identity_judge._normalized_identities(identities),
-        'mutable_budget': mutable_identity_judge._normalized_budget(mutable_budget),
+        'window_pairs': judge_common.normalize_window_pairs(window_pairs),
+        'identities': judge_common.normalized_identities(identities),
+        'mutable_budget': judge_common.normalized_budget(mutable_budget),
         'judgment_rules': {
             'judge_reads_full_window': True,
             'python_must_not_score_identity': True,
@@ -118,20 +118,12 @@ def build_judge_input(
                 'add': sorted(ADD_REASON_CODES),
                 'no_change': sorted(NO_CHANGE_REASON_CODES),
             },
-            'technical_reason_codes_not_model_output': sorted(mutable_identity_judge.TECHNICAL_REASON_CODES),
-            'automatic_operations_forbidden': [
-                'tighten',
-                'merge',
-                'clear_obsolete',
-                'target',
-                'targets',
-                'target_ref',
-                'target_refs',
-            ],
+            'technical_reason_codes_not_model_output': sorted(judge_common.TECHNICAL_REASON_CODES),
+            'legacy_manager_contract_forbidden': True,
             'automatic_writes': ['identity_mutables'],
             'static_writes_forbidden': True,
         },
-        'source_annotations': mutable_identity_judge._compact_annotation_value(source_annotations or {}),
+        'source_annotations': judge_common.compact_annotation_value(source_annotations or {}),
     }
 
 
@@ -525,7 +517,7 @@ def build_judge_observability_v2(contract: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def run_mutable_identity_judge_v2(judge_input: Mapping[str, Any]) -> dict[str, Any]:
-    settings = mutable_identity_judge.runtime_model_settings()
+    settings = judge_common.runtime_model_settings()
     try:
         system_prompt = load_prompt_v2(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)
     except Exception:

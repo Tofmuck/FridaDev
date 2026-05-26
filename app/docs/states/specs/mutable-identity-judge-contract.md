@@ -7,11 +7,12 @@ Hors-scope de cette spec: migration DB lourde, test modele live, benchmark model
 
 Mise a jour 2026-05-26: le caller OpenRouter du juge envoie un
 `response_format` JSON Schema strict pour le contrat actif et
-`provider.require_parameters=true`. Il privilegie aussi
-`provider.order=["anthropic"]` pour eviter la latence observee via Amazon
-Bedrock, sans desactiver les fallbacks OpenRouter. Ce verrou amont ne remplace
-pas le validateur metier FridaDev: la validation locale reste souveraine pour
-les contraintes conditionnelles, les tailles, la securite et la persistence.
+`provider.require_parameters=true`. `provider.order` n'est force que pour les
+modeles Anthropic; le modele actif `openai/gpt-5.2` ne force pas de provider
+Anthropic et omet les parametres d'echantillonnage non supportes par OpenRouter
+avec `require_parameters=true`. Ce verrou amont ne remplace pas le validateur
+metier FridaDev: la validation locale reste souveraine pour les contraintes
+conditionnelles, les tailles, la securite et la persistence.
 
 Mise a jour 2026-05-26, Lot B add-only ontologique: le runtime actif utilise
 `mutable_judge_v2`. Le regime automatique admet seulement de nouveaux enonces
@@ -23,6 +24,12 @@ Convention de lecture apres Lot B: les sections qui decrivent `mutable_judge_v1`
 `persist`, `operation`, `tighten`, `merge`, `clear_obsolete`, `target_ref` ou
 `target_refs` sont des traces legacy pre-Lot-B / compatibilite historique. Elles
 ne constituent plus le regime runtime actif.
+
+Mise a jour 2026-05-26, Lot E cleanup: l'implementation v1 gestionnaire a ete
+retiree du chemin de code actif. `app/memory/mutable_identity_judge.py` reste un
+shim de compatibilite operateur content-free; les helpers communs utilises par
+v2 vivent dans `mutable_identity_judge_common.py`. Les refs cible
+`mutable_identity_refs.py` ont ete supprimees.
 
 ## Decision
 
@@ -153,8 +160,9 @@ Exception: une redaction obligatoire pour securite runtime ou secret suit la pol
 
 ## Schema JSON Legacy Pre-Lot-B (`mutable_judge_v1`)
 
-Le schema `mutable_judge_v1` est conserve comme reference historique et
-compatibilite locale des anciens tests. Il n'est plus le contrat runtime actif.
+Le schema `mutable_judge_v1` est conserve dans cette spec comme reference
+historique. Son implementation runtime a ete retiree en Lot E; il n'est plus le
+contrat runtime actif et n'a plus de builder schema actif.
 
 Nom de schema: `mutable_judge_v1`
 
@@ -229,8 +237,10 @@ Statut: actif depuis Lot B.
 Le contrat v2 recadre le juge automatique comme admission d'un nouvel enonce
 ontologique, pas comme maintenance du canon existant. Il conserve la fenetre de
 5 paires, le meme regime pour `user` et `llm`, le structured output OpenRouter,
-`provider.require_parameters=true`, `provider.order=["anthropic"]`, la validation
-locale stricte et l'observabilite content-free.
+`provider.require_parameters=true`, la validation locale stricte et
+l'observabilite content-free. Le modele runtime actif est `openai/gpt-5.2`;
+`provider.order=["anthropic"]` reste seulement une preference conditionnelle
+pour les modeles Anthropic.
 
 Activation:
 

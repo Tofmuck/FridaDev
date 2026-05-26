@@ -28,6 +28,19 @@ documentent les etapes pre-Lot B. Le contrat actif automatique depuis Lot B est
 `mutable_judge_v2`: verdicts `add` / `no_change` uniquement, sans operation ni
 maintenance automatique du canon existant.
 
+Mise a jour Lot E du 2026-05-26:
+
+- le module v1 gestionnaire `app/memory/mutable_identity_judge.py` a ete reduit
+  a un shim content-free de compatibilite operateur;
+- les helpers techniques encore utiles au caller v2 ont ete extraits dans
+  `app/memory/mutable_identity_judge_common.py`;
+- le builder schema v1 et `app/memory/mutable_identity_refs.py` ont ete retires;
+- les tests actifs valident maintenant uniquement `mutable_judge_v2`, le schema
+  add/no_change, le refus des champs gestionnaires et le pipeline append-only;
+- les mentions restantes de `persist`, `tighten`, `merge`, `clear_obsolete` ou
+  `target_ref(s)` sont historiques, des tests d'absence ou des interdictions
+  explicites du regime actif.
+
 ## Smoke Reel Lot D Add-Only v2 - 2026-05-26
 
 Le smoke reel Lot D a ete adapte pour appeler le vrai juge `mutable_judge_v2`

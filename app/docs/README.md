@@ -38,7 +38,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
 - Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
 - Note suspendue memoire/intention `feed her from herself`: `todo-todo/memory/Frida_from_herself.md`
-- TODO actif recadrage mutable add-only ontologique: `todo-todo/memory/mutable-identity-add-only-ontology-todo.md`
+- Archive recadrage mutable add-only ontologique: `todo-done/refactors/mutable-identity-add-only-ontology-todo.md`
 - Archive refonte des mutables identity judge-first: `todo-done/refactors/mutable-identity-judge-refactor-todo.md`
 - Contrat source-of-truth juge mutable: `states/specs/mutable-identity-judge-contract.md`
 - Validation finale refonte mutable judge-first 2026-05-25: `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`
@@ -176,7 +176,7 @@ But: cadrer le chantier separe permettant a Frida de consulter une bibliotheque 
 
 Lire d'abord:
 - `states/specs/mutable-identity-judge-contract.md`
-- `todo-todo/memory/mutable-identity-add-only-ontology-todo.md` pour le recadrage actif add-only ontologique du juge mutable automatique: admission d'enonces d'etre, pas maintenance du canon existant.
+- `todo-done/refactors/mutable-identity-add-only-ontology-todo.md` pour l'archive du recadrage add-only ontologique du juge mutable automatique: admission d'enonces d'etre, pas maintenance du canon existant.
 - `states/policies/identity-new-contract-plan.md`
 - `todo-done/refactors/identity-new-contract-todo.md`
 - `todo-done/refactors/mutable-identity-judge-refactor-todo.md` pour l'archive de la refonte du pipeline mutable vers `fenetre complete de 5 paires -> juge LLM -> identity_mutables`

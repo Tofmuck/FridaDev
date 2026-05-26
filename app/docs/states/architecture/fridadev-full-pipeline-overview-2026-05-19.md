@@ -305,9 +305,9 @@ En mode shadow, les resultats peuvent rester evidence/diagnostic. En mode enforc
 
 Le chemin mutable actif ne passe plus par l'ancien agent periodic score-first.
 
-L'extracteur repere encore des signaux immediats dans un couple de messages comme diagnostics hors canon. Le chemin mutable canonique attend une fenetre technique de 5 paires completes, relit les identites `static` et `mutable_current`, puis appelle le juge `mutable_judge_v1`.
+L'extracteur repere encore des signaux immediats dans un couple de messages comme diagnostics hors canon. Le chemin mutable canonique attend une fenetre technique de 5 paires completes, relit les identites `static` et `mutable_current`, puis appelle le juge actif `mutable_judge_v2` add-only ontologique.
 
-Si le juge echoue, timeout, renvoie un contrat invalide ou si l'applicateur echoue, la fenetre est preservee. Les seules operations canoniques passent par `mutable_identity_apply.apply_mutable_judge_contract(...)`; l'ancien applicateur `memory_identity_periodic_apply` a ete retire.
+Si le juge echoue, timeout, renvoie un contrat invalide ou si l'applicateur echoue, la fenetre est preservee. Les seules ecritures canoniques automatiques sont des `add` append-only via `mutable_identity_apply.apply_mutable_judge_contract(...)`; l'ancien applicateur `memory_identity_periodic_apply` a ete retire.
 
 ### Resume conversationnel
 

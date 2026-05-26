@@ -24,6 +24,7 @@ if str(APP_DIR) not in sys.path:
 
 import config  # noqa: E402
 from memory import mutable_identity_judge_schema  # noqa: E402
+from memory import mutable_identity_judge_common  # noqa: E402
 from memory import mutable_identity_judge_v2  # noqa: E402
 
 
@@ -276,7 +277,7 @@ def _run_once(*, model_override: str, run_index: int, runs_requested: int) -> in
             }
         },
     )
-    runtime_settings = mutable_identity_judge_v2.mutable_identity_judge.runtime_model_settings()
+    runtime_settings = mutable_identity_judge_common.runtime_model_settings()
     settings = dict(runtime_settings)
     runtime_model = str(settings.get("model") or "")
     if model_override:
@@ -295,7 +296,7 @@ def _run_once(*, model_override: str, run_index: int, runs_requested: int) -> in
 
     captured_provider: dict[str, Any] = {}
     original_log_provider = mutable_identity_judge_v2.llm_client.log_provider_metadata
-    original_runtime_settings = mutable_identity_judge_v2.mutable_identity_judge.runtime_model_settings
+    original_runtime_settings = mutable_identity_judge_common.runtime_model_settings
     original_build_payload = mutable_identity_judge_v2.build_openrouter_payload_v2
 
     def capture_provider(_logger: Any, _event_name: str, provider_metadata: Any) -> None:
@@ -323,13 +324,13 @@ def _run_once(*, model_override: str, run_index: int, runs_requested: int) -> in
         )
 
     mutable_identity_judge_v2.llm_client.log_provider_metadata = capture_provider
-    mutable_identity_judge_v2.mutable_identity_judge.runtime_model_settings = smoke_runtime_settings
+    mutable_identity_judge_common.runtime_model_settings = smoke_runtime_settings
     mutable_identity_judge_v2.build_openrouter_payload_v2 = smoke_build_payload
     try:
         result = mutable_identity_judge_v2.run_mutable_identity_judge_v2(judge_input)
     finally:
         mutable_identity_judge_v2.llm_client.log_provider_metadata = original_log_provider
-        mutable_identity_judge_v2.mutable_identity_judge.runtime_model_settings = original_runtime_settings
+        mutable_identity_judge_common.runtime_model_settings = original_runtime_settings
         mutable_identity_judge_v2.build_openrouter_payload_v2 = original_build_payload
 
     contract = _mapping(result.get("contract"))

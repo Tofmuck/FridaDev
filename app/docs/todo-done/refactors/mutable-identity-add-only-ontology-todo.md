@@ -2,7 +2,7 @@
 
 ## Statut
 
-- [x] Actif sur `feature/mutable-refonte`.
+- [x] Archive cloturee sur `feature/mutable-refonte`.
 - [x] Source de travail pour recadrer le juge mutable automatique apres la refonte judge-first.
 - [x] Lot A dormant livre: schema, prompt et tests v2 prepares sans activation runtime.
 - [x] Lot B livre: cutover runtime coherent vers `mutable_judge_v2` + applicateur append-only.
@@ -11,7 +11,8 @@
 - [x] Lot D bis livre: smoke candidat `openai/gpt-5.4-mini` execute sans DB live; apres retrait des parametres non supportes `temperature` / `top_p`, le modele route, mais il ne passe pas encore le smoke stabilite 3 runs.
 - [x] Smoke modele frontiere livre: `openai/gpt-5.5` passe le smoke reel 3/3 sans DB live ni applicateur; le runtime persistant reste inchange.
 - [x] Bascule modele runtime livre: `identity_periodic_model.model` pointe vers `openai/gpt-5.2` pour le juge mutable v2 add-only.
-- [ ] A executer en lots courts, testes, commites et pushes separement.
+- [x] Lot E livre: v1 gestionnaire neutralise en shim compat, refs cible supprimees, tests v1 requalifies, docs/index mis a jour.
+- [x] Execute en lots courts, testes, commites et pushes separement.
 
 ## Contexte
 
@@ -132,7 +133,7 @@ l'applicateur add-only.
 - [x] Garder `response_format.type=json_schema`.
 - [x] Garder `response_format.json_schema.strict=true`.
 - [x] Garder `provider.require_parameters=true`.
-- [x] Garder `provider.order=["anthropic"]` sauf decision explicite documentee.
+- [x] Garder `provider.order=["anthropic"]` seulement pour les modeles Anthropic; les modeles OpenAI n'ont pas d'ordre provider force.
 - [x] Garder la garde taille 32_000 chars / 12_000 tokens estimes sauf preuve contraire.
 
 Tests/preuves:
@@ -305,64 +306,62 @@ Critere de sortie:
 
 Objectif: ne laisser aucun deuxieme regime mutable automatique actif.
 
-- [ ] Retirer ou requalifier proprement `app/memory/mutable_identity_refs.py` si plus utilise.
-- [ ] Supprimer ou requalifier les tests morts de refs, `merge`, `tighten`, `clear_obsolete`.
-- [ ] Retirer des docs actives le regime gestionnaire comme cible actuelle.
-- [ ] Garder les mentions historiques seulement dans archives ou notes de validation clairement datees.
-- [ ] Verifier les hits runtime actifs pour `tighten`.
-- [ ] Verifier les hits runtime actifs pour `merge`.
-- [ ] Verifier les hits runtime actifs pour `clear_obsolete`.
-- [ ] Verifier les hits runtime actifs pour `target_ref`.
-- [ ] Verifier les hits runtime actifs pour `target_refs`.
-- [ ] Verifier les hits runtime actifs pour `mutable_tightening`.
-- [ ] Verifier les hits runtime actifs pour `mutable_merge`.
-- [ ] Verifier les hits runtime actifs pour `mutable_obsolete_explicitly_removed`.
-- [ ] Distinguer hits interdits en runtime actif et hits acceptables dans archives `todo-done`.
-- [ ] Verifier admin/read-model/logs: le regime actif raconte `mutable_judge_v2` add-only, pas le gestionnaire de canon.
-- [ ] Verifier `app/docs/README.md`.
-- [ ] Verifier `README.md` si les chantiers actifs identity y sont indexes.
-- [ ] Verifier et mettre a jour `AGENTS.md` si le contrat actif mutable change.
-- [ ] Ne pas laisser `AGENTS.md` raconter l'ancien regime judge-first gestionnaire comme source active.
-- [ ] Garder les archives historiques separees de la doctrine active.
-- [ ] Decider explicitement si `mutable_judge_v1` reste compat ou disparait.
-- [ ] Ne pas laisser deux schemas actifs pour le chemin automatique.
+- [x] Retirer ou requalifier proprement `app/memory/mutable_identity_refs.py` si plus utilise.
+- [x] Supprimer ou requalifier les tests morts de refs, `merge`, `tighten`, `clear_obsolete`.
+- [x] Retirer des docs actives le regime gestionnaire comme cible actuelle.
+- [x] Garder les mentions historiques seulement dans archives ou notes de validation clairement datees.
+- [x] Verifier les hits runtime actifs pour `tighten`.
+- [x] Verifier les hits runtime actifs pour `merge`.
+- [x] Verifier les hits runtime actifs pour `clear_obsolete`.
+- [x] Verifier les hits runtime actifs pour `target_ref`.
+- [x] Verifier les hits runtime actifs pour `target_refs`.
+- [x] Verifier les hits runtime actifs pour `mutable_tightening`.
+- [x] Verifier les hits runtime actifs pour `mutable_merge`.
+- [x] Verifier les hits runtime actifs pour `mutable_obsolete_explicitly_removed`.
+- [x] Distinguer hits interdits en runtime actif et hits acceptables dans archives `todo-done`.
+- [x] Verifier admin/read-model/logs: le regime actif raconte `mutable_judge_v2` add-only, pas le gestionnaire de canon.
+- [x] Verifier `app/docs/README.md`.
+- [x] Verifier `README.md` si les chantiers actifs identity y sont indexes.
+- [x] Verifier et mettre a jour `AGENTS.md` si le contrat actif mutable change.
+- [x] Ne pas laisser `AGENTS.md` raconter l'ancien regime judge-first gestionnaire comme source active.
+- [x] Garder les archives historiques separees de la doctrine active.
+- [x] Decider explicitement: `mutable_judge_v1` disparait comme implementation active; `app/memory/mutable_identity_judge.py` reste seulement un shim content-free de compatibilite operateur.
+- [x] Ne pas laisser deux schemas actifs pour le chemin automatique.
 
 Tests/preuves:
 
-- [ ] `grep -RIn "tighten\\|merge\\|clear_obsolete\\|target_ref\\|target_refs\\|mutable_tightening\\|mutable_merge\\|mutable_obsolete_explicitly_removed" app/core app/memory app/admin app/tests app/docs/states app/docs/todo-todo | head -200`.
-- [ ] Suite tests ciblee juge/apply/runtime/read-model.
-- [ ] `git diff --check`.
-- [ ] Rebuild applicatif si runtime/prompt charge modifie.
+- [x] `grep -RIn "tighten\\|merge\\|clear_obsolete\\|target_ref\\|target_refs\\|mutable_tightening\\|mutable_merge\\|mutable_obsolete_explicitly_removed" app/core app/memory app/admin app/tests app/docs/states app/docs/todo-todo | head -200`.
+- [x] Suite tests ciblee juge/apply/runtime/read-model.
+- [x] `git diff --check`.
+- [x] Rebuild applicatif si runtime/prompt charge modifie.
 
 Critere de sortie:
 
-- [ ] Aucun chemin automatique actif ne sait modifier, fusionner ou supprimer une mutable existante.
-- [ ] Les seuls restes du regime gestionnaire sont historiques, archives ou explicitement compat non active.
+- [x] Aucun chemin automatique actif ne sait modifier, fusionner ou supprimer une mutable existante.
+- [x] Les seuls restes du regime gestionnaire sont historiques, archives ou explicitement compat non active.
 
 ## Risques
 
-- Haiku peut continuer a produire des phrases narratives molles malgre le prompt.
-- Un validateur trop syntaxique pourrait remplacer le jugement ontologique par une regex pauvre.
 - Le canon existant herite du regime gestionnaire peut rester imparfait tant qu'un nettoyage manuel separe n'est pas ouvert.
-- Le passage a `mutable_judge_v2` peut demander une migration soigneuse des tests/admin/read-model qui exposent encore `operation_kinds`.
+- Un validateur trop syntaxique pourrait remplacer le jugement ontologique par une regex pauvre.
 - Le slot runtime `identity_periodic_model` reste un nom de compatibilite et peut continuer a troubler l'operateur si la surface admin n'est pas claire.
 
 ## Définition de fini
 
-- [ ] Le pipeline automatique est:
+- [x] Le pipeline automatique est:
 
 ```text
 5 paires completes -> juge LLM -> mutable_judge_v2 -> applicateur add-only -> identity_mutables -> audit content-free -> reinjection
 ```
 
-- [ ] Le juge decide seulement `no_change` ou `add`.
-- [ ] Le schema actif ne contient plus `operation`, `target`, `targets`, `target_ref` ou `target_refs`.
-- [ ] Le runtime automatique ne contient plus `tighten`, `merge` ou `clear_obsolete`.
-- [ ] Aucun scoring identitaire n'est introduit.
-- [ ] Aucune ecriture `static`.
-- [ ] Aucun writer mutable legacy actif.
-- [ ] `user` et `llm` passent par le meme regime.
-- [ ] Les tests couvrent les enonces ontologiques, le bruit, le deja-couvert et les sorties narratives molles.
-- [ ] Le smoke Haiku est documente et tranche la question du modele.
-- [ ] Les docs actives racontent le regime add-only ontologique.
-- [ ] Les archives peuvent garder l'ancien vocabulaire, mais rien ne le presente comme regime automatique actif.
+- [x] Le juge decide seulement `no_change` ou `add`.
+- [x] Le schema actif ne contient plus `operation`, `target`, `targets`, `target_ref` ou `target_refs`.
+- [x] Le runtime automatique ne contient plus `tighten`, `merge` ou `clear_obsolete`.
+- [x] Aucun scoring identitaire n'est introduit.
+- [x] Aucune ecriture `static`.
+- [x] Aucun writer mutable legacy actif.
+- [x] `user` et `llm` passent par le meme regime.
+- [x] Les tests couvrent les enonces ontologiques, le bruit, le deja-couvert et les sorties narratives molles.
+- [x] Le smoke modele est documente; Haiku et GPT-5.4-mini sont insuffisants, `openai/gpt-5.2` est le modele actif apres smoke 3/3.
+- [x] Les docs actives racontent le regime add-only ontologique.
+- [x] Les archives peuvent garder l'ancien vocabulaire, mais rien ne le presente comme regime automatique actif.
