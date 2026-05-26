@@ -149,17 +149,34 @@ def build_judge_messages_v2(judge_input: Mapping[str, Any], *, system_prompt: st
     ]
 
 
+def _normalized_model_slug(model: Any) -> str:
+    return _text(model).lower()
+
+
+def _model_supports_sampling_parameters(model: Any) -> bool:
+    normalized = _normalized_model_slug(model)
+    if normalized.startswith('openai/gpt-5'):
+        return False
+    return True
+
+
+def _provider_preferences_for_model(model: Any) -> dict[str, Any]:
+    provider: dict[str, Any] = {'require_parameters': True}
+    if _normalized_model_slug(model).startswith('anthropic/'):
+        provider['order'] = ['anthropic']
+    return provider
+
+
 def build_openrouter_payload_v2(
     judge_input: Mapping[str, Any],
     *,
     model_settings: Mapping[str, Any],
     system_prompt: str,
 ) -> dict[str, Any]:
-    return {
-        'model': _text(model_settings.get('model')),
+    model = _text(model_settings.get('model'))
+    payload = {
+        'model': model,
         'messages': build_judge_messages_v2(judge_input, system_prompt=system_prompt),
-        'temperature': float(model_settings.get('temperature')),
-        'top_p': float(model_settings.get('top_p')),
         'max_tokens': int(model_settings.get('max_tokens')),
         'response_format': mutable_identity_judge_schema.build_mutable_judge_v2_response_format(
             schema_version=SCHEMA_VERSION,
@@ -169,10 +186,7 @@ def build_openrouter_payload_v2(
             continuity_kinds=ALLOWED_CONTINUITY_KINDS,
             source_refs=_ALLOWED_SOURCE_REFS,
         ),
-        'provider': {
-            'require_parameters': True,
-            'order': ['anthropic'],
-        },
+        'provider': _provider_preferences_for_model(model),
         'metadata': {
             'frida_caller': CALLER,
             'frida_slot': MODEL_SLOT,
@@ -184,6 +198,10 @@ def build_openrouter_payload_v2(
             'generation_name': 'FridaDev / Mutable Identity Judge v2 Add-Only',
         },
     }
+    if _model_supports_sampling_parameters(model):
+        payload['temperature'] = float(model_settings.get('temperature'))
+        payload['top_p'] = float(model_settings.get('top_p'))
+    return payload
 
 
 def _headers() -> dict[str, Any]:

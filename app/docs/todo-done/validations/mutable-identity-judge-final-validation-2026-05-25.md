@@ -109,27 +109,34 @@ Resultat content-free:
 
 - modele runtime persistant: `anthropic/claude-haiku-4.5`;
 - modele demande pour le smoke: `openai/gpt-5.4-mini`;
-- provider effectif: aucun, la requete echoue avant reponse provider;
+- provider effectif: `openai/gpt-5.4-mini-20260317`;
 - structured output: oui, `json_schema`, `strict=true`;
-- status: `skipped`;
-- reason_code: `judge_transport_error`;
-- HTTP status: `404`;
-- verdict_counts: `{}`;
-- add `llm`: non;
-- add `user`: non;
+- `temperature` et `top_p` omis pour ce modele afin de rester compatible avec
+  `provider.require_parameters=true`;
+- status: `ok`;
+- reason_code: `judge_complete`;
+- verdict_counts: `{"add": 2}`;
+- add `llm`: oui;
+- add `user`: oui;
 - bruit ajoute: non;
+- propositions synthetiques acceptees: `Frida tient une voix propre sans se
+  confondre avec Tof.` et `Tof traite la frontière entre sa pensée et la voix
+  de Frida comme un objet central.`;
+- tokens provider observes: `prompt=2273`, `completion=168`, `total=2441`;
 - `live_db_write=false`;
 - `applicator_called=false`;
-- exit code: `2`.
+- exit code: `0`.
 
 Decision:
 
-- `openai/gpt-5.4-mini` ne peut pas etre compare qualitativement a Haiku dans
-  ce smoke: le slug est refuse ou indisponible via OpenRouter dans le transport
-  courant.
+- Le 404 precedent ne venait pas d'un modele absent, mais d'un payload non
+  routable avec `provider.require_parameters=true` et des parametres non
+  supportes (`temperature` / `top_p`).
+- `openai/gpt-5.4-mini` passe le smoke synthetique `mutable_judge_v2` avec
+  schema strict et validateur metier souverain.
 - Ne pas changer le modele actif.
-- Prochain micro-lot possible: verifier le slug OpenRouter exact ou tester un
-  autre modele candidat disponible avec structured output strict.
+- Prochain micro-lot possible: proposer explicitement la bascule du slot
+  `identity_periodic_model` vers ce modele, avec validation live bornee.
 
 ## Crash Test Conversationnel
 

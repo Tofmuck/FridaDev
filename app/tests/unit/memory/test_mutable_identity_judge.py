@@ -1160,6 +1160,8 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
         self.assertEqual(payload['response_format']['json_schema']['name'], 'mutable_judge_v2')
         self.assertEqual(payload['provider']['require_parameters'], True)
         self.assertEqual(payload['provider']['order'], ['anthropic'])
+        self.assertEqual(payload['temperature'], 0.0)
+        self.assertEqual(payload['top_p'], 1.0)
         self.assertEqual(payload['metadata']['frida_contract_status'], 'active_add_only_lot_b')
         verdict_schema = payload['response_format']['json_schema']['schema']['properties']['verdicts']['items']
         self.assertEqual(set(verdict_schema['properties']['verdict']['enum']), {'add', 'no_change'})
@@ -1168,6 +1170,32 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
         self.assertNotIn('mutable_tightening', verdict_schema['properties']['reason_code']['enum'])
         self.assertEqual(mutable_identity_judge_v2.JUDGE_WINDOW_MAX_CHARS, 32_000)
         self.assertEqual(mutable_identity_judge_v2.JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT, 12_000)
+
+    def test_v2_payload_for_openai_gpt54_mini_omits_unsupported_sampling_parameters(self) -> None:
+        judge_input = mutable_identity_judge_v2.build_judge_input(
+            window_pairs=_window_pairs(),
+            identities=_identities(),
+            mutable_budget=_budget(),
+        )
+        payload = mutable_identity_judge_v2.build_openrouter_payload_v2(
+            judge_input,
+            model_settings={
+                'model': 'openai/gpt-5.4-mini',
+                'temperature': 0.0,
+                'top_p': 1.0,
+                'max_tokens': 1400,
+            },
+            system_prompt='judge prompt v2',
+        )
+
+        self.assertEqual(payload['model'], 'openai/gpt-5.4-mini')
+        self.assertEqual(payload['response_format']['type'], 'json_schema')
+        self.assertTrue(payload['response_format']['json_schema']['strict'])
+        self.assertEqual(payload['response_format']['json_schema']['name'], 'mutable_judge_v2')
+        self.assertEqual(payload['provider']['require_parameters'], True)
+        self.assertNotIn('order', payload['provider'])
+        self.assertNotIn('temperature', payload)
+        self.assertNotIn('top_p', payload)
 
     def test_run_v2_loads_prompt_from_configured_runtime_path(self) -> None:
         original_get_settings = mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings
