@@ -161,6 +161,8 @@ Forme top-level:
       "proposition": "Proposition canonique compacte.",
       "target": "",
       "targets": [],
+      "target_ref": "",
+      "target_refs": [],
       "reason_code": "explicit_self_limit_continuity",
       "continuity_kind": "limit",
       "source_refs": ["pair_03"],
@@ -173,6 +175,8 @@ Forme top-level:
       "proposition": "",
       "target": "",
       "targets": [],
+      "target_ref": "",
+      "target_refs": [],
       "reason_code": "no_mutable_identity_signal",
       "continuity_kind": "none",
       "source_refs": [],
@@ -199,6 +203,9 @@ Regles de schema:
 - Les formulations identitaires humaines non vides (`proposition`, `target`, `targets[]`) sont redigees en francais.
 - Les cles JSON, enums, `reason_code`, `continuity_kind`, `source_refs` et `guard_notes` restent en forme canonique code.
 - `continuity_kind` vaut `identity`, `relation`, `value`, `limit`, `posture`, `tension` ou `none`.
+- `current_mutables.<subject>.propositions[]` fournit au juge des refs stables
+  content-free du type `llm_01` / `user_01` associees aux formulations
+  courantes; ces refs sont reconstruites depuis le canon courant a chaque run.
 
 ## Verdicts Canoniques
 
@@ -227,42 +234,60 @@ Quand `verdict != persist`:
 - `proposition` doit etre vide;
 - `target` doit etre vide;
 - `targets` doit etre vide.
+- `target_ref` doit etre vide;
+- `target_refs` doit etre vide.
 
 Quand `operation = add`:
 
 - `proposition` est obligatoire;
 - `target` est vide;
 - `targets` est vide.
+- `target_ref` est vide;
+- `target_refs` est vide.
 
 Quand `operation = tighten`:
 
-- `target` reference exactement une proposition mutable courante;
+- `target_ref` reference une proposition mutable courante du meme sujet, par
+  exemple `llm_01` ou `user_02`;
+- `target` reste un chemin de compatibilite texte exact si aucune ref n'est
+  disponible;
 - `proposition` est la nouvelle formulation;
 - `targets` est vide.
+- `target_refs` est vide.
 
 Quand `operation = merge`:
 
-- `targets` reference au moins deux propositions mutables courantes;
+- `target_refs` reference au moins deux propositions mutables courantes du
+  meme sujet;
+- `targets` reste un chemin de compatibilite texte exact si aucune ref n'est
+  disponible;
 - `proposition` est la formulation fusionnee;
 - `target` est vide.
+- `target_ref` est vide.
 
 Quand `operation = clear_obsolete`:
 
-- `target` reference exactement une proposition mutable courante;
+- `target_ref` reference une proposition mutable courante du meme sujet;
+- `target` reste un chemin de compatibilite texte exact si aucune ref n'est
+  disponible;
 - `proposition` est vide;
 - `targets` est vide.
+- `target_refs` est vide.
 
 Le juge ne doit jamais produire un `persist` incomplet. Si `add`, `tighten` ou
 `merge` ne peuvent pas fournir de `proposition` non vide, le verdict attendu
 est `no_change`, `reject` ou `defer` avec un reason code de non-persistence
 compatible, par exemple `already_covered_by_mutable`, `already_covered_by_static`,
 `insufficient_context` ou `source_scope_unclear`. `clear_obsolete` est le seul
-cas ou `proposition` vide est normal, et seulement avec `target` non vide.
+cas ou `proposition` vide est normal, et seulement avec `target_ref` ou
+`target` non vide.
 
 Tant que `identity_mutables` stocke un contenu canonique par sujet sans
-identifiants stables par proposition, `target` et `targets` referencent les
-formulations exactes presentes dans le canon mutable courant du meme sujet.
-L'applicateur ne cree pas de nouveau modele DB pour ce lot.
+identifiants persistants par proposition, `target_ref` / `target_refs` sont des
+refs techniques reconstruites depuis l'ordre courant des propositions du canon
+mutable. Elles ne sont pas stockees comme IDs DB durables. `target` et
+`targets` restent seulement une compatibilite texte exact; l'applicateur ne
+fait pas de matching approximatif.
 
 ## Structured Output OpenRouter
 
@@ -274,6 +299,8 @@ Le payload OpenRouter du caller `mutable_identity_judge` contient:
 - `response_format.json_schema.schema.additionalProperties = false`;
 - enums de forme pour `subject`, `verdict`, `operation`, `reason_code`,
   `continuity_kind` et `source_refs`;
+- champs de ciblage stables `target_ref` et `target_refs`, en plus des champs
+  de compatibilite texte `target` et `targets`;
 - `provider.require_parameters = true`, afin d'eviter un routage vers un
   provider qui ignorerait `response_format`.
 - `provider.order = ["anthropic"]`, afin de privilegier le provider Anthropic
@@ -355,6 +382,9 @@ Codes techniques:
 - `invalid_verdict`
 - `invalid_operation`
 - `invalid_target`
+- `target_not_found`
+- `target_ambiguous`
+- `target_ref_invalid`
 - `empty_proposition`
 - `proposition_too_long`
 - `prompt_like_content`

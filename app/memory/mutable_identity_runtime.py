@@ -133,6 +133,8 @@ def _validation_fields(observability: Mapping[str, Any]) -> dict[str, Any]:
             'invalid_proposition_chars',
             'invalid_target_chars',
             'invalid_targets_count',
+            'invalid_target_ref',
+            'invalid_target_refs_count',
             'invalid_source_refs_count',
             'invalid_guard_notes_count',
             'http_status',

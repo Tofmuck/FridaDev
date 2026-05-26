@@ -178,6 +178,8 @@ def empty_latest_agent_activity() -> dict[str, Any]:
         'invalid_proposition_chars': None,
         'invalid_target_chars': None,
         'invalid_targets_count': None,
+        'invalid_target_ref': None,
+        'invalid_target_refs_count': None,
         'invalid_source_refs_count': None,
         'invalid_guard_notes_count': None,
         'apply_status': None,
@@ -273,6 +275,7 @@ def latest_agent_activity(event: Mapping[str, Any]) -> dict[str, Any]:
         'invalid_proposition_chars',
         'invalid_target_chars',
         'invalid_targets_count',
+        'invalid_target_refs_count',
         'invalid_source_refs_count',
         'invalid_guard_notes_count',
         'http_status',
@@ -286,6 +289,7 @@ def latest_agent_activity(event: Mapping[str, Any]) -> dict[str, Any]:
         'invalid_verdict',
         'invalid_operation',
         'invalid_reason_code',
+        'invalid_target_ref',
         'error_class',
     ):
         text = _optional_text(payload.get(key))

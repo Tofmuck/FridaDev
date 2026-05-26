@@ -12,6 +12,7 @@ import requests
 import config
 from admin import runtime_settings
 from core import llm_client
+from memory import mutable_identity_refs
 from memory import mutable_identity_judge_schema
 
 
@@ -71,6 +72,9 @@ TECHNICAL_REASON_CODES = {
     'invalid_verdict',
     'invalid_operation',
     'invalid_target',
+    'target_not_found',
+    'target_ambiguous',
+    'target_ref_invalid',
     'empty_proposition',
     'proposition_too_long',
     'prompt_like_content',
@@ -142,6 +146,8 @@ _VERDICT_KEYS = {
     'proposition',
     'target',
     'targets',
+    'target_ref',
+    'target_refs',
     'reason_code',
     'continuity_kind',
     'source_refs',
@@ -163,6 +169,8 @@ _RAW_ANNOTATION_KEYS = {
     'message',
     'messages',
     'proposition',
+    'target_ref',
+    'target_refs',
     'excerpt',
     'preview',
 }
@@ -285,6 +293,19 @@ def _normalized_identities(identities: Mapping[str, Any]) -> dict[str, dict[str,
     }
 
 
+def _current_mutables(identities: Mapping[str, Any]) -> dict[str, dict[str, list[dict[str, str]]]]:
+    normalized = _normalized_identities(identities)
+    return {
+        subject: {
+            'propositions': mutable_identity_refs.build_proposition_refs(
+                subject,
+                normalized[subject]['mutable_current'],
+            )
+        }
+        for subject in ('llm', 'user')
+    }
+
+
 def _normalized_budget(mutable_budget: Mapping[str, Any]) -> dict[str, int]:
     budget = _mapping(mutable_budget)
     return {
@@ -304,6 +325,7 @@ def build_judge_input(
         'schema_version': INPUT_SCHEMA_VERSION,
         'window_pairs': _normalize_window_pairs(window_pairs),
         'identities': _normalized_identities(identities),
+        'current_mutables': _current_mutables(identities),
         'mutable_budget': _normalized_budget(mutable_budget),
         'judgment_rules': {
             'judge_reads_full_window': True,
@@ -460,6 +482,8 @@ def _verdict_failure_observability(item: Mapping[str, Any], *, reason_code: str,
         'invalid_proposition_chars': len(_text(item.get('proposition'))),
         'invalid_target_chars': len(_text(item.get('target'))),
         'invalid_targets_count': len(targets),
+        'invalid_target_ref': _text(item.get('target_ref')).lower(),
+        'invalid_target_refs_count': len(_list(item.get('target_refs'))),
         'invalid_source_refs_count': len(source_refs),
         'invalid_guard_notes_count': len(guard_notes),
     }
@@ -587,6 +611,32 @@ def _validate_target(value: Any) -> tuple[str | None, str]:
     return target, ''
 
 
+def _validate_target_ref(value: Any, *, subject: str) -> tuple[str | None, str]:
+    target_ref = _text(value).lower()
+    if not target_ref:
+        return None, ''
+    _, reason = mutable_identity_refs.resolve_ref_index(
+        subject=subject,
+        ref=target_ref,
+        lines=['placeholder'],
+    )
+    if reason == 'target_ref_invalid':
+        return None, reason
+    return target_ref, ''
+
+
+def _validate_target_ref_list(value: Any, *, subject: str) -> list[str] | None:
+    if not isinstance(value, list):
+        return None
+    refs: list[str] = []
+    for raw_ref in value:
+        target_ref, reason = _validate_target_ref(raw_ref, subject=subject)
+        if reason or not target_ref:
+            return None
+        refs.append(target_ref)
+    return refs
+
+
 def persist_reason_code_matches_operation(operation: str, reason_code: str) -> bool:
     operation_key = _text(operation).lower()
     reason_key = _text(reason_code)
@@ -600,6 +650,8 @@ def _empty_persistence_fields(item: Mapping[str, Any]) -> bool:
         and _text(item.get('proposition')) == ''
         and _text(item.get('target')) == ''
         and _list(item.get('targets')) == []
+        and _text(item.get('target_ref')) == ''
+        and _list(item.get('target_refs')) == []
     )
 
 
@@ -636,6 +688,12 @@ def _validate_verdict_item(
     proposition = _text(item.get('proposition'))
     target = _text(item.get('target'))
     targets = [_text(target_item) for target_item in _list(item.get('targets'))]
+    target_ref, target_ref_reason = _validate_target_ref(item.get('target_ref'), subject=subject)
+    if target_ref_reason:
+        return None, target_ref_reason
+    target_refs = _validate_target_ref_list(item.get('target_refs'), subject=subject)
+    if target_refs is None:
+        return None, 'target_ref_invalid'
 
     if verdict != 'persist':
         if not _empty_persistence_fields(item):
@@ -647,6 +705,8 @@ def _validate_verdict_item(
             'proposition': '',
             'target': '',
             'targets': [],
+            'target_ref': '',
+            'target_refs': [],
             'reason_code': reason_code,
             'continuity_kind': continuity_kind,
             'source_refs': source_refs,
@@ -659,39 +719,52 @@ def _validate_verdict_item(
         return None, 'invalid_operation'
 
     if operation == 'add':
-        if target or targets:
+        if target or targets or target_ref or target_refs:
             return None, 'invalid_target'
         proposition_value, reason = _validate_proposition(proposition, mutable_budget=mutable_budget)
         if reason:
             return None, reason
         canonical_target = ''
         canonical_targets: list[str] = []
+        canonical_target_ref = ''
+        canonical_target_refs: list[str] = []
     elif operation == 'tighten':
-        canonical_target, reason = _validate_target(target)
-        if reason:
-            return None, reason
-        if targets:
+        if not target and not target_ref:
+            return None, 'invalid_target'
+        if targets or target_refs:
             return None, 'invalid_target'
         proposition_value, reason = _validate_proposition(proposition, mutable_budget=mutable_budget)
         if reason:
             return None, reason
+        canonical_target = target
         canonical_targets = []
+        canonical_target_ref = target_ref or ''
+        canonical_target_refs = []
     elif operation == 'merge':
-        if target or len(targets) < 2 or any(not item for item in targets) or len(set(targets)) != len(targets):
+        if target or target_ref:
+            return None, 'invalid_target'
+        if target_refs:
+            if len(target_refs) < 2 or len(set(target_refs)) != len(target_refs):
+                return None, 'invalid_target'
+        elif len(targets) < 2 or any(not item for item in targets) or len(set(targets)) != len(targets):
             return None, 'invalid_target'
         proposition_value, reason = _validate_proposition(proposition, mutable_budget=mutable_budget)
         if reason:
             return None, reason
         canonical_target = ''
         canonical_targets = targets
+        canonical_target_ref = ''
+        canonical_target_refs = target_refs
     else:
-        canonical_target, reason = _validate_target(target)
-        if reason:
-            return None, reason
-        if proposition or targets:
+        if not target and not target_ref:
+            return None, 'invalid_target'
+        if proposition or targets or target_refs:
             return None, 'invalid_operation'
+        canonical_target = target
         proposition_value = ''
         canonical_targets = []
+        canonical_target_ref = target_ref or ''
+        canonical_target_refs = []
 
     return {
         'subject': subject,
@@ -700,6 +773,8 @@ def _validate_verdict_item(
         'proposition': proposition_value,
         'target': canonical_target,
         'targets': canonical_targets,
+        'target_ref': canonical_target_ref,
+        'target_refs': canonical_target_refs,
         'reason_code': reason_code,
         'continuity_kind': continuity_kind,
         'source_refs': source_refs,
@@ -716,17 +791,18 @@ def _validate_persistent_operation_compatibility(subject_verdicts: Sequence[Mapp
             continue
         operation = _text(item.get('operation'))
         if operation == 'tighten':
-            target = _text(item.get('target'))
+            target = _text(item.get('target_ref')) or _text(item.get('target'))
             if target in tighten_targets or target in clear_targets or target in merge_targets:
                 return 'impossible_mutation'
             tighten_targets.add(target)
         elif operation == 'clear_obsolete':
-            target = _text(item.get('target'))
+            target = _text(item.get('target_ref')) or _text(item.get('target'))
             if target in clear_targets or target in tighten_targets or target in merge_targets:
                 return 'impossible_mutation'
             clear_targets.add(target)
         elif operation == 'merge':
-            targets = set(_text(target) for target in _list(item.get('targets')))
+            raw_targets = _list(item.get('target_refs')) or _list(item.get('targets'))
+            targets = set(_text(target) for target in raw_targets)
             if targets & tighten_targets or targets & clear_targets or targets & merge_targets:
                 return 'impossible_mutation'
             merge_targets.update(targets)

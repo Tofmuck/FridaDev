@@ -53,6 +53,8 @@ def build_mutable_judge_response_format(
                                 'proposition',
                                 'target',
                                 'targets',
+                                'target_ref',
+                                'target_refs',
                                 'reason_code',
                                 'continuity_kind',
                                 'source_refs',
@@ -65,6 +67,11 @@ def build_mutable_judge_response_format(
                                 'proposition': {'type': 'string'},
                                 'target': {'type': 'string'},
                                 'targets': {
+                                    'type': 'array',
+                                    'items': {'type': 'string'},
+                                },
+                                'target_ref': {'type': 'string'},
+                                'target_refs': {
                                     'type': 'array',
                                     'items': {'type': 'string'},
                                 },

@@ -68,6 +68,8 @@ def _valid_contract() -> dict[str, Any]:
                 'proposition': 'User keeps a durable boundary.',
                 'target': '',
                 'targets': [],
+                'target_ref': '',
+                'target_refs': [],
                 'reason_code': 'explicit_self_limit_continuity',
                 'continuity_kind': 'limit',
                 'source_refs': ['pair_03'],
@@ -80,6 +82,8 @@ def _valid_contract() -> dict[str, Any]:
                 'proposition': '',
                 'target': '',
                 'targets': [],
+                'target_ref': '',
+                'target_refs': [],
                 'reason_code': 'no_mutable_identity_signal',
                 'continuity_kind': 'none',
                 'source_refs': [],
@@ -131,6 +135,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertIn('Never produce an incomplete `persist` verdict', prompt)
         self.assertIn('`clear_obsolete` is the only', prompt)
         self.assertIn('`proposition = ""` is normal', prompt)
+        self.assertIn('current_mutables.<subject>.propositions[].ref', prompt)
+        self.assertIn('set `target_ref` to one current proposition ref', prompt)
+        self.assertIn('set `target_refs` to at least two current proposition refs', prompt)
 
     def test_build_judge_input_contains_complete_window_identities_and_no_scores(self) -> None:
         judge_input = mutable_identity_judge.build_judge_input(
@@ -156,6 +163,14 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertEqual(judge_input['identities']['llm']['mutable_current'], 'Frida mutable current')
         self.assertEqual(judge_input['identities']['user']['static'], 'User static')
         self.assertEqual(judge_input['identities']['user']['mutable_current'], 'User mutable current')
+        self.assertEqual(
+            judge_input['current_mutables']['llm']['propositions'],
+            [{'ref': 'llm_01', 'text': 'Frida mutable current'}],
+        )
+        self.assertEqual(
+            judge_input['current_mutables']['user']['propositions'],
+            [{'ref': 'user_01', 'text': 'User mutable current'}],
+        )
         self.assertEqual(judge_input['mutable_budget'], _budget())
         self.assertTrue(judge_input['judgment_rules']['python_must_not_score_identity'])
         self.assertTrue(judge_input['judgment_rules']['static_writes_forbidden'])
@@ -198,6 +213,10 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertIn('raise_tension', verdict_schema['properties']['verdict']['enum'])
         self.assertIn('clear_obsolete', verdict_schema['properties']['operation']['enum'])
         self.assertIn('', verdict_schema['properties']['operation']['enum'])
+        self.assertIn('target_ref', verdict_schema['required'])
+        self.assertIn('target_refs', verdict_schema['required'])
+        self.assertEqual(verdict_schema['properties']['target_ref']['type'], 'string')
+        self.assertEqual(verdict_schema['properties']['target_refs']['items']['type'], 'string')
         self.assertIn('pair_05', verdict_schema['properties']['source_refs']['items']['enum'])
         self.assertIn('explicit_self_limit_continuity', verdict_schema['properties']['reason_code']['enum'])
         self.assertNotIn('empty_proposition', verdict_schema['properties']['reason_code']['enum'])
@@ -241,6 +260,8 @@ class MutableIdentityJudgeTests(unittest.TestCase):
                 'proposition': '',
                 'target': '',
                 'targets': [],
+                'target_ref': '',
+                'target_refs': [],
                 'reason_code': 'no_mutable_identity_signal',
                 'continuity_kind': 'none',
                 'source_refs': [],
@@ -261,7 +282,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             'operation': 'add',
             'proposition': 'User has a tension.',
             'target': '',
-            'targets': [],
+                'targets': [],
+                'target_ref': '',
+                'target_refs': [],
             'reason_code': 'relation_tension_open',
             'continuity_kind': 'tension',
             'source_refs': ['pair_02'],
@@ -281,7 +304,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             'operation': '',
             'proposition': '',
             'target': '',
-            'targets': [],
+                'targets': [],
+                'target_ref': '',
+                'target_refs': [],
             'reason_code': 'relation_tension_open',
             'continuity_kind': 'tension',
             'source_refs': ['pair_02'],
@@ -311,7 +336,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
                     'operation': '',
                     'proposition': '',
                     'target': '',
-                    'targets': [],
+                'targets': [],
+                'target_ref': '',
+                'target_refs': [],
                     'reason_code': reason_code,
                     'continuity_kind': continuity_kind,
                     'source_refs': ['pair_01'] if verdict != 'no_change' else [],
@@ -382,7 +409,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             'operation': 'clear_obsolete',
             'proposition': '',
             'target': 'User keeps a durable boundary.',
-            'targets': [],
+                'targets': [],
+                'target_ref': '',
+                'target_refs': [],
             'reason_code': 'mutable_obsolete_explicitly_removed',
             'continuity_kind': 'limit',
             'source_refs': ['pair_03'],
@@ -396,6 +425,70 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertEqual(validated['verdicts'][0]['operation'], 'clear_obsolete')
         self.assertEqual(validated['verdicts'][0]['proposition'], '')
 
+    def test_tighten_and_merge_accept_stable_target_refs(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'][0] = {
+            'subject': 'user',
+            'verdict': 'persist',
+            'operation': 'tighten',
+            'proposition': 'User keeps a sharper boundary.',
+            'target': '',
+            'targets': [],
+            'target_ref': 'user_01',
+            'target_refs': [],
+            'reason_code': 'mutable_tightening',
+            'continuity_kind': 'limit',
+            'source_refs': ['pair_03'],
+            'guard_notes': ['not_task_local'],
+        }
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertEqual(reason, '')
+        self.assertEqual(validated['verdicts'][0]['target_ref'], 'user_01')
+
+        payload['verdicts'][0] = {
+            'subject': 'user',
+            'verdict': 'persist',
+            'operation': 'merge',
+            'proposition': 'User keeps a merged boundary.',
+            'target': '',
+            'targets': [],
+            'target_ref': '',
+            'target_refs': ['user_01', 'user_02'],
+            'reason_code': 'mutable_merge',
+            'continuity_kind': 'limit',
+            'source_refs': ['pair_03'],
+            'guard_notes': ['not_task_local'],
+        }
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertEqual(reason, '')
+        self.assertEqual(validated['verdicts'][0]['target_refs'], ['user_01', 'user_02'])
+
+    def test_target_ref_must_match_subject_prefix(self) -> None:
+        payload = _valid_contract()
+        payload['verdicts'][0] = {
+            'subject': 'user',
+            'verdict': 'persist',
+            'operation': 'tighten',
+            'proposition': 'User keeps a sharper boundary.',
+            'target': '',
+            'targets': [],
+            'target_ref': 'llm_01',
+            'target_refs': [],
+            'reason_code': 'mutable_tightening',
+            'continuity_kind': 'limit',
+            'source_refs': ['pair_03'],
+            'guard_notes': ['not_task_local'],
+        }
+
+        validated, reason = mutable_identity_judge.validate_mutable_judge_contract(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'target_ref_invalid')
+
     def test_non_persistent_verdict_cannot_use_persistence_reason_code(self) -> None:
         payload = _valid_contract()
         payload['verdicts'][0] = {
@@ -404,7 +497,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             'operation': '',
             'proposition': '',
             'target': '',
-            'targets': [],
+                'targets': [],
+                'target_ref': '',
+                'target_refs': [],
             'reason_code': 'explicit_self_limit_continuity',
             'continuity_kind': 'limit',
             'source_refs': ['pair_02'],
@@ -426,7 +521,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             'operation': 'tighten',
             'proposition': 'User keeps a sharper boundary.',
             'target': 'mut_user_01',
-            'targets': [],
+                'targets': [],
+                'target_ref': '',
+                'target_refs': [],
             'reason_code': 'mutable_tightening',
             'continuity_kind': 'limit',
             'source_refs': ['pair_02'],
@@ -440,6 +537,8 @@ class MutableIdentityJudgeTests(unittest.TestCase):
                 'proposition': 'User keeps the same sharper boundary.',
                 'target': 'mut_user_01',
                 'targets': [],
+                'target_ref': '',
+                'target_refs': [],
                 'reason_code': 'mutable_tightening',
                 'continuity_kind': 'limit',
                 'source_refs': ['pair_03'],
@@ -455,7 +554,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             'operation': 'tighten',
             'proposition': 'User keeps a sharper boundary.',
             'target': 'mut_user_02',
-            'targets': [],
+                'targets': [],
+                'target_ref': '',
+                'target_refs': [],
             'reason_code': 'mutable_tightening',
             'continuity_kind': 'limit',
             'source_refs': ['pair_02'],
@@ -469,6 +570,8 @@ class MutableIdentityJudgeTests(unittest.TestCase):
                 'proposition': '',
                 'target': 'mut_user_02',
                 'targets': [],
+                'target_ref': '',
+                'target_refs': [],
                 'reason_code': 'mutable_obsolete_explicitly_removed',
                 'continuity_kind': 'limit',
                 'source_refs': ['pair_03'],
@@ -485,6 +588,8 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             'proposition': 'User keeps a merged relation posture.',
             'target': '',
             'targets': ['mut_user_03', 'mut_user_04'],
+            'target_ref': '',
+            'target_refs': [],
             'reason_code': 'mutable_merge',
             'continuity_kind': 'relation',
             'source_refs': ['pair_02'],
@@ -498,6 +603,8 @@ class MutableIdentityJudgeTests(unittest.TestCase):
                 'proposition': 'User keeps a sharper relation posture.',
                 'target': 'mut_user_04',
                 'targets': [],
+                'target_ref': '',
+                'target_refs': [],
                 'reason_code': 'mutable_tightening',
                 'continuity_kind': 'relation',
                 'source_refs': ['pair_03'],
@@ -645,7 +752,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
             'operation': 'tighten',
             'proposition': '',
             'target': sensitive_target,
-            'targets': [],
+                'targets': [],
+                'target_ref': '',
+                'target_refs': [],
             'reason_code': 'mutable_tightening',
             'continuity_kind': 'limit',
             'source_refs': ['pair_02'],

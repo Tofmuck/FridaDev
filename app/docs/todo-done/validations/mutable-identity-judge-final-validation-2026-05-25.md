@@ -132,6 +132,37 @@ Smoke reel apres patch:
 - persistence live: `false`;
 - contenu affiche: uniquement compteurs, statuts, longueurs et hashes courts.
 
+## Correction Ciblage Mutable - 2026-05-26
+
+Apres le passage du juge en structured output, le blocage live suivant a ete
+observe content-free:
+
+- `judge_status=ok`, `judge_reason_code=judge_complete`;
+- `apply_status=skipped`, `apply_reason_code=impossible_mutation`;
+- `operation_kinds=["add", "tighten"]`;
+- outcome fautif: `operation=tighten`, `reason_code=invalid_target`;
+- aucun write partiel grace au batch all-or-nothing.
+
+Cause confirmee: le juge demandait un `tighten`, mais l'ancien contrat exigeait
+que `target` recopie exactement une proposition mutable courante. Une
+reformulation, une cible issue d'un canon avant rewrite manuel ou une phrase
+proche suffisait donc a bloquer toute la fenetre.
+
+Correction:
+
+- le payload juge expose maintenant `current_mutables.<subject>.propositions[]`
+  avec des refs reconstruites `llm_01`, `user_01`, etc.;
+- le contrat `mutable_judge_v1` ajoute `target_ref` et `target_refs`;
+- l'applicateur resout `tighten`, `merge` et `clear_obsolete` par ref stable
+  quand elle est fournie;
+- le fallback texte exact `target` / `targets` reste disponible pour
+  compatibilite;
+- aucun matching approximatif ou scoring identitaire n'est introduit;
+- les echecs sont distingues en `target_ref_invalid`, `target_not_found` ou
+  `target_ambiguous` lorsque possible;
+- l'observabilite reste content-free: refs, compteurs, longueurs, hashes, jamais
+  le texte brut des mutables ou de la fenetre.
+
 ## Non-Concurrence Legacy
 
 Preuves attendues et verifiees:

@@ -5,6 +5,7 @@ import re
 from typing import Any, Mapping, Sequence
 
 import config
+from memory import mutable_identity_refs
 from memory import mutable_identity_judge
 
 
@@ -12,7 +13,6 @@ ACTOR = 'mutable_identity_judge_apply'
 UPDATE_REASON = 'mutable_judge_persist'
 _ALLOWED_SUBJECTS = {'llm', 'user'}
 _PERSIST_OPERATIONS = {'add', 'tighten', 'merge', 'clear_obsolete'}
-_SENTENCE_SPLIT_RE = re.compile(r'\n+|(?<=[.!?])\s+')
 _PROMPT_LIKE_RE = re.compile(
     r'(ignore\s+previous|system\s+prompt|developer\s+message|follow\s+these\s+instructions|'
     r'tu\s+dois\s+repondre|tu\s+dois\s+répondre|reponds\s+comme|réponds\s+comme)',
@@ -44,10 +44,7 @@ def _short_hash(value: Any) -> str | None:
 
 
 def _split_propositions(text: str) -> list[str]:
-    cleaned = _text(text)
-    if not cleaned:
-        return []
-    return [item for item in (_text(part) for part in _SENTENCE_SPLIT_RE.split(cleaned)) if item]
+    return mutable_identity_refs.split_propositions(text)
 
 
 def _joined_content(lines: Sequence[str]) -> str:
@@ -66,6 +63,18 @@ def _find_unique_index(lines: Sequence[str], target: str) -> int | None:
     return matches[0]
 
 
+def _find_unique_index_with_reason(lines: Sequence[str], target: str) -> tuple[int | None, str]:
+    target_norm = _norm(target)
+    if not target_norm:
+        return None, 'invalid_target'
+    matches = [index for index, line in enumerate(lines) if _norm(line) == target_norm]
+    if not matches:
+        return None, 'target_not_found'
+    if len(matches) != 1:
+        return None, 'target_ambiguous'
+    return matches[0], ''
+
+
 def _content_fields(old_content: str, new_content: str) -> dict[str, Any]:
     return {
         'old_chars': len(old_content),
@@ -78,13 +87,69 @@ def _content_fields(old_content: str, new_content: str) -> dict[str, Any]:
 def _target_fields(item: Mapping[str, Any]) -> dict[str, Any]:
     target = _text(item.get('target'))
     targets = [_text(value) for value in _list(item.get('targets')) if _text(value)]
+    target_ref = _text(item.get('target_ref')).lower()
+    target_refs = [_text(value).lower() for value in _list(item.get('target_refs')) if _text(value)]
     payload: dict[str, Any] = {}
     if target:
         payload['target_sha256_12'] = _short_hash(target)
     if targets:
         payload['target_count'] = len(targets)
         payload['target_sha256_12s'] = [_short_hash(value) for value in targets]
+    if target_ref:
+        payload['target_ref'] = target_ref
+    if target_refs:
+        payload['target_refs_count'] = len(target_refs)
+        payload['target_refs'] = target_refs
     return payload
+
+
+def _resolve_single_target_index(
+    *,
+    subject: str,
+    lines: Sequence[str],
+    item: Mapping[str, Any],
+) -> tuple[int | None, str]:
+    target_ref = _text(item.get('target_ref')).lower()
+    if target_ref:
+        return mutable_identity_refs.resolve_ref_index(
+            subject=subject,
+            ref=target_ref,
+            lines=lines,
+        )
+    return _find_unique_index_with_reason(lines, _text(item.get('target')))
+
+
+def _resolve_target_indexes(
+    *,
+    subject: str,
+    lines: Sequence[str],
+    item: Mapping[str, Any],
+) -> tuple[list[int] | None, str]:
+    target_refs = [_text(value).lower() for value in _list(item.get('target_refs')) if _text(value)]
+    if target_refs:
+        indexes: list[int] = []
+        for target_ref in target_refs:
+            found_index, reason = mutable_identity_refs.resolve_ref_index(
+                subject=subject,
+                ref=target_ref,
+                lines=lines,
+            )
+            if reason or found_index is None:
+                return None, reason or 'target_ref_invalid'
+            indexes.append(found_index)
+    else:
+        indexes = []
+        for target in [_text(value) for value in _list(item.get('targets'))]:
+            found_index, reason = _find_unique_index_with_reason(lines, target)
+            if reason or found_index is None:
+                return None, reason or 'invalid_target'
+            indexes.append(found_index)
+    unique_indexes = sorted(set(indexes))
+    if len(unique_indexes) != len(indexes):
+        return None, 'target_ambiguous'
+    if len(unique_indexes) < 2:
+        return None, 'invalid_target'
+    return unique_indexes, ''
 
 
 def _outcome(
@@ -242,14 +307,18 @@ def _apply_operation_to_lines(
         )
 
     if operation == 'tighten':
-        target_index = _find_unique_index(lines, _text(item.get('target')))
+        target_index, target_reason = _resolve_single_target_index(
+            subject=subject,
+            lines=lines,
+            item=item,
+        )
         if target_index is None:
             return None, _outcome(
                 subject=subject,
                 verdict='persist',
                 operation=operation,
                 status='failed',
-                reason_code='invalid_target',
+                reason_code=target_reason or 'invalid_target',
                 continuity_kind=continuity_kind,
                 old_content=original_content,
                 new_content=current_content,
@@ -289,32 +358,18 @@ def _apply_operation_to_lines(
         )
 
     if operation == 'merge':
-        target_indexes: list[int] = []
-        for target in [_text(value) for value in _list(item.get('targets'))]:
-            found_index = _find_unique_index(lines, target)
-            if found_index is None:
-                return None, _outcome(
-                    subject=subject,
-                    verdict='persist',
-                    operation=operation,
-                    status='failed',
-                    reason_code='invalid_target',
-                    continuity_kind=continuity_kind,
-                    old_content=original_content,
-                    new_content=current_content,
-                    source_refs_count=source_refs_count,
-                    guard_notes_count=guard_notes_count,
-                    **_target_fields(item),
-                )
-            target_indexes.append(found_index)
-        unique_indexes = sorted(set(target_indexes))
-        if len(unique_indexes) < 2:
+        unique_indexes, target_reason = _resolve_target_indexes(
+            subject=subject,
+            lines=lines,
+            item=item,
+        )
+        if unique_indexes is None:
             return None, _outcome(
                 subject=subject,
                 verdict='persist',
                 operation=operation,
                 status='failed',
-                reason_code='invalid_target',
+                reason_code=target_reason or 'invalid_target',
                 continuity_kind=continuity_kind,
                 old_content=original_content,
                 new_content=current_content,
@@ -353,14 +408,18 @@ def _apply_operation_to_lines(
             **_target_fields(item),
         )
 
-    target_index = _find_unique_index(lines, _text(item.get('target')))
+    target_index, target_reason = _resolve_single_target_index(
+        subject=subject,
+        lines=lines,
+        item=item,
+    )
     if target_index is None:
         return None, _outcome(
             subject=subject,
             verdict='persist',
             operation=operation,
             status='failed',
-            reason_code='invalid_target',
+            reason_code=target_reason or 'invalid_target',
             continuity_kind=continuity_kind,
             old_content=original_content,
             new_content=current_content,

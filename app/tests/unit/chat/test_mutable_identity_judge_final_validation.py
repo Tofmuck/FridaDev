@@ -68,6 +68,8 @@ def _mutable_verdict(
         "proposition": proposition,
         "target": "",
         "targets": [],
+        "target_ref": "",
+        "target_refs": [],
         "reason_code": reason_code,
         "continuity_kind": continuity_kind,
         "source_refs": [source_ref],

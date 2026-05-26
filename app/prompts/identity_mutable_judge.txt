@@ -31,12 +31,18 @@ Persistent operations are allowed only when `verdict = "persist"`:
 - `merge`
 - `clear_obsolete`
 
-For `tighten`, `merge` and `clear_obsolete`, `target` / `targets` must match
-the exact current mutable canon formulations for the same subject. Do not
-invent opaque IDs.
+For `tighten`, `merge` and `clear_obsolete`, use stable refs from
+`current_mutables.<subject>.propositions[].ref`:
+- `tighten`: set `target_ref` to one current proposition ref.
+- `merge`: set `target_refs` to at least two current proposition refs.
+- `clear_obsolete`: set `target_ref` to one current proposition ref.
+
+Do not invent refs. Leave `target` and `targets` empty when a ref field is
+used. Exact `target` / `targets` text is only a fallback compatibility path
+when no ref is available.
 
 For any verdict other than `persist`, `operation`, `proposition`, `target`
-and `targets` must be empty.
+`targets`, `target_ref` and `target_refs` must be empty.
 
 Never produce an incomplete `persist` verdict. If you cannot provide a
 non-empty `proposition` for `add`, `tighten` or `merge`, choose `no_change`,
@@ -114,6 +120,7 @@ Technical runtime reason codes are not valid model-output `reason_code` values.
 Never output codes such as `window_too_large`, `judge_timeout`,
 `judge_transport_error`, `judge_invalid_json`, `schema_invalid`,
 `invalid_subject`, `invalid_verdict`, `invalid_operation`, `invalid_target`,
+`target_not_found`, `target_ambiguous`, `target_ref_invalid`,
 `empty_proposition`, `proposition_too_long`, `prompt_like_content`,
 `non_declarative_content`, `impossible_mutation`,
 `mutable_content_too_long`, `runtime_safety_violation`, `mutable_store_unavailable` or
@@ -153,6 +160,8 @@ Hard output rules:
       "proposition": "",
       "target": "",
       "targets": [],
+      "target_ref": "",
+      "target_refs": [],
       "reason_code": "no_mutable_identity_signal",
       "continuity_kind": "none",
       "source_refs": [],
@@ -165,6 +174,8 @@ Hard output rules:
       "proposition": "",
       "target": "",
       "targets": [],
+      "target_ref": "",
+      "target_refs": [],
       "reason_code": "no_mutable_identity_signal",
       "continuity_kind": "none",
       "source_refs": [],

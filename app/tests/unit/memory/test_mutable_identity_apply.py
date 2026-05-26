@@ -37,6 +37,8 @@ def _no_change(subject: str) -> dict[str, Any]:
         'proposition': '',
         'target': '',
         'targets': [],
+        'target_ref': '',
+        'target_refs': [],
         'reason_code': 'no_mutable_identity_signal',
         'continuity_kind': 'none',
         'source_refs': [],
@@ -69,6 +71,8 @@ def _persist(
     proposition: str = 'User keeps a durable boundary.',
     target: str = '',
     targets: list[str] | None = None,
+    target_ref: str = '',
+    target_refs: list[str] | None = None,
     reason_code: str = 'explicit_self_limit_continuity',
     continuity_kind: str = 'limit',
 ) -> dict[str, Any]:
@@ -79,6 +83,8 @@ def _persist(
         'proposition': proposition,
         'target': target,
         'targets': list(targets or []),
+        'target_ref': target_ref,
+        'target_refs': list(target_refs or []),
         'reason_code': reason_code,
         'continuity_kind': continuity_kind,
         'source_refs': ['pair_03'],
@@ -308,6 +314,65 @@ class MutableIdentityApplyTests(unittest.TestCase):
         self.assertEqual(len(store.upsert_calls), 1)
         self.assertNotIn('User keeps an older boundary.', store.mutable['user']['content'])
 
+    def test_persist_tighten_resolves_stable_target_ref_without_exact_text(self) -> None:
+        original = 'User keeps an older boundary.\nUser keeps another posture.'
+        replacement = 'User keeps a sharper boundary.'
+        store = _MutableStore({'user': original})
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(
+                _persist(
+                    operation='tighten',
+                    proposition=replacement,
+                    target='User slightly misquoted target.',
+                    target_ref='user_01',
+                    reason_code='mutable_tightening',
+                )
+            ),
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertTrue(summary['writes_applied'])
+        self.assertEqual(
+            store.mutable['user']['content'],
+            'User keeps a sharper boundary.\nUser keeps another posture.',
+        )
+        applied = [item for item in summary['outcomes'] if item.get('status') == 'applied'][0]
+        self.assertEqual(applied['target_ref'], 'user_01')
+        self.assertNotIn('User slightly misquoted target.', repr(summary))
+
+    def test_persist_tighten_invalid_ref_fails_without_partial_write(self) -> None:
+        original = 'Frida keeps a stable posture.'
+        store = _MutableStore({'llm': original})
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(
+                _persist(
+                    subject='user',
+                    proposition='User keeps a durable boundary.',
+                ),
+                _persist(
+                    subject='llm',
+                    operation='tighten',
+                    proposition='Frida keeps a sharper posture.',
+                    target_ref='llm_99',
+                    reason_code='mutable_tightening',
+                    continuity_kind='posture',
+                ),
+            ),
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'impossible_mutation')
+        failed = [item for item in summary['outcomes'] if item.get('status') == 'failed'][0]
+        self.assertEqual(failed['reason_code'], 'target_not_found')
+        self.assertFalse(summary['writes_applied'])
+        self.assertFalse(store.upsert_calls)
+        self.assertEqual(store.mutable['llm']['content'], original)
+        self.assertNotIn('Frida keeps a sharper posture.', repr(summary))
+
     def test_persist_merge_fuses_only_targeted_mutables(self) -> None:
         original = 'User keeps a durable boundary.\nUser keeps another posture.\nUser values careful distance.'
         merged = 'User keeps a durable boundary with careful distance.'
@@ -333,6 +398,32 @@ class MutableIdentityApplyTests(unittest.TestCase):
         )
         self.assertEqual(summary['operation_kinds'], ['merge'])
 
+    def test_persist_merge_resolves_stable_target_refs(self) -> None:
+        original = 'User keeps a durable boundary.\nUser keeps another posture.\nUser values careful distance.'
+        merged = 'User keeps a durable boundary with careful distance.'
+        store = _MutableStore({'user': original})
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(
+                _persist(
+                    operation='merge',
+                    proposition=merged,
+                    target_refs=['user_01', 'user_03'],
+                    reason_code='mutable_merge',
+                    continuity_kind='posture',
+                )
+            ),
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(
+            store.mutable['user']['content'],
+            'User keeps a durable boundary with careful distance.\nUser keeps another posture.',
+        )
+        applied = [item for item in summary['outcomes'] if item.get('status') == 'applied'][0]
+        self.assertEqual(applied['target_refs'], ['user_01', 'user_03'])
+
     def test_persist_clear_obsolete_removes_only_targeted_mutable(self) -> None:
         original = 'User keeps an obsolete posture.\nUser keeps a durable boundary.'
         store = _MutableStore({'user': original})
@@ -353,6 +444,27 @@ class MutableIdentityApplyTests(unittest.TestCase):
         self.assertEqual(store.mutable['user']['content'], 'User keeps a durable boundary.')
         self.assertEqual(len(store.upsert_calls), 1)
         self.assertFalse(store.clear_calls)
+
+    def test_persist_clear_obsolete_resolves_stable_target_ref(self) -> None:
+        original = 'User keeps an obsolete posture.\nUser keeps a durable boundary.'
+        store = _MutableStore({'user': original})
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(
+                _persist(
+                    operation='clear_obsolete',
+                    proposition='',
+                    target_ref='user_01',
+                    reason_code='mutable_obsolete_explicitly_removed',
+                )
+            ),
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(store.mutable['user']['content'], 'User keeps a durable boundary.')
+        applied = [item for item in summary['outcomes'] if item.get('status') == 'applied'][0]
+        self.assertEqual(applied['target_ref'], 'user_01')
 
     def test_clear_obsolete_removes_row_when_last_mutable_is_cleared(self) -> None:
         store = _MutableStore({'user': 'User keeps an obsolete posture.'})
@@ -383,6 +495,8 @@ class MutableIdentityApplyTests(unittest.TestCase):
                 'proposition': '',
                 'target': '',
                 'targets': [],
+                'target_ref': '',
+                'target_refs': [],
                 'reason_code': reason_code,
                 'continuity_kind': continuity_kind,
                 'source_refs': ['pair_01'] if verdict != 'no_change' else [],
