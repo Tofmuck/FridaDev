@@ -188,6 +188,8 @@ Regles de schema:
 - `no_change` ne coexiste pas avec un autre verdict du meme sujet dans le meme run.
 - `source_refs` reference uniquement la fenetre courante: `pair_01`, `pair_02`, `pair_03`, `pair_04`, `pair_05`. Toute autre reference, dont `pair_99`, est invalide.
 - `guard_notes` contient des codes courts, jamais une justification longue.
+- Les formulations identitaires humaines non vides (`proposition`, `target`, `targets[]`) sont redigees en francais.
+- Les cles JSON, enums, `reason_code`, `continuity_kind`, `source_refs` et `guard_notes` restent en forme canonique code.
 - `continuity_kind` vaut `identity`, `relation`, `value`, `limit`, `posture`, `tension` ou `none`.
 
 ## Verdicts Canoniques

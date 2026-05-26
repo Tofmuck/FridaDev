@@ -122,6 +122,10 @@ Hard output rules:
 - begin directly with `{` and end directly with `}`;
 - do not wrap the JSON in Markdown fences such as ```json;
 - return at least one verdict for `user` and at least one verdict for `llm`;
+- write every non-empty human-readable identity formulation in French:
+  `proposition`, `target` and every `targets` item. Keep JSON keys,
+  enum values, `reason_code`, `continuity_kind`, `source_refs` and
+  `guard_notes` in their canonical code form;
 - `guard_notes` may be `[]`; if you use it, every item must be a short code
   token only, with letters, digits, `_`, `:` or `-`; never write phrases,
   spaces, quotes, excerpts or explanations in `guard_notes`.

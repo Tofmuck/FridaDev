@@ -123,6 +123,9 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertIn('`mutable_content_too_long`', prompt)
         self.assertIn('`pair_05`', prompt)
         self.assertIn('return at least one verdict for `user` and at least one verdict for `llm`', prompt)
+        self.assertIn('write every non-empty human-readable identity formulation in French', prompt)
+        self.assertIn('`proposition`, `target` and every `targets` item', prompt)
+        self.assertIn('canonical code form', prompt)
         self.assertIn('every item must be a short code', prompt)
         self.assertIn('never write phrases', prompt)
 
