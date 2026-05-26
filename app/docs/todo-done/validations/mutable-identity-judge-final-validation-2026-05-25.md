@@ -163,6 +163,18 @@ Correction:
 - l'observabilite reste content-free: refs, compteurs, longueurs, hashes, jamais
   le texte brut des mutables ou de la fenetre.
 
+Micro-correction batch du 2026-05-26:
+
+- les refs `llm_01`, `user_02`, etc. sont resolues contre le snapshot mutable
+  initial envoye au juge pour toute la duree du batch;
+- l'applicateur garde une table d'origines separee de la liste courante mutee,
+  afin qu'une suppression anterieure ne decale pas la cible d'un `tighten` ou
+  d'un `merge` suivant;
+- si une ref vise une proposition initiale deja supprimee ou fusionnee dans le
+  meme contrat, l'operation echoue content-free (`target_already_mutated` ou
+  `impossible_mutation`) et le batch atomique n'ecrit rien;
+- aucun matching approximatif, score identitaire ou writer legacy n'est ajoute.
+
 ## Non-Concurrence Legacy
 
 Preuves attendues et verifiees:

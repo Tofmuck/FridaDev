@@ -75,6 +75,7 @@ TECHNICAL_REASON_CODES = {
     'target_not_found',
     'target_ambiguous',
     'target_ref_invalid',
+    'target_already_mutated',
     'empty_proposition',
     'proposition_too_long',
     'prompt_like_content',

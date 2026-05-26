@@ -289,6 +289,15 @@ mutable. Elles ne sont pas stockees comme IDs DB durables. `target` et
 `targets` restent seulement une compatibilite texte exact; l'applicateur ne
 fait pas de matching approximatif.
 
+Dans un meme contrat applique en batch, ces refs sont stables par rapport au
+snapshot initial envoye au juge, pas par rapport a la liste courante deja
+modifiee par les operations precedentes. L'applicateur conserve une table
+d'origines pour que `user_02` continue a viser la deuxieme proposition initiale
+meme si `user_01` a ete retiree plus tot dans le batch. Si une proposition
+initiale visee par ref a deja ete supprimee ou fusionnee par une operation
+precedente du meme contrat, l'operation suivante est refusee avec
+`target_already_mutated` ou `impossible_mutation`; le batch reste all-or-nothing.
+
 ## Structured Output OpenRouter
 
 Le payload OpenRouter du caller `mutable_identity_judge` contient:
@@ -385,6 +394,7 @@ Codes techniques:
 - `target_not_found`
 - `target_ambiguous`
 - `target_ref_invalid`
+- `target_already_mutated`
 - `empty_proposition`
 - `proposition_too_long`
 - `prompt_like_content`

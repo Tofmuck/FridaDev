@@ -50,7 +50,8 @@ non-empty `proposition` for `add`, `tighten` or `merge`, choose `no_change`,
 `already_covered_by_mutable`, `already_covered_by_static`,
 `insufficient_context` or `source_scope_unclear`. `clear_obsolete` is the only
 persistent operation where `proposition = ""` is normal, and it still requires
-a non-empty `target`.
+a non-empty target reference: use `target_ref` by preference, or exact `target`
+text only as a fallback compatibility path.
 
 Valid `continuity_kind` values:
 - `identity`
@@ -120,7 +121,7 @@ Technical runtime reason codes are not valid model-output `reason_code` values.
 Never output codes such as `window_too_large`, `judge_timeout`,
 `judge_transport_error`, `judge_invalid_json`, `schema_invalid`,
 `invalid_subject`, `invalid_verdict`, `invalid_operation`, `invalid_target`,
-`target_not_found`, `target_ambiguous`, `target_ref_invalid`,
+`target_not_found`, `target_ambiguous`, `target_ref_invalid`, `target_already_mutated`,
 `empty_proposition`, `proposition_too_long`, `prompt_like_content`,
 `non_declarative_content`, `impossible_mutation`,
 `mutable_content_too_long`, `runtime_safety_violation`, `mutable_store_unavailable` or

@@ -55,14 +55,6 @@ def _norm(value: Any) -> str:
     return re.sub(r'\s+', ' ', _text(value)).lower()
 
 
-def _find_unique_index(lines: Sequence[str], target: str) -> int | None:
-    target_norm = _norm(target)
-    matches = [index for index, line in enumerate(lines) if _norm(line) == target_norm]
-    if len(matches) != 1:
-        return None
-    return matches[0]
-
-
 def _find_unique_index_with_reason(lines: Sequence[str], target: str) -> tuple[int | None, str]:
     target_norm = _norm(target)
     if not target_norm:
@@ -106,41 +98,58 @@ def _target_fields(item: Mapping[str, Any]) -> dict[str, Any]:
 def _resolve_single_target_index(
     *,
     subject: str,
-    lines: Sequence[str],
+    current_lines: Sequence[str],
+    current_origins: Sequence[int | None],
+    original_lines: Sequence[str],
     item: Mapping[str, Any],
 ) -> tuple[int | None, str]:
     target_ref = _text(item.get('target_ref')).lower()
     if target_ref:
-        return mutable_identity_refs.resolve_ref_index(
+        original_index, reason = mutable_identity_refs.resolve_ref_index(
             subject=subject,
             ref=target_ref,
-            lines=lines,
+            lines=original_lines,
         )
-    return _find_unique_index_with_reason(lines, _text(item.get('target')))
+        if reason or original_index is None:
+            return None, reason or 'target_ref_invalid'
+        matches = [index for index, origin in enumerate(current_origins) if origin == original_index]
+        if not matches:
+            return None, 'target_already_mutated'
+        if len(matches) != 1:
+            return None, 'target_ambiguous'
+        return matches[0], ''
+    return _find_unique_index_with_reason(current_lines, _text(item.get('target')))
 
 
 def _resolve_target_indexes(
     *,
     subject: str,
-    lines: Sequence[str],
+    current_lines: Sequence[str],
+    current_origins: Sequence[int | None],
+    original_lines: Sequence[str],
     item: Mapping[str, Any],
 ) -> tuple[list[int] | None, str]:
     target_refs = [_text(value).lower() for value in _list(item.get('target_refs')) if _text(value)]
     if target_refs:
         indexes: list[int] = []
         for target_ref in target_refs:
-            found_index, reason = mutable_identity_refs.resolve_ref_index(
+            original_index, reason = mutable_identity_refs.resolve_ref_index(
                 subject=subject,
                 ref=target_ref,
-                lines=lines,
+                lines=original_lines,
             )
-            if reason or found_index is None:
+            if reason or original_index is None:
                 return None, reason or 'target_ref_invalid'
-            indexes.append(found_index)
+            matches = [index for index, origin in enumerate(current_origins) if origin == original_index]
+            if not matches:
+                return None, 'target_already_mutated'
+            if len(matches) != 1:
+                return None, 'target_ambiguous'
+            indexes.append(matches[0])
     else:
         indexes = []
         for target in [_text(value) for value in _list(item.get('targets'))]:
-            found_index, reason = _find_unique_index_with_reason(lines, target)
+            found_index, reason = _find_unique_index_with_reason(current_lines, target)
             if reason or found_index is None:
                 return None, reason or 'invalid_target'
             indexes.append(found_index)
@@ -221,7 +230,9 @@ def _apply_operation_to_lines(
     item: Mapping[str, Any],
     original_content: str,
     current_lines: Sequence[str],
-) -> tuple[list[str] | None, dict[str, Any]]:
+    current_origins: Sequence[int | None],
+    original_lines: Sequence[str],
+) -> tuple[list[str] | None, list[int | None] | None, dict[str, Any]]:
     subject = _text(item.get('subject'))
     operation = _text(item.get('operation'))
     reason_code = _text(item.get('reason_code'))
@@ -229,10 +240,11 @@ def _apply_operation_to_lines(
     source_refs_count = len(_list(item.get('source_refs')))
     guard_notes_count = len(_list(item.get('guard_notes')))
     lines = list(current_lines)
+    origins = list(current_origins)
     current_content = _joined_content(lines)
 
     if operation not in _PERSIST_OPERATIONS:
-        return None, _outcome(
+        return None, None, _outcome(
             subject=subject,
             verdict='persist',
             operation=operation,
@@ -246,7 +258,7 @@ def _apply_operation_to_lines(
             **_target_fields(item),
         )
     if not mutable_identity_judge.persist_reason_code_matches_operation(operation, reason_code):
-        return None, _outcome(
+        return None, None, _outcome(
             subject=subject,
             verdict='persist',
             operation=operation,
@@ -264,7 +276,7 @@ def _apply_operation_to_lines(
     if operation in {'add', 'tighten', 'merge'}:
         validation_reason = _validate_proposition_text(proposition)
         if validation_reason:
-            return None, _outcome(
+            return None, None, _outcome(
                 subject=subject,
                 verdict='persist',
                 operation=operation,
@@ -280,7 +292,7 @@ def _apply_operation_to_lines(
 
     if operation == 'add':
         if _norm(proposition) in {_norm(line) for line in lines}:
-            return lines, _outcome(
+            return lines, origins, _outcome(
                 subject=subject,
                 verdict='persist',
                 operation=operation,
@@ -293,7 +305,8 @@ def _apply_operation_to_lines(
                 guard_notes_count=guard_notes_count,
             )
         lines.append(proposition)
-        return lines, _outcome(
+        origins.append(None)
+        return lines, origins, _outcome(
             subject=subject,
             verdict='persist',
             operation=operation,
@@ -309,11 +322,13 @@ def _apply_operation_to_lines(
     if operation == 'tighten':
         target_index, target_reason = _resolve_single_target_index(
             subject=subject,
-            lines=lines,
+            current_lines=lines,
+            current_origins=origins,
+            original_lines=original_lines,
             item=item,
         )
         if target_index is None:
-            return None, _outcome(
+            return None, None, _outcome(
                 subject=subject,
                 verdict='persist',
                 operation=operation,
@@ -329,7 +344,7 @@ def _apply_operation_to_lines(
         proposition_norm = _norm(proposition)
         target_norm = _norm(lines[target_index])
         if proposition_norm != target_norm and proposition_norm in {_norm(line) for line in lines}:
-            return None, _outcome(
+            return None, None, _outcome(
                 subject=subject,
                 verdict='persist',
                 operation=operation,
@@ -343,7 +358,7 @@ def _apply_operation_to_lines(
                 **_target_fields(item),
             )
         lines[target_index] = proposition
-        return lines, _outcome(
+        return lines, origins, _outcome(
             subject=subject,
             verdict='persist',
             operation=operation,
@@ -360,11 +375,13 @@ def _apply_operation_to_lines(
     if operation == 'merge':
         unique_indexes, target_reason = _resolve_target_indexes(
             subject=subject,
-            lines=lines,
+            current_lines=lines,
+            current_origins=origins,
+            original_lines=original_lines,
             item=item,
         )
         if unique_indexes is None:
-            return None, _outcome(
+            return None, None, _outcome(
                 subject=subject,
                 verdict='persist',
                 operation=operation,
@@ -379,7 +396,7 @@ def _apply_operation_to_lines(
             )
         target_norms = {_norm(lines[index]) for index in unique_indexes}
         if _norm(proposition) not in target_norms and _norm(proposition) in {_norm(line) for line in lines}:
-            return None, _outcome(
+            return None, None, _outcome(
                 subject=subject,
                 verdict='persist',
                 operation=operation,
@@ -393,8 +410,10 @@ def _apply_operation_to_lines(
                 **_target_fields(item),
             )
         next_lines = [line for index, line in enumerate(lines) if index not in unique_indexes]
+        next_origins = [origin for index, origin in enumerate(origins) if index not in unique_indexes]
         next_lines.insert(unique_indexes[0], proposition)
-        return next_lines, _outcome(
+        next_origins.insert(unique_indexes[0], None)
+        return next_lines, next_origins, _outcome(
             subject=subject,
             verdict='persist',
             operation=operation,
@@ -410,11 +429,13 @@ def _apply_operation_to_lines(
 
     target_index, target_reason = _resolve_single_target_index(
         subject=subject,
-        lines=lines,
+        current_lines=lines,
+        current_origins=origins,
+        original_lines=original_lines,
         item=item,
     )
     if target_index is None:
-        return None, _outcome(
+        return None, None, _outcome(
             subject=subject,
             verdict='persist',
             operation=operation,
@@ -428,7 +449,8 @@ def _apply_operation_to_lines(
             **_target_fields(item),
         )
     del lines[target_index]
-    return lines, _outcome(
+    del origins[target_index]
+    return lines, origins, _outcome(
         subject=subject,
         verdict='persist',
         operation=operation,
@@ -449,21 +471,26 @@ def _subject_plan(
     verdicts: Sequence[Mapping[str, Any]],
     current_content: str,
 ) -> tuple[str | None, list[dict[str, Any]]]:
-    lines = _split_propositions(current_content)
+    original_lines = _split_propositions(current_content)
+    lines = list(original_lines)
+    origins: list[int | None] = list(range(len(original_lines)))
     outcomes: list[dict[str, Any]] = []
     for item in verdicts:
         if _text(item.get('verdict')) != 'persist':
             outcomes.append(_non_persist_outcome(item, _joined_content(lines)))
             continue
-        next_lines, outcome = _apply_operation_to_lines(
+        next_lines, next_origins, outcome = _apply_operation_to_lines(
             item=item,
             original_content=current_content,
             current_lines=lines,
+            current_origins=origins,
+            original_lines=original_lines,
         )
         outcomes.append(outcome)
-        if next_lines is None:
+        if next_lines is None or next_origins is None:
             return None, outcomes
         lines = next_lines
+        origins = next_origins
     return _joined_content(lines), outcomes
 
 

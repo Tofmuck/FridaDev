@@ -466,6 +466,90 @@ class MutableIdentityApplyTests(unittest.TestCase):
         applied = [item for item in summary['outcomes'] if item.get('status') == 'applied'][0]
         self.assertEqual(applied['target_ref'], 'user_01')
 
+    def test_target_refs_are_stable_after_prior_clear_in_same_subject_batch(self) -> None:
+        original = 'A first line.\nB second line.\nC third line.'
+        store = _MutableStore({'user': original})
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(
+                _persist(
+                    operation='clear_obsolete',
+                    proposition='',
+                    target_ref='user_01',
+                    reason_code='mutable_obsolete_explicitly_removed',
+                ),
+                _persist(
+                    operation='tighten',
+                    proposition='B second line tightened.',
+                    target_ref='user_02',
+                    reason_code='mutable_tightening',
+                    continuity_kind='posture',
+                ),
+            ),
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(store.mutable['user']['content'], 'B second line tightened.\nC third line.')
+        self.assertNotEqual(store.mutable['user']['content'], 'B second line.\nB second line tightened.')
+
+    def test_target_refs_are_stable_when_tighten_precedes_clear_in_same_subject_batch(self) -> None:
+        original = 'A first line.\nB second line.\nC third line.'
+        store = _MutableStore({'user': original})
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(
+                _persist(
+                    operation='tighten',
+                    proposition='B second line tightened.',
+                    target_ref='user_02',
+                    reason_code='mutable_tightening',
+                    continuity_kind='posture',
+                ),
+                _persist(
+                    operation='clear_obsolete',
+                    proposition='',
+                    target_ref='user_01',
+                    reason_code='mutable_obsolete_explicitly_removed',
+                ),
+            ),
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(store.mutable['user']['content'], 'B second line tightened.\nC third line.')
+
+    def test_target_ref_already_mutated_fails_without_partial_write(self) -> None:
+        original = 'A first line.\nB second line.'
+        store = _MutableStore({'user': original})
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(
+                _persist(
+                    operation='clear_obsolete',
+                    proposition='',
+                    target='A first line.',
+                    reason_code='mutable_obsolete_explicitly_removed',
+                ),
+                _persist(
+                    operation='tighten',
+                    proposition='A first line tightened.',
+                    target_ref='user_01',
+                    reason_code='mutable_tightening',
+                    continuity_kind='posture',
+                ),
+            ),
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'impossible_mutation')
+        failed = [item for item in summary['outcomes'] if item.get('status') == 'failed'][0]
+        self.assertEqual(failed['reason_code'], 'target_already_mutated')
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], original)
+        self.assertFalse(store.upsert_calls)
+
     def test_clear_obsolete_removes_row_when_last_mutable_is_cleared(self) -> None:
         store = _MutableStore({'user': 'User keeps an obsolete posture.'})
 
