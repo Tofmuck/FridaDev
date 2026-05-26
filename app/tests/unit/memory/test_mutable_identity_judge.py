@@ -21,6 +21,7 @@ if str(APP_DIR) not in sys.path:
 
 from admin import runtime_settings
 from memory import mutable_identity_judge
+from memory import mutable_identity_judge_v2
 
 
 def _window_pairs() -> list[dict[str, dict[str, str]]]:
@@ -84,6 +85,37 @@ def _valid_contract() -> dict[str, Any]:
                 'targets': [],
                 'target_ref': '',
                 'target_refs': [],
+                'reason_code': 'no_mutable_identity_signal',
+                'continuity_kind': 'none',
+                'source_refs': [],
+                'guard_notes': [],
+            },
+        ],
+    }
+
+
+def _valid_v2_contract() -> dict[str, Any]:
+    return {
+        'schema_version': 'mutable_judge_v2',
+        'meta': {
+            'execution_status': 'complete',
+            'window_pairs_count': 5,
+            'window_complete': True,
+        },
+        'verdicts': [
+            {
+                'subject': 'user',
+                'verdict': 'add',
+                'proposition': 'Tof tient une frontiere nette entre sa pensee et la voix de Frida.',
+                'reason_code': 'explicit_self_limit_continuity',
+                'continuity_kind': 'limit',
+                'source_refs': ['pair_03'],
+                'guard_notes': ['not_task_local'],
+            },
+            {
+                'subject': 'llm',
+                'verdict': 'no_change',
+                'proposition': '',
                 'reason_code': 'no_mutable_identity_signal',
                 'continuity_kind': 'none',
                 'source_refs': [],
@@ -929,6 +961,154 @@ class MutableIdentityJudgeTests(unittest.TestCase):
         self.assertEqual(observed['headers']['Authorization'], 'caller=mutable_identity_judge')
         self.assertEqual(observed['provider_metadata']['provider_caller'], 'mutable_identity_judge')
         self.assertEqual(observed['provider_metadata']['provider_title'], 'FridaDev / Mutable Identity Judge')
+
+
+class MutableIdentityJudgeV2DormantTests(unittest.TestCase):
+    def test_v2_contract_accepts_add_only_and_is_content_free(self) -> None:
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(_valid_v2_contract())
+
+        self.assertEqual(reason, '')
+        self.assertIsNotNone(validated)
+        observability = mutable_identity_judge_v2.build_judge_observability_v2(validated)
+        self.assertEqual(observability['schema_version'], 'mutable_judge_v2')
+        self.assertEqual(observability['contract_status'], 'dormant_until_lot_b')
+        self.assertEqual(observability['verdict_counts'], {'add': 1, 'no_change': 1})
+        self.assertEqual(observability['subjects_touched'], ['user'])
+        self.assertEqual(observability['operation_kinds'], [])
+        self.assertNotIn('frontiere nette', repr(observability))
+
+    def test_v2_refuses_verdicts_outside_no_change_and_add(self) -> None:
+        for verdict in ('persist', 'reject', 'defer', 'raise_tension'):
+            with self.subTest(verdict=verdict):
+                payload = _valid_v2_contract()
+                payload['verdicts'][0]['verdict'] = verdict
+
+                validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+                self.assertIsNone(validated)
+                self.assertEqual(reason, 'invalid_verdict')
+
+    def test_v2_no_change_cannot_coexist_with_add_for_same_subject(self) -> None:
+        payload = _valid_v2_contract()
+        payload['verdicts'].append(
+            {
+                'subject': 'user',
+                'verdict': 'no_change',
+                'proposition': '',
+                'reason_code': 'already_covered_by_mutable',
+                'continuity_kind': 'none',
+                'source_refs': [],
+                'guard_notes': [],
+            }
+        )
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'invalid_verdict')
+
+    def test_v2_refuses_manager_fields_and_schema_omits_them(self) -> None:
+        manager_fields = {'operation', 'target', 'targets', 'target_ref', 'target_refs'}
+        payload = _valid_v2_contract()
+        payload['verdicts'][0]['operation'] = 'tighten'
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'schema_invalid')
+
+        response_format = mutable_identity_judge_v2.build_openrouter_payload_v2(
+            {'schema_version': 'mutable_identity_judge_input_v1', 'window_pairs': []},
+            model_settings={
+                'model': 'anthropic/claude-haiku-4.5',
+                'temperature': 0.0,
+                'top_p': 1.0,
+                'max_tokens': 1400,
+            },
+            system_prompt='judge prompt v2',
+        )['response_format']
+        schema_keys = _collect_keys(response_format)
+        self.assertEqual(response_format['type'], 'json_schema')
+        self.assertTrue(response_format['json_schema']['strict'])
+        self.assertEqual(response_format['json_schema']['name'], 'mutable_judge_v2')
+        self.assertFalse(response_format['json_schema']['schema']['additionalProperties'])
+        self.assertTrue(manager_fields.isdisjoint(schema_keys))
+
+    def test_v2_payload_keeps_structured_output_provider_require_parameters_and_anthropic_order(self) -> None:
+        judge_input = mutable_identity_judge.build_judge_input(
+            window_pairs=_window_pairs(),
+            identities=_identities(),
+            mutable_budget=_budget(),
+        )
+        payload = mutable_identity_judge_v2.build_openrouter_payload_v2(
+            judge_input,
+            model_settings={
+                'model': 'anthropic/claude-haiku-4.5',
+                'temperature': 0.0,
+                'top_p': 1.0,
+                'max_tokens': 1400,
+            },
+            system_prompt='judge prompt v2',
+        )
+
+        self.assertEqual(payload['response_format']['type'], 'json_schema')
+        self.assertTrue(payload['response_format']['json_schema']['strict'])
+        self.assertEqual(payload['response_format']['json_schema']['name'], 'mutable_judge_v2')
+        self.assertEqual(payload['provider']['require_parameters'], True)
+        self.assertEqual(payload['provider']['order'], ['anthropic'])
+        self.assertEqual(payload['metadata']['frida_contract_status'], 'dormant_until_lot_b')
+        verdict_schema = payload['response_format']['json_schema']['schema']['properties']['verdicts']['items']
+        self.assertEqual(set(verdict_schema['properties']['verdict']['enum']), {'add', 'no_change'})
+        self.assertNotIn('operation', verdict_schema['properties'])
+        self.assertIn('explicit_frida_limit_continuity', verdict_schema['properties']['reason_code']['enum'])
+        self.assertNotIn('mutable_tightening', verdict_schema['properties']['reason_code']['enum'])
+        self.assertEqual(mutable_identity_judge_v2.JUDGE_WINDOW_MAX_CHARS, 32_000)
+        self.assertEqual(mutable_identity_judge_v2.JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT, 12_000)
+
+    def test_v2_prompt_contains_ontology_rules_and_examples(self) -> None:
+        prompt = mutable_identity_judge_v2.load_prompt_v2()
+
+        for phrase in (
+            'You do not summarize.',
+            'You do not psychologize.',
+            'You do not maintain a knowledge base.',
+            'You do not clean the canon.',
+            'You do not rewrite the existing canon.',
+            'You seek only declarations of being.',
+            'Frida est...',
+            'Frida tient...',
+            'Frida refuse...',
+            'Tof traite... comme...',
+            'already covered by static or mutable_current',
+        ):
+            self.assertIn(phrase, prompt)
+        self.assertIn('Never output `operation`.', prompt)
+        self.assertIn('Never output `target`, `targets`, `target_ref`, or `target_refs`.', prompt)
+
+    def test_v2_is_dormant_and_active_runtime_payload_remains_v1(self) -> None:
+        judge_input = mutable_identity_judge.build_judge_input(
+            window_pairs=_window_pairs(),
+            identities=_identities(),
+            mutable_budget=_budget(),
+        )
+        active_payload = mutable_identity_judge.build_openrouter_payload(
+            judge_input,
+            model_settings={
+                'model': 'anthropic/claude-haiku-4.5',
+                'temperature': 0.0,
+                'top_p': 1.0,
+                'max_tokens': 1400,
+            },
+            system_prompt='judge prompt',
+        )
+
+        self.assertEqual(mutable_identity_judge.SCHEMA_VERSION, 'mutable_judge_v1')
+        self.assertEqual(active_payload['response_format']['json_schema']['name'], 'mutable_judge_v1')
+        active_verdict_schema = active_payload['response_format']['json_schema']['schema']['properties']['verdicts']['items']
+        self.assertIn('operation', active_verdict_schema['required'])
+        self.assertIn('target_ref', active_verdict_schema['required'])
+        self.assertIn('persist', active_verdict_schema['properties']['verdict']['enum'])
+        self.assertNotEqual(mutable_identity_judge_v2.SCHEMA_VERSION, mutable_identity_judge.SCHEMA_VERSION)
 
 
 if __name__ == '__main__':

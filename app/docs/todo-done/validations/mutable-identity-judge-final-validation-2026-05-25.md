@@ -175,6 +175,24 @@ Micro-correction batch du 2026-05-26:
   `impossible_mutation`) et le batch atomique n'ecrit rien;
 - aucun matching approximatif, score identitaire ou writer legacy n'est ajoute.
 
+## Preparation Dormante Add-Only Ontologique - 2026-05-26
+
+Un contrat `mutable_judge_v2` dormant a ete ajoute en Lot A pour preparer le
+recadrage add-only ontologique sans bascule runtime.
+
+Etat:
+
+- le runtime actif reste `mutable_judge_v1`;
+- `mutable_judge_v2` n'est pas appele par le flow chat;
+- le prompt dormant est `app/prompts/identity_mutable_judge_v2.txt`;
+- le schema v2 accepte seulement les verdicts `add` et `no_change`;
+- le schema v2 ne contient pas `operation`, `target`, `targets`, `target_ref`
+  ou `target_refs`;
+- le structured output v2 reste strict et conserve
+  `provider.require_parameters=true` avec `provider.order=["anthropic"]`;
+- le cutover reel est reserve au Lot B, en meme temps que l'applicateur
+  add-only.
+
 ## Non-Concurrence Legacy
 
 Preuves attendues et verifiees:

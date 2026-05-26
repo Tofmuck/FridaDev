@@ -13,6 +13,11 @@ fallbacks OpenRouter. Ce verrou amont ne remplace pas le validateur metier
 FridaDev: la validation locale reste souveraine pour les contraintes
 conditionnelles, les tailles, les cibles et la persistence.
 
+Mise a jour 2026-05-26, Lot A add-only ontologique: un contrat dormant
+`mutable_judge_v2` est prepare pour le futur cutover add-only. Il n'est pas
+actif dans le runtime tant que l'applicateur add-only du Lot B n'est pas branche.
+Le chemin actif reste `mutable_judge_v1`.
+
 ## Decision
 
 Le nouveau systeme mutable est judge-first.
@@ -206,6 +211,102 @@ Regles de schema:
 - `current_mutables.<subject>.propositions[]` fournit au juge des refs stables
   content-free du type `llm_01` / `user_01` associees aux formulations
   courantes; ces refs sont reconstruites depuis le canon courant a chaque run.
+
+## Contrat Dormant Add-Only `mutable_judge_v2`
+
+Statut: prepare en Lot A, dormant jusqu'au cutover Lot B.
+
+Le contrat v2 recadre le juge automatique comme admission d'un nouvel enonce
+ontologique, pas comme maintenance du canon existant. Il conserve la fenetre de
+5 paires, le meme regime pour `user` et `llm`, le structured output OpenRouter,
+`provider.require_parameters=true`, `provider.order=["anthropic"]`, la validation
+locale stricte et l'observabilite content-free.
+
+Activation interdite seule:
+
+- le runtime actif ne doit pas appeler `mutable_judge_v2` tant que
+  l'applicateur add-only n'est pas branche;
+- Lot A peut livrer le schema, le prompt et les tests comme preparation
+  dormante uniquement;
+- le cutover reel doit activer ensemble le juge v2 et l'applicateur add-only.
+
+Schema v2:
+
+```json
+{
+  "schema_version": "mutable_judge_v2",
+  "meta": {
+    "execution_status": "complete",
+    "window_pairs_count": 5,
+    "window_complete": true
+  },
+  "verdicts": [
+    {
+      "subject": "user",
+      "verdict": "add",
+      "proposition": "Tof traite la frontiere entre sa pensee et la voix de Frida comme un objet central.",
+      "reason_code": "explicit_relation_continuity",
+      "continuity_kind": "relation",
+      "source_refs": ["pair_03"],
+      "guard_notes": ["not_task_local"]
+    },
+    {
+      "subject": "llm",
+      "verdict": "no_change",
+      "proposition": "",
+      "reason_code": "no_mutable_identity_signal",
+      "continuity_kind": "none",
+      "source_refs": [],
+      "guard_notes": []
+    }
+  ]
+}
+```
+
+Regles v2:
+
+- verdicts autorises: `no_change`, `add`;
+- champs interdits: `operation`, `target`, `targets`, `target_ref`,
+  `target_refs`;
+- operations automatiques retirees du contrat cible: `tighten`, `merge`,
+  `clear_obsolete`;
+- `persist` disparait comme conteneur multi-operation;
+- `add` exige une `proposition` francaise, courte, ontologique et declarative;
+- `no_change` exige une `proposition=""`;
+- si l'idee est deja couverte par `static` ou `mutable_current`, le verdict est
+  `no_change`;
+- si la matiere est locale, temporaire, narrative, psychologique,
+  operationnelle, conversationnelle, citee, rapportee ou trop molle, le verdict
+  est `no_change`;
+- si le juge ne peut pas produire une phrase ontologique courte, le verdict est
+  `no_change`.
+
+Reason codes d'admission v2:
+
+- `explicit_self_definition_continuity`;
+- `explicit_self_value_continuity`;
+- `explicit_self_limit_continuity`;
+- `explicit_relation_continuity`;
+- `explicit_frida_self_definition_continuity`;
+- `explicit_frida_limit_continuity`;
+- `explicit_posture_continuity`.
+
+Reason codes de non-admission v2:
+
+- `no_mutable_identity_signal`;
+- `already_covered_by_static`;
+- `already_covered_by_mutable`;
+- `task_local_not_identity`;
+- `temporary_state`;
+- `ambiguous_subject`;
+- `insufficient_context`;
+- `source_scope_unclear`;
+- `quoted_or_reported_speech`;
+- `project_policy_not_identity`.
+
+Le prompt dormant associe est `app/prompts/identity_mutable_judge_v2.txt`. Le
+prompt runtime actif reste `app/prompts/identity_mutable_judge.txt` jusqu'au
+Lot B.
 
 ## Verdicts Canoniques
 

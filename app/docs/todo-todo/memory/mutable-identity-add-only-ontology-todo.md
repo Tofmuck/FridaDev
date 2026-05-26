@@ -2,9 +2,9 @@
 
 ## Statut
 
-- [ ] Actif sur `feature/mutable-refonte`.
-- [ ] Docs-only initial: aucun patch runtime, DB, prompt runtime ou rebuild dans ce lot de cadrage.
-- [ ] Source de travail pour recadrer le juge mutable automatique apres la refonte judge-first.
+- [x] Actif sur `feature/mutable-refonte`.
+- [x] Source de travail pour recadrer le juge mutable automatique apres la refonte judge-first.
+- [x] Lot A dormant livre: schema, prompt et tests v2 prepares sans activation runtime.
 - [ ] A executer en lots courts, testes, commites et pushes separement.
 
 ## Contexte
@@ -107,41 +107,41 @@ ensemble. Si Lot A et Lot B sont commites separement, Lot A doit documenter la
 garde qui empeche `mutable_judge_v2` d'etre appele en production avant
 l'applicateur add-only.
 
-- [ ] Choisir explicitement entre `mutable_judge_v2` nouveau schema ou migration controlee de `mutable_judge_v1`; preference: `mutable_judge_v2`.
-- [ ] Garder `mutable_judge_v2` dormant tant que l'applicateur add-only Lot B n'est pas pret.
-- [ ] Documenter explicitement la garde de non-activation si Lot A est livre avant Lot B.
-- [ ] Definir `schema_version = mutable_judge_v2`.
-- [ ] Limiter les verdicts actifs a `no_change` et `add`.
-- [ ] Retirer du schema actif `operation`, `target`, `targets`, `target_ref`, `target_refs`.
-- [ ] Remplacer `persist` par `add` comme verdict ou conserver `verdict=add` explicitement; ne pas garder `persist` comme conteneur multi-operation.
-- [ ] Limiter les reason codes persistants aux raisons compatibles avec admission add-only: `explicit_self_definition_continuity`, `explicit_self_value_continuity`, `explicit_self_limit_continuity`, `explicit_relation_continuity`, `explicit_frida_self_definition_continuity`, `explicit_frida_limit_continuity`, `explicit_posture_continuity`.
-- [ ] Retirer du contrat modele les reason codes `mutable_tightening`, `mutable_merge`, `mutable_obsolete_explicitly_removed`.
-- [ ] Garder les reason codes de non-admission utiles: `no_mutable_identity_signal`, `already_covered_by_static`, `already_covered_by_mutable`, `task_local_not_identity`, `temporary_state`, `ambiguous_subject`, `insufficient_context`, `source_scope_unclear`, `quoted_or_reported_speech`, `project_policy_not_identity`.
-- [ ] Reecrire `app/prompts/identity_mutable_judge.txt` autour des etats d'etre.
-- [ ] Dire explicitement dans le prompt: tu ne resumes pas, tu ne psychologises pas, tu ne maintiens pas une base de connaissances, tu ne nettoies pas le canon, tu ne reformules pas le canon existant.
-- [ ] Imposer les propositions en francais, courtes, ontologiques et declaratives.
-- [ ] Donner des exemples acceptables: `Frida tient la dignite et l'egalite reelle comme principes non negociables.`, `Tof traite la frontiere entre sa pensee et la voix de Frida comme un objet central.`
-- [ ] Donner des exemples interdits: `Frida travaille cette posture...`, `Tof observe...`, `Frida essaie de...`, `Tof semble...`, `Dans cette conversation...`
-- [ ] Imposer `no_change` si deja couvert par `static` ou `mutable_current`.
-- [ ] Garder `response_format.type=json_schema`.
-- [ ] Garder `response_format.json_schema.strict=true`.
-- [ ] Garder `provider.require_parameters=true`.
-- [ ] Garder `provider.order=["anthropic"]` sauf decision explicite documentee.
-- [ ] Garder la garde taille 32_000 chars / 12_000 tokens estimes sauf preuve contraire.
+- [x] Choisir explicitement entre `mutable_judge_v2` nouveau schema ou migration controlee de `mutable_judge_v1`; choix Lot A: nouveau schema dormant `mutable_judge_v2`.
+- [x] Garder `mutable_judge_v2` dormant tant que l'applicateur add-only Lot B n'est pas pret.
+- [x] Documenter explicitement la garde de non-activation si Lot A est livre avant Lot B.
+- [x] Definir `schema_version = mutable_judge_v2`.
+- [x] Limiter les verdicts v2 a `no_change` et `add`.
+- [x] Retirer du schema v2 `operation`, `target`, `targets`, `target_ref`, `target_refs`.
+- [x] Remplacer `persist` par `add` comme verdict; ne pas garder `persist` comme conteneur multi-operation.
+- [x] Limiter les reason codes d'admission aux raisons compatibles avec add-only: `explicit_self_definition_continuity`, `explicit_self_value_continuity`, `explicit_self_limit_continuity`, `explicit_relation_continuity`, `explicit_frida_self_definition_continuity`, `explicit_frida_limit_continuity`, `explicit_posture_continuity`.
+- [x] Retirer du contrat modele v2 les reason codes `mutable_tightening`, `mutable_merge`, `mutable_obsolete_explicitly_removed`.
+- [x] Garder les reason codes de non-admission utiles: `no_mutable_identity_signal`, `already_covered_by_static`, `already_covered_by_mutable`, `task_local_not_identity`, `temporary_state`, `ambiguous_subject`, `insufficient_context`, `source_scope_unclear`, `quoted_or_reported_speech`, `project_policy_not_identity`.
+- [x] Creer un prompt v2 dormant `app/prompts/identity_mutable_judge_v2.txt` autour des etats d'etre, sans remplacer le prompt runtime v1.
+- [x] Dire explicitement dans le prompt: tu ne resumes pas, tu ne psychologises pas, tu ne maintiens pas une base de connaissances, tu ne nettoies pas le canon, tu ne reformules pas le canon existant.
+- [x] Imposer les propositions en francais, courtes, ontologiques et declaratives.
+- [x] Donner des exemples acceptables: `Frida tient la dignite et l'egalite reelle comme principes non negociables.`, `Tof traite la frontiere entre sa pensee et la voix de Frida comme un objet central.`
+- [x] Donner des exemples interdits: `Frida travaille cette posture...`, `Tof observe...`, `Frida essaie de...`, `Tof semble...`, `Dans cette conversation...`
+- [x] Imposer `no_change` si deja couvert par `static` ou `mutable_current`.
+- [x] Garder `response_format.type=json_schema`.
+- [x] Garder `response_format.json_schema.strict=true`.
+- [x] Garder `provider.require_parameters=true`.
+- [x] Garder `provider.order=["anthropic"]` sauf decision explicite documentee.
+- [x] Garder la garde taille 32_000 chars / 12_000 tokens estimes sauf preuve contraire.
 
 Tests/preuves:
 
-- [ ] `python3 -m py_compile app/memory/mutable_identity_judge.py app/memory/mutable_identity_judge_schema.py`.
-- [ ] Tests unitaires du schema: aucun verdict autre que `add` / `no_change`.
-- [ ] Tests unitaires du schema: aucun champ `operation` dans le schema actif.
-- [ ] Tests unitaires du payload OpenRouter: structured output strict et `provider.require_parameters=true`.
-- [ ] Grep prouvant que `target_ref` / `target_refs` ne sont plus dans le schema actif.
+- [x] `python3 -m py_compile app/memory/mutable_identity_judge.py app/memory/mutable_identity_judge_schema.py app/memory/mutable_identity_judge_v2.py`.
+- [x] Tests unitaires du schema v2: aucun verdict autre que `add` / `no_change`.
+- [x] Tests unitaires du schema v2: aucun champ `operation` dans le schema v2 dormant.
+- [x] Tests unitaires du payload OpenRouter v2: structured output strict et `provider.require_parameters=true`.
+- [x] Tests prouvant que `target_ref` / `target_refs` ne sont plus dans le schema v2 dormant.
 
 Critere de sortie:
 
-- [ ] Un developpeur peut implementer le juge add-only sans inventer de decision conceptuelle.
-- [ ] Le prompt ne raconte plus le juge comme mainteneur du canon existant.
-- [ ] Le contrat v2 n'est pas active seul en runtime; activation uniquement avec Lot B ou garde de non-appel prouvee.
+- [x] Un developpeur peut implementer le juge add-only sans inventer de decision conceptuelle.
+- [x] Le prompt v2 ne raconte plus le juge comme mainteneur du canon existant.
+- [x] Le contrat v2 n'est pas active seul en runtime; activation uniquement avec Lot B ou garde de non-appel prouvee.
 
 ## Lot B - Applicateur append-only, retrait du runtime cible/refs/ops
 
