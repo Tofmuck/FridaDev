@@ -8,6 +8,7 @@
 - [x] Lot B livre: cutover runtime coherent vers `mutable_judge_v2` + applicateur append-only.
 - [x] Lot C livre: tests unitaires et crash test conversationnel add-only ontologique.
 - [x] Lot D livre: smoke reel v2 execute sans DB live; Haiku retourne une reponse provider mais echoue au validateur (`invalid_verdict`) et doit etre considere fragile pour ce role tant qu'un micro-lot modele/timeout n'a pas tranche.
+- [x] Lot D bis livre: smoke candidat `openai/gpt-5.4-mini` execute sans DB live; le slug retourne `judge_transport_error` HTTP 404 via OpenRouter et ne doit pas etre active sans verification modele separee.
 - [ ] A executer en lots courts, testes, commites et pushes separement.
 
 ## Contexte
@@ -247,6 +248,18 @@ Resultat Lot D:
 - Verdict counts: `{}` faute de contrat valide; aucune proposition acceptee.
 - `live_db_write=false`, `applicator_called=false`.
 - Decision: Haiku est trop fragile pour ce role dans la configuration actuelle; ne pas changer le modele dans Lot D, ouvrir un micro-lot separe pour comparer un modele plus fort ou ajuster le timeout du slot juge.
+
+Resultat Lot D bis:
+
+- Le script accepte un override temporaire `--model`, strictement local au smoke, sans persistence runtime.
+- Commande candidate: `python scripts/smoke_mutable_identity_judge_llm.py --model openai/gpt-5.4-mini`.
+- Le runtime persistant reste `anthropic/claude-haiku-4.5`; `runtime_model_persisted_changed=false`.
+- Le smoke conserve le meme prompt actif, le meme schema strict, le meme scenario synthetique, aucun applicateur et aucune DB live.
+- Pour le modele override non-Anthropic, le smoke retire seulement `provider.order=["anthropic"]` et conserve `provider.require_parameters=true`.
+- Resultat observe pour `openai/gpt-5.4-mini`: `status=skipped`, `reason_code=judge_transport_error`, `http_status=404`.
+- Aucun provider effectif, aucun token count et aucun contrat valide ne sont disponibles.
+- Verdict counts: `{}`; add `llm=false`; add `user=false`; bruit ajoute `0`.
+- Decision: `openai/gpt-5.4-mini` n'est pas comparable en qualite dans ce smoke car le slug est refuse ou indisponible via le transport OpenRouter courant. Ne pas changer le modele actif; verifier le slug ou choisir un autre modele candidat dans un micro-lot separe.
 
 Tests/preuves:
 

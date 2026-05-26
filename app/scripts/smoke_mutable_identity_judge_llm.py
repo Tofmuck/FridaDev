@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import sys
@@ -24,6 +25,24 @@ if str(APP_DIR) not in sys.path:
 import config  # noqa: E402
 from memory import mutable_identity_judge_schema  # noqa: E402
 from memory import mutable_identity_judge_v2  # noqa: E402
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run the synthetic mutable_judge_v2 real-provider smoke without "
+            "calling the applicator or writing live DB state."
+        )
+    )
+    parser.add_argument(
+        "--model",
+        default="",
+        help=(
+            "Temporary model override for this smoke only. Does not persist "
+            "runtime settings."
+        ),
+    )
+    return parser.parse_args()
 
 
 def _short_hash(text: str) -> str:
@@ -180,7 +199,34 @@ def _provider_summary(provider_metadata: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _provider_order_for_model(model: str) -> list[str]:
+    normalized = str(model or "").strip().lower()
+    if normalized.startswith("anthropic/"):
+        return ["anthropic"]
+    return []
+
+
+def _smoke_payload_for_model(
+    payload: Mapping[str, Any],
+    *,
+    model: str,
+    model_override_active: bool,
+) -> dict[str, Any]:
+    next_payload = dict(payload)
+    provider = dict(_mapping(next_payload.get("provider")))
+    if model_override_active:
+        provider_order = _provider_order_for_model(model)
+        if provider_order:
+            provider["order"] = provider_order
+        else:
+            provider.pop("order", None)
+    next_payload["provider"] = provider
+    return next_payload
+
+
 def main() -> int:
+    args = _parse_args()
+    model_override = str(args.model or "").strip()
     synthetic_pairs = _window_pairs()
     judge_input = mutable_identity_judge_v2.build_judge_input(
         window_pairs=synthetic_pairs[:5],
@@ -204,33 +250,71 @@ def main() -> int:
             }
         },
     )
-    settings = mutable_identity_judge_v2.mutable_identity_judge.runtime_model_settings()
+    runtime_settings = mutable_identity_judge_v2.mutable_identity_judge.runtime_model_settings()
+    settings = dict(runtime_settings)
+    runtime_model = str(settings.get("model") or "")
+    if model_override:
+        settings["model"] = model_override
     prompt = mutable_identity_judge_v2.load_prompt_v2(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)
     request_payload = mutable_identity_judge_v2.build_openrouter_payload_v2(
         judge_input,
         model_settings=settings,
         system_prompt=prompt,
     )
+    request_payload = _smoke_payload_for_model(
+        request_payload,
+        model=str(settings.get("model") or ""),
+        model_override_active=bool(model_override),
+    )
 
     captured_provider: dict[str, Any] = {}
     original_log_provider = mutable_identity_judge_v2.llm_client.log_provider_metadata
+    original_runtime_settings = mutable_identity_judge_v2.mutable_identity_judge.runtime_model_settings
+    original_build_payload = mutable_identity_judge_v2.build_openrouter_payload_v2
 
     def capture_provider(_logger: Any, _event_name: str, provider_metadata: Any) -> None:
         captured_provider.update(dict(_mapping(provider_metadata)))
         original_log_provider(_logger, _event_name, provider_metadata)
 
+    def smoke_runtime_settings() -> dict[str, Any]:
+        return dict(settings)
+
+    def smoke_build_payload(
+        smoke_judge_input: Mapping[str, Any],
+        *,
+        model_settings: Mapping[str, Any],
+        system_prompt: str,
+    ) -> dict[str, Any]:
+        payload = original_build_payload(
+            smoke_judge_input,
+            model_settings=model_settings,
+            system_prompt=system_prompt,
+        )
+        return _smoke_payload_for_model(
+            payload,
+            model=str(model_settings.get("model") or ""),
+            model_override_active=bool(model_override),
+        )
+
     mutable_identity_judge_v2.llm_client.log_provider_metadata = capture_provider
+    mutable_identity_judge_v2.mutable_identity_judge.runtime_model_settings = smoke_runtime_settings
+    mutable_identity_judge_v2.build_openrouter_payload_v2 = smoke_build_payload
     try:
         result = mutable_identity_judge_v2.run_mutable_identity_judge_v2(judge_input)
     finally:
         mutable_identity_judge_v2.llm_client.log_provider_metadata = original_log_provider
+        mutable_identity_judge_v2.mutable_identity_judge.runtime_model_settings = original_runtime_settings
+        mutable_identity_judge_v2.build_openrouter_payload_v2 = original_build_payload
 
     contract = _mapping(result.get("contract"))
     contract_summary = _contract_summary(contract)
     summary = {
         "smoke": "mutable_identity_judge_v2_real_llm",
         "slot": mutable_identity_judge_v2.MODEL_SLOT,
+        "runtime_model": runtime_model,
         "requested_model": settings.get("model"),
+        "model_override": model_override or None,
+        "runtime_model_persisted_changed": False,
         "prompt_kind": mutable_identity_judge_v2.PROMPT_KIND,
         "prompt_path": str(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH),
         "status": result.get("status"),

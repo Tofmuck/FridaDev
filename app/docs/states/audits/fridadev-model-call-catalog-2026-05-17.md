@@ -12,6 +12,8 @@ Mise a jour du 2026-05-26: `mutable_identity_judge` envoie maintenant `response_
 
 Mise a jour du 2026-05-26 Lot D: le smoke reel `mutable_judge_v2` sans applicateur ni DB live appelle bien OpenRouter via le slot `identity_periodic_model`; le provider repond avec `anthropic/claude-4.5-haiku-20251001`, mais la sortie est rejetee par le validateur FridaDev (`invalid_verdict`). Le modele n'est pas change dans ce lot; decision operatoire: Haiku est fragile pour ce role tant qu'un micro-lot modele/timeout n'a pas tranche.
 
+Mise a jour du 2026-05-26 Lot D bis: le smoke candidat `openai/gpt-5.4-mini` est execute uniquement via override local du script, sans changer le slot runtime persistant. OpenRouter retourne `judge_transport_error` HTTP 404 avant reponse provider; le modele actif reste donc inchange et le candidat doit etre re-verifie par slug ou remplace dans un micro-lot separe.
+
 Verdict court:
 
 - FridaDev expose **11 chemins fonctionnels d'inference**, correspondant a **13 slots modele/service** si l'on compte separement les modeles primaire/fallback du `stimmung_agent` et du `validation_agent`.

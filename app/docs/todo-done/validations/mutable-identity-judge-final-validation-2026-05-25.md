@@ -84,6 +84,53 @@ Decision modele:
   `mutable_judge_v2` ou ajuster explicitement le timeout du slot juge, puis
   rejouer le meme smoke sans ecriture DB.
 
+## Smoke Reel Lot D Bis - Candidat GPT 5.4 Mini - 2026-05-26
+
+Le smoke a ete etendu avec un override modele temporaire:
+
+```bash
+docker exec -i -w /app platform-fridadev sh -c 'python scripts/smoke_mutable_identity_judge_llm.py --model openai/gpt-5.4-mini; printf "\nexit_code=%s\n" "$?"'
+```
+
+Garanties:
+
+- l'override ne modifie pas les runtime settings persistants;
+- `runtime_model_persisted_changed=false`;
+- aucun applicateur n'est appele;
+- aucune ecriture DB live;
+- meme prompt `prompts/identity_mutable_judge_v2.txt`;
+- meme schema strict `mutable_judge_v2`;
+- meme scenario synthetique que Lot D;
+- `provider.require_parameters=true`;
+- `provider.order=["anthropic"]` est retire pour ce candidat non-Anthropic afin
+  de ne pas forcer le provider Anthropic.
+
+Resultat content-free:
+
+- modele runtime persistant: `anthropic/claude-haiku-4.5`;
+- modele demande pour le smoke: `openai/gpt-5.4-mini`;
+- provider effectif: aucun, la requete echoue avant reponse provider;
+- structured output: oui, `json_schema`, `strict=true`;
+- status: `skipped`;
+- reason_code: `judge_transport_error`;
+- HTTP status: `404`;
+- verdict_counts: `{}`;
+- add `llm`: non;
+- add `user`: non;
+- bruit ajoute: non;
+- `live_db_write=false`;
+- `applicator_called=false`;
+- exit code: `2`.
+
+Decision:
+
+- `openai/gpt-5.4-mini` ne peut pas etre compare qualitativement a Haiku dans
+  ce smoke: le slug est refuse ou indisponible via OpenRouter dans le transport
+  courant.
+- Ne pas changer le modele actif.
+- Prochain micro-lot possible: verifier le slug OpenRouter exact ou tester un
+  autre modele candidat disponible avec structured output strict.
+
 ## Crash Test Conversationnel
 
 Test ajoute:
