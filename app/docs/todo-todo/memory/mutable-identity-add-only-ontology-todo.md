@@ -98,7 +98,18 @@ Le systeme automatique ne doit plus faire:
 
 Objectif: remplacer le contrat gestionnaire `add/tighten/merge/clear_obsolete` par un contrat automatique add-only ontologique.
 
+Contrainte de rollout: Lot A ne doit pas produire a lui seul un runtime actif
+en entre-deux. Il peut preparer un schema, un prompt et des tests dormants
+seulement si le chemin runtime actif continue d'appeler `mutable_judge_v1`.
+La premiere activation reelle de `mutable_judge_v2` doit etre un cutover
+coherent avec Lot B, c'est-a-dire juge v2 et applicateur add-only branches
+ensemble. Si Lot A et Lot B sont commites separement, Lot A doit documenter la
+garde qui empeche `mutable_judge_v2` d'etre appele en production avant
+l'applicateur add-only.
+
 - [ ] Choisir explicitement entre `mutable_judge_v2` nouveau schema ou migration controlee de `mutable_judge_v1`; preference: `mutable_judge_v2`.
+- [ ] Garder `mutable_judge_v2` dormant tant que l'applicateur add-only Lot B n'est pas pret.
+- [ ] Documenter explicitement la garde de non-activation si Lot A est livre avant Lot B.
 - [ ] Definir `schema_version = mutable_judge_v2`.
 - [ ] Limiter les verdicts actifs a `no_change` et `add`.
 - [ ] Retirer du schema actif `operation`, `target`, `targets`, `target_ref`, `target_refs`.
@@ -121,7 +132,8 @@ Objectif: remplacer le contrat gestionnaire `add/tighten/merge/clear_obsolete` p
 Tests/preuves:
 
 - [ ] `python3 -m py_compile app/memory/mutable_identity_judge.py app/memory/mutable_identity_judge_schema.py`.
-- [ ] Tests unitaires du schema: aucune operation autre que `add` / `no_change`.
+- [ ] Tests unitaires du schema: aucun verdict autre que `add` / `no_change`.
+- [ ] Tests unitaires du schema: aucun champ `operation` dans le schema actif.
 - [ ] Tests unitaires du payload OpenRouter: structured output strict et `provider.require_parameters=true`.
 - [ ] Grep prouvant que `target_ref` / `target_refs` ne sont plus dans le schema actif.
 
@@ -129,10 +141,17 @@ Critere de sortie:
 
 - [ ] Un developpeur peut implementer le juge add-only sans inventer de decision conceptuelle.
 - [ ] Le prompt ne raconte plus le juge comme mainteneur du canon existant.
+- [ ] Le contrat v2 n'est pas active seul en runtime; activation uniquement avec Lot B ou garde de non-appel prouvee.
 
 ## Lot B - Applicateur append-only, retrait du runtime cible/refs/ops
 
 Objectif: rendre l'applicateur automatique incapable de modifier, fusionner ou supprimer le canon mutable existant.
+
+Contrainte de rollout: Lot B porte le cutover runtime add-only. Le chemin actif
+ne doit basculer vers `mutable_judge_v2` que lorsque l'applicateur add-only est
+branche, teste et observe. Aucun rebuild/deploiement ne doit laisser un juge v2
+produire des contrats que l'ancien applicateur gestionnaire attendrait, ni
+l'inverse.
 
 - [ ] Rendre l'applicateur automatique add-only.
 - [ ] Refuser tout contrat actif contenant `tighten`, `merge` ou `clear_obsolete`.
@@ -245,6 +264,9 @@ Objectif: ne laisser aucun deuxieme regime mutable automatique actif.
 - [ ] Verifier admin/read-model/logs: le regime actif raconte `mutable_judge_v2` add-only, pas le gestionnaire de canon.
 - [ ] Verifier `app/docs/README.md`.
 - [ ] Verifier `README.md` si les chantiers actifs identity y sont indexes.
+- [ ] Verifier et mettre a jour `AGENTS.md` si le contrat actif mutable change.
+- [ ] Ne pas laisser `AGENTS.md` raconter l'ancien regime judge-first gestionnaire comme source active.
+- [ ] Garder les archives historiques separees de la doctrine active.
 - [ ] Decider explicitement si `mutable_judge_v1` reste compat ou disparait.
 - [ ] Ne pas laisser deux schemas actifs pour le chemin automatique.
 
