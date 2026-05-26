@@ -6,39 +6,37 @@ Portee: contrat source-of-truth de la refonte mutable `user` et `llm`
 Hors-scope de cette spec: migration DB lourde, test modele live, benchmark modele, promotion mutable -> static
 
 Mise a jour 2026-05-26: le caller OpenRouter du juge envoie un
-`response_format` JSON Schema strict pour `mutable_judge_v1` et
-`provider.require_parameters=true`. Il privilegie aussi `provider.order=["anthropic"]`
-pour eviter la latence observee via Amazon Bedrock, sans desactiver les
-fallbacks OpenRouter. Ce verrou amont ne remplace pas le validateur metier
-FridaDev: la validation locale reste souveraine pour les contraintes
-conditionnelles, les tailles, les cibles et la persistence.
+`response_format` JSON Schema strict pour le contrat actif et
+`provider.require_parameters=true`. Il privilegie aussi
+`provider.order=["anthropic"]` pour eviter la latence observee via Amazon
+Bedrock, sans desactiver les fallbacks OpenRouter. Ce verrou amont ne remplace
+pas le validateur metier FridaDev: la validation locale reste souveraine pour
+les contraintes conditionnelles, les tailles, la securite et la persistence.
 
-Mise a jour 2026-05-26, Lot A add-only ontologique: un contrat dormant
-`mutable_judge_v2` est prepare pour le futur cutover add-only. Il n'est pas
-actif dans le runtime tant que l'applicateur add-only du Lot B n'est pas branche.
-Le chemin actif reste `mutable_judge_v1`.
+Mise a jour 2026-05-26, Lot B add-only ontologique: le runtime actif utilise
+`mutable_judge_v2`. Le regime automatique admet seulement de nouveaux enonces
+ontologiques courts via `add` ou conclut `no_change`. Il ne maintient plus le
+canon existant: pas de `persist`, pas d'`operation`, pas de `tighten`, pas de
+`merge`, pas de `clear_obsolete`, pas de `target_ref` / `target_refs`.
 
-Convention de lecture avant Lot B: les sections qui decrivent `persist`,
-`operation`, `tighten`, `merge`, `clear_obsolete`, `target_ref` ou
-`target_refs` documentent le regime `mutable_judge_v1` encore actif. Elles ne
-constituent pas la cible durable add-only. La cible Lot B est le contrat
-`mutable_judge_v2`: `add` / `no_change`, sans operations ni ciblage du canon
-existant.
+Convention de lecture apres Lot B: les sections qui decrivent `mutable_judge_v1`,
+`persist`, `operation`, `tighten`, `merge`, `clear_obsolete`, `target_ref` ou
+`target_refs` sont des traces legacy pre-Lot-B / compatibilite historique. Elles
+ne constituent plus le regime runtime actif.
 
 ## Decision
 
-Le systeme mutable est judge-first. Avant le cutover Lot B, le runtime actif
-reste le regime `mutable_judge_v1`; la cible durable preparee en Lot A est
-`mutable_judge_v2` add-only ontologique.
+Le systeme mutable est judge-first et add-only ontologique. Depuis le cutover
+Lot B, le runtime actif est `mutable_judge_v2`.
 
-Pipeline runtime actif pre-Lot B (`mutable_judge_v1`):
+Pipeline runtime actif (`mutable_judge_v2`):
 
 ```text
 5 paires completes user/assistant
 -> juge LLM mutable
--> verdicts du juge
+-> verdict add/no_change
 -> validation technique minimale
--> identity_mutables si et seulement si verdict=persist et operation valide
+-> identity_mutables si et seulement si verdict=add valide
 -> audit content-free
 -> reinjection static + mutable
 ```
@@ -95,10 +93,10 @@ Regles runtime:
 - `arbiter.run_identity_periodic_agent(...)` est une entree de compatibilite desactivee depuis Lot 6: pas d'appel provider, pas d'ecriture canonique, retour content-free `legacy_identity_periodic_agent_disabled`;
 - `app/prompts/identity_periodic_agent.txt` est un artefact legacy desactive, conserve pour compatibilite documentaire/admin, pas un prompt runtime actif;
 - en `shadow`, le juge peut etre appele et observe, mais l'applicateur n'est pas lance et `identity_mutables` ne change pas;
-- en `enforced`, un contrat `mutable_judge_v1` valide peut etre applique dans `identity_mutables`;
+- en `enforced`, un contrat `mutable_judge_v2` valide peut ajouter dans `identity_mutables`;
 - si le juge echoue, timeout, renvoie JSON/schema invalide ou `window_too_large`, la fenetre est preservee;
 - si l'applicateur echoue, la fenetre est preservee;
-- si le run se termine proprement par `no_change`, `reject`, `defer`, `raise_tension` ou par persistence appliquee, la fenetre est consommee;
+- si le run se termine proprement par `no_change` ou par `add` applique, la fenetre est consommee;
 - aucun chemin actif n'appelle `memory_identity_periodic_apply.apply_periodic_agent_contract(...)` ni `memory_identity_periodic_scoring.score_operation(...)`; les modules legacy correspondants ont ete retires en Lot 6;
 - aucun chemin actif n'ecrit `static`.
 
@@ -153,7 +151,10 @@ Il ne peut pas:
 
 Exception: une redaction obligatoire pour securite runtime ou secret suit la politique de securite generale. Elle doit etre auditee comme garde technique, jamais comme jugement identitaire.
 
-## Schema JSON Canonique Actif Pre-Lot B (`mutable_judge_v1`)
+## Schema JSON Legacy Pre-Lot-B (`mutable_judge_v1`)
+
+Le schema `mutable_judge_v1` est conserve comme reference historique et
+compatibilite locale des anciens tests. Il n'est plus le contrat runtime actif.
 
 Nom de schema: `mutable_judge_v1`
 
@@ -221,9 +222,9 @@ Regles de schema:
   content-free du type `llm_01` / `user_01` associees aux formulations
   courantes; ces refs sont reconstruites depuis le canon courant a chaque run.
 
-## Contrat Dormant Add-Only `mutable_judge_v2`
+## Contrat Actif Add-Only `mutable_judge_v2`
 
-Statut: prepare en Lot A, dormant jusqu'au cutover Lot B.
+Statut: actif depuis Lot B.
 
 Le contrat v2 recadre le juge automatique comme admission d'un nouvel enonce
 ontologique, pas comme maintenance du canon existant. Il conserve la fenetre de
@@ -231,13 +232,12 @@ ontologique, pas comme maintenance du canon existant. Il conserve la fenetre de
 `provider.require_parameters=true`, `provider.order=["anthropic"]`, la validation
 locale stricte et l'observabilite content-free.
 
-Activation interdite seule:
+Activation:
 
-- le runtime actif ne doit pas appeler `mutable_judge_v2` tant que
-  l'applicateur add-only n'est pas branche;
-- Lot A peut livrer le schema, le prompt et les tests comme preparation
-  dormante uniquement;
-- le cutover reel doit activer ensemble le juge v2 et l'applicateur add-only.
+- le runtime actif appelle `mutable_judge_v2`;
+- l'applicateur automatique actif est append-only;
+- tout contrat contenant un champ gestionnaire v1 est invalide dans le chemin
+  actif.
 
 Schema v2:
 
@@ -313,11 +313,12 @@ Reason codes de non-admission v2:
 - `quoted_or_reported_speech`;
 - `project_policy_not_identity`.
 
-Le prompt dormant associe est `app/prompts/identity_mutable_judge_v2.txt`. Le
-prompt runtime actif reste `app/prompts/identity_mutable_judge.txt` jusqu'au
-Lot B.
+Le prompt runtime actif est `app/prompts/identity_mutable_judge_v2.txt`.
 
-## Verdicts Canoniques Actifs Pre-Lot B (`mutable_judge_v1`)
+## Verdicts Legacy Pre-Lot-B (`mutable_judge_v1`)
+
+Cette section decrit le regime gestionnaire retire du chemin actif en Lot B.
+Elle reste utile pour comprendre l'historique, pas pour coder le runtime actuel.
 
 Verdicts autorises:
 
@@ -550,18 +551,19 @@ Le code ne peut pas refuser parce que:
 - la formulation n'a pas ete extraite par une regex;
 - la fenetre contient de l'indetermine.
 
-## Persistence v1 Active Pre-Lot B
+## Persistence Active Lot B (`mutable_judge_v2`)
 
-Seul `verdict = persist` avec operation valide peut modifier `identity_mutables`.
+Seul `verdict = add` valide peut ajouter dans `identity_mutables`.
 
 Le nouveau pipeline:
 
 - ecrit seulement le canon mutable dans `identity_mutables`;
-- borne le contenu canonique final de chaque sujet a `IDENTITY_MUTABLE_MAX_CHARS`, apres composition de toutes les operations du run;
+- borne le contenu canonique final de chaque sujet a `IDENTITY_MUTABLE_MAX_CHARS`, apres append des propositions admises du run;
 - persiste les mutations `llm` / `user` d'un meme contrat en transaction batch all-or-nothing: si un sujet echoue, aucun sujet n'est ecrit;
 - ecrit un audit compact content-free dans `identity_mutable_audit` ou dans la surface d'audit finale retenue;
 - ne stocke pas la fenetre brute dans l'audit;
-- ne reinjecte pas `reject`, `defer` ou `raise_tension`;
+- ignore `no_change` sans ecriture;
+- ne modifie, ne fusionne et ne supprime jamais le canon existant automatiquement;
 - ne migre pas automatiquement les donnees legacy;
 - ne revalide pas silencieusement le canon mutable herite.
 

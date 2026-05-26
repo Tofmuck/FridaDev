@@ -203,7 +203,7 @@ def _run_periodic_identity_agent(
             outcomes=[],
             error_class=exc.__class__.__name__,
             legacy_writer_disabled=False,
-            runtime_pipeline='mutable_identity_judge_first',
+            runtime_pipeline='mutable_identity_judge_v2_add_only',
             write_mode='enforced' if enforce_writes else 'shadow',
         )
     else:
@@ -237,7 +237,7 @@ def _run_periodic_identity_agent(
             last_agent_status=str(summary.get('last_agent_status') or ''),
             outcomes=list(summary.get('outcomes') or []),
             legacy_writer_disabled=bool(summary.get('legacy_writer_disabled')),
-            runtime_pipeline=str(summary.get('runtime_pipeline') or 'mutable_identity_judge_first'),
+            runtime_pipeline=str(summary.get('runtime_pipeline') or 'mutable_identity_judge_v2_add_only'),
             write_mode=str(summary.get('write_mode') or ('enforced' if enforce_writes else 'shadow')),
             judge_status=str(summary.get('judge_status') or ''),
             judge_reason_code=str(summary.get('judge_reason_code') or ''),
@@ -245,7 +245,6 @@ def _run_periodic_identity_agent(
             apply_reason_code=str(summary.get('apply_reason_code') or ''),
             score_first_writer_enabled=bool(summary.get('score_first_writer_enabled')),
             verdict_counts=dict(summary.get('verdict_counts') or {}),
-            persistent_operation_count=int(summary.get('persistent_operation_count') or 0),
             **size_fields,
         )
     _log_stage_latency(
@@ -709,7 +708,7 @@ def record_identity_entries_for_mode(
             promotions=list(periodic_summary.get('promotions') or []),
             rejection_reasons=dict(periodic_summary.get('rejection_reasons') or {}),
             legacy_writer_disabled=bool(periodic_summary.get('legacy_writer_disabled')),
-            runtime_pipeline=str(periodic_summary.get('runtime_pipeline') or 'mutable_identity_judge_first'),
+            runtime_pipeline=str(periodic_summary.get('runtime_pipeline') or 'mutable_identity_judge_v2_add_only'),
             write_mode=str(periodic_summary.get('write_mode') or 'enforced'),
         )
         return
@@ -760,6 +759,6 @@ def record_identity_entries_for_mode(
         buffer_frozen=bool(periodic_summary.get('buffer_frozen')),
         auto_canonization_suspended=bool(periodic_summary.get('auto_canonization_suspended')),
         legacy_writer_disabled=bool(periodic_summary.get('legacy_writer_disabled')),
-        runtime_pipeline=str(periodic_summary.get('runtime_pipeline') or 'mutable_identity_judge_first'),
+        runtime_pipeline=str(periodic_summary.get('runtime_pipeline') or 'mutable_identity_judge_v2_add_only'),
         write_mode='shadow',
     )

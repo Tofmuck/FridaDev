@@ -47,8 +47,8 @@ class _LogStoreWithOkReasonCode:
                     'status': 'ok',
                     'payload': {
                         'reason_code': 'applied',
-                        'runtime_pipeline': 'mutable_identity_judge_first',
-                        'prompt_kind': 'mutable_identity_judge',
+                        'runtime_pipeline': 'mutable_identity_judge_v2_add_only',
+                        'prompt_kind': 'mutable_identity_judge_v2',
                         'write_mode': 'enforced',
                         'writes_applied': True,
                         'buffer_pairs_count': 5,
@@ -56,11 +56,9 @@ class _LogStoreWithOkReasonCode:
                         'judge_status': 'ok',
                         'apply_status': 'ok',
                         'verdict_count': 1,
-                        'verdict_counts': {'persist': 1},
+                        'verdict_counts': {'add': 1},
                         'subjects_seen': ['llm', 'user'],
                         'subjects_touched': ['user'],
-                        'operation_kinds': ['add'],
-                        'persistent_operation_count': 1,
                         'continuity_kinds': ['limit'],
                         'reason_codes': ['explicit_self_formulation'],
                         'source_refs_count': 1,
@@ -73,8 +71,7 @@ class _LogStoreWithOkReasonCode:
                         'outcomes': [
                             {
                                 'subject': 'user',
-                                'verdict': 'persist',
-                                'operation': 'add',
+                                'verdict': 'add',
                                 'status': 'applied',
                                 'reason_code': 'add_applied',
                                 'old_chars': 0,
@@ -107,10 +104,10 @@ class IdentityReadModelLot3Tests(unittest.TestCase):
         self.assertTrue(activity['writes_applied'])
         self.assertEqual(activity['promotion_count'], 0)
         self.assertEqual(activity['stage'], 'mutable_identity_judge')
-        self.assertEqual(activity['runtime_pipeline'], 'mutable_identity_judge_first')
+        self.assertEqual(activity['runtime_pipeline'], 'mutable_identity_judge_v2_add_only')
         self.assertEqual(activity['buffer_target_pairs'], 5)
-        self.assertEqual(activity['verdict_counts'], {'persist': 1})
-        self.assertEqual(activity['operation_kinds'], ['add'])
+        self.assertEqual(activity['verdict_counts'], {'add': 1})
+        self.assertNotIn('operation_kinds', activity)
         self.assertEqual(activity['outcome_count'], 1)
         self.assertEqual(activity['outcome_summaries'][0]['new_chars'], 42)
         self.assertEqual(activity['outcome_summaries'][0]['new_sha256_12'], '123456789abc')

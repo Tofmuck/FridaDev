@@ -24,7 +24,7 @@ from core import chat_memory_flow
 from identity import identity
 from identity import static_identity_content
 from memory import memory_identity_periodic_agent
-from memory import mutable_identity_judge
+from memory import mutable_identity_judge_v2
 
 
 def _event_payloads(events: list[tuple[str, dict[str, Any]]], name: str) -> list[dict[str, Any]]:
@@ -55,7 +55,6 @@ def _sha256_12(text: str) -> str | None:
 def _mutable_verdict(
     *,
     subject: str,
-    operation: str,
     proposition: str,
     reason_code: str,
     continuity_kind: str,
@@ -63,13 +62,8 @@ def _mutable_verdict(
 ) -> dict[str, Any]:
     return {
         "subject": subject,
-        "verdict": "persist",
-        "operation": operation,
+        "verdict": "add",
         "proposition": proposition,
-        "target": "",
-        "targets": [],
-        "target_ref": "",
-        "target_refs": [],
         "reason_code": reason_code,
         "continuity_kind": continuity_kind,
         "source_refs": [source_ref],
@@ -79,7 +73,7 @@ def _mutable_verdict(
 
 def _mutable_contract(*verdicts: dict[str, Any]) -> dict[str, Any]:
     return {
-        "schema_version": "mutable_judge_v1",
+        "schema_version": "mutable_judge_v2",
         "meta": {
             "execution_status": "complete",
             "window_pairs_count": memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
@@ -262,7 +256,7 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
     def test_conversation_crash_test_runs_judge_first_pipeline_without_live_db_pollution(self) -> None:
         conversation_id = "conv-lot7-mutable-crash-test"
         llm_proposition = "Frida prefere eclairer plutot que contester par reflexe."
-        user_proposition = "User wants systems to state clearly what they can actually sustain."
+        user_proposition = "Tof exige que les systemes disent clairement ce qu'ils peuvent reellement tenir."
         conversation = [
             [
                 {
@@ -301,7 +295,6 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
         contract = _mutable_contract(
             _mutable_verdict(
                 subject="llm",
-                operation="add",
                 proposition=llm_proposition,
                 reason_code="explicit_frida_self_definition_continuity",
                 continuity_kind="posture",
@@ -309,14 +302,14 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
             ),
             _mutable_verdict(
                 subject="user",
-                operation="add",
                 proposition=user_proposition,
                 reason_code="explicit_self_definition_continuity",
                 continuity_kind="identity",
                 source_ref="pair_01",
             ),
         )
-        validated_contract, validation_reason = mutable_identity_judge.validate_mutable_judge_contract(contract)
+        contract["schema_version"] = "mutable_judge_v2"
+        validated_contract, validation_reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(contract)
         self.assertIsNone(validation_reason or None)
         self.assertIsNotNone(validated_contract)
 
@@ -332,7 +325,7 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
                 "status": "ok",
                 "reason_code": "judge_complete",
                 "contract": copy.deepcopy(validated_contract),
-                "observability": mutable_identity_judge.build_judge_observability(validated_contract or {}),
+                "observability": mutable_identity_judge_v2.build_judge_observability_v2(validated_contract or {}),
             }
 
         arbiter_module = SimpleNamespace(
@@ -382,7 +375,7 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
 
         self.assertEqual(len(judge_inputs), 1)
         judge_input = judge_inputs[0]
-        self.assertEqual(judge_input["schema_version"], "mutable_identity_judge_input_v1")
+        self.assertEqual(judge_input["schema_version"], "mutable_identity_judge_input_v2")
         self.assertEqual(judge_input["identities"]["llm"]["static"], "Frida statique de validation Lot 7.")
         self.assertEqual(judge_input["identities"]["user"]["static"], "Utilisateur statique de validation Lot 7.")
         self.assertEqual(judge_input["identities"]["llm"]["mutable_current"], "")
@@ -391,6 +384,8 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
         self.assertTrue(judge_input["judgment_rules"]["python_must_not_score_identity"])
         self.assertTrue(judge_input["judgment_rules"]["static_writes_forbidden"])
         self.assertEqual(judge_input["judgment_rules"]["same_regime_for_subjects"], ["llm", "user"])
+        self.assertEqual(judge_input["judgment_rules"]["allowed_verdicts"], ["add", "no_change"])
+        self.assertNotIn("current_mutables", judge_input)
         self.assertEqual([item["id"] for item in judge_input["window_pairs"]], [f"pair_{index:02d}" for index in range(1, 6)])
         self.assertEqual(
             [
@@ -408,8 +403,8 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
         self.assertEqual(
             store.upsert_calls,
             [
-                ("llm", llm_proposition, "mutable_identity_judge_apply", "mutable_judge_persist"),
-                ("user", user_proposition, "mutable_identity_judge_apply", "mutable_judge_persist"),
+                ("llm", llm_proposition, "mutable_identity_judge_apply", "mutable_judge_add"),
+                ("user", user_proposition, "mutable_identity_judge_apply", "mutable_judge_add"),
             ],
         )
         self.assertEqual(len(store.audit), 2)
@@ -429,17 +424,18 @@ class MutableIdentityJudgeFinalValidationTests(unittest.TestCase):
         self.assertEqual(apply_events[4]["status"], "ok")
         self.assertEqual(apply_events[4]["reason_code"], "applied")
         self.assertTrue(apply_events[4]["writes_applied"])
-        self.assertEqual(apply_events[4]["runtime_pipeline"], "mutable_identity_judge_first")
+        self.assertEqual(apply_events[4]["runtime_pipeline"], "mutable_identity_judge_v2_add_only")
         self.assertFalse(apply_events[4]["score_first_writer_enabled"])
         self.assertEqual(apply_events[4]["promotion_count"], 0)
         self.assertEqual(apply_events[5]["status"], "buffering")
         self.assertFalse(apply_events[5]["writes_applied"])
         self.assertEqual([event for event, _payload in chat_events].count("mutable_identity_judge"), 1)
         mutable_judge_event = [payload for event, payload in chat_events if event == "mutable_identity_judge"][0]["payload"]
-        self.assertEqual(mutable_judge_event["prompt_kind"], "mutable_identity_judge")
-        self.assertEqual(mutable_judge_event["runtime_pipeline"], "mutable_identity_judge_first")
-        self.assertEqual(mutable_judge_event["verdict_counts"], {"persist": 2})
-        self.assertEqual(mutable_judge_event["operation_kinds"], ["add"])
+        self.assertEqual(mutable_judge_event["prompt_kind"], "mutable_identity_judge_v2")
+        self.assertEqual(mutable_judge_event["runtime_pipeline"], "mutable_identity_judge_v2_add_only")
+        self.assertEqual(mutable_judge_event["verdict_counts"], {"add": 2})
+        self.assertNotIn("operation_kinds", mutable_judge_event)
+        self.assertNotIn("persistent_operation_count", mutable_judge_event)
         self.assertEqual(mutable_judge_event["subjects_seen"], ["llm", "user"])
         self.assertEqual(mutable_judge_event["subjects_touched"], ["llm", "user"])
         self.assertEqual(mutable_judge_event["promotion_count"], 0)

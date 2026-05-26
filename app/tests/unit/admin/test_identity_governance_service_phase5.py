@@ -174,14 +174,18 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertEqual(items_by_key['IDENTITY_TOP_N']['category'], 'legacy_inactive_readonly')
         self.assertEqual(items_by_key['IDENTITY_MAX_TOKENS']['category'], 'legacy_inactive_readonly')
         self.assertEqual(sections_by_key['staging_contract']['classification'], 'active_readonly')
-        self.assertEqual(sections_by_key['staging_contract']['active_scope'], 'mutable_identity_judge_first')
+        self.assertEqual(sections_by_key['staging_contract']['active_scope'], 'mutable_identity_judge_v2_add_only')
+        self.assertEqual(sections_by_key['staging_contract']['details']['pipeline'], 'mutable_identity_judge_v2_add_only')
+        self.assertEqual(sections_by_key['staging_contract']['details']['contract'], 'mutable_judge_v2')
+        self.assertEqual(sections_by_key['staging_contract']['details']['allowed_verdicts'], ['add', 'no_change'])
+        self.assertFalse(sections_by_key['staging_contract']['details']['manager_operations_enabled'])
         self.assertEqual(sections_by_key['staging_contract']['details']['buffer_target_pairs'], 5)
         self.assertFalse(sections_by_key['staging_contract']['details']['actively_injected'])
         self.assertEqual(sections_by_key['scoring_contract']['classification'], 'legacy_inactive')
         self.assertEqual(sections_by_key['scoring_contract']['active_scope'], 'inactive_legacy')
         self.assertEqual(
             sections_by_key['scoring_contract']['details']['runtime_authority'],
-            'inactive_superseded_by_mutable_identity_judge_first',
+            'inactive_superseded_by_mutable_identity_judge_v2_add_only',
         )
         self.assertFalse(sections_by_key['scoring_contract']['details']['admission_by_local_score'])
         self.assertEqual(sections_by_key['promotion_and_suspension_contract']['classification'], 'legacy_inactive')

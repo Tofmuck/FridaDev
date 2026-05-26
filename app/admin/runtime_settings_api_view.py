@@ -222,7 +222,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'label': 'IDENTITY_EXTRACTOR_DECOUPLING',
                 'value': (
                     'extract_identities() uses identity_extractor_model. '
-                    'mutable_identity_judge uses identity_periodic_model; arbiter_model is no longer an '
+                    'mutable_identity_judge_v2 uses identity_periodic_model; arbiter_model is no longer an '
                     'effective source for active model callers.'
                 ),
                 'is_editable': False,
@@ -239,7 +239,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             },
             'prompt_loader': {
                 'label': 'IDENTITY_MUTABLE_JUDGE_PROMPT_RUNTIME_SOURCE',
-                'value': 'memory.mutable_identity_judge.load_prompt(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)',
+                'value': 'memory.mutable_identity_judge_v2.load_prompt_v2(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)',
                 'is_editable': False,
                 'source': 'backend_loader',
             },
@@ -274,7 +274,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'label': 'IDENTITY_MUTABLE_JUDGE_DOCTRINE',
                 'value': (
                     'identity_periodic_model is the compatibility model slot for the active '
-                    'mutable_identity_judge caller. The active prompt is identity_mutable_judge; '
+                    'mutable_identity_judge_v2 caller. The active prompt is identity_mutable_judge_v2; '
                     'identity_periodic_agent is legacy pre-refactor.'
                 ),
                 'is_editable': False,
@@ -297,7 +297,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'label': 'ARBITER_MODEL_ACTIVE_REPLACEMENTS',
                 'value': (
                     'memory_arbiter_model drives memory arbitration; identity_extractor_model drives '
-                    'per-turn identity extraction; identity_periodic_model drives mutable_identity_judge.'
+                    'per-turn identity extraction; identity_periodic_model drives mutable_identity_judge_v2.'
                 ),
                 'is_editable': False,
                 'source': 'runtime_contract',

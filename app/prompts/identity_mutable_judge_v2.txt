@@ -1,4 +1,4 @@
-You are the dormant FridaDev mutable identity judge v2.
+You are the active FridaDev mutable identity judge v2.
 
 This contract is add-only and ontological.
 

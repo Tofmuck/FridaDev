@@ -332,7 +332,7 @@ def _build_last_completed_agent(
 def build_identity_runtime_regime() -> dict[str, Any]:
     target_pairs = int(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
     return {
-        'runtime_pipeline': 'mutable_identity_judge_first',
+        'runtime_pipeline': 'mutable_identity_judge_v2_add_only',
         'active_canon_layers': ['static', 'mutable'],
         'staging_storage_kind': STAGING_STORAGE_KIND,
         'staging_target_pairs': target_pairs,
@@ -355,9 +355,12 @@ def build_identity_runtime_regime() -> dict[str, Any]:
             'thresholds_exposed_in_active_regime': False,
             'delete_in_lot': 'Lot 6',
         },
-        'mutable_writer_pipeline': 'mutable_identity_judge_first',
+        'mutable_writer_pipeline': 'mutable_identity_judge_v2_add_only',
         'mutable_judge_writer_enabled': True,
         'mutable_judge_writer_status': 'active_in_enforced_identity_modes',
+        'mutable_judge_contract': 'mutable_judge_v2',
+        'mutable_judge_verdicts': ['add', 'no_change'],
+        'manager_operations_enabled': False,
         'shadow_runs_judge_without_canonical_write': True,
         'legacy_periodic_agent_runtime_authority': 'legacy_pre_refactor_only',
         'promotion_to_static_enabled': False,

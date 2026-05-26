@@ -108,7 +108,7 @@ def build_mutable_judge_v2_response_format(
     continuity_kinds: Iterable[str],
     source_refs: Iterable[str],
 ) -> dict[str, Any]:
-    """Return the dormant OpenRouter strict JSON Schema envelope for mutable_judge_v2."""
+    """Return the active OpenRouter strict JSON Schema envelope for mutable_judge_v2."""
     return {
         'type': 'json_schema',
         'json_schema': {

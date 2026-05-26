@@ -366,7 +366,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             data['readonly_info']['transition_note']['value'],
         )
         self.assertIn(
-            'mutable_identity_judge uses identity_periodic_model',
+            'mutable_identity_judge_v2 uses identity_periodic_model',
             data['readonly_info']['transition_note']['value'],
         )
 
@@ -400,7 +400,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['section'], 'identity_periodic_model')
         self.assertEqual(data['payload']['model']['value'], 'anthropic/claude-haiku-4.5')
         self.assertEqual(data['payload']['max_tokens']['value'], 1400)
-        self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/identity_mutable_judge.txt')
+        self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/identity_mutable_judge_v2.txt')
         self.assertEqual(
             data['readonly_info']['legacy_prompt_path']['value'],
             'prompts/identity_periodic_agent.txt',
@@ -408,7 +408,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertIn('mutable identity judge', data['readonly_info']['system_prompt']['value'])
         self.assertEqual(
             data['readonly_info']['prompt_loader']['value'],
-            'memory.mutable_identity_judge.load_prompt(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)',
+            'memory.mutable_identity_judge_v2.load_prompt_v2(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)',
         )
         self.assertIn('main_model.title_identity_periodic', data['readonly_info']['shared_transport']['value'])
         self.assertIn(
@@ -445,7 +445,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['payload']['timeout_s']['value'], 12)
         self.assertIn('no active model caller', data['readonly_info']['operator_warning']['value'])
         self.assertIn(
-            'identity_periodic_model drives mutable_identity_judge',
+            'identity_periodic_model drives mutable_identity_judge_v2',
             data['readonly_info']['active_replacements']['value'],
         )
         self.assertIn('not an effective source', data['readonly_info']['legacy_scope']['value'])

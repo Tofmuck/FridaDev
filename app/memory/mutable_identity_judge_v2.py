@@ -1,17 +1,26 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any, Mapping
 
+import requests
+
+import config
+from core import llm_client
 from memory import mutable_identity_judge
 from memory import mutable_identity_judge_schema
 
 
+logger = logging.getLogger('frida.mutable_identity_judge')
+
 SCHEMA_VERSION = 'mutable_judge_v2'
+INPUT_SCHEMA_VERSION = 'mutable_identity_judge_input_v2'
 PROMPT_KIND = 'mutable_identity_judge_v2'
 PROMPT_PATH = 'prompts/identity_mutable_judge_v2.txt'
+CONTRACT_STATUS = 'active_add_only_lot_b'
 MODEL_SLOT = mutable_identity_judge.MODEL_SLOT
 CALLER = mutable_identity_judge.CALLER
 JUDGE_WINDOW_MAX_CHARS = mutable_identity_judge.JUDGE_WINDOW_MAX_CHARS
@@ -61,6 +70,7 @@ _PROMPT_LIKE_RE = re.compile(
     r'tu\s+dois\s+repondre|tu\s+dois\s+répondre|reponds\s+comme|réponds\s+comme)',
     re.IGNORECASE,
 )
+_JSON_FENCE_RE = re.compile(r'^\s*```(?:json)?\s*(?P<body>.*?)\s*```\s*$', re.IGNORECASE | re.DOTALL)
 
 
 def _text(value: Any) -> str:
@@ -79,6 +89,46 @@ def _list(value: Any) -> list[Any]:
     if isinstance(value, list):
         return list(value)
     return []
+
+
+def build_judge_input(
+    *,
+    window_pairs: Any,
+    identities: Mapping[str, Any],
+    mutable_budget: Mapping[str, Any],
+    source_annotations: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        'schema_version': INPUT_SCHEMA_VERSION,
+        'window_pairs': mutable_identity_judge._normalize_window_pairs(window_pairs),
+        'identities': mutable_identity_judge._normalized_identities(identities),
+        'mutable_budget': mutable_identity_judge._normalized_budget(mutable_budget),
+        'judgment_rules': {
+            'judge_reads_full_window': True,
+            'python_must_not_score_identity': True,
+            'python_must_not_preselect_semantic_candidates': True,
+            'same_regime_for_subjects': ['llm', 'user'],
+            'allowed_verdicts': sorted(ALLOWED_VERDICTS),
+            'allowed_continuity_kinds': sorted(ALLOWED_CONTINUITY_KINDS),
+            'model_output_reason_codes': {
+                'add': sorted(ADD_REASON_CODES),
+                'no_change': sorted(NO_CHANGE_REASON_CODES),
+            },
+            'technical_reason_codes_not_model_output': sorted(mutable_identity_judge.TECHNICAL_REASON_CODES),
+            'automatic_operations_forbidden': [
+                'tighten',
+                'merge',
+                'clear_obsolete',
+                'target',
+                'targets',
+                'target_ref',
+                'target_refs',
+            ],
+            'automatic_writes': ['identity_mutables'],
+            'static_writes_forbidden': True,
+        },
+        'source_annotations': mutable_identity_judge._compact_annotation_value(source_annotations or {}),
+    }
 
 
 def load_prompt_v2(prompt_path: str | None = None) -> str:
@@ -124,12 +174,154 @@ def build_openrouter_payload_v2(
             'frida_caller': CALLER,
             'frida_slot': MODEL_SLOT,
             'frida_contract': SCHEMA_VERSION,
-            'frida_contract_status': 'dormant_until_lot_b',
+            'frida_contract_status': CONTRACT_STATUS,
         },
         'trace': {
             'trace_name': 'FridaDev',
-            'generation_name': 'FridaDev / Mutable Identity Judge v2 Dormant',
+            'generation_name': 'FridaDev / Mutable Identity Judge v2 Add-Only',
         },
+    }
+
+
+def _headers() -> dict[str, Any]:
+    return llm_client.or_headers_custom(
+        caller=CALLER,
+        referer=config.OR_REFERER_IDENTITY_PERIODIC,
+        title='FridaDev / Mutable Identity Judge v2',
+    )
+
+
+def _safe_json_loads(raw: Any) -> Mapping[str, Any] | None:
+    text = _text(raw)
+    candidates = [text]
+    fenced = _JSON_FENCE_RE.fullmatch(text)
+    if fenced:
+        candidates.append(_text(fenced.group('body')))
+    for candidate in candidates:
+        try:
+            parsed = json.loads(candidate)
+        except Exception:
+            continue
+        if isinstance(parsed, Mapping):
+            return parsed
+    return None
+
+
+def _failure_result(reason_code: str, observability_fields: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    observability = {
+        'status': 'skipped',
+        'reason_code': reason_code,
+        'schema_version': SCHEMA_VERSION,
+        'prompt_kind': PROMPT_KIND,
+    }
+    observability.update(dict(_mapping(observability_fields)))
+    return {
+        'status': 'skipped',
+        'reason_code': reason_code,
+        'contract': None,
+        'observability': observability,
+    }
+
+
+def _request_exception_observability(exc: BaseException) -> dict[str, Any]:
+    response = getattr(exc, 'response', None)
+    status_code = getattr(response, 'status_code', None)
+    payload: dict[str, Any] = {'error_class': exc.__class__.__name__}
+    if status_code is not None:
+        payload['http_status'] = int(status_code)
+    return payload
+
+
+def _estimated_prompt_tokens(char_count: int) -> int:
+    if char_count <= 0:
+        return 0
+    return (int(char_count) + 3) // 4
+
+
+def _judge_window_chars(judge_input: Mapping[str, Any]) -> int:
+    total = 0
+    for pair in _list(judge_input.get('window_pairs')):
+        pair_payload = _mapping(pair)
+        for role_key in ('user', 'assistant'):
+            message = _mapping(pair_payload.get(role_key))
+            total += len(str(message.get('content') or ''))
+    return total
+
+
+def _judge_size_guard(
+    *,
+    judge_input: Mapping[str, Any],
+    system_prompt: str,
+    model_input_json: str,
+) -> dict[str, Any]:
+    window_chars = _judge_window_chars(judge_input)
+    payload_chars = len(model_input_json)
+    estimated_prompt_tokens = _estimated_prompt_tokens(len(system_prompt or '') + payload_chars)
+    ok = (
+        window_chars <= JUDGE_WINDOW_MAX_CHARS
+        and estimated_prompt_tokens <= JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT
+    )
+    return {
+        'ok': ok,
+        'window_chars': window_chars,
+        'payload_chars': payload_chars,
+        'estimated_prompt_tokens': estimated_prompt_tokens,
+        'max_window_chars': JUDGE_WINDOW_MAX_CHARS,
+        'max_estimated_prompt_tokens': JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT,
+    }
+
+
+def _verdict_failure_observability(item: Mapping[str, Any], *, reason_code: str, index: int) -> dict[str, Any]:
+    return {
+        'validation_reason': reason_code,
+        'invalid_verdict_index': index,
+        'invalid_subject': _text(item.get('subject')).lower(),
+        'invalid_verdict': _text(item.get('verdict')).lower(),
+        'invalid_reason_code': _text(item.get('reason_code')),
+        'invalid_proposition_chars': len(_text(item.get('proposition'))),
+        'invalid_source_refs_count': len(_list(item.get('source_refs'))),
+        'invalid_guard_notes_count': len(_list(item.get('guard_notes'))),
+    }
+
+
+def _validation_failure_observability(payload: Mapping[str, Any], *, reason_code: str) -> dict[str, Any]:
+    observability: dict[str, Any] = {'validation_reason': reason_code}
+    verdicts = payload.get('verdicts')
+    if not isinstance(verdicts, list):
+        return observability
+    for index, raw_item in enumerate(verdicts, start=1):
+        item = _mapping(raw_item)
+        if not item:
+            return {**observability, 'invalid_verdict_index': index}
+        validated, item_reason = validate_mutable_judge_contract_v2(
+            {
+                'schema_version': SCHEMA_VERSION,
+                'meta': {
+                    'execution_status': 'complete',
+                    'window_pairs_count': mutable_identity_judge.WINDOW_PAIRS_COUNT,
+                    'window_complete': True,
+                },
+                'verdicts': [item, _minimal_no_change('llm' if _text(item.get('subject')) == 'user' else 'user')],
+            }
+        )
+        if validated is None:
+            return _verdict_failure_observability(
+                item,
+                reason_code=item_reason or reason_code or 'schema_invalid',
+                index=index,
+            )
+    return observability
+
+
+def _minimal_no_change(subject: str) -> dict[str, Any]:
+    return {
+        'subject': subject,
+        'verdict': 'no_change',
+        'proposition': '',
+        'reason_code': 'no_mutable_identity_signal',
+        'continuity_kind': 'none',
+        'source_refs': [],
+        'guard_notes': [],
     }
 
 
@@ -279,8 +471,14 @@ def build_judge_observability_v2(contract: Mapping[str, Any]) -> dict[str, Any]:
         guard_notes_count += len(guard_notes)
 
     return {
+        'status': 'ok',
+        'reason_code': 'judge_complete',
         'schema_version': SCHEMA_VERSION,
-        'contract_status': 'dormant_until_lot_b',
+        'prompt_kind': PROMPT_KIND,
+        'contract_status': CONTRACT_STATUS,
+        'window_pairs_count': int(_mapping(contract.get('meta')).get('window_pairs_count') or 0),
+        'window_complete': _mapping(contract.get('meta')).get('window_complete') is True,
+        'verdict_count': sum(verdict_counts.values()),
         'verdict_counts': dict(sorted(verdict_counts.items())),
         'subjects_seen': sorted(subjects_seen),
         'subjects_touched': sorted(subjects_touched),
@@ -289,4 +487,89 @@ def build_judge_observability_v2(contract: Mapping[str, Any]) -> dict[str, Any]:
         'continuity_kinds': sorted(continuity_kinds),
         'source_refs_count': source_refs_count,
         'guard_notes_count': guard_notes_count,
+    }
+
+
+def run_mutable_identity_judge_v2(judge_input: Mapping[str, Any]) -> dict[str, Any]:
+    settings = mutable_identity_judge.runtime_model_settings()
+    try:
+        system_prompt = load_prompt_v2()
+    except Exception:
+        return _failure_result('runtime_safety_violation')
+    model_input_json = json.dumps(dict(judge_input), ensure_ascii=False, indent=2)
+    size_guard = _judge_size_guard(
+        judge_input=judge_input,
+        system_prompt=system_prompt,
+        model_input_json=model_input_json,
+    )
+    if not size_guard['ok']:
+        logger.warning(
+            'mutable_identity_judge_v2_window_too_large model=%s window_chars=%s payload_chars=%s estimated_prompt_tokens=%s',
+            settings['model'],
+            size_guard['window_chars'],
+            size_guard['payload_chars'],
+            size_guard['estimated_prompt_tokens'],
+        )
+        return _failure_result(
+            'window_too_large',
+            {
+                key: value
+                for key, value in size_guard.items()
+                if key != 'ok'
+            },
+        )
+
+    model_payload = build_openrouter_payload_v2(
+        judge_input,
+        model_settings=settings,
+        system_prompt=system_prompt,
+    )
+    try:
+        response = requests.post(
+            llm_client.or_chat_completions_url(),
+            json=model_payload,
+            headers=_headers(),
+            timeout=settings['timeout_s'],
+        )
+        response.raise_for_status()
+        response_payload = llm_client.read_openrouter_response_payload(response)
+        provider_metadata = llm_client.extract_openrouter_provider_metadata(
+            response_payload,
+            requested_model=settings['model'],
+        )
+        provider_metadata.setdefault('provider_caller', CALLER)
+        provider_metadata.setdefault('provider_title', 'FridaDev / Mutable Identity Judge v2')
+        provider_metadata.setdefault('provider_contract', SCHEMA_VERSION)
+        llm_client.log_provider_metadata(
+            logger,
+            'mutable_identity_judge_provider_response',
+            provider_metadata,
+        )
+        raw = llm_client.extract_openrouter_text(response_payload)
+    except requests.exceptions.Timeout:
+        logger.warning('mutable_identity_judge_v2_timeout model=%s', settings['model'])
+        return _failure_result('judge_timeout')
+    except requests.exceptions.RequestException as exc:
+        logger.warning('mutable_identity_judge_v2_transport_error model=%s err=%s', settings['model'], exc.__class__.__name__)
+        return _failure_result('judge_transport_error', _request_exception_observability(exc))
+    except Exception as exc:
+        logger.error('mutable_identity_judge_v2_transport_error err=%s', exc.__class__.__name__)
+        return _failure_result('judge_transport_error')
+
+    parsed = _safe_json_loads(raw)
+    if parsed is None:
+        return _failure_result('judge_invalid_json')
+
+    validated, reason = validate_mutable_judge_contract_v2(parsed)
+    if validated is None:
+        failure_reason = reason or 'schema_invalid'
+        return _failure_result(
+            failure_reason,
+            _validation_failure_observability(parsed, reason_code=failure_reason),
+        )
+    return {
+        'status': 'ok',
+        'reason_code': 'judge_complete',
+        'contract': validated,
+        'observability': build_judge_observability_v2(validated),
     }

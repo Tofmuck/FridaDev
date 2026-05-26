@@ -5,6 +5,7 @@
 - [x] Actif sur `feature/mutable-refonte`.
 - [x] Source de travail pour recadrer le juge mutable automatique apres la refonte judge-first.
 - [x] Lot A dormant livre: schema, prompt et tests v2 prepares sans activation runtime.
+- [x] Lot B livre: cutover runtime coherent vers `mutable_judge_v2` + applicateur append-only.
 - [ ] A executer en lots courts, testes, commites et pushes separement.
 
 ## Contexte
@@ -153,37 +154,37 @@ branche, teste et observe. Aucun rebuild/deploiement ne doit laisser un juge v2
 produire des contrats que l'ancien applicateur gestionnaire attendrait, ni
 l'inverse.
 
-- [ ] Rendre l'applicateur automatique add-only.
-- [ ] Refuser tout contrat actif contenant `tighten`, `merge` ou `clear_obsolete`.
-- [ ] Retirer du chemin actif la resolution `target_ref` / `target_refs`.
-- [ ] Retirer du chemin actif `target` / `targets`.
-- [ ] Supprimer ou neutraliser les branches d'application `tighten`, `merge`, `clear_obsolete`.
-- [ ] Garder la deduplication exacte normalisee contre `mutable_current`.
-- [ ] Ajouter une verification de couverture exacte normalisee contre `static` si localement fiable; sinon documenter que le juge porte d'abord cette decision et que le code ne fait qu'une garde anti-duplication simple.
-- [ ] Garder la borne finale `IDENTITY_MUTABLE_MAX_CHARS`.
-- [ ] Garder le batch atomique entre `llm` et `user`.
-- [ ] Garder `updated_by=mutable_identity_judge_apply` ou nom equivalent stable.
-- [ ] Garder l'audit compact content-free: status, subject, verdict, reason_code, continuity_kind, counts, lengths, hashes courts.
-- [ ] Ne jamais ecrire `static`.
-- [ ] Ne pas appeler de scoring, threshold ou ancien writer.
-- [ ] Conserver shadow/enforced: en shadow, aucune ecriture canonique.
+- [x] Rendre l'applicateur automatique add-only.
+- [x] Refuser tout contrat actif contenant `tighten`, `merge` ou `clear_obsolete`.
+- [x] Retirer du chemin actif la resolution `target_ref` / `target_refs`.
+- [x] Retirer du chemin actif `target` / `targets`.
+- [x] Supprimer ou neutraliser les branches d'application `tighten`, `merge`, `clear_obsolete`.
+- [x] Garder la deduplication exacte normalisee contre `mutable_current`.
+- [x] Ajouter une verification de couverture exacte normalisee contre `static` si localement fiable; sinon documenter que le juge porte d'abord cette decision et que le code ne fait qu'une garde anti-duplication simple.
+- [x] Garder la borne finale `IDENTITY_MUTABLE_MAX_CHARS`.
+- [x] Garder le batch atomique entre `llm` et `user`.
+- [x] Garder `updated_by=mutable_identity_judge_apply` ou nom equivalent stable.
+- [x] Garder l'audit compact content-free: status, subject, verdict, reason_code, continuity_kind, counts, lengths, hashes courts.
+- [x] Ne jamais ecrire `static`.
+- [x] Ne pas appeler de scoring, threshold ou ancien writer.
+- [x] Conserver shadow/enforced: en shadow, aucune ecriture canonique.
 
 Tests/preuves:
 
-- [ ] Test add user ecrit seulement `identity_mutables.user`.
-- [ ] Test add llm ecrit seulement `identity_mutables.llm`.
-- [ ] Test no_change n'ecrit rien.
-- [ ] Test duplicate exact normalise n'ecrit rien ou resulte en no-op content-free.
-- [ ] Test proposition trop longue n'ecrit rien.
-- [ ] Test prompt-like n'ecrit rien.
-- [ ] Test batch all-or-nothing entre user et llm.
-- [ ] Test aucun appel `write_static_identity_content`.
-- [ ] Test aucun appel scoring / legacy writer.
+- [x] Test add user ecrit seulement `identity_mutables.user`.
+- [x] Test add llm ecrit seulement `identity_mutables.llm`.
+- [x] Test no_change n'ecrit rien.
+- [x] Test duplicate exact normalise n'ecrit rien ou resulte en no-op content-free.
+- [x] Test proposition trop longue n'ecrit rien.
+- [x] Test prompt-like n'ecrit rien.
+- [x] Test batch all-or-nothing entre user et llm.
+- [x] Test aucun appel `write_static_identity_content`.
+- [x] Test aucun appel scoring / legacy writer.
 
 Critere de sortie:
 
-- [ ] Le runtime automatique ne peut plus modifier, fusionner ou supprimer une mutable existante.
-- [ ] `identity_mutables` reste le seul canon mutable ecrit.
+- [x] Le runtime automatique ne peut plus modifier, fusionner ou supprimer une mutable existante.
+- [x] `identity_mutables` reste le seul canon mutable ecrit.
 
 ## Lot C - Tests unitaires + crash test conversationnel
 

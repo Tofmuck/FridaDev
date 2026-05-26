@@ -52,16 +52,6 @@ def _completed_summary_state(apply_summary: Mapping[str, Any]) -> tuple[str, str
     if bool(apply_summary.get('writes_applied')):
         return 'applied', reason_code or 'applied'
 
-    outcomes = list(apply_summary.get('outcomes') or [])
-    for item in outcomes:
-        payload = _mapping(item)
-        action = _text(payload.get('action'))
-        outcome_reason = _text(payload.get('reason_code'))
-        if action == 'raise_conflict' or outcome_reason in {'raise_conflict', 'raise_conflict_open'}:
-            return 'completed_with_open_tension', 'completed_with_open_tension'
-        if _text(payload.get('verdict')) == 'raise_tension':
-            return 'completed_with_open_tension', 'completed_with_open_tension'
-
     return 'completed_no_change', reason_code or 'completed_no_change'
 
 
@@ -79,7 +69,7 @@ def _emit_periodic_agent_event(
         payload={
             'reason_code': event_reason_code,
             'runtime_pipeline': _text(summary.get('runtime_pipeline')) or mutable_identity_runtime.PIPELINE_NAME,
-            'prompt_kind': _text(summary.get('prompt_kind')) or 'mutable_identity_judge',
+            'prompt_kind': _text(summary.get('prompt_kind')) or 'mutable_identity_judge_v2',
             'buffer_pairs_count': int(summary.get('buffer_pairs_count') or 0),
             'buffer_target_pairs': int(summary.get('buffer_target_pairs') or BUFFER_TARGET_PAIRS),
             'buffer_cleared': bool(summary.get('buffer_cleared')),
@@ -104,8 +94,6 @@ def _emit_periodic_agent_event(
             'verdict_count': int(summary.get('verdict_count') or 0),
             'subjects_seen': list(summary.get('subjects_seen') or []),
             'subjects_touched': list(summary.get('subjects_touched') or []),
-            'operation_kinds': list(summary.get('operation_kinds') or []),
-            'persistent_operation_count': int(summary.get('persistent_operation_count') or 0),
             'continuity_kinds': list(summary.get('continuity_kinds') or []),
             'reason_codes': list(summary.get('reason_codes') or []),
             'source_refs_count': int(summary.get('source_refs_count') or 0),
@@ -131,13 +119,8 @@ def _emit_periodic_agent_event(
                     'invalid_verdict_index',
                     'invalid_subject',
                     'invalid_verdict',
-                    'invalid_operation',
                     'invalid_reason_code',
                     'invalid_proposition_chars',
-                    'invalid_target_chars',
-                    'invalid_targets_count',
-                    'invalid_target_ref',
-                    'invalid_target_refs_count',
                     'invalid_source_refs_count',
                     'invalid_guard_notes_count',
                     'http_status',
@@ -146,7 +129,7 @@ def _emit_periodic_agent_event(
                 if summary.get(key) is not None
             },
         },
-        prompt_kind='mutable_identity_judge',
+        prompt_kind='mutable_identity_judge_v2',
     )
 
 

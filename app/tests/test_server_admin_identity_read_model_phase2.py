@@ -175,9 +175,9 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
                     'stage': 'mutable_identity_judge',
                     'status': 'ok',
                     'payload': {
-                        'reason_code': 'completed_with_open_tension',
-                        'runtime_pipeline': 'mutable_identity_judge_first',
-                        'prompt_kind': 'mutable_identity_judge',
+                        'reason_code': 'completed_no_change',
+                        'runtime_pipeline': 'mutable_identity_judge_v2_add_only',
+                        'prompt_kind': 'mutable_identity_judge_v2',
                         'write_mode': 'enforced',
                         'writes_applied': False,
                         'buffer_pairs_count': 5,
@@ -189,14 +189,12 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
                         'apply_status': 'ok',
                         'apply_reason_code': 'completed_no_change',
                         'verdict_count': 2,
-                        'verdict_counts': {'raise_tension': 1, 'no_change': 1},
+                        'verdict_counts': {'no_change': 2},
                         'subjects_seen': ['llm', 'user'],
-                        'subjects_touched': ['user'],
-                        'operation_kinds': [],
-                        'persistent_operation_count': 0,
-                        'continuity_kinds': ['tension'],
-                        'reason_codes': ['relation_tension_open'],
-                        'source_refs_count': 1,
+                        'subjects_touched': [],
+                        'continuity_kinds': ['none'],
+                        'reason_codes': ['already_covered_by_mutable'],
+                        'source_refs_count': 0,
                         'guard_notes_count': 1,
                         'applied_count': 0,
                         'skipped_count': 2,
@@ -210,12 +208,11 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
                         'outcomes': [
                             {
                                 'subject': 'user',
-                                'verdict': 'raise_tension',
+                                'verdict': 'no_change',
                                 'status': 'skipped',
-                                'operation': '',
-                                'reason_code': 'relation_tension_open',
-                                'continuity_kind': 'tension',
-                                'source_refs_count': 1,
+                                'reason_code': 'already_covered_by_mutable',
+                                'continuity_kind': 'none',
+                                'source_refs_count': 0,
                                 'guard_notes_count': 1,
                                 'old_chars': 128,
                                 'new_chars': 128,
@@ -329,7 +326,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['identity_staging']['last_completed_agent']['status'], 'ok')
         self.assertEqual(
             data['identity_staging']['last_completed_agent']['reason_code'],
-            'completed_with_open_tension',
+            'completed_no_change',
         )
         self.assertEqual(data['identity_staging']['last_completed_agent']['run_ts'], '2026-04-16T10:00:31Z')
         self.assertNotIn('buffer_pairs', data['identity_staging'])
@@ -338,28 +335,28 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertNotIn('buffer_pairs', data['identity_staging']['last_completed_agent'])
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['reason_code'],
-            'completed_with_open_tension',
+            'completed_no_change',
         )
         self.assertEqual(data['identity_staging']['latest_agent_activity']['stage'], 'mutable_identity_judge')
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['activity_runtime_authority'],
-            'active_mutable_identity_judge_first',
+            'active_mutable_identity_judge_v2_add_only',
         )
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['runtime_pipeline'],
-            'mutable_identity_judge_first',
+            'mutable_identity_judge_v2_add_only',
         )
         self.assertEqual(data['identity_staging']['latest_agent_activity']['buffer_target_pairs'], 5)
         self.assertEqual(data['identity_staging']['latest_agent_activity']['verdict_count'], 2)
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['verdict_counts'],
-            {'raise_tension': 1, 'no_change': 1},
+            {'no_change': 2},
         )
-        self.assertEqual(data['identity_staging']['latest_agent_activity']['source_refs_count'], 1)
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['source_refs_count'], 0)
         self.assertEqual(data['identity_staging']['latest_agent_activity']['guard_notes_count'], 1)
         self.assertEqual(data['identity_staging']['latest_agent_activity']['window_chars'], 1200)
         self.assertEqual(data['identity_staging']['latest_agent_activity']['promotion_count'], 0)
-        self.assertEqual(data['identity_staging']['latest_agent_activity']['open_tension_count'], 1)
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['open_tension_count'], 0)
         self.assertEqual(data['identity_staging']['latest_agent_activity']['outcome_count'], 1)
         self.assertNotIn('buffer_pairs', data['identity_staging']['latest_agent_activity'])
         self.assertNotIn('outcomes', data['identity_staging']['latest_agent_activity'])
@@ -379,26 +376,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             'conversation_scoped_latest',
         )
         self.assertFalse(data['identity_staging']['latest_agent_activity']['open_tensions_actively_injected'])
-        self.assertEqual(
-            data['identity_staging']['latest_agent_activity']['open_tensions'][0]['verdict'],
-            'raise_tension',
-        )
-        self.assertNotIn(
-            'content',
-            data['identity_staging']['latest_agent_activity']['open_tensions'][0],
-        )
-        self.assertNotIn(
-            'strength',
-            data['identity_staging']['latest_agent_activity']['open_tensions'][0],
-        )
-        self.assertNotIn(
-            'threshold_verdict',
-            data['identity_staging']['latest_agent_activity']['open_tensions'][0],
-        )
-        self.assertEqual(
-            data['identity_staging']['latest_agent_activity']['open_tensions'][0]['reason_code'],
-            'relation_tension_open',
-        )
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['open_tensions'], [])
         self.assertEqual(observed['fragments'], [('llm', 20), ('user', 20)])
         self.assertEqual(observed['evidence'], [('llm', 20), ('user', 20)])
         self.assertEqual(observed['conflicts'], [('llm', 20), ('user', 20)])

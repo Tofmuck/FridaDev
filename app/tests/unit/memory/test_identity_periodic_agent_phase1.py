@@ -69,12 +69,7 @@ def _no_change(subject: str) -> dict[str, Any]:
     return {
         'subject': subject,
         'verdict': 'no_change',
-        'operation': '',
         'proposition': '',
-        'target': '',
-        'targets': [],
-        'target_ref': '',
-        'target_refs': [],
         'reason_code': 'no_mutable_identity_signal',
         'continuity_kind': 'none',
         'source_refs': [],
@@ -85,13 +80,8 @@ def _no_change(subject: str) -> dict[str, Any]:
 def _persist_add(subject: str, proposition: str, *, reason_code: str | None = None) -> dict[str, Any]:
     return {
         'subject': subject,
-        'verdict': 'persist',
-        'operation': 'add',
+        'verdict': 'add',
         'proposition': proposition,
-        'target': '',
-        'targets': [],
-        'target_ref': '',
-        'target_refs': [],
         'reason_code': reason_code
         or ('explicit_frida_self_definition_continuity' if subject == 'llm' else 'explicit_self_limit_continuity'),
         'continuity_kind': 'posture' if subject == 'llm' else 'limit',
@@ -104,12 +94,7 @@ def _raise_tension(subject: str, proposition: str) -> dict[str, Any]:
     return {
         'subject': subject,
         'verdict': 'raise_tension',
-        'operation': '',
         'proposition': '',
-        'target': '',
-        'targets': [],
-        'target_ref': '',
-        'target_refs': [],
         'reason_code': 'relation_tension_open',
         'continuity_kind': 'tension',
         'source_refs': ['pair_05'],
@@ -121,12 +106,7 @@ def _non_persist(subject: str, verdict: str, reason_code: str, *, continuity_kin
     return {
         'subject': subject,
         'verdict': verdict,
-        'operation': '',
         'proposition': '',
-        'target': '',
-        'targets': [],
-        'target_ref': '',
-        'target_refs': [],
         'reason_code': reason_code,
         'continuity_kind': continuity_kind,
         'source_refs': ['pair_05'] if verdict in {'reject', 'defer'} else [],
@@ -142,7 +122,7 @@ def _contract(*verdicts: dict[str, Any]) -> dict[str, Any]:
     if 'user' not in subjects:
         items.append(_no_change('user'))
     return {
-        'schema_version': 'mutable_judge_v1',
+        'schema_version': 'mutable_judge_v2',
         'meta': {
             'execution_status': 'complete',
             'window_pairs_count': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
@@ -160,8 +140,8 @@ def _judge_ok(contract: dict[str, Any]) -> dict[str, Any]:
         'observability': {
             'status': 'ok',
             'reason_code': 'judge_complete',
-            'schema_version': 'mutable_judge_v1',
-            'prompt_kind': 'mutable_identity_judge',
+            'schema_version': 'mutable_judge_v2',
+            'prompt_kind': 'mutable_identity_judge_v2',
             'window_pairs_count': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
             'window_complete': True,
             'verdict_count': len(contract['verdicts']),
@@ -174,11 +154,9 @@ def _judge_ok(contract: dict[str, Any]) -> dict[str, Any]:
                 {
                     item['subject']
                     for item in contract['verdicts']
-                    if item['verdict'] in {'persist', 'raise_tension', 'reject', 'defer'}
+                    if item['verdict'] == 'add'
                 }
             ),
-            'operation_kinds': sorted({item['operation'] for item in contract['verdicts'] if item['operation']}),
-            'persistent_operation_count': sum(1 for item in contract['verdicts'] if item['operation']),
             'continuity_kinds': sorted({item['continuity_kind'] for item in contract['verdicts']}),
             'reason_codes': sorted({item['reason_code'] for item in contract['verdicts']}),
             'source_refs_count': sum(len(item['source_refs']) for item in contract['verdicts']),
@@ -409,7 +387,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         for text in forbidden_texts:
             self.assertNotIn(text, serialized)
 
-    def test_completed_summary_state_keeps_contradiction_raise_conflict_visible(self) -> None:
+    def test_completed_summary_state_treats_non_write_outcomes_as_no_change(self) -> None:
         status, reason = memory_identity_periodic_agent._completed_summary_state(
             {
                 'reason_code': 'completed_no_change',
@@ -424,8 +402,8 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(status, 'completed_with_open_tension')
-        self.assertEqual(reason, 'completed_with_open_tension')
+        self.assertEqual(status, 'completed_no_change')
+        self.assertEqual(reason, 'completed_no_change')
 
     def test_periodic_agent_event_marks_legacy_writer_disabled_for_valid_no_change_run(self) -> None:
         proposition = 'Tof maintient une observation stable sans nouvelle canonisation.'
@@ -472,10 +450,10 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(payload['promotion_count'], 0)
         self.assertEqual(store.mutable['user']['content'], proposition)
         self.assertEqual(store.upsert_calls[0][2], 'mutable_identity_judge_apply')
-        self.assertEqual(payload['verdict_counts']['persist'], 1)
+        self.assertEqual(payload['verdict_counts']['add'], 1)
         self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'attention durable'])
 
-    def test_periodic_agent_event_neutralizes_valid_legacy_tension_contract(self) -> None:
+    def test_periodic_agent_event_rejects_legacy_tension_contract(self) -> None:
         proposition = 'Tof semble osciller entre retrait durable et besoin d exposition.'
         arbiter_module = SimpleNamespace(
             run_mutable_identity_judge=lambda _payload: _judge_ok(_contract(_raise_tension('user', proposition)))
@@ -488,12 +466,14 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         )
         payload = event['payload_json']
 
-        self.assertEqual(event['status'], 'ok')
-        self.assertEqual(summary['reason_code'], 'completed_with_open_tension')
-        self.assertEqual(payload['reason_code'], 'completed_with_open_tension')
+        self.assertEqual(event['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'invalid_verdict')
+        self.assertEqual(summary['last_agent_status'], 'apply_failed')
+        self.assertEqual(payload['reason_code'], 'invalid_verdict')
         self.assertFalse(payload['writes_applied'])
         self.assertTrue(payload['legacy_writer_disabled'])
         self.assertEqual(payload['verdict_counts']['raise_tension'], 1)
+        self.assertFalse(payload['buffer_cleared'])
         self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'osciller'])
 
     def test_does_not_call_agent_before_five_pairs(self) -> None:
@@ -594,7 +574,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(store.mutable['user']['content'], proposition)
         self.assertEqual(store.upsert_calls[0][2], 'mutable_identity_judge_apply')
 
-    def test_valid_legacy_tension_contract_is_neutralized_without_canonical_write(self) -> None:
+    def test_legacy_tension_contract_preserves_buffer_as_invalid_v2(self) -> None:
         store = _InMemoryIdentityStore()
         proposition = 'Tof semble osciller entre retrait durable et besoin d exposition.'
 
@@ -617,17 +597,17 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             memory_store_module=store,
         )
 
-        self.assertEqual(summary['status'], 'ok')
-        self.assertEqual(summary['reason_code'], 'completed_with_open_tension')
-        self.assertEqual(summary['last_agent_status'], 'completed_with_open_tension')
-        self.assertTrue(summary['buffer_cleared'])
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'invalid_verdict')
+        self.assertEqual(summary['last_agent_status'], 'apply_failed')
+        self.assertFalse(summary['buffer_cleared'])
         self.assertFalse(summary['writes_applied'])
         self.assertTrue(summary['legacy_writer_disabled'])
         self.assertEqual(summary['verdict_counts']['raise_tension'], 1)
         staging_state = store.get_identity_staging_state('conv-open-tension')
-        self.assertEqual(staging_state['buffer_pairs_count'], 0)
-        self.assertEqual(staging_state['last_agent_status'], 'completed_with_open_tension')
-        self.assertEqual(staging_state['last_agent_reason'], 'completed_with_open_tension')
+        self.assertEqual(staging_state['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
+        self.assertEqual(staging_state['last_agent_status'], 'apply_failed')
+        self.assertEqual(staging_state['last_agent_reason'], 'invalid_verdict')
 
         next_summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-open-tension',
@@ -636,11 +616,11 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             memory_store_module=store,
         )
 
-        self.assertEqual(next_summary['status'], 'buffering')
-        self.assertEqual(next_summary['last_agent_status'], 'buffering')
-        self.assertIsNone(store.get_identity_staging_state('conv-open-tension')['last_agent_reason'])
+        self.assertEqual(next_summary['status'], 'skipped')
+        self.assertEqual(next_summary['reason_code'], 'invalid_verdict')
+        self.assertEqual(store.get_identity_staging_state('conv-open-tension')['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
 
-    def test_clean_reject_and_defer_clear_buffer_without_canonical_write(self) -> None:
+    def test_reject_and_defer_are_invalid_v2_and_preserve_buffer(self) -> None:
         store = _InMemoryIdentityStore()
         arbiter_module = SimpleNamespace(
             run_mutable_identity_judge=lambda _payload: _judge_ok(
@@ -666,14 +646,17 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             memory_store_module=store,
         )
 
-        self.assertEqual(summary['status'], 'ok')
-        self.assertEqual(summary['reason_code'], 'completed_no_change')
-        self.assertEqual(summary['last_agent_status'], 'completed_no_change')
-        self.assertTrue(summary['buffer_cleared'])
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'invalid_verdict')
+        self.assertEqual(summary['last_agent_status'], 'apply_failed')
+        self.assertFalse(summary['buffer_cleared'])
         self.assertFalse(summary['writes_applied'])
         self.assertEqual(summary['verdict_counts'], {'defer': 1, 'reject': 1})
         self.assertEqual(store.mutable, {})
-        self.assertEqual(store.get_identity_staging_state('conv-reject-defer')['buffer_pairs_count'], 0)
+        self.assertEqual(
+            store.get_identity_staging_state('conv-reject-defer')['buffer_pairs_count'],
+            memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+        )
 
     def test_shadow_mode_runs_judge_without_canonical_write(self) -> None:
         store = _InMemoryIdentityStore()

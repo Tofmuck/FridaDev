@@ -13,7 +13,7 @@ from admin import runtime_settings
 from core import llm_client
 from core.hermeneutic_node.inputs import time_input
 from memory import identity_temporal_guard
-from memory import mutable_identity_judge
+from memory import mutable_identity_judge_v2
 
 logger = logging.getLogger('frida.arbiter')
 
@@ -755,7 +755,7 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
     return {
         'status': 'skipped',
         'reason_code': 'legacy_identity_periodic_agent_disabled',
-        'runtime_pipeline': 'mutable_identity_judge_first',
+        'runtime_pipeline': 'mutable_identity_judge_v2_add_only',
         'prompt_kind': 'identity_periodic_agent_legacy_disabled',
         'legacy_writer_disabled': True,
         'legacy_writer_disabled_reason': 'score_first_writer_removed_in_lot6',
@@ -768,4 +768,4 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
 
 
 def run_mutable_identity_judge(payload_input: Dict[str, Any]) -> Dict[str, Any]:
-    return mutable_identity_judge.run_mutable_identity_judge(payload_input)
+    return mutable_identity_judge_v2.run_mutable_identity_judge_v2(payload_input)

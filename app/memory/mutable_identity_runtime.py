@@ -5,10 +5,10 @@ from typing import Any, Mapping
 import config
 from identity import identity
 from memory import mutable_identity_apply
-from memory import mutable_identity_judge
+from memory import mutable_identity_judge_v2
 
 
-PIPELINE_NAME = 'mutable_identity_judge_first'
+PIPELINE_NAME = 'mutable_identity_judge_v2_add_only'
 WRITER_ACTOR = 'mutable_identity_judge_apply'
 SHADOW_REASON_CODE = 'shadow_completed'
 
@@ -51,7 +51,7 @@ def _build_judge_input(
     memory_store_module: Any,
 ) -> dict[str, Any]:
     buffer_pairs = list(staging_state.get('buffer_pairs') or [])
-    return mutable_identity_judge.build_judge_input(
+    return mutable_identity_judge_v2.build_judge_input(
         window_pairs=buffer_pairs,
         identities={
             'llm': _subject_identity_payload(subject='llm', memory_store_module=memory_store_module),
@@ -64,7 +64,7 @@ def _build_judge_input(
         source_annotations={
             'staging': {
                 'buffer_pairs_count': int(staging_state.get('buffer_pairs_count') or len(buffer_pairs)),
-                'buffer_target_pairs': int(staging_state.get('buffer_target_pairs') or mutable_identity_judge.WINDOW_PAIRS_COUNT),
+                'buffer_target_pairs': int(staging_state.get('buffer_target_pairs') or 5),
                 'buffer_frozen': bool(staging_state.get('buffer_frozen')),
                 'auto_canonization_suspended': bool(staging_state.get('auto_canonization_suspended')),
                 'last_agent_status': _text(staging_state.get('last_agent_status')),
@@ -77,16 +77,14 @@ def _empty_observability(reason_code: str) -> dict[str, Any]:
     return {
         'status': 'skipped',
         'reason_code': reason_code,
-        'schema_version': mutable_identity_judge.SCHEMA_VERSION,
-        'prompt_kind': mutable_identity_judge.PROMPT_KIND,
+        'schema_version': mutable_identity_judge_v2.SCHEMA_VERSION,
+        'prompt_kind': mutable_identity_judge_v2.PROMPT_KIND,
         'window_pairs_count': 0,
         'window_complete': False,
         'verdict_count': 0,
         'verdict_counts': {},
         'subjects_seen': [],
         'subjects_touched': [],
-        'operation_kinds': [],
-        'persistent_operation_count': 0,
         'continuity_kinds': [],
         'reason_codes': [],
         'source_refs_count': 0,
@@ -99,10 +97,6 @@ def _completion_from_apply(apply_summary: Mapping[str, Any]) -> tuple[str, str]:
     if bool(apply_summary.get('writes_applied')):
         return 'applied', reason_code or 'applied'
 
-    for item in _list(apply_summary.get('outcomes')):
-        payload = _mapping(item)
-        if _text(payload.get('verdict')) == 'raise_tension':
-            return 'completed_with_open_tension', 'completed_with_open_tension'
     return 'completed_no_change', reason_code or 'completed_no_change'
 
 
@@ -128,13 +122,8 @@ def _validation_fields(observability: Mapping[str, Any]) -> dict[str, Any]:
             'invalid_verdict_index',
             'invalid_subject',
             'invalid_verdict',
-            'invalid_operation',
             'invalid_reason_code',
             'invalid_proposition_chars',
-            'invalid_target_chars',
-            'invalid_targets_count',
-            'invalid_target_ref',
-            'invalid_target_refs_count',
             'invalid_source_refs_count',
             'invalid_guard_notes_count',
             'http_status',
@@ -159,7 +148,7 @@ def _summary(
         'reason_code': reason_code,
         'last_agent_status': last_agent_status,
         'runtime_pipeline': PIPELINE_NAME,
-        'prompt_kind': mutable_identity_judge.PROMPT_KIND,
+        'prompt_kind': mutable_identity_judge_v2.PROMPT_KIND,
         'score_first_writer_enabled': False,
         'legacy_writer_disabled': True,
         'legacy_writer_disabled_reason': 'score_first_writer_retired_from_active_path',
@@ -178,8 +167,6 @@ def _summary(
         'verdict_count': int(judge_observability.get('verdict_count') or 0),
         'subjects_seen': list(judge_observability.get('subjects_seen') or []),
         'subjects_touched': list(judge_observability.get('subjects_touched') or []),
-        'operation_kinds': list(judge_observability.get('operation_kinds') or []),
-        'persistent_operation_count': int(judge_observability.get('persistent_operation_count') or 0),
         'continuity_kinds': list(judge_observability.get('continuity_kinds') or []),
         'reason_codes': list(judge_observability.get('reason_codes') or []),
         'source_refs_count': int(judge_observability.get('source_refs_count') or 0),
@@ -215,7 +202,7 @@ def run_mutable_identity_window(
 
     run_judge = getattr(arbiter_module, 'run_mutable_identity_judge', None)
     if not callable(run_judge):
-        run_judge = mutable_identity_judge.run_mutable_identity_judge
+        run_judge = mutable_identity_judge_v2.run_mutable_identity_judge_v2
 
     try:
         judge_result = run_judge(judge_input)
@@ -265,6 +252,10 @@ def run_mutable_identity_window(
         apply_summary = mutable_identity_apply.apply_mutable_judge_contract(
             contract,
             memory_store_module=memory_store_module,
+            static_identity_by_subject={
+                'llm': _text(_mapping(_mapping(judge_input.get('identities')).get('llm')).get('static')),
+                'user': _text(_mapping(_mapping(judge_input.get('identities')).get('user')).get('static')),
+            },
         )
     except Exception:
         return _summary(

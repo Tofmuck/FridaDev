@@ -4,10 +4,10 @@ Statut: spec vivante
 Portee: lecture operator-facing read-only reemployee par `/hermeneutic-admin` et `/identity`
 Lot ferme: `Lot 5`
 
-Transition refonte mutable 2026-05-25:
-- le read-model expose maintenant le regime actif `mutable_identity_judge_first`;
+Transition refonte mutable 2026-05-26:
+- le read-model expose maintenant le regime actif `mutable_identity_judge_v2_add_only`;
 - le contrat source-of-truth du writer mutable reste `mutable-identity-judge-contract.md`;
-- les champs de fenetre, statut, reason code, longueurs et hash courts racontent `5 paires completes -> juge LLM -> identity_mutables`;
+- les champs de fenetre, statut, reason code, longueurs et hash courts racontent `5 paires completes -> juge LLM mutable_judge_v2 -> add/no_change -> identity_mutables`;
 - le scoring local et la promotion mutable -> static restent visibles seulement comme legacy pre-refonte inactive.
 
 ## But
@@ -116,12 +116,11 @@ Semantique:
 - `buffer_target_pairs` designe toujours la cible runtime active de la fenetre judge-first; une ancienne valeur stockee en DB peut rester visible seulement via `stored_buffer_target_pairs` / `legacy_stored_buffer_target_pairs`, non autoritatifs;
 - il separe explicitement l'etat du buffer courant (`current_buffer`) du dernier run agent termine (`last_completed_agent`) sans dump du buffer brut;
 - quand un nouveau buffer est en cours, `last_agent_reason` ne doit pas porter une ancienne raison terminale comme `completed_no_change`; cette raison reste lisible via `last_completed_agent.reason_code` quand disponible;
-- `latest_agent_activity` resume compactement le dernier verdict utile, les tensions ouvertes `raise_tension`, les compteurs, statuts, reason codes, longueurs, hash courts, tailles de fenetre et eventuels evenements legacy compactes pour cette conversation;
+- `latest_agent_activity` resume compactement le dernier verdict utile, les compteurs, statuts, reason codes, longueurs, hash courts, tailles de fenetre et eventuels evenements legacy compactes pour cette conversation;
 - `latest_agent_activity.reason_code` lit le `reason_code` compact de l'event actif `mutable_identity_judge`, avec fallback historique vers `identity_periodic_agent`;
-- quand un run se termine sans write canonique mais garde au moins une tension ouverte, son resume compact ne doit pas etre aplati en `completed_no_change` et utilise `completed_with_open_tension`;
-- les tensions ouvertes du nouvel agent y vivent seulement comme activite judge-first compacte conversation-scoped, avec `open_tension_count`, `open_tensions_storage_kind = "mutable_identity_judge_latest_activity"`, `open_tensions_scope_kind = "conversation_scoped_latest"` et `open_tensions_actively_injected = false`;
-- ces tensions ouvertes ne requalifient pas `identity_conflicts` en source active et ne rejoignent pas le canon injecte.
-- `latest_agent_activity.outcome_summaries` peut exposer seulement des summaries content-free: sujet, verdict, operation, statut, reason code, continuity kind, compteurs, longueurs, hash courts et target hashes; il ne contient jamais proposition brute, fenetre brute, prompt ou contenu mutable.
+- `raise_tension` ne fait plus partie du contrat actif `mutable_judge_v2`; les champs `open_tension_*` peuvent rester vides par compatibilite read-model, ou compacter uniquement d'anciens events pre-Lot-B;
+- ces anciennes tensions compactes ne requalifient pas `identity_conflicts` en source active et ne rejoignent pas le canon injecte.
+- `latest_agent_activity.outcome_summaries` peut exposer seulement des summaries content-free: sujet, verdict, statut, reason code, continuity kind, compteurs, longueurs et hash courts; il ne contient jamais proposition brute, fenetre brute, prompt ou contenu mutable.
 
 ## Couches par sujet
 
@@ -220,7 +219,7 @@ Semantique:
 - couche legacy diagnostique/historique seulement;
 - hors injection active et hors staging;
 - expose `classification = "legacy_diagnostic_only"` et `runtime_authority = "historical_only"`;
-- ne sert pas de persistence aux tensions `raise_tension` du regime judge-first actif, qui restent dans `latest_agent_activity` seulement.
+- ne sert pas de persistence aux anciens signaux `raise_tension`; dans le regime actif `mutable_judge_v2`, ces signaux ne sont plus emis.
 
 ### `conflicts`
 
@@ -241,7 +240,7 @@ Semantique:
 - couche legacy diagnostique/historique seulement;
 - hors injection active et hors staging;
 - expose `classification = "legacy_diagnostic_only"` et `runtime_authority = "historical_only"`;
-- ne sert pas de persistence aux tensions `raise_tension` du regime judge-first actif, qui restent dans `latest_agent_activity` seulement.
+- ne sert pas de persistence aux anciens signaux `raise_tension`; dans le regime actif `mutable_judge_v2`, ces signaux ne sont plus emis.
 
 ## Affichage operateur
 

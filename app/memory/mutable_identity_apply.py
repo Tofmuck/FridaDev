@@ -5,14 +5,13 @@ import re
 from typing import Any, Mapping, Sequence
 
 import config
-from memory import mutable_identity_refs
-from memory import mutable_identity_judge
+from memory import mutable_identity_judge_v2
 
 
 ACTOR = 'mutable_identity_judge_apply'
-UPDATE_REASON = 'mutable_judge_persist'
+UPDATE_REASON = 'mutable_judge_add'
+AUDIT_REASON_CODE = 'mutable_judge_add'
 _ALLOWED_SUBJECTS = {'llm', 'user'}
-_PERSIST_OPERATIONS = {'add', 'tighten', 'merge', 'clear_obsolete'}
 _PROMPT_LIKE_RE = re.compile(
     r'(ignore\s+previous|system\s+prompt|developer\s+message|follow\s+these\s+instructions|'
     r'tu\s+dois\s+repondre|tu\s+dois\s+répondre|reponds\s+comme|réponds\s+comme)',
@@ -44,7 +43,7 @@ def _short_hash(value: Any) -> str | None:
 
 
 def _split_propositions(text: str) -> list[str]:
-    return mutable_identity_refs.split_propositions(text)
+    return [_text(line) for line in str(text or '').splitlines() if _text(line)]
 
 
 def _joined_content(lines: Sequence[str]) -> str:
@@ -53,18 +52,6 @@ def _joined_content(lines: Sequence[str]) -> str:
 
 def _norm(value: Any) -> str:
     return re.sub(r'\s+', ' ', _text(value)).lower()
-
-
-def _find_unique_index_with_reason(lines: Sequence[str], target: str) -> tuple[int | None, str]:
-    target_norm = _norm(target)
-    if not target_norm:
-        return None, 'invalid_target'
-    matches = [index for index, line in enumerate(lines) if _norm(line) == target_norm]
-    if not matches:
-        return None, 'target_not_found'
-    if len(matches) != 1:
-        return None, 'target_ambiguous'
-    return matches[0], ''
 
 
 def _content_fields(old_content: str, new_content: str) -> dict[str, Any]:
@@ -76,96 +63,10 @@ def _content_fields(old_content: str, new_content: str) -> dict[str, Any]:
     }
 
 
-def _target_fields(item: Mapping[str, Any]) -> dict[str, Any]:
-    target = _text(item.get('target'))
-    targets = [_text(value) for value in _list(item.get('targets')) if _text(value)]
-    target_ref = _text(item.get('target_ref')).lower()
-    target_refs = [_text(value).lower() for value in _list(item.get('target_refs')) if _text(value)]
-    payload: dict[str, Any] = {}
-    if target:
-        payload['target_sha256_12'] = _short_hash(target)
-    if targets:
-        payload['target_count'] = len(targets)
-        payload['target_sha256_12s'] = [_short_hash(value) for value in targets]
-    if target_ref:
-        payload['target_ref'] = target_ref
-    if target_refs:
-        payload['target_refs_count'] = len(target_refs)
-        payload['target_refs'] = target_refs
-    return payload
-
-
-def _resolve_single_target_index(
-    *,
-    subject: str,
-    current_lines: Sequence[str],
-    current_origins: Sequence[int | None],
-    original_lines: Sequence[str],
-    item: Mapping[str, Any],
-) -> tuple[int | None, str]:
-    target_ref = _text(item.get('target_ref')).lower()
-    if target_ref:
-        original_index, reason = mutable_identity_refs.resolve_ref_index(
-            subject=subject,
-            ref=target_ref,
-            lines=original_lines,
-        )
-        if reason or original_index is None:
-            return None, reason or 'target_ref_invalid'
-        matches = [index for index, origin in enumerate(current_origins) if origin == original_index]
-        if not matches:
-            return None, 'target_already_mutated'
-        if len(matches) != 1:
-            return None, 'target_ambiguous'
-        return matches[0], ''
-    return _find_unique_index_with_reason(current_lines, _text(item.get('target')))
-
-
-def _resolve_target_indexes(
-    *,
-    subject: str,
-    current_lines: Sequence[str],
-    current_origins: Sequence[int | None],
-    original_lines: Sequence[str],
-    item: Mapping[str, Any],
-) -> tuple[list[int] | None, str]:
-    target_refs = [_text(value).lower() for value in _list(item.get('target_refs')) if _text(value)]
-    if target_refs:
-        indexes: list[int] = []
-        for target_ref in target_refs:
-            original_index, reason = mutable_identity_refs.resolve_ref_index(
-                subject=subject,
-                ref=target_ref,
-                lines=original_lines,
-            )
-            if reason or original_index is None:
-                return None, reason or 'target_ref_invalid'
-            matches = [index for index, origin in enumerate(current_origins) if origin == original_index]
-            if not matches:
-                return None, 'target_already_mutated'
-            if len(matches) != 1:
-                return None, 'target_ambiguous'
-            indexes.append(matches[0])
-    else:
-        indexes = []
-        for target in [_text(value) for value in _list(item.get('targets'))]:
-            found_index, reason = _find_unique_index_with_reason(current_lines, target)
-            if reason or found_index is None:
-                return None, reason or 'invalid_target'
-            indexes.append(found_index)
-    unique_indexes = sorted(set(indexes))
-    if len(unique_indexes) != len(indexes):
-        return None, 'target_ambiguous'
-    if len(unique_indexes) < 2:
-        return None, 'invalid_target'
-    return unique_indexes, ''
-
-
 def _outcome(
     *,
     subject: str,
     verdict: str,
-    operation: str,
     status: str,
     reason_code: str,
     continuity_kind: str,
@@ -173,12 +74,12 @@ def _outcome(
     new_content: str,
     source_refs_count: int,
     guard_notes_count: int,
+    proposition: str = '',
     **extra: Any,
 ) -> dict[str, Any]:
     payload = {
         'subject': subject,
         'verdict': verdict,
-        'operation': operation,
         'status': status,
         'reason_code': reason_code,
         'continuity_kind': continuity_kind,
@@ -186,23 +87,11 @@ def _outcome(
         'guard_notes_count': guard_notes_count,
         **_content_fields(old_content, new_content),
     }
+    if proposition:
+        payload['proposition_chars'] = len(proposition)
+        payload['proposition_sha256_12'] = _short_hash(proposition)
     payload.update(extra)
     return payload
-
-
-def _non_persist_outcome(item: Mapping[str, Any], current_content: str) -> dict[str, Any]:
-    return _outcome(
-        subject=_text(item.get('subject')),
-        verdict=_text(item.get('verdict')),
-        operation='',
-        status='skipped',
-        reason_code=_text(item.get('reason_code')) or _text(item.get('verdict')) or 'no_change',
-        continuity_kind=_text(item.get('continuity_kind')) or 'none',
-        old_content=current_content,
-        new_content=current_content,
-        source_refs_count=len(_list(item.get('source_refs'))),
-        guard_notes_count=len(_list(item.get('guard_notes'))),
-    )
 
 
 def _validate_proposition_text(proposition: str) -> str:
@@ -218,327 +107,158 @@ def _validate_proposition_text(proposition: str) -> str:
     return ''
 
 
-def _operation_audit_reason(operation_kinds: Sequence[str]) -> str:
-    unique = sorted({_text(item) for item in operation_kinds if _text(item)})
-    if len(unique) == 1:
-        return f'mutable_judge_{unique[0]}'
-    return 'mutable_judge_multi'
+def _non_add_outcome(item: Mapping[str, Any], current_content: str) -> dict[str, Any]:
+    return _outcome(
+        subject=_text(item.get('subject')),
+        verdict=_text(item.get('verdict')) or 'no_change',
+        status='skipped',
+        reason_code=_text(item.get('reason_code')) or 'no_mutable_identity_signal',
+        continuity_kind=_text(item.get('continuity_kind')) or 'none',
+        old_content=current_content,
+        new_content=current_content,
+        source_refs_count=len(_list(item.get('source_refs'))),
+        guard_notes_count=len(_list(item.get('guard_notes'))),
+    )
 
 
-def _apply_operation_to_lines(
+def _apply_add_verdict(
     *,
     item: Mapping[str, Any],
-    original_content: str,
+    current_content: str,
     current_lines: Sequence[str],
-    current_origins: Sequence[int | None],
-    original_lines: Sequence[str],
-) -> tuple[list[str] | None, list[int | None] | None, dict[str, Any]]:
+    static_content: str,
+) -> tuple[list[str] | None, dict[str, Any]]:
     subject = _text(item.get('subject'))
-    operation = _text(item.get('operation'))
-    reason_code = _text(item.get('reason_code'))
+    proposition = _text(item.get('proposition'))
     continuity_kind = _text(item.get('continuity_kind'))
     source_refs_count = len(_list(item.get('source_refs')))
     guard_notes_count = len(_list(item.get('guard_notes')))
     lines = list(current_lines)
-    origins = list(current_origins)
-    current_content = _joined_content(lines)
-
-    if operation not in _PERSIST_OPERATIONS:
-        return None, None, _outcome(
+    validation_reason = _validate_proposition_text(proposition)
+    if validation_reason:
+        return None, _outcome(
             subject=subject,
-            verdict='persist',
-            operation=operation,
+            verdict='add',
             status='failed',
-            reason_code='invalid_operation',
+            reason_code=validation_reason,
             continuity_kind=continuity_kind,
-            old_content=original_content,
+            old_content=current_content,
             new_content=current_content,
             source_refs_count=source_refs_count,
             guard_notes_count=guard_notes_count,
-            **_target_fields(item),
         )
-    if not mutable_identity_judge.persist_reason_code_matches_operation(operation, reason_code):
-        return None, None, _outcome(
+
+    proposition_norm = _norm(proposition)
+    if proposition_norm in {_norm(line) for line in lines}:
+        return lines, _outcome(
             subject=subject,
-            verdict='persist',
-            operation=operation,
-            status='failed',
-            reason_code='invalid_operation',
+            verdict='add',
+            status='skipped',
+            reason_code='already_covered_by_mutable',
             continuity_kind=continuity_kind,
-            old_content=original_content,
+            old_content=current_content,
             new_content=current_content,
             source_refs_count=source_refs_count,
             guard_notes_count=guard_notes_count,
-            **_target_fields(item),
         )
-
-    proposition = _text(item.get('proposition'))
-    if operation in {'add', 'tighten', 'merge'}:
-        validation_reason = _validate_proposition_text(proposition)
-        if validation_reason:
-            return None, None, _outcome(
-                subject=subject,
-                verdict='persist',
-                operation=operation,
-                status='failed',
-                reason_code=validation_reason,
-                continuity_kind=continuity_kind,
-                old_content=original_content,
-                new_content=current_content,
-                source_refs_count=source_refs_count,
-                guard_notes_count=guard_notes_count,
-                **_target_fields(item),
-            )
-
-    if operation == 'add':
-        if _norm(proposition) in {_norm(line) for line in lines}:
-            return lines, origins, _outcome(
-                subject=subject,
-                verdict='persist',
-                operation=operation,
-                status='skipped',
-                reason_code='already_present',
-                continuity_kind=continuity_kind,
-                old_content=original_content,
-                new_content=current_content,
-                source_refs_count=source_refs_count,
-                guard_notes_count=guard_notes_count,
-            )
-        lines.append(proposition)
-        origins.append(None)
-        return lines, origins, _outcome(
+    static_norms = {_norm(line) for line in _split_propositions(static_content)}
+    whole_static_norm = _norm(static_content)
+    if proposition_norm and (proposition_norm == whole_static_norm or proposition_norm in static_norms):
+        return lines, _outcome(
             subject=subject,
-            verdict='persist',
-            operation=operation,
-            status='applied',
-            reason_code='add_applied',
+            verdict='add',
+            status='skipped',
+            reason_code='already_covered_by_static',
             continuity_kind=continuity_kind,
-            old_content=original_content,
-            new_content=_joined_content(lines),
+            old_content=current_content,
+            new_content=current_content,
             source_refs_count=source_refs_count,
             guard_notes_count=guard_notes_count,
         )
 
-    if operation == 'tighten':
-        target_index, target_reason = _resolve_single_target_index(
-            subject=subject,
-            current_lines=lines,
-            current_origins=origins,
-            original_lines=original_lines,
-            item=item,
-        )
-        if target_index is None:
-            return None, None, _outcome(
-                subject=subject,
-                verdict='persist',
-                operation=operation,
-                status='failed',
-                reason_code=target_reason or 'invalid_target',
-                continuity_kind=continuity_kind,
-                old_content=original_content,
-                new_content=current_content,
-                source_refs_count=source_refs_count,
-                guard_notes_count=guard_notes_count,
-                **_target_fields(item),
-            )
-        proposition_norm = _norm(proposition)
-        target_norm = _norm(lines[target_index])
-        if proposition_norm != target_norm and proposition_norm in {_norm(line) for line in lines}:
-            return None, None, _outcome(
-                subject=subject,
-                verdict='persist',
-                operation=operation,
-                status='failed',
-                reason_code='impossible_mutation',
-                continuity_kind=continuity_kind,
-                old_content=original_content,
-                new_content=current_content,
-                source_refs_count=source_refs_count,
-                guard_notes_count=guard_notes_count,
-                **_target_fields(item),
-            )
-        lines[target_index] = proposition
-        return lines, origins, _outcome(
-            subject=subject,
-            verdict='persist',
-            operation=operation,
-            status='applied',
-            reason_code='tighten_applied',
-            continuity_kind=continuity_kind,
-            old_content=original_content,
-            new_content=_joined_content(lines),
-            source_refs_count=source_refs_count,
-            guard_notes_count=guard_notes_count,
-            **_target_fields(item),
-        )
-
-    if operation == 'merge':
-        unique_indexes, target_reason = _resolve_target_indexes(
-            subject=subject,
-            current_lines=lines,
-            current_origins=origins,
-            original_lines=original_lines,
-            item=item,
-        )
-        if unique_indexes is None:
-            return None, None, _outcome(
-                subject=subject,
-                verdict='persist',
-                operation=operation,
-                status='failed',
-                reason_code=target_reason or 'invalid_target',
-                continuity_kind=continuity_kind,
-                old_content=original_content,
-                new_content=current_content,
-                source_refs_count=source_refs_count,
-                guard_notes_count=guard_notes_count,
-                **_target_fields(item),
-            )
-        target_norms = {_norm(lines[index]) for index in unique_indexes}
-        if _norm(proposition) not in target_norms and _norm(proposition) in {_norm(line) for line in lines}:
-            return None, None, _outcome(
-                subject=subject,
-                verdict='persist',
-                operation=operation,
-                status='failed',
-                reason_code='impossible_mutation',
-                continuity_kind=continuity_kind,
-                old_content=original_content,
-                new_content=current_content,
-                source_refs_count=source_refs_count,
-                guard_notes_count=guard_notes_count,
-                **_target_fields(item),
-            )
-        next_lines = [line for index, line in enumerate(lines) if index not in unique_indexes]
-        next_origins = [origin for index, origin in enumerate(origins) if index not in unique_indexes]
-        next_lines.insert(unique_indexes[0], proposition)
-        next_origins.insert(unique_indexes[0], None)
-        return next_lines, next_origins, _outcome(
-            subject=subject,
-            verdict='persist',
-            operation=operation,
-            status='applied',
-            reason_code='merge_applied',
-            continuity_kind=continuity_kind,
-            old_content=original_content,
-            new_content=_joined_content(next_lines),
-            source_refs_count=source_refs_count,
-            guard_notes_count=guard_notes_count,
-            **_target_fields(item),
-        )
-
-    target_index, target_reason = _resolve_single_target_index(
+    lines.append(proposition)
+    return lines, _outcome(
         subject=subject,
-        current_lines=lines,
-        current_origins=origins,
-        original_lines=original_lines,
-        item=item,
-    )
-    if target_index is None:
-        return None, None, _outcome(
-            subject=subject,
-            verdict='persist',
-            operation=operation,
-            status='failed',
-            reason_code=target_reason or 'invalid_target',
-            continuity_kind=continuity_kind,
-            old_content=original_content,
-            new_content=current_content,
-            source_refs_count=source_refs_count,
-            guard_notes_count=guard_notes_count,
-            **_target_fields(item),
-        )
-    del lines[target_index]
-    del origins[target_index]
-    return lines, origins, _outcome(
-        subject=subject,
-        verdict='persist',
-        operation=operation,
+        verdict='add',
         status='applied',
-        reason_code='clear_obsolete_applied',
+        reason_code='add_applied',
         continuity_kind=continuity_kind,
-        old_content=original_content,
+        old_content=current_content,
         new_content=_joined_content(lines),
         source_refs_count=source_refs_count,
         guard_notes_count=guard_notes_count,
-        **_target_fields(item),
+        proposition=proposition,
     )
 
 
 def _subject_plan(
     *,
-    subject: str,
     verdicts: Sequence[Mapping[str, Any]],
     current_content: str,
+    static_content: str,
 ) -> tuple[str | None, list[dict[str, Any]]]:
-    original_lines = _split_propositions(current_content)
-    lines = list(original_lines)
-    origins: list[int | None] = list(range(len(original_lines)))
+    lines = _split_propositions(current_content)
     outcomes: list[dict[str, Any]] = []
     for item in verdicts:
-        if _text(item.get('verdict')) != 'persist':
-            outcomes.append(_non_persist_outcome(item, _joined_content(lines)))
+        if _text(item.get('verdict')) != 'add':
+            outcomes.append(_non_add_outcome(item, _joined_content(lines)))
             continue
-        next_lines, next_origins, outcome = _apply_operation_to_lines(
+        next_lines, outcome = _apply_add_verdict(
             item=item,
-            original_content=current_content,
+            current_content=current_content,
             current_lines=lines,
-            current_origins=origins,
-            original_lines=original_lines,
+            static_content=static_content,
         )
         outcomes.append(outcome)
-        if next_lines is None or next_origins is None:
+        if next_lines is None:
             return None, outcomes
         lines = next_lines
-        origins = next_origins
     return _joined_content(lines), outcomes
+
+
+def _empty_summary(reason_code: str) -> dict[str, Any]:
+    return {
+        'status': 'skipped',
+        'reason_code': reason_code,
+        'writes_applied': False,
+        'applied_count': 0,
+        'skipped_count': 0,
+        'failed_count': 0,
+        'outcomes': [],
+        'subjects_touched': [],
+        'audit_storage': 'identity_mutable_audit',
+    }
 
 
 def apply_mutable_judge_contract(
     contract: Mapping[str, Any],
     *,
     memory_store_module: Any,
+    static_identity_by_subject: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    validated_contract, validation_reason = mutable_identity_judge.validate_mutable_judge_contract(contract)
+    validated_contract, validation_reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(contract)
     if validated_contract is None:
-        return {
-            'status': 'skipped',
-            'reason_code': validation_reason or 'schema_invalid',
-            'writes_applied': False,
-            'applied_count': 0,
-            'skipped_count': 0,
-            'failed_count': 0,
-            'outcomes': [],
-            'subjects_touched': [],
-            'operation_kinds': [],
-            'audit_storage': 'identity_mutable_audit',
-        }
+        return _empty_summary(validation_reason or 'schema_invalid')
 
     get_mutable_identity = getattr(memory_store_module, 'get_mutable_identity', None)
     apply_subject_updates = getattr(memory_store_module, 'apply_mutable_identity_subject_updates', None)
     if not callable(get_mutable_identity) or not callable(apply_subject_updates):
-        return {
-            'status': 'skipped',
-            'reason_code': 'mutable_store_unavailable',
-            'writes_applied': False,
-            'applied_count': 0,
-            'skipped_count': 0,
-            'failed_count': 0,
-            'outcomes': [],
-            'subjects_touched': [],
-            'operation_kinds': [],
-            'audit_storage': 'identity_mutable_audit',
-        }
+        return _empty_summary('mutable_store_unavailable')
 
     verdicts_by_subject: dict[str, list[Mapping[str, Any]]] = {subject: [] for subject in sorted(_ALLOWED_SUBJECTS)}
     for item in _list(validated_contract.get('verdicts')):
         payload = _mapping(item)
-        verdicts_by_subject[_text(payload.get('subject'))].append(payload)
+        subject = _text(payload.get('subject'))
+        if subject in verdicts_by_subject:
+            verdicts_by_subject[subject].append(payload)
 
+    static_by_subject = {
+        subject: _text(_mapping(static_identity_by_subject or {}).get(subject))
+        for subject in sorted(_ALLOWED_SUBJECTS)
+    }
     current_by_subject: dict[str, str] = {}
     next_by_subject: dict[str, str] = {}
     outcomes: list[dict[str, Any]] = []
-    operations_by_subject: dict[str, list[str]] = {subject: [] for subject in sorted(_ALLOWED_SUBJECTS)}
     max_content_chars = int(config.IDENTITY_MUTABLE_MAX_CHARS)
 
     for subject in sorted(_ALLOWED_SUBJECTS):
@@ -546,35 +266,24 @@ def apply_mutable_judge_contract(
         current_content = _text(current_item.get('content'))
         current_by_subject[subject] = current_content
         next_content, subject_outcomes = _subject_plan(
-            subject=subject,
             verdicts=verdicts_by_subject.get(subject) or [],
             current_content=current_content,
+            static_content=static_by_subject.get(subject, ''),
         )
         outcomes.extend(subject_outcomes)
-        operations_by_subject[subject] = [
-            _text(item.get('operation'))
-            for item in verdicts_by_subject.get(subject) or []
-            if _text(item.get('verdict')) == 'persist' and _text(item.get('operation'))
-        ]
         if next_content is None:
             return {
-                'status': 'skipped',
-                'reason_code': 'impossible_mutation',
-                'writes_applied': False,
-                'applied_count': 0,
+                **_empty_summary('impossible_mutation'),
                 'skipped_count': len([item for item in outcomes if item.get('status') == 'skipped']),
                 'failed_count': len([item for item in outcomes if item.get('status') == 'failed']),
                 'outcomes': outcomes,
                 'subjects_touched': sorted({str(item.get('subject') or '') for item in outcomes if item.get('status') == 'failed'}),
-                'operation_kinds': sorted({str(item.get('operation') or '') for item in outcomes if item.get('operation')}),
-                'audit_storage': 'identity_mutable_audit',
             }
         if len(next_content) > max_content_chars:
             outcomes.append(
                 _outcome(
                     subject=subject,
-                    verdict='persist',
-                    operation='',
+                    verdict='add',
                     status='failed',
                     reason_code='mutable_content_too_long',
                     continuity_kind='none',
@@ -586,16 +295,10 @@ def apply_mutable_judge_contract(
                 )
             )
             return {
-                'status': 'skipped',
-                'reason_code': 'mutable_content_too_long',
-                'writes_applied': False,
-                'applied_count': 0,
-                'skipped_count': len([item for item in outcomes if item.get('status') == 'skipped']),
-                'failed_count': len([item for item in outcomes if item.get('status') == 'failed']),
+                **_empty_summary('mutable_content_too_long'),
+                'failed_count': 1,
                 'outcomes': outcomes,
                 'subjects_touched': [subject],
-                'operation_kinds': sorted({operation for values in operations_by_subject.values() for operation in values}),
-                'audit_storage': 'identity_mutable_audit',
             }
         next_by_subject[subject] = next_content
 
@@ -603,31 +306,17 @@ def apply_mutable_judge_contract(
     for subject in sorted(_ALLOWED_SUBJECTS):
         if next_by_subject.get(subject, '') == current_by_subject.get(subject, ''):
             continue
-        operation_kinds = operations_by_subject.get(subject) or ['persist']
-        if next_by_subject.get(subject):
-            subject_updates.append(
-                {
-                    'subject': subject,
-                    'mutation_kind': 'set',
-                    'content': next_by_subject[subject],
-                    'source_trace_id': None,
-                    'updated_by': ACTOR,
-                    'update_reason': UPDATE_REASON,
-                    'audit_reason_code': _operation_audit_reason(operation_kinds),
-                }
-            )
-        else:
-            subject_updates.append(
-                {
-                    'subject': subject,
-                    'mutation_kind': 'clear',
-                    'content': '',
-                    'source_trace_id': None,
-                    'updated_by': ACTOR,
-                    'update_reason': UPDATE_REASON,
-                    'audit_reason_code': _operation_audit_reason(operation_kinds),
-                }
-            )
+        subject_updates.append(
+            {
+                'subject': subject,
+                'mutation_kind': 'set',
+                'content': next_by_subject[subject],
+                'source_trace_id': None,
+                'updated_by': ACTOR,
+                'update_reason': UPDATE_REASON,
+                'audit_reason_code': AUDIT_REASON_CODE,
+            }
+        )
 
     try:
         result = apply_subject_updates(subject_updates)
@@ -636,16 +325,15 @@ def apply_mutable_judge_contract(
         writes_applied = bool(subject_updates)
     except Exception:
         return {
-            'status': 'skipped',
-            'reason_code': 'canonical_write_failed',
-            'writes_applied': False,
-            'applied_count': 0,
+            **_empty_summary('canonical_write_failed'),
             'skipped_count': len([item for item in outcomes if item.get('status') == 'skipped']),
             'failed_count': max(1, len([item for item in outcomes if item.get('status') == 'failed'])),
             'outcomes': outcomes,
-            'subjects_touched': sorted({subject for subject, content in next_by_subject.items() if content != current_by_subject.get(subject, '')}),
-            'operation_kinds': sorted({operation for values in operations_by_subject.values() for operation in values}),
-            'audit_storage': 'identity_mutable_audit',
+            'subjects_touched': sorted(
+                subject
+                for subject, content in next_by_subject.items()
+                if content != current_by_subject.get(subject, '')
+            ),
         }
 
     applied_count = len([item for item in outcomes if item.get('status') == 'applied'])
@@ -660,6 +348,5 @@ def apply_mutable_judge_contract(
         'failed_count': failed_count,
         'outcomes': outcomes,
         'subjects_touched': sorted({str(item.get('subject') or '') for item in outcomes if item.get('status') == 'applied'}),
-        'operation_kinds': sorted({str(item.get('operation') or '') for item in outcomes if item.get('operation')}),
         'audit_storage': 'identity_mutable_audit',
     }

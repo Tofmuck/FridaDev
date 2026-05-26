@@ -48,7 +48,7 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                     'buffer_cleared': True,
                     'writes_applied': False,
                     'legacy_writer_disabled': True,
-                    'runtime_pipeline': 'mutable_identity_judge_first',
+                    'runtime_pipeline': 'mutable_identity_judge_v2_add_only',
                     'verdict_counts': {'no_change': 2},
                     'window_chars': 1200,
                     'payload_chars': 1800,
@@ -56,7 +56,7 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                     'promotions': [],
                     'outcomes': [],
                 },
-                prompt_kind='mutable_identity_judge',
+                prompt_kind='mutable_identity_judge_v2',
             )
             chat_turn_logger.end_turn(token, final_status='ok')
         finally:
@@ -64,8 +64,8 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
 
         periodic_event = next(event for event in observed if event['stage'] == 'mutable_identity_judge')
         payload = periodic_event['payload_json']
-        self.assertEqual(payload['prompt_kind'], 'mutable_identity_judge')
-        self.assertEqual(payload['runtime_pipeline'], 'mutable_identity_judge_first')
+        self.assertEqual(payload['prompt_kind'], 'mutable_identity_judge_v2')
+        self.assertEqual(payload['runtime_pipeline'], 'mutable_identity_judge_v2_add_only')
         self.assertNotIn('preview', payload)
         self.assertNotIn('buffer_pairs', payload)
         self.assertNotIn('messages', payload)

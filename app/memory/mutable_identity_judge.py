@@ -25,6 +25,7 @@ WINDOW_PAIRS_COUNT = 5
 PROMPT_KIND = 'mutable_identity_judge'
 MODEL_SLOT = 'identity_periodic_model'
 CALLER = 'mutable_identity_judge'
+LEGACY_PROMPT_PATH = 'prompts/identity_mutable_judge.txt'
 JUDGE_WINDOW_MAX_CHARS = 32_000
 JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT = 12_000
 _CHARS_PER_TOKEN_ESTIMATE = 4
@@ -353,7 +354,7 @@ def build_judge_input(
 
 
 def load_prompt(prompt_path: str | None = None) -> str:
-    raw_path = _text(prompt_path or getattr(config, 'IDENTITY_MUTABLE_JUDGE_PROMPT_PATH', 'prompts/identity_mutable_judge.txt'))
+    raw_path = _text(prompt_path or LEGACY_PROMPT_PATH)
     path = Path(raw_path)
     if not path.is_absolute():
         path = Path(__file__).resolve().parents[1] / path

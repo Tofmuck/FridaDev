@@ -55,7 +55,6 @@ def _compact_outcome_item(item: Any) -> dict[str, Any]:
         'subject',
         'action',
         'verdict',
-        'operation',
         'status',
         'reason_code',
         'continuity_kind',
@@ -124,7 +123,6 @@ def _compact_open_tensions(values: Any) -> list[dict[str, Any]]:
             'subject',
             'action',
             'verdict',
-            'operation',
             'status',
             'reason_code',
             'continuity_kind',
@@ -173,13 +171,8 @@ def empty_latest_agent_activity() -> dict[str, Any]:
         'invalid_verdict_index': None,
         'invalid_subject': None,
         'invalid_verdict': None,
-        'invalid_operation': None,
         'invalid_reason_code': None,
         'invalid_proposition_chars': None,
-        'invalid_target_chars': None,
-        'invalid_targets_count': None,
-        'invalid_target_ref': None,
-        'invalid_target_refs_count': None,
         'invalid_source_refs_count': None,
         'invalid_guard_notes_count': None,
         'apply_status': None,
@@ -188,8 +181,6 @@ def empty_latest_agent_activity() -> dict[str, Any]:
         'verdict_counts': {},
         'subjects_seen': [],
         'subjects_touched': [],
-        'operation_kinds': [],
-        'persistent_operation_count': 0,
         'continuity_kinds': [],
         'reason_codes': [],
         'source_refs_count': 0,
@@ -217,7 +208,7 @@ def latest_agent_activity(event: Mapping[str, Any]) -> dict[str, Any]:
         'present': bool(event),
         'stage': stage,
         'activity_runtime_authority': (
-            'active_mutable_identity_judge_first'
+            'active_mutable_identity_judge_v2_add_only'
             if stage == 'mutable_identity_judge'
             else 'legacy_pre_refactor_fallback'
             if stage == 'identity_periodic_agent'
@@ -247,8 +238,6 @@ def latest_agent_activity(event: Mapping[str, Any]) -> dict[str, Any]:
         'verdict_counts': dict(payload.get('verdict_counts') or {}),
         'subjects_seen': list(payload.get('subjects_seen') or []),
         'subjects_touched': list(payload.get('subjects_touched') or []),
-        'operation_kinds': list(payload.get('operation_kinds') or []),
-        'persistent_operation_count': int(payload.get('persistent_operation_count') or 0),
         'continuity_kinds': list(payload.get('continuity_kinds') or []),
         'reason_codes': list(payload.get('reason_codes') or []),
         'source_refs_count': int(payload.get('source_refs_count') or 0),
@@ -273,9 +262,6 @@ def latest_agent_activity(event: Mapping[str, Any]) -> dict[str, Any]:
         'max_estimated_prompt_tokens',
         'invalid_verdict_index',
         'invalid_proposition_chars',
-        'invalid_target_chars',
-        'invalid_targets_count',
-        'invalid_target_refs_count',
         'invalid_source_refs_count',
         'invalid_guard_notes_count',
         'http_status',
@@ -287,9 +273,7 @@ def latest_agent_activity(event: Mapping[str, Any]) -> dict[str, Any]:
         'validation_reason',
         'invalid_subject',
         'invalid_verdict',
-        'invalid_operation',
         'invalid_reason_code',
-        'invalid_target_ref',
         'error_class',
     ):
         text = _optional_text(payload.get(key))

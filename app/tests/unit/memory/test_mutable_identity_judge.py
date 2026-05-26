@@ -971,7 +971,7 @@ class MutableIdentityJudgeV2DormantTests(unittest.TestCase):
         self.assertIsNotNone(validated)
         observability = mutable_identity_judge_v2.build_judge_observability_v2(validated)
         self.assertEqual(observability['schema_version'], 'mutable_judge_v2')
-        self.assertEqual(observability['contract_status'], 'dormant_until_lot_b')
+        self.assertEqual(observability['contract_status'], 'active_add_only_lot_b')
         self.assertEqual(observability['verdict_counts'], {'add': 1, 'no_change': 1})
         self.assertEqual(observability['subjects_touched'], ['user'])
         self.assertNotIn('operation_kinds', observability)
@@ -1072,7 +1072,7 @@ class MutableIdentityJudgeV2DormantTests(unittest.TestCase):
         self.assertEqual(payload['response_format']['json_schema']['name'], 'mutable_judge_v2')
         self.assertEqual(payload['provider']['require_parameters'], True)
         self.assertEqual(payload['provider']['order'], ['anthropic'])
-        self.assertEqual(payload['metadata']['frida_contract_status'], 'dormant_until_lot_b')
+        self.assertEqual(payload['metadata']['frida_contract_status'], 'active_add_only_lot_b')
         verdict_schema = payload['response_format']['json_schema']['schema']['properties']['verdicts']['items']
         self.assertEqual(set(verdict_schema['properties']['verdict']['enum']), {'add', 'no_change'})
         self.assertNotIn('operation', verdict_schema['properties'])
@@ -1101,7 +1101,7 @@ class MutableIdentityJudgeV2DormantTests(unittest.TestCase):
         self.assertIn('Never output `operation`.', prompt)
         self.assertIn('Never output `target`, `targets`, `target_ref`, or `target_refs`.', prompt)
 
-    def test_v2_is_dormant_and_active_runtime_payload_remains_v1(self) -> None:
+    def test_v2_is_ready_for_active_runtime_without_mutating_v1_helpers(self) -> None:
         judge_input = mutable_identity_judge.build_judge_input(
             window_pairs=_window_pairs(),
             identities=_identities(),
@@ -1125,6 +1125,24 @@ class MutableIdentityJudgeV2DormantTests(unittest.TestCase):
         self.assertIn('target_ref', active_verdict_schema['required'])
         self.assertIn('persist', active_verdict_schema['properties']['verdict']['enum'])
         self.assertNotEqual(mutable_identity_judge_v2.SCHEMA_VERSION, mutable_identity_judge.SCHEMA_VERSION)
+
+        v2_payload = mutable_identity_judge_v2.build_openrouter_payload_v2(
+            mutable_identity_judge_v2.build_judge_input(
+                window_pairs=_window_pairs(),
+                identities=_identities(),
+                mutable_budget=_budget(),
+            ),
+            model_settings={
+                'model': 'anthropic/claude-haiku-4.5',
+                'temperature': 0.0,
+                'top_p': 1.0,
+                'max_tokens': 1400,
+            },
+            system_prompt='judge prompt v2',
+        )
+        v2_keys = _collect_keys(v2_payload)
+        self.assertEqual(v2_payload['response_format']['json_schema']['name'], 'mutable_judge_v2')
+        self.assertTrue({'operation', 'target', 'targets', 'target_ref', 'target_refs'}.isdisjoint(v2_keys))
 
 
 if __name__ == '__main__':

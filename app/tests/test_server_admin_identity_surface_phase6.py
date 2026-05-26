@@ -86,18 +86,17 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
                     'stage': 'mutable_identity_judge',
                     'status': 'skipped',
                     'payload': {
-                        'reason_code': 'completed_with_open_tension',
+                        'reason_code': 'completed_no_change',
                         'writes_applied': False,
                         'promotion_count': 0,
                         'promotions': [],
                         'outcomes': [
                             {
                                 'subject': 'user',
-                                'verdict': 'raise_tension',
-                                'operation': '',
-                                'reason_code': 'relation_tension_open',
-                                'continuity_kind': 'tension',
-                                'source_refs_count': 1,
+                                'verdict': 'no_change',
+                                'reason_code': 'already_covered_by_mutable',
+                                'continuity_kind': 'none',
+                                'source_refs_count': 0,
                                 'guard_notes_count': 1,
                             }
                         ],
@@ -133,19 +132,16 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertTrue(payload['identity_staging']['auto_canonization_suspended'])
         self.assertEqual(
             payload['identity_staging']['latest_agent_activity']['reason_code'],
-            'completed_with_open_tension',
+            'completed_no_change',
         )
-        self.assertEqual(payload['identity_staging']['latest_agent_activity']['open_tension_count'], 1)
+        self.assertEqual(payload['identity_staging']['latest_agent_activity']['open_tension_count'], 0)
         self.assertNotIn('buffer_pairs', payload['identity_staging']['latest_agent_activity'])
         self.assertNotIn('outcomes', payload['identity_staging']['latest_agent_activity'])
         self.assertEqual(
             payload['identity_staging']['latest_agent_activity']['open_tensions_storage_kind'],
             'mutable_identity_judge_latest_activity',
         )
-        self.assertNotIn(
-            'content',
-            payload['identity_staging']['latest_agent_activity']['open_tensions'][0],
-        )
+        self.assertEqual(payload['identity_staging']['latest_agent_activity']['open_tensions'], [])
         self.assertTrue(payload['structured_identity']['present'])
         self.assertEqual(payload['structured_identity']['technical_name'], 'identity_input')
         self.assertEqual(payload['structured_identity']['role'], 'hermeneutic_judgment')
