@@ -181,6 +181,44 @@ Conclusion:
 - `openai/gpt-5.4-mini` n'est pas encore valide pour une bascule runtime: il
   rate les adds attendus sur le smoke 3 runs.
 
+## Smoke Reel Modele Frontiere - GPT 5.5 - 2026-05-26
+
+Verification OpenRouter pre-smoke:
+
+- `openai/gpt-5.2`: disponible, `response_format` et `structured_outputs`
+  annonces par l'API modeles/endpoints;
+- `openai/gpt-5.1`: disponible, `response_format` et `structured_outputs`
+  annonces par l'API modeles/endpoints;
+- `openai/gpt-5.5`: disponible, `response_format` et `structured_outputs`
+  annonces par l'API modeles/endpoints.
+
+Smoke retenu:
+
+```bash
+docker exec -i -w /app platform-fridadev sh -c 'python scripts/smoke_mutable_identity_judge_llm.py --model openai/gpt-5.5 --runs 3; printf "\nexit_code=%s\n" "$?"'
+```
+
+Resultat content-free:
+
+- modele demande: `openai/gpt-5.5`;
+- provider effectif: `openai/gpt-5.5-20260423`;
+- structured output: oui, `json_schema`, `strict=true`;
+- run 1: `status=ok`, `verdict_counts={"add": 2}`, add llm oui, add user oui;
+- run 2: `status=ok`, `verdict_counts={"add": 2}`, add llm oui, add user oui;
+- run 3: `status=ok`, `verdict_counts={"add": 2}`, add llm oui, add user oui;
+- `noise_add_count=0` sur les trois runs;
+- aucun champ v1;
+- `live_db_write=false`;
+- `applicator_called=false`;
+- aggregate: `runs_ok=3/3`, `exit_code=0`.
+
+Decision:
+
+- `openai/gpt-5.5` est le premier candidat valide observe pour le juge mutable
+  `mutable_judge_v2` sur le smoke synthetique strict.
+- Le runtime persistant n'est pas modifie; une bascule du slot
+  `identity_periodic_model` doit rester un micro-lot separe avec GO explicite.
+
 ## Crash Test Conversationnel
 
 Test ajoute:

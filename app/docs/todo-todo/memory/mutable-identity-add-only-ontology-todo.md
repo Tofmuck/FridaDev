@@ -9,6 +9,7 @@
 - [x] Lot C livre: tests unitaires et crash test conversationnel add-only ontologique.
 - [x] Lot D livre: smoke reel v2 execute sans DB live; Haiku retourne une reponse provider mais echoue au validateur (`invalid_verdict`) et doit etre considere fragile pour ce role tant qu'un micro-lot modele/timeout n'a pas tranche.
 - [x] Lot D bis livre: smoke candidat `openai/gpt-5.4-mini` execute sans DB live; apres retrait des parametres non supportes `temperature` / `top_p`, le modele route, mais il ne passe pas encore le smoke stabilite 3 runs.
+- [x] Smoke modele frontiere livre: `openai/gpt-5.5` passe le smoke reel 3/3 sans DB live ni applicateur; le runtime persistant reste inchange.
 - [ ] A executer en lots courts, testes, commites et pushes separement.
 
 ## Contexte
@@ -269,6 +270,16 @@ Resultat Lot D bis:
 - Smoke 3 runs apres durcissement: OpenRouter route bien vers `openai/gpt-5.4-mini-20260317`, mais le critere de smoke echoue (`exit_code=5`, `runs_ok=0/3`).
 - Runs observes: run 1 `{"no_change": 2}`, run 2 `{"no_change": 2}`, run 3 `{"add": 1, "no_change": 1}`; aucun bruit ajoute; aucun `no_change` pollue.
 - Decision: `openai/gpt-5.4-mini` respecte maintenant la forme stricte, mais ne doit pas etre bascule comme juge mutable tant qu'il ne reconnait pas regulierement les adds attendus en smoke 3 runs.
+
+Resultat smoke modele frontiere:
+
+- Verification OpenRouter: `openai/gpt-5.2`, `openai/gpt-5.1` et `openai/gpt-5.5` existent et annoncent `response_format` / `structured_outputs`.
+- Smoke execute uniquement en override local: `python scripts/smoke_mutable_identity_judge_llm.py --model openai/gpt-5.5 --runs 3`.
+- Provider effectif: `openai/gpt-5.5-20260423`.
+- Structured output strict conserve, `provider.require_parameters=true`, aucun `provider.order=["anthropic"]` force pour ce modele OpenAI.
+- Runs observes: run 1 `{"add": 2}`, run 2 `{"add": 2}`, run 3 `{"add": 2}`.
+- Add llm oui et add user oui sur les trois runs; bruit ajoute `0`; aucun champ v1; `live_db_write=false`; `applicator_called=false`.
+- Decision: `openai/gpt-5.5` est un candidat valide pour une bascule modele separee; ne pas changer le runtime sans GO explicite.
 
 Tests/preuves:
 

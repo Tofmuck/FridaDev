@@ -14,6 +14,8 @@ Mise a jour du 2026-05-26 Lot D: le smoke reel `mutable_judge_v2` sans applicate
 
 Mise a jour du 2026-05-26 Lot D bis: le smoke candidat `openai/gpt-5.4-mini` est execute uniquement via override local du script, sans changer le slot runtime persistant. Le 404 initial venait du couple `provider.require_parameters=true` + parametres non supportes (`temperature` / `top_p`), pas d'un modele absent. Avec un payload compatible conservant le schema strict, OpenRouter route vers `openai/gpt-5.4-mini-20260317`. Apres durcissement du schema discriminant `add` / `no_change`, le smoke 3 runs garde les `no_change` propres mais echoue au critere modele (`runs_ok=0/3`, `exit_code=5`) parce que le modele rate des adds attendus; le modele actif reste inchange.
 
+Mise a jour du 2026-05-26 modele frontiere: l'API OpenRouter confirme `openai/gpt-5.2`, `openai/gpt-5.1` et `openai/gpt-5.5` comme disponibles avec `response_format` / `structured_outputs`. Le smoke reel candidat `openai/gpt-5.5`, execute uniquement via override local, passe 3/3 runs (`provider=openai/gpt-5.5-20260423`, `verdict_counts={"add": 2}` a chaque run, bruit ajoute `0`, `live_db_write=false`, `applicator_called=false`). Recommandation: `openai/gpt-5.5` est le premier candidat valide pour une bascule separee du slot `identity_periodic_model`; le runtime persistant n'est pas modifie par ce smoke.
+
 Verdict court:
 
 - FridaDev expose **11 chemins fonctionnels d'inference**, correspondant a **13 slots modele/service** si l'on compte separement les modeles primaire/fallback du `stimmung_agent` et du `validation_agent`.
