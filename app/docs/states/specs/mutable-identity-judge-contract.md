@@ -18,11 +18,20 @@ Mise a jour 2026-05-26, Lot A add-only ontologique: un contrat dormant
 actif dans le runtime tant que l'applicateur add-only du Lot B n'est pas branche.
 Le chemin actif reste `mutable_judge_v1`.
 
+Convention de lecture avant Lot B: les sections qui decrivent `persist`,
+`operation`, `tighten`, `merge`, `clear_obsolete`, `target_ref` ou
+`target_refs` documentent le regime `mutable_judge_v1` encore actif. Elles ne
+constituent pas la cible durable add-only. La cible Lot B est le contrat
+`mutable_judge_v2`: `add` / `no_change`, sans operations ni ciblage du canon
+existant.
+
 ## Decision
 
-Le nouveau systeme mutable est judge-first.
+Le systeme mutable est judge-first. Avant le cutover Lot B, le runtime actif
+reste le regime `mutable_judge_v1`; la cible durable preparee en Lot A est
+`mutable_judge_v2` add-only ontologique.
 
-Pipeline normatif:
+Pipeline runtime actif pre-Lot B (`mutable_judge_v1`):
 
 ```text
 5 paires completes user/assistant
@@ -144,7 +153,7 @@ Il ne peut pas:
 
 Exception: une redaction obligatoire pour securite runtime ou secret suit la politique de securite generale. Elle doit etre auditee comme garde technique, jamais comme jugement identitaire.
 
-## Schema JSON Canonique
+## Schema JSON Canonique Actif Pre-Lot B (`mutable_judge_v1`)
 
 Nom de schema: `mutable_judge_v1`
 
@@ -308,7 +317,7 @@ Le prompt dormant associe est `app/prompts/identity_mutable_judge_v2.txt`. Le
 prompt runtime actif reste `app/prompts/identity_mutable_judge.txt` jusqu'au
 Lot B.
 
-## Verdicts Canoniques
+## Verdicts Canoniques Actifs Pre-Lot B (`mutable_judge_v1`)
 
 Verdicts autorises:
 
@@ -320,7 +329,7 @@ Verdicts autorises:
 
 `raise_tension` n'est pas une operation de persistence. Il peut produire une trace content-free, un reason code, un compteur ou une future surface operateur, mais il ne cree pas, ne modifie pas et ne supprime pas de mutable canonique.
 
-## Operations Persistantes
+## Operations Persistantes v1 Actives Pre-Lot B
 
 Operations autorisees uniquement quand `verdict = persist`:
 
@@ -399,7 +408,7 @@ initiale visee par ref a deja ete supprimee ou fusionnee par une operation
 precedente du meme contrat, l'operation suivante est refusee avec
 `target_already_mutated` ou `impossible_mutation`; le batch reste all-or-nothing.
 
-## Structured Output OpenRouter
+## Structured Output OpenRouter v1 Actif Pre-Lot B
 
 Le payload OpenRouter du caller `mutable_identity_judge` contient:
 
@@ -423,7 +432,7 @@ conditionnelle metier: compatibilite verdict/reason code, obligation de
 operations incompatibles et bornes applicatives restent validees par
 `validate_mutable_judge_contract(...)`.
 
-## Reason Codes Canoniques
+## Reason Codes Canoniques v1 Actifs Pre-Lot B
 
 Les reason codes sont content-free, stables et courts.
 
@@ -541,7 +550,7 @@ Le code ne peut pas refuser parce que:
 - la formulation n'a pas ete extraite par une regex;
 - la fenetre contient de l'indetermine.
 
-## Persistence
+## Persistence v1 Active Pre-Lot B
 
 Seul `verdict = persist` avec operation valide peut modifier `identity_mutables`.
 

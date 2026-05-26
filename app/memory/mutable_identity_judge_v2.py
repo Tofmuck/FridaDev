@@ -58,7 +58,7 @@ _ALLOWED_SOURCE_REFS = {f'pair_{index:02d}' for index in range(1, mutable_identi
 _CODE_RE = re.compile(r'^[A-Za-z0-9_:-]{1,80}$')
 _PROMPT_LIKE_RE = re.compile(
     r'(ignore\s+previous|system\s+prompt|developer\s+message|follow\s+these\s+instructions|'
-    r'tu\s+dois\s+repondre|reponds\s+comme)',
+    r'tu\s+dois\s+repondre|tu\s+dois\s+répondre|reponds\s+comme|réponds\s+comme)',
     re.IGNORECASE,
 )
 
@@ -142,7 +142,7 @@ def _validate_proposition(proposition: str) -> str:
         return 'empty_proposition'
     if len(proposition) > 600:
         return 'proposition_too_long'
-    if _PROMPT_LIKE_RE.search(proposition):
+    if '\n' in proposition or _PROMPT_LIKE_RE.search(proposition):
         return 'prompt_like_content'
     if proposition.endswith('?'):
         return 'non_declarative_content'
@@ -285,7 +285,6 @@ def build_judge_observability_v2(contract: Mapping[str, Any]) -> dict[str, Any]:
         'subjects_seen': sorted(subjects_seen),
         'subjects_touched': sorted(subjects_touched),
         'add_count': add_count,
-        'operation_kinds': [],
         'reason_codes': sorted(reason_codes),
         'continuity_kinds': sorted(continuity_kinds),
         'source_refs_count': source_refs_count,
