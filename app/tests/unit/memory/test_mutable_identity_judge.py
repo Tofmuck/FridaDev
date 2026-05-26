@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from admin import runtime_settings
+import config
 from memory import mutable_identity_judge
 from memory import mutable_identity_judge_v2
 
@@ -1080,6 +1082,67 @@ class MutableIdentityJudgeV2DormantTests(unittest.TestCase):
         self.assertNotIn('mutable_tightening', verdict_schema['properties']['reason_code']['enum'])
         self.assertEqual(mutable_identity_judge_v2.JUDGE_WINDOW_MAX_CHARS, 32_000)
         self.assertEqual(mutable_identity_judge_v2.JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT, 12_000)
+
+    def test_run_v2_loads_prompt_from_configured_runtime_path(self) -> None:
+        original_get_settings = mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings
+        original_prompt_path = config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH
+        original_post = mutable_identity_judge_v2.requests.post
+        original_url = mutable_identity_judge_v2.llm_client.or_chat_completions_url
+        original_headers = mutable_identity_judge_v2.llm_client.or_headers_custom
+        original_log_provider = mutable_identity_judge_v2.llm_client.log_provider_metadata
+        captured: dict[str, Any] = {}
+
+        def fake_get_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='identity_periodic_model',
+                payload=runtime_settings.build_env_seed_bundle('identity_periodic_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': json.dumps(_valid_v2_contract(), ensure_ascii=False)}}]}
+
+        def fake_post(_url, *, json, headers, timeout):
+            captured['system_prompt'] = json['messages'][0]['content']
+            captured['prompt_kind'] = json['metadata']['frida_caller']
+            return FakeResponse()
+
+        judge_input = mutable_identity_judge_v2.build_judge_input(
+            window_pairs=_window_pairs(),
+            identities=_identities(),
+            mutable_budget=_budget(),
+        )
+
+        mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings = fake_get_settings
+        mutable_identity_judge_v2.requests.post = fake_post
+        mutable_identity_judge_v2.llm_client.or_chat_completions_url = lambda: 'https://openrouter.test/chat/completions'
+        mutable_identity_judge_v2.llm_client.or_headers_custom = (
+            lambda *, caller, referer, title: {'Authorization': f'caller={caller}', 'X-Title': title}
+        )
+        mutable_identity_judge_v2.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
+        try:
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                prompt_path = Path(tmp_dir) / 'identity_mutable_judge_v2_custom.txt'
+                prompt_path.write_text('custom configured mutable judge v2 prompt', encoding='utf-8')
+                config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH = str(prompt_path)
+
+                result = mutable_identity_judge_v2.run_mutable_identity_judge_v2(judge_input)
+
+            self.assertEqual(result['status'], 'ok')
+            self.assertEqual(result['contract']['schema_version'], 'mutable_judge_v2')
+            self.assertEqual(captured['system_prompt'], 'custom configured mutable judge v2 prompt')
+        finally:
+            config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH = original_prompt_path
+            mutable_identity_judge.runtime_settings.get_identity_periodic_model_settings = original_get_settings
+            mutable_identity_judge_v2.requests.post = original_post
+            mutable_identity_judge_v2.llm_client.or_chat_completions_url = original_url
+            mutable_identity_judge_v2.llm_client.or_headers_custom = original_headers
+            mutable_identity_judge_v2.llm_client.log_provider_metadata = original_log_provider
 
     def test_v2_prompt_contains_ontology_rules_and_examples(self) -> None:
         prompt = mutable_identity_judge_v2.load_prompt_v2()

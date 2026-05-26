@@ -493,7 +493,7 @@ def build_judge_observability_v2(contract: Mapping[str, Any]) -> dict[str, Any]:
 def run_mutable_identity_judge_v2(judge_input: Mapping[str, Any]) -> dict[str, Any]:
     settings = mutable_identity_judge.runtime_model_settings()
     try:
-        system_prompt = load_prompt_v2()
+        system_prompt = load_prompt_v2(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)
     except Exception:
         return _failure_result('runtime_safety_violation')
     model_input_json = json.dumps(dict(judge_input), ensure_ascii=False, indent=2)

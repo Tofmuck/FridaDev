@@ -139,7 +139,7 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             'benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-hermeneutic.md',
         )
         self.assertIn('extract_identities() uses identity_extractor_model', readonly_info['transition_note']['value'])
-        self.assertIn('mutable_identity_judge uses identity_periodic_model', readonly_info['transition_note']['value'])
+        self.assertIn('mutable_identity_judge_v2 uses identity_periodic_model', readonly_info['transition_note']['value'])
 
     def test_get_section_readonly_info_identity_periodic_model_exposes_prompt_transport_and_decision(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('identity_periodic_model')
@@ -151,7 +151,7 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         self.assertEqual(readonly_info['prompt_path']['value'], config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)
         self.assertEqual(
             readonly_info['prompt_loader']['value'],
-            'memory.mutable_identity_judge.load_prompt(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)',
+            'memory.mutable_identity_judge_v2.load_prompt_v2(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)',
         )
         self.assertEqual(
             readonly_info['legacy_prompt_path']['value'],
