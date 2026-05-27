@@ -12,6 +12,7 @@ import config
 from core import llm_client
 from memory import mutable_identity_judge_common as judge_common
 from memory import mutable_identity_judge_schema
+from memory import mutable_identity_subject_names
 
 
 logger = logging.getLogger('frida.mutable_identity_judge')
@@ -71,9 +72,6 @@ _PROMPT_LIKE_RE = re.compile(
     r'tu\s+dois\s+repondre|tu\s+dois\s+répondre|reponds\s+comme|réponds\s+comme)',
     re.IGNORECASE,
 )
-_ONTOLOGICAL_PROPOSITION_RE = re.compile(
-    r'^(Frida|Tof|Amandine|Utilisateur)\s+(est|tient|refuse|reconna(?:i|î)t|traite|exige)\b.+\.$'
-)
 _JSON_FENCE_RE = re.compile(r'^\s*```(?:json)?\s*(?P<body>.*?)\s*```\s*$', re.IGNORECASE | re.DOTALL)
 
 
@@ -93,6 +91,24 @@ def _list(value: Any) -> list[Any]:
     if isinstance(value, list):
         return list(value)
     return []
+
+
+def active_identity_names_by_subject(
+    *,
+    identities: Mapping[str, Any] | None = None,
+    static_identity_by_subject: Mapping[str, Any] | None = None,
+) -> dict[str, set[str]]:
+    return mutable_identity_subject_names.active_identity_names_by_subject(
+        subjects=ALLOWED_SUBJECTS,
+        identities=identities,
+        static_identity_by_subject=static_identity_by_subject,
+    )
+
+
+def _active_names_from_judge_input(judge_input: Mapping[str, Any]) -> dict[str, set[str]]:
+    return active_identity_names_by_subject(
+        identities=_mapping(judge_input.get('identities')),
+    )
 
 
 def build_judge_input(
@@ -298,7 +314,12 @@ def _verdict_failure_observability(item: Mapping[str, Any], *, reason_code: str,
     }
 
 
-def _validation_failure_observability(payload: Mapping[str, Any], *, reason_code: str) -> dict[str, Any]:
+def _validation_failure_observability(
+    payload: Mapping[str, Any],
+    *,
+    reason_code: str,
+    active_names_by_subject: Mapping[str, set[str]] | None = None,
+) -> dict[str, Any]:
     observability: dict[str, Any] = {'validation_reason': reason_code}
     verdicts = payload.get('verdicts')
     if not isinstance(verdicts, list):
@@ -316,7 +337,8 @@ def _validation_failure_observability(payload: Mapping[str, Any], *, reason_code
                     'window_complete': True,
                 },
                 'verdicts': [item, _minimal_no_change('llm' if _text(item.get('subject')) == 'user' else 'user')],
-            }
+            },
+            active_names_by_subject=active_names_by_subject,
         )
         if validated is None:
             return _verdict_failure_observability(
@@ -343,7 +365,12 @@ def _validate_code_list(values: list[Any]) -> bool:
     return all(isinstance(value, str) and bool(_CODE_RE.fullmatch(value)) for value in values)
 
 
-def _validate_proposition(proposition: str) -> str:
+def _validate_proposition(
+    proposition: str,
+    *,
+    subject: str,
+    active_names_by_subject: Mapping[str, set[str]],
+) -> str:
     if not proposition:
         return 'empty_proposition'
     if len(proposition) > 600:
@@ -352,14 +379,30 @@ def _validate_proposition(proposition: str) -> str:
         return 'prompt_like_content'
     if proposition.endswith('?'):
         return 'non_declarative_content'
-    if not _ONTOLOGICAL_PROPOSITION_RE.fullmatch(proposition):
+    match = mutable_identity_subject_names.ONTOLOGICAL_PROPOSITION_RE.fullmatch(proposition)
+    if not match:
         return 'non_ontological_proposition'
+    proposition_name = _text(match.group('name'))
+    active_names = set(active_names_by_subject.get(subject) or set())
+    if proposition_name not in active_names:
+        return 'invalid_subject_name'
     if ' traite ' in proposition and ' comme ' not in proposition:
         return 'non_ontological_proposition'
     return ''
 
 
-def validate_mutable_judge_contract_v2(payload: Mapping[str, Any]) -> tuple[dict[str, Any] | None, str]:
+def validate_mutable_judge_contract_v2(
+    payload: Mapping[str, Any],
+    *,
+    active_names_by_subject: Mapping[str, set[str]] | None = None,
+) -> tuple[dict[str, Any] | None, str]:
+    active_names = {
+        subject: set(
+            (active_names_by_subject or {}).get(subject)
+            or mutable_identity_subject_names.DEFAULT_ACTIVE_SUBJECT_NAMES.get(subject, set())
+        )
+        for subject in sorted(ALLOWED_SUBJECTS)
+    }
     source = _mapping(payload)
     if set(source.keys()) != _TOP_LEVEL_KEYS:
         return None, 'schema_invalid'
@@ -413,7 +456,11 @@ def validate_mutable_judge_contract_v2(payload: Mapping[str, Any]) -> tuple[dict
                 return None, 'schema_invalid'
             if continuity_kind == 'none':
                 return None, 'schema_invalid'
-            proposition_reason = _validate_proposition(proposition)
+            proposition_reason = _validate_proposition(
+                proposition,
+                subject=subject,
+                active_names_by_subject=active_names,
+            )
             if proposition_reason:
                 return None, proposition_reason
             if not source_refs:
@@ -586,12 +633,20 @@ def run_mutable_identity_judge_v2(judge_input: Mapping[str, Any]) -> dict[str, A
     if parsed is None:
         return _failure_result('judge_invalid_json')
 
-    validated, reason = validate_mutable_judge_contract_v2(parsed)
+    active_names = _active_names_from_judge_input(judge_input)
+    validated, reason = validate_mutable_judge_contract_v2(
+        parsed,
+        active_names_by_subject=active_names,
+    )
     if validated is None:
         failure_reason = reason or 'schema_invalid'
         return _failure_result(
             failure_reason,
-            _validation_failure_observability(parsed, reason_code=failure_reason),
+            _validation_failure_observability(
+                parsed,
+                reason_code=failure_reason,
+                active_names_by_subject=active_names,
+            ),
         )
     return {
         'status': 'ok',

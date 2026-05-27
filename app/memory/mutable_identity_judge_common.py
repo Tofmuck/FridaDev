@@ -27,6 +27,7 @@ TECHNICAL_REASON_CODES = {
     'prompt_like_content',
     'non_declarative_content',
     'non_ontological_proposition',
+    'invalid_subject_name',
     'impossible_mutation',
     'mutable_content_too_long',
     'runtime_safety_violation',

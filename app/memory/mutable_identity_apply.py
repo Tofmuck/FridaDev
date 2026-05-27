@@ -236,7 +236,13 @@ def apply_mutable_judge_contract(
     memory_store_module: Any,
     static_identity_by_subject: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    validated_contract, validation_reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(contract)
+    active_names = mutable_identity_judge_v2.active_identity_names_by_subject(
+        static_identity_by_subject=static_identity_by_subject or {}
+    )
+    validated_contract, validation_reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(
+        contract,
+        active_names_by_subject=active_names,
+    )
     if validated_contract is None:
         return _empty_summary(validation_reason or 'schema_invalid')
 

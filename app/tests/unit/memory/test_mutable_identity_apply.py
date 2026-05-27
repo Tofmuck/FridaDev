@@ -176,6 +176,28 @@ class MutableIdentityApplyTests(unittest.TestCase):
         self.assertNotIn(proposition, repr(store.audit))
         self.assertNotIn('operation_kinds', summary)
 
+    def test_add_uses_active_user_name_from_static_identity_context(self) -> None:
+        store = _MutableStore()
+        proposition = 'Amandine tient une frontiere durable.'
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(_add(proposition=proposition)),
+            memory_store_module=store,
+            static_identity_by_subject={'user': 'Amandine est la participante active.'},
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertTrue(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], proposition)
+
+        rejected = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(_add(proposition='Utilisateur tient une frontiere durable.')),
+            memory_store_module=_MutableStore(),
+            static_identity_by_subject={'user': 'Amandine est la participante active.'},
+        )
+        self.assertEqual(rejected['status'], 'skipped')
+        self.assertEqual(rejected['reason_code'], 'invalid_subject_name')
+
     def test_add_writes_llm_mutable_for_llm_subject_only(self) -> None:
         store = _MutableStore()
         proposition = 'Frida tient une voix propre.'

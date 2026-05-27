@@ -187,14 +187,6 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
         self.assertIsNotNone(validated)
         self.assertEqual([item['verdict'] for item in validated['verdicts']], ['add', 'add'])
 
-        payload['verdicts'][1]['proposition'] = (
-            'Amandine traite la frontiere entre sa pensee et la voix de Frida comme un objet central.'
-        )
-        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
-
-        self.assertEqual(reason, '')
-        self.assertIsNotNone(validated)
-
     def test_v2_refuses_verdicts_outside_no_change_and_add(self) -> None:
         for verdict in ('persist', 'reject', 'defer', 'raise_tension'):
             with self.subTest(verdict=verdict):
@@ -224,6 +216,71 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
 
         self.assertIsNone(validated)
         self.assertEqual(reason, 'invalid_verdict')
+
+    def test_v2_validates_user_name_from_active_identity_context(self) -> None:
+        payload = _valid_v2_contract()
+        payload['verdicts'][0]['proposition'] = (
+            'Amandine traite la frontiere entre sa pensee et la voix de Frida comme un objet central.'
+        )
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'invalid_subject_name')
+
+        active_names = mutable_identity_judge_v2.active_identity_names_by_subject(
+            identities={
+                'llm': {'static': 'Frida statique.', 'mutable_current': ''},
+                'user': {'static': 'Amandine est la participante active.', 'mutable_current': ''},
+            }
+        )
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(
+            payload,
+            active_names_by_subject=active_names,
+        )
+        self.assertEqual(reason, '')
+        self.assertIsNotNone(validated)
+
+        payload['verdicts'][0]['proposition'] = 'Tof tient une frontiere durable.'
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(
+            payload,
+            active_names_by_subject=active_names,
+        )
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'invalid_subject_name')
+
+    def test_v2_rejects_generic_user_label_and_wrong_llm_name(self) -> None:
+        payload = _valid_v2_contract()
+        payload['verdicts'][0]['proposition'] = 'Utilisateur tient une frontiere durable.'
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'invalid_subject_name')
+
+        payload = _valid_v2_contract()
+        payload['verdicts'] = [
+            {
+                'subject': 'llm',
+                'verdict': 'add',
+                'proposition': 'Amandine tient une voix propre.',
+                'reason_code': 'explicit_frida_self_definition_continuity',
+                'continuity_kind': 'posture',
+                'source_refs': ['pair_01'],
+                'guard_notes': ['not_task_local'],
+            },
+            {
+                'subject': 'user',
+                'verdict': 'no_change',
+                'proposition': '',
+                'reason_code': 'no_mutable_identity_signal',
+                'continuity_kind': 'none',
+                'source_refs': [],
+                'guard_notes': [],
+            },
+        ]
+
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+        self.assertIsNone(validated)
+        self.assertEqual(reason, 'invalid_subject_name')
 
     def test_v2_refuses_accented_prompt_like_and_multiline_propositions(self) -> None:
         cases = [
@@ -499,6 +556,7 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
             'Tof traite... comme...',
             'Amandine traite... comme...',
             'Do not force `Tof` when the active user identity',
+            'Never use the generic label `Utilisateur`',
             'already covered by static or mutable_current',
         ):
             self.assertIn(phrase, prompt)

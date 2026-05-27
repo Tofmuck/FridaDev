@@ -293,8 +293,11 @@ Regles v2:
 - `add` exige une `proposition` francaise, courte, ontologique et declarative;
 - la validation locale du contrat borne la forme canonique de sortie, sans lire
   ni filtrer la fenetre: une `proposition` ajoutee doit commencer par le nom
-  clair du participant (`Frida`, `Tof`, `Amandine`, ou le fallback technique
-  `Utilisateur`), employer une forme du type `est`, `tient`, `refuse`,
+  actif du sujet. Pour `llm`, le nom actif est `Frida`. Pour `user`, le nom est
+  derive de l'identite active (`user.static` / `user.mutable_current`), par
+  exemple `Tof` sur Frida courante ou `Amandine` sur un clone seede ainsi. Le
+  fallback UI generique `Utilisateur` n'est pas un nom canonique mutable;
+  la proposition doit employer une forme du type `est`, `tient`, `refuse`,
   `reconnait`, `traite`, `exige`, se terminer par un point, et `traite` doit
   porter un `comme`;
 - `no_change` exige une `proposition=""`;

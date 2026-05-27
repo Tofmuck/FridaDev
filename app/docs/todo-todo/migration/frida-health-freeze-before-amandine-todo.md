@@ -856,7 +856,7 @@ Greps executes:
 | --- | ---: | --- |
 | hostnames publics `fridadev.frida-system.fr|fridadev-db.frida-system.fr` | 113 | majoritairement docs OVH, tests, examples et referers OpenRouter; pas de secret; defaults FridaDev a reseeder pour Amandine via runtime settings/env |
 | chemins OVH `/opt/platform/fridadev*` | 76 | docs operations/freeze, AGENTS, archives et chemins de tests OVH; pas de dependance runtime cachee bloquante |
-| traces `Tof|Amandine` | 215 apres patch | fixtures/tests/docs et contrat mutable acceptant `Tof` + `Amandine`; plus de label UI export actif hardcode `Tof` |
+| traces `Tof|Amandine` | 215 apres patch | fixtures/tests/docs et contrat mutable contextualise par identite active; plus de label UI export actif hardcode `Tof` |
 | legacy actif `identity_periodic_agent|score_operation|apply_periodic_agent_contract|target_ref|clear_obsolete` | 217 | wrapper technique de fenetre/slot compat, tests de rejet/absence, docs/tests legacy; aucun writer score-first actif |
 | labels actifs dans docs `Statut: chantier actif|TODO actif|chantier actif` | 13 | todo-todo actifs, archives qui parlent historiquement de leur cloture, ou grep de freeze; pas de contradiction bloquante |
 | inspection `state/data/identity`, `app/data/identity`, `app/prompts` | 19 fichiers | identites Frida/Tof et prompts a reseeder/revoir pour Amandine; aucune purge ou copie effectuee |
@@ -866,7 +866,7 @@ Corrections effectuees:
 | ID | Surface | Severite | Duplication impact | Correction |
 | --- | --- | --- | --- | --- |
 | LOT5-P2-001 | export Markdown chat | P2 | une instance Amandine aurait exporte les messages user sous le label `Tof` | label actif remplace par `Utilisateur`; tests frontend et spec mis a jour |
-| LOT5-P2-002 | juge mutable v2 | P2 | le validateur ontologique user acceptait `Tof` mais pas `Amandine`, ce qui pouvait bloquer les adds mutables utilisateur apres duplication | validation v2 et prompt v2 acceptent explicitement `Amandine` comme nom user de duplication; spec et tests mis a jour |
+| LOT5-P2-002 | juge mutable v2 | P2 | le validateur ontologique user etait trop lie a une whitelist globale: avant correction il acceptait `Tof` mais pas `Amandine`, puis un audit post-Lot 5 a montre que la whitelist inverse acceptait trop largement `Amandine` / `Utilisateur` sur Frida courante | validation v2 contextualisee par identite active: `Frida` cote `llm`; `Tof` sur Frida courante; `Amandine` seulement si `user.static` / `user.mutable_current` nomme Amandine; `Utilisateur` reste un label UI export, pas un sujet canonique mutable |
 
 Hits classes sans correction:
 
@@ -897,7 +897,7 @@ Findings Lot 5:
 | ID | Surface | Severite | Duplication impact | Correction requise | Statut | Lien preuve |
 | --- | --- | --- | --- | --- | --- | --- |
 | LOT5-P2-001 | export Markdown chat | P2 | label user `Tof` actif dans un export Amandine | remplacer par label generique et tests/spec | corrige | grep `EXPORT_USER_LABEL` |
-| LOT5-P2-002 | mutable judge v2 | P2 | `Amandine` pouvait etre rejetee comme proposition non ontologique malgre phrase valide | accepter `Amandine` dans la garde formelle et le prompt v2 | corrige | tests `mutable_identity_judge` |
+| LOT5-P2-002 | mutable judge v2 | P2 | le nom canonique user devait suivre l'identite active sans whitelist globale arbitraire | valider le nom de proposition par sujet et contexte d'identite active; refuser `Amandine` sur Frida courante et `Utilisateur` comme sujet canonique | corrige | tests `mutable_identity_judge` |
 | LOT5-P3-001 | referers/hostnames FridaDev par defaut | P3 | faible si le reseed runtime Amandine est bien execute; sinon analytics OpenRouter pourraient rester marques FridaDev | documente; reseed env/runtime settings requis au futur lot Amandine | accepte | grep hostnames publics |
 | LOT5-P3-002 | separation `/log` judge/apply deja notee Lot 4 | P3 | faible: apply visible via admin logs/filesystem, pas chat events | peut attendre un lot d'unification observabilite si souhaite | accepte | Lot 4 |
 
