@@ -8,6 +8,9 @@ Source freeze: `app/docs/todo-done/migrations/frida-health-freeze-before-amandin
 ## Principe
 
 La duplication Amandine part du repository FridaDev sain, pas des donnees Frida.
+Le code applicatif Amandine doit venir d'un checkout/clone Git propre d'un
+commit ou d'une branche identifies. Il ne doit pas venir d'un `rsync`, d'une
+copie manuelle ou d'une duplication opaque de la working copy live Frida.
 
 La cible est une instance separee:
 
@@ -27,7 +30,10 @@ Ce plan ne cree pas Amandine. Il decrit les lots a executer ensuite avec GO expl
 
 - [ ] Strategie retenue: instance separee, pas multi-utilisateur dans la meme DB.
 - [ ] Copier la structure applicative depuis le repository, pas les donnees Frida/Tof.
+- [ ] Creer le code applicatif Amandine depuis un clone/checkout Git propre, avec commit ou branche source consignes.
+- [ ] Interdire la copie de la working copy live comme source applicative Amandine.
 - [ ] Garder les secrets hors Git et hors preuves.
+- [ ] Utiliser un token OpenRouter Amandine separe du token Frida.
 - [ ] Distinguer strictement actions applicatives Celebrimbor et actions plateforme Sauron.
 - [ ] Ne pas commencer une action destructive sans backup et rollback documentes.
 - [ ] Ne pas promettre de memoire durable sans mecanisme persistant reel.
@@ -168,6 +174,7 @@ Responsable: Celebrimbor pour le cadrage; Sauron pour validation/execution plate
 Objectif:
 
 - [ ] Decider les noms de stack, conteneurs, DB, volumes et hostnames Amandine.
+- [ ] Decider le commit ou la branche Git source du clone/checkout Amandine.
 - [ ] Eviter toute collision avec `platform-fridadev`.
 - [ ] Formaliser les referers/titles OpenRouter attendus pour Amandine.
 
@@ -181,18 +188,21 @@ Surfaces concernees:
 Actions autorisees:
 
 - [ ] Proposer noms et ports internes.
+- [ ] Documenter la commande de clone/checkout attendue sans l'executer dans ce lot docs-only.
 - [ ] Produire une matrice Frida actuelle -> Amandine cible.
 - [ ] Identifier ce qui releve de Sauron.
 
 Actions interdites:
 
 - [ ] Ne pas modifier Docker Compose.
+- [ ] Ne pas creer l'app Amandine par `rsync`, copie manuelle ou duplication de la working copy live.
 - [ ] Ne pas creer hostname ni certificat.
 - [ ] Ne pas changer Caddy/Authelia.
 
 Preuves attendues:
 
 - [ ] tableau de topologie cible;
+- [ ] commit ou branche source du checkout Amandine consigne;
 - [ ] liste des hostnames envisages;
 - [ ] liste des decisions Sauron requises.
 
@@ -203,6 +213,7 @@ Rollback:
 Critere de sortie:
 
 - [ ] Topologie cible approuvee.
+- [ ] Source Git applicative Amandine approuvee et reproductible.
 - [ ] Frontiere Celebrimbor/Sauron explicite.
 
 ## Lot 2 - Backup Frida prealable et rollback
@@ -350,6 +361,8 @@ Objectif:
 - [ ] Reseeder les runtime settings Amandine.
 - [ ] Adapter referers/titles/URLs a Amandine.
 - [ ] Conserver les secrets hors Git.
+- [ ] Injecter un token OpenRouter propre a Amandine, distinct du token Frida.
+- [ ] Separer quotas, couts et logs provider Amandine de Frida.
 - [ ] Garder `identity_periodic_model` comme slot compat du juge mutable v2.
 
 Surfaces concernees:
@@ -363,11 +376,13 @@ Actions autorisees:
 - [ ] Definir modele principal Amandine.
 - [ ] Reseeder `identity_periodic_model.model` selon decision produit, probablement `openai/gpt-5.2` si le meme juge mutable est conserve.
 - [ ] Adapter `referer_*`, `title_*`, `app_name` a Amandine.
+- [ ] Creer ou fournir un token OpenRouter Amandine distinct via Sauron, sans copier la valeur Frida.
 - [ ] Injecter secrets via mecanisme runtime chiffre ou env Sauron, jamais en Git.
 
 Actions interdites:
 
 - [ ] Ne pas copier `runtime_settings_history` Frida.
+- [ ] Ne pas copier le token OpenRouter Frida.
 - [ ] Ne pas afficher `api_key`, DSN, tokens ou secret embedding.
 - [ ] Ne pas changer le contrat mutable v2 pour Amandine.
 
@@ -376,17 +391,21 @@ Preuves attendues:
 - [ ] sections runtime presentes;
 - [ ] secrets `is_set=true/false` sans valeurs;
 - [ ] referers/titles Amandine visibles;
+- [ ] token OpenRouter Amandine prouve seulement par `is_set=true`, jamais par sa valeur;
+- [ ] quotas/couts/logs provider attribuables a Amandine sans melange avec Frida;
 - [ ] modele juge mutable visible en admin;
 - [ ] ancien benchmark Frida/Haiku non presente comme actif.
 
 Rollback:
 
 - [ ] reseed settings depuis matrice documentee;
+- [ ] rotation possible du token OpenRouter Amandine sans toucher Frida;
 - [ ] rotation secrets si une valeur a ete exposee par erreur.
 
 Critere de sortie:
 
 - [ ] Runtime settings Amandine coherents, secrets masques, referers propres.
+- [ ] Aucun secret runtime Amandine ne depend du token OpenRouter Frida.
 
 ## Lot 6 - Seed identite Amandine
 
@@ -639,6 +658,7 @@ Critere de sortie:
 Arreter et revenir a l'operateur si:
 
 - un secret est expose ou risque de l'etre;
+- l'app Amandine est proposee depuis une copie opaque de la working copy live au lieu d'un checkout/clone Git propre;
 - une commande necessite une purge/copie DB non approuvee;
 - une action plateforme est necessaire mais Sauron n'a pas donne GO;
 - l'identite Amandine ne peut pas etre seedee sans ambiguite;
@@ -652,6 +672,9 @@ Arreter et revenir a l'operateur si:
 - [ ] DB Amandine neuve et structuree, sans donnees Frida/Tof.
 - [ ] `state/` Amandine propre.
 - [ ] Runtime settings reseedes et secrets masques.
+- [ ] Runtime Amandine isole des tokens, quotas, couts et logs provider Frida.
+- [ ] Token OpenRouter Amandine distinct, injecte hors Git et prouve seulement par `is_set=true`.
+- [ ] Code applicatif Amandine issu d'un checkout/clone Git propre d'un commit ou d'une branche identifies.
 - [ ] Identite active Amandine etablie avant mention de tiers/historique.
 - [ ] Surfaces admin racontent Amandine.
 - [ ] Juge mutable v2 add-only fonctionne.
