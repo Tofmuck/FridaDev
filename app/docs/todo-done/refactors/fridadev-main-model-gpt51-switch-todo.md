@@ -1,6 +1,6 @@
 # TODO - bascule du modele principal vers GPT-5.1
 
-Statut: chantier actif.
+Statut: clos, archive le 2026-05-20.
 
 Branche: `feature/main-model-gpt51`.
 

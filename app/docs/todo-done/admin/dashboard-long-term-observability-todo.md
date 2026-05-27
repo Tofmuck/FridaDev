@@ -33,7 +33,7 @@ Note corrective post-cloture summaries du 2026-05-15:
 
 ## 1. Intention
 
-Ce TODO ouvre le chantier actif du futur dashboard long terme FridaDev.
+Ce TODO a ouvert le chantier du futur dashboard long terme FridaDev. Il est maintenant clos et archive; cette section conserve l'intention initiale du chantier.
 
 Le besoin n'est pas d'ajouter une cinquieme surface opaque ni de refaire l'observabilite existante. FridaDev possede deja des logs compacts, des read-models, des snapshots et des surfaces admin riches:
 

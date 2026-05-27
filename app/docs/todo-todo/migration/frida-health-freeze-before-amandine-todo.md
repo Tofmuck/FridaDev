@@ -163,9 +163,11 @@ Severites utilisables:
 
 Findings Lot 0:
 
+Aucun P0/P1/P2 ouvert au Lot 0. Un P3 documentaire a ete confirme par le grep `Statut: chantier actif|TODO actif|chantier actif` puis corrige dans les archives concernees.
+
 | ID | Surface | Severite | Duplication impact | Correction requise | Statut | Lien preuve |
 | --- | --- | --- | --- | --- | --- | --- |
-| LOT0-NONE | Inventaire documentaire | none | aucun bloquant detecte au Lot 0 | aucune correction runtime | clos | specs presentes; grep actif/migration classe comme bruit documentaire attendu |
+| LOT0-P3-001 | Archives/docs liees | P3 | faible: grep de freeze plus bruyant, sans effet runtime | requalifier deux libelles archivees et un critere historique de spec qui se disaient encore actifs | corrige | `todo-done/admin/dashboard-long-term-observability-todo.md`; `todo-done/refactors/fridadev-main-model-gpt51-switch-todo.md`; `states/specs/dashboard-long-term-observability-contract.md` |
 
 Risques evidents a surveiller dans les lots suivants:
 

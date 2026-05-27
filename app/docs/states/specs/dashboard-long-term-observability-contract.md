@@ -782,7 +782,7 @@ Convention de roles stabilisee au Lot 9:
 Le Lot 1 est ferme quand:
 
 - ce contrat existe dans `app/docs/states/specs/`;
-- le TODO actif pointe vers ce contrat;
+- le TODO de lancement, alors actif, pointait vers ce contrat;
 - les niveaux cockpit / lecture traduite / comprehension fidele / contenu complet sont definis;
 - la limite hash + longueur est explicite;
 - les couches de verite sont definies;
