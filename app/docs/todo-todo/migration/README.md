@@ -7,6 +7,10 @@ Portee: preparation de la duplication FridaDev vers une instance separee pour Am
 
 Ce repertoire centralise les audits, plans, checklists et preuves lies a la migration / duplication.
 
+## Plans actifs
+
+- `frida-health-freeze-before-amandine-todo.md`: checklist de freeze sante Frida avant duplication Amandine. Objectif: verifier que Frida est une base produit saine avant toute creation de stack, DB neuve ou `state/` propre pour Amandine.
+
 Y ranger notamment:
 
 - les audits pre-migration;

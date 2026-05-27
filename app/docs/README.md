@@ -44,6 +44,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Validation finale refonte mutable judge-first 2026-05-25: `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`
 - Boussole produit finale des cinq derniers gros chantiers FridaDev: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Chantier actif migration / duplication Amandine: `todo-todo/migration/README.md`
+- Freeze sante Frida avant duplication Amandine: `todo-todo/migration/frida-health-freeze-before-amandine-todo.md`
 - Archive atelier documentaire / répertoires de travail: `todo-done/product/fridadev-workspace-folders-todo.md`
 - Contrat source-of-truth atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
 - Audit court du contrat courant `identity_periodic_agent` 2026-05-19: `states/audits/identity-periodic-current-contract-audit-2026-05-19.md`
