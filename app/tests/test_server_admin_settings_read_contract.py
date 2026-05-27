@@ -129,7 +129,11 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         )
         self.assertEqual(
             data['sections']['identity_periodic_model']['readonly_info']['benchmark_decision']['value'],
-            'benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md',
+            'app/docs/todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md',
+        )
+        self.assertEqual(
+            data['sections']['identity_periodic_model']['readonly_info']['legacy_benchmark_decision']['source'],
+            'legacy_pre_gpt52_cutover',
         )
         self.assertIn(
             'not an effective source',
@@ -420,8 +424,20 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         )
         self.assertIn('main_model.title_identity_periodic', data['readonly_info']['shared_transport']['value'])
         self.assertIn(
-            '2026-05-19-haiku-periodic-decision.md',
+            'mutable-identity-judge-final-validation-2026-05-25.md',
             data['readonly_info']['benchmark_decision']['value'],
+        )
+        self.assertEqual(
+            data['readonly_info']['benchmark_decision']['label'],
+            'MUTABLE_IDENTITY_JUDGE_GPT52_MODEL_DECISION',
+        )
+        self.assertIn(
+            '2026-05-19-haiku-periodic-decision.md',
+            data['readonly_info']['legacy_benchmark_decision']['value'],
+        )
+        self.assertEqual(
+            data['readonly_info']['legacy_benchmark_decision']['source'],
+            'legacy_pre_gpt52_cutover',
         )
 
     def test_get_admin_settings_arbiter_model_returns_legacy_identity_section(self) -> None:

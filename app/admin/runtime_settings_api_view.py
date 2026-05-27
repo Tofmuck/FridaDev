@@ -314,10 +314,16 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'source': 'main_model_runtime_settings',
             },
             'benchmark_decision': {
-                'label': 'IDENTITY_PERIODIC_BENCHMARK_DECISION',
+                'label': 'MUTABLE_IDENTITY_JUDGE_GPT52_MODEL_DECISION',
+                'value': 'app/docs/todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md',
+                'is_editable': False,
+                'source': 'validation_artifact',
+            },
+            'legacy_benchmark_decision': {
+                'label': 'IDENTITY_PERIODIC_HAIKU_BENCHMARK_DECISION_LEGACY',
                 'value': 'benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md',
                 'is_editable': False,
-                'source': 'benchmark_artifact',
+                'source': 'legacy_pre_gpt52_cutover',
             },
             'doctrine': {
                 'label': 'IDENTITY_MUTABLE_JUDGE_DOCTRINE',

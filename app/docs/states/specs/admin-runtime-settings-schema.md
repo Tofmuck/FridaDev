@@ -169,7 +169,7 @@ Slot de compatibilite conserve sous le nom `identity_periodic_model`, mais depui
 
 Transition refonte mutable 2026-05-26: le prompt actif expose a l'operateur est `prompts/identity_mutable_judge_v2.txt` via le juge `mutable_identity_judge_v2`. `prompts/identity_mutable_judge.txt` et `prompts/identity_periodic_agent.txt` restent des artefacts legacy/compat pre-Lot-B, pas le prompt runtime actif.
 
-Surface admin operateur: la section doit exposer explicitement le module actif `mutable_identity_judge_v2_add_only`, le caller `mutable_identity_judge`, le contrat `mutable_judge_v2`, le prompt kind `mutable_identity_judge_v2`, le champ de modele effectif `identity_periodic_model.model`, et le structured output `json_schema strict=true` avec `provider.require_parameters=true`. Le nom du slot reste une compatibilite, pas une preuve d'agent periodic actif.
+Surface admin operateur: la section doit exposer explicitement le module actif `mutable_identity_judge_v2_add_only`, le caller `mutable_identity_judge`, le contrat `mutable_judge_v2`, le prompt kind `mutable_identity_judge_v2`, le champ de modele effectif `identity_periodic_model.model`, et le structured output `json_schema strict=true` avec `provider.require_parameters=true`. Le nom du slot reste une compatibilite, pas une preuve d'agent periodic actif. Le champ read-only `benchmark_decision` pointe vers la validation GPT-5.2 actuelle; l'ancienne decision Haiku du 2026-05-19 peut rester visible uniquement sous `legacy_benchmark_decision` avec source `legacy_pre_gpt52_cutover`.
 
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |

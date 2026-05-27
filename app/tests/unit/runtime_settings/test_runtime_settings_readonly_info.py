@@ -169,9 +169,23 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         self.assertIn('main_model.title_identity_periodic', readonly_info['shared_transport']['value'])
         self.assertIn('main_model.referer_identity_periodic', readonly_info['shared_transport']['value'])
         self.assertEqual(
+            readonly_info['benchmark_decision']['label'],
+            'MUTABLE_IDENTITY_JUDGE_GPT52_MODEL_DECISION',
+        )
+        self.assertEqual(
             readonly_info['benchmark_decision']['value'],
+            'app/docs/todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md',
+        )
+        self.assertEqual(readonly_info['benchmark_decision']['source'], 'validation_artifact')
+        self.assertEqual(
+            readonly_info['legacy_benchmark_decision']['label'],
+            'IDENTITY_PERIODIC_HAIKU_BENCHMARK_DECISION_LEGACY',
+        )
+        self.assertEqual(
+            readonly_info['legacy_benchmark_decision']['value'],
             'benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md',
         )
+        self.assertEqual(readonly_info['legacy_benchmark_decision']['source'], 'legacy_pre_gpt52_cutover')
         self.assertIn('compatibility model slot', readonly_info['doctrine']['value'])
 
     def test_get_section_readonly_info_summary_model_exposes_prompt_transport_and_benchmark_decision(self) -> None:
