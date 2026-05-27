@@ -292,8 +292,8 @@ Smokes complementaires content-free:
 | chat stream / prompt augmente / summaries | conteneur live | tests cibles `test_server_logs_phase3` | OK, 4 tests |
 | documents actifs / non-contamination | working copy montee | `test_server_active_documents_contract`, `test_active_document_prompt_lane`, `test_active_document_non_contamination_lot5`, `test_active_documents_observability_lot7` | OK, 47 tests; fixtures synthetiques |
 | documents actifs / non-contamination | conteneur live | memes suites | OK, 47 tests |
-| web search source-first / observabilite | conteneur live | `test_web_search_phase4`, `test_web_search_source_first`, `test_web_search_observability`, `test_chat_turn_logger_web_search` | OK, 48 tests |
-| web search source-first / observabilite | working copy montee | memes suites | P3: 47/48 OK, 1 test depend de settings DB/secrets absents dans `docker run`; le conteneur live passe |
+| web search source-first / observabilite | conteneur live | `tests.unit.web_search.test_web_search_phase4`, `tests.unit.web_search.test_web_search_source_first`, `tests.unit.web_search.test_web_search_observability`, `tests.unit.logs.test_chat_turn_logger_web_search` | OK, 48 tests |
+| web search source-first / observabilite | working copy montee | memes suites importables | P3: 47/48 OK, 1 test depend de settings DB/secrets absents dans `docker run`; le conteneur live passe |
 
 Observabilite live content-free:
 
@@ -322,69 +322,149 @@ Actions non effectuees au Lot 1:
 
 ## Lot 2 - Freeze identity / memoire / mutable
 
-- [ ] Verifier `identity_input` compile:
+- [x] Verifier `identity_input` compile:
   - static user present si attendu;
   - static llm present si attendu;
   - mutable user present si attendu;
   - mutable llm present si attendu;
   - pas de legacy `identities` comme source active.
-- [ ] Verifier la surface `/identity`:
+- [x] Verifier la surface `/identity`:
   - elle raconte static + mutable comme canon actif;
   - elle distingue staging et canon;
   - elle ne promet pas une memoire durable au-dela du mecanisme existant.
-- [ ] Verifier `/hermeneutic-admin` identity/read-model:
+- [x] Verifier `/hermeneutic-admin` identity/read-model:
   - `mutable_judge_runtime.model = openai/gpt-5.2`;
   - `module = mutable_identity_judge_v2_add_only`;
   - `contract = mutable_judge_v2`;
   - `verdicts = add/no_change`;
   - `window_target_pairs = 5`.
-- [ ] Verifier l'admin settings:
+- [x] Verifier l'admin settings:
   - `identity_periodic_model.model = openai/gpt-5.2`;
   - `active_module = mutable_identity_judge_v2_add_only`;
   - prompt actif `prompts/identity_mutable_judge_v2.txt`;
   - l'ancien benchmark Haiku est visible seulement comme legacy.
-- [ ] Smoke mutable add-only avec donnees synthetiques:
+- [x] Smoke mutable add-only avec donnees synthetiques:
   - 5 paires completes;
   - au moins un add `llm`;
   - au moins un add `user`;
   - bruit ignore;
   - pas de `tighten`, `merge`, `clear_obsolete`, `target_ref`, `target_refs`;
   - audit content-free.
-- [ ] Verifier que la 6e paire repart sur un buffer 1/5 si le test pipeline est rejoue.
-- [ ] Verifier absence de score-first actif:
+- [x] Verifier que la 6e paire repart sur un buffer 1/5 si le test pipeline est rejoue.
+- [x] Verifier absence de score-first actif:
   - aucun appel actif `score_operation`;
   - aucun writer `apply_periodic_agent_contract`;
   - aucun scoring comme critere d'admission mutable.
-- [ ] Verifier absence d'ecriture static automatique:
+- [x] Verifier absence d'ecriture static automatique:
   - pas de promotion mutable -> static;
   - pas d'appel runtime a `write_static_identity_content`.
-- [ ] Verifier Memory/RAG:
+- [x] Verifier Memory/RAG:
   - retrieval fonctionne;
   - admin memory raconte les sources et counts;
   - pas de confusion entre souvenirs, resume, identity, active documents.
-- [ ] Verifier promesses de memoire dans les prompts/UI:
+- [x] Verifier promesses de memoire dans les prompts/UI:
   - pas de promesse de memorisation si aucun mecanisme ne porte l'inscription;
   - mention claire des couches static/mutable/memory quand elles sont exposees.
 
 ### Tests/preuves Lot 2
 
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.chat.test_mutable_identity_judge_final_validation`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.chat.test_mutable_identity_judge_final_validation`
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_identity_phase4`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_identity_phase4`
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_identity_read_model_phase2`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_identity_read_model_phase2`
-- [ ] Grep non-concurrence:
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.chat.test_mutable_identity_judge_final_validation`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.chat.test_mutable_identity_judge_final_validation`
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_identity_phase4`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_identity_phase4`
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_identity_read_model_phase2`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_identity_read_model_phase2`
+- [x] Grep non-concurrence:
   - `grep -RIn "score_operation\\|apply_periodic_agent_contract\\|mutable_judge_v1\\|target_ref\\|target_refs\\|clear_obsolete\\|mutable_tightening\\|mutable_merge" app/core app/memory app/admin app/tests app/docs/states app/docs/todo-todo || true`
 
 ### Critere de sortie Lot 2
 
-- [ ] Identity injectee coherente.
-- [ ] Mutable add-only actif et visible.
-- [ ] Aucun ancien regime mutable actif.
-- [ ] Aucun P0/P1/P2 identity/memory ouvert.
+- [x] Identity injectee coherente.
+- [x] Mutable add-only actif et visible.
+- [x] Aucun ancien regime mutable actif.
+- [x] Aucun P0/P1/P2 identity/memory ouvert.
+
+### Photo operatoire Lot 2 - 2026-05-27
+
+Etat repo au demarrage:
+
+- branche: `migration`;
+- dernier commit avant patch Lot 2: `781f6fa docs: validate health freeze lot 1 runtime`;
+- worktree: clean avant patch Lot 2.
+
+Correction documentaire pre-Lot 2:
+
+- le P3 de lisibilite Lot 1 sur les suites web-search abregees est corrige dans la photo Lot 1;
+- les chemins importables notes sont maintenant `tests.unit.web_search.test_web_search_phase4`, `tests.unit.web_search.test_web_search_source_first`, `tests.unit.web_search.test_web_search_observability` et `tests.unit.logs.test_chat_turn_logger_web_search`.
+
+Tests obligatoires:
+
+Note: aucun patch runtime n'a ete fait au Lot 2, donc aucun rebuild n'a ete lance. Les lignes "conteneur live apres rebuild" ci-dessus sont cochees comme preuves du conteneur actuellement servi, pas comme validation d'une image rebuildee apres ce patch docs-only.
+
+| Environnement | Suite | Resultat |
+| --- | --- | --- |
+| working copy montee | `tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply` | OK, 27 tests |
+| conteneur live | `tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply` | OK, 27 tests |
+| working copy montee | `tests.unit.chat.test_mutable_identity_judge_final_validation` | OK, 1 test |
+| conteneur live | `tests.unit.chat.test_mutable_identity_judge_final_validation` | OK, 1 test |
+| working copy montee | `tests.test_identity_phase4` | OK, 13 tests |
+| conteneur live | `tests.test_identity_phase4` | OK, 13 tests |
+| working copy montee | `tests.test_server_admin_identity_read_model_phase2` | OK, 3 tests; logs DB indisponible attendus car `docker run` non attache au Postgres live |
+| conteneur live | `tests.test_server_admin_identity_read_model_phase2` | OK, 3 tests |
+
+Preuves identity / mutable live content-free:
+
+| Surface | Resultat |
+| --- | --- |
+| `identity_input` runtime | schema `v2`; `frida.static`, `frida.mutable`, `user.static`, `user.mutable` presents; longueurs et hashes courts verifies; mutables `updated_by=mutable_identity_judge_apply`, `update_reason=mutable_judge_add` |
+| `/api/admin/identity/read-model` | `active_identity_source=identity_mutables`, `active_static_source=resource_path_content`, `identity_input_schema_version=v2`, `active_prompt_contract=static + mutable narrative` |
+| `mutable_judge_runtime` | model `openai/gpt-5.2`, module `mutable_identity_judge_v2_add_only`, caller `mutable_identity_judge`, contract `mutable_judge_v2`, verdicts `add/no_change`, prompt `prompts/identity_mutable_judge_v2.txt` |
+| regime runtime | pipeline `mutable_identity_judge_v2_add_only`, `window_target_pairs=5`, `score_first_writer_enabled=false`, `promotion_to_static_enabled=false`, `manager_operations_enabled=false`, staging non injecte |
+| staging live | `identity_mutable_staging`, conversation-scoped latest, buffer `0/5`, non gele, latest activity `mutable_identity_judge` status `ok`, reason `applied`, pipeline v2 add-only |
+| admin settings `identity_periodic_model` | model `openai/gpt-5.2`; benchmark courant pointe vers la validation mutable final; ancien benchmark Haiku visible seulement via `legacy_benchmark_decision` |
+| `/identity` et runtime representations | route in-container `200`; la source canonique statique + mutable est distinguee de `identity_input`, du texte injecte et du staging; staging marque separe/non injecte |
+
+Preuves Memory/RAG:
+
+| Surface | Resultat |
+| --- | --- |
+| `/api/admin/memory/dashboard` | `200`, `ok=true`, surface `Memory Admin`, route `/memory-admin`, sections sources/counts disponibles |
+| `/api/admin/hermeneutics/arbiter-decisions?limit=5` | `200`, `ok=true`, 5 items compacts |
+| suites Memory/RAG live | `tests.test_memory_store_phase4`, `tests.unit.chat.test_chat_memory_flow_prepare_context_contracts`, `tests.test_server_admin_memory_surface_phase10e`: OK, 38 tests |
+
+Smokes mutable add-only:
+
+| Preuve | Resultat |
+| --- | --- |
+| crash test conversationnel `test_mutable_identity_judge_final_validation` | 5 premieres paires transmises au juge fake v2, add `llm` et `user`, bruit ignore, aucun champ v1, writer `mutable_identity_judge_apply`, aucune ecriture static |
+| 6e paire | buffer repart sur `1/5`, non gele, sans rejuger/ecrire une seconde fois |
+
+Greps et classements:
+
+| Grep | Classement |
+| --- | --- |
+| non-concurrence `score_operation|apply_periodic_agent_contract|mutable_judge_v1|target_ref|target_refs|clear_obsolete|mutable_tightening|mutable_merge` | aucun appel actif score-first ou writer v1; hits restants = shim v1 retire, tests de rejet/absence, docs legacy pre-Lot-B, ou TODO de verification |
+| static write / promotion | aucun appel runtime mutable vers `write_static_identity_content`; hits restants = service admin static explicite, tests d'absence ou docs legacy; `promotion_to_static_enabled=false` dans le read-model |
+| promesses memoire | aucun hit dans `app/prompts`; hits restants = UI Memory Admin qui distingue memoire durable/contexte summary, docs de doctrine/evaluation, TODO qui interdit les fausses promesses |
+
+Findings Lot 2:
+
+| ID | Surface | Severite | Duplication impact | Correction requise | Statut | Lien preuve |
+| --- | --- | --- | --- | --- | --- | --- |
+| LOT2-P3-001 | Lot 1 docs | P3 | nul apres correction; les commandes web-search sont importables dans la photo Lot 1 | correction docs-only des chemins abreiges | corrige | photo Lot 1 mise a jour |
+| LOT2-P3-002 | Memory/RAG tests en working copy montee | P3 | faible: une preuve montee n'est pas autonome pour un test qui attend runtime settings DB/secrets; pas d'impact live observe | aucune avant duplication; utiliser le conteneur live ou un environnement de test avec DB/settings pour cette preuve | accepte | live OK 38/38; working copy montee 37/38 avec `missing secret config: main_model.api_key` |
+
+Actions non effectuees au Lot 2:
+
+- pas de creation Amandine;
+- pas de purge, copie ou migration DB/state;
+- pas de modification des mutables/statics reels;
+- pas de rebuild;
+- pas de changement modele;
+- pas de relachement du contrat add-only ontologique;
+- pas d'affichage volontaire de conversation brute, mutable brute reelle, prompt complet, secret, cookie, DSN complet ou `.env`.
 
 ## Lot 3 - Freeze DB / state / logs et preparation purge future
 
