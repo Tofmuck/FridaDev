@@ -5,7 +5,7 @@ from typing import Any, Mapping, Tuple
 
 import config
 from admin import admin_identity_judge_activity_projection
-from memory import memory_identity_periodic_agent
+from memory import memory_identity_periodic_agent, mutable_identity_judge_common, mutable_identity_judge_v2
 
 
 READ_MODEL_VERSION = 'v2'
@@ -370,6 +370,49 @@ def build_identity_runtime_regime() -> dict[str, Any]:
     }
 
 
+def _runtime_payload_value(payload: Mapping[str, Any], key: str) -> Any:
+    field = _mapping(payload.get(key))
+    if 'value' in field:
+        return field.get('value')
+    return None
+
+
+def build_mutable_judge_runtime_block(*, runtime_settings_module: Any = None) -> dict[str, Any]:
+    model = str(config.IDENTITY_PERIODIC_MODEL or '').strip()
+    settings_source = 'config_fallback'
+    settings_source_reason = 'runtime_settings_not_provided'
+
+    if runtime_settings_module is not None:
+        try:
+            view = runtime_settings_module.get_identity_periodic_model_settings()
+            model = str(_runtime_payload_value(view.payload, 'model') or model).strip()
+            settings_source = _optional_text(getattr(view, 'source', None)) or settings_source
+            settings_source_reason = _optional_text(getattr(view, 'source_reason', None)) or settings_source_reason
+        except Exception:
+            settings_source = 'config_fallback'
+            settings_source_reason = 'runtime_settings_unavailable'
+
+    return {
+        'module': 'mutable_identity_judge_v2_add_only',
+        'caller': mutable_identity_judge_common.CALLER,
+        'runtime_slot': mutable_identity_judge_common.MODEL_SLOT,
+        'runtime_slot_compatibility': 'legacy_compatible_name',
+        'model': model,
+        'model_source': settings_source,
+        'model_source_reason': settings_source_reason,
+        'prompt_kind': mutable_identity_judge_v2.PROMPT_KIND,
+        'prompt_path': str(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH),
+        'contract': mutable_identity_judge_v2.SCHEMA_VERSION,
+        'contract_status': mutable_identity_judge_v2.CONTRACT_STATUS,
+        'structured_output': True,
+        'structured_output_schema': 'json_schema_strict',
+        'provider_require_parameters': True,
+        'window_target_pairs': int(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS),
+        'verdicts': ['add', 'no_change'],
+        'role': '5_pairs_to_add_no_change_ontological_identity_mutables',
+    }
+
+
 def build_identity_staging_block(
     *,
     memory_store_module: Any,
@@ -577,6 +620,7 @@ def identity_read_model_response(
     identity_module: Any,
     static_identity_content_module: Any,
     log_store_module: Any = None,
+    runtime_settings_module: Any = None,
 ) -> Tuple[dict[str, Any], int]:
     limit = _normalize_limit(args.get('limit', DEFAULT_LAYER_LIMIT))
 
@@ -649,6 +693,9 @@ def identity_read_model_response(
                 'legacy_identity_pipeline_recorded_via': LEGACY_IDENTITY_PIPELINE_RECORDED_VIA,
                 'legacy_identity_pipeline_storage': LEGACY_IDENTITY_PIPELINE_STORAGE,
                 'read_surface_stage': READ_SURFACE_STAGE,
+                'mutable_judge_runtime': build_mutable_judge_runtime_block(
+                    runtime_settings_module=runtime_settings_module,
+                ),
                 'identity_runtime_regime': build_identity_runtime_regime(),
             },
             'identity_staging': identity_staging,

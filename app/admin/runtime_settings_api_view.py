@@ -8,6 +8,7 @@ from core import prompt_loader
 from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
 from core.hermeneutic_node.inputs import recent_window_input as canonical_recent_window_input
 from identity import identity_governance
+from memory import mutable_identity_judge_common, mutable_identity_judge_v2
 
 
 NormalizeStoredPayload = Callable[[str, Mapping[str, Any]], dict[str, dict[str, Any]]]
@@ -231,6 +232,54 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
         }
     if section == 'identity_periodic_model':
         return {
+            'active_module': {
+                'label': 'MUTABLE_IDENTITY_JUDGE_ACTIVE_MODULE',
+                'value': 'mutable_identity_judge_v2_add_only',
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+            'runtime_slot': {
+                'label': 'MUTABLE_IDENTITY_JUDGE_RUNTIME_SLOT',
+                'value': mutable_identity_judge_common.MODEL_SLOT,
+                'is_editable': False,
+                'source': 'runtime_settings_slot',
+            },
+            'model_field': {
+                'label': 'MUTABLE_IDENTITY_JUDGE_MODEL_FIELD',
+                'value': f'{mutable_identity_judge_common.MODEL_SLOT}.model',
+                'is_editable': False,
+                'source': 'runtime_settings_slot',
+            },
+            'caller': {
+                'label': 'MUTABLE_IDENTITY_JUDGE_CALLER',
+                'value': mutable_identity_judge_common.CALLER,
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+            'contract': {
+                'label': 'MUTABLE_IDENTITY_JUDGE_CONTRACT',
+                'value': mutable_identity_judge_v2.SCHEMA_VERSION,
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+            'prompt_kind': {
+                'label': 'MUTABLE_IDENTITY_JUDGE_PROMPT_KIND',
+                'value': mutable_identity_judge_v2.PROMPT_KIND,
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+            'structured_output': {
+                'label': 'MUTABLE_IDENTITY_JUDGE_STRUCTURED_OUTPUT',
+                'value': 'response_format=json_schema strict=true; provider.require_parameters=true',
+                'is_editable': False,
+                'source': 'openrouter_payload_contract',
+            },
+            'runtime_role': {
+                'label': 'MUTABLE_IDENTITY_JUDGE_RUNTIME_ROLE',
+                'value': '5 paires completes -> add/no_change ontologique -> identity_mutables',
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
             'prompt_path': {
                 'label': 'IDENTITY_MUTABLE_JUDGE_PROMPT_PATH',
                 'value': str(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH),

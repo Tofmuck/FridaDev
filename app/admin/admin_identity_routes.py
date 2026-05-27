@@ -30,6 +30,7 @@ def register_admin_identity_routes(
             identity_module=identity_module,
             static_identity_content_module=static_identity_content_module,
             log_store_module=log_store_module,
+            runtime_settings_module=runtime_settings_module,
         )
         return jsonify(payload), status
 

@@ -144,6 +144,14 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
     def test_get_section_readonly_info_identity_periodic_model_exposes_prompt_transport_and_decision(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('identity_periodic_model')
 
+        self.assertEqual(readonly_info['active_module']['value'], 'mutable_identity_judge_v2_add_only')
+        self.assertEqual(readonly_info['runtime_slot']['value'], 'identity_periodic_model')
+        self.assertEqual(readonly_info['model_field']['value'], 'identity_periodic_model.model')
+        self.assertEqual(readonly_info['caller']['value'], 'mutable_identity_judge')
+        self.assertEqual(readonly_info['contract']['value'], 'mutable_judge_v2')
+        self.assertEqual(readonly_info['prompt_kind']['value'], 'mutable_identity_judge_v2')
+        self.assertIn('json_schema strict=true', readonly_info['structured_output']['value'])
+        self.assertIn('add/no_change ontologique', readonly_info['runtime_role']['value'])
         self.assertEqual(
             readonly_info['prompt_path']['label'],
             'IDENTITY_MUTABLE_JUDGE_PROMPT_PATH',

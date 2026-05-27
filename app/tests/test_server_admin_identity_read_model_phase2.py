@@ -61,6 +61,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         original_get_latest_identity_staging_state = self.server.memory_store.get_latest_identity_staging_state
         original_read_static_identity_snapshot = self.server.static_identity_content.read_static_identity_snapshot
         original_read_chat_log_events = self.server.log_store.read_chat_log_events
+        original_get_identity_periodic_model_settings = self.server.runtime_settings.get_identity_periodic_model_settings
 
         def fake_list_identity_fragments(subject: str, limit: int | None = None):
             observed['fragments'].append((subject, limit))
@@ -165,6 +166,18 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             content='Frida static canonique' if subject == 'llm' else 'User static canonique',
             raw_content='Frida static canonique' if subject == 'llm' else 'User static canonique',
         )
+        self.server.runtime_settings.get_identity_periodic_model_settings = lambda: self.server.runtime_settings.RuntimeSectionView(
+            section='identity_periodic_model',
+            payload={
+                'model': {'value': 'openai/gpt-5.2', 'is_secret': False, 'origin': 'db'},
+                'temperature': {'value': 0.0, 'is_secret': False, 'origin': 'db'},
+                'top_p': {'value': 1.0, 'is_secret': False, 'origin': 'db'},
+                'max_tokens': {'value': 1400, 'is_secret': False, 'origin': 'db'},
+                'timeout_s': {'value': 10, 'is_secret': False, 'origin': 'db'},
+            },
+            source='db',
+            source_reason='db_row',
+        )
         self.server.log_store.read_chat_log_events = lambda **_kwargs: {
             'items': [
                 {
@@ -242,6 +255,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             self.server.memory_store.get_latest_identity_staging_state = original_get_latest_identity_staging_state
             self.server.static_identity_content.read_static_identity_snapshot = original_read_static_identity_snapshot
             self.server.log_store.read_chat_log_events = original_read_chat_log_events
+            self.server.runtime_settings.get_identity_periodic_model_settings = original_get_identity_periodic_model_settings
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
@@ -269,6 +283,26 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         )
         self.assertFalse(data['active_runtime']['legacy_drives_active_injection'])
         self.assertEqual(data['active_runtime']['read_surface_stage'], 'lot_b5_identity_operator_truth')
+        self.assertEqual(data['active_runtime']['mutable_judge_runtime']['module'], 'mutable_identity_judge_v2_add_only')
+        self.assertEqual(data['active_runtime']['mutable_judge_runtime']['caller'], 'mutable_identity_judge')
+        self.assertEqual(data['active_runtime']['mutable_judge_runtime']['runtime_slot'], 'identity_periodic_model')
+        self.assertEqual(data['active_runtime']['mutable_judge_runtime']['runtime_slot_compatibility'], 'legacy_compatible_name')
+        self.assertEqual(data['active_runtime']['mutable_judge_runtime']['model'], 'openai/gpt-5.2')
+        self.assertEqual(data['active_runtime']['mutable_judge_runtime']['model_source'], 'db')
+        self.assertEqual(data['active_runtime']['mutable_judge_runtime']['prompt_kind'], 'mutable_identity_judge_v2')
+        self.assertEqual(
+            data['active_runtime']['mutable_judge_runtime']['prompt_path'],
+            'prompts/identity_mutable_judge_v2.txt',
+        )
+        self.assertEqual(data['active_runtime']['mutable_judge_runtime']['contract'], 'mutable_judge_v2')
+        self.assertTrue(data['active_runtime']['mutable_judge_runtime']['structured_output'])
+        self.assertEqual(
+            data['active_runtime']['mutable_judge_runtime']['structured_output_schema'],
+            'json_schema_strict',
+        )
+        self.assertTrue(data['active_runtime']['mutable_judge_runtime']['provider_require_parameters'])
+        self.assertEqual(data['active_runtime']['mutable_judge_runtime']['window_target_pairs'], 5)
+        self.assertEqual(data['active_runtime']['mutable_judge_runtime']['verdicts'], ['add', 'no_change'])
         self.assertTrue(data['active_runtime']['identity_runtime_regime']['staging_not_injected'])
         self.assertEqual(data['active_runtime']['identity_runtime_regime']['window_target_pairs'], 5)
         self.assertEqual(

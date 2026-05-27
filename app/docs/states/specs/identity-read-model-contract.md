@@ -50,6 +50,7 @@ Le read-model doit exposer explicitement:
 - `governance_read_via = "/api/admin/identity/governance"`
 - `governance_editable_via = "/api/admin/identity/governance"`
 - `runtime_representations_read_via = "/api/admin/identity/runtime-representations"`
+- `mutable_judge_runtime` comme fiche operateur du juge mutable actif: module `mutable_identity_judge_v2_add_only`, caller `mutable_identity_judge`, slot runtime `identity_periodic_model`, modele effectif, prompt actif, contrat `mutable_judge_v2`, structured output strict et verdicts `add` / `no_change`
 - `identity_runtime_regime` comme rappel compact du regime runtime actif: `runtime_pipeline`, `window_target_pairs=5`, budget mutable, stages actifs, writer score-first desactive et promotion static desactivee
 - `identity_staging` comme verite read-only distincte du canon actif injecte
 
@@ -83,6 +84,34 @@ Chaque sujet expose exactement ces couches:
 - `legacy_fragments`
 - `evidence`
 - `conflicts`
+
+## `active_runtime.mutable_judge_runtime`
+
+Bloc read-only compact du caller modele actif qui pilote l'admission mutable automatique.
+
+Champs minimaux:
+- `module = "mutable_identity_judge_v2_add_only"`
+- `caller = "mutable_identity_judge"`
+- `runtime_slot = "identity_periodic_model"`
+- `runtime_slot_compatibility = "legacy_compatible_name"`
+- `model`
+- `model_source`
+- `model_source_reason`
+- `prompt_kind = "mutable_identity_judge_v2"`
+- `prompt_path = "prompts/identity_mutable_judge_v2.txt"`
+- `contract = "mutable_judge_v2"`
+- `contract_status`
+- `structured_output = true`
+- `structured_output_schema = "json_schema_strict"`
+- `provider_require_parameters = true`
+- `window_target_pairs = 5`
+- `verdicts = ["add", "no_change"]`
+- `role = "5_pairs_to_add_no_change_ontological_identity_mutables"`
+
+Semantique:
+- ce bloc ne modifie pas le runtime; il expose la verite operateur du slot qui est deja consomme par le juge;
+- le nom `identity_periodic_model` reste une compatibilite de stockage/admin, pas une indication que `identity_periodic_agent` serait actif;
+- aucune fenetre brute, proposition brute, prompt complet ou secret OpenRouter n'y apparait.
 
 ## `identity_staging`
 

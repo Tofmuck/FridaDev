@@ -378,7 +378,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             return runtime_settings.RuntimeSectionView(
                 section=section,
                 payload={
-                    'model': {'value': 'anthropic/claude-haiku-4.5', 'is_secret': False, 'origin': 'db'},
+                    'model': {'value': 'openai/gpt-5.2', 'is_secret': False, 'origin': 'db'},
                     'temperature': {'value': 0.0, 'is_secret': False, 'origin': 'db'},
                     'top_p': {'value': 1.0, 'is_secret': False, 'origin': 'db'},
                     'max_tokens': {'value': 1400, 'is_secret': False, 'origin': 'db'},
@@ -398,8 +398,16 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         data = response.get_json()
         self.assertTrue(data['ok'])
         self.assertEqual(data['section'], 'identity_periodic_model')
-        self.assertEqual(data['payload']['model']['value'], 'anthropic/claude-haiku-4.5')
+        self.assertEqual(data['payload']['model']['value'], 'openai/gpt-5.2')
         self.assertEqual(data['payload']['max_tokens']['value'], 1400)
+        self.assertEqual(data['readonly_info']['active_module']['value'], 'mutable_identity_judge_v2_add_only')
+        self.assertEqual(data['readonly_info']['runtime_slot']['value'], 'identity_periodic_model')
+        self.assertEqual(data['readonly_info']['model_field']['value'], 'identity_periodic_model.model')
+        self.assertEqual(data['readonly_info']['caller']['value'], 'mutable_identity_judge')
+        self.assertEqual(data['readonly_info']['contract']['value'], 'mutable_judge_v2')
+        self.assertEqual(data['readonly_info']['prompt_kind']['value'], 'mutable_identity_judge_v2')
+        self.assertIn('json_schema strict=true', data['readonly_info']['structured_output']['value'])
+        self.assertIn('add/no_change ontologique', data['readonly_info']['runtime_role']['value'])
         self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/identity_mutable_judge_v2.txt')
         self.assertEqual(
             data['readonly_info']['legacy_prompt_path']['value'],
