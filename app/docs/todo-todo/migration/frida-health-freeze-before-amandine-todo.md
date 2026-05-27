@@ -42,6 +42,17 @@ Le freeze doit distinguer:
 - [ ] Ne pas refactorer le code hors correction bloquante.
 - [ ] Ne pas transformer le freeze en audit infini: tout finding doit etre classe P0/P1/P2/P3 et rattache a la duplication.
 
+## Convention d'execution des tests
+
+Chaque preuve doit dire explicitement quel environnement elle teste:
+
+- [ ] **Working copy montee**: utiliser cette forme avant rebuild, pour tester exactement `/opt/platform/fridadev/app`:
+  - `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest <suite>`
+- [ ] **Conteneur live**: utiliser cette forme apres rebuild, pour tester l'image effectivement servie:
+  - `docker exec platform-fridadev python -m unittest <suite>`
+- [ ] Un test `docker exec platform-fridadev ...` n'est autoritatif sur un patch recent que si l'app a ete rebuildee depuis ce patch.
+- [ ] Pour un patch docs-only, ne pas rebuild; les preuves sont alors `git diff --check`, greps, liens et relecture.
+
 ## Lot 0 - Inventaire et cartographie du freeze
 
 - [ ] Verifier branche, dernier commit, et clean worktree:
@@ -148,10 +159,14 @@ Le freeze doit distinguer:
 
 ### Tests/preuves Lot 1
 
-- [ ] `python -m unittest tests.unit.chat.test_chat_memory_flow_identity_mode_pipeline`
-- [ ] `python -m unittest tests.test_server_admin_settings_read_contract tests.test_server_admin_identity_read_model_phase2`
-- [ ] `python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
-- [ ] `python -m unittest tests.test_minimal_validation_phase4`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.chat.test_chat_memory_flow_identity_mode_pipeline`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.chat.test_chat_memory_flow_identity_mode_pipeline`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_settings_read_contract tests.test_server_admin_identity_read_model_phase2`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_settings_read_contract tests.test_server_admin_identity_read_model_phase2`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_minimal_validation_phase4`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_minimal_validation_phase4`
 - [ ] Smoke live note avec status, routes, model ids et absence d'erreurs.
 
 ### Critere de sortie Lot 1
@@ -210,10 +225,14 @@ Le freeze doit distinguer:
 
 ### Tests/preuves Lot 2
 
-- [ ] `python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
-- [ ] `python -m unittest tests.unit.chat.test_mutable_identity_judge_final_validation`
-- [ ] `python -m unittest tests.test_identity_phase4`
-- [ ] `python -m unittest tests.test_server_admin_identity_read_model_phase2`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.chat.test_mutable_identity_judge_final_validation`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.chat.test_mutable_identity_judge_final_validation`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_identity_phase4`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_identity_phase4`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_identity_read_model_phase2`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_identity_read_model_phase2`
 - [ ] Grep non-concurrence:
   - `grep -RIn "score_operation\\|apply_periodic_agent_contract\\|mutable_judge_v1\\|target_ref\\|target_refs\\|clear_obsolete\\|mutable_tightening\\|mutable_merge" app/core app/memory app/admin app/tests app/docs/states app/docs/todo-todo || true`
 
@@ -328,10 +347,14 @@ Le freeze doit distinguer:
 
 ### Tests/preuves Lot 4
 
-- [ ] `python -m unittest tests.test_server_admin_settings_read_contract`
-- [ ] `python -m unittest tests.test_server_admin_identity_read_model_phase2`
-- [ ] `python -m unittest tests.unit.admin.test_identity_governance_service_phase5`
-- [ ] `python -m unittest tests.test_server_admin_identity_read_model_phase2 tests.test_server_admin_settings_read_contract`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_settings_read_contract`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_settings_read_contract`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_identity_read_model_phase2`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_identity_read_model_phase2`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.admin.test_identity_governance_service_phase5`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.admin.test_identity_governance_service_phase5`
+- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_identity_read_model_phase2 tests.test_server_admin_settings_read_contract`
+- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_identity_read_model_phase2 tests.test_server_admin_settings_read_contract`
 - [ ] Greps operateur:
   - `grep -RIn "Haiku\\|identity_periodic_agent\\|score-first\\|promotion_to_static_enabled.*true" app/admin app/web app/docs/states app/docs/todo-todo || true`
 
@@ -367,8 +390,15 @@ Le freeze doit distinguer:
 
 ### Tests/preuves Lot 5
 
-- [ ] Grep hardcoding:
-  - `grep -RIn "fridadev.frida-system.fr\\|fridadev-db.frida-system.fr\\|/opt/platform/fridadev\\|Tof\\|Frida" app --exclude-dir=.git || true`
+- [ ] Grep hostnames publics:
+  - `grep -RIn "fridadev.frida-system.fr\\|fridadev-db.frida-system.fr" app AGENTS.md README.md --exclude-dir=.git || true`
+- [ ] Grep chemins OVH / working copy:
+  - `grep -RIn "/opt/platform/fridadev\\|/opt/platform/fridadev-app\\|/opt/platform/fridadev-db" app AGENTS.md README.md --exclude-dir=.git || true`
+- [ ] Grep traces utilisateur/personnelles hors fixtures attendues:
+  - `grep -RIn "Tof\\|Amandine" app AGENTS.md README.md --exclude-dir=.git || true`
+- [ ] Inspection manuelle ciblee des identites/statics/prompts:
+  - verifier `state/data/identity/`, `app/data/identity/` si present, `app/prompts/` et les docs source-of-truth sans lancer de grep global sur `Frida`;
+  - garder `Frida` seulement pour des recherches ciblees par fichier ou section, car c'est le nom normal du produit.
 - [ ] Grep legacy actif:
   - `grep -RIn "identity_periodic_agent\\|score_operation\\|apply_periodic_agent_contract\\|target_ref\\|clear_obsolete" app/core app/memory app/admin app/web app/tests || true`
 - [ ] Tests cibles selon fichiers corriges.
