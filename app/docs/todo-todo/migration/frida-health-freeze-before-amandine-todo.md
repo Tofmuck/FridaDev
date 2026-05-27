@@ -468,7 +468,7 @@ Actions non effectuees au Lot 2:
 
 ## Lot 3 - Freeze DB / state / logs et preparation purge future
 
-- [ ] Inventorier les tables DB contenant des donnees utilisateur ou etat runtime:
+- [x] Inventorier les tables DB contenant des donnees utilisateur ou etat runtime:
   - conversations;
   - messages;
   - memories;
@@ -481,57 +481,177 @@ Actions non effectuees au Lot 2:
   - active documents;
   - documents uploades;
   - caches eventuels.
-- [ ] Pour chaque table, classer pour Amandine:
+- [x] Pour chaque table, classer pour Amandine:
   - seed propre requis;
   - vide au depart;
   - valeur runtime a reseeder;
   - archive Frida a ne pas copier;
   - backup obligatoire avant action.
-- [ ] Inventorier `state/` sans afficher contenu sensible:
+- [x] Inventorier `state/` sans afficher contenu sensible:
   - chemins;
   - tailles;
   - counts;
   - extensions;
   - timestamps;
   - pas de dump de fichiers.
-- [ ] Identifier les fichiers `state/` a rendre neufs pour Amandine:
+- [x] Identifier les fichiers `state/` a rendre neufs pour Amandine:
   - conversations;
   - logs;
   - uploads;
   - active documents;
   - identity state;
   - caches.
-- [ ] Identifier les fichiers de config/code a conserver depuis le repo:
+- [x] Identifier les fichiers de config/code a conserver depuis le repo:
   - prompts;
   - specs;
   - assets;
   - migrations SQL;
   - seeds non secrets.
-- [ ] Preparer la future checklist backup/purge, sans l'executer:
+- [x] Preparer la future checklist backup/purge, sans l'executer:
   - backup DB Frida;
   - backup `state/`;
   - preuve de restauration minimale;
   - commande de creation DB neuve;
   - commande de seed runtime settings;
   - verification post-purge.
-- [ ] Verifier que les logs recents ne contiennent pas de secret ou contenu brut evident:
+- [x] Verifier que les logs recents ne contiennent pas de secret ou contenu brut evident:
   - grep content-free sur noms de variables sensibles;
   - pas d'affichage des valeurs.
 
 ### Tests/preuves Lot 3
 
-- [ ] Inventaire DB content-free via requetes `count(*)`, tailles et noms de table seulement.
-- [ ] Inventaire `state/` par `find`, `du`, counts, extensions.
-- [ ] Grep secret-safe:
+- [x] Inventaire DB content-free via requetes `count(*)`, tailles et noms de table seulement.
+- [x] Inventaire `state/` par `find`, `du`, counts, extensions.
+- [x] Grep secret-safe:
   - noms de patterns seulement;
   - aucun affichage de valeur secrete.
 
 ### Critere de sortie Lot 3
 
-- [ ] Liste DB/state a neuver pour Amandine complete.
-- [ ] Plan backup/purge futur ecrit, non execute.
-- [ ] Aucun secret expose.
-- [ ] Aucun nettoyage live effectue.
+- [x] Liste DB/state a neuver pour Amandine complete.
+- [x] Plan backup/purge futur ecrit, non execute.
+- [x] Aucun secret expose.
+- [x] Aucun nettoyage live effectue.
+
+### Photo operatoire Lot 3 - 2026-05-27
+
+Etat repo au demarrage:
+
+- branche: `migration`;
+- dernier commit avant patch Lot 3: `7e2c67e docs: validate health freeze lot 2 identity`;
+- worktree: clean avant patch Lot 3.
+
+Sources relues:
+
+- `app/docs/todo-done/migrations/fridadev-to-frida-system-migration-todo.md`: archive OVH, DB dediee Frida, principe backup avant action;
+- `app/docs/states/baselines/database-schema-baseline.md`: baseline DB historique, completee par introspection live;
+- `app/admin/sql/runtime_settings_v1.sql`: sections runtime settings a reseeder, dont `identity_periodic_model`;
+- modules de persistence: `memory_store.py`, `memory_identity_mutables.py`, `memory_identity_staging.py`, `observability/`, `core/active_conversation_documents.py`, workspace files.
+
+Inventaire DB live content-free:
+
+Note: inventaire par schemas/tables, counts, tailles, colonnes texte/json/bytea comptees, timestamps min/max seulement. Aucun contenu texte, JSON payload, document, conversation, mutable, secret ou DSN n'a ete affiche.
+
+| Famille | Relations observees | Rows | Classification Amandine |
+| --- | --- | --- | --- |
+| conversations | `public.conversations`, `public.conversation_messages` | 107 / 861 | `frida_archive_do_not_copy`, `empty_for_amandine`, `backup_required_before_action` |
+| memory/RAG | `public.traces`, `public.summaries`, `public.arbiter_decisions` | 743 / 2 / 1931 | `frida_archive_do_not_copy`, `empty_for_amandine`, `backup_required_before_action` |
+| identity legacy/evidence | `public.identities`, `public.identity_evidence`, `public.identity_conflicts` | 395 / 415 / 1064 | `frida_archive_do_not_copy`, `empty_for_amandine`; legacy non source active mais a sauvegarder avant purge |
+| identity mutable canon/audit/staging | `public.identity_mutables`, `public.identity_mutable_audit`, `public.identity_mutable_staging` | 2 / 9 / 22 | `frida_archive_do_not_copy`, `empty_for_amandine`; futur seed Amandine separe si decision produit |
+| runtime settings | `public.runtime_settings`, `public.runtime_settings_history` | 14 / 65 | `runtime_setting_reseed`; historique Frida `frida_archive_do_not_copy`; secrets reseedes hors Git |
+| active documents | `public.active_conversation_documents` | 6 | `frida_archive_do_not_copy`, `empty_for_amandine`, `backup_required_before_action` |
+| workspace/catalogue files | `public.workspace_folders`, `public.workspace_files`, `public.workspace_file_selections` | 2 / 12 / 12 | `frida_archive_do_not_copy` sauf seed produit explicite; fichiers associes a neuver |
+| hermeneutic state | `public.hermeneutic_node_states` | 22 | `frida_archive_do_not_copy`, `empty_for_amandine` |
+| observability raw/events | `observability.chat_log_events` | 138885 | `frida_archive_do_not_copy`, `empty_for_amandine`, `backup_required_before_action` |
+| observability projections | `observability.dashboard_turn_facts`, `dashboard_conversation_summaries`, `dashboard_metric_buckets`, `dashboard_materialization_status` | 1319 / 90 / 713 / 1 | `empty_for_amandine`; regenerable depuis events si events seedes, sinon repartir vide |
+
+Etat DB support:
+
+| Preuve | Resultat |
+| --- | --- |
+| schemas live | `public`, `observability` |
+| extensions live | `pg_trgm`, `pgcrypto`, `plpgsql`, `vector` |
+| `runtime_settings` | 14 sections, toutes avec marqueur `is_secret`; 4 lignes avec marqueur `value_encrypted`; valeurs non affichees |
+| section modele mutable | `identity_periodic_model`, updated_by `celebrimbor_mutable_judge_model_cutover`, a reseeder pour Amandine vers le modele decide |
+
+Inventaire `state/` / mounts runtime content-free:
+
+Mounts observes sur `platform-fridadev`:
+
+| Source hote | Destination conteneur | Classification Amandine |
+| --- | --- | --- |
+| `/opt/platform/fridadev-app/state/conv` | `/app/conv` | `empty_for_amandine`; contient fichiers workspace/documents Frida |
+| `/opt/platform/fridadev-app/state/logs` | `/app/logs` | `empty_for_amandine`; logs Frida a archiver, ne pas copier |
+| `/opt/platform/fridadev/state/data` | `/app/data` | seed a reconstruire: identites/prompts/data produit selon decision; backups Frida a ne pas copier |
+
+Inventaire fichiers sans contenu:
+
+| Racine | Counts / taille | Extensions | Bornes dates | Classification Amandine |
+| --- | --- | --- | --- | --- |
+| repo `state/data/identity` | 7 fichiers, 5263 bytes | `.json` 2, `.md` 1, `.txt` 4 | 2026-04-12 -> 2026-05-26 | `seed_required` ou redefinition produit; ne pas copier tel quel si identite Frida/Tof |
+| repo `state/data/backups/manual-static-promotion/...` | 5 fichiers, 5723 bytes | `.json`/`.txt` | 2026-05-26 | `frida_archive_do_not_copy` |
+| runtime `state/conv/_workspace_files/...` | 10 fichiers, environ 4.2 MiB | `.pdf` 8, `.docx` 1, `.md` 1 | 2026-05-20 -> 2026-05-27 | `frida_archive_do_not_copy`, `empty_for_amandine` |
+| runtime `state/logs` | 15 fichiers, environ 1.2 MiB | `.jsonl` 15 | 2026-05-07 -> 2026-05-27 | `frida_archive_do_not_copy`, `empty_for_amandine` |
+| runtime app `state/data` | environ 28 KiB | identity/prompts/migrations dirs | selon fichiers | conserver seulement seeds non secrets explicitement retenus |
+
+Familles a rendre neuves pour Amandine:
+
+- DB conversations/messages/traces/summaries/arbiter decisions;
+- DB identity mutables/audit/staging et tables identity legacy/evidence/conflicts;
+- DB active documents et workspace file selections/files/folders;
+- DB observability raw events et projections dashboard;
+- runtime `state/conv` et documents uploades;
+- runtime `state/logs`;
+- runtime identity/static files si elles portent Frida/Tof, a remplacer par seed Amandine explicite;
+- runtime settings: reseed depuis valeurs produit, sans copier historique ni secrets Frida.
+
+Fichiers de config/code a conserver depuis le repo:
+
+- prompts applicatifs et prompts v2, apres verification produit;
+- specs source-of-truth;
+- assets UI;
+- migrations SQL et code de creation tables;
+- tests;
+- seeds non secrets explicitement valides;
+- pas les backups manuels Frida, logs live, uploads ou fichiers identity personnels.
+
+Checklist future backup/purge, non executee:
+
+1. annoncer gel des ecritures Frida si une purge/copie reelle est planifiee;
+2. backup DB Frida complet hors Git, avec horodatage et verification `pg_restore --list`;
+3. backup `state/` Frida hors Git: `fridadev-app/state/conv`, `fridadev-app/state/logs`, `fridadev/state/data`;
+4. preuve de restauration minimale dans une DB temporaire dediee, jamais dans la DB live;
+5. creation DB Amandine neuve avec extensions `pgcrypto`, `vector`, `pg_trgm` si le runtime les attend;
+6. application migrations/schema depuis le repo;
+7. seed runtime settings Amandine: modeles, services, resources, database, identity governance; secrets injectes hors Git;
+8. seed identity/static Amandine seulement apres decision produit explicite;
+9. verification post-seed: counts attendus vides, runtime settings presents, secrets masques, admin lisible;
+10. aucun transfert de conversations, logs, documents, mutables, traces ou summaries Frida/Tof vers Amandine sans GO explicite.
+
+Checks logs secret-safe:
+
+| Source | Preuve | Resultat |
+| --- | --- | --- |
+| `/opt/platform/fridadev-app/state/logs` | compte par motif, sans lignes ni valeurs | 15 fichiers; `OPENROUTER_API_KEY`, `FRIDA_MEMORY_DB_DSN`, `Authorization`, `Bearer`, `Set-Cookie`, `Cookie:`, `password`, `secret`, `api_key`, `dsn`, `.env` = 0; motif generique `token` = 1688 occurrences, a verifier au Lot 4 si les logs doivent etre exportes |
+| `/opt/platform/fridadev/state/data` | compte par motif, sans lignes ni valeurs | 12 fichiers; 0 occurrence sur tous les motifs sensibles testes |
+| `docker logs --since 24h platform-fridadev` | compte motifs seulement | 0 bytes retournes; 0 `ERROR`, `CRITICAL`, `Traceback` et 0 motif secret teste |
+| `observability.chat_log_events` recents | 7 events lus via API interne, motifs comptes sans payload affiche | 0 occurrence motif secret teste; 0 statut `error` |
+
+Findings Lot 3:
+
+| ID | Surface | Severite | Duplication impact | Correction requise | Statut | Lien preuve |
+| --- | --- | --- | --- | --- | --- | --- |
+| LOT3-P3-001 | `state/logs` | P3 | faible: le motif generique `token` apparait dans les logs jsonl, probablement noms de champs/counts; aucune valeur n'a ete affichee ni confirmee | verifier au Lot 4 avant tout export de logs; ne pas copier logs Frida vers Amandine | accepte | grep secret-safe counts |
+
+Actions non effectuees au Lot 3:
+
+- pas de creation Amandine;
+- pas de purge, copie, dump, restore ou migration DB;
+- pas d'ecriture DB/state volontaire;
+- pas de nettoyage `state/`;
+- pas de rebuild/restart;
+- pas de modification modele/runtime/platforme;
+- pas d'affichage volontaire de secret, cookie, DSN complet, `.env`, conversation brute, mutable brute, prompt complet, document utilisateur ou payload log brut.
 
 ## Lot 4 - Freeze admin / observabilite / verite operateur
 
