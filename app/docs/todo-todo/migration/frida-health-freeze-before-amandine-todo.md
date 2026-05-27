@@ -55,10 +55,10 @@ Chaque preuve doit dire explicitement quel environnement elle teste:
 
 ## Lot 0 - Inventaire et cartographie du freeze
 
-- [ ] Verifier branche, dernier commit, et clean worktree:
+- [x] Verifier branche, dernier commit, et clean worktree:
   - `git status --short --branch`
   - `git log --oneline -10`
-- [ ] Cartographier les surfaces runtime a valider:
+- [x] Cartographier les surfaces runtime a valider:
   - chat principal;
   - prompt augmente;
   - identity static / mutable;
@@ -71,7 +71,7 @@ Chaque preuve doit dire explicitement quel environnement elle teste:
   - logs / observabilite;
   - runtime settings;
   - backup / restore minimal.
-- [ ] Lister les specs source-of-truth a relire avant test:
+- [x] Lister les specs source-of-truth a relire avant test:
   - `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`;
   - `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`;
   - `app/docs/states/specs/mutable-identity-judge-contract.md`;
@@ -80,7 +80,7 @@ Chaque preuve doit dire explicitement quel environnement elle teste:
   - `app/docs/states/specs/active-conversation-documents-contract.md`;
   - `app/docs/states/specs/fridadev-web-search-regimes-source-first-contract.md`;
   - `app/docs/states/specs/memory-admin-surface-contract.md`.
-- [ ] Definir le format de preuve content-free:
+- [x] Definir le format de preuve content-free:
   - statuts;
   - counts;
   - model ids;
@@ -89,7 +89,7 @@ Chaque preuve doit dire explicitement quel environnement elle teste:
   - hashes courts si necessaire;
   - aucune conversation brute;
   - aucune mutable brute hors fixture synthetique.
-- [ ] Produire un tableau de findings avec colonnes:
+- [x] Produire un tableau de findings avec colonnes:
   - id;
   - surface;
   - severite P0/P1/P2/P3;
@@ -100,16 +100,89 @@ Chaque preuve doit dire explicitement quel environnement elle teste:
 
 ### Tests/preuves Lot 0
 
-- [ ] `git status --short --branch`
-- [ ] `find app/docs/todo-todo app/docs/todo-done app/docs/states -maxdepth 3 -type f | sort`
-- [ ] `grep -RIn "TODO actif\\|chantier actif\\|migration\\|Amandine" app/docs README.md AGENTS.md || true`
+- [x] `git status --short --branch`
+- [x] `find app/docs/todo-todo app/docs/todo-done app/docs/states -maxdepth 3 -type f | sort`
+- [x] `grep -RIn "TODO actif\\|chantier actif\\|migration\\|Amandine" app/docs README.md AGENTS.md || true`
 
 ### Critere de sortie Lot 0
 
-- [ ] Les surfaces a tester sont listees.
-- [ ] Les preuves attendues sont content-free.
-- [ ] Les severites P0/P1/P2/P3 sont definies.
-- [ ] Aucun test destructif n'est prevu.
+- [x] Les surfaces a tester sont listees.
+- [x] Les preuves attendues sont content-free.
+- [x] Les severites P0/P1/P2/P3 sont definies.
+- [x] Aucun test destructif n'est prevu.
+
+### Photo operatoire Lot 0 - 2026-05-27
+
+Etat git au demarrage du lot:
+
+- branche: `migration`;
+- upstream: `origin/migration`;
+- dernier commit avant patch Lot 0: `d274d5a docs: clarify health freeze execution checks`;
+- worktree: clean avant patch Lot 0.
+
+Surfaces runtime a tester dans les lots suivants:
+
+| Surface | Lots | Preuve attendue | Destructif |
+| --- | --- | --- | --- |
+| Chat principal / streaming / prompt augmente | Lot 1 | statuts routes, tests chat, smoke synthetique content-free | non |
+| Identity static / mutable / juge mutable v2 add-only | Lot 2 | model id, module, contrat, counts, hashes courts, tests add-only | non |
+| Memory / RAG / resumes | Lots 1-2 | counts, routes, status, tests existants, aucun contenu brut | non |
+| Web search / documents actifs | Lot 1 | status, source regime, reason codes, non-contamination | non |
+| Admin / read-model / runtime settings | Lots 1, 2, 4 | champs operateur, model ids, prompts, contrats | non |
+| Logs / observabilite | Lots 1, 4 | events content-free, erreurs classees, aucun secret | non |
+| DB / state / backup-restore minimal | Lot 3 | inventaire tables/fichiers, classification neuf/seed/legacy | lecture seule au freeze |
+| Code / docs / TODO actifs | Lot 5 | greps classes, tests stale detectes, correction seulement si bloquante | non |
+
+Specs source-of-truth relues ou verifiees:
+
+| Spec | Statut Lot 0 |
+| --- | --- |
+| `app/docs/states/architecture/fridadev-current-runtime-pipeline.md` | presente |
+| `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md` | presente |
+| `app/docs/states/specs/mutable-identity-judge-contract.md` | presente |
+| `app/docs/states/specs/identity-read-model-contract.md` | presente |
+| `app/docs/states/specs/admin-runtime-settings-schema.md` | presente |
+| `app/docs/states/specs/active-conversation-documents-contract.md` | presente |
+| `app/docs/states/specs/fridadev-web-search-regimes-source-first-contract.md` | presente |
+| `app/docs/states/specs/memory-admin-surface-contract.md` | presente |
+
+Format de preuve content-free retenu:
+
+- autorise: statuts, counts, model ids, caller/module/contrat, routes, timestamps, reason codes, longueurs, hashes courts, exit codes;
+- interdit: conversations brutes, mutables reelles brutes, prompts complets, documents utilisateur complets, secrets, cookies, DSN complets, `.env`;
+- fixtures synthetiques autorisees si elles sont explicitement marquees comme telles et ne touchent pas la DB live.
+
+Severites utilisables:
+
+| Severite | Definition freeze |
+| --- | --- |
+| P0 | risque perte de donnees, fuite secret, corruption DB/state, ou duplication impossible immediatement |
+| P1 | pipeline principal casse ou verite operateur fausse sur un mecanisme central avant duplication |
+| P2 | incoherence serieuse a corriger avant duplication pour eviter une instance Amandine confuse ou fragile |
+| P3 | confort, documentation, dette ou nettoyage acceptable apres duplication si explicitement accepte |
+
+Findings Lot 0:
+
+| ID | Surface | Severite | Duplication impact | Correction requise | Statut | Lien preuve |
+| --- | --- | --- | --- | --- | --- | --- |
+| LOT0-NONE | Inventaire documentaire | none | aucun bloquant detecte au Lot 0 | aucune correction runtime | clos | specs presentes; grep actif/migration classe comme bruit documentaire attendu |
+
+Risques evidents a surveiller dans les lots suivants:
+
+- ne pas confondre working copy montee et conteneur live non rebuilde;
+- ne jamais copier DB/state Frida/Tof vers Amandine par accident;
+- verifier explicitement les docs actives qui parlent encore d'Amandine ou de chantiers produit ouverts;
+- garder `identity_periodic_model` comme nom de compatibilite seulement, sans raconter l'ancien agent comme actif;
+- ne pas convertir le freeze en refactor general: seuls les P0/P1/P2 bloquants doivent etre corriges avant decision.
+
+Aucune action destructive prevue ou executee au Lot 0:
+
+- pas de tests runtime;
+- pas de smoke live;
+- pas de rebuild;
+- pas de lecture ou modification de secrets;
+- pas de purge, copie, migration ou ecriture DB/state;
+- pas d'action Caddy, Authelia, Docker global, reseaux ou hostnames.
 
 ## Lot 1 - Freeze fonctionnel runtime/live
 
