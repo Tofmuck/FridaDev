@@ -188,10 +188,10 @@ Aucune action destructive prevue ou executee au Lot 0:
 
 ## Lot 1 - Freeze fonctionnel runtime/live
 
-- [ ] Verifier que l'app live est healthy:
+- [x] Verifier que l'app live est healthy:
   - `docker ps --filter name=platform-fridadev --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"`;
   - `curl --max-time 12 -sSI https://fridadev.frida-system.fr/admin | grep -vi '^set-cookie:' | sed -n '1,12p'`.
-- [ ] Verifier que les routes principales repondent selon leur contrat:
+- [x] Verifier que les routes principales repondent selon leur contrat:
   - `/`;
   - `/admin`;
   - `/dashboard`;
@@ -199,58 +199,126 @@ Aucune action destructive prevue ou executee au Lot 0:
   - `/memory-admin`;
   - `/hermeneutic-admin`;
   - `/identity`.
-- [ ] Executer les tests runtime essentiels dans le conteneur:
+- [x] Executer les tests runtime essentiels dans le conteneur:
   - tests chat flow;
   - tests admin settings read contract;
   - tests identity read-model;
   - tests mutable judge/apply;
   - tests active documents;
   - tests web search si disponibles sans provider externe.
-- [ ] Smoke chat principal avec conversation synthetique non sensible:
+- [x] Smoke chat principal avec conversation synthetique non sensible:
   - verifier reponse streaming;
   - verifier absence d'erreur serveur;
   - verifier prompt augmente actif par observabilite content-free;
   - verifier absence de fuite `reasoning_details`.
-- [ ] Smoke prompt augmente:
+- [x] Smoke prompt augmente:
   - presence reference temporelle;
   - identity_input injecte quand attendu;
   - memory/RAG injecte seulement selon contrat;
   - active documents injectes seulement si attaches.
-- [ ] Smoke summaries:
+- [x] Smoke summaries:
   - verifier qu'un resume existant est lu sans erreur;
   - verifier qu'aucun resume ne promet une memoire durable inexistante.
-- [ ] Smoke web search:
+- [x] Smoke web search:
   - web off => aucun appel externe;
   - URL explicite => lecture locale/controlee;
   - recherche ouverte => provider configure, observabilite content-free.
-- [ ] Smoke active documents:
+- [x] Smoke active documents:
   - document texte synthetique;
   - image/PDF seulement si deja couvert par les tests;
   - verifier non-contamination Memory/RAG/Identity/Summary.
-- [ ] Verifier absence d'erreurs runtime recentes bloquantes:
+- [x] Verifier absence d'erreurs runtime recentes bloquantes:
   - logs conteneur filtres par `ERROR|CRITICAL|Traceback`;
   - events applicatifs recents content-free;
   - ne pas afficher prompt complet, conversations, secrets.
 
 ### Tests/preuves Lot 1
 
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.chat.test_chat_memory_flow_identity_mode_pipeline`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.chat.test_chat_memory_flow_identity_mode_pipeline`
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_settings_read_contract tests.test_server_admin_identity_read_model_phase2`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_settings_read_contract tests.test_server_admin_identity_read_model_phase2`
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_minimal_validation_phase4`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_minimal_validation_phase4`
-- [ ] Smoke live note avec status, routes, model ids et absence d'erreurs.
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.chat.test_chat_memory_flow_identity_mode_pipeline`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.chat.test_chat_memory_flow_identity_mode_pipeline`
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_settings_read_contract tests.test_server_admin_identity_read_model_phase2`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_settings_read_contract tests.test_server_admin_identity_read_model_phase2`
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply`
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_minimal_validation_phase4`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_minimal_validation_phase4`
+- [x] Smoke live note avec status, routes, model ids et absence d'erreurs.
 
 ### Critere de sortie Lot 1
 
-- [ ] App live healthy.
-- [ ] Chat principal OK.
-- [ ] Admin OK.
-- [ ] Web/documents/summaries ne presentent aucun P0/P1/P2.
-- [ ] Les erreurs recentes sont classees ou absentes.
+- [x] App live healthy.
+- [x] Chat principal OK.
+- [x] Admin OK.
+- [x] Web/documents/summaries ne presentent aucun P0/P1/P2.
+- [x] Les erreurs recentes sont classees ou absentes.
+
+### Photo operatoire Lot 1 - 2026-05-27
+
+Etat repo au demarrage:
+
+- branche: `migration`;
+- dernier commit avant patch Lot 1: `c65bce7 docs: clarify health freeze active labels`;
+- worktree: clean avant patch Lot 1.
+
+Health live:
+
+| Preuve | Resultat |
+| --- | --- |
+| conteneur app | `platform-fridadev` up et healthy |
+| conteneur DB | `platform-fridadev-postgres` up et healthy |
+| `/admin` public | `HTTP/2 302` vers Authelia, cookies filtres |
+| routes `/`, `/admin`, `/dashboard`, `/log`, `/memory-admin`, `/hermeneutic-admin`, `/identity` | toutes `HTTP/2 302` vers Authelia, cookies filtres |
+
+Tests obligatoires:
+
+Note: aucun patch runtime n'a ete fait au Lot 1, donc aucun rebuild n'a ete lance. Les lignes "conteneur live apres rebuild" ci-dessus sont cochees comme preuves du conteneur actuellement servi, pas comme validation d'une image rebuildee apres ce patch docs-only.
+
+| Environnement | Suite | Resultat |
+| --- | --- | --- |
+| working copy montee | `tests.unit.chat.test_chat_memory_flow_identity_mode_pipeline` | OK, 5 tests |
+| conteneur live | `tests.unit.chat.test_chat_memory_flow_identity_mode_pipeline` | OK, 5 tests |
+| working copy montee | `tests.test_server_admin_settings_read_contract tests.test_server_admin_identity_read_model_phase2` | OK, 26 tests; logs DB indisponible attendus car `docker run` non attache au Postgres live |
+| conteneur live | `tests.test_server_admin_settings_read_contract tests.test_server_admin_identity_read_model_phase2` | OK, 26 tests |
+| working copy montee | `tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply` | OK, 27 tests |
+| conteneur live | `tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply` | OK, 27 tests |
+| working copy montee | `tests.test_minimal_validation_phase4` | OK, 9 tests |
+| conteneur live | `tests.test_minimal_validation_phase4` | OK, 9 tests |
+
+Smokes complementaires content-free:
+
+| Surface | Environnement | Preuve | Resultat |
+| --- | --- | --- | --- |
+| chat stream / prompt augmente / summaries | working copy montee | tests cibles `test_server_logs_phase3` | OK, 4 tests; logs DB indisponible attendus en `docker run` |
+| chat stream / prompt augmente / summaries | conteneur live | tests cibles `test_server_logs_phase3` | OK, 4 tests |
+| documents actifs / non-contamination | working copy montee | `test_server_active_documents_contract`, `test_active_document_prompt_lane`, `test_active_document_non_contamination_lot5`, `test_active_documents_observability_lot7` | OK, 47 tests; fixtures synthetiques |
+| documents actifs / non-contamination | conteneur live | memes suites | OK, 47 tests |
+| web search source-first / observabilite | conteneur live | `test_web_search_phase4`, `test_web_search_source_first`, `test_web_search_observability`, `test_chat_turn_logger_web_search` | OK, 48 tests |
+| web search source-first / observabilite | working copy montee | memes suites | P3: 47/48 OK, 1 test depend de settings DB/secrets absents dans `docker run`; le conteneur live passe |
+
+Observabilite live content-free:
+
+| Surface | Resultat |
+| --- | --- |
+| admin settings `identity_periodic_model` | model `openai/gpt-5.2`, module `mutable_identity_judge_v2_add_only`, caller `mutable_identity_judge`, contract `mutable_judge_v2`, prompt resume par longueur/hash court seulement |
+| admin settings `main_model` | model `openai/gpt-5.1`, `reasoning_effort=high`, secret `api_key` present mais valeur non visible |
+| `/api/admin/logs/chat/metrics` in-container | `events_count=2000`, `errors_by_stage_count=0`, redaction keys presentes |
+| `observability.log_store.read_chat_log_events(limit=120)` | 120 events lus, `error_like_count=0`, statuts `ok=114`, `skipped=6` |
+| `docker logs --since 2h platform-fridadev | grep ERROR|CRITICAL|Traceback` | aucun hit recent |
+
+Findings Lot 1:
+
+| ID | Surface | Severite | Duplication impact | Correction requise | Statut | Lien preuve |
+| --- | --- | --- | --- | --- | --- | --- |
+| LOT1-P3-001 | Web search tests en working copy montee | P3 | faible: la preuve montee n'est pas autonome pour un test qui attend runtime settings DB/secrets; pas d'impact live observe | aucune avant duplication; utiliser le conteneur live ou un environnement de test avec DB/settings pour cette preuve | accepte | live OK 48/48; working copy montee 47/48 avec `missing secret config: main_model.api_key` |
+
+Actions non effectuees au Lot 1:
+
+- pas de creation Amandine;
+- pas de purge, copie, migration ou ecriture DB/state volontaire;
+- pas de rebuild;
+- pas de changement modele;
+- pas de modification Caddy, Authelia, Docker global, reseaux ou hostnames;
+- pas d'affichage volontaire de secret, cookie, DSN complet, `.env`, conversation brute ou prompt complet dans la note de freeze.
 
 ## Lot 2 - Freeze identity / memoire / mutable
 
