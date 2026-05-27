@@ -655,34 +655,34 @@ Actions non effectuees au Lot 3:
 
 ## Lot 4 - Freeze admin / observabilite / verite operateur
 
-- [ ] Verifier `/admin`:
+- [x] Verifier `/admin`:
   - modules modeles lisibles;
   - `identity_periodic_model` explique la compatibilite de nom;
   - modele juge mutable `openai/gpt-5.2` visible;
   - prompt/contract/caller visibles;
   - secrets masques.
-- [ ] Verifier `/dashboard`:
+- [x] Verifier `/dashboard`:
   - pas de statut mensonger;
   - erreurs et activites recentes comprehensibles;
   - pas de contenu brut sensible hors surfaces prevues.
-- [ ] Verifier `/log`:
+- [x] Verifier `/log`:
   - filtres fonctionnels;
   - events `mutable_identity_judge` / `mutable_identity_judge_apply`;
   - pas de fenetre brute;
   - pas de prompt complet.
-- [ ] Verifier `/memory-admin`:
+- [x] Verifier `/memory-admin`:
   - counts et sources;
   - pas de confusion Memory/RAG/Identity;
   - pas de scoring legacy comme verite active.
-- [ ] Verifier `/identity` et `/hermeneutic-admin`:
+- [x] Verifier `/identity` et `/hermeneutic-admin`:
   - `mutable_judge_v2_add_only` raconte le regime actif;
   - `identity_mutable_staging` raconte la fenetre, pas le canon;
   - read-model ne montre pas `15` comme cible active si un ancien staging existe.
-- [ ] Verifier runtime settings:
+- [x] Verifier runtime settings:
   - secrets read-only masques;
   - source/source_reason coherents;
   - bootstrap DB externe documente sans DSN.
-- [ ] Verifier docs source-of-truth:
+- [x] Verifier docs source-of-truth:
   - `app/docs/README.md`;
   - `AGENTS.md`;
   - specs actives;
@@ -690,23 +690,113 @@ Actions non effectuees au Lot 3:
 
 ### Tests/preuves Lot 4
 
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_settings_read_contract`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_settings_read_contract`
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_identity_read_model_phase2`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_identity_read_model_phase2`
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.admin.test_identity_governance_service_phase5`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.admin.test_identity_governance_service_phase5`
-- [ ] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_identity_read_model_phase2 tests.test_server_admin_settings_read_contract`
-- [ ] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_identity_read_model_phase2 tests.test_server_admin_settings_read_contract`
-- [ ] Greps operateur:
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_settings_read_contract`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_settings_read_contract`
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_identity_read_model_phase2`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_identity_read_model_phase2`
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.unit.admin.test_identity_governance_service_phase5`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.unit.admin.test_identity_governance_service_phase5`
+- [x] Working copy pre-rebuild: `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python -m unittest tests.test_server_admin_identity_read_model_phase2 tests.test_server_admin_settings_read_contract`
+- [x] Conteneur live apres rebuild: `docker exec platform-fridadev python -m unittest tests.test_server_admin_identity_read_model_phase2 tests.test_server_admin_settings_read_contract`
+- [x] Greps operateur:
   - `grep -RIn "Haiku\\|identity_periodic_agent\\|score-first\\|promotion_to_static_enabled.*true" app/admin app/web app/docs/states app/docs/todo-todo || true`
 
 ### Critere de sortie Lot 4
 
-- [ ] Admin raconte le systeme reel.
-- [ ] Observabilite utile sans contenu brut.
-- [ ] Aucun ancien regime presente comme actif.
-- [ ] Secrets masques.
+- [x] Admin raconte le systeme reel.
+- [x] Observabilite utile sans contenu brut.
+- [x] Aucun ancien regime presente comme actif.
+- [x] Secrets masques.
+
+### Photo operatoire Lot 4 - 2026-05-27
+
+Etat repo au demarrage:
+
+- branche: `migration`;
+- dernier commit avant patch Lot 4: `efe988e docs: validate health freeze lot 3 state`;
+- worktree: clean avant patch Lot 4.
+
+Note: aucun patch runtime n'a ete fait au Lot 4, donc aucun rebuild n'a ete lance. Les lignes "conteneur live apres rebuild" ci-dessus sont cochees comme preuves du conteneur actuellement servi, pas comme validation d'une image rebuildee apres ce patch docs-only.
+
+Tests obligatoires:
+
+| Environnement | Suite | Resultat |
+| --- | --- | --- |
+| working copy montee | `tests.test_server_admin_settings_read_contract` | OK, 23 tests; logs DB indisponible attendus car `docker run` non attache au Postgres live |
+| conteneur live | `tests.test_server_admin_settings_read_contract` | OK, 23 tests |
+| working copy montee | `tests.test_server_admin_identity_read_model_phase2` | OK, 3 tests; logs DB indisponible attendus car `docker run` non attache au Postgres live |
+| conteneur live | `tests.test_server_admin_identity_read_model_phase2` | OK, 3 tests |
+| working copy montee | `tests.unit.admin.test_identity_governance_service_phase5` | OK, 6 tests |
+| conteneur live | `tests.unit.admin.test_identity_governance_service_phase5` | OK, 6 tests |
+| working copy montee | `tests.test_server_admin_identity_read_model_phase2 tests.test_server_admin_settings_read_contract` | OK, 26 tests; logs DB indisponible attendus car `docker run` non attache au Postgres live |
+| conteneur live | `tests.test_server_admin_identity_read_model_phase2 tests.test_server_admin_settings_read_contract` | OK, 26 tests |
+
+Verite operateur `/admin` et runtime settings:
+
+| Surface | Resultat |
+| --- | --- |
+| admin settings `identity_periodic_model` | model `openai/gpt-5.2`, module `mutable_identity_judge_v2_add_only`, caller `mutable_identity_judge`, contract `mutable_judge_v2`, prompt `prompts/identity_mutable_judge_v2.txt` |
+| structured output | `response_format=json_schema strict=true`; `provider.require_parameters=true` documente dans la surface readonly |
+| compatibilite de nom | slot `identity_periodic_model` expose comme legacy-compatible, pas comme ancien agent periodique actif |
+| benchmark courant | `app/docs/todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md` |
+| benchmark Haiku | visible seulement via `legacy_benchmark_decision`, pas comme decision active |
+| secrets settings | `main_model.api_key` et `database.dsn` detectes comme secrets; valeurs masquees/non affichees; aucun secret expose dans la preuve |
+
+Verite `/dashboard`, `/log`, `/memory-admin`, `/identity`, `/hermeneutic-admin`:
+
+| Surface | Resultat |
+| --- | --- |
+| `/dashboard` overview/conversations | routes API in-container OK; materialization OK; `error_count=0`; redaction active; pas de payload brut affiche |
+| `/api/admin/logs/chat/metrics` | route OK; `raw_event_payloads_included=false`; metrics sur 2000 events avec troncature explicite |
+| `/api/admin/logs/chat?limit=80` | route OK; 80 events compacts lus; statuts `ok=75`, `skipped=5`; longueur max de chaine observee 160 caracteres |
+| `/api/admin/logs/chat?stage=mutable_identity_judge` | filtre stage OK; 9 events `mutable_identity_judge`; statuts `ok=3`, `skipped=6`; pas de fenetre brute ni prompt complet |
+| `/api/admin/logs?limit=80` | route admin logs OK; 80 events compacts; `mutable_identity_judge_apply` present dans les stages recents; longueur max de chaine observee 52 caracteres |
+| filesystem logs `/opt/platform/fridadev-app/state/logs` | `mutable_identity_judge_apply` present; aucun dump de ligne ni valeur affiche; anciens `identity_periodic_agent*` seulement historiques, dernier timestamp 2026-05-24 |
+| `/memory-admin` | surface OK; scope distingue Memory Admin, logs, hermeneutic admin et identity; counts/sources disponibles sans scoring legacy actif |
+| `/identity` / read-model | pipeline `mutable_identity_judge_v2_add_only`; staging `identity_mutable_staging` separe du canon; `window_target_pairs=5`; pas de cible active `15`; `promotion_to_static_enabled=false`; `score_first_writer_enabled=false` |
+| `/hermeneutic-admin` | surface OK; pas de contradiction detectee avec le regime mutable v2 add-only dans les preuves lues |
+
+Classification content-free du motif `token` dans `state/logs`:
+
+| Cle contenant `token` | Count |
+| --- | ---: |
+| `estimated_prompt_window_tokens` | 196 |
+| `estimated_user_tokens` | 192 |
+| `max_tokens` | 192 |
+| `provider_prompt_tokens` | 190 |
+| `provider_completion_tokens` | 190 |
+| `provider_total_tokens` | 190 |
+| `estimated_assistant_tokens` | 182 |
+| `prompt_soft_token_limit` | 153 |
+| `token_estimate` | 7 |
+
+Conclusion `token`: les occurrences confirmees sont des noms de cles metriques ou des noms d'evenements techniques, pas des valeurs de secret. Aucune valeur, ligne jsonl, conversation, prompt complet, cookie, DSN ou token d'authentification n'a ete affiche. Les logs Frida restent classes `frida_archive_do_not_copy` / `empty_for_amandine`.
+
+Docs source-of-truth:
+
+| Source | Resultat |
+| --- | --- |
+| `AGENTS.md` | pointe vers le contrat mutable add-only actif et le catalogue modeles |
+| `app/docs/README.md` | indexe le freeze migration actif, les specs admin/identity/log/memory et le catalogue modeles |
+| specs actives | `admin-runtime-settings-schema.md`, `identity-read-model-contract.md`, `log-module-contract.md`, `memory-admin-surface-contract.md`, `mutable-identity-judge-contract.md` alignes sur v2 add-only |
+| catalogue modeles | runtime mutable documente comme `openai/gpt-5.2` via slot compat `identity_periodic_model`; Haiku reste historique |
+| grep operateur | hits restants classes comme compat active explicite, historique date ou instructions de grep/TODO; aucun ancien regime presente comme actif |
+
+Findings Lot 4:
+
+| ID | Surface | Severite | Duplication impact | Correction requise | Statut | Lien preuve |
+| --- | --- | --- | --- | --- | --- | --- |
+| LOT4-P3-001 | `state/logs` motif `token` | P3 | faible: bruit d'audit secret si on grep le mot `token` sans parser JSON | aucune correction runtime; classifier comme cles metriques et ne pas copier/exporter les logs Frida vers Amandine | ferme | counts par cle token, sans valeurs |
+| LOT4-P3-002 | `/log` / observabilite mutable apply | P3 | faible: `mutable_identity_judge` est visible dans `/api/admin/logs/chat`, tandis que `mutable_identity_judge_apply` est visible dans `/api/admin/logs` et les logs filesystem; l'operateur doit connaitre cette separation de sources | a reconsiderer au Lot 5 si `/log` doit unifier explicitement chat events et admin runtime logs; pas bloquant duplication | accepte | API content-free par stage |
+
+Actions non effectuees au Lot 4:
+
+- pas de creation Amandine;
+- pas de purge, copie, migration DB/state ou modification logs live;
+- pas de changement modele/runtime/prompt;
+- pas de cleanup Lot 5;
+- pas de rebuild/restart;
+- pas d'affichage volontaire de secret, cookie, DSN complet, `.env`, conversation brute, mutable brute, prompt complet, payload log brut ou document utilisateur.
 
 ## Lot 5 - Cleanup cible uniquement si bloquant
 
