@@ -28,7 +28,7 @@ test('buildConversationMarkdown exports a readable conversation without technica
       },
       {
         role: 'assistant',
-        content: 'Bonsoir Tof.\n\n# Markdown gardé comme texte du message',
+        content: 'Bonsoir utilisateur.\n\n# Markdown gardé comme texte du message',
         timestamp: '2026-05-16T21:54:30Z',
         meta: { hash: 'abc123' },
       },
@@ -36,7 +36,7 @@ test('buildConversationMarkdown exports a readable conversation without technica
   });
 
   assert.match(markdown, /^# Conversation avec Frida\n\nExportée le /);
-  assert.match(markdown, /## Tof — .*21:54/);
+  assert.match(markdown, /## Utilisateur — .*21:54/);
   assert.match(markdown, /## Frida — .*21:54/);
   assert.match(markdown, /Bonsoir Frida\./);
   assert.match(markdown, /# Markdown gardé comme texte du message/);

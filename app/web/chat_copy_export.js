@@ -1,7 +1,7 @@
 'use strict';
 
 const EXPORT_TITLE = 'Conversation avec Frida';
-const EXPORT_USER_LABEL = 'Tof';
+const EXPORT_USER_LABEL = 'Utilisateur';
 const EXPORT_ASSISTANT_LABEL = 'Frida';
 
 function pad2(value) {

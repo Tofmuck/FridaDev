@@ -158,7 +158,7 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
         self.assertNotIn('operation_kinds', observability)
         self.assertNotIn('frontiere nette', repr(observability))
 
-    def test_v2_accepts_canonical_frida_and_tof_ontological_examples(self) -> None:
+    def test_v2_accepts_canonical_frida_current_user_and_migration_user_examples(self) -> None:
         payload = _valid_v2_contract()
         payload['verdicts'] = [
             {
@@ -186,6 +186,14 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
         self.assertEqual(reason, '')
         self.assertIsNotNone(validated)
         self.assertEqual([item['verdict'] for item in validated['verdicts']], ['add', 'add'])
+
+        payload['verdicts'][1]['proposition'] = (
+            'Amandine traite la frontiere entre sa pensee et la voix de Frida comme un objet central.'
+        )
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(payload)
+
+        self.assertEqual(reason, '')
+        self.assertIsNotNone(validated)
 
     def test_v2_refuses_verdicts_outside_no_change_and_add(self) -> None:
         for verdict in ('persist', 'reject', 'defer', 'raise_tension'):
@@ -489,6 +497,8 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
             'Frida tient...',
             'Frida refuse...',
             'Tof traite... comme...',
+            'Amandine traite... comme...',
+            'Do not force `Tof` when the active user identity',
             'already covered by static or mutable_current',
         ):
             self.assertIn(phrase, prompt)

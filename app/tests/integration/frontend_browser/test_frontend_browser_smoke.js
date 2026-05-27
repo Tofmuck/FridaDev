@@ -366,7 +366,7 @@ test('chat stream nominal handles done terminal, assistant bubble, timestamp and
     assert.match(download.suggestedFilename(), /^frida-conversation-.*\.md$/);
     const markdown = await readDownloadText(download);
     assert.match(markdown, /^# Conversation avec Frida\n\nExportée le /);
-    assert.match(markdown, /## Tof — .*09:59/);
+    assert.match(markdown, /## Utilisateur — .*09:59/);
     assert.match(markdown, /## Frida — .*10:00/);
     assert.match(markdown, /Bonjour nominal/);
     assert.match(markdown, /Réponse nominale/);

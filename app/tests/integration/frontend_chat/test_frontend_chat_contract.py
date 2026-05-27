@@ -149,7 +149,7 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('chatCopyExport.buildConversationMarkdown', app_source)
         self.assertIn('hydrateThreadMessages(currentId, { force: true })', app_source)
         self.assertIn("EXPORT_TITLE = 'Conversation avec Frida'", export_source)
-        self.assertIn("EXPORT_USER_LABEL = 'Tof'", export_source)
+        self.assertIn("EXPORT_USER_LABEL = 'Utilisateur'", export_source)
         self.assertIn("EXPORT_ASSISTANT_LABEL = 'Frida'", export_source)
         self.assertNotIn('conversation_id', export_source)
         self.assertNotIn('text_sha256', export_source)

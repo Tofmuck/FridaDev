@@ -72,7 +72,7 @@ _PROMPT_LIKE_RE = re.compile(
     re.IGNORECASE,
 )
 _ONTOLOGICAL_PROPOSITION_RE = re.compile(
-    r'^(Frida|Tof)\s+(est|tient|refuse|reconna(?:i|î)t|traite|exige)\b.+\.$'
+    r'^(Frida|Tof|Amandine|Utilisateur)\s+(est|tient|refuse|reconna(?:i|î)t|traite|exige)\b.+\.$'
 )
 _JSON_FENCE_RE = re.compile(r'^\s*```(?:json)?\s*(?P<body>.*?)\s*```\s*$', re.IGNORECASE | re.DOTALL)
 

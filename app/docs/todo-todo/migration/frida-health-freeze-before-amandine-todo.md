@@ -800,47 +800,116 @@ Actions non effectuees au Lot 4:
 
 ## Lot 5 - Cleanup cible uniquement si bloquant
 
-- [ ] A partir des Lots 0-4, lister uniquement les cleanups qui menacent la duplication.
-- [ ] Classer chaque cleanup:
+- [x] A partir des Lots 0-4, lister uniquement les cleanups qui menacent la duplication.
+- [x] Classer chaque cleanup:
   - bloquant duplication;
   - a corriger avant duplication;
   - peut attendre apres duplication.
-- [ ] Chercher code mort dangereux:
+- [x] Chercher code mort dangereux:
   - anciens writers mutables;
   - appels legacy encore actifs;
   - tests stale qui valident un ancien contrat actif;
   - chemins hardcodes Frida/Tof/hostname;
   - dependances implicites a `/opt/platform/fridadev` ou au hostname public.
-- [ ] Chercher TODO actifs contradictoires:
+- [x] Chercher TODO actifs contradictoires:
   - `app/docs/todo-todo/`;
   - mentions "actif" dans `todo-done/`;
   - doublons de source-of-truth.
-- [ ] Verifier modules trop gros/ambigus seulement si cela menace la duplication:
+- [x] Verifier modules trop gros/ambigus seulement si cela menace la duplication:
   - pas de refactor esthetique;
   - pas de renommage global;
   - correction minimale et testee si bloquant.
-- [ ] Ne corriger dans ce lot que les P0/P1/P2 confirmes.
+- [x] Ne corriger dans ce lot que les P0/P1/P2 confirmes.
 
 ### Tests/preuves Lot 5
 
-- [ ] Grep hostnames publics:
+- [x] Grep hostnames publics:
   - `grep -RIn "fridadev.frida-system.fr\\|fridadev-db.frida-system.fr" app AGENTS.md README.md --exclude-dir=.git || true`
-- [ ] Grep chemins OVH / working copy:
+- [x] Grep chemins OVH / working copy:
   - `grep -RIn "/opt/platform/fridadev\\|/opt/platform/fridadev-app\\|/opt/platform/fridadev-db" app AGENTS.md README.md --exclude-dir=.git || true`
-- [ ] Grep traces utilisateur/personnelles hors fixtures attendues:
+- [x] Grep traces utilisateur/personnelles hors fixtures attendues:
   - `grep -RIn "Tof\\|Amandine" app AGENTS.md README.md --exclude-dir=.git || true`
-- [ ] Inspection manuelle ciblee des identites/statics/prompts:
+- [x] Inspection manuelle ciblee des identites/statics/prompts:
   - verifier `state/data/identity/`, `app/data/identity/` si present, `app/prompts/` et les docs source-of-truth sans lancer de grep global sur `Frida`;
   - garder `Frida` seulement pour des recherches ciblees par fichier ou section, car c'est le nom normal du produit.
-- [ ] Grep legacy actif:
+- [x] Grep legacy actif:
   - `grep -RIn "identity_periodic_agent\\|score_operation\\|apply_periodic_agent_contract\\|target_ref\\|clear_obsolete" app/core app/memory app/admin app/web app/tests || true`
-- [ ] Tests cibles selon fichiers corriges.
+- [x] Tests cibles selon fichiers corriges.
 
 ### Critere de sortie Lot 5
 
-- [ ] Aucun cleanup bloquant duplication ouvert.
-- [ ] Les P3 acceptes sont listes.
-- [ ] Aucun refactor opportuniste n'a ete lance.
+- [x] Aucun cleanup bloquant duplication ouvert.
+- [x] Les P3 acceptes sont listes.
+- [x] Aucun refactor opportuniste n'a ete lance.
+
+### Photo operatoire Lot 5 - 2026-05-27
+
+Etat repo au demarrage:
+
+- branche: `migration`;
+- dernier commit avant patch Lot 5: `9f333c7 docs: validate health freeze lot 4 admin`;
+- worktree: clean avant patch Lot 5.
+
+Greps executes:
+
+| Preuve | Hits | Classification |
+| --- | ---: | --- |
+| hostnames publics `fridadev.frida-system.fr|fridadev-db.frida-system.fr` | 113 | majoritairement docs OVH, tests, examples et referers OpenRouter; pas de secret; defaults FridaDev a reseeder pour Amandine via runtime settings/env |
+| chemins OVH `/opt/platform/fridadev*` | 76 | docs operations/freeze, AGENTS, archives et chemins de tests OVH; pas de dependance runtime cachee bloquante |
+| traces `Tof|Amandine` | 215 apres patch | fixtures/tests/docs et contrat mutable acceptant `Tof` + `Amandine`; plus de label UI export actif hardcode `Tof` |
+| legacy actif `identity_periodic_agent|score_operation|apply_periodic_agent_contract|target_ref|clear_obsolete` | 217 | wrapper technique de fenetre/slot compat, tests de rejet/absence, docs/tests legacy; aucun writer score-first actif |
+| labels actifs dans docs `Statut: chantier actif|TODO actif|chantier actif` | 13 | todo-todo actifs, archives qui parlent historiquement de leur cloture, ou grep de freeze; pas de contradiction bloquante |
+| inspection `state/data/identity`, `app/data/identity`, `app/prompts` | 19 fichiers | identites Frida/Tof et prompts a reseeder/revoir pour Amandine; aucune purge ou copie effectuee |
+
+Corrections effectuees:
+
+| ID | Surface | Severite | Duplication impact | Correction |
+| --- | --- | --- | --- | --- |
+| LOT5-P2-001 | export Markdown chat | P2 | une instance Amandine aurait exporte les messages user sous le label `Tof` | label actif remplace par `Utilisateur`; tests frontend et spec mis a jour |
+| LOT5-P2-002 | juge mutable v2 | P2 | le validateur ontologique user acceptait `Tof` mais pas `Amandine`, ce qui pouvait bloquer les adds mutables utilisateur apres duplication | validation v2 et prompt v2 acceptent explicitement `Amandine` comme nom user de duplication; spec et tests mis a jour |
+
+Hits classes sans correction:
+
+| Famille | Decision |
+| --- | --- |
+| `identity_periodic_agent` dans `chat_memory_flow`, `llm_client`, read-model/admin | compatibilite technique connue: wrapper de fenetre 5 paires et slot historique `identity_periodic_model`; pas de provider legacy ni writer score-first |
+| `score_operation` | uniquement test d'absence sur l'applicateur mutable actif |
+| `apply_periodic_agent_contract` | 0 hit actif dans les greps Lot 5 |
+| `target_ref` / `clear_obsolete` | tests de rejet/absence et docs legacy source-of-truth; pas de champ runtime actif v2 |
+| `mutable_judge_v1` / `persist` / `operation` dans tests | tests de shim retire, rejet v1 ou persistence basse couche; pas de test non cible qui valide v1 comme contrat actif |
+| hostnames FridaDev dans `config.py`, `config.example.py`, `.env.example` et image generation | defaults/referers FridaDev actuels; Amandine devra reseeder runtime settings/env et eventuellement referers OpenRouter, deja liste dans la checklist DB/state Lot 3 |
+| chemins OVH dans AGENTS/docs/tests | documentation de l'environnement courant; utile pour le freeze, pas un chemin applicatif cache |
+| `Frida` dans produit/docs | nom normal du produit/assistant; pas grep global comme bruit de duplication |
+
+Tests executes:
+
+| Environnement | Suite | Resultat |
+| --- | --- | --- |
+| host Python | `python3 -m py_compile app/memory/mutable_identity_judge_v2.py app/memory/mutable_identity_apply.py app/core/chat_memory_flow.py` | OK |
+| working copy montee | `tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply tests.unit.chat.test_mutable_identity_judge_final_validation` | OK, 28 tests |
+| host Node | `node --check web/chat_copy_export.js` | OK |
+| host Node | `node --check tests/integration/frontend_browser/test_frontend_browser_smoke.js` | OK |
+| host Node | `node --test tests/unit/frontend_chat/test_chat_copy_export_module.js` | OK, 4 tests |
+| working copy montee | `tests.integration.frontend_chat.test_frontend_chat_contract` | OK, 22 tests |
+
+Findings Lot 5:
+
+| ID | Surface | Severite | Duplication impact | Correction requise | Statut | Lien preuve |
+| --- | --- | --- | --- | --- | --- | --- |
+| LOT5-P2-001 | export Markdown chat | P2 | label user `Tof` actif dans un export Amandine | remplacer par label generique et tests/spec | corrige | grep `EXPORT_USER_LABEL` |
+| LOT5-P2-002 | mutable judge v2 | P2 | `Amandine` pouvait etre rejetee comme proposition non ontologique malgre phrase valide | accepter `Amandine` dans la garde formelle et le prompt v2 | corrige | tests `mutable_identity_judge` |
+| LOT5-P3-001 | referers/hostnames FridaDev par defaut | P3 | faible si le reseed runtime Amandine est bien execute; sinon analytics OpenRouter pourraient rester marques FridaDev | documente; reseed env/runtime settings requis au futur lot Amandine | accepte | grep hostnames publics |
+| LOT5-P3-002 | separation `/log` judge/apply deja notee Lot 4 | P3 | faible: apply visible via admin logs/filesystem, pas chat events | peut attendre un lot d'unification observabilite si souhaite | accepte | Lot 4 |
+
+Actions non effectuees au Lot 5:
+
+- pas de creation Amandine;
+- pas de purge, copie, migration DB/state;
+- pas de cleanup large des archives;
+- pas de refactor esthetique ni renommage global;
+- pas de changement modele runtime;
+- pas de modification plateforme;
+- pas d'affichage volontaire de secret, cookie, DSN complet, `.env`, payload brut, conversation brute ou prompt complet.
 
 ## Lot 6 - Decision de freeze et note finale
 

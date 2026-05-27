@@ -20,7 +20,7 @@ Etat runtime: livre le 2026-05-17
   - titre `Conversation avec Frida`;
   - date d'export;
   - sections par message;
-  - labels humains `Tof` et `Frida`;
+  - labels humains generiques `Utilisateur` et `Frida`;
   - texte de message preserve, y compris Markdown saisi dans une bulle.
 - l'export exclut les messages systeme et toute metadonnee technique.
 
