@@ -1,8 +1,11 @@
 # Freeze sante Frida avant duplication Amandine
 
-Statut: actif sur `migration`
+Statut: valide / clos
 Portee: audit applicatif FridaDev avant creation d'une instance Amandine separee
 But: prouver que Frida est assez saine pour servir de base produit, avec DB neuve et `state/` propre, sans lancer la duplication dans ce chantier.
+Cloture: 2026-05-27
+Decision: GO duplication Amandine sous plan separe
+Note finale: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
 
 ## Principe
 
@@ -26,21 +29,21 @@ Le freeze doit distinguer:
 
 ## Statut
 
-- [ ] Actif sur `migration`.
-- [ ] Aucun changement de plateforme effectue.
-- [ ] Aucune purge DB / `state/` effectuee.
-- [ ] Aucun secret, DSN complet, token, cookie ou `.env` affiche dans les preuves.
-- [ ] Decision finale de freeze non encore prise.
+- [x] Actif sur `migration` pendant le freeze.
+- [x] Aucun changement de plateforme effectue.
+- [x] Aucune purge DB / `state/` effectuee.
+- [x] Aucun secret, DSN complet, token, cookie ou `.env` affiche dans les preuves.
+- [x] Decision finale de freeze prise: GO sous plan Amandine separe.
 
 ## Hors-scope
 
-- [ ] Ne pas creer la stack Amandine.
-- [ ] Ne pas modifier Caddy, Authelia, Docker global, reseaux, secrets ou hostnames.
-- [ ] Ne pas purger, copier ou migrer la DB live.
-- [ ] Ne pas nettoyer `state/` live.
-- [ ] Ne pas changer le modele runtime sans lot separe.
-- [ ] Ne pas refactorer le code hors correction bloquante.
-- [ ] Ne pas transformer le freeze en audit infini: tout finding doit etre classe P0/P1/P2/P3 et rattache a la duplication.
+- [x] Ne pas creer la stack Amandine.
+- [x] Ne pas modifier Caddy, Authelia, Docker global, reseaux, secrets ou hostnames.
+- [x] Ne pas purger, copier ou migrer la DB live.
+- [x] Ne pas nettoyer `state/` live.
+- [x] Ne pas changer le modele runtime sans lot separe.
+- [x] Ne pas refactorer le code hors correction bloquante.
+- [x] Ne pas transformer le freeze en audit infini: tout finding doit etre classe P0/P1/P2/P3 et rattache a la duplication.
 
 ## Convention d'execution des tests
 
@@ -913,8 +916,8 @@ Actions non effectuees au Lot 5:
 
 ## Lot 6 - Decision de freeze et note finale
 
-- [ ] Rediger une note de validation finale dans `app/docs/todo-done/migrations/`.
-- [ ] Inclure:
+- [x] Rediger une note de validation finale dans `app/docs/todo-done/migrations/`.
+- [x] Inclure:
   - date;
   - branche;
   - commit;
@@ -924,49 +927,88 @@ Actions non effectuees au Lot 5:
   - P0/P1/P2 restants;
   - P3 acceptes;
   - decision GO / NO-GO.
-- [ ] Si GO:
+- [x] Si GO:
   - archiver cette TODO dans `app/docs/todo-done/migrations/`;
   - mettre a jour `app/docs/README.md`;
   - ouvrir le prochain plan Amandine uniquement apres decision explicite.
-- [ ] Si NO-GO:
+- [x] Si NO-GO: non applicable, decision finale GO.
   - laisser cette TODO active;
   - ouvrir des micro-lots correctifs classes par severite;
   - ne pas commencer la duplication.
 
 ### Tests/preuves Lot 6
 
-- [ ] `git status --short --branch`
-- [ ] `git diff --check`
-- [ ] Liens docs valides par grep.
-- [ ] Note finale relue.
+- [x] `git status --short --branch`
+- [x] `git diff --check`
+- [x] Liens docs valides par grep.
+- [x] Note finale relue.
 
 ### Critere de sortie Lot 6
 
-- [ ] Decision GO/NO-GO explicite.
-- [ ] Preuves centralisees.
-- [ ] Aucun P0/P1/P2 ouvert si GO.
-- [ ] P3 restants acceptes explicitement.
+- [x] Decision GO/NO-GO explicite.
+- [x] Preuves centralisees.
+- [x] Aucun P0/P1/P2 ouvert si GO.
+- [x] P3 restants acceptes explicitement.
+
+### Photo operatoire Lot 6 - 2026-05-27
+
+Etat repo au demarrage:
+
+- branche: `migration`;
+- dernier commit avant patch Lot 6: `b489ed2 Fix mutable judge primary user name detection`;
+- worktree: clean avant patch Lot 6.
+
+Decision finale: **GO** pour ouvrir un plan separe de duplication Amandine depuis le repository FridaDev, avec DB neuve, `state/` propre et runtime settings reseedes.
+
+Preuves finales:
+
+| Preuve | Resultat |
+| --- | --- |
+| `tests.unit.memory.test_mutable_identity_judge tests.unit.memory.test_mutable_identity_apply tests.unit.chat.test_mutable_identity_judge_final_validation` live | OK, 32 tests |
+| `tests.test_server_admin_settings_read_contract tests.test_server_admin_identity_read_model_phase2 tests.test_minimal_validation_phase4` live | OK, 35 tests |
+| conteneurs | `platform-fridadev` healthy; Postgres healthy |
+| `/admin` public | `HTTP/2 302` vers Authelia, cookies filtres |
+| preuve mutable user-name | `active_user_names ['Tof']`; `mentions_amandine True` sans activation d'Amandine |
+
+P0/P1/P2 restants: aucun.
+
+P3 acceptes:
+
+- referers/hostnames FridaDev a reseeder lors de la creation Amandine;
+- separation `/log` entre `mutable_identity_judge` cote chat events et `mutable_identity_judge_apply` cote admin logs/filesystem;
+- logs Frida et `state/` Frida a ne pas copier;
+- futur seed Amandine: etablir clairement `Amandine` comme nom principal user avant toute mention de tiers/historique;
+- preuves working-copy montee Memory/RAG ou web-search parfois dependantes des DB/settings live; live sain.
+
+Actions non effectuees au Lot 6:
+
+- pas de creation Amandine;
+- pas de purge, copie, migration DB/state;
+- pas de changement modele/prompt/runtime;
+- pas de modification plateforme;
+- pas de rebuild;
+- pas d'affichage volontaire de secret, `.env`, DSN complet, token, cookie, payload brut, conversation brute, prompt complet ou identite brute.
 
 ## Criteres de sortie globaux
 
 Frida est assez saine pour lancer la duplication Amandine si et seulement si:
 
-- [ ] tests essentiels OK;
-- [ ] live healthy;
-- [ ] admin coherent;
-- [ ] smoke chat OK;
-- [ ] smoke identity mutable OK;
-- [ ] smoke memory/RAG OK;
-- [ ] smoke web/documents OK si la duplication Amandine doit utiliser ces capacites des le depart;
-- [ ] runtime settings lisibles et secrets masques;
-- [ ] modele juge mutable visible: `openai/gpt-5.2`;
-- [ ] pipeline mutable actif visible: `mutable_identity_judge_v2_add_only`;
-- [ ] aucun ancien regime mutable actif;
-- [ ] aucune promotion mutable -> static automatique;
-- [ ] inventaire DB/state pret;
-- [ ] plan backup/purge futur pret, non execute;
-- [ ] aucun P0/P1/P2 ouvert sur pipeline principal;
-- [ ] P3 restants listes et acceptes.
+- [x] tests essentiels OK;
+- [x] live healthy;
+- [x] admin coherent;
+- [x] smoke chat OK;
+- [x] smoke identity mutable OK;
+- [x] smoke memory/RAG OK;
+- [x] smoke web/documents OK si la duplication Amandine doit utiliser ces capacites des le depart;
+- [x] runtime settings lisibles et secrets masques;
+- [x] modele juge mutable visible: `openai/gpt-5.2`;
+- [x] pipeline mutable actif visible: `mutable_identity_judge_v2_add_only`;
+- [x] aucun ancien regime mutable actif;
+- [x] aucune promotion mutable -> static automatique;
+- [x] inventaire DB/state pret;
+- [x] plan backup/purge futur pret, non execute;
+- [x] aucun P0/P1/P2 ouvert sur pipeline principal;
+- [x] P3 restants listes et acceptes.
 
 ## Risques
 
@@ -980,8 +1022,8 @@ Frida est assez saine pour lancer la duplication Amandine si et seulement si:
 
 ## Definition de fini
 
-- [ ] Les lots 0 a 6 sont coches ou explicitement classes non applicables.
-- [ ] La note finale GO/NO-GO existe dans `app/docs/todo-done/migrations/`.
-- [ ] Les index docs pointent vers la note finale ou vers cette TODO si elle reste ouverte.
-- [ ] La duplication Amandine n'a pas commence dans ce chantier.
-- [ ] La prochaine action est claire: corriger les bloquants, ou ouvrir le plan de duplication Amandine.
+- [x] Les lots 0 a 6 sont coches ou explicitement classes non applicables.
+- [x] La note finale GO/NO-GO existe dans `app/docs/todo-done/migrations/`.
+- [x] Les index docs pointent vers la note finale et cette TODO archivee.
+- [x] La duplication Amandine n'a pas commence dans ce chantier.
+- [x] La prochaine action est claire: ouvrir le plan de duplication Amandine apres GO utilisateur separe.

@@ -43,8 +43,9 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat source-of-truth juge mutable: `states/specs/mutable-identity-judge-contract.md`
 - Validation finale refonte mutable judge-first 2026-05-25: `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`
 - Boussole produit finale des cinq derniers gros chantiers FridaDev: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
-- Chantier actif migration / duplication Amandine: `todo-todo/migration/README.md`
-- Freeze sante Frida avant duplication Amandine: `todo-todo/migration/frida-health-freeze-before-amandine-todo.md`
+- Chantier migration / duplication Amandine: `todo-todo/migration/README.md`
+- Validation finale freeze sante Frida avant duplication Amandine 2026-05-27: `todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
+- Archive freeze sante Frida avant duplication Amandine: `todo-done/migrations/frida-health-freeze-before-amandine-todo.md`
 - Archive atelier documentaire / répertoires de travail: `todo-done/product/fridadev-workspace-folders-todo.md`
 - Contrat source-of-truth atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
 - Audit court du contrat courant `identity_periodic_agent` 2026-05-19: `states/audits/identity-periodic-current-contract-audit-2026-05-19.md`
@@ -76,6 +77,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 ### Archives utiles
 
 - Migration OVH et chemins runtime: `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
+- Freeze sante Frida avant duplication Amandine: `todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
 - Cloture operatoire du nouveau contrat identitaire: `todo-done/refactors/identity-new-contract-todo.md`
 - Grande roadmap hermeneutique archivee: `todo-done/notes/hermeneutical-add-todo.md`
 - Bascule vers un arbitre de reponse LLM dominant: `todo-done/refactors/llm-dominant-response-arbiter-todo.md`

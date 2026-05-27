@@ -9,7 +9,12 @@ Ce repertoire centralise les audits, plans, checklists et preuves lies a la migr
 
 ## Plans actifs
 
-- `frida-health-freeze-before-amandine-todo.md`: checklist de freeze sante Frida avant duplication Amandine. Objectif: verifier que Frida est une base produit saine avant toute creation de stack, DB neuve ou `state/` propre pour Amandine.
+- Aucun plan actif dans ce dossier apres cloture du freeze sante Frida.
+
+## Archives recentes
+
+- `../../todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`: decision GO du freeze sante Frida avant duplication Amandine.
+- `../../todo-done/migrations/frida-health-freeze-before-amandine-todo.md`: roadmap executee et preuves Lots 0-6.
 
 Y ranger notamment:
 
