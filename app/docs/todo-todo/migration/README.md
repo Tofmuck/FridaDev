@@ -9,7 +9,7 @@ Ce repertoire centralise les audits, plans, checklists et preuves lies a la migr
 
 ## Plans actifs
 
-- Aucun plan actif dans ce dossier apres cloture du freeze sante Frida.
+- `amandine-duplication-todo.md`: plan operatoire de creation d'une instance Amandine separee depuis FridaDev sain, avec DB neuve, `state/` propre, runtime settings reseedes et frontiere Celebrimbor/Sauron explicite.
 
 ## Archives recentes
 
