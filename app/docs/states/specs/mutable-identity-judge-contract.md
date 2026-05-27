@@ -295,8 +295,9 @@ Regles v2:
   ni filtrer la fenetre: une `proposition` ajoutee doit commencer par le nom
   actif du sujet. Pour `llm`, le nom actif est `Frida`. Pour `user`, le nom est
   derive de l'identite active (`user.static` / `user.mutable_current`), par
-  exemple `Tof` sur Frida courante ou `Amandine` sur un clone seede ainsi. Le
-  fallback UI generique `Utilisateur` n'est pas un nom canonique mutable;
+  exemple `Tof` sur Frida courante ou `Amandine` sur un clone seede ainsi. Une
+  simple mention relationnelle ou historique d'un nom tiers ne suffit pas a le
+  rendre actif. Le fallback UI generique `Utilisateur` n'est pas un nom canonique mutable;
   la proposition doit employer une forme du type `est`, `tient`, `refuse`,
   `reconnait`, `traite`, `exige`, se terminer par un point, et `traite` doit
   porter un `comme`;

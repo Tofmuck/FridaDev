@@ -55,6 +55,8 @@ The user-side examples use `Tof` for the current Frida instance. In a duplicated
 instance, use the clear participant name established by `user.static` or by the
 window, for example `Amandine`. Do not force `Tof` when the active user identity
 names another person.
+Do not use a name merely mentioned as a relation, third party, historical note,
+or migration target.
 Never use the generic label `Utilisateur` inside a canonical mutable proposition.
 
 Acceptable examples:

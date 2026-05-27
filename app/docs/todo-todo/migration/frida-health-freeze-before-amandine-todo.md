@@ -866,7 +866,7 @@ Corrections effectuees:
 | ID | Surface | Severite | Duplication impact | Correction |
 | --- | --- | --- | --- | --- |
 | LOT5-P2-001 | export Markdown chat | P2 | une instance Amandine aurait exporte les messages user sous le label `Tof` | label actif remplace par `Utilisateur`; tests frontend et spec mis a jour |
-| LOT5-P2-002 | juge mutable v2 | P2 | le validateur ontologique user etait trop lie a une whitelist globale: avant correction il acceptait `Tof` mais pas `Amandine`, puis un audit post-Lot 5 a montre que la whitelist inverse acceptait trop largement `Amandine` / `Utilisateur` sur Frida courante | validation v2 contextualisee par identite active: `Frida` cote `llm`; `Tof` sur Frida courante; `Amandine` seulement si `user.static` / `user.mutable_current` nomme Amandine; `Utilisateur` reste un label UI export, pas un sujet canonique mutable |
+| LOT5-P2-002 | juge mutable v2 | P2 | le validateur ontologique user etait trop lie a une whitelist globale: avant correction il acceptait `Tof` mais pas `Amandine`, puis un audit post-Lot 5 a montre que la whitelist inverse retenait toute mention connue, dont `Amandine` comme tiers sur Frida courante | validation v2 contextualisee par nom principal d'identite active: `Frida` cote `llm`; `Tof` sur Frida courante; `Amandine` seulement si une formulation principale de `user.static` / `user.mutable_current` etablit Amandine; `Utilisateur` reste un label UI export, pas un sujet canonique mutable |
 
 Hits classes sans correction:
 
@@ -897,7 +897,7 @@ Findings Lot 5:
 | ID | Surface | Severite | Duplication impact | Correction requise | Statut | Lien preuve |
 | --- | --- | --- | --- | --- | --- | --- |
 | LOT5-P2-001 | export Markdown chat | P2 | label user `Tof` actif dans un export Amandine | remplacer par label generique et tests/spec | corrige | grep `EXPORT_USER_LABEL` |
-| LOT5-P2-002 | mutable judge v2 | P2 | le nom canonique user devait suivre l'identite active sans whitelist globale arbitraire | valider le nom de proposition par sujet et contexte d'identite active; refuser `Amandine` sur Frida courante et `Utilisateur` comme sujet canonique | corrige | tests `mutable_identity_judge` |
+| LOT5-P2-002 | mutable judge v2 | P2 | le nom canonique user devait suivre le nom principal de l'identite active, sans retenir les simples mentions de tiers | valider le nom de proposition par sujet et formulation principale d'identite active; refuser `Amandine` sur Frida courante si Amandine est seulement mentionnee comme tiers, et refuser `Utilisateur` comme sujet canonique | corrige | tests `mutable_identity_judge` + preuve live content-free |
 | LOT5-P3-001 | referers/hostnames FridaDev par defaut | P3 | faible si le reseed runtime Amandine est bien execute; sinon analytics OpenRouter pourraient rester marques FridaDev | documente; reseed env/runtime settings requis au futur lot Amandine | accepte | grep hostnames publics |
 | LOT5-P3-002 | separation `/log` judge/apply deja notee Lot 4 | P3 | faible: apply visible via admin logs/filesystem, pas chat events | peut attendre un lot d'unification observabilite si souhaite | accepte | Lot 4 |
 

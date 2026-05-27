@@ -17,6 +17,7 @@ ONTOLOGICAL_PROPOSITION_RE = re.compile(
     r'^(?P<name>[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ-]{1,60})\s+'
     r'(?P<verb>est|tient|refuse|reconna(?:i|î)t|traite|exige)\b.+\.$'
 )
+_SUBJECT_STATEMENT_VERBS_RE = r'(?:est|tient|refuse|reconna(?:i|î)t|traite|exige)'
 
 
 def _text(value: Any) -> str:
@@ -31,10 +32,15 @@ def _mapping(value: Any) -> Mapping[str, Any]:
     return {}
 
 
-def _contains_name(text: str, name: str) -> bool:
-    if not text or not name:
-        return False
-    return re.search(rf'(?<!\w){re.escape(name)}(?!\w)', text) is not None
+def _primary_statement_name(text: str, names: set[str]) -> str:
+    if not text or not names:
+        return ''
+    best: tuple[int, str] | None = None
+    for name in sorted(names):
+        match = re.search(rf'(?<!\w){re.escape(name)}\s+{_SUBJECT_STATEMENT_VERBS_RE}\b', text)
+        if match and (best is None or match.start() < best[0]):
+            best = (match.start(), name)
+    return best[1] if best else ''
 
 
 def _subject_identity_texts(source: Mapping[str, Any], subject: str) -> list[str]:
@@ -57,10 +63,11 @@ def active_identity_names_by_subject(
     for subject in sorted(subjects):
         texts = _subject_identity_texts(identity_source, subject)
         texts.append(_text(static_source.get(subject)))
-        detected = {
-            name
-            for name in KNOWN_SUBJECT_NAMES.get(subject, set())
-            if any(_contains_name(text, name) for text in texts)
-        }
+        detected = set()
+        for text in texts:
+            name = _primary_statement_name(text, KNOWN_SUBJECT_NAMES.get(subject, set()))
+            if name:
+                detected = {name}
+                break
         names_by_subject[subject] = detected or set(DEFAULT_ACTIVE_SUBJECT_NAMES.get(subject, set()))
     return names_by_subject

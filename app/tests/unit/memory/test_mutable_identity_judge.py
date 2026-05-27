@@ -248,6 +248,35 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
         self.assertIsNone(validated)
         self.assertEqual(reason, 'invalid_subject_name')
 
+    def test_v2_active_user_name_uses_primary_statement_not_mentions(self) -> None:
+        current = mutable_identity_judge_v2.active_identity_names_by_subject(
+            identities={
+                'llm': {'static': 'Frida est la voix active.', 'mutable_current': ''},
+                'user': {
+                    'static': (
+                        'Tof tient une frontiere durable. '
+                        'Amandine est mentionnee comme tiers relationnel.'
+                    ),
+                    'mutable_current': '',
+                },
+            }
+        )
+        self.assertEqual(current['user'], {'Tof'})
+
+        clone = mutable_identity_judge_v2.active_identity_names_by_subject(
+            identities={
+                'llm': {'static': 'Frida est la voix active.', 'mutable_current': ''},
+                'user': {
+                    'static': (
+                        'Amandine tient une frontiere durable. '
+                        'Tof est mentionne comme contexte historique.'
+                    ),
+                    'mutable_current': '',
+                },
+            }
+        )
+        self.assertEqual(clone['user'], {'Amandine'})
+
     def test_v2_rejects_generic_user_label_and_wrong_llm_name(self) -> None:
         payload = _valid_v2_contract()
         payload['verdicts'][0]['proposition'] = 'Utilisateur tient une frontiere durable.'
@@ -556,6 +585,7 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
             'Tof traite... comme...',
             'Amandine traite... comme...',
             'Do not force `Tof` when the active user identity',
+            'Do not use a name merely mentioned as a relation',
             'Never use the generic label `Utilisateur`',
             'already covered by static or mutable_current',
         ):
