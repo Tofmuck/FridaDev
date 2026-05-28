@@ -38,7 +38,7 @@ Le freeze doit distinguer:
 - [x] Aucun changement de plateforme effectue.
 - [x] Aucune purge DB / `state/` effectuee.
 - [x] Aucun secret, DSN complet, token, cookie ou `.env` affiche dans les preuves.
-- [x] Decision finale de freeze prise: GO sous plan Amandine separe.
+- [x] Decision finale historique du 2026-05-27: GO sous plan Amandine separe, supersede le 2026-05-28 par annulation produit.
 
 ## Hors-scope
 
@@ -932,11 +932,11 @@ Actions non effectuees au Lot 5:
   - P0/P1/P2 restants;
   - P3 acceptes;
   - decision GO / NO-GO.
-- [x] Si GO:
+- [x] Si GO historique du 2026-05-27:
   - archiver cette TODO dans `app/docs/todo-done/migrations/`;
   - mettre a jour `app/docs/README.md`;
-  - ouvrir le prochain plan Amandine uniquement apres decision explicite.
-- [x] Si NO-GO: non applicable, decision finale GO.
+  - aurait ouvert le prochain plan Amandine uniquement apres decision explicite. Supersede le 2026-05-28: aucun plan Amandine n'est a ouvrir.
+- [x] Si NO-GO: non applicable au 2026-05-27, decision finale historique GO.
   - laisser cette TODO active;
   - ouvrir des micro-lots correctifs classes par severite;
   - ne pas commencer la duplication.
@@ -963,7 +963,7 @@ Etat repo au demarrage:
 - dernier commit avant patch Lot 6: `b489ed2 Fix mutable judge primary user name detection`;
 - worktree: clean avant patch Lot 6.
 
-Decision finale: **GO** pour ouvrir un plan separe de duplication Amandine depuis le repository FridaDev, avec DB neuve, `state/` propre et runtime settings reseedes.
+Decision finale historique du 2026-05-27: **GO** a l'ouverture possible d'un plan separe de duplication Amandine depuis le repository FridaDev, avec DB neuve, `state/` propre et runtime settings reseedes. Decision supersedee le 2026-05-28 par l'annulation produit de la duplication Amandine.
 
 Preuves finales:
 
@@ -994,9 +994,9 @@ Actions non effectuees au Lot 6:
 - pas de rebuild;
 - pas d'affichage volontaire de secret, `.env`, DSN complet, token, cookie, payload brut, conversation brute, prompt complet ou identite brute.
 
-## Criteres de sortie globaux
+## Criteres de sortie globaux historiques
 
-Frida est assez saine pour lancer la duplication Amandine si et seulement si:
+Au 2026-05-27, Frida etait assez saine pour autoriser l'ouverture d'un plan de duplication Amandine si et seulement si:
 
 - [x] tests essentiels OK;
 - [x] live healthy;
@@ -1031,4 +1031,4 @@ Frida est assez saine pour lancer la duplication Amandine si et seulement si:
 - [x] La note finale GO/NO-GO existe dans `app/docs/todo-done/migrations/`.
 - [x] Les index docs pointent vers la note finale et cette TODO archivee.
 - [x] La duplication Amandine n'a pas commence dans ce chantier.
-- [x] La prochaine action est claire: ouvrir le plan de duplication Amandine apres GO utilisateur separe.
+- [x] La prochaine action historique au 2026-05-27 aurait ete l'ouverture du plan de duplication Amandine apres GO utilisateur separe. Supersede le 2026-05-28: aucune prochaine action Amandine.
