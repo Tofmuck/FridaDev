@@ -10,6 +10,7 @@ Spec fondatrice a creer: `app/docs/states/specs/frida-biblio-native-catalogue-co
 Portee: Lot 0 prioritaire de correction humaine des metadonnees Catalogue, puis consultation native, a la demande, d'une bibliotheque persistante via Frida Catalogue / doc-pipeline
 Hors-scope courant: runtime FridaDev, branchement LLM, endpoint FridaDev, migration DB dans ce depot, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal, rebuild
 Livraison Lot 0 plateforme: 2026-05-28, hors depot FridaDev, dans `/opt/platform/doc-pipeline` et `/opt/platform/doc-library`
+Correctif UI Lot 0: 2026-05-28, protection du formulaire dirty contre l'auto-refresh Catalogue
 
 ## 1. Intention
 
@@ -88,6 +89,17 @@ Livraison plateforme Lot 0 du 2026-05-28:
 - aucun OCR, branchement Frida/LLM, Memory/RAG, document actif ou workspace n'a ete ajoute;
 - backup plateforme: `/opt/platform/backups/catalogue-human-metadata-20260528-155550`;
 - preuve smoke content-free: une note operateur benigne a ete ecrite puis relue sur un document test reel, id court `dabfe4a7`, avec une ligne d'audit.
+
+Correctif UI Catalogue du 2026-05-28:
+
+- `/opt/platform/doc-library/index.html` protege le formulaire metadata avec un etat `formDirty`;
+- l'auto-refresh periodique est suspendu pendant une edition non sauvegardee;
+- le reload de fiche selectionnee ne remplace plus les valeurs du formulaire si la fiche est dirty;
+- le changement volontaire de fiche demande confirmation avant perte des modifications;
+- apres sauvegarde, la fiche peut etre rechargee proprement depuis l'API;
+- backup plateforme: `/opt/platform/backups/catalogue-ui-refresh-fix-20260528-164209`;
+- nettoyage realise: `/tmp/catalogue-human-metadata-work` supprime;
+- aucun changement DB, API doc-pipeline, OCR, FridaDev runtime, Caddy, Authelia ou Homepage.
 
 ## 4. Hors-scope du chantier
 
@@ -168,6 +180,7 @@ Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, 
 - [x] Remplacer les suppressions legeres par une confirmation forte pour DB seule et DB + fichiers.
 - [x] Tester que l'edition metadata ne lance pas de re-OCR.
 - [x] Tester que l'edition metadata ne branche pas Frida/LLM, Memory/RAG, documents actifs ou workspace.
+- [x] Proteger le formulaire metadata contre l'auto-refresh destructeur pendant une edition dirty.
 
 ### Lot 1 - Spec FridaDev Biblio native read-only
 

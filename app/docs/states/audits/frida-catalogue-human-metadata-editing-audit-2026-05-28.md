@@ -213,3 +213,37 @@ Preuves live:
 - page doc-library servie et contenant le formulaire metadata;
 - route publique `/bibliotheque` toujours protegee par Authelia;
 - logs recents `platform-doc-pipeline-api` et `platform-doc-library` sans erreur critique observee.
+
+## 10. Correctif UI auto-refresh du 2026-05-28
+
+Finding valide: la page Catalogue relancait `loadCatalog(true)` toutes les 30 secondes. Quand une fiche etait selectionnee, ce refresh rappelait `loadMetadata(selectedId, false)` et rerendait le formulaire, ce qui pouvait ecraser les champs en cours de saisie.
+
+Patch borne:
+
+- fichier modifie: `/opt/platform/doc-library/index.html`;
+- backup: `/opt/platform/backups/catalogue-ui-refresh-fix-20260528-164209/doc-library-index.html.before`;
+- ajout d'un etat UI `formDirty`;
+- `formDirty=true` des qu'un champ du formulaire metadata change;
+- auto-refresh suspendu tant que le formulaire est dirty;
+- reload de la fiche selectionnee bloque tant que le formulaire est dirty;
+- changement de fiche different demande confirmation avant perte des modifications;
+- `formDirty=false` apres sauvegarde reussie et rechargement propre;
+- suppression maintenue separee dans la zone dangereuse;
+- dossier temporaire `/tmp/catalogue-human-metadata-work` supprime.
+
+Preuves:
+
+- grep statique: `setInterval`, `formDirty`, `loadCatalog`, `loadMetadata`, `metadata-form` presents dans le fichier servi;
+- page `platform-doc-library` servie avec formulaire metadata et garde dirty;
+- test Playwright mocke: champ `canonical_title` rempli, attente > 30 secondes, valeur conservee, `data-dirty=true`, hint de suspension auto-refresh present;
+- `catalog_hits=1` et `metadata_hits=1` pendant ce test, donc pas de reload automatique destructeur apres dirty;
+- logs recents `platform-doc-library` sans erreur critique observee.
+
+Frontiere:
+
+- aucun changement DB;
+- aucun changement API doc-pipeline;
+- aucun OCR lance;
+- aucun DELETE appele;
+- aucun changement FridaDev runtime;
+- aucun restart Caddy, Authelia, Homepage, DB, FridaDev ou doc-pipeline-api.
