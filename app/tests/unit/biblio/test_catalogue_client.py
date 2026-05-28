@@ -93,6 +93,107 @@ class CatalogueClientTests(unittest.TestCase):
         self.assertEqual(result.result_count, 2)
         self.assertEqual(fake.calls[0]["params"], {"q": "theetete", "limit": 2})
 
+    def test_valid_numeric_boundaries_are_forwarded(self) -> None:
+        fake = FakeRequests(
+            [
+                FakeResponse({"items": []}),
+                FakeResponse({"count": 0}),
+                FakeResponse({"text": ""}),
+                FakeResponse({"results": []}),
+            ]
+        )
+        api = _client(fake)
+
+        api.catalog(limit=client.CATALOG_LIMIT_MAX, offset=client.CATALOG_OFFSET_MAX)
+        api.locate("doc-1", "126b", limit=client.LOCATE_LIMIT_MAX)
+        api.context(
+            "doc-1",
+            paragraph_id=client.CONTEXT_PARAGRAPH_ID_MIN,
+            char_offset=client.CONTEXT_CHAR_OFFSET_MAX,
+            window_chars=client.CONTEXT_WINDOW_CHARS_MAX,
+        )
+        api.search("theetete", limit=client.SEARCH_LIMIT_MAX)
+
+        self.assertEqual(
+            fake.calls[0]["params"],
+            {"limit": client.CATALOG_LIMIT_MAX, "offset": client.CATALOG_OFFSET_MAX},
+        )
+        self.assertEqual(fake.calls[1]["params"]["limit"], client.LOCATE_LIMIT_MAX)
+        self.assertEqual(
+            fake.calls[2]["params"],
+            {
+                "char_offset": client.CONTEXT_CHAR_OFFSET_MAX,
+                "window_chars": client.CONTEXT_WINDOW_CHARS_MAX,
+                "paragraph_id": client.CONTEXT_PARAGRAPH_ID_MIN,
+            },
+        )
+        self.assertEqual(fake.calls[3]["params"], {"q": "theetete", "limit": client.SEARCH_LIMIT_MAX})
+
+    def test_catalog_rejects_invalid_numeric_params_before_network(self) -> None:
+        api, fake = _client_without_expected_network()
+        cases = [
+            {"limit": -1, "offset": 0},
+            {"limit": "abc", "offset": 0},
+            {"limit": client.CATALOG_LIMIT_MAX + 1, "offset": 0},
+            {"limit": 1, "offset": -9},
+            {"limit": 1, "offset": "abc"},
+            {"limit": 1, "offset": client.CATALOG_OFFSET_MAX + 1},
+        ]
+
+        for kwargs in cases:
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaises(client.CatalogueInvalidParameter) as ctx:
+                    api.catalog(**kwargs)
+                self.assertEqual(ctx.exception.reason_code, client.REASON_INVALID_PARAMETER)
+                self.assertNotIn("abc", str(ctx.exception))
+
+        self.assertEqual(fake.calls, [])
+
+    def test_locate_rejects_invalid_limit_before_network(self) -> None:
+        api, fake = _client_without_expected_network()
+        for limit in [-1, "abc", client.LOCATE_LIMIT_MAX + 1]:
+            with self.subTest(limit=limit):
+                with self.assertRaises(client.CatalogueInvalidParameter) as ctx:
+                    api.locate("doc-1", "126b", limit=limit)
+                self.assertEqual(ctx.exception.reason_code, client.REASON_INVALID_PARAMETER)
+                self.assertNotIn("abc", str(ctx.exception))
+
+        self.assertEqual(fake.calls, [])
+
+    def test_context_rejects_invalid_numeric_params_before_network(self) -> None:
+        api, fake = _client_without_expected_network()
+        cases = [
+            {"page_no": 1, "para_no": 1, "char_offset": -10},
+            {"page_no": 1, "para_no": 1, "window_chars": -20},
+            {"page_no": 1, "para_no": 1, "window_chars": client.CONTEXT_WINDOW_CHARS_MIN - 1},
+            {"page_no": 1, "para_no": 1, "window_chars": client.CONTEXT_WINDOW_CHARS_MAX + 1},
+            {"page_no": 0, "para_no": 1},
+            {"page_no": 1, "para_no": "abc"},
+            {"paragraph_id": 0},
+            {"paragraph_id": client.CONTEXT_PARAGRAPH_ID_MAX + 1},
+            {"page_no": None, "para_no": None},
+        ]
+
+        for kwargs in cases:
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaises(client.CatalogueInvalidParameter) as ctx:
+                    api.context("doc-1", **kwargs)
+                self.assertEqual(ctx.exception.reason_code, client.REASON_INVALID_PARAMETER)
+                self.assertNotIn("abc", str(ctx.exception))
+
+        self.assertEqual(fake.calls, [])
+
+    def test_search_rejects_invalid_limit_before_network(self) -> None:
+        api, fake = _client_without_expected_network()
+        for limit in [-7, "abc", client.SEARCH_LIMIT_MAX + 1]:
+            with self.subTest(limit=limit):
+                with self.assertRaises(client.CatalogueInvalidParameter) as ctx:
+                    api.search("theetete", limit=limit)
+                self.assertEqual(ctx.exception.reason_code, client.REASON_INVALID_PARAMETER)
+                self.assertNotIn("abc", str(ctx.exception))
+
+        self.assertEqual(fake.calls, [])
+
     def test_not_found_is_content_free(self) -> None:
         fake = FakeRequests(FakeResponse({"detail": "Document not found with private title"}, status_code=404))
         api = _client(fake)
@@ -210,6 +311,11 @@ def _client(fake: "FakeRequests") -> client.CatalogueClient:
         requests_module=fake,
         monotonic=_monotonic(1.0, 1.025, 1.050, 1.075, 1.100),
     )
+
+
+def _client_without_expected_network() -> tuple[client.CatalogueClient, "FakeRequests"]:
+    fake = FakeRequests([])
+    return _client(fake), fake
 
 
 def _monotonic(*values: float):

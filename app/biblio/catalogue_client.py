@@ -39,6 +39,26 @@ REASON_TIMEOUT = "biblio_catalogue_timeout"
 REASON_INVALID_JSON = "biblio_catalogue_invalid_json"
 REASON_NOT_FOUND = "biblio_catalogue_not_found"
 REASON_UNEXPECTED_STATUS = "biblio_catalogue_unexpected_status"
+REASON_INVALID_PARAMETER = "biblio_catalogue_invalid_parameter"
+
+CATALOG_LIMIT_MIN = 1
+CATALOG_LIMIT_MAX = 500
+CATALOG_OFFSET_MIN = 0
+CATALOG_OFFSET_MAX = 100_000
+LOCATE_LIMIT_MIN = 1
+LOCATE_LIMIT_MAX = 1_000
+CONTEXT_PAGE_NO_MIN = 1
+CONTEXT_PAGE_NO_MAX = 100_000
+CONTEXT_PARA_NO_MIN = 1
+CONTEXT_PARA_NO_MAX = 100_000
+CONTEXT_PARAGRAPH_ID_MIN = 1
+CONTEXT_PARAGRAPH_ID_MAX = 2_147_483_647
+CONTEXT_CHAR_OFFSET_MIN = 0
+CONTEXT_CHAR_OFFSET_MAX = 1_000_000
+CONTEXT_WINDOW_CHARS_MIN = 80
+CONTEXT_WINDOW_CHARS_MAX = 8_000
+SEARCH_LIMIT_MIN = 1
+SEARCH_LIMIT_MAX = 100
 
 _ALLOWED_STATIC_GET_PATHS = {
     "/health",
@@ -157,6 +177,10 @@ class CatalogueUnexpectedStatus(CatalogueClientError):
     reason_code = REASON_UNEXPECTED_STATUS
 
 
+class CatalogueInvalidParameter(CatalogueClientError):
+    reason_code = REASON_INVALID_PARAMETER
+
+
 def get_catalogue_client_config(config_module: Any = None) -> CatalogueClientConfig:
     source = config_module if config_module is not None else default_config
     base_url = str(
@@ -192,7 +216,22 @@ class CatalogueClient:
         return self._get(ENDPOINT_HEALTH, "/health")
 
     def catalog(self, *, q: str | None = None, limit: int = 100, offset: int = 0) -> CatalogueResponse:
-        params: dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
+        params: dict[str, Any] = {
+            "limit": _bounded_int(
+                limit,
+                endpoint_kind=ENDPOINT_CATALOG,
+                name="limit",
+                minimum=CATALOG_LIMIT_MIN,
+                maximum=CATALOG_LIMIT_MAX,
+            ),
+            "offset": _bounded_int(
+                offset,
+                endpoint_kind=ENDPOINT_CATALOG,
+                name="offset",
+                minimum=CATALOG_OFFSET_MIN,
+                maximum=CATALOG_OFFSET_MAX,
+            ),
+        }
         if q is not None:
             params["q"] = str(q)
         return self._get(ENDPOINT_CATALOG, "/catalog", params=params)
@@ -214,7 +253,18 @@ class CatalogueClient:
         limit: int = 200,
     ) -> CatalogueResponse:
         path = f"/doc/{_quote_path_segment(doc_id)}/locate"
-        params = {"kind": str(kind), "label": str(locator), "limit": int(limit)}
+        params = {
+            "kind": str(kind),
+            "label": str(locator),
+            "limit": _bounded_int(
+                limit,
+                endpoint_kind=ENDPOINT_LOCATE,
+                name="limit",
+                minimum=LOCATE_LIMIT_MIN,
+                maximum=LOCATE_LIMIT_MAX,
+                doc_id=doc_id,
+            ),
+        }
         return self._get(ENDPOINT_LOCATE, path, params=params, doc_id=doc_id)
 
     def context(
@@ -229,20 +279,72 @@ class CatalogueClient:
     ) -> CatalogueResponse:
         path = f"/doc/{_quote_path_segment(doc_id)}/context"
         params: dict[str, Any] = {
-            "char_offset": int(char_offset),
-            "window_chars": int(window_chars),
+            "char_offset": _bounded_int(
+                char_offset,
+                endpoint_kind=ENDPOINT_CONTEXT,
+                name="char_offset",
+                minimum=CONTEXT_CHAR_OFFSET_MIN,
+                maximum=CONTEXT_CHAR_OFFSET_MAX,
+                doc_id=doc_id,
+            ),
+            "window_chars": _bounded_int(
+                window_chars,
+                endpoint_kind=ENDPOINT_CONTEXT,
+                name="window_chars",
+                minimum=CONTEXT_WINDOW_CHARS_MIN,
+                maximum=CONTEXT_WINDOW_CHARS_MAX,
+                doc_id=doc_id,
+            ),
         }
         if paragraph_id is not None:
-            params["paragraph_id"] = int(paragraph_id)
+            params["paragraph_id"] = _bounded_int(
+                paragraph_id,
+                endpoint_kind=ENDPOINT_CONTEXT,
+                name="paragraph_id",
+                minimum=CONTEXT_PARAGRAPH_ID_MIN,
+                maximum=CONTEXT_PARAGRAPH_ID_MAX,
+                doc_id=doc_id,
+            )
         else:
-            if page_no is not None:
-                params["page_no"] = int(page_no)
-            if para_no is not None:
-                params["para_no"] = int(para_no)
+            if page_no is None or para_no is None:
+                raise CatalogueInvalidParameter(
+                    endpoint_kind=ENDPOINT_CONTEXT,
+                    doc_id=doc_id,
+                    detail="context_locator_required",
+                )
+            params["page_no"] = _bounded_int(
+                page_no,
+                endpoint_kind=ENDPOINT_CONTEXT,
+                name="page_no",
+                minimum=CONTEXT_PAGE_NO_MIN,
+                maximum=CONTEXT_PAGE_NO_MAX,
+                doc_id=doc_id,
+            )
+            params["para_no"] = _bounded_int(
+                para_no,
+                endpoint_kind=ENDPOINT_CONTEXT,
+                name="para_no",
+                minimum=CONTEXT_PARA_NO_MIN,
+                maximum=CONTEXT_PARA_NO_MAX,
+                doc_id=doc_id,
+            )
         return self._get(ENDPOINT_CONTEXT, path, params=params, doc_id=doc_id)
 
     def search(self, q: str, *, limit: int = 20) -> CatalogueResponse:
-        return self._get(ENDPOINT_SEARCH, "/search", params={"q": str(q), "limit": int(limit)})
+        return self._get(
+            ENDPOINT_SEARCH,
+            "/search",
+            params={
+                "q": str(q),
+                "limit": _bounded_int(
+                    limit,
+                    endpoint_kind=ENDPOINT_SEARCH,
+                    name="limit",
+                    minimum=SEARCH_LIMIT_MIN,
+                    maximum=SEARCH_LIMIT_MAX,
+                ),
+            },
+        )
 
     def _get(
         self,
@@ -435,6 +537,35 @@ def _positive_int(value: Any, default: int) -> int:
     except (TypeError, ValueError):
         return default
     return integer if integer > 0 else default
+
+
+def _bounded_int(
+    value: Any,
+    *,
+    endpoint_kind: str,
+    name: str,
+    minimum: int,
+    maximum: int,
+    doc_id: str = "",
+) -> int:
+    try:
+        if isinstance(value, bool):
+            raise TypeError("bool is not an integer parameter")
+        integer = int(value)
+    except (TypeError, ValueError) as exc:
+        raise CatalogueInvalidParameter(
+            endpoint_kind=endpoint_kind,
+            doc_id=doc_id,
+            detail=f"{name}_must_be_integer",
+        ) from exc
+
+    if integer < minimum or integer > maximum:
+        raise CatalogueInvalidParameter(
+            endpoint_kind=endpoint_kind,
+            doc_id=doc_id,
+            detail=f"{name}_out_of_range",
+        )
+    return integer
 
 
 def _duration_ms(started: float, monotonic: Any) -> int:

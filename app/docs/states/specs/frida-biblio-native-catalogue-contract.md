@@ -209,8 +209,25 @@ Implementation Lot 2 du 2026-05-28:
 - garde structurelle: `_request()` refuse tout verbe autre que `GET`;
 - allowlist structurelle: seuls `/health`, `/catalog`, `/search`, `/doc/{id}`, `/doc/{id}/metadata`, `/doc/{id}/locate`, `/doc/{id}/context` sont acceptes;
 - routes mutatrices et exports non allowlistes sont refuses avant appel reseau;
-- erreurs content-free: forbidden method, forbidden route, invalid base URL, service unavailable, timeout, invalid JSON, not found, unexpected status;
+- erreurs content-free: forbidden method, forbidden route, invalid base URL, invalid parameter, service unavailable, timeout, invalid JSON, not found, unexpected status;
 - `CatalogueResponse.to_observability()` exclut le payload brut et expose seulement endpoint, status, duree, compte, id court et longueur compacte si applicable.
+
+Correctif Lot 2 du 2026-05-28:
+
+- les parametres numeriques publics sont valides avant appel reseau;
+- les erreurs de parametre utilisent `biblio_catalogue_invalid_parameter`;
+- aucune valeur brute utilisateur n'est exposee dans l'erreur ou l'observabilite;
+- bornes alignees sur Catalogue quand l'API les declare:
+  - `catalog.limit`: `1..500`;
+  - `locate.limit`: `1..1000`;
+  - `context.window_chars`: `80..8000`;
+  - `search.limit`: `1..100`;
+- bornes client conservatrices quand l'API ne declare pas de maximum:
+  - `catalog.offset`: `0..100000`;
+  - `context.char_offset`: `0..1000000`;
+  - `context.page_no`: `1..100000`;
+  - `context.para_no`: `1..100000`;
+  - `context.paragraph_id`: `1..2147483647`.
 
 Le Lot 2 ne branche toujours pas:
 
