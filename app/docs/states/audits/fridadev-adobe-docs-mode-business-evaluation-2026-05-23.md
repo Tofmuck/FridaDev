@@ -2,14 +2,14 @@
 
 Statut: evaluation metier Lot 8
 Date: 2026-05-23
-TODO source: `app/docs/todo-todo/product/Adobe to do.md`
+Roadmap archivee source: `app/docs/todo-done/product/Adobe to do.md`
 Spec source: `app/docs/states/specs/fridadev-adobe-docs-mode-contract.md`
 
 ## Verdict
 
 Le Lot 8 est valide cote evaluation automatisee: un jeu de tests metier synthetiques couvre Photoshop, Illustrator, release notes, known issues, cas piege, comparaison Adobe actif/inactif et exports content-free.
 
-Cette evaluation ne remplace pas une validation Amandine en atelier. Elle prouve que le mini-pipeline sait chercher une preuve sourcee dans des contenus de forme HelpX quand elle existe, et qu'il signale l'insuffisance de preuve sur une fonctionnalite inventee.
+Cette evaluation ne remplacait pas une validation Amandine en atelier au moment du chantier. Depuis l'annulation produit du 2026-05-28, cette validation est sans objet. L'evaluation prouve que le mini-pipeline sait chercher une preuve sourcee dans des contenus de forme HelpX quand elle existe, et qu'il signale l'insuffisance de preuve sur une fonctionnalite inventee.
 
 ## Meilleur plan retenu
 
@@ -100,7 +100,7 @@ Verifications automatisees:
 - Les tests n'evaluent pas la qualite finale d'une reponse LLM redigee.
 - Les tests n'evaluent pas l'exhaustivite HelpX.
 - Les tests ne garantissent pas les libelles exacts de menus en interface francaise.
-- Amandine doit encore valider au moins un cas Photoshop reel et un cas Illustrator reel.
+- La validation Amandine initialement ouverte est sans objet depuis l'annulation produit du 2026-05-28.
 - Une validation live metier bornee pourra etre utile, mais elle doit rester content-free cote logs et ne pas stocker de passages Adobe bruts.
 
 ## Commandes / preuves

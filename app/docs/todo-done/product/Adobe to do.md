@@ -1,15 +1,31 @@
 # Adobe Photoshop / Illustrator - TODO
 
-Classement: `app/docs/todo-todo/product/`
-Statut: MVP clos provisoirement le 2026-05-23 apres Lots 1-9; sous surveillance; validation metier Amandine reelle encore ouverte; pas d'index Adobe durable.
+Classement: `app/docs/todo-done/product/`
+Statut: archive / non actif depuis le 2026-05-28.
+Ancien statut: MVP clos provisoirement le 2026-05-23 apres Lots 1-9; sous surveillance; validation metier Amandine reelle encore ouverte; pas d'index Adobe durable.
 Date d'ouverture: 2026-05-23.
 Spec normative: `app/docs/states/specs/fridadev-adobe-docs-mode-contract.md`
 Cloture provisoire: `app/docs/states/audits/fridadev-adobe-docs-mode-provisional-closure-2026-05-23.md`
-Besoin produit: rendre Frida utile pour Amandine sur Photoshop et Illustrator via une lecture officielle Adobe a la demande, sans index durable Adobe et sans casser la recherche web generale.
+Besoin produit historique: rendre Frida utile pour Amandine sur Photoshop et Illustrator via une lecture officielle Adobe a la demande, sans index durable Adobe et sans casser la recherche web generale.
+
+## Cloture produit du 2026-05-28
+
+Le mode Adobe Photoshop / Illustrator livre reste une capacite runtime et une
+reference historique utile. La TODO n'est plus un chantier actif:
+
+- la duplication Amandine est annulee par decision produit;
+- Amandine ne demande plus une Frida separee;
+- Tof n'a pas besoin actuellement d'un chantier Illustrator actif;
+- les validations ouvertes `Amandine valide Photoshop / Illustrator` deviennent
+  sans objet, pas validees.
+
+Ne pas lire les cases ouvertes ci-dessous comme des actions a reprendre. Tout
+nouvel elargissement Adobe Learn, Community, PDF, GitHub AdobeDocs, index
+durable ou Biblio Adobe requerra une nouvelle decision explicite.
 
 ## Invariants deja actes
 
-- Garder ce chantier separe de `job-divers-todo.md`; `job-divers-todo.md` reste actif pour les petits jobs produit/hiver.
+- Garder ce chantier separe du panier historique `job-divers-todo.md`; au moment de la livraison Adobe, ce panier servait aux petits jobs produit/hiver.
 - Ne pas creer de mode `auto`: Amandine choisit explicitement Photoshop ou Illustrator.
 - Ne pas vendre ce chantier comme une base de connaissance Adobe persistante.
 - Ne pas demander a Amandine de documenter chaque geste ou effet pendant son travail.
@@ -193,7 +209,7 @@ Statut: clos le 2026-05-23 par creation de la spec normative `app/docs/states/sp
 - [x] Verifier les surfaces UI de boutons/modes chat.
 - [x] Verifier les surfaces payload `/api/chat`.
 - [x] Verifier les garde-fous Memory/Identity/Summary.
-- [x] Confirmer que `job-divers-todo.md` reste actif et non archive.
+- [x] Confirmer que `job-divers-todo.md` etait encore actif et non archive au moment du cadrage Adobe.
 
 ### PATCH
 
@@ -566,7 +582,7 @@ Statut: clos le 2026-05-23 par validation live bornee. Note: `app/docs/states/au
 ### PATCH
 
 - [x] Ajouter fixtures/evals si le framework existant le justifie.
-- [x] Documenter le protocole manuel restant pour validation Amandine.
+- [x] Documenter le protocole manuel restant pour validation Amandine. Supersede le 2026-05-28: validation sans objet.
 - [x] Ajouter snapshots content-free de preuves.
 - [x] Renforcer les alias metier FR/EN bornes exposes par l'evaluation: detourage, disque, vectoriel, impression, import/export, suppression.
 
@@ -590,7 +606,7 @@ Statut: clos le 2026-05-23 par validation live bornee. Note: `app/docs/states/au
 - [x] Exiger citations/metadonnees de source.
 - [x] Comparer mode Adobe actif vs inactif sur quelques cas.
 - [x] Inclure questions pieges.
-- [ ] Valider avec Amandine sur cas reels.
+- [ ] Sans objet depuis le 2026-05-28: valider avec Amandine sur cas reels.
 
 ## Lot 9 - Rebuild, validation live et cloture provisoire
 
@@ -607,7 +623,7 @@ Statut: clos provisoirement le 2026-05-23. Note: `app/docs/states/audits/fridade
 
 - [x] Aucun patch supplementaire runtime dans ce lot.
 - [x] Mettre a jour ce TODO avec preuves finales.
-- [x] Ne pas archiver en `todo-done` tant que la validation Amandine reelle reste ouverte.
+- [x] Decision historique: ne pas archiver en `todo-done` tant que la validation Amandine reelle reste ouverte. Supersede le 2026-05-28 par annulation produit.
 
 ### TEST
 
@@ -652,7 +668,7 @@ Statut: clos provisoirement le 2026-05-23. Note: `app/docs/states/audits/fridade
 - [x] Aucun markdown, passage ou lane prompt Adobe n'entre en Memory/Identity/Summary/Biblio/Active Documents.
 - [x] Les logs restent content-free.
 - [x] Les tests couvrent non-regression chat/web normal.
-- [ ] Amandine valide au moins un cas Photoshop reel et un cas Illustrator reel.
+- [ ] Sans objet depuis le 2026-05-28: Amandine ne valide pas de cas Photoshop / Illustrator reel dans ce chantier archive.
 
 ## Decisions tranchees pendant le MVP
 
@@ -668,8 +684,8 @@ Statut: clos provisoirement le 2026-05-23. Note: `app/docs/states/audits/fridade
 
 ## Reste ouvert hors cloture provisoire
 
-- [ ] Amandine valide au moins un cas Photoshop reel.
-- [ ] Amandine valide au moins un cas Illustrator reel.
+- [ ] Sans objet depuis le 2026-05-28: validation Photoshop reelle par Amandine.
+- [ ] Sans objet depuis le 2026-05-28: validation Illustrator reelle par Amandine.
 - [ ] Decider explicitement avant tout ajout Learn, Community, PDF, GitHub AdobeDocs, index durable ou Biblio Adobe.
 
 ## Hors-scope strict MVP

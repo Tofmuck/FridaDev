@@ -1,9 +1,24 @@
 # FridaDev - Externalisation reglee des facultes - TODO
 
-Statut: actif
-Classement: `app/docs/todo-todo/product/`
+Statut: archive / non actif depuis le 2026-05-28.
+Ancien statut: actif
+Classement: `app/docs/todo-done/product/`
 Nature: note de travail + roadmap de clarification architecturale
 Portee: FridaDev comme noyau orchestrateur et externalisation progressive de certaines capacites
+
+## Cloture produit du 2026-05-28
+
+Cette note reste utile comme orientation historique: FridaDev garde le noyau
+conversation, memoire, identite et jugement; certaines capacites peuvent devenir
+des facultes externes sous contrat stable.
+
+Elle n'est plus une roadmap active avant Biblio:
+
+- aucune externalisation de service n'est lancee par ce document;
+- les idees doctrinales devront etre extraites vers `app/docs/states/` si elles
+  redeviennent source-of-truth;
+- le chantier Biblio doit rester borne a son propre contrat, sans ouvrir une
+  refonte d'architecture distribuee.
 
 ## Intention
 
@@ -296,7 +311,7 @@ Si elle clarifie une faculte:
 Si elle disperse le sujet:
 - il faut garder la fonction au centre.
 
-## TODO actif
+## TODO historique non actif
 
 - [ ] Cartographier les frontieres internes actuelles de FridaDev par capacite.
 - [ ] Identifier les ports internes qui pourraient avoir un adapter `local|http` sans changer la logique metier.

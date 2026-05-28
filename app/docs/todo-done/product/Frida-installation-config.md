@@ -1,6 +1,22 @@
 # Frida - Configuration d'installation
 
+Statut: archive / non actif depuis le 2026-05-28.
+Ancien classement: `app/docs/todo-todo/product/`
+Motif: pas de distribution publique ni installation tierce prevue a court terme.
+Reference operationnelle encore utile: `app/docs/states/operations/frida-installation-operations.md`
+
 Objectif: definir ce qui doit etre configurable a l'installation pour rendre `Frida` publiable, sans garder des dependances cachees ou trop liees a l'infra actuelle.
+
+## Cloture produit du 2026-05-28
+
+Cette roadmap conserve une valeur historique pour comprendre les besoins d'une
+installation publiable. Elle ne decrit plus un chantier actif avant Biblio:
+
+- l'instance OVH courante reste l'environnement actif;
+- aucune distribution publique ni installation tierce n'est planifiee a court
+  terme;
+- aucune nouvelle surface d'installation/admin ne doit etre ouverte depuis ce
+  document sans decision produit explicite.
 
 ## Etat apres tranche docs (2026-03-29)
 

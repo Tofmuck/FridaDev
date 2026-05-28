@@ -126,7 +126,7 @@ Frontend rehydration and operator observability
 - Response arbiter power contract: `app/docs/states/specs/response-arbiter-power-contract.md`
 - Global audit dated 2026-05-03: `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
 - Archived global audit remediation: `app/docs/todo-done/audits/fridadev-global-audit-remediation-todo.md`
-- Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
+- Archived installation roadmap: `app/docs/todo-done/product/Frida-installation-config.md`
 
 ### Versioned vs runtime-local
 
@@ -298,7 +298,7 @@ Rehydratation frontend et observabilite operateur
 - Contrat de pouvoir de l'arbitre de reponse: `app/docs/states/specs/response-arbiter-power-contract.md`
 - Audit global date du 2026-05-03: `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
 - Remediation archivee de l'audit global: `app/docs/todo-done/audits/fridadev-global-audit-remediation-todo.md`
-- Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`
+- Roadmap installation archivee: `app/docs/todo-done/product/Frida-installation-config.md`
 
 ### Ce qui est versionne vs local runtime
 

@@ -1,11 +1,23 @@
 # FridaDev - jobs divers produit - TODO
 
-Statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif et cloture provisoirement sous surveillance apres validation live navigateur 99 s; objet 4 repertoires de travail fermes par defaut livre; objet 5 composer actions en grille droite livre; objet 6 animation des statuts Whisper livre; objet 7 loader assistant anime livre; objet 8 memoire/intention de Frida ajoute en cadrage docs-only, non lance runtime
+Statut: archive / non actif depuis le 2026-05-28.
+Ancien statut: objets 1 et 2 livres en runtime applicatif; objet 3 dictee Whisper longue corrige cote applicatif et cloture provisoirement sous surveillance apres validation live navigateur 99 s; objet 4 repertoires de travail fermes par defaut livre; objet 5 composer actions en grille droite livre; objet 6 animation des statuts Whisper livre; objet 7 loader assistant anime livre; objet 8 memoire/intention de Frida ajoute en cadrage docs-only, non lance runtime
 Date de creation: 2026-05-22
-Classement: `app/docs/todo-todo/product/`
-Nature: TODO source-of-truth pour jobs produit courts et bornes, docs-only au moment de creation
+Classement: `app/docs/todo-done/product/`
+Nature historique: TODO source-of-truth pour jobs produit courts et bornes, docs-only au moment de creation
 Portee: LLM principal OpenRouter `openai/gpt-5.1`, runtime settings, admin, controle chat, payload, observabilite, UI de streaming visuel, dictee Whisper locale longue, polish UI des repertoires de travail, ergonomie du composer de chat, retour visuel actif de la dictee Whisper, loader assistant anime, cadrage memoire/intention `feed her from herself`
 Hors-scope du commit de creation: runtime, DB, migration, frontend, backend, tests applicatifs, changement de modele, rebuild
+
+## Cloture produit du 2026-05-28
+
+Ce fichier etait un panier temporaire de petits jobs produit. Il est archive
+avant l'ouverture du chantier Biblio pour ne plus parasiter la surface active.
+
+- Les objets livres restent auditables dans cette archive.
+- Le sujet memoire/intention `feed her from herself` reste porte, si besoin, par
+  `app/docs/todo-todo/memory/Frida_from_herself.md`.
+- Un nouveau panier de jobs courts pourra etre cree plus tard, avec un perimetre
+  frais et explicite.
 
 ## 1. Intention
 
@@ -648,5 +660,5 @@ Le chantier pourra etre clos seulement si:
 - les statuts actifs Whisper affichent une animation sobre et compatible reduced motion sans toucher au backend;
 - le loader assistant du chat utilise la meme animation sobre, disparait au premier contenu visible et reste compatible reduced motion;
 - le chantier `feed her from herself` est soit extrait dans un TODO memoire dedie avec contrat, soit explicitement maintenu hors implementation;
-- le renommage en `job-divers-todo.md` est propage aux index et roadmaps actives;
+- le renommage en `job-divers-todo.md` etait propage aux index et roadmaps alors actives;
 - le TODO est archive dans `app/docs/todo-done/product/`.

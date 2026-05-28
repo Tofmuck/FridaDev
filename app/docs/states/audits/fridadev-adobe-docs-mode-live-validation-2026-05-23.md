@@ -2,7 +2,7 @@
 
 Statut: validation live bornee
 Date: 2026-05-23
-TODO source: `app/docs/todo-todo/product/Adobe to do.md`
+Roadmap archivee source: `app/docs/todo-done/product/Adobe to do.md`
 Spec source: `app/docs/states/specs/fridadev-adobe-docs-mode-contract.md`
 
 ## Verdict
