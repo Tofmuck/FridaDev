@@ -245,12 +245,13 @@ Le Lot 2 ne branche toujours pas:
 
 ## 7. Resolver documentaire
 
-Le resolver futur retourne toujours un statut:
+Le resolver Lot 3 retourne toujours un statut:
 
 - `resolved`;
 - `ambiguous`;
 - `not_found`;
-- `error`.
+- `invalid_request`;
+- `catalogue_unavailable`.
 
 Regles:
 
@@ -261,13 +262,26 @@ Regles:
 - conserver le `source_filename` comme trace, pas comme preuve bibliographique;
 - traiter les milestones Stephanus comme aide, pas comme preuve suffisante.
 
+Implementation Lot 3 du 2026-05-28:
+
+- module: `app/biblio/document_resolver.py`;
+- classes structurantes: `BiblioResolveRequest`, `BiblioResolutionResult`, `DocumentCandidate`, `LocatorCandidate`, `BiblioDocumentResolver`;
+- le resolver utilise seulement le client Catalogue GET-only;
+- il peut appeler `catalog()`, `document()`, `metadata()` et `locate()`;
+- il n'appelle pas `context()` et n'extrait aucun passage;
+- il ne branche pas chat, prompt, frontend, toggle, DB, Memory/RAG, Identity, Summary, Web, workspace ou OCR;
+- il retourne des raisons content-free comme `locator_requires_document`, `ambiguous_document`, `ambiguous_locator`, `document_not_found`, `locator_not_found`, `catalogue_unavailable`;
+- `to_observability()` expose status, reason, ids courts et compteurs de candidats, jamais de payload Catalogue brut ni de texte OCR.
+
 Cas Platon / Stephanus:
 
 - `126b -> 126e` doit etre un cas de test;
+- `126b` seul retourne `invalid_request` / `locator_requires_document`;
+- `Platon 126b` peut rester `ambiguous` si plusieurs documents ou editions correspondent;
 - si le dialogue cible n'est pas determine, le resultat doit etre `ambiguous`;
 - si plusieurs occurrences ou editions restent plausibles, le resultat doit etre `ambiguous`;
 - si aucun locator compatible n'est trouve, le resultat doit etre `not_found`;
-- si Catalogue echoue, le resultat doit etre `error`.
+- si Catalogue echoue, le resultat doit etre `catalogue_unavailable`.
 
 ## 8. Extraction bornee
 

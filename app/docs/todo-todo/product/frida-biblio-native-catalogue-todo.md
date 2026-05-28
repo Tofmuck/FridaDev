@@ -14,6 +14,7 @@ Correctif UI Lot 0: 2026-05-28, protection du formulaire dirty contre l'auto-ref
 Livraison Lot 1: 2026-05-28, spec native read-only creee dans `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Livraison Lot 2: 2026-05-28, client FridaDev Catalogue GET-only cree dans `app/biblio/catalogue_client.py`
 Correctif Lot 2: 2026-05-28, validation bornee et strictement entiere des parametres numeriques publics avant reseau avec erreur `biblio_catalogue_invalid_parameter`
+Livraison Lot 3: 2026-05-28, resolver documentaire cree dans `app/biblio/document_resolver.py`, sans extraction de passage ni branchement chat
 
 ## 1. Intention
 
@@ -209,12 +210,12 @@ Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, 
 
 ### Lot 3 - Resolver documentaire
 
-- [ ] Resoudre un document par titre, corpus ou metadata disponible.
-- [ ] Detecter les cas ambigus.
-- [ ] Resoudre un locator simple.
-- [ ] Traiter explicitement Stephanus et ses limites.
-- [ ] Tester le cas `Platon` / `126b` / `126e` comme resolution ou ambiguite explicite.
-- [ ] Ne jamais presenter une resolution incertaine comme certaine.
+- [x] Resoudre un document par id, titre, auteur ou metadata Catalogue disponible.
+- [x] Detecter les cas ambigus.
+- [x] Resoudre un locator simple sans extraction de passage.
+- [x] Traiter explicitement Stephanus et ses limites: un locator sans document resolu est `invalid_request`, pas `resolved`.
+- [x] Tester le cas `Platon` / `126b` / `126e` comme resolution ou ambiguite explicite.
+- [x] Ne jamais presenter une resolution incertaine comme certaine.
 
 ### Lot 4 - Extraction passage bornee
 
