@@ -15,6 +15,7 @@ Livraison Lot 1: 2026-05-28, spec native read-only creee dans `app/docs/states/s
 Livraison Lot 2: 2026-05-28, client FridaDev Catalogue GET-only cree dans `app/biblio/catalogue_client.py`
 Correctif Lot 2: 2026-05-28, validation bornee et strictement entiere des parametres numeriques publics avant reseau avec erreur `biblio_catalogue_invalid_parameter`
 Livraison Lot 3: 2026-05-28, resolver documentaire cree dans `app/biblio/document_resolver.py`, sans extraction de passage ni branchement chat
+Correctif Lot 3: 2026-05-28, observabilite resolver rendue content-free pour les locators demandes et resolus
 
 ## 1. Intention
 
@@ -216,6 +217,7 @@ Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, 
 - [x] Traiter explicitement Stephanus et ses limites: un locator sans document resolu est `invalid_request`, pas `resolved`.
 - [x] Tester le cas `Platon` / `126b` / `126e` comme resolution ou ambiguite explicite.
 - [x] Ne jamais presenter une resolution incertaine comme certaine.
+- [x] Garantir que l'observabilite du resolver n'expose pas les locators bruts, titres, auteurs, payloads ou texte d'ouvrage.
 
 ### Lot 4 - Extraction passage bornee
 

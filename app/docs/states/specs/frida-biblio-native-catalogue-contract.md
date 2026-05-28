@@ -271,7 +271,10 @@ Implementation Lot 3 du 2026-05-28:
 - il n'appelle pas `context()` et n'extrait aucun passage;
 - il ne branche pas chat, prompt, frontend, toggle, DB, Memory/RAG, Identity, Summary, Web, workspace ou OCR;
 - il retourne des raisons content-free comme `locator_requires_document`, `ambiguous_document`, `ambiguous_locator`, `document_not_found`, `locator_not_found`, `catalogue_unavailable`;
-- `to_observability()` expose status, reason, ids courts et compteurs de candidats, jamais de payload Catalogue brut ni de texte OCR.
+- `to_observability()` expose status, reason, ids courts et compteurs de candidats, jamais de payload Catalogue brut ni de texte OCR;
+- les locators demandes et resolus ne sortent pas en clair dans l'observabilite: seuls presence, longueur et hash court stable sont exposes;
+- `locator_kind` est expose seulement comme valeur connue (`stephanus`, `page`, `paragraph`, `chapter`, `milestone`) ou `custom`;
+- titres, auteurs, titre canonique, label de locator, texte OCR, passage, payload Catalogue et requete utilisateur brute restent hors observabilite.
 
 Cas Platon / Stephanus:
 

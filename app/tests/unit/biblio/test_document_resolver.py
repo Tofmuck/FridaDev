@@ -257,6 +257,93 @@ class DocumentResolverTests(unittest.TestCase):
         self.assertEqual(result.status, resolver.STATUS_CATALOGUE_UNAVAILABLE)
         self.assertEqual(result.reason_code, resolver.REASON_CATALOGUE_UNAVAILABLE)
 
+    def test_observability_hides_requested_locator_raw_value(self) -> None:
+        raw_locator = "SECRET USER RAW LOCATOR SHOULD NOT BE IN OBSERVABILITY"
+
+        result = resolver.BiblioDocumentResolver(FakeCatalogueClient()).resolve(
+            resolver.BiblioResolveRequest(locator=raw_locator)
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, resolver.STATUS_INVALID_REQUEST)
+        self.assertEqual(observed["status"], resolver.STATUS_INVALID_REQUEST)
+        self.assertEqual(observed["reason_code"], resolver.REASON_LOCATOR_REQUIRES_DOCUMENT)
+        self.assertNotIn(raw_locator, str(observed))
+        self.assertEqual(observed["requested_locator"]["present"], True)
+        self.assertEqual(observed["requested_locator"]["length"], len(raw_locator))
+        self.assertEqual(len(observed["requested_locator"]["hash"]), 12)
+
+    def test_observability_hides_requested_locator_end_raw_value(self) -> None:
+        raw_locator_end = "SECRET END RAW LOCATOR SHOULD NOT BE IN OBSERVABILITY"
+
+        result = resolver.BiblioDocumentResolver(FakeCatalogueClient()).resolve(
+            resolver.BiblioResolveRequest(document_id="doc-1", locator_end=raw_locator_end)
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, resolver.STATUS_INVALID_REQUEST)
+        self.assertEqual(observed["reason_code"], resolver.REASON_LOCATOR_RANGE_REQUIRES_START)
+        self.assertNotIn(raw_locator_end, str(observed))
+        self.assertEqual(observed["requested_locator_end"]["present"], True)
+        self.assertEqual(observed["requested_locator_end"]["length"], len(raw_locator_end))
+
+    def test_observability_hides_locator_candidate_label_raw_value(self) -> None:
+        raw_locator = "SECRET RAW LOCATOR LABEL"
+        fake = FakeCatalogueClient(
+            documents={"doc-1": {"document": {"id": "doc-1", "title": "Theetete"}}},
+            metadata={"doc-1": {"document": {"id": "doc-1"}, "human_metadata": {"authors": "Platon"}}},
+            locate_payloads={
+                ("doc-1", "custom", raw_locator): {
+                    "document_id": "doc-1",
+                    "kind": "custom",
+                    "label": raw_locator,
+                    "match_count": 1,
+                    "best": {"kind": "custom", "label": raw_locator, "page_no": 12, "para_no": 3},
+                }
+            },
+        )
+
+        result = resolver.BiblioDocumentResolver(fake).resolve(
+            resolver.BiblioResolveRequest(document_id="doc-1", locator=raw_locator, locator_kind="custom")
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, resolver.STATUS_RESOLVED)
+        self.assertEqual(result.locator.label, raw_locator)
+        self.assertNotIn(raw_locator, str(observed))
+        self.assertEqual(observed["locator"]["kind"], "custom")
+        self.assertEqual(observed["locator"]["label"]["present"], True)
+        self.assertEqual(observed["locator"]["label"]["length"], len(raw_locator))
+        self.assertEqual(len(observed["locator"]["label"]["hash"]), 12)
+        self.assertEqual(observed["locator_candidate_count"], 1)
+
+    def test_observability_keeps_stephanus_ambiguity_content_free(self) -> None:
+        fake = FakeCatalogueClient(
+            documents={"doc-1": {"document": {"id": "doc-1", "title": "Theetete"}}},
+            metadata={"doc-1": {"document": {"id": "doc-1"}, "human_metadata": {"authors": "Platon"}}},
+            locate_payloads={
+                ("doc-1", "stephanus", "126b"): {
+                    "document_id": "doc-1",
+                    "kind": "stephanus",
+                    "label": "126b",
+                    "match_count": 2,
+                    "best": {"kind": "stephanus", "label": "126b", "page_no": 1, "para_no": 1},
+                    "alternatives": [{"kind": "stephanus", "label": "126b", "page_no": 9, "para_no": 5}],
+                }
+            },
+        )
+
+        result = resolver.BiblioDocumentResolver(fake).resolve(
+            resolver.BiblioResolveRequest(document_id="doc-1", locator="126b")
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(observed["status"], resolver.STATUS_AMBIGUOUS)
+        self.assertEqual(observed["reason_code"], resolver.REASON_AMBIGUOUS_LOCATOR)
+        self.assertEqual(observed["locator_candidate_count"], 2)
+        self.assertNotIn("126b", str(observed))
+        self.assertEqual(observed["requested_locator"]["length"], len("126b"))
+
 
 def response(payload: dict[str, object], endpoint_kind: str) -> catalogue.CatalogueResponse:
     return catalogue.CatalogueResponse(

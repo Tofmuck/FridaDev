@@ -7,6 +7,7 @@ passages, calls context, writes to Catalogue, or touches chat state.
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
@@ -41,6 +42,7 @@ REASON_INVALID_CATALOGUE_REQUEST = "invalid_catalogue_request"
 
 DOCUMENT_QUERY_LIMIT = 20
 LOCATOR_QUERY_LIMIT = 20
+SAFE_LOCATOR_KINDS = {"chapter", "milestone", "page", "paragraph", "stephanus"}
 
 
 @dataclass(frozen=True)
@@ -84,8 +86,8 @@ class LocatorCandidate:
     def to_observability(self) -> dict[str, Any]:
         return {
             "doc_id_short": self.doc_id_short,
-            "kind": self.kind,
-            "label": self.label,
+            "kind": _observable_locator_kind(self.kind),
+            "label": _compact_text_signal(self.label),
             "page_no": self.page_no,
             "para_no": self.para_no,
             "paragraph_id": self.paragraph_id,
@@ -115,9 +117,9 @@ class BiblioResolutionResult:
             "locator": self.locator.to_observability() if self.locator else None,
             "locator_end": self.locator_end.to_observability() if self.locator_end else None,
             "locator_candidate_count": len(self.locator_candidates),
-            "requested_locator_kind": self.requested_locator_kind,
-            "requested_locator": self.requested_locator,
-            "requested_locator_end": self.requested_locator_end,
+            "requested_locator_kind": _observable_locator_kind(self.requested_locator_kind),
+            "requested_locator": _compact_text_signal(self.requested_locator),
+            "requested_locator_end": _compact_text_signal(self.requested_locator_end),
         }
 
 
@@ -532,3 +534,18 @@ def _text(value: Any) -> str:
 
 def _short_doc_id(doc_id: str) -> str:
     return doc_id[:8]
+
+
+def _observable_locator_kind(kind: str) -> str:
+    normalized = _text(kind).lower()
+    if normalized in SAFE_LOCATOR_KINDS:
+        return normalized
+    return "custom" if normalized else ""
+
+
+def _compact_text_signal(value: str) -> dict[str, Any]:
+    text = _text(value)
+    if not text:
+        return {"present": False, "length": 0, "hash": ""}
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+    return {"present": True, "length": len(text), "hash": digest}
