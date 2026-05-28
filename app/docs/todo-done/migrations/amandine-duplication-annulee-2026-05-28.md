@@ -1,16 +1,41 @@
-# Duplication Amandine depuis FridaDev sain
+# Duplication Amandine depuis FridaDev sain - annulee
 
-Statut: actif sur `migration`
-Portee: plan operatoire de creation d'une instance Amandine separee
-Precondition: freeze sante Frida valide GO le 2026-05-27
+Statut: annule par decision produit le 2026-05-28
+Ancien statut: actif sur `migration`
+Portee: archive du plan operatoire prepare, non execute et a ne pas lancer
+Precondition historique: freeze sante Frida valide le 2026-05-27
 Source freeze: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
+
+## Decision produit du 2026-05-28
+
+Amandine ne souhaite pas disposer d'une Frida separee: elle dit que cela n'a
+pas d'interet pour elle. Ce choix est la decision source-of-truth actuelle et
+doit etre respecte.
+
+Cette annulation n'est pas un echec technique. Le freeze sante Frida reste
+valide et utile comme baseline de sante, de non-regression et de lisibilite du
+runtime Frida, mais il ne declenche plus de duplication Amandine.
+
+Consequences applicables:
+
+- aucune DB Amandine ne doit etre creee;
+- aucun conteneur, hostname, volume, `state/` ou secret/token Amandine ne doit
+  etre cree;
+- aucune stack Amandine ne doit etre preparee ou lancee;
+- aucune action Sauron n'est attendue pour Amandine;
+- cette migration n'est pas reportee implicitement: elle est annulee dans
+  l'etat produit courant.
+
+Les sections ci-dessous conservent l'historique auditable des precautions
+preparees. Elles ne constituent plus un plan actif ni une checklist a executer.
 
 ## Principe
 
-La duplication Amandine part du repository FridaDev sain, pas des donnees Frida.
-Le code applicatif Amandine doit venir d'un checkout/clone Git propre d'un
-commit ou d'une branche identifies. Il ne doit pas venir d'un `rsync`, d'une
-copie manuelle ou d'une duplication opaque de la working copy live Frida.
+Historique du plan annule: la duplication Amandine devait partir du repository
+FridaDev sain, pas des donnees Frida. Le code applicatif Amandine devait venir
+d'un checkout/clone Git propre d'un commit ou d'une branche identifies. Il ne
+devait pas venir d'un `rsync`, d'une copie manuelle ou d'une duplication opaque
+de la working copy live Frida.
 
 La cible est une instance separee:
 
@@ -24,7 +49,7 @@ repository FridaDev sain
 -> instance Amandine autonome
 ```
 
-Ce plan ne cree pas Amandine. Il decrit les lots a executer ensuite avec GO explicite.
+Ce plan n'a pas cree Amandine. Les lots ci-dessous ne sont plus a executer.
 
 ## Decision de base
 
@@ -651,9 +676,9 @@ Critere de sortie:
 
 - [ ] Decision GO/NO-GO explicite.
 - [ ] Aucun P0/P1/P2 ouvert si GO.
-- [ ] Prochaine action produit claire.
+- [ ] Prochaine action produit claire. Supersede le 2026-05-28: aucune prochaine action Amandine.
 
-## Conditions d'arret
+## Conditions d'arret historiques du plan annule
 
 Arreter et revenir a l'operateur si:
 
@@ -666,7 +691,7 @@ Arreter et revenir a l'operateur si:
 - les smokes revelent un P0/P1/P2;
 - le plan derive vers une migration de donnees Frida au lieu d'une instance propre.
 
-## Definition de fini
+## Definition de fini historique du plan annule
 
 - [ ] Amandine dispose d'une stack separee.
 - [ ] DB Amandine neuve et structuree, sans donnees Frida/Tof.

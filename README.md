@@ -113,6 +113,8 @@ Frontend rehydration and operator observability
 - Archived active conversation documents audit-plan: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
 - Archived active conversation documents OCR roadmap: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Active Biblio native / Frida Catalogue roadmap: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
+- Archived cancelled Amandine duplication plan: `app/docs/todo-done/migrations/amandine-duplication-annulee-2026-05-28.md`
+- Frida health freeze baseline: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Archived long-term dashboard roadmap: `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`
 - Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
@@ -283,6 +285,8 @@ Rehydratation frontend et observabilite operateur
 - Audit-plan archive documents actifs de conversation: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
 - Roadmap archivee OCR des documents actifs: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Roadmap active Biblio native / Frida Catalogue: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
+- Archive annulation duplication Amandine: `app/docs/todo-done/migrations/amandine-duplication-annulee-2026-05-28.md`
+- Baseline freeze sante Frida: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
 - Contrat dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Roadmap archivee dashboard long terme: `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`
 - Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`

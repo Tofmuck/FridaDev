@@ -4,8 +4,13 @@ Statut: valide / clos
 Portee: audit applicatif FridaDev avant creation d'une instance Amandine separee
 But: prouver que Frida est assez saine pour servir de base produit, avec DB neuve et `state/` propre, sans lancer la duplication dans ce chantier.
 Cloture: 2026-05-27
-Decision: GO duplication Amandine sous plan separe
+Decision historique: GO duplication Amandine sous plan separe, supersede le 2026-05-28 par annulation produit
 Note finale: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
+
+Note de mise a jour 2026-05-28: la duplication Amandine a ete annulee ensuite
+par decision produit, pas par echec technique. Ce freeze reste une archive utile
+pour comprendre la sante de Frida et les precautions qui auraient ete requises,
+mais il ne porte plus de prochaine action Amandine.
 
 ## Principe
 

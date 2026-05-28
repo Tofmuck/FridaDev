@@ -1,14 +1,21 @@
 # Validation finale freeze sante Frida avant duplication Amandine
 
-Statut: GO duplication Amandine, sous lot separe
+Statut: freeze sante Frida valide; GO Amandine historique supersede le 2026-05-28
 Date: 2026-05-27
 Branche: `migration`
 Commit runtime valide: `b489ed2 Fix mutable judge primary user name detection`
 Roadmap archivee: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-todo.md`
 
-## Decision
+Note de mise a jour 2026-05-28: le plan de duplication Amandine ouvert apres
+ce freeze a ete annule par decision produit, car Amandine ne souhaite pas de
+Frida separee. Cette validation reste une baseline utile de sante Frida, mais
+elle ne doit plus etre lue comme une action a executer, a reporter ou a confier
+a Sauron. Aucune DB, aucun conteneur, aucun secret/token et aucun `state/`
+Amandine ne doivent etre crees.
 
-Decision: **GO** pour ouvrir un plan separe de duplication Amandine depuis le repository FridaDev, avec DB neuve, `state/` propre et runtime settings reseedes.
+## Decision historique du 2026-05-27
+
+Decision au moment du freeze: **GO** pour ouvrir un plan separe de duplication Amandine depuis le repository FridaDev, avec DB neuve, `state/` propre et runtime settings reseedes.
 
 Cette validation ne cree pas Amandine, ne purge rien, ne copie aucune DB et ne modifie pas la plateforme. La duplication reste interdite dans ce lot et doit faire l'objet d'un GO utilisateur separe.
 
@@ -103,6 +110,10 @@ Ce lot n'a pas:
 - touche Caddy, Authelia, Docker global, reseaux, hostnames ou secrets;
 - affiche de secret, `.env`, DSN complet, token, cookie, payload brut, conversation brute, prompt complet ou identite brute.
 
-## Prochaine action
+## Statut apres decision produit 2026-05-28
 
-Ouvrir, sur GO utilisateur separe, un plan de duplication Amandine. Ce plan devra partir de cette validation, creer une DB neuve, un `state/` propre, reseeder les runtime settings et etablir explicitement l'identite active Amandine avant tout smoke mutable.
+Il n'y a plus de prochaine action de duplication Amandine. Le plan ouvert apres
+ce freeze est archive comme annule dans
+`app/docs/todo-done/migrations/amandine-duplication-annulee-2026-05-28.md`.
+Le freeze reste une baseline utile pour Frida et pour de futures verifications
+de sante, sans creation de DB, conteneur, secret/token ou `state/` Amandine.
