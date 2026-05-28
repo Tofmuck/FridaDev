@@ -1,6 +1,6 @@
 # Frida Biblio native / Frida Catalogue - TODO
 
-Statut: actif (Lots 0, 1 et 2 livres, lots resolver/prompt/chat ouverts)
+Statut: actif (Lots 0, 1, 2, 3 et 4 livres, lots prompt/chat ouverts)
 Date de creation: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 Audit-plan source: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
@@ -16,6 +16,7 @@ Livraison Lot 2: 2026-05-28, client FridaDev Catalogue GET-only cree dans `app/b
 Correctif Lot 2: 2026-05-28, validation bornee et strictement entiere des parametres numeriques publics avant reseau avec erreur `biblio_catalogue_invalid_parameter`
 Livraison Lot 3: 2026-05-28, resolver documentaire cree dans `app/biblio/document_resolver.py`, sans extraction de passage ni branchement chat
 Correctif Lot 3: 2026-05-28, observabilite resolver rendue content-free pour les locators demandes et resolus
+Livraison Lot 4: 2026-05-28, extraction de passage bornee creee dans `app/biblio/passage_extractor.py`, sans branchement chat ni lane prompt
 
 ## 1. Intention
 
@@ -221,11 +222,13 @@ Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, 
 
 ### Lot 4 - Extraction passage bornee
 
-- [ ] Extraire un passage borne depuis les unites Catalogue disponibles.
-- [ ] Definir longueur maximale et comportement si le passage est trop long.
-- [ ] Retourner chars, hash court, locator resolu, document ref et statut.
-- [ ] Tester passage trouve, absent, ambigu et trop long.
-- [ ] Ne pas stocker le passage comme document actif.
+- [x] Extraire un passage borne depuis les unites Catalogue disponibles via `context()` GET-only.
+- [x] Definir longueur maximale et comportement si le passage est trop long: `too_long`, sans passage brut accepte.
+- [x] Retourner chars, hash court, locator resolu, document ref et statut.
+- [x] Tester passage trouve, absent, ambigu, vide, incoherent, indisponible et trop long.
+- [x] Ne pas stocker le passage comme document actif.
+- [x] Garantir que `to_observability()` n'expose pas passage brut, texte OCR, payload Catalogue, locator brut, titre, auteur ou requete utilisateur brute.
+- [x] Refuser les ranges resolus dans ce lot avec `range_extraction_not_supported`, pour ne pas extraire silencieusement seulement le debut.
 
 ### Lot 5 - Lane prompt dediee
 

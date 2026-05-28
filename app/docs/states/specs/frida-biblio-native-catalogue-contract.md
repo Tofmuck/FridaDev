@@ -319,6 +319,25 @@ Regles:
 - pas de troncature silencieuse sans reason code;
 - pas de promesse que tout l'ouvrage a ete lu.
 
+Implementation Lot 4 du 2026-05-28:
+
+- module: `app/biblio/passage_extractor.py`;
+- l'extracteur utilise le resolver Lot 3 et le client Catalogue GET-only;
+- il peut appeler seulement `context()` apres resolution `resolved`;
+- il refuse toute extraction si la resolution est `ambiguous`, `not_found`, `invalid_request` ou `catalogue_unavailable`;
+- il exige un locator resolu avec cible contextuelle non ambigue: `paragraph_id` ou couple `page_no` / `para_no`;
+- il refuse les ranges resolus avec `range_extraction_not_supported` tant qu'aucun contrat range borne n'existe;
+- il ne choisit jamais le premier passage d'un locator ambigu;
+- bornes initiales:
+  - `window_chars`: `80..2000`;
+  - `max_passage_chars`: `80..4000`;
+  - `char_offset`: `0..1000000`;
+- seuls les entiers stricts ou chaines d'entiers decimales propres sont acceptes pour les options numeriques;
+- reponse Catalogue incoherente, passage vide, introuvable, trop long ou indisponibilite Catalogue produisent des statuts explicites;
+- l'objet metier peut contenir le passage brut en interne uniquement quand `status=extracted`;
+- `to_observability()` n'expose jamais passage brut, texte OCR, payload Catalogue, locator brut, titre, auteur ou requete utilisateur brute;
+- l'observabilite expose seulement status, reason code, resolution content-free, ids courts, longueurs, hash court stable, bornes appliquees et positions non textuelles.
+
 ## 9. Lane prompt future
 
 Nom cible:
