@@ -242,6 +242,20 @@ class PassageExtractorTests(unittest.TestCase):
         self.assertEqual(result.reason_code, extractor.REASON_INCOHERENT_CATALOGUE_RESPONSE)
         self.assertEqual(result.passage, "")
 
+    def test_incoherent_context_without_document_id_never_extracts_text(self) -> None:
+        raw_passage = "RAW PASSAGE WITHOUT DOCUMENT ID MUST NOT LEAK"
+        fake = _single_locator_client(
+            context_payload={"page_no": 12, "para_no": 3, "excerpt": raw_passage}
+        )
+
+        result = extractor.BiblioPassageExtractor(fake).extract(_single_locator_request())
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, extractor.STATUS_INCOHERENT_CATALOGUE)
+        self.assertEqual(result.reason_code, extractor.REASON_INCOHERENT_CATALOGUE_RESPONSE)
+        self.assertEqual(result.passage, "")
+        self.assertNotIn(raw_passage, str(observed))
+
     def test_catalogue_unavailable_from_context_is_content_free(self) -> None:
         fake = _single_locator_client(
             context_error=catalogue.CatalogueTimeout(endpoint_kind="context", error_class="Timeout")

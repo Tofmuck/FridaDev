@@ -334,6 +334,7 @@ Implementation Lot 4 du 2026-05-28:
   - `char_offset`: `0..1000000`;
 - seuls les entiers stricts ou chaines d'entiers decimales propres sont acceptes pour les options numeriques;
 - reponse Catalogue incoherente, passage vide, introuvable, trop long ou indisponibilite Catalogue produisent des statuts explicites;
+- le payload `/context` doit porter un `document_id` identique au document resolu, sinon l'extraction retourne `incoherent_catalogue` sans conserver le passage;
 - l'objet metier peut contenir le passage brut en interne uniquement quand `status=extracted`;
 - `to_observability()` n'expose jamais passage brut, texte OCR, payload Catalogue, locator brut, titre, auteur ou requete utilisateur brute;
 - l'observabilite expose seulement status, reason code, resolution content-free, ids courts, longueurs, hash court stable, bornes appliquees et positions non textuelles.

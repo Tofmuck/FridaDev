@@ -262,7 +262,7 @@ def _from_context_response(
 
     payload = response.payload
     payload_doc_id = _text(payload.get("document_id"))
-    if payload_doc_id and payload_doc_id != document.document_id:
+    if payload_doc_id != document.document_id:
         return _result(
             STATUS_INCOHERENT_CATALOGUE,
             REASON_INCOHERENT_CATALOGUE_RESPONSE,

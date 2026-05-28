@@ -17,6 +17,7 @@ Correctif Lot 2: 2026-05-28, validation bornee et strictement entiere des parame
 Livraison Lot 3: 2026-05-28, resolver documentaire cree dans `app/biblio/document_resolver.py`, sans extraction de passage ni branchement chat
 Correctif Lot 3: 2026-05-28, observabilite resolver rendue content-free pour les locators demandes et resolus
 Livraison Lot 4: 2026-05-28, extraction de passage bornee creee dans `app/biblio/passage_extractor.py`, sans branchement chat ni lane prompt
+Correctif Lot 4: 2026-05-28, `document_id` rendu obligatoire dans le payload `/context` avant extraction
 
 ## 1. Intention
 
