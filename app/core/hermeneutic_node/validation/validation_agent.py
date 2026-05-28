@@ -22,7 +22,7 @@ SCHEMA_VERSION = "v1"
 PRIMARY_MODEL = "google/gemini-3.1-flash-lite"
 FALLBACK_MODEL = "openai/gpt-5.4-nano"
 PROMPT_PATH = "prompts/validation_agent.txt"
-REQUEST_TIMEOUT_S = 10
+REQUEST_TIMEOUT_S = 15
 MAX_RESPONSE_TOKENS = 140
 MAX_VALIDATION_CONTEXT_MESSAGES = canonical_recent_context_input.VALIDATION_DIALOGUE_CONTEXT_MAX_MESSAGES
 MAX_VALIDATION_CONTEXT_MESSAGE_CHARS = 420
@@ -815,6 +815,8 @@ def _build_fail_open_validated_output(
     applied_hard_guards: Sequence[str],
     hard_guard_effect: str | None,
 ) -> dict[str, Any]:
+    if _text(hard_guard_effect) != hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN:
+        return {}
     return _build_validated_output_payload(
         primary_verdict=primary_verdict,
         final_judgment_posture="suspend",

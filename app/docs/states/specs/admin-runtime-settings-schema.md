@@ -242,7 +242,7 @@ Convention explicite:
 | --- | --- | --- | --- |
 | `primary_model` | `text` | non | defaut runtime `google/gemini-3.1-flash-lite` |
 | `fallback_model` | `text` | non | defaut runtime `openai/gpt-5.4-nano` |
-| `timeout_s` | `int` | non | defaut runtime `10` |
+| `timeout_s` | `int` | non | defaut runtime `15` |
 | `temperature` | `float` | non | defaut runtime `0.0` |
 | `top_p` | `float` | non | defaut runtime `1.0` |
 | `max_tokens` | `int` | non | defaut runtime `140` |
@@ -250,6 +250,7 @@ Convention explicite:
 Convention explicite:
 
 - cette section pilote le `validation_agent` du pipeline hermeneutique;
+- `timeout_s` est fixe a `15` secondes par defaut pour eviter les faux timeouts Gemini observes sur le chemin `validation_agent`;
 - `max_tokens` reste borne par le contrat de validation serveur, releve a `140` apres relance benchmark du 2026-05-19;
 - elle ne donne pas au `validation_agent` un pouvoir de persistence direct sur l'identite.
 

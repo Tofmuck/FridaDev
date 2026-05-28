@@ -625,7 +625,7 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
         self.assertNotIn('message invalide', serialized)
         self.assertNotIn('BACKEND SYSTEM PROMPT', serialized)
 
-    def test_api_chat_injects_suspend_block_when_validation_agent_fail_opens(self) -> None:
+    def test_api_chat_does_not_inject_suspend_block_when_validation_agent_fail_opens_without_hard_guard(self) -> None:
         conversation = {
             'id': 'conv-validation-fail-open-phase14',
             'created_at': '2026-03-26T00:00:00Z',
@@ -660,18 +660,7 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
         }
         self.server.chat_service.validation_agent.build_validated_output = lambda **_kwargs: (
             self.server.chat_service.validation_agent.ValidationAgentResult(
-                validated_output={
-                    'schema_version': 'v1',
-                    'validation_decision': 'suspend',
-                    'final_judgment_posture': 'suspend',
-                    'final_output_regime': 'simple',
-                    'pipeline_directives_final': ['posture_suspend', 'regime_simple', 'fallback_validation'],
-                    'arbiter_followed_upstream': False,
-                    'advisory_recommendations_followed': ['upstream_output_regime_proposed'],
-                    'advisory_recommendations_overridden': ['upstream_recommendation_posture'],
-                    'applied_hard_guards': [],
-                    'arbiter_reason': 'validation fail-open (timeout)',
-                },
+                validated_output={},
                 status='error',
                 model='openai/gpt-5.4-nano',
                 decision_source='fail_open',
@@ -699,19 +688,10 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
             for message in observed_state['payload_messages']
             if message.get('role') == 'system'
         )
-        self.assertIn('[JUGEMENT HERMENEUTIQUE]', system_prompt)
-        self.assertIn('Posture finale validee: suspend.', system_prompt)
-        self.assertIn('Regime final valide: simple.', system_prompt)
-        self.assertIn(
-            'Consigne hermeneutique: Tu ne dois pas produire de reponse substantive normale. Tu dois expliciter la suspension ou la limite presente.',
-            system_prompt,
-        )
-        self.assertIn('Consigne de regime: Reste dans une reprise locale, sobre, dialogique et non meta.', system_prompt)
-        self.assertIn('Directives finales actives: posture_suspend, regime_simple, fallback_validation.', system_prompt)
-        self.assertEqual(len(observed_state['node_state_writes']), 1)
-        persisted_state = observed_state['node_state_writes'][0]['state']
-        self.assertEqual(persisted_state['last_judgment_posture'], 'suspend')
-        self.assertIsNone(persisted_state['last_answer_output_regime'])
+        self.assertNotIn('[JUGEMENT HERMENEUTIQUE]', system_prompt)
+        self.assertNotIn('Posture finale validee: suspend.', system_prompt)
+        self.assertNotIn('Tu ne dois pas produire de reponse substantive normale', system_prompt)
+        self.assertEqual(observed_state['node_state_writes'], [])
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_emits_override_logs_and_projects_answer_block_without_raw_dump(self) -> None:

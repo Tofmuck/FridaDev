@@ -178,7 +178,7 @@ SECTION_SPECS: dict[str, SectionSpec] = {
         fields=(
             FieldSpec('primary_model', 'text', seed_from_env=False, seed_default='google/gemini-3.1-flash-lite'),
             FieldSpec('fallback_model', 'text', seed_from_env=False, seed_default='openai/gpt-5.4-nano'),
-            FieldSpec('timeout_s', 'int', seed_from_env=False, seed_default=10),
+            FieldSpec('timeout_s', 'int', seed_from_env=False, seed_default=15),
             FieldSpec('temperature', 'float', seed_from_env=False, seed_default=0.0),
             FieldSpec('top_p', 'float', seed_from_env=False, seed_default=1.0),
             FieldSpec('max_tokens', 'int', seed_from_env=False, seed_default=140),

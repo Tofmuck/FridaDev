@@ -680,6 +680,52 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(requests_module.calls[0]["json"]["metadata"]["frida_slot"], "validation_agent_model")
         self.assertEqual(requests_module.calls[0]["timeout"], 14)
 
+    def test_fail_open_without_hard_guard_does_not_project_suspend(self) -> None:
+        requests_module = _FakeRequests([
+            _FakeResponse("not-json"),
+            _FakeResponse("not-json"),
+        ])
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(),
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.status, "error")
+        self.assertEqual(result.decision_source, "fail_open")
+        self.assertEqual(result.reason_code, "invalid_json")
+        self.assertEqual(result.validated_output, {})
+
+    def test_fail_open_with_answer_forbidden_hard_guard_keeps_suspend(self) -> None:
+        requests_module = _FakeRequests([
+            _FakeResponse("not-json"),
+            _FakeResponse("not-json"),
+        ])
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(
+                web_input=_web_input(
+                    status="ok",
+                    explicit_url_detected=True,
+                    explicit_url="https://example.test/source",
+                    read_state="page_not_read_error",
+                )
+            ),
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.status, "error")
+        self.assertEqual(result.decision_source, "fail_open")
+        self.assertEqual(result.validated_output["final_judgment_posture"], "suspend")
+        self.assertEqual(result.validated_output["final_output_regime"], "simple")
+        self.assertIn("explicit_url_not_read", result.validated_output["applied_hard_guards"])
+
     def test_build_validated_output_clamps_runtime_settings_max_tokens_to_contractual_cap(self) -> None:
         validation_agent.runtime_settings.get_validation_agent_model_settings = lambda: types.SimpleNamespace(
             payload={
@@ -1562,19 +1608,7 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(result.decision_source, "fail_open")
         self.assertEqual(result.model, validation_agent.FALLBACK_MODEL)
         self.assertEqual(result.reason_code, "invalid_json")
-        self.assertEqual(
-            result.validated_output,
-            _expected_validated_output(
-                validation_decision="suspend",
-                final_judgment_posture="suspend",
-                final_output_regime="simple",
-                arbiter_followed_upstream=False,
-                advisory_recommendations_followed=["upstream_output_regime_proposed"],
-                advisory_recommendations_overridden=["upstream_recommendation_posture"],
-                arbiter_reason="validation fail-open (invalid_json)",
-                fail_open=True,
-            ),
-        )
+        self.assertEqual(result.validated_output, {})
         prompt_events = [
             item for item in self.observed_events if item["stage"] == "validation_prompt_prepared"
         ]

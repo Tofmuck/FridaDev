@@ -111,7 +111,9 @@ Liste runtime retenue au lot 5:
 Familles explicitement non retenues comme garde-fous durs au lot 5:
 
 - les `source_conflicts` generiques restent amont-conseillers tant qu'aucun signal runtime distinct de contradiction materielle haute n'est stabilise;
-- payload arbitral invalide ou contexte insuffisant relevent du fail-open de validation, pas d'un garde-fou laissant le choix entre `clarify` et `suspend`.
+- payload arbitral invalide, timeout ou contexte insuffisant relevent du fail-open de validation;
+- sans garde-fou dur applique, ce fail-open ne doit pas injecter de `suspend` dans le prompt principal;
+- si un garde-fou dur interdit `answer`, le fail-open peut encore projeter une suspension sobre.
 
 ### 5.2 Analyse amont a autorite non souveraine
 

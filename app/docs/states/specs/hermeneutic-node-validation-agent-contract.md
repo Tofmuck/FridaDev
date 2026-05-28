@@ -239,7 +239,7 @@ Depuis le lot 2 runtime:
 Cadre minimal retenu:
 
 - budget token explicite et borne par passe
-- timeout dur par passe
+- timeout dur par passe; le timeout runtime par defaut du `validation_agent` est `15s`
 - fail-open explicite et auditable
 - circuit breaker explicite si echecs ou cout/latence se repetent
 - cible de cout/latence compatible avec un usage conversationnel interactif
@@ -249,7 +249,9 @@ Discipline minimale:
 - pas de seconde passe implicite
 - pas de boucle auto-relancee
 - le fail-open de validation ne doit pas se maquiller en `confirm`
-- cette spec ne fixe pas encore de seuils chiffres
+- le fail-open de validation sans hard guard ne doit pas devenir une suspension pratique du dialogue
+- une suspension fail-open reste admissible seulement lorsqu'un hard guard deterministe interdit `answer`
+- les autres seuils chiffres restent portes par les runtime settings et leurs specs dediees
 
 Modele cible de reference en V1:
 
