@@ -27,8 +27,9 @@ Etat apres Lot 1 du 2026-05-28:
 
 - Lot 0 plateforme livre l'edition humaine des metadonnees Catalogue et la protection du formulaire contre l'auto-refresh destructeur;
 - Lot 1 cree la spec source-of-truth `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`;
-- FridaDev reste non branche a Catalogue;
-- le prochain lot code doit rester client read-only / GET-only.
+- Lot 2 cree le client FridaDev GET-only `app/biblio/catalogue_client.py`;
+- FridaDev reste non branche au chat/prompt/frontend Biblio;
+- le prochain lot code doit rester resolver documentaire au-dessus de ce client, sans route mutatrice Catalogue.
 
 ## 2. Question produit
 

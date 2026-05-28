@@ -199,6 +199,32 @@ Le client futur doit:
 - ne lancer aucun OCR;
 - ne lancer aucun backfill.
 
+Implementation Lot 2 du 2026-05-28:
+
+- module: `app/biblio/catalogue_client.py`;
+- package domaine: `app/biblio/`;
+- config non secrete: `BIBLIO_CATALOGUE_BASE_URL`, defaut `http://platform-doc-pipeline-api:8090`;
+- timeout non secret: `BIBLIO_CATALOGUE_TIMEOUT_S`, defaut `8`;
+- methodes publiques: `health()`, `catalog()`, `document()`, `metadata()`, `locate()`, `context()`, `search()`;
+- garde structurelle: `_request()` refuse tout verbe autre que `GET`;
+- allowlist structurelle: seuls `/health`, `/catalog`, `/search`, `/doc/{id}`, `/doc/{id}/metadata`, `/doc/{id}/locate`, `/doc/{id}/context` sont acceptes;
+- routes mutatrices et exports non allowlistes sont refuses avant appel reseau;
+- erreurs content-free: forbidden method, forbidden route, invalid base URL, service unavailable, timeout, invalid JSON, not found, unexpected status;
+- `CatalogueResponse.to_observability()` exclut le payload brut et expose seulement endpoint, status, duree, compte, id court et longueur compacte si applicable.
+
+Le Lot 2 ne branche toujours pas:
+
+- chat;
+- frontend;
+- toggle Biblio;
+- lane prompt;
+- route API FridaDev;
+- DB FridaDev;
+- Memory/RAG;
+- Identity;
+- Summary;
+- OCR.
+
 ## 7. Resolver documentaire
 
 Le resolver futur retourne toujours un statut:
@@ -361,7 +387,7 @@ Lots suivants:
 
 ## 12. Conditions d'ouverture des lots suivants
 
-Lot 2 peut commencer seulement si:
+Lot 2 etant livre, Lot 3 peut commencer seulement si:
 
 - cette spec reste indexee comme source-of-truth;
 - le client cible est confirme GET-only;

@@ -1,6 +1,6 @@
 # Frida Biblio native / Frida Catalogue - TODO
 
-Statut: actif (Lot 0 plateforme et Lot 1 spec livres, lots FridaDev runtime ouverts)
+Statut: actif (Lots 0, 1 et 2 livres, lots resolver/prompt/chat ouverts)
 Date de creation: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 Audit-plan source: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
@@ -12,6 +12,7 @@ Hors-scope courant: runtime FridaDev, branchement LLM, endpoint FridaDev, migrat
 Livraison Lot 0 plateforme: 2026-05-28, hors depot FridaDev, dans `/opt/platform/doc-pipeline` et `/opt/platform/doc-library`
 Correctif UI Lot 0: 2026-05-28, protection du formulaire dirty contre l'auto-refresh Catalogue
 Livraison Lot 1: 2026-05-28, spec native read-only creee dans `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+Livraison Lot 2: 2026-05-28, client FridaDev Catalogue GET-only cree dans `app/biblio/catalogue_client.py`
 
 ## 1. Intention
 
@@ -64,6 +65,7 @@ La cartographie read-only a confirme:
 - l'instance AnythingLLM courante n'est pas une vraie source active de bibliotheque;
 - `frida_biblio.py` cote OpenWebUI est un precedent utile a relire, pas l'integration cible.
 - la spec Lot 1 `app/docs/states/specs/frida-biblio-native-catalogue-contract.md` fixe maintenant le contrat FridaDev GET-only, les frontieres, le toggle futur, le resolver, l'extraction bornee, la lane prompt et l'observabilite content-free.
+- le client Lot 2 `app/biblio/catalogue_client.py` implemente la lecture Catalogue GET-only sans branchement chat, prompt, frontend, DB, Memory/RAG, Identity, Summary ou OCR.
 
 Audit cible Lot 0 du 2026-05-28:
 
@@ -196,12 +198,12 @@ Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, 
 
 ### Lot 2 - Client Catalogue GET-only
 
-- [ ] Choisir l'emplacement code FridaDev apres relecture du depot.
-- [ ] Definir un client/service natif GET-only vers l'API Catalogue.
-- [ ] Encapsuler `/catalog`, `/doc/...`, `/locate`, `/context`, `/search` et exports strictement utiles.
-- [ ] Interdire au client FridaDev initial les routes DELETE et toute future route d'edition.
-- [ ] Garantir que le chemin nominal ne depend pas d'AnythingLLM.
-- [ ] Tester health, catalogue, document absent et erreur Catalogue.
+- [x] Choisir l'emplacement code FridaDev apres relecture du depot: `app/biblio/catalogue_client.py`.
+- [x] Definir un client/service natif GET-only vers l'API Catalogue.
+- [x] Encapsuler `/catalog`, `/doc/...`, `/metadata`, `/locate`, `/context` et `/search` strictement utiles au Lot 2.
+- [x] Interdire au client FridaDev initial les routes DELETE, PUT metadata, settings et progress mutateurs.
+- [x] Garantir que le chemin nominal ne depend pas d'AnythingLLM.
+- [x] Tester health, catalogue, document absent et erreur Catalogue.
 
 ### Lot 3 - Resolver documentaire
 
