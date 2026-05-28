@@ -26,6 +26,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Validation live Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-live-validation-2026-05-23.md`
 - Evaluation metier Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-business-evaluation-2026-05-23.md`
 - Cloture provisoire MVP Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-provisional-closure-2026-05-23.md`
+- Audit cible Catalogue humain editable 2026-05-28: `states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 - Decision produit OpenRouter/Exa comme provider de decouverte web ouverte 2026-05-22: `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 - Archive du renforcement web local V0 SearXNG/Crawl4AI: `todo-done/product/fridadev-local-web-search-hardening-todo.md`
 - Archive A-Z web discovery local-first + Exa: `todo-done/product/fridadev-local-web-search-rebuild-todo.md`
@@ -173,10 +174,11 @@ Extension livree: l'OCR bornee des PDF scannes est archivee dans `todo-done/prod
 ### Biblio native / Frida Catalogue
 
 Lire d'abord:
+- `states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md` pour le constat cible: surface Catalogue hors FridaDev, metadata SQL pauvres, absence d'edition humaine, routes DELETE existantes et priorite Lot 0.
 - `todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
 - `todo-todo/product/frida-biblio-native-catalogue-todo.md`
 
-But: cadrer le chantier separe permettant a Frida de consulter une bibliotheque persistante native, identifier un `library_document` / `catalogue_document`, resoudre un locator et extraire un `passage documentaire` sans confondre cette capacite avec les documents actifs de conversation.
+But: cadrer le chantier separe permettant d'abord de rendre Catalogue humainement editable, puis de permettre a Frida de consulter une bibliotheque persistante native, identifier un `library_document` / `catalogue_document`, resoudre un locator et extraire un `passage documentaire` sans confondre cette capacite avec les documents actifs de conversation.
 
 ### Identity / doctrine
 

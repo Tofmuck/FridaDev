@@ -4,21 +4,23 @@ Statut: actif
 Date: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 TODO derive: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
+Audit cible Lot 0: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 Chantier compatible mais distinct archive: `app/docs/todo-done/product/active-conversation-documents-todo.md`
-Portee: consultation native, a la demande, d'une bibliotheque documentaire persistante deja adossee a Frida Catalogue / doc-pipeline
-Hors-scope: runtime dans ce commit, endpoint FridaDev, frontend, migration, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal
+Portee: priorite Lot 0 pour rendre Frida Catalogue humainement editable, puis consultation native, a la demande, d'une bibliotheque documentaire persistante deja adossee a Frida Catalogue / doc-pipeline
+Hors-scope: runtime FridaDev dans ce commit, branchement LLM, endpoint FridaDev, migration DB depuis ce depot, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal
 
 ## 1. Question initiale et verdict
 
 Existe-t-il un meilleur plan ?
 
-Non pour ce cycle docs-only. Le meilleur plan est de creer un chantier Biblio separe maintenant, pendant que la cartographie est fraiche, sans lancer d'implementation runtime.
+Non pour ce cycle docs-only. Le meilleur plan reste de garder un chantier Biblio separe, mais l'ordre doit changer: la correction humaine des metadonnees Catalogue devient le Lot 0 prioritaire avant tout branchement FridaDev read-only.
 
 Verdict produit:
 
 - documents actifs de conversation = fichiers temporaires fournis par l'utilisateur, actifs dans une conversation, reinjectes jusqu'au retrait manuel;
 - Biblio native = bibliotheque persistante consultable a la demande, capable de resoudre un document et un passage, puis d'injecter l'extrait utile dans le tour;
 - les deux capacites doivent partager une discipline de lanes, de vocabulaire et d'observabilite, mais pas le meme etat serveur.
+- Catalogue humain editable = precondition produit: les metadonnees sales ou pauvres doivent etre corrigeables avant que Frida s'appuie dessus.
 
 ## 2. Question produit
 
@@ -51,7 +53,7 @@ Zones observees en lecture seule:
 
 - `doc-pipeline`;
 - `doc-library`;
-- `ocr-web`;
+- `doc-pipeline-info` / surface historique `ocr-web`;
 - stockage OCR dedie;
 - instance AnythingLLM existante, relue seulement comme precedent.
 
@@ -88,6 +90,24 @@ Comptes compacts observes pendant l'audit:
 
 Aucun contenu documentaire brut n'a ete repris dans ce plan.
 
+### Surface Catalogue humaine 2026-05-28
+
+Audit cible: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`.
+
+Constats:
+
+- Homepage pointe `FRIDA Catalogue` vers `https://home.frida-system.fr/bibliotheque`;
+- Caddy route `/bibliotheque*` vers `doc-library:80`;
+- le front est `/opt/platform/doc-library/index.html`, hors depot FridaDev;
+- ce front appelle `/doc-api/health` et `/doc-api/catalog`;
+- la fiche detail actuelle est surtout JSON via `/doc-api/doc/{id}`;
+- les suppressions DB et DB + fichiers existent deja dans l'UI;
+- aucune edition humaine des metadonnees n'a ete observee;
+- aucune route document metadata `PATCH`/`PUT` n'a ete observee;
+- aucune table d'audit/history metadata n'a ete observee.
+
+Consequence: l'integration FridaDev doit attendre un Lot 0 Catalogue humain editable ou rester strictement consciente que les metadonnees peuvent etre sales.
+
 ### API existante
 
 L'API Catalogue expose deja des primitives utiles, notamment:
@@ -102,6 +122,16 @@ L'API Catalogue expose deja des primitives utiles, notamment:
 - exports document / chapitre / chunks selon les chemins existants.
 
 Ces routes prouvent une base consultable, mais elles ne constituent pas encore une integration native FridaDev.
+
+Routes mutatrices importantes observees:
+
+- `PUT /settings`, pour reglages pipeline;
+- `POST /settings/reset`;
+- `POST /progress/recent/clear`;
+- `DELETE /doc/{doc_id}`;
+- `DELETE /doc/{doc_id}/with-files`.
+
+Il n'existe pas encore de route d'edition metadata bibliographique.
 
 ### Corpus Platon et Stephanus
 
@@ -158,6 +188,8 @@ Ils sont compatibles parce qu'ils peuvent partager une discipline de lanes et d'
 
 Construire une integration native Frida, au-dessus de Frida Catalogue / doc-pipeline, sans passer par AnythingLLM comme intermediaire principal.
 
+Precondition produit ajoutee le 2026-05-28: rendre le Catalogue humainement editable avant de brancher FridaDev sur des metadonnees bibliographiques qui peuvent etre sales ou trop pauvres.
+
 Le futur module Biblio doit:
 
 - exposer un contrat d'outil ou de service interne;
@@ -167,6 +199,8 @@ Le futur module Biblio doit:
 - restituer une preuve content-free de ce qui a ete consulte;
 - injecter le passage dans une lane prompt dediee;
 - garder le passage lui-meme hors des logs ordinaires.
+
+Le premier client FridaDev doit etre GET-only. Les routes d'edition metadata et de suppression restent hors FridaDev tant qu'une decision d'architecture ne deplace pas explicitement cette responsabilite.
 
 ### 5.2 Lane prompt
 
@@ -243,6 +277,8 @@ Rejete. Les milestones Stephanus sont un atout, mais la resolution fine exige un
 - RAG opaque: il peut masquer les erreurs de document ou de repere.
 - Fuite de contenu: les passages peuvent etre sensibles ou longs; logs ordinaires content-free obligatoires.
 - Confusion UI: un bouton generique `Documents` melangerait upload temporaire et Biblio.
+- Metadonnees sales: un titre pauvre comme `der` peut conduire Frida a resoudre ou citer le mauvais ouvrage.
+- Suppression accidentelle: la surface Catalogue expose deja suppression DB et DB + fichiers.
 - Dependances plateforme: FridaDev ne doit pas modifier la stack doc-pipeline dans un lot applicatif sans decision explicite.
 - AnythingLLM: utile comme precedent, dangereux comme detour si traite comme cible.
 
@@ -250,6 +286,7 @@ Rejete. Les milestones Stephanus sont un atout, mais la resolution fine exige un
 
 Les futurs lots devront prouver:
 
+- Lot 0: edition humaine metadata, persistance SQL, audit minimal, confirmation suppression et absence de re-OCR;
 - consultation Catalogue sans event_limit ni scraping UI;
 - resolution d'un document par titre / corpus;
 - resolution explicite d'un locator;

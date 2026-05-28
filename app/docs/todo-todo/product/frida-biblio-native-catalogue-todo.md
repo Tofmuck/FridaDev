@@ -4,16 +4,19 @@ Statut: actif
 Date de creation: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 Audit-plan source: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
+Audit cible Lot 0: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 Chantier compatible mais distinct archive: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 Spec fondatrice a creer: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
-Portee: consultation native, a la demande, d'une bibliotheque persistante via Frida Catalogue / doc-pipeline
-Hors-scope du commit de creation: runtime, endpoint, frontend, migration, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal, rebuild
+Portee: Lot 0 prioritaire de correction humaine des metadonnees Catalogue, puis consultation native, a la demande, d'une bibliotheque persistante via Frida Catalogue / doc-pipeline
+Hors-scope courant: runtime FridaDev, branchement LLM, endpoint FridaDev, migration DB dans ce depot, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal, rebuild
 
 ## 1. Intention
 
 Ce TODO ouvre le chantier produit Biblio native.
 
-Le besoin est que Frida puisse consulter une bibliotheque persistante deja adossee a Frida Catalogue, identifier un document, resoudre un repere, extraire un passage borne, puis l'utiliser dans sa reponse.
+Priorite produit du 2026-05-28: avant de brancher Frida sur Catalogue, rendre le Catalogue humainement editable pour corriger les metadonnees bibliographiques sales ou trop pauvres. Un ouvrage affiche comme `der` doit pouvoir etre corrige manuellement en titre bibliographique lisible, avec auteur, editeur, collection, annee, langue, type et notes operateur si necessaire.
+
+Le besoin cible reste que Frida puisse consulter une bibliotheque persistante deja adossee a Frida Catalogue, identifier un document, resoudre un repere, extraire un passage borne, puis l'utiliser dans sa reponse. Mais ce branchement doit attendre une surface Catalogue fiable et corrigible.
 
 Ce chantier est separe des documents actifs de conversation:
 
@@ -38,6 +41,9 @@ Pourquoi deux chantiers separes mais compatibles ?
 - La Biblio n'est pas un RAG opaque sans preuve de document / locator.
 - La Biblio doit avoir son propre contrat prompt.
 - La Biblio doit avoir sa propre observabilite.
+- Les metadonnees bibliographiques corrigees par humain doivent etre distinguees du nom de fichier source et des metadonnees extraites automatiquement.
+- Les corrections humaines doivent etre sauvegardees en SQL avec audit minimal.
+- La suppression DB/fichiers doit demander une confirmation forte et rester distincte de l'edition de metadonnees.
 - AnythingLLM et OpenWebUI peuvent etre relus comme precedents, mais ne sont pas le chemin principal cible.
 - Les milestones Stephanus aident, mais ne suffisent pas toujours a garantir une resolution fiable.
 
@@ -55,23 +61,45 @@ La cartographie read-only a confirme:
 - l'instance AnythingLLM courante n'est pas une vraie source active de bibliotheque;
 - `frida_biblio.py` cote OpenWebUI est un precedent utile a relire, pas l'integration cible.
 
+Audit cible Lot 0 du 2026-05-28:
+
+- la page humaine visible est `FRIDA Bibliotheque`, servie hors FridaDev par `/opt/platform/doc-library/index.html` via Caddy `/bibliotheque*`;
+- Homepage pointe `FRIDA Catalogue` vers `https://home.frida-system.fr/bibliotheque`;
+- la fiche JSON et la liste appellent l'API doc-pipeline via `/doc-api`;
+- l'API Catalogue est dans `/opt/platform/doc-pipeline/query_api.py`;
+- la table metadata actuelle est surtout `documents`;
+- les metadonnees SQL courantes sont des metadonnees d'ingestion/OCR: `title`, `source_filename`, hash, langue, compteurs, qualite JSON, type source et TOC;
+- aucun champ auteur, traducteur, editeur, collection, annee, notes operateur, statut de validation ou titre original n'existe dans `documents`;
+- aucune table audit/history/revision/metadata/edit n'a ete trouvee;
+- aucune route `PATCH`/`PUT` de metadonnees documentaires n'a ete trouvee;
+- deux routes de suppression existent deja: `DELETE /doc/{doc_id}` et `DELETE /doc/{doc_id}/with-files`;
+- le front Catalogue actuel expose deja ces suppressions via deux boutons et `window.confirm`;
+- le front Catalogue actuel n'est pas dans le depot FridaDev.
+
 ## 4. Hors-scope du chantier
 
 - fusion avec documents actifs;
 - stockage des documents Catalogue dans l'etat actif serveur;
 - transformation de la Biblio en document reinjecte a chaque tour;
-- OCR;
-- refonte doc-pipeline;
-- migration ou backfill Catalogue;
+- re-OCR dans le Lot 0;
+- branchement Frida/LLM dans le Lot 0;
+- injection Memory/RAG dans le Lot 0;
+- refonte doc-pipeline non bornee;
+- migration ou backfill Catalogue hors lot explicite;
 - RAG documentaire opaque comme premiere promesse;
 - AnythingLLM comme intermediaire principal;
-- UI finale avant contrat;
+- UI finale FridaDev avant contrat;
 - exposition brute de passages dans logs ou dashboard ordinaires.
 
 ## 5. Criteres de fermeture du chantier
 
 Le chantier pourra etre clos seulement si:
 
+- le Lot 0 a rendu les metadonnees Catalogue corrigeables humainement ou a ete explicitement requalifie par decision produit;
+- la liste Catalogue et la fiche ouvrage sont lisibles par un humain, pas seulement en JSON brut;
+- le modele de metadonnees distingue fichier source, extraction automatique et correction humaine;
+- l'edition metadata est sauvegardee en SQL avec audit minimal;
+- la suppression DB/fichiers est protegee par confirmation forte;
 - une spec fondatrice active existe;
 - le vocabulaire `active_document` / `library_document` / `catalogue_document` / `passage documentaire` est stabilise;
 - Frida peut consulter Catalogue via un contrat natif;
@@ -89,11 +117,44 @@ Le chantier pourra etre clos seulement si:
 
 Ne pas prolonger ce chantier vers une refonte complete de doc-pipeline, une bibliotheque UI definitive, un OCR generalise, un RAG documentaire opaque ou une ingestion longue duree non decidee.
 
-La condition de non-prolongation est atteinte quand Frida sait consulter nativement Catalogue pour resoudre un document et un passage, injecter un extrait borne dans une lane dediee, et prouver l'operation sans melanger Biblio avec les documents actifs.
+Le Lot 0 s'arrete quand la correction humaine des metadonnees Catalogue est possible, auditee minimalement et protegee cote suppression, sans re-OCR ni branchement Frida/LLM.
+
+La condition de non-prolongation globale est atteinte quand Frida sait consulter nativement Catalogue pour resoudre un document et un passage, injecter un extrait borne dans une lane dediee, et prouver l'operation sans melanger Biblio avec les documents actifs.
 
 ## 7. Lots
 
-### Lot 1 - Spec fondatrice Biblio native
+### Lot 0 - Catalogue humain editable / correction des metadonnees
+
+Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, pas runtime FridaDev, sauf decision explicite contraire.
+
+- [ ] Confirmer le repo/runtime proprietaire de la page `FRIDA Bibliotheque`, de l'API `/doc-api` et de la DB Catalogue avant tout patch.
+- [ ] Afficher une liste lisible des ouvrages OCRises avec titre humain, auteur si disponible, type, langue, statut metadata et fichier source.
+- [ ] Ajouter une fiche ouvrage lisible, pas seulement la fiche JSON brute.
+- [ ] Permettre l'edition manuelle des metadonnees bibliographiques.
+- [ ] Sauvegarder les corrections en SQL.
+- [ ] Distinguer explicitement:
+  - nom de fichier source;
+  - metadonnees extraites automatiquement;
+  - metadonnees corrigees humainement.
+- [ ] Prevoir au minimum:
+  - titre canonique;
+  - titre original;
+  - auteur(s);
+  - traducteur(s) / editeur scientifique si pertinent;
+  - editeur;
+  - collection;
+  - annee;
+  - langue;
+  - type: livre, article, recueil, oeuvres completes, etc.;
+  - fichier source;
+  - notes operateur;
+  - statut: `a_verifier`, `corrige_humainement`, `valide`.
+- [ ] Ajouter un audit minimal de modification metadata: date, champ, ancienne/nouvelle valeur ou hash, acteur logique si disponible.
+- [ ] Remplacer les suppressions legeres par une confirmation forte pour DB seule et DB + fichiers.
+- [ ] Tester que l'edition metadata ne lance pas de re-OCR.
+- [ ] Tester que l'edition metadata ne branche pas Frida/LLM, Memory/RAG, documents actifs ou workspace.
+
+### Lot 1 - Spec FridaDev Biblio native read-only
 
 - [ ] Creer `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`.
 - [ ] Stabiliser le vocabulaire: `library_document`, `catalogue_document`, `passage documentaire`, locator, resolution, ambiguite, confiance.
@@ -101,16 +162,18 @@ La condition de non-prolongation est atteinte quand Frida sait consulter nativem
 - [ ] Definir les sources de verite: Catalogue / doc-pipeline, pas AnythingLLM.
 - [ ] Definir les limites initiales autour des milestones Stephanus.
 - [ ] Definir la doctrine content-free.
+- [ ] Definir que FridaDev consomme Catalogue en lecture seule au depart.
 
-### Lot 2 - Contrat d'outil / acces au Catalogue
+### Lot 2 - Client Catalogue GET-only
 
 - [ ] Choisir l'emplacement code FridaDev apres relecture du depot.
-- [ ] Definir un client/service natif vers l'API Catalogue.
+- [ ] Definir un client/service natif GET-only vers l'API Catalogue.
 - [ ] Encapsuler `/catalog`, `/doc/...`, `/locate`, `/context`, `/search` et exports strictement utiles.
+- [ ] Interdire au client FridaDev initial les routes DELETE et toute future route d'edition.
 - [ ] Garantir que le chemin nominal ne depend pas d'AnythingLLM.
 - [ ] Tester health, catalogue, document absent et erreur Catalogue.
 
-### Lot 3 - Resolution documentaire et desambiguisation
+### Lot 3 - Resolver documentaire
 
 - [ ] Resoudre un document par titre, corpus ou metadata disponible.
 - [ ] Detecter les cas ambigus.
@@ -119,7 +182,7 @@ La condition de non-prolongation est atteinte quand Frida sait consulter nativem
 - [ ] Tester le cas `Platon` / `126b` / `126e` comme resolution ou ambiguite explicite.
 - [ ] Ne jamais presenter une resolution incertaine comme certaine.
 
-### Lot 4 - Extraction de passage borne
+### Lot 4 - Extraction passage bornee
 
 - [ ] Extraire un passage borne depuis les unites Catalogue disponibles.
 - [ ] Definir longueur maximale et comportement si le passage est trop long.
@@ -127,7 +190,7 @@ La condition de non-prolongation est atteinte quand Frida sait consulter nativem
 - [ ] Tester passage trouve, absent, ambigu et trop long.
 - [ ] Ne pas stocker le passage comme document actif.
 
-### Lot 5 - Contrat prompt de lane `passage de bibliotheque consulte`
+### Lot 5 - Lane prompt dediee
 
 - [ ] Definir les balises ou l'encadrement stable.
 - [ ] Enseigner au modele que la lane vient d'une bibliotheque persistante consultee a la demande.
@@ -135,7 +198,7 @@ La condition de non-prolongation est atteinte quand Frida sait consulter nativem
 - [ ] Distinguer cette lane des documents actifs, Memory/RAG, summary, Identity, Web et Hermeneutic.
 - [ ] Tester que l'instruction d'interpretation est presente dans le prompt final.
 
-### Lot 6 - Observabilite / dashboard
+### Lot 6 - Observabilite/admin FridaDev
 
 - [ ] Ajouter events compacts de requete Biblio.
 - [ ] Exposer document resolu, locator, passage extrait, statut, ambiguite, confiance, chars/hash sans contenu brut par defaut.
@@ -143,15 +206,10 @@ La condition de non-prolongation est atteinte quand Frida sait consulter nativem
 - [ ] Raconter dans l'inspection traduite: Biblio consultee, document resolu, passage extrait ou ambigu.
 - [ ] Tester content-free strict.
 
-### Lot 7 - UI Biblio eventuelle
+### Lot 7 - Branchement chat minimal
 
-- [ ] Auditer si une surface UI dediee est necessaire.
-- [ ] Ne pas reutiliser un libelle generique `Documents` qui confondrait upload temporaire et Biblio.
-- [ ] Definir navigation et libelles seulement apres validation du contrat.
-- [ ] Garder cette UI hors du chemin critique si l'outil modele suffit au premier lot produit.
-
-### Lot 8 - Tests / preuves
-
+- [ ] Brancher le resolver et la lane dans un chemin chat minimal.
+- [ ] Garder le declenchement borne et explicite.
 - [ ] Tester consultation Catalogue nominale.
 - [ ] Tester document absent.
 - [ ] Tester locator absent.
@@ -160,9 +218,6 @@ La condition de non-prolongation est atteinte quand Frida sait consulter nativem
 - [ ] Tester exemple `126b -> 126e` avec statut fiable ou ambigu documente.
 - [ ] Tester non-contamination `active_document`.
 - [ ] Tester absence d'AnythingLLM dans le chemin nominal.
-
-### Lot 9 - Documentation de cloture
-
 - [ ] Mettre a jour les specs vivantes touchees.
 - [ ] Documenter les limites restantes: OCR, editions, locators ambigus, UI future.
 - [ ] Verifier que le TODO ne contient plus de case ouverte reelle.
@@ -172,6 +227,7 @@ La condition de non-prolongation est atteinte quand Frida sait consulter nativem
 
 Les lots devront adapter les suites exactes au code courant, mais viser:
 
+- tests plateforme Lot 0 metadata: edition, persistance SQL, audit minimal, confirmation suppression, absence de re-OCR;
 - tests unitaires client Catalogue;
 - tests de resolution documentaire;
 - tests Stephanus / locator;
@@ -184,7 +240,8 @@ Les lots devront adapter les suites exactes au code courant, mais viser:
 
 ## 9. Notes d'implementation a revalider a chaque lot
 
-- Le bon emplacement code doit etre revalide avant patch.
+- Le bon emplacement code doit etre revalide avant patch; Lot 0 semble appartenir a la stack Catalogue `/opt/platform/doc-pipeline` / `/opt/platform/doc-library`, pas au runtime FridaDev.
+- Le premier client FridaDev doit rester GET-only.
 - Les APIs Catalogue doivent etre consommees comme source persistante, pas copiees dans FridaDev.
 - Les passages extraits ne doivent pas devenir des `active_document`.
 - Les milestones Stephanus ne suffisent pas toujours a lever l'ambiguite.
