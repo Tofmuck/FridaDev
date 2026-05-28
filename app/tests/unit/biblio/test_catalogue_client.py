@@ -129,6 +129,51 @@ class CatalogueClientTests(unittest.TestCase):
         )
         self.assertEqual(fake.calls[3]["params"], {"q": "theetete", "limit": client.SEARCH_LIMIT_MAX})
 
+    def test_integer_strings_are_accepted_without_truncation(self) -> None:
+        fake = FakeRequests(
+            [
+                FakeResponse({"items": []}),
+                FakeResponse({"count": 0}),
+                FakeResponse({"text": ""}),
+                FakeResponse({"results": []}),
+            ]
+        )
+        api = _client(fake)
+
+        api.catalog(limit="50", offset="3")
+        api.locate("doc-1", "126b", limit="20")
+        api.context("doc-1", page_no="12", para_no="3", char_offset="0", window_chars="900")
+        api.search("theetete", limit="2")
+
+        self.assertEqual(fake.calls[0]["params"], {"limit": 50, "offset": 3})
+        self.assertEqual(fake.calls[1]["params"], {"kind": "stephanus", "label": "126b", "limit": 20})
+        self.assertEqual(fake.calls[2]["params"], {"page_no": 12, "para_no": 3, "char_offset": 0, "window_chars": 900})
+        self.assertEqual(fake.calls[3]["params"], {"q": "theetete", "limit": 2})
+
+    def test_rejects_non_integer_values_before_network_without_truncation(self) -> None:
+        api, fake = _client_without_expected_network()
+        cases = [
+            ("catalog_limit_float", lambda: api.catalog(limit=1.9), "1.9"),
+            ("catalog_offset_float", lambda: api.catalog(offset=2.9), "2.9"),
+            ("catalog_offset_fraction", lambda: api.catalog(offset=0.1), "0.1"),
+            ("search_limit_float", lambda: api.search("theetete", limit=2.9), "2.9"),
+            ("context_window_float", lambda: api.context("doc-1", page_no=1, para_no=1, window_chars=80.9), "80.9"),
+            ("catalog_decimal_string", lambda: api.catalog(limit="1.9"), "1.9"),
+            ("catalog_bool_true", lambda: api.catalog(limit=True), "True"),
+            ("catalog_bool_false", lambda: api.catalog(offset=False), "False"),
+            ("search_nan", lambda: api.search("theetete", limit=float("nan")), "nan"),
+            ("search_inf", lambda: api.search("theetete", limit=float("inf")), "inf"),
+        ]
+
+        for label, call, raw_value in cases:
+            with self.subTest(label=label):
+                with self.assertRaises(client.CatalogueInvalidParameter) as ctx:
+                    call()
+                self.assertEqual(ctx.exception.reason_code, client.REASON_INVALID_PARAMETER)
+                self.assertNotIn(raw_value, str(ctx.exception))
+
+        self.assertEqual(fake.calls, [])
+
     def test_catalog_rejects_invalid_numeric_params_before_network(self) -> None:
         api, fake = _client_without_expected_network()
         cases = [

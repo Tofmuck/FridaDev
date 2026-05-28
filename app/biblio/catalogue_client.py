@@ -548,16 +548,12 @@ def _bounded_int(
     maximum: int,
     doc_id: str = "",
 ) -> int:
-    try:
-        if isinstance(value, bool):
-            raise TypeError("bool is not an integer parameter")
-        integer = int(value)
-    except (TypeError, ValueError) as exc:
-        raise CatalogueInvalidParameter(
-            endpoint_kind=endpoint_kind,
-            doc_id=doc_id,
-            detail=f"{name}_must_be_integer",
-        ) from exc
+    integer = _strict_int_parameter(
+        value,
+        endpoint_kind=endpoint_kind,
+        name=name,
+        doc_id=doc_id,
+    )
 
     if integer < minimum or integer > maximum:
         raise CatalogueInvalidParameter(
@@ -566,6 +562,18 @@ def _bounded_int(
             detail=f"{name}_out_of_range",
         )
     return integer
+
+
+def _strict_int_parameter(value: Any, *, endpoint_kind: str, name: str, doc_id: str) -> int:
+    if type(value) is int:
+        return value
+    if isinstance(value, str) and value.isdecimal():
+        return int(value)
+    raise CatalogueInvalidParameter(
+        endpoint_kind=endpoint_kind,
+        doc_id=doc_id,
+        detail=f"{name}_must_be_integer",
+    )
 
 
 def _duration_ms(started: float, monotonic: Any) -> int:

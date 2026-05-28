@@ -217,6 +217,7 @@ Correctif Lot 2 du 2026-05-28:
 - les parametres numeriques publics sont valides avant appel reseau;
 - les erreurs de parametre utilisent `biblio_catalogue_invalid_parameter`;
 - aucune valeur brute utilisateur n'est exposee dans l'erreur ou l'observabilite;
+- aucune troncature silencieuse n'est autorisee: seuls les `int` Python et les chaines d'entiers decimales propres sont acceptes;
 - bornes alignees sur Catalogue quand l'API les declare:
   - `catalog.limit`: `1..500`;
   - `locate.limit`: `1..1000`;

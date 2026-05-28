@@ -13,7 +13,7 @@ Livraison Lot 0 plateforme: 2026-05-28, hors depot FridaDev, dans `/opt/platform
 Correctif UI Lot 0: 2026-05-28, protection du formulaire dirty contre l'auto-refresh Catalogue
 Livraison Lot 1: 2026-05-28, spec native read-only creee dans `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Livraison Lot 2: 2026-05-28, client FridaDev Catalogue GET-only cree dans `app/biblio/catalogue_client.py`
-Correctif Lot 2: 2026-05-28, validation bornee des parametres numeriques publics avant reseau avec erreur `biblio_catalogue_invalid_parameter`
+Correctif Lot 2: 2026-05-28, validation bornee et strictement entiere des parametres numeriques publics avant reseau avec erreur `biblio_catalogue_invalid_parameter`
 
 ## 1. Intention
 
@@ -203,7 +203,7 @@ Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, 
 - [x] Definir un client/service natif GET-only vers l'API Catalogue.
 - [x] Encapsuler `/catalog`, `/doc/...`, `/metadata`, `/locate`, `/context` et `/search` strictement utiles au Lot 2.
 - [x] Interdire au client FridaDev initial les routes DELETE, PUT metadata, settings et progress mutateurs.
-- [x] Valider les parametres numeriques publics avant reseau avec erreurs Biblio content-free.
+- [x] Valider les parametres numeriques publics avant reseau avec erreurs Biblio content-free, sans troncature silencieuse.
 - [x] Garantir que le chemin nominal ne depend pas d'AnythingLLM.
 - [x] Tester health, catalogue, document absent et erreur Catalogue.
 
