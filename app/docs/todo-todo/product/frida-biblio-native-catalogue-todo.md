@@ -1,16 +1,17 @@
 # Frida Biblio native / Frida Catalogue - TODO
 
-Statut: actif (Lot 0 plateforme livre, lots FridaDev ouverts)
+Statut: actif (Lot 0 plateforme et Lot 1 spec livres, lots FridaDev runtime ouverts)
 Date de creation: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 Audit-plan source: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
 Audit cible Lot 0: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 Chantier compatible mais distinct archive: `app/docs/todo-done/product/active-conversation-documents-todo.md`
-Spec fondatrice a creer: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+Spec fondatrice active: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Portee: Lot 0 prioritaire de correction humaine des metadonnees Catalogue, puis consultation native, a la demande, d'une bibliotheque persistante via Frida Catalogue / doc-pipeline
 Hors-scope courant: runtime FridaDev, branchement LLM, endpoint FridaDev, migration DB dans ce depot, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal, rebuild
 Livraison Lot 0 plateforme: 2026-05-28, hors depot FridaDev, dans `/opt/platform/doc-pipeline` et `/opt/platform/doc-library`
 Correctif UI Lot 0: 2026-05-28, protection du formulaire dirty contre l'auto-refresh Catalogue
+Livraison Lot 1: 2026-05-28, spec native read-only creee dans `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 
 ## 1. Intention
 
@@ -62,6 +63,7 @@ La cartographie read-only a confirme:
 - `126b -> 126e` est faisable en principe, mais pas fiable tel quel sans desambiguisation oeuvre / dialogue / passage;
 - l'instance AnythingLLM courante n'est pas une vraie source active de bibliotheque;
 - `frida_biblio.py` cote OpenWebUI est un precedent utile a relire, pas l'integration cible.
+- la spec Lot 1 `app/docs/states/specs/frida-biblio-native-catalogue-contract.md` fixe maintenant le contrat FridaDev GET-only, les frontieres, le toggle futur, le resolver, l'extraction bornee, la lane prompt et l'observabilite content-free.
 
 Audit cible Lot 0 du 2026-05-28:
 
@@ -184,13 +186,13 @@ Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, 
 
 ### Lot 1 - Spec FridaDev Biblio native read-only
 
-- [ ] Creer `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`.
-- [ ] Stabiliser le vocabulaire: `library_document`, `catalogue_document`, `passage documentaire`, locator, resolution, ambiguite, confiance.
-- [ ] Definir la frontiere avec `active_document`.
-- [ ] Definir les sources de verite: Catalogue / doc-pipeline, pas AnythingLLM.
-- [ ] Definir les limites initiales autour des milestones Stephanus.
-- [ ] Definir la doctrine content-free.
-- [ ] Definir que FridaDev consomme Catalogue en lecture seule au depart.
+- [x] Creer `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`.
+- [x] Stabiliser le vocabulaire: `library_document`, `catalogue_document`, `passage documentaire`, locator, resolution, ambiguite, confiance.
+- [x] Definir la frontiere avec `active_document`.
+- [x] Definir les sources de verite: Catalogue / doc-pipeline, pas AnythingLLM.
+- [x] Definir les limites initiales autour des milestones Stephanus.
+- [x] Definir la doctrine content-free.
+- [x] Definir que FridaDev consomme Catalogue en lecture seule au depart.
 
 ### Lot 2 - Client Catalogue GET-only
 

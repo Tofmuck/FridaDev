@@ -5,6 +5,7 @@ Date: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 TODO derive: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Audit cible Lot 0: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
+Spec Lot 1: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Chantier compatible mais distinct archive: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 Portee: priorite Lot 0 pour rendre Frida Catalogue humainement editable, puis consultation native, a la demande, d'une bibliotheque documentaire persistante deja adossee a Frida Catalogue / doc-pipeline
 Hors-scope: runtime FridaDev dans ce commit, branchement LLM, endpoint FridaDev, migration DB depuis ce depot, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal
@@ -21,6 +22,13 @@ Verdict produit:
 - Biblio native = bibliotheque persistante consultable a la demande, capable de resoudre un document et un passage, puis d'injecter l'extrait utile dans le tour;
 - les deux capacites doivent partager une discipline de lanes, de vocabulaire et d'observabilite, mais pas le meme etat serveur.
 - Catalogue humain editable = precondition produit: les metadonnees sales ou pauvres doivent etre corrigeables avant que Frida s'appuie dessus.
+
+Etat apres Lot 1 du 2026-05-28:
+
+- Lot 0 plateforme livre l'edition humaine des metadonnees Catalogue et la protection du formulaire contre l'auto-refresh destructeur;
+- Lot 1 cree la spec source-of-truth `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`;
+- FridaDev reste non branche a Catalogue;
+- le prochain lot code doit rester client read-only / GET-only.
 
 ## 2. Question produit
 
@@ -94,7 +102,7 @@ Aucun contenu documentaire brut n'a ete repris dans ce plan.
 
 Audit cible: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`.
 
-Constats:
+Constats pre-Lot 0:
 
 - Homepage pointe `FRIDA Catalogue` vers `https://home.frida-system.fr/bibliotheque`;
 - Caddy route `/bibliotheque*` vers `doc-library:80`;
@@ -131,7 +139,7 @@ Routes mutatrices importantes observees:
 - `DELETE /doc/{doc_id}`;
 - `DELETE /doc/{doc_id}/with-files`.
 
-Il n'existe pas encore de route d'edition metadata bibliographique.
+Depuis le Lot 0, Catalogue expose aussi `GET /doc/{doc_id}/metadata` et `PUT /doc/{doc_id}/metadata`. Le client FridaDev initial doit pouvoir lire `GET /doc/{doc_id}/metadata`, mais ne doit pas appeler `PUT /doc/{doc_id}/metadata`.
 
 ### Corpus Platon et Stephanus
 
@@ -201,6 +209,8 @@ Le futur module Biblio doit:
 - garder le passage lui-meme hors des logs ordinaires.
 
 Le premier client FridaDev doit etre GET-only. Les routes d'edition metadata et de suppression restent hors FridaDev tant qu'une decision d'architecture ne deplace pas explicitement cette responsabilite.
+
+La spec source-of-truth est maintenant `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`.
 
 ### 5.2 Lane prompt
 
