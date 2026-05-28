@@ -1,6 +1,6 @@
 # Frida Biblio native / Frida Catalogue - TODO
 
-Statut: actif
+Statut: actif (Lot 0 plateforme livre, lots FridaDev ouverts)
 Date de creation: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 Audit-plan source: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
@@ -9,6 +9,7 @@ Chantier compatible mais distinct archive: `app/docs/todo-done/product/active-co
 Spec fondatrice a creer: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Portee: Lot 0 prioritaire de correction humaine des metadonnees Catalogue, puis consultation native, a la demande, d'une bibliotheque persistante via Frida Catalogue / doc-pipeline
 Hors-scope courant: runtime FridaDev, branchement LLM, endpoint FridaDev, migration DB dans ce depot, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal, rebuild
+Livraison Lot 0 plateforme: 2026-05-28, hors depot FridaDev, dans `/opt/platform/doc-pipeline` et `/opt/platform/doc-library`
 
 ## 1. Intention
 
@@ -76,6 +77,18 @@ Audit cible Lot 0 du 2026-05-28:
 - le front Catalogue actuel expose deja ces suppressions via deux boutons et `window.confirm`;
 - le front Catalogue actuel n'est pas dans le depot FridaDev.
 
+Livraison plateforme Lot 0 du 2026-05-28:
+
+- `/opt/platform/doc-pipeline/db_store.py` ajoute les tables SQL separees `catalogue_human_metadata` et `catalogue_human_metadata_audit`;
+- `/opt/platform/doc-pipeline/query_api.py` ajoute les routes non destructrices `GET /doc/{doc_id}/metadata` et `PUT /doc/{doc_id}/metadata`;
+- `/opt/platform/doc-library/index.html` ajoute une fiche ouvrage lisible et un formulaire d'edition des metadonnees humaines;
+- les suppressions existantes restent separees dans une zone dangereuse, avec confirmation par saisie de l'id document complet;
+- l'edition metadata ne modifie pas les tables OCR, les pages, les paragraphs, les raw units, les milestones ni les fichiers sources;
+- aucune route DELETE n'a ete appelee pendant la livraison;
+- aucun OCR, branchement Frida/LLM, Memory/RAG, document actif ou workspace n'a ete ajoute;
+- backup plateforme: `/opt/platform/backups/catalogue-human-metadata-20260528-155550`;
+- preuve smoke content-free: une note operateur benigne a ete ecrite puis relue sur un document test reel, id court `dabfe4a7`, avec une ligne d'audit.
+
 ## 4. Hors-scope du chantier
 
 - fusion avec documents actifs;
@@ -94,6 +107,8 @@ Audit cible Lot 0 du 2026-05-28:
 ## 5. Criteres de fermeture du chantier
 
 Le chantier pourra etre clos seulement si:
+
+Note 2026-05-28: les criteres Lot 0 ci-dessous sont remplis cote plateforme Catalogue, mais le chantier global reste actif tant que les lots FridaDev read-only et chat ne sont pas livres.
 
 - le Lot 0 a rendu les metadonnees Catalogue corrigeables humainement ou a ete explicitement requalifie par decision produit;
 - la liste Catalogue et la fiche ouvrage sont lisibles par un humain, pas seulement en JSON brut;
@@ -127,16 +142,16 @@ La condition de non-prolongation globale est atteinte quand Frida sait consulter
 
 Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, pas runtime FridaDev, sauf decision explicite contraire.
 
-- [ ] Confirmer le repo/runtime proprietaire de la page `FRIDA Bibliotheque`, de l'API `/doc-api` et de la DB Catalogue avant tout patch.
-- [ ] Afficher une liste lisible des ouvrages OCRises avec titre humain, auteur si disponible, type, langue, statut metadata et fichier source.
-- [ ] Ajouter une fiche ouvrage lisible, pas seulement la fiche JSON brute.
-- [ ] Permettre l'edition manuelle des metadonnees bibliographiques.
-- [ ] Sauvegarder les corrections en SQL.
-- [ ] Distinguer explicitement:
+- [x] Confirmer le repo/runtime proprietaire de la page `FRIDA Bibliotheque`, de l'API `/doc-api` et de la DB Catalogue avant tout patch.
+- [x] Afficher une liste lisible des ouvrages OCRises avec titre humain, auteur si disponible, type, langue, statut metadata et fichier source.
+- [x] Ajouter une fiche ouvrage lisible, pas seulement la fiche JSON brute.
+- [x] Permettre l'edition manuelle des metadonnees bibliographiques.
+- [x] Sauvegarder les corrections en SQL.
+- [x] Distinguer explicitement:
   - nom de fichier source;
   - metadonnees extraites automatiquement;
   - metadonnees corrigees humainement.
-- [ ] Prevoir au minimum:
+- [x] Prevoir au minimum:
   - titre canonique;
   - titre original;
   - auteur(s);
@@ -148,11 +163,11 @@ Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, 
   - type: livre, article, recueil, oeuvres completes, etc.;
   - fichier source;
   - notes operateur;
-  - statut: `a_verifier`, `corrige_humainement`, `valide`.
-- [ ] Ajouter un audit minimal de modification metadata: date, champ, ancienne/nouvelle valeur ou hash, acteur logique si disponible.
-- [ ] Remplacer les suppressions legeres par une confirmation forte pour DB seule et DB + fichiers.
-- [ ] Tester que l'edition metadata ne lance pas de re-OCR.
-- [ ] Tester que l'edition metadata ne branche pas Frida/LLM, Memory/RAG, documents actifs ou workspace.
+  - statut implemente: `to_review`, `corrected`, `validated`.
+- [x] Ajouter un audit minimal de modification metadata: date, champ, anciennes/nouvelles valeurs, acteur logique si disponible.
+- [x] Remplacer les suppressions legeres par une confirmation forte pour DB seule et DB + fichiers.
+- [x] Tester que l'edition metadata ne lance pas de re-OCR.
+- [x] Tester que l'edition metadata ne branche pas Frida/LLM, Memory/RAG, documents actifs ou workspace.
 
 ### Lot 1 - Spec FridaDev Biblio native read-only
 

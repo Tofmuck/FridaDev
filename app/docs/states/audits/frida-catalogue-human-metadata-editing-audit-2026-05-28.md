@@ -1,15 +1,19 @@
 # Frida Catalogue - human metadata editing audit - 2026-05-28
 
-Statut: audit cible lecture seule
+Statut: audit cible lecture seule + livraison Lot 0 plateforme
 Classement: `app/docs/states/audits/`
 Chantier lie: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
-Discipline plateforme: lecture seule sous discipline Sauron
+Discipline plateforme: lecture seule initiale, puis patch borne sous discipline Sauron
 
 ## 1. Question
 
 Avant de brancher FridaDev sur Frida Catalogue, il faut verifier ou vit la surface Catalogue actuelle et si elle permet deja de corriger humainement les metadonnees bibliographiques.
 
-Verdict: la stack Catalogue existe et repond, mais l'edition humaine des metadonnees n'existe pas encore. Elle doit devenir le Lot 0 prioritaire avant le client FridaDev read-only.
+Verdict initial: la stack Catalogue existait et repondait, mais l'edition humaine des metadonnees n'existait pas encore. Elle devait devenir le Lot 0 prioritaire avant le client FridaDev read-only.
+
+Etat apres livraison Lot 0 du 2026-05-28: l'edition humaine des metadonnees existe maintenant cote plateforme Catalogue. FridaDev reste non branche et le prochain lot FridaDev doit rester read-only / GET-only.
+
+Les sections 2 a 5 gardent le constat pre-patch qui a justifie le Lot 0. La section 9 documente l'etat livre.
 
 ## 2. Surface humaine observee
 
@@ -151,3 +155,61 @@ Preuves realisees sans secret, sans contenu OCR brut, sans dump d'ouvrage, sans 
 - lecture du schema `documents` via `information_schema`;
 - comptages et tailles de tables via `pg_stat_user_tables`;
 - appels GET content-free a `/health`, `/catalog?limit=2`, `/settings` et `/progress` depuis le conteneur FridaDev.
+
+## 9. Livraison Lot 0 plateforme
+
+Fichiers modifies hors depot FridaDev:
+
+- `/opt/platform/doc-pipeline/db_store.py`;
+- `/opt/platform/doc-pipeline/query_api.py`;
+- `/opt/platform/doc-library/index.html`.
+
+Backups:
+
+- repertoire: `/opt/platform/backups/catalogue-human-metadata-20260528-155550`;
+- fichiers sauvegardes: `db_store.py.before`, `query_api.py.before`, `doc-library-index.html.before`;
+- backup DB: `catalogue-db.dump`, taille 47M.
+
+DB:
+
+- table `catalogue_human_metadata` creee, separee de `documents`;
+- table `catalogue_human_metadata_audit` creee;
+- contrainte `metadata_status` bornee a `to_review`, `corrected`, `validated`;
+- aucune colonne ne stocke de texte OCR brut;
+- smoke content-free: `metadata_rows=1`, `audit_rows=1`, document test affiche seulement par id court `dabfe4a7`.
+
+API:
+
+- `GET /doc/{doc_id}/metadata` retourne metadonnees d'ingestion content-safe, fichier source, compteurs, metadonnees humaines et timestamps;
+- `PUT /doc/{doc_id}/metadata` accepte seulement les champs allowlistes, trim les chaines, limite les tailles, verifie que le document existe, ecrit l'audit et ne modifie aucune table OCR;
+- test champ inconnu: rejet HTTP 422;
+- aucune route DELETE n'a ete appelee.
+
+UI:
+
+- la page `/bibliotheque` garde la liste et ajoute une fiche ouvrage lisible;
+- le formulaire edite titre canonique, titre original, auteurs, traducteurs, editeur scientifique, editeur, collection, annee, langue override, type, notes operateur et statut;
+- la fiche affiche fichier source, id court/hash si disponible, langue detectee, type source, compteurs et qualite JSON sans texte d'ouvrage;
+- les suppressions existantes sont separees dans une zone dangereuse avec confirmation par saisie de l'id document complet.
+
+Frontiere:
+
+- aucun FridaDev runtime n'a ete modifie;
+- aucun client Biblio FridaDev n'a ete cree;
+- aucun branchement Frida/LLM, Memory/RAG, documents actifs, workspace, Identity ou Summary n'a ete ajoute;
+- aucun OCR, re-OCR ou indexation longue n'a ete lance.
+
+Restart:
+
+- seul `platform-doc-pipeline-api` a ete rebuilde/redemarre;
+- pas de restart Caddy, Authelia, Homepage, DB, FridaDev ni doc-pipeline worker.
+
+Preuves live:
+
+- health API OK depuis le reseau Docker;
+- catalogue API OK avec comptage content-free;
+- GET/PUT/GET metadata OK sur document test, avec note operateur benigne;
+- tables metadata/audit presentes et comptees;
+- page doc-library servie et contenant le formulaire metadata;
+- route publique `/bibliotheque` toujours protegee par Authelia;
+- logs recents `platform-doc-pipeline-api` et `platform-doc-library` sans erreur critique observee.
