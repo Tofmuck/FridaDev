@@ -194,6 +194,7 @@ def build_dashboard_turn_fact(events: Sequence[Mapping[str, Any]]) -> dict[str, 
         'hermeneutic': hermeneutic,
         'web': dict(_mapping(item.get('web'))),
         'documents': dict(_mapping(item.get('documents'))),
+        'biblio': dict(_mapping(item.get('biblio'))),
         'node_state': node_state,
         'latencies': dict(_mapping(item.get('latencies'))),
         'errors': dict(_mapping(item.get('errors'))),
@@ -244,6 +245,8 @@ def build_dashboard_conversation_summaries(
         documents_active_turns = 0
         documents_injected_total = 0
         documents_not_injected_total = 0
+        biblio_used_turns = 0
+        biblio_passages_total = 0
         last_problem_reason_code: str | None = None
 
         for fact in ordered:
@@ -253,6 +256,7 @@ def build_dashboard_conversation_summaries(
             rag = _mapping(fact.get('rag'))
             web = _mapping(fact.get('web'))
             documents = _mapping(fact.get('documents'))
+            biblio = _mapping(fact.get('biblio'))
             errors = _mapping(fact.get('errors'))
 
             if _to_int(rag.get('injected')) > 0 or _to_int(rag.get('retrieved')) > 0:
@@ -271,6 +275,11 @@ def build_dashboard_conversation_summaries(
                 _inc(modules_involved, 'documents')
             documents_injected_total += _to_int(documents.get('injected_count'))
             documents_not_injected_total += _to_int(documents.get('not_injected_count'))
+
+            if bool(biblio.get('used')):
+                biblio_used_turns += 1
+                _inc(modules_involved, 'biblio')
+            biblio_passages_total += _to_int(biblio.get('passage_count'))
 
             current_errors = _to_int(errors.get('error_count'))
             current_fallbacks = _to_int(errors.get('fallback_count'))
@@ -308,6 +317,8 @@ def build_dashboard_conversation_summaries(
                 'documents_active_turns': documents_active_turns,
                 'documents_injected_total': documents_injected_total,
                 'documents_not_injected_total': documents_not_injected_total,
+                'biblio_used_turns': biblio_used_turns,
+                'biblio_passages_total': biblio_passages_total,
                 'error_count': error_count,
                 'fallback_count': fallback_count,
                 'last_problem_reason_code': last_problem_reason_code,

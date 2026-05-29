@@ -1,6 +1,6 @@
 # Frida Biblio native / Frida Catalogue - TODO
 
-Statut: actif (Lots 0, 1, 2, 3, 4 et 5 livres, lots chat/admin ouverts)
+Statut: actif (Lots 0, 1, 2, 3, 4, 5 et 6 livres, lots chat/frontend ouverts)
 Date de creation: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 Audit-plan source: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
@@ -20,6 +20,7 @@ Livraison Lot 4: 2026-05-28, extraction de passage bornee creee dans `app/biblio
 Correctif Lot 4: 2026-05-28, `document_id` rendu obligatoire dans le payload `/context` avant extraction
 Livraison Lot 5: 2026-05-29, lane prompt Biblio creee dans `app/biblio/prompt_lane.py`, sans branchement chat, frontend, toggle, API, Catalogue, DB, Memory/RAG, Identity, Summary, Web ni OCR
 Correctif post-audit Lot 5: 2026-05-29, hash observable durci et balises Biblio internes neutralisees dans le texte injecte
+Livraison Lot 6: 2026-05-29, observabilite/admin Biblio content-free creee dans `app/biblio/observability.py` et `GET /api/admin/biblio/observability`, avec module dashboard `biblio`, sans branchement chat, frontend, toggle, Catalogue automatique ni DB Biblio
 
 ## 1. Intention
 
@@ -253,11 +254,13 @@ Note Lot 5: le prompt final du chat n'est pas modifie dans ce lot. `app/biblio/p
 
 ### Lot 6 - Observabilite/admin FridaDev
 
-- [ ] Ajouter events compacts de requete Biblio.
-- [ ] Exposer document resolu, locator, passage extrait, statut, ambiguite, confiance, chars/hash sans contenu brut par defaut.
-- [ ] Ajouter un module observable ou une projection compatible dashboard.
-- [ ] Raconter dans l'inspection traduite: Biblio consultee, document resolu, passage extrait ou ambigu.
-- [ ] Tester content-free strict.
+- [x] Ajouter events compacts de requete Biblio.
+- [x] Exposer document resolu, locator, passage extrait, statut, ambiguite, confiance, chars/hash sans contenu brut par defaut.
+- [x] Ajouter un module observable ou une projection compatible dashboard.
+- [x] Raconter dans l'inspection traduite: Biblio consultee, document resolu, passage extrait ou ambigu.
+- [x] Tester content-free strict.
+
+Note Lot 6: `app/biblio/observability.py` construit une projection passive `stage=biblio` et une surface admin read-only. Le lot ne branche toujours pas le chat, ne lance pas de recherche Catalogue, ne cree pas de route metier Biblio, ne cree pas de toggle et ne serialise jamais `BiblioPromptLane.message`.
 
 ### Lot 7 - Branchement chat minimal
 

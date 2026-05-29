@@ -636,6 +636,97 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertNotIn('RAW LARGE DOCUMENT TEXT MUST NOT LEAK', serialized)
         self.assertNotIn('text_content', self._collect_keys(fact))
 
+    def test_turn_fact_materializes_biblio_content_free(self) -> None:
+        events = [
+            *self._complete_turn(),
+            self._event(
+                'biblio',
+                payload={
+                    'source_kind': 'biblio_native_catalogue',
+                    'enabled': True,
+                    'used': True,
+                    'query_kind': 'document_locator',
+                    'status': 'ok',
+                    'resolver': {
+                        'status': 'resolved',
+                        'reason_code': 'document_and_locator_resolved',
+                        'document': {'doc_id_short': 'doc-1234'},
+                        'document_candidate_count': 1,
+                        'document_candidate_ids': ['doc-1234'],
+                        'locator': {'kind': 'stephanus', 'label': {'present': True, 'length': 4, 'hash': 'abcdef123456'}},
+                        'locator_candidate_count': 1,
+                        'requested_locator_kind': 'stephanus',
+                        'requested_locator': {'present': True, 'length': 4, 'hash': 'abcdef123456'},
+                    },
+                    'extractor': {
+                        'status': 'extracted',
+                        'reason_code': 'passage_extracted',
+                        'doc_id_short': 'doc-1234',
+                        'passage_chars': 42,
+                        'passage_hash': 'abcdef123456',
+                        'passage': 'RAW BIBLIO PASSAGE MUST NOT LEAK',
+                    },
+                    'lane': {
+                        'present': True,
+                        'passage_count': 1,
+                        'skipped_count': 0,
+                        'chars': 300,
+                        'hashes': ['abcdef123456'],
+                        'doc_id_shorts': ['doc-1234'],
+                        'positions': [{'page_no': 12, 'para_no': 3, 'paragraph_id': 99}],
+                        'message': {'content': 'RAW BIBLIO LANE MUST NOT LEAK'},
+                    },
+                    'counts': {'passage_count': 1, 'lane_chars': 300},
+                    'reason_code_counts': {
+                        'document_and_locator_resolved': 1,
+                        'passage_extracted': 1,
+                    },
+                    'payload': {'text': 'RAW CATALOGUE PAYLOAD MUST NOT LEAK'},
+                    'redaction': {'raw_content_included': False},
+                },
+                event_id='turn-dashboard:0009:biblio',
+            ),
+        ]
+
+        fact = dashboard_analytics.build_dashboard_turn_fact(events)
+        biblio = fact['biblio']
+
+        self.assertEqual(biblio['source_kind'], 'biblio_native_catalogue')
+        self.assertTrue(biblio['event_present'])
+        self.assertTrue(biblio['enabled'])
+        self.assertTrue(biblio['used'])
+        self.assertEqual(biblio['status'], 'ok')
+        self.assertEqual(biblio['document_status'], 'resolved')
+        self.assertEqual(biblio['passage_status'], 'extracted')
+        self.assertEqual(biblio['passage_count'], 1)
+        self.assertEqual(biblio['lane_chars'], 300)
+        self.assertEqual(biblio['hashes'], ['abcdef123456'])
+        self.assertFalse(biblio['raw_content_included'])
+
+        summaries = dashboard_analytics.build_dashboard_conversation_summaries([fact])
+        self.assertEqual(summaries[0]['biblio_used_turns'], 1)
+        self.assertEqual(summaries[0]['biblio_passages_total'], 1)
+        self.assertEqual(summaries[0]['modules_involved']['biblio'], 1)
+
+        buckets = dashboard_analytics.build_dashboard_metric_buckets(
+            [fact],
+            now=datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+        biblio_hour_bucket = next(
+            bucket for bucket in buckets
+            if bucket['module_key'] == 'biblio' and bucket['granularity'] == 'hour'
+        )
+        self.assertEqual(biblio_hour_bucket['metrics']['used_turns'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['passages_total'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['lane_chars_total'], 300)
+
+        serialized = json.dumps({'fact': fact, 'summaries': summaries, 'buckets': buckets}, sort_keys=True)
+        self.assertNotIn('RAW BIBLIO PASSAGE MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW BIBLIO LANE MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW CATALOGUE PAYLOAD MUST NOT LEAK', serialized)
+        self.assertNotIn('message', self._collect_keys(fact))
+        self.assertNotIn('payload', self._collect_keys(fact))
+
     def test_materialization_status_tracks_lag_without_raw_error_message(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
         error = RuntimeError('RAW SECRET DSN MUST NOT LEAK')

@@ -759,6 +759,48 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertIn('Aucun texte de document actif n est affiche', story_text)
         self.assertNotIn('RAW DOCUMENT TEXT MUST NOT LEAK', story_text)
 
+    def test_turn_story_tells_biblio_without_raw_passage(self) -> None:
+        fact = {
+            'conversation_id': 'conv-biblio',
+            'turn_id': 'turn-biblio',
+            'classification': 'complete',
+            'score': 96,
+            'source_event_count': 9,
+            'persistence': {'status': 'saved', 'assistant_final_saved': True},
+            'providers': {'main': {'present': True, 'status': 'ok'}, 'secondary': {}},
+            'rag': {'retrieved': 0, 'kept': 0, 'injected': 0},
+            'identity': {'block_present': False, 'status': 'missing'},
+            'hermeneutic': {'block_present': False, 'status': 'missing'},
+            'web': {'requested': False, 'success': False, 'injected': False, 'status': 'not_applicable'},
+            'documents': {},
+            'biblio': {
+                'source_kind': 'biblio_native_catalogue',
+                'event_present': True,
+                'enabled': True,
+                'used': True,
+                'status': 'ok',
+                'document_status': 'resolved',
+                'passage_status': 'extracted',
+                'passage_count': 1,
+                'lane_chars': 300,
+                'hashes': ['abcdef123456'],
+                'raw_content_included': False,
+                'message': {'content': 'RAW BIBLIO PASSAGE MUST NOT LEAK'},
+            },
+            'node_state': {},
+            'errors': {'error_count': 0, 'skipped_count': 0, 'fallback_count': 0, 'reason_code_counts': {}},
+            'flags': {'events_truncated': False},
+            'content_availability': {'content_comprehension_status': 'compact_only'},
+        }
+
+        story = dashboard_read_model._turn_story(fact)
+        story_text = json.dumps(story, ensure_ascii=False, sort_keys=True)
+
+        self.assertIn('1 passage(s) Biblio observe(s)', story_text)
+        self.assertIn('Biblio: consultee oui, etat reussi, document resolu', story_text)
+        self.assertNotIn('abcdef123456', story_text)
+        self.assertNotIn('RAW BIBLIO PASSAGE MUST NOT LEAK', story_text)
+
     def test_turn_story_does_not_invent_parent_summary_window_when_only_count_exists(self) -> None:
         fact = {
             'conversation_id': 'conv-summary-count-only',

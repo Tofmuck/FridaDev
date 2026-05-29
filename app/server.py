@@ -45,6 +45,7 @@ from admin import (
 )
 from admin import admin_actions
 from admin import runtime_settings
+from biblio import observability as biblio_observability
 from core import token_utils
 from identity import identity
 from identity import static_identity_content
@@ -1044,6 +1045,12 @@ def api_admin_chat_logs_metrics():
         return jsonify({'ok': False, 'error': str(exc)}), 400
 
     return jsonify({'ok': True, **metrics})
+
+
+@app.get('/api/admin/biblio/observability')
+def api_admin_biblio_observability():
+    payload = biblio_observability.build_admin_observability(config_module=config)
+    return jsonify({'ok': True, **payload})
 
 
 @app.get('/api/admin/dashboard/overview')

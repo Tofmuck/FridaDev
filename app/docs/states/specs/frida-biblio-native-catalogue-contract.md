@@ -4,11 +4,12 @@ Statut: spec vivante
 Date: 2026-05-28
 Mise a jour Lot 5: 2026-05-29
 Correctif post-audit Lot 5: 2026-05-29
+Mise a jour Lot 6: 2026-05-29
 Classement: `app/docs/states/specs/`
 Roadmap active: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Audit Lot 0 Catalogue: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 Specs voisines: `app/docs/states/specs/active-conversation-documents-contract.md`, `app/docs/states/specs/workspace-folders-contract.md`
-Portee: contrat produit, frontieres, client futur GET-only, resolver, extraction bornee, lane prompt et observabilite de Biblio native.
+Portee: contrat produit, frontieres, client futur GET-only, resolver, extraction bornee, lane prompt, observabilite et surface admin content-free de Biblio native.
 
 ## 1. Statut et portee
 
@@ -446,6 +447,21 @@ Ne pas logguer par defaut:
 - source filename si le nom revele une information sensible et qu'un label compact suffit.
 
 Le dashboard ordinaire doit rester content-free. Toute vue future affichant un passage complet devra etre une surface explicite, bornee et documentee separement.
+
+Implementation Lot 6 du 2026-05-29:
+
+- module: `app/biblio/observability.py`;
+- surface admin read-only: `GET /api/admin/biblio/observability`;
+- la route admin n'appelle pas Catalogue, ne resout aucun document, n'extrait aucun passage, ne construit aucune lane prompt et n'ecrit rien en DB;
+- la route expose seulement l'etat du module, la config non secrete utile (`catalogue_base_url` expurgee de userinfo, query et fragment; timeout; GET-only), les endpoints GET autorises et les mutations interdites;
+- `build_biblio_event_payload()` projette des objets deja produits par les lots 2 a 5 en event compact: `enabled`, `used`, `query_kind`, status, client, resolver, extractor, lane, counts, confidence non disponible, reason codes, frontieres et redaction;
+- `emit_biblio_event()` reserve le stage compact `biblio`, mais le Lot 6 ne le branche pas au chat principal;
+- l'observabilite Biblio ne serialise jamais `BiblioPromptLane.message`;
+- les projections recalculent ou valident strictement les hashes de passage observables et compactent les textes inconnus en longueur/hash court au lieu de les exposer;
+- les payloads bruts Catalogue, passage brut, texte OCR, prompt complet, titre, auteur, requete ou locator brut, secret, cookie, token, DSN et `.env` restent hors projection;
+- le catalogue observable dashboard declare le module `biblio`, ses metriques compactes, ses raisons de degradation et sa traduction d'inspection;
+- le read-model de tour reconnait des events `stage=biblio` s'ils existent deja, sans creer d'event ni declencher Catalogue;
+- la Biblio reste separee des documents actifs, workspace, Memory/RAG, Identity, Summary, Web, Hermeneutic, AnythingLLM et OCR des documents actifs.
 
 ## 11. Tests futurs obligatoires
 

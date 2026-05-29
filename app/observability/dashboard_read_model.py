@@ -757,6 +757,7 @@ def _turn_fact_row(row: Sequence[Any]) -> dict[str, Any]:
         'hermeneutic': _json_mapping(row[13]),
         'web': _json_mapping(row[14]),
         'documents': _json_mapping(row[15]),
+        'biblio': {},
         'node_state': _json_mapping(row[16]),
         'latencies': _json_mapping(row[17]),
         'errors': _json_mapping(row[18]),
@@ -1015,6 +1016,9 @@ def _status_fr(value: Any) -> str:
         'skipped': 'ignore',
         'not_applicable': 'non utilise',
         'missing': 'non observe',
+        'resolved': 'resolu',
+        'ambiguous': 'ambigu',
+        'not_found': 'introuvable',
         'unknown': 'a verifier',
     }
     return labels.get(str(value or '').strip().lower(), 'a verifier')
@@ -1195,6 +1199,7 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
     hermeneutic = _mapping(fact.get('hermeneutic'))
     web = _mapping(fact.get('web'))
     documents = _mapping(fact.get('documents'))
+    biblio = _mapping(fact.get('biblio'))
     node_state = _mapping(fact.get('node_state'))
     persistence = _mapping(fact.get('persistence'))
     errors = _mapping(fact.get('errors'))
@@ -1246,6 +1251,12 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
         context_parts.append('document actif observe mais non injecte')
     else:
         context_parts.append('pas de document actif observe')
+    if biblio.get('used') and _to_int(biblio.get('passage_count')) > 0:
+        context_parts.append(f"{_to_int(biblio.get('passage_count'))} passage(s) Biblio observe(s)")
+    elif biblio.get('used'):
+        context_parts.append('Biblio consultee sans passage injecte observe')
+    else:
+        context_parts.append('pas de consultation Biblio observee')
 
     embeddings_requested, embeddings_requested_present = _first_present_int(
         rag,
@@ -1343,6 +1354,10 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
                     f"injecte {_yes_no(web.get('injected'))}, resultats comptes {_to_int(web.get('results_count'))}."
                 ),
                 *_document_story_lines(documents),
+                (
+                    f"Biblio: consultee {_yes_no(biblio.get('used'))}, etat {_status_fr(biblio.get('status'))}, "
+                    f"document {_status_fr(biblio.get('document_status'))}, passages {_to_int(biblio.get('passage_count'))}."
+                ),
                 f"Persistence: etat {_status_fr(persistence.get('status'))}.",
             ],
         },

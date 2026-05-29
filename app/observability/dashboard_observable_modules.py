@@ -179,6 +179,25 @@ def _reduce_documents_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) 
         _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
 
 
+def _reduce_biblio_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    biblio = _mapping(fact.get('biblio'))
+    _add_metric_label(metrics, 'status_counts', biblio.get('status'))
+    _add_metric_count(metrics, 'enabled_turns', 1 if biblio.get('enabled') else 0)
+    _add_metric_count(metrics, 'used_turns', 1 if biblio.get('used') else 0)
+    _add_metric_count(metrics, 'passages_total', _to_int(biblio.get('passage_count')))
+    _add_metric_count(metrics, 'skipped_total', _to_int(biblio.get('skipped_count')))
+    _add_metric_count(metrics, 'lane_chars_total', _to_int(biblio.get('lane_chars')))
+    document_status = biblio.get('document_status')
+    if document_status:
+        _add_metric_label(metrics, 'document_status_counts', document_status)
+    passage_status = biblio.get('passage_status')
+    if passage_status:
+        _add_metric_label(metrics, 'passage_status_counts', passage_status)
+    reason_counts = _mapping(biblio.get('reason_code_counts'))
+    for reason, count in reason_counts.items():
+        _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
+
+
 def _reduce_provider_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
     providers = _mapping(fact.get('providers'))
     main = _mapping(providers.get('main'))
@@ -309,6 +328,29 @@ def _summarize_documents_turn(fact: Mapping[str, Any]) -> str:
     return f'{active_count} document(s) actif(s) etaient visibles sur ce tour.{ocr_sentence}'
 
 
+def _summarize_biblio_turn(fact: Mapping[str, Any]) -> str:
+    biblio = _mapping(fact.get('biblio'))
+    if not biblio.get('event_present'):
+        return 'Aucune consultation Biblio n est observee sur ce tour.'
+    if not biblio.get('used'):
+        return 'La Biblio etait visible en observabilite mais aucun passage n a ete consulte.'
+    status = str(biblio.get('status') or '').strip().lower()
+    reason = str(
+        biblio.get('passage_reason_code')
+        or biblio.get('document_reason_code')
+        or biblio.get('confidence_reason_code')
+        or ''
+    ).strip()
+    if status == 'ambiguous':
+        return f'La Biblio a ete consultee mais la resolution est ambigue; raison compacte: {reason or "unknown"}.'
+    if status in {'error', 'not_found'}:
+        return f'La Biblio a ete consultee sans passage injectable; raison compacte: {reason or status}.'
+    passage_count = _to_int(biblio.get('passage_count'))
+    if passage_count > 0:
+        return f'La Biblio a ete consultee; {passage_count} passage(s) de bibliotheque sont observes en lane compacte.'
+    return 'La Biblio a ete consultee, sans passage injecte dans les signaux compacts.'
+
+
 def _summarize_providers_turn(fact: Mapping[str, Any]) -> str:
     main = _mapping(_mapping(fact.get('providers')).get('main'))
     if main.get('present'):
@@ -357,6 +399,23 @@ def _resolve_documents_reason(fact: Mapping[str, Any]) -> str | None:
         'active_documents_reader_unavailable',
         'document_too_large_for_turn',
         'document_empty_text',
+    ):
+        if _to_int(reason_counts.get(reason)) > 0:
+            return reason
+    return next(iter(reason_counts.keys()), None)
+
+
+def _resolve_biblio_reason(fact: Mapping[str, Any]) -> str | None:
+    reason_counts = _mapping(_mapping(fact.get('biblio')).get('reason_code_counts'))
+    for reason in (
+        'ambiguous_document',
+        'ambiguous_locator',
+        'document_not_found',
+        'locator_not_found',
+        'catalogue_unavailable',
+        'passage_too_long',
+        'biblio_prompt_max_total_chars_reached',
+        'biblio_prompt_max_passages_reached',
     ):
         if _to_int(reason_counts.get(reason)) > 0:
             return reason
@@ -620,6 +679,53 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         bucket_metrics_reducer=_reduce_documents_metrics,
         turn_summary_renderer=_summarize_documents_turn,
         turn_degradation_reason_resolver=_resolve_documents_reason,
+    ),
+    _module(
+        module_key='biblio',
+        label_fr='Biblio native',
+        description_fr='Observe les consultations Catalogue Biblio, resolutions et lanes sans contenu de passage.',
+        global_metrics=_fields(
+            ('enabled_turns', 'Tours avec Biblio activee'),
+            ('used_turns', 'Tours avec consultation Biblio'),
+            ('passages_total', 'Passages Biblio observes'),
+            ('skipped_total', 'Passages ignores'),
+            ('lane_chars_total', 'Taille totale des lanes Biblio'),
+        ),
+        conversation_summary=_fields(
+            ('biblio_used_turns', 'Tours avec Biblio consultee'),
+            ('biblio_passages_total', 'Passages Biblio observes'),
+            ('modules_involved.biblio', 'Biblio impliquee'),
+        ),
+        turn_summary=_fields(
+            ('used', 'Biblio consultee'),
+            ('status', 'Etat Biblio'),
+            ('document_status', 'Resolution document'),
+            ('passage_count', 'Passages observes'),
+            ('reason_code_counts', 'Raisons compactes'),
+        ),
+        human_detail=_fields(
+            ('biblio_flow', 'Explique document resolu, ambiguite, passage extrait ou skip sans afficher le passage.'),
+        ),
+        sources=('biblio events', 'dashboard_turn_facts.biblio', 'biblio observability projection'),
+        limits=(
+            'Ne branche pas le chat ni le frontend Biblio.',
+            'Ne contient jamais le passage, le payload Catalogue, le prompt complet, le locator brut, titre ou auteur.',
+            'Reste separe des documents actifs, Memory/RAG, workspace, Identity, Summary, Web et OCR.',
+        ),
+        degradation_reasons=(
+            ('ambiguous_document', 'Plusieurs documents Catalogue restent plausibles.'),
+            ('ambiguous_locator', 'Plusieurs locators restent plausibles.'),
+            ('document_not_found', 'Aucun document Catalogue compatible n a ete trouve.'),
+            ('locator_not_found', 'Aucun locator compatible n a ete trouve.'),
+            ('catalogue_unavailable', 'Catalogue etait indisponible ou en erreur.'),
+            ('passage_too_long', 'Le passage extrait depassait la borne autorisee.'),
+            ('biblio_prompt_max_total_chars_reached', 'La lane Biblio aurait depasse sa taille maximale.'),
+            ('biblio_prompt_max_passages_reached', 'La lane Biblio avait atteint son nombre maximal de passages.'),
+        ),
+        gated_content=('Passage Biblio brut', 'Payload Catalogue brut', 'Prompt Biblio complet'),
+        bucket_metrics_reducer=_reduce_biblio_metrics,
+        turn_summary_renderer=_summarize_biblio_turn,
+        turn_degradation_reason_resolver=_resolve_biblio_reason,
     ),
     _module(
         module_key='providers',
