@@ -5,6 +5,7 @@ Date: 2026-05-28
 Mise a jour Lot 5: 2026-05-29
 Correctif post-audit Lot 5: 2026-05-29
 Mise a jour Lot 6: 2026-05-29
+Correctif post-audit Lot 6: 2026-05-29
 Classement: `app/docs/states/specs/`
 Roadmap active: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Audit Lot 0 Catalogue: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
@@ -462,6 +463,14 @@ Implementation Lot 6 du 2026-05-29:
 - le catalogue observable dashboard declare le module `biblio`, ses metriques compactes, ses raisons de degradation et sa traduction d'inspection;
 - le read-model de tour reconnait des events `stage=biblio` s'ils existent deja, sans creer d'event ni declencher Catalogue;
 - la Biblio reste separee des documents actifs, workspace, Memory/RAG, Identity, Summary, Web, Hermeneutic, AnythingLLM et OCR des documents actifs.
+
+Correctif post-audit Lot 6 du 2026-05-29:
+
+- la projection materialisee `observability.dashboard_turn_facts` porte une colonne `biblio_json JSONB NOT NULL DEFAULT '{}'::jsonb`;
+- le schema runtime ajoute cette colonne par `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` pour les DB existantes;
+- `dashboard_analytics_storage.py` persiste et relit `fact["biblio"]`;
+- `dashboard_read_model.py` relit `biblio_json` au lieu de remettre `biblio` a `{}`;
+- le contenu de `biblio_json` reste la projection compacte content-free deja expurgee; aucune donnee Biblio metier brute n'est ajoutee a la persistence dashboard.
 
 ## 11. Tests futurs obligatoires
 

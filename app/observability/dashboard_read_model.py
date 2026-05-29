@@ -617,6 +617,8 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
     documents_active_turns = 0
     documents_injected_total = 0
     documents_not_injected_total = 0
+    biblio_used_turns = 0
+    biblio_passages_total = 0
     error_count = 0
     fallback_count = 0
     last_turn_id = None
@@ -627,7 +629,8 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
         rag = _mapping(row[7])
         web = _mapping(row[8])
         documents = _mapping(row[9])
-        errors = _mapping(row[10])
+        biblio = _mapping(row[10])
+        errors = _mapping(row[11])
         if _to_int(rag.get('injected')) > 0 or _to_int(rag.get('retrieved')) > 0:
             memory_used_turns += 1
         if bool(web.get('requested')):
@@ -638,6 +641,9 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
             documents_active_turns += 1
         documents_injected_total += _to_int(documents.get('injected_count'))
         documents_not_injected_total += _to_int(documents.get('not_injected_count'))
+        if bool(biblio.get('used')):
+            biblio_used_turns += 1
+        biblio_passages_total += _to_int(biblio.get('passage_count'))
         error_count += _to_int(errors.get('error_count'))
         fallback_count += _to_int(errors.get('fallback_count'))
     return {
@@ -655,6 +661,8 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
         'documents_active_turns': documents_active_turns,
         'documents_injected_total': documents_injected_total,
         'documents_not_injected_total': documents_not_injected_total,
+        'biblio_used_turns': biblio_used_turns,
+        'biblio_passages_total': biblio_passages_total,
         'error_count': error_count,
         'fallback_count': fallback_count,
         'redaction': {'raw_content_included': False},
@@ -687,6 +695,7 @@ def read_dashboard_conversations(
                         f.rag_json,
                         f.web_json,
                         f.documents_json,
+                        f.biblio_json,
                         f.errors_json
                     FROM observability.dashboard_turn_facts AS f
                     LEFT JOIN observability.dashboard_conversation_summaries AS s
@@ -740,6 +749,8 @@ def read_dashboard_conversations(
 
 
 def _turn_fact_row(row: Sequence[Any]) -> dict[str, Any]:
+    if len(row) == 24:
+        row = (*row[:16], {}, *row[16:])
     return {
         'conversation_id': str(row[0] or ''),
         'turn_id': str(row[1] or ''),
@@ -757,15 +768,15 @@ def _turn_fact_row(row: Sequence[Any]) -> dict[str, Any]:
         'hermeneutic': _json_mapping(row[13]),
         'web': _json_mapping(row[14]),
         'documents': _json_mapping(row[15]),
-        'biblio': {},
-        'node_state': _json_mapping(row[16]),
-        'latencies': _json_mapping(row[17]),
-        'errors': _json_mapping(row[18]),
-        'stage_counts': _json_mapping(row[19]),
-        'flags': _json_mapping(row[20]),
-        'content_availability': _json_mapping(row[21]),
-        'calculation_version': str(row[22] or ''),
-        'materialized_ts': _iso(row[23]),
+        'biblio': _json_mapping(row[16]),
+        'node_state': _json_mapping(row[17]),
+        'latencies': _json_mapping(row[18]),
+        'errors': _json_mapping(row[19]),
+        'stage_counts': _json_mapping(row[20]),
+        'flags': _json_mapping(row[21]),
+        'content_availability': _json_mapping(row[22]),
+        'calculation_version': str(row[23] or ''),
+        'materialized_ts': _iso(row[24]),
         'redaction': {'raw_content_included': False},
     }
 
@@ -789,6 +800,7 @@ def _turn_fact_select_sql() -> str:
             hermeneutic_json,
             web_json,
             documents_json,
+            biblio_json,
             node_state_json,
             latencies_json,
             errors_json,

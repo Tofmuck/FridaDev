@@ -21,6 +21,7 @@ Correctif Lot 4: 2026-05-28, `document_id` rendu obligatoire dans le payload `/c
 Livraison Lot 5: 2026-05-29, lane prompt Biblio creee dans `app/biblio/prompt_lane.py`, sans branchement chat, frontend, toggle, API, Catalogue, DB, Memory/RAG, Identity, Summary, Web ni OCR
 Correctif post-audit Lot 5: 2026-05-29, hash observable durci et balises Biblio internes neutralisees dans le texte injecte
 Livraison Lot 6: 2026-05-29, observabilite/admin Biblio content-free creee dans `app/biblio/observability.py` et `GET /api/admin/biblio/observability`, avec module dashboard `biblio`, sans branchement chat, frontend, toggle, Catalogue automatique ni DB Biblio
+Correctif post-audit Lot 6: 2026-05-29, persistence dashboard `biblio_json` ajoutee a `observability.dashboard_turn_facts` et relue par le read-model admin
 
 ## 1. Intention
 
@@ -261,6 +262,8 @@ Note Lot 5: le prompt final du chat n'est pas modifie dans ce lot. `app/biblio/p
 - [x] Tester content-free strict.
 
 Note Lot 6: `app/biblio/observability.py` construit une projection passive `stage=biblio` et une surface admin read-only. Le lot ne branche toujours pas le chat, ne lance pas de recherche Catalogue, ne cree pas de route metier Biblio, ne cree pas de toggle et ne serialise jamais `BiblioPromptLane.message`.
+
+Correctif Lot 6: le dashboard materialise conserve maintenant `fact["biblio"]` dans `biblio_json` et le read-model admin le relit. La colonne est ajoutee par migration additive `ADD COLUMN IF NOT EXISTS`; elle ne contient que la projection compacte content-free.
 
 ### Lot 7 - Branchement chat minimal
 

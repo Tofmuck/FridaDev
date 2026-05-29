@@ -801,6 +801,48 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertNotIn('abcdef123456', story_text)
         self.assertNotIn('RAW BIBLIO PASSAGE MUST NOT LEAK', story_text)
 
+    def test_turn_fact_row_reads_persisted_biblio_json(self) -> None:
+        row = (
+            'conv-biblio-row',
+            'turn-biblio-row',
+            datetime(2026, 5, 15, 10, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 15, 10, 1, tzinfo=timezone.utc),
+            'complete',
+            100,
+            9,
+            'evt-first',
+            'evt-latest',
+            {'status': 'saved'},
+            {'main': {'present': True}},
+            {'retrieved': 0},
+            {'status': 'missing'},
+            {'status': 'missing'},
+            {'requested': False},
+            {},
+            {
+                'source_kind': 'biblio_native_catalogue',
+                'used': True,
+                'passage_count': 1,
+                'hashes': ['abcdef123456'],
+            },
+            {},
+            {},
+            {'error_count': 0},
+            {'biblio': 1},
+            {'raw_event_payloads_included': False},
+            {'content_comprehension_status': 'compact_only'},
+            'dashboard_analytics_v1',
+            datetime(2026, 5, 15, 10, 2, tzinfo=timezone.utc),
+        )
+
+        fact = dashboard_read_model._turn_fact_row(row)
+        encoded = json.dumps(fact, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(fact['biblio']['used'])
+        self.assertEqual(fact['biblio']['passage_count'], 1)
+        self.assertEqual(fact['biblio']['hashes'], ['abcdef123456'])
+        self.assertNotIn('RAW BIBLIO PASSAGE MUST NOT LEAK', encoded)
+
     def test_turn_story_does_not_invent_parent_summary_window_when_only_count_exists(self) -> None:
         fact = {
             'conversation_id': 'conv-summary-count-only',

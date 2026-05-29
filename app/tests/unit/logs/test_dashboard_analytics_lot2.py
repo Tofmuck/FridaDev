@@ -205,6 +205,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
             fact.get('hermeneutic') or {},
             fact.get('web') or {},
             fact.get('documents') or {},
+            fact.get('biblio') or {},
             fact.get('node_state') or {},
             fact.get('latencies') or {},
             fact.get('errors') or {},
@@ -218,7 +219,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         return {
             'kind': 'dashboard_turn_fact',
             'schema_version': '1',
-            'calculation_version': params[23],
+            'calculation_version': params[24],
             'conversation_id': params[0],
             'turn_id': params[1],
             'first_ts': params[2],
@@ -236,12 +237,13 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
             'hermeneutic': json.loads(params[14]),
             'web': json.loads(params[15]),
             'documents': json.loads(params[16]),
-            'node_state': json.loads(params[17]),
-            'latencies': json.loads(params[18]),
-            'errors': json.loads(params[19]),
-            'stage_counts': json.loads(params[20]),
-            'flags': json.loads(params[21]),
-            'content_availability': json.loads(params[22]),
+            'biblio': json.loads(params[17]),
+            'node_state': json.loads(params[18]),
+            'latencies': json.loads(params[19]),
+            'errors': json.loads(params[20]),
+            'stage_counts': json.loads(params[21]),
+            'flags': json.loads(params[22]),
+            'content_availability': json.loads(params[23]),
             'redaction': {'raw_content_stored': False, 'raw_event_payloads_included': False},
         }
 
@@ -727,6 +729,83 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertNotIn('message', self._collect_keys(fact))
         self.assertNotIn('payload', self._collect_keys(fact))
 
+    def test_persisted_turn_fact_preserves_biblio_json_content_free(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        observed: dict[str, Any] = {'queries': [], 'params': [], 'commits': 0}
+        state: dict[tuple[str, str], dict[str, Any]] = {}
+        raw_values = (
+            'RAW BIBLIO PASSAGE MUST NOT LEAK',
+            'RAW BIBLIO LANE MUST NOT LEAK',
+            'RAW CATALOGUE PAYLOAD MUST NOT LEAK',
+        )
+        events = [
+            *self._complete_turn(),
+            self._event(
+                'biblio',
+                payload={
+                    'source_kind': 'biblio_native_catalogue',
+                    'enabled': True,
+                    'used': True,
+                    'query_kind': 'document_locator',
+                    'status': 'ok',
+                    'resolver': {
+                        'status': 'resolved',
+                        'reason_code': 'document_and_locator_resolved',
+                        'document': {'doc_id_short': 'doc-1234'},
+                    },
+                    'extractor': {
+                        'status': 'extracted',
+                        'reason_code': 'passage_extracted',
+                        'doc_id_short': 'doc-1234',
+                        'passage_chars': 42,
+                        'passage_hash': 'abcdef123456',
+                        'passage': raw_values[0],
+                    },
+                    'lane': {
+                        'present': True,
+                        'passage_count': 1,
+                        'skipped_count': 0,
+                        'chars': 300,
+                        'hashes': ['abcdef123456'],
+                        'doc_id_shorts': ['doc-1234'],
+                        'message': {'content': raw_values[1]},
+                    },
+                    'counts': {'passage_count': 1, 'lane_chars': 300},
+                    'reason_code_counts': {'passage_extracted': 1},
+                    'payload': {'text': raw_values[2]},
+                    'redaction': {'raw_content_included': False},
+                },
+                event_id='turn-dashboard:0009:biblio',
+            ),
+        ]
+        analytics = dashboard_analytics.build_dashboard_analytics(events, now=now)
+        FakeConn = self._window_state_fake_conn(state=state, observed=observed)
+
+        result = dashboard_analytics.persist_dashboard_analytics(
+            analytics,
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertTrue(result['ok'])
+        persisted = state[('conv-dashboard', 'turn-dashboard')]
+        self.assertEqual(persisted['biblio']['source_kind'], 'biblio_native_catalogue')
+        self.assertTrue(persisted['biblio']['used'])
+        self.assertEqual(persisted['biblio']['passage_count'], 1)
+        self.assertEqual(persisted['biblio']['hashes'], ['abcdef123456'])
+        biblio_buckets = [
+            json.loads(params[6])
+            for params in observed['bucket_params']
+            if params[3] == 'biblio'
+        ]
+        self.assertTrue(any(metrics.get('used_turns') == 1 for metrics in biblio_buckets))
+        self.assertTrue(any(metrics.get('passages_total') == 1 for metrics in biblio_buckets))
+        serialized = json.dumps({'state': list(state.values()), 'observed': observed}, sort_keys=True)
+        for raw in raw_values:
+            self.assertNotIn(raw, serialized)
+        self.assertNotIn('message', self._collect_keys(persisted))
+        self.assertNotIn('payload', self._collect_keys(persisted))
+
     def test_materialization_status_tracks_lag_without_raw_error_message(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
         error = RuntimeError('RAW SECRET DSN MUST NOT LEAK')
@@ -954,6 +1033,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
 
         self.assertIn('observability.dashboard_turn_facts', joined)
         self.assertIn('documents_json', joined)
+        self.assertIn('biblio_json', joined)
         self.assertIn('observability.dashboard_conversation_summaries', joined)
         self.assertIn('observability.dashboard_metric_buckets', joined)
         self.assertIn('observability.dashboard_materialization_status', joined)
