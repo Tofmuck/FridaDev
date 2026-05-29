@@ -3,6 +3,7 @@
 Statut: spec vivante
 Date: 2026-05-28
 Mise a jour Lot 5: 2026-05-29
+Correctif post-audit Lot 5: 2026-05-29
 Classement: `app/docs/states/specs/`
 Roadmap active: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Audit Lot 0 Catalogue: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
@@ -385,8 +386,10 @@ Implementation Lot 5 du 2026-05-29:
 - format source: `catalogue_doc=<doc_id_short>` puis positions non textuelles disponibles (`page`, `paragraphe`, `paragraph_id`);
 - pas d'invention de titre, auteur, edition, filename source ou locator textuel;
 - le passage brut existe uniquement dans le `message["content"]` produit par la lane;
+- les balises `[PASSAGES DE BIBLIOTHEQUE CONSULTES]` et `[/PASSAGES DE BIBLIOTHEQUE CONSULTES]` presentes dans un passage sont neutralisees uniquement dans le texte injecte, sans modifier le `BiblioPassageResult` interne;
 - `BiblioPromptLane.message` est exclu du `repr` pour reduire le risque de fuite accidentelle;
 - `to_observability()` n'expose jamais passage brut, texte OCR, payload Catalogue, locator brut, titre, auteur, requete utilisateur brute ou prompt complet;
+- l'observabilite ne fait pas confiance a un `passage_hash` arbitraire: si le passage brut existe, le hash court est recalcule depuis ce passage; sinon seul un hash court strictement hexadecimal de 12 caracteres peut etre repris;
 - observabilite lane: presence, `passage_count`, `skipped_count`, `chars`, bornes appliquees, hashes courts, doc ids courts, positions non textuelles et decisions content-free.
 
 Format Lot 5:

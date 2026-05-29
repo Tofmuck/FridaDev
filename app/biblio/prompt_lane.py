@@ -208,7 +208,7 @@ def _passage_lines(result: BiblioPassageResult, *, passage_no: int) -> list[str]
         f"Passage {passage_no}",
         f"Source: {_source_line(result)}",
         "Texte:",
-        result.passage,
+        _neutralize_lane_tags(result.passage),
     ]
 
 
@@ -230,7 +230,7 @@ def _lane_content(body_lines: Sequence[str]) -> str:
 
 
 def _decision_from_result(result: BiblioPassageResult, *, index: int) -> BiblioPromptPassageDecision:
-    passage_hash = result.passage_hash or (_short_hash(result.passage) if result.passage else "")
+    passage_hash = _observable_passage_hash(result)
     passage_chars = result.passage_chars or (len(result.passage) if result.passage else 0)
     return BiblioPromptPassageDecision(
         index=index,
@@ -298,6 +298,31 @@ def _bounded_int(value: Any, *, minimum: int, maximum: int) -> int:
     if integer < minimum or integer > maximum:
         raise ValueError(REASON_INVALID_LIMIT)
     return integer
+
+
+def _neutralize_lane_tags(value: str) -> str:
+    return str(value or "").replace(
+        LANE_FOOTER,
+        "[BALISE BIBLIO NEUTRALISEE: /PASSAGES DE BIBLIOTHEQUE CONSULTES]",
+    ).replace(
+        LANE_HEADER,
+        "[BALISE BIBLIO NEUTRALISEE: PASSAGES DE BIBLIOTHEQUE CONSULTES]",
+    )
+
+
+def _observable_passage_hash(result: BiblioPassageResult) -> str:
+    if result.passage:
+        return _short_hash(result.passage)
+    return _strict_short_hash(result.passage_hash)
+
+
+def _strict_short_hash(value: str) -> str:
+    text = str(value or "").strip().lower()
+    if len(text) != 12:
+        return ""
+    if any(char not in "0123456789abcdef" for char in text):
+        return ""
+    return text
 
 
 def _short_hash(value: str) -> str:

@@ -19,6 +19,7 @@ Correctif Lot 3: 2026-05-28, observabilite resolver rendue content-free pour les
 Livraison Lot 4: 2026-05-28, extraction de passage bornee creee dans `app/biblio/passage_extractor.py`, sans branchement chat ni lane prompt
 Correctif Lot 4: 2026-05-28, `document_id` rendu obligatoire dans le payload `/context` avant extraction
 Livraison Lot 5: 2026-05-29, lane prompt Biblio creee dans `app/biblio/prompt_lane.py`, sans branchement chat, frontend, toggle, API, Catalogue, DB, Memory/RAG, Identity, Summary, Web ni OCR
+Correctif post-audit Lot 5: 2026-05-29, hash observable durci et balises Biblio internes neutralisees dans le texte injecte
 
 ## 1. Intention
 
@@ -243,6 +244,8 @@ Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, 
 - [x] Definir les bornes locales: `DEFAULT_MAX_PASSAGES = 3` et `DEFAULT_MAX_TOTAL_CHARS = 8000`.
 - [x] Tracer explicitement les skips content-free: statut non extrait, passage vide, limite nombre, limite taille.
 - [x] Ajouter `BiblioPromptLane.to_observability()` content-free: compte passages, skips, chars, hashes courts, doc ids courts, positions non textuelles et decisions.
+- [x] Corriger le hash observable pour ne jamais exposer un `passage_hash` arbitraire.
+- [x] Neutraliser les balises Biblio presentes dans un passage avant injection dans la lane.
 - [x] Tester que l'instruction d'interpretation est presente dans la lane produite.
 - [x] Tester que la lane ne confond pas ses balises avec les documents actifs.
 
