@@ -80,7 +80,7 @@ def build_admin_observability(*, config_module: Any = None) -> dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "module_key": MODULE_KEY,
         "source_kind": SOURCE_KIND,
-        "status": "available_unwired",
+        "status": "available_wired",
         "admin_route": ADMIN_ROUTE,
         "module_state": {
             "client_available": True,
@@ -88,9 +88,9 @@ def build_admin_observability(*, config_module: Any = None) -> dict[str, Any]:
             "extractor_available": True,
             "prompt_lane_available": True,
             "observability_available": True,
-            "chat_wired": False,
-            "frontend_wired": False,
-            "toggle_wired": False,
+            "chat_wired": True,
+            "frontend_wired": True,
+            "toggle_wired": True,
             "automatic_catalogue_call": False,
             "db_write": False,
         },
@@ -158,6 +158,7 @@ def build_biblio_event_payload(
     passage_result: Any = None,
     prompt_lane: Any = None,
     status: str = "",
+    reason_code: str = "",
 ) -> dict[str, Any]:
     """Project one potential Biblio operation into compact observability.
 
@@ -181,7 +182,9 @@ def build_biblio_event_payload(
         extractor=extractor_projection,
         lane=lane_projection,
     )
+    safe_reason_code = _safe_token(reason_code)
     reason_counts = _reason_counts(
+        {"reason_code": safe_reason_code} if safe_reason_code else {},
         client_items,
         resolver_projection,
         extractor_projection,
@@ -206,6 +209,7 @@ def build_biblio_event_payload(
         "used": effective_used,
         "query_kind": _safe_token(query_kind) or ("not_requested" if not enabled else "unknown"),
         "status": effective_status,
+        "reason_code": safe_reason_code,
         "client": {
             "event_count": len(client_items),
             "items": client_items,

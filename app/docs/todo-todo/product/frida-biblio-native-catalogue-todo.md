@@ -1,6 +1,6 @@
 # Frida Biblio native / Frida Catalogue - TODO
 
-Statut: actif (Lots 0, 1, 2, 3, 4, 5 et 6 livres, lots chat/frontend ouverts)
+Statut: actif (Lots 0, 1, 2, 3, 4, 5, 6 et 7 livres, Lot 8 ouvert)
 Date de creation: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 Audit-plan source: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
@@ -22,6 +22,7 @@ Livraison Lot 5: 2026-05-29, lane prompt Biblio creee dans `app/biblio/prompt_la
 Correctif post-audit Lot 5: 2026-05-29, hash observable durci et balises Biblio internes neutralisees dans le texte injecte
 Livraison Lot 6: 2026-05-29, observabilite/admin Biblio content-free creee dans `app/biblio/observability.py` et `GET /api/admin/biblio/observability`, avec module dashboard `biblio`, sans branchement chat, frontend, toggle, Catalogue automatique ni DB Biblio
 Correctif post-audit Lot 6: 2026-05-29, persistence dashboard `biblio_json` ajoutee a `observability.dashboard_turn_facts` et relue par le read-model admin
+Livraison Lot 7: 2026-05-29, toggle frontend Biblio et branchement chat minimal livres via `app/web/chat_biblio_mode.js` et `app/biblio/chat_runtime.py`, avec detection conservatrice, lane prompt injectee seulement apres extraction et observabilite `stage=biblio` content-free
 
 ## 1. Intention
 
@@ -267,20 +268,24 @@ Correctif Lot 6: le dashboard materialise conserve maintenant `fact["biblio"]` d
 
 ### Lot 7 - Branchement chat minimal
 
-- [ ] Brancher le resolver et la lane dans un chemin chat minimal.
-- [ ] Garder le declenchement borne et explicite.
-- [ ] Tester consultation Catalogue nominale.
-- [ ] Tester document absent.
-- [ ] Tester locator absent.
-- [ ] Tester locator ambigu.
-- [ ] Tester passage borne extrait.
-- [ ] Tester exemple `126b -> 126e` avec statut fiable ou ambigu documente.
-- [ ] Tester non-contamination `active_document`.
-- [ ] Tester absence d'AnythingLLM dans le chemin nominal.
-- [ ] Mettre a jour les specs vivantes touchees.
-- [ ] Documenter les limites restantes: OCR, editions, locators ambigus, UI future.
+- [x] Brancher le resolver et la lane dans un chemin chat minimal.
+- [x] Garder le declenchement borne et explicite.
+- [x] Tester consultation Catalogue nominale.
+- [x] Tester document absent.
+- [x] Tester locator absent.
+- [x] Tester locator ambigu.
+- [x] Tester passage borne extrait.
+- [x] Tester exemple `126b -> 126e` avec statut fiable ou ambigu documente.
+- [x] Tester non-contamination `active_document`.
+- [x] Tester absence d'AnythingLLM dans le chemin nominal.
+- [x] Mettre a jour les specs vivantes touchees.
+- [x] Documenter les limites restantes: OCR, editions, locators ambigus, UI future.
 - [ ] Verifier que le TODO ne contient plus de case ouverte reelle.
 - [ ] Archiver le TODO dans `app/docs/todo-done/product/` quand tous les lots sont fermes.
+
+Note Lot 7: le branchement est volontairement minimal. `app/biblio/chat_runtime.py` ne construit un client Catalogue que si le toggle `biblio_enabled` est actif et si le message contient un signal bibliographique conservateur. Les skips `toggle_disabled`, `no_bibliographic_signal` et `adobe_topic_ignored` sont explicites et content-free. La lane n'est injectee dans le prompt principal que si `build_biblio_prompt_lane()` produit un message a partir d'un passage extrait. Le frontend ajoute `btnBiblioMode` avec icone livre juste apres Adobe et transmet toujours `biblio_enabled`.
+
+Limites restantes documentees apres Lot 7: ranges de locators toujours non extraits silencieusement, OCR et editions Catalogue hors FridaDev, detection bibliographique volontairement conservatrice, pas d'UI Catalogue dans FridaDev, pas de recherche semantique large ni de RAG documentaire.
 
 ## 8. Tests attendus par le chantier
 

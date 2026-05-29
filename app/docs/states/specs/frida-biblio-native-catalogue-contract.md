@@ -6,6 +6,7 @@ Mise a jour Lot 5: 2026-05-29
 Correctif post-audit Lot 5: 2026-05-29
 Mise a jour Lot 6: 2026-05-29
 Correctif post-audit Lot 6: 2026-05-29
+Mise a jour Lot 7: 2026-05-29
 Classement: `app/docs/states/specs/`
 Roadmap active: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Audit Lot 0 Catalogue: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
@@ -126,9 +127,9 @@ Un passage extrait ne devient pas automatiquement durable.
 - Une fois repris dans la reponse, il devient seulement matiere conversationnelle ordinaire.
 - Il ne devient pas memoire documentaire durable, document actif, workspace file ou entree Identity.
 
-## 4. Toggle frontend futur
+## 4. Toggle frontend
 
-Un lot futur devra ajouter un bouton/toggle Biblio dans le frontend chat, au meme niveau conceptuel que les autres outils explicites.
+Le Lot 7 ajoute un bouton/toggle Biblio dans le frontend chat, au meme niveau conceptuel que les autres outils explicites.
 
 Invariant `Biblio off`:
 
@@ -146,7 +147,13 @@ Invariant `Biblio on`:
 - le toggle ne transforme pas Catalogue en contexte permanent;
 - l'observabilite indique si Biblio a ete utilisee ou non.
 
-Le toggle n'est pas livre au Lot 1. Il ne doit pas etre confondu avec l'upload de documents actifs, la selection workspace, le web search, Memory/RAG ou un mode OCR.
+Implementation Lot 7 du 2026-05-29:
+
+- bouton frontend: `btnBiblioMode`, classe `btn-biblio-mode`, icone livre, place dans la rangee des outils bas juste apres le mode Adobe;
+- payload chat: `biblio_enabled: true|false`, transmis explicitement a chaque envoi;
+- etat visuel: meme taille, classes `active`, `aria-pressed`, tooltip et rythme que les autres boutons de composer;
+- le toggle ne cree aucun document actif, ne modifie pas Memory/RAG, Identity, Summary, workspace ou Web;
+- le toggle autorise seulement le chemin Biblio minimal du tour courant.
 
 ## 5. Source de verite
 
@@ -471,6 +478,19 @@ Correctif post-audit Lot 6 du 2026-05-29:
 - `dashboard_analytics_storage.py` persiste et relit `fact["biblio"]`;
 - `dashboard_read_model.py` relit `biblio_json` au lieu de remettre `biblio` a `{}`;
 - le contenu de `biblio_json` reste la projection compacte content-free deja expurgee; aucune donnee Biblio metier brute n'est ajoutee a la persistence dashboard.
+
+Implementation Lot 7 du 2026-05-29:
+
+- module runtime: `app/biblio/chat_runtime.py`;
+- le chat appelle Biblio seulement si `biblio_enabled=true`;
+- si le toggle est off, l'event `stage=biblio` expose `enabled=false`, `used=false`, `status=not_applicable`, sans construire de client Catalogue;
+- si le toggle est on mais que le message ne contient pas de signal bibliographique clair, l'event expose `enabled=true`, `used=false`, `status=not_used`, sans construire de client Catalogue;
+- la detection minimale accepte uniquement des signaux conservateurs: document/titre/id explicite, `dans la bibliotheque`, `dans le catalogue`, `cherche dans ...`, ou locator Stephanus associe a un document/titre;
+- les demandes Adobe/Photoshop/Illustrator sans signal Biblio explicite sont ignorees par Biblio;
+- si le signal est clair, `BiblioPassageExtractor` est appele, puis `build_biblio_prompt_lane()` formate les passages extraits;
+- la lane `[PASSAGES DE BIBLIOTHEQUE CONSULTES]` est injectee dans le prompt principal seulement si un passage `status=extracted` existe;
+- l'event `stage=biblio` utilise uniquement `build_biblio_event_payload()` et ne serialise jamais `BiblioPromptLane.message`;
+- la surface admin `GET /api/admin/biblio/observability` indique maintenant `chat_wired=true`, `frontend_wired=true`, `toggle_wired=true`, tout en conservant `automatic_catalogue_call=false` et `db_write=false`.
 
 ## 11. Tests futurs obligatoires
 

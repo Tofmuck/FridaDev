@@ -21,6 +21,8 @@ from core.hermeneutic_node.runtime import primary_node
 from core.hermeneutic_node.validation import validation_agent
 from core.hermeneutic_node.inputs import stimmung_input as canonical_stimmung_input
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
+from biblio import chat_runtime as biblio_chat_runtime
+from biblio import observability as biblio_observability
 from observability import active_documents_observability
 from observability import chat_turn_logger
 from observability import hermeneutic_node_logger
@@ -436,6 +438,18 @@ def _emit_adobe_prompt_lane_observability(lane: Any) -> None:
     )
 
 
+def _emit_biblio_observability(result: Any) -> None:
+    payload = getattr(result, 'observability_payload', None)
+    if not isinstance(payload, Mapping):
+        return
+    clean_payload = dict(payload)
+    chat_turn_logger.set_state('biblio', clean_payload)
+    biblio_observability.emit_biblio_event(
+        clean_payload,
+        chat_turn_logger_module=chat_turn_logger,
+    )
+
+
 def _run_hermeneutic_node_insertion_point(
     *,
     conversation: Mapping[str, Any],
@@ -721,6 +735,13 @@ def chat_response(
             admin_logs_module=admin_logs_module,
         )
 
+    biblio_result = biblio_chat_runtime.run_biblio_chat_turn(
+        data,
+        user_msg=user_msg,
+        config_module=config_module,
+    )
+    _emit_biblio_observability(biblio_result)
+
     hermeneutic_node_runtime = _run_hermeneutic_node_insertion_point(
         conversation=conversation,
         user_msg=user_msg,
@@ -850,6 +871,10 @@ def chat_response(
     active_documents_observability.emit_prompt_decision_event(
         active_document_lane,
         chat_turn_logger_module=chat_turn_logger,
+    )
+    biblio_chat_runtime.inject_biblio_prompt_lane(
+        prompt_messages,
+        biblio_result,
     )
     adobe_lane = adobe_docs_prompt_lane.inject_adobe_prompt_lane(
         prompt_messages,

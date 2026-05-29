@@ -28,6 +28,10 @@
   if (!adobeMode) {
     throw new Error("FridaAdobeMode module missing");
   }
+  const biblioMode = window.FridaBiblioMode;
+  if (!biblioMode) {
+    throw new Error("FridaBiblioMode module missing");
+  }
   const {
     STREAMING_UI_STATE_INTERRUPTED,
     STREAMING_UI_EVENT_REQUEST_STARTED,
@@ -57,6 +61,7 @@
   const btnActiveDocument = $("#btnActiveDocument");
   const btnImageGeneration = $("#btnImageGeneration");
   const btnAdobeMode = $("#btnAdobeMode");
+  const btnBiblioMode = $("#btnBiblioMode");
   const adobeProductChoices = $("#adobeProductChoices");
   const btnExportConversation = $("#btnExportConversation");
   const activeDocumentFileInput = $("#activeDocumentFileInput");
@@ -96,6 +101,7 @@
   // ---- Web search toggle
   let webSearchEnabled = localStorage.getItem("frida.webSearch") === "1";
   let adobeModeController = null;
+  let biblioModeController = null;
   const isAdobeModeActive = () => Boolean(adobeModeController && adobeModeController.isActive());
   const updateWebSearchBtn = () => {
     if (!btnWebSearch) return;
@@ -415,6 +421,9 @@
       updateWebSearchBtn();
     },
   });
+  biblioModeController = biblioMode.createBiblioModeController({
+    buttonEl: btnBiblioMode,
+  });
   updateWebSearchBtn();
 
   // ---- Nouveau chat
@@ -574,6 +583,7 @@
   async function sendToServer(userText, onChunk, threadId, inputMode = "keyboard", options = {}){
     const thread = threadId ? getThreadById(threadId) : null;
     const adobePayload = adobeModeController ? adobeModeController.getPayload() : {};
+    const biblioPayload = biblioModeController ? biblioModeController.getPayload() : { biblio_enabled: false };
     const adobeActive = Boolean(adobePayload.specialization_profile);
     const emitStreamEvent = (event) => {
       if (typeof options?.onStreamEvent === "function") {
@@ -589,6 +599,7 @@
         stream: true,
         web_search: adobeActive ? false : webSearchEnabled,
         input_mode: inputMode === "voice" ? "voice" : "keyboard",
+        ...biblioPayload,
         ...adobePayload,
       })
     });
