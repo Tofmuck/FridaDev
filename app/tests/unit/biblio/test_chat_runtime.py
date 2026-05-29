@@ -89,6 +89,51 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertNotIn(prompt_lane.LANE_HEADER, encoded_observability)
         self.assertEqual(result.observability_payload["counts"]["passage_count"], 1)
 
+    def test_common_french_locator_phrasings_resolve_title(self) -> None:
+        cases = (
+            "Cherche le passage 126b dans Platon dans le catalogue.",
+            "Peux-tu me sortir le passage 126b de Platon ?",
+            "Peux-tu me sortir le passage 126b de Platon dans la bibliotheque ?",
+            "Dans la biblio, trouve 126b chez Platon.",
+        )
+
+        for message in cases:
+            with self.subTest(message=message):
+                decision = chat_runtime.resolve_biblio_chat_decision(
+                    {"biblio_enabled": True},
+                    message,
+                )
+
+                self.assertTrue(decision.should_attempt)
+                self.assertEqual(decision.reason_code, chat_runtime.REASON_DOCUMENT_LOCATOR_SIGNAL_DETECTED)
+                self.assertIsNotNone(decision.resolve_request)
+                self.assertEqual(decision.resolve_request.title, "Platon")
+                self.assertEqual(decision.resolve_request.locator, "126b")
+
+    def test_function_words_and_biblio_surface_words_are_never_titles(self) -> None:
+        fragments = ("le", "la", "l", "bibliotheque", "catalogue", "biblio", "ouvrage", "livre")
+
+        for fragment in fragments:
+            with self.subTest(fragment=fragment):
+                decision = chat_runtime.resolve_biblio_chat_decision(
+                    {"biblio_enabled": True},
+                    f"Trouve 126b chez {fragment}.",
+                )
+
+                self.assertFalse(decision.should_attempt)
+                self.assertIsNone(decision.resolve_request)
+
+    def test_toggle_off_still_blocks_natural_biblio_request_before_client_construction(self) -> None:
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": False},
+            user_msg="Peux-tu me sortir le passage 126b de Platon ?",
+            client_factory=_raising_client_factory,
+        )
+
+        self.assertFalse(result.enabled)
+        self.assertFalse(result.used)
+        self.assertIsNone(result.prompt_message)
+
     def test_inject_prompt_lane_inserts_before_last_user_message(self) -> None:
         passage = _passage(RAW_PASSAGE)
         result = chat_runtime.BiblioChatResult(

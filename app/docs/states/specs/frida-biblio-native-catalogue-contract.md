@@ -7,6 +7,7 @@ Correctif post-audit Lot 5: 2026-05-29
 Mise a jour Lot 6: 2026-05-29
 Correctif post-audit Lot 6: 2026-05-29
 Mise a jour Lot 7: 2026-05-29
+Correctif post-audit Lot 7: 2026-05-29
 Classement: `app/docs/states/specs/`
 Roadmap active: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Audit Lot 0 Catalogue: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
@@ -429,10 +430,9 @@ Observabilite content-free par defaut:
 - endpoint logique;
 - document `resolved` / `ambiguous` / `not_found` / `error`;
 - doc id court ou hash court;
-- titre human metadata si acceptable, sinon label compact;
-- metadata status;
-- locator demande;
-- locator resolu;
+- metadata status compact si disponible;
+- locator demande sous forme presence/longueur/hash/kind seulement;
+- locator resolu sous forme positions non textuelles et kind seulement;
 - passage chars;
 - passage hash court;
 - confidence;

@@ -23,6 +23,7 @@ Correctif post-audit Lot 5: 2026-05-29, hash observable durci et balises Biblio 
 Livraison Lot 6: 2026-05-29, observabilite/admin Biblio content-free creee dans `app/biblio/observability.py` et `GET /api/admin/biblio/observability`, avec module dashboard `biblio`, sans branchement chat, frontend, toggle, Catalogue automatique ni DB Biblio
 Correctif post-audit Lot 6: 2026-05-29, persistence dashboard `biblio_json` ajoutee a `observability.dashboard_turn_facts` et relue par le read-model admin
 Livraison Lot 7: 2026-05-29, toggle frontend Biblio et branchement chat minimal livres via `app/web/chat_biblio_mode.js` et `app/biblio/chat_runtime.py`, avec detection conservatrice, lane prompt injectee seulement apres extraction et observabilite `stage=biblio` content-free
+Correctif post-audit Lot 7: 2026-05-29, parsing naturel Biblio durci pour `126b de Platon`, `126b de Platon dans la bibliotheque` et `126b chez Platon`, sans fuzzy matching ni relachement du toggle off
 
 ## 1. Intention
 
@@ -149,7 +150,7 @@ Note 2026-05-28: les criteres Lot 0 ci-dessous sont remplis cote plateforme Cata
 - un passage borne peut etre extrait;
 - la lane prompt `passage de bibliotheque consulte` ou equivalent est definie;
 - le modele recoit une instruction expliquant le statut du passage consulte;
-- l'observabilite montre requete, document resolu, locator, passage extrait, ambiguite et confiance sans contenu brut par defaut;
+- l'observabilite montre signaux de requete, document resolu, locator, passage extrait, ambiguite et confiance sous projection content-free, jamais titre/auteur/locator/requete brute;
 - l'exemple type `126b -> 126e` est teste comme cas de resolution ou d'ambiguite explicite;
 - AnythingLLM n'est pas requis dans le chemin nominal;
 - les documents actifs restent separes et non contamines.
@@ -257,7 +258,7 @@ Note Lot 5: le prompt final du chat n'est pas modifie dans ce lot. `app/biblio/p
 ### Lot 6 - Observabilite/admin FridaDev
 
 - [x] Ajouter events compacts de requete Biblio.
-- [x] Exposer document resolu, locator, passage extrait, statut, ambiguite, confiance, chars/hash sans contenu brut par defaut.
+- [x] Exposer document resolu, locator, passage extrait, statut, ambiguite, confiance, chars/hash sous projection content-free, sans titre/auteur/locator/requete brute.
 - [x] Ajouter un module observable ou une projection compatible dashboard.
 - [x] Raconter dans l'inspection traduite: Biblio consultee, document resolu, passage extrait ou ambigu.
 - [x] Tester content-free strict.

@@ -52,6 +52,10 @@ _INLINE_TITLE_RE = re.compile(
     re.IGNORECASE,
 )
 _DANS_RE = re.compile(r"\b(?:dans|chez)\s+([^,.;?!\n]{2,120})", re.IGNORECASE)
+_TITLE_AFTER_LOCATOR_RE = re.compile(
+    r"\b[1-9][0-9]{1,3}[a-e]\b\s+(?:de\s+la|d'|du|des|de|chez|dans)\s+([^,.;?!\n]{2,120})",
+    re.IGNORECASE,
+)
 _AUTHOR_RE = re.compile(r"\bauteur\s*[:=]\s*([^,.;?!\n]{2,80})", re.IGNORECASE)
 
 
@@ -257,6 +261,12 @@ def _extract_title(text: str, folded_text: str, *, locator: str) -> str:
             if _is_usable_title(candidate):
                 return candidate
 
+    if locator:
+        for match in _TITLE_AFTER_LOCATOR_RE.finditer(text):
+            candidate = _clean_title_candidate(match.group(1), locator=locator)
+            if _is_usable_title(candidate):
+                return candidate
+
     for match in _DANS_RE.finditer(text):
         candidate = _clean_title_candidate(match.group(1), locator=locator)
         if _is_usable_title(candidate):
@@ -284,7 +294,11 @@ def _title_before_locator(text: str, locator: str) -> str:
     if index <= 0:
         return ""
     prefix = text[:index]
-    parts = re.split(r"\b(?:bibliotheque|bibliothèque|catalogue|biblio|passage|cherche|recherche|consulte)\b", prefix, flags=re.IGNORECASE)
+    parts = re.split(
+        r"\b(?:bibliotheque|bibliothèque|catalogue|biblio|passage|cherche|recherche|consulte|trouve|trouver|sortir|sors)\b",
+        prefix,
+        flags=re.IGNORECASE,
+    )
     return _clean_title_candidate(parts[-1] if parts else "", locator=locator)
 
 
@@ -296,11 +310,18 @@ def _clean_title_candidate(value: str, *, locator: str) -> str:
         text,
         flags=re.IGNORECASE,
     )
-    text = re.sub(r"\b(?:le|la|les|un|une|du|de la|des)\s+", "", text, count=1, flags=re.IGNORECASE).strip()
+    text = re.sub(
+        r"\b(?:de la|le|la|les|un|une|du|des)\s+",
+        "",
+        text,
+        count=1,
+        flags=re.IGNORECASE,
+    ).strip()
+    text = re.sub(r"\bl['’]\s*", "", text, count=1, flags=re.IGNORECASE).strip()
     text = _STEPLIKE_LOCATOR_RE.sub("", text)
     if locator:
         text = re.sub(re.escape(locator), "", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b(?:passage|stephanus|page|paragraphe|dans|chez|cherche|recherche|consulte|catalogue|bibliotheque|bibliothèque|biblio)\b", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\b(?:passage|stephanus|page|paragraphe|dans|chez|cherche|recherche|consulte|trouve|trouver|sortir|sors|catalogue|bibliotheque|bibliothèque|biblio)\b", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text).strip(" ,;:-")
     return text[:120]
 
@@ -317,6 +338,16 @@ def _is_usable_title(candidate: str) -> bool:
         "livre",
         "ouvrage",
         "document",
+        "le",
+        "la",
+        "l",
+        "l'",
+        "les",
+        "un",
+        "une",
+        "du",
+        "de",
+        "des",
         "document actif",
         "documents actifs",
         "web",
