@@ -1,6 +1,6 @@
 # Frida Biblio native / Frida Catalogue - TODO
 
-Statut: actif (Lots 0, 1, 2, 3 et 4 livres, lots prompt/chat ouverts)
+Statut: actif (Lots 0, 1, 2, 3, 4 et 5 livres, lots chat/admin ouverts)
 Date de creation: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 Audit-plan source: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
@@ -18,6 +18,7 @@ Livraison Lot 3: 2026-05-28, resolver documentaire cree dans `app/biblio/documen
 Correctif Lot 3: 2026-05-28, observabilite resolver rendue content-free pour les locators demandes et resolus
 Livraison Lot 4: 2026-05-28, extraction de passage bornee creee dans `app/biblio/passage_extractor.py`, sans branchement chat ni lane prompt
 Correctif Lot 4: 2026-05-28, `document_id` rendu obligatoire dans le payload `/context` avant extraction
+Livraison Lot 5: 2026-05-29, lane prompt Biblio creee dans `app/biblio/prompt_lane.py`, sans branchement chat, frontend, toggle, API, Catalogue, DB, Memory/RAG, Identity, Summary, Web ni OCR
 
 ## 1. Intention
 
@@ -233,11 +234,19 @@ Responsabilite probable: stack Catalogue / doc-pipeline sous discipline Sauron, 
 
 ### Lot 5 - Lane prompt dediee
 
-- [ ] Definir les balises ou l'encadrement stable.
-- [ ] Enseigner au modele que la lane vient d'une bibliotheque persistante consultee a la demande.
-- [ ] Expliquer que le passage consulte n'implique pas lecture de tout le document.
-- [ ] Distinguer cette lane des documents actifs, Memory/RAG, summary, Identity, Web et Hermeneutic.
-- [ ] Tester que l'instruction d'interpretation est presente dans le prompt final.
+- [x] Definir les balises ou l'encadrement stable: `[PASSAGES DE BIBLIOTHEQUE CONSULTES]`.
+- [x] Creer `app/biblio/prompt_lane.py` comme formatter dedie de `BiblioPassageResult` deja extraits.
+- [x] Injecter dans la lane seulement les resultats `status=extracted` avec passage present.
+- [x] Enseigner au modele, dans le bloc produit, que la lane vient d'une bibliotheque persistante consultee a la demande.
+- [x] Expliquer que le passage consulte n'implique pas lecture de tout le document.
+- [x] Distinguer cette lane des documents actifs, Memory/RAG, summary, Identity, Web et Hermeneutic.
+- [x] Definir les bornes locales: `DEFAULT_MAX_PASSAGES = 3` et `DEFAULT_MAX_TOTAL_CHARS = 8000`.
+- [x] Tracer explicitement les skips content-free: statut non extrait, passage vide, limite nombre, limite taille.
+- [x] Ajouter `BiblioPromptLane.to_observability()` content-free: compte passages, skips, chars, hashes courts, doc ids courts, positions non textuelles et decisions.
+- [x] Tester que l'instruction d'interpretation est presente dans la lane produite.
+- [x] Tester que la lane ne confond pas ses balises avec les documents actifs.
+
+Note Lot 5: le prompt final du chat n'est pas modifie dans ce lot. `app/biblio/prompt_lane.py` fabrique seulement un message de lane disponible pour un lot futur; il n'appelle pas Catalogue et ne decide pas quoi extraire.
 
 ### Lot 6 - Observabilite/admin FridaDev
 

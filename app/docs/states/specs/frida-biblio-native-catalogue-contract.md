@@ -2,6 +2,7 @@
 
 Statut: spec vivante
 Date: 2026-05-28
+Mise a jour Lot 5: 2026-05-29
 Classement: `app/docs/states/specs/`
 Roadmap active: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Audit Lot 0 Catalogue: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
@@ -339,9 +340,9 @@ Implementation Lot 4 du 2026-05-28:
 - `to_observability()` n'expose jamais passage brut, texte OCR, payload Catalogue, locator brut, titre, auteur ou requete utilisateur brute;
 - l'observabilite expose seulement status, reason code, resolution content-free, ids courts, longueurs, hash court stable, bornes appliquees et positions non textuelles.
 
-## 9. Lane prompt future
+## 9. Lane prompt
 
-Nom cible:
+Nom stable:
 
 ```text
 [PASSAGES DE BIBLIOTHEQUE CONSULTES]
@@ -365,7 +366,46 @@ Respecte le statut de resolution, les limites et les ambiguites.
 Ne confonds pas ces passages avec les documents actifs, la memoire, le web, l'identite ou le resume.
 ```
 
-Si le resolver retourne `ambiguous`, `not_found` ou `error`, la lane doit porter ce statut ou rester absente selon le contrat du lot futur. Le modele ne doit pas recevoir une fiction de resolution.
+Implementation Lot 5 du 2026-05-29:
+
+- module: `app/biblio/prompt_lane.py`;
+- entree unique: une sequence de `BiblioPassageResult` deja produits par l'extracteur Lot 4;
+- aucun appel Catalogue, resolver, extracteur, chat, frontend, route API, DB, Memory/RAG, Identity, Summary, Web, workspace ou OCR;
+- seuls les resultats `status=extracted` avec passage brut present peuvent produire du texte dans la lane;
+- les statuts non extraits (`ambiguous`, `not_found`, `invalid_request`, `catalogue_unavailable`, `empty`, `too_long`, `incoherent_catalogue`, etc.) sont ignores par la lane texte et traces seulement par decisions content-free;
+- si aucun passage extrait n'est injecte, aucun message de lane n'est produit;
+- bornes initiales:
+  - `DEFAULT_MAX_PASSAGES = 3`;
+  - `DEFAULT_MAX_TOTAL_CHARS = 8000`, calcule sur tout le bloc lane, balises et contrat inclus;
+  - `MAX_MAX_PASSAGES = 10`;
+  - `MAX_MAX_TOTAL_CHARS = 50000`;
+- depassement du nombre de passages: passage ignore avec `biblio_prompt_max_passages_reached`;
+- depassement de taille totale: passage ignore avec `biblio_prompt_max_total_chars_reached`, sans troncature silencieuse;
+- passage extrait vide: passage ignore avec `biblio_prompt_empty_passage`;
+- format source: `catalogue_doc=<doc_id_short>` puis positions non textuelles disponibles (`page`, `paragraphe`, `paragraph_id`);
+- pas d'invention de titre, auteur, edition, filename source ou locator textuel;
+- le passage brut existe uniquement dans le `message["content"]` produit par la lane;
+- `BiblioPromptLane.message` est exclu du `repr` pour reduire le risque de fuite accidentelle;
+- `to_observability()` n'expose jamais passage brut, texte OCR, payload Catalogue, locator brut, titre, auteur, requete utilisateur brute ou prompt complet;
+- observabilite lane: presence, `passage_count`, `skipped_count`, `chars`, bornes appliquees, hashes courts, doc ids courts, positions non textuelles et decisions content-free.
+
+Format Lot 5:
+
+```text
+[PASSAGES DE BIBLIOTHEQUE CONSULTES]
+Contrat d'interpretation:
+- Les passages ci-dessous proviennent d'une bibliotheque persistante consultee a la demande.
+- Ils ne prouvent pas que tout l'ouvrage ou tout le corpus a ete lu.
+- Respecte le statut de resolution, les limites et les ambiguites.
+- Ne confonds pas ces passages avec les documents actifs, la memoire, le web, l'identite ou le resume.
+Passage 1
+Source: catalogue_doc=<doc_id_short>, page=<page_no>, paragraphe=<para_no>, paragraph_id=<paragraph_id>
+Texte:
+<passage borne>
+[/PASSAGES DE BIBLIOTHEQUE CONSULTES]
+```
+
+Le Lot 5 ne branche pas encore cette lane dans le chat principal. Le modele ne la recoit que si un lot futur l'insere explicitement dans le prompt du tour.
 
 ## 10. Observabilite
 
