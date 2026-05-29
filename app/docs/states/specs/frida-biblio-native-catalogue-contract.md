@@ -8,8 +8,10 @@ Mise a jour Lot 6: 2026-05-29
 Correctif post-audit Lot 6: 2026-05-29
 Mise a jour Lot 7: 2026-05-29
 Correctif post-audit Lot 7: 2026-05-29
+Validation finale Lot 8: 2026-05-29
 Classement: `app/docs/states/specs/`
-Roadmap active: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
+Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
+Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 Audit Lot 0 Catalogue: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 Specs voisines: `app/docs/states/specs/active-conversation-documents-contract.md`, `app/docs/states/specs/workspace-folders-contract.md`
 Portee: contrat produit, frontieres, client futur GET-only, resolver, extraction bornee, lane prompt, observabilite et surface admin content-free de Biblio native.
@@ -492,9 +494,16 @@ Implementation Lot 7 du 2026-05-29:
 - l'event `stage=biblio` utilise uniquement `build_biblio_event_payload()` et ne serialise jamais `BiblioPromptLane.message`;
 - la surface admin `GET /api/admin/biblio/observability` indique maintenant `chat_wired=true`, `frontend_wired=true`, `toggle_wired=true`, tout en conservant `automatic_catalogue_call=false` et `db_write=false`.
 
-## 11. Tests futurs obligatoires
+Validation finale Lot 8 du 2026-05-29:
 
-Lots suivants:
+- le parsing naturel accepte les formulations conservatrices `126b de l Apologie`, `126b de l'Apologie`, `126b de la Republique` et `126b -> 126e dans le catalogue` sans garder d'article oral ou de fleche dans le titre;
+- les ranges restent volontairement non extraits par `BiblioPassageExtractor` avec `range_extraction_not_supported`;
+- aucune case ouverte reelle ne reste dans la roadmap Biblio archivee;
+- toute extension future doit ouvrir un lot explicite si elle touche ranges, UI Catalogue FridaDev, ecriture Catalogue, recherche semantique large, RAG documentaire, OCR ou changement de frontiere avec les documents actifs.
+
+## 11. Tests de regression du chantier
+
+Suites et cas a conserver:
 
 - client GET-only nominal;
 - interdiction routes mutatrices;
@@ -528,14 +537,14 @@ Lots suivants:
 - erreur Catalogue content-free;
 - timeout Catalogue content-free.
 
-## 12. Conditions d'ouverture des lots suivants
+## 12. Conditions de reouverture future
 
-Lot 2 etant livre, Lot 3 peut commencer seulement si:
+Le chantier Biblio native est clos au 2026-05-29. Une reouverture future doit rester explicite et verifier d'abord que:
 
 - cette spec reste indexee comme source-of-truth;
 - le client cible est confirme GET-only;
 - les endpoints mutateurs sont explicitement exclus des tests et du code;
 - la frontiere avec `active_document` et workspace est conservee;
-- la decision produit accepte que FridaDev consomme Catalogue sans ecrire dans Catalogue.
+- la decision produit accepte que FridaDev consomme Catalogue sans ecrire dans Catalogue, sauf lot separe d'edition explicitement approuve.
 
 Tout changement futur qui veut ecrire dans Catalogue, editer les metadonnees depuis FridaDev, supprimer un document, lancer OCR, backfill, indexer ou vectoriser doit ouvrir un nouveau lot explicite avant code.

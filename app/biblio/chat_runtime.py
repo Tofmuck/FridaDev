@@ -317,10 +317,11 @@ def _clean_title_candidate(value: str, *, locator: str) -> str:
         count=1,
         flags=re.IGNORECASE,
     ).strip()
-    text = re.sub(r"\bl['’]\s*", "", text, count=1, flags=re.IGNORECASE).strip()
+    text = re.sub(r"^l(?:['’]\s*|\s+)", "", text, count=1, flags=re.IGNORECASE).strip()
     text = _STEPLIKE_LOCATOR_RE.sub("", text)
     if locator:
         text = re.sub(re.escape(locator), "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s*(?:->|-->)\s*", " ", text)
     text = re.sub(r"\b(?:passage|stephanus|page|paragraphe|dans|chez|cherche|recherche|consulte|trouve|trouver|sortir|sors|catalogue|bibliotheque|bibliothèque|biblio)\b", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text).strip(" ,;:-")
     return text[:120]

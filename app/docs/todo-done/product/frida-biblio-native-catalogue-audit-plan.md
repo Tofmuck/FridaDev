@@ -1,14 +1,16 @@
 # Frida Biblio native / Frida Catalogue - audit-plan
 
-Statut: actif
+Statut: archive
 Date: 2026-05-16
-Classement: `app/docs/todo-todo/product/`
-TODO derive: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
+Classement: `app/docs/todo-done/product/`
+TODO derive archive: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Audit cible Lot 0: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 Spec Lot 1: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Chantier compatible mais distinct archive: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 Portee: priorite Lot 0 pour rendre Frida Catalogue humainement editable, puis consultation native, a la demande, d'une bibliotheque documentaire persistante deja adossee a Frida Catalogue / doc-pipeline
-Hors-scope: runtime FridaDev dans ce commit, branchement LLM, endpoint FridaDev, migration DB depuis ce depot, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal
+Hors-scope conserve: extraction de ranges, recherche semantique large, RAG documentaire, UI Catalogue FridaDev, ecriture Catalogue, migration DB metier Biblio depuis ce depot, backfill, OCR general, fusion avec documents actifs, AnythingLLM comme intermediaire principal
+
+Note de cloture 2026-05-29: ce plan a ete execute par les Lots 0 a 8. Le client FridaDev est GET-only, le toggle chat est livre, la lane prompt Biblio est bornee, l'observabilite reste content-free et le chantier est archive.
 
 ## 1. Question initiale et verdict
 
@@ -23,13 +25,14 @@ Verdict produit:
 - les deux capacites doivent partager une discipline de lanes, de vocabulaire et d'observabilite, mais pas le meme etat serveur.
 - Catalogue humain editable = precondition produit: les metadonnees sales ou pauvres doivent etre corrigeables avant que Frida s'appuie dessus.
 
-Etat apres Lot 1 du 2026-05-28:
+Etat final apres Lot 8 du 2026-05-29:
 
 - Lot 0 plateforme livre l'edition humaine des metadonnees Catalogue et la protection du formulaire contre l'auto-refresh destructeur;
 - Lot 1 cree la spec source-of-truth `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`;
 - Lot 2 cree le client FridaDev GET-only `app/biblio/catalogue_client.py`;
-- FridaDev reste non branche au chat/prompt/frontend Biblio;
-- le prochain lot code doit rester resolver documentaire au-dessus de ce client, sans route mutatrice Catalogue.
+- Lots 3 a 7 livrent resolver, extracteur borne, lane prompt, observabilite/admin content-free, persistence dashboard, toggle frontend et branchement chat minimal;
+- Lot 8 cloture le chantier avec correctifs P3 parseur, tests cibles et archivage documentaire;
+- toute extension future doit rester explicite, notamment pour les ranges, une UI Catalogue FridaDev, l'ecriture Catalogue, l'OCR ou un RAG documentaire.
 
 ## 2. Question produit
 
@@ -243,9 +246,9 @@ Par defaut, rendre visible:
 
 - requete Biblio;
 - document resolu;
-- document_id / hash court / titre content-free si applicable;
-- locator demande;
-- locator resolu;
+- document_id / hash court / metadata status compact si applicable;
+- locator demande sous forme presence/longueur/hash/kind;
+- locator resolu sous forme positions non textuelles et kind;
 - passage extrait oui/non;
 - longueur / chars / hash court;
 - ambiguite;

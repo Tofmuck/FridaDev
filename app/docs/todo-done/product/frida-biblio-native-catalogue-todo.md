@@ -1,14 +1,14 @@
 # Frida Biblio native / Frida Catalogue - TODO
 
-Statut: actif (Lots 0, 1, 2, 3, 4, 5, 6 et 7 livres, Lot 8 ouvert)
+Statut: archive (Lots 0 a 8 livres, chantier clos)
 Date de creation: 2026-05-16
-Classement: `app/docs/todo-todo/product/`
-Audit-plan source: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
+Classement: `app/docs/todo-done/product/`
+Audit-plan source archive: `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
 Audit cible Lot 0: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 Chantier compatible mais distinct archive: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 Spec fondatrice active: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Portee: Lot 0 prioritaire de correction humaine des metadonnees Catalogue, puis consultation native, a la demande, d'une bibliotheque persistante via Frida Catalogue / doc-pipeline
-Hors-scope courant: runtime FridaDev, branchement LLM, endpoint FridaDev, migration DB dans ce depot, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal, rebuild
+Hors-scope conserve apres cloture: extraction de ranges, recherche semantique large, RAG documentaire, UI Catalogue FridaDev, ecriture Catalogue, backfill, OCR general, fusion avec documents actifs, AnythingLLM comme intermediaire principal
 Livraison Lot 0 plateforme: 2026-05-28, hors depot FridaDev, dans `/opt/platform/doc-pipeline` et `/opt/platform/doc-library`
 Correctif UI Lot 0: 2026-05-28, protection du formulaire dirty contre l'auto-refresh Catalogue
 Livraison Lot 1: 2026-05-28, spec native read-only creee dans `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
@@ -24,6 +24,7 @@ Livraison Lot 6: 2026-05-29, observabilite/admin Biblio content-free creee dans 
 Correctif post-audit Lot 6: 2026-05-29, persistence dashboard `biblio_json` ajoutee a `observability.dashboard_turn_facts` et relue par le read-model admin
 Livraison Lot 7: 2026-05-29, toggle frontend Biblio et branchement chat minimal livres via `app/web/chat_biblio_mode.js` et `app/biblio/chat_runtime.py`, avec detection conservatrice, lane prompt injectee seulement apres extraction et observabilite `stage=biblio` content-free
 Correctif post-audit Lot 7: 2026-05-29, parsing naturel Biblio durci pour `126b de Platon`, `126b de Platon dans la bibliotheque` et `126b chez Platon`, sans fuzzy matching ni relachement du toggle off
+Cloture Lot 8: 2026-05-29, deux P3 parseur corriges, invariants revus, tests cibles verts, note finale `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`, TODO et audit-plan archives
 
 ## 1. Intention
 
@@ -135,7 +136,7 @@ Correctif UI Catalogue du 2026-05-28:
 
 Le chantier pourra etre clos seulement si:
 
-Note 2026-05-28: les criteres Lot 0 ci-dessous sont remplis cote plateforme Catalogue, mais le chantier global reste actif tant que les lots FridaDev read-only et chat ne sont pas livres.
+Note 2026-05-29: les criteres ci-dessous sont remplis. Les limites restantes sont volontaires et doivent ouvrir un nouveau lot explicite si elles changent.
 
 - le Lot 0 a rendu les metadonnees Catalogue corrigeables humainement ou a ete explicitement requalifie par decision produit;
 - la liste Catalogue et la fiche ouvrage sont lisibles par un humain, pas seulement en JSON brut;
@@ -281,12 +282,21 @@ Correctif Lot 6: le dashboard materialise conserve maintenant `fact["biblio"]` d
 - [x] Tester absence d'AnythingLLM dans le chemin nominal.
 - [x] Mettre a jour les specs vivantes touchees.
 - [x] Documenter les limites restantes: OCR, editions, locators ambigus, UI future.
-- [ ] Verifier que le TODO ne contient plus de case ouverte reelle.
-- [ ] Archiver le TODO dans `app/docs/todo-done/product/` quand tous les lots sont fermes.
+- [x] Verifier que le TODO ne contient plus de case ouverte reelle.
+- [x] Archiver le TODO dans `app/docs/todo-done/product/` quand tous les lots sont fermes.
 
 Note Lot 7: le branchement est volontairement minimal. `app/biblio/chat_runtime.py` ne construit un client Catalogue que si le toggle `biblio_enabled` est actif et si le message contient un signal bibliographique conservateur. Les skips `toggle_disabled`, `no_bibliographic_signal` et `adobe_topic_ignored` sont explicites et content-free. La lane n'est injectee dans le prompt principal que si `build_biblio_prompt_lane()` produit un message a partir d'un passage extrait. Le frontend ajoute `btnBiblioMode` avec icone livre juste apres Adobe et transmet toujours `biblio_enabled`.
 
 Limites restantes documentees apres Lot 7: ranges de locators toujours non extraits silencieusement, OCR et editions Catalogue hors FridaDev, detection bibliographique volontairement conservatrice, pas d'UI Catalogue dans FridaDev, pas de recherche semantique large ni de RAG documentaire.
+
+### Lot 8 - Cloture
+
+- [x] Valider et corriger localement le parsing `126b de l Apologie` sans casser `de la République`.
+- [x] Valider et corriger localement le nettoyage de titre pour `126b -> 126e` sans implementer l'extraction de ranges.
+- [x] Repasser les invariants GET-only, content-free, non-contamination et toggle off.
+- [x] Executer les suites Biblio, chat et frontend ciblees.
+- [x] Creer une note finale de validation.
+- [x] Archiver le TODO et l'audit-plan Biblio dans `app/docs/todo-done/product/`.
 
 ## 8. Tests attendus par le chantier
 
@@ -303,7 +313,7 @@ Les lots devront adapter les suites exactes au code courant, mais viser:
 - tests anti-confusion avec documents actifs;
 - tests d'absence de dependance AnythingLLM.
 
-## 9. Notes d'implementation a revalider a chaque lot
+## 9. Notes d'implementation conservees
 
 - Le bon emplacement code doit etre revalide avant patch; Lot 0 semble appartenir a la stack Catalogue `/opt/platform/doc-pipeline` / `/opt/platform/doc-library`, pas au runtime FridaDev.
 - Le premier client FridaDev doit rester GET-only.

@@ -2,7 +2,7 @@
 
 Statut: audit cible lecture seule + livraison Lot 0 plateforme
 Classement: `app/docs/states/audits/`
-Chantier lie: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
+Chantier lie archive: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Discipline plateforme: lecture seule initiale, puis patch borne sous discipline Sauron
 
 ## 1. Question

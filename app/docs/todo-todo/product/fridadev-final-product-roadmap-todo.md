@@ -6,6 +6,10 @@ Mise a jour 2026-05-28: la duplication Amandine est annulee par decision
 produit et retiree de cette boussole active. Les paniers Adobe, installation,
 externalisation et jobs divers sont archives dans `app/docs/todo-done/product/`.
 
+Mise a jour 2026-05-29: Biblio native / Frida Catalogue est livre et archive.
+Il ne reste plus comme grand chantier produit potentiel que Text-to-speech, si
+la priorite est confirmee.
+
 Il ne lance pas plusieurs implementations maintenant. Il sert de boussole de fin de cycle: les gros chantiers produit restants sont limites aux points ci-dessous. Il pourra encore y avoir des correctifs, des ajustements de comportement, du polish, des preuves operateur ou de petites ameliorations locales, mais aucun nouveau gros chantier produit ne doit etre ajoute par inertie avant decision explicite.
 
 ## Perimetre fige
@@ -14,11 +18,11 @@ Les chantiers produit majeurs suivis par cette boussole sont:
 
 1. Atelier documentaire / repertoire de travail, livre et archive.
 2. Recherche internet, livree avec archives et policy active.
-3. Biblio native / catalogue Tulu.
+3. Biblio native / catalogue Tulu, livre et archive.
 4. Text-to-speech.
 
-Les vrais chantiers encore ouverts depuis cette boussole sont Biblio native et,
-si la priorite est confirmee, Text-to-speech.
+Le vrai chantier encore ouvert depuis cette boussole est Text-to-speech, si la
+priorite est confirmee.
 
 ## Ancien chantier transversal archive
 
@@ -34,7 +38,7 @@ Garde-fou conserve comme historique: un nouveau panier futur ne devra jamais ren
 
 1. Atelier documentaire / repertoire de travail.
 2. Audit et fiabilisation de la recherche internet.
-3. Biblio native Tulu.
+3. Biblio native Tulu, livre et archive.
 4. Text-to-speech selon priorite explicite.
 
 ## 1. Atelier documentaire / repertoire de travail
@@ -98,10 +102,11 @@ Ce chantier est separe de l'atelier documentaire:
 - la Biblio conserve un fonds durable et cataloguable;
 - les documents actifs restent ce que Frida peut lire maintenant dans un tour donne.
 
-References deja ouvertes:
+References archivees:
 
-- `frida-biblio-native-catalogue-audit-plan.md`
-- `frida-biblio-native-catalogue-todo.md`
+- `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
+- `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
+- `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 
 ## 4. Text-to-speech
 

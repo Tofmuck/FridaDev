@@ -110,6 +110,37 @@ class BiblioChatRuntimeTests(unittest.TestCase):
                 self.assertEqual(decision.resolve_request.title, "Platon")
                 self.assertEqual(decision.resolve_request.locator, "126b")
 
+    def test_oral_apostrophe_title_cleanup_preserves_de_la_title(self) -> None:
+        cases = (
+            ("Peux-tu me sortir le passage 126b de l Apologie ?", "Apologie"),
+            ("Peux-tu me sortir le passage 126b de l'Apologie ?", "Apologie"),
+            ("Peux-tu me sortir le passage 126b de la République ?", "République"),
+        )
+
+        for message, expected_title in cases:
+            with self.subTest(message=message):
+                decision = chat_runtime.resolve_biblio_chat_decision(
+                    {"biblio_enabled": True},
+                    message,
+                )
+
+                self.assertTrue(decision.should_attempt)
+                self.assertIsNotNone(decision.resolve_request)
+                self.assertEqual(decision.resolve_request.title, expected_title)
+                self.assertEqual(decision.resolve_request.locator, "126b")
+
+    def test_locator_range_arrow_does_not_remain_in_title(self) -> None:
+        decision = chat_runtime.resolve_biblio_chat_decision(
+            {"biblio_enabled": True},
+            "Cherche dans Platon 126b -> 126e dans le catalogue.",
+        )
+
+        self.assertTrue(decision.should_attempt)
+        self.assertIsNotNone(decision.resolve_request)
+        self.assertEqual(decision.resolve_request.title, "Platon")
+        self.assertEqual(decision.resolve_request.locator, "126b")
+        self.assertEqual(decision.resolve_request.locator_end, "126e")
+
     def test_function_words_and_biblio_surface_words_are_never_titles(self) -> None:
         fragments = ("le", "la", "l", "bibliotheque", "catalogue", "biblio", "ouvrage", "livre")
 

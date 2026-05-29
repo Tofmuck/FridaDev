@@ -28,6 +28,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Cloture provisoire MVP Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-provisional-closure-2026-05-23.md`
 - Audit cible Catalogue humain editable et livraison Lot 0 2026-05-28: `states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 - Contrat Biblio native / Frida Catalogue 2026-05-28: `states/specs/frida-biblio-native-catalogue-contract.md`
+- Validation finale Biblio native / Frida Catalogue 2026-05-29: `todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 - Decision produit OpenRouter/Exa comme provider de decouverte web ouverte 2026-05-22: `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 - Archive du renforcement web local V0 SearXNG/Crawl4AI: `todo-done/product/fridadev-local-web-search-hardening-todo.md`
 - Archive A-Z web discovery local-first + Exa: `todo-done/product/fridadev-local-web-search-rebuild-todo.md`
@@ -168,19 +169,20 @@ Lire d'abord:
 
 But: relire le chantier livre permettant a l'utilisateur de fournir des documents textuels, ou certains PDF scannes apres OCR V1 bornee, a une conversation active, sans RAG documentaire, sans contamination Memory/RAG/Identity/Summary, et sans promesse d'ouverture du texte complet du document dans le dashboard.
 
-Frontiere importante: ce chantier concerne les `active_document` temporaires, pas la future Biblio persistante.
+Frontiere importante: ce chantier concerne les `active_document` temporaires, pas la Biblio persistante.
 
 Extension livree: l'OCR bornee des PDF scannes est archivee dans `todo-done/product/active-conversation-documents-ocr-todo.md`; elle prolonge `active_document` via Stirling seulement apres `document_ocr_required`, avec limites `25 pages`, `25 Mo`, `180` secondes, `fra+eng+deu`, sans ouvrir Biblio, n8n ni doc-pipeline nominal.
 
 ### Biblio native / Frida Catalogue
 
 Lire d'abord:
-- `states/specs/frida-biblio-native-catalogue-contract.md` pour le contrat source-of-truth Lot 1: Biblio persistante separee, client FridaDev read-only / GET-only, toggle frontend futur, frontieres avec `active_document`, workspace, Memory/RAG, Identity, Summary, Web, Hermeneutic et AnythingLLM.
+- `states/specs/frida-biblio-native-catalogue-contract.md` pour le contrat source-of-truth: Biblio persistante separee, client FridaDev read-only / GET-only, toggle frontend, lane prompt dediee, observabilite content-free, frontieres avec `active_document`, workspace, Memory/RAG, Identity, Summary, Web, Hermeneutic et AnythingLLM.
 - `states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md` pour le constat cible et la livraison Lot 0: surface Catalogue hors FridaDev, tables metadata humaines, audit minimal, routes GET/PUT metadata, UI d'edition, routes DELETE existantes separees.
-- `todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
-- `todo-todo/product/frida-biblio-native-catalogue-todo.md`
+- `todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
+- `todo-done/product/frida-biblio-native-catalogue-todo.md`
+- `todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 
-But: cadrer le chantier separe permettant, apres le Lot 0 plateforme d'edition metadata humaine et le Lot 1 spec, de permettre a Frida de consulter une bibliotheque persistante native, identifier un `library_document` / `catalogue_document`, resoudre un locator et extraire un `passage documentaire` sans confondre cette capacite avec les documents actifs de conversation.
+But: relire le chantier livre permettant a Frida de consulter explicitement une bibliotheque persistante native, identifier un `library_document` / `catalogue_document`, resoudre un locator et extraire un `passage documentaire` sans confondre cette capacite avec les documents actifs de conversation.
 
 ### Identity / doctrine
 
