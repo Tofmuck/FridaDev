@@ -316,32 +316,42 @@ Tests minimum:
 
 ### Lot 2 - Planner documentaire de recherche de passage
 
-- [ ] Etendre le planner au-dela de `search_catalog` / `extract_locator`.
-- [ ] Ajouter une intention explicite, par exemple `search_passage` ou `extract_conceptual_passage`.
-- [ ] Produire un plan structure separe:
-  - `work_title`;
-  - `corpus_or_author`;
-  - `theme_query`;
-  - `quoted_expression`;
-  - `locator_start`;
-  - `locator_end`;
-  - `needs_clarification`.
-- [ ] Evaluer si le deterministe suffit.
-- [ ] Si le deterministe devient fragile, specifier un planner LLM structure avant le LLM principal:
-  - entree: message utilisateur + `biblio_enabled`;
-  - sortie JSON stricte;
-  - schema borne;
-  - pas de passage brut dans logs;
-  - fallback deterministe si JSON invalide;
-  - aucun appel Catalogue si le planner conclut `not_bibliographic`.
-- [ ] Documenter le contrat de planification et les reason codes.
+- Statut: livre le 2026-05-30.
+
+- [x] Garder le planner deterministe Lot 1/1 bis comme entree structuree (`BiblioQueryPlan`) au lieu d'ajouter une intention runtime plus large avant preuve.
+- [x] Creer un module dedie `app/biblio/passage_candidate_search.py`.
+- [x] Transformer un plan en variantes de recherche puis appels `GET /search` uniquement via `CatalogueClient.search()`.
+- [x] Agreger les resultats `/search` en candidats de paragraphe par `document_id` + `page_no` + `para_no` + `paragraph_id` quand disponible.
+- [x] Dedoublonner les resultats issus de plusieurs variantes et augmenter la confiance sans dupliquer le candidat.
+- [x] Ranker de facon explicable:
+  - bonus theme direct;
+  - bonus variante exacte/pliee;
+  - bonus multi-variante;
+  - bonus rang Catalogue eleve;
+  - bonus document correspondant a l'oeuvre/corpus recherche;
+  - bonus proximite non textuelle oeuvre/theme quand les positions existent.
+- [x] Refuser le choix silencieux si les meilleurs candidats sont indiscernables: statut `ambiguous`.
+- [x] Exposer une observabilite strictement content-free: counts, hashes de variantes, doc ids courts, pages, paragraphes, `paragraph_id`, scores, reason codes et endpoint counts.
+- [x] Ne pas appeler `/context`, ne pas extraire, ne pas injecter de passage brut.
 
 Sorties attendues:
 
-- demande thematique claire -> plan de recherche de passage;
-- demande de liste -> `list_catalog`;
-- demande locator -> `extract_passage` / `extract_range`;
-- demande vague -> `clarify_ambiguous`.
+- demande thematique claire -> candidats de passages content-free;
+- variantes sans accents -> variantes accentuees testees via `/search`;
+- plusieurs variantes sur le meme paragraphe -> un seul candidat avec confiance accrue;
+- egalite de score en tete -> `ambiguous`;
+- aucun resultat -> `not_found`;
+- erreur client -> `catalogue_unavailable`.
+
+Preuves unitaires:
+
+- `maïeutique` trouve des candidats;
+- `maieutique` trouve via variante accentuee;
+- `Theetete` + theme donne un bonus au document pertinent;
+- deduplication multi-variantes;
+- ambiguite par score egal;
+- not found;
+- client error.
 
 ### Lot 3 - Moteur `search -> candidats -> context`
 
