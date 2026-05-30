@@ -159,7 +159,7 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertTrue(result.used)
         self.assertEqual(result.query_kind, "show_table_of_contents")
         self.assertEqual(fake.calls[0], ("catalog", "Platon", 8, 0))
-        self.assertEqual(fake.calls[1], ("document", "doc-toc"))
+        self.assertEqual(fake.calls[1], ("chapters", "doc-toc", 500, 0))
         self.assertEqual(result.observability_payload["status"], "toc_listed")
         self.assertEqual(result.observability_payload["client"]["event_count"], 2)
         self.assertIsNotNone(result.prompt_message)
@@ -181,14 +181,15 @@ class BiblioChatRuntimeTests(unittest.TestCase):
 
         self.assertTrue(result.used)
         self.assertEqual(result.query_kind, "show_table_of_contents")
-        self.assertEqual(fake.calls, [("catalog", "Platon", 8, 0)])
-        self.assertEqual(result.observability_payload["status"], "toc_summary")
-        self.assertEqual(result.reason_code, "biblio_table_of_contents_detail_route_skipped")
+        self.assertEqual(fake.calls, [("catalog", "Platon", 8, 0), ("chapters", "doc-large", 500, 0)])
+        self.assertEqual(result.observability_payload["status"], "toc_listed")
+        self.assertEqual(result.reason_code, "biblio_table_of_contents_listed")
         self.assertIsNotNone(result.prompt_message)
-        self.assertIn("Correctif plateforme requis", result.prompt_message["content"])
+        self.assertIn("Table des matieres disponible: 10 entrees. Liste complete affichee.", result.prompt_message["content"])
 
         encoded_observability = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
         self.assertNotIn("RAW DOCUMENT TITLE", encoded_observability)
+        self.assertNotIn("RAW CHAPTER TITLE ONE", encoded_observability)
 
     def test_open_document_request_returns_catalogue_summary_without_raw_observability(self) -> None:
         fake = _TableOfContentsClient()
@@ -569,14 +570,18 @@ class _TableOfContentsClient:
             result_count=1,
         )
 
-    def document(self, doc_id: str) -> catalogue.CatalogueResponse:
-        self.calls.append(("document", doc_id))
+    def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("chapters", doc_id, limit, offset))
         return catalogue.CatalogueResponse(
-            endpoint_kind=catalogue.ENDPOINT_DOCUMENT,
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
             status_code=200,
             payload={
                 "document": {"id": doc_id, "toc_source": "synthetic"},
-                "pages": [],
+                "total": 2,
+                "limit": limit,
+                "offset": offset,
+                "count": 2,
+                "truncated": False,
                 "chapters": [
                     {"chapter_no": 1, "title": "RAW CHAPTER TITLE ONE", "unit_no": 1, "source": "synthetic"},
                     {"chapter_no": 2, "title": "RAW CHAPTER TITLE TWO", "unit_no": 2, "source": "synthetic"},
@@ -612,6 +617,29 @@ class _LargeTableOfContentsClient(_TableOfContentsClient):
             },
             duration_ms=1,
             result_count=1,
+        )
+
+    def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("chapters", doc_id, limit, offset))
+        chapters = [
+            {"chapter_no": index, "title": f"RAW CHAPTER TITLE {index}", "unit_no": index, "source": "synthetic"}
+            for index in range(1, 11)
+        ]
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            status_code=200,
+            payload={
+                "document": {"id": doc_id, "toc_source": "synthetic"},
+                "total": len(chapters),
+                "limit": limit,
+                "offset": offset,
+                "count": len(chapters),
+                "truncated": False,
+                "chapters": chapters,
+            },
+            duration_ms=1,
+            result_count=len(chapters),
+            doc_id_short=doc_id[:8],
         )
 
 

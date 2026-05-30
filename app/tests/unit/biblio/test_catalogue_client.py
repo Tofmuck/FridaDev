@@ -64,6 +64,20 @@ class CatalogueClientTests(unittest.TestCase):
         self.assertEqual(result.doc_id_short, "dabfe4a7")
         self.assertEqual(fake.calls[0]["url"], "http://catalogue.example/api/doc/dabfe4a7-extra/metadata")
 
+    def test_chapters_ok_is_get_allowlisted_without_ocr_content(self) -> None:
+        fake = FakeRequests(FakeResponse({"document_id": "doc-1", "total": 2, "chapters": [{"chapter_no": 1}]}))
+        api = _client(fake)
+
+        result = api.chapters("doc-1", limit=500, offset=2)
+
+        self.assertEqual(result.endpoint_kind, client.ENDPOINT_CHAPTERS)
+        self.assertEqual(result.result_count, 1)
+        self.assertEqual(result.doc_id_short, "doc-1")
+        self.assertEqual(fake.calls[0]["method"], "GET")
+        self.assertEqual(fake.calls[0]["url"], "http://catalogue.example/api/doc/doc-1/chapters")
+        self.assertEqual(fake.calls[0]["params"], {"limit": 500, "offset": 2})
+        self.assertNotIn("chapters", result.to_observability())
+
     def test_locate_and_context_are_get_with_expected_params(self) -> None:
         fake = FakeRequests(
             [
@@ -97,6 +111,7 @@ class CatalogueClientTests(unittest.TestCase):
         fake = FakeRequests(
             [
                 FakeResponse({"items": []}),
+                FakeResponse({"chapters": []}),
                 FakeResponse({"count": 0}),
                 FakeResponse({"text": ""}),
                 FakeResponse({"results": []}),
@@ -105,6 +120,7 @@ class CatalogueClientTests(unittest.TestCase):
         api = _client(fake)
 
         api.catalog(limit=client.CATALOG_LIMIT_MAX, offset=client.CATALOG_OFFSET_MAX)
+        api.chapters("doc-1", limit=client.CHAPTERS_LIMIT_MAX, offset=client.CHAPTERS_OFFSET_MAX)
         api.locate("doc-1", "126b", limit=client.LOCATE_LIMIT_MAX)
         api.context(
             "doc-1",
@@ -118,21 +134,26 @@ class CatalogueClientTests(unittest.TestCase):
             fake.calls[0]["params"],
             {"limit": client.CATALOG_LIMIT_MAX, "offset": client.CATALOG_OFFSET_MAX},
         )
-        self.assertEqual(fake.calls[1]["params"]["limit"], client.LOCATE_LIMIT_MAX)
         self.assertEqual(
-            fake.calls[2]["params"],
+            fake.calls[1]["params"],
+            {"limit": client.CHAPTERS_LIMIT_MAX, "offset": client.CHAPTERS_OFFSET_MAX},
+        )
+        self.assertEqual(fake.calls[2]["params"]["limit"], client.LOCATE_LIMIT_MAX)
+        self.assertEqual(
+            fake.calls[3]["params"],
             {
                 "char_offset": client.CONTEXT_CHAR_OFFSET_MAX,
                 "window_chars": client.CONTEXT_WINDOW_CHARS_MAX,
                 "paragraph_id": client.CONTEXT_PARAGRAPH_ID_MIN,
             },
         )
-        self.assertEqual(fake.calls[3]["params"], {"q": "theetete", "limit": client.SEARCH_LIMIT_MAX})
+        self.assertEqual(fake.calls[4]["params"], {"q": "theetete", "limit": client.SEARCH_LIMIT_MAX})
 
     def test_integer_strings_are_accepted_without_truncation(self) -> None:
         fake = FakeRequests(
             [
                 FakeResponse({"items": []}),
+                FakeResponse({"chapters": []}),
                 FakeResponse({"count": 0}),
                 FakeResponse({"text": ""}),
                 FakeResponse({"results": []}),
@@ -141,14 +162,16 @@ class CatalogueClientTests(unittest.TestCase):
         api = _client(fake)
 
         api.catalog(limit="50", offset="3")
+        api.chapters("doc-1", limit="500", offset="2")
         api.locate("doc-1", "126b", limit="20")
         api.context("doc-1", page_no="12", para_no="3", char_offset="0", window_chars="900")
         api.search("theetete", limit="2")
 
         self.assertEqual(fake.calls[0]["params"], {"limit": 50, "offset": 3})
-        self.assertEqual(fake.calls[1]["params"], {"kind": "stephanus", "label": "126b", "limit": 20})
-        self.assertEqual(fake.calls[2]["params"], {"page_no": 12, "para_no": 3, "char_offset": 0, "window_chars": 900})
-        self.assertEqual(fake.calls[3]["params"], {"q": "theetete", "limit": 2})
+        self.assertEqual(fake.calls[1]["params"], {"limit": 500, "offset": 2})
+        self.assertEqual(fake.calls[2]["params"], {"kind": "stephanus", "label": "126b", "limit": 20})
+        self.assertEqual(fake.calls[3]["params"], {"page_no": 12, "para_no": 3, "char_offset": 0, "window_chars": 900})
+        self.assertEqual(fake.calls[4]["params"], {"q": "theetete", "limit": 2})
 
     def test_rejects_non_integer_values_before_network_without_truncation(self) -> None:
         api, fake = _client_without_expected_network()
@@ -156,6 +179,8 @@ class CatalogueClientTests(unittest.TestCase):
             ("catalog_limit_float", lambda: api.catalog(limit=1.9), "1.9"),
             ("catalog_offset_float", lambda: api.catalog(offset=2.9), "2.9"),
             ("catalog_offset_fraction", lambda: api.catalog(offset=0.1), "0.1"),
+            ("chapters_limit_float", lambda: api.chapters("doc-1", limit=1.9), "1.9"),
+            ("chapters_offset_float", lambda: api.chapters("doc-1", offset=2.9), "2.9"),
             ("search_limit_float", lambda: api.search("theetete", limit=2.9), "2.9"),
             ("context_window_float", lambda: api.context("doc-1", page_no=1, para_no=1, window_chars=80.9), "80.9"),
             ("catalog_decimal_string", lambda: api.catalog(limit="1.9"), "1.9"),

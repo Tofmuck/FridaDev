@@ -1,8 +1,9 @@
 # Frida Biblio vraie bibliotheque - remediation produit P1
 
-Statut: actif
+Statut: livre et archive
 Date de reouverture: 2026-05-30
-Classement: `app/docs/todo-todo/product/`
+Date d'archivage: 2026-05-30
+Classement: `app/docs/todo-done/product/`
 Spec source-of-truth: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Validation requalifiee: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
 Roadmap technique archivee: `app/docs/todo-done/product/frida-biblio-real-library-passage-search-todo.md`
@@ -66,10 +67,19 @@ Preuves live content-free du correctif applicatif:
 
 ## 4. Correctif plateforme requis avant GO produit complet
 
-- [ ] Ajouter cote Catalogue une route GET read-only legere pour chapitres/table des matieres, sans texte OCR: `GET /doc/{id}/chapters` ou equivalent.
-- [ ] Rebuild doc-pipeline apres backup, uniquement dans un lot Sauron explicite.
-- [ ] Etendre `CatalogueClient` FridaDev avec cette route GET allowlistee.
-- [ ] Smoke live: table des matieres Platon retourne des entrees de chapitres, pas seulement un compteur.
+- [x] Ajouter cote Catalogue une route GET read-only legere pour chapitres/table des matieres, sans texte OCR: `GET /doc/{id}/chapters`.
+- [x] Rebuild doc-pipeline apres backup, uniquement dans un lot Sauron explicite.
+- [x] Etendre `CatalogueClient` FridaDev avec cette route GET allowlistee.
+- [x] Raccorder `show_table_of_contents` a cette route, via un module TOC dedie pour eviter de regonfler `library_runtime.py`.
+- [x] Smoke live: table des matieres Platon retourne des entrees de chapitres, pas seulement un compteur.
+
+Contrat livre:
+
+- route plateforme: `GET /doc/{id}/chapters?limit=<1..1000>&offset=<0..100000>`;
+- lecture seule: `documents` + `document_chapters`;
+- payload autorise: `document_id`, compteurs, `total`, `limit`, `offset`, `count`, `truncated`, et chapitres `{chapter_no, title, unit_no, source}`;
+- payload interdit: texte OCR, paragraphe, excerpt, page text, raw unit, prompt ou secret;
+- FridaDev observe seulement endpoint/status/counts/id court/longueurs; les titres de chapitres peuvent apparaitre dans la lane produit de consultation, pas dans les projections techniques.
 
 ## 5. Invariants
 
@@ -84,11 +94,17 @@ Preuves live content-free du correctif applicatif:
 
 ## 6. Decision actuelle
 
-NO-GO validation finale "vraie bibliotheque" tant que la table des matieres detaillee des gros documents Catalogue n'est pas accessible via une route GET legere.
+GO technique pour le chaînon table des matieres: FridaDev sait maintenant demander une TOC detaillee via la route GET legere Catalogue et construire une lane produit de consultation.
 
-GO partiel attendu apres le correctif applicatif:
+GO produit conditionnel:
 
 - la bibliotheque n'est plus reduite a une preview de 5 ouvrages;
 - Frida sait ouvrir un document et signaler ses compteurs;
-- Frida sait distinguer "TOC signalee mais route detaillee manquante" de "je n'ai pas acces";
+- Frida sait lister les chapitres d'un document dont Catalogue expose `document_chapters`;
 - les recherches thematiques et extractions deja livrees restent fonctionnelles.
+
+Reste a surveiller hors ce lot:
+
+- qualite bibliographique des titres/chapitres produits par OCR/TOC source;
+- intents naturels futurs qui pourraient necessiter un bibliothecaire structure plus riche;
+- pagination explicite si le catalogue depasse durablement 100 ouvrages ou si une TOC depasse 500 entrees.

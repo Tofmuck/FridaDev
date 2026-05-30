@@ -43,6 +43,22 @@ from .query_planner import (
     INTENT_SHOW_TABLE_OF_CONTENTS,
     BiblioQueryPlan,
 )
+from .table_of_contents_runtime import (
+    REASON_DOCUMENT_AMBIGUOUS,
+    REASON_DOCUMENT_NOT_FOUND,
+    REASON_DOCUMENT_OPENED,
+    REASON_TOC_LISTED,
+    REASON_TOC_NOT_FOUND,
+    REASON_TOC_SUMMARY,
+    STATUS_AMBIGUOUS,
+    STATUS_NOT_FOUND,
+    STATUS_OPENED,
+    STATUS_TOC_LISTED,
+    STATUS_TOC_SUMMARY,
+    BiblioCatalogueConsultationResult,
+    run_biblio_open_document,
+    run_biblio_table_of_contents,
+)
 from .work_resolver import BiblioWorkResolution, BiblioWorkResolver
 
 
@@ -50,30 +66,16 @@ CONSULTATION_HEADER = "[CONSULTATION DE BIBLIOTHEQUE]"
 CONSULTATION_FOOTER = "[/CONSULTATION DE BIBLIOTHEQUE]"
 
 STATUS_LISTED = "listed"
-STATUS_OPENED = "opened"
-STATUS_TOC_LISTED = "toc_listed"
-STATUS_TOC_SUMMARY = "toc_summary"
 STATUS_EXTRACTED_OR_LANE = "extracted"
 STATUS_SKIPPED = "skipped"
-STATUS_NOT_FOUND = "not_found"
-STATUS_AMBIGUOUS = "ambiguous"
 STATUS_ERROR = "error"
 
 REASON_CATALOG_LISTED = "biblio_catalog_listed"
-REASON_DOCUMENT_OPENED = "biblio_document_opened"
-REASON_DOCUMENT_NOT_FOUND = "biblio_document_not_found"
-REASON_DOCUMENT_AMBIGUOUS = "biblio_document_ambiguous"
-REASON_TOC_LISTED = "biblio_table_of_contents_listed"
-REASON_TOC_SUMMARY = "biblio_table_of_contents_summary"
-REASON_TOC_NOT_FOUND = "biblio_table_of_contents_not_found"
-REASON_TOC_DETAIL_ROUTE_SKIPPED = "biblio_table_of_contents_detail_route_skipped"
 REASON_PASSAGE_LANE_READY = "biblio_passage_lane_ready"
 REASON_CATALOGUE_UNAVAILABLE = "catalogue_unavailable"
 
 DEFAULT_LIST_LIMIT = 100
 MAX_COMPLETE_CATALOGUE_ITEMS = 100
-MAX_TOC_ITEMS = 100
-MAX_DOCUMENT_OVERVIEW_PARAGRAPHS = 5_000
 DEFAULT_RANGE_WINDOW_CHARS = MAX_CONTEXT_WINDOW_CHARS
 DEFAULT_RANGE_MAX_PASSAGE_CHARS = 7_000
 
@@ -213,177 +215,11 @@ def _list_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLibra
 
 
 def _open_document(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLibraryRuntimeResult:
-    return _catalogue_document_summary(
-        client,
-        plan,
-        status=STATUS_OPENED,
-        reason_code=REASON_DOCUMENT_OPENED,
-        not_found_reason=REASON_DOCUMENT_NOT_FOUND,
-        ambiguous_reason=REASON_DOCUMENT_AMBIGUOUS,
-        heading="Document Catalogue trouve:",
-    )
+    return _catalogue_consultation_result(plan, run_biblio_open_document(client, plan))
 
 
 def _show_table_of_contents(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLibraryRuntimeResult:
-    query = _catalogue_query(plan)
-    endpoint_observations: list[CatalogueEndpointObservation] = []
-    try:
-        response = client.catalog(q=query or None, limit=plan.limit or 8, offset=0)
-        endpoint_observations.append(observe_catalogue_response(response))
-    except CatalogueClientError as exc:
-        return _client_error(plan, exc)
-
-    items = _catalog_items(response)
-    if not items:
-        consultation = _consultation_message(
-            status=STATUS_NOT_FOUND,
-            reason_code=REASON_TOC_NOT_FOUND,
-            lines=["Aucun document Catalogue correspondant n'a ete trouve pour la table des matieres."],
-        )
-        return BiblioLibraryRuntimeResult(
-            status=STATUS_NOT_FOUND,
-            reason_code=REASON_TOC_NOT_FOUND,
-            query_kind=plan.query_kind,
-            endpoint_observations=tuple(endpoint_observations),
-            consultation_message=consultation,
-        )
-
-    selected = items[0]
-    if len(items) > 1:
-        consultation = _document_candidates_message(
-            status=STATUS_AMBIGUOUS,
-            reason_code=REASON_DOCUMENT_AMBIGUOUS,
-            heading="Plusieurs documents Catalogue correspondent a la demande de table des matieres:",
-            items=items,
-        )
-        return BiblioLibraryRuntimeResult(
-            status=STATUS_AMBIGUOUS,
-            reason_code=REASON_DOCUMENT_AMBIGUOUS,
-            query_kind=plan.query_kind,
-            endpoint_observations=tuple(endpoint_observations),
-            consultation_message=consultation,
-        )
-
-    chapter_count = _optional_int(selected.get("chapter_count")) or 0
-    paragraph_count = _optional_int(selected.get("paragraph_count")) or 0
-    doc_id = _text(selected.get("id") or selected.get("document_id"))
-    if chapter_count <= 0:
-        consultation = _consultation_message(
-            status=STATUS_NOT_FOUND,
-            reason_code=REASON_TOC_NOT_FOUND,
-            lines=[
-                "Document trouve, mais aucune table des matieres structuree n'est signalee par Catalogue.",
-                *_document_summary_lines(selected),
-            ],
-            doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
-        )
-        return BiblioLibraryRuntimeResult(
-            status=STATUS_NOT_FOUND,
-            reason_code=REASON_TOC_NOT_FOUND,
-            query_kind=plan.query_kind,
-            endpoint_observations=tuple(endpoint_observations),
-            consultation_message=consultation,
-        )
-
-    if paragraph_count > MAX_DOCUMENT_OVERVIEW_PARAGRAPHS:
-        consultation = _consultation_message(
-            status=STATUS_TOC_SUMMARY,
-            reason_code=REASON_TOC_DETAIL_ROUTE_SKIPPED,
-            lines=[
-                "Table des matieres signalee par Catalogue, mais la route detaillee actuelle passe par une vue document trop lourde pour une consultation bornee.",
-                f"Chapitres signales: {chapter_count}.",
-                "Correctif plateforme requis: GET leger de chapitres/table des matieres.",
-                *_document_summary_lines(selected),
-            ],
-            doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
-            total_count=chapter_count,
-            displayed_count=0,
-            truncated=True,
-        )
-        return BiblioLibraryRuntimeResult(
-            status=STATUS_TOC_SUMMARY,
-            reason_code=REASON_TOC_DETAIL_ROUTE_SKIPPED,
-            query_kind=plan.query_kind,
-            endpoint_observations=tuple(endpoint_observations),
-            consultation_message=consultation,
-        )
-
-    try:
-        overview = client.document(doc_id)
-        endpoint_observations.append(observe_catalogue_response(overview))
-    except CatalogueClientError as exc:
-        consultation = _consultation_message(
-            status=STATUS_TOC_SUMMARY,
-            reason_code=REASON_TOC_SUMMARY,
-            lines=[
-                "Table des matieres signalee par Catalogue, mais le detail n'a pas pu etre lu via la route document actuelle.",
-                f"Chapitres signales: {chapter_count}.",
-                *_document_summary_lines(selected),
-            ],
-            doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
-            total_count=chapter_count,
-            displayed_count=0,
-            truncated=True,
-        )
-        return BiblioLibraryRuntimeResult(
-            status=STATUS_TOC_SUMMARY,
-            reason_code=REASON_TOC_SUMMARY,
-            query_kind=plan.query_kind,
-            endpoint_observations=tuple(endpoint_observations),
-            client_error=exc,
-            consultation_message=consultation,
-        )
-
-    chapters = _chapters(overview)
-    if not chapters:
-        consultation = _consultation_message(
-            status=STATUS_TOC_SUMMARY,
-            reason_code=REASON_TOC_SUMMARY,
-            lines=[
-                "Document lu, mais aucune entree de table des matieres exploitable n'a ete retournee.",
-                f"Chapitres signales: {chapter_count}.",
-                *_document_summary_lines(selected),
-            ],
-            doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
-            total_count=chapter_count,
-            displayed_count=0,
-            truncated=True,
-        )
-        return BiblioLibraryRuntimeResult(
-            status=STATUS_TOC_SUMMARY,
-            reason_code=REASON_TOC_SUMMARY,
-            query_kind=plan.query_kind,
-            endpoint_observations=tuple(endpoint_observations),
-            consultation_message=consultation,
-        )
-
-    displayed = chapters[:MAX_TOC_ITEMS]
-    truncated = len(chapters) > len(displayed)
-    lines = [
-        (
-            f"Table des matieres disponible: {len(chapters)} entrees. Liste complete affichee."
-            if not truncated
-            else f"Table des matieres disponible: {len(chapters)} entrees. Affichage des {len(displayed)} premieres."
-        ),
-        *_document_summary_lines(selected),
-        *_chapter_lines(displayed),
-    ]
-    consultation = _consultation_message(
-        status=STATUS_TOC_LISTED,
-        reason_code=REASON_TOC_LISTED,
-        lines=lines,
-        doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
-        total_count=len(chapters),
-        displayed_count=len(displayed),
-        truncated=truncated,
-    )
-    return BiblioLibraryRuntimeResult(
-        status=STATUS_TOC_LISTED,
-        reason_code=REASON_TOC_LISTED,
-        query_kind=plan.query_kind,
-        endpoint_observations=tuple(endpoint_observations),
-        consultation_message=consultation,
-    )
+    return _catalogue_consultation_result(plan, run_biblio_table_of_contents(client, plan))
 
 
 def _search_passages(
@@ -521,6 +357,29 @@ def _client_error(
     )
 
 
+def _catalogue_consultation_result(
+    plan: BiblioQueryPlan,
+    result: BiblioCatalogueConsultationResult,
+) -> BiblioLibraryRuntimeResult:
+    consultation = _consultation_message(
+        status=result.status,
+        reason_code=result.reason_code,
+        lines=result.lines,
+        doc_id_shorts=result.doc_id_shorts,
+        total_count=result.total_count,
+        displayed_count=result.displayed_count,
+        truncated=result.truncated,
+    )
+    return BiblioLibraryRuntimeResult(
+        status=result.status,
+        reason_code=result.reason_code,
+        query_kind=plan.query_kind,
+        endpoint_observations=result.endpoint_observations,
+        client_error=result.client_error,
+        consultation_message=consultation,
+    )
+
+
 def _catalog_consultation_message(
     *,
     status: str,
@@ -588,97 +447,6 @@ def _consultation_message(
     )
 
 
-def _catalogue_document_summary(
-    client: CatalogueClient,
-    plan: BiblioQueryPlan,
-    *,
-    status: str,
-    reason_code: str,
-    not_found_reason: str,
-    ambiguous_reason: str,
-    heading: str,
-) -> BiblioLibraryRuntimeResult:
-    query = _catalogue_query(plan)
-    endpoint_observations: list[CatalogueEndpointObservation] = []
-    try:
-        response = client.catalog(q=query or None, limit=plan.limit or 8, offset=0)
-        endpoint_observations.append(observe_catalogue_response(response))
-    except CatalogueClientError as exc:
-        return _client_error(plan, exc)
-
-    items = _catalog_items(response)
-    if not items:
-        consultation = _consultation_message(
-            status=STATUS_NOT_FOUND,
-            reason_code=not_found_reason,
-            lines=["Aucun document Catalogue correspondant n'a ete trouve."],
-        )
-        return BiblioLibraryRuntimeResult(
-            status=STATUS_NOT_FOUND,
-            reason_code=not_found_reason,
-            query_kind=plan.query_kind,
-            endpoint_observations=tuple(endpoint_observations),
-            consultation_message=consultation,
-        )
-    if len(items) > 1:
-        consultation = _document_candidates_message(
-            status=STATUS_AMBIGUOUS,
-            reason_code=ambiguous_reason,
-            heading="Plusieurs documents Catalogue correspondent:",
-            items=items,
-        )
-        return BiblioLibraryRuntimeResult(
-            status=STATUS_AMBIGUOUS,
-            reason_code=ambiguous_reason,
-            query_kind=plan.query_kind,
-            endpoint_observations=tuple(endpoint_observations),
-            consultation_message=consultation,
-        )
-
-    item = items[0]
-    doc_id = _text(item.get("id") or item.get("document_id"))
-    consultation = _consultation_message(
-        status=status,
-        reason_code=reason_code,
-        lines=[heading, *_document_summary_lines(item)],
-        doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
-        total_count=1,
-        displayed_count=1,
-        truncated=False,
-    )
-    return BiblioLibraryRuntimeResult(
-        status=status,
-        reason_code=reason_code,
-        query_kind=plan.query_kind,
-        endpoint_observations=tuple(endpoint_observations),
-        consultation_message=consultation,
-    )
-
-
-def _document_candidates_message(
-    *,
-    status: str,
-    reason_code: str,
-    heading: str,
-    items: Sequence[Mapping[str, Any]],
-) -> BiblioConsultationMessage:
-    lines = [heading]
-    doc_ids: list[str] = []
-    for index, item in enumerate(items[:MAX_COMPLETE_CATALOGUE_ITEMS], 1):
-        doc_id = _text(item.get("id") or item.get("document_id"))
-        doc_ids.append(short_doc_id(doc_id))
-        lines.append(f"{index}. {'; '.join(_document_summary_lines(item))}")
-    return _consultation_message(
-        status=status,
-        reason_code=reason_code,
-        lines=lines,
-        doc_id_shorts=tuple(doc_id for doc_id in doc_ids if doc_id),
-        total_count=len(items),
-        displayed_count=min(len(items), MAX_COMPLETE_CATALOGUE_ITEMS),
-        truncated=len(items) > MAX_COMPLETE_CATALOGUE_ITEMS,
-    )
-
-
 def _context_consultation_message(context_result: BiblioPassageContextSearchResult) -> BiblioConsultationMessage:
     observed = context_result.to_observability()
     doc_ids = tuple(str(item or "") for item in observed.get("candidate_search", {}).get("doc_id_shorts", []) if item)
@@ -725,60 +493,6 @@ def _list_limit(value: int) -> int:
     return DEFAULT_LIST_LIMIT
 
 
-def _catalogue_query(plan: BiblioQueryPlan) -> str:
-    return _text(plan.catalogue_query or plan.document_title or plan.work_title or plan.author)
-
-
-def _document_summary_lines(item: Mapping[str, Any]) -> list[str]:
-    doc_id = _text(item.get("id") or item.get("document_id"))
-    fields = [f"catalogue_doc={short_doc_id(doc_id) or 'unknown'}"]
-    title = _display_title(item)
-    author = _display_author(item)
-    if title:
-        fields.append(f"titre={title}")
-    if author:
-        fields.append(f"auteur={author}")
-    for label, key in (
-        ("pages", "page_count"),
-        ("paragraphes", "paragraph_count"),
-        ("chapitres", "chapter_count"),
-        ("milestones", "milestone_total"),
-        ("stephanus", "stephanus_count"),
-    ):
-        value = _optional_int(item.get(key))
-        if value is not None:
-            fields.append(f"{label}={value}")
-    toc_source = _text(item.get("toc_source"))
-    if toc_source and toc_source != "none":
-        fields.append("table_des_matieres=signalee")
-    return fields
-
-
-def _chapters(response: CatalogueResponse) -> list[Mapping[str, Any]]:
-    chapters = response.payload.get("chapters")
-    if not isinstance(chapters, list):
-        return []
-    return [chapter for chapter in chapters if isinstance(chapter, Mapping)]
-
-
-def _chapter_lines(chapters: Sequence[Mapping[str, Any]]) -> list[str]:
-    lines: list[str] = []
-    for chapter in chapters:
-        number = _optional_int(chapter.get("chapter_no"))
-        title = _neutralize(_text(chapter.get("title")))
-        unit_no = _optional_int(chapter.get("unit_no"))
-        source = _neutralize(_text(chapter.get("source")))
-        parts = [f"chapitre={number}" if number is not None else "chapitre=unknown"]
-        if title:
-            parts.append(f"titre={title}")
-        if unit_no is not None:
-            parts.append(f"unit={unit_no}")
-        if source and source != "none":
-            parts.append(f"source={source}")
-        lines.append("; ".join(parts))
-    return lines
-
-
 def _display_title(item: Mapping[str, Any]) -> str:
     return _neutralize(
         _text(item.get("human_canonical_title") or item.get("canonical_title") or item.get("title"))
@@ -808,11 +522,3 @@ def _neutralize(value: str) -> str:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
-
-
-def _optional_int(value: Any) -> int | None:
-    if type(value) is int:
-        return value
-    if isinstance(value, str) and value.isdecimal():
-        return int(value)
-    return None

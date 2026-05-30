@@ -15,12 +15,13 @@ Mise a jour recherche passages Lot 6: 2026-05-30
 Mise a jour recherche passages Lot 7: 2026-05-30
 Validation finale recherche passages Lot 8: 2026-05-30
 Reouverture produit vraie bibliotheque: 2026-05-30
+Route legere table des matieres Catalogue: 2026-05-30
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 Roadmap vraie bibliotheque archivee: `app/docs/todo-done/product/frida-biblio-real-library-passage-search-todo.md`
 Validation vraie bibliotheque requalifiee: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
-Remediation vraie bibliotheque active: `app/docs/todo-todo/product/frida-biblio-real-library-product-gap-todo.md`
+Remediation vraie bibliotheque archivee: `app/docs/todo-done/product/frida-biblio-real-library-product-gap-todo.md`
 Audit Lot 0 Catalogue: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 Specs voisines: `app/docs/states/specs/active-conversation-documents-contract.md`, `app/docs/states/specs/workspace-folders-contract.md`
 Portee: contrat produit, frontieres, client futur GET-only, resolver, extraction bornee, lane prompt, observabilite et surface admin content-free de Biblio native.
@@ -197,6 +198,7 @@ Endpoints autorises au depart:
 - `GET /catalog`;
 - `GET /doc/{id}`;
 - `GET /doc/{id}/metadata`;
+- `GET /doc/{id}/chapters`;
 - `GET /doc/{id}/locate`;
 - `GET /doc/{id}/context`;
 - `GET /search`.
@@ -228,9 +230,9 @@ Implementation Lot 2 du 2026-05-28:
 - package domaine: `app/biblio/`;
 - config non secrete: `BIBLIO_CATALOGUE_BASE_URL`, defaut `http://platform-doc-pipeline-api:8090`;
 - timeout non secret: `BIBLIO_CATALOGUE_TIMEOUT_S`, defaut `8`;
-- methodes publiques: `health()`, `catalog()`, `document()`, `metadata()`, `locate()`, `context()`, `search()`;
+- methodes publiques: `health()`, `catalog()`, `document()`, `metadata()`, `chapters()`, `locate()`, `context()`, `search()`;
 - garde structurelle: `_request()` refuse tout verbe autre que `GET`;
-- allowlist structurelle: seuls `/health`, `/catalog`, `/search`, `/doc/{id}`, `/doc/{id}/metadata`, `/doc/{id}/locate`, `/doc/{id}/context` sont acceptes;
+- allowlist structurelle: seuls `/health`, `/catalog`, `/search`, `/doc/{id}`, `/doc/{id}/metadata`, `/doc/{id}/chapters`, `/doc/{id}/locate`, `/doc/{id}/context` sont acceptes;
 - routes mutatrices et exports non allowlistes sont refuses avant appel reseau;
 - erreurs content-free: forbidden method, forbidden route, invalid base URL, invalid parameter, service unavailable, timeout, invalid JSON, not found, unexpected status;
 - `CatalogueResponse.to_observability()` exclut le payload brut et expose seulement endpoint, status, duree, compte, id court et longueur compacte si applicable.
@@ -243,11 +245,13 @@ Correctif Lot 2 du 2026-05-28:
 - aucune troncature silencieuse n'est autorisee: seuls les `int` Python et les chaines d'entiers decimales propres sont acceptes;
 - bornes alignees sur Catalogue quand l'API les declare:
   - `catalog.limit`: `1..500`;
+  - `chapters.limit`: `1..1000`;
   - `locate.limit`: `1..1000`;
   - `context.window_chars`: `80..8000`;
   - `search.limit`: `1..100`;
 - bornes client conservatrices quand l'API ne declare pas de maximum:
   - `catalog.offset`: `0..100000`;
+  - `chapters.offset`: `0..100000`;
   - `context.char_offset`: `0..1000000`;
   - `context.page_no`: `1..100000`;
   - `context.para_no`: `1..100000`;
@@ -599,14 +603,26 @@ Validation finale vraie bibliotheque Lot 8 du 2026-05-30:
 Requalification produit du 2026-05-30:
 
 - la validation ci-dessus reste une preuve technique du chemin passage, mais elle n'est plus un GO produit final "vraie bibliotheque";
-- le chantier est rouvert dans `app/docs/todo-todo/product/frida-biblio-real-library-product-gap-todo.md`;
+- le chantier est rouvert puis corrige et archive dans `app/docs/todo-done/product/frida-biblio-real-library-product-gap-todo.md`;
 - une demande de catalogue doit lister tout le fonds disponible jusqu'a 100 ouvrages, pas une preview `limit=5`;
 - si `total > displayed`, la lane produit doit dire explicitement combien d'ouvrages existent et combien sont affiches;
 - les demandes `quels ouvrages`, `combien d'ouvrages`, `liste la bibliotheque` et `c'est tout ?` sont des signaux Biblio quand le toggle est actif;
 - les actions bibliothecaires deterministes reconnues incluent `list_catalog`, `open_document`, `show_table_of_contents`, `search_catalog`, `extract_passage` et `extract_range`;
 - les titres/auteurs peuvent etre presentes dans la lane produit de consultation lorsque l'utilisateur demande la liste ou l'ouverture du fonds, mais ils restent interdits dans observabilite/admin/dashboard/read-model;
-- Catalogue expose des compteurs TOC (`chapter_count`, `toc_source`) et stocke `document_chapters`, mais FridaDev ne doit pas pretendre disposer d'une table detaillee si seule une route document trop lourde est disponible;
-- avant GO produit complet, une route GET Catalogue legere de chapitres/table des matieres est requise pour les gros documents.
+- Catalogue expose des compteurs TOC (`chapter_count`, `toc_source`) et stocke `document_chapters`;
+- une route GET Catalogue legere est maintenant requise et livree pour les gros documents: `GET /doc/{id}/chapters`;
+- FridaDev doit utiliser cette route pour `show_table_of_contents` et ne plus passer par `/doc/{id}` pour lister les chapitres d'un gros document.
+
+Route legere table des matieres du 2026-05-30:
+
+- plateforme Catalogue: `GET /doc/{id}/chapters`;
+- lecture seule: `documents` + `document_chapters`;
+- bornes: `limit` par defaut 500, maximum 1000; `offset` minimum 0;
+- payload autorise: `document_id`, compteurs documentaires, `total`, `limit`, `offset`, `count`, `truncated`, et une liste de chapitres `{chapter_no, title, unit_no, source}`;
+- payload interdit: texte OCR, paragraphes, excerpts, page text, raw units, fichiers, prompt, secret, cookie, token ou DSN;
+- FridaDev expose les titres/chapitres seulement dans la lane produit `[CONSULTATION DE BIBLIOTHEQUE]` quand l'utilisateur demande la table des matieres;
+- observabilite/admin/dashboard/read-model ne gardent que endpoint kind, status, duree, counts, id court, longueurs et reason codes, jamais les titres de chapitres ni le payload Catalogue brut;
+- `library_runtime.py` delegue l'ouverture document / TOC a `table_of_contents_runtime.py` pour garder la responsabilite du runtime bibliothecaire lisible.
 
 Validation finale Lot 8 du 2026-05-29:
 

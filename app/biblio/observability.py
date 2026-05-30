@@ -114,6 +114,7 @@ def build_admin_observability(*, config_module: Any = None) -> dict[str, Any]:
                 catalogue_client.ENDPOINT_CATALOG,
                 catalogue_client.ENDPOINT_DOCUMENT,
                 catalogue_client.ENDPOINT_METADATA,
+                catalogue_client.ENDPOINT_CHAPTERS,
                 catalogue_client.ENDPOINT_LOCATE,
                 catalogue_client.ENDPOINT_CONTEXT,
                 catalogue_client.ENDPOINT_SEARCH,

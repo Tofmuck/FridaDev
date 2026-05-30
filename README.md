@@ -77,7 +77,7 @@ Frontend rehydration and operator observability
 - On `done`, Frida saves the complete assistant text, verifies canonical persistence, then emits derived writes. On `error`, it stores an interrupted marker when that marker save is proven; it does not canonicalize partial assistant text.
 - `/dashboard` is the long-term operator dashboard: recent health, materialized metrics, conversation comparison, translated inspection, and content-free summaries.
 - `/log` remains the technical debug timeline. Memory Admin, Hermeneutic Admin, and Identity remain specialized domain or editing surfaces.
-- The Biblio native / Frida Catalogue workstream is separate from active conversation documents: its platform Lot 0 delivered human Catalogue metadata editing, and FridaDev now has a GET-only Catalogue client, resolver, bounded extractor, dedicated prompt lane, content-free observability, dashboard persistence, frontend toggle, chat wiring, and bounded passage search through `/search` then `/context`. The "real library" product validation is reopened for catalogue listing and table-of-contents behavior; the feature remains explicit per turn through `biblio_enabled` and is not Memory/RAG, not Web, not workspace, and not an active document.
+- The Biblio native / Frida Catalogue workstream is separate from active conversation documents: its platform Lot 0 delivered human Catalogue metadata editing, and FridaDev now has a GET-only Catalogue client, resolver, bounded extractor, dedicated prompt lane, content-free observability, dashboard persistence, frontend toggle, chat wiring, bounded passage search through `/search` then `/context`, complete catalogue listing up to the product limit, and a lightweight table-of-contents route through `GET /doc/{id}/chapters`. The feature remains explicit per turn through `biblio_enabled` and is not Memory/RAG, not Web, not workspace, and not an active document.
 
 ### What the repository contains
 
@@ -119,7 +119,7 @@ Frontend rehydration and operator observability
 - Final Biblio native / Frida Catalogue validation: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 - Archived Biblio real-library passage search roadmap: `app/docs/todo-done/product/frida-biblio-real-library-passage-search-todo.md`
 - Requalified Biblio real-library passage search validation: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
-- Active Biblio real-library product-gap remediation: `app/docs/todo-todo/product/frida-biblio-real-library-product-gap-todo.md`
+- Archived Biblio real-library product-gap remediation and TOC route delivery: `app/docs/todo-done/product/frida-biblio-real-library-product-gap-todo.md`
 - Archived cancelled Amandine duplication plan: `app/docs/todo-done/migrations/amandine-duplication-annulee-2026-05-28.md`
 - Frida health freeze baseline: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
@@ -256,7 +256,7 @@ Rehydratation frontend et observabilite operateur
 - Sur `done`, Frida sauvegarde le texte assistant complet, verifie la persistance canonique, puis emet les ecritures derivees. Sur `error`, Frida sauvegarde un marqueur interrompu lorsque cette sauvegarde est prouvee; elle ne canonise pas de texte assistant partiel.
 - `/dashboard` est le dashboard operateur long terme: sante recente, metriques materialisees, comparaison des conversations, inspection traduite et statut du content gate.
 - `/log` reste la timeline technique de debug. Memory Admin, Hermeneutic Admin et Identity restent des surfaces specialisees de domaine ou d'edition.
-- Le chantier Biblio native / Frida Catalogue est separe des documents actifs de conversation: son Lot 0 plateforme a livre l'edition humaine des metadonnees Catalogue, et FridaDev dispose maintenant d'un client Catalogue GET-only, d'un resolver, d'un extracteur borne, d'une lane prompt dediee, d'une observabilite content-free, d'une persistence dashboard, d'un toggle frontend, d'un branchement chat et d'une recherche de passages bornee via `/search` puis `/context`. La validation produit "vraie bibliotheque" est reouverte pour la liste catalogue et les tables des matieres; la capacite reste explicite par tour via `biblio_enabled` et n'est ni Memory/RAG, ni Web, ni workspace, ni document actif.
+- Le chantier Biblio native / Frida Catalogue est separe des documents actifs de conversation: son Lot 0 plateforme a livre l'edition humaine des metadonnees Catalogue, et FridaDev dispose maintenant d'un client Catalogue GET-only, d'un resolver, d'un extracteur borne, d'une lane prompt dediee, d'une observabilite content-free, d'une persistence dashboard, d'un toggle frontend, d'un branchement chat, d'une recherche de passages bornee via `/search` puis `/context`, d'une liste catalogue complete jusqu'a la limite produit et d'une table des matieres legere via `GET /doc/{id}/chapters`. La capacite reste explicite par tour via `biblio_enabled` et n'est ni Memory/RAG, ni Web, ni workspace, ni document actif.
 
 ### Ce que contient le depot
 
@@ -298,7 +298,7 @@ Rehydratation frontend et observabilite operateur
 - Validation finale Biblio native / Frida Catalogue: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 - Roadmap archivee Biblio vraie bibliotheque / recherche de passages: `app/docs/todo-done/product/frida-biblio-real-library-passage-search-todo.md`
 - Validation requalifiee Biblio vraie bibliotheque / recherche de passages: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
-- Remediation active Biblio vraie bibliotheque / ecart produit: `app/docs/todo-todo/product/frida-biblio-real-library-product-gap-todo.md`
+- Remediation archivee Biblio vraie bibliotheque / ecart produit et route TOC: `app/docs/todo-done/product/frida-biblio-real-library-product-gap-todo.md`
 - Archive annulation duplication Amandine: `app/docs/todo-done/migrations/amandine-duplication-annulee-2026-05-28.md`
 - Baseline freeze sante Frida: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
 - Contrat dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`

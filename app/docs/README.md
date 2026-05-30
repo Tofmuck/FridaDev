@@ -31,7 +31,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Validation finale Biblio native / Frida Catalogue 2026-05-29: `todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 - Roadmap archivee Biblio vraie bibliotheque / recherche de passages 2026-05-30: `todo-done/product/frida-biblio-real-library-passage-search-todo.md`
 - Validation requalifiee Biblio vraie bibliotheque / recherche de passages 2026-05-30: `todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
-- Remediation active Biblio vraie bibliotheque / ecart produit 2026-05-30: `todo-todo/product/frida-biblio-real-library-product-gap-todo.md`
+- Remediation archivee Biblio vraie bibliotheque / ecart produit et route TOC 2026-05-30: `todo-done/product/frida-biblio-real-library-product-gap-todo.md`
 - Decision produit OpenRouter/Exa comme provider de decouverte web ouverte 2026-05-22: `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 - Archive du renforcement web local V0 SearXNG/Crawl4AI: `todo-done/product/fridadev-local-web-search-hardening-todo.md`
 - Archive A-Z web discovery local-first + Exa: `todo-done/product/fridadev-local-web-search-rebuild-todo.md`
@@ -185,9 +185,9 @@ Lire d'abord:
 - `todo-done/product/frida-biblio-native-catalogue-todo.md`
 - `todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 - `todo-done/product/frida-biblio-real-library-passage-search-todo.md` et `todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md` pour l'archive technique requalifiee du chantier P1: recherche conceptuelle de passages, ranking de candidats, extraction bornee via `/context`, variantes sans accents et smokes live.
-- `todo-todo/product/frida-biblio-real-library-product-gap-todo.md` pour la remediation active de l'ecart produit: liste catalogue complete jusqu'a 100, ouverture de documents, table des matieres et route Catalogue legere de chapitres.
+- `todo-done/product/frida-biblio-real-library-product-gap-todo.md` pour la remediation archivee de l'ecart produit et sa livraison route TOC: liste catalogue complete jusqu'a 100, ouverture de documents, table des matieres via `GET /doc/{id}/chapters` et garde content-free.
 
-But: relire le chantier livre permettant a Frida de consulter explicitement une bibliotheque persistante native, puis l'ecart produit actif qui empeche encore de declarer la bibliotheque pleinement consultable, sans confondre cette capacite avec les documents actifs de conversation.
+But: relire le chantier livre permettant a Frida de consulter explicitement une bibliotheque persistante native, puis la remediation produit qui a ajoute la liste catalogue complete et la table des matieres legere, sans confondre cette capacite avec les documents actifs de conversation.
 
 ### Identity / doctrine
 

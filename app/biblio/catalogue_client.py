@@ -27,6 +27,7 @@ ENDPOINT_HEALTH = "health"
 ENDPOINT_CATALOG = "catalog"
 ENDPOINT_DOCUMENT = "document"
 ENDPOINT_METADATA = "metadata"
+ENDPOINT_CHAPTERS = "chapters"
 ENDPOINT_LOCATE = "locate"
 ENDPOINT_CONTEXT = "context"
 ENDPOINT_SEARCH = "search"
@@ -45,6 +46,10 @@ CATALOG_LIMIT_MIN = 1
 CATALOG_LIMIT_MAX = 500
 CATALOG_OFFSET_MIN = 0
 CATALOG_OFFSET_MAX = 100_000
+CHAPTERS_LIMIT_MIN = 1
+CHAPTERS_LIMIT_MAX = 1_000
+CHAPTERS_OFFSET_MIN = 0
+CHAPTERS_OFFSET_MAX = 100_000
 LOCATE_LIMIT_MIN = 1
 LOCATE_LIMIT_MAX = 1_000
 CONTEXT_PAGE_NO_MIN = 1
@@ -281,6 +286,28 @@ class CatalogueClient:
     def metadata(self, doc_id: str) -> CatalogueResponse:
         path = f"/doc/{_quote_path_segment(doc_id)}/metadata"
         return self._get(ENDPOINT_METADATA, path, doc_id=doc_id)
+
+    def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> CatalogueResponse:
+        path = f"/doc/{_quote_path_segment(doc_id)}/chapters"
+        params = {
+            "limit": _bounded_int(
+                limit,
+                endpoint_kind=ENDPOINT_CHAPTERS,
+                name="limit",
+                minimum=CHAPTERS_LIMIT_MIN,
+                maximum=CHAPTERS_LIMIT_MAX,
+                doc_id=doc_id,
+            ),
+            "offset": _bounded_int(
+                offset,
+                endpoint_kind=ENDPOINT_CHAPTERS,
+                name="offset",
+                minimum=CHAPTERS_OFFSET_MIN,
+                maximum=CHAPTERS_OFFSET_MAX,
+                doc_id=doc_id,
+            ),
+        }
+        return self._get(ENDPOINT_CHAPTERS, path, params=params, doc_id=doc_id)
 
     def locate(
         self,
@@ -522,7 +549,7 @@ def _validate_get_path(path: str, *, endpoint_kind: str = "", doc_id: str = "") 
     if len(parts) >= 2 and parts[0] == "doc" and parts[1]:
         if len(parts) == 2:
             return normalized
-        if len(parts) == 3 and parts[2] in {"metadata", "locate", "context"}:
+        if len(parts) == 3 and parts[2] in {"metadata", "chapters", "locate", "context"}:
             return normalized
 
     raise CatalogueForbiddenRoute(endpoint_kind=endpoint_kind, doc_id=doc_id, detail="not_in_get_allowlist")
@@ -553,7 +580,7 @@ def _result_count(payload: Mapping[str, Any]) -> int | None:
     count = payload.get("count")
     if isinstance(count, int):
         return count
-    for key in ("items", "results"):
+    for key in ("items", "results", "chapters"):
         value = payload.get(key)
         if isinstance(value, list):
             return len(value)
