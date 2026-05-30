@@ -409,6 +409,14 @@ Correctif Lot 3 bis du 2026-05-30:
 - [x] Autoriser le texte brut uniquement dans `BiblioPassageContextSearchResult.passage` quand `status=extracted`.
 - [x] Ajouter des tests qui inspectent les objets resultats eux-memes, pas seulement `to_observability()`.
 
+Correctif runtime payload du 2026-05-30:
+
+- [x] Etendre la discipline de retention aux chemins actifs `library_runtime.py` et `work_resolver.py`.
+- [x] Remplacer `client_responses` par `endpoint_observations` dans `BiblioLibraryRuntimeResult`.
+- [x] Remplacer `client_responses` par `endpoint_observations` dans `BiblioWorkResolution`.
+- [x] Ne garder les payloads Catalogue bruts que comme variables locales transitoires pendant le calcul.
+- [x] Ajouter des tests objet pour liste Catalogue, recherche Catalogue, resolution d'oeuvre et extraction range via runtime.
+
 ### Lot 4 - Ranking et selection bornee de passages
 
 - [ ] Definir un ranking explicable content-free:

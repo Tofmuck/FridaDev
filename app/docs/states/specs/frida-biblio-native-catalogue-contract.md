@@ -508,6 +508,7 @@ Correctif bibliothecaire du 2026-05-30:
 - `library_runtime.py` peut produire une lane de consultation `[CONSULTATION DE BIBLIOTHEQUE]` pour liste, recherche, candidat ou statut non extrait; cette lane peut contenir des titres Catalogue dans le prompt produit, mais elle n'est jamais serialisee en observabilite;
 - les passages bruts restent limites a `[PASSAGES DE BIBLIOTHEQUE CONSULTES]` quand `BiblioPassageResult.status=extracted`;
 - si Catalogue est joignable et la demande est bibliographique, le systeme doit consulter ou produire une ambiguite/statut explicite; il ne doit pas repondre comme si aucune bibliotheque n'etait accessible.
+- les resultats actifs `BiblioLibraryRuntimeResult` et `BiblioWorkResolution` ne conservent pas de `CatalogueResponse.payload`; ils gardent seulement des observations endpoint compactes content-free.
 
 Correctif recherche de candidats du 2026-05-30:
 

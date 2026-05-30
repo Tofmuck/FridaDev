@@ -34,6 +34,22 @@ class BiblioWorkResolverTests(unittest.TestCase):
         self.assertNotIn("Théétète", encoded)
         self.assertNotIn("Platon", encoded)
 
+    def test_work_resolution_retains_only_endpoint_observations_not_raw_payloads(self) -> None:
+        plan = query_planner.plan_biblio_query("un extrait du Théétète de Platon, 126b à 128a")
+        fake = _FakeClient()
+
+        result = work_resolver.BiblioWorkResolver(fake).resolve(plan)
+        observed = [item.to_observability() for item in result.endpoint_observations]
+        encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, work_resolver.STATUS_RESOLVED)
+        self.assertTrue(result.endpoint_observations)
+        self.assertFalse(hasattr(result, "client_responses"))
+        self.assertFalse(any(hasattr(item, "payload") for item in result.endpoint_observations))
+        self.assertNotIn("RAW TITLE MUST STAY INTERNAL", encoded)
+        self.assertNotIn("RAW OCR MUST STAY INTERNAL", encoded)
+        self.assertNotIn("payload", encoded)
+
     def test_search_anchor_uses_work_alias_variants(self) -> None:
         plan = query_planner.BiblioQueryPlan(
             should_consult=True,

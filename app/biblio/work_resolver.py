@@ -12,7 +12,14 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
-from .catalogue_client import CatalogueClient, CatalogueClientError, CatalogueResponse, short_doc_id
+from .catalogue_client import (
+    CatalogueClient,
+    CatalogueClientError,
+    CatalogueEndpointObservation,
+    CatalogueResponse,
+    observe_catalogue_response,
+    short_doc_id,
+)
 from .document_resolver import BiblioResolveRequest
 from .query_planner import BiblioQueryPlan
 
@@ -38,7 +45,11 @@ class BiblioWorkResolution:
     status: str
     reason_code: str
     resolve_request: BiblioResolveRequest | None = None
-    client_responses: tuple[CatalogueResponse, ...] = field(default_factory=tuple, repr=False, compare=False)
+    endpoint_observations: tuple[CatalogueEndpointObservation, ...] = field(
+        default_factory=tuple,
+        repr=False,
+        compare=False,
+    )
     client_error: CatalogueClientError | None = field(default=None, repr=False, compare=False)
     document_candidate_ids: tuple[str, ...] = field(default_factory=tuple)
     search_result_count: int = 0
@@ -66,7 +77,7 @@ class BiblioWorkResolver:
         self._client = client
 
     def resolve(self, plan: BiblioQueryPlan) -> BiblioWorkResolution:
-        responses: list[CatalogueResponse] = []
+        endpoint_observations: list[CatalogueEndpointObservation] = []
         try:
             catalog_items: list[Mapping[str, Any]] = []
             if plan.document_title or plan.author:
@@ -76,7 +87,7 @@ class BiblioWorkResolver:
                         limit=DOCUMENT_QUERY_LIMIT,
                         offset=0,
                     )
-                    responses.append(catalog_response)
+                    endpoint_observations.append(observe_catalogue_response(catalog_response))
                     catalog_items = _catalog_items(catalog_response)
                     if catalog_items:
                         break
@@ -85,7 +96,7 @@ class BiblioWorkResolver:
             if plan.work_title:
                 for query in _candidate_queries(plan.work_title_variants, plan.work_title):
                     search_response = self._client.search(query, limit=WORK_SEARCH_LIMIT)
-                    responses.append(search_response)
+                    endpoint_observations.append(observe_catalogue_response(search_response))
                     search_rows = _search_results(search_response)
                     if search_rows:
                         break
@@ -94,7 +105,7 @@ class BiblioWorkResolver:
             return BiblioWorkResolution(
                 status=STATUS_CATALOGUE_UNAVAILABLE,
                 reason_code=REASON_CATALOGUE_UNAVAILABLE,
-                client_responses=tuple(responses),
+                endpoint_observations=tuple(endpoint_observations),
                 client_error=exc,
             )
 
@@ -104,7 +115,7 @@ class BiblioWorkResolver:
             return BiblioWorkResolution(
                 status=STATUS_NOT_FOUND,
                 reason_code=REASON_WORK_NOT_FOUND,
-                client_responses=tuple(responses),
+                endpoint_observations=tuple(endpoint_observations),
                 document_candidate_ids=candidate_ids,
                 search_result_count=len(search_rows),
                 catalog_result_count=len(catalog_items),
@@ -126,7 +137,7 @@ class BiblioWorkResolver:
             status=status,
             reason_code=reason,
             resolve_request=request,
-            client_responses=tuple(responses),
+            endpoint_observations=tuple(endpoint_observations),
             document_candidate_ids=candidate_ids,
             search_result_count=len(search_rows),
             catalog_result_count=len(catalog_items),

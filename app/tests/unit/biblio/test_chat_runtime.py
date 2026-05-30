@@ -12,8 +12,10 @@ if str(APP_DIR) not in sys.path:
 
 from biblio import chat_runtime
 from biblio import catalogue_client as catalogue
+from biblio import library_runtime
 from biblio import passage_extractor as extractor
 from biblio import prompt_lane
+from biblio import query_planner
 
 
 RAW_PASSAGE = "SYNTHETIC_BIBLIO_CHAT_PASSAGE_MUST_ONLY_APPEAR_IN_PROMPT"
@@ -104,6 +106,16 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(result.observability_payload["status"], "listed")
         self.assertEqual(result.observability_payload["client"]["event_count"], 1)
 
+    def test_library_runtime_list_catalog_retains_only_endpoint_observations(self) -> None:
+        plan = query_planner.plan_biblio_query("Tu peux chercher et voir les premiers ouvrages ?")
+
+        result = library_runtime.run_biblio_library_plan(_FakeClient(), plan)
+
+        self.assertEqual(result.status, library_runtime.STATUS_LISTED)
+        self.assertTrue(result.endpoint_observations)
+        self.assertFalse(hasattr(result, "client_responses"))
+        self.assertFalse(any(hasattr(item, "payload") for item in result.endpoint_observations))
+
     def test_unaccented_thematic_search_uses_accent_variant_without_extracting_yet(self) -> None:
         fake = _AccentSensitiveSearchClient()
 
@@ -122,6 +134,21 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertNotIn(prompt_lane.LANE_HEADER, result.prompt_message["content"])
         self.assertIn(("search", "maïeutique"), fake.calls)
         self.assertNotIn(("context",), fake.calls)
+
+    def test_library_runtime_search_catalog_retains_only_endpoint_observations(self) -> None:
+        plan = query_planner.plan_biblio_query("Cherche maieutique dans la bibliotheque")
+        fake = _AccentSensitiveSearchClient()
+
+        result = library_runtime.run_biblio_library_plan(fake, plan)
+        encoded = json.dumps(result.client_observability(), ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, library_runtime.STATUS_SEARCHED)
+        self.assertTrue(result.endpoint_observations)
+        self.assertFalse(hasattr(result, "client_responses"))
+        self.assertFalse(any(hasattr(item, "payload") for item in result.endpoint_observations))
+        self.assertNotIn("RAW TITLE MUST STAY INTERNAL", encoded)
+        self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
+        self.assertNotIn("payload", encoded)
 
     def test_thematic_search_repro_phrasings_do_not_fall_back_to_locator_required(self) -> None:
         messages = (
@@ -170,6 +197,27 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(request.resolve_request.locator_end, "128a")
         self.assertEqual(request.resolve_request.locator_anchor_page, 131)
         self.assertNotEqual(result.reason_code, chat_runtime.REASON_NO_BIBLIOGRAPHIC_SIGNAL)
+
+    def test_library_runtime_extract_range_retains_no_payloads_in_runtime_or_work_resolution(self) -> None:
+        plan = query_planner.plan_biblio_query(
+            "Bon, vas-y, tu me balances ici un extrait du Théétète de Platon. On va dire 126b à 128a."
+        )
+        observed: dict[str, object] = {}
+
+        result = library_runtime.run_biblio_library_plan(
+            _FakeClient(),
+            plan,
+            extractor_factory=lambda client: _FakeExtractor(observed),
+        )
+
+        self.assertEqual(result.status, library_runtime.STATUS_EXTRACTED_OR_LANE)
+        self.assertIsNotNone(result.work_resolution)
+        self.assertTrue(result.endpoint_observations)
+        self.assertTrue(result.work_resolution.endpoint_observations)
+        self.assertFalse(hasattr(result, "client_responses"))
+        self.assertFalse(hasattr(result.work_resolution, "client_responses"))
+        self.assertFalse(any(hasattr(item, "payload") for item in result.endpoint_observations))
+        self.assertFalse(any(hasattr(item, "payload") for item in result.work_resolution.endpoint_observations))
 
     def test_common_french_locator_phrasings_resolve_title(self) -> None:
         cases = (

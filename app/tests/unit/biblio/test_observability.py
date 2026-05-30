@@ -89,6 +89,31 @@ class BiblioObservabilityTests(unittest.TestCase):
         self.assertNotIn(prompt_lane.LANE_HEADER, encoded)
         self.assertNotIn(prompt_lane.LANE_FOOTER, encoded)
 
+    def test_event_payload_accepts_endpoint_observations_without_payload(self) -> None:
+        observation = catalogue.CatalogueEndpointObservation(
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            status_code=200,
+            duration_ms=7,
+            result_count=8,
+            doc_id_short="doc-1234",
+            content_chars=128,
+        )
+
+        payload = observability.build_biblio_event_payload(
+            enabled=True,
+            used=True,
+            query_kind="search_catalog",
+            client_response=[observation],
+            status="searched",
+            reason_code="biblio_catalog_searched",
+        )
+        encoded = _json(payload)
+
+        self.assertEqual(payload["client"]["event_count"], 1)
+        self.assertEqual(payload["client"]["items"][0]["endpoint_kind"], catalogue.ENDPOINT_SEARCH)
+        self.assertNotIn("payload", payload["client"]["items"][0])
+        self.assertNotIn(RAW_SECRET, encoded)
+
     def test_malformed_passage_hash_without_text_is_never_observable(self) -> None:
         passage = _passage(
             "",

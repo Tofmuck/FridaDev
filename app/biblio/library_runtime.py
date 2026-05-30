@@ -10,7 +10,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
-from .catalogue_client import CatalogueClient, CatalogueClientError, CatalogueResponse, short_doc_id
+from .catalogue_client import (
+    CatalogueClient,
+    CatalogueClientError,
+    CatalogueEndpointObservation,
+    CatalogueResponse,
+    observe_catalogue_response,
+    short_doc_id,
+)
 from .passage_extractor import (
     BiblioPassageExtractor,
     BiblioPassageRequest,
@@ -79,7 +86,11 @@ class BiblioLibraryRuntimeResult:
     status: str
     reason_code: str
     query_kind: str
-    client_responses: tuple[CatalogueResponse, ...] = field(default_factory=tuple, repr=False, compare=False)
+    endpoint_observations: tuple[CatalogueEndpointObservation, ...] = field(
+        default_factory=tuple,
+        repr=False,
+        compare=False,
+    )
     client_error: CatalogueClientError | None = field(default=None, repr=False, compare=False)
     work_resolution: BiblioWorkResolution | None = field(default=None, repr=False, compare=False)
     passage_result: BiblioPassageResult | None = field(default=None, repr=False, compare=False)
@@ -95,7 +106,7 @@ class BiblioLibraryRuntimeResult:
         return None
 
     def client_observability(self) -> list[dict[str, Any]]:
-        items = [dict(response.to_observability()) for response in self.client_responses]
+        items = [dict(observation.to_observability()) for observation in self.endpoint_observations]
         if self.client_error is not None:
             items.append(dict(self.client_error.to_observability()))
         return items
@@ -150,17 +161,17 @@ def _list_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLibra
         status=STATUS_LISTED,
         reason_code=REASON_CATALOG_LISTED,
         query_kind=plan.query_kind,
-        client_responses=(response,),
+        endpoint_observations=(observe_catalogue_response(response),),
         consultation_message=consultation,
     )
 
 
 def _search_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLibraryRuntimeResult:
-    responses: list[CatalogueResponse] = []
+    endpoint_observations: list[CatalogueEndpointObservation] = []
     try:
         for query in _candidate_queries(plan.catalogue_query_variants, plan.catalogue_query):
             response = client.catalog(q=query, limit=plan.limit or DEFAULT_SEARCH_LIMIT, offset=0)
-            responses.append(response)
+            endpoint_observations.append(observe_catalogue_response(response))
             items = _catalog_items(response)[: plan.limit or DEFAULT_SEARCH_LIMIT]
             if items:
                 consultation = _catalog_consultation_message(
@@ -173,7 +184,7 @@ def _search_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLib
                     status=STATUS_SEARCHED,
                     reason_code=REASON_CATALOG_SEARCHED,
                     query_kind=plan.query_kind,
-                    client_responses=tuple(responses),
+                    endpoint_observations=tuple(endpoint_observations),
                     consultation_message=consultation,
                 )
         for query in _candidate_queries(
@@ -183,7 +194,7 @@ def _search_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLib
             plan.work_title,
         ):
             search_response = client.search(query, limit=plan.limit or DEFAULT_SEARCH_LIMIT)
-            responses.append(search_response)
+            endpoint_observations.append(observe_catalogue_response(search_response))
             rows = _search_results(search_response)
             if rows:
                 consultation = _search_consultation_message(rows)
@@ -191,11 +202,11 @@ def _search_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLib
                     status=STATUS_SEARCHED,
                     reason_code=REASON_CATALOG_SEARCHED,
                     query_kind=plan.query_kind,
-                    client_responses=tuple(responses),
+                    endpoint_observations=tuple(endpoint_observations),
                     consultation_message=consultation,
                 )
     except CatalogueClientError as exc:
-        return _client_error(plan, exc, responses=responses)
+        return _client_error(plan, exc, endpoint_observations=endpoint_observations)
 
     consultation = _consultation_message(
         status=STATUS_NOT_FOUND,
@@ -206,7 +217,7 @@ def _search_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLib
         status=STATUS_NOT_FOUND,
         reason_code=REASON_PASSAGE_NOT_EXTRACTED,
         query_kind=plan.query_kind,
-        client_responses=tuple(responses),
+        endpoint_observations=tuple(endpoint_observations),
         consultation_message=consultation,
     )
 
@@ -220,13 +231,13 @@ def _resolve_and_extract(
     work_resolver_factory: Any,
 ) -> BiblioLibraryRuntimeResult:
     work_resolution = work_resolver_factory(client).resolve(plan)
-    responses = list(work_resolution.client_responses)
+    endpoint_observations = list(work_resolution.endpoint_observations)
     if work_resolution.client_error is not None:
         return BiblioLibraryRuntimeResult(
             status=STATUS_ERROR,
             reason_code=REASON_CATALOGUE_UNAVAILABLE,
             query_kind=plan.query_kind,
-            client_responses=tuple(responses),
+            endpoint_observations=tuple(endpoint_observations),
             client_error=work_resolution.client_error,
             work_resolution=work_resolution,
         )
@@ -241,7 +252,7 @@ def _resolve_and_extract(
             status=work_resolution.status,
             reason_code=work_resolution.reason_code,
             query_kind=plan.query_kind,
-            client_responses=tuple(responses),
+            endpoint_observations=tuple(endpoint_observations),
             work_resolution=work_resolution,
             consultation_message=consultation,
         )
@@ -260,7 +271,7 @@ def _resolve_and_extract(
             status=STATUS_EXTRACTED_OR_LANE,
             reason_code=REASON_PASSAGE_LANE_READY,
             query_kind=plan.query_kind,
-            client_responses=tuple(responses),
+            endpoint_observations=tuple(endpoint_observations),
             work_resolution=work_resolution,
             passage_result=passage_result,
             prompt_lane=prompt_lane,
@@ -276,7 +287,7 @@ def _resolve_and_extract(
         status=passage_result.status,
         reason_code=passage_result.reason_code,
         query_kind=plan.query_kind,
-        client_responses=tuple(responses),
+        endpoint_observations=tuple(endpoint_observations),
         work_resolution=work_resolution,
         passage_result=passage_result,
         prompt_lane=prompt_lane,
@@ -288,13 +299,13 @@ def _client_error(
     plan: BiblioQueryPlan,
     exc: CatalogueClientError,
     *,
-    responses: Sequence[CatalogueResponse] = (),
+    endpoint_observations: Sequence[CatalogueEndpointObservation] = (),
 ) -> BiblioLibraryRuntimeResult:
     return BiblioLibraryRuntimeResult(
         status=STATUS_ERROR,
         reason_code=REASON_CATALOGUE_UNAVAILABLE,
         query_kind=plan.query_kind,
-        client_responses=tuple(responses),
+        endpoint_observations=tuple(endpoint_observations),
         client_error=exc,
     )
 
