@@ -528,6 +528,12 @@ docker exec -w /app platform-fridadev python -m biblio.smoke_live --jsonl
 
 Le runner imprime seulement des records JSON content-free par `case_id` (`S1`..`S5`). Les formulations exactes restent dans le code du smoke, mais ne sont pas imprimees; les sorties contiennent uniquement statuts, reason codes, counts, endpoint kinds, ids courts, hashes courts, longueurs et flags de retention/fuite.
 
+Correctif strict smoke du 2026-05-30:
+
+- [x] Le runner est strict par defaut: il retourne un code non-zero si `raw_marker_leaks=true` ou si `payload_objects_retained > 0`.
+- [x] L'inspection non bloquante existe seulement via `--no-strict`.
+- [x] `raw_marker_leaks` est calcule sur les projections sources et sur le record final sanitize avant emission, afin qu'un futur champ brut ajoute au record soit detecte.
+
 ### Lot 7 - Observabilite/admin content-free
 
 - [ ] Etendre `build_biblio_event_payload()` si besoin pour les recherches thematiques.

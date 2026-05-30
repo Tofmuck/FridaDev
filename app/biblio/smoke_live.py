@@ -36,6 +36,29 @@ DEFAULT_RAW_MARKERS: tuple[str, ...] = (
 
 SmokeTurnRunner = Callable[..., BiblioChatResult]
 
+EXIT_OK = 0
+EXIT_CONTENT_FREE_VIOLATION = 2
+
+_OUTPUT_KEYS = {
+    "candidate_count",
+    "case_id",
+    "client_count",
+    "context_call_count",
+    "doc_id_shorts",
+    "endpoint_count",
+    "endpoint_kinds",
+    "hashes",
+    "lane_chars",
+    "lane_injected",
+    "lengths",
+    "passage_count",
+    "payload_objects_retained",
+    "query_kind",
+    "reason_code",
+    "selected_count",
+    "status",
+}
+
 
 def run_smokes(
     *,
@@ -72,16 +95,12 @@ def _record_for_result(
     passage_count = _to_int(lane.get("passage_count")) or _to_int(counts.get("passage_count"))
     lane_chars = _to_int(lane.get("chars")) or _to_int(counts.get("lane_chars"))
     prompt_content = (result.prompt_message or {}).get("content") if result.prompt_message else ""
-    encoded_observability = json.dumps(
-        {
-            "event": event,
-            "context": context,
-            "lane": lane,
-        },
-        ensure_ascii=False,
-        sort_keys=True,
-    )
-    return {
+    source_projection = {
+        "event": event,
+        "context": context,
+        "lane": lane,
+    }
+    base_record = {
         "case_id": case_id,
         "status": _safe_text(event.get("status")),
         "reason_code": _safe_text(event.get("reason_code")),
@@ -103,8 +122,12 @@ def _record_for_result(
             "passage_chars": _to_int(context.get("passage_chars")) or _to_int(counts.get("passage_chars")),
         },
         "payload_objects_retained": _payload_objects_retained(result),
-        "raw_marker_leaks": any(marker in encoded_observability for marker in raw_markers),
     }
+    return _finalize_record(
+        base_record,
+        raw_markers=raw_markers,
+        source_projection=source_projection,
+    )
 
 
 def _lane_observability(value: Any) -> dict[str, Any]:
@@ -165,6 +188,42 @@ def _payload_objects_retained(result: BiblioChatResult) -> int:
     return total
 
 
+def _finalize_record(
+    record: Mapping[str, Any],
+    *,
+    raw_markers: Sequence[str],
+    source_projection: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    sanitized = {key: record[key] for key in sorted(_OUTPUT_KEYS) if key in record}
+    source_leaks = _contains_raw_marker(source_projection or {}, raw_markers)
+    record_leaks = _contains_raw_marker(record, raw_markers) or _contains_raw_marker(sanitized, raw_markers)
+    sanitized["raw_marker_leaks"] = bool(source_leaks or record_leaks)
+    return sanitized
+
+
+def smoke_record_violations(record: Mapping[str, Any]) -> tuple[str, ...]:
+    violations: list[str] = []
+    if bool(record.get("raw_marker_leaks")):
+        violations.append("raw_marker_leaks")
+    if _to_int(record.get("payload_objects_retained")) > 0:
+        violations.append("payload_objects_retained")
+    return tuple(violations)
+
+
+def smoke_exit_code(records: Sequence[Mapping[str, Any]], *, strict: bool = True) -> int:
+    if not strict:
+        return EXIT_OK
+    for record in records:
+        if smoke_record_violations(record):
+            return EXIT_CONTENT_FREE_VIOLATION
+    return EXIT_OK
+
+
+def _contains_raw_marker(value: Any, raw_markers: Sequence[str]) -> bool:
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return any(marker in encoded for marker in raw_markers if marker)
+
+
 def _to_int(value: Any) -> int:
     if type(value) is int:
         return value
@@ -180,6 +239,11 @@ def _safe_text(value: Any) -> str:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run content-free Biblio live smokes.")
     parser.add_argument("--jsonl", action="store_true", help="Print one JSON object per line.")
+    parser.add_argument(
+        "--no-strict",
+        action="store_true",
+        help="Print records even if content-free guardrails fail and exit 0.",
+    )
     args = parser.parse_args(argv)
     records = run_smokes()
     if args.jsonl:
@@ -187,7 +251,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps(record, ensure_ascii=False, sort_keys=True))
     else:
         print(json.dumps(records, ensure_ascii=False, indent=2, sort_keys=True))
-    return 0
+    return smoke_exit_code(records, strict=not args.no_strict)
 
 
 if __name__ == "__main__":

@@ -561,10 +561,12 @@ Injection thematique Lot 5 du 2026-05-30:
 Smokes live philosophiques Lot 6 du 2026-05-30:
 
 - le protocole reutilisable est `python -m biblio.smoke_live --jsonl`;
+- le mode normal est strict: le processus retourne un code non-zero si `raw_marker_leaks=true` ou si `payload_objects_retained > 0`;
+- l'inspection non bloquante doit etre explicite via `--no-strict`;
 - le runner execute les cas obligatoires de liste, range explicite, recherche thematique, recherche theme seul et formulation dictee approximative;
 - les sorties ne contiennent pas les formulations utilisateur, titres, auteurs, locators, passages, payloads Catalogue, prompts complets, cookies, tokens ou DSN;
 - chaque record est identifie seulement par `case_id` et expose `status`, `reason_code`, `query_kind`, `client_count`, `endpoint_count`, `endpoint_kinds`, `candidate_count`, `context_call_count`, `selected_count`, `passage_count`, `lane_injected`, `lane_chars`, ids courts, hashes courts, longueurs, `payload_objects_retained` et `raw_marker_leaks`;
-- `raw_marker_leaks` est calcule sur les projections content-free (`observability_payload`, observation contextuelle et observation de lane), jamais sur le message prompt brut;
+- `raw_marker_leaks` est calcule sur les projections content-free (`observability_payload`, observation contextuelle et observation de lane) et sur le record final sanitize avant emission, jamais sur le message prompt brut;
 - le nettoyage P3 post-Lot 5 supprime l'ancien chemin `library_runtime._search_catalog()` et ses constantes locales stale: `INTENT_SEARCH_CATALOG` passe uniquement par `_search_passages()` et `BiblioPassageContextSearcher`.
 
 Validation finale Lot 8 du 2026-05-29:
