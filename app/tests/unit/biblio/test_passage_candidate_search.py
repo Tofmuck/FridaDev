@@ -22,7 +22,7 @@ RAW_TEXT = "RAW OCR TEXT MUST STAY INTERNAL"
 class BiblioPassageCandidateSearchTests(unittest.TestCase):
     def test_accented_theme_search_finds_content_free_candidates(self) -> None:
         plan = query_planner.plan_biblio_query("Cherche maïeutique dans la bibliothèque")
-        fake = _FakeSearchClient({"maïeutique": [_row("doc-1", page_no=4, para_no=26, rank=1)]})
+        fake = _FakeSearchClient({"maïeutique": [_row("doc-1", page_no=4, para_no=26, rank=0.3)]})
 
         result = candidate_search.BiblioPassageCandidateSearcher(fake).search(plan)
         observed = result.to_observability()
@@ -33,10 +33,40 @@ class BiblioPassageCandidateSearchTests(unittest.TestCase):
         self.assertEqual(observed["candidates"][0]["doc_id_short"], "doc-1")
         self.assertEqual(observed["candidates"][0]["page_no"], 4)
         self.assertEqual(observed["candidates"][0]["para_no"], 26)
+        self.assertEqual(observed["candidates"][0]["catalogue_rank_score"], 0.3)
+        self.assertEqual(observed["candidates"][0]["first_result_index"], 1)
+        self.assertIn("high_catalogue_rank_score", observed["candidates"][0]["reason_codes"])
         self.assertIn(("search", "maïeutique"), fake.calls)
         self.assertNotIn(RAW_TITLE, encoded)
         self.assertNotIn(RAW_TEXT, encoded)
         self.assertNotIn("maïeutique", encoded)
+
+    def test_live_like_float_catalogue_rank_is_preserved_and_scores_candidates(self) -> None:
+        plan = query_planner.plan_biblio_query("Cherche maïeutique dans la bibliothèque")
+        fake = _FakeSearchClient(
+            {
+                "maïeutique": [
+                    _row("doc-top", page_no=4, para_no=26, rank=0.3),
+                    _row("doc-middle", page_no=4, para_no=27, rank=0.2),
+                    _row("doc-low", page_no=4, para_no=28, rank=0.1),
+                ]
+            }
+        )
+
+        result = candidate_search.BiblioPassageCandidateSearcher(fake).search(plan)
+        observed = result.to_observability()
+        encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, candidate_search.STATUS_CANDIDATES_FOUND)
+        self.assertEqual(result.candidates[0].doc_id_short, "doc-top")
+        self.assertEqual(result.candidates[0].catalogue_rank_score, 0.3)
+        self.assertIsNotNone(result.candidates[0].catalogue_rank_score)
+        self.assertGreater(result.candidates[0].score, result.candidates[1].score)
+        self.assertEqual(observed["candidates"][0]["catalogue_rank_score"], 0.3)
+        self.assertIn("catalogue_rank_score", observed["candidates"][0]["reason_codes"])
+        self.assertIn("high_catalogue_rank_score", observed["candidates"][0]["reason_codes"])
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_TEXT, encoded)
 
     def test_unaccented_theme_uses_accented_variant(self) -> None:
         plan = query_planner.plan_biblio_query("Cherche maieutique dans la bibliotheque")
@@ -55,10 +85,10 @@ class BiblioPassageCandidateSearchTests(unittest.TestCase):
         fake = _FakeSearchClient(
             {
                 "maïeutique": [
-                    _row("doc-work", page_no=5, para_no=26, rank=2),
-                    _row("doc-other", page_no=5, para_no=26, rank=2),
+                    _row("doc-work", page_no=5, para_no=26, rank=0.2),
+                    _row("doc-other", page_no=5, para_no=26, rank=0.2),
                 ],
-                "Théétète": [_row("doc-work", page_no=4, para_no=20, rank=1)],
+                "Théétète": [_row("doc-work", page_no=4, para_no=20, rank=0.3)],
             }
         )
 
@@ -72,7 +102,7 @@ class BiblioPassageCandidateSearchTests(unittest.TestCase):
 
     def test_duplicate_paragraph_hits_are_deduplicated_and_boosted(self) -> None:
         plan = query_planner.plan_biblio_query("Cherche maieutique dans la bibliotheque")
-        rows = [_row("doc-1", page_no=4, para_no=26, paragraph_id=43430, rank=1)]
+        rows = [_row("doc-1", page_no=4, para_no=26, paragraph_id=43430, rank=0.3)]
         fake = _FakeSearchClient({"maieutique": rows, "maïeutique": rows})
 
         result = candidate_search.BiblioPassageCandidateSearcher(fake).search(plan)
@@ -88,8 +118,8 @@ class BiblioPassageCandidateSearchTests(unittest.TestCase):
         fake = _FakeSearchClient(
             {
                 "maïeutique": [
-                    _row("doc-a", page_no=4, para_no=26, rank=4),
-                    _row("doc-b", page_no=4, para_no=26, rank=4),
+                    _row("doc-a", page_no=4, para_no=26, rank=0.3),
+                    _row("doc-b", page_no=4, para_no=26, rank=0.3),
                 ]
             }
         )
@@ -152,7 +182,7 @@ def _row(
     page_no: int,
     para_no: int,
     paragraph_id: int | None = None,
-    rank: int = 1,
+    rank: object = 0.0,
 ) -> dict[str, object]:
     row: dict[str, object] = {
         "document_id": document_id,

@@ -8,6 +8,7 @@ Catalogue payloads, prompt content, or raw query strings in observability.
 from __future__ import annotations
 
 import hashlib
+import math
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
@@ -57,7 +58,8 @@ class BiblioPassageCandidate:
     query_variant_count: int = 0
     query_hashes: tuple[str, ...] = field(default_factory=tuple)
     reason_codes: tuple[str, ...] = field(default_factory=tuple)
-    first_rank: int | None = None
+    catalogue_rank_score: float | None = None
+    first_result_index: int | None = None
 
     def to_observability(self) -> dict[str, Any]:
         return {
@@ -70,7 +72,8 @@ class BiblioPassageCandidate:
             "query_variant_count": self.query_variant_count,
             "query_hashes": list(self.query_hashes),
             "reason_codes": list(self.reason_codes),
-            "first_rank": self.first_rank,
+            "catalogue_rank_score": _round_optional(self.catalogue_rank_score),
+            "first_result_index": self.first_result_index,
         }
 
 
@@ -132,12 +135,12 @@ class BiblioPassageCandidateSearcher:
                 response = self._client.search(spec.query, limit=request.search_limit)
                 responses.append(response)
                 rows = _search_results(response)
-                for row in rows:
+                for result_index, row in enumerate(rows, 1):
                     position = _row_position(row)
                     if position is None:
                         skipped_rows += 1
                         continue
-                    doc_id, page_no, para_no, paragraph_id, rank = position
+                    doc_id, page_no, para_no, paragraph_id, catalogue_rank_score = position
                     if _ROLE_WORK in spec.roles:
                         work_positions.setdefault(doc_id, []).append((page_no, para_no))
                     if not spec.produces_candidates:
@@ -152,7 +155,11 @@ class BiblioPassageCandidateSearcher:
                             paragraph_id=paragraph_id,
                         ),
                     )
-                    aggregate.add_hit(spec, rank=rank)
+                    aggregate.add_hit(
+                        spec,
+                        catalogue_rank_score=catalogue_rank_score,
+                        result_index=result_index,
+                    )
         except CatalogueClientError as exc:
             return BiblioPassageCandidateSearchResult(
                 status=STATUS_CATALOGUE_UNAVAILABLE,
@@ -206,9 +213,16 @@ class _CandidateAggregate:
     hit_count: int = 0
     query_hashes: list[str] = field(default_factory=list)
     reason_codes: set[str] = field(default_factory=set)
-    first_rank: int | None = None
+    catalogue_rank_score: float | None = None
+    first_result_index: int | None = None
 
-    def add_hit(self, spec: _QuerySpec, *, rank: int | None) -> None:
+    def add_hit(
+        self,
+        spec: _QuerySpec,
+        *,
+        catalogue_rank_score: float | None,
+        result_index: int,
+    ) -> None:
         self.hit_count += 1
         if spec.query_hash not in self.query_hashes:
             self.query_hashes.append(spec.query_hash)
@@ -231,11 +245,19 @@ class _CandidateAggregate:
         if self.hit_count > 1:
             self.base_score += 3
             self.reason_codes.add("multi_variant_hit")
-        if rank is not None:
-            self.first_rank = rank if self.first_rank is None else min(self.first_rank, rank)
-            if rank <= 3:
-                self.base_score += 3
-                self.reason_codes.add("high_search_rank")
+        if self.first_result_index is None or result_index < self.first_result_index:
+            self.first_result_index = result_index
+        if catalogue_rank_score is not None:
+            self.catalogue_rank_score = (
+                catalogue_rank_score
+                if self.catalogue_rank_score is None
+                else max(self.catalogue_rank_score, catalogue_rank_score)
+            )
+            if catalogue_rank_score > 0:
+                self.base_score += min(catalogue_rank_score * 10, 8)
+                self.reason_codes.add("catalogue_rank_score")
+            if catalogue_rank_score >= 0.05:
+                self.reason_codes.add("high_catalogue_rank_score")
 
     def to_candidate(self, work_positions: Mapping[str, Sequence[tuple[int | None, int | None]]]) -> BiblioPassageCandidate:
         score = self.base_score
@@ -257,7 +279,8 @@ class _CandidateAggregate:
             query_variant_count=len(self.query_hashes),
             query_hashes=tuple(self.query_hashes[:8]),
             reason_codes=tuple(sorted(reasons)),
-            first_rank=self.first_rank,
+            catalogue_rank_score=self.catalogue_rank_score,
+            first_result_index=self.first_result_index,
         )
 
 
@@ -334,7 +357,7 @@ def _search_results(response: CatalogueResponse) -> list[Mapping[str, Any]]:
     return [item for item in results if isinstance(item, Mapping)]
 
 
-def _row_position(row: Mapping[str, Any]) -> tuple[str, int | None, int | None, int | None, int | None] | None:
+def _row_position(row: Mapping[str, Any]) -> tuple[str, int | None, int | None, int | None, float | None] | None:
     doc_id = str(row.get("document_id") or "").strip()
     if not doc_id:
         return None
@@ -343,7 +366,7 @@ def _row_position(row: Mapping[str, Any]) -> tuple[str, int | None, int | None, 
     paragraph_id = _optional_int(row.get("paragraph_id"))
     if paragraph_id is None and (page_no is None or para_no is None):
         return None
-    return doc_id, page_no, para_no, paragraph_id, _optional_int(row.get("rank"))
+    return doc_id, page_no, para_no, paragraph_id, _optional_float(row.get("rank"))
 
 
 def _candidate_key(
@@ -364,6 +387,7 @@ def _ranked_candidates(
         candidates,
         key=lambda candidate: (
             -candidate.score,
+            candidate.first_result_index or 1_000_000,
             candidate.doc_id_short,
             candidate.page_no or 0,
             candidate.para_no or 0,
@@ -409,6 +433,25 @@ def _optional_int(value: Any) -> int | None:
     if isinstance(value, str) and value.isdecimal():
         return int(value)
     return None
+
+
+def _optional_float(value: Any) -> float | None:
+    if type(value) in {int, float}:
+        numeric = float(value)
+    elif isinstance(value, str):
+        try:
+            numeric = float(value)
+        except ValueError:
+            return None
+    else:
+        return None
+    return numeric if math.isfinite(numeric) else None
+
+
+def _round_optional(value: float | None) -> float | None:
+    if value is None:
+        return None
+    return round(float(value), 6)
 
 
 def _sha256_12(value: Any) -> str:

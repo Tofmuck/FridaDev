@@ -353,6 +353,14 @@ Preuves unitaires:
 - not found;
 - client error.
 
+Correctif Lot 2 bis du 2026-05-30:
+
+- [x] Corriger l'interpretation de `/search.rank`: c'est un score Catalogue float (`ts_rank_cd` ou fallback `0::float`), pas un rang ordinal entier.
+- [x] Accepter uniquement un score numerique fini sans troncature silencieuse.
+- [x] Exposer en observabilite `catalogue_rank_score` et `first_result_index`, au lieu de raisonner `first_rank` comme un entier.
+- [x] Ajouter le reason code `high_catalogue_rank_score` quand le score Catalogue contribue vraiment au ranking.
+- [x] Prouver sur payload live-like `rank=0.3`, `0.2`, `0.1` que le score est conserve, exploite et reste content-free.
+
 ### Lot 3 - Moteur `search -> candidats -> context`
 
 - [ ] Creer ou etendre un module dedie sans gonfler `chat_runtime.py`.

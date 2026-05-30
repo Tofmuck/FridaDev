@@ -509,6 +509,15 @@ Correctif bibliothecaire du 2026-05-30:
 - les passages bruts restent limites a `[PASSAGES DE BIBLIOTHEQUE CONSULTES]` quand `BiblioPassageResult.status=extracted`;
 - si Catalogue est joignable et la demande est bibliographique, le systeme doit consulter ou produire une ambiguite/statut explicite; il ne doit pas repondre comme si aucune bibliotheque n'etait accessible.
 
+Correctif recherche de candidats du 2026-05-30:
+
+- `app/biblio/passage_candidate_search.py` transforme un `BiblioQueryPlan` en candidats de paragraphes via `GET /search` uniquement;
+- `/search.rank` est un score Catalogue float, issu notamment de `ts_rank_cd(...) AS rank` ou du fallback `0::float`, et ne doit jamais etre interprete comme un rang ordinal entier;
+- le ranking distingue `catalogue_rank_score` du `first_result_index` local aux resultats retournes par `/search`;
+- un score Catalogue float fini peut contribuer au ranking et produire le reason code `high_catalogue_rank_score`;
+- l'observabilite des candidats reste content-free: ids courts, pages, paragraphes, `paragraph_id`, scores, hashes de variantes, reason codes et counts seulement;
+- cette couche ne doit pas appeler `/context`, ne doit pas extraire de passage, et ne doit pas injecter de lane `[PASSAGES DE BIBLIOTHEQUE CONSULTES]`.
+
 Validation finale Lot 8 du 2026-05-29:
 
 - le parsing naturel accepte les formulations conservatrices `126b de l Apologie`, `126b de l'Apologie`, `126b de la Republique` et `126b -> 126e dans le catalogue` sans garder d'article oral ou de fleche dans le titre;
