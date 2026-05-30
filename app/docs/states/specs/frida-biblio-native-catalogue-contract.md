@@ -9,6 +9,7 @@ Correctif post-audit Lot 6: 2026-05-29
 Mise a jour Lot 7: 2026-05-29
 Correctif post-audit Lot 7: 2026-05-29
 Validation finale Lot 8: 2026-05-29
+Correctif bibliothecaire Biblio reelle: 2026-05-30
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -18,7 +19,7 @@ Portee: contrat produit, frontieres, client futur GET-only, resolver, extraction
 
 ## 1. Statut et portee
 
-Biblio native est une capacite documentaire persistante separee. Elle permet a FridaDev de consulter une bibliotheque durable connue de Frida Catalogue / doc-pipeline, puis de resoudre un document et un passage documentaire borne a la demande.
+Biblio native est une capacite documentaire persistante separee. Elle permet a FridaDev de consulter une bibliotheque durable connue de Frida Catalogue / doc-pipeline, lister ou chercher des ouvrages, puis resoudre un document, une oeuvre interne et un passage documentaire borne a la demande.
 
 Source nominale:
 
@@ -333,18 +334,19 @@ Regles:
 - pas de troncature silencieuse sans reason code;
 - pas de promesse que tout l'ouvrage a ete lu.
 
-Implementation Lot 4 du 2026-05-28:
+Implementation Lot 4 du 2026-05-28, completee par le correctif bibliothecaire du 2026-05-30:
 
 - module: `app/biblio/passage_extractor.py`;
 - l'extracteur utilise le resolver Lot 3 et le client Catalogue GET-only;
 - il peut appeler seulement `context()` apres resolution `resolved`;
 - il refuse toute extraction si la resolution est `ambiguous`, `not_found`, `invalid_request` ou `catalogue_unavailable`;
 - il exige un locator resolu avec cible contextuelle non ambigue: `paragraph_id` ou couple `page_no` / `para_no`;
-- il refuse les ranges resolus avec `range_extraction_not_supported` tant qu'aucun contrat range borne n'existe;
+- il refuse les ranges non bornes ou incoherents avec `range_extraction_not_supported`;
+- il peut extraire un range borne seulement quand le document et les deux locators sont resolus sans ambiguite apres ancrage, sur une meme page, avec au plus `MAX_RANGE_PARAGRAPHS = 40` paragraphes et une taille finale autorisee;
 - il ne choisit jamais le premier passage d'un locator ambigu;
 - bornes initiales:
   - `window_chars`: `80..2000`;
-  - `max_passage_chars`: `80..4000`;
+  - `max_passage_chars`: `80..4000` par defaut, jusqu'a `8000` pour une extraction range explicitement bornee par le runtime bibliothecaire;
   - `char_offset`: `0..1000000`;
 - seuls les entiers stricts ou chaines d'entiers decimales propres sont acceptes pour les options numeriques;
 - reponse Catalogue incoherente, passage vide, introuvable, trop long ou indisponibilite Catalogue produisent des statuts explicites;
@@ -494,10 +496,23 @@ Implementation Lot 7 du 2026-05-29:
 - l'event `stage=biblio` utilise uniquement `build_biblio_event_payload()` et ne serialise jamais `BiblioPromptLane.message`;
 - la surface admin `GET /api/admin/biblio/observability` indique maintenant `chat_wired=true`, `frontend_wired=true`, `toggle_wired=true`, tout en conservant `automatic_catalogue_call=false` et `db_write=false`.
 
+Correctif bibliothecaire du 2026-05-30:
+
+- nouveaux modules applicatifs: `app/biblio/query_planner.py`, `app/biblio/work_resolver.py`, `app/biblio/library_runtime.py`;
+- `chat_runtime.py` redevient une orchestration mince: toggle, plan structure, client GET-only, runtime bibliothecaire, observabilite et injection prompt;
+- le planner reconnait les intentions `list_catalog`, `search_catalog`, `resolve_work`, `extract_passage`, `extract_range` et `clarify_ambiguous`;
+- quand `biblio_enabled=true`, les demandes naturelles comme `voir les premiers ouvrages`, `cherche Theetete`, `extrait du Theetete de Platon`, `Theetete 126b a 128a` ne tombent plus en faux `no_signal`;
+- `work_resolver.py` distingue document physique Catalogue, oeuvre interne cherchee par `/search`, locator et range; il utilise les resultats de recherche seulement comme ancre interne content-free pour desambiguiser les milestones;
+- le resolver accepte des ancres non textuelles `locator_anchor_page` / `locator_anchor_para` pour choisir un locator parmi plusieurs candidats sans exposer le titre, l'oeuvre ou la requete en observabilite;
+- le chemin document-id utilise `/metadata` plutot que le payload lourd `/doc/{id}` pour eviter de tirer inutilement l'overview complet;
+- `library_runtime.py` peut produire une lane de consultation `[CONSULTATION DE BIBLIOTHEQUE]` pour liste, recherche, candidat ou statut non extrait; cette lane peut contenir des titres Catalogue dans le prompt produit, mais elle n'est jamais serialisee en observabilite;
+- les passages bruts restent limites a `[PASSAGES DE BIBLIOTHEQUE CONSULTES]` quand `BiblioPassageResult.status=extracted`;
+- si Catalogue est joignable et la demande est bibliographique, le systeme doit consulter ou produire une ambiguite/statut explicite; il ne doit pas repondre comme si aucune bibliotheque n'etait accessible.
+
 Validation finale Lot 8 du 2026-05-29:
 
 - le parsing naturel accepte les formulations conservatrices `126b de l Apologie`, `126b de l'Apologie`, `126b de la Republique` et `126b -> 126e dans le catalogue` sans garder d'article oral ou de fleche dans le titre;
-- les ranges restent volontairement non extraits par `BiblioPassageExtractor` avec `range_extraction_not_supported`;
+- la limite Lot 8 "ranges non extraits" est supersedee par le correctif bibliothecaire du 2026-05-30: seuls les ranges bornes et surs peuvent etre extraits; les autres restent refuses explicitement;
 - aucune case ouverte reelle ne reste dans la roadmap Biblio archivee;
 - toute extension future doit ouvrir un lot explicite si elle touche ranges, UI Catalogue FridaDev, ecriture Catalogue, recherche semantique large, RAG documentaire, OCR ou changement de frontiere avec les documents actifs.
 

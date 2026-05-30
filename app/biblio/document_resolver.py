@@ -53,6 +53,8 @@ class BiblioResolveRequest:
     locator: str = ""
     locator_end: str = ""
     locator_kind: str = "stephanus"
+    locator_anchor_page: int | None = None
+    locator_anchor_para: int | None = None
 
 
 @dataclass(frozen=True)
@@ -82,6 +84,7 @@ class LocatorCandidate:
     page_no: int | None = None
     para_no: int | None = None
     paragraph_id: int | None = None
+    order_index: int | None = None
 
     def to_observability(self) -> dict[str, Any]:
         return {
@@ -91,6 +94,7 @@ class LocatorCandidate:
             "page_no": self.page_no,
             "para_no": self.para_no,
             "paragraph_id": self.paragraph_id,
+            "order_index": self.order_index,
         }
 
 
@@ -106,6 +110,8 @@ class BiblioResolutionResult:
     requested_locator_kind: str = ""
     requested_locator: str = ""
     requested_locator_end: str = ""
+    locator_anchor_page: int | None = None
+    locator_anchor_para: int | None = None
 
     def to_observability(self) -> dict[str, Any]:
         return {
@@ -120,6 +126,8 @@ class BiblioResolutionResult:
             "requested_locator_kind": _observable_locator_kind(self.requested_locator_kind),
             "requested_locator": _compact_text_signal(self.requested_locator),
             "requested_locator_end": _compact_text_signal(self.requested_locator_end),
+            "locator_anchor_page": self.locator_anchor_page,
+            "locator_anchor_para": self.locator_anchor_para,
         }
 
 
@@ -157,6 +165,8 @@ class BiblioDocumentResolver:
             requested_locator_kind=clean.locator_kind,
             requested_locator=clean.locator,
             requested_locator_end=clean.locator_end,
+            locator_anchor_page=clean.locator_anchor_page,
+            locator_anchor_para=clean.locator_anchor_para,
         )
 
     def _resolve_document(self, request: BiblioResolveRequest) -> BiblioResolutionResult:
@@ -205,21 +215,14 @@ class BiblioDocumentResolver:
         )
 
     def _resolve_document_by_id(self, request: BiblioResolveRequest) -> BiblioResolutionResult:
-        try:
-            document = self._client.document(request.document_id)
-        except CatalogueClientError as exc:
-            return _client_error_result(request, exc, REASON_DOCUMENT_NOT_FOUND)
-
         metadata_payload: Mapping[str, Any] | None = None
         try:
             metadata = self._client.metadata(request.document_id)
             metadata_payload = metadata.payload
-        except CatalogueNotFound:
-            metadata_payload = None
         except CatalogueClientError as exc:
-            return _client_error_result(request, exc, REASON_CATALOGUE_UNAVAILABLE)
+            return _client_error_result(request, exc, REASON_DOCUMENT_NOT_FOUND)
 
-        candidate = _document_candidate_from_detail(document.payload, metadata_payload, request)
+        candidate = _document_candidate_from_metadata(metadata_payload, request)
         if not candidate:
             return _result(request, STATUS_NOT_FOUND, REASON_DOCUMENT_NOT_FOUND)
         return _result(
@@ -254,6 +257,8 @@ class BiblioDocumentResolver:
             requested_locator_kind=request.locator_kind,
             requested_locator=request.locator,
             requested_locator_end=request.locator_end,
+            locator_anchor_page=request.locator_anchor_page,
+            locator_anchor_para=request.locator_anchor_para,
         )
 
     def _locate_one(
@@ -275,6 +280,17 @@ class BiblioDocumentResolver:
         candidates = _locator_candidates(response.payload, document)
         if not candidates:
             return _result(request, STATUS_NOT_FOUND, REASON_LOCATOR_NOT_FOUND, document=document)
+
+        anchored = _anchored_locator_candidate(candidates, request)
+        if anchored is not None:
+            return _result(
+                request,
+                STATUS_RESOLVED,
+                REASON_DOCUMENT_AND_LOCATOR_RESOLVED,
+                document=document,
+                locator=anchored,
+                locator_candidates=candidates,
+            )
 
         match_count = _payload_int(response.payload, "match_count")
         if (match_count is not None and match_count > 1) or len(candidates) > 1:
@@ -304,6 +320,8 @@ def _clean_request(request: BiblioResolveRequest) -> BiblioResolveRequest:
         locator=str(request.locator or "").strip(),
         locator_end=str(request.locator_end or "").strip(),
         locator_kind=str(request.locator_kind or "stephanus").strip().lower() or "stephanus",
+        locator_anchor_page=_positive_optional_int(request.locator_anchor_page),
+        locator_anchor_para=_positive_optional_int(request.locator_anchor_para),
     )
 
 
@@ -341,6 +359,8 @@ def _result(
         requested_locator_kind=request.locator_kind,
         requested_locator=request.locator,
         requested_locator_end=request.locator_end,
+        locator_anchor_page=request.locator_anchor_page,
+        locator_anchor_para=request.locator_anchor_para,
     )
 
 
@@ -414,6 +434,38 @@ def _document_candidate_from_detail(
     metadata_status = _text(
         metadata_payload.get("metadata_status") if isinstance(metadata_payload, Mapping) else ""
     ) or _text(human.get("metadata_status"))
+    return DocumentCandidate(
+        document_id=doc_id,
+        doc_id_short=_short_doc_id(doc_id),
+        title=title,
+        canonical_title=canonical_title,
+        authors=authors,
+        metadata_status=metadata_status,
+        match_reasons=_match_reasons(title, canonical_title, authors, request),
+    )
+
+
+def _document_candidate_from_metadata(
+    metadata_payload: Mapping[str, Any] | None,
+    request: BiblioResolveRequest,
+) -> DocumentCandidate | None:
+    if not isinstance(metadata_payload, Mapping):
+        return None
+    human = metadata_payload.get("human_metadata")
+    if not isinstance(human, Mapping):
+        human = {}
+    document = metadata_payload.get("document")
+    if not isinstance(document, Mapping):
+        document = {}
+
+    doc_id = _text(document.get("id") or request.document_id)
+    if not doc_id:
+        return None
+
+    title = _text(document.get("title"))
+    canonical_title = _text(human.get("canonical_title"))
+    authors = _text(human.get("authors"))
+    metadata_status = _text(metadata_payload.get("metadata_status")) or _text(human.get("metadata_status"))
     return DocumentCandidate(
         document_id=doc_id,
         doc_id_short=_short_doc_id(doc_id),
@@ -512,7 +564,31 @@ def _locator_candidate_from_mapping(
         page_no=_optional_int(item.get("page_no")),
         para_no=_optional_int(item.get("para_no")),
         paragraph_id=_optional_int(item.get("paragraph_id")),
+        order_index=_optional_int(item.get("order_index")),
     )
+
+
+def _anchored_locator_candidate(
+    candidates: Sequence[LocatorCandidate],
+    request: BiblioResolveRequest,
+) -> LocatorCandidate | None:
+    if request.locator_anchor_page is None:
+        return None
+    scored: list[tuple[int, LocatorCandidate]] = []
+    for candidate in candidates:
+        if candidate.page_no is None:
+            continue
+        para_score = 0
+        if request.locator_anchor_para is not None and candidate.para_no is not None:
+            para_score = abs(candidate.para_no - request.locator_anchor_para)
+        score = abs(candidate.page_no - request.locator_anchor_page) * 100_000 + para_score
+        scored.append((score, candidate))
+    if not scored:
+        return None
+    scored.sort(key=lambda item: item[0])
+    if len(scored) > 1 and scored[0][0] == scored[1][0]:
+        return None
+    return scored[0][1]
 
 
 def _payload_int(payload: Mapping[str, Any], key: str) -> int | None:
@@ -526,6 +602,13 @@ def _optional_int(value: Any) -> int | None:
     if type(value) is int:
         return value
     return None
+
+
+def _positive_optional_int(value: Any) -> int | None:
+    integer = _optional_int(value)
+    if integer is None or integer < 1:
+        return None
+    return integer
 
 
 def _text(value: Any) -> str:

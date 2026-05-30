@@ -1,0 +1,75 @@
+from __future__ import annotations
+
+import json
+import sys
+import unittest
+from pathlib import Path
+
+
+APP_DIR = Path(__file__).resolve().parents[3]
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+from biblio import catalogue_client as catalogue
+from biblio import query_planner
+from biblio import work_resolver
+
+
+class BiblioWorkResolverTests(unittest.TestCase):
+    def test_search_anchor_turns_internal_work_into_locator_hint(self) -> None:
+        plan = query_planner.plan_biblio_query("un extrait du Théétète de Platon, 126b à 128a")
+        fake = _FakeClient()
+
+        result = work_resolver.BiblioWorkResolver(fake).resolve(plan)
+        observed = result.to_observability()
+        encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, work_resolver.STATUS_RESOLVED)
+        self.assertIsNotNone(result.resolve_request)
+        self.assertEqual(result.resolve_request.title, "Platon")
+        self.assertEqual(result.resolve_request.locator_anchor_page, 131)
+        self.assertEqual(result.resolve_request.locator, "126b")
+        self.assertEqual(result.resolve_request.locator_end, "128a")
+        self.assertEqual([call[0] for call in fake.calls], ["catalog", "search"])
+        self.assertNotIn("Théétète", encoded)
+        self.assertNotIn("Platon", encoded)
+
+
+class _FakeClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[object, ...]] = []
+
+    def catalog(self, *, q: str | None = None, limit: int = 100, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("catalog", q, limit, offset))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            status_code=200,
+            payload={"total": 1, "items": [{"id": "doc-1234", "title": q or ""}]},
+            duration_ms=1,
+            result_count=1,
+        )
+
+    def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search", q, limit))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            status_code=200,
+            payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "title": "RAW TITLE MUST STAY INTERNAL",
+                        "page_no": 131,
+                        "para_no": 230,
+                        "text": "RAW OCR MUST STAY INTERNAL",
+                    }
+                ],
+            },
+            duration_ms=1,
+            result_count=1,
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -40,6 +40,7 @@ REASON_PASSAGE_EXTRACTED = "passage_extracted"
 REASON_LOCATOR_REQUIRED = "locator_required_for_passage"
 REASON_LOCATOR_CONTEXT_TARGET_MISSING = "locator_context_target_missing"
 REASON_RANGE_EXTRACTION_NOT_SUPPORTED = "range_extraction_not_supported"
+REASON_RANGE_EXTRACTED = "range_extracted"
 REASON_PASSAGE_NOT_FOUND = "passage_not_found"
 REASON_PASSAGE_EMPTY = "passage_empty"
 REASON_PASSAGE_TOO_LONG = "passage_too_long"
@@ -53,9 +54,10 @@ MIN_CONTEXT_WINDOW_CHARS = 80
 MAX_CONTEXT_WINDOW_CHARS = 2_000
 DEFAULT_MAX_PASSAGE_CHARS = 4_000
 MIN_MAX_PASSAGE_CHARS = 80
-MAX_MAX_PASSAGE_CHARS = 4_000
+MAX_MAX_PASSAGE_CHARS = 8_000
 MIN_CHAR_OFFSET = 0
 MAX_CHAR_OFFSET = 1_000_000
+MAX_RANGE_PARAGRAPHS = 40
 
 
 @dataclass(frozen=True)
@@ -148,14 +150,7 @@ class BiblioPassageExtractor:
                 doc_id_short=resolution.document.doc_id_short if resolution.document else "",
             )
         if resolution.locator_end:
-            return _result(
-                STATUS_INVALID_REQUEST,
-                REASON_RANGE_EXTRACTION_NOT_SUPPORTED,
-                options=options,
-                resolution=resolution,
-                doc_id_short=resolution.document.doc_id_short,
-                locator=resolution.locator,
-            )
+            return self._extract_range(resolution, options)
 
         target = _context_target(resolution.locator)
         if target is None:
@@ -199,6 +194,143 @@ class BiblioPassageExtractor:
             )
 
         return _from_context_response(response, resolution, options)
+
+    def _extract_range(
+        self,
+        resolution: BiblioResolutionResult,
+        options: _ExtractionOptions,
+    ) -> BiblioPassageResult:
+        if not resolution.document or not resolution.locator or not resolution.locator_end:
+            return _result(
+                STATUS_INVALID_REQUEST,
+                REASON_RANGE_EXTRACTION_NOT_SUPPORTED,
+                options=options,
+                resolution=resolution,
+                doc_id_short=resolution.document.doc_id_short if resolution.document else "",
+                locator=resolution.locator,
+            )
+
+        start = resolution.locator
+        end = resolution.locator_end
+        paragraph_targets = _range_paragraph_targets(start, end)
+        if not paragraph_targets:
+            return _result(
+                STATUS_INVALID_REQUEST,
+                REASON_RANGE_EXTRACTION_NOT_SUPPORTED,
+                options=options,
+                resolution=resolution,
+                doc_id_short=resolution.document.doc_id_short,
+                locator=start,
+            )
+
+        excerpts: list[str] = []
+        range_options = _ExtractionOptions(
+            char_offset=0,
+            window_chars=max(options.window_chars, MAX_CONTEXT_WINDOW_CHARS),
+            max_passage_chars=options.max_passage_chars,
+        )
+        try:
+            for target in paragraph_targets:
+                response = self._context(resolution.document.document_id, target, range_options)
+                payload = response.payload
+                payload_doc_id = _text(payload.get("document_id"))
+                if payload_doc_id != resolution.document.document_id:
+                    return _result(
+                        STATUS_INCOHERENT_CATALOGUE,
+                        REASON_INCOHERENT_CATALOGUE_RESPONSE,
+                        options=options,
+                        resolution=resolution,
+                        doc_id_short=resolution.document.doc_id_short,
+                        locator=start,
+                        payload=payload,
+                    )
+                passage = _passage_text(payload)
+                if passage is None:
+                    return _result(
+                        STATUS_INCOHERENT_CATALOGUE,
+                        REASON_INCOHERENT_CATALOGUE_RESPONSE,
+                        options=options,
+                        resolution=resolution,
+                        doc_id_short=resolution.document.doc_id_short,
+                        locator=start,
+                        payload=payload,
+                    )
+                if passage.strip():
+                    candidate_excerpts = [*excerpts, passage]
+                    candidate_passage = "\n\n".join(candidate_excerpts)
+                    if len(candidate_passage) > options.max_passage_chars:
+                        return _result(
+                            STATUS_TOO_LONG,
+                            REASON_PASSAGE_TOO_LONG,
+                            options=options,
+                            resolution=resolution,
+                            doc_id_short=resolution.document.doc_id_short,
+                            locator=start,
+                            passage_chars=len(candidate_passage),
+                            passage_hash=_short_hash(candidate_passage),
+                        )
+                    excerpts = candidate_excerpts
+        except CatalogueNotFound:
+            return _result(
+                STATUS_NOT_FOUND,
+                REASON_PASSAGE_NOT_FOUND,
+                options=options,
+                resolution=resolution,
+                doc_id_short=resolution.document.doc_id_short,
+                locator=start,
+            )
+        except CatalogueInvalidParameter:
+            return _result(
+                STATUS_INVALID_REQUEST,
+                REASON_INVALID_CATALOGUE_REQUEST,
+                options=options,
+                resolution=resolution,
+                doc_id_short=resolution.document.doc_id_short,
+                locator=start,
+            )
+        except CatalogueClientError:
+            return _result(
+                STATUS_CATALOGUE_UNAVAILABLE,
+                REASON_CATALOGUE_UNAVAILABLE,
+                options=options,
+                resolution=resolution,
+                doc_id_short=resolution.document.doc_id_short,
+                locator=start,
+            )
+
+        passage = "\n\n".join(excerpts)
+        if not passage.strip():
+            return _result(
+                STATUS_EMPTY,
+                REASON_PASSAGE_EMPTY,
+                options=options,
+                resolution=resolution,
+                doc_id_short=resolution.document.doc_id_short,
+                locator=start,
+                passage_chars=len(passage),
+                passage_hash=_short_hash(passage),
+            )
+
+        return _result(
+            STATUS_EXTRACTED,
+            REASON_RANGE_EXTRACTED,
+            options=options,
+            resolution=resolution,
+            doc_id_short=resolution.document.doc_id_short,
+            locator=start,
+            passage=passage,
+            passage_chars=len(passage),
+            passage_hash=_short_hash(passage),
+            payload={
+                "document_id": resolution.document.document_id,
+                "page_no": start.page_no,
+                "para_no": start.para_no,
+                "paragraph_id": start.paragraph_id,
+                "excerpt_start": 0,
+                "excerpt_end": len(passage),
+                "text_length": len(passage),
+            },
+        )
 
     def _context(
         self,
@@ -364,6 +496,21 @@ def _context_target(locator: LocatorCandidate) -> dict[str, int] | None:
     if type(locator.page_no) is int and type(locator.para_no) is int:
         return {"page_no": locator.page_no, "para_no": locator.para_no}
     return None
+
+
+def _range_paragraph_targets(start: LocatorCandidate, end: LocatorCandidate) -> list[dict[str, int]]:
+    if start.document_id != end.document_id:
+        return []
+    if start.page_no is None or end.page_no is None or start.para_no is None or end.para_no is None:
+        return []
+    if start.page_no != end.page_no:
+        return []
+    if end.para_no < start.para_no:
+        return []
+    paragraph_count = end.para_no - start.para_no + 1
+    if paragraph_count < 1 or paragraph_count > MAX_RANGE_PARAGRAPHS:
+        return []
+    return [{"page_no": start.page_no, "para_no": para_no} for para_no in range(start.para_no, end.para_no + 1)]
 
 
 def _passage_text(payload: Mapping[str, Any]) -> str | None:

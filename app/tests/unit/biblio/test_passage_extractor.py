@@ -157,6 +157,64 @@ class PassageExtractorTests(unittest.TestCase):
         self.assertEqual(result.reason_code, extractor.REASON_RANGE_EXTRACTION_NOT_SUPPORTED)
         self.assertNotIn("context", [call[0] for call in fake.calls])
 
+    def test_resolved_same_page_range_extracts_bounded_paragraphs(self) -> None:
+        raw_a = "RANGE PASSAGE PART A"
+        raw_b = "RANGE PASSAGE PART B"
+        fake = FakeCatalogueClient(
+            metadata={"doc-1": {"document": {"id": "doc-1"}, "human_metadata": {}}},
+            locate_payloads={
+                ("doc-1", "stephanus", "126b"): {
+                    "match_count": 1,
+                    "best": {"kind": "stephanus", "label": "126b", "page_no": 7, "para_no": 2},
+                },
+                ("doc-1", "stephanus", "126c"): {
+                    "match_count": 1,
+                    "best": {"kind": "stephanus", "label": "126c", "page_no": 7, "para_no": 3},
+                },
+            },
+            context_payloads={
+                ("page_para", "doc-1", 7, 2, 0, extractor.MAX_CONTEXT_WINDOW_CHARS): {
+                    "document_id": "doc-1",
+                    "page_no": 7,
+                    "para_no": 2,
+                    "excerpt": raw_a,
+                },
+                ("page_para", "doc-1", 7, 3, 0, extractor.MAX_CONTEXT_WINDOW_CHARS): {
+                    "document_id": "doc-1",
+                    "page_no": 7,
+                    "para_no": 3,
+                    "excerpt": raw_b,
+                },
+            },
+        )
+
+        result = extractor.BiblioPassageExtractor(fake).extract(
+            extractor.BiblioPassageRequest(
+                resolve_request=resolver.BiblioResolveRequest(
+                    document_id="doc-1",
+                    locator="126b",
+                    locator_end="126c",
+                ),
+                window_chars=extractor.MAX_CONTEXT_WINDOW_CHARS,
+                max_passage_chars=500,
+            )
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, extractor.STATUS_EXTRACTED)
+        self.assertEqual(result.reason_code, extractor.REASON_RANGE_EXTRACTED)
+        self.assertIn(raw_a, result.passage)
+        self.assertIn(raw_b, result.passage)
+        self.assertNotIn(raw_a, str(observed))
+        self.assertNotIn(raw_b, str(observed))
+        self.assertEqual(
+            [call for call in fake.calls if call[0] == "context"],
+            [
+                ("context", "doc-1", None, 7, 2, 0, extractor.MAX_CONTEXT_WINDOW_CHARS),
+                ("context", "doc-1", None, 7, 3, 0, extractor.MAX_CONTEXT_WINDOW_CHARS),
+            ],
+        )
+
     def test_locator_without_context_target_is_invalid(self) -> None:
         fake = FakeCatalogueClient(
             documents={"doc-1": {"document": {"id": "doc-1"}}},

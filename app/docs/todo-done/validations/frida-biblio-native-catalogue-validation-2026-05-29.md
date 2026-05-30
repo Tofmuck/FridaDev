@@ -72,3 +72,26 @@ Resultat: suites vertes au moment de la cloture.
 - Pas de backfill, OCR general ou re-OCR Catalogue.
 
 Toute evolution de ces limites doit ouvrir un nouveau lot explicite.
+
+## Addendum correctif bibliothecaire - 2026-05-30
+
+Statut: correctif produit applique sur le chantier archive.
+
+Motif: deux demandes Biblio reelles etaient classees a tort `biblio_no_bibliographic_signal` malgre un Catalogue joignable: liste des premiers ouvrages et extraction naturelle d'un passage du Theetete de Platon avec range Stephanus.
+
+Changements valides:
+
+- ajout de `app/biblio/query_planner.py` pour produire un plan structure (`list_catalog`, `search_catalog`, `resolve_work`, `extract_passage`, `extract_range`, `clarify_ambiguous`);
+- ajout de `app/biblio/work_resolver.py` pour relier oeuvre interne, document physique Catalogue et ancre non textuelle issue de `/search`;
+- ajout de `app/biblio/library_runtime.py` pour executer la consultation GET-only et produire soit une lane de consultation, soit la lane passage existante;
+- `chat_runtime.py` orchestre ces modules sans devenir un fourre-tout;
+- `BiblioDocumentResolver` accepte des ancres `locator_anchor_page` / `locator_anchor_para` et resout les document-id via `/metadata`;
+- `BiblioPassageExtractor` accepte les ranges bornes sur une meme page et garde un refus explicite pour les ranges non surs.
+
+Limites mises a jour:
+
+- les ranges ne sont plus tous refuses par principe; seuls les ranges resolus de maniere sure, bornee, sur une meme page et sous les limites de taille peuvent produire un passage;
+- les autres ranges restent `range_extraction_not_supported`, `too_long`, `ambiguous`, `not_found` ou autre statut explicite;
+- aucune route plateforme nouvelle n'a ete necessaire.
+
+Les invariants GET-only, toggle off, separation des documents actifs et observabilite content-free restent inchanges.

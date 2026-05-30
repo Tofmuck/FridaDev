@@ -168,8 +168,8 @@ def build_biblio_event_payload(
     client_items = [
         item
         for item in (
-            _object_projection(client_response),
-            _object_projection(client_error),
+            *_object_projections(client_response),
+            *_object_projections(client_error),
         )
         if item
     ]
@@ -294,6 +294,18 @@ def _object_projection(value: Any) -> dict[str, Any]:
         "reason_code": "biblio_observability_unsupported_object",
         "object_class": _safe_token(value.__class__.__name__),
     }
+
+
+def _object_projections(value: Any) -> list[dict[str, Any]]:
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        projections: list[dict[str, Any]] = []
+        for item in value:
+            projected = _object_projection(item)
+            if projected:
+                projections.append(projected)
+        return projections
+    projected = _object_projection(value)
+    return [projected] if projected else []
 
 
 def _passage_result_projection(value: Any) -> dict[str, Any]:

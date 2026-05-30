@@ -11,6 +11,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from biblio import chat_runtime
+from biblio import catalogue_client as catalogue
 from biblio import passage_extractor as extractor
 from biblio import prompt_lane
 
@@ -74,7 +75,7 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         )
 
         self.assertTrue(result.used)
-        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_DOCUMENT_LOCATOR)
+        self.assertEqual(result.query_kind, "extract_passage")
         self.assertIsInstance(observed["extractor_client"], _FakeClient)
         self.assertIs(observed["client_config_module"], _FakeConfig)
         request = observed["request"]
@@ -88,6 +89,39 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertNotIn(RAW_PASSAGE, encoded_observability)
         self.assertNotIn(prompt_lane.LANE_HEADER, encoded_observability)
         self.assertEqual(result.observability_payload["counts"]["passage_count"], 1)
+
+    def test_catalogue_list_request_consults_catalogue_and_builds_consultation_lane(self) -> None:
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Tu peux chercher et voir les premiers ouvrages ?",
+            client_factory=lambda **_kwargs: _FakeClient(),
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "list_catalog")
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn("[CONSULTATION DE BIBLIOTHEQUE]", result.prompt_message["content"])
+        self.assertEqual(result.observability_payload["status"], "listed")
+        self.assertEqual(result.observability_payload["client"]["event_count"], 1)
+
+    def test_theetete_range_request_reaches_extractor_with_work_anchor(self) -> None:
+        observed: dict[str, object] = {}
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Bon, vas-y, tu me balances ici un extrait du Théétète de Platon. On va dire 126b à 128a.",
+            client_factory=lambda **_kwargs: _FakeClient(),
+            extractor_factory=lambda client: _FakeExtractor(observed),
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "extract_range")
+        request = observed["request"]
+        self.assertEqual(request.resolve_request.title, "Platon")
+        self.assertEqual(request.resolve_request.locator, "126b")
+        self.assertEqual(request.resolve_request.locator_end, "128a")
+        self.assertEqual(request.resolve_request.locator_anchor_page, 131)
+        self.assertNotEqual(result.reason_code, chat_runtime.REASON_NO_BIBLIOGRAPHIC_SIGNAL)
 
     def test_common_french_locator_phrasings_resolve_title(self) -> None:
         cases = (
@@ -105,7 +139,7 @@ class BiblioChatRuntimeTests(unittest.TestCase):
                 )
 
                 self.assertTrue(decision.should_attempt)
-                self.assertEqual(decision.reason_code, chat_runtime.REASON_DOCUMENT_LOCATOR_SIGNAL_DETECTED)
+                self.assertEqual(decision.reason_code, "biblio_passage_requested")
                 self.assertIsNotNone(decision.resolve_request)
                 self.assertEqual(decision.resolve_request.title, "Platon")
                 self.assertEqual(decision.resolve_request.locator, "126b")
@@ -195,7 +229,42 @@ class _FakeConfig:
 
 
 class _FakeClient:
-    pass
+    def catalog(self, *, q: str | None = None, limit: int = 100, offset: int = 0) -> catalogue.CatalogueResponse:
+        items = [
+            {
+                "id": "doc-1234",
+                "title": q or "Catalogue item",
+                "human_canonical_title": q or "Catalogue item",
+                "human_authors": "Platon" if q == "Platon" else "",
+            }
+        ]
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            status_code=200,
+            payload={"total": len(items), "items": items},
+            duration_ms=1,
+            result_count=len(items),
+        )
+
+    def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            status_code=200,
+            payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "title": "Internal work carrier",
+                        "page_no": 131,
+                        "para_no": 230,
+                        "text": "RAW SEARCH TEXT MUST NOT BE OBSERVABLE",
+                    }
+                ],
+            },
+            duration_ms=1,
+            result_count=1,
+        )
 
 
 class _FakeExtractor:

@@ -298,6 +298,21 @@ Limites restantes documentees apres Lot 7: ranges de locators toujours non extra
 - [x] Creer une note finale de validation.
 - [x] Archiver le TODO et l'audit-plan Biblio dans `app/docs/todo-done/product/`.
 
+### Correctif produit post-cloture - Bibliothecaire Biblio reelle (2026-05-30)
+
+- [x] Valider la regression live: `voir les premiers ouvrages` et `extrait du Theetete de Platon 126b a 128a` etaient classes a tort `biblio_no_bibliographic_signal`.
+- [x] Ajouter une couche bibliothecaire structuree au lieu d'empiler le parsing dans `chat_runtime.py`: `query_planner.py`, `work_resolver.py`, `library_runtime.py`.
+- [x] Lister les premiers ouvrages du Catalogue via GET `/catalog` quand Biblio est activee et que l'utilisateur le demande.
+- [x] Chercher une oeuvre interne via GET `/search` quand le titre n'est pas un titre physique Catalogue direct.
+- [x] Utiliser les resultats de recherche comme ancre non textuelle pour desambiguiser les milestones multiples d'un document physique.
+- [x] Distinguer document physique, oeuvre interne, locator et range dans le runtime.
+- [x] Supporter les ranges bornes et surs sur une meme page, en conservant `range_extraction_not_supported` pour les cas non surs.
+- [x] Garantir que toggle off et absence de signal bibliographique clair ne construisent toujours aucun client Catalogue.
+- [x] Garder logs, admin, dashboard et observabilite content-free: pas de passage brut, payload Catalogue brut, prompt complet, titre/auteur/locator/requete brute ou secret.
+- [x] Ne pas modifier `/opt/platform/doc-pipeline`: les routes GET existantes suffisent.
+
+Note: ce correctif supersede la limite archivee "ranges non extraits" uniquement pour les ranges resolus de maniere sure et bornee. Il ne cree pas de recherche semantique large, RAG documentaire, UI Catalogue FridaDev, ecriture Catalogue, backfill ou OCR.
+
 ## 8. Tests attendus par le chantier
 
 Les lots devront adapter les suites exactes au code courant, mais viser:

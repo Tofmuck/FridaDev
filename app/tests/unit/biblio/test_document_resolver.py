@@ -40,7 +40,7 @@ class DocumentResolverTests(unittest.TestCase):
         self.assertEqual(result.document.canonical_title, "Theetete")
         self.assertEqual(result.document.authors, "Platon")
         self.assertNotIn("auto title", str(result.to_observability()))
-        self.assertEqual(fake.calls, [("document", "doc-1"), ("metadata", "doc-1")])
+        self.assertEqual(fake.calls, [("metadata", "doc-1")])
 
     def test_title_and_author_resolve_single_catalogue_candidate(self) -> None:
         fake = FakeCatalogueClient(
@@ -159,6 +159,38 @@ class DocumentResolverTests(unittest.TestCase):
         self.assertEqual(result.status, resolver.STATUS_AMBIGUOUS)
         self.assertEqual(result.reason_code, resolver.REASON_AMBIGUOUS_LOCATOR)
         self.assertEqual(len(result.locator_candidates), 2)
+
+    def test_locator_anchor_disambiguates_multiple_matches_without_text(self) -> None:
+        fake = FakeCatalogueClient(
+            metadata={"doc-1": {"document": {"id": "doc-1"}, "human_metadata": {"authors": "Platon"}}},
+            locate_payloads={
+                ("doc-1", "stephanus", "126b"): {
+                    "document_id": "doc-1",
+                    "kind": "stephanus",
+                    "label": "126b",
+                    "match_count": 2,
+                    "best": {"kind": "stephanus", "label": "126b", "page_no": 1, "para_no": 1},
+                    "alternatives": [
+                        {"kind": "stephanus", "label": "126b", "page_no": 9, "para_no": 5, "order_index": 25}
+                    ],
+                }
+            },
+        )
+
+        result = resolver.BiblioDocumentResolver(fake).resolve(
+            resolver.BiblioResolveRequest(
+                document_id="doc-1",
+                locator="126b",
+                locator_anchor_page=9,
+            )
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, resolver.STATUS_RESOLVED)
+        self.assertEqual(result.locator.page_no, 9)
+        self.assertEqual(result.locator.order_index, 25)
+        self.assertEqual(observed["locator_anchor_page"], 9)
+        self.assertNotIn("126b", str(observed))
 
     def test_stephanus_range_is_ambiguous_when_end_locator_is_ambiguous(self) -> None:
         fake = FakeCatalogueClient(
