@@ -363,22 +363,26 @@ Correctif Lot 2 bis du 2026-05-30:
 
 ### Lot 3 - Moteur `search -> candidats -> context`
 
-- [ ] Creer ou etendre un module dedie sans gonfler `chat_runtime.py`.
-- [ ] Pour une recherche thematique:
-  - chercher oeuvre/corpus via `/catalog` et/ou `/search`;
-  - filtrer les resultats par document candidat quand possible;
-  - convertir les resultats `/search` en cibles `/context`;
-  - appeler `/context` uniquement sur un petit nombre de candidats bornes;
-  - ne jamais injecter tout le document.
-- [ ] Preferer les positions non textuelles (`paragraph_id`, `page_no`, `para_no`) aux payloads bruts.
-- [ ] Si `/search` ne fournit pas de `paragraph_id`, verifier le couple `page_no` / `para_no`.
-- [ ] Refuser les contextes incoherents (`document_id` absent ou divergent).
-- [ ] Definir bornes:
-  - max resultats `/search`;
-  - max contextes appeles;
-  - max chars par passage;
-  - max chars total lane;
-  - timeout et comportement degrade.
+- Statut: livre le 2026-05-30.
+
+- [x] Creer un module dedie `app/biblio/passage_context_search.py` sans gonfler `chat_runtime.py`.
+- [x] Graver le P3: `candidates_found` signifie liste classee provisoire, jamais passage choisi avec certitude.
+- [x] Valider les candidats Lot 2 par appels `/context` bornes avant toute extraction.
+- [x] Appeler `/context` seulement sur un petit top-N local (`DEFAULT_MAX_CONTEXT_CANDIDATES = 3`).
+- [x] Preferer `paragraph_id` quand il existe.
+- [x] Retomber sur `page_no` + `para_no` quand `paragraph_id` est absent.
+- [x] Refuser tout contexte incoherent si `document_id` est absent ou divergent.
+- [x] Produire un statut explicite:
+  - `extracted`;
+  - `ambiguous`;
+  - `not_found`;
+  - `invalid_request`;
+  - `incoherent_catalogue`;
+  - `catalogue_unavailable`;
+  - `too_long`.
+- [x] Garder le passage brut uniquement dans l'objet metier interne si `status=extracted`.
+- [x] Garder `to_observability()` content-free: counts, ids courts, positions, hashes, scores, endpoint counts, jamais passage/payload/titre/requete/prompt.
+- [x] Ne pas brancher davantage le chat et ne pas injecter de lane passage dans ce lot.
 
 Statuts attendus:
 
@@ -390,6 +394,12 @@ Statuts attendus:
 - `too_long`;
 - `catalogue_unavailable`;
 - `invalid_request`.
+
+Notes Lot 3:
+
+- L'ambiguite est preferee a une extraction silencieuse fragile: plusieurs contextes plausibles retournent `ambiguous`.
+- Aucun appel Catalogue mutateur n'est ajoute: le chemin utilise seulement `GET /search` puis `GET /doc/{id}/context`.
+- Les passages extraits par ce moteur ne sont pas encore injectes automatiquement dans `[PASSAGES DE BIBLIOTHEQUE CONSULTES]`; ce branchement reste pour les lots suivants.
 
 ### Lot 4 - Ranking et selection bornee de passages
 

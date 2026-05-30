@@ -518,6 +518,19 @@ Correctif recherche de candidats du 2026-05-30:
 - l'observabilite des candidats reste content-free: ids courts, pages, paragraphes, `paragraph_id`, scores, hashes de variantes, reason codes et counts seulement;
 - cette couche ne doit pas appeler `/context`, ne doit pas extraire de passage, et ne doit pas injecter de lane `[PASSAGES DE BIBLIOTHEQUE CONSULTES]`.
 
+Moteur contextuel Lot 3 du 2026-05-30:
+
+- `app/biblio/passage_context_search.py` consomme les candidats Lot 2 comme un ranking provisoire, pas comme une resolution finale;
+- le statut `candidates_found` ne signifie jamais "passage choisi avec certitude";
+- le moteur valide seulement un petit top-N borne par `GET /doc/{id}/context`, avec `DEFAULT_MAX_CONTEXT_CANDIDATES = 3`;
+- `paragraph_id` est prefere quand disponible, sinon le couple non textuel `page_no` / `para_no` est utilise;
+- un contexte sans `document_id`, ou avec `document_id` divergent du candidat, retourne `incoherent_catalogue`;
+- un seul contexte coherent et borne peut retourner `extracted`;
+- plusieurs contextes plausibles retournent `ambiguous` plutot qu'un choix silencieux;
+- aucun contexte exploitable retourne `not_found`, et les erreurs transport/API retournent `catalogue_unavailable`;
+- le passage brut est autorise seulement dans l'objet metier interne quand `status=extracted`; il reste interdit en observabilite, logs, dashboard, read-model et retour technique;
+- ce lot n'ajoute pas d'injection chat supplementaire et ne modifie pas le toggle frontend.
+
 Validation finale Lot 8 du 2026-05-29:
 
 - le parsing naturel accepte les formulations conservatrices `126b de l Apologie`, `126b de l'Apologie`, `126b de la Republique` et `126b -> 126e dans le catalogue` sans garder d'article oral ou de fleche dans le titre;
