@@ -419,20 +419,32 @@ Correctif runtime payload du 2026-05-30:
 
 ### Lot 4 - Ranking et selection bornee de passages
 
-- [ ] Definir un ranking explicable content-free:
+- Statut: livre le 2026-05-30.
+
+- [x] Definir un ranking explicable content-free:
   - match document / oeuvre;
   - match theme ou expression;
   - proximite des mots cles;
   - score Catalogue si disponible;
   - diversite des candidats;
   - longueur acceptable.
-- [ ] Ajouter une strategie d'ambiguite:
+- [x] Ajouter une strategie d'ambiguite:
   - plusieurs passages plausibles -> injecter top N avec statut clair, ou demander clarification;
   - candidats dans plusieurs documents -> candidats documentaires, pas extraction forcee;
   - score insuffisant -> `not_found` ou clarification.
-- [ ] Ne pas inventer une certitude sur un passage seulement parce qu'un mot apparait.
+- [x] Ne pas inventer une certitude sur un passage seulement parce qu'un mot apparait.
 - [ ] Prevoir un mode multi-passage borne pour themes disperses.
-- [ ] Tester que les passages non retenus ne sont pas exposes en observabilite.
+- [x] Tester que les passages non retenus ne sont pas exposes en observabilite.
+
+Contrat Lot 4:
+
+- module dedie `app/biblio/passage_selection.py`;
+- selection possible seulement apres validation `/context` bornee;
+- un seul contexte plausible est selectionne;
+- plusieurs contextes plausibles ne sont selectionnes que si le meilleur domine avec `score_gap >= 8.0` et un signal fort (`work_document_match`, `work_theme_proximity`, `exact_theme_variant`, `folded_theme_variant` ou `multi_variant_hit`);
+- un meilleur score Catalogue seul ne suffit pas a selectionner;
+- les scores et reason codes de selection sont content-free (`selected_count`, `top_score`, `score_gap`, `selection_reason_codes`);
+- les passages non retenus restent absents de l'observabilite et aucun payload Catalogue brut n'est retenu.
 
 ### Lot 5 - Injection lane Biblio avec passages multiples possibles
 

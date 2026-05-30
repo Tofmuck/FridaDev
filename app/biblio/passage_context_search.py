@@ -9,7 +9,7 @@ Observability stays content-free; raw passage text is kept only on an
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Mapping, Sequence
 
 from .catalogue_client import (
@@ -29,6 +29,12 @@ from .passage_candidate_search import (
     STATUS_INVALID_REQUEST as CANDIDATES_INVALID_REQUEST,
 )
 from .passage_extractor import DEFAULT_CONTEXT_WINDOW_CHARS, DEFAULT_MAX_PASSAGE_CHARS
+from .passage_selection import (
+    BiblioPassageSelectionDecision,
+    BiblioPassageSelectionInput,
+    BiblioPassageSelectionScore,
+    select_biblio_passage,
+)
 from .query_planner import BiblioQueryPlan
 
 
@@ -86,6 +92,9 @@ class BiblioPassageContextDecision:
     excerpt_start: int | None = None
     excerpt_end: int | None = None
     text_length: int | None = None
+    selected: bool = False
+    selection_score: float = 0.0
+    selection_reason_codes: tuple[str, ...] = field(default_factory=tuple)
 
     def to_observability(self) -> dict[str, Any]:
         return {
@@ -102,6 +111,9 @@ class BiblioPassageContextDecision:
             "excerpt_start": self.excerpt_start,
             "excerpt_end": self.excerpt_end,
             "text_length": self.text_length,
+            "selected": self.selected,
+            "selection_score": round(float(self.selection_score), 3),
+            "selection_reason_codes": list(self.selection_reason_codes),
         }
 
 
@@ -124,6 +136,7 @@ class BiblioPassageContextSearchResult:
     passage: str = field(default="", repr=False, compare=False)
     passage_chars: int = 0
     passage_hash: str = ""
+    selection: BiblioPassageSelectionDecision | None = field(default=None, repr=False, compare=False)
     doc_id_short: str = ""
     page_no: int | None = None
     para_no: int | None = None
@@ -149,12 +162,18 @@ class BiblioPassageContextSearchResult:
         if self.client_error is not None and self.client_error.endpoint_kind:
             endpoint_kinds.add(self.client_error.endpoint_kind)
         plausible_count = sum(1 for decision in self.decisions if decision.status == STATUS_EXTRACTED)
+        selection_observability = self.selection.to_observability() if self.selection is not None else {}
         return {
             "status": self.status,
             "reason_code": self.reason_code,
             "candidate_count": len(self.candidate_result.candidates) if self.candidate_result else 0,
             "context_call_count": len(self.context_observations),
             "plausible_context_count": plausible_count,
+            "selected_count": int(selection_observability.get("selected_count") or 0),
+            "ambiguous": self.status == STATUS_AMBIGUOUS,
+            "top_score": selection_observability.get("top_score", 0.0),
+            "score_gap": selection_observability.get("score_gap", 0.0),
+            "selection_reason_codes": list(selection_observability.get("selected_reason_codes") or []),
             "max_context_candidates": self.max_context_candidates,
             "passage_present": self.status == STATUS_EXTRACTED and bool(self.passage),
             "passage_chars": self.passage_chars,
@@ -169,6 +188,7 @@ class BiblioPassageContextSearchResult:
             "endpoint_count": endpoint_count,
             "endpoint_kinds": sorted(endpoint_kinds),
             "candidate_search": candidate_observability,
+            "selection": selection_observability,
             "decisions": [decision.to_observability() for decision in self.decisions],
             "client_error": self.client_error.to_observability() if self.client_error else None,
         }
@@ -184,6 +204,14 @@ class _ContextOptions:
 
 class _InvalidContextSearchParameter(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class _ExtractedContext:
+    candidate: BiblioPassageCandidate
+    passage: str = field(repr=False, compare=False)
+    payload: Mapping[str, Any] = field(repr=False, compare=False)
+    decision_index: int = 0
 
 
 class BiblioPassageContextSearcher:
@@ -235,7 +263,7 @@ class BiblioPassageContextSearcher:
 
         context_observations: list[CatalogueEndpointObservation] = []
         decisions: list[BiblioPassageContextDecision] = []
-        extracted: list[tuple[BiblioPassageCandidate, str, Mapping[str, Any]]] = []
+        extracted: list[_ExtractedContext] = []
         too_long_count = 0
 
         for candidate in candidate_result.candidates[: options.max_context_candidates]:
@@ -299,39 +327,59 @@ class BiblioPassageContextSearcher:
                         REASON_CONTEXT_TOO_LONG,
                         payload=response.payload,
                         passage=passage,
+                        include_context_hash=False,
                     )
                 )
                 continue
 
-            decisions.append(
-                _decision(
-                    candidate,
-                    STATUS_EXTRACTED,
-                    REASON_CONTEXT_EXTRACTED,
-                    payload=response.payload,
+            decision = _decision(
+                candidate,
+                STATUS_EXTRACTED,
+                REASON_CONTEXT_EXTRACTED,
+                payload=response.payload,
+                passage=passage,
+            )
+            decisions.append(decision)
+            extracted.append(
+                _ExtractedContext(
+                    candidate=candidate,
                     passage=passage,
+                    payload=response.payload,
+                    decision_index=len(decisions) - 1,
                 )
             )
-            extracted.append((candidate, passage, response.payload))
 
-        if len(extracted) == 1:
-            candidate, passage, payload = extracted[0]
-            return _extracted_result(
-                candidate_result=candidate_result,
-                context_observations=tuple(context_observations),
-                decisions=tuple(decisions),
-                candidate=candidate,
-                payload=payload,
-                passage=passage,
-                options=options,
+        if extracted:
+            selection = select_biblio_passage(
+                [
+                    BiblioPassageSelectionInput(
+                        index=index,
+                        candidate=item.candidate,
+                        context_chars=len(item.passage),
+                    )
+                    for index, item in enumerate(extracted)
+                ]
             )
-        if len(extracted) > 1:
+            decisions_tuple = _apply_selection(tuple(decisions), tuple(extracted), selection)
+            if selection.selected_index is not None:
+                selected = extracted[selection.selected_index]
+                return _extracted_result(
+                    candidate_result=candidate_result,
+                    context_observations=tuple(context_observations),
+                    decisions=decisions_tuple,
+                    candidate=selected.candidate,
+                    payload=selected.payload,
+                    passage=selected.passage,
+                    selection=selection,
+                    options=options,
+                )
             return BiblioPassageContextSearchResult(
                 status=STATUS_AMBIGUOUS,
                 reason_code=REASON_CONTEXT_AMBIGUOUS,
                 candidate_result=candidate_result,
                 context_observations=tuple(context_observations),
-                decisions=tuple(decisions),
+                decisions=decisions_tuple,
+                selection=selection,
                 max_context_candidates=options.max_context_candidates,
             )
         if too_long_count:
@@ -423,24 +471,28 @@ def _coherent_context(
 
 def _extracted_result(
     *,
+    status: str = STATUS_EXTRACTED,
+    reason_code: str = REASON_CONTEXT_EXTRACTED,
     candidate_result: BiblioPassageCandidateSearchResult,
     context_observations: tuple[CatalogueEndpointObservation, ...],
     decisions: tuple[BiblioPassageContextDecision, ...],
     candidate: BiblioPassageCandidate,
     payload: Mapping[str, Any],
     passage: str,
+    selection: BiblioPassageSelectionDecision | None = None,
     options: _ContextOptions,
 ) -> BiblioPassageContextSearchResult:
     passage_hash = _short_hash(passage)
     return BiblioPassageContextSearchResult(
-        status=STATUS_EXTRACTED,
-        reason_code=REASON_CONTEXT_EXTRACTED,
+        status=status,
+        reason_code=reason_code,
         candidate_result=candidate_result,
         context_observations=context_observations,
         decisions=decisions,
-        passage=passage,
-        passage_chars=len(passage),
-        passage_hash=passage_hash,
+        passage=passage if status == STATUS_EXTRACTED else "",
+        passage_chars=len(passage) if status == STATUS_EXTRACTED else 0,
+        passage_hash=passage_hash if status == STATUS_EXTRACTED else "",
+        selection=selection,
         doc_id_short=candidate.doc_id_short,
         page_no=_optional_int(payload.get("page_no")) if payload else candidate.page_no,
         para_no=_optional_int(payload.get("para_no")) if payload else candidate.para_no,
@@ -459,6 +511,7 @@ def _decision(
     *,
     payload: Mapping[str, Any] | None = None,
     passage: str = "",
+    include_context_hash: bool = True,
 ) -> BiblioPassageContextDecision:
     data = payload or {}
     passage_chars = len(passage) if passage else 0
@@ -472,11 +525,45 @@ def _decision(
         candidate_score=candidate.score,
         candidate_reason_codes=candidate.reason_codes,
         context_chars=passage_chars,
-        context_hash=_short_hash(passage) if passage else "",
+        context_hash=_short_hash(passage) if passage and include_context_hash else "",
         excerpt_start=_optional_int(data.get("excerpt_start")),
         excerpt_end=_optional_int(data.get("excerpt_end")),
         text_length=_optional_int(data.get("text_length")),
     )
+
+
+def _apply_selection(
+    decisions: tuple[BiblioPassageContextDecision, ...],
+    extracted: tuple[_ExtractedContext, ...],
+    selection: BiblioPassageSelectionDecision,
+) -> tuple[BiblioPassageContextDecision, ...]:
+    selected_decision_index: int | None = None
+    if selection.selected_index is not None and selection.selected_index < len(extracted):
+        selected_decision_index = extracted[selection.selected_index].decision_index
+
+    scores_by_decision_index: dict[int, BiblioPassageSelectionScore] = {}
+    for extracted_index, item in enumerate(extracted):
+        score = selection.score_for_index(extracted_index)
+        if score is not None:
+            scores_by_decision_index[item.decision_index] = score
+
+    updated: list[BiblioPassageContextDecision] = []
+    for index, decision in enumerate(decisions):
+        score = scores_by_decision_index.get(index)
+        if score is None:
+            updated.append(decision)
+            continue
+        selected = selected_decision_index == index
+        updated.append(
+            replace(
+                decision,
+                context_hash=decision.context_hash if selected else "",
+                selected=selected,
+                selection_score=score.score,
+                selection_reason_codes=score.reason_codes,
+            ),
+        )
+    return tuple(updated)
 
 
 def _passage_text(payload: Mapping[str, Any]) -> str | None:

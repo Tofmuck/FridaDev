@@ -96,6 +96,133 @@ class BiblioPassageContextSearchTests(unittest.TestCase):
         self.assertNotIn(RAW_TITLE, encoded)
         self.assertNotIn(RAW_QUERY, encoded)
 
+    def test_dominant_candidate_becomes_extracted_with_selection_reasons(self) -> None:
+        selected_passage = _long_passage("SELECTED")
+        rejected_passage = _long_passage("REJECTED")
+        candidate_result = _candidate_result(
+            [
+                _candidate(
+                    "doc-1",
+                    page_no=4,
+                    para_no=26,
+                    score=42,
+                    reason_codes=("exact_theme_variant", "theme_hit", "work_document_match"),
+                ),
+                _candidate("doc-2", page_no=5, para_no=27, score=25),
+            ]
+        )
+        fake = _FakeContextClient(
+            context_payloads={
+                ("page_para", "doc-1", 4, 26): _context_payload("doc-1", selected_passage),
+                ("page_para", "doc-2", 5, 27): _context_payload("doc-2", rejected_passage),
+            }
+        )
+
+        result = context_search.BiblioPassageContextSearcher(fake).search(_request(candidate_result))
+        observed = result.to_observability()
+        encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, context_search.STATUS_EXTRACTED)
+        self.assertEqual(result.passage, selected_passage)
+        self.assertEqual(observed["selected_count"], 1)
+        self.assertGreaterEqual(observed["score_gap"], 8)
+        self.assertIn("work_document_match", observed["selection_reason_codes"])
+        self.assertIn("exact_theme_variant", observed["selection_reason_codes"])
+        self.assertEqual(sum(1 for decision in result.decisions if decision.selected), 1)
+        self.assertNotIn(selected_passage, encoded)
+        self.assertNotIn(rejected_passage, encoded)
+
+    def test_close_candidates_remain_ambiguous(self) -> None:
+        candidate_result = _candidate_result(
+            [
+                _candidate(
+                    "doc-1",
+                    page_no=4,
+                    para_no=26,
+                    score=42,
+                    reason_codes=("theme_hit", "work_document_match"),
+                ),
+                _candidate(
+                    "doc-2",
+                    page_no=5,
+                    para_no=27,
+                    score=39,
+                    reason_codes=("theme_hit", "work_document_match"),
+                ),
+            ]
+        )
+        fake = _FakeContextClient(
+            context_payloads={
+                ("page_para", "doc-1", 4, 26): _context_payload("doc-1", _long_passage("A")),
+                ("page_para", "doc-2", 5, 27): _context_payload("doc-2", _long_passage("B")),
+            }
+        )
+
+        result = context_search.BiblioPassageContextSearcher(fake).search(_request(candidate_result))
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, context_search.STATUS_AMBIGUOUS)
+        self.assertEqual(result.passage, "")
+        self.assertEqual(observed["selected_count"], 0)
+        self.assertTrue(observed["selection"]["ambiguous"])
+        self.assertLess(observed["score_gap"], 8)
+
+    def test_catalogue_rank_alone_does_not_select(self) -> None:
+        candidate_result = _candidate_result(
+            [
+                _candidate(
+                    "doc-1",
+                    page_no=4,
+                    para_no=26,
+                    score=48,
+                    reason_codes=("catalogue_rank_score", "high_catalogue_rank_score", "search_hit"),
+                    catalogue_rank_score=0.9,
+                ),
+                _candidate("doc-2", page_no=5, para_no=27, score=25),
+            ]
+        )
+        fake = _FakeContextClient(
+            context_payloads={
+                ("page_para", "doc-1", 4, 26): _context_payload("doc-1", _long_passage("A")),
+                ("page_para", "doc-2", 5, 27): _context_payload("doc-2", _long_passage("B")),
+            }
+        )
+
+        result = context_search.BiblioPassageContextSearcher(fake).search(_request(candidate_result))
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, context_search.STATUS_AMBIGUOUS)
+        self.assertEqual(result.passage, "")
+        self.assertEqual(observed["selected_count"], 0)
+        self.assertEqual(observed["selection"]["reason_code"], "selection_evidence_insufficient")
+
+    def test_work_theme_and_candidate_score_can_disambiguate(self) -> None:
+        candidate_result = _candidate_result(
+            [
+                _candidate(
+                    "doc-1",
+                    page_no=4,
+                    para_no=26,
+                    score=36,
+                    reason_codes=("theme_hit", "work_document_match"),
+                ),
+                _candidate("doc-2", page_no=5, para_no=27, score=25),
+            ]
+        )
+        fake = _FakeContextClient(
+            context_payloads={
+                ("page_para", "doc-1", 4, 26): _context_payload("doc-1", _long_passage("A")),
+                ("page_para", "doc-2", 5, 27): _context_payload("doc-2", _long_passage("B")),
+            }
+        )
+
+        result = context_search.BiblioPassageContextSearcher(fake).search(_request(candidate_result))
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, context_search.STATUS_EXTRACTED)
+        self.assertEqual(observed["selected_count"], 1)
+        self.assertIn("work_document_match", observed["selection_reason_codes"])
+
     def test_context_without_document_id_is_incoherent(self) -> None:
         candidate_result = _candidate_result([_candidate("doc-1", page_no=4, para_no=26)])
         fake = _FakeContextClient(
@@ -197,6 +324,19 @@ class BiblioPassageContextSearchTests(unittest.TestCase):
         result = context_search.BiblioPassageContextSearcher(fake).search(_request(candidate_result))
 
         self.assertEqual(result.status, context_search.STATUS_NOT_FOUND)
+        self.assertEqual(result.passage, "")
+
+    def test_too_long_context_remains_too_long(self) -> None:
+        candidate_result = _candidate_result([_candidate("doc-1", page_no=4, para_no=26)])
+        fake = _FakeContextClient(
+            context_payloads={("page_para", "doc-1", 4, 26): _context_payload("doc-1", _long_passage("LONG"))}
+        )
+
+        result = context_search.BiblioPassageContextSearcher(fake).search(
+            _request(candidate_result, max_passage_chars=80)
+        )
+
+        self.assertEqual(result.status, context_search.STATUS_TOO_LONG)
         self.assertEqual(result.passage, "")
 
     def test_catalogue_error_is_catalogue_unavailable(self) -> None:
@@ -307,11 +447,13 @@ def _request(
     candidate_result: candidate_search.BiblioPassageCandidateSearchResult,
     *,
     max_context_candidates: int = context_search.DEFAULT_MAX_CONTEXT_CANDIDATES,
+    max_passage_chars: int = context_search.DEFAULT_MAX_PASSAGE_CHARS,
 ) -> context_search.BiblioPassageContextSearchRequest:
     return context_search.BiblioPassageContextSearchRequest(
         plan=query_planner.plan_biblio_query("Cherche maïeutique dans la bibliothèque"),
         candidate_result=candidate_result,
         max_context_candidates=max_context_candidates,
+        max_passage_chars=max_passage_chars,
     )
 
 
@@ -333,6 +475,8 @@ def _candidate(
     para_no: int,
     paragraph_id: int | None = None,
     score: float = 30.0,
+    reason_codes: tuple[str, ...] = ("theme_hit",),
+    catalogue_rank_score: float | None = 0.3,
 ) -> candidate_search.BiblioPassageCandidate:
     return candidate_search.BiblioPassageCandidate(
         document_id=document_id,
@@ -344,8 +488,8 @@ def _candidate(
         hit_count=1,
         query_variant_count=1,
         query_hashes=("abc123abc123",),
-        reason_codes=("theme_hit",),
-        catalogue_rank_score=0.3,
+        reason_codes=reason_codes,
+        catalogue_rank_score=catalogue_rank_score,
         first_result_index=1,
     )
 
@@ -371,6 +515,10 @@ def _context_payload(
     if paragraph_id is not None:
         payload["paragraph_id"] = paragraph_id
     return payload
+
+
+def _long_passage(label: str) -> str:
+    return f"{label} " * 20
 
 
 if __name__ == "__main__":

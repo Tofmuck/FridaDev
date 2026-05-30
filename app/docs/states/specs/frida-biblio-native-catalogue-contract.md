@@ -534,6 +534,16 @@ Moteur contextuel Lot 3 du 2026-05-30:
 - les resultats contextuels ne conservent pas les payloads Catalogue bruts de `/context`; les reponses stockees sont des observations compactes content-free, et le payload brut reste une variable locale transitoire pendant la validation;
 - ce lot n'ajoute pas d'injection chat supplementaire et ne modifie pas le toggle frontend.
 
+Selection de passages Lot 4 du 2026-05-30:
+
+- `app/biblio/passage_selection.py` applique un ranking deterministe et content-free aux contextes deja valides par `/context`;
+- signaux utilises: score candidat Lot 2, `catalogue_rank_score`, `first_result_index`, reason codes de candidat (`theme_hit`, `exact_theme_variant`, `folded_theme_variant`, `multi_variant_hit`, `work_document_match`, `work_theme_proximity`) et longueur du contexte;
+- un seul contexte plausible reste selectionnable;
+- plusieurs contextes plausibles ne produisent `extracted` que si le meilleur domine avec `score_gap >= 8.0` et un signal fort autre que le seul rang Catalogue;
+- si l'ecart est trop faible ou si le meilleur ne doit sa position qu'au score Catalogue, le statut reste `ambiguous`;
+- l'observabilite expose seulement `selected_count`, `top_score`, `score_gap`, `selection_reason_codes` et les decisions content-free;
+- les passages non retenus ne sont jamais inclus dans l'observabilite; le passage brut reste uniquement dans `BiblioPassageContextSearchResult.passage` quand `status=extracted`.
+
 Validation finale Lot 8 du 2026-05-29:
 
 - le parsing naturel accepte les formulations conservatrices `126b de l Apologie`, `126b de l'Apologie`, `126b de la Republique` et `126b -> 126e dans le catalogue` sans garder d'article oral ou de fleche dans le titre;
