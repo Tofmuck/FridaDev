@@ -7,11 +7,22 @@ raw textual signals.
 
 from __future__ import annotations
 
-import hashlib
 import re
-import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from typing import Any
+
+from .query_normalizer import (
+    canonical_work_title,
+    compact_text_signal,
+    fold_text,
+    is_known_work_alias,
+    is_surface_only,
+    is_usable_title,
+    normalize_biblio_query,
+    normalize_text,
+    query_variants,
+    variants_observability,
+)
 
 
 INTENT_NONE = "none"
@@ -63,34 +74,15 @@ _SEARCH_AFTER_RE = re.compile(
     r"\b(?:cherche|recherche|trouve|consulte|sortir|sors|voir)\b(?:\s+dans\s+(?:la\s+)?(?:bibliotheque|bibliothèque|biblio|catalogue))?\s+([^,.;?!\n]{2,120})",
     re.IGNORECASE,
 )
-
-_SURFACE_WORDS = {
-    "bibliotheque",
-    "biblio",
-    "catalogue",
-    "livre",
-    "livres",
-    "ouvrage",
-    "ouvrages",
-    "document",
-    "documents",
-}
-_FUNCTION_WORDS = {
-    "a",
-    "au",
-    "aux",
-    "dans",
-    "de",
-    "des",
-    "du",
-    "l",
-    "la",
-    "le",
-    "les",
-    "un",
-    "une",
-}
-
+_THEMATIC_WORK_RE = re.compile(
+    r"\b(?:cherche|recherche|trouve|consulte|sortir|sors|voir|donne)\b"
+    r"(?:\s+\w+){0,3}?\s+dans\s+"
+    r"(?:le\s+|la\s+|l['’]\s*|l\s+)?"
+    r"([^,.;?!\n]{2,100}?)\s+"
+    r"(?:le\s+|un\s+|du\s+)?(?:passage|extrait|endroit|moment)\s+"
+    r"(?:ou|où|dans lequel|qui)\s+([^.;?!\n]{2,160})",
+    re.IGNORECASE,
+)
 
 @dataclass(frozen=True)
 class BiblioQueryPlan:
@@ -102,11 +94,16 @@ class BiblioQueryPlan:
     catalogue_query: str = ""
     document_title: str = ""
     work_title: str = ""
+    theme_query: str = ""
     author: str = ""
     locator: str = ""
     locator_end: str = ""
     locator_kind: str = "stephanus"
     limit: int = 5
+    catalogue_query_variants: tuple[str, ...] = field(default_factory=tuple)
+    document_title_variants: tuple[str, ...] = field(default_factory=tuple)
+    work_title_variants: tuple[str, ...] = field(default_factory=tuple)
+    theme_query_variants: tuple[str, ...] = field(default_factory=tuple)
 
     def to_observability(self) -> dict[str, Any]:
         return {
@@ -118,11 +115,16 @@ class BiblioQueryPlan:
             "catalogue_query": _compact_text_signal(self.catalogue_query),
             "document_title": _compact_text_signal(self.document_title),
             "work_title": _compact_text_signal(self.work_title),
+            "theme_query": _compact_text_signal(self.theme_query),
             "author": _compact_text_signal(self.author),
             "locator": _compact_text_signal(self.locator),
             "locator_end": _compact_text_signal(self.locator_end),
             "locator_kind": self.locator_kind if self.locator_kind in {"stephanus"} else "custom",
             "limit": self.limit,
+            "catalogue_query_variants": variants_observability(self.catalogue_query_variants),
+            "document_title_variants": variants_observability(self.document_title_variants),
+            "work_title_variants": variants_observability(self.work_title_variants),
+            "theme_query_variants": variants_observability(self.theme_query_variants),
         }
 
 
@@ -130,7 +132,9 @@ def plan_biblio_query(user_msg: str) -> BiblioQueryPlan:
     text = str(user_msg or "").strip()
     if not text:
         return _none(REASON_NO_SIGNAL)
-    folded = _fold(text)
+    normalized = normalize_biblio_query(text)
+    text = normalized.normalized
+    folded = normalized.folded
     if "document actif" in folded or "documents actifs" in folded:
         return _none(REASON_NO_SIGNAL)
     if _adobe_topic_without_biblio_signal(folded):
@@ -139,7 +143,14 @@ def plan_biblio_query(user_msg: str) -> BiblioQueryPlan:
     document_id = _extract_document_id(text)
     locator, locator_end = _extract_locator_pair(folded)
     author = _extract_author(text)
-    work_title, document_title = _extract_work_and_document_titles(text, folded, locator=locator)
+    thematic_work, theme_query = _extract_thematic_work_and_query(text)
+    work_title, document_title = _extract_work_and_document_titles(
+        text,
+        folded,
+        locator=locator,
+        locator_end=locator_end,
+    )
+    work_title = canonical_work_title(thematic_work or work_title)
 
     if locator and not (document_id or work_title or document_title or author):
         return BiblioQueryPlan(
@@ -152,7 +163,7 @@ def plan_biblio_query(user_msg: str) -> BiblioQueryPlan:
         )
 
     if locator and (document_id or work_title or document_title or author):
-        return BiblioQueryPlan(
+        return _with_variants(BiblioQueryPlan(
             should_consult=True,
             intent=INTENT_EXTRACT_RANGE if locator_end else INTENT_EXTRACT_PASSAGE,
             reason_code=REASON_RANGE_REQUESTED if locator_end else REASON_PASSAGE_REQUESTED,
@@ -160,44 +171,48 @@ def plan_biblio_query(user_msg: str) -> BiblioQueryPlan:
             document_id=document_id,
             document_title=document_title,
             work_title=work_title,
+            theme_query=theme_query,
             author=author,
             catalogue_query=_first_non_empty(document_title, author, work_title),
             locator=locator,
             locator_end=locator_end,
-        )
+        ))
 
     if _is_catalogue_list_request(folded):
-        return BiblioQueryPlan(
+        return _with_variants(BiblioQueryPlan(
             should_consult=True,
             intent=INTENT_LIST_CATALOG,
             reason_code=REASON_LIST_CATALOG,
             query_kind=INTENT_LIST_CATALOG,
             limit=5,
-        )
+        ))
 
-    search_query = _extract_search_query(text, folded)
+    search_query = theme_query or _extract_search_query(text, folded)
     if search_query:
-        return BiblioQueryPlan(
+        search_work = work_title or (canonical_work_title(search_query) if is_known_work_alias(search_query) else "")
+        search_theme = theme_query or ("" if search_work else search_query)
+        return _with_variants(BiblioQueryPlan(
             should_consult=True,
             intent=INTENT_SEARCH_CATALOG,
             reason_code=REASON_SEARCH_CATALOG,
             query_kind=INTENT_SEARCH_CATALOG,
             catalogue_query=search_query,
-            work_title=search_query,
+            work_title=search_work,
+            theme_query=search_theme,
             limit=8,
-        )
+        ))
 
     if _is_generic_catalogue_consultation(folded):
-        return BiblioQueryPlan(
+        return _with_variants(BiblioQueryPlan(
             should_consult=True,
             intent=INTENT_LIST_CATALOG,
             reason_code=REASON_LIST_CATALOG,
             query_kind=INTENT_LIST_CATALOG,
             limit=5,
-        )
+        ))
 
     if work_title or document_title or author or document_id:
-        return BiblioQueryPlan(
+        return _with_variants(BiblioQueryPlan(
             should_consult=True,
             intent=INTENT_RESOLVE_WORK,
             reason_code=REASON_WORK_REQUESTED,
@@ -205,10 +220,11 @@ def plan_biblio_query(user_msg: str) -> BiblioQueryPlan:
             document_id=document_id,
             document_title=document_title,
             work_title=work_title,
+            theme_query=theme_query,
             author=author,
             catalogue_query=_first_non_empty(document_title, author, work_title),
             limit=8,
-        )
+        ))
 
     return _none(REASON_NO_SIGNAL)
 
@@ -219,6 +235,16 @@ def _none(reason_code: str) -> BiblioQueryPlan:
         intent=INTENT_NONE,
         reason_code=reason_code,
         query_kind="no_signal",
+    )
+
+
+def _with_variants(plan: BiblioQueryPlan) -> BiblioQueryPlan:
+    return replace(
+        plan,
+        catalogue_query_variants=query_variants(plan.catalogue_query, plan.theme_query, plan.work_title),
+        document_title_variants=query_variants(plan.document_title),
+        work_title_variants=query_variants(plan.work_title),
+        theme_query_variants=query_variants(plan.theme_query),
     )
 
 
@@ -244,7 +270,24 @@ def _extract_author(text: str) -> str:
     return _clean_title(match.group(1), locator="") if _usable_title(match.group(1)) else ""
 
 
-def _extract_work_and_document_titles(text: str, folded: str, *, locator: str) -> tuple[str, str]:
+def _extract_thematic_work_and_query(text: str) -> tuple[str, str]:
+    match = _THEMATIC_WORK_RE.search(text)
+    if not match:
+        return "", ""
+    work = _clean_title(match.group(1), locator="")
+    theme = _clean_theme_query(match.group(2))
+    if not _usable_title(work) or not _usable_title(theme):
+        return "", ""
+    return canonical_work_title(work), theme
+
+
+def _extract_work_and_document_titles(
+    text: str,
+    folded: str,
+    *,
+    locator: str,
+    locator_end: str = "",
+) -> tuple[str, str]:
     explicit_title = _extract_explicit_title(text, locator=locator)
     if explicit_title:
         return "", explicit_title
@@ -255,8 +298,13 @@ def _extract_work_and_document_titles(text: str, folded: str, *, locator: str) -
         return work or passage_title, document
 
     if locator:
-        after = _title_after_locator(text, locator)
+        after = _title_after_locator(text, locator_end or locator)
         if after:
+            work, document = _split_work_of_corpus(after)
+            if work and document:
+                return work, document
+            if document:
+                return "", document
             return "", after
 
         before = _title_before_locator(text, locator)
@@ -272,8 +320,8 @@ def _extract_work_and_document_titles(text: str, folded: str, *, locator: str) -
 
     if _has_biblio_catalogue_cue(folded):
         query = _extract_search_query(text, folded)
-        if query and not _is_surface_only(query):
-            return query, ""
+        if query and not _is_surface_only(query) and is_known_work_alias(query):
+            return canonical_work_title(query), ""
 
     return "", ""
 
@@ -355,6 +403,19 @@ def _extract_search_query(text: str, folded: str) -> str:
     return ""
 
 
+def _clean_theme_query(value: str) -> str:
+    text = normalize_text(value)
+    text = re.sub(
+        r"\s+(?:dans\s+|du\s+|de\s+)?(?:le\s+|la\s+)?(?:catalogue|bibliotheque|bibliothèque|biblio)\b.*$",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"^(?:ou|où|que|qui|dont)\s+", "", text, count=1, flags=re.IGNORECASE)
+    text = re.sub(r"\s+", " ", text).strip(" ,;:-?.!")
+    return text[:160]
+
+
 def _split_work_of_corpus(value: str) -> tuple[str, str]:
     candidate = str(value or "").strip()
     match = _WORK_OF_CORPUS_RE.match(candidate)
@@ -369,11 +430,11 @@ def _split_work_of_corpus(value: str) -> tuple[str, str]:
 
 
 def _clean_title(value: str, *, locator: str) -> str:
-    text = str(value or "").strip(" \t\r\n'\"“”")
-    if locator:
-        text = re.sub(re.escape(locator), " ", text, flags=re.IGNORECASE)
+    text = normalize_text(value).strip(" \t\r\n'\"")
     text = _RANGE_RE.sub(" ", text)
     text = _LOCATOR_RE.sub(" ", text)
+    if locator:
+        text = re.sub(re.escape(locator), " ", text, flags=re.IGNORECASE)
     text = re.sub(
         r"\s+(?:dans\s+|du\s+|de\s+)?(?:le\s+|la\s+)?(?:catalogue|bibliotheque|bibliothèque|biblio)\b.*$",
         "",
@@ -400,22 +461,11 @@ def _clean_title(value: str, *, locator: str) -> str:
 
 
 def _usable_title(candidate: str) -> bool:
-    text = str(candidate or "").strip()
-    if len(text) < 2:
-        return False
-    folded = _fold(text)
-    if folded in _SURFACE_WORDS or folded in _FUNCTION_WORDS:
-        return False
-    if re.fullmatch(r"(?:mon|ma|mes|ton|ta|tes|son|sa|ses|ce|cet|cette)?\s*(?:livre|ouvrage|document)s?", folded):
-        return False
-    if folded in {"adobe", "photoshop", "illustrator", "web"}:
-        return False
-    return True
+    return is_usable_title(candidate)
 
 
 def _is_surface_only(value: str) -> bool:
-    words = {_fold(part) for part in re.findall(r"\w+", str(value or ""))}
-    return bool(words) and all(word in _SURFACE_WORDS or word in _FUNCTION_WORDS for word in words)
+    return is_surface_only(value)
 
 
 def _is_vague_book_query(value: str, folded_message: str) -> bool:
@@ -459,17 +509,8 @@ def _first_non_empty(*values: str) -> str:
 
 
 def _compact_text_signal(value: str) -> dict[str, Any]:
-    text = str(value or "").strip()
-    if not text:
-        return {"present": False, "length": 0, "hash": ""}
-    return {
-        "present": True,
-        "length": len(text),
-        "hash": hashlib.sha256(text.encode("utf-8")).hexdigest()[:12],
-    }
+    return compact_text_signal(value)
 
 
 def _fold(value: str) -> str:
-    normalized = unicodedata.normalize("NFKD", str(value or ""))
-    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
-    return ascii_text.lower()
+    return fold_text(value)

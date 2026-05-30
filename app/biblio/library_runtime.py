@@ -158,35 +158,42 @@ def _list_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLibra
 def _search_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLibraryRuntimeResult:
     responses: list[CatalogueResponse] = []
     try:
-        response = client.catalog(q=plan.catalogue_query, limit=plan.limit or DEFAULT_SEARCH_LIMIT, offset=0)
-        responses.append(response)
-        items = _catalog_items(response)[: plan.limit or DEFAULT_SEARCH_LIMIT]
-        if items:
-            consultation = _catalog_consultation_message(
-                status=STATUS_SEARCHED,
-                reason_code=REASON_CATALOG_SEARCHED,
-                heading="Candidats Catalogue trouves:",
-                items=items,
-            )
-            return BiblioLibraryRuntimeResult(
-                status=STATUS_SEARCHED,
-                reason_code=REASON_CATALOG_SEARCHED,
-                query_kind=plan.query_kind,
-                client_responses=tuple(responses),
-                consultation_message=consultation,
-            )
-        if plan.work_title:
-            search_response = client.search(plan.work_title, limit=plan.limit or DEFAULT_SEARCH_LIMIT)
+        for query in _candidate_queries(plan.catalogue_query_variants, plan.catalogue_query):
+            response = client.catalog(q=query, limit=plan.limit or DEFAULT_SEARCH_LIMIT, offset=0)
+            responses.append(response)
+            items = _catalog_items(response)[: plan.limit or DEFAULT_SEARCH_LIMIT]
+            if items:
+                consultation = _catalog_consultation_message(
+                    status=STATUS_SEARCHED,
+                    reason_code=REASON_CATALOG_SEARCHED,
+                    heading="Candidats Catalogue trouves:",
+                    items=items,
+                )
+                return BiblioLibraryRuntimeResult(
+                    status=STATUS_SEARCHED,
+                    reason_code=REASON_CATALOG_SEARCHED,
+                    query_kind=plan.query_kind,
+                    client_responses=tuple(responses),
+                    consultation_message=consultation,
+                )
+        for query in _candidate_queries(
+            plan.theme_query_variants,
+            plan.theme_query,
+            plan.work_title_variants,
+            plan.work_title,
+        ):
+            search_response = client.search(query, limit=plan.limit or DEFAULT_SEARCH_LIMIT)
             responses.append(search_response)
             rows = _search_results(search_response)
-            consultation = _search_consultation_message(rows)
-            return BiblioLibraryRuntimeResult(
-                status=STATUS_SEARCHED if rows else STATUS_NOT_FOUND,
-                reason_code=REASON_CATALOG_SEARCHED if rows else REASON_PASSAGE_NOT_EXTRACTED,
-                query_kind=plan.query_kind,
-                client_responses=tuple(responses),
-                consultation_message=consultation,
-            )
+            if rows:
+                consultation = _search_consultation_message(rows)
+                return BiblioLibraryRuntimeResult(
+                    status=STATUS_SEARCHED,
+                    reason_code=REASON_CATALOG_SEARCHED,
+                    query_kind=plan.query_kind,
+                    client_responses=tuple(responses),
+                    consultation_message=consultation,
+                )
     except CatalogueClientError as exc:
         return _client_error(plan, exc, responses=responses)
 
@@ -290,6 +297,22 @@ def _client_error(
         client_responses=tuple(responses),
         client_error=exc,
     )
+
+
+def _candidate_queries(*groups: Any) -> tuple[str, ...]:
+    queries: list[str] = []
+    for group in groups:
+        if isinstance(group, str):
+            items = (group,)
+        elif isinstance(group, Sequence):
+            items = tuple(str(item or "") for item in group)
+        else:
+            items = ()
+        for item in items:
+            text = str(item or "").strip()
+            if text and text not in queries:
+                queries.append(text)
+    return tuple(queries)
 
 
 def _catalog_consultation_message(

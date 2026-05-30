@@ -104,6 +104,25 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(result.observability_payload["status"], "listed")
         self.assertEqual(result.observability_payload["client"]["event_count"], 1)
 
+    def test_unaccented_thematic_search_uses_accent_variant_without_extracting_yet(self) -> None:
+        fake = _AccentSensitiveSearchClient()
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Cherche maieutique dans la bibliotheque",
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "search_catalog")
+        self.assertEqual(result.observability_payload["status"], "searched")
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn("[CONSULTATION DE BIBLIOTHEQUE]", result.prompt_message["content"])
+        self.assertIsNone(result.passage_result)
+        self.assertNotIn(prompt_lane.LANE_HEADER, result.prompt_message["content"])
+        self.assertIn(("search", "maïeutique"), fake.calls)
+        self.assertNotIn(("context",), fake.calls)
+
     def test_theetete_range_request_reaches_extractor_with_work_anchor(self) -> None:
         observed: dict[str, object] = {}
 
@@ -264,6 +283,42 @@ class _FakeClient:
             },
             duration_ms=1,
             result_count=1,
+        )
+
+
+class _AccentSensitiveSearchClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, ...]] = []
+
+    def catalog(self, *, q: str | None = None, limit: int = 100, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("catalog", str(q or "")))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            status_code=200,
+            payload={"total": 0, "items": []},
+            duration_ms=1,
+            result_count=0,
+        )
+
+    def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search", str(q or "")))
+        rows = []
+        if q == "maïeutique":
+            rows = [
+                {
+                    "document_id": "doc-1234",
+                    "title": "RAW TITLE MUST STAY INTERNAL",
+                    "page_no": 4,
+                    "para_no": 26,
+                    "text": "RAW SEARCH TEXT MUST NOT BE OBSERVABLE",
+                }
+            ]
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            status_code=200,
+            payload={"count": len(rows), "results": rows},
+            duration_ms=1,
+            result_count=len(rows),
         )
 
 

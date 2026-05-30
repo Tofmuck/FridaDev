@@ -10,7 +10,7 @@ APP_DIR = Path(__file__).resolve().parents[3]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from biblio import query_planner
+from biblio import query_normalizer, query_planner
 
 
 class BiblioQueryPlannerTests(unittest.TestCase):
@@ -37,6 +37,9 @@ class BiblioQueryPlannerTests(unittest.TestCase):
         self.assertEqual(plan.document_title, "Platon")
         self.assertEqual(plan.locator, "126b")
         self.assertEqual(plan.locator_end, "128a")
+        self.assertIn("Theetete", plan.work_title_variants)
+        self.assertIn("Theaitetos", plan.work_title_variants)
+        self.assertIn("Theaetetus", plan.work_title_variants)
 
     def test_work_title_without_corpus_can_still_be_planned(self) -> None:
         plan = query_planner.plan_biblio_query("Théétète 126b à 128a")
@@ -46,11 +49,75 @@ class BiblioQueryPlannerTests(unittest.TestCase):
         self.assertEqual(plan.work_title, "Théétète")
         self.assertEqual(plan.document_title, "")
 
+    def test_unaccented_work_alias_range_is_normalized(self) -> None:
+        for alias in ("Theetete", "Theaitetos", "Theaetetus"):
+            with self.subTest(alias=alias):
+                plan = query_planner.plan_biblio_query(f"{alias} 126b à 128a")
+
+                self.assertTrue(plan.should_consult)
+                self.assertEqual(plan.intent, query_planner.INTENT_EXTRACT_RANGE)
+                self.assertEqual(plan.work_title, "Théétète")
+                self.assertIn("Théétète", plan.work_title_variants)
+                self.assertEqual(plan.locator, "126b")
+                self.assertEqual(plan.locator_end, "128a")
+
+    def test_short_range_suffix_keeps_internal_work_and_corpus_separate(self) -> None:
+        plan = query_planner.plan_biblio_query("126b à 128a du Theetete de Platon")
+
+        self.assertTrue(plan.should_consult)
+        self.assertEqual(plan.intent, query_planner.INTENT_EXTRACT_RANGE)
+        self.assertEqual(plan.work_title, "Théétète")
+        self.assertEqual(plan.document_title, "Platon")
+        self.assertEqual(plan.locator, "126b")
+        self.assertEqual(plan.locator_end, "128a")
+
+    def test_thematic_passage_request_separates_work_and_theme(self) -> None:
+        cases = (
+            "Trouve dans le Théétète le passage où Socrate parle de la maïeutique",
+            "Trouve dans le Theetete le passage ou Socrate parle de la maieutique",
+        )
+
+        for message in cases:
+            with self.subTest(message=message):
+                plan = query_planner.plan_biblio_query(message)
+
+                self.assertTrue(plan.should_consult)
+                self.assertEqual(plan.intent, query_planner.INTENT_SEARCH_CATALOG)
+                self.assertEqual(plan.work_title, "Théétète")
+                self.assertIn("Socrate", plan.theme_query)
+                self.assertIn("maïeutique", plan.theme_query_variants)
+                self.assertIn("maieutique", plan.theme_query_variants)
+                self.assertIn("Théétète", plan.work_title_variants)
+
     def test_vague_book_request_is_not_bibliographic_signal(self) -> None:
         plan = query_planner.plan_biblio_query("Je cherche un livre sympa.")
 
         self.assertFalse(plan.should_consult)
         self.assertEqual(plan.reason_code, query_planner.REASON_NO_SIGNAL)
+
+    def test_false_titles_remain_unusable(self) -> None:
+        fragments = ("le", "la", "l", "bibliotheque", "bibliothèque", "catalogue", "biblio", "ouvrage", "livre")
+
+        for fragment in fragments:
+            with self.subTest(fragment=fragment):
+                plan = query_planner.plan_biblio_query(f"Trouve 126b chez {fragment}.")
+
+                self.assertFalse(plan.should_consult)
+                self.assertEqual(plan.reason_code, query_planner.REASON_CLARIFY_DOCUMENT_REQUIRED)
+
+    def test_query_normalizer_builds_alias_accent_ligature_and_dictation_variants(self) -> None:
+        self.assertEqual(query_normalizer.fold_text("œuvres complètes"), "oeuvres completes")
+        self.assertEqual(query_normalizer.fold_text("oeuvres completes"), "oeuvres completes")
+        self.assertIn("Théétète", query_normalizer.query_variants("Theetete"))
+        self.assertIn("Théétète", query_normalizer.query_variants("Theaitetos"))
+        self.assertIn("Théétète", query_normalizer.query_variants("Theaetetus"))
+        self.assertIn("maïeutique", query_normalizer.query_variants("maieutique"))
+        self.assertIn("sage-femme", query_normalizer.query_variants("sage femme"))
+        self.assertIn("sage femme", query_normalizer.query_variants("sage-femme"))
+        oral = query_planner.plan_biblio_query("126b de l Apologie")
+        typed = query_planner.plan_biblio_query("126b de l’Apologie")
+        self.assertEqual(oral.document_title or oral.work_title, "Apologie")
+        self.assertEqual(typed.document_title or typed.work_title, "Apologie")
 
     def test_observability_does_not_expose_raw_query_terms(self) -> None:
         raw = "Théétète SECRET RAW"
@@ -60,6 +127,8 @@ class BiblioQueryPlannerTests(unittest.TestCase):
 
         self.assertTrue(plan.should_consult)
         self.assertNotIn(raw, encoded)
+        self.assertNotIn("SECRET", encoded)
+        self.assertNotIn("Théétète", encoded)
         self.assertIn("hash", encoded)
 
 

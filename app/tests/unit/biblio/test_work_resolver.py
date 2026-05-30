@@ -34,6 +34,28 @@ class BiblioWorkResolverTests(unittest.TestCase):
         self.assertNotIn("Théétète", encoded)
         self.assertNotIn("Platon", encoded)
 
+    def test_search_anchor_uses_work_alias_variants(self) -> None:
+        plan = query_planner.BiblioQueryPlan(
+            should_consult=True,
+            intent=query_planner.INTENT_EXTRACT_PASSAGE,
+            reason_code=query_planner.REASON_PASSAGE_REQUESTED,
+            query_kind=query_planner.INTENT_EXTRACT_PASSAGE,
+            work_title="Theetete",
+            locator="126b",
+            work_title_variants=("Theetete", "Théétète"),
+        )
+        fake = _AccentSensitiveFakeClient()
+
+        result = work_resolver.BiblioWorkResolver(fake).resolve(plan)
+        encoded = json.dumps(result.to_observability(), ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, work_resolver.STATUS_RESOLVED)
+        self.assertIsNotNone(result.resolve_request)
+        self.assertEqual(result.resolve_request.document_id, "doc-1234")
+        self.assertEqual(result.resolve_request.locator, "126b")
+        self.assertEqual([call[1] for call in fake.calls], ["Theetete", "Théétète"])
+        self.assertNotIn("Théétète", encoded)
+
 
 class _FakeClient:
     def __init__(self) -> None:
@@ -68,6 +90,32 @@ class _FakeClient:
             },
             duration_ms=1,
             result_count=1,
+        )
+
+
+class _AccentSensitiveFakeClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[object, ...]] = []
+
+    def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search", q, limit))
+        rows = []
+        if q == "Théétète":
+            rows = [
+                {
+                    "document_id": "doc-1234",
+                    "title": "RAW TITLE MUST STAY INTERNAL",
+                    "page_no": 131,
+                    "para_no": 230,
+                    "text": "RAW OCR MUST STAY INTERNAL",
+                }
+            ]
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            status_code=200,
+            payload={"count": len(rows), "results": rows},
+            duration_ms=1,
+            result_count=len(rows),
         )
 
 

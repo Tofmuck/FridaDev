@@ -70,19 +70,25 @@ class BiblioWorkResolver:
         try:
             catalog_items: list[Mapping[str, Any]] = []
             if plan.document_title or plan.author:
-                catalog_response = self._client.catalog(
-                    q=plan.document_title or plan.author,
-                    limit=DOCUMENT_QUERY_LIMIT,
-                    offset=0,
-                )
-                responses.append(catalog_response)
-                catalog_items = _catalog_items(catalog_response)
+                for query in _candidate_queries(plan.document_title_variants, plan.document_title, plan.author):
+                    catalog_response = self._client.catalog(
+                        q=query,
+                        limit=DOCUMENT_QUERY_LIMIT,
+                        offset=0,
+                    )
+                    responses.append(catalog_response)
+                    catalog_items = _catalog_items(catalog_response)
+                    if catalog_items:
+                        break
 
             search_rows: list[Mapping[str, Any]] = []
             if plan.work_title:
-                search_response = self._client.search(plan.work_title, limit=WORK_SEARCH_LIMIT)
-                responses.append(search_response)
-                search_rows = _search_results(search_response)
+                for query in _candidate_queries(plan.work_title_variants, plan.work_title):
+                    search_response = self._client.search(query, limit=WORK_SEARCH_LIMIT)
+                    responses.append(search_response)
+                    search_rows = _search_results(search_response)
+                    if search_rows:
+                        break
 
         except CatalogueClientError as exc:
             return BiblioWorkResolution(
@@ -142,6 +148,22 @@ def _catalog_items(response: CatalogueResponse) -> list[Mapping[str, Any]]:
     if not isinstance(items, list):
         return []
     return [item for item in items if isinstance(item, Mapping)]
+
+
+def _candidate_queries(*groups: Any) -> tuple[str, ...]:
+    queries: list[str] = []
+    for group in groups:
+        if isinstance(group, str):
+            items = (group,)
+        elif isinstance(group, Sequence):
+            items = tuple(str(item or "") for item in group)
+        else:
+            items = ()
+        for item in items:
+            text = str(item or "").strip()
+            if text and text not in queries:
+                queries.append(text)
+    return tuple(queries)
 
 
 def _search_results(response: CatalogueResponse) -> list[Mapping[str, Any]]:

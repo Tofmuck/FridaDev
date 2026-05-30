@@ -251,17 +251,48 @@ Lot 1 ne doit pas demarrer si le patch propose:
 
 ### Lot 1 - Normalisation requete / accents / dictee / alias d'oeuvres
 
-- [ ] Centraliser une normalisation partagee: accents, apostrophes, ligatures, ponctuation dictee, variantes `bibliotheque` / `biblio`.
-- [ ] Gerer `Theetete`, `Theaitetos`, `Theaetetus`, `Théétète` comme alias candidats sans inventer une correspondance certaine.
-- [ ] Separer proprement:
+- Statut: livre le 2026-05-30.
+
+- [x] Centraliser une normalisation partagee: accents, apostrophes, ligatures, ponctuation dictee, variantes `bibliotheque` / `biblio`.
+- [x] Gerer `Theetete`, `Theaitetos`, `Theaetetus`, `Théétète` comme alias candidats sans inventer une correspondance certaine.
+- [x] Separer proprement:
   - oeuvre interne;
   - corpus / auteur;
   - theme recherche;
   - locator eventuel;
   - demande de liste.
-- [ ] Ne jamais promouvoir les fragments `le`, `la`, `l`, `bibliotheque`, `catalogue`, `ouvrage`, `livre` en titre utilisable.
-- [ ] Couvrir les formulations dictees sans accents: `maieutique`, `Theetete`, `ou Socrate parle de`.
-- [ ] Garder une strategie conservatrice: si la demande est vraiment vague, clarifier au lieu de chercher toute la bibliotheque.
+- [x] Ne jamais promouvoir les fragments `le`, `la`, `l`, `bibliotheque`, `catalogue`, `ouvrage`, `livre` en titre utilisable.
+- [x] Couvrir les formulations dictees sans accents: `maieutique`, `Theetete`, `ou Socrate parle de`.
+- [x] Garder une strategie conservatrice: si la demande est vraiment vague, clarifier au lieu de chercher toute la bibliotheque.
+
+Livraison:
+
+- ajout de `app/biblio/query_normalizer.py` pour centraliser:
+  - texte normalise avec apostrophes standardisees;
+  - pliage accents/ligatures (`œuvres` et `oeuvres` convergent);
+  - alias candidats d'oeuvres (`Théétète`, `Theetete`, `Theaitetos`, `Theaetetus`);
+  - variantes de concepts (`maïeutique` / `maieutique`, `sage-femme` / `sage femme`);
+  - signaux content-free par longueurs et hashes.
+- extension de `BiblioQueryPlan` avec:
+  - `theme_query`;
+  - `catalogue_query_variants`;
+  - `document_title_variants`;
+  - `work_title_variants`;
+  - `theme_query_variants`.
+- integration des variantes dans les chemins existants `search_catalog` et `work_resolver`, sans appeler `/context` pour les recherches thematiques.
+- correction locale du parsing range court: `126b a 128a du Theetete de Platon` separe maintenant oeuvre interne et corpus.
+- maintien du comportement attendu: une recherche thematique peut trouver des candidats via variantes, mais ne produit pas encore de passage tant que les Lots 2/3 ne sont pas livres.
+
+Preuves unitaires ajoutees:
+
+- alias `Théétète` / `Theetete` / `Theaitetos` / `Theaetetus`;
+- variantes `maïeutique` / `maieutique`;
+- variantes `sage-femme` / `sage femme`;
+- apostrophes `l'Apologie`, `l’Apologie`, `l Apologie`;
+- ligatures `œuvres` / `oeuvres`;
+- refus des faux titres;
+- observabilite du planner sans termes bruts;
+- recherche thematique sans extraction de passage.
 
 Tests minimum:
 
