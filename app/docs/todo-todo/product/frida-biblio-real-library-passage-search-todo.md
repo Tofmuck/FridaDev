@@ -401,6 +401,14 @@ Notes Lot 3:
 - Aucun appel Catalogue mutateur n'est ajoute: le chemin utilise seulement `GET /search` puis `GET /doc/{id}/context`.
 - Les passages extraits par ce moteur ne sont pas encore injectes automatiquement dans `[PASSAGES DE BIBLIOTHEQUE CONSULTES]`; ce branchement reste pour les lots suivants.
 
+Correctif Lot 3 bis du 2026-05-30:
+
+- [x] Remplacer les reponses Catalogue brutes retenues par les resultats Lot 2 / Lot 3 par des observations compactes content-free.
+- [x] Ne plus conserver de `CatalogueResponse.payload` issu de `/search` dans `BiblioPassageCandidateSearchResult`.
+- [x] Ne plus conserver de `CatalogueResponse.payload` issu de `/context` dans `BiblioPassageContextSearchResult`.
+- [x] Autoriser le texte brut uniquement dans `BiblioPassageContextSearchResult.passage` quand `status=extracted`.
+- [x] Ajouter des tests qui inspectent les objets resultats eux-memes, pas seulement `to_observability()`.
+
 ### Lot 4 - Ranking et selection bornee de passages
 
 - [ ] Definir un ranking explicable content-free:

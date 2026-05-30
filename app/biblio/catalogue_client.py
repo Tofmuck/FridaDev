@@ -99,6 +99,44 @@ class CatalogueResponse:
         }
 
 
+@dataclass(frozen=True)
+class CatalogueEndpointObservation:
+    endpoint_kind: str
+    status_code: int | None = None
+    duration_ms: int = 0
+    result_count: int | None = None
+    doc_id_short: str = ""
+    content_chars: int = 0
+    reason_code: str = ""
+    error_class: str = ""
+
+    def to_observability(self) -> dict[str, Any]:
+        observed: dict[str, Any] = {
+            "endpoint_kind": self.endpoint_kind,
+            "status_code": self.status_code,
+            "duration_ms": self.duration_ms,
+            "result_count": self.result_count,
+            "doc_id_short": self.doc_id_short,
+            "content_chars": self.content_chars,
+        }
+        if self.reason_code:
+            observed["reason_code"] = self.reason_code
+        if self.error_class:
+            observed["error_class"] = self.error_class
+        return observed
+
+
+def observe_catalogue_response(response: CatalogueResponse) -> CatalogueEndpointObservation:
+    return CatalogueEndpointObservation(
+        endpoint_kind=response.endpoint_kind,
+        status_code=response.status_code,
+        duration_ms=response.duration_ms,
+        result_count=response.result_count,
+        doc_id_short=response.doc_id_short,
+        content_chars=response.content_chars,
+    )
+
+
 class CatalogueClientError(Exception):
     reason_code = "biblio_catalogue_error"
 

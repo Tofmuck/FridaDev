@@ -516,6 +516,7 @@ Correctif recherche de candidats du 2026-05-30:
 - le ranking distingue `catalogue_rank_score` du `first_result_index` local aux resultats retournes par `/search`;
 - un score Catalogue float fini peut contribuer au ranking et produire le reason code `high_catalogue_rank_score`;
 - l'observabilite des candidats reste content-free: ids courts, pages, paragraphes, `paragraph_id`, scores, hashes de variantes, reason codes et counts seulement;
+- l'objet resultat de recherche de candidats ne conserve pas les payloads Catalogue bruts de `/search`; il garde seulement des observations endpoint compactes content-free;
 - cette couche ne doit pas appeler `/context`, ne doit pas extraire de passage, et ne doit pas injecter de lane `[PASSAGES DE BIBLIOTHEQUE CONSULTES]`.
 
 Moteur contextuel Lot 3 du 2026-05-30:
@@ -529,6 +530,7 @@ Moteur contextuel Lot 3 du 2026-05-30:
 - plusieurs contextes plausibles retournent `ambiguous` plutot qu'un choix silencieux;
 - aucun contexte exploitable retourne `not_found`, et les erreurs transport/API retournent `catalogue_unavailable`;
 - le passage brut est autorise seulement dans l'objet metier interne quand `status=extracted`; il reste interdit en observabilite, logs, dashboard, read-model et retour technique;
+- les resultats contextuels ne conservent pas les payloads Catalogue bruts de `/context`; les reponses stockees sont des observations compactes content-free, et le payload brut reste une variable locale transitoire pendant la validation;
 - ce lot n'ajoute pas d'injection chat supplementaire et ne modifie pas le toggle frontend.
 
 Validation finale Lot 8 du 2026-05-29:

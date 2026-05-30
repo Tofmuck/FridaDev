@@ -12,7 +12,14 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
-from .catalogue_client import CatalogueClient, CatalogueClientError, CatalogueResponse, short_doc_id
+from .catalogue_client import (
+    CatalogueClient,
+    CatalogueClientError,
+    CatalogueEndpointObservation,
+    CatalogueResponse,
+    observe_catalogue_response,
+    short_doc_id,
+)
 from .query_normalizer import fold_text
 from .query_planner import BiblioQueryPlan
 
@@ -83,7 +90,11 @@ class BiblioPassageCandidateSearchResult:
     reason_code: str
     candidates: tuple[BiblioPassageCandidate, ...] = field(default_factory=tuple)
     query_hashes: tuple[str, ...] = field(default_factory=tuple)
-    client_responses: tuple[CatalogueResponse, ...] = field(default_factory=tuple, repr=False, compare=False)
+    endpoint_observations: tuple[CatalogueEndpointObservation, ...] = field(
+        default_factory=tuple,
+        repr=False,
+        compare=False,
+    )
     client_error: CatalogueClientError | None = field(default=None, repr=False, compare=False)
     skipped_row_count: int = 0
     total_candidate_count: int = 0
@@ -102,8 +113,8 @@ class BiblioPassageCandidateSearchResult:
             "top_score": round(float(top_score), 3),
             "query_variant_count": len(self.query_hashes),
             "query_hashes": list(self.query_hashes),
-            "endpoint_count": len(self.client_responses) + (1 if self.client_error else 0),
-            "endpoint_kinds": _endpoint_kinds(self.client_responses, self.client_error),
+            "endpoint_count": len(self.endpoint_observations) + (1 if self.client_error else 0),
+            "endpoint_kinds": _endpoint_kinds(self.endpoint_observations, self.client_error),
             "doc_id_shorts": list(doc_id_shorts),
             "candidates": [candidate.to_observability() for candidate in self.candidates],
             "client_error": self.client_error.to_observability() if self.client_error else None,
@@ -126,14 +137,14 @@ class BiblioPassageCandidateSearcher:
                 reason_code=REASON_INVALID_REQUEST,
             )
 
-        responses: list[CatalogueResponse] = []
+        endpoint_observations: list[CatalogueEndpointObservation] = []
         aggregates: dict[tuple[Any, ...], _CandidateAggregate] = {}
         work_positions: dict[str, list[tuple[int | None, int | None]]] = {}
         skipped_rows = 0
         try:
             for spec in query_specs:
                 response = self._client.search(spec.query, limit=request.search_limit)
-                responses.append(response)
+                endpoint_observations.append(observe_catalogue_response(response))
                 rows = _search_results(response)
                 for result_index, row in enumerate(rows, 1):
                     position = _row_position(row)
@@ -164,7 +175,7 @@ class BiblioPassageCandidateSearcher:
             return BiblioPassageCandidateSearchResult(
                 status=STATUS_CATALOGUE_UNAVAILABLE,
                 reason_code=REASON_CATALOGUE_UNAVAILABLE,
-                client_responses=tuple(responses),
+                endpoint_observations=tuple(endpoint_observations),
                 client_error=exc,
                 skipped_row_count=skipped_rows,
             )
@@ -174,7 +185,7 @@ class BiblioPassageCandidateSearcher:
                 status=STATUS_NOT_FOUND,
                 reason_code=REASON_CANDIDATES_NOT_FOUND,
                 query_hashes=tuple(_query_hashes(query_specs)),
-                client_responses=tuple(responses),
+                endpoint_observations=tuple(endpoint_observations),
                 skipped_row_count=skipped_rows,
             )
 
@@ -186,7 +197,7 @@ class BiblioPassageCandidateSearcher:
             reason_code=REASON_CANDIDATES_AMBIGUOUS if ambiguous else REASON_CANDIDATES_FOUND,
             candidates=returned,
             query_hashes=tuple(_query_hashes(query_specs)),
-            client_responses=tuple(responses),
+            endpoint_observations=tuple(endpoint_observations),
             skipped_row_count=skipped_rows,
             total_candidate_count=len(all_candidates),
             ambiguous=ambiguous,
@@ -414,10 +425,10 @@ def _near_work_position(
 
 
 def _endpoint_kinds(
-    responses: Sequence[CatalogueResponse],
+    observations: Sequence[CatalogueEndpointObservation],
     error: CatalogueClientError | None,
 ) -> list[str]:
-    kinds = [str(response.endpoint_kind or "") for response in responses if str(response.endpoint_kind or "")]
+    kinds = [str(observation.endpoint_kind or "") for observation in observations if str(observation.endpoint_kind or "")]
     if error is not None and error.endpoint_kind:
         kinds.append(error.endpoint_kind)
     return sorted(set(kinds))

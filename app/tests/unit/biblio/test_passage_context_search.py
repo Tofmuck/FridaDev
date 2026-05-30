@@ -138,6 +138,53 @@ class BiblioPassageContextSearchTests(unittest.TestCase):
 
         self.assertEqual(result.status, context_search.STATUS_AMBIGUOUS)
         self.assertEqual(result.passage, "")
+        self.assertTrue(result.context_observations)
+        self.assertFalse(any(hasattr(item, "payload") for item in result.context_observations))
+        self.assertNotIn("RAW PASSAGE A", encoded)
+        self.assertNotIn("RAW PASSAGE B", encoded)
+
+    def test_ambiguous_result_retains_no_raw_search_or_context_payloads(self) -> None:
+        plan = query_planner.plan_biblio_query("Cherche maïeutique dans la bibliothèque")
+        fake = _FakeContextClient(
+            search_rows={
+                "maïeutique": [
+                    {
+                        "document_id": "doc-1",
+                        "page_no": 4,
+                        "para_no": 26,
+                        "rank": 0.3,
+                        "title": RAW_TITLE,
+                        "text": RAW_QUERY,
+                    },
+                    {
+                        "document_id": "doc-2",
+                        "page_no": 5,
+                        "para_no": 27,
+                        "rank": 0.3,
+                        "title": RAW_TITLE,
+                        "text": RAW_QUERY,
+                    },
+                ]
+            },
+            context_payloads={
+                ("page_para", "doc-1", 4, 26): _context_payload("doc-1", "RAW PASSAGE A"),
+                ("page_para", "doc-2", 5, 27): _context_payload("doc-2", "RAW PASSAGE B"),
+            },
+        )
+
+        result = context_search.BiblioPassageContextSearcher(fake).search(plan)
+        candidate_result = result.candidate_result
+        encoded = json.dumps(result.to_observability(), ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, context_search.STATUS_AMBIGUOUS)
+        self.assertIsNotNone(candidate_result)
+        self.assertTrue(candidate_result.endpoint_observations)
+        self.assertTrue(result.context_observations)
+        self.assertFalse(any(hasattr(item, "payload") for item in candidate_result.endpoint_observations))
+        self.assertFalse(any(hasattr(item, "payload") for item in result.context_observations))
+        self.assertEqual(result.passage, "")
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_QUERY, encoded)
         self.assertNotIn("RAW PASSAGE A", encoded)
         self.assertNotIn("RAW PASSAGE B", encoded)
 
@@ -190,6 +237,10 @@ class BiblioPassageContextSearchTests(unittest.TestCase):
         encoded = json.dumps(result.to_observability(), ensure_ascii=False, sort_keys=True)
 
         self.assertEqual(result.status, context_search.STATUS_EXTRACTED)
+        self.assertTrue(result.context_observations)
+        self.assertFalse(any(hasattr(item, "payload") for item in result.context_observations))
+        self.assertIsNotNone(result.candidate_result)
+        self.assertFalse(any(hasattr(item, "payload") for item in result.candidate_result.endpoint_observations))
         self.assertNotIn(RAW_PASSAGE, encoded)
         self.assertNotIn(RAW_TITLE, encoded)
         self.assertNotIn(RAW_QUERY, encoded)

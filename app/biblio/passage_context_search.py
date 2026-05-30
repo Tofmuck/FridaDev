@@ -15,9 +15,11 @@ from typing import Any, Mapping, Sequence
 from .catalogue_client import (
     CatalogueClient,
     CatalogueClientError,
+    CatalogueEndpointObservation,
     CatalogueInvalidParameter,
     CatalogueNotFound,
     CatalogueResponse,
+    observe_catalogue_response,
 )
 from .passage_candidate_search import (
     BiblioPassageCandidate,
@@ -112,7 +114,11 @@ class BiblioPassageContextSearchResult:
         repr=False,
         compare=False,
     )
-    context_responses: tuple[CatalogueResponse, ...] = field(default_factory=tuple, repr=False, compare=False)
+    context_observations: tuple[CatalogueEndpointObservation, ...] = field(
+        default_factory=tuple,
+        repr=False,
+        compare=False,
+    )
     client_error: CatalogueClientError | None = field(default=None, repr=False, compare=False)
     decisions: tuple[BiblioPassageContextDecision, ...] = field(default_factory=tuple)
     passage: str = field(default="", repr=False, compare=False)
@@ -131,14 +137,14 @@ class BiblioPassageContextSearchResult:
         candidate_observability = (
             self.candidate_result.to_observability() if self.candidate_result is not None else {}
         )
-        endpoint_count = int(candidate_observability.get("endpoint_count") or 0) + len(self.context_responses)
+        endpoint_count = int(candidate_observability.get("endpoint_count") or 0) + len(self.context_observations)
         if self.client_error is not None:
             endpoint_count += 1
         endpoint_kinds = set(candidate_observability.get("endpoint_kinds") or [])
         endpoint_kinds.update(
-            str(response.endpoint_kind or "")
-            for response in self.context_responses
-            if str(response.endpoint_kind or "")
+            str(observation.endpoint_kind or "")
+            for observation in self.context_observations
+            if str(observation.endpoint_kind or "")
         )
         if self.client_error is not None and self.client_error.endpoint_kind:
             endpoint_kinds.add(self.client_error.endpoint_kind)
@@ -147,7 +153,7 @@ class BiblioPassageContextSearchResult:
             "status": self.status,
             "reason_code": self.reason_code,
             "candidate_count": len(self.candidate_result.candidates) if self.candidate_result else 0,
-            "context_call_count": len(self.context_responses),
+            "context_call_count": len(self.context_observations),
             "plausible_context_count": plausible_count,
             "max_context_candidates": self.max_context_candidates,
             "passage_present": self.status == STATUS_EXTRACTED and bool(self.passage),
@@ -227,9 +233,9 @@ class BiblioPassageContextSearcher:
                 max_context_candidates=options.max_context_candidates,
             )
 
-        context_responses: list[CatalogueResponse] = []
+        context_observations: list[CatalogueEndpointObservation] = []
         decisions: list[BiblioPassageContextDecision] = []
-        extracted: list[tuple[BiblioPassageCandidate, str, CatalogueResponse]] = []
+        extracted: list[tuple[BiblioPassageCandidate, str, Mapping[str, Any]]] = []
         too_long_count = 0
 
         for candidate in candidate_result.candidates[: options.max_context_candidates]:
@@ -239,7 +245,7 @@ class BiblioPassageContextSearcher:
                 continue
             try:
                 response = self._context(candidate, target, options)
-                context_responses.append(response)
+                context_observations.append(observe_catalogue_response(response))
             except CatalogueNotFound:
                 decisions.append(_decision(candidate, STATUS_NOT_FOUND, REASON_CONTEXT_NOT_FOUND))
                 continue
@@ -251,7 +257,7 @@ class BiblioPassageContextSearcher:
                     status=STATUS_CATALOGUE_UNAVAILABLE,
                     reason_code=REASON_CONTEXT_CATALOGUE_UNAVAILABLE,
                     candidate_result=candidate_result,
-                    context_responses=tuple(context_responses),
+                    context_observations=tuple(context_observations),
                     client_error=exc,
                     decisions=tuple(decisions),
                     max_context_candidates=options.max_context_candidates,
@@ -263,7 +269,7 @@ class BiblioPassageContextSearcher:
                     status=STATUS_INCOHERENT_CATALOGUE,
                     reason_code=REASON_CONTEXT_INCOHERENT,
                     candidate_result=candidate_result,
-                    context_responses=tuple(context_responses),
+                    context_observations=tuple(context_observations),
                     decisions=(*decisions, coherent),
                     max_context_candidates=options.max_context_candidates,
                 )
@@ -274,7 +280,7 @@ class BiblioPassageContextSearcher:
                     status=STATUS_INCOHERENT_CATALOGUE,
                     reason_code=REASON_CONTEXT_INCOHERENT,
                     candidate_result=candidate_result,
-                    context_responses=tuple(context_responses),
+                    context_observations=tuple(context_observations),
                     decisions=(
                         *decisions,
                         _decision(candidate, STATUS_INCOHERENT_CATALOGUE, REASON_CONTEXT_INCOHERENT),
@@ -306,16 +312,16 @@ class BiblioPassageContextSearcher:
                     passage=passage,
                 )
             )
-            extracted.append((candidate, passage, response))
+            extracted.append((candidate, passage, response.payload))
 
         if len(extracted) == 1:
-            candidate, passage, response = extracted[0]
+            candidate, passage, payload = extracted[0]
             return _extracted_result(
                 candidate_result=candidate_result,
-                context_responses=tuple(context_responses),
+                context_observations=tuple(context_observations),
                 decisions=tuple(decisions),
                 candidate=candidate,
-                payload=response.payload,
+                payload=payload,
                 passage=passage,
                 options=options,
             )
@@ -324,7 +330,7 @@ class BiblioPassageContextSearcher:
                 status=STATUS_AMBIGUOUS,
                 reason_code=REASON_CONTEXT_AMBIGUOUS,
                 candidate_result=candidate_result,
-                context_responses=tuple(context_responses),
+                context_observations=tuple(context_observations),
                 decisions=tuple(decisions),
                 max_context_candidates=options.max_context_candidates,
             )
@@ -333,7 +339,7 @@ class BiblioPassageContextSearcher:
                 status=STATUS_TOO_LONG,
                 reason_code=REASON_CONTEXT_TOO_LONG,
                 candidate_result=candidate_result,
-                context_responses=tuple(context_responses),
+                context_observations=tuple(context_observations),
                 decisions=tuple(decisions),
                 max_context_candidates=options.max_context_candidates,
             )
@@ -341,7 +347,7 @@ class BiblioPassageContextSearcher:
             status=STATUS_NOT_FOUND,
             reason_code=REASON_CONTEXT_NOT_FOUND,
             candidate_result=candidate_result,
-            context_responses=tuple(context_responses),
+            context_observations=tuple(context_observations),
             decisions=tuple(decisions),
             max_context_candidates=options.max_context_candidates,
         )
@@ -418,7 +424,7 @@ def _coherent_context(
 def _extracted_result(
     *,
     candidate_result: BiblioPassageCandidateSearchResult,
-    context_responses: tuple[CatalogueResponse, ...],
+    context_observations: tuple[CatalogueEndpointObservation, ...],
     decisions: tuple[BiblioPassageContextDecision, ...],
     candidate: BiblioPassageCandidate,
     payload: Mapping[str, Any],
@@ -430,7 +436,7 @@ def _extracted_result(
         status=STATUS_EXTRACTED,
         reason_code=REASON_CONTEXT_EXTRACTED,
         candidate_result=candidate_result,
-        context_responses=context_responses,
+        context_observations=context_observations,
         decisions=decisions,
         passage=passage,
         passage_chars=len(passage),

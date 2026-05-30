@@ -68,6 +68,21 @@ class BiblioPassageCandidateSearchTests(unittest.TestCase):
         self.assertNotIn(RAW_TITLE, encoded)
         self.assertNotIn(RAW_TEXT, encoded)
 
+    def test_result_retains_only_endpoint_observations_not_raw_search_payloads(self) -> None:
+        plan = query_planner.plan_biblio_query("Cherche maïeutique dans la bibliothèque")
+        fake = _FakeSearchClient({"maïeutique": [_row("doc-1", page_no=4, para_no=26, rank=0.3)]})
+
+        result = candidate_search.BiblioPassageCandidateSearcher(fake).search(plan)
+        observed = [item.to_observability() for item in result.endpoint_observations]
+        encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, candidate_search.STATUS_CANDIDATES_FOUND)
+        self.assertTrue(result.endpoint_observations)
+        self.assertFalse(any(hasattr(item, "payload") for item in result.endpoint_observations))
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_TEXT, encoded)
+        self.assertNotIn("payload", encoded)
+
     def test_unaccented_theme_uses_accented_variant(self) -> None:
         plan = query_planner.plan_biblio_query("Cherche maieutique dans la bibliotheque")
         fake = _FakeSearchClient({"maïeutique": [_row("doc-1", page_no=4, para_no=26)]})
