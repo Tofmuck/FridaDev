@@ -138,19 +138,116 @@ Important: l'interdiction de contenu brut concerne les surfaces techniques. Le p
 
 ### Lot 0 - Audit actuel et repro live content-free
 
-- [ ] Reproduire les cas live sans afficher de contenu d'ouvrage brut.
-- [ ] Confirmer pour chaque cas: `query_kind`, `status`, `reason_code`, `client_count`, `candidate_count`, `passage_count`, `lane_injected`.
-- [ ] Auditer le shape content-free de `/search` et `/context`: champs disponibles, presence ou absence de `paragraph_id`, page, paragraphe, titre document, score/rank.
-- [ ] Mesurer si `/search` retourne assez de positions pour appeler `/context` sans nouvelle API.
-- [ ] Identifier les limites exactes de `library_runtime._search_catalog()`: candidats injectes, absence d'extraction.
-- [ ] Lister les cas qui tombent encore en `no_signal`, `locator_required_for_passage`, `not_found` ou `ambiguous`.
-- [ ] Verifier que toggle off ne construit toujours aucun client Catalogue.
+Statut: valide le 2026-05-30 par repros live content-free dans `platform-fridadev`.
+
+- [x] Reproduire les cas live sans afficher de contenu d'ouvrage brut.
+- [x] Confirmer pour chaque cas: `query_kind`, `status`, `reason_code`, `client_count`, `candidate_count`, `passage_count`, `lane_injected`.
+- [x] Auditer le shape content-free de `/search` et `/context`: champs disponibles, presence ou absence de `paragraph_id`, page, paragraphe, titre document, score/rank.
+- [x] Mesurer si `/search` retourne assez de positions pour appeler `/context` sans nouvelle API.
+- [x] Identifier les limites exactes de `library_runtime._search_catalog()`: candidats injectes, absence d'extraction.
+- [x] Lister les cas qui tombent encore en `no_signal`, `locator_required_for_passage`, `not_found` ou `ambiguous`.
+- [x] Verifier que toggle off ne construit toujours aucun client Catalogue.
 
 Preuves attendues, content-free:
 
 - pas de passage brut dans les sorties;
 - pas de titre/auteur/requete brute dans observabilite;
 - counts, ids courts, hashes, longueurs et positions seulement.
+
+#### Photo operatoire Lot 0 - 2026-05-30
+
+Commande: repro live in-container avec un `CatalogueClient` audite localement pour compter les appels GET effectifs, sans imprimer le contenu des lanes, passages, payloads Catalogue, prompts ou textes OCR.
+
+Toggle off:
+
+| Cas | enabled | used | status | reason_code | client_event_count | prompt_message_present |
+| --- | --- | --- | --- | --- | ---: | --- |
+| OFF1 | false | false | `not_applicable` | `biblio_toggle_disabled` | 0 | false |
+
+Repros Biblio activee:
+
+| Cas | Formulation testee | query_kind | intent | status | reason_code | client_event_count | endpoints | search_called | context_called | prompt_lane_present | consultation_lane_present | passage_present | prompt_chars | passage_chars |
+| --- | --- | --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | ---: | ---: |
+| R1 | premiers ouvrages | `list_catalog` | `list_catalog` | `listed` | `biblio_catalog_listed` | 1 | catalog=1 | false | false | false | true | false | 861 | 0 |
+| R2 | extrait court avec oeuvre/auteur/range | `extract_range` | `extract_range` | `not_found` | `document_not_found` | 3 | catalog=2, search=1 | true | false | false | false | false | 0 | 0 |
+| R3 | extrait naturel long avec oeuvre/auteur/range | `extract_range` | `extract_range` | `extracted` | `biblio_passage_lane_ready` | 38 | catalog=2, search=1, locate=2, context=33 | true | true | true | false | true | 7061 | 6534 |
+| R4 | thematique accentuee dans oeuvre | `search_catalog` | `search_catalog` | `not_found` | `biblio_passage_not_extracted` | 2 | catalog=1, search=1 | true | false | false | true | false | 466 | 0 |
+| R5 | thematique sans accents dans oeuvre | `search_catalog` | `search_catalog` | `not_found` | `biblio_passage_not_extracted` | 2 | catalog=1, search=1 | true | false | false | true | false | 466 | 0 |
+| R6 | terme accentue dans bibliotheque | `search_catalog` | `search_catalog` | `searched` | `biblio_catalog_searched` | 2 | catalog=1, search=1 | true | false | false | true | false | 468 | 0 |
+| R7 | terme sans accents dans bibliotheque | `search_catalog` | `search_catalog` | `not_found` | `biblio_passage_not_extracted` | 2 | catalog=1, search=1 | true | false | false | true | false | 466 | 0 |
+| R8 | locator + auteur/catalogue | `extract_passage` | `extract_passage` | `ambiguous` | `ambiguous_locator` | 3 | catalog=2, locate=1 | false | false | false | false | false | 0 | 0 |
+| R9 | range + oeuvre/auteur en suffixe | `clarify_ambiguous` | `clarify_ambiguous` | `not_used` | `biblio_clarify_document_required` | 0 | aucun | false | false | false | false | false | 0 | 0 |
+
+Notes content-free:
+
+- `client_event_count` ci-dessus vient du client audite dans la repro live et inclut les appels `/context`.
+- `observability.client.event_count` actuel n'inclut pas les appels `/context` emis par l'extracteur: R3 montre 38 appels GET effectifs contre 2 evenements client observes par la projection actuelle.
+- Les cas R4 a R7 consultent le Catalogue mais restent sur une lane de consultation, pas une lane de passage.
+- Aucun texte d'ouvrage, payload Catalogue complet, prompt complet ni passage n'a ete imprime.
+
+#### Recherche Catalogue content-free
+
+Commande: appels directs `GET /search` et un probe `GET /doc/{id}/context` depuis le premier resultat positionne, sans afficher le texte retourne.
+
+| Cas | Terme | status | count | rows | doc_ids courts | positions exploitables | row_keys content-free |
+| --- | --- | ---: | ---: | ---: | --- | --- | --- |
+| S1 | `maïeutique` | 200 | 9 | 9 | `d1f49f74` | document_id=9, page_no=9, para_no=9, paragraph_id=0 | document_id, page_no, para_no, rank, title |
+| S2 | `maieutique` sans accents | 200 | 0 | 0 | aucun | document_id=0, page_no=0, para_no=0, paragraph_id=0 | aucun |
+| S3 | `accoucheuse` | 200 | 2 | 2 | `d1f49f74` | document_id=2, page_no=2, para_no=2, paragraph_id=0 | document_id, page_no, para_no, rank, title |
+| S4 | `accouchement` | 200 | 10 | 10 | `62db0e10`, `d1f49f74`, `dabfe4a7` | document_id=10, page_no=10, para_no=10, paragraph_id=0 | document_id, page_no, para_no, rank, title |
+| S5 | `sage-femme` | 200 | 1 | 1 | `dabfe4a7` | document_id=1, page_no=1, para_no=1, paragraph_id=0 | document_id, page_no, para_no, rank, title |
+| S6 | `Théétète` | 200 | 10 | 10 | `d1f49f74` | document_id=10, page_no=10, para_no=10, paragraph_id=0 | document_id, page_no, para_no, rank, title |
+| S7 | `Theetete` sans accents | 200 | 0 | 0 | aucun | document_id=0, page_no=0, para_no=0, paragraph_id=0 | aucun |
+
+Probe `/context` content-free depuis S1:
+
+| context_probe | status | doc_id_short | content_chars_observed | has_text_field | page_no | para_no | paragraph_id | excerpt_start | excerpt_end | text_length |
+| --- | ---: | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| ok | 200 | `d1f49f74` | 179 | true | 4 | 26 | 43430 | 0 | 179 | 179 |
+
+Conclusion technique Lot 0:
+
+- `/search` fournit deja assez de positions (`document_id`, `page_no`, `para_no`) pour appeler `/context` sans nouvelle API dans certains cas.
+- `/context` sait retourner un passage borne pour au moins un candidat thematique, mais le runtime actuel ne le fait pas dans la branche `search_catalog`.
+- La recherche Catalogue est sensible aux accents: les formes sans accents testees retournent 0 resultat alors que les formes accentuees retournent des candidats.
+
+#### Findings Lot 0
+
+P0:
+
+- Aucun P0 observe.
+
+P1:
+
+- Biblio n'est pas encore une vraie recherche de passages: les demandes thematiques R4/R5/R6/R7 appellent `/search` mais jamais `/context`, n'injectent pas la lane `[PASSAGES DE BIBLIOTHEQUE CONSULTES]` et ne produisent aucun passage, alors que `/search` + `/context` prouvent qu'un chemin d'extraction borne est possible.
+- Les variantes sans accents/dictee restent un bloqueur produit: `maieutique` sans accents et `Theetete` sans accents retournent 0 resultat direct, alors que les formes accentuees retournent des candidats.
+
+P2:
+
+- Le parsing range/oeuvre reste fragile: R2 echoue en `document_not_found`, R9 devient `clarify_ambiguous` sans aucun appel Catalogue, tandis que R3 extrait correctement avec une formulation plus longue.
+- L'observabilite actuelle sous-compte les appels Catalogue quand l'extracteur appelle `/context`: R3 produit 38 appels GET audites, mais `observability.client.event_count` vaut 2.
+- La branche `search_catalog` produit une lane de consultation qui aide le modele, mais elle ne porte pas le statut "passage non extrait" de facon assez actionnable pour transformer les candidats en extraction.
+
+P3:
+
+- Les lignes `/search` exposent une cle `title` dans leur shape. Elle n'a pas ete imprimee pendant l'audit, mais les futurs lots doivent continuer a ne pas remonter les titres bruts en observabilite ordinaire.
+
+#### Criteres precis pour ouvrir Lot 1
+
+Lot 1 peut demarrer si:
+
+- le correctif reste applicatif FridaDev et GET-only cote Catalogue;
+- les tests couvrent les variantes accentuees et sans accents sans afficher de texte d'ouvrage;
+- la normalisation separe `work_title`, theme, auteur/corpus, locator et demande de liste;
+- les fragments `le`, `la`, `l`, `bibliotheque`, `catalogue`, `ouvrage`, `livre` ne peuvent pas devenir des titres;
+- les preuves restent content-free.
+
+Lot 1 ne doit pas demarrer si le patch propose:
+
+- une modification Catalogue ou DB sans preuve qu'une route GET manque;
+- une recherche semantique large non bornee;
+- une injection de candidats non extraits comme passages;
+- une fuite de passage, payload, titre/auteur brut, requete brute ou prompt complet dans logs/admin/dashboard.
 
 ### Lot 1 - Normalisation requete / accents / dictee / alias d'oeuvres
 
