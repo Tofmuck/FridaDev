@@ -117,6 +117,7 @@ Frontend rehydration and operator observability
 - Archived Biblio native / Frida Catalogue audit-plan: `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
 - Archived Biblio native / Frida Catalogue roadmap: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 - Final Biblio native / Frida Catalogue validation: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
+- Active Biblio real-library passage search roadmap: `app/docs/todo-todo/product/frida-biblio-real-library-passage-search-todo.md`
 - Archived cancelled Amandine duplication plan: `app/docs/todo-done/migrations/amandine-duplication-annulee-2026-05-28.md`
 - Frida health freeze baseline: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
@@ -293,6 +294,7 @@ Rehydratation frontend et observabilite operateur
 - Audit-plan archive Biblio native / Frida Catalogue: `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
 - Roadmap archivee Biblio native / Frida Catalogue: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 - Validation finale Biblio native / Frida Catalogue: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
+- Roadmap active Biblio vraie bibliotheque / recherche de passages: `app/docs/todo-todo/product/frida-biblio-real-library-passage-search-todo.md`
 - Archive annulation duplication Amandine: `app/docs/todo-done/migrations/amandine-duplication-annulee-2026-05-28.md`
 - Baseline freeze sante Frida: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
 - Contrat dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`

@@ -29,6 +29,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit cible Catalogue humain editable et livraison Lot 0 2026-05-28: `states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 - Contrat Biblio native / Frida Catalogue 2026-05-28: `states/specs/frida-biblio-native-catalogue-contract.md`
 - Validation finale Biblio native / Frida Catalogue 2026-05-29: `todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
+- Roadmap active Biblio vraie bibliotheque / recherche de passages 2026-05-30: `todo-todo/product/frida-biblio-real-library-passage-search-todo.md`
 - Decision produit OpenRouter/Exa comme provider de decouverte web ouverte 2026-05-22: `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 - Archive du renforcement web local V0 SearXNG/Crawl4AI: `todo-done/product/fridadev-local-web-search-hardening-todo.md`
 - Archive A-Z web discovery local-first + Exa: `todo-done/product/fridadev-local-web-search-rebuild-todo.md`
@@ -181,8 +182,9 @@ Lire d'abord:
 - `todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
 - `todo-done/product/frida-biblio-native-catalogue-todo.md`
 - `todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
+- `todo-todo/product/frida-biblio-real-library-passage-search-todo.md` pour le chantier actif P1: recherche conceptuelle de passages, ranking de candidats, extraction bornee via `/context`, variantes sans accents et smokes live.
 
-But: relire le chantier livre permettant a Frida de consulter explicitement une bibliotheque persistante native, identifier un `library_document` / `catalogue_document`, resoudre un locator et extraire un `passage documentaire` sans confondre cette capacite avec les documents actifs de conversation.
+But: relire le chantier livre permettant a Frida de consulter explicitement une bibliotheque persistante native, puis le correctif actif qui doit transformer la recherche thematique en extraction bornee de passages, sans confondre cette capacite avec les documents actifs de conversation.
 
 ### Identity / doctrine
 
