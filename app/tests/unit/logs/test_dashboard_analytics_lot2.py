@@ -678,7 +678,38 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                         'positions': [{'page_no': 12, 'para_no': 3, 'paragraph_id': 99}],
                         'message': {'content': 'RAW BIBLIO LANE MUST NOT LEAK'},
                     },
-                    'counts': {'passage_count': 1, 'lane_chars': 300},
+                    'passage_search': {
+                        'candidate_count': 3,
+                        'total_candidate_count': 5,
+                        'context_call_count': 2,
+                        'plausible_context_count': 1,
+                        'selected_count': 1,
+                        'passage_result_count': 1,
+                        'passage_count': 1,
+                        'ambiguous': False,
+                        'lane_injected': True,
+                        'lane_chars': 300,
+                        'endpoint_count': 3,
+                        'endpoint_kinds': ['search', 'context'],
+                        'ranking_available': True,
+                        'selection_reason_codes': ['dominant_context'],
+                        'top_score': 42.5,
+                        'score_gap': 7.0,
+                        'candidate_top_score': 34.0,
+                        'candidate_query_variant_count': 4,
+                        'doc_id_shorts': ['doc-1234'],
+                        'hashes': ['abcdef123456'],
+                        'positions': [{'page_no': 12, 'para_no': 3, 'paragraph_id': 99}],
+                        'theme_query_signal': {'available': False, 'reason_code': 'biblio_raw_query_not_observed'},
+                        'raw_theme_query': 'RAW QUERY MUST NOT LEAK',
+                    },
+                    'counts': {
+                        'passage_count': 1,
+                        'lane_chars': 300,
+                        'candidate_count': 3,
+                        'context_call_count': 2,
+                        'selected_count': 1,
+                    },
                     'reason_code_counts': {
                         'document_and_locator_resolved': 1,
                         'passage_extracted': 1,
@@ -703,6 +734,18 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertEqual(biblio['passage_count'], 1)
         self.assertEqual(biblio['lane_chars'], 300)
         self.assertEqual(biblio['hashes'], ['abcdef123456'])
+        self.assertEqual(biblio['search_candidate_count'], 3)
+        self.assertEqual(biblio['search_total_candidate_count'], 5)
+        self.assertEqual(biblio['context_fetch_count'], 2)
+        self.assertEqual(biblio['selected_passage_count'], 1)
+        self.assertEqual(biblio['passage_result_count'], 1)
+        self.assertTrue(biblio['lane_injected'])
+        self.assertTrue(biblio['ranking_available'])
+        self.assertEqual(biblio['endpoint_count'], 3)
+        self.assertEqual(biblio['endpoint_kinds'], ['search', 'context'])
+        self.assertEqual(biblio['selection_reason_codes'], ['dominant_context'])
+        self.assertEqual(biblio['top_score'], 42.5)
+        self.assertEqual(biblio['score_gap'], 7.0)
         self.assertFalse(biblio['raw_content_included'])
 
         summaries = dashboard_analytics.build_dashboard_conversation_summaries([fact])
@@ -721,11 +764,15 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertEqual(biblio_hour_bucket['metrics']['used_turns'], 1)
         self.assertEqual(biblio_hour_bucket['metrics']['passages_total'], 1)
         self.assertEqual(biblio_hour_bucket['metrics']['lane_chars_total'], 300)
+        self.assertEqual(biblio_hour_bucket['metrics']['search_candidates_total'], 3)
+        self.assertEqual(biblio_hour_bucket['metrics']['context_fetch_total'], 2)
+        self.assertEqual(biblio_hour_bucket['metrics']['selected_passages_total'], 1)
 
         serialized = json.dumps({'fact': fact, 'summaries': summaries, 'buckets': buckets}, sort_keys=True)
         self.assertNotIn('RAW BIBLIO PASSAGE MUST NOT LEAK', serialized)
         self.assertNotIn('RAW BIBLIO LANE MUST NOT LEAK', serialized)
         self.assertNotIn('RAW CATALOGUE PAYLOAD MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW QUERY MUST NOT LEAK', serialized)
         self.assertNotIn('message', self._collect_keys(fact))
         self.assertNotIn('payload', self._collect_keys(fact))
 

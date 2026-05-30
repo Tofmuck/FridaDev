@@ -156,6 +156,15 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
                 'lane_chars': 300,
                 'hashes': ['abcdef123456'],
                 'positions': [{'page_no': 12, 'para_no': 3, 'paragraph_id': 99}],
+                'search_candidate_count': 3,
+                'context_fetch_count': 2,
+                'selected_passage_count': 1,
+                'passage_result_count': 1,
+                'ambiguous': False,
+                'endpoint_count': 3,
+                'endpoint_kinds': ['search', 'context'],
+                'ranking_available': True,
+                'selection_reason_codes': ['dominant_context'],
                 'confidence_available': False,
                 'confidence_reason_code': 'biblio_confidence_not_implemented',
                 'reason_code_counts': {
@@ -310,6 +319,12 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
         self.assertEqual(by_key['biblio']['metrics']['passages_total'], 1)
         self.assertEqual(by_key['biblio']['metrics']['lane_chars_total'], 300)
         self.assertEqual(by_key['biblio']['metrics']['document_status_counts']['resolved'], 1)
+        self.assertEqual(by_key['biblio']['metrics']['search_candidates_total'], 3)
+        self.assertEqual(by_key['biblio']['metrics']['context_fetch_total'], 2)
+        self.assertEqual(by_key['biblio']['metrics']['selected_passages_total'], 1)
+        self.assertEqual(by_key['biblio']['metrics']['ranking_available_turns'], 1)
+        self.assertEqual(by_key['biblio']['metrics']['endpoint_kind_counts']['search'], 1)
+        self.assertEqual(by_key['biblio']['metrics']['selection_reason_counts']['dominant_context'], 1)
         self.assertEqual(by_key['providers']['metrics']['main_call_present_count'], 1)
         self.assertEqual(by_key['providers']['metrics']['main_duration_ms_p50'], 120)
         self.assertEqual(by_key['identity']['metrics']['block_present_turns'], 1)
@@ -401,8 +416,13 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
             'status': 'ambiguous',
             'document_status': 'ambiguous',
             'document_reason_code': 'ambiguous_document',
-            'passage_count': 0,
-            'reason_code_counts': {'ambiguous_document': 1},
+            'passage_count': 3,
+            'search_candidate_count': 8,
+            'context_fetch_count': 3,
+            'selected_passage_count': 0,
+            'ambiguous': True,
+            'selection_reason_codes': ['selection_gap_too_small'],
+            'reason_code_counts': {'biblio_context_candidates_ambiguous': 1, 'selection_gap_too_small': 1},
             'raw_content_included': False,
         }
 
@@ -410,8 +430,10 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
         reason = dashboard_analytics.resolve_module_turn_degradation_reason('biblio', fact)
 
         self.assertIn('resolution est ambigue', summary)
-        self.assertIn('ambiguous_document', summary)
-        self.assertEqual(reason, 'ambiguous_document')
+        self.assertIn('3 passage(s) candidat(s)', summary)
+        self.assertIn('3 contexte(s)', summary)
+        self.assertIn('biblio_context_candidates_ambiguous', summary)
+        self.assertEqual(reason, 'biblio_context_candidates_ambiguous')
         self.assertNotIn('RAW', summary)
 
     def test_catalog_public_labels_do_not_include_runtime_content(self) -> None:

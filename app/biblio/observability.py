@@ -69,6 +69,15 @@ _TOKEN_KEYS = {
     "source_reason_code",
     "status",
 }
+_HASH_LIST_KEYS = {"hashes", "query_hashes"}
+_DOC_ID_LIST_KEYS = {"doc_id_shorts", "document_candidate_ids"}
+_TOKEN_LIST_KEYS = {
+    "candidate_reason_codes",
+    "endpoint_kinds",
+    "reason_codes",
+    "selection_reason_codes",
+    "selected_reason_codes",
+}
 
 
 def build_admin_observability(*, config_module: Any = None) -> dict[str, Any]:
@@ -176,11 +185,17 @@ def build_biblio_event_payload(
     resolver_projection = _object_projection(resolution)
     extractor_projection = _passage_result_projection(passage_result)
     lane_projection = _prompt_lane_projection(prompt_lane)
+    passage_search_projection = _passage_search_projection(
+        client_items=client_items,
+        extractor=extractor_projection,
+        lane=lane_projection,
+    )
     counts = _counts(
         client_items=client_items,
         resolver=resolver_projection,
         extractor=extractor_projection,
         lane=lane_projection,
+        passage_search=passage_search_projection,
     )
     safe_reason_code = _safe_token(reason_code)
     reason_counts = _reason_counts(
@@ -217,6 +232,7 @@ def build_biblio_event_payload(
         "resolver": resolver_projection,
         "extractor": extractor_projection,
         "lane": lane_projection,
+        "passage_search": passage_search_projection,
         "counts": counts,
         "confidence": {
             "available": False,
@@ -331,6 +347,7 @@ def _counts(
     resolver: Mapping[str, Any],
     extractor: Mapping[str, Any],
     lane: Mapping[str, Any],
+    passage_search: Mapping[str, Any],
 ) -> dict[str, Any]:
     resolver_document = resolver.get("document") if isinstance(resolver.get("document"), Mapping) else {}
     return {
@@ -344,7 +361,76 @@ def _counts(
         "passage_chars": _to_int(extractor.get("passage_chars")),
         "lane_chars": _to_int(lane.get("chars")),
         "hash_count": len(lane.get("hashes") or []) if isinstance(lane.get("hashes"), Sequence) else 0,
+        "candidate_count": _to_int(passage_search.get("candidate_count")),
+        "context_call_count": _to_int(passage_search.get("context_call_count")),
+        "selected_count": _to_int(passage_search.get("selected_count")),
+        "passage_result_count": _to_int(passage_search.get("passage_result_count")),
+        "endpoint_count": _to_int(passage_search.get("endpoint_count")),
+        "ambiguous_count": 1 if passage_search.get("ambiguous") else 0,
+        "lane_injected_count": 1 if passage_search.get("lane_injected") else 0,
     }
+
+
+def _passage_search_projection(
+    *,
+    client_items: Sequence[Mapping[str, Any]],
+    extractor: Mapping[str, Any],
+    lane: Mapping[str, Any],
+) -> dict[str, Any]:
+    candidate_search = _mapping(extractor.get("candidate_search"))
+    selection = _mapping(extractor.get("selection"))
+    endpoint_kinds = _endpoint_kinds(client_items, extractor)
+    selection_reason_codes = _token_list(
+        extractor.get("selection_reason_codes")
+        or selection.get("selected_reason_codes")
+        or selection.get("reason_codes")
+    )
+    if not selection_reason_codes:
+        selection_reason = _safe_token(selection.get("reason_code"))
+        if selection_reason:
+            selection_reason_codes = [selection_reason]
+    lane_hashes = _hash_list(lane.get("hashes"))
+    lane_doc_ids = _doc_id_list(lane.get("doc_id_shorts"))
+    candidate_doc_ids = _doc_id_list(candidate_search.get("doc_id_shorts"))
+    doc_id_shorts = tuple(dict.fromkeys([*lane_doc_ids, *candidate_doc_ids]))
+    projection = {
+        "present": bool(extractor or lane or client_items),
+        "status": _safe_token(extractor.get("status")),
+        "reason_code": _safe_token(extractor.get("reason_code")),
+        "candidate_count": _to_int(extractor.get("candidate_count"))
+        or _to_int(candidate_search.get("candidate_count")),
+        "total_candidate_count": _to_int(candidate_search.get("total_candidate_count")),
+        "context_call_count": _to_int(extractor.get("context_call_count")),
+        "plausible_context_count": _to_int(extractor.get("plausible_context_count")),
+        "selected_count": _to_int(extractor.get("selected_count"))
+        or _to_int(selection.get("selected_count")),
+        "passage_result_count": _to_int(extractor.get("passage_result_count")),
+        "passage_count": _to_int(lane.get("passage_count"))
+        or _to_int(extractor.get("passage_result_count")),
+        "ambiguous": bool(extractor.get("ambiguous") or selection.get("ambiguous")),
+        "lane_injected": bool(lane.get("present")),
+        "lane_chars": _to_int(lane.get("chars")),
+        "endpoint_count": _to_int(extractor.get("endpoint_count")) or len(client_items),
+        "endpoint_kinds": endpoint_kinds,
+        "ranking_available": bool(candidate_search or selection or _to_int(extractor.get("candidate_count"))),
+        "selection_reason_codes": selection_reason_codes,
+        "top_score": _safe_float(extractor.get("top_score") or selection.get("top_score")),
+        "score_gap": _safe_float(extractor.get("score_gap") or selection.get("score_gap")),
+        "candidate_top_score": _safe_float(candidate_search.get("top_score")),
+        "candidate_query_variant_count": _to_int(candidate_search.get("query_variant_count")),
+        "doc_id_shorts": list(doc_id_shorts[:12]),
+        "hashes": lane_hashes[:12],
+        "positions": _positions(lane.get("positions")),
+        "theme_query_signal": {
+            "available": False,
+            "reason_code": "biblio_raw_query_not_observed",
+        },
+        "work_query_signal": {
+            "available": False,
+            "reason_code": "biblio_raw_query_not_observed",
+        },
+    }
+    return _sanitize_mapping(projection)
 
 
 def _reason_counts(*values: Any) -> dict[str, int]:
@@ -366,6 +452,85 @@ def _reason_counts(*values: Any) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
+def _mapping(value: Any) -> Mapping[str, Any]:
+    if isinstance(value, Mapping):
+        return value
+    return {}
+
+
+def _sequence(value: Any) -> Sequence[Any]:
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return value
+    return ()
+
+
+def _token_list(value: Any) -> list[str]:
+    tokens: list[str] = []
+    for item in _sequence(value):
+        token = _safe_token(item)
+        if token:
+            tokens.append(token)
+    return tokens[:24]
+
+
+def _hash_list(value: Any) -> list[str]:
+    hashes: list[str] = []
+    for item in _sequence(value):
+        digest = _strict_hash_12(item)
+        if digest:
+            hashes.append(digest)
+    return hashes[:24]
+
+
+def _doc_id_list(value: Any) -> list[str]:
+    ids: list[str] = []
+    for item in _sequence(value):
+        doc_id = _safe_doc_id(item)
+        if doc_id:
+            ids.append(doc_id)
+    return ids[:24]
+
+
+def _endpoint_kinds(client_items: Sequence[Mapping[str, Any]], extractor: Mapping[str, Any]) -> list[str]:
+    kinds: list[str] = []
+    for item in client_items:
+        kind = _safe_token(item.get("endpoint_kind"))
+        if kind and kind not in kinds:
+            kinds.append(kind)
+    for item in _sequence(extractor.get("endpoint_kinds")):
+        kind = _safe_token(item)
+        if kind and kind not in kinds:
+            kinds.append(kind)
+    return kinds[:12]
+
+
+def _positions(value: Any) -> list[dict[str, Any]]:
+    positions: list[dict[str, Any]] = []
+    for raw_item in _sequence(value):
+        item = _mapping(raw_item)
+        positions.append(
+            {
+                "page_no": item.get("page_no") if type(item.get("page_no")) is int else None,
+                "para_no": item.get("para_no") if type(item.get("para_no")) is int else None,
+                "paragraph_id": item.get("paragraph_id") if type(item.get("paragraph_id")) is int else None,
+                "excerpt_start": item.get("excerpt_start") if type(item.get("excerpt_start")) is int else None,
+                "excerpt_end": item.get("excerpt_end") if type(item.get("excerpt_end")) is int else None,
+                "text_length": item.get("text_length") if type(item.get("text_length")) is int else None,
+            }
+        )
+    return positions[:12]
+
+
+def _safe_float(value: Any) -> float:
+    try:
+        number = float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+    if number != number or number in {float("inf"), float("-inf")}:
+        return 0.0
+    return round(number, 3)
+
+
 def _event_status(
     *,
     explicit: str,
@@ -384,7 +549,7 @@ def _event_status(
     extractor_status = str(extractor.get("status") or "").lower()
     if "error" in client_statuses or resolver_status == "catalogue_unavailable" or extractor_status == "catalogue_unavailable":
         return "error"
-    if resolver_status == "ambiguous":
+    if resolver_status == "ambiguous" or extractor_status == "ambiguous":
         return "ambiguous"
     if resolver_status == "not_found" or extractor_status == "not_found":
         return "not_found"
@@ -422,7 +587,7 @@ def _sanitize_value(value: Any, *, key: str = "") -> Any:
     if isinstance(value, Mapping):
         return _sanitize_mapping(value)
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return [_sanitize_value(item, key=key) for item in list(value)[:50]]
+        return [_sanitize_sequence_value(item, key=key_l) for item in list(value)[:50]]
     if isinstance(value, str):
         if key_l in _HASH_KEYS:
             return _strict_hash_12(value)
@@ -438,6 +603,17 @@ def _sanitize_value(value: Any, *, key: str = "") -> Any:
     if isinstance(value, float):
         return value
     return _compact_text_signal(str(value))
+
+
+def _sanitize_sequence_value(value: Any, *, key: str = "") -> Any:
+    if isinstance(value, str):
+        if key in _HASH_LIST_KEYS:
+            return _strict_hash_12(value)
+        if key in _DOC_ID_LIST_KEYS:
+            return _safe_doc_id(value)
+        if key in _TOKEN_LIST_KEYS:
+            return _safe_token(value)
+    return _sanitize_value(value, key=key)
 
 
 def _safe_token(value: Any, *, max_chars: int = 120) -> str:

@@ -536,18 +536,24 @@ Correctif strict smoke du 2026-05-30:
 
 ### Lot 7 - Observabilite/admin content-free
 
-- [ ] Etendre `build_biblio_event_payload()` si besoin pour les recherches thematiques.
-- [ ] Ajouter les projections content-free:
-  - `theme_query` longueur/hash;
-  - `work_query` longueur/hash;
+- [x] Etendre `build_biblio_event_payload()` pour les recherches thematiques via la projection compacte `passage_search`.
+- [x] Ajouter les projections content-free:
+  - `theme_query` / `work_query`: pas de valeur brute observee; les signaux indiquent `available=false` et `reason_code=biblio_raw_query_not_observed`;
   - `search_candidate_count`;
   - `context_fetch_count`;
   - `selected_passage_count`;
   - `selection_reason_codes`;
   - `ranking_available`.
-- [ ] Verifier dashboard/read-model si de nouvelles cles sont materialisees.
-- [ ] Tester que les titres, auteurs, locators bruts, requetes brutes et passages ne fuitent pas.
-- [ ] Ne pas ajouter de dashboard brut de passages.
+- [x] Verifier dashboard/read-model: `dashboard_turn_facts.biblio_json` materialise les nouveaux counts, endpoints, scores compacts, selection reasons et ambiguite sans changement schema.
+- [x] Tester que les titres, auteurs, locators bruts, requetes brutes et passages ne fuitent pas.
+- [x] Ne pas ajouter de dashboard brut de passages.
+
+Decision Lot 7 du 2026-05-30:
+
+- `build_biblio_event_payload()` expose maintenant `passage_search`: `candidate_count`, `total_candidate_count`, `context_call_count`, `plausible_context_count`, `selected_count`, `passage_result_count`, `passage_count`, `ambiguous`, `lane_injected`, `lane_chars`, `endpoint_count`, `endpoint_kinds`, `ranking_available`, `selection_reason_codes`, `top_score`, `score_gap`, `candidate_top_score`, `candidate_query_variant_count`, ids courts, hashes courts et positions non textuelles.
+- Le read-model dashboard reprend ces champs sous `biblio_json` avec les noms operateur `search_candidate_count`, `context_fetch_count`, `selected_passage_count`, `ambiguous`, `endpoint_kinds`, `selection_reason_codes`, `top_score`, `score_gap`.
+- Les metriques dashboard agregent candidats, contextes, selections, ambiguite, endpoint kinds et selection reason codes.
+- Les requetes/titres/auteurs/locators bruts restent absents des projections; les hash/longueur de requete ne sont ajoutes que si une projection deja expurgee les fournit, jamais a partir du message utilisateur brut.
 
 ### Lot 8 - Validation finale GO/NO-GO
 

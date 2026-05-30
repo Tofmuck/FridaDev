@@ -12,6 +12,7 @@ Validation finale Lot 8: 2026-05-29
 Correctif bibliothecaire Biblio reelle: 2026-05-30
 Mise a jour recherche passages Lot 5: 2026-05-30
 Mise a jour recherche passages Lot 6: 2026-05-30
+Mise a jour recherche passages Lot 7: 2026-05-30
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -568,6 +569,16 @@ Smokes live philosophiques Lot 6 du 2026-05-30:
 - chaque record est identifie seulement par `case_id` et expose `status`, `reason_code`, `query_kind`, `client_count`, `endpoint_count`, `endpoint_kinds`, `candidate_count`, `context_call_count`, `selected_count`, `passage_count`, `lane_injected`, `lane_chars`, ids courts, hashes courts, longueurs, `payload_objects_retained` et `raw_marker_leaks`;
 - `raw_marker_leaks` est calcule sur les projections content-free (`observability_payload`, observation contextuelle et observation de lane) et sur le record final sanitize avant emission, jamais sur le message prompt brut;
 - le nettoyage P3 post-Lot 5 supprime l'ancien chemin `library_runtime._search_catalog()` et ses constantes locales stale: `INTENT_SEARCH_CATALOG` passe uniquement par `_search_passages()` et `BiblioPassageContextSearcher`.
+
+Observabilite/admin recherche passages Lot 7 du 2026-05-30:
+
+- `build_biblio_event_payload()` expose une projection `passage_search` dediee aux recherches thematiques et range/search contextuels;
+- cette projection est construite seulement depuis `to_observability()` et les observations endpoint compactes, jamais depuis `BiblioPromptLane.message`, `CatalogueResponse.payload`, le message utilisateur brut ou un passage OCR brut;
+- champs autorises: counts (`candidate_count`, `total_candidate_count`, `context_call_count`, `plausible_context_count`, `selected_count`, `passage_result_count`, `passage_count`), flags (`ambiguous`, `lane_injected`, `ranking_available`), longueurs (`lane_chars`), endpoint counts/kinds, scores compacts (`top_score`, `score_gap`, `candidate_top_score`), `selection_reason_codes`, `candidate_query_variant_count`, ids courts, hashes courts et positions non textuelles;
+- `theme_query_signal` et `work_query_signal` restent `available=false` tant que la projection ne recoit pas une longueur/hash deja expurgee; le read-model ne doit jamais recalculer ces signaux depuis la requete utilisateur brute;
+- `dashboard_turn_facts.biblio_json` materialise les nouveaux champs operateur sous noms compacts (`search_candidate_count`, `context_fetch_count`, `selected_passage_count`, `ambiguous`, `endpoint_kinds`, `selection_reason_codes`, scores), sans migration schema additionnelle;
+- les metriques dashboard peuvent agregger candidats, contextes, selections, ambiguite, endpoint kinds et raisons de selection;
+- les surfaces admin/dashboard/read-model restent content-free: pas de passage brut, texte OCR, payload Catalogue, prompt complet, lane message, titre, auteur, locator, requete utilisateur brute, cookie, token, DSN ou `.env`.
 
 Validation finale Lot 8 du 2026-05-29:
 

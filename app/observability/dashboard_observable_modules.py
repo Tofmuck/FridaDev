@@ -187,12 +187,21 @@ def _reduce_biblio_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> 
     _add_metric_count(metrics, 'passages_total', _to_int(biblio.get('passage_count')))
     _add_metric_count(metrics, 'skipped_total', _to_int(biblio.get('skipped_count')))
     _add_metric_count(metrics, 'lane_chars_total', _to_int(biblio.get('lane_chars')))
+    _add_metric_count(metrics, 'search_candidates_total', _to_int(biblio.get('search_candidate_count')))
+    _add_metric_count(metrics, 'context_fetch_total', _to_int(biblio.get('context_fetch_count')))
+    _add_metric_count(metrics, 'selected_passages_total', _to_int(biblio.get('selected_passage_count')))
+    _add_metric_count(metrics, 'ambiguous_turns', 1 if biblio.get('ambiguous') else 0)
+    _add_metric_count(metrics, 'ranking_available_turns', 1 if biblio.get('ranking_available') else 0)
     document_status = biblio.get('document_status')
     if document_status:
         _add_metric_label(metrics, 'document_status_counts', document_status)
     passage_status = biblio.get('passage_status')
     if passage_status:
         _add_metric_label(metrics, 'passage_status_counts', passage_status)
+    for endpoint_kind in biblio.get('endpoint_kinds') or []:
+        _add_metric_label(metrics, 'endpoint_kind_counts', endpoint_kind)
+    for reason in biblio.get('selection_reason_codes') or []:
+        _add_metric_label(metrics, 'selection_reason_counts', reason)
     reason_counts = _mapping(biblio.get('reason_code_counts'))
     for reason, count in reason_counts.items():
         _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
@@ -335,14 +344,35 @@ def _summarize_biblio_turn(fact: Mapping[str, Any]) -> str:
     if not biblio.get('used'):
         return 'La Biblio etait visible en observabilite mais aucun passage n a ete consulte.'
     status = str(biblio.get('status') or '').strip().lower()
+    reason_counts = _mapping(biblio.get('reason_code_counts'))
+    preferred_ambiguity_reason = next(
+        (
+            reason
+            for reason in (
+                'biblio_context_candidates_ambiguous',
+                'selection_gap_too_small',
+                'selection_evidence_insufficient',
+            )
+            if _to_int(reason_counts.get(reason)) > 0
+        ),
+        None,
+    )
     reason = str(
-        biblio.get('passage_reason_code')
+        preferred_ambiguity_reason
+        or biblio.get('passage_reason_code')
         or biblio.get('document_reason_code')
         or biblio.get('confidence_reason_code')
         or ''
     ).strip()
     if status == 'ambiguous':
-        return f'La Biblio a ete consultee mais la resolution est ambigue; raison compacte: {reason or "unknown"}.'
+        passage_count = _to_int(biblio.get('passage_count'))
+        context_count = _to_int(biblio.get('context_fetch_count'))
+        selected_count = _to_int(biblio.get('selected_passage_count'))
+        return (
+            'La Biblio a ete consultee mais la resolution est ambigue; '
+            f'{passage_count} passage(s) candidat(s), {context_count} contexte(s) consulte(s), '
+            f'{selected_count} selection certaine; raison compacte: {reason or "unknown"}.'
+        )
     if status in {'error', 'not_found'}:
         return f'La Biblio a ete consultee sans passage injectable; raison compacte: {reason or status}.'
     passage_count = _to_int(biblio.get('passage_count'))
@@ -408,6 +438,9 @@ def _resolve_documents_reason(fact: Mapping[str, Any]) -> str | None:
 def _resolve_biblio_reason(fact: Mapping[str, Any]) -> str | None:
     reason_counts = _mapping(_mapping(fact.get('biblio')).get('reason_code_counts'))
     for reason in (
+        'biblio_context_candidates_ambiguous',
+        'selection_gap_too_small',
+        'selection_evidence_insufficient',
         'ambiguous_document',
         'ambiguous_locator',
         'document_not_found',
@@ -690,6 +723,10 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('passages_total', 'Passages Biblio observes'),
             ('skipped_total', 'Passages ignores'),
             ('lane_chars_total', 'Taille totale des lanes Biblio'),
+            ('search_candidates_total', 'Candidats de recherche observes'),
+            ('context_fetch_total', 'Contextes Catalogue consultes'),
+            ('selected_passages_total', 'Passages selectionnes avec certitude'),
+            ('ambiguous_turns', 'Tours Biblio ambigus'),
         ),
         conversation_summary=_fields(
             ('biblio_used_turns', 'Tours avec Biblio consultee'),
@@ -701,6 +738,10 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('status', 'Etat Biblio'),
             ('document_status', 'Resolution document'),
             ('passage_count', 'Passages observes'),
+            ('search_candidate_count', 'Candidats de recherche'),
+            ('context_fetch_count', 'Contextes consultes'),
+            ('selected_passage_count', 'Passages selectionnes'),
+            ('ambiguous', 'Ambiguite conservee'),
             ('reason_code_counts', 'Raisons compactes'),
         ),
         human_detail=_fields(
@@ -710,9 +751,13 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         limits=(
             'Ne branche pas le chat ni le frontend Biblio.',
             'Ne contient jamais le passage, le payload Catalogue, le prompt complet, le locator brut, titre ou auteur.',
+            'Les recherches de passages exposent seulement counts, endpoint kinds, ids courts, hashes courts et raisons compactes.',
             'Reste separe des documents actifs, Memory/RAG, workspace, Identity, Summary, Web et OCR.',
         ),
         degradation_reasons=(
+            ('biblio_context_candidates_ambiguous', 'Plusieurs contextes Catalogue restent plausibles.'),
+            ('biblio_selection_gap_too_small', 'Le meilleur passage candidat ne domine pas assez les suivants.'),
+            ('biblio_selection_evidence_insufficient', 'Les signaux de ranking ne suffisent pas a selectionner un passage.'),
             ('ambiguous_document', 'Plusieurs documents Catalogue restent plausibles.'),
             ('ambiguous_locator', 'Plusieurs locators restent plausibles.'),
             ('document_not_found', 'Aucun document Catalogue compatible n a ete trouve.'),

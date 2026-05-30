@@ -32,6 +32,16 @@ def _to_int(value: Any) -> int:
         return 0
 
 
+def _to_float(value: Any) -> float:
+    try:
+        number = float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+    if number != number or number in {float('inf'), float('-inf')}:
+        return 0.0
+    return round(number, 3)
+
+
 def _to_bool(value: Any) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in {'1', 'true', 'yes', 'on'}
@@ -997,6 +1007,15 @@ def _biblio_doc_ids(value: Any) -> list[str]:
     return ids
 
 
+def _biblio_tokens(value: Any) -> list[str]:
+    tokens: list[str] = []
+    for item in _sequence(value):
+        token = _biblio_token(item)
+        if token:
+            tokens.append(token)
+    return tokens[:24]
+
+
 def _biblio_positions(value: Any) -> list[dict[str, Any]]:
     positions: list[dict[str, Any]] = []
     for raw_item in _sequence(value):
@@ -1023,6 +1042,7 @@ def _biblio_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     lane = _mapping(payload.get('lane'))
     counts = _mapping(payload.get('counts'))
     confidence = _mapping(payload.get('confidence'))
+    passage_search = _mapping(payload.get('passage_search'))
     resolver_document = _mapping(resolver.get('document'))
     resolver_locator = _mapping(resolver.get('locator'))
     extractor_resolution = _mapping(extractor.get('resolution'))
@@ -1033,6 +1053,10 @@ def _biblio_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     )
     if document_doc_id and document_doc_id not in doc_ids:
         doc_ids.insert(0, document_doc_id)
+    search_doc_ids = _biblio_doc_ids(passage_search.get('doc_id_shorts'))
+    for doc_id in search_doc_ids:
+        if doc_id not in doc_ids:
+            doc_ids.append(doc_id)
     status = (
         _biblio_token(payload.get('status'))
         or (_status(latest or {}) if latest else None)
@@ -1063,6 +1087,26 @@ def _biblio_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         'lane_chars': _to_int(lane.get('chars')) or _to_int(counts.get('lane_chars')),
         'hashes': _biblio_hashes(lane.get('hashes')),
         'positions': _biblio_positions(lane.get('positions')),
+        'search_candidate_count': _to_int(passage_search.get('candidate_count'))
+        or _to_int(counts.get('candidate_count')),
+        'search_total_candidate_count': _to_int(passage_search.get('total_candidate_count')),
+        'context_fetch_count': _to_int(passage_search.get('context_call_count'))
+        or _to_int(counts.get('context_call_count')),
+        'plausible_context_count': _to_int(passage_search.get('plausible_context_count')),
+        'selected_passage_count': _to_int(passage_search.get('selected_count'))
+        or _to_int(counts.get('selected_count')),
+        'passage_result_count': _to_int(passage_search.get('passage_result_count'))
+        or _to_int(counts.get('passage_result_count')),
+        'ambiguous': bool(passage_search.get('ambiguous')) or status == 'ambiguous',
+        'lane_injected': bool(passage_search.get('lane_injected')) or bool(lane.get('present')),
+        'endpoint_count': _to_int(passage_search.get('endpoint_count')) or _to_int(counts.get('endpoint_count')),
+        'endpoint_kinds': _biblio_tokens(passage_search.get('endpoint_kinds')),
+        'ranking_available': bool(passage_search.get('ranking_available')),
+        'selection_reason_codes': _biblio_tokens(passage_search.get('selection_reason_codes')),
+        'top_score': _to_float(passage_search.get('top_score')),
+        'score_gap': _to_float(passage_search.get('score_gap')),
+        'candidate_top_score': _to_float(passage_search.get('candidate_top_score')),
+        'candidate_query_variant_count': _to_int(passage_search.get('candidate_query_variant_count')),
         'confidence_available': bool(confidence.get('available')),
         'confidence_reason_code': _biblio_token(confidence.get('reason_code')),
         'reason_code_counts': _biblio_reason_counts(payload.get('reason_code_counts')),

@@ -13,7 +13,10 @@ if str(APP_DIR) not in sys.path:
 from biblio import catalogue_client as catalogue
 from biblio import document_resolver as resolver
 from biblio import observability
+from biblio import passage_candidate_search as candidate_search
+from biblio import passage_context_search as context_search
 from biblio import passage_extractor as extractor
+from biblio import passage_selection
 from biblio import prompt_lane
 
 
@@ -113,6 +116,42 @@ class BiblioObservabilityTests(unittest.TestCase):
         self.assertEqual(payload["client"]["items"][0]["endpoint_kind"], catalogue.ENDPOINT_SEARCH)
         self.assertNotIn("payload", payload["client"]["items"][0])
         self.assertNotIn(RAW_SECRET, encoded)
+
+    def test_event_payload_exposes_lot7_passage_search_projection_content_free(self) -> None:
+        context_result = _ambiguous_context_search_result()
+        lane = prompt_lane.build_biblio_prompt_lane(context_result.passage_results)
+
+        payload = observability.build_biblio_event_payload(
+            enabled=True,
+            used=True,
+            query_kind="search_catalog",
+            passage_result=context_result,
+            prompt_lane=lane,
+        )
+        encoded = _json(payload)
+        passage_search = payload["passage_search"]
+
+        self.assertEqual(payload["status"], "ambiguous")
+        self.assertEqual(passage_search["candidate_count"], 2)
+        self.assertEqual(passage_search["context_call_count"], 1)
+        self.assertEqual(passage_search["selected_count"], 0)
+        self.assertEqual(passage_search["passage_result_count"], 1)
+        self.assertEqual(passage_search["passage_count"], 1)
+        self.assertTrue(passage_search["ambiguous"])
+        self.assertTrue(passage_search["lane_injected"])
+        self.assertCountEqual(passage_search["endpoint_kinds"], [catalogue.ENDPOINT_SEARCH, catalogue.ENDPOINT_CONTEXT])
+        self.assertEqual(passage_search["selection_reason_codes"], ["selection_gap_too_small"])
+        self.assertEqual(payload["counts"]["candidate_count"], 2)
+        self.assertEqual(payload["counts"]["context_call_count"], 1)
+        self.assertEqual(payload["counts"]["ambiguous_count"], 1)
+        self.assertFalse(passage_search["theme_query_signal"]["available"])
+        self.assertFalse(passage_search["work_query_signal"]["available"])
+
+        self.assertNotIn(RAW_SECRET, encoded)
+        self.assertNotIn("RAW TITLE MUST NOT LEAK", encoded)
+        self.assertNotIn("RAW QUERY MUST NOT LEAK", encoded)
+        self.assertNotIn(prompt_lane.LANE_HEADER, encoded)
+        self.assertNotIn("message", encoded)
 
     def test_malformed_passage_hash_without_text_is_never_observable(self) -> None:
         passage = _passage(
@@ -220,6 +259,115 @@ def _passage(
         page_no=12,
         para_no=3,
         paragraph_id=99,
+    )
+
+
+def _ambiguous_context_search_result() -> context_search.BiblioPassageContextSearchResult:
+    first = candidate_search.BiblioPassageCandidate(
+        document_id="doc-123456",
+        doc_id_short="doc-1234",
+        page_no=12,
+        para_no=3,
+        paragraph_id=99,
+        score=42.0,
+        hit_count=2,
+        query_variant_count=2,
+        query_hashes=("a" * 12,),
+        reason_codes=("theme_hit", "work_document_match"),
+        catalogue_rank_score=0.3,
+        first_result_index=1,
+    )
+    second = candidate_search.BiblioPassageCandidate(
+        document_id="doc-567890",
+        doc_id_short="doc-5678",
+        page_no=13,
+        para_no=4,
+        paragraph_id=100,
+        score=41.0,
+        hit_count=1,
+        query_variant_count=1,
+        query_hashes=("b" * 12,),
+        reason_codes=("theme_hit",),
+        catalogue_rank_score=0.2,
+        first_result_index=2,
+    )
+    candidate_result = candidate_search.BiblioPassageCandidateSearchResult(
+        status=candidate_search.STATUS_CANDIDATES_FOUND,
+        reason_code=candidate_search.REASON_CANDIDATES_FOUND,
+        candidates=(first, second),
+        query_hashes=("a" * 12, "b" * 12),
+        endpoint_observations=(
+            catalogue.CatalogueEndpointObservation(
+                endpoint_kind=catalogue.ENDPOINT_SEARCH,
+                status_code=200,
+                duration_ms=8,
+                result_count=2,
+                doc_id_short="doc-1234",
+                content_chars=128,
+            ),
+        ),
+        total_candidate_count=2,
+    )
+    selection = passage_selection.BiblioPassageSelectionDecision(
+        status=passage_selection.STATUS_AMBIGUOUS,
+        reason_code=passage_selection.REASON_SELECTION_GAP_TOO_SMALL,
+        scores=(
+            passage_selection.BiblioPassageSelectionScore(
+                index=0,
+                doc_id_short="doc-1234",
+                score=42.0,
+                candidate_score=42.0,
+                context_chars=len(RAW_SECRET),
+                reason_codes=("selection_gap_too_small",),
+            ),
+            passage_selection.BiblioPassageSelectionScore(
+                index=1,
+                doc_id_short="doc-5678",
+                score=41.0,
+                candidate_score=41.0,
+                context_chars=32,
+                reason_codes=("selection_gap_too_small",),
+            ),
+        ),
+        top_score=42.0,
+        runner_up_score=41.0,
+        score_gap=1.0,
+        ambiguous=True,
+    )
+    passage = _passage(RAW_SECRET)
+    return context_search.BiblioPassageContextSearchResult(
+        status=context_search.STATUS_AMBIGUOUS,
+        reason_code=context_search.REASON_CONTEXT_AMBIGUOUS,
+        candidate_result=candidate_result,
+        context_observations=(
+            catalogue.CatalogueEndpointObservation(
+                endpoint_kind=catalogue.ENDPOINT_CONTEXT,
+                status_code=200,
+                duration_ms=6,
+                result_count=1,
+                doc_id_short="doc-1234",
+                content_chars=len(RAW_SECRET),
+            ),
+        ),
+        decisions=(
+            context_search.BiblioPassageContextDecision(
+                status=context_search.STATUS_EXTRACTED,
+                reason_code=context_search.REASON_CONTEXT_EXTRACTED,
+                doc_id_short="doc-1234",
+                page_no=12,
+                para_no=3,
+                paragraph_id=99,
+                candidate_score=42.0,
+                candidate_reason_codes=("theme_hit", "work_document_match"),
+                context_chars=len(RAW_SECRET),
+                context_hash="c" * 12,
+                selected=False,
+                selection_score=42.0,
+                selection_reason_codes=("selection_gap_too_small",),
+            ),
+        ),
+        passage_results=(passage,),
+        selection=selection,
     )
 
 

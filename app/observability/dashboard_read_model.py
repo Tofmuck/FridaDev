@@ -1368,7 +1368,11 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
                 *_document_story_lines(documents),
                 (
                     f"Biblio: consultee {_yes_no(biblio.get('used'))}, etat {_status_fr(biblio.get('status'))}, "
-                    f"document {_status_fr(biblio.get('document_status'))}, passages {_to_int(biblio.get('passage_count'))}."
+                    f"document {_status_fr(biblio.get('document_status'))}, passages {_to_int(biblio.get('passage_count'))}, "
+                    f"candidats {_to_int(biblio.get('search_candidate_count'))}, "
+                    f"contextes {_to_int(biblio.get('context_fetch_count'))}, "
+                    f"selectionnes {_to_int(biblio.get('selected_passage_count'))}, "
+                    f"ambigue {_yes_no(biblio.get('ambiguous'))}."
                 ),
                 f"Persistence: etat {_status_fr(persistence.get('status'))}.",
             ],
