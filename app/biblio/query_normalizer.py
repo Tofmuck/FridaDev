@@ -25,7 +25,7 @@ _LIGATURE_TRANSLATION = str.maketrans(
 )
 _APOSTROPHES_RE = re.compile(r"[’`´ʻʼʹ]")
 _WHITESPACE_RE = re.compile(r"\s+")
-_TOKEN_RE = re.compile(r"[a-z0-9]+(?:[-'][a-z0-9]+)?")
+_TOKEN_RE = re.compile(r"[^\W_]+(?:[-'][^\W_]+)?", re.UNICODE)
 
 _SURFACE_WORDS = {
     "bibliotheque",
@@ -230,11 +230,16 @@ def _replace_alias_phrase(value: str, key: str, replacement: str) -> str:
     words = key.split()
     if not words:
         return value
-    tokens = list(_TOKEN_RE.finditer(fold_text(value).replace("-", " ")))
-    lowered = [token.group(0).replace("-", " ") for token in tokens]
-    for index in range(0, len(lowered) - len(words) + 1):
-        if lowered[index : index + len(words)] == words:
-            return replacement
+    text = normalize_text(value)
+    tokens = list(_TOKEN_RE.finditer(text))
+    for index in range(0, len(tokens)):
+        for end_index in range(index + 1, len(tokens) + 1):
+            phrase = " ".join(token.group(0) for token in tokens[index:end_index])
+            if alias_key(phrase) != key:
+                continue
+            start = tokens[index].start()
+            end = tokens[end_index - 1].end()
+            return f"{text[:start]}{replacement}{text[end:]}"
     return value
 
 

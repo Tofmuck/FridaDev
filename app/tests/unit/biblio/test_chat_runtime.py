@@ -123,6 +123,35 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertIn(("search", "maïeutique"), fake.calls)
         self.assertNotIn(("context",), fake.calls)
 
+    def test_thematic_search_repro_phrasings_do_not_fall_back_to_locator_required(self) -> None:
+        messages = (
+            "Peux-tu me trouver dans le Théétète le passage où Socrate parle de la maïeutique ?",
+            "Peux-tu me trouver dans le Theetete le passage ou Socrate parle de la maieutique ?",
+            "Tu peux me chercher dans le Théétète le passage où Socrate parle de la maïeutique ?",
+            "Trouve le passage sur la maieutique dans le Theetete",
+            "Cherche le passage sur la maïeutique dans le Théétète",
+        )
+
+        for message in messages:
+            with self.subTest(message=message):
+                fake = _AccentSensitiveSearchClient()
+                result = chat_runtime.run_biblio_chat_turn(
+                    {"biblio_enabled": True},
+                    user_msg=message,
+                    client_factory=lambda **_kwargs: fake,
+                )
+
+                self.assertTrue(result.used)
+                self.assertEqual(result.query_kind, "search_catalog")
+                self.assertEqual(result.observability_payload["status"], "searched")
+                self.assertNotEqual(result.reason_code, "locator_required_for_passage")
+                self.assertIsNone(result.passage_result)
+                self.assertIsNotNone(result.prompt_message)
+                self.assertIn("[CONSULTATION DE BIBLIOTHEQUE]", result.prompt_message["content"])
+                self.assertNotIn(prompt_lane.LANE_HEADER, result.prompt_message["content"])
+                self.assertIn(("search", "maïeutique"), fake.calls)
+                self.assertNotIn(("context",), fake.calls)
+
     def test_theetete_range_request_reaches_extractor_with_work_anchor(self) -> None:
         observed: dict[str, object] = {}
 

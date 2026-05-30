@@ -294,6 +294,19 @@ Preuves unitaires ajoutees:
 - observabilite du planner sans termes bruts;
 - recherche thematique sans extraction de passage.
 
+Lot 1 bis - micro-correctif post-audit du 2026-05-30:
+
+- [x] Ajouter les verbes/formes `trouver` et `chercher` aux patrons thematiques.
+- [x] Corriger les formulations:
+  - `Peux-tu me trouver dans le Théétète le passage où Socrate parle de la maïeutique ?`;
+  - `Peux-tu me trouver dans le Theetete le passage ou Socrate parle de la maieutique ?`;
+  - `Tu peux me chercher dans le Théétète le passage où Socrate parle de la maïeutique ?`.
+- [x] Ajouter le patron inverse `passage sur <theme> dans <oeuvre>` pour:
+  - `Trouve le passage sur la maieutique dans le Theetete`;
+  - `Cherche le passage sur la maïeutique dans le Théétète`.
+- [x] Corriger `query_variants()` pour produire aussi les variantes de phrase completes, par exemple `Socrate parle de la maïeutique` depuis `Socrate parle de la maieutique`.
+- [x] Verifier que ces formulations restent `search_catalog`, avec `work_title` present, `theme_query` present, variantes accentuees/non accentuees, sans extraction de passage ni appel `/context`.
+
 Tests minimum:
 
 - `Trouve dans le Theetete le passage ou Socrate parle de la maieutique`;

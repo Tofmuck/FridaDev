@@ -75,6 +75,9 @@ class BiblioQueryPlannerTests(unittest.TestCase):
         cases = (
             "Trouve dans le Théétète le passage où Socrate parle de la maïeutique",
             "Trouve dans le Theetete le passage ou Socrate parle de la maieutique",
+            "Peux-tu me trouver dans le Théétète le passage où Socrate parle de la maïeutique ?",
+            "Peux-tu me trouver dans le Theetete le passage ou Socrate parle de la maieutique ?",
+            "Tu peux me chercher dans le Théétète le passage où Socrate parle de la maïeutique ?",
         )
 
         for message in cases:
@@ -88,6 +91,23 @@ class BiblioQueryPlannerTests(unittest.TestCase):
                 self.assertIn("maïeutique", plan.theme_query_variants)
                 self.assertIn("maieutique", plan.theme_query_variants)
                 self.assertIn("Théétète", plan.work_title_variants)
+
+    def test_inverted_thematic_passage_request_separates_theme_and_work(self) -> None:
+        cases = (
+            ("Trouve le passage sur la maieutique dans le Theetete", "maieutique"),
+            ("Cherche le passage sur la maïeutique dans le Théétète", "maïeutique"),
+        )
+
+        for message, expected_theme_variant in cases:
+            with self.subTest(message=message):
+                plan = query_planner.plan_biblio_query(message)
+
+                self.assertTrue(plan.should_consult)
+                self.assertEqual(plan.intent, query_planner.INTENT_SEARCH_CATALOG)
+                self.assertEqual(plan.work_title, "Théétète")
+                self.assertEqual(plan.theme_query, expected_theme_variant)
+                self.assertIn("maïeutique", plan.theme_query_variants)
+                self.assertIn("maieutique", plan.theme_query_variants)
 
     def test_vague_book_request_is_not_bibliographic_signal(self) -> None:
         plan = query_planner.plan_biblio_query("Je cherche un livre sympa.")
@@ -111,6 +131,10 @@ class BiblioQueryPlannerTests(unittest.TestCase):
         self.assertIn("Théétète", query_normalizer.query_variants("Theetete"))
         self.assertIn("Théétète", query_normalizer.query_variants("Theaitetos"))
         self.assertIn("Théétète", query_normalizer.query_variants("Theaetetus"))
+        self.assertIn(
+            "Socrate parle de la maïeutique",
+            query_normalizer.query_variants("Socrate parle de la maieutique"),
+        )
         self.assertIn("maïeutique", query_normalizer.query_variants("maieutique"))
         self.assertIn("sage-femme", query_normalizer.query_variants("sage femme"))
         self.assertIn("sage femme", query_normalizer.query_variants("sage-femme"))

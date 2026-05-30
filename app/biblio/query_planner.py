@@ -71,16 +71,26 @@ _IN_CORPUS_RE = re.compile(
     re.IGNORECASE,
 )
 _SEARCH_AFTER_RE = re.compile(
-    r"\b(?:cherche|recherche|trouve|consulte|sortir|sors|voir)\b(?:\s+dans\s+(?:la\s+)?(?:bibliotheque|bibliothèque|biblio|catalogue))?\s+([^,.;?!\n]{2,120})",
+    r"\b(?:cherche|chercher|recherche|trouve|trouver|consulte|sortir|sors|voir)\b(?:\s+dans\s+(?:la\s+)?(?:bibliotheque|bibliothèque|biblio|catalogue))?\s+([^,.;?!\n]{2,120})",
     re.IGNORECASE,
 )
 _THEMATIC_WORK_RE = re.compile(
-    r"\b(?:cherche|recherche|trouve|consulte|sortir|sors|voir|donne)\b"
+    r"\b(?:cherche|chercher|recherche|trouve|trouver|consulte|sortir|sors|voir|donne)\b"
     r"(?:\s+\w+){0,3}?\s+dans\s+"
     r"(?:le\s+|la\s+|l['’]\s*|l\s+)?"
     r"([^,.;?!\n]{2,100}?)\s+"
     r"(?:le\s+|un\s+|du\s+)?(?:passage|extrait|endroit|moment)\s+"
     r"(?:ou|où|dans lequel|qui)\s+([^.;?!\n]{2,160})",
+    re.IGNORECASE,
+)
+_INVERTED_THEMATIC_WORK_RE = re.compile(
+    r"\b(?:cherche|chercher|recherche|trouve|trouver|consulte|sortir|sors|voir|donne)\b"
+    r"(?:\s+\w+){0,4}?\s+"
+    r"(?:passage|extrait|endroit|moment)\s+"
+    r"(?:sur|a\s+propos\s+de|à\s+propos\s+de|concernant|au\s+sujet\s+de)\s+"
+    r"([^,.;?!\n]{2,120}?)\s+dans\s+"
+    r"(?:le\s+|la\s+|l['’]\s*|l\s+)?"
+    r"([^,.;?!\n]{2,100})",
     re.IGNORECASE,
 )
 
@@ -272,10 +282,17 @@ def _extract_author(text: str) -> str:
 
 def _extract_thematic_work_and_query(text: str) -> tuple[str, str]:
     match = _THEMATIC_WORK_RE.search(text)
+    if match:
+        work = _clean_title(match.group(1), locator="")
+        theme = _clean_theme_query(match.group(2))
+        if _usable_title(work) and _usable_title(theme):
+            return canonical_work_title(work), theme
+
+    match = _INVERTED_THEMATIC_WORK_RE.search(text)
     if not match:
         return "", ""
-    work = _clean_title(match.group(1), locator="")
-    theme = _clean_theme_query(match.group(2))
+    theme = _clean_theme_query(match.group(1))
+    work = _clean_title(match.group(2), locator="")
     if not _usable_title(work) or not _usable_title(theme):
         return "", ""
     return canonical_work_title(work), theme
@@ -412,6 +429,14 @@ def _clean_theme_query(value: str) -> str:
         flags=re.IGNORECASE,
     )
     text = re.sub(r"^(?:ou|où|que|qui|dont)\s+", "", text, count=1, flags=re.IGNORECASE)
+    text = re.sub(
+        r"^(?:sur|a\s+propos\s+de|à\s+propos\s+de|concernant|au\s+sujet\s+de)\s+",
+        "",
+        text,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"^(?:le|la|les|l['’]?|un|une)\s+", "", text, count=1, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text).strip(" ,;:-?.!")
     return text[:160]
 
