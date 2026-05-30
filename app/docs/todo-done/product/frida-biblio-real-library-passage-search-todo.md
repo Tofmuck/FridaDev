@@ -1,11 +1,13 @@
 # Frida Biblio vraie bibliotheque / recherche de passages - TODO P1
 
-Statut: actif
+Statut: clos le 2026-05-30
 Date de creation: 2026-05-30
-Classement: `app/docs/todo-todo/product/`
+Classement initial: `app/docs/todo-todo/product/`
+Classement apres cloture: `app/docs/todo-done/product/`
 Spec source-of-truth: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Chantier Biblio archive: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation archivee: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
+Validation finale: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
 Commit declencheur: `b5e1df2 Add Biblio librarian runtime`
 Priorite: P1 produit
 
@@ -557,13 +559,34 @@ Decision Lot 7 du 2026-05-30:
 
 ### Lot 8 - Validation finale GO/NO-GO
 
-- [ ] Repasser les invariants GET-only.
-- [ ] Repasser toggle off / toggle on sans signal.
-- [ ] Repasser separation active documents / Biblio / Memory/RAG / Web / Identity / Summary.
-- [ ] Executer suites Biblio, chat et admin pertinentes.
-- [ ] Executer smokes live content-free.
-- [ ] Mettre a jour la spec Biblio et cette TODO.
-- [ ] Si tout est clos, archiver cette TODO dans `app/docs/todo-done/product/` avec une note de validation.
+- Statut: valide le 2026-05-30.
+
+- [x] Repasser les invariants GET-only.
+- [x] Repasser toggle off / toggle on sans signal.
+- [x] Repasser separation active documents / Biblio / Memory/RAG / Web / Identity / Summary.
+- [x] Executer suites Biblio, chat et admin pertinentes.
+- [x] Executer smokes live content-free.
+- [x] Mettre a jour la spec Biblio et cette TODO.
+- [x] Si tout est clos, archiver cette TODO dans `app/docs/todo-done/product/` avec une note de validation.
+
+Decision Lot 8 du 2026-05-30:
+
+- GO final: la Biblio fonctionne comme une bibliotheque consultable pour les cas cibles livres.
+- `biblio_enabled=false` et `biblio_enabled=true` sans signal bibliographique clair ne construisent pas de client Catalogue.
+- Une demande bibliographique claire consulte Catalogue en GET-only.
+- Les demandes thematiques utilisent `/search` puis `/context` borne; si plusieurs passages restent plausibles, le statut reste `ambiguous` et une lane Biblio multi-passages candidate est injectee sans inventer de certitude.
+- Le range Theetete smoke extrait un passage borne et injecte `[PASSAGES DE BIBLIOTHEQUE CONSULTES]`.
+- Le runner strict `python -m biblio.smoke_live --jsonl` sort `0`, avec `payload_objects_retained=0` et `raw_marker_leaks=false` sur tous les cas.
+- Les suites Biblio, chat, admin/dashboard et read-model passent en conteneur live.
+- Aucune fuite de passage, OCR, payload Catalogue, prompt complet, titre/auteur/locator/requete brute ou secret n'est observee dans les surfaces techniques.
+
+Preuves de cloture:
+
+- `python3 -m py_compile app/biblio/*.py app/core/chat_service.py app/core/chat_llm_flow.py app/server.py`;
+- `python3 -m unittest discover app/tests/unit/biblio`;
+- `docker exec -w /app platform-fridadev python -m unittest discover tests/unit/biblio`;
+- `docker exec -w /app platform-fridadev python -m unittest tests.test_server_chat_biblio_contract tests.test_server_admin_chat_logs_contract tests.unit.logs.test_dashboard_analytics_lot2 tests.unit.logs.test_dashboard_observable_modules_lot3 tests.unit.logs.test_dashboard_read_model_lot4`;
+- `docker exec -w /app platform-fridadev python -m biblio.smoke_live --jsonl`.
 
 GO si:
 

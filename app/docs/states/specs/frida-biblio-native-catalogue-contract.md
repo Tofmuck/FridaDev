@@ -13,9 +13,12 @@ Correctif bibliothecaire Biblio reelle: 2026-05-30
 Mise a jour recherche passages Lot 5: 2026-05-30
 Mise a jour recherche passages Lot 6: 2026-05-30
 Mise a jour recherche passages Lot 7: 2026-05-30
+Validation finale recherche passages Lot 8: 2026-05-30
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
+Roadmap vraie bibliotheque archivee: `app/docs/todo-done/product/frida-biblio-real-library-passage-search-todo.md`
+Validation vraie bibliotheque: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
 Audit Lot 0 Catalogue: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 Specs voisines: `app/docs/states/specs/active-conversation-documents-contract.md`, `app/docs/states/specs/workspace-folders-contract.md`
 Portee: contrat produit, frontieres, client futur GET-only, resolver, extraction bornee, lane prompt, observabilite et surface admin content-free de Biblio native.
@@ -580,6 +583,17 @@ Observabilite/admin recherche passages Lot 7 du 2026-05-30:
 - les metriques dashboard peuvent agregger candidats, contextes, selections, ambiguite, endpoint kinds et raisons de selection;
 - les surfaces admin/dashboard/read-model restent content-free: pas de passage brut, texte OCR, payload Catalogue, prompt complet, lane message, titre, auteur, locator, requete utilisateur brute, cookie, token, DSN ou `.env`.
 
+Validation finale vraie bibliotheque Lot 8 du 2026-05-30:
+
+- le chantier P1 `frida-biblio-real-library-passage-search-todo.md` est clos et archive;
+- la validation finale est tracee dans `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`;
+- le smoke strict `python -m biblio.smoke_live --jsonl` couvre liste Catalogue, extraction range Theetete, recherche thematique dans Theetete, recherche theme seul et formulation dictee approximative sans accents;
+- les cas thematiques valides appellent `/search` puis `/context` borne, injectent une lane de passages candidats quand des contextes plausibles existent, et gardent `ambiguous` lorsque `selected_count=0`;
+- le cas range smoke extrait un passage borne et injecte `[PASSAGES DE BIBLIOTHEQUE CONSULTES]`;
+- les preuves live valident `payload_objects_retained=0` et `raw_marker_leaks=false` sur tous les smokes;
+- les suites Biblio, chat, admin/dashboard et read-model passent en conteneur live;
+- aucune case ouverte reelle ne reste dans la roadmap P1: toute evolution future doit rouvrir un lot explicite.
+
 Validation finale Lot 8 du 2026-05-29:
 
 - le parsing naturel accepte les formulations conservatrices `126b de l Apologie`, `126b de l'Apologie`, `126b de la Republique` et `126b -> 126e dans le catalogue` sans garder d'article oral ou de fleche dans le titre;
@@ -625,7 +639,7 @@ Suites et cas a conserver:
 
 ## 12. Conditions de reouverture future
 
-Le chantier Biblio native est clos au 2026-05-29. Une reouverture future doit rester explicite et verifier d'abord que:
+Le chantier Biblio native est clos au 2026-05-29, et son correctif P1 "vraie bibliotheque / recherche de passages" est clos au 2026-05-30. Une reouverture future doit rester explicite et verifier d'abord que:
 
 - cette spec reste indexee comme source-of-truth;
 - le client cible est confirme GET-only;
