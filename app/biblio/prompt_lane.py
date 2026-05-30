@@ -198,6 +198,7 @@ def _contract_lines() -> list[str]:
         "Contrat d'interpretation:",
         "- Les passages ci-dessous proviennent d'une bibliotheque persistante consultee a la demande.",
         "- Ils ne prouvent pas que tout l'ouvrage ou tout le corpus a ete lu.",
+        "- Si plusieurs passages sont fournis, ils peuvent etre des candidats plausibles plutot qu'une certitude unique.",
         "- Respecte le statut de resolution, les limites et les ambiguites.",
         "- Ne confonds pas ces passages avec les documents actifs, la memoire, le web, l'identite ou le resume.",
     ]

@@ -116,7 +116,7 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertFalse(hasattr(result, "client_responses"))
         self.assertFalse(any(hasattr(item, "payload") for item in result.endpoint_observations))
 
-    def test_unaccented_thematic_search_uses_accent_variant_without_extracting_yet(self) -> None:
+    def test_unaccented_thematic_search_uses_context_and_builds_passage_lane(self) -> None:
         fake = _AccentSensitiveSearchClient()
 
         result = chat_runtime.run_biblio_chat_turn(
@@ -127,13 +127,21 @@ class BiblioChatRuntimeTests(unittest.TestCase):
 
         self.assertTrue(result.used)
         self.assertEqual(result.query_kind, "search_catalog")
-        self.assertEqual(result.observability_payload["status"], "searched")
+        self.assertEqual(result.observability_payload["status"], "extracted")
+        self.assertIsNotNone(result.context_result)
+        self.assertIsNotNone(result.passage_result)
         self.assertIsNotNone(result.prompt_message)
-        self.assertIn("[CONSULTATION DE BIBLIOTHEQUE]", result.prompt_message["content"])
-        self.assertIsNone(result.passage_result)
-        self.assertNotIn(prompt_lane.LANE_HEADER, result.prompt_message["content"])
+        self.assertIn(prompt_lane.LANE_HEADER, result.prompt_message["content"])
+        self.assertNotIn("[CONSULTATION DE BIBLIOTHEQUE]", result.prompt_message["content"])
+        self.assertIn(RAW_PASSAGE, result.prompt_message["content"])
+        self.assertEqual(result.observability_payload["counts"]["passage_count"], 1)
         self.assertIn(("search", "maïeutique"), fake.calls)
-        self.assertNotIn(("context",), fake.calls)
+        self.assertTrue(any(call[0] == "context" for call in fake.calls))
+
+        encoded_observability = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn(RAW_PASSAGE, encoded_observability)
+        self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded_observability)
+        self.assertNotIn("RAW TITLE MUST STAY INTERNAL", encoded_observability)
 
     def test_library_runtime_search_catalog_retains_only_endpoint_observations(self) -> None:
         plan = query_planner.plan_biblio_query("Cherche maieutique dans la bibliotheque")
@@ -142,15 +150,22 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         result = library_runtime.run_biblio_library_plan(fake, plan)
         encoded = json.dumps(result.client_observability(), ensure_ascii=False, sort_keys=True)
 
-        self.assertEqual(result.status, library_runtime.STATUS_SEARCHED)
+        self.assertEqual(result.status, "extracted")
+        self.assertIsNotNone(result.context_result)
+        self.assertIsNotNone(result.prompt_lane)
         self.assertTrue(result.endpoint_observations)
         self.assertFalse(hasattr(result, "client_responses"))
         self.assertFalse(any(hasattr(item, "payload") for item in result.endpoint_observations))
+        self.assertFalse(any(hasattr(item, "payload") for item in result.context_result.context_observations))
+        self.assertFalse(
+            any(hasattr(item, "payload") for item in result.context_result.candidate_result.endpoint_observations)
+        )
         self.assertNotIn("RAW TITLE MUST STAY INTERNAL", encoded)
         self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
+        self.assertNotIn(RAW_PASSAGE, encoded)
         self.assertNotIn("payload", encoded)
 
-    def test_thematic_search_repro_phrasings_do_not_fall_back_to_locator_required(self) -> None:
+    def test_thematic_search_repro_phrasings_build_passage_lane(self) -> None:
         messages = (
             "Peux-tu me trouver dans le Théétète le passage où Socrate parle de la maïeutique ?",
             "Peux-tu me trouver dans le Theetete le passage ou Socrate parle de la maieutique ?",
@@ -170,14 +185,43 @@ class BiblioChatRuntimeTests(unittest.TestCase):
 
                 self.assertTrue(result.used)
                 self.assertEqual(result.query_kind, "search_catalog")
-                self.assertEqual(result.observability_payload["status"], "searched")
+                self.assertEqual(result.observability_payload["status"], "extracted")
                 self.assertNotEqual(result.reason_code, "locator_required_for_passage")
-                self.assertIsNone(result.passage_result)
+                self.assertIsNotNone(result.context_result)
+                self.assertIsNotNone(result.passage_result)
                 self.assertIsNotNone(result.prompt_message)
-                self.assertIn("[CONSULTATION DE BIBLIOTHEQUE]", result.prompt_message["content"])
-                self.assertNotIn(prompt_lane.LANE_HEADER, result.prompt_message["content"])
+                self.assertIn(prompt_lane.LANE_HEADER, result.prompt_message["content"])
+                self.assertNotIn("[CONSULTATION DE BIBLIOTHEQUE]", result.prompt_message["content"])
                 self.assertIn(("search", "maïeutique"), fake.calls)
-                self.assertNotIn(("context",), fake.calls)
+                self.assertTrue(any(call[0] == "context" for call in fake.calls))
+
+    def test_ambiguous_thematic_search_builds_bounded_candidate_passage_lane(self) -> None:
+        fake = _AmbiguousThematicSearchClient()
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Cherche maïeutique dans la bibliothèque",
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "search_catalog")
+        self.assertEqual(result.observability_payload["status"], "ambiguous")
+        self.assertIsNotNone(result.context_result)
+        self.assertIsNone(result.passage_result)
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn(prompt_lane.LANE_HEADER, result.prompt_message["content"])
+        self.assertIn("Passage 1", result.prompt_message["content"])
+        self.assertIn("Passage 2", result.prompt_message["content"])
+        self.assertEqual(result.observability_payload["counts"]["passage_count"], 2)
+        self.assertEqual(result.context_result.to_observability()["selected_count"], 0)
+        self.assertTrue(any(call[0] == "context" for call in fake.calls))
+
+        encoded_observability = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn("RAW AMBIGUOUS PASSAGE A", encoded_observability)
+        self.assertNotIn("RAW AMBIGUOUS PASSAGE B", encoded_observability)
+        self.assertNotIn("RAW TITLE MUST STAY INTERNAL", encoded_observability)
+        self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded_observability)
 
     def test_theetete_range_request_reaches_extractor_with_work_anchor(self) -> None:
         observed: dict[str, object] = {}
@@ -396,6 +440,103 @@ class _AccentSensitiveSearchClient:
             payload={"count": len(rows), "results": rows},
             duration_ms=1,
             result_count=len(rows),
+        )
+
+    def context(
+        self,
+        doc_id: str,
+        *,
+        page_no: int | None = None,
+        para_no: int | None = None,
+        paragraph_id: int | None = None,
+        char_offset: int = 0,
+        window_chars: int = 700,
+    ) -> catalogue.CatalogueResponse:
+        self.calls.append(("context", doc_id, str(paragraph_id or ""), str(page_no or ""), str(para_no or "")))
+        passage = RAW_PASSAGE
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CONTEXT,
+            status_code=200,
+            payload={
+                "document_id": doc_id,
+                "page_no": page_no,
+                "para_no": para_no,
+                "paragraph_id": paragraph_id,
+                "excerpt": passage,
+                "excerpt_start": 0,
+                "excerpt_end": len(passage),
+                "text_length": len(passage),
+                "title": "RAW TITLE MUST STAY INTERNAL",
+            },
+            duration_ms=1,
+            result_count=1,
+            doc_id_short=doc_id[:8],
+            content_chars=len(passage),
+        )
+
+
+class _AmbiguousThematicSearchClient(_AccentSensitiveSearchClient):
+    def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search", str(q or "")))
+        rows = []
+        if q == "maïeutique":
+            rows = [
+                {
+                    "document_id": "doc-1234",
+                    "title": "RAW TITLE MUST STAY INTERNAL",
+                    "page_no": 4,
+                    "para_no": 26,
+                    "rank": 0.3,
+                    "text": "RAW SEARCH TEXT MUST NOT BE OBSERVABLE",
+                },
+                {
+                    "document_id": "doc-5678",
+                    "title": "RAW TITLE MUST STAY INTERNAL",
+                    "page_no": 5,
+                    "para_no": 27,
+                    "rank": 0.3,
+                    "text": "RAW SEARCH TEXT MUST NOT BE OBSERVABLE",
+                },
+            ]
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            status_code=200,
+            payload={"count": len(rows), "results": rows[:limit]},
+            duration_ms=1,
+            result_count=len(rows[:limit]),
+        )
+
+    def context(
+        self,
+        doc_id: str,
+        *,
+        page_no: int | None = None,
+        para_no: int | None = None,
+        paragraph_id: int | None = None,
+        char_offset: int = 0,
+        window_chars: int = 700,
+    ) -> catalogue.CatalogueResponse:
+        self.calls.append(("context", doc_id, str(paragraph_id or ""), str(page_no or ""), str(para_no or "")))
+        suffix = "A" if doc_id == "doc-1234" else "B"
+        passage = f"RAW AMBIGUOUS PASSAGE {suffix} " + ("x" * 120)
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CONTEXT,
+            status_code=200,
+            payload={
+                "document_id": doc_id,
+                "page_no": page_no,
+                "para_no": para_no,
+                "paragraph_id": paragraph_id,
+                "excerpt": passage,
+                "excerpt_start": 0,
+                "excerpt_end": len(passage),
+                "text_length": len(passage),
+                "title": "RAW TITLE MUST STAY INTERNAL",
+            },
+            duration_ms=1,
+            result_count=1,
+            doc_id_short=doc_id[:8],
+            content_chars=len(passage),
         )
 
 

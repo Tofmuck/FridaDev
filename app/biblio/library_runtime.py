@@ -27,6 +27,11 @@ from .passage_extractor import (
     MAX_CONTEXT_WINDOW_CHARS,
     STATUS_EXTRACTED,
 )
+from .passage_context_search import (
+    BiblioPassageContextSearcher,
+    BiblioPassageContextSearchResult,
+    STATUS_CATALOGUE_UNAVAILABLE as CONTEXT_STATUS_CATALOGUE_UNAVAILABLE,
+)
 from .prompt_lane import BiblioPromptLane, LANE_FOOTER, LANE_HEADER, build_biblio_prompt_lane
 from .query_planner import (
     INTENT_EXTRACT_PASSAGE,
@@ -93,7 +98,9 @@ class BiblioLibraryRuntimeResult:
     )
     client_error: CatalogueClientError | None = field(default=None, repr=False, compare=False)
     work_resolution: BiblioWorkResolution | None = field(default=None, repr=False, compare=False)
+    context_result: BiblioPassageContextSearchResult | None = field(default=None, repr=False, compare=False)
     passage_result: BiblioPassageResult | None = field(default=None, repr=False, compare=False)
+    passage_results: tuple[BiblioPassageResult, ...] = field(default_factory=tuple, repr=False, compare=False)
     prompt_lane: BiblioPromptLane | None = field(default=None, repr=False, compare=False)
     consultation_message: BiblioConsultationMessage | None = field(default=None, repr=False, compare=False)
 
@@ -119,11 +126,17 @@ def run_biblio_library_plan(
     extractor_factory: Any = BiblioPassageExtractor,
     lane_builder: Any = build_biblio_prompt_lane,
     work_resolver_factory: Any = BiblioWorkResolver,
+    context_searcher_factory: Any = BiblioPassageContextSearcher,
 ) -> BiblioLibraryRuntimeResult:
     if plan.intent == INTENT_LIST_CATALOG:
         return _list_catalog(client, plan)
     if plan.intent == INTENT_SEARCH_CATALOG:
-        return _search_catalog(client, plan)
+        return _search_passages(
+            client,
+            plan,
+            lane_builder=lane_builder,
+            context_searcher_factory=context_searcher_factory,
+        )
     if plan.intent in {INTENT_EXTRACT_PASSAGE, INTENT_EXTRACT_RANGE, INTENT_RESOLVE_WORK}:
         return _resolve_and_extract(
             client,
@@ -162,6 +175,51 @@ def _list_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLibra
         reason_code=REASON_CATALOG_LISTED,
         query_kind=plan.query_kind,
         endpoint_observations=(observe_catalogue_response(response),),
+        consultation_message=consultation,
+    )
+
+
+def _search_passages(
+    client: CatalogueClient,
+    plan: BiblioQueryPlan,
+    *,
+    lane_builder: Any,
+    context_searcher_factory: Any,
+) -> BiblioLibraryRuntimeResult:
+    context_result = context_searcher_factory(client).search(plan)
+    endpoint_observations = _context_endpoint_observations(context_result)
+    passage_results = tuple(context_result.passage_results)
+    prompt_lane = lane_builder(passage_results)
+    if prompt_lane.message:
+        return BiblioLibraryRuntimeResult(
+            status=context_result.status,
+            reason_code=context_result.reason_code,
+            query_kind=plan.query_kind,
+            endpoint_observations=endpoint_observations,
+            client_error=context_result.client_error,
+            context_result=context_result,
+            passage_result=passage_results[0] if len(passage_results) == 1 else None,
+            passage_results=passage_results,
+            prompt_lane=prompt_lane,
+        )
+
+    if context_result.status == CONTEXT_STATUS_CATALOGUE_UNAVAILABLE:
+        return BiblioLibraryRuntimeResult(
+            status=STATUS_ERROR,
+            reason_code=REASON_CATALOGUE_UNAVAILABLE,
+            query_kind=plan.query_kind,
+            endpoint_observations=endpoint_observations,
+            client_error=context_result.client_error,
+            context_result=context_result,
+        )
+
+    consultation = _context_consultation_message(context_result)
+    return BiblioLibraryRuntimeResult(
+        status=context_result.status,
+        reason_code=context_result.reason_code,
+        query_kind=plan.query_kind,
+        endpoint_observations=endpoint_observations,
+        context_result=context_result,
         consultation_message=consultation,
     )
 
@@ -274,6 +332,7 @@ def _resolve_and_extract(
             endpoint_observations=tuple(endpoint_observations),
             work_resolution=work_resolution,
             passage_result=passage_result,
+            passage_results=(passage_result,),
             prompt_lane=prompt_lane,
         )
 
@@ -290,6 +349,7 @@ def _resolve_and_extract(
         endpoint_observations=tuple(endpoint_observations),
         work_resolution=work_resolution,
         passage_result=passage_result,
+        passage_results=(passage_result,) if passage_result.status == STATUS_EXTRACTED else (),
         prompt_lane=prompt_lane,
         consultation_message=consultation,
     )
@@ -402,6 +462,34 @@ def _consultation_message(
         chars=len(content),
         doc_id_shorts=tuple(doc_id_shorts),
     )
+
+
+def _context_consultation_message(context_result: BiblioPassageContextSearchResult) -> BiblioConsultationMessage:
+    observed = context_result.to_observability()
+    doc_ids = tuple(str(item or "") for item in observed.get("candidate_search", {}).get("doc_id_shorts", []) if item)
+    lines = [
+        "Recherche de passages effectuee.",
+        f"Candidats: {int(observed.get('candidate_count') or 0)}",
+        f"Contextes consultes: {int(observed.get('context_call_count') or 0)}",
+        f"Passages retenus: {int(observed.get('passage_result_count') or 0)}",
+        "Aucun passage n'a ete injecte.",
+    ]
+    return _consultation_message(
+        status=context_result.status,
+        reason_code=context_result.reason_code,
+        lines=lines,
+        doc_id_shorts=doc_ids,
+    )
+
+
+def _context_endpoint_observations(
+    context_result: BiblioPassageContextSearchResult,
+) -> tuple[CatalogueEndpointObservation, ...]:
+    observations: list[CatalogueEndpointObservation] = []
+    if context_result.candidate_result is not None:
+        observations.extend(context_result.candidate_result.endpoint_observations)
+    observations.extend(context_result.context_observations)
+    return tuple(observations)
 
 
 def _catalog_items(response: CatalogueResponse) -> list[Mapping[str, Any]]:

@@ -433,7 +433,7 @@ Correctif runtime payload du 2026-05-30:
   - candidats dans plusieurs documents -> candidats documentaires, pas extraction forcee;
   - score insuffisant -> `not_found` ou clarification.
 - [x] Ne pas inventer une certitude sur un passage seulement parce qu'un mot apparait.
-- [ ] Prevoir un mode multi-passage borne pour themes disperses.
+- [x] Prevoir un mode multi-passage borne pour themes disperses.
 - [x] Tester que les passages non retenus ne sont pas exposes en observabilite.
 
 Contrat Lot 4:
@@ -448,12 +448,16 @@ Contrat Lot 4:
 
 ### Lot 5 - Injection lane Biblio avec passages multiples possibles
 
-- [ ] Reutiliser `[PASSAGES DE BIBLIOTHEQUE CONSULTES]` pour les passages extraits.
-- [ ] Injecter un a trois passages retenus, selon bornes.
-- [ ] Conserver le contrat d'interpretation: passages consultes, pas lecture totale.
-- [ ] Ne pas fusionner avec `active_document`.
-- [ ] Ne pas injecter les lanes de consultation candidates a la place d'un passage si un passage a ete extrait.
-- [ ] Ajouter une observabilite lane:
+- Statut: livre le 2026-05-30.
+
+- [x] Reutiliser `[PASSAGES DE BIBLIOTHEQUE CONSULTES]` pour les passages extraits.
+- [x] Brancher `INTENT_SEARCH_CATALOG` sur `BiblioPassageContextSearcher` au lieu de s'arreter a la consultation de candidats.
+- [x] Injecter un a trois passages retenus, selon bornes.
+- [x] Autoriser une lane multi-passages quand plusieurs contextes plausibles restent proches, avec statut `ambiguous` conserve et sans pretendre qu'un passage unique est certain.
+- [x] Conserver le contrat d'interpretation: passages consultes, pas lecture totale.
+- [x] Ne pas fusionner avec `active_document`.
+- [x] Ne pas injecter les lanes de consultation candidates a la place d'un passage si un passage a ete extrait.
+- [x] Ajouter une observabilite lane:
   - `passage_count`;
   - `candidate_count`;
   - `selected_count`;
@@ -462,7 +466,17 @@ Contrat Lot 4:
   - hashes courts;
   - doc ids courts;
   - positions non textuelles.
-- [ ] Garantir que `BiblioPromptLane.message` et les passages restent absents des logs/admin/dashboard.
+- [x] Garantir que `BiblioPromptLane.message` et les passages restent absents des logs/admin/dashboard.
+
+Contrat Lot 5:
+
+- le chemin chat Biblio thematique conserve `search_catalog` comme `query_kind`, mais execute maintenant `GET /search` puis un nombre borne de `GET /doc/{id}/context`;
+- si la selection Lot 4 extrait un seul contexte, la lane contient ce passage et le resultat runtime expose un `passage_result` interne;
+- si plusieurs contextes plausibles restent proches, le statut reste `ambiguous`, `selected_count=0`, mais une lane bornee de passages candidats consultes peut etre fournie au LLM principal pour qu'il reponde sans inventer de certitude;
+- la consultation `[CONSULTATION DE BIBLIOTHEQUE]` reste reservee aux listes, aux statuts non extraits et aux cas ou aucune lane passage n'est produite;
+- les objets runtime conservent seulement des observations endpoint content-free; les payloads Catalogue bruts restent des variables locales transitoires;
+- les passages bruts multi-candidats sont autorises uniquement dans les `BiblioPassageResult` internes necessaires a `BiblioPromptLane.message`, puis dans la lane prompt produit; ils ne sont pas recopies dans `BiblioPassageContextSearchResult.passage` tant que le statut reste `ambiguous`;
+- ils restent absents de `to_observability()`, logs, admin, dashboard et read-model.
 
 ### Lot 6 - Smokes live philosophiques
 

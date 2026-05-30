@@ -15,6 +15,7 @@ from .catalogue_client import CatalogueClient
 from .document_resolver import BiblioResolveRequest
 from .library_runtime import run_biblio_library_plan
 from .observability import build_biblio_event_payload
+from .passage_context_search import BiblioPassageContextSearchResult
 from .passage_extractor import BiblioPassageExtractor, BiblioPassageResult
 from .prompt_lane import build_biblio_prompt_lane
 from .query_planner import BiblioQueryPlan, plan_biblio_query
@@ -51,6 +52,7 @@ class BiblioChatResult:
     reason_code: str
     query_kind: str
     observability_payload: dict[str, Any]
+    context_result: BiblioPassageContextSearchResult | None = field(default=None, repr=False, compare=False)
     passage_result: BiblioPassageResult | None = field(default=None, repr=False, compare=False)
     prompt_lane: Any = field(default=None, repr=False, compare=False)
 
@@ -129,13 +131,14 @@ def run_biblio_chat_turn(
             extractor_factory=extractor_factory,
             lane_builder=lane_builder,
         )
+        runtime_projection = library_result.context_result or library_result.passage_result
         payload = observability_builder(
             enabled=True,
             used=True,
             query_kind=decision.query_kind,
             client_response=library_result.client_observability(),
             resolution=library_result.work_resolution or decision.query_plan,
-            passage_result=library_result.passage_result,
+            passage_result=runtime_projection,
             prompt_lane=library_result.prompt_lane or library_result.consultation_message,
             status=library_result.status,
             reason_code=library_result.reason_code or decision.reason_code,
@@ -145,6 +148,7 @@ def run_biblio_chat_turn(
             used=True,
             reason_code=library_result.reason_code or decision.reason_code,
             query_kind=decision.query_kind,
+            context_result=library_result.context_result,
             passage_result=library_result.passage_result,
             prompt_lane=library_result.prompt_lane or library_result.consultation_message,
             observability_payload=payload,

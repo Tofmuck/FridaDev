@@ -10,6 +10,7 @@ Mise a jour Lot 7: 2026-05-29
 Correctif post-audit Lot 7: 2026-05-29
 Validation finale Lot 8: 2026-05-29
 Correctif bibliothecaire Biblio reelle: 2026-05-30
+Mise a jour recherche passages Lot 5: 2026-05-30
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -542,7 +543,19 @@ Selection de passages Lot 4 du 2026-05-30:
 - plusieurs contextes plausibles ne produisent `extracted` que si le meilleur domine avec `score_gap >= 8.0` et un signal fort autre que le seul rang Catalogue;
 - si l'ecart est trop faible ou si le meilleur ne doit sa position qu'au score Catalogue, le statut reste `ambiguous`;
 - l'observabilite expose seulement `selected_count`, `top_score`, `score_gap`, `selection_reason_codes` et les decisions content-free;
-- les passages non retenus ne sont jamais inclus dans l'observabilite; le passage brut reste uniquement dans `BiblioPassageContextSearchResult.passage` quand `status=extracted`.
+- les passages non retenus ne sont jamais inclus dans l'observabilite; pour le resultat final unique, le passage brut reste uniquement dans `BiblioPassageContextSearchResult.passage` quand `status=extracted`.
+
+Injection thematique Lot 5 du 2026-05-30:
+
+- le runtime chat garde `chat_runtime.py` comme orchestration mince et delegue `INTENT_SEARCH_CATALOG` a `library_runtime.py`;
+- `library_runtime.py` utilise `BiblioPassageContextSearcher` pour executer `GET /search` puis des appels `GET /doc/{id}/context` bornes avant toute lane de passage thematique;
+- si un seul passage est selectionne, `[PASSAGES DE BIBLIOTHEQUE CONSULTES]` contient ce passage et le resultat runtime conserve un `BiblioPassageResult` interne;
+- si plusieurs contextes plausibles restent proches, le statut runtime reste `ambiguous` et `selected_count=0`, mais une lane bornee peut contenir les passages candidats consultes pour permettre une reponse prudente du LLM principal;
+- cette lane multi-passages ne transforme pas l'ambiguite en certitude: son contrat prompt indique que plusieurs passages peuvent etre des candidats plausibles;
+- la lane `[CONSULTATION DE BIBLIOTHEQUE]` reste le fallback pour liste, recherche sans passage extrait, erreur ou absence de contexte exploitable;
+- les passages bruts issus de contextes ambigus sont autorises seulement dans les `BiblioPassageResult` internes transmis a `BiblioPromptLane.message` et dans la lane prompt produit; ils ne sont pas recopies dans `BiblioPassageContextSearchResult.passage` tant que le statut reste `ambiguous`;
+- ces passages candidats restent interdits en observabilite, logs, dashboard, read-model, retour technique et payloads admin;
+- les objets resultats actifs ne retiennent toujours aucun `CatalogueResponse.payload`: ils conservent seulement `CatalogueEndpointObservation`, counts, endpoint kinds, ids courts, positions, hashes courts, scores et reason codes.
 
 Validation finale Lot 8 du 2026-05-29:
 
