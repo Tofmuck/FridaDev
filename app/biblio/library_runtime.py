@@ -48,20 +48,15 @@ CONSULTATION_HEADER = "[CONSULTATION DE BIBLIOTHEQUE]"
 CONSULTATION_FOOTER = "[/CONSULTATION DE BIBLIOTHEQUE]"
 
 STATUS_LISTED = "listed"
-STATUS_SEARCHED = "searched"
 STATUS_EXTRACTED_OR_LANE = "extracted"
-STATUS_NOT_FOUND = "not_found"
 STATUS_SKIPPED = "skipped"
 STATUS_ERROR = "error"
 
 REASON_CATALOG_LISTED = "biblio_catalog_listed"
-REASON_CATALOG_SEARCHED = "biblio_catalog_searched"
 REASON_PASSAGE_LANE_READY = "biblio_passage_lane_ready"
-REASON_PASSAGE_NOT_EXTRACTED = "biblio_passage_not_extracted"
 REASON_CATALOGUE_UNAVAILABLE = "catalogue_unavailable"
 
 DEFAULT_LIST_LIMIT = 5
-DEFAULT_SEARCH_LIMIT = 8
 DEFAULT_RANGE_WINDOW_CHARS = MAX_CONTEXT_WINDOW_CHARS
 DEFAULT_RANGE_MAX_PASSAGE_CHARS = 7_000
 
@@ -224,62 +219,6 @@ def _search_passages(
     )
 
 
-def _search_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLibraryRuntimeResult:
-    endpoint_observations: list[CatalogueEndpointObservation] = []
-    try:
-        for query in _candidate_queries(plan.catalogue_query_variants, plan.catalogue_query):
-            response = client.catalog(q=query, limit=plan.limit or DEFAULT_SEARCH_LIMIT, offset=0)
-            endpoint_observations.append(observe_catalogue_response(response))
-            items = _catalog_items(response)[: plan.limit or DEFAULT_SEARCH_LIMIT]
-            if items:
-                consultation = _catalog_consultation_message(
-                    status=STATUS_SEARCHED,
-                    reason_code=REASON_CATALOG_SEARCHED,
-                    heading="Candidats Catalogue trouves:",
-                    items=items,
-                )
-                return BiblioLibraryRuntimeResult(
-                    status=STATUS_SEARCHED,
-                    reason_code=REASON_CATALOG_SEARCHED,
-                    query_kind=plan.query_kind,
-                    endpoint_observations=tuple(endpoint_observations),
-                    consultation_message=consultation,
-                )
-        for query in _candidate_queries(
-            plan.theme_query_variants,
-            plan.theme_query,
-            plan.work_title_variants,
-            plan.work_title,
-        ):
-            search_response = client.search(query, limit=plan.limit or DEFAULT_SEARCH_LIMIT)
-            endpoint_observations.append(observe_catalogue_response(search_response))
-            rows = _search_results(search_response)
-            if rows:
-                consultation = _search_consultation_message(rows)
-                return BiblioLibraryRuntimeResult(
-                    status=STATUS_SEARCHED,
-                    reason_code=REASON_CATALOG_SEARCHED,
-                    query_kind=plan.query_kind,
-                    endpoint_observations=tuple(endpoint_observations),
-                    consultation_message=consultation,
-                )
-    except CatalogueClientError as exc:
-        return _client_error(plan, exc, endpoint_observations=endpoint_observations)
-
-    consultation = _consultation_message(
-        status=STATUS_NOT_FOUND,
-        reason_code=REASON_PASSAGE_NOT_EXTRACTED,
-        lines=["Catalogue consulte; aucun candidat fiable n'a ete trouve."],
-    )
-    return BiblioLibraryRuntimeResult(
-        status=STATUS_NOT_FOUND,
-        reason_code=REASON_PASSAGE_NOT_EXTRACTED,
-        query_kind=plan.query_kind,
-        endpoint_observations=tuple(endpoint_observations),
-        consultation_message=consultation,
-    )
-
-
 def _resolve_and_extract(
     client: CatalogueClient,
     plan: BiblioQueryPlan,
@@ -370,22 +309,6 @@ def _client_error(
     )
 
 
-def _candidate_queries(*groups: Any) -> tuple[str, ...]:
-    queries: list[str] = []
-    for group in groups:
-        if isinstance(group, str):
-            items = (group,)
-        elif isinstance(group, Sequence):
-            items = tuple(str(item or "") for item in group)
-        else:
-            items = ()
-        for item in items:
-            text = str(item or "").strip()
-            if text and text not in queries:
-                queries.append(text)
-    return tuple(queries)
-
-
 def _catalog_consultation_message(
     *,
     status: str,
@@ -411,29 +334,6 @@ def _catalog_consultation_message(
         reason_code=reason_code,
         lines=lines,
         doc_id_shorts=tuple(doc_id for doc_id in doc_ids if doc_id),
-    )
-
-
-def _search_consultation_message(rows: Sequence[Mapping[str, Any]]) -> BiblioConsultationMessage:
-    doc_lines: list[str] = ["Recherche interne Catalogue effectuee:"]
-    doc_ids: list[str] = []
-    seen: set[str] = set()
-    for row in rows:
-        doc_id = _text(row.get("document_id"))
-        if not doc_id or doc_id in seen:
-            continue
-        seen.add(doc_id)
-        doc_short = short_doc_id(doc_id)
-        doc_ids.append(doc_short)
-        title = _neutralize(_text(row.get("title"))) or "document candidat"
-        doc_lines.append(f"- catalogue_doc={doc_short}; titre={title}")
-    if len(doc_lines) == 1:
-        doc_lines.append("Aucun candidat interne fiable.")
-    return _consultation_message(
-        status=STATUS_SEARCHED if doc_ids else STATUS_NOT_FOUND,
-        reason_code=REASON_CATALOG_SEARCHED if doc_ids else REASON_PASSAGE_NOT_EXTRACTED,
-        lines=doc_lines,
-        doc_id_shorts=tuple(doc_ids),
     )
 
 
@@ -497,13 +397,6 @@ def _catalog_items(response: CatalogueResponse) -> list[Mapping[str, Any]]:
     if not isinstance(items, list):
         return []
     return [item for item in items if isinstance(item, Mapping)]
-
-
-def _search_results(response: CatalogueResponse) -> list[Mapping[str, Any]]:
-    results = response.payload.get("results")
-    if not isinstance(results, list):
-        return []
-    return [item for item in results if isinstance(item, Mapping)]
 
 
 def _display_title(item: Mapping[str, Any]) -> str:

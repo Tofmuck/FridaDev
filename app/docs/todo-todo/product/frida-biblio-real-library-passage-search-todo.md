@@ -478,28 +478,55 @@ Contrat Lot 5:
 - les passages bruts multi-candidats sont autorises uniquement dans les `BiblioPassageResult` internes necessaires a `BiblioPromptLane.message`, puis dans la lane prompt produit; ils ne sont pas recopies dans `BiblioPassageContextSearchResult.passage` tant que le statut reste `ambiguous`;
 - ils restent absents de `to_observability()`, logs, admin, dashboard et read-model.
 
+Correctif P3 post-Lot 5 du 2026-05-30:
+
+- [x] Supprimer le reliquat stale `library_runtime._search_catalog()`;
+- [x] Supprimer les constantes devenues inutiles `STATUS_SEARCHED`, `REASON_CATALOG_SEARCHED` et `DEFAULT_SEARCH_LIMIT` dans `library_runtime.py`;
+- [x] Conserver le comportement valide: `INTENT_SEARCH_CATALOG` passe uniquement par `_search_passages()` et `BiblioPassageContextSearcher`.
+
 ### Lot 6 - Smokes live philosophiques
 
-- [ ] Ajouter un script ou protocole smoke content-free reutilisable.
-- [ ] Verifier les cas obligatoires:
+- Statut: livre le 2026-05-30.
+
+- [x] Ajouter un script ou protocole smoke content-free reutilisable.
+- [x] Verifier les cas obligatoires:
   - `Tu peux chercher et voir les premiers ouvrages ?`;
   - `Extrait du Theetete de Platon 126b a 128a`;
   - `Trouve dans le Theetete le passage ou Socrate parle de la maieutique`;
   - `Cherche maieutique dans la bibliotheque`;
   - formulation dictee approximative sans accents.
-- [ ] Pour chaque smoke, reporter seulement:
+- [x] Pour chaque smoke, reporter seulement:
   - status;
   - reason code;
   - query kind;
   - client count;
+  - endpoint count;
+  - endpoint kinds;
   - candidate count;
+  - context call count;
   - selected count;
   - passage count;
   - lane injected;
+  - lane chars;
   - doc ids courts;
   - hashes courts;
   - longueurs.
-- [ ] Ne jamais afficher le texte d'ouvrage dans le retour technique.
+- [x] Reporter `payload_objects_retained` et `raw_marker_leaks`.
+- [x] Ne jamais afficher le texte d'ouvrage dans le retour technique.
+
+Protocole Lot 6:
+
+```bash
+python -m biblio.smoke_live --jsonl
+```
+
+Depuis le conteneur live:
+
+```bash
+docker exec -w /app platform-fridadev python -m biblio.smoke_live --jsonl
+```
+
+Le runner imprime seulement des records JSON content-free par `case_id` (`S1`..`S5`). Les formulations exactes restent dans le code du smoke, mais ne sont pas imprimees; les sorties contiennent uniquement statuts, reason codes, counts, endpoint kinds, ids courts, hashes courts, longueurs et flags de retention/fuite.
 
 ### Lot 7 - Observabilite/admin content-free
 

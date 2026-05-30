@@ -11,6 +11,7 @@ Correctif post-audit Lot 7: 2026-05-29
 Validation finale Lot 8: 2026-05-29
 Correctif bibliothecaire Biblio reelle: 2026-05-30
 Mise a jour recherche passages Lot 5: 2026-05-30
+Mise a jour recherche passages Lot 6: 2026-05-30
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -556,6 +557,15 @@ Injection thematique Lot 5 du 2026-05-30:
 - les passages bruts issus de contextes ambigus sont autorises seulement dans les `BiblioPassageResult` internes transmis a `BiblioPromptLane.message` et dans la lane prompt produit; ils ne sont pas recopies dans `BiblioPassageContextSearchResult.passage` tant que le statut reste `ambiguous`;
 - ces passages candidats restent interdits en observabilite, logs, dashboard, read-model, retour technique et payloads admin;
 - les objets resultats actifs ne retiennent toujours aucun `CatalogueResponse.payload`: ils conservent seulement `CatalogueEndpointObservation`, counts, endpoint kinds, ids courts, positions, hashes courts, scores et reason codes.
+
+Smokes live philosophiques Lot 6 du 2026-05-30:
+
+- le protocole reutilisable est `python -m biblio.smoke_live --jsonl`;
+- le runner execute les cas obligatoires de liste, range explicite, recherche thematique, recherche theme seul et formulation dictee approximative;
+- les sorties ne contiennent pas les formulations utilisateur, titres, auteurs, locators, passages, payloads Catalogue, prompts complets, cookies, tokens ou DSN;
+- chaque record est identifie seulement par `case_id` et expose `status`, `reason_code`, `query_kind`, `client_count`, `endpoint_count`, `endpoint_kinds`, `candidate_count`, `context_call_count`, `selected_count`, `passage_count`, `lane_injected`, `lane_chars`, ids courts, hashes courts, longueurs, `payload_objects_retained` et `raw_marker_leaks`;
+- `raw_marker_leaks` est calcule sur les projections content-free (`observability_payload`, observation contextuelle et observation de lane), jamais sur le message prompt brut;
+- le nettoyage P3 post-Lot 5 supprime l'ancien chemin `library_runtime._search_catalog()` et ses constantes locales stale: `INTENT_SEARCH_CATALOG` passe uniquement par `_search_passages()` et `BiblioPassageContextSearcher`.
 
 Validation finale Lot 8 du 2026-05-29:
 
