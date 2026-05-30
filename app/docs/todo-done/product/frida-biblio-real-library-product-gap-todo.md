@@ -63,7 +63,8 @@ Preuves live content-free du correctif applicatif:
 - les tables de chapitres existent en DB Catalogue (`document_chapters`) avec 973 lignes;
 - `/doc/{id}` peut timeouter meme pour un document Catalogue cible, car la route renvoie une vue document lourde;
 - apres patch, les demandes de liste retournent `total_count=10`, `displayed_count=10`, `truncated=false`;
-- apres patch, une demande TOC Platon retourne `status=toc_summary`, `reason_code=biblio_table_of_contents_detail_route_skipped`, `endpoint_kinds=[catalog]`, sans fuite brute.
+- avant la route legere, une demande TOC Platon retournait `status=toc_summary`, `reason_code=biblio_table_of_contents_detail_route_skipped`, `endpoint_kinds=[catalog]`, sans fuite brute;
+- apres livraison de la route legere, une demande TOC Platon retourne `status=toc_listed`, `reason_code=biblio_table_of_contents_listed`, `endpoint_kinds=[catalog, chapters]`, sans fuite brute.
 
 ## 4. Correctif plateforme requis avant GO produit complet
 
