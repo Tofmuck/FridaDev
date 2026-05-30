@@ -18,6 +18,9 @@ class BiblioQueryPlannerTests(unittest.TestCase):
         for message in (
             "Tu peux chercher et voir les premiers ouvrages ?",
             "cherche dans la bibliothèque",
+            "Et tu peux me dire ce que tu as comme ouvrages dans la bibliothèque ? Tu peux les lister ?",
+            "Combien tu as d'ouvrages dans la bibliothèque ?",
+            "C'est tout ?",
         ):
             with self.subTest(message=message):
                 plan = query_planner.plan_biblio_query(message)
@@ -25,6 +28,26 @@ class BiblioQueryPlannerTests(unittest.TestCase):
                 self.assertTrue(plan.should_consult)
                 self.assertEqual(plan.intent, query_planner.INTENT_LIST_CATALOG)
                 self.assertEqual(plan.query_kind, query_planner.INTENT_LIST_CATALOG)
+                self.assertEqual(plan.limit, 100)
+
+    def test_table_of_contents_request_is_planned_as_catalogue_document_action(self) -> None:
+        plan = query_planner.plan_biblio_query(
+            "T'arrives à trouver la table des matières des éditions complètes de Platon que tu as dans la bibliothèque ?"
+        )
+
+        self.assertTrue(plan.should_consult)
+        self.assertEqual(plan.intent, query_planner.INTENT_SHOW_TABLE_OF_CONTENTS)
+        self.assertEqual(plan.query_kind, query_planner.INTENT_SHOW_TABLE_OF_CONTENTS)
+        self.assertEqual(plan.document_title, "Platon")
+        self.assertEqual(plan.catalogue_query, "Platon")
+
+    def test_open_document_request_is_planned_as_catalogue_document_action(self) -> None:
+        plan = query_planner.plan_biblio_query("Ouvre Platon dans la bibliothèque")
+
+        self.assertTrue(plan.should_consult)
+        self.assertEqual(plan.intent, query_planner.INTENT_OPEN_DOCUMENT)
+        self.assertEqual(plan.query_kind, query_planner.INTENT_OPEN_DOCUMENT)
+        self.assertEqual(plan.document_title, "Platon")
 
     def test_natural_theetete_range_is_planned_as_internal_work(self) -> None:
         plan = query_planner.plan_biblio_query(

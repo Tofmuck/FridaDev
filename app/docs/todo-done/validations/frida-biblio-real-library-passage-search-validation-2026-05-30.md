@@ -1,15 +1,34 @@
 # Frida Biblio vraie bibliotheque / recherche de passages - validation finale
 
 Date: 2026-05-30
-Statut: GO final
+Statut: GO technique requalifie; validation produit finale invalidee le 2026-05-30
 Classement: `app/docs/todo-done/validations/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-real-library-passage-search-todo.md`
 Spec source-of-truth: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Commit de cloture: commit d'archivage Lot 8 portant cette note.
+Reouverture P1: `app/docs/todo-todo/product/frida-biblio-real-library-product-gap-todo.md`
+
+## Requalification produit du 2026-05-30
+
+Cette note ne doit plus etre lue comme un GO produit final "vraie bibliotheque".
+
+Elle reste valable pour les preuves techniques suivantes:
+
+- recherche de passages thematiques content-free;
+- extraction bornee sur locator/range;
+- lane Biblio;
+- observabilite sans payload brut;
+- runner smoke strict.
+
+Elle est invalidee comme validation produit globale parce que:
+
+- la liste Catalogue etait une preview bornee a 5 elements pouvant etre prise pour la totalite du fonds;
+- les demandes de table des matieres / chapitres n'etaient pas servies comme operations bibliothecaires de premier ordre;
+- Catalogue possede des donnees de chapitres, mais FridaDev n'a pas encore de route GET legere pour les lister sur les gros documents.
 
 ## Decision
 
-Le chantier P1 "Biblio vraie bibliotheque" est valide.
+Le chantier P1 "Biblio vraie bibliotheque" etait valide techniquement pour les passages, mais il est rouvert cote produit.
 
 Biblio sait maintenant:
 

@@ -27,6 +27,8 @@ from .query_normalizer import (
 
 INTENT_NONE = "none"
 INTENT_LIST_CATALOG = "list_catalog"
+INTENT_OPEN_DOCUMENT = "open_document"
+INTENT_SHOW_TABLE_OF_CONTENTS = "show_table_of_contents"
 INTENT_SEARCH_CATALOG = "search_catalog"
 INTENT_RESOLVE_WORK = "resolve_work"
 INTENT_EXTRACT_PASSAGE = "extract_passage"
@@ -35,6 +37,8 @@ INTENT_CLARIFY_AMBIGUOUS = "clarify_ambiguous"
 
 REASON_NO_SIGNAL = "biblio_no_bibliographic_signal"
 REASON_LIST_CATALOG = "biblio_list_catalog_requested"
+REASON_OPEN_DOCUMENT = "biblio_open_document_requested"
+REASON_TABLE_OF_CONTENTS = "biblio_table_of_contents_requested"
 REASON_SEARCH_CATALOG = "biblio_search_catalog_requested"
 REASON_WORK_REQUESTED = "biblio_work_requested"
 REASON_PASSAGE_REQUESTED = "biblio_passage_requested"
@@ -188,13 +192,37 @@ def plan_biblio_query(user_msg: str) -> BiblioQueryPlan:
             locator_end=locator_end,
         ))
 
+    toc_target = _extract_table_of_contents_target(text, folded)
+    if toc_target or _is_table_of_contents_request(folded):
+        return _with_variants(BiblioQueryPlan(
+            should_consult=True,
+            intent=INTENT_SHOW_TABLE_OF_CONTENTS,
+            reason_code=REASON_TABLE_OF_CONTENTS,
+            query_kind=INTENT_SHOW_TABLE_OF_CONTENTS,
+            document_title=toc_target,
+            catalogue_query=toc_target,
+            limit=8,
+        ))
+
+    open_target = _extract_open_document_target(text, folded)
+    if open_target:
+        return _with_variants(BiblioQueryPlan(
+            should_consult=True,
+            intent=INTENT_OPEN_DOCUMENT,
+            reason_code=REASON_OPEN_DOCUMENT,
+            query_kind=INTENT_OPEN_DOCUMENT,
+            document_title=open_target,
+            catalogue_query=open_target,
+            limit=8,
+        ))
+
     if _is_catalogue_list_request(folded):
         return _with_variants(BiblioQueryPlan(
             should_consult=True,
             intent=INTENT_LIST_CATALOG,
             reason_code=REASON_LIST_CATALOG,
             query_kind=INTENT_LIST_CATALOG,
-            limit=5,
+            limit=100,
         ))
 
     search_query = theme_query or _extract_search_query(text, folded)
@@ -218,7 +246,7 @@ def plan_biblio_query(user_msg: str) -> BiblioQueryPlan:
             intent=INTENT_LIST_CATALOG,
             reason_code=REASON_LIST_CATALOG,
             query_kind=INTENT_LIST_CATALOG,
-            limit=5,
+            limit=100,
         ))
 
     if work_title or document_title or author or document_id:
@@ -420,6 +448,53 @@ def _extract_search_query(text: str, folded: str) -> str:
     return ""
 
 
+def _extract_table_of_contents_target(text: str, folded: str) -> str:
+    if not _is_table_of_contents_request(folded):
+        return ""
+    match = re.search(
+        r"\b(?:table\s+des\s+matieres|table\s+des\s+matières|sommaire|chapitres?|oeuvres\s+internes|œuvres\s+internes)\b"
+        r".{0,100}?\b(?:de|du|des|d['’])\s+([^,.;?!\n]{2,120})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if match:
+        candidate = _clean_catalogue_target(match.group(1))
+        if _usable_title(candidate):
+            return candidate
+    return _extract_catalogue_named_target(text)
+
+
+def _extract_open_document_target(text: str, folded: str) -> str:
+    if not re.search(r"\b(?:ouvre|ouvrir|consulte|regarde)\b", folded):
+        return ""
+    if not _has_biblio_catalogue_cue(folded) and not re.search(r"\b(?:document|ouvrage|livre|volume)\b", folded):
+        return ""
+    match = re.search(
+        r"\b(?:ouvre|ouvrir|consulte|regarde)\b(?:\s+le|\s+la|\s+l['’]?|\s+un|\s+une|\s+document|\s+ouvrage|\s+livre|\s+volume)*\s+([^,.;?!\n]{2,120})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    candidate = _clean_catalogue_target(match.group(1))
+    return candidate if _usable_title(candidate) and not _is_surface_only(candidate) else ""
+
+
+def _extract_catalogue_named_target(text: str) -> str:
+    patterns = (
+        r"\b(?:editions?|éditions?|oeuvres|œuvres|ouvrages|volumes?)\s+(?:completes|complètes)\s+de\s+([^,.;?!\n]{2,120})",
+        r"\b(?:de|du|des|d['’])\s+([^,.;?!\n]{2,120})\s+(?:dans\s+la\s+)?(?:bibliotheque|bibliothèque|biblio|catalogue)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if not match:
+            continue
+        candidate = _clean_catalogue_target(match.group(1))
+        if _usable_title(candidate):
+            return candidate
+    return ""
+
+
 def _clean_theme_query(value: str) -> str:
     text = normalize_text(value)
     text = re.sub(
@@ -439,6 +514,23 @@ def _clean_theme_query(value: str) -> str:
     text = re.sub(r"^(?:le|la|les|l['’]?|un|une)\s+", "", text, count=1, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text).strip(" ,;:-?.!")
     return text[:160]
+
+
+def _clean_catalogue_target(value: str) -> str:
+    text = _clean_title(value, locator="")
+    text = re.sub(
+        r"\b(?:que\s+tu\s+as|que\s+vous\s+avez|disponibles?|dans\s+la\s+bibliotheque|dans\s+le\s+catalogue)\b.*$",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\b(?:editions?|éditions?|oeuvres|œuvres|ouvrages|volumes?)\s+(?:completes|complètes)\s+de\s+",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    return re.sub(r"\s+", " ", text).strip(" ,;:-?.!")[:120]
 
 
 def _split_work_of_corpus(value: str) -> tuple[str, str]:
@@ -506,7 +598,26 @@ def _is_catalogue_list_request(folded: str) -> bool:
         return True
     if re.search(r"\b(?:ouvrages?|livres?|documents?)\b.*\b(?:premiers?|liste|lister)\b", folded):
         return True
+    if re.search(r"\b(?:quels?|quoi|que)\b.*\b(?:ouvrages?|livres?|documents?|bibliotheque|biblio|catalogue)\b", folded):
+        return True
+    if re.search(r"\bcombien\b.*\b(?:ouvrages?|livres?|documents?)\b", folded):
+        return True
+    if re.search(r"\b(?:liste|lister|inventaire)\b.*\b(?:bibliotheque|biblio|catalogue)\b", folded):
+        return True
+    if re.search(r"\bc(?:'| )?est\s+tout\b.*\b(?:tu\s+as|vous\s+avez|ouvrages?|livres?|documents?|bibliotheque|biblio|catalogue)\b", folded):
+        return True
+    if re.fullmatch(r"\s*c(?:'| )?est\s+tout\s*\??\s*", folded):
+        return True
     return False
+
+
+def _is_table_of_contents_request(folded: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:table\s+des\s+matieres|sommaire|chapitres?|oeuvres\s+internes|contenu\s+du\s+volume)\b",
+            folded,
+        )
+    )
 
 
 def _is_generic_catalogue_consultation(folded: str) -> bool:

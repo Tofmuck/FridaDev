@@ -106,6 +106,109 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(result.observability_payload["status"], "listed")
         self.assertEqual(result.observability_payload["client"]["event_count"], 1)
 
+    def test_catalogue_list_request_fetches_complete_reasonable_catalogue(self) -> None:
+        fake = _CatalogListClient(total=10)
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Et tu peux me dire ce que tu as comme ouvrages dans la bibliothèque ? Tu peux les lister ?",
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "list_catalog")
+        self.assertEqual(fake.calls, [("catalog", None, 100, 0)])
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn("Catalogue disponible: 10 ouvrages. Liste complete affichee.", result.prompt_message["content"])
+        self.assertIn("10.", result.prompt_message["content"])
+        self.assertEqual(result.observability_payload["status"], "listed")
+        self.assertEqual(result.observability_payload["lane"]["total_count"], 10)
+        self.assertEqual(result.observability_payload["lane"]["displayed_count"], 10)
+        self.assertFalse(result.observability_payload["lane"]["truncated"])
+
+        encoded_observability = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn("RAW CATALOG TITLE", encoded_observability)
+        self.assertNotIn("RAW CATALOG AUTHOR", encoded_observability)
+
+    def test_catalogue_list_request_is_explicitly_paginated_above_reasonable_limit(self) -> None:
+        fake = _CatalogListClient(total=125)
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="C'est tout ?",
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(fake.calls, [("catalog", None, 100, 0)])
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn("Catalogue disponible: 125 ouvrages. Affichage des 100 premiers", result.prompt_message["content"])
+        self.assertEqual(result.observability_payload["lane"]["total_count"], 125)
+        self.assertEqual(result.observability_payload["lane"]["displayed_count"], 100)
+        self.assertTrue(result.observability_payload["lane"]["truncated"])
+
+    def test_table_of_contents_request_lists_chapters_when_lightweight_overview_is_available(self) -> None:
+        fake = _TableOfContentsClient()
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Table des matières des éditions complètes de Platon dans la bibliothèque",
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "show_table_of_contents")
+        self.assertEqual(fake.calls[0], ("catalog", "Platon", 8, 0))
+        self.assertEqual(fake.calls[1], ("document", "doc-toc"))
+        self.assertEqual(result.observability_payload["status"], "toc_listed")
+        self.assertEqual(result.observability_payload["client"]["event_count"], 2)
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn("Table des matieres disponible: 2 entrees. Liste complete affichee.", result.prompt_message["content"])
+        self.assertIn("RAW CHAPTER TITLE ONE", result.prompt_message["content"])
+
+        encoded_observability = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn("RAW CHAPTER TITLE ONE", encoded_observability)
+        self.assertNotIn("RAW DOCUMENT TITLE", encoded_observability)
+
+    def test_table_of_contents_request_reports_platform_gap_for_large_document_without_document_route_call(self) -> None:
+        fake = _LargeTableOfContentsClient()
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="T'arrives à trouver la table des matières des éditions complètes de Platon que tu as dans la bibliothèque ?",
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "show_table_of_contents")
+        self.assertEqual(fake.calls, [("catalog", "Platon", 8, 0)])
+        self.assertEqual(result.observability_payload["status"], "toc_summary")
+        self.assertEqual(result.reason_code, "biblio_table_of_contents_detail_route_skipped")
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn("Correctif plateforme requis", result.prompt_message["content"])
+
+        encoded_observability = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn("RAW DOCUMENT TITLE", encoded_observability)
+
+    def test_open_document_request_returns_catalogue_summary_without_raw_observability(self) -> None:
+        fake = _TableOfContentsClient()
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Ouvre Platon dans la bibliothèque",
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "open_document")
+        self.assertEqual(result.observability_payload["status"], "opened")
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn("Document Catalogue trouve:", result.prompt_message["content"])
+        self.assertEqual(fake.calls, [("catalog", "Platon", 8, 0)])
+
+        encoded_observability = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn("RAW DOCUMENT TITLE", encoded_observability)
+
     def test_library_runtime_list_catalog_retains_only_endpoint_observations(self) -> None:
         plan = query_planner.plan_biblio_query("Tu peux chercher et voir les premiers ouvrages ?")
 
@@ -399,6 +502,111 @@ class _FakeClient:
                         "page_no": 131,
                         "para_no": 230,
                         "text": "RAW SEARCH TEXT MUST NOT BE OBSERVABLE",
+                    }
+                ],
+            },
+            duration_ms=1,
+            result_count=1,
+        )
+
+
+class _CatalogListClient:
+    def __init__(self, *, total: int) -> None:
+        self.total = total
+        self.calls: list[tuple[object, ...]] = []
+
+    def catalog(self, *, q: str | None = None, limit: int = 100, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("catalog", q, limit, offset))
+        count = min(limit, self.total)
+        items = [
+            {
+                "id": f"doc-{index:04d}",
+                "title": f"RAW CATALOG TITLE {index}",
+                "human_canonical_title": f"RAW CATALOG TITLE {index}",
+                "human_authors": f"RAW CATALOG AUTHOR {index}",
+                "page_count": 10 + index,
+                "paragraph_count": 100 + index,
+                "chapter_count": index,
+                "toc_source": "synthetic" if index else "none",
+            }
+            for index in range(1, count + 1)
+        ]
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            status_code=200,
+            payload={"total": self.total, "count": len(items), "items": items},
+            duration_ms=1,
+            result_count=len(items),
+        )
+
+
+class _TableOfContentsClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[object, ...]] = []
+
+    def catalog(self, *, q: str | None = None, limit: int = 100, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("catalog", q, limit, offset))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            status_code=200,
+            payload={
+                "total": 1,
+                "count": 1,
+                "items": [
+                    {
+                        "id": "doc-toc",
+                        "title": "RAW DOCUMENT TITLE",
+                        "human_canonical_title": "RAW DOCUMENT TITLE",
+                        "human_authors": "RAW DOCUMENT AUTHOR",
+                        "page_count": 42,
+                        "paragraph_count": 400,
+                        "chapter_count": 2,
+                        "toc_source": "synthetic",
+                    }
+                ],
+            },
+            duration_ms=1,
+            result_count=1,
+        )
+
+    def document(self, doc_id: str) -> catalogue.CatalogueResponse:
+        self.calls.append(("document", doc_id))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_DOCUMENT,
+            status_code=200,
+            payload={
+                "document": {"id": doc_id, "toc_source": "synthetic"},
+                "pages": [],
+                "chapters": [
+                    {"chapter_no": 1, "title": "RAW CHAPTER TITLE ONE", "unit_no": 1, "source": "synthetic"},
+                    {"chapter_no": 2, "title": "RAW CHAPTER TITLE TWO", "unit_no": 2, "source": "synthetic"},
+                ],
+            },
+            duration_ms=1,
+            result_count=1,
+            doc_id_short=doc_id[:8],
+        )
+
+
+class _LargeTableOfContentsClient(_TableOfContentsClient):
+    def catalog(self, *, q: str | None = None, limit: int = 100, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("catalog", q, limit, offset))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            status_code=200,
+            payload={
+                "total": 1,
+                "count": 1,
+                "items": [
+                    {
+                        "id": "doc-large",
+                        "title": "RAW DOCUMENT TITLE",
+                        "human_canonical_title": "RAW DOCUMENT TITLE",
+                        "human_authors": "RAW DOCUMENT AUTHOR",
+                        "page_count": 252,
+                        "paragraph_count": 41_482,
+                        "chapter_count": 10,
+                        "toc_source": "synthetic",
                     }
                 ],
             },

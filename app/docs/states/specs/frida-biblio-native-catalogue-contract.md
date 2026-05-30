@@ -14,11 +14,13 @@ Mise a jour recherche passages Lot 5: 2026-05-30
 Mise a jour recherche passages Lot 6: 2026-05-30
 Mise a jour recherche passages Lot 7: 2026-05-30
 Validation finale recherche passages Lot 8: 2026-05-30
+Reouverture produit vraie bibliotheque: 2026-05-30
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 Roadmap vraie bibliotheque archivee: `app/docs/todo-done/product/frida-biblio-real-library-passage-search-todo.md`
-Validation vraie bibliotheque: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
+Validation vraie bibliotheque requalifiee: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
+Remediation vraie bibliotheque active: `app/docs/todo-todo/product/frida-biblio-real-library-product-gap-todo.md`
 Audit Lot 0 Catalogue: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 Specs voisines: `app/docs/states/specs/active-conversation-documents-contract.md`, `app/docs/states/specs/workspace-folders-contract.md`
 Portee: contrat produit, frontieres, client futur GET-only, resolver, extraction bornee, lane prompt, observabilite et surface admin content-free de Biblio native.
@@ -594,6 +596,18 @@ Validation finale vraie bibliotheque Lot 8 du 2026-05-30:
 - les suites Biblio, chat, admin/dashboard et read-model passent en conteneur live;
 - aucune case ouverte reelle ne reste dans la roadmap P1: toute evolution future doit rouvrir un lot explicite.
 
+Requalification produit du 2026-05-30:
+
+- la validation ci-dessus reste une preuve technique du chemin passage, mais elle n'est plus un GO produit final "vraie bibliotheque";
+- le chantier est rouvert dans `app/docs/todo-todo/product/frida-biblio-real-library-product-gap-todo.md`;
+- une demande de catalogue doit lister tout le fonds disponible jusqu'a 100 ouvrages, pas une preview `limit=5`;
+- si `total > displayed`, la lane produit doit dire explicitement combien d'ouvrages existent et combien sont affiches;
+- les demandes `quels ouvrages`, `combien d'ouvrages`, `liste la bibliotheque` et `c'est tout ?` sont des signaux Biblio quand le toggle est actif;
+- les actions bibliothecaires deterministes reconnues incluent `list_catalog`, `open_document`, `show_table_of_contents`, `search_catalog`, `extract_passage` et `extract_range`;
+- les titres/auteurs peuvent etre presentes dans la lane produit de consultation lorsque l'utilisateur demande la liste ou l'ouverture du fonds, mais ils restent interdits dans observabilite/admin/dashboard/read-model;
+- Catalogue expose des compteurs TOC (`chapter_count`, `toc_source`) et stocke `document_chapters`, mais FridaDev ne doit pas pretendre disposer d'une table detaillee si seule une route document trop lourde est disponible;
+- avant GO produit complet, une route GET Catalogue legere de chapitres/table des matieres est requise pour les gros documents.
+
 Validation finale Lot 8 du 2026-05-29:
 
 - le parsing naturel accepte les formulations conservatrices `126b de l Apologie`, `126b de l'Apologie`, `126b de la Republique` et `126b -> 126e dans le catalogue` sans garder d'article oral ou de fleche dans le titre;
@@ -639,7 +653,7 @@ Suites et cas a conserver:
 
 ## 12. Conditions de reouverture future
 
-Le chantier Biblio native est clos au 2026-05-29, et son correctif P1 "vraie bibliotheque / recherche de passages" est clos au 2026-05-30. Une reouverture future doit rester explicite et verifier d'abord que:
+Le chantier Biblio native est clos au 2026-05-29. Son correctif P1 "vraie bibliotheque / recherche de passages" est requalifie: preuve technique close, validation produit rouverte le 2026-05-30. Une reouverture future doit rester explicite et verifier d'abord que:
 
 - cette spec reste indexee comme source-of-truth;
 - le client cible est confirme GET-only;

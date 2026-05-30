@@ -1,6 +1,6 @@
 # Frida Biblio vraie bibliotheque / recherche de passages - TODO P1
 
-Statut: clos le 2026-05-30
+Statut: clos techniquement le 2026-05-30; validation produit reouverte le 2026-05-30
 Date de creation: 2026-05-30
 Classement initial: `app/docs/todo-todo/product/`
 Classement apres cloture: `app/docs/todo-done/product/`
@@ -8,6 +8,7 @@ Spec source-of-truth: `app/docs/states/specs/frida-biblio-native-catalogue-contr
 Chantier Biblio archive: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation archivee: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
+Reouverture produit: `app/docs/todo-todo/product/frida-biblio-real-library-product-gap-todo.md`
 Commit declencheur: `b5e1df2 Add Biblio librarian runtime`
 Priorite: P1 produit
 
@@ -571,7 +572,9 @@ Decision Lot 7 du 2026-05-30:
 
 Decision Lot 8 du 2026-05-30:
 
-- GO final: la Biblio fonctionne comme une bibliotheque consultable pour les cas cibles livres.
+- GO technique initial, requalifie le 2026-05-30: la Biblio fonctionne pour les cas de passages cibles livres, mais la validation produit "vraie bibliotheque" est invalidee.
+- Reouverture P1: `app/docs/todo-todo/product/frida-biblio-real-library-product-gap-todo.md`.
+- Causes de reouverture: liste Catalogue bornee a 5 elements et absence de chemin FridaDev fiable pour table des matieres detaillee des gros documents Catalogue.
 - `biblio_enabled=false` et `biblio_enabled=true` sans signal bibliographique clair ne construisent pas de client Catalogue.
 - Une demande bibliographique claire consulte Catalogue en GET-only.
 - Les demandes thematiques utilisent `/search` puis `/context` borne; si plusieurs passages restent plausibles, le statut reste `ambiguous` et une lane Biblio multi-passages candidate est injectee sans inventer de certitude.

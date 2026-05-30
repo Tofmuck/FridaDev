@@ -23,6 +23,7 @@ DEFAULT_SMOKE_CASES: tuple[BiblioSmokeCase, ...] = (
     BiblioSmokeCase("S3", "Trouve dans le Theetete le passage ou Socrate parle de la maieutique"),
     BiblioSmokeCase("S4", "Cherche maieutique dans la bibliotheque"),
     BiblioSmokeCase("S5", "Peux tu me trouver dans le Theetete le passage ou Socrate parle de la maieutique"),
+    BiblioSmokeCase("S6", "Table des matieres des editions completes de Platon dans la bibliotheque"),
 )
 
 DEFAULT_RAW_MARKERS: tuple[str, ...] = (
