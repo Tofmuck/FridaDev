@@ -5,6 +5,7 @@ Statut: TODO active canonique
 Classement: `app/docs/todo-todo/product/`
 Audit source: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 Contrat source: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 Scope: plan produit/runtime pour agent bibliothecaire Frida, docs-only dans ce commit.
 
 ## Objectif produit
@@ -136,49 +137,67 @@ Risque de construire l'agent sur une perception floue de l'existant ou de confon
 
 ### Plan
 
-- [ ] Relire l'audit du 2026-05-31 et cette TODO.
-- [ ] Executer le smoke strict existant.
-- [ ] Construire une matrice de repros live content-free pour les cas obligatoires.
-- [ ] Construire une matrice Catalogue/API/plateforme live content-free:
-  - [ ] routes disponibles;
-  - [ ] routes lourdes;
-  - [ ] routes interdites;
-  - [ ] `chapters`;
-  - [ ] `context`;
-  - [ ] route `page` eventuelle;
-  - [ ] sante `doc-pipeline-api`;
-  - [ ] counts DB content-free;
-  - [ ] endpoint kinds utilises par les smokes.
-- [ ] Capturer les statuts, reason codes, endpoint kinds, counts, ids courts et hashes seulement.
-- [ ] Noter les cas qui echouent parce que l'etat conversationnel n'existe pas encore.
+- [x] Relire l'audit du 2026-05-31 et cette TODO.
+- [x] Executer le smoke strict existant.
+- [x] Construire une matrice de repros live content-free pour les cas obligatoires.
+- [x] Construire une matrice Catalogue/API/plateforme live content-free:
+  - [x] routes disponibles;
+  - [x] routes lourdes;
+  - [x] routes interdites;
+  - [x] `chapters`;
+  - [x] `context`;
+  - [x] route `page` eventuelle;
+  - [x] sante `doc-pipeline-api`;
+  - [x] counts DB content-free;
+  - [x] endpoint kinds utilises par les smokes.
+- [x] Capturer les statuts, reason codes, endpoint kinds, counts, ids courts et hashes seulement.
+- [x] Noter les cas qui echouent parce que l'etat conversationnel n'existe pas encore.
 
 ### Patch attendu
 
-- [ ] Aucun patch runtime.
-- [ ] Eventuellement une note de baseline sous `app/docs/states/baselines/` si les resultats live divergent de l'audit.
-- [ ] Pas de modification plateforme.
+- [x] Aucun patch runtime.
+- [x] Eventuellement une note de baseline sous `app/docs/states/baselines/` si les resultats live divergent de l'audit.
+- [x] Pas de modification plateforme.
 
 ### Tests / preuves
 
-- [ ] `docker exec -w /app platform-fridadev python -m biblio.smoke_live --jsonl`
-- [ ] repros manuels ou script content-free des cas obligatoires;
-- [ ] preuve `doc-pipeline-api` health content-free;
-- [ ] inventaire routes disponibles/lourdes/interdites;
-- [ ] preuve counts DB content-free sans contenu d'ouvrage;
-- [ ] preuve endpoint kinds observes dans les smokes;
-- [ ] `git diff --check` si une note est produite;
-- [ ] verification que les sorties ne contiennent pas de passage brut hors lane produit.
+- [x] `docker exec -w /app platform-fridadev python -m biblio.smoke_live --jsonl`
+- [x] repros manuels ou script content-free des cas obligatoires;
+- [x] preuve `doc-pipeline-api` health content-free;
+- [x] inventaire routes disponibles/lourdes/interdites;
+- [x] preuve counts DB content-free sans contenu d'ouvrage;
+- [x] preuve endpoint kinds observes dans les smokes;
+- [x] `git diff --check` si une note est produite;
+- [x] verification que les sorties ne contiennent pas de passage brut hors lane produit.
 
 ### Réduction du risque attendue
 
-- [ ] Risque reduit par une baseline reproductible et content-free avant changement.
+- [x] Risque reduit par une baseline reproductible et content-free avant changement.
 
 ### Critères de sortie
 
-- [ ] Matrice des cas obligatoires remplie avec statut courant.
-- [ ] Matrice Catalogue/API/plateforme remplie avec routes, health, counts DB et endpoint kinds.
-- [ ] Liste des gaps confirmes.
-- [ ] Aucun patch runtime.
+- [x] Matrice des cas obligatoires remplie avec statut courant.
+- [x] Matrice Catalogue/API/plateforme remplie avec routes, health, counts DB et endpoint kinds.
+- [x] Liste des gaps confirmes.
+- [x] Aucun patch runtime.
+
+### Photo operatoire Lot 0 - 2026-05-31
+
+Baseline source: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`.
+
+Decision: Lot 0 valide, GO Lot 1 sous conditions.
+
+Resume content-free:
+
+- smoke strict exit code `0`;
+- endpoint kinds observes: `catalog`, `search`, `context`, `chapters`;
+- matrice produit P01-P11 remplie sans requete brute ni passage brut;
+- `state_present=false` pour tous les cas produit;
+- gaps P1 confirmes: etat Biblio absent, planning deterministe fragile, navigation/verification impossibles sans ancre technique;
+- matrice API: `GET /health` HTTP `200`, OpenAPI `33` routes GET et `6` routes mutantes;
+- counts DB: `documents=10`, `document_chapters=973`, `pages=4837`, `paragraphs=101421`, `raw_units=378034`, `catalogue_human_metadata=10`;
+- routes dangereuses confirmees: `/doc/{id}` lourd, `latest/page` et `latest/context` interdits par invariant et non utilisables comme base agentique;
+- aucun patch runtime, aucun patch plateforme, aucun rebuild.
 
 ### Hors-scope
 
