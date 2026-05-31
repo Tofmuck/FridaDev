@@ -654,7 +654,7 @@ Implementation Lot 5:
   position exploitable;
 - une demande de TOC avec titre explicite non resolu clarifie au lieu
   d'utiliser silencieusement le document courant, meme si le titre explicite
-  precede les mots `table des matieres` ou `sommaire`;
+  precede ou suit directement les mots `table des matieres` ou `sommaire`;
 - les emplois discursifs ou thematiques de `avant` ne sont pas des commandes
   de navigation; seuls les deplacements documentaires explicites restent
   `navigate`;

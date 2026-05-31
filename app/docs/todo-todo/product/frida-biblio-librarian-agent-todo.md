@@ -647,9 +647,9 @@ Photo operatoire Lot 5 - 2026-05-31:
   (`avant Socrate, cherche ...`);
 - correction post-audit Lot 5 ter: une table des matieres avec titre explicite
   non resolu, y compris les formes prefixees (`Theetete sommaire`, `du
-  Theetete, donne la table...`), ne reutilise pas silencieusement
-  `current_document`; les formes deictiques (`ce livre`, `celui-la`) restent
-  autorisees;
+  Theetete, donne la table...`) et suffixees (`table des matieres Theetete`,
+  `sommaire Theetete`), ne reutilise pas silencieusement `current_document`;
+  les formes deictiques (`ce livre`, `celui-la`) restent autorisees;
 - correction post-audit Lot 5 bis: `recent_dialogue` est borne et observable,
   mais pas encore utilise comme signal decisionnel;
 - limite assumee Lot 5 ter: la recherche `dans ce livre` reste une recherche

@@ -65,6 +65,8 @@ def toc_has_unresolved_explicit_reference(folded: str) -> bool:
         return False
     if re.search(r"\b(table des matieres|sommaire)\b.*\b(de|du|des|d')\s+[a-z0-9]{3,}", folded):
         return True
+    if re.search(r"\b(table des matieres|sommaire)\b\s+(?!de\b|du\b|des\b|d'\b)[a-z0-9]{3,}", folded):
+        return True
     if re.search(r"^\s*(de|du|des|d')\s+[a-z0-9]{3,}.*\b(table des matieres|sommaire)\b", folded):
         return True
     prefix = re.search(r"\b([a-z0-9]{3,})\b\s+(table des matieres|sommaire)\b", folded)

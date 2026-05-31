@@ -209,6 +209,10 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
             "Theetete table des matieres",
             "Theetete sommaire",
             "Sommaire du Theetete",
+            "Table des matieres Theetete",
+            "Montre moi le sommaire Theetete",
+            "Sommaire Theetete",
+            "Table des matieres Platon",
         ):
             with self.subTest(message=message):
                 result = dialogue.plan_biblio_dialogue(message, state=state)
@@ -221,12 +225,17 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
     def test_table_of_contents_deictic_book_request_uses_current_document(self) -> None:
         state = _state_with_document()
 
-        result = dialogue.plan_biblio_dialogue("Sommaire de ce livre", state=state)
+        for message in (
+            "Sommaire de ce livre",
+            "Table des matieres de cet ouvrage",
+        ):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
 
-        self.assertEqual(result.status, dialogue.STATUS_PLANNED)
-        self.assertEqual(result.reason_code, dialogue.REASON_TABLE_OF_CONTENTS)
-        self.assertEqual(_tool_names(result), [tools.TOOL_DOCUMENT_TOC])
-        self.assertEqual(result.plan.tool_calls[0].params["document_id"], "doc-1")
+                self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+                self.assertEqual(result.reason_code, dialogue.REASON_TABLE_OF_CONTENTS)
+                self.assertEqual(_tool_names(result), [tools.TOOL_DOCUMENT_TOC])
+                self.assertEqual(result.plan.tool_calls[0].params["document_id"], "doc-1")
 
     def test_dictated_theme_query_plans_search(self) -> None:
         result = dialogue.plan_biblio_dialogue("cherche le moment ou Socrate parle de sage femme")
