@@ -573,6 +573,16 @@ Implementation Lot 4:
 - execution via `BiblioLibrarianToolRegistry`, sans reseau nouveau;
 - budgets livres: `max_steps`, `max_tool_calls`, `max_total_duration_ms`,
   `max_clarifications`, `max_context_chars`;
+- discipline post-audit: `max_clarifications` ne produit
+  `needs_clarification` que si le plan structure le demande explicitement;
+  un plan vide reste un fallback deterministe;
+- discipline post-audit: une demande `passage_context` est bornee avant
+  l'appel outil si `window_chars` depasse le budget `max_context_chars`
+  restant, ou refusee avant reseau si la fenetre minimale Catalogue ne peut
+  plus etre respectee;
+- discipline post-audit: `max_steps` compte strictement les steps conserves;
+  le statut final peut signaler `budget_exhausted` sans step additionnel si
+  le budget de steps est deja consomme;
 - statuts livres: `tool_executed`, `needs_clarification`, `not_found`,
   `ambiguous`, `budget_exhausted`, `tool_rejected`, `tool_failed`,
   `fallback_deterministic`;

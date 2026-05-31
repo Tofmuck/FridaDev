@@ -541,6 +541,15 @@ Photo operatoire Lot 4 - 2026-05-31:
   `BiblioLibrarianToolRegistry`;
 - budgets livres: `max_steps`, `max_tool_calls`, `max_total_duration_ms`,
   `max_clarifications`, `max_context_chars`;
+- correctif post-audit Lot 4: `max_clarifications` est applique uniquement
+  quand le plan demande explicitement une clarification; sinon un plan vide
+  reste un fallback deterministe;
+- correctif post-audit Lot 4: `passage_context.window_chars` est borne ou
+  refuse avant l'appel outil si le budget `max_context_chars` restant ne
+  permet plus une fenetre Catalogue minimale;
+- correctif post-audit Lot 4: `max_steps` est strict; quand aucun slot de
+  step ne reste, le resultat peut porter `budget_exhausted` sans ajouter de
+  step diagnostique supplementaire;
 - statuts livres: `tool_executed`, `needs_clarification`, `not_found`,
   `ambiguous`, `budget_exhausted`, `tool_rejected`, `tool_failed`,
   `fallback_deterministic`;

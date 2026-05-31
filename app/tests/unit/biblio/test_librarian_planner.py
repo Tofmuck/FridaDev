@@ -164,6 +164,96 @@ class BiblioLibrarianPlannerTests(unittest.TestCase):
         self.assertTrue(result.to_observability()["fallback_deterministic"])
         self.assertEqual(fake.calls, [])
 
+    def test_clarification_plan_uses_clarification_budget_without_network(self) -> None:
+        fake = _FakeToolClient()
+        request = planner.BiblioLibrarianLoopRequest(
+            plan=planner.BiblioLibrarianPlan(intent="clarify", answer_mode="clarify")
+        )
+
+        result = _planner(fake).run(request)
+
+        self.assertEqual(result.status, planner.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.reason_code, planner.REASON_NEEDS_CLARIFICATION)
+        self.assertEqual(len(result.steps), 1)
+        self.assertEqual(result.steps[0].status, planner.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.steps[0].observation["clarification_count"], 1)
+        self.assertEqual(fake.calls, [])
+
+    def test_zero_clarification_budget_blocks_clarification_without_network(self) -> None:
+        fake = _FakeToolClient()
+        request = planner.BiblioLibrarianLoopRequest(
+            plan=planner.BiblioLibrarianPlan(intent="clarify"),
+            options=planner.BiblioLibrarianLoopOptions(max_clarifications=0),
+        )
+
+        result = _planner(fake).run(request)
+
+        self.assertEqual(result.status, planner.STATUS_BUDGET_EXHAUSTED)
+        self.assertEqual(result.reason_code, planner.REASON_BUDGET_EXHAUSTED)
+        self.assertEqual(len(result.steps), 1)
+        self.assertEqual(result.steps[0].observation["budget_exhausted"], "max_clarifications")
+        self.assertEqual(fake.calls, [])
+
+    def test_context_window_is_bounded_before_network(self) -> None:
+        fake = _FakeToolClient(context_payload={"document_id": "doc-1", "text": "x" * 1000})
+
+        result = _planner(fake).run(
+            proposed_tool_calls=[
+                {
+                    "tool_name": tools.TOOL_PASSAGE_CONTEXT,
+                    "params": {
+                        "document_id": "doc-1",
+                        "page_no": 12,
+                        "para_no": 3,
+                        "window_chars": 1500,
+                    },
+                }
+            ],
+            options=planner.BiblioLibrarianLoopOptions(max_context_chars=1000),
+        )
+
+        self.assertEqual(result.status, planner.STATUS_TOOL_EXECUTED)
+        self.assertEqual(fake.calls, [("context", "doc-1", None, 12, 3, 0, 1000)])
+
+    def test_context_call_is_refused_before_network_when_no_safe_window_remains(self) -> None:
+        fake = _FakeToolClient(context_payload={"document_id": "doc-1", "text": "x" * 30})
+
+        result = _planner(fake).run(
+            proposed_tool_calls=[
+                {
+                    "tool_name": tools.TOOL_PASSAGE_CONTEXT,
+                    "params": {"document_id": "doc-1", "page_no": 12, "para_no": 3, "window_chars": 80},
+                },
+                {
+                    "tool_name": tools.TOOL_PASSAGE_CONTEXT,
+                    "params": {"document_id": "doc-1", "page_no": 13, "para_no": 1, "window_chars": 80},
+                },
+            ],
+            options=planner.BiblioLibrarianLoopOptions(max_context_chars=100),
+        )
+
+        self.assertEqual(result.status, planner.STATUS_BUDGET_EXHAUSTED)
+        self.assertEqual(result.reason_code, planner.REASON_BUDGET_EXHAUSTED)
+        self.assertEqual(fake.calls, [("context", "doc-1", None, 12, 3, 0, 80)])
+        self.assertEqual(result.steps[-1].observation["budget_exhausted"], "max_context_chars")
+
+    def test_max_steps_budget_is_strict_after_first_tool(self) -> None:
+        fake = _FakeToolClient(catalog_payload={"items": [{"id": "doc-1"}]})
+
+        result = _planner(fake).run(
+            proposed_tool_calls=[
+                {"tool_name": tools.TOOL_CATALOG_LIST, "params": {}},
+                {"tool_name": tools.TOOL_CATALOG_SEARCH, "params": {"query": RAW_QUERY}},
+            ],
+            options=planner.BiblioLibrarianLoopOptions(max_steps=1),
+        )
+
+        self.assertEqual(result.status, planner.STATUS_BUDGET_EXHAUSTED)
+        self.assertEqual(result.reason_code, planner.REASON_BUDGET_EXHAUSTED)
+        self.assertEqual(len(result.steps), 1)
+        self.assertEqual(result.tool_call_count, 1)
+        self.assertEqual(fake.calls, [("catalog", "", 100, 0)])
+
     def test_observability_and_repr_are_content_free(self) -> None:
         fake = _FakeToolClient(
             catalog_payload={"items": [{"id": "doc-1", "title": RAW_TITLE, "human_authors": RAW_AUTHOR}]},

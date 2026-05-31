@@ -6,6 +6,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
+from . import catalogue_client as catalogue
 from . import librarian_tools as tools
 
 
@@ -208,6 +209,36 @@ class BiblioLibrarianPlanner:
                 started,
                 self._monotonic,
             )
+        steps: list[BiblioLibrarianStep] = []
+        context_chars = 0
+        tool_calls = 0
+        terminal_status = ""
+        terminal_reason = ""
+        if _plan_requests_clarification(loop_request.plan):
+            if loop_request.options.max_clarifications < 1:
+                steps = _with_budget_step_if_room(
+                    steps,
+                    None,
+                    loop_request.options,
+                    "max_clarifications",
+                )
+                terminal_status = STATUS_BUDGET_EXHAUSTED
+                terminal_reason = REASON_BUDGET_EXHAUSTED
+            elif loop_request.options.max_steps < 1:
+                terminal_status = STATUS_BUDGET_EXHAUSTED
+                terminal_reason = REASON_BUDGET_EXHAUSTED
+            else:
+                steps.append(_clarification_step(0, loop_request.options))
+                terminal_status = STATUS_NEEDS_CLARIFICATION
+                terminal_reason = REASON_NEEDS_CLARIFICATION
+            return _final_result(
+                terminal_status,
+                terminal_reason,
+                tuple(steps),
+                loop_request.options,
+                started,
+                self._monotonic,
+            )
         if not loop_request.plan.tool_calls:
             return _final_result(
                 STATUS_FALLBACK_DETERMINISTIC,
@@ -219,15 +250,23 @@ class BiblioLibrarianPlanner:
                 fallback=True,
             )
 
-        steps: list[BiblioLibrarianStep] = []
-        context_chars = 0
-        tool_calls = 0
         for call in loop_request.plan.tool_calls:
             if _duration_ms(started, self._monotonic) > loop_request.options.max_total_duration_ms:
-                steps.append(_budget_step(len(steps), call, "max_total_duration_ms"))
+                steps = _with_budget_step_if_room(steps, call, loop_request.options, "max_total_duration_ms")
+                terminal_status = STATUS_BUDGET_EXHAUSTED
+                terminal_reason = REASON_BUDGET_EXHAUSTED
                 break
             if len(steps) >= loop_request.options.max_steps or tool_calls >= loop_request.options.max_tool_calls:
-                steps.append(_budget_step(len(steps), call, "max_tool_calls"))
+                budget = "max_steps" if len(steps) >= loop_request.options.max_steps else "max_tool_calls"
+                steps = _with_budget_step_if_room(steps, call, loop_request.options, budget)
+                terminal_status = STATUS_BUDGET_EXHAUSTED
+                terminal_reason = REASON_BUDGET_EXHAUSTED
+                break
+            call, budget = _bounded_context_call(call, context_chars, loop_request.options.max_context_chars)
+            if budget:
+                steps = _with_budget_step_if_room(steps, call, loop_request.options, budget)
+                terminal_status = STATUS_BUDGET_EXHAUSTED
+                terminal_reason = REASON_BUDGET_EXHAUSTED
                 break
             step = self._run_tool_call(len(steps), call)
             steps.append(step)
@@ -235,12 +274,18 @@ class BiblioLibrarianPlanner:
                 tool_calls += 1
             context_chars += _int(step.observation.get("content_chars")) or 0
             if context_chars > loop_request.options.max_context_chars:
-                steps.append(_budget_step(len(steps), call, "max_context_chars"))
+                steps = _with_budget_step_if_room(steps, call, loop_request.options, "max_context_chars")
+                terminal_status = STATUS_BUDGET_EXHAUSTED
+                terminal_reason = REASON_BUDGET_EXHAUSTED
                 break
             if step.status in _TERMINAL_STEP_STATUSES:
                 break
 
-        status, reason = _result_status(tuple(steps))
+        status, reason = (
+            (terminal_status, terminal_reason)
+            if terminal_status
+            else _result_status(tuple(steps))
+        )
         return _final_result(
             status,
             reason,
@@ -361,14 +406,72 @@ def _result_status(steps: tuple[BiblioLibrarianStep, ...]) -> tuple[str, str]:
     return STATUS_NEEDS_CLARIFICATION, REASON_NEEDS_CLARIFICATION
 
 
-def _budget_step(index: int, call: BiblioLibrarianToolCall, budget: str) -> BiblioLibrarianStep:
+def _plan_requests_clarification(plan: BiblioLibrarianPlan) -> bool:
+    return _safe_token(plan.intent) in {"clarify", "clarification", STATUS_NEEDS_CLARIFICATION} or _safe_token(
+        plan.answer_mode
+    ) in {"clarify", "clarification", STATUS_NEEDS_CLARIFICATION}
+
+
+def _clarification_step(index: int, options: BiblioLibrarianLoopOptions) -> BiblioLibrarianStep:
+    return BiblioLibrarianStep(
+        index=index,
+        status=STATUS_NEEDS_CLARIFICATION,
+        reason_code=REASON_NEEDS_CLARIFICATION,
+        observation={
+            "clarification_count": 1,
+            "max_clarifications": options.max_clarifications,
+        },
+    )
+
+
+def _with_budget_step_if_room(
+    steps: Sequence[BiblioLibrarianStep],
+    call: BiblioLibrarianToolCall | None,
+    options: BiblioLibrarianLoopOptions,
+    budget: str,
+) -> list[BiblioLibrarianStep]:
+    updated = list(steps)
+    if len(updated) < max(options.max_steps, 0):
+        updated.append(_budget_step(len(updated), call, budget))
+    return updated
+
+
+def _budget_step(index: int, call: BiblioLibrarianToolCall | None, budget: str) -> BiblioLibrarianStep:
     return BiblioLibrarianStep(
         index=index,
         status=STATUS_BUDGET_EXHAUSTED,
         reason_code=REASON_BUDGET_EXHAUSTED,
-        tool_name=_safe_tool_name(call.tool_name),
+        tool_name=_safe_tool_name(call.tool_name) if call is not None else "",
         observation={"budget_exhausted": _safe_token(budget)},
         tool_call=call,
+    )
+
+
+def _bounded_context_call(
+    call: BiblioLibrarianToolCall,
+    context_chars: int,
+    max_context_chars: int,
+) -> tuple[BiblioLibrarianToolCall, str]:
+    if _safe_tool_name(call.tool_name) != tools.TOOL_PASSAGE_CONTEXT:
+        return call, ""
+    remaining = max_context_chars - max(context_chars, 0)
+    if remaining < catalogue.CONTEXT_WINDOW_CHARS_MIN:
+        return call, "max_context_chars"
+    requested = _strict_int(call.params.get("window_chars", 700))
+    if requested is None:
+        return call, ""
+    if requested <= remaining:
+        return call, ""
+    params = dict(call.params)
+    params["window_chars"] = remaining
+    return (
+        BiblioLibrarianToolCall(
+            tool_name=call.tool_name,
+            params=params,
+            call_id=call.call_id,
+            method=call.method,
+        ),
+        "",
     )
 
 
@@ -412,6 +515,8 @@ def _safe_observation(observation: Mapping[str, Any]) -> dict[str, Any]:
         "positions",
         "error_class",
         "budget_exhausted",
+        "clarification_count",
+        "max_clarifications",
     }
     return {key: value for key, value in observation.items() if key in allowed}
 
@@ -467,6 +572,14 @@ def _safe_token(value: Any, *, max_chars: int = 120) -> str:
 
 def _int(value: Any) -> int | None:
     return value if type(value) is int else None
+
+
+def _strict_int(value: Any) -> int | None:
+    if type(value) is int:
+        return value
+    if isinstance(value, str) and value.isdecimal():
+        return int(value)
+    return None
 
 
 def _clean(payload: Mapping[str, Any]) -> dict[str, Any]:
