@@ -699,6 +699,13 @@ Implementation Lot 6:
 - `continue`, page precedente/suivante, plus haut/bas et passage proche ne sont
   pas inventes: ils retournent `unsupported_missing_tool` sur etat valide, ou
   `needs_clarification` si l'etat manque;
+- une navigation qui nomme un ouvrage explicite non resolu (`dans le Theetete`,
+  `dans Platon`) clarifie avec
+  `biblio_dialogue_navigation_explicit_reference_unresolved` et ne reutilise
+  jamais le document courant;
+- `passage proche` reste navigation seulement pour une reprise anaphorique
+  (`un autre passage proche`, `passage voisin`); avec un verbe de recherche et
+  un theme/ouvrage explicite, la demande reste `search_passage`;
 - les formes TOC avec politesses apres qualificatif (`stp`, `merci`,
   `maintenant`, `s il te plait`) restent des TOC du document courant si l'etat
   existe; les formes `qualificatif + titre` clarifient toujours;
@@ -713,6 +720,8 @@ NO-GO retroactif Lot 6 si un patch ulterieur:
 - utilise `latest/page`, `latest/context`, `export/chunk` ou `/doc/{id}` lourd
   comme navigation automatique;
 - navigue sans `document_id` explicite;
+- reutilise le document courant quand la navigation nomme un autre ouvrage
+  non resolu;
 - expose passage, prompt, titre brut, requete brute ou payload Catalogue en
   observabilite.
 

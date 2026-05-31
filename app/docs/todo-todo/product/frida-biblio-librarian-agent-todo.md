@@ -734,6 +734,13 @@ Photo operatoire Lot 6 - 2026-05-31:
 - `continue`, page precedente/suivante, plus haut/bas et passage proche ne sont
   pas simules: ils retournent `unsupported_missing_tool` si l'etat existe ou
   `needs_clarification` si l'etat manque;
+- correction post-audit Lot 6: une navigation avec ouvrage explicite non
+  resolu (`dans le Theetete`, `dans Platon`) clarifie et ne reutilise jamais
+  silencieusement le document courant;
+- correction post-audit Lot 6: `passage proche` reste navigation seulement
+  pour les reprises anaphoriques (`un autre passage proche`, `passage voisin`);
+  avec un verbe de recherche et un theme/ouvrage explicite, la demande reste
+  une recherche thematique;
 - correction d'ouverture P3: les politesses apres qualificatifs de TOC (`stp`,
   `merci`, `maintenant`, `s il te plait`) ne sont pas des titres; les formes
   `qualificatif + titre` clarifient toujours;

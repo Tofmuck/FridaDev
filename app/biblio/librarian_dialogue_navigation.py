@@ -18,6 +18,40 @@ NAVIGATION_DOWN = "down"
 NAVIGATION_CONTINUE = "continue"
 NAVIGATION_GENERIC = "generic"
 
+_SEARCH_VERB_RE = re.compile(r"\b(cherche|chercher|trouve|trouver|retrouve|retrouver|sort|sortir)\b")
+_NEARBY_TOPIC_RE = re.compile(
+    r"\b(?:de|du|des|d'|dans|sur)\s+(?:(?:le|la|l'|les|un|une)\s+)?([a-z0-9]{3,})\b"
+)
+_NEARBY_ANAPHORIC_RE = re.compile(r"\bautre\s+(passage|extrait)\b.*\b(proche|voisin|voisine)\b")
+_REFERENCE_RE = re.compile(
+    r"\b(?:dans|de|du|des|d')\s+(?:(?:le|la|l'|les|un|une)\s+)?([a-z0-9]{3,})\b"
+)
+_REFERENCE_STOPWORDS = frozenset(
+    {
+        "autour",
+        "celle",
+        "celui",
+        "ceci",
+        "cela",
+        "ces",
+        "cet",
+        "cette",
+        "document",
+        "extrait",
+        "livre",
+        "meme",
+        "même",
+        "ouvrage",
+        "page",
+        "passage",
+        "volume",
+    }
+)
+
+
+def is_navigation_request(folded: str) -> bool:
+    return classify_navigation(folded) != NAVIGATION_GENERIC
+
 
 def classify_navigation(folded: str) -> str:
     if re.search(r"\b(continue|continuer|la suite|suite|poursuis)\b", folded):
@@ -26,7 +60,7 @@ def classify_navigation(folded: str) -> str:
         return NAVIGATION_AROUND_PASSAGE
     if re.search(r"\b(passage|extrait)\b.*\b(autour|alentour)\b", folded):
         return NAVIGATION_AROUND_PASSAGE
-    if re.search(r"\b(autre\s+)?(passage|extrait)\b.*\b(proche|voisin|voisine)\b", folded):
+    if _is_nearby_navigation(folded):
         return NAVIGATION_NEARBY_PASSAGE
     if re.search(r"\b(page|passage|extrait)\s+(precedente|precedent|avant)\b", folded):
         return NAVIGATION_PAGE_PREVIOUS
@@ -41,6 +75,14 @@ def classify_navigation(folded: str) -> str:
     if re.search(r"\b(plus bas|descends|avance|recule)\b", folded):
         return NAVIGATION_DOWN
     return NAVIGATION_GENERIC
+
+
+def has_unresolved_explicit_reference(folded: str) -> bool:
+    for match in _REFERENCE_RE.finditer(folded):
+        token = str(match.group(1) or "").strip()
+        if token and token not in _REFERENCE_STOPWORDS:
+            return True
+    return False
 
 
 def can_plan_context_navigation(kind: str) -> bool:
@@ -59,3 +101,21 @@ def context_params_for_navigation(kind: str, state: BiblioConversationState) -> 
     if params:
         params["window_chars"] = 1_400
     return params
+
+
+def _is_nearby_navigation(folded: str) -> bool:
+    if not re.search(r"\b(autre\s+)?(passage|extrait)\b.*\b(proche|voisin|voisine)\b", folded):
+        return False
+    if not _SEARCH_VERB_RE.search(folded):
+        return True
+    if _nearby_request_has_explicit_topic(folded):
+        return False
+    return bool(_NEARBY_ANAPHORIC_RE.search(folded))
+
+
+def _nearby_request_has_explicit_topic(folded: str) -> bool:
+    for match in _NEARBY_TOPIC_RE.finditer(folded):
+        token = str(match.group(1) or "").strip()
+        if token and token not in _REFERENCE_STOPWORDS:
+            return True
+    return False

@@ -48,6 +48,9 @@ REASON_LAST_PASSAGE_CONTEXT = "biblio_dialogue_last_passage_context"
 REASON_LAST_PASSAGE_MISSING = "biblio_dialogue_last_passage_missing"
 REASON_LAST_PASSAGE_POSITION_MISSING = "biblio_dialogue_last_passage_position_missing"
 REASON_NAVIGATION_CONTEXT_AROUND = "biblio_dialogue_navigation_context_around"
+REASON_NAVIGATION_EXPLICIT_REFERENCE_UNRESOLVED = (
+    "biblio_dialogue_navigation_explicit_reference_unresolved"
+)
 REASON_NAVIGATION_TOOL_MISSING = "biblio_dialogue_navigation_tool_missing"
 REASON_CANDIDATES_MISSING = "biblio_dialogue_candidates_missing"
 REASON_CANDIDATES_INCOMPLETE = "biblio_dialogue_candidates_incomplete"
@@ -270,8 +273,29 @@ def _navigation_result(
     state: BiblioConversationState,
     variants: Sequence[str],
 ) -> BiblioDialoguePlanningResult:
-    kind = navigation.classify_navigation(intents.fold_message(message))
+    folded = intents.fold_message(message)
+    kind = navigation.classify_navigation(folded)
     tool_required = navigation.tool_required_for_navigation(kind)
+    if navigation.has_unresolved_explicit_reference(folded):
+        return _planned_result(
+            message,
+            variants,
+            status=STATUS_NEEDS_CLARIFICATION,
+            reason_code=REASON_NAVIGATION_EXPLICIT_REFERENCE_UNRESOLVED,
+            intent=BiblioDialogueIntent(
+                INTENT_NAVIGATE,
+                state_required=True,
+                tool_required=tool_required,
+                scope_mode=kind,
+            ),
+            plan=BiblioLibrarianPlan(
+                intent="clarify",
+                answer_mode="clarify",
+                fallback_reason=REASON_NAVIGATION_EXPLICIT_REFERENCE_UNRESOLVED,
+            ),
+            state=state,
+            tool_required=tool_required,
+        )
     if navigation.can_plan_context_navigation(kind):
         if not state.present:
             return _clarification_result(

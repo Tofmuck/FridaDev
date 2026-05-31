@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from . import librarian_dialogue_navigation as navigation
 from .query_normalizer import fold_text, normalize_text, query_variants
 
 
@@ -111,19 +112,7 @@ def _toc_suffix_has_explicit_reference(folded: str) -> bool:
 
 
 def asks_navigation(folded: str) -> bool:
-    if re.search(r"\b(page|passage|extrait)\s+(suivante|suivant|precedente|precedent)\b", folded):
-        return True
-    if re.search(r"\b(page|passage|extrait)\s+(avant|apres)\b", folded):
-        return True
-    if re.search(r"\b(avant|apres)\s+(le|la|l'|ce|cet|cette|celui|celle)?\s*(page|passage|extrait)\b", folded):
-        return True
-    if re.search(r"\b(plus haut|plus bas|remonte|descends|monte|avance|recule)\b", folded):
-        return True
-    if re.search(r"\b(autour|alentour|proche|voisin|voisine)\b.*\b(passage|extrait)\b", folded):
-        return True
-    if re.search(r"\b(passage|extrait)\b.*\b(autour|alentour|proche|voisin|voisine)\b", folded):
-        return True
-    return bool(re.search(r"\b(continue|continuer|la suite|suite|poursuis)\b", folded))
+    return navigation.is_navigation_request(folded)
 
 
 def asks_passage_reference(folded: str) -> bool:

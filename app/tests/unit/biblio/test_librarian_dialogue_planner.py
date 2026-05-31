@@ -311,6 +311,9 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
             ("Remonte un peu.", "up"),
             ("Plus bas.", "down"),
             ("Cherche un autre passage proche.", "nearby_passage"),
+            ("Un autre passage proche.", "nearby_passage"),
+            ("Montre un passage voisin.", "nearby_passage"),
+            ("Autre extrait voisin.", "nearby_passage"),
         ):
             with self.subTest(message=message):
                 result = dialogue.plan_biblio_dialogue(message, state=state)
@@ -322,19 +325,72 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
                 self.assertEqual(result.tool_required, f"navigation_{scope_mode}")
                 self.assertEqual(_tool_names(result), [])
 
+    def test_navigation_explicit_unresolved_reference_does_not_use_current_document(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "paragraph_id": 101})
+
+        for message in (
+            "Autour de ce passage dans le Theetete",
+            "Autour de ce passage dans Platon",
+            "Continue dans le Theetete",
+            "Page precedente dans Platon",
+        ):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
+
+                self.assertEqual(result.status, dialogue.STATUS_NEEDS_CLARIFICATION)
+                self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_EXPLICIT_REFERENCE_UNRESOLVED)
+                self.assertEqual(result.intent.intent, dialogue.INTENT_NAVIGATE)
+                self.assertFalse(result.current_document_used)
+                self.assertEqual(_tool_names(result), [])
+
+    def test_nearby_search_with_theme_or_work_stays_thematic_search(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "paragraph_id": 101})
+
+        for message in (
+            "Cherche un passage proche de la maieutique",
+            "Trouve un passage proche de Socrate",
+            "Cherche le passage proche dans le Theetete",
+        ):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
+
+                self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+                self.assertEqual(result.reason_code, dialogue.REASON_THEME_SEARCH)
+                self.assertEqual(result.intent.intent, dialogue.INTENT_SEARCH_PASSAGE)
+                self.assertEqual(_tool_names(result), [tools.TOOL_CATALOG_SEARCH])
+                self.assertFalse(result.current_document_used)
+
     def test_around_this_passage_with_valid_state_plans_bounded_context(self) -> None:
         state = _state_with_document(last_result={"document_id": "doc-1", "paragraph_id": 101})
 
-        result = dialogue.plan_biblio_dialogue("Autour de ce passage.", state=state)
+        for message in (
+            "Autour de ce passage.",
+            "Autour de ce passage dans ce livre.",
+            "Autour de ce passage dans cet ouvrage.",
+        ):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
 
-        self.assertEqual(result.status, dialogue.STATUS_PLANNED)
-        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_CONTEXT_AROUND)
+                self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+                self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_CONTEXT_AROUND)
+                self.assertEqual(result.intent.intent, dialogue.INTENT_NAVIGATE)
+                self.assertEqual(result.intent.scope_mode, "around_passage")
+                self.assertEqual(result.tool_required, "navigation_around_passage")
+                self.assertEqual(_tool_names(result), [tools.TOOL_PASSAGE_CONTEXT])
+                self.assertEqual(result.plan.tool_calls[0].params["paragraph_id"], 101)
+                self.assertEqual(result.plan.tool_calls[0].params["window_chars"], 1400)
+
+    def test_deictic_navigation_with_missing_tool_stays_missing_tool(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "paragraph_id": 101})
+
+        result = dialogue.plan_biblio_dialogue("Continue dans ce livre", state=state)
+
+        self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
+        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
         self.assertEqual(result.intent.intent, dialogue.INTENT_NAVIGATE)
-        self.assertEqual(result.intent.scope_mode, "around_passage")
-        self.assertEqual(result.tool_required, "navigation_around_passage")
-        self.assertEqual(_tool_names(result), [tools.TOOL_PASSAGE_CONTEXT])
-        self.assertEqual(result.plan.tool_calls[0].params["paragraph_id"], 101)
-        self.assertEqual(result.plan.tool_calls[0].params["window_chars"], 1400)
+        self.assertEqual(result.intent.scope_mode, "continue")
+        self.assertEqual(result.tool_required, "navigation_continue")
+        self.assertEqual(_tool_names(result), [])
 
     def test_navigation_without_state_clarifies(self) -> None:
         for message in ("Continue.", "Plus haut.", "Montre-moi la page precedente."):
