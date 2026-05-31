@@ -626,7 +626,46 @@ NO-GO Lot 5 si le patch tente:
 - remplacer le chemin deterministe sans smokes comparatifs;
 - declarer l'agent bibliothecaire produit livre.
 
-## 18. Hors-scope
+## 18. Lot 5 livre
+
+Lot 5 livre uniquement la preparation de comprehension implicite/dialogue
+au-dessus de la boucle Lot 4.
+
+Implementation Lot 5:
+
+- module: `app/biblio/librarian_dialogue_planner.py`;
+- structures livrees: `BiblioDialogueIntent`,
+  `BiblioDialoguePlanningRequest`, `BiblioDialoguePlanningResult`,
+  `BiblioDialoguePlanner`;
+- entree: demande utilisateur interne, etat Biblio conversationnel
+  content-free, dialogue recent borne a 6 messages pour signal technique;
+- sortie: `BiblioLibrarianPlan` executable par la boucle Lot 4, ou
+  clarification/fallback structure;
+- intentions preparees: `list_catalog`, `search_passage`,
+  `search_current_document`, `show_table_of_contents`, `compare_passages`,
+  `navigate`, `fallback`;
+- statuts prepares: `planned`, `needs_clarification`,
+  `unsupported_missing_tool`, `fallback_deterministic`;
+- la navigation ou la page suivante ne simule aucun outil absent: elle retourne
+  `unsupported_missing_tool` ou `needs_clarification`;
+- observabilite et `repr(result)` content-free: pas de requete brute, titre,
+  auteur, passage, payload Catalogue ou prompt complet;
+- aucun branchement chat/runtime produit;
+- aucun OpenRouter, aucun modele externe reel, aucun outil page, aucun
+  `export/chunk`, aucun `latest/page`, aucun `latest/context`;
+- `librarian_planner.py`, `librarian_tools.py` et
+  `librarian_planner_observability.py` ne portent pas la comprehension
+  dialogue.
+
+NO-GO retroactif Lot 5 si un patch ulterieur reintroduit:
+
+- interpretation dialogue dans `librarian_planner.py`;
+- logique dialogue dans `librarian_planner_observability.py`;
+- appel OpenRouter ou modele reel sans lot de gate separe;
+- outil page ou route `latest`;
+- fuite content-rich via observabilite ou `repr(result)`.
+
+## 19. Hors-scope
 
 - runtime agent;
 - appel OpenRouter;

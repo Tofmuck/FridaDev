@@ -585,33 +585,57 @@ Risque que l'agent interprete "le passage", "dans ce meme ouvrage" ou "c'est tou
 
 ### Plan
 
-- [ ] Injecter a l'agent une synthese content-free de l'etat Biblio.
-- [ ] Fournir un dialogue recent borne pour interpretation linguistique.
-- [ ] Declarer que l'etat technique prime sur la memoire conversationnelle floue.
-- [ ] Gerer les references anaphoriques: ce passage, ce livre, meme ouvrage, plus haut, apres.
-- [ ] Demander clarification si l'etat est absent ou contradictoire.
+- [x] Preparer une synthese content-free de l'etat Biblio pour le futur agent.
+- [x] Recevoir un dialogue recent borne comme signal content-free; Lot 5 ne le
+  livre pas encore a un modele.
+- [x] Declarer que l'etat technique prime sur la memoire conversationnelle floue.
+- [x] Gerer les references anaphoriques: ce passage, ce livre, meme ouvrage,
+  plus haut, apres.
+- [x] Demander clarification si l'etat est absent ou contradictoire.
 
 ### Patch attendu
 
-- [ ] Extension du contrat agent et de l'etat.
-- [ ] Tests multi-tour.
-- [ ] Reason codes pour anaphore resolue ou impossible.
+- [x] Module dedie: `app/biblio/librarian_dialogue_planner.py`.
+- [x] Tests multi-tour/content-free dans
+  `app/tests/unit/biblio/test_librarian_dialogue_planner.py`.
+- [x] Reason codes pour anaphore resolue, etat absent, candidats absents ou
+  outil de navigation manquant.
 
 ### Tests / preuves
 
-- [ ] Ouvrir Platon -> "donne-moi la table des matieres".
-- [ ] Passage Theetete -> "continue".
-- [ ] Ambiguite -> "le deuxieme".
-- [ ] Etat absent -> clarification propre.
+- [x] Ouvrir Platon -> "donne-moi la table des matieres".
+- [x] Passage Theetete -> "continue" clarifie ou signale l'outil de navigation
+  manquant, sans inventer de page.
+- [x] Ambiguite -> comparaison planifiee seulement si deux candidats
+  content-free positionnes existent.
+- [x] Etat absent -> clarification propre.
 
 ### Réduction du risque attendue
 
-- [ ] Risque reduit par priorite donnee aux references techniques; risque rendu observable quand l'anaphore ne peut pas etre resolue.
+- [x] Risque reduit par priorite donnee aux references techniques; risque rendu
+  observable quand l'anaphore ne peut pas etre resolue.
 
 ### Critères de sortie
 
-- [ ] Les demandes implicites principales passent ou clarifient.
-- [ ] Aucune reference technique n'est inventee depuis le dialogue.
+- [x] Les demandes implicites principales passent ou clarifient.
+- [x] Aucune reference technique n'est inventee depuis le dialogue.
+
+Photo operatoire Lot 5 - 2026-05-31:
+
+- `BiblioDialoguePlanner` transforme une demande utilisateur interne + un etat
+  Biblio content-free en `BiblioLibrarianPlan` ou clarification;
+- statut livre: `planned`, `needs_clarification`,
+  `unsupported_missing_tool`, `fallback_deterministic`;
+- intentions livrees: liste Catalogue, recherche thematique, recherche dans le
+  document courant, table des matieres du document courant, comparaison de
+  candidats precedents et navigation refusee proprement;
+- aucun appel reseau, aucun OpenRouter, aucun modele reel, aucun branchement
+  chat/runtime produit;
+- aucun outil page, aucun `export/chunk`, aucun `latest/page`, aucun
+  `latest/context`;
+- `librarian_planner.py`, `librarian_tools.py` et
+  `librarian_planner_observability.py` ne portent pas la comprehension
+  dialogue.
 
 ### Hors-scope
 
