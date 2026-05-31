@@ -223,60 +223,80 @@ Risque que Frida reponde a "continue", "ce passage", "la page precedente" ou "da
 
 ### Plan
 
-- [ ] Definir `BiblioConversationState` avec `schema_version`.
-- [ ] Porter au minimum `current_document`, `current_work`, `page_no`, `para_no`, `paragraph_id`, dernier passage hash, dernier resultat exploitable, derniers candidats, derniere ambiguite, dernier intent.
-- [ ] Trancher explicitement la frontiere de persistance: memoire process seule, etat attache a la conversation, persistance content-free, survie reload navigateur, survie reprise de conversation et survie rebuild/restart.
-- [ ] Garantir au minimum que "continue", "page precedente" et "ce passage" survivent au reload/reprise de conversation si le produit promet cette reprise.
-- [ ] Si la survie reload/reprise/rebuild n'est pas livree dans ce lot, forcer une clarification propre plutot qu'une reprise inventee.
-- [ ] Lire l'etat avant planning Biblio.
-- [ ] Mettre a jour l'etat apres resolution, TOC, extraction, recherche, navigation ou clarification.
-- [ ] Garder l'etat interne non content-rich: ids, positions, hashes, counts, reason codes.
-- [ ] Ne pas deduire `document_id`, `page_no`, `para_no` ou `paragraph_id` seulement du dialogue recent.
-- [ ] Traiter P08 et P11 comme criteres centraux du lot: reprise depuis `last_result` et verification par ancre technique.
-- [ ] Garder P03 et P09 comme cas de regression a surveiller: P03 depend aussi du planner/intention, P09 depend aussi d'un outil page non expose par `CatalogueClient`.
-- [ ] Clarifier proprement si l'etat, le planner ou l'outillage manque, sans promettre une correction complete de P03/P09 dans ce lot.
+- [x] Definir `BiblioConversationState` avec `schema_version`.
+- [x] Porter au minimum `current_document`, `current_work`, `page_no`, `para_no`, `paragraph_id`, dernier passage hash, dernier resultat exploitable, derniers candidats, derniere ambiguite, dernier intent.
+- [x] Trancher explicitement la frontiere de persistance: memoire process seule, etat attache a la conversation, persistance content-free, survie reload navigateur, survie reprise de conversation et survie rebuild/restart.
+- [x] Garantir au minimum que "continue", "page precedente" et "ce passage" survivent au reload/reprise de conversation si le produit promet cette reprise.
+- [x] Si la survie reload/reprise/rebuild n'est pas livree dans ce lot, forcer une clarification propre plutot qu'une reprise inventee.
+- [x] Lire l'etat avant planning Biblio.
+- [x] Mettre a jour l'etat apres resolution, TOC, extraction, recherche, navigation ou clarification.
+- [x] Garder l'etat interne non content-rich: ids, positions, hashes, counts, reason codes.
+- [x] Ne pas deduire `document_id`, `page_no`, `para_no` ou `paragraph_id` seulement du dialogue recent.
+- [x] Traiter P08 et P11 comme criteres centraux du lot: reprise depuis `last_result` et verification par ancre technique.
+- [x] Garder P03 et P09 comme cas de regression a surveiller: P03 depend aussi du planner/intention, P09 depend aussi d'un outil page non expose par `CatalogueClient`.
+- [x] Clarifier proprement si l'etat, le planner ou l'outillage manque, sans promettre une correction complete de P03/P09 dans ce lot.
 
 ### Frontiere de persistance minimale
 
-- [ ] documenter la decision de persistance dans le patch du lot: process-only, conversation-attached ou persiste content-free;
-- [ ] si reprise produit promise: faire survivre `document_id`, `page_no`, `para_no`, `paragraph_id`, dernier passage hash et dernier resultat exploitable au reload navigateur;
-- [ ] si reprise produit promise: faire survivre ces references a la reprise de conversation;
-- [ ] si rebuild/restart non couvert: produire une clarification propre apres redemarrage au lieu d'inventer une position;
-- [ ] tester reload/reprise;
-- [ ] ne jamais persister de passage brut, prompt complet, payload Catalogue, titre brut, auteur brut ou requete brute;
-- [ ] ne jamais exposer ces champs bruts en observabilite.
+- [x] documenter la decision de persistance dans le patch du lot: process-only, conversation-attached ou persiste content-free;
+- [x] si reprise produit promise: faire survivre `document_id`, `page_no`, `para_no`, `paragraph_id`, dernier passage hash et dernier resultat exploitable au reload navigateur;
+- [x] si reprise produit promise: faire survivre ces references a la reprise de conversation;
+- [x] si rebuild/restart non couvert: produire une clarification propre apres redemarrage au lieu d'inventer une position;
+- [x] tester reload/reprise;
+- [x] ne jamais persister de passage brut, prompt complet, payload Catalogue, titre brut, auteur brut ou requete brute;
+- [x] ne jamais exposer ces champs bruts en observabilite.
+
+Decision livree Lot 1:
+
+- mode: etat persiste content-free dans `message.meta.biblio_state` du dernier message utilisateur;
+- attachement: etat rattache a la conversation par les messages existants, sans nouvelle table ni schema DB;
+- survie reload navigateur: oui apres sauvegarde normale de la conversation;
+- survie reprise de conversation: oui apres sauvegarde normale de la conversation;
+- survie rebuild/restart: oui apres sauvegarde normale de la conversation, car le `meta` des messages est deja persiste;
+- avant sauvegarde ou si l'etat manque: clarification propre, jamais reprise inventee;
+- aucune ecriture Catalogue, aucun OCR, aucune route mutante, aucun `latest/page` ou `latest/context`.
 
 ### Patch attendu
 
-- [ ] Nouveau module dedie, par exemple `app/biblio/conversation_state.py`.
-- [ ] Integration dans `chat_service.py` ou `chat_runtime.py` sans grossir les fichiers au-dela du raisonnable.
-- [ ] Tests unitaires de read/update/clear.
-- [ ] Event content-free `biblio_state_*`.
+- [x] Nouveau module dedie, par exemple `app/biblio/conversation_state.py`.
+- [x] Integration dans `chat_service.py` ou `chat_runtime.py` sans grossir les fichiers au-dela du raisonnable.
+- [x] Tests unitaires de read/update/clear.
+- [x] Event content-free `biblio_state_*`.
 
 ### Tests / preuves
 
-- [ ] Tests unitaires sur serialisation content-free.
-- [ ] Test multi-tour: ouvrir Platon -> demander TOC sans renommer Platon.
-- [ ] Test multi-tour: extraire Theetete 126b -> "continue apres ce passage".
-- [ ] Test multi-tour: passage trouve -> "page precedente".
-- [ ] Test reload navigateur puis reprise "continue".
-- [ ] Test reprise de conversation puis "page precedente".
-- [ ] Test rebuild/restart ou, si hors lot, clarification propre documentee.
-- [ ] Verification absence de passage brut dans l'etat observe.
+- [x] Tests unitaires sur serialisation content-free.
+- [x] Test multi-tour: ouvrir Platon -> demander TOC sans renommer Platon.
+- [x] Test multi-tour: extraire Theetete 126b -> "continue apres ce passage".
+- [x] Test multi-tour: passage trouve -> "page precedente".
+- [x] Test reload navigateur puis reprise "continue".
+- [x] Test reprise de conversation puis "page precedente".
+- [x] Test rebuild/restart ou, si hors lot, clarification propre documentee.
+- [x] Verification absence de passage brut dans l'etat observe.
 
 ### Réduction du risque attendue
 
-- [ ] Risque reduit par une source technique explicite de reprise; risque rendu observable par reason codes quand l'etat manque.
+- [x] Risque reduit par une source technique explicite de reprise; risque rendu observable par reason codes quand l'etat manque.
 
 ### Critères de sortie
 
-- [ ] Les references techniques ne dependent pas du dialogue visible.
-- [ ] La frontiere de persistance est explicite et prouvee ou limitee par clarification propre.
-- [ ] Reload/reprise sont testes si le produit promet la reprise.
-- [ ] Les cas de navigation savent echouer proprement si l'etat est absent.
-- [ ] Aucun contenu brut durable hors lane produit.
-- [ ] Lot 1 ne modifie pas le planner/intention hors adaptation minimale necessaire a lire/ecrire l'etat.
-- [ ] Lot 1 n'ajoute pas l'outil page et ne livre pas la navigation complete.
+- [x] Les references techniques ne dependent pas du dialogue visible.
+- [x] La frontiere de persistance est explicite et prouvee ou limitee par clarification propre.
+- [x] Reload/reprise sont testes si le produit promet la reprise.
+- [x] Les cas de navigation savent echouer proprement si l'etat est absent.
+- [x] Aucun contenu brut durable hors lane produit.
+- [x] Lot 1 ne modifie pas le planner/intention hors adaptation minimale necessaire a lire/ecrire l'etat.
+- [x] Lot 1 n'ajoute pas l'outil page et ne livre pas la navigation complete.
+
+Photo operatoire Lot 1 - 2026-05-31:
+
+- `app/biblio/conversation_state.py` porte `BiblioConversationState`, `BiblioStateTransition`, serialisation, lecture/ecriture et mise a jour content-free;
+- `app/biblio/conversation_followup.py` porte la detection bornee de follow-up et la clarification content-free;
+- `app/biblio/chat_runtime.py` lit l'etat avant le plan, l'applique seulement au cas TOC sans cible quand un `document_id` courant existe, met a jour l'etat apres consultation et clarifie les reprises sans ancre/outillage;
+- `app/core/chat_service.py` lit l'etat depuis la conversation et rattache l'etat produit au dernier message utilisateur;
+- `app/biblio/observability.py` expose `state` et `state_transition` sans payload brut;
+- P03 et P09 restent des surveillances de regression, pas des promesses de correction complete du Lot 1;
+- aucun agent LLM, aucun OpenRouter, aucun outil page, aucune route Catalogue mutante, aucun `latest/page` ou `latest/context`.
 
 ### Hors-scope
 

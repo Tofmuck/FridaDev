@@ -12,6 +12,8 @@ if str(APP_DIR) not in sys.path:
 
 from biblio import chat_runtime
 from biblio import catalogue_client as catalogue
+from biblio import conversation_followup
+from biblio import conversation_state
 from biblio import library_runtime
 from biblio import passage_extractor as extractor
 from biblio import prompt_lane
@@ -56,6 +58,83 @@ class BiblioChatRuntimeTests(unittest.TestCase):
                 self.assertIsNone(result.prompt_message)
                 self.assertEqual(result.observability_payload["status"], "not_used")
                 self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+
+    def test_followup_without_biblio_state_clarifies_without_catalogue_call(self) -> None:
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="continue apres ce passage",
+            conversation_id="conv-biblio-state",
+            client_factory=_raising_client_factory,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_STATE_FOLLOWUP)
+        self.assertEqual(result.reason_code, conversation_followup.REASON_STATE_MISSING)
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn("clarifier", result.prompt_message["content"])
+        self.assertIn("latest/page", result.prompt_message["content"])
+        self.assertEqual(result.observability_payload["status"], conversation_followup.STATUS_CLARIFICATION_REQUIRED)
+        self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+
+    def test_extracted_passage_updates_and_attaches_content_free_state(self) -> None:
+        observed: dict[str, object] = {}
+        conversation = {
+            "id": "conv-biblio-state",
+            "messages": [
+                {"role": "system", "content": "system"},
+                {"role": "user", "content": "RAW USER QUERY MUST NOT ENTER STATE"},
+            ],
+        }
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Cherche le passage 126b dans Platon dans le catalogue.",
+            conversation_id="conv-biblio-state",
+            now_iso="2026-05-31T12:00:00Z",
+            client_factory=lambda **_kwargs: _FakeClient(),
+            extractor_factory=lambda client: _FakeExtractor(observed),
+        )
+        attached = chat_runtime.attach_biblio_conversation_state(conversation, result)
+        loaded = chat_runtime.read_biblio_conversation_state(conversation)
+
+        self.assertTrue(attached)
+        self.assertTrue(loaded.present)
+        self.assertEqual(loaded.page_no, 12)
+        self.assertEqual(loaded.para_no, 3)
+        self.assertEqual(loaded.paragraph_id, 99)
+        self.assertEqual(len(loaded.last_passage_hash), 12)
+        encoded_state = json.dumps(loaded.to_dict(), ensure_ascii=False, sort_keys=True)
+        self.assertNotIn(RAW_PASSAGE, encoded_state)
+        self.assertNotIn("RAW USER QUERY MUST NOT ENTER STATE", encoded_state)
+        self.assertNotIn("payload", encoded_state.lower())
+        self.assertEqual(result.observability_payload["state"]["last_result_present"], True)
+
+    def test_previous_page_with_state_clarifies_because_page_tool_is_absent(self) -> None:
+        state, _transition = conversation_state.update_state_from_runtime(
+            conversation_state.BiblioConversationState.empty(conversation_id="conv-biblio-state"),
+            query_plan=query_planner.BiblioQueryPlan(
+                should_consult=True,
+                intent=query_planner.INTENT_SEARCH_CATALOG,
+                reason_code=query_planner.REASON_SEARCH_CATALOG,
+                query_kind=query_planner.INTENT_SEARCH_CATALOG,
+            ),
+            library_result=_RuntimeResult(passage_result=_passage(RAW_PASSAGE), status="extracted"),
+            conversation_id="conv-biblio-state",
+            now_iso="2026-05-31T12:00:00Z",
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="montre-moi la page precedente",
+            conversation_id="conv-biblio-state",
+            conversation_state=state,
+            client_factory=_raising_client_factory,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.reason_code, conversation_followup.REASON_PAGE_TOOL_UNAVAILABLE)
+        self.assertIn("Outil requis indisponible", result.prompt_message["content"])
+        self.assertEqual(result.observability_payload["client"]["event_count"], 0)
 
     def test_clear_document_locator_signal_extracts_and_builds_lane(self) -> None:
         observed: dict[str, object] = {}
@@ -169,6 +248,32 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         encoded_observability = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
         self.assertNotIn("RAW CHAPTER TITLE ONE", encoded_observability)
         self.assertNotIn("RAW DOCUMENT TITLE", encoded_observability)
+
+    def test_table_of_contents_can_reuse_current_document_state_without_renaming_work(self) -> None:
+        fake = _TableOfContentsClient()
+        opened = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Ouvre Platon dans la bibliothèque",
+            conversation_id="conv-biblio-state",
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(opened.biblio_state.current_document.get("document_id"))
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Donne-moi la table des matières",
+            conversation_id="conv-biblio-state",
+            conversation_state=opened.biblio_state,
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "show_table_of_contents")
+        self.assertEqual(fake.calls, [("catalog", "Platon", 8, 0), ("chapters", "doc-toc", 500, 0)])
+        self.assertEqual(result.observability_payload["status"], "toc_listed")
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn("Table des matieres disponible: 2 entrees.", result.prompt_message["content"])
 
     def test_table_of_contents_request_reports_platform_gap_for_large_document_without_document_route_call(self) -> None:
         fake = _LargeTableOfContentsClient()
@@ -326,6 +431,8 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertNotIn("RAW AMBIGUOUS PASSAGE B", encoded_observability)
         self.assertNotIn("RAW TITLE MUST STAY INTERNAL", encoded_observability)
         self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded_observability)
+        self.assertTrue(result.biblio_state.last_ambiguity)
+        self.assertGreaterEqual(result.biblio_state.last_ambiguity["candidate_count"], 2)
 
     def test_theetete_range_request_reaches_extractor_with_work_anchor(self) -> None:
         observed: dict[str, object] = {}
@@ -783,6 +890,16 @@ class _FakeExtractor:
     def extract(self, request):
         self.observed["request"] = request
         return _passage(RAW_PASSAGE)
+
+
+class _RuntimeResult:
+    def __init__(self, *, passage_result=None, status: str) -> None:
+        self.status = status
+        self.reason_code = f"biblio_{status}"
+        self.passage_result = passage_result
+        self.context_result = None
+        self.passage_results = (passage_result,) if passage_result is not None else ()
+        self.consultation_message = None
 
 
 def _raising_client_factory(**_kwargs):

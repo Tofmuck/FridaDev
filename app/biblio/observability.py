@@ -167,6 +167,8 @@ def build_biblio_event_payload(
     resolution: Any = None,
     passage_result: Any = None,
     prompt_lane: Any = None,
+    biblio_state: Any = None,
+    state_transition: Any = None,
     status: str = "",
     reason_code: str = "",
 ) -> dict[str, Any]:
@@ -186,6 +188,8 @@ def build_biblio_event_payload(
     resolver_projection = _object_projection(resolution)
     extractor_projection = _passage_result_projection(passage_result)
     lane_projection = _prompt_lane_projection(prompt_lane)
+    state_projection = _object_projection(biblio_state)
+    state_transition_projection = _object_projection(state_transition)
     passage_search_projection = _passage_search_projection(
         client_items=client_items,
         extractor=extractor_projection,
@@ -233,6 +237,8 @@ def build_biblio_event_payload(
         "resolver": resolver_projection,
         "extractor": extractor_projection,
         "lane": lane_projection,
+        "state": state_projection,
+        "state_transition": state_transition_projection,
         "passage_search": passage_search_projection,
         "counts": counts,
         "confidence": {

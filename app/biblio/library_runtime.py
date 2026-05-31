@@ -123,6 +123,7 @@ class BiblioLibraryRuntimeResult:
     passage_results: tuple[BiblioPassageResult, ...] = field(default_factory=tuple, repr=False, compare=False)
     prompt_lane: BiblioPromptLane | None = field(default=None, repr=False, compare=False)
     consultation_message: BiblioConsultationMessage | None = field(default=None, repr=False, compare=False)
+    document_ids: tuple[str, ...] = field(default_factory=tuple, repr=False, compare=False)
 
     @property
     def prompt_message(self) -> dict[str, Any] | None:
@@ -377,6 +378,7 @@ def _catalogue_consultation_result(
         endpoint_observations=result.endpoint_observations,
         client_error=result.client_error,
         consultation_message=consultation,
+        document_ids=tuple(str(item or "").strip() for item in result.document_ids if str(item or "").strip()),
     )
 
 

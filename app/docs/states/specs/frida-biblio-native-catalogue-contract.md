@@ -16,6 +16,7 @@ Mise a jour recherche passages Lot 7: 2026-05-30
 Validation finale recherche passages Lot 8: 2026-05-30
 Reouverture produit vraie bibliotheque: 2026-05-30
 Route legere table des matieres Catalogue: 2026-05-30
+Etat conversationnel agent bibliothecaire Lot 1: 2026-05-31
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -39,7 +40,7 @@ Source nominale:
 
 Le premier client FridaDev doit etre strictement read-only / GET-only.
 
-Le Lot 1 ne livre aucun code runtime:
+Le Lot 1 historique du chantier Biblio native 2026-05-28 ne livrait aucun code runtime:
 
 - pas de route FridaDev;
 - pas de client Catalogue;
@@ -631,7 +632,59 @@ Validation finale Lot 8 du 2026-05-29:
 - aucune case ouverte reelle ne reste dans la roadmap Biblio archivee;
 - toute extension future doit ouvrir un lot explicite si elle touche ranges, UI Catalogue FridaDev, ecriture Catalogue, recherche semantique large, RAG documentaire, OCR ou changement de frontiere avec les documents actifs.
 
-## 11. Tests de regression du chantier
+## 11. Etat conversationnel Biblio
+
+Implementation agent bibliothecaire Lot 1 du 2026-05-31:
+
+- module dedie: `app/biblio/conversation_state.py`;
+- schema: `biblio_conversation_state_v1`;
+- persistance: `message.meta.biblio_state` sur le dernier message utilisateur;
+- portee: etat attache a la conversation, persiste content-free via la persistence existante des messages;
+- survie reload navigateur: oui apres sauvegarde normale de la conversation;
+- survie reprise de conversation: oui apres sauvegarde normale de la conversation;
+- survie rebuild/restart: oui apres sauvegarde normale de la conversation;
+- absence de nouvelle table, de migration DB ou de stockage Catalogue;
+- absence d'ecriture Catalogue, d'OCR, de route mutante, d'appel OpenRouter et d'agent LLM.
+
+Champs autorises dans l'etat:
+
+- `schema_version`;
+- `conversation_id`;
+- `current_document` avec `document_id` si disponible, `doc_id_short` et source compacte;
+- `current_work` sous forme de presence, longueur et hash court, jamais titre brut;
+- `page_no`, `para_no`, `paragraph_id`;
+- `last_passage_hash`;
+- `last_result`;
+- `last_candidates`;
+- `last_ambiguity`;
+- `last_intent`;
+- `updated_at`;
+- `source_event`.
+
+Champs interdits dans l'etat:
+
+- passage brut;
+- texte OCR;
+- payload Catalogue;
+- prompt complet;
+- lane complete;
+- titre brut;
+- auteur brut;
+- requete utilisateur brute;
+- secret, token, DSN, cookie ou `.env`.
+
+Integration runtime:
+
+- `chat_runtime.py` reste l'orchestrateur Biblio mince: toggle, plan deterministe existant, adaptation minimale par etat, runtime bibliothecaire, observabilite et clarification;
+- l'etat est lu avant consultation et mis a jour apres resolution, ouverture, TOC, extraction, recherche ou clarification;
+- l'adaptation par etat est bornee au cas TOC sans cible explicite quand un `document_id` courant existe deja;
+- P03 reste un cas de surveillance planner/intention, pas une promesse de correction Lot 1;
+- P09 reste un cas de surveillance outillage page, pas une promesse de navigation complete Lot 1;
+- si l'utilisateur demande une reprise et que l'etat, le planner ou l'outillage manque, Frida recoit une lane `[ETAT BIBLIO]` lui demandant de clarifier proprement;
+- cette lane interdit explicitement `latest/page`, `latest/context` et toute reprise inventee;
+- l'observabilite `stage=biblio` expose maintenant `state` et `state_transition` content-free.
+
+## 12. Tests de regression du chantier
 
 Suites et cas a conserver:
 
@@ -667,7 +720,7 @@ Suites et cas a conserver:
 - erreur Catalogue content-free;
 - timeout Catalogue content-free.
 
-## 12. Conditions de reouverture future
+## 13. Conditions de reouverture future
 
 Le chantier Biblio native est clos au 2026-05-29. Son correctif P1 "vraie bibliotheque / recherche de passages" est requalifie: preuve technique close, validation produit rouverte le 2026-05-30. Une reouverture future doit rester explicite et verifier d'abord que:
 

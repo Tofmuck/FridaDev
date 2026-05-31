@@ -735,11 +735,16 @@ def chat_response(
             admin_logs_module=admin_logs_module,
         )
 
+    biblio_state = biblio_chat_runtime.read_biblio_conversation_state(conversation)
     biblio_result = biblio_chat_runtime.run_biblio_chat_turn(
         data,
         user_msg=user_msg,
+        conversation_id=conversation.get('id'),
+        conversation_state=biblio_state,
+        now_iso=now_iso_value,
         config_module=config_module,
     )
+    biblio_chat_runtime.attach_biblio_conversation_state(conversation, biblio_result)
     _emit_biblio_observability(biblio_result)
 
     hermeneutic_node_runtime = _run_hermeneutic_node_insertion_point(

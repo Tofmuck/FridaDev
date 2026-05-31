@@ -54,6 +54,7 @@ class BiblioCatalogueConsultationResult:
     )
     client_error: CatalogueClientError | None = field(default=None, repr=False, compare=False)
     lines: tuple[str, ...] = field(default_factory=tuple, repr=False, compare=False)
+    document_ids: tuple[str, ...] = field(default_factory=tuple, repr=False, compare=False)
     doc_id_shorts: tuple[str, ...] = field(default_factory=tuple)
     total_count: int | None = None
     displayed_count: int | None = None
@@ -94,6 +95,7 @@ def run_biblio_open_document(
         reason_code=REASON_DOCUMENT_OPENED,
         endpoint_observations=observations,
         lines=("Document Catalogue trouve:", *_document_summary_lines(item)),
+        document_ids=tuple(filter(None, [doc_id])),
         doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
         total_count=1,
         displayed_count=1,
@@ -105,6 +107,9 @@ def run_biblio_table_of_contents(
     client: CatalogueClient,
     plan: BiblioQueryPlan,
 ) -> BiblioCatalogueConsultationResult:
+    if plan.document_id:
+        return _table_of_contents_for_document_id(client, plan.document_id)
+
     endpoint_observations: list[CatalogueEndpointObservation] = []
     try:
         response = client.catalog(q=_catalogue_query(plan) or None, limit=plan.limit or DEFAULT_DOCUMENT_LOOKUP_LIMIT, offset=0)
@@ -141,6 +146,7 @@ def run_biblio_table_of_contents(
                 "Document trouve, mais aucune table des matieres structuree n'est signalee par Catalogue.",
                 *_document_summary_lines(selected),
             ),
+            document_ids=tuple(filter(None, [doc_id])),
             doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
             total_count=chapter_count,
             displayed_count=0,
@@ -161,6 +167,7 @@ def run_biblio_table_of_contents(
                 f"Chapitres signales: {chapter_count}.",
                 *_document_summary_lines(selected),
             ),
+            document_ids=tuple(filter(None, [doc_id])),
             doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
             total_count=chapter_count,
             displayed_count=0,
@@ -180,6 +187,7 @@ def run_biblio_table_of_contents(
                 f"Chapitres signales: {chapter_count}.",
                 *_document_summary_lines(selected),
             ),
+            document_ids=tuple(filter(None, [doc_id])),
             doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
             total_count=total or chapter_count,
             displayed_count=0,
@@ -200,6 +208,67 @@ def run_biblio_table_of_contents(
         reason_code=REASON_TOC_LISTED,
         endpoint_observations=tuple(endpoint_observations),
         lines=tuple(lines),
+        document_ids=tuple(filter(None, [doc_id])),
+        doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
+        total_count=total,
+        displayed_count=len(chapters),
+        truncated=truncated,
+    )
+
+
+def _table_of_contents_for_document_id(
+    client: CatalogueClient,
+    doc_id: str,
+) -> BiblioCatalogueConsultationResult:
+    endpoint_observations: list[CatalogueEndpointObservation] = []
+    try:
+        chapters_response = client.chapters(doc_id, limit=DEFAULT_TOC_LIMIT, offset=0)
+        endpoint_observations.append(observe_catalogue_response(chapters_response))
+    except CatalogueClientError as exc:
+        return BiblioCatalogueConsultationResult(
+            status=STATUS_TOC_SUMMARY,
+            reason_code=REASON_TOC_SUMMARY,
+            endpoint_observations=tuple(endpoint_observations),
+            client_error=exc,
+            lines=("Document courant resolu, mais la route chapitres n'a pas pu etre lue.",),
+            document_ids=tuple(filter(None, [doc_id])),
+            doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
+            total_count=0,
+            displayed_count=0,
+            truncated=True,
+        )
+
+    chapters = _chapters(chapters_response)
+    total = _optional_int(chapters_response.payload.get("total")) or len(chapters)
+    truncated = bool(chapters_response.payload.get("truncated")) or total > len(chapters)
+    if not chapters:
+        return BiblioCatalogueConsultationResult(
+            status=STATUS_TOC_SUMMARY,
+            reason_code=REASON_TOC_SUMMARY,
+            endpoint_observations=tuple(endpoint_observations),
+            lines=("Document courant resolu, mais aucune entree de table des matieres n'a ete retournee.",),
+            document_ids=tuple(filter(None, [doc_id])),
+            doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
+            total_count=total,
+            displayed_count=0,
+            truncated=truncated,
+        )
+
+    lines = [
+        (
+            f"Table des matieres disponible: {total} entrees. Liste complete affichee."
+            if not truncated
+            else f"Table des matieres disponible: {total} entrees. Affichage des {len(chapters)} premieres."
+        ),
+        f"catalogue_doc={short_doc_id(doc_id) or 'unknown'}",
+        *_chapter_lines(chapters),
+    ]
+    return BiblioCatalogueConsultationResult(
+        status=STATUS_TOC_LISTED,
+        reason_code=REASON_TOC_LISTED,
+        endpoint_observations=tuple(endpoint_observations),
+        lines=tuple(lines),
+        document_ids=tuple(filter(None, [doc_id])),
         doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
         total_count=total,
         displayed_count=len(chapters),

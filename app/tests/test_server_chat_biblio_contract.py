@@ -68,9 +68,10 @@ class ServerChatBiblioContractTests(unittest.TestCase):
         original_emit = self.server.chat_service.chat_turn_logger.emit
         original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
 
-        def fake_biblio_turn(data, *, user_msg, config_module):
+        def fake_biblio_turn(data, *, user_msg, config_module, **kwargs):
             observed["biblio_data"] = dict(data)
             observed["biblio_user_msg_chars"] = len(user_msg)
+            observed["biblio_kwargs"] = dict(kwargs)
             passage = _passage(BIBLIO_SECRET_PASSAGE)
             lane = prompt_lane.build_biblio_prompt_lane([passage])
             payload = biblio_observability.build_biblio_event_payload(
@@ -118,6 +119,8 @@ class ServerChatBiblioContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json()["ok"])
         self.assertTrue(observed["biblio_data"]["biblio_enabled"])
+        self.assertIn("conversation_id", observed["biblio_kwargs"])
+        self.assertIn("conversation_state", observed["biblio_kwargs"])
         prompt_text = "\n".join(message["content"] for message in observed_state["payload_messages"])
         self.assertIn(prompt_lane.LANE_HEADER, prompt_text)
         self.assertIn(BIBLIO_SECRET_PASSAGE, prompt_text)
