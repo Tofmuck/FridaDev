@@ -577,7 +577,10 @@ Photo operatoire Lot 4 - 2026-05-31:
 
 ### Objectif
 
-Faire cooperer dialogue recent et etat Biblio explicite pour comprendre les demandes implicites.
+Preparer la cooperation future entre dialogue recent et etat Biblio explicite
+pour comprendre les demandes implicites. Lot 5 bis confirme que le dialogue
+recent est seulement borne/observable pour l'instant, pas encore un signal de
+decision.
 
 ### Risque produit traité
 
@@ -586,8 +589,8 @@ Risque que l'agent interprete "le passage", "dans ce meme ouvrage" ou "c'est tou
 ### Plan
 
 - [x] Preparer une synthese content-free de l'etat Biblio pour le futur agent.
-- [x] Recevoir un dialogue recent borne comme signal content-free; Lot 5 ne le
-  livre pas encore a un modele.
+- [x] Recevoir un dialogue recent borne comme entree content-free; Lot 5 ne
+  l'utilise pas encore comme signal decisionnel et ne le livre pas a un modele.
 - [x] Declarer que l'etat technique prime sur la memoire conversationnelle floue.
 - [x] Gerer les references anaphoriques: ce passage, ce livre, meme ouvrage,
   plus haut, apres.
@@ -626,9 +629,20 @@ Photo operatoire Lot 5 - 2026-05-31:
   Biblio content-free en `BiblioLibrarianPlan` ou clarification;
 - statut livre: `planned`, `needs_clarification`,
   `unsupported_missing_tool`, `fallback_deterministic`;
-- intentions livrees: liste Catalogue, recherche thematique, recherche dans le
-  document courant, table des matieres du document courant, comparaison de
-  candidats precedents et navigation refusee proprement;
+- intentions livrees: liste Catalogue, recherche thematique, recherche avec
+  ancre document courant mais recherche Catalogue globale explicite, table des
+  matieres deictique du document courant, reprise d'un dernier passage positionne,
+  comparaison de candidats precedents et navigation refusee proprement;
+- correction post-audit Lot 5 bis: `ce passage` / `reprends ce passage`
+  reouvrent seulement un contexte borne si `last_result` porte une position;
+  sinon clarification;
+- correction post-audit Lot 5 bis: `plus haut`, `avant`, `apres`, `continue`
+  signalent l'outil de navigation manquant si l'etat existe, ou clarifient si
+  l'etat manque;
+- correction post-audit Lot 5 bis: une table des matieres avec titre explicite
+  non resolu ne reutilise pas silencieusement `current_document`;
+- correction post-audit Lot 5 bis: `recent_dialogue` est borne et observable,
+  mais pas encore utilise comme signal decisionnel;
 - aucun appel reseau, aucun OpenRouter, aucun modele reel, aucun branchement
   chat/runtime produit;
 - aucun outil page, aucun `export/chunk`, aucun `latest/page`, aucun

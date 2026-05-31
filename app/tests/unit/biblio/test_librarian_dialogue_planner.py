@@ -48,10 +48,13 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
         result = dialogue.plan_biblio_dialogue("Dans ce livre, cherche la maieutique", state=state)
 
         self.assertEqual(result.status, dialogue.STATUS_PLANNED)
-        self.assertEqual(result.reason_code, dialogue.REASON_CURRENT_DOCUMENT_SEARCH)
+        self.assertEqual(result.reason_code, dialogue.REASON_CURRENT_DOCUMENT_ANCHOR_GLOBAL_SEARCH)
         self.assertTrue(result.current_document_used)
+        self.assertEqual(result.intent.scope_mode, "current_document_anchor_global_search")
+        self.assertNotEqual(result.intent.scope_mode, "current_document_strict")
         self.assertEqual(_tool_names(result), [tools.TOOL_DOCUMENT_OPEN_SUMMARY, tools.TOOL_CATALOG_SEARCH])
         self.assertEqual(result.plan.tool_calls[0].params["document_id"], "doc-1")
+        self.assertEqual(result.to_observability()["intent"]["scope_mode"], "current_document_anchor_global_search")
 
     def test_current_document_search_without_state_clarifies(self) -> None:
         result = dialogue.plan_biblio_dialogue("Dans ce livre, cherche la maieutique")
@@ -62,6 +65,35 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
         self.assertEqual(result.plan.answer_mode, "clarify")
         self.assertEqual(_tool_names(result), [])
 
+    def test_explain_this_passage_with_last_result_plans_bounded_context(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
+
+        result = dialogue.plan_biblio_dialogue("Explique ce passage", state=state)
+
+        self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+        self.assertEqual(result.reason_code, dialogue.REASON_LAST_PASSAGE_CONTEXT)
+        self.assertEqual(result.intent.intent, dialogue.INTENT_EXPLAIN_PASSAGE)
+        self.assertEqual(_tool_names(result), [tools.TOOL_PASSAGE_CONTEXT])
+        self.assertEqual(result.plan.tool_calls[0].params["page_no"], 12)
+        self.assertEqual(result.plan.tool_calls[0].params["para_no"], 3)
+
+    def test_resume_this_passage_with_last_result_plans_bounded_context(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "paragraph_id": 101})
+
+        result = dialogue.plan_biblio_dialogue("reprends ce passage", state=state)
+
+        self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+        self.assertEqual(result.reason_code, dialogue.REASON_LAST_PASSAGE_CONTEXT)
+        self.assertEqual(_tool_names(result), [tools.TOOL_PASSAGE_CONTEXT])
+        self.assertEqual(result.plan.tool_calls[0].params["paragraph_id"], 101)
+
+    def test_this_passage_without_state_clarifies(self) -> None:
+        result = dialogue.plan_biblio_dialogue("Explique ce passage")
+
+        self.assertEqual(result.status, dialogue.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.reason_code, dialogue.REASON_LAST_PASSAGE_MISSING)
+        self.assertEqual(_tool_names(result), [])
+
     def test_navigation_request_missing_tool_does_not_plan_forbidden_tool(self) -> None:
         state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
 
@@ -70,6 +102,22 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
         self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
         self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
         self.assertEqual(result.tool_required, "navigation")
+        self.assertEqual(_tool_names(result), [])
+
+    def test_plus_haut_with_state_reports_missing_navigation_tool(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
+
+        result = dialogue.plan_biblio_dialogue("plus haut", state=state)
+
+        self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
+        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
+        self.assertEqual(_tool_names(result), [])
+
+    def test_plus_haut_without_state_clarifies(self) -> None:
+        result = dialogue.plan_biblio_dialogue("plus haut")
+
+        self.assertEqual(result.status, dialogue.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.reason_code, dialogue.REASON_CURRENT_DOCUMENT_MISSING)
         self.assertEqual(_tool_names(result), [])
 
     def test_compare_without_candidates_clarifies(self) -> None:
@@ -100,6 +148,16 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
         self.assertEqual(result.reason_code, dialogue.REASON_TABLE_OF_CONTENTS)
         self.assertEqual(_tool_names(result), [tools.TOOL_DOCUMENT_TOC])
         self.assertEqual(result.plan.tool_calls[0].params["document_id"], "doc-1")
+
+    def test_table_of_contents_explicit_title_does_not_silently_use_current_document(self) -> None:
+        state = _state_with_document()
+
+        result = dialogue.plan_biblio_dialogue("Montre la table des matieres du Theetete", state=state)
+
+        self.assertEqual(result.status, dialogue.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.reason_code, dialogue.REASON_TOC_EXPLICIT_REFERENCE_UNRESOLVED)
+        self.assertEqual(_tool_names(result), [])
+        self.assertFalse(result.current_document_used)
 
     def test_dictated_theme_query_plans_search(self) -> None:
         result = dialogue.plan_biblio_dialogue("cherche le moment ou Socrate parle de sage femme")

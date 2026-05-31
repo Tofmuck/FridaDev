@@ -638,14 +638,21 @@ Implementation Lot 5:
   `BiblioDialoguePlanningRequest`, `BiblioDialoguePlanningResult`,
   `BiblioDialoguePlanner`;
 - entree: demande utilisateur interne, etat Biblio conversationnel
-  content-free, dialogue recent borne a 6 messages pour signal technique;
+  content-free, dialogue recent borne a 6 messages; Lot 5 ne l'utilise pas
+  encore comme signal decisionnel;
 - sortie: `BiblioLibrarianPlan` executable par la boucle Lot 4, ou
   clarification/fallback structure;
 - intentions preparees: `list_catalog`, `search_passage`,
-  `search_current_document`, `show_table_of_contents`, `compare_passages`,
-  `navigate`, `fallback`;
+  `search_current_document`, `explain_passage`, `show_table_of_contents`,
+  `compare_passages`, `navigate`, `fallback`;
 - statuts prepares: `planned`, `needs_clarification`,
   `unsupported_missing_tool`, `fallback_deterministic`;
+- une recherche "dans ce livre" reste une recherche Catalogue globale avec
+  ancre document courant explicite (`scope_mode=current_document_anchor_global_search`);
+- `ce passage` / `reprends ce passage` n'ouvrent qu'un `passage_context` borne
+  si `last_result` contient une position exploitable;
+- une demande de TOC avec titre explicite non resolu clarifie au lieu
+  d'utiliser silencieusement le document courant;
 - la navigation ou la page suivante ne simule aucun outil absent: elle retourne
   `unsupported_missing_tool` ou `needs_clarification`;
 - observabilite et `repr(result)` content-free: pas de requete brute, titre,
