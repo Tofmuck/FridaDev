@@ -438,6 +438,10 @@ Risque qu'un agent LLM appelle une route lourde, destructive, non bornee ou non 
 - [x] Tests interdiction `export/chunk` automatique ou opportuniste dans le scope Lot 3.
 - [x] Tests parametres bornes.
 - [x] Test timeout content-free.
+- [x] Tests `passage_context` refusant un payload sans `document_id`
+  coherent avec la demande.
+- [x] Tests anti-fuite `repr(result)` pour passage, titre, auteur, chapitre
+  et requete brute.
 
 ### Réduction du risque attendue
 
@@ -448,6 +452,9 @@ Risque qu'un agent LLM appelle une route lourde, destructive, non bornee ou non 
 - [x] L'agent futur ne peut recevoir que les outils GET definis par le registre.
 - [x] Chaque outil retourne un resultat interne compact sans payload brut retenu
   et une observabilite content-free.
+- [x] `passage_context` exige un `document_id` Catalogue present et coherent
+  avant de conserver un contexte interne.
+- [x] Les champs content-rich des resultats outils sont exclus de `repr(result)`.
 - [x] Les routes lourdes sont explicitement bornees ou refusees:
   `GET /doc/{id}` n'est pas utilise par `document_open_summary`.
 - [x] `page_read` et `export/chunk` restent hors Lot 3 et requierent un GO separe.
@@ -968,19 +975,23 @@ Lot 1 et correction Lot 1 bis livres.
 
 Lot 2 contrat/spec agent bibliothecaire livre.
 
-Lot 3 registre d'outils Catalogue GET-only livre.
+Lot 3 registre d'outils Catalogue GET-only livre; correction post-Lot 3
+appliquee sur coherence `passage_context` et anti-fuite `repr(result)`.
 
 NO-GO pour declarer l'agent bibliothecaire produit livre.
 
 GO conditionnel pour ouvrir le Lot 4 comme lot planner/boucle bibliothecaire,
-sans activation produit par defaut et sous preuve OpenRouter/JSON separee avant
-tout appel modele.
+seulement si les preuves Lot 3 restent vertes, sans activation produit par
+defaut et sous preuve OpenRouter/JSON separee avant tout appel modele.
 
 NO-GO pour coder directement l'agent.
 
 NO-GO pour faire deborder Lot 4 vers outil page, `export/chunk`, navigation
 complete, OpenRouter non verifie, modele hardcode, activation runtime ou agent
 bibliothecaire complet.
+
+NO-GO Lot 4 si `passage_context` peut accepter un document divergent ou si
+`repr(result)` expose passage, titre, auteur, chapitre ou requete brute.
 
 Risques restants reels: agent absent, outil page absent, `export/chunk` absent,
 OpenRouter/JSON non verifie, modele agent non configure, fallback agent non

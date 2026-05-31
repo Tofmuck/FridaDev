@@ -18,6 +18,7 @@ from biblio import librarian_tools as tools
 RAW_QUERY = "RAW QUERY MUST NOT LEAK"
 RAW_TITLE = "RAW TITLE MUST NOT LEAK"
 RAW_AUTHOR = "RAW AUTHOR MUST NOT LEAK"
+RAW_CHAPTER = "RAW CHAPTER MUST NOT LEAK"
 RAW_PASSAGE = "RAW CONTEXT PASSAGE MUST STAY INTERNAL"
 
 
@@ -182,7 +183,39 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertNotIn("126b", encoded)
         self.assertNotIn(RAW_PASSAGE, encoded)
 
-    def test_passage_context_retains_internal_text_but_observation_is_content_free(self) -> None:
+    def test_passage_context_rejects_missing_payload_document_id_without_internal_text(self) -> None:
+        fake = _FakeToolClient(context_payload={"text": RAW_PASSAGE})
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(
+            tools.TOOL_PASSAGE_CONTEXT,
+            {"document_id": "doc-1", "page_no": 12, "para_no": 3, "window_chars": 700},
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, tools.STATUS_INCOHERENT_CATALOGUE)
+        self.assertEqual(result.reason_code, tools.REASON_CONTEXT_INCOHERENT)
+        self.assertEqual(result.context_text, "")
+        self.assertEqual(observed["reason_code"], tools.REASON_CONTEXT_INCOHERENT)
+        self.assertNotIn(RAW_PASSAGE, _json(observed))
+        self.assertNotIn(RAW_PASSAGE, repr(result))
+
+    def test_passage_context_rejects_divergent_payload_document_id_without_internal_text(self) -> None:
+        fake = _FakeToolClient(context_payload={"document_id": "doc-2", "text": RAW_PASSAGE})
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(
+            tools.TOOL_PASSAGE_CONTEXT,
+            {"document_id": "doc-1", "page_no": 12, "para_no": 3, "window_chars": 700},
+        )
+
+        self.assertEqual(result.status, tools.STATUS_INCOHERENT_CATALOGUE)
+        self.assertEqual(result.reason_code, tools.REASON_CONTEXT_INCOHERENT)
+        self.assertEqual(result.context_text, "")
+        self.assertNotIn(RAW_PASSAGE, _json(result.to_observability()))
+        self.assertNotIn(RAW_PASSAGE, repr(result))
+
+    def test_passage_context_accepts_coherent_payload_document_id(self) -> None:
         fake = _FakeToolClient(context_payload={"document_id": "doc-1", "text": RAW_PASSAGE})
         registry = tools.build_librarian_tool_registry(fake)
 
@@ -203,6 +236,35 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertEqual(observed["positions"][0]["page_no"], 12)
         self.assertNotIn(RAW_PASSAGE, encoded)
         self.assertNotIn("text", observed)
+
+    def test_result_repr_never_exposes_content_rich_fields(self) -> None:
+        catalog = tools.build_librarian_tool_registry(
+            _FakeToolClient(
+                catalog_payload={
+                    "items": [{"id": "doc-1", "title": RAW_TITLE, "human_authors": RAW_AUTHOR}]
+                }
+            )
+        ).run(tools.TOOL_CATALOG_LIST, {"q": RAW_QUERY})
+        summary = tools.build_librarian_tool_registry(
+            _FakeToolClient(
+                metadata_payload={
+                    "document": {"id": "doc-1", "title": RAW_TITLE},
+                    "human_metadata": {"authors": RAW_AUTHOR},
+                }
+            )
+        ).run(tools.TOOL_DOCUMENT_OPEN_SUMMARY, {"document_id": "doc-1"})
+        toc = tools.build_librarian_tool_registry(
+            _FakeToolClient(chapters_payload={"chapters": [{"chapter_no": 1, "title": RAW_CHAPTER}]})
+        ).run(tools.TOOL_DOCUMENT_TOC, {"document_id": "doc-1"})
+        context = tools.build_librarian_tool_registry(
+            _FakeToolClient(context_payload={"document_id": "doc-1", "text": RAW_PASSAGE})
+        ).run(tools.TOOL_PASSAGE_CONTEXT, {"document_id": "doc-1", "page_no": 12, "para_no": 3})
+
+        encoded = "\n".join(repr(result) for result in (catalog, summary, toc, context))
+
+        for raw in (RAW_QUERY, RAW_TITLE, RAW_AUTHOR, RAW_CHAPTER, RAW_PASSAGE):
+            with self.subTest(raw=raw):
+                self.assertNotIn(raw, encoded)
 
     def test_invalid_parameters_are_rejected_before_network(self) -> None:
         registry = tools.build_librarian_tool_registry(_FakeToolClient())

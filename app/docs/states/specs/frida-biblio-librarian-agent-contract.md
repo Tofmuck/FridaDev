@@ -335,6 +335,12 @@ Implementation Lot 3:
 - `passage_context` peut porter un contexte interne pour le futur agent, mais
   `to_observability()` n'expose que tailles, hash court, positions et ids
   courts.
+- correction post-Lot 3: `passage_context` exige que le payload Catalogue
+  porte un `document_id` present et egal au `document_id` demande; sinon le
+  resultat est `incoherent_catalogue`, content-free, sans contexte interne;
+- correction post-Lot 3: les champs content-rich des resultats outils
+  (`items`, `document_summary`, `chapters`, `positions`, `context_text`) sont
+  exclus de `repr(result)` et des comparaisons dataclass.
 
 ## 9. Budgets, timeouts et retries
 
@@ -553,10 +559,13 @@ NO-GO retroactif Lot 3 si un patch ulterieur reintroduit:
 
 GO conditionnel Lot 4 uniquement pour preparer la boucle/planner
 bibliothecaire au-dessus du registre Lot 3, sous feature flag et sans
-activation produit par defaut.
+activation produit par defaut, si les corrections post-Lot 3 restent prouvees.
 
 NO-GO Lot 4 si le patch tente:
 
+- accepter un `passage_context` dont le `document_id` Catalogue est absent ou
+  divergent;
+- exposer passage, titre, auteur, chapitre ou requete brute via `repr(result)`;
 - outil page ou `page_read`;
 - `export/chunk`;
 - navigation complete;

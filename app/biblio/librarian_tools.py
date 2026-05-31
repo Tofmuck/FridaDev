@@ -44,6 +44,7 @@ FORBIDDEN_TOOL_NAMES = frozenset(
 
 STATUS_OK = "ok"
 STATUS_ERROR = "error"
+STATUS_INCOHERENT_CATALOGUE = "incoherent_catalogue"
 
 REASON_OK = "ok"
 REASON_UNKNOWN_TOOL = "unknown_tool"
@@ -57,6 +58,7 @@ REASON_CATALOGUE_UNAVAILABLE = "catalogue_unavailable"
 REASON_UNEXPECTED_STATUS = "unexpected_status"
 REASON_INVALID_JSON = "invalid_json"
 REASON_BUDGET_OR_LIMIT_EXCEEDED = "budget_or_limit_exceeded"
+REASON_CONTEXT_INCOHERENT = "biblio_librarian_context_incoherent_catalogue"
 
 _ENDPOINT_BY_TOOL = {
     TOOL_CATALOG_LIST: catalogue.ENDPOINT_CATALOG,
@@ -149,11 +151,11 @@ class BiblioLibrarianToolResult:
     reason_code: str
     endpoint_kind: str
     observation: BiblioLibrarianToolObservation
-    items: tuple[dict[str, Any], ...] = ()
-    document_summary: dict[str, Any] = field(default_factory=dict)
-    chapters: tuple[dict[str, Any], ...] = ()
-    positions: tuple[dict[str, Any], ...] = ()
-    context_text: str = ""
+    items: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
+    document_summary: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    chapters: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
+    positions: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
+    context_text: str = field(default="", repr=False, compare=False)
 
     def to_observability(self) -> dict[str, Any]:
         return self.observation.to_observability()
@@ -306,6 +308,8 @@ class BiblioLibrarianToolRegistry:
             )
         except catalogue.CatalogueClientError as exc:
             return _error_result(tool, exc)
+        if _string(response.payload.get("document_id")) != doc_id:
+            return _incoherent_context_result(tool, response, doc_id)
         context_text = _context_text(response.payload)
         positions = (
             _position(
@@ -393,6 +397,31 @@ def _ok_result(
         chapters=chapters,
         positions=positions,
         context_text=context_text,
+    )
+
+
+def _incoherent_context_result(
+    tool: str,
+    response: catalogue.CatalogueResponse,
+    doc_id: str,
+) -> BiblioLibrarianToolResult:
+    observation = BiblioLibrarianToolObservation(
+        tool_name=tool,
+        endpoint_kind=response.endpoint_kind,
+        status=STATUS_INCOHERENT_CATALOGUE,
+        reason_code=REASON_CONTEXT_INCOHERENT,
+        fields={
+            "status_code": response.status_code,
+            "duration_ms": response.duration_ms,
+            "doc_id_short": response.doc_id_short or catalogue.short_doc_id(doc_id),
+        },
+    )
+    return BiblioLibrarianToolResult(
+        tool_name=tool,
+        status=STATUS_INCOHERENT_CATALOGUE,
+        reason_code=REASON_CONTEXT_INCOHERENT,
+        endpoint_kind=response.endpoint_kind,
+        observation=observation,
     )
 
 
