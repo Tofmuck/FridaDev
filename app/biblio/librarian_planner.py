@@ -6,8 +6,18 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
-from . import catalogue_client as catalogue
 from . import librarian_tools as tools
+from .librarian_planner_budget import bounded_context_params as _bounded_context_params
+from .librarian_planner_budget import plan_requests_clarification as _plan_requests_clarification
+from .librarian_planner_observability import clean as _clean
+from .librarian_planner_observability import collect_doc_id_shorts as _collect_doc_id_shorts
+from .librarian_planner_observability import collect_positions as _collect_positions
+from .librarian_planner_observability import field_values as _field_values
+from .librarian_planner_observability import int_value as _int
+from .librarian_planner_observability import safe_observation as _safe_observation
+from .librarian_planner_observability import safe_token as _safe_token
+from .librarian_planner_observability import safe_tool_name as _safe_tool_name
+from .librarian_planner_observability import unique as _unique
 
 
 SCHEMA_VERSION = "biblio_librarian_loop_v1"
@@ -214,7 +224,11 @@ class BiblioLibrarianPlanner:
         tool_calls = 0
         terminal_status = ""
         terminal_reason = ""
-        if _plan_requests_clarification(loop_request.plan):
+        if _plan_requests_clarification(
+            loop_request.plan.intent,
+            loop_request.plan.answer_mode,
+            needs_status=STATUS_NEEDS_CLARIFICATION,
+        ):
             if loop_request.options.max_clarifications < 1:
                 steps = _with_budget_step_if_room(
                     steps,
@@ -262,12 +276,24 @@ class BiblioLibrarianPlanner:
                 terminal_status = STATUS_BUDGET_EXHAUSTED
                 terminal_reason = REASON_BUDGET_EXHAUSTED
                 break
-            call, budget = _bounded_context_call(call, context_chars, loop_request.options.max_context_chars)
+            bounded_params, budget = _bounded_context_params(
+                call.tool_name,
+                call.params,
+                context_chars=context_chars,
+                max_context_chars=loop_request.options.max_context_chars,
+            )
             if budget:
                 steps = _with_budget_step_if_room(steps, call, loop_request.options, budget)
                 terminal_status = STATUS_BUDGET_EXHAUSTED
                 terminal_reason = REASON_BUDGET_EXHAUSTED
                 break
+            if bounded_params is not None:
+                call = BiblioLibrarianToolCall(
+                    tool_name=call.tool_name,
+                    params=bounded_params,
+                    call_id=call.call_id,
+                    method=call.method,
+                )
             step = self._run_tool_call(len(steps), call)
             steps.append(step)
             if step.tool_result is not None:
@@ -406,12 +432,6 @@ def _result_status(steps: tuple[BiblioLibrarianStep, ...]) -> tuple[str, str]:
     return STATUS_NEEDS_CLARIFICATION, REASON_NEEDS_CLARIFICATION
 
 
-def _plan_requests_clarification(plan: BiblioLibrarianPlan) -> bool:
-    return _safe_token(plan.intent) in {"clarify", "clarification", STATUS_NEEDS_CLARIFICATION} or _safe_token(
-        plan.answer_mode
-    ) in {"clarify", "clarification", STATUS_NEEDS_CLARIFICATION}
-
-
 def _clarification_step(index: int, options: BiblioLibrarianLoopOptions) -> BiblioLibrarianStep:
     return BiblioLibrarianStep(
         index=index,
@@ -447,34 +467,6 @@ def _budget_step(index: int, call: BiblioLibrarianToolCall | None, budget: str) 
     )
 
 
-def _bounded_context_call(
-    call: BiblioLibrarianToolCall,
-    context_chars: int,
-    max_context_chars: int,
-) -> tuple[BiblioLibrarianToolCall, str]:
-    if _safe_tool_name(call.tool_name) != tools.TOOL_PASSAGE_CONTEXT:
-        return call, ""
-    remaining = max_context_chars - max(context_chars, 0)
-    if remaining < catalogue.CONTEXT_WINDOW_CHARS_MIN:
-        return call, "max_context_chars"
-    requested = _strict_int(call.params.get("window_chars", 700))
-    if requested is None:
-        return call, ""
-    if requested <= remaining:
-        return call, ""
-    params = dict(call.params)
-    params["window_chars"] = remaining
-    return (
-        BiblioLibrarianToolCall(
-            tool_name=call.tool_name,
-            params=params,
-            call_id=call.call_id,
-            method=call.method,
-        ),
-        "",
-    )
-
-
 def _final_result(
     status: str,
     reason_code: str,
@@ -495,96 +487,5 @@ def _final_result(
     )
 
 
-def _safe_observation(observation: Mapping[str, Any]) -> dict[str, Any]:
-    allowed = {
-        "endpoint_kind",
-        "status_code",
-        "duration_ms",
-        "result_count",
-        "total_count",
-        "displayed_count",
-        "truncated",
-        "doc_id_short",
-        "doc_id_shorts",
-        "query_chars",
-        "query_hash",
-        "locator_chars",
-        "locator_hash",
-        "content_chars",
-        "content_hash",
-        "positions",
-        "error_class",
-        "budget_exhausted",
-        "clarification_count",
-        "max_clarifications",
-    }
-    return {key: value for key, value in observation.items() if key in allowed}
-
-
-def _field_values(items: Sequence[Mapping[str, Any]], key: str) -> list[str]:
-    return [str(item.get(key) or "") for item in items if str(item.get(key) or "")]
-
-
-def _collect_doc_id_shorts(items: Sequence[Mapping[str, Any]]) -> list[str]:
-    values: list[str] = []
-    for item in items:
-        if item.get("doc_id_short"):
-            values.append(str(item["doc_id_short"]))
-        value = item.get("doc_id_shorts")
-        if isinstance(value, list):
-            values.extend(str(part) for part in value if str(part or ""))
-    return values
-
-
-def _collect_positions(items: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    positions: list[dict[str, Any]] = []
-    for item in items:
-        value = item.get("positions")
-        if isinstance(value, list):
-            positions.extend(dict(position) for position in value if isinstance(position, Mapping))
-    return positions[:12]
-
-
-def _unique(values: Sequence[str]) -> list[str]:
-    seen: list[str] = []
-    for value in values:
-        if value and value not in seen:
-            seen.append(value)
-    return seen
-
-
 def _duration_ms(started: float, monotonic: Any) -> int:
     return int(max((monotonic() - started) * 1000, 0))
-
-
-def _safe_tool_name(value: Any) -> str:
-    return str(value or "").strip()
-
-
-def _safe_token(value: Any, *, max_chars: int = 120) -> str:
-    text = str(value or "").strip().lower()
-    if not text:
-        return ""
-    if any(char not in "abcdefghijklmnopqrstuvwxyz0123456789_-.:/" for char in text):
-        return "invalid_token"
-    return text[:max_chars]
-
-
-def _int(value: Any) -> int | None:
-    return value if type(value) is int else None
-
-
-def _strict_int(value: Any) -> int | None:
-    if type(value) is int:
-        return value
-    if isinstance(value, str) and value.isdecimal():
-        return int(value)
-    return None
-
-
-def _clean(payload: Mapping[str, Any]) -> dict[str, Any]:
-    return {
-        key: value
-        for key, value in payload.items()
-        if value is not None and value != "" and value != [] and value != {}
-    }

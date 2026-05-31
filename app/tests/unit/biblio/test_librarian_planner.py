@@ -13,6 +13,8 @@ if str(APP_DIR) not in sys.path:
 
 from biblio import catalogue_client as catalogue
 from biblio import librarian_planner as planner
+from biblio import librarian_planner_budget as planner_budget
+from biblio import librarian_planner_observability as planner_observability
 from biblio import librarian_tools as tools
 
 
@@ -279,12 +281,13 @@ class BiblioLibrarianPlannerTests(unittest.TestCase):
                 self.assertNotIn(raw, repr_encoded)
 
     def test_planner_module_has_no_external_agent_wiring_imports(self) -> None:
-        source = inspect.getsource(planner).lower()
-
-        self.assertNotIn("openrouter", source)
-        self.assertNotIn("chat_runtime", source)
-        self.assertNotIn("model_call", source)
-        self.assertNotIn("llm", source)
+        for module in (planner, planner_budget, planner_observability):
+            source = inspect.getsource(module).lower()
+            with self.subTest(module=module.__name__):
+                self.assertNotIn("openrouter", source)
+                self.assertNotIn("chat_runtime", source)
+                self.assertNotIn("model_call", source)
+                self.assertNotIn("llm", source)
 
 
 def _planner(fake: object) -> planner.BiblioLibrarianPlanner:

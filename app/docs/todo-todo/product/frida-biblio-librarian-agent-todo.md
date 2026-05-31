@@ -550,6 +550,11 @@ Photo operatoire Lot 4 - 2026-05-31:
 - correctif post-audit Lot 4: `max_steps` est strict; quand aucun slot de
   step ne reste, le resultat peut porter `budget_exhausted` sans ajouter de
   step diagnostique supplementaire;
+- micro-refactor post-audit Lot 4: les helpers de budget/contexte vivent dans
+  `app/biblio/librarian_planner_budget.py`, les helpers d'observabilite
+  content-free vivent dans `app/biblio/librarian_planner_observability.py`,
+  et `librarian_planner.py` reste centre sur les dataclasses publiques et la
+  boucle `BiblioLibrarianPlanner`;
 - statuts livres: `tool_executed`, `needs_clarification`, `not_found`,
   `ambiguous`, `budget_exhausted`, `tool_rejected`, `tool_failed`,
   `fallback_deterministic`;
@@ -1028,8 +1033,9 @@ complete, OpenRouter non verifie, modele hardcode, activation runtime ou agent
 bibliothecaire complet.
 
 NO-GO Lot 5 si la boucle Lot 4 n'est plus bornee, fuit via observabilite ou
-`repr`, importe OpenRouter/chat/model/LLM, ou si `librarian_tools.py` est
-regonfle sans necessite vitale.
+`repr`, importe OpenRouter/chat/model/LLM, si `librarian_tools.py` est
+regonfle sans necessite vitale, ou si la comprehension implicite/dialogue est
+empilee dans `librarian_planner.py` au lieu d'une responsabilite dediee.
 
 Risques restants reels: agent absent, outil page absent, `export/chunk` absent,
 OpenRouter/JSON non verifie, modele agent non configure, fallback agent non

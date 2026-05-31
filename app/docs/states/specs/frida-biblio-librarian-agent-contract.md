@@ -583,6 +583,11 @@ Implementation Lot 4:
 - discipline post-audit: `max_steps` compte strictement les steps conserves;
   le statut final peut signaler `budget_exhausted` sans step additionnel si
   le budget de steps est deja consomme;
+- discipline post-audit de responsabilite: `librarian_planner.py` reste centre
+  sur les dataclasses publiques et la boucle `BiblioLibrarianPlanner`; les
+  helpers de budget/contexte sont dans `librarian_planner_budget.py` et les
+  helpers d'observabilite content-free dans
+  `librarian_planner_observability.py`;
 - statuts livres: `tool_executed`, `needs_clarification`, `not_found`,
   `ambiguous`, `budget_exhausted`, `tool_rejected`, `tool_failed`,
   `fallback_deterministic`;
