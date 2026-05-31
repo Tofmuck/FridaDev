@@ -213,6 +213,12 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
             "Montre moi le sommaire Theetete",
             "Sommaire Theetete",
             "Table des matieres Platon",
+            "Table des matieres complete Theetete",
+            "Sommaire complet Theetete",
+            "Sommaire general Platon",
+            "Table des matieres detaillee Platon",
+            "Table des matieres complete du Theetete",
+            "Sommaire complet du Theetete",
         ):
             with self.subTest(message=message):
                 result = dialogue.plan_biblio_dialogue(message, state=state)
@@ -241,6 +247,8 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
         state = _state_with_document()
 
         for message in (
+            "Table des matieres",
+            "Sommaire",
             "Table des matieres complete",
             "Montre la table des matieres complete",
             "Table des matieres detaillee",
@@ -257,7 +265,9 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
 
     def test_table_of_contents_suffix_qualifiers_without_state_clarify(self) -> None:
         for message in (
+            "Table des matieres",
             "Table des matieres complete",
+            "Sommaire complet",
             "Sommaire general",
         ):
             with self.subTest(message=message):

@@ -648,9 +648,10 @@ Photo operatoire Lot 5 - 2026-05-31:
 - correction post-audit Lot 5 ter: une table des matieres avec titre explicite
   non resolu, y compris les formes prefixees (`Theetete sommaire`, `du
   Theetete, donne la table...`) et suffixees (`table des matieres Theetete`,
-  `sommaire Theetete`), ne reutilise pas silencieusement `current_document`;
+  `sommaire Theetete`, `sommaire complet Theetete`), ne reutilise pas
+  silencieusement `current_document`;
   les formes deictiques (`ce livre`, `celui-la`) et les qualificatifs de TOC
-  (`complete`, `detaillee`, `complet`, `general`) restent autorises;
+  seuls (`complete`, `detaillee`, `complet`, `general`) restent autorises;
 - correction post-audit Lot 5 bis: `recent_dialogue` est borne et observable,
   mais pas encore utilise comme signal decisionnel;
 - limite assumee Lot 5 ter: la recherche `dans ce livre` reste une recherche

@@ -26,6 +26,7 @@ _TOC_PREFIX_STOPWORDS = frozenset(
         "voir",
     }
 )
+_TOC_TERM_RE = re.compile(r"\b(table des matieres|sommaire)\b")
 _TOC_SUFFIX_QUALIFIERS = frozenset(
     {
         "complet",
@@ -81,13 +82,21 @@ def toc_has_unresolved_explicit_reference(folded: str) -> bool:
         return False
     if re.search(r"\b(table des matieres|sommaire)\b.*\b(de|du|des|d')\s+[a-z0-9]{3,}", folded):
         return True
-    suffix = re.search(r"\b(table des matieres|sommaire)\b\s+(?!de\b|du\b|des\b|d'\b)([a-z0-9]{3,})", folded)
-    if suffix and suffix.group(2) not in _TOC_SUFFIX_QUALIFIERS:
+    if _toc_suffix_has_explicit_reference(folded):
         return True
     if re.search(r"^\s*(de|du|des|d')\s+[a-z0-9]{3,}.*\b(table des matieres|sommaire)\b", folded):
         return True
     prefix = re.search(r"\b([a-z0-9]{3,})\b\s+(table des matieres|sommaire)\b", folded)
     return bool(prefix and prefix.group(1) not in _TOC_PREFIX_STOPWORDS)
+
+
+def _toc_suffix_has_explicit_reference(folded: str) -> bool:
+    match = _TOC_TERM_RE.search(folded)
+    if not match:
+        return False
+    suffix = folded[match.end() :]
+    tokens = re.findall(r"\b[a-z0-9]{3,}\b", suffix)
+    return any(token not in _TOC_SUFFIX_QUALIFIERS for token in tokens)
 
 
 def asks_navigation(folded: str) -> bool:

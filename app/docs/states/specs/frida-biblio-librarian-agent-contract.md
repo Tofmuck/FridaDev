@@ -656,7 +656,8 @@ Implementation Lot 5:
   d'utiliser silencieusement le document courant, meme si le titre explicite
   precede ou suit directement les mots `table des matieres` ou `sommaire`;
 - les qualificatifs de TOC (`complete`, `detaillee`, `complet`, `general`)
-  ne sont pas traites comme des titres explicites;
+  ne sont pas traites comme des titres explicites quand ils sont seuls; s'ils
+  sont suivis d'un titre probable, la demande clarifie;
 - les emplois discursifs ou thematiques de `avant` ne sont pas des commandes
   de navigation; seuls les deplacements documentaires explicites restent
   `navigate`;
