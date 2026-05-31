@@ -636,13 +636,25 @@ Photo operatoire Lot 5 - 2026-05-31:
 - correction post-audit Lot 5 bis: `ce passage` / `reprends ce passage`
   reouvrent seulement un contexte borne si `last_result` porte une position;
   sinon clarification;
+- correction post-audit Lot 5 ter: `le passage` / `reprends le passage` /
+  `resume le passage` / `relis le passage` suivent la meme regle de contexte
+  borne que `ce passage`;
 - correction post-audit Lot 5 bis: `plus haut`, `avant`, `apres`, `continue`
   signalent l'outil de navigation manquant si l'etat existe, ou clarifient si
   l'etat manque;
-- correction post-audit Lot 5 bis: une table des matieres avec titre explicite
-  non resolu ne reutilise pas silencieusement `current_document`;
+- correction post-audit Lot 5 ter: `avant` n'est plus traite comme navigation
+  quand il est discursif (`avant tout`, `avant de chercher`) ou thematique
+  (`avant Socrate, cherche ...`);
+- correction post-audit Lot 5 ter: une table des matieres avec titre explicite
+  non resolu, y compris les formes prefixees (`Theetete sommaire`, `du
+  Theetete, donne la table...`), ne reutilise pas silencieusement
+  `current_document`; les formes deictiques (`ce livre`, `celui-la`) restent
+  autorisees;
 - correction post-audit Lot 5 bis: `recent_dialogue` est borne et observable,
   mais pas encore utilise comme signal decisionnel;
+- limite assumee Lot 5 ter: la recherche `dans ce livre` reste une recherche
+  Catalogue globale avec ancre documentaire observable, pas une recherche
+  strictement bornee au contenu du livre;
 - aucun appel reseau, aucun OpenRouter, aucun modele reel, aucun branchement
   chat/runtime produit;
 - aucun outil page, aucun `export/chunk`, aucun `latest/page`, aucun

@@ -13,6 +13,19 @@ _CURRENT_DOCUMENT_RE = re.compile(r"\b(ce|cet|cette|celui|celle|meme|même)\b")
 _DEICTIC_TOC_RE = re.compile(
     r"\b(de|du|des|d')\s+(celui|celle|cela|ca|ça|ceci|ce|cet|cette|livre|ouvrage|document|volume)\b"
 )
+_TOC_PREFIX_STOPWORDS = frozenset(
+    {
+        "affiche",
+        "donne",
+        "liste",
+        "montre",
+        "ouvre",
+        "peux",
+        "table",
+        "vois",
+        "voir",
+    }
+)
 
 
 def normalize_message(value: str) -> str:
@@ -50,19 +63,31 @@ def toc_has_unresolved_explicit_reference(folded: str) -> bool:
         return False
     if _DEICTIC_TOC_RE.search(folded):
         return False
-    return bool(re.search(r"\b(table des matieres|sommaire)\b.*\b(de|du|des|d')\s+[a-z0-9]{3,}", folded))
+    if re.search(r"\b(table des matieres|sommaire)\b.*\b(de|du|des|d')\s+[a-z0-9]{3,}", folded):
+        return True
+    if re.search(r"^\s*(de|du|des|d')\s+[a-z0-9]{3,}.*\b(table des matieres|sommaire)\b", folded):
+        return True
+    prefix = re.search(r"\b([a-z0-9]{3,})\b\s+(table des matieres|sommaire)\b", folded)
+    return bool(prefix and prefix.group(1) not in _TOC_PREFIX_STOPWORDS)
 
 
 def asks_navigation(folded: str) -> bool:
     if re.search(r"\b(page|passage|extrait)\s+(suivante|suivant|precedente|precedent)\b", folded):
         return True
+    if re.search(r"\b(page|passage|extrait)\s+(avant|apres)\b", folded):
+        return True
+    if re.search(r"\b(avant|apres)\s+(le|la|l'|ce|cet|cette|celui|celle)?\s*(page|passage|extrait)\b", folded):
+        return True
     if re.search(r"\b(plus haut|plus bas|remonte|descends|monte|avance|recule)\b", folded):
         return True
-    return bool(re.search(r"\b(continue|continuer|la suite|suite|poursuis|apres|avant)\b", folded))
+    return bool(re.search(r"\b(continue|continuer|la suite|suite|poursuis)\b", folded))
 
 
 def asks_passage_reference(folded: str) -> bool:
-    if not re.search(r"\b(ce|cet|cette|dernier|derniere|meme|même)\s+(passage|extrait|paragraphe)\b", folded):
+    if not re.search(
+        r"\b(le|l'|ce|cet|cette|dernier|derniere|meme|même)\s+(passage|extrait|paragraphe)\b",
+        folded,
+    ):
         return False
     return bool(re.search(r"\b(explique|expliquer|reprends|reprendre|resume|resumer|relis|relire|commente)\b", folded))
 

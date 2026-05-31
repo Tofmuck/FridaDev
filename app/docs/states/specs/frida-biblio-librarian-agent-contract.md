@@ -649,10 +649,15 @@ Implementation Lot 5:
   `unsupported_missing_tool`, `fallback_deterministic`;
 - une recherche "dans ce livre" reste une recherche Catalogue globale avec
   ancre document courant explicite (`scope_mode=current_document_anchor_global_search`);
-- `ce passage` / `reprends ce passage` n'ouvrent qu'un `passage_context` borne
-  si `last_result` contient une position exploitable;
+- `ce passage` / `le passage` / `reprends ce passage` / `reprends le passage`
+  n'ouvrent qu'un `passage_context` borne si `last_result` contient une
+  position exploitable;
 - une demande de TOC avec titre explicite non resolu clarifie au lieu
-  d'utiliser silencieusement le document courant;
+  d'utiliser silencieusement le document courant, meme si le titre explicite
+  precede les mots `table des matieres` ou `sommaire`;
+- les emplois discursifs ou thematiques de `avant` ne sont pas des commandes
+  de navigation; seuls les deplacements documentaires explicites restent
+  `navigate`;
 - la navigation ou la page suivante ne simule aucun outil absent: elle retourne
   `unsupported_missing_tool` ou `needs_clarification`;
 - observabilite et `repr(result)` content-free: pas de requete brute, titre,
