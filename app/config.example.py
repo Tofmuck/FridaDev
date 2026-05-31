@@ -176,7 +176,7 @@ ACTIVE_DOCUMENT_OCR_MAX_PAGES = _env_int('ACTIVE_DOCUMENT_OCR_MAX_PAGES', 25)
 ACTIVE_DOCUMENT_OCR_MAX_BYTES = _env_int('ACTIVE_DOCUMENT_OCR_MAX_BYTES', 25 * 1024 * 1024)
 
 # Native Biblio / Frida Catalogue read-only client.
-# This client is not wired to chat until the Biblio lots explicitly do so.
+# This client is wired to chat only through the biblio_enabled read-only path.
 BIBLIO_CATALOGUE_BASE_URL = os.environ.get(
     'BIBLIO_CATALOGUE_BASE_URL',
     'http://platform-doc-pipeline-api:8090',

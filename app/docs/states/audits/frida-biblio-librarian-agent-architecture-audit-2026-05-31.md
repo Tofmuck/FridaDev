@@ -172,6 +172,13 @@ Routes GET legeres utiles:
 - `/doc/{doc_id}/page/{page_no}/para/{para_no}`;
 - `/search`.
 
+Routes `latest` a eviter cote futur agent:
+
+- `/doc/latest/page/{page_no}`;
+- `/doc/latest/context`.
+
+Lecture source plateforme du 2026-05-31: ces routes passent encore par `doc_latest()` ou `get_latest_document_overview()` avant de resoudre le document. Le futur agent ne doit donc pas utiliser `latest/page` ou `latest/context`: il doit resoudre un `document_id` explicite avant toute lecture de page ou de contexte. Si l'usage `latest/page` ou `latest/context` devient necessaire, ce sera un micro-lot Sauron separe pour les alleger comme `/doc/latest/chapters`, sans patch plateforme dans ce lot FridaDev.
+
 Routes GET lourdes ou a borner:
 
 - `/doc/{doc_id}`;
@@ -411,7 +418,7 @@ P2-BIBLIO-06 - Pas de recherche document-scoped dans l'API.
 
 ### P3
 
-P3-BIBLIO-01 - `app/config.example.py` dit encore que le client Biblio n'est pas branche au chat.
+P3-BIBLIO-01 - `app/config.py` et `app/config.example.py` disent encore que le client Biblio n'est pas branche au chat.
 
 Le commentaire est stale: le chat, le frontend et l'admin observability sont branches.
 
@@ -487,19 +494,22 @@ Outils FridaDev existants a conserver:
 
 Outils a ajouter ou etendre:
 
-- `fetch_page`: GET `/doc/{id}/page/{page_no}`, avec `max_chars` et hash content-free;
+- `fetch_page`: GET `/doc/{id}/page/{page_no}`, avec `document_id` explicite, `max_chars` et hash content-free; jamais `latest/page`;
 - `fetch_export_chunk`: GET `/doc/{id}/export/chunk`, uniquement sur demande explicite d'ouverture/extrait long, jamais automatique;
 - `search_with_document_scope`: wrapper qui filtre strictement par doc id en attendant une route Catalogue `doc_id`;
 - `query_rewrite_variants`: outil non souverain qui produit 3 a 8 variantes, avec hashes en observabilite;
 - `biblio_state_read` et `biblio_state_update`: etat conversationnel leger;
 - `clarify_question`: sortie structuree quand plusieurs documents/passages restent plausibles.
 
-### Etat Biblio leger
+### Etat Biblio conversationnel explicite
 
 Stockage propose:
 
-- V1 ephemere dans le tour/chat runtime, derive du dialogue recent;
-- V2 persistant leger par conversation si besoin, dans un fichier/DB FridaDev non content-rich.
+- Lot 1 doit introduire un etat Biblio interne explicite par conversation, meme leger;
+- le dialogue recent aide l'agent a interpreter la demande, mais il n'est pas la source des references techniques de reprise;
+- l'etat doit porter les references que le dialogue visible ne garantit pas: `document_id`, `page_no`, `para_no`, `paragraph_id`, dernier passage trouve et dernier resultat exploitable;
+- l'observabilite reste content-free: ids courts, positions, hashes, longueurs et reason codes seulement;
+- une V2 persistante legere peut etre ajoutee si l'etat doit survivre au runtime, mais le contrat Lot 1 ne doit pas rester seulement derive du dialogue recent.
 
 Champs autorises:
 
@@ -702,7 +712,8 @@ Commandes/preuves:
 - DB content-free via `psql` dans `platform-doc-pipeline-db`;
 - routes Catalogue via `openapi.json`;
 - mesures live Catalogue avec timeout 60 s;
-- smokes Biblio `python -m biblio.smoke_live --jsonl --no-strict`;
+- smokes Biblio stricts `python -m biblio.smoke_live --jsonl`;
+- smoke Biblio `--no-strict` reserve au diagnostic, pas comme preuve principale;
 - repros produit Biblio runtime avec timeout Catalogue 60 s;
 - admin observability Biblio content-free;
 - logs recents doc-pipeline/doc-pipeline-api filtres erreurs: aucun signal recent imprime.
