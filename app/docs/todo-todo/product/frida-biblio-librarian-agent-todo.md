@@ -686,25 +686,30 @@ Risque que Frida ne sache pas se deplacer dans un ouvrage deja consulte.
 
 ### Plan
 
-- [ ] Ajouter intents de navigation structures.
-- [ ] Utiliser `last_result` et `current_document`.
-- [ ] Lire page/contexte voisin avec bornes.
+- [x] Ajouter intents de navigation structures.
+- [x] Utiliser `last_result` et `current_document`.
+- [x] Lire le contexte autour d'un passage avec bornes quand une ancre
+  exploitable existe.
+- [ ] Lire page/contexte voisin: bloque tant qu'aucune route page/voisin sure
+  n'existe.
 - [ ] Paginer catalogue et TOC.
-- [ ] Ne jamais utiliser `latest/page` ou `latest/context`.
-- [ ] Clarifier si l'etat ne suffit pas.
+- [x] Ne jamais utiliser `latest/page` ou `latest/context`.
+- [x] Clarifier si l'etat ne suffit pas.
 
 ### Patch attendu
 
+- [x] Planification `passage_context` bornee pour `autour de ce passage`.
 - [ ] Outils page/contexte voisins si route client sure.
 - [ ] Mise a jour etat apres navigation.
 - [ ] Tests de pagination catalogue/TOC.
 
 ### Tests / preuves
 
-- [ ] "Continue apres ce passage."
-- [ ] "Montre-moi la page precedente."
-- [ ] "Remonte un peu."
-- [ ] "Cherche un autre passage proche."
+- [x] "Continue apres ce passage." -> outil de navigation manquant.
+- [x] "Montre-moi la page precedente." -> outil de navigation manquant.
+- [x] "Remonte un peu." -> outil de navigation manquant.
+- [x] "Autour de ce passage." -> `passage_context` borne si ancre presente.
+- [x] "Cherche un autre passage proche." -> outil de navigation manquant.
 - [ ] "Il y a 100 ouvrages ? Liste-les tous."
 
 ### Réduction du risque attendue
@@ -713,9 +718,27 @@ Risque que Frida ne sache pas se deplacer dans un ouvrage deja consulte.
 
 ### Critères de sortie
 
-- [ ] Navigation fonctionne sur etat valide.
-- [ ] Navigation clarifie sur etat absent.
-- [ ] Observabilite expose positions/hashes/counts seulement.
+- [x] Navigation autour d'un passage fonctionne sur etat valide.
+- [x] Navigation non supportee signale l'outil manquant sur etat valide.
+- [x] Navigation clarifie sur etat absent.
+- [x] Observabilite expose positions/hashes/counts seulement.
+
+Photo operatoire Lot 6 - 2026-05-31:
+
+- `librarian_dialogue_navigation.py` classe les demandes de navigation en
+  `continue`, `page_previous`, `page_next`, `up`, `down`, `around_passage`,
+  `nearby_passage` ou `generic`;
+- seul `around_passage` est planifie en outil Catalogue existant:
+  `passage_context` GET-only avec `document_id` explicite, position issue de
+  `last_result` et `window_chars` borne;
+- `continue`, page precedente/suivante, plus haut/bas et passage proche ne sont
+  pas simules: ils retournent `unsupported_missing_tool` si l'etat existe ou
+  `needs_clarification` si l'etat manque;
+- correction d'ouverture P3: les politesses apres qualificatifs de TOC (`stp`,
+  `merci`, `maintenant`, `s il te plait`) ne sont pas des titres; les formes
+  `qualificatif + titre` clarifient toujours;
+- aucun outil page, aucun `latest/page`, aucun `latest/context`, aucun
+  `export/chunk`, aucun OpenRouter et aucun branchement runtime produit.
 
 ### Hors-scope
 

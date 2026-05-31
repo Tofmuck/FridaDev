@@ -13,6 +13,7 @@ if str(APP_DIR) not in sys.path:
 
 from biblio.conversation_state import BiblioConversationState
 from biblio import librarian_dialogue_planner as dialogue
+from biblio import librarian_dialogue_navigation as dialogue_navigation
 from biblio import librarian_tools as tools
 
 
@@ -142,7 +143,7 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
 
         self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
         self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
-        self.assertEqual(result.tool_required, "navigation")
+        self.assertEqual(result.tool_required, "navigation_page_next")
         self.assertEqual(_tool_names(result), [])
 
     def test_passage_before_request_stays_navigation_missing_tool(self) -> None:
@@ -152,7 +153,7 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
 
         self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
         self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
-        self.assertEqual(result.tool_required, "navigation")
+        self.assertEqual(result.tool_required, "navigation_page_previous")
         self.assertEqual(_tool_names(result), [])
 
     def test_plus_haut_with_state_reports_missing_navigation_tool(self) -> None:
@@ -263,6 +264,30 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
                 self.assertEqual(_tool_names(result), [tools.TOOL_DOCUMENT_TOC])
                 self.assertEqual(result.plan.tool_calls[0].params["document_id"], "doc-1")
 
+    def test_table_of_contents_politeness_suffixes_use_current_document(self) -> None:
+        state = _state_with_document()
+
+        for message in (
+            "Table des matieres complete stp",
+            "Table des matieres complete s il te plait",
+            "Sommaire general merci",
+            "Sommaire complet maintenant",
+        ):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
+
+                self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+                self.assertEqual(result.reason_code, dialogue.REASON_TABLE_OF_CONTENTS)
+                self.assertEqual(_tool_names(result), [tools.TOOL_DOCUMENT_TOC])
+                self.assertEqual(result.plan.tool_calls[0].params["document_id"], "doc-1")
+
+    def test_table_of_contents_politeness_suffixes_without_state_clarify(self) -> None:
+        result = dialogue.plan_biblio_dialogue("Table des matieres complete stp")
+
+        self.assertEqual(result.status, dialogue.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.reason_code, dialogue.REASON_CURRENT_DOCUMENT_MISSING)
+        self.assertEqual(_tool_names(result), [])
+
     def test_table_of_contents_suffix_qualifiers_without_state_clarify(self) -> None:
         for message in (
             "Table des matieres",
@@ -275,6 +300,50 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
 
                 self.assertEqual(result.status, dialogue.STATUS_NEEDS_CLARIFICATION)
                 self.assertEqual(result.reason_code, dialogue.REASON_CURRENT_DOCUMENT_MISSING)
+                self.assertEqual(_tool_names(result), [])
+
+    def test_navigation_with_valid_state_reports_missing_tools_for_unsupported_moves(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
+
+        for message, scope_mode in (
+            ("Continue apres ce passage.", "continue"),
+            ("Montre-moi la page precedente.", "page_previous"),
+            ("Remonte un peu.", "up"),
+            ("Plus bas.", "down"),
+            ("Cherche un autre passage proche.", "nearby_passage"),
+        ):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
+
+                self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
+                self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
+                self.assertEqual(result.intent.intent, dialogue.INTENT_NAVIGATE)
+                self.assertEqual(result.intent.scope_mode, scope_mode)
+                self.assertEqual(result.tool_required, f"navigation_{scope_mode}")
+                self.assertEqual(_tool_names(result), [])
+
+    def test_around_this_passage_with_valid_state_plans_bounded_context(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "paragraph_id": 101})
+
+        result = dialogue.plan_biblio_dialogue("Autour de ce passage.", state=state)
+
+        self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_CONTEXT_AROUND)
+        self.assertEqual(result.intent.intent, dialogue.INTENT_NAVIGATE)
+        self.assertEqual(result.intent.scope_mode, "around_passage")
+        self.assertEqual(result.tool_required, "navigation_around_passage")
+        self.assertEqual(_tool_names(result), [tools.TOOL_PASSAGE_CONTEXT])
+        self.assertEqual(result.plan.tool_calls[0].params["paragraph_id"], 101)
+        self.assertEqual(result.plan.tool_calls[0].params["window_chars"], 1400)
+
+    def test_navigation_without_state_clarifies(self) -> None:
+        for message in ("Continue.", "Plus haut.", "Montre-moi la page precedente."):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message)
+
+                self.assertEqual(result.status, dialogue.STATUS_NEEDS_CLARIFICATION)
+                self.assertEqual(result.reason_code, dialogue.REASON_CURRENT_DOCUMENT_MISSING)
+                self.assertEqual(result.intent.intent, dialogue.INTENT_NAVIGATE)
                 self.assertEqual(_tool_names(result), [])
 
     def test_dictated_theme_query_plans_search(self) -> None:
@@ -301,12 +370,19 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
                 self.assertNotIn(raw, repr_encoded)
 
     def test_dialogue_planner_has_no_external_agent_wiring_imports(self) -> None:
-        source = inspect.getsource(dialogue).lower()
+        source = (inspect.getsource(dialogue) + inspect.getsource(dialogue_navigation)).lower()
 
         self.assertNotIn("openrouter", source)
         self.assertNotIn("chat_runtime", source)
         self.assertNotIn("model_call", source)
         self.assertNotIn("llm", source)
+
+    def test_dialogue_navigation_has_no_forbidden_catalogue_routes(self) -> None:
+        source = (inspect.getsource(dialogue) + inspect.getsource(dialogue_navigation)).lower()
+
+        for forbidden in ("latest/page", "latest/context", "export/chunk", "page_read"):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, source)
 
 
 def _state_with_document(*, last_result: dict[str, object] | None = None) -> BiblioConversationState:

@@ -680,7 +680,43 @@ NO-GO retroactif Lot 5 si un patch ulterieur reintroduit:
 - outil page ou route `latest`;
 - fuite content-rich via observabilite ou `repr(result)`.
 
-## 19. Hors-scope
+## 19. Lot 6 livre
+
+Lot 6 livre uniquement une navigation bibliothecaire bornee au-dessus de
+l'etat Biblio conversationnel existant. Il ne cree pas de route Catalogue et
+ne simule pas de lecture page voisine.
+
+Implementation Lot 6:
+
+- module: `app/biblio/librarian_dialogue_navigation.py`;
+- classification structuree: `continue`, `page_previous`, `page_next`, `up`,
+  `down`, `around_passage`, `nearby_passage`, `generic`;
+- `around_passage` peut produire un `passage_context` GET-only si et seulement
+  si `last_result` contient une position exploitable et un `document_id`
+  explicite;
+- le contexte autour utilise une fenetre bornee (`window_chars=1400`) et reste
+  soumis aux bornes de la boucle bibliothecaire;
+- `continue`, page precedente/suivante, plus haut/bas et passage proche ne sont
+  pas inventes: ils retournent `unsupported_missing_tool` sur etat valide, ou
+  `needs_clarification` si l'etat manque;
+- les formes TOC avec politesses apres qualificatif (`stp`, `merci`,
+  `maintenant`, `s il te plait`) restent des TOC du document courant si l'etat
+  existe; les formes `qualificatif + titre` clarifient toujours;
+- observabilite et `repr(result)` restent content-free;
+- aucun outil page, aucun `latest/page`, aucun `latest/context`, aucun
+  `export/chunk`, aucun OpenRouter, aucun appel modele, aucun branchement
+  runtime produit.
+
+NO-GO retroactif Lot 6 si un patch ulterieur:
+
+- fabrique un voisin de page/paragraphe par arithmetique sans route sure;
+- utilise `latest/page`, `latest/context`, `export/chunk` ou `/doc/{id}` lourd
+  comme navigation automatique;
+- navigue sans `document_id` explicite;
+- expose passage, prompt, titre brut, requete brute ou payload Catalogue en
+  observabilite.
+
+## 20. Hors-scope
 
 - runtime agent;
 - appel OpenRouter;

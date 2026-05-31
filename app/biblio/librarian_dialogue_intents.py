@@ -43,6 +43,17 @@ _TOC_SUFFIX_QUALIFIERS = frozenset(
         "generaux",
     }
 )
+_TOC_SUFFIX_POLITENESS = frozenset(
+    {
+        "maintenant",
+        "merci",
+        "plait",
+        "please",
+        "svp",
+        "stp",
+    }
+)
+_TOC_SUFFIX_IGNORED_TOKENS = _TOC_SUFFIX_QUALIFIERS | _TOC_SUFFIX_POLITENESS
 
 
 def normalize_message(value: str) -> str:
@@ -96,7 +107,7 @@ def _toc_suffix_has_explicit_reference(folded: str) -> bool:
         return False
     suffix = folded[match.end() :]
     tokens = re.findall(r"\b[a-z0-9]{3,}\b", suffix)
-    return any(token not in _TOC_SUFFIX_QUALIFIERS for token in tokens)
+    return any(token not in _TOC_SUFFIX_IGNORED_TOKENS for token in tokens)
 
 
 def asks_navigation(folded: str) -> bool:
@@ -107,6 +118,10 @@ def asks_navigation(folded: str) -> bool:
     if re.search(r"\b(avant|apres)\s+(le|la|l'|ce|cet|cette|celui|celle)?\s*(page|passage|extrait)\b", folded):
         return True
     if re.search(r"\b(plus haut|plus bas|remonte|descends|monte|avance|recule)\b", folded):
+        return True
+    if re.search(r"\b(autour|alentour|proche|voisin|voisine)\b.*\b(passage|extrait)\b", folded):
+        return True
+    if re.search(r"\b(passage|extrait)\b.*\b(autour|alentour|proche|voisin|voisine)\b", folded):
         return True
     return bool(re.search(r"\b(continue|continuer|la suite|suite|poursuis)\b", folded))
 

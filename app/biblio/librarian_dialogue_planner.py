@@ -15,6 +15,7 @@ from .conversation_state import BiblioConversationState
 from .librarian_planner import BiblioLibrarianPlan, BiblioLibrarianToolCall
 from . import librarian_tools as tools
 from . import librarian_dialogue_intents as intents
+from . import librarian_dialogue_navigation as navigation
 from . import librarian_dialogue_references as references
 from .librarian_planner_observability import clean as _clean
 from .librarian_planner_observability import safe_token as _safe_token
@@ -46,6 +47,7 @@ REASON_TOC_EXPLICIT_REFERENCE_UNRESOLVED = "biblio_dialogue_toc_explicit_referen
 REASON_LAST_PASSAGE_CONTEXT = "biblio_dialogue_last_passage_context"
 REASON_LAST_PASSAGE_MISSING = "biblio_dialogue_last_passage_missing"
 REASON_LAST_PASSAGE_POSITION_MISSING = "biblio_dialogue_last_passage_position_missing"
+REASON_NAVIGATION_CONTEXT_AROUND = "biblio_dialogue_navigation_context_around"
 REASON_NAVIGATION_TOOL_MISSING = "biblio_dialogue_navigation_tool_missing"
 REASON_CANDIDATES_MISSING = "biblio_dialogue_candidates_missing"
 REASON_CANDIDATES_INCOMPLETE = "biblio_dialogue_candidates_incomplete"
@@ -268,16 +270,80 @@ def _navigation_result(
     state: BiblioConversationState,
     variants: Sequence[str],
 ) -> BiblioDialoguePlanningResult:
+    kind = navigation.classify_navigation(intents.fold_message(message))
+    tool_required = navigation.tool_required_for_navigation(kind)
+    if navigation.can_plan_context_navigation(kind):
+        if not state.present:
+            return _clarification_result(
+                message,
+                variants,
+                reason_code=REASON_LAST_PASSAGE_MISSING,
+                intent=BiblioDialogueIntent(
+                    INTENT_NAVIGATE,
+                    query_kind="passage_context",
+                    state_required=True,
+                    tool_required=tool_required,
+                    scope_mode=kind,
+                ),
+                state=state,
+            )
+        params = navigation.context_params_for_navigation(kind, state)
+        if not params:
+            return _clarification_result(
+                message,
+                variants,
+                reason_code=REASON_LAST_PASSAGE_POSITION_MISSING,
+                intent=BiblioDialogueIntent(
+                    INTENT_NAVIGATE,
+                    query_kind="passage_context",
+                    state_required=True,
+                    tool_required=tool_required,
+                    scope_mode=kind,
+                ),
+                state=state,
+            )
+        return _planned_result(
+            message,
+            variants,
+            status=STATUS_PLANNED,
+            reason_code=REASON_NAVIGATION_CONTEXT_AROUND,
+            intent=BiblioDialogueIntent(
+                INTENT_NAVIGATE,
+                query_kind="passage_context",
+                state_required=True,
+                tool_required=tool_required,
+                scope_mode=kind,
+            ),
+            plan=BiblioLibrarianPlan(
+                intent=INTENT_NAVIGATE,
+                answer_mode="tool",
+                tool_calls=(
+                    BiblioLibrarianToolCall(
+                        tool_name=tools.TOOL_PASSAGE_CONTEXT,
+                        params=params,
+                        method="GET",
+                    ),
+                ),
+            ),
+            state=state,
+            current_document_used=True,
+            tool_required=tool_required,
+        )
     reason = REASON_NAVIGATION_TOOL_MISSING if state.present else REASON_CURRENT_DOCUMENT_MISSING
     return _planned_result(
         message,
         variants,
         status=STATUS_UNSUPPORTED_MISSING_TOOL if state.present else STATUS_NEEDS_CLARIFICATION,
         reason_code=reason,
-        intent=BiblioDialogueIntent(INTENT_NAVIGATE, state_required=True, tool_required="navigation"),
+        intent=BiblioDialogueIntent(
+            INTENT_NAVIGATE,
+            state_required=True,
+            tool_required=tool_required,
+            scope_mode=kind,
+        ),
         plan=BiblioLibrarianPlan(intent="clarify", answer_mode="clarify", fallback_reason=reason),
         state=state,
-        tool_required="navigation",
+        tool_required=tool_required,
     )
 
 
