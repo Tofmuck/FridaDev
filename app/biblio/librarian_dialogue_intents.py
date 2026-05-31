@@ -26,6 +26,22 @@ _TOC_PREFIX_STOPWORDS = frozenset(
         "voir",
     }
 )
+_TOC_SUFFIX_QUALIFIERS = frozenset(
+    {
+        "complet",
+        "complete",
+        "complets",
+        "completes",
+        "detaille",
+        "detaillee",
+        "detailles",
+        "detaillees",
+        "general",
+        "generale",
+        "generales",
+        "generaux",
+    }
+)
 
 
 def normalize_message(value: str) -> str:
@@ -65,7 +81,8 @@ def toc_has_unresolved_explicit_reference(folded: str) -> bool:
         return False
     if re.search(r"\b(table des matieres|sommaire)\b.*\b(de|du|des|d')\s+[a-z0-9]{3,}", folded):
         return True
-    if re.search(r"\b(table des matieres|sommaire)\b\s+(?!de\b|du\b|des\b|d'\b)[a-z0-9]{3,}", folded):
+    suffix = re.search(r"\b(table des matieres|sommaire)\b\s+(?!de\b|du\b|des\b|d'\b)([a-z0-9]{3,})", folded)
+    if suffix and suffix.group(2) not in _TOC_SUFFIX_QUALIFIERS:
         return True
     if re.search(r"^\s*(de|du|des|d')\s+[a-z0-9]{3,}.*\b(table des matieres|sommaire)\b", folded):
         return True

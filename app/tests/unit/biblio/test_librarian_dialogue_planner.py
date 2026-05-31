@@ -237,6 +237,36 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
                 self.assertEqual(_tool_names(result), [tools.TOOL_DOCUMENT_TOC])
                 self.assertEqual(result.plan.tool_calls[0].params["document_id"], "doc-1")
 
+    def test_table_of_contents_suffix_qualifiers_use_current_document(self) -> None:
+        state = _state_with_document()
+
+        for message in (
+            "Table des matieres complete",
+            "Montre la table des matieres complete",
+            "Table des matieres detaillee",
+            "Sommaire complet",
+            "Sommaire general",
+        ):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
+
+                self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+                self.assertEqual(result.reason_code, dialogue.REASON_TABLE_OF_CONTENTS)
+                self.assertEqual(_tool_names(result), [tools.TOOL_DOCUMENT_TOC])
+                self.assertEqual(result.plan.tool_calls[0].params["document_id"], "doc-1")
+
+    def test_table_of_contents_suffix_qualifiers_without_state_clarify(self) -> None:
+        for message in (
+            "Table des matieres complete",
+            "Sommaire general",
+        ):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message)
+
+                self.assertEqual(result.status, dialogue.STATUS_NEEDS_CLARIFICATION)
+                self.assertEqual(result.reason_code, dialogue.REASON_CURRENT_DOCUMENT_MISSING)
+                self.assertEqual(_tool_names(result), [])
+
     def test_dictated_theme_query_plans_search(self) -> None:
         result = dialogue.plan_biblio_dialogue("cherche le moment ou Socrate parle de sage femme")
 
