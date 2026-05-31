@@ -484,45 +484,70 @@ Risque que Frida reste bloquee sur une seule regex ou une seule recherche lexica
 
 ### Plan
 
-- [ ] Introduire une boucle bornee: planifier -> appeler outil -> observer -> decider suite -> finaliser.
-- [ ] Garder l'agent off par defaut ou en mode parallele tant que les smokes produit ne sont pas valides.
-- [ ] Garantir que le toggle Biblio existant ne force pas l'appel agent tant que le branchement produit n'est pas valide.
+- [x] Introduire une boucle bornee: planifier -> appeler outil -> observer -> finaliser.
+- [x] Garder la boucle non branchee au produit tant que les smokes produit ne sont pas valides.
+- [x] Garantir que le toggle Biblio existant ne force pas l'appel agent: aucun branchement chat/runtime produit dans ce lot.
 - [ ] Comparer le chemin agentique au chemin deterministe actuel avant remplacement.
-- [ ] Budget nominal: nombre max d'appels, variantes, contextes, duree totale.
+- [x] Budget nominal: nombre max d'etapes, appels outils, contextes, duree totale logique.
 - [ ] Requetes alternatives pour accents, paraphrases, auteur/oeuvre/theme.
-- [ ] Stop sur certitude insuffisante.
-- [ ] Sortie clarification quand plusieurs chemins restent plausibles.
-- [ ] Fallback deterministe si agent indisponible.
+- [x] Stop propre sur plan invalide, outil refuse, outil echoue ou budget depasse.
+- [x] Sortie clarification/fallback quand aucun plan utile n'est fourni.
+- [x] Fallback deterministe explicite si aucune boucle n'est executable.
 
 ### Patch attendu
 
-- [ ] Module agent runtime dedie, par exemple `app/biblio/librarian_agent.py`.
-- [ ] Adaptateur OpenRouter ou reuse d'un caller existant si frontieres claires.
-- [ ] Tests avec faux Catalogue et faux modele.
-- [ ] Feature flag runtime ou mode parallele.
-- [ ] Rollback runtime documente avant activation produit.
+- [x] Module planner/boucle dedie: `app/biblio/librarian_planner.py`.
+- [x] Aucun adaptateur OpenRouter dans ce lot; gate OpenRouter/JSON reste separe.
+- [x] Tests avec faux Catalogue et sorties structurees fake.
+- [x] Aucun branchement produit, donc aucune activation par defaut.
+- [ ] Feature flag runtime et rollback restent requis avant activation produit.
 
 ### Tests / preuves
 
-- [ ] `Sapere aude` dans Kant: separation document/expression.
-- [ ] Theetete/maieutique: variantes et contextes.
-- [ ] Sage-femme: reformulation.
-- [ ] JSON invalide puis fallback/clarification.
-- [ ] Budget depasse -> erreur propre.
-- [ ] Smokes comparatifs avant/apres: catalogue, TOC, passage exact, recherche thematique.
-- [ ] Test agent desactive: chemin deterministe encore disponible ou remplacement prouve sans regression.
+- [x] Plan simple `catalog_list`.
+- [x] Sequence bornee `catalog_search` -> `passage_context`.
+- [x] Rejet outil inconnu avant appel outil.
+- [x] Rejet `page_read`, `export/chunk`, `latest/page`, `latest/context`.
+- [x] Rejet methode non GET et nom de route mutatrice.
+- [x] Rejet `passage_context` sans document ou sans position.
+- [x] Budget `max_tool_calls` depasse -> `budget_exhausted`.
+- [x] Timeout outil -> `tool_failed` content-free.
+- [x] Sortie structuree fake invalide -> `tool_rejected`, pas de fail suspend.
+- [x] Observabilite et `repr(result)` / `repr(step)` sans requete, passage, titre, auteur ou chapitre brut.
+- [x] Test absence import OpenRouter/chat/model/LLM.
+- [ ] Smokes comparatifs agent vs deterministe restent hors Lot 4 preparatoire.
 
 ### Réduction du risque attendue
 
-- [ ] Risque reduit par iteration bornee; risque accepte si Catalogue ne contient pas le passage et que l'agent le signale proprement.
+- [x] Risque reduit par iteration bornee; risque accepte car la boucle n'est pas encore branchee au produit.
 
 ### Critères de sortie
 
-- [ ] L'agent execute plusieurs etapes sans fuite.
-- [ ] L'agent peut rester desactive ou parallele.
+- [x] La boucle execute plusieurs etapes sans fuite.
+- [x] La boucle reste non branchee au produit.
 - [ ] Le chemin deterministe actuel reste disponible ou son remplacement est prouve par smokes comparatifs.
-- [ ] Les reason codes distinguent not_found, ambiguous, budget_exhausted, model_failed, catalogue_failed.
-- [ ] Aucun blocage technique visible comme consigne systeme.
+- [x] Les reason codes distinguent `not_found`, `ambiguous`, `budget_exhausted`, `tool_rejected`, `tool_failed` et `fallback_deterministic`.
+- [x] Aucun blocage technique visible comme consigne systeme.
+
+Photo operatoire Lot 4 - 2026-05-31:
+
+- `app/biblio/librarian_planner.py` livre `BiblioLibrarianPlan`,
+  `BiblioLibrarianToolCall`, `BiblioLibrarianLoopRequest`,
+  `BiblioLibrarianStep`, `BiblioLibrarianLoopResult` et
+  `BiblioLibrarianPlanner`;
+- la boucle consomme seulement des appels outils structures fake/deterministes,
+  pas de modele externe reel;
+- la boucle valide les tool calls contre le registre Lot 3 et execute via
+  `BiblioLibrarianToolRegistry`;
+- budgets livres: `max_steps`, `max_tool_calls`, `max_total_duration_ms`,
+  `max_clarifications`, `max_context_chars`;
+- statuts livres: `tool_executed`, `needs_clarification`, `not_found`,
+  `ambiguous`, `budget_exhausted`, `tool_rejected`, `tool_failed`,
+  `fallback_deterministic`;
+- `librarian_tools.py` n'a pas ete modifie ni regonfle dans ce lot;
+- aucun branchement chat, aucun OpenRouter, aucun modele, aucun outil page,
+  aucun `export/chunk`, aucune navigation complete et aucune activation
+  runtime produit.
 
 ### Hors-scope
 
@@ -978,20 +1003,24 @@ Lot 2 contrat/spec agent bibliothecaire livre.
 Lot 3 registre d'outils Catalogue GET-only livre; correction post-Lot 3
 appliquee sur coherence `passage_context` et anti-fuite `repr(result)`.
 
+Lot 4 boucle/planner bibliothecaire borne livre comme module non branche
+produit, sans modele externe reel.
+
 NO-GO pour declarer l'agent bibliothecaire produit livre.
 
-GO conditionnel pour ouvrir le Lot 4 comme lot planner/boucle bibliothecaire,
-seulement si les preuves Lot 3 restent vertes, sans activation produit par
+GO conditionnel pour ouvrir le Lot 5 comprehension implicite/dialogue,
+seulement si les preuves Lot 4 restent vertes, sans activation produit par
 defaut et sous preuve OpenRouter/JSON separee avant tout appel modele.
 
 NO-GO pour coder directement l'agent.
 
-NO-GO pour faire deborder Lot 4 vers outil page, `export/chunk`, navigation
+NO-GO pour faire deborder Lot 5 vers outil page, `export/chunk`, navigation
 complete, OpenRouter non verifie, modele hardcode, activation runtime ou agent
 bibliothecaire complet.
 
-NO-GO Lot 4 si `passage_context` peut accepter un document divergent ou si
-`repr(result)` expose passage, titre, auteur, chapitre ou requete brute.
+NO-GO Lot 5 si la boucle Lot 4 n'est plus bornee, fuit via observabilite ou
+`repr`, importe OpenRouter/chat/model/LLM, ou si `librarian_tools.py` est
+regonfle sans necessite vitale.
 
 Risques restants reels: agent absent, outil page absent, `export/chunk` absent,
 OpenRouter/JSON non verifie, modele agent non configure, fallback agent non

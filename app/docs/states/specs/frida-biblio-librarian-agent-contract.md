@@ -15,6 +15,9 @@ d'outils Lot 3, sans agent runtime active.
 Cette spec ferme le Lot 2 documentaire du chantier agent bibliothecaire.
 Mise a jour Lot 3: le registre d'outils Catalogue GET-only est livre dans
 `app/biblio/librarian_tools.py`.
+Mise a jour Lot 4: la boucle/planner bibliothecaire bornee est livre dans
+`app/biblio/librarian_planner.py`, sans branchement produit ni modele externe
+reel.
 Elle ne livre pas l'agent runtime.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
@@ -40,9 +43,10 @@ doc-pipeline.
 Decision: GO conditionnel pour ouvrir le Lot 3 outils GET-only, NO-GO pour
 coder directement l'agent runtime.
 
-Etat courant: Lot 3 outils GET-only livre. Le prochain GO est seulement
-conditionnel pour ouvrir un Lot 4 planner/boucle bibliothecaire, sans
-activation produit par defaut.
+Etat courant: Lot 3 outils GET-only livre et Lot 4 boucle/planner
+bibliothecaire bornee livre comme module non branche. Le prochain GO est
+seulement conditionnel pour ouvrir un Lot 5 comprehension implicite/dialogue,
+sans activation produit par defaut.
 
 Le Lot 3 peut definir le registre d'outils Catalogue bornes si et seulement si:
 
@@ -555,17 +559,35 @@ NO-GO retroactif Lot 3 si un patch ulterieur reintroduit:
 - remplacement du chemin deterministe sans preuve comparative;
 - fuite content-rich dans logs/admin/dashboard/read-models.
 
-## 16. GO / NO-GO Lot 4
+## 16. Lot 4 livre
 
-GO conditionnel Lot 4 uniquement pour preparer la boucle/planner
-bibliothecaire au-dessus du registre Lot 3, sous feature flag et sans
-activation produit par defaut, si les corrections post-Lot 3 restent prouvees.
+Lot 4 livre uniquement la preparation de boucle/planner bibliothecaire au-dessus
+du registre Lot 3.
 
-NO-GO Lot 4 si le patch tente:
+Implementation Lot 4:
+
+- module: `app/biblio/librarian_planner.py`;
+- structures livrees: `BiblioLibrarianPlan`, `BiblioLibrarianToolCall`,
+  `BiblioLibrarianLoopRequest`, `BiblioLibrarianStep`,
+  `BiblioLibrarianLoopResult`, `BiblioLibrarianPlanner`;
+- execution via `BiblioLibrarianToolRegistry`, sans reseau nouveau;
+- budgets livres: `max_steps`, `max_tool_calls`, `max_total_duration_ms`,
+  `max_clarifications`, `max_context_chars`;
+- statuts livres: `tool_executed`, `needs_clarification`, `not_found`,
+  `ambiguous`, `budget_exhausted`, `tool_rejected`, `tool_failed`,
+  `fallback_deterministic`;
+- refus avant outil pour tool inconnu, `page_read`, `export/chunk`,
+  `latest/page`, `latest/context`, methode non GET et nom de route mutatrice;
+- observabilite et `repr(result)` / `repr(step)` content-free;
+- aucun branchement chat/runtime produit;
+- aucun OpenRouter, aucun modele externe reel, aucun slug, aucune activation.
+
+NO-GO retroactif Lot 4 si un patch ulterieur reintroduit:
 
 - accepter un `passage_context` dont le `document_id` Catalogue est absent ou
   divergent;
 - exposer passage, titre, auteur, chapitre ou requete brute via `repr(result)`;
+- regonfler `librarian_tools.py` sans necessite vitale;
 - outil page ou `page_read`;
 - `export/chunk`;
 - navigation complete;
@@ -575,7 +597,21 @@ NO-GO Lot 4 si le patch tente:
 - remplacement du chemin deterministe sans preuve comparative;
 - fuite content-rich dans logs/admin/dashboard/read-models.
 
-## 17. Hors-scope
+## 17. GO / NO-GO Lot 5
+
+GO conditionnel Lot 5 seulement pour comprehension implicite/dialogue au-dessus
+de la boucle Lot 4 non branchee, sans activation produit par defaut.
+
+NO-GO Lot 5 si le patch tente:
+
+- brancher la boucle comme agent produit actif;
+- appeler OpenRouter ou introduire un modele externe reel sans gate date;
+- hardcoder un modele ou slug;
+- ajouter page, `export/chunk`, `latest/page` ou `latest/context`;
+- remplacer le chemin deterministe sans smokes comparatifs;
+- declarer l'agent bibliothecaire produit livre.
+
+## 18. Hors-scope
 
 - runtime agent;
 - appel OpenRouter;
