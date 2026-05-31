@@ -20,11 +20,13 @@ NAVIGATION_GENERIC = "generic"
 
 _SEARCH_VERB_RE = re.compile(r"\b(cherche|chercher|trouve|trouver|retrouve|retrouver|sort|sortir)\b")
 _NEARBY_TOPIC_RE = re.compile(
-    r"\b(?:de|du|des|d'|dans|sur)\s+(?:(?:le|la|l'|les|un|une)\s+)?([a-z0-9]{3,})\b"
+    r"\b(?:dans|chez|sur|de|du|des)\s+(?:(?:le|la|l['’]?|les|un|une)\s*)?([a-z0-9]{3,})\b"
+    r"|\bd['’]\s*([a-z0-9]{3,})\b"
 )
 _NEARBY_ANAPHORIC_RE = re.compile(r"\bautre\s+(passage|extrait)\b.*\b(proche|voisin|voisine)\b")
 _REFERENCE_RE = re.compile(
-    r"\b(?:dans|de|du|des|d')\s+(?:(?:le|la|l'|les|un|une)\s+)?([a-z0-9]{3,})\b"
+    r"\b(?:dans|chez|de|du|des)\s+(?:(?:le|la|l['’]?|les|un|une)\s*)?([a-z0-9]{3,})\b"
+    r"|\bd['’]\s*([a-z0-9]{3,})\b"
 )
 _REFERENCE_STOPWORDS = frozenset(
     {
@@ -79,7 +81,7 @@ def classify_navigation(folded: str) -> str:
 
 def has_unresolved_explicit_reference(folded: str) -> bool:
     for match in _REFERENCE_RE.finditer(folded):
-        token = str(match.group(1) or "").strip()
+        token = _first_match_group(match)
         if token and token not in _REFERENCE_STOPWORDS:
             return True
     return False
@@ -115,7 +117,14 @@ def _is_nearby_navigation(folded: str) -> bool:
 
 def _nearby_request_has_explicit_topic(folded: str) -> bool:
     for match in _NEARBY_TOPIC_RE.finditer(folded):
-        token = str(match.group(1) or "").strip()
+        token = _first_match_group(match)
         if token and token not in _REFERENCE_STOPWORDS:
             return True
     return False
+
+
+def _first_match_group(match: re.Match[str]) -> str:
+    for value in match.groups():
+        if value:
+            return str(value).strip()
+    return ""

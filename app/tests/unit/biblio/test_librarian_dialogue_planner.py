@@ -331,8 +331,16 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
         for message in (
             "Autour de ce passage dans le Theetete",
             "Autour de ce passage dans Platon",
+            "Autour de ce passage chez Platon",
+            "Autour de ce passage dans l'Apologie",
+            "Autour de ce passage dans l Apologie",
+            "Autour de ce passage de l Apologie",
+            "Autour de ce passage d'Apologie",
+            "Autour de ce passage dans Apologie",
             "Continue dans le Theetete",
+            "Continue chez Platon",
             "Page precedente dans Platon",
+            "Page precedente chez Platon",
         ):
             with self.subTest(message=message):
                 result = dialogue.plan_biblio_dialogue(message, state=state)
@@ -367,6 +375,8 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
             "Autour de ce passage.",
             "Autour de ce passage dans ce livre.",
             "Autour de ce passage dans cet ouvrage.",
+            "Autour de ce passage de cet ouvrage.",
+            "Autour de ce passage du document.",
         ):
             with self.subTest(message=message):
                 result = dialogue.plan_biblio_dialogue(message, state=state)
@@ -383,14 +393,16 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
     def test_deictic_navigation_with_missing_tool_stays_missing_tool(self) -> None:
         state = _state_with_document(last_result={"document_id": "doc-1", "paragraph_id": 101})
 
-        result = dialogue.plan_biblio_dialogue("Continue dans ce livre", state=state)
+        for message in ("Continue dans ce livre", "Continue dans cet ouvrage"):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
 
-        self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
-        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
-        self.assertEqual(result.intent.intent, dialogue.INTENT_NAVIGATE)
-        self.assertEqual(result.intent.scope_mode, "continue")
-        self.assertEqual(result.tool_required, "navigation_continue")
-        self.assertEqual(_tool_names(result), [])
+                self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
+                self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
+                self.assertEqual(result.intent.intent, dialogue.INTENT_NAVIGATE)
+                self.assertEqual(result.intent.scope_mode, "continue")
+                self.assertEqual(result.tool_required, "navigation_continue")
+                self.assertEqual(_tool_names(result), [])
 
     def test_navigation_without_state_clarifies(self) -> None:
         for message in ("Continue.", "Plus haut.", "Montre-moi la page precedente."):

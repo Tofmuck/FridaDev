@@ -700,7 +700,8 @@ Implementation Lot 6:
   pas inventes: ils retournent `unsupported_missing_tool` sur etat valide, ou
   `needs_clarification` si l'etat manque;
 - une navigation qui nomme un ouvrage explicite non resolu (`dans le Theetete`,
-  `dans Platon`) clarifie avec
+  `dans Platon`, `chez Platon`, `dans l'Apologie`, `de l Apologie`,
+  `d'Apologie`) clarifie avec
   `biblio_dialogue_navigation_explicit_reference_unresolved` et ne reutilise
   jamais le document courant;
 - `passage proche` reste navigation seulement pour une reprise anaphorique
