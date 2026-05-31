@@ -638,11 +638,13 @@ Implementation agent bibliothecaire Lot 1 du 2026-05-31:
 
 - module dedie: `app/biblio/conversation_state.py`;
 - schema: `biblio_conversation_state_v1`;
-- persistance: `message.meta.biblio_state` sur le dernier message utilisateur;
-- portee: etat attache a la conversation, persiste content-free via la persistence existante des messages;
-- survie reload navigateur: oui apres sauvegarde normale de la conversation;
-- survie reprise de conversation: oui apres sauvegarde normale de la conversation;
-- survie rebuild/restart: oui apres sauvegarde normale de la conversation;
+- persistance: `message.meta.biblio_state` sur le dernier message utilisateur seulement quand le tour courant produit une transition Biblio utile;
+- portee: etat attache a la conversation, persiste content-free via la persistence existante des messages apres sauvegarde normale reussie;
+- ancien etat: conserve dans l'historique sauvegarde, jamais efface par toggle Biblio off;
+- toggle Biblio off: aucune consultation, aucune mise a jour d'etat, aucun nouveau tamponnage Biblio du message courant;
+- tour non utilise sans clarification ni consultation: pas de recopie de l'ancien etat sur le message courant;
+- survie reload/reprise/rebuild: garantie seulement apres sauvegarde normale reussie de la conversation;
+- observabilite avant sauvegarde: `state_transition.persistence_status=pending_normal_conversation_save`;
 - absence de nouvelle table, de migration DB ou de stockage Catalogue;
 - absence d'ecriture Catalogue, d'OCR, de route mutante, d'appel OpenRouter et d'agent LLM.
 
@@ -676,13 +678,15 @@ Champs interdits dans l'etat:
 Integration runtime:
 
 - `chat_runtime.py` reste l'orchestrateur Biblio mince: toggle, plan deterministe existant, adaptation minimale par etat, runtime bibliothecaire, observabilite et clarification;
-- l'etat est lu avant consultation et mis a jour apres resolution, ouverture, TOC, extraction, recherche ou clarification;
+- l'etat est lu avant consultation et mis a jour apres resolution, ouverture, TOC, extraction, recherche, ambiguite ou clarification explicite;
+- `previous_page` et `next_page` sont distingues comme follow-ups, mais restent clarifies sans outil page dans ce lot;
 - l'adaptation par etat est bornee au cas TOC sans cible explicite quand un `document_id` courant existe deja;
 - P03 reste un cas de surveillance planner/intention, pas une promesse de correction Lot 1;
 - P09 reste un cas de surveillance outillage page, pas une promesse de navigation complete Lot 1;
 - si l'utilisateur demande une reprise et que l'etat, le planner ou l'outillage manque, Frida recoit une lane `[ETAT BIBLIO]` lui demandant de clarifier proprement;
 - cette lane interdit explicitement `latest/page`, `latest/context` et toute reprise inventee;
-- l'observabilite `stage=biblio` expose maintenant `state` et `state_transition` content-free.
+- l'observabilite `stage=biblio` expose maintenant `state` et `state_transition` content-free sans pretendre que la sauvegarde finale a deja reussi;
+- `conversation_state.py` depasse temporairement 500 lignes mais reste accepte comme module borne etat/projection; toute extension Lot 2 doit extraire une responsabilite avant de l'alourdir.
 
 ## 12. Tests de regression du chantier
 

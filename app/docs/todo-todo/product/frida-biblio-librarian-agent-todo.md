@@ -239,20 +239,22 @@ Risque que Frida reponde a "continue", "ce passage", "la page precedente" ou "da
 ### Frontiere de persistance minimale
 
 - [x] documenter la decision de persistance dans le patch du lot: process-only, conversation-attached ou persiste content-free;
-- [x] si reprise produit promise: faire survivre `document_id`, `page_no`, `para_no`, `paragraph_id`, dernier passage hash et dernier resultat exploitable au reload navigateur;
-- [x] si reprise produit promise: faire survivre ces references a la reprise de conversation;
-- [x] si rebuild/restart non couvert: produire une clarification propre apres redemarrage au lieu d'inventer une position;
-- [x] tester reload/reprise;
+- [x] si reprise produit promise: faire survivre `document_id`, `page_no`, `para_no`, `paragraph_id`, dernier passage hash et dernier resultat exploitable apres sauvegarde normale reussie;
+- [x] si reprise produit promise: faire survivre ces references a la reprise de conversation apres sauvegarde normale reussie;
+- [x] si l'etat n'a pas encore ete sauvegarde ou manque apres redemarrage: produire une clarification propre au lieu d'inventer une position;
+- [x] tester le chemin store fake save/load de `message.meta.biblio_state`;
 - [x] ne jamais persister de passage brut, prompt complet, payload Catalogue, titre brut, auteur brut ou requete brute;
 - [x] ne jamais exposer ces champs bruts en observabilite.
 
-Decision livree Lot 1:
+Decision livree Lot 1, corrigee Lot 1 bis:
 
 - mode: etat persiste content-free dans `message.meta.biblio_state` du dernier message utilisateur;
-- attachement: etat rattache a la conversation par les messages existants, sans nouvelle table ni schema DB;
-- survie reload navigateur: oui apres sauvegarde normale de la conversation;
-- survie reprise de conversation: oui apres sauvegarde normale de la conversation;
-- survie rebuild/restart: oui apres sauvegarde normale de la conversation, car le `meta` des messages est deja persiste;
+- attachement: un etat ancien reste dans l'historique sauvegarde, mais n'est pas recopie sur chaque nouveau message utilisateur;
+- toggle Biblio off: aucune consultation, aucune mise a jour d'etat, aucun nouveau tamponnage Biblio du message courant;
+- attachement nouveau: seulement si le tour courant porte une transition Biblio utile, par consultation, extraction, TOC, ambiguite ou clarification explicite;
+- portee: etat rattache a la conversation par les messages existants, sans nouvelle table ni schema DB;
+- survie reload/reprise/rebuild: garantie seulement apres sauvegarde normale reussie de la conversation;
+- observabilite: `state_transition.persistence_status=pending_normal_conversation_save` au moment de l'event Biblio;
 - avant sauvegarde ou si l'etat manque: clarification propre, jamais reprise inventee;
 - aucune ecriture Catalogue, aucun OCR, aucune route mutante, aucun `latest/page` ou `latest/context`.
 
@@ -269,9 +271,9 @@ Decision livree Lot 1:
 - [x] Test multi-tour: ouvrir Platon -> demander TOC sans renommer Platon.
 - [x] Test multi-tour: extraire Theetete 126b -> "continue apres ce passage".
 - [x] Test multi-tour: passage trouve -> "page precedente".
-- [x] Test reload navigateur puis reprise "continue".
-- [x] Test reprise de conversation puis "page precedente".
-- [x] Test rebuild/restart ou, si hors lot, clarification propre documentee.
+- [x] Test fake-store: sauvegarde normale puis relecture des messages DB preserve `meta.biblio_state`.
+- [x] Tests reprise "continue", "page precedente" et "page suivante" par clarification propre si l'outil page manque.
+- [x] Tests toggle off / tour non utilise: ancien etat conserve dans l'historique, pas de recopie sur le message courant.
 - [x] Verification absence de passage brut dans l'etat observe.
 
 ### Réduction du risque attendue
@@ -293,8 +295,9 @@ Photo operatoire Lot 1 - 2026-05-31:
 - `app/biblio/conversation_state.py` porte `BiblioConversationState`, `BiblioStateTransition`, serialisation, lecture/ecriture et mise a jour content-free;
 - `app/biblio/conversation_followup.py` porte la detection bornee de follow-up et la clarification content-free;
 - `app/biblio/chat_runtime.py` lit l'etat avant le plan, l'applique seulement au cas TOC sans cible quand un `document_id` courant existe, met a jour l'etat apres consultation et clarifie les reprises sans ancre/outillage;
-- `app/core/chat_service.py` lit l'etat depuis la conversation et rattache l'etat produit au dernier message utilisateur;
-- `app/biblio/observability.py` expose `state` et `state_transition` sans payload brut;
+- `app/core/chat_service.py` lit l'etat depuis la conversation et rattache l'etat produit au dernier message utilisateur seulement si le tour courant produit une transition Biblio;
+- `app/biblio/observability.py` expose `state` et `state_transition` sans payload brut, avec persistance marquee pending jusqu'a sauvegarde normale;
+- `app/biblio/conversation_state.py` depasse temporairement 500 lignes mais reste borne a la responsabilite etat/projection; Lot 2 ne doit pas l'alourdir sans extraction dediee;
 - P03 et P09 restent des surveillances de regression, pas des promesses de correction complete du Lot 1;
 - aucun agent LLM, aucun OpenRouter, aucun outil page, aucune route Catalogue mutante, aucun `latest/page` ou `latest/context`.
 
@@ -918,10 +921,14 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 
 Lot 0 valide.
 
-NO-GO pour declarer la bibliotheque produit livree.
+Lot 1 et correction Lot 1 bis livres.
 
-GO conditionnel pour ouvrir le Lot 1 comme lot d'etat Biblio conversationnel explicite.
+NO-GO pour declarer l'agent bibliothecaire produit livre.
+
+GO conditionnel pour ouvrir le Lot 2 comme lot contrat/spec agent bibliothecaire, sans runtime agent complet.
 
 NO-GO pour coder directement l'agent.
 
-NO-GO pour faire deborder Lot 1 vers planner/intention, outil page, navigation complete ou agent bibliothecaire complet.
+NO-GO pour faire deborder Lot 2 vers outil page, navigation complete, OpenRouter non verifie ou agent bibliothecaire complet.
+
+Risques restants reels: agent absent, outil page absent, OpenRouter/JSON non verifie, modele agent non configure.

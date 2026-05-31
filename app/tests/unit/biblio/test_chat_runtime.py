@@ -39,6 +39,43 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(result.observability_payload["status"], "not_applicable")
         self.assertIn(chat_runtime.REASON_TOGGLE_DISABLED, result.observability_payload["reason_code_counts"])
 
+    def test_toggle_off_with_existing_state_does_not_reattach_current_user_message(self) -> None:
+        state, _transition = conversation_state.update_state_from_runtime(
+            conversation_state.BiblioConversationState.empty(conversation_id="conv-biblio-state"),
+            query_plan=query_planner.BiblioQueryPlan(
+                should_consult=True,
+                intent=query_planner.INTENT_SEARCH_CATALOG,
+                reason_code=query_planner.REASON_SEARCH_CATALOG,
+                query_kind=query_planner.INTENT_SEARCH_CATALOG,
+            ),
+            library_result=_RuntimeResult(passage_result=_passage(RAW_PASSAGE), status="extracted"),
+            conversation_id="conv-biblio-state",
+            now_iso="2026-05-31T12:00:00Z",
+        )
+        conversation = {
+            "id": "conv-biblio-state",
+            "messages": [
+                {"role": "system", "content": "system"},
+                {"role": "user", "content": "ancienne demande", "meta": {"biblio_state": state.to_dict()}},
+                {"role": "assistant", "content": "ancienne reponse"},
+                {"role": "user", "content": "message courant"},
+            ],
+        }
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": False},
+            user_msg="message courant",
+            conversation_id="conv-biblio-state",
+            conversation_state=chat_runtime.read_biblio_conversation_state(conversation),
+            client_factory=_raising_client_factory,
+        )
+        attached = chat_runtime.attach_biblio_conversation_state(conversation, result)
+
+        self.assertFalse(result.used)
+        self.assertFalse(attached)
+        self.assertNotIn("meta", conversation["messages"][-1])
+        self.assertTrue(chat_runtime.read_biblio_conversation_state(conversation).present)
+
     def test_toggle_on_without_clear_bibliographic_signal_does_not_call_catalogue(self) -> None:
         for message in (
             "Explique simplement ce concept.",
@@ -58,6 +95,42 @@ class BiblioChatRuntimeTests(unittest.TestCase):
                 self.assertIsNone(result.prompt_message)
                 self.assertEqual(result.observability_payload["status"], "not_used")
                 self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+
+    def test_non_used_turn_with_existing_state_does_not_reattach_current_user_message(self) -> None:
+        state, _transition = conversation_state.update_state_from_runtime(
+            conversation_state.BiblioConversationState.empty(conversation_id="conv-biblio-state"),
+            query_plan=query_planner.BiblioQueryPlan(
+                should_consult=True,
+                intent=query_planner.INTENT_SEARCH_CATALOG,
+                reason_code=query_planner.REASON_SEARCH_CATALOG,
+                query_kind=query_planner.INTENT_SEARCH_CATALOG,
+            ),
+            library_result=_RuntimeResult(passage_result=_passage(RAW_PASSAGE), status="extracted"),
+            conversation_id="conv-biblio-state",
+            now_iso="2026-05-31T12:00:00Z",
+        )
+        conversation = {
+            "id": "conv-biblio-state",
+            "messages": [
+                {"role": "system", "content": "system"},
+                {"role": "user", "content": "ancienne demande", "meta": {"biblio_state": state.to_dict()}},
+                {"role": "assistant", "content": "ancienne reponse"},
+                {"role": "user", "content": "Explique simplement ce concept."},
+            ],
+        }
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Explique simplement ce concept.",
+            conversation_id="conv-biblio-state",
+            conversation_state=chat_runtime.read_biblio_conversation_state(conversation),
+            client_factory=_raising_client_factory,
+        )
+        attached = chat_runtime.attach_biblio_conversation_state(conversation, result)
+
+        self.assertFalse(result.used)
+        self.assertFalse(attached)
+        self.assertNotIn("meta", conversation["messages"][-1])
 
     def test_followup_without_biblio_state_clarifies_without_catalogue_call(self) -> None:
         result = chat_runtime.run_biblio_chat_turn(
@@ -134,6 +207,34 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertTrue(result.used)
         self.assertEqual(result.reason_code, conversation_followup.REASON_PAGE_TOOL_UNAVAILABLE)
         self.assertIn("Outil requis indisponible", result.prompt_message["content"])
+        self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+
+    def test_next_page_with_state_clarifies_because_page_tool_is_absent(self) -> None:
+        state, _transition = conversation_state.update_state_from_runtime(
+            conversation_state.BiblioConversationState.empty(conversation_id="conv-biblio-state"),
+            query_plan=query_planner.BiblioQueryPlan(
+                should_consult=True,
+                intent=query_planner.INTENT_SEARCH_CATALOG,
+                reason_code=query_planner.REASON_SEARCH_CATALOG,
+                query_kind=query_planner.INTENT_SEARCH_CATALOG,
+            ),
+            library_result=_RuntimeResult(passage_result=_passage(RAW_PASSAGE), status="extracted"),
+            conversation_id="conv-biblio-state",
+            now_iso="2026-05-31T12:00:00Z",
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="montre-moi la page suivante",
+            conversation_id="conv-biblio-state",
+            conversation_state=state,
+            client_factory=_raising_client_factory,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_STATE_FOLLOWUP)
+        self.assertEqual(result.reason_code, conversation_followup.REASON_PAGE_TOOL_UNAVAILABLE)
+        self.assertIn("next_page", result.prompt_message["content"])
         self.assertEqual(result.observability_payload["client"]["event_count"], 0)
 
     def test_clear_document_locator_signal_extracts_and_builds_lane(self) -> None:

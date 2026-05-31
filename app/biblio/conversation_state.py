@@ -130,9 +130,9 @@ class BiblioStateTransition:
     reason_code: str
     source_event: str
     persistence_mode: str = PERSISTENCE_MODE
-    survives_reload: bool = True
-    survives_conversation_resume: bool = True
-    survives_rebuild_restart_after_save: bool = True
+    attached_to_message_meta: bool = True
+    persistence_status: str = "pending_normal_conversation_save"
+    persistence_guarantee: str = "after_normal_conversation_save"
 
     def to_observability(self) -> dict[str, Any]:
         return {
@@ -142,9 +142,9 @@ class BiblioStateTransition:
             "reason_code": self.reason_code,
             "source_event": self.source_event,
             "persistence_mode": self.persistence_mode,
-            "survives_reload": self.survives_reload,
-            "survives_conversation_resume": self.survives_conversation_resume,
-            "survives_rebuild_restart_after_save": self.survives_rebuild_restart_after_save,
+            "attached_to_message_meta": self.attached_to_message_meta,
+            "persistence_status": self.persistence_status,
+            "persistence_guarantee": self.persistence_guarantee,
         }
 
 

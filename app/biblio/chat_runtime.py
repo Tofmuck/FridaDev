@@ -266,6 +266,8 @@ def attach_biblio_conversation_state(
     conversation: dict[str, Any],
     result: BiblioChatResult,
 ) -> bool:
+    if result.state_transition is None or not result.state_transition.after_present:
+        return False
     return attach_state_to_latest_user_message(conversation, result.biblio_state)
 
 

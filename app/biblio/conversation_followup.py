@@ -15,6 +15,7 @@ STATUS_CLARIFICATION_REQUIRED = "clarification_required"
 
 FOLLOWUP_CONTINUE = "continue_after"
 FOLLOWUP_PREVIOUS_PAGE = "previous_page"
+FOLLOWUP_NEXT_PAGE = "next_page"
 FOLLOWUP_VERIFY_ORIGIN = "verify_origin"
 FOLLOWUP_SELECT_CANDIDATE = "select_candidate"
 
@@ -94,8 +95,10 @@ def detect_followup_request(user_msg: str) -> BiblioFollowupRequest:
     folded = fold_text(str(user_msg or ""))
     if not folded:
         return BiblioFollowupRequest()
-    if re.search(r"\bpage\s+(precedente|d'avant|avant|suivante|apres)\b", folded):
+    if re.search(r"\bpage\s+(precedente|d'avant|avant)\b", folded):
         return BiblioFollowupRequest(FOLLOWUP_PREVIOUS_PAGE, REASON_PAGE_TOOL_UNAVAILABLE)
+    if re.search(r"\bpage\s+(suivante|d'apres|apres)\b", folded):
+        return BiblioFollowupRequest(FOLLOWUP_NEXT_PAGE, REASON_PAGE_TOOL_UNAVAILABLE)
     if re.fullmatch(r"(continue|continuer|suite|la suite|poursuis|poursuivre)", folded):
         return BiblioFollowupRequest(FOLLOWUP_CONTINUE, REASON_NAVIGATION_NOT_IN_LOT)
     if re.search(r"\b(continue|continuer|suite|poursuis|poursuivre)\b", folded) and re.search(
@@ -177,7 +180,7 @@ def update_state_for_clarification(
 
 
 def _tool_for_followup(kind: str) -> str:
-    if kind == FOLLOWUP_PREVIOUS_PAGE:
+    if kind in {FOLLOWUP_PREVIOUS_PAGE, FOLLOWUP_NEXT_PAGE}:
         return "page"
     if kind == FOLLOWUP_CONTINUE:
         return "navigation"

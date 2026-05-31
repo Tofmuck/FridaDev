@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+import types
 import unittest
 from pathlib import Path
 
@@ -17,6 +18,23 @@ from biblio import passage_candidate_search as candidate_search
 from biblio import passage_context_search as context_search
 from biblio import passage_extractor as extractor
 from biblio import passage_selection
+
+try:
+    from core import conversations_store
+except ModuleNotFoundError as exc:
+    if exc.name != "psycopg":
+        raise
+    psycopg_module = types.ModuleType("psycopg")
+    psycopg_rows_module = types.ModuleType("psycopg.rows")
+    psycopg_types_module = types.ModuleType("psycopg.types")
+    psycopg_json_module = types.ModuleType("psycopg.types.json")
+    psycopg_rows_module.dict_row = object()
+    psycopg_json_module.Json = lambda value: value
+    sys.modules.setdefault("psycopg", psycopg_module)
+    sys.modules.setdefault("psycopg.rows", psycopg_rows_module)
+    sys.modules.setdefault("psycopg.types", psycopg_types_module)
+    sys.modules.setdefault("psycopg.types.json", psycopg_json_module)
+    from core import conversations_store
 
 
 RAW_PASSAGE = "SYNTHETIC_BIBLIO_STATE_PASSAGE_MUST_NOT_PERSIST"
@@ -50,6 +68,8 @@ class BiblioConversationStateTests(unittest.TestCase):
 
         self.assertTrue(state.present)
         self.assertTrue(transition.changed)
+        self.assertEqual(transition.to_observability()["persistence_status"], "pending_normal_conversation_save")
+        self.assertEqual(transition.to_observability()["persistence_guarantee"], "after_normal_conversation_save")
         self.assertEqual(state.last_intent, "extract_passage")
         self.assertEqual(state.page_no, 12)
         self.assertEqual(state.para_no, 3)
@@ -122,6 +142,82 @@ class BiblioConversationStateTests(unittest.TestCase):
         self.assertTrue(clarification.anchor_present)
         self.assertEqual(clarification.reason_code, conversation_followup.REASON_PAGE_TOOL_UNAVAILABLE)
         self.assertIn("latest/page", clarification.message["content"])
+
+    def test_next_page_with_anchor_has_distinct_followup_kind_without_page_tool(self) -> None:
+        state, _transition = conversation_state.update_state_from_runtime(
+            conversation_state.BiblioConversationState.empty(conversation_id="conv-123"),
+            query_plan=_Plan(intent="search_catalog"),
+            library_result=_RuntimeResult(passage_result=_passage(RAW_PASSAGE), status="extracted"),
+            conversation_id="conv-123",
+            now_iso="2026-05-31T12:00:00Z",
+        )
+        followup = conversation_followup.detect_followup_request("montre-moi la page suivante")
+        clarification = conversation_followup.clarification_for_followup(state, followup)
+
+        self.assertEqual(followup.kind, conversation_followup.FOLLOWUP_NEXT_PAGE)
+        self.assertIsNotNone(clarification)
+        self.assertEqual(clarification.followup_kind, conversation_followup.FOLLOWUP_NEXT_PAGE)
+        self.assertEqual(clarification.reason_code, conversation_followup.REASON_PAGE_TOOL_UNAVAILABLE)
+        self.assertIn("Outil requis indisponible", clarification.message["content"])
+
+    def test_state_survives_normal_conversation_save_and_load_through_store_fakes(self) -> None:
+        conversation_id = "11111111-1111-4111-8111-111111111111"
+        state, _transition = conversation_state.update_state_from_runtime(
+            conversation_state.BiblioConversationState.empty(conversation_id=conversation_id),
+            query_plan=_Plan(intent="extract_passage", work_title=RAW_QUERY),
+            library_result=_RuntimeResult(passage_result=_passage(RAW_PASSAGE), status="extracted"),
+            conversation_id=conversation_id,
+            now_iso="2026-05-31T12:00:00Z",
+        )
+        conversation = {
+            "id": conversation_id,
+            "created_at": "2026-05-31T12:00:00Z",
+            "messages": [
+                {"role": "system", "content": "system", "timestamp": "2026-05-31T12:00:00Z"},
+                {"role": "user", "content": RAW_QUERY, "timestamp": "2026-05-31T12:00:01Z"},
+            ],
+        }
+        self.assertTrue(conversation_state.attach_state_to_latest_user_message(conversation, state))
+
+        stored_messages: list[dict[str, object]] = []
+        logger = _Logger()
+        result = conversations_store.save_conversation(
+            conversation,
+            updated_at="2026-05-31T12:00:02Z",
+            preserve_deleted=False,
+            now_iso_func=lambda: "2026-05-31T12:00:03Z",
+            normalize_messages_for_storage_func=_normalize_messages_for_storage,
+            logger=logger,
+            admin_log_event_func=lambda *_args, **_kwargs: None,
+            upsert_conversation_catalog_func=lambda *_args, **_kwargs: {"id": conversation_id},
+            upsert_conversation_messages_func=lambda saved: _capture_messages(saved, stored_messages),
+        )
+
+        self.assertTrue(result.ok)
+        self.assertTrue(stored_messages)
+        loaded_messages = conversations_store.load_messages_from_db(
+            conversation_id,
+            normalize_conversation_id_func=lambda raw: str(raw) if raw else None,
+            db_conn_func=lambda: _FakeMessagesConn(stored_messages),
+            ts_to_iso_func=lambda raw: conversations_store.ts_to_iso(
+                raw,
+                now_iso_func=lambda: "2026-05-31T12:00:04Z",
+            ),
+            logger=logger,
+        )
+        loaded_state = conversation_state.read_state_from_conversation(
+            {"id": conversation_id, "messages": loaded_messages}
+        )
+
+        self.assertTrue(loaded_state.present)
+        self.assertEqual(loaded_state.current_document["document_id"], "doc-123456")
+        self.assertEqual(loaded_state.page_no, 12)
+        self.assertEqual(loaded_state.para_no, 3)
+        self.assertEqual(loaded_state.paragraph_id, 99)
+        encoded_loaded = _json(loaded_messages)
+        self.assertNotIn(RAW_PASSAGE, encoded_loaded)
+        self.assertNotIn(RAW_TITLE, encoded_loaded)
+        self.assertNotIn(RAW_QUERY, _json(loaded_state.to_dict()))
 
 
 class _Plan:
@@ -246,6 +342,71 @@ def _ambiguous_context_result() -> context_search.BiblioPassageContextSearchResu
 
 def _json(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _normalize_messages_for_storage(messages):
+    return conversations_store.normalize_messages_for_storage(
+        messages,
+        ts_to_iso_func=lambda raw: conversations_store.ts_to_iso(
+            raw,
+            now_iso_func=lambda: "2026-05-31T12:00:05Z",
+        ),
+        coerce_bool_func=conversations_store.coerce_bool,
+    )
+
+
+def _capture_messages(saved: dict[str, object], out: list[dict[str, object]]) -> bool:
+    out[:] = json.loads(json.dumps(saved.get("messages") or []))
+    return True
+
+
+class _Logger:
+    def info(self, *_args, **_kwargs) -> None:
+        return None
+
+    def warning(self, *_args, **_kwargs) -> None:
+        return None
+
+
+class _FakeMessagesCursor:
+    def __init__(self, messages: list[dict[str, object]]) -> None:
+        self.messages = messages
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+    def execute(self, *_args, **_kwargs) -> None:
+        return None
+
+    def fetchall(self) -> list[dict[str, object]]:
+        return [
+            {
+                "role": item.get("role"),
+                "content": item.get("content"),
+                "timestamp": item.get("timestamp"),
+                "summarized_by": item.get("summarized_by"),
+                "embedded": item.get("embedded"),
+                "meta": item.get("meta"),
+            }
+            for item in self.messages
+        ]
+
+
+class _FakeMessagesConn:
+    def __init__(self, messages: list[dict[str, object]]) -> None:
+        self.messages = messages
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+    def cursor(self, *_args, **_kwargs):
+        return _FakeMessagesCursor(self.messages)
 
 
 if __name__ == "__main__":
