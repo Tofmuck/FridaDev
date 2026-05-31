@@ -278,7 +278,7 @@ Outils autorises au niveau contrat:
 | `document_toc` | `GET /doc/{id}/chapters` | TOC bornee ou paginee, `document_id` explicite. |
 | `locate` | `GET /doc/{id}/locate` | Repere explicite, document resolu requis. |
 | `passage_context` | `GET /doc/{id}/context` | Contexte borne, document et position explicites. |
-| `page_read` | route page future seulement | Autorise plus tard seulement si route/client sure, `document_id` explicite, borne de chars, jamais `latest/page`. |
+| `page_read` | route page future seulement | Hors Lot 3; autorise plus tard seulement si route/client sure, GO separe, `document_id` explicite, borne de chars, tests, jamais `latest/page`. |
 
 Interdictions:
 
@@ -295,7 +295,11 @@ Interdictions:
 - route parametrique sans `document_id` explicite resolu;
 - OCR;
 - export complet automatique;
+- `export/chunk` automatique ou opportuniste;
 - modification de `/opt/platform/doc-pipeline`.
+
+`export/chunk` n'appartient pas au registre initial du Lot 3. Tout usage futur
+necessite un GO separe, des bornes explicites et des tests dedies.
 
 Chaque appel outil doit produire une observation content-free:
 
@@ -428,7 +432,8 @@ Champs autorises:
 - retry count;
 - budget requested/used;
 - ids courts;
-- positions;
+- positions content-free: `page_no`, `para_no`, `paragraph_id`, offsets
+  bornes;
 - hashes;
 - booleens de presence.
 
@@ -439,7 +444,7 @@ Champs interdits:
 - prompt agent;
 - raw agent JSON;
 - passage;
-- page;
+- page text ou page content;
 - titre brut;
 - auteur brut;
 - payload Catalogue;

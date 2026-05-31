@@ -401,9 +401,20 @@ Risque qu'un agent LLM appelle une route lourde, destructive, non bornee ou non 
 
 ### Plan
 
-- [ ] Transformer les capacites existantes en outils: `catalog`, `metadata`, `chapters`, `locate`, `search`, `context`.
-- [ ] Ajouter seulement si necessaire `page` avec `document_id` explicite, bornes de chars et interdiction `latest/page`.
-- [ ] Ajouter seulement si necessaire `export/chunk` borne et explicite, jamais automatique.
+- [ ] Transformer les capacites existantes en outils agent contractuels:
+  `catalog_list`, `catalog_search`, `document_open_summary`, `document_toc`,
+  `locate`, `passage_context`.
+- [ ] Distinguer explicitement noms d'outils agent et routes internes:
+  `catalog_list` / `catalog_search` peuvent s'appuyer sur `GET /catalog` ou
+  `GET /search`, `document_open_summary` sur `GET /catalog` et
+  `GET /doc/{id}/metadata`, `document_toc` sur `GET /doc/{id}/chapters`,
+  `locate` sur `GET /doc/{id}/locate`, `passage_context` sur
+  `GET /doc/{id}/context`.
+- [ ] Garder `page_read` hors Lot 3: futur outil explicite seulement, avec GO
+  separe, route/client sure, `document_id` explicite, bornes, tests et
+  interdiction `latest/page`.
+- [ ] Garder `export/chunk` hors Lot 3: futur lot optionnel seulement avec GO
+  explicite, jamais automatique ni opportuniste.
 - [ ] Refuser toute methode non GET.
 - [ ] Refuser `PUT`, `POST`, `DELETE`, `settings`, `progress clear`, routes destructive UI et path hors allowlist.
 - [ ] Ajouter timeouts par outil.
@@ -417,9 +428,12 @@ Risque qu'un agent LLM appelle une route lourde, destructive, non bornee ou non 
 
 ### Tests / preuves
 
-- [ ] Tests outils nominal: catalog/search/chapters/locate/context.
+- [ ] Tests outils nominaux: `catalog_list`, `catalog_search`,
+  `document_open_summary`, `document_toc`, `locate`, `passage_context`.
 - [ ] Tests interdiction routes mutatrices.
 - [ ] Tests interdiction `latest/page` et `latest/context`.
+- [ ] Tests interdiction `page_read` dans le scope Lot 3.
+- [ ] Tests interdiction `export/chunk` automatique ou opportuniste dans le scope Lot 3.
 - [ ] Tests parametres bornes.
 - [ ] Test timeout content-free.
 
@@ -432,12 +446,16 @@ Risque qu'un agent LLM appelle une route lourde, destructive, non bornee ou non 
 - [ ] L'agent ne peut appeler que des outils GET definis.
 - [ ] Chaque outil retourne contenu interne ou lane candidate sans payload brut en observabilite.
 - [ ] Les routes lourdes sont explicitement bornees ou refusees.
+- [ ] `page_read` et `export/chunk` restent hors Lot 3 et requierent un GO separe.
 
 ### Hors-scope
 
 - Choix autonome de sequence.
 - Edition Catalogue.
 - OCR.
+- Outil page / `page_read`.
+- Navigation complete.
+- Export/chunk.
 
 ### Format de retour attendu
 
