@@ -7,11 +7,14 @@ Roadmap active: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md
 Audit source: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 Contrat Biblio natif voisin: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
-Portee: contrat normatif du futur agent bibliothecaire, sans implementation runtime.
+Portee: contrat normatif du futur agent bibliothecaire et trace du registre
+d'outils Lot 3, sans agent runtime active.
 
 ## 1. Statut et portee
 
 Cette spec ferme le Lot 2 documentaire du chantier agent bibliothecaire.
+Mise a jour Lot 3: le registre d'outils Catalogue GET-only est livre dans
+`app/biblio/librarian_tools.py`.
 Elle ne livre pas l'agent runtime.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
@@ -32,10 +35,14 @@ Le futur agent reste une capacite Biblio. Il ne devient pas Memory/RAG, Web,
 workspace, active_document, Identity, Summary, Hermeneutic, AnythingLLM ou
 doc-pipeline.
 
-## 2. Decision Lot 2
+## 2. Decision Lot 2 et etat Lot 3
 
 Decision: GO conditionnel pour ouvrir le Lot 3 outils GET-only, NO-GO pour
 coder directement l'agent runtime.
+
+Etat courant: Lot 3 outils GET-only livre. Le prochain GO est seulement
+conditionnel pour ouvrir un Lot 4 planner/boucle bibliothecaire, sans
+activation produit par defaut.
 
 Le Lot 3 peut definir le registre d'outils Catalogue bornes si et seulement si:
 
@@ -315,6 +322,20 @@ Chaque appel outil doit produire une observation content-free:
 - hashes;
 - reason code.
 
+Implementation Lot 3:
+
+- module: `app/biblio/librarian_tools.py`;
+- registre expose: `catalog_list`, `catalog_search`,
+  `document_open_summary`, `document_toc`, `locate`, `passage_context`;
+- `page_read`, `latest/page`, `latest/context`, `export/chunk` et les routes
+  mutatrices sont refuses avant reseau;
+- `document_open_summary` n'appelle pas `GET /doc/{id}` et utilise
+  `GET /doc/{id}/metadata` ou une resolution compacte via `GET /catalog`;
+- les resultats internes ne retiennent pas de `CatalogueResponse.payload` brut;
+- `passage_context` peut porter un contexte interne pour le futur agent, mais
+  `to_observability()` n'expose que tailles, hash court, positions et ids
+  courts.
+
 ## 9. Budgets, timeouts et retries
 
 Budgets nominaux a stabiliser dans les runtime settings ou constantes de
@@ -502,18 +523,18 @@ Avant tout branchement runtime agentique:
 - rollback restaure chemin deterministe;
 - smokes comparatifs avec chemin actuel.
 
-## 15. GO / NO-GO Lot 3
+## 15. Lot 3 livre
 
-GO conditionnel Lot 3:
+Lot 3 est livre si les preuves suivantes restent vertes:
 
-- definir un registre d'outils GET-only;
-- borner les parametres;
-- tester allowlist et interdictions;
-- produire observabilite content-free;
-- ne pas appeler de modele agent;
-- ne pas activer l'agent.
+- registre d'outils GET-only defini dans `app/biblio/librarian_tools.py`;
+- parametres bornes avant reseau;
+- allowlist et interdictions testees;
+- observabilite content-free;
+- aucun appel modele agent;
+- aucune activation agent.
 
-NO-GO Lot 3 si le patch tente:
+NO-GO retroactif Lot 3 si un patch ulterieur reintroduit:
 
 - activation agent par defaut;
 - modele hardcode;
@@ -528,7 +549,24 @@ NO-GO Lot 3 si le patch tente:
 - remplacement du chemin deterministe sans preuve comparative;
 - fuite content-rich dans logs/admin/dashboard/read-models.
 
-## 16. Hors-scope
+## 16. GO / NO-GO Lot 4
+
+GO conditionnel Lot 4 uniquement pour preparer la boucle/planner
+bibliothecaire au-dessus du registre Lot 3, sous feature flag et sans
+activation produit par defaut.
+
+NO-GO Lot 4 si le patch tente:
+
+- outil page ou `page_read`;
+- `export/chunk`;
+- navigation complete;
+- activation runtime produit;
+- appel OpenRouter sans artefact date de verification JSON/tool calling;
+- modele hardcode;
+- remplacement du chemin deterministe sans preuve comparative;
+- fuite content-rich dans logs/admin/dashboard/read-models.
+
+## 17. Hors-scope
 
 - runtime agent;
 - appel OpenRouter;
@@ -536,6 +574,7 @@ NO-GO Lot 3 si le patch tente:
 - nouveau model caller;
 - outil page;
 - navigation complete;
+- `export/chunk`;
 - modification Catalogue;
 - DB migration;
 - frontend toggle supplementaire;

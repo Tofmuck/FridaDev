@@ -401,52 +401,56 @@ Risque qu'un agent LLM appelle une route lourde, destructive, non bornee ou non 
 
 ### Plan
 
-- [ ] Transformer les capacites existantes en outils agent contractuels:
+- [x] Transformer les capacites existantes en outils agent contractuels:
   `catalog_list`, `catalog_search`, `document_open_summary`, `document_toc`,
   `locate`, `passage_context`.
-- [ ] Distinguer explicitement noms d'outils agent et routes internes:
+- [x] Distinguer explicitement noms d'outils agent et routes internes:
   `catalog_list` / `catalog_search` peuvent s'appuyer sur `GET /catalog` ou
   `GET /search`, `document_open_summary` sur `GET /catalog` et
   `GET /doc/{id}/metadata`, `document_toc` sur `GET /doc/{id}/chapters`,
   `locate` sur `GET /doc/{id}/locate`, `passage_context` sur
   `GET /doc/{id}/context`.
-- [ ] Garder `page_read` hors Lot 3: futur outil explicite seulement, avec GO
+- [x] Garder `page_read` hors Lot 3: futur outil explicite seulement, avec GO
   separe, route/client sure, `document_id` explicite, bornes, tests et
   interdiction `latest/page`.
-- [ ] Garder `export/chunk` hors Lot 3: futur lot optionnel seulement avec GO
+- [x] Garder `export/chunk` hors Lot 3: futur lot optionnel seulement avec GO
   explicite, jamais automatique ni opportuniste.
-- [ ] Refuser toute methode non GET.
-- [ ] Refuser `PUT`, `POST`, `DELETE`, `settings`, `progress clear`, routes destructive UI et path hors allowlist.
-- [ ] Ajouter timeouts par outil.
+- [x] Refuser toute methode non GET.
+- [x] Refuser `PUT`, `POST`, `DELETE`, `settings`, `progress clear`, routes destructive UI et path hors allowlist.
+- [x] Appliquer le timeout Catalogue existant a chaque appel outil; aucun
+  timeout agent/model additionnel tant que l'agent runtime est absent.
 
 ### Patch attendu
 
-- [ ] Nouveau module outil dedie, par exemple `app/biblio/librarian_tools.py`.
-- [ ] Event observations compactes par appel.
-- [ ] Tests d'allowlist.
-- [ ] Pas de patch `/opt/platform/doc-pipeline` sauf lot Sauron separe.
+- [x] Nouveau module outil dedie: `app/biblio/librarian_tools.py`.
+- [x] Event observations compactes par appel.
+- [x] Tests d'allowlist.
+- [x] Pas de patch `/opt/platform/doc-pipeline`.
 
 ### Tests / preuves
 
-- [ ] Tests outils nominaux: `catalog_list`, `catalog_search`,
+- [x] Tests outils nominaux: `catalog_list`, `catalog_search`,
   `document_open_summary`, `document_toc`, `locate`, `passage_context`.
-- [ ] Tests interdiction routes mutatrices.
-- [ ] Tests interdiction `latest/page` et `latest/context`.
-- [ ] Tests interdiction `page_read` dans le scope Lot 3.
-- [ ] Tests interdiction `export/chunk` automatique ou opportuniste dans le scope Lot 3.
-- [ ] Tests parametres bornes.
-- [ ] Test timeout content-free.
+- [x] Tests interdiction routes mutatrices par absence d'API outil mutatrice et
+  reutilisation exclusive des methodes publiques GET du `CatalogueClient`.
+- [x] Tests interdiction `latest/page` et `latest/context`.
+- [x] Tests interdiction `page_read` dans le scope Lot 3.
+- [x] Tests interdiction `export/chunk` automatique ou opportuniste dans le scope Lot 3.
+- [x] Tests parametres bornes.
+- [x] Test timeout content-free.
 
 ### Réduction du risque attendue
 
-- [ ] Risque bloque par allowlist et method guard; risque rendu observable par endpoint kind/status/duration/counts.
+- [x] Risque bloque par allowlist et method guard; risque rendu observable par endpoint kind/status/duration/counts.
 
 ### Critères de sortie
 
-- [ ] L'agent ne peut appeler que des outils GET definis.
-- [ ] Chaque outil retourne contenu interne ou lane candidate sans payload brut en observabilite.
-- [ ] Les routes lourdes sont explicitement bornees ou refusees.
-- [ ] `page_read` et `export/chunk` restent hors Lot 3 et requierent un GO separe.
+- [x] L'agent futur ne peut recevoir que les outils GET definis par le registre.
+- [x] Chaque outil retourne un resultat interne compact sans payload brut retenu
+  et une observabilite content-free.
+- [x] Les routes lourdes sont explicitement bornees ou refusees:
+  `GET /doc/{id}` n'est pas utilise par `document_open_summary`.
+- [x] `page_read` et `export/chunk` restent hors Lot 3 et requierent un GO separe.
 
 ### Hors-scope
 
@@ -964,12 +968,20 @@ Lot 1 et correction Lot 1 bis livres.
 
 Lot 2 contrat/spec agent bibliothecaire livre.
 
+Lot 3 registre d'outils Catalogue GET-only livre.
+
 NO-GO pour declarer l'agent bibliothecaire produit livre.
 
-GO conditionnel pour ouvrir le Lot 3 comme lot registre d'outils Catalogue GET-only, sans modele agent, sans boucle agentique, sans outil page et sans activation runtime.
+GO conditionnel pour ouvrir le Lot 4 comme lot planner/boucle bibliothecaire,
+sans activation produit par defaut et sous preuve OpenRouter/JSON separee avant
+tout appel modele.
 
 NO-GO pour coder directement l'agent.
 
-NO-GO pour faire deborder Lot 3 vers outil page, navigation complete, OpenRouter non verifie ou agent bibliothecaire complet.
+NO-GO pour faire deborder Lot 4 vers outil page, `export/chunk`, navigation
+complete, OpenRouter non verifie, modele hardcode, activation runtime ou agent
+bibliothecaire complet.
 
-Risques restants reels: agent absent, outil page absent, OpenRouter/JSON non verifie, modele agent non configure, fallback agent non prouve.
+Risques restants reels: agent absent, outil page absent, `export/chunk` absent,
+OpenRouter/JSON non verifie, modele agent non configure, fallback agent non
+prouve.
