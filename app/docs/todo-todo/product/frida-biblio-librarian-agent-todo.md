@@ -6,7 +6,7 @@ Classement: `app/docs/todo-todo/product/`
 Audit source: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 Contrat source: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
-Scope: plan produit/runtime pour agent bibliothecaire Frida, docs-only dans ce commit.
+Scope: plan produit/runtime pour agent bibliothecaire Frida, lots docs et runtime bornes.
 
 ## Objectif produit
 
@@ -896,8 +896,10 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 ## Risques documentes mais non corriges par cette TODO
 
 - Pas encore d'agent bibliothecaire runtime.
-- Pas encore d'etat Biblio conversationnel exploite.
-- Pas encore de page precedente/suivante cote FridaDev.
+- Etat Biblio conversationnel Lot 1/Lot 1 bis livre et exploite, mais borne a un etat content-free, un attachement conditionnel, des clarifications et une persistance seulement apres sauvegarde normale reussie.
+- Pas encore d'outil page cote FridaDev; P09 reste une surveillance, pas une promesse de navigation complete.
+- P03 reste une surveillance planner/intention, pas une promesse de correction complete par l'etat Lot 1.
+- Pas encore de navigation precedente/suivante complete cote FridaDev.
 - Pas encore de verification OpenRouter actuelle pour JSON/structured outputs.
 - Pas encore de section runtime settings pour le modele agent.
 
@@ -912,7 +914,7 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 
 ## Risques acceptes temporairement
 
-- L'agent n'est pas livre dans ce lot docs-only.
+- L'agent runtime n'est pas encore livre; la TODO a commence docs-only, puis Lot 1/Lot 1 bis ont livre l'etat conversationnel applicatif.
 - DeepSeek V4 Pro reste candidat, pas engagement de slug ou de disponibilite.
 - Les routes Catalogue manquantes ou lourdes restent hors scope FridaDev jusqu'a lot dedie.
 - Les corrections OCR/metadata restent hors scope agent.
