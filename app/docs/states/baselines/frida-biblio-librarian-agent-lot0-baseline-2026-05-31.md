@@ -78,7 +78,8 @@ Synthese transverse:
 - `state_present=false` pour tous les cas.
 - `raw_marker_leaks=false` pour tous les cas.
 - `payload_objects_retained=0` pour tous les cas observes.
-- Les cas P03, P08, P09 et P11 prouvent directement le besoin Lot 1.
+- Les cas P08 et P11 prouvent directement le besoin Lot 1: etat conversationnel et ancres techniques.
+- Les cas P03 et P09 sont des surveillances de regression pour Lot 1, pas des promesses de correction complete: P03 depend aussi du planner/intention, P09 depend aussi d'un outil page non expose par `CatalogueClient`.
 - Les cas P01 et P07 prouvent une fragilite de planning deterministe avant agent.
 
 ## Matrice Catalogue / API / plateforme
@@ -104,7 +105,7 @@ Lecture faite en read-only sous discipline Sauron.
 | `GET /health` | HTTP `200`, environ `0.015s`, content-free |
 | OpenAPI | HTTP `200`, `33` routes GET, `6` routes mutantes |
 | Routes GET utiles presentes | `/catalog`, `/search`, `/doc/{doc_id}/context`, `/doc/{doc_id}/chapters`, `/doc/{doc_id}/locate`, `/doc/{doc_id}/page/{page_no}`, `/doc/{doc_id}`, `/doc/latest/page/{page_no}` |
-| Route specifique absente de l'OpenAPI | `/doc/latest/context` |
+| Route specifique absente de l'OpenAPI | `/doc/latest/context`; la forme `latest` peut toutefois etre capturee par une route parametrique ou produire un comportement lourd |
 | Routes mutantes exposees cote Catalogue | `DELETE /doc/{doc_id}`, `DELETE /doc/{doc_id}/with-files`, `POST /progress/recent/clear`, `POST /settings/reset`, `PUT /doc/{doc_id}/metadata`, `PUT /settings` |
 | Routes mutantes appelees par Lot 0 | aucune |
 | OCR / jobs doc-pipeline declenches | aucun |
@@ -121,7 +122,7 @@ Lecture faite en read-only sous discipline Sauron.
 | `GET /doc/{id}/locate` | HTTP `404` sur label-sonde neutre, route presente |
 | `GET /doc/{id}` | HTTP `200`, environ `10.159s`, environ `211262` caracteres de payload, route lourde a eviter pour l'agent |
 | `GET /doc/latest/page/1` | `ReadTimeout` a `15s`, interdit par invariant sans `document_id` explicite |
-| `GET /doc/latest/context` | `ReadTimeout` a `15s`, route non declaree specifiquement par OpenAPI et interdite par invariant sans `document_id` explicite |
+| `GET /doc/latest/context` | `ReadTimeout` a `15s`; aucune route specifique declaree, forme `latest` probablement capturee par route parametrique ou comportement lourd, interdite sans `document_id` explicite |
 
 ### Counts DB content-free
 
@@ -144,15 +145,16 @@ Aucun P0 confirme dans Lot 0. Le smoke strict passe, aucune fuite brute n'a ete 
 
 ### P1
 
-- Etat conversationnel Biblio absent: P03, P08, P09 et P11 echouent ou se degradent parce que `current_document`, `last_result`, `page_no`, `para_no` et ancre technique ne sont pas disponibles.
+- Etat conversationnel Biblio absent: P08 et P11 echouent ou se degradent directement parce que `last_result` et ancre technique ne sont pas disponibles.
+- Cadrage Lot 1 a borner: P03 depend aussi du planner/intention; P09 depend aussi d'un outil page non expose par `CatalogueClient`. Lot 1 doit preparer les ancres et clarifier proprement si l'etat ou l'outillage manque, sans promettre de corriger tout le planner ni d'ajouter la navigation page complete.
 - Planning deterministe fragile sur formulations naturelles: P01 route une demande catalogue vers une extraction, et P07 echoue a retrouver un range alors que S2 prouve qu'un range equivalent peut etre extrait via une autre formulation.
-- Navigation bibliotheque non livree: "continuer", "page precedente" et verification d'origine ne peuvent pas etre fiables sans Lot 1 et sans outil page explicite cote client.
+- Navigation bibliotheque non livree: "continuer" et verification d'origine relevent du besoin d'etat; "page precedente" reste a surveiller mais exige aussi un outil page explicite cote client.
 
 ### P2
 
 - `CatalogueClient` n'expose pas encore la route page alors que l'API expose `/doc/{doc_id}/page/{page_no}`.
 - `/doc/{id}` reste lourd et ne doit pas devenir une strategie agentique par defaut.
-- Les chemins `latest/page` et `latest/context` sont dangereux pour FridaDev: ils timeoutent dans cette preuve et violent l'invariant d'un `document_id` explicite.
+- Les chemins `latest/page` et `latest/context` sont dangereux pour FridaDev: `latest/page` est expose, `latest/context` n'est pas declare comme route specifique mais peut etre capture par une route parametrique ou comportement lourd; dans tous les cas, ils violent l'invariant d'un `document_id` explicite et ne doivent jamais etre utilises par l'agent.
 - Les routes mutantes existent cote Catalogue; elles doivent rester exclues de l'enveloppe d'outils FridaDev.
 
 ### P3
@@ -167,10 +169,13 @@ Lot 0 est valide.
 Go Lot 1: oui, sous conditions:
 
 - maintenir le chemin Biblio actuel disponible tant que l'etat conversationnel n'est pas valide;
-- ajouter l'etat Biblio en content-free seulement;
+- livrer seulement l'etat Biblio conversationnel explicite et les ancres techniques content-free necessaires;
+- clarifier proprement quand l'etat, le planner ou l'outillage manque;
 - ne jamais utiliser `latest/page` ou `latest/context`;
 - ne pas appeler `/doc/{id}` comme strategie de navigation;
-- garder les smokes produit P03, P08, P09 et P11 comme criteres centraux du Lot 1.
+- garder P08 et P11 comme criteres centraux de Lot 1;
+- garder P03 et P09 comme cas de regression a surveiller, sans promettre de corriger le planner/intention ni d'ajouter l'outil page dans Lot 1;
+- ne pas faire deborder Lot 1 vers planner, outil page, navigation complete ou agent bibliothecaire complet.
 
 ## Rebuild / live
 

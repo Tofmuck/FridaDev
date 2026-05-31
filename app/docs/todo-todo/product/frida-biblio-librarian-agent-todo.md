@@ -215,6 +215,8 @@ Resume content-free:
 
 Creer un etat Biblio interne par conversation qui porte les references techniques necessaires a la reprise.
 
+Lot 1 est un lot d'etat conversationnel explicite. Il doit preparer les ancres techniques et les clarifications propres, pas resoudre tout le planner, pas ajouter l'outil page et pas livrer l'agent complet.
+
 ### Risque produit traité
 
 Risque que Frida reponde a "continue", "ce passage", "la page precedente" ou "dans ce meme ouvrage" avec une memoire floue issue du dialogue visible.
@@ -230,6 +232,9 @@ Risque que Frida reponde a "continue", "ce passage", "la page precedente" ou "da
 - [ ] Mettre a jour l'etat apres resolution, TOC, extraction, recherche, navigation ou clarification.
 - [ ] Garder l'etat interne non content-rich: ids, positions, hashes, counts, reason codes.
 - [ ] Ne pas deduire `document_id`, `page_no`, `para_no` ou `paragraph_id` seulement du dialogue recent.
+- [ ] Traiter P08 et P11 comme criteres centraux du lot: reprise depuis `last_result` et verification par ancre technique.
+- [ ] Garder P03 et P09 comme cas de regression a surveiller: P03 depend aussi du planner/intention, P09 depend aussi d'un outil page non expose par `CatalogueClient`.
+- [ ] Clarifier proprement si l'etat, le planner ou l'outillage manque, sans promettre une correction complete de P03/P09 dans ce lot.
 
 ### Frontiere de persistance minimale
 
@@ -270,11 +275,17 @@ Risque que Frida reponde a "continue", "ce passage", "la page precedente" ou "da
 - [ ] Reload/reprise sont testes si le produit promet la reprise.
 - [ ] Les cas de navigation savent echouer proprement si l'etat est absent.
 - [ ] Aucun contenu brut durable hors lane produit.
+- [ ] Lot 1 ne modifie pas le planner/intention hors adaptation minimale necessaire a lire/ecrire l'etat.
+- [ ] Lot 1 n'ajoute pas l'outil page et ne livre pas la navigation complete.
 
 ### Hors-scope
 
 - Planner LLM.
+- Refonte du planner deterministe ou de la detection d'intention.
+- Ajout de l'outil page dans `CatalogueClient`.
+- Navigation page precedente/suivante complete.
 - Nouvelle route Catalogue.
+- Agent bibliothecaire complet.
 - Persistance long terme riche.
 
 ### Format de retour attendu
@@ -885,8 +896,12 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 
 ## GO / NO-GO courant
 
-GO pour ouvrir le Lot 0.
+Lot 0 valide.
 
 NO-GO pour declarer la bibliotheque produit livree.
 
-NO-GO pour coder directement l'agent sans Lot 0, Lot 1 et Lot 2.
+GO conditionnel pour ouvrir le Lot 1 comme lot d'etat Biblio conversationnel explicite.
+
+NO-GO pour coder directement l'agent.
+
+NO-GO pour faire deborder Lot 1 vers planner/intention, outil page, navigation complete ou agent bibliothecaire complet.
