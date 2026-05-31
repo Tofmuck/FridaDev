@@ -114,6 +114,7 @@ Frontend rehydration and operator observability
 - Archived active conversation documents OCR roadmap: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Frida Catalogue metadata editing audit and Lot 0 delivery note: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 - Native Biblio / Frida Catalogue contract: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+- Biblio / Catalogue librarian-agent architecture audit: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 - Archived Biblio native / Frida Catalogue audit-plan: `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
 - Archived Biblio native / Frida Catalogue roadmap: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 - Final Biblio native / Frida Catalogue validation: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`

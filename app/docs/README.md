@@ -28,6 +28,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Cloture provisoire MVP Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-provisional-closure-2026-05-23.md`
 - Audit cible Catalogue humain editable et livraison Lot 0 2026-05-28: `states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 - Contrat Biblio native / Frida Catalogue 2026-05-28: `states/specs/frida-biblio-native-catalogue-contract.md`
+- Audit Biblio / Catalogue et architecture agent bibliothecaire 2026-05-31: `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 - Validation finale Biblio native / Frida Catalogue 2026-05-29: `todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 - Roadmap archivee Biblio vraie bibliotheque / recherche de passages 2026-05-30: `todo-done/product/frida-biblio-real-library-passage-search-todo.md`
 - Validation requalifiee Biblio vraie bibliotheque / recherche de passages 2026-05-30: `todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
@@ -180,6 +181,7 @@ Extension livree: l'OCR bornee des PDF scannes est archivee dans `todo-done/prod
 
 Lire d'abord:
 - `states/specs/frida-biblio-native-catalogue-contract.md` pour le contrat source-of-truth: Biblio persistante separee, client FridaDev read-only / GET-only, toggle frontend, lane prompt dediee, observabilite content-free, frontieres avec `active_document`, workspace, Memory/RAG, Identity, Summary, Web, Hermeneutic et AnythingLLM.
+- `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md` pour l'audit courant Biblio/Catalogue et la proposition d'agent bibliothecaire borne: cartographie plateforme, repros live, findings P0/P1/P2/P3, routes lourdes/manquantes, et plan de migration depuis les modules existants.
 - `states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md` pour le constat cible et la livraison Lot 0: surface Catalogue hors FridaDev, tables metadata humaines, audit minimal, routes GET/PUT metadata, UI d'edition, routes DELETE existantes separees.
 - `todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
 - `todo-done/product/frida-biblio-native-catalogue-todo.md`
