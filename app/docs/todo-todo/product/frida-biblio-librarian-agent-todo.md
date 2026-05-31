@@ -57,6 +57,10 @@ Ce chantier ne livre pas encore l'agent. Il cadre les lots qui devront le livrer
 - Aucun modele agent hardcode.
 - Toute configuration modele doit etre observable sans exposer de secret.
 - Le critere de verite n'est pas "le modele semble bon", mais "il reussit les cas bibliotheque".
+- L'agent bibliothecaire doit rester desactivable par feature flag runtime ou mode parallele jusqu'aux smokes produit valides.
+- Le toggle Biblio existant ne doit pas devenir un appel agent obligatoire tant que le lot de branchement n'est pas valide.
+- Le chemin Biblio deterministe actuel doit rester disponible ou etre remplace seulement avec preuve de non-regression.
+- Le rollback runtime doit etre documente avant toute activation produit de l'agent.
 
 ## Modele agent / runtime settings
 
@@ -92,6 +96,16 @@ Regles:
 - les erreurs de contrat doivent etre observables par reason code content-free;
 - les schemas internes doivent etre versionnes et testes avec fixtures.
 
+Artefact obligatoire de verification avant implementation:
+
+- [ ] noter la date de verification OpenRouter;
+- [ ] lister les URLs OpenRouter consultees;
+- [ ] noter le modele/slug observe pour DeepSeek V4 Pro ou le candidat retenu;
+- [ ] confirmer ou infirmer les capacites JSON, structured output, tool schema ou JSON mode;
+- [ ] ecrire la decision dans cette TODO ou dans une spec source-of-truth;
+- [ ] associer les tests JSON/provider a cette decision;
+- [ ] definir le fallback si la capacite provider n'est pas confirmee.
+
 ## Cas produit obligatoires
 
 Chaque cas ci-dessous doit prouver: outil(s) appele(s), etat Biblio mis a jour ou preserve, passage injecte ou clarification, observabilite content-free, absence de fuite brute hors lane produit.
@@ -122,34 +136,49 @@ Risque de construire l'agent sur une perception floue de l'existant ou de confon
 
 ### Plan
 
-- Relire l'audit du 2026-05-31 et cette TODO.
-- Executer le smoke strict existant.
-- Construire une matrice de repros live content-free pour les cas obligatoires.
-- Capturer les statuts, reason codes, endpoint kinds, counts, ids courts et hashes seulement.
-- Noter les cas qui echouent parce que l'etat conversationnel n'existe pas encore.
+- [ ] Relire l'audit du 2026-05-31 et cette TODO.
+- [ ] Executer le smoke strict existant.
+- [ ] Construire une matrice de repros live content-free pour les cas obligatoires.
+- [ ] Construire une matrice Catalogue/API/plateforme live content-free:
+  - [ ] routes disponibles;
+  - [ ] routes lourdes;
+  - [ ] routes interdites;
+  - [ ] `chapters`;
+  - [ ] `context`;
+  - [ ] route `page` eventuelle;
+  - [ ] sante `doc-pipeline-api`;
+  - [ ] counts DB content-free;
+  - [ ] endpoint kinds utilises par les smokes.
+- [ ] Capturer les statuts, reason codes, endpoint kinds, counts, ids courts et hashes seulement.
+- [ ] Noter les cas qui echouent parce que l'etat conversationnel n'existe pas encore.
 
 ### Patch attendu
 
-- Aucun patch runtime.
-- Eventuellement une note de baseline sous `app/docs/states/baselines/` si les resultats live divergent de l'audit.
-- Pas de modification plateforme.
+- [ ] Aucun patch runtime.
+- [ ] Eventuellement une note de baseline sous `app/docs/states/baselines/` si les resultats live divergent de l'audit.
+- [ ] Pas de modification plateforme.
 
 ### Tests / preuves
 
-- `docker exec -w /app platform-fridadev python -m biblio.smoke_live --jsonl`
-- repros manuels ou script content-free des cas obligatoires;
-- `git diff --check` si une note est produite;
-- verification que les sorties ne contiennent pas de passage brut hors lane produit.
+- [ ] `docker exec -w /app platform-fridadev python -m biblio.smoke_live --jsonl`
+- [ ] repros manuels ou script content-free des cas obligatoires;
+- [ ] preuve `doc-pipeline-api` health content-free;
+- [ ] inventaire routes disponibles/lourdes/interdites;
+- [ ] preuve counts DB content-free sans contenu d'ouvrage;
+- [ ] preuve endpoint kinds observes dans les smokes;
+- [ ] `git diff --check` si une note est produite;
+- [ ] verification que les sorties ne contiennent pas de passage brut hors lane produit.
 
 ### Réduction du risque attendue
 
-Risque reduit par une baseline reproductible et content-free avant changement.
+- [ ] Risque reduit par une baseline reproductible et content-free avant changement.
 
 ### Critères de sortie
 
-- Matrice des cas obligatoires remplie avec statut courant.
-- Liste des gaps confirmes.
-- Aucun patch runtime.
+- [ ] Matrice des cas obligatoires remplie avec statut courant.
+- [ ] Matrice Catalogue/API/plateforme remplie avec routes, health, counts DB et endpoint kinds.
+- [ ] Liste des gaps confirmes.
+- [ ] Aucun patch runtime.
 
 ### Hors-scope
 
@@ -173,37 +202,55 @@ Risque que Frida reponde a "continue", "ce passage", "la page precedente" ou "da
 
 ### Plan
 
-- Definir `BiblioConversationState` avec `schema_version`.
-- Porter au minimum `current_document`, `current_work`, `page_no`, `para_no`, `paragraph_id`, dernier passage hash, dernier resultat exploitable, derniers candidats, derniere ambiguite, dernier intent.
-- Lire l'etat avant planning Biblio.
-- Mettre a jour l'etat apres resolution, TOC, extraction, recherche, navigation ou clarification.
-- Garder l'etat interne non content-rich: ids, positions, hashes, counts, reason codes.
-- Ne pas deduire `document_id`, `page_no`, `para_no` ou `paragraph_id` seulement du dialogue recent.
+- [ ] Definir `BiblioConversationState` avec `schema_version`.
+- [ ] Porter au minimum `current_document`, `current_work`, `page_no`, `para_no`, `paragraph_id`, dernier passage hash, dernier resultat exploitable, derniers candidats, derniere ambiguite, dernier intent.
+- [ ] Trancher explicitement la frontiere de persistance: memoire process seule, etat attache a la conversation, persistance content-free, survie reload navigateur, survie reprise de conversation et survie rebuild/restart.
+- [ ] Garantir au minimum que "continue", "page precedente" et "ce passage" survivent au reload/reprise de conversation si le produit promet cette reprise.
+- [ ] Si la survie reload/reprise/rebuild n'est pas livree dans ce lot, forcer une clarification propre plutot qu'une reprise inventee.
+- [ ] Lire l'etat avant planning Biblio.
+- [ ] Mettre a jour l'etat apres resolution, TOC, extraction, recherche, navigation ou clarification.
+- [ ] Garder l'etat interne non content-rich: ids, positions, hashes, counts, reason codes.
+- [ ] Ne pas deduire `document_id`, `page_no`, `para_no` ou `paragraph_id` seulement du dialogue recent.
+
+### Frontiere de persistance minimale
+
+- [ ] documenter la decision de persistance dans le patch du lot: process-only, conversation-attached ou persiste content-free;
+- [ ] si reprise produit promise: faire survivre `document_id`, `page_no`, `para_no`, `paragraph_id`, dernier passage hash et dernier resultat exploitable au reload navigateur;
+- [ ] si reprise produit promise: faire survivre ces references a la reprise de conversation;
+- [ ] si rebuild/restart non couvert: produire une clarification propre apres redemarrage au lieu d'inventer une position;
+- [ ] tester reload/reprise;
+- [ ] ne jamais persister de passage brut, prompt complet, payload Catalogue, titre brut, auteur brut ou requete brute;
+- [ ] ne jamais exposer ces champs bruts en observabilite.
 
 ### Patch attendu
 
-- Nouveau module dedie, par exemple `app/biblio/conversation_state.py`.
-- Integration dans `chat_service.py` ou `chat_runtime.py` sans grossir les fichiers au-dela du raisonnable.
-- Tests unitaires de read/update/clear.
-- Event content-free `biblio_state_*`.
+- [ ] Nouveau module dedie, par exemple `app/biblio/conversation_state.py`.
+- [ ] Integration dans `chat_service.py` ou `chat_runtime.py` sans grossir les fichiers au-dela du raisonnable.
+- [ ] Tests unitaires de read/update/clear.
+- [ ] Event content-free `biblio_state_*`.
 
 ### Tests / preuves
 
-- Tests unitaires sur serialisation content-free.
-- Test multi-tour: ouvrir Platon -> demander TOC sans renommer Platon.
-- Test multi-tour: extraire Theetete 126b -> "continue apres ce passage".
-- Test multi-tour: passage trouve -> "page precedente".
-- Verification absence de passage brut dans l'etat observe.
+- [ ] Tests unitaires sur serialisation content-free.
+- [ ] Test multi-tour: ouvrir Platon -> demander TOC sans renommer Platon.
+- [ ] Test multi-tour: extraire Theetete 126b -> "continue apres ce passage".
+- [ ] Test multi-tour: passage trouve -> "page precedente".
+- [ ] Test reload navigateur puis reprise "continue".
+- [ ] Test reprise de conversation puis "page precedente".
+- [ ] Test rebuild/restart ou, si hors lot, clarification propre documentee.
+- [ ] Verification absence de passage brut dans l'etat observe.
 
 ### Réduction du risque attendue
 
-Risque reduit par une source technique explicite de reprise; risque rendu observable par reason codes quand l'etat manque.
+- [ ] Risque reduit par une source technique explicite de reprise; risque rendu observable par reason codes quand l'etat manque.
 
 ### Critères de sortie
 
-- Les references techniques ne dependent pas du dialogue visible.
-- Les cas de navigation savent echouer proprement si l'etat est absent.
-- Aucun contenu brut durable hors lane produit.
+- [ ] Les references techniques ne dependent pas du dialogue visible.
+- [ ] La frontiere de persistance est explicite et prouvee ou limitee par clarification propre.
+- [ ] Reload/reprise sont testes si le produit promet la reprise.
+- [ ] Les cas de navigation savent echouer proprement si l'etat est absent.
+- [ ] Aucun contenu brut durable hors lane produit.
 
 ### Hors-scope
 
@@ -227,37 +274,40 @@ Risque d'introduire un agent non testable, non observable ou lie a un modele har
 
 ### Plan
 
-- Specifier les entrees: message courant, dialogue recent borne, etat Biblio, catalogue tool registry, budgets.
-- Specifier les sorties: action plan, tool calls demandes, reponse structuree, mise a jour d'etat, lane candidate, clarification.
-- Versionner le schema interne.
-- Ajouter un contrat JSON seulement apres verification OpenRouter actuelle.
-- Prevoir fallback modele et fallback deterministe.
-- Interdire toute action non allowlistee.
+- [ ] Specifier les entrees: message courant, dialogue recent borne, etat Biblio, catalogue tool registry, budgets.
+- [ ] Specifier les sorties: action plan, tool calls demandes, reponse structuree, mise a jour d'etat, lane candidate, clarification.
+- [ ] Versionner le schema interne.
+- [ ] Ajouter un contrat JSON seulement apres verification OpenRouter actuelle.
+- [ ] Produire l'artefact date OpenRouter/JSON: date, URLs, modele/slug observe, capacites confirmees ou non, decision, tests et fallback.
+- [ ] Prevoir fallback modele et fallback deterministe.
+- [ ] Interdire toute action non allowlistee.
 
 ### Patch attendu
 
-- Spec ou module contractuel dedie avant runtime complet.
-- Runtime settings pour modele agent: primary/fallback/timeouts/budgets.
-- Tests de validation de configuration.
-- Observabilite modele effective sans secret.
+- [ ] Spec ou module contractuel dedie avant runtime complet.
+- [ ] Runtime settings pour modele agent: primary/fallback/timeouts/budgets.
+- [ ] Tests de validation de configuration.
+- [ ] Observabilite modele effective sans secret.
 
 ### Tests / preuves
 
-- Tests de schema valide/invalide.
-- Tests JSON absent, invalide, tronque, hors contrat, refus, texte libre.
-- Test fallback modele.
-- Test aucun fail suspend: Frida obtient clarification ou erreur propre.
+- [ ] Tests de schema valide/invalide.
+- [ ] Tests JSON absent, invalide, tronque, hors contrat, refus, texte libre.
+- [ ] Test lie a l'artefact OpenRouter: slug observe, capacites declarees, format payload attendu et fallback si non confirme.
+- [ ] Test fallback modele.
+- [ ] Test aucun fail suspend: Frida obtient clarification ou erreur propre.
 
 ### Réduction du risque attendue
 
-Risque reduit par contrat versionne et par degradation testee; risque rendu observable par status et reason codes.
+- [ ] Risque reduit par contrat versionne et par degradation testee; risque rendu observable par status et reason codes.
 
 ### Critères de sortie
 
-- Aucun modele hardcode.
-- DeepSeek V4 Pro est seulement candidat runtime verifie, pas slug invente.
-- JSON/tool contract documente selon OpenRouter actuel.
-- Fallback prouve.
+- [ ] Aucun modele hardcode.
+- [ ] DeepSeek V4 Pro est seulement candidat runtime verifie, pas slug invente.
+- [ ] Artefact OpenRouter date et source.
+- [ ] JSON/tool contract documente selon OpenRouter actuel.
+- [ ] Fallback prouve.
 
 ### Hors-scope
 
@@ -281,37 +331,37 @@ Risque qu'un agent LLM appelle une route lourde, destructive, non bornee ou non 
 
 ### Plan
 
-- Transformer les capacites existantes en outils: `catalog`, `metadata`, `chapters`, `locate`, `search`, `context`.
-- Ajouter seulement si necessaire `page` avec `document_id` explicite, bornes de chars et interdiction `latest/page`.
-- Ajouter seulement si necessaire `export/chunk` borne et explicite, jamais automatique.
-- Refuser toute methode non GET.
-- Refuser `PUT`, `POST`, `DELETE`, `settings`, `progress clear`, routes destructive UI et path hors allowlist.
-- Ajouter timeouts par outil.
+- [ ] Transformer les capacites existantes en outils: `catalog`, `metadata`, `chapters`, `locate`, `search`, `context`.
+- [ ] Ajouter seulement si necessaire `page` avec `document_id` explicite, bornes de chars et interdiction `latest/page`.
+- [ ] Ajouter seulement si necessaire `export/chunk` borne et explicite, jamais automatique.
+- [ ] Refuser toute methode non GET.
+- [ ] Refuser `PUT`, `POST`, `DELETE`, `settings`, `progress clear`, routes destructive UI et path hors allowlist.
+- [ ] Ajouter timeouts par outil.
 
 ### Patch attendu
 
-- Nouveau module outil dedie, par exemple `app/biblio/librarian_tools.py`.
-- Event observations compactes par appel.
-- Tests d'allowlist.
-- Pas de patch `/opt/platform/doc-pipeline` sauf lot Sauron separe.
+- [ ] Nouveau module outil dedie, par exemple `app/biblio/librarian_tools.py`.
+- [ ] Event observations compactes par appel.
+- [ ] Tests d'allowlist.
+- [ ] Pas de patch `/opt/platform/doc-pipeline` sauf lot Sauron separe.
 
 ### Tests / preuves
 
-- Tests outils nominal: catalog/search/chapters/locate/context.
-- Tests interdiction routes mutatrices.
-- Tests interdiction `latest/page` et `latest/context`.
-- Tests parametres bornes.
-- Test timeout content-free.
+- [ ] Tests outils nominal: catalog/search/chapters/locate/context.
+- [ ] Tests interdiction routes mutatrices.
+- [ ] Tests interdiction `latest/page` et `latest/context`.
+- [ ] Tests parametres bornes.
+- [ ] Test timeout content-free.
 
 ### Réduction du risque attendue
 
-Risque bloque par allowlist et method guard; risque rendu observable par endpoint kind/status/duration/counts.
+- [ ] Risque bloque par allowlist et method guard; risque rendu observable par endpoint kind/status/duration/counts.
 
 ### Critères de sortie
 
-- L'agent ne peut appeler que des outils GET definis.
-- Chaque outil retourne contenu interne ou lane candidate sans payload brut en observabilite.
-- Les routes lourdes sont explicitement bornees ou refusees.
+- [ ] L'agent ne peut appeler que des outils GET definis.
+- [ ] Chaque outil retourne contenu interne ou lane candidate sans payload brut en observabilite.
+- [ ] Les routes lourdes sont explicitement bornees ou refusees.
 
 ### Hors-scope
 
@@ -335,37 +385,45 @@ Risque que Frida reste bloquee sur une seule regex ou une seule recherche lexica
 
 ### Plan
 
-- Introduire une boucle bornee: planifier -> appeler outil -> observer -> decider suite -> finaliser.
-- Budget nominal: nombre max d'appels, variantes, contextes, duree totale.
-- Requetes alternatives pour accents, paraphrases, auteur/oeuvre/theme.
-- Stop sur certitude insuffisante.
-- Sortie clarification quand plusieurs chemins restent plausibles.
-- Fallback deterministe si agent indisponible.
+- [ ] Introduire une boucle bornee: planifier -> appeler outil -> observer -> decider suite -> finaliser.
+- [ ] Garder l'agent off par defaut ou en mode parallele tant que les smokes produit ne sont pas valides.
+- [ ] Garantir que le toggle Biblio existant ne force pas l'appel agent tant que le branchement produit n'est pas valide.
+- [ ] Comparer le chemin agentique au chemin deterministe actuel avant remplacement.
+- [ ] Budget nominal: nombre max d'appels, variantes, contextes, duree totale.
+- [ ] Requetes alternatives pour accents, paraphrases, auteur/oeuvre/theme.
+- [ ] Stop sur certitude insuffisante.
+- [ ] Sortie clarification quand plusieurs chemins restent plausibles.
+- [ ] Fallback deterministe si agent indisponible.
 
 ### Patch attendu
 
-- Module agent runtime dedie, par exemple `app/biblio/librarian_agent.py`.
-- Adaptateur OpenRouter ou reuse d'un caller existant si frontieres claires.
-- Tests avec faux Catalogue et faux modele.
-- Feature flag runtime.
+- [ ] Module agent runtime dedie, par exemple `app/biblio/librarian_agent.py`.
+- [ ] Adaptateur OpenRouter ou reuse d'un caller existant si frontieres claires.
+- [ ] Tests avec faux Catalogue et faux modele.
+- [ ] Feature flag runtime ou mode parallele.
+- [ ] Rollback runtime documente avant activation produit.
 
 ### Tests / preuves
 
-- `Sapere aude` dans Kant: separation document/expression.
-- Theetete/maieutique: variantes et contextes.
-- Sage-femme: reformulation.
-- JSON invalide puis fallback/clarification.
-- Budget depasse -> erreur propre.
+- [ ] `Sapere aude` dans Kant: separation document/expression.
+- [ ] Theetete/maieutique: variantes et contextes.
+- [ ] Sage-femme: reformulation.
+- [ ] JSON invalide puis fallback/clarification.
+- [ ] Budget depasse -> erreur propre.
+- [ ] Smokes comparatifs avant/apres: catalogue, TOC, passage exact, recherche thematique.
+- [ ] Test agent desactive: chemin deterministe encore disponible ou remplacement prouve sans regression.
 
 ### Réduction du risque attendue
 
-Risque reduit par iteration bornee; risque accepte si Catalogue ne contient pas le passage et que l'agent le signale proprement.
+- [ ] Risque reduit par iteration bornee; risque accepte si Catalogue ne contient pas le passage et que l'agent le signale proprement.
 
 ### Critères de sortie
 
-- L'agent execute plusieurs etapes sans fuite.
-- Les reason codes distinguent not_found, ambiguous, budget_exhausted, model_failed, catalogue_failed.
-- Aucun blocage technique visible comme consigne systeme.
+- [ ] L'agent execute plusieurs etapes sans fuite.
+- [ ] L'agent peut rester desactive ou parallele.
+- [ ] Le chemin deterministe actuel reste disponible ou son remplacement est prouve par smokes comparatifs.
+- [ ] Les reason codes distinguent not_found, ambiguous, budget_exhausted, model_failed, catalogue_failed.
+- [ ] Aucun blocage technique visible comme consigne systeme.
 
 ### Hors-scope
 
@@ -389,33 +447,33 @@ Risque que l'agent interprete "le passage", "dans ce meme ouvrage" ou "c'est tou
 
 ### Plan
 
-- Injecter a l'agent une synthese content-free de l'etat Biblio.
-- Fournir un dialogue recent borne pour interpretation linguistique.
-- Declarer que l'etat technique prime sur la memoire conversationnelle floue.
-- Gerer les references anaphoriques: ce passage, ce livre, meme ouvrage, plus haut, apres.
-- Demander clarification si l'etat est absent ou contradictoire.
+- [ ] Injecter a l'agent une synthese content-free de l'etat Biblio.
+- [ ] Fournir un dialogue recent borne pour interpretation linguistique.
+- [ ] Declarer que l'etat technique prime sur la memoire conversationnelle floue.
+- [ ] Gerer les references anaphoriques: ce passage, ce livre, meme ouvrage, plus haut, apres.
+- [ ] Demander clarification si l'etat est absent ou contradictoire.
 
 ### Patch attendu
 
-- Extension du contrat agent et de l'etat.
-- Tests multi-tour.
-- Reason codes pour anaphore resolue ou impossible.
+- [ ] Extension du contrat agent et de l'etat.
+- [ ] Tests multi-tour.
+- [ ] Reason codes pour anaphore resolue ou impossible.
 
 ### Tests / preuves
 
-- Ouvrir Platon -> "donne-moi la table des matieres".
-- Passage Theetete -> "continue".
-- Ambiguite -> "le deuxieme".
-- Etat absent -> clarification propre.
+- [ ] Ouvrir Platon -> "donne-moi la table des matieres".
+- [ ] Passage Theetete -> "continue".
+- [ ] Ambiguite -> "le deuxieme".
+- [ ] Etat absent -> clarification propre.
 
 ### Réduction du risque attendue
 
-Risque reduit par priorite donnee aux references techniques; risque rendu observable quand l'anaphore ne peut pas etre resolue.
+- [ ] Risque reduit par priorite donnee aux references techniques; risque rendu observable quand l'anaphore ne peut pas etre resolue.
 
 ### Critères de sortie
 
-- Les demandes implicites principales passent ou clarifient.
-- Aucune reference technique n'est inventee depuis le dialogue.
+- [ ] Les demandes implicites principales passent ou clarifient.
+- [ ] Aucune reference technique n'est inventee depuis le dialogue.
 
 ### Hors-scope
 
@@ -438,36 +496,36 @@ Risque que Frida ne sache pas se deplacer dans un ouvrage deja consulte.
 
 ### Plan
 
-- Ajouter intents de navigation structures.
-- Utiliser `last_result` et `current_document`.
-- Lire page/contexte voisin avec bornes.
-- Paginer catalogue et TOC.
-- Ne jamais utiliser `latest/page` ou `latest/context`.
-- Clarifier si l'etat ne suffit pas.
+- [ ] Ajouter intents de navigation structures.
+- [ ] Utiliser `last_result` et `current_document`.
+- [ ] Lire page/contexte voisin avec bornes.
+- [ ] Paginer catalogue et TOC.
+- [ ] Ne jamais utiliser `latest/page` ou `latest/context`.
+- [ ] Clarifier si l'etat ne suffit pas.
 
 ### Patch attendu
 
-- Outils page/contexte voisins si route client sure.
-- Mise a jour etat apres navigation.
-- Tests de pagination catalogue/TOC.
+- [ ] Outils page/contexte voisins si route client sure.
+- [ ] Mise a jour etat apres navigation.
+- [ ] Tests de pagination catalogue/TOC.
 
 ### Tests / preuves
 
-- "Continue apres ce passage."
-- "Montre-moi la page precedente."
-- "Remonte un peu."
-- "Cherche un autre passage proche."
-- "Il y a 100 ouvrages ? Liste-les tous."
+- [ ] "Continue apres ce passage."
+- [ ] "Montre-moi la page precedente."
+- [ ] "Remonte un peu."
+- [ ] "Cherche un autre passage proche."
+- [ ] "Il y a 100 ouvrages ? Liste-les tous."
 
 ### Réduction du risque attendue
 
-Risque reduit par navigation explicite et bornee; risque bloque par garde `document_id` obligatoire.
+- [ ] Risque reduit par navigation explicite et bornee; risque bloque par garde `document_id` obligatoire.
 
 ### Critères de sortie
 
-- Navigation fonctionne sur etat valide.
-- Navigation clarifie sur etat absent.
-- Observabilite expose positions/hashes/counts seulement.
+- [ ] Navigation fonctionne sur etat valide.
+- [ ] Navigation clarifie sur etat absent.
+- [ ] Observabilite expose positions/hashes/counts seulement.
 
 ### Hors-scope
 
@@ -490,33 +548,33 @@ Risque de citation faussement certaine ou d'attribution incorrecte.
 
 ### Plan
 
-- Reutiliser et etendre `passage_selection.py`.
-- Definir seuils explicites de selection et d'ambiguite.
-- Tenir compte du document cible, de la proximite theme, de positions, de scores Catalogue et de preuves contextuelles.
-- Presenter candidats ou demander clarification quand l'ecart est insuffisant.
-- Ne pas transformer un candidat en passage certain sans preuve.
+- [ ] Reutiliser et etendre `passage_selection.py`.
+- [ ] Definir seuils explicites de selection et d'ambiguite.
+- [ ] Tenir compte du document cible, de la proximite theme, de positions, de scores Catalogue et de preuves contextuelles.
+- [ ] Presenter candidats ou demander clarification quand l'ecart est insuffisant.
+- [ ] Ne pas transformer un candidat en passage certain sans preuve.
 
 ### Patch attendu
 
-- Selection agentique content-free.
-- Tests de score gap et ambiguite.
-- Lane produit qui distingue candidat, passage retenu et clarification.
+- [ ] Selection agentique content-free.
+- [ ] Tests de score gap et ambiguite.
+- [ ] Lane produit qui distingue candidat, passage retenu et clarification.
 
 ### Tests / preuves
 
-- Theetete maieutique ambigu.
-- Sage-femme avec plusieurs candidats.
-- Verification "vient bien du Theetete ?".
-- Cas meilleur candidat faible -> clarification.
+- [ ] Theetete maieutique ambigu.
+- [ ] Sage-femme avec plusieurs candidats.
+- [ ] Verification "vient bien du Theetete ?".
+- [ ] Cas meilleur candidat faible -> clarification.
 
 ### Réduction du risque attendue
 
-Risque reduit par seuils et par clarification; risque accepte si Catalogue/OCR ne permet pas de trancher.
+- [ ] Risque reduit par seuils et par clarification; risque accepte si Catalogue/OCR ne permet pas de trancher.
 
 ### Critères de sortie
 
-- Les cas ambigus ne sont pas presentes comme certains.
-- Les candidats plausibles peuvent etre montres a Frida pour reponse naturelle prudente.
+- [ ] Les cas ambigus ne sont pas presentes comme certains.
+- [ ] Les candidats plausibles peuvent etre montres a Frida pour reponse naturelle prudente.
 
 ### Hors-scope
 
@@ -539,33 +597,33 @@ Risque que la reponse finale efface les incertitudes de l'agent ou pretende avoi
 
 ### Plan
 
-- Versionner la lane agent bibliothecaire.
-- Inclure statut, document, positions, passages bornes, candidats, limites.
-- Indiquer explicitement ambiguite ou not_found.
-- Ne pas injecter tout ouvrage.
-- Garder la lane avant le dernier message utilisateur, comme Biblio actuel, sauf preuve contraire.
+- [ ] Versionner la lane agent bibliothecaire.
+- [ ] Inclure statut, document, positions, passages bornes, candidats, limites.
+- [ ] Indiquer explicitement ambiguite ou not_found.
+- [ ] Ne pas injecter tout ouvrage.
+- [ ] Garder la lane avant le dernier message utilisateur, comme Biblio actuel, sauf preuve contraire.
 
 ### Patch attendu
 
-- Adaptation de `prompt_lane.py` ou nouveau builder dedie.
-- Tests d'injection et de neutralisation marqueurs.
-- Tests que `BiblioPromptLane.message` ou equivalent ne sort pas en observabilite.
+- [ ] Adaptation de `prompt_lane.py` ou nouveau builder dedie.
+- [ ] Tests d'injection et de neutralisation marqueurs.
+- [ ] Tests que `BiblioPromptLane.message` ou equivalent ne sort pas en observabilite.
 
 ### Tests / preuves
 
-- Passage exact injecte.
-- Ambiguite injectee comme ambiguite.
-- Catalogue complet injecte comme consultation bornee.
-- Prompt/log/admin sans lane complete.
+- [ ] Passage exact injecte.
+- [ ] Ambiguite injectee comme ambiguite.
+- [ ] Catalogue complet injecte comme consultation bornee.
+- [ ] Prompt/log/admin sans lane complete.
 
 ### Réduction du risque attendue
 
-Risque reduit par un contrat de lane explicite; risque rendu observable par counts/chars/hashes.
+- [ ] Risque reduit par un contrat de lane explicite; risque rendu observable par counts/chars/hashes.
 
 ### Critères de sortie
 
-- Frida peut repondre naturellement avec prudence.
-- La lane ne fuit pas dans les surfaces techniques.
+- [ ] Frida peut repondre naturellement avec prudence.
+- [ ] La lane ne fuit pas dans les surfaces techniques.
 
 ### Hors-scope
 
@@ -588,32 +646,32 @@ Risque de debug impossible ou de fuite de contenu/prompt/payload.
 
 ### Plan
 
-- Definir events agent: start, tool_call, selection, state_update, fallback, final.
-- Exposer endpoint kinds, durees, status, counts, ids courts, positions, hashes, model source, budgets.
-- Interdire passages, pages, titres bruts, auteurs bruts, requetes utilisateur brutes, payloads et prompts complets.
-- Etendre admin/dashboard/read-model seulement avec projections compactes.
+- [ ] Definir events agent: start, tool_call, selection, state_update, fallback, final.
+- [ ] Exposer endpoint kinds, durees, status, counts, ids courts, positions, hashes, model source, budgets.
+- [ ] Interdire passages, pages, titres bruts, auteurs bruts, requetes utilisateur brutes, payloads et prompts complets.
+- [ ] Etendre admin/dashboard/read-model seulement avec projections compactes.
 
 ### Patch attendu
 
-- Projection observability dediee.
-- Tests anti-fuite.
-- Read-model/dashboard si besoin.
+- [ ] Projection observability dediee.
+- [ ] Tests anti-fuite.
+- [ ] Read-model/dashboard si besoin.
 
 ### Tests / preuves
 
-- Unitaires anti-fuite.
-- Smoke strict agent.
-- Dashboard/read-model sans contenu brut.
-- Modele effectif observable sans secret.
+- [ ] Unitaires anti-fuite.
+- [ ] Smoke strict agent.
+- [ ] Dashboard/read-model sans contenu brut.
+- [ ] Modele effectif observable sans secret.
 
 ### Réduction du risque attendue
 
-Risque reduit par projections compactes; risque bloque par tests anti-fuite.
+- [ ] Risque reduit par projections compactes; risque bloque par tests anti-fuite.
 
 ### Critères de sortie
 
-- Chaque tour agentique est audit-able content-free.
-- Aucune surface technique ordinaire ne montre contenu d'ouvrage.
+- [ ] Chaque tour agentique est audit-able content-free.
+- [ ] Aucune surface technique ordinaire ne montre contenu d'ouvrage.
 
 ### Hors-scope
 
@@ -636,32 +694,32 @@ Risque de livrer un agent qui passe les unitaires mais echoue les demandes philo
 
 ### Plan
 
-- Etendre `app/biblio/smoke_live.py` ou creer un runner agent dedie.
-- Couvrir catalogue complet, 100 ouvrages, Platon, Theetete, maieutique, sage-femme, 126b-128a, navigation, verification et ambiguite.
-- Sorties strictement content-free.
-- Exit code non zero si fuite ou violation de statut attendu.
+- [ ] Etendre `app/biblio/smoke_live.py` ou creer un runner agent dedie.
+- [ ] Couvrir catalogue complet, 100 ouvrages, Platon, Theetete, maieutique, sage-femme, 126b-128a, navigation, verification et ambiguite.
+- [ ] Sorties strictement content-free.
+- [ ] Exit code non zero si fuite ou violation de statut attendu.
 
 ### Patch attendu
 
-- Runner smoke agent.
-- Fixtures attendues content-free.
-- Documentation des cas et resultats.
+- [ ] Runner smoke agent.
+- [ ] Fixtures attendues content-free.
+- [ ] Documentation des cas et resultats.
 
 ### Tests / preuves
 
-- `docker exec -w /app platform-fridadev python -m biblio.smoke_librarian_agent_live --jsonl`
-- Verification `raw_marker_leaks=false`.
-- Verification `payload_objects_retained=0`.
-- Verification des endpoint kinds et state updates attendus.
+- [ ] `docker exec -w /app platform-fridadev python -m biblio.smoke_librarian_agent_live --jsonl`
+- [ ] Verification `raw_marker_leaks=false`.
+- [ ] Verification `payload_objects_retained=0`.
+- [ ] Verification des endpoint kinds et state updates attendus.
 
 ### Réduction du risque attendue
 
-Risque reduit par validation produit live; risque rendu observable par matrice de cas.
+- [ ] Risque reduit par validation produit live; risque rendu observable par matrice de cas.
 
 ### Critères de sortie
 
-- Tous les cas obligatoires passent ou produisent une clarification explicitement acceptee.
-- Aucune fuite brute.
+- [ ] Tous les cas obligatoires passent ou produisent une clarification explicitement acceptee.
+- [ ] Aucune fuite brute.
 
 ### Hors-scope
 
@@ -684,35 +742,35 @@ Risque que l'agent se bloque, coute trop cher, attende trop longtemps ou expose 
 
 ### Plan
 
-- Budgets par tour: appels outils, appels modele, duree totale, contextes, variantes, chars lane.
-- Timeouts par outil Catalogue et par appel modele.
-- Retries bornes sur timeout/transient.
-- Fallback modele si modele principal indisponible ou invalide JSON.
-- Fallback deterministe si agent indisponible.
-- Degradation: clarification, reponse bornee, erreur propre.
+- [ ] Budgets par tour: appels outils, appels modele, duree totale, contextes, variantes, chars lane.
+- [ ] Timeouts par outil Catalogue et par appel modele.
+- [ ] Retries bornes sur timeout/transient.
+- [ ] Fallback modele si modele principal indisponible ou invalide JSON.
+- [ ] Fallback deterministe si agent indisponible.
+- [ ] Degradation: clarification, reponse bornee, erreur propre.
 
 ### Patch attendu
 
-- Configuration runtime budgets/timeouts.
-- Tests timeout modele, timeout Catalogue, JSON invalide, budget depasse.
-- Observabilite reason codes.
+- [ ] Configuration runtime budgets/timeouts.
+- [ ] Tests timeout modele, timeout Catalogue, JSON invalide, budget depasse.
+- [ ] Observabilite reason codes.
 
 ### Tests / preuves
 
-- Faux modele timeout.
-- Faux Catalogue timeout.
-- JSON tronque.
-- Outil trop lent.
-- Aucune fail suspend.
+- [ ] Faux modele timeout.
+- [ ] Faux Catalogue timeout.
+- [ ] JSON tronque.
+- [ ] Outil trop lent.
+- [ ] Aucune fail suspend.
 
 ### Réduction du risque attendue
 
-Risque reduit par budgets et fallback; risque accepte temporairement si le fallback deterministe couvre moins de cas mais reste propre.
+- [ ] Risque reduit par budgets et fallback; risque accepte temporairement si le fallback deterministe couvre moins de cas mais reste propre.
 
 ### Critères de sortie
 
-- Tous les echecs techniques aboutissent a clarification/reponse degradee/erreur propre.
-- Les budgets sont visibles content-free.
+- [ ] Tous les echecs techniques aboutissent a clarification/reponse degradee/erreur propre.
+- [ ] Les budgets sont visibles content-free.
 
 ### Hors-scope
 
@@ -735,36 +793,43 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 
 ### Plan
 
-- Rejouer tous les smokes stricts.
-- Rejouer les cas obligatoires en live.
-- Verifier GET-only et anti-fuite.
-- Verifier rollback feature flag.
-- Documenter limites restantes.
-- Mettre a jour README, `app/docs/README.md`, `AGENTS.md` si la TODO est archivee.
+- [ ] Rejouer tous les smokes stricts.
+- [ ] Rejouer les cas obligatoires en live.
+- [ ] Verifier GET-only et anti-fuite.
+- [ ] Verifier rollback feature flag.
+- [ ] Verifier agent off / mode parallele avant activation produit.
+- [ ] Rejouer les smokes comparatifs avant/apres: catalogue, TOC, passage exact, recherche thematique.
+- [ ] Documenter limites restantes.
+- [ ] Mettre a jour README, `app/docs/README.md`, `AGENTS.md` si la TODO est archivee.
 
 ### Patch attendu
 
-- Note de validation finale sous `app/docs/todo-done/validations/`.
-- TODO deplacee sous `app/docs/todo-done/product/` seulement si tous les criteres sont atteints.
-- Docs d'index mises a jour.
+- [ ] Note de validation finale sous `app/docs/todo-done/validations/`.
+- [ ] TODO deplacee sous `app/docs/todo-done/product/` seulement si tous les criteres sont atteints.
+- [ ] Docs d'index mises a jour.
 
 ### Tests / preuves
 
-- Unitaires agent.
-- Contrats chat/admin/dashboard/read-model.
-- Smokes live agent.
-- `git diff --check`.
-- Status final propre.
+- [ ] Unitaires agent.
+- [ ] Contrats chat/admin/dashboard/read-model.
+- [ ] Smokes live agent.
+- [ ] Smokes comparatifs agent vs deterministe.
+- [ ] Test rollback runtime.
+- [ ] Test toggle Biblio avec agent off.
+- [ ] `git diff --check`.
+- [ ] Status final propre.
 
 ### Réduction du risque attendue
 
-Risque reduit par validation live et archivage conditionnel; risque restant documente s'il ne bloque pas le GO.
+- [ ] Risque reduit par validation live et archivage conditionnel; risque restant documente s'il ne bloque pas le GO.
 
 ### Critères de sortie
 
-- GO produit seulement si les cas bibliotheque passent ou clarifient proprement.
-- NO-GO si etat multi-tour, GET-only, anti-fuite ou fallback echoue.
-- Aucun rebuild plateforme implicite.
+- [ ] GO produit seulement si les cas bibliotheque passent ou clarifient proprement.
+- [ ] NO-GO si etat multi-tour, GET-only, anti-fuite ou fallback echoue.
+- [ ] NO-GO si agent off/rollback n'est pas prouve.
+- [ ] NO-GO si les smokes comparatifs regressent catalogue, TOC, passage exact ou recherche thematique.
+- [ ] Aucun rebuild plateforme implicite.
 
 ### Hors-scope
 
