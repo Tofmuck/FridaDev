@@ -28,6 +28,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Cloture provisoire MVP Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-provisional-closure-2026-05-23.md`
 - Audit cible Catalogue humain editable et livraison Lot 0 2026-05-28: `states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 - Contrat Biblio native / Frida Catalogue 2026-05-28: `states/specs/frida-biblio-native-catalogue-contract.md`
+- Contrat agent bibliothecaire Biblio 2026-05-31: `states/specs/frida-biblio-librarian-agent-contract.md`
 - Audit Biblio / Catalogue et architecture agent bibliothecaire 2026-05-31: `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 - Baseline Lot 0 agent bibliothecaire Frida 2026-05-31: `states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 - TODO active agent bibliothecaire Frida 2026-05-31: `todo-todo/product/frida-biblio-librarian-agent-todo.md`
@@ -183,6 +184,7 @@ Extension livree: l'OCR bornee des PDF scannes est archivee dans `todo-done/prod
 
 Lire d'abord:
 - `states/specs/frida-biblio-native-catalogue-contract.md` pour le contrat source-of-truth: Biblio persistante separee, client FridaDev read-only / GET-only, toggle frontend, lane prompt dediee, observabilite content-free, frontieres avec `active_document`, workspace, Memory/RAG, Identity, Summary, Web, Hermeneutic et AnythingLLM.
+- `states/specs/frida-biblio-librarian-agent-contract.md` pour le contrat source-of-truth du futur agent bibliothecaire: entrees/sorties versionnees, modele runtime-configurable, feature flag/rollback, OpenRouter/JSON gate, outils GET-only, fallback deterministe et observabilite content-free.
 - `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md` pour l'audit courant Biblio/Catalogue et la proposition d'agent bibliothecaire borne: cartographie plateforme, repros live, findings P0/P1/P2/P3, routes lourdes/manquantes, et plan de migration depuis les modules existants.
 - `states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md` pour la baseline Lot 0 validee: smoke strict, matrice produit P01-P11 content-free, matrice Catalogue/API/plateforme, counts DB, routes lourdes/interdites et GO Lot 1.
 - `todo-todo/product/frida-biblio-librarian-agent-todo.md` pour la roadmap active de l'agent bibliothecaire Frida: etat conversationnel Biblio explicite, modele agent runtime-configurable, outils Catalogue GET-only, boucle agentique, OpenRouter/JSON, observabilite content-free et smokes produit.

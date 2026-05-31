@@ -4,7 +4,8 @@ Date: 2026-05-31
 Statut: TODO active canonique
 Classement: `app/docs/todo-todo/product/`
 Audit source: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
-Contrat source: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+Contrat source Biblio native: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+Contrat source agent Lot 2: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 Scope: plan produit/runtime pour agent bibliothecaire Frida, lots docs et runtime bornes.
 
@@ -19,6 +20,7 @@ Ce chantier ne livre pas encore l'agent. Il cadre les lots qui devront le livrer
 - `AGENTS.md`
 - `README.md`
 - `app/docs/README.md`
+- `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 - `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
@@ -34,7 +36,7 @@ Ce chantier ne livre pas encore l'agent. Il cadre les lots qui devront le livrer
 
 - Le frontend transmet `biblio_enabled` via `app/web/chat_biblio_mode.js`.
 - `app/core/chat_service.py` appelle `run_biblio_chat_turn(data, user_msg=user_msg, ...)`.
-- Le runtime Biblio actuel planifie a partir du dernier message utilisateur, sans etat Biblio conversationnel interne.
+- Le runtime Biblio actuel planifie a partir du dernier message utilisateur et exploite maintenant un etat conversationnel Biblio content-free Lot 1 / Lot 1 bis via `message.meta.biblio_state`.
 - `CatalogueClient` est GET-only et expose notamment `catalog`, `document`, `metadata`, `chapters`, `locate`, `context`, `search`.
 - Le client n'expose pas encore `page` ni `export/chunk`.
 - `query_planner.py` reste deterministe et porte deja des intents `list_catalog`, `open_document`, `show_table_of_contents`, `search_catalog`, `extract_passage`, `extract_range`.
@@ -327,40 +329,55 @@ Risque d'introduire un agent non testable, non observable ou lie a un modele har
 
 ### Plan
 
-- [ ] Specifier les entrees: message courant, dialogue recent borne, etat Biblio, catalogue tool registry, budgets.
-- [ ] Specifier les sorties: action plan, tool calls demandes, reponse structuree, mise a jour d'etat, lane candidate, clarification.
-- [ ] Versionner le schema interne.
-- [ ] Ajouter un contrat JSON seulement apres verification OpenRouter actuelle.
-- [ ] Produire l'artefact date OpenRouter/JSON: date, URLs, modele/slug observe, capacites confirmees ou non, decision, tests et fallback.
-- [ ] Prevoir fallback modele et fallback deterministe.
-- [ ] Interdire toute action non allowlistee.
+- [x] Specifier les entrees: message courant, dialogue recent borne, etat Biblio, catalogue tool registry, budgets.
+- [x] Specifier les sorties: action plan, tool calls demandes, reponse structuree, mise a jour d'etat, lane candidate, clarification.
+- [x] Versionner le schema interne cible.
+- [x] Ajouter un contrat OpenRouter/JSON comme gate obligatoire avant implementation runtime.
+- [x] Rendre obligatoire l'artefact date OpenRouter/JSON avant tout appel agent: date, URLs, modele/slug observe, capacites confirmees ou non, decision, tests et fallback.
+- [x] Prevoir fallback modele et fallback deterministe.
+- [x] Interdire toute action non allowlistee.
 
 ### Patch attendu
 
-- [ ] Spec ou module contractuel dedie avant runtime complet.
-- [ ] Runtime settings pour modele agent: primary/fallback/timeouts/budgets.
-- [ ] Tests de validation de configuration.
-- [ ] Observabilite modele effective sans secret.
+- [x] Spec contractuelle dediee avant runtime complet: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`.
+- [x] Contrat runtime settings pour modele agent: primary/fallback/timeouts/budgets, sans implementation runtime dans ce lot.
+- [x] Tests de validation de configuration specifies comme gates avant runtime.
+- [x] Observabilite modele effective sans secret specifiee comme contrat.
 
 ### Tests / preuves
 
-- [ ] Tests de schema valide/invalide.
-- [ ] Tests JSON absent, invalide, tronque, hors contrat, refus, texte libre.
-- [ ] Test lie a l'artefact OpenRouter: slug observe, capacites declarees, format payload attendu et fallback si non confirme.
-- [ ] Test fallback modele.
-- [ ] Test aucun fail suspend: Frida obtient clarification ou erreur propre.
+- [x] Tests de schema valide/invalide listes comme exigences avant runtime.
+- [x] Tests JSON absent, invalide, tronque, hors contrat, refus, texte libre listes comme exigences avant runtime.
+- [x] Test lie a l'artefact OpenRouter specifie: slug observe, capacites declarees, format payload attendu et fallback si non confirme.
+- [x] Test fallback modele specifie.
+- [x] Test aucun fail suspend specifie: Frida obtient clarification ou erreur propre.
+- [x] Preuves docs-only Lot 2: `git diff --check`, `git diff --cached --check`, grep contractuel et relecture du diff utile.
 
 ### Réduction du risque attendue
 
-- [ ] Risque reduit par contrat versionne et par degradation testee; risque rendu observable par status et reason codes.
+- [x] Risque reduit par contrat versionne et par degradation exigee; risque rendu observable par status et reason codes.
 
 ### Critères de sortie
 
-- [ ] Aucun modele hardcode.
-- [ ] DeepSeek V4 Pro est seulement candidat runtime verifie, pas slug invente.
-- [ ] Artefact OpenRouter date et source.
-- [ ] JSON/tool contract documente selon OpenRouter actuel.
-- [ ] Fallback prouve.
+- [x] Aucun modele hardcode dans le contrat.
+- [x] DeepSeek V4 Pro est seulement candidat runtime a verifier, pas slug invente.
+- [x] Artefact OpenRouter date et source rendu obligatoire avant implementation runtime.
+- [x] JSON/tool contract documente comme gate a verifier selon OpenRouter actuel avant implementation.
+- [x] Fallback modele et fallback deterministe specifies; preuve runtime obligatoire avant activation agent.
+
+Photo operatoire Lot 2 - 2026-05-31:
+
+- `app/docs/states/specs/frida-biblio-librarian-agent-contract.md` livre le contrat normatif agent bibliothecaire;
+- le futur agent reste `off` par defaut et pilote par feature flag/mode runtime;
+- le toggle `biblio_enabled` autorise Biblio mais ne force pas le futur agent;
+- le modele agent est runtime-configurable, jamais hardcode;
+- DeepSeek V4 Pro reste candidat a verifier, sans slug invente;
+- l'artefact OpenRouter/JSON date est un gate bloquant avant tout appel modele agent;
+- le schema conceptuel `biblio_librarian_agent_v1` est defini;
+- les outils futurs sont limites a un registre GET-only explicite;
+- `latest/page`, `latest/context`, routes mutantes et `GET /doc/{id}` automatique/non borne restent interdits;
+- l'observabilite agent doit rester content-free;
+- aucun runtime agent, aucun appel OpenRouter, aucun outil page, aucun rebuild.
 
 ### Hors-scope
 
@@ -896,12 +913,14 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 ## Risques documentes mais non corriges par cette TODO
 
 - Pas encore d'agent bibliothecaire runtime.
+- Contrat agent bibliothecaire Lot 2 livre, mais pas encore implemente.
 - Etat Biblio conversationnel Lot 1/Lot 1 bis livre et exploite, mais borne a un etat content-free, un attachement conditionnel, des clarifications et une persistance seulement apres sauvegarde normale reussie.
 - Pas encore d'outil page cote FridaDev; P09 reste une surveillance, pas une promesse de navigation complete.
 - P03 reste une surveillance planner/intention, pas une promesse de correction complete par l'etat Lot 1.
 - Pas encore de navigation precedente/suivante complete cote FridaDev.
-- Pas encore de verification OpenRouter actuelle pour JSON/structured outputs.
-- Pas encore de section runtime settings pour le modele agent.
+- Pas encore de verification OpenRouter actuelle pour JSON/structured outputs; l'artefact date reste gate obligatoire avant implementation runtime.
+- Pas encore de section runtime settings implementee pour le modele agent.
+- Pas encore de preuve runtime fallback modele/fallback deterministe agent.
 
 ## Risques que la future architecture devra reduire
 
@@ -925,12 +944,14 @@ Lot 0 valide.
 
 Lot 1 et correction Lot 1 bis livres.
 
+Lot 2 contrat/spec agent bibliothecaire livre.
+
 NO-GO pour declarer l'agent bibliothecaire produit livre.
 
-GO conditionnel pour ouvrir le Lot 2 comme lot contrat/spec agent bibliothecaire, sans runtime agent complet.
+GO conditionnel pour ouvrir le Lot 3 comme lot registre d'outils Catalogue GET-only, sans modele agent, sans boucle agentique, sans outil page et sans activation runtime.
 
 NO-GO pour coder directement l'agent.
 
-NO-GO pour faire deborder Lot 2 vers outil page, navigation complete, OpenRouter non verifie ou agent bibliothecaire complet.
+NO-GO pour faire deborder Lot 3 vers outil page, navigation complete, OpenRouter non verifie ou agent bibliothecaire complet.
 
-Risques restants reels: agent absent, outil page absent, OpenRouter/JSON non verifie, modele agent non configure.
+Risques restants reels: agent absent, outil page absent, OpenRouter/JSON non verifie, modele agent non configure, fallback agent non prouve.
