@@ -882,54 +882,81 @@ du contenu brut.
 
 `PLAN / PATCH / TEST / RISKS / AGENT CONTRACT / GO-NO-GO Lot 8`.
 
-## Lot 8 — Injection lane et reponse Frida
+## Lot 8 — Integration comparative agentique non souveraine
 
 ### Objectif
 
-Donner a Frida les passages consultes, les limites et les ambiguities dans une lane claire, pour une reponse naturelle et prudente.
+Brancher le socle agentique dans le runtime Biblio comme comparateur
+observable, sans donner le controle produit a l'agent.
 
 ### Risque produit traité
 
-Risque que la reponse finale efface les incertitudes de l'agent ou pretende avoir lu plus que la lane.
+Risque de passer d'un socle agentique teste en isolation a une activation
+produit trop rapide. Risque inverse: garder l'agent hors runtime et ne jamais
+observer sa comparaison avec le deterministe.
 
 ### Plan
 
-- [ ] Versionner la lane agent bibliothecaire.
-- [ ] Inclure statut, document, positions, passages bornes, candidats, limites.
-- [ ] Indiquer explicitement ambiguite ou not_found.
-- [ ] Ne pas injecter tout ouvrage.
-- [ ] Garder la lane avant le dernier message utilisateur, comme Biblio actuel, sauf preuve contraire.
+- [x] Construire une `BiblioLibrarianAgentRequest` bornee depuis le message
+  courant, le dialogue recent, l'etat Biblio content-free, la baseline
+  deterministe et les settings runtime.
+- [x] Appeler l'agent uniquement si Biblio est activee et si le mode agent
+  n'est pas `off`.
+- [x] Garder le deterministe comme controleur unique de la reponse produit.
+- [x] En `shadow` et `candidate`, observer le plan agent sans modifier la
+  reponse ni le prompt produit.
+- [x] En `active`, refuser encore l'activation produit et ne pas appeler le
+  provider.
+- [x] Ajouter une comparaison content-free dans l'evenement Biblio:
+  mode, model_called, candidate_plan_present, used_for_response=false,
+  deterministic_controller=true, product_response_changed=false.
+- [x] Proteger le fallback deterministe si le comparateur agent echoue.
 
 ### Patch attendu
 
-- [ ] Adaptation de `prompt_lane.py` ou nouveau builder dedie.
-- [ ] Tests d'injection et de neutralisation marqueurs.
-- [ ] Tests que `BiblioPromptLane.message` ou equivalent ne sort pas en observabilite.
+- [x] Nouveau module dedie `app/biblio/librarian_agent_runtime.py`.
+- [x] Wiring minimal dans `app/biblio/chat_runtime.py` apres baseline
+  deterministe.
+- [x] Passage du dialogue recent borne depuis `app/core/chat_service.py`.
+- [x] Extension passive de `app/biblio/observability.py` pour la projection
+  agent.
 
 ### Tests / preuves
 
-- [ ] Passage exact injecte.
-- [ ] Ambiguite injectee comme ambiguite.
-- [ ] Catalogue complet injecte comme consultation bornee.
-- [ ] Prompt/log/admin sans lane complete.
+- [x] Mode agent `off`: aucun appel modele.
+- [x] Biblio toggle off: aucun appel agent.
+- [x] `shadow`: modele fake appele, reponse deterministe inchangee.
+- [x] `candidate`: plan candidat observable, reponse deterministe inchangee.
+- [x] `active`: non active produit, aucun remplacement souverain.
+- [x] JSON invalide, outil interdit, timeout provider et exception runtime
+  agent: fallback deterministe.
+- [x] Observabilite agent sans message brut, dialogue brut, prompt, raw JSON,
+  passage, titre, auteur, locator ou payload Catalogue.
 
 ### Réduction du risque attendue
 
-- [ ] Risque reduit par un contrat de lane explicite; risque rendu observable par counts/chars/hashes.
+- [x] Risque reduit par comparaison runtime observable avant activation:
+  l'agent peut etre evalue en conditions Biblio sans controler la reponse.
 
 ### Critères de sortie
 
-- [ ] Frida peut repondre naturellement avec prudence.
-- [ ] La lane ne fuit pas dans les surfaces techniques.
+- [x] L'agent ne peut pas influencer la reponse produit.
+- [x] L'agent n'est pas appele en mode `off`.
+- [x] Biblio off ne declenche pas d'agent.
+- [x] Le fallback deterministe reste intact.
+- [x] Les projections restent content-free.
 
 ### Hors-scope
 
+- Injection lane/reponse Frida pilotee par le plan agent.
+- Execution des outils proposes par le modele pour produire la reponse finale.
+- Activation produit `active`.
 - Changement du contrat principal de sortie assistant.
 - Streaming UI.
 
 ### Format de retour attendu
 
-`PLAN / PATCH / TEST / RISKS / LANE PROOF / GO-NO-GO Lot 9`.
+`PLAN / PATCH / TEST / RISKS / COMPARISON PROOF / GO-NO-GO Lot 9`.
 
 ## Lot 9 — Observabilite content-free
 
@@ -1180,23 +1207,24 @@ appliquee sur coherence `passage_context` et anti-fuite `repr(result)`.
 Lot 4 boucle/planner bibliothecaire borne livre comme module non branche
 produit, sans modele externe reel.
 
+Lot 5 comprehension implicite/dialogue livre.
+
+Lot 6 navigation bornee livre.
+
+Lot 7 socle OpenRouter/JSON livre, avec validation stricte, mode `off` par
+defaut et `provider.require_parameters=true` invariant.
+
+Lot 8 integration comparative runtime livre: l'agent peut etre appele en
+`shadow`/`candidate` quand Biblio est activee, mais le deterministe reste le
+controleur et `used_for_response=false`.
+
 NO-GO pour declarer l'agent bibliothecaire produit livre.
 
-GO conditionnel pour ouvrir le Lot 5 comprehension implicite/dialogue,
-seulement si les preuves Lot 4 restent vertes, sans activation produit par
-defaut et sous preuve OpenRouter/JSON separee avant tout appel modele.
+NO-GO pour activer `active`, executer les outils proposes par le modele dans
+le chat produit, remplacer le chemin deterministe, ajouter outil page,
+`export/chunk`, navigation complete, modele hardcode ou route plateforme.
 
-NO-GO pour coder directement l'agent.
-
-NO-GO pour faire deborder Lot 5 vers outil page, `export/chunk`, navigation
-complete, OpenRouter non verifie, modele hardcode, activation runtime ou agent
-bibliothecaire complet.
-
-NO-GO Lot 5 si la boucle Lot 4 n'est plus bornee, fuit via observabilite ou
-`repr`, importe OpenRouter/chat/model/LLM, si `librarian_tools.py` est
-regonfle sans necessite vitale, ou si la comprehension implicite/dialogue est
-empilee dans `librarian_planner.py` au lieu d'une responsabilite dediee.
-
-Risques restants reels: pas de smoke modele reel, pas de branchement chat
-produit de l'agent, pas d'activation `active`, pas de runtime settings admin/DB
-dedies, outil page absent et `export/chunk` absent.
+Risques restants reels: pas de smoke modele reel, pas de branchement produit
+du plan agent, pas d'execution d'outils agentiques pour reponse finale, pas
+d'activation `active`, pas de runtime settings admin/DB dedies, outil page
+absent et `export/chunk` absent.

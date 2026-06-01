@@ -4,6 +4,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 APP_DIR = Path(__file__).resolve().parents[3]
@@ -15,6 +16,10 @@ from biblio import catalogue_client as catalogue
 from biblio import conversation_followup
 from biblio import conversation_state
 from biblio import library_runtime
+from biblio import librarian_agent
+from biblio import librarian_agent_contract as agent_contract
+from biblio import librarian_agent_openrouter as agent_openrouter
+from biblio import librarian_tools
 from biblio import passage_extractor as extractor
 from biblio import prompt_lane
 from biblio import query_planner
@@ -95,6 +100,143 @@ class BiblioChatRuntimeTests(unittest.TestCase):
                 self.assertIsNone(result.prompt_message)
                 self.assertEqual(result.observability_payload["status"], "not_used")
                 self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+
+    def test_agent_mode_off_does_not_call_model(self) -> None:
+        fake_model = _FakeAgentModel(_valid_agent_json())
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Explique simplement ce concept.",
+            client_factory=_raising_client_factory,
+            config_module=SimpleNamespace(BIBLIO_LIBRARIAN_AGENT_MODE="off"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+
+        self.assertFalse(result.used)
+        self.assertEqual(fake_model.calls, 0)
+        self.assertEqual(result.observability_payload["librarian_agent"]["status"], "skipped")
+        self.assertFalse(result.observability_payload["librarian_agent"]["model_called"])
+
+    def test_biblio_toggle_off_does_not_call_agent_even_if_agent_shadow_configured(self) -> None:
+        fake_model = _FakeAgentModel(_valid_agent_json())
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": False},
+            user_msg="passage 126b dans Platon",
+            client_factory=_raising_client_factory,
+            config_module=_agent_config("shadow"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+
+        self.assertFalse(result.enabled)
+        self.assertFalse(result.used)
+        self.assertEqual(fake_model.calls, 0)
+        self.assertEqual(result.observability_payload["librarian_agent"], {})
+
+    def test_agent_shadow_compares_without_changing_deterministic_response(self) -> None:
+        fake_model = _FakeAgentModel(_valid_agent_json(tool_name=librarian_tools.TOOL_CATALOG_SEARCH, params={"query": "hidden"}))
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Explique simplement ce concept.",
+            recent_dialogue=({"role": "user", "content": "RAW DIALOGUE MUST NOT LEAK"},),
+            client_factory=_raising_client_factory,
+            config_module=_agent_config("shadow"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertFalse(result.used)
+        self.assertIsNone(result.prompt_message)
+        self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+        self.assertEqual(fake_model.calls, 1)
+        self.assertEqual(observed["mode"], "shadow")
+        self.assertTrue(observed["model_called"])
+        self.assertFalse(observed["used_for_response"])
+        self.assertTrue(observed["deterministic_controller"])
+        self.assertFalse(observed["product_response_changed"])
+        self.assertNotIn("Explique simplement ce concept.", encoded)
+        self.assertNotIn("RAW DIALOGUE MUST NOT LEAK", encoded)
+        self.assertNotIn("hidden", encoded)
+
+    def test_agent_candidate_keeps_candidate_observable_without_using_response(self) -> None:
+        fake_model = _FakeAgentModel(_valid_agent_json(tool_name=librarian_tools.TOOL_CATALOG_LIST, params={"limit": 10}))
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Explique simplement ce concept.",
+            client_factory=_raising_client_factory,
+            config_module=_agent_config("candidate"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+
+        self.assertFalse(result.used)
+        self.assertEqual(fake_model.calls, 1)
+        self.assertEqual(observed["mode"], "candidate")
+        self.assertTrue(observed["candidate_plan_present"])
+        self.assertFalse(observed["used_for_response"])
+
+    def test_agent_active_is_not_product_enabled(self) -> None:
+        fake_model = _FakeAgentModel(_valid_agent_json())
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Explique simplement ce concept.",
+            client_factory=_raising_client_factory,
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+
+        self.assertFalse(result.used)
+        self.assertEqual(fake_model.calls, 0)
+        self.assertEqual(observed["agent"]["reason_code"], librarian_agent.REASON_ACTIVE_NOT_ENABLED)
+        self.assertFalse(observed["used_for_response"])
+        self.assertTrue(observed["fallback_deterministic"])
+
+    def test_agent_invalid_json_forbidden_tool_and_timeout_keep_deterministic_response(self) -> None:
+        cases = [
+            _FakeAgentModel("not json"),
+            _FakeAgentModel(_valid_agent_json(tool_name="latest/page")),
+            _FakeAgentModel(
+                response=agent_openrouter.BiblioLibrarianAgentModelResponse(
+                    status=agent_openrouter.STATUS_ERROR,
+                    reason_code=agent_openrouter.REASON_TIMEOUT,
+                    attempt_count=1,
+                )
+            ),
+        ]
+        for fake_model in cases:
+            with self.subTest(response=fake_model.response.reason_code if fake_model.response else "content"):
+                result = chat_runtime.run_biblio_chat_turn(
+                    {"biblio_enabled": True},
+                    user_msg="Explique simplement ce concept.",
+                    client_factory=_raising_client_factory,
+                    config_module=_agent_config("shadow"),
+                    librarian_agent_factory=lambda fake=fake_model: librarian_agent.BiblioLibrarianAgent(fake),
+                )
+                observed = result.observability_payload["librarian_agent"]
+
+                self.assertFalse(result.used)
+                self.assertIsNone(result.prompt_message)
+                self.assertFalse(observed["used_for_response"])
+                self.assertTrue(observed["fallback_deterministic"])
+
+    def test_agent_runtime_exception_keeps_deterministic_response(self) -> None:
+        def raising_agent_factory():
+            raise RuntimeError("RAW MODEL FAILURE MUST NOT LEAK")
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Explique simplement ce concept.",
+            client_factory=_raising_client_factory,
+            config_module=_agent_config("shadow"),
+            librarian_agent_factory=raising_agent_factory,
+        )
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertFalse(result.used)
+        self.assertIsNone(result.prompt_message)
+        self.assertEqual(result.observability_payload["librarian_agent"]["status"], "fallback_deterministic")
+        self.assertFalse(result.observability_payload["librarian_agent"]["used_for_response"])
+        self.assertNotIn("RAW MODEL FAILURE MUST NOT LEAK", encoded)
 
     def test_non_used_turn_with_existing_state_does_not_reattach_current_user_message(self) -> None:
         state, _transition = conversation_state.update_state_from_runtime(
@@ -993,6 +1135,33 @@ class _FakeExtractor:
         return _passage(RAW_PASSAGE)
 
 
+class _FakeAgentModel:
+    def __init__(
+        self,
+        content: str = "",
+        *,
+        response: agent_openrouter.BiblioLibrarianAgentModelResponse | None = None,
+    ) -> None:
+        self.content = content
+        self.response = response
+        self.calls = 0
+        self.requests: list[agent_contract.BiblioLibrarianAgentRequest] = []
+
+    def complete(self, request, *, settings=None):
+        self.calls += 1
+        self.requests.append(request)
+        if self.response is not None:
+            return self.response
+        return agent_openrouter.BiblioLibrarianAgentModelResponse(
+            status=agent_openrouter.STATUS_OK,
+            reason_code=agent_openrouter.REASON_OK,
+            content=self.content,
+            finish_reason="stop",
+            attempt_count=1,
+            response_chars=len(self.content),
+        )
+
+
 class _RuntimeResult:
     def __init__(self, *, passage_result=None, status: str) -> None:
         self.status = status
@@ -1005,6 +1174,38 @@ class _RuntimeResult:
 
 def _raising_client_factory(**_kwargs):
     raise AssertionError("Catalogue client must not be built")
+
+
+def _agent_config(mode: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        BIBLIO_LIBRARIAN_AGENT_MODE=mode,
+        BIBLIO_LIBRARIAN_AGENT_MODEL="model/x",
+        BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS=3,
+    )
+
+
+def _valid_agent_json(
+    *,
+    tool_name: str = librarian_tools.TOOL_CATALOG_LIST,
+    params: dict[str, object] | None = None,
+) -> str:
+    return json.dumps(
+        {
+            "schema_version": agent_contract.SCHEMA_VERSION,
+            "intent": "list_catalog",
+            "tool_calls": [
+                {
+                    "tool_name": tool_name,
+                    "method": "GET",
+                    "params": dict(params or {"limit": 10}),
+                }
+            ],
+            "answer_mode": "tool",
+            "risk_flags": [],
+            "fallback_reason": "",
+        },
+        ensure_ascii=False,
+    )
 
 
 def _passage(passage: str) -> extractor.BiblioPassageResult:

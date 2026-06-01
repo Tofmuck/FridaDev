@@ -61,6 +61,7 @@ _TOKEN_KEYS = {
     "error_class",
     "event_kind",
     "kind",
+    "mode",
     "module_key",
     "query_kind",
     "reason_code",
@@ -169,6 +170,7 @@ def build_biblio_event_payload(
     prompt_lane: Any = None,
     biblio_state: Any = None,
     state_transition: Any = None,
+    librarian_agent: Any = None,
     status: str = "",
     reason_code: str = "",
 ) -> dict[str, Any]:
@@ -190,6 +192,7 @@ def build_biblio_event_payload(
     lane_projection = _prompt_lane_projection(prompt_lane)
     state_projection = _object_projection(biblio_state)
     state_transition_projection = _object_projection(state_transition)
+    librarian_agent_projection = _object_projection(librarian_agent)
     passage_search_projection = _passage_search_projection(
         client_items=client_items,
         extractor=extractor_projection,
@@ -209,6 +212,7 @@ def build_biblio_event_payload(
         resolver_projection,
         extractor_projection,
         lane_projection,
+        librarian_agent_projection,
     )
     effective_used = bool(used or client_items or resolver_projection or extractor_projection or lane_projection)
     effective_status = _event_status(
@@ -239,6 +243,7 @@ def build_biblio_event_payload(
         "lane": lane_projection,
         "state": state_projection,
         "state_transition": state_transition_projection,
+        "librarian_agent": librarian_agent_projection,
         "passage_search": passage_search_projection,
         "counts": counts,
         "confidence": {

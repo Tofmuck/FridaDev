@@ -53,9 +53,8 @@ coder directement l'agent runtime.
 Etat courant: Lot 3 outils GET-only livre, Lot 4 boucle/planner
 bibliothecaire bornee livre comme module non branche, Lot 5 comprehension
 implicite/dialogue livre, Lot 6 navigation bornee livre, et Lot 7 socle
-agentique non active livre. Le prochain GO est seulement conditionnel pour
-ouvrir un Lot 8 d'integration ou de comparaison agentique, sans activation
-produit par defaut.
+agentique non active livre. Lot 8 integre ce socle comme comparaison runtime
+observable, sans activation produit par defaut.
 
 Le Lot 3 peut definir le registre d'outils Catalogue bornes si et seulement si:
 
@@ -844,7 +843,74 @@ NO-GO retroactif Lot 7 si un patch ulterieur:
 - remplace le chemin deterministe sans rollback;
 - expose un contenu brut dans admin/dashboard/logs/read-model/smokes.
 
-## 21. Hors-scope
+## 21. Lot 8 livre
+
+Lot 8 integre l'agent dans le runtime Biblio uniquement comme comparateur
+observable et reversible.
+
+Implementation:
+
+- module comparateur: `app/biblio/librarian_agent_runtime.py`;
+- wiring: `app/biblio/chat_runtime.py` apres decision/baseline
+  deterministe;
+- dialogue recent borne passe depuis `app/core/chat_service.py`;
+- projection content-free ajoutee dans l'evenement Biblio sous
+  `librarian_agent`;
+- aucun outil propose par le modele n'est execute dans le chat produit;
+- aucune lane prompt n'est construite depuis le plan agent;
+- `used_for_response` reste toujours false;
+- `product_response_changed` reste false;
+- `deterministic_controller` reste true.
+
+Modes:
+
+- Biblio off -> aucun comparateur agent et aucun appel modele;
+- mode agent `off` -> comparateur skipped, aucun appel modele;
+- `shadow` -> appel modele possible si modele/provider configures, plan valide
+  observe, reponse deterministe inchangee;
+- `candidate` -> plan candidat conserve/observe, reponse deterministe
+  inchangee;
+- `active` -> toujours non active produit, aucun remplacement souverain.
+
+Fallback:
+
+- JSON invalide, outil interdit, plan non executable, timeout provider,
+  erreur provider ou exception du comparateur -> fallback deterministe;
+- l'erreur du comparateur ne peut pas transformer le tour Biblio en decision
+  produit agentique.
+
+Observabilite Lot 8 autorisee:
+
+- mode;
+- status / reason code;
+- model_called;
+- candidate_plan_present;
+- deterministic_controller;
+- product_response_changed;
+- used_for_response;
+- hashes/longueurs du message courant et dialogue recent via la requete agent;
+- observations agent deja expurgees par Lot 7.
+
+Observabilite Lot 8 interdite:
+
+- message utilisateur brut;
+- dialogue brut;
+- prompt agent;
+- raw JSON modele;
+- params d'outils bruts;
+- passage, titre, auteur, locator, payload Catalogue ou secret.
+
+NO-GO retroactif Lot 8 si un patch ulterieur:
+
+- utilise le plan agent pour repondre a l'utilisateur sans lot d'activation
+  separe;
+- appelle l'agent quand Biblio est desactivee;
+- appelle le modele en mode agent `off`;
+- transforme `candidate` en decision produit;
+- casse le fallback deterministe;
+- expose du contenu brut dans les projections techniques.
+
+## 22. Hors-scope
 
 - activation produit de l'agent;
 - remplacement du chemin deterministe;

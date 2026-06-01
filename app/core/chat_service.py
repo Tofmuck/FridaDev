@@ -450,6 +450,24 @@ def _emit_biblio_observability(result: Any) -> None:
     )
 
 
+def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> tuple[dict[str, str], ...]:
+    messages = conversation.get('messages')
+    if not isinstance(messages, list):
+        return ()
+    selected: list[dict[str, str]] = []
+    for raw_message in messages[-12:]:
+        if not isinstance(raw_message, Mapping):
+            continue
+        role = str(raw_message.get('role') or '').strip()
+        if role not in {'user', 'assistant'}:
+            continue
+        content = str(raw_message.get('content') or '')
+        if role == 'user' and content == user_msg and raw_message is messages[-1]:
+            continue
+        selected.append({'role': role, 'content': content})
+    return tuple(selected[-8:])
+
+
 def _run_hermeneutic_node_insertion_point(
     *,
     conversation: Mapping[str, Any],
@@ -741,6 +759,7 @@ def chat_response(
         user_msg=user_msg,
         conversation_id=conversation.get('id'),
         conversation_state=biblio_state,
+        recent_dialogue=_biblio_recent_dialogue(conversation, user_msg),
         now_iso=now_iso_value,
         config_module=config_module,
     )

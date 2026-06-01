@@ -26,6 +26,7 @@ from .conversation_state import (
 )
 from .document_resolver import BiblioResolveRequest
 from .library_runtime import run_biblio_library_plan
+from .librarian_agent_runtime import run_biblio_librarian_agent_comparison
 from .observability import build_biblio_event_payload
 from .passage_context_search import BiblioPassageContextSearchResult
 from .passage_extractor import BiblioPassageExtractor, BiblioPassageResult
@@ -70,6 +71,7 @@ class BiblioChatResult:
     prompt_lane: Any = field(default=None, repr=False, compare=False)
     biblio_state: BiblioConversationState | None = field(default=None, repr=False, compare=False)
     state_transition: BiblioStateTransition | None = field(default=None, repr=False, compare=False)
+    librarian_agent_result: Any = field(default=None, repr=False, compare=False)
 
     @property
     def prompt_message(self) -> dict[str, Any] | None:
@@ -115,12 +117,15 @@ def run_biblio_chat_turn(
     user_msg: str,
     conversation_id: str = "",
     conversation_state: BiblioConversationState | None = None,
+    recent_dialogue: Sequence[Mapping[str, Any]] = (),
     now_iso: str = "",
     config_module: Any = None,
     client_factory: Any = CatalogueClient,
     extractor_factory: Any = BiblioPassageExtractor,
     lane_builder: Any = build_biblio_prompt_lane,
     observability_builder: Any = build_biblio_event_payload,
+    librarian_agent_runner: Any = run_biblio_librarian_agent_comparison,
+    librarian_agent_factory: Any = None,
 ) -> BiblioChatResult:
     state_before = (
         conversation_state
@@ -139,6 +144,19 @@ def run_biblio_chat_turn(
                 conversation_id=conversation_id,
                 now_iso=now_iso,
             )
+            librarian_agent_result = _run_librarian_agent_comparison(
+                runner=librarian_agent_runner,
+                factory=librarian_agent_factory,
+                enabled=True,
+                user_msg=user_msg,
+                recent_dialogue=recent_dialogue,
+                biblio_state=state_after,
+                deterministic_plan=decision.query_plan,
+                deterministic_status=clarification.to_observability()["status"],
+                deterministic_reason_code=clarification.reason_code,
+                deterministic_query_kind=QUERY_KIND_STATE_FOLLOWUP,
+                config_module=config_module,
+            )
             payload = observability_builder(
                 enabled=True,
                 used=True,
@@ -146,6 +164,7 @@ def run_biblio_chat_turn(
                 prompt_lane=clarification,
                 biblio_state=state_after,
                 state_transition=state_transition,
+                librarian_agent=librarian_agent_result,
                 status=clarification.to_observability()["status"],
                 reason_code=clarification.reason_code,
             )
@@ -157,10 +176,24 @@ def run_biblio_chat_turn(
                 prompt_lane=clarification,
                 biblio_state=state_after,
                 state_transition=state_transition,
+                librarian_agent_result=librarian_agent_result,
                 observability_payload=payload,
             )
 
         status = "not_applicable" if not decision.enabled else "not_used"
+        librarian_agent_result = _run_librarian_agent_comparison(
+            runner=librarian_agent_runner,
+            factory=librarian_agent_factory,
+            enabled=decision.enabled,
+            user_msg=user_msg,
+            recent_dialogue=recent_dialogue,
+            biblio_state=state_before if state_before.present else None,
+            deterministic_plan=decision.query_plan,
+            deterministic_status=status,
+            deterministic_reason_code=decision.reason_code,
+            deterministic_query_kind=decision.query_kind,
+            config_module=config_module,
+        )
         payload = observability_builder(
             enabled=decision.enabled,
             used=False,
@@ -169,6 +202,7 @@ def run_biblio_chat_turn(
             reason_code=decision.reason_code,
             resolution=decision.query_plan,
             biblio_state=state_before if state_before.present else None,
+            librarian_agent=librarian_agent_result,
         )
         return BiblioChatResult(
             enabled=decision.enabled,
@@ -176,6 +210,7 @@ def run_biblio_chat_turn(
             reason_code=decision.reason_code,
             query_kind=decision.query_kind,
             biblio_state=state_before if state_before.present else None,
+            librarian_agent_result=librarian_agent_result,
             observability_payload=payload,
         )
 
@@ -197,6 +232,19 @@ def run_biblio_chat_turn(
             now_iso=now_iso,
             reason_code="biblio_state_updated_from_runtime",
         )
+        librarian_agent_result = _run_librarian_agent_comparison(
+            runner=librarian_agent_runner,
+            factory=librarian_agent_factory,
+            enabled=True,
+            user_msg=user_msg,
+            recent_dialogue=recent_dialogue,
+            biblio_state=state_after,
+            deterministic_plan=query_plan,
+            deterministic_status=library_result.status,
+            deterministic_reason_code=library_result.reason_code or decision.reason_code,
+            deterministic_query_kind=decision.query_kind,
+            config_module=config_module,
+        )
         payload = observability_builder(
             enabled=True,
             used=True,
@@ -207,6 +255,7 @@ def run_biblio_chat_turn(
             prompt_lane=library_result.prompt_lane or library_result.consultation_message,
             biblio_state=state_after,
             state_transition=state_transition,
+            librarian_agent=librarian_agent_result,
             status=library_result.status,
             reason_code=library_result.reason_code or decision.reason_code,
         )
@@ -220,6 +269,7 @@ def run_biblio_chat_turn(
             prompt_lane=library_result.prompt_lane or library_result.consultation_message,
             biblio_state=state_after,
             state_transition=state_transition,
+            librarian_agent_result=librarian_agent_result,
             observability_payload=payload,
         )
     except Exception as exc:
@@ -296,6 +346,51 @@ def _apply_conversation_state_to_plan(
     if not document_id:
         return plan
     return replace(plan, document_id=document_id)
+
+
+def _run_librarian_agent_comparison(
+    *,
+    runner: Any,
+    factory: Any,
+    enabled: bool,
+    user_msg: str,
+    recent_dialogue: Sequence[Mapping[str, Any]],
+    biblio_state: BiblioConversationState | None,
+    deterministic_plan: Any,
+    deterministic_status: str,
+    deterministic_reason_code: str,
+    deterministic_query_kind: str,
+    config_module: Any,
+) -> Any:
+    if not enabled:
+        return None
+    kwargs = {
+        "biblio_enabled": True,
+        "user_msg": user_msg,
+        "recent_dialogue": recent_dialogue,
+        "biblio_state": biblio_state,
+        "deterministic_plan": deterministic_plan,
+        "deterministic_status": deterministic_status,
+        "deterministic_reason_code": deterministic_reason_code,
+        "deterministic_query_kind": deterministic_query_kind,
+        "config_module": config_module,
+    }
+    if factory is not None:
+        kwargs["agent_factory"] = factory
+    try:
+        return runner(**kwargs)
+    except Exception as exc:
+        return {
+            "present": True,
+            "status": "fallback_deterministic",
+            "reason_code": "biblio_librarian_agent_runtime_error",
+            "error_class": exc.__class__.__name__,
+            "model_called": False,
+            "used_for_response": False,
+            "fallback_deterministic": True,
+            "deterministic_controller": True,
+            "product_response_changed": False,
+        }
 
 
 def _truthy(value: Any) -> bool:
