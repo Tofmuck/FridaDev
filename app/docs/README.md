@@ -31,6 +31,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat agent bibliothecaire Biblio 2026-05-31: `states/specs/frida-biblio-librarian-agent-contract.md`
 - Audit Biblio / Catalogue et architecture agent bibliothecaire 2026-05-31: `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 - Baseline Lot 0 agent bibliothecaire Frida 2026-05-31: `states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
+- Verification OpenRouter / JSON du socle agent bibliothecaire 2026-06-01: `states/baselines/frida-biblio-librarian-agent-openrouter-json-2026-06-01.md`
 - TODO active agent bibliothecaire Frida 2026-05-31: `todo-todo/product/frida-biblio-librarian-agent-todo.md`
 - Validation finale Biblio native / Frida Catalogue 2026-05-29: `todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 - Roadmap archivee Biblio vraie bibliotheque / recherche de passages 2026-05-30: `todo-done/product/frida-biblio-real-library-passage-search-todo.md`

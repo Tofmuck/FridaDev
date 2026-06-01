@@ -13,7 +13,9 @@ Scope: plan produit/runtime pour agent bibliothecaire Frida, lots docs et runtim
 
 Frida doit pouvoir utiliser la bibliotheque comme une vraie bibliotheque, pas seulement comme un parser de requetes ciblees. Elle doit pouvoir comprendre une demande explicite ou implicite, construire ses propres requetes Catalogue, explorer, desambiguiser, consulter des passages, tenir un etat conversationnel Biblio et restituer a l'utilisateur des donnees comme si l'ouvrage etait devant elle, sans inventer une certitude documentaire.
 
-Ce chantier ne livre pas encore l'agent. Il cadre les lots qui devront le livrer.
+Ce chantier livre progressivement l'agent. Le Lot 7 livre seulement le socle
+agentique borne, non active par defaut et compare au deterministe; il ne livre
+pas encore le remplacement produit du chemin Biblio actuel.
 
 ## Sources lues
 
@@ -757,54 +759,102 @@ Photo operatoire Lot 6 - 2026-05-31:
 
 `PLAN / PATCH / TEST / RISKS / NAVIGATION MATRIX / GO-NO-GO Lot 7`.
 
-## Lot 7 — Selection / ranking / prudence
+## Lot 7 — Socle agentique OpenRouter / JSON, off-shadow
 
 ### Objectif
 
-Selectionner sans forcer une certitude quand plusieurs ouvrages, chapitres ou passages sont plausibles.
+Livrer la premiere fondation reelle du bibliothecaire agentique sans activation
+produit sauvage: entree bornee, appel OpenRouter optionnel par mode, JSON strict,
+validation du plan, rejet des outils interdits, fallback deterministe et
+observabilite content-free.
 
 ### Risque produit traité
 
-Risque de citation faussement certaine ou d'attribution incorrecte.
+Risque de continuer a empiler des regex locales au lieu de donner a Frida un
+bibliothecaire capable de planifier une consultation multi-tour. Risque inverse:
+appeler un modele non borne qui remplacerait le chemin deterministe ou fuirait
+du contenu brut.
 
 ### Plan
 
-- [ ] Reutiliser et etendre `passage_selection.py`.
-- [ ] Definir seuils explicites de selection et d'ambiguite.
-- [ ] Tenir compte du document cible, de la proximite theme, de positions, de scores Catalogue et de preuves contextuelles.
-- [ ] Presenter candidats ou demander clarification quand l'ecart est insuffisant.
-- [ ] Ne pas transformer un candidat en passage certain sans preuve.
+- [x] Verifier la documentation OpenRouter actuelle pour `response_format`
+  JSON Schema strict, tool calling et support modele.
+- [x] Creer un artefact date:
+  `app/docs/states/baselines/frida-biblio-librarian-agent-openrouter-json-2026-06-01.md`.
+- [x] Ajouter un contrat agent versionne:
+  `app/biblio/librarian_agent_contract.py`.
+- [x] Ajouter un adaptateur OpenRouter:
+  `app/biblio/librarian_agent_openrouter.py`.
+- [x] Ajouter l'orchestrateur non actif:
+  `app/biblio/librarian_agent.py`.
+- [x] Ajouter les modes `off`, `shadow`, `candidate`, `active`.
+- [x] Garder `off` par defaut et ne pas utiliser `active` comme chemin
+  produit dans ce lot.
+- [x] Valider strictement le JSON avant tout plan executable.
+- [x] Rejeter JSON absent, invalide, tronque, texte libre, schema inconnu,
+  outil interdit, outil inconnu, methode non GET et budget depasse.
+- [x] Ne conserver aucun prompt complet ni raw JSON modele dans le resultat
+  agent observe.
+- [x] Garder le chemin deterministe comme controleur en `shadow` et
+  `candidate`.
 
 ### Patch attendu
 
-- [ ] Selection agentique content-free.
-- [ ] Tests de score gap et ambiguite.
-- [ ] Lane produit qui distingue candidat, passage retenu et clarification.
+- [x] Config non secrete:
+  `BIBLIO_LIBRARIAN_AGENT_MODE`, `BIBLIO_LIBRARIAN_AGENT_MODEL`,
+  `BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL`, timeout, sampling, max tokens,
+  max tool/model calls, max recent turns, JSON contract et
+  `require_parameters`.
+- [x] Referer/title OpenRouter dedies:
+  `OPENROUTER_REFERER_BIBLIO_LIBRARIAN`,
+  `OPENROUTER_TITLE_BIBLIO_LIBRARIAN`.
+- [x] Aucune cle API dediee nouvelle: reutilisation de `OPENROUTER_API_KEY`
+  seulement si mode/model permettent l'appel.
+- [x] Aucun branchement chat/runtime produit.
+- [x] Aucun appel Catalogue nouveau.
 
 ### Tests / preuves
 
-- [ ] Theetete maieutique ambigu.
-- [ ] Sage-femme avec plusieurs candidats.
-- [ ] Verification "vient bien du Theetete ?".
-- [ ] Cas meilleur candidat faible -> clarification.
+- [x] mode `off`: aucun appel modele.
+- [x] mode `shadow`: appel possible, plan valide non utilise pour la reponse.
+- [x] mode `candidate`: plan candidat conserve mais deterministe controle.
+- [x] mode `active`: non active par Lot 7, fallback deterministe.
+- [x] JSON valide: plan `BiblioLibrarianPlan` produit.
+- [x] JSON invalide, texte libre, tronque: fallback deterministe.
+- [x] outil interdit / inconnu / methode mutable: rejet avant execution.
+- [x] budget modele et budget tool calls: rejet propre.
+- [x] timeout / erreur provider: fallback deterministe.
+- [x] dialogue recent borne a `max_recent_turns`.
+- [x] fixtures produit anaphoriques passent par le contrat agentique sans
+  nouvelle regex produit.
+- [x] `to_observability()` et `repr(result)` restent content-free.
 
 ### Réduction du risque attendue
 
-- [ ] Risque reduit par seuils et par clarification; risque accepte si Catalogue/OCR ne permet pas de trancher.
+- [x] Risque reduit par un contrat agentique testable avant activation:
+  l'agent peut proposer un plan, mais il ne devient pas souverain.
 
 ### Critères de sortie
 
-- [ ] Les cas ambigus ne sont pas presentes comme certains.
-- [ ] Les candidats plausibles peuvent etre montres a Frida pour reponse naturelle prudente.
+- [x] `BIBLIO_LIBRARIAN_AGENT_MODE=off` ne construit aucun appel modele.
+- [x] `shadow` et `candidate` ne remplacent pas le chemin deterministe.
+- [x] OpenRouter / JSON documente avec URLs et limites.
+- [x] Aucun modele n'est hardcode comme choix actif; DeepSeek V4 Pro est
+  documente comme slug observe, pas comme default runtime.
+- [x] Aucun outil hors allowlist ne passe la validation.
+- [x] Aucune fuite brute dans l'observabilite ou `repr`.
 
 ### Hors-scope
 
-- Annotation humaine Catalogue.
-- Correction OCR.
+- Activation produit de l'agent.
+- Remplacement du chemin deterministe.
+- Execution de la boucle d'outils depuis le plan agent en chat runtime.
+- Runtime settings admin/DB.
+- Nouveau Catalogue, outil page, navigation complete ou route plateforme.
 
 ### Format de retour attendu
 
-`PLAN / PATCH / TEST / RISKS / SELECTION PROOF / GO-NO-GO Lot 8`.
+`PLAN / PATCH / TEST / RISKS / AGENT CONTRACT / GO-NO-GO Lot 8`.
 
 ## Lot 8 — Injection lane et reponse Frida
 

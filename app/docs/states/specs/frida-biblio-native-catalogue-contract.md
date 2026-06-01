@@ -17,6 +17,7 @@ Validation finale recherche passages Lot 8: 2026-05-30
 Reouverture produit vraie bibliotheque: 2026-05-30
 Route legere table des matieres Catalogue: 2026-05-30
 Etat conversationnel agent bibliothecaire Lot 1: 2026-05-31
+Socle agent bibliothecaire Lot 7: 2026-06-01
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -688,7 +689,32 @@ Integration runtime:
 - l'observabilite `stage=biblio` expose maintenant `state` et `state_transition` content-free sans pretendre que la sauvegarde finale a deja reussi;
 - `conversation_state.py` depasse temporairement 500 lignes mais reste accepte comme module borne etat/projection; toute extension Lot 2 doit extraire une responsabilite avant de l'alourdir.
 
-## 12. Tests de regression du chantier
+## 12. Socle agent bibliothecaire Lot 7
+
+Le chantier agent bibliothecaire ajoute un socle OpenRouter / JSON non actif
+par defaut au-dessus de Biblio native.
+
+Contrat avec Biblio native:
+
+- `BIBLIO_LIBRARIAN_AGENT_MODE=off` par defaut ne construit aucun appel modele;
+- `shadow` et `candidate` peuvent produire un plan candidat, mais ne remplacent
+  pas le chemin deterministe Biblio;
+- `active` n'est pas un chemin produit livre dans ce lot;
+- le modele agent est configurable et peut etre vide; aucun slug n'est hardcode
+  comme default actif;
+- les outils proposés par le modele restent bornes a l'allowlist GET-only
+  Biblio: catalog, search, metadata, chapters, locate, context;
+- toute methode non GET, outil inconnu, outil interdit ou budget depasse
+  retombe sur le deterministe;
+- l'observabilite de l'agent ne contient ni prompt, ni raw JSON modele, ni
+  message utilisateur brut, ni titre/auteur/locator, ni passage, ni payload
+  Catalogue;
+- aucun endpoint Catalogue nouveau n'est cree et aucune route mutatrice n'est
+  autorisee.
+
+Artefact provider: `app/docs/states/baselines/frida-biblio-librarian-agent-openrouter-json-2026-06-01.md`.
+
+## 13. Tests de regression du chantier
 
 Suites et cas a conserver:
 
@@ -724,7 +750,7 @@ Suites et cas a conserver:
 - erreur Catalogue content-free;
 - timeout Catalogue content-free.
 
-## 13. Conditions de reouverture future
+## 14. Conditions de reouverture future
 
 Le chantier Biblio native est clos au 2026-05-29. Son correctif P1 "vraie bibliotheque / recherche de passages" est requalifie: preuve technique close, validation produit rouverte le 2026-05-30. Une reouverture future doit rester explicite et verifier d'abord que:
 

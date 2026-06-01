@@ -59,6 +59,7 @@ _OPENROUTER_COMPONENT_REFERER_DEFAULTS = {
     'summary': 'https://fridadev.frida-system.fr/openrouter/summary',
     'stimmung': 'https://fridadev.frida-system.fr/openrouter/stimmung',
     'validation-agent': 'https://fridadev.frida-system.fr/openrouter/validation-agent',
+    'biblio-librarian': 'https://fridadev.frida-system.fr/openrouter/biblio-librarian',
 }
 
 
@@ -87,6 +88,7 @@ OR_REFERER_IDENTITY_PERIODIC = os.environ.get('OPENROUTER_REFERER_IDENTITY_PERIO
 OR_REFERER_RESUMER = os.environ.get('OPENROUTER_REFERER_RESUMER', _default_openrouter_component_referer('summary')).strip() or _default_openrouter_component_referer('summary')
 OR_REFERER_STIMMUNG_AGENT = os.environ.get('OPENROUTER_REFERER_STIMMUNG_AGENT', _default_openrouter_component_referer('stimmung')).strip() or _default_openrouter_component_referer('stimmung')
 OR_REFERER_VALIDATION_AGENT = os.environ.get('OPENROUTER_REFERER_VALIDATION_AGENT', _default_openrouter_component_referer('validation-agent')).strip() or _default_openrouter_component_referer('validation-agent')
+OR_REFERER_BIBLIO_LIBRARIAN = os.environ.get('OPENROUTER_REFERER_BIBLIO_LIBRARIAN', _default_openrouter_component_referer('biblio-librarian')).strip() or _default_openrouter_component_referer('biblio-librarian')
 OR_TITLE_BASE = os.environ.get('OPENROUTER_APP_NAME', 'FridaDev').strip() or 'FridaDev'
 OR_TITLE_LLM = os.environ.get('OPENROUTER_TITLE_LLM', f'{OR_TITLE_BASE} / Main Chat').strip() or f'{OR_TITLE_BASE} / Main Chat'
 OR_TITLE_WEB_REFORMULATION = os.environ.get(
@@ -111,6 +113,10 @@ OR_TITLE_VALIDATION_AGENT = os.environ.get(
     'OPENROUTER_TITLE_VALIDATION_AGENT',
     f'{OR_TITLE_BASE} / Validation Agent',
 ).strip() or f'{OR_TITLE_BASE} / Validation Agent'
+OR_TITLE_BIBLIO_LIBRARIAN = os.environ.get(
+    'OPENROUTER_TITLE_BIBLIO_LIBRARIAN',
+    f'{OR_TITLE_BASE} / Biblio Librarian Agent',
+).strip() or f'{OR_TITLE_BASE} / Biblio Librarian Agent'
 OR_TITLE = OR_TITLE_LLM
 
 # Web reformulation model
@@ -182,6 +188,20 @@ BIBLIO_CATALOGUE_BASE_URL = os.environ.get(
     'http://platform-doc-pipeline-api:8090',
 ).strip().rstrip('/')
 BIBLIO_CATALOGUE_TIMEOUT_S = _env_int('BIBLIO_CATALOGUE_TIMEOUT_S', 8)
+
+# Biblio librarian agent foundation. Default off: no model call.
+BIBLIO_LIBRARIAN_AGENT_MODE = os.environ.get('BIBLIO_LIBRARIAN_AGENT_MODE', 'off').strip().lower() or 'off'
+BIBLIO_LIBRARIAN_AGENT_MODEL = os.environ.get('BIBLIO_LIBRARIAN_AGENT_MODEL', '').strip()
+BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL = os.environ.get('BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL', '').strip()
+BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S = _env_int('BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S', 10)
+BIBLIO_LIBRARIAN_AGENT_TEMPERATURE = _env_float('BIBLIO_LIBRARIAN_AGENT_TEMPERATURE', 0.0)
+BIBLIO_LIBRARIAN_AGENT_TOP_P = _env_float('BIBLIO_LIBRARIAN_AGENT_TOP_P', 1.0)
+BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS = _env_int('BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS', 900)
+BIBLIO_LIBRARIAN_AGENT_MAX_TOOL_CALLS = _env_int('BIBLIO_LIBRARIAN_AGENT_MAX_TOOL_CALLS', 5)
+BIBLIO_LIBRARIAN_AGENT_MAX_MODEL_CALLS = _env_int('BIBLIO_LIBRARIAN_AGENT_MAX_MODEL_CALLS', 1)
+BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS = _env_int('BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS', 5)
+BIBLIO_LIBRARIAN_AGENT_JSON_CONTRACT_ENABLED = _env_bool('BIBLIO_LIBRARIAN_AGENT_JSON_CONTRACT_ENABLED', True)
+BIBLIO_LIBRARIAN_AGENT_REQUIRE_PARAMETERS = _env_bool('BIBLIO_LIBRARIAN_AGENT_REQUIRE_PARAMETERS', True)
 
 # Prompt files
 MAIN_SYSTEM_PROMPT_PATH = os.environ.get('MAIN_SYSTEM_PROMPT_PATH', 'prompts/main_system.txt')

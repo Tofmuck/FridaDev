@@ -7,8 +7,10 @@ Roadmap active: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md
 Audit source: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 Contrat Biblio natif voisin: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
-Portee: contrat normatif du futur agent bibliothecaire et trace du registre
-d'outils Lot 3, sans agent runtime active.
+Verification OpenRouter Lot 7: `app/docs/states/baselines/frida-biblio-librarian-agent-openrouter-json-2026-06-01.md`
+Portee: contrat normatif de l'agent bibliothecaire, du registre d'outils
+GET-only, de la boucle bornee et du socle agentique Lot 7, sans activation
+produit active.
 
 ## 1. Statut et portee
 
@@ -18,7 +20,12 @@ Mise a jour Lot 3: le registre d'outils Catalogue GET-only est livre dans
 Mise a jour Lot 4: la boucle/planner bibliothecaire bornee est livre dans
 `app/biblio/librarian_planner.py`, sans branchement produit ni modele externe
 reel.
-Elle ne livre pas l'agent runtime.
+Mise a jour Lot 7: le socle agentique OpenRouter / JSON est livre dans
+`app/biblio/librarian_agent_contract.py`,
+`app/biblio/librarian_agent_openrouter.py` et
+`app/biblio/librarian_agent.py`, avec mode `off` par defaut, validation
+stricte et fallback deterministe.
+Elle ne livre pas l'activation produit de l'agent.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
 Le but est de rendre le futur agent testable avant d'etre branche:
@@ -43,10 +50,12 @@ doc-pipeline.
 Decision: GO conditionnel pour ouvrir le Lot 3 outils GET-only, NO-GO pour
 coder directement l'agent runtime.
 
-Etat courant: Lot 3 outils GET-only livre et Lot 4 boucle/planner
-bibliothecaire bornee livre comme module non branche. Le prochain GO est
-seulement conditionnel pour ouvrir un Lot 5 comprehension implicite/dialogue,
-sans activation produit par defaut.
+Etat courant: Lot 3 outils GET-only livre, Lot 4 boucle/planner
+bibliothecaire bornee livre comme module non branche, Lot 5 comprehension
+implicite/dialogue livre, Lot 6 navigation bornee livre, et Lot 7 socle
+agentique non active livre. Le prochain GO est seulement conditionnel pour
+ouvrir un Lot 8 d'integration ou de comparaison agentique, sans activation
+produit par defaut.
 
 Le Lot 3 peut definir le registre d'outils Catalogue bornes si et seulement si:
 
@@ -57,9 +66,10 @@ Le Lot 3 peut definir le registre d'outils Catalogue bornes si et seulement si:
 - aucun `latest/page` ou `latest/context` n'est utilise;
 - aucune observabilite content-rich n'est creee.
 
-Le runtime agentique, la boucle modele et le remplacement du chemin
-deterministe restent NO-GO tant que les gates de cette spec ne sont pas
-valides.
+Le remplacement du chemin deterministe reste NO-GO tant que les gates de cette
+spec ne sont pas valides. Le socle modele Lot 7 peut etre appele seulement si
+le mode runtime le permet; en `shadow` et `candidate`, il ne controle pas la
+reponse utilisateur.
 
 ## 3. Feature flag, modes et rollback
 
@@ -726,12 +736,89 @@ NO-GO retroactif Lot 6 si un patch ulterieur:
 - expose passage, prompt, titre brut, requete brute ou payload Catalogue en
   observabilite.
 
-## 20. Hors-scope
+## 20. Lot 7 livre
 
-- runtime agent;
-- appel OpenRouter;
-- verification live OpenRouter;
-- nouveau model caller;
+Lot 7 livre uniquement le socle agentique non souverain du bibliothecaire.
+
+Implementation:
+
+- module contrat: `app/biblio/librarian_agent_contract.py`;
+- module OpenRouter: `app/biblio/librarian_agent_openrouter.py`;
+- orchestration: `app/biblio/librarian_agent.py`;
+- schema sortie agent: `biblio_librarian_agent_v1`;
+- modes: `off`, `shadow`, `candidate`, `active`;
+- default runtime: `BIBLIO_LIBRARIAN_AGENT_MODE=off`, modele vide;
+- `active` est reconnu comme valeur de mode mais n'est pas utilise comme
+  chemin produit dans ce lot;
+- `shadow` et `candidate` peuvent valider un plan JSON mais gardent
+  `fallback_deterministic=true` et `used_for_response=false`;
+- `BIBLIO_LIBRARIAN_AGENT_MODEL` et
+  `BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL` sont configurables, jamais hardcodes;
+- referer/title dedies: `OPENROUTER_REFERER_BIBLIO_LIBRARIAN` et
+  `OPENROUTER_TITLE_BIBLIO_LIBRARIAN`;
+- payload OpenRouter: `response_format.type=json_schema`,
+  `json_schema.name=biblio_librarian_agent_v1`, `strict=true`,
+  `provider.require_parameters=true`;
+- le raw prompt, le raw JSON modele et la reponse provider brute ne sont pas
+  retenus dans `BiblioLibrarianAgentResult`;
+- le plan candidat interne est un `BiblioLibrarianPlan`, dont `repr` et
+  `to_observability()` ne sortent pas les params bruts.
+
+Validation:
+
+- JSON absent, invalide, tronque ou texte libre -> fallback deterministe;
+- schema version inconnue -> fallback deterministe;
+- `tool_calls` au-dela du budget -> fallback deterministe;
+- outil interdit (`page_read`, `latest/page`, `latest/context`,
+  `export/chunk`, mutateurs) -> fallback deterministe;
+- outil inconnu -> fallback deterministe;
+- methode non GET -> fallback deterministe;
+- timeout ou erreur provider -> fallback deterministe;
+- modele ou cle provider absents -> aucun appel provider;
+- dialogue recent borne a `BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS`.
+
+Observabilite autorisee:
+
+- mode;
+- status / reason code;
+- booleens `model_called`, `used_for_response`, `fallback_deterministic`;
+- modele effectif expurge;
+- finish reason;
+- duree;
+- status code;
+- longueur/hash du JSON modele, jamais le JSON;
+- noms d'outils;
+- nombre d'appels outil;
+- budgets configures.
+
+Observabilite interdite:
+
+- message utilisateur brut;
+- dialogue brut;
+- prompt agent;
+- raw JSON modele;
+- params d'outils bruts;
+- titre, auteur, locator, passage ou payload Catalogue;
+- token, cookie, DSN, `.env`.
+
+NO-GO retroactif Lot 7 si un patch ulterieur:
+
+- active l'agent par defaut;
+- utilise `active` comme chemin produit sans lot separe;
+- execute les outils proposes par le modele dans le chat sans validation
+  comparative;
+- conserve le raw JSON modele dans un resultat durable;
+- hardcode DeepSeek V4 Pro ou un autre modele comme default actif;
+- remplace le chemin deterministe sans rollback;
+- expose un contenu brut dans admin/dashboard/logs/read-model/smokes.
+
+## 21. Hors-scope
+
+- activation produit de l'agent;
+- remplacement du chemin deterministe;
+- appel OpenRouter en mode `off`;
+- execution de la boucle d'outils agentique dans le chat produit;
+- runtime settings admin/DB dedies;
 - outil page;
 - navigation complete;
 - `export/chunk`;
