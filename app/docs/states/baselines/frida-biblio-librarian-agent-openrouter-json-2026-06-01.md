@@ -44,13 +44,15 @@ modele reel et sans activation produit.
 - Valider en Python le JSON modele meme si structured output est demande.
 - Rejeter localement les payloads hors schema: champs racine en trop, champs
   requis absents, `risk_flags` invalides, params inconnus et params hors
-  bornes.
+  bornes; `params` doit rester un objet JSON et ne doit pas etre normalise
+  silencieusement depuis `null`, liste, string, nombre ou booleen.
 - Rejeter localement les plans schema-valid mais non executables par
   `librarian_tools.py`: query manquante pour `catalog_search`, document_id
   manquant pour TOC/locate/context, position manquante pour
   `passage_context`, bornes par outil et offset search non nul.
 - Garder le contrat JSON obligatoire; ne pas exposer de knob operateur pour le
-  desactiver dans le Lot 7.
+  desactiver dans le Lot 7. Le payload OpenRouter force toujours
+  `provider.require_parameters=true`.
 - Tenter le fallback modele configure uniquement quand `max_model_calls >= 2`.
 - Ne jamais conserver le prompt complet, le raw JSON modele ou un payload
   provider brut dans le resultat observe.

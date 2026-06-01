@@ -114,7 +114,6 @@ class BiblioLibrarianAgentSettings:
     max_tool_calls: int = 5
     max_model_calls: int = 1
     max_recent_turns: int = 5
-    require_parameters: bool = True
 
     @classmethod
     def from_config(cls, config_module: Any) -> "BiblioLibrarianAgentSettings":
@@ -129,10 +128,6 @@ class BiblioLibrarianAgentSettings:
             max_tool_calls=_positive_int(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MAX_TOOL_CALLS", 5), 5),
             max_model_calls=_positive_int(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MAX_MODEL_CALLS", 1), 1),
             max_recent_turns=_positive_int(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS", 5), 5),
-            require_parameters=_bool(
-                getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_REQUIRE_PARAMETERS", True),
-                True,
-            ),
         )
 
     def to_observability(self) -> dict[str, Any]:
@@ -149,7 +144,7 @@ class BiblioLibrarianAgentSettings:
                 "max_model_calls": self.max_model_calls,
                 "max_recent_turns": self.max_recent_turns,
                 "json_contract_required": True,
-                "require_parameters": self.require_parameters,
+                "require_parameters": True,
             }
         )
 
@@ -316,7 +311,7 @@ def validate_agent_payload(
                 json_hash=json_hash,
                 finish_reason=finish_reason,
             )
-        params = raw_call.get("params") or {}
+        params = raw_call.get("params")
         if not isinstance(params, Mapping):
             return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
         if not _valid_params(tool_name, params):

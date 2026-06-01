@@ -81,7 +81,7 @@ Invariant cible:
 Implication probable:
 
 - ajouter une section runtime settings dediee, par exemple `biblio_librarian_agent_model`, plutot que reutiliser `main_model`;
-- cette section devra avoir `primary_model`, `fallback_model`, `timeout_s`, `temperature`, `top_p`, `max_tokens`, `max_tool_calls`, `max_model_calls` et `require_parameters` ou equivalents;
+- cette section devra avoir `primary_model`, `fallback_model`, `timeout_s`, `temperature`, `top_p`, `max_tokens`, `max_tool_calls` et `max_model_calls` ou equivalents;
 - le contrat JSON est obligatoire dans le Lot 7; aucun knob operateur ne doit permettre de le desactiver sans lot separe;
 - les secrets restent ceux du provider OpenRouter deja gere, sans nouveau secret si ce n'est pas necessaire;
 - tout ajout de section runtime settings exige tests spec/validation/API/admin.
@@ -797,6 +797,9 @@ du contenu brut.
 - [x] Rejeter localement les payloads hors schema: champs racine en trop,
   champs requis absents, `risk_flags` invalides, params inconnus et bornes de
   params depassees.
+- [x] Rejeter `params` non objet (`null`, liste, string, nombre, booleen) sans
+  le normaliser en `{}`; `{}` reste valide seulement pour les outils qui
+  l'acceptent reellement.
 - [x] Aligner la validation locale sur les contraintes executables de
   `librarian_tools.py`: query obligatoire pour `catalog_search`, document_id
   obligatoire pour TOC/locate/context, position obligatoire pour
@@ -814,9 +817,9 @@ du contenu brut.
 - [x] Config non secrete:
   `BIBLIO_LIBRARIAN_AGENT_MODE`, `BIBLIO_LIBRARIAN_AGENT_MODEL`,
   `BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL`, timeout, sampling, max tokens,
-  max tool/model calls, max recent turns et `require_parameters`.
+  max tool/model calls et max recent turns.
 - [x] Contrat JSON obligatoire: pas de knob operateur permettant de le
-  desactiver dans ce lot.
+  desactiver dans ce lot; `provider.require_parameters=true` est invariant.
 - [x] Referer/title OpenRouter dedies:
   `OPENROUTER_REFERER_BIBLIO_LIBRARIAN`,
   `OPENROUTER_TITLE_BIBLIO_LIBRARIAN`.

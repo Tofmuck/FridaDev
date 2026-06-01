@@ -761,7 +761,8 @@ Implementation:
   `provider.require_parameters=true`, avec schemas d'outils bornes par outil
   et alignes sur `librarian_tools.py`;
 - le contrat JSON est obligatoire dans le Lot 7; il n'existe plus de setting
-  operateur pour le desactiver;
+  operateur pour le desactiver, et `provider.require_parameters` ne depend
+  d'aucune variable d'environnement;
 - le fallback modele est tente seulement si un `fallback_model` est configure
   et si `max_model_calls >= 2`;
 - le raw prompt, le raw JSON modele et la reponse provider brute ne sont pas
@@ -775,6 +776,9 @@ Validation:
 - schema version inconnue -> fallback deterministe;
 - champs racine en trop, champs requis absents, `risk_flags` invalides,
   call keys en trop -> fallback deterministe;
+- `params` absent ou non objet JSON -> fallback deterministe avec schema
+  invalid; le validateur ne normalise pas `null`, liste, string, nombre ou
+  booleen en `{}`;
 - params inconnus, params hors bornes ou params insuffisants pour executer
   l'outil GET-only -> fallback deterministe avec
   `biblio_librarian_agent_tool_not_executable`;

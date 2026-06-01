@@ -197,7 +197,7 @@ def build_librarian_agent_payload(
         "response_format": build_librarian_agent_response_format(
             max_tool_calls=effective_settings.max_tool_calls
         ),
-        "provider": {"require_parameters": bool(effective_settings.require_parameters)},
+        "provider": {"require_parameters": True},
         "metadata": {
             "frida_caller": "biblio_librarian_agent",
             "frida_contract": SCHEMA_VERSION,

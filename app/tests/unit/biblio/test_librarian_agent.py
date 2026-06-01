@@ -189,6 +189,39 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 self.assertEqual(validation.status, contract.STATUS_REJECTED)
                 self.assertEqual(validation.reason_code, reason)
 
+    def test_local_validation_rejects_non_object_params_without_normalizing_to_empty(self) -> None:
+        base = json.loads(_valid_json())
+        for raw_params in [None, [], "", 0, False]:
+            with self.subTest(params_type=type(raw_params).__name__):
+                validation = contract.validate_agent_payload(
+                    {
+                        **base,
+                        "tool_calls": [
+                            {
+                                "tool_name": tools.TOOL_CATALOG_LIST,
+                                "method": "GET",
+                                "params": raw_params,
+                            }
+                        ],
+                    }
+                )
+                self.assertEqual(validation.status, contract.STATUS_REJECTED)
+                self.assertEqual(validation.reason_code, contract.REASON_SCHEMA_INVALID)
+
+        validation = contract.validate_agent_payload(
+            {
+                **base,
+                "tool_calls": [
+                    {
+                        "tool_name": tools.TOOL_CATALOG_LIST,
+                        "method": "GET",
+                        "params": {},
+                    }
+                ],
+            }
+        )
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+
     def test_local_validation_rejects_tool_contract_mismatches_before_execution(self) -> None:
         base = json.loads(_valid_json())
         cases = [
@@ -405,7 +438,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(params["properties"]["limit"]["maximum"], 50)
         self.assertEqual(params["properties"]["offset"]["maximum"], 0)
 
-    def test_settings_from_config_keeps_json_contract_required_and_parses_booleans(self) -> None:
+    def test_settings_from_config_keeps_json_contract_required_without_operator_disable(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings.from_config(
             SimpleNamespace(
                 BIBLIO_LIBRARIAN_AGENT_MODE="shadow",
@@ -416,14 +449,17 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
 
         self.assertEqual(settings.mode, contract.MODE_SHADOW)
         self.assertEqual(settings.primary_model, "deepseek/deepseek-v4-pro")
-        self.assertFalse(settings.require_parameters)
         self.assertTrue(settings.to_observability()["json_contract_required"])
+        self.assertTrue(settings.to_observability()["require_parameters"])
 
     def test_openrouter_payload_uses_biblio_headers_and_required_parameters(self) -> None:
-        settings = contract.BiblioLibrarianAgentSettings(
-            mode=contract.MODE_SHADOW,
-            primary_model="deepseek/deepseek-v4-pro",
-            max_recent_turns=1,
+        settings = contract.BiblioLibrarianAgentSettings.from_config(
+            SimpleNamespace(
+                BIBLIO_LIBRARIAN_AGENT_MODE="shadow",
+                BIBLIO_LIBRARIAN_AGENT_MODEL="deepseek/deepseek-v4-pro",
+                BIBLIO_LIBRARIAN_AGENT_REQUIRE_PARAMETERS="false",
+                BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS=1,
+            )
         )
         payload = openrouter.build_librarian_agent_payload(_request(settings=settings), settings=settings)
 
