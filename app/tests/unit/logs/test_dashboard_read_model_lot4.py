@@ -786,6 +786,16 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
                 'hashes': ['abcdef123456'],
                 'raw_content_included': False,
                 'message': {'content': 'RAW BIBLIO PASSAGE MUST NOT LEAK'},
+                'librarian_agent': {
+                    'present': True,
+                    'mode': 'shadow',
+                    'model_called': True,
+                    'candidate_plan_present': True,
+                    'deterministic_controller': True,
+                    'used_for_response': False,
+                    'tool_execution_status': 'not_executed',
+                    'message': 'RAW AGENT MESSAGE MUST NOT LEAK',
+                },
             },
             'node_state': {},
             'errors': {'error_count': 0, 'skipped_count': 0, 'fallback_count': 0, 'reason_code_counts': {}},
@@ -797,9 +807,12 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         story_text = json.dumps(story, ensure_ascii=False, sort_keys=True)
 
         self.assertIn('1 passage(s) Biblio observe(s)', story_text)
+        self.assertIn('comparaison agent bibliothecaire observee', story_text)
         self.assertIn('Biblio: consultee oui, etat reussi, document resolu', story_text)
+        self.assertIn('Agent Biblio: present oui, mode shadow, modele appele oui', story_text)
         self.assertNotIn('abcdef123456', story_text)
         self.assertNotIn('RAW BIBLIO PASSAGE MUST NOT LEAK', story_text)
+        self.assertNotIn('RAW AGENT MESSAGE MUST NOT LEAK', story_text)
 
     def test_turn_fact_row_reads_persisted_biblio_json(self) -> None:
         row = (

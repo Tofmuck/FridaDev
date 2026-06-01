@@ -43,6 +43,7 @@ _DANGEROUS_KEYS = {
     "passage",
     "payload",
     "prompt",
+    "params",
     "query",
     "raw",
     "request",
@@ -54,6 +55,7 @@ _DANGEROUS_KEYS = {
 }
 _HASH_KEYS = {
     "hash",
+    "json_hash",
     "sha256_12",
     "passage_hash",
     "text_sha256_12",
@@ -63,28 +65,43 @@ _HASH_KEYS = {
 _DOC_ID_KEYS = {"doc_id", "doc_id_short", "document_id", "document_candidate_ids", "doc_id_shorts"}
 _TOKEN_KEYS = {
     "calculation_version",
+    "answer_mode",
+    "comparison_kind",
     "decision",
     "endpoint_kind",
     "error_class",
     "event_kind",
+    "fallback_model",
+    "fallback_reason",
+    "finish_reason",
+    "intent",
     "kind",
+    "method",
     "mode",
+    "model_effective",
     "module_key",
+    "primary_model",
+    "primary_reason_code",
     "query_kind",
     "reason_code",
     "requested_locator_kind",
+    "schema_version",
     "source_kind",
     "source_reason_code",
     "status",
+    "tool_execution_status",
+    "tool_name",
 }
 _HASH_LIST_KEYS = {"hashes", "query_hashes", "recent_dialogue_hashes"}
 _DOC_ID_LIST_KEYS = {"doc_id_shorts", "document_candidate_ids"}
 _TOKEN_LIST_KEYS = {
     "candidate_reason_codes",
     "endpoint_kinds",
+    "invalid_tool_names",
     "reason_codes",
     "selection_reason_codes",
     "selected_reason_codes",
+    "tool_names",
 }
 
 

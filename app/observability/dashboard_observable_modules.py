@@ -181,6 +181,7 @@ def _reduce_documents_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) 
 
 def _reduce_biblio_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
     biblio = _mapping(fact.get('biblio'))
+    librarian_agent = _mapping(biblio.get('librarian_agent'))
     _add_metric_label(metrics, 'status_counts', biblio.get('status'))
     _add_metric_count(metrics, 'enabled_turns', 1 if biblio.get('enabled') else 0)
     _add_metric_count(metrics, 'used_turns', 1 if biblio.get('used') else 0)
@@ -205,6 +206,50 @@ def _reduce_biblio_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> 
     reason_counts = _mapping(biblio.get('reason_code_counts'))
     for reason, count in reason_counts.items():
         _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
+    if librarian_agent.get('present'):
+        _add_metric_count(metrics, 'librarian_agent_present_turns', 1 if librarian_agent.get('present') else 0)
+        _add_metric_count(metrics, 'librarian_agent_model_called_turns', 1 if librarian_agent.get('model_called') else 0)
+        _add_metric_count(
+            metrics,
+            'librarian_agent_candidate_plan_turns',
+            1 if librarian_agent.get('candidate_plan_present') else 0,
+        )
+        _add_metric_count(
+            metrics,
+            'librarian_agent_fallback_turns',
+            1 if librarian_agent.get('fallback_deterministic') else 0,
+        )
+        _add_metric_count(
+            metrics,
+            'librarian_agent_used_for_response_turns',
+            1 if librarian_agent.get('used_for_response') else 0,
+        )
+        _add_metric_count(
+            metrics,
+            'librarian_agent_product_response_changed_turns',
+            1 if librarian_agent.get('product_response_changed') else 0,
+        )
+        _add_metric_count(metrics, 'librarian_agent_attempts_total', _to_int(librarian_agent.get('attempt_count')))
+        _add_metric_count(metrics, 'librarian_agent_duration_ms_total', _to_int(librarian_agent.get('duration_ms')))
+        _add_metric_count(metrics, 'librarian_agent_response_chars_total', _to_int(librarian_agent.get('response_chars')))
+        _add_metric_count(
+            metrics,
+            'librarian_agent_tool_call_events_total',
+            _to_int(librarian_agent.get('tool_call_event_count')),
+        )
+        _add_metric_count(
+            metrics,
+            'librarian_agent_validation_tool_calls_total',
+            _to_int(librarian_agent.get('validation_tool_call_count')),
+        )
+        _add_metric_label(metrics, 'librarian_agent_mode_counts', librarian_agent.get('mode'))
+        _add_metric_label(metrics, 'librarian_agent_status_counts', librarian_agent.get('status'))
+        _add_metric_label(metrics, 'librarian_agent_reason_counts', librarian_agent.get('reason_code'))
+        _add_metric_label(metrics, 'librarian_agent_model_status_counts', librarian_agent.get('model_status'))
+        _add_metric_label(metrics, 'librarian_agent_validation_status_counts', librarian_agent.get('validation_status'))
+        _add_metric_label(metrics, 'librarian_agent_tool_execution_status_counts', librarian_agent.get('tool_execution_status'))
+        for tool_name in librarian_agent.get('validation_tool_names') or []:
+            _add_metric_label(metrics, 'librarian_agent_tool_name_counts', tool_name)
 
 
 def _reduce_provider_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:

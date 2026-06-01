@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Mapping, Sequence
 
+from observability.biblio_librarian_agent_read_model import build_biblio_librarian_agent_summary
 from observability.turn_observability_checklist import build_turn_observability_checklist
 
 
@@ -1043,6 +1044,7 @@ def _biblio_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     counts = _mapping(payload.get('counts'))
     confidence = _mapping(payload.get('confidence'))
     passage_search = _mapping(payload.get('passage_search'))
+    librarian_agent = build_biblio_librarian_agent_summary(payload)
     resolver_document = _mapping(resolver.get('document'))
     resolver_locator = _mapping(resolver.get('locator'))
     extractor_resolution = _mapping(extractor.get('resolution'))
@@ -1107,6 +1109,16 @@ def _biblio_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         'score_gap': _to_float(passage_search.get('score_gap')),
         'candidate_top_score': _to_float(passage_search.get('candidate_top_score')),
         'candidate_query_variant_count': _to_int(passage_search.get('candidate_query_variant_count')),
+        'librarian_agent': librarian_agent,
+        'librarian_agent_present': bool(librarian_agent.get('present')),
+        'librarian_agent_mode': _biblio_token(librarian_agent.get('mode')),
+        'librarian_agent_model_called': bool(librarian_agent.get('model_called')),
+        'librarian_agent_candidate_plan_present': bool(librarian_agent.get('candidate_plan_present')),
+        'librarian_agent_used_for_response': bool(librarian_agent.get('used_for_response')),
+        'librarian_agent_product_response_changed': bool(librarian_agent.get('product_response_changed')),
+        'librarian_agent_deterministic_controller': bool(librarian_agent.get('deterministic_controller')),
+        'librarian_agent_tool_execution_status': _biblio_token(librarian_agent.get('tool_execution_status')),
+        'librarian_agent_attempt_count': _to_int(librarian_agent.get('attempt_count')),
         'confidence_available': bool(confidence.get('available')),
         'confidence_reason_code': _biblio_token(confidence.get('reason_code')),
         'reason_code_counts': _biblio_reason_counts(payload.get('reason_code_counts')),

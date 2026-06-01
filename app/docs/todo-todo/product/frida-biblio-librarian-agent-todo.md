@@ -974,32 +974,52 @@ Risque de debug impossible ou de fuite de contenu/prompt/payload.
 
 ### Plan
 
-- [ ] Definir events agent: start, tool_call, selection, state_update, fallback, final.
-- [ ] Exposer endpoint kinds, durees, status, counts, ids courts, positions, hashes, model source, budgets.
-- [ ] Interdire passages, pages, titres bruts, auteurs bruts, requetes utilisateur brutes, payloads et prompts complets.
-- [ ] Etendre admin/dashboard/read-model seulement avec projections compactes.
+- [x] Ne pas inventer d'events agentiques absents: aucun `tool_call`,
+  `selection`, `state_update` ou `final` agentique n'est declare execute dans
+  le runtime comparatif.
+- [x] Exposer le statut reel du comparateur: mode, skipped/off,
+  `request_observation`, appel modele, validation JSON, plan candidat,
+  fallback, reason codes, budgets, modele effectif expurge et resultat de
+  comparaison.
+- [x] Exposer explicitement `tool_execution_status=not_executed` et les
+  compteurs d'evenements agentiques executes a `0`.
+- [x] Exposer les metriques compactes disponibles: durees, counts, hashes,
+  longueurs, tool names allowlistes, status/reason codes et model source
+  expurgee.
+- [x] Interdire passages, pages, titres bruts, auteurs bruts, requetes
+  utilisateur brutes, payloads, prompts complets, raw JSON modele et params
+  d'outils bruts.
+- [x] Etendre read-model/dashboard uniquement avec projections compactes
+  persistees dans `biblio_json`.
 
 ### Patch attendu
 
-- [ ] Projection observability dediee.
-- [ ] Tests anti-fuite.
-- [ ] Read-model/dashboard si besoin.
+- [x] Projection `librarian_agent` enrichie dans l'evenement Biblio.
+- [x] Sanitizer Biblio ajuste pour conserver les tokens/hashes agentiques
+  lisibles sans brut.
+- [x] Read-model dashboard: resume compact `biblio.librarian_agent`.
+- [x] Aggregats dashboard Biblio pour mode, statut, appels modele, fallback,
+  validation JSON et absence d'execution d'outils agentiques.
+- [x] Tests anti-fuite Biblio + dashboard/read-model.
 
 ### Tests / preuves
 
-- [ ] Unitaires anti-fuite.
-- [ ] Smoke strict agent.
-- [ ] Dashboard/read-model sans contenu brut.
-- [ ] Modele effectif observable sans secret.
+- [x] Unitaires anti-fuite.
+- [x] Smoke strict existant conserve vert.
+- [x] Dashboard/read-model sans contenu brut.
+- [x] Modele effectif observable sans secret.
 
 ### Réduction du risque attendue
 
-- [ ] Risque reduit par projections compactes; risque bloque par tests anti-fuite.
+- [x] Risque reduit par projections compactes; risque bloque par tests
+  anti-fuite et par compteurs explicites `not_executed`.
 
 ### Critères de sortie
 
-- [ ] Chaque tour agentique est audit-able content-free.
-- [ ] Aucune surface technique ordinaire ne montre contenu d'ouvrage.
+- [x] Chaque tour comparatif agentique est audit-able content-free.
+- [x] Aucune surface technique ordinaire ne montre contenu d'ouvrage.
+- [x] L'agent reste non souverain: `used_for_response=false`,
+  `product_response_changed=false`, `deterministic_controller=true`.
 
 ### Hors-scope
 

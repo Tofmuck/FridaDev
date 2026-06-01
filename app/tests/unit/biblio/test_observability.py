@@ -117,6 +117,40 @@ class BiblioObservabilityTests(unittest.TestCase):
         self.assertNotIn("payload", payload["client"]["items"][0])
         self.assertNotIn(RAW_SECRET, encoded)
 
+    def test_event_payload_exposes_librarian_agent_observation_without_raw_content(self) -> None:
+        payload = observability.build_biblio_event_payload(
+            enabled=True,
+            used=False,
+            query_kind="no_signal",
+            librarian_agent=_FakeLibrarianAgentObservation(),
+            status="not_used",
+            reason_code="biblio_no_bibliographic_signal",
+        )
+        agent = payload["librarian_agent"]
+        encoded = _json(payload)
+
+        self.assertEqual(agent["mode"], "shadow")
+        self.assertEqual(agent["comparison_kind"], "deterministic_comparison")
+        self.assertTrue(agent["request_observation"]["user_message_present"])
+        self.assertEqual(agent["request_observation"]["user_message_hash"], "abcdef123456")
+        self.assertEqual(agent["request_observation"]["recent_dialogue_hashes"], ["123456abcdef"])
+        self.assertEqual(agent["request_observation"]["settings"]["primary_model"], "model/x")
+        self.assertEqual(agent["agent"]["validation"]["tool_names"], ["catalog_search"])
+        self.assertEqual(agent["agent"]["validation"]["json_hash"], "fedcba654321")
+        self.assertEqual(agent["tool_execution_status"], "not_executed")
+        self.assertFalse(agent["used_for_response"])
+        self.assertFalse(agent["product_response_changed"])
+
+        self.assertNotIn("request", agent)
+        self.assertNotIn(RAW_SECRET, encoded)
+        self.assertNotIn("RAW JSON MODEL MUST NOT LEAK", encoded)
+        self.assertNotIn("RAW TOOL PARAMS MUST NOT LEAK", encoded)
+        keys = _collect_keys(payload)
+        self.assertNotIn("message", keys)
+        self.assertNotIn("prompt", keys)
+        self.assertNotIn("payload", keys)
+        self.assertNotIn("params", keys)
+
     def test_event_payload_exposes_lot7_passage_search_projection_content_free(self) -> None:
         context_result = _ambiguous_context_search_result()
         lane = prompt_lane.build_biblio_prompt_lane(context_result.passage_results)
@@ -201,6 +235,67 @@ class _FakeTurnLogger:
     def emit(self, stage: str, *, status: str, payload: dict[str, object]) -> bool:
         self.events.append({"stage": stage, "status": status, "payload": payload})
         return True
+
+
+class _FakeLibrarianAgentObservation:
+    def to_observability(self) -> dict[str, object]:
+        return {
+            "present": True,
+            "comparison_kind": "deterministic_comparison",
+            "status": "evaluated",
+            "reason_code": "biblio_librarian_agent_compared",
+            "mode": "shadow",
+            "model_called": True,
+            "candidate_plan_present": True,
+            "used_for_response": False,
+            "deterministic_controller": True,
+            "product_response_changed": False,
+            "fallback_deterministic": True,
+            "tool_execution_status": "not_executed",
+            "tool_call_event_count": 0,
+            "selection_event_count": 0,
+            "state_update_event_count": 0,
+            "final_event_count": 0,
+            "agent_loop_executed": False,
+            "request_observation": {
+                "user_message_present": True,
+                "user_message_chars": 32,
+                "user_message_hash": "abcdef123456",
+                "recent_dialogue_count": 1,
+                "bounded_recent_dialogue_count": 1,
+                "recent_dialogue_hashes": ["123456abcdef"],
+                "message": RAW_SECRET,
+                "settings": {
+                    "mode": "shadow",
+                    "primary_model": "model/x",
+                    "prompt": RAW_SECRET,
+                },
+            },
+            "agent": {
+                "validation": {
+                    "status": "validated",
+                    "reason_code": "biblio_librarian_agent_json_validated",
+                    "tool_names": ["catalog_search"],
+                    "json_hash": "fedcba654321",
+                    "raw": "RAW JSON MODEL MUST NOT LEAK",
+                    "plan": {
+                        "intent": "list_catalog",
+                        "tool_names": ["catalog_search"],
+                        "params": "RAW TOOL PARAMS MUST NOT LEAK",
+                    },
+                },
+                "model": {
+                    "status": "ok",
+                    "reason_code": "biblio_librarian_agent_model_ok",
+                    "model_effective": "model/x",
+                    "finish_reason": "stop",
+                    "attempt_count": 1,
+                    "duration_ms": 12,
+                    "response_chars": 200,
+                    "payload": RAW_SECRET,
+                },
+            },
+        }
 
 
 def _resolution_with_raw_internal_fields() -> resolver.BiblioResolutionResult:
@@ -373,6 +468,20 @@ def _ambiguous_context_search_result() -> context_search.BiblioPassageContextSea
 
 def _json(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _collect_keys(value: object) -> set[str]:
+    if isinstance(value, dict):
+        keys = set(value.keys())
+        for child in value.values():
+            keys.update(_collect_keys(child))
+        return keys
+    if isinstance(value, list):
+        keys: set[str] = set()
+        for child in value:
+            keys.update(_collect_keys(child))
+        return keys
+    return set()
 
 
 if __name__ == "__main__":

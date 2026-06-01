@@ -51,6 +51,7 @@ class BiblioLibrarianAgentComparison:
         return _clean(
             {
                 "present": True,
+                "comparison_kind": "deterministic_comparison",
                 "status": _safe_token(self.status),
                 "reason_code": _safe_token(self.reason_code),
                 "mode": contract.normalize_mode(self.settings.mode),
@@ -60,6 +61,12 @@ class BiblioLibrarianAgentComparison:
                 "deterministic_controller": True,
                 "product_response_changed": False,
                 "fallback_deterministic": True,
+                "tool_execution_status": "not_executed",
+                "tool_call_event_count": 0,
+                "selection_event_count": 0,
+                "state_update_event_count": 0,
+                "final_event_count": 0,
+                "agent_loop_executed": False,
                 "request_observation": self.request_observation,
                 "deterministic": self.deterministic_observation,
                 "agent": agent_observation,

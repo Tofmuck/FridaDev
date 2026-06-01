@@ -912,7 +912,53 @@ NO-GO retroactif Lot 8 si un patch ulterieur:
 - casse le fallback deterministe;
 - expose du contenu brut dans les projections techniques.
 
-## 22. Hors-scope
+## 22. Lot 9 livre
+
+Lot 9 rend l'agent bibliothecaire comparatif lisible par les surfaces
+operateur sans l'activer comme controleur produit.
+
+Observabilite reelle exposee:
+
+- mode, status, reason code, `model_called`, `candidate_plan_present`;
+- `request_observation` avec presence, longueurs, hashes courts et counts du
+  message courant et du dialogue recent;
+- settings expurges: modele primaire/fallback, timeout, budgets et contrat JSON
+  obligatoire;
+- observation modele: modele effectif expurge, finish reason, duree, status
+  code, response chars, attempt count, fallback model flag;
+- observation validation JSON: status, reason code, longueur/hash JSON, noms
+  d'outils allowlistes, nombre d'appels outil proposes;
+- comparaison produit: `used_for_response=false`,
+  `product_response_changed=false`, `deterministic_controller=true`;
+- absence d'execution agentique runtime:
+  `tool_execution_status=not_executed`,
+  `tool_call_event_count=0`, `selection_event_count=0`,
+  `state_update_event_count=0`, `final_event_count=0`.
+
+Dashboard/read-model:
+
+- `biblio_json.librarian_agent` persiste une projection compacte content-free;
+- les buckets Biblio agregent les modes, statuts, appels modele, tentatives,
+  durees, validations et compteurs d'outil agentique executes;
+- la story admin mentionne l'agent seulement comme comparaison observee.
+
+Interdits Lot 9:
+
+- inventer des events `tool_call`, `selection`, `state_update` ou `final` si le
+  runtime ne les execute pas;
+- exposer message brut, dialogue brut, prompt agent, raw JSON modele, params
+  d'outils bruts, passage, titre, auteur, locator, payload Catalogue ou secret;
+- utiliser le plan agent pour modifier la reponse visible.
+
+NO-GO retroactif Lot 9 si un patch ulterieur:
+
+- transforme un signal `not_executed` en evenement fictif;
+- ajoute des projections dashboard content-rich;
+- rend `used_for_response` ou `product_response_changed` vrai sans lot
+  d'activation separe;
+- appelle le modele en mode `off` ou quand Biblio est desactivee.
+
+## 23. Hors-scope
 
 - activation produit de l'agent;
 - remplacement du chemin deterministe;

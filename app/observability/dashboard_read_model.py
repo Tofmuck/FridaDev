@@ -1212,6 +1212,7 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
     web = _mapping(fact.get('web'))
     documents = _mapping(fact.get('documents'))
     biblio = _mapping(fact.get('biblio'))
+    librarian_agent = _mapping(biblio.get('librarian_agent'))
     node_state = _mapping(fact.get('node_state'))
     persistence = _mapping(fact.get('persistence'))
     errors = _mapping(fact.get('errors'))
@@ -1269,6 +1270,8 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
         context_parts.append('Biblio consultee sans passage injecte observe')
     else:
         context_parts.append('pas de consultation Biblio observee')
+    if librarian_agent.get('present'):
+        context_parts.append('comparaison agent bibliothecaire observee')
 
     embeddings_requested, embeddings_requested_present = _first_present_int(
         rag,
@@ -1373,6 +1376,15 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
                     f"contextes {_to_int(biblio.get('context_fetch_count'))}, "
                     f"selectionnes {_to_int(biblio.get('selected_passage_count'))}, "
                     f"ambigue {_yes_no(biblio.get('ambiguous'))}."
+                ),
+                (
+                    f"Agent Biblio: present {_yes_no(librarian_agent.get('present'))}, "
+                    f"mode {str(librarian_agent.get('mode') or 'non observe')}, "
+                    f"modele appele {_yes_no(librarian_agent.get('model_called'))}, "
+                    f"plan candidat {_yes_no(librarian_agent.get('candidate_plan_present'))}, "
+                    f"controleur deterministe {_yes_no(librarian_agent.get('deterministic_controller'))}, "
+                    f"utilise pour reponse {_yes_no(librarian_agent.get('used_for_response'))}, "
+                    f"outils agentiques {str(librarian_agent.get('tool_execution_status') or 'not_executed')}."
                 ),
                 f"Persistence: etat {_status_fr(persistence.get('status'))}.",
             ],

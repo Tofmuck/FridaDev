@@ -703,6 +703,66 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                         'theme_query_signal': {'available': False, 'reason_code': 'biblio_raw_query_not_observed'},
                         'raw_theme_query': 'RAW QUERY MUST NOT LEAK',
                     },
+                    'librarian_agent': {
+                        'present': True,
+                        'comparison_kind': 'deterministic_comparison',
+                        'status': 'evaluated',
+                        'reason_code': 'biblio_librarian_agent_compared',
+                        'mode': 'shadow',
+                        'model_called': True,
+                        'candidate_plan_present': True,
+                        'used_for_response': False,
+                        'deterministic_controller': True,
+                        'product_response_changed': False,
+                        'fallback_deterministic': True,
+                        'tool_execution_status': 'not_executed',
+                        'tool_call_event_count': 0,
+                        'selection_event_count': 0,
+                        'state_update_event_count': 0,
+                        'final_event_count': 0,
+                        'agent_loop_executed': False,
+                        'request_observation': {
+                            'user_message_present': True,
+                            'user_message_chars': 32,
+                            'user_message_hash': '123456abcdef',
+                            'recent_dialogue_count': 1,
+                            'bounded_recent_dialogue_count': 1,
+                            'recent_dialogue_hashes': ['abcdef123456'],
+                            'message': 'RAW AGENT MESSAGE MUST NOT LEAK',
+                        },
+                        'agent': {
+                            'status': 'shadow_ready',
+                            'reason_code': 'biblio_librarian_agent_shadow_validated',
+                            'validation': {
+                                'status': 'validated',
+                                'reason_code': 'biblio_librarian_agent_json_validated',
+                                'tool_call_count': 1,
+                                'tool_names': ['catalog_search'],
+                                'json_chars': 200,
+                                'json_hash': 'fedcba654321',
+                                'raw': 'RAW MODEL JSON MUST NOT LEAK',
+                                'plan': {
+                                    'intent': 'list_catalog',
+                                    'answer_mode': 'tool',
+                                    'tool_call_count': 1,
+                                    'tool_names': ['catalog_search'],
+                                    'params': 'RAW TOOL PARAMS MUST NOT LEAK',
+                                },
+                            },
+                            'model': {
+                                'status': 'ok',
+                                'reason_code': 'biblio_librarian_agent_model_ok',
+                                'model_effective': 'model/x',
+                                'finish_reason': 'stop',
+                                'duration_ms': 12,
+                                'status_code': 200,
+                                'response_chars': 200,
+                                'attempt_count': 1,
+                                'fallback_model_used': False,
+                                'payload': 'RAW MODEL PAYLOAD MUST NOT LEAK',
+                            },
+                        },
+                    },
                     'counts': {
                         'passage_count': 1,
                         'lane_chars': 300,
@@ -747,6 +807,24 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertEqual(biblio['top_score'], 42.5)
         self.assertEqual(biblio['score_gap'], 7.0)
         self.assertFalse(biblio['raw_content_included'])
+        agent = biblio['librarian_agent']
+        self.assertTrue(agent['present'])
+        self.assertEqual(agent['mode'], 'shadow')
+        self.assertTrue(agent['model_called'])
+        self.assertTrue(agent['candidate_plan_present'])
+        self.assertFalse(agent['used_for_response'])
+        self.assertFalse(agent['product_response_changed'])
+        self.assertTrue(agent['deterministic_controller'])
+        self.assertEqual(agent['tool_execution_status'], 'not_executed')
+        self.assertEqual(agent['tool_call_event_count'], 0)
+        self.assertEqual(agent['attempt_count'], 1)
+        self.assertEqual(agent['duration_ms'], 12)
+        self.assertEqual(agent['response_chars'], 200)
+        self.assertEqual(agent['validation_tool_call_count'], 1)
+        self.assertEqual(agent['validation_tool_names'], ['catalog_search'])
+        self.assertEqual(agent['json_hash'], 'fedcba654321')
+        self.assertEqual(agent['user_message_hash'], '123456abcdef')
+        self.assertEqual(agent['recent_dialogue_hashes'], ['abcdef123456'])
 
         summaries = dashboard_analytics.build_dashboard_conversation_summaries([fact])
         self.assertEqual(summaries[0]['biblio_used_turns'], 1)
@@ -767,14 +845,24 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertEqual(biblio_hour_bucket['metrics']['search_candidates_total'], 3)
         self.assertEqual(biblio_hour_bucket['metrics']['context_fetch_total'], 2)
         self.assertEqual(biblio_hour_bucket['metrics']['selected_passages_total'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_present_turns'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_model_called_turns'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_tool_call_events_total'], 0)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_validation_tool_calls_total'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_mode_counts']['shadow'], 1)
 
         serialized = json.dumps({'fact': fact, 'summaries': summaries, 'buckets': buckets}, sort_keys=True)
         self.assertNotIn('RAW BIBLIO PASSAGE MUST NOT LEAK', serialized)
         self.assertNotIn('RAW BIBLIO LANE MUST NOT LEAK', serialized)
         self.assertNotIn('RAW CATALOGUE PAYLOAD MUST NOT LEAK', serialized)
         self.assertNotIn('RAW QUERY MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW AGENT MESSAGE MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW MODEL JSON MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW TOOL PARAMS MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW MODEL PAYLOAD MUST NOT LEAK', serialized)
         self.assertNotIn('message', self._collect_keys(fact))
         self.assertNotIn('payload', self._collect_keys(fact))
+        self.assertNotIn('params', self._collect_keys(fact))
 
     def test_persisted_turn_fact_preserves_biblio_json_content_free(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
