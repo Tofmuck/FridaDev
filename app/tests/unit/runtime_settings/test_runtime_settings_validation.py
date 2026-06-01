@@ -140,7 +140,7 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
                     'top_p': {'value': 1},
                     'max_tokens': {'value': 16000},
                     'max_recent_turns': {'value': 5},
-                    'timeout_s': {'value': 120},
+                    'timeout_s': {'value': 240},
                     'reasoning_effort': {'value': 'high'},
                 },
                 fetcher=lambda: {},

@@ -1070,7 +1070,7 @@ Risque de livrer un agent qui passe les unitaires mais echoue les demandes philo
   `--no-agent-strict` permet une inspection debug non bloquante.
 - [x] Mini-lot configuration active post-Lot 10: defaults applicatifs non
   secrets `active`, `deepseek/deepseek-v4-pro`, temperature `0`, `top_p=1`,
-  `max_tokens=16000`, `max_recent_turns=5`, timeout `120s` et
+  `max_tokens=16000`, `max_recent_turns=5`, timeout `240s` et
   `reasoning_effort=high`.
 - [x] Correctif post-audit: payload OpenRouter Biblio aligne sur
   `reasoning={"effort":"high","exclude":true}` et smoke segmentable par
@@ -1152,11 +1152,18 @@ utilisateur, pas d'un nouveau GO technique d'activation.
 - [ ] Tests unitaires/regression pour chaque correctif.
 - [ ] Eventuels ajustements de prompt/lane seulement si le probleme est prouve
   par usage live et garde les murs content-free hors lane produit.
+- [x] Stabilisation immediate post-retour live: timeout bibliothecaire porte a
+  `240s`, prompt renforce pour chercher le texte primaire avant commentaire ou
+  notice, et diagnostic Stephanus content-free date sous
+  `app/docs/states/baselines/biblio-smokes/`.
 
 ### Tests / preuves
 
 - [ ] `python -m biblio.smoke_librarian_agent_live --jsonl` en conteneur live.
 - [ ] Repros live utilisateur ciblees, content-free.
+- [x] Diagnostic content-free Stephanus: labels simples localisables selon le
+  document; plage brute non directement localisable, sans patch plateforme ni
+  affichage OCR.
 - [ ] Unitaires Biblio impactes par chaque stabilisation.
 - [ ] Verification anti-fuite: pas de passage brut, prompt, payload, titre,
   auteur, locator, requete brute ou secret dans les preuves techniques.

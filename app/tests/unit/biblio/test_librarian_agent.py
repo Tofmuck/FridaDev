@@ -588,7 +588,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(settings.mode, contract.MODE_ACTIVE)
         self.assertEqual(settings.primary_model, "deepseek/deepseek-v4-pro")
         self.assertEqual(settings.max_tokens, 16000)
-        self.assertEqual(settings.timeout_s, 120)
+        self.assertEqual(settings.timeout_s, 240)
         self.assertEqual(settings.reasoning_effort, "high")
         observed = settings.to_observability()
         self.assertEqual(observed["settings_source"], "db")
@@ -601,7 +601,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 BIBLIO_LIBRARIAN_AGENT_MODEL="deepseek/deepseek-v4-pro",
                 BIBLIO_LIBRARIAN_AGENT_REQUIRE_PARAMETERS="false",
                 BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS=1,
-                BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S=120,
+                BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S=240,
                 BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS=16000,
                 BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT="high",
             )
@@ -617,6 +617,25 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(payload["provider"], {"require_parameters": True})
         self.assertEqual(payload["response_format"]["type"], "json_schema")
         self.assertEqual(len(payload["messages"]), 2)
+
+    def test_openrouter_system_prompt_guides_primary_text_and_stephanus_ranges(self) -> None:
+        settings = contract.BiblioLibrarianAgentSettings(
+            mode=contract.MODE_ACTIVE,
+            primary_model="model/x",
+        )
+        messages = openrouter.build_librarian_agent_messages(_request(settings=settings), settings=settings)
+        system = messages[0]["content"]
+
+        for marker in [
+            "texte primaire",
+            "commentaire",
+            "Stephanus",
+            "148e-151d",
+            "locate sur le debut",
+            "second locate sur la fin",
+            "n'invente pas le texte exact",
+        ]:
+            self.assertIn(marker, system)
 
     def test_openrouter_payload_omits_reasoning_effort_when_disabled(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings(
@@ -906,7 +925,7 @@ class _FakeRuntimeSettingsModule:
                 "mode": {"value": "active"},
                 "primary_model": {"value": "deepseek/deepseek-v4-pro"},
                 "fallback_model": {"value": ""},
-                "timeout_s": {"value": 120},
+                "timeout_s": {"value": 240},
                 "temperature": {"value": 0},
                 "top_p": {"value": 1},
                 "max_tokens": {"value": 16000},

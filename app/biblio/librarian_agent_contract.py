@@ -15,6 +15,7 @@ from .librarian_planner_observability import safe_tool_name as _safe_tool_name
 
 
 SCHEMA_VERSION = "biblio_librarian_agent_v1"
+DEFAULT_TIMEOUT_S = 240
 
 MODE_OFF = "off"
 MODE_SHADOW = "shadow"
@@ -108,7 +109,7 @@ class BiblioLibrarianAgentSettings:
     mode: str = MODE_OFF
     primary_model: str = ""
     fallback_model: str = ""
-    timeout_s: int = 10
+    timeout_s: int = DEFAULT_TIMEOUT_S
     temperature: float = 0.0
     top_p: float = 1.0
     max_tokens: int = 900
@@ -125,7 +126,10 @@ class BiblioLibrarianAgentSettings:
             mode=normalize_mode(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MODE", MODE_OFF)),
             primary_model=str(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MODEL", "") or "").strip(),
             fallback_model=str(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL", "") or "").strip(),
-            timeout_s=_positive_int(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S", 10), 10),
+            timeout_s=_positive_int(
+                getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S", DEFAULT_TIMEOUT_S),
+                DEFAULT_TIMEOUT_S,
+            ),
             temperature=_float(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_TEMPERATURE", 0.0), 0.0),
             top_p=_float(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_TOP_P", 1.0), 1.0),
             max_tokens=_positive_int(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS", 900), 900),
@@ -157,7 +161,7 @@ class BiblioLibrarianAgentSettings:
             mode=mode,
             primary_model=_payload_text(payload, "primary_model"),
             fallback_model=_payload_text(payload, "fallback_model"),
-            timeout_s=_positive_int(_payload_value(payload, "timeout_s"), 10),
+            timeout_s=_positive_int(_payload_value(payload, "timeout_s"), DEFAULT_TIMEOUT_S),
             temperature=_float(_payload_value(payload, "temperature"), 0.0),
             top_p=_float(_payload_value(payload, "top_p"), 1.0),
             max_tokens=_positive_int(_payload_value(payload, "max_tokens"), 900),
