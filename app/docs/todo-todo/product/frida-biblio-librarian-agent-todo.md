@@ -1050,12 +1050,13 @@ Risque de livrer un agent qui passe les unitaires mais echoue les demandes philo
 - [x] Creer un runner agent dedie: `python -m biblio.smoke_librarian_agent_live --jsonl`.
 - [x] Couvrir catalogue complet, 100 ouvrages, Platon, Theetete, maieutique, sage-femme, 126b-128a, navigation, verification et ambiguite.
 - [x] Sorties strictement content-free.
-- [x] Exit code non zero si fuite, payload retenu, endpoint lourd interdit, effet agent produit ou statut produit `failed`.
+- [x] Exit code non zero si fuite, payload retenu, endpoint lourd interdit, effet agent produit, agent attendu non appele, statut produit `failed` ou `partial_required_attention`.
 
 ### Patch attendu
 
-- [x] Runner smoke agent, agent mode `off` par defaut.
-- [x] Fixtures attendues content-free avec `product_expectation_status` (`met`, `partial`, `failed`).
+- [x] Runner smoke agent, agent mode nominal `candidate`; `off` reste explicite pour test negatif.
+- [x] Fixtures attendues content-free avec statuts separes: `runtime_expectation_status`, `agent_expectation_status`, `product_expectation_status`.
+- [x] Un plan dialogue local seul ne peut pas rendre un cas `met`.
 - [x] Documentation des cas et resultats.
 
 ### Tests / preuves

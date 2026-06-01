@@ -970,7 +970,8 @@ Runner:
 
 - commande canonique:
   `python -m biblio.smoke_librarian_agent_live --jsonl`;
-- mode agent par defaut: `off`;
+- mode agent par defaut: `candidate`;
+- `off` est reserve aux tests negatifs explicites;
 - options explicites: `--agent-mode off|config|shadow|candidate`;
 - aucune execution de boucle d'outils agentique;
 - aucun appel modele en mode `off`;
@@ -994,9 +995,12 @@ Chaque record expose seulement:
   passages, lane chars;
 - ids courts, hashes courts, longueurs;
 - observation dialogue/agent content-free;
+- statuts separes `runtime_expectation_status`,
+  `agent_expectation_status`, `product_expectation_status`;
 - flags guardrail: `raw_marker_leaks`, `payload_objects_retained`,
   `forbidden_endpoint_used`;
-- `product_expectation_status` (`met`, `partial`, `failed`) et reason code.
+- `product_expectation_status` (`met`, `partial_required_attention`,
+  `failed`) et reason code.
 
 Le runner sort non-zero en mode strict si:
 
@@ -1006,10 +1010,14 @@ Le runner sort non-zero en mode strict si:
 - l'agent est utilise pour la reponse produit;
 - la reponse produit change;
 - une execution outil agentique est observee;
-- une attente produit est `failed`.
+- un agent nominal `candidate`/`shadow` attendu n'appelle pas le modele ou ne
+  produit pas de plan candidat;
+- une attente produit est `failed` ou `partial_required_attention`.
 
-Les statuts `partial` sont acceptes pour les cas ou le systeme planifie,
-consulte ou clarifie honnetement sans inventer de certitude.
+Un plan du dialogue planner local ne suffit jamais a rendre un cas produit
+`met`. Il peut seulement aider le diagnostic. Les cas runtime non trouves,
+notamment les smokes Kant/Sapere aude, doivent rester visibles comme `failed`
+ou `partial_required_attention` au lieu de produire un faux vert.
 
 Interdits Lot 10:
 
@@ -1027,7 +1035,9 @@ NO-GO retroactif Lot 10 si un patch ulterieur:
 
 - affiche les messages de smoke dans le JSONL;
 - rend `--agent-mode off` capable d'appeler OpenRouter;
+- remet le mode nominal du runner a `off`;
 - autorise un record `failed` en strict;
+- autorise un record `partial_required_attention` en strict;
 - contourne les flags content-free par `--no-strict` dans le chemin de
   validation normal.
 

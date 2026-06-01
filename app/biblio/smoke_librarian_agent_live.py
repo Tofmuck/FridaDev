@@ -12,6 +12,8 @@ import json
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Sequence
 
+import config as runtime_config
+
 from .catalogue_client import CatalogueClient, ENDPOINT_DOCUMENT
 from .chat_runtime import BiblioChatResult, run_biblio_chat_turn
 from .conversation_state import BiblioConversationState
@@ -109,6 +111,7 @@ SmokeTurnRunner = Callable[..., BiblioChatResult]
 EXIT_OK = 0
 EXIT_VALIDATION_FAILURE = 2
 
+DEFAULT_AGENT_MODE = agent_contract.MODE_CANDIDATE
 _AGENT_MODE_CONFIG = "config"
 _ALLOWED_AGENT_MODES = (
     agent_contract.MODE_OFF,
@@ -123,6 +126,10 @@ _OUTPUT_KEYS = {
     "agent_present",
     "agent_product_response_changed",
     "agent_reason_code",
+    "agent_expectation_reason_code",
+    "agent_expectation_status",
+    "agent_plan_tool_call_count",
+    "agent_plan_tool_names",
     "agent_status",
     "agent_tool_call_event_count",
     "agent_tool_execution_status",
@@ -154,6 +161,8 @@ _OUTPUT_KEYS = {
     "query_kind",
     "raw_marker_leaks",
     "reason_code",
+    "runtime_expectation_reason_code",
+    "runtime_expectation_status",
     "selected_count",
     "status",
     "total_count",
@@ -162,18 +171,13 @@ _OUTPUT_KEYS = {
 }
 
 
-@dataclass(frozen=True)
 class _AgentModeConfig:
-    BIBLIO_LIBRARIAN_AGENT_MODE: str = agent_contract.MODE_OFF
-    BIBLIO_LIBRARIAN_AGENT_MODEL: str = ""
-    BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL: str = ""
-    BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S: int = 10
-    BIBLIO_LIBRARIAN_AGENT_TEMPERATURE: float = 0.0
-    BIBLIO_LIBRARIAN_AGENT_TOP_P: float = 1.0
-    BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS: int = 900
-    BIBLIO_LIBRARIAN_AGENT_MAX_TOOL_CALLS: int = 5
-    BIBLIO_LIBRARIAN_AGENT_MAX_MODEL_CALLS: int = 1
-    BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS: int = 5
+    def __init__(self, *, mode: str, base_config: Any = None) -> None:
+        self.BIBLIO_LIBRARIAN_AGENT_MODE = mode
+        self._base_config = base_config or runtime_config
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._base_config, name)
 
 
 def run_smokes(
@@ -182,7 +186,7 @@ def run_smokes(
     turn_runner: SmokeTurnRunner = run_biblio_chat_turn,
     client_factory: Any = CatalogueClient,
     config_module: Any = None,
-    agent_mode: str = agent_contract.MODE_OFF,
+    agent_mode: str = DEFAULT_AGENT_MODE,
     raw_markers: Sequence[str] = DEFAULT_RAW_MARKERS,
 ) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
@@ -280,14 +284,14 @@ def _record_for_result(
         "agent_mode": _safe_token(agent.get("mode")),
         "agent_model_called": _to_bool(agent.get("model_called")),
         "agent_candidate_plan_present": _to_bool(agent.get("candidate_plan_present")),
+        "agent_plan_tool_call_count": _agent_plan_tool_call_count(agent),
+        "agent_plan_tool_names": _agent_plan_tool_names(agent),
         "agent_used_for_response": _to_bool(agent.get("used_for_response")),
         "agent_product_response_changed": _to_bool(agent.get("product_response_changed")),
         "agent_tool_execution_status": _safe_token(agent.get("tool_execution_status")),
         "agent_tool_call_event_count": _to_int(agent.get("tool_call_event_count")),
     }
-    expectation_status, expectation_reason = _evaluate_product_expectation(case, base_record)
-    base_record["product_expectation_status"] = expectation_status
-    base_record["product_expectation_reason_code"] = expectation_reason
+    base_record.update(_evaluate_expectations(case, base_record))
     return _finalize_record(
         base_record,
         raw_markers=raw_markers,
@@ -317,8 +321,14 @@ def smoke_record_violations(record: Mapping[str, Any], *, product_strict: bool =
     tool_execution = _safe_token(record.get("agent_tool_execution_status"))
     if tool_execution and tool_execution != "not_executed":
         violations.append("agent_tool_execution_status")
-    if product_strict and _safe_token(record.get("product_expectation_status")) == "failed":
-        violations.append("product_expectation_failed")
+    if product_strict:
+        if _safe_token(record.get("agent_expectation_status")) == "failed":
+            violations.append("agent_expectation_failed")
+        product_status = _safe_token(record.get("product_expectation_status"))
+        if product_status == "failed":
+            violations.append("product_expectation_failed")
+        elif product_status == "partial_required_attention":
+            violations.append("product_expectation_partial_required_attention")
     return tuple(violations)
 
 
@@ -336,7 +346,31 @@ def smoke_exit_code(
     return EXIT_OK
 
 
-def _evaluate_product_expectation(
+def _evaluate_expectations(
+    case: BiblioLibrarianProductSmokeCase,
+    record: Mapping[str, Any],
+) -> dict[str, str]:
+    runtime_status, runtime_reason = _evaluate_runtime_expectation(case, record)
+    agent_status, agent_reason = _evaluate_agent_expectation(record)
+    product_status, product_reason = _combine_expectations(
+        case,
+        record,
+        runtime_status=runtime_status,
+        runtime_reason=runtime_reason,
+        agent_status=agent_status,
+        agent_reason=agent_reason,
+    )
+    return {
+        "runtime_expectation_status": runtime_status,
+        "runtime_expectation_reason_code": runtime_reason,
+        "agent_expectation_status": agent_status,
+        "agent_expectation_reason_code": agent_reason,
+        "product_expectation_status": product_status,
+        "product_expectation_reason_code": product_reason,
+    }
+
+
+def _evaluate_runtime_expectation(
     case: BiblioLibrarianProductSmokeCase,
     record: Mapping[str, Any],
 ) -> tuple[str, str]:
@@ -348,11 +382,10 @@ def _evaluate_product_expectation(
     candidate_count = _to_int(record.get("candidate_count"))
     passage_count = _to_int(record.get("passage_count"))
     lane_injected = _to_bool(record.get("lane_injected"))
-    dialogue_status = _safe_token(record.get("dialogue_status"))
-    dialogue_tool_count = _to_int(record.get("dialogue_tool_call_count"))
     total_count = _to_int(record.get("total_count"))
     displayed_count = _to_int(record.get("displayed_count"))
     truncated = _to_bool(record.get("truncated"))
+    anchor_present = bool(record.get("doc_id_shorts") or record.get("hashes"))
 
     if kind == "catalog_full":
         if query_kind == "list_catalog" and status == "listed" and displayed_count > 0:
@@ -371,33 +404,91 @@ def _evaluate_product_expectation(
     if kind in {"theme_search", "external_theme"}:
         if context_call_count > 0 and (candidate_count > 0 or passage_count > 0 or lane_injected):
             return "met", "theme_search_reached_context"
-        if endpoint_count > 0 or dialogue_tool_count > 0:
-            return "partial", "theme_search_planned_or_consulted"
+        if endpoint_count > 0:
+            if status == "not_found" and candidate_count == 0 and context_call_count == 0:
+                return "failed", "theme_search_not_found_without_context"
+            return "partial", "theme_search_consulted_without_context"
         return "failed", "theme_search_not_reached"
     if kind == "work_lookup":
-        if endpoint_count > 0 or dialogue_tool_count > 0:
-            return "met", "work_lookup_planned_or_consulted"
-        if dialogue_status in {"planned", "needs_clarification"}:
-            return "partial", "work_lookup_dialogue_only"
+        if endpoint_count > 0:
+            return "met", "work_lookup_consulted"
         return "failed", "work_lookup_not_reached"
     if kind == "toc":
         endpoints = set(_safe_token_list(record.get("endpoint_kinds")))
         if "chapters" in endpoints or status == "toc_listed":
             return "met", "toc_listed"
-        if endpoint_count > 0 or dialogue_tool_count > 0 or dialogue_status == "needs_clarification":
+        if endpoint_count > 0:
             return "partial", "toc_planned_or_clarified"
         return "failed", "toc_not_reached"
     if kind == "state_followup":
-        if query_kind == "state_followup" or dialogue_tool_count > 0:
+        if query_kind == "state_followup" and (lane_injected or anchor_present):
             return "met", "state_followup_handled"
-        if dialogue_status in {"planned", "needs_clarification", "unsupported_missing_tool"}:
-            return "partial", "state_followup_dialogue_only"
-        return "failed", "state_followup_not_recognized"
+        return "failed", "state_followup_not_reached"
     if kind == "origin_check":
-        if query_kind == "state_followup" or dialogue_status in {"planned", "needs_clarification"}:
-            return "met", "origin_check_handled_or_clarified"
-        return "partial", "origin_check_dialogue_only"
+        if query_kind == "state_followup" and anchor_present:
+            return "met", "origin_anchor_available"
+        if query_kind == "state_followup" or lane_injected:
+            return "partial", "origin_clarification_without_anchor"
+        return "failed", "origin_check_not_reached"
     return "partial", "expectation_not_classified"
+
+
+def _evaluate_agent_expectation(record: Mapping[str, Any]) -> tuple[str, str]:
+    mode = _safe_token(record.get("agent_mode"))
+    if mode == agent_contract.MODE_OFF:
+        return "met", "agent_off_explicit"
+    if mode not in {agent_contract.MODE_SHADOW, agent_contract.MODE_CANDIDATE}:
+        return "failed", "agent_mode_not_nominal"
+    if not _to_bool(record.get("agent_present")):
+        return "failed", "agent_observation_missing"
+    if not _to_bool(record.get("agent_model_called")):
+        reason = _safe_token(record.get("agent_reason_code")) or "agent_model_not_called"
+        return "failed", reason
+    if not _to_bool(record.get("agent_candidate_plan_present")):
+        reason = _safe_token(record.get("agent_reason_code")) or "agent_candidate_plan_missing"
+        return "failed", reason
+    return "met", "agent_candidate_plan_observed"
+
+
+def _combine_expectations(
+    case: BiblioLibrarianProductSmokeCase,
+    record: Mapping[str, Any],
+    *,
+    runtime_status: str,
+    runtime_reason: str,
+    agent_status: str,
+    agent_reason: str,
+) -> tuple[str, str]:
+    if runtime_status == "met":
+        return "met", runtime_reason
+    agent_plan_satisfies = _agent_plan_can_satisfy(record, agent_status=agent_status)
+    if case.case_kind == "external_theme" and runtime_reason == "theme_search_not_found_without_context":
+        if agent_plan_satisfies:
+            return "partial_required_attention", "external_theme_runtime_not_found_agent_plan_only"
+        return "failed", runtime_reason
+    if case.case_kind == "origin_check":
+        if runtime_status == "partial":
+            return "partial_required_attention", runtime_reason
+        return runtime_status, runtime_reason
+    if agent_plan_satisfies and case.case_kind in {
+        "work_lookup",
+        "toc",
+        "state_followup",
+        "theme_search",
+        "range_extract",
+        "state_seed",
+    }:
+        return "met", agent_reason
+    if runtime_status == "partial" or agent_status == "partial":
+        return "partial_required_attention", runtime_reason if runtime_status == "partial" else agent_reason
+    if agent_status == "failed" and runtime_status == "failed":
+        return "failed", runtime_reason
+    return runtime_status, runtime_reason
+
+
+def _agent_plan_can_satisfy(record: Mapping[str, Any], *, agent_status: str) -> bool:
+    mode = _safe_token(record.get("agent_mode"))
+    return agent_status == "met" and mode in {agent_contract.MODE_SHADOW, agent_contract.MODE_CANDIDATE}
 
 
 def _finalize_record(
@@ -428,12 +519,27 @@ def _recent_turn_observation(
 
 
 def _config_for_agent_mode(agent_mode: str, *, config_module: Any = None) -> Any:
-    normalized = _safe_token(agent_mode) or agent_contract.MODE_OFF
+    normalized = _safe_token(agent_mode) or DEFAULT_AGENT_MODE
     if normalized == _AGENT_MODE_CONFIG:
         return config_module
     if normalized not in set(_ALLOWED_AGENT_MODES):
-        normalized = agent_contract.MODE_OFF
-    return _AgentModeConfig(BIBLIO_LIBRARIAN_AGENT_MODE=normalized)
+        normalized = DEFAULT_AGENT_MODE
+    return _AgentModeConfig(mode=normalized, base_config=config_module)
+
+
+def _agent_plan_tool_call_count(agent: Mapping[str, Any]) -> int:
+    nested_agent = _mapping(agent.get("agent"))
+    validation = _mapping(nested_agent.get("validation"))
+    plan = _mapping(validation.get("plan"))
+    return _to_int(validation.get("tool_call_count")) or _to_int(plan.get("tool_call_count"))
+
+
+def _agent_plan_tool_names(agent: Mapping[str, Any]) -> list[str]:
+    nested_agent = _mapping(agent.get("agent"))
+    validation = _mapping(nested_agent.get("validation"))
+    plan = _mapping(validation.get("plan"))
+    names = _safe_token_list(validation.get("tool_names"))
+    return names or _safe_token_list(plan.get("tool_names"))
 
 
 def _lane_observability(value: Any) -> dict[str, Any]:
@@ -569,8 +675,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--agent-mode",
         choices=_ALLOWED_AGENT_MODES,
-        default=agent_contract.MODE_OFF,
-        help="Agent comparison mode for the smoke. Default keeps the model off.",
+        default=DEFAULT_AGENT_MODE,
+        help="Agent comparison mode for the smoke. Default asks the model for a candidate plan.",
     )
     args = parser.parse_args(argv)
     records = run_smokes(agent_mode=args.agent_mode)

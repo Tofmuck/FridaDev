@@ -25,6 +25,18 @@ RAW_QUERY = "RAW AGENT SMOKE QUERY MUST NOT APPEAR"
 
 
 class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
+    def test_default_agent_mode_is_candidate_and_off_is_explicit_only(self) -> None:
+        self.assertEqual(smoke.DEFAULT_AGENT_MODE, "candidate")
+        self.assertNotEqual(smoke.DEFAULT_AGENT_MODE, "off")
+        self.assertEqual(
+            smoke._config_for_agent_mode(smoke.DEFAULT_AGENT_MODE).BIBLIO_LIBRARIAN_AGENT_MODE,
+            "candidate",
+        )
+        self.assertEqual(
+            smoke._config_for_agent_mode("off").BIBLIO_LIBRARIAN_AGENT_MODE,
+            "off",
+        )
+
     def test_matrix_contains_required_product_families_without_raw_case_ids(self) -> None:
         messages = "\n".join(case.message for case in smoke.DEFAULT_SMOKE_CASES)
         encoded_public_matrix = json.dumps(
@@ -61,6 +73,114 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         self.assertNotIn(RAW_PASSAGE, encoded)
         self.assertNotIn(RAW_QUERY, encoded)
 
+    def test_no_signal_work_lookup_with_local_plan_is_not_product_met(self) -> None:
+        case = smoke.BiblioLibrarianProductSmokeCase("P03", "work_lookup", RAW_QUERY)
+        expectations = smoke._evaluate_expectations(
+            case,
+            {
+                "query_kind": "no_signal",
+                "status": "not_used",
+                "endpoint_count": 0,
+                "dialogue_tool_call_count": 1,
+                "agent_mode": "off",
+            },
+        )
+
+        self.assertEqual(expectations["runtime_expectation_status"], "failed")
+        self.assertNotEqual(expectations["product_expectation_status"], "met")
+
+    def test_state_followup_local_passage_context_plan_is_not_product_met(self) -> None:
+        case = smoke.BiblioLibrarianProductSmokeCase("P11", "state_followup", RAW_QUERY)
+        expectations = smoke._evaluate_expectations(
+            case,
+            {
+                "query_kind": "no_signal",
+                "status": "not_used",
+                "endpoint_count": 0,
+                "lane_injected": False,
+                "dialogue_tool_call_count": 1,
+                "dialogue_tool_names": ["passage_context"],
+                "agent_mode": "off",
+            },
+        )
+
+        self.assertEqual(expectations["runtime_expectation_status"], "failed")
+        self.assertNotEqual(expectations["product_expectation_status"], "met")
+
+    def test_origin_clarification_without_anchor_is_partial_not_met(self) -> None:
+        case = smoke.BiblioLibrarianProductSmokeCase("P15", "origin_check", RAW_QUERY)
+        expectations = smoke._evaluate_expectations(
+            case,
+            {
+                "query_kind": "state_followup",
+                "status": "clarification_required",
+                "endpoint_count": 0,
+                "lane_injected": True,
+                "doc_id_shorts": [],
+                "hashes": [],
+                "agent_mode": "off",
+            },
+        )
+
+        self.assertEqual(expectations["runtime_expectation_status"], "partial")
+        self.assertEqual(expectations["product_expectation_status"], "partial_required_attention")
+
+    def test_nominal_agent_mode_fails_strict_when_model_is_not_called(self) -> None:
+        record = {
+            "case_id": "P03",
+            "raw_marker_leaks": False,
+            "payload_objects_retained": 0,
+            "forbidden_endpoint_used": False,
+            "agent_mode": "candidate",
+            "agent_present": True,
+            "agent_model_called": False,
+            "agent_candidate_plan_present": False,
+            "agent_expectation_status": "failed",
+            "agent_tool_execution_status": "not_executed",
+            "agent_tool_call_event_count": 0,
+            "agent_used_for_response": False,
+            "agent_product_response_changed": False,
+            "product_expectation_status": "failed",
+        }
+
+        self.assertEqual(smoke.smoke_exit_code([record]), smoke.EXIT_VALIDATION_FAILURE)
+
+    def test_kant_not_found_without_context_is_not_silent_success(self) -> None:
+        self.assertTrue(any("Kant" in case.message for case in smoke.DEFAULT_SMOKE_CASES))
+        case = smoke.BiblioLibrarianProductSmokeCase("P16", "external_theme", RAW_QUERY)
+        failed = smoke._evaluate_expectations(
+            case,
+            {
+                "query_kind": "search_catalog",
+                "status": "not_found",
+                "endpoint_count": 1,
+                "context_call_count": 0,
+                "candidate_count": 0,
+                "passage_count": 0,
+                "lane_injected": True,
+                "agent_mode": "off",
+            },
+        )
+        partial = smoke._evaluate_expectations(
+            case,
+            {
+                "query_kind": "search_catalog",
+                "status": "not_found",
+                "endpoint_count": 1,
+                "context_call_count": 0,
+                "candidate_count": 0,
+                "passage_count": 0,
+                "lane_injected": True,
+                "agent_mode": "candidate",
+                "agent_present": True,
+                "agent_model_called": True,
+                "agent_candidate_plan_present": True,
+            },
+        )
+
+        self.assertEqual(failed["product_expectation_status"], "failed")
+        self.assertEqual(partial["product_expectation_status"], "partial_required_attention")
+
     def test_final_record_marker_leak_is_detected_without_emitting_unknown_field(self) -> None:
         record = smoke._finalize_record(
             {
@@ -85,6 +205,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
             "raw_marker_leaks": False,
             "payload_objects_retained": 0,
             "forbidden_endpoint_used": False,
+            "agent_expectation_status": "met",
             "agent_used_for_response": False,
             "agent_product_response_changed": False,
             "agent_tool_execution_status": "not_executed",
@@ -94,11 +215,13 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         raw_leak = {**safe, "raw_marker_leaks": True}
         retained_payload = {**safe, "payload_objects_retained": 1}
         product_failed = {**safe, "product_expectation_status": "failed"}
+        product_partial_attention = {**safe, "product_expectation_status": "partial_required_attention"}
 
         self.assertEqual(smoke.smoke_exit_code([safe]), smoke.EXIT_OK)
         self.assertEqual(smoke.smoke_exit_code([raw_leak]), smoke.EXIT_VALIDATION_FAILURE)
         self.assertEqual(smoke.smoke_exit_code([retained_payload]), smoke.EXIT_VALIDATION_FAILURE)
         self.assertEqual(smoke.smoke_exit_code([product_failed]), smoke.EXIT_VALIDATION_FAILURE)
+        self.assertEqual(smoke.smoke_exit_code([product_partial_attention]), smoke.EXIT_VALIDATION_FAILURE)
         self.assertEqual(
             smoke.smoke_exit_code([product_failed], product_strict=False),
             smoke.EXIT_OK,
@@ -110,6 +233,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
             "raw_marker_leaks": False,
             "payload_objects_retained": 0,
             "forbidden_endpoint_used": False,
+            "agent_expectation_status": "met",
             "agent_used_for_response": False,
             "agent_product_response_changed": False,
             "agent_tool_execution_status": "not_executed",
@@ -140,6 +264,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
                 "case_id": "P01",
                 "raw_marker_leaks": True,
                 "payload_objects_retained": 0,
+                "agent_expectation_status": "met",
                 "product_expectation_status": "met",
             }
         ]
