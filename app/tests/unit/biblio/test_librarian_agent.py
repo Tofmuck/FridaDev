@@ -69,17 +69,19 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertTrue(result.fallback_deterministic)
         self.assertIsNotNone(result.candidate_plan)
 
-    def test_active_mode_is_not_enabled_by_lot_7(self) -> None:
+    def test_active_mode_calls_model_and_validates_json_without_using_response(self) -> None:
         fake = _FakeModelClient(_valid_json())
         result = agent.BiblioLibrarianAgent(fake).run(
             _request(settings=contract.BiblioLibrarianAgentSettings(mode=contract.MODE_ACTIVE, primary_model="model/x"))
         )
 
-        self.assertEqual(result.status, agent.STATUS_FALLBACK_DETERMINISTIC)
-        self.assertEqual(result.reason_code, agent.REASON_ACTIVE_NOT_ENABLED)
+        self.assertEqual(result.status, agent.STATUS_ACTIVE_READY)
+        self.assertEqual(result.reason_code, agent.REASON_ACTIVE_VALIDATED)
         self.assertFalse(result.used_for_response)
-        self.assertFalse(result.model_called)
-        self.assertEqual(fake.calls, 0)
+        self.assertTrue(result.model_called)
+        self.assertTrue(result.fallback_deterministic)
+        self.assertIsNotNone(result.candidate_plan)
+        self.assertEqual(fake.calls, 1)
 
     def test_invalid_json_and_free_text_fall_back(self) -> None:
         cases = [

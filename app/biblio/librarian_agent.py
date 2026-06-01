@@ -1,4 +1,4 @@
-"""Shadow/candidate Biblio librarian agent orchestration."""
+"""Biblio librarian agent orchestration."""
 
 from __future__ import annotations
 
@@ -13,13 +13,15 @@ from .librarian_planner_observability import clean as _clean
 STATUS_SKIPPED = "skipped"
 STATUS_SHADOW_READY = "shadow_ready"
 STATUS_CANDIDATE_READY = "candidate_ready"
+STATUS_ACTIVE_READY = "active_ready"
 STATUS_FALLBACK_DETERMINISTIC = "fallback_deterministic"
 
 REASON_MODE_OFF = "biblio_librarian_agent_mode_off"
+REASON_MODE_UNSUPPORTED = "biblio_librarian_agent_mode_unsupported"
 REASON_MODEL_CALL_BUDGET_EXHAUSTED = "biblio_librarian_agent_model_call_budget_exhausted"
 REASON_SHADOW_VALIDATED = "biblio_librarian_agent_shadow_validated"
 REASON_CANDIDATE_VALIDATED = "biblio_librarian_agent_candidate_validated"
-REASON_ACTIVE_NOT_ENABLED = "biblio_librarian_agent_active_not_enabled"
+REASON_ACTIVE_VALIDATED = "biblio_librarian_agent_active_validated"
 
 
 @dataclass(frozen=True)
@@ -64,14 +66,6 @@ class BiblioLibrarianAgent:
             return BiblioLibrarianAgentResult(
                 status=STATUS_SKIPPED,
                 reason_code=REASON_MODE_OFF,
-                mode=mode,
-                model_called=False,
-                fallback_deterministic=True,
-            )
-        if mode == contract.MODE_ACTIVE:
-            return BiblioLibrarianAgentResult(
-                status=STATUS_FALLBACK_DETERMINISTIC,
-                reason_code=REASON_ACTIVE_NOT_ENABLED,
                 mode=mode,
                 model_called=False,
                 fallback_deterministic=True,
@@ -137,9 +131,20 @@ class BiblioLibrarianAgent:
                 validation_observation=validation_observation,
                 model_observation=model_observation,
             )
+        if mode == contract.MODE_ACTIVE:
+            return BiblioLibrarianAgentResult(
+                status=STATUS_ACTIVE_READY,
+                reason_code=REASON_ACTIVE_VALIDATED,
+                mode=mode,
+                model_called=provider_called,
+                fallback_deterministic=True,
+                candidate_plan=validation.plan,
+                validation_observation=validation_observation,
+                model_observation=model_observation,
+            )
         return BiblioLibrarianAgentResult(
             status=STATUS_FALLBACK_DETERMINISTIC,
-            reason_code=REASON_ACTIVE_NOT_ENABLED,
+            reason_code=REASON_MODE_UNSUPPORTED,
             mode=mode,
             model_called=False,
             fallback_deterministic=True,

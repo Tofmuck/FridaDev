@@ -213,8 +213,9 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         observed = result.observability_payload["librarian_agent"]
 
         self.assertFalse(result.used)
-        self.assertEqual(fake_model.calls, 0)
-        self.assertEqual(observed["agent"]["reason_code"], librarian_agent.REASON_ACTIVE_NOT_ENABLED)
+        self.assertEqual(fake_model.calls, 1)
+        self.assertEqual(observed["agent"]["reason_code"], librarian_agent.REASON_ACTIVE_VALIDATED)
+        self.assertTrue(observed["candidate_plan_present"])
         self.assertFalse(observed["used_for_response"])
         self.assertTrue(observed["fallback_deterministic"])
 

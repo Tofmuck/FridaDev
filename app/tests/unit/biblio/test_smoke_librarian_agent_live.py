@@ -25,12 +25,12 @@ RAW_QUERY = "RAW AGENT SMOKE QUERY MUST NOT APPEAR"
 
 
 class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
-    def test_default_agent_mode_is_candidate_and_off_is_explicit_only(self) -> None:
-        self.assertEqual(smoke.DEFAULT_AGENT_MODE, "candidate")
+    def test_default_agent_mode_is_active_and_off_is_explicit_only(self) -> None:
+        self.assertEqual(smoke.DEFAULT_AGENT_MODE, "active")
         self.assertNotEqual(smoke.DEFAULT_AGENT_MODE, "off")
         self.assertEqual(
             smoke._config_for_agent_mode(smoke.DEFAULT_AGENT_MODE).BIBLIO_LIBRARIAN_AGENT_MODE,
-            "candidate",
+            "active",
         )
         self.assertEqual(
             smoke._config_for_agent_mode("off").BIBLIO_LIBRARIAN_AGENT_MODE,
@@ -131,7 +131,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
             "raw_marker_leaks": False,
             "payload_objects_retained": 0,
             "forbidden_endpoint_used": False,
-            "agent_mode": "candidate",
+            "agent_mode": "active",
             "agent_present": True,
             "agent_model_called": False,
             "agent_candidate_plan_present": False,
@@ -171,7 +171,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
                 "candidate_count": 0,
                 "passage_count": 0,
                 "lane_injected": True,
-                "agent_mode": "candidate",
+                "agent_mode": "active",
                 "agent_present": True,
                 "agent_model_called": True,
                 "agent_candidate_plan_present": True,
@@ -226,6 +226,54 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
             smoke.smoke_exit_code([product_failed], product_strict=False),
             smoke.EXIT_OK,
         )
+
+    def test_no_product_strict_does_not_mask_agent_expectation_failure(self) -> None:
+        record = {
+            "case_id": "P01",
+            "raw_marker_leaks": False,
+            "payload_objects_retained": 0,
+            "forbidden_endpoint_used": False,
+            "agent_expectation_status": "failed",
+            "agent_used_for_response": False,
+            "agent_product_response_changed": False,
+            "agent_tool_execution_status": "not_executed",
+            "agent_tool_call_event_count": 0,
+            "product_expectation_status": "failed",
+        }
+
+        self.assertEqual(
+            smoke.smoke_exit_code([record], product_strict=False),
+            smoke.EXIT_VALIDATION_FAILURE,
+        )
+        self.assertEqual(
+            smoke.smoke_exit_code([record], product_strict=False, agent_strict=False),
+            smoke.EXIT_OK,
+        )
+
+    def test_shadow_and_candidate_are_not_nominal_smoke_proof(self) -> None:
+        for mode in ("shadow", "candidate"):
+            with self.subTest(mode=mode):
+                expectations = smoke._evaluate_expectations(
+                    smoke.BiblioLibrarianProductSmokeCase("P01", "catalog_full", RAW_QUERY),
+                    {
+                        "query_kind": "list_catalog",
+                        "status": "listed",
+                        "displayed_count": 10,
+                        "total_count": 10,
+                        "truncated": False,
+                        "agent_mode": mode,
+                        "agent_present": True,
+                        "agent_model_called": True,
+                        "agent_candidate_plan_present": True,
+                    },
+                )
+
+                self.assertEqual(expectations["runtime_expectation_status"], "met")
+                self.assertEqual(expectations["agent_expectation_status"], "failed")
+                self.assertEqual(
+                    expectations["agent_expectation_reason_code"],
+                    "agent_mode_dev_only_not_nominal",
+                )
 
     def test_strict_exit_fails_on_agent_side_effects(self) -> None:
         base = {

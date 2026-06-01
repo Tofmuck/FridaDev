@@ -1054,7 +1054,13 @@ Risque de livrer un agent qui passe les unitaires mais echoue les demandes philo
 
 ### Patch attendu
 
-- [x] Runner smoke agent, agent mode nominal `candidate`; `off` reste explicite pour test negatif.
+- [x] Runner smoke agent, agent mode nominal `active`; `off` reste explicite pour test negatif.
+- [x] `shadow` et `candidate` restent des modes compat/dev et ne comptent pas
+  comme preuve produit nominale.
+- [x] `active` appelle le modele et valide le JSON; il ne modifie pas encore la
+  reponse produit (`used_for_response=false`, outils non executes).
+- [x] `--no-product-strict` ne masque plus un echec agent; seul
+  `--no-agent-strict` permet une inspection debug non bloquante.
 - [x] Fixtures attendues content-free avec statuts separes: `runtime_expectation_status`, `agent_expectation_status`, `product_expectation_status`.
 - [x] Un plan dialogue local seul ne peut pas rendre un cas `met`.
 - [x] Documentation des cas et resultats.
@@ -1197,8 +1203,9 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 ## Risques documentes mais non corriges par cette TODO
 
 - Pas encore de branchement chat produit de l'agent bibliothecaire.
-- Pas encore de smoke modele reel OpenRouter dans l'environnement live.
-- Pas encore d'activation `active` produit.
+- Le smoke nominal `active` peut echouer honnetement si le modele ou la cle
+  provider ne sont pas configures; ce n'est plus remplace par `candidate`.
+- Pas encore d'activation souveraine du plan agent dans la reponse produit.
 - Pas encore de section runtime settings admin/DB dediee au modele agent.
 - Pas encore d'outil page cote FridaDev; P09 reste une surveillance, pas une promesse de navigation complete.
 - P03 reste une surveillance planner/intention, pas une promesse de correction complete par l'etat Lot 1.
@@ -1250,11 +1257,11 @@ controleur et `used_for_response=false`.
 
 NO-GO pour declarer l'agent bibliothecaire produit livre.
 
-NO-GO pour activer `active`, executer les outils proposes par le modele dans
-le chat produit, remplacer le chemin deterministe, ajouter outil page,
-`export/chunk`, navigation complete, modele hardcode ou route plateforme.
+NO-GO pour executer les outils proposes par le modele dans le chat produit,
+remplacer le chemin deterministe, ajouter outil page, `export/chunk`,
+navigation complete, modele hardcode ou route plateforme.
 
-Risques restants reels: pas de smoke modele reel, pas de branchement produit
-du plan agent, pas d'execution d'outils agentiques pour reponse finale, pas
-d'activation `active`, pas de runtime settings admin/DB dedies, outil page
-absent et `export/chunk` absent.
+Risques restants reels: le smoke nominal `active` depend de la configuration
+OpenRouter live, pas de branchement souverain du plan agent, pas d'execution
+d'outils agentiques pour reponse finale, pas de runtime settings admin/DB
+dedies, outil page absent et `export/chunk` absent.

@@ -970,11 +970,15 @@ Runner:
 
 - commande canonique:
   `python -m biblio.smoke_librarian_agent_live --jsonl`;
-- mode agent par defaut: `candidate`;
+- mode agent par defaut: `active`;
 - `off` est reserve aux tests negatifs explicites;
-- options explicites: `--agent-mode off|config|shadow|candidate`;
+- options explicites: `--agent-mode off|config|active|shadow|candidate`;
 - aucune execution de boucle d'outils agentique;
 - aucun appel modele en mode `off`;
+- `shadow` et `candidate` sont des modes compat/dev; ils ne valent pas preuve
+  produit nominale;
+- `active` doit appeler le modele et valider un plan JSON pour passer le smoke
+  agent, mais ne controle pas encore la reponse produit;
 - sortie JSONL uniquement content-free.
 
 Matrice couverte:
@@ -1010,9 +1014,14 @@ Le runner sort non-zero en mode strict si:
 - l'agent est utilise pour la reponse produit;
 - la reponse produit change;
 - une execution outil agentique est observee;
-- un agent nominal `candidate`/`shadow` attendu n'appelle pas le modele ou ne
-  produit pas de plan candidat;
+- l'agent nominal `active` n'appelle pas le modele ou ne produit pas de plan
+  candidat valide;
+- un mode compat/dev `shadow` ou `candidate` est utilise comme preuve nominale;
 - une attente produit est `failed` ou `partial_required_attention`.
+
+`--no-product-strict` ne desactive pas l'echec agent. Une option debug separee
+`--no-agent-strict` existe pour inspection non bloquante, mais elle ne fait pas
+partie du chemin de validation normal.
 
 Un plan du dialogue planner local ne suffit jamais a rendre un cas produit
 `met`. Il peut seulement aider le diagnostic. Les cas runtime non trouves,
@@ -1036,8 +1045,10 @@ NO-GO retroactif Lot 10 si un patch ulterieur:
 - affiche les messages de smoke dans le JSONL;
 - rend `--agent-mode off` capable d'appeler OpenRouter;
 - remet le mode nominal du runner a `off`;
+- remet le mode nominal du runner a `candidate` ou `shadow`;
 - autorise un record `failed` en strict;
 - autorise un record `partial_required_attention` en strict;
+- laisse `--no-product-strict` masquer `agent_expectation_failed`;
 - contourne les flags content-free par `--no-strict` dans le chemin de
   validation normal.
 

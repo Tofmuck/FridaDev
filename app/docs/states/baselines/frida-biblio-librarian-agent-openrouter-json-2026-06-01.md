@@ -81,3 +81,12 @@ modele reel et sans activation produit.
   produit.
 - La disponibilite et la qualite de DeepSeek V4 Pro ne remplacent pas les tests
   produit Biblio.
+
+## Note post-Lot 10
+
+Cette baseline de Lot 7 reste historique pour le socle OpenRouter/JSON. Le
+contrat de smoke live Lot 10 est plus strict: le mode nominal du runner est
+`active`, `active` appelle le modele et valide le JSON, et `shadow`/`candidate`
+ne valent plus preuve produit nominale. Le plan agent reste toutefois observe
+seulement: `used_for_response=false`, outils non executes et reponse produit
+deterministe inchangee jusqu'a lot separe.
