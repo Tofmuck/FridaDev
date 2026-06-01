@@ -60,7 +60,7 @@ class BiblioLibrarianAgentComparison:
                 "deterministic_controller": True,
                 "product_response_changed": False,
                 "fallback_deterministic": True,
-                "request": self.request_observation,
+                "request_observation": self.request_observation,
                 "deterministic": self.deterministic_observation,
                 "agent": agent_observation,
             }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import unittest
@@ -153,6 +154,20 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertFalse(observed["used_for_response"])
         self.assertTrue(observed["deterministic_controller"])
         self.assertFalse(observed["product_response_changed"])
+        self.assertNotIn("request", observed)
+        request_observation = observed["request_observation"]
+        self.assertTrue(request_observation["user_message_present"])
+        self.assertEqual(request_observation["user_message_chars"], len("Explique simplement ce concept."))
+        self.assertEqual(
+            request_observation["user_message_hash"],
+            hashlib.sha256("Explique simplement ce concept.".encode("utf-8")).hexdigest()[:12],
+        )
+        self.assertEqual(request_observation["recent_dialogue_count"], 1)
+        self.assertEqual(request_observation["bounded_recent_dialogue_count"], 1)
+        self.assertEqual(
+            request_observation["recent_dialogue_hashes"],
+            [hashlib.sha256("RAW DIALOGUE MUST NOT LEAK".encode("utf-8")).hexdigest()[:12]],
+        )
         self.assertNotIn("Explique simplement ce concept.", encoded)
         self.assertNotIn("RAW DIALOGUE MUST NOT LEAK", encoded)
         self.assertNotIn("hidden", encoded)

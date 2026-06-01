@@ -52,7 +52,14 @@ _DANGEROUS_KEYS = {
     "title",
     "token",
 }
-_HASH_KEYS = {"hash", "sha256_12", "passage_hash", "text_sha256_12", "content_sha256_12"}
+_HASH_KEYS = {
+    "hash",
+    "sha256_12",
+    "passage_hash",
+    "text_sha256_12",
+    "content_sha256_12",
+    "user_message_hash",
+}
 _DOC_ID_KEYS = {"doc_id", "doc_id_short", "document_id", "document_candidate_ids", "doc_id_shorts"}
 _TOKEN_KEYS = {
     "calculation_version",
@@ -70,7 +77,7 @@ _TOKEN_KEYS = {
     "source_reason_code",
     "status",
 }
-_HASH_LIST_KEYS = {"hashes", "query_hashes"}
+_HASH_LIST_KEYS = {"hashes", "query_hashes", "recent_dialogue_hashes"}
 _DOC_ID_LIST_KEYS = {"doc_id_shorts", "document_candidate_ids"}
 _TOKEN_LIST_KEYS = {
     "candidate_reason_codes",

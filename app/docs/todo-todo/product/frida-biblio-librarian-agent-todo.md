@@ -932,6 +932,10 @@ observer sa comparaison avec le deterministe.
   agent: fallback deterministe.
 - [x] Observabilite agent sans message brut, dialogue brut, prompt, raw JSON,
   passage, titre, auteur, locator ou payload Catalogue.
+- [x] Correction post-audit Lot 8: l'observation de requete est exposee sous
+  `request_observation`, pas sous la cle globale redigee `request`, afin de
+  conserver les longueurs/hashes content-free du message courant et du dialogue
+  recent dans l'evenement final.
 
 ### Réduction du risque attendue
 

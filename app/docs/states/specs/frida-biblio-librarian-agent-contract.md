@@ -890,6 +890,8 @@ Observabilite Lot 8 autorisee:
 - used_for_response;
 - hashes/longueurs du message courant et dialogue recent via la requete agent;
 - observations agent deja expurgees par Lot 7.
+- observation de requete sous la cle `request_observation`, jamais sous
+  `request` qui reste une cle redigee globalement.
 
 Observabilite Lot 8 interdite:
 
