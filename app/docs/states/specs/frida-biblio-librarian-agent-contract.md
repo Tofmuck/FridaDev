@@ -9,8 +9,8 @@ Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-bas
 Contrat Biblio natif voisin: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Verification OpenRouter Lot 7: `app/docs/states/baselines/frida-biblio-librarian-agent-openrouter-json-2026-06-01.md`
 Portee: contrat normatif de l'agent bibliothecaire, du registre d'outils
-GET-only, de la boucle bornee et du socle agentique Lot 7, sans activation
-produit active.
+GET-only, de la boucle bornee, du socle agentique et de la tranche
+agent-first active comme controleur Biblio.
 
 ## 1. Statut et portee
 
@@ -33,7 +33,8 @@ Catalogue GET-only allowlistes sous budgets stricts, puis injecter une lane
 produit utile. Le deterministe tient les murs et reste fallback.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
-Le but est de rendre le futur agent testable avant d'etre branche:
+Le but est de garder l'agent bibliothecaire livre testable, borne et
+reversible:
 
 - entrees explicites;
 - sorties versionnees;
@@ -44,9 +45,9 @@ Le but est de rendre le futur agent testable avant d'etre branche:
 - contrat OpenRouter / JSON a verifier avant implementation;
 - observabilite content-free;
 - feature flag et rollback;
-- criteres GO / NO-GO du Lot 3.
+- criteres GO / NO-GO des lots restants.
 
-Le futur agent reste une capacite Biblio. Il ne devient pas Memory/RAG, Web,
+L'agent bibliothecaire reste une capacite Biblio. Il ne devient pas Memory/RAG, Web,
 workspace, active_document, Identity, Summary, Hermeneutic, AnythingLLM ou
 doc-pipeline.
 
@@ -1104,12 +1105,60 @@ NO-GO retroactif Lot 10 si un patch ulterieur:
 - contourne les flags content-free par `--no-strict` dans le chemin de
   validation normal.
 
-## 24. Hors-scope
+## 24. Lots 11 et 12 restants
+
+L'agent-first general est livre et corrige par:
+
+- `73ec11d` pour la tranche agent-first generale;
+- `6af332a` pour la verite operateur du smoke agent-first;
+- artefact post-correctif:
+  `app/docs/states/baselines/biblio-smokes/agent-first-full-post-truth-fix-20260601T185215Z.jsonl`.
+
+Le Lot 11 n'est plus une activation produit. Il devient le lot de test
+utilisateur live et de stabilisation produit. Le prochain signal source de
+verite vient des usages reels de Tof avec Frida:
+
+- demandes naturelles de catalogue, TOC, oeuvre interne, passage exact,
+  recherche thematique et reprise conversationnelle;
+- reponses pauvres, fausses certitudes, mauvaises citations, lenteurs,
+  incomprehensions, ambiguities mal explicitees;
+- frequence et utilite des fallbacks `fallback_repaired`;
+- qualite de la lane produit et de la reponse visible;
+- maintien strict des murs GET-only, content-free hors lane produit et
+  rollback/off.
+
+Le Lot 12 est le lot de consolidation et cloture. Il integre les retours du
+Lot 11, ferme les derniers ecarts P0/P1/P2 confirmes, documente les dettes
+acceptees, puis archive la roadmap seulement si les tests live utilisateur
+confirment que Frida se comporte comme une bibliotheque utilisable. Il ne doit
+pas promettre de GO final avant cette validation humaine.
+
+Doctrine maintenue:
+
+- le bibliothecaire LLM fait le travail bibliothecaire: interpretation,
+  exploration, choix d'outils, consultation et construction de lane produit;
+- le deterministe tient les murs: GET-only, allowlist outils, budgets,
+  validation JSON, fallback borne, observabilite content-free, anti-fuite et
+  rollback;
+- un fallback reparateur peut donner un produit vert, mais reste observable
+  comme `fallback_repaired`, pas comme succes pur du plan modele.
+
+Dettes a conserver jusqu'a cloture ou lot dedie:
+
+- taille des modules agent et besoin de separation par responsabilite;
+- dependance OpenRouter live;
+- latence et cout;
+- qualite JSON et plans inexecutables;
+- absence d'outil page;
+- absence `export/chunk`;
+- limites du fonds Catalogue et de ses metadata.
+
+## 25. Hors-scope
 
 - ajout d'outils hors allowlist;
 - remplacement des murs deterministes;
 - appel OpenRouter en mode `off`;
-- activation souveraine de la section runtime settings comme controleur produit;
+- reouverture de l'activation agent-first comme si elle n'etait pas livree;
 - outil page;
 - navigation complete;
 - `export/chunk`;

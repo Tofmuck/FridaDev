@@ -1107,76 +1107,127 @@ Risque de livrer un agent qui passe les unitaires mais echoue les demandes philo
 
 `PLAN / PATCH / TEST / RISKS / SMOKE MATRIX / GO-NO-GO Lot 11`.
 
-## Lot 11 — Timeouts, retries, degradation
+## Lot 11 — Test utilisateur live et stabilisation produit
 
 ### Objectif
 
-Definir budgets, retries, fallback modele, fallback deterministe, clarification utilisateur et absence de suspension.
+Permettre a Tof de tester Frida en usage reel avec l'agent-first Biblio deja
+actif comme controleur bibliothecaire. Collecter les echecs produit, reponses
+pauvres, lenteurs, mauvaises citations, ambiguities mal gerees,
+incomprehensions et cas ou Frida manipule mal le fonds, puis stabiliser sans
+rouvrir l'activation agent-first.
 
 ### Risque produit traité
 
-Risque que l'agent se bloque, coute trop cher, attende trop longtemps ou expose une erreur technique brute.
+Risque de confondre une matrice de smokes verte avec une bibliotheque vraiment
+utilisable en conversation. Le prochain signal produit vient des tests live
+utilisateur, pas d'un nouveau GO technique d'activation.
 
 ### Plan
 
-- [ ] Budgets par tour: appels outils, appels modele, duree totale, contextes, variantes, chars lane.
-- [ ] Timeouts par outil Catalogue et par appel modele.
-- [ ] Retries bornes sur timeout/transient.
-- [ ] Fallback modele si modele principal indisponible ou invalide JSON.
-- [ ] Fallback deterministe si agent indisponible.
-- [ ] Degradation: clarification, reponse bornee, erreur propre.
+- [ ] Organiser une session de test live utilisateur avec Biblio activee.
+- [ ] Capturer les cas reels qui echouent ou degradent l'experience:
+  - [ ] faux "je n'ai pas acces";
+  - [ ] catalogue incomplet ou presente comme exhaustif a tort;
+  - [ ] TOC/chapitres mal consultes;
+  - [ ] mauvaise oeuvre interne ou mauvais volume;
+  - [ ] citation ou passage mal borne;
+  - [ ] ambiguite non annoncee ou certitude forcee;
+  - [ ] reponse trop pauvre alors que la lane contient assez d'elements;
+  - [ ] lenteur, timeout, cout ou instabilite OpenRouter;
+  - [ ] JSON modele invalide, plan inexecutable ou fallback trop frequent.
+- [ ] Pour chaque cas, conserver une preuve content-free: `case_id` local,
+  status/reason, endpoints, outils executes, lane presente ou non, longueurs,
+  hashes courts, latence si disponible, jamais le texte d'ouvrage.
+- [ ] Classer les retours P0/P1/P2/P3 selon impact produit.
+- [ ] Corriger seulement les ecarts confirmes et bornes; ne pas ajouter page,
+  `export/chunk`, route Catalogue ou refactor large sans lot separe.
+- [ ] Verifier apres chaque correction que le smoke strict P01-P18 reste vert.
 
 ### Patch attendu
 
-- [ ] Configuration runtime budgets/timeouts.
-- [ ] Tests timeout modele, timeout Catalogue, JSON invalide, budget depasse.
-- [ ] Observabilite reason codes.
+- [ ] Notes de test live content-free sous `app/docs/states/baselines/` ou
+  `app/docs/states/audits/` selon la forme retenue.
+- [ ] Micro-correctifs produit si les tests live revelent un ecart local.
+- [ ] Tests unitaires/regression pour chaque correctif.
+- [ ] Eventuels ajustements de prompt/lane seulement si le probleme est prouve
+  par usage live et garde les murs content-free hors lane produit.
 
 ### Tests / preuves
 
-- [ ] Faux modele timeout.
-- [ ] Faux Catalogue timeout.
-- [ ] JSON tronque.
-- [ ] Outil trop lent.
-- [ ] Aucune fail suspend.
+- [ ] `python -m biblio.smoke_librarian_agent_live --jsonl` en conteneur live.
+- [ ] Repros live utilisateur ciblees, content-free.
+- [ ] Unitaires Biblio impactes par chaque stabilisation.
+- [ ] Verification anti-fuite: pas de passage brut, prompt, payload, titre,
+  auteur, locator, requete brute ou secret dans les preuves techniques.
+- [ ] Verification que les fallbacks reparateurs restent distingues par
+  `fallback_repaired` et ne deviennent pas un succes pur du plan modele.
 
 ### Réduction du risque attendue
 
-- [ ] Risque reduit par budgets et fallback; risque accepte temporairement si le fallback deterministe couvre moins de cas mais reste propre.
+- [ ] Risque reduit par confrontation aux usages reels au lieu d'une validation
+  seulement smoke-driven.
+- [ ] Risques conserves et suivis: taille des modules, dependance OpenRouter
+  live, latence/cout, qualite JSON, absence d'outil page et absence
+  `export/chunk`.
 
 ### Critères de sortie
 
-- [ ] Tous les echecs techniques aboutissent a clarification/reponse degradee/erreur propre.
-- [ ] Les budgets sont visibles content-free.
+- [ ] Les retours live utilisateur sont inventories et classes.
+- [ ] Les P0/P1/P2 confirmes sont corriges ou explicitement bloques avec
+  justification produit.
+- [ ] Le smoke strict reste vert apres stabilisation.
+- [ ] Aucune regression GET-only, content-free, rollback/off ou separation
+  Biblio / Memory-RAG / Web / documents actifs.
 
 ### Hors-scope
 
-- Optimisation cout fine.
-- Choix definitif permanent du modele.
+- Nouvelle activation produit: l'agent-first est deja actif comme controleur
+  Biblio.
+- Refonte agentique large.
+- Outil page, `export/chunk`, nouvelle route Catalogue ou patch plateforme.
+- Benchmark exhaustif du fonds.
+- Optimisation fine cout/latence hors regression bloquante.
 
 ### Format de retour attendu
 
-`PLAN / PATCH / TEST / RISKS / DEGRADATION PROOF / GO-NO-GO Lot 12`.
+`PLAN / PATCH / TEST LIVE / STABILISATIONS / RISKS / GO-NO-GO Lot 12`.
 
-## Lot 12 — Validation finale et archivage
+## Lot 12 — Consolidation et clôture agent bibliothécaire
 
 ### Objectif
 
-Decider GO/NO-GO produit, mettre a jour les docs vivantes et archiver la TODO si le chantier est livre.
+Integrer les retours du Lot 11, corriger les derniers ecarts acceptes dans le
+scope, documenter l'etat final, les limites et les dettes acceptees, puis
+archiver la roadmap seulement si le test utilisateur live confirme que Frida se
+comporte comme une bibliotheque utilisable.
 
 ### Risque produit traité
 
-Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
+Risque de cloturer administrativement le chantier alors que l'usage reel reste
+fragile. Le GO final ne peut pas preceder les tests live utilisateur et leur
+triage.
 
 ### Plan
 
-- [ ] Rejouer tous les smokes stricts.
-- [ ] Rejouer les cas obligatoires en live.
+- [ ] Relire les retours Lot 11 et fermer chaque P0/P1/P2 confirme.
+- [ ] Rejouer les smokes stricts agent-first.
+- [ ] Rejouer les cas live utilisateur qui avaient echoue.
 - [ ] Verifier GET-only et anti-fuite.
 - [ ] Verifier rollback feature flag.
-- [ ] Verifier agent off / mode parallele avant activation produit.
-- [ ] Rejouer les smokes comparatifs avant/apres: catalogue, TOC, passage exact, recherche thematique.
-- [ ] Documenter limites restantes.
+- [ ] Verifier mode `off` et absence d'appel modele quand Biblio/agent sont
+  desactives.
+- [ ] Documenter les limites restantes:
+  - [ ] modules gros et dette de separation;
+  - [ ] dependance OpenRouter live;
+  - [ ] latence/cout;
+  - [ ] qualite JSON modele;
+  - [ ] absence page;
+  - [ ] absence `export/chunk`;
+  - [ ] fonds Catalogue et metadata non corriges par FridaDev.
+- [ ] Confirmer la doctrine finale: le bibliothecaire LLM fait le travail
+  bibliothecaire; le deterministe tient les murs GET-only, budgets, validation
+  JSON, fallback et observabilite content-free.
 - [ ] Mettre a jour README, `app/docs/README.md`, `AGENTS.md` si la TODO est archivee.
 
 ### Patch attendu
@@ -1184,13 +1235,15 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 - [ ] Note de validation finale sous `app/docs/todo-done/validations/`.
 - [ ] TODO deplacee sous `app/docs/todo-done/product/` seulement si tous les criteres sont atteints.
 - [ ] Docs d'index mises a jour.
+- [ ] Dettes acceptees documentees explicitement, sans les masquer comme GO
+  parfait.
 
 ### Tests / preuves
 
 - [ ] Unitaires agent.
 - [ ] Contrats chat/admin/dashboard/read-model.
 - [ ] Smokes live agent.
-- [ ] Smokes comparatifs agent vs deterministe.
+- [ ] Repros Lot 11 fermees ou requalifiees.
 - [ ] Test rollback runtime.
 - [ ] Test toggle Biblio avec agent off.
 - [ ] `git diff --check`.
@@ -1202,10 +1255,12 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 
 ### Critères de sortie
 
-- [ ] GO produit seulement si les cas bibliotheque passent ou clarifient proprement.
+- [ ] GO final seulement si les tests live utilisateur confirment que les cas
+  bibliotheque passent, extraient, listent, consultent ou clarifient proprement.
 - [ ] NO-GO si etat multi-tour, GET-only, anti-fuite ou fallback echoue.
 - [ ] NO-GO si agent off/rollback n'est pas prouve.
-- [ ] NO-GO si les smokes comparatifs regressent catalogue, TOC, passage exact ou recherche thematique.
+- [ ] NO-GO si catalogue, TOC, passage exact, recherche thematique ou reprise
+  conversationnelle regressent.
 - [ ] Aucun rebuild plateforme implicite.
 
 ### Hors-scope
