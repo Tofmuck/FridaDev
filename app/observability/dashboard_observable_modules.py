@@ -23,6 +23,8 @@ _STATE_LABELS_FR = {
     'skipped': 'Ignore',
     'not_applicable': 'Non concerne',
 }
+_TRUE_TOKENS = {'1', 'true', 'yes', 'y', 'on'}
+_FALSE_TOKENS = {'0', 'false', 'no', 'n', 'off'}
 
 BucketMetricsReducer = Callable[[dict[str, Any], Mapping[str, Any]], None]
 BucketMetricsFinalizer = Callable[[dict[str, Any]], None]
@@ -42,6 +44,20 @@ def _to_float(value: Any) -> float:
         return float(value or 0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _to_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value == 1
+    if isinstance(value, str):
+        token = value.strip().lower()
+        if token in _TRUE_TOKENS:
+            return True
+        if token in _FALSE_TOKENS:
+            return False
+    return False
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -206,28 +222,29 @@ def _reduce_biblio_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> 
     reason_counts = _mapping(biblio.get('reason_code_counts'))
     for reason, count in reason_counts.items():
         _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
-    if librarian_agent.get('present'):
-        _add_metric_count(metrics, 'librarian_agent_present_turns', 1 if librarian_agent.get('present') else 0)
-        _add_metric_count(metrics, 'librarian_agent_model_called_turns', 1 if librarian_agent.get('model_called') else 0)
+    agent_present = _to_bool(librarian_agent.get('present'))
+    if agent_present:
+        _add_metric_count(metrics, 'librarian_agent_present_turns', 1)
+        _add_metric_count(metrics, 'librarian_agent_model_called_turns', 1 if _to_bool(librarian_agent.get('model_called')) else 0)
         _add_metric_count(
             metrics,
             'librarian_agent_candidate_plan_turns',
-            1 if librarian_agent.get('candidate_plan_present') else 0,
+            1 if _to_bool(librarian_agent.get('candidate_plan_present')) else 0,
         )
         _add_metric_count(
             metrics,
             'librarian_agent_deterministic_controlled_turns',
-            1 if librarian_agent.get('fallback_deterministic') else 0,
+            1 if _to_bool(librarian_agent.get('deterministic_controller')) else 0,
         )
         _add_metric_count(
             metrics,
             'librarian_agent_used_for_response_turns',
-            1 if librarian_agent.get('used_for_response') else 0,
+            1 if _to_bool(librarian_agent.get('used_for_response')) else 0,
         )
         _add_metric_count(
             metrics,
             'librarian_agent_product_response_changed_turns',
-            1 if librarian_agent.get('product_response_changed') else 0,
+            1 if _to_bool(librarian_agent.get('product_response_changed')) else 0,
         )
         _add_metric_count(metrics, 'librarian_agent_attempts_total', _to_int(librarian_agent.get('attempt_count')))
         _add_metric_count(metrics, 'librarian_agent_duration_ms_total', _to_int(librarian_agent.get('duration_ms')))

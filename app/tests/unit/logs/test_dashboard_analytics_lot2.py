@@ -900,6 +900,72 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertIn('N execute pas les outils agentiques', limits)
         self.assertNotIn('Ne branche pas le chat ni le frontend Biblio', limits)
 
+    def test_biblio_agent_bucket_booleans_are_strict_and_control_metric_uses_controller(self) -> None:
+        facts = [
+            {
+                'latest_ts': '2026-05-15T12:00:00+00:00',
+                'source_event_count': 1,
+                'biblio': {
+                    'librarian_agent': {
+                        'present': True,
+                        'model_called': False,
+                        'candidate_plan_present': False,
+                        'deterministic_controller': True,
+                        'fallback_deterministic': False,
+                        'used_for_response': False,
+                        'product_response_changed': False,
+                    },
+                },
+            },
+            {
+                'latest_ts': '2026-05-15T12:05:00+00:00',
+                'source_event_count': 1,
+                'biblio': {
+                    'librarian_agent': {
+                        'present': 'true',
+                        'model_called': 'false',
+                        'candidate_plan_present': '0',
+                        'deterministic_controller': 'false',
+                        'fallback_deterministic': 'true',
+                        'used_for_response': 'no',
+                        'product_response_changed': 'off',
+                    },
+                },
+            },
+            {
+                'latest_ts': '2026-05-15T12:10:00+00:00',
+                'source_event_count': 1,
+                'biblio': {
+                    'librarian_agent': {
+                        'present': 'false',
+                        'model_called': 'true',
+                        'candidate_plan_present': 'true',
+                        'deterministic_controller': 'true',
+                        'used_for_response': 'true',
+                        'product_response_changed': 'true',
+                    },
+                },
+            },
+        ]
+
+        buckets = dashboard_analytics.build_dashboard_metric_buckets(
+            facts,
+            now=datetime(2026, 5, 15, 12, 30, tzinfo=timezone.utc),
+        )
+        biblio_hour_bucket = next(
+            bucket for bucket in buckets
+            if bucket['module_key'] == 'biblio' and bucket['granularity'] == 'hour'
+        )
+        metrics = biblio_hour_bucket['metrics']
+
+        self.assertEqual(metrics['librarian_agent_present_turns'], 2)
+        self.assertEqual(metrics['librarian_agent_deterministic_controlled_turns'], 1)
+        self.assertEqual(metrics['librarian_agent_model_called_turns'], 0)
+        self.assertEqual(metrics['librarian_agent_candidate_plan_turns'], 0)
+        self.assertEqual(metrics['librarian_agent_used_for_response_turns'], 0)
+        self.assertEqual(metrics['librarian_agent_product_response_changed_turns'], 0)
+        self.assertNotIn('librarian_agent_fallback_turns', metrics)
+
     def test_librarian_agent_read_model_parses_boolean_tokens_strictly(self) -> None:
         summary = build_biblio_librarian_agent_summary(
             {
