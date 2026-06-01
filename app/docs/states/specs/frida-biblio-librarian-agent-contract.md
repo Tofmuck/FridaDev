@@ -27,8 +27,10 @@ Mise a jour Lot 7: le socle agentique OpenRouter / JSON est livre dans
 deterministe.
 Mise a jour post-Lot 10: le smoke nominal utilise `active` et la configuration
 applicative par defaut demande `deepseek/deepseek-v4-pro` avec
-`reasoning_effort=high`; l'agent reste non souverain.
-Elle ne livre pas l'activation produit de l'agent.
+`reasoning_effort=high`; l'agent reste non souverain, sauf tranche verticale
+P03 explicitement bornee a l'execution d'un unique `catalog_search` valide
+quand le deterministe est `no_signal`.
+Elle ne livre pas l'activation produit generale de l'agent.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
 Le but est de rendre le futur agent testable avant d'etre branche:
@@ -937,12 +939,16 @@ Observabilite reelle exposee:
   code, response chars, attempt count, fallback model flag;
 - observation validation JSON: status, reason code, longueur/hash JSON, noms
   d'outils allowlistes, nombre d'appels outil proposes;
-- comparaison produit: `used_for_response=false`,
+- comparaison produit par defaut: `used_for_response=false`,
   `product_response_changed=false`, `deterministic_controller=true`;
-- absence d'execution agentique runtime:
-  `tool_execution_status=not_executed`,
-  `tool_call_event_count=0`, `selection_event_count=0`,
-  `state_update_event_count=0`, `final_event_count=0`.
+- tranche P03 agent-first: `execution_scope=catalog_search_only`,
+  `used_for_response=true`, `product_response_changed=true`,
+  `deterministic_controller=false`, `tool_execution_status=executed`,
+  `tool_call_event_count=1`;
+- hors tranche P03, absence d'execution agentique runtime:
+  `tool_execution_status=not_executed`, `tool_call_event_count=0`,
+  `selection_event_count=0`, `state_update_event_count=0`,
+  `final_event_count=0`.
 
 Dashboard/read-model:
 
@@ -982,12 +988,16 @@ Runner:
 - mode agent par defaut: `active`;
 - `off` est reserve aux tests negatifs explicites;
 - options explicites: `--agent-mode off|config|active|shadow|candidate`;
-- aucune execution de boucle d'outils agentique;
+- aucune execution de boucle d'outils agentique generale;
+- exception post-Lot 10 bornee: le cas P03 peut executer un unique
+  `catalog_search` GET valide si le deterministe est `no_signal`, si le plan
+  agent active est valide, et si le registre d'outils accepte les parametres;
 - aucun appel modele en mode `off`;
 - `shadow` et `candidate` sont des modes compat/dev; ils ne valent pas preuve
   produit nominale;
 - `active` doit appeler le modele et valider un plan JSON pour passer le smoke
-  agent, mais ne controle pas encore la reponse produit;
+  agent; il ne controle pas la reponse produit sauf tranche P03
+  `catalog_search` unique sous garde deterministe;
 - sortie JSONL uniquement content-free.
 
 Matrice couverte:
@@ -1020,9 +1030,11 @@ Le runner sort non-zero en mode strict si:
 - une fuite brute est detectee;
 - un payload Catalogue reste retenu;
 - un endpoint lourd interdit comme `document` apparait;
-- l'agent est utilise pour la reponse produit;
-- la reponse produit change;
-- une execution outil agentique est observee;
+- l'agent est utilise pour la reponse produit hors scope P03 `catalog_search`
+  unique;
+- la reponse produit change hors scope P03 `catalog_search` unique;
+- une execution outil agentique est observee hors scope P03 `catalog_search`
+  unique;
 - l'agent nominal `active` n'appelle pas le modele ou ne produit pas de plan
   candidat valide;
 - un mode compat/dev `shadow` ou `candidate` est utilise comme preuve nominale;
@@ -1063,10 +1075,11 @@ NO-GO retroactif Lot 10 si un patch ulterieur:
 
 ## 24. Hors-scope
 
-- activation produit de l'agent;
+- activation produit generale de l'agent;
 - remplacement du chemin deterministe;
 - appel OpenRouter en mode `off`;
-- execution de la boucle d'outils agentique dans le chat produit;
+- execution de la boucle d'outils agentique dans le chat produit hors tranche
+  P03 `catalog_search` unique;
 - activation souveraine de la section runtime settings comme controleur produit;
 - outil page;
 - navigation complete;

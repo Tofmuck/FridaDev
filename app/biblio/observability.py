@@ -71,6 +71,7 @@ _TOKEN_KEYS = {
     "endpoint_kind",
     "error_class",
     "event_kind",
+    "execution_scope",
     "fallback_model",
     "fallback_reason",
     "finish_reason",

@@ -26,6 +26,11 @@ from .conversation_state import (
 )
 from .document_resolver import BiblioResolveRequest
 from .library_runtime import run_biblio_library_plan
+from .librarian_agent_first import (
+    EXECUTION_SCOPE_CATALOG_SEARCH_ONLY,
+    STATUS_AGENT_FIRST_EXECUTED,
+    run_agent_first_catalog_search,
+)
 from .librarian_agent_runtime import run_biblio_librarian_agent_comparison
 from .observability import build_biblio_event_payload
 from .passage_context_search import BiblioPassageContextSearchResult
@@ -194,6 +199,51 @@ def run_biblio_chat_turn(
             deterministic_query_kind=decision.query_kind,
             config_module=config_module,
         )
+        agent_first_result = None
+        if _agent_first_candidate_allowed(decision=decision, status=status, librarian_agent_result=librarian_agent_result):
+            try:
+                client = client_factory(config_module=config_module)
+                agent_first_result = run_agent_first_catalog_search(
+                    comparison=librarian_agent_result,
+                    client=client,
+                )
+            except Exception:
+                agent_first_result = None
+        if agent_first_result is not None and getattr(agent_first_result, "loop_result", None) is not None:
+            librarian_agent_result = replace(
+                librarian_agent_result,
+                tool_loop_result=agent_first_result.loop_result,
+                execution_scope=EXECUTION_SCOPE_CATALOG_SEARCH_ONLY,
+                used_for_response_override=agent_first_result.status == STATUS_AGENT_FIRST_EXECUTED,
+                product_response_changed_override=agent_first_result.status == STATUS_AGENT_FIRST_EXECUTED,
+            )
+        if (
+            agent_first_result is not None
+            and agent_first_result.status == STATUS_AGENT_FIRST_EXECUTED
+            and agent_first_result.consultation_message is not None
+        ):
+            payload = observability_builder(
+                enabled=True,
+                used=True,
+                query_kind=decision.query_kind,
+                client_response=agent_first_result.client_observability(),
+                resolution=decision.query_plan,
+                prompt_lane=agent_first_result.consultation_message,
+                biblio_state=state_before if state_before.present else None,
+                librarian_agent=librarian_agent_result,
+                status=agent_first_result.status,
+                reason_code=agent_first_result.reason_code,
+            )
+            return BiblioChatResult(
+                enabled=True,
+                used=True,
+                reason_code=agent_first_result.reason_code,
+                query_kind=decision.query_kind,
+                prompt_lane=agent_first_result.consultation_message,
+                biblio_state=state_before if state_before.present else None,
+                librarian_agent_result=librarian_agent_result,
+                observability_payload=payload,
+            )
         payload = observability_builder(
             enabled=decision.enabled,
             used=False,
@@ -391,6 +441,30 @@ def _run_librarian_agent_comparison(
             "deterministic_controller": True,
             "product_response_changed": False,
         }
+
+
+def _agent_first_candidate_allowed(
+    *,
+    decision: BiblioChatDecision,
+    status: str,
+    librarian_agent_result: Any,
+) -> bool:
+    if not decision.enabled or decision.should_attempt:
+        return False
+    if decision.query_kind != QUERY_KIND_NO_SIGNAL or status != "not_used":
+        return False
+    if librarian_agent_result is None or isinstance(librarian_agent_result, Mapping):
+        return False
+    agent_result = getattr(librarian_agent_result, "agent_result", None)
+    plan = getattr(agent_result, "candidate_plan", None)
+    tool_calls = tuple(getattr(plan, "tool_calls", ()) or ())
+    if len(tool_calls) != 1:
+        return False
+    call = tool_calls[0]
+    return (
+        str(getattr(call, "tool_name", "") or "") == "catalog_search"
+        and str(getattr(call, "method", "") or "").strip().upper() == "GET"
+    )
 
 
 def _truthy(value: Any) -> bool:

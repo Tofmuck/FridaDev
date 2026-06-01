@@ -53,14 +53,15 @@ def smoke_record_violations(
         violations.append("payload_objects_retained")
     if _to_bool(record.get("forbidden_endpoint_used")):
         violations.append("forbidden_endpoint_used")
-    if _to_bool(record.get("agent_used_for_response")):
+    agent_first_allowed = _agent_first_catalog_search_allowed(record)
+    if _to_bool(record.get("agent_used_for_response")) and not agent_first_allowed:
         violations.append("agent_used_for_response")
-    if _to_bool(record.get("agent_product_response_changed")):
+    if _to_bool(record.get("agent_product_response_changed")) and not agent_first_allowed:
         violations.append("agent_product_response_changed")
-    if _to_int(record.get("agent_tool_call_event_count")) > 0:
+    if _to_int(record.get("agent_tool_call_event_count")) > 0 and not agent_first_allowed:
         violations.append("agent_tool_call_event_count")
     tool_execution = _safe_token(record.get("agent_tool_execution_status"))
-    if tool_execution and tool_execution != "not_executed":
+    if tool_execution and tool_execution != "not_executed" and not agent_first_allowed:
         violations.append("agent_tool_execution_status")
     if agent_strict and _safe_token(record.get("agent_expectation_status")) == "failed":
         violations.append("agent_expectation_failed")
@@ -174,7 +175,6 @@ def _combine_expectations(
             return "partial_required_attention", runtime_reason
         return runtime_status, runtime_reason
     if agent_plan_satisfies and kind in {
-        "work_lookup",
         "toc",
         "state_followup",
         "theme_search",
@@ -191,6 +191,27 @@ def _combine_expectations(
 
 def _agent_plan_can_satisfy(record: Mapping[str, Any], *, agent_status: str) -> bool:
     return agent_status == "met" and _safe_token(record.get("agent_mode")) == agent_contract.MODE_ACTIVE
+
+
+def _agent_first_catalog_search_allowed(record: Mapping[str, Any]) -> bool:
+    if _safe_token(record.get("agent_execution_scope")) != "catalog_search_only":
+        return False
+    if _safe_token(record.get("agent_mode")) != agent_contract.MODE_ACTIVE:
+        return False
+    if _safe_token(record.get("agent_tool_execution_status")) != "executed":
+        return False
+    if _to_int(record.get("agent_tool_call_event_count")) != 1:
+        return False
+    if _safe_token_list(record.get("agent_plan_tool_names")) != ["catalog_search"]:
+        return False
+    endpoint_kinds = set(_safe_token_list(record.get("endpoint_kinds")))
+    if endpoint_kinds and not endpoint_kinds.issubset({"search"}):
+        return False
+    return (
+        _to_bool(record.get("agent_used_for_response"))
+        and _to_bool(record.get("agent_product_response_changed"))
+        and _safe_token(record.get("product_expectation_status")) == "met"
+    )
 
 
 def _sequence(value: Any) -> Sequence[Any]:

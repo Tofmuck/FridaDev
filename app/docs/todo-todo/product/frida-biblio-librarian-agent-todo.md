@@ -1275,11 +1275,22 @@ Lot 8 integration comparative runtime livre: l'agent peut etre appele en
 `shadow`/`candidate` quand Biblio est activee, mais le deterministe reste le
 controleur et `used_for_response=false`.
 
+Tranche verticale post-Lot 10 en cours: P03 peut utiliser un chemin
+agent-first minimal uniquement quand le deterministe est `no_signal`, que
+l'agent `active` produit un plan JSON valide avec un seul outil
+`catalog_search` GET, et que `librarian_tools.py` accepte ce plan. Dans ce cas
+le `catalog_search` est execute, une lane de consultation bornee est produite,
+et l'observabilite doit dire explicitement `execution_scope=catalog_search_only`,
+`tool_execution_status=executed`, `used_for_response=true` et
+`product_response_changed=true`. Tout autre outil, boucle multi-step, route
+lourde, route `latest/*`, route mutante ou payload brut reste interdit.
+
 NO-GO pour declarer l'agent bibliothecaire produit livre.
 
-NO-GO pour executer les outils proposes par le modele dans le chat produit,
-remplacer le chemin deterministe, ajouter outil page, `export/chunk`,
-navigation complete, modele hardcode ou route plateforme.
+NO-GO pour executer les outils proposes par le modele dans le chat produit hors
+tranche P03 `catalog_search` unique, remplacer le chemin deterministe de facon
+generale, ajouter outil page, `export/chunk`, navigation complete, modele
+hardcode ou route plateforme.
 
 Risques restants reels: le smoke nominal `active` depend de la disponibilite
 OpenRouter live et de la qualite JSON du modele, pas de branchement souverain

@@ -233,6 +233,42 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertFalse(observed["used_for_response"])
         self.assertTrue(observed["fallback_deterministic"])
 
+    def test_agent_first_executes_only_valid_catalog_search_when_deterministic_has_no_signal(self) -> None:
+        fake_model = _FakeAgentModel(
+            _valid_agent_json(
+                tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
+                params={"query": "RAW AGENT QUERY MUST NOT LEAK", "limit": 5},
+            )
+        )
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Trouve-moi le Théétète de Platon.",
+            client_factory=lambda **_kwargs: _FakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(result.used)
+        self.assertIsNotNone(result.prompt_message)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_NO_SIGNAL)
+        self.assertEqual(result.observability_payload["client"]["event_count"], 1)
+        self.assertEqual(result.observability_payload["client"]["items"][0]["endpoint_kind"], "search")
+        self.assertEqual(result.observability_payload["status"], "agent_first_executed")
+        self.assertEqual(result.observability_payload["reason_code"], "biblio_agent_first_catalog_search_executed")
+        self.assertTrue(observed["used_for_response"])
+        self.assertFalse(observed["deterministic_controller"])
+        self.assertTrue(observed["product_response_changed"])
+        self.assertTrue(observed["agent_loop_executed"])
+        self.assertEqual(observed["execution_scope"], "catalog_search_only")
+        self.assertEqual(observed["tool_execution_status"], "executed")
+        self.assertEqual(observed["tool_call_event_count"], 1)
+        self.assertEqual(observed["tool_loop"]["tool_names"], [librarian_tools.TOOL_CATALOG_SEARCH])
+        self.assertEqual(observed["tool_loop"]["endpoint_kinds"], ["search"])
+        self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", encoded)
+        self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
+
     def test_agent_invalid_json_forbidden_tool_and_timeout_keep_deterministic_response(self) -> None:
         cases = [
             _FakeAgentModel("not json"),

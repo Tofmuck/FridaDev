@@ -34,6 +34,10 @@ class BiblioLibrarianAgentComparison:
     request_observation: dict[str, Any] = field(default_factory=dict)
     deterministic_observation: dict[str, Any] = field(default_factory=dict)
     agent_result: librarian_agent.BiblioLibrarianAgentResult | None = field(default=None, repr=False, compare=False)
+    tool_loop_result: Any = field(default=None, repr=False, compare=False)
+    execution_scope: str = ""
+    used_for_response_override: bool = False
+    product_response_changed_override: bool = False
 
     @property
     def model_called(self) -> bool:
@@ -45,7 +49,13 @@ class BiblioLibrarianAgentComparison:
 
     def to_observability(self) -> dict[str, Any]:
         agent_observation = self.agent_result.to_observability() if self.agent_result else {}
-        used_for_response = bool(agent_observation.get("used_for_response"))
+        loop_observation = self.tool_loop_result.to_observability() if self.tool_loop_result else {}
+        tool_call_count = _int_value(loop_observation.get("tool_call_count"))
+        used_for_response = bool(agent_observation.get("used_for_response") or self.used_for_response_override)
+        product_response_changed = bool(self.product_response_changed_override)
+        tool_execution_status = "not_executed"
+        if loop_observation:
+            tool_execution_status = "executed" if tool_call_count > 0 else _safe_token(loop_observation.get("status"))
         return _clean(
             {
                 "present": True,
@@ -56,18 +66,20 @@ class BiblioLibrarianAgentComparison:
                 "model_called": self.model_called,
                 "candidate_plan_present": self.candidate_plan_present,
                 "used_for_response": used_for_response,
-                "deterministic_controller": True,
-                "product_response_changed": False,
+                "deterministic_controller": not used_for_response,
+                "product_response_changed": product_response_changed,
                 "fallback_deterministic": True,
-                "tool_execution_status": "not_executed",
-                "tool_call_event_count": 0,
+                "tool_execution_status": tool_execution_status,
+                "tool_call_event_count": tool_call_count,
                 "selection_event_count": 0,
                 "state_update_event_count": 0,
                 "final_event_count": 0,
-                "agent_loop_executed": False,
+                "agent_loop_executed": bool(loop_observation),
+                "execution_scope": _safe_token(self.execution_scope),
                 "request_observation": self.request_observation,
                 "deterministic": self.deterministic_observation,
                 "agent": agent_observation,
+                "tool_loop": loop_observation,
             }
         )
 
@@ -136,6 +148,14 @@ def _resolve_settings(config_module: Any = None) -> contract.BiblioLibrarianAgen
             mode_override=getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MODE", None)
         )
     return contract.BiblioLibrarianAgentSettings.from_config(config_module)
+
+
+def _int_value(value: Any) -> int:
+    if type(value) is int:
+        return value
+    if isinstance(value, str) and value.isdecimal():
+        return int(value)
+    return 0
 
 
 def _deterministic_observation(

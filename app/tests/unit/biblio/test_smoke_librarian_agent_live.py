@@ -89,6 +89,25 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         self.assertEqual(expectations["runtime_expectation_status"], "failed")
         self.assertNotEqual(expectations["product_expectation_status"], "met")
 
+    def test_work_lookup_agent_plan_only_is_not_product_met_without_catalogue(self) -> None:
+        case = smoke.BiblioLibrarianProductSmokeCase("P03", "work_lookup", RAW_QUERY)
+        expectations = smoke._evaluate_expectations(
+            case,
+            {
+                "query_kind": "no_signal",
+                "status": "not_used",
+                "endpoint_count": 0,
+                "agent_mode": "active",
+                "agent_present": True,
+                "agent_model_called": True,
+                "agent_candidate_plan_present": True,
+            },
+        )
+
+        self.assertEqual(expectations["runtime_expectation_status"], "failed")
+        self.assertEqual(expectations["agent_expectation_status"], "met")
+        self.assertEqual(expectations["product_expectation_status"], "failed")
+
     def test_state_followup_local_passage_context_plan_is_not_product_met(self) -> None:
         case = smoke.BiblioLibrarianProductSmokeCase("P11", "state_followup", RAW_QUERY)
         expectations = smoke._evaluate_expectations(
@@ -303,6 +322,34 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         )
         self.assertEqual(
             smoke.smoke_exit_code([{**base, "agent_tool_execution_status": "executed"}]),
+            smoke.EXIT_VALIDATION_FAILURE,
+        )
+
+    def test_strict_exit_allows_bounded_agent_first_catalog_search(self) -> None:
+        record = {
+            "case_id": "P03",
+            "raw_marker_leaks": False,
+            "payload_objects_retained": 0,
+            "forbidden_endpoint_used": False,
+            "agent_mode": "active",
+            "agent_present": True,
+            "agent_model_called": True,
+            "agent_candidate_plan_present": True,
+            "agent_expectation_status": "met",
+            "agent_execution_scope": "catalog_search_only",
+            "agent_plan_tool_names": ["catalog_search"],
+            "agent_used_for_response": True,
+            "agent_product_response_changed": True,
+            "agent_tool_execution_status": "executed",
+            "agent_tool_call_event_count": 1,
+            "endpoint_kinds": ["search"],
+            "runtime_expectation_status": "met",
+            "product_expectation_status": "met",
+        }
+
+        self.assertEqual(smoke.smoke_exit_code([record]), smoke.EXIT_OK)
+        self.assertEqual(
+            smoke.smoke_exit_code([{**record, "agent_plan_tool_names": ["document_toc"]}]),
             smoke.EXIT_VALIDATION_FAILURE,
         )
 

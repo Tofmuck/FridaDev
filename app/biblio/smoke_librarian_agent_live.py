@@ -130,6 +130,9 @@ _OUTPUT_KEYS = {
     "agent_reason_code",
     "agent_expectation_reason_code",
     "agent_expectation_status",
+    "agent_execution_scope",
+    "agent_loop_reason_code",
+    "agent_loop_status",
     "agent_plan_tool_call_count",
     "agent_plan_tool_names",
     "agent_status",
@@ -297,6 +300,9 @@ def _record_for_result(
         "agent_product_response_changed": _to_bool(agent.get("product_response_changed")),
         "agent_tool_execution_status": _safe_token(agent.get("tool_execution_status")),
         "agent_tool_call_event_count": _to_int(agent.get("tool_call_event_count")),
+        "agent_execution_scope": _safe_token(agent.get("execution_scope")),
+        "agent_loop_status": _safe_token(_mapping(agent.get("tool_loop")).get("status")),
+        "agent_loop_reason_code": _safe_token(_mapping(agent.get("tool_loop")).get("reason_code")),
     }
     base_record.update(_evaluate_expectations(case, base_record))
     return _finalize_record(
