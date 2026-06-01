@@ -1,8 +1,8 @@
-"""Content-free product smokes for the future Biblio librarian agent.
+"""Content-free product smokes for the active Biblio librarian agent.
 
-This runner validates the live product envelope without activating the agent as
-controller.  It exercises the deterministic Biblio path, records the passive
-librarian comparison and dialogue plan projections, and emits compact JSONL.
+This runner validates the live product envelope with the agent-first controller
+under strict GET-only guardrails.  It records compact operator truth about
+model plans, bounded fallback repairs, executed tools and product outcomes.
 """
 
 from __future__ import annotations
@@ -131,6 +131,7 @@ _OUTPUT_KEYS = {
     "agent_expectation_reason_code",
     "agent_expectation_status",
     "agent_execution_scope",
+    "agent_executed_tool_names",
     "agent_loop_reason_code",
     "agent_loop_status",
     "agent_plan_tool_call_count",
@@ -301,6 +302,7 @@ def _record_for_result(
         "agent_candidate_plan_present": _to_bool(agent.get("candidate_plan_present")),
         "agent_plan_tool_call_count": _agent_plan_tool_call_count(agent),
         "agent_plan_tool_names": _agent_plan_tool_names(agent),
+        "agent_executed_tool_names": _agent_executed_tool_names(agent),
         "agent_used_for_response": _to_bool(agent.get("used_for_response")),
         "agent_product_response_changed": _to_bool(agent.get("product_response_changed")),
         "agent_tool_execution_status": _safe_token(agent.get("tool_execution_status")),
@@ -405,6 +407,11 @@ def _agent_plan_tool_names(agent: Mapping[str, Any]) -> list[str]:
     plan = _mapping(validation.get("plan"))
     names = _safe_token_list(validation.get("tool_names"))
     return names or _safe_token_list(plan.get("tool_names"))
+
+
+def _agent_executed_tool_names(agent: Mapping[str, Any]) -> list[str]:
+    loop = _mapping(agent.get("tool_loop"))
+    return _safe_token_list(loop.get("tool_names"))
 
 
 def _lane_observability(value: Any) -> dict[str, Any]:

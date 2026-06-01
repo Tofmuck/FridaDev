@@ -1292,10 +1292,26 @@ l'observabilite dit explicitement `execution_scope=agent_first`,
 `product_response_changed=true`. Route lourde, route `latest/*`, route mutante,
 nouvel outil, frontend, plateforme ou payload brut restent interdits.
 
-GO pour la tranche agent-first P01-P18: artefact content-free
-`app/docs/states/baselines/biblio-smokes/agent-first-full-20260601T181903Z.jsonl`,
-18/18 records, `runtime_expectation_status=met`,
-`agent_expectation_status=met`, `product_expectation_status=met`, exit 0.
+Correction verite operateur post-tranche agent-first: l'artefact
+`app/docs/states/baselines/biblio-smokes/agent-first-full-20260601T181903Z.jsonl`
+reste une preuve produit P01-P18, mais il etait trop genereux cote agent:
+les cas repares par fallback borne ne doivent plus etre comptes comme succes
+pur du plan modele. Le smoke expose maintenant les outils reellement executes
+via `agent_executed_tool_names`; `agent_expectation_status=met` signifie plan
+modele valide/executable, tandis que `fallback_repaired` signifie reponse
+produit verte par fallback agent-first borne et observable.
+Preuve post-correctif:
+`app/docs/states/baselines/biblio-smokes/agent-first-full-post-truth-fix-20260601T185215Z.jsonl`,
+18/18 records avec `runtime_expectation_status=met`,
+`product_expectation_status=met`, `raw_marker_leaks=false`,
+`payload_objects_retained=0`, et statuts agent separes `met` /
+`fallback_repaired`.
+
+Dette structurelle post-agent-first: `librarian_agent_first.py`,
+`chat_runtime.py`, `librarian_agent_contract.py` et `librarian_tools.py`
+depassent ou frolent la zone 500-700 lignes. Aucun refactor dans cette
+micro-correction; un futur nettoyage doit separer par responsabilite reelle
+avant d'empiler de nouvelles capacites agentiques.
 
 NO-GO pour executer un outil non allowliste, ajouter outil page,
 `export/chunk`, navigation complete, modele hardcode, route plateforme, ou

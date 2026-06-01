@@ -301,7 +301,7 @@ class BiblioLibrarianPlanner:
                 document_id=carried_document_id,
                 position=carried_position,
             )
-            step = self._run_tool_call(len(steps), call)
+            step = self.run_tool_call(len(steps), call)
             steps.append(step)
             if step.tool_result is not None:
                 tool_calls += 1
@@ -330,7 +330,8 @@ class BiblioLibrarianPlanner:
             self._monotonic,
         )
 
-    def _run_tool_call(self, index: int, call: BiblioLibrarianToolCall) -> BiblioLibrarianStep:
+    def run_tool_call(self, index: int, call: BiblioLibrarianToolCall) -> BiblioLibrarianStep:
+        """Run one bounded GET-only tool call for loop continuations."""
         tool_name = _safe_tool_name(call.tool_name)
         if not tool_name:
             return BiblioLibrarianStep(index, STATUS_TOOL_REJECTED, REASON_INVALID_PLAN)

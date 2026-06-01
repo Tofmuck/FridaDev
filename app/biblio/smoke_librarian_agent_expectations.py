@@ -153,6 +153,17 @@ def _evaluate_agent_expectation(record: Mapping[str, Any]) -> tuple[str, str]:
     if not _to_bool(record.get("agent_candidate_plan_present")):
         reason = _safe_token(record.get("agent_reason_code")) or "agent_candidate_plan_missing"
         return "failed", reason
+    agent_status = _safe_token(record.get("agent_status"))
+    plan_tools = _safe_token_list(record.get("agent_plan_tool_names"))
+    executed_tools = _safe_token_list(record.get("agent_executed_tool_names"))
+    if agent_status == "fallback_deterministic":
+        if executed_tools and _safe_token(record.get("agent_execution_scope")) == "agent_first":
+            return "fallback_repaired", "agent_first_fallback_repaired"
+        reason = _safe_token(record.get("agent_reason_code")) or "agent_first_fallback_not_executed"
+        return "failed", reason
+    if not plan_tools:
+        reason = _safe_token(record.get("agent_reason_code")) or "agent_candidate_plan_without_tool"
+        return "failed", reason
     return "met", "agent_active_plan_observed"
 
 
@@ -198,7 +209,8 @@ def _agent_first_execution_allowed(record: Mapping[str, Any]) -> bool:
         "locate",
         "passage_context",
     }
-    if not set(_safe_token_list(record.get("agent_plan_tool_names"))).issubset(allowed_tools):
+    executed_tools = set(_safe_token_list(record.get("agent_executed_tool_names")))
+    if not executed_tools or not executed_tools.issubset(allowed_tools):
         return False
     allowed_endpoints = {"catalog", "search", "metadata", "chapters", "locate", "context"}
     endpoint_kinds = set(_safe_token_list(record.get("endpoint_kinds")))

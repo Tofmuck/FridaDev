@@ -1020,6 +1020,9 @@ Chaque record expose seulement:
   passages, lane chars;
 - ids courts, hashes courts, longueurs;
 - observation dialogue/agent content-free;
+- `agent_plan_tool_names` pour le plan modele valide et
+  `agent_executed_tool_names` pour les outils reellement executes apres
+  continuation, carry ou fallback borne;
 - statuts separes `runtime_expectation_status`,
   `agent_expectation_status`, `product_expectation_status`;
 - flags guardrail: `raw_marker_leaks`, `payload_objects_retained`,
@@ -1039,6 +1042,8 @@ Le runner sort non-zero en mode strict si:
   endpoints bornes;
 - l'agent nominal `active` n'appelle pas le modele ou ne produit pas de plan
   candidat valide;
+- un fallback borne repare une reponse produit mais est declare comme succes
+  pur du plan modele au lieu de `fallback_repaired`;
 - un mode compat/dev `shadow` ou `candidate` est utilise comme preuve nominale;
 - une attente produit est `failed` ou `partial_required_attention`.
 
@@ -1057,10 +1062,23 @@ Preuve agent-first P01-P18 courante:
 
 - artefact:
   `app/docs/states/baselines/biblio-smokes/agent-first-full-20260601T181903Z.jsonl`;
-- 18/18 records avec `runtime_expectation_status=met`,
-  `agent_expectation_status=met`, `product_expectation_status=met`;
+- 18/18 records avec `runtime_expectation_status=met` et
+  `product_expectation_status=met`;
+- correction post-audit: les cas repares par fallback borne ne doivent plus
+  etre comptabilises comme `agent_expectation_status=met`; ils doivent exposer
+  `fallback_repaired` et des `agent_executed_tool_names` content-free;
+- artefact post-correctif:
+  `app/docs/states/baselines/biblio-smokes/agent-first-full-post-truth-fix-20260601T185215Z.jsonl`,
+  18/18 records avec `runtime_expectation_status=met`,
+  `product_expectation_status=met`, `raw_marker_leaks=false`,
+  `payload_objects_retained=0`, et statuts agent `met` / `fallback_repaired`;
 - flags `raw_marker_leaks=false`, `payload_objects_retained=0`,
   `forbidden_endpoint_used=false` sur la matrice.
+
+Dette structurelle acceptee hors micro-corrections: plusieurs modules agent
+(`librarian_agent_first.py`, `chat_runtime.py`, `librarian_agent_contract.py`,
+`librarian_tools.py`) sont gros. Les prochains lots doivent eviter de les
+rallonger sans extraction par responsabilite.
 
 Interdits Lot 10:
 

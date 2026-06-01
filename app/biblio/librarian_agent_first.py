@@ -230,7 +230,7 @@ def _append_tool_call(
         return loop_result
     call = librarian_planner.BiblioLibrarianToolCall(tool_name=tool_name, method="GET", params=dict(params))
     planner = librarian_planner.BiblioLibrarianPlanner(registry)
-    step = planner._run_tool_call(len(loop_result.steps), call)  # Bounded single GET continuation.
+    step = planner.run_tool_call(len(loop_result.steps), call)  # Bounded single GET continuation.
     steps = (*loop_result.steps, step)
     status = librarian_planner.STATUS_TOOL_EXECUTED
     reason = librarian_planner.REASON_TOOL_EXECUTED
