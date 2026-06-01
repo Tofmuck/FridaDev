@@ -39,6 +39,43 @@ REASON_BUDGET_EXCEEDED = "biblio_librarian_agent_budget_exceeded"
 
 _HASH_LEN = 12
 _RECENT_DIALOGUE_CONTENT_MAX_CHARS = 1200
+_ROOT_KEYS = {"schema_version", "intent", "tool_calls", "answer_mode", "risk_flags", "fallback_reason"}
+_CALL_KEYS = {"tool_name", "method", "params", "call_id"}
+_CODE_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:-")
+_TEXT_PARAM_MAX = {
+    "q": 240,
+    "query": 240,
+    "document_id": 160,
+    "doc_id": 160,
+    "locator": 120,
+    "label": 120,
+    "kind": 40,
+}
+_INT_PARAM_BOUNDS = {
+    "limit": (1, 500),
+    "offset": (0, 100_000),
+    "page_no": (1, 100_000),
+    "para_no": (1, 100_000),
+    "paragraph_id": (1, 2_147_483_647),
+    "char_offset": (0, 1_000_000),
+    "window_chars": (80, 2_000),
+}
+_ALLOWED_PARAMS_BY_TOOL = {
+    tools.TOOL_CATALOG_LIST: {"q", "limit", "offset"},
+    tools.TOOL_CATALOG_SEARCH: {"q", "query", "limit", "offset"},
+    tools.TOOL_DOCUMENT_OPEN_SUMMARY: {"document_id", "doc_id", "q", "query", "limit"},
+    tools.TOOL_DOCUMENT_TOC: {"document_id", "doc_id", "limit", "offset"},
+    tools.TOOL_LOCATE: {"document_id", "doc_id", "locator", "label", "kind", "limit"},
+    tools.TOOL_PASSAGE_CONTEXT: {
+        "document_id",
+        "doc_id",
+        "page_no",
+        "para_no",
+        "paragraph_id",
+        "char_offset",
+        "window_chars",
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -53,7 +90,6 @@ class BiblioLibrarianAgentSettings:
     max_tool_calls: int = 5
     max_model_calls: int = 1
     max_recent_turns: int = 5
-    json_contract_enabled: bool = True
     require_parameters: bool = True
 
     @classmethod
@@ -69,10 +105,6 @@ class BiblioLibrarianAgentSettings:
             max_tool_calls=_positive_int(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MAX_TOOL_CALLS", 5), 5),
             max_model_calls=_positive_int(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MAX_MODEL_CALLS", 1), 1),
             max_recent_turns=_positive_int(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS", 5), 5),
-            json_contract_enabled=_bool(
-                getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_JSON_CONTRACT_ENABLED", True),
-                True,
-            ),
             require_parameters=_bool(
                 getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_REQUIRE_PARAMETERS", True),
                 True,
@@ -92,7 +124,7 @@ class BiblioLibrarianAgentSettings:
                 "max_tool_calls": self.max_tool_calls,
                 "max_model_calls": self.max_model_calls,
                 "max_recent_turns": self.max_recent_turns,
-                "json_contract_enabled": self.json_contract_enabled,
+                "json_contract_required": True,
                 "require_parameters": self.require_parameters,
             }
         )
@@ -202,11 +234,19 @@ def validate_agent_payload(
     effective_settings = settings or BiblioLibrarianAgentSettings()
     if not isinstance(payload, Mapping):
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    if set(payload.keys()) != _ROOT_KEYS:
+        return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     if str(payload.get("schema_version") or "") != SCHEMA_VERSION:
         return _rejected(REASON_SCHEMA_VERSION, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    if not _valid_code(payload.get("intent")):
+        return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    if not _valid_code(payload.get("answer_mode")):
+        return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    if not _valid_code(payload.get("fallback_reason")):
+        return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    if not _valid_risk_flags(payload.get("risk_flags")):
+        return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     raw_calls = payload.get("tool_calls")
-    if raw_calls is None:
-        raw_calls = ()
     if not isinstance(raw_calls, Sequence) or isinstance(raw_calls, (str, bytes, bytearray)):
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     if len(raw_calls) > effective_settings.max_tool_calls:
@@ -217,8 +257,14 @@ def validate_agent_payload(
     for raw_call in raw_calls:
         if not isinstance(raw_call, Mapping):
             return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
-        tool_name = _safe_tool_name(raw_call.get("tool_name") or raw_call.get("name"))
-        method = str(raw_call.get("method") or "GET").strip().upper()
+        if not {"tool_name", "method", "params"}.issubset(raw_call.keys()):
+            return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+        if not set(raw_call.keys()).issubset(_CALL_KEYS):
+            return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+        tool_name = _safe_tool_name(raw_call.get("tool_name"))
+        method = str(raw_call.get("method") or "").strip().upper()
+        if "call_id" in raw_call and not _valid_code(raw_call.get("call_id")):
+            return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
         if method != "GET":
             invalid_tool_names.append(tool_name)
             return _rejected(
@@ -248,6 +294,8 @@ def validate_agent_payload(
             )
         params = raw_call.get("params") or {}
         if not isinstance(params, Mapping):
+            return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+        if not _valid_params(tool_name, params):
             return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
         calls.append(
             planner.BiblioLibrarianToolCall(
@@ -316,6 +364,43 @@ def _hash(text: Any) -> str:
 
 def _safe_model_slug(value: Any) -> str:
     return _safe_token(value, max_chars=140)
+
+
+def _valid_code(value: Any) -> bool:
+    if not isinstance(value, str) or len(value) > 96:
+        return False
+    return all(char in _CODE_CHARS for char in value)
+
+
+def _valid_risk_flags(value: Any) -> bool:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
+        return False
+    if len(value) > 12:
+        return False
+    return all(_valid_code(item) for item in value)
+
+
+def _valid_params(tool_name: str, params: Mapping[str, Any]) -> bool:
+    if not set(params.keys()).issubset(_ALLOWED_PARAMS_BY_TOOL.get(tool_name, set())):
+        return False
+    for key, value in params.items():
+        if key in _TEXT_PARAM_MAX:
+            if not isinstance(value, str):
+                return False
+            if len(value.strip()) > _TEXT_PARAM_MAX[key]:
+                return False
+            if key == "kind" and not _valid_code(value):
+                return False
+            continue
+        if key in _INT_PARAM_BOUNDS:
+            if type(value) is not int:
+                return False
+            minimum, maximum = _INT_PARAM_BOUNDS[key]
+            if value < minimum or value > maximum:
+                return False
+            continue
+        return False
+    return True
 
 
 def _positive_int(value: Any, default: int) -> int:

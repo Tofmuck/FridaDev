@@ -7,6 +7,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import requests
+
 
 APP_DIR = Path(__file__).resolve().parents[3]
 if str(APP_DIR) not in sys.path:
@@ -76,6 +78,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(result.status, agent.STATUS_FALLBACK_DETERMINISTIC)
         self.assertEqual(result.reason_code, agent.REASON_ACTIVE_NOT_ENABLED)
         self.assertFalse(result.used_for_response)
+        self.assertFalse(result.model_called)
+        self.assertEqual(fake.calls, 0)
 
     def test_invalid_json_and_free_text_fall_back(self) -> None:
         cases = [
@@ -124,6 +128,61 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 )
                 self.assertEqual(result.status, agent.STATUS_FALLBACK_DETERMINISTIC)
                 self.assertEqual(result.reason_code, reason)
+
+    def test_local_validation_rejects_payloads_outside_announced_schema(self) -> None:
+        base = json.loads(_valid_json())
+        cases = [
+            ("extra_root", {**base, "extra": "oops"}),
+            ("missing_intent", {key: value for key, value in base.items() if key != "intent"}),
+            ("missing_answer_mode", {key: value for key, value in base.items() if key != "answer_mode"}),
+            ("bad_risk_flags_type", {**base, "risk_flags": "oops"}),
+            ("too_many_risk_flags", {**base, "risk_flags": [f"flag_{index}" for index in range(13)]}),
+            (
+                "extra_call_key",
+                {**base, "tool_calls": [{**base["tool_calls"][0], "extra": "oops"}]},
+            ),
+            (
+                "missing_call_method",
+                {
+                    **base,
+                    "tool_calls": [
+                        {key: value for key, value in base["tool_calls"][0].items() if key != "method"}
+                    ],
+                },
+            ),
+            (
+                "extra_param",
+                {
+                    **base,
+                    "tool_calls": [
+                        {"tool_name": tools.TOOL_CATALOG_LIST, "method": "GET", "params": {"limit": 10, "raw": "x"}}
+                    ],
+                },
+            ),
+            (
+                "huge_limit",
+                {
+                    **base,
+                    "tool_calls": [
+                        {"tool_name": tools.TOOL_CATALOG_LIST, "method": "GET", "params": {"limit": 999999}}
+                    ],
+                },
+            ),
+            (
+                "bad_param_type",
+                {
+                    **base,
+                    "tool_calls": [
+                        {"tool_name": tools.TOOL_CATALOG_LIST, "method": "GET", "params": {"limit": "10"}}
+                    ],
+                },
+            ),
+        ]
+        for name, payload in cases:
+            with self.subTest(name=name):
+                validation = contract.validate_agent_payload(payload)
+                self.assertEqual(validation.status, contract.STATUS_REJECTED)
+                self.assertEqual(validation.reason_code, contract.REASON_SCHEMA_INVALID)
 
     def test_budget_exceeded_before_and_after_model_call(self) -> None:
         no_model_budget = agent.BiblioLibrarianAgent(_FakeModelClient(_valid_json())).run(
@@ -197,7 +256,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         for marker in [RAW_USER, RAW_DIALOGUE, RAW_TITLE, RAW_PASSAGE]:
             self.assertNotIn(marker, encoded)
 
-    def test_product_fixtures_can_be_handled_by_structured_agent_without_regex_runtime(self) -> None:
+    def test_product_fixtures_are_transmitted_to_model_context_without_regex_runtime_claim(self) -> None:
         samples = [
             "Tu peux me reprendre le passage dont on parlait ?",
             "Dans le même ouvrage, cherche le passage sur la maïeutique.",
@@ -211,6 +270,11 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 result = agent.BiblioLibrarianAgent(fake).run(
                     _request(
                         user_message=sample,
+                        recent_dialogue=(
+                            {"role": "user", "content": RAW_DIALOGUE},
+                            {"role": "assistant", "content": "assistant state"},
+                        ),
+                        biblio_state={"present": True, "last_result": {"doc_id_short": "abc123"}},
                         settings=contract.BiblioLibrarianAgentSettings(
                             mode=contract.MODE_SHADOW,
                             primary_model="model/x",
@@ -219,6 +283,14 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 )
                 self.assertEqual(result.status, agent.STATUS_SHADOW_READY)
                 self.assertEqual(fake.calls, 1)
+                self.assertEqual(fake.requests[0].user_message, sample)
+                payload = openrouter.build_librarian_agent_payload(fake.requests[0])
+                model_context = json.loads(payload["messages"][1]["content"])
+                self.assertEqual(model_context["current_user_message"], sample)
+                self.assertEqual(len(model_context["recent_dialogue"]), 2)
+                self.assertIn(tools.TOOL_CATALOG_SEARCH, model_context["available_tools"])
+                self.assertTrue(model_context["biblio_state"]["present"])
+                self.assertNotIn(sample, _json(result.to_observability()))
 
     def test_response_format_is_strict_json_schema(self) -> None:
         response_format = openrouter.build_librarian_agent_response_format(max_tool_calls=2)
@@ -227,21 +299,23 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertTrue(response_format["json_schema"]["strict"])
         self.assertEqual(response_format["json_schema"]["name"], contract.SCHEMA_VERSION)
         self.assertFalse(response_format["json_schema"]["schema"]["additionalProperties"])
+        params = response_format["json_schema"]["schema"]["properties"]["tool_calls"]["items"]["properties"]["params"]
+        self.assertFalse(params["additionalProperties"])
+        self.assertEqual(params["properties"]["limit"]["maximum"], 500)
 
-    def test_settings_from_config_keeps_agent_off_and_parses_booleans(self) -> None:
+    def test_settings_from_config_keeps_json_contract_required_and_parses_booleans(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings.from_config(
             SimpleNamespace(
                 BIBLIO_LIBRARIAN_AGENT_MODE="shadow",
                 BIBLIO_LIBRARIAN_AGENT_MODEL="deepseek/deepseek-v4-pro",
-                BIBLIO_LIBRARIAN_AGENT_JSON_CONTRACT_ENABLED="0",
                 BIBLIO_LIBRARIAN_AGENT_REQUIRE_PARAMETERS="false",
             )
         )
 
         self.assertEqual(settings.mode, contract.MODE_SHADOW)
         self.assertEqual(settings.primary_model, "deepseek/deepseek-v4-pro")
-        self.assertFalse(settings.json_contract_enabled)
         self.assertFalse(settings.require_parameters)
+        self.assertTrue(settings.to_observability()["json_contract_required"])
 
     def test_openrouter_payload_uses_biblio_headers_and_required_parameters(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings(
@@ -273,6 +347,73 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(response.reason_code, openrouter.REASON_MODEL_NOT_CONFIGURED)
         self.assertFalse(called["value"])
 
+    def test_openrouter_client_uses_fallback_model_when_budget_allows(self) -> None:
+        calls: list[str] = []
+
+        def fake_post(*_args: Any, **kwargs: Any) -> _FakeHTTPResponse:
+            calls.append(kwargs["json"]["model"])
+            if len(calls) == 1:
+                raise requests.Timeout()
+            return _FakeHTTPResponse(
+                {
+                    "model": "fallback/model",
+                    "choices": [
+                        {"message": {"content": _valid_json()}, "finish_reason": "stop"},
+                    ],
+                }
+            )
+
+        client = openrouter.OpenRouterBiblioLibrarianAgentClient(
+            requests_post=fake_post,
+            config_module=_provider_config(),
+            monotonic=_FakeClock(),
+        )
+        response = client.complete(
+            _request(
+                settings=contract.BiblioLibrarianAgentSettings(
+                    mode=contract.MODE_SHADOW,
+                    primary_model="primary/model",
+                    fallback_model="fallback/model",
+                    max_model_calls=2,
+                )
+            )
+        )
+
+        self.assertEqual(response.status, openrouter.STATUS_OK)
+        self.assertEqual(calls, ["primary/model", "fallback/model"])
+        self.assertTrue(response.fallback_model_used)
+        self.assertEqual(response.attempt_count, 2)
+        self.assertEqual(response.primary_reason_code, openrouter.REASON_TIMEOUT)
+
+    def test_openrouter_client_does_not_use_fallback_when_model_call_budget_is_one(self) -> None:
+        calls: list[str] = []
+
+        def fake_post(*_args: Any, **kwargs: Any) -> _FakeHTTPResponse:
+            calls.append(kwargs["json"]["model"])
+            raise requests.Timeout()
+
+        client = openrouter.OpenRouterBiblioLibrarianAgentClient(
+            requests_post=fake_post,
+            config_module=_provider_config(),
+            monotonic=_FakeClock(),
+        )
+        response = client.complete(
+            _request(
+                settings=contract.BiblioLibrarianAgentSettings(
+                    mode=contract.MODE_SHADOW,
+                    primary_model="primary/model",
+                    fallback_model="fallback/model",
+                    max_model_calls=1,
+                )
+            )
+        )
+
+        self.assertEqual(response.status, openrouter.STATUS_ERROR)
+        self.assertEqual(response.reason_code, openrouter.REASON_TIMEOUT)
+        self.assertEqual(response.attempt_count, 1)
+        self.assertFalse(response.fallback_model_used)
+        self.assertEqual(calls, ["primary/model"])
+
 
 class _FakeModelClient:
     def __init__(
@@ -286,9 +427,12 @@ class _FakeModelClient:
         self._response = response
         self._finish_reason = finish_reason
         self.calls = 0
+        self.requests: list[contract.BiblioLibrarianAgentRequest] = []
 
     def complete(self, *_args: Any, **_kwargs: Any) -> openrouter.BiblioLibrarianAgentModelResponse:
         self.calls += 1
+        if _args:
+            self.requests.append(_args[0])
         if self._response is not None:
             return self._response
         return openrouter.BiblioLibrarianAgentModelResponse(
@@ -343,6 +487,33 @@ def _valid_json(
 
 def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+class _FakeHTTPResponse:
+    def __init__(self, payload: dict[str, Any], *, status_code: int = 200) -> None:
+        self._payload = payload
+        self.status_code = status_code
+
+    def json(self) -> dict[str, Any]:
+        return self._payload
+
+
+class _FakeClock:
+    def __init__(self) -> None:
+        self._value = 100.0
+
+    def __call__(self) -> float:
+        self._value += 0.01
+        return self._value
+
+
+def _provider_config() -> SimpleNamespace:
+    return SimpleNamespace(
+        OR_KEY="secret",
+        OR_BASE="https://openrouter.ai/api/v1",
+        OR_REFERER_BIBLIO_LIBRARIAN="https://fridadev.frida-system.fr/openrouter/biblio-librarian",
+        OR_TITLE_BIBLIO_LIBRARIAN="FridaDev / Biblio Librarian Agent",
+    )
 
 
 if __name__ == "__main__":

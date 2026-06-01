@@ -68,6 +68,14 @@ class BiblioLibrarianAgent:
                 model_called=False,
                 fallback_deterministic=True,
             )
+        if mode == contract.MODE_ACTIVE:
+            return BiblioLibrarianAgentResult(
+                status=STATUS_FALLBACK_DETERMINISTIC,
+                reason_code=REASON_ACTIVE_NOT_ENABLED,
+                mode=mode,
+                model_called=False,
+                fallback_deterministic=True,
+            )
         if request.settings.max_model_calls < 1:
             return BiblioLibrarianAgentResult(
                 status=STATUS_FALLBACK_DETERMINISTIC,
@@ -132,9 +140,6 @@ class BiblioLibrarianAgent:
             status=STATUS_FALLBACK_DETERMINISTIC,
             reason_code=REASON_ACTIVE_NOT_ENABLED,
             mode=mode,
-            model_called=True,
+            model_called=False,
             fallback_deterministic=True,
-            candidate_plan=validation.plan,
-            validation_observation=validation_observation,
-            model_observation=model_observation,
         )

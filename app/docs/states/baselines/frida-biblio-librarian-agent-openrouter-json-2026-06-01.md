@@ -42,20 +42,28 @@ modele reel et sans activation produit.
 - Ajouter les modes `shadow` et `candidate` comme evaluation non souveraine.
 - Ne pas utiliser `active` comme chemin produit dans ce lot.
 - Valider en Python le JSON modele meme si structured output est demande.
+- Rejeter localement les payloads hors schema: champs racine en trop, champs
+  requis absents, `risk_flags` invalides, params inconnus et params hors
+  bornes.
+- Garder le contrat JSON obligatoire; ne pas exposer de knob operateur pour le
+  desactiver dans le Lot 7.
+- Tenter le fallback modele configure uniquement quand `max_model_calls >= 2`.
 - Ne jamais conserver le prompt complet, le raw JSON modele ou un payload
   provider brut dans le resultat observe.
 
 ## Fallbacks exiges
 
 - modele absent ou cle absente: aucun appel provider;
-- timeout provider: fallback deterministe;
-- erreur HTTP/provider: fallback deterministe;
+- timeout provider primaire: fallback modele si configure et budgetise, sinon
+  fallback deterministe;
+- erreur HTTP/provider primaire: fallback modele si configure et budgetise,
+  sinon fallback deterministe;
 - finish reason `length`: sortie tronquee, fallback deterministe;
 - JSON absent, invalide ou texte libre: fallback deterministe;
 - schema version inconnue ou outil interdit/inconnu: fallback deterministe;
 - budget depasse: fallback deterministe;
 - mode `off`: aucun appel modele;
-- mode `active`: non active par Lot 7, fallback deterministe.
+- mode `active`: non active par Lot 7, fallback deterministe sans appel modele.
 
 ## Limites
 

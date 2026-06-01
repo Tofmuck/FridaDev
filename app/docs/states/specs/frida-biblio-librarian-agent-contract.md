@@ -114,7 +114,7 @@ Section runtime settings cible, nom indicatif:
   - `max_tool_calls`;
   - `max_model_calls`;
   - `max_total_duration_s`;
-  - `json_contract_enabled`;
+  - `json_contract_required`;
   - `provider_payload_profile`;
   - `structured_output_profile`;
   - `fallback_to_deterministic`;
@@ -759,6 +759,10 @@ Implementation:
 - payload OpenRouter: `response_format.type=json_schema`,
   `json_schema.name=biblio_librarian_agent_v1`, `strict=true`,
   `provider.require_parameters=true`;
+- le contrat JSON est obligatoire dans le Lot 7; il n'existe plus de setting
+  operateur pour le desactiver;
+- le fallback modele est tente seulement si un `fallback_model` est configure
+  et si `max_model_calls >= 2`;
 - le raw prompt, le raw JSON modele et la reponse provider brute ne sont pas
   retenus dans `BiblioLibrarianAgentResult`;
 - le plan candidat interne est un `BiblioLibrarianPlan`, dont `repr` et
@@ -768,13 +772,19 @@ Validation:
 
 - JSON absent, invalide, tronque ou texte libre -> fallback deterministe;
 - schema version inconnue -> fallback deterministe;
+- champs racine en trop, champs requis absents, `risk_flags` invalides,
+  call keys en trop, params inconnus ou params hors bornes -> fallback
+  deterministe;
 - `tool_calls` au-dela du budget -> fallback deterministe;
 - outil interdit (`page_read`, `latest/page`, `latest/context`,
   `export/chunk`, mutateurs) -> fallback deterministe;
 - outil inconnu -> fallback deterministe;
 - methode non GET -> fallback deterministe;
 - timeout ou erreur provider -> fallback deterministe;
+- timeout ou erreur provider primaire -> fallback modele seulement si le
+  budget d'appels modele le permet;
 - modele ou cle provider absents -> aucun appel provider;
+- `active` -> aucun appel provider dans le Lot 7;
 - dialogue recent borne a `BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS`.
 
 Observabilite autorisee:
@@ -783,6 +793,9 @@ Observabilite autorisee:
 - status / reason code;
 - booleens `model_called`, `used_for_response`, `fallback_deterministic`;
 - modele effectif expurge;
+- fallback model configured/used;
+- attempt count;
+- primary reason code si fallback utilise;
 - finish reason;
 - duree;
 - status code;

@@ -45,6 +45,9 @@ class BiblioLibrarianAgentModelResponse:
     duration_ms: int = 0
     status_code: int | None = None
     response_chars: int = 0
+    attempt_count: int = 0
+    fallback_model_used: bool = False
+    primary_reason_code: str = ""
 
     def to_observability(self) -> dict[str, Any]:
         return _clean(
@@ -56,6 +59,9 @@ class BiblioLibrarianAgentModelResponse:
                 "duration_ms": self.duration_ms,
                 "status_code": self.status_code,
                 "response_chars": self.response_chars,
+                "attempt_count": self.attempt_count,
+                "fallback_model_used": self.fallback_model_used,
+                "primary_reason_code": _safe_token(self.primary_reason_code),
             }
         )
 
@@ -84,26 +90,57 @@ class OpenRouterBiblioLibrarianAgentClient:
         if not str(getattr(self._config, "OR_KEY", "") or "").strip():
             return _model_error(REASON_PROVIDER_NOT_CONFIGURED, model=effective_settings.primary_model)
 
+        primary = self._complete_model(request, settings=effective_settings, model=effective_settings.primary_model)
+        if (
+            primary.status == STATUS_OK
+            or not effective_settings.fallback_model
+            or effective_settings.max_model_calls < 2
+        ):
+            return primary
+        fallback = self._complete_model(request, settings=effective_settings, model=effective_settings.fallback_model)
+        return BiblioLibrarianAgentModelResponse(
+            status=fallback.status,
+            reason_code=fallback.reason_code,
+            content=fallback.content,
+            model_effective=fallback.model_effective,
+            finish_reason=fallback.finish_reason,
+            duration_ms=primary.duration_ms + fallback.duration_ms,
+            status_code=fallback.status_code,
+            response_chars=fallback.response_chars,
+            attempt_count=2,
+            fallback_model_used=True,
+            primary_reason_code=primary.reason_code,
+        )
+
+    def _complete_model(
+        self,
+        request: BiblioLibrarianAgentRequest,
+        *,
+        settings: BiblioLibrarianAgentSettings,
+        model: str,
+    ) -> BiblioLibrarianAgentModelResponse:
         started = self._monotonic()
         try:
             response = self._requests_post(
                 _chat_completions_url(self._config),
                 headers=_headers(self._config),
-                json=build_librarian_agent_payload(request, settings=effective_settings),
-                timeout=effective_settings.timeout_s,
+                json=build_librarian_agent_payload(request, settings=settings, model_override=model),
+                timeout=settings.timeout_s,
             )
         except requests.Timeout:
             return _model_error(
                 REASON_TIMEOUT,
-                model=effective_settings.primary_model,
+                model=model,
                 duration_ms=_duration_ms(started, self._monotonic),
+                attempt_count=1,
             )
         except requests.RequestException as exc:
             return _model_error(
                 REASON_PROVIDER_ERROR,
-                model=effective_settings.primary_model,
+                model=model,
                 duration_ms=_duration_ms(started, self._monotonic),
                 status_code=getattr(getattr(exc, "response", None), "status_code", None),
+                attempt_count=1,
             )
 
         status_code = getattr(response, "status_code", None)
@@ -111,23 +148,25 @@ class OpenRouterBiblioLibrarianAgentClient:
         if status_code is not None and int(status_code) >= 400:
             return _model_error(
                 REASON_PROVIDER_ERROR,
-                model=effective_settings.primary_model,
+                model=model,
                 duration_ms=duration_ms,
                 status_code=int(status_code),
+                attempt_count=1,
             )
         try:
             data = response.json()
         except (TypeError, ValueError):
             return _model_error(
                 REASON_INVALID_RESPONSE,
-                model=effective_settings.primary_model,
+                model=model,
                 duration_ms=duration_ms,
                 status_code=status_code,
+                attempt_count=1,
             )
         choice = _first_choice(data)
         message = choice.get("message") if isinstance(choice.get("message"), Mapping) else {}
         content = str(message.get("content") or "")
-        model_effective = str(data.get("model") or effective_settings.primary_model)
+        model_effective = str(data.get("model") or model)
         finish_reason = str(choice.get("finish_reason") or "")
         return BiblioLibrarianAgentModelResponse(
             status=STATUS_OK,
@@ -138,6 +177,7 @@ class OpenRouterBiblioLibrarianAgentClient:
             duration_ms=duration_ms,
             status_code=status_code,
             response_chars=len(content),
+            attempt_count=1,
         )
 
 
@@ -145,10 +185,11 @@ def build_librarian_agent_payload(
     request: BiblioLibrarianAgentRequest,
     *,
     settings: BiblioLibrarianAgentSettings | None = None,
+    model_override: str = "",
 ) -> dict[str, Any]:
     effective_settings = settings or request.settings
     payload: dict[str, Any] = {
-        "model": effective_settings.primary_model,
+        "model": model_override or effective_settings.primary_model,
         "messages": build_librarian_agent_messages(request, settings=effective_settings),
         "max_tokens": effective_settings.max_tokens,
         "temperature": effective_settings.temperature,
@@ -203,33 +244,24 @@ def build_librarian_agent_messages(
 
 def build_librarian_agent_response_format(*, max_tool_calls: int = 5) -> dict[str, Any]:
     code = {"type": "string", "maxLength": 96, "pattern": "^[A-Za-z0-9_:-]{0,96}$"}
-    text = {"type": "string", "maxLength": 240}
-    param_value = {
-        "anyOf": [
-            {"type": "string", "maxLength": 240},
-            {"type": "integer"},
-            {"type": "boolean"},
-            {"type": "null"},
-        ]
-    }
     params_schema = {
         "type": "object",
         "additionalProperties": False,
         "properties": {
-            "q": text,
-            "query": text,
-            "document_id": text,
-            "doc_id": text,
-            "locator": text,
-            "label": text,
-            "kind": code,
-            "limit": param_value,
-            "offset": param_value,
-            "page_no": param_value,
-            "para_no": param_value,
-            "paragraph_id": param_value,
-            "char_offset": param_value,
-            "window_chars": param_value,
+            "q": {"type": "string", "maxLength": 240},
+            "query": {"type": "string", "maxLength": 240},
+            "document_id": {"type": "string", "maxLength": 160},
+            "doc_id": {"type": "string", "maxLength": 160},
+            "locator": {"type": "string", "maxLength": 120},
+            "label": {"type": "string", "maxLength": 120},
+            "kind": {"type": "string", "maxLength": 40, "pattern": "^[A-Za-z0-9_:-]{0,40}$"},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 500},
+            "offset": {"type": "integer", "minimum": 0, "maximum": 100000},
+            "page_no": {"type": "integer", "minimum": 1, "maximum": 100000},
+            "para_no": {"type": "integer", "minimum": 1, "maximum": 100000},
+            "paragraph_id": {"type": "integer", "minimum": 1, "maximum": 2147483647},
+            "char_offset": {"type": "integer", "minimum": 0, "maximum": 1000000},
+            "window_chars": {"type": "integer", "minimum": 80, "maximum": 2000},
         },
     }
     return {
@@ -322,6 +354,7 @@ def _model_error(
     model: str = "",
     duration_ms: int = 0,
     status_code: int | None = None,
+    attempt_count: int = 0,
 ) -> BiblioLibrarianAgentModelResponse:
     return BiblioLibrarianAgentModelResponse(
         status=STATUS_ERROR,
@@ -329,6 +362,7 @@ def _model_error(
         model_effective=model,
         duration_ms=duration_ms,
         status_code=status_code,
+        attempt_count=attempt_count,
     )
 
 

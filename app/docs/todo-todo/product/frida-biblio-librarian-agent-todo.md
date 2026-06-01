@@ -81,7 +81,8 @@ Invariant cible:
 Implication probable:
 
 - ajouter une section runtime settings dediee, par exemple `biblio_librarian_agent_model`, plutot que reutiliser `main_model`;
-- cette section devra avoir `primary_model`, `fallback_model`, `timeout_s`, `temperature`, `top_p`, `max_tokens`, `max_tool_calls`, `json_contract_enabled` ou equivalents;
+- cette section devra avoir `primary_model`, `fallback_model`, `timeout_s`, `temperature`, `top_p`, `max_tokens`, `max_tool_calls`, `max_model_calls` et `require_parameters` ou equivalents;
+- le contrat JSON est obligatoire dans le Lot 7; aucun knob operateur ne doit permettre de le desactiver sans lot separe;
 - les secrets restent ceux du provider OpenRouter deja gere, sans nouveau secret si ce n'est pas necessaire;
 - tout ajout de section runtime settings exige tests spec/validation/API/admin.
 
@@ -793,6 +794,12 @@ du contenu brut.
 - [x] Valider strictement le JSON avant tout plan executable.
 - [x] Rejeter JSON absent, invalide, tronque, texte libre, schema inconnu,
   outil interdit, outil inconnu, methode non GET et budget depasse.
+- [x] Rejeter localement les payloads hors schema: champs racine en trop,
+  champs requis absents, `risk_flags` invalides, params inconnus et bornes de
+  params depassees.
+- [x] Refuser `active` avant appel modele dans le Lot 7.
+- [x] Implementer le fallback modele configure seulement si
+  `max_model_calls >= 2`.
 - [x] Ne conserver aucun prompt complet ni raw JSON modele dans le resultat
   agent observe.
 - [x] Garder le chemin deterministe comme controleur en `shadow` et
@@ -803,8 +810,9 @@ du contenu brut.
 - [x] Config non secrete:
   `BIBLIO_LIBRARIAN_AGENT_MODE`, `BIBLIO_LIBRARIAN_AGENT_MODEL`,
   `BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL`, timeout, sampling, max tokens,
-  max tool/model calls, max recent turns, JSON contract et
-  `require_parameters`.
+  max tool/model calls, max recent turns et `require_parameters`.
+- [x] Contrat JSON obligatoire: pas de knob operateur permettant de le
+  desactiver dans ce lot.
 - [x] Referer/title OpenRouter dedies:
   `OPENROUTER_REFERER_BIBLIO_LIBRARIAN`,
   `OPENROUTER_TITLE_BIBLIO_LIBRARIAN`.
@@ -819,14 +827,19 @@ du contenu brut.
 - [x] mode `shadow`: appel possible, plan valide non utilise pour la reponse.
 - [x] mode `candidate`: plan candidat conserve mais deterministe controle.
 - [x] mode `active`: non active par Lot 7, fallback deterministe.
+- [x] mode `active`: aucun appel modele, aucun cout/latence provider.
 - [x] JSON valide: plan `BiblioLibrarianPlan` produit.
 - [x] JSON invalide, texte libre, tronque: fallback deterministe.
+- [x] JSON hors schema local: rejet, meme si le provider devait deja faire du
+  strict schema.
 - [x] outil interdit / inconnu / methode mutable: rejet avant execution.
 - [x] budget modele et budget tool calls: rejet propre.
-- [x] timeout / erreur provider: fallback deterministe.
+- [x] timeout / erreur provider primaire: tentative du fallback modele si
+  configure et budget `max_model_calls >= 2`, sinon fallback deterministe.
 - [x] dialogue recent borne a `max_recent_turns`.
-- [x] fixtures produit anaphoriques passent par le contrat agentique sans
-  nouvelle regex produit.
+- [x] fixtures produit anaphoriques transmises au modele avec message courant,
+  dialogue recent borne, etat Biblio et outils disponibles; cela ne prouve pas
+  encore la comprehension reelle du modele.
 - [x] `to_observability()` et `repr(result)` restent content-free.
 
 ### Réduction du risque attendue
