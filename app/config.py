@@ -234,17 +234,25 @@ BIBLIO_CATALOGUE_BASE_URL = os.environ.get(
 BIBLIO_CATALOGUE_TIMEOUT_S = _env_int('BIBLIO_CATALOGUE_TIMEOUT_S', 8)
 
 # Biblio librarian agent foundation.
-# Default off: no model call and no replacement of the deterministic Biblio path.
-BIBLIO_LIBRARIAN_AGENT_MODE = os.environ.get('BIBLIO_LIBRARIAN_AGENT_MODE', 'off').strip().lower() or 'off'
-BIBLIO_LIBRARIAN_AGENT_MODEL = os.environ.get('BIBLIO_LIBRARIAN_AGENT_MODEL', '').strip()
+# Active smoke default: model-validated plan, deterministic path still controls
+# the product response until a separate activation lot executes agent tools.
+BIBLIO_LIBRARIAN_AGENT_MODE = os.environ.get('BIBLIO_LIBRARIAN_AGENT_MODE', 'active').strip().lower() or 'active'
+BIBLIO_LIBRARIAN_AGENT_MODEL = os.environ.get(
+    'BIBLIO_LIBRARIAN_AGENT_MODEL',
+    'deepseek/deepseek-v4-pro',
+).strip() or 'deepseek/deepseek-v4-pro'
 BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL = os.environ.get('BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL', '').strip()
-BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S = _env_int('BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S', 10)
+BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S = _env_int('BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S', 120)
 BIBLIO_LIBRARIAN_AGENT_TEMPERATURE = _env_float('BIBLIO_LIBRARIAN_AGENT_TEMPERATURE', 0.0)
 BIBLIO_LIBRARIAN_AGENT_TOP_P = _env_float('BIBLIO_LIBRARIAN_AGENT_TOP_P', 1.0)
-BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS = _env_int('BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS', 900)
+BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS = _env_int('BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS', 16000)
 BIBLIO_LIBRARIAN_AGENT_MAX_TOOL_CALLS = _env_int('BIBLIO_LIBRARIAN_AGENT_MAX_TOOL_CALLS', 5)
 BIBLIO_LIBRARIAN_AGENT_MAX_MODEL_CALLS = _env_int('BIBLIO_LIBRARIAN_AGENT_MAX_MODEL_CALLS', 1)
 BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS = _env_int('BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS', 5)
+BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT = os.environ.get(
+    'BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT',
+    'high',
+).strip().lower() or 'high'
 
 # Durable workspace folder files live under the mounted conversation volume on
 # OVH by default. Paths remain internal and are never exposed to the browser.

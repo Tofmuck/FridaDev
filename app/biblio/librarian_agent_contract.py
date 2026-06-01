@@ -61,6 +61,7 @@ _INT_PARAM_BOUNDS = {
     "char_offset": (0, 1_000_000),
     "window_chars": (80, 2_000),
 }
+_REASONING_EFFORTS = {"xhigh", "high", "medium", "low", "minimal", "none"}
 _TOOL_PARAM_CONTRACTS = {
     tools.TOOL_CATALOG_LIST: {
         "allowed": {"q", "limit", "offset"},
@@ -114,6 +115,7 @@ class BiblioLibrarianAgentSettings:
     max_tool_calls: int = 5
     max_model_calls: int = 1
     max_recent_turns: int = 5
+    reasoning_effort: str = "none"
 
     @classmethod
     def from_config(cls, config_module: Any) -> "BiblioLibrarianAgentSettings":
@@ -128,6 +130,9 @@ class BiblioLibrarianAgentSettings:
             max_tool_calls=_positive_int(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MAX_TOOL_CALLS", 5), 5),
             max_model_calls=_positive_int(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MAX_MODEL_CALLS", 1), 1),
             max_recent_turns=_positive_int(getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS", 5), 5),
+            reasoning_effort=_reasoning_effort(
+                getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT", "none")
+            ),
         )
 
     def to_observability(self) -> dict[str, Any]:
@@ -143,6 +148,7 @@ class BiblioLibrarianAgentSettings:
                 "max_tool_calls": self.max_tool_calls,
                 "max_model_calls": self.max_model_calls,
                 "max_recent_turns": self.max_recent_turns,
+                "reasoning_effort": _reasoning_effort(self.reasoning_effort),
                 "json_contract_required": True,
                 "require_parameters": True,
             }
@@ -213,6 +219,11 @@ class BiblioLibrarianAgentValidation:
 def normalize_mode(value: Any) -> str:
     mode = str(value or MODE_OFF).strip().lower()
     return mode if mode in ALLOWED_MODES else MODE_OFF
+
+
+def _reasoning_effort(value: Any) -> str:
+    effort = _safe_token(value)
+    return effort if effort in _REASONING_EFFORTS else "none"
 
 
 def parse_and_validate_agent_json(

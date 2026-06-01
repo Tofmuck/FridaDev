@@ -20,6 +20,7 @@ from biblio import library_runtime
 from biblio import librarian_agent
 from biblio import librarian_agent_contract as agent_contract
 from biblio import librarian_agent_openrouter as agent_openrouter
+from biblio import librarian_agent_runtime
 from biblio import librarian_tools
 from biblio import passage_extractor as extractor
 from biblio import prompt_lane
@@ -30,6 +31,13 @@ RAW_PASSAGE = "SYNTHETIC_BIBLIO_CHAT_PASSAGE_MUST_ONLY_APPEAR_IN_PROMPT"
 
 
 class BiblioChatRuntimeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._agent_mode_before = librarian_agent_runtime.config.BIBLIO_LIBRARIAN_AGENT_MODE
+        librarian_agent_runtime.config.BIBLIO_LIBRARIAN_AGENT_MODE = "off"
+
+    def tearDown(self) -> None:
+        librarian_agent_runtime.config.BIBLIO_LIBRARIAN_AGENT_MODE = self._agent_mode_before
+
     def test_toggle_off_does_not_build_client_or_call_catalogue(self) -> None:
         result = chat_runtime.run_biblio_chat_turn(
             {"biblio_enabled": False},

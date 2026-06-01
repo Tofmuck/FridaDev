@@ -207,6 +207,8 @@ def build_librarian_agent_payload(
             "generation_name": "FridaDev / Biblio Librarian Agent",
         },
     }
+    if effective_settings.reasoning_effort != "none":
+        payload["reasoning_effort"] = effective_settings.reasoning_effort
     return payload
 
 

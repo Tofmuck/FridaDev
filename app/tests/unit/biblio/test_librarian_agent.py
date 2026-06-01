@@ -446,13 +446,16 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 BIBLIO_LIBRARIAN_AGENT_MODE="shadow",
                 BIBLIO_LIBRARIAN_AGENT_MODEL="deepseek/deepseek-v4-pro",
                 BIBLIO_LIBRARIAN_AGENT_REQUIRE_PARAMETERS="false",
+                BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT="high",
             )
         )
 
         self.assertEqual(settings.mode, contract.MODE_SHADOW)
         self.assertEqual(settings.primary_model, "deepseek/deepseek-v4-pro")
+        self.assertEqual(settings.reasoning_effort, "high")
         self.assertTrue(settings.to_observability()["json_contract_required"])
         self.assertTrue(settings.to_observability()["require_parameters"])
+        self.assertEqual(settings.to_observability()["reasoning_effort"], "high")
 
     def test_openrouter_payload_uses_biblio_headers_and_required_parameters(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings.from_config(
@@ -461,14 +464,31 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 BIBLIO_LIBRARIAN_AGENT_MODEL="deepseek/deepseek-v4-pro",
                 BIBLIO_LIBRARIAN_AGENT_REQUIRE_PARAMETERS="false",
                 BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS=1,
+                BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S=120,
+                BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS=16000,
+                BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT="high",
             )
         )
         payload = openrouter.build_librarian_agent_payload(_request(settings=settings), settings=settings)
 
         self.assertEqual(payload["model"], "deepseek/deepseek-v4-pro")
+        self.assertEqual(payload["max_tokens"], 16000)
+        self.assertEqual(payload["temperature"], 0.0)
+        self.assertEqual(payload["top_p"], 1.0)
+        self.assertEqual(payload["reasoning_effort"], "high")
         self.assertEqual(payload["provider"], {"require_parameters": True})
         self.assertEqual(payload["response_format"]["type"], "json_schema")
         self.assertEqual(len(payload["messages"]), 2)
+
+    def test_openrouter_payload_omits_reasoning_effort_when_disabled(self) -> None:
+        settings = contract.BiblioLibrarianAgentSettings(
+            mode=contract.MODE_ACTIVE,
+            primary_model="model/x",
+            reasoning_effort="none",
+        )
+        payload = openrouter.build_librarian_agent_payload(_request(settings=settings), settings=settings)
+
+        self.assertNotIn("reasoning_effort", payload)
 
     def test_openrouter_client_does_not_call_without_model_or_key(self) -> None:
         called = {"value": False}

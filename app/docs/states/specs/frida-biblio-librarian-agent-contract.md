@@ -23,8 +23,11 @@ reel.
 Mise a jour Lot 7: le socle agentique OpenRouter / JSON est livre dans
 `app/biblio/librarian_agent_contract.py`,
 `app/biblio/librarian_agent_openrouter.py` et
-`app/biblio/librarian_agent.py`, avec mode `off` par defaut, validation
-stricte et fallback deterministe.
+`app/biblio/librarian_agent.py`, avec validation stricte et fallback
+deterministe.
+Mise a jour post-Lot 10: le smoke nominal utilise `active` et la configuration
+applicative par defaut demande `deepseek/deepseek-v4-pro` avec
+`reasoning_effort=high`; l'agent reste non souverain.
 Elle ne livre pas l'activation produit de l'agent.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
@@ -746,9 +749,14 @@ Implementation:
 - orchestration: `app/biblio/librarian_agent.py`;
 - schema sortie agent: `biblio_librarian_agent_v1`;
 - modes: `off`, `shadow`, `candidate`, `active`;
-- default runtime: `BIBLIO_LIBRARIAN_AGENT_MODE=off`, modele vide;
+- default runtime post-Lot 10:
+  `BIBLIO_LIBRARIAN_AGENT_MODE=active`,
+  `BIBLIO_LIBRARIAN_AGENT_MODEL=deepseek/deepseek-v4-pro`,
+  `BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S=120`,
+  `BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS=16000`,
+  `BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT=high`;
 - `active` est reconnu comme valeur de mode mais n'est pas utilise comme
-  chemin produit dans ce lot;
+  chemin souverain de reponse produit dans ce lot;
 - `shadow` et `candidate` peuvent valider un plan JSON mais gardent
   `fallback_deterministic=true` et `used_for_response=false`;
 - `BIBLIO_LIBRARIAN_AGENT_MODEL` et
@@ -757,8 +765,8 @@ Implementation:
   `OPENROUTER_TITLE_BIBLIO_LIBRARIAN`;
 - payload OpenRouter: `response_format.type=json_schema`,
   `json_schema.name=biblio_librarian_agent_v1`, `strict=true`,
-  `provider.require_parameters=true`, avec schemas d'outils bornes par outil
-  et alignes sur `librarian_tools.py`;
+  `provider.require_parameters=true`, `reasoning_effort` si configure, avec
+  schemas d'outils bornes par outil et alignes sur `librarian_tools.py`;
 - le contrat JSON est obligatoire dans le Lot 7; il n'existe plus de setting
   operateur pour le desactiver, et `provider.require_parameters` ne depend
   d'aucune variable d'environnement;
@@ -831,7 +839,7 @@ Observabilite interdite:
 
 NO-GO retroactif Lot 7 si un patch ulterieur:
 
-- active l'agent par defaut;
+- fait de l'agent le controleur produit par defaut;
 - utilise `active` comme chemin produit sans lot separe;
 - execute les outils proposes par le modele dans le chat sans validation
   comparative;
@@ -839,7 +847,8 @@ NO-GO retroactif Lot 7 si un patch ulterieur:
 - annonce `model_called=true` alors qu'aucune tentative provider n'a eu lieu;
 - valide un plan que `librarian_tools.py` rejetterait immediatement faute de
   query, document, position ou borne specifique;
-- hardcode DeepSeek V4 Pro ou un autre modele comme default actif;
+- hardcode DeepSeek V4 Pro dans la logique metier au lieu de le garder comme
+  default config/env surchargeable;
 - remplace le chemin deterministe sans rollback;
 - expose un contenu brut dans admin/dashboard/logs/read-model/smokes.
 

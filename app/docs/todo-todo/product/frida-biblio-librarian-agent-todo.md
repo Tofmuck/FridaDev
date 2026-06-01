@@ -1061,6 +1061,10 @@ Risque de livrer un agent qui passe les unitaires mais echoue les demandes philo
   reponse produit (`used_for_response=false`, outils non executes).
 - [x] `--no-product-strict` ne masque plus un echec agent; seul
   `--no-agent-strict` permet une inspection debug non bloquante.
+- [x] Mini-lot configuration active post-Lot 10: defaults applicatifs non
+  secrets `active`, `deepseek/deepseek-v4-pro`, temperature `0`, `top_p=1`,
+  `max_tokens=16000`, `max_recent_turns=5`, timeout `120s` et
+  `reasoning_effort=high`.
 - [x] Fixtures attendues content-free avec statuts separes: `runtime_expectation_status`, `agent_expectation_status`, `product_expectation_status`.
 - [x] Un plan dialogue local seul ne peut pas rendre un cas `met`.
 - [x] Documentation des cas et resultats.
@@ -1248,8 +1252,9 @@ Lot 5 comprehension implicite/dialogue livre.
 
 Lot 6 navigation bornee livre.
 
-Lot 7 socle OpenRouter/JSON livre, avec validation stricte, mode `off` par
-defaut et `provider.require_parameters=true` invariant.
+Lot 7 socle OpenRouter/JSON livre, avec validation stricte et
+`provider.require_parameters=true` invariant. Le mini-lot post-Lot 10 configure
+le default applicatif de smoke agent en `active` avec DeepSeek V4 Pro.
 
 Lot 8 integration comparative runtime livre: l'agent peut etre appele en
 `shadow`/`candidate` quand Biblio est activee, mais le deterministe reste le
@@ -1261,7 +1266,7 @@ NO-GO pour executer les outils proposes par le modele dans le chat produit,
 remplacer le chemin deterministe, ajouter outil page, `export/chunk`,
 navigation complete, modele hardcode ou route plateforme.
 
-Risques restants reels: le smoke nominal `active` depend de la configuration
-OpenRouter live, pas de branchement souverain du plan agent, pas d'execution
-d'outils agentiques pour reponse finale, pas de runtime settings admin/DB
-dedies, outil page absent et `export/chunk` absent.
+Risques restants reels: le smoke nominal `active` depend de la disponibilite
+OpenRouter live et de la qualite JSON du modele, pas de branchement souverain
+du plan agent, pas d'execution d'outils agentiques pour reponse finale, pas de
+runtime settings admin/DB dedies, outil page absent et `export/chunk` absent.

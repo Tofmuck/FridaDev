@@ -32,13 +32,18 @@ modele reel et sans activation produit.
   `deepseek/deepseek-v4-pro`.
 - DeepSeek V4 Pro est un candidat agentique possible, pas un default hardcode:
   le modele effectif reste configure par `BIBLIO_LIBRARIAN_AGENT_MODEL`.
+- OpenRouter documente `reasoning_effort` comme parametre top-level optionnel
+  (`xhigh`, `high`, `medium`, `low`, `minimal`, `none`) et `reasoning` comme
+  map optionnelle pour les modeles qui supportent les tokens de raisonnement.
 
 ## Decision Lot 7
 
 - Construire le payload avec `response_format.type=json_schema`,
   `json_schema.name=biblio_librarian_agent_v1`, `strict=true` et
   `provider.require_parameters=true`.
-- Garder le modele vide par defaut et le mode `off` par defaut.
+- Garder le modele vide par defaut et le mode `off` par defaut dans le Lot 7
+  initial; le mini-lot post-Lot 10 bascule ensuite le default applicatif vers
+  `active` + `deepseek/deepseek-v4-pro`.
 - Ajouter les modes `shadow` et `candidate` comme evaluation non souveraine.
 - Ne pas utiliser `active` comme chemin produit dans ce lot.
 - Valider en Python le JSON modele meme si structured output est demande.
@@ -90,3 +95,21 @@ contrat de smoke live Lot 10 est plus strict: le mode nominal du runner est
 ne valent plus preuve produit nominale. Le plan agent reste toutefois observe
 seulement: `used_for_response=false`, outils non executes et reponse produit
 deterministe inchangee jusqu'a lot separe.
+
+## Note configuration active post-Lot 10
+
+La configuration applicative non secrete demandee par l'operateur est:
+
+- `BIBLIO_LIBRARIAN_AGENT_MODE=active`;
+- `BIBLIO_LIBRARIAN_AGENT_MODEL=deepseek/deepseek-v4-pro`;
+- `BIBLIO_LIBRARIAN_AGENT_TEMPERATURE=0`;
+- `BIBLIO_LIBRARIAN_AGENT_TOP_P=1`;
+- `BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS=16000`;
+- `BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS=5`;
+- `BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S=120`;
+- `BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT=high`.
+
+Ces valeurs restent surchargeables par environnement; le modele n'est pas
+hardcode dans la logique metier. `active` signifie modele appele et JSON valide
+pour le smoke agent, pas execution des outils agentiques ni remplacement de la
+reponse produit.
