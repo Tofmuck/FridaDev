@@ -291,13 +291,26 @@ def parse_and_validate_agent_json(
     except json.JSONDecodeError:
         reason = REASON_JSON_INVALID if clean_text[:1] in {"{", "["} else REASON_JSON_FREE_TEXT
         return _rejected(reason, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
-    return validate_agent_payload(
+    validation = validate_agent_payload(
         payload,
         settings=settings,
         json_chars=json_chars,
         json_hash=json_hash,
         finish_reason=finish_reason,
     )
+    if validation.status == STATUS_VALIDATED:
+        return validation
+    repaired = _repair_agent_payload(payload)
+    if repaired is payload:
+        return validation
+    repaired_validation = validate_agent_payload(
+        repaired,
+        settings=settings,
+        json_chars=json_chars,
+        json_hash=json_hash,
+        finish_reason=finish_reason,
+    )
+    return repaired_validation if repaired_validation.status == STATUS_VALIDATED else validation
 
 
 def validate_agent_payload(
@@ -331,6 +344,8 @@ def validate_agent_payload(
 
     calls: list[planner.BiblioLibrarianToolCall] = []
     invalid_tool_names: list[str] = []
+    carry_document_available = False
+    carry_position_available = False
     for raw_call in raw_calls:
         if not isinstance(raw_call, Mapping):
             return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
@@ -372,7 +387,12 @@ def validate_agent_payload(
         params = raw_call.get("params")
         if not isinstance(params, Mapping):
             return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
-        if not _valid_params(tool_name, params):
+        if not _valid_params(tool_name, params) and not _valid_deferred_params(
+            tool_name,
+            params,
+            carry_document_available=carry_document_available,
+            carry_position_available=carry_position_available,
+        ):
             return _rejected(REASON_TOOL_NOT_EXECUTABLE, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
         calls.append(
             planner.BiblioLibrarianToolCall(
@@ -382,6 +402,11 @@ def validate_agent_payload(
                 method=method,
             )
         )
+        if tool_name in {tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_OPEN_SUMMARY, tools.TOOL_DOCUMENT_TOC}:
+            carry_document_available = True
+        if tool_name in {tools.TOOL_CATALOG_SEARCH, tools.TOOL_LOCATE, tools.TOOL_PASSAGE_CONTEXT}:
+            carry_position_available = True
+            carry_document_available = True
 
     plan = planner.BiblioLibrarianPlan(
         schema_version=planner.SCHEMA_VERSION,
@@ -418,6 +443,163 @@ def _rejected(
         json_hash=json_hash,
         finish_reason=finish_reason,
     )
+
+
+def _repair_agent_payload(payload: Any) -> Any:
+    if not isinstance(payload, Mapping):
+        return payload
+    raw_calls = payload.get("tool_calls")
+    changed = False
+    if isinstance(raw_calls, Mapping):
+        raw_calls = (raw_calls,)
+        changed = True
+    if not isinstance(raw_calls, Sequence) or isinstance(raw_calls, (str, bytes, bytearray)):
+        return payload
+    repaired_calls: list[dict[str, Any]] = []
+    for raw_call in raw_calls:
+        if not isinstance(raw_call, Mapping):
+            return payload
+        tool_name = _safe_tool_name(raw_call.get("tool_name") or raw_call.get("name") or raw_call.get("tool"))
+        if tool_name not in tools.LOT3_TOOL_NAMES:
+            return payload
+        params = raw_call.get("params")
+        params = _repair_raw_params(tool_name, params)
+        if params is None:
+            return payload
+        repaired_tool_name = _repair_tool_name(tool_name, params)
+        repaired_params = _repair_params(repaired_tool_name, params)
+        repaired_call = {
+            "tool_name": repaired_tool_name,
+            "method": str(raw_call.get("method") or "GET").strip().upper(),
+            "params": repaired_params,
+        }
+        call_id = raw_call.get("call_id")
+        if call_id:
+            repaired_call["call_id"] = str(call_id)
+        changed = (
+            changed
+            or repaired_tool_name != tool_name
+            or set(raw_call.keys()) != set(repaired_call.keys())
+            or dict(params) != repaired_params
+        )
+        repaired_calls.append(repaired_call)
+    repaired_payload = {
+        "schema_version": str(payload.get("schema_version") or SCHEMA_VERSION),
+        "intent": _safe_token(payload.get("intent")) or "biblio_request",
+        "tool_calls": repaired_calls,
+        "answer_mode": _safe_token(payload.get("answer_mode")) or "tool",
+        "risk_flags": payload.get("risk_flags") if isinstance(payload.get("risk_flags"), list) else [],
+        "fallback_reason": _safe_token(payload.get("fallback_reason")),
+    }
+    changed = changed or set(payload.keys()) != _ROOT_KEYS
+    return repaired_payload if changed else payload
+
+
+def _repair_raw_params(tool_name: str, params: Any) -> Mapping[str, Any] | None:
+    if isinstance(params, Mapping):
+        return params
+    if params is None:
+        return {}
+    if isinstance(params, str) and params.strip():
+        if tool_name in {
+            tools.TOOL_CATALOG_LIST,
+            tools.TOOL_CATALOG_SEARCH,
+            tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+            tools.TOOL_DOCUMENT_TOC,
+            tools.TOOL_PASSAGE_CONTEXT,
+        }:
+            return {"query": params.strip()[:240]}
+        if tool_name == tools.TOOL_LOCATE:
+            return {"locator": params.strip()[:120]}
+    return None
+
+
+def _repair_tool_name(tool_name: str, params: Mapping[str, Any]) -> str:
+    if tool_name == tools.TOOL_DOCUMENT_TOC and not _has_document_id(params) and _combined_query(params):
+        return tools.TOOL_CATALOG_SEARCH
+    if tool_name == tools.TOOL_LOCATE and not _has_document_id(params) and _combined_query(params):
+        return tools.TOOL_CATALOG_SEARCH
+    if tool_name == tools.TOOL_PASSAGE_CONTEXT and (
+        not _has_document_id(params) or not _has_context_position(params)
+    ) and _combined_query(params):
+        return tools.TOOL_CATALOG_SEARCH
+    return tool_name
+
+
+def _repair_params(tool_name: str, params: Mapping[str, Any]) -> dict[str, Any]:
+    contract = _TOOL_PARAM_CONTRACTS[tool_name]
+    allowed = set(contract["allowed"])
+    repaired = {key: value for key, value in params.items() if key in allowed}
+    if tool_name in {tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_OPEN_SUMMARY, tools.TOOL_CATALOG_LIST}:
+        if not (repaired.get("q") or repaired.get("query")):
+            query = _combined_query(params)
+            if query:
+                repaired["query" if tool_name != tools.TOOL_CATALOG_LIST else "q"] = query
+    if tool_name == tools.TOOL_LOCATE and not (repaired.get("locator") or repaired.get("label")):
+        locator = _first_text(params, ("locator_start", "start_locator", "stephanus", "reference"))
+        if locator:
+            repaired["locator"] = locator
+    if tool_name == tools.TOOL_CATALOG_LIST and "limit" not in repaired:
+        repaired["limit"] = 100
+    return _repair_integer_params(tool_name, repaired)
+
+
+def _repair_integer_params(tool_name: str, params: Mapping[str, Any]) -> dict[str, Any]:
+    bounds = _TOOL_PARAM_CONTRACTS[tool_name].get("int_bounds", {})
+    repaired = dict(params)
+    for key, (minimum, maximum) in bounds.items():
+        if key not in repaired:
+            continue
+        value = repaired[key]
+        if isinstance(value, str) and value.strip().isdigit():
+            value = int(value.strip())
+        if type(value) is int:
+            value = max(minimum, min(maximum, value))
+            repaired[key] = value
+    return repaired
+
+
+def _combined_query(params: Mapping[str, Any]) -> str:
+    values: list[str] = []
+    for name in (
+        "q",
+        "query",
+        "title",
+        "work_title",
+        "document_title",
+        "author",
+        "theme",
+        "theme_query",
+        "subject",
+    ):
+        value = _first_text(params, (name,))
+        if value and value not in values:
+            values.append(value)
+    return " ".join(values)[:240].strip()
+
+
+def _has_document_id(params: Mapping[str, Any]) -> bool:
+    return bool(_first_text(params, ("document_id", "doc_id")))
+
+
+def _has_context_position(params: Mapping[str, Any]) -> bool:
+    has_paragraph = _present_like(params.get("paragraph_id"))
+    has_page_pair = _present_like(params.get("page_no")) and _present_like(params.get("para_no"))
+    return has_paragraph or has_page_pair
+
+
+def _present_like(value: Any) -> bool:
+    if isinstance(value, str):
+        return bool(value.strip())
+    return value is not None
+
+
+def _first_text(params: Mapping[str, Any], names: Sequence[str]) -> str:
+    for name in names:
+        value = params.get(name)
+        if isinstance(value, str) and value.strip():
+            return value.strip()[:240]
+    return ""
 
 
 def _bounded_turn(turn: Mapping[str, Any]) -> dict[str, Any]:
@@ -484,6 +666,46 @@ def _valid_params(tool_name: str, params: Mapping[str, Any]) -> bool:
             if key in {"document_id", "doc_id", "q", "query", "locator", "label"} and not stripped:
                 return False
             if key == "kind" and not _valid_code(value):
+                return False
+            continue
+        if key in _INT_PARAM_BOUNDS:
+            if type(value) is not int:
+                return False
+            minimum, maximum = int_bounds.get(key, _INT_PARAM_BOUNDS[key])
+            if value < minimum or value > maximum:
+                return False
+            continue
+        return False
+    return True
+
+
+def _valid_deferred_params(
+    tool_name: str,
+    params: Mapping[str, Any],
+    *,
+    carry_document_available: bool,
+    carry_position_available: bool,
+) -> bool:
+    if tool_name != tools.TOOL_PASSAGE_CONTEXT:
+        return False
+    contract = _TOOL_PARAM_CONTRACTS.get(tool_name)
+    if not contract:
+        return False
+    allowed = contract.get("allowed", set())
+    if not isinstance(allowed, set) or not set(params.keys()).issubset(allowed):
+        return False
+    has_document = _present_param(params, "document_id") or _present_param(params, "doc_id")
+    if not has_document and not carry_document_available:
+        return False
+    has_position = _present_param(params, "paragraph_id") or (
+        _present_param(params, "page_no") and _present_param(params, "para_no")
+    )
+    if has_position or not carry_position_available:
+        return False
+    int_bounds = contract.get("int_bounds", {})
+    for key, value in params.items():
+        if key in {"document_id", "doc_id"}:
+            if not isinstance(value, str) or not value.strip() or len(value.strip()) > _TEXT_PARAM_MAX[key]:
                 return False
             continue
         if key in _INT_PARAM_BOUNDS:

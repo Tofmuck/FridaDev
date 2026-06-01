@@ -91,6 +91,8 @@ class BiblioConsultationMessage:
     total_count: int | None = None
     displayed_count: int | None = None
     truncated: bool = False
+    passage_count: int = 0
+    hashes: tuple[str, ...] = field(default_factory=tuple)
 
     def to_observability(self) -> dict[str, Any]:
         return {
@@ -103,6 +105,8 @@ class BiblioConsultationMessage:
             "total_count": self.total_count,
             "displayed_count": self.displayed_count,
             "truncated": self.truncated,
+            "passage_count": self.passage_count,
+            "hashes": list(self.hashes),
         }
 
 

@@ -68,7 +68,7 @@ class BiblioLibrarianAgentComparison:
                 "used_for_response": used_for_response,
                 "deterministic_controller": not used_for_response,
                 "product_response_changed": product_response_changed,
-                "fallback_deterministic": True,
+                "fallback_deterministic": not used_for_response,
                 "tool_execution_status": tool_execution_status,
                 "tool_call_event_count": tool_call_count,
                 "selection_event_count": 0,

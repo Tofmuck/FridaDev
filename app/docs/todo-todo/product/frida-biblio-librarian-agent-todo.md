@@ -1219,14 +1219,16 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 
 ## Risques documentes mais non corriges par cette TODO
 
-- Pas encore de branchement chat produit de l'agent bibliothecaire.
+- Branchement chat produit agent-first livre pour la matrice P01-P18.
 - Le smoke nominal `active` peut echouer honnetement si le modele ou la cle
   provider ne sont pas configures; ce n'est plus remplace par `candidate`.
-- Pas encore d'activation souveraine du plan agent dans la reponse produit.
-- Section runtime settings admin/DB dediee livree; smoke complet actif encore
-  a valider comme gate global.
+- Activation agent-first livree sous murs GET-only, avec fallback borne si le
+  JSON actif est invalide, vide ou inexecutable.
+- Section runtime settings admin/DB dediee livree; smoke complet actif P01-P18
+  valide comme gate global le 2026-06-01.
 - Pas encore d'outil page cote FridaDev; P09 reste une surveillance, pas une promesse de navigation complete.
-- P03 reste une surveillance planner/intention, pas une promesse de correction complete par l'etat Lot 1.
+- P03 reste un cas de regression historique mais passe par l'architecture
+  agent-first generale; il ne doit plus etre gere comme exception produit.
 - Pas encore de navigation precedente/suivante complete cote FridaDev.
 - Risques stale retires: verification OpenRouter/JSON datee, contrat agent,
   config env, fallback modele configure, fallback deterministe, validation
@@ -1275,25 +1277,32 @@ Lot 8 integration comparative runtime livre: l'agent peut etre appele en
 `shadow`/`candidate` quand Biblio est activee, mais le deterministe reste le
 controleur et `used_for_response=false`.
 
-Tranche verticale post-Lot 10 en cours: P03 peut utiliser un chemin
-agent-first minimal uniquement quand le deterministe est `no_signal`, que
-l'agent `active` produit un plan JSON valide avec un seul outil
-`catalog_search` GET, et que `librarian_tools.py` accepte ce plan. Dans ce cas
-le `catalog_search` est execute, une lane de consultation bornee est produite,
-et l'observabilite doit dire explicitement `execution_scope=catalog_search_only`,
+Tranche verticale post-Lot 10 generalisee livree: l'exception P03-only est
+remplacee par une architecture agent-first Biblio. Quand Biblio est activee,
+l'agent `active` est appele comme controleur bibliothecaire principal. Un plan
+JSON valide peut executer les outils GET-only allowlistes (`catalog_list`,
+`catalog_search`, `document_open_summary`, `document_toc`, `locate`,
+`passage_context`) par `librarian_tools.py` sous budgets stricts. Si le modele
+rend un JSON invalide, un plan vide ou un outil inexecutable, un fallback borne
+peut synthetiser un plan depuis les signaux deterministes/dialogue deja
+content-free, toujours sous `execution_scope=agent_first` et murs GET-only.
+Une lane de consultation bornee contient les donnees produit utiles, tandis que
+l'observabilite dit explicitement `execution_scope=agent_first`,
 `tool_execution_status=executed`, `used_for_response=true` et
-`product_response_changed=true`. Tout autre outil, boucle multi-step, route
-lourde, route `latest/*`, route mutante ou payload brut reste interdit.
+`product_response_changed=true`. Route lourde, route `latest/*`, route mutante,
+nouvel outil, frontend, plateforme ou payload brut restent interdits.
 
-NO-GO pour declarer l'agent bibliothecaire produit livre.
+GO pour la tranche agent-first P01-P18: artefact content-free
+`app/docs/states/baselines/biblio-smokes/agent-first-full-20260601T181903Z.jsonl`,
+18/18 records, `runtime_expectation_status=met`,
+`agent_expectation_status=met`, `product_expectation_status=met`, exit 0.
 
-NO-GO pour executer les outils proposes par le modele dans le chat produit hors
-tranche P03 `catalog_search` unique, remplacer le chemin deterministe de facon
-generale, ajouter outil page, `export/chunk`, navigation complete, modele
-hardcode ou route plateforme.
+NO-GO pour executer un outil non allowliste, ajouter outil page,
+`export/chunk`, navigation complete, modele hardcode, route plateforme, ou
+marquer un smoke produit vert sur simple plan agent observe sans donnees reelles
+injectees dans la lane.
 
 Risques restants reels: le smoke nominal `active` depend de la disponibilite
-OpenRouter live et de la qualite JSON du modele, pas de branchement souverain
-du plan agent, pas d'execution d'outils agentiques pour reponse finale, pas de
-validation full-smoke globale terminee, outil page absent et `export/chunk`
-absent.
+OpenRouter live et de la qualite JSON du modele, l'outil page reste absent,
+`export/chunk` reste absent, et les fallbacks bornes doivent rester limites aux
+signaux deja valides par les murs deterministes/dialogue.

@@ -252,22 +252,159 @@ class BiblioChatRuntimeTests(unittest.TestCase):
 
         self.assertTrue(result.used)
         self.assertIsNotNone(result.prompt_message)
-        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_NO_SIGNAL)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
         self.assertEqual(result.observability_payload["client"]["event_count"], 1)
         self.assertEqual(result.observability_payload["client"]["items"][0]["endpoint_kind"], "search")
         self.assertEqual(result.observability_payload["status"], "agent_first_executed")
-        self.assertEqual(result.observability_payload["reason_code"], "biblio_agent_first_catalog_search_executed")
+        self.assertEqual(result.observability_payload["reason_code"], "biblio_agent_first_plan_executed")
         self.assertTrue(observed["used_for_response"])
         self.assertFalse(observed["deterministic_controller"])
         self.assertTrue(observed["product_response_changed"])
         self.assertTrue(observed["agent_loop_executed"])
-        self.assertEqual(observed["execution_scope"], "catalog_search_only")
+        self.assertEqual(observed["execution_scope"], "agent_first")
         self.assertEqual(observed["tool_execution_status"], "executed")
         self.assertEqual(observed["tool_call_event_count"], 1)
         self.assertEqual(observed["tool_loop"]["tool_names"], [librarian_tools.TOOL_CATALOG_SEARCH])
         self.assertEqual(observed["tool_loop"]["endpoint_kinds"], ["search"])
         self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", encoded)
         self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
+
+    def test_agent_first_theme_search_completes_to_context_when_deterministic_requests_passage(self) -> None:
+        fake_model = _FakeAgentModel(
+            _valid_agent_json(
+                tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
+                params={"query": "RAW AGENT QUERY MUST NOT LEAK", "limit": 5},
+            )
+        )
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Cherche le passage sur la maieutique dans le Theetete",
+            client_factory=lambda **_kwargs: _FakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertEqual(result.observability_payload["client"]["event_count"], 2)
+        self.assertEqual(
+            [item["endpoint_kind"] for item in result.observability_payload["client"]["items"]],
+            ["search", "context"],
+        )
+        self.assertEqual(result.observability_payload["lane"]["passage_count"], 1)
+        self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", encoded)
+        self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
+        self.assertNotIn("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE", encoded)
+
+    def test_agent_first_uses_bounded_fallback_plan_when_active_model_returns_invalid_json(self) -> None:
+        fake_model = _FakeAgentModel("not json")
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Dans le Theetete, trouve le passage ou Socrate parle de la maieutique.",
+            client_factory=lambda **_kwargs: _FakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertTrue(observed["candidate_plan_present"])
+        self.assertEqual(observed["agent"]["reason_code"], agent_contract.REASON_JSON_FREE_TEXT)
+        self.assertEqual(observed["execution_scope"], "agent_first")
+        self.assertEqual(result.observability_payload["client"]["event_count"], 2)
+        self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
+        self.assertNotIn("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE", encoded)
+
+    def test_agent_first_invalid_json_uses_dialogue_state_fallback_for_context_followup(self) -> None:
+        fake_model = _FakeAgentModel("not json")
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-agent-first-state",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "paragraph_id": 99, "passage_hash": "a" * 12},
+            last_passage_hash="a" * 12,
+            last_intent="extract_passage",
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Autour de ce passage.",
+            conversation_id="conv-agent-first-state",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: _FakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertTrue(observed["candidate_plan_present"])
+        self.assertEqual(observed["execution_scope"], "agent_first")
+        self.assertEqual(result.observability_payload["client"]["event_count"], 1)
+        self.assertEqual(result.observability_payload["client"]["items"][0]["endpoint_kind"], "context")
+        self.assertEqual(result.observability_payload["lane"]["passage_count"], 1)
+        self.assertFalse(observed["deterministic_controller"])
+        self.assertNotIn("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE", encoded)
+
+    def test_agent_first_invalid_json_uses_dialogue_state_fallback_for_origin_check(self) -> None:
+        fake_model = _FakeAgentModel("not json")
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-agent-first-origin",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "paragraph_id": 99, "passage_hash": "a" * 12},
+            last_passage_hash="a" * 12,
+            last_intent="extract_passage",
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="D'ou vient ce passage ?",
+            conversation_id="conv-agent-first-origin",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: _FakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertEqual(result.observability_payload["client"]["event_count"], 1)
+        self.assertEqual(result.observability_payload["client"]["items"][0]["endpoint_kind"], "context")
+        self.assertEqual(result.observability_payload["lane"]["passage_count"], 1)
+        self.assertTrue(result.biblio_state.has_last_anchor if result.biblio_state else False)
+
+    def test_agent_first_empty_candidate_plan_uses_dialogue_state_fallback(self) -> None:
+        fake_model = _FakeAgentModel(_empty_agent_plan_json())
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-agent-first-empty",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "paragraph_id": 99, "passage_hash": "a" * 12},
+            last_passage_hash="a" * 12,
+            last_intent="extract_passage",
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="D'ou vient ce passage ?",
+            conversation_id="conv-agent-first-empty",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: _FakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertTrue(observed["candidate_plan_present"])
+        self.assertEqual(result.observability_payload["client"]["event_count"], 1)
+        self.assertEqual(result.observability_payload["client"]["items"][0]["endpoint_kind"], "context")
+        self.assertEqual(result.observability_payload["lane"]["passage_count"], 1)
+        self.assertTrue(observed["used_for_response"])
 
     def test_agent_invalid_json_forbidden_tool_and_timeout_keep_deterministic_response(self) -> None:
         cases = [
@@ -938,6 +1075,26 @@ class _FakeClient:
             result_count=1,
         )
 
+    def context(
+        self,
+        doc_id: str,
+        *,
+        page_no: int | None = None,
+        para_no: int | None = None,
+        paragraph_id: int | None = None,
+        char_offset: int = 0,
+        window_chars: int = 700,
+    ) -> catalogue.CatalogueResponse:
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CONTEXT,
+            status_code=200,
+            payload={"document_id": doc_id, "text": "RAW CONTEXT TEXT MUST NOT BE OBSERVABLE"},
+            duration_ms=1,
+            result_count=1,
+            doc_id_short=catalogue.short_doc_id(doc_id),
+            content_chars=len("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE"),
+        )
+
 
 class _CatalogListClient:
     def __init__(self, *, total: int) -> None:
@@ -1281,6 +1438,20 @@ def _valid_agent_json(
             "answer_mode": "tool",
             "risk_flags": [],
             "fallback_reason": "",
+        },
+        ensure_ascii=False,
+    )
+
+
+def _empty_agent_plan_json() -> str:
+    return json.dumps(
+        {
+            "schema_version": agent_contract.SCHEMA_VERSION,
+            "intent": "clarify",
+            "tool_calls": [],
+            "answer_mode": "clarify",
+            "risk_flags": [],
+            "fallback_reason": "model_requested_clarification",
         },
         ensure_ascii=False,
     )

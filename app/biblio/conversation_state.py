@@ -261,6 +261,9 @@ def update_state_from_runtime(
 
 
 def _anchor_from_runtime_result(value: Any) -> dict[str, Any]:
+    direct_anchor = _anchor_mapping(getattr(value, "state_anchor", None))
+    if direct_anchor:
+        return direct_anchor
     for candidate in (
         getattr(value, "passage_result", None),
         getattr(value, "context_result", None),

@@ -286,6 +286,129 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 validation = contract.validate_agent_payload({**base, "tool_calls": [call]})
                 self.assertEqual(validation.status, contract.STATUS_VALIDATED)
 
+    def test_local_validation_accepts_deferred_context_position_after_locate_or_search(self) -> None:
+        base = json.loads(_valid_json())
+        cases = [
+            [
+                {"tool_name": tools.TOOL_LOCATE, "method": "GET", "params": {"document_id": "doc-1", "locator": "126b"}},
+                {"tool_name": tools.TOOL_PASSAGE_CONTEXT, "method": "GET", "params": {"document_id": "doc-1"}},
+            ],
+            [
+                {"tool_name": tools.TOOL_CATALOG_SEARCH, "method": "GET", "params": {"query": "x"}},
+                {"tool_name": tools.TOOL_PASSAGE_CONTEXT, "method": "GET", "params": {}},
+            ],
+        ]
+        for calls in cases:
+            with self.subTest(first_tool=calls[0]["tool_name"]):
+                validation = contract.validate_agent_payload({**base, "tool_calls": calls})
+                self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+
+    def test_parser_repairs_model_param_aliases_without_relaxing_mutating_methods(self) -> None:
+        repaired = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "search_passage",
+                    "tool_calls": [
+                        {
+                            "tool": tools.TOOL_CATALOG_SEARCH,
+                            "method": "GET",
+                            "params": {"theme_query": RAW_TITLE, "limit": "7"},
+                        }
+                    ],
+                    "answer_mode": "tool",
+                }
+            )
+        )
+        self.assertEqual(repaired.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(repaired.plan)
+        assert repaired.plan is not None
+        self.assertEqual(repaired.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
+        self.assertEqual(repaired.plan.tool_calls[0].params["query"], RAW_TITLE)
+        self.assertEqual(repaired.plan.tool_calls[0].params["limit"], 7)
+
+        toc_reference = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "show_table_of_contents",
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_DOCUMENT_TOC,
+                            "method": "GET",
+                            "params": {"title": RAW_TITLE, "limit": "500"},
+                        }
+                    ],
+                    "answer_mode": "tool",
+                }
+            )
+        )
+        self.assertEqual(toc_reference.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(toc_reference.plan)
+        assert toc_reference.plan is not None
+        self.assertEqual(toc_reference.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
+        self.assertEqual(toc_reference.plan.tool_calls[0].params["query"], RAW_TITLE)
+
+        locate_reference = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "extract_range",
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_LOCATE,
+                            "method": "GET",
+                            "params": {"work_title": RAW_TITLE, "locator": "126b", "limit": "20"},
+                        }
+                    ],
+                    "answer_mode": "tool",
+                }
+            )
+        )
+        self.assertEqual(locate_reference.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(locate_reference.plan)
+        assert locate_reference.plan is not None
+        self.assertEqual(locate_reference.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
+        self.assertEqual(locate_reference.plan.tool_calls[0].params["query"], RAW_TITLE)
+
+        object_call = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "search_passage",
+                    "tool_calls": {
+                        "tool_name": tools.TOOL_CATALOG_SEARCH,
+                        "method": "GET",
+                        "params": RAW_TITLE,
+                    },
+                    "answer_mode": "tool",
+                }
+            )
+        )
+        self.assertEqual(object_call.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(object_call.plan)
+        assert object_call.plan is not None
+        self.assertEqual(object_call.plan.tool_calls[0].params["query"], RAW_TITLE)
+
+        rejected = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "search_passage",
+                    "tool_calls": [
+                        {
+                            "tool": tools.TOOL_CATALOG_SEARCH,
+                            "method": "POST",
+                            "params": {"theme_query": RAW_TITLE},
+                        }
+                    ],
+                    "answer_mode": "tool",
+                }
+            )
+        )
+        self.assertEqual(rejected.status, contract.STATUS_REJECTED)
+        self.assertIsNone(rejected.plan)
+
     def test_budget_exceeded_before_and_after_model_call(self) -> None:
         no_model_budget = agent.BiblioLibrarianAgent(_FakeModelClient(_valid_json())).run(
             _request(

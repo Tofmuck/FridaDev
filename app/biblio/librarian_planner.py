@@ -222,6 +222,8 @@ class BiblioLibrarianPlanner:
         steps: list[BiblioLibrarianStep] = []
         context_chars = 0
         tool_calls = 0
+        carried_document_id = ""
+        carried_position: dict[str, Any] = {}
         terminal_status = ""
         terminal_reason = ""
         if _plan_requests_clarification(
@@ -294,10 +296,17 @@ class BiblioLibrarianPlanner:
                     call_id=call.call_id,
                     method=call.method,
                 )
+            call = _with_carried_anchor(
+                call,
+                document_id=carried_document_id,
+                position=carried_position,
+            )
             step = self._run_tool_call(len(steps), call)
             steps.append(step)
             if step.tool_result is not None:
                 tool_calls += 1
+                carried_document_id = _carried_document_id(step.tool_result) or carried_document_id
+                carried_position = _carried_position(step.tool_result) or carried_position
             context_chars += _int(step.observation.get("content_chars")) or 0
             if context_chars > loop_request.options.max_context_chars:
                 steps = _with_budget_step_if_room(steps, call, loop_request.options, "max_context_chars")
@@ -397,6 +406,68 @@ def _coerce_call(value: Mapping[str, Any] | BiblioLibrarianToolCall) -> BiblioLi
         call_id=_safe_token(value.get("call_id")),
         method=_safe_token(value.get("method")),
     )
+
+
+def _with_carried_anchor(
+    call: BiblioLibrarianToolCall,
+    *,
+    document_id: str,
+    position: Mapping[str, Any],
+) -> BiblioLibrarianToolCall:
+    params = dict(call.params)
+    changed = False
+    if call.tool_name in {
+        tools.TOOL_DOCUMENT_TOC,
+        tools.TOOL_LOCATE,
+        tools.TOOL_PASSAGE_CONTEXT,
+    } and document_id and not (params.get("document_id") or params.get("doc_id")):
+        params["document_id"] = document_id
+        changed = True
+    if call.tool_name == tools.TOOL_PASSAGE_CONTEXT and position:
+        for key in ("paragraph_id", "page_no", "para_no"):
+            if key not in params and position.get(key) is not None:
+                params[key] = position[key]
+                changed = True
+    if not changed:
+        return call
+    return BiblioLibrarianToolCall(
+        tool_name=call.tool_name,
+        params=params,
+        call_id=call.call_id,
+        method=call.method,
+    )
+
+
+def _carried_document_id(result: tools.BiblioLibrarianToolResult) -> str:
+    direct = str(getattr(result, "document_id", "") or "").strip()
+    if direct:
+        return direct
+    ids: list[str] = []
+    sources: tuple[Any, ...] = tuple(result.items)
+    if result.document_summary:
+        sources = sources + (result.document_summary,)
+    for item in sources:
+        if isinstance(item, Mapping):
+            doc_id = str(item.get("document_id") or "").strip()
+            if doc_id and doc_id not in ids:
+                ids.append(doc_id)
+    return ids[0] if len(ids) == 1 else ""
+
+
+def _carried_position(result: tools.BiblioLibrarianToolResult) -> dict[str, Any]:
+    if len(result.positions) != 1:
+        if len(result.items) != 1:
+            return {}
+        position = result.items[0]
+    else:
+        position = result.positions[0]
+    if not isinstance(position, Mapping):
+        return {}
+    return {
+        key: position.get(key)
+        for key in ("paragraph_id", "page_no", "para_no")
+        if position.get(key) is not None
+    }
 
 
 def _step_status(tool_status: str) -> str:

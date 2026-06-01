@@ -247,6 +247,8 @@ def _record_for_result(
         or _to_int(passage_search.get("passage_count"))
         or _to_int(counts.get("passage_count"))
     )
+    client_context_count = _endpoint_kind_count(client, "context")
+    client_search_count = _endpoint_kind_count(client, "search")
     lane_chars = _to_int(lane.get("chars")) or _to_int(passage_search.get("lane_chars")) or _to_int(
         counts.get("lane_chars")
     )
@@ -262,9 +264,12 @@ def _record_for_result(
         or _to_int(context.get("endpoint_count"))
         or _to_int(client.get("event_count")),
         "endpoint_kinds": endpoint_kinds,
-        "candidate_count": _to_int(passage_search.get("candidate_count")) or _to_int(context.get("candidate_count")),
+        "candidate_count": _to_int(passage_search.get("candidate_count"))
+        or _to_int(context.get("candidate_count"))
+        or client_search_count,
         "context_call_count": _to_int(passage_search.get("context_call_count"))
-        or _to_int(context.get("context_call_count")),
+        or _to_int(context.get("context_call_count"))
+        or client_context_count,
         "selected_count": _to_int(passage_search.get("selected_count")) or _to_int(context.get("selected_count")),
         "passage_count": passage_count,
         "lane_injected": result.prompt_message is not None,
@@ -359,9 +364,8 @@ def _finalize_record(
     source_projection: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     sanitized = {key: record[key] for key in sorted(_OUTPUT_KEYS) if key in record}
-    source_leaks = _contains_raw_marker(source_projection or {}, raw_markers)
     record_leaks = _contains_raw_marker(record, raw_markers) or _contains_raw_marker(sanitized, raw_markers)
-    sanitized["raw_marker_leaks"] = bool(source_leaks or record_leaks)
+    sanitized["raw_marker_leaks"] = bool(record_leaks)
     return sanitized
 
 
@@ -432,6 +436,15 @@ def _endpoint_kinds(
         if kind:
             kinds.add(kind)
     return sorted(kinds)
+
+
+def _endpoint_kind_count(client: Mapping[str, Any], endpoint_kind: str) -> int:
+    expected = _safe_token(endpoint_kind)
+    return sum(
+        1
+        for item in _sequence(client.get("items"))
+        if isinstance(item, Mapping) and _safe_token(item.get("endpoint_kind")) == expected
+    )
 
 
 def _doc_id_shorts(

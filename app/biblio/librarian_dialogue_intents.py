@@ -121,7 +121,12 @@ def asks_passage_reference(folded: str) -> bool:
         folded,
     ):
         return False
-    return bool(re.search(r"\b(explique|expliquer|reprends|reprendre|resume|resumer|relis|relire|commente)\b", folded))
+    return bool(
+        re.search(
+            r"\b(explique|expliquer|reprends|reprendre|resume|resumer|relis|relire|commente|vient|provient|origine|source)\b",
+            folded,
+        )
+    )
 
 
 def asks_compare(folded: str) -> bool:

@@ -151,6 +151,7 @@ class BiblioLibrarianToolResult:
     reason_code: str
     endpoint_kind: str
     observation: BiblioLibrarianToolObservation
+    document_id: str = field(default="", repr=False, compare=False)
     items: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
     document_summary: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     chapters: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
@@ -191,6 +192,12 @@ class BiblioLibrarianToolRegistry:
         except catalogue.CatalogueClientError as exc:
             return _error_result(tool, exc)
         items = tuple(_catalog_item(item) for item in _items(response.payload, "items"))
+        if query and not items and offset == 0:
+            try:
+                response = self._client.catalog(limit=limit, offset=offset)
+            except catalogue.CatalogueClientError as exc:
+                return _error_result(tool, exc)
+            items = tuple(_catalog_item(item) for item in _items(response.payload, "items"))
         return _ok_result(tool, response, items=items, offset=offset, limit=limit, query=query)
 
     def _catalog_search(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
@@ -392,6 +399,7 @@ def _ok_result(
         reason_code=REASON_OK,
         endpoint_kind=response.endpoint_kind,
         observation=observation,
+        document_id=doc_id,
         items=items,
         document_summary=dict(document_summary or {}),
         chapters=chapters,
@@ -570,6 +578,9 @@ def _search_item(raw: Any) -> dict[str, Any]:
         {
             "document_id": doc_id,
             "doc_id_short": catalogue.short_doc_id(doc_id),
+            "title": _string(item.get("human_canonical_title") or item.get("canonical_title") or item.get("title")),
+            "authors": _string(item.get("human_authors") or item.get("authors")),
+            "snippet": _string(item.get("snippet") or item.get("excerpt") or item.get("text")),
             "page_no": _raw_int(item.get("page_no")),
             "para_no": _raw_int(item.get("para_no")),
             "paragraph_id": _raw_int(item.get("paragraph_id")),

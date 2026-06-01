@@ -255,7 +255,17 @@ def build_librarian_agent_messages(
         "Tu es le planificateur bibliothecaire Biblio de FridaDev. "
         "Tu ne reponds jamais en prose libre. Tu produis uniquement un JSON "
         f"conforme a {SCHEMA_VERSION}. Tu choisis seulement des outils GET-only "
-        "allowlistes et tu clarifies si l'ancre documentaire manque."
+        "allowlistes et tu respectes exactement les parametres declares. "
+        "N'invente jamais work_title, title, theme, author, start_locator ou "
+        "end_locator comme cle de params: utilise q/query, document_id/doc_id, "
+        "locator/label, page_no/para_no/paragraph_id, limit, offset, "
+        "char_offset ou window_chars selon l'outil. Pour lister toute la "
+        "bibliotheque, appelle catalog_list sans q avec limit 100. Pour une "
+        "table des matieres sans document_id, commence par catalog_search ou "
+        "document_open_summary; le runtime peut porter l'ancre documentaire "
+        "unique vers l'outil suivant. Pour un passage, utilise catalog_search "
+        "puis passage_context seulement si une position explicite est connue "
+        "ou portee par un outil precedent."
     )
     user_payload = {
         "schema_version": SCHEMA_VERSION,
@@ -266,6 +276,7 @@ def build_librarian_agent_messages(
         "deterministic_baseline": _observation(request.deterministic_plan),
         "available_tools": list(tools.LOT3_TOOL_NAMES),
         "forbidden_tools": sorted(tools.FORBIDDEN_TOOL_NAMES),
+        "tool_param_contracts": _tool_param_contracts(),
         "budgets": {
             "max_tool_calls": effective_settings.max_tool_calls,
             "max_recent_turns": effective_settings.max_recent_turns,
@@ -275,6 +286,38 @@ def build_librarian_agent_messages(
         {"role": "system", "content": system},
         {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False, sort_keys=True)},
     ]
+
+
+def _tool_param_contracts() -> dict[str, Any]:
+    return {
+        "catalog_list": {
+            "allowed": ["q", "limit", "offset"],
+            "note": "Pour lister la bibliotheque entiere, omettre q et utiliser limit=100.",
+        },
+        "catalog_search": {
+            "allowed": ["q", "query", "limit", "offset"],
+            "required_any": [["q", "query"]],
+        },
+        "document_open_summary": {
+            "allowed": ["document_id", "doc_id", "q", "query", "limit"],
+            "required_any": [["document_id", "doc_id", "q", "query"]],
+        },
+        "document_toc": {
+            "allowed": ["document_id", "doc_id", "limit", "offset"],
+            "required_any": [["document_id", "doc_id"]],
+            "note": "Si le doc_id manque, faire preceder par une recherche qui donne un document unique.",
+        },
+        "locate": {
+            "allowed": ["document_id", "doc_id", "locator", "label", "kind", "limit"],
+            "required_any": [["document_id", "doc_id"], ["locator", "label"]],
+        },
+        "passage_context": {
+            "allowed": ["document_id", "doc_id", "page_no", "para_no", "paragraph_id", "char_offset", "window_chars"],
+            "required_any": [["document_id", "doc_id"]],
+            "required_position": True,
+            "note": "Une position peut etre portee depuis locate ou catalog_search si elle est unique.",
+        },
+    }
 
 
 _CODE_SCHEMA = {"type": "string", "maxLength": 96, "pattern": "^[A-Za-z0-9_:-]{0,96}$"}
@@ -432,11 +475,41 @@ def _default_llm_module() -> Any:
 def _state_for_model(state: Any) -> Any:
     if state is None:
         return {}
+    if hasattr(state, "to_dict"):
+        raw = state.to_dict()
+        if isinstance(raw, Mapping):
+            return _state_mapping_for_model(raw)
     if hasattr(state, "to_observability"):
         return state.to_observability()
     if isinstance(state, Mapping):
-        return dict(state)
+        return _state_mapping_for_model(state)
     return {"present": True}
+
+
+def _state_mapping_for_model(state: Mapping[str, Any]) -> dict[str, Any]:
+    allowed = {
+        "schema_version",
+        "current_document",
+        "current_work",
+        "page_no",
+        "para_no",
+        "paragraph_id",
+        "last_passage_hash",
+        "last_result",
+        "last_candidates",
+        "last_ambiguity",
+        "last_intent",
+    }
+    projected = {key: state[key] for key in allowed if key in state}
+    projected["present"] = bool(
+        projected.get("current_document")
+        or projected.get("current_work")
+        or projected.get("last_result")
+        or projected.get("last_candidates")
+        or projected.get("last_ambiguity")
+        or projected.get("last_intent")
+    )
+    return projected
 
 
 def _observation(value: Any) -> dict[str, Any]:

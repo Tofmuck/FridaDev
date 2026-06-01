@@ -198,7 +198,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         )
 
         self.assertEqual(failed["product_expectation_status"], "failed")
-        self.assertEqual(partial["product_expectation_status"], "partial_required_attention")
+        self.assertEqual(partial["product_expectation_status"], "failed")
 
     def test_final_record_marker_leak_is_detected_without_emitting_unknown_field(self) -> None:
         record = smoke._finalize_record(
@@ -216,6 +216,22 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
 
         self.assertTrue(record["raw_marker_leaks"])
         self.assertNotIn("debug_raw", record)
+        self.assertNotIn(RAW_PASSAGE, encoded)
+
+    def test_product_source_projection_markers_do_not_mark_content_free_record_as_leaking(self) -> None:
+        record = smoke._finalize_record(
+            {
+                "case_id": "P01",
+                "status": "agent_first_executed",
+                "payload_objects_retained": 0,
+                "product_expectation_status": "met",
+            },
+            raw_markers=(RAW_PASSAGE,),
+            source_projection={"product_lane": {"content": RAW_PASSAGE}},
+        )
+        encoded = json.dumps(record, ensure_ascii=False, sort_keys=True)
+
+        self.assertFalse(record["raw_marker_leaks"])
         self.assertNotIn(RAW_PASSAGE, encoded)
 
     def test_strict_exit_fails_on_leaks_payload_and_product_failure(self) -> None:
@@ -325,7 +341,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
             smoke.EXIT_VALIDATION_FAILURE,
         )
 
-    def test_strict_exit_allows_bounded_agent_first_catalog_search(self) -> None:
+    def test_strict_exit_allows_bounded_agent_first_execution(self) -> None:
         record = {
             "case_id": "P03",
             "raw_marker_leaks": False,
@@ -336,7 +352,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
             "agent_model_called": True,
             "agent_candidate_plan_present": True,
             "agent_expectation_status": "met",
-            "agent_execution_scope": "catalog_search_only",
+            "agent_execution_scope": "agent_first",
             "agent_plan_tool_names": ["catalog_search"],
             "agent_used_for_response": True,
             "agent_product_response_changed": True,
@@ -349,7 +365,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
 
         self.assertEqual(smoke.smoke_exit_code([record]), smoke.EXIT_OK)
         self.assertEqual(
-            smoke.smoke_exit_code([{**record, "agent_plan_tool_names": ["document_toc"]}]),
+            smoke.smoke_exit_code([{**record, "agent_plan_tool_names": ["latest/page"]}]),
             smoke.EXIT_VALIDATION_FAILURE,
         )
 

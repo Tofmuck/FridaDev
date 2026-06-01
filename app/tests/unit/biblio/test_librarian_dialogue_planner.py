@@ -390,6 +390,24 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
                 self.assertEqual(result.plan.tool_calls[0].params["paragraph_id"], 101)
                 self.assertEqual(result.plan.tool_calls[0].params["window_chars"], 1400)
 
+    def test_origin_question_about_this_passage_plans_bounded_context(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "paragraph_id": 101})
+
+        for message in (
+            "D'ou vient ce passage ?",
+            "Quelle est la source de ce passage ?",
+            "Ce passage provient d'ou ?",
+        ):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
+
+                self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+                self.assertEqual(result.reason_code, dialogue.REASON_LAST_PASSAGE_CONTEXT)
+                self.assertEqual(result.intent.intent, dialogue.INTENT_EXPLAIN_PASSAGE)
+                self.assertEqual(_tool_names(result), [tools.TOOL_PASSAGE_CONTEXT])
+                self.assertEqual(result.plan.tool_calls[0].params["paragraph_id"], 101)
+                self.assertTrue(result.current_document_used)
+
     def test_deictic_navigation_with_missing_tool_stays_missing_tool(self) -> None:
         state = _state_with_document(last_result={"document_id": "doc-1", "paragraph_id": 101})
 

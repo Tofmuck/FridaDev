@@ -1,0 +1,370 @@
+from __future__ import annotations
+
+import json
+import sys
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
+
+
+APP_DIR = Path(__file__).resolve().parents[3]
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+from biblio import catalogue_client as catalogue
+from biblio import librarian_agent_contract as agent_contract
+from biblio import librarian_agent_first as agent_first
+from biblio import librarian_planner as planner
+from biblio import librarian_tools as tools
+
+
+RAW_QUERY = "RAW AGENT FIRST QUERY MUST NOT LEAK"
+RAW_TITLE = "RAW AGENT FIRST TITLE MUST NOT LEAK"
+RAW_CHAPTER = "RAW AGENT FIRST CHAPTER MUST NOT LEAK"
+RAW_PASSAGE = "RAW AGENT FIRST PASSAGE MUST NOT LEAK"
+
+
+class BiblioLibrarianAgentFirstTests(unittest.TestCase):
+    def test_theme_search_appends_bounded_context_when_agent_returns_search_only(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "title": RAW_TITLE,
+                        "text": RAW_PASSAGE,
+                        "page_no": 12,
+                        "para_no": 3,
+                        "paragraph_id": 99,
+                    }
+                ],
+            },
+            context_payload={"document_id": "doc-1234", "text": RAW_PASSAGE},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="search_passage",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="search_catalog"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        observed = result.loop_result.to_observability() if result.loop_result else {}
+        encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls[0], ("search", RAW_QUERY, 5))
+        self.assertEqual(fake.calls[1], ("context", "doc-1234", 99, None, None, 0, 700))
+        self.assertEqual(observed["endpoint_kinds"], [catalogue.ENDPOINT_SEARCH, catalogue.ENDPOINT_CONTEXT])
+        self.assertEqual(observed["tool_names"], [tools.TOOL_CATALOG_SEARCH, tools.TOOL_PASSAGE_CONTEXT])
+        self.assertEqual(result.consultation_message.passage_count if result.consultation_message else 0, 1)
+        self.assertNotIn(RAW_QUERY, encoded)
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_PASSAGE, encoded)
+
+    def test_theme_search_tries_bounded_significant_fallback_when_agent_query_is_empty(self) -> None:
+        fallback_query = "servir propre entendement"
+        fake = _FakeAgentFirstClient(
+            search_payload={"count": 0, "results": []},
+            search_payloads={
+                fallback_query: {
+                    "count": 1,
+                    "results": [
+                        {
+                            "document_id": "doc-1234",
+                            "text": RAW_PASSAGE,
+                            "page_no": 12,
+                            "para_no": 3,
+                        }
+                    ],
+                }
+            },
+            context_payload={"document_id": "doc-1234", "text": RAW_PASSAGE},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="search_passage",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(
+                intent="search_catalog",
+                theme_query="sur oser se servir de son propre entendement",
+                theme_query_variants=("sur oser se servir de son propre entendement",),
+                limit=8,
+            ),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        observed = result.loop_result.to_observability() if result.loop_result else {}
+        encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls[0], ("search", RAW_QUERY, 5))
+        self.assertEqual(fake.calls[1], ("search", fallback_query, 8))
+        self.assertEqual(fake.calls[2], ("context", "doc-1234", None, 12, 3, 0, 700))
+        self.assertEqual(observed["endpoint_kinds"], [catalogue.ENDPOINT_SEARCH, catalogue.ENDPOINT_CONTEXT])
+        self.assertNotIn(RAW_QUERY, encoded)
+        self.assertNotIn(RAW_PASSAGE, encoded)
+
+    def test_theme_search_fallbacks_when_search_hits_lack_context_position(self) -> None:
+        fallback_query = "Socrate parle maïeutique"
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 2,
+                "results": [
+                    {"document_id": "doc-1234", "title": RAW_TITLE},
+                    {"document_id": "doc-5678", "title": RAW_TITLE},
+                ],
+            },
+            search_payloads={
+                fallback_query: {
+                    "count": 1,
+                    "results": [
+                        {
+                            "document_id": "doc-1234",
+                            "text": RAW_PASSAGE,
+                            "page_no": 12,
+                            "para_no": 3,
+                        }
+                    ],
+                }
+            },
+            context_payload={"document_id": "doc-1234", "text": RAW_PASSAGE},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="search_passage",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(
+                intent="search_catalog",
+                theme_query="dans le Theetete Socrate parle maïeutique",
+                theme_query_variants=("dans le Theetete Socrate parle maïeutique",),
+                limit=8,
+            ),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        observed = result.loop_result.to_observability() if result.loop_result else {}
+        encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls[0], ("search", RAW_QUERY, 5))
+        self.assertEqual(fake.calls[1], ("search", fallback_query, 8))
+        self.assertEqual(fake.calls[2], ("context", "doc-1234", None, 12, 3, 0, 700))
+        self.assertEqual(observed["endpoint_kinds"], [catalogue.ENDPOINT_SEARCH, catalogue.ENDPOINT_CONTEXT])
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_PASSAGE, encoded)
+
+    def test_toc_request_appends_chapters_when_agent_returns_unique_document_search(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "title": RAW_TITLE,
+                    }
+                ],
+            },
+            chapters_payload={
+                "total": 1,
+                "chapters": [
+                    {
+                        "chapter_no": 1,
+                        "title": RAW_CHAPTER,
+                        "page_start": 7,
+                    }
+                ],
+            },
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="show_table_of_contents",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="show_table_of_contents"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        observed = result.loop_result.to_observability() if result.loop_result else {}
+        encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls[0], ("search", RAW_QUERY, 5))
+        self.assertEqual(fake.calls[1], ("chapters", "doc-1234", 500, 0))
+        self.assertEqual(observed["endpoint_kinds"], [catalogue.ENDPOINT_SEARCH, catalogue.ENDPOINT_CHAPTERS])
+        self.assertEqual(observed["tool_names"], [tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_TOC])
+        self.assertNotIn(RAW_QUERY, encoded)
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_CHAPTER, encoded)
+
+    def test_toc_request_recovers_from_unanchored_toc_step_after_search(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 2,
+                "results": [
+                    {"document_id": "doc-1234", "title": RAW_TITLE},
+                    {"document_id": "doc-5678", "title": RAW_TITLE},
+                ],
+            },
+            chapters_payload={"total": 1, "chapters": [{"chapter_no": 1, "title": RAW_CHAPTER}]},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="show_table_of_contents",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        ),
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_DOCUMENT_TOC,
+                            method="GET",
+                            params={},
+                        ),
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="show_table_of_contents"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        observed = result.loop_result.to_observability() if result.loop_result else {}
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls[0], ("search", RAW_QUERY, 5))
+        self.assertEqual(fake.calls[1], ("chapters", "doc-1234", 500, 0))
+        self.assertEqual(observed["status"], "tool_executed")
+        self.assertIn(catalogue.ENDPOINT_CHAPTERS, observed["endpoint_kinds"])
+
+
+def _comparison(plan: planner.BiblioLibrarianPlan) -> SimpleNamespace:
+    return SimpleNamespace(
+        settings=agent_contract.BiblioLibrarianAgentSettings(mode=agent_contract.MODE_ACTIVE),
+        agent_result=SimpleNamespace(candidate_plan=plan),
+    )
+
+
+def _plan(*, intent: str, calls: list[planner.BiblioLibrarianToolCall]) -> planner.BiblioLibrarianPlan:
+    return planner.BiblioLibrarianPlan(
+        schema_version=planner.SCHEMA_VERSION,
+        intent=intent,
+        tool_calls=tuple(calls),
+        answer_mode="tool",
+    )
+
+
+class _FakeAgentFirstClient:
+    def __init__(
+        self,
+        *,
+        search_payload: dict[str, Any] | None = None,
+        search_payloads: dict[str, dict[str, Any]] | None = None,
+        chapters_payload: dict[str, Any] | None = None,
+        context_payload: dict[str, Any] | None = None,
+    ) -> None:
+        self.search_payload = search_payload or {"count": 0, "results": []}
+        self.search_payloads = search_payloads or {}
+        self.chapters_payload = chapters_payload or {"total": 0, "chapters": []}
+        self.context_payload = context_payload or {"document_id": "doc-1234", "text": ""}
+        self.calls: list[tuple[Any, ...]] = []
+
+    def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search", q, limit))
+        payload = self.search_payloads.get(q, self.search_payload)
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            status_code=200,
+            payload=payload,
+            duration_ms=1,
+            result_count=_count(payload, "results"),
+        )
+
+    def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("chapters", doc_id, limit, offset))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            status_code=200,
+            payload=self.chapters_payload,
+            duration_ms=1,
+            result_count=_count(self.chapters_payload, "chapters"),
+            doc_id_short=catalogue.short_doc_id(doc_id),
+        )
+
+    def context(
+        self,
+        doc_id: str,
+        *,
+        page_no: int | None = None,
+        para_no: int | None = None,
+        paragraph_id: int | None = None,
+        char_offset: int = 0,
+        window_chars: int = 700,
+    ) -> catalogue.CatalogueResponse:
+        self.calls.append(("context", doc_id, paragraph_id, page_no, para_no, char_offset, window_chars))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CONTEXT,
+            status_code=200,
+            payload=self.context_payload,
+            duration_ms=1,
+            result_count=1,
+            doc_id_short=catalogue.short_doc_id(doc_id),
+            content_chars=len(str(self.context_payload.get("text") or "")),
+        )
+
+
+def _count(payload: dict[str, Any], key: str) -> int:
+    value = payload.get(key)
+    return len(value) if isinstance(value, list) else 0
+
+
+if __name__ == "__main__":
+    unittest.main()

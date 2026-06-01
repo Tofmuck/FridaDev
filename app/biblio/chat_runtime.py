@@ -25,11 +25,15 @@ from .conversation_state import (
     update_state_from_runtime,
 )
 from .document_resolver import BiblioResolveRequest
+from . import librarian_planner
+from . import librarian_tools
+from . import librarian_dialogue_planner
 from .library_runtime import run_biblio_library_plan
 from .librarian_agent_first import (
-    EXECUTION_SCOPE_CATALOG_SEARCH_ONLY,
+    EXECUTION_SCOPE_AGENT_FIRST,
     STATUS_AGENT_FIRST_EXECUTED,
-    run_agent_first_catalog_search,
+    STATUS_AGENT_FIRST_NEEDS_CLARIFICATION,
+    run_agent_first_plan,
 )
 from .librarian_agent_runtime import run_biblio_librarian_agent_comparison
 from .observability import build_biblio_event_payload
@@ -53,6 +57,7 @@ QUERY_KIND_NO_SIGNAL = "no_signal"
 QUERY_KIND_DOCUMENT = "document"
 QUERY_KIND_DOCUMENT_LOCATOR = "document_locator"
 QUERY_KIND_STATE_FOLLOWUP = "state_followup"
+QUERY_KIND_AGENT_FIRST = "agent_first"
 
 @dataclass(frozen=True)
 class BiblioChatDecision:
@@ -138,6 +143,102 @@ def run_biblio_chat_turn(
         else BiblioConversationState.empty(conversation_id=conversation_id)
     )
     decision = resolve_biblio_chat_decision(data, user_msg)
+    librarian_agent_result = None
+    if decision.enabled:
+        preliminary_status = "deterministic_candidate" if decision.should_attempt else "not_used"
+        librarian_agent_result = _run_librarian_agent_comparison(
+            runner=librarian_agent_runner,
+            factory=librarian_agent_factory,
+            enabled=True,
+            user_msg=user_msg,
+            recent_dialogue=recent_dialogue,
+            biblio_state=state_before if state_before.present else None,
+            deterministic_plan=decision.query_plan,
+            deterministic_status=preliminary_status,
+            deterministic_reason_code=decision.reason_code,
+            deterministic_query_kind=decision.query_kind,
+            config_module=config_module,
+        )
+        agent_first_result = None
+        if _agent_first_candidate_allowed(librarian_agent_result=librarian_agent_result):
+            try:
+                client = client_factory(config_module=config_module)
+                agent_first_result = run_agent_first_plan(
+                    comparison=librarian_agent_result,
+                    client=client,
+                    deterministic_plan=decision.query_plan,
+                )
+            except Exception:
+                agent_first_result = None
+        elif _agent_first_fallback_allowed(librarian_agent_result):
+            fallback_plan = _agent_first_fallback_plan(decision.query_plan) or _agent_first_dialogue_fallback_plan(
+                user_msg=user_msg,
+                state=state_before,
+                recent_dialogue=recent_dialogue,
+            )
+            if fallback_plan is not None:
+                librarian_agent_result = _with_agent_first_fallback_plan(
+                    librarian_agent_result,
+                    fallback_plan,
+                )
+                try:
+                    client = client_factory(config_module=config_module)
+                    agent_first_result = run_agent_first_plan(
+                        comparison=librarian_agent_result,
+                        client=client,
+                        deterministic_plan=decision.query_plan,
+                    )
+                except Exception:
+                    agent_first_result = None
+        if agent_first_result is not None and getattr(agent_first_result, "loop_result", None) is not None:
+            agent_used = agent_first_result.status in {
+                STATUS_AGENT_FIRST_EXECUTED,
+                STATUS_AGENT_FIRST_NEEDS_CLARIFICATION,
+            }
+            librarian_agent_result = replace(
+                librarian_agent_result,
+                tool_loop_result=agent_first_result.loop_result,
+                execution_scope=EXECUTION_SCOPE_AGENT_FIRST,
+                used_for_response_override=agent_used,
+                product_response_changed_override=agent_used,
+            )
+        if (
+            agent_first_result is not None
+            and agent_first_result.status in {STATUS_AGENT_FIRST_EXECUTED, STATUS_AGENT_FIRST_NEEDS_CLARIFICATION}
+            and agent_first_result.consultation_message is not None
+        ):
+            state_after, state_transition = update_state_from_runtime(
+                state_before,
+                query_plan=decision.query_plan,
+                library_result=agent_first_result,
+                conversation_id=conversation_id,
+                now_iso=now_iso,
+                reason_code="biblio_state_updated_from_agent_first",
+            )
+            payload = observability_builder(
+                enabled=True,
+                used=True,
+                query_kind=QUERY_KIND_AGENT_FIRST,
+                client_response=agent_first_result.client_observability(),
+                resolution=decision.query_plan,
+                prompt_lane=agent_first_result.consultation_message,
+                biblio_state=state_after if state_after.present else None,
+                state_transition=state_transition,
+                librarian_agent=librarian_agent_result,
+                status=agent_first_result.status,
+                reason_code=agent_first_result.reason_code,
+            )
+            return BiblioChatResult(
+                enabled=True,
+                used=True,
+                reason_code=agent_first_result.reason_code,
+                query_kind=QUERY_KIND_AGENT_FIRST,
+                prompt_lane=agent_first_result.consultation_message,
+                biblio_state=state_after if state_after.present else None,
+                state_transition=state_transition,
+                librarian_agent_result=librarian_agent_result,
+                observability_payload=payload,
+            )
     if not decision.should_attempt or decision.query_plan is None:
         followup = detect_followup_request(user_msg) if decision.enabled else None
         clarification = clarification_for_followup(state_before, followup) if followup else None
@@ -148,19 +249,6 @@ def run_biblio_chat_turn(
                 clarification=clarification,
                 conversation_id=conversation_id,
                 now_iso=now_iso,
-            )
-            librarian_agent_result = _run_librarian_agent_comparison(
-                runner=librarian_agent_runner,
-                factory=librarian_agent_factory,
-                enabled=True,
-                user_msg=user_msg,
-                recent_dialogue=recent_dialogue,
-                biblio_state=state_after,
-                deterministic_plan=decision.query_plan,
-                deterministic_status=clarification.to_observability()["status"],
-                deterministic_reason_code=clarification.reason_code,
-                deterministic_query_kind=QUERY_KIND_STATE_FOLLOWUP,
-                config_module=config_module,
             )
             payload = observability_builder(
                 enabled=True,
@@ -186,64 +274,6 @@ def run_biblio_chat_turn(
             )
 
         status = "not_applicable" if not decision.enabled else "not_used"
-        librarian_agent_result = _run_librarian_agent_comparison(
-            runner=librarian_agent_runner,
-            factory=librarian_agent_factory,
-            enabled=decision.enabled,
-            user_msg=user_msg,
-            recent_dialogue=recent_dialogue,
-            biblio_state=state_before if state_before.present else None,
-            deterministic_plan=decision.query_plan,
-            deterministic_status=status,
-            deterministic_reason_code=decision.reason_code,
-            deterministic_query_kind=decision.query_kind,
-            config_module=config_module,
-        )
-        agent_first_result = None
-        if _agent_first_candidate_allowed(decision=decision, status=status, librarian_agent_result=librarian_agent_result):
-            try:
-                client = client_factory(config_module=config_module)
-                agent_first_result = run_agent_first_catalog_search(
-                    comparison=librarian_agent_result,
-                    client=client,
-                )
-            except Exception:
-                agent_first_result = None
-        if agent_first_result is not None and getattr(agent_first_result, "loop_result", None) is not None:
-            librarian_agent_result = replace(
-                librarian_agent_result,
-                tool_loop_result=agent_first_result.loop_result,
-                execution_scope=EXECUTION_SCOPE_CATALOG_SEARCH_ONLY,
-                used_for_response_override=agent_first_result.status == STATUS_AGENT_FIRST_EXECUTED,
-                product_response_changed_override=agent_first_result.status == STATUS_AGENT_FIRST_EXECUTED,
-            )
-        if (
-            agent_first_result is not None
-            and agent_first_result.status == STATUS_AGENT_FIRST_EXECUTED
-            and agent_first_result.consultation_message is not None
-        ):
-            payload = observability_builder(
-                enabled=True,
-                used=True,
-                query_kind=decision.query_kind,
-                client_response=agent_first_result.client_observability(),
-                resolution=decision.query_plan,
-                prompt_lane=agent_first_result.consultation_message,
-                biblio_state=state_before if state_before.present else None,
-                librarian_agent=librarian_agent_result,
-                status=agent_first_result.status,
-                reason_code=agent_first_result.reason_code,
-            )
-            return BiblioChatResult(
-                enabled=True,
-                used=True,
-                reason_code=agent_first_result.reason_code,
-                query_kind=decision.query_kind,
-                prompt_lane=agent_first_result.consultation_message,
-                biblio_state=state_before if state_before.present else None,
-                librarian_agent_result=librarian_agent_result,
-                observability_payload=payload,
-            )
         payload = observability_builder(
             enabled=decision.enabled,
             used=False,
@@ -281,19 +311,6 @@ def run_biblio_chat_turn(
             conversation_id=conversation_id,
             now_iso=now_iso,
             reason_code="biblio_state_updated_from_runtime",
-        )
-        librarian_agent_result = _run_librarian_agent_comparison(
-            runner=librarian_agent_runner,
-            factory=librarian_agent_factory,
-            enabled=True,
-            user_msg=user_msg,
-            recent_dialogue=recent_dialogue,
-            biblio_state=state_after,
-            deterministic_plan=query_plan,
-            deterministic_status=library_result.status,
-            deterministic_reason_code=library_result.reason_code or decision.reason_code,
-            deterministic_query_kind=decision.query_kind,
-            config_module=config_module,
         )
         payload = observability_builder(
             enabled=True,
@@ -445,26 +462,121 @@ def _run_librarian_agent_comparison(
 
 def _agent_first_candidate_allowed(
     *,
-    decision: BiblioChatDecision,
-    status: str,
     librarian_agent_result: Any,
 ) -> bool:
-    if not decision.enabled or decision.should_attempt:
-        return False
-    if decision.query_kind != QUERY_KIND_NO_SIGNAL or status != "not_used":
-        return False
     if librarian_agent_result is None or isinstance(librarian_agent_result, Mapping):
+        return False
+    if str(getattr(getattr(librarian_agent_result, "settings", None), "mode", "") or "").strip().lower() != "active":
         return False
     agent_result = getattr(librarian_agent_result, "agent_result", None)
     plan = getattr(agent_result, "candidate_plan", None)
     tool_calls = tuple(getattr(plan, "tool_calls", ()) or ())
-    if len(tool_calls) != 1:
+    if not tool_calls:
         return False
-    call = tool_calls[0]
-    return (
-        str(getattr(call, "tool_name", "") or "") == "catalog_search"
-        and str(getattr(call, "method", "") or "").strip().upper() == "GET"
+    return all(str(getattr(call, "method", "") or "").strip().upper() == "GET" for call in tool_calls)
+
+
+def _agent_first_fallback_allowed(librarian_agent_result: Any) -> bool:
+    if librarian_agent_result is None or isinstance(librarian_agent_result, Mapping):
+        return False
+    if str(getattr(getattr(librarian_agent_result, "settings", None), "mode", "") or "").strip().lower() != "active":
+        return False
+    agent_result = getattr(librarian_agent_result, "agent_result", None)
+    if agent_result is None or not bool(getattr(agent_result, "model_called", False)):
+        return False
+    plan = getattr(agent_result, "candidate_plan", None)
+    tool_calls = tuple(getattr(plan, "tool_calls", ()) or ()) if plan is not None else ()
+    if tool_calls:
+        return False
+    return True
+
+
+def _with_agent_first_fallback_plan(librarian_agent_result: Any, plan: librarian_planner.BiblioLibrarianPlan) -> Any:
+    agent_result = getattr(librarian_agent_result, "agent_result", None)
+    if agent_result is None:
+        return librarian_agent_result
+    return replace(librarian_agent_result, agent_result=replace(agent_result, candidate_plan=plan))
+
+
+def _agent_first_fallback_plan(query_plan: Any) -> librarian_planner.BiblioLibrarianPlan | None:
+    intent = str(getattr(query_plan, "intent", "") or "")
+    calls: list[librarian_planner.BiblioLibrarianToolCall] = []
+    if intent == "list_catalog":
+        calls.append(
+            librarian_planner.BiblioLibrarianToolCall(
+                tool_name=librarian_tools.TOOL_CATALOG_LIST,
+                method="GET",
+                params={"limit": 100},
+            )
+        )
+    elif intent == INTENT_SHOW_TABLE_OF_CONTENTS:
+        query = _fallback_catalogue_query(query_plan)
+        if query:
+            calls.append(
+                librarian_planner.BiblioLibrarianToolCall(
+                    tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
+                    method="GET",
+                    params={"query": query, "limit": _fallback_limit(query_plan, default=5)},
+                )
+            )
+    elif intent in {"search_catalog", "extract_passage", "extract_range", "document_locator", "resolve_work"}:
+        query = _fallback_catalogue_query(query_plan)
+        if query:
+            calls.append(
+                librarian_planner.BiblioLibrarianToolCall(
+                    tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
+                    method="GET",
+                    params={"query": query, "limit": _fallback_limit(query_plan, default=8)},
+                )
+            )
+    if not calls:
+        return None
+    return librarian_planner.BiblioLibrarianPlan(
+        schema_version=librarian_planner.SCHEMA_VERSION,
+        intent=intent or "biblio_request",
+        tool_calls=tuple(calls),
+        answer_mode="tool",
+        fallback_reason="agent_json_invalid_fallback_plan",
     )
+
+
+def _agent_first_dialogue_fallback_plan(
+    *,
+    user_msg: str,
+    state: BiblioConversationState,
+    recent_dialogue: Sequence[Mapping[str, Any]],
+) -> librarian_planner.BiblioLibrarianPlan | None:
+    dialogue = librarian_dialogue_planner.plan_biblio_dialogue(
+        user_msg,
+        state=state,
+        recent_dialogue=recent_dialogue,
+    )
+    plan = dialogue.plan
+    tool_calls = tuple(getattr(plan, "tool_calls", ()) or ())
+    if dialogue.status != librarian_dialogue_planner.STATUS_PLANNED or not tool_calls:
+        return None
+    if not all(str(getattr(call, "method", "") or "").strip().upper() == "GET" for call in tool_calls):
+        return None
+    return replace(
+        plan,
+        schema_version=librarian_planner.SCHEMA_VERSION,
+        fallback_reason="agent_json_invalid_dialogue_fallback_plan",
+    )
+
+
+def _fallback_catalogue_query(query_plan: Any) -> str:
+    for attr in ("catalogue_query", "theme_query", "work_title", "document_title", "author", "locator"):
+        value = str(getattr(query_plan, attr, "") or "").strip()
+        if value:
+            return value[:240]
+    return ""
+
+
+def _fallback_limit(query_plan: Any, *, default: int) -> int:
+    value = getattr(query_plan, "limit", default)
+    if type(value) is int and value > 0:
+        return min(value, 50)
+    return default
 
 
 def _truthy(value: Any) -> bool:

@@ -27,10 +27,10 @@ Mise a jour Lot 7: le socle agentique OpenRouter / JSON est livre dans
 deterministe.
 Mise a jour post-Lot 10: le smoke nominal utilise `active` et la configuration
 applicative par defaut demande `deepseek/deepseek-v4-pro` avec
-`reasoning_effort=high`; l'agent reste non souverain, sauf tranche verticale
-P03 explicitement bornee a l'execution d'un unique `catalog_search` valide
-quand le deterministe est `no_signal`.
-Elle ne livre pas l'activation produit generale de l'agent.
+`reasoning_effort=high`. La tranche agent-first generale remplace l'exception
+P03: quand Biblio est activee, un plan agent valide peut executer les outils
+Catalogue GET-only allowlistes sous budgets stricts, puis injecter une lane
+produit utile. Le deterministe tient les murs et reste fallback.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
 Le but est de rendre le futur agent testable avant d'etre branche:
@@ -516,12 +516,13 @@ Le contrat supporte les familles de sortie suivantes:
 - refus de fausse certitude;
 - degradation propre.
 
-P03 et P09 restent des surveillances:
+P03 et P09 restent des surveillances de regression:
 
-- P03 depend encore du planner/intention et ne devient pas une promesse de
-  correction automatique par le contrat agent;
+- P03 est couvert par l'architecture agent-first generale, pas par une
+  exception `case_id`;
 - P09 depend d'un outil page et d'une route/client sure qui n'existent pas
-  encore cote FridaDev.
+  encore cote FridaDev pour la navigation complete, mais la TOC passe par
+  `document_toc`/`chapters` quand un document est resolu.
 
 ## 14. Tests exiges avant runtime
 
@@ -939,13 +940,13 @@ Observabilite reelle exposee:
   code, response chars, attempt count, fallback model flag;
 - observation validation JSON: status, reason code, longueur/hash JSON, noms
   d'outils allowlistes, nombre d'appels outil proposes;
-- comparaison produit par defaut: `used_for_response=false`,
+- comparaison produit fallback: `used_for_response=false`,
   `product_response_changed=false`, `deterministic_controller=true`;
-- tranche P03 agent-first: `execution_scope=catalog_search_only`,
+- tranche agent-first generale: `execution_scope=agent_first`,
   `used_for_response=true`, `product_response_changed=true`,
   `deterministic_controller=false`, `tool_execution_status=executed`,
-  `tool_call_event_count=1`;
-- hors tranche P03, absence d'execution agentique runtime:
+  `tool_call_event_count>=1`;
+- hors mode agent-first actif, absence d'execution agentique runtime:
   `tool_execution_status=not_executed`, `tool_call_event_count=0`,
   `selection_event_count=0`, `state_update_event_count=0`,
   `final_event_count=0`.
@@ -978,8 +979,9 @@ NO-GO retroactif Lot 9 si un patch ulterieur:
 
 ## 23. Lot 10 livre
 
-Lot 10 ajoute un protocole de smoke produit philosophique, sans activer l'agent
-comme controleur.
+Lot 10 ajoute un protocole de smoke produit philosophique. La tranche
+post-Lot 10 fait de l'agent actif le controleur principal Biblio sous murs
+deterministes GET-only et budgets stricts.
 
 Runner:
 
@@ -988,16 +990,16 @@ Runner:
 - mode agent par defaut: `active`;
 - `off` est reserve aux tests negatifs explicites;
 - options explicites: `--agent-mode off|config|active|shadow|candidate`;
-- aucune execution de boucle d'outils agentique generale;
-- exception post-Lot 10 bornee: le cas P03 peut executer un unique
-  `catalog_search` GET valide si le deterministe est `no_signal`, si le plan
-  agent active est valide, et si le registre d'outils accepte les parametres;
+- execution agent-first autorisee pour les outils GET-only allowlistes:
+  `catalog_list`, `catalog_search`, `document_open_summary`, `document_toc`,
+  `locate`, `passage_context`;
 - aucun appel modele en mode `off`;
 - `shadow` et `candidate` sont des modes compat/dev; ils ne valent pas preuve
   produit nominale;
-- `active` doit appeler le modele et valider un plan JSON pour passer le smoke
-  agent; il ne controle pas la reponse produit sauf tranche P03
-  `catalog_search` unique sous garde deterministe;
+- `active` doit appeler le modele; il controle la reponse produit seulement si
+  un plan valide, repare, ou un fallback borne issu des signaux
+  deterministes/dialogue content-free est execute par le registre d'outils sous
+  budgets et `execution_scope=agent_first`;
 - sortie JSONL uniquement content-free.
 
 Matrice couverte:
@@ -1030,11 +1032,11 @@ Le runner sort non-zero en mode strict si:
 - une fuite brute est detectee;
 - un payload Catalogue reste retenu;
 - un endpoint lourd interdit comme `document` apparait;
-- l'agent est utilise pour la reponse produit hors scope P03 `catalog_search`
-  unique;
-- la reponse produit change hors scope P03 `catalog_search` unique;
-- une execution outil agentique est observee hors scope P03 `catalog_search`
-  unique;
+- l'agent est utilise pour la reponse produit sans `execution_scope=agent_first`
+  valide;
+- la reponse produit change sans `execution_scope=agent_first` valide;
+- une execution outil agentique sort des outils GET-only allowlistes ou des
+  endpoints bornes;
 - l'agent nominal `active` n'appelle pas le modele ou ne produit pas de plan
   candidat valide;
 - un mode compat/dev `shadow` ou `candidate` est utilise comme preuve nominale;
@@ -1045,9 +1047,20 @@ Le runner sort non-zero en mode strict si:
 partie du chemin de validation normal.
 
 Un plan du dialogue planner local ne suffit jamais a rendre un cas produit
-`met`. Il peut seulement aider le diagnostic. Les cas runtime non trouves,
-notamment les smokes Kant/Sapere aude, doivent rester visibles comme `failed`
-ou `partial_required_attention` au lieu de produire un faux vert.
+`met`. Il peut seulement aider le diagnostic ou servir de fallback borne apres
+appel modele actif invalide/vide, et uniquement si les outils GET-only sont
+reellement executes et que la lane produit contient des donnees utiles. Les cas
+runtime non trouves doivent rester visibles comme `failed` ou
+`partial_required_attention` au lieu de produire un faux vert.
+
+Preuve agent-first P01-P18 courante:
+
+- artefact:
+  `app/docs/states/baselines/biblio-smokes/agent-first-full-20260601T181903Z.jsonl`;
+- 18/18 records avec `runtime_expectation_status=met`,
+  `agent_expectation_status=met`, `product_expectation_status=met`;
+- flags `raw_marker_leaks=false`, `payload_objects_retained=0`,
+  `forbidden_endpoint_used=false` sur la matrice.
 
 Interdits Lot 10:
 
@@ -1075,11 +1088,9 @@ NO-GO retroactif Lot 10 si un patch ulterieur:
 
 ## 24. Hors-scope
 
-- activation produit generale de l'agent;
-- remplacement du chemin deterministe;
+- ajout d'outils hors allowlist;
+- remplacement des murs deterministes;
 - appel OpenRouter en mode `off`;
-- execution de la boucle d'outils agentique dans le chat produit hors tranche
-  P03 `catalog_search` unique;
 - activation souveraine de la section runtime settings comme controleur produit;
 - outil page;
 - navigation complete;
