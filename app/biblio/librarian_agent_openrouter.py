@@ -72,10 +72,12 @@ class OpenRouterBiblioLibrarianAgentClient:
         *,
         requests_post: Callable[..., Any] = requests.post,
         config_module: Any = config,
+        llm_module: Any = None,
         monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self._requests_post = requests_post
         self._config = config_module
+        self._llm = llm_module
         self._monotonic = monotonic
 
     def complete(
@@ -87,17 +89,34 @@ class OpenRouterBiblioLibrarianAgentClient:
         effective_settings = settings or request.settings
         if not effective_settings.primary_model:
             return _model_error(REASON_MODEL_NOT_CONFIGURED)
-        if not str(getattr(self._config, "OR_KEY", "") or "").strip():
+        try:
+            provider_headers = self._provider_headers()
+            chat_url = self._chat_completions_url()
+        except Exception as exc:
+            if not _is_provider_config_error(exc):
+                raise
             return _model_error(REASON_PROVIDER_NOT_CONFIGURED, model=effective_settings.primary_model)
 
-        primary = self._complete_model(request, settings=effective_settings, model=effective_settings.primary_model)
+        primary = self._complete_model(
+            request,
+            settings=effective_settings,
+            model=effective_settings.primary_model,
+            provider_headers=provider_headers,
+            chat_url=chat_url,
+        )
         if (
             primary.status == STATUS_OK
             or not effective_settings.fallback_model
             or effective_settings.max_model_calls < 2
         ):
             return primary
-        fallback = self._complete_model(request, settings=effective_settings, model=effective_settings.fallback_model)
+        fallback = self._complete_model(
+            request,
+            settings=effective_settings,
+            model=effective_settings.fallback_model,
+            provider_headers=provider_headers,
+            chat_url=chat_url,
+        )
         return BiblioLibrarianAgentModelResponse(
             status=fallback.status,
             reason_code=fallback.reason_code,
@@ -118,12 +137,14 @@ class OpenRouterBiblioLibrarianAgentClient:
         *,
         settings: BiblioLibrarianAgentSettings,
         model: str,
+        provider_headers: Mapping[str, Any],
+        chat_url: str,
     ) -> BiblioLibrarianAgentModelResponse:
         started = self._monotonic()
         try:
             response = self._requests_post(
-                _chat_completions_url(self._config),
-                headers=_headers(self._config),
+                chat_url,
+                headers=dict(provider_headers),
                 json=build_librarian_agent_payload(request, settings=settings, model_override=model),
                 timeout=settings.timeout_s,
             )
@@ -180,6 +201,18 @@ class OpenRouterBiblioLibrarianAgentClient:
             attempt_count=1,
         )
 
+    def _provider_headers(self) -> dict[str, Any]:
+        llm_module = self._llm or _default_llm_module()
+        return llm_module.or_headers_custom(
+            caller="biblio_librarian",
+            referer=str(getattr(self._config, "OR_REFERER_BIBLIO_LIBRARIAN", "") or "").strip(),
+            title=str(getattr(self._config, "OR_TITLE_BIBLIO_LIBRARIAN", "") or "").strip(),
+        )
+
+    def _chat_completions_url(self) -> str:
+        llm_module = self._llm or _default_llm_module()
+        return llm_module.or_chat_completions_url()
+
 
 def build_librarian_agent_payload(
     request: BiblioLibrarianAgentRequest,
@@ -208,7 +241,7 @@ def build_librarian_agent_payload(
         },
     }
     if effective_settings.reasoning_effort != "none":
-        payload["reasoning_effort"] = effective_settings.reasoning_effort
+        payload["reasoning"] = {"effort": effective_settings.reasoning_effort, "exclude": True}
     return payload
 
 
@@ -382,17 +415,18 @@ def _tool_call_schema(tool_name: str) -> dict[str, Any]:
     }
 
 
-def _headers(config_module: Any) -> dict[str, str]:
-    return {
-        "Authorization": f"Bearer {str(getattr(config_module, 'OR_KEY', '') or '').strip()}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": str(getattr(config_module, "OR_REFERER_BIBLIO_LIBRARIAN", "") or "").strip(),
-        "X-OpenRouter-Title": str(getattr(config_module, "OR_TITLE_BIBLIO_LIBRARIAN", "") or "").strip(),
+def _is_provider_config_error(exc: Exception) -> bool:
+    return exc.__class__.__name__ in {
+        "RuntimeSettingsDbUnavailableError",
+        "RuntimeSettingsSecretRequiredError",
+        "RuntimeSettingsSecretResolutionError",
     }
 
 
-def _chat_completions_url(config_module: Any) -> str:
-    return f"{str(getattr(config_module, 'OR_BASE', 'https://openrouter.ai/api/v1')).rstrip('/')}/chat/completions"
+def _default_llm_module() -> Any:
+    from core import llm_client
+
+    return llm_client
 
 
 def _state_for_model(state: Any) -> Any:

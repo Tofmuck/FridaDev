@@ -41,6 +41,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'web_reformulation_model',
                 'stimmung_agent_model',
                 'validation_agent_model',
+                'biblio_librarian_agent',
                 'embedding',
                 'database',
                 'services',
@@ -130,6 +131,27 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertFalse(spec.is_secret)
         self.assertFalse(spec.seed_from_env)
         self.assertEqual(spec.seed_default, 'high')
+
+    def test_biblio_librarian_agent_has_dedicated_runtime_section(self) -> None:
+        spec = runtime_settings.get_section_spec('biblio_librarian_agent')
+        self.assertEqual(
+            spec.field_names(),
+            (
+                'mode',
+                'primary_model',
+                'fallback_model',
+                'timeout_s',
+                'temperature',
+                'top_p',
+                'max_tokens',
+                'max_tool_calls',
+                'max_model_calls',
+                'max_recent_turns',
+                'reasoning_effort',
+            ),
+        )
+        self.assertEqual(runtime_settings.get_field_spec('biblio_librarian_agent', 'primary_model').env_var, 'BIBLIO_LIBRARIAN_AGENT_MODEL')
+        self.assertFalse(runtime_settings.get_field_spec('biblio_librarian_agent', 'primary_model').is_secret)
 
     def test_web_reformulation_model_has_dedicated_runtime_section(self) -> None:
         spec = runtime_settings.get_section_spec('web_reformulation_model')

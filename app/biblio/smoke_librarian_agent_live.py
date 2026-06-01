@@ -176,6 +176,7 @@ _OUTPUT_KEYS = {
 class _AgentModeConfig:
     def __init__(self, *, mode: str, base_config: Any = None) -> None:
         self.BIBLIO_LIBRARIAN_AGENT_MODE = mode
+        self._runtime_settings_mode_override = True
         self._base_config = base_config or runtime_config
 
     def __getattr__(self, name: str) -> Any:
@@ -190,6 +191,7 @@ def run_smokes(
     config_module: Any = None,
     agent_mode: str = DEFAULT_AGENT_MODE,
     raw_markers: Sequence[str] = DEFAULT_RAW_MARKERS,
+    on_record: Callable[[Mapping[str, Any]], None] | None = None,
 ) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     states: dict[str, BiblioConversationState] = {}
@@ -212,7 +214,10 @@ def run_smokes(
         if result.biblio_state is not None:
             states[conversation_id] = result.biblio_state
         recent_dialogues.setdefault(conversation_id, []).append(_recent_turn_observation(case, result))
-        records.append(_record_for_result(case, result, dialogue, raw_markers=raw_markers))
+        record = _record_for_result(case, result, dialogue, raw_markers=raw_markers)
+        records.append(record)
+        if on_record is not None:
+            on_record(record)
     return records
 
 
@@ -533,11 +538,32 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=DEFAULT_AGENT_MODE,
         help="Agent comparison mode for the smoke. Default requires an active model-validated plan.",
     )
+    parser.add_argument(
+        "--case-id",
+        action="append",
+        default=[],
+        help="Run only the given smoke case id. Repeat for several cases.",
+    )
+    parser.add_argument(
+        "--max-cases",
+        type=int,
+        default=0,
+        help="Run only the first N selected cases. Debug/segmentation only; not a full-smoke proof.",
+    )
     args = parser.parse_args(argv)
-    records = run_smokes(agent_mode=args.agent_mode)
+    selected_cases = _select_cases(DEFAULT_SMOKE_CASES, case_ids=args.case_id, max_cases=args.max_cases)
+    emitted: list[dict[str, Any]] = []
+
+    def emit_record(record: Mapping[str, Any]) -> None:
+        if args.jsonl:
+            print(json.dumps(record, ensure_ascii=False, sort_keys=True), flush=True)
+        emitted.append(dict(record))
+
+    records = run_smokes(agent_mode=args.agent_mode, cases=selected_cases, on_record=emit_record)
     if args.jsonl:
-        for record in records:
-            print(json.dumps(record, ensure_ascii=False, sort_keys=True))
+        if records != emitted:
+            for record in records[len(emitted) :]:
+                print(json.dumps(record, ensure_ascii=False, sort_keys=True), flush=True)
     else:
         print(json.dumps(records, ensure_ascii=False, indent=2, sort_keys=True))
     return smoke_exit_code(
@@ -546,6 +572,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         product_strict=not args.no_product_strict,
         agent_strict=not args.no_agent_strict,
     )
+
+
+def _select_cases(
+    cases: Sequence[BiblioLibrarianProductSmokeCase],
+    *,
+    case_ids: Sequence[str],
+    max_cases: int = 0,
+) -> tuple[BiblioLibrarianProductSmokeCase, ...]:
+    selected = tuple(cases)
+    wanted = {str(case_id or "").strip().upper() for case_id in case_ids if str(case_id or "").strip()}
+    if wanted:
+        selected = tuple(case for case in selected if case.case_id.upper() in wanted)
+    if max_cases > 0:
+        selected = selected[:max_cases]
+    return selected
 
 
 if __name__ == "__main__":

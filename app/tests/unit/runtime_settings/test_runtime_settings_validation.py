@@ -127,6 +127,35 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         self.assertTrue(checks['reasoning_effort']['ok'])
         self.assertIn('model_supported=False', checks['reasoning_effort']['detail'])
 
+    def test_validate_runtime_section_accepts_biblio_librarian_agent_runtime_payload(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-validation'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'biblio_librarian_agent',
+                {
+                    'mode': {'value': 'active'},
+                    'primary_model': {'value': 'deepseek/deepseek-v4-pro'},
+                    'temperature': {'value': 0},
+                    'top_p': {'value': 1},
+                    'max_tokens': {'value': 16000},
+                    'max_recent_turns': {'value': 5},
+                    'timeout_s': {'value': 120},
+                    'reasoning_effort': {'value': 'high'},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertTrue(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['mode']['ok'])
+        self.assertTrue(checks['primary_model']['ok'])
+        self.assertTrue(checks['reasoning_effort']['ok'])
+        self.assertTrue(checks['shared_transport_runtime']['ok'])
+        self.assertIn('main_model.api_key available from env_fallback', checks['shared_transport_runtime']['detail'])
+
     def test_validate_runtime_section_rejects_invalid_component_referer(self) -> None:
         original_api_key = config.OR_KEY
         config.OR_KEY = 'sk-phase5-validation'

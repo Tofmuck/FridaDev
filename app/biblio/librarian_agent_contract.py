@@ -116,6 +116,8 @@ class BiblioLibrarianAgentSettings:
     max_model_calls: int = 1
     max_recent_turns: int = 5
     reasoning_effort: str = "none"
+    settings_source: str = ""
+    settings_source_reason: str = ""
 
     @classmethod
     def from_config(cls, config_module: Any) -> "BiblioLibrarianAgentSettings":
@@ -133,6 +135,38 @@ class BiblioLibrarianAgentSettings:
             reasoning_effort=_reasoning_effort(
                 getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT", "none")
             ),
+            settings_source="config",
+            settings_source_reason="explicit_config_module",
+        )
+
+    @classmethod
+    def from_runtime_settings(
+        cls,
+        *,
+        fetcher: Any = None,
+        runtime_settings_module: Any = None,
+        mode_override: Any = None,
+    ) -> "BiblioLibrarianAgentSettings":
+        if runtime_settings_module is None:
+            from admin import runtime_settings as runtime_settings_module
+
+        view = runtime_settings_module.get_biblio_librarian_agent_settings(fetcher=fetcher)
+        payload = view.payload
+        mode = normalize_mode(mode_override) if mode_override is not None else normalize_mode(_payload_value(payload, "mode"))
+        return cls(
+            mode=mode,
+            primary_model=_payload_text(payload, "primary_model"),
+            fallback_model=_payload_text(payload, "fallback_model"),
+            timeout_s=_positive_int(_payload_value(payload, "timeout_s"), 10),
+            temperature=_float(_payload_value(payload, "temperature"), 0.0),
+            top_p=_float(_payload_value(payload, "top_p"), 1.0),
+            max_tokens=_positive_int(_payload_value(payload, "max_tokens"), 900),
+            max_tool_calls=_positive_int(_payload_value(payload, "max_tool_calls"), 5),
+            max_model_calls=_positive_int(_payload_value(payload, "max_model_calls"), 1),
+            max_recent_turns=_positive_int(_payload_value(payload, "max_recent_turns"), 5),
+            reasoning_effort=_reasoning_effort(_payload_value(payload, "reasoning_effort")),
+            settings_source=_safe_token(getattr(view, "source", "")),
+            settings_source_reason=_safe_token(getattr(view, "source_reason", "")),
         )
 
     def to_observability(self) -> dict[str, Any]:
@@ -149,6 +183,8 @@ class BiblioLibrarianAgentSettings:
                 "max_model_calls": self.max_model_calls,
                 "max_recent_turns": self.max_recent_turns,
                 "reasoning_effort": _reasoning_effort(self.reasoning_effort),
+                "settings_source": _safe_token(self.settings_source),
+                "settings_source_reason": _safe_token(self.settings_source_reason),
                 "json_contract_required": True,
                 "require_parameters": True,
             }
@@ -224,6 +260,17 @@ def normalize_mode(value: Any) -> str:
 def _reasoning_effort(value: Any) -> str:
     effort = _safe_token(value)
     return effort if effort in _REASONING_EFFORTS else "none"
+
+
+def _payload_value(payload: Mapping[str, Any], field: str) -> Any:
+    field_payload = payload.get(field) if isinstance(payload, Mapping) else None
+    if isinstance(field_payload, Mapping):
+        return field_payload.get("value")
+    return None
+
+
+def _payload_text(payload: Mapping[str, Any], field: str) -> str:
+    return str(_payload_value(payload, field) or "").strip()
 
 
 def parse_and_validate_agent_json(

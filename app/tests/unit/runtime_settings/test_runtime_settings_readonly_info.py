@@ -295,6 +295,7 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             'identity_governance',
         }
         expected_empty = {
+            'biblio_librarian_agent',
             'embedding',
             'database',
             'services',

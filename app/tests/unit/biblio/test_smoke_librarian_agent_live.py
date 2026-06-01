@@ -323,6 +323,33 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(smoke.main(["--jsonl", "--no-strict"]), smoke.EXIT_OK)
 
+    def test_main_supports_case_id_and_max_cases_for_segmented_live_debug(self) -> None:
+        observed = {}
+
+        def fake_run_smokes(**kwargs):
+            observed.update(kwargs)
+            return [
+                {
+                    "case_id": "P03",
+                    "raw_marker_leaks": False,
+                    "payload_objects_retained": 0,
+                    "forbidden_endpoint_used": False,
+                    "agent_expectation_status": "met",
+                    "agent_used_for_response": False,
+                    "agent_product_response_changed": False,
+                    "agent_tool_execution_status": "not_executed",
+                    "agent_tool_call_event_count": 0,
+                    "product_expectation_status": "met",
+                }
+            ]
+
+        with mock.patch("biblio.smoke_librarian_agent_live.run_smokes", side_effect=fake_run_smokes):
+            with contextlib.redirect_stdout(io.StringIO()) as stdout:
+                self.assertEqual(smoke.main(["--jsonl", "--case-id", "P03", "--max-cases", "1"]), smoke.EXIT_OK)
+
+        self.assertEqual([case.case_id for case in observed["cases"]], ["P03"])
+        self.assertIn('"case_id": "P03"', stdout.getvalue())
+
 
 def _fake_turn_runner(
     data,

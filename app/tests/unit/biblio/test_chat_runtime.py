@@ -32,11 +32,17 @@ RAW_PASSAGE = "SYNTHETIC_BIBLIO_CHAT_PASSAGE_MUST_ONLY_APPEAR_IN_PROMPT"
 
 class BiblioChatRuntimeTests(unittest.TestCase):
     def setUp(self) -> None:
-        self._agent_mode_before = librarian_agent_runtime.config.BIBLIO_LIBRARIAN_AGENT_MODE
-        librarian_agent_runtime.config.BIBLIO_LIBRARIAN_AGENT_MODE = "off"
+        self._resolve_settings_before = librarian_agent_runtime._resolve_settings
+
+        def deterministic_unit_settings(config_module=None):
+            if config_module is not None:
+                return self._resolve_settings_before(config_module)
+            return agent_contract.BiblioLibrarianAgentSettings(mode=agent_contract.MODE_OFF)
+
+        librarian_agent_runtime._resolve_settings = deterministic_unit_settings
 
     def tearDown(self) -> None:
-        librarian_agent_runtime.config.BIBLIO_LIBRARIAN_AGENT_MODE = self._agent_mode_before
+        librarian_agent_runtime._resolve_settings = self._resolve_settings_before
 
     def test_toggle_off_does_not_build_client_or_call_catalogue(self) -> None:
         result = chat_runtime.run_biblio_chat_turn(

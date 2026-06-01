@@ -31,10 +31,14 @@ modele reel et sans activation produit.
   `https://openrouter.ai/deepseek/deepseek-v4-pro`, soit le slug observe
   `deepseek/deepseek-v4-pro`.
 - DeepSeek V4 Pro est un candidat agentique possible, pas un default hardcode:
-  le modele effectif reste configure par `BIBLIO_LIBRARIAN_AGENT_MODEL`.
-- OpenRouter documente `reasoning_effort` comme parametre top-level optionnel
-  (`xhigh`, `high`, `medium`, `low`, `minimal`, `none`) et `reasoning` comme
-  map optionnelle pour les modeles qui supportent les tokens de raisonnement.
+  le modele effectif reste configure par la section runtime settings
+  `biblio_librarian_agent`; les variables `BIBLIO_LIBRARIAN_AGENT_*` restent des
+  seeds/bootstrap.
+- OpenRouter documente `reasoning` comme map optionnelle pour les modeles qui
+  supportent les tokens de raisonnement; FridaDev envoie
+  `reasoning={"effort":"high","exclude":true}` quand le champ runtime
+  `reasoning_effort` vaut `high`, et n'envoie plus de champ top-level
+  `reasoning_effort` sur ce caller.
 
 ## Decision Lot 7
 
@@ -98,18 +102,22 @@ deterministe inchangee jusqu'a lot separe.
 
 ## Note configuration active post-Lot 10
 
-La configuration applicative non secrete demandee par l'operateur est:
+La configuration applicative non secrete demandee par l'operateur est portee par
+la section runtime settings DB `biblio_librarian_agent`:
 
-- `BIBLIO_LIBRARIAN_AGENT_MODE=active`;
-- `BIBLIO_LIBRARIAN_AGENT_MODEL=deepseek/deepseek-v4-pro`;
-- `BIBLIO_LIBRARIAN_AGENT_TEMPERATURE=0`;
-- `BIBLIO_LIBRARIAN_AGENT_TOP_P=1`;
-- `BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS=16000`;
-- `BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS=5`;
-- `BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S=120`;
-- `BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT=high`.
+- `mode=active`;
+- `primary_model=deepseek/deepseek-v4-pro`;
+- `temperature=0`;
+- `top_p=1`;
+- `max_tokens=16000`;
+- `max_recent_turns=5`;
+- `timeout_s=120`;
+- `reasoning_effort=high`.
 
-Ces valeurs restent surchargeables par environnement; le modele n'est pas
+Les variables `BIBLIO_LIBRARIAN_AGENT_*` restent des seeds/bootstrap historiques;
+elles ne sont pas l'autorite runtime quand la DB est disponible. Le secret
+OpenRouter n'est pas duplique: l'appel Biblio reutilise `main_model.api_key` via
+`llm_client` et les headers custom `biblio_librarian`. Le modele n'est pas
 hardcode dans la logique metier. `active` signifie modele appele et JSON valide
 pour le smoke agent, pas execution des outils agentiques ni remplacement de la
 reponse produit.

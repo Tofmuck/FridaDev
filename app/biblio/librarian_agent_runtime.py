@@ -10,8 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
-import config
-
 from . import librarian_agent
 from . import librarian_agent_contract as contract
 from .librarian_planner_observability import clean as _clean
@@ -87,7 +85,7 @@ def run_biblio_librarian_agent_comparison(
     config_module: Any = None,
     agent_factory: Any = librarian_agent.BiblioLibrarianAgent,
 ) -> BiblioLibrarianAgentComparison:
-    settings = contract.BiblioLibrarianAgentSettings.from_config(config_module or config)
+    settings = _resolve_settings(config_module)
     deterministic_observation = _deterministic_observation(
         plan=deterministic_plan,
         status=deterministic_status,
@@ -128,6 +126,16 @@ def run_biblio_librarian_agent_comparison(
         deterministic_observation=deterministic_observation,
         agent_result=agent_result,
     )
+
+
+def _resolve_settings(config_module: Any = None) -> contract.BiblioLibrarianAgentSettings:
+    if config_module is None:
+        return contract.BiblioLibrarianAgentSettings.from_runtime_settings()
+    if bool(getattr(config_module, "_runtime_settings_mode_override", False)):
+        return contract.BiblioLibrarianAgentSettings.from_runtime_settings(
+            mode_override=getattr(config_module, "BIBLIO_LIBRARIAN_AGENT_MODE", None)
+        )
+    return contract.BiblioLibrarianAgentSettings.from_config(config_module)
 
 
 def _deterministic_observation(

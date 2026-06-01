@@ -457,6 +457,20 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertTrue(settings.to_observability()["require_parameters"])
         self.assertEqual(settings.to_observability()["reasoning_effort"], "high")
 
+    def test_settings_from_runtime_settings_uses_dedicated_biblio_section(self) -> None:
+        settings = contract.BiblioLibrarianAgentSettings.from_runtime_settings(
+            runtime_settings_module=_FakeRuntimeSettingsModule()
+        )
+
+        self.assertEqual(settings.mode, contract.MODE_ACTIVE)
+        self.assertEqual(settings.primary_model, "deepseek/deepseek-v4-pro")
+        self.assertEqual(settings.max_tokens, 16000)
+        self.assertEqual(settings.timeout_s, 120)
+        self.assertEqual(settings.reasoning_effort, "high")
+        observed = settings.to_observability()
+        self.assertEqual(observed["settings_source"], "db")
+        self.assertEqual(observed["settings_source_reason"], "db_row")
+
     def test_openrouter_payload_uses_biblio_headers_and_required_parameters(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings.from_config(
             SimpleNamespace(
@@ -475,7 +489,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(payload["max_tokens"], 16000)
         self.assertEqual(payload["temperature"], 0.0)
         self.assertEqual(payload["top_p"], 1.0)
-        self.assertEqual(payload["reasoning_effort"], "high")
+        self.assertEqual(payload["reasoning"], {"effort": "high", "exclude": True})
+        self.assertNotIn("reasoning_effort", payload)
         self.assertEqual(payload["provider"], {"require_parameters": True})
         self.assertEqual(payload["response_format"]["type"], "json_schema")
         self.assertEqual(len(payload["messages"]), 2)
@@ -488,6 +503,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         )
         payload = openrouter.build_librarian_agent_payload(_request(settings=settings), settings=settings)
 
+        self.assertNotIn("reasoning", payload)
         self.assertNotIn("reasoning_effort", payload)
 
     def test_openrouter_client_does_not_call_without_model_or_key(self) -> None:
@@ -498,7 +514,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
 
         client = openrouter.OpenRouterBiblioLibrarianAgentClient(
             requests_post=fake_post,
-            config_module=SimpleNamespace(OR_KEY="", OR_BASE="https://openrouter.ai/api/v1"),
+            config_module=_provider_config(),
+            llm_module=_FakeLlmModule(missing_secret=True),
         )
         response = client.complete(
             _request(settings=contract.BiblioLibrarianAgentSettings(mode=contract.MODE_SHADOW))
@@ -521,6 +538,42 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertFalse(called["value"])
         self.assertEqual(response.attempt_count, 0)
 
+    def test_openrouter_client_uses_shared_main_model_key_path_without_or_key(self) -> None:
+        calls: list[dict[str, Any]] = []
+        llm_module = _FakeLlmModule()
+
+        def fake_post(*_args: Any, **kwargs: Any) -> _FakeHTTPResponse:
+            calls.append(kwargs)
+            return _FakeHTTPResponse(
+                {
+                    "model": "primary/model",
+                    "choices": [
+                        {"message": {"content": _valid_json()}, "finish_reason": "stop"},
+                    ],
+                }
+            )
+
+        client = openrouter.OpenRouterBiblioLibrarianAgentClient(
+            requests_post=fake_post,
+            config_module=_ProviderConfigWithoutOrKey(),
+            llm_module=llm_module,
+            monotonic=_FakeClock(),
+        )
+        response = client.complete(
+            _request(
+                settings=contract.BiblioLibrarianAgentSettings(
+                    mode=contract.MODE_ACTIVE,
+                    primary_model="primary/model",
+                )
+            )
+        )
+
+        self.assertEqual(response.status, openrouter.STATUS_OK)
+        self.assertEqual(llm_module.header_calls, 1)
+        self.assertEqual(llm_module.url_calls, 1)
+        self.assertEqual(calls[0]["headers"]["Authorization"], "Bearer shared-main-model-key")
+        self.assertEqual(calls[0]["headers"]["X-Frida-Caller"], "biblio_librarian")
+
     def test_openrouter_client_uses_fallback_model_when_budget_allows(self) -> None:
         calls: list[str] = []
 
@@ -540,6 +593,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         client = openrouter.OpenRouterBiblioLibrarianAgentClient(
             requests_post=fake_post,
             config_module=_provider_config(),
+            llm_module=_FakeLlmModule(),
             monotonic=_FakeClock(),
         )
         response = client.complete(
@@ -569,6 +623,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         client = openrouter.OpenRouterBiblioLibrarianAgentClient(
             requests_post=fake_post,
             config_module=_provider_config(),
+            llm_module=_FakeLlmModule(),
             monotonic=_FakeClock(),
         )
         response = client.complete(
@@ -680,6 +735,64 @@ class _FakeClock:
     def __call__(self) -> float:
         self._value += 0.01
         return self._value
+
+
+class _FakeLlmModule:
+    def __init__(self, *, missing_secret: bool = False) -> None:
+        self.missing_secret = missing_secret
+        self.header_calls = 0
+        self.url_calls = 0
+
+    def or_headers_custom(self, *, caller: str, referer: str, title: str) -> dict[str, str]:
+        self.header_calls += 1
+        if self.missing_secret:
+            raise RuntimeSettingsSecretRequiredError("missing main_model.api_key")
+        return {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer shared-main-model-key",
+            "X-Frida-Caller": caller,
+            "HTTP-Referer": referer,
+            "X-OpenRouter-Title": title,
+        }
+
+    def or_chat_completions_url(self) -> str:
+        self.url_calls += 1
+        return "https://runtime-main.example/chat/completions"
+
+
+class RuntimeSettingsSecretRequiredError(RuntimeError):
+    pass
+
+
+class _ProviderConfigWithoutOrKey:
+    OR_REFERER_BIBLIO_LIBRARIAN = "https://fridadev.frida-system.fr/openrouter/biblio-librarian"
+    OR_TITLE_BIBLIO_LIBRARIAN = "FridaDev / Biblio Librarian Agent"
+
+    @property
+    def OR_KEY(self) -> str:
+        raise AssertionError("Biblio librarian must not read OR_KEY directly")
+
+
+class _FakeRuntimeSettingsModule:
+    def get_biblio_librarian_agent_settings(self, *, fetcher=None):
+        del fetcher
+        return SimpleNamespace(
+            source="db",
+            source_reason="db_row",
+            payload={
+                "mode": {"value": "active"},
+                "primary_model": {"value": "deepseek/deepseek-v4-pro"},
+                "fallback_model": {"value": ""},
+                "timeout_s": {"value": 120},
+                "temperature": {"value": 0},
+                "top_p": {"value": 1},
+                "max_tokens": {"value": 16000},
+                "max_tool_calls": {"value": 5},
+                "max_model_calls": {"value": 1},
+                "max_recent_turns": {"value": 5},
+                "reasoning_effort": {"value": "high"},
+            },
+        )
 
 
 def _provider_config() -> SimpleNamespace:

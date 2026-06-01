@@ -95,17 +95,18 @@ Regles:
   deterministe sans migration, rebuild, purge DB ou changement Catalogue;
 - le chemin deterministe actuel doit rester disponible, ou etre remplace
   seulement apres preuve comparative de non-regression;
-- aucune activation par defaut ne doit suivre un deploiement de code.
+- aucune activation souveraine de reponse produit ne doit suivre un deploiement
+  de code; le mode comparatif `active` peut appeler le modele si le runtime
+  settings le demande, avec `used_for_response=false`.
 
 ## 4. Configuration modele runtime
 
 Le modele agent ne doit jamais etre hardcode dans le code runtime.
 
-Section runtime settings cible, nom indicatif:
+Section runtime settings livree:
 
 - section: `biblio_librarian_agent`;
 - champs minimaux:
-  - `enabled`;
   - `mode`;
   - `primary_model`;
   - `fallback_model`;
@@ -115,12 +116,8 @@ Section runtime settings cible, nom indicatif:
   - `max_tokens`;
   - `max_tool_calls`;
   - `max_model_calls`;
-  - `max_total_duration_s`;
-  - `json_contract_required`;
-  - `provider_payload_profile`;
-  - `structured_output_profile`;
-  - `fallback_to_deterministic`;
-  - `shadow_compare_enabled`.
+  - `max_recent_turns`;
+  - `reasoning_effort`.
 
 Contraintes:
 
@@ -750,23 +747,26 @@ Implementation:
 - schema sortie agent: `biblio_librarian_agent_v1`;
 - modes: `off`, `shadow`, `candidate`, `active`;
 - default runtime post-Lot 10:
-  `BIBLIO_LIBRARIAN_AGENT_MODE=active`,
-  `BIBLIO_LIBRARIAN_AGENT_MODEL=deepseek/deepseek-v4-pro`,
-  `BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S=120`,
-  `BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS=16000`,
-  `BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT=high`;
+  section DB `biblio_librarian_agent` seedee avec `mode=active`,
+  `primary_model=deepseek/deepseek-v4-pro`, `timeout_s=120`,
+  `max_tokens=16000`, `max_recent_turns=5`, `reasoning_effort=high`;
 - `active` est reconnu comme valeur de mode mais n'est pas utilise comme
   chemin souverain de reponse produit dans ce lot;
 - `shadow` et `candidate` peuvent valider un plan JSON mais gardent
   `fallback_deterministic=true` et `used_for_response=false`;
-- `BIBLIO_LIBRARIAN_AGENT_MODEL` et
-  `BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL` sont configurables, jamais hardcodes;
+- les variables `BIBLIO_LIBRARIAN_AGENT_*` restent des seeds/bootstrap, pas la
+  source runtime principale apres presence de la section DB;
 - referer/title dedies: `OPENROUTER_REFERER_BIBLIO_LIBRARIAN` et
   `OPENROUTER_TITLE_BIBLIO_LIBRARIAN`;
+- transport OpenRouter: URL et secret viennent du runtime shared
+  `main_model` via `llm_client.or_chat_completions_url()` et
+  `llm_client.or_headers_custom(...)`; le bibliothecaire ne lit pas
+  directement `OPENROUTER_API_KEY`;
 - payload OpenRouter: `response_format.type=json_schema`,
   `json_schema.name=biblio_librarian_agent_v1`, `strict=true`,
-  `provider.require_parameters=true`, `reasoning_effort` si configure, avec
-  schemas d'outils bornes par outil et alignes sur `librarian_tools.py`;
+  `provider.require_parameters=true`, `reasoning={"effort": "...",
+  "exclude": true}` si configure, avec schemas d'outils bornes par outil et
+  alignes sur `librarian_tools.py`;
 - le contrat JSON est obligatoire dans le Lot 7; il n'existe plus de setting
   operateur pour le desactiver, et `provider.require_parameters` ne depend
   d'aucune variable d'environnement;
@@ -1067,7 +1067,7 @@ NO-GO retroactif Lot 10 si un patch ulterieur:
 - remplacement du chemin deterministe;
 - appel OpenRouter en mode `off`;
 - execution de la boucle d'outils agentique dans le chat produit;
-- runtime settings admin/DB dedies;
+- activation souveraine de la section runtime settings comme controleur produit;
 - outil page;
 - navigation complete;
 - `export/chunk`;

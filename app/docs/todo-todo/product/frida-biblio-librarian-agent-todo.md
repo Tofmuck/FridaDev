@@ -78,12 +78,15 @@ Invariant cible:
 - prevoir un fallback runtime vers un modele plus robuste si DeepSeek V4 Pro est indisponible, trop lent, invalide son JSON ou echoue aux smokes;
 - exposer en observabilite content-free le modele effectif, la source de configuration, le fallback eventuel, le timeout, le nombre de retries et le reason code, jamais la cle API.
 
-Implication probable:
+Implication livree partiellement:
 
-- ajouter une section runtime settings dediee, par exemple `biblio_librarian_agent_model`, plutot que reutiliser `main_model`;
-- cette section devra avoir `primary_model`, `fallback_model`, `timeout_s`, `temperature`, `top_p`, `max_tokens`, `max_tool_calls` et `max_model_calls` ou equivalents;
+- section runtime settings dediee `biblio_librarian_agent`;
+- cette section a `mode`, `primary_model`, `fallback_model`, `timeout_s`,
+  `temperature`, `top_p`, `max_tokens`, `max_tool_calls`, `max_model_calls`,
+  `max_recent_turns` et `reasoning_effort`;
 - le contrat JSON est obligatoire dans le Lot 7; aucun knob operateur ne doit permettre de le desactiver sans lot separe;
-- les secrets restent ceux du provider OpenRouter deja gere, sans nouveau secret si ce n'est pas necessaire;
+- les secrets restent ceux du provider OpenRouter deja gere via
+  `main_model.api_key`; aucune cle dediee Biblio;
 - tout ajout de section runtime settings exige tests spec/validation/API/admin.
 
 ## OpenRouter / JSON contracts
@@ -814,17 +817,19 @@ du contenu brut.
 
 ### Patch attendu
 
-- [x] Config non secrete:
+- [x] Section runtime settings non secrete `biblio_librarian_agent`:
   `BIBLIO_LIBRARIAN_AGENT_MODE`, `BIBLIO_LIBRARIAN_AGENT_MODEL`,
   `BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL`, timeout, sampling, max tokens,
-  max tool/model calls et max recent turns.
+  max tool/model calls, max recent turns et reasoning restent des seeds/env
+  bootstrap, pas la source runtime principale quand la DB est disponible.
 - [x] Contrat JSON obligatoire: pas de knob operateur permettant de le
   desactiver dans ce lot; `provider.require_parameters=true` est invariant.
 - [x] Referer/title OpenRouter dedies:
   `OPENROUTER_REFERER_BIBLIO_LIBRARIAN`,
   `OPENROUTER_TITLE_BIBLIO_LIBRARIAN`.
-- [x] Aucune cle API dediee nouvelle: reutilisation de `OPENROUTER_API_KEY`
-  seulement si mode/model permettent l'appel.
+- [x] Aucune cle API dediee nouvelle: reutilisation du secret runtime
+  `main_model.api_key` via `llm_client`; `OPENROUTER_API_KEY` ne sert plus
+  d'autorite directe pour l'appel Biblio.
 - [x] Aucun branchement chat/runtime produit.
 - [x] Aucun appel Catalogue nouveau.
 
@@ -833,8 +838,10 @@ du contenu brut.
 - [x] mode `off`: aucun appel modele.
 - [x] mode `shadow`: appel possible, plan valide non utilise pour la reponse.
 - [x] mode `candidate`: plan candidat conserve mais deterministe controle.
-- [x] mode `active`: non active par Lot 7, fallback deterministe.
-- [x] mode `active`: aucun appel modele, aucun cout/latence provider.
+- [x] mode `active` Lot 7 historique: non active, fallback deterministe.
+- [x] mode `active` Lot 7 historique: aucun appel modele, aucun cout/latence
+  provider. Supersede post-Lot 10: le smoke nominal `active` appelle le modele
+  mais reste non souverain (`used_for_response=false`, outils non executes).
 - [x] JSON valide: plan `BiblioLibrarianPlan` produit.
 - [x] JSON invalide, texte libre, tronque: fallback deterministe.
 - [x] JSON hors schema local: rejet, meme si le provider devait deja faire du
@@ -1065,13 +1072,19 @@ Risque de livrer un agent qui passe les unitaires mais echoue les demandes philo
   secrets `active`, `deepseek/deepseek-v4-pro`, temperature `0`, `top_p=1`,
   `max_tokens=16000`, `max_recent_turns=5`, timeout `120s` et
   `reasoning_effort=high`.
+- [x] Correctif post-audit: payload OpenRouter Biblio aligne sur
+  `reasoning={"effort":"high","exclude":true}` et smoke segmentable par
+  `--case-id` / `--max-cases`; le full smoke reste le gate global.
 - [x] Fixtures attendues content-free avec statuts separes: `runtime_expectation_status`, `agent_expectation_status`, `product_expectation_status`.
 - [x] Un plan dialogue local seul ne peut pas rendre un cas `met`.
 - [x] Documentation des cas et resultats.
 
 ### Tests / preuves
 
-- [x] `docker exec -w /app platform-fridadev python -m biblio.smoke_librarian_agent_live --jsonl`
+- [ ] `docker exec -w /app platform-fridadev python -m biblio.smoke_librarian_agent_live --jsonl`
+  complet, strict, termine.
+- [x] Smoke segmente content-free utilisable pour debug:
+  `python -m biblio.smoke_librarian_agent_live --jsonl --case-id P01`.
 - [x] Verification `raw_marker_leaks=false`.
 - [x] Verification `payload_objects_retained=0`.
 - [x] Verification des endpoint kinds, lanes et state updates attendus.
@@ -1210,7 +1223,8 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 - Le smoke nominal `active` peut echouer honnetement si le modele ou la cle
   provider ne sont pas configures; ce n'est plus remplace par `candidate`.
 - Pas encore d'activation souveraine du plan agent dans la reponse produit.
-- Pas encore de section runtime settings admin/DB dediee au modele agent.
+- Section runtime settings admin/DB dediee livree; smoke complet actif encore
+  a valider comme gate global.
 - Pas encore d'outil page cote FridaDev; P09 reste une surveillance, pas une promesse de navigation complete.
 - P03 reste une surveillance planner/intention, pas une promesse de correction complete par l'etat Lot 1.
 - Pas encore de navigation precedente/suivante complete cote FridaDev.
@@ -1253,8 +1267,9 @@ Lot 5 comprehension implicite/dialogue livre.
 Lot 6 navigation bornee livre.
 
 Lot 7 socle OpenRouter/JSON livre, avec validation stricte et
-`provider.require_parameters=true` invariant. Le mini-lot post-Lot 10 configure
-le default applicatif de smoke agent en `active` avec DeepSeek V4 Pro.
+`provider.require_parameters=true` invariant. Le correctif post-Lot 10 branche
+la source runtime settings DB `biblio_librarian_agent`, la cle partagee
+`main_model.api_key` et le payload `reasoning` officiel.
 
 Lot 8 integration comparative runtime livre: l'agent peut etre appele en
 `shadow`/`candidate` quand Biblio est activee, mais le deterministe reste le
@@ -1269,4 +1284,5 @@ navigation complete, modele hardcode ou route plateforme.
 Risques restants reels: le smoke nominal `active` depend de la disponibilite
 OpenRouter live et de la qualite JSON du modele, pas de branchement souverain
 du plan agent, pas d'execution d'outils agentiques pour reponse finale, pas de
-runtime settings admin/DB dedies, outil page absent et `export/chunk` absent.
+validation full-smoke globale terminee, outil page absent et `export/chunk`
+absent.
