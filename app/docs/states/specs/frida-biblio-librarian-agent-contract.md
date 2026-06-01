@@ -939,7 +939,10 @@ Dashboard/read-model:
 
 - `biblio_json.librarian_agent` persiste une projection compacte content-free;
 - les buckets Biblio agregent les modes, statuts, appels modele, tentatives,
-  durees, validations et compteurs d'outil agentique executes;
+  durees, validations, controle deterministe et compteurs d'outil agentique
+  executes;
+- les metriques agent declarees distinguent le controle deterministe normal
+  (`librarian_agent_deterministic_controlled_turns`) des erreurs/fallbacks;
 - la story admin mentionne l'agent seulement comme comparaison observee.
 
 Interdits Lot 9:

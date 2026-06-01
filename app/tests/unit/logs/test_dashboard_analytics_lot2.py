@@ -20,6 +20,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from observability import dashboard_analytics
+from observability.biblio_librarian_agent_read_model import build_biblio_librarian_agent_summary
 
 
 class _NoopLogger:
@@ -847,6 +848,9 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertEqual(biblio_hour_bucket['metrics']['selected_passages_total'], 1)
         self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_present_turns'], 1)
         self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_model_called_turns'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_candidate_plan_turns'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_deterministic_controlled_turns'], 1)
+        self.assertNotIn('librarian_agent_fallback_turns', biblio_hour_bucket['metrics'])
         self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_tool_call_events_total'], 0)
         self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_validation_tool_calls_total'], 1)
         self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_mode_counts']['shadow'], 1)
@@ -863,6 +867,75 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertNotIn('message', self._collect_keys(fact))
         self.assertNotIn('payload', self._collect_keys(fact))
         self.assertNotIn('params', self._collect_keys(fact))
+
+    def test_biblio_module_declares_librarian_agent_metrics_and_current_limits(self) -> None:
+        catalog = dashboard_analytics.build_dashboard_module_catalog()
+        biblio_module = next(module for module in catalog['modules'] if module['module_key'] == 'biblio')
+        global_metrics = biblio_module['global_metrics']
+        limits = ' '.join(biblio_module['limits'])
+
+        for metric in (
+            'librarian_agent_present_turns',
+            'librarian_agent_model_called_turns',
+            'librarian_agent_candidate_plan_turns',
+            'librarian_agent_deterministic_controlled_turns',
+            'librarian_agent_used_for_response_turns',
+            'librarian_agent_product_response_changed_turns',
+            'librarian_agent_attempts_total',
+            'librarian_agent_duration_ms_total',
+            'librarian_agent_response_chars_total',
+            'librarian_agent_tool_call_events_total',
+            'librarian_agent_validation_tool_calls_total',
+            'librarian_agent_mode_counts',
+            'librarian_agent_status_counts',
+            'librarian_agent_reason_counts',
+            'librarian_agent_model_status_counts',
+            'librarian_agent_validation_status_counts',
+            'librarian_agent_tool_execution_status_counts',
+            'librarian_agent_tool_name_counts',
+        ):
+            self.assertIn(metric, global_metrics)
+        self.assertNotIn('librarian_agent_fallback_turns', global_metrics)
+        self.assertIn('controleur de reponse produit', limits)
+        self.assertIn('N execute pas les outils agentiques', limits)
+        self.assertNotIn('Ne branche pas le chat ni le frontend Biblio', limits)
+
+    def test_librarian_agent_read_model_parses_boolean_tokens_strictly(self) -> None:
+        summary = build_biblio_librarian_agent_summary(
+            {
+                'librarian_agent': {
+                    'present': 'false',
+                    'model_called': 'false',
+                    'candidate_plan_present': '0',
+                    'used_for_response': 'no',
+                    'product_response_changed': 'off',
+                    'deterministic_controller': 'false',
+                    'fallback_deterministic': 'yes',
+                    'agent_loop_executed': 'not really',
+                    'request_observation': {
+                        'user_message_present': 'false',
+                        'biblio_state_present': '0',
+                        'deterministic_plan_present': 'no',
+                    },
+                    'agent': {
+                        'model': {'fallback_model_used': 'false'},
+                    },
+                },
+            }
+        )
+
+        self.assertFalse(summary['present'])
+        self.assertFalse(summary['model_called'])
+        self.assertFalse(summary['candidate_plan_present'])
+        self.assertFalse(summary['used_for_response'])
+        self.assertFalse(summary['product_response_changed'])
+        self.assertFalse(summary['deterministic_controller'])
+        self.assertTrue(summary['fallback_deterministic'])
+        self.assertFalse(summary['agent_loop_executed'])
+        self.assertFalse(summary['user_message_present'])
+        self.assertFalse(summary['biblio_state_present'])
+        self.assertFalse(summary['deterministic_plan_present'])
+        self.assertFalse(summary['fallback_model_used'])
 
     def test_persisted_turn_fact_preserves_biblio_json_content_free(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)

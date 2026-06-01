@@ -998,8 +998,13 @@ Risque de debug impossible ou de fuite de contenu/prompt/payload.
 - [x] Sanitizer Biblio ajuste pour conserver les tokens/hashes agentiques
   lisibles sans brut.
 - [x] Read-model dashboard: resume compact `biblio.librarian_agent`.
-- [x] Aggregats dashboard Biblio pour mode, statut, appels modele, fallback,
-  validation JSON et absence d'execution d'outils agentiques.
+- [x] Aggregats dashboard Biblio pour mode, statut, appels modele, controle
+  deterministe normal, validation JSON et absence d'execution d'outils
+  agentiques.
+- [x] Metriques agent declarees dans le module observable Biblio, sans compteur
+  `fallback` ambigu.
+- [x] Read-model agent defensif: les chaines `"false"` / `"0"` ne deviennent
+  pas des booleens vrais.
 - [x] Tests anti-fuite Biblio + dashboard/read-model.
 
 ### Tests / preuves

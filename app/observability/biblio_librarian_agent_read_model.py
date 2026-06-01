@@ -6,6 +6,8 @@ from typing import Any, Mapping, Sequence
 
 _TOKEN_CHARS = set('abcdefghijklmnopqrstuvwxyz0123456789_-.:/')
 _HEX_CHARS = set('0123456789abcdef')
+_TRUE_TOKENS = {'1', 'true', 'yes', 'y', 'on'}
+_FALSE_TOKENS = {'0', 'false', 'no', 'n', 'off'}
 
 
 def build_biblio_librarian_agent_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -33,32 +35,32 @@ def build_biblio_librarian_agent_summary(payload: Mapping[str, Any]) -> dict[str
     validation_plan = _mapping(validation.get('plan'))
     model = _mapping(agent.get('model'))
     return {
-        'present': bool(agent_payload.get('present')),
+        'present': _to_bool(agent_payload.get('present')),
         'comparison_kind': _token(agent_payload.get('comparison_kind')),
         'status': _token(agent_payload.get('status')),
         'reason_code': _token(agent_payload.get('reason_code')),
         'mode': _token(agent_payload.get('mode')),
-        'model_called': bool(agent_payload.get('model_called')),
-        'candidate_plan_present': bool(agent_payload.get('candidate_plan_present')),
-        'used_for_response': bool(agent_payload.get('used_for_response')),
-        'product_response_changed': bool(agent_payload.get('product_response_changed')),
-        'deterministic_controller': bool(agent_payload.get('deterministic_controller')),
-        'fallback_deterministic': bool(agent_payload.get('fallback_deterministic')),
+        'model_called': _to_bool(agent_payload.get('model_called')),
+        'candidate_plan_present': _to_bool(agent_payload.get('candidate_plan_present')),
+        'used_for_response': _to_bool(agent_payload.get('used_for_response')),
+        'product_response_changed': _to_bool(agent_payload.get('product_response_changed')),
+        'deterministic_controller': _to_bool(agent_payload.get('deterministic_controller')),
+        'fallback_deterministic': _to_bool(agent_payload.get('fallback_deterministic')),
         'tool_execution_status': _token(agent_payload.get('tool_execution_status')) or 'not_executed',
         'tool_call_event_count': _to_int(agent_payload.get('tool_call_event_count')),
         'selection_event_count': _to_int(agent_payload.get('selection_event_count')),
         'state_update_event_count': _to_int(agent_payload.get('state_update_event_count')),
         'final_event_count': _to_int(agent_payload.get('final_event_count')),
-        'agent_loop_executed': bool(agent_payload.get('agent_loop_executed')),
+        'agent_loop_executed': _to_bool(agent_payload.get('agent_loop_executed')),
         'request_observation_present': bool(request_observation),
-        'user_message_present': bool(request_observation.get('user_message_present')),
+        'user_message_present': _to_bool(request_observation.get('user_message_present')),
         'user_message_chars': _to_int(request_observation.get('user_message_chars')),
         'user_message_hash': _hash(request_observation.get('user_message_hash')),
         'recent_dialogue_count': _to_int(request_observation.get('recent_dialogue_count')),
         'bounded_recent_dialogue_count': _to_int(request_observation.get('bounded_recent_dialogue_count')),
         'recent_dialogue_hashes': _hashes(request_observation.get('recent_dialogue_hashes')),
-        'biblio_state_present': bool(request_observation.get('biblio_state_present')),
-        'deterministic_plan_present': bool(request_observation.get('deterministic_plan_present')),
+        'biblio_state_present': _to_bool(request_observation.get('biblio_state_present')),
+        'deterministic_plan_present': _to_bool(request_observation.get('deterministic_plan_present')),
         'deterministic_status': _token(deterministic.get('status')),
         'deterministic_reason_code': _token(deterministic.get('reason_code')),
         'deterministic_query_kind': _token(deterministic.get('query_kind')),
@@ -83,7 +85,7 @@ def build_biblio_librarian_agent_summary(payload: Mapping[str, Any]) -> dict[str
         'status_code': _to_int(model.get('status_code')),
         'response_chars': _to_int(model.get('response_chars')),
         'attempt_count': _to_int(model.get('attempt_count')),
-        'fallback_model_used': bool(model.get('fallback_model_used')),
+        'fallback_model_used': _to_bool(model.get('fallback_model_used')),
         'primary_reason_code': _token(model.get('primary_reason_code')),
         'raw_content_included': False,
     }
@@ -106,6 +108,24 @@ def _to_int(value: Any) -> int:
         return int(value or 0)
     except (TypeError, ValueError):
         return 0
+
+
+def _to_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        if value == 1:
+            return True
+        if value == 0:
+            return False
+        return False
+    if isinstance(value, str):
+        token = value.strip().lower()
+        if token in _TRUE_TOKENS:
+            return True
+        if token in _FALSE_TOKENS:
+            return False
+    return False
 
 
 def _token(value: Any, *, max_chars: int = 120) -> str | None:

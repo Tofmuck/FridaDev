@@ -216,7 +216,7 @@ def _reduce_biblio_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> 
         )
         _add_metric_count(
             metrics,
-            'librarian_agent_fallback_turns',
+            'librarian_agent_deterministic_controlled_turns',
             1 if librarian_agent.get('fallback_deterministic') else 0,
         )
         _add_metric_count(
@@ -772,6 +772,24 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('context_fetch_total', 'Contextes Catalogue consultes'),
             ('selected_passages_total', 'Passages selectionnes avec certitude'),
             ('ambiguous_turns', 'Tours Biblio ambigus'),
+            ('librarian_agent_present_turns', 'Tours avec comparaison agent bibliothecaire observee'),
+            ('librarian_agent_model_called_turns', 'Tours avec appel modele agent bibliothecaire'),
+            ('librarian_agent_candidate_plan_turns', 'Tours avec plan candidat agent observe'),
+            ('librarian_agent_deterministic_controlled_turns', 'Tours ou le deterministe reste controleur'),
+            ('librarian_agent_used_for_response_turns', 'Tours ou l agent controle la reponse produit'),
+            ('librarian_agent_product_response_changed_turns', 'Tours ou l agent modifie la reponse produit'),
+            ('librarian_agent_attempts_total', 'Tentatives modele agent bibliothecaire'),
+            ('librarian_agent_duration_ms_total', 'Duree totale modele agent bibliothecaire'),
+            ('librarian_agent_response_chars_total', 'Taille totale des sorties modele agent'),
+            ('librarian_agent_tool_call_events_total', 'Evenements outil agentique executes'),
+            ('librarian_agent_validation_tool_calls_total', 'Appels outil proposes par le JSON valide'),
+            ('librarian_agent_mode_counts', 'Modes agent bibliothecaire observes'),
+            ('librarian_agent_status_counts', 'Etats agent bibliothecaire observes'),
+            ('librarian_agent_reason_counts', 'Raisons agent bibliothecaire observees'),
+            ('librarian_agent_model_status_counts', 'Etats modele agent observes'),
+            ('librarian_agent_validation_status_counts', 'Etats validation JSON agent observes'),
+            ('librarian_agent_tool_execution_status_counts', 'Etats execution outils agentiques'),
+            ('librarian_agent_tool_name_counts', 'Noms outils agentiques allowlistes proposes'),
         ),
         conversation_summary=_fields(
             ('biblio_used_turns', 'Tours avec Biblio consultee'),
@@ -794,7 +812,9 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         ),
         sources=('biblio events', 'dashboard_turn_facts.biblio', 'biblio observability projection'),
         limits=(
-            'Ne branche pas le chat ni le frontend Biblio.',
+            'N active pas l agent bibliothecaire comme controleur de reponse produit.',
+            'N execute pas les outils agentiques proposes par le comparateur.',
+            'Le toggle frontend Biblio et le branchement chat deterministe existent deja mais sont hors perimetre de cette observabilite.',
             'Ne contient jamais le passage, le payload Catalogue, le prompt complet, le locator brut, titre ou auteur.',
             'Les recherches de passages exposent seulement counts, endpoint kinds, ids courts, hashes courts et raisons compactes.',
             'Reste separe des documents actifs, Memory/RAG, workspace, Identity, Summary, Web et OCR.',
