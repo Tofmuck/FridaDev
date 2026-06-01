@@ -758,7 +758,8 @@ Implementation:
   `OPENROUTER_TITLE_BIBLIO_LIBRARIAN`;
 - payload OpenRouter: `response_format.type=json_schema`,
   `json_schema.name=biblio_librarian_agent_v1`, `strict=true`,
-  `provider.require_parameters=true`;
+  `provider.require_parameters=true`, avec schemas d'outils bornes par outil
+  et alignes sur `librarian_tools.py`;
 - le contrat JSON est obligatoire dans le Lot 7; il n'existe plus de setting
   operateur pour le desactiver;
 - le fallback modele est tente seulement si un `fallback_model` est configure
@@ -773,8 +774,17 @@ Validation:
 - JSON absent, invalide, tronque ou texte libre -> fallback deterministe;
 - schema version inconnue -> fallback deterministe;
 - champs racine en trop, champs requis absents, `risk_flags` invalides,
-  call keys en trop, params inconnus ou params hors bornes -> fallback
-  deterministe;
+  call keys en trop -> fallback deterministe;
+- params inconnus, params hors bornes ou params insuffisants pour executer
+  l'outil GET-only -> fallback deterministe avec
+  `biblio_librarian_agent_tool_not_executable`;
+- `catalog_search` exige `q` ou `query`, limite <= 50 et offset 0;
+- `document_open_summary` exige un document explicite ou une requete, limite
+  <= 20;
+- `document_toc` exige un document explicite, limite <= 500;
+- `locate` exige un document explicite et un locator/label, limite <= 200;
+- `passage_context` exige un document explicite et soit `paragraph_id`, soit
+  `page_no` + `para_no`;
 - `tool_calls` au-dela du budget -> fallback deterministe;
 - outil interdit (`page_read`, `latest/page`, `latest/context`,
   `export/chunk`, mutateurs) -> fallback deterministe;
@@ -784,6 +794,8 @@ Validation:
 - timeout ou erreur provider primaire -> fallback modele seulement si le
   budget d'appels modele le permet;
 - modele ou cle provider absents -> aucun appel provider;
+- `model_called` signifie tentative provider reelle (`attempt_count > 0`), pas
+  simple invocation de l'adaptateur local;
 - `active` -> aucun appel provider dans le Lot 7;
 - dialogue recent borne a `BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS`.
 
@@ -821,6 +833,9 @@ NO-GO retroactif Lot 7 si un patch ulterieur:
 - execute les outils proposes par le modele dans le chat sans validation
   comparative;
 - conserve le raw JSON modele dans un resultat durable;
+- annonce `model_called=true` alors qu'aucune tentative provider n'a eu lieu;
+- valide un plan que `librarian_tools.py` rejetterait immediatement faute de
+  query, document, position ou borne specifique;
 - hardcode DeepSeek V4 Pro ou un autre modele comme default actif;
 - remplace le chemin deterministe sans rollback;
 - expose un contenu brut dans admin/dashboard/logs/read-model/smokes.

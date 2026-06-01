@@ -45,17 +45,24 @@ modele reel et sans activation produit.
 - Rejeter localement les payloads hors schema: champs racine en trop, champs
   requis absents, `risk_flags` invalides, params inconnus et params hors
   bornes.
+- Rejeter localement les plans schema-valid mais non executables par
+  `librarian_tools.py`: query manquante pour `catalog_search`, document_id
+  manquant pour TOC/locate/context, position manquante pour
+  `passage_context`, bornes par outil et offset search non nul.
 - Garder le contrat JSON obligatoire; ne pas exposer de knob operateur pour le
   desactiver dans le Lot 7.
 - Tenter le fallback modele configure uniquement quand `max_model_calls >= 2`.
 - Ne jamais conserver le prompt complet, le raw JSON modele ou un payload
   provider brut dans le resultat observe.
+- Observer `model_called=true` seulement quand une tentative provider a eu
+  lieu (`attempt_count > 0`), pas sur une sortie locale modele/cle absente.
 
 ## Fallbacks exiges
 
-- modele absent ou cle absente: aucun appel provider;
+- modele absent ou cle absente: aucun appel provider et `model_called=false`;
 - timeout provider primaire: fallback modele si configure et budgetise, sinon
-  fallback deterministe;
+  fallback deterministe; la tentative provider reste observable avec
+  `attempt_count=1`;
 - erreur HTTP/provider primaire: fallback modele si configure et budgetise,
   sinon fallback deterministe;
 - finish reason `length`: sortie tronquee, fallback deterministe;

@@ -132,14 +132,15 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
     def test_local_validation_rejects_payloads_outside_announced_schema(self) -> None:
         base = json.loads(_valid_json())
         cases = [
-            ("extra_root", {**base, "extra": "oops"}),
-            ("missing_intent", {key: value for key, value in base.items() if key != "intent"}),
-            ("missing_answer_mode", {key: value for key, value in base.items() if key != "answer_mode"}),
-            ("bad_risk_flags_type", {**base, "risk_flags": "oops"}),
-            ("too_many_risk_flags", {**base, "risk_flags": [f"flag_{index}" for index in range(13)]}),
+            ("extra_root", {**base, "extra": "oops"}, contract.REASON_SCHEMA_INVALID),
+            ("missing_intent", {key: value for key, value in base.items() if key != "intent"}, contract.REASON_SCHEMA_INVALID),
+            ("missing_answer_mode", {key: value for key, value in base.items() if key != "answer_mode"}, contract.REASON_SCHEMA_INVALID),
+            ("bad_risk_flags_type", {**base, "risk_flags": "oops"}, contract.REASON_SCHEMA_INVALID),
+            ("too_many_risk_flags", {**base, "risk_flags": [f"flag_{index}" for index in range(13)]}, contract.REASON_SCHEMA_INVALID),
             (
                 "extra_call_key",
                 {**base, "tool_calls": [{**base["tool_calls"][0], "extra": "oops"}]},
+                contract.REASON_SCHEMA_INVALID,
             ),
             (
                 "missing_call_method",
@@ -149,6 +150,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         {key: value for key, value in base["tool_calls"][0].items() if key != "method"}
                     ],
                 },
+                contract.REASON_SCHEMA_INVALID,
             ),
             (
                 "extra_param",
@@ -158,6 +160,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         {"tool_name": tools.TOOL_CATALOG_LIST, "method": "GET", "params": {"limit": 10, "raw": "x"}}
                     ],
                 },
+                contract.REASON_TOOL_NOT_EXECUTABLE,
             ),
             (
                 "huge_limit",
@@ -167,6 +170,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         {"tool_name": tools.TOOL_CATALOG_LIST, "method": "GET", "params": {"limit": 999999}}
                     ],
                 },
+                contract.REASON_TOOL_NOT_EXECUTABLE,
             ),
             (
                 "bad_param_type",
@@ -176,13 +180,76 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         {"tool_name": tools.TOOL_CATALOG_LIST, "method": "GET", "params": {"limit": "10"}}
                     ],
                 },
+                contract.REASON_TOOL_NOT_EXECUTABLE,
             ),
         ]
-        for name, payload in cases:
+        for name, payload, reason in cases:
             with self.subTest(name=name):
                 validation = contract.validate_agent_payload(payload)
                 self.assertEqual(validation.status, contract.STATUS_REJECTED)
-                self.assertEqual(validation.reason_code, contract.REASON_SCHEMA_INVALID)
+                self.assertEqual(validation.reason_code, reason)
+
+    def test_local_validation_rejects_tool_contract_mismatches_before_execution(self) -> None:
+        base = json.loads(_valid_json())
+        cases = [
+            (
+                "catalog_search_no_query",
+                {"tool_name": tools.TOOL_CATALOG_SEARCH, "method": "GET", "params": {}},
+            ),
+            (
+                "document_toc_no_document_id",
+                {"tool_name": tools.TOOL_DOCUMENT_TOC, "method": "GET", "params": {"limit": 10}},
+            ),
+            (
+                "passage_context_no_position",
+                {"tool_name": tools.TOOL_PASSAGE_CONTEXT, "method": "GET", "params": {"document_id": "doc-1"}},
+            ),
+            (
+                "catalog_search_limit_too_high",
+                {"tool_name": tools.TOOL_CATALOG_SEARCH, "method": "GET", "params": {"query": "x", "limit": 500}},
+            ),
+            (
+                "document_open_summary_limit_too_high",
+                {"tool_name": tools.TOOL_DOCUMENT_OPEN_SUMMARY, "method": "GET", "params": {"document_id": "doc-1", "limit": 500}},
+            ),
+            (
+                "locate_limit_too_high",
+                {"tool_name": tools.TOOL_LOCATE, "method": "GET", "params": {"document_id": "doc-1", "locator": "126b", "limit": 500}},
+            ),
+            (
+                "catalog_search_offset_disallowed",
+                {"tool_name": tools.TOOL_CATALOG_SEARCH, "method": "GET", "params": {"query": "x", "offset": 10}},
+            ),
+        ]
+        for name, call in cases:
+            with self.subTest(name=name):
+                validation = contract.validate_agent_payload({**base, "tool_calls": [call]})
+                self.assertEqual(validation.status, contract.STATUS_REJECTED)
+                self.assertEqual(validation.reason_code, contract.REASON_TOOL_NOT_EXECUTABLE)
+
+    def test_local_validation_accepts_tool_contract_valid_cases(self) -> None:
+        base = json.loads(_valid_json())
+        cases = [
+            {
+                "tool_name": tools.TOOL_CATALOG_SEARCH,
+                "method": "GET",
+                "params": {"query": "x", "limit": 50, "offset": 0},
+            },
+            {
+                "tool_name": tools.TOOL_DOCUMENT_TOC,
+                "method": "GET",
+                "params": {"document_id": "doc-1", "limit": 500},
+            },
+            {
+                "tool_name": tools.TOOL_PASSAGE_CONTEXT,
+                "method": "GET",
+                "params": {"document_id": "doc-1", "paragraph_id": 123, "window_chars": 700},
+            },
+        ]
+        for call in cases:
+            with self.subTest(tool=call["tool_name"]):
+                validation = contract.validate_agent_payload({**base, "tool_calls": [call]})
+                self.assertEqual(validation.status, contract.STATUS_VALIDATED)
 
     def test_budget_exceeded_before_and_after_model_call(self) -> None:
         no_model_budget = agent.BiblioLibrarianAgent(_FakeModelClient(_valid_json())).run(
@@ -212,11 +279,13 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             openrouter.BiblioLibrarianAgentModelResponse(
                 status=openrouter.STATUS_ERROR,
                 reason_code=openrouter.REASON_TIMEOUT,
+                attempt_count=1,
             ),
             openrouter.BiblioLibrarianAgentModelResponse(
                 status=openrouter.STATUS_ERROR,
                 reason_code=openrouter.REASON_PROVIDER_ERROR,
                 status_code=502,
+                attempt_count=1,
             ),
         ]:
             with self.subTest(reason=response.reason_code):
@@ -230,6 +299,33 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 )
                 self.assertEqual(result.status, agent.STATUS_FALLBACK_DETERMINISTIC)
                 self.assertEqual(result.reason_code, response.reason_code)
+                self.assertTrue(result.model_called)
+
+    def test_no_model_or_provider_key_does_not_claim_model_called(self) -> None:
+        for response in [
+            openrouter.BiblioLibrarianAgentModelResponse(
+                status=openrouter.STATUS_ERROR,
+                reason_code=openrouter.REASON_MODEL_NOT_CONFIGURED,
+                attempt_count=0,
+            ),
+            openrouter.BiblioLibrarianAgentModelResponse(
+                status=openrouter.STATUS_ERROR,
+                reason_code=openrouter.REASON_PROVIDER_NOT_CONFIGURED,
+                attempt_count=0,
+            ),
+        ]:
+            with self.subTest(reason=response.reason_code):
+                result = agent.BiblioLibrarianAgent(_FakeModelClient(response=response)).run(
+                    _request(
+                        settings=contract.BiblioLibrarianAgentSettings(
+                            mode=contract.MODE_SHADOW,
+                            primary_model="model/x",
+                        )
+                    )
+                )
+                self.assertEqual(result.status, agent.STATUS_FALLBACK_DETERMINISTIC)
+                self.assertEqual(result.reason_code, response.reason_code)
+                self.assertFalse(result.model_called)
 
     def test_recent_dialogue_is_bounded_and_observable_without_content(self) -> None:
         request = _request(
@@ -299,9 +395,15 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertTrue(response_format["json_schema"]["strict"])
         self.assertEqual(response_format["json_schema"]["name"], contract.SCHEMA_VERSION)
         self.assertFalse(response_format["json_schema"]["schema"]["additionalProperties"])
-        params = response_format["json_schema"]["schema"]["properties"]["tool_calls"]["items"]["properties"]["params"]
+        tool_items = response_format["json_schema"]["schema"]["properties"]["tool_calls"]["items"]
+        self.assertEqual(len(tool_items["oneOf"]), len(tools.LOT3_TOOL_NAMES))
+        catalog_search = next(
+            item for item in tool_items["oneOf"] if item["properties"]["tool_name"]["enum"] == [tools.TOOL_CATALOG_SEARCH]
+        )
+        params = catalog_search["properties"]["params"]
         self.assertFalse(params["additionalProperties"])
-        self.assertEqual(params["properties"]["limit"]["maximum"], 500)
+        self.assertEqual(params["properties"]["limit"]["maximum"], 50)
+        self.assertEqual(params["properties"]["offset"]["maximum"], 0)
 
     def test_settings_from_config_keeps_json_contract_required_and_parses_booleans(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings.from_config(
@@ -346,6 +448,20 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
 
         self.assertEqual(response.reason_code, openrouter.REASON_MODEL_NOT_CONFIGURED)
         self.assertFalse(called["value"])
+        self.assertEqual(response.attempt_count, 0)
+
+        response = client.complete(
+            _request(
+                settings=contract.BiblioLibrarianAgentSettings(
+                    mode=contract.MODE_SHADOW,
+                    primary_model="model/x",
+                )
+            )
+        )
+
+        self.assertEqual(response.reason_code, openrouter.REASON_PROVIDER_NOT_CONFIGURED)
+        self.assertFalse(called["value"])
+        self.assertEqual(response.attempt_count, 0)
 
     def test_openrouter_client_uses_fallback_model_when_budget_allows(self) -> None:
         calls: list[str] = []
@@ -442,6 +558,7 @@ class _FakeModelClient:
             model_effective="model/x",
             finish_reason=self._finish_reason,
             response_chars=len(self._content),
+            attempt_count=1,
         )
 
 

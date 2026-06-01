@@ -797,6 +797,10 @@ du contenu brut.
 - [x] Rejeter localement les payloads hors schema: champs racine en trop,
   champs requis absents, `risk_flags` invalides, params inconnus et bornes de
   params depassees.
+- [x] Aligner la validation locale sur les contraintes executables de
+  `librarian_tools.py`: query obligatoire pour `catalog_search`, document_id
+  obligatoire pour TOC/locate/context, position obligatoire pour
+  `passage_context`, limites par outil et offset de recherche borne.
 - [x] Refuser `active` avant appel modele dans le Lot 7.
 - [x] Implementer le fallback modele configure seulement si
   `max_model_calls >= 2`.
@@ -836,6 +840,12 @@ du contenu brut.
 - [x] budget modele et budget tool calls: rejet propre.
 - [x] timeout / erreur provider primaire: tentative du fallback modele si
   configure et budget `max_model_calls >= 2`, sinon fallback deterministe.
+- [x] modele absent ou cle provider absente: aucun appel provider et
+  `model_called=false`.
+- [x] timeout provider simule: tentative provider observee,
+  `attempt_count=1` et `model_called=true`.
+- [x] plans JSON valides mais non executables par les outils GET-only rejetes
+  avant toute execution.
 - [x] dialogue recent borne a `max_recent_turns`.
 - [x] fixtures produit anaphoriques transmises au modele avec message courant,
   dialogue recent borne, etat Biblio et outils disponibles; cela ne prouve pas
@@ -1126,15 +1136,16 @@ Risque de declarer trop vite que Frida a une bibliotheque produit devant elle.
 
 ## Risques documentes mais non corriges par cette TODO
 
-- Pas encore d'agent bibliothecaire runtime.
-- Contrat agent bibliothecaire Lot 2 livre, mais pas encore implemente.
-- Etat Biblio conversationnel Lot 1/Lot 1 bis livre et exploite, mais borne a un etat content-free, un attachement conditionnel, des clarifications et une persistance seulement apres sauvegarde normale reussie.
+- Pas encore de branchement chat produit de l'agent bibliothecaire.
+- Pas encore de smoke modele reel OpenRouter dans l'environnement live.
+- Pas encore d'activation `active` produit.
+- Pas encore de section runtime settings admin/DB dediee au modele agent.
 - Pas encore d'outil page cote FridaDev; P09 reste une surveillance, pas une promesse de navigation complete.
 - P03 reste une surveillance planner/intention, pas une promesse de correction complete par l'etat Lot 1.
 - Pas encore de navigation precedente/suivante complete cote FridaDev.
-- Pas encore de verification OpenRouter actuelle pour JSON/structured outputs; l'artefact date reste gate obligatoire avant implementation runtime.
-- Pas encore de section runtime settings implementee pour le modele agent.
-- Pas encore de preuve runtime fallback modele/fallback deterministe agent.
+- Risques stale retires: verification OpenRouter/JSON datee, contrat agent,
+  config env, fallback modele configure, fallback deterministe, validation
+  d'outils interdits et validation locale des plans non executables.
 
 ## Risques que la future architecture devra reduire
 
@@ -1183,6 +1194,6 @@ NO-GO Lot 5 si la boucle Lot 4 n'est plus bornee, fuit via observabilite ou
 regonfle sans necessite vitale, ou si la comprehension implicite/dialogue est
 empilee dans `librarian_planner.py` au lieu d'une responsabilite dediee.
 
-Risques restants reels: agent absent, outil page absent, `export/chunk` absent,
-OpenRouter/JSON non verifie, modele agent non configure, fallback agent non
-prouve.
+Risques restants reels: pas de smoke modele reel, pas de branchement chat
+produit de l'agent, pas d'activation `active`, pas de runtime settings admin/DB
+dedies, outil page absent et `export/chunk` absent.

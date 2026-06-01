@@ -242,28 +242,97 @@ def build_librarian_agent_messages(
     ]
 
 
-def build_librarian_agent_response_format(*, max_tool_calls: int = 5) -> dict[str, Any]:
-    code = {"type": "string", "maxLength": 96, "pattern": "^[A-Za-z0-9_:-]{0,96}$"}
-    params_schema = {
+_CODE_SCHEMA = {"type": "string", "maxLength": 96, "pattern": "^[A-Za-z0-9_:-]{0,96}$"}
+_STRING_SCHEMAS = {
+    "q": {"type": "string", "minLength": 1, "maxLength": 240},
+    "query": {"type": "string", "minLength": 1, "maxLength": 240},
+    "document_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "doc_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "locator": {"type": "string", "minLength": 1, "maxLength": 120},
+    "label": {"type": "string", "minLength": 1, "maxLength": 120},
+    "kind": {"type": "string", "maxLength": 40, "pattern": "^[A-Za-z0-9_:-]{0,40}$"},
+}
+_PARAM_SCHEMAS_BY_TOOL: dict[str, dict[str, Any]] = {
+    tools.TOOL_CATALOG_LIST: {
         "type": "object",
         "additionalProperties": False,
         "properties": {
-            "q": {"type": "string", "maxLength": 240},
-            "query": {"type": "string", "maxLength": 240},
-            "document_id": {"type": "string", "maxLength": 160},
-            "doc_id": {"type": "string", "maxLength": 160},
-            "locator": {"type": "string", "maxLength": 120},
-            "label": {"type": "string", "maxLength": 120},
-            "kind": {"type": "string", "maxLength": 40, "pattern": "^[A-Za-z0-9_:-]{0,40}$"},
+            "q": _STRING_SCHEMAS["q"],
+            "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+            "offset": {"type": "integer", "minimum": 0, "maximum": 100000},
+        },
+    },
+    tools.TOOL_CATALOG_SEARCH: {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "q": _STRING_SCHEMAS["q"],
+            "query": _STRING_SCHEMAS["query"],
+            "limit": {"type": "integer", "minimum": 1, "maximum": 50},
+            "offset": {"type": "integer", "minimum": 0, "maximum": 0},
+        },
+        "anyOf": [{"required": ["q"]}, {"required": ["query"]}],
+    },
+    tools.TOOL_DOCUMENT_OPEN_SUMMARY: {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "document_id": _STRING_SCHEMAS["document_id"],
+            "doc_id": _STRING_SCHEMAS["doc_id"],
+            "q": _STRING_SCHEMAS["q"],
+            "query": _STRING_SCHEMAS["query"],
+            "limit": {"type": "integer", "minimum": 1, "maximum": 20},
+        },
+        "anyOf": [{"required": ["document_id"]}, {"required": ["doc_id"]}, {"required": ["q"]}, {"required": ["query"]}],
+    },
+    tools.TOOL_DOCUMENT_TOC: {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "document_id": _STRING_SCHEMAS["document_id"],
+            "doc_id": _STRING_SCHEMAS["doc_id"],
             "limit": {"type": "integer", "minimum": 1, "maximum": 500},
             "offset": {"type": "integer", "minimum": 0, "maximum": 100000},
+        },
+        "anyOf": [{"required": ["document_id"]}, {"required": ["doc_id"]}],
+    },
+    tools.TOOL_LOCATE: {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "document_id": _STRING_SCHEMAS["document_id"],
+            "doc_id": _STRING_SCHEMAS["doc_id"],
+            "locator": _STRING_SCHEMAS["locator"],
+            "label": _STRING_SCHEMAS["label"],
+            "kind": _STRING_SCHEMAS["kind"],
+            "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+        },
+        "allOf": [
+            {"anyOf": [{"required": ["document_id"]}, {"required": ["doc_id"]}]},
+            {"anyOf": [{"required": ["locator"]}, {"required": ["label"]}]},
+        ],
+    },
+    tools.TOOL_PASSAGE_CONTEXT: {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "document_id": _STRING_SCHEMAS["document_id"],
+            "doc_id": _STRING_SCHEMAS["doc_id"],
             "page_no": {"type": "integer", "minimum": 1, "maximum": 100000},
             "para_no": {"type": "integer", "minimum": 1, "maximum": 100000},
             "paragraph_id": {"type": "integer", "minimum": 1, "maximum": 2147483647},
             "char_offset": {"type": "integer", "minimum": 0, "maximum": 1000000},
             "window_chars": {"type": "integer", "minimum": 80, "maximum": 2000},
         },
-    }
+        "allOf": [
+            {"anyOf": [{"required": ["document_id"]}, {"required": ["doc_id"]}]},
+            {"anyOf": [{"required": ["paragraph_id"]}, {"required": ["page_no", "para_no"]}]},
+        ],
+    },
+}
+
+
+def build_librarian_agent_response_format(*, max_tool_calls: int = 5) -> dict[str, Any]:
     return {
         "type": "json_schema",
         "json_schema": {
@@ -282,27 +351,31 @@ def build_librarian_agent_response_format(*, max_tool_calls: int = 5) -> dict[st
                 ],
                 "properties": {
                     "schema_version": {"type": "string", "enum": [SCHEMA_VERSION]},
-                    "intent": code,
+                    "intent": _CODE_SCHEMA,
                     "tool_calls": {
                         "type": "array",
                         "maxItems": max(0, int(max_tool_calls)),
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "required": ["tool_name", "method", "params"],
-                            "properties": {
-                                "tool_name": {"type": "string", "enum": list(tools.LOT3_TOOL_NAMES)},
-                                "method": {"type": "string", "enum": ["GET"]},
-                                "params": params_schema,
-                                "call_id": code,
-                            },
-                        },
+                        "items": {"oneOf": [_tool_call_schema(tool_name) for tool_name in tools.LOT3_TOOL_NAMES]},
                     },
-                    "answer_mode": code,
-                    "risk_flags": {"type": "array", "items": code, "maxItems": 12},
-                    "fallback_reason": code,
+                    "answer_mode": _CODE_SCHEMA,
+                    "risk_flags": {"type": "array", "items": _CODE_SCHEMA, "maxItems": 12},
+                    "fallback_reason": _CODE_SCHEMA,
                 },
             },
+        },
+    }
+
+
+def _tool_call_schema(tool_name: str) -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["tool_name", "method", "params"],
+        "properties": {
+            "tool_name": {"type": "string", "enum": [tool_name]},
+            "method": {"type": "string", "enum": ["GET"]},
+            "params": _PARAM_SCHEMAS_BY_TOOL[tool_name],
+            "call_id": _CODE_SCHEMA,
         },
     }
 

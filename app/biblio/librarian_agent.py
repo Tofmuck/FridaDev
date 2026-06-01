@@ -87,12 +87,13 @@ class BiblioLibrarianAgent:
 
         model_response = self._model_client.complete(request, settings=request.settings)
         model_observation = model_response.to_observability()
+        provider_called = _provider_called(model_observation)
         if model_response.status != openrouter.STATUS_OK:
             return BiblioLibrarianAgentResult(
                 status=STATUS_FALLBACK_DETERMINISTIC,
                 reason_code=model_response.reason_code,
                 mode=mode,
-                model_called=True,
+                model_called=provider_called,
                 fallback_deterministic=True,
                 model_observation=model_observation,
             )
@@ -108,7 +109,7 @@ class BiblioLibrarianAgent:
                 status=STATUS_FALLBACK_DETERMINISTIC,
                 reason_code=validation.reason_code,
                 mode=mode,
-                model_called=True,
+                model_called=provider_called,
                 fallback_deterministic=True,
                 validation_observation=validation_observation,
                 model_observation=model_observation,
@@ -119,7 +120,7 @@ class BiblioLibrarianAgent:
                 status=STATUS_SHADOW_READY,
                 reason_code=REASON_SHADOW_VALIDATED,
                 mode=mode,
-                model_called=True,
+                model_called=provider_called,
                 fallback_deterministic=True,
                 candidate_plan=validation.plan,
                 validation_observation=validation_observation,
@@ -130,7 +131,7 @@ class BiblioLibrarianAgent:
                 status=STATUS_CANDIDATE_READY,
                 reason_code=REASON_CANDIDATE_VALIDATED,
                 mode=mode,
-                model_called=True,
+                model_called=provider_called,
                 fallback_deterministic=True,
                 candidate_plan=validation.plan,
                 validation_observation=validation_observation,
@@ -143,3 +144,10 @@ class BiblioLibrarianAgent:
             model_called=False,
             fallback_deterministic=True,
         )
+
+
+def _provider_called(model_observation: dict[str, Any]) -> bool:
+    try:
+        return int(model_observation.get("attempt_count") or 0) > 0
+    except (TypeError, ValueError):
+        return False

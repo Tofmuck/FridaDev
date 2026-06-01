@@ -35,6 +35,7 @@ REASON_SCHEMA_INVALID = "biblio_librarian_agent_schema_invalid"
 REASON_TOOL_FORBIDDEN = "biblio_librarian_agent_forbidden_tool"
 REASON_TOOL_UNKNOWN = "biblio_librarian_agent_unknown_tool"
 REASON_METHOD_FORBIDDEN = "biblio_librarian_agent_forbidden_method"
+REASON_TOOL_NOT_EXECUTABLE = "biblio_librarian_agent_tool_not_executable"
 REASON_BUDGET_EXCEEDED = "biblio_librarian_agent_budget_exceeded"
 
 _HASH_LEN = 12
@@ -60,20 +61,43 @@ _INT_PARAM_BOUNDS = {
     "char_offset": (0, 1_000_000),
     "window_chars": (80, 2_000),
 }
-_ALLOWED_PARAMS_BY_TOOL = {
-    tools.TOOL_CATALOG_LIST: {"q", "limit", "offset"},
-    tools.TOOL_CATALOG_SEARCH: {"q", "query", "limit", "offset"},
-    tools.TOOL_DOCUMENT_OPEN_SUMMARY: {"document_id", "doc_id", "q", "query", "limit"},
-    tools.TOOL_DOCUMENT_TOC: {"document_id", "doc_id", "limit", "offset"},
-    tools.TOOL_LOCATE: {"document_id", "doc_id", "locator", "label", "kind", "limit"},
+_TOOL_PARAM_CONTRACTS = {
+    tools.TOOL_CATALOG_LIST: {
+        "allowed": {"q", "limit", "offset"},
+        "required_any": (),
+        "int_bounds": {"limit": (1, 100), "offset": (0, 100_000)},
+    },
+    tools.TOOL_CATALOG_SEARCH: {
+        "allowed": {"q", "query", "limit", "offset"},
+        "required_any": (("q", "query"),),
+        "int_bounds": {"limit": (1, 50), "offset": (0, 0)},
+    },
+    tools.TOOL_DOCUMENT_OPEN_SUMMARY: {
+        "allowed": {"document_id", "doc_id", "q", "query", "limit"},
+        "required_any": (("document_id", "doc_id", "q", "query"),),
+        "int_bounds": {"limit": (1, 20)},
+    },
+    tools.TOOL_DOCUMENT_TOC: {
+        "allowed": {"document_id", "doc_id", "limit", "offset"},
+        "required_any": (("document_id", "doc_id"),),
+        "int_bounds": {"limit": (1, 500), "offset": (0, 100_000)},
+    },
+    tools.TOOL_LOCATE: {
+        "allowed": {"document_id", "doc_id", "locator", "label", "kind", "limit"},
+        "required_any": (("document_id", "doc_id"), ("locator", "label")),
+        "int_bounds": {"limit": (1, 200)},
+    },
     tools.TOOL_PASSAGE_CONTEXT: {
-        "document_id",
-        "doc_id",
-        "page_no",
-        "para_no",
-        "paragraph_id",
-        "char_offset",
-        "window_chars",
+        "allowed": {"document_id", "doc_id", "page_no", "para_no", "paragraph_id", "char_offset", "window_chars"},
+        "required_any": (("document_id", "doc_id"),),
+        "required_position": True,
+        "int_bounds": {
+            "page_no": (1, 100_000),
+            "para_no": (1, 100_000),
+            "paragraph_id": (1, 2_147_483_647),
+            "char_offset": (0, 1_000_000),
+            "window_chars": (80, 2_000),
+        },
     },
 }
 
@@ -296,7 +320,7 @@ def validate_agent_payload(
         if not isinstance(params, Mapping):
             return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
         if not _valid_params(tool_name, params):
-            return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+            return _rejected(REASON_TOOL_NOT_EXECUTABLE, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
         calls.append(
             planner.BiblioLibrarianToolCall(
                 tool_name=tool_name,
@@ -381,13 +405,30 @@ def _valid_risk_flags(value: Any) -> bool:
 
 
 def _valid_params(tool_name: str, params: Mapping[str, Any]) -> bool:
-    if not set(params.keys()).issubset(_ALLOWED_PARAMS_BY_TOOL.get(tool_name, set())):
+    contract = _TOOL_PARAM_CONTRACTS.get(tool_name)
+    if not contract:
         return False
+    allowed = contract.get("allowed", set())
+    if not isinstance(allowed, set) or not set(params.keys()).issubset(allowed):
+        return False
+    required_any = contract.get("required_any", ())
+    for alternatives in required_any:
+        if not any(_present_param(params, key) for key in alternatives):
+            return False
+    if contract.get("required_position"):
+        has_paragraph = _present_param(params, "paragraph_id")
+        has_page_pair = _present_param(params, "page_no") and _present_param(params, "para_no")
+        if not has_paragraph and not has_page_pair:
+            return False
+    int_bounds = contract.get("int_bounds", {})
     for key, value in params.items():
         if key in _TEXT_PARAM_MAX:
             if not isinstance(value, str):
                 return False
-            if len(value.strip()) > _TEXT_PARAM_MAX[key]:
+            stripped = value.strip()
+            if len(stripped) > _TEXT_PARAM_MAX[key]:
+                return False
+            if key in {"document_id", "doc_id", "q", "query", "locator", "label"} and not stripped:
                 return False
             if key == "kind" and not _valid_code(value):
                 return False
@@ -395,12 +436,21 @@ def _valid_params(tool_name: str, params: Mapping[str, Any]) -> bool:
         if key in _INT_PARAM_BOUNDS:
             if type(value) is not int:
                 return False
-            minimum, maximum = _INT_PARAM_BOUNDS[key]
+            minimum, maximum = int_bounds.get(key, _INT_PARAM_BOUNDS[key])
             if value < minimum or value > maximum:
                 return False
             continue
         return False
     return True
+
+
+def _present_param(params: Mapping[str, Any], key: str) -> bool:
+    value = params.get(key)
+    if isinstance(value, str):
+        return bool(value.strip())
+    if key in _INT_PARAM_BOUNDS:
+        return type(value) is int
+    return value is not None
 
 
 def _positive_int(value: Any, default: int) -> int:
