@@ -1047,32 +1047,32 @@ Risque de livrer un agent qui passe les unitaires mais echoue les demandes philo
 
 ### Plan
 
-- [ ] Etendre `app/biblio/smoke_live.py` ou creer un runner agent dedie.
-- [ ] Couvrir catalogue complet, 100 ouvrages, Platon, Theetete, maieutique, sage-femme, 126b-128a, navigation, verification et ambiguite.
-- [ ] Sorties strictement content-free.
-- [ ] Exit code non zero si fuite ou violation de statut attendu.
+- [x] Creer un runner agent dedie: `python -m biblio.smoke_librarian_agent_live --jsonl`.
+- [x] Couvrir catalogue complet, 100 ouvrages, Platon, Theetete, maieutique, sage-femme, 126b-128a, navigation, verification et ambiguite.
+- [x] Sorties strictement content-free.
+- [x] Exit code non zero si fuite, payload retenu, endpoint lourd interdit, effet agent produit ou statut produit `failed`.
 
 ### Patch attendu
 
-- [ ] Runner smoke agent.
-- [ ] Fixtures attendues content-free.
-- [ ] Documentation des cas et resultats.
+- [x] Runner smoke agent, agent mode `off` par defaut.
+- [x] Fixtures attendues content-free avec `product_expectation_status` (`met`, `partial`, `failed`).
+- [x] Documentation des cas et resultats.
 
 ### Tests / preuves
 
-- [ ] `docker exec -w /app platform-fridadev python -m biblio.smoke_librarian_agent_live --jsonl`
-- [ ] Verification `raw_marker_leaks=false`.
-- [ ] Verification `payload_objects_retained=0`.
-- [ ] Verification des endpoint kinds et state updates attendus.
+- [x] `docker exec -w /app platform-fridadev python -m biblio.smoke_librarian_agent_live --jsonl`
+- [x] Verification `raw_marker_leaks=false`.
+- [x] Verification `payload_objects_retained=0`.
+- [x] Verification des endpoint kinds, lanes et state updates attendus.
 
 ### Réduction du risque attendue
 
-- [ ] Risque reduit par validation produit live; risque rendu observable par matrice de cas.
+- [x] Risque reduit par validation produit live; risque rendu observable par matrice de cas.
 
 ### Critères de sortie
 
-- [ ] Tous les cas obligatoires passent ou produisent une clarification explicitement acceptee.
-- [ ] Aucune fuite brute.
+- [x] Tous les cas obligatoires passent ou produisent une clarification explicitement acceptee.
+- [x] Aucune fuite brute.
 
 ### Hors-scope
 

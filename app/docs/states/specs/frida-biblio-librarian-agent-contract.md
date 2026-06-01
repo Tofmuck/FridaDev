@@ -961,7 +961,77 @@ NO-GO retroactif Lot 9 si un patch ulterieur:
   d'activation separe;
 - appelle le modele en mode `off` ou quand Biblio est desactivee.
 
-## 23. Hors-scope
+## 23. Lot 10 livre
+
+Lot 10 ajoute un protocole de smoke produit philosophique, sans activer l'agent
+comme controleur.
+
+Runner:
+
+- commande canonique:
+  `python -m biblio.smoke_librarian_agent_live --jsonl`;
+- mode agent par defaut: `off`;
+- options explicites: `--agent-mode off|config|shadow|candidate`;
+- aucune execution de boucle d'outils agentique;
+- aucun appel modele en mode `off`;
+- sortie JSONL uniquement content-free.
+
+Matrice couverte:
+
+- catalogue complet et question "100 ouvrages";
+- recherche/ouverture Platon/Theetete;
+- extraction bornee 126b-128a;
+- recherche thematique maieutique, sage-femme et images d'accouchement;
+- table des matieres;
+- reprise conversationnelle: expliquer, autour, plus haut, continuer, origine;
+- cas externe Kant / Lumieres / Sapere aude.
+
+Chaque record expose seulement:
+
+- `case_id`, `case_kind`;
+- status/reason/query kind;
+- counts Catalogue, endpoint kinds, context calls, candidats, selections,
+  passages, lane chars;
+- ids courts, hashes courts, longueurs;
+- observation dialogue/agent content-free;
+- flags guardrail: `raw_marker_leaks`, `payload_objects_retained`,
+  `forbidden_endpoint_used`;
+- `product_expectation_status` (`met`, `partial`, `failed`) et reason code.
+
+Le runner sort non-zero en mode strict si:
+
+- une fuite brute est detectee;
+- un payload Catalogue reste retenu;
+- un endpoint lourd interdit comme `document` apparait;
+- l'agent est utilise pour la reponse produit;
+- la reponse produit change;
+- une execution outil agentique est observee;
+- une attente produit est `failed`.
+
+Les statuts `partial` sont acceptes pour les cas ou le systeme planifie,
+consulte ou clarifie honnetement sans inventer de certitude.
+
+Interdits Lot 10:
+
+- passage brut;
+- OCR brut;
+- payload Catalogue;
+- prompt complet;
+- requete utilisateur brute;
+- titre, auteur, locator brut;
+- raw JSON modele;
+- params d'outil bruts;
+- cookie, token, DSN, `.env` ou secret.
+
+NO-GO retroactif Lot 10 si un patch ulterieur:
+
+- affiche les messages de smoke dans le JSONL;
+- rend `--agent-mode off` capable d'appeler OpenRouter;
+- autorise un record `failed` en strict;
+- contourne les flags content-free par `--no-strict` dans le chemin de
+  validation normal.
+
+## 24. Hors-scope
 
 - activation produit de l'agent;
 - remplacement du chemin deterministe;
