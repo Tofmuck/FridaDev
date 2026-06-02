@@ -50,6 +50,11 @@ Micro-correction P3 2026-06-02: un follow-up d'origine/provenance de passage
 (`D'ou vient ce passage ?`, `source`, `provient`) doit maintenant etre porte
 par `passage_origin_check`, distinct de `passage_explain_current`, meme si les
 deux familles reutilisent aujourd'hui l'outil technique `passage_context`.
+Micro-correction compare_passages 2026-06-02: le fallback dialogue
+`compare_passages` doit maintenant porter explicitement
+`passage_compare_candidates`, au lieu de retomber sur une inference generique
+de type `passage_search_in_work`, tout en restant borne a des appels
+`passage_context` content-free.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
 Le but est de garder l'agent bibliothecaire livre testable, borne et

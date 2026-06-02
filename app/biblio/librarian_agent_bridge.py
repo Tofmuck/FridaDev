@@ -275,6 +275,8 @@ def _fallback_product_method(
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK
     if clean_intent == librarian_dialogue_planner.INTENT_EXPLAIN_PASSAGE:
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT
+    if clean_intent == librarian_dialogue_planner.INTENT_COMPARE_PASSAGES:
+        return librarian_product_methods.PRODUCT_METHOD_PASSAGE_COMPARE_CANDIDATES
     if clean_query_kind == "passage_context":
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT
     if clean_intent == librarian_dialogue_planner.INTENT_NAVIGATE and clean_query_kind == "page_read":

@@ -340,6 +340,17 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "params": {"document_id": "doc-1", "paragraph_id": 123, "window_chars": 700},
                 },
             ),
+            (
+                {
+                    "case_id": "",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_COMPARE_CANDIDATES,
+                },
+                {
+                    "tool_name": tools.TOOL_PASSAGE_CONTEXT,
+                    "method": "GET",
+                    "params": {"document_id": "doc-1", "paragraph_id": 123, "window_chars": 700},
+                },
+            ),
         ]
         for overrides, call in cases:
             with self.subTest(tool=call["tool_name"]):
@@ -348,6 +359,36 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 self.assertIsNotNone(validation.plan)
                 assert validation.plan is not None
                 self.assertEqual(validation.plan.product_method, overrides["product_method"])
+
+    def test_legacy_compare_intent_repairs_to_compare_candidates_method(self) -> None:
+        validation = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "case_id": "",
+                    "intent": "compare_passages",
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_PASSAGE_CONTEXT,
+                            "method": "GET",
+                            "params": {"document_id": "doc-1", "paragraph_id": 123},
+                        }
+                    ],
+                    "answer_mode": "tool",
+                    "risk_flags": [],
+                    "fallback_reason": "",
+                }
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.case_id, "")
+        self.assertEqual(
+            validation.plan.product_method,
+            product_methods.PRODUCT_METHOD_PASSAGE_COMPARE_CANDIDATES,
+        )
 
     def test_local_validation_accepts_empty_case_id_when_method_is_known(self) -> None:
         validation = contract.validate_agent_payload(

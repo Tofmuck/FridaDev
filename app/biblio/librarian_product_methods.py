@@ -33,6 +33,7 @@ PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE = "passage_set_current_reference"
 PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK = "passage_search_in_work"
 PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT = "passage_explain_current"
 PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT = "passage_show_around_current"
+PRODUCT_METHOD_PASSAGE_COMPARE_CANDIDATES = "passage_compare_candidates"
 PRODUCT_METHOD_PASSAGE_MOVE_PREVIOUS_SEGMENT = "passage_move_previous_segment"
 PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT = "passage_continue_next_segment"
 PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK = "passage_origin_check"
@@ -143,6 +144,14 @@ METHOD_SPECS = (
         allowed_tool_names=(tools.TOOL_PASSAGE_CONTEXT,),
         preconditions=("current_passage_anchor_present",),
         truth_levels=(TRUTH_LEVEL_CONTEXTUAL,),
+        execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_ERROR),
+    ),
+    BiblioProductMethodSpec(
+        product_method=PRODUCT_METHOD_PASSAGE_COMPARE_CANDIDATES,
+        case_ids=(),
+        allowed_tool_names=(tools.TOOL_PASSAGE_CONTEXT,),
+        preconditions=("candidate_context_positions_present",),
+        truth_levels=(TRUTH_LEVEL_CONTEXTUAL, TRUTH_LEVEL_PLAUSIBLE),
         execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_ERROR),
     ),
     BiblioProductMethodSpec(
@@ -285,6 +294,8 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
         return PRODUCT_METHOD_DOCUMENT_TOC_SHOW
     if clean_intent == "resolve_work":
         return PRODUCT_METHOD_WORK_LOOKUP
+    if clean_intent == "compare_passages":
+        return PRODUCT_METHOD_PASSAGE_COMPARE_CANDIDATES
     if clean_intent in {"extract_passage", "extract_range", "document_locator"} or tools.TOOL_LOCATE in tool_set:
         return PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE
     if clean_intent == "search_catalog":
