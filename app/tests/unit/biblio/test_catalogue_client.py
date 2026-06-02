@@ -129,6 +129,17 @@ class CatalogueClientTests(unittest.TestCase):
         self.assertEqual(result.result_count, 2)
         self.assertEqual(fake.calls[0]["params"], {"q": "theetete", "limit": 2})
 
+    def test_search_chapters_ok_reports_results_count(self) -> None:
+        fake = FakeRequests(FakeResponse({"results": [{"document_id": "doc-1"}]}))
+        api = _client(fake)
+
+        result = api.search_chapters("theetete", limit=3)
+
+        self.assertEqual(result.endpoint_kind, client.ENDPOINT_CHAPTER_SEARCH)
+        self.assertEqual(result.result_count, 1)
+        self.assertEqual(fake.calls[0]["url"], "http://catalogue.example/api/search/chapters")
+        self.assertEqual(fake.calls[0]["params"], {"q": "theetete", "limit": 3})
+
     def test_valid_numeric_boundaries_are_forwarded(self) -> None:
         fake = FakeRequests(
             [
@@ -288,6 +299,17 @@ class CatalogueClientTests(unittest.TestCase):
             with self.subTest(limit=limit):
                 with self.assertRaises(client.CatalogueInvalidParameter) as ctx:
                     api.search("theetete", limit=limit)
+                self.assertEqual(ctx.exception.reason_code, client.REASON_INVALID_PARAMETER)
+                self.assertNotIn("abc", str(ctx.exception))
+
+        self.assertEqual(fake.calls, [])
+
+    def test_search_chapters_rejects_invalid_limit_before_network(self) -> None:
+        api, fake = _client_without_expected_network()
+        for limit in [-7, "abc", client.SEARCH_LIMIT_MAX + 1]:
+            with self.subTest(limit=limit):
+                with self.assertRaises(client.CatalogueInvalidParameter) as ctx:
+                    api.search_chapters("theetete", limit=limit)
                 self.assertEqual(ctx.exception.reason_code, client.REASON_INVALID_PARAMETER)
                 self.assertNotIn("abc", str(ctx.exception))
 

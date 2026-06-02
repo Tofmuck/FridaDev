@@ -204,6 +204,7 @@ Endpoints autorises au depart:
 - `GET /doc/{id}`;
 - `GET /doc/{id}/metadata`;
 - `GET /doc/{id}/chapters`;
+- `GET /search/chapters`;
 - `GET /doc/{id}/page/{page_no}`;
 - `GET /doc/{id}/locate`;
 - `GET /doc/{id}/context`;
@@ -236,9 +237,9 @@ Implementation Lot 2 du 2026-05-28:
 - package domaine: `app/biblio/`;
 - config non secrete: `BIBLIO_CATALOGUE_BASE_URL`, defaut `http://platform-doc-pipeline-api:8090`;
 - timeout non secret: `BIBLIO_CATALOGUE_TIMEOUT_S`, defaut `8`;
-- methodes publiques: `health()`, `catalog()`, `document()`, `metadata()`, `chapters()`, `page()`, `locate()`, `context()`, `search()`;
+- methodes publiques: `health()`, `catalog()`, `document()`, `metadata()`, `chapters()`, `search_chapters()`, `page()`, `locate()`, `context()`, `search()`;
 - garde structurelle: `_request()` refuse tout verbe autre que `GET`;
-- allowlist structurelle: seuls `/health`, `/catalog`, `/search`, `/doc/{id}`, `/doc/{id}/metadata`, `/doc/{id}/chapters`, `/doc/{id}/page/{page_no}`, `/doc/{id}/locate`, `/doc/{id}/context` sont acceptes;
+- allowlist structurelle: seuls `/health`, `/catalog`, `/search`, `/search/chapters`, `/doc/{id}`, `/doc/{id}/metadata`, `/doc/{id}/chapters`, `/doc/{id}/page/{page_no}`, `/doc/{id}/locate`, `/doc/{id}/context` sont acceptes;
 - routes mutatrices et exports non allowlistes sont refuses avant appel reseau;
 - erreurs content-free: forbidden method, forbidden route, invalid base URL, invalid parameter, service unavailable, timeout, invalid JSON, not found, unexpected status;
 - `CatalogueResponse.to_observability()` exclut le payload brut et expose seulement endpoint, status, duree, compte, id court et longueur compacte si applicable.
@@ -255,6 +256,7 @@ Correctif Lot 2 du 2026-05-28:
   - `locate.limit`: `1..1000`;
   - `context.window_chars`: `80..8000`;
   - `search.limit`: `1..100`;
+  - `search_chapters.limit`: `1..100`;
 - bornes client conservatrices quand l'API ne declare pas de maximum:
   - `catalog.offset`: `0..100000`;
   - `chapters.offset`: `0..100000`;
@@ -525,7 +527,9 @@ Correctif bibliothecaire du 2026-05-30:
 - `chat_runtime.py` redevient une orchestration mince: toggle, plan structure, client GET-only, runtime bibliothecaire, observabilite et injection prompt;
 - le planner reconnait les intentions `list_catalog`, `search_catalog`, `resolve_work`, `extract_passage`, `extract_range` et `clarify_ambiguous`;
 - quand `biblio_enabled=true`, les demandes naturelles comme `voir les premiers ouvrages`, `cherche Theetete`, `extrait du Theetete de Platon`, `Theetete 126b a 128a` ne tombent plus en faux `no_signal`;
-- `work_resolver.py` distingue document physique Catalogue, oeuvre interne, locator et range; quand un document physique unique est deja resolu, il consulte d'abord `GET /doc/{id}/chapters` comme hint structurel d'oeuvre interne avec un matching normalise par mots/phrase, puis n'utilise `/search` qu'en fallback ou quand un locator/range exige encore une ancre interne content-free pour desambiguiser les milestones;
+- `work_resolver.py` distingue document physique Catalogue, oeuvre interne, locator et range; quand un document physique unique est deja resolu, il consulte d'abord `GET /doc/{id}/chapters` comme hint structurel d'oeuvre interne avec un matching normalise par mots/phrase;
+- quand aucun document physique unique n'est encore resolu mais qu'une oeuvre interne est explicitement demandee, il peut maintenant consulter `GET /search/chapters` comme support structural leger a l'echelle du catalogue avant de retomber sur `/search` de paragraphes;
+- `GET /search/chapters` ne remplace pas la recherche plein texte de paragraphes pour les locators/ranges: si une ancre documentaire interne reste necessaire, `/search` continue de fournir cette ancre content-free;
 - le resolver accepte des ancres non textuelles `locator_anchor_page` / `locator_anchor_para` pour choisir un locator parmi plusieurs candidats sans exposer le titre, l'oeuvre ou la requete en observabilite;
 - le chemin document-id utilise `/metadata` plutot que le payload lourd `/doc/{id}` pour eviter de tirer inutilement l'overview complet;
 - `library_runtime.py` peut produire une lane de consultation `[CONSULTATION DE BIBLIOTHEQUE]` pour liste, recherche, candidat ou statut non extrait; cette lane peut contenir des titres Catalogue dans le prompt produit, mais elle n'est jamais serialisee en observabilite;

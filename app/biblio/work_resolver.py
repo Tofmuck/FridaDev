@@ -110,8 +110,22 @@ class BiblioWorkResolver:
                     _candidate_queries(plan.work_title_variants, plan.work_title),
                 )
 
+            chapter_search_rows: list[Mapping[str, Any]] = []
+            chapter_search_doc_id = ""
+            if plan.work_title and not resolved_doc_id:
+                for query in _candidate_queries(plan.work_title_variants, plan.work_title):
+                    chapter_search_response = self._client.search_chapters(query, limit=WORK_SEARCH_LIMIT)
+                    endpoint_observations.append(observe_catalogue_response(chapter_search_response))
+                    chapter_search_rows = _chapter_search_results(chapter_search_response)
+                    if chapter_search_rows:
+                        chapter_search_doc_id = _single_row_document_id(chapter_search_rows)
+                        break
+                if chapter_search_doc_id:
+                    resolved_doc_id = chapter_search_doc_id
+
             search_rows: list[Mapping[str, Any]] = []
-            if plan.work_title and (plan.locator or plan.locator_end or not chapter_rows):
+            structural_work_match = bool(chapter_rows) or bool(chapter_search_doc_id)
+            if plan.work_title and (plan.locator or plan.locator_end or not structural_work_match):
                 for query in _candidate_queries(plan.work_title_variants, plan.work_title):
                     search_response = self._client.search(query, limit=WORK_SEARCH_LIMIT)
                     endpoint_observations.append(observe_catalogue_response(search_response))
@@ -131,7 +145,7 @@ class BiblioWorkResolver:
             )
 
         anchor = _select_anchor(search_rows, catalog_items)
-        candidate_ids = _candidate_ids(catalog_items, search_rows)
+        candidate_ids = _candidate_ids(catalog_items, search_rows, chapter_search_rows)
         if not (plan.document_id or plan.document_title or plan.author or plan.work_title):
             return BiblioWorkResolution(
                 status=STATUS_NOT_FOUND,
@@ -148,6 +162,8 @@ class BiblioWorkResolver:
         anchor_document_id = plan.document_id or _committed_anchor_document_id(anchor, catalog_items)
         if not anchor_document_id and chapter_rows:
             anchor_document_id = resolved_doc_id or ""
+        if not anchor_document_id and chapter_search_doc_id:
+            anchor_document_id = chapter_search_doc_id
         request = BiblioResolveRequest(
             document_id=anchor_document_id,
             title=plan.document_title or ("" if anchor_document_id else plan.work_title),
@@ -244,6 +260,13 @@ def _search_results(response: CatalogueResponse) -> list[Mapping[str, Any]]:
     return [item for item in results if isinstance(item, Mapping)]
 
 
+def _chapter_search_results(response: CatalogueResponse) -> list[Mapping[str, Any]]:
+    results = response.payload.get("results")
+    if not isinstance(results, list):
+        return []
+    return [item for item in results if isinstance(item, Mapping)]
+
+
 def _select_anchor(
     search_rows: Sequence[Mapping[str, Any]],
     catalog_items: Sequence[Mapping[str, Any]],
@@ -280,6 +303,7 @@ def _select_anchor(
 def _candidate_ids(
     catalog_items: Sequence[Mapping[str, Any]],
     search_rows: Sequence[Mapping[str, Any]],
+    chapter_search_rows: Sequence[Mapping[str, Any]],
 ) -> tuple[str, ...]:
     ids: list[str] = []
     for item in catalog_items:
@@ -287,6 +311,10 @@ def _candidate_ids(
         if doc_id:
             ids.append(short_doc_id(doc_id))
     for row in search_rows:
+        doc_id = _text(row.get("document_id"))
+        if doc_id:
+            ids.append(short_doc_id(doc_id))
+    for row in chapter_search_rows:
         doc_id = _text(row.get("document_id"))
         if doc_id:
             ids.append(short_doc_id(doc_id))
@@ -329,6 +357,19 @@ def _chapter_tokens_match(title_tokens: Sequence[str], query_tokens: Sequence[st
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _single_row_document_id(rows: Sequence[Mapping[str, Any]]) -> str:
+    doc_ids = tuple(
+        dict.fromkeys(
+            _text(row.get("document_id"))
+            for row in rows
+            if _text(row.get("document_id"))
+        )
+    )
+    if len(doc_ids) == 1:
+        return doc_ids[0]
+    return ""
 
 
 def _documentary_target(plan: BiblioQueryPlan) -> str:

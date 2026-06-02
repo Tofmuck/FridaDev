@@ -72,7 +72,15 @@ class BiblioWorkResolverTests(unittest.TestCase):
         self.assertEqual(result.resolve_request.document_id, "doc-1234")
         self.assertEqual(result.resolve_request.work_title, "Theetete")
         self.assertEqual(result.resolve_request.locator, "126b")
-        self.assertEqual([call[1] for call in fake.calls], ["Theetete", "Théétète"])
+        self.assertEqual(
+            fake.calls,
+            [
+                ("search_chapters", "Theetete", 20),
+                ("search_chapters", "Théétète", 20),
+                ("search", "Theetete", 20),
+                ("search", "Théétète", 20),
+            ],
+        )
         self.assertNotIn("Théétète", encoded)
 
     def test_bare_work_request_keeps_work_and_document_signals_separate(self) -> None:
@@ -129,6 +137,25 @@ class BiblioWorkResolverTests(unittest.TestCase):
         self.assertEqual([call[0] for call in fake.calls], ["catalog", "chapters", "search"])
         self.assertEqual([call[1] for call in fake.calls if call[0] == "search"], ["Ion"])
 
+    def test_global_chapter_search_resolves_internal_work_before_paragraph_search(self) -> None:
+        plan = query_planner.BiblioQueryPlan(
+            should_consult=True,
+            intent=query_planner.INTENT_RESOLVE_WORK,
+            reason_code=query_planner.REASON_WORK_REQUESTED,
+            query_kind=query_planner.INTENT_RESOLVE_WORK,
+            work_title="Théétète",
+        )
+        fake = _GlobalChapterSearchClient()
+
+        result = work_resolver.BiblioWorkResolver(fake).resolve(plan)
+
+        self.assertEqual(result.status, work_resolver.STATUS_RESOLVED)
+        self.assertIsNotNone(result.resolve_request)
+        assert result.resolve_request is not None
+        self.assertEqual(result.resolve_request.document_id, "doc-5678")
+        self.assertEqual(result.resolve_request.work_title, "Théétète")
+        self.assertEqual(fake.calls, [("search_chapters", "Théétète", 20)])
+
 
 class _FakeClient:
     def __init__(self) -> None:
@@ -163,6 +190,16 @@ class _FakeClient:
             },
             duration_ms=1,
             result_count=1,
+        )
+
+    def search_chapters(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search_chapters", q, limit))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CHAPTER_SEARCH,
+            status_code=200,
+            payload={"count": 0, "results": []},
+            duration_ms=1,
+            result_count=0,
         )
 
     def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
@@ -208,6 +245,16 @@ class _AccentSensitiveFakeClient:
             result_count=len(rows),
         )
 
+    def search_chapters(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search_chapters", q, limit))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CHAPTER_SEARCH,
+            status_code=200,
+            payload={"count": 0, "results": []},
+            duration_ms=1,
+            result_count=0,
+        )
+
 
 class _ShortTitleFalsePositiveClient(_FakeClient):
     def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
@@ -220,6 +267,31 @@ class _ShortTitleFalsePositiveClient(_FakeClient):
                 "total": 1,
                 "chapters": [
                     {"chapter_no": 1, "title": "Introduction", "unit_no": 1, "source": "toc"},
+                ],
+            },
+            duration_ms=1,
+            result_count=1,
+        )
+
+
+class _GlobalChapterSearchClient(_FakeClient):
+    def search_chapters(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search_chapters", q, limit))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CHAPTER_SEARCH,
+            status_code=200,
+            payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-5678",
+                        "document_title": "Platon",
+                        "chapter_no": 2,
+                        "chapter_title": "Théétète",
+                        "unit_no": 2,
+                        "source": "toc",
+                        "rank": 0.9,
+                    }
                 ],
             },
             duration_ms=1,

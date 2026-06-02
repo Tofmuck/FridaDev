@@ -354,6 +354,10 @@ encore decide ou repare a plusieurs endroits.
 - [x] Reutiliser la TOC/chapters legere existante comme hint d'oeuvre interne
       quand un document physique unique est deja resolu, avant de retomber sur
       la recherche plein texte de paragraphes.
+- [x] Rendre la TOC searchable a l'echelle du catalogue via une route GET
+      legere de recherche de chapitres, puis l'utiliser dans `work_lookup`
+      avant de retomber sur `/search` de paragraphes quand aucun document
+      physique unique n'est encore resolu.
 - [x] Exploiter les ancres `locate` deja resolues avec `GET /doc/{id}/page/{page_no}`
       pour sortir de la limite artificielle "meme page seulement" sur les
       ranges canoniques bornes, sans pretendre avoir encore un objet

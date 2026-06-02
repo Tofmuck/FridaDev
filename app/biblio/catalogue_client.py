@@ -32,6 +32,7 @@ ENDPOINT_PAGE = "page"
 ENDPOINT_LOCATE = "locate"
 ENDPOINT_CONTEXT = "context"
 ENDPOINT_SEARCH = "search"
+ENDPOINT_CHAPTER_SEARCH = "chapter_search"
 
 REASON_FORBIDDEN_METHOD = "biblio_catalogue_forbidden_method"
 REASON_FORBIDDEN_ROUTE = "biblio_catalogue_forbidden_route"
@@ -72,6 +73,7 @@ _ALLOWED_STATIC_GET_PATHS = {
     "/health",
     "/catalog",
     "/search",
+    "/search/chapters",
 }
 _FORBIDDEN_MUTATING_PATHS = {
     "/settings",
@@ -419,6 +421,22 @@ class CatalogueClient:
                 "limit": _bounded_int(
                     limit,
                     endpoint_kind=ENDPOINT_SEARCH,
+                    name="limit",
+                    minimum=SEARCH_LIMIT_MIN,
+                    maximum=SEARCH_LIMIT_MAX,
+                ),
+            },
+        )
+
+    def search_chapters(self, q: str, *, limit: int = 20) -> CatalogueResponse:
+        return self._get(
+            ENDPOINT_CHAPTER_SEARCH,
+            "/search/chapters",
+            params={
+                "q": str(q),
+                "limit": _bounded_int(
+                    limit,
+                    endpoint_kind=ENDPOINT_CHAPTER_SEARCH,
                     name="limit",
                     minimum=SEARCH_LIMIT_MIN,
                     maximum=SEARCH_LIMIT_MAX,
