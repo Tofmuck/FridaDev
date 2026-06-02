@@ -19,6 +19,7 @@ from biblio import conversation_state
 from biblio import document_resolver
 from biblio import library_runtime
 from biblio import librarian_agent
+from biblio import librarian_agent_bridge
 from biblio import librarian_agent_contract as agent_contract
 from biblio import librarian_agent_openrouter as agent_openrouter
 from biblio import librarian_product_methods
@@ -363,7 +364,7 @@ class BiblioChatRuntimeTests(unittest.TestCase):
     def test_agent_first_query_fallback_plan_carries_product_method(self) -> None:
         query_plan = query_planner.plan_biblio_query("Dans le Theetete, trouve le passage ou Socrate parle de la maieutique.")
 
-        fallback = chat_runtime._agent_first_fallback_plan(query_plan)
+        fallback = librarian_agent_bridge.build_query_fallback_plan(query_plan)
 
         self.assertIsNotNone(fallback)
         assert fallback is not None
@@ -412,7 +413,7 @@ class BiblioChatRuntimeTests(unittest.TestCase):
             last_intent="extract_passage",
         )
 
-        fallback = chat_runtime._agent_first_dialogue_fallback_plan(
+        fallback = librarian_agent_bridge.build_dialogue_fallback_plan(
             user_msg="Autour de ce passage.",
             state=state,
             recent_dialogue=(),
@@ -433,7 +434,7 @@ class BiblioChatRuntimeTests(unittest.TestCase):
             last_intent="extract_passage",
         )
 
-        fallback = chat_runtime._agent_first_dialogue_fallback_plan(
+        fallback = librarian_agent_bridge.build_dialogue_fallback_plan(
             user_msg="D'ou vient ce passage ?",
             state=state,
             recent_dialogue=(),
