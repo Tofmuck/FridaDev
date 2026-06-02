@@ -297,15 +297,15 @@ encore decide ou repare a plusieurs endroits.
 
 ### Lot A - Cadrage canonique cas -> methode
 
-- [ ] Geler la grammaire des 18 cas.
-- [ ] Geler le registre initial des methodes produit.
-- [ ] Geler la regle de statut `vert net / partiel / faux vert / absent`.
+- [x] Geler la grammaire des 18 cas.
+- [x] Geler le registre initial des methodes produit.
+- [x] Geler la regle de statut `vert net / partiel / faux vert / absent`.
 
 ### Lot B - Contrat methode produit
 
-- [ ] Faire evoluer la spec agent vers une sortie qui nomme la methode produit.
-- [ ] Definir le payload structure minimal commun a toutes les methodes.
-- [ ] Definir les preconditions et la verite produit de chaque methode.
+- [x] Faire evoluer la spec agent vers une sortie qui nomme la methode produit.
+- [x] Definir le payload structure minimal commun a toutes les methodes.
+- [x] Definir les preconditions et la verite produit de chaque methode.
 
 ### Lot C - Execution runtime par methode
 

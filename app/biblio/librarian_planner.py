@@ -88,7 +88,9 @@ class BiblioLibrarianToolCall:
 @dataclass(frozen=True)
 class BiblioLibrarianPlan:
     schema_version: str = SCHEMA_VERSION
+    case_id: str = ""
     intent: str = ""
+    product_method: str = ""
     tool_calls: tuple[BiblioLibrarianToolCall, ...] = field(
         default_factory=tuple,
         repr=False,
@@ -101,7 +103,9 @@ class BiblioLibrarianPlan:
         return _clean(
             {
                 "schema_version": self.schema_version,
+                "case_id": _safe_token(self.case_id),
                 "intent": _safe_token(self.intent),
+                "product_method": _safe_token(self.product_method),
                 "answer_mode": _safe_token(self.answer_mode),
                 "tool_call_count": len(self.tool_calls),
                 "tool_names": [_safe_tool_name(call.tool_name) for call in self.tool_calls],

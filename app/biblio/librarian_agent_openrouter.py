@@ -16,6 +16,7 @@ import requests
 
 import config
 
+from . import librarian_product_methods as product_methods
 from . import librarian_tools as tools
 from .librarian_agent_contract import SCHEMA_VERSION
 from .librarian_agent_contract import BiblioLibrarianAgentRequest
@@ -268,7 +269,11 @@ def build_librarian_agent_messages(
         "N'invente jamais work_title, title, theme, author, start_locator ou "
         "end_locator comme cle de params: utilise q/query, document_id/doc_id, "
         "locator/label, page_no/para_no/paragraph_id, limit, offset, "
-        "char_offset ou window_chars selon l'outil. Pour lister toute la "
+        "char_offset ou window_chars selon l'outil. Retourne toujours un "
+        "product_method explicite et un "
+        "case_id si tu peux le reconnaitre sans forcer; sinon laisse case_id "
+        "vide. Le product_method est obligatoire et doit decrire la methode "
+        "produit, pas seulement l'outil. Pour lister toute la "
         "bibliotheque, appelle catalog_list sans q avec limit 100. Pour une "
         "table des matieres sans document_id, commence par catalog_search ou "
         "document_open_summary; le runtime peut porter l'ancre documentaire "
@@ -296,6 +301,8 @@ def build_librarian_agent_messages(
         "recent_dialogue": list(request.bounded_recent_dialogue()),
         "biblio_state": _state_for_model(request.biblio_state),
         "deterministic_baseline": _observation(request.deterministic_plan),
+        "case_grammar": list(product_methods.CASE_IDS),
+        "available_product_methods": list(product_methods.all_product_method_names()),
         "available_tools": list(tools.LOT3_TOOL_NAMES),
         "forbidden_tools": sorted(tools.FORBIDDEN_TOOL_NAMES),
         "tool_param_contracts": _tool_param_contracts(),
@@ -361,7 +368,9 @@ def build_librarian_agent_response_format(*, max_tool_calls: int = 5) -> dict[st
                 "additionalProperties": False,
                 "required": [
                     "schema_version",
+                    "case_id",
                     "intent",
+                    "product_method",
                     "tool_calls",
                     "answer_mode",
                     "risk_flags",
@@ -369,7 +378,9 @@ def build_librarian_agent_response_format(*, max_tool_calls: int = 5) -> dict[st
                 ],
                 "properties": {
                     "schema_version": {"type": "string", "enum": [SCHEMA_VERSION]},
+                    "case_id": {"type": "string", "enum": ["", *product_methods.CASE_IDS]},
                     "intent": _CODE_SCHEMA,
+                    "product_method": {"type": "string", "enum": list(product_methods.all_product_method_names())},
                     "tool_calls": {
                         "type": "array",
                         "maxItems": max(0, int(max_tool_calls)),

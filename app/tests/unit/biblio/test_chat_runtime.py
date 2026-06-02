@@ -21,6 +21,7 @@ from biblio import library_runtime
 from biblio import librarian_agent
 from biblio import librarian_agent_contract as agent_contract
 from biblio import librarian_agent_openrouter as agent_openrouter
+from biblio import librarian_product_methods
 from biblio import librarian_agent_runtime
 from biblio import librarian_tools
 from biblio import passage_extractor as extractor
@@ -1665,11 +1666,19 @@ def _valid_agent_json(
     *,
     tool_name: str = librarian_tools.TOOL_CATALOG_LIST,
     params: dict[str, object] | None = None,
+    case_id: str | None = None,
+    product_method: str | None = None,
 ) -> str:
+    effective_product_method = product_method or _product_method_for_tool(tool_name)
+    effective_case_id = (
+        case_id if case_id is not None else librarian_product_methods.default_case_id_for_method(effective_product_method)
+    )
     return json.dumps(
         {
             "schema_version": agent_contract.SCHEMA_VERSION,
+            "case_id": effective_case_id,
             "intent": "list_catalog",
+            "product_method": effective_product_method,
             "tool_calls": [
                 {
                     "tool_name": tool_name,
@@ -1689,7 +1698,9 @@ def _empty_agent_plan_json() -> str:
     return json.dumps(
         {
             "schema_version": agent_contract.SCHEMA_VERSION,
+            "case_id": "",
             "intent": "clarify",
+            "product_method": librarian_product_methods.PRODUCT_METHOD_CLARIFY_BIBLIO_REQUEST,
             "tool_calls": [],
             "answer_mode": "clarify",
             "risk_flags": [],
@@ -1697,6 +1708,19 @@ def _empty_agent_plan_json() -> str:
         },
         ensure_ascii=False,
     )
+
+
+def _product_method_for_tool(tool_name: str) -> str:
+    mapping = {
+        librarian_tools.TOOL_CATALOG_LIST: librarian_product_methods.PRODUCT_METHOD_CATALOG_LIST_BOUNDED,
+        librarian_tools.TOOL_CATALOG_SEARCH: librarian_product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+        librarian_tools.TOOL_DOCUMENT_OPEN_SUMMARY: librarian_product_methods.PRODUCT_METHOD_WORK_LOOKUP,
+        librarian_tools.TOOL_DOCUMENT_TOC: librarian_product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+        librarian_tools.TOOL_PAGE_READ: librarian_product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT,
+        librarian_tools.TOOL_LOCATE: librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+        librarian_tools.TOOL_PASSAGE_CONTEXT: librarian_product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT,
+    }
+    return mapping.get(tool_name, librarian_product_methods.PRODUCT_METHOD_CATALOG_LIST_BOUNDED)
 
 
 def _passage(passage: str) -> extractor.BiblioPassageResult:

@@ -7,6 +7,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
+from . import librarian_product_methods as product_methods
 from . import librarian_planner as planner
 from . import librarian_tools as tools
 from .librarian_planner_observability import clean as _clean
@@ -33,6 +34,10 @@ REASON_JSON_FREE_TEXT = "biblio_librarian_agent_free_text"
 REASON_JSON_TRUNCATED = "biblio_librarian_agent_json_truncated"
 REASON_SCHEMA_VERSION = "biblio_librarian_agent_schema_version_invalid"
 REASON_SCHEMA_INVALID = "biblio_librarian_agent_schema_invalid"
+REASON_CASE_ID_UNKNOWN = "biblio_librarian_agent_case_id_unknown"
+REASON_PRODUCT_METHOD_UNKNOWN = "biblio_librarian_agent_product_method_unknown"
+REASON_PRODUCT_METHOD_CASE_MISMATCH = "biblio_librarian_agent_product_method_case_mismatch"
+REASON_PRODUCT_METHOD_TOOL_MISMATCH = "biblio_librarian_agent_product_method_tool_mismatch"
 REASON_TOOL_FORBIDDEN = "biblio_librarian_agent_forbidden_tool"
 REASON_TOOL_UNKNOWN = "biblio_librarian_agent_unknown_tool"
 REASON_METHOD_FORBIDDEN = "biblio_librarian_agent_forbidden_method"
@@ -41,7 +46,16 @@ REASON_BUDGET_EXCEEDED = "biblio_librarian_agent_budget_exceeded"
 
 _HASH_LEN = 12
 _RECENT_DIALOGUE_CONTENT_MAX_CHARS = 1200
-_ROOT_KEYS = {"schema_version", "intent", "tool_calls", "answer_mode", "risk_flags", "fallback_reason"}
+_ROOT_KEYS = {
+    "schema_version",
+    "case_id",
+    "intent",
+    "product_method",
+    "tool_calls",
+    "answer_mode",
+    "risk_flags",
+    "fallback_reason",
+}
 _CALL_KEYS = {"tool_name", "method", "params", "call_id"}
 _CODE_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:-")
 _TEXT_PARAM_MAX = {
@@ -337,8 +351,26 @@ def validate_agent_payload(
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     if str(payload.get("schema_version") or "") != SCHEMA_VERSION:
         return _rejected(REASON_SCHEMA_VERSION, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    case_id = str(payload.get("case_id") or "").strip()
     if not _valid_code(payload.get("intent")):
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    if case_id and not product_methods.is_known_case_id(case_id):
+        return _rejected(REASON_CASE_ID_UNKNOWN, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    product_method = str(payload.get("product_method") or "").strip()
+    if not product_methods.is_known_product_method(product_method):
+        return _rejected(
+            REASON_PRODUCT_METHOD_UNKNOWN,
+            json_chars=json_chars,
+            json_hash=json_hash,
+            finish_reason=finish_reason,
+        )
+    if not product_methods.method_accepts_case_id(product_method, case_id):
+        return _rejected(
+            REASON_PRODUCT_METHOD_CASE_MISMATCH,
+            json_chars=json_chars,
+            json_hash=json_hash,
+            finish_reason=finish_reason,
+        )
     if not _valid_code(payload.get("answer_mode")):
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     if not _valid_code(payload.get("fallback_reason")):
@@ -350,6 +382,13 @@ def validate_agent_payload(
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     if len(raw_calls) > effective_settings.max_tool_calls:
         return _rejected(REASON_BUDGET_EXCEEDED, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    if not raw_calls and product_methods.method_requires_tool_calls(product_method):
+        return _rejected(
+            REASON_PRODUCT_METHOD_TOOL_MISMATCH,
+            json_chars=json_chars,
+            json_hash=json_hash,
+            finish_reason=finish_reason,
+        )
 
     calls: list[planner.BiblioLibrarianToolCall] = []
     invalid_tool_names: list[str] = []
@@ -393,6 +432,13 @@ def validate_agent_payload(
                 json_hash=json_hash,
                 finish_reason=finish_reason,
             )
+        if not product_methods.method_allows_tool(product_method, tool_name):
+            return _rejected(
+                REASON_PRODUCT_METHOD_TOOL_MISMATCH,
+                json_chars=json_chars,
+                json_hash=json_hash,
+                finish_reason=finish_reason,
+            )
         params = raw_call.get("params")
         if not isinstance(params, Mapping):
             return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
@@ -419,7 +465,9 @@ def validate_agent_payload(
 
     plan = planner.BiblioLibrarianPlan(
         schema_version=planner.SCHEMA_VERSION,
+        case_id=case_id,
         intent=_safe_token(payload.get("intent")),
+        product_method=_safe_token(product_method),
         tool_calls=tuple(calls),
         answer_mode=_safe_token(payload.get("answer_mode")),
         fallback_reason=_safe_token(payload.get("fallback_reason")),
@@ -494,12 +542,23 @@ def _repair_agent_payload(payload: Any) -> Any:
         repaired_calls.append(repaired_call)
     repaired_payload = {
         "schema_version": str(payload.get("schema_version") or SCHEMA_VERSION),
+        "case_id": "",
         "intent": _safe_token(payload.get("intent")) or "biblio_request",
+        "product_method": "",
         "tool_calls": repaired_calls,
         "answer_mode": _safe_token(payload.get("answer_mode")) or "tool",
         "risk_flags": payload.get("risk_flags") if isinstance(payload.get("risk_flags"), list) else [],
         "fallback_reason": _safe_token(payload.get("fallback_reason")),
     }
+    inferred_product_method = product_methods.infer_product_method(
+        intent=repaired_payload["intent"],
+        answer_mode=repaired_payload["answer_mode"],
+        tool_names=[str(call.get("tool_name") or "") for call in repaired_calls],
+    )
+    repaired_payload["product_method"] = _safe_token(payload.get("product_method")) or inferred_product_method
+    repaired_payload["case_id"] = _safe_token(payload.get("case_id")) or product_methods.default_case_id_for_method(
+        repaired_payload["product_method"]
+    )
     changed = changed or set(payload.keys()) != _ROOT_KEYS
     return repaired_payload if changed else payload
 

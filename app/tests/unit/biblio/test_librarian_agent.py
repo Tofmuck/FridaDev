@@ -17,6 +17,7 @@ if str(APP_DIR) not in sys.path:
 from biblio import librarian_agent as agent
 from biblio import librarian_agent_contract as contract
 from biblio import librarian_agent_openrouter as openrouter
+from biblio import librarian_product_methods as product_methods
 from biblio import librarian_tools as tools
 
 
@@ -224,90 +225,201 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(validation.status, contract.STATUS_VALIDATED)
 
     def test_local_validation_rejects_tool_contract_mismatches_before_execution(self) -> None:
-        base = json.loads(_valid_json())
         cases = [
             (
                 "catalog_search_no_query",
+                {
+                    "case_id": "P05",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+                },
                 {"tool_name": tools.TOOL_CATALOG_SEARCH, "method": "GET", "params": {}},
             ),
             (
                 "document_toc_no_document_id",
+                {
+                    "case_id": "P09",
+                    "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+                },
                 {"tool_name": tools.TOOL_DOCUMENT_TOC, "method": "GET", "params": {"limit": 10}},
             ),
             (
                 "page_read_no_document_id",
+                {
+                    "case_id": "P14",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT,
+                },
                 {"tool_name": tools.TOOL_PAGE_READ, "method": "GET", "params": {"page_no": 28}},
             ),
             (
                 "page_read_no_page_number",
+                {
+                    "case_id": "P14",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT,
+                },
                 {"tool_name": tools.TOOL_PAGE_READ, "method": "GET", "params": {"document_id": "doc-1"}},
             ),
             (
                 "passage_context_no_position",
+                {
+                    "case_id": "P12",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT,
+                },
                 {"tool_name": tools.TOOL_PASSAGE_CONTEXT, "method": "GET", "params": {"document_id": "doc-1"}},
             ),
             (
                 "catalog_search_limit_too_high",
+                {
+                    "case_id": "P05",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+                },
                 {"tool_name": tools.TOOL_CATALOG_SEARCH, "method": "GET", "params": {"query": "x", "limit": 500}},
             ),
             (
                 "document_open_summary_limit_too_high",
+                {
+                    "case_id": "P03",
+                    "product_method": product_methods.PRODUCT_METHOD_WORK_LOOKUP,
+                },
                 {"tool_name": tools.TOOL_DOCUMENT_OPEN_SUMMARY, "method": "GET", "params": {"document_id": "doc-1", "limit": 500}},
             ),
             (
                 "locate_limit_too_high",
+                {
+                    "case_id": "P04",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+                },
                 {"tool_name": tools.TOOL_LOCATE, "method": "GET", "params": {"document_id": "doc-1", "locator": "126b", "limit": 500}},
             ),
             (
                 "catalog_search_offset_disallowed",
+                {
+                    "case_id": "P05",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+                },
                 {"tool_name": tools.TOOL_CATALOG_SEARCH, "method": "GET", "params": {"query": "x", "offset": 10}},
             ),
         ]
-        for name, call in cases:
+        for name, overrides, call in cases:
             with self.subTest(name=name):
-                validation = contract.validate_agent_payload({**base, "tool_calls": [call]})
+                validation = contract.validate_agent_payload({**json.loads(_valid_json()), **overrides, "tool_calls": [call]})
                 self.assertEqual(validation.status, contract.STATUS_REJECTED)
                 self.assertEqual(validation.reason_code, contract.REASON_TOOL_NOT_EXECUTABLE)
 
     def test_local_validation_accepts_tool_contract_valid_cases(self) -> None:
+        cases = [
+            (
+                {
+                    "case_id": "P05",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+                },
+                {
+                    "tool_name": tools.TOOL_CATALOG_SEARCH,
+                    "method": "GET",
+                    "params": {"query": "x", "limit": 50, "offset": 0},
+                },
+            ),
+            (
+                {
+                    "case_id": "P09",
+                    "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+                },
+                {
+                    "tool_name": tools.TOOL_DOCUMENT_TOC,
+                    "method": "GET",
+                    "params": {"document_id": "doc-1", "limit": 500},
+                },
+            ),
+            (
+                {
+                    "case_id": "P12",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT,
+                },
+                {
+                    "tool_name": tools.TOOL_PASSAGE_CONTEXT,
+                    "method": "GET",
+                    "params": {"document_id": "doc-1", "paragraph_id": 123, "window_chars": 700},
+                },
+            ),
+        ]
+        for overrides, call in cases:
+            with self.subTest(tool=call["tool_name"]):
+                validation = contract.validate_agent_payload({**json.loads(_valid_json()), **overrides, "tool_calls": [call]})
+                self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+                self.assertIsNotNone(validation.plan)
+                assert validation.plan is not None
+                self.assertEqual(validation.plan.product_method, overrides["product_method"])
+
+    def test_local_validation_rejects_unknown_or_mismatched_product_method_contract(self) -> None:
         base = json.loads(_valid_json())
         cases = [
-            {
-                "tool_name": tools.TOOL_CATALOG_SEARCH,
-                "method": "GET",
-                "params": {"query": "x", "limit": 50, "offset": 0},
-            },
-            {
-                "tool_name": tools.TOOL_DOCUMENT_TOC,
-                "method": "GET",
-                "params": {"document_id": "doc-1", "limit": 500},
-            },
-            {
-                "tool_name": tools.TOOL_PASSAGE_CONTEXT,
-                "method": "GET",
-                "params": {"document_id": "doc-1", "paragraph_id": 123, "window_chars": 700},
-            },
+            (
+                "unknown_product_method",
+                {
+                    **base,
+                    "product_method": "made_up_method",
+                },
+                contract.REASON_PRODUCT_METHOD_UNKNOWN,
+            ),
+            (
+                "wrong_case_for_method",
+                {
+                    **base,
+                    "case_id": "P03",
+                    "product_method": product_methods.PRODUCT_METHOD_CATALOG_LIST_BOUNDED,
+                },
+                contract.REASON_PRODUCT_METHOD_CASE_MISMATCH,
+            ),
+            (
+                "wrong_tool_for_method",
+                {
+                    **base,
+                    "case_id": "P09",
+                    "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+                },
+                contract.REASON_PRODUCT_METHOD_TOOL_MISMATCH,
+            ),
+            (
+                "missing_required_tools_for_method",
+                {
+                    **base,
+                    "product_method": product_methods.PRODUCT_METHOD_CATALOG_LIST_BOUNDED,
+                    "tool_calls": [],
+                },
+                contract.REASON_PRODUCT_METHOD_TOOL_MISMATCH,
+            ),
         ]
-        for call in cases:
-            with self.subTest(tool=call["tool_name"]):
-                validation = contract.validate_agent_payload({**base, "tool_calls": [call]})
-                self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        for name, payload, reason in cases:
+            with self.subTest(name=name):
+                validation = contract.validate_agent_payload(payload)
+                self.assertEqual(validation.status, contract.STATUS_REJECTED)
+                self.assertEqual(validation.reason_code, reason)
 
     def test_local_validation_accepts_deferred_context_position_after_locate_or_search(self) -> None:
-        base = json.loads(_valid_json())
         cases = [
-            [
-                {"tool_name": tools.TOOL_LOCATE, "method": "GET", "params": {"document_id": "doc-1", "locator": "126b"}},
-                {"tool_name": tools.TOOL_PASSAGE_CONTEXT, "method": "GET", "params": {"document_id": "doc-1"}},
-            ],
-            [
-                {"tool_name": tools.TOOL_CATALOG_SEARCH, "method": "GET", "params": {"query": "x"}},
-                {"tool_name": tools.TOOL_PASSAGE_CONTEXT, "method": "GET", "params": {}},
-            ],
+            (
+                {
+                    "case_id": "P04",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+                },
+                [
+                    {"tool_name": tools.TOOL_LOCATE, "method": "GET", "params": {"document_id": "doc-1", "locator": "126b"}},
+                    {"tool_name": tools.TOOL_PASSAGE_CONTEXT, "method": "GET", "params": {"document_id": "doc-1"}},
+                ],
+            ),
+            (
+                {
+                    "case_id": "P05",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+                },
+                [
+                    {"tool_name": tools.TOOL_CATALOG_SEARCH, "method": "GET", "params": {"query": "x"}},
+                    {"tool_name": tools.TOOL_PASSAGE_CONTEXT, "method": "GET", "params": {}},
+                ],
+            ),
         ]
-        for calls in cases:
+        for overrides, calls in cases:
             with self.subTest(first_tool=calls[0]["tool_name"]):
-                validation = contract.validate_agent_payload({**base, "tool_calls": calls})
+                validation = contract.validate_agent_payload({**json.loads(_valid_json()), **overrides, "tool_calls": calls})
                 self.assertEqual(validation.status, contract.STATUS_VALIDATED)
 
     def test_parser_repairs_model_param_aliases_without_relaxing_mutating_methods(self) -> None:
@@ -330,6 +442,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(repaired.status, contract.STATUS_VALIDATED)
         self.assertIsNotNone(repaired.plan)
         assert repaired.plan is not None
+        self.assertEqual(repaired.plan.product_method, product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK)
         self.assertEqual(repaired.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
         self.assertEqual(repaired.plan.tool_calls[0].params["query"], RAW_TITLE)
         self.assertEqual(repaired.plan.tool_calls[0].params["limit"], 7)
@@ -353,6 +466,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(toc_reference.status, contract.STATUS_VALIDATED)
         self.assertIsNotNone(toc_reference.plan)
         assert toc_reference.plan is not None
+        self.assertEqual(toc_reference.plan.product_method, product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW)
+        self.assertEqual(toc_reference.plan.case_id, "P09")
         self.assertEqual(toc_reference.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
         self.assertEqual(toc_reference.plan.tool_calls[0].params["query"], RAW_TITLE)
 
@@ -375,6 +490,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(locate_reference.status, contract.STATUS_VALIDATED)
         self.assertIsNotNone(locate_reference.plan)
         assert locate_reference.plan is not None
+        self.assertEqual(locate_reference.plan.product_method, product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE)
+        self.assertEqual(locate_reference.plan.case_id, "P04")
         self.assertEqual(locate_reference.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
         self.assertEqual(locate_reference.plan.tool_calls[0].params["query"], RAW_TITLE)
 
@@ -395,6 +512,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(object_call.status, contract.STATUS_VALIDATED)
         self.assertIsNotNone(object_call.plan)
         assert object_call.plan is not None
+        self.assertEqual(object_call.plan.product_method, product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK)
         self.assertEqual(object_call.plan.tool_calls[0].params["query"], RAW_TITLE)
 
         rejected = contract.parse_and_validate_agent_json(
@@ -603,6 +721,27 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertTrue(response_format["json_schema"]["strict"])
         self.assertEqual(response_format["json_schema"]["name"], contract.SCHEMA_VERSION)
         self.assertFalse(response_format["json_schema"]["schema"]["additionalProperties"])
+        self.assertEqual(
+            set(response_format["json_schema"]["schema"]["required"]),
+            {
+                "schema_version",
+                "case_id",
+                "intent",
+                "product_method",
+                "tool_calls",
+                "answer_mode",
+                "risk_flags",
+                "fallback_reason",
+            },
+        )
+        self.assertEqual(
+            response_format["json_schema"]["schema"]["properties"]["case_id"]["enum"],
+            ["", *product_methods.CASE_IDS],
+        )
+        self.assertEqual(
+            set(response_format["json_schema"]["schema"]["properties"]["product_method"]["enum"]),
+            set(product_methods.all_product_method_names()),
+        )
         tool_items = response_format["json_schema"]["schema"]["properties"]["tool_calls"]["items"]
         self.assertFalse(tool_items["additionalProperties"])
         self.assertEqual(set(tool_items["required"]), {"tool_name", "method", "params", "call_id"})
@@ -905,7 +1044,11 @@ def _valid_json(
     method: str = "GET",
     params: dict[str, Any] | None = None,
     tool_count: int = 1,
+    case_id: str | None = None,
+    product_method: str | None = None,
 ) -> str:
+    effective_product_method = product_method or _product_method_for_tool(tool_name)
+    effective_case_id = case_id if case_id is not None else product_methods.default_case_id_for_method(effective_product_method)
     tool_calls = [
         {"tool_name": tool_name, "method": method, "params": dict(params or {"limit": 10})}
         for _ in range(tool_count)
@@ -913,7 +1056,9 @@ def _valid_json(
     return json.dumps(
         {
             "schema_version": contract.SCHEMA_VERSION,
+            "case_id": effective_case_id,
             "intent": "list_catalog",
+            "product_method": effective_product_method,
             "tool_calls": tool_calls,
             "answer_mode": "catalog_list",
             "risk_flags": [],
@@ -925,6 +1070,19 @@ def _valid_json(
 
 def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _product_method_for_tool(tool_name: str) -> str:
+    mapping = {
+        tools.TOOL_CATALOG_LIST: product_methods.PRODUCT_METHOD_CATALOG_LIST_BOUNDED,
+        tools.TOOL_CATALOG_SEARCH: product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+        tools.TOOL_DOCUMENT_OPEN_SUMMARY: product_methods.PRODUCT_METHOD_WORK_LOOKUP,
+        tools.TOOL_DOCUMENT_TOC: product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+        tools.TOOL_PAGE_READ: product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT,
+        tools.TOOL_LOCATE: product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+        tools.TOOL_PASSAGE_CONTEXT: product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT,
+    }
+    return mapping.get(tool_name, product_methods.PRODUCT_METHOD_CATALOG_LIST_BOUNDED)
 
 
 class _FakeHTTPResponse:

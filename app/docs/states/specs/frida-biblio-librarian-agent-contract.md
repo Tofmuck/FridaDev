@@ -1,7 +1,7 @@
 # Frida Biblio librarian agent contract
 
 Statut: spec vivante
-Date: 2026-05-31
+Date: 2026-06-02
 Classement: `app/docs/states/specs/`
 Roadmap active: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
 Matrice d'action produit complementaire: `app/docs/todo-todo/product/frida-biblio-refonte.md`
@@ -38,6 +38,11 @@ une verite produit explicite `exact_passage / plausible_candidate /
 contextual_approximation / clarification_required`, et la resolution
 documentaire FridaDev conserve `work_title` distinct de `document_title` jusque
 dans le runtime.
+Mise a jour refonte Lot B 2026-06-02: le contrat agent porte maintenant
+`case_id` et `product_method`, et le registre declaratif des methodes produit
+est livre dans `app/biblio/librarian_product_methods.py`. Les `tool_calls`
+restent le sous-plan technique borne de la methode produit; le basculement du
+runtime sur une execution souveraine par methode reste un lot suivant.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
 Le but est de garder l'agent bibliothecaire livre testable, borne et
@@ -248,37 +253,68 @@ sortie doit clarifier.
 
 ## 7. Sortie agent
 
-Schema conceptuel interne, version initiale:
+Le contrat agent courant est maintenant coupe en deux couches explicites.
+
+### A. Plan agent valide aujourd'hui
+
+Schema valide du plan agent:
 
 ```json
 {
   "schema_version": "biblio_librarian_agent_v1",
+  "case_id": "P01",
   "intent": "string",
-  "tool_plan": [],
+  "product_method": "catalog_list_bounded",
   "tool_calls": [],
   "answer_mode": "string",
-  "state_update": {},
-  "clarification": {},
-  "confidence": {},
   "risk_flags": [],
   "fallback_reason": ""
 }
 ```
 
-Champs minimaux:
+Champs minimaux du plan:
 
 - `schema_version`: obligatoire, valeur exacte attendue;
-- `intent`: intent bibliothecaire normalise;
-- `tool_plan`: plan declaratif borne, non execute par le modele lui-meme;
-- `tool_calls`: appels demandes, tous verifies par allowlist avant execution;
-- `answer_mode`: `passage`, `catalog_list`, `open_work`, `toc`,
-  `conceptual_search`, `clarify`, `not_found`, `ambiguous`, `degraded`,
-  `refuse_false_certainty` ou equivalent versionne;
-- `state_update`: ancres content-free uniquement;
-- `clarification`: question produit si resolution insuffisante;
-- `confidence`: signal borne, non souverain;
+- `case_id`: identifiant de cas Biblio si reconnu sans forcer, sinon chaine vide;
+- `intent`: intent bibliothecaire normalise, conserve pour compatibilite de
+  transition;
+- `product_method`: methode produit explicite obligatoire;
+- `tool_calls`: sous-plan technique borne, tous verifies par allowlist avant
+  execution;
+- `answer_mode`: mode de sortie planifie (`passage`, `catalog_list`, `open_work`,
+  `toc`, `conceptual_search`, `clarify`, `not_found`, `ambiguous`, `degraded`,
+  `refuse_false_certainty` ou equivalent versionne);
 - `risk_flags`: reason codes, jamais contenu brut;
 - `fallback_reason`: reason code si modele ou schema non utilisable.
+
+Regles:
+
+- `product_method` est le niveau produit;
+- `tool_calls` ne sont plus la grammaire produit;
+- `case_id` peut rester vide si plusieurs cas partagent la meme methode et que
+  le bibliothecaire ne tranche pas proprement;
+- `intent` reste temporairement present pour compatibilite avec le runtime
+  actuel.
+
+### B. Resultat structure de methode cible
+
+Le runtime n'execute pas encore souverainement toutes les methodes via ce
+contrat, mais le payload structure minimal cible est fige:
+
+- `case_id`
+- `product_method`
+- `execution_status`
+- `reason_code`
+- `truth_level`
+- `state_update`
+- `result_summary`
+- `anchors`
+- `tool_trace` content-free
+
+`execution_status` et `truth_level` sont separes:
+
+- `execution_status`: `success`, `clarification`, `not_found`, `error`;
+- `truth_level`: `exact`, `plausible`, `contextuel`.
 
 La sortie ne doit pas contenir:
 
@@ -298,7 +334,8 @@ observabilite/admin/logs/read-models.
 ## 8. Registre d'outils GET-only
 
 Le futur registre d'outils doit etre explicite, borne et verifie avant tout
-appel.
+appel. Le registre declaratif des methodes produit vit maintenant a cote dans
+`app/biblio/librarian_product_methods.py`.
 
 Outils autorises au niveau contrat:
 
