@@ -200,17 +200,23 @@ def _matching_chapters(
     chapters = response.payload.get("chapters")
     if not isinstance(chapters, list):
         return []
-    query_keys = {_normalized_work_key(query) for query in queries if _normalized_work_key(query)}
-    if not query_keys:
+    query_token_sequences = tuple(
+        dict.fromkeys(
+            _normalized_word_sequence(query)
+            for query in queries
+            if _normalized_word_sequence(query)
+        )
+    )
+    if not query_token_sequences:
         return []
     matched: list[Mapping[str, Any]] = []
     for chapter in chapters:
         if not isinstance(chapter, Mapping):
             continue
-        title_key = _normalized_work_key(chapter.get("title"))
-        if not title_key:
+        title_tokens = _normalized_word_sequence(chapter.get("title"))
+        if not title_tokens:
             continue
-        if any(query_key in title_key or title_key in query_key for query_key in query_keys):
+        if any(_chapter_tokens_match(title_tokens, query_tokens) for query_tokens in query_token_sequences):
             matched.append(chapter)
     return matched
 
@@ -298,6 +304,27 @@ def _normalized_work_key(value: Any) -> str:
     text = "".join(char for char in text if not unicodedata.combining(char))
     text = re.sub(r"[^a-z0-9]+", " ", text.casefold())
     return " ".join(text.split())
+
+
+def _normalized_word_sequence(value: Any) -> tuple[str, ...]:
+    normalized = _normalized_work_key(value)
+    if not normalized:
+        return ()
+    return tuple(normalized.split())
+
+
+def _chapter_tokens_match(title_tokens: Sequence[str], query_tokens: Sequence[str]) -> bool:
+    if not title_tokens or not query_tokens:
+        return False
+    query_length = len(query_tokens)
+    if query_length == 1:
+        return query_tokens[0] in title_tokens
+    if query_length > len(title_tokens):
+        return False
+    for start in range(len(title_tokens) - query_length + 1):
+        if tuple(title_tokens[start : start + query_length]) == tuple(query_tokens):
+            return True
+    return False
 
 
 def _text(value: Any) -> str:
