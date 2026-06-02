@@ -8,7 +8,8 @@ Matrice d'action produit complementaire: `app/docs/todo-todo/product/frida-bibli
 Audit source: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 Contrat Biblio natif voisin: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
-Verification OpenRouter Lot 7: `app/docs/states/baselines/frida-biblio-librarian-agent-openrouter-json-2026-06-01.md`
+Verification OpenRouter Lot 7 historique: `app/docs/states/baselines/frida-biblio-librarian-agent-openrouter-json-2026-06-01.md`
+Verification OpenRouter courante: `app/docs/states/baselines/frida-biblio-librarian-agent-openrouter-gpt52-2026-06-02.md`
 Portee: contrat normatif de l'agent bibliothecaire, du registre d'outils
 GET-only, de la boucle bornee, du socle agentique et de la tranche
 agent-first active comme controleur Biblio.
@@ -27,7 +28,7 @@ Mise a jour Lot 7: le socle agentique OpenRouter / JSON est livre dans
 `app/biblio/librarian_agent.py`, avec validation stricte et fallback
 deterministe.
 Mise a jour post-Lot 10: le smoke nominal utilise `active` et la configuration
-applicative par defaut demande `deepseek/deepseek-v4-pro` avec
+applicative par defaut demande `openai/gpt-5.2` avec
 `reasoning_effort=high`. La tranche agent-first generale remplace l'exception
 P03: quand Biblio est activee, un plan agent valide peut executer les outils
 Catalogue GET-only allowlistes sous budgets stricts, puis injecter une lane
@@ -128,11 +129,12 @@ Contraintes:
 
 - `primary_model` et `fallback_model` viennent des runtime settings ou d'un
   seed versionne, jamais d'un literal cache dans le module agent;
-- DeepSeek V4 Pro est seulement un candidat produit si OpenRouter le rend
-  disponible et adapte;
-- ne pas inventer de slug OpenRouter pour DeepSeek V4 Pro;
+- `openai/gpt-5.2` est le candidat produit courant tant que les preuves
+  OpenRouter / JSON / live restent vertes;
+- ne pas inventer de compatibilite provider hors verification documentaire et
+  preuve live ciblee;
 - le slug observe, les capacites et les limites doivent etre documentes dans
-  l'artefact OpenRouter / JSON avant implementation;
+  l'artefact OpenRouter / JSON avant implementation ou bascule de modele;
 - le fallback modele doit etre configurable;
 - si le modele principal est indisponible, trop lent, refuse, produit du JSON
   invalide ou ne respecte pas le tool schema, le runtime doit degrader
@@ -780,8 +782,12 @@ Implementation:
 - modes: `off`, `shadow`, `candidate`, `active`;
 - default runtime post-Lot 10:
   section DB `biblio_librarian_agent` seedee avec `mode=active`,
-  `primary_model=deepseek/deepseek-v4-pro`, `timeout_s=240`,
+  `primary_model=openai/gpt-5.2`, `timeout_s=240`,
   `max_tokens=16000`, `max_recent_turns=5`, `reasoning_effort=high`;
+- avec `provider.require_parameters=true`, le caller bibliothecaire garde
+  `reasoning` et `response_format=json_schema`; pour les modeles `openai/gpt-5*`,
+  il omet `temperature` et `top_p` si le provider ne les annonce pas comme
+  supportes sur ce chemin strict.
 - `active` est reconnu comme valeur de mode mais n'est pas utilise comme
   chemin souverain de reponse produit dans ce lot;
 - `shadow` et `candidate` peuvent valider un plan JSON mais gardent
@@ -797,8 +803,12 @@ Implementation:
 - payload OpenRouter: `response_format.type=json_schema`,
   `json_schema.name=biblio_librarian_agent_v1`, `strict=true`,
   `provider.require_parameters=true`, `reasoning={"effort": "...",
-  "exclude": true}` si configure, avec schemas d'outils bornes par outil et
-  alignes sur `librarian_tools.py`;
+  "exclude": true}` si configure. Sur le chemin `openai/gpt-5*`, le caller
+  omet `temperature` et `top_p`, n'utilise pas `oneOf` dans
+  `tool_calls.items`, et declare un `call_id` nullable ainsi qu'un objet
+  `params` ferme a superset nullable des cles Biblio; le validateur local
+  FridaDev reste souverain pour filtrer les `null` / vides puis revalider
+  l'executabilite par outil contre `librarian_tools.py`;
 - le contrat JSON est obligatoire dans le Lot 7; il n'existe plus de setting
   operateur pour le desactiver, et `provider.require_parameters` ne depend
   d'aucune variable d'environnement;

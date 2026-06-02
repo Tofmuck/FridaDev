@@ -538,7 +538,11 @@ def _repair_tool_name(tool_name: str, params: Mapping[str, Any]) -> str:
 def _repair_params(tool_name: str, params: Mapping[str, Any]) -> dict[str, Any]:
     contract = _TOOL_PARAM_CONTRACTS[tool_name]
     allowed = set(contract["allowed"])
-    repaired = {key: value for key, value in params.items() if key in allowed}
+    repaired = {
+        key: value
+        for key, value in params.items()
+        if key in allowed and value is not None and not (isinstance(value, str) and not value.strip())
+    }
     if tool_name in {tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_OPEN_SUMMARY, tools.TOOL_CATALOG_LIST}:
         if not (repaired.get("q") or repaired.get("query")):
             query = _combined_query(params)

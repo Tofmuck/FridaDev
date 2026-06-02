@@ -135,7 +135,7 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
                 'biblio_librarian_agent',
                 {
                     'mode': {'value': 'active'},
-                    'primary_model': {'value': 'deepseek/deepseek-v4-pro'},
+                    'primary_model': {'value': 'openai/gpt-5.2'},
                     'temperature': {'value': 0},
                     'top_p': {'value': 1},
                     'max_tokens': {'value': 16000},

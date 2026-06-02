@@ -8,6 +8,7 @@ Contrat source Biblio native: `app/docs/states/specs/frida-biblio-native-catalog
 Contrat source agent Lot 2: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 Matrice d'action produit complementaire: `app/docs/todo-todo/product/frida-biblio-refonte.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
+Verification OpenRouter courante: `app/docs/states/baselines/frida-biblio-librarian-agent-openrouter-gpt52-2026-06-02.md`
 Scope: plan produit/runtime pour agent bibliothecaire Frida, lots docs et runtime bornes.
 
 ## Objectif produit
@@ -73,10 +74,10 @@ pas encore le remplacement produit du chemin Biblio actuel.
 Invariant cible:
 
 - le modele de l'agent bibliothecaire est configurable via runtime settings;
-- le candidat produit par defaut est DeepSeek V4 Pro, si disponible et adapte cote OpenRouter;
-- ne pas deviner le slug OpenRouter exact dans le code ou la doc d'implementation;
+- le candidat produit courant par defaut est `openai/gpt-5.2`;
+- ne pas deviner le slug OpenRouter exact hors verification documentaire et preuve live ciblee;
 - verifier le slug, la disponibilite, les capacites JSON/outils, les couts et la latence au moment du lot runtime;
-- prevoir un fallback runtime vers un modele plus robuste si DeepSeek V4 Pro est indisponible, trop lent, invalide son JSON ou echoue aux smokes;
+- prevoir un fallback runtime vers un autre modele robuste si `openai/gpt-5.2` devient indisponible, trop lent, invalide son JSON ou echoue aux smokes;
 - exposer en observabilite content-free le modele effectif, la source de configuration, le fallback eventuel, le timeout, le nombre de retries et le reason code, jamais la cle API.
 
 Implication livree partiellement:
@@ -110,7 +111,7 @@ Artefact obligatoire de verification avant implementation:
 
 - [ ] noter la date de verification OpenRouter;
 - [ ] lister les URLs OpenRouter consultees;
-- [ ] noter le modele/slug observe pour DeepSeek V4 Pro ou le candidat retenu;
+- [ ] noter le modele/slug observe pour le candidat retenu;
 - [ ] confirmer ou infirmer les capacites JSON, structured output, tool schema ou JSON mode;
 - [ ] ecrire la decision dans cette TODO ou dans une spec source-of-truth;
 - [ ] associer les tests JSON/provider a cette decision;
@@ -1092,12 +1093,16 @@ Risque de livrer un agent qui passe les unitaires mais echoue les demandes philo
 - [x] `--no-product-strict` ne masque plus un echec agent; seul
   `--no-agent-strict` permet une inspection debug non bloquante.
 - [x] Mini-lot configuration active post-Lot 10: defaults applicatifs non
-  secrets `active`, `deepseek/deepseek-v4-pro`, temperature `0`, `top_p=1`,
+  secrets `active`, `openai/gpt-5.2`, temperature `0`, `top_p=1`,
   `max_tokens=16000`, `max_recent_turns=5`, timeout `240s` et
   `reasoning_effort=high`.
 - [x] Correctif post-audit: payload OpenRouter Biblio aligne sur
   `reasoning={"effort":"high","exclude":true}` et smoke segmentable par
   `--case-id` / `--max-cases`; le full smoke reste le gate global.
+- [x] Compat GPT-5.2 prouvee sans refonte prompt: le caller omet
+  `temperature` / `top_p` pour `openai/gpt-5*`, evite `oneOf` dans
+  `tool_calls.items`, et normalise localement les `null` / vides d'un schema
+  `params` strict OpenRouter-compatible.
 - [x] Fixtures attendues content-free avec statuts separes: `runtime_expectation_status`, `agent_expectation_status`, `product_expectation_status`.
 - [x] Un plan dialogue local seul ne peut pas rendre un cas `met`.
 - [x] Documentation des cas et resultats.

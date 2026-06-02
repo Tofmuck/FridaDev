@@ -416,6 +416,49 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(rejected.status, contract.STATUS_REJECTED)
         self.assertIsNone(rejected.plan)
 
+    def test_parser_repairs_nullable_openrouter_param_shape_into_executable_params(self) -> None:
+        repaired = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "search_passage",
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_CATALOG_SEARCH,
+                            "method": "GET",
+                            "params": {
+                                "q": None,
+                                "query": "maieutique",
+                                "document_id": None,
+                                "doc_id": None,
+                                "locator": None,
+                                "label": None,
+                                "kind": None,
+                                "limit": 10,
+                                "offset": None,
+                                "page_no": None,
+                                "para_no": None,
+                                "paragraph_id": None,
+                                "char_offset": None,
+                                "window_chars": None,
+                            },
+                        }
+                    ],
+                    "answer_mode": "tool",
+                    "risk_flags": [],
+                    "fallback_reason": "",
+                }
+            )
+        )
+
+        self.assertEqual(repaired.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(repaired.plan)
+        assert repaired.plan is not None
+        self.assertEqual(
+            repaired.plan.tool_calls[0].params,
+            {"query": "maieutique", "limit": 10},
+        )
+
     def test_budget_exceeded_before_and_after_model_call(self) -> None:
         no_model_budget = agent.BiblioLibrarianAgent(_FakeModelClient(_valid_json())).run(
             _request(
@@ -561,27 +604,30 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(response_format["json_schema"]["name"], contract.SCHEMA_VERSION)
         self.assertFalse(response_format["json_schema"]["schema"]["additionalProperties"])
         tool_items = response_format["json_schema"]["schema"]["properties"]["tool_calls"]["items"]
-        self.assertEqual(len(tool_items["oneOf"]), len(tools.LOT3_TOOL_NAMES))
-        catalog_search = next(
-            item for item in tool_items["oneOf"] if item["properties"]["tool_name"]["enum"] == [tools.TOOL_CATALOG_SEARCH]
-        )
-        params = catalog_search["properties"]["params"]
+        self.assertFalse(tool_items["additionalProperties"])
+        self.assertEqual(set(tool_items["required"]), {"tool_name", "method", "params", "call_id"})
+        self.assertEqual(set(tool_items["properties"]["tool_name"]["enum"]), set(tools.LOT3_TOOL_NAMES))
+        self.assertEqual(tool_items["properties"]["method"]["enum"], ["GET"])
+        params = tool_items["properties"]["params"]
+        self.assertEqual(params["type"], "object")
         self.assertFalse(params["additionalProperties"])
-        self.assertEqual(params["properties"]["limit"]["maximum"], 50)
-        self.assertEqual(params["properties"]["offset"]["maximum"], 0)
+        self.assertEqual(set(params["required"]), set(params["properties"].keys()))
+        self.assertIn("query", params["properties"])
+        self.assertIn("document_id", params["properties"])
+        self.assertIn("page_no", params["properties"])
 
     def test_settings_from_config_keeps_json_contract_required_without_operator_disable(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings.from_config(
             SimpleNamespace(
                 BIBLIO_LIBRARIAN_AGENT_MODE="shadow",
-                BIBLIO_LIBRARIAN_AGENT_MODEL="deepseek/deepseek-v4-pro",
+                BIBLIO_LIBRARIAN_AGENT_MODEL="openai/gpt-5.2",
                 BIBLIO_LIBRARIAN_AGENT_REQUIRE_PARAMETERS="false",
                 BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT="high",
             )
         )
 
         self.assertEqual(settings.mode, contract.MODE_SHADOW)
-        self.assertEqual(settings.primary_model, "deepseek/deepseek-v4-pro")
+        self.assertEqual(settings.primary_model, "openai/gpt-5.2")
         self.assertEqual(settings.reasoning_effort, "high")
         self.assertTrue(settings.to_observability()["json_contract_required"])
         self.assertTrue(settings.to_observability()["require_parameters"])
@@ -593,7 +639,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         )
 
         self.assertEqual(settings.mode, contract.MODE_ACTIVE)
-        self.assertEqual(settings.primary_model, "deepseek/deepseek-v4-pro")
+        self.assertEqual(settings.primary_model, "openai/gpt-5.2")
         self.assertEqual(settings.max_tokens, 16000)
         self.assertEqual(settings.timeout_s, 240)
         self.assertEqual(settings.reasoning_effort, "high")
@@ -605,7 +651,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         settings = contract.BiblioLibrarianAgentSettings.from_config(
             SimpleNamespace(
                 BIBLIO_LIBRARIAN_AGENT_MODE="shadow",
-                BIBLIO_LIBRARIAN_AGENT_MODEL="deepseek/deepseek-v4-pro",
+                BIBLIO_LIBRARIAN_AGENT_MODEL="openai/gpt-5.2",
                 BIBLIO_LIBRARIAN_AGENT_REQUIRE_PARAMETERS="false",
                 BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS=1,
                 BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S=240,
@@ -615,15 +661,28 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         )
         payload = openrouter.build_librarian_agent_payload(_request(settings=settings), settings=settings)
 
-        self.assertEqual(payload["model"], "deepseek/deepseek-v4-pro")
+        self.assertEqual(payload["model"], "openai/gpt-5.2")
         self.assertEqual(payload["max_tokens"], 16000)
-        self.assertEqual(payload["temperature"], 0.0)
-        self.assertEqual(payload["top_p"], 1.0)
+        self.assertNotIn("temperature", payload)
+        self.assertNotIn("top_p", payload)
         self.assertEqual(payload["reasoning"], {"effort": "high", "exclude": True})
         self.assertNotIn("reasoning_effort", payload)
         self.assertEqual(payload["provider"], {"require_parameters": True})
         self.assertEqual(payload["response_format"]["type"], "json_schema")
         self.assertEqual(len(payload["messages"]), 2)
+
+    def test_openrouter_payload_keeps_sampling_for_non_gpt5_models(self) -> None:
+        settings = contract.BiblioLibrarianAgentSettings(
+            mode=contract.MODE_SHADOW,
+            primary_model="provider/model-x",
+            temperature=0.25,
+            top_p=0.9,
+        )
+
+        payload = openrouter.build_librarian_agent_payload(_request(settings=settings), settings=settings)
+
+        self.assertEqual(payload["temperature"], 0.25)
+        self.assertEqual(payload["top_p"], 0.9)
 
     def test_openrouter_system_prompt_guides_primary_text_and_stephanus_ranges(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings(
@@ -930,7 +989,7 @@ class _FakeRuntimeSettingsModule:
             source_reason="db_row",
             payload={
                 "mode": {"value": "active"},
-                "primary_model": {"value": "deepseek/deepseek-v4-pro"},
+                "primary_model": {"value": "openai/gpt-5.2"},
                 "fallback_model": {"value": ""},
                 "timeout_s": {"value": 240},
                 "temperature": {"value": 0},

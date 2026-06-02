@@ -194,8 +194,8 @@ BIBLIO_CATALOGUE_TIMEOUT_S = _env_int('BIBLIO_CATALOGUE_TIMEOUT_S', 8)
 BIBLIO_LIBRARIAN_AGENT_MODE = os.environ.get('BIBLIO_LIBRARIAN_AGENT_MODE', 'active').strip().lower() or 'active'
 BIBLIO_LIBRARIAN_AGENT_MODEL = os.environ.get(
     'BIBLIO_LIBRARIAN_AGENT_MODEL',
-    'deepseek/deepseek-v4-pro',
-).strip() or 'deepseek/deepseek-v4-pro'
+    'openai/gpt-5.2',
+).strip() or 'openai/gpt-5.2'
 BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL = os.environ.get('BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL', '').strip()
 BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S = _env_int('BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S', 240)
 BIBLIO_LIBRARIAN_AGENT_TEMPERATURE = _env_float('BIBLIO_LIBRARIAN_AGENT_TEMPERATURE', 0.0)
