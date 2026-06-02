@@ -72,10 +72,12 @@ La methode produit est l'unite de pilotage du runtime. Elle porte:
 - les preconditions;
 - les outils/scripts autorises;
 - le type de resultat structure attendu;
-- la verite produit de sortie:
+- le niveau de verite produit de sortie:
   - exact;
   - plausible;
   - contextuel;
+- le statut d'execution de sortie:
+  - success;
   - clarification;
   - not_found;
   - error.
@@ -102,7 +104,7 @@ sans reenqueter sur le cas. Ce payload doit porter au minimum:
 
 - `case_id`
 - `product_method`
-- `status`
+- `execution_status`
 - `reason_code`
 - `truth_level`
 - `state_update`
@@ -169,13 +171,13 @@ Regle dure:
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | P04 | Plage canonique explicite | Extraire un passage borne demande par locator/range | `passage_extract_canonical_range` | resolution documentaire, `locate`, `passage_context` | partiel | Le chemin exact existe sur certains cas forts, mais la methode n'est pas encore la brique canonique du systeme | mixte | Declarer la methode produit et documenter clairement la frontiere label simple vs plage canonique generale |
-| P10 | Amorcage d'etat sur passage explicite | Initialiser l'etat Biblio a partir d'un passage exact | `passage_seed_from_exact_result` | meme chaine que P04 + `state_update` | partiel | L'amorcage existe, mais comme consequence du runtime, pas comme methode explicite | FridaDev | Rendre le seed d'etat explicite dans le contrat de methode |
+| P10 | Passage courant de reference | Faire de ce passage exact le point de depart de la suite Biblio | `passage_set_current_reference` | meme chaine que P04 + `state_update` | partiel | Le passage exact peut deja servir d'ancre pour la suite, mais ce role reste encore porte comme effet du runtime, pas comme methode explicite | FridaDev | Rendre cette mise en reference explicite dans le contrat de methode |
 
 ### D. Recherche thematique dans une oeuvre
 
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P05 | Theme dans une oeuvre | Trouver un passage thematique dans l'oeuvre cible | `passage_search_in_work` | resolution documentaire, `catalog_search`, `passage_context`, selection | partiel | Le systeme sait produire des candidats/contextes, pas encore une verite bibliothecaire forte | mixte | Stabiliser la methode produit et la sortie `exact/plausible/contextuel/clarification` |
+| P05 | Theme dans une oeuvre | Trouver un passage thematique dans l'oeuvre cible | `passage_search_in_work` | resolution documentaire, `catalog_search`, `passage_context`, selection | partiel | Le systeme sait produire des candidats/contextes, pas encore une verite bibliothecaire forte | mixte | Stabiliser la methode produit et separer explicitement `truth_level` et `execution_status` |
 | P06 | Theme dans une oeuvre sans accents | Meme cas que P05, avec variantes de forme | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | partiel | Le cas passe encore avec reparation/fallback sur certaines variantes | FridaDev | Sortir les variantes de la logique de reparation et les rattacher a la methode produit |
 | P07 | Theme lexical voisin | Meme cas que P05 avec reformulation ("sage-femme") | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | partiel | La recherche marche parfois, mais sans garantie de source ni de niveau documentaire | mixte | Integrer la verification oeuvre/source dans la methode |
 | P08 | Theme paraphrase | Meme cas que P05 avec reformulation plus libre | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | partiel | Le cas reste un `search -> context` utile, pas une resolution forte | mixte | Mieux separer paraphrase, candidat plausible et passage exact |
@@ -210,7 +212,7 @@ Methodes canoniques minimales:
 - `work_lookup`
 - `document_toc_show`
 - `passage_extract_canonical_range`
-- `passage_seed_from_exact_result`
+- `passage_set_current_reference`
 - `passage_search_in_work`
 - `passage_explain_current`
 - `passage_show_around_current`
