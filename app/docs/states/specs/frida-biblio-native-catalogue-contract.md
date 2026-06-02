@@ -518,7 +518,7 @@ Correctif bibliothecaire du 2026-05-30:
 - `chat_runtime.py` redevient une orchestration mince: toggle, plan structure, client GET-only, runtime bibliothecaire, observabilite et injection prompt;
 - le planner reconnait les intentions `list_catalog`, `search_catalog`, `resolve_work`, `extract_passage`, `extract_range` et `clarify_ambiguous`;
 - quand `biblio_enabled=true`, les demandes naturelles comme `voir les premiers ouvrages`, `cherche Theetete`, `extrait du Theetete de Platon`, `Theetete 126b a 128a` ne tombent plus en faux `no_signal`;
-- `work_resolver.py` distingue document physique Catalogue, oeuvre interne cherchee par `/search`, locator et range; il utilise les resultats de recherche seulement comme ancre interne content-free pour desambiguiser les milestones;
+- `work_resolver.py` distingue document physique Catalogue, oeuvre interne, locator et range; quand un document physique unique est deja resolu, il consulte d'abord `GET /doc/{id}/chapters` comme hint structurel d'oeuvre interne, puis n'utilise `/search` qu'en fallback ou quand un locator/range exige encore une ancre interne content-free pour desambiguiser les milestones;
 - le resolver accepte des ancres non textuelles `locator_anchor_page` / `locator_anchor_para` pour choisir un locator parmi plusieurs candidats sans exposer le titre, l'oeuvre ou la requete en observabilite;
 - le chemin document-id utilise `/metadata` plutot que le payload lourd `/doc/{id}` pour eviter de tirer inutilement l'overview complet;
 - `library_runtime.py` peut produire une lane de consultation `[CONSULTATION DE BIBLIOTHEQUE]` pour liste, recherche, candidat ou statut non extrait; cette lane peut contenir des titres Catalogue dans le prompt produit, mais elle n'est jamais serialisee en observabilite;

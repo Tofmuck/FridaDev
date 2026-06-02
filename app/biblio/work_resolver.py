@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
+import re
 from typing import Any, Mapping, Sequence
+import unicodedata
 
 from .catalogue_client import (
     CatalogueClient,
@@ -98,8 +100,18 @@ class BiblioWorkResolver:
                     if catalog_items:
                         break
 
+            chapter_rows: list[Mapping[str, Any]] = []
+            resolved_doc_id = plan.document_id or _single_catalog_document_id(catalog_items)
+            if plan.work_title and resolved_doc_id:
+                chapters_response = self._client.chapters(resolved_doc_id, limit=500, offset=0)
+                endpoint_observations.append(observe_catalogue_response(chapters_response))
+                chapter_rows = _matching_chapters(
+                    chapters_response,
+                    _candidate_queries(plan.work_title_variants, plan.work_title),
+                )
+
             search_rows: list[Mapping[str, Any]] = []
-            if plan.work_title:
+            if plan.work_title and (plan.locator or plan.locator_end or not chapter_rows):
                 for query in _candidate_queries(plan.work_title_variants, plan.work_title):
                     search_response = self._client.search(query, limit=WORK_SEARCH_LIMIT)
                     endpoint_observations.append(observe_catalogue_response(search_response))
@@ -134,6 +146,8 @@ class BiblioWorkResolver:
             )
 
         anchor_document_id = plan.document_id or _committed_anchor_document_id(anchor, catalog_items)
+        if not anchor_document_id and chapter_rows:
+            anchor_document_id = resolved_doc_id or ""
         request = BiblioResolveRequest(
             document_id=anchor_document_id,
             title=plan.document_title or ("" if anchor_document_id else plan.work_title),
@@ -177,6 +191,28 @@ def _catalog_items(response: CatalogueResponse) -> list[Mapping[str, Any]]:
     if not isinstance(items, list):
         return []
     return [item for item in items if isinstance(item, Mapping)]
+
+
+def _matching_chapters(
+    response: CatalogueResponse,
+    queries: Sequence[str],
+) -> list[Mapping[str, Any]]:
+    chapters = response.payload.get("chapters")
+    if not isinstance(chapters, list):
+        return []
+    query_keys = {_normalized_work_key(query) for query in queries if _normalized_work_key(query)}
+    if not query_keys:
+        return []
+    matched: list[Mapping[str, Any]] = []
+    for chapter in chapters:
+        if not isinstance(chapter, Mapping):
+            continue
+        title_key = _normalized_work_key(chapter.get("title"))
+        if not title_key:
+            continue
+        if any(query_key in title_key or title_key in query_key for query_key in query_keys):
+            matched.append(chapter)
+    return matched
 
 
 def _candidate_queries(*groups: Any) -> tuple[str, ...]:
@@ -257,6 +293,13 @@ def _optional_int(value: Any) -> int | None:
     return None
 
 
+def _normalized_work_key(value: Any) -> str:
+    text = unicodedata.normalize("NFKD", _text(value))
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    text = re.sub(r"[^a-z0-9]+", " ", text.casefold())
+    return " ".join(text.split())
+
+
 def _text(value: Any) -> str:
     return str(value or "").strip()
 
@@ -292,4 +335,17 @@ def _committed_anchor_document_id(
     }
     if len(catalog_doc_ids) == 1 and anchor.document_id in catalog_doc_ids:
         return anchor.document_id
+    return ""
+
+
+def _single_catalog_document_id(catalog_items: Sequence[Mapping[str, Any]]) -> str:
+    catalog_doc_ids = tuple(
+        dict.fromkeys(
+            _text(item.get("id") or item.get("document_id"))
+            for item in catalog_items
+            if _text(item.get("id") or item.get("document_id"))
+        )
+    )
+    if len(catalog_doc_ids) == 1:
+        return catalog_doc_ids[0]
     return ""

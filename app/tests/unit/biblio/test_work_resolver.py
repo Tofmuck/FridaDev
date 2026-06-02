@@ -32,7 +32,7 @@ class BiblioWorkResolverTests(unittest.TestCase):
         self.assertEqual(result.resolve_request.locator_anchor_page, 131)
         self.assertEqual(result.resolve_request.locator, "126b")
         self.assertEqual(result.resolve_request.locator_end, "128a")
-        self.assertEqual([call[0] for call in fake.calls], ["catalog", "search"])
+        self.assertEqual([call[0] for call in fake.calls], ["catalog", "chapters", "search"])
         self.assertNotIn("Théétète", encoded)
         self.assertNotIn("Platon", encoded)
 
@@ -89,6 +89,23 @@ class BiblioWorkResolverTests(unittest.TestCase):
         self.assertEqual(result.resolve_request.title, "Platon")
         self.assertEqual(result.resolve_request.document_title, "Platon")
         self.assertEqual(result.resolve_request.work_title, "Théétète")
+        self.assertEqual([call[0] for call in fake.calls], ["catalog", "chapters"])
+
+    def test_unique_document_uses_chapters_before_paragraph_search_for_internal_work(self) -> None:
+        plan = query_planner.plan_biblio_query("Trouve-moi le Theetete de Platon.")
+        fake = _FakeClient()
+
+        result = work_resolver.BiblioWorkResolver(fake).resolve(plan)
+        encoded = json.dumps(result.to_observability(), ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, work_resolver.STATUS_RESOLVED)
+        self.assertIsNotNone(result.resolve_request)
+        assert result.resolve_request is not None
+        self.assertEqual(result.resolve_request.document_id, "doc-1234")
+        self.assertEqual(result.resolve_request.document_title, "Platon")
+        self.assertEqual(result.resolve_request.work_title, "Théétète")
+        self.assertEqual([call[0] for call in fake.calls], ["catalog", "chapters"])
+        self.assertNotIn("RAW CHAPTER TITLE MUST STAY INTERNAL", encoded)
 
 
 class _FakeClient:
@@ -124,6 +141,23 @@ class _FakeClient:
             },
             duration_ms=1,
             result_count=1,
+        )
+
+    def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("chapters", doc_id, limit, offset))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            status_code=200,
+            payload={
+                "document_id": doc_id,
+                "total": 2,
+                "chapters": [
+                    {"chapter_no": 1, "title": "RAW CHAPTER TITLE MUST STAY INTERNAL", "unit_no": 1, "source": "toc"},
+                    {"chapter_no": 2, "title": "Théétète", "unit_no": 2, "source": "toc"},
+                ],
+            },
+            duration_ms=1,
+            result_count=2,
         )
 
 

@@ -1362,6 +1362,37 @@ class _FakeClient:
             result_count=1,
         )
 
+    def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            status_code=200,
+            payload={
+                "document_id": doc_id,
+                "total": 2,
+                "limit": limit,
+                "offset": offset,
+                "count": 2,
+                "truncated": False,
+                "chapters": [
+                    {
+                        "chapter_no": 1,
+                        "title": "RAW CHAPTER TITLE MUST STAY INTERNAL",
+                        "unit_no": 1,
+                        "source": "toc",
+                    },
+                    {
+                        "chapter_no": 2,
+                        "title": "Théétète",
+                        "unit_no": 2,
+                        "source": "toc",
+                    },
+                ],
+            },
+            duration_ms=1,
+            result_count=2,
+            doc_id_short=catalogue.short_doc_id(doc_id),
+        )
+
     def page(self, doc_id: str, page_no: int) -> catalogue.CatalogueResponse:
         text = f"RAW PAGE {page_no} TEXT MUST NOT BE OBSERVABLE"
         return catalogue.CatalogueResponse(

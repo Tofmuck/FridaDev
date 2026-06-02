@@ -351,6 +351,9 @@ encore decide ou repare a plusieurs endroits.
       - signal primaire/commentaire;
       - oeuvre interne;
       - navigation documentaire plus riche si prouvee necessaire.
+- [x] Reutiliser la TOC/chapters legere existante comme hint d'oeuvre interne
+      quand un document physique unique est deja resolu, avant de retomber sur
+      la recherche plein texte de paragraphes.
 
 ## 9. Criteres de sortie de cette refonte
 
