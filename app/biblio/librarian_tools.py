@@ -657,6 +657,9 @@ def _search_item(raw: Any) -> dict[str, Any]:
             "paragraph_id": _raw_int(item.get("paragraph_id")),
             "rank": _raw_float(item.get("rank")),
             "score": _raw_float(item.get("score")),
+            "document_role_signal": _string(item.get("document_role_signal")),
+            "document_role_signal_source": _string(item.get("document_role_signal_source")),
+            "document_role_signal_strength": _string(item.get("document_role_signal_strength")),
         }
     )
 

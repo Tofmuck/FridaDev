@@ -128,6 +128,47 @@ class BiblioPassageCandidateSearchTests(unittest.TestCase):
         self.assertEqual(result.candidates[0].hit_count, 2)
         self.assertIn("multi_variant_hit", observed["candidates"][0]["reason_codes"])
 
+    def test_commentary_signal_demotes_candidate_without_claiming_primary_truth(self) -> None:
+        plan = query_planner.plan_biblio_query("Cherche maïeutique dans la bibliothèque")
+        fake = _FakeSearchClient(
+            {
+                "maïeutique": [
+                    _row(
+                        "doc-commentary",
+                        page_no=4,
+                        para_no=26,
+                        rank=0.3,
+                        document_role_signal="commentary",
+                        document_role_signal_source="chapter_title",
+                        document_role_signal_strength="weak",
+                    ),
+                    _row(
+                        "doc-body",
+                        page_no=4,
+                        para_no=27,
+                        rank=0.3,
+                        document_role_signal="body",
+                        document_role_signal_source="chapter_title",
+                        document_role_signal_strength="weak",
+                    ),
+                ]
+            }
+        )
+
+        result = candidate_search.BiblioPassageCandidateSearcher(fake).search(plan)
+        observed = result.to_observability()
+        encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(result.status, candidate_search.STATUS_CANDIDATES_FOUND)
+        self.assertEqual(result.candidates[0].doc_id_short, "doc-body")
+        self.assertEqual(result.candidates[0].document_role_signal, "body")
+        self.assertEqual(result.candidates[1].document_role_signal, "commentary")
+        self.assertIn("commentary_role_signal", observed["candidates"][1]["reason_codes"])
+        self.assertEqual(observed["candidates"][1]["document_role_signal_source"], "chapter_title")
+        self.assertEqual(observed["candidates"][1]["document_role_signal_strength"], "weak")
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_TEXT, encoded)
+
     def test_equal_top_scores_are_ambiguous(self) -> None:
         plan = query_planner.plan_biblio_query("Cherche maïeutique dans la bibliothèque")
         fake = _FakeSearchClient(
@@ -198,6 +239,9 @@ def _row(
     para_no: int,
     paragraph_id: int | None = None,
     rank: object = 0.0,
+    document_role_signal: str = "",
+    document_role_signal_source: str = "",
+    document_role_signal_strength: str = "",
 ) -> dict[str, object]:
     row: dict[str, object] = {
         "document_id": document_id,
@@ -209,6 +253,12 @@ def _row(
     }
     if paragraph_id is not None:
         row["paragraph_id"] = paragraph_id
+    if document_role_signal:
+        row["document_role_signal"] = document_role_signal
+    if document_role_signal_source:
+        row["document_role_signal_source"] = document_role_signal_source
+    if document_role_signal_strength:
+        row["document_role_signal_strength"] = document_role_signal_strength
     return row
 
 

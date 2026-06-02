@@ -19,6 +19,7 @@ Route legere table des matieres Catalogue: 2026-05-30
 Etat conversationnel agent bibliothecaire Lot 1: 2026-05-31
 Socle agent bibliothecaire Lot 7: 2026-06-01
 Navigation documentaire R1: 2026-06-02
+Signal faible role documentaire Lot E: 2026-06-02
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -536,6 +537,16 @@ Correctif recherche de candidats du 2026-05-30:
 - `app/biblio/passage_candidate_search.py` transforme un `BiblioQueryPlan` en candidats de paragraphes via `GET /search` uniquement;
 - `/search.rank` est un score Catalogue float, issu notamment de `ts_rank_cd(...) AS rank` ou du fallback `0::float`, et ne doit jamais etre interprete comme un rang ordinal entier;
 - le ranking distingue `catalogue_rank_score` du `first_result_index` local aux resultats retournes par `/search`;
+- `/search` peut maintenant exposer un signal faible `document_role_signal`,
+  derive du titre du chapitre porteur ou, a defaut, du titre documentaire;
+- valeurs autorisees pour ce signal faible: `commentary`, `notice`,
+  `introduction`, `body`;
+- source autorisee: `chapter_title` ou `document_title`;
+- force autorisee: `weak` uniquement a ce stade;
+- ce signal ne prouve jamais qu'un hit est du texte primaire; il sert
+  seulement a demoter proprement les hits `commentary`, `notice` ou
+  `introduction`, et a conserver un indice explicite plutot qu'une heuristique
+  cachee;
 - un score Catalogue float fini peut contribuer au ranking et produire le reason code `high_catalogue_rank_score`;
 - l'observabilite des candidats reste content-free: ids courts, pages, paragraphes, `paragraph_id`, scores, hashes de variantes, reason codes et counts seulement;
 - l'objet resultat de recherche de candidats ne conserve pas les payloads Catalogue bruts de `/search`; il garde seulement des observations endpoint compactes content-free;

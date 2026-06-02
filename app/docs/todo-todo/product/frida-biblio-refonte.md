@@ -358,6 +358,11 @@ encore decide ou repare a plusieurs endroits.
       pour sortir de la limite artificielle "meme page seulement" sur les
       ranges canoniques bornes, sans pretendre avoir encore un objet
       d'intervalle canonique general.
+- [x] Exposer depuis Catalogue un signal faible `document_role_signal` sur les
+      hits `/search`, derive des titres de chapitre ou de document, puis
+      l'utiliser seulement comme indice faible de demotion
+      `commentary/notice/introduction` cote FridaDev, sans le maquiller en
+      verite primaire forte.
 
 ## 9. Criteres de sortie de cette refonte
 

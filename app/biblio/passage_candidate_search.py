@@ -44,6 +44,24 @@ _ROLE_THEME = "theme"
 _ROLE_CATALOGUE = "catalogue"
 _ROLE_WORK = "work"
 
+ROLE_SIGNAL_INTRODUCTION = "introduction"
+ROLE_SIGNAL_NOTICE = "notice"
+ROLE_SIGNAL_COMMENTARY = "commentary"
+ROLE_SIGNAL_BODY = "body"
+ROLE_SIGNAL_STRENGTH_WEAK = "weak"
+
+_ROLE_SIGNAL_PENALTIES = {
+    ROLE_SIGNAL_COMMENTARY: 8.0,
+    ROLE_SIGNAL_NOTICE: 6.0,
+    ROLE_SIGNAL_INTRODUCTION: 4.0,
+}
+_ROLE_SIGNAL_REASON_CODES = {
+    ROLE_SIGNAL_COMMENTARY: "commentary_role_signal",
+    ROLE_SIGNAL_NOTICE: "notice_role_signal",
+    ROLE_SIGNAL_INTRODUCTION: "introduction_role_signal",
+    ROLE_SIGNAL_BODY: "body_role_signal",
+}
+
 
 @dataclass(frozen=True)
 class BiblioPassageCandidateSearchRequest:
@@ -67,6 +85,9 @@ class BiblioPassageCandidate:
     reason_codes: tuple[str, ...] = field(default_factory=tuple)
     catalogue_rank_score: float | None = None
     first_result_index: int | None = None
+    document_role_signal: str = ""
+    document_role_signal_source: str = ""
+    document_role_signal_strength: str = ""
 
     def to_observability(self) -> dict[str, Any]:
         return {
@@ -81,6 +102,9 @@ class BiblioPassageCandidate:
             "reason_codes": list(self.reason_codes),
             "catalogue_rank_score": _round_optional(self.catalogue_rank_score),
             "first_result_index": self.first_result_index,
+            "document_role_signal": self.document_role_signal,
+            "document_role_signal_source": self.document_role_signal_source,
+            "document_role_signal_strength": self.document_role_signal_strength,
         }
 
 
@@ -170,6 +194,7 @@ class BiblioPassageCandidateSearcher:
                         spec,
                         catalogue_rank_score=catalogue_rank_score,
                         result_index=result_index,
+                        **_row_role_signal(row),
                     )
         except CatalogueClientError as exc:
             return BiblioPassageCandidateSearchResult(
@@ -226,6 +251,9 @@ class _CandidateAggregate:
     reason_codes: set[str] = field(default_factory=set)
     catalogue_rank_score: float | None = None
     first_result_index: int | None = None
+    document_role_signal: str = ""
+    document_role_signal_source: str = ""
+    document_role_signal_strength: str = ""
 
     def add_hit(
         self,
@@ -233,6 +261,9 @@ class _CandidateAggregate:
         *,
         catalogue_rank_score: float | None,
         result_index: int,
+        document_role_signal: str = "",
+        document_role_signal_source: str = "",
+        document_role_signal_strength: str = "",
     ) -> None:
         self.hit_count += 1
         if spec.query_hash not in self.query_hashes:
@@ -269,10 +300,37 @@ class _CandidateAggregate:
                 self.reason_codes.add("catalogue_rank_score")
             if catalogue_rank_score >= 0.05:
                 self.reason_codes.add("high_catalogue_rank_score")
+        self._update_role_signal(
+            signal=document_role_signal,
+            source=document_role_signal_source,
+            strength=document_role_signal_strength,
+        )
+
+    def _update_role_signal(self, *, signal: str, source: str, strength: str) -> None:
+        if signal not in _ROLE_SIGNAL_REASON_CODES:
+            return
+        signal_rank = _role_signal_rank(signal)
+        current_rank = _role_signal_rank(self.document_role_signal)
+        if signal_rank < current_rank:
+            return
+        if signal_rank == current_rank and self.document_role_signal_source and not _prefer_role_source(
+            source,
+            self.document_role_signal_source,
+        ):
+            return
+        self.document_role_signal = signal
+        self.document_role_signal_source = source if signal else ""
+        self.document_role_signal_strength = strength if signal else ""
 
     def to_candidate(self, work_positions: Mapping[str, Sequence[tuple[int | None, int | None]]]) -> BiblioPassageCandidate:
         score = self.base_score
         reasons = set(self.reason_codes)
+        role_penalty = _ROLE_SIGNAL_PENALTIES.get(self.document_role_signal, 0.0)
+        if role_penalty:
+            score -= role_penalty
+        role_reason = _ROLE_SIGNAL_REASON_CODES.get(self.document_role_signal, "")
+        if role_reason:
+            reasons.add(role_reason)
         if self.document_id in work_positions:
             score += 10
             reasons.add("work_document_match")
@@ -292,6 +350,9 @@ class _CandidateAggregate:
             reason_codes=tuple(sorted(reasons)),
             catalogue_rank_score=self.catalogue_rank_score,
             first_result_index=self.first_result_index,
+            document_role_signal=self.document_role_signal,
+            document_role_signal_source=self.document_role_signal_source,
+            document_role_signal_strength=self.document_role_signal_strength,
         )
 
 
@@ -380,6 +441,17 @@ def _row_position(row: Mapping[str, Any]) -> tuple[str, int | None, int | None, 
     return doc_id, page_no, para_no, paragraph_id, _optional_float(row.get("rank"))
 
 
+def _row_role_signal(row: Mapping[str, Any]) -> dict[str, str]:
+    signal = str(row.get("document_role_signal") or "").strip().lower()
+    if signal not in _ROLE_SIGNAL_REASON_CODES:
+        return {}
+    return {
+        "document_role_signal": signal,
+        "document_role_signal_source": str(row.get("document_role_signal_source") or "").strip().lower(),
+        "document_role_signal_strength": str(row.get("document_role_signal_strength") or "").strip().lower(),
+    }
+
+
 def _candidate_key(
     document_id: str,
     page_no: int | None,
@@ -422,6 +494,19 @@ def _near_work_position(
         if work_para is not None and para_no is not None and work_page == page_no and abs(work_para - para_no) <= 8:
             return True
     return False
+
+
+def _role_signal_rank(signal: str) -> int:
+    if signal in {ROLE_SIGNAL_COMMENTARY, ROLE_SIGNAL_NOTICE, ROLE_SIGNAL_INTRODUCTION}:
+        return 2
+    if signal == ROLE_SIGNAL_BODY:
+        return 1
+    return 0
+
+
+def _prefer_role_source(candidate: str, current: str) -> bool:
+    priority = {"chapter_title": 2, "document_title": 1}
+    return priority.get(candidate, 0) > priority.get(current, 0)
 
 
 def _endpoint_kinds(

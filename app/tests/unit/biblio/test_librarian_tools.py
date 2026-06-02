@@ -91,7 +91,19 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertNotIn("payload", result.items[0])
 
     def test_catalog_search_requires_query_and_never_observes_it(self) -> None:
-        fake = _FakeToolClient(search_payload={"results": [{"document_id": "doc-a", "text": RAW_PASSAGE}]})
+        fake = _FakeToolClient(
+            search_payload={
+                "results": [
+                    {
+                        "document_id": "doc-a",
+                        "text": RAW_PASSAGE,
+                        "document_role_signal": "commentary",
+                        "document_role_signal_source": "chapter_title",
+                        "document_role_signal_strength": "weak",
+                    }
+                ]
+            }
+        )
         registry = tools.build_librarian_tool_registry(fake)
 
         with self.assertRaises(tools.BiblioLibrarianToolError) as ctx:
@@ -107,6 +119,9 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertNotIn(RAW_QUERY, _json(observed))
         self.assertNotIn(RAW_PASSAGE, _json(observed))
         self.assertNotIn("text", result.items[0])
+        self.assertEqual(result.items[0]["document_role_signal"], "commentary")
+        self.assertEqual(result.items[0]["document_role_signal_source"], "chapter_title")
+        self.assertEqual(result.items[0]["document_role_signal_strength"], "weak")
 
     def test_document_open_summary_uses_metadata_not_heavy_document_route(self) -> None:
         fake = _FakeToolClient(
