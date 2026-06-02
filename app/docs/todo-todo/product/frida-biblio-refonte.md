@@ -360,9 +360,9 @@ encore decide ou repare a plusieurs endroits.
       d'intervalle canonique general.
 - [x] Exposer depuis Catalogue un signal faible `document_role_signal` sur les
       hits `/search`, derive des titres de chapitre ou de document, puis
-      l'utiliser seulement comme indice faible de demotion
-      `commentary/notice/introduction` cote FridaDev, sans le maquiller en
-      verite primaire forte.
+      l'utiliser seulement comme indice faible negatif de demotion
+      `commentary/notice/introduction` cote FridaDev, sans emettre de faux
+      signal positif par defaut ni le maquiller en verite primaire forte.
 
 ## 9. Criteres de sortie de cette refonte
 

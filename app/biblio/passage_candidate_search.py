@@ -47,7 +47,6 @@ _ROLE_WORK = "work"
 ROLE_SIGNAL_INTRODUCTION = "introduction"
 ROLE_SIGNAL_NOTICE = "notice"
 ROLE_SIGNAL_COMMENTARY = "commentary"
-ROLE_SIGNAL_BODY = "body"
 ROLE_SIGNAL_STRENGTH_WEAK = "weak"
 
 _ROLE_SIGNAL_PENALTIES = {
@@ -59,7 +58,6 @@ _ROLE_SIGNAL_REASON_CODES = {
     ROLE_SIGNAL_COMMENTARY: "commentary_role_signal",
     ROLE_SIGNAL_NOTICE: "notice_role_signal",
     ROLE_SIGNAL_INTRODUCTION: "introduction_role_signal",
-    ROLE_SIGNAL_BODY: "body_role_signal",
 }
 
 
@@ -499,8 +497,6 @@ def _near_work_position(
 def _role_signal_rank(signal: str) -> int:
     if signal in {ROLE_SIGNAL_COMMENTARY, ROLE_SIGNAL_NOTICE, ROLE_SIGNAL_INTRODUCTION}:
         return 2
-    if signal == ROLE_SIGNAL_BODY:
-        return 1
     return 0
 
 

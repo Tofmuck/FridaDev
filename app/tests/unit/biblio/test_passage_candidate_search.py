@@ -143,13 +143,10 @@ class BiblioPassageCandidateSearchTests(unittest.TestCase):
                         document_role_signal_strength="weak",
                     ),
                     _row(
-                        "doc-body",
+                        "doc-neutral",
                         page_no=4,
                         para_no=27,
                         rank=0.3,
-                        document_role_signal="body",
-                        document_role_signal_source="chapter_title",
-                        document_role_signal_strength="weak",
                     ),
                 ]
             }
@@ -160,8 +157,8 @@ class BiblioPassageCandidateSearchTests(unittest.TestCase):
         encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
 
         self.assertEqual(result.status, candidate_search.STATUS_CANDIDATES_FOUND)
-        self.assertEqual(result.candidates[0].doc_id_short, "doc-body")
-        self.assertEqual(result.candidates[0].document_role_signal, "body")
+        self.assertEqual(result.candidates[0].doc_id_short, "doc-neut")
+        self.assertEqual(result.candidates[0].document_role_signal, "")
         self.assertEqual(result.candidates[1].document_role_signal, "commentary")
         self.assertIn("commentary_role_signal", observed["candidates"][1]["reason_codes"])
         self.assertEqual(observed["candidates"][1]["document_role_signal_source"], "chapter_title")

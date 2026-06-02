@@ -540,13 +540,13 @@ Correctif recherche de candidats du 2026-05-30:
 - `/search` peut maintenant exposer un signal faible `document_role_signal`,
   derive du titre du chapitre porteur ou, a defaut, du titre documentaire;
 - valeurs autorisees pour ce signal faible: `commentary`, `notice`,
-  `introduction`, `body`;
+  `introduction`;
 - source autorisee: `chapter_title` ou `document_title`;
 - force autorisee: `weak` uniquement a ce stade;
 - ce signal ne prouve jamais qu'un hit est du texte primaire; il sert
   seulement a demoter proprement les hits `commentary`, `notice` ou
   `introduction`, et a conserver un indice explicite plutot qu'une heuristique
-  cachee;
+  cachee; l'absence de signal ne prouve rien de positif sur la nature du hit.
 - un score Catalogue float fini peut contribuer au ranking et produire le reason code `high_catalogue_rank_score`;
 - l'observabilite des candidats reste content-free: ids courts, pages, paragraphes, `paragraph_id`, scores, hashes de variantes, reason codes et counts seulement;
 - l'objet resultat de recherche de candidats ne conserve pas les payloads Catalogue bruts de `/search`; il garde seulement des observations endpoint compactes content-free;

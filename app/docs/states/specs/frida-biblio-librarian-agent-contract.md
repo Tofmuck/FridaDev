@@ -928,9 +928,9 @@ Validation:
   `biblio_librarian_agent_tool_not_executable`;
 - `catalog_search` exige `q` ou `query`, limite <= 50 et offset 0;
 - `catalog_search` peut remonter un signal faible `document_role_signal`
-  (`commentary`, `notice`, `introduction`, `body`) derive par Catalogue des
-  titres de chapitre ou de document; ce signal reste un indice borne de tri,
-  jamais une preuve de texte primaire;
+  (`commentary`, `notice`, `introduction`) derive par Catalogue des titres de
+  chapitre ou de document; ce signal reste un indice borne de tri, jamais une
+  preuve de texte primaire, et son absence ne vaut pas signal positif;
 - `document_open_summary` exige un document explicite ou une requete, limite
   <= 20;
 - `document_toc` exige un document explicite, limite <= 500;
