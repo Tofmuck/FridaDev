@@ -577,6 +577,8 @@ def _fallback_product_method(
     clean_query_kind = str(query_kind or "").strip()
     if clean_intent == librarian_dialogue_planner.INTENT_NAVIGATE and clean_query_kind == "passage_context":
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT
+    if clean_intent == librarian_dialogue_planner.INTENT_ORIGIN_CHECK:
+        return librarian_product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK
     if clean_intent == librarian_dialogue_planner.INTENT_EXPLAIN_PASSAGE:
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT
     if clean_query_kind == "passage_context":

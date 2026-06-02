@@ -436,8 +436,8 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
                 result = dialogue.plan_biblio_dialogue(message, state=state)
 
                 self.assertEqual(result.status, dialogue.STATUS_PLANNED)
-                self.assertEqual(result.reason_code, dialogue.REASON_LAST_PASSAGE_CONTEXT)
-                self.assertEqual(result.intent.intent, dialogue.INTENT_EXPLAIN_PASSAGE)
+                self.assertEqual(result.reason_code, dialogue.REASON_LAST_PASSAGE_ORIGIN)
+                self.assertEqual(result.intent.intent, dialogue.INTENT_ORIGIN_CHECK)
                 self.assertEqual(_tool_names(result), [tools.TOOL_PASSAGE_CONTEXT])
                 self.assertEqual(result.plan.tool_calls[0].params["paragraph_id"], 101)
                 self.assertTrue(result.current_document_used)

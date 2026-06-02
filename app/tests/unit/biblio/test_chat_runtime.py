@@ -424,6 +424,27 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(fallback.product_method, librarian_product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT)
         self.assertEqual([call.tool_name for call in fallback.tool_calls], [librarian_tools.TOOL_PASSAGE_CONTEXT])
 
+    def test_agent_first_dialogue_fallback_plan_carries_origin_check_method(self) -> None:
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-agent-first-origin",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "paragraph_id": 99, "passage_hash": "a" * 12},
+            last_passage_hash="a" * 12,
+            last_intent="extract_passage",
+        )
+
+        fallback = chat_runtime._agent_first_dialogue_fallback_plan(
+            user_msg="D'ou vient ce passage ?",
+            state=state,
+            recent_dialogue=(),
+        )
+
+        self.assertIsNotNone(fallback)
+        assert fallback is not None
+        self.assertEqual(fallback.case_id, "")
+        self.assertEqual(fallback.product_method, librarian_product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK)
+        self.assertEqual([call.tool_name for call in fallback.tool_calls], [librarian_tools.TOOL_PASSAGE_CONTEXT])
+
     def test_agent_first_invalid_json_uses_dialogue_state_fallback_for_origin_check(self) -> None:
         fake_model = _FakeAgentModel("not json")
         state = conversation_state.BiblioConversationState(

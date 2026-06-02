@@ -127,6 +127,9 @@ Mise a jour Lot C minimal 2026-06-02:
   mais seulement a l'interieur de la methode deja declaree;
 - une completion runtime ne doit plus changer silencieusement de methode parce
   qu'une autre intention deterministe passait par la.
+- le suivi d'origine/provenance d'un passage reste une methode distincte
+  (`passage_origin_check`), meme lorsqu'il reutilise le meme outil borne de
+  contexte que `passage_explain_current`.
 
 Le payload ne doit pas porter:
 

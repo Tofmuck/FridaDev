@@ -46,6 +46,10 @@ Mise a jour refonte Lot C minimal 2026-06-02: le runtime agent-first execute
 maintenant ses completions bornees via `product_method`; le deterministe peut
 encore tenir les murs et fournir des indices de requete, mais il ne doit plus
 changer silencieusement la methode produit suivie.
+Micro-correction P3 2026-06-02: un follow-up d'origine/provenance de passage
+(`D'ou vient ce passage ?`, `source`, `provient`) doit maintenant etre porte
+par `passage_origin_check`, distinct de `passage_explain_current`, meme si les
+deux familles reutilisent aujourd'hui l'outil technique `passage_context`.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
 Le but est de garder l'agent bibliothecaire livre testable, borne et

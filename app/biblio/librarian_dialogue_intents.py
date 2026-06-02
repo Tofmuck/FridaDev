@@ -129,6 +129,15 @@ def asks_passage_reference(folded: str) -> bool:
     )
 
 
+def asks_origin_check(folded: str) -> bool:
+    if not re.search(
+        r"\b(le|l'|ce|cet|cette|dernier|derniere|meme|même)\s+(passage|extrait|paragraphe)\b",
+        folded,
+    ):
+        return False
+    return bool(re.search(r"\b(vient|provient|origine|source)\b", folded))
+
+
 def asks_compare(folded: str) -> bool:
     return bool(re.search(r"\b(compare|comparer|difference|differences)\b", folded))
 

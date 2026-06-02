@@ -33,6 +33,7 @@ INTENT_LIST_CATALOG = "list_catalog"
 INTENT_SEARCH_PASSAGE = "search_passage"
 INTENT_SEARCH_CURRENT_DOCUMENT = "search_current_document"
 INTENT_EXPLAIN_PASSAGE = "explain_passage"
+INTENT_ORIGIN_CHECK = "origin_check"
 INTENT_SHOW_TABLE_OF_CONTENTS = "show_table_of_contents"
 INTENT_COMPARE_PASSAGES = "compare_passages"
 INTENT_NAVIGATE = "navigate"
@@ -45,6 +46,7 @@ REASON_CURRENT_DOCUMENT_MISSING = "biblio_dialogue_current_document_missing"
 REASON_TABLE_OF_CONTENTS = "biblio_dialogue_table_of_contents"
 REASON_TOC_EXPLICIT_REFERENCE_UNRESOLVED = "biblio_dialogue_toc_explicit_reference_unresolved"
 REASON_LAST_PASSAGE_CONTEXT = "biblio_dialogue_last_passage_context"
+REASON_LAST_PASSAGE_ORIGIN = "biblio_dialogue_last_passage_origin"
 REASON_LAST_PASSAGE_MISSING = "biblio_dialogue_last_passage_missing"
 REASON_LAST_PASSAGE_POSITION_MISSING = "biblio_dialogue_last_passage_position_missing"
 REASON_NAVIGATION_CONTEXT_AROUND = "biblio_dialogue_navigation_context_around"
@@ -462,12 +464,15 @@ def _passage_reference_result(
     state: BiblioConversationState,
     variants: Sequence[str],
 ) -> BiblioDialoguePlanningResult:
+    origin_check = intents.asks_origin_check(intents.fold_message(message))
+    intent_name = INTENT_ORIGIN_CHECK if origin_check else INTENT_EXPLAIN_PASSAGE
+    reason_code = REASON_LAST_PASSAGE_ORIGIN if origin_check else REASON_LAST_PASSAGE_CONTEXT
     if not state.present:
         return _clarification_result(
             message,
             variants,
             reason_code=REASON_LAST_PASSAGE_MISSING,
-            intent=BiblioDialogueIntent(INTENT_EXPLAIN_PASSAGE, query_kind="passage_context", state_required=True),
+            intent=BiblioDialogueIntent(intent_name, query_kind="passage_context", state_required=True),
             state=state,
         )
     params = references.last_result_context_params(state)
@@ -476,17 +481,17 @@ def _passage_reference_result(
             message,
             variants,
             reason_code=REASON_LAST_PASSAGE_POSITION_MISSING,
-            intent=BiblioDialogueIntent(INTENT_EXPLAIN_PASSAGE, query_kind="passage_context", state_required=True),
+            intent=BiblioDialogueIntent(intent_name, query_kind="passage_context", state_required=True),
             state=state,
         )
     return _planned_result(
         message,
         variants,
         status=STATUS_PLANNED,
-        reason_code=REASON_LAST_PASSAGE_CONTEXT,
-        intent=BiblioDialogueIntent(INTENT_EXPLAIN_PASSAGE, query_kind="passage_context", state_required=True),
+        reason_code=reason_code,
+        intent=BiblioDialogueIntent(intent_name, query_kind="passage_context", state_required=True),
         plan=BiblioLibrarianPlan(
-            intent=INTENT_EXPLAIN_PASSAGE,
+            intent=intent_name,
             answer_mode="tool",
             tool_calls=(
                 BiblioLibrarianToolCall(
