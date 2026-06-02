@@ -297,6 +297,40 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
         self.assertNotIn("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE", encoded)
 
+    def test_agent_first_keeps_explicit_locator_range_under_deterministic_control(self) -> None:
+        fake_model = _FakeAgentModel(
+            _valid_agent_json(
+                tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
+                params={"query": "RAW AGENT QUERY MUST NOT LEAK", "limit": 5},
+            )
+        )
+        observed: dict[str, object] = {}
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Bon, vas-y, tu me balances ici un extrait du Théétète de Platon. On va dire 126b à 128a.",
+            client_factory=lambda **_kwargs: _FakeClient(),
+            extractor_factory=lambda client: _FakeExtractor(observed),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        agent_observed = result.observability_payload["librarian_agent"]
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "extract_range")
+        self.assertEqual(result.observability_payload["status"], "extracted")
+        self.assertEqual(fake_model.calls, 1)
+        self.assertTrue(agent_observed["candidate_plan_present"])
+        self.assertFalse(agent_observed["used_for_response"])
+        self.assertTrue(agent_observed["deterministic_controller"])
+        self.assertFalse(agent_observed["agent_loop_executed"])
+        self.assertEqual(agent_observed["tool_call_event_count"], 0)
+        self.assertEqual(agent_observed["tool_execution_status"], "not_executed")
+        request = observed["request"]
+        self.assertEqual(request.resolve_request.title, "Platon")
+        self.assertEqual(request.resolve_request.locator, "126b")
+        self.assertEqual(request.resolve_request.locator_end, "128a")
+
     def test_agent_first_uses_bounded_fallback_plan_when_active_model_returns_invalid_json(self) -> None:
         fake_model = _FakeAgentModel("not json")
         result = chat_runtime.run_biblio_chat_turn(

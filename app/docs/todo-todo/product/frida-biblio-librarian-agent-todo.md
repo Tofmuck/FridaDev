@@ -1156,6 +1156,10 @@ utilisateur, pas d'un nouveau GO technique d'activation.
   `240s`, prompt renforce pour chercher le texte primaire avant commentaire ou
   notice, et diagnostic Stephanus content-free date sous
   `app/docs/states/baselines/biblio-smokes/`.
+- [x] Correctif borne Stephanus / logique produit: les requetes canoniques
+  explicites `extract_passage` / `extract_range` avec locator present restent
+  sous controle deterministe; l'agent-first reste compare/observable mais ne
+  degrade plus ces cas en `catalog_search -> passage_context` approximatif.
 
 ### Tests / preuves
 
@@ -1164,6 +1168,8 @@ utilisateur, pas d'un nouveau GO technique d'activation.
 - [x] Diagnostic content-free Stephanus: labels simples localisables selon le
   document; plage brute non directement localisable, sans patch plateforme ni
   affichage OCR.
+- [x] Audit date sous `app/docs/states/audits/frida-biblio-stephanus-library-audit-2026-06-02.md`
+  et baseline associee `stephanus-range-diagnostic-20260602T062819Z.md`.
 - [ ] Unitaires Biblio impactes par chaque stabilisation.
 - [ ] Verification anti-fuite: pas de passage brut, prompt, payload, titre,
   auteur, locator, requete brute ou secret dans les preuves techniques.

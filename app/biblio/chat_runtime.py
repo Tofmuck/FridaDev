@@ -40,7 +40,13 @@ from .observability import build_biblio_event_payload
 from .passage_context_search import BiblioPassageContextSearchResult
 from .passage_extractor import BiblioPassageExtractor, BiblioPassageResult
 from .prompt_lane import build_biblio_prompt_lane
-from .query_planner import BiblioQueryPlan, INTENT_SHOW_TABLE_OF_CONTENTS, plan_biblio_query
+from .query_planner import (
+    BiblioQueryPlan,
+    INTENT_EXTRACT_PASSAGE,
+    INTENT_EXTRACT_RANGE,
+    INTENT_SHOW_TABLE_OF_CONTENTS,
+    plan_biblio_query,
+)
 
 
 PAYLOAD_KEY_BIBLIO_ENABLED = "biblio_enabled"
@@ -160,7 +166,8 @@ def run_biblio_chat_turn(
             config_module=config_module,
         )
         agent_first_result = None
-        if _agent_first_candidate_allowed(librarian_agent_result=librarian_agent_result):
+        agent_first_eligible = not _agent_first_prefers_deterministic_controller(decision.query_plan)
+        if agent_first_eligible and _agent_first_candidate_allowed(librarian_agent_result=librarian_agent_result):
             try:
                 client = client_factory(config_module=config_module)
                 agent_first_result = run_agent_first_plan(
@@ -170,7 +177,7 @@ def run_biblio_chat_turn(
                 )
             except Exception:
                 agent_first_result = None
-        elif _agent_first_fallback_allowed(librarian_agent_result):
+        elif agent_first_eligible and _agent_first_fallback_allowed(librarian_agent_result):
             fallback_plan = _agent_first_fallback_plan(decision.query_plan) or _agent_first_dialogue_fallback_plan(
                 user_msg=user_msg,
                 state=state_before,
@@ -474,6 +481,16 @@ def _agent_first_candidate_allowed(
     if not tool_calls:
         return False
     return all(str(getattr(call, "method", "") or "").strip().upper() == "GET" for call in tool_calls)
+
+
+def _agent_first_prefers_deterministic_controller(query_plan: Any) -> bool:
+    if query_plan is None:
+        return False
+    intent = str(getattr(query_plan, "intent", "") or "").strip()
+    locator = str(getattr(query_plan, "locator", "") or "").strip()
+    if not locator:
+        return False
+    return intent in {INTENT_EXTRACT_PASSAGE, INTENT_EXTRACT_RANGE}
 
 
 def _agent_first_fallback_allowed(librarian_agent_result: Any) -> bool:

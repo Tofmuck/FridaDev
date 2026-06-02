@@ -791,6 +791,10 @@ rouvrir l'activation agent-first. Les corrections Lot 11 restent bornees:
 - prompt bibliothecaire oriente methode: chercher d'abord le texte primaire,
   distinguer commentaire/notice/TOC/candidat/passage exact, et progresser par
   `catalog_search`, resume/TOC si utile, `locate`, puis `passage_context`;
+- pour une requete canonique explicite `extract_passage` / `extract_range`
+  avec `locator` present, l'agent-first reste compare/observable mais ne
+  controle pas la reponse produit tant qu'il ne depasse pas clairement le
+  chemin exact existant; le deterministe tient ce mur;
 - references canoniques Stephanus: `locate` traite les labels simples; une
   plage doit etre planifiee comme debut/fin separes si un `document_id` est
   disponible ou porte;
@@ -801,8 +805,9 @@ Le diagnostic date `stephanus-locate-diagnostic-20260601T195136Z.md` constate
 content-free que les labels simples peuvent etre localises sur certains
 documents, mais qu'une plage brute n'est pas encore un objet Catalogue
 exploitable directement. Le correctif immediat est donc le guidage du planner;
-le support range complet reste conditionne a un outil/index/mapping dedie si
-les tests live le confirment.
+le controle produit des locators explicites reste donc deterministe, et le
+support range complet reste conditionne a un outil/index/mapping dedie si les
+tests live le confirment.
 
 Validation:
 
