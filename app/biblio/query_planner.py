@@ -249,6 +249,19 @@ def plan_biblio_query(user_msg: str) -> BiblioQueryPlan:
             limit=100,
         ))
 
+    bare_work, bare_document = _extract_bare_work_and_document_titles(text)
+    if bare_work or bare_document:
+        return _with_variants(BiblioQueryPlan(
+            should_consult=True,
+            intent=INTENT_RESOLVE_WORK,
+            reason_code=REASON_WORK_REQUESTED,
+            query_kind=INTENT_RESOLVE_WORK,
+            document_title=bare_document,
+            work_title=canonical_work_title(bare_work),
+            catalogue_query=_first_non_empty(bare_document, bare_work),
+            limit=8,
+        ))
+
     if work_title or document_title or author or document_id:
         return _with_variants(BiblioQueryPlan(
             should_consult=True,
@@ -493,6 +506,28 @@ def _extract_catalogue_named_target(text: str) -> str:
         if _usable_title(candidate):
             return candidate
     return ""
+
+
+def _extract_bare_work_and_document_titles(text: str) -> tuple[str, str]:
+    candidate = normalize_text(text)
+    candidate = re.sub(r"^(?:bon\s*,\s*|vas-y\s*,\s*)+", "", candidate, flags=re.IGNORECASE)
+    candidate = re.sub(
+        r"^(?:trouve|trouver|cherche|chercher|retrouve|retrouver|ouvre|ouvrir|consulte|regarde|montre)"
+        r"(?:[-\s]+moi|[-\s]+nous|[-\s]+le|[-\s]+la|[-\s]+l['’]?|[-\s]+un|[-\s]+une|\s+me)?\s+",
+        "",
+        candidate,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    candidate = _clean_title(candidate, locator="")
+    if not candidate:
+        return "", ""
+    work, document = _split_work_of_corpus(candidate)
+    if work and not is_known_work_alias(work) and canonical_work_title(work) == work:
+        return "", ""
+    if work and document:
+        return work, document
+    return "", ""
 
 
 def _clean_theme_query(value: str) -> str:

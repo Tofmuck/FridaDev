@@ -567,6 +567,11 @@ Injection thematique Lot 5 du 2026-05-30:
 - si un seul passage est selectionne, `[PASSAGES DE BIBLIOTHEQUE CONSULTES]` contient ce passage et le resultat runtime conserve un `BiblioPassageResult` interne;
 - si plusieurs contextes plausibles restent proches, le statut runtime reste `ambiguous` et `selected_count=0`, mais une lane bornee peut contenir les passages candidats consultes pour permettre une reponse prudente du LLM principal;
 - cette lane multi-passages ne transforme pas l'ambiguite en certitude: son contrat prompt indique que plusieurs passages peuvent etre des candidats plausibles;
+- le runtime porte maintenant un niveau de verite produit explicite:
+  - `exact_passage` pour une extraction locator/range effectivement resolue;
+  - `plausible_candidate` pour une lane de passages candidats ambigus;
+  - `contextual_approximation` pour un passage thematique retenu via `search -> context`;
+  - `clarification_required` quand la resolution ou l'extraction ne sont pas assez fortes;
 - la lane `[CONSULTATION DE BIBLIOTHEQUE]` reste le fallback pour liste, recherche sans passage extrait, erreur ou absence de contexte exploitable;
 - les passages bruts issus de contextes ambigus sont autorises seulement dans les `BiblioPassageResult` internes transmis a `BiblioPromptLane.message` et dans la lane prompt produit; ils ne sont pas recopies dans `BiblioPassageContextSearchResult.passage` tant que le statut reste `ambiguous`;
 - ces passages candidats restent interdits en observabilite, logs, dashboard, read-model, retour technique et payloads admin;

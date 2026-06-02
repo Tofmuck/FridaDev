@@ -27,6 +27,8 @@ class BiblioWorkResolverTests(unittest.TestCase):
         self.assertEqual(result.status, work_resolver.STATUS_RESOLVED)
         self.assertIsNotNone(result.resolve_request)
         self.assertEqual(result.resolve_request.title, "Platon")
+        self.assertEqual(result.resolve_request.document_title, "Platon")
+        self.assertEqual(result.resolve_request.work_title, "Théétète")
         self.assertEqual(result.resolve_request.locator_anchor_page, 131)
         self.assertEqual(result.resolve_request.locator, "126b")
         self.assertEqual(result.resolve_request.locator_end, "128a")
@@ -68,9 +70,25 @@ class BiblioWorkResolverTests(unittest.TestCase):
         self.assertEqual(result.status, work_resolver.STATUS_RESOLVED)
         self.assertIsNotNone(result.resolve_request)
         self.assertEqual(result.resolve_request.document_id, "doc-1234")
+        self.assertEqual(result.resolve_request.work_title, "Theetete")
         self.assertEqual(result.resolve_request.locator, "126b")
         self.assertEqual([call[1] for call in fake.calls], ["Theetete", "Théétète"])
         self.assertNotIn("Théétète", encoded)
+
+    def test_bare_work_request_keeps_work_and_document_signals_separate(self) -> None:
+        plan = query_planner.plan_biblio_query("Trouve-moi le Theetete de Platon.")
+        fake = _FakeClient()
+
+        result = work_resolver.BiblioWorkResolver(fake).resolve(plan)
+
+        self.assertEqual(result.status, work_resolver.STATUS_RESOLVED)
+        self.assertEqual(result.documentary_target, "work_in_document")
+        self.assertTrue(result.work_hint_present)
+        self.assertTrue(result.document_hint_present)
+        self.assertIsNotNone(result.resolve_request)
+        self.assertEqual(result.resolve_request.title, "Platon")
+        self.assertEqual(result.resolve_request.document_title, "Platon")
+        self.assertEqual(result.resolve_request.work_title, "Théétète")
 
 
 class _FakeClient:

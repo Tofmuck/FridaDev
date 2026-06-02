@@ -32,7 +32,16 @@ from .passage_context_search import (
     BiblioPassageContextSearchResult,
     STATUS_CATALOGUE_UNAVAILABLE as CONTEXT_STATUS_CATALOGUE_UNAVAILABLE,
 )
-from .prompt_lane import BiblioPromptLane, LANE_FOOTER, LANE_HEADER, build_biblio_prompt_lane
+from .prompt_lane import (
+    BiblioPromptLane,
+    LANE_FOOTER,
+    LANE_HEADER,
+    TRUTH_CLARIFICATION_REQUIRED,
+    TRUTH_CONTEXTUAL_APPROXIMATION,
+    TRUTH_EXACT_PASSAGE,
+    TRUTH_PLAUSIBLE_CANDIDATE,
+    build_biblio_prompt_lane,
+)
 from .query_planner import (
     INTENT_EXTRACT_PASSAGE,
     INTENT_EXTRACT_RANGE,
@@ -66,11 +75,13 @@ CONSULTATION_HEADER = "[CONSULTATION DE BIBLIOTHEQUE]"
 CONSULTATION_FOOTER = "[/CONSULTATION DE BIBLIOTHEQUE]"
 
 STATUS_LISTED = "listed"
+STATUS_RESOLVED = "resolved"
 STATUS_EXTRACTED_OR_LANE = "extracted"
 STATUS_SKIPPED = "skipped"
 STATUS_ERROR = "error"
 
 REASON_CATALOG_LISTED = "biblio_catalog_listed"
+REASON_DOCUMENTARY_RESOLUTION_READY = "biblio_documentary_resolution_ready"
 REASON_PASSAGE_LANE_READY = "biblio_passage_lane_ready"
 REASON_CATALOGUE_UNAVAILABLE = "catalogue_unavailable"
 
@@ -85,6 +96,8 @@ class BiblioConsultationMessage:
     message: dict[str, Any] | None = field(default=None, repr=False, compare=False)
     status: str = STATUS_SKIPPED
     reason_code: str = ""
+    product_truth: str = ""
+    documentary_target: str = ""
     item_count: int = 0
     chars: int = 0
     doc_id_shorts: tuple[str, ...] = field(default_factory=tuple)
@@ -99,6 +112,8 @@ class BiblioConsultationMessage:
             "present": self.message is not None,
             "status": self.status,
             "reason_code": self.reason_code,
+            "product_truth": self.product_truth,
+            "documentary_target": self.documentary_target,
             "item_count": self.item_count,
             "chars": self.chars,
             "doc_id_shorts": list(self.doc_id_shorts),
@@ -115,6 +130,8 @@ class BiblioLibraryRuntimeResult:
     status: str
     reason_code: str
     query_kind: str
+    product_truth: str = ""
+    documentary_target: str = ""
     endpoint_observations: tuple[CatalogueEndpointObservation, ...] = field(
         default_factory=tuple,
         repr=False,
@@ -166,7 +183,9 @@ def run_biblio_library_plan(
             lane_builder=lane_builder,
             context_searcher_factory=context_searcher_factory,
         )
-    if plan.intent in {INTENT_EXTRACT_PASSAGE, INTENT_EXTRACT_RANGE, INTENT_RESOLVE_WORK}:
+    if plan.intent == INTENT_RESOLVE_WORK:
+        return _resolve_work(client, plan, work_resolver_factory=work_resolver_factory)
+    if plan.intent in {INTENT_EXTRACT_PASSAGE, INTENT_EXTRACT_RANGE}:
         return _resolve_and_extract(
             client,
             plan,
@@ -178,12 +197,14 @@ def run_biblio_library_plan(
         status=STATUS_SKIPPED,
         reason_code=plan.reason_code,
         lines=["Aucune consultation Catalogue n'a ete necessaire."],
+        documentary_target=_documentary_target(plan, None),
     )
     return BiblioLibraryRuntimeResult(
         status=STATUS_SKIPPED,
         reason_code=plan.reason_code,
         query_kind=plan.query_kind,
         consultation_message=consultation,
+        documentary_target=_documentary_target(plan, None),
     )
 
 
@@ -216,6 +237,7 @@ def _list_catalog(client: CatalogueClient, plan: BiblioQueryPlan) -> BiblioLibra
         query_kind=plan.query_kind,
         endpoint_observations=(observe_catalogue_response(response),),
         consultation_message=consultation,
+        documentary_target=_documentary_target(plan, None),
     )
 
 
@@ -237,12 +259,15 @@ def _search_passages(
     context_result = context_searcher_factory(client).search(plan)
     endpoint_observations = _context_endpoint_observations(context_result)
     passage_results = tuple(context_result.passage_results)
-    prompt_lane = lane_builder(passage_results)
+    product_truth = _context_product_truth(context_result)
+    prompt_lane = lane_builder(passage_results, product_truth=product_truth)
     if prompt_lane.message:
         return BiblioLibraryRuntimeResult(
             status=context_result.status,
             reason_code=context_result.reason_code,
             query_kind=plan.query_kind,
+            product_truth=product_truth,
+            documentary_target=_documentary_target(plan, None),
             endpoint_observations=endpoint_observations,
             client_error=context_result.client_error,
             context_result=context_result,
@@ -256,18 +281,87 @@ def _search_passages(
             status=STATUS_ERROR,
             reason_code=REASON_CATALOGUE_UNAVAILABLE,
             query_kind=plan.query_kind,
+            product_truth=product_truth,
+            documentary_target=_documentary_target(plan, None),
             endpoint_observations=endpoint_observations,
             client_error=context_result.client_error,
             context_result=context_result,
         )
 
-    consultation = _context_consultation_message(context_result)
+    consultation = _context_consultation_message(context_result, product_truth=product_truth)
     return BiblioLibraryRuntimeResult(
         status=context_result.status,
         reason_code=context_result.reason_code,
         query_kind=plan.query_kind,
+        product_truth=product_truth,
+        documentary_target=_documentary_target(plan, None),
         endpoint_observations=endpoint_observations,
         context_result=context_result,
+        consultation_message=consultation,
+    )
+
+
+def _resolve_work(
+    client: CatalogueClient,
+    plan: BiblioQueryPlan,
+    *,
+    work_resolver_factory: Any,
+) -> BiblioLibraryRuntimeResult:
+    work_resolution = work_resolver_factory(client).resolve(plan)
+    endpoint_observations = tuple(work_resolution.endpoint_observations)
+    documentary_target = _documentary_target(plan, work_resolution)
+    if work_resolution.client_error is not None:
+        return BiblioLibraryRuntimeResult(
+            status=STATUS_ERROR,
+            reason_code=REASON_CATALOGUE_UNAVAILABLE,
+            query_kind=plan.query_kind,
+            product_truth=TRUTH_CLARIFICATION_REQUIRED,
+            documentary_target=documentary_target,
+            endpoint_observations=endpoint_observations,
+            client_error=work_resolution.client_error,
+            work_resolution=work_resolution,
+        )
+
+    if work_resolution.resolve_request is not None:
+        consultation = _consultation_message(
+            status=STATUS_RESOLVED,
+            reason_code=REASON_DOCUMENTARY_RESOLUTION_READY,
+            product_truth="",
+            documentary_target=documentary_target,
+            lines=_work_resolution_lines(work_resolution, documentary_target=documentary_target),
+            doc_id_shorts=_document_shorts_from_work_resolution(work_resolution),
+        )
+        document_ids = ()
+        if work_resolution.resolve_request.document_id:
+            document_ids = (work_resolution.resolve_request.document_id,)
+        return BiblioLibraryRuntimeResult(
+            status=STATUS_RESOLVED,
+            reason_code=REASON_DOCUMENTARY_RESOLUTION_READY,
+            query_kind=plan.query_kind,
+            product_truth="",
+            documentary_target=documentary_target,
+            endpoint_observations=endpoint_observations,
+            work_resolution=work_resolution,
+            consultation_message=consultation,
+            document_ids=document_ids,
+        )
+
+    consultation = _consultation_message(
+        status=work_resolution.status,
+        reason_code=work_resolution.reason_code,
+        product_truth=TRUTH_CLARIFICATION_REQUIRED,
+        documentary_target=documentary_target,
+        lines=["Resolution documentaire insuffisante; une clarification est necessaire."],
+        doc_id_shorts=work_resolution.document_candidate_ids,
+    )
+    return BiblioLibraryRuntimeResult(
+        status=work_resolution.status,
+        reason_code=work_resolution.reason_code,
+        query_kind=plan.query_kind,
+        product_truth=TRUTH_CLARIFICATION_REQUIRED,
+        documentary_target=documentary_target,
+        endpoint_observations=endpoint_observations,
+        work_resolution=work_resolution,
         consultation_message=consultation,
     )
 
@@ -287,6 +381,8 @@ def _resolve_and_extract(
             status=STATUS_ERROR,
             reason_code=REASON_CATALOGUE_UNAVAILABLE,
             query_kind=plan.query_kind,
+            product_truth=TRUTH_CLARIFICATION_REQUIRED,
+            documentary_target=_documentary_target(plan, work_resolution),
             endpoint_observations=tuple(endpoint_observations),
             client_error=work_resolution.client_error,
             work_resolution=work_resolution,
@@ -295,6 +391,8 @@ def _resolve_and_extract(
         consultation = _consultation_message(
             status=work_resolution.status,
             reason_code=work_resolution.reason_code,
+            product_truth=TRUTH_CLARIFICATION_REQUIRED,
+            documentary_target=_documentary_target(plan, work_resolution),
             lines=["Catalogue consulte; resolution documentaire insuffisante."],
             doc_id_shorts=work_resolution.document_candidate_ids,
         )
@@ -302,6 +400,8 @@ def _resolve_and_extract(
             status=work_resolution.status,
             reason_code=work_resolution.reason_code,
             query_kind=plan.query_kind,
+            product_truth=TRUTH_CLARIFICATION_REQUIRED,
+            documentary_target=_documentary_target(plan, work_resolution),
             endpoint_observations=tuple(endpoint_observations),
             work_resolution=work_resolution,
             consultation_message=consultation,
@@ -315,12 +415,14 @@ def _resolve_and_extract(
         else DEFAULT_MAX_PASSAGE_CHARS,
     )
     passage_result = extractor_factory(client).extract(request)
-    prompt_lane = lane_builder([passage_result])
+    prompt_lane = lane_builder([passage_result], product_truth=TRUTH_EXACT_PASSAGE)
     if passage_result.status == STATUS_EXTRACTED and prompt_lane.message:
         return BiblioLibraryRuntimeResult(
             status=STATUS_EXTRACTED_OR_LANE,
             reason_code=REASON_PASSAGE_LANE_READY,
             query_kind=plan.query_kind,
+            product_truth=TRUTH_EXACT_PASSAGE,
+            documentary_target=_documentary_target(plan, work_resolution),
             endpoint_observations=tuple(endpoint_observations),
             work_resolution=work_resolution,
             passage_result=passage_result,
@@ -331,6 +433,8 @@ def _resolve_and_extract(
     consultation = _consultation_message(
         status=passage_result.status,
         reason_code=passage_result.reason_code,
+        product_truth=TRUTH_CLARIFICATION_REQUIRED,
+        documentary_target=_documentary_target(plan, work_resolution),
         lines=["Catalogue consulte; aucun passage n'a ete injecte."],
         doc_id_shorts=work_resolution.document_candidate_ids,
     )
@@ -338,6 +442,8 @@ def _resolve_and_extract(
         status=passage_result.status,
         reason_code=passage_result.reason_code,
         query_kind=plan.query_kind,
+        product_truth=TRUTH_CLARIFICATION_REQUIRED,
+        documentary_target=_documentary_target(plan, work_resolution),
         endpoint_observations=tuple(endpoint_observations),
         work_resolution=work_resolution,
         passage_result=passage_result,
@@ -357,6 +463,8 @@ def _client_error(
         status=STATUS_ERROR,
         reason_code=REASON_CATALOGUE_UNAVAILABLE,
         query_kind=plan.query_kind,
+        product_truth=TRUTH_CLARIFICATION_REQUIRED,
+        documentary_target=_documentary_target(plan, None),
         endpoint_observations=tuple(endpoint_observations),
         client_error=exc,
     )
@@ -369,6 +477,7 @@ def _catalogue_consultation_result(
     consultation = _consultation_message(
         status=result.status,
         reason_code=result.reason_code,
+        documentary_target=_documentary_target(plan, None),
         lines=result.lines,
         doc_id_shorts=result.doc_id_shorts,
         total_count=result.total_count,
@@ -379,6 +488,7 @@ def _catalogue_consultation_result(
         status=result.status,
         reason_code=result.reason_code,
         query_kind=plan.query_kind,
+        documentary_target=_documentary_target(plan, None),
         endpoint_observations=result.endpoint_observations,
         client_error=result.client_error,
         consultation_message=consultation,
@@ -412,6 +522,7 @@ def _catalog_consultation_message(
     return _consultation_message(
         status=status,
         reason_code=reason_code,
+        documentary_target="document_catalogue",
         lines=lines,
         doc_id_shorts=tuple(doc_id for doc_id in doc_ids if doc_id),
         total_count=total_count,
@@ -425,6 +536,8 @@ def _consultation_message(
     status: str,
     reason_code: str,
     lines: Sequence[str],
+    product_truth: str = "",
+    documentary_target: str = "",
     doc_id_shorts: Sequence[str] = (),
     total_count: int | None = None,
     displayed_count: int | None = None,
@@ -437,6 +550,8 @@ def _consultation_message(
         "- Ne confonds pas cette consultation avec les documents actifs, la memoire, le web, l'identite ou le resume.",
         f"Statut: {status}",
         f"Raison: {reason_code}",
+        *([f"Niveau de resolution: {_truth_label(product_truth)}"] if _truth_label(product_truth) else []),
+        *([f"Cible documentaire: {_documentary_target_label(documentary_target)}"] if _documentary_target_label(documentary_target) else []),
         *_neutralized_lines(lines),
     ]
     content = "\n".join([CONSULTATION_HEADER, *body, CONSULTATION_FOOTER])
@@ -444,6 +559,8 @@ def _consultation_message(
         message={"role": "system", "content": content},
         status=status,
         reason_code=reason_code,
+        product_truth=product_truth,
+        documentary_target=documentary_target,
         item_count=len([line for line in lines if str(line).strip()]),
         chars=len(content),
         doc_id_shorts=tuple(doc_id_shorts),
@@ -453,7 +570,11 @@ def _consultation_message(
     )
 
 
-def _context_consultation_message(context_result: BiblioPassageContextSearchResult) -> BiblioConsultationMessage:
+def _context_consultation_message(
+    context_result: BiblioPassageContextSearchResult,
+    *,
+    product_truth: str,
+) -> BiblioConsultationMessage:
     observed = context_result.to_observability()
     doc_ids = tuple(str(item or "") for item in observed.get("candidate_search", {}).get("doc_id_shorts", []) if item)
     lines = [
@@ -466,6 +587,8 @@ def _context_consultation_message(context_result: BiblioPassageContextSearchResu
     return _consultation_message(
         status=context_result.status,
         reason_code=context_result.reason_code,
+        product_truth=product_truth,
+        documentary_target="work_search" if observed.get("candidate_count") else "",
         lines=lines,
         doc_id_shorts=doc_ids,
     )
@@ -528,3 +651,79 @@ def _neutralize(value: str) -> str:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _context_product_truth(context_result: BiblioPassageContextSearchResult) -> str:
+    if context_result.status == STATUS_EXTRACTED and bool(context_result.passage):
+        return TRUTH_CONTEXTUAL_APPROXIMATION
+    if context_result.status == STATUS_AMBIGUOUS and bool(context_result.passage_results):
+        return TRUTH_PLAUSIBLE_CANDIDATE
+    if context_result.status in {STATUS_NOT_FOUND, STATUS_AMBIGUOUS, STATUS_ERROR}:
+        return TRUTH_CLARIFICATION_REQUIRED
+    return ""
+
+
+def _documentary_target(plan: BiblioQueryPlan, work_resolution: BiblioWorkResolution | None) -> str:
+    if work_resolution is not None and work_resolution.documentary_target:
+        return work_resolution.documentary_target
+    if plan.document_id:
+        return "document_id"
+    if plan.work_title and (plan.document_title or plan.author):
+        return "work_in_document"
+    if plan.work_title:
+        return "work"
+    if plan.document_title and plan.author:
+        return "document_with_author"
+    if plan.document_title:
+        return "document_or_volume"
+    if plan.author:
+        return "author_or_corpus"
+    return ""
+
+
+def _documentary_target_label(value: str) -> str:
+    return {
+        "document_id": "document explicite",
+        "work_in_document": "oeuvre interne dans document/corpus",
+        "work": "oeuvre",
+        "document_with_author": "document ou corpus avec auteur",
+        "document_or_volume": "document ou volume",
+        "author_or_corpus": "auteur ou corpus",
+        "document_catalogue": "document catalogue",
+        "work_search": "recherche de passage dans une oeuvre",
+    }.get(str(value or "").strip(), "")
+
+
+def _truth_label(value: str) -> str:
+    return {
+        TRUTH_EXACT_PASSAGE: "passage exact",
+        TRUTH_PLAUSIBLE_CANDIDATE: "candidat plausible",
+        TRUTH_CONTEXTUAL_APPROXIMATION: "approximation contextuelle",
+        TRUTH_CLARIFICATION_REQUIRED: "clarification necessaire",
+    }.get(str(value or "").strip(), "")
+
+
+def _work_resolution_lines(
+    work_resolution: BiblioWorkResolution,
+    *,
+    documentary_target: str,
+) -> list[str]:
+    lines = ["Resolution documentaire effectuee."]
+    if documentary_target == "work_in_document":
+        lines.append("Une oeuvre interne a ete reperee dans un document ou corpus Catalogue.")
+    elif documentary_target == "work":
+        lines.append("Une oeuvre a ete reperee dans le Catalogue.")
+    elif documentary_target:
+        lines.append("Une cible documentaire a ete reperee dans le Catalogue.")
+    lines.append("Aucun passage exact n'a ete extrait a ce stade.")
+    if work_resolution.anchor_doc_id_short:
+        lines.append("Un ancrage documentaire borne est disponible pour la suite.")
+    return lines
+
+
+def _document_shorts_from_work_resolution(work_resolution: BiblioWorkResolution) -> tuple[str, ...]:
+    ids: list[str] = []
+    if work_resolution.resolve_request is not None and work_resolution.resolve_request.document_id:
+        ids.append(short_doc_id(work_resolution.resolve_request.document_id))
+    ids.extend(item for item in work_resolution.document_candidate_ids if item)
+    return tuple(dict.fromkeys(ids))

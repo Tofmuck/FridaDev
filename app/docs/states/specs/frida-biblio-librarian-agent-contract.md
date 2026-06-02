@@ -33,6 +33,11 @@ applicative par defaut demande `openai/gpt-5.2` avec
 P03: quand Biblio est activee, un plan agent valide peut executer les outils
 Catalogue GET-only allowlistes sous budgets stricts, puis injecter une lane
 produit utile. Le deterministe tient les murs et reste fallback.
+Mise a jour stabilisation 2026-06-02: le runtime natif Biblio porte maintenant
+une verite produit explicite `exact_passage / plausible_candidate /
+contextual_approximation / clarification_required`, et la resolution
+documentaire FridaDev conserve `work_title` distinct de `document_title` jusque
+dans le runtime.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
 Le but est de garder l'agent bibliothecaire livre testable, borne et

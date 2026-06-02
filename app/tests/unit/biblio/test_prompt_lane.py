@@ -22,17 +22,19 @@ class BiblioPromptLaneTests(unittest.TestCase):
     def test_extracted_passage_produces_lane_with_exact_tags(self) -> None:
         result = _passage(RAW_PASSAGE_ONE)
 
-        lane = prompt_lane.build_biblio_prompt_lane([result])
+        lane = prompt_lane.build_biblio_prompt_lane([result], product_truth=prompt_lane.TRUTH_EXACT_PASSAGE)
         content = lane.message["content"]
 
         self.assertEqual(lane.message["role"], "system")
         self.assertTrue(content.startswith(prompt_lane.LANE_HEADER))
         self.assertTrue(content.endswith(prompt_lane.LANE_FOOTER))
-        self.assertIn("Passage 1", content)
+        self.assertIn("Niveau de resolution: passage exact.", content)
+        self.assertIn("Passage exact 1", content)
         self.assertIn("Source: catalogue_doc=doc-1234, page=12, paragraphe=3, paragraph_id=99", content)
         self.assertIn("Texte:\n" + RAW_PASSAGE_ONE, content)
         self.assertEqual(lane.passage_count, 1)
         self.assertEqual(lane.skipped_count, 0)
+        self.assertEqual(lane.product_truth, prompt_lane.TRUTH_EXACT_PASSAGE)
 
     def test_no_extracted_passage_produces_no_lane(self) -> None:
         lane = prompt_lane.build_biblio_prompt_lane(
@@ -102,11 +104,13 @@ class BiblioPromptLaneTests(unittest.TestCase):
                 _passage(RAW_PASSAGE_TWO, paragraph_id=100, passage_hash="hash-two"),
             ],
             max_passages=1,
+            product_truth=prompt_lane.TRUTH_PLAUSIBLE_CANDIDATE,
         )
         observed = lane.to_observability()
 
         self.assertEqual(observed["passage_count"], 1)
         self.assertEqual(observed["skipped_count"], 1)
+        self.assertEqual(observed["product_truth"], prompt_lane.TRUTH_PLAUSIBLE_CANDIDATE)
         self.assertEqual(observed["hashes"], [_short_hash(RAW_PASSAGE_ONE)])
         self.assertEqual(observed["doc_id_shorts"], ["doc-1234"])
         self.assertEqual(observed["positions"][0]["paragraph_id"], 99)

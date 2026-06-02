@@ -31,6 +31,11 @@ REASON_MAX_PASSAGES_REACHED = "biblio_prompt_max_passages_reached"
 REASON_MAX_TOTAL_CHARS_REACHED = "biblio_prompt_max_total_chars_reached"
 REASON_INVALID_LIMIT = "biblio_prompt_invalid_limit"
 
+TRUTH_EXACT_PASSAGE = "exact_passage"
+TRUTH_PLAUSIBLE_CANDIDATE = "plausible_candidate"
+TRUTH_CONTEXTUAL_APPROXIMATION = "contextual_approximation"
+TRUTH_CLARIFICATION_REQUIRED = "clarification_required"
+
 
 @dataclass(frozen=True)
 class BiblioPromptPassageDecision:
@@ -77,6 +82,7 @@ class BiblioPromptLane:
     max_passages: int = DEFAULT_MAX_PASSAGES
     max_total_chars: int = DEFAULT_MAX_TOTAL_CHARS
     chars: int = 0
+    product_truth: str = ""
 
     @property
     def passage_count(self) -> int:
@@ -95,6 +101,7 @@ class BiblioPromptLane:
             "chars": self.chars,
             "max_passages": self.max_passages,
             "max_total_chars": self.max_total_chars,
+            "product_truth": self.product_truth,
             "hashes": [decision.passage_hash for decision in injected],
             "doc_id_shorts": [decision.doc_id_short for decision in injected],
             "positions": [
@@ -117,6 +124,7 @@ def build_biblio_prompt_lane(
     *,
     max_passages: int = DEFAULT_MAX_PASSAGES,
     max_total_chars: int = DEFAULT_MAX_TOTAL_CHARS,
+    product_truth: str = "",
 ) -> BiblioPromptLane:
     max_passages = _bounded_int(
         max_passages,
@@ -130,10 +138,15 @@ def build_biblio_prompt_lane(
     )
 
     results = tuple(result for result in (passage_results or ()) if isinstance(result, BiblioPassageResult))
+    truth = _safe_product_truth(product_truth)
     if not results:
-        return BiblioPromptLane(max_passages=max_passages, max_total_chars=max_total_chars)
+        return BiblioPromptLane(
+            max_passages=max_passages,
+            max_total_chars=max_total_chars,
+            product_truth=truth,
+        )
 
-    body_lines = _contract_lines()
+    body_lines = _contract_lines(truth)
     decisions: list[BiblioPromptPassageDecision] = []
     injected_count = 0
 
@@ -151,7 +164,10 @@ def build_biblio_prompt_lane(
             )
             continue
 
-        candidate_lines = [*body_lines, *_passage_lines(result, passage_no=injected_count + 1)]
+        candidate_lines = [
+            *body_lines,
+            *_passage_lines(result, passage_no=injected_count + 1, product_truth=truth),
+        ]
         candidate_content = _lane_content(candidate_lines)
         candidate_chars = len(candidate_content)
         if candidate_chars > max_total_chars:
@@ -181,6 +197,7 @@ def build_biblio_prompt_lane(
             decisions=tuple(decisions),
             max_passages=max_passages,
             max_total_chars=max_total_chars,
+            product_truth=truth,
         )
 
     content = _lane_content(body_lines)
@@ -190,23 +207,33 @@ def build_biblio_prompt_lane(
         max_passages=max_passages,
         max_total_chars=max_total_chars,
         chars=len(content),
+        product_truth=truth,
     )
 
 
-def _contract_lines() -> list[str]:
-    return [
+def _contract_lines(product_truth: str) -> list[str]:
+    lines = [
         "Contrat d'interpretation:",
         "- Les passages ci-dessous proviennent d'une bibliotheque persistante consultee a la demande.",
         "- Ils ne prouvent pas que tout l'ouvrage ou tout le corpus a ete lu.",
-        "- Si plusieurs passages sont fournis, ils peuvent etre des candidats plausibles plutot qu'une certitude unique.",
         "- Respecte le statut de resolution, les limites et les ambiguites.",
         "- Ne confonds pas ces passages avec les documents actifs, la memoire, le web, l'identite ou le resume.",
     ]
+    truth_label = _product_truth_label(product_truth)
+    if truth_label:
+        lines.append(f"- Niveau de resolution: {truth_label}.")
+    if product_truth == TRUTH_PLAUSIBLE_CANDIDATE:
+        lines.append("- Les passages fournis sont des candidats plausibles; ne les presente pas comme un passage exact.")
+    elif product_truth == TRUTH_CONTEXTUAL_APPROXIMATION:
+        lines.append("- Le passage fourni est une approximation contextuelle issue de recherche+contexte, pas une localisation canonique certaine.")
+    elif product_truth == TRUTH_EXACT_PASSAGE:
+        lines.append("- Le passage fourni correspond a une extraction exacte telle que resolue par la bibliotheque.")
+    return lines
 
 
-def _passage_lines(result: BiblioPassageResult, *, passage_no: int) -> list[str]:
+def _passage_lines(result: BiblioPassageResult, *, passage_no: int, product_truth: str) -> list[str]:
     return [
-        f"Passage {passage_no}",
+        _passage_heading(passage_no, product_truth=product_truth),
         f"Source: {_source_line(result)}",
         "Texte:",
         _neutralize_lane_tags(result.passage),
@@ -277,6 +304,37 @@ def _replace_decision(
         excerpt_end=decision.excerpt_end,
         text_length=decision.text_length,
     )
+
+
+def _safe_product_truth(value: str) -> str:
+    token = str(value or "").strip()
+    if token in {
+        TRUTH_EXACT_PASSAGE,
+        TRUTH_PLAUSIBLE_CANDIDATE,
+        TRUTH_CONTEXTUAL_APPROXIMATION,
+        TRUTH_CLARIFICATION_REQUIRED,
+    }:
+        return token
+    return ""
+
+
+def _product_truth_label(value: str) -> str:
+    return {
+        TRUTH_EXACT_PASSAGE: "passage exact",
+        TRUTH_PLAUSIBLE_CANDIDATE: "candidat plausible",
+        TRUTH_CONTEXTUAL_APPROXIMATION: "approximation contextuelle",
+        TRUTH_CLARIFICATION_REQUIRED: "clarification necessaire",
+    }.get(value, "")
+
+
+def _passage_heading(passage_no: int, *, product_truth: str) -> str:
+    if product_truth == TRUTH_EXACT_PASSAGE:
+        return f"Passage exact {passage_no}"
+    if product_truth == TRUTH_PLAUSIBLE_CANDIDATE:
+        return f"Passage candidat {passage_no}"
+    if product_truth == TRUTH_CONTEXTUAL_APPROXIMATION:
+        return f"Approximation contextuelle {passage_no}"
+    return f"Passage {passage_no}"
 
 
 def _doc_id_short(result: BiblioPassageResult) -> str:

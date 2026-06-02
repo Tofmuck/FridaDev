@@ -49,6 +49,8 @@ SAFE_LOCATOR_KINDS = {"chapter", "milestone", "page", "paragraph", "stephanus"}
 class BiblioResolveRequest:
     document_id: str = ""
     title: str = ""
+    document_title: str = ""
+    work_title: str = ""
     author: str = ""
     locator: str = ""
     locator_end: str = ""
@@ -173,7 +175,7 @@ class BiblioDocumentResolver:
         if request.document_id:
             return self._resolve_document_by_id(request)
 
-        query = request.title or request.author
+        query = _document_query(request) or request.author
         try:
             response = self._client.catalog(q=query, limit=DOCUMENT_QUERY_LIMIT, offset=0)
         except CatalogueClientError as exc:
@@ -316,6 +318,8 @@ def _clean_request(request: BiblioResolveRequest) -> BiblioResolveRequest:
     return BiblioResolveRequest(
         document_id=str(request.document_id or "").strip(),
         title=str(request.title or "").strip(),
+        document_title=str(request.document_title or "").strip(),
+        work_title=str(request.work_title or "").strip(),
         author=str(request.author or "").strip(),
         locator=str(request.locator or "").strip(),
         locator_end=str(request.locator_end or "").strip(),
@@ -326,11 +330,21 @@ def _clean_request(request: BiblioResolveRequest) -> BiblioResolveRequest:
 
 
 def _has_any_request_value(request: BiblioResolveRequest) -> bool:
-    return any([request.document_id, request.title, request.author, request.locator, request.locator_end])
+    return any(
+        [
+            request.document_id,
+            request.title,
+            request.document_title,
+            request.work_title,
+            request.author,
+            request.locator,
+            request.locator_end,
+        ]
+    )
 
 
 def _has_document_signal(request: BiblioResolveRequest) -> bool:
-    return bool(request.document_id or request.title or request.author)
+    return bool(request.document_id or request.title or request.document_title or request.work_title or request.author)
 
 
 def _has_locator(request: BiblioResolveRequest) -> bool:
@@ -479,7 +493,8 @@ def _document_candidate_from_metadata(
 
 def _matches_document_request(candidate: DocumentCandidate, request: BiblioResolveRequest) -> bool:
     haystack = " ".join([candidate.title, candidate.canonical_title, candidate.authors]).lower()
-    if request.title and request.title.lower() not in haystack:
+    document_query = _document_query(request)
+    if document_query and document_query.lower() not in haystack:
         return False
     if request.author and request.author.lower() not in candidate.authors.lower():
         return False
@@ -493,7 +508,8 @@ def _match_reasons(
     request: BiblioResolveRequest,
 ) -> tuple[str, ...]:
     reasons: list[str] = []
-    title_query = request.title.lower()
+    title_query = _document_query(request).lower()
+    work_query = request.work_title.lower()
     author_query = request.author.lower()
     if title_query:
         if title_query in canonical_title.lower():
@@ -502,9 +518,18 @@ def _match_reasons(
             reasons.append("source_title")
         elif title_query in authors.lower():
             reasons.append("human_author")
+    if work_query:
+        if work_query in canonical_title.lower():
+            reasons.append("work_title_hint")
+        elif work_query in title.lower():
+            reasons.append("work_title_hint")
     if author_query and author_query in authors.lower():
         reasons.append("human_author")
     return tuple(dict.fromkeys(reasons))
+
+
+def _document_query(request: BiblioResolveRequest) -> str:
+    return str(request.document_title or request.title or "").strip()
 
 
 def _locator_candidates(

@@ -449,6 +449,8 @@ def _resolve_request_from_plan(plan: BiblioQueryPlan) -> BiblioResolveRequest | 
     return BiblioResolveRequest(
         document_id=plan.document_id,
         title=plan.document_title or plan.work_title,
+        document_title=plan.document_title,
+        work_title=plan.work_title,
         author=plan.author,
         locator=plan.locator,
         locator_end=plan.locator_end,

@@ -971,9 +971,12 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertIsNotNone(result.passage_result)
         self.assertIsNotNone(result.prompt_message)
         self.assertIn(prompt_lane.LANE_HEADER, result.prompt_message["content"])
+        self.assertIn("Niveau de resolution: approximation contextuelle.", result.prompt_message["content"])
+        self.assertIn("Approximation contextuelle 1", result.prompt_message["content"])
         self.assertNotIn("[CONSULTATION DE BIBLIOTHEQUE]", result.prompt_message["content"])
         self.assertIn(RAW_PASSAGE, result.prompt_message["content"])
         self.assertEqual(result.observability_payload["counts"]["passage_count"], 1)
+        self.assertEqual(result.observability_payload["lane"]["product_truth"], "contextual_approximation")
         self.assertIn(("search", "maïeutique"), fake.calls)
         self.assertTrue(any(call[0] == "context" for call in fake.calls))
 
@@ -1050,9 +1053,11 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertIsNone(result.passage_result)
         self.assertIsNotNone(result.prompt_message)
         self.assertIn(prompt_lane.LANE_HEADER, result.prompt_message["content"])
-        self.assertIn("Passage 1", result.prompt_message["content"])
-        self.assertIn("Passage 2", result.prompt_message["content"])
+        self.assertIn("Niveau de resolution: candidat plausible.", result.prompt_message["content"])
+        self.assertIn("Passage candidat 1", result.prompt_message["content"])
+        self.assertIn("Passage candidat 2", result.prompt_message["content"])
         self.assertEqual(result.observability_payload["counts"]["passage_count"], 2)
+        self.assertEqual(result.observability_payload["lane"]["product_truth"], "plausible_candidate")
         self.assertEqual(result.context_result.to_observability()["selected_count"], 0)
         self.assertTrue(any(call[0] == "context" for call in fake.calls))
 
@@ -1078,10 +1083,32 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(result.query_kind, "extract_range")
         request = observed["request"]
         self.assertEqual(request.resolve_request.title, "Platon")
+        self.assertEqual(request.resolve_request.document_title, "Platon")
+        self.assertEqual(request.resolve_request.work_title, "Théétète")
         self.assertEqual(request.resolve_request.locator, "126b")
         self.assertEqual(request.resolve_request.locator_end, "128a")
         self.assertEqual(request.resolve_request.locator_anchor_page, 131)
         self.assertNotEqual(result.reason_code, chat_runtime.REASON_NO_BIBLIOGRAPHIC_SIGNAL)
+
+    def test_bare_work_and_corpus_request_returns_documentary_resolution_without_forcing_passage(self) -> None:
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Trouve-moi le Theetete de Platon.",
+            client_factory=lambda **_kwargs: _FakeClient(),
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "resolve_work")
+        self.assertEqual(result.observability_payload["status"], "resolved")
+        self.assertIsNone(result.passage_result)
+        self.assertIsNone(result.context_result)
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn("[CONSULTATION DE BIBLIOTHEQUE]", result.prompt_message["content"])
+        self.assertIn("Cible documentaire: oeuvre interne dans document/corpus", result.prompt_message["content"])
+        self.assertIn("Resolution documentaire effectuee.", result.prompt_message["content"])
+        self.assertIn("Aucun passage exact n'a ete extrait", result.prompt_message["content"])
+        self.assertTrue(result.biblio_state.current_document.get("document_id"))
+        self.assertTrue(result.biblio_state.current_work)
 
     def test_library_runtime_extract_range_retains_no_payloads_in_runtime_or_work_resolution(self) -> None:
         plan = query_planner.plan_biblio_query(

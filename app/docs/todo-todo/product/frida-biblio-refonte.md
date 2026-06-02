@@ -58,10 +58,10 @@ Frida doit pouvoir utiliser la bibliotheque comme une vraie bibliotheque:
 | [ ] | Lister le catalogue | livre | FridaDev | Garder l'affichage complet jusqu'a 100 et rendre explicite la continuation au-dela | aucune | Frida n'annonce jamais une page comme totalite si le total depasse l'affichage |
 | [ ] | Paginer le catalogue | partiel | FridaDev | Formaliser continuation, reprise et borne produit | etat multi-tour Biblio stable | `continue la liste` reprend proprement sans re-lister au hasard |
 | [ ] | Ouvrir un ouvrage / volume / edition | partiel | mixte | Distinguer ouverture bibliographique, resume document et lecture documentaire | resolution oeuvre/document plus nette | Frida sait dire ce qu'elle a ouvert et a quel niveau |
-| [ ] | Distinguer oeuvre / auteur / corpus / volume | partiel | FridaDev | Refaire la resolution metier, notamment sur `Theetete de Platon` | normalisation + resolveur metier | Les requetes mixtes ne tombent plus sur le mauvais niveau documentaire |
+| [ ] | Distinguer oeuvre / auteur / corpus / volume | partiel | FridaDev | Poursuivre la resolution metier: le runtime conserve maintenant `work_title` vs `document_title`, mais la hierarchie oeuvre/corpus/volume reste incomplète | normalisation + resolveur metier | Les requetes mixtes ne tombent plus sur le mauvais niveau documentaire |
 | [ ] | Afficher la table des matieres | livre | FridaDev | Garder la route legere et mieux l'integrer dans la logique produit | aucune | Une demande TOC reelle liste les chapitres sans faux resume |
 | [ ] | Rechercher dans la table des matieres | absent | mixte | Definir si la recherche passe par chapters indexes, metadata ou outil dedie | contrat outil TOC + donnees Catalogue | Frida peut trouver une oeuvre interne via TOC sans detour fragile par paragraph search |
-| [ ] | Chercher un passage par theme dans une oeuvre | partiel | mixte | Remplacer la logique `search -> premier contexte utile` par une selection bibliothecaire verifiable | meilleur ranking + source classes | Frida renvoie soit un passage plausible justifie, soit une ambiguite claire |
+| [ ] | Chercher un passage par theme dans une oeuvre | partiel | mixte | Le runtime distingue maintenant approximation contextuelle vs candidat plausible, mais la provenance et la priorite source restent a renforcer | meilleur ranking + source classes | Frida renvoie soit un passage plausible justifie, soit une ambiguite claire |
 | [ ] | Chercher un passage par theme dans tout le corpus | partiel | mixte | Definir scope corpus, ranking, desambiguation et reprise | separation oeuvre/corpus + signals source | Frida dit dans quel corpus elle a cherche et pourquoi elle retient ou non un passage |
 | [ ] | Chercher une chaine exacte | partiel | Catalogue/DB | Verifier et documenter les garanties exact-match et les limites d'index | index texte et surfaces d'appel | Frida distingue clairement exact-match, zero hit et hit contextuel |
 | [ ] | Locator canonique simple | livre | mixte | Conserver `locate -> context` comme chemin exact borne | document_id + label simple resolus | Un locator simple donne une extraction ou une ambiguite honnete |
@@ -77,7 +77,7 @@ Frida doit pouvoir utiliser la bibliotheque comme une vraie bibliotheque:
 | [ ] | Verification de provenance | partiel | mixte | Porter un statut explicite source primaire/commentaire/notice et une verification de provenance | metadata/source classes + runtime | Frida peut dire si le passage vient bien de l'oeuvre demandee |
 | [ ] | Priorite texte primaire > commentaire > notice > introduction | absent | mixte | Ajouter un signal bibliographique exploitable au ranking et a la selection | metadata/source classes | Un commentaire ne gagne plus silencieusement contre le texte primaire |
 | [ ] | Navigation multi-tour | partiel | FridaDev | Stabiliser l'etat Biblio et la reprise d'action documentaire | conversation state + primitives nav | `continue`, `plus haut`, `dans ce livre` restent ancres et honnetes |
-| [ ] | Distinguer passage exact / candidat plausible / approximation contextuelle | faux-semblant | FridaDev | Rendre ce statut visible dans la logique produit, pas seulement dans l'observabilite | reprise du contrat runtime | Frida ne sur-vend plus une approximation comme extraction exacte |
+| [ ] | Distinguer passage exact / candidat plausible / approximation contextuelle | partiel | FridaDev | Le runtime et la lane portent maintenant ce statut; il reste a l'adosser a une meilleure verification de provenance | reprise du contrat runtime + source classes | Frida ne sur-vend plus une approximation comme extraction exacte |
 
 ## 4. Front FridaDev
 
@@ -110,12 +110,12 @@ Frida doit pouvoir utiliser la bibliotheque comme une vraie bibliotheque:
 
 ### D. Runtime bibliothecaire
 
-- [ ] Ne plus laisser l'agent ou le deterministe presenter une approximation
+- [x] Ne plus laisser l'agent ou le deterministe presenter une approximation
       search/context comme une resolution canonique forte.
 - [ ] Reprendre la logique de selection pour favoriser le texte primaire avant
       commentaire, notice ou introduction.
 - [ ] Brancher les primitives de navigation reelles sur l'etat multi-tour.
-- [ ] Garder l'observabilite content-free tout en rendant visible le niveau
+- [x] Garder l'observabilite content-free tout en rendant visible le niveau
       exact/plausible/approxime.
 
 ## 5. Front Catalogue / DB / indexation
@@ -238,3 +238,31 @@ Limites maintenues:
 - aucune promesse d'intervalle canonique general;
 - `deux pages apres 147c` reste absent tant que le lien locator -> page/offset
   n'est pas prouve comme primitive produit generale.
+
+## 11. Mise a jour Lot R3 - verite produit et resolution documentaire
+
+Lot R3 livre un petit pas runtime/documentation sans patch Catalogue/DB:
+
+- les recherches thematiques n'injectent plus une lane muette sur leur niveau
+  de certitude: la logique produit distingue maintenant `passage exact`,
+  `candidat plausible`, `approximation contextuelle` et `clarification
+  necessaire`;
+- cette verite produit n'est plus seulement dans l'observabilite: elle est
+  portee dans le runtime et jusque dans la lane Biblio injectee au modele
+  principal;
+- `resolve_work` ne force plus artificiellement un extracteur de passage quand
+  l'utilisateur demande d'abord une cible documentaire;
+- `BiblioResolveRequest` conserve maintenant `document_title` et `work_title`
+  separement, ce qui rend `Theetete de Platon` moins tordu cote FridaDev;
+- une requete nue du type `Trouve-moi le Theetete de Platon` peut maintenant
+  produire une resolution documentaire honnete au lieu d'un faux no-signal ou
+  d'une tentative de passage.
+
+Limites maintenues:
+
+- la provenance primaire/commentaire/notice n'est pas encore garantie;
+- la priorite texte primaire > commentaire reste un chantier ouvert;
+- la recherche thematique extraite via `search -> context` reste une
+  approximation contextuelle tant qu'elle n'est pas confirmee par une
+  resolution plus forte;
+- la hierarchie complete `oeuvre / corpus / volume / edition` reste partielle.

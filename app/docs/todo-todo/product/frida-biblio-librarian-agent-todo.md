@@ -1188,6 +1188,11 @@ utilisateur, pas d'un nouveau GO technique d'activation.
   explicites `extract_passage` / `extract_range` avec locator present restent
   sous controle deterministe; l'agent-first reste compare/observable mais ne
   degrade plus ces cas en `catalog_search -> passage_context` approximatif.
+- [x] Correctif borne verite produit / resolution documentaire: la lane Biblio
+  distingue maintenant `exact_passage`, `plausible_candidate` et
+  `contextual_approximation`; `resolve_work` n'essaie plus d'extraire un
+  passage sans locator et conserve `work_title` distinct de `document_title`
+  pour des cas du type `Theetete de Platon`.
 
 ### Tests / preuves
 

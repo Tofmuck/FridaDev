@@ -83,6 +83,7 @@ _TOKEN_KEYS = {
     "module_key",
     "primary_model",
     "primary_reason_code",
+    "product_truth",
     "query_kind",
     "reason_code",
     "requested_locator_kind",
@@ -92,6 +93,7 @@ _TOKEN_KEYS = {
     "status",
     "tool_execution_status",
     "tool_name",
+    "documentary_target",
 }
 _HASH_LIST_KEYS = {"hashes", "query_hashes", "recent_dialogue_hashes"}
 _DOC_ID_LIST_KEYS = {"doc_id_shorts", "document_candidate_ids"}
@@ -435,6 +437,7 @@ def _passage_search_projection(
         "present": bool(extractor or lane or client_items),
         "status": _safe_token(extractor.get("status")),
         "reason_code": _safe_token(extractor.get("reason_code")),
+        "product_truth": _safe_token(lane.get("product_truth") or extractor.get("product_truth")),
         "candidate_count": _to_int(extractor.get("candidate_count"))
         or _to_int(candidate_search.get("candidate_count")),
         "total_candidate_count": _to_int(candidate_search.get("total_candidate_count")),

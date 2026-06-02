@@ -57,6 +57,9 @@ class BiblioWorkResolution:
     anchor_doc_id_short: str = ""
     anchor_page: int | None = None
     anchor_para: int | None = None
+    documentary_target: str = ""
+    work_hint_present: bool = False
+    document_hint_present: bool = False
 
     def to_observability(self) -> dict[str, Any]:
         return {
@@ -69,6 +72,9 @@ class BiblioWorkResolution:
             "anchor_doc_id_short": self.anchor_doc_id_short,
             "anchor_page": self.anchor_page,
             "anchor_para": self.anchor_para,
+            "documentary_target": self.documentary_target,
+            "work_hint_present": self.work_hint_present,
+            "document_hint_present": self.document_hint_present,
         }
 
 
@@ -107,6 +113,9 @@ class BiblioWorkResolver:
                 reason_code=REASON_CATALOGUE_UNAVAILABLE,
                 endpoint_observations=tuple(endpoint_observations),
                 client_error=exc,
+                documentary_target=_documentary_target(plan),
+                work_hint_present=bool(plan.work_title),
+                document_hint_present=bool(plan.document_title or plan.author or plan.document_id),
             )
 
         anchor = _select_anchor(search_rows, catalog_items)
@@ -119,11 +128,17 @@ class BiblioWorkResolver:
                 document_candidate_ids=candidate_ids,
                 search_result_count=len(search_rows),
                 catalog_result_count=len(catalog_items),
+                documentary_target=_documentary_target(plan),
+                work_hint_present=bool(plan.work_title),
+                document_hint_present=bool(plan.document_title or plan.author or plan.document_id),
             )
 
+        anchor_document_id = plan.document_id or _committed_anchor_document_id(anchor, catalog_items)
         request = BiblioResolveRequest(
-            document_id=plan.document_id or (anchor.document_id if anchor and not (plan.document_title or plan.author) else ""),
-            title=plan.document_title or ("" if anchor else plan.work_title),
+            document_id=anchor_document_id,
+            title=plan.document_title or ("" if anchor_document_id else plan.work_title),
+            document_title=plan.document_title,
+            work_title=plan.work_title,
             author=plan.author,
             locator=plan.locator,
             locator_end=plan.locator_end,
@@ -144,6 +159,9 @@ class BiblioWorkResolver:
             anchor_doc_id_short=short_doc_id(anchor.document_id) if anchor else "",
             anchor_page=anchor.page_no if anchor else None,
             anchor_para=anchor.para_no if anchor else None,
+            documentary_target=_documentary_target(plan),
+            work_hint_present=bool(plan.work_title),
+            document_hint_present=bool(plan.document_title or plan.author or plan.document_id),
         )
 
 
@@ -241,3 +259,37 @@ def _optional_int(value: Any) -> int | None:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _documentary_target(plan: BiblioQueryPlan) -> str:
+    if plan.document_id:
+        return "document_id"
+    if plan.work_title and (plan.document_title or plan.author):
+        return "work_in_document"
+    if plan.work_title:
+        return "work"
+    if plan.document_title and plan.author:
+        return "document_with_author"
+    if plan.document_title:
+        return "document_or_volume"
+    if plan.author:
+        return "author_or_corpus"
+    return ""
+
+
+def _committed_anchor_document_id(
+    anchor: _Anchor | None,
+    catalog_items: Sequence[Mapping[str, Any]],
+) -> str:
+    if anchor is None or not anchor.document_id:
+        return ""
+    if not catalog_items:
+        return anchor.document_id
+    catalog_doc_ids = {
+        _text(item.get("id") or item.get("document_id"))
+        for item in catalog_items
+        if _text(item.get("id") or item.get("document_id"))
+    }
+    if len(catalog_doc_ids) == 1 and anchor.document_id in catalog_doc_ids:
+        return anchor.document_id
+    return ""

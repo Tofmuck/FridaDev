@@ -280,7 +280,7 @@ def _anchor_from_runtime_result(value: Any) -> dict[str, Any]:
     document_ids = tuple(_safe_doc_id(item) for item in _sequence(getattr(value, "document_ids", ())) if item)
     doc_ids = tuple(_safe_doc_id(item) for item in _sequence(getattr(consultation, "doc_id_shorts", ())) if item)
     status = _safe_token(getattr(value, "status", ""))
-    if (document_ids or doc_ids) and status in {"opened", "toc_listed", "toc_summary"}:
+    if (document_ids or doc_ids) and status in {"opened", "resolved", "toc_listed", "toc_summary"}:
         return {
             "status": status,
             "reason_code": _safe_token(getattr(value, "reason_code", "")),

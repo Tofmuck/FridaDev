@@ -94,6 +94,15 @@ class BiblioQueryPlannerTests(unittest.TestCase):
         self.assertEqual(plan.locator, "126b")
         self.assertEqual(plan.locator_end, "128a")
 
+    def test_bare_work_and_corpus_request_is_planned_as_resolve_work(self) -> None:
+        plan = query_planner.plan_biblio_query("Trouve-moi le Theetete de Platon.")
+
+        self.assertTrue(plan.should_consult)
+        self.assertEqual(plan.intent, query_planner.INTENT_RESOLVE_WORK)
+        self.assertEqual(plan.query_kind, query_planner.INTENT_RESOLVE_WORK)
+        self.assertEqual(plan.work_title, "Théétète")
+        self.assertEqual(plan.document_title, "Platon")
+
     def test_thematic_passage_request_separates_work_and_theme(self) -> None:
         cases = (
             "Trouve dans le Théétète le passage où Socrate parle de la maïeutique",
