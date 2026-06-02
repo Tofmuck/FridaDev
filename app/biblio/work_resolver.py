@@ -113,12 +113,16 @@ class BiblioWorkResolver:
             chapter_search_rows: list[Mapping[str, Any]] = []
             chapter_search_doc_id = ""
             if plan.work_title and not resolved_doc_id:
-                for query in _candidate_queries(plan.work_title_variants, plan.work_title):
+                chapter_queries = _candidate_queries(plan.work_title_variants, plan.work_title)
+                for query in chapter_queries:
                     chapter_search_response = self._client.search_chapters(query, limit=WORK_SEARCH_LIMIT)
                     endpoint_observations.append(observe_catalogue_response(chapter_search_response))
                     chapter_search_rows = _chapter_search_results(chapter_search_response)
                     if chapter_search_rows:
-                        chapter_search_doc_id = _single_row_document_id(chapter_search_rows)
+                        chapter_search_doc_id = _committed_chapter_search_document_id(
+                            chapter_search_rows,
+                            chapter_queries,
+                        )
                         break
                 if chapter_search_doc_id:
                     resolved_doc_id = chapter_search_doc_id
@@ -357,6 +361,47 @@ def _chapter_tokens_match(title_tokens: Sequence[str], query_tokens: Sequence[st
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _committed_chapter_search_document_id(
+    rows: Sequence[Mapping[str, Any]],
+    queries: Sequence[str],
+) -> str:
+    query_token_sequences = tuple(
+        dict.fromkeys(
+            _normalized_word_sequence(query)
+            for query in queries
+            if _normalized_word_sequence(query)
+        )
+    )
+    if not query_token_sequences:
+        return ""
+    matched_rows = [
+        row
+        for row in rows
+        if _chapter_search_row_matches_query(row, query_token_sequences)
+    ]
+    if not matched_rows:
+        return ""
+    return _single_row_document_id(matched_rows)
+
+
+def _chapter_search_row_matches_query(
+    row: Mapping[str, Any],
+    query_token_sequences: Sequence[Sequence[str]],
+) -> bool:
+    title_tokens = _normalized_word_sequence(row.get("chapter_title") or row.get("title"))
+    if not title_tokens:
+        return False
+    return any(_chapter_search_tokens_match(title_tokens, query_tokens) for query_tokens in query_token_sequences)
+
+
+def _chapter_search_tokens_match(title_tokens: Sequence[str], query_tokens: Sequence[str]) -> bool:
+    if not title_tokens or not query_tokens:
+        return False
+    if len(query_tokens) == 1:
+        return len(title_tokens) == 1 and title_tokens[0] == query_tokens[0]
+    return _chapter_tokens_match(title_tokens, query_tokens)
 
 
 def _single_row_document_id(rows: Sequence[Mapping[str, Any]]) -> str:
