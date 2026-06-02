@@ -1,8 +1,8 @@
-"""Dialogue-level planning for the future Biblio librarian agent.
+"""Dialogue-level planning for Biblio librarian follow-ups and shortcuts.
 
 This module prepares implicit conversation requests for the bounded librarian
-loop.  It does not call Catalogue, does not call a model and is not wired into
-the product runtime.
+loop.  It does not call Catalogue and does not call a model; its planning is
+now consumed by the product runtime via dedicated dialogue executors.
 """
 
 from __future__ import annotations

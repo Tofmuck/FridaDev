@@ -336,7 +336,7 @@ encore decide ou repare a plusieurs endroits.
 ### Lot D - Cleanup `app/biblio/` par responsabilites
 
 - [x] Recentrer `chat_runtime.py` sur l'orchestration.
-- [ ] Sortir la reconnaissance de cas locale la ou elle est dupliquee.
+- [x] Sortir la reconnaissance de cas locale la ou elle est dupliquee.
 - [ ] Separer clairement:
       - reconnaissance de cas;
       - registre de methodes;
