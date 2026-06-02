@@ -6,6 +6,7 @@ Classement: `app/docs/todo-todo/product/`
 Audit source: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 Contrat source Biblio native: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Contrat source agent Lot 2: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
+Matrice d'action produit complementaire: `app/docs/todo-todo/product/frida-biblio-refonte.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 Scope: plan produit/runtime pour agent bibliothecaire Frida, lots docs et runtime bornes.
 

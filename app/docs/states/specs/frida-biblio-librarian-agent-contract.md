@@ -4,6 +4,7 @@ Statut: spec vivante
 Date: 2026-05-31
 Classement: `app/docs/states/specs/`
 Roadmap active: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+Matrice d'action produit complementaire: `app/docs/todo-todo/product/frida-biblio-refonte.md`
 Audit source: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 Contrat Biblio natif voisin: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
