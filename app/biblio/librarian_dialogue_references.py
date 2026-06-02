@@ -13,6 +13,13 @@ def current_document_id(state: BiblioConversationState) -> str:
     return str(state.current_document.get("document_id") or "").strip()
 
 
+def anchored_document_id(state: BiblioConversationState) -> str:
+    doc_id = current_document_id(state)
+    if doc_id:
+        return doc_id
+    return str(state.last_result.get("document_id") or "").strip()
+
+
 def last_result_context_params(state: BiblioConversationState) -> dict[str, Any]:
     last = state.last_result
     doc_id = str(last.get("document_id") or "").strip() or current_document_id(state)

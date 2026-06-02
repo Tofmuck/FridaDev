@@ -66,12 +66,12 @@ Frida doit pouvoir utiliser la bibliotheque comme une vraie bibliotheque:
 | [ ] | Chercher une chaine exacte | partiel | Catalogue/DB | Verifier et documenter les garanties exact-match et les limites d'index | index texte et surfaces d'appel | Frida distingue clairement exact-match, zero hit et hit contextuel |
 | [ ] | Locator canonique simple | livre | mixte | Conserver `locate -> context` comme chemin exact borne | document_id + label simple resolus | Un locator simple donne une extraction ou une ambiguite honnete |
 | [ ] | Intervalle canonique | absent | Catalogue/DB | Definir un objet natif ou un mapping stable debut/fin -> sequence documentaire | chantier indexation intervalle | Frida ne simule plus un range general avec une astuce locale |
-| [ ] | Extraire ce qui precede un passage | absent | mixte | Introduire une primitive documentaire bornee de navigation arriere | outil page/voisinage ou equivalent | `ce qui precede` ne depend plus d'une approximation libre |
-| [ ] | Extraire ce qui suit un passage | absent | mixte | Introduire une primitive documentaire bornee de navigation avant | outil page/voisinage ou equivalent | `continue apres ce passage` donne une vraie continuation documentaire |
+| [ ] | Extraire ce qui precede un passage | partiel | FridaDev | La navigation page existe; la navigation exacte intra-page reste a definir | outil page borne + ancre de passage plus fine | `ce qui precede` ne depend plus d'une approximation libre |
+| [ ] | Extraire ce qui suit un passage | partiel | FridaDev | La navigation page existe; la navigation exacte intra-page reste a definir | outil page borne + ancre de passage plus fine | `continue apres ce passage` donne une vraie continuation documentaire |
 | [ ] | `autour de ce passage` | partiel | FridaDev | Clarifier la difference entre voisinage exact et simple contexte local | etat technique + primitive de voisinage | Frida sait dire si elle montre un vrai voisinage ou juste le contexte deja present |
-| [ ] | `continue apres ce passage` | absent | mixte | Brancher une navigation sequentielle sur etat ancre | etat multi-tour + outil de lecture borne | La continuation ne re-search pas au hasard |
-| [ ] | `page suivante / page precedente` | absent | FridaDev | Integrer une route page sure deja existante cote Catalogue dans le contrat FridaDev | decision outil GET-only page | Frida change reellement de page avec document_id explicite |
-| [ ] | `page 28 a page 32` | absent | mixte | Definir lecture de plage de pages bornee et ses limites de taille | outil page + garde volume | Frida sait lire une plage de pages sans deriver vers export total |
+| [ ] | `continue apres ce passage` | partiel | FridaDev | Brancher une navigation sequentielle sur etat ancre en gardant la verite page-vs-passage | etat multi-tour + outil page borne | La continuation ne re-search pas au hasard |
+| [x] | `page suivante / page precedente` | livre | FridaDev | Route page legere integree dans le contrat FridaDev via `page_read` borne | `document_id` explicite + page ancree | Frida change reellement de page avec document_id explicite |
+| [x] | `page 28 a page 32` | livre | FridaDev | Lecture de plage de pages bornee livree via `page_read` compose | `document_id` explicite + garde `<= 5` pages | Frida sait lire une plage de pages sans deriver vers export total |
 | [ ] | `deux pages apres 147c` | absent | mixte | Relier locator canonique et navigation page | intervalle/positionnement stable | Frida peut calculer un deplacement documentaire reel |
 | [ ] | `147c a 151d` | faux-semblant | mixte | Arreter de traiter une plage brute comme si elle etait deja localisable | objet intervalle canonique natif | Frida n'annonce pas un range general comme supporte avant preuve |
 | [ ] | Verification de provenance | partiel | mixte | Porter un statut explicite source primaire/commentaire/notice et une verification de provenance | metadata/source classes + runtime | Frida peut dire si le passage vient bien de l'oeuvre demandee |
@@ -102,7 +102,7 @@ Frida doit pouvoir utiliser la bibliotheque comme une vraie bibliotheque:
 
 - [ ] Integrer proprement les routes Catalogue utiles deja existantes quand elles
       sont compatibles avec le contrat GET-only.
-- [ ] Ajouter une primitive de navigation page bornee si elle est retenue.
+- [x] Ajouter une primitive de navigation page bornee si elle est retenue.
 - [ ] Ajouter une primitive documentaire de voisinage ou de lecture sequentielle
       si la page seule ne suffit pas.
 - [ ] Garder interdites les routes `latest/*`, les exports massifs et toute
@@ -210,3 +210,26 @@ Frida doit pouvoir utiliser la bibliotheque comme une vraie bibliotheque:
       applicatif ou si elle revele un manque Catalogue / DB / indexation.
 - [ ] Toute validation future doit nommer ce qui est exact, ce qui est plausible
       et ce qui reste non supporte.
+
+## 10. Mise a jour Lot R1 - navigation documentaire reelle
+
+Lot R1 livre le premier front documentaire utile cote FridaDev, sans patch
+Catalogue ni DB:
+
+- `CatalogueClient.page(document_id, page_no)` appelle seulement
+  `GET /doc/{id}/page/{page_no}`;
+- l'outil `page_read` est maintenant allowliste, GET-only, borne, avec
+  `document_id` explicite obligatoire;
+- le runtime dialogue Biblio execute reellement:
+  - `page suivante / page precedente`;
+  - `page 28 a page 32` avec garde `<= 5` pages;
+  - `continue apres ce passage` quand une page ancree existe deja;
+  - `autour de ce passage` via `passage_context` borne.
+
+Limites maintenues:
+
+- aucun `latest/page` ni `latest/context`;
+- aucune navigation inventee depuis un titre explicite non resolu;
+- aucune promesse d'intervalle canonique general;
+- `deux pages apres 147c` reste absent tant que le lien locator -> page/offset
+  n'est pas prouve comme primitive produit generale.

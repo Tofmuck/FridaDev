@@ -28,6 +28,7 @@ from .document_resolver import BiblioResolveRequest
 from . import librarian_planner
 from . import librarian_tools
 from . import librarian_dialogue_planner
+from .librarian_navigation_runtime import run_biblio_navigation_plan
 from .library_runtime import run_biblio_library_plan
 from .librarian_agent_first import (
     EXECUTION_SCOPE_AGENT_FIRST,
@@ -247,6 +248,50 @@ def run_biblio_chat_turn(
                 observability_payload=payload,
             )
     if not decision.should_attempt or decision.query_plan is None:
+        navigation_result = (
+            _run_navigation_dialogue_plan(
+                enabled=decision.enabled,
+                user_msg=user_msg,
+                state=state_before,
+                recent_dialogue=recent_dialogue,
+                client_factory=client_factory,
+                config_module=config_module,
+            )
+            if decision.enabled
+            else None
+        )
+        if navigation_result is not None:
+            state_after, state_transition = update_state_from_runtime(
+                state_before,
+                library_result=navigation_result,
+                conversation_id=conversation_id,
+                now_iso=now_iso,
+                source_event="biblio_navigation_dialogue",
+                reason_code="biblio_state_updated_from_navigation_dialogue",
+            )
+            payload = observability_builder(
+                enabled=True,
+                used=True,
+                query_kind=navigation_result.query_kind or decision.query_kind,
+                client_response=navigation_result.client_observability(),
+                prompt_lane=navigation_result.consultation_message,
+                biblio_state=state_after if state_after.present else None,
+                state_transition=state_transition,
+                librarian_agent=librarian_agent_result,
+                status=navigation_result.status,
+                reason_code=navigation_result.reason_code,
+            )
+            return BiblioChatResult(
+                enabled=True,
+                used=True,
+                reason_code=navigation_result.reason_code,
+                query_kind=navigation_result.query_kind or decision.query_kind,
+                prompt_lane=navigation_result.consultation_message,
+                biblio_state=state_after if state_after.present else None,
+                state_transition=state_transition,
+                librarian_agent_result=librarian_agent_result,
+                observability_payload=payload,
+            )
         followup = detect_followup_request(user_msg) if decision.enabled else None
         clarification = clarification_for_followup(state_before, followup) if followup else None
         if clarification is not None and followup is not None:
@@ -579,6 +624,36 @@ def _agent_first_dialogue_fallback_plan(
         schema_version=librarian_planner.SCHEMA_VERSION,
         fallback_reason="agent_json_invalid_dialogue_fallback_plan",
     )
+
+
+def _run_navigation_dialogue_plan(
+    *,
+    enabled: bool,
+    user_msg: str,
+    state: BiblioConversationState,
+    recent_dialogue: Sequence[Mapping[str, Any]],
+    client_factory: Any,
+    config_module: Any,
+) -> Any:
+    if not enabled:
+        return None
+    dialogue = librarian_dialogue_planner.plan_biblio_dialogue(
+        user_msg,
+        state=state,
+        recent_dialogue=recent_dialogue,
+    )
+    if dialogue.intent.intent != librarian_dialogue_planner.INTENT_NAVIGATE:
+        return None
+    if dialogue.status not in {
+        librarian_dialogue_planner.STATUS_PLANNED,
+        librarian_dialogue_planner.STATUS_NEEDS_CLARIFICATION,
+        librarian_dialogue_planner.STATUS_UNSUPPORTED_MISSING_TOOL,
+    }:
+        return None
+    if dialogue.status == librarian_dialogue_planner.STATUS_PLANNED:
+        client = client_factory(config_module=config_module)
+        return run_biblio_navigation_plan(client, dialogue)
+    return run_biblio_navigation_plan(None, dialogue)
 
 
 def _fallback_catalogue_query(query_plan: Any) -> str:

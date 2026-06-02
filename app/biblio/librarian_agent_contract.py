@@ -84,6 +84,11 @@ _TOOL_PARAM_CONTRACTS = {
         "required_any": (("document_id", "doc_id"),),
         "int_bounds": {"limit": (1, 500), "offset": (0, 100_000)},
     },
+    tools.TOOL_PAGE_READ: {
+        "allowed": {"document_id", "doc_id", "page_no"},
+        "required_any": (("document_id", "doc_id"), ("page_no",)),
+        "int_bounds": {"page_no": (1, 100_000)},
+    },
     tools.TOOL_LOCATE: {
         "allowed": {"document_id", "doc_id", "locator", "label", "kind", "limit"},
         "required_any": (("document_id", "doc_id"), ("locator", "label")),

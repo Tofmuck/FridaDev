@@ -141,20 +141,22 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
 
         result = dialogue.plan_biblio_dialogue("Et le passage suivant ?", state=state)
 
-        self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
-        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
+        self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_PAGE_READ)
         self.assertEqual(result.tool_required, "navigation_page_next")
-        self.assertEqual(_tool_names(result), [])
+        self.assertEqual(_tool_names(result), [tools.TOOL_PAGE_READ])
+        self.assertEqual(result.plan.tool_calls[0].params["page_no"], 13)
 
     def test_passage_before_request_stays_navigation_missing_tool(self) -> None:
         state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
 
         result = dialogue.plan_biblio_dialogue("Je veux le passage avant celui-ci", state=state)
 
-        self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
-        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
+        self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_PAGE_READ)
         self.assertEqual(result.tool_required, "navigation_page_previous")
-        self.assertEqual(_tool_names(result), [])
+        self.assertEqual(_tool_names(result), [tools.TOOL_PAGE_READ])
+        self.assertEqual(result.plan.tool_calls[0].params["page_no"], 11)
 
     def test_plus_haut_with_state_reports_missing_navigation_tool(self) -> None:
         state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
@@ -302,12 +304,31 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
                 self.assertEqual(result.reason_code, dialogue.REASON_CURRENT_DOCUMENT_MISSING)
                 self.assertEqual(_tool_names(result), [])
 
-    def test_navigation_with_valid_state_reports_missing_tools_for_unsupported_moves(self) -> None:
+    def test_navigation_with_valid_page_anchor_plans_bounded_page_reads(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
+
+        for message, scope_mode, expected_pages in (
+            ("Continue apres ce passage.", "continue", [13]),
+            ("Montre-moi la page precedente.", "page_previous", [11]),
+            ("Montre-moi la page suivante.", "page_next", [13]),
+            ("Page 28 a page 32.", "page_explicit", [28, 29, 30, 31, 32]),
+        ):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
+
+                self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+                self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_PAGE_READ)
+                self.assertEqual(result.intent.intent, dialogue.INTENT_NAVIGATE)
+                self.assertEqual(result.intent.scope_mode, scope_mode)
+                self.assertEqual(result.tool_required, f"navigation_{scope_mode}")
+                self.assertEqual(_tool_names(result), [tools.TOOL_PAGE_READ] * len(expected_pages))
+                self.assertEqual([call.params["page_no"] for call in result.plan.tool_calls], expected_pages)
+                self.assertTrue(result.current_document_used)
+
+    def test_navigation_with_valid_state_reports_missing_tools_for_still_unsupported_moves(self) -> None:
         state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
 
         for message, scope_mode in (
-            ("Continue apres ce passage.", "continue"),
-            ("Montre-moi la page precedente.", "page_previous"),
             ("Remonte un peu.", "up"),
             ("Plus bas.", "down"),
             ("Cherche un autre passage proche.", "nearby_passage"),
@@ -415,11 +436,22 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
             with self.subTest(message=message):
                 result = dialogue.plan_biblio_dialogue(message, state=state)
 
-                self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
-                self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
+                self.assertEqual(result.status, dialogue.STATUS_NEEDS_CLARIFICATION)
+                self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_PAGE_ANCHOR_MISSING)
                 self.assertEqual(result.intent.intent, dialogue.INTENT_NAVIGATE)
                 self.assertEqual(result.intent.scope_mode, "continue")
                 self.assertEqual(result.tool_required, "navigation_continue")
+                self.assertEqual(_tool_names(result), [])
+
+    def test_navigation_without_page_anchor_clarifies(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "paragraph_id": 101})
+
+        for message in ("Continue apres ce passage.", "Montre-moi la page precedente."):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
+
+                self.assertEqual(result.status, dialogue.STATUS_NEEDS_CLARIFICATION)
+                self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_PAGE_ANCHOR_MISSING)
                 self.assertEqual(_tool_names(result), [])
 
     def test_navigation_without_state_clarifies(self) -> None:
@@ -431,6 +463,15 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
                 self.assertEqual(result.reason_code, dialogue.REASON_CURRENT_DOCUMENT_MISSING)
                 self.assertEqual(result.intent.intent, dialogue.INTENT_NAVIGATE)
                 self.assertEqual(_tool_names(result), [])
+
+    def test_explicit_page_range_too_wide_clarifies(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
+
+        result = dialogue.plan_biblio_dialogue("Page 28 a page 40", state=state)
+
+        self.assertEqual(result.status, dialogue.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_PAGE_RANGE_TOO_WIDE)
+        self.assertEqual(_tool_names(result), [])
 
     def test_dictated_theme_query_plans_search(self) -> None:
         result = dialogue.plan_biblio_dialogue("cherche le moment ou Socrate parle de sage femme")
@@ -466,7 +507,7 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
     def test_dialogue_navigation_has_no_forbidden_catalogue_routes(self) -> None:
         source = (inspect.getsource(dialogue) + inspect.getsource(dialogue_navigation)).lower()
 
-        for forbidden in ("latest/page", "latest/context", "export/chunk", "page_read"):
+        for forbidden in ("latest/page", "latest/context", "export/chunk"):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, source)
 

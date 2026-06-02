@@ -33,18 +33,18 @@ class BiblioLibrarianToolTests(unittest.TestCase):
                 tools.TOOL_CATALOG_SEARCH,
                 tools.TOOL_DOCUMENT_OPEN_SUMMARY,
                 tools.TOOL_DOCUMENT_TOC,
+                tools.TOOL_PAGE_READ,
                 tools.TOOL_LOCATE,
                 tools.TOOL_PASSAGE_CONTEXT,
             ),
         )
-        self.assertNotIn("page_read", registry.tool_names)
         self.assertNotIn("export/chunk", registry.tool_names)
 
     def test_forbidden_and_unknown_tools_fail_before_network(self) -> None:
         fake = _FakeToolClient()
         registry = tools.build_librarian_tool_registry(fake)
 
-        forbidden = ["page_read", "export/chunk", "latest/page", "latest/context"]
+        forbidden = ["export/chunk", "latest/page", "latest/context"]
         for tool_name in forbidden:
             with self.subTest(tool_name=tool_name):
                 with self.assertRaises(tools.BiblioLibrarianToolError) as ctx:
@@ -155,6 +155,29 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertEqual(observed["endpoint_kind"], catalogue.ENDPOINT_CHAPTERS)
         self.assertNotIn(RAW_TITLE, _json(observed))
 
+    def test_page_read_is_bounded_and_content_free(self) -> None:
+        fake = _FakeToolClient(
+            page_payload={
+                "document_id": "doc-1",
+                "title": RAW_TITLE,
+                "page_no": 28,
+                "raw_text": RAW_PASSAGE,
+                "paragraph_count": 3,
+            }
+        )
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(tools.TOOL_PAGE_READ, {"document_id": "doc-1", "page_no": 28})
+        observed = result.to_observability()
+
+        self.assertEqual(fake.calls, [("page", "doc-1", 28)])
+        self.assertEqual(result.page_text, RAW_PASSAGE)
+        self.assertEqual(observed["endpoint_kind"], catalogue.ENDPOINT_PAGE)
+        self.assertEqual(observed["positions"][0]["page_no"], 28)
+        self.assertEqual(observed["paragraph_count"], 3)
+        self.assertNotIn(RAW_PASSAGE, _json(observed))
+        self.assertNotIn(RAW_TITLE, _json(observed))
+
     def test_locate_requires_document_and_locator_with_content_free_position(self) -> None:
         fake = _FakeToolClient(
             locate_payload={
@@ -256,11 +279,14 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         toc = tools.build_librarian_tool_registry(
             _FakeToolClient(chapters_payload={"chapters": [{"chapter_no": 1, "title": RAW_CHAPTER}]})
         ).run(tools.TOOL_DOCUMENT_TOC, {"document_id": "doc-1"})
+        page = tools.build_librarian_tool_registry(
+            _FakeToolClient(page_payload={"document_id": "doc-1", "title": RAW_TITLE, "page_no": 28, "raw_text": RAW_PASSAGE})
+        ).run(tools.TOOL_PAGE_READ, {"document_id": "doc-1", "page_no": 28})
         context = tools.build_librarian_tool_registry(
             _FakeToolClient(context_payload={"document_id": "doc-1", "text": RAW_PASSAGE})
         ).run(tools.TOOL_PASSAGE_CONTEXT, {"document_id": "doc-1", "page_no": 12, "para_no": 3})
 
-        encoded = "\n".join(repr(result) for result in (catalog, summary, toc, context))
+        encoded = "\n".join(repr(result) for result in (catalog, summary, toc, page, context))
 
         for raw in (RAW_QUERY, RAW_TITLE, RAW_AUTHOR, RAW_CHAPTER, RAW_PASSAGE):
             with self.subTest(raw=raw):
@@ -275,6 +301,7 @@ class BiblioLibrarianToolTests(unittest.TestCase):
             (tools.TOOL_CATALOG_LIST, {"limit": 101}, tools.REASON_BUDGET_OR_LIMIT_EXCEEDED),
             (tools.TOOL_CATALOG_SEARCH, {"query": "x", "offset": 1}, tools.REASON_BUDGET_OR_LIMIT_EXCEEDED),
             (tools.TOOL_DOCUMENT_TOC, {"document_id": "doc-1", "limit": 501}, tools.REASON_BUDGET_OR_LIMIT_EXCEEDED),
+            (tools.TOOL_PAGE_READ, {"document_id": "doc-1", "page_no": 0}, tools.REASON_INVALID_PARAMETER),
             (tools.TOOL_PASSAGE_CONTEXT, {"document_id": "doc-1", "page_no": 1, "para_no": 1, "window_chars": 2001}, tools.REASON_BUDGET_OR_LIMIT_EXCEEDED),
             (tools.TOOL_PASSAGE_CONTEXT, {"document_id": "doc/1", "page_no": 1, "para_no": 1}, tools.REASON_INVALID_PARAMETER),
         ]
@@ -319,6 +346,7 @@ class _FakeToolClient:
         search_payload: dict[str, object] | None = None,
         metadata_payload: dict[str, object] | None = None,
         chapters_payload: dict[str, object] | None = None,
+        page_payload: dict[str, object] | None = None,
         locate_payload: dict[str, object] | None = None,
         context_payload: dict[str, object] | None = None,
     ) -> None:
@@ -326,6 +354,7 @@ class _FakeToolClient:
         self.search_payload = search_payload or {"count": 0, "results": []}
         self.metadata_payload = metadata_payload or {"document": {"id": "doc-1"}, "human_metadata": {}}
         self.chapters_payload = chapters_payload or {"total": 0, "chapters": []}
+        self.page_payload = page_payload or {"document_id": "doc-1", "page_no": 1, "raw_text": ""}
         self.locate_payload = locate_payload or {"count": 0, "matches": []}
         self.context_payload = context_payload or {"document_id": "doc-1", "text": ""}
         self.calls: list[tuple[object, ...]] = []
@@ -348,6 +377,15 @@ class _FakeToolClient:
     def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
         self.calls.append(("chapters", doc_id, limit, offset))
         return _response(catalogue.ENDPOINT_CHAPTERS, self.chapters_payload, doc_id=doc_id, result_count=_count(self.chapters_payload, "chapters"))
+
+    def page(self, doc_id: str, page_no: int) -> catalogue.CatalogueResponse:
+        self.calls.append(("page", doc_id, page_no))
+        return _response(
+            catalogue.ENDPOINT_PAGE,
+            self.page_payload,
+            doc_id=doc_id,
+            content_chars=len(str(self.page_payload.get("raw_text") or "")),
+        )
 
     def locate(
         self,

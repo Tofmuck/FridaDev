@@ -18,6 +18,7 @@ Reouverture produit vraie bibliotheque: 2026-05-30
 Route legere table des matieres Catalogue: 2026-05-30
 Etat conversationnel agent bibliothecaire Lot 1: 2026-05-31
 Socle agent bibliothecaire Lot 7: 2026-06-01
+Navigation documentaire R1: 2026-06-02
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -201,6 +202,7 @@ Endpoints autorises au depart:
 - `GET /doc/{id}`;
 - `GET /doc/{id}/metadata`;
 - `GET /doc/{id}/chapters`;
+- `GET /doc/{id}/page/{page_no}`;
 - `GET /doc/{id}/locate`;
 - `GET /doc/{id}/context`;
 - `GET /search`.
@@ -232,9 +234,9 @@ Implementation Lot 2 du 2026-05-28:
 - package domaine: `app/biblio/`;
 - config non secrete: `BIBLIO_CATALOGUE_BASE_URL`, defaut `http://platform-doc-pipeline-api:8090`;
 - timeout non secret: `BIBLIO_CATALOGUE_TIMEOUT_S`, defaut `8`;
-- methodes publiques: `health()`, `catalog()`, `document()`, `metadata()`, `chapters()`, `locate()`, `context()`, `search()`;
+- methodes publiques: `health()`, `catalog()`, `document()`, `metadata()`, `chapters()`, `page()`, `locate()`, `context()`, `search()`;
 - garde structurelle: `_request()` refuse tout verbe autre que `GET`;
-- allowlist structurelle: seuls `/health`, `/catalog`, `/search`, `/doc/{id}`, `/doc/{id}/metadata`, `/doc/{id}/chapters`, `/doc/{id}/locate`, `/doc/{id}/context` sont acceptes;
+- allowlist structurelle: seuls `/health`, `/catalog`, `/search`, `/doc/{id}`, `/doc/{id}/metadata`, `/doc/{id}/chapters`, `/doc/{id}/page/{page_no}`, `/doc/{id}/locate`, `/doc/{id}/context` sont acceptes;
 - routes mutatrices et exports non allowlistes sont refuses avant appel reseau;
 - erreurs content-free: forbidden method, forbidden route, invalid base URL, invalid parameter, service unavailable, timeout, invalid JSON, not found, unexpected status;
 - `CatalogueResponse.to_observability()` exclut le payload brut et expose seulement endpoint, status, duree, compte, id court et longueur compacte si applicable.

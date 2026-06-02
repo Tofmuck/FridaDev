@@ -59,9 +59,10 @@ coder directement l'agent runtime.
 
 Etat courant: Lot 3 outils GET-only livre, Lot 4 boucle/planner
 bibliothecaire bornee livre comme module non branche, Lot 5 comprehension
-implicite/dialogue livre, Lot 6 navigation bornee livre, et Lot 7 socle
-agentique non active livre. Lot 8 integre ce socle comme comparaison runtime
-observable, sans activation produit par defaut.
+implicite/dialogue livre, Lot 6 navigation bornee livre, Lot 7 socle
+agentique non active livre et Lot R1 ajoute la primitive documentaire
+`page_read` cote FridaDev sans patch Catalogue. Lot 8 integre ce socle comme
+comparaison runtime observable, sans activation produit par defaut.
 
 Le Lot 3 peut definir le registre d'outils Catalogue bornes si et seulement si:
 
@@ -302,7 +303,7 @@ Outils autorises au niveau contrat:
 | `document_toc` | `GET /doc/{id}/chapters` | TOC bornee ou paginee, `document_id` explicite. |
 | `locate` | `GET /doc/{id}/locate` | Repere explicite, document resolu requis. |
 | `passage_context` | `GET /doc/{id}/context` | Contexte borne, document et position explicites. |
-| `page_read` | route page future seulement | Hors Lot 3; autorise plus tard seulement si route/client sure, GO separe, `document_id` explicite, borne de chars, tests, jamais `latest/page`. |
+| `page_read` | `GET /doc/{id}/page/{page_no}` | Lecture bornee d'une page explicite seulement; `document_id` explicite requis, chars bornes, jamais `latest/page`. |
 
 Interdictions:
 
@@ -344,8 +345,8 @@ Implementation Lot 3:
 - module: `app/biblio/librarian_tools.py`;
 - registre expose: `catalog_list`, `catalog_search`,
   `document_open_summary`, `document_toc`, `locate`, `passage_context`;
-- `page_read`, `latest/page`, `latest/context`, `export/chunk` et les routes
-  mutatrices sont refuses avant reseau;
+- `latest/page`, `latest/context`, `export/chunk` et les routes mutatrices
+  sont refuses avant reseau;
 - `document_open_summary` n'appelle pas `GET /doc/{id}` et utilise
   `GET /doc/{id}/metadata` ou une resolution compacte via `GET /catalog`;
 - les resultats internes ne retiennent pas de `CatalogueResponse.payload` brut;
@@ -617,7 +618,8 @@ NO-GO retroactif Lot 4 si un patch ulterieur reintroduit:
   divergent;
 - exposer passage, titre, auteur, chapitre ou requete brute via `repr(result)`;
 - regonfler `librarian_tools.py` sans necessite vitale;
-- outil page ou `page_read`;
+- outil page non borne, sans `document_id` explicite, ou reposant sur
+  `latest/page`;
 - `export/chunk`;
 - navigation complete;
 - activation runtime produit;
@@ -636,7 +638,7 @@ NO-GO Lot 5 si le patch tente:
 - brancher la boucle comme agent produit actif;
 - appeler OpenRouter ou introduire un modele externe reel sans gate date;
 - hardcoder un modele ou slug;
-- ajouter page, `export/chunk`, `latest/page` ou `latest/context`;
+- ajouter `export/chunk`, `latest/page` ou `latest/context`;
 - remplacer le chemin deterministe sans smokes comparatifs;
 - declarer l'agent bibliothecaire produit livre.
 
@@ -691,14 +693,14 @@ NO-GO retroactif Lot 5 si un patch ulterieur reintroduit:
 - interpretation dialogue dans `librarian_planner.py`;
 - logique dialogue dans `librarian_planner_observability.py`;
 - appel OpenRouter ou modele reel sans lot de gate separe;
-- outil page ou route `latest`;
+- outil page non borne ou route `latest`;
 - fuite content-rich via observabilite ou `repr(result)`.
 
 ## 19. Lot 6 livre
 
 Lot 6 livre uniquement une navigation bibliothecaire bornee au-dessus de
-l'etat Biblio conversationnel existant. Il ne cree pas de route Catalogue et
-ne simule pas de lecture page voisine.
+l'etat Biblio conversationnel existant. Il ne cree pas de route Catalogue et,
+historiquement, ne simulait pas de lecture page voisine.
 
 Implementation Lot 6:
 
@@ -711,8 +713,9 @@ Implementation Lot 6:
 - le contexte autour utilise une fenetre bornee (`window_chars=1400`) et reste
   soumis aux bornes de la boucle bibliothecaire;
 - `continue`, page precedente/suivante, plus haut/bas et passage proche ne sont
-  pas inventes: ils retournent `unsupported_missing_tool` sur etat valide, ou
-  `needs_clarification` si l'etat manque;
+  pas inventes dans le Lot 6 historique: ils retournent
+  `unsupported_missing_tool` sur etat valide, ou `needs_clarification` si
+  l'etat manque;
 - une navigation qui nomme un ouvrage explicite non resolu (`dans le Theetete`,
   `dans Platon`, `chez Platon`, `dans l'Apologie`, `de l Apologie`,
   `d'Apologie`) clarifie avec
@@ -725,9 +728,26 @@ Implementation Lot 6:
   `maintenant`, `s il te plait`) restent des TOC du document courant si l'etat
   existe; les formes `qualificatif + titre` clarifient toujours;
 - observabilite et `repr(result)` restent content-free;
-- aucun outil page, aucun `latest/page`, aucun `latest/context`, aucun
-  `export/chunk`, aucun OpenRouter, aucun appel modele, aucun branchement
-  runtime produit.
+- aucun `latest/page`, aucun `latest/context`, aucun `export/chunk`, aucun
+  OpenRouter, aucun appel modele, aucun branchement runtime produit.
+
+### Mise a jour Lot R1 - navigation documentaire reelle
+
+La navigation documentaire page est maintenant livree cote FridaDev, sans
+patch Catalogue:
+
+- `CatalogueClient.page(document_id, page_no)` appelle seulement
+  `GET /doc/{id}/page/{page_no}`;
+- l'outil `page_read` est allowliste, GET-only, borne, avec `document_id`
+  explicite obligatoire;
+- `librarian_dialogue_planner.py` et `chat_runtime.py` executent maintenant
+  `page suivante / page precedente`, `page 28 a page 32` et
+  `continue apres ce passage` quand l'etat porte une page ancree;
+- `autour de ce passage` reste sur `passage_context`, ce qui garde la verite
+  produit entre lecture de page et contexte autour d'un passage;
+- `deux pages apres 147c` reste hors contrat tant qu'un lien general
+  locator -> page/offset n'est pas prouve;
+- `latest/page` et `latest/context` restent interdits.
 
 NO-GO retroactif Lot 6 si un patch ulterieur:
 
@@ -830,8 +850,9 @@ Validation:
 - `passage_context` exige un document explicite et soit `paragraph_id`, soit
   `page_no` + `para_no`;
 - `tool_calls` au-dela du budget -> fallback deterministe;
-- outil interdit (`page_read`, `latest/page`, `latest/context`,
-  `export/chunk`, mutateurs) -> fallback deterministe;
+- outil interdit (`latest/page`, `latest/context`, `export/chunk`,
+  mutateurs, ou `page_read` sans `document_id` explicite / hors bornes)
+  -> fallback deterministe;
 - outil inconnu -> fallback deterministe;
 - methode non GET -> fallback deterministe;
 - timeout ou erreur provider -> fallback deterministe;
@@ -1178,7 +1199,7 @@ Dettes a conserver jusqu'a cloture ou lot dedie:
 - dependance OpenRouter live;
 - latence et cout;
 - qualite JSON et plans inexecutables;
-- absence d'outil page;
+- absence de lien general locator -> page/offset;
 - absence `export/chunk`;
 - limites du fonds Catalogue et de ses metadata.
 
@@ -1188,7 +1209,7 @@ Dettes a conserver jusqu'a cloture ou lot dedie:
 - remplacement des murs deterministes;
 - appel OpenRouter en mode `off`;
 - reouverture de l'activation agent-first comme si elle n'etait pas livree;
-- outil page;
+- outil page non borne ou navigation canonique generale;
 - navigation complete;
 - `export/chunk`;
 - modification Catalogue;

@@ -13,6 +13,7 @@ TOOL_CATALOG_LIST = "catalog_list"
 TOOL_CATALOG_SEARCH = "catalog_search"
 TOOL_DOCUMENT_OPEN_SUMMARY = "document_open_summary"
 TOOL_DOCUMENT_TOC = "document_toc"
+TOOL_PAGE_READ = "page_read"
 TOOL_LOCATE = "locate"
 TOOL_PASSAGE_CONTEXT = "passage_context"
 
@@ -21,6 +22,7 @@ LOT3_TOOL_NAMES = (
     TOOL_CATALOG_SEARCH,
     TOOL_DOCUMENT_OPEN_SUMMARY,
     TOOL_DOCUMENT_TOC,
+    TOOL_PAGE_READ,
     TOOL_LOCATE,
     TOOL_PASSAGE_CONTEXT,
 )
@@ -28,7 +30,6 @@ LOT3_TOOL_NAMES = (
 FORBIDDEN_TOOL_NAMES = frozenset(
     {
         "page",
-        "page_read",
         "latest/page",
         "latest/context",
         "export",
@@ -59,12 +60,14 @@ REASON_UNEXPECTED_STATUS = "unexpected_status"
 REASON_INVALID_JSON = "invalid_json"
 REASON_BUDGET_OR_LIMIT_EXCEEDED = "budget_or_limit_exceeded"
 REASON_CONTEXT_INCOHERENT = "biblio_librarian_context_incoherent_catalogue"
+REASON_PAGE_INCOHERENT = "biblio_librarian_page_incoherent_catalogue"
 
 _ENDPOINT_BY_TOOL = {
     TOOL_CATALOG_LIST: catalogue.ENDPOINT_CATALOG,
     TOOL_CATALOG_SEARCH: catalogue.ENDPOINT_SEARCH,
     TOOL_DOCUMENT_OPEN_SUMMARY: catalogue.ENDPOINT_METADATA,
     TOOL_DOCUMENT_TOC: catalogue.ENDPOINT_CHAPTERS,
+    TOOL_PAGE_READ: catalogue.ENDPOINT_PAGE,
     TOOL_LOCATE: catalogue.ENDPOINT_LOCATE,
     TOOL_PASSAGE_CONTEXT: catalogue.ENDPOINT_CONTEXT,
 }
@@ -72,6 +75,7 @@ _QUERY_MAX = 240
 _LOCATOR_MAX = 120
 _DOC_ID_MAX = 160
 _OFFSET_MAX = 100_000
+_PAGE_TEXT_MAX_CHARS = 2_500
 
 
 class BiblioLibrarianToolError(Exception):
@@ -157,6 +161,7 @@ class BiblioLibrarianToolResult:
     chapters: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
     positions: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
     context_text: str = field(default="", repr=False, compare=False)
+    page_text: str = field(default="", repr=False, compare=False)
 
     def to_observability(self) -> dict[str, Any]:
         return self.observation.to_observability()
@@ -177,6 +182,7 @@ class BiblioLibrarianToolRegistry:
             TOOL_CATALOG_SEARCH: self._catalog_search,
             TOOL_DOCUMENT_OPEN_SUMMARY: self._document_open_summary,
             TOOL_DOCUMENT_TOC: self._document_toc,
+            TOOL_PAGE_READ: self._page_read,
             TOOL_LOCATE: self._locate,
             TOOL_PASSAGE_CONTEXT: self._passage_context,
         }
@@ -250,6 +256,41 @@ class BiblioLibrarianToolRegistry:
             return _error_result(tool, exc)
         chapters = tuple(_chapter_item(item) for item in _items(response.payload, "chapters"))
         return _ok_result(tool, response, chapters=chapters, offset=offset, limit=limit, doc_id=doc_id)
+
+    def _page_read(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
+        tool = TOOL_PAGE_READ
+        doc_id = _required_doc_id(params, tool=tool)
+        page_no = _integer(
+            params.get("page_no"),
+            tool=tool,
+            name="page_no",
+            minimum=catalogue.PAGE_NO_MIN,
+            maximum=catalogue.PAGE_NO_MAX,
+        )
+        try:
+            response = self._client.page(doc_id, page_no)
+        except catalogue.CatalogueClientError as exc:
+            return _error_result(tool, exc)
+        if _string(response.payload.get("document_id")) != doc_id:
+            return _incoherent_page_result(tool, response, doc_id)
+        page_text = _page_text(response.payload)
+        summary = _page_document_summary(response.payload, doc_id)
+        return _ok_result(
+            tool,
+            response,
+            document_summary=summary,
+            positions=(_position({"page_no": page_no}),),
+            doc_id=doc_id,
+            content=page_text,
+            page_text=page_text,
+            extra_fields={
+                "paragraph_count": _raw_int(response.payload.get("paragraph_count")),
+                "page_truncated": bool(
+                    isinstance(response.payload.get("raw_text"), str)
+                    and len(str(response.payload.get("raw_text") or "")) > len(page_text)
+                ),
+            },
+        )
 
     def _locate(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
         tool = TOOL_LOCATE
@@ -361,12 +402,14 @@ def _ok_result(
     chapters: tuple[dict[str, Any], ...] = (),
     positions: tuple[dict[str, Any], ...] = (),
     context_text: str = "",
+    page_text: str = "",
     offset: int = 0,
     limit: int = 0,
     query: str = "",
     locator: str = "",
     doc_id: str = "",
     content: str = "",
+    extra_fields: Mapping[str, Any] | None = None,
 ) -> BiblioLibrarianToolResult:
     visible_items = items or chapters or positions
     fields = {
@@ -386,6 +429,7 @@ def _ok_result(
         "content_hash": _hash(content),
         "positions": [dict(position) for position in positions],
     }
+    fields.update({key: value for key, value in dict(extra_fields or {}).items() if value is not None})
     observation = BiblioLibrarianToolObservation(
         tool_name=tool,
         endpoint_kind=response.endpoint_kind,
@@ -405,6 +449,7 @@ def _ok_result(
         chapters=chapters,
         positions=positions,
         context_text=context_text,
+        page_text=page_text,
     )
 
 
@@ -430,6 +475,32 @@ def _incoherent_context_result(
         reason_code=REASON_CONTEXT_INCOHERENT,
         endpoint_kind=response.endpoint_kind,
         observation=observation,
+    )
+
+
+def _incoherent_page_result(
+    tool: str,
+    response: catalogue.CatalogueResponse,
+    doc_id: str,
+) -> BiblioLibrarianToolResult:
+    observation = BiblioLibrarianToolObservation(
+        tool_name=tool,
+        endpoint_kind=response.endpoint_kind,
+        status=STATUS_INCOHERENT_CATALOGUE,
+        reason_code=REASON_PAGE_INCOHERENT,
+        fields={
+            "status_code": response.status_code,
+            "duration_ms": response.duration_ms,
+            "doc_id_short": response.doc_id_short or catalogue.short_doc_id(doc_id),
+        },
+    )
+    return BiblioLibrarianToolResult(
+        tool_name=tool,
+        status=STATUS_INCOHERENT_CATALOGUE,
+        reason_code=REASON_PAGE_INCOHERENT,
+        endpoint_kind=response.endpoint_kind,
+        observation=observation,
+        document_id=doc_id,
     )
 
 
@@ -603,6 +674,17 @@ def _document_summary(payload: Mapping[str, Any], fallback_doc_id: str) -> dict[
     }
 
 
+def _page_document_summary(payload: Mapping[str, Any], fallback_doc_id: str) -> dict[str, Any]:
+    doc_id = _string(payload.get("document_id")) or fallback_doc_id
+    return {
+        "document_id": doc_id,
+        "doc_id_short": catalogue.short_doc_id(doc_id),
+        "title": _string(payload.get("title")),
+        "authors": "",
+        "metadata_status": "",
+    }
+
+
 def _chapter_item(raw: Any) -> dict[str, Any]:
     item = _mapping(raw)
     return _clean_observation(
@@ -642,6 +724,16 @@ def _context_text(payload: Mapping[str, Any]) -> str:
         if isinstance(value, str):
             return value
     return ""
+
+
+def _page_text(payload: Mapping[str, Any]) -> str:
+    value = payload.get("raw_text")
+    if not isinstance(value, str):
+        return ""
+    text = value.strip()
+    if len(text) <= _PAGE_TEXT_MAX_CHARS:
+        return text
+    return text[:_PAGE_TEXT_MAX_CHARS].rstrip() + "\n[page bornee: suite masquee]"
 
 
 def _items(payload: Mapping[str, Any], key: str) -> tuple[Any, ...]:

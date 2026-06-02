@@ -419,6 +419,7 @@ def _with_carried_anchor(
     changed = False
     if call.tool_name in {
         tools.TOOL_DOCUMENT_TOC,
+        tools.TOOL_PAGE_READ,
         tools.TOOL_LOCATE,
         tools.TOOL_PASSAGE_CONTEXT,
     } and document_id and not (params.get("document_id") or params.get("doc_id")):

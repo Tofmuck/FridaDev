@@ -455,6 +455,8 @@ def _tool_result_lines(tool_results: Sequence[librarian_tools.BiblioLibrarianToo
             lines.extend(_chapter_lines(result.chapters))
         if result.positions:
             lines.extend(_position_lines(result.positions))
+        if result.page_text:
+            lines.extend(_page_lines(result.page_text))
         if result.context_text:
             lines.extend(_passage_lines(result.context_text))
     return lines
@@ -537,6 +539,11 @@ def _position_lines(positions: Sequence[Mapping[str, Any]]) -> list[str]:
 def _passage_lines(text: str) -> list[str]:
     clipped = _neutralize(_clip(text, DEFAULT_SNIPPET_MAX_CHARS * 3))
     return ["Passage consulte:", clipped]
+
+
+def _page_lines(text: str) -> list[str]:
+    clipped = _neutralize(_clip(text, DEFAULT_SNIPPET_MAX_CHARS * 3))
+    return ["Page consultee:", clipped]
 
 
 def _displayed_count(result: librarian_tools.BiblioLibrarianToolResult) -> int:

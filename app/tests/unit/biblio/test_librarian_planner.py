@@ -75,6 +75,24 @@ class BiblioLibrarianPlannerTests(unittest.TestCase):
         self.assertNotIn(RAW_QUERY, encoded)
         self.assertNotIn(RAW_PASSAGE, encoded)
 
+    def test_executes_page_read_sequence(self) -> None:
+        fake = _FakeToolClient(page_payload={"document_id": "doc-1", "page_no": 28, "raw_text": RAW_PASSAGE})
+        loop = _planner(fake)
+
+        result = loop.run(
+            proposed_tool_calls=[
+                {"tool_name": tools.TOOL_PAGE_READ, "params": {"document_id": "doc-1", "page_no": 28}},
+            ]
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, planner.STATUS_TOOL_EXECUTED)
+        self.assertEqual(fake.calls, [("page", "doc-1", 28)])
+        self.assertEqual(observed["tool_names"], [tools.TOOL_PAGE_READ])
+        self.assertEqual(observed["endpoint_kinds"], [catalogue.ENDPOINT_PAGE])
+        self.assertEqual(observed["positions"][0]["page_no"], 28)
+        self.assertNotIn(RAW_PASSAGE, _json(observed))
+
     def test_unknown_tool_is_rejected_before_network(self) -> None:
         fake = _FakeToolClient()
         result = _planner(fake).run(proposed_tool_calls=[{"tool_name": "catalog_delete", "params": {}}])
@@ -84,7 +102,7 @@ class BiblioLibrarianPlannerTests(unittest.TestCase):
         self.assertEqual(fake.calls, [])
 
     def test_forbidden_tools_are_rejected_before_network(self) -> None:
-        forbidden = ["page_read", "export/chunk", "latest/page", "latest/context"]
+        forbidden = ["export/chunk", "latest/page", "latest/context"]
         for tool_name in forbidden:
             fake = _FakeToolClient()
             with self.subTest(tool_name=tool_name):
@@ -260,12 +278,14 @@ class BiblioLibrarianPlannerTests(unittest.TestCase):
         fake = _FakeToolClient(
             catalog_payload={"items": [{"id": "doc-1", "title": RAW_TITLE, "human_authors": RAW_AUTHOR}]},
             chapters_payload={"chapters": [{"chapter_no": 1, "title": RAW_CHAPTER}]},
+            page_payload={"document_id": "doc-1", "page_no": 28, "raw_text": RAW_PASSAGE},
             context_payload={"document_id": "doc-1", "text": RAW_PASSAGE},
         )
         result = _planner(fake).run(
             proposed_tool_calls=[
                 {"tool_name": tools.TOOL_CATALOG_LIST, "params": {"q": RAW_QUERY}},
                 {"tool_name": tools.TOOL_DOCUMENT_TOC, "params": {"document_id": "doc-1"}},
+                {"tool_name": tools.TOOL_PAGE_READ, "params": {"document_id": "doc-1", "page_no": 28}},
                 {
                     "tool_name": tools.TOOL_PASSAGE_CONTEXT,
                     "params": {"document_id": "doc-1", "page_no": 12, "para_no": 3},
@@ -302,12 +322,14 @@ class _FakeToolClient:
         search_payload: dict[str, object] | None = None,
         metadata_payload: dict[str, object] | None = None,
         chapters_payload: dict[str, object] | None = None,
+        page_payload: dict[str, object] | None = None,
         context_payload: dict[str, object] | None = None,
     ) -> None:
         self.catalog_payload = catalog_payload or {"total": 0, "items": []}
         self.search_payload = search_payload or {"count": 0, "results": []}
         self.metadata_payload = metadata_payload or {"document": {"id": "doc-1"}, "human_metadata": {}}
         self.chapters_payload = chapters_payload or {"total": 0, "chapters": []}
+        self.page_payload = page_payload or {"document_id": "doc-1", "page_no": 1, "raw_text": ""}
         self.context_payload = context_payload or {"document_id": "doc-1", "text": ""}
         self.calls: list[tuple[object, ...]] = []
 
@@ -326,6 +348,15 @@ class _FakeToolClient:
     def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
         self.calls.append(("chapters", doc_id, limit, offset))
         return _response(catalogue.ENDPOINT_CHAPTERS, self.chapters_payload, doc_id=doc_id, result_count=_count(self.chapters_payload, "chapters"))
+
+    def page(self, doc_id: str, page_no: int) -> catalogue.CatalogueResponse:
+        self.calls.append(("page", doc_id, page_no))
+        return _response(
+            catalogue.ENDPOINT_PAGE,
+            self.page_payload,
+            doc_id=doc_id,
+            content_chars=len(str(self.page_payload.get("raw_text") or "")),
+        )
 
     def locate(
         self,

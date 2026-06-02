@@ -40,8 +40,8 @@ pas encore le remplacement produit du chemin Biblio actuel.
 - Le frontend transmet `biblio_enabled` via `app/web/chat_biblio_mode.js`.
 - `app/core/chat_service.py` appelle `run_biblio_chat_turn(data, user_msg=user_msg, ...)`.
 - Le runtime Biblio actuel planifie a partir du dernier message utilisateur et exploite maintenant un etat conversationnel Biblio content-free Lot 1 / Lot 1 bis via `message.meta.biblio_state`.
-- `CatalogueClient` est GET-only et expose notamment `catalog`, `document`, `metadata`, `chapters`, `locate`, `context`, `search`.
-- Le client n'expose pas encore `page` ni `export/chunk`.
+- `CatalogueClient` est GET-only et expose notamment `catalog`, `document`, `metadata`, `chapters`, `page`, `locate`, `context`, `search`.
+- Le client n'expose toujours pas `export/chunk`.
 - `query_planner.py` reste deterministe et porte deja des intents `list_catalog`, `open_document`, `show_table_of_contents`, `search_catalog`, `extract_passage`, `extract_range`.
 - Plusieurs modules Biblio depassent ou frolent 500-600 lignes; les lots doivent eviter d'empiler des regex dans `query_planner.py`.
 
@@ -752,8 +752,24 @@ Photo operatoire Lot 6 - 2026-05-31:
 - correction d'ouverture P3: les politesses apres qualificatifs de TOC (`stp`,
   `merci`, `maintenant`, `s il te plait`) ne sont pas des titres; les formes
   `qualificatif + titre` clarifient toujours;
-- aucun outil page, aucun `latest/page`, aucun `latest/context`, aucun
-  `export/chunk`, aucun OpenRouter et aucun branchement runtime produit.
+- aucun outil page dans le Lot 6 historique, aucun `latest/page`, aucun
+  `latest/context`, aucun `export/chunk`, aucun OpenRouter et aucun
+  branchement runtime produit.
+
+### Mise a jour Lot R1 - 2026-06-02
+
+- `page_read` est maintenant livre comme primitive GET-only bornee sur
+  `GET /doc/{id}/page/{page_no}`;
+- le planner dialogue Biblio planifie `page_read` pour:
+  - `page suivante / page precedente`;
+  - `page 28 a page 32` avec garde `<= 5` pages;
+  - `continue apres ce passage` quand l'etat porte deja `document_id` et
+    `page_no`;
+- `autour de ce passage` reste sur `passage_context`, ce qui preserve la
+  distinction entre lecture de page et contexte autour d'une ancre;
+- `deux pages apres 147c` reste hors contrat: aucun lien general locator ->
+  page/offset n'est encore promis;
+- `latest/page` et `latest/context` restent interdits.
 
 ### Hors-scope
 
@@ -1182,8 +1198,8 @@ utilisateur, pas d'un nouveau GO technique d'activation.
 - [ ] Risque reduit par confrontation aux usages reels au lieu d'une validation
   seulement smoke-driven.
 - [ ] Risques conserves et suivis: taille des modules, dependance OpenRouter
-  live, latence/cout, qualite JSON, absence d'outil page et absence
-  `export/chunk`.
+  live, latence/cout, qualite JSON, absence de navigation canonique
+  locator -> page/offset et absence `export/chunk`.
 
 ### Critères de sortie
 
@@ -1295,10 +1311,12 @@ triage.
   JSON actif est invalide, vide ou inexecutable.
 - Section runtime settings admin/DB dediee livree; smoke complet actif P01-P18
   valide comme gate global le 2026-06-01.
-- Pas encore d'outil page cote FridaDev; P09 reste une surveillance, pas une promesse de navigation complete.
+- L'outil page borne existe cote FridaDev, mais P09 reste une surveillance
+  tant que la navigation canonique locator -> page/offset n'est pas livree.
 - P03 reste un cas de regression historique mais passe par l'architecture
   agent-first generale; il ne doit plus etre gere comme exception produit.
-- Pas encore de navigation precedente/suivante complete cote FridaDev.
+- La navigation precedente/suivante borne existe cote FridaDev; la navigation
+  canonique ou intra-page reste partielle.
 - Risques stale retires: verification OpenRouter/JSON datee, contrat agent,
   config env, fallback modele configure, fallback deterministe, validation
   d'outils interdits et validation locale des plans non executables.
@@ -1382,12 +1400,13 @@ depassent ou frolent la zone 500-700 lignes. Aucun refactor dans cette
 micro-correction; un futur nettoyage doit separer par responsabilite reelle
 avant d'empiler de nouvelles capacites agentiques.
 
-NO-GO pour executer un outil non allowliste, ajouter outil page,
+NO-GO pour executer un outil non allowliste, ajouter un outil page non borne,
 `export/chunk`, navigation complete, modele hardcode, route plateforme, ou
 marquer un smoke produit vert sur simple plan agent observe sans donnees reelles
 injectees dans la lane.
 
 Risques restants reels: le smoke nominal `active` depend de la disponibilite
-OpenRouter live et de la qualite JSON du modele, l'outil page reste absent,
-`export/chunk` reste absent, et les fallbacks bornes doivent rester limites aux
-signaux deja valides par les murs deterministes/dialogue.
+OpenRouter live et de la qualite JSON du modele, la navigation canonique
+locator -> page/offset reste absente, `export/chunk` reste absent, et les
+fallbacks bornes doivent rester limites aux signaux deja valides par les murs
+deterministes/dialogue.

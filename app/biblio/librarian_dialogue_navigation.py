@@ -11,12 +11,14 @@ from . import librarian_dialogue_references as references
 
 NAVIGATION_AROUND_PASSAGE = "around_passage"
 NAVIGATION_NEARBY_PASSAGE = "nearby_passage"
+NAVIGATION_PAGE_EXPLICIT = "page_explicit"
 NAVIGATION_PAGE_PREVIOUS = "page_previous"
 NAVIGATION_PAGE_NEXT = "page_next"
 NAVIGATION_UP = "up"
 NAVIGATION_DOWN = "down"
 NAVIGATION_CONTINUE = "continue"
 NAVIGATION_GENERIC = "generic"
+PAGE_RANGE_MAX_PAGES = 5
 
 _SEARCH_VERB_RE = re.compile(r"\b(cherche|chercher|trouve|trouver|retrouve|retrouver|sort|sortir)\b")
 _NEARBY_TOPIC_RE = re.compile(
@@ -24,6 +26,9 @@ _NEARBY_TOPIC_RE = re.compile(
     r"|\bd['’]\s*([a-z0-9]{3,})\b"
 )
 _NEARBY_ANAPHORIC_RE = re.compile(r"\bautre\s+(passage|extrait)\b.*\b(proche|voisin|voisine)\b")
+_PAGE_REQUEST_RE = re.compile(
+    r"\bpages?\s+(\d{1,5})(?:\s*(?:a|à|-|au)\s*(?:pages?\s+)?(\d{1,5}))?\b"
+)
 _REFERENCE_RE = re.compile(
     r"\b(?:dans|chez|de|du|des)\s+(?:(?:le|la|l['’]?|les|un|une)\s*)?([a-z0-9]{3,})\b"
     r"|\bd['’]\s*([a-z0-9]{3,})\b"
@@ -56,6 +61,8 @@ def is_navigation_request(folded: str) -> bool:
 
 
 def classify_navigation(folded: str) -> str:
+    if page_request(folded) is not None:
+        return NAVIGATION_PAGE_EXPLICIT
     if re.search(r"\b(continue|continuer|la suite|suite|poursuis)\b", folded):
         return NAVIGATION_CONTINUE
     if re.search(r"\b(autour|alentour)\b.*\b(passage|extrait)\b", folded):
@@ -91,6 +98,15 @@ def can_plan_context_navigation(kind: str) -> bool:
     return kind == NAVIGATION_AROUND_PASSAGE
 
 
+def can_plan_page_navigation(kind: str) -> bool:
+    return kind in {
+        NAVIGATION_PAGE_EXPLICIT,
+        NAVIGATION_PAGE_PREVIOUS,
+        NAVIGATION_PAGE_NEXT,
+        NAVIGATION_CONTINUE,
+    }
+
+
 def tool_required_for_navigation(kind: str) -> str:
     clean = re.sub(r"[^a-z0-9_]+", "_", str(kind or NAVIGATION_GENERIC).lower()).strip("_")
     return f"navigation_{clean or NAVIGATION_GENERIC}"
@@ -103,6 +119,41 @@ def context_params_for_navigation(kind: str, state: BiblioConversationState) -> 
     if params:
         params["window_chars"] = 1_400
     return params
+
+
+def page_request(folded: str) -> tuple[int, int] | None:
+    match = _PAGE_REQUEST_RE.search(folded)
+    if match is None:
+        return None
+    start = int(match.group(1))
+    end = int(match.group(2) or match.group(1))
+    if start <= 0 or end <= 0:
+        return None
+    if end < start:
+        start, end = end, start
+    return start, end
+
+
+def page_numbers_for_navigation(kind: str, state: BiblioConversationState, folded: str) -> tuple[int, ...]:
+    if kind == NAVIGATION_PAGE_EXPLICIT:
+        request = page_request(folded)
+        if request is None:
+            return ()
+        start, end = request
+        if (end - start) + 1 > PAGE_RANGE_MAX_PAGES:
+            return ()
+        return tuple(range(start, end + 1))
+    last = getattr(state, "last_result", {}) or {}
+    anchor_page = last.get("page_no") if isinstance(last, dict) else None
+    if anchor_page is None:
+        anchor_page = state.page_no
+    if type(anchor_page) is not int or anchor_page < 1:
+        return ()
+    if kind == NAVIGATION_PAGE_PREVIOUS:
+        return (anchor_page - 1,) if anchor_page > 1 else ()
+    if kind in {NAVIGATION_PAGE_NEXT, NAVIGATION_CONTINUE}:
+        return (anchor_page + 1,)
+    return ()
 
 
 def _is_nearby_navigation(folded: str) -> bool:

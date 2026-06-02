@@ -114,7 +114,6 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
     def test_forbidden_unknown_and_mutating_tool_are_rejected(self) -> None:
         cases = [
             (_valid_json(tool_name="latest/page"), contract.REASON_TOOL_FORBIDDEN),
-            (_valid_json(tool_name="page_read"), contract.REASON_TOOL_FORBIDDEN),
             (_valid_json(tool_name="made_up_tool"), contract.REASON_TOOL_UNKNOWN),
             (_valid_json(method="POST"), contract.REASON_METHOD_FORBIDDEN),
         ]
@@ -234,6 +233,14 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             (
                 "document_toc_no_document_id",
                 {"tool_name": tools.TOOL_DOCUMENT_TOC, "method": "GET", "params": {"limit": 10}},
+            ),
+            (
+                "page_read_no_document_id",
+                {"tool_name": tools.TOOL_PAGE_READ, "method": "GET", "params": {"page_no": 28}},
+            ),
+            (
+                "page_read_no_page_number",
+                {"tool_name": tools.TOOL_PAGE_READ, "method": "GET", "params": {"document_id": "doc-1"}},
             ),
             (
                 "passage_context_no_position",

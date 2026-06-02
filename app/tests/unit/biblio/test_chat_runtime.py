@@ -16,6 +16,7 @@ from biblio import chat_runtime
 from biblio import catalogue_client as catalogue
 from biblio import conversation_followup
 from biblio import conversation_state
+from biblio import document_resolver
 from biblio import library_runtime
 from biblio import librarian_agent
 from biblio import librarian_agent_contract as agent_contract
@@ -532,12 +533,11 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         )
 
         self.assertTrue(result.used)
-        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_STATE_FOLLOWUP)
-        self.assertEqual(result.reason_code, conversation_followup.REASON_STATE_MISSING)
+        self.assertEqual(result.query_kind, "page_read")
+        self.assertEqual(result.reason_code, chat_runtime.librarian_dialogue_planner.REASON_CURRENT_DOCUMENT_MISSING)
         self.assertIsNotNone(result.prompt_message)
-        self.assertIn("clarifier", result.prompt_message["content"])
-        self.assertIn("latest/page", result.prompt_message["content"])
-        self.assertEqual(result.observability_payload["status"], conversation_followup.STATUS_CLARIFICATION_REQUIRED)
+        self.assertIn("Navigation documentaire demandee", result.prompt_message["content"])
+        self.assertEqual(result.observability_payload["status"], "needs_clarification")
         self.assertEqual(result.observability_payload["client"]["event_count"], 0)
 
     def test_extracted_passage_updates_and_attaches_content_free_state(self) -> None:
@@ -573,7 +573,7 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertNotIn("payload", encoded_state.lower())
         self.assertEqual(result.observability_payload["state"]["last_result_present"], True)
 
-    def test_previous_page_with_state_clarifies_because_page_tool_is_absent(self) -> None:
+    def test_previous_page_with_state_reads_previous_page(self) -> None:
         state, _transition = conversation_state.update_state_from_runtime(
             conversation_state.BiblioConversationState.empty(conversation_id="conv-biblio-state"),
             query_plan=query_planner.BiblioQueryPlan(
@@ -592,15 +592,17 @@ class BiblioChatRuntimeTests(unittest.TestCase):
             user_msg="montre-moi la page precedente",
             conversation_id="conv-biblio-state",
             conversation_state=state,
-            client_factory=_raising_client_factory,
+            client_factory=lambda **_kwargs: _FakeClient(),
         )
 
         self.assertTrue(result.used)
-        self.assertEqual(result.reason_code, conversation_followup.REASON_PAGE_TOOL_UNAVAILABLE)
-        self.assertIn("Outil requis indisponible", result.prompt_message["content"])
-        self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+        self.assertEqual(result.query_kind, "page_read")
+        self.assertEqual(result.reason_code, chat_runtime.librarian_dialogue_planner.REASON_NAVIGATION_PAGE_READ)
+        self.assertIn("Page consultee", result.prompt_message["content"])
+        self.assertEqual(result.observability_payload["client"]["event_count"], 1)
+        self.assertEqual(result.observability_payload["client"]["items"][0]["endpoint_kind"], "page")
 
-    def test_next_page_with_state_clarifies_because_page_tool_is_absent(self) -> None:
+    def test_next_page_with_state_reads_next_page(self) -> None:
         state, _transition = conversation_state.update_state_from_runtime(
             conversation_state.BiblioConversationState.empty(conversation_id="conv-biblio-state"),
             query_plan=query_planner.BiblioQueryPlan(
@@ -619,14 +621,64 @@ class BiblioChatRuntimeTests(unittest.TestCase):
             user_msg="montre-moi la page suivante",
             conversation_id="conv-biblio-state",
             conversation_state=state,
-            client_factory=_raising_client_factory,
+            client_factory=lambda **_kwargs: _FakeClient(),
         )
 
         self.assertTrue(result.used)
-        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_STATE_FOLLOWUP)
-        self.assertEqual(result.reason_code, conversation_followup.REASON_PAGE_TOOL_UNAVAILABLE)
-        self.assertIn("next_page", result.prompt_message["content"])
-        self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+        self.assertEqual(result.query_kind, "page_read")
+        self.assertEqual(result.reason_code, chat_runtime.librarian_dialogue_planner.REASON_NAVIGATION_PAGE_READ)
+        self.assertIn("Page consultee", result.prompt_message["content"])
+        self.assertEqual(result.observability_payload["client"]["event_count"], 1)
+        self.assertEqual(result.observability_payload["client"]["items"][0]["endpoint_kind"], "page")
+
+    def test_explicit_page_range_with_current_document_reads_bounded_pages(self) -> None:
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-biblio-state",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            page_no=12,
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="page 28 a page 32",
+            conversation_id="conv-biblio-state",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: _FakeClient(),
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "page_read")
+        self.assertEqual(result.observability_payload["client"]["event_count"], 5)
+        self.assertEqual(
+            [item["endpoint_kind"] for item in result.observability_payload["client"]["items"]],
+            ["page", "page", "page", "page", "page"],
+        )
+        self.assertIn("Page consultee", result.prompt_message["content"])
+
+    def test_around_this_passage_executes_bounded_context_navigation(self) -> None:
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-biblio-state",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "paragraph_id": 101, "page_no": 12, "para_no": 3},
+            page_no=12,
+            para_no=3,
+            paragraph_id=101,
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="autour de ce passage",
+            conversation_id="conv-biblio-state",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: _FakeClient(),
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "passage_context")
+        self.assertEqual(result.reason_code, chat_runtime.librarian_dialogue_planner.REASON_NAVIGATION_CONTEXT_AROUND)
+        self.assertEqual(result.observability_payload["client"]["event_count"], 1)
+        self.assertEqual(result.observability_payload["client"]["items"][0]["endpoint_kind"], "context")
+        self.assertIn("Contexte consulte", result.prompt_message["content"])
 
     def test_clear_document_locator_signal_extracts_and_builds_lane(self) -> None:
         observed: dict[str, object] = {}
@@ -1109,6 +1161,24 @@ class _FakeClient:
             result_count=1,
         )
 
+    def page(self, doc_id: str, page_no: int) -> catalogue.CatalogueResponse:
+        text = f"RAW PAGE {page_no} TEXT MUST NOT BE OBSERVABLE"
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_PAGE,
+            status_code=200,
+            payload={
+                "document_id": doc_id,
+                "title": "Internal work carrier",
+                "page_no": page_no,
+                "raw_text": text,
+                "paragraph_count": 4,
+            },
+            duration_ms=1,
+            result_count=1,
+            doc_id_short=catalogue.short_doc_id(doc_id),
+            content_chars=len(text),
+        )
+
     def context(
         self,
         doc_id: str,
@@ -1492,9 +1562,34 @@ def _empty_agent_plan_json() -> str:
 
 
 def _passage(passage: str) -> extractor.BiblioPassageResult:
+    document = document_resolver.DocumentCandidate(
+        document_id="doc-1234",
+        doc_id_short="doc-1234",
+        title="Document de test",
+    )
+    locator = document_resolver.LocatorCandidate(
+        document_id="doc-1234",
+        doc_id_short="doc-1234",
+        kind="stephanus",
+        label="126b",
+        page_no=12,
+        para_no=3,
+        paragraph_id=99,
+    )
+    resolution = document_resolver.BiblioResolutionResult(
+        status=document_resolver.STATUS_RESOLVED,
+        reason_code=document_resolver.REASON_DOCUMENT_AND_LOCATOR_RESOLVED,
+        document=document,
+        document_candidates=(document,),
+        locator=locator,
+        locator_candidates=(locator,),
+        requested_locator_kind="stephanus",
+        requested_locator="126b",
+    )
     return extractor.BiblioPassageResult(
         status=extractor.STATUS_EXTRACTED,
         reason_code=extractor.REASON_PASSAGE_EXTRACTED,
+        resolution=resolution,
         passage=passage,
         doc_id_short="doc-1234",
         passage_chars=len(passage),

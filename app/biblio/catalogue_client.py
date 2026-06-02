@@ -28,6 +28,7 @@ ENDPOINT_CATALOG = "catalog"
 ENDPOINT_DOCUMENT = "document"
 ENDPOINT_METADATA = "metadata"
 ENDPOINT_CHAPTERS = "chapters"
+ENDPOINT_PAGE = "page"
 ENDPOINT_LOCATE = "locate"
 ENDPOINT_CONTEXT = "context"
 ENDPOINT_SEARCH = "search"
@@ -50,6 +51,8 @@ CHAPTERS_LIMIT_MIN = 1
 CHAPTERS_LIMIT_MAX = 1_000
 CHAPTERS_OFFSET_MIN = 0
 CHAPTERS_OFFSET_MAX = 100_000
+PAGE_NO_MIN = 1
+PAGE_NO_MAX = 100_000
 LOCATE_LIMIT_MIN = 1
 LOCATE_LIMIT_MAX = 1_000
 CONTEXT_PAGE_NO_MIN = 1
@@ -309,6 +312,18 @@ class CatalogueClient:
         }
         return self._get(ENDPOINT_CHAPTERS, path, params=params, doc_id=doc_id)
 
+    def page(self, doc_id: str, page_no: int) -> CatalogueResponse:
+        safe_page_no = _bounded_int(
+            page_no,
+            endpoint_kind=ENDPOINT_PAGE,
+            name="page_no",
+            minimum=PAGE_NO_MIN,
+            maximum=PAGE_NO_MAX,
+            doc_id=doc_id,
+        )
+        path = f"/doc/{_quote_path_segment(doc_id)}/page/{safe_page_no}"
+        return self._get(ENDPOINT_PAGE, path, doc_id=doc_id)
+
     def locate(
         self,
         doc_id: str,
@@ -551,6 +566,8 @@ def _validate_get_path(path: str, *, endpoint_kind: str = "", doc_id: str = "") 
             return normalized
         if len(parts) == 3 and parts[2] in {"metadata", "chapters", "locate", "context"}:
             return normalized
+        if len(parts) == 4 and parts[2] == "page" and parts[3].isdigit():
+            return normalized
 
     raise CatalogueForbiddenRoute(endpoint_kind=endpoint_kind, doc_id=doc_id, detail="not_in_get_allowlist")
 
@@ -589,7 +606,7 @@ def _result_count(payload: Mapping[str, Any]) -> int | None:
 
 def _content_chars(payload: Mapping[str, Any]) -> int:
     total = 0
-    for key in ("text", "context", "markdown"):
+    for key in ("text", "context", "markdown", "raw_text"):
         value = payload.get(key)
         if isinstance(value, str):
             total += len(value)

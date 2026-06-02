@@ -320,6 +320,11 @@ def _tool_param_contracts() -> dict[str, Any]:
             "required_any": [["document_id", "doc_id"]],
             "note": "Si le doc_id manque, faire preceder par une recherche qui donne un document unique.",
         },
+        "page_read": {
+            "allowed": ["document_id", "doc_id", "page_no"],
+            "required_any": [["document_id", "doc_id"], ["page_no"]],
+            "note": "Lecture bornee d'une page explicite; ne pas utiliser latest/page.",
+        },
         "locate": {
             "allowed": ["document_id", "doc_id", "locator", "label", "kind", "limit"],
             "required_any": [["document_id", "doc_id"], ["locator", "label"]],
@@ -386,6 +391,19 @@ _PARAM_SCHEMAS_BY_TOOL: dict[str, dict[str, Any]] = {
             "offset": {"type": "integer", "minimum": 0, "maximum": 100000},
         },
         "anyOf": [{"required": ["document_id"]}, {"required": ["doc_id"]}],
+    },
+    tools.TOOL_PAGE_READ: {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "document_id": _STRING_SCHEMAS["document_id"],
+            "doc_id": _STRING_SCHEMAS["doc_id"],
+            "page_no": {"type": "integer", "minimum": 1, "maximum": 100000},
+        },
+        "allOf": [
+            {"anyOf": [{"required": ["document_id"]}, {"required": ["doc_id"]}]},
+            {"required": ["page_no"]},
+        ],
     },
     tools.TOOL_LOCATE: {
         "type": "object",

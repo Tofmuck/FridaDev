@@ -48,6 +48,9 @@ REASON_LAST_PASSAGE_CONTEXT = "biblio_dialogue_last_passage_context"
 REASON_LAST_PASSAGE_MISSING = "biblio_dialogue_last_passage_missing"
 REASON_LAST_PASSAGE_POSITION_MISSING = "biblio_dialogue_last_passage_position_missing"
 REASON_NAVIGATION_CONTEXT_AROUND = "biblio_dialogue_navigation_context_around"
+REASON_NAVIGATION_PAGE_READ = "biblio_dialogue_navigation_page_read"
+REASON_NAVIGATION_PAGE_ANCHOR_MISSING = "biblio_dialogue_navigation_page_anchor_missing"
+REASON_NAVIGATION_PAGE_RANGE_TOO_WIDE = "biblio_dialogue_navigation_page_range_too_wide"
 REASON_NAVIGATION_EXPLICIT_REFERENCE_UNRESOLVED = (
     "biblio_dialogue_navigation_explicit_reference_unresolved"
 )
@@ -294,6 +297,83 @@ def _navigation_result(
                 fallback_reason=REASON_NAVIGATION_EXPLICIT_REFERENCE_UNRESOLVED,
             ),
             state=state,
+            tool_required=tool_required,
+        )
+    if navigation.can_plan_page_navigation(kind):
+        doc_id = references.anchored_document_id(state)
+        if not doc_id:
+            return _clarification_result(
+                message,
+                variants,
+                reason_code=REASON_CURRENT_DOCUMENT_MISSING,
+                intent=BiblioDialogueIntent(
+                    INTENT_NAVIGATE,
+                    query_kind="page_read",
+                    state_required=True,
+                    tool_required=tool_required,
+                    scope_mode=kind,
+                ),
+                state=state,
+                tool_required=tool_required,
+            )
+        page_numbers = navigation.page_numbers_for_navigation(kind, state, folded)
+        if kind == navigation.NAVIGATION_PAGE_EXPLICIT and navigation.page_request(folded) is not None and not page_numbers:
+            return _clarification_result(
+                message,
+                variants,
+                reason_code=REASON_NAVIGATION_PAGE_RANGE_TOO_WIDE,
+                intent=BiblioDialogueIntent(
+                    INTENT_NAVIGATE,
+                    query_kind="page_read",
+                    state_required=True,
+                    tool_required=tool_required,
+                    scope_mode=kind,
+                ),
+                state=state,
+                tool_required=tool_required,
+            )
+        if not page_numbers:
+            return _clarification_result(
+                message,
+                variants,
+                reason_code=REASON_NAVIGATION_PAGE_ANCHOR_MISSING,
+                intent=BiblioDialogueIntent(
+                    INTENT_NAVIGATE,
+                    query_kind="page_read",
+                    state_required=True,
+                    tool_required=tool_required,
+                    scope_mode=kind,
+                ),
+                state=state,
+                tool_required=tool_required,
+            )
+        calls = tuple(
+            BiblioLibrarianToolCall(
+                tool_name=tools.TOOL_PAGE_READ,
+                params={"document_id": doc_id, "page_no": page_no},
+                method="GET",
+            )
+            for page_no in page_numbers
+        )
+        return _planned_result(
+            message,
+            variants,
+            status=STATUS_PLANNED,
+            reason_code=REASON_NAVIGATION_PAGE_READ,
+            intent=BiblioDialogueIntent(
+                INTENT_NAVIGATE,
+                query_kind="page_read",
+                state_required=True,
+                tool_required=tool_required,
+                scope_mode=kind,
+            ),
+            plan=BiblioLibrarianPlan(
+                intent=INTENT_NAVIGATE,
+                answer_mode="tool",
+                tool_calls=calls,
+            ),
+            state=state,
+            current_document_used=True,
             tool_required=tool_required,
         )
     if navigation.can_plan_context_navigation(kind):
@@ -552,6 +632,7 @@ def _clarification_result(
     reason_code: str,
     intent: BiblioDialogueIntent,
     state: BiblioConversationState,
+    tool_required: str = "",
 ) -> BiblioDialoguePlanningResult:
     return _planned_result(
         message,
@@ -561,6 +642,7 @@ def _clarification_result(
         intent=intent,
         plan=BiblioLibrarianPlan(intent="clarify", answer_mode="clarify", fallback_reason=reason_code),
         state=state,
+        tool_required=tool_required,
     )
 
 
