@@ -372,6 +372,19 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
                 self.assertFalse(result.current_document_used)
                 self.assertEqual(_tool_names(result), [])
 
+    def test_navigation_explicit_reference_target_extracts_real_named_documents(self) -> None:
+        cases = {
+            "Dans Platon, page 28 a 32": "Platon",
+            "Dans Aristote page suivante": "Aristote",
+            "Page precedente chez Friedrich Nietzsche": "Friedrich Nietzsche",
+            "Dans le Theetete, page 28 a 32": "Theetete",
+            "Continue dans ce livre": "",
+        }
+
+        for message, expected in cases.items():
+            with self.subTest(message=message):
+                self.assertEqual(dialogue_navigation.explicit_reference_target(message), expected)
+
     def test_nearby_search_with_theme_or_work_stays_thematic_search(self) -> None:
         state = _state_with_document(last_result={"document_id": "doc-1", "paragraph_id": 101})
 

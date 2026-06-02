@@ -760,6 +760,9 @@ Photo operatoire Lot 6 - 2026-05-31:
 
 - `page_read` est maintenant livre comme primitive GET-only bornee sur
   `GET /doc/{id}/page/{page_no}`;
+- le runtime Biblio sait maintenant resoudre un document/volume explicitement
+  nomme dans une demande de navigation page, puis composer cette resolution
+  sur `page_read`;
 - le planner dialogue Biblio planifie `page_read` pour:
   - `page suivante / page precedente`;
   - `page 28 a page 32` avec garde `<= 5` pages;
@@ -767,6 +770,9 @@ Photo operatoire Lot 6 - 2026-05-31:
     `page_no`;
 - `autour de ce passage` reste sur `passage_context`, ce qui preserve la
   distinction entre lecture de page et contexte autour d'une ancre;
+- une oeuvre interne non mappee proprement a des pages documentaires
+  (exemple: `Theetete` comme oeuvre dans `Platon`) ne doit pas etre
+  requalifiee en navigation page supportee sans preuve de mapping reel;
 - `deux pages apres 147c` reste hors contrat: aucun lien general locator ->
   page/offset n'est encore promis;
 - `latest/page` et `latest/context` restent interdits.

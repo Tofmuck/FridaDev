@@ -280,6 +280,11 @@ def _navigation_result(
     kind = navigation.classify_navigation(folded)
     tool_required = navigation.tool_required_for_navigation(kind)
     if navigation.has_unresolved_explicit_reference(folded):
+        query_kind = ""
+        if navigation.can_plan_page_navigation(kind):
+            query_kind = "page_read"
+        elif navigation.can_plan_context_navigation(kind):
+            query_kind = "passage_context"
         return _planned_result(
             message,
             variants,
@@ -287,6 +292,7 @@ def _navigation_result(
             reason_code=REASON_NAVIGATION_EXPLICIT_REFERENCE_UNRESOLVED,
             intent=BiblioDialogueIntent(
                 INTENT_NAVIGATE,
+                query_kind=query_kind,
                 state_required=True,
                 tool_required=tool_required,
                 scope_mode=kind,

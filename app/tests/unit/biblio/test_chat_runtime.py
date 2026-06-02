@@ -655,6 +655,92 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         )
         self.assertIn("Page consultee", result.prompt_message["content"])
 
+    def test_explicit_page_range_with_named_document_reads_bounded_pages(self) -> None:
+        fake = _NamedDocumentPageClient({"Platon": "doc-1234"})
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Dans Platon, page 28 a page 32",
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "page_read")
+        self.assertEqual(result.reason_code, chat_runtime.librarian_dialogue_planner.REASON_NAVIGATION_PAGE_READ)
+        self.assertEqual(result.observability_payload["client"]["event_count"], 5)
+        self.assertEqual(
+            [item["endpoint_kind"] for item in result.observability_payload["client"]["items"]],
+            ["page", "page", "page", "page", "page"],
+        )
+        self.assertIn("Page consultee", result.prompt_message["content"])
+
+    def test_named_previous_page_uses_matching_document_anchor(self) -> None:
+        fake = _NamedDocumentPageClient({"Platon": "doc-1234"})
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-biblio-state",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "page_no": 12, "para_no": 3},
+            page_no=12,
+            para_no=3,
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Dans Platon, page precedente",
+            conversation_id="conv-biblio-state",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "page_read")
+        self.assertEqual(result.reason_code, chat_runtime.librarian_dialogue_planner.REASON_NAVIGATION_PAGE_READ)
+        self.assertEqual(result.observability_payload["client"]["event_count"], 1)
+        self.assertEqual(result.observability_payload["client"]["items"][0]["endpoint_kind"], "page")
+        self.assertIn("Page consultee", result.prompt_message["content"])
+
+    def test_named_previous_page_does_not_reuse_other_document_anchor(self) -> None:
+        fake = _NamedDocumentPageClient({"Platon": "doc-1234"})
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-biblio-state",
+            current_document={"document_id": "doc-other", "doc_id_short": "doc-other"},
+            last_result={"document_id": "doc-other", "page_no": 12, "para_no": 3},
+            page_no=12,
+            para_no=3,
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Dans Platon, page precedente",
+            conversation_id="conv-biblio-state",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "page_read")
+        self.assertEqual(result.reason_code, chat_runtime.librarian_dialogue_planner.REASON_NAVIGATION_PAGE_ANCHOR_MISSING)
+        self.assertEqual(result.observability_payload["status"], "needs_clarification")
+        self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+
+    def test_named_internal_work_without_document_page_mapping_stays_clarification(self) -> None:
+        fake = _NamedDocumentPageClient({"Platon": "doc-1234"})
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Dans le Theetete, page 28 a 32",
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "page_read")
+        self.assertEqual(
+            result.reason_code,
+            chat_runtime.librarian_dialogue_planner.REASON_NAVIGATION_EXPLICIT_REFERENCE_UNRESOLVED,
+        )
+        self.assertEqual(result.observability_payload["status"], "needs_clarification")
+        self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+
     def test_around_this_passage_executes_bounded_context_navigation(self) -> None:
         state = conversation_state.BiblioConversationState(
             conversation_id="conv-biblio-state",
@@ -1197,6 +1283,31 @@ class _FakeClient:
             result_count=1,
             doc_id_short=catalogue.short_doc_id(doc_id),
             content_chars=len("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE"),
+        )
+
+
+class _NamedDocumentPageClient(_FakeClient):
+    def __init__(self, documents: dict[str, str]) -> None:
+        self._documents = dict(documents)
+
+    def catalog(self, *, q: str | None = None, limit: int = 100, offset: int = 0) -> catalogue.CatalogueResponse:
+        doc_id = self._documents.get(str(q or ""))
+        items = []
+        if doc_id:
+            items.append(
+                {
+                    "id": doc_id,
+                    "title": str(q or ""),
+                    "human_canonical_title": str(q or ""),
+                    "human_authors": "",
+                }
+            )
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            status_code=200,
+            payload={"total": len(items), "items": items},
+            duration_ms=1,
+            result_count=len(items),
         )
 
 

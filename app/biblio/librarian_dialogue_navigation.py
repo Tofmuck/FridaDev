@@ -7,6 +7,7 @@ from typing import Any
 
 from .conversation_state import BiblioConversationState
 from . import librarian_dialogue_references as references
+from .query_normalizer import fold_text, is_usable_title, normalize_text
 
 
 NAVIGATION_AROUND_PASSAGE = "around_passage"
@@ -33,9 +34,28 @@ _REFERENCE_RE = re.compile(
     r"\b(?:dans|chez|de|du|des)\s+(?:(?:le|la|l['’]?|les|un|une)\s*)?([a-z0-9]{3,})\b"
     r"|\bd['’]\s*([a-z0-9]{3,})\b"
 )
+_EXPLICIT_REFERENCE_TARGET_RE = re.compile(
+    r"\b(?:dans|chez|de|du|des)\s+([^,.;?!\n]{2,120})"
+    r"|\bd['’]\s*([^,.;?!\n]{2,120})\b",
+    re.IGNORECASE,
+)
+_EXPLICIT_REFERENCE_TRAILING_NAVIGATION_RE = re.compile(
+    r"\s+(?:pages?\s+\d{1,5}(?:\s*(?:a|à|-|au)\s*(?:pages?\s+)?\d{1,5})?"
+    r"|page\s+(?:suivante|suivant|precedente|precedent|avant|apres)"
+    r"|continue(?:r)?(?:\s+apres\s+ce\s+passage)?"
+    r"|suite"
+    r"|autour\s+de\s+ce\s+passage"
+    r"|ce\s+passage"
+    r"|cet?\s+(?:ouvrage|livre|document|volume))\b.*$",
+    re.IGNORECASE,
+)
 _REFERENCE_STOPWORDS = frozenset(
     {
         "autour",
+        "bibliotheque",
+        "bibliothèque",
+        "biblio",
+        "catalogue",
         "celle",
         "celui",
         "ceci",
@@ -52,6 +72,18 @@ _REFERENCE_STOPWORDS = frozenset(
         "page",
         "passage",
         "volume",
+    }
+)
+_DEICTIC_REFERENCE_PHRASES = frozenset(
+    {
+        "ce livre",
+        "cet ouvrage",
+        "ce document",
+        "ce volume",
+        "celui la",
+        "celui-là",
+        "cet extrait",
+        "ce passage",
     }
 )
 
@@ -92,6 +124,18 @@ def has_unresolved_explicit_reference(folded: str) -> bool:
         if token and token not in _REFERENCE_STOPWORDS:
             return True
     return False
+
+
+def explicit_reference_target(message: str) -> str:
+    text = normalize_text(message)
+    folded = fold_text(text)
+    if not has_unresolved_explicit_reference(folded):
+        return ""
+    for match in _EXPLICIT_REFERENCE_TARGET_RE.finditer(text):
+        candidate = _clean_explicit_reference_target(_first_match_group(match))
+        if _is_usable_explicit_reference_target(candidate):
+            return candidate
+    return ""
 
 
 def can_plan_context_navigation(kind: str) -> bool:
@@ -179,3 +223,29 @@ def _first_match_group(match: re.Match[str]) -> str:
         if value:
             return str(value).strip()
     return ""
+
+
+def _clean_explicit_reference_target(value: str) -> str:
+    text = normalize_text(value)
+    text = _EXPLICIT_REFERENCE_TRAILING_NAVIGATION_RE.sub("", text)
+    text = re.sub(
+        r"^(?:de la|de l['’]?|d['’]|du|des|le|la|les|l['’]?|l\s+|un|une)\s+",
+        "",
+        text,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"\s+", " ", text).strip(" ,;:-?.!")
+    return text[:120]
+
+
+def _is_usable_explicit_reference_target(value: str) -> bool:
+    if not value or not is_usable_title(value):
+        return False
+    folded = fold_text(value).replace("'", " ").replace("’", " ")
+    if folded in _DEICTIC_REFERENCE_PHRASES:
+        return False
+    tokens = re.findall(r"[a-z0-9]{2,}", folded)
+    if tokens and all(token in _REFERENCE_STOPWORDS for token in tokens):
+        return False
+    return True

@@ -740,11 +740,18 @@ patch Catalogue:
   `GET /doc/{id}/page/{page_no}`;
 - l'outil `page_read` est allowliste, GET-only, borne, avec `document_id`
   explicite obligatoire;
+- le runtime peut resoudre un document/volume explicitement nomme dans une
+  requete de navigation page, puis composer cette resolution sur `page_read`;
 - `librarian_dialogue_planner.py` et `chat_runtime.py` executent maintenant
   `page suivante / page precedente`, `page 28 a page 32` et
-  `continue apres ce passage` quand l'etat porte une page ancree;
+  `continue apres ce passage` quand l'etat porte une page ancree; les formes
+  nommees utilisent l'ancre de page seulement si le document resolu est bien
+  le meme que celui deja ancre;
 - `autour de ce passage` reste sur `passage_context`, ce qui garde la verite
   produit entre lecture de page et contexte autour d'un passage;
+- une oeuvre interne non mappee proprement a des pages documentaires reelles
+  (par exemple `Theetete` dans un volume `Platon`) reste hors de ce lot et
+  ne doit pas etre promue silencieusement en navigation page supportee;
 - `deux pages apres 147c` reste hors contrat tant qu'un lien general
   locator -> page/offset n'est pas prouve;
 - `latest/page` et `latest/context` restent interdits.

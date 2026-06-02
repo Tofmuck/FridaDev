@@ -70,8 +70,8 @@ Frida doit pouvoir utiliser la bibliotheque comme une vraie bibliotheque:
 | [ ] | Extraire ce qui suit un passage | partiel | FridaDev | La navigation page existe; la navigation exacte intra-page reste a definir | outil page borne + ancre de passage plus fine | `continue apres ce passage` donne une vraie continuation documentaire |
 | [ ] | `autour de ce passage` | partiel | FridaDev | Clarifier la difference entre voisinage exact et simple contexte local | etat technique + primitive de voisinage | Frida sait dire si elle montre un vrai voisinage ou juste le contexte deja present |
 | [ ] | `continue apres ce passage` | partiel | FridaDev | Brancher une navigation sequentielle sur etat ancre en gardant la verite page-vs-passage | etat multi-tour + outil page borne | La continuation ne re-search pas au hasard |
-| [x] | `page suivante / page precedente` | livre | FridaDev | Route page legere integree dans le contrat FridaDev via `page_read` borne | `document_id` explicite + page ancree | Frida change reellement de page avec document_id explicite |
-| [x] | `page 28 a page 32` | livre | FridaDev | Lecture de plage de pages bornee livree via `page_read` compose | `document_id` explicite + garde `<= 5` pages | Frida sait lire une plage de pages sans deriver vers export total |
+| [x] | `page suivante / page precedente` | livre | FridaDev | Route page legere integree dans le contrat FridaDev via `page_read` borne | `document_id` explicite ou document/volume nomme resolu + page ancree | Frida change reellement de page avec document_id explicite, y compris quand l'utilisateur renomine le meme document |
+| [x] | `page 28 a page 32` | livre | FridaDev | Lecture de plage de pages bornee livree via `page_read` compose | `document_id` explicite ou document/volume nomme resolu + garde `<= 5` pages | Frida sait lire une plage de pages sans deriver vers export total sur un document/volume reel resolu |
 | [ ] | `deux pages apres 147c` | absent | mixte | Relier locator canonique et navigation page | intervalle/positionnement stable | Frida peut calculer un deplacement documentaire reel |
 | [ ] | `147c a 151d` | faux-semblant | mixte | Arreter de traiter une plage brute comme si elle etait deja localisable | objet intervalle canonique natif | Frida n'annonce pas un range general comme supporte avant preuve |
 | [ ] | Verification de provenance | partiel | mixte | Porter un statut explicite source primaire/commentaire/notice et une verification de provenance | metadata/source classes + runtime | Frida peut dire si le passage vient bien de l'oeuvre demandee |
@@ -220,6 +220,8 @@ Catalogue ni DB:
   `GET /doc/{id}/page/{page_no}`;
 - l'outil `page_read` est maintenant allowliste, GET-only, borne, avec
   `document_id` explicite obligatoire;
+- la navigation page peut maintenant resoudre un document/volume explicitement
+  nomme dans la requete, puis composer sur `page_read` sans patch Catalogue;
 - le runtime dialogue Biblio execute reellement:
   - `page suivante / page precedente`;
   - `page 28 a page 32` avec garde `<= 5` pages;
@@ -230,6 +232,9 @@ Limites maintenues:
 
 - aucun `latest/page` ni `latest/context`;
 - aucune navigation inventee depuis un titre explicite non resolu;
+- les oeuvres internes non mappees a des pages documentaires reelles
+  (exemple typique: `Theetete` comme oeuvre interne dans un volume `Platon`)
+  ne sont pas requalifiees silencieusement en navigation par page supportee;
 - aucune promesse d'intervalle canonique general;
 - `deux pages apres 147c` reste absent tant que le lien locator -> page/offset
   n'est pas prouve comme primitive produit generale.
