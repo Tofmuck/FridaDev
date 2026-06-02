@@ -1,0 +1,352 @@
+"""Method-driven runtime continuation for Biblio librarian plans.
+
+Lot C keeps the bounded GET-only tool loop, but stops letting scattered
+deterministic intents silently decide how an agent-first plan should continue.
+The declared ``product_method`` is now the runtime unit that decides whether we
+complete toward a document summary, a table of contents, or a bounded passage
+context.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Mapping, Sequence
+
+from . import librarian_planner
+from . import librarian_product_methods as product_methods
+from . import librarian_tools
+
+
+_SUMMARY_COMPLETION_METHODS = frozenset(
+    {
+        product_methods.PRODUCT_METHOD_WORK_LOOKUP,
+    }
+)
+
+_TOC_COMPLETION_METHODS = frozenset(
+    {
+        product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+    }
+)
+
+_CONTEXT_COMPLETION_METHODS = frozenset(
+    {
+        product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+        product_methods.PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE,
+        product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+        product_methods.PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT,
+        product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT,
+        product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK,
+        product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+    }
+)
+
+_SEARCH_ASSISTED_CONTEXT_METHODS = frozenset(
+    {
+        product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+        product_methods.PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE,
+        product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+        product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+    }
+)
+
+_THEME_QUERY_STOPWORDS = frozenset(
+    {
+        "a",
+        "au",
+        "aux",
+        "ce",
+        "ces",
+        "cet",
+        "cette",
+        "dans",
+        "de",
+        "des",
+        "du",
+        "en",
+        "et",
+        "la",
+        "le",
+        "les",
+        "l",
+        "ou",
+        "où",
+        "par",
+        "pour",
+        "sa",
+        "se",
+        "ses",
+        "son",
+        "sur",
+        "un",
+        "une",
+    }
+)
+
+
+def complete_product_method_loop(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    plan: librarian_planner.BiblioLibrarianPlan,
+    registry: librarian_tools.BiblioLibrarianToolRegistry,
+    deterministic_plan: Any,
+) -> librarian_planner.BiblioLibrarianLoopResult:
+    if loop_result.status not in {
+        librarian_planner.STATUS_TOOL_EXECUTED,
+        librarian_planner.STATUS_TOOL_FAILED,
+        librarian_planner.STATUS_TOOL_REJECTED,
+    }:
+        return loop_result
+    product_method = str(getattr(plan, "product_method", "") or "")
+    if not product_method:
+        return loop_result
+
+    if product_method in _SUMMARY_COMPLETION_METHODS and not _has_document_summary(loop_result):
+        doc_id = _first_document_id(loop_result)
+        if doc_id:
+            loop_result = _append_tool_call(
+                loop_result,
+                registry=registry,
+                tool_name=librarian_tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+                params={"document_id": doc_id},
+            )
+
+    if product_method in _TOC_COMPLETION_METHODS and not _has_endpoint(loop_result, "chapters"):
+        doc_id = _first_document_id(loop_result)
+        if doc_id:
+            return _append_tool_call(
+                loop_result,
+                registry=registry,
+                tool_name=librarian_tools.TOOL_DOCUMENT_TOC,
+                params={"document_id": doc_id, "limit": 500},
+            )
+
+    if product_method in _CONTEXT_COMPLETION_METHODS and not _has_endpoint(loop_result, "context"):
+        if product_method in _SEARCH_ASSISTED_CONTEXT_METHODS:
+            for _ in range(3):
+                if _first_context_params(loop_result):
+                    break
+                fallback_query = _fallback_search_query(deterministic_plan, loop_result)
+                if not fallback_query:
+                    break
+                loop_result = _append_tool_call(
+                    loop_result,
+                    registry=registry,
+                    tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
+                    params={
+                        "query": fallback_query,
+                        "limit": _positive_int(getattr(deterministic_plan, "limit", 0)) or 8,
+                    },
+                )
+        context_params = _first_context_params(loop_result)
+        if context_params:
+            return _append_tool_call(
+                loop_result,
+                registry=registry,
+                tool_name=librarian_tools.TOOL_PASSAGE_CONTEXT,
+                params=context_params,
+            )
+
+    return loop_result
+
+
+def _append_tool_call(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    registry: librarian_tools.BiblioLibrarianToolRegistry,
+    tool_name: str,
+    params: Mapping[str, Any],
+) -> librarian_planner.BiblioLibrarianLoopResult:
+    if loop_result.tool_call_count >= loop_result.options.max_tool_calls:
+        return loop_result
+    call = librarian_planner.BiblioLibrarianToolCall(tool_name=tool_name, method="GET", params=dict(params))
+    planner = librarian_planner.BiblioLibrarianPlanner(registry)
+    step = planner.run_tool_call(len(loop_result.steps), call)
+    steps = (*loop_result.steps, step)
+    status = librarian_planner.STATUS_TOOL_EXECUTED
+    reason = librarian_planner.REASON_TOOL_EXECUTED
+    if step.status != librarian_planner.STATUS_TOOL_EXECUTED:
+        status = step.status
+        reason = step.reason_code
+    return librarian_planner.BiblioLibrarianLoopResult(
+        status=status,
+        reason_code=reason,
+        steps=steps,
+        options=loop_result.options,
+        duration_ms=loop_result.duration_ms,
+        fallback_deterministic=loop_result.fallback_deterministic,
+    )
+
+
+def _has_endpoint(loop_result: librarian_planner.BiblioLibrarianLoopResult, endpoint_kind: str) -> bool:
+    return any(
+        step.endpoint_kind == endpoint_kind and step.status == librarian_planner.STATUS_TOOL_EXECUTED
+        for step in loop_result.steps
+    )
+
+
+def _has_document_summary(loop_result: librarian_planner.BiblioLibrarianLoopResult) -> bool:
+    return any(
+        step.tool_result is not None and bool(step.tool_result.document_summary)
+        for step in loop_result.steps
+    )
+
+
+def _first_document_id(loop_result: librarian_planner.BiblioLibrarianLoopResult) -> str:
+    for step in loop_result.steps:
+        result = step.tool_result
+        if result is None:
+            continue
+        direct = _text(getattr(result, "document_id", ""))
+        if direct:
+            return direct
+        for item in result.items:
+            doc_id = _text(item.get("document_id"))
+            if doc_id:
+                return doc_id
+        if result.document_summary:
+            doc_id = _text(result.document_summary.get("document_id"))
+            if doc_id:
+                return doc_id
+    return ""
+
+
+def _first_context_params(loop_result: librarian_planner.BiblioLibrarianLoopResult) -> dict[str, Any]:
+    for step in loop_result.steps:
+        result = step.tool_result
+        if result is None:
+            continue
+        for item in result.items:
+            if not isinstance(item, Mapping):
+                continue
+            doc_id = _text(item.get("document_id"))
+            paragraph_id = _int(item.get("paragraph_id"))
+            page_no = _int(item.get("page_no"))
+            para_no = _int(item.get("para_no"))
+            if doc_id and (paragraph_id or (page_no and para_no)):
+                params: dict[str, Any] = {"document_id": doc_id, "window_chars": 700}
+                if paragraph_id:
+                    params["paragraph_id"] = paragraph_id
+                else:
+                    params["page_no"] = page_no
+                    params["para_no"] = para_no
+                return params
+    return {}
+
+
+def _fallback_search_query(deterministic_plan: Any, loop_result: librarian_planner.BiblioLibrarianLoopResult) -> str:
+    if _first_context_params(loop_result):
+        return ""
+    used = _used_search_queries(loop_result)
+    for raw_query in _deterministic_queries(deterministic_plan):
+        for candidate in _fallback_query_candidates(raw_query):
+            if candidate and candidate not in used:
+                return candidate
+    return ""
+
+
+def _used_search_queries(loop_result: librarian_planner.BiblioLibrarianLoopResult) -> set[str]:
+    queries: set[str] = set()
+    for step in loop_result.steps:
+        call = step.tool_call
+        if call is None or call.tool_name != librarian_tools.TOOL_CATALOG_SEARCH:
+            continue
+        for key in ("query", "q"):
+            value = _text(call.params.get(key))
+            if value:
+                queries.add(value)
+    return queries
+
+
+def _deterministic_queries(deterministic_plan: Any) -> tuple[str, ...]:
+    values: list[str] = []
+    for attr in (
+        "theme_query_variants",
+        "catalogue_query_variants",
+        "work_title_variants",
+        "document_title_variants",
+    ):
+        raw = getattr(deterministic_plan, attr, ())
+        if isinstance(raw, Sequence) and not isinstance(raw, (str, bytes, bytearray)):
+            for item in raw:
+                value = _text(item)
+                if value and value not in values:
+                    values.append(value)
+    for attr in ("theme_query", "catalogue_query", "work_title", "document_title", "author"):
+        value = _text(getattr(deterministic_plan, attr, ""))
+        if value and value not in values:
+            values.append(value)
+    values.sort(key=_query_priority)
+    return tuple(values)
+
+
+def _query_priority(value: str) -> tuple[int, int]:
+    return (0 if _has_non_ascii(value) else 1, len(value))
+
+
+def _has_non_ascii(value: str) -> bool:
+    return any(ord(char) > 127 for char in value)
+
+
+def _fallback_query_candidates(raw_query: str) -> tuple[str, ...]:
+    query = _text(raw_query)
+    if not query:
+        return ()
+    tokens = [
+        token
+        for token in _query_tokens(query)
+        if len(token) > 2 and token.casefold() not in _THEME_QUERY_STOPWORDS
+    ]
+    candidates: list[str] = []
+    if len(tokens) >= 3:
+        candidates.append(" ".join(tokens[-3:]))
+    if len(tokens) >= 2:
+        candidates.append(" ".join(tokens[-2:]))
+    if tokens:
+        candidates.append(tokens[-1])
+    cleaned = " ".join(tokens)
+    if cleaned:
+        candidates.append(cleaned)
+    if not candidates and query:
+        candidates.append(query)
+    allow_original = len(tokens) == 1
+    out: list[str] = []
+    for candidate in candidates:
+        if not candidate or (not allow_original and candidate == query) or candidate in out:
+            continue
+        out.append(candidate)
+    return tuple(out)
+
+
+def _query_tokens(query: str) -> tuple[str, ...]:
+    tokens: list[str] = []
+    current: list[str] = []
+    for char in query:
+        if char.isalnum() or char in {"'", "’", "-"}:
+            current.append(char)
+            continue
+        if current:
+            tokens.append("".join(current).strip("'’-."))
+            current = []
+    if current:
+        tokens.append("".join(current).strip("'’-."))
+    return tuple(token for token in tokens if token)
+
+
+def _positive_int(value: Any) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return parsed if parsed > 0 else 0
+
+
+def _int(value: Any) -> int:
+    if type(value) is int:
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return 0
+
+
+def _text(value: Any) -> str:
+    return str(value or "").strip()

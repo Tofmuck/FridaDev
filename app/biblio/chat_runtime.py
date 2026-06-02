@@ -28,6 +28,7 @@ from . import document_resolver
 from .document_resolver import BiblioResolveRequest
 from . import librarian_planner
 from . import librarian_tools
+from . import librarian_product_methods
 from . import librarian_dialogue_planner
 from . import librarian_dialogue_navigation
 from . import librarian_dialogue_intents
@@ -565,6 +566,30 @@ def _with_agent_first_fallback_plan(librarian_agent_result: Any, plan: librarian
     return replace(librarian_agent_result, agent_result=replace(agent_result, candidate_plan=plan))
 
 
+def _fallback_product_method(
+    *,
+    intent: str,
+    answer_mode: str,
+    tool_calls: Sequence[librarian_planner.BiblioLibrarianToolCall],
+    query_kind: str = "",
+) -> str:
+    clean_intent = str(intent or "").strip()
+    clean_query_kind = str(query_kind or "").strip()
+    if clean_intent == librarian_dialogue_planner.INTENT_NAVIGATE and clean_query_kind == "passage_context":
+        return librarian_product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT
+    if clean_intent == librarian_dialogue_planner.INTENT_EXPLAIN_PASSAGE:
+        return librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT
+    if clean_query_kind == "passage_context":
+        return librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT
+    if clean_intent == librarian_dialogue_planner.INTENT_NAVIGATE and clean_query_kind == "page_read":
+        return librarian_product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT
+    return librarian_product_methods.infer_product_method(
+        intent=clean_intent,
+        answer_mode=answer_mode,
+        tool_names=[str(call.tool_name or "") for call in tool_calls],
+    )
+
+
 def _agent_first_fallback_plan(query_plan: Any) -> librarian_planner.BiblioLibrarianPlan | None:
     intent = str(getattr(query_plan, "intent", "") or "")
     calls: list[librarian_planner.BiblioLibrarianToolCall] = []
@@ -598,9 +623,17 @@ def _agent_first_fallback_plan(query_plan: Any) -> librarian_planner.BiblioLibra
             )
     if not calls:
         return None
+    product_method = _fallback_product_method(
+        intent=intent or "biblio_request",
+        answer_mode="tool",
+        tool_calls=tuple(calls),
+        query_kind=str(getattr(query_plan, "query_kind", "") or ""),
+    )
     return librarian_planner.BiblioLibrarianPlan(
         schema_version=librarian_planner.SCHEMA_VERSION,
+        case_id="",
         intent=intent or "biblio_request",
+        product_method=product_method,
         tool_calls=tuple(calls),
         answer_mode="tool",
         fallback_reason="agent_json_invalid_fallback_plan",
@@ -624,9 +657,17 @@ def _agent_first_dialogue_fallback_plan(
         return None
     if not all(str(getattr(call, "method", "") or "").strip().upper() == "GET" for call in tool_calls):
         return None
+    product_method = _fallback_product_method(
+        intent=str(getattr(plan, "intent", "") or ""),
+        answer_mode=str(getattr(plan, "answer_mode", "") or ""),
+        tool_calls=tool_calls,
+        query_kind=str(getattr(dialogue.intent, "query_kind", "") or ""),
+    )
     return replace(
         plan,
         schema_version=librarian_planner.SCHEMA_VERSION,
+        case_id="",
+        product_method=product_method,
         fallback_reason="agent_json_invalid_dialogue_fallback_plan",
     )
 

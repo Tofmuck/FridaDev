@@ -235,11 +235,13 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertFalse(observed["used_for_response"])
         self.assertTrue(observed["fallback_deterministic"])
 
-    def test_agent_first_executes_only_valid_catalog_search_when_deterministic_has_no_signal(self) -> None:
+    def test_agent_first_executes_work_lookup_method_when_deterministic_has_no_signal(self) -> None:
         fake_model = _FakeAgentModel(
             _valid_agent_json(
                 tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
                 params={"query": "RAW AGENT QUERY MUST NOT LEAK", "limit": 5},
+                product_method=librarian_product_methods.PRODUCT_METHOD_WORK_LOOKUP,
+                case_id="",
             )
         )
         result = chat_runtime.run_biblio_chat_turn(
@@ -255,8 +257,9 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertTrue(result.used)
         self.assertIsNotNone(result.prompt_message)
         self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
-        self.assertEqual(result.observability_payload["client"]["event_count"], 1)
+        self.assertEqual(result.observability_payload["client"]["event_count"], 2)
         self.assertEqual(result.observability_payload["client"]["items"][0]["endpoint_kind"], "search")
+        self.assertEqual(result.observability_payload["client"]["items"][1]["endpoint_kind"], "metadata")
         self.assertEqual(result.observability_payload["status"], "agent_first_executed")
         self.assertEqual(result.observability_payload["reason_code"], "biblio_agent_first_plan_executed")
         self.assertTrue(observed["used_for_response"])
@@ -265,9 +268,12 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertTrue(observed["agent_loop_executed"])
         self.assertEqual(observed["execution_scope"], "agent_first")
         self.assertEqual(observed["tool_execution_status"], "executed")
-        self.assertEqual(observed["tool_call_event_count"], 1)
-        self.assertEqual(observed["tool_loop"]["tool_names"], [librarian_tools.TOOL_CATALOG_SEARCH])
-        self.assertEqual(observed["tool_loop"]["endpoint_kinds"], ["search"])
+        self.assertEqual(observed["tool_call_event_count"], 2)
+        self.assertEqual(
+            observed["tool_loop"]["tool_names"],
+            [librarian_tools.TOOL_CATALOG_SEARCH, librarian_tools.TOOL_DOCUMENT_OPEN_SUMMARY],
+        )
+        self.assertEqual(observed["tool_loop"]["endpoint_kinds"], ["search", "metadata"])
         self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", encoded)
         self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
 
@@ -354,6 +360,17 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
         self.assertNotIn("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE", encoded)
 
+    def test_agent_first_query_fallback_plan_carries_product_method(self) -> None:
+        query_plan = query_planner.plan_biblio_query("Dans le Theetete, trouve le passage ou Socrate parle de la maieutique.")
+
+        fallback = chat_runtime._agent_first_fallback_plan(query_plan)
+
+        self.assertIsNotNone(fallback)
+        assert fallback is not None
+        self.assertEqual(fallback.case_id, "")
+        self.assertEqual(fallback.product_method, librarian_product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK)
+        self.assertEqual([call.tool_name for call in fallback.tool_calls], [librarian_tools.TOOL_CATALOG_SEARCH])
+
     def test_agent_first_invalid_json_uses_dialogue_state_fallback_for_context_followup(self) -> None:
         fake_model = _FakeAgentModel("not json")
         state = conversation_state.BiblioConversationState(
@@ -385,6 +402,27 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(result.observability_payload["lane"]["passage_count"], 1)
         self.assertFalse(observed["deterministic_controller"])
         self.assertNotIn("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE", encoded)
+
+    def test_agent_first_dialogue_fallback_plan_carries_show_around_current_method(self) -> None:
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-agent-first-state",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "paragraph_id": 99, "passage_hash": "a" * 12},
+            last_passage_hash="a" * 12,
+            last_intent="extract_passage",
+        )
+
+        fallback = chat_runtime._agent_first_dialogue_fallback_plan(
+            user_msg="Autour de ce passage.",
+            state=state,
+            recent_dialogue=(),
+        )
+
+        self.assertIsNotNone(fallback)
+        assert fallback is not None
+        self.assertEqual(fallback.case_id, "")
+        self.assertEqual(fallback.product_method, librarian_product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT)
+        self.assertEqual([call.tool_name for call in fallback.tool_calls], [librarian_tools.TOOL_PASSAGE_CONTEXT])
 
     def test_agent_first_invalid_json_uses_dialogue_state_fallback_for_origin_check(self) -> None:
         fake_model = _FakeAgentModel("not json")
@@ -1311,6 +1349,21 @@ class _FakeClient:
             result_count=1,
             doc_id_short=catalogue.short_doc_id(doc_id),
             content_chars=len("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE"),
+        )
+
+    def metadata(self, doc_id: str) -> catalogue.CatalogueResponse:
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_METADATA,
+            status_code=200,
+            payload={
+                "document_id": doc_id,
+                "title": "Internal work carrier",
+                "human_canonical_title": "Internal work carrier",
+                "human_authors": "Platon",
+            },
+            duration_ms=1,
+            result_count=1,
+            doc_id_short=catalogue.short_doc_id(doc_id),
         )
 
 

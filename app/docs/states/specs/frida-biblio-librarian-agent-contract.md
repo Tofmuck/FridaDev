@@ -41,8 +41,11 @@ dans le runtime.
 Mise a jour refonte Lot B 2026-06-02: le contrat agent porte maintenant
 `case_id` et `product_method`, et le registre declaratif des methodes produit
 est livre dans `app/biblio/librarian_product_methods.py`. Les `tool_calls`
-restent le sous-plan technique borne de la methode produit; le basculement du
-runtime sur une execution souveraine par methode reste un lot suivant.
+restent le sous-plan technique borne de la methode produit.
+Mise a jour refonte Lot C minimal 2026-06-02: le runtime agent-first execute
+maintenant ses completions bornees via `product_method`; le deterministe peut
+encore tenir les murs et fournir des indices de requete, mais il ne doit plus
+changer silencieusement la methode produit suivie.
 Elle ne modifie pas le planner, le client Catalogue, les routes, l'UI, la DB ou la plateforme.
 
 Le but est de garder l'agent bibliothecaire livre testable, borne et
@@ -304,7 +307,9 @@ Regles:
 ### B. Resultat structure de methode cible
 
 Le runtime n'execute pas encore souverainement toutes les methodes via ce
-contrat, mais le payload structure minimal cible est fige:
+contrat sur toute la surface Biblio, mais la couche agent-first execute deja
+ses completions bornees par `product_method` et le payload structure minimal
+cible reste fige:
 
 - `case_id`
 - `product_method`

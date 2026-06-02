@@ -120,6 +120,14 @@ Doctrine de transition Lot B:
 - une reparation legacy peut inferer `product_method`, mais elle ne doit pas
   inventer un `case_id` plus precis que ce qu'elle sait reellement.
 
+Mise a jour Lot C minimal 2026-06-02:
+
+- l'execution agent-first complete maintenant les plans selon `product_method`;
+- le deterministe peut encore fournir des bornes ou des indices de requete,
+  mais seulement a l'interieur de la methode deja declaree;
+- une completion runtime ne doit plus changer silencieusement de methode parce
+  qu'une autre intention deterministe passait par la.
+
 Le payload ne doit pas porter:
 
 - prompt brut;
@@ -317,10 +325,10 @@ encore decide ou repare a plusieurs endroits.
 
 ### Lot C - Execution runtime par methode
 
-- [ ] Brancher le runtime sur les methodes produit, pas sur des intentions
+- [x] Brancher le runtime sur les methodes produit, pas sur des intentions
       heuristiques eparpillees.
-- [ ] Arreter les reparations silencieuses qui changent de methode sans le dire.
-- [ ] Laisser le deterministe tenir les murs sans redevenir le plan produit.
+- [x] Arreter les reparations silencieuses qui changent de methode sans le dire.
+- [x] Laisser le deterministe tenir les murs sans redevenir le plan produit.
 
 ### Lot D - Cleanup `app/biblio/` par responsabilites
 

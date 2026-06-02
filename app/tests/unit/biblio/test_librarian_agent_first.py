@@ -16,6 +16,7 @@ from biblio import catalogue_client as catalogue
 from biblio import librarian_agent_contract as agent_contract
 from biblio import librarian_agent_first as agent_first
 from biblio import librarian_planner as planner
+from biblio import librarian_product_methods as product_methods
 from biblio import librarian_tools as tools
 
 
@@ -74,6 +75,52 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn(RAW_QUERY, encoded)
         self.assertNotIn(RAW_TITLE, encoded)
         self.assertNotIn(RAW_PASSAGE, encoded)
+
+    def test_theme_search_completion_follows_product_method_instead_of_deterministic_toc_intent(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "title": RAW_TITLE,
+                        "text": RAW_PASSAGE,
+                        "page_no": 12,
+                        "para_no": 3,
+                        "paragraph_id": 99,
+                    }
+                ],
+            },
+            context_payload={"document_id": "doc-1234", "text": RAW_PASSAGE},
+            chapters_payload={"total": 1, "chapters": [{"chapter_no": 1, "title": RAW_CHAPTER}]},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="show_table_of_contents",
+                    product_method=product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="show_table_of_contents"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        observed = result.loop_result.to_observability() if result.loop_result else {}
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls[0], ("search", RAW_QUERY, 5))
+        self.assertEqual(fake.calls[1], ("context", "doc-1234", 99, None, None, 0, 700))
+        self.assertEqual(observed["endpoint_kinds"], [catalogue.ENDPOINT_SEARCH, catalogue.ENDPOINT_CONTEXT])
+        self.assertEqual(observed["tool_names"], [tools.TOOL_CATALOG_SEARCH, tools.TOOL_PASSAGE_CONTEXT])
 
     def test_theme_search_tries_bounded_significant_fallback_when_agent_query_is_empty(self) -> None:
         fallback_query = "servir propre entendement"
@@ -242,6 +289,99 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn(RAW_TITLE, encoded)
         self.assertNotIn(RAW_CHAPTER, encoded)
 
+    def test_toc_completion_follows_product_method_instead_of_deterministic_search_intent(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "title": RAW_TITLE,
+                    }
+                ],
+            },
+            chapters_payload={
+                "total": 1,
+                "chapters": [
+                    {
+                        "chapter_no": 1,
+                        "title": RAW_CHAPTER,
+                        "page_start": 7,
+                    }
+                ],
+            },
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="search_passage",
+                    product_method=product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="search_catalog"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        observed = result.loop_result.to_observability() if result.loop_result else {}
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls[0], ("search", RAW_QUERY, 5))
+        self.assertEqual(fake.calls[1], ("chapters", "doc-1234", 500, 0))
+        self.assertEqual(observed["endpoint_kinds"], [catalogue.ENDPOINT_SEARCH, catalogue.ENDPOINT_CHAPTERS])
+        self.assertEqual(observed["tool_names"], [tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_TOC])
+
+    def test_work_lookup_completion_follows_product_method_without_context_repair(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "title": RAW_TITLE,
+                    }
+                ],
+            },
+            summary_payload={"document_id": "doc-1234", "title": RAW_TITLE},
+            context_payload={"document_id": "doc-1234", "text": RAW_PASSAGE},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="search_passage",
+                    product_method=product_methods.PRODUCT_METHOD_WORK_LOOKUP,
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="search_catalog"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        observed = result.loop_result.to_observability() if result.loop_result else {}
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls[0], ("search", RAW_QUERY, 5))
+        self.assertEqual(fake.calls[1], ("metadata", "doc-1234"))
+        self.assertEqual(observed["endpoint_kinds"], [catalogue.ENDPOINT_SEARCH, catalogue.ENDPOINT_METADATA])
+        self.assertEqual(observed["tool_names"], [tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_OPEN_SUMMARY])
+        self.assertNotIn(catalogue.ENDPOINT_CONTEXT, observed["endpoint_kinds"])
+
     def test_toc_request_recovers_from_unanchored_toc_step_after_search(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={
@@ -293,10 +433,24 @@ def _comparison(plan: planner.BiblioLibrarianPlan) -> SimpleNamespace:
     )
 
 
-def _plan(*, intent: str, calls: list[planner.BiblioLibrarianToolCall]) -> planner.BiblioLibrarianPlan:
+def _plan(
+    *,
+    intent: str,
+    calls: list[planner.BiblioLibrarianToolCall],
+    product_method: str = "",
+    case_id: str | None = None,
+) -> planner.BiblioLibrarianPlan:
+    effective_product_method = product_method or product_methods.infer_product_method(
+        intent=intent,
+        answer_mode="tool",
+        tool_names=[call.tool_name for call in calls],
+    )
+    effective_case_id = case_id if case_id is not None else product_methods.default_case_id_for_method(effective_product_method)
     return planner.BiblioLibrarianPlan(
         schema_version=planner.SCHEMA_VERSION,
+        case_id=effective_case_id,
         intent=intent,
+        product_method=effective_product_method,
         tool_calls=tuple(calls),
         answer_mode="tool",
     )
@@ -309,11 +463,13 @@ class _FakeAgentFirstClient:
         search_payload: dict[str, Any] | None = None,
         search_payloads: dict[str, dict[str, Any]] | None = None,
         chapters_payload: dict[str, Any] | None = None,
+        summary_payload: dict[str, Any] | None = None,
         context_payload: dict[str, Any] | None = None,
     ) -> None:
         self.search_payload = search_payload or {"count": 0, "results": []}
         self.search_payloads = search_payloads or {}
         self.chapters_payload = chapters_payload or {"total": 0, "chapters": []}
+        self.summary_payload = summary_payload or {"document_id": "doc-1234", "title": RAW_TITLE}
         self.context_payload = context_payload or {"document_id": "doc-1234", "text": ""}
         self.calls: list[tuple[Any, ...]] = []
 
@@ -336,6 +492,19 @@ class _FakeAgentFirstClient:
             payload=self.chapters_payload,
             duration_ms=1,
             result_count=_count(self.chapters_payload, "chapters"),
+            doc_id_short=catalogue.short_doc_id(doc_id),
+        )
+
+    def metadata(self, doc_id: str) -> catalogue.CatalogueResponse:
+        self.calls.append(("metadata", doc_id))
+        payload = dict(self.summary_payload)
+        payload.setdefault("document_id", doc_id)
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_METADATA,
+            status_code=200,
+            payload=payload,
+            duration_ms=1,
+            result_count=1,
             doc_id_short=catalogue.short_doc_id(doc_id),
         )
 
