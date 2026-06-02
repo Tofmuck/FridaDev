@@ -897,6 +897,10 @@ rouvrir l'activation agent-first. Les corrections Lot 11 restent bornees:
 - references canoniques Stephanus: `locate` traite les labels simples; une
   plage doit etre planifiee comme debut/fin separes si un `document_id` est
   disponible ou porte;
+- cote deterministe, une plage canonique bornee peut maintenant etre extraite
+  sur plusieurs pages quand les deux ancres se resolvent vers des positions
+  `page_no` / `para_no` coherentes; ce support reste borne et ne remplace pas
+  encore un objet d'intervalle canonique general;
 - aucun passage, payload Catalogue, prompt brut, titre/auteur/requete brute ou
   secret ne peut etre conserve dans les preuves techniques.
 
@@ -906,7 +910,9 @@ documents, mais qu'une plage brute n'est pas encore un objet Catalogue
 exploitable directement. Le correctif immediat est donc le guidage du planner;
 le controle produit des locators explicites reste donc deterministe, et le
 support range complet reste conditionne a un outil/index/mapping dedie si les
-tests live le confirment.
+tests live le confirment, meme si le chemin deterministe sait maintenant
+assembler un intervalle borne multi-page a partir des ancres resolues et des
+pages Catalogue existantes.
 
 Validation:
 

@@ -58,6 +58,7 @@ MAX_MAX_PASSAGE_CHARS = 8_000
 MIN_CHAR_OFFSET = 0
 MAX_CHAR_OFFSET = 1_000_000
 MAX_RANGE_PARAGRAPHS = 40
+MAX_RANGE_PAGES = 12
 
 
 @dataclass(frozen=True)
@@ -213,16 +214,29 @@ class BiblioPassageExtractor:
         start = resolution.locator
         end = resolution.locator_end
         paragraph_targets = _range_paragraph_targets(start, end)
-        if not paragraph_targets:
-            return _result(
-                STATUS_INVALID_REQUEST,
-                REASON_RANGE_EXTRACTION_NOT_SUPPORTED,
-                options=options,
-                resolution=resolution,
-                doc_id_short=resolution.document.doc_id_short,
-                locator=start,
-            )
+        if paragraph_targets:
+            return self._extract_same_page_range(resolution, options, start, paragraph_targets)
 
+        page_numbers = _range_page_numbers(start, end)
+        if page_numbers:
+            return self._extract_multi_page_range(resolution, options, start, end, page_numbers)
+
+        return _result(
+            STATUS_INVALID_REQUEST,
+            REASON_RANGE_EXTRACTION_NOT_SUPPORTED,
+            options=options,
+            resolution=resolution,
+            doc_id_short=resolution.document.doc_id_short,
+            locator=start,
+        )
+
+    def _extract_same_page_range(
+        self,
+        resolution: BiblioResolutionResult,
+        options: _ExtractionOptions,
+        start: LocatorCandidate,
+        paragraph_targets: list[dict[str, int]],
+    ) -> BiblioPassageResult:
         excerpts: list[str] = []
         range_options = _ExtractionOptions(
             char_offset=0,
@@ -332,6 +346,143 @@ class BiblioPassageExtractor:
             },
         )
 
+    def _extract_multi_page_range(
+        self,
+        resolution: BiblioResolutionResult,
+        options: _ExtractionOptions,
+        start: LocatorCandidate,
+        end: LocatorCandidate,
+        page_numbers: list[int],
+    ) -> BiblioPassageResult:
+        excerpts: list[str] = []
+        selected_paragraph_count = 0
+        try:
+            for page_no in page_numbers:
+                response = self._page(resolution.document.document_id, page_no)
+                payload = response.payload
+                payload_doc_id = _text(payload.get("document_id"))
+                if payload_doc_id != resolution.document.document_id:
+                    return _result(
+                        STATUS_INCOHERENT_CATALOGUE,
+                        REASON_INCOHERENT_CATALOGUE_RESPONSE,
+                        options=options,
+                        resolution=resolution,
+                        doc_id_short=resolution.document.doc_id_short,
+                        locator=start,
+                        payload=payload,
+                    )
+                if _optional_int(payload.get("page_no")) != page_no:
+                    return _result(
+                        STATUS_INCOHERENT_CATALOGUE,
+                        REASON_INCOHERENT_CATALOGUE_RESPONSE,
+                        options=options,
+                        resolution=resolution,
+                        doc_id_short=resolution.document.doc_id_short,
+                        locator=start,
+                        payload=payload,
+                    )
+
+                page_paragraphs = _page_paragraphs(payload, page_no=page_no, start=start, end=end)
+                if page_paragraphs is None:
+                    return _result(
+                        STATUS_INCOHERENT_CATALOGUE,
+                        REASON_INCOHERENT_CATALOGUE_RESPONSE,
+                        options=options,
+                        resolution=resolution,
+                        doc_id_short=resolution.document.doc_id_short,
+                        locator=start,
+                        payload=payload,
+                    )
+
+                selected_paragraph_count += len(page_paragraphs)
+                if selected_paragraph_count > MAX_RANGE_PARAGRAPHS:
+                    return _result(
+                        STATUS_INVALID_REQUEST,
+                        REASON_RANGE_EXTRACTION_NOT_SUPPORTED,
+                        options=options,
+                        resolution=resolution,
+                        doc_id_short=resolution.document.doc_id_short,
+                        locator=start,
+                    )
+
+                for _para_no, text in page_paragraphs:
+                    if text.strip():
+                        candidate_excerpts = [*excerpts, text]
+                        candidate_passage = "\n\n".join(candidate_excerpts)
+                        if len(candidate_passage) > options.max_passage_chars:
+                            return _result(
+                                STATUS_TOO_LONG,
+                                REASON_PASSAGE_TOO_LONG,
+                                options=options,
+                                resolution=resolution,
+                                doc_id_short=resolution.document.doc_id_short,
+                                locator=start,
+                                passage_chars=len(candidate_passage),
+                                passage_hash=_short_hash(candidate_passage),
+                            )
+                        excerpts = candidate_excerpts
+        except CatalogueNotFound:
+            return _result(
+                STATUS_NOT_FOUND,
+                REASON_PASSAGE_NOT_FOUND,
+                options=options,
+                resolution=resolution,
+                doc_id_short=resolution.document.doc_id_short,
+                locator=start,
+            )
+        except CatalogueInvalidParameter:
+            return _result(
+                STATUS_INVALID_REQUEST,
+                REASON_INVALID_CATALOGUE_REQUEST,
+                options=options,
+                resolution=resolution,
+                doc_id_short=resolution.document.doc_id_short,
+                locator=start,
+            )
+        except CatalogueClientError:
+            return _result(
+                STATUS_CATALOGUE_UNAVAILABLE,
+                REASON_CATALOGUE_UNAVAILABLE,
+                options=options,
+                resolution=resolution,
+                doc_id_short=resolution.document.doc_id_short,
+                locator=start,
+            )
+
+        passage = "\n\n".join(excerpts)
+        if not passage.strip():
+            return _result(
+                STATUS_EMPTY,
+                REASON_PASSAGE_EMPTY,
+                options=options,
+                resolution=resolution,
+                doc_id_short=resolution.document.doc_id_short,
+                locator=start,
+                passage_chars=len(passage),
+                passage_hash=_short_hash(passage),
+            )
+
+        return _result(
+            STATUS_EXTRACTED,
+            REASON_RANGE_EXTRACTED,
+            options=options,
+            resolution=resolution,
+            doc_id_short=resolution.document.doc_id_short,
+            locator=start,
+            passage=passage,
+            passage_chars=len(passage),
+            passage_hash=_short_hash(passage),
+            payload={
+                "document_id": resolution.document.document_id,
+                "page_no": start.page_no,
+                "para_no": start.para_no,
+                "paragraph_id": start.paragraph_id,
+                "excerpt_start": 0,
+                "excerpt_end": len(passage),
+                "text_length": len(passage),
+            },
+        )
+
     def _context(
         self,
         doc_id: str,
@@ -352,6 +503,9 @@ class BiblioPassageExtractor:
             char_offset=options.char_offset,
             window_chars=options.window_chars,
         )
+
+    def _page(self, doc_id: str, page_no: int) -> CatalogueResponse:
+        return self._client.page(doc_id, page_no)
 
 
 def _from_resolution(
@@ -511,6 +665,59 @@ def _range_paragraph_targets(start: LocatorCandidate, end: LocatorCandidate) -> 
     if paragraph_count < 1 or paragraph_count > MAX_RANGE_PARAGRAPHS:
         return []
     return [{"page_no": start.page_no, "para_no": para_no} for para_no in range(start.para_no, end.para_no + 1)]
+
+
+def _range_page_numbers(start: LocatorCandidate, end: LocatorCandidate) -> list[int]:
+    if start.document_id != end.document_id:
+        return []
+    if start.page_no is None or end.page_no is None or start.para_no is None or end.para_no is None:
+        return []
+    if start.page_no == end.page_no:
+        return []
+    if start.order_index is not None and end.order_index is not None and end.order_index < start.order_index:
+        return []
+    if end.page_no < start.page_no:
+        return []
+    page_count = end.page_no - start.page_no + 1
+    if page_count < 2 or page_count > MAX_RANGE_PAGES:
+        return []
+    return list(range(start.page_no, end.page_no + 1))
+
+
+def _page_paragraphs(
+    payload: Mapping[str, Any],
+    *,
+    page_no: int,
+    start: LocatorCandidate,
+    end: LocatorCandidate,
+) -> list[tuple[int, str]] | None:
+    raw_paragraphs = payload.get("paragraphs")
+    if not isinstance(raw_paragraphs, list):
+        return None
+
+    selected: list[tuple[int, str]] = []
+    start_found = page_no != start.page_no
+    end_found = page_no != end.page_no
+    for row in raw_paragraphs:
+        if not isinstance(row, Mapping):
+            continue
+        para_no = _optional_int(row.get("para_no"))
+        if para_no is None:
+            continue
+        text = str(row.get("text") or "")
+        if page_no == start.page_no and para_no == start.para_no:
+            start_found = True
+        if page_no == end.page_no and para_no == end.para_no:
+            end_found = True
+        if page_no == start.page_no and para_no < start.para_no:
+            continue
+        if page_no == end.page_no and para_no > end.para_no:
+            continue
+        selected.append((para_no, text))
+
+    if not start_found or not end_found:
+        return None
+    return selected
 
 
 def _passage_text(payload: Mapping[str, Any]) -> str | None:

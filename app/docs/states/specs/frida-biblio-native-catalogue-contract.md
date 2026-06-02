@@ -354,11 +354,16 @@ Implementation Lot 4 du 2026-05-28, completee par le correctif bibliothecaire du
 
 - module: `app/biblio/passage_extractor.py`;
 - l'extracteur utilise le resolver Lot 3 et le client Catalogue GET-only;
-- il peut appeler seulement `context()` apres resolution `resolved`;
+- il peut appeler `context()` pour un passage simple ou un range borne sur une
+  meme page, et `page()` pour un range borne multi-page quand les deux ancres
+  resolues portent des positions `page_no` / `para_no` coherentes;
 - il refuse toute extraction si la resolution est `ambiguous`, `not_found`, `invalid_request` ou `catalogue_unavailable`;
 - il exige un locator resolu avec cible contextuelle non ambigue: `paragraph_id` ou couple `page_no` / `para_no`;
 - il refuse les ranges non bornes ou incoherents avec `range_extraction_not_supported`;
-- il peut extraire un range borne seulement quand le document et les deux locators sont resolus sans ambiguite apres ancrage, sur une meme page, avec au plus `MAX_RANGE_PARAGRAPHS = 40` paragraphes et une taille finale autorisee;
+- il peut extraire un range borne quand le document et les deux locators sont
+  resolus sans ambiguite apres ancrage, avec au plus
+  `MAX_RANGE_PARAGRAPHS = 40` paragraphes, au plus `MAX_RANGE_PAGES = 12`
+  pages, et une taille finale autorisee;
 - il ne choisit jamais le premier passage d'un locator ambigu;
 - bornes initiales:
   - `window_chars`: `80..2000`;

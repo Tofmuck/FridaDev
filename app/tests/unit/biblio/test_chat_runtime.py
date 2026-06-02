@@ -1404,6 +1404,12 @@ class _FakeClient:
                 "page_no": page_no,
                 "raw_text": text,
                 "paragraph_count": 4,
+                "paragraphs": [
+                    {"para_no": 1, "text": f"RAW PAGE {page_no} PARA 1"},
+                    {"para_no": 2, "text": f"RAW PAGE {page_no} PARA 2"},
+                    {"para_no": 3, "text": f"RAW PAGE {page_no} PARA 3"},
+                    {"para_no": 4, "text": f"RAW PAGE {page_no} PARA 4"},
+                ],
             },
             duration_ms=1,
             result_count=1,

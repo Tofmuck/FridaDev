@@ -189,7 +189,7 @@ Regle dure:
 
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P04 | Plage canonique explicite | Extraire un passage borne demande par locator/range | `passage_extract_canonical_range` | resolution documentaire, `locate`, `passage_context` | partiel | Le chemin exact existe sur certains cas forts, mais la methode n'est pas encore la brique canonique du systeme | mixte | Declarer la methode produit et documenter clairement la frontiere label simple vs plage canonique generale |
+| P04 | Plage canonique explicite | Extraire un passage borne demande par locator/range | `passage_extract_canonical_range` | resolution documentaire, `locate`, `passage_context`, `page_read` borne si la plage traverse plusieurs pages | partiel | Le chemin exact sait maintenant assembler des ranges bornes multi-page quand les deux ancres se resolvent proprement, mais il n'existe toujours pas d'objet canonique general d'intervalle | mixte | Garder la frontiere claire entre range borne resolue et support general d'intervalle canonique |
 | P10 | Passage courant de reference | Faire de ce passage exact le point de depart de la suite Biblio | `passage_set_current_reference` | meme chaine que P04 + `state_update` | partiel | Le passage exact peut deja servir d'ancre pour la suite, mais ce role reste encore porte comme effet du runtime, pas comme methode explicite | FridaDev | Rendre cette mise en reference explicite dans le contrat de methode |
 
 ### D. Recherche thematique dans une oeuvre
@@ -354,6 +354,10 @@ encore decide ou repare a plusieurs endroits.
 - [x] Reutiliser la TOC/chapters legere existante comme hint d'oeuvre interne
       quand un document physique unique est deja resolu, avant de retomber sur
       la recherche plein texte de paragraphes.
+- [x] Exploiter les ancres `locate` deja resolues avec `GET /doc/{id}/page/{page_no}`
+      pour sortir de la limite artificielle "meme page seulement" sur les
+      ranges canoniques bornes, sans pretendre avoir encore un objet
+      d'intervalle canonique general.
 
 ## 9. Criteres de sortie de cette refonte
 

@@ -127,7 +127,7 @@ class PassageExtractorTests(unittest.TestCase):
         self.assertEqual(result.reason_code, resolver.REASON_LOCATOR_REQUIRES_DOCUMENT)
         self.assertEqual(fake.calls, [])
 
-    def test_resolved_range_is_not_silently_extracted_from_start(self) -> None:
+    def test_resolved_cross_page_range_without_page_data_fails_cleanly(self) -> None:
         fake = FakeCatalogueClient(
             documents={"doc-1": {"document": {"id": "doc-1", "title": "Theetete"}}},
             metadata={"doc-1": {"document": {"id": "doc-1"}, "human_metadata": {}}},
@@ -153,8 +153,8 @@ class PassageExtractorTests(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result.status, extractor.STATUS_INVALID_REQUEST)
-        self.assertEqual(result.reason_code, extractor.REASON_RANGE_EXTRACTION_NOT_SUPPORTED)
+        self.assertEqual(result.status, extractor.STATUS_NOT_FOUND)
+        self.assertEqual(result.reason_code, extractor.REASON_PASSAGE_NOT_FOUND)
         self.assertNotIn("context", [call[0] for call in fake.calls])
 
     def test_resolved_same_page_range_extracts_bounded_paragraphs(self) -> None:
@@ -212,6 +212,83 @@ class PassageExtractorTests(unittest.TestCase):
             [
                 ("context", "doc-1", None, 7, 2, 0, extractor.MAX_CONTEXT_WINDOW_CHARS),
                 ("context", "doc-1", None, 7, 3, 0, extractor.MAX_CONTEXT_WINDOW_CHARS),
+            ],
+        )
+
+    def test_resolved_multi_page_range_extracts_bounded_page_paragraphs(self) -> None:
+        raw_a = "RANGE PAGE 7 PARA 2"
+        raw_b = "RANGE PAGE 8 PARA 1"
+        raw_c = "RANGE PAGE 8 PARA 2"
+        fake = FakeCatalogueClient(
+            metadata={"doc-1": {"document": {"id": "doc-1"}, "human_metadata": {}}},
+            locate_payloads={
+                ("doc-1", "stephanus", "126b"): {
+                    "match_count": 1,
+                    "best": {
+                        "kind": "stephanus",
+                        "label": "126b",
+                        "page_no": 7,
+                        "para_no": 2,
+                        "order_index": 10,
+                    },
+                },
+                ("doc-1", "stephanus", "126e"): {
+                    "match_count": 1,
+                    "best": {
+                        "kind": "stephanus",
+                        "label": "126e",
+                        "page_no": 8,
+                        "para_no": 2,
+                        "order_index": 13,
+                    },
+                },
+            },
+            page_payloads={
+                ("doc-1", 7): {
+                    "document_id": "doc-1",
+                    "page_no": 7,
+                    "paragraphs": [
+                        {"para_no": 1, "text": "IGNORE BEFORE START"},
+                        {"para_no": 2, "text": raw_a},
+                    ],
+                },
+                ("doc-1", 8): {
+                    "document_id": "doc-1",
+                    "page_no": 8,
+                    "paragraphs": [
+                        {"para_no": 1, "text": raw_b},
+                        {"para_no": 2, "text": raw_c},
+                        {"para_no": 3, "text": "IGNORE AFTER END"},
+                    ],
+                },
+            },
+        )
+
+        result = extractor.BiblioPassageExtractor(fake).extract(
+            extractor.BiblioPassageRequest(
+                resolve_request=resolver.BiblioResolveRequest(
+                    document_id="doc-1",
+                    locator="126b",
+                    locator_end="126e",
+                ),
+                max_passage_chars=500,
+            )
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, extractor.STATUS_EXTRACTED)
+        self.assertEqual(result.reason_code, extractor.REASON_RANGE_EXTRACTED)
+        self.assertIn(raw_a, result.passage)
+        self.assertIn(raw_b, result.passage)
+        self.assertIn(raw_c, result.passage)
+        self.assertNotIn(raw_a, str(observed))
+        self.assertNotIn(raw_b, str(observed))
+        self.assertNotIn(raw_c, str(observed))
+        self.assertEqual(
+            [call for call in fake.calls if call[0] == "page"],
+            [
+                ("page", "doc-1", 7),
+                ("page", "doc-1", 8),
             ],
         )
 
@@ -398,6 +475,7 @@ class FakeCatalogueClient:
         locate_payloads: dict[tuple[str, str, str], dict[str, object]] | None = None,
         locate_errors: dict[tuple[str, str, str], Exception] | None = None,
         context_payloads: dict[tuple[object, ...], dict[str, object]] | None = None,
+        page_payloads: dict[tuple[str, int], dict[str, object]] | None = None,
         context_error: Exception | None = None,
     ) -> None:
         self.documents = documents or {}
@@ -406,6 +484,7 @@ class FakeCatalogueClient:
         self.locate_payloads = locate_payloads or {}
         self.locate_errors = locate_errors or {}
         self.context_payloads = context_payloads or {}
+        self.page_payloads = page_payloads or {}
         self.context_error = context_error
         self.calls: list[tuple[object, ...]] = []
 
@@ -463,6 +542,13 @@ class FakeCatalogueClient:
         if key not in self.context_payloads:
             raise catalogue.CatalogueNotFound(doc_id=doc_id)
         return response(self.context_payloads[key], "context")
+
+    def page(self, doc_id: str, page_no: int) -> catalogue.CatalogueResponse:
+        self.calls.append(("page", doc_id, page_no))
+        key = (doc_id, page_no)
+        if key not in self.page_payloads:
+            raise catalogue.CatalogueNotFound(doc_id=doc_id)
+        return response(self.page_payloads[key], "page")
 
 
 def _single_locator_client(
