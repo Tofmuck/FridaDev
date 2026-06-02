@@ -214,8 +214,12 @@ def is_known_product_method(product_method: Any) -> bool:
     return get_product_method_spec(str(product_method or "").strip()) is not None
 
 
+def normalize_case_id(case_id: Any) -> str:
+    return str(case_id or "").strip().upper()
+
+
 def is_known_case_id(case_id: Any) -> bool:
-    text = str(case_id or "").strip()
+    text = normalize_case_id(case_id)
     return bool(text) and text in CASE_ID_SET
 
 
@@ -223,7 +227,7 @@ def method_accepts_case_id(product_method: str, case_id: str) -> bool:
     spec = get_product_method_spec(product_method)
     if spec is None:
         return False
-    case = str(case_id or "").strip()
+    case = normalize_case_id(case_id)
     if not case:
         return True
     return case in spec.case_ids
@@ -246,6 +250,25 @@ def default_case_id_for_method(product_method: str) -> str:
     if spec is None or len(spec.case_ids) != 1:
         return ""
     return spec.case_ids[0]
+
+
+def infer_case_id_for_legacy_payload(
+    *,
+    product_method: Any,
+    intent: Any,
+    answer_mode: Any,
+    tool_names: list[str] | tuple[str, ...],
+) -> str:
+    """Return a conservative case_id for repaired legacy payloads.
+
+    Lot B guarantees the product_method layer first. During transition, a legacy
+    payload may be honest about the method while still being unable to
+    discriminate a precise case inside the family. In that situation we keep
+    case_id empty instead of guessing.
+    """
+
+    _ = (product_method, intent, answer_mode, tool_names)
+    return ""
 
 
 def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str] | tuple[str, ...]) -> str:

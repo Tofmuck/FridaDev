@@ -112,6 +112,14 @@ sans reenqueter sur le cas. Ce payload doit porter au minimum:
 - `anchors` utiles
 - `tool_trace` content-free
 
+Doctrine de transition Lot B:
+
+- Lot B garantit la couche `product_method`;
+- `case_id` peut rester vide pendant la transition si la methode produit est
+  reconnue proprement mais que le cas exact n'est pas tranchable honnetement;
+- une reparation legacy peut inferer `product_method`, mais elle ne doit pas
+  inventer un `case_id` plus precis que ce qu'elle sait reellement.
+
 Le payload ne doit pas porter:
 
 - prompt brut;

@@ -351,7 +351,7 @@ def validate_agent_payload(
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     if str(payload.get("schema_version") or "") != SCHEMA_VERSION:
         return _rejected(REASON_SCHEMA_VERSION, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
-    case_id = str(payload.get("case_id") or "").strip()
+    case_id = product_methods.normalize_case_id(payload.get("case_id"))
     if not _valid_code(payload.get("intent")):
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     if case_id and not product_methods.is_known_case_id(case_id):
@@ -556,9 +556,19 @@ def _repair_agent_payload(payload: Any) -> Any:
         tool_names=[str(call.get("tool_name") or "") for call in repaired_calls],
     )
     repaired_payload["product_method"] = _safe_token(payload.get("product_method")) or inferred_product_method
-    repaired_payload["case_id"] = _safe_token(payload.get("case_id")) or product_methods.default_case_id_for_method(
-        repaired_payload["product_method"]
-    )
+    explicit_case_id = product_methods.normalize_case_id(payload.get("case_id"))
+    if explicit_case_id and product_methods.is_known_case_id(explicit_case_id):
+        if product_methods.method_accepts_case_id(repaired_payload["product_method"], explicit_case_id):
+            repaired_payload["case_id"] = explicit_case_id
+        else:
+            repaired_payload["case_id"] = ""
+    else:
+        repaired_payload["case_id"] = product_methods.infer_case_id_for_legacy_payload(
+            product_method=repaired_payload["product_method"],
+            intent=repaired_payload["intent"],
+            answer_mode=repaired_payload["answer_mode"],
+            tool_names=[str(call.get("tool_name") or "") for call in repaired_calls],
+        )
     changed = changed or set(payload.keys()) != _ROOT_KEYS
     return repaired_payload if changed else payload
 

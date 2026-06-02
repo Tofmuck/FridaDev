@@ -349,6 +349,28 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 assert validation.plan is not None
                 self.assertEqual(validation.plan.product_method, overrides["product_method"])
 
+    def test_local_validation_accepts_empty_case_id_when_method_is_known(self) -> None:
+        validation = contract.validate_agent_payload(
+            {
+                **json.loads(_valid_json()),
+                "case_id": "",
+                "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+                "tool_calls": [
+                    {
+                        "tool_name": tools.TOOL_CATALOG_SEARCH,
+                        "method": "GET",
+                        "params": {"query": "x", "limit": 10, "offset": 0},
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.case_id, "")
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK)
+
     def test_local_validation_rejects_unknown_or_mismatched_product_method_contract(self) -> None:
         base = json.loads(_valid_json())
         cases = [
@@ -442,6 +464,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(repaired.status, contract.STATUS_VALIDATED)
         self.assertIsNotNone(repaired.plan)
         assert repaired.plan is not None
+        self.assertEqual(repaired.plan.case_id, "")
         self.assertEqual(repaired.plan.product_method, product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK)
         self.assertEqual(repaired.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
         self.assertEqual(repaired.plan.tool_calls[0].params["query"], RAW_TITLE)
@@ -467,7 +490,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertIsNotNone(toc_reference.plan)
         assert toc_reference.plan is not None
         self.assertEqual(toc_reference.plan.product_method, product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW)
-        self.assertEqual(toc_reference.plan.case_id, "P09")
+        self.assertEqual(toc_reference.plan.case_id, "")
         self.assertEqual(toc_reference.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
         self.assertEqual(toc_reference.plan.tool_calls[0].params["query"], RAW_TITLE)
 
@@ -491,7 +514,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertIsNotNone(locate_reference.plan)
         assert locate_reference.plan is not None
         self.assertEqual(locate_reference.plan.product_method, product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE)
-        self.assertEqual(locate_reference.plan.case_id, "P04")
+        self.assertEqual(locate_reference.plan.case_id, "")
         self.assertEqual(locate_reference.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
         self.assertEqual(locate_reference.plan.tool_calls[0].params["query"], RAW_TITLE)
 
@@ -512,6 +535,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(object_call.status, contract.STATUS_VALIDATED)
         self.assertIsNotNone(object_call.plan)
         assert object_call.plan is not None
+        self.assertEqual(object_call.plan.case_id, "")
         self.assertEqual(object_call.plan.product_method, product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK)
         self.assertEqual(object_call.plan.tool_calls[0].params["query"], RAW_TITLE)
 
@@ -572,10 +596,36 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(repaired.status, contract.STATUS_VALIDATED)
         self.assertIsNotNone(repaired.plan)
         assert repaired.plan is not None
+        self.assertEqual(repaired.plan.case_id, "")
         self.assertEqual(
             repaired.plan.tool_calls[0].params,
             {"query": "maieutique", "limit": 10},
         )
+
+    def test_parser_preserves_explicit_case_id_when_it_is_known_and_method_compatible(self) -> None:
+        repaired = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "case_id": "P09",
+                    "intent": "show_table_of_contents",
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_DOCUMENT_TOC,
+                            "method": "GET",
+                            "params": {"title": RAW_TITLE, "limit": "500"},
+                        }
+                    ],
+                    "answer_mode": "tool",
+                }
+            )
+        )
+
+        self.assertEqual(repaired.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(repaired.plan)
+        assert repaired.plan is not None
+        self.assertEqual(repaired.plan.case_id, "P09")
+        self.assertEqual(repaired.plan.product_method, product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW)
 
     def test_budget_exceeded_before_and_after_model_call(self) -> None:
         no_model_budget = agent.BiblioLibrarianAgent(_FakeModelClient(_valid_json())).run(

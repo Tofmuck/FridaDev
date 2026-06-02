@@ -289,10 +289,15 @@ Champs minimaux du plan:
 
 Regles:
 
+- Lot B garantit d'abord `product_method`;
 - `product_method` est le niveau produit;
 - `tool_calls` ne sont plus la grammaire produit;
 - `case_id` peut rester vide si plusieurs cas partagent la meme methode et que
   le bibliothecaire ne tranche pas proprement;
+- pendant la transition, la reparation legacy peut inferer `product_method`
+  sans forcer un `case_id`;
+- la reparation legacy ne doit jamais inventer un `case_id` plus precis que ce
+  que le payload repare permet d'affirmer honnetement;
 - `intent` reste temporairement present pour compatibilite avec le runtime
   actuel.
 
