@@ -14,6 +14,7 @@ from typing import Any, Mapping, Sequence
 
 from . import librarian_method_runtime
 from . import librarian_planner
+from . import librarian_runtime_projection
 from . import librarian_tools
 from .library_runtime import BiblioConsultationMessage, CONSULTATION_FOOTER, CONSULTATION_HEADER
 from .librarian_agent_contract import MODE_ACTIVE, normalize_mode
@@ -45,13 +46,7 @@ class BiblioAgentFirstExecutionResult:
     executed: bool = False
 
     def client_observability(self) -> list[dict[str, Any]]:
-        if self.loop_result is None:
-            return []
-        items: list[dict[str, Any]] = []
-        for step in self.loop_result.steps:
-            if step.tool_result is not None:
-                items.append(dict(step.tool_result.to_observability()))
-        return items
+        return librarian_runtime_projection.loop_client_observability(self.loop_result)
 
 
 def run_agent_first_plan(
@@ -106,6 +101,7 @@ def run_agent_first_plan(
             executed=False,
         )
 
+    tool_results = librarian_runtime_projection.loop_tool_results(loop_result)
     consultation = _consultation_message(
         loop_result,
         status=STATUS_AGENT_FIRST_EXECUTED,
@@ -116,7 +112,11 @@ def run_agent_first_plan(
         reason_code=REASON_AGENT_FIRST_EXECUTED,
         loop_result=loop_result,
         consultation_message=consultation,
-        state_anchor=_state_anchor([step.tool_result for step in loop_result.steps if step.tool_result is not None]),
+        state_anchor=librarian_runtime_projection.state_anchor_from_tool_results(
+            tool_results,
+            status=STATUS_AGENT_FIRST_EXECUTED,
+            reason_code=REASON_AGENT_FIRST_EXECUTED,
+        ),
         executed=True,
     )
 
@@ -144,8 +144,8 @@ def _consultation_message(
     reason_code: str,
 ) -> BiblioConsultationMessage:
     observed = loop_result.to_observability()
-    doc_ids = tuple(str(item or "") for item in observed.get("doc_id_shorts", []) if str(item or ""))
-    tool_results = [step.tool_result for step in loop_result.steps if step.tool_result is not None]
+    tool_results = librarian_runtime_projection.loop_tool_results(loop_result)
+    doc_ids = librarian_runtime_projection.tool_results_doc_id_shorts(tool_results)
     displayed_count = sum(_displayed_count(result) for result in tool_results)
     total_count = _first_total_count(tool_results)
     truncated = any(bool(result.to_observability().get("truncated")) for result in tool_results)
@@ -173,7 +173,7 @@ def _consultation_message(
         reason_code=reason_code,
         item_count=displayed_count,
         chars=len(content),
-        doc_id_shorts=doc_ids,
+        doc_id_shorts=tuple(doc_ids),
         total_count=total_count,
         displayed_count=displayed_count,
         truncated=truncated,
@@ -310,30 +310,6 @@ def _passage_summary(tool_results: Sequence[librarian_tools.BiblioLibrarianToolR
         count += 1
         hashes.append(hashlib.sha256(result.context_text.encode("utf-8")).hexdigest()[:12])
     return count, tuple(hashes)
-
-
-def _state_anchor(tool_results: Sequence[librarian_tools.BiblioLibrarianToolResult]) -> dict[str, Any]:
-    for result in reversed(tool_results):
-        doc_id = _text(getattr(result, "document_id", ""))
-        if not doc_id and result.document_summary:
-            doc_id = _text(result.document_summary.get("document_id"))
-        if not doc_id:
-            continue
-        position = result.positions[0] if result.positions else {}
-        anchor = {
-            "status": STATUS_AGENT_FIRST_EXECUTED,
-            "reason_code": REASON_AGENT_FIRST_EXECUTED,
-            "document_id": doc_id,
-            "doc_id_short": _text(result.to_observability().get("doc_id_short")) or doc_id[:8],
-            "page_no": _int(position.get("page_no")),
-            "para_no": _int(position.get("para_no")),
-            "paragraph_id": _int(position.get("paragraph_id")),
-        }
-        if result.context_text:
-            anchor["passage_hash"] = hashlib.sha256(result.context_text.encode("utf-8")).hexdigest()[:12]
-            anchor["passage_chars"] = len(result.context_text)
-        return {key: value for key, value in anchor.items() if value}
-    return {}
 
 
 def _bounded_content(lines: Sequence[str]) -> str:

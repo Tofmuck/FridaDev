@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
-from .catalogue_client import CatalogueEndpointObservation, short_doc_id
+from .catalogue_client import CatalogueEndpointObservation
 from .library_runtime import BiblioConsultationMessage, CONSULTATION_FOOTER, CONSULTATION_HEADER
 from . import librarian_dialogue_planner as dialogue
 from . import librarian_planner
+from . import librarian_runtime_projection
 from . import librarian_tools
 
 
@@ -36,7 +36,7 @@ class BiblioNavigationRuntimeResult:
     document_ids: tuple[str, ...] = field(default_factory=tuple, repr=False, compare=False)
 
     def client_observability(self) -> list[dict[str, Any]]:
-        return [dict(observation.to_observability()) for observation in self.endpoint_observations]
+        return librarian_runtime_projection.endpoint_client_observability(self.endpoint_observations)
 
 
 def run_biblio_navigation_plan(
@@ -74,19 +74,22 @@ def run_biblio_navigation_plan(
             ),
         )
     )
-    tool_results = [step.tool_result for step in loop_result.steps if step.tool_result is not None]
+    tool_results = librarian_runtime_projection.loop_tool_results(loop_result)
     consultation = _executed_message(planning_result, loop_result, tool_results)
-    document_ids = tuple(_document_ids(tool_results))
+    document_ids = librarian_runtime_projection.tool_results_document_ids(tool_results)
     return BiblioNavigationRuntimeResult(
         status=_runtime_status(loop_result.status),
         reason_code=planning_result.reason_code
         if loop_result.status == librarian_planner.STATUS_TOOL_EXECUTED
         else loop_result.reason_code,
         query_kind=query_kind,
-        endpoint_observations=tuple(_endpoint_observations(tool_results)),
+        endpoint_observations=librarian_runtime_projection.tool_result_endpoint_observations(tool_results),
         consultation_message=consultation,
         loop_result=loop_result,
-        state_anchor=_state_anchor(tool_results),
+        state_anchor=librarian_runtime_projection.state_anchor_from_tool_results(
+            tool_results,
+            status=STATUS_NAVIGATION_EXECUTED,
+        ),
         document_ids=document_ids,
     )
 
@@ -135,7 +138,7 @@ def _executed_message(
         status=_runtime_status(loop_result.status),
         reason_code=planning_result.reason_code if loop_result.status == librarian_planner.STATUS_TOOL_EXECUTED else loop_result.reason_code,
         lines=lines,
-        doc_id_shorts=tuple(_doc_id_shorts(tool_results)),
+        doc_id_shorts=librarian_runtime_projection.tool_results_doc_id_shorts(tool_results),
         item_count=len(tool_results),
     )
 
@@ -203,76 +206,6 @@ def _tool_lines(result: librarian_tools.BiblioLibrarianToolResult) -> list[str]:
         lines.append("Contexte consulte autour du passage:")
         lines.append(_neutralize(_clip(result.context_text, DEFAULT_CONTEXT_SNIPPET_MAX_CHARS)))
     return lines
-
-
-def _endpoint_observations(
-    tool_results: Sequence[librarian_tools.BiblioLibrarianToolResult | None],
-) -> tuple[CatalogueEndpointObservation, ...]:
-    observations: list[CatalogueEndpointObservation] = []
-    for result in tool_results:
-        if result is None:
-            continue
-        observed = result.to_observability()
-        observations.append(
-            CatalogueEndpointObservation(
-                endpoint_kind=result.endpoint_kind,
-                status_code=_int(observed.get("status_code")),
-                duration_ms=_int(observed.get("duration_ms")) or 0,
-                result_count=_int(observed.get("result_count")),
-                doc_id_short=_text(observed.get("doc_id_short")),
-                content_chars=_int(observed.get("content_chars")) or 0,
-                reason_code=result.reason_code,
-            )
-        )
-    return tuple(observations)
-
-
-def _state_anchor(tool_results: Sequence[librarian_tools.BiblioLibrarianToolResult | None]) -> dict[str, Any]:
-    for result in reversed(tool_results):
-        if result is None:
-            continue
-        doc_id = _text(getattr(result, "document_id", ""))
-        if not doc_id and result.document_summary:
-            doc_id = _text(result.document_summary.get("document_id"))
-        if not doc_id:
-            continue
-        position = result.positions[0] if result.positions else {}
-        anchor = {
-            "status": STATUS_NAVIGATION_EXECUTED,
-            "reason_code": result.reason_code,
-            "document_id": doc_id,
-            "doc_id_short": _text(result.to_observability().get("doc_id_short")) or short_doc_id(doc_id),
-            "page_no": _int(position.get("page_no")),
-            "para_no": _int(position.get("para_no")),
-            "paragraph_id": _int(position.get("paragraph_id")),
-        }
-        if result.context_text:
-            anchor["passage_hash"] = hashlib.sha256(result.context_text.encode("utf-8")).hexdigest()[:12]
-            anchor["passage_chars"] = len(result.context_text)
-        return {key: value for key, value in anchor.items() if value not in ("", None)}
-    return {}
-
-
-def _document_ids(tool_results: Sequence[librarian_tools.BiblioLibrarianToolResult | None]) -> list[str]:
-    ids: list[str] = []
-    for result in tool_results:
-        if result is None:
-            continue
-        doc_id = _text(getattr(result, "document_id", ""))
-        if not doc_id and result.document_summary:
-            doc_id = _text(result.document_summary.get("document_id"))
-        if doc_id and doc_id not in ids:
-            ids.append(doc_id)
-    return ids
-
-
-def _doc_id_shorts(tool_results: Sequence[librarian_tools.BiblioLibrarianToolResult | None]) -> list[str]:
-    shorts: list[str] = []
-    for doc_id in _document_ids(tool_results):
-        short = short_doc_id(doc_id)
-        if short and short not in shorts:
-            shorts.append(short)
-    return shorts
 
 
 def _bounded_content(lines: Sequence[str]) -> str:

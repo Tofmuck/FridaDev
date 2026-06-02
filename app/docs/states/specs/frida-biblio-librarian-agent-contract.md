@@ -1209,6 +1209,19 @@ Dette structurelle acceptee hors micro-corrections: plusieurs modules agent
 `librarian_tools.py`) sont gros. Les prochains lots doivent eviter de les
 rallonger sans extraction par responsabilite.
 
+Etat apres cleanup Lot D:
+
+- reconnaissance de cas: `query_planner.py`, `librarian_dialogue_planner.py`,
+  `conversation_followup.py`;
+- registre de methodes: `librarian_product_methods.py`;
+- execution runtime: `library_runtime.py`, `librarian_method_runtime.py`,
+  `librarian_agent_first.py`, `librarian_navigation_runtime.py`,
+  `librarian_dialogue_runtime.py`;
+- outils techniques GET-only: `librarian_tools.py`;
+- projections runtime / observabilite content-free:
+  `librarian_planner_observability.py`, `librarian_runtime_projection.py`,
+  `observability.py`.
+
 Interdits Lot 10:
 
 - passage brut;

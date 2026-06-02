@@ -337,7 +337,7 @@ encore decide ou repare a plusieurs endroits.
 
 - [x] Recentrer `chat_runtime.py` sur l'orchestration.
 - [x] Sortir la reconnaissance de cas locale la ou elle est dupliquee.
-- [ ] Separer clairement:
+- [x] Separer clairement:
       - reconnaissance de cas;
       - registre de methodes;
       - execution de methode;
