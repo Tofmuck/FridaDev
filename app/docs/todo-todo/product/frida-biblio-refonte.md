@@ -5,264 +5,354 @@ Statut: TODO active
 Classement: `app/docs/todo-todo/product/`
 Sources:
 
-- `app/docs/states/audits/frida-biblio-stephanus-library-audit-2026-06-02.md`
 - `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
 - `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+- `app/docs/states/audits/frida-biblio-stephanus-library-audit-2026-06-02.md`
+- `app/docs/states/baselines/biblio-smokes/agent-first-full-post-truth-fix-20260601T185215Z.jsonl`
 
-Portee: matrice d'action produit pour transformer Biblio en bibliotheque
-reellement consultable. Ce document ne remplace pas le contrat agent ni la
-roadmap agent. Il sert de plan d'execution transverse entre FridaDev et
-Catalogue / DB / indexation.
+Portee: document canonique de pilotage produit pour la refonte Biblio. Ce
+document ne remplace ni la spec agent, ni la spec Catalogue. Il fixe
+l'invariant produit, la grammaire des 18 cas, la couche "methode produit",
+les verites actuelles, les faux verts et l'ordre reel des lots.
 
-## 1. Objectif produit final
+## 1. Invariant produit canonique
 
-Frida doit pouvoir utiliser la bibliotheque comme une vraie bibliotheque:
+Invariant durable:
 
-- lister tout le catalogue disponible tant que la taille reste raisonnable;
-- ouvrir un document, un volume ou une edition sans le confondre avec une
-  oeuvre interne;
-- afficher une table des matieres reelle et exploitable;
-- distinguer auteur, corpus, volume, oeuvre et edition;
-- chercher un passage par theme, chaine exacte, locator simple ou intervalle
-  canonique;
-- naviguer avant, apres, autour, page par page ou sur une plage de pages quand
-  l'outillage et les donnees le permettent;
-- dire honnetement quand elle a un passage exact, un candidat plausible ou une
-  approximation contextuelle;
-- verifier la provenance du passage et privilegier le texte primaire avant le
-  commentaire, la notice ou l'introduction.
+- il existe 18 cas Biblio de reference;
+- ces 18 cas forment la grammaire produit;
+- le bibliothecaire recoit:
+  - la demande utilisateur;
+  - les 5 derniers echanges utiles;
+  - l'etat Biblio;
+- le bibliothecaire reconnait le cas applicable;
+- le bibliothecaire declenche la methode produit explicite correspondante;
+- la methode produit orchestre un ou plusieurs outils/scripts techniques bornes;
+- la methode renvoie un resultat structure;
+- Frida repond a partir de ce resultat structure.
 
-## 2. Constats de depart
+Doctrine:
 
-- [ ] Le systeme actuel n'est pas encore une vraie bibliotheque complete.
-- [ ] Le front FridaDev et le front Catalogue / DB / indexation doivent etre
-      traites separement, puis recales ensemble.
-- [ ] Les smokes verts et les lanes injectees ne prouvent pas a eux seuls une
-      capacite produit reelle.
-- [ ] `catalog_search` est encore utilise comme bequille universelle alors qu'il
-      ne prouve ni l'oeuvre, ni la source, ni l'exactitude du passage.
-- [ ] Le parse metier reste tordu sur des formes du type `Theetete de Platon`
-      et melange encore trop facilement oeuvre, auteur, corpus et document.
-- [ ] Le systeme ne porte pas encore un objet natif d'intervalle canonique.
-- [ ] La navigation sequentielle reelle manque encore cote contrat FridaDev.
-- [ ] Des routes utiles existent deja cote Catalogue, mais ne sont pas encore
-      integrees proprement dans le contrat Biblio FridaDev.
-- [ ] Une partie des validations precedentes ont prouve des capacites
-      partielles, pas une bibliotheque pleinement manipulable.
+- le bibliothecaire est souverain pour reconnaitre le cas;
+- le deterministe tient les murs:
+  - garde-fous;
+  - refus propres;
+  - validation;
+  - fallback;
+  - bornes techniques;
+- un parseur local ne doit plus decider le cas a la place du bibliothecaire;
+- un agent ne doit pas improviser le produit sans cas ni methode explicites.
 
-## 3. Matrice des capacites metier
+Regle de structure:
 
-| TODO | Capacite | Etat actuel | Front | Action a mener | Dependance | Validation produit reelle |
-| --- | --- | --- | --- | --- | --- | --- |
-| [ ] | Lister le catalogue | livre | FridaDev | Garder l'affichage complet jusqu'a 100 et rendre explicite la continuation au-dela | aucune | Frida n'annonce jamais une page comme totalite si le total depasse l'affichage |
-| [ ] | Paginer le catalogue | partiel | FridaDev | Formaliser continuation, reprise et borne produit | etat multi-tour Biblio stable | `continue la liste` reprend proprement sans re-lister au hasard |
-| [ ] | Ouvrir un ouvrage / volume / edition | partiel | mixte | Distinguer ouverture bibliographique, resume document et lecture documentaire | resolution oeuvre/document plus nette | Frida sait dire ce qu'elle a ouvert et a quel niveau |
-| [ ] | Distinguer oeuvre / auteur / corpus / volume | partiel | FridaDev | Poursuivre la resolution metier: le runtime conserve maintenant `work_title` vs `document_title`, mais la hierarchie oeuvre/corpus/volume reste incomplète | normalisation + resolveur metier | Les requetes mixtes ne tombent plus sur le mauvais niveau documentaire |
-| [ ] | Afficher la table des matieres | livre | FridaDev | Garder la route legere et mieux l'integrer dans la logique produit | aucune | Une demande TOC reelle liste les chapitres sans faux resume |
-| [ ] | Rechercher dans la table des matieres | absent | mixte | Definir si la recherche passe par chapters indexes, metadata ou outil dedie | contrat outil TOC + donnees Catalogue | Frida peut trouver une oeuvre interne via TOC sans detour fragile par paragraph search |
-| [ ] | Chercher un passage par theme dans une oeuvre | partiel | mixte | Le runtime distingue maintenant approximation contextuelle vs candidat plausible, mais la provenance et la priorite source restent a renforcer | meilleur ranking + source classes | Frida renvoie soit un passage plausible justifie, soit une ambiguite claire |
-| [ ] | Chercher un passage par theme dans tout le corpus | partiel | mixte | Definir scope corpus, ranking, desambiguation et reprise | separation oeuvre/corpus + signals source | Frida dit dans quel corpus elle a cherche et pourquoi elle retient ou non un passage |
-| [ ] | Chercher une chaine exacte | partiel | Catalogue/DB | Verifier et documenter les garanties exact-match et les limites d'index | index texte et surfaces d'appel | Frida distingue clairement exact-match, zero hit et hit contextuel |
-| [ ] | Locator canonique simple | livre | mixte | Conserver `locate -> context` comme chemin exact borne | document_id + label simple resolus | Un locator simple donne une extraction ou une ambiguite honnete |
-| [ ] | Intervalle canonique | absent | Catalogue/DB | Definir un objet natif ou un mapping stable debut/fin -> sequence documentaire | chantier indexation intervalle | Frida ne simule plus un range general avec une astuce locale |
-| [ ] | Extraire ce qui precede un passage | partiel | FridaDev | La navigation page existe; la navigation exacte intra-page reste a definir | outil page borne + ancre de passage plus fine | `ce qui precede` ne depend plus d'une approximation libre |
-| [ ] | Extraire ce qui suit un passage | partiel | FridaDev | La navigation page existe; la navigation exacte intra-page reste a definir | outil page borne + ancre de passage plus fine | `continue apres ce passage` donne une vraie continuation documentaire |
-| [ ] | `autour de ce passage` | partiel | FridaDev | Clarifier la difference entre voisinage exact et simple contexte local | etat technique + primitive de voisinage | Frida sait dire si elle montre un vrai voisinage ou juste le contexte deja present |
-| [ ] | `continue apres ce passage` | partiel | FridaDev | Brancher une navigation sequentielle sur etat ancre en gardant la verite page-vs-passage | etat multi-tour + outil page borne | La continuation ne re-search pas au hasard |
-| [x] | `page suivante / page precedente` | livre | FridaDev | Route page legere integree dans le contrat FridaDev via `page_read` borne | `document_id` explicite ou document/volume nomme resolu + page ancree | Frida change reellement de page avec document_id explicite, y compris quand l'utilisateur renomine le meme document |
-| [x] | `page 28 a page 32` | livre | FridaDev | Lecture de plage de pages bornee livree via `page_read` compose | `document_id` explicite ou document/volume nomme resolu + garde `<= 5` pages | Frida sait lire une plage de pages sans deriver vers export total sur un document/volume reel resolu |
-| [ ] | `deux pages apres 147c` | absent | mixte | Relier locator canonique et navigation page | intervalle/positionnement stable | Frida peut calculer un deplacement documentaire reel |
-| [ ] | `147c a 151d` | faux-semblant | mixte | Arreter de traiter une plage brute comme si elle etait deja localisable | objet intervalle canonique natif | Frida n'annonce pas un range general comme supporte avant preuve |
-| [ ] | Verification de provenance | partiel | mixte | Porter un statut explicite source primaire/commentaire/notice et une verification de provenance | metadata/source classes + runtime | Frida peut dire si le passage vient bien de l'oeuvre demandee |
-| [ ] | Priorite texte primaire > commentaire > notice > introduction | absent | mixte | Ajouter un signal bibliographique exploitable au ranking et a la selection | metadata/source classes | Un commentaire ne gagne plus silencieusement contre le texte primaire |
-| [ ] | Navigation multi-tour | partiel | FridaDev | Stabiliser l'etat Biblio et la reprise d'action documentaire | conversation state + primitives nav | `continue`, `plus haut`, `dans ce livre` restent ancres et honnetes |
-| [ ] | Distinguer passage exact / candidat plausible / approximation contextuelle | partiel | FridaDev | Le runtime et la lane portent maintenant ce statut; il reste a l'adosser a une meilleure verification de provenance | reprise du contrat runtime + source classes | Frida ne sur-vend plus une approximation comme extraction exacte |
+- `1 cas != 1 outil`;
+- `1 cas = 1 methode produit explicite`;
+- `1 methode produit` peut encapsuler:
+  - 1 outil;
+  - plusieurs outils;
+  - plusieurs scripts;
+  - une validation;
+  - une clarification;
+  - une mise a jour d'etat.
 
-## 4. Front FridaDev
+## 2. Couches a separer explicitement
 
-### A. Verite produit et contrat d'execution
+### A. Cas produit
 
-- [ ] Requalifier explicitement dans le runtime et la doc ce qui est exact, ce
-      qui est plausible et ce qui est seulement contextuel.
-- [ ] Sortir `catalog_search` du role de bequille universelle.
-- [ ] Garder `locate -> context` comme chemin exact pour les locators simples.
-- [ ] Refuser explicitement les ranges canoniques generaux non supportes au lieu
-      de laisser croire qu'ils le sont.
+Le cas produit est la forme grammaticale stable que le produit promet de
+reconnaitre. Exemples: "catalogue complet", "ouvrir un ouvrage", "sortir une
+plage canonique", "autour de ce passage", "origine du passage".
 
-### B. Resolution metier
+### B. Methode produit
 
-- [ ] Refaire la resolution metier `oeuvre / auteur / corpus / volume / edition`
-      sans tout laisser a la recherche texte.
-- [ ] Corriger les formes encore fragiles du type `Theetete de Platon`.
-- [ ] Stabiliser la distinction `document ouvert` vs `oeuvre interne resolue`.
-- [ ] Introduire un statut produit de provenance et de confiance bibliographique.
+La methode produit est l'unite de pilotage du runtime. Elle porte:
 
-### C. Contrat d'outils FridaDev
+- l'intention produit;
+- les preconditions;
+- les outils/scripts autorises;
+- le type de resultat structure attendu;
+- la verite produit de sortie:
+  - exact;
+  - plausible;
+  - contextuel;
+  - clarification;
+  - not_found;
+  - error.
 
-- [ ] Integrer proprement les routes Catalogue utiles deja existantes quand elles
-      sont compatibles avec le contrat GET-only.
-- [x] Ajouter une primitive de navigation page bornee si elle est retenue.
-- [ ] Ajouter une primitive documentaire de voisinage ou de lecture sequentielle
-      si la page seule ne suffit pas.
-- [ ] Garder interdites les routes `latest/*`, les exports massifs et toute
-      lecture lourde implicite.
+### C. Outils / scripts techniques
 
-### D. Runtime bibliothecaire
+Les outils/scripts sont les briques bornes:
 
-- [x] Ne plus laisser l'agent ou le deterministe presenter une approximation
-      search/context comme une resolution canonique forte.
-- [ ] Reprendre la logique de selection pour favoriser le texte primaire avant
-      commentaire, notice ou introduction.
-- [ ] Brancher les primitives de navigation reelles sur l'etat multi-tour.
-- [x] Garder l'observabilite content-free tout en rendant visible le niveau
-      exact/plausible/approxime.
+- `catalog_list`
+- `catalog_search`
+- `document_open_summary`
+- `document_toc`
+- `page_read`
+- `locate`
+- `passage_context`
 
-## 5. Front Catalogue / DB / indexation
+Ces briques ne sont pas la grammaire produit. Elles sont l'infrastructure
+technique des methodes.
 
-### A. Representation bibliographique
+### D. Payload structure attendu
 
-- [ ] Verifier si la DB peut porter un signal exploitable primaire/commentaire
-      sans heuristique fragile.
-- [ ] Verifier si les chapitres/TOC peuvent servir a resoudre des oeuvres
-      internes de facon plus forte.
-- [ ] Definir, si necessaire, une representation plus nette des oeuvres internes
-      dans les gros volumes.
+Chaque methode doit renvoyer un payload structure qui peut etre lu par Frida
+sans reenqueter sur le cas. Ce payload doit porter au minimum:
 
-### B. Intervalle canonique
+- `case_id`
+- `product_method`
+- `status`
+- `reason_code`
+- `truth_level`
+- `state_update`
+- `result_summary`
+- `anchors` utiles
+- `tool_trace` content-free
 
-- [ ] Definir si l'intervalle canonique devient un objet natif d'indexation.
-- [ ] Si non, definir un mapping stable et borne debut/fin -> sequence
-      paragraphes/pages.
-- [ ] Documenter le contrat exact de cette capacite avant toute promesse
-      produit.
+Le payload ne doit pas porter:
 
-### C. Navigation documentaire
+- prompt brut;
+- query brute;
+- payload Catalogue brut;
+- passage brut hors lane produit;
+- titre brut, auteur brut, locator brut dans l'observabilite ordinaire.
 
-- [ ] Verifier quelles routes page/paragraphes existent deja et sont vraiment
-      assez legeres pour le produit.
-- [ ] Definir si un outil `page_read` borne suffit ou si une primitive plus
-      documentaire est necessaire.
-- [ ] Eviter toute derive vers export integral ou lecture non bornee.
+### E. Dependances DB / indexation / representation
 
-### D. Indexation et recherche
+Ce document doit dire explicitement si un cas bloque:
 
-- [ ] Qualifier plus explicitement ce que `search` sait trouver: chaine exacte,
-      occurrences thematiques, bruit, rang.
-- [ ] Verifier si la TOC peut etre searchable de facon utile.
-- [ ] Documenter les limites de l'index actuel pour eviter les faux verts.
+- cote FridaDev seulement;
+- cote Catalogue / DB / indexation;
+- ou en mixte.
 
-## 6. Dependances et ordre reel des chantiers
+## 3. Regle de statut produit
 
-### Ordre recommande
+Statuts utilises dans cette TODO:
 
-- [ ] Etape 1 - Refixer la verite produit et les statuts exact/plausible/approxime.
-- [ ] Etape 2 - Refaire le contrat d'outils FridaDev autour de vraies primitives
-      documentaires.
-- [ ] Etape 3 - Corriger la resolution metier cote FridaDev.
-- [ ] Etape 4 - Ouvrir le chantier Catalogue / DB / indexation pour ce qui ne
-      peut pas etre resout proprement cote app.
-- [ ] Etape 5 - Refaire les validations produit avec des cas de bibliotheque
-      generiques et non plus des seuls smokes favorables.
+- `vert net`: le cas est reconnu proprement, execute par la bonne methode, sans
+  reparation silencieuse et sans derive produit.
+- `partiel`: le cas fonctionne sur une partie saine du besoin, mais il manque
+  une verite produit, une preuve de source, une borne ou une partie du contrat.
+- `faux vert`: le cas peut sembler vert dans les smokes, mais la logique
+  produit actuelle ne correspond pas encore a la methode attendue.
+- `absent`: le cas n'a pas de methode produit reelle ou depend d'une
+  primitive/documentation inexistante.
 
-### Dependances dures
+Regle dure:
 
-- [ ] Pas de navigation sequentielle fiable sans primitive documentaire adaptee.
-- [ ] Pas de support honnete des ranges canoniques generaux sans objet ou mapping
-      d'intervalle.
-- [ ] Pas de garantie texte primaire > commentaire sans signal bibliographique
-      exploitable.
-- [ ] Pas de vraie resolution oeuvre/corpus/volume sans sortir du reflexe
-      `catalog_search` comme solution par defaut.
+- un cas `fallback_repaired` n'est jamais `vert net`;
+- un cas "outils executes mais methode non explicite" n'est jamais `vert net`;
+- un cas qui depend d'un bricolage `search -> context` au lieu de la bonne
+  methode reste `partiel` ou `faux vert`;
+- un cas qui n'a pas d'objet d'intervalle, de source ou de navigation reel ne
+  doit pas etre promu artificiellement en `livre`.
 
-## 7. Criteres de sortie
+## 4. Matrice canonique des 18 cas
 
-- [ ] Frida ne presente plus un candidat de recherche comme un passage exact.
-- [ ] Frida sait dire quand elle lit un document, une oeuvre interne, un
-      commentaire ou une notice.
-- [ ] Frida sait lister, ouvrir, afficher une TOC, chercher et naviguer sans
-      s'appuyer sur des approximations silencieuses.
-- [ ] Les ranges canoniques annonces comme supportes sont reellement supportes
-      de facon generale, pas seulement sur quelques cas bornes.
-- [ ] Les validations produit prouvent des cas generiques de bibliotheque et pas
-      seulement des smokes verts locaux.
-- [ ] La separation FridaDev / Catalogue / DB est documentee et les dettes
-      restantes sont explicites.
+### A. Catalogue
 
-## 8. Risques / illusions a eviter
+| case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P01 | Catalogue complet | Lister le fonds disponible | `catalog_list_full` | `catalog_list` | vert net | Le cas est deja lisible comme consultation bornee du catalogue | FridaDev | Conserver cette methode et la declarer explicitement dans le futur registre |
+| P02 | Catalogue complet borne a 100 | Dire combien il y a d'ouvrages et lister les 100 premiers / tous si <= 100 | `catalog_list_bounded` | `catalog_list` | vert net | La borne produit actuelle tient la route tant qu'elle reste explicite | FridaDev | Formaliser la continuation au-dela de 100 dans la methode, pas dans un fallback implicite |
 
-- [ ] Confondre lane injectee et capacite produit reelle.
-- [ ] Confondre `catalog_search` avec une resolution bibliothecaire forte.
-- [ ] Confondre un locator simple qui marche avec un support general des ranges.
-- [ ] Confondre une TOC disponible avec une vraie resolution des oeuvres internes.
-- [ ] Confondre un contexte local avec une navigation documentaire.
-- [ ] Confondre une preuve content-free propre avec une verite produit suffisante.
-- [ ] Relancer des micro-correctifs locaux sans d'abord traiter les primitives
-      manquantes.
-- [ ] Laisser croire qu'une capacite est `livree` quand elle n'est que
-      `partielle` ou `faux-semblant`.
+### B. Ouvrage / ouverture / TOC
 
-## 9. Regle de pilotage
+| case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P03 | Trouver l'ouvrage | Retrouver l'ouvrage ou la bonne cible documentaire | `work_lookup` | `catalog_search`, `document_open_summary`, `document_toc` si utile | faux vert | Le smoke vert connu repose surtout sur `catalog_search`; ce n'est pas encore une vraie methode d'ouverture documentaire | mixte | Definir `work_lookup` comme methode produit explicite avec sortie structuree ouvrage/document/ambiguite |
+| P09 | Table des matieres d'un ouvrage | Montrer la TOC de l'ouvrage cible | `document_toc_show` | `document_toc`, resolution prealable eventuelle | faux vert | Le chemin peut finir par appeler `chapters`, mais il reste repare depuis un cas initialement non resolu | FridaDev | Rattacher la TOC a une vraie methode `document_toc_show`, sans reparation silencieuse |
 
-- [ ] Aucun lot ne peut se declarer `termine` sur un simple smoke vert si la
-      capacite produit reste partielle.
-- [ ] Toute correction FridaDev doit dire explicitement si elle ferme un probleme
-      applicatif ou si elle revele un manque Catalogue / DB / indexation.
-- [ ] Toute validation future doit nommer ce qui est exact, ce qui est plausible
-      et ce qui reste non supporte.
+### C. Passage canonique explicite
 
-## 10. Mise a jour Lot R1 - navigation documentaire reelle
+| case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P04 | Plage canonique explicite | Extraire un passage borne demande par locator/range | `passage_extract_canonical_range` | resolution documentaire, `locate`, `passage_context` | partiel | Le chemin exact existe sur certains cas forts, mais la methode n'est pas encore la brique canonique du systeme | mixte | Declarer la methode produit et documenter clairement la frontiere label simple vs plage canonique generale |
+| P10 | Amorcage d'etat sur passage explicite | Initialiser l'etat Biblio a partir d'un passage exact | `passage_seed_from_exact_result` | meme chaine que P04 + `state_update` | partiel | L'amorcage existe, mais comme consequence du runtime, pas comme methode explicite | FridaDev | Rendre le seed d'etat explicite dans le contrat de methode |
 
-Lot R1 livre le premier front documentaire utile cote FridaDev, sans patch
-Catalogue ni DB:
+### D. Recherche thematique dans une oeuvre
 
-- `CatalogueClient.page(document_id, page_no)` appelle seulement
-  `GET /doc/{id}/page/{page_no}`;
-- l'outil `page_read` est maintenant allowliste, GET-only, borne, avec
-  `document_id` explicite obligatoire;
-- la navigation page peut maintenant resoudre un document/volume explicitement
-  nomme dans la requete, puis composer sur `page_read` sans patch Catalogue;
-- le runtime dialogue Biblio execute reellement:
-  - `page suivante / page precedente`;
-  - `page 28 a page 32` avec garde `<= 5` pages;
-  - `continue apres ce passage` quand une page ancree existe deja;
-  - `autour de ce passage` via `passage_context` borne.
+| case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P05 | Theme dans une oeuvre | Trouver un passage thematique dans l'oeuvre cible | `passage_search_in_work` | resolution documentaire, `catalog_search`, `passage_context`, selection | partiel | Le systeme sait produire des candidats/contextes, pas encore une verite bibliothecaire forte | mixte | Stabiliser la methode produit et la sortie `exact/plausible/contextuel/clarification` |
+| P06 | Theme dans une oeuvre sans accents | Meme cas que P05, avec variantes de forme | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | partiel | Le cas passe encore avec reparation/fallback sur certaines variantes | FridaDev | Sortir les variantes de la logique de reparation et les rattacher a la methode produit |
+| P07 | Theme lexical voisin | Meme cas que P05 avec reformulation ("sage-femme") | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | partiel | La recherche marche parfois, mais sans garantie de source ni de niveau documentaire | mixte | Integrer la verification oeuvre/source dans la methode |
+| P08 | Theme paraphrase | Meme cas que P05 avec reformulation plus libre | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | partiel | Le cas reste un `search -> context` utile, pas une resolution forte | mixte | Mieux separer paraphrase, candidat plausible et passage exact |
 
-Limites maintenues:
+### E. Suivi de passage / multi-tour
 
-- aucun `latest/page` ni `latest/context`;
-- aucune navigation inventee depuis un titre explicite non resolu;
-- les oeuvres internes non mappees a des pages documentaires reelles
-  (exemple typique: `Theetete` comme oeuvre interne dans un volume `Platon`)
-  ne sont pas requalifiees silencieusement en navigation par page supportee;
-- aucune promesse d'intervalle canonique general;
-- `deux pages apres 147c` reste absent tant que le lien locator -> page/offset
-  n'est pas prouve comme primitive produit generale.
+| case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P11 | Expliquer ce passage | Expliquer le dernier passage ancre | `passage_explain_current` | lecture du `last_result`, `passage_context` si necessaire | partiel | L'etat aide deja, mais la methode n'est pas encore une unite produit explicite | FridaDev | Definir la methode `passage_explain_current` avec preconditions et sortie structuree |
+| P12 | Autour de ce passage | Montrer le voisinage documentaire du passage courant | `passage_show_around_current` | `passage_context` | partiel | Cas utile et relativement sain, mais encore trop confondu avec simple contexte local | FridaDev | Fixer la verite produit: vrai voisinage borne vs simple contexte |
+| P13 | Plus haut | Remonter avant le passage courant | `passage_move_previous_segment` | `page_read` ou primitive de voisinage plus fine | faux vert | Le cas est encore maquille par des reparations de contexte, pas par une vraie methode documentaire | mixte | Declarer le cas comme non stabilise tant qu'une primitive documentaire propre n'existe pas |
+| P14 | Continue | Continuer apres le passage courant | `passage_continue_next_segment` | `page_read` ou primitive sequentielle dediee | faux vert | Le smoke vert connu ne prouve pas une vraie continuation documentaire | mixte | Arreter de considerer ce cas comme "vert" tant que la methode n'est pas explicite et ancree |
+| P15 | D'ou vient ce passage ? | Verifier l'origine documentaire du passage visible | `passage_origin_check` | `document_open_summary`, `document_toc`, `passage_context`, ancre technique | partiel | La provenance est partiellement visible, mais pas encore garantie comme verite forte | mixte | Ajouter un vrai statut de provenance et une verification de source exploitable |
 
-## 11. Mise a jour Lot R3 - verite produit et resolution documentaire
+### F. Recherche thematique hors oeuvre courante
 
-Lot R3 livre un petit pas runtime/documentation sans patch Catalogue/DB:
+| case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P16 | Theme externe 1 | Trouver un passage thematique dans une autre oeuvre/corpus | `passage_search_external_work` | `catalog_search`, `passage_context`, selection | partiel | Le cas peut marcher, mais encore avec reparation/fallback selon la forme de demande | mixte | Definir explicitement le scope corpus/oeuvre et le statut de resultat |
+| P17 | Theme externe 2 | Meme methode que P16, autre reformulation | `passage_search_external_work` | `catalog_search`, `passage_context`, selection | partiel | Meme faiblesse: pas encore une vraie methode bibliothecaire canonique | mixte | Mutualiser la methode au lieu de traiter ces cas comme des variantes opportunistes |
+| P18 | Theme externe 3 | Meme methode que P16, autre reformulation | `passage_search_external_work` | `catalog_search`, `passage_context`, selection | partiel | Le cas est utile, mais reste un assemblage d'outils plus qu'une methode produit | mixte | Fermer la methode externe avec verite produit et clarifications propres |
 
-- les recherches thematiques n'injectent plus une lane muette sur leur niveau
-  de certitude: la logique produit distingue maintenant `passage exact`,
-  `candidat plausible`, `approximation contextuelle` et `clarification
-  necessaire`;
-- cette verite produit n'est plus seulement dans l'observabilite: elle est
-  portee dans le runtime et jusque dans la lane Biblio injectee au modele
-  principal;
-- `resolve_work` ne force plus artificiellement un extracteur de passage quand
-  l'utilisateur demande d'abord une cible documentaire;
-- `BiblioResolveRequest` conserve maintenant `document_title` et `work_title`
-  separement, ce qui rend `Theetete de Platon` moins tordu cote FridaDev;
-- une requete nue du type `Trouve-moi le Theetete de Platon` peut maintenant
-  produire une resolution documentaire honnete au lieu d'un faux no-signal ou
-  d'une tentative de passage.
+## 5. Registre cible des methodes produit
 
-Limites maintenues:
+Le chantier doit converger vers un registre explicite de methodes produit. Ce
+registre n'est pas encore une spec de schema; il est la cible de pilotage.
 
-- la provenance primaire/commentaire/notice n'est pas encore garantie;
-- la priorite texte primaire > commentaire reste un chantier ouvert;
-- la recherche thematique extraite via `search -> context` reste une
-  approximation contextuelle tant qu'elle n'est pas confirmee par une
-  resolution plus forte;
-- la hierarchie complete `oeuvre / corpus / volume / edition` reste partielle.
+Methodes canoniques minimales:
+
+- `catalog_list_full`
+- `catalog_list_bounded`
+- `work_lookup`
+- `document_toc_show`
+- `passage_extract_canonical_range`
+- `passage_seed_from_exact_result`
+- `passage_search_in_work`
+- `passage_explain_current`
+- `passage_show_around_current`
+- `passage_move_previous_segment`
+- `passage_continue_next_segment`
+- `passage_origin_check`
+- `passage_search_external_work`
+
+Regles:
+
+- plusieurs cas peuvent reutiliser la meme methode;
+- une methode ne doit pas etre une simple copie du nom d'un outil;
+- le contrat agent futur doit evoluer vers une sortie qui nomme la methode
+  produit, pas seulement des `tool_calls`;
+- le runtime doit executer la methode, pas "deviner" la methode apres coup
+  depuis une liste d'outils.
+
+## 6. Nettoyage `app/biblio/` rattache a l'invariant
+
+Le cleanup n'est pas cosmetique. Il est necessaire parce que le meme cas est
+encore decide ou repare a plusieurs endroits.
+
+### A. Nettoyage immediat a rattacher au chantier fonctionnel
+
+| Zone | Fichiers principaux | Probleme | Pourquoi ce n'est pas cosmetique |
+| --- | --- | --- | --- |
+| Reconnaissance de cas distribuee | `query_planner.py`, `librarian_dialogue_intents.py`, `librarian_dialogue_navigation.py`, `conversation_followup.py`, `librarian_dialogue_planner.py` | Plusieurs parseurs locaux continuent a reconnaitre le cas ou a le tordre | Tant que plusieurs couches decident le cas, le bibliothecaire n'est pas souverain |
+| Orchestration runtime trop concentree | `chat_runtime.py`, `library_runtime.py`, `librarian_agent_first.py` | Le runtime choisit, repare, reroute et post-traite trop de choses | Cela empeche de brancher proprement une couche "methode produit" |
+| Methode et outils confondus | `librarian_tools.py`, `librarian_planner.py`, `librarian_agent_contract.py` | Les outils sont exposes clairement, mais la methode produit ne l'est pas | Le systeme parle en `tool_calls`, pas en cas produit explicites |
+| Verite produit eparpillee | `prompt_lane.py`, `observability.py`, `chat_runtime.py` | Le niveau exact/plausible/contextuel n'est pas encore porte par une methode source unique | Le produit peut devenir vrai en observabilite et faux dans sa logique d'execution |
+
+### B. Nettoyage a faire apres stabilisation fonctionnelle
+
+| Zone | Fichiers principaux | Pourquoi attendre |
+| --- | --- | --- |
+| Moteurs bas niveau passage | `passage_candidate_search.py`, `passage_context_search.py`, `passage_selection.py`, `passage_extractor.py` | Ces briques sont plus stables que la couche de pilotage; il vaut mieux d'abord figer les methodes produit |
+| Resolveurs documentaires | `document_resolver.py`, `work_resolver.py`, `table_of_contents_runtime.py` | Leur bon decoupage dependra du futur registre de methodes |
+| Client Catalogue et observabilite large | `catalogue_client.py`, `observability.py` | Le vrai nettoyage dependra des primitives retenues et des payloads de methode |
+
+### C. Regle de cleanup
+
+- ne pas commencer par "refactoriser le bazar";
+- commencer par fixer:
+  - qui reconnait le cas;
+  - quelle methode porte ce cas;
+  - quel payload structure revient;
+- extraire ensuite les responsabilites par couche, pas par confort local.
+
+## 7. Ce qui releve de FridaDev vs Catalogue / DB / indexation
+
+### A. Releve de FridaDev
+
+- registre de methodes produit;
+- reconnaissance du cas par le bibliothecaire;
+- fallback deterministe comme garde-fou, pas comme souverainete produit;
+- orchestration runtime par methode;
+- verite produit de sortie;
+- etat Biblio multi-tour;
+- lanes produit;
+- observabilite content-free;
+- clarifications propres.
+
+### B. Releve de Catalogue / DB / indexation
+
+- representation forte d'une oeuvre interne si le produit la promet;
+- signal exploitable primaire/commentaire/notice/introduction;
+- objet ou mapping d'intervalle canonique general;
+- primitives documentaires supplementaires si `page_read` et `passage_context`
+  ne suffisent pas;
+- indexation utile de TOC si la TOC doit devenir searchable comme support
+  d'oeuvre interne.
+
+### C. Releve mixte
+
+- `work_lookup`
+- verification de provenance;
+- priorite texte primaire > commentaire;
+- recherche thematique dans une oeuvre;
+- continuation documentaire forte.
+
+## 8. Ordre reel des lots
+
+### Lot A - Cadrage canonique cas -> methode
+
+- [ ] Geler la grammaire des 18 cas.
+- [ ] Geler le registre initial des methodes produit.
+- [ ] Geler la regle de statut `vert net / partiel / faux vert / absent`.
+
+### Lot B - Contrat methode produit
+
+- [ ] Faire evoluer la spec agent vers une sortie qui nomme la methode produit.
+- [ ] Definir le payload structure minimal commun a toutes les methodes.
+- [ ] Definir les preconditions et la verite produit de chaque methode.
+
+### Lot C - Execution runtime par methode
+
+- [ ] Brancher le runtime sur les methodes produit, pas sur des intentions
+      heuristiques eparpillees.
+- [ ] Arreter les reparations silencieuses qui changent de methode sans le dire.
+- [ ] Laisser le deterministe tenir les murs sans redevenir le plan produit.
+
+### Lot D - Cleanup `app/biblio/` par responsabilites
+
+- [ ] Recentrer `chat_runtime.py` sur l'orchestration.
+- [ ] Sortir la reconnaissance de cas locale la ou elle est dupliquee.
+- [ ] Separer clairement:
+      - reconnaissance de cas;
+      - registre de methodes;
+      - execution de methode;
+      - outils techniques;
+      - observabilite.
+
+### Lot E - Chantiers Catalogue / DB / indexation necessaires
+
+- [ ] Ouvrir seulement les lots structurels encore necessaires:
+      - intervalle canonique;
+      - signal primaire/commentaire;
+      - oeuvre interne;
+      - navigation documentaire plus riche si prouvee necessaire.
+
+## 9. Criteres de sortie de cette refonte
+
+- [ ] Les 18 cas existent comme matrice produit explicite, pas seulement comme
+      smokes.
+- [ ] Chaque cas renvoie a une methode produit explicite.
+- [ ] Chaque methode annonce ses outils/scripts techniques et son payload
+      structure.
+- [ ] Les faux verts sont explicitement nommes et refuses comme validation
+      finale.
+- [ ] La separation FridaDev / Catalogue / DB / indexation est documentee sans
+      flou.
+- [ ] Le cleanup `app/biblio/` est rattache a l'invariant produit, pas a un
+      geste de style.
+
+## 10. Regles de pilotage
+
+- [ ] Aucun lot futur ne peut se declarer "termine" sur un simple smoke vert si
+      le cas reste `partiel` ou `faux vert`.
+- [ ] Aucun lot futur ne doit confondre outil technique et methode produit.
+- [ ] Toute validation future doit dire si l'ecart restant releve:
+      - de FridaDev;
+      - de Catalogue / DB / indexation;
+      - ou d'un mixte.
+- [ ] Aucune reouverture de micro-lot runtime ne doit court-circuiter cette
+      matrice canonique.
