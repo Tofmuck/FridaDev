@@ -478,8 +478,8 @@ def _extract_table_of_contents_titles(text: str, folded: str) -> tuple[str, str]
         candidate = _extract_catalogue_named_target(text)
     if not _usable_title(candidate):
         return "", ""
-    work, document = _split_work_of_corpus_for_table_of_contents(candidate)
-    if work and document:
+    work, document = _split_work_of_corpus(candidate)
+    if work and document and is_known_work_alias(work):
         return canonical_work_title(work), document
     return "", candidate
 
@@ -586,22 +586,6 @@ def _split_work_of_corpus(value: str) -> tuple[str, str]:
         work if _usable_title(work) else "",
         document if _usable_title(document) else "",
     )
-
-
-def _split_work_of_corpus_for_table_of_contents(value: str) -> tuple[str, str]:
-    candidate = str(value or "").strip()
-    match = re.match(
-        r"^\s*(.+?)\s+(?:de|du|des|d['’])\s+([^,.;?!\n]{1,80})\s*$",
-        candidate,
-        flags=re.IGNORECASE,
-    )
-    if not match:
-        return "", ""
-    work = _clean_title(match.group(1), locator="")
-    document = _clean_title(match.group(2), locator="")
-    if not _usable_title(work) or not _usable_title(document):
-        return "", ""
-    return work, document
 
 
 def _clean_title(value: str, *, locator: str) -> str:

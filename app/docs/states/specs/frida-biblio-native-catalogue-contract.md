@@ -247,11 +247,11 @@ Implementation Lot 2 du 2026-05-28:
 
 Correctif oeuvre interne Lot E du 2026-06-03:
 
-- une demande TOC de forme structurelle claire `sommaire ... <oeuvre> de
-  <volume/corpus>` peut maintenant rester cote FridaDev: le planner separe
-  `work_title` et `document_title`, puis la runtime TOC consulte le volume
-  unique et renvoie seulement les entrees TOC correspondantes a l'oeuvre
-  interne quand elles existent;
+- une petite demande TOC deja mappee de forme `Sommaire du Theetete de
+  Platon` peut rester cote FridaDev: le planner separe `work_title` et
+  `document_title`, puis la runtime TOC consulte le volume unique et renvoie
+  seulement les entrees TOC correspondantes a l'oeuvre interne quand elles
+  existent;
 - cette focalisation reste un repere structurel dans la TOC du volume; elle
   ne doit pas etre racontee comme une table des matieres autonome et complete
   de l'oeuvre interne;

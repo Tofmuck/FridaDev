@@ -1040,47 +1040,6 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertNotIn("RAW WORK CHAPTER TITLE THÉÉTÈTE", encoded_observability)
         self.assertNotIn("RAW DOCUMENT TITLE", encoded_observability)
 
-    def test_internal_work_table_of_contents_request_accepts_lowercase_corpus_form(self) -> None:
-        fake = _InternalWorkTableOfContentsClient()
-
-        result = chat_runtime.run_biblio_chat_turn(
-            {"biblio_enabled": True},
-            user_msg="Sommaire du theetete de platon",
-            client_factory=lambda **_kwargs: fake,
-        )
-
-        self.assertTrue(result.used)
-        self.assertEqual(result.query_kind, "show_table_of_contents")
-        self.assertEqual(fake.calls, [("catalog", "platon", 8, 0), ("chapters", "doc-toc", 500, 0)])
-        self.assertEqual(result.observability_payload["status"], "toc_listed")
-        self.assertIsNotNone(result.prompt_message)
-        self.assertIn(
-            "Affichage des 1 entrees correspondant a l'oeuvre interne.",
-            result.prompt_message["content"],
-        )
-        self.assertIn("RAW WORK CHAPTER TITLE THÉÉTÈTE", result.prompt_message["content"])
-
-    def test_internal_work_table_of_contents_request_supports_generic_work_titles(self) -> None:
-        fake = _InternalWorkTableOfContentsClient(work_chapter_title="RAW WORK CHAPTER TITLE ION")
-
-        result = chat_runtime.run_biblio_chat_turn(
-            {"biblio_enabled": True},
-            user_msg="Sommaire de l Ion de Platon",
-            client_factory=lambda **_kwargs: fake,
-        )
-
-        self.assertTrue(result.used)
-        self.assertEqual(result.query_kind, "show_table_of_contents")
-        self.assertEqual(fake.calls, [("catalog", "Platon", 8, 0), ("chapters", "doc-toc", 500, 0)])
-        self.assertEqual(result.observability_payload["status"], "toc_listed")
-        self.assertIsNotNone(result.prompt_message)
-        self.assertIn(
-            "Affichage des 1 entrees correspondant a l'oeuvre interne.",
-            result.prompt_message["content"],
-        )
-        self.assertIn("RAW WORK CHAPTER TITLE ION", result.prompt_message["content"])
-        self.assertNotIn("RAW INTRO CHAPTER TITLE", result.prompt_message["content"])
-
     def test_open_document_request_returns_catalogue_summary_without_raw_observability(self) -> None:
         fake = _TableOfContentsClient()
 
@@ -1678,10 +1637,6 @@ class _LargeTableOfContentsClient(_TableOfContentsClient):
 
 
 class _InternalWorkTableOfContentsClient(_TableOfContentsClient):
-    def __init__(self, *, work_chapter_title: str = "RAW WORK CHAPTER TITLE THÉÉTÈTE") -> None:
-        super().__init__()
-        self._work_chapter_title = work_chapter_title
-
     def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
         self.calls.append(("chapters", doc_id, limit, offset))
         return catalogue.CatalogueResponse(
@@ -1704,7 +1659,7 @@ class _InternalWorkTableOfContentsClient(_TableOfContentsClient):
                         "document_role_signal_source": "chapter_title",
                         "document_role_signal_strength": "weak",
                     },
-                    {"chapter_no": 2, "title": self._work_chapter_title, "unit_no": 2, "source": "synthetic"},
+                    {"chapter_no": 2, "title": "RAW WORK CHAPTER TITLE THÉÉTÈTE", "unit_no": 2, "source": "synthetic"},
                     {"chapter_no": 3, "title": "RAW OTHER CHAPTER TITLE", "unit_no": 3, "source": "synthetic"},
                 ],
             },
