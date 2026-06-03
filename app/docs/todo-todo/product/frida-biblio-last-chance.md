@@ -859,7 +859,7 @@ Artefacts produit partiels ou solides seulement dans leur perimetre:
 | Artefact | Cases / statut | Methode / outils | Verdict |
 | --- | --- | --- | --- |
 | `app/docs/states/baselines/biblio-smokes/kant-internal-section-two-pages-diagnostic-20260603T135200Z.jsonl` | diagnostic Kant interne | plan agent-first | Diagnostic structurel, pas preuve finale. |
-| `app/docs/states/baselines/biblio-smokes/kant-internal-section-two-pages-live-final-20260603T144926Z.jsonl` | `KANT_INTERNAL_SECTION_TWO_PAGES`, `met`, `final_restitution_ok=true` | `catalog_search`, `document_open_summary`, `search_chapters`, `page_read` | Preuve produit ciblee; ne generalise pas le runner. |
+| `app/docs/states/baselines/biblio-smokes/kant-internal-section-two-pages-live-final-20260603T144926Z.jsonl` | `KANT_INTERNAL_SECTION_TWO_PAGES`, `met`, `final_restitution_ok=true` | `catalog_search`, `document_open_summary`, `search_chapters`, `page_read` | Preuve partielle utile du chemin section interne -> lectures de pages; non suffisante comme preuve produit finale tant qu'aucune preuve content-free du message final rendu n'est conservee. |
 | `app/docs/states/baselines/biblio-smokes/radical-audit-biblio-live-20260603T152425Z.jsonl` | Kant/Foucault/Stephanus live audit | outils et message hashes | Audit live content-free; classe des risques et regressions, pas cloture. |
 
 ### Exigences pour preuves futures
