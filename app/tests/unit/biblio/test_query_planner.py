@@ -42,14 +42,30 @@ class BiblioQueryPlannerTests(unittest.TestCase):
         self.assertEqual(plan.catalogue_query, "Platon")
 
     def test_internal_work_table_of_contents_request_separates_work_and_volume(self) -> None:
-        plan = query_planner.plan_biblio_query("Sommaire du Théétète de Platon")
+        cases = (
+            ("Sommaire du Théétète de Platon", "Théétète", "Platon"),
+            ("Sommaire du Théétète de platon", "Théétète", "platon"),
+            ("Sommaire du theetete de platon", "Théétète", "platon"),
+            ("Sommaire de l Apologie de Platon", "Apologie", "Platon"),
+            ("Sommaire de l Ion de Platon", "Ion", "Platon"),
+        )
 
-        self.assertTrue(plan.should_consult)
-        self.assertEqual(plan.intent, query_planner.INTENT_SHOW_TABLE_OF_CONTENTS)
-        self.assertEqual(plan.document_title, "Platon")
-        self.assertEqual(plan.work_title, "Théétète")
-        self.assertEqual(plan.catalogue_query, "Platon")
-        self.assertIn("Theetete", plan.work_title_variants)
+        for message, expected_work, expected_document in cases:
+            with self.subTest(message=message):
+                plan = query_planner.plan_biblio_query(message)
+
+                self.assertTrue(plan.should_consult)
+                self.assertEqual(plan.intent, query_planner.INTENT_SHOW_TABLE_OF_CONTENTS)
+                self.assertEqual(plan.document_title, expected_document)
+                self.assertEqual(plan.work_title, expected_work)
+                self.assertEqual(plan.catalogue_query, expected_document)
+
+        accented = query_planner.plan_biblio_query("Sommaire du Théétète de Platon")
+        lowered = query_planner.plan_biblio_query("Sommaire du theetete de platon")
+        generic = query_planner.plan_biblio_query("Sommaire de l Ion de Platon")
+        self.assertIn("Theetete", accented.work_title_variants)
+        self.assertIn("Theetete", lowered.work_title_variants)
+        self.assertIn("Ion", generic.work_title_variants)
 
     def test_open_document_request_is_planned_as_catalogue_document_action(self) -> None:
         plan = query_planner.plan_biblio_query("Ouvre Platon dans la bibliothèque")
