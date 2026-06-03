@@ -198,7 +198,7 @@ Regle dure:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | P05 | Theme dans une oeuvre | Trouver un passage thematique dans l'oeuvre cible | `passage_search_in_work` | resolution documentaire, `catalog_search`, `passage_context`, selection | vert net | La methode explicite est maintenant reconnue agentiquement, consulte l'oeuvre resolue puis un contexte borne, et restitue un passage thematique utile sans le sur-vendre comme certitude textuelle plus forte que ce que le runtime tient | FridaDev | Conserver la distinction entre passage plausible/contextuel et preuve textuelle forte |
 | P06 | Theme dans une oeuvre sans accents | Meme cas que P05, avec variantes de forme | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | vert net | La variante sans accents/translitteree est maintenant reconnue par l'agent comme le bon cas de famille, sans rebasculer la reconnaissance vers une reparation deterministe phrase par phrase | FridaDev | Conserver cette distinction du cote agentique et ne pas la redescendre dans le parseur local |
-| P07 | Theme lexical voisin | Meme cas que P05 avec reformulation ("sage-femme") | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | partiel | La recherche marche parfois, mais sans garantie de source ni de niveau documentaire | mixte | Integrer la verification oeuvre/source dans la methode |
+| P07 | Theme lexical voisin | Meme cas que P05 avec reformulation ("sage-femme") | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | vert net | La reformulation lexicale voisine est maintenant reconnue comme le bon cas de famille et reste bornee a l'oeuvre resolue avant consultation de contexte, sans fabriquer une source hors document courant | FridaDev | Conserver la verification oeuvre/document comme borne de la methode |
 | P08 | Theme paraphrase | Meme cas que P05 avec reformulation plus libre | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | partiel | Le cas reste un `search -> context` utile, pas une resolution forte | mixte | Mieux separer paraphrase, candidat plausible et passage exact |
 
 ### E. Suivi de passage / multi-tour
@@ -367,7 +367,7 @@ encore decide ou repare a plusieurs endroits.
 - [x] `P06 passage_search_in_work` variante sans accents: ferme le cas sans
       rebasculer la reconnaissance vers des reparations locales phrase par
       phrase.
-- [ ] `P07 passage_search_in_work` variante lexicale voisine: fermer le cas
+- [x] `P07 passage_search_in_work` variante lexicale voisine: ferme le cas
       avec verification oeuvre/source exploitable.
 - [ ] `P08 passage_search_in_work` paraphrase libre: fermer le cas en separant
       clairement paraphrase, candidat plausible et passage exact.
