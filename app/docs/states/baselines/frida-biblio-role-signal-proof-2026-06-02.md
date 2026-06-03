@@ -35,3 +35,17 @@ docker exec -w /app platform-doc-pipeline-api python -c "import json,db_store; c
 - cette commande est rejouable telle quelle dans le conteneur live;
 - elle ne depend ni d'un import `tests.*`, ni d'un fichier copie sous `/tmp`;
 - l'absence de signal (`""`) ne vaut jamais preuve positive de texte primaire.
+
+## 5. Test Sauron rejouable
+
+Pour rejouer le test `doc-pipeline` lui-meme dans le bon contexte:
+
+```bash
+docker exec -w /app platform-doc-pipeline-api python tests/test_biblio_role_signal.py -v
+```
+
+Cette commande est canonique pour ce micro-lot:
+
+- elle s'execute dans le conteneur qui embarque `psycopg` et le code live;
+- elle n'utilise ni import `tests.*`, ni chemin implicite faux;
+- elle ne pretend pas rendre le host Python nu equivalent a l'image runtime.
