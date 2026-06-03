@@ -158,6 +158,7 @@ class BiblioLibrarianToolResult:
     document_id: str = field(default="", repr=False, compare=False)
     items: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
     document_summary: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    chapter_hint: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     chapters: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
     positions: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
     context_text: str = field(default="", repr=False, compare=False)
@@ -275,16 +276,23 @@ class BiblioLibrarianToolRegistry:
             return _incoherent_page_result(tool, response, doc_id)
         page_text = _page_text(response.payload)
         summary = _page_document_summary(response.payload, doc_id)
+        chapter_hint = _chapter_hint(response.payload)
         return _ok_result(
             tool,
             response,
             document_summary=summary,
+            chapter_hint=chapter_hint,
             positions=(_position({"page_no": page_no}),),
             doc_id=doc_id,
             content=page_text,
             page_text=page_text,
             extra_fields={
                 "paragraph_count": _raw_int(response.payload.get("paragraph_count")),
+                "current_chapter_no": _raw_int(chapter_hint.get("chapter_no")),
+                "current_chapter_unit_start": _raw_int(chapter_hint.get("unit_start")),
+                "current_chapter_unit_end": _raw_int(chapter_hint.get("unit_end")),
+                "next_chapter_no": _raw_int(chapter_hint.get("next_chapter_no")),
+                "chapter_source": _string(chapter_hint.get("source")),
                 "page_truncated": bool(
                     isinstance(response.payload.get("raw_text"), str)
                     and len(str(response.payload.get("raw_text") or "")) > len(page_text)
@@ -359,6 +367,7 @@ class BiblioLibrarianToolRegistry:
         if _string(response.payload.get("document_id")) != doc_id:
             return _incoherent_context_result(tool, response, doc_id)
         context_text = _context_text(response.payload)
+        chapter_hint = _chapter_hint(response.payload)
         positions = (
             _position(
                 {
@@ -373,10 +382,18 @@ class BiblioLibrarianToolRegistry:
         return _ok_result(
             tool,
             response,
+            chapter_hint=chapter_hint,
             positions=positions,
             context_text=context_text,
             doc_id=doc_id,
             content=context_text,
+            extra_fields={
+                "current_chapter_no": _raw_int(chapter_hint.get("chapter_no")),
+                "current_chapter_unit_start": _raw_int(chapter_hint.get("unit_start")),
+                "current_chapter_unit_end": _raw_int(chapter_hint.get("unit_end")),
+                "next_chapter_no": _raw_int(chapter_hint.get("next_chapter_no")),
+                "chapter_source": _string(chapter_hint.get("source")),
+            },
         )
 
 
@@ -399,6 +416,7 @@ def _ok_result(
     *,
     items: tuple[dict[str, Any], ...] = (),
     document_summary: dict[str, Any] | None = None,
+    chapter_hint: dict[str, Any] | None = None,
     chapters: tuple[dict[str, Any], ...] = (),
     positions: tuple[dict[str, Any], ...] = (),
     context_text: str = "",
@@ -446,6 +464,7 @@ def _ok_result(
         document_id=doc_id,
         items=items,
         document_summary=dict(document_summary or {}),
+        chapter_hint=dict(chapter_hint or {}),
         chapters=chapters,
         positions=positions,
         context_text=context_text,
@@ -698,6 +717,24 @@ def _chapter_item(raw: Any) -> dict[str, Any]:
             "page_end": _raw_int(item.get("page_end")),
             "paragraph_start": _raw_int(item.get("paragraph_start")),
             "paragraph_end": _raw_int(item.get("paragraph_end")),
+        }
+    )
+
+
+def _chapter_hint(payload: Mapping[str, Any]) -> dict[str, Any]:
+    item = _mapping(payload.get("chapter"))
+    return _clean_observation(
+        {
+            "chapter_no": _raw_int(item.get("chapter_no")),
+            "title": _string(item.get("title")),
+            "unit_start": _raw_int(item.get("unit_start")),
+            "unit_end": _raw_int(item.get("unit_end")),
+            "source": _string(item.get("source")),
+            "next_chapter_no": _raw_int(item.get("next_chapter_no")),
+            "next_chapter_title": _string(item.get("next_chapter_title")),
+            "document_role_signal": _string(item.get("document_role_signal")),
+            "document_role_signal_source": _string(item.get("document_role_signal_source")),
+            "document_role_signal_strength": _string(item.get("document_role_signal_strength")),
         }
     )
 

@@ -556,6 +556,11 @@ Correctif recherche de candidats du 2026-05-30:
 - `GET /doc/{id}/chapters` peut exposer ce meme signal faible sur ses lignes de
   TOC directe, derive du titre de chapitre et, a defaut, du titre
   documentaire;
+- `GET /doc/{id}/page/{page_no}` et `GET /doc/{id}/context` peuvent maintenant
+  exposer un repere TOC borne sous forme d'un objet `chapter`, derive de
+  `document_chapters` pour l'unite/page demandee;
+- ce repere peut contenir le chapitre courant, sa plage unitaire bornee, et le
+  chapitre suivant quand il existe;
 - valeurs autorisees pour ce signal faible: `commentary`, `notice`,
   `introduction`;
 - source autorisee: `chapter_title` ou `document_title`;
@@ -564,6 +569,9 @@ Correctif recherche de candidats du 2026-05-30:
   seulement a demoter proprement les hits `commentary`, `notice` ou
   `introduction`, et a conserver un indice explicite plutot qu'une heuristique
   cachee; l'absence de signal ne prouve rien de positif sur la nature du hit.
+- le repere `chapter` enrichit seulement la navigation documentaire bornee
+  cote FridaDev (`page_read`, `passage_context`); il n'autorise pas a
+  sur-vendre une resolution bibliographique plus forte que la TOC elle-meme.
 - un score Catalogue float fini peut contribuer au ranking et produire le reason code `high_catalogue_rank_score`;
 - l'observabilite des candidats reste content-free: ids courts, pages, paragraphes, `paragraph_id`, scores, hashes de variantes, reason codes et counts seulement;
 - l'objet resultat de recherche de candidats ne conserve pas les payloads Catalogue bruts de `/search`; il garde seulement des observations endpoint compactes content-free;

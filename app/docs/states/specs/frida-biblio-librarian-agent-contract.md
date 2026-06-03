@@ -419,9 +419,13 @@ Implementation Lot 3:
 - correction post-Lot 3: `passage_context` exige que le payload Catalogue
   porte un `document_id` present et egal au `document_id` demande; sinon le
   resultat est `incoherent_catalogue`, content-free, sans contexte interne;
+- correction Lot E navigation: `page_read` et `passage_context` peuvent
+  maintenant porter en interne un repere TOC borne `chapter_hint` (chapitre
+  courant / suivant) quand Catalogue l'expose deja, mais ce repere ne fuit
+  jamais brut dans `to_observability()`;
 - correction post-Lot 3: les champs content-rich des resultats outils
-  (`items`, `document_summary`, `chapters`, `positions`, `context_text`) sont
-  exclus de `repr(result)` et des comparaisons dataclass.
+  (`items`, `document_summary`, `chapter_hint`, `chapters`, `positions`,
+  `context_text`) sont exclus de `repr(result)` et des comparaisons dataclass.
 
 ## 9. Budgets, timeouts et retries
 

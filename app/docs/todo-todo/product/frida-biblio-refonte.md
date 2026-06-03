@@ -374,6 +374,11 @@ encore decide ou repare a plusieurs endroits.
 - [x] Propager ce meme signal faible negatif aux lignes `GET /doc/{id}/chapters`
       et l'utiliser pareillement seulement comme garde-fou negatif quand
       `work_lookup` travaille deja dans un document physique unique.
+- [x] Faire remonter depuis `GET /doc/{id}/page/{page_no}` et
+      `GET /doc/{id}/context` un repere TOC borne (chapitre courant /
+      chapitre suivant) quand la structure documentaire l'autorise deja, puis
+      l'afficher cote navigation sans le maquiller en resolution bibliographique
+      forte.
 
 ## 9. Criteres de sortie de cette refonte
 

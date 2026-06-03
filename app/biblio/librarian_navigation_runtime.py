@@ -199,6 +199,26 @@ def _tool_lines(result: librarian_tools.BiblioLibrarianToolResult) -> list[str]:
             parts.append(f"paragraph_id={position['paragraph_id']}")
         if parts:
             lines.append("Position: " + "; ".join(parts))
+    if result.chapter_hint:
+        chapter_no = _int(result.chapter_hint.get("chapter_no"))
+        chapter_title = _text(result.chapter_hint.get("title"))
+        if chapter_no is not None or chapter_title:
+            label = "Repere TOC:"
+            if chapter_no is not None and chapter_title:
+                lines.append(f"{label} chapitre {chapter_no} - {_neutralize(chapter_title)}")
+            elif chapter_no is not None:
+                lines.append(f"{label} chapitre {chapter_no}")
+            else:
+                lines.append(f"{label} {_neutralize(chapter_title)}")
+        next_chapter_no = _int(result.chapter_hint.get("next_chapter_no"))
+        next_chapter_title = _text(result.chapter_hint.get("next_chapter_title"))
+        if next_chapter_no is not None or next_chapter_title:
+            if next_chapter_no is not None and next_chapter_title:
+                lines.append(f"Chapitre suivant: {next_chapter_no} - {_neutralize(next_chapter_title)}")
+            elif next_chapter_no is not None:
+                lines.append(f"Chapitre suivant: {next_chapter_no}")
+            else:
+                lines.append(f"Chapitre suivant: {_neutralize(next_chapter_title)}")
     if result.page_text:
         lines.append("Page consultee:")
         lines.append(_neutralize(_clip(result.page_text, DEFAULT_PAGE_SNIPPET_MAX_CHARS)))

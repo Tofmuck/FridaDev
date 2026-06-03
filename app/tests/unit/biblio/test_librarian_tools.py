@@ -178,6 +178,15 @@ class BiblioLibrarianToolTests(unittest.TestCase):
                 "page_no": 28,
                 "raw_text": RAW_PASSAGE,
                 "paragraph_count": 3,
+                "chapter": {
+                    "chapter_no": 4,
+                    "title": RAW_CHAPTER,
+                    "unit_start": 25,
+                    "unit_end": 32,
+                    "source": "toc",
+                    "next_chapter_no": 5,
+                    "next_chapter_title": "RAW NEXT CHAPTER MUST NOT LEAK",
+                },
             }
         )
         registry = tools.build_librarian_tool_registry(fake)
@@ -187,11 +196,15 @@ class BiblioLibrarianToolTests(unittest.TestCase):
 
         self.assertEqual(fake.calls, [("page", "doc-1", 28)])
         self.assertEqual(result.page_text, RAW_PASSAGE)
+        self.assertEqual(result.chapter_hint["title"], RAW_CHAPTER)
         self.assertEqual(observed["endpoint_kind"], catalogue.ENDPOINT_PAGE)
         self.assertEqual(observed["positions"][0]["page_no"], 28)
         self.assertEqual(observed["paragraph_count"], 3)
+        self.assertEqual(observed["current_chapter_no"], 4)
+        self.assertEqual(observed["next_chapter_no"], 5)
         self.assertNotIn(RAW_PASSAGE, _json(observed))
         self.assertNotIn(RAW_TITLE, _json(observed))
+        self.assertNotIn(RAW_CHAPTER, _json(observed))
 
     def test_locate_requires_document_and_locator_with_content_free_position(self) -> None:
         fake = _FakeToolClient(
@@ -254,7 +267,21 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertNotIn(RAW_PASSAGE, repr(result))
 
     def test_passage_context_accepts_coherent_payload_document_id(self) -> None:
-        fake = _FakeToolClient(context_payload={"document_id": "doc-1", "text": RAW_PASSAGE})
+        fake = _FakeToolClient(
+            context_payload={
+                "document_id": "doc-1",
+                "text": RAW_PASSAGE,
+                "chapter": {
+                    "chapter_no": 4,
+                    "title": RAW_CHAPTER,
+                    "unit_start": 25,
+                    "unit_end": 32,
+                    "source": "toc",
+                    "next_chapter_no": 5,
+                    "next_chapter_title": "RAW NEXT CHAPTER MUST NOT LEAK",
+                },
+            }
+        )
         registry = tools.build_librarian_tool_registry(fake)
 
         with self.assertRaises(tools.BiblioLibrarianToolError) as ctx:
@@ -270,9 +297,13 @@ class BiblioLibrarianToolTests(unittest.TestCase):
 
         self.assertEqual(fake.calls, [("context", "doc-1", None, 12, 3, 0, 700)])
         self.assertEqual(result.context_text, RAW_PASSAGE)
+        self.assertEqual(result.chapter_hint["title"], RAW_CHAPTER)
         self.assertEqual(observed["content_chars"], len(RAW_PASSAGE))
         self.assertEqual(observed["positions"][0]["page_no"], 12)
+        self.assertEqual(observed["current_chapter_no"], 4)
+        self.assertEqual(observed["next_chapter_no"], 5)
         self.assertNotIn(RAW_PASSAGE, encoded)
+        self.assertNotIn(RAW_CHAPTER, encoded)
         self.assertNotIn("text", observed)
 
     def test_result_repr_never_exposes_content_rich_fields(self) -> None:
