@@ -209,7 +209,7 @@ Regle dure:
 | P12 | Autour de ce passage | Montrer le voisinage documentaire du passage courant | `passage_show_around_current` | `passage_context` | vert net | Le follow-up de voisinage courant est maintenant tenu en agent-first nominal: `case_id=P12`, `product_method=passage_show_around_current` et `passage_context` borne autour de l'ancre courante, avec reparation d'execution limitee au meme product_method si le tool call initial est trop fragile | FridaDev | Conserver cette reparation agentique bornee sans redonner la reconnaissance du cas au parseur local |
 | P13 | Plus haut | Remonter avant le passage courant | `passage_move_previous_segment` | `passage_context` sur le segment precedent, sinon repli page borne | vert net | Le cas est maintenant tenu comme vraie methode documentaire: si l'ancre courante porte `page_no/para_no`, Frida remonte d'abord vers le segment precedent sur la meme page via `passage_context`; si cette finesse manque, le repli reste page-granulaire et borne | FridaDev | Conserver cette priorite documentaire: segment precedent si l'ancre le permet, page precedente seulement en repli explicite |
 | P14 | Continue | Continuer apres le passage courant | `passage_continue_next_segment` | `passage_context` si une fin precise est connue, sinon `page_read` borne | vert net | Le cas est maintenant tenu comme vraie methode documentaire agent-first: la continuation reste ancree sur l'etat courant et peut s'executer soit via `passage_context`, soit via `page_read`, tant que l'execution reste dans la meme methode produit et sous bornes explicites | FridaDev | Conserver cette verite produit: continuation documentaire explicite, avec repli borne assume quand l'ancre disponible est plus page-granulaire |
-| P15 | D'ou vient ce passage ? | Verifier l'origine documentaire du passage visible | `passage_origin_check` | `document_open_summary`, `document_toc`, `passage_context`, ancre technique | partiel | La provenance est partiellement visible, mais pas encore garantie comme verite forte | mixte | Ajouter un vrai statut de provenance et une verification de source exploitable |
+| P15 | D'ou vient ce passage ? | Verifier l'origine documentaire du passage visible | `passage_origin_check` | `document_open_summary`, `document_toc`, `passage_context`, ancre technique | vert net | La provenance du passage courant est maintenant tenue comme methode agent-first explicite: l'agent reconnait `P15`, garde l'ancre courante et peut verifier l'origine soit via `document_open_summary`, soit via `passage_context`, tant que l'execution reste dans la meme methode produit et rend une origine documentaire exploitable | FridaDev | Conserver cette verite de provenance: ancre courante obligatoire, verification documentaire bornee, pas de requalification locale du cas |
 
 ### F. Recherche thematique hors oeuvre courante
 
@@ -383,7 +383,7 @@ encore decide ou repare a plusieurs endroits.
       methode documentaire, pas comme reparation de contexte.
 - [x] `P14 passage_continue_next_segment`: fermer `continue` comme vraie methode
       documentaire explicite, pas comme smoke vert ambigu.
-- [ ] `P15 passage_origin_check`: fermer la provenance du passage comme verite
+- [x] `P15 passage_origin_check`: fermer la provenance du passage comme verite
       documentaire exploitable.
 - [ ] `P16 passage_search_external_work`: fermer la recherche thematique hors
       oeuvre courante comme vraie methode bibliothecaire canonique.

@@ -663,6 +663,16 @@ P14 est maintenant ferme comme continuation documentaire agent-first:
 - preuve datee:
   `app/docs/states/baselines/biblio-smokes/p14-agentic-20260603T121113Z.jsonl`.
 
+P15 est maintenant ferme comme verification de provenance agent-first:
+
+- apres une ancre courante deja posee, le plan agent valide reconnait
+  `case_id=P15` et `product_method=passage_origin_check`;
+- l'execution peut verifier l'origine documentaire utile soit par
+  `document_open_summary`, soit par `passage_context`, tant que l'ancre
+  courante reste la source de verite et que la methode produit ne change pas;
+- preuve datee:
+  `app/docs/states/baselines/biblio-smokes/p15-agentic-20260603T121537Z.jsonl`.
+
 ## 14. Tests exiges avant runtime
 
 Avant tout branchement runtime agentique:
