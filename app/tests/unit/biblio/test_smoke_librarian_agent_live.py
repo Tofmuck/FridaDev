@@ -72,6 +72,54 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         self.assertEqual(record["product_expectation_status"], "met")
         self.assertNotIn(RAW_PASSAGE, encoded)
         self.assertNotIn(RAW_QUERY, encoded)
+        self.assertEqual(record["agent_plan_case_id"], "")
+        self.assertEqual(record["agent_plan_product_method"], "")
+        self.assertFalse(record["state_present_after"])
+
+    def test_smoke_record_exposes_agent_plan_case_and_method_content_free(self) -> None:
+        fake_result = _fake_turn_runner(
+            {"biblio_enabled": True},
+            user_msg=RAW_QUERY,
+        )
+        fake_result = chat_runtime.BiblioChatResult(
+            enabled=fake_result.enabled,
+            used=fake_result.used,
+            reason_code=fake_result.reason_code,
+            query_kind=fake_result.query_kind,
+            context_result=fake_result.context_result,
+            passage_result=fake_result.passage_result,
+            prompt_lane=fake_result.prompt_lane,
+            biblio_state=fake_result.biblio_state,
+            state_transition=fake_result.state_transition,
+            librarian_agent_result=_fake_librarian_agent_result(
+                case_id="P03",
+                product_method="work_lookup",
+                answer_mode="tool",
+            ),
+            observability_payload=observability.build_biblio_event_payload(
+                enabled=True,
+                used=True,
+                query_kind="agent_first",
+                prompt_lane=fake_result.prompt_lane,
+                librarian_agent=_fake_librarian_agent_result(
+                    case_id="P03",
+                    product_method="work_lookup",
+                    answer_mode="tool",
+                ),
+                status="agent_first_executed",
+                reason_code="biblio_agent_first_plan_executed",
+            ),
+        )
+
+        records = smoke.run_smokes(
+            cases=(smoke.BiblioLibrarianProductSmokeCase("P03", "work_lookup", RAW_QUERY),),
+            turn_runner=lambda *_args, **_kwargs: fake_result,
+            raw_markers=(RAW_PASSAGE, RAW_QUERY),
+        )
+
+        self.assertEqual(records[0]["agent_plan_case_id"], "P03")
+        self.assertEqual(records[0]["agent_plan_product_method"], "work_lookup")
+        self.assertEqual(records[0]["agent_plan_answer_mode"], "tool")
 
     def test_no_signal_work_lookup_with_local_plan_is_not_product_met(self) -> None:
         case = smoke.BiblioLibrarianProductSmokeCase("P03", "work_lookup", RAW_QUERY)
@@ -502,6 +550,52 @@ def _passage(passage: str) -> extractor.BiblioPassageResult:
         para_no=3,
         paragraph_id=99,
     )
+
+
+def _fake_librarian_agent_result(*, case_id: str, product_method: str, answer_mode: str):
+    class _FakeInnerAgent:
+        def __init__(self):
+            self.validation_observation = {
+                "tool_call_count": 1,
+                "tool_names": ["catalog_search"],
+                "plan": {
+                    "case_id": case_id,
+                    "product_method": product_method,
+                    "answer_mode": answer_mode,
+                    "tool_call_count": 1,
+                    "tool_names": ["catalog_search"],
+                },
+            }
+
+    class _FakeComparison:
+        def __init__(self):
+            self.agent_result = _FakeInnerAgent()
+
+        def to_observability(self):
+            return {
+                "present": True,
+                "status": "evaluated",
+                "reason_code": "biblio_librarian_agent_compared",
+                "mode": "active",
+                "model_called": True,
+                "candidate_plan_present": True,
+                "used_for_response": True,
+                "product_response_changed": True,
+                "tool_execution_status": "executed",
+                "tool_call_event_count": 1,
+                "execution_scope": "agent_first",
+                "agent": {
+                    "validation": self.agent_result.validation_observation,
+                },
+                "tool_loop": {
+                    "status": "tool_executed",
+                    "reason_code": "biblio_librarian_tool_executed",
+                    "tool_call_count": 1,
+                    "tool_names": ["catalog_search"],
+                },
+            }
+
+    return _FakeComparison()
 
 
 if __name__ == "__main__":

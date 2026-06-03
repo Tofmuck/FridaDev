@@ -18,6 +18,7 @@ from .catalogue_client import CatalogueClient, ENDPOINT_DOCUMENT
 from .chat_runtime import BiblioChatResult, run_biblio_chat_turn
 from .conversation_state import BiblioConversationState
 from . import librarian_agent_contract as agent_contract
+from . import librarian_product_methods as product_methods
 from . import smoke_librarian_agent_expectations as expectations
 from .librarian_dialogue_planner import BiblioDialoguePlanningResult, plan_biblio_dialogue
 
@@ -122,6 +123,9 @@ _ALLOWED_AGENT_MODES = (
     agent_contract.MODE_CANDIDATE,
 )
 _OUTPUT_KEYS = {
+    "agent_plan_answer_mode",
+    "agent_plan_case_id",
+    "agent_plan_product_method",
     "agent_candidate_plan_present",
     "agent_mode",
     "agent_model_called",
@@ -173,6 +177,7 @@ _OUTPUT_KEYS = {
     "status",
     "total_count",
     "displayed_count",
+    "state_present_after",
     "truncated",
 } | expectations.EXPECTATION_OUTPUT_KEYS
 
@@ -240,6 +245,7 @@ def _record_for_result(
     counts = _mapping(event.get("counts"))
     passage_search = _mapping(event.get("passage_search"))
     agent = _mapping(event.get("librarian_agent"))
+    agent_validation_plan = _agent_validation_plan(result)
     dialogue_intent = _mapping(dialogue_observation.get("intent"))
     dialogue_plan = _mapping(dialogue_observation.get("plan"))
     endpoint_kinds = _endpoint_kinds(client, context, passage_search)
@@ -302,6 +308,9 @@ def _record_for_result(
         "agent_candidate_plan_present": _to_bool(agent.get("candidate_plan_present")),
         "agent_plan_tool_call_count": _agent_plan_tool_call_count(agent),
         "agent_plan_tool_names": _agent_plan_tool_names(agent),
+        "agent_plan_case_id": product_methods.normalize_case_id(agent_validation_plan.get("case_id")),
+        "agent_plan_product_method": str(agent_validation_plan.get("product_method") or "").strip(),
+        "agent_plan_answer_mode": _safe_token(agent_validation_plan.get("answer_mode")),
         "agent_executed_tool_names": _agent_executed_tool_names(agent),
         "agent_used_for_response": _to_bool(agent.get("used_for_response")),
         "agent_product_response_changed": _to_bool(agent.get("product_response_changed")),
@@ -310,6 +319,7 @@ def _record_for_result(
         "agent_execution_scope": _safe_token(agent.get("execution_scope")),
         "agent_loop_status": _safe_token(_mapping(agent.get("tool_loop")).get("status")),
         "agent_loop_reason_code": _safe_token(_mapping(agent.get("tool_loop")).get("reason_code")),
+        "state_present_after": bool(result.biblio_state and result.biblio_state.present),
     }
     base_record.update(_evaluate_expectations(case, base_record))
     return _finalize_record(
@@ -412,6 +422,17 @@ def _agent_plan_tool_names(agent: Mapping[str, Any]) -> list[str]:
 def _agent_executed_tool_names(agent: Mapping[str, Any]) -> list[str]:
     loop = _mapping(agent.get("tool_loop"))
     return _safe_token_list(loop.get("tool_names"))
+
+
+def _agent_validation_plan(result: BiblioChatResult) -> Mapping[str, Any]:
+    comparison = getattr(result, "librarian_agent_result", None)
+    agent_result = getattr(comparison, "agent_result", None)
+    validation = getattr(agent_result, "validation_observation", None)
+    if isinstance(validation, Mapping):
+        plan = validation.get("plan")
+        if isinstance(plan, Mapping):
+            return plan
+    return {}
 
 
 def _lane_observability(value: Any) -> dict[str, Any]:

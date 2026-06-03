@@ -64,6 +64,7 @@ _HASH_KEYS = {
 }
 _DOC_ID_KEYS = {"doc_id", "doc_id_short", "document_id", "document_candidate_ids", "doc_id_shorts"}
 _TOKEN_KEYS = {
+    "case_id",
     "calculation_version",
     "answer_mode",
     "comparison_kind",
@@ -84,6 +85,7 @@ _TOKEN_KEYS = {
     "primary_model",
     "primary_reason_code",
     "product_truth",
+    "product_method",
     "query_kind",
     "reason_code",
     "requested_locator_kind",
