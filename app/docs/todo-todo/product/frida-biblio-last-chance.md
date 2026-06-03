@@ -78,6 +78,36 @@ L'utilisateur peut confirmer, corriger, demander une autre piste ou
 elargir/recentrer. Le code ne doit pas pretendre fermer une question
 interpretative a la place de l'utilisateur.
 
+## 0 ter. Invariant import / parsing / normalisation
+
+La bibliotheque doit converger vers une forme documentaire homogene quelle que
+soit l'origine technique des ouvrages. Un ouvrage peut venir d'un PDF scanne
+avec OCR, d'un PDF texte, d'un EPUB, d'un import manuel ou d'un autre pipeline;
+cette origine varie, mais la forme documentaire finale doit rejoindre le meme
+modele canonique.
+
+Il ne doit pas exister une bibliotheque speciale OCR, une bibliotheque PDF
+texte, une bibliotheque EPUB ou des structures incompatibles selon le chemin
+d'entree. Les differences d'origine doivent etre conservees comme provenance,
+qualite, confiance, limites OCR ou limites de parsing, jamais comme schemas
+produit divergents.
+
+Regle de normalisation:
+
+1. Auditer la bibliotheque existante telle qu'elle est deja en base.
+2. Definir le modele canonique de sortie attendu pour tous les documents:
+   document, oeuvre interne, sections/chapitres, pages, paragraphes/unites
+   texte, ancres stables, intervalles, roles de contenu, provenance, qualite,
+   confiance et limites OCR si necessaire.
+3. Normaliser la bibliotheque actuelle vers ce modele canonique.
+4. Ensuite seulement, imposer ce meme modele comme contrat d'import pour les
+   futurs ouvrages.
+
+Le premier chantier concret est donc la normalisation de l'existant. Cette
+normalisation doit produire et figer le canon de sortie. Les futurs imports
+devront ensuite respecter ce canon, mais le pipeline d'import ne doit pas etre
+patche tant que ce canon n'est pas prouve sur le fonds deja ingere.
+
 ## 1. Probleme a corriger
 
 Le chantier actuel a de bonnes pieces:
@@ -741,6 +771,17 @@ preuve finale de bibliotheque fonctionnelle.
 
 - [ ] Definir `DocumentManifest`, `Work`, `SectionNode`, `Anchor`, `Interval`,
       `ContentRole`.
+- [ ] Auditer les chemins d'entree deja presents dans le fonds existant: PDF
+      scanne/OCR, PDF texte, EPUB, import manuel ou autre pipeline detecte.
+- [ ] Verifier comment ces chemins remplissent aujourd'hui `documents`,
+      `pages`, `paragraphs`, `raw_units`, `document_chapters` et `milestones`.
+- [ ] Verifier si pages, paragraphes, chapitres, TOC et ancres sont comparables
+      entre origines, ou si certains imports produisent une structure plus
+      pauvre, instable ou non homogene.
+- [ ] Identifier ce qui est obligatoire, facultatif, inconnu ou derive dans le
+      manifeste canonique.
+- [ ] Garder l'origine technique comme provenance/qualite/confiance/limites,
+      sans laisser cette origine produire des structures Biblio incompatibles.
 - [ ] Produire un manifeste derive pour chaque document existant, sans changer
       le runtime chat.
 - [ ] Marquer explicitement les roles inconnus.
@@ -749,7 +790,9 @@ preuve finale de bibliotheque fonctionnelle.
       la TOC le permet honnetement.
 
 Critere de fermeture: les documents existants ont une projection structurelle
-inspectable, versionnee et sans texte long expose.
+inspectable, versionnee et sans texte long expose. Cette projection normalise
+le fonds actuel vers un modele canonique unique et sert ensuite de contrat
+d'import futur, sans patcher le pipeline d'import avant preuve sur l'existant.
 
 ### Lot 2 - API/outils de bibliotheque minimale
 
