@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Sequence
 
 from . import librarian_agent_contract as agent_contract
+from . import librarian_product_methods as product_methods
 
 
 EXPECTATION_OUTPUT_KEYS = frozenset(
@@ -176,6 +177,9 @@ def _combine_expectations(
     agent_status: str,
     agent_reason: str,
 ) -> tuple[str, str]:
+    consistency_reason = _case_closure_consistency_reason(record)
+    if consistency_reason:
+        return "failed", consistency_reason
     if runtime_status == "met":
         return "met", runtime_reason
     kind = _safe_token(case_kind)
@@ -201,18 +205,25 @@ def _agent_first_execution_allowed(record: Mapping[str, Any]) -> bool:
         return False
     if _to_int(record.get("agent_tool_call_event_count")) < 1:
         return False
-    allowed_tools = {
+    executed_tools = set(_safe_token_list(record.get("agent_executed_tool_names")))
+    product_method = str(record.get("product_method_effective") or "").strip()
+    if not executed_tools:
+        return False
+    global_allowed_tools = {
         "catalog_list",
         "catalog_search",
         "document_open_summary",
         "document_toc",
+        "page_read",
         "locate",
         "passage_context",
     }
-    executed_tools = set(_safe_token_list(record.get("agent_executed_tool_names")))
-    if not executed_tools or not executed_tools.issubset(allowed_tools):
+    if not executed_tools.issubset(global_allowed_tools):
         return False
-    allowed_endpoints = {"catalog", "search", "metadata", "chapters", "locate", "context"}
+    if product_method:
+        if not all(product_methods.method_allows_tool(product_method, tool_name) for tool_name in executed_tools):
+            return False
+    allowed_endpoints = {"catalog", "search", "metadata", "chapters", "locate", "context", "page"}
     endpoint_kinds = set(_safe_token_list(record.get("endpoint_kinds")))
     if endpoint_kinds and not endpoint_kinds.issubset(allowed_endpoints):
         return False
@@ -221,6 +232,32 @@ def _agent_first_execution_allowed(record: Mapping[str, Any]) -> bool:
         and _to_bool(record.get("agent_product_response_changed"))
         and _safe_token(record.get("product_expectation_status")) == "met"
     )
+
+
+def _case_closure_consistency_reason(record: Mapping[str, Any]) -> str:
+    if _safe_token(record.get("query_kind")) != "agent_first":
+        return ""
+    case_id = product_methods.normalize_case_id(record.get("case_id"))
+    if not case_id or not product_methods.is_known_case_id(case_id):
+        return ""
+    expected_method = str(
+        product_methods.CASE_REFERENCE_SIGNATURES.get(case_id, {}).get("product_method") or ""
+    ).strip()
+    if not expected_method:
+        return ""
+    product_method = str(record.get("product_method_effective") or "").strip()
+    if product_method != expected_method:
+        return "case_closure_product_method_mismatch"
+    product_case_id = product_methods.normalize_case_id(record.get("product_case_id"))
+    if product_case_id != case_id:
+        return "case_closure_product_case_mismatch"
+    agent_plan_case_id = product_methods.normalize_case_id(record.get("agent_plan_case_id"))
+    if agent_plan_case_id and agent_plan_case_id != case_id:
+        return "case_closure_agent_plan_case_mismatch"
+    agent_plan_product_method = str(record.get("agent_plan_product_method") or "").strip()
+    if agent_plan_product_method and agent_plan_product_method != expected_method:
+        return "case_closure_agent_plan_product_method_mismatch"
+    return ""
 
 
 def _sequence(value: Any) -> Sequence[Any]:

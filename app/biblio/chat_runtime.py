@@ -472,17 +472,6 @@ def _agent_first_product_projection(
         case_id = librarian_product_methods.default_case_id_for_method(product_method)
     execution_status = librarian_product_methods.EXECUTION_STATUS_SUCCESS
     product_truth = _default_truth_for_method(product_method)
-    if _state_seeded_from_exact_extract(
-        product_method=product_method,
-        state_after=state_after,
-        state_transition=state_transition,
-    ):
-        return {
-            "case_id": "P10",
-            "product_method": librarian_product_methods.PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE,
-            "execution_status": librarian_product_methods.EXECUTION_STATUS_SUCCESS,
-            "product_truth": librarian_product_methods.TRUTH_LEVEL_EXACT,
-        }
     return {
         "case_id": case_id,
         "product_method": product_method,
@@ -506,20 +495,6 @@ def _default_truth_for_method(product_method: str) -> str:
     if not spec or not spec.truth_levels:
         return ""
     return str(spec.truth_levels[0] or "").strip()
-
-
-def _state_seeded_from_exact_extract(
-    *,
-    product_method: str,
-    state_after: BiblioConversationState,
-    state_transition: BiblioStateTransition | None,
-) -> bool:
-    if product_method != librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE:
-        return False
-    if state_transition is None or not state_transition.after_present:
-        return False
-    last_result = getattr(state_after, "last_result", {}) or {}
-    return bool(last_result.get("document_id") and (last_result.get("paragraph_id") or last_result.get("passage_hash")))
 
 
 def _truthy(value: Any) -> bool:

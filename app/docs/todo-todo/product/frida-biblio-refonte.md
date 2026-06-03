@@ -1,7 +1,7 @@
 # Frida Biblio refonte
 
 Date: 2026-06-02
-Statut: cloturee produit; archivage documentaire a planifier
+Statut: TODO active
 Classement: `app/docs/todo-todo/product/`
 Sources:
 
@@ -10,7 +10,9 @@ Sources:
 - `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - `app/docs/states/audits/frida-biblio-stephanus-library-audit-2026-06-02.md`
 - `app/docs/states/baselines/biblio-smokes/agent-first-full-post-truth-fix-20260601T185215Z.jsonl`
-- `app/docs/states/baselines/biblio-smokes/lot-e-p03-p18-final-20260603T123538Z.jsonl`
+- `app/docs/states/baselines/biblio-smokes/p04-agentic-rerun-20260603T131029Z.jsonl`
+- `app/docs/states/baselines/biblio-smokes/p10-agentic-rerun-20260603T131029Z.jsonl`
+- `app/docs/states/baselines/biblio-smokes/p14-agentic-rerun-stateful-20260603T131342Z.jsonl`
 
 Portee: document canonique de pilotage produit pour la refonte Biblio. Ce
 document ne remplace ni la spec agent, ni la spec Catalogue. Il fixe
@@ -191,7 +193,7 @@ Regle dure:
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | P04 | Plage canonique explicite | Extraire un passage borne demande par locator/range | `passage_extract_canonical_range` | resolution documentaire, `locate`, `passage_context`, `page_read` borne si la plage traverse plusieurs pages | vert net | La methode explicite est maintenant reconnue agentiquement, assemble une plage canonique bornee exploitable et publie un `interval_hint` reutilisable, sans promettre un objet canonique general d'intervalle | FridaDev | Conserver la frontiere claire entre range borne resolue et support general d'intervalle canonique |
-| P10 | Passage courant de reference | Faire de ce passage exact le point de depart de la suite Biblio | `passage_set_current_reference` | meme chaine que P04 + `state_update` | vert net | Le tour d'extraction exacte publie maintenant explicitement la mise en reference courante comme resultat produit `P10`, avec ancre technique persistee pour la suite, sans demander a l'agent de feindre une difference linguistique avec `P04` | FridaDev | Conserver cette couture explicite entre extraction exacte et reference courante |
+| P10 | Passage courant de reference | Faire de ce passage exact le point de depart de la suite Biblio | `passage_set_current_reference` | meme chaine que P04 + `state_update` | partiel | Le runtime sait encore poser l'ancre courante apres une extraction exacte, mais la preuve live stricte montre que `P10` n'est pas aujourd'hui ferme comme cas distinct: le plan agent reste `P04` et le validateur requalifie ce croisement comme mismatch de cloture de cas | FridaDev | Soit introduire une vraie fermeture distincte pour `passage_set_current_reference`, soit requalifier durablement `P10` comme projection dependante au lieu d'un cas ferme separablement |
 
 ### D. Recherche thematique dans une oeuvre
 
@@ -347,11 +349,13 @@ encore decide ou repare a plusieurs endroits.
 
 ### Lot E - Chantiers Catalogue / DB / indexation necessaires
 
-- [x] Lot E ne porte plus de `case_id` `partiel` ou `faux vert` dans la
-      matrice canonique; fermeture validee par le replay final
-      `lot-e-p03-p18-final-20260603T123538Z.jsonl`.
-- [x] Regle de fermeture de Lot E tenue: aucune case ci-dessous n'a ete cochee
-      sans au moins un test live avec le bibliothecaire agentique, conserve
+- [ ] Lot E reste ouvert tant qu'un `case_id` encore `partiel` ou `faux vert`
+      de la matrice canonique n'est pas referme comme vraie methode produit;
+      `P10` a ete requalifie `partiel` par les reruns stricts
+      `p04/p10-agentic-rerun-20260603T131029Z.jsonl`.
+- [x] Regle de fermeture de Lot E maintenue: aucune case ci-dessous n'a ete
+      reclassee `vert net` sans au moins un test live avec le bibliothecaire
+      agentique, conserve
       dans un artefact JSONL date, prouvant noir sur blanc:
       - `case_id` reconnu;
       - bonne methode/categorie de cas;
@@ -375,8 +379,9 @@ encore decide ou repare a plusieurs endroits.
       clairement paraphrase, candidat plausible et passage exact.
 - [x] `P09 document_toc_show`: ferme la TOC comme vraie methode rattachee a une
       cible resolue, sans elargir le parseur local.
-- [x] `P10 passage_set_current_reference`: ferme la mise en reference courante
-      comme methode explicite, pas comme effet de bord du runtime.
+- [ ] `P10 passage_set_current_reference`: soit fermer la mise en reference
+      courante comme cas distinct, soit la requalifier durablement comme
+      projection dependante de `P04`.
 - [x] `P11 passage_explain_current`: fermer l'explication du passage courant
       comme vraie methode multi-tour explicite.
 - [x] `P12 passage_show_around_current`: fermer le voisinage documentaire du

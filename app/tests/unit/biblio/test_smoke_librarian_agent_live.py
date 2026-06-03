@@ -195,6 +195,82 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         self.assertEqual(expectations["agent_expectation_reason_code"], "agent_first_fallback_repaired")
         self.assertEqual(expectations["product_expectation_status"], "met")
 
+    def test_p04_product_projection_to_p10_fails_case_closure_consistency(self) -> None:
+        case = smoke.BiblioLibrarianProductSmokeCase("P04", "range_extract", RAW_QUERY)
+        expectations = smoke._evaluate_expectations(
+            case,
+            {
+                "case_id": "P04",
+                "query_kind": "agent_first",
+                "status": "agent_first_executed",
+                "endpoint_count": 2,
+                "context_call_count": 1,
+                "passage_count": 1,
+                "lane_injected": True,
+                "agent_mode": "active",
+                "agent_present": True,
+                "agent_model_called": True,
+                "agent_candidate_plan_present": True,
+                "agent_status": "evaluated",
+                "agent_execution_scope": "agent_first",
+                "agent_tool_execution_status": "executed",
+                "agent_tool_call_event_count": 2,
+                "agent_used_for_response": True,
+                "agent_product_response_changed": True,
+                "agent_plan_case_id": "P04",
+                "agent_plan_product_method": "passage_extract_canonical_range",
+                "agent_plan_tool_names": ["catalog_search", "locate", "passage_context"],
+                "agent_executed_tool_names": ["catalog_search", "locate", "passage_context"],
+                "product_case_id": "P10",
+                "product_method_effective": "passage_set_current_reference",
+                "product_truth": "exact",
+                "endpoint_kinds": ["search", "context"],
+            },
+        )
+
+        self.assertEqual(expectations["runtime_expectation_status"], "met")
+        self.assertEqual(expectations["agent_expectation_status"], "met")
+        self.assertEqual(expectations["product_expectation_status"], "failed")
+        self.assertEqual(expectations["product_expectation_reason_code"], "case_closure_product_method_mismatch")
+
+    def test_p10_replay_of_p04_turn_fails_case_closure_consistency(self) -> None:
+        case = smoke.BiblioLibrarianProductSmokeCase("P10", "state_seed", RAW_QUERY)
+        expectations = smoke._evaluate_expectations(
+            case,
+            {
+                "case_id": "P10",
+                "query_kind": "agent_first",
+                "status": "agent_first_executed",
+                "endpoint_count": 2,
+                "context_call_count": 1,
+                "passage_count": 1,
+                "lane_injected": True,
+                "agent_mode": "active",
+                "agent_present": True,
+                "agent_model_called": True,
+                "agent_candidate_plan_present": True,
+                "agent_status": "evaluated",
+                "agent_execution_scope": "agent_first",
+                "agent_tool_execution_status": "executed",
+                "agent_tool_call_event_count": 2,
+                "agent_used_for_response": True,
+                "agent_product_response_changed": True,
+                "agent_plan_case_id": "P04",
+                "agent_plan_product_method": "passage_extract_canonical_range",
+                "agent_plan_tool_names": ["catalog_search", "locate", "passage_context"],
+                "agent_executed_tool_names": ["catalog_search", "locate", "passage_context"],
+                "product_case_id": "P04",
+                "product_method_effective": "passage_extract_canonical_range",
+                "product_truth": "exact",
+                "endpoint_kinds": ["search", "context"],
+            },
+        )
+
+        self.assertEqual(expectations["runtime_expectation_status"], "met")
+        self.assertEqual(expectations["agent_expectation_status"], "met")
+        self.assertEqual(expectations["product_expectation_status"], "failed")
+        self.assertEqual(expectations["product_expectation_reason_code"], "case_closure_product_method_mismatch")
+
     def test_state_followup_local_passage_context_plan_is_not_product_met(self) -> None:
         case = smoke.BiblioLibrarianProductSmokeCase("P11", "state_followup", RAW_QUERY)
         expectations = smoke._evaluate_expectations(
@@ -460,6 +536,36 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
             smoke.smoke_exit_code([{**record, "agent_executed_tool_names": []}]),
             smoke.EXIT_VALIDATION_FAILURE,
         )
+
+    def test_strict_exit_allows_page_read_when_method_declares_it(self) -> None:
+        record = {
+            "case_id": "P14",
+            "raw_marker_leaks": False,
+            "payload_objects_retained": 0,
+            "forbidden_endpoint_used": False,
+            "agent_mode": "active",
+            "agent_present": True,
+            "agent_model_called": True,
+            "agent_candidate_plan_present": True,
+            "agent_expectation_status": "met",
+            "agent_execution_scope": "agent_first",
+            "agent_plan_case_id": "P14",
+            "agent_plan_product_method": "passage_continue_next_segment",
+            "agent_plan_tool_names": ["passage_context"],
+            "agent_executed_tool_names": ["page_read"],
+            "agent_used_for_response": True,
+            "agent_product_response_changed": True,
+            "agent_tool_execution_status": "executed",
+            "agent_tool_call_event_count": 1,
+            "endpoint_kinds": ["page"],
+            "query_kind": "agent_first",
+            "product_case_id": "P14",
+            "product_method_effective": "passage_continue_next_segment",
+            "runtime_expectation_status": "met",
+            "product_expectation_status": "met",
+        }
+
+        self.assertEqual(smoke.smoke_exit_code([record]), smoke.EXIT_OK)
 
     def test_main_is_strict_by_default_and_no_strict_is_explicit(self) -> None:
         records = [

@@ -333,12 +333,13 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertGreaterEqual(agent_observed["tool_call_event_count"], 2)
         self.assertEqual(agent_observed["tool_execution_status"], "executed")
         self.assertIn("context", agent_observed["tool_loop"]["endpoint_kinds"])
-        self.assertEqual(result.observability_payload["product_case_id"], "P10")
+        self.assertEqual(result.observability_payload["product_case_id"], "P04")
         self.assertEqual(
             result.observability_payload["product_method"],
-            librarian_product_methods.PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE,
+            librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
         )
         self.assertEqual(result.observability_payload["product_truth"], librarian_product_methods.TRUTH_LEVEL_EXACT)
+        self.assertTrue(result.biblio_state is not None and result.biblio_state.present)
 
     def test_agent_first_uses_bounded_fallback_plan_when_active_model_returns_invalid_json(self) -> None:
         fake_model = _FakeAgentModel("not json")

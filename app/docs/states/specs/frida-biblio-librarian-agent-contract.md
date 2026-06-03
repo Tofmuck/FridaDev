@@ -608,15 +608,18 @@ La navigation complete autour d'une TOC reste separee de cette fermeture:
 - fermer `document_toc_show` ne veut pas dire que toute navigation sequentielle
   ou canonique a partir de la TOC est deja un sous-cas livre.
 
-P10 est maintenant ferme comme projection produit explicite:
+P10 est maintenant requalifie comme case non fermee distinctement:
 
-- le plan agent peut rester `P04` / `passage_extract_canonical_range` pour le
-  travail d'extraction;
-- quand ce tour exact laisse une ancre technique exploitable dans l'etat,
-  l'observabilite produit expose explicitement `product_case_id=P10` et
-  `product_method=passage_set_current_reference`;
-- preuve datee:
-  `app/docs/states/baselines/biblio-smokes/p10-agentic-20260603T113057Z.jsonl`.
+- le runtime sait encore poser une ancre courante exploitable apres un tour
+  exact de type `P04` / `passage_extract_canonical_range`;
+- mais le rerun strict montre que `P10` n'est pas aujourd'hui reconnu ni ferme
+  comme cas distinct: sur le smoke cible, `agent_plan_case_id=P04`,
+  `product_case_id=P04` et le validateur rejette ce croisement comme
+  `case_closure_product_method_mismatch`;
+- preuves datees:
+  `app/docs/states/baselines/biblio-smokes/p04-agentic-rerun-20260603T131029Z.jsonl`
+  et
+  `app/docs/states/baselines/biblio-smokes/p10-agentic-rerun-20260603T131029Z.jsonl`.
 
 P11 est maintenant ferme comme follow-up agent-first nominal:
 
@@ -1328,12 +1331,18 @@ Preuve agent-first P01-P18 courante:
   18/18 records avec `runtime_expectation_status=met`,
   `product_expectation_status=met`, `raw_marker_leaks=false`,
   `payload_objects_retained=0`, et statuts agent `met` / `fallback_repaired`;
-- artefact final de fermeture Lot E P03-P18:
-  `app/docs/states/baselines/biblio-smokes/lot-e-p03-p18-final-20260603T123538Z.jsonl`,
-  16/16 records avec `runtime_expectation_status=met`,
-  `agent_expectation_status=met`, `product_expectation_status=met`, et
-  correspondance explicite `case_id <-> agent_plan_case_id/product_case_id`
-  sur toute la tranche P03-P18;
+- artefact historique de cloture Lot E P03-P18, desormais stale comme preuve
+  finale:
+  `app/docs/states/baselines/biblio-smokes/lot-e-p03-p18-final-20260603T123538Z.jsonl`;
+- reruns cibles de coherence `2026-06-03`:
+  - `p04-agentic-rerun-20260603T131029Z.jsonl`: `P04` aligne
+    `case_id/agent_plan_case_id/product_case_id` sur
+    `passage_extract_canonical_range`;
+  - `p10-agentic-rerun-20260603T131029Z.jsonl`: `P10` echoue strictement avec
+    `case_closure_product_method_mismatch`;
+  - `p14-agentic-rerun-stateful-20260603T131342Z.jsonl`: `P14` reste valide en
+    rerun stateful, et le validateur strict accepte des executions compatibles
+    `passage_context` ou `page_read` pour `passage_continue_next_segment`;
 - flags `raw_marker_leaks=false`, `payload_objects_retained=0`,
   `forbidden_endpoint_used=false` sur la matrice.
 
