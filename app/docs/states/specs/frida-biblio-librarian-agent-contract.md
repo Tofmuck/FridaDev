@@ -683,6 +683,15 @@ P16 est maintenant ferme comme recherche thematique externe agent-first:
 - preuve datee:
   `app/docs/states/baselines/biblio-smokes/p16-agentic-20260603T122008Z.jsonl`.
 
+P17 est maintenant ferme comme reformulation soeur de la meme methode externe:
+
+- une formulation soeur du meme besoin reste reconnue explicitement comme
+  `case_id=P17` et `product_method=passage_search_external_work`;
+- l'execution observee reste `agent_first`, avec outils GET-only bornes et
+  resultat produit utile sur oeuvre externe sans variante opportuniste locale;
+- preuve datee:
+  `app/docs/states/baselines/biblio-smokes/p17-agentic-20260603T122300Z.jsonl`.
+
 ## 14. Tests exiges avant runtime
 
 Avant tout branchement runtime agentique:

@@ -216,7 +216,7 @@ Regle dure:
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | P16 | Theme externe 1 | Trouver un passage thematique dans une autre oeuvre/corpus | `passage_search_external_work` | `catalog_search`, `passage_context`, selection | vert net | La recherche thematique hors oeuvre courante est maintenant tenue comme vraie methode bibliothecaire canonique: l'agent reconnait explicitement `P16`, borne la cible documentaire externe, puis atteint un `passage_context` utile sans fallback deterministe ni requalification locale du cas | FridaDev | Conserver cette methode externe comme cas produit unique, sans re-decouper ses reformulations en mini-parseur opportuniste |
-| P17 | Theme externe 2 | Meme methode que P16, autre reformulation | `passage_search_external_work` | `catalog_search`, `passage_context`, selection | partiel | Meme faiblesse: pas encore une vraie methode bibliothecaire canonique | mixte | Mutualiser la methode au lieu de traiter ces cas comme des variantes opportunistes |
+| P17 | Theme externe 2 | Meme methode que P16, autre reformulation | `passage_search_external_work` | `catalog_search`, `passage_context`, selection | vert net | La reformulation soeur est maintenant reconnue dans la meme methode canonique `passage_search_external_work`, avec plan agent-first explicite et resultat produit utile sur oeuvre externe sans variante locale dediee | FridaDev | Conserver l'unite de la methode externe et surveiller seulement les regressions agent-first |
 | P18 | Theme externe 3 | Meme methode que P16, autre reformulation | `passage_search_external_work` | `catalog_search`, `passage_context`, selection | partiel | Le cas est utile, mais reste un assemblage d'outils plus qu'une methode produit | mixte | Fermer la methode externe avec verite produit et clarifications propres |
 
 ## 5. Registre cible des methodes produit
@@ -387,7 +387,7 @@ encore decide ou repare a plusieurs endroits.
       documentaire exploitable.
 - [x] `P16 passage_search_external_work`: fermer la recherche thematique hors
       oeuvre courante comme vraie methode bibliothecaire canonique.
-- [ ] `P17 passage_search_external_work` reformulation soeur: fermer le cas dans
+- [x] `P17 passage_search_external_work` reformulation soeur: fermer le cas dans
       la meme methode canonique, sans variante opportuniste locale.
 - [ ] `P18 passage_search_external_work` reformulation soeur: fermer le cas dans
       la meme methode canonique, avec meme niveau de preuve live.
