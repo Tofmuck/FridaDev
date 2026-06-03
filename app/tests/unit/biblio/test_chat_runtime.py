@@ -569,6 +569,54 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(observed["tool_loop"]["tool_names"], [librarian_tools.TOOL_PASSAGE_CONTEXT])
         self.assertEqual(observed["tool_loop"]["endpoint_kinds"], ["context"])
 
+    def test_agent_first_repairs_continue_followup_with_method_compatible_dialogue_plan(self) -> None:
+        fake_model = _FakeAgentModel(
+            _valid_agent_json(
+                case_id="P14",
+                product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT,
+                tool_name=librarian_tools.TOOL_PASSAGE_CONTEXT,
+                params={"document_id": "doc-1234", "paragraph_id": 99, "window_chars": 1400},
+            )
+        )
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-agent-first-continue",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "page_no": 12, "para_no": 6, "passage_hash": "a" * 12},
+            page_no=12,
+            para_no=6,
+            last_passage_hash="a" * 12,
+            last_intent="extract_passage",
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Continue.",
+            conversation_id="conv-agent-first-continue",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: _ParagraphIdFailingContextClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertEqual(result.observability_payload["status"], "agent_first_executed")
+        self.assertEqual(result.observability_payload["product_case_id"], "P14")
+        self.assertEqual(
+            result.observability_payload["product_method"],
+            librarian_product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT,
+        )
+        self.assertEqual(
+            result.observability_payload["product_truth"],
+            librarian_product_methods.TRUTH_LEVEL_CONTEXTUAL,
+        )
+        self.assertTrue(observed["used_for_response"])
+        self.assertFalse(observed["deterministic_controller"])
+        self.assertEqual(observed["execution_scope"], "agent_first")
+        self.assertEqual(observed["tool_loop"]["tool_names"], [librarian_tools.TOOL_PAGE_READ])
+        self.assertEqual(observed["tool_loop"]["endpoint_kinds"], ["page"])
+
     def test_agent_first_invalid_json_uses_dialogue_state_fallback_for_origin_check(self) -> None:
         fake_model = _FakeAgentModel("not json")
         state = conversation_state.BiblioConversationState(

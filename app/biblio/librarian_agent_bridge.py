@@ -323,9 +323,17 @@ def _dialogue_fallback_matches_candidate(
         return False
     candidate_tools = tuple(str(getattr(call, "tool_name", "") or "").strip() for call in candidate_plan.tool_calls)
     fallback_tools = tuple(str(getattr(call, "tool_name", "") or "").strip() for call in fallback_plan.tool_calls)
-    if not candidate_tools or candidate_tools != fallback_tools:
+    if not candidate_tools or not fallback_tools:
         return False
-    return True
+    if candidate_tools == fallback_tools:
+        return True
+    spec = librarian_product_methods.get_product_method_spec(candidate_method)
+    if spec is None:
+        return False
+    allowed = {str(name or "").strip() for name in spec.allowed_tool_names if str(name or "").strip()}
+    if not allowed:
+        return False
+    return set(candidate_tools).issubset(allowed) and set(fallback_tools).issubset(allowed)
 
 
 def _agent_first_result_is_usable(agent_first_result: Any) -> bool:

@@ -651,6 +651,18 @@ P13 est maintenant ferme comme navigation documentaire agent-first bornee:
 - preuve datee:
   `app/docs/states/baselines/biblio-smokes/p13-agentic-20260603T120437Z.jsonl`.
 
+P14 est maintenant ferme comme continuation documentaire agent-first:
+
+- apres une ancre courante deja posee, le plan agent valide reconnait
+  `case_id=P14` et `product_method=passage_continue_next_segment`;
+- l'execution peut rester `passage_context` quand une ancre plus fine est
+  exploitable, ou se reparer vers `page_read` quand le meilleur repli borne de
+  la meme methode devient page-granulaire;
+- dans les deux cas, le controle reste du cote agent-first et le repli ne
+  requalifie pas localement le cas;
+- preuve datee:
+  `app/docs/states/baselines/biblio-smokes/p14-agentic-20260603T121113Z.jsonl`.
+
 ## 14. Tests exiges avant runtime
 
 Avant tout branchement runtime agentique:
