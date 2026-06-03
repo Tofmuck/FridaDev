@@ -32,6 +32,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit Biblio / Catalogue et architecture agent bibliothecaire 2026-05-31: `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 - Baseline Lot 0 agent bibliothecaire Frida 2026-05-31: `states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 - Verification OpenRouter / JSON du socle agent bibliothecaire 2026-06-01: `states/baselines/frida-biblio-librarian-agent-openrouter-json-2026-06-01.md`
+- TODO structurante Frida Biblio Last Chance 2026-06-03: `todo-todo/product/frida-biblio-last-chance.md`
 - TODO active agent bibliothecaire Frida 2026-05-31: `todo-todo/product/frida-biblio-librarian-agent-todo.md`
 - Validation finale Biblio native / Frida Catalogue 2026-05-29: `todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 - Roadmap archivee Biblio vraie bibliotheque / recherche de passages 2026-05-30: `todo-done/product/frida-biblio-real-library-passage-search-todo.md`
@@ -184,6 +185,7 @@ Extension livree: l'OCR bornee des PDF scannes est archivee dans `todo-done/prod
 ### Biblio native / Frida Catalogue
 
 Lire d'abord:
+- `todo-todo/product/frida-biblio-last-chance.md` pour le recadrage actif du chantier Biblio depuis les questions canoniques d'une bibliotheque: structure documentaire minimale, API/outils, extraction mecanique, renderer produit, place du bibliothecaire LLM, migration et nettoyage strict du module `app/biblio/`.
 - `states/specs/frida-biblio-native-catalogue-contract.md` pour le contrat source-of-truth: Biblio persistante separee, client FridaDev read-only / GET-only, toggle frontend, lane prompt dediee, observabilite content-free, frontieres avec `active_document`, workspace, Memory/RAG, Identity, Summary, Web, Hermeneutic et AnythingLLM.
 - `states/specs/frida-biblio-librarian-agent-contract.md` pour le contrat source-of-truth du futur agent bibliothecaire: entrees/sorties versionnees, modele runtime-configurable, feature flag/rollback, OpenRouter/JSON gate, outils GET-only, fallback deterministe et observabilite content-free.
 - `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md` pour l'audit courant Biblio/Catalogue et la proposition d'agent bibliothecaire borne: cartographie plateforme, repros live, findings P0/P1/P2/P3, routes lourdes/manquantes, et plan de migration depuis les modules existants.

@@ -1,10 +1,11 @@
 # Frida Biblio refonte
 
 Date: 2026-06-02
-Statut: TODO active
+Statut: TODO active de transition, requalifiee par `frida-biblio-last-chance.md`
 Classement: `app/docs/todo-todo/product/`
 Sources:
 
+- `app/docs/todo-todo/product/frida-biblio-last-chance.md`
 - `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
 - `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
@@ -18,6 +19,17 @@ Portee: document canonique de pilotage produit pour la refonte Biblio. Ce
 document ne remplace ni la spec agent, ni la spec Catalogue. Il fixe
 l'invariant produit, la grammaire des 18 cas, la couche "methode produit",
 les verites actuelles, les faux verts et l'ordre reel des lots.
+
+Requalification 2026-06-03:
+
+- `frida-biblio-last-chance.md` devient le plan structurant prioritaire pour
+  repenser Biblio depuis les questions canoniques d'une bibliotheque;
+- le present document reste une trace active de transition pour la matrice
+  P01-P18, les faux verts historiques, le registre initial de methodes et les
+  dettes constatees;
+- aucune cloture future ne doit repartir des 18 cas comme canon principal sans
+  verifier d'abord la structure documentaire, l'API/outillage, l'extraction
+  mecanique, le renderer produit et le nettoyage `app/biblio/`.
 
 ## 1. Invariant produit canonique
 

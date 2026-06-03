@@ -117,6 +117,7 @@ Frontend rehydration and operator observability
 - Native Biblio / Frida Catalogue contract: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - Biblio librarian-agent contract: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Biblio / Catalogue librarian-agent architecture audit: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
+- Frida Biblio Last Chance structural roadmap: `app/docs/todo-todo/product/frida-biblio-last-chance.md`
 - Active Biblio librarian-agent roadmap: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
 - Archived Biblio native / Frida Catalogue audit-plan: `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
 - Archived Biblio native / Frida Catalogue roadmap: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
@@ -300,6 +301,7 @@ Rehydratation frontend et observabilite operateur
 - Contrat Biblio native / Frida Catalogue: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - Contrat agent bibliothecaire Biblio: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Audit architecture agent bibliothecaire Biblio: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
+- Roadmap structurante Frida Biblio Last Chance: `app/docs/todo-todo/product/frida-biblio-last-chance.md`
 - Roadmap active agent bibliothecaire Biblio: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
 - Audit-plan archive Biblio native / Frida Catalogue: `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
 - Roadmap archivee Biblio native / Frida Catalogue: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
