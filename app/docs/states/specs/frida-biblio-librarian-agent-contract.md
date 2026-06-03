@@ -618,6 +618,15 @@ P10 est maintenant ferme comme projection produit explicite:
 - preuve datee:
   `app/docs/states/baselines/biblio-smokes/p10-agentic-20260603T113057Z.jsonl`.
 
+P11 est maintenant ferme comme follow-up agent-first nominal:
+
+- apres une ancre de passage exacte deja posee, le plan agent valide reconnait
+  `case_id=P11` et `product_method=passage_explain_current`;
+- l'execution nominale passe par un seul `passage_context` borne, sans
+  fallback deterministe ni requalification locale du cas;
+- preuve datee:
+  `app/docs/states/baselines/biblio-smokes/p11-agentic-20260603T113533Z.jsonl`.
+
 ## 14. Tests exiges avant runtime
 
 Avant tout branchement runtime agentique:
