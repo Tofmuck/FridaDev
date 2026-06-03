@@ -63,6 +63,27 @@ def last_result_interval_end_context_params(
     return params
 
 
+def previous_segment_context_params(
+    state: BiblioConversationState,
+    *,
+    window_chars: int = 700,
+) -> dict[str, Any]:
+    last = state.last_result
+    doc_id = str(last.get("document_id") or "").strip() or current_document_id(state)
+    if not doc_id:
+        return {}
+    page_no = last.get("page_no") if last.get("page_no") is not None else state.page_no
+    para_no = last.get("para_no") if last.get("para_no") is not None else state.para_no
+    if page_no is None or para_no is None or para_no <= 1:
+        return {}
+    return {
+        "document_id": doc_id,
+        "page_no": page_no,
+        "para_no": para_no - 1,
+        "window_chars": window_chars,
+    }
+
+
 def candidate_has_context_position(candidate: Mapping[str, Any]) -> bool:
     if not str(candidate.get("document_id") or "").strip():
         return False

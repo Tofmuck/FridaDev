@@ -139,7 +139,7 @@ def explicit_reference_target(message: str) -> str:
 
 
 def can_plan_context_navigation(kind: str) -> bool:
-    return kind == NAVIGATION_AROUND_PASSAGE
+    return kind in {NAVIGATION_AROUND_PASSAGE, NAVIGATION_UP}
 
 
 def can_plan_page_navigation(kind: str) -> bool:
@@ -148,6 +148,7 @@ def can_plan_page_navigation(kind: str) -> bool:
         NAVIGATION_PAGE_PREVIOUS,
         NAVIGATION_PAGE_NEXT,
         NAVIGATION_CONTINUE,
+        NAVIGATION_UP,
     }
 
 
@@ -159,6 +160,8 @@ def tool_required_for_navigation(kind: str) -> str:
 def context_params_for_navigation(kind: str, state: BiblioConversationState) -> dict[str, Any]:
     if kind == NAVIGATION_CONTINUE:
         return references.last_result_interval_end_context_params(state, window_chars=1_400)
+    if kind == NAVIGATION_UP:
+        return references.previous_segment_context_params(state, window_chars=1_400)
     if not can_plan_context_navigation(kind):
         return {}
     params = references.last_result_context_params(state)
@@ -194,6 +197,8 @@ def page_numbers_for_navigation(kind: str, state: BiblioConversationState, folde
     if type(anchor_page) is not int or anchor_page < 1:
         return ()
     if kind == NAVIGATION_PAGE_PREVIOUS:
+        return (anchor_page - 1,) if anchor_page > 1 else ()
+    if kind == NAVIGATION_UP:
         return (anchor_page - 1,) if anchor_page > 1 else ()
     if kind in {NAVIGATION_PAGE_NEXT, NAVIGATION_CONTINUE}:
         return (anchor_page + 1,)

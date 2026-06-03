@@ -50,6 +50,7 @@ REASON_LAST_PASSAGE_ORIGIN = "biblio_dialogue_last_passage_origin"
 REASON_LAST_PASSAGE_MISSING = "biblio_dialogue_last_passage_missing"
 REASON_LAST_PASSAGE_POSITION_MISSING = "biblio_dialogue_last_passage_position_missing"
 REASON_NAVIGATION_CONTEXT_AROUND = "biblio_dialogue_navigation_context_around"
+REASON_NAVIGATION_CONTEXT_PREVIOUS = "biblio_dialogue_navigation_context_previous"
 REASON_NAVIGATION_CONTINUE_FROM_RANGE_END = "biblio_dialogue_navigation_continue_from_range_end"
 REASON_NAVIGATION_PAGE_READ = "biblio_dialogue_navigation_page_read"
 REASON_NAVIGATION_PAGE_ANCHOR_MISSING = "biblio_dialogue_navigation_page_anchor_missing"
@@ -316,6 +317,36 @@ def _navigation_result(
                 variants,
                 status=STATUS_PLANNED,
                 reason_code=REASON_NAVIGATION_CONTINUE_FROM_RANGE_END,
+                intent=BiblioDialogueIntent(
+                    INTENT_NAVIGATE,
+                    query_kind="passage_context",
+                    state_required=True,
+                    tool_required=tool_required,
+                    scope_mode=kind,
+                ),
+                plan=BiblioLibrarianPlan(
+                    intent=INTENT_NAVIGATE,
+                    answer_mode="tool",
+                    tool_calls=(
+                        BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_PASSAGE_CONTEXT,
+                            params=params,
+                            method="GET",
+                        ),
+                    ),
+                ),
+                state=state,
+                current_document_used=True,
+                tool_required=tool_required,
+            )
+    if kind == navigation.NAVIGATION_UP:
+        params = navigation.context_params_for_navigation(kind, state)
+        if params:
+            return _planned_result(
+                message,
+                variants,
+                status=STATUS_PLANNED,
+                reason_code=REASON_NAVIGATION_CONTEXT_PREVIOUS,
                 intent=BiblioDialogueIntent(
                     INTENT_NAVIGATE,
                     query_kind="passage_context",

@@ -17,6 +17,7 @@ from typing import Any, Mapping, Sequence
 from .conversation_state import BiblioConversationState
 from . import librarian_agent_first
 from . import librarian_agent_runtime
+from . import librarian_dialogue_navigation
 from . import librarian_dialogue_planner
 from . import librarian_planner
 from . import librarian_product_methods
@@ -214,6 +215,7 @@ def build_dialogue_fallback_plan(
         answer_mode=str(getattr(plan, "answer_mode", "") or ""),
         tool_calls=tool_calls,
         query_kind=str(getattr(dialogue.intent, "query_kind", "") or ""),
+        scope_mode=str(getattr(dialogue.intent, "scope_mode", "") or ""),
     )
     return replace(
         plan,
@@ -339,10 +341,16 @@ def _fallback_product_method(
     answer_mode: str,
     tool_calls: Sequence[librarian_planner.BiblioLibrarianToolCall],
     query_kind: str = "",
+    scope_mode: str = "",
 ) -> str:
     clean_intent = str(intent or "").strip()
     clean_query_kind = str(query_kind or "").strip()
+    clean_scope_mode = str(scope_mode or "").strip()
     if clean_intent == librarian_dialogue_planner.INTENT_NAVIGATE and clean_query_kind == "passage_context":
+        if clean_scope_mode == librarian_dialogue_navigation.NAVIGATION_UP:
+            return librarian_product_methods.PRODUCT_METHOD_PASSAGE_MOVE_PREVIOUS_SEGMENT
+        if clean_scope_mode == librarian_dialogue_navigation.NAVIGATION_CONTINUE:
+            return librarian_product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT
     if clean_intent == librarian_dialogue_planner.INTENT_ORIGIN_CHECK:
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK
@@ -353,6 +361,8 @@ def _fallback_product_method(
     if clean_query_kind == "passage_context":
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT
     if clean_intent == librarian_dialogue_planner.INTENT_NAVIGATE and clean_query_kind == "page_read":
+        if clean_scope_mode == librarian_dialogue_navigation.NAVIGATION_UP:
+            return librarian_product_methods.PRODUCT_METHOD_PASSAGE_MOVE_PREVIOUS_SEGMENT
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT
     return librarian_product_methods.infer_product_method(
         intent=clean_intent,

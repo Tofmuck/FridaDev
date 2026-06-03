@@ -158,14 +158,26 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
         self.assertEqual(_tool_names(result), [tools.TOOL_PAGE_READ])
         self.assertEqual(result.plan.tool_calls[0].params["page_no"], 11)
 
-    def test_plus_haut_with_state_reports_missing_navigation_tool(self) -> None:
+    def test_plus_haut_with_state_plans_previous_context_when_anchor_is_precise(self) -> None:
         state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
 
         result = dialogue.plan_biblio_dialogue("plus haut", state=state)
 
-        self.assertEqual(result.status, dialogue.STATUS_UNSUPPORTED_MISSING_TOOL)
-        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_TOOL_MISSING)
-        self.assertEqual(_tool_names(result), [])
+        self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_CONTEXT_PREVIOUS)
+        self.assertEqual(_tool_names(result), [tools.TOOL_PASSAGE_CONTEXT])
+        self.assertEqual(result.plan.tool_calls[0].params["page_no"], 12)
+        self.assertEqual(result.plan.tool_calls[0].params["para_no"], 2)
+
+    def test_plus_haut_at_page_start_falls_back_to_previous_page(self) -> None:
+        state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 1})
+
+        result = dialogue.plan_biblio_dialogue("plus haut", state=state)
+
+        self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_PAGE_READ)
+        self.assertEqual(_tool_names(result), [tools.TOOL_PAGE_READ])
+        self.assertEqual(result.plan.tool_calls[0].params["page_no"], 11)
 
     def test_plus_haut_without_state_clarifies(self) -> None:
         result = dialogue.plan_biblio_dialogue("plus haut")
@@ -409,7 +421,6 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
         state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
 
         for message, scope_mode in (
-            ("Remonte un peu.", "up"),
             ("Plus bas.", "down"),
             ("Cherche un autre passage proche.", "nearby_passage"),
             ("Un autre passage proche.", "nearby_passage"),
