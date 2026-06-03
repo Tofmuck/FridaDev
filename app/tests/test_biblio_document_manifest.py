@@ -199,6 +199,73 @@ class BiblioDocumentManifestTests(unittest.TestCase):
         self.assertIn("validation", payload["manifests"][0])
         self.assertTrue(payload["content_policy"]["content_free"])
 
+    def test_baseline_fails_when_projected_manifest_is_invalid(self) -> None:
+        client = _FakeCatalogueClient(
+            items=[
+                {
+                    "id": "88888888-8888-8888-8888-888888888888",
+                    "title": "Broken structure",
+                    "source_type": "pdf",
+                    "unit_label": "pages",
+                    "unit_count": 0,
+                    "page_count": 0,
+                    "paragraph_count": 0,
+                    "chapter_count": 0,
+                    "toc_source": "none",
+                }
+            ]
+        )
+
+        payload, failures = build_baseline_from_client(
+            client=client,
+            generated_at="2026-06-03T00:00:00Z",
+            raw_unit_stats={},
+            db_audit={"status": "skipped", "reason_code": "test"},
+        )
+
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(payload["summary"]["documents_seen"], 1)
+        self.assertEqual(payload["summary"]["manifests_produced"], 0)
+        self.assertEqual(payload["summary"]["failures"], 1)
+        self.assertEqual(payload["summary"]["invalid_manifest_failures"], 1)
+        self.assertEqual(payload["summary"]["failure_reason_counts"]["manifest_validation_failed"], 1)
+        self.assertEqual(failures[0]["status"], "invalid")
+        self.assertEqual(failures[0]["reason_code"], "manifest_validation_failed")
+        self.assertIn("document_units_missing", failures[0]["validation_reason_codes"])
+        self.assertIn("pages_missing", failures[0]["validation_reason_codes"])
+        self.assertIn("paragraphs_missing", failures[0]["validation_reason_codes"])
+        self.assertIn("manifest_validation_failed", repr(payload["failures"]))
+
+    def test_baseline_accepts_valid_with_warnings(self) -> None:
+        client = _FakeCatalogueClient(
+            items=[
+                {
+                    "id": "99999999-9999-9999-9999-999999999999",
+                    "title": "Warning only structure",
+                    "source_type": "unknown",
+                    "unit_label": "pages",
+                    "unit_count": 2,
+                    "page_count": 2,
+                    "paragraph_count": 4,
+                    "chapter_count": 0,
+                    "toc_source": "none",
+                }
+            ]
+        )
+
+        payload, failures = build_baseline_from_client(
+            client=client,
+            generated_at="2026-06-03T00:00:00Z",
+            raw_unit_stats={},
+            db_audit={"status": "skipped", "reason_code": "test"},
+        )
+
+        self.assertEqual(failures, [])
+        self.assertEqual(payload["summary"]["manifests_produced"], 1)
+        self.assertEqual(payload["summary"]["failures"], 0)
+        self.assertEqual(payload["summary"]["validation_status_counts"]["valid_with_warnings"], 1)
+        self.assertIn("technical_origin_not_fully_known", payload["manifests"][0]["validation"]["warning_codes"])
+
     def test_db_audit_collector_is_content_free(self) -> None:
         payload = collect_content_free_db_audit_from_connection(_FakeDbConnection())
 

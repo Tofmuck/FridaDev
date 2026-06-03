@@ -110,6 +110,9 @@ Livraison Last Chance Lot 1:
   `app/docs/states/baselines/biblio-manifests/frida-biblio-document-manifest-lot1-correctif-20260603T183445Z.json`;
 - couverture: 10 documents vus, 10 manifestes produits, 0 echec;
 - validation: 10 manifestes `valid_with_warnings`, 0 reason code invalidant;
+- verrou baseline: `valid` et `valid_with_warnings` passent; `invalid` devient
+  une failure `manifest_validation_failed` avec `validation_reason_codes` et
+  fait sortir le runner non-zero;
 - normalisation: EPUB, PDF et origines inconnues futures doivent converger vers
   ce meme modele de sortie;
 - contrat d'import: un nouvel ouvrage ajoute par le chemin nominal doit etre

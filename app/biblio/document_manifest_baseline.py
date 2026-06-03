@@ -10,7 +10,12 @@ from pathlib import Path
 from typing import Any, Mapping, Protocol
 
 from .catalogue_client import CatalogueClient, CatalogueClientConfig, CatalogueClientError
-from .structure import build_document_manifest, build_manifest_baseline_payload
+from .structure import (
+    STATUS_INVALID,
+    build_document_manifest,
+    build_manifest_baseline_payload,
+    validate_document_manifest,
+)
 
 
 DEFAULT_OUTPUT_DIR = "app/docs/states/baselines/biblio-manifests"
@@ -125,6 +130,19 @@ def build_baseline_from_client(
                 chapters_payload=chapters,
                 raw_unit_stats=_mapping((raw_unit_stats or {}).get(doc_id)),
             )
+            validation = validate_document_manifest(manifest)
+            if validation.status == STATUS_INVALID:
+                failures.append(
+                    {
+                        "document_id": doc_id,
+                        "doc_id_short": doc_id[:8],
+                        "status": "invalid",
+                        "reason_code": "manifest_validation_failed",
+                        "validation_reason_codes": list(validation.reason_codes),
+                        "validation_warning_codes": list(validation.warning_codes),
+                    }
+                )
+                continue
             manifests.append(manifest)
         except CatalogueClientError as exc:
             failures.append(

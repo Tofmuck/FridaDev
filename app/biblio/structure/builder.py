@@ -165,6 +165,9 @@ def _baseline_summary(
     validation_status_counts: Counter[str] = Counter()
     validation_reason_counts: Counter[str] = Counter()
     validation_warning_counts: Counter[str] = Counter()
+    failure_reason_counts: Counter[str] = Counter()
+    for failure in failures:
+        failure_reason_counts[str(failure.get("reason_code") or "unknown")] += 1
     role_counts: Counter[str] = Counter()
     bounded_sections = 0
     for manifest in manifests:
@@ -201,6 +204,8 @@ def _baseline_summary(
         "validation_status_counts": dict(sorted(validation_status_counts.items())),
         "validation_reason_counts": dict(sorted(validation_reason_counts.items())),
         "validation_warning_counts": dict(sorted(validation_warning_counts.items())),
+        "failure_reason_counts": dict(sorted(failure_reason_counts.items())),
+        "invalid_manifest_failures": failure_reason_counts.get("manifest_validation_failed", 0),
         "ambiguity_count": sum(len(manifest.ambiguities) for manifest in manifests),
         "limit_count": sum(len(manifest.limits) for manifest in manifests),
         "db_audit": dict(db_audit),

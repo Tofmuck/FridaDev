@@ -1016,6 +1016,9 @@ verite seulement; il ne ferme aucun lot structurel suivant.
       chemin nominal doit produire un `DocumentManifest` valide ou
       `valid_with_warnings`, ou apparaitre comme echec content-free avec raison
       explicite.
+- [x] Verrouiller la baseline: `valid` et `valid_with_warnings` passent;
+      `invalid` devient une failure `manifest_validation_failed` et la commande
+      sort non-zero.
 
 Livraison Lot 1, 2026-06-03:
 
@@ -1049,6 +1052,9 @@ Livraison Lot 1, 2026-06-03:
 - validation: 10 manifestes `valid_with_warnings`, 0 `reason_code` invalidant;
   warnings attendus: roles incomplets, oeuvres internes inconnues, origine PDF
   encore ambigue, 1 document sans reference canonique;
+- verrou final: un manifeste `invalid` n'est pas accepte comme manifeste
+  produit; il est reporte dans `failures` avec `validation_reason_codes`, et le
+  runner sort avec code non-zero;
 - limites assumees: les PDF ne distinguent pas encore PDF texte / PDF scanne
   OCR dans `source_type`; les EPUB exposent leurs sections via la semantique
   actuelle `page_no`; les oeuvres internes complexes ne sont pas inventees.
@@ -1059,7 +1065,8 @@ projection normalise le fonds actuel vers un modele canonique unique et devient
 le contrat de sortie des imports futurs: si un ouvrage entre demain par le
 pipeline nominal, il doit etre projetable/validable comme `DocumentManifest`.
 S'il manque des champs minimaux, l'echec doit etre content-free et explicite;
-il ne doit pas disparaitre dans une structure incompatible.
+il ne doit pas disparaitre dans une structure incompatible ni dans un smoke vert
+de baseline.
 
 ### Lot 2 - API/outils de bibliotheque minimale
 
