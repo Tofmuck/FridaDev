@@ -810,10 +810,12 @@ patch Catalogue:
 - le runtime peut resoudre un document/volume explicitement nomme dans une
   requete de navigation page, puis composer cette resolution sur `page_read`;
 - `librarian_dialogue_planner.py` et `chat_runtime.py` executent maintenant
-  `page suivante / page precedente`, `page 28 a page 32` et
-  `continue apres ce passage` quand l'etat porte une page ancree; les formes
-  nommees utilisent l'ancre de page seulement si le document resolu est bien
-  le meme que celui deja ancre;
+  `page suivante / page precedente` et `page 28 a page 32` sur `page_read`
+  quand l'etat porte une page ancree; `continue apres ce passage` peut, lui,
+  utiliser `passage_context` sur l'ancre de fin d'un range deja extrait quand
+  `interval_hint.end_page_no` / `end_para_no` ou `end_paragraph_id` sont
+  connus; les formes nommees utilisent l'ancre de page seulement si le
+  document resolu est bien le meme que celui deja ancre;
 - `autour de ce passage` reste sur `passage_context`, ce qui garde la verite
   produit entre lecture de page et contexte autour d'un passage;
 - une oeuvre interne non mappee proprement a des pages documentaires reelles

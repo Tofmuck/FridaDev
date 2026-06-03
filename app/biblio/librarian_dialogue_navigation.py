@@ -157,6 +157,8 @@ def tool_required_for_navigation(kind: str) -> str:
 
 
 def context_params_for_navigation(kind: str, state: BiblioConversationState) -> dict[str, Any]:
+    if kind == NAVIGATION_CONTINUE:
+        return references.last_result_interval_end_context_params(state, window_chars=1_400)
     if not can_plan_context_navigation(kind):
         return {}
     params = references.last_result_context_params(state)

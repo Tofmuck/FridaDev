@@ -38,6 +38,31 @@ def last_result_context_params(state: BiblioConversationState) -> dict[str, Any]
     return params
 
 
+def last_result_interval_end_context_params(
+    state: BiblioConversationState,
+    *,
+    window_chars: int = 700,
+) -> dict[str, Any]:
+    last = state.last_result
+    doc_id = str(last.get("document_id") or "").strip() or current_document_id(state)
+    if not doc_id:
+        return {}
+    interval_hint = last.get("interval_hint")
+    if not isinstance(interval_hint, Mapping) or str(interval_hint.get("kind") or "").strip() != "range":
+        return {}
+    params: dict[str, Any] = {"document_id": doc_id, "window_chars": window_chars}
+    if interval_hint.get("end_paragraph_id") is not None:
+        params["paragraph_id"] = interval_hint.get("end_paragraph_id")
+        return params
+    end_page_no = interval_hint.get("end_page_no")
+    end_para_no = interval_hint.get("end_para_no")
+    if end_page_no is None or end_para_no is None:
+        return {}
+    params["page_no"] = end_page_no
+    params["para_no"] = end_para_no
+    return params
+
+
 def candidate_has_context_position(candidate: Mapping[str, Any]) -> bool:
     if not str(candidate.get("document_id") or "").strip():
         return False

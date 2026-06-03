@@ -366,6 +366,10 @@ Implementation Lot 4 du 2026-05-28, completee par le correctif bibliothecaire du
   borne (`kind`, `mode`, ancres start/end non textuelles, spans calcules) afin
   de reutiliser proprement le range dans l'etat et la navigation, sans
   pretendre a un objet canonique general d'intervalle;
+- dans l'etat courant, `continue apres ce passage` peut reutiliser l'ancre de
+  fin d'un `interval_hint` via `passage_context` quand `end_page_no` /
+  `end_para_no` ou `end_paragraph_id` sont connus; `page suivante` reste un
+  geste page-granulaire sur `page_read`;
 - il refuse toute extraction si la resolution est `ambiguous`, `not_found`, `invalid_request` ou `catalogue_unavailable`;
 - il exige un locator resolu avec cible contextuelle non ambigue: `paragraph_id` ou couple `page_no` / `para_no`;
 - il refuse les ranges non bornes ou incoherents avec `range_extraction_not_supported`;
