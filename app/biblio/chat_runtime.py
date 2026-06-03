@@ -25,6 +25,7 @@ from . import librarian_agent_first
 from . import librarian_agent_bridge
 from . import librarian_dialogue_planner
 from . import librarian_dialogue_runtime
+from . import librarian_product_methods
 from .library_runtime import run_biblio_library_plan
 from .librarian_agent_runtime import run_biblio_librarian_agent_comparison
 from .observability import build_biblio_event_payload
@@ -183,6 +184,11 @@ def run_biblio_chat_turn(
                 now_iso=now_iso,
                 reason_code="biblio_state_updated_from_agent_first",
             )
+            product_projection = _agent_first_product_projection(
+                librarian_agent_result=librarian_agent_result,
+                state_after=state_after,
+                state_transition=state_transition,
+            )
             payload = observability_builder(
                 enabled=True,
                 used=True,
@@ -193,6 +199,10 @@ def run_biblio_chat_turn(
                 biblio_state=state_after if state_after.present else None,
                 state_transition=state_transition,
                 librarian_agent=librarian_agent_result,
+                product_case_id=product_projection["case_id"],
+                product_method=product_projection["product_method"],
+                execution_status=product_projection["execution_status"],
+                product_truth=product_projection["product_truth"],
                 status=agent_first_result.status,
                 reason_code=agent_first_result.reason_code,
             )
@@ -447,6 +457,69 @@ def _fallback_limit(query_plan: Any, *, default: int) -> int:
     if type(value) is int and value > 0:
         return min(value, 50)
     return default
+
+
+def _agent_first_product_projection(
+    *,
+    librarian_agent_result: Any,
+    state_after: BiblioConversationState,
+    state_transition: BiblioStateTransition | None,
+) -> dict[str, str]:
+    validation_plan = _agent_validation_plan(librarian_agent_result)
+    product_method = str(validation_plan.get("product_method") or "").strip()
+    case_id = librarian_product_methods.normalize_case_id(validation_plan.get("case_id"))
+    if not case_id:
+        case_id = librarian_product_methods.default_case_id_for_method(product_method)
+    execution_status = librarian_product_methods.EXECUTION_STATUS_SUCCESS
+    product_truth = _default_truth_for_method(product_method)
+    if _state_seeded_from_exact_extract(
+        product_method=product_method,
+        state_after=state_after,
+        state_transition=state_transition,
+    ):
+        return {
+            "case_id": "P10",
+            "product_method": librarian_product_methods.PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE,
+            "execution_status": librarian_product_methods.EXECUTION_STATUS_SUCCESS,
+            "product_truth": librarian_product_methods.TRUTH_LEVEL_EXACT,
+        }
+    return {
+        "case_id": case_id,
+        "product_method": product_method,
+        "execution_status": execution_status if product_method else "",
+        "product_truth": product_truth,
+    }
+
+
+def _agent_validation_plan(librarian_agent_result: Any) -> Mapping[str, Any]:
+    comparison = getattr(librarian_agent_result, "agent_result", None)
+    validation = getattr(comparison, "validation_observation", None)
+    if isinstance(validation, Mapping):
+        plan = validation.get("plan")
+        if isinstance(plan, Mapping):
+            return plan
+    return {}
+
+
+def _default_truth_for_method(product_method: str) -> str:
+    spec = librarian_product_methods.get_product_method_spec(product_method)
+    if not spec or not spec.truth_levels:
+        return ""
+    return str(spec.truth_levels[0] or "").strip()
+
+
+def _state_seeded_from_exact_extract(
+    *,
+    product_method: str,
+    state_after: BiblioConversationState,
+    state_transition: BiblioStateTransition | None,
+) -> bool:
+    if product_method != librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE:
+        return False
+    if state_transition is None or not state_transition.after_present:
+        return False
+    last_result = getattr(state_after, "last_result", {}) or {}
+    return bool(last_result.get("document_id") and (last_result.get("paragraph_id") or last_result.get("passage_hash")))
 
 
 def _truthy(value: Any) -> bool:

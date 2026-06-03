@@ -190,7 +190,7 @@ Regle dure:
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | P04 | Plage canonique explicite | Extraire un passage borne demande par locator/range | `passage_extract_canonical_range` | resolution documentaire, `locate`, `passage_context`, `page_read` borne si la plage traverse plusieurs pages | vert net | La methode explicite est maintenant reconnue agentiquement, assemble une plage canonique bornee exploitable et publie un `interval_hint` reutilisable, sans promettre un objet canonique general d'intervalle | FridaDev | Conserver la frontiere claire entre range borne resolue et support general d'intervalle canonique |
-| P10 | Passage courant de reference | Faire de ce passage exact le point de depart de la suite Biblio | `passage_set_current_reference` | meme chaine que P04 + `state_update` | partiel | Le passage exact peut deja servir d'ancre pour la suite, mais ce role reste encore porte comme effet du runtime, pas comme methode explicite | FridaDev | Rendre cette mise en reference explicite dans le contrat de methode |
+| P10 | Passage courant de reference | Faire de ce passage exact le point de depart de la suite Biblio | `passage_set_current_reference` | meme chaine que P04 + `state_update` | vert net | Le tour d'extraction exacte publie maintenant explicitement la mise en reference courante comme resultat produit `P10`, avec ancre technique persistee pour la suite, sans demander a l'agent de feindre une difference linguistique avec `P04` | FridaDev | Conserver cette couture explicite entre extraction exacte et reference courante |
 
 ### D. Recherche thematique dans une oeuvre
 
@@ -373,7 +373,7 @@ encore decide ou repare a plusieurs endroits.
       clairement paraphrase, candidat plausible et passage exact.
 - [x] `P09 document_toc_show`: ferme la TOC comme vraie methode rattachee a une
       cible resolue, sans elargir le parseur local.
-- [ ] `P10 passage_set_current_reference`: fermer la mise en reference courante
+- [x] `P10 passage_set_current_reference`: ferme la mise en reference courante
       comme methode explicite, pas comme effet de bord du runtime.
 - [ ] `P11 passage_explain_current`: fermer l'explication du passage courant
       comme vraie methode multi-tour explicite.

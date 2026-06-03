@@ -608,6 +608,16 @@ La navigation complete autour d'une TOC reste separee de cette fermeture:
 - fermer `document_toc_show` ne veut pas dire que toute navigation sequentielle
   ou canonique a partir de la TOC est deja un sous-cas livre.
 
+P10 est maintenant ferme comme projection produit explicite:
+
+- le plan agent peut rester `P04` / `passage_extract_canonical_range` pour le
+  travail d'extraction;
+- quand ce tour exact laisse une ancre technique exploitable dans l'etat,
+  l'observabilite produit expose explicitement `product_case_id=P10` et
+  `product_method=passage_set_current_reference`;
+- preuve datee:
+  `app/docs/states/baselines/biblio-smokes/p10-agentic-20260603T113057Z.jsonl`.
+
 ## 14. Tests exiges avant runtime
 
 Avant tout branchement runtime agentique:

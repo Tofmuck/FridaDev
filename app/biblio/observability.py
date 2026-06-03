@@ -62,6 +62,7 @@ _HASH_KEYS = {
     "content_sha256_12",
     "user_message_hash",
 }
+_CASE_ID_KEYS = {"case_id", "product_case_id"}
 _DOC_ID_KEYS = {"doc_id", "doc_id_short", "document_id", "document_candidate_ids", "doc_id_shorts"}
 _TOKEN_KEYS = {
     "case_id",
@@ -82,8 +83,10 @@ _TOKEN_KEYS = {
     "mode",
     "model_effective",
     "module_key",
+    "execution_status",
     "primary_model",
     "primary_reason_code",
+    "product_case_id",
     "product_truth",
     "product_method",
     "query_kind",
@@ -201,6 +204,10 @@ def build_biblio_event_payload(
     biblio_state: Any = None,
     state_transition: Any = None,
     librarian_agent: Any = None,
+    product_case_id: str = "",
+    product_method: str = "",
+    execution_status: str = "",
+    product_truth: str = "",
     status: str = "",
     reason_code: str = "",
 ) -> dict[str, Any]:
@@ -262,6 +269,10 @@ def build_biblio_event_payload(
         "enabled": bool(enabled),
         "used": effective_used,
         "query_kind": _safe_token(query_kind) or ("not_requested" if not enabled else "unknown"),
+        "product_case_id": _safe_case_id(product_case_id),
+        "product_method": _safe_token(product_method),
+        "execution_status": _safe_token(execution_status),
+        "product_truth": _safe_token(product_truth),
         "status": effective_status,
         "reason_code": safe_reason_code,
         "client": {
@@ -634,6 +645,8 @@ def _sanitize_value(value: Any, *, key: str = "") -> Any:
     if isinstance(value, str):
         if key_l in _HASH_KEYS:
             return _strict_hash_12(value)
+        if key_l in _CASE_ID_KEYS:
+            return _safe_case_id(value)
         if key_l in _DOC_ID_KEYS:
             return _safe_doc_id(value)
         if key_l in _TOKEN_KEYS:
@@ -678,6 +691,13 @@ def _safe_doc_id(value: Any) -> str:
     if len(text) <= 16 and all(char.lower() in _TOKEN_CHARS for char in text):
         return text[:8]
     return f"sha256:{_sha256_12(text)}"
+
+
+def _safe_case_id(value: Any) -> str:
+    text = str(value or "").strip().upper()
+    if len(text) == 3 and text.startswith("P") and text[1:].isdigit():
+        return text
+    return ""
 
 
 def _strict_hash_12(value: Any) -> str:

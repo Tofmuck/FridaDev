@@ -106,6 +106,9 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
                     product_method="work_lookup",
                     answer_mode="tool",
                 ),
+                product_case_id="P03",
+                product_method="work_lookup",
+                product_truth="exact",
                 status="agent_first_executed",
                 reason_code="biblio_agent_first_plan_executed",
             ),
@@ -120,6 +123,9 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         self.assertEqual(records[0]["agent_plan_case_id"], "P03")
         self.assertEqual(records[0]["agent_plan_product_method"], "work_lookup")
         self.assertEqual(records[0]["agent_plan_answer_mode"], "tool")
+        self.assertEqual(records[0]["product_case_id"], "P03")
+        self.assertEqual(records[0]["product_method_effective"], "work_lookup")
+        self.assertEqual(records[0]["product_truth"], "exact")
 
     def test_no_signal_work_lookup_with_local_plan_is_not_product_met(self) -> None:
         case = smoke.BiblioLibrarianProductSmokeCase("P03", "work_lookup", RAW_QUERY)
