@@ -1327,8 +1327,9 @@ triage.
   JSON actif est invalide, vide ou inexecutable.
 - Section runtime settings admin/DB dediee livree; smoke complet actif P01-P18
   valide comme gate global le 2026-06-01.
-- L'outil page borne existe cote FridaDev, mais P09 reste une surveillance
-  tant que la navigation canonique locator -> page/offset n'est pas livree.
+- L'outil page borne existe cote FridaDev; P09 est maintenant ferme pour la
+  simple consultation TOC agent-first, mais la navigation canonique
+  locator -> page/offset reste un sujet distinct.
 - P03 etait un cas de regression historique; il est maintenant prouve comme
   `work_lookup` agent-first nominal et ne doit plus etre gere comme exception
   produit.

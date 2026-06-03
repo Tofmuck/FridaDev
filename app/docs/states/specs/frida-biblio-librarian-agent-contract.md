@@ -594,12 +594,19 @@ P03 est maintenant ferme comme cas agent-first nominal:
 - preuve datee:
   `app/docs/states/baselines/biblio-smokes/p03-agentic-20260603T110117Z.jsonl`.
 
-P09 reste une surveillance de regression:
+P09 est maintenant ferme comme cas agent-first nominal:
 
-- la TOC depend encore d'une resolution documentaire prealable suffisamment
-  propre;
-- la navigation complete autour d'une TOC reste separee de la simple
-  consultation `document_toc`/`chapters`.
+- le plan agent valide reconnait `case_id=P09` et
+  `product_method=document_toc_show`;
+- l'execution nominale passe par `catalog_search` puis `document_toc`, avec
+  `chapters` cote Catalogue comme sortie documentaire;
+- preuve datee:
+  `app/docs/states/baselines/biblio-smokes/p09-agentic-20260603T112010Z.jsonl`.
+
+La navigation complete autour d'une TOC reste separee de cette fermeture:
+
+- fermer `document_toc_show` ne veut pas dire que toute navigation sequentielle
+  ou canonique a partir de la TOC est deja un sous-cas livre.
 
 ## 14. Tests exiges avant runtime
 

@@ -183,7 +183,7 @@ Regle dure:
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | P03 | Trouver l'ouvrage | Retrouver l'ouvrage ou la bonne cible documentaire | `work_lookup` | `catalog_search`, `document_open_summary`, `document_toc` si utile | vert net | Le cas est maintenant reconnu agentiquement comme `work_lookup`, execute les outils documentaires bornes attendus et conserve une sortie structuree exploitable sans fallback deterministe | FridaDev | Conserver le contrat `work_lookup` et surveiller seulement les regressions d'agent-first |
-| P09 | Table des matieres d'un ouvrage | Montrer la TOC de l'ouvrage cible | `document_toc_show` | `document_toc`, resolution prealable eventuelle | faux vert | Le chemin peut finir par appeler `chapters`, mais il reste repare depuis un cas initialement non resolu | FridaDev | Rattacher la TOC a une vraie methode `document_toc_show`, sans reparation silencieuse |
+| P09 | Table des matieres d'un ouvrage | Montrer la TOC de l'ouvrage cible | `document_toc_show` | `document_toc`, resolution prealable eventuelle | vert net | La TOC est maintenant reconnue agentiquement comme `document_toc_show`, resolve une cible documentaire bornee puis appelle `document_toc`/`chapters` sans reparation silencieuse maquillee en succes | FridaDev | Conserver la TOC comme consultation bornee; la navigation plus riche autour de cette TOC reste un sujet distinct |
 
 ### C. Passage canonique explicite
 
@@ -371,7 +371,7 @@ encore decide ou repare a plusieurs endroits.
       avec verification oeuvre/source exploitable.
 - [x] `P08 passage_search_in_work` paraphrase libre: ferme le cas en separant
       clairement paraphrase, candidat plausible et passage exact.
-- [ ] `P09 document_toc_show`: fermer la TOC comme vraie methode rattachee a une
+- [x] `P09 document_toc_show`: ferme la TOC comme vraie methode rattachee a une
       cible resolue, sans elargir le parseur local.
 - [ ] `P10 passage_set_current_reference`: fermer la mise en reference courante
       comme methode explicite, pas comme effet de bord du runtime.
