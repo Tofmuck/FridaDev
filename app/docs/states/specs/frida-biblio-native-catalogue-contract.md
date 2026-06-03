@@ -528,12 +528,14 @@ Correctif bibliothecaire du 2026-05-30:
 - le planner reconnait les intentions `list_catalog`, `search_catalog`, `resolve_work`, `extract_passage`, `extract_range` et `clarify_ambiguous`;
 - quand `biblio_enabled=true`, les demandes naturelles comme `voir les premiers ouvrages`, `cherche Theetete`, `extrait du Theetete de Platon`, `Theetete 126b a 128a` ne tombent plus en faux `no_signal`;
 - `work_resolver.py` distingue document physique Catalogue, oeuvre interne, locator et range; quand un document physique unique est deja resolu, il consulte d'abord `GET /doc/{id}/chapters` comme hint structurel d'oeuvre interne avec un matching normalise par mots/phrase;
+- `GET /doc/{id}/chapters` peut maintenant porter le meme signal faible negatif `document_role_signal` que `/search` et `/search/chapters`, derive du couple `document_title` / `title`;
 - quand aucun document physique unique n'est encore resolu mais qu'une oeuvre interne est explicitement demandee, il peut maintenant consulter `GET /search/chapters` comme support structural leger a l'echelle du catalogue avant de retomber sur `/search` de paragraphes;
 - `GET /search/chapters` ne remplace pas la recherche plein texte de paragraphes pour les locators/ranges: si une ancre documentaire interne reste necessaire, `/search` continue de fournir cette ancre content-free;
 - `GET /search/chapters` doit rester un support structural honnete: le fallback permissif par simple sous-chaine accidentelle n'est pas autorise pour "resoudre" une oeuvre interne;
 - cote FridaDev, un `document_id` unique issu de `search/chapters` n'est accepte que si le titre de chapitre matche la requete de facon defendable; sinon le resolver retombe sur le chemin suivant au lieu d'inventer une resolution;
 - `GET /search/chapters` peut maintenant porter le meme signal faible negatif `document_role_signal` que `/search`, derive du couple `document_title` / `chapter_title`;
 - ce signal reste faible et negatif uniquement: FridaDev peut l'utiliser pour refuser qu'un hit de type `introduction`, `notice` ou `commentary` engage a lui seul une resolution d'oeuvre interne, mais jamais pour prouver positivement qu'un hit est le texte primaire;
+- la meme regle vaut maintenant pour `GET /doc/{id}/chapters`: un chapitre deja situe dans un document physique unique mais marque `introduction`, `notice` ou `commentary` ne suffit pas a lui seul a "resoudre" l'oeuvre interne;
 - le resolver accepte des ancres non textuelles `locator_anchor_page` / `locator_anchor_para` pour choisir un locator parmi plusieurs candidats sans exposer le titre, l'oeuvre ou la requete en observabilite;
 - le chemin document-id utilise `/metadata` plutot que le payload lourd `/doc/{id}` pour eviter de tirer inutilement l'overview complet;
 - `library_runtime.py` peut produire une lane de consultation `[CONSULTATION DE BIBLIOTHEQUE]` pour liste, recherche, candidat ou statut non extrait; cette lane peut contenir des titres Catalogue dans le prompt produit, mais elle n'est jamais serialisee en observabilite;
@@ -551,6 +553,9 @@ Correctif recherche de candidats du 2026-05-30:
 - `GET /search/chapters` peut exposer ce meme signal faible sur ses resultats
   structurels de TOC, derive directement du titre de chapitre et, a defaut, du
   titre documentaire;
+- `GET /doc/{id}/chapters` peut exposer ce meme signal faible sur ses lignes de
+  TOC directe, derive du titre de chapitre et, a defaut, du titre
+  documentaire;
 - valeurs autorisees pour ce signal faible: `commentary`, `notice`,
   `introduction`;
 - source autorisee: `chapter_title` ou `document_title`;

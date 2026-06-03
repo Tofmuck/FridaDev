@@ -115,6 +115,29 @@ class BiblioWorkResolverTests(unittest.TestCase):
         self.assertEqual([call[0] for call in fake.calls], ["catalog", "chapters"])
         self.assertNotIn("RAW CHAPTER TITLE MUST STAY INTERNAL", encoded)
 
+    def test_unique_document_negative_role_signal_does_not_commit_front_matter_work_title(self) -> None:
+        plan = query_planner.BiblioQueryPlan(
+            should_consult=True,
+            intent=query_planner.INTENT_RESOLVE_WORK,
+            reason_code=query_planner.REASON_WORK_REQUESTED,
+            query_kind=query_planner.INTENT_RESOLVE_WORK,
+            document_title="Platon",
+            author="Platon",
+            work_title="Introduction générale",
+        )
+        fake = _DirectChapterNegativeSignalClient()
+
+        result = work_resolver.BiblioWorkResolver(fake).resolve(plan)
+
+        self.assertEqual(result.status, work_resolver.STATUS_RESOLVED)
+        self.assertIsNotNone(result.resolve_request)
+        assert result.resolve_request is not None
+        self.assertEqual(result.resolve_request.document_id, "doc-1234")
+        self.assertEqual(
+            [call[0] for call in fake.calls],
+            ["catalog", "chapters", "search"],
+        )
+
     def test_short_work_title_does_not_match_chapter_by_accidental_substring(self) -> None:
         plan = query_planner.BiblioQueryPlan(
             should_consult=True,
@@ -315,6 +338,53 @@ class _ShortTitleFalsePositiveClient(_FakeClient):
                 "total": 1,
                 "chapters": [
                     {"chapter_no": 1, "title": "Introduction", "unit_no": 1, "source": "toc"},
+                ],
+            },
+            duration_ms=1,
+            result_count=1,
+        )
+
+
+class _DirectChapterNegativeSignalClient(_FakeClient):
+    def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("chapters", doc_id, limit, offset))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            status_code=200,
+            payload={
+                "document_id": doc_id,
+                "total": 1,
+                "chapters": [
+                    {
+                        "chapter_no": 1,
+                        "title": "Introduction générale",
+                        "unit_no": 1,
+                        "source": "toc",
+                        "document_role_signal": "introduction",
+                        "document_role_signal_source": "chapter_title",
+                        "document_role_signal_strength": "weak",
+                    },
+                ],
+            },
+            duration_ms=1,
+            result_count=1,
+        )
+
+    def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search", q, limit))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            status_code=200,
+            payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "title": "RAW TITLE MUST STAY INTERNAL",
+                        "page_no": 18,
+                        "para_no": 3,
+                        "text": "RAW OCR MUST STAY INTERNAL",
+                    }
                 ],
             },
             duration_ms=1,

@@ -371,6 +371,9 @@ encore decide ou repare a plusieurs endroits.
       l'utiliser seulement pour refuser qu'un chapitre de type
       `introduction/notice/commentary` engage a lui seul `work_lookup` comme
       resolution d'oeuvre interne.
+- [x] Propager ce meme signal faible negatif aux lignes `GET /doc/{id}/chapters`
+      et l'utiliser pareillement seulement comme garde-fou negatif quand
+      `work_lookup` travaille deja dans un document physique unique.
 
 ## 9. Criteres de sortie de cette refonte
 

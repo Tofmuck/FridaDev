@@ -109,6 +109,11 @@ class BiblioWorkResolver:
                     chapters_response,
                     _candidate_queries(plan.work_title_variants, plan.work_title),
                 )
+                chapter_rows = [
+                    row
+                    for row in chapter_rows
+                    if not _has_negative_document_role_signal(row)
+                ]
 
             chapter_search_rows: list[Mapping[str, Any]] = []
             chapter_search_doc_id = ""
