@@ -91,25 +91,33 @@ Le Lot 1 historique du chantier Biblio native 2026-05-28 ne livrait aucun code r
 
 `human metadata`: metadonnees bibliographiques corrigees humainement par Lot 0 Catalogue: titre canonique, titre original, auteur(s), traducteur(s), editeur scientifique, editeur, collection, annee, langue override, type, notes operateur, statut.
 
-`DocumentManifest`: projection structurelle FridaDev, versionnee et
-content-free, derivee du fonds Catalogue existant. Elle porte `LibraryDocument`,
-`Work`, `SectionNode`, `TextUnit`, `Anchor`, `Interval`,
-`CanonicalReference` et `ContentRole`, avec etats `known`, `unknown`,
+`DocumentManifest`: projection structurelle FridaDev, versionnee, validable et
+content-free, derivee du fonds Catalogue existant et obligatoire pour les
+imports nominaux futurs. Elle porte `LibraryDocument`, `Work`, `SectionNode`,
+`TextUnit`, `Anchor`, `Interval`, `CanonicalReference`, `ContentRole`, signal de
+langue exploitable et validation de forme, avec etats `known`, `unknown`,
 `derived` ou `ambiguous`. Le manifeste ne contient ni texte long d'ouvrage, ni
 payload Catalogue brut, ni titre/auteur brut; il porte des ids, compteurs,
-ancres, roles, limites et hashes courts.
+ancres, roles, limites, raisons content-free et hashes courts.
 
 Livraison Last Chance Lot 1:
 
-- module: `app/biblio/structure/manifest.py`;
+- module: `app/biblio/structure/`;
 - runner de preuve: `app/biblio/document_manifest_baseline.py`;
 - artefact:
   `app/docs/states/baselines/biblio-manifests/frida-biblio-document-manifest-lot1-20260603T173615Z.json`;
+- artefact correctif rejouable:
+  `app/docs/states/baselines/biblio-manifests/frida-biblio-document-manifest-lot1-correctif-20260603T183445Z.json`;
 - couverture: 10 documents vus, 10 manifestes produits, 0 echec;
+- validation: 10 manifestes `valid_with_warnings`, 0 reason code invalidant;
 - normalisation: EPUB, PDF et origines inconnues futures doivent converger vers
   ce meme modele de sortie;
-- limite volontaire: le manifeste est une projection derivee; il ne modifie ni
-  DB schema, ni import, ni API Catalogue, ni chat runtime.
+- contrat d'import: un nouvel ouvrage ajoute par le chemin nominal doit etre
+  projetable/validable comme `DocumentManifest`; si les champs minimaux
+  manquent, la preuve doit produire un echec content-free explicite;
+- limite volontaire: le manifeste est une projection/validation FridaDev; ce
+  correctif ne modifie ni DB schema, ni import, ni API Catalogue, ni chat
+  runtime.
 
 ## 3. Frontieres non negociables
 

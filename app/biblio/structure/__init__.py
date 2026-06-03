@@ -7,11 +7,17 @@ from .manifest import (
     DocumentManifest,
     Interval,
     LibraryDocument,
+    ManifestValidationResult,
     SectionNode,
     TextUnit,
     Work,
+    STATUS_INVALID,
+    STATUS_VALID,
+    STATUS_VALID_WITH_WARNINGS,
+    language_signal,
     build_document_manifest,
     build_manifest_baseline_payload,
+    validate_document_manifest,
 )
 
 __all__ = [
@@ -21,9 +27,15 @@ __all__ = [
     "DocumentManifest",
     "Interval",
     "LibraryDocument",
+    "ManifestValidationResult",
     "SectionNode",
     "TextUnit",
     "Work",
+    "STATUS_INVALID",
+    "STATUS_VALID",
+    "STATUS_VALID_WITH_WARNINGS",
+    "language_signal",
     "build_document_manifest",
     "build_manifest_baseline_payload",
+    "validate_document_manifest",
 ]

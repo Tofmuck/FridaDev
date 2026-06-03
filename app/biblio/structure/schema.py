@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import hashlib
+import re
 from typing import Any, Mapping
 
 MANIFEST_SCHEMA_VERSION = "frida_biblio_document_manifest.v1"
@@ -37,6 +38,8 @@ ROLE_SIGNAL_MAP = {
     "notice": ROLE_NOTICE,
 }
 
+LANGUAGE_CODE_RE = re.compile(r"^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$")
+
 
 def short_hash(value: Any, *, length: int = 12) -> str:
     text = str(value or "").strip()
@@ -54,6 +57,21 @@ def text_signal(value: Any) -> dict[str, Any]:
     if not text:
         return {"state": STATE_UNKNOWN, "chars": 0, "sha256_12": ""}
     return {"state": STATE_KNOWN, "chars": len(text), "sha256_12": short_hash(text)}
+
+
+def language_signal(value: Any) -> dict[str, Any]:
+    text = str(value or "").strip()
+    if not text:
+        return {"state": STATE_UNKNOWN}
+    normalized = text.lower().replace("_", "-")
+    if LANGUAGE_CODE_RE.fullmatch(normalized):
+        return {"state": STATE_KNOWN, "value": normalized, "source": "catalogue_metadata"}
+    return {
+        "state": STATE_DERIVED,
+        "chars": len(text),
+        "sha256_12": short_hash(text),
+        "source": "catalogue_metadata_non_code",
+    }
 
 
 @dataclass(frozen=True)
@@ -183,6 +201,7 @@ class LibraryDocument:
     toc_source: str
     metadata_status: str
     language_state: str
+    language_signal: dict[str, Any] = field(default_factory=dict)
     quality: dict[str, Any] = field(default_factory=dict)
     source_limits: tuple[str, ...] = field(default_factory=tuple)
 
@@ -204,6 +223,7 @@ class LibraryDocument:
                 "toc_source": self.toc_source,
                 "metadata_status": self.metadata_status,
                 "language_state": self.language_state,
+                "language_signal": self.language_signal,
                 "quality": self.quality,
                 "source_limits": list(self.source_limits),
             }
@@ -296,6 +316,22 @@ class DocumentManifest:
                 "field_states": dict(sorted(self.field_states.items())),
                 "ambiguities": list(self.ambiguities),
                 "limits": list(self.limits),
+            }
+        )
+
+
+@dataclass(frozen=True)
+class ManifestValidationResult:
+    status: str
+    reason_codes: tuple[str, ...] = field(default_factory=tuple)
+    warning_codes: tuple[str, ...] = field(default_factory=tuple)
+
+    def to_dict(self) -> dict[str, Any]:
+        return _compact(
+            {
+                "status": self.status,
+                "reason_codes": list(self.reason_codes),
+                "warning_codes": list(self.warning_codes),
             }
         )
 

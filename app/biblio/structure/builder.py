@@ -24,9 +24,11 @@ from .schema import (
     TextUnit,
     Work,
     _compact,
+    language_signal,
     short_doc_id,
     text_signal,
 )
+from .validation import validate_document_manifest
 
 def build_document_manifest(
     *,
@@ -63,6 +65,11 @@ def build_document_manifest(
         or catalog_item.get("title")
     )
     source_filename = document_row.get("source_filename") or catalog_item.get("source_filename")
+    language = language_signal(
+        metadata.get("language_override")
+        or document_row.get("language_detected")
+        or catalog_item.get("language_detected")
+    )
 
     library_document = LibraryDocument(
         document_id=document_id,
@@ -78,9 +85,8 @@ def build_document_manifest(
         chapter_count=chapter_count,
         toc_source=toc_source,
         metadata_status=metadata_status or "unknown",
-        language_state=STATE_KNOWN
-        if _string(metadata.get("language_override") or document_row.get("language_detected"))
-        else STATE_UNKNOWN,
+        language_state=language.get("state", STATE_UNKNOWN),
+        language_signal=language,
         quality=_quality(document_row),
         source_limits=_source_limits(source_type, unit_label),
     )
@@ -124,7 +130,11 @@ def build_manifest_baseline_payload(
     generated_at: str,
     db_audit: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    manifest_dicts = [manifest.to_dict() for manifest in manifests]
+    manifest_dicts = []
+    for manifest in manifests:
+        item = manifest.to_dict()
+        item["validation"] = validate_document_manifest(manifest).to_dict()
+        manifest_dicts.append(item)
     summary = _baseline_summary(manifests, failures=failures, db_audit=db_audit or {})
     return {
         "schema_version": BASELINE_SCHEMA_VERSION,
@@ -152,9 +162,16 @@ def _baseline_summary(
     origin_counts = Counter(manifest.document.technical_origin for manifest in manifests)
     source_counts = Counter(manifest.document.source_type for manifest in manifests)
     toc_counts = Counter(manifest.document.toc_source for manifest in manifests)
+    validation_status_counts: Counter[str] = Counter()
+    validation_reason_counts: Counter[str] = Counter()
+    validation_warning_counts: Counter[str] = Counter()
     role_counts: Counter[str] = Counter()
     bounded_sections = 0
     for manifest in manifests:
+        validation = validate_document_manifest(manifest)
+        validation_status_counts[validation.status] += 1
+        validation_reason_counts.update(validation.reason_codes)
+        validation_warning_counts.update(validation.warning_codes)
         for section in manifest.sections:
             role_counts[section.content_role.value] += 1
             if section.end_anchor is not None:
@@ -181,6 +198,9 @@ def _baseline_summary(
         "sections_total": sum(len(manifest.sections) for manifest in manifests),
         "sections_with_derived_end": bounded_sections,
         "content_role_counts": dict(sorted(role_counts.items())),
+        "validation_status_counts": dict(sorted(validation_status_counts.items())),
+        "validation_reason_counts": dict(sorted(validation_reason_counts.items())),
+        "validation_warning_counts": dict(sorted(validation_warning_counts.items())),
         "ambiguity_count": sum(len(manifest.ambiguities) for manifest in manifests),
         "limit_count": sum(len(manifest.limits) for manifest in manifests),
         "db_audit": dict(db_audit),
@@ -390,6 +410,7 @@ def _field_states(
         "document": STATE_KNOWN,
         "title": document.title_signal.get("state", STATE_UNKNOWN),
         "source_filename": document.source_filename_signal.get("state", STATE_UNKNOWN),
+        "language": document.language_signal.get("state", STATE_UNKNOWN),
         "technical_origin": document.technical_origin_state,
         "pages": STATE_KNOWN if document.page_count else STATE_UNKNOWN,
         "paragraphs": STATE_KNOWN if document.paragraph_count else STATE_UNKNOWN,

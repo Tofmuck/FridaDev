@@ -100,13 +100,17 @@ Regle de normalisation:
    texte, ancres stables, intervalles, roles de contenu, provenance, qualite,
    confiance et limites OCR si necessaire.
 3. Normaliser la bibliotheque actuelle vers ce modele canonique.
-4. Ensuite seulement, imposer ce meme modele comme contrat d'import pour les
-   futurs ouvrages.
+4. Contraindre le chemin nominal des futurs ouvrages a produire ce meme modele:
+   tout nouvel ouvrage doit etre projetable/validable comme `DocumentManifest`,
+   ou echouer avec un `reason_code` content-free indiquant les champs
+   structurels manquants.
 
-Le premier chantier concret est donc la normalisation de l'existant. Cette
-normalisation doit produire et figer le canon de sortie. Les futurs imports
-devront ensuite respecter ce canon, mais le pipeline d'import ne doit pas etre
-patche tant que ce canon n'est pas prouve sur le fonds deja ingere.
+Le premier chantier concret reste la normalisation de l'existant, parce que le
+fonds deja ingere est la preuve disponible. Mais cette normalisation fige aussi
+le contrat de sortie des imports futurs: EPUB, PDF texte, PDF OCR, import manuel
+ou origine inconnue convergent vers le meme `DocumentManifest`. Les champs
+peuvent rester `unknown`, `ambiguous` ou `derived`; la forme, elle, ne doit plus
+etre incompatible ni silencieuse.
 
 ## 0 quater. Invariant memoire conversationnelle des lectures
 
@@ -542,7 +546,11 @@ La cible ne doit pas attendre que l'agent compense l'absence de structure.
 
 - projection structurelle par document;
 - oeuvre(s), sections, aliases, roles, bornes;
+- langue exploitable via signal court (`fr`, `de`, `en`, etc.) ou signal
+  derive content-free quand la metadonnee n'est pas un code court;
 - source: import, metadata humaine, backfill, correction operateur;
+- validation de forme: `valid`, `valid_with_warnings` ou `invalid`, avec
+  `reason_codes` content-free pour les champs obligatoires manquants;
 - version et date.
 
 ### A porter des l'import ou du backfill documentaire
@@ -996,21 +1004,41 @@ verite seulement; il ne ferme aucun lot structurel suivant.
 - [x] Ajouter les bornes de fin de section par chapitre suivant quand possible.
 - [x] Identifier les oeuvres internes dans les volumes complexes seulement si
       la TOC le permet honnetement.
+- [x] Porter une langue exploitable dans le manifeste: valeur courte quand elle
+      existe (`fr`, `de`, `en`, etc.), sinon signal derive content-free.
+- [x] Ajouter un validateur de forme `DocumentManifest`: un document peut rester
+      incomplet bibliographiquement, mais il ne peut plus sortir du format commun
+      sans `reason_code`.
+- [x] Rendre la baseline Lot 1 rejouable de bout en bout: le runner collecte
+      lui-meme l'audit DB content-free quand `DOC_PIPELINE_DATABASE_URL`,
+      `DATABASE_URL` ou `--database-url` est disponible.
+- [x] Poser le contrat d'import obligatoire: un ouvrage ajoute demain par le
+      chemin nominal doit produire un `DocumentManifest` valide ou
+      `valid_with_warnings`, ou apparaitre comme echec content-free avec raison
+      explicite.
 
 Livraison Lot 1, 2026-06-03:
 
-- code: `app/biblio/structure/manifest.py` et runner content-free
+- code: package `app/biblio/structure/` et runner content-free
   `app/biblio/document_manifest_baseline.py`;
 - test: `app/tests/test_biblio_document_manifest.py`;
 - artefact:
   `app/docs/states/baselines/biblio-manifests/frida-biblio-document-manifest-lot1-20260603T173615Z.json`;
+- artefact correctif rejouable:
+  `app/docs/states/baselines/biblio-manifests/frida-biblio-document-manifest-lot1-correctif-20260603T183445Z.json`;
+- commande OVH rejouable, sans afficher l'URL DB:
+  `DB_URL=$(docker exec platform-doc-pipeline-api sh -lc 'printf %s "$DOC_PIPELINE_DATABASE_URL"') && docker run --rm --network doc-pipeline_default -v /opt/platform/fridadev:/repo -w /repo -e PYTHONPATH=app -e DOC_PIPELINE_DATABASE_URL="$DB_URL" platform-fridadev-app:local python -m biblio.document_manifest_baseline --base-url http://platform-doc-pipeline-api:8090 --output app/docs/states/baselines/biblio-manifests/frida-biblio-document-manifest-lot1-correctif-<YYYYMMDDTHHMMSSZ>.json`;
 - resultat: 10 documents vus, 10 manifestes produits, 0 echec;
 - fonds existant: 5 EPUB / `sections`, 5 PDF / `pages`;
 - tables DB auditees: 10 `documents`, 4837 `pages`, 101421
   `paragraphs`, 378034 `raw_units`, 973 `document_chapters`, 26492
   `milestones`;
-- `raw_units`: presents pour tous les documents, mais non exposes par l'API
-  Catalogue actuelle; l'artefact Lot 1 les enrichit par audit DB content-free;
+- `raw_units`: presents pour tous les documents; le runner correctif les
+  collecte lui-meme par audit DB content-free quand la DB documentaire est
+  joignable;
+- langue: 10 documents avec signal de langue connu cote DB; 6 signaux courts
+  portes directement, 4 signaux derives content-free parce que la metadonnee
+  n'est pas un code court;
 - TOC: 5 documents `epub_toc`, 4 `llm_fallback`, 1 `pdf_outline`;
 - sections: 973 sections projetees, 973 bornes de fin derivees par chapitre
   suivant ou fin de document;
@@ -1018,15 +1046,20 @@ Livraison Lot 1, 2026-06-03:
   `primary_text` n'est invente;
 - references canoniques: milestones Stephanus dans 9 documents; 1 document sans
   milestone;
+- validation: 10 manifestes `valid_with_warnings`, 0 `reason_code` invalidant;
+  warnings attendus: roles incomplets, oeuvres internes inconnues, origine PDF
+  encore ambigue, 1 document sans reference canonique;
 - limites assumees: les PDF ne distinguent pas encore PDF texte / PDF scanne
   OCR dans `source_type`; les EPUB exposent leurs sections via la semantique
   actuelle `page_no`; les oeuvres internes complexes ne sont pas inventees.
 
 Critere de fermeture: les documents existants ont maintenant une projection
-structurelle inspectable, versionnee et sans texte long expose. Cette
-projection normalise le fonds actuel vers un modele canonique unique et sert
-de contrat de sortie pour le futur contrat d'import, sans patcher le pipeline
-d'import avant preuve sur l'existant.
+structurelle inspectable, versionnee, validee et sans texte long expose. Cette
+projection normalise le fonds actuel vers un modele canonique unique et devient
+le contrat de sortie des imports futurs: si un ouvrage entre demain par le
+pipeline nominal, il doit etre projetable/validable comme `DocumentManifest`.
+S'il manque des champs minimaux, l'echec doit etre content-free et explicite;
+il ne doit pas disparaitre dans une structure incompatible.
 
 ### Lot 2 - API/outils de bibliotheque minimale
 
