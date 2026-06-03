@@ -113,14 +113,22 @@ Livraison Last Chance Lot 1:
 - verrou baseline: `valid` et `valid_with_warnings` passent; `invalid` devient
   une failure `manifest_validation_failed` avec `validation_reason_codes` et
   fait sortir le runner non-zero;
+- usine d'entree doc-pipeline: le worker nominal controle le payload normalise
+  avant DB et les tables reellement ecrites avant commit. `accepted` couvre
+  `valid` / `valid_with_warnings`; `invalid` bloque l'import avec reason codes
+  content-free, notamment si pages, paragraphes, unites ou `raw_units` manquent;
+- preuve d'entree reelle 2026-06-03: un EPUB UQAM fourni a ete importe par le
+  worker nominal avec `quality_gate=accepted`, `validation=valid_with_warnings`,
+  0 reason code invalidant; la baseline courante apres import voit 11 documents,
+  11 manifestes, 0 failure;
 - normalisation: EPUB, PDF et origines inconnues futures doivent converger vers
   ce meme modele de sortie;
 - contrat d'import: un nouvel ouvrage ajoute par le chemin nominal doit etre
   projetable/validable comme `DocumentManifest`; si les champs minimaux
   manquent, la preuve doit produire un echec content-free explicite;
-- limite volontaire: le manifeste est une projection/validation FridaDev; ce
-  correctif ne modifie ni DB schema, ni import, ni API Catalogue, ni chat
-  runtime.
+- limite volontaire: ce correctif ne modifie ni DB schema, ni API Catalogue, ni
+  chat runtime; le worker d'import doc-pipeline a ete modifie de facon ciblee
+  pour porter le gate d'entree.
 
 ## 3. Frontieres non negociables
 

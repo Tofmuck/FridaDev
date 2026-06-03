@@ -1019,6 +1019,10 @@ verite seulement; il ne ferme aucun lot structurel suivant.
 - [x] Verrouiller la baseline: `valid` et `valid_with_warnings` passent;
       `invalid` devient une failure `manifest_validation_failed` et la commande
       sort non-zero.
+- [x] Verrouiller le chemin nominal d'import doc-pipeline: le payload normalise
+      et les tables reellement ecrites passent par un quality gate content-free;
+      `accepted` couvre `valid` / `valid_with_warnings`, `invalid` bloque
+      l'import avant succes silencieux.
 
 Livraison Lot 1, 2026-06-03:
 
@@ -1055,6 +1059,21 @@ Livraison Lot 1, 2026-06-03:
 - verrou final: un manifeste `invalid` n'est pas accepte comme manifeste
   produit; il est reporte dans `failures` avec `validation_reason_codes`, et le
   runner sort avec code non-zero;
+- usine d'entree: `/opt/platform/doc-pipeline` porte un gate d'import minimal:
+  `validate_import_payload_quality()` controle le payload normalise avant DB,
+  `validate_ingested_document_quality()` controle apres ecriture SQL, avant
+  commit; si le document manque pages, paragraphes, unites ou `raw_units`,
+  l'import echoue avec reason codes content-free;
+- runtime import: le worker `platform-doc-pipeline` a ete reconstruit/recree
+  de facon ciblee pour embarquer ce gate; DB, API Catalogue, Caddy et FridaDev
+  runtime chat n'ont pas ete redemarres;
+- preuve d'entree reelle: un EPUB UQAM fourni le 2026-06-03 a ete importe par
+  le worker nominal avec `input_kind=epub`, 2 unites, 1071 paragraphes, 3951
+  `raw_units`, 28 chapitres, `quality_gate=accepted` et
+  `validation=valid_with_warnings`; une fixture cassee sans unites/pages/
+  paragraphes/`raw_units` retourne `invalid` avec reason codes content-free;
+- baseline rejouee apres cet import reel: 11 documents vus, 11 manifestes
+  produits, 0 failure, 11 `valid_with_warnings`;
 - limites assumees: les PDF ne distinguent pas encore PDF texte / PDF scanne
   OCR dans `source_type`; les EPUB exposent leurs sections via la semantique
   actuelle `page_no`; les oeuvres internes complexes ne sont pas inventees.
@@ -1066,7 +1085,8 @@ le contrat de sortie des imports futurs: si un ouvrage entre demain par le
 pipeline nominal, il doit etre projetable/validable comme `DocumentManifest`.
 S'il manque des champs minimaux, l'echec doit etre content-free et explicite;
 il ne doit pas disparaitre dans une structure incompatible ni dans un smoke vert
-de baseline.
+de baseline. Lot 2 reste interdit si le gate d'entree n'est pas actif sur le
+worker d'import nominal.
 
 ### Lot 2 - API/outils de bibliotheque minimale
 
