@@ -15,10 +15,11 @@ Sources:
 - `app/docs/states/baselines/biblio-smokes/p10-agentic-rerun-20260603T131029Z.jsonl`
 - `app/docs/states/baselines/biblio-smokes/p14-agentic-isolated-from-stateful-20260603T133545Z.jsonl`
 
-Portee: document canonique de pilotage produit pour la refonte Biblio. Ce
-document ne remplace ni la spec agent, ni la spec Catalogue. Il fixe
-l'invariant produit, la grammaire des 18 cas, la couche "methode produit",
-les verites actuelles, les faux verts et l'ordre reel des lots.
+Portee: document de transition pour la refonte Biblio. Ce document ne remplace
+ni la spec agent, ni la spec Catalogue, ni le plan structurant
+`frida-biblio-last-chance.md`. Il conserve la matrice de regression P01-P18, la
+couche "methode produit", les verites actuelles, les faux verts historiques et
+l'ordre reel des lots deja executes.
 
 Requalification 2026-06-03:
 
@@ -31,12 +32,16 @@ Requalification 2026-06-03:
   verifier d'abord la structure documentaire, l'API/outillage, l'extraction
   mecanique, le renderer produit et le nettoyage `app/biblio/`.
 
-## 1. Invariant produit canonique
+## 1. Invariant produit de transition
 
 Invariant durable:
 
-- il existe 18 cas Biblio de reference;
-- ces 18 cas forment la grammaire produit;
+- les questions canoniques d'une bibliotheque forment le canon de travail
+  prioritaire, selon `frida-biblio-last-chance.md`;
+- il existe 18 cas Biblio de reference historique et de regression;
+- ces 18 cas ne forment plus la grammaire produit principale: ils restent une
+  matrice de transition utile pour surveiller les regressions, les faux verts
+  et les methodes produit deja livrees;
 - le bibliothecaire recoit:
   - la demande utilisateur;
   - les 5 derniers echanges utiles;
@@ -197,7 +202,7 @@ Regle dure:
 - un cas qui n'a pas d'objet d'intervalle, de source ou de navigation reel ne
   doit pas etre promu artificiellement en `livre`.
 
-## 4. Matrice canonique des 18 cas
+## 4. Matrice de regression des 18 cas
 
 ### A. Catalogue
 
@@ -342,9 +347,9 @@ encore decide ou repare a plusieurs endroits.
 
 ## 8. Ordre reel des lots
 
-### Lot A - Cadrage canonique cas -> methode
+### Lot A - Cadrage de transition cas -> methode
 
-- [x] Geler la grammaire des 18 cas.
+- [x] Geler la matrice de regression des 18 cas.
 - [x] Geler le registre initial des methodes produit.
 - [x] Geler la regle de statut `vert net / partiel / faux vert / absent`.
 
