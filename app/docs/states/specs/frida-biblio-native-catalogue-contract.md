@@ -245,6 +245,17 @@ Implementation Lot 2 du 2026-05-28:
 - erreurs content-free: forbidden method, forbidden route, invalid base URL, invalid parameter, service unavailable, timeout, invalid JSON, not found, unexpected status;
 - `CatalogueResponse.to_observability()` exclut le payload brut et expose seulement endpoint, status, duree, compte, id court et longueur compacte si applicable.
 
+Correctif oeuvre interne Lot E du 2026-06-03:
+
+- une demande de type `sommaire / chapitres du Theetete de Platon` peut
+  maintenant rester cote FridaDev: le planner separe `work_title` et
+  `document_title`, puis la runtime TOC consulte le volume unique et renvoie
+  seulement les entrees TOC correspondantes a l'oeuvre interne quand elles
+  existent;
+- cette focalisation reste un repere structurel dans la TOC du volume; elle
+  ne doit pas etre racontee comme une table des matieres autonome et complete
+  de l'oeuvre interne.
+
 Correctif Lot 2 du 2026-05-28:
 
 - les parametres numeriques publics sont valides avant appel reseau;

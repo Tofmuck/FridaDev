@@ -21,6 +21,9 @@ from .catalogue_client import (
 )
 from .prompt_lane import LANE_FOOTER, LANE_HEADER
 from .query_planner import BiblioQueryPlan
+from .work_resolver import _candidate_queries as _work_candidate_queries
+from .work_resolver import _has_negative_document_role_signal as _has_negative_chapter_role_signal
+from .work_resolver import _matching_chapters as _matching_work_chapters
 
 
 STATUS_OPENED = "opened"
@@ -192,6 +195,32 @@ def run_biblio_table_of_contents(
             total_count=total or chapter_count,
             displayed_count=0,
             truncated=truncated,
+        )
+
+    matched_work_chapters = _matching_work_chapters(
+        chapters_response,
+        _work_candidate_queries(plan.work_title_variants, plan.work_title),
+    )
+    matched_work_chapters = [
+        row for row in matched_work_chapters if not _has_negative_chapter_role_signal(row)
+    ]
+    if plan.work_title and matched_work_chapters:
+        lines = [
+            f"Table des matieres du volume disponible: {total} entrees. Affichage des {len(matched_work_chapters)} entrees correspondant a l'oeuvre interne.",
+            "Oeuvre interne reperee comme entree TOC du volume, sans pretendre ouvrir une table des matieres propre a l'oeuvre seule.",
+            *_document_summary_lines(selected),
+            *_chapter_lines(matched_work_chapters),
+        ]
+        return BiblioCatalogueConsultationResult(
+            status=STATUS_TOC_LISTED,
+            reason_code=REASON_TOC_LISTED,
+            endpoint_observations=tuple(endpoint_observations),
+            lines=tuple(lines),
+            document_ids=tuple(filter(None, [doc_id])),
+            doc_id_shorts=tuple(filter(None, [short_doc_id(doc_id)])),
+            total_count=total,
+            displayed_count=len(matched_work_chapters),
+            truncated=total > len(matched_work_chapters),
         )
 
     lines = [

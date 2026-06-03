@@ -192,15 +192,16 @@ def plan_biblio_query(user_msg: str) -> BiblioQueryPlan:
             locator_end=locator_end,
         ))
 
-    toc_target = _extract_table_of_contents_target(text, folded)
-    if toc_target or _is_table_of_contents_request(folded):
+    toc_work_title, toc_document_title = _extract_table_of_contents_titles(text, folded)
+    if toc_work_title or toc_document_title or _is_table_of_contents_request(folded):
         return _with_variants(BiblioQueryPlan(
             should_consult=True,
             intent=INTENT_SHOW_TABLE_OF_CONTENTS,
             reason_code=REASON_TABLE_OF_CONTENTS,
             query_kind=INTENT_SHOW_TABLE_OF_CONTENTS,
-            document_title=toc_target,
-            catalogue_query=toc_target,
+            document_title=toc_document_title,
+            work_title=toc_work_title,
+            catalogue_query=_first_non_empty(toc_document_title, toc_work_title),
             limit=8,
         ))
 
@@ -461,9 +462,10 @@ def _extract_search_query(text: str, folded: str) -> str:
     return ""
 
 
-def _extract_table_of_contents_target(text: str, folded: str) -> str:
+def _extract_table_of_contents_titles(text: str, folded: str) -> tuple[str, str]:
     if not _is_table_of_contents_request(folded):
-        return ""
+        return "", ""
+    candidate = ""
     match = re.search(
         r"\b(?:table\s+des\s+matieres|table\s+des\s+matières|sommaire|chapitres?|oeuvres\s+internes|œuvres\s+internes)\b"
         r".{0,100}?\b(?:de|du|des|d['’])\s+([^,.;?!\n]{2,120})",
@@ -472,9 +474,14 @@ def _extract_table_of_contents_target(text: str, folded: str) -> str:
     )
     if match:
         candidate = _clean_catalogue_target(match.group(1))
-        if _usable_title(candidate):
-            return candidate
-    return _extract_catalogue_named_target(text)
+    if not _usable_title(candidate):
+        candidate = _extract_catalogue_named_target(text)
+    if not _usable_title(candidate):
+        return "", ""
+    work, document = _split_work_of_corpus(candidate)
+    if work and document and is_known_work_alias(work):
+        return canonical_work_title(work), document
+    return "", candidate
 
 
 def _extract_open_document_target(text: str, folded: str) -> str:

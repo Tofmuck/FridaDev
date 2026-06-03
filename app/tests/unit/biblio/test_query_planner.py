@@ -41,6 +41,16 @@ class BiblioQueryPlannerTests(unittest.TestCase):
         self.assertEqual(plan.document_title, "Platon")
         self.assertEqual(plan.catalogue_query, "Platon")
 
+    def test_internal_work_table_of_contents_request_separates_work_and_volume(self) -> None:
+        plan = query_planner.plan_biblio_query("Sommaire du Théétète de Platon")
+
+        self.assertTrue(plan.should_consult)
+        self.assertEqual(plan.intent, query_planner.INTENT_SHOW_TABLE_OF_CONTENTS)
+        self.assertEqual(plan.document_title, "Platon")
+        self.assertEqual(plan.work_title, "Théétète")
+        self.assertEqual(plan.catalogue_query, "Platon")
+        self.assertIn("Theetete", plan.work_title_variants)
+
     def test_open_document_request_is_planned_as_catalogue_document_action(self) -> None:
         plan = query_planner.plan_biblio_query("Ouvre Platon dans la bibliothèque")
 

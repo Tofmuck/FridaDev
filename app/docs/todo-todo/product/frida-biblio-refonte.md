@@ -379,6 +379,10 @@ encore decide ou repare a plusieurs endroits.
       chapitre suivant) quand la structure documentaire l'autorise deja, puis
       l'afficher cote navigation sans le maquiller en resolution bibliographique
       forte.
+- [x] Quand une demande TOC cible une oeuvre interne dans un volume/corpus
+      (`Sommaire du Theetete de Platon`), faire porter par FridaDev un repere
+      TOC focalise sur l'entree de volume correspondante, sans presenter cela
+      comme une table des matieres autonome de l'oeuvre.
 
 ## 9. Criteres de sortie de cette refonte
 

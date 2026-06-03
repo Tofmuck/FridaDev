@@ -1014,6 +1014,32 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertNotIn("RAW DOCUMENT TITLE", encoded_observability)
         self.assertNotIn("RAW CHAPTER TITLE ONE", encoded_observability)
 
+    def test_internal_work_table_of_contents_request_focuses_matching_volume_entry(self) -> None:
+        fake = _InternalWorkTableOfContentsClient()
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Sommaire du Théétète de Platon",
+            client_factory=lambda **_kwargs: fake,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, "show_table_of_contents")
+        self.assertEqual(fake.calls, [("catalog", "Platon", 8, 0), ("chapters", "doc-toc", 500, 0)])
+        self.assertEqual(result.observability_payload["status"], "toc_listed")
+        self.assertEqual(result.reason_code, "biblio_table_of_contents_listed")
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn(
+            "Affichage des 1 entrees correspondant a l'oeuvre interne.",
+            result.prompt_message["content"],
+        )
+        self.assertIn("RAW WORK CHAPTER TITLE THÉÉTÈTE", result.prompt_message["content"])
+        self.assertNotIn("RAW INTRO CHAPTER TITLE", result.prompt_message["content"])
+
+        encoded_observability = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn("RAW WORK CHAPTER TITLE THÉÉTÈTE", encoded_observability)
+        self.assertNotIn("RAW DOCUMENT TITLE", encoded_observability)
+
     def test_open_document_request_returns_catalogue_summary_without_raw_observability(self) -> None:
         fake = _TableOfContentsClient()
 
@@ -1606,6 +1632,39 @@ class _LargeTableOfContentsClient(_TableOfContentsClient):
             },
             duration_ms=1,
             result_count=len(chapters),
+            doc_id_short=doc_id[:8],
+        )
+
+
+class _InternalWorkTableOfContentsClient(_TableOfContentsClient):
+    def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("chapters", doc_id, limit, offset))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            status_code=200,
+            payload={
+                "document": {"id": doc_id, "toc_source": "synthetic"},
+                "total": 3,
+                "limit": limit,
+                "offset": offset,
+                "count": 3,
+                "truncated": False,
+                "chapters": [
+                    {
+                        "chapter_no": 1,
+                        "title": "RAW INTRO CHAPTER TITLE",
+                        "unit_no": 1,
+                        "source": "synthetic",
+                        "document_role_signal": "introduction",
+                        "document_role_signal_source": "chapter_title",
+                        "document_role_signal_strength": "weak",
+                    },
+                    {"chapter_no": 2, "title": "RAW WORK CHAPTER TITLE THÉÉTÈTE", "unit_no": 2, "source": "synthetic"},
+                    {"chapter_no": 3, "title": "RAW OTHER CHAPTER TITLE", "unit_no": 3, "source": "synthetic"},
+                ],
+            },
+            duration_ms=1,
+            result_count=3,
             doc_id_short=doc_id[:8],
         )
 
