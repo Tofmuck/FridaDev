@@ -692,6 +692,16 @@ P17 est maintenant ferme comme reformulation soeur de la meme methode externe:
 - preuve datee:
   `app/docs/states/baselines/biblio-smokes/p17-agentic-20260603T122300Z.jsonl`.
 
+P18 est maintenant ferme comme troisieme reformulation de la famille externe:
+
+- la troisieme formulation de la meme famille reste reconnue explicitement
+  comme `case_id=P18` et `product_method=passage_search_external_work`;
+- l'execution peut mobiliser resolution documentaire, ouverture resumee,
+  `locate` et `passage_context`, tant que le controle reste du cote
+  `agent_first` et que la methode produit ne change pas;
+- preuve datee:
+  `app/docs/states/baselines/biblio-smokes/p18-agentic-20260603T122300Z.jsonl`.
+
 ## 14. Tests exiges avant runtime
 
 Avant tout branchement runtime agentique:
