@@ -24,6 +24,7 @@ Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 Preuve role signal: `app/docs/states/baselines/frida-biblio-role-signal-proof-2026-06-02.md`
+Trace navigation chapter hint: `app/docs/states/baselines/frida-biblio-navigation-chapter-hint-trace-2026-06-03.md`
 Roadmap vraie bibliotheque archivee: `app/docs/todo-done/product/frida-biblio-real-library-passage-search-todo.md`
 Validation vraie bibliotheque requalifiee: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
 Remediation vraie bibliotheque archivee: `app/docs/todo-done/product/frida-biblio-real-library-product-gap-todo.md`
