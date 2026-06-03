@@ -188,9 +188,7 @@ def page_numbers_for_navigation(kind: str, state: BiblioConversationState, folde
             return ()
         return tuple(range(start, end + 1))
     last = getattr(state, "last_result", {}) or {}
-    anchor_page = last.get("page_no") if isinstance(last, dict) else None
-    if anchor_page is None:
-        anchor_page = state.page_no
+    anchor_page = _anchor_page_for_navigation(kind, state, last)
     if type(anchor_page) is not int or anchor_page < 1:
         return ()
     if kind == NAVIGATION_PAGE_PREVIOUS:
@@ -198,6 +196,19 @@ def page_numbers_for_navigation(kind: str, state: BiblioConversationState, folde
     if kind in {NAVIGATION_PAGE_NEXT, NAVIGATION_CONTINUE}:
         return (anchor_page + 1,)
     return ()
+
+
+def _anchor_page_for_navigation(kind: str, state: BiblioConversationState, last: Any) -> int | None:
+    if isinstance(last, dict) and kind in {NAVIGATION_PAGE_NEXT, NAVIGATION_CONTINUE}:
+        interval_hint = last.get("interval_hint")
+        if isinstance(interval_hint, dict):
+            end_page_no = interval_hint.get("end_page_no")
+            if type(end_page_no) is int and end_page_no >= 1:
+                return end_page_no
+    anchor_page = last.get("page_no") if isinstance(last, dict) else None
+    if anchor_page is None:
+        anchor_page = state.page_no
+    return anchor_page if type(anchor_page) is int else None
 
 
 def _is_nearby_navigation(folded: str) -> bool:

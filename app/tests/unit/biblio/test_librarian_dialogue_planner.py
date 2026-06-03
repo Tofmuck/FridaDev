@@ -325,6 +325,32 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
                 self.assertEqual([call.params["page_no"] for call in result.plan.tool_calls], expected_pages)
                 self.assertTrue(result.current_document_used)
 
+    def test_navigation_continue_after_range_uses_interval_end_page(self) -> None:
+        state = _state_with_document(
+            last_result={
+                "document_id": "doc-1",
+                "page_no": 12,
+                "para_no": 3,
+                "interval_hint": {
+                    "kind": "range",
+                    "mode": "multi_page_range",
+                    "start_page_no": 12,
+                    "end_page_no": 14,
+                    "end_para_no": 2,
+                    "page_span": 3,
+                },
+            }
+        )
+
+        for message in ("Continue apres ce passage.", "Montre-moi la page suivante."):
+            with self.subTest(message=message):
+                result = dialogue.plan_biblio_dialogue(message, state=state)
+
+                self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+                self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_PAGE_READ)
+                self.assertEqual(_tool_names(result), [tools.TOOL_PAGE_READ])
+                self.assertEqual(result.plan.tool_calls[0].params["page_no"], 15)
+
     def test_navigation_with_valid_state_reports_missing_tools_for_still_unsupported_moves(self) -> None:
         state = _state_with_document(last_result={"document_id": "doc-1", "page_no": 12, "para_no": 3})
 

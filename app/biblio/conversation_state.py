@@ -98,6 +98,7 @@ class BiblioConversationState:
         }
 
     def to_observability(self) -> dict[str, Any]:
+        interval_hint = _mapping(self.last_result.get("interval_hint"))
         return {
             "schema_version": SCHEMA_VERSION,
             "persistence_mode": PERSISTENCE_MODE,
@@ -114,6 +115,10 @@ class BiblioConversationState:
             "last_result_present": bool(self.last_result),
             "last_result_status": _safe_token(self.last_result.get("status")),
             "last_result_reason_code": _safe_token(self.last_result.get("reason_code")),
+            "last_result_interval_kind": _safe_token(interval_hint.get("kind")),
+            "last_result_interval_mode": _safe_token(interval_hint.get("mode")),
+            "last_result_interval_end_page_no": _optional_int(interval_hint.get("end_page_no")),
+            "last_result_interval_end_para_no": _optional_int(interval_hint.get("end_para_no")),
             "last_candidate_count": len(self.last_candidates),
             "last_ambiguity_present": bool(self.last_ambiguity),
             "last_ambiguity_candidate_count": _optional_int(self.last_ambiguity.get("candidate_count")) or 0,
@@ -324,6 +329,11 @@ def _anchor_from_passage_like(value: Any) -> dict[str, Any]:
         "excerpt_start": _optional_int(getattr(value, "excerpt_start", None) or observed.get("excerpt_start")),
         "excerpt_end": _optional_int(getattr(value, "excerpt_end", None) or observed.get("excerpt_end")),
         "text_length": _optional_int(getattr(value, "text_length", None) or observed.get("text_length")),
+        "interval_hint": _interval_hint_mapping(
+            getattr(getattr(value, "interval_hint", None), "to_observability", lambda: getattr(value, "interval_hint", None))()
+            if getattr(value, "interval_hint", None) is not None
+            else observed.get("interval_hint")
+        ),
     }
     return _anchor_mapping(anchor)
 
@@ -497,6 +507,26 @@ def _anchor_mapping(value: Any) -> dict[str, Any]:
         "excerpt_start": _optional_int(item.get("excerpt_start")),
         "excerpt_end": _optional_int(item.get("excerpt_end")),
         "text_length": _optional_int(item.get("text_length")),
+        "interval_hint": _interval_hint_mapping(item.get("interval_hint")),
+    }
+    return {key: value for key, value in out.items() if value not in ("", None)}
+
+
+def _interval_hint_mapping(value: Any) -> dict[str, Any]:
+    item = _mapping(value)
+    if not item:
+        return {}
+    out = {
+        "kind": _safe_token(item.get("kind")),
+        "mode": _safe_token(item.get("mode")),
+        "start_page_no": _optional_int(item.get("start_page_no")),
+        "start_para_no": _optional_int(item.get("start_para_no")),
+        "start_paragraph_id": _optional_int(item.get("start_paragraph_id")),
+        "end_page_no": _optional_int(item.get("end_page_no")),
+        "end_para_no": _optional_int(item.get("end_para_no")),
+        "end_paragraph_id": _optional_int(item.get("end_paragraph_id")),
+        "page_span": _optional_int(item.get("page_span")),
+        "paragraph_span": _optional_int(item.get("paragraph_span")),
     }
     return {key: value for key, value in out.items() if value not in ("", None)}
 

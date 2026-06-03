@@ -62,6 +62,35 @@ MAX_RANGE_PAGES = 12
 
 
 @dataclass(frozen=True)
+class BiblioCanonicalIntervalHint:
+    kind: str = "point"
+    mode: str = "single_locator"
+    start_page_no: int | None = None
+    start_para_no: int | None = None
+    start_paragraph_id: int | None = None
+    end_page_no: int | None = None
+    end_para_no: int | None = None
+    end_paragraph_id: int | None = None
+    page_span: int | None = None
+    paragraph_span: int | None = None
+
+    def to_observability(self) -> dict[str, Any]:
+        observed = {
+            "kind": str(self.kind or "").strip(),
+            "mode": str(self.mode or "").strip(),
+            "start_page_no": self.start_page_no,
+            "start_para_no": self.start_para_no,
+            "start_paragraph_id": self.start_paragraph_id,
+            "end_page_no": self.end_page_no,
+            "end_para_no": self.end_para_no,
+            "end_paragraph_id": self.end_paragraph_id,
+            "page_span": self.page_span,
+            "paragraph_span": self.paragraph_span,
+        }
+        return {key: value for key, value in observed.items() if value not in ("", None)}
+
+
+@dataclass(frozen=True)
 class BiblioPassageRequest:
     resolve_request: BiblioResolveRequest = field(default_factory=BiblioResolveRequest)
     char_offset: int = MIN_CHAR_OFFSET
@@ -87,6 +116,7 @@ class BiblioPassageResult:
     page_no: int | None = None
     para_no: int | None = None
     paragraph_id: int | None = None
+    interval_hint: BiblioCanonicalIntervalHint | None = None
 
     def to_observability(self) -> dict[str, Any]:
         return {
@@ -106,6 +136,7 @@ class BiblioPassageResult:
             "page_no": self.page_no,
             "para_no": self.para_no,
             "paragraph_id": self.paragraph_id,
+            "interval_hint": self.interval_hint.to_observability() if self.interval_hint else None,
         }
 
 
@@ -344,6 +375,13 @@ class BiblioPassageExtractor:
                 "excerpt_end": len(passage),
                 "text_length": len(passage),
             },
+            interval_hint=_range_interval_hint(
+                mode="same_page_range",
+                start=start,
+                end=resolution.locator_end,
+                page_span=1,
+                paragraph_span=len(paragraph_targets),
+            ),
         )
 
     def _extract_multi_page_range(
@@ -481,6 +519,13 @@ class BiblioPassageExtractor:
                 "excerpt_end": len(passage),
                 "text_length": len(passage),
             },
+            interval_hint=_range_interval_hint(
+                mode="multi_page_range",
+                start=start,
+                end=end,
+                page_span=len(page_numbers),
+                paragraph_span=selected_paragraph_count,
+            ),
         )
 
     def _context(
@@ -622,6 +667,7 @@ def _result(
     passage: str = "",
     passage_chars: int = 0,
     passage_hash: str = "",
+    interval_hint: BiblioCanonicalIntervalHint | None = None,
 ) -> BiblioPassageResult:
     data = payload or {}
     return BiblioPassageResult(
@@ -641,6 +687,7 @@ def _result(
         page_no=_optional_int(data.get("page_no")) if data else (locator.page_no if locator else None),
         para_no=_optional_int(data.get("para_no")) if data else (locator.para_no if locator else None),
         paragraph_id=_optional_int(data.get("paragraph_id")) if data else (locator.paragraph_id if locator else None),
+        interval_hint=interval_hint or _point_interval_hint(locator),
     )
 
 
@@ -778,3 +825,39 @@ def _text(value: Any) -> str:
 
 def _short_hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+
+
+def _point_interval_hint(locator: LocatorCandidate | None) -> BiblioCanonicalIntervalHint | None:
+    if locator is None:
+        return None
+    if locator.page_no is None and locator.para_no is None and locator.paragraph_id is None:
+        return None
+    return BiblioCanonicalIntervalHint(
+        kind="point",
+        mode="single_locator",
+        start_page_no=locator.page_no,
+        start_para_no=locator.para_no,
+        start_paragraph_id=locator.paragraph_id,
+    )
+
+
+def _range_interval_hint(
+    *,
+    mode: str,
+    start: LocatorCandidate,
+    end: LocatorCandidate,
+    page_span: int,
+    paragraph_span: int,
+) -> BiblioCanonicalIntervalHint:
+    return BiblioCanonicalIntervalHint(
+        kind="range",
+        mode=mode,
+        start_page_no=start.page_no,
+        start_para_no=start.para_no,
+        start_paragraph_id=start.paragraph_id,
+        end_page_no=end.page_no,
+        end_para_no=end.para_no,
+        end_paragraph_id=end.paragraph_id,
+        page_span=page_span,
+        paragraph_span=paragraph_span,
+    )

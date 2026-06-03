@@ -207,6 +207,11 @@ class PassageExtractorTests(unittest.TestCase):
         self.assertIn(raw_b, result.passage)
         self.assertNotIn(raw_a, str(observed))
         self.assertNotIn(raw_b, str(observed))
+        self.assertEqual(observed["interval_hint"]["kind"], "range")
+        self.assertEqual(observed["interval_hint"]["mode"], "same_page_range")
+        self.assertEqual(observed["interval_hint"]["start_page_no"], 7)
+        self.assertEqual(observed["interval_hint"]["end_page_no"], 7)
+        self.assertEqual(observed["interval_hint"]["paragraph_span"], 2)
         self.assertEqual(
             [call for call in fake.calls if call[0] == "context"],
             [
@@ -284,6 +289,12 @@ class PassageExtractorTests(unittest.TestCase):
         self.assertNotIn(raw_a, str(observed))
         self.assertNotIn(raw_b, str(observed))
         self.assertNotIn(raw_c, str(observed))
+        self.assertEqual(observed["interval_hint"]["kind"], "range")
+        self.assertEqual(observed["interval_hint"]["mode"], "multi_page_range")
+        self.assertEqual(observed["interval_hint"]["start_page_no"], 7)
+        self.assertEqual(observed["interval_hint"]["end_page_no"], 8)
+        self.assertEqual(observed["interval_hint"]["page_span"], 2)
+        self.assertEqual(observed["interval_hint"]["paragraph_span"], 3)
         self.assertEqual(
             [call for call in fake.calls if call[0] == "page"],
             [

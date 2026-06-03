@@ -362,6 +362,10 @@ Implementation Lot 4 du 2026-05-28, completee par le correctif bibliothecaire du
 - il peut appeler `context()` pour un passage simple ou un range borne sur une
   meme page, et `page()` pour un range borne multi-page quand les deux ancres
   resolues portent des positions `page_no` / `para_no` coherentes;
+- en sortie, l'extraction exacte peut exposer un `interval_hint` content-free
+  borne (`kind`, `mode`, ancres start/end non textuelles, spans calcules) afin
+  de reutiliser proprement le range dans l'etat et la navigation, sans
+  pretendre a un objet canonique general d'intervalle;
 - il refuse toute extraction si la resolution est `ambiguous`, `not_found`, `invalid_request` ou `catalogue_unavailable`;
 - il exige un locator resolu avec cible contextuelle non ambigue: `paragraph_id` ou couple `page_no` / `para_no`;
 - il refuse les ranges non bornes ou incoherents avec `range_extraction_not_supported`;

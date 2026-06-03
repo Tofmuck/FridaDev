@@ -82,6 +82,31 @@ class BiblioConversationStateTests(unittest.TestCase):
         self.assertNotIn(RAW_QUERY, encoded)
         self.assertNotIn("payload", encoded.lower())
 
+    def test_update_after_range_extraction_persists_interval_hint_without_text(self) -> None:
+        previous = conversation_state.BiblioConversationState.empty(conversation_id="conv-123")
+        runtime = _RuntimeResult(passage_result=_range_passage(RAW_PASSAGE), status="extracted")
+
+        state, _transition = conversation_state.update_state_from_runtime(
+            previous,
+            query_plan=_Plan(intent="extract_range", work_title=RAW_QUERY),
+            library_result=runtime,
+            conversation_id="conv-123",
+            now_iso="2026-05-31T12:00:00Z",
+        )
+        observed = state.to_observability()
+
+        self.assertEqual(state.last_intent, "extract_range")
+        self.assertEqual(state.last_result["interval_hint"]["kind"], "range")
+        self.assertEqual(state.last_result["interval_hint"]["mode"], "multi_page_range")
+        self.assertEqual(state.last_result["interval_hint"]["end_page_no"], 14)
+        self.assertEqual(state.last_result["interval_hint"]["end_para_no"], 2)
+        self.assertEqual(observed["last_result_interval_kind"], "range")
+        self.assertEqual(observed["last_result_interval_mode"], "multi_page_range")
+        self.assertEqual(observed["last_result_interval_end_page_no"], 14)
+        encoded = _json(state.to_dict())
+        self.assertNotIn(RAW_PASSAGE, encoded)
+        self.assertNotIn(RAW_QUERY, encoded)
+
     def test_state_round_trips_through_latest_user_message_meta(self) -> None:
         state, _transition = conversation_state.update_state_from_runtime(
             conversation_state.BiblioConversationState.empty(conversation_id="conv-123"),
@@ -296,6 +321,39 @@ def _passage(passage: str) -> extractor.BiblioPassageResult:
         page_no=12,
         para_no=3,
         paragraph_id=99,
+    )
+
+
+def _range_passage(passage: str) -> extractor.BiblioPassageResult:
+    result = _passage(passage)
+    return extractor.BiblioPassageResult(
+        status=result.status,
+        reason_code=extractor.REASON_RANGE_EXTRACTED,
+        resolution=result.resolution,
+        passage=result.passage,
+        doc_id_short=result.doc_id_short,
+        passage_chars=result.passage_chars,
+        passage_hash=result.passage_hash,
+        char_offset=result.char_offset,
+        window_chars=result.window_chars,
+        max_passage_chars=result.max_passage_chars,
+        excerpt_start=result.excerpt_start,
+        excerpt_end=result.excerpt_end,
+        text_length=result.text_length,
+        page_no=12,
+        para_no=3,
+        paragraph_id=99,
+        interval_hint=extractor.BiblioCanonicalIntervalHint(
+            kind="range",
+            mode="multi_page_range",
+            start_page_no=12,
+            start_para_no=3,
+            start_paragraph_id=99,
+            end_page_no=14,
+            end_para_no=2,
+            page_span=3,
+            paragraph_span=5,
+        ),
     )
 
 
