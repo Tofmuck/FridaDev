@@ -196,7 +196,7 @@ Regle dure:
 
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P05 | Theme dans une oeuvre | Trouver un passage thematique dans l'oeuvre cible | `passage_search_in_work` | resolution documentaire, `catalog_search`, `passage_context`, selection | partiel | Le systeme sait produire des candidats/contextes, pas encore une verite bibliothecaire forte | mixte | Stabiliser la methode produit et separer explicitement `truth_level` et `execution_status` |
+| P05 | Theme dans une oeuvre | Trouver un passage thematique dans l'oeuvre cible | `passage_search_in_work` | resolution documentaire, `catalog_search`, `passage_context`, selection | vert net | La methode explicite est maintenant reconnue agentiquement, consulte l'oeuvre resolue puis un contexte borne, et restitue un passage thematique utile sans le sur-vendre comme certitude textuelle plus forte que ce que le runtime tient | FridaDev | Conserver la distinction entre passage plausible/contextuel et preuve textuelle forte |
 | P06 | Theme dans une oeuvre sans accents | Meme cas que P05, avec variantes de forme | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | partiel | Le cas passe encore avec reparation/fallback sur certaines variantes | FridaDev | Sortir les variantes de la logique de reparation et les rattacher a la methode produit |
 | P07 | Theme lexical voisin | Meme cas que P05 avec reformulation ("sage-femme") | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | partiel | La recherche marche parfois, mais sans garantie de source ni de niveau documentaire | mixte | Integrer la verification oeuvre/source dans la methode |
 | P08 | Theme paraphrase | Meme cas que P05 avec reformulation plus libre | `passage_search_in_work` | variantes + `catalog_search` + `passage_context` | partiel | Le cas reste un `search -> context` utile, pas une resolution forte | mixte | Mieux separer paraphrase, candidat plausible et passage exact |
@@ -361,8 +361,9 @@ encore decide ou repare a plusieurs endroits.
 - [x] `P04 passage_extract_canonical_range`: ferme l'extraction canonique comme
       methode produit explicite, sans vendre un objet general d'intervalle tant
       qu'il n'existe pas.
-- [ ] `P05 passage_search_in_work`: fermer la recherche thematique dans une
-      oeuvre avec niveau de verite et source explicites.
+- [x] `P05 passage_search_in_work`: ferme la recherche thematique dans une
+      oeuvre avec une methode agentique explicite et une borne documentaire
+      honnete.
 - [ ] `P06 passage_search_in_work` variante sans accents: fermer le cas sans
       rebasculer la reconnaissance vers des reparations locales phrase par
       phrase.
