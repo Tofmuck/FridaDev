@@ -673,6 +673,16 @@ P15 est maintenant ferme comme verification de provenance agent-first:
 - preuve datee:
   `app/docs/states/baselines/biblio-smokes/p15-agentic-20260603T121537Z.jsonl`.
 
+P16 est maintenant ferme comme recherche thematique externe agent-first:
+
+- hors oeuvre courante, le plan agent valide reconnait `case_id=P16` et
+  `product_method=passage_search_external_work`;
+- l'execution bornee atteint une cible documentaire externe puis un
+  `passage_context` utile sans fallback deterministe ni requalification locale
+  du cas;
+- preuve datee:
+  `app/docs/states/baselines/biblio-smokes/p16-agentic-20260603T122008Z.jsonl`.
+
 ## 14. Tests exiges avant runtime
 
 Avant tout branchement runtime agentique:

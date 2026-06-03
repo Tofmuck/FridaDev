@@ -215,7 +215,7 @@ Regle dure:
 
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P16 | Theme externe 1 | Trouver un passage thematique dans une autre oeuvre/corpus | `passage_search_external_work` | `catalog_search`, `passage_context`, selection | partiel | Le cas peut marcher, mais encore avec reparation/fallback selon la forme de demande | mixte | Definir explicitement le scope corpus/oeuvre et le statut de resultat |
+| P16 | Theme externe 1 | Trouver un passage thematique dans une autre oeuvre/corpus | `passage_search_external_work` | `catalog_search`, `passage_context`, selection | vert net | La recherche thematique hors oeuvre courante est maintenant tenue comme vraie methode bibliothecaire canonique: l'agent reconnait explicitement `P16`, borne la cible documentaire externe, puis atteint un `passage_context` utile sans fallback deterministe ni requalification locale du cas | FridaDev | Conserver cette methode externe comme cas produit unique, sans re-decouper ses reformulations en mini-parseur opportuniste |
 | P17 | Theme externe 2 | Meme methode que P16, autre reformulation | `passage_search_external_work` | `catalog_search`, `passage_context`, selection | partiel | Meme faiblesse: pas encore une vraie methode bibliothecaire canonique | mixte | Mutualiser la methode au lieu de traiter ces cas comme des variantes opportunistes |
 | P18 | Theme externe 3 | Meme methode que P16, autre reformulation | `passage_search_external_work` | `catalog_search`, `passage_context`, selection | partiel | Le cas est utile, mais reste un assemblage d'outils plus qu'une methode produit | mixte | Fermer la methode externe avec verite produit et clarifications propres |
 
@@ -385,7 +385,7 @@ encore decide ou repare a plusieurs endroits.
       documentaire explicite, pas comme smoke vert ambigu.
 - [x] `P15 passage_origin_check`: fermer la provenance du passage comme verite
       documentaire exploitable.
-- [ ] `P16 passage_search_external_work`: fermer la recherche thematique hors
+- [x] `P16 passage_search_external_work`: fermer la recherche thematique hors
       oeuvre courante comme vraie methode bibliothecaire canonique.
 - [ ] `P17 passage_search_external_work` reformulation soeur: fermer le cas dans
       la meme methode canonique, sans variante opportuniste locale.
