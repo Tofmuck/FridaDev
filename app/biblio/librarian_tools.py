@@ -11,6 +11,7 @@ from . import catalogue_client as catalogue
 
 TOOL_CATALOG_LIST = "catalog_list"
 TOOL_CATALOG_SEARCH = "catalog_search"
+TOOL_SEARCH_CHAPTERS = "search_chapters"
 TOOL_DOCUMENT_OPEN_SUMMARY = "document_open_summary"
 TOOL_DOCUMENT_TOC = "document_toc"
 TOOL_PAGE_READ = "page_read"
@@ -20,6 +21,7 @@ TOOL_PASSAGE_CONTEXT = "passage_context"
 LOT3_TOOL_NAMES = (
     TOOL_CATALOG_LIST,
     TOOL_CATALOG_SEARCH,
+    TOOL_SEARCH_CHAPTERS,
     TOOL_DOCUMENT_OPEN_SUMMARY,
     TOOL_DOCUMENT_TOC,
     TOOL_PAGE_READ,
@@ -65,6 +67,7 @@ REASON_PAGE_INCOHERENT = "biblio_librarian_page_incoherent_catalogue"
 _ENDPOINT_BY_TOOL = {
     TOOL_CATALOG_LIST: catalogue.ENDPOINT_CATALOG,
     TOOL_CATALOG_SEARCH: catalogue.ENDPOINT_SEARCH,
+    TOOL_SEARCH_CHAPTERS: catalogue.ENDPOINT_CHAPTER_SEARCH,
     TOOL_DOCUMENT_OPEN_SUMMARY: catalogue.ENDPOINT_METADATA,
     TOOL_DOCUMENT_TOC: catalogue.ENDPOINT_CHAPTERS,
     TOOL_PAGE_READ: catalogue.ENDPOINT_PAGE,
@@ -181,6 +184,7 @@ class BiblioLibrarianToolRegistry:
         handlers = {
             TOOL_CATALOG_LIST: self._catalog_list,
             TOOL_CATALOG_SEARCH: self._catalog_search,
+            TOOL_SEARCH_CHAPTERS: self._search_chapters,
             TOOL_DOCUMENT_OPEN_SUMMARY: self._document_open_summary,
             TOOL_DOCUMENT_TOC: self._document_toc,
             TOOL_PAGE_READ: self._page_read,
@@ -218,6 +222,21 @@ class BiblioLibrarianToolRegistry:
             return _error_result(tool, exc)
         items = tuple(_search_item(item) for item in _items(response.payload, "results"))
         return _ok_result(tool, response, items=items, limit=limit, query=query)
+
+    def _search_chapters(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
+        tool = TOOL_SEARCH_CHAPTERS
+        query = _required_text(params, ("q", "query"), tool=tool, max_chars=_QUERY_MAX)
+        limit = _integer(params.get("limit", 20), tool=tool, name="limit", minimum=1, maximum=50)
+        _integer(params.get("offset", 0), tool=tool, name="offset", minimum=0, maximum=0)
+        doc_id = _doc_id(params, tool=tool)
+        try:
+            response = self._client.search_chapters(query, limit=limit)
+        except catalogue.CatalogueClientError as exc:
+            return _error_result(tool, exc)
+        items = tuple(_chapter_search_item(item) for item in _items(response.payload, "results"))
+        if doc_id:
+            items = tuple(item for item in items if _string(item.get("document_id")) == doc_id)
+        return _ok_result(tool, response, items=items, limit=limit, query=query, doc_id=doc_id)
 
     def _document_open_summary(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
         tool = TOOL_DOCUMENT_OPEN_SUMMARY
@@ -676,6 +695,29 @@ def _search_item(raw: Any) -> dict[str, Any]:
             "paragraph_id": _raw_int(item.get("paragraph_id")),
             "rank": _raw_float(item.get("rank")),
             "score": _raw_float(item.get("score")),
+            "document_role_signal": _string(item.get("document_role_signal")),
+            "document_role_signal_source": _string(item.get("document_role_signal_source")),
+            "document_role_signal_strength": _string(item.get("document_role_signal_strength")),
+        }
+    )
+
+
+def _chapter_search_item(raw: Any) -> dict[str, Any]:
+    item = _mapping(raw)
+    doc_id = _string(item.get("document_id") or item.get("id"))
+    unit_no = _raw_int(item.get("unit_no"))
+    return _clean_observation(
+        {
+            "document_id": doc_id,
+            "doc_id_short": catalogue.short_doc_id(doc_id),
+            "title": _string(item.get("chapter_title") or item.get("title")),
+            "document_title": _string(item.get("document_title")),
+            "chapter_no": _raw_int(item.get("chapter_no")),
+            "page_no": unit_no,
+            "unit_no": unit_no,
+            "rank": _raw_float(item.get("rank")),
+            "score": _raw_float(item.get("score")),
+            "source": _string(item.get("source")),
             "document_role_signal": _string(item.get("document_role_signal")),
             "document_role_signal_source": _string(item.get("document_role_signal_source")),
             "document_role_signal_strength": _string(item.get("document_role_signal_strength")),

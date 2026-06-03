@@ -362,6 +362,7 @@ Outils autorises au niveau contrat:
 | --- | --- | --- |
 | `catalog_list` | `GET /catalog` | Liste bornee, pagination explicite, pas de promesse de totalite au-dela de la limite. |
 | `catalog_search` | `GET /catalog` ou `GET /search` | Recherche bornee, variantes autorisees, pas de payload brut en observabilite. |
+| `search_chapters` | `GET /search/chapters` | Recherche structurelle de chapitres/sections; utile pour trouver le debut d'une section interne sans locator canonique, eventuellement apres resolution d'un volume/corpus. |
 | `document_open_summary` | `GET /catalog`, `GET /doc/{id}/metadata` | Resume bibliographique borne; `GET /doc/{id}` lourd interdit par defaut. |
 | `document_toc` | `GET /doc/{id}/chapters` | TOC bornee ou paginee, `document_id` explicite. |
 | `locate` | `GET /doc/{id}/locate` | Repere explicite, document resolu requis. |
@@ -407,7 +408,8 @@ Implementation Lot 3:
 
 - module: `app/biblio/librarian_tools.py`;
 - registre expose: `catalog_list`, `catalog_search`,
-  `document_open_summary`, `document_toc`, `locate`, `passage_context`;
+  `search_chapters`, `document_open_summary`, `document_toc`, `locate`,
+  `passage_context`, `page_read`;
 - `latest/page`, `latest/context`, `export/chunk` et les routes mutatrices
   sont refuses avant reseau;
 - `document_open_summary` n'appelle pas `GET /doc/{id}` et utilise
@@ -1247,8 +1249,9 @@ Runner:
 - `off` est reserve aux tests negatifs explicites;
 - options explicites: `--agent-mode off|config|active|shadow|candidate`;
 - execution agent-first autorisee pour les outils GET-only allowlistes:
-  `catalog_list`, `catalog_search`, `document_open_summary`, `document_toc`,
-  `locate`, `passage_context`;
+  `catalog_list`, `catalog_search`, `search_chapters`,
+  `document_open_summary`, `document_toc`, `locate`, `passage_context`,
+  `page_read`;
 - aucun appel modele en mode `off`;
 - `shadow` et `candidate` sont des modes compat/dev; ils ne valent pas preuve
   produit nominale;

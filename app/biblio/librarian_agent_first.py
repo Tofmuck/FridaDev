@@ -157,6 +157,7 @@ def _consultation_message(
         "- Elle a ete declenchee par un plan bibliothecaire valide, sous garde deterministe.",
         "- Les outils Catalogue appeles sont GET-only et bornes.",
         "- Ne confonds pas cette consultation avec les documents actifs, la memoire, le web, l'identite ou le resume.",
+        "- Si la consultation localise un texte mais que la surface ne peut pas restituer tout le bloc demande, decris la limite de restitution de surface sans inventer de probleme de droits ou de legalite.",
         f"Statut: {status}",
         f"Raison: {reason_code}",
         f"Outils executes: {loop_result.tool_call_count}",

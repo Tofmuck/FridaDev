@@ -275,7 +275,17 @@ def build_librarian_agent_messages(
         "case_id quand la demande correspond clairement a un cas de reference; "
         "si tu ne peux pas choisir honnetement entre plusieurs cas, laisse "
         "case_id vide. Le product_method est obligatoire et doit decrire la methode "
-        "produit, pas seulement l'outil. Pour lister toute la "
+        "produit, pas seulement l'outil. Utilise seulement des codes compacts "
+        "sans espaces pour intent et answer_mode. intents autorises: "
+        "list_catalog, show_table_of_contents, resolve_work, search_catalog, "
+        "extract_passage, extract_range, compare_passages, clarify. "
+        "answer_mode autorises: tool_calls, clarify, catalog_list, toc, "
+        "passage, conceptual_search, needs_tool_result_then_page_read, "
+        "bounded_context_extract_start_of_section, "
+        "deliver_excerpt_context_from_section_start, section_start_page_block_2. "
+        "Pour une demande de debut de section ou d'oeuvre interne suivie de "
+        "premieres pages, garde un answer_mode compact de cette famille et "
+        "n'ecris jamais une phrase libre a la place d'un code. Pour lister toute la "
         "bibliotheque, appelle catalog_list sans q avec limit 100. Pour une "
         "table des matieres sans document_id, commence par catalog_search ou "
         "document_open_summary; le runtime peut porter l'ancre documentaire "
@@ -287,6 +297,10 @@ def build_librarian_agent_messages(
         "l'oeuvre, document_open_summary ou document_toc si la structure aide, "
         "locate pour une reference canonique, puis passage_context seulement "
         "si une position explicite est connue ou portee par un outil precedent. "
+        "Pour le debut d'une section ou d'une oeuvre interne dans un volume/"
+        "corpus sans locator canonique, prefere search_chapters pour trouver "
+        "l'entree structurelle, puis page_read pour lire les premieres pages "
+        "si la demande les cible explicitement. "
         "Quand un catalog_search, document_open_summary ou locate precede un "
         "autre outil, tu peux omettre document_id si l'ancre sera portee par "
         "le runtime. Pour passage_context, tu peux omettre la position "
@@ -355,6 +369,11 @@ def _tool_param_contracts() -> dict[str, Any]:
         "catalog_search": {
             "allowed": ["q", "query", "limit", "offset"],
             "required_any": [["q", "query"]],
+        },
+        "search_chapters": {
+            "allowed": ["document_id", "doc_id", "q", "query", "limit", "offset"],
+            "required_any": [["q", "query"]],
+            "note": "Recherche structurelle de chapitres/sections; document_id facultatif si le runtime porte deja une ancre documentaire unique.",
         },
         "document_open_summary": {
             "allowed": ["document_id", "doc_id", "q", "query", "limit"],

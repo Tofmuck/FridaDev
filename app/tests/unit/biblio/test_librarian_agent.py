@@ -529,6 +529,16 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     {"tool_name": tools.TOOL_LOCATE, "method": "GET", "params": {"label": "126b", "kind": "stephanus", "limit": 5}},
                 ],
             ),
+            (
+                {
+                    "case_id": "",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+                },
+                [
+                    {"tool_name": tools.TOOL_DOCUMENT_OPEN_SUMMARY, "method": "GET", "params": {"query": "Kant", "limit": 5}},
+                    {"tool_name": tools.TOOL_SEARCH_CHAPTERS, "method": "GET", "params": {"query": "Analytique transcendantale", "limit": 5}},
+                ],
+            ),
         ]
         for overrides, calls in cases:
             with self.subTest(second_tool=calls[1]["tool_name"]):

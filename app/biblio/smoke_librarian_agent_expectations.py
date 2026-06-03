@@ -212,6 +212,7 @@ def _agent_first_execution_allowed(record: Mapping[str, Any]) -> bool:
     global_allowed_tools = {
         "catalog_list",
         "catalog_search",
+        "search_chapters",
         "document_open_summary",
         "document_toc",
         "page_read",
@@ -223,7 +224,7 @@ def _agent_first_execution_allowed(record: Mapping[str, Any]) -> bool:
     if product_method:
         if not all(product_methods.method_allows_tool(product_method, tool_name) for tool_name in executed_tools):
             return False
-    allowed_endpoints = {"catalog", "search", "metadata", "chapters", "locate", "context", "page"}
+    allowed_endpoints = {"catalog", "search", "chapter_search", "metadata", "chapters", "locate", "context", "page"}
     endpoint_kinds = set(_safe_token_list(record.get("endpoint_kinds")))
     if endpoint_kinds and not endpoint_kinds.issubset(allowed_endpoints):
         return False

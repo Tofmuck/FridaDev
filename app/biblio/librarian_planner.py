@@ -423,6 +423,7 @@ def _with_carried_anchor(
     changed = False
     if call.tool_name in {
         tools.TOOL_DOCUMENT_TOC,
+        tools.TOOL_SEARCH_CHAPTERS,
         tools.TOOL_PAGE_READ,
         tools.TOOL_LOCATE,
         tools.TOOL_PASSAGE_CONTEXT,

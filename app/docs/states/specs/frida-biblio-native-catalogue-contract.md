@@ -259,6 +259,18 @@ Correctif oeuvre interne Lot E du 2026-06-03:
   du deterministe et doit revenir au bibliothecaire agentique, pas a une
   accumulation de variantes locales.
 
+Correctif generique section interne -> deux pages du 2026-06-03:
+
+- quand un volume/corpus est deja resolu et qu'une demande vise le debut d'une
+  section interne sans locator canonique, FridaDev peut maintenant utiliser
+  `GET /search/chapters` comme repere structurel de debut, puis enchainer
+  `GET /doc/{id}/page/{page_no}` sur `page_start` et `page_start + 1`;
+- ce chemin reste documentaire et borne: il n'invente ni nouvel objet
+  canonique general, ni pseudo-resolution semantique forte;
+- s'il existe ensuite une limite de restitution de surface dans le chat, elle
+  doit etre traitee comme limite de surface distincte, pas comme faux
+  probleme de droits.
+
 Correctif Lot 2 du 2026-05-28:
 
 - les parametres numeriques publics sont valides avant appel reseau;

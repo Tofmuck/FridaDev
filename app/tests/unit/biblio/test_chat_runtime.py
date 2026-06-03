@@ -306,6 +306,114 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
         self.assertNotIn("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE", encoded)
 
+    def test_agent_first_section_start_request_repairs_to_structural_chapter_search_and_two_page_reads(self) -> None:
+        payload = {
+            "schema_version": agent_contract.SCHEMA_VERSION,
+            "case_id": "",
+            "intent": "extract_section_start_pages",
+            "product_method": librarian_product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+            "tool_calls": [
+                {
+                    "tool_name": librarian_tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+                    "method": "GET",
+                    "params": {"query": "RAW DOC QUERY MUST NOT LEAK", "limit": 5},
+                },
+                {
+                    "tool_name": librarian_tools.TOOL_LOCATE,
+                    "method": "GET",
+                    "params": {"label": "RAW SECTION LABEL MUST NOT LEAK", "kind": "section", "limit": 5},
+                },
+            ],
+            "answer_mode": "bounded_context_extract_start_of_section",
+            "risk_flags": [],
+            "fallback_reason": "section_start_pages_requested",
+        }
+        fake_model = _FakeAgentModel(json.dumps(payload, ensure_ascii=False))
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Sors-moi les deux premières pages d'une section interne.",
+            client_factory=lambda **_kwargs: _FakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+        endpoint_kinds = [item["endpoint_kind"] for item in result.observability_payload["client"]["items"]]
+        page_positions = [
+            item["positions"][0]["page_no"]
+            for item in result.observability_payload["client"]["items"]
+            if item["endpoint_kind"] == "page"
+        ]
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertEqual(
+            result.observability_payload["product_method"],
+            librarian_product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+        )
+        self.assertEqual(result.observability_payload["product_truth"], librarian_product_methods.TRUTH_LEVEL_EXACT)
+        self.assertEqual(endpoint_kinds, ["catalog", "locate", "chapter_search", "page", "page"])
+        self.assertEqual(
+            observed["tool_loop"]["tool_names"],
+            [
+                librarian_tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+                librarian_tools.TOOL_LOCATE,
+                librarian_tools.TOOL_SEARCH_CHAPTERS,
+                librarian_tools.TOOL_PAGE_READ,
+            ],
+        )
+        self.assertEqual(page_positions, [2247, 2248])
+        self.assertNotIn("RAW DOC QUERY MUST NOT LEAK", encoded)
+        self.assertNotIn("RAW SECTION LABEL MUST NOT LEAK", encoded)
+        self.assertNotIn("RAW PAGE 2247 TEXT MUST NOT BE OBSERVABLE", encoded)
+
+    def test_agent_first_structural_section_search_reads_two_pages_without_special_answer_mode(self) -> None:
+        payload = {
+            "schema_version": agent_contract.SCHEMA_VERSION,
+            "case_id": "",
+            "intent": "extract_section_start_pages",
+            "product_method": librarian_product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+            "tool_calls": [
+                {
+                    "tool_name": librarian_tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+                    "method": "GET",
+                    "params": {"query": "RAW DOC QUERY MUST NOT LEAK", "limit": 5},
+                },
+                {
+                    "tool_name": librarian_tools.TOOL_SEARCH_CHAPTERS,
+                    "method": "GET",
+                    "params": {"query": "RAW SECTION LABEL MUST NOT LEAK", "limit": 5},
+                },
+            ],
+            "answer_mode": "needs_tool_result_then_page_read",
+            "risk_flags": [],
+            "fallback_reason": "section_start_pages_requested",
+        }
+        fake_model = _FakeAgentModel(json.dumps(payload, ensure_ascii=False))
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Sors-moi les deux premières pages d'une section interne.",
+            client_factory=lambda **_kwargs: _FakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        endpoint_kinds = [item["endpoint_kind"] for item in result.observability_payload["client"]["items"]]
+        page_positions = [
+            item["positions"][0]["page_no"]
+            for item in result.observability_payload["client"]["items"]
+            if item["endpoint_kind"] == "page"
+        ]
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertEqual(
+            result.observability_payload["product_method"],
+            librarian_product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+        )
+        self.assertEqual(result.observability_payload["product_truth"], librarian_product_methods.TRUTH_LEVEL_EXACT)
+        self.assertEqual(endpoint_kinds, ["catalog", "chapter_search", "page", "page"])
+        self.assertEqual(page_positions, [2247, 2248])
+
     def test_agent_first_executes_explicit_locator_range_when_agent_plan_is_valid(self) -> None:
         fake_model = _FakeAgentModel(
             _valid_agent_json(
@@ -1533,6 +1641,26 @@ class _FakeClient:
             result_count=1,
         )
 
+    def search_chapters(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CHAPTER_SEARCH,
+            status_code=200,
+            payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "chapter_title": "RAW CHAPTER TITLE MUST STAY INTERNAL",
+                        "chapter_no": 669,
+                        "unit_no": 2247,
+                        "source": "epub_toc",
+                    }
+                ],
+            },
+            duration_ms=1,
+            result_count=1,
+        )
+
     def chapters(self, doc_id: str, *, limit: int = 500, offset: int = 0) -> catalogue.CatalogueResponse:
         return catalogue.CatalogueResponse(
             endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
@@ -1562,6 +1690,14 @@ class _FakeClient:
             duration_ms=1,
             result_count=2,
             doc_id_short=catalogue.short_doc_id(doc_id),
+        )
+
+    def locate(self, doc_id: str, locator: str, *, kind: str = "stephanus", limit: int = 200) -> catalogue.CatalogueResponse:
+        raise catalogue.CatalogueNotFound(
+            endpoint_kind=catalogue.ENDPOINT_LOCATE,
+            status_code=404,
+            doc_id=doc_id,
+            detail="locate unavailable for internal section test double",
         )
 
     def page(self, doc_id: str, page_no: int) -> catalogue.CatalogueResponse:

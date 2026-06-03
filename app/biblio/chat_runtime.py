@@ -26,6 +26,7 @@ from . import librarian_agent_bridge
 from . import librarian_dialogue_planner
 from . import librarian_dialogue_runtime
 from . import librarian_product_methods
+from . import librarian_tools
 from .library_runtime import run_biblio_library_plan
 from .librarian_agent_runtime import run_biblio_librarian_agent_comparison
 from .observability import build_biblio_event_payload
@@ -471,7 +472,12 @@ def _agent_first_product_projection(
     if not case_id:
         case_id = librarian_product_methods.default_case_id_for_method(product_method)
     execution_status = librarian_product_methods.EXECUTION_STATUS_SUCCESS
-    product_truth = _default_truth_for_method(product_method)
+    product_truth = _project_agent_first_truth(
+        product_method,
+        answer_mode=str(validation_plan.get("answer_mode") or "").strip(),
+        validation_plan=validation_plan,
+        librarian_agent_result=librarian_agent_result,
+    )
     return {
         "case_id": case_id,
         "product_method": product_method,
@@ -495,6 +501,41 @@ def _default_truth_for_method(product_method: str) -> str:
     if not spec or not spec.truth_levels:
         return ""
     return str(spec.truth_levels[0] or "").strip()
+
+
+def _project_agent_first_truth(
+    product_method: str,
+    *,
+    answer_mode: str,
+    validation_plan: Mapping[str, Any],
+    librarian_agent_result: Any,
+) -> str:
+    default_truth = _default_truth_for_method(product_method)
+    plan_tool_names = {
+        str(name or "").strip()
+        for name in (validation_plan.get("tool_names") or [])
+        if str(name or "").strip()
+    }
+    if (
+        answer_mode not in {
+            "bounded_context_extract_start_of_section",
+            "deliver_excerpt_context_from_section_start",
+            "section_start_page_block_2",
+        }
+        and librarian_tools.TOOL_SEARCH_CHAPTERS not in plan_tool_names
+    ):
+        return default_truth
+    loop_result = getattr(librarian_agent_result, "tool_loop_result", None)
+    if loop_result is None:
+        return librarian_product_methods.TRUTH_LEVEL_CONTEXTUAL
+    endpoint_kinds = {
+        str(step.endpoint_kind or "").strip()
+        for step in getattr(loop_result, "steps", ()) or ()
+        if getattr(step, "status", "") == "tool_executed"
+    }
+    if "page" in endpoint_kinds:
+        return default_truth
+    return librarian_product_methods.TRUTH_LEVEL_CONTEXTUAL
 
 
 def _truthy(value: Any) -> bool:

@@ -31,6 +31,7 @@ class BiblioLibrarianToolTests(unittest.TestCase):
             (
                 tools.TOOL_CATALOG_LIST,
                 tools.TOOL_CATALOG_SEARCH,
+                tools.TOOL_SEARCH_CHAPTERS,
                 tools.TOOL_DOCUMENT_OPEN_SUMMARY,
                 tools.TOOL_DOCUMENT_TOC,
                 tools.TOOL_PAGE_READ,
@@ -152,6 +153,45 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertEqual(fake.calls, [("catalog", RAW_QUERY, 2, 0)])
         self.assertEqual(result.endpoint_kind, catalogue.ENDPOINT_CATALOG)
         self.assertNotIn(RAW_QUERY, _json(result.to_observability()))
+
+    def test_search_chapters_filters_by_document_and_keeps_page_anchor_content_free(self) -> None:
+        fake = _FakeToolClient(
+            chapter_search_payload={
+                "count": 2,
+                "results": [
+                    {
+                        "document_id": "doc-1",
+                        "chapter_title": RAW_CHAPTER,
+                        "chapter_no": 7,
+                        "unit_no": 2247,
+                        "source": "epub_toc",
+                    },
+                    {
+                        "document_id": "doc-2",
+                        "chapter_title": "Autre section",
+                        "chapter_no": 8,
+                        "unit_no": 331,
+                        "source": "epub_toc",
+                    },
+                ],
+            }
+        )
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(
+            tools.TOOL_SEARCH_CHAPTERS,
+            {"document_id": "doc-1", "query": RAW_QUERY, "limit": 5},
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(fake.calls, [("search_chapters", RAW_QUERY, 5)])
+        self.assertEqual(result.items[0]["document_id"], "doc-1")
+        self.assertEqual(result.items[0]["page_no"], 2247)
+        self.assertEqual(result.items[0]["unit_no"], 2247)
+        self.assertEqual(observed["endpoint_kind"], catalogue.ENDPOINT_CHAPTER_SEARCH)
+        self.assertEqual(observed["displayed_count"], 1)
+        self.assertNotIn(RAW_QUERY, _json(observed))
+        self.assertNotIn(RAW_CHAPTER, _json(observed))
 
     def test_document_toc_is_bounded_and_content_free(self) -> None:
         fake = _FakeToolClient(
@@ -390,6 +430,7 @@ class _FakeToolClient:
         *,
         catalog_payload: dict[str, object] | None = None,
         search_payload: dict[str, object] | None = None,
+        chapter_search_payload: dict[str, object] | None = None,
         metadata_payload: dict[str, object] | None = None,
         chapters_payload: dict[str, object] | None = None,
         page_payload: dict[str, object] | None = None,
@@ -398,6 +439,7 @@ class _FakeToolClient:
     ) -> None:
         self.catalog_payload = catalog_payload or {"total": 0, "items": []}
         self.search_payload = search_payload or {"count": 0, "results": []}
+        self.chapter_search_payload = chapter_search_payload or {"count": 0, "results": []}
         self.metadata_payload = metadata_payload or {"document": {"id": "doc-1"}, "human_metadata": {}}
         self.chapters_payload = chapters_payload or {"total": 0, "chapters": []}
         self.page_payload = page_payload or {"document_id": "doc-1", "page_no": 1, "raw_text": ""}
@@ -412,6 +454,14 @@ class _FakeToolClient:
     def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
         self.calls.append(("search", q, limit))
         return _response(catalogue.ENDPOINT_SEARCH, self.search_payload, result_count=_count(self.search_payload, "results"))
+
+    def search_chapters(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search_chapters", q, limit))
+        return _response(
+            catalogue.ENDPOINT_CHAPTER_SEARCH,
+            self.chapter_search_payload,
+            result_count=_count(self.chapter_search_payload, "results"),
+        )
 
     def metadata(self, doc_id: str) -> catalogue.CatalogueResponse:
         self.calls.append(("metadata", doc_id))

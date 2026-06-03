@@ -88,6 +88,11 @@ _TOOL_PARAM_CONTRACTS = {
         "required_any": (("q", "query"),),
         "int_bounds": {"limit": (1, 50), "offset": (0, 0)},
     },
+    tools.TOOL_SEARCH_CHAPTERS: {
+        "allowed": {"document_id", "doc_id", "q", "query", "limit", "offset"},
+        "required_any": (("q", "query"),),
+        "int_bounds": {"limit": (1, 50), "offset": (0, 0)},
+    },
     tools.TOOL_DOCUMENT_OPEN_SUMMARY: {
         "allowed": {"document_id", "doc_id", "q", "query", "limit"},
         "required_any": (("document_id", "doc_id", "q", "query"),),

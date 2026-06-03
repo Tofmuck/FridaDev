@@ -55,6 +55,23 @@ _SEARCH_ASSISTED_CONTEXT_METHODS = frozenset(
     }
 )
 
+_SECTION_START_PAGE_BLOCK_METHODS = frozenset(
+    {
+        product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+        product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+    }
+)
+
+_SECTION_START_PAGE_BLOCK_ANSWER_MODES = frozenset(
+    {
+        "bounded_context_extract_start_of_section",
+        "deliver_excerpt_context_from_section_start",
+        "section_start_page_block_2",
+    }
+)
+
+_SECTION_START_PAGE_COUNT = 2
+
 _THEME_QUERY_STOPWORDS = frozenset(
     {
         "a",
@@ -143,6 +160,16 @@ def complete_product_method_loop(
                 params={"document_id": doc_id, "limit": 500},
             )
 
+    if _wants_section_start_page_block(product_method, plan):
+        repaired = _complete_section_start_page_block(
+            loop_result,
+            plan=plan,
+            registry=registry,
+        )
+        if _has_endpoint(repaired, "page"):
+            return repaired
+        loop_result = repaired
+
     if product_method in _CONTEXT_COMPLETION_METHODS and not _has_endpoint(loop_result, "context"):
         if product_method in _SEARCH_ASSISTED_CONTEXT_METHODS:
             for _ in range(3):
@@ -214,6 +241,23 @@ def _has_document_summary(loop_result: librarian_planner.BiblioLibrarianLoopResu
     )
 
 
+def _wants_section_start_page_block(
+    product_method: str,
+    plan: librarian_planner.BiblioLibrarianPlan,
+) -> bool:
+    if product_method not in _SECTION_START_PAGE_BLOCK_METHODS:
+        return False
+    answer_mode = _text(getattr(plan, "answer_mode", ""))
+    if answer_mode in _SECTION_START_PAGE_BLOCK_ANSWER_MODES:
+        return True
+    for call in getattr(plan, "tool_calls", ()) or ():
+        if call.tool_name == librarian_tools.TOOL_SEARCH_CHAPTERS:
+            return True
+        if call.tool_name == librarian_tools.TOOL_LOCATE and _text(call.params.get("kind")) == "section":
+            return True
+    return False
+
+
 def _first_document_id(loop_result: librarian_planner.BiblioLibrarianLoopResult) -> str:
     for step in loop_result.steps:
         result = step.tool_result
@@ -254,6 +298,91 @@ def _first_context_params(loop_result: librarian_planner.BiblioLibrarianLoopResu
                     params["para_no"] = para_no
                 return params
     return {}
+
+
+def _complete_section_start_page_block(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    plan: librarian_planner.BiblioLibrarianPlan,
+    registry: librarian_tools.BiblioLibrarianToolRegistry,
+) -> librarian_planner.BiblioLibrarianLoopResult:
+    doc_id = _first_document_id(loop_result)
+    section_query = _planned_section_query(plan)
+    if not doc_id or not section_query:
+        return loop_result
+    if not _has_endpoint(loop_result, "chapter_search"):
+        loop_result = _append_tool_call(
+            loop_result,
+            registry=registry,
+            tool_name=librarian_tools.TOOL_SEARCH_CHAPTERS,
+            params={"document_id": doc_id, "query": section_query, "limit": 10},
+        )
+    start_page = _first_section_start_page(loop_result, document_id=doc_id)
+    if start_page is None:
+        return loop_result
+    for page_no in range(start_page, start_page + _SECTION_START_PAGE_COUNT):
+        if _has_page_read(loop_result, document_id=doc_id, page_no=page_no):
+            continue
+        loop_result = _append_tool_call(
+            loop_result,
+            registry=registry,
+            tool_name=librarian_tools.TOOL_PAGE_READ,
+            params={"document_id": doc_id, "page_no": page_no},
+        )
+    return loop_result
+
+
+def _planned_section_query(plan: librarian_planner.BiblioLibrarianPlan) -> str:
+    for call in getattr(plan, "tool_calls", ()) or ():
+        if call.tool_name == librarian_tools.TOOL_SEARCH_CHAPTERS:
+            query = _text(call.params.get("query") or call.params.get("q"))
+            if query:
+                return query
+    for call in getattr(plan, "tool_calls", ()) or ():
+        if call.tool_name == librarian_tools.TOOL_LOCATE:
+            label = _text(call.params.get("label") or call.params.get("locator"))
+            if label:
+                return label
+    return ""
+
+
+def _first_section_start_page(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    document_id: str,
+) -> int | None:
+    for step in reversed(loop_result.steps):
+        result = step.tool_result
+        if result is None or result.tool_name != librarian_tools.TOOL_SEARCH_CHAPTERS:
+            continue
+        for item in result.items:
+            if not isinstance(item, Mapping):
+                continue
+            item_doc_id = _text(item.get("document_id"))
+            if item_doc_id and item_doc_id != document_id:
+                continue
+            page_no = _int(item.get("page_no"))
+            if page_no is not None and page_no >= 1:
+                return page_no
+    return None
+
+
+def _has_page_read(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    document_id: str,
+    page_no: int,
+) -> bool:
+    for step in loop_result.steps:
+        result = step.tool_result
+        if result is None or result.tool_name != librarian_tools.TOOL_PAGE_READ:
+            continue
+        if _text(getattr(result, "document_id", "")) != document_id:
+            continue
+        for position in result.positions:
+            if _int(position.get("page_no")) == page_no:
+                return True
+    return False
 
 
 def _fallback_search_query(deterministic_plan: Any, loop_result: librarian_planner.BiblioLibrarianLoopResult) -> str:

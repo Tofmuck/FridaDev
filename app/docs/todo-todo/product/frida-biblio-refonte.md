@@ -91,11 +91,24 @@ Les outils/scripts sont les briques bornes:
 
 - `catalog_list`
 - `catalog_search`
+- `search_chapters`
 - `document_open_summary`
 - `document_toc`
 - `page_read`
 - `locate`
 - `passage_context`
+
+Correctif generique section interne 2026-06-03:
+
+- quand une demande vise le debut d'une section interne dans un volume/corpus
+  resolu, puis un bloc borne de deux pages, le chemin nominal n'est plus un
+  bricolage `search -> context`;
+- l'agent peut maintenant rester dans une vraie methode documentaire,
+  retrouver l'entree structurelle via `search_chapters`, puis lire
+  `page_read(page_start)` et `page_read(page_start + 1)`;
+- si une limite de restitution de surface demeure plus tard dans la reponse
+  finale, elle doit etre dite comme limite de surface et jamais comme faux
+  probleme de droits.
 
 Ces briques ne sont pas la grammaire produit. Elles sont l'infrastructure
 technique des methodes.
