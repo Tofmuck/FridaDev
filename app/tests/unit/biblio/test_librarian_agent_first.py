@@ -425,6 +425,54 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertEqual(observed["status"], "tool_executed")
         self.assertIn(catalogue.ENDPOINT_CHAPTERS, observed["endpoint_kinds"])
 
+    def test_toc_request_recovers_from_unresolved_summary_then_searches_before_chapters(self) -> None:
+        fake = _FakeAgentFirstClient(
+            summary_payload={},
+            search_payload={
+                "count": 1,
+                "results": [
+                    {"document_id": "doc-1234", "title": RAW_TITLE},
+                ],
+            },
+            chapters_payload={"total": 1, "chapters": [{"chapter_no": 1, "title": RAW_CHAPTER}]},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="show_table_of_contents",
+                    product_method=product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        ),
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_DOCUMENT_TOC,
+                            method="GET",
+                            params={},
+                        ),
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="show_table_of_contents", document_title=RAW_QUERY, limit=5),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        observed = result.loop_result.to_observability() if result.loop_result else {}
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls[0], ("metadata_search", RAW_QUERY, 5))
+        self.assertEqual(fake.calls[1][0], "search")
+        self.assertEqual(fake.calls[1][2], 5)
+        self.assertEqual(fake.calls[2], ("chapters", "doc-1234", 500, 0))
+        self.assertCountEqual(
+            observed["endpoint_kinds"],
+            [catalogue.ENDPOINT_METADATA, catalogue.ENDPOINT_SEARCH, catalogue.ENDPOINT_CHAPTERS],
+        )
+
 
 def _comparison(plan: planner.BiblioLibrarianPlan) -> SimpleNamespace:
     return SimpleNamespace(
@@ -478,6 +526,17 @@ class _FakeAgentFirstClient:
         payload = self.search_payloads.get(q, self.search_payload)
         return catalogue.CatalogueResponse(
             endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            status_code=200,
+            payload=payload,
+            duration_ms=1,
+            result_count=_count(payload, "results"),
+        )
+
+    def catalog(self, q: str, *, limit: int = 20, offset: int = 0) -> catalogue.CatalogueResponse:
+        self.calls.append(("metadata_search", q, limit))
+        payload = self.search_payloads.get(q, self.search_payload)
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_METADATA,
             status_code=200,
             payload=payload,
             duration_ms=1,

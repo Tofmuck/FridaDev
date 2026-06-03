@@ -182,7 +182,7 @@ Regle dure:
 
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P03 | Trouver l'ouvrage | Retrouver l'ouvrage ou la bonne cible documentaire | `work_lookup` | `catalog_search`, `document_open_summary`, `document_toc` si utile | faux vert | Le smoke vert connu repose surtout sur `catalog_search`; ce n'est pas encore une vraie methode d'ouverture documentaire | mixte | Definir `work_lookup` comme methode produit explicite avec sortie structuree ouvrage/document/ambiguite |
+| P03 | Trouver l'ouvrage | Retrouver l'ouvrage ou la bonne cible documentaire | `work_lookup` | `catalog_search`, `document_open_summary`, `document_toc` si utile | vert net | Le cas est maintenant reconnu agentiquement comme `work_lookup`, execute les outils documentaires bornes attendus et conserve une sortie structuree exploitable sans fallback deterministe | FridaDev | Conserver le contrat `work_lookup` et surveiller seulement les regressions d'agent-first |
 | P09 | Table des matieres d'un ouvrage | Montrer la TOC de l'ouvrage cible | `document_toc_show` | `document_toc`, resolution prealable eventuelle | faux vert | Le chemin peut finir par appeler `chapters`, mais il reste repare depuis un cas initialement non resolu | FridaDev | Rattacher la TOC a une vraie methode `document_toc_show`, sans reparation silencieuse |
 
 ### C. Passage canonique explicite
@@ -356,7 +356,7 @@ encore decide ou repare a plusieurs endroits.
       - bons outils proposes ou executes;
       - statuts runtime/agent/produit exploitables;
       - resultat produit conforme au besoin.
-- [ ] `P03 work_lookup`: trouver l'ouvrage comme vraie methode produit
+- [x] `P03 work_lookup`: trouve l'ouvrage comme vraie methode produit
       explicite, agentique et structuree.
 - [ ] `P04 passage_extract_canonical_range`: fermer l'extraction canonique comme
       methode produit explicite, sans vendre un objet general d'intervalle tant

@@ -463,9 +463,10 @@ def validate_agent_payload(
             carry_position_available = True
             carry_document_available = True
 
+    resolved_case_id = case_id or product_methods.default_case_id_for_method(product_method)
     plan = planner.BiblioLibrarianPlan(
         schema_version=planner.SCHEMA_VERSION,
-        case_id=case_id,
+        case_id=resolved_case_id,
         intent=_safe_token(payload.get("intent")),
         product_method=_safe_token(product_method),
         tool_calls=tuple(calls),
@@ -563,7 +564,9 @@ def _repair_agent_payload(payload: Any) -> Any:
         else:
             repaired_payload["case_id"] = ""
     else:
-        repaired_payload["case_id"] = product_methods.infer_case_id_for_legacy_payload(
+        repaired_payload["case_id"] = product_methods.default_case_id_for_method(
+            repaired_payload["product_method"]
+        ) or product_methods.infer_case_id_for_legacy_payload(
             product_method=repaired_payload["product_method"],
             intent=repaired_payload["intent"],
             answer_mode=repaired_payload["answer_mode"],
@@ -597,6 +600,9 @@ def _repair_tool_name(tool_name: str, params: Mapping[str, Any]) -> str:
         return tools.TOOL_CATALOG_SEARCH
     if tool_name == tools.TOOL_LOCATE and not _has_document_id(params) and _combined_query(params):
         return tools.TOOL_CATALOG_SEARCH
+    if tool_name == tools.TOOL_LOCATE and not _has_document_id(params):
+        if _safe_token(params.get("kind")) == "fulltext" and _first_text(params, ("label", "locator")):
+            return tools.TOOL_CATALOG_SEARCH
     if tool_name == tools.TOOL_PASSAGE_CONTEXT and (
         not _has_document_id(params) or not _has_context_position(params)
     ) and _combined_query(params):
@@ -615,6 +621,8 @@ def _repair_params(tool_name: str, params: Mapping[str, Any]) -> dict[str, Any]:
     if tool_name in {tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_OPEN_SUMMARY, tools.TOOL_CATALOG_LIST}:
         if not (repaired.get("q") or repaired.get("query")):
             query = _combined_query(params)
+            if not query and _safe_token(params.get("kind")) == "fulltext":
+                query = _first_text(params, ("label", "locator"))
             if query:
                 repaired["query" if tool_name != tools.TOOL_CATALOG_LIST else "q"] = query
     if tool_name == tools.TOOL_LOCATE and not (repaired.get("locator") or repaired.get("label")):
@@ -768,37 +776,21 @@ def _valid_deferred_params(
     carry_document_available: bool,
     carry_position_available: bool,
 ) -> bool:
-    if tool_name != tools.TOOL_PASSAGE_CONTEXT:
-        return False
-    contract = _TOOL_PARAM_CONTRACTS.get(tool_name)
-    if not contract:
-        return False
-    allowed = contract.get("allowed", set())
-    if not isinstance(allowed, set) or not set(params.keys()).issubset(allowed):
-        return False
-    has_document = _present_param(params, "document_id") or _present_param(params, "doc_id")
-    if not has_document and not carry_document_available:
-        return False
-    has_position = _present_param(params, "paragraph_id") or (
-        _present_param(params, "page_no") and _present_param(params, "para_no")
-    )
-    if has_position or not carry_position_available:
-        return False
-    int_bounds = contract.get("int_bounds", {})
-    for key, value in params.items():
-        if key in {"document_id", "doc_id"}:
-            if not isinstance(value, str) or not value.strip() or len(value.strip()) > _TEXT_PARAM_MAX[key]:
-                return False
-            continue
-        if key in _INT_PARAM_BOUNDS:
-            if type(value) is not int:
-                return False
-            minimum, maximum = int_bounds.get(key, _INT_PARAM_BOUNDS[key])
-            if value < minimum or value > maximum:
-                return False
-            continue
-        return False
-    return True
+    synthetic = dict(params)
+    if tool_name == tools.TOOL_PASSAGE_CONTEXT:
+        if not carry_document_available or not carry_position_available:
+            return False
+        if not _has_document_id(synthetic):
+            synthetic["document_id"] = "doc-carried"
+        if not _has_context_position(synthetic):
+            synthetic["paragraph_id"] = 1
+        return _valid_params(tool_name, synthetic)
+    if tool_name in {tools.TOOL_DOCUMENT_TOC, tools.TOOL_PAGE_READ, tools.TOOL_LOCATE}:
+        if _has_document_id(synthetic) or not carry_document_available:
+            return False
+        synthetic["document_id"] = "doc-carried"
+        return _valid_params(tool_name, synthetic)
+    return False
 
 
 def _present_param(params: Mapping[str, Any], key: str) -> bool:

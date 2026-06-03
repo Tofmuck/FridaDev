@@ -586,13 +586,20 @@ Le contrat supporte les familles de sortie suivantes:
 - refus de fausse certitude;
 - degradation propre.
 
-P03 et P09 restent des surveillances de regression:
+P03 est maintenant ferme comme cas agent-first nominal:
 
-- P03 est couvert par l'architecture agent-first generale, pas par une
-  exception `case_id`;
-- P09 depend d'un outil page et d'une route/client sure qui n'existent pas
-  encore cote FridaDev pour la navigation complete, mais la TOC passe par
-  `document_toc`/`chapters` quand un document est resolu.
+- le plan agent valide reconnait `case_id=P03` et `product_method=work_lookup`;
+- l'execution nominale passe par `catalog_search` puis
+  `document_open_summary`, sans fallback deterministe;
+- preuve datee:
+  `app/docs/states/baselines/biblio-smokes/p03-agentic-20260603T110117Z.jsonl`.
+
+P09 reste une surveillance de regression:
+
+- la TOC depend encore d'une resolution documentaire prealable suffisamment
+  propre;
+- la navigation complete autour d'une TOC reste separee de la simple
+  consultation `document_toc`/`chapters`.
 
 ## 14. Tests exiges avant runtime
 

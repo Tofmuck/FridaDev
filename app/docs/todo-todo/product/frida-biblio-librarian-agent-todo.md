@@ -1329,8 +1329,9 @@ triage.
   valide comme gate global le 2026-06-01.
 - L'outil page borne existe cote FridaDev, mais P09 reste une surveillance
   tant que la navigation canonique locator -> page/offset n'est pas livree.
-- P03 reste un cas de regression historique mais passe par l'architecture
-  agent-first generale; il ne doit plus etre gere comme exception produit.
+- P03 etait un cas de regression historique; il est maintenant prouve comme
+  `work_lookup` agent-first nominal et ne doit plus etre gere comme exception
+  produit.
 - La navigation precedente/suivante borne existe cote FridaDev; la navigation
   canonique ou intra-page reste partielle.
 - Risques stale retires: verification OpenRouter/JSON datee, contrat agent,

@@ -21,7 +21,7 @@ from . import librarian_dialogue_planner
 from . import librarian_planner
 from . import librarian_product_methods
 from . import librarian_tools
-from .query_planner import INTENT_EXTRACT_PASSAGE, INTENT_EXTRACT_RANGE, INTENT_SHOW_TABLE_OF_CONTENTS
+from .query_planner import INTENT_SHOW_TABLE_OF_CONTENTS
 
 
 @dataclass(frozen=True)
@@ -87,7 +87,7 @@ def run_agent_first_bridge(
 ) -> BiblioAgentBridgeResult:
     result = librarian_agent_result
     agent_first_result = None
-    eligible = not _agent_first_prefers_deterministic_controller(query_plan)
+    eligible = True
     if eligible and _agent_first_candidate_allowed(librarian_agent_result=result):
         try:
             client = client_factory(config_module=config_module)
@@ -226,16 +226,6 @@ def _agent_first_candidate_allowed(
     if not tool_calls:
         return False
     return all(str(getattr(call, "method", "") or "").strip().upper() == "GET" for call in tool_calls)
-
-
-def _agent_first_prefers_deterministic_controller(query_plan: Any) -> bool:
-    if query_plan is None:
-        return False
-    intent = str(getattr(query_plan, "intent", "") or "").strip()
-    locator = str(getattr(query_plan, "locator", "") or "").strip()
-    if not locator:
-        return False
-    return intent in {INTENT_EXTRACT_PASSAGE, INTENT_EXTRACT_RANGE}
 
 
 def _agent_first_fallback_allowed(librarian_agent_result: Any) -> bool:

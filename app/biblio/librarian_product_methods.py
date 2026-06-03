@@ -210,6 +210,99 @@ METHOD_SPECS = (
 
 METHODS_BY_NAME = {spec.product_method: spec for spec in METHOD_SPECS}
 
+CASE_REFERENCE_SIGNATURES: dict[str, dict[str, Any]] = {
+    "P01": {
+        "product_method": PRODUCT_METHOD_CATALOG_LIST_FULL,
+        "signature": "catalogue complet sans borne demandee",
+        "example": "Quels ouvrages as-tu dans la bibliotheque ?",
+    },
+    "P02": {
+        "product_method": PRODUCT_METHOD_CATALOG_LIST_BOUNDED,
+        "signature": "catalogue avec borne explicite 100 ou tous si <= 100",
+        "example": "Il y a 100 ouvrages ? Liste-les tous.",
+    },
+    "P03": {
+        "product_method": PRODUCT_METHOD_WORK_LOOKUP,
+        "signature": "retrouver l'ouvrage ou la cible documentaire",
+        "example": "Trouve-moi le Theetete de Platon.",
+    },
+    "P04": {
+        "product_method": PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+        "signature": "extraire une plage canonique explicite",
+        "example": "Dans le Theetete de Platon, sors-moi 126b a 128a.",
+    },
+    "P05": {
+        "product_method": PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+        "signature": "theme dans une oeuvre, forme canonique avec ancre thematique directe",
+        "example": "Dans le Theetete, trouve le passage ou Socrate parle de la maieutique.",
+    },
+    "P06": {
+        "product_method": PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+        "signature": "theme dans une oeuvre, variante sans accents ou translitteree",
+        "example": "Dans le Theetete, trouve le passage ou Socrate parle de la maieutique.",
+    },
+    "P07": {
+        "product_method": PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+        "signature": "theme dans une oeuvre, voisinage lexical ou metaphore proche",
+        "example": "Dans le Theetete, trouve le passage sur la sage-femme.",
+    },
+    "P08": {
+        "product_method": PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+        "signature": "theme dans une oeuvre, paraphrase plus libre",
+        "example": "Dans le Theetete, trouve le passage sur accoucher les ames.",
+    },
+    "P09": {
+        "product_method": PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+        "signature": "table des matieres de l'ouvrage cible",
+        "example": "Montre-moi la table des matieres du Theetete.",
+    },
+    "P10": {
+        "product_method": PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE,
+        "signature": "faire du passage exact extrait la reference courante",
+        "example": "Dans le Theetete de Platon, sors-moi 126b a 128a.",
+    },
+    "P11": {
+        "product_method": PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT,
+        "signature": "expliquer le passage courant",
+        "example": "Explique ce passage.",
+    },
+    "P12": {
+        "product_method": PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT,
+        "signature": "montrer le voisinage du passage courant",
+        "example": "Autour de ce passage.",
+    },
+    "P13": {
+        "product_method": PRODUCT_METHOD_PASSAGE_MOVE_PREVIOUS_SEGMENT,
+        "signature": "aller plus haut avant le passage courant",
+        "example": "Plus haut.",
+    },
+    "P14": {
+        "product_method": PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT,
+        "signature": "continuer apres le passage courant",
+        "example": "Continue.",
+    },
+    "P15": {
+        "product_method": PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK,
+        "signature": "verifier d'ou vient le passage courant",
+        "example": "D'ou vient ce passage ?",
+    },
+    "P16": {
+        "product_method": PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+        "signature": "theme dans une autre oeuvre, formulation de base",
+        "example": "Dans Qu'est-ce que les Lumieres ? de Kant, trouve le passage sur Sapere aude.",
+    },
+    "P17": {
+        "product_method": PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+        "signature": "theme dans une autre oeuvre, reformulation conceptuelle voisine",
+        "example": "Dans Qu'est-ce que les Lumieres ? de Kant, trouve le passage ou Kant parle de penser par soi-meme.",
+    },
+    "P18": {
+        "product_method": PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+        "signature": "theme dans une autre oeuvre, paraphrase ou citation voisine",
+        "example": "Dans Qu'est-ce que les Lumieres ? de Kant, trouve le passage sur oser se servir de son propre entendement.",
+    },
+}
+
 
 def all_product_method_names() -> tuple[str, ...]:
     return tuple(METHODS_BY_NAME.keys())
@@ -259,6 +352,21 @@ def default_case_id_for_method(product_method: str) -> str:
     if spec is None or len(spec.case_ids) != 1:
         return ""
     return spec.case_ids[0]
+
+
+def case_reference_signatures() -> tuple[dict[str, str], ...]:
+    rows: list[dict[str, str]] = []
+    for case_id in CASE_IDS:
+        payload = CASE_REFERENCE_SIGNATURES.get(case_id, {})
+        rows.append(
+            {
+                "case_id": case_id,
+                "product_method": str(payload.get("product_method") or ""),
+                "signature": str(payload.get("signature") or ""),
+                "example": str(payload.get("example") or ""),
+            }
+        )
+    return tuple(rows)
 
 
 def infer_case_id_for_legacy_payload(

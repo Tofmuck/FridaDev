@@ -271,8 +271,9 @@ def build_librarian_agent_messages(
         "locator/label, page_no/para_no/paragraph_id, limit, offset, "
         "char_offset ou window_chars selon l'outil. Retourne toujours un "
         "product_method explicite et un "
-        "case_id si tu peux le reconnaitre sans forcer; sinon laisse case_id "
-        "vide. Le product_method est obligatoire et doit decrire la methode "
+        "case_id quand la demande correspond clairement a un cas de reference; "
+        "si tu ne peux pas choisir honnetement entre plusieurs cas, laisse "
+        "case_id vide. Le product_method est obligatoire et doit decrire la methode "
         "produit, pas seulement l'outil. Pour lister toute la "
         "bibliotheque, appelle catalog_list sans q avec limit 100. Pour une "
         "table des matieres sans document_id, commence par catalog_search ou "
@@ -285,6 +286,15 @@ def build_librarian_agent_messages(
         "l'oeuvre, document_open_summary ou document_toc si la structure aide, "
         "locate pour une reference canonique, puis passage_context seulement "
         "si une position explicite est connue ou portee par un outil precedent. "
+        "Quand un catalog_search, document_open_summary ou locate precede un "
+        "autre outil, tu peux omettre document_id si l'ancre sera portee par "
+        "le runtime. Pour passage_context, tu peux omettre la position "
+        "seulement si un outil precedent la porte deja. Garde les params "
+        "strictement minimaux: n'envoie pas de champs null. window_chars doit "
+        "rester borne (2000 max, 700 par defaut utile). Pour une recherche "
+        "thematique, n'utilise pas locate avec un label en prose libre: "
+        "commence par catalog_search, puis passage_context si une position "
+        "explicite ou portee est disponible. "
         "References Stephanus et plages: reconnais des labels comme 148e, "
         "151d, 126b ou des plages comme 148e-151d et 126b-128a. Pour une plage, "
         "n'envoie pas start_locator/end_locator: utilise locate sur le debut "
@@ -302,6 +312,7 @@ def build_librarian_agent_messages(
         "biblio_state": _state_for_model(request.biblio_state),
         "deterministic_baseline": _observation(request.deterministic_plan),
         "case_grammar": list(product_methods.CASE_IDS),
+        "case_reference_signatures": list(product_methods.case_reference_signatures()),
         "available_product_methods": list(product_methods.all_product_method_names()),
         "available_tools": list(tools.LOT3_TOOL_NAMES),
         "forbidden_tools": sorted(tools.FORBIDDEN_TOOL_NAMES),
@@ -310,6 +321,11 @@ def build_librarian_agent_messages(
             "max_tool_calls": effective_settings.max_tool_calls,
             "max_recent_turns": effective_settings.max_recent_turns,
         },
+        "case_selection_note": (
+            "Quand plusieurs cas partagent la meme methode, ne les aplatis pas vers "
+            "le cas de base si la signature de reference correspond clairement a la "
+            "formulation courante."
+        ),
     }
     return [
         {"role": "system", "content": system},

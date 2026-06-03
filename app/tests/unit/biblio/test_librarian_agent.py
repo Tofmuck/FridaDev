@@ -412,6 +412,28 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(validation.plan.case_id, "")
         self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK)
 
+    def test_local_validation_backfills_single_case_id_for_unique_method(self) -> None:
+        validation = contract.validate_agent_payload(
+            {
+                **json.loads(_valid_json()),
+                "case_id": "",
+                "product_method": product_methods.PRODUCT_METHOD_WORK_LOOKUP,
+                "tool_calls": [
+                    {
+                        "tool_name": tools.TOOL_CATALOG_SEARCH,
+                        "method": "GET",
+                        "params": {"query": "x", "limit": 10, "offset": 0},
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.case_id, "P03")
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_WORK_LOOKUP)
+
     def test_local_validation_rejects_unknown_or_mismatched_product_method_contract(self) -> None:
         base = json.loads(_valid_json())
         cases = [
@@ -485,6 +507,34 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 validation = contract.validate_agent_payload({**json.loads(_valid_json()), **overrides, "tool_calls": calls})
                 self.assertEqual(validation.status, contract.STATUS_VALIDATED)
 
+    def test_local_validation_accepts_deferred_document_anchor_for_toc_locate_and_page(self) -> None:
+        cases = [
+            (
+                {
+                    "case_id": "P09",
+                    "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+                },
+                [
+                    {"tool_name": tools.TOOL_CATALOG_SEARCH, "method": "GET", "params": {"query": "Theetete", "limit": 5, "offset": 0}},
+                    {"tool_name": tools.TOOL_DOCUMENT_TOC, "method": "GET", "params": {"limit": 200, "offset": 0}},
+                ],
+            ),
+            (
+                {
+                    "case_id": "P04",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+                },
+                [
+                    {"tool_name": tools.TOOL_CATALOG_SEARCH, "method": "GET", "params": {"query": "Platon Theetete", "limit": 5, "offset": 0}},
+                    {"tool_name": tools.TOOL_LOCATE, "method": "GET", "params": {"label": "126b", "kind": "stephanus", "limit": 5}},
+                ],
+            ),
+        ]
+        for overrides, calls in cases:
+            with self.subTest(second_tool=calls[1]["tool_name"]):
+                validation = contract.validate_agent_payload({**json.loads(_valid_json()), **overrides, "tool_calls": calls})
+                self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+
     def test_parser_repairs_model_param_aliases_without_relaxing_mutating_methods(self) -> None:
         repaired = contract.parse_and_validate_agent_json(
             json.dumps(
@@ -531,7 +581,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertIsNotNone(toc_reference.plan)
         assert toc_reference.plan is not None
         self.assertEqual(toc_reference.plan.product_method, product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW)
-        self.assertEqual(toc_reference.plan.case_id, "")
+        self.assertEqual(toc_reference.plan.case_id, "P09")
         self.assertEqual(toc_reference.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
         self.assertEqual(toc_reference.plan.tool_calls[0].params["query"], RAW_TITLE)
 
@@ -555,9 +605,35 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertIsNotNone(locate_reference.plan)
         assert locate_reference.plan is not None
         self.assertEqual(locate_reference.plan.product_method, product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE)
-        self.assertEqual(locate_reference.plan.case_id, "")
+        self.assertEqual(locate_reference.plan.case_id, "P04")
         self.assertEqual(locate_reference.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
         self.assertEqual(locate_reference.plan.tool_calls[0].params["query"], RAW_TITLE)
+
+        fulltext_locate_reference = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "search_passage",
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_LOCATE,
+                            "method": "GET",
+                            "params": {"label": "oser se servir de son propre entendement", "kind": "fulltext", "limit": 5},
+                        }
+                    ],
+                    "answer_mode": "tool",
+                }
+            )
+        )
+        self.assertEqual(fulltext_locate_reference.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(fulltext_locate_reference.plan)
+        assert fulltext_locate_reference.plan is not None
+        self.assertEqual(fulltext_locate_reference.plan.product_method, product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK)
+        self.assertEqual(fulltext_locate_reference.plan.tool_calls[0].tool_name, tools.TOOL_CATALOG_SEARCH)
+        self.assertEqual(
+            fulltext_locate_reference.plan.tool_calls[0].params["query"],
+            "oser se servir de son propre entendement",
+        )
 
         object_call = contract.parse_and_validate_agent_json(
             json.dumps(
@@ -930,8 +1006,25 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             "locate sur le debut",
             "second locate sur la fin",
             "n'invente pas le texte exact",
+            "window_chars",
+            "case_id quand la demande correspond clairement",
         ]:
             self.assertIn(marker, system)
+
+    def test_openrouter_payload_exposes_case_reference_signatures(self) -> None:
+        settings = contract.BiblioLibrarianAgentSettings(
+            mode=contract.MODE_ACTIVE,
+            primary_model="model/x",
+        )
+        messages = openrouter.build_librarian_agent_messages(_request(settings=settings), settings=settings)
+        payload = json.loads(messages[1]["content"])
+
+        self.assertIn("case_reference_signatures", payload)
+        rows = {row["case_id"]: row for row in payload["case_reference_signatures"]}
+        self.assertEqual(rows["P03"]["product_method"], product_methods.PRODUCT_METHOD_WORK_LOOKUP)
+        self.assertEqual(rows["P09"]["product_method"], product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW)
+        self.assertIn("paraphrase", rows["P18"]["signature"])
+        self.assertIn("Theetete", rows["P06"]["example"])
 
     def test_openrouter_payload_omits_reasoning_effort_when_disabled(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings(
