@@ -977,30 +977,56 @@ verite seulement; il ne ferme aucun lot structurel suivant.
 
 ### Lot 1 - Manifeste documentaire minimal
 
-- [ ] Definir `DocumentManifest`, `Work`, `SectionNode`, `Anchor`, `Interval`,
+- [x] Definir `DocumentManifest`, `Work`, `SectionNode`, `Anchor`, `Interval`,
       `ContentRole`.
-- [ ] Auditer les chemins d'entree deja presents dans le fonds existant: PDF
+- [x] Auditer les chemins d'entree deja presents dans le fonds existant: PDF
       scanne/OCR, PDF texte, EPUB, import manuel ou autre pipeline detecte.
-- [ ] Verifier comment ces chemins remplissent aujourd'hui `documents`,
+- [x] Verifier comment ces chemins remplissent aujourd'hui `documents`,
       `pages`, `paragraphs`, `raw_units`, `document_chapters` et `milestones`.
-- [ ] Verifier si pages, paragraphes, chapitres, TOC et ancres sont comparables
+- [x] Verifier si pages, paragraphes, chapitres, TOC et ancres sont comparables
       entre origines, ou si certains imports produisent une structure plus
       pauvre, instable ou non homogene.
-- [ ] Identifier ce qui est obligatoire, facultatif, inconnu ou derive dans le
+- [x] Identifier ce qui est obligatoire, facultatif, inconnu ou derive dans le
       manifeste canonique.
-- [ ] Garder l'origine technique comme provenance/qualite/confiance/limites,
+- [x] Garder l'origine technique comme provenance/qualite/confiance/limites,
       sans laisser cette origine produire des structures Biblio incompatibles.
-- [ ] Produire un manifeste derive pour chaque document existant, sans changer
+- [x] Produire un manifeste derive pour chaque document existant, sans changer
       le runtime chat.
-- [ ] Marquer explicitement les roles inconnus.
-- [ ] Ajouter les bornes de fin de section par chapitre suivant quand possible.
-- [ ] Identifier les oeuvres internes dans les volumes complexes seulement si
+- [x] Marquer explicitement les roles inconnus.
+- [x] Ajouter les bornes de fin de section par chapitre suivant quand possible.
+- [x] Identifier les oeuvres internes dans les volumes complexes seulement si
       la TOC le permet honnetement.
 
-Critere de fermeture: les documents existants ont une projection structurelle
-inspectable, versionnee et sans texte long expose. Cette projection normalise
-le fonds actuel vers un modele canonique unique et sert ensuite de contrat
-d'import futur, sans patcher le pipeline d'import avant preuve sur l'existant.
+Livraison Lot 1, 2026-06-03:
+
+- code: `app/biblio/structure/manifest.py` et runner content-free
+  `app/biblio/document_manifest_baseline.py`;
+- test: `app/tests/test_biblio_document_manifest.py`;
+- artefact:
+  `app/docs/states/baselines/biblio-manifests/frida-biblio-document-manifest-lot1-20260603T173615Z.json`;
+- resultat: 10 documents vus, 10 manifestes produits, 0 echec;
+- fonds existant: 5 EPUB / `sections`, 5 PDF / `pages`;
+- tables DB auditees: 10 `documents`, 4837 `pages`, 101421
+  `paragraphs`, 378034 `raw_units`, 973 `document_chapters`, 26492
+  `milestones`;
+- `raw_units`: presents pour tous les documents, mais non exposes par l'API
+  Catalogue actuelle; l'artefact Lot 1 les enrichit par audit DB content-free;
+- TOC: 5 documents `epub_toc`, 4 `llm_fallback`, 1 `pdf_outline`;
+- sections: 973 sections projetees, 973 bornes de fin derivees par chapitre
+  suivant ou fin de document;
+- roles: 61 signaux faibles `introduction`, 912 roles `unknown`; aucun
+  `primary_text` n'est invente;
+- references canoniques: milestones Stephanus dans 9 documents; 1 document sans
+  milestone;
+- limites assumees: les PDF ne distinguent pas encore PDF texte / PDF scanne
+  OCR dans `source_type`; les EPUB exposent leurs sections via la semantique
+  actuelle `page_no`; les oeuvres internes complexes ne sont pas inventees.
+
+Critere de fermeture: les documents existants ont maintenant une projection
+structurelle inspectable, versionnee et sans texte long expose. Cette
+projection normalise le fonds actuel vers un modele canonique unique et sert
+de contrat de sortie pour le futur contrat d'import, sans patcher le pipeline
+d'import avant preuve sur l'existant.
 
 ### Lot 2 - API/outils de bibliotheque minimale
 

@@ -20,6 +20,7 @@ Etat conversationnel agent bibliothecaire Lot 1: 2026-05-31
 Socle agent bibliothecaire Lot 7: 2026-06-01
 Navigation documentaire R1: 2026-06-02
 Signal faible role documentaire Lot E: 2026-06-02
+Manifeste documentaire minimal Last Chance Lot 1: 2026-06-03
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -89,6 +90,26 @@ Le Lot 1 historique du chantier Biblio native 2026-05-28 ne livrait aucun code r
 `source metadata`: metadonnees d'ingestion ou d'OCR portees par Catalogue: titre auto, nom de fichier source, hash, langue detectee, type source, compteurs, qualite JSON, TOC et champs apparentes.
 
 `human metadata`: metadonnees bibliographiques corrigees humainement par Lot 0 Catalogue: titre canonique, titre original, auteur(s), traducteur(s), editeur scientifique, editeur, collection, annee, langue override, type, notes operateur, statut.
+
+`DocumentManifest`: projection structurelle FridaDev, versionnee et
+content-free, derivee du fonds Catalogue existant. Elle porte `LibraryDocument`,
+`Work`, `SectionNode`, `TextUnit`, `Anchor`, `Interval`,
+`CanonicalReference` et `ContentRole`, avec etats `known`, `unknown`,
+`derived` ou `ambiguous`. Le manifeste ne contient ni texte long d'ouvrage, ni
+payload Catalogue brut, ni titre/auteur brut; il porte des ids, compteurs,
+ancres, roles, limites et hashes courts.
+
+Livraison Last Chance Lot 1:
+
+- module: `app/biblio/structure/manifest.py`;
+- runner de preuve: `app/biblio/document_manifest_baseline.py`;
+- artefact:
+  `app/docs/states/baselines/biblio-manifests/frida-biblio-document-manifest-lot1-20260603T173615Z.json`;
+- couverture: 10 documents vus, 10 manifestes produits, 0 echec;
+- normalisation: EPUB, PDF et origines inconnues futures doivent converger vers
+  ce meme modele de sortie;
+- limite volontaire: le manifeste est une projection derivee; il ne modifie ni
+  DB schema, ni import, ni API Catalogue, ni chat runtime.
 
 ## 3. Frontieres non negociables
 
