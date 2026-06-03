@@ -23,6 +23,7 @@ from .librarian_agent_contract import BiblioLibrarianAgentRequest
 from .librarian_agent_contract import BiblioLibrarianAgentSettings
 from .librarian_planner_observability import clean as _clean
 from .librarian_planner_observability import safe_token as _safe_token
+from .query_normalizer import fold_text
 
 
 STATUS_OK = "ok"
@@ -294,7 +295,12 @@ def build_librarian_agent_messages(
         "rester borne (2000 max, 700 par defaut utile). Pour une recherche "
         "thematique, n'utilise pas locate avec un label en prose libre: "
         "commence par catalog_search, puis passage_context si une position "
-        "explicite ou portee est disponible. "
+        "explicite ou portee est disponible. Quand plusieurs cas partagent la "
+        "meme methode, choisis le case_id qui correspond a la forme reelle de "
+        "la demande au lieu d'aplatir vers le premier cas de la famille. "
+        "Pour P05-P08, utilise aussi les indices de forme exposes dans le "
+        "payload utilisateur: si la demande est la variante ASCII/sans accents "
+        "de la forme canonique, choisis P06 plutot que P05. "
         "References Stephanus et plages: reconnais des labels comme 148e, "
         "151d, 126b ou des plages comme 148e-151d et 126b-128a. Pour une plage, "
         "n'envoie pas start_locator/end_locator: utilise locate sur le debut "
@@ -308,6 +314,8 @@ def build_librarian_agent_messages(
         "schema_version": SCHEMA_VERSION,
         "mode": effective_settings.mode,
         "current_user_message": request.user_message,
+        "current_user_message_folded_ascii": fold_text(request.user_message),
+        "current_user_message_has_non_ascii": any(ord(char) > 127 for char in str(request.user_message or "")),
         "recent_dialogue": list(request.bounded_recent_dialogue()),
         "biblio_state": _state_for_model(request.biblio_state),
         "deterministic_baseline": _observation(request.deterministic_plan),
@@ -324,7 +332,10 @@ def build_librarian_agent_messages(
         "case_selection_note": (
             "Quand plusieurs cas partagent la meme methode, ne les aplatis pas vers "
             "le cas de base si la signature de reference correspond clairement a la "
-            "formulation courante."
+            "formulation courante. P05-P08: meme methode, mais P05 est la forme "
+            "canonique, P06 la variante sans accents/translitteree, P07 le voisinage "
+            "lexical/metaphorique, P08 la paraphrase plus libre. P16-P18: meme "
+            "principe pour la recherche thematique hors oeuvre courante."
         ),
     }
     return [

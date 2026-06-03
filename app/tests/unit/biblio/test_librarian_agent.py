@@ -1008,6 +1008,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             "n'invente pas le texte exact",
             "window_chars",
             "case_id quand la demande correspond clairement",
+            "choisis le case_id qui correspond a la forme reelle",
+            "variante ASCII/sans accents",
         ]:
             self.assertIn(marker, system)
 
@@ -1025,6 +1027,10 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(rows["P09"]["product_method"], product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW)
         self.assertIn("paraphrase", rows["P18"]["signature"])
         self.assertIn("Theetete", rows["P06"]["example"])
+        self.assertIn("P05-P08", payload["case_selection_note"])
+        self.assertIn("sans accents", payload["case_selection_note"])
+        self.assertIn("current_user_message_folded_ascii", payload)
+        self.assertIn("current_user_message_has_non_ascii", payload)
 
     def test_openrouter_payload_omits_reasoning_effort_when_disabled(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings(
