@@ -383,7 +383,14 @@ def _committed_chapter_search_document_id(
     ]
     if not matched_rows:
         return ""
-    return _single_row_document_id(matched_rows)
+    preferred_rows = [
+        row
+        for row in matched_rows
+        if not _has_negative_document_role_signal(row)
+    ]
+    if preferred_rows:
+        return _single_row_document_id(preferred_rows)
+    return ""
 
 
 def _chapter_search_row_matches_query(
@@ -402,6 +409,14 @@ def _chapter_search_tokens_match(title_tokens: Sequence[str], query_tokens: Sequ
     if len(query_tokens) == 1:
         return len(title_tokens) == 1 and title_tokens[0] == query_tokens[0]
     return _chapter_tokens_match(title_tokens, query_tokens)
+
+
+def _has_negative_document_role_signal(row: Mapping[str, Any]) -> bool:
+    return _text(row.get("document_role_signal")) in {
+        "commentary",
+        "notice",
+        "introduction",
+    }
 
 
 def _single_row_document_id(rows: Sequence[Mapping[str, Any]]) -> str:

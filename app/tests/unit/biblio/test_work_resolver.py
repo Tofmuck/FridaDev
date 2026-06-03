@@ -156,6 +156,30 @@ class BiblioWorkResolverTests(unittest.TestCase):
         self.assertEqual(result.resolve_request.work_title, "Théétète")
         self.assertEqual(fake.calls, [("search_chapters", "Théétète", 20)])
 
+    def test_global_chapter_search_negative_role_signal_does_not_commit_exact_front_matter_title(self) -> None:
+        plan = query_planner.BiblioQueryPlan(
+            should_consult=True,
+            intent=query_planner.INTENT_RESOLVE_WORK,
+            reason_code=query_planner.REASON_WORK_REQUESTED,
+            query_kind=query_planner.INTENT_RESOLVE_WORK,
+            work_title="Introduction générale",
+        )
+        fake = _GlobalChapterSearchNegativeSignalClient()
+
+        result = work_resolver.BiblioWorkResolver(fake).resolve(plan)
+
+        self.assertEqual(result.status, work_resolver.STATUS_RESOLVED)
+        self.assertIsNotNone(result.resolve_request)
+        assert result.resolve_request is not None
+        self.assertEqual(result.resolve_request.document_id, "doc-9999")
+        self.assertEqual(
+            fake.calls,
+            [
+                ("search_chapters", "Introduction générale", 20),
+                ("search", "Introduction générale", 20),
+            ],
+        )
+
     def test_global_chapter_search_does_not_commit_short_or_generic_single_token_titles(self) -> None:
         plan = query_planner.BiblioQueryPlan(
             should_consult=True,
@@ -360,6 +384,55 @@ class _GlobalChapterSearchFalsePositiveClient(_FakeClient):
                         "title": "RAW TITLE MUST STAY INTERNAL",
                         "page_no": 12,
                         "para_no": 4,
+                        "text": "RAW OCR MUST STAY INTERNAL",
+                    }
+                ],
+            },
+            duration_ms=1,
+            result_count=1,
+        )
+
+
+class _GlobalChapterSearchNegativeSignalClient(_FakeClient):
+    def search_chapters(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search_chapters", q, limit))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_CHAPTER_SEARCH,
+            status_code=200,
+            payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-5678",
+                        "document_title": "Platon",
+                        "chapter_no": 1,
+                        "chapter_title": "Introduction générale",
+                        "unit_no": 1,
+                        "source": "toc",
+                        "rank": 0.9,
+                        "document_role_signal": "introduction",
+                        "document_role_signal_source": "chapter_title",
+                        "document_role_signal_strength": "weak",
+                    }
+                ],
+            },
+            duration_ms=1,
+            result_count=1,
+        )
+
+    def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        self.calls.append(("search", q, limit))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            status_code=200,
+            payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-9999",
+                        "title": "RAW TITLE MUST STAY INTERNAL",
+                        "page_no": 33,
+                        "para_no": 2,
                         "text": "RAW OCR MUST STAY INTERNAL",
                     }
                 ],

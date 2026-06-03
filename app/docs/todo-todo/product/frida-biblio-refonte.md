@@ -367,6 +367,10 @@ encore decide ou repare a plusieurs endroits.
       l'utiliser seulement comme indice faible negatif de demotion
       `commentary/notice/introduction` cote FridaDev, sans emettre de faux
       signal positif par defaut ni le maquiller en verite primaire forte.
+- [x] Propager ce signal faible negatif aux hits `GET /search/chapters`, puis
+      l'utiliser seulement pour refuser qu'un chapitre de type
+      `introduction/notice/commentary` engage a lui seul `work_lookup` comme
+      resolution d'oeuvre interne.
 
 ## 9. Criteres de sortie de cette refonte
 
