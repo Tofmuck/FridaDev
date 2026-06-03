@@ -10,6 +10,17 @@ Matrice d'action produit complementaire: `app/docs/todo-todo/product/frida-bibli
 Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 Verification OpenRouter courante: `app/docs/states/baselines/frida-biblio-librarian-agent-openrouter-gpt52-2026-06-02.md`
 Scope: plan produit/runtime pour agent bibliothecaire Frida, lots docs et runtime bornes.
+Gel de verite Biblio courant: `app/docs/todo-todo/product/frida-biblio-last-chance.md`.
+
+Requalification Lot 0 Last Chance, 2026-06-03:
+
+- les smokes P01-P18 et artefacts agent-first restent une matrice historique /
+  regression utile, mais ne sont plus le canon principal de validation;
+- un outil appele, un endpoint appele, une lane injectee, un smoke vert ou un
+  `final_restitution_ok` projete ne suffisent plus a fermer une preuve produit;
+- toute preuve produit doit suivre le gel de verite Last Chance: question
+  canonique identifiee, ancrage/provenance, distinction lane interne / reponse
+  finale / memoire si concernee, et statut de sortie explicite.
 
 ## Objectif produit
 
@@ -1087,7 +1098,7 @@ Risque de livrer un agent qui passe les unitaires mais echoue les demandes philo
 
 - [x] Runner smoke agent, agent mode nominal `active`; `off` reste explicite pour test negatif.
 - [x] `shadow` et `candidate` restent des modes compat/dev et ne comptent pas
-  comme preuve produit nominale.
+  comme preuve nominale de plomberie agentique.
 - [x] `active` appelle le modele et valide le JSON; il ne modifie pas encore la
   reponse produit (`used_for_response=false`, outils non executes).
 - [x] `--no-product-strict` ne masque plus un echec agent; seul
@@ -1399,12 +1410,14 @@ nouvel outil, frontend, plateforme ou payload brut restent interdits.
 
 Correction verite operateur post-tranche agent-first: l'artefact
 `app/docs/states/baselines/biblio-smokes/agent-first-full-20260601T181903Z.jsonl`
-reste une preuve produit P01-P18, mais il etait trop genereux cote agent:
-les cas repares par fallback borne ne doivent plus etre comptes comme succes
-pur du plan modele. Le smoke expose maintenant les outils reellement executes
-via `agent_executed_tool_names`; `agent_expectation_status=met` signifie plan
-modele valide/executable, tandis que `fallback_repaired` signifie reponse
-produit verte par fallback agent-first borne et observable.
+reste un artefact de regression P01-P18 utile, mais il etait trop genereux cote
+agent et ne constitue plus a lui seul une preuve produit finale. Les cas repares
+par fallback borne ne doivent plus etre comptes comme succes pur du plan modele.
+Le smoke expose maintenant les outils reellement executes via
+`agent_executed_tool_names`; `agent_expectation_status=met` signifie plan modele
+valide/executable, tandis que `fallback_repaired` signifie plomberie produit
+verte par fallback agent-first borne et observable, a revalider selon le gel de
+verite Last Chance.
 Preuve post-correctif:
 `app/docs/states/baselines/biblio-smokes/agent-first-full-post-truth-fix-20260601T185215Z.jsonl`,
 18/18 records avec `runtime_expectation_status=met`,

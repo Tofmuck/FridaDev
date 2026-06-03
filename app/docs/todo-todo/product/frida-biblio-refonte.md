@@ -462,8 +462,8 @@ encore decide ou repare a plusieurs endroits.
 
 ## 9. Criteres de sortie de cette refonte
 
-- [x] Les 18 cas existent comme matrice produit explicite, pas seulement comme
-      smokes.
+- [x] Les 18 cas existent comme matrice de regression / transition explicite,
+      pas seulement comme smokes, et ne sont plus le canon principal.
 - [x] Chaque cas renvoie a une methode produit explicite.
 - [x] Chaque methode annonce ses outils/scripts techniques et son payload
       structure.

@@ -742,6 +742,141 @@ Jeter a terme:
 - choix de premier resultat sans objet d'ambiguite;
 - code mort des chemins legacy une fois les methodes migrees.
 
+## 7 bis. Lot 0 - Gel de verite livre
+
+Date de gel: 2026-06-03.
+
+Portee: docs/audit/proofs uniquement. Ce lot ne ferme ni le manifeste
+documentaire, ni l'API cible, ni l'extraction mecanique, ni le renderer, ni le
+nettoyage `app/biblio/`.
+
+### Definitions de validation
+
+Preuve de plomberie:
+
+- un agent a appele un outil;
+- un endpoint Catalogue a repondu;
+- une lane Biblio existe dans le prompt;
+- un JSONL contient `status=agent_first_executed`;
+- un smoke strict passe sur des noms d'outils, endpoint kinds ou reason codes;
+- `agent_used_for_response=true` et `agent_product_response_changed=true` sont
+  observes sans verifier la reponse finale rendue.
+
+Une preuve de plomberie prouve que la tuyauterie tourne. Elle ne prouve pas que
+la bibliotheque a repondu correctement.
+
+Preuve produit:
+
+- la question canonique visee est identifiee;
+- le document, l'oeuvre, la section et le role de contenu sont corrects;
+- les ancres de debut/fin ou l'intervalle courant sont corrects;
+- l'extraction mecanique ou la clarification est effectivement rendue cote
+  utilisateur;
+- la preuve distingue lane interne, reponse finale, memoire si concernee,
+  provenance et metadonnees d'ancrage;
+- le statut de sortie est explicite: `resolved`, `ambiguous`, `not_found`,
+  `clarification` ou `error`;
+- l'artefact live est content-free: pas de secret, pas de prompt brut, pas de
+  payload Catalogue brut, pas de contenu d'ouvrage long.
+
+Faux vert:
+
+- bons outils appeles, mauvaise ancre;
+- commentaire ou appareil critique trouve a la place du texte primaire;
+- page lue, mais section demandee non prouvee;
+- lane interne confondue avec reponse utilisateur;
+- `final_restitution_ok` projete sans verification du message final rendu;
+- fallback deterministe masquant un echec agentique;
+- methode produit incoherente avec le `case_id`;
+- exemple Kant/Foucault/Stephanus declare "regle" alors que la structure
+  canonique reste non prouvee.
+
+Validation insuffisante:
+
+- endpoint appele seul;
+- outil appele seul;
+- lane produite seule;
+- smoke vert seul;
+- reason code attendu seul;
+- hash ou longueur de message sans verifier la semantique rendue;
+- `final_restitution_ok=true` sans preuve content-free associee du message final
+  et du rendu utilisateur.
+
+### Canon prioritaire de validation
+
+Les questions canoniques restent le canon de validation prioritaire:
+
+- inventaire / metadonnees;
+- resolution documentaire;
+- structure / TOC;
+- recherche scoped;
+- extraction;
+- navigation lecteur;
+- provenance;
+- desambiguisation / clarification;
+- ancrage / etat;
+- import / parsing / normalisation;
+- memoire conversationnelle des lectures.
+
+Les exemples Kant/Foucault/Stephanus restent des regressions severes. Ils ne
+remplacent pas ces questions canoniques et ne suffisent pas a fermer un lot
+structurel.
+
+### Audit content-free des artefacts existants
+
+Artefacts requalifies comme preuves de plomberie:
+
+| Artefact | Cases / statut | Methode / outils | Verdict |
+| --- | --- | --- | --- |
+| `app/docs/states/baselines/biblio-smokes/agent-first-full-20260601T181903Z.jsonl` | P01-P18, `agent_first_executed`, `met:18` | outils/endpoints observes, lanes | Plomberie verte historique; pas de reponse finale. |
+| `app/docs/states/baselines/biblio-smokes/agent-first-full-post-truth-fix-20260601T185215Z.jsonl` | P01-P18, `agent_first_executed`, `met:18` | methodes/outils mieux exposes | Plomberie avancee; contient encore des reparations/fallbacks. |
+| `app/docs/states/baselines/biblio-smokes/agent-gpt52-live-20260602T121652Z.jsonl` | `GPT52-LIVE-01` | `catalog_search` | Preuve provider/outil seulement. |
+| `app/docs/states/baselines/biblio-smokes/p03-agent-smoke-20260601T150723Z.jsonl` | P03, `not_used`, runtime failed | plan agent observe | Preuve agent/planner, pas preuve produit. |
+
+Artefacts mixtes a ne plus utiliser comme preuve stricte isolee:
+
+| Artefact | Cases / statut | Methode / outils | Verdict |
+| --- | --- | --- | --- |
+| `app/docs/states/baselines/biblio-smokes/lot-e-p03-p18-final-20260603T123538Z.jsonl` | P03-P18, `met:16` | methodes P03-P18, GET-only | Bonne plomberie agent-first et case/method, mais pas de reponse finale. |
+| `app/docs/states/baselines/biblio-smokes/p03-agentic-20260603T110117Z.jsonl` -> `p18-agentic-20260603T122300Z.jsonl` | P03-P18 unitaires, majoritairement `met` | outils par cas | Preuves unitaires utiles; pas fermeture produit globale. |
+| `app/docs/states/baselines/biblio-smokes/r1-navigation-live-20260602T082355Z.jsonl` | navigation, `navigation_executed` | `page_read`, `passage_context` | Preuve de primitives navigation, pas validation lecteur finale. |
+| `app/docs/states/baselines/biblio-smokes/r2-named-document-page-navigation-20260602T112708Z.jsonl` | navigation nommee, `navigation_executed`/`needs_clarification` | `page_read` | Preuve partielle navigation document nomme. |
+| `app/docs/states/baselines/biblio-smokes/r3-truth-and-document-resolution-20260602T130112Z.jsonl` | resolution/truth, `resolved`/`extracted`/`ambiguous` | `resolve_work`, `extract_range`, recherche | Preuve partielle utile sur statuts, pas renderer. |
+| `app/docs/states/baselines/biblio-smokes/stephanus-live-check-20260602T061059Z.jsonl` et `stephanus-live-check-20260602T063133Z.jsonl` | P04/P05, `met` | `catalog_search`, `passage_context`, endpoints | Regression Stephanus partielle; pas preuve canonique stable. |
+
+Artefacts faux verts ou preuves insuffisantes nommees:
+
+| Artefact | Cases / statut | Methode / outils | Verdict |
+| --- | --- | --- | --- |
+| `app/docs/states/baselines/biblio-smokes/lot-e-p12-p18-readiness-20260603T100407Z.jsonl` | P12-P15 failed/partial, P16-P18 met | context/search | Gaps stateful et origine encore visibles. |
+| `app/docs/states/baselines/biblio-smokes/p10-agentic-rerun-20260603T131029Z.jsonl` | P10, failed | `passage_extract_canonical_range` | Faux vert bloque par mismatch case/method. |
+| `app/docs/states/baselines/biblio-smokes/p14-agentic-rerun-stateful-20260603T131342Z.jsonl` | P10 failed, P11-P14 met | stateful context/page | Mixte; P10 prouve une regression de methode. |
+| `app/docs/states/baselines/biblio-smokes/p14-agentic-isolated-from-stateful-20260603T133545Z.jsonl` | P14 met isole | `passage_context` | Preuve insuffisante: follow-up sans preuve complete du fil stateful. |
+| `app/docs/states/baselines/biblio-smokes/stephanus-interval-diagnostic-20260603T134500Z.jsonl` | `agent_first_executed` | methode canonical range | Diagnostic incomplet, pas preuve produit. |
+
+Artefacts produit partiels ou solides seulement dans leur perimetre:
+
+| Artefact | Cases / statut | Methode / outils | Verdict |
+| --- | --- | --- | --- |
+| `app/docs/states/baselines/biblio-smokes/kant-internal-section-two-pages-diagnostic-20260603T135200Z.jsonl` | diagnostic Kant interne | plan agent-first | Diagnostic structurel, pas preuve finale. |
+| `app/docs/states/baselines/biblio-smokes/kant-internal-section-two-pages-live-final-20260603T144926Z.jsonl` | `KANT_INTERNAL_SECTION_TWO_PAGES`, `met`, `final_restitution_ok=true` | `catalog_search`, `document_open_summary`, `search_chapters`, `page_read` | Preuve produit ciblee; ne generalise pas le runner. |
+| `app/docs/states/baselines/biblio-smokes/radical-audit-biblio-live-20260603T152425Z.jsonl` | Kant/Foucault/Stephanus live audit | outils et message hashes | Audit live content-free; classe des risques et regressions, pas cloture. |
+
+### Exigences pour preuves futures
+
+- Les smokes doivent dire s'ils valident une lane interne ou une reponse finale.
+- Une extraction exacte doit prouver le renderer ou le message final rendu.
+- Un cas de recherche doit prouver document/oeuvre/section/role quand ces
+  dimensions comptent.
+- Un follow-up doit prouver l'etat conversationnel, pas seulement une nouvelle
+  lane.
+- `final_restitution_ok` doit etre accompagne d'une preuve content-free de
+  reponse finale rendue, ou rester une projection.
+- Les artefacts live doivent rester sans secret, sans prompt brut et sans long
+  contenu d'ouvrage.
+- Les preuves doivent etre indexees d'abord par questions canoniques, puis par
+  regressions P01-P18 ou Kant/Foucault/Stephanus.
+
 ## 8. Nettoyage ultra strict du module Biblio
 
 Le cleanup est un critere de fermeture, pas un embellissement.
@@ -831,13 +966,14 @@ Le cleanup est un critere de fermeture, pas un embellissement.
 
 ### Lot 0 - Gel de verite
 
-- [ ] Requalifier les smokes verts actuels en preuves de plomberie.
-- [ ] Lister les preuves produit insuffisantes sans les supprimer.
-- [ ] Interdire toute nouvelle validation fondee seulement sur endpoint/lane.
-- [ ] Fixer la matrice des questions canoniques comme entree de validation.
+- [x] Requalifier les smokes verts actuels en preuves de plomberie.
+- [x] Lister les preuves produit insuffisantes sans les supprimer.
+- [x] Interdire toute nouvelle validation fondee seulement sur endpoint/lane.
+- [x] Fixer la matrice des questions canoniques comme entree de validation.
 
-Critere de fermeture: aucun document actif ne pretend que les 18 cas sont une
-preuve finale de bibliotheque fonctionnelle.
+Critere de fermeture: aucun document de travail actif ne pretend que les 18 cas
+sont une preuve finale de bibliotheque fonctionnelle. Lot 0 ferme le gel de
+verite seulement; il ne ferme aucun lot structurel suivant.
 
 ### Lot 1 - Manifeste documentaire minimal
 
