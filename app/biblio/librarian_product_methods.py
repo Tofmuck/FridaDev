@@ -233,8 +233,8 @@ CASE_REFERENCE_SIGNATURES: dict[str, dict[str, Any]] = {
     },
     "P05": {
         "product_method": PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
-        "signature": "theme dans une oeuvre, forme canonique avec ancre thematique directe",
-        "example": "Dans le Theetete, trouve le passage ou Socrate parle de la maieutique.",
+        "signature": "theme dans une oeuvre, forme canonique accentuee avec ancre thematique directe",
+        "example": "Dans le Théétète, trouve le passage où Socrate parle de la maïeutique.",
     },
     "P06": {
         "product_method": PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,

@@ -299,8 +299,9 @@ def build_librarian_agent_messages(
         "meme methode, choisis le case_id qui correspond a la forme reelle de "
         "la demande au lieu d'aplatir vers le premier cas de la famille. "
         "Pour P05-P08, utilise aussi les indices de forme exposes dans le "
-        "payload utilisateur: si la demande est la variante ASCII/sans accents "
-        "de la forme canonique, choisis P06 plutot que P05. "
+        "payload utilisateur: si la demande garde la forme canonique avec "
+        "accents/non-ASCII, choisis P05; si elle est la variante ASCII/sans "
+        "accents de la forme canonique, choisis P06 plutot que P05. "
         "References Stephanus et plages: reconnais des labels comme 148e, "
         "151d, 126b ou des plages comme 148e-151d et 126b-128a. Pour une plage, "
         "n'envoie pas start_locator/end_locator: utilise locate sur le debut "
@@ -333,8 +334,9 @@ def build_librarian_agent_messages(
             "Quand plusieurs cas partagent la meme methode, ne les aplatis pas vers "
             "le cas de base si la signature de reference correspond clairement a la "
             "formulation courante. P05-P08: meme methode, mais P05 est la forme "
-            "canonique, P06 la variante sans accents/translitteree, P07 le voisinage "
-            "lexical/metaphorique, P08 la paraphrase plus libre. P16-P18: meme "
+            "canonique accentuee, P06 la variante sans accents/translitteree, "
+            "P07 le voisinage lexical/metaphorique, P08 la paraphrase plus libre. "
+            "P16-P18: meme "
             "principe pour la recherche thematique hors oeuvre courante."
         ),
     }

@@ -1261,6 +1261,9 @@ Matrice couverte:
 - recherche/ouverture Platon/Theetete;
 - extraction bornee 126b-128a;
 - recherche thematique maieutique, sage-femme et images d'accouchement;
+- distinction P05/P06 tenue dans la grammaire agentique:
+  forme canonique accentuee vs variante ASCII/sans accents, sans
+  re-decider le cas dans un parseur local;
 - table des matieres;
 - reprise conversationnelle: expliquer, autour, plus haut, continuer, origine;
 - cas externe Kant / Lumieres / Sapere aude.
