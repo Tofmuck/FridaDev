@@ -108,6 +108,60 @@ normalisation doit produire et figer le canon de sortie. Les futurs imports
 devront ensuite respecter ce canon, mais le pipeline d'import ne doit pas etre
 patche tant que ce canon n'est pas prouve sur le fonds deja ingere.
 
+## 0 quater. Invariant memoire / conversation / evenements de lecture
+
+Bibliotheque = source canonique du texte exact.
+
+Conversation = espace ou l'extrait rendu devient visible et utilisable par le
+LLM.
+
+Memoire durable = trace ancree de l'evenement de lecture, pas duplication
+automatique de longs textes bruts.
+
+Tout extrait rendu mecaniquement dans le fil conversationnel devient disponible
+au LLM comme contexte immediat. Le LLM peut le commenter, l'expliquer, le
+comparer, le reprendre ou continuer dessus dans la conversation courante.
+
+Cette disponibilite conversationnelle ne signifie pas que Memory doit absorber
+par defaut le texte brut long des ouvrages. La memoire durable doit conserver un
+evenement de lecture ancre; si le texte exact doit etre retrouve plus tard, il
+doit etre rehydrate depuis la bibliotheque a partir des ancres, pas recopie
+comme memoire autonome.
+
+Une note de lecture, une synthese ou une interpretation peut etre memorisee si
+elle releve vraiment de la conversation. Elle doit rester distincte du texte
+source, porter ses ancres et ne pas se presenter comme une copie durable du
+passage.
+
+Objet cible minimal: `BiblioReadingEvent`.
+
+- `document_id`;
+- `work_id` ou titre d'oeuvre quand disponible;
+- `section_id` ou section quand disponible;
+- ancres debut/fin;
+- pages, paragraphes ou intervalle quand disponible;
+- `content_hash` ou hash court du bloc rendu;
+- type de restitution: page, pages, section, intervalle, passage trouve,
+  continuation;
+- demande utilisateur associee sous forme content-free ou resumee;
+- statut: rendu, consulte, explique, compare, repris;
+- provenance;
+- limites;
+- eventuelle note/synthese memorisable;
+- indicateur explicite `raw_long_text_excluded_from_durable_memory`.
+
+Ce `BiblioReadingEvent` ne contient pas de long texte source brut. Il relie la
+conversation a la bibliotheque et donne le chemin de rehydratation.
+
+Risque courant a nommer dans le chantier: la lane Biblio injectee dans le
+prompt n'est pas elle-meme un message conversationnel durable, et l'etat Biblio
+est content-free. En revanche, la reponse finale de Frida est sauvegardee comme
+message assistant ordinaire, puis les chemins de traces et de resumes Memory
+traitent les messages `user`/`assistant` eligibles. Si Frida recopie un long
+extrait source dans sa reponse, ce texte peut donc etre aspire indirectement
+comme trace ou resume durable tant qu'un lot runtime ne distingue pas clairement
+texte source rendu, evenement de lecture et note memorisable.
+
 ## 1. Probleme a corriger
 
 Le chantier actuel a de bonnes pieces:
@@ -817,6 +871,33 @@ sans passer par une recherche globale puis tri opportuniste.
 Critere de fermeture: une extraction exacte peut etre rendue sans generation
 libre du texte extrait.
 
+### Lot 3 bis - Memoire / conversation / evenements de lecture
+
+- [ ] Documenter la frontiere entre contexte conversationnel immediat et
+      memoire durable.
+- [ ] Definir `BiblioReadingEvent` sans long texte source brut.
+- [ ] Poser l'exclusion par defaut des longs extraits bruts de la memoire
+      durable.
+- [ ] Faire de la rehydratation par ancres depuis la bibliotheque le chemin
+      cible pour retrouver le texte exact.
+- [ ] Distinguer texte source, note de lecture, synthese et interpretation.
+- [ ] Auditer les chemins runtime concernes: lane Biblio, reponse assistant,
+      `message.meta.biblio_state`, traces Memory, resumes, retrieval et
+      documents actifs de conversation.
+- [ ] Nommer explicitement le risque courant: si Frida recopie un long extrait
+      source dans sa reponse, les chemins Memory ordinaires peuvent le traiter
+      comme contenu assistant durable.
+- [ ] Definir les preuves futures qui distinguent extrait rendu dans la
+      conversation, trace memoire durable et recuperation ulterieure depuis la
+      bibliotheque.
+
+Critere de fermeture: le comportement conversation immediate vs memoire durable
+est documente; l'evenement de lecture structure est defini; la non-duplication
+automatique des longs extraits bruts est explicite; la rehydratation par ancre
+depuis la bibliotheque est le chemin cible; les risques du code actuel sont
+nommes; les preuves futures distinguent extrait rendu, trace durable et
+recuperation ulterieure depuis la bibliotheque.
+
 ### Lot 4 - Methodes par questions canoniques
 
 - [ ] Migrer inventaire/metadonnees.
@@ -876,6 +957,10 @@ Preuves produit minimales:
 - provenance avec role;
 - clarification d'ambiguite;
 - rendu final mecanique pour extrait exact.
+- evenement de lecture Biblio ancre, sans long texte source brut en memoire
+  durable;
+- preuve de rehydratation ulterieure du texte exact depuis la bibliotheque a
+  partir des ancres.
 
 ## 11. Risques si cette TODO n'est pas suivie
 
@@ -884,6 +969,8 @@ Preuves produit minimales:
 - agent LLM utilise comme substitut a une structure documentaire absente;
 - erreurs primaires/commentaires;
 - refus generiques alors que la bibliotheque locale a un extrait borne;
+- longs extraits Biblio recycles comme memoire durable au lieu de rester source
+  bibliotheque rehydratable;
 - module Biblio trop gros et trop ambigu pour etre maintenu;
 - perte de confiance utilisateur.
 
