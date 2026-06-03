@@ -663,8 +663,8 @@ P14 est maintenant ferme comme continuation documentaire agent-first:
   la meme methode devient page-granulaire;
 - dans les deux cas, le controle reste du cote agent-first et le repli ne
   requalifie pas localement le cas;
-- preuve datee:
-  `app/docs/states/baselines/biblio-smokes/p14-agentic-20260603T121113Z.jsonl`.
+- preuve isolee datee:
+  `app/docs/states/baselines/biblio-smokes/p14-agentic-isolated-from-stateful-20260603T133545Z.jsonl`.
 
 P15 est maintenant ferme comme verification de provenance agent-first:
 
@@ -1340,9 +1340,12 @@ Preuve agent-first P01-P18 courante:
     `passage_extract_canonical_range`;
   - `p10-agentic-rerun-20260603T131029Z.jsonl`: `P10` echoue strictement avec
     `case_closure_product_method_mismatch`;
-  - `p14-agentic-rerun-stateful-20260603T131342Z.jsonl`: `P14` reste valide en
-    rerun stateful, et le validateur strict accepte des executions compatibles
-    `passage_context` ou `page_read` pour `passage_continue_next_segment`;
+  - `p14-agentic-rerun-stateful-20260603T131342Z.jsonl`: artefact stateful
+    mixte utile pour le contexte de reprise, mais pas preuve stricte isolee de
+    `P14` parce qu'il contient aussi `P10`;
+  - `p14-agentic-isolated-from-stateful-20260603T133545Z.jsonl`: preuve
+    stricte isolee de `P14`, extraite d'un rerun live stateful minimal et
+    validee seule avec `strict_exit=0`;
 - flags `raw_marker_leaks=false`, `payload_objects_retained=0`,
   `forbidden_endpoint_used=false` sur la matrice.
 

@@ -12,7 +12,7 @@ Sources:
 - `app/docs/states/baselines/biblio-smokes/agent-first-full-post-truth-fix-20260601T185215Z.jsonl`
 - `app/docs/states/baselines/biblio-smokes/p04-agentic-rerun-20260603T131029Z.jsonl`
 - `app/docs/states/baselines/biblio-smokes/p10-agentic-rerun-20260603T131029Z.jsonl`
-- `app/docs/states/baselines/biblio-smokes/p14-agentic-rerun-stateful-20260603T131342Z.jsonl`
+- `app/docs/states/baselines/biblio-smokes/p14-agentic-isolated-from-stateful-20260603T133545Z.jsonl`
 
 Portee: document canonique de pilotage produit pour la refonte Biblio. Ce
 document ne remplace ni la spec agent, ni la spec Catalogue. Il fixe
