@@ -1,7 +1,7 @@
 # Frida Biblio refonte
 
 Date: 2026-06-02
-Statut: TODO active
+Statut: cloturee produit; archivage documentaire a planifier
 Classement: `app/docs/todo-todo/product/`
 Sources:
 
@@ -10,6 +10,7 @@ Sources:
 - `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - `app/docs/states/audits/frida-biblio-stephanus-library-audit-2026-06-02.md`
 - `app/docs/states/baselines/biblio-smokes/agent-first-full-post-truth-fix-20260601T185215Z.jsonl`
+- `app/docs/states/baselines/biblio-smokes/lot-e-p03-p18-final-20260603T123538Z.jsonl`
 
 Portee: document canonique de pilotage produit pour la refonte Biblio. Ce
 document ne remplace ni la spec agent, ni la spec Catalogue. Il fixe
@@ -346,9 +347,10 @@ encore decide ou repare a plusieurs endroits.
 
 ### Lot E - Chantiers Catalogue / DB / indexation necessaires
 
-- [ ] Lot E reste ouvert tant qu'un `case_id` encore `partiel` ou `faux vert`
-      de la matrice canonique n'est pas referme comme vraie methode produit.
-- [ ] Regle de fermeture de Lot E: aucune case ci-dessous ne peut etre cochee
+- [x] Lot E ne porte plus de `case_id` `partiel` ou `faux vert` dans la
+      matrice canonique; fermeture validee par le replay final
+      `lot-e-p03-p18-final-20260603T123538Z.jsonl`.
+- [x] Regle de fermeture de Lot E tenue: aucune case ci-dessous n'a ete cochee
       sans au moins un test live avec le bibliothecaire agentique, conserve
       dans un artefact JSONL date, prouvant noir sur blanc:
       - `case_id` reconnu;
@@ -391,9 +393,9 @@ encore decide ou repare a plusieurs endroits.
       la meme methode canonique, sans variante opportuniste locale.
 - [x] `P18 passage_search_external_work` reformulation soeur: fermer le cas dans
       la meme methode canonique, avec meme niveau de preuve live.
-- [ ] Les sous-crans techniques deja livres ci-dessous ne doivent plus etre lus
-      comme "Lot E coche", mais comme pieces de support deja acquises pour
-      fermer ensuite les cas produit restants.
+- [x] Les sous-crans techniques deja livres ci-dessous ont bien servi de pieces
+      de support pour fermer ensuite les cas produit restants; ils ne valaient
+      pas a eux seuls cloture du lot avant la preuve finale.
 - [x] Reutiliser la TOC/chapters legere existante comme hint d'oeuvre interne
       quand un document physique unique est deja resolu, avant de retomber sur
       la recherche plein texte de paragraphes.
@@ -425,26 +427,26 @@ encore decide ou repare a plusieurs endroits.
 
 ## 9. Criteres de sortie de cette refonte
 
-- [ ] Les 18 cas existent comme matrice produit explicite, pas seulement comme
+- [x] Les 18 cas existent comme matrice produit explicite, pas seulement comme
       smokes.
-- [ ] Chaque cas renvoie a une methode produit explicite.
-- [ ] Chaque methode annonce ses outils/scripts techniques et son payload
+- [x] Chaque cas renvoie a une methode produit explicite.
+- [x] Chaque methode annonce ses outils/scripts techniques et son payload
       structure.
-- [ ] Les faux verts sont explicitement nommes et refuses comme validation
+- [x] Les faux verts sont explicitement nommes et refuses comme validation
       finale.
-- [ ] La separation FridaDev / Catalogue / DB / indexation est documentee sans
+- [x] La separation FridaDev / Catalogue / DB / indexation est documentee sans
       flou.
-- [ ] Le cleanup `app/biblio/` est rattache a l'invariant produit, pas a un
+- [x] Le cleanup `app/biblio/` est rattache a l'invariant produit, pas a un
       geste de style.
 
 ## 10. Regles de pilotage
 
-- [ ] Aucun lot futur ne peut se declarer "termine" sur un simple smoke vert si
+- [x] Aucun lot futur ne peut se declarer "termine" sur un simple smoke vert si
       le cas reste `partiel` ou `faux vert`.
-- [ ] Aucun lot futur ne doit confondre outil technique et methode produit.
-- [ ] Toute validation future doit dire si l'ecart restant releve:
+- [x] Aucun lot futur ne doit confondre outil technique et methode produit.
+- [x] Toute validation future doit dire si l'ecart restant releve:
       - de FridaDev;
       - de Catalogue / DB / indexation;
       - ou d'un mixte.
-- [ ] Aucune reouverture de micro-lot runtime ne doit court-circuiter cette
+- [x] Aucune reouverture de micro-lot runtime ne doit court-circuiter cette
       matrice canonique.

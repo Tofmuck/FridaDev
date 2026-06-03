@@ -1328,6 +1328,12 @@ Preuve agent-first P01-P18 courante:
   18/18 records avec `runtime_expectation_status=met`,
   `product_expectation_status=met`, `raw_marker_leaks=false`,
   `payload_objects_retained=0`, et statuts agent `met` / `fallback_repaired`;
+- artefact final de fermeture Lot E P03-P18:
+  `app/docs/states/baselines/biblio-smokes/lot-e-p03-p18-final-20260603T123538Z.jsonl`,
+  16/16 records avec `runtime_expectation_status=met`,
+  `agent_expectation_status=met`, `product_expectation_status=met`, et
+  correspondance explicite `case_id <-> agent_plan_case_id/product_case_id`
+  sur toute la tranche P03-P18;
 - flags `raw_marker_leaks=false`, `payload_objects_retained=0`,
   `forbidden_endpoint_used=false` sur la matrice.
 
