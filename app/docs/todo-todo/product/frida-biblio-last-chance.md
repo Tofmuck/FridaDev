@@ -60,6 +60,24 @@ Frontieres cible:
   des ancres et demande les outils; il ne remplace pas la structure ni
   l'extracteur.
 
+## 0 bis. Principe de souverainete documentaire
+
+Le bibliothecaire LLM est le documentaliste central. Il decide au maximum dans
+le cadre des outils/API disponibles: comprehension de la demande, strategie de
+recherche, choix des candidats, proposition d'ancres, gestion de l'ambiguite et
+formulation des limites.
+
+Les murs deterministes doivent rester ultra fins: securite, GET-only, budgets,
+coherence minimale des ancres, extraction mecanique, renderer et observabilite
+content-free. Ils ne doivent pas epaissir en jugement bibliographique, ni
+transformer un resultat plausible en verite produit.
+
+La validation de pertinence finale reste dialogique et humaine: le systeme
+expose ses ancres, sa provenance, son niveau de confiance et ses ambiguites.
+L'utilisateur peut confirmer, corriger, demander une autre piste ou
+elargir/recentrer. Le code ne doit pas pretendre fermer une question
+interpretative a la place de l'utilisateur.
+
 ## 1. Probleme a corriger
 
 Le chantier actuel a de bonnes pieces:
