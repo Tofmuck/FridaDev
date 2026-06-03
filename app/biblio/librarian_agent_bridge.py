@@ -98,6 +98,18 @@ def run_agent_first_bridge(
             )
         except Exception:
             agent_first_result = None
+        if not _agent_first_result_is_usable(agent_first_result):
+            repaired = _repair_agent_first_with_dialogue_fallback(
+                librarian_agent_result=result,
+                user_msg=user_msg,
+                state=state,
+                recent_dialogue=recent_dialogue,
+                client_factory=client_factory,
+                config_module=config_module,
+                deterministic_plan=query_plan,
+            )
+            if repaired is not None:
+                result, agent_first_result = repaired
     elif eligible and _agent_first_fallback_allowed(result):
         fallback_plan = build_query_fallback_plan(query_plan) or build_dialogue_fallback_plan(
             user_msg=user_msg,
@@ -248,6 +260,77 @@ def _with_agent_first_fallback_plan(librarian_agent_result: Any, plan: librarian
     if agent_result is None:
         return librarian_agent_result
     return replace(librarian_agent_result, agent_result=replace(agent_result, candidate_plan=plan))
+
+
+def _repair_agent_first_with_dialogue_fallback(
+    *,
+    librarian_agent_result: Any,
+    user_msg: str,
+    state: BiblioConversationState,
+    recent_dialogue: Sequence[Mapping[str, Any]],
+    client_factory: Any,
+    config_module: Any,
+    deterministic_plan: Any,
+) -> tuple[Any, Any] | None:
+    candidate_plan = _candidate_plan(librarian_agent_result)
+    if candidate_plan is None:
+        return None
+    fallback_plan = build_dialogue_fallback_plan(
+        user_msg=user_msg,
+        state=state,
+        recent_dialogue=recent_dialogue,
+    )
+    if fallback_plan is None or not _dialogue_fallback_matches_candidate(candidate_plan, fallback_plan):
+        return None
+    repaired_plan = replace(
+        fallback_plan,
+        case_id=str(getattr(candidate_plan, "case_id", "") or ""),
+        product_method=str(getattr(candidate_plan, "product_method", "") or fallback_plan.product_method or ""),
+        fallback_reason="agent_dialogue_fallback_repaired_plan",
+    )
+    repaired_result = _with_agent_first_fallback_plan(librarian_agent_result, repaired_plan)
+    try:
+        client = client_factory(config_module=config_module)
+        repaired_execution = librarian_agent_first.run_agent_first_plan(
+            comparison=repaired_result,
+            client=client,
+            deterministic_plan=deterministic_plan,
+        )
+    except Exception:
+        return None
+    if not _agent_first_result_is_usable(repaired_execution):
+        return None
+    return repaired_result, repaired_execution
+
+
+def _candidate_plan(librarian_agent_result: Any) -> librarian_planner.BiblioLibrarianPlan | None:
+    agent_result = getattr(librarian_agent_result, "agent_result", None)
+    plan = getattr(agent_result, "candidate_plan", None)
+    if isinstance(plan, librarian_planner.BiblioLibrarianPlan):
+        return plan
+    return None
+
+
+def _dialogue_fallback_matches_candidate(
+    candidate_plan: librarian_planner.BiblioLibrarianPlan,
+    fallback_plan: librarian_planner.BiblioLibrarianPlan,
+) -> bool:
+    candidate_method = str(getattr(candidate_plan, "product_method", "") or "").strip()
+    fallback_method = str(getattr(fallback_plan, "product_method", "") or "").strip()
+    if not candidate_method or candidate_method != fallback_method:
+        return False
+    candidate_tools = tuple(str(getattr(call, "tool_name", "") or "").strip() for call in candidate_plan.tool_calls)
+    fallback_tools = tuple(str(getattr(call, "tool_name", "") or "").strip() for call in fallback_plan.tool_calls)
+    if not candidate_tools or candidate_tools != fallback_tools:
+        return False
+    return True
+
+
+def _agent_first_result_is_usable(agent_first_result: Any) -> bool:
+    return agent_first_result is not None and getattr(agent_first_result, "status", "") in {
+        librarian_agent_first.STATUS_AGENT_FIRST_EXECUTED,
+        librarian_agent_first.STATUS_AGENT_FIRST_NEEDS_CLARIFICATION,
+    }
 
 
 def _fallback_product_method(

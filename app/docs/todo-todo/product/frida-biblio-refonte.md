@@ -206,7 +206,7 @@ Regle dure:
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | P11 | Expliquer ce passage | Expliquer le dernier passage ancre | `passage_explain_current` | lecture du `last_result`, `passage_context` si necessaire | vert net | Le follow-up explicatif repart maintenant de l'ancre courante en agent-first nominal, avec `case_id=P11`, `product_method=passage_explain_current` et un seul `passage_context` borne, sans fallback deterministe | FridaDev | Conserver cette borne agentique: expliquer le passage courant sans refaire la reconnaissance du cas dans le parseur local |
-| P12 | Autour de ce passage | Montrer le voisinage documentaire du passage courant | `passage_show_around_current` | `passage_context` | partiel | Cas utile et relativement sain, mais encore trop confondu avec simple contexte local | FridaDev | Fixer la verite produit: vrai voisinage borne vs simple contexte |
+| P12 | Autour de ce passage | Montrer le voisinage documentaire du passage courant | `passage_show_around_current` | `passage_context` | vert net | Le follow-up de voisinage courant est maintenant tenu en agent-first nominal: `case_id=P12`, `product_method=passage_show_around_current` et `passage_context` borne autour de l'ancre courante, avec reparation d'execution limitee au meme product_method si le tool call initial est trop fragile | FridaDev | Conserver cette reparation agentique bornee sans redonner la reconnaissance du cas au parseur local |
 | P13 | Plus haut | Remonter avant le passage courant | `passage_move_previous_segment` | `page_read` ou primitive de voisinage plus fine | faux vert | Le cas est encore maquille par des reparations de contexte, pas par une vraie methode documentaire | mixte | Declarer le cas comme non stabilise tant qu'une primitive documentaire propre n'existe pas |
 | P14 | Continue | Continuer apres le passage courant | `passage_continue_next_segment` | `page_read` ou primitive sequentielle dediee | faux vert | Le smoke vert connu ne prouve pas une vraie continuation documentaire | mixte | Arreter de considerer ce cas comme "vert" tant que la methode n'est pas explicite et ancree |
 | P15 | D'ou vient ce passage ? | Verifier l'origine documentaire du passage visible | `passage_origin_check` | `document_open_summary`, `document_toc`, `passage_context`, ancre technique | partiel | La provenance est partiellement visible, mais pas encore garantie comme verite forte | mixte | Ajouter un vrai statut de provenance et une verification de source exploitable |
@@ -377,7 +377,7 @@ encore decide ou repare a plusieurs endroits.
       comme methode explicite, pas comme effet de bord du runtime.
 - [x] `P11 passage_explain_current`: fermer l'explication du passage courant
       comme vraie methode multi-tour explicite.
-- [ ] `P12 passage_show_around_current`: fermer le voisinage documentaire du
+- [x] `P12 passage_show_around_current`: fermer le voisinage documentaire du
       passage courant comme vraie methode explicite.
 - [ ] `P13 passage_move_previous_segment`: fermer `plus haut` comme vraie
       methode documentaire, pas comme reparation de contexte.

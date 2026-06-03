@@ -627,6 +627,18 @@ P11 est maintenant ferme comme follow-up agent-first nominal:
 - preuve datee:
   `app/docs/states/baselines/biblio-smokes/p11-agentic-20260603T113533Z.jsonl`.
 
+P12 est maintenant ferme comme follow-up agent-first nominal:
+
+- apres une ancre de passage exacte deja posee, le plan agent valide reconnait
+  `case_id=P12` et `product_method=passage_show_around_current`;
+- si le tool call initial de l'agent est trop fragile mais reste dans la meme
+  methode produit, le runtime peut le reparer avec le plan dialogue borne
+  homologue, sans redonner la reconnaissance du cas au parseur local;
+- l'execution nominale observee reste `agent_first`, avec un seul
+  `passage_context` borne autour de l'ancre courante;
+- preuve datee:
+  `app/docs/states/baselines/biblio-smokes/p12-agentic-20260603T115629Z.jsonl`.
+
 ## 14. Tests exiges avant runtime
 
 Avant tout branchement runtime agentique:
