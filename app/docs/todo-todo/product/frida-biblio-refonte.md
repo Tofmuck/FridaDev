@@ -346,11 +346,35 @@ encore decide ou repare a plusieurs endroits.
 
 ### Lot E - Chantiers Catalogue / DB / indexation necessaires
 
-- [ ] Ouvrir seulement les lots structurels encore necessaires:
-      - intervalle canonique;
-      - signal primaire/commentaire;
-      - oeuvre interne;
-      - navigation documentaire plus riche si prouvee necessaire.
+- [ ] Lot E reste ouvert tant que les cas encore `partiel` ou `faux vert` de la
+      matrice canonique ne sont pas refermes comme vraies methodes produit; les
+      sous-crans techniques ci-dessous sont utiles, mais ne valent pas cloture a
+      eux seuls.
+- [ ] Fermer `P03 work_lookup` comme vraie methode produit explicite, agentique
+      et structuree, au lieu d'un simple enchainement de recherches/reparations.
+- [ ] Fermer `P09 document_toc_show` comme vraie methode TOC rattachee a une
+      cible deja resolue, sans elargir le parseur local ni rebasculer la
+      reconnaissance du cas du cote du deterministe.
+- [ ] Garder l'oeuvre interne comme sujet ouvert de Lot E:
+      - petit repere TOC borne possible quand il est deja resolu;
+      - formulations libres et reconnaissance du cas renvoyees au
+        bibliothecaire agentique;
+      - pas de fausse "TOC autonome d'oeuvre" deduite localement.
+- [ ] Garder `P04` + `P10` ouverts tant qu'il n'existe pas encore de vraie
+      methode explicite pour l'intervalle canonique borne et la mise en
+      reference courante.
+- [ ] Garder `P05` a `P08` ouverts tant que la recherche thematique dans une
+      oeuvre n'annonce pas clairement son niveau de verite, sa source et son
+      statut d'execution.
+- [ ] Garder `P11` a `P15` ouverts tant que le suivi multi-tour (expliquer /
+      autour / plus haut / continue / provenance) n'est pas porte par de vraies
+      methodes documentaires explicites.
+- [ ] Garder `P16` a `P18` ouverts tant que la recherche thematique hors oeuvre
+      courante reste un assemblage d'outils plutot qu'une methode
+      bibliothecaire canonique.
+- [ ] Les sous-crans techniques deja livres ci-dessous ne doivent plus etre lus
+      comme "Lot E coche", mais comme pieces de support deja acquises pour
+      fermer ensuite les cas produit restants.
 - [x] Reutiliser la TOC/chapters legere existante comme hint d'oeuvre interne
       quand un document physique unique est deja resolu, avant de retomber sur
       la recherche plein texte de paragraphes.
@@ -379,11 +403,6 @@ encore decide ou repare a plusieurs endroits.
       chapitre suivant) quand la structure documentaire l'autorise deja, puis
       l'afficher cote navigation sans le maquiller en resolution bibliographique
       forte.
-- [x] Quand une demande TOC prend la petite forme structurelle deja mappee
-      `Sommaire du Theetete de Platon`, faire porter par FridaDev un repere
-      TOC focalise sur l'entree de volume correspondante, sans presenter cela
-      comme une table des matieres autonome de l'oeuvre; les formulations plus
-      libres doivent revenir au bibliothecaire agentique, pas au parseur local.
 
 ## 9. Criteres de sortie de cette refonte
 
