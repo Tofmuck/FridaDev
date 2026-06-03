@@ -189,7 +189,7 @@ Regle dure:
 
 | case_id | Nom du cas | Intention produit | Methode produit attendue | Outils / scripts techniques | Etat actuel | Verite produit actuelle | Dependance | Action necessaire |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P04 | Plage canonique explicite | Extraire un passage borne demande par locator/range | `passage_extract_canonical_range` | resolution documentaire, `locate`, `passage_context`, `page_read` borne si la plage traverse plusieurs pages | partiel | Le chemin exact sait maintenant assembler des ranges bornes multi-page quand les deux ancres se resolvent proprement, et publie un `interval_hint` start/end reutilisable pour la suite, mais il n'existe toujours pas d'objet canonique general d'intervalle | mixte | Garder la frontiere claire entre range borne resolue et support general d'intervalle canonique |
+| P04 | Plage canonique explicite | Extraire un passage borne demande par locator/range | `passage_extract_canonical_range` | resolution documentaire, `locate`, `passage_context`, `page_read` borne si la plage traverse plusieurs pages | vert net | La methode explicite est maintenant reconnue agentiquement, assemble une plage canonique bornee exploitable et publie un `interval_hint` reutilisable, sans promettre un objet canonique general d'intervalle | FridaDev | Conserver la frontiere claire entre range borne resolue et support general d'intervalle canonique |
 | P10 | Passage courant de reference | Faire de ce passage exact le point de depart de la suite Biblio | `passage_set_current_reference` | meme chaine que P04 + `state_update` | partiel | Le passage exact peut deja servir d'ancre pour la suite, mais ce role reste encore porte comme effet du runtime, pas comme methode explicite | FridaDev | Rendre cette mise en reference explicite dans le contrat de methode |
 
 ### D. Recherche thematique dans une oeuvre
@@ -358,7 +358,7 @@ encore decide ou repare a plusieurs endroits.
       - resultat produit conforme au besoin.
 - [x] `P03 work_lookup`: trouve l'ouvrage comme vraie methode produit
       explicite, agentique et structuree.
-- [ ] `P04 passage_extract_canonical_range`: fermer l'extraction canonique comme
+- [x] `P04 passage_extract_canonical_range`: ferme l'extraction canonique comme
       methode produit explicite, sans vendre un objet general d'intervalle tant
       qu'il n'existe pas.
 - [ ] `P05 passage_search_in_work`: fermer la recherche thematique dans une
