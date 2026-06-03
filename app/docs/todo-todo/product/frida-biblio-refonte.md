@@ -346,32 +346,50 @@ encore decide ou repare a plusieurs endroits.
 
 ### Lot E - Chantiers Catalogue / DB / indexation necessaires
 
-- [ ] Lot E reste ouvert tant que les cas encore `partiel` ou `faux vert` de la
-      matrice canonique ne sont pas refermes comme vraies methodes produit; les
-      sous-crans techniques ci-dessous sont utiles, mais ne valent pas cloture a
-      eux seuls.
-- [ ] Fermer `P03 work_lookup` comme vraie methode produit explicite, agentique
-      et structuree, au lieu d'un simple enchainement de recherches/reparations.
-- [ ] Fermer `P09 document_toc_show` comme vraie methode TOC rattachee a une
-      cible deja resolue, sans elargir le parseur local ni rebasculer la
-      reconnaissance du cas du cote du deterministe.
-- [ ] Garder l'oeuvre interne comme sujet ouvert de Lot E:
-      - petit repere TOC borne possible quand il est deja resolu;
-      - formulations libres et reconnaissance du cas renvoyees au
-        bibliothecaire agentique;
-      - pas de fausse "TOC autonome d'oeuvre" deduite localement.
-- [ ] Garder `P04` + `P10` ouverts tant qu'il n'existe pas encore de vraie
-      methode explicite pour l'intervalle canonique borne et la mise en
-      reference courante.
-- [ ] Garder `P05` a `P08` ouverts tant que la recherche thematique dans une
-      oeuvre n'annonce pas clairement son niveau de verite, sa source et son
-      statut d'execution.
-- [ ] Garder `P11` a `P15` ouverts tant que le suivi multi-tour (expliquer /
-      autour / plus haut / continue / provenance) n'est pas porte par de vraies
-      methodes documentaires explicites.
-- [ ] Garder `P16` a `P18` ouverts tant que la recherche thematique hors oeuvre
-      courante reste un assemblage d'outils plutot qu'une methode
-      bibliothecaire canonique.
+- [ ] Lot E reste ouvert tant qu'un `case_id` encore `partiel` ou `faux vert`
+      de la matrice canonique n'est pas referme comme vraie methode produit.
+- [ ] Regle de fermeture de Lot E: aucune case ci-dessous ne peut etre cochee
+      sans au moins un test live avec le bibliothecaire agentique, conserve
+      dans un artefact JSONL date, prouvant noir sur blanc:
+      - `case_id` reconnu;
+      - bonne methode/categorie de cas;
+      - bons outils proposes ou executes;
+      - statuts runtime/agent/produit exploitables;
+      - resultat produit conforme au besoin.
+- [ ] `P03 work_lookup`: trouver l'ouvrage comme vraie methode produit
+      explicite, agentique et structuree.
+- [ ] `P04 passage_extract_canonical_range`: fermer l'extraction canonique comme
+      methode produit explicite, sans vendre un objet general d'intervalle tant
+      qu'il n'existe pas.
+- [ ] `P05 passage_search_in_work`: fermer la recherche thematique dans une
+      oeuvre avec niveau de verite et source explicites.
+- [ ] `P06 passage_search_in_work` variante sans accents: fermer le cas sans
+      rebasculer la reconnaissance vers des reparations locales phrase par
+      phrase.
+- [ ] `P07 passage_search_in_work` variante lexicale voisine: fermer le cas
+      avec verification oeuvre/source exploitable.
+- [ ] `P08 passage_search_in_work` paraphrase libre: fermer le cas en separant
+      clairement paraphrase, candidat plausible et passage exact.
+- [ ] `P09 document_toc_show`: fermer la TOC comme vraie methode rattachee a une
+      cible resolue, sans elargir le parseur local.
+- [ ] `P10 passage_set_current_reference`: fermer la mise en reference courante
+      comme methode explicite, pas comme effet de bord du runtime.
+- [ ] `P11 passage_explain_current`: fermer l'explication du passage courant
+      comme vraie methode multi-tour explicite.
+- [ ] `P12 passage_show_around_current`: fermer le voisinage documentaire du
+      passage courant comme vraie methode explicite.
+- [ ] `P13 passage_move_previous_segment`: fermer `plus haut` comme vraie
+      methode documentaire, pas comme reparation de contexte.
+- [ ] `P14 passage_continue_next_segment`: fermer `continue` comme vraie methode
+      documentaire explicite, pas comme smoke vert ambigu.
+- [ ] `P15 passage_origin_check`: fermer la provenance du passage comme verite
+      documentaire exploitable.
+- [ ] `P16 passage_search_external_work`: fermer la recherche thematique hors
+      oeuvre courante comme vraie methode bibliothecaire canonique.
+- [ ] `P17 passage_search_external_work` reformulation soeur: fermer le cas dans
+      la meme methode canonique, sans variante opportuniste locale.
+- [ ] `P18 passage_search_external_work` reformulation soeur: fermer le cas dans
+      la meme methode canonique, avec meme niveau de preuve live.
 - [ ] Les sous-crans techniques deja livres ci-dessous ne doivent plus etre lus
       comme "Lot E coche", mais comme pieces de support deja acquises pour
       fermer ensuite les cas produit restants.
