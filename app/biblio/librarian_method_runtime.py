@@ -256,9 +256,11 @@ def _wants_section_start_page_block(
     product_method: str,
     plan: librarian_planner.BiblioLibrarianPlan,
 ) -> bool:
+    answer_mode = _text(getattr(plan, "answer_mode", ""))
+    if product_method == product_methods.PRODUCT_METHOD_EXTRACTION:
+        return answer_mode in _SECTION_START_PAGE_BLOCK_ANSWER_MODES
     if product_method not in _SECTION_START_PAGE_BLOCK_METHODS:
         return False
-    answer_mode = _text(getattr(plan, "answer_mode", ""))
     if answer_mode in _SECTION_START_PAGE_BLOCK_ANSWER_MODES:
         return True
     for call in getattr(plan, "tool_calls", ()) or ():
@@ -347,8 +349,13 @@ def _complete_section_start_page_block(
     registry: librarian_tools.BiblioLibrarianToolRegistry,
 ) -> librarian_planner.BiblioLibrarianLoopResult:
     doc_id = _first_document_id(loop_result)
+    if not doc_id:
+        return loop_result
+    if _text(getattr(plan, "product_method", "")) == product_methods.PRODUCT_METHOD_EXTRACTION:
+        return _append_section_start_pages(loop_result, registry=registry, document_id=doc_id)
+
     section_query = _planned_section_query(plan)
-    if not doc_id or not section_query:
+    if not section_query:
         return loop_result
     if not _has_endpoint(loop_result, "chapter_search"):
         loop_result = _append_tool_call(
@@ -360,14 +367,36 @@ def _complete_section_start_page_block(
     start_page = _first_section_start_page(loop_result, document_id=doc_id)
     if start_page is None:
         return loop_result
-    for page_no in range(start_page, start_page + _SECTION_START_PAGE_COUNT):
-        if _has_page_read(loop_result, document_id=doc_id, page_no=page_no):
-            continue
+    return _append_section_start_pages(loop_result, registry=registry, document_id=doc_id, start_page=start_page)
+
+
+def _append_section_start_pages(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    registry: librarian_tools.BiblioLibrarianToolRegistry,
+    document_id: str,
+    start_page: int | None = None,
+) -> librarian_planner.BiblioLibrarianLoopResult:
+    effective_start = start_page or _first_section_start_page(loop_result, document_id=document_id)
+    if effective_start is None:
+        return loop_result
+    end_page = _first_section_end_page(loop_result, document_id=document_id)
+    requested_end = effective_start + _SECTION_START_PAGE_COUNT - 1
+    if end_page is not None and end_page >= effective_start:
+        requested_end = min(requested_end, end_page)
+    pages_to_read = tuple(
+        page_no
+        for page_no in range(effective_start, requested_end + 1)
+        if not _has_page_read(loop_result, document_id=document_id, page_no=page_no)
+    )
+    if len(pages_to_read) > max(0, loop_result.options.max_tool_calls - loop_result.tool_call_count):
+        return loop_result
+    for page_no in pages_to_read:
         loop_result = _append_tool_call(
             loop_result,
             registry=registry,
             tool_name=librarian_tools.TOOL_PAGE_READ,
-            params={"document_id": doc_id, "page_no": page_no},
+            params={"document_id": document_id, "page_no": page_no},
         )
     return loop_result
 
@@ -393,7 +422,17 @@ def _first_section_start_page(
 ) -> int | None:
     for step in reversed(loop_result.steps):
         result = step.tool_result
-        if result is None or result.tool_name != librarian_tools.TOOL_SEARCH_CHAPTERS:
+        if result is None:
+            continue
+        if result.tool_name == librarian_tools.TOOL_SECTION_BOUNDS and result.status == librarian_tools.STATUS_RESOLVED:
+            result_doc_id = _text(getattr(result, "document_id", ""))
+            if result_doc_id and result_doc_id != document_id:
+                continue
+            page_no = _page_from_section_bounds(result, key="start")
+            if page_no is not None:
+                return page_no
+            continue
+        if result.tool_name != librarian_tools.TOOL_SEARCH_CHAPTERS:
             continue
         for item in result.items:
             if not isinstance(item, Mapping):
@@ -404,6 +443,55 @@ def _first_section_start_page(
             page_no = _int(item.get("page_no"))
             if page_no is not None and page_no >= 1:
                 return page_no
+    return None
+
+
+def _first_section_end_page(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    document_id: str,
+) -> int | None:
+    for step in reversed(loop_result.steps):
+        result = step.tool_result
+        if (
+            result is None
+            or result.tool_name != librarian_tools.TOOL_SECTION_BOUNDS
+            or result.status != librarian_tools.STATUS_RESOLVED
+        ):
+            continue
+        result_doc_id = _text(getattr(result, "document_id", ""))
+        if result_doc_id and result_doc_id != document_id:
+            continue
+        page_no = _page_from_section_bounds(result, key="end")
+        if page_no is not None:
+            return page_no
+    return None
+
+
+def _page_from_section_bounds(
+    result: librarian_tools.BiblioLibrarianToolResult,
+    *,
+    key: str,
+) -> int | None:
+    interval_anchor = result.interval.get(key)
+    if isinstance(interval_anchor, Mapping):
+        page_no = _int(interval_anchor.get("page_no"))
+        if page_no >= 1:
+            return page_no
+        unit_label = _text(interval_anchor.get("unit_label"))
+        unit_no = _int(interval_anchor.get("unit_no"))
+        if unit_label == "pages" and unit_no >= 1:
+            return unit_no
+    for item in result.items:
+        if not isinstance(item, Mapping):
+            continue
+        page_no = _int(item.get(f"page_{key}"))
+        if page_no >= 1:
+            return page_no
+        unit_label = _text(item.get("unit_label"))
+        unit_no = _int(item.get(f"unit_{key}"))
+        if unit_label == "pages" and unit_no >= 1:
+            return unit_no
     return None
 
 

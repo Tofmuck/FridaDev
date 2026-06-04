@@ -1694,6 +1694,55 @@ Limites restantes Lot 4E apres 4E.1:
 - preuve actuelle: tests unitaires et agent-first contractuels seulement, pas de
   smoke live agentique ni artefact JSONL.
 
+Livraison Lot 4E.2, 2026-06-04:
+
+- Lot 4E.2 reste dans la famille canonique `extraction`;
+- il livre un premier pont runtime depuis des bornes de section deja resolues
+  vers des lectures mecaniques `page_read` courtes;
+- condition de declenchement: `product_method=extraction`, `case_id=""`,
+  un `section_bounds` resolu avec `document_id` et une page de debut
+  exploitable, plus un `answer_mode` compact explicite de debut de section
+  (`section_start_page_block_2` ou famille equivalente deja autorisee);
+- sans cet `answer_mode` explicite, `section_bounds` reste une structure/bornes:
+  il ne devient pas automatiquement une extraction exacte;
+- comportement livre: le runtime lit mecaniquement les deux premieres pages de
+  la section, ou moins si la borne de fin connue rend la section plus courte,
+  puis laisse `answer_extraction.py` assembler/verrouiller le rendu exact selon
+  les regles Lot 4E.1;
+- `section_bounds` seul ne rend jamais un extrait exact. Le texte exact ne vient
+  que des `page_read` effectivement executes;
+- ambiguite, absence de `document_id`, absence de page de debut exploitable ou
+  borne non-page restent bloques/clarification; le code ne choisit pas une
+  section et n'invente pas une borne;
+- aucun parseur de formulation utilisateur n'est ajoute: le bibliothecaire LLM
+  decide la section et le mode de restitution; le deterministe execute seulement
+  le contrat technique sous budget;
+- observabilite: pas de texte brut dans les preuves, seulement statuts,
+  reason codes, ids courts, compteurs, hashes et ancres;
+- preuve actuelle: tests unitaires et agent-first contractuels seulement, pas de
+  smoke live agentique ni artefact JSONL.
+
+Findings Lot 4E.2:
+
+- F1 valide: Lot 4E.1 savait assembler les pages deja lues, mais pas completer
+  depuis `section_bounds`.
+- F2 valide: `section_bounds` porte les bornes structurelles; le runtime
+  canonique `extraction` ne les transformait pas encore en lectures courtes.
+- F3 valide: ambiguite, absence de document, absence de page exploitable ou
+  intervalle non materialise doivent bloquer proprement.
+- F4 valide: le debut/deux premieres pages de section lit seulement le petit
+  bloc demande; aucune section longue n'est lue dans ce lot.
+- F5 valide: la preuve runtime `resolve/section_bounds -> page_read ->
+  exact_excerpt -> final lock` manquait jusque-la.
+
+Limites restantes Lot 4E apres 4E.2:
+
+- pas de section complete longue;
+- pas d'intervalle arbitraire de section hors petit bloc de debut explicite;
+- pas de plage canonique complete type Stephanus;
+- pas de navigation lecteur globale ni continuation depuis etat implicite;
+- pas de nouveau filtre ou enrichissement structurel Lot 2 bis.
+
 ### Lot 5 - Nettoyage dur
 
 - [ ] Supprimer ou declasser les chemins legacy non appeles.

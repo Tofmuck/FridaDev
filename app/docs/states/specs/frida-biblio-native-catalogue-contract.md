@@ -479,6 +479,25 @@ Extraction mecanique bornee Last Chance Lot 4E.1 livree:
   relevera d'un futur etat/ancrage fiable;
 - preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
 
+Extraction depuis bornes de section Last Chance Lot 4E.2 livree:
+
+- la methode canonique reste `product_method=extraction`, `case_id=""`;
+- `section_bounds` peut servir de pont vers une extraction exacte seulement
+  quand le bibliothecaire a explicitement choisi un `answer_mode` compact de
+  debut de section, par exemple `section_start_page_block_2`;
+- `section_bounds` seul est une preuve de structure/bornes, pas une lecture:
+  il ne rend jamais de texte exact sans `page_read` effectivement execute;
+- si les bornes de section portent une page de debut exploitable, le runtime
+  peut lire mecaniquement deux pages de debut, ou moins si la borne de fin connue
+  indique une section plus courte;
+- le rendu exact reste soumis au contrat Lot 4E.1: blocs effectivement lus,
+  meme `document_id`, intervalle contigu, budget 1 a 3 pages / 8 000 caracteres,
+  ancres globales couvrantes et hash/longueur coherents;
+- ambiguite, absence de document, absence de page exploitable ou bornes non-page
+  bloquent/clarifient. Le deterministe ne choisit pas une section, n'invente pas
+  une borne et ne juge jamais la pertinence semantique;
+- preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
+
 ## 3. Frontieres non negociables
 
 Biblio n'est pas `active_document`.

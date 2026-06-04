@@ -520,7 +520,7 @@ def _carried_position(result: tools.BiblioLibrarianToolResult) -> dict[str, Any]
 
 
 def _step_status(tool_status: str) -> str:
-    if tool_status == tools.STATUS_OK:
+    if tool_status in {tools.STATUS_OK, tools.STATUS_RESOLVED}:
         return STATUS_TOOL_EXECUTED
     if tool_status == tools.STATUS_INCOHERENT_CATALOGUE:
         return STATUS_TOOL_FAILED

@@ -1040,6 +1040,120 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn(page_12, encoded)
         self.assertNotIn(page_13, encoded)
 
+    def test_extraction_section_bounds_answer_mode_reads_two_section_start_pages(self) -> None:
+        page_12 = "RAW AGENT FIRST SECTION PAGE 12 MUST NOT LEAK"
+        page_13 = "RAW AGENT FIRST SECTION PAGE 13 MUST NOT LEAK"
+        fake = _FakeAgentFirstClient(
+            chapters_payload=_section_chapters_payload(),
+            page_payloads={
+                12: {"document_id": "doc-1234", "raw_text": page_12, "paragraph_count": 4},
+                13: {"document_id": "doc-1234", "raw_text": page_13, "paragraph_count": 5},
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    answer_mode="section_start_page_block_2",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SECTION_BOUNDS,
+                            method="GET",
+                            params={"document_id": "doc-1234", "chapter_no": 2},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        encoded = json.dumps(
+            {
+                "loop": result.loop_result.to_observability() if result.loop_result else {},
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(
+            fake.calls,
+            [
+                ("chapters", "doc-1234", 500, 0),
+                ("page", "doc-1234", 12),
+                ("page", "doc-1234", 13),
+            ],
+        )
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.extraction["status"], "resolved")
+        self.assertEqual(result.answer_object.extraction["content_kind"], "page_range")
+        self.assertEqual(result.answer_object.extraction["block_count"], 2)
+        self.assertEqual(result.answer_object.extraction["page_start"], 12)
+        self.assertEqual(result.answer_object.extraction["page_end"], 13)
+        self.assertEqual([anchor["page_no"] for anchor in result.answer_object.anchors], [12, 13])
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertLess(result.rendered_answer.content.index(page_12), result.rendered_answer.content.index(page_13))
+        self.assertNotIn(("context", "doc-1234", None, None, None, 0, 700), fake.calls)
+        self.assertNotIn(page_12, encoded)
+        self.assertNotIn(page_13, encoded)
+
+    def test_extraction_section_bounds_without_explicit_answer_mode_does_not_read_pages(self) -> None:
+        fake = _FakeAgentFirstClient(
+            chapters_payload=_section_chapters_payload(),
+            page_payloads={
+                12: {"document_id": "doc-1234", "raw_text": "RAW PAGE 12 MUST NOT RENDER"},
+                13: {"document_id": "doc-1234", "raw_text": "RAW PAGE 13 MUST NOT RENDER"},
+            },
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SECTION_BOUNDS,
+                            method="GET",
+                            params={"document_id": "doc-1234", "chapter_no": 2},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+
+        self.assertEqual(fake.calls, [("chapters", "doc-1234", 500, 0)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_BLOCKED_EXACT)
+        self.assertEqual(result.answer_object.exact_text, "")
+        self.assertFalse(result.rendered_answer.exact_text_rendered)
+        self.assertNotIn("RAW PAGE", result.rendered_answer.content)
+
     def test_toc_request_recovers_from_unanchored_toc_step_after_search(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={
@@ -1145,10 +1259,11 @@ def _plan(
     calls: list[planner.BiblioLibrarianToolCall],
     product_method: str = "",
     case_id: str | None = None,
+    answer_mode: str = "tool",
 ) -> planner.BiblioLibrarianPlan:
     effective_product_method = product_method or product_methods.infer_product_method(
         intent=intent,
-        answer_mode="tool",
+        answer_mode=answer_mode,
         tool_names=[call.tool_name for call in calls],
     )
     effective_case_id = case_id if case_id is not None else product_methods.default_case_id_for_method(effective_product_method)
@@ -1158,8 +1273,29 @@ def _plan(
         intent=intent,
         product_method=effective_product_method,
         tool_calls=tuple(calls),
-        answer_mode="tool",
+        answer_mode=answer_mode,
     )
+
+
+def _section_chapters_payload() -> dict[str, Any]:
+    return {
+        "document": {
+            "id": "doc-1234",
+            "source_type": "pdf",
+            "unit_label": "pages",
+            "unit_count": 80,
+            "page_count": 80,
+            "paragraph_count": 400,
+            "chapter_count": 3,
+            "toc_source": "synthetic",
+        },
+        "total": 3,
+        "chapters": [
+            {"chapter_no": 1, "title": "RAW SECTION ONE MUST STAY INTERNAL", "unit_no": 1, "source": "toc"},
+            {"chapter_no": 2, "title": "RAW SECTION TWO MUST STAY INTERNAL", "unit_no": 12, "source": "toc"},
+            {"chapter_no": 3, "title": "RAW SECTION THREE MUST STAY INTERNAL", "unit_no": 16, "source": "toc"},
+        ],
+    }
 
 
 class _FakeAgentFirstClient:
