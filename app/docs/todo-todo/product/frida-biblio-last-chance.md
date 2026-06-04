@@ -1129,6 +1129,60 @@ Limite volontaire: les primitives Lot 2 normalisent l'acces documentaire pour
 le bibliothecaire, mais ne livrent pas encore le renderer produit ni
 l'extraction mecanique exacte du Lot 3.
 
+### Lot 2 bis - Enrichissement structurel / aliases / oeuvres internes
+
+- [ ] Enrichir `DocumentManifest` avec des aliases exploitables:
+      titres alternatifs, transliterations, titres courts, titres d'oeuvres
+      internes et titres de sections.
+- [ ] Distinguer plus fortement document physique / volume, oeuvre interne,
+      partie / livre / section / chapitre.
+- [ ] Distinguer plus fortement texte primaire, commentaire, preface,
+      introduction, notes, appareil critique et role inconnu.
+- [ ] Porter une hierarchie de sections quand elle est disponible ou derivable
+      honnetement, sans inventer une structure absente.
+- [ ] Produire des bornes plus fiables: section -> page, section -> paragraphe
+      ou raw unit si disponible, oeuvre interne -> debut / fin.
+- [ ] Ajouter des reason codes content-free pour les limites structurelles,
+      par exemple `work_alias_missing`, `internal_work_unresolved`,
+      `section_alias_missing`, `primary_text_role_unknown` ou noms plus justes.
+- [ ] Prouver content-free qu'une section interne connue peut se resoudre par
+      alias quand l'alias existe dans la structure.
+- [ ] Prouver content-free qu'une oeuvre interne dans un volume peut se
+      resoudre sans confondre texte primaire et commentaire quand les roles le
+      permettent.
+- [ ] Prouver qu'une requete bibliographique ambigue reste `ambiguous` ou
+      demande clarification au lieu de fabriquer une certitude.
+- [ ] Interdire les preuves contenant texte long d'ouvrage, prompt brut, titre
+      ou auteur brut non necessaire, payload brut, secret ou URL sensible.
+
+Limite a figer: Lot 2 expose les outils minimaux (`search_document`,
+`search_work`, `search_section`, `resolve_work`, `resolve_section`,
+`section_bounds`), mais ces outils ne suffisent pas si la structure
+documentaire reste pauvre. Des echecs severes comme une section interne connue
+dans un volume Kant montrent le manque d'aliases, d'oeuvres internes, de
+sections hierarchiques, de roles de contenu, de mapping section -> page/para et
+de distinction texte primaire / commentaire. Ces exemples restent des
+regressions severes, pas le canon conceptuel du chantier.
+
+Invariant: le bibliothecaire LLM reste souverain dans le cadre de l'API. Il
+comprend la demande, explore, compare, choisit les outils et propose les
+ancres. Le deterministe reste un mur mince: GET-only, budgets, validation de
+forme, refus des routes dangereuses, observabilite content-free et extraction
+mecanique quand les ancres sont donnees. Lot 2 bis ne doit pas devenir un
+parseur local de formulations, une pile de regex Kant/Foucault/Stephanus, ni
+une confusion entre les 18 cas historiques et 18 outils. La structure doit
+aider le bibliothecaire, pas le remplacer. Quand la pertinence bibliographique
+reste interpretative ou ambigue, le systeme expose l'ambiguite ou demande
+clarification; le code ne doit pas faire semblant d'une certitude structurelle
+absente.
+
+Critere de fermeture: le bibliothecaire dispose d'une structure documentaire
+assez riche pour resoudre des aliases, oeuvres internes, sections
+hierarchiques, roles de contenu et bornes sans basculer vers une recherche
+globale opportuniste ni vers un jugement bibliographique deterministe. Les
+preuves restent content-free et distinguent clairement structure disponible,
+structure derivee, structure ambigue et structure absente.
+
 ### Lot 3 - Answer object et renderer
 
 - [ ] Introduire `BiblioAnswerObject`.

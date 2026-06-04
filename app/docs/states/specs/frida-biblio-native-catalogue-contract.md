@@ -22,6 +22,7 @@ Navigation documentaire R1: 2026-06-02
 Signal faible role documentaire Lot E: 2026-06-02
 Manifeste documentaire minimal Last Chance Lot 1: 2026-06-03
 API/outils minimaux Last Chance Lot 2: 2026-06-04
+Cadrage enrichissement structurel Last Chance Lot 2 bis: 2026-06-04
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -150,6 +151,29 @@ Livraison Last Chance Lot 2:
   la section est unique; les bornes derivees restent signalees comme telles;
 - le schema agent OpenRouter et les methodes produit acceptent ces outils
   comme primitives documentaires GET-only.
+
+Cadrage Last Chance Lot 2 bis:
+
+- Lot 2 donne au bibliothecaire des outils minimaux, mais ne garantit pas a lui
+  seul la richesse documentaire necessaire aux questions canoniques;
+- la couche documentaire doit porter aliases, titres alternatifs,
+  transliterations, titres courts, oeuvres internes, titres de sections,
+  hierarchies de sections, roles de contenu et bornes plus fiables quand ces
+  signaux sont disponibles ou derivables honnetement;
+- le contrat ne doit pas transformer des regressions severes comme Kant,
+  Foucault ou Stephanus en regex locales ni en cas canoniques substitues aux
+  questions de bibliotheque;
+- les 18 cas historiques restent une matrice de regression, pas 18 outils ni
+  le canon principal du chantier;
+- le bibliothecaire LLM reste souverain pour explorer, comparer et proposer les
+  ancres; le deterministe reste limite a GET-only, budgets, validation de
+  forme, refus de routes dangereuses, observabilite content-free et extraction
+  mecanique quand les ancres sont donnees;
+- si la structure ne suffit pas, les outils doivent exposer des statuts ou
+  reason codes content-free (`ambiguous`, `not_found`,
+  `work_alias_missing`, `internal_work_unresolved`,
+  `section_alias_missing`, `primary_text_role_unknown` ou equivalents)
+  plutot que fabriquer une certitude bibliographique.
 
 ## 3. Frontieres non negociables
 
