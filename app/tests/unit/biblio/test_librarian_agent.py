@@ -375,6 +375,28 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             ),
             (
                 {
+                    "case_id": "",
+                    "product_method": product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+                },
+                {
+                    "tool_name": tools.TOOL_SEARCH_DOCUMENT,
+                    "method": "GET",
+                    "params": {"query": "target", "limit": 5, "offset": 0},
+                },
+            ),
+            (
+                {
+                    "case_id": "",
+                    "product_method": product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+                },
+                {
+                    "tool_name": tools.TOOL_CATALOG_SEARCH,
+                    "method": "GET",
+                    "params": {"query": "theme", "document_id": "doc-1", "limit": 10, "offset": 0},
+                },
+            ),
+            (
+                {
                     "case_id": "P05",
                     "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
                 },
@@ -622,6 +644,84 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         assert validation.plan is not None
         self.assertEqual(validation.plan.case_id, "")
         self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE)
+
+    def test_scoped_search_is_canonical_family_distinct_from_legacy_passage_search(self) -> None:
+        spec = product_methods.get_product_method_spec(product_methods.PRODUCT_METHOD_SCOPED_SEARCH)
+
+        self.assertIsNotNone(spec)
+        assert spec is not None
+        self.assertEqual(spec.case_ids, ())
+        self.assertEqual(spec.canonical_family, product_methods.CANONICAL_FAMILY_SCOPED_SEARCH)
+        self.assertEqual(
+            set(spec.allowed_tool_names),
+            {
+                tools.TOOL_SEARCH_DOCUMENT,
+                tools.TOOL_SEARCH_WORK,
+                tools.TOOL_SEARCH_SECTION,
+                tools.TOOL_RESOLVE_WORK,
+                tools.TOOL_RESOLVE_SECTION,
+                tools.TOOL_SECTION_BOUNDS,
+                tools.TOOL_CATALOG_SEARCH,
+            },
+        )
+        self.assertEqual(
+            product_methods.canonical_family_for_method(product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK),
+            product_methods.CANONICAL_FAMILY_SCOPED_SEARCH,
+        )
+        self.assertIn(
+            product_methods.CANONICAL_FAMILY_SCOPED_SEARCH,
+            product_methods.all_canonical_family_names(),
+        )
+
+    def test_scoped_search_rejects_extraction_tools_as_next_lot(self) -> None:
+        for tool_name, params in (
+            (tools.TOOL_PASSAGE_CONTEXT, {"document_id": "doc-1", "paragraph_id": 123}),
+            (tools.TOOL_PAGE_READ, {"document_id": "doc-1", "page_no": 12}),
+            (tools.TOOL_LOCATE, {"document_id": "doc-1", "locator": "126b"}),
+        ):
+            with self.subTest(tool=tool_name):
+                validation = contract.validate_agent_payload(
+                    {
+                        **json.loads(_valid_json()),
+                        "case_id": "",
+                        "product_method": product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+                        "tool_calls": [
+                            {
+                                "tool_name": tool_name,
+                                "method": "GET",
+                                "params": params,
+                            }
+                        ],
+                    }
+                )
+
+                self.assertEqual(validation.status, contract.STATUS_REJECTED)
+                self.assertEqual(validation.reason_code, contract.REASON_PRODUCT_METHOD_TOOL_MISMATCH)
+
+    def test_scoped_search_intent_repairs_to_canonical_method(self) -> None:
+        validation = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "scoped_search",
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_CATALOG_SEARCH,
+                            "method": "GET",
+                            "params": {"query": "theme", "document_id": "doc-1", "limit": "10"},
+                        }
+                    ],
+                    "answer_mode": "scoped_search",
+                }
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.case_id, "")
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_SCOPED_SEARCH)
+        self.assertEqual(validation.plan.tool_calls[0].params["document_id"], "doc-1")
 
     def test_toc_catalog_search_repair_stays_legacy_p09(self) -> None:
         validation = contract.parse_and_validate_agent_json(
@@ -1310,6 +1410,10 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             "questions canoniques d'inventaire/metadonnees",
             "questions canoniques de resolution documentaire",
             "questions canoniques de structure documentaire",
+            "scoped_search",
+            "questions canoniques de recherche scoped",
+            "N'appelle pas passage_context",
+            "candidats de recherche",
             "case_id quand la demande correspond clairement",
             "choisis le case_id qui correspond a la forme reelle",
             "variante ASCII/sans accents",
@@ -1338,6 +1442,12 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             payload["canonical_family_by_product_method"][product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE],
             product_methods.CANONICAL_FAMILY_DOCUMENT_STRUCTURE,
         )
+        self.assertEqual(
+            payload["canonical_family_by_product_method"][product_methods.PRODUCT_METHOD_SCOPED_SEARCH],
+            product_methods.CANONICAL_FAMILY_SCOPED_SEARCH,
+        )
+        self.assertIn(product_methods.CANONICAL_FAMILY_SCOPED_SEARCH, payload["canonical_families"])
+        self.assertIn("document_id", payload["tool_param_contracts"][tools.TOOL_CATALOG_SEARCH]["allowed"])
         rows = {row["case_id"]: row for row in payload["case_reference_signatures"]}
         self.assertEqual(rows["P03"]["product_method"], product_methods.PRODUCT_METHOD_WORK_LOOKUP)
         self.assertEqual(rows["P09"]["product_method"], product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW)

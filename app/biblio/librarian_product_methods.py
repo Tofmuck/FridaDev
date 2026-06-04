@@ -37,6 +37,7 @@ EXECUTION_STATUS_ERROR = "error"
 PRODUCT_METHOD_INVENTORY_METADATA = "inventory_metadata"
 PRODUCT_METHOD_DOCUMENT_RESOLUTION = "document_resolution"
 PRODUCT_METHOD_DOCUMENT_STRUCTURE = "document_structure"
+PRODUCT_METHOD_SCOPED_SEARCH = "scoped_search"
 PRODUCT_METHOD_CATALOG_LIST_FULL = "catalog_list_full"
 PRODUCT_METHOD_CATALOG_LIST_BOUNDED = "catalog_list_bounded"
 PRODUCT_METHOD_WORK_LOOKUP = "work_lookup"
@@ -112,6 +113,23 @@ METHOD_SPECS = (
         ),
         preconditions=("biblio_enabled", "resolved_document_or_unique_match"),
         truth_levels=(TRUTH_LEVEL_EXACT, TRUTH_LEVEL_PLAUSIBLE),
+        execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
+    ),
+    BiblioProductMethodSpec(
+        product_method=PRODUCT_METHOD_SCOPED_SEARCH,
+        canonical_family=CANONICAL_FAMILY_SCOPED_SEARCH,
+        case_ids=(),
+        allowed_tool_names=(
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_SEARCH_WORK,
+            tools.TOOL_SEARCH_SECTION,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_RESOLVE_SECTION,
+            tools.TOOL_SECTION_BOUNDS,
+            tools.TOOL_CATALOG_SEARCH,
+        ),
+        preconditions=("biblio_enabled", "resolved_scope", "theme_query_present"),
+        truth_levels=(TRUTH_LEVEL_PLAUSIBLE, TRUTH_LEVEL_CONTEXTUAL),
         execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
     ),
     BiblioProductMethodSpec(
@@ -537,6 +555,10 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
         return PRODUCT_METHOD_DOCUMENT_RESOLUTION
     if clean_intent == CANONICAL_FAMILY_DOCUMENT_STRUCTURE:
         return PRODUCT_METHOD_DOCUMENT_STRUCTURE
+    if clean_intent == CANONICAL_FAMILY_SCOPED_SEARCH:
+        return PRODUCT_METHOD_SCOPED_SEARCH
+    if clean_intent == "scoped_search":
+        return PRODUCT_METHOD_SCOPED_SEARCH
     if clean_intent == "list_catalog":
         return PRODUCT_METHOD_CATALOG_LIST_BOUNDED
     if clean_intent == "show_table_of_contents":
@@ -562,6 +584,8 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
         return PRODUCT_METHOD_INVENTORY_METADATA
     if clean_answer_mode in {"passage", "conceptual_search"}:
         return PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK
+    if clean_answer_mode == "scoped_search":
+        return PRODUCT_METHOD_SCOPED_SEARCH
     if tools.TOOL_DOCUMENT_TOC in tool_set:
         return PRODUCT_METHOD_DOCUMENT_STRUCTURE
     if tools.TOOL_SEARCH_SECTION in tool_set:

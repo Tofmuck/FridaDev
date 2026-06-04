@@ -422,6 +422,164 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertIn("aucune structure documentaire", rendered.content)
         self.assertFalse(rendered.exact_text_rendered)
 
+    def test_scoped_search_filters_global_hits_without_exact_excerpt(self) -> None:
+        scope = _tool_result(
+            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            items=({"candidate_type": "document", "document_id": "doc-1", "doc_id_short": "doc-1", "title": RAW_TITLE},),
+        )
+        search = _tool_result(
+            tool_name=tools.TOOL_CATALOG_SEARCH,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            items=(
+                {
+                    "document_id": "doc-1",
+                    "doc_id_short": "doc-1",
+                    "title": RAW_TITLE,
+                    "snippet": RAW_EXACT_TEXT,
+                    "page_no": 12,
+                    "para_no": 3,
+                    "paragraph_id": 99,
+                    "rank": 1,
+                    "score": 0.9,
+                },
+                {
+                    "document_id": "doc-2",
+                    "doc_id_short": "doc-2",
+                    "snippet": "RAW OUT OF SCOPE PASSAGE MUST NOT RENDER",
+                    "page_no": 4,
+                    "para_no": 1,
+                    "paragraph_id": 42,
+                },
+            ),
+            context_text="RAW CONTEXT TEXT MUST NOT BECOME EXACT",
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(scope, search),
+            product_method=product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertEqual(answer.exact_text, "")
+        self.assertEqual(answer.scoped_search["status"], "resolved")
+        self.assertEqual(answer.scoped_search["candidate_count"], 1)
+        self.assertEqual(answer.scoped_search["raw_candidate_count"], 2)
+        self.assertEqual(answer.scoped_search["filtered_out_count"], 1)
+        self.assertTrue(lock.ok)
+        self.assertFalse(lock.exact_text_rendered)
+        self.assertIn("Recherche scoped:", rendered.content)
+        self.assertIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn("RAW OUT OF SCOPE", rendered.content)
+        self.assertNotIn("RAW CONTEXT TEXT", rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+        self.assertNotIn(RAW_TITLE, _json(observed))
+
+    def test_scoped_search_ambiguous_scope_does_not_choose_or_render_hits(self) -> None:
+        scope = _tool_result(
+            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            items=(
+                {"candidate_type": "document", "document_id": "doc-1", "doc_id_short": "doc-1", "title": "Candidate 1"},
+                {"candidate_type": "document", "document_id": "doc-2", "doc_id_short": "doc-2", "title": "Candidate 2"},
+            ),
+        )
+        search = _tool_result(
+            tool_name=tools.TOOL_CATALOG_SEARCH,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            items=(
+                {"document_id": "doc-1", "doc_id_short": "doc-1", "snippet": RAW_EXACT_TEXT, "page_no": 12},
+                {"document_id": "doc-2", "doc_id_short": "doc-2", "snippet": "RAW OTHER HIT MUST NOT RENDER"},
+            ),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(scope, search),
+            product_method=product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+
+        self.assertEqual(answer.status, answer_object.STATUS_AMBIGUOUS)
+        self.assertEqual(answer.document_id, "")
+        self.assertEqual(answer.scoped_search["status"], "ambiguous")
+        self.assertEqual(answer.scoped_search["candidate_count"], 0)
+        self.assertIn("ambiguite conservee", rendered.content)
+        self.assertIn("scopes possibles", rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn("RAW OTHER HIT", rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(answer.to_observability()))
+
+    def test_scoped_search_hits_outside_scope_are_not_found_content_free(self) -> None:
+        scope = _tool_result(
+            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            items=({"candidate_type": "document", "document_id": "doc-1", "doc_id_short": "doc-1"},),
+        )
+        search = _tool_result(
+            tool_name=tools.TOOL_CATALOG_SEARCH,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            items=({"document_id": "doc-2", "doc_id_short": "doc-2", "snippet": RAW_EXACT_TEXT, "page_no": 12},),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(scope, search),
+            product_method=product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_NOT_FOUND)
+        self.assertEqual(answer.scoped_search["status"], "not_found")
+        self.assertEqual(answer.scoped_search["candidate_count"], 0)
+        self.assertEqual(answer.scoped_search["filtered_out_count"], 1)
+        self.assertIn(tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE, answer.scoped_search["reason_codes"])
+        self.assertIn("aucun candidat de recherche ne reste dans le scope", rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+
+    def test_scoped_search_context_text_does_not_become_exact_excerpt(self) -> None:
+        search = _tool_result(
+            tool_name=tools.TOOL_CATALOG_SEARCH,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            document_id="doc-1",
+            items=({"document_id": "doc-1", "doc_id_short": "doc-1", "snippet": RAW_EXACT_TEXT, "page_no": 12},),
+            context_text=RAW_EXACT_TEXT,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(search,),
+            product_method=product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertEqual(answer.exact_text, "")
+        self.assertFalse(rendered.exact_text_rendered)
+        self.assertIn(RAW_EXACT_TEXT, rendered.content)
+
     def test_final_response_lock_authorizes_only_technical_render_contract(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_PASSAGE_CONTEXT,

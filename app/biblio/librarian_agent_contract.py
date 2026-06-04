@@ -116,7 +116,7 @@ _TOOL_PARAM_CONTRACTS = {
         "int_bounds": {"limit": (1, 100), "offset": (0, 100_000)},
     },
     tools.TOOL_CATALOG_SEARCH: {
-        "allowed": {"q", "query", "limit", "offset"},
+        "allowed": {"q", "query", "document_id", "doc_id", "limit", "offset"},
         "required_any": (("q", "query"),),
         "int_bounds": {"limit": (1, 50), "offset": (0, 0)},
     },

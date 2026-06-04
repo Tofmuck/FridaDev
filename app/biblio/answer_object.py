@@ -13,6 +13,7 @@ import hashlib
 from typing import Any, Mapping, Sequence
 
 from . import answer_resolution
+from . import answer_search
 from . import answer_structure
 from . import librarian_planner
 from . import librarian_product_methods as product_methods
@@ -89,6 +90,7 @@ class BiblioAnswerObject:
     inventory_metadata: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     document_resolution: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     document_structure: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    scoped_search: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     truth_level: str = ""
     source_tool_names: tuple[str, ...] = field(default_factory=tuple)
     render_mode: str = RENDER_STRUCTURED_STATUS
@@ -124,6 +126,7 @@ class BiblioAnswerObject:
                 "inventory_metadata": _inventory_observability(self.inventory_metadata),
                 "document_resolution": answer_resolution.to_observability(self.document_resolution),
                 "document_structure": answer_structure.to_observability(self.document_structure),
+                "scoped_search": answer_search.to_observability(self.scoped_search),
                 "truth_level": self.truth_level,
                 "source_tool_names": list(self.source_tool_names),
                 "render_mode": self.render_mode,
@@ -230,6 +233,13 @@ def build_biblio_answer_object(
         reason_codes=reason_codes,
     )
     status = answer_structure.override_answer_status(document_structure, base_status=status)
+    scoped_search = answer_search.build_scoped_search(
+        results,
+        product_method=product_method,
+        base_status=status,
+        reason_codes=reason_codes,
+    )
+    status = answer_search.override_answer_status(scoped_search, base_status=status)
     exact_text = _mechanical_exact_text(results) if status == STATUS_READY and _method_allows_exact_text(product_method) else ""
     selected = _selected_candidate(results, status=status)
     document_id = _document_id(results, selected)
@@ -256,6 +266,7 @@ def build_biblio_answer_object(
         inventory_metadata=inventory_metadata,
         document_resolution=document_resolution,
         document_structure=document_structure,
+        scoped_search=scoped_search,
         truth_level=_text(truth_level) or _default_truth(product_method),
         source_tool_names=source_tool_names,
         render_mode=render_mode,
@@ -322,6 +333,8 @@ def render_biblio_answer_object(
         lines.extend(answer_resolution.render_lines(answer.document_resolution))
     if answer.document_structure:
         lines.extend(answer_structure.render_lines(answer.document_structure))
+    if answer.scoped_search:
+        lines.extend(answer_search.render_lines(answer.scoped_search))
     if answer.interval:
         lines.append(
             "Intervalle: "
@@ -656,7 +669,10 @@ def _mechanical_exact_text(results: Sequence[librarian_tools.BiblioLibrarianTool
 
 
 def _method_allows_exact_text(product_method: str) -> bool:
-    family = product_methods.canonical_family_for_method(_text(product_method))
+    method = _text(product_method)
+    if method == product_methods.PRODUCT_METHOD_SCOPED_SEARCH:
+        return False
+    family = product_methods.canonical_family_for_method(method)
     if not family:
         return True
     return family in {

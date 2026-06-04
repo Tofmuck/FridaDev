@@ -6,6 +6,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
+from . import librarian_product_methods as product_methods
 from . import librarian_tools as tools
 from .librarian_planner_budget import bounded_context_params as _bounded_context_params
 from .librarian_planner_budget import plan_requests_clarification as _plan_requests_clarification
@@ -300,6 +301,9 @@ class BiblioLibrarianPlanner:
                     call_id=call.call_id,
                     method=call.method,
                 )
+            if _scoped_search_missing_scope(loop_request.plan, call, carried_document_id=carried_document_id):
+                steps.append(_scoped_search_scope_missing_step(len(steps), call))
+                break
             call = _with_carried_anchor(
                 call,
                 document_id=carried_document_id,
@@ -429,6 +433,7 @@ def _with_carried_anchor(
         tools.TOOL_RESOLVE_WORK,
         tools.TOOL_RESOLVE_SECTION,
         tools.TOOL_SECTION_BOUNDS,
+        tools.TOOL_CATALOG_SEARCH,
         tools.TOOL_PAGE_READ,
         tools.TOOL_LOCATE,
         tools.TOOL_PASSAGE_CONTEXT,
@@ -447,6 +452,38 @@ def _with_carried_anchor(
         params=params,
         call_id=call.call_id,
         method=call.method,
+    )
+
+
+def _scoped_search_missing_scope(
+    plan: BiblioLibrarianPlan,
+    call: BiblioLibrarianToolCall,
+    *,
+    carried_document_id: str,
+) -> bool:
+    if plan.product_method != product_methods.PRODUCT_METHOD_SCOPED_SEARCH:
+        return False
+    if call.tool_name != tools.TOOL_CATALOG_SEARCH:
+        return False
+    params = call.params
+    if str(params.get("document_id") or params.get("doc_id") or "").strip():
+        return False
+    return not carried_document_id
+
+
+def _scoped_search_scope_missing_step(index: int, call: BiblioLibrarianToolCall) -> BiblioLibrarianStep:
+    return BiblioLibrarianStep(
+        index=index,
+        status=STATUS_NEEDS_CLARIFICATION,
+        reason_code=tools.REASON_SCOPED_SEARCH_SCOPE_MISSING,
+        tool_name=_safe_tool_name(call.tool_name),
+        endpoint_kind=tools._ENDPOINT_BY_TOOL.get(call.tool_name, ""),
+        observation={
+            "status": STATUS_NEEDS_CLARIFICATION,
+            "reason_code": tools.REASON_SCOPED_SEARCH_SCOPE_MISSING,
+            "tool_name": _safe_tool_name(call.tool_name),
+        },
+        tool_call=call,
     )
 
 

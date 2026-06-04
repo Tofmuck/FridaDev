@@ -30,6 +30,7 @@ Memoire conversationnelle des lectures Last Chance Lot 3 bis: 2026-06-04
 Premiere methode canonique Last Chance Lot 4A: 2026-06-04
 Resolution documentaire canonique Last Chance Lot 4B: 2026-06-04
 Structure/TOC canonique Last Chance Lot 4C: 2026-06-04
+Recherche scoped canonique Last Chance Lot 4D: 2026-06-04
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -370,6 +371,45 @@ Structure/TOC canonique Last Chance Lot 4C livree:
   de contenu, statuts de bornes, reason codes et flags de borne. Les titres de
   chapitres/sections peuvent etre rendus a l'utilisateur comme resultat produit,
   mais ne doivent pas fuiter dans les artefacts ou logs content-free;
+- preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
+
+Recherche scoped canonique Last Chance Lot 4D livree:
+
+- famille canonique: `scoped_search`;
+- methode produit: `product_method=scoped_search`, `case_id=""`;
+- outils autorises: `search_document`, `search_work`, `search_section`,
+  `resolve_work`, `resolve_section`, `section_bounds`, `catalog_search`;
+- anciens P05-P08/P16-P18 restent des regressions historiques et des
+  compatibilites de transition `passage_search_in_work` /
+  `passage_search_external_work`, pas le canon principal de validation Lot 4D;
+- `catalog_search` reste une recherche plein texte globale cote API Catalogue.
+  Elle ne devient recherche scoped que si un `document_id` est explicite ou
+  porte depuis une resolution documentaire unique. Le runtime bloque une
+  recherche scoped sans scope unique et filtre techniquement les hits par
+  `document_id`;
+- le bibliothecaire LLM choisit le sens, le theme et le scope documentaire. Le
+  deterministe ne juge jamais la pertinence intellectuelle d'un hit; il valide
+  seulement la methode, l'allowlist GET-only, les params bornes, le scope unique,
+  le filtrage technique et l'observabilite content-free;
+- `app/biblio/answer_search.py` porte la projection/rendu recherche scoped pour
+  eviter d'empiler toutes les familles dans `answer_object.py`;
+- `BiblioAnswerObject.scoped_search` porte les statuts `resolved`, `ambiguous`,
+  `not_found`, `needs_clarification` ou `error`, ainsi que scope, compteurs,
+  candidats bornes, hits filtres hors scope et reason codes;
+- recherche scoped canonique n'est pas extraction exacte. La methode
+  `product_method=scoped_search` rend un `structured_status`; elle ne transforme
+  pas `context_text`, `page_text` ou un hit de recherche en `exact_excerpt`. Les
+  anciens P05-P08/P16-P18 peuvent encore produire un contexte borne comme
+  compatibilite legacy jusqu'a leur migration extraction;
+- plusieurs documents possibles avant recherche restent ambigus ou demandent
+  clarification. Plusieurs hits dans un scope resolu restent des candidats de
+  recherche et ne sont pas presentes comme le passage exact;
+- `passage_context`, `page_read` et `locate` restent hors Lot 4D canonique et
+  relevent de l'extraction, de la navigation ou des references canoniques;
+- l'observabilite expose uniquement compteurs, hashes courts, ids courts,
+  statuts, reason codes et flags de borne. Les snippets bornes peuvent etre
+  rendus a l'utilisateur comme surface de recherche scoped, mais pas fuiter dans
+  les artefacts/logs content-free;
 - preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
 
 ## 3. Frontieres non negociables

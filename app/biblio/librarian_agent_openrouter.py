@@ -277,11 +277,11 @@ def build_librarian_agent_messages(
         "case_id vide. Le product_method est obligatoire et doit decrire la methode "
         "produit, pas seulement l'outil. Utilise seulement des codes compacts "
         "sans espaces pour intent et answer_mode. intents autorises: "
-        "inventory_metadata, document_resolution, document_structure, list_catalog, "
+        "inventory_metadata, document_resolution, document_structure, scoped_search, list_catalog, "
         "show_table_of_contents, resolve_work, search_catalog, extract_passage, "
         "extract_range, compare_passages, clarify. "
         "answer_mode autorises: tool_calls, clarify, catalog_list, toc, "
-        "passage, conceptual_search, needs_tool_result_then_page_read, "
+        "scoped_search, passage, conceptual_search, needs_tool_result_then_page_read, "
         "bounded_context_extract_start_of_section, "
         "deliver_excerpt_context_from_section_start, section_start_page_block_2. "
         "Pour une demande de debut de section ou d'oeuvre interne suivie de "
@@ -301,6 +301,16 @@ def build_librarian_agent_messages(
         "case_id vide; utilise document_toc, search_section, resolve_section ou "
         "section_bounds apres ancre documentaire explicite ou portee. Ne presente "
         "jamais une TOC ou une section structurelle comme texte primaire extrait. "
+        "Pour les questions canoniques de recherche scoped (chercher un theme ou "
+        "un motif dans un document, une oeuvre, une section ou une ancre courante "
+        "deja resolue), choisis product_method=scoped_search avec case_id vide. "
+        "Le sens et le scope sont ton choix bibliothecaire; le runtime filtre "
+        "seulement techniquement par scope documentaire. Resous d'abord le scope "
+        "avec search_document, search_work, resolve_work, search_section, "
+        "resolve_section ou section_bounds; appelle ensuite catalog_search avec "
+        "document_id/doc_id explicite ou laisse le runtime porter l'ancre unique. "
+        "N'appelle pas passage_context, page_read ou locate dans ce cran: plusieurs "
+        "hits scoped sont des candidats de recherche, pas un passage exact extrait. "
         "Pour lister toute la "
         "bibliotheque, appelle catalog_list sans q avec limit 100. Pour une "
         "table des matieres sans document_id dans la methode document_structure, "
@@ -324,9 +334,10 @@ def build_librarian_agent_messages(
         "seulement si un outil precedent la porte deja. Garde les params "
         "strictement minimaux: n'envoie pas de champs null. window_chars doit "
         "rester borne (2000 max, 700 par defaut utile). Pour une recherche "
-        "thematique, n'utilise pas locate avec un label en prose libre: "
-        "commence par catalog_search, puis passage_context si une position "
-        "explicite ou portee est disponible. Quand plusieurs cas partagent la "
+        "thematique legacy avec extraction de contexte, n'utilise pas locate "
+        "avec un label en prose libre: commence par catalog_search, puis "
+        "passage_context seulement si une position explicite ou portee est "
+        "disponible. Quand plusieurs cas partagent la "
         "meme methode, choisis le case_id qui correspond a la forme reelle de "
         "la demande au lieu d'aplatir vers le premier cas de la famille. "
         "Pour P05-P08, utilise aussi les indices de forme exposes dans le "
@@ -419,8 +430,9 @@ def _tool_param_contracts() -> dict[str, Any]:
             "note": "Pour lister la bibliotheque entiere, omettre q et utiliser limit=100.",
         },
         "catalog_search": {
-            "allowed": ["q", "query", "limit", "offset"],
+            "allowed": ["q", "query", "document_id", "doc_id", "limit", "offset"],
             "required_any": [["q", "query"]],
+            "note": "Recherche plein texte globale de l'API; pour product_method=scoped_search, fournir ou porter un document_id unique afin que le runtime filtre techniquement les hits.",
         },
         "search_chapters": {
             "allowed": ["document_id", "doc_id", "q", "query", "limit", "offset"],

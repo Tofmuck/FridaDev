@@ -90,6 +90,8 @@ REASON_WORK_ALIAS_MISSING = "work_alias_missing"
 REASON_INTERNAL_WORK_UNRESOLVED = "internal_work_unresolved"
 REASON_SECTION_ALIAS_MISSING = "section_alias_missing"
 REASON_PRIMARY_TEXT_ROLE_UNKNOWN = "primary_text_role_unknown"
+REASON_SCOPED_SEARCH_SCOPE_MISSING = "scoped_search_scope_missing"
+REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE = "scoped_search_no_hits_in_scope"
 
 _ENDPOINT_BY_TOOL = {
     TOOL_SEARCH_DOCUMENT: catalogue.ENDPOINT_CATALOG,
@@ -275,12 +277,15 @@ class BiblioLibrarianToolRegistry:
         query = _required_text(params, ("q", "query"), tool=tool, max_chars=_QUERY_MAX)
         limit = _integer(params.get("limit", 20), tool=tool, name="limit", minimum=1, maximum=50)
         _integer(params.get("offset", 0), tool=tool, name="offset", minimum=0, maximum=0)
+        doc_id = _doc_id(params, tool=tool)
         try:
             response = self._client.search(query, limit=limit)
         except catalogue.CatalogueClientError as exc:
             return _error_result(tool, exc)
         items = tuple(_search_item(item) for item in _items(response.payload, "results"))
-        return _ok_result(tool, response, items=items, limit=limit, query=query)
+        if doc_id:
+            items = tuple(item for item in items if _string(item.get("document_id")) == doc_id)
+        return _ok_result(tool, response, items=items, limit=limit, query=query, doc_id=doc_id)
 
     def _search_chapters(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
         tool = TOOL_SEARCH_CHAPTERS

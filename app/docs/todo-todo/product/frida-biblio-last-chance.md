@@ -1374,7 +1374,7 @@ effectivement memorise et metadonnees d'ancrage/provenance.
 - [x] Lot 4A: migrer un premier cran inventaire/metadonnees.
 - [x] Lot 4B: migrer un premier cran resolution documentaire.
 - [x] Lot 4C: migrer un premier cran structure/TOC.
-- [ ] Migrer recherche scoped.
+- [x] Lot 4D: migrer un premier cran recherche scoped.
 - [ ] Migrer extraction.
 - [ ] Migrer navigation lecteur.
 - [ ] Migrer provenance.
@@ -1531,6 +1531,70 @@ Findings Lot 4C:
 
 Familles Lot 4 encore ouvertes apres Lot 4C: recherche scoped, extraction,
 navigation lecteur, provenance, desambiguisation, etat/ancrage.
+
+Livraison Lot 4D, 2026-06-04:
+
+- famille canonique livree en premier cran: `scoped_search`;
+- methode produit canonique ajoutee: `product_method=scoped_search`,
+  `case_id=""`, distincte des anciens P05-P08/P16-P18 qui restent des
+  regressions historiques et des compatibilites de transition
+  `passage_search_in_work` / `passage_search_external_work`;
+- outils autorises explicites: `search_document`, `search_work`,
+  `search_section`, `resolve_work`, `resolve_section`, `section_bounds`,
+  `catalog_search`;
+- `catalog_search` reste une recherche plein texte globale cote API Catalogue,
+  mais le chemin canonique `scoped_search` ne l'accepte comme recherche scoped
+  que si un `document_id` est explicite ou porte depuis un scope documentaire
+  unique. Le runtime bloque une recherche globale sans scope et filtre
+  techniquement les hits par `document_id`;
+- le bibliothecaire LLM choisit le sens, le theme, le scope et la methode. Le
+  deterministe ne juge pas quel hit est intellectuellement le bon passage: il
+  verifie seulement la methode, les outils GET-only, les params bornes, le scope
+  unique, le filtrage technique et l'observabilite content-free;
+- `app/biblio/answer_search.py` porte la projection/rendu recherche scoped pour
+  eviter d'empiler toutes les familles dans `answer_object.py`;
+- `BiblioAnswerObject.scoped_search` expose `resolved`, `ambiguous`,
+  `not_found`, `needs_clarification` ou `error`, avec scope, compteurs,
+  candidats bornes, hits filtres hors scope et reason codes content-free;
+- recherche scoped canonique n'est pas extraction exacte: la methode
+  `product_method=scoped_search` force un rendu `structured_status` et ne
+  transforme ni `context_text`, ni `page_text`, ni un hit de recherche en
+  `exact_excerpt`. Les anciens P05-P08/P16-P18 peuvent encore produire un
+  contexte borne comme compatibilite legacy jusqu'a leur migration extraction;
+- plusieurs documents possibles avant recherche restent `ambiguous` ou
+  `needs_clarification`. Plusieurs hits dans un scope resolu restent des
+  candidats de recherche; le renderer ne choisit pas silencieusement le
+  "meilleur" passage;
+- `passage_context`, `page_read` et `locate` restent hors du cran canonique
+  Lot 4D: ils relevent de l'extraction, de la navigation ou des references
+  canoniques;
+- l'observabilite ne contient pas de snippets/titres bruts: seulement compteurs,
+  hashes courts, ids courts, statuts, reason codes et flags de borne. Les
+  snippets bornes peuvent etre rendus a l'utilisateur comme surface de recherche
+  scoped, mais pas dans les artefacts/logs content-free;
+- preuve actuelle: tests unitaires de validation agent, answer object et
+  agent-first. Ce n'est pas une preuve live agentique: aucun artefact JSONL live
+  n'est produit par ce lot.
+
+Findings Lot 4D:
+
+- F1 valide: `passage_search_in_work` est trop large pour rester le canon Lot
+  4D; il reste legacy/regression historique.
+- F2 valide: `_method_allows_exact_text()` ne doit pas autoriser la methode
+  canonique `product_method=scoped_search` a rendre `exact_excerpt`; Lot 4D
+  retire cette possibilite sans casser les legacy P05-P08/P16-P18.
+- F3 valide: `/search` / `catalog_search` est global; la recherche scoped est
+  garantie par un scope documentaire explicite/porte et par un filtrage
+  technique content-free cote FridaDev.
+- F4 valide: plusieurs documents possibles avant recherche restent
+  `ambiguous`/clarification; aucun premier candidat documentaire n'est choisi.
+- F5 valide: plusieurs hits dans un document resolu forment un resultat de
+  recherche, pas un passage exact.
+- F6 valide: Kant, Foucault et Stephanus restent des regressions severes, pas
+  des cas particuliers corriges par ce lot.
+
+Familles Lot 4 encore ouvertes apres Lot 4D: extraction, navigation lecteur,
+provenance, desambiguisation, etat/ancrage.
 
 ### Lot 5 - Nettoyage dur
 

@@ -647,6 +647,188 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertIn("ambiguite conservee", result.rendered_answer.content)
         self.assertNotIn(("chapters", "doc-1", 500, 0), fake.calls)
 
+    def test_scoped_search_canonical_method_filters_to_carried_document_without_context(self) -> None:
+        scope_query = "scoped target"
+        theme_query = RAW_QUERY
+        fake = _FakeAgentFirstClient(
+            search_payloads={
+                scope_query: {
+                    "total": 1,
+                    "items": [{"id": "doc-1234", "title": RAW_TITLE}],
+                },
+                theme_query: {
+                    "count": 2,
+                    "results": [
+                        {
+                            "document_id": "doc-1234",
+                            "title": RAW_TITLE,
+                            "text": RAW_PASSAGE,
+                            "page_no": 12,
+                            "para_no": 3,
+                            "paragraph_id": 99,
+                        },
+                        {
+                            "document_id": "doc-5678",
+                            "text": "RAW OUT OF SCOPE AGENT HIT MUST NOT RENDER",
+                            "page_no": 2,
+                        },
+                    ],
+                },
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="scoped_search",
+                    product_method=product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+                    case_id="",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+                            method="GET",
+                            params={"query": scope_query, "limit": 5, "offset": 0},
+                        ),
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": theme_query, "limit": 5},
+                        ),
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="search_catalog"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        encoded = json.dumps(
+            {
+                "loop": result.loop_result.to_observability() if result.loop_result else {},
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls, [("metadata_search", scope_query, 5), ("search", theme_query, 5)])
+        self.assertEqual(result.answer_object.product_method, product_methods.PRODUCT_METHOD_SCOPED_SEARCH)
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertEqual(result.answer_object.scoped_search["status"], "resolved")
+        self.assertEqual(result.answer_object.scoped_search["candidate_count"], 1)
+        self.assertTrue(lock.ok)
+        self.assertFalse(lock.exact_text_rendered)
+        self.assertIn("Recherche scoped:", result.rendered_answer.content)
+        self.assertIn(RAW_PASSAGE, result.rendered_answer.content)
+        self.assertNotIn("RAW OUT OF SCOPE", result.rendered_answer.content)
+        self.assertNotIn(("context", "doc-1234", 99, None, None, 0, 700), fake.calls)
+        self.assertNotIn(RAW_QUERY, encoded)
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_PASSAGE, encoded)
+
+    def test_scoped_search_canonical_method_blocks_unscoped_global_search(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "results": [{"document_id": "doc-1234", "text": RAW_PASSAGE, "paragraph_id": 99}],
+            }
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="scoped_search",
+                    product_method=product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+                    case_id="",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="search_catalog"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_NEEDS_CLARIFICATION)
+        self.assertEqual(fake.calls, [])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.answer_object.scoped_search["status"], "needs_clarification")
+        self.assertIn(tools.REASON_SCOPED_SEARCH_SCOPE_MISSING, result.answer_object.scoped_search["reason_codes"])
+        self.assertIn("clarification requise", result.rendered_answer.content)
+        self.assertNotIn(RAW_PASSAGE, result.rendered_answer.content)
+
+    def test_scoped_search_canonical_method_keeps_ambiguous_scope_before_search(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "total": 2,
+                "items": [
+                    {"id": "doc-1", "title": "Candidate 1"},
+                    {"id": "doc-2", "title": "Candidate 2"},
+                ],
+            },
+            context_payload={"document_id": "doc-1", "text": RAW_PASSAGE},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="scoped_search",
+                    product_method=product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+                    case_id="",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5, "offset": 0},
+                        ),
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": "theme", "limit": 5},
+                        ),
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="search_catalog"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls, [("metadata_search", RAW_QUERY, 5)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_AMBIGUOUS)
+        self.assertEqual(result.answer_object.document_id, "")
+        self.assertEqual(result.answer_object.scoped_search["status"], "ambiguous")
+        self.assertEqual(result.answer_object.scoped_search["candidate_count"], 0)
+        self.assertIn("ambiguite conservee", result.rendered_answer.content)
+        self.assertNotIn(("search", "theme", 5), fake.calls)
+        self.assertNotIn(("context", "doc-1", None, None, None, 0, 700), fake.calls)
+
     def test_toc_request_recovers_from_unanchored_toc_step_after_search(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={
