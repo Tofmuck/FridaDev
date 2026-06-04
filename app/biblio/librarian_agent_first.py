@@ -12,8 +12,10 @@ from dataclasses import dataclass, field
 import hashlib
 from typing import Any, Mapping, Sequence
 
+from . import answer_object as biblio_answer_object
 from . import librarian_method_runtime
 from . import librarian_planner
+from . import librarian_product_methods as product_methods
 from . import librarian_runtime_projection
 from . import librarian_tools
 from .library_runtime import BiblioConsultationMessage, CONSULTATION_FOOTER, CONSULTATION_HEADER
@@ -42,6 +44,8 @@ class BiblioAgentFirstExecutionResult:
     reason_code: str
     loop_result: librarian_planner.BiblioLibrarianLoopResult | None = field(default=None, repr=False, compare=False)
     consultation_message: BiblioConsultationMessage | None = field(default=None, repr=False, compare=False)
+    answer_object: biblio_answer_object.BiblioAnswerObject | None = field(default=None, repr=False, compare=False)
+    rendered_answer: biblio_answer_object.BiblioRenderedAnswer | None = field(default=None, repr=False, compare=False)
     state_anchor: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     executed: bool = False
 
@@ -81,16 +85,21 @@ def run_agent_first_plan(
         deterministic_plan=deterministic_plan,
     )
     if loop_result.status == librarian_planner.STATUS_NEEDS_CLARIFICATION:
+        answer = _answer_object_from_loop(loop_result, plan=plan)
+        rendered = biblio_answer_object.render_biblio_answer_object(answer)
         consultation = _consultation_message(
             loop_result,
             status=STATUS_AGENT_FIRST_NEEDS_CLARIFICATION,
             reason_code=REASON_AGENT_FIRST_NEEDS_CLARIFICATION,
+            rendered_answer=rendered,
         )
         return BiblioAgentFirstExecutionResult(
             status=STATUS_AGENT_FIRST_NEEDS_CLARIFICATION,
             reason_code=REASON_AGENT_FIRST_NEEDS_CLARIFICATION,
             loop_result=loop_result,
             consultation_message=consultation,
+            answer_object=answer,
+            rendered_answer=rendered,
             executed=False,
         )
     if loop_result.status != librarian_planner.STATUS_TOOL_EXECUTED:
@@ -102,16 +111,21 @@ def run_agent_first_plan(
         )
 
     tool_results = librarian_runtime_projection.loop_tool_results(loop_result)
+    answer = _answer_object_from_loop(loop_result, plan=plan)
+    rendered = biblio_answer_object.render_biblio_answer_object(answer)
     consultation = _consultation_message(
         loop_result,
         status=STATUS_AGENT_FIRST_EXECUTED,
         reason_code=REASON_AGENT_FIRST_EXECUTED,
+        rendered_answer=rendered,
     )
     return BiblioAgentFirstExecutionResult(
         status=STATUS_AGENT_FIRST_EXECUTED,
         reason_code=REASON_AGENT_FIRST_EXECUTED,
         loop_result=loop_result,
         consultation_message=consultation,
+        answer_object=answer,
+        rendered_answer=rendered,
         state_anchor=librarian_runtime_projection.state_anchor_from_tool_results(
             tool_results,
             status=STATUS_AGENT_FIRST_EXECUTED,
@@ -142,6 +156,7 @@ def _consultation_message(
     *,
     status: str,
     reason_code: str,
+    rendered_answer: biblio_answer_object.BiblioRenderedAnswer | None = None,
 ) -> BiblioConsultationMessage:
     observed = loop_result.to_observability()
     tool_results = librarian_runtime_projection.loop_tool_results(loop_result)
@@ -164,6 +179,9 @@ def _consultation_message(
         f"Resultats affiches: {displayed_count}",
         f"Total observe: {total_count or 0}",
     ]
+    if rendered_answer is not None and rendered_answer.content:
+        body.append("")
+        body.extend(rendered_answer.content.splitlines())
     body.extend(_tool_result_lines(tool_results))
     if not tool_results and loop_result.status == librarian_planner.STATUS_NEEDS_CLARIFICATION:
         body.append("Clarification bibliothecaire requise avant consultation.")
@@ -181,6 +199,46 @@ def _consultation_message(
         passage_count=passage_count,
         hashes=hashes,
     )
+
+
+def _answer_object_from_loop(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    plan: librarian_planner.BiblioLibrarianPlan,
+) -> biblio_answer_object.BiblioAnswerObject:
+    tool_results = librarian_runtime_projection.loop_tool_results(loop_result)
+    truth_level = _truth_from_plan_and_loop(plan, loop_result)
+    return biblio_answer_object.build_biblio_answer_object(
+        tool_results=tool_results,
+        loop_status=loop_result.status,
+        loop_reason_code=loop_result.reason_code,
+        product_method=plan.product_method,
+        case_id=plan.case_id,
+        truth_level=truth_level,
+    )
+
+
+def _truth_from_plan_and_loop(
+    plan: librarian_planner.BiblioLibrarianPlan,
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+) -> str:
+    product_method = str(getattr(plan, "product_method", "") or "").strip()
+    default_truth = _default_truth_for_method(product_method)
+    if status := str(getattr(loop_result, "status", "") or "").strip():
+        if status in {
+            librarian_planner.STATUS_AMBIGUOUS,
+            librarian_planner.STATUS_NOT_FOUND,
+            librarian_planner.STATUS_NEEDS_CLARIFICATION,
+        }:
+            return "clarification_required"
+    return default_truth
+
+
+def _default_truth_for_method(product_method: str) -> str:
+    spec = product_methods.get_product_method_spec(product_method)
+    if not spec or not spec.truth_levels:
+        return ""
+    return str(spec.truth_levels[0] or "").strip()
 
 
 def _tool_result_lines(tool_results: Sequence[librarian_tools.BiblioLibrarianToolResult]) -> list[str]:

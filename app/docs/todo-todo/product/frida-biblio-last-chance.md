@@ -1217,14 +1217,48 @@ Ces limites restent des dettes structurelles, pas des cas a reparer par regex.
 
 ### Lot 3 - Answer object et renderer
 
-- [ ] Introduire `BiblioAnswerObject`.
-- [ ] Porter document, oeuvre, section, ancre, intervalle, role, provenance,
+- [x] Introduire `BiblioAnswerObject`.
+- [x] Porter document, oeuvre, section, ancre, intervalle, role, provenance,
       limites, truth level et status.
-- [ ] Brancher un renderer produit pour les extractions exactes.
-- [ ] Empêcher le LLM final d'etre l'imprimante du texte exact.
+- [x] Brancher un renderer produit minimal pour statuts et textes deja
+      mecaniquement presents.
+- [x] Empêcher le LLM final d'etre l'imprimante du texte exact sur ce premier
+      cran: le renderer bloque les faux exacts quand le statut structurel ne
+      permet pas de rendre.
 
 Critere de fermeture: une extraction exacte peut etre rendue sans generation
 libre du texte extrait.
+
+Livraison premier cran Lot 3, 2026-06-04:
+
+- code: `app/biblio/answer_object.py`;
+- objet: `BiblioAnswerObject` avec `status`, `product_method`, `case_id`,
+  `document_id`, `work_id` / `work_state`, `section_id` / `section_state`,
+  `anchors`, `interval`, `content_role`, `provenance`, `limits`,
+  `reason_codes`, `truth_level`, `source_tool_names` et `render_mode`;
+- statuts minimaux: `ready`, `ambiguous`, `not_found`,
+  `needs_clarification`, `error`;
+- render modes minimaux: `structured_status`, `exact_excerpt`,
+  `blocked_exact`;
+- renderer: `render_biblio_answer_object()` produit un bloc mecanique
+  `[RESULTAT BIBLIO STRUCTURE]` qui rend le statut, la provenance courte,
+  l'intervalle et, seulement si disponible, un texte exact deja present dans
+  `context_text` ou `page_text`;
+- garde-fou: `ambiguous`, `not_found`, `section_alias_missing`,
+  `internal_work_unresolved`, `work_alias_missing` et autres manques
+  structurels ne deviennent pas des extraits exacts;
+- integration: la voie agent-first construit l'objet depuis le tool loop et
+  insere le rendu minimal dans la consultation Biblio; la lane interne, l'objet
+  structure et le rendu sont maintenant distinguables;
+- observabilite: `to_observability()` reste content-free, avec hashes/compteurs
+  pour les textes exacts et sans prompt brut ni payload brut.
+
+Important: Lot 3 commence pendant que Lot 2 bis reste ouvert. Le renderer ne
+remplace pas la richesse structurelle manquante: si aliases, oeuvres internes,
+roles ou bornes sont insuffisants, l'objet expose la limite et le renderer
+bloque la pseudo-restitution exacte. Ce premier cran ne ferme pas encore toute
+l'extraction mecanique ni la surface finale utilisateur; il installe le guichet
+de verite de sortie.
 
 ### Lot 3 bis - Memoire conversationnelle des lectures
 

@@ -13,6 +13,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from biblio import catalogue_client as catalogue
+from biblio import answer_object
 from biblio import librarian_agent_contract as agent_contract
 from biblio import librarian_agent_first as agent_first
 from biblio import librarian_planner as planner
@@ -72,6 +73,13 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertEqual(observed["endpoint_kinds"], [catalogue.ENDPOINT_SEARCH, catalogue.ENDPOINT_CONTEXT])
         self.assertEqual(observed["tool_names"], [tools.TOOL_CATALOG_SEARCH, tools.TOOL_PASSAGE_CONTEXT])
         self.assertEqual(result.consultation_message.passage_count if result.consultation_message else 0, 1)
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        self.assertEqual(result.answer_object.status if result.answer_object else "", answer_object.STATUS_READY)
+        self.assertIn(
+            answer_object.ANSWER_HEADER,
+            result.consultation_message.message["content"] if result.consultation_message else "",
+        )
         self.assertNotIn(RAW_QUERY, encoded)
         self.assertNotIn(RAW_TITLE, encoded)
         self.assertNotIn(RAW_PASSAGE, encoded)

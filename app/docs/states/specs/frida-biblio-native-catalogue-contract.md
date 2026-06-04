@@ -24,6 +24,7 @@ Manifeste documentaire minimal Last Chance Lot 1: 2026-06-03
 API/outils minimaux Last Chance Lot 2: 2026-06-04
 Cadrage enrichissement structurel Last Chance Lot 2 bis: 2026-06-04
 Premier cran aliases structurels Last Chance Lot 2 bis: 2026-06-04
+Premier cran answer object Last Chance Lot 3: 2026-06-04
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -197,6 +198,36 @@ Premier cran Lot 2 bis livre:
 - restent ouverts: oeuvres internes fiables, hierarchie profonde, roles
   primaires/commentaires forts, mapping section -> paragraphe/raw unit et
   bornes d'oeuvre interne.
+
+Premier cran Last Chance Lot 3 livre:
+
+- module: `app/biblio/answer_object.py`;
+- `BiblioAnswerObject` devient le guichet de verite de sortie entre la lane
+  Biblio interne, le resultat structure et le rendu produit minimal;
+- statuts minimaux: `ready`, `ambiguous`, `not_found`,
+  `needs_clarification`, `error`;
+- champs minimaux: `product_method`, `case_id`, `document_id`, `work_id`,
+  `section_id`, `anchors`, `interval`, `content_role`, `provenance`,
+  `limits`, `reason_codes`, `truth_level`, `source_tool_names` et
+  `render_mode`;
+- render modes minimaux: `structured_status`, `exact_excerpt`,
+  `blocked_exact`;
+- le renderer ne produit un extrait exact que si le texte est deja
+  mecaniquement present dans un resultat borne (`context_text` ou
+  `page_text`);
+- `ambiguous`, `not_found`, `section_alias_missing`,
+  `internal_work_unresolved`, `work_alias_missing` et autres manques
+  structurels ne doivent pas devenir des sorties pseudo-exactes;
+- l'observabilite reste content-free: ids courts, statuts, reason codes,
+  compteurs et hashes, jamais prompt brut, payload Catalogue brut ni texte long;
+- la voie agent-first construit ce premier objet depuis le tool loop et insere
+  le rendu minimal dans la consultation Biblio.
+
+Limite volontaire: Lot 3 commence alors que Lot 2 bis reste ouvert. Le renderer
+ne choisit pas une oeuvre, une section, un role ou une ancre ambiguë a la place
+du bibliothecaire; il rend la structure disponible ou expose la limite. La
+surface finale utilisateur et l'extraction mecanique complete restent a
+renforcer dans les lots suivants.
 
 ## 3. Frontieres non negociables
 
