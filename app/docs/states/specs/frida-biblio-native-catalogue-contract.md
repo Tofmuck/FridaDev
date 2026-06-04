@@ -23,6 +23,7 @@ Signal faible role documentaire Lot E: 2026-06-02
 Manifeste documentaire minimal Last Chance Lot 1: 2026-06-03
 API/outils minimaux Last Chance Lot 2: 2026-06-04
 Cadrage enrichissement structurel Last Chance Lot 2 bis: 2026-06-04
+Premier cran aliases structurels Last Chance Lot 2 bis: 2026-06-04
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -174,6 +175,28 @@ Cadrage Last Chance Lot 2 bis:
   `work_alias_missing`, `internal_work_unresolved`,
   `section_alias_missing`, `primary_text_role_unknown` ou equivalents)
   plutot que fabriquer une certitude bibliographique.
+
+Premier cran Lot 2 bis livre:
+
+- `DocumentManifest` porte `AliasSignal` sur `Work` et `SectionNode`;
+- les aliases sont derives seulement depuis les signaux deja fournis par
+  Catalogue/metadonnees/TOC (`title`, `chapter_title`, `label`, `short_title`,
+  `aliases`, `title_aliases`, `alternative_titles`) et par transliteration
+  accent-stripped d'un alias existant;
+- la serialisation manifeste reste content-free: count, state, source et
+  hashes courts, jamais labels bruts;
+- `search_section`, `resolve_section`, `section_bounds` et les candidats
+  `section_scope` de `search_work` utilisent ces aliases dans le scope du
+  document cible, sans presenter `search_chapters` global comme resolution
+  scoped;
+- les resultats outils n'exposent que `alias_count`, `alias_state` et
+  `alias_source`; les aliases bruts ne doivent pas apparaitre dans
+  l'observabilite;
+- `section_alias_missing`, `internal_work_unresolved` et `work_alias_missing`
+  rendent les insuffisances structurelles explicites;
+- restent ouverts: oeuvres internes fiables, hierarchie profonde, roles
+  primaires/commentaires forts, mapping section -> paragraphe/raw unit et
+  bornes d'oeuvre interne.
 
 ## 3. Frontieres non negociables
 

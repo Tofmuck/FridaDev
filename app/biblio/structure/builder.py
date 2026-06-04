@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+import unicodedata
 from typing import Any, Mapping, Sequence
 
 from .schema import (
@@ -14,6 +15,7 @@ from .schema import (
     STATE_DERIVED,
     STATE_KNOWN,
     STATE_UNKNOWN,
+    AliasSignal,
     Anchor,
     CanonicalReference,
     ContentRole,
@@ -93,7 +95,26 @@ def build_document_manifest(
 
     chapters = _chapter_rows(overview_payload, chapters_payload)
     sections = _section_nodes(document_id, unit_label, unit_count or page_count, chapters)
-    works = (_document_scope_work(document_id, unit_label, unit_count or page_count, title_value),)
+    works = (
+        _document_scope_work(
+            document_id,
+            unit_label,
+            unit_count or page_count,
+            title_value,
+            aliases=_alias_signal(
+                "catalogue_metadata",
+                title_value,
+                metadata.get("canonical_title"),
+                metadata.get("original_title"),
+                metadata.get("title"),
+                metadata.get("aliases"),
+                metadata.get("title_aliases"),
+                metadata.get("alternative_titles"),
+                document_row.get("title"),
+                catalog_item.get("title"),
+            ),
+        ),
+    )
     text_units = _text_units(
         page_count=page_count,
         paragraph_count=paragraph_count,
@@ -279,6 +300,16 @@ def _section_nodes(
             boundary_state = STATE_DERIVED
             boundary_note = "end_derived_from_next_chapter_or_document_end"
         role = _content_role(row)
+        aliases = _alias_signal(
+            "document_chapters",
+            row.get("title"),
+            row.get("chapter_title"),
+            row.get("label"),
+            row.get("short_title"),
+            row.get("aliases"),
+            row.get("title_aliases"),
+            row.get("alternative_titles"),
+        )
         sections.append(
             SectionNode(
                 section_id=section_id,
@@ -299,6 +330,7 @@ def _section_nodes(
                 ),
                 boundary_state=boundary_state,
                 limits=tuple(_section_limits(row, end_anchor)),
+                aliases=aliases,
             )
         )
     return tuple(sections)
@@ -309,6 +341,8 @@ def _document_scope_work(
     unit_label: str,
     document_unit_count: int,
     title_value: Any,
+    *,
+    aliases: AliasSignal | None = None,
 ) -> Work:
     start = Anchor(
         document_id=document_id,
@@ -342,6 +376,7 @@ def _document_scope_work(
         ),
         content_role=ContentRole(value=ROLE_UNKNOWN, state=STATE_UNKNOWN),
         limits=("internal_works_not_detected_without_explicit_toc_signal",),
+        aliases=aliases or AliasSignal(),
     )
 
 
@@ -422,6 +457,8 @@ def _field_states(
         "raw_units": STATE_KNOWN if _mapping(raw_unit_stats).get("raw_unit_kinds") else STATE_UNKNOWN,
         "sections": STATE_KNOWN if sections else STATE_UNKNOWN,
         "section_bounds": STATE_DERIVED if any(section.end_anchor for section in sections) else STATE_UNKNOWN,
+        "section_aliases": STATE_DERIVED if any(section.aliases.values for section in sections) else STATE_UNKNOWN,
+        "work_aliases": STATE_DERIVED if document.title_signal.get("state") == STATE_KNOWN else STATE_UNKNOWN,
         "internal_works": STATE_UNKNOWN,
         "content_roles": STATE_DERIVED
         if any(section.content_role.state == STATE_DERIVED for section in sections)
@@ -525,6 +562,16 @@ def _section_limits(row: Mapping[str, Any], end_anchor: Anchor | None) -> list[s
         limits.append("section_end_unknown")
     if not row.get("document_role_signal"):
         limits.append("content_role_unknown")
+    if not _alias_values(
+        row.get("title"),
+        row.get("chapter_title"),
+        row.get("label"),
+        row.get("short_title"),
+        row.get("aliases"),
+        row.get("title_aliases"),
+        row.get("alternative_titles"),
+    ):
+        limits.append("section_alias_missing")
     return limits
 
 
@@ -534,6 +581,52 @@ def _derived_end_unit(start_unit: int, next_start: int, document_unit_count: int
     if document_unit_count and document_unit_count >= start_unit:
         return document_unit_count
     return 0
+
+
+def _alias_signal(source: str, *values: Any) -> AliasSignal:
+    aliases = tuple(_alias_values(*values))
+    state = STATE_DERIVED if aliases else STATE_UNKNOWN
+    return AliasSignal(values=aliases, state=state, source=source if aliases else "")
+
+
+def _alias_values(*values: Any) -> list[str]:
+    aliases: list[str] = []
+    for value in values:
+        for candidate in _iter_alias_candidates(value):
+            text = _string(candidate)
+            if not text:
+                continue
+            _append_unique(aliases, text)
+            folded = _ascii_fold(text)
+            if folded and folded.casefold() != text.casefold():
+                _append_unique(aliases, folded)
+    return aliases
+
+
+def _iter_alias_candidates(value: Any) -> tuple[Any, ...]:
+    if isinstance(value, Mapping):
+        return tuple(
+            value.get(key)
+            for key in ("title", "label", "canonical_title", "original_title", "short_title")
+            if value.get(key)
+        )
+    if isinstance(value, (list, tuple, set)):
+        found: list[Any] = []
+        for item in value:
+            found.extend(_iter_alias_candidates(item))
+        return tuple(found)
+    return (value,)
+
+
+def _ascii_fold(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    return "".join(ch for ch in normalized if not unicodedata.combining(ch)).strip()
+
+
+def _append_unique(items: list[str], value: str) -> None:
+    key = value.casefold()
+    if not any(item.casefold() == key for item in items):
+        items.append(value)
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:

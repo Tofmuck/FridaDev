@@ -86,7 +86,8 @@ def _resolve_work(client: Any, params: Mapping[str, Any]) -> tools.BiblioLibrari
             response, candidates = _work_candidates(client, doc_id=doc_id, query=query, limit=limit)
     except catalogue.CatalogueClientError as exc:
         return tools._error_result(tool, exc)
-    return _resolution_result(tool, response, candidates, query=query, doc_id=doc_id)
+    empty_reason = tools.REASON_INTERNAL_WORK_UNRESOLVED if doc_id else tools.REASON_WORK_ALIAS_MISSING
+    return _resolution_result(tool, response, candidates, query=query, doc_id=doc_id, empty_reason_code=empty_reason)
 
 
 def _resolve_section(client: Any, params: Mapping[str, Any]) -> tools.BiblioLibrarianToolResult:
@@ -113,7 +114,14 @@ def _resolve_section(client: Any, params: Mapping[str, Any]) -> tools.BiblioLibr
         )
     except catalogue.CatalogueClientError as exc:
         return tools._error_result(tool, exc)
-    return _resolution_result(tool, response, candidates, query=query, doc_id=doc_id)
+    return _resolution_result(
+        tool,
+        response,
+        candidates,
+        query=query,
+        doc_id=doc_id,
+        empty_reason_code=_empty_section_reason(response, query=query, chapter_no=chapter_no, section_id=section_id),
+    )
 
 
 def _section_bounds(client: Any, params: Mapping[str, Any]) -> tools.BiblioLibrarianToolResult:
@@ -141,7 +149,14 @@ def _section_bounds(client: Any, params: Mapping[str, Any]) -> tools.BiblioLibra
     except catalogue.CatalogueClientError as exc:
         return tools._error_result(tool, exc)
     if len(candidates) != 1:
-        return _resolution_result(tool, response, candidates, query=query, doc_id=doc_id)
+        return _resolution_result(
+            tool,
+            response,
+            candidates,
+            query=query,
+            doc_id=doc_id,
+            empty_reason_code=_empty_section_reason(response, query=query, chapter_no=chapter_no, section_id=section_id),
+        )
     item = candidates[0]
     interval = tools._mapping(item.get("interval"))
     anchors = tuple(
@@ -207,7 +222,7 @@ def _work_candidates(
                 continue
             candidate = _manifest_section_work_candidate(section, manifest, row)
             if _candidate_matches(candidate, query):
-                candidates.append(candidate)
+                candidates.append(_public_candidate(candidate))
         return chapters_response, tuple(candidates[:limit])
 
     response = client.catalog(q=query, limit=limit, offset=0)
@@ -239,7 +254,7 @@ def _section_candidates(
             continue
         if query and not _candidate_matches(candidate, query):
             continue
-        candidates.append(candidate)
+        candidates.append(_public_candidate(candidate))
     return response, tuple(candidates[:limit])
 
 
@@ -297,13 +312,14 @@ def _resolution_result(
     *,
     query: str = "",
     doc_id: str = "",
+    empty_reason_code: str = tools.REASON_NOT_FOUND,
 ) -> tools.BiblioLibrarianToolResult:
     if not candidates:
         return _status_result(
             tool,
             response,
             status=tools.STATUS_NOT_FOUND,
-            reason_code=tools.REASON_NOT_FOUND,
+            reason_code=empty_reason_code,
             query=query,
             doc_id=doc_id,
         )
@@ -383,6 +399,8 @@ def _document_scope_work_candidate(payload: Mapping[str, Any], fallback_doc_id: 
             "authors": tools._string(summary.get("authors")),
             "metadata_status": tools._string(summary.get("metadata_status")),
             "source": "catalogue_metadata",
+            "alias_count": 1 if tools._string(summary.get("title")) else 0,
+            "alias_state": "derived" if tools._string(summary.get("title")) else "unknown",
             "limits": ("internal_works_not_detected_without_explicit_toc_signal",),
         }
     )
@@ -432,9 +450,17 @@ def _manifest_section_candidate(
             "page_start": tools._raw_int(start_anchor.get("page_no")),
             "page_end": tools._raw_int(end_anchor.get("page_no")),
             "interval": interval,
+            "alias_count": len(section.aliases.values),
+            "alias_state": section.aliases.state,
+            "alias_source": section.aliases.source,
+            "_match_texts": section.aliases.values,
             "limits": tuple(section.limits),
         }
     )
+
+
+def _public_candidate(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in dict(candidate).items() if not str(key).startswith("_")}
 
 
 def _raw_chapter_rows(payload: Mapping[str, Any]) -> tuple[Mapping[str, Any], ...]:
@@ -452,10 +478,36 @@ def _candidate_matches(candidate: Mapping[str, Any], query: str) -> bool:
     query_tokens = _tokens(query)
     if not query_tokens:
         return True
-    haystack_tokens = _tokens(" ".join(tools._string(candidate.get(key)) for key in ("title", "authors", "section_id")))
+    match_texts = tuple(_match_texts(candidate))
+    haystack_tokens = _tokens(" ".join(match_texts))
     if not haystack_tokens:
         return False
     return all(token in haystack_tokens for token in query_tokens)
+
+
+def _match_texts(candidate: Mapping[str, Any]) -> tuple[str, ...]:
+    raw = candidate.get("_match_texts")
+    texts: list[str] = []
+    if isinstance(raw, (list, tuple)):
+        texts.extend(tools._string(item) for item in raw if tools._string(item))
+    texts.extend(
+        tools._string(candidate.get(key))
+        for key in ("title", "authors", "section_id")
+        if tools._string(candidate.get(key))
+    )
+    return tuple(dict.fromkeys(texts))
+
+
+def _empty_section_reason(
+    response: catalogue.CatalogueResponse,
+    *,
+    query: str,
+    chapter_no: int | None,
+    section_id: str,
+) -> str:
+    if query and chapter_no is None and not section_id and _raw_chapter_rows(response.payload):
+        return tools.REASON_SECTION_ALIAS_MISSING
+    return tools.REASON_NOT_FOUND
 
 
 def _tokens(value: str) -> set[str]:

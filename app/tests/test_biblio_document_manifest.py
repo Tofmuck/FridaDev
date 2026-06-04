@@ -53,11 +53,15 @@ class BiblioDocumentManifestTests(unittest.TestCase):
         self.assertEqual(payload["document"]["language_signal"]["value"], "fr")
         self.assertEqual(payload["field_states"]["language"], "known")
         self.assertEqual(payload["field_states"]["raw_units"], "known")
+        self.assertEqual(payload["field_states"]["section_aliases"], "derived")
         self.assertEqual(payload["sections"][0]["start_anchor"]["unit_no"], 3)
         self.assertEqual(payload["sections"][0]["end_anchor"]["unit_no"], 7)
         self.assertEqual(payload["sections"][1]["end_anchor"]["unit_no"], 20)
+        self.assertEqual(payload["sections"][0]["aliases"]["state"], "derived")
+        self.assertGreaterEqual(payload["sections"][0]["aliases"]["count"], 1)
         self.assertNotIn("A corrected title", repr(payload))
         self.assertNotIn("source.epub", repr(payload))
+        self.assertNotIn("Intro", repr(payload))
 
     def test_pdf_origin_is_ambiguous_without_ocr_text_signal(self) -> None:
         manifest = build_document_manifest(

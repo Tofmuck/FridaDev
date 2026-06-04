@@ -83,6 +83,64 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertNotIn(RAW_QUERY, _json(observed))
         self.assertNotIn("Analytique transcendantale", _json(observed))
 
+    def test_resolve_section_uses_manifest_alias_without_global_search(self) -> None:
+        fake = _FakeToolClient(
+            chapters_payload=_chapters_payload(
+                chapters=[
+                    {
+                        "chapter_no": 1,
+                        "title": "Première division",
+                        "aliases": ["Analytique transcendantale"],
+                        "unit_no": 10,
+                        "source": "toc",
+                    },
+                    {"chapter_no": 2, "title": "Deuxieme division", "unit_no": 30, "source": "toc"},
+                ],
+                unit_count=60,
+            )
+        )
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(
+            tools.TOOL_RESOLVE_SECTION,
+            {"document_id": "doc-1", "query": "Analytique transcendantale"},
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(fake.calls, [("chapters", "doc-1", 500, 0)])
+        self.assertEqual(result.status, tools.STATUS_RESOLVED)
+        self.assertEqual(result.reason_code, tools.REASON_RESOLVED)
+        self.assertEqual(result.items[0]["chapter_no"], 1)
+        self.assertEqual(result.items[0]["alias_count"], 3)
+        self.assertNotIn(("search_chapters", "Analytique transcendantale", 20), fake.calls)
+        self.assertNotIn("Analytique transcendantale", _json(observed))
+        self.assertNotIn("Analytique transcendantale", _json(result.items))
+
+    def test_section_bounds_uses_unique_alias_resolution(self) -> None:
+        fake = _FakeToolClient(
+            chapters_payload=_chapters_payload(
+                chapters=[
+                    {
+                        "chapter_no": 1,
+                        "title": "A",
+                        "title_aliases": ["Internal section"],
+                        "unit_no": 4,
+                        "source": "toc",
+                    },
+                    {"chapter_no": 2, "title": "B", "unit_no": 12, "source": "toc"},
+                ],
+                unit_count=20,
+            )
+        )
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(tools.TOOL_SECTION_BOUNDS, {"document_id": "doc-1", "query": "Internal section"})
+
+        self.assertEqual(fake.calls, [("chapters", "doc-1", 500, 0)])
+        self.assertEqual(result.status, tools.STATUS_RESOLVED)
+        self.assertEqual(result.interval["start"]["unit_no"], 4)
+        self.assertEqual(result.interval["end"]["unit_no"], 11)
+
     def test_section_bounds_can_resolve_by_chapter_number_without_global_search(self) -> None:
         fake = _FakeToolClient(chapters_payload=_chapters_payload())
         registry = tools.build_librarian_tool_registry(fake)
@@ -118,12 +176,29 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertEqual(observed["displayed_count"], 2)
         self.assertNotIn("Livre premier", _json(observed))
 
+        ambiguous_alias = _FakeToolClient(
+            chapters_payload=_chapters_payload(
+                chapters=[
+                    {"chapter_no": 1, "title": "Section A", "aliases": ["Shared alias"], "unit_no": 1, "source": "toc"},
+                    {"chapter_no": 2, "title": "Section B", "aliases": ["Shared alias"], "unit_no": 12, "source": "toc"},
+                ],
+                unit_count=40,
+            )
+        )
+        registry = tools.build_librarian_tool_registry(ambiguous_alias)
+        result = registry.run(tools.TOOL_RESOLVE_SECTION, {"document_id": "doc-1", "query": "Shared alias"})
+
+        self.assertEqual(result.status, tools.STATUS_AMBIGUOUS)
+        self.assertEqual(result.reason_code, tools.REASON_AMBIGUOUS)
+        self.assertNotIn("Shared alias", _json(result.to_observability()))
+
         missing = _FakeToolClient(chapters_payload=_chapters_payload())
         registry = tools.build_librarian_tool_registry(missing)
         result = registry.run(tools.TOOL_RESOLVE_SECTION, {"document_id": "doc-1", "query": "Section absente"})
 
         self.assertEqual(result.status, tools.STATUS_NOT_FOUND)
-        self.assertEqual(result.reason_code, tools.REASON_NOT_FOUND)
+        self.assertEqual(result.reason_code, tools.REASON_SECTION_ALIAS_MISSING)
+        self.assertNotIn("Section absente", _json(result.to_observability()))
 
     def test_search_section_requires_scope_before_network(self) -> None:
         fake = _FakeToolClient(chapters_payload=_chapters_payload())

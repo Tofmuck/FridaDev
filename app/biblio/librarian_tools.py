@@ -86,6 +86,10 @@ REASON_BUDGET_OR_LIMIT_EXCEEDED = "budget_or_limit_exceeded"
 REASON_CONTEXT_INCOHERENT = "biblio_librarian_context_incoherent_catalogue"
 REASON_PAGE_INCOHERENT = "biblio_librarian_page_incoherent_catalogue"
 REASON_SECTION_BOUNDS_UNAVAILABLE = "section_bounds_unavailable"
+REASON_WORK_ALIAS_MISSING = "work_alias_missing"
+REASON_INTERNAL_WORK_UNRESOLVED = "internal_work_unresolved"
+REASON_SECTION_ALIAS_MISSING = "section_alias_missing"
+REASON_PRIMARY_TEXT_ROLE_UNKNOWN = "primary_text_role_unknown"
 
 _ENDPOINT_BY_TOOL = {
     TOOL_SEARCH_DOCUMENT: catalogue.ENDPOINT_CATALOG,

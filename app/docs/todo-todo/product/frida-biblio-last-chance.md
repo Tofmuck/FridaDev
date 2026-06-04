@@ -1131,7 +1131,7 @@ l'extraction mecanique exacte du Lot 3.
 
 ### Lot 2 bis - Enrichissement structurel / aliases / oeuvres internes
 
-- [ ] Enrichir `DocumentManifest` avec des aliases exploitables:
+- [x] Enrichir `DocumentManifest` avec des aliases exploitables:
       titres alternatifs, transliterations, titres courts, titres d'oeuvres
       internes et titres de sections.
 - [ ] Distinguer plus fortement document physique / volume, oeuvre interne,
@@ -1142,17 +1142,17 @@ l'extraction mecanique exacte du Lot 3.
       honnetement, sans inventer une structure absente.
 - [ ] Produire des bornes plus fiables: section -> page, section -> paragraphe
       ou raw unit si disponible, oeuvre interne -> debut / fin.
-- [ ] Ajouter des reason codes content-free pour les limites structurelles,
+- [x] Ajouter des reason codes content-free pour les limites structurelles,
       par exemple `work_alias_missing`, `internal_work_unresolved`,
       `section_alias_missing`, `primary_text_role_unknown` ou noms plus justes.
-- [ ] Prouver content-free qu'une section interne connue peut se resoudre par
+- [x] Prouver content-free qu'une section interne connue peut se resoudre par
       alias quand l'alias existe dans la structure.
 - [ ] Prouver content-free qu'une oeuvre interne dans un volume peut se
       resoudre sans confondre texte primaire et commentaire quand les roles le
       permettent.
-- [ ] Prouver qu'une requete bibliographique ambigue reste `ambiguous` ou
+- [x] Prouver qu'une requete bibliographique ambigue reste `ambiguous` ou
       demande clarification au lieu de fabriquer une certitude.
-- [ ] Interdire les preuves contenant texte long d'ouvrage, prompt brut, titre
+- [x] Interdire les preuves contenant texte long d'ouvrage, prompt brut, titre
       ou auteur brut non necessaire, payload brut, secret ou URL sensible.
 
 Limite a figer: Lot 2 expose les outils minimaux (`search_document`,
@@ -1182,6 +1182,38 @@ hierarchiques, roles de contenu et bornes sans basculer vers une recherche
 globale opportuniste ni vers un jugement bibliographique deterministe. Les
 preuves restent content-free et distinguent clairement structure disponible,
 structure derivee, structure ambigue et structure absente.
+
+Livraison premier cran Lot 2 bis, 2026-06-04:
+
+- `DocumentManifest` porte maintenant `AliasSignal` sur `Work` et
+  `SectionNode`;
+- les aliases sont derives conservativement depuis les champs deja disponibles:
+  titres Catalogue/metadonnees, titres de TOC, `chapter_title`, `label`,
+  `short_title`, `aliases`, `title_aliases`, `alternative_titles`;
+- une transliteration accent-stripped est ajoutee seulement a partir d'un alias
+  existant; aucun dictionnaire Kant/Foucault/Stephanus ni synonyme externe
+  n'est introduit;
+- la projection manifeste reste content-free: `AliasSignal.to_dict()` expose
+  count, state, source et hashes courts, pas les labels bruts;
+- `search_section`, `resolve_section`, `section_bounds` et les candidats
+  `section_scope` de `search_work` matchent les aliases quand ils existent,
+  sans passer par `search_chapters` global;
+- les aliases bruts ne sont pas retournes dans `result.items` ni dans
+  l'observabilite; seuls `alias_count`, `alias_state` et `alias_source` sont
+  visibles;
+- `resolve_section` / `section_bounds` retournent `section_alias_missing`
+  lorsqu'une TOC existe mais qu'aucun alias/titre scoped ne resout la requete;
+- `resolve_work` retourne `internal_work_unresolved` dans un document connu et
+  `work_alias_missing` hors document quand la resolution d'oeuvre echoue;
+- l'ambiguite reste `ambiguous` si plusieurs sections matchent le meme alias;
+- preuves: tests cibles sur alias de section, alias ambigu, alias absent,
+  `section_bounds` par alias, absence de recherche globale opportuniste et
+  manifeste content-free.
+
+Limites encore ouvertes: detection forte des oeuvres internes, hierarchie
+multi-niveau, roles `primary_text` / commentaire vraiment fiables, mapping
+section -> paragraphe/raw unit plus fin et bornes d'oeuvre interne debut/fin.
+Ces limites restent des dettes structurelles, pas des cas a reparer par regex.
 
 ### Lot 3 - Answer object et renderer
 

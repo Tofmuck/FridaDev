@@ -75,6 +75,28 @@ def language_signal(value: Any) -> dict[str, Any]:
 
 
 @dataclass(frozen=True)
+class AliasSignal:
+    values: tuple[str, ...] = field(default_factory=tuple, repr=False, compare=False)
+    state: str = STATE_UNKNOWN
+    source: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        signals = []
+        for value in self.values[:20]:
+            signal = text_signal(value)
+            if signal.get("state") != STATE_UNKNOWN:
+                signals.append(signal)
+        return _compact(
+            {
+                "state": self.state,
+                "count": len(self.values),
+                "source": self.source,
+                "signals": signals,
+            }
+        )
+
+
+@dataclass(frozen=True)
 class ContentRole:
     value: str = ROLE_UNKNOWN
     state: str = STATE_UNKNOWN
@@ -240,6 +262,7 @@ class Work:
     interval: Interval
     content_role: ContentRole
     limits: tuple[str, ...] = field(default_factory=tuple)
+    aliases: AliasSignal = field(default_factory=AliasSignal)
 
     def to_dict(self) -> dict[str, Any]:
         return _compact(
@@ -252,6 +275,7 @@ class Work:
                 "interval": self.interval.to_dict(),
                 "content_role": self.content_role.to_dict(),
                 "limits": list(self.limits),
+                "aliases": self.aliases.to_dict(),
             }
         )
 
@@ -270,6 +294,7 @@ class SectionNode:
     boundary_state: str
     parent_id: str = ""
     limits: tuple[str, ...] = field(default_factory=tuple)
+    aliases: AliasSignal = field(default_factory=AliasSignal)
 
     def to_dict(self) -> dict[str, Any]:
         return _compact(
@@ -286,6 +311,7 @@ class SectionNode:
                 "interval": self.interval.to_dict(),
                 "boundary_state": self.boundary_state,
                 "limits": list(self.limits),
+                "aliases": self.aliases.to_dict(),
             }
         )
 
