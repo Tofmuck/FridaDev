@@ -185,7 +185,11 @@ def complete_product_method_loop(
             return repaired
         loop_result = repaired
 
-    if product_method == product_methods.PRODUCT_METHOD_EXTRACTION and not _has_endpoint(loop_result, "page"):
+    if (
+        product_method == product_methods.PRODUCT_METHOD_EXTRACTION
+        and not _has_endpoint(loop_result, "page")
+        and not _has_step_reason(loop_result, librarian_tools.REASON_PAGE_READ_DOCUMENT_SCOPE_CONFLICT)
+    ):
         repaired = _complete_explicit_page_extraction(
             loop_result,
             registry=registry,
@@ -276,6 +280,10 @@ def _has_endpoint(loop_result: librarian_planner.BiblioLibrarianLoopResult, endp
         step.endpoint_kind == endpoint_kind and step.status == librarian_planner.STATUS_TOOL_EXECUTED
         for step in loop_result.steps
     )
+
+
+def _has_step_reason(loop_result: librarian_planner.BiblioLibrarianLoopResult, reason_code: str) -> bool:
+    return any(str(step.reason_code or "") == reason_code for step in loop_result.steps)
 
 
 def _has_document_summary(loop_result: librarian_planner.BiblioLibrarianLoopResult) -> bool:

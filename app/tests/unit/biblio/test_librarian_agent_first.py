@@ -1458,7 +1458,7 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertIn(page_text, result.rendered_answer.content)
         self.assertNotIn(page_text, encoded)
 
-    def test_extraction_page_read_uses_carried_document_over_incoherent_param(self) -> None:
+    def test_extraction_page_read_uses_carried_document_over_weak_placeholder_param(self) -> None:
         page_text = "RAW MECHANICAL CARRIED PAGE MUST ONLY APPEAR IN RENDERED CONTENT"
         fake = _FakeAgentFirstClient(
             search_payload={
@@ -1510,6 +1510,65 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertEqual(result.answer_object.extraction["status"], "resolved")
         self.assertTrue(result.rendered_answer.exact_text_rendered)
         self.assertIn(page_text, result.rendered_answer.content)
+
+    def test_extraction_page_read_blocks_conflicting_real_document_id(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "items": [
+                    {
+                        "id": "doc-1234",
+                        "title": RAW_TITLE,
+                    }
+                ],
+            },
+            page_payload={
+                "document_id": "doc-1234",
+                "raw_text": "RAW CONFLICT PAGE MUST NOT BE CALLED",
+            },
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        ),
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_PAGE_READ,
+                            method="GET",
+                            params={"document_id": "doc-5678", "page_no": 12},
+                        ),
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+            user_msg="Dans ce document, sors exactement la page 12.",
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.loop_result)
+        assert result.loop_result is not None
+        observed = result.loop_result.to_observability()
+        encoded = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(fake.calls, [("metadata_search", RAW_QUERY, 5)])
+        self.assertEqual(result.status, planner.STATUS_TOOL_REJECTED)
+        self.assertEqual(result.loop_result.status, planner.STATUS_TOOL_REJECTED)
+        self.assertEqual(result.loop_result.steps[-1].reason_code, tools.REASON_PAGE_READ_DOCUMENT_SCOPE_CONFLICT)
+        self.assertIsNone(result.answer_object)
+        self.assertIsNone(result.rendered_answer)
+        self.assertIn(tools.REASON_PAGE_READ_DOCUMENT_SCOPE_CONFLICT, encoded)
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn("RAW CONFLICT PAGE", encoded)
 
     def test_extraction_page_range_after_document_search_reads_pages(self) -> None:
         page_12 = "RAW MECHANICAL PAGE 12 MUST ONLY APPEAR IN RENDERED CONTENT"

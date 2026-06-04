@@ -1911,10 +1911,12 @@ Proof Gate ancrage documentaire naturel avant `page_read`:
   globales couvrent les pages et le final lock autorise. Le verdict initial du
   harness exigeait a tort `search_document`; l'artefact porte le flag
   `verdict_reclassified_after_harness_audit=true`;
-- correction runtime: si un `page_read` suit une resolution documentaire unique
-  et porte un `document_id` contradictoire ou hallucine, le planner utilise
-  l'ancre documentaire unique deja portee. Ce mur ne choisit pas le document:
-  il preserve la coherence technique du document resolu par le bibliothecaire;
+- correction runtime: si un `page_read` suit une resolution documentaire unique,
+  le planner porte le `document_id` absent ou remplace un placeholder faible
+  manifestement hallucine (`"1"`, entier court). En revanche, une contradiction
+  explicite entre deux vrais identifiants documentaires bloque techniquement le
+  `page_read` avec `page_read_document_scope_conflict`; ce mur ne choisit pas le
+  document, il preserve la coherence du document resolu par le bibliothecaire;
 - limite restante hors scope: le cas recherche scoped multi-hit reste partiel
   dans ce replay et devra etre traite dans le lot scoped_search/clarification,
   pas dans le lot page-render.

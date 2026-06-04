@@ -304,6 +304,9 @@ class BiblioLibrarianPlanner:
             if _scoped_search_missing_scope(loop_request.plan, call, carried_document_id=carried_document_id):
                 steps.append(_scoped_search_scope_missing_step(len(steps), call))
                 break
+            if _page_read_document_scope_conflict(call, carried_document_id=carried_document_id):
+                steps.append(_page_read_document_scope_conflict_step(len(steps), call, carried_document_id))
+                break
             call = _with_carried_anchor(
                 call,
                 document_id=carried_document_id,
@@ -427,7 +430,7 @@ def _with_carried_anchor(
     changed = False
     if call.tool_name == tools.TOOL_PAGE_READ and document_id:
         provided_doc_id = str(params.get("document_id") or params.get("doc_id") or "").strip()
-        if provided_doc_id and provided_doc_id != document_id:
+        if provided_doc_id and provided_doc_id != document_id and _weak_document_id_placeholder(provided_doc_id):
             params["document_id"] = document_id
             params.pop("doc_id", None)
             changed = True
@@ -458,6 +461,45 @@ def _with_carried_anchor(
         params=params,
         call_id=call.call_id,
         method=call.method,
+    )
+
+
+def _page_read_document_scope_conflict(
+    call: BiblioLibrarianToolCall,
+    *,
+    carried_document_id: str,
+) -> bool:
+    if call.tool_name != tools.TOOL_PAGE_READ or not carried_document_id:
+        return False
+    provided_doc_id = str(call.params.get("document_id") or call.params.get("doc_id") or "").strip()
+    if not provided_doc_id or provided_doc_id == carried_document_id:
+        return False
+    return not _weak_document_id_placeholder(provided_doc_id)
+
+
+def _weak_document_id_placeholder(value: str) -> bool:
+    clean = str(value or "").strip()
+    return bool(clean and clean.isdecimal() and len(clean) <= 4)
+
+
+def _page_read_document_scope_conflict_step(
+    index: int,
+    call: BiblioLibrarianToolCall,
+    carried_document_id: str,
+) -> BiblioLibrarianStep:
+    return BiblioLibrarianStep(
+        index=index,
+        status=STATUS_TOOL_REJECTED,
+        reason_code=tools.REASON_PAGE_READ_DOCUMENT_SCOPE_CONFLICT,
+        tool_name=_safe_tool_name(call.tool_name),
+        endpoint_kind=tools._ENDPOINT_BY_TOOL.get(call.tool_name, ""),
+        observation={
+            "status": STATUS_TOOL_REJECTED,
+            "reason_code": tools.REASON_PAGE_READ_DOCUMENT_SCOPE_CONFLICT,
+            "tool_name": _safe_tool_name(call.tool_name),
+            "carried_doc_id_short": tools.catalogue.short_doc_id(carried_document_id),
+        },
+        tool_call=call,
     )
 
 
