@@ -1921,6 +1921,91 @@ Proof Gate ancrage documentaire naturel avant `page_read`:
   dans ce replay et devra etre traite dans le lot scoped_search/clarification,
   pas dans le lot page-render.
 
+### Verrou operatoire Lot 4 - cadrage de fin
+
+Ce verrou arrete la derive organique de Lot 4. Lot 4 a livre les familles
+canoniques et plusieurs murs techniques, mais il ne doit plus devenir une suite
+ouverte de micro-ponts deterministes. Un nouveau patch 4E.x n'est acceptable
+que s'il prouve une brique encore strictement dans le contrat extraction deja
+defini; sinon le chantier doit basculer vers un lot nomme separement.
+
+Inventaire de verite Lot 4:
+
+| Item | Etat | Preuve unitaire / contractuelle | Preuve live JSONL | Limite principale |
+| --- | --- | --- | --- | --- |
+| 4A `inventory_metadata` | livre | oui | non | pas une preuve live agentique; famille simple de metadonnees. |
+| 4B `document_resolution` | livre | oui | non | resolution section/TOC fine reste hors de ce cran. |
+| 4C `document_structure` | livre | oui | non | structure/TOC ne vaut jamais extraction exacte. |
+| 4D `scoped_search` | livre mais validation live partielle | oui | oui, zero-hit prouve; multi-hit encore partiel dans le dernier replay | candidats multiples a clarifier/rendre sans exact; ne pas revenir a `passage_search_in_work`. |
+| 4E `extraction` | livre | oui | oui pour pages apres ancrage; non pour toutes les variantes | exact seulement depuis `page_read` ou `passage_context`; aucune section longue. |
+| 4E.1 pages courtes | livre | oui | oui: page unique et deux pages contigues quand les pages sont lues | budget 1 a 3 pages / 8 000 caracteres; pas d'intervalle arbitraire. |
+| 4E.2 `section_bounds` -> `page_read` | livre contractuel | oui | non | uniquement debut de section compact explicitement borne; pas section complete. |
+| 4E.3 hit unique ancre -> `passage_context` | livre contractuel | oui | non | un seul hit scoped total ancre; pas ranking ni choix du meilleur hit. |
+| Proof Gate initial 4E | diagnostic livre | n/a | `lot4e-proof-gate-live-20260604T144426Z.jsonl`: `0 met`, `3 failed`, `1 partial` | prouve surtout l'ecart agentique live initial. |
+| Replay transition agentique | diagnostic livre | n/a | `lot4e-proof-gate-live-after-agentic-transition-20260604T145952Z.jsonl`: `1 met`, `0 failed`, `3 partial` | trajectoires ameliorees, rendu page encore non ferme. |
+| Proof Gate page-render isole | preuve live ciblee | n/a | `lot4e-proof-gate-live-after-page-render-20260604T151409Z.jsonl`: `4 met` | preuve avec document deja ancre; pas preuve de resolution naturelle. |
+| Proof Gate ancrage document naturel | preuve live ciblee | n/a | `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`: `3 met`, `1 partial` | page/page-range fermees; scoped multi-hit encore partiel. |
+| Micro-correctifs 4D/4E | livres | oui | non sauf proof gate cite | corrigent des contrats techniques; ne sont pas des preuves produit live globales. |
+
+Requalification des preuves:
+
+- preuve contractuelle/unitaire: methode connue, outils autorises, statut,
+  reason code, projection `BiblioAnswerObject`, renderer et final lock testes
+  localement. Elle ne prouve pas a elle seule le comportement agentique live;
+- preuve de plomberie: outil appele, endpoint repondu, lane produite, smoke vert
+  ou lock calcule sans verification du message final. Cela prouve le passage de
+  signal, pas la reponse produit;
+- preuve produit live minimale: artefact JSONL date, content-free, avec methode
+  canonique choisie, outils GET-only coherents, objet resultat, renderer/final
+  lock, message assistant final verifie quand le lock s'active, et aucun texte
+  exact issu de snippet/search/TOC;
+- preuve non vendable comme fermeture: anciens P-cases, `passage_search_in_work`
+  legacy, extraction via fallback deterministe, ou test unitaire sans replay
+  live quand l'enjeu est agentique.
+
+Definition stricte de fin Lot 4:
+
+- Lot 4 est termine comme **cadrage technique des methodes canoniques** quand
+  `inventory_metadata`, `document_resolution`, `document_structure`,
+  `scoped_search` et `extraction` ont chacune une methode produit explicite,
+  des outils allowlistes, une projection/rendu structure, des reason codes
+  content-free et des tests contractuels;
+- Lot 4 n'est pas termine comme validation produit exhaustive de Biblio: les
+  preuves live ne couvrent pas encore toutes les familles ni tous les chemins
+  d'ambiguite;
+- les chemins exacts prouves live dans ce cycle sont: page unique et deux pages
+  contigues lues par `page_read`, avec ancrage documentaire naturel, final lock
+  et message assistant verifies; scoped zero-hit est prouve sans exact; scoped
+  multi-hit reste partiel;
+- 4E.2 et 4E.3 restent prouves contractuellement seulement. Les vendre comme
+  comportements live fermes serait un faux vert;
+- toute nouvelle extension apres ce verrou doit etre nommee comme lot separe:
+  pas de `4E.x` opportuniste si le besoin touche navigation, provenance, etat,
+  section longue, plages canoniques, clarification multi-candidats ou nettoyage.
+
+Prochain lot recommande: **Lot 5 - Nettoyage dur**.
+
+Raison: le meilleur pas suivant n'est pas d'ajouter encore un pont
+deterministe. Il faut reduire le risque accumule: declasser les chemins legacy,
+separer les responsabilites restantes, verifier que `passage_search_in_work`
+n'est plus le trou noir des familles canoniques, et refaire les preuves autour
+des questions canoniques. Un `Lot 4D-bis - scoped_search clarification /
+candidats` reste possible si l'on decide de fermer le `PG4E_SCOPED_MULTI`, mais
+il doit etre un lot explicite de clarification/rendu de candidats, pas un
+micro-correctif cache dans l'extraction.
+
+Non-objectifs explicites a partir de ce verrou:
+
+- pas de section complete longue dans Lot 4;
+- pas de Stephanus complet ni plage canonique complete dans Lot 4;
+- pas de correction Kant/Foucault/Stephanus comme cas isole;
+- pas de ranking semantique deterministe;
+- pas de nouvelles formulations utilisateur apprises par le code;
+- pas de transformation de snippet, recherche, TOC ou titre de chapitre en
+  texte exact;
+- pas de nouveau pont extraction sans preuve que le perimetre est encore
+  strictement `product_method=extraction` et sans decision de lot explicite.
+
 ### Lot 5 - Nettoyage dur
 
 - [ ] Supprimer ou declasser les chemins legacy non appeles.

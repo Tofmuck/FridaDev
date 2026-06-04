@@ -544,6 +544,27 @@ Correction transition agentique live 4E:
   `passage_context`: il reste une surface structuree de recherche, pas un
   extrait exact.
 
+Verrou de preuve Last Chance Lot 4:
+
+- Lot 4 est clos comme cadrage technique quand les familles canoniques
+  `inventory_metadata`, `document_resolution`, `document_structure`,
+  `scoped_search` et `extraction` ont une methode produit explicite, une
+  allowlist d'outils GET-only, une projection `BiblioAnswerObject`, un renderer,
+  des reason codes content-free et des tests contractuels;
+- cette cloture technique ne vaut pas validation produit exhaustive. Les
+  comportements live ne sont prouves que par artefact JSONL date et content-free
+  verifiant aussi le message assistant final quand le final lock s'active;
+- les chemins exacts prouves live dans ce cycle sont les lectures page unique et
+  page-range courte via `page_read`, avec ancrage documentaire naturel. Le zero
+  hit scoped est prouve sans exact; le multi-hit scoped reste partiel dans le
+  dernier replay et ne doit pas etre vendu comme ferme;
+- `section_bounds` -> `page_read` et hit unique ancre -> `passage_context` sont
+  des contrats unitaires tant qu'aucun replay live JSONL dedie ne les couvre;
+- apres ce verrou, aucun nouveau `4E.x` opportuniste ne doit etre ajoute pour
+  section longue, Stephanus complet, ranking semantique, navigation lecteur,
+  provenance ou etat de lecture. Ces sujets relevent d'un lot separe ou du
+  nettoyage dur.
+
 ## 3. Frontieres non negociables
 
 Biblio n'est pas `active_document`.
