@@ -26,6 +26,7 @@ Cadrage enrichissement structurel Last Chance Lot 2 bis: 2026-06-04
 Premier cran aliases structurels Last Chance Lot 2 bis: 2026-06-04
 Premier cran answer object Last Chance Lot 3: 2026-06-04
 Verrou final assistant Last Chance L3A1: 2026-06-04
+Memoire conversationnelle des lectures Last Chance Lot 3 bis: 2026-06-04
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -257,6 +258,27 @@ Limite volontaire: L3A1 ne corrige pas les erreurs d'ancrage ou de pertinence
 documentaire. Il empeche seulement qu'un rendu Biblio deja produit soit ignore,
 reformule ou contredit par le LLM final quand le contrat technique est
 coherent.
+
+Memoire conversationnelle Last Chance Lot 3 bis livree:
+
+- un extrait Biblio effectivement rendu dans le message assistant final est du
+  contenu conversationnel ordinaire;
+- Memory ne doit pas l'exclure parce qu'il vient de Biblio;
+- les ancres, provenance, statut, mode de rendu, hashes courts et compteurs
+  portes par `message.meta` enrichissent cette memoire, mais ne remplacent pas le
+  texte rendu;
+- `AssistantResponseOverride` persiste le message assistant final en mode
+  synchrone et streaming, puis appelle `memory_store.save_new_traces()` sur la
+  conversation contenant ce message;
+- `memory_traces_summaries._message_is_trace_eligible()` ne filtre pas
+  `source=biblio_rendered_answer`: les messages `assistant` non vides, non deja
+  `embedded`, et non interrompus restent eligibles;
+- la lane Biblio interne, le payload Catalogue et l'observabilite content-free ne
+  sont pas promus automatiquement en Memory. Seul le contenu effectivement rendu
+  dans le fil suit la politique generale de memoire conversationnelle;
+- la rehydratation ulterieure par ancres depuis la bibliotheque est un complement
+  de verification/recuperation, pas un substitut obligatoire au texte memorise
+  quand la conversation est memorisee.
 
 ## 3. Frontieres non negociables
 

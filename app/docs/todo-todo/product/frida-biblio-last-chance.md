@@ -1303,35 +1303,63 @@ bibliothecaire puis dialogique/humaine.
 
 ### Lot 3 bis - Memoire conversationnelle des lectures
 
-- [ ] Documenter la frontiere entre lane Biblio interne, extrait rendu dans le
+LOT 3 BIS: UN EXTRAIT BIBLIO EFFECTIVEMENT RENDU DANS LE MESSAGE ASSISTANT FINAL ENTRE DANS LA CONVERSATION COMME N'IMPORTE QUEL AUTRE CONTENU ASSISTANT. MEMORY NE DOIT PAS L'EXCLURE PARCE QU'IL VIENT DE BIBLIO. LES ANCRES ET LA PROVENANCE SONT UN COMPLEMENT, PAS UN SUBSTITUT AU TEXTE RENDU.
+
+- [x] Documenter la frontiere entre lane Biblio interne, extrait rendu dans le
       fil et contenu effectivement memorise.
-- [ ] Verifier la politique reelle conversation -> memoire: messages `user`,
+- [x] Verifier la politique reelle conversation -> traces Memory: messages `user`,
       messages `assistant`, messages interrompus, messages deja `embedded`,
-      `message.meta`, summaries et retrieval.
-- [ ] Poser que toute conversation est candidate a la memoire selon les regles
+      `message.meta`; summaries et retrieval restent sous politique generale
+      Memory, sans exception Biblio.
+- [x] Poser que toute conversation est candidate a la memoire selon les regles
       generales de Memory.
-- [ ] Poser que les extraits Biblio rendus dans la conversation ne sont pas
+- [x] Poser que les extraits Biblio rendus dans la conversation ne sont pas
       exclus par defaut.
-- [ ] Poser que les citations, extraits, commentaires, explications et reprises
+- [x] Poser que les citations, extraits, commentaires, explications et reprises
       Biblio entrent comme contenu conversationnel normal quand ils sont
       effectivement rendus dans le fil.
-- [ ] Definir `BiblioReadingEvent` comme enrichissement d'ancrage/provenance,
+- [x] Definir `BiblioReadingEvent` comme enrichissement d'ancrage/provenance,
       pas comme substitut sans texte au contenu rendu.
-- [ ] Conserver en complement document_id, oeuvre, section, ancres, pages, hash,
+- [x] Conserver en complement document_id, oeuvre, section, ancres, pages, hash,
       provenance, role de contenu, origine `biblio_extraction` et limites.
-- [ ] Faire de la rehydratation par ancres depuis la bibliotheque un complement
+- [x] Faire de la rehydratation par ancres depuis la bibliotheque un complement
       de verification/recuperation, pas un substitut obligatoire a la memoire du
       texte effectivement dit.
-- [ ] Distinguer texte source rendu, note de lecture, synthese et interpretation
+- [x] Distinguer texte source rendu, note de lecture, synthese et interpretation
       par metadonnees et provenance, sans les rendre moins memorisables.
-- [ ] Auditer les chemins runtime concernes: lane Biblio, reponse assistant,
-      `message.meta.biblio_state`, traces Memory, resumes, retrieval et
+- [x] Auditer les chemins runtime concernes: lane Biblio, reponse assistant,
+      `message.meta`, traces Memory, et frontiere avec resumes, retrieval et
       documents actifs de conversation.
-- [ ] Verifier si un extrait Biblio rendu peut etre perdu entre lane interne,
+- [x] Verifier si un extrait Biblio rendu peut etre perdu entre lane interne,
       renderer, reponse finale, persistence conversationnelle et Memory.
-- [ ] Definir les preuves futures qui distinguent extrait rendu dans la
+- [x] Definir les preuves futures qui distinguent extrait rendu dans la
       conversation, contenu effectivement memorise, metadonnees
       d'ancrage/provenance et recuperation ulterieure depuis la bibliotheque.
+
+Livraison Lot 3 bis, 2026-06-04:
+
+- `AssistantResponseOverride` persiste le rendu Biblio autorise comme message
+  assistant final, en mode synchrone et streaming, avant d'appeler
+  `memory_store.save_new_traces(conversation)`;
+- `conv_store.append_message()` conserve le texte effectivement rendu dans
+  `message.content`; `message.meta` porte seulement les signaux Biblio
+  complementaires content-free (`source`, statut, mode de rendu, hash court,
+  compteurs), sans remplacer le texte rendu;
+- `memory_traces_summaries._message_is_trace_eligible()` accepte les messages
+  `user` et `assistant` non vides, non deja `embedded`, et exclut seulement les
+  assistants interrompus. Aucun filtre `source=biblio_rendered_answer` ne retire
+  les extraits Biblio rendus;
+- P3 streaming est valide comme trou de preuve historique et ferme par test:
+  `test_run_llm_exchange_stream_override_persists_biblio_content_for_memory`
+  prouve que le stream finalise le message assistant, garde ses metadonnees
+  Biblio, appelle `save_new_traces()` avec le texte rendu, bypass OpenRouter et
+  garde l'observabilite sans texte brut;
+- les summaries et retrieval restent des comportements generaux de Memory: ce
+  lot prouve l'entree du contenu rendu dans la conversation et dans
+  `save_new_traces`, pas une politique speciale de recuperation documentaire;
+- aucune memoire documentaire speciale ne remplace le texte conversationnel:
+  `BiblioReadingEvent` reste un enrichissement d'ancrage/provenance et un futur
+  lien possible vers traces ou ancres.
 
 Critere de fermeture: le comportement reel conversation -> memoire est audite;
 on sait precisement si les extraits rendus entrent en memoire; les

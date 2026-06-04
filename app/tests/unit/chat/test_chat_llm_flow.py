@@ -404,6 +404,144 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(_event_payloads(events, 'llm_call'), [])
         self.assertEqual(_event_payloads(events, 'AssistantText')[0]['estimated_assistant_tokens'], 13)
 
+    def test_run_llm_exchange_stream_override_persists_biblio_content_for_memory(self) -> None:
+        events = []
+        observed = {
+            'secret_calls': 0,
+            'post_calls': 0,
+            'save_new_traces_calls': [],
+            'identity_callback_called': False,
+            'reactivate_called': False,
+            'save_calls': [],
+        }
+        raw_biblio_text = 'RAW BIBLIO STREAM TEXT IS USER-VISIBLE FINAL CONTENT'
+        final_text = (
+            '[RESULTAT BIBLIO STRUCTURE]\n'
+            'Status: ready\n'
+            'Texte exact rendu mecaniquement:\n'
+            f'{raw_biblio_text}\n'
+            '[/RESULTAT BIBLIO STRUCTURE]'
+        )
+        conversation = {
+            'id': 'conv-stream-override',
+            'created_at': '2026-06-04T00:00:00Z',
+            'messages': [{'role': 'user', 'content': 'biblio stream'}],
+        }
+
+        def forbidden_secret(*_args, **_kwargs):
+            observed['secret_calls'] += 1
+            raise AssertionError('LLM secret must not be read for a streaming override')
+
+        def forbidden_post(*_args, **_kwargs):
+            observed['post_calls'] += 1
+            raise AssertionError('LLM must not be called for a streaming override')
+
+        def fake_save_new_traces(saved_conversation):
+            observed['save_new_traces_calls'].append([dict(message) for message in saved_conversation['messages']])
+
+        def fake_save_conversation(_conversation, **kwargs):
+            observed['save_calls'].append(dict(kwargs))
+
+        result = chat_llm_flow.run_llm_exchange(
+            conversation=conversation,
+            prompt_messages=[{'role': 'user', 'content': 'biblio stream'}],
+            runtime_main_model='openrouter/runtime-main-model',
+            temperature=0.4,
+            top_p=1.0,
+            max_tokens=256,
+            stream_req=True,
+            current_mode='enforced_all',
+            identity_ids=['id-stream'],
+            web_input=None,
+            runtime_settings_module=SimpleNamespace(
+                get_runtime_secret_value=forbidden_secret,
+                RuntimeSettingsSecretRequiredError=RuntimeError,
+                RuntimeSettingsSecretResolutionError=ValueError,
+            ),
+            memory_store_module=SimpleNamespace(
+                save_new_traces=fake_save_new_traces,
+                reactivate_identities=lambda _identity_ids: observed.update({'reactivate_called': True}),
+            ),
+            conv_store_module=SimpleNamespace(
+                append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
+                    {
+                        'role': role,
+                        'content': content,
+                        'timestamp': timestamp,
+                        **({'meta': meta} if meta is not None else {}),
+                    }
+                ),
+                save_conversation=fake_save_conversation,
+            ),
+            llm_module=SimpleNamespace(),
+            requests_module=SimpleNamespace(
+                post=forbidden_post,
+                exceptions=SimpleNamespace(RequestException=_RequestException),
+            ),
+            token_utils_module=SimpleNamespace(estimate_tokens=lambda _messages, _model: 21),
+            admin_logs_module=SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs))),
+            config_module=SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42),
+            logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None),
+            arbiter_module=SimpleNamespace(),
+            now_iso_func=lambda: '2026-06-04T00:12:00Z',
+            record_identity_entries_for_mode=lambda *_args, **_kwargs: observed.update(
+                {'identity_callback_called': True}
+            ),
+            mode_enforces_identity=lambda _mode: True,
+            conversation_headers_func=lambda _conversation, updated_at: {'X-Conversation-Updated-At': updated_at},
+            conversation_stream_headers_func=lambda _conversation: {'X-Conversation-Id': 'conv-stream-override'},
+            assistant_response_override=chat_llm_flow.AssistantResponseOverride(
+                content=final_text,
+                source='biblio_rendered_answer',
+                reason_code='biblio_final_response_authorized',
+                meta={
+                    'source': 'biblio_rendered_answer',
+                    'biblio_answer_status': 'ready',
+                    'biblio_render_mode': 'exact_excerpt',
+                    'biblio_exact_text_rendered': True,
+                    'biblio_exact_text_chars': len(raw_biblio_text),
+                    'biblio_exact_text_hash': 'fedcba654321',
+                },
+                observability={
+                    'status': 'authorized',
+                    'content_hash': '0123456789ab',
+                    'exact_text_chars': len(raw_biblio_text),
+                    'exact_text_hash': 'fedcba654321',
+                    'semantic_judgment': False,
+                },
+            ),
+        )
+
+        self.assertEqual(result['kind'], 'stream')
+        self.assertEqual(result['headers'], {'X-Conversation-Id': 'conv-stream-override'})
+        streamed, terminal = _collect_stream_output(result['stream'])
+        self.assertEqual(streamed, final_text)
+        self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-06-04T00:12:00Z'})
+        self.assertEqual(conversation['messages'][-1]['role'], 'assistant')
+        self.assertEqual(conversation['messages'][-1]['content'], final_text)
+        self.assertEqual(conversation['messages'][-1]['meta']['source'], 'biblio_rendered_answer')
+        self.assertEqual(conversation['messages'][-1]['meta']['biblio_answer_status'], 'ready')
+        self.assertEqual(conversation['messages'][-1]['meta']['biblio_render_mode'], 'exact_excerpt')
+        self.assertTrue(conversation['messages'][-1]['meta']['biblio_exact_text_rendered'])
+        self.assertEqual(conversation['messages'][-1]['meta']['biblio_exact_text_hash'], 'fedcba654321')
+        self.assertEqual(observed['secret_calls'], 0)
+        self.assertEqual(observed['post_calls'], 0)
+        self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-06-04T00:12:00Z')
+        self.assertEqual(observed['save_new_traces_calls'][-1][-1]['content'], final_text)
+        self.assertEqual(
+            observed['save_new_traces_calls'][-1][-1]['meta']['source'],
+            'biblio_rendered_answer',
+        )
+        self.assertTrue(observed['identity_callback_called'])
+        self.assertTrue(observed['reactivate_called'])
+        event_dump = str(events)
+        self.assertIn('assistant_response_override', event_dump)
+        self.assertIn('semantic_judgment', event_dump)
+        self.assertNotIn(raw_biblio_text, event_dump)
+        self.assertEqual(_event_payloads(events, 'llm_payload'), [])
+        self.assertEqual(_event_payloads(events, 'llm_call'), [])
+        self.assertEqual(_event_payloads(events, 'AssistantText')[0]['estimated_assistant_tokens'], 21)
+
     def test_run_llm_exchange_sync_persistence_failure_blocks_derived_writes(self) -> None:
         events = []
         observed = {
