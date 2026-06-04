@@ -1983,7 +1983,7 @@ Definition stricte de fin Lot 4:
   pas de `4E.x` opportuniste si le besoin touche navigation, provenance, etat,
   section longue, plages canoniques, clarification multi-candidats ou nettoyage.
 
-Prochain lot recommande: **Lot 5 - Nettoyage dur**.
+Candidat de prochain lot apres verrou technique: **Lot 5 - Nettoyage dur**.
 
 Raison: le meilleur pas suivant n'est pas d'ajouter encore un pont
 deterministe. Il faut reduire le risque accumule: declasser les chemins legacy,
@@ -2005,6 +2005,88 @@ Non-objectifs explicites a partir de ce verrou:
   texte exact;
 - pas de nouveau pont extraction sans preuve que le perimetre est encore
   strictement `product_method=extraction` et sans decision de lot explicite.
+
+### Matrice des capacites utilisateur Biblio
+
+Cette matrice repart des demandes utilisateur, pas des briques internes. Le
+canon Biblio est ce qu'un utilisateur demande a une bibliotheque: inventorier,
+resoudre, parcourir, chercher, extraire, citer, reprendre. Une capacite n'est
+fermee produit que si un artefact JSONL live agentique, date et content-free,
+prouve le comportement final. Les tests unitaires/contractuels comptent comme
+preuves de contrat, mais ne ferment pas seuls une capacite live.
+
+Taxonomie:
+
+- `ferme_live`: prouve par artefact JSONL live agentique content-free;
+- `partiel_live`: prouve live sur un sous-chemin ou avec une limite visible;
+- `contractuel_unitaire`: code/contrat/tests unitaires, pas de preuve live;
+- `ouvert`: pas encore proprement fonctionnel;
+- `a_ne_pas_pretendre`: le systeme ne doit pas presenter cette capacite comme
+  acquise.
+
+Invariants a relire avec cette matrice:
+
+- le bibliothecaire LLM reste souverain sur le sens documentaire;
+- le determinisme tient les murs techniques: scope, ancre, `document_id`,
+  budget, coherence mecanique, provenance, rendu exact et observabilite
+  content-free;
+- le determinisme ne choisit jamais intellectuellement le "bon passage";
+- Kant, Foucault et Stephanus sont des regressions severes, pas le canon unique;
+- exact text vient seulement d'une extraction mecanique autorisee
+  (`page_read`, `passage_context` ou future brique explicitement autorisee);
+- snippets, recherche, TOC et titres de chapitre ne deviennent jamais texte
+  exact;
+- les 18 cas historiques ne sont ni 18 outils ni le canon principal.
+
+Matrice:
+
+| Capacite utilisateur | Statut | Preuve actuelle | Test live JSONL requis pour fermer | Prochain lot probable |
+| --- | --- | --- | --- | --- |
+| Inventaire: "Quels ouvrages as-tu ?", "Combien ?" | `contractuel_unitaire` | Lot 4A `inventory_metadata`, tests contractuels | question naturelle inventaire -> `product_method=inventory_metadata` -> rendu final structure, sans payload brut | Lot 6 validation live ou Lot 5 proof harness |
+| Metadonnees: langue, pages, metadonnees connues | `contractuel_unitaire` | Lot 4A + manifeste Lot 1 | question naturelle sur un ouvrage -> resolution + metadonnees rendues, message final verifie | Lot 6 validation live |
+| Resolution document: "Trouve tel ouvrage" | `partiel_live` | Proof Gate ancrage naturel: `search_document`/`resolve_work` portent un `document_id` vers `page_read` | question de resolution seule -> statut `resolved`/`ambiguous`/`not_found`, sans extraction parasite | Lot 6 validation live |
+| Resolution oeuvre interne dans un volume | `contractuel_unitaire` | Lot 4B + Lot 2 bis aliases/oeuvres internes premiers crans | requete oeuvre interne -> candidat structure ou clarification, sans choisir le premier | Lot 2 bis / Lot 4B-bis si priorise |
+| Distinguer texte primaire/commentaire/preface/notice/lecon | `ouvert` | roles de contenu portes partiellement dans le manifeste | question de distinction -> roles affiches ou `unknown`, pas faux texte primaire | Lot 2 bis roles/oeuvres internes |
+| TOC: "Donne la table des matieres", "chapitres" | `contractuel_unitaire` | Lot 4C `document_structure`, tests | question naturelle TOC -> `document_structure` live, rendu `structured_status`, pas exact | Lot 6 validation live |
+| Bornes: "Ou commence/finit tel chapitre ?" | `contractuel_unitaire` | Lot 4C + `section_bounds` | section resolue -> bornes page/para ou reason code `unavailable`, message final verifie | Lot 4C-bis ou Lot 6 |
+| Section interne: "Ou commence telle section ?" | `contractuel_unitaire` | Lot 4E.2 utilise les bornes pour debut compact | question live section -> `section_bounds`, rendu structure ou extraction compacte si demande explicite | Lot 4E.2 proof live dedie |
+| Recherche scoped zero-hit | `ferme_live` | `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`, `PG4E_SCOPED_ZERO=met` | deja ferme pour zero-hit scoped: `scoped_search/not_found`, pas exact | surveiller Lot 5 |
+| Recherche scoped multi-hit/candidats | `partiel_live` | dernier replay: `PG4E_SCOPED_MULTI=partial`; page-render isole prouve le renderer mais pas le live naturel | recherche avec plusieurs hits -> candidats structures ou clarification; aucun `passage_context`, aucun choix semantique deterministe | Lot 4D-bis scoped_search clarification/candidats |
+| Recherche thematique "trouve le passage sur..." | `partiel_live` | 4D/4E contrats + proof scoped partiel | live agentique: bibliothecaire choisit scope/theme, rend candidats ou demande clarification; exact seulement si extraction explicite et unique ancre | Lot 4D-bis puis Lot 6 |
+| Recherche dans une section | `ouvert` | structure et scoped_search existent separement | section resolue -> recherche bornee section, candidats structures, pas extraction automatique | Lot 4D-bis / Lot 2 bis bornes riches |
+| Extraction page X | `ferme_live` | `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`, `PG4E_PAGE_ONE=met` | deja ferme pour page unique courte via `page_read`, final lock et message final | surveiller Lot 5 |
+| Extraction pages X-Y courtes | `ferme_live` | meme artefact, `PG4E_PAGE_TWO=met` apres audit harness | deja ferme pour deux pages contigues; limite actuelle 1 a 3 pages / 8 000 caracteres | surveiller Lot 5 |
+| Extraction deux premieres pages d'une section | `contractuel_unitaire` | Lot 4E.2 tests: `section_bounds` -> `page_read` compact | live section explicite -> bornes -> pages lues -> exact lock | Lot 4E.2 proof live dedie si priorise |
+| Extraction section complete longue | `ouvert` | hors scope Lot 4E.1/4E.2 | section debut/fin resolues -> plan decoupage/budget/continuation/streaming; pas de lecture longue silencieuse | Lot extraction longue separe |
+| Extraction autour d'une occurrence unique ancree | `contractuel_unitaire` | Lot 4E.3 tests: unique hit scoped total -> `passage_context` | live extraction explicite -> `catalog_search` scoped unique -> `passage_context` -> exact lock; snippet jamais rendu | Lot 4E.3 proof live dedie |
+| Plage canonique type Stephanus | `a_ne_pas_pretendre` | legacy/regression historique seulement | locator/range canonique fiable -> extraction mecanique bornee; sinon clarification | Lot references canoniques separe |
+| Navigation lecteur: continue, page suivante/precedente | `ouvert` | ancrage page existe dans resultats; pas d'etat lecteur global ferme | message avec ancre courante -> page suivante/precedente lue, message final verifie | Lot navigation lecteur |
+| Navigation: chapitre suivant, dix pages plus loin, remonte avant | `a_ne_pas_pretendre` | pas de preuve produit | etat lecteur + bornes + budgets + clarification si ambigu | Lot navigation lecteur |
+| Provenance: ouvrage/page/section d'un passage rendu | `partiel_live` | extractions page portent ancres et `document_id`; final lock prouve message exact | question "d'ou vient ce passage ?" apres rendu -> provenance structuree depuis ancres, sans relire texte brut | Lot 4F provenance/ancrage |
+| Ancre courante: "quelle est l'ancre actuelle ?" | `ouvert` | ancres dans objets, pas etat conversationnel complet | tour suivant -> etat ancre explicite restitue ou reason code absent | Lot 4F provenance/ancrage/etat |
+| Memoire: "reviens au passage qu'on vient de lire" | `contractuel_unitaire` | Lot 3 bis: le message assistant Biblio rendu suit le chemin conversation/Memory general | live conversation multi-tour -> Memory voit le texte rendu + meta Biblio, reprise sans perte | Lot memoire/lecture live |
+| Comparer avec extrait precedent | `ouvert` | contenu conversationnel existe, pas preuve bibliotheque multi-extrait | deux extraits rendus -> comparaison en tour suivant avec ancres distinctes | Lot memoire/lecture live |
+| Continuer depuis ce qu'on a lu | `ouvert` | pas d'etat lecteur global ferme | ancre de lecture -> continuation explicite, budget, page suivante ou contexte suivant | Lot navigation lecteur + memoire |
+
+Capacites a ne pas pretendre:
+
+- rendre une section longue complete;
+- rendre une plage Stephanus complete;
+- choisir automatiquement le meilleur hit parmi plusieurs candidats;
+- extraire du texte exact depuis un snippet de recherche;
+- transformer une TOC ou un titre de chapitre en passage primaire;
+- reprendre une ancre courante si aucun etat de lecture explicite n'existe;
+- presenter un test unitaire comme fermeture produit live.
+
+Prochain lot recommande depuis la matrice:
+
+**Lot 4D-bis - scoped_search clarification / candidats**, avant le nettoyage
+dur si l'objectif immediat est produit. C'est le plus petit lot qui renforce une
+capacite utilisateur encore visible (`PG4E_SCOPED_MULTI`) sans epaissir le
+determinisme: le bibliothecaire garde le sens, le code rend/structure les
+candidats ou demande clarification. **Lot 5 - Nettoyage dur** reste le meilleur
+lot juste apres, pour declasser les legacy et empecher `passage_search_in_work`
+de redevenir un raccourci.
 
 ### Lot 5 - Nettoyage dur
 
