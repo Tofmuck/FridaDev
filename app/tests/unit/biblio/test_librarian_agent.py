@@ -831,6 +831,35 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_EXTRACTION)
         self.assertEqual(validation.plan.tool_calls[0].params["page_no"], 12)
 
+    def test_extraction_accepts_page_read_deferred_after_document_search(self) -> None:
+        validation = contract.validate_agent_payload(
+            {
+                **json.loads(_valid_json()),
+                "case_id": "",
+                "intent": "extraction",
+                "product_method": product_methods.PRODUCT_METHOD_EXTRACTION,
+                "tool_calls": [
+                    {
+                        "tool_name": tools.TOOL_SEARCH_DOCUMENT,
+                        "method": "GET",
+                        "params": {"query": "document", "limit": 5},
+                    },
+                    {
+                        "tool_name": tools.TOOL_PAGE_READ,
+                        "method": "GET",
+                        "params": {"page_no": 12},
+                    },
+                ],
+                "answer_mode": "extraction",
+            }
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_EXTRACTION)
+        self.assertEqual([call.tool_name for call in validation.plan.tool_calls], [tools.TOOL_SEARCH_DOCUMENT, tools.TOOL_PAGE_READ])
+
     def test_toc_catalog_search_repair_stays_legacy_p09(self) -> None:
         validation = contract.parse_and_validate_agent_json(
             json.dumps(
@@ -1525,9 +1554,11 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             "product_method=extraction",
             "questions canoniques d'extraction exacte",
             "ses snippets sont des candidats de recherche",
-            "case_id quand la demande correspond clairement",
-            "choisis le case_id qui correspond a la forme reelle",
-            "variante ASCII/sans accents",
+            "case_id seulement pour une regression historique Pxx explicite",
+            "Les methodes legacy passage_search_in_work et passage_search_external_work",
+            "ne les choisis pas pour une question canonique",
+            "search_document puis page_read(page_no)",
+            "Ne transforme pas les signatures P05-P08/P16-P18 en canon",
         ]:
             self.assertIn(marker, system)
 
@@ -1571,9 +1602,9 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertIn("maïeutique", rows["P05"]["example"])
         self.assertIn("paraphrase", rows["P18"]["signature"])
         self.assertIn("Theetete", rows["P06"]["example"])
-        self.assertIn("P05-P08", payload["case_selection_note"])
-        self.assertIn("accentuee", payload["case_selection_note"])
-        self.assertIn("sans accents", payload["case_selection_note"])
+        self.assertIn("matrice historique/regression", payload["case_selection_note"])
+        self.assertIn("case_id vide", payload["case_selection_note"])
+        self.assertIn("P05-P08/P16-P18", payload["case_selection_note"])
         self.assertIn("current_user_message_folded_ascii", payload)
         self.assertIn("current_user_message_has_non_ascii", payload)
 

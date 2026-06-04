@@ -522,6 +522,20 @@ Extraction depuis candidat de recherche ancre Last Chance Lot 4E.3 livree:
   content-free;
 - preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
 
+Correction transition agentique live 4E:
+
+- les familles canoniques live doivent etre exposees au bibliothecaire comme
+  `product_method=scoped_search` ou `product_method=extraction`, avec
+  `case_id=""`;
+- P05-P08/P16-P18 restent legacy/regression et ne doivent pas absorber les
+  demandes canoniques de recherche scoped ou d'extraction;
+- une extraction de page ou plage courte peut porter le `document_id` depuis une
+  resolution documentaire unique vers `page_read`; les bornes numeriques
+  explicites restent limitees par budget;
+- un plan legacy avec `answer_mode=scoped_search` ne complete pas vers
+  `passage_context`: il reste une surface structuree de recherche, pas un
+  extrait exact.
+
 ## 3. Frontieres non negociables
 
 Biblio n'est pas `active_document`.

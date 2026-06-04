@@ -11,9 +11,11 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
+from . import librarian_dialogue_navigation
 from . import librarian_planner
 from . import librarian_product_methods as product_methods
 from . import librarian_tools
+from .query_normalizer import fold_text
 
 
 _SUMMARY_COMPLETION_METHODS = frozenset(
@@ -74,6 +76,7 @@ _SECTION_START_PAGE_BLOCK_ANSWER_MODES = frozenset(
 )
 
 _SECTION_START_PAGE_COUNT = 2
+_EXTRACTION_PAGE_REQUEST_MAX_PAGES = 3
 
 _THEME_QUERY_STOPWORDS = frozenset(
     {
@@ -115,6 +118,7 @@ def complete_product_method_loop(
     plan: librarian_planner.BiblioLibrarianPlan,
     registry: librarian_tools.BiblioLibrarianToolRegistry,
     deterministic_plan: Any,
+    user_msg: str = "",
 ) -> librarian_planner.BiblioLibrarianLoopResult:
     if loop_result.status not in {
         librarian_planner.STATUS_TOOL_EXECUTED,
@@ -181,8 +185,18 @@ def complete_product_method_loop(
             return repaired
         loop_result = repaired
 
+    if product_method == product_methods.PRODUCT_METHOD_EXTRACTION and not _has_endpoint(loop_result, "page"):
+        repaired = _complete_explicit_page_extraction(
+            loop_result,
+            registry=registry,
+            user_msg=user_msg,
+        )
+        if _has_endpoint(repaired, "page"):
+            return repaired
+        loop_result = repaired
+
     if product_method in _CONTEXT_COMPLETION_METHODS and not _has_endpoint(loop_result, "context"):
-        if product_method in _SEARCH_ASSISTED_CONTEXT_METHODS:
+        if product_method in _SEARCH_ASSISTED_CONTEXT_METHODS and _method_allows_context_completion(plan):
             for _ in range(3):
                 if _first_context_params(loop_result):
                     break
@@ -198,11 +212,11 @@ def complete_product_method_loop(
                         "limit": _positive_int(getattr(deterministic_plan, "limit", 0)) or 8,
                     },
                 )
-        context_params = (
-            _unique_scoped_search_hit_context_params(loop_result)
-            if product_method == product_methods.PRODUCT_METHOD_EXTRACTION
-            else _first_context_params(loop_result)
-        )
+        context_params = {}
+        if product_method == product_methods.PRODUCT_METHOD_EXTRACTION:
+            context_params = _unique_scoped_search_hit_context_params(loop_result)
+        elif _method_allows_context_completion(plan):
+            context_params = _first_context_params(loop_result)
         if context_params:
             return _append_tool_call(
                 loop_result,
@@ -212,6 +226,21 @@ def complete_product_method_loop(
             )
 
     return loop_result
+
+
+def _method_allows_context_completion(plan: librarian_planner.BiblioLibrarianPlan) -> bool:
+    product_method = _text(getattr(plan, "product_method", ""))
+    answer_mode = _text(getattr(plan, "answer_mode", ""))
+    if (
+        answer_mode == "scoped_search"
+        and product_method
+        in {
+            product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+            product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+        }
+    ):
+        return False
+    return True
 
 
 def _append_tool_call(
@@ -408,6 +437,49 @@ def _complete_section_start_page_block(
     if start_page is None:
         return loop_result
     return _append_section_start_pages(loop_result, registry=registry, document_id=doc_id, start_page=start_page)
+
+
+def _complete_explicit_page_extraction(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    registry: librarian_tools.BiblioLibrarianToolRegistry,
+    user_msg: str,
+) -> librarian_planner.BiblioLibrarianLoopResult:
+    doc_id = _summary_completion_document_id(loop_result) or _first_document_id(loop_result)
+    if not doc_id:
+        return loop_result
+    page_numbers = _explicit_page_numbers(user_msg)
+    if not page_numbers:
+        return loop_result
+    available = max(0, loop_result.options.max_tool_calls - loop_result.tool_call_count)
+    pages_to_read = tuple(
+        page_no
+        for page_no in page_numbers
+        if not _has_page_read(loop_result, document_id=doc_id, page_no=page_no)
+    )
+    if not pages_to_read or len(pages_to_read) > available:
+        return loop_result
+    for page_no in pages_to_read:
+        loop_result = _append_tool_call(
+            loop_result,
+            registry=registry,
+            tool_name=librarian_tools.TOOL_PAGE_READ,
+            params={"document_id": doc_id, "page_no": page_no},
+        )
+    return loop_result
+
+
+def _explicit_page_numbers(user_msg: str) -> tuple[int, ...]:
+    folded = fold_text(str(user_msg or ""))
+    request = librarian_dialogue_navigation.page_request(folded)
+    if request is None:
+        return ()
+    start, end = request
+    if start <= 0 or end < start:
+        return ()
+    if (end - start) + 1 > _EXTRACTION_PAGE_REQUEST_MAX_PAGES:
+        return ()
+    return tuple(range(start, end + 1))
 
 
 def _append_section_start_pages(

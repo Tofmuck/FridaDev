@@ -96,6 +96,7 @@ def run_agent_first_bridge(
                 comparison=result,
                 client=client,
                 deterministic_plan=query_plan,
+                user_msg=user_msg,
             )
         except Exception:
             agent_first_result = None
@@ -125,6 +126,7 @@ def run_agent_first_bridge(
                     comparison=result,
                     client=client,
                     deterministic_plan=query_plan,
+                    user_msg=user_msg,
                 )
             except Exception:
                 agent_first_result = None
@@ -297,6 +299,7 @@ def _repair_agent_first_with_dialogue_fallback(
             comparison=repaired_result,
             client=client,
             deterministic_plan=deterministic_plan,
+            user_msg=user_msg,
         )
     except Exception:
         return None

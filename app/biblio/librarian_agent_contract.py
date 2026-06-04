@@ -494,7 +494,17 @@ def validate_agent_payload(
                 method=method,
             )
         )
-        if tool_name in {tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_OPEN_SUMMARY, tools.TOOL_DOCUMENT_TOC}:
+        if tool_name in {
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_SEARCH_WORK,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_SEARCH_SECTION,
+            tools.TOOL_RESOLVE_SECTION,
+            tools.TOOL_SECTION_BOUNDS,
+            tools.TOOL_CATALOG_SEARCH,
+            tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+            tools.TOOL_DOCUMENT_TOC,
+        }:
             carry_document_available = True
         if tool_name in {tools.TOOL_CATALOG_SEARCH, tools.TOOL_LOCATE, tools.TOOL_PASSAGE_CONTEXT}:
             carry_position_available = True

@@ -1406,6 +1406,165 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn("RAW GLOBAL HIT", result.rendered_answer.content)
         self.assertNotIn("RAW CONTEXT", result.rendered_answer.content)
 
+    def test_extraction_page_request_after_document_search_reads_page(self) -> None:
+        page_text = "RAW MECHANICAL PAGE MUST ONLY APPEAR IN RENDERED CONTENT"
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "items": [
+                    {
+                        "id": "doc-1234",
+                        "title": RAW_TITLE,
+                    }
+                ],
+            },
+            page_payload={"document_id": "doc-1234", "raw_text": page_text},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+            user_msg="Dans ce document, sors exactement la page 12.",
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        encoded = json.dumps(result.answer_object.to_observability(), ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(fake.calls, [("metadata_search", RAW_QUERY, 5), ("page", "doc-1234", 12)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(result.answer_object.extraction["status"], "resolved")
+        self.assertEqual(result.answer_object.extraction["source_tool_name"], tools.TOOL_PAGE_READ)
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertIn(page_text, result.rendered_answer.content)
+        self.assertNotIn(page_text, encoded)
+
+    def test_extraction_page_range_after_document_search_reads_pages(self) -> None:
+        page_12 = "RAW MECHANICAL PAGE 12 MUST ONLY APPEAR IN RENDERED CONTENT"
+        page_13 = "RAW MECHANICAL PAGE 13 MUST ONLY APPEAR IN RENDERED CONTENT"
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "items": [
+                    {
+                        "id": "doc-1234",
+                        "title": RAW_TITLE,
+                    }
+                ],
+            },
+            page_payloads={
+                12: {"document_id": "doc-1234", "raw_text": page_12},
+                13: {"document_id": "doc-1234", "raw_text": page_13},
+            },
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+            user_msg="Dans ce document, sors exactement les pages 12 et 13.",
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+
+        self.assertEqual(
+            fake.calls,
+            [("metadata_search", RAW_QUERY, 5), ("page", "doc-1234", 12), ("page", "doc-1234", 13)],
+        )
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.extraction["content_kind"], "page_range")
+        self.assertEqual(result.answer_object.extraction["block_count"], 2)
+        self.assertEqual(len(result.answer_object.anchors), 2)
+        self.assertEqual([anchor["page_no"] for anchor in result.answer_object.anchors], [12, 13])
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn(page_12, result.rendered_answer.content)
+        self.assertIn(page_13, result.rendered_answer.content)
+
+    def test_legacy_scoped_search_answer_mode_does_not_complete_context(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "text": "RAW SEARCH SNIPPET MUST NOT RENDER AS EXACT",
+                        "paragraph_id": 99,
+                    }
+                ],
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="search_passage",
+                    product_method=product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+                    case_id="P05",
+                    answer_mode="scoped_search",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "document_id": "doc-1234", "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="search_catalog"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+
+        self.assertEqual(fake.calls, [("search", RAW_QUERY, 5)])
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertFalse(result.rendered_answer.exact_text_rendered)
+        self.assertNotIn("RAW CONTEXT", result.rendered_answer.content)
+
     def test_toc_request_recovers_from_unanchored_toc_step_after_search(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={

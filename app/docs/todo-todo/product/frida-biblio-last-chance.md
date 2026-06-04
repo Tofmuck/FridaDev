@@ -1839,6 +1839,46 @@ Prochain micro-lot recommande apres Proof Gate:
   - legacy `passage_search_in_work` ne doit plus absorber les demandes
     canoniques de recherche scoped ou d'extraction page/pages.
 
+Correction transition agentique live 4E:
+
+- le contrat agentique rappelle que les P-cases sont une matrice historique /
+  regression, pas le canon principal des questions live;
+- pour les familles canoniques `scoped_search` et `extraction`, le
+  bibliothecaire doit privilegier `case_id=""` et les methodes canoniques;
+- `passage_search_in_work` / P05-P08 et
+  `passage_search_external_work` / P16-P18 restent legacy et ne doivent plus
+  absorber une recherche scoped canonique;
+- une extraction page/page-range peut enchainer resolution documentaire puis
+  `page_read` avec `document_id` porte par le runtime quand la page ou plage
+  courte est explicite;
+- le separateur naturel `pages N et M` est accepte comme borne numerique courte,
+  au meme titre que `pages N a M`;
+- si un vieux plan declare `answer_mode=scoped_search`, le runtime ne complete
+  pas vers `passage_context`: il rend une surface structuree de recherche, pas
+  un extrait exact;
+- cette correction reste un mur technique: elle ne choisit pas le bon passage,
+  ne ranke pas semantiquement, ne corrige pas Kant/Foucault/Stephanus et
+  n'ajoute pas de regex de cas produit. Le Proof Gate live doit etre rejoue
+  pour verifier le comportement agentique reel.
+
+Replay live apres correction:
+
+- artefact content-free conserve:
+  `app/docs/states/baselines/biblio-smokes/lot4e-proof-gate-live-after-agentic-transition-20260604T145952Z.jsonl`;
+- score initial: `0 met`, `3 failed`, `1 partial`;
+- score apres correction: `1 met`, `0 failed`, `3 partial`;
+- amelioration observee: les cas page/petite plage basculent vers
+  `product_method=extraction` avec `page_read`; les cas recherche bornee
+  basculent vers `product_method=scoped_search`; aucun cas scoped ne rend
+  d'extrait exact via `passage_context`;
+- limite restante: les cas page restent partiels quand la resolution
+  documentaire live ne porte pas encore un document unique exploitable jusqu'au
+  rendu final. C'est une limite de transition agentique/resolution
+  documentaire, pas un bug du renderer d'extraction;
+- Lot 4E live n'est pas encore ferme: le replay valide l'amelioration de
+  trajectoire, mais les pages precises doivent encore produire regulierement
+  `BiblioAnswerObject` + `BiblioFinalResponseLock` exact depuis `page_read`.
+
 ### Lot 5 - Nettoyage dur
 
 - [ ] Supprimer ou declasser les chemins legacy non appeles.

@@ -28,7 +28,7 @@ _NEARBY_TOPIC_RE = re.compile(
 )
 _NEARBY_ANAPHORIC_RE = re.compile(r"\bautre\s+(passage|extrait)\b.*\b(proche|voisin|voisine)\b")
 _PAGE_REQUEST_RE = re.compile(
-    r"\bpages?\s+(\d{1,5})(?:\s*(?:a|à|-|au)\s*(?:pages?\s+)?(\d{1,5}))?\b"
+    r"\bpages?\s+(\d{1,5})(?:\s*(?:a|à|-|au|et)\s*(?:pages?\s+)?(\d{1,5}))?\b"
 )
 _REFERENCE_RE = re.compile(
     r"\b(?:dans|chez|de|du|des)\s+(?:(?:le|la|l['’]?|les|un|une)\s*)?([a-z0-9]{3,})\b"
