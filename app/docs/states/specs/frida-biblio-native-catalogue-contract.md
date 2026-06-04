@@ -505,11 +505,13 @@ Extraction depuis candidat de recherche ancre Last Chance Lot 4E.3 livree:
 - `catalog_search` est accepte comme outil precurseur uniquement pour localiser
   un candidat ancre dans un scope documentaire explicite ou porte;
 - le runtime peut appeler `passage_context` seulement si le resultat de
-  recherche est document-scoped, contient exactement un candidat restant, et que
-  ce candidat porte `paragraph_id` ou `page_no` + `para_no`;
-- plusieurs candidats, zero candidat, candidat sans ancre, candidat sans
-  `document_id`, recherche globale non scopee ou document incoherent bloquent
-  l'extraction exacte. Aucun premier hit n'est choisi silencieusement;
+  recherche est document-scoped, contient exactement un seul hit scoped total
+  apres filtrage, et que ce hit unique porte `paragraph_id` ou `page_no` +
+  `para_no`;
+- plusieurs candidats scoped, zero candidat, candidat unique sans ancre,
+  candidat sans `document_id`, recherche globale non scopee ou document
+  incoherent bloquent l'extraction exacte. Aucun premier hit n'est choisi
+  silencieusement, meme si un seul des candidats scoped est ancre;
 - le texte exact rendu vient uniquement du `context_text` retourne par
   `passage_context`. Le snippet de `catalog_search` ne devient jamais
   `exact_excerpt`;

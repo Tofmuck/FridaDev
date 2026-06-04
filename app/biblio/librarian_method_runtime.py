@@ -349,7 +349,7 @@ def _first_context_params(loop_result: librarian_planner.BiblioLibrarianLoopResu
 def _unique_scoped_search_hit_context_params(
     loop_result: librarian_planner.BiblioLibrarianLoopResult,
 ) -> dict[str, Any]:
-    candidates: list[dict[str, Any]] = []
+    scoped_hits: list[Mapping[str, Any]] = []
     for step in loop_result.steps:
         result = step.tool_result
         if result is None or result.tool_name != librarian_tools.TOOL_CATALOG_SEARCH:
@@ -363,18 +363,23 @@ def _unique_scoped_search_hit_context_params(
             doc_id = _text(item.get("document_id"))
             if doc_id != scoped_doc_id:
                 continue
-            paragraph_id = _int(item.get("paragraph_id"))
-            page_no = _int(item.get("page_no"))
-            para_no = _int(item.get("para_no"))
-            if paragraph_id or (page_no and para_no):
-                params: dict[str, Any] = {"document_id": doc_id, "window_chars": 700}
-                if paragraph_id:
-                    params["paragraph_id"] = paragraph_id
-                else:
-                    params["page_no"] = page_no
-                    params["para_no"] = para_no
-                candidates.append(params)
-    return candidates[0] if len(candidates) == 1 else {}
+            scoped_hits.append(item)
+    if len(scoped_hits) != 1:
+        return {}
+    hit = scoped_hits[0]
+    doc_id = _text(hit.get("document_id"))
+    paragraph_id = _int(hit.get("paragraph_id"))
+    page_no = _int(hit.get("page_no"))
+    para_no = _int(hit.get("para_no"))
+    if not doc_id or not (paragraph_id or (page_no and para_no)):
+        return {}
+    params: dict[str, Any] = {"document_id": doc_id, "window_chars": 700}
+    if paragraph_id:
+        params["paragraph_id"] = paragraph_id
+    else:
+        params["page_no"] = page_no
+        params["para_no"] = para_no
+    return params
 
 
 def _complete_section_start_page_block(

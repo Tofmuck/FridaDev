@@ -1270,6 +1270,52 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn("RAW HIT", result.rendered_answer.content)
         self.assertNotIn("RAW CONTEXT", result.rendered_answer.content)
 
+    def test_extraction_mixed_anchored_and_unanchored_scoped_hits_do_not_choose_context(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 2,
+                "results": [
+                    {"document_id": "doc-1234", "text": "RAW ANCHORED HIT MUST NOT RENDER", "paragraph_id": 99},
+                    {"document_id": "doc-1234", "text": "RAW UNANCHORED HIT MUST NOT RENDER"},
+                ],
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "document_id": "doc-1234", "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+
+        self.assertEqual(fake.calls, [("search", RAW_QUERY, 5)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_BLOCKED_EXACT)
+        self.assertFalse(result.rendered_answer.exact_text_rendered)
+        self.assertNotIn("RAW ANCHORED HIT", result.rendered_answer.content)
+        self.assertNotIn("RAW UNANCHORED HIT", result.rendered_answer.content)
+        self.assertNotIn("RAW CONTEXT", result.rendered_answer.content)
+
     def test_extraction_unanchored_search_hit_does_not_read_context(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={

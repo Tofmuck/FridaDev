@@ -1749,16 +1749,18 @@ Livraison Lot 4E.3, 2026-06-04:
 - il livre un premier pont depuis un candidat de recherche ancre vers une
   extraction mecanique `passage_context`;
 - condition de declenchement: `product_method=extraction`, `case_id=""`, un
-  `catalog_search` document-scoped par `document_id` explicite ou porte, un seul
-  candidat restant apres filtrage, et une ancre technique exploitable
-  (`paragraph_id` ou `page_no` + `para_no`);
+  `catalog_search` document-scoped par `document_id` explicite ou porte,
+  exactement un seul hit scoped total apres filtrage, et ce hit unique doit
+  porter une ancre technique exploitable (`paragraph_id` ou `page_no` +
+  `para_no`);
 - `catalog_search` est autorise comme precurseur de localisation dans
   `extraction`, mais ses snippets ne sont jamais du texte exact;
 - le runtime appelle `passage_context` uniquement apres ce candidat unique
   ancre; le rendu exact vient ensuite de `context_text`, pas du snippet;
-- zero candidat, plusieurs candidats, candidat sans ancre, candidat sans
-  `document_id`, recherche non scopee ou document incoherent restent
-  bloques/clarification. Le code ne choisit pas le premier hit;
+- zero candidat, plusieurs candidats scoped, candidat unique sans ancre,
+  candidat sans `document_id`, recherche non scopee ou document incoherent
+  restent bloques/clarification. Le code ne choisit pas le premier hit, meme si
+  un seul des candidats scoped est ancre;
 - `scoped_search` ne change pas de nature: il reste une methode de recherche
   structuree et ne declenche pas `passage_context`;
 - aucun jugement semantique n'est code: le bibliothecaire choisit la requete,
@@ -1771,15 +1773,16 @@ Findings Lot 4E.3:
 
 - F1 valide: le runtime pouvait prendre le premier candidat ancre via
   `_first_context_params()`; le chemin canonique `extraction` exige maintenant
-  un unique hit scoped et ancre.
+  un unique hit scoped total, puis verifie que ce hit unique est ancre.
 - F2 valide: `scoped_search` reste recherche structuree, sans `exact_excerpt`.
 - F3 valide: le pont est limite a `product_method=extraction` et ne s'active
-  que sur un candidat unique ancre dans un scope documentaire.
+  que sur un unique hit scoped total, ancre, dans un scope documentaire.
 - F4 valide: le renderer savait deja rendre `passage_context`; le manque etait
   le pont runtime strict depuis la recherche ancree.
 - F5 valide: le chemin `catalog_search` unique scoped -> `passage_context` ->
   `exact_excerpt` -> final lock est maintenant prouve par tests.
-- F6 valide: plusieurs hits ancres bloquent; aucun premier hit n'est choisi.
+- F6 valide: plusieurs hits scoped bloquent, meme si un seul est ancre; aucun
+  premier hit n'est choisi.
 
 Limites restantes Lot 4E apres 4E.3:
 
