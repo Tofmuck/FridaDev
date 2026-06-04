@@ -1558,6 +1558,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             "Les methodes legacy passage_search_in_work et passage_search_external_work",
             "ne les choisis pas pour une question canonique",
             "search_document puis page_read(page_no)",
+            "recopie ce titre",
             "Ne transforme pas les signatures P05-P08/P16-P18 en canon",
         ]:
             self.assertIn(marker, system)

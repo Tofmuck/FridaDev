@@ -425,6 +425,12 @@ def _with_carried_anchor(
 ) -> BiblioLibrarianToolCall:
     params = dict(call.params)
     changed = False
+    if call.tool_name == tools.TOOL_PAGE_READ and document_id:
+        provided_doc_id = str(params.get("document_id") or params.get("doc_id") or "").strip()
+        if provided_doc_id and provided_doc_id != document_id:
+            params["document_id"] = document_id
+            params.pop("doc_id", None)
+            changed = True
     if call.tool_name in {
         tools.TOOL_DOCUMENT_TOC,
         tools.TOOL_SEARCH_CHAPTERS,

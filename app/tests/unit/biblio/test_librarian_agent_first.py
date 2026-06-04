@@ -1458,6 +1458,59 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertIn(page_text, result.rendered_answer.content)
         self.assertNotIn(page_text, encoded)
 
+    def test_extraction_page_read_uses_carried_document_over_incoherent_param(self) -> None:
+        page_text = "RAW MECHANICAL CARRIED PAGE MUST ONLY APPEAR IN RENDERED CONTENT"
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "items": [
+                    {
+                        "id": "doc-1234",
+                        "title": RAW_TITLE,
+                    }
+                ],
+            },
+            page_payload={"document_id": "doc-1234", "raw_text": page_text},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        ),
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_PAGE_READ,
+                            method="GET",
+                            params={"document_id": "1", "page_no": 12},
+                        ),
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+            user_msg="Dans ce document, sors exactement la page 12.",
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+
+        self.assertEqual(fake.calls, [("metadata_search", RAW_QUERY, 5), ("page", "doc-1234", 12)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.extraction["status"], "resolved")
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertIn(page_text, result.rendered_answer.content)
+
     def test_extraction_page_range_after_document_search_reads_pages(self) -> None:
         page_12 = "RAW MECHANICAL PAGE 12 MUST ONLY APPEAR IN RENDERED CONTENT"
         page_13 = "RAW MECHANICAL PAGE 13 MUST ONLY APPEAR IN RENDERED CONTENT"

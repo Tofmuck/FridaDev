@@ -456,6 +456,13 @@ Extraction mecanique bornee Last Chance Lot 4E.1 livree:
 - intervalle court: 2 ou 3 appels `page_read` peuvent etre assembles
   mecaniquement, en ordre documentaire, si les pages sont consecutives et dans
   le meme document;
+- une resolution documentaire unique (`search_document`, `resolve_work` ou
+  equivalent autorise) peut porter le `document_id` vers `page_read` quand le
+  bibliothecaire demande une page ou une courte plage explicite. Si un
+  `page_read` subsequent contient un `document_id` contradictoire alors qu'une
+  ancre documentaire unique est deja portee, le planner utilise l'ancre portee
+  pour maintenir la coherence technique; il ne choisit pas un document
+  semantiquement, il applique le scope deja resolu;
 - budget actuel: 1 a 3 pages, 8 000 caracteres exacts assembles. Les warnings
   ou refus sont content-free;
 - reason codes bloquants:

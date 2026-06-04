@@ -1896,6 +1896,29 @@ Proof Gate page-render isole:
   renderer page-range minimal est prouve quand les pages ont effectivement ete
   lues.
 
+Proof Gate ancrage documentaire naturel avant `page_read`:
+
+- artefact content-free conserve:
+  `app/docs/states/baselines/biblio-smokes/lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`;
+- score: `3 met`, `0 failed`, `1 partial`;
+- `PG4E_PAGE_ONE`: `met`. Une demande naturelle de page d'un ouvrage resolu
+  passe par `search_document` puis `page_read`; l'extraction devient
+  `resolved/page`, le renderer rend `exact_excerpt`, le final lock autorise et
+  le message assistant correspond au lock;
+- `PG4E_PAGE_TWO`: `met` apres audit du harness. Le bibliothecaire passe par
+  `resolve_work` puis deux `page_read`; `resolve_work` porte un `document_id`
+  unique exploitable, l'extraction devient `resolved/page_range`, deux ancres
+  globales couvrent les pages et le final lock autorise. Le verdict initial du
+  harness exigeait a tort `search_document`; l'artefact porte le flag
+  `verdict_reclassified_after_harness_audit=true`;
+- correction runtime: si un `page_read` suit une resolution documentaire unique
+  et porte un `document_id` contradictoire ou hallucine, le planner utilise
+  l'ancre documentaire unique deja portee. Ce mur ne choisit pas le document:
+  il preserve la coherence technique du document resolu par le bibliothecaire;
+- limite restante hors scope: le cas recherche scoped multi-hit reste partiel
+  dans ce replay et devra etre traite dans le lot scoped_search/clarification,
+  pas dans le lot page-render.
+
 ### Lot 5 - Nettoyage dur
 
 - [ ] Supprimer ou declasser les chemins legacy non appeles.
