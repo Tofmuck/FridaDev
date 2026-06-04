@@ -149,25 +149,28 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
   - Preuve live: aucune.
   - Prochain test live requis: section resolue -> recherche bornee section,
     candidats structures, pas extraction automatique.
-- [ ] BIB-15 - Presenter plusieurs passages candidats sans les transformer en
+- [x] BIB-15 - Presenter plusieurs passages candidats sans les transformer en
   extrait exact.
-  - Statut: `partiel_live`
-  - Preuve live: `PG4E_SCOPED_MULTI` reste partiel dans
-    `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`.
-  - Prochain test live requis: plusieurs hits -> candidats structures, aucun
-    `passage_context`, aucun texte exact.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib15-bib17-live-20260604T190851Z.jsonl`,
+    `BIB15_SCOPED_MULTI_CANDIDATES=met`.
+  - Prochain test live requis: surveillance regression; plusieurs hits ->
+    candidats structures, aucun `passage_context`, aucun texte exact.
 - [ ] BIB-16 - Choisir explicitement un candidat parmi plusieurs quand le
   bibliothecaire a assez d'elements, sans choix deterministe semantique.
   - Statut: `ouvert`
   - Preuve live: aucune.
   - Prochain test live requis: bibliothecaire justifie/outille son choix; le
     code ne choisit pas le "meilleur" hit.
-- [ ] BIB-17 - Demander une clarification quand plusieurs passages restent
+- [x] BIB-17 - Demander une clarification quand plusieurs passages restent
   possibles.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: multi-candidat ambigu -> question de
-    clarification ou candidats, pas exact.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib15-bib17-live-20260604T190851Z.jsonl`,
+    `BIB17_UNSCOPED_CLARIFICATION=met`.
+  - Prochain test live requis: surveillance regression; plusieurs passages ou
+    scopes restent possibles -> clarification/ambiguite visible, pas exact.
 - [ ] BIB-18 - Porter l'ancre d'un candidat choisi ou clarifie vers la suite du
   dialogue.
   - Statut: `ouvert`
@@ -262,6 +265,25 @@ restent utiles pour comprendre les briques, mais la checklist BIB-01 -> BIB-33
 prevaut pour piloter le produit. Si une ancienne section semble fermer une
 capacite sans preuve live agentique JSONL suffisante, il faut lire cette
 fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
+
+## Journal de preuve live BIB
+
+- BIB-15 - 2026-06-04 -
+  `app/docs/states/baselines/biblio-smokes/bib15-bib17-live-20260604T190851Z.jsonl`
+  - Statut: `ferme_live`
+  - Proof case: `BIB15_SCOPED_MULTI_CANDIDATES`
+  - Outils appeles: `catalog_search`
+  - Reason codes: `biblio_librarian_tool_executed`, `ok`
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-17 - 2026-06-04 -
+  `app/docs/states/baselines/biblio-smokes/bib15-bib17-live-20260604T190851Z.jsonl`
+  - Statut: `ferme_live`
+  - Proof case: `BIB17_UNSCOPED_CLARIFICATION`
+  - Outils traces: `catalog_search`; recherche effective bloquee avant
+    execution faute de scope unique; `passage_context` absent.
+  - Reason codes: `biblio_librarian_needs_clarification`,
+    `scoped_search_scope_missing`
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
 
