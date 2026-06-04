@@ -302,6 +302,12 @@ class BiblioChatRuntimeTests(unittest.TestCase):
             ["search", "context"],
         )
         self.assertEqual(result.observability_payload["lane"]["passage_count"], 1)
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        self.assertIsNotNone(result.final_response_lock)
+        self.assertTrue(result.final_response_lock.ok if result.final_response_lock else False)
+        self.assertIn("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE", result.final_response_lock.content if result.final_response_lock else "")
+        self.assertEqual(result.observability_payload["final_response_lock"]["status"], "authorized")
         self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", encoded)
         self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
         self.assertNotIn("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE", encoded)

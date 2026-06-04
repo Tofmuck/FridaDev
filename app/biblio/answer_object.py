@@ -30,10 +30,32 @@ RENDER_STRUCTURED_STATUS = "structured_status"
 RENDER_EXACT_EXCERPT = "exact_excerpt"
 RENDER_BLOCKED_EXACT = "blocked_exact"
 
+FINAL_RESPONSE_SOURCE = "biblio_rendered_answer"
+REASON_FINAL_RESPONSE_AUTHORIZED = "biblio_final_response_authorized"
+REASON_FINAL_RESPONSE_MISSING_ANSWER = "biblio_final_response_answer_missing"
+REASON_FINAL_RESPONSE_MISSING_RENDERED = "biblio_final_response_rendered_missing"
+REASON_FINAL_RESPONSE_EMPTY_CONTENT = "biblio_final_response_empty_content"
+REASON_FINAL_RESPONSE_INVALID_STATUS = "biblio_final_response_invalid_status"
+REASON_FINAL_RESPONSE_STATUS_MISMATCH = "biblio_final_response_status_mismatch"
+REASON_FINAL_RESPONSE_RENDER_MODE_MISMATCH = "biblio_final_response_render_mode_mismatch"
+REASON_FINAL_RESPONSE_EXACT_CONTRACT_FAILED = "biblio_final_response_exact_contract_failed"
+REASON_FINAL_RESPONSE_ANCHOR_MISSING = "biblio_final_response_anchor_missing"
+REASON_FINAL_RESPONSE_BLOCKED_CONTRACT_FAILED = "biblio_final_response_blocked_contract_failed"
+
 ANSWER_HEADER = "[RESULTAT BIBLIO STRUCTURE]"
 ANSWER_FOOTER = "[/RESULTAT BIBLIO STRUCTURE]"
 
 DEFAULT_MAX_RENDERED_EXACT_CHARS = 8_000
+
+_KNOWN_STATUSES = frozenset(
+    {
+        STATUS_READY,
+        STATUS_AMBIGUOUS,
+        STATUS_NOT_FOUND,
+        STATUS_NEEDS_CLARIFICATION,
+        STATUS_ERROR,
+    }
+)
 
 _STRUCTURAL_CLARIFICATION_REASONS = frozenset(
     {
@@ -129,6 +151,50 @@ class BiblioRenderedAnswer:
         )
 
 
+@dataclass(frozen=True, repr=False)
+class BiblioFinalResponseLock:
+    ok: bool
+    reason_code: str
+    content: str = field(default="", repr=False, compare=False)
+    source: str = FINAL_RESPONSE_SOURCE
+    status: str = ""
+    render_mode: str = ""
+    exact_text_rendered: bool = False
+    exact_text_chars: int = 0
+    exact_text_hash: str = ""
+
+    def to_message_meta(self) -> dict[str, Any]:
+        return _clean(
+            {
+                "source": self.source,
+                "reason_code": self.reason_code,
+                "biblio_answer_status": self.status,
+                "biblio_render_mode": self.render_mode,
+                "biblio_exact_text_rendered": self.exact_text_rendered,
+                "biblio_exact_text_chars": self.exact_text_chars,
+                "biblio_exact_text_hash": self.exact_text_hash,
+            }
+        )
+
+    def to_observability(self) -> dict[str, Any]:
+        return _clean(
+            {
+                "status": "authorized" if self.ok else "blocked",
+                "reason_code": self.reason_code,
+                "source": self.source,
+                "answer_status": self.status,
+                "render_mode": self.render_mode,
+                "content_present": bool(self.content),
+                "content_chars": len(self.content),
+                "content_sha256_12": _hash(self.content),
+                "exact_text_rendered": self.exact_text_rendered,
+                "exact_text_chars": self.exact_text_chars,
+                "exact_text_hash": self.exact_text_hash,
+                "semantic_judgment": False,
+            }
+        )
+
+
 def build_biblio_answer_object(
     *,
     tool_results: Sequence[librarian_tools.BiblioLibrarianToolResult | None],
@@ -168,6 +234,36 @@ def build_biblio_answer_object(
         source_tool_names=source_tool_names,
         render_mode=render_mode,
         exact_text=exact_text,
+    )
+
+
+def build_final_response_lock(
+    answer: BiblioAnswerObject | None,
+    rendered: BiblioRenderedAnswer | None,
+) -> BiblioFinalResponseLock:
+    if answer is None:
+        return BiblioFinalResponseLock(
+            ok=False,
+            reason_code=REASON_FINAL_RESPONSE_MISSING_ANSWER,
+        )
+    if rendered is None:
+        return BiblioFinalResponseLock(
+            ok=False,
+            reason_code=REASON_FINAL_RESPONSE_MISSING_RENDERED,
+            status=answer.status,
+            render_mode=answer.render_mode,
+        )
+    reason_code = _final_response_contract_reason(answer, rendered)
+    ok = reason_code == REASON_FINAL_RESPONSE_AUTHORIZED
+    return BiblioFinalResponseLock(
+        ok=ok,
+        reason_code=reason_code,
+        content=rendered.content if ok else "",
+        status=answer.status,
+        render_mode=rendered.render_mode,
+        exact_text_rendered=rendered.exact_text_rendered,
+        exact_text_chars=rendered.exact_text_chars,
+        exact_text_hash=rendered.exact_text_hash,
     )
 
 
@@ -227,6 +323,34 @@ def render_biblio_answer_object(
         exact_text_chars=len(exact_text) if exact_rendered else 0,
         exact_text_hash=_hash(exact_text) if exact_rendered else "",
     )
+
+
+def _final_response_contract_reason(
+    answer: BiblioAnswerObject,
+    rendered: BiblioRenderedAnswer,
+) -> str:
+    if not rendered.content:
+        return REASON_FINAL_RESPONSE_EMPTY_CONTENT
+    if answer.status not in _KNOWN_STATUSES:
+        return REASON_FINAL_RESPONSE_INVALID_STATUS
+    if rendered.status != answer.status:
+        return REASON_FINAL_RESPONSE_STATUS_MISMATCH
+    if rendered.render_mode != answer.render_mode:
+        return REASON_FINAL_RESPONSE_RENDER_MODE_MISMATCH
+    if rendered.exact_text_rendered:
+        if (
+            answer.status != STATUS_READY
+            or answer.render_mode != RENDER_EXACT_EXCERPT
+            or not answer.exact_text
+            or rendered.exact_text_hash != answer.exact_text_hash
+            or rendered.exact_text_chars != answer.exact_text_chars
+        ):
+            return REASON_FINAL_RESPONSE_EXACT_CONTRACT_FAILED
+        if not answer.anchors:
+            return REASON_FINAL_RESPONSE_ANCHOR_MISSING
+    elif answer.status != STATUS_READY and rendered.render_mode != RENDER_BLOCKED_EXACT:
+        return REASON_FINAL_RESPONSE_BLOCKED_CONTRACT_FAILED
+    return REASON_FINAL_RESPONSE_AUTHORIZED
 
 
 def _answer_status(
@@ -309,6 +433,16 @@ def _anchors(
     for result in reversed(results):
         if result.anchors:
             return tuple(dict(anchor) for anchor in result.anchors)
+    for result in reversed(results):
+        if result.positions:
+            anchors: list[dict[str, Any]] = []
+            for position in result.positions:
+                anchor = dict(position)
+                document_id = _text(getattr(result, "document_id", ""))
+                if document_id:
+                    anchor.setdefault("document_id", document_id)
+                anchors.append(anchor)
+            return tuple(anchors)
     anchors = []
     for key in ("start", "end"):
         anchor = interval.get(key)

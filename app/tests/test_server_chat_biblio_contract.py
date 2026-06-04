@@ -9,6 +9,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from biblio import answer_object
 from biblio import chat_runtime
 from biblio import observability as biblio_observability
 from biblio import passage_extractor as extractor
@@ -154,6 +155,101 @@ class ServerChatBiblioContractTests(unittest.TestCase):
         prompt_text = "\n".join(message["content"] for message in observed_state["payload_messages"])
         self.assertNotIn(prompt_lane.LANE_HEADER, prompt_text)
         self.assertNotIn(BIBLIO_SECRET_PASSAGE, prompt_text)
+
+    def test_biblio_final_response_lock_controls_assistant_message(self) -> None:
+        observed = {"events": []}
+        final_text = (
+            "[RESULTAT BIBLIO STRUCTURE]\n"
+            "Status: ready\n"
+            "Texte exact rendu mecaniquement:\n"
+            f"{BIBLIO_SECRET_PASSAGE}\n"
+            "[/RESULTAT BIBLIO STRUCTURE]"
+        )
+        answer = answer_object.BiblioAnswerObject(
+            status=answer_object.STATUS_READY,
+            reason_codes=("biblio_context_ready",),
+            render_mode=answer_object.RENDER_EXACT_EXCERPT,
+            anchors=({"document_id": "doc-1", "page_no": 12, "para_no": 3},),
+            exact_text=BIBLIO_SECRET_PASSAGE,
+        )
+        rendered = answer_object.BiblioRenderedAnswer(
+            status=answer_object.STATUS_READY,
+            reason_code="biblio_context_ready",
+            render_mode=answer_object.RENDER_EXACT_EXCERPT,
+            content=final_text,
+            exact_text_rendered=True,
+            exact_text_chars=len(BIBLIO_SECRET_PASSAGE),
+            exact_text_hash=answer.exact_text_hash,
+        )
+        lock = answer_object.build_final_response_lock(answer, rendered)
+        conversation = {
+            "id": "conv-biblio-final-lock",
+            "created_at": "2026-06-04T00:00:00Z",
+            "messages": [{"role": "system", "content": "BACKEND SYSTEM PROMPT"}],
+        }
+        observed_state, restore = self._patch_chat_pipeline(conversation=conversation)
+        original_biblio_turn = self.server.chat_service.biblio_chat_runtime.run_biblio_chat_turn
+        original_emit = self.server.chat_service.chat_turn_logger.emit
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+
+        def fake_biblio_turn(data, *, user_msg, config_module, **kwargs):
+            payload = biblio_observability.build_biblio_event_payload(
+                enabled=True,
+                used=True,
+                query_kind=chat_runtime.QUERY_KIND_AGENT_FIRST,
+                status="agent_first_executed",
+                reason_code="biblio_agent_first_plan_executed",
+            )
+            payload["answer_object"] = answer.to_observability()
+            payload["rendered_answer"] = rendered.to_observability()
+            payload["final_response_lock"] = lock.to_observability()
+            return chat_runtime.BiblioChatResult(
+                enabled=True,
+                used=True,
+                reason_code="biblio_agent_first_plan_executed",
+                query_kind=chat_runtime.QUERY_KIND_AGENT_FIRST,
+                observability_payload=payload,
+                answer_object=answer,
+                rendered_answer=rendered,
+                final_response_lock=lock,
+            )
+
+        def fake_insertion(**kwargs):
+            return None
+
+        self.server.chat_service.biblio_chat_runtime.run_biblio_chat_turn = fake_biblio_turn
+        self.server.chat_service.chat_turn_logger.emit = (
+            lambda event, **kwargs: observed["events"].append((event, kwargs))
+        )
+        self.server.chat_service._run_hermeneutic_node_insertion_point = fake_insertion
+        try:
+            response = self.client.post(
+                "/api/chat",
+                json={
+                    "message": "Rends le passage exact.",
+                    "biblio_enabled": True,
+                    "web_search": False,
+                },
+            )
+        finally:
+            self.server.chat_service.biblio_chat_runtime.run_biblio_chat_turn = original_biblio_turn
+            self.server.chat_service.chat_turn_logger.emit = original_emit
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["text"], final_text)
+        self.assertEqual(conversation["messages"][-1]["role"], "assistant")
+        self.assertEqual(conversation["messages"][-1]["content"], final_text)
+        self.assertEqual(
+            conversation["messages"][-1]["meta"]["source"],
+            answer_object.FINAL_RESPONSE_SOURCE,
+        )
+        self.assertNotEqual(payload["text"], "ok biblio")
+        event_dump = str(observed["events"])
+        self.assertIn("biblio", event_dump)
+        self.assertNotIn(BIBLIO_SECRET_PASSAGE, event_dump)
 
 
 def _passage(passage: str) -> extractor.BiblioPassageResult:

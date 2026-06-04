@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Any, Mapping, Sequence
 
+from . import answer_object as biblio_answer_object
 from .catalogue_client import CatalogueClient
 from .conversation_followup import update_state_for_clarification
 from .conversation_state import (
@@ -81,6 +82,13 @@ class BiblioChatResult:
     biblio_state: BiblioConversationState | None = field(default=None, repr=False, compare=False)
     state_transition: BiblioStateTransition | None = field(default=None, repr=False, compare=False)
     librarian_agent_result: Any = field(default=None, repr=False, compare=False)
+    answer_object: biblio_answer_object.BiblioAnswerObject | None = field(default=None, repr=False, compare=False)
+    rendered_answer: biblio_answer_object.BiblioRenderedAnswer | None = field(default=None, repr=False, compare=False)
+    final_response_lock: biblio_answer_object.BiblioFinalResponseLock | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
 
     @property
     def prompt_message(self) -> dict[str, Any] | None:
@@ -190,6 +198,10 @@ def run_biblio_chat_turn(
                 state_after=state_after,
                 state_transition=state_transition,
             )
+            final_response_lock = biblio_answer_object.build_final_response_lock(
+                agent_first_result.answer_object,
+                agent_first_result.rendered_answer,
+            )
             payload = observability_builder(
                 enabled=True,
                 used=True,
@@ -207,6 +219,12 @@ def run_biblio_chat_turn(
                 status=agent_first_result.status,
                 reason_code=agent_first_result.reason_code,
             )
+            payload = _with_answer_object_observability(
+                payload,
+                answer_object=agent_first_result.answer_object,
+                rendered_answer=agent_first_result.rendered_answer,
+                final_response_lock=final_response_lock,
+            )
             return BiblioChatResult(
                 enabled=True,
                 used=True,
@@ -216,6 +234,9 @@ def run_biblio_chat_turn(
                 biblio_state=state_after if state_after.present else None,
                 state_transition=state_transition,
                 librarian_agent_result=librarian_agent_result,
+                answer_object=agent_first_result.answer_object,
+                rendered_answer=agent_first_result.rendered_answer,
+                final_response_lock=final_response_lock,
                 observability_payload=payload,
             )
     if not decision.should_attempt or decision.query_plan is None:
@@ -416,6 +437,15 @@ def attach_biblio_conversation_state(
     return attach_state_to_latest_user_message(conversation, result.biblio_state)
 
 
+def final_response_lock_for_result(result: BiblioChatResult) -> biblio_answer_object.BiblioFinalResponseLock | None:
+    lock = result.final_response_lock
+    if lock is not None:
+        return lock
+    if result.answer_object is None and result.rendered_answer is None:
+        return None
+    return biblio_answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+
+
 def _resolve_request_from_plan(plan: BiblioQueryPlan) -> BiblioResolveRequest | None:
     if not (plan.document_id or plan.document_title or plan.work_title or plan.author or plan.locator):
         return None
@@ -494,6 +524,23 @@ def _agent_validation_plan(librarian_agent_result: Any) -> Mapping[str, Any]:
         if isinstance(plan, Mapping):
             return plan
     return {}
+
+
+def _with_answer_object_observability(
+    payload: Mapping[str, Any],
+    *,
+    answer_object: biblio_answer_object.BiblioAnswerObject | None,
+    rendered_answer: biblio_answer_object.BiblioRenderedAnswer | None,
+    final_response_lock: biblio_answer_object.BiblioFinalResponseLock | None,
+) -> dict[str, Any]:
+    observed = dict(payload)
+    if answer_object is not None:
+        observed["answer_object"] = answer_object.to_observability()
+    if rendered_answer is not None:
+        observed["rendered_answer"] = rendered_answer.to_observability()
+    if final_response_lock is not None:
+        observed["final_response_lock"] = final_response_lock.to_observability()
+    return observed
 
 
 def _default_truth_for_method(product_method: str) -> str:

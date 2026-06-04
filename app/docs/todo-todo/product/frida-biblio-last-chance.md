@@ -1222,12 +1222,11 @@ Ces limites restent des dettes structurelles, pas des cas a reparer par regex.
       limites, truth level et status.
 - [x] Brancher un renderer produit minimal pour statuts et textes deja
       mecaniquement presents.
-- [x] Empêcher le LLM final d'etre l'imprimante du texte exact sur ce premier
-      cran: le renderer bloque les faux exacts quand le statut structurel ne
+- [x] Bloquer les faux exacts dans le renderer quand le statut structurel ne
       permet pas de rendre.
 
-Critere de fermeture: une extraction exacte peut etre rendue sans generation
-libre du texte extrait.
+Critere de fermeture Lot 3 strict: l'objet de verite et le renderer minimal
+existent. Le verrou du message assistant final est porte par L3A1.
 
 Livraison premier cran Lot 3, 2026-06-04:
 
@@ -1257,8 +1256,50 @@ Important: Lot 3 commence pendant que Lot 2 bis reste ouvert. Le renderer ne
 remplace pas la richesse structurelle manquante: si aliases, oeuvres internes,
 roles ou bornes sont insuffisants, l'objet expose la limite et le renderer
 bloque la pseudo-restitution exacte. Ce premier cran ne ferme pas encore toute
-l'extraction mecanique ni la surface finale utilisateur; il installe le guichet
-de verite de sortie.
+l'extraction mecanique ni, a lui seul, la surface finale utilisateur; il
+installe le guichet de verite de sortie.
+
+### Lot 3.1 / L3A1 - Verrou du message assistant final
+
+INVARIANT L3A1: LE DETERMINISME NE JUGE JAMAIS LA PERTINENCE SEMANTIQUE D'UNE REPONSE BIBLIO. SEUL LE BIBLIOTHECAIRE LLM DECIDE DOCUMENTAIREMENT. LE DETERMINISME VERIFIE UNIQUEMENT LE CONTRAT TECHNIQUE DE RESTITUTION: ANCRE PRESENTE, TEXTE MECANIQUE PRESENT, STATUT COHERENT, ABSENCE DE FAUX EXTRAIT, BUDGETS, GET-ONLY ET OBSERVABILITE CONTENT-FREE.
+
+- [x] Requalifier Lot 3: objet de verite + renderer minimal, pas verrou final
+      complet a lui seul.
+- [x] Ajouter un verrou technique de restitution finale
+      `BiblioFinalResponseLock`.
+- [x] Autoriser le message assistant final seulement si le rendu Biblio respecte
+      son contrat technique: statut connu, statut/mode coherents, hash et
+      longueur du texte exact concordants quand un texte exact est rendu.
+- [x] Court-circuiter `run_llm_exchange()` quand un rendu Biblio final autorise
+      existe, afin que le message assistant final corresponde au rendu Biblio
+      et ne soit pas recopie ou reformule librement par le LLM final.
+- [x] Conserver la persistance conversationnelle, Memory, Identity et
+      `AssistantText` sur ce message final rendu.
+- [x] Exposer content-free la separation lane Biblio interne /
+      `BiblioAnswerObject` / `BiblioRenderedAnswer` / message assistant final.
+
+Livraison L3A1, 2026-06-04:
+
+- `app/biblio/answer_object.py` ajoute `BiblioFinalResponseLock`;
+- `app/biblio/chat_runtime.py` transporte `answer_object`, `rendered_answer` et
+  `final_response_lock` dans `BiblioChatResult`, et enrichit l'observabilite
+  content-free;
+- `app/core/chat_llm_flow.py` ajoute `AssistantResponseOverride`, surface
+  generique de message assistant final deja autorise par un composant produit;
+- `app/core/chat_service.py` convertit un `BiblioFinalResponseLock` autorise en
+  override assistant final;
+- l'override n'appelle pas OpenRouter, ne demande pas au LLM final de recopier
+  le texte exact, et persiste le message comme assistant final normal;
+- le verrou ne lit ni la demande utilisateur, ni les titres bruts, ni les
+  passages pour juger de leur pertinence. Il controle seulement la coherence
+  technique du rendu deja produit par Biblio.
+
+Limite L3A1: le verrou final ne rend pas la structure documentaire plus riche,
+ne resout pas les ambiguïtés et ne termine pas le Lot 4 d'extraction mecanique
+complete. Si le bibliothecaire fournit une mauvaise ancre mais techniquement
+coherente, le verrou ne corrige pas le sens: il expose seulement la sortie
+structuree autorisee. La validation de pertinence documentaire reste
+bibliothecaire puis dialogique/humaine.
 
 ### Lot 3 bis - Memoire conversationnelle des lectures
 

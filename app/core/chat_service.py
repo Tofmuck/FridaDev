@@ -450,6 +450,25 @@ def _emit_biblio_observability(result: Any) -> None:
     )
 
 
+def _biblio_assistant_response_override(result: Any) -> chat_llm_flow.AssistantResponseOverride | None:
+    lock_reader = getattr(biblio_chat_runtime, 'final_response_lock_for_result', None)
+    lock = lock_reader(result) if callable(lock_reader) else getattr(result, 'final_response_lock', None)
+    if lock is None or not bool(getattr(lock, 'ok', False)):
+        return None
+    content = str(getattr(lock, 'content', '') or '')
+    if not content:
+        return None
+    meta_builder = getattr(lock, 'to_message_meta', None)
+    observability_builder = getattr(lock, 'to_observability', None)
+    return chat_llm_flow.AssistantResponseOverride(
+        content=content,
+        source=str(getattr(lock, 'source', '') or ''),
+        reason_code=str(getattr(lock, 'reason_code', '') or ''),
+        meta=meta_builder() if callable(meta_builder) else None,
+        observability=observability_builder() if callable(observability_builder) else {},
+    )
+
+
 def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> tuple[dict[str, str], ...]:
     messages = conversation.get('messages')
     if not isinstance(messages, list):
@@ -900,6 +919,7 @@ def chat_response(
         prompt_messages,
         biblio_result,
     )
+    biblio_final_response_override = _biblio_assistant_response_override(biblio_result)
     adobe_lane = adobe_docs_prompt_lane.inject_adobe_prompt_lane(
         prompt_messages,
         adobe_context,
@@ -933,4 +953,5 @@ def chat_response(
         mode_enforces_identity=chat_memory_flow.mode_enforces_identity,
         conversation_headers_func=chat_session_flow.conversation_headers,
         conversation_stream_headers_func=chat_session_flow.conversation_stream_headers,
+        assistant_response_override=biblio_final_response_override,
     )

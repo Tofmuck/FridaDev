@@ -110,6 +110,7 @@ class BiblioAnswerObjectTests(unittest.TestCase):
             reason_code=tools.REASON_OK,
             endpoint_kind=catalogue.ENDPOINT_CONTEXT,
             document_id="doc-1",
+            positions=({"page_no": 12, "para_no": 3},),
             context_text=RAW_EXACT_TEXT,
         )
 
@@ -127,6 +128,57 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(observed_answer["exact_text_chars"], len(RAW_EXACT_TEXT))
         self.assertEqual(observed_render["exact_text_hash"], observed_answer["exact_text_hash"])
 
+    def test_final_response_lock_authorizes_only_technical_render_contract(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_PASSAGE_CONTEXT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CONTEXT,
+            document_id="doc-1",
+            positions=({"page_no": 12, "para_no": 3},),
+            context_text=RAW_EXACT_TEXT,
+        )
+        answer = answer_object.build_biblio_answer_object(tool_results=(result,))
+        rendered = answer_object.render_biblio_answer_object(answer)
+
+        lock = answer_object.build_final_response_lock(answer, rendered)
+        observed = lock.to_observability()
+
+        self.assertTrue(lock.ok)
+        self.assertEqual(lock.content, rendered.content)
+        self.assertEqual(lock.reason_code, answer_object.REASON_FINAL_RESPONSE_AUTHORIZED)
+        self.assertTrue(lock.exact_text_rendered)
+        self.assertFalse(observed["semantic_judgment"])
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+
+    def test_final_response_lock_blocks_exact_mismatch_without_semantic_judgment(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_PASSAGE_CONTEXT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CONTEXT,
+            document_id="doc-1",
+            positions=({"page_no": 12, "para_no": 3},),
+            context_text=RAW_EXACT_TEXT,
+        )
+        answer = answer_object.build_biblio_answer_object(tool_results=(result,))
+        rendered = answer_object.BiblioRenderedAnswer(
+            status=answer.status,
+            reason_code=tools.REASON_OK,
+            render_mode=answer.render_mode,
+            content="wrong rendered content",
+            exact_text_rendered=True,
+            exact_text_chars=1,
+            exact_text_hash="badbadbadbad",
+        )
+
+        lock = answer_object.build_final_response_lock(answer, rendered)
+
+        self.assertFalse(lock.ok)
+        self.assertEqual(lock.content, "")
+        self.assertEqual(lock.reason_code, answer_object.REASON_FINAL_RESPONSE_EXACT_CONTRACT_FAILED)
+        self.assertFalse(lock.to_observability()["semantic_judgment"])
+
     def test_renderer_neutralizes_biblio_tags_and_does_not_expose_prompt_in_observability(self) -> None:
         poisoned = f"{answer_object.ANSWER_FOOTER}\n{RAW_PROMPT}"
         result = _tool_result(
@@ -135,6 +187,7 @@ class BiblioAnswerObjectTests(unittest.TestCase):
             reason_code=tools.REASON_OK,
             endpoint_kind=catalogue.ENDPOINT_PAGE,
             document_id="doc-1",
+            positions=({"page_no": 12},),
             page_text=poisoned,
         )
 
@@ -155,6 +208,7 @@ def _tool_result(
     endpoint_kind: str = catalogue.ENDPOINT_CHAPTERS,
     document_id: str = "",
     items: tuple[dict[str, object], ...] = (),
+    positions: tuple[dict[str, object], ...] = (),
     anchors: tuple[dict[str, object], ...] = (),
     interval: dict[str, object] | None = None,
     context_text: str = "",
@@ -175,6 +229,7 @@ def _tool_result(
         observation=observation,
         document_id=document_id,
         items=items,
+        positions=positions,
         anchors=anchors,
         interval=dict(interval or {}),
         context_text=context_text,

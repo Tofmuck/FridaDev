@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import json
 from typing import Any, Callable, Mapping, Sequence
 
@@ -38,6 +39,25 @@ def _build_stream_headers(
 
 
 CONVERSATION_PERSIST_ERROR_CODE = chat_stream_control.STREAM_ERROR_CONVERSATION_PERSIST_FAILED
+
+
+@dataclass(frozen=True, repr=False)
+class AssistantResponseOverride:
+    content: str = field(repr=False, compare=False)
+    source: str = ""
+    reason_code: str = ""
+    meta: Mapping[str, Any] | None = field(default=None, repr=False, compare=False)
+    observability: Mapping[str, Any] = field(default_factory=dict, repr=False, compare=False)
+
+    def to_observability(self) -> dict[str, Any]:
+        return {
+            "source": str(self.source or "").strip(),
+            "reason_code": str(self.reason_code or "").strip(),
+            "content_present": bool(str(self.content or "")),
+            "content_chars": len(str(self.content or "")),
+            "meta_present": self.meta is not None,
+            "observability": dict(self.observability or {}),
+        }
 
 
 def _save_result_ok(result: Any) -> bool:
@@ -87,6 +107,118 @@ def _latest_completed_identity_pair(messages: Sequence[Mapping[str, Any]]) -> li
     return []
 
 
+def _run_assistant_response_override(
+    *,
+    override: AssistantResponseOverride,
+    conversation: dict[str, Any],
+    runtime_main_model: str,
+    stream_req: bool,
+    current_mode: str,
+    identity_ids: Sequence[str],
+    web_input: Mapping[str, Any] | None,
+    memory_store_module: Any,
+    conv_store_module: Any,
+    token_utils_module: Any,
+    admin_logs_module: Any,
+    arbiter_module: Any,
+    now_iso_func: Callable[[], str],
+    record_identity_entries_for_mode: Callable[..., None],
+    mode_enforces_identity: Callable[[str], bool],
+    conversation_headers_func: Callable[[Mapping[str, Any], str], dict[str, str]],
+    conversation_stream_headers_func: Callable[[Mapping[str, Any]], dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    text = str(override.content or "")
+    source = str(override.source or "").strip()
+    reason_code = str(override.reason_code or "").strip()
+    override_observability = {
+        key: value
+        for key, value in override.to_observability().items()
+        if key not in {"source", "reason_code"}
+    }
+    admin_logs_module.log_event(
+        "assistant_response_override",
+        conversation_id=conversation["id"],
+        source=source,
+        reason_code=reason_code,
+        stream=stream_req,
+        **override_observability,
+    )
+
+    def persist_and_record() -> tuple[bool, str | None, dict[str, Any] | None]:
+        updated_at = now_iso_func()
+        append_kwargs: dict[str, Any] = {"timestamp": updated_at}
+        if override.meta is not None:
+            append_kwargs["meta"] = dict(override.meta)
+        conv_store_module.append_message(conversation, "assistant", text, **append_kwargs)
+        _mark_next_persist_phase(conv_store_module, "assistant_final")
+        save_result = conv_store_module.save_conversation(conversation, updated_at=updated_at)
+        if not _save_result_ok(save_result):
+            messages = conversation.get("messages")
+            if isinstance(messages, list) and messages:
+                last = messages[-1]
+                if isinstance(last, dict) and last.get("role") == "assistant" and last.get("content") == text:
+                    messages.pop()
+            return False, updated_at, _persistence_failure_payload(save_result)
+        persisted_at = _save_result_updated_at(save_result, updated_at)
+        estimated_assistant_tokens = token_utils_module.estimate_tokens([{"content": text}], runtime_main_model)
+        admin_logs_module.log_event(
+            "AssistantText",
+            conversation_id=conversation["id"],
+            estimated_assistant_tokens=estimated_assistant_tokens,
+            message_timestamp=persisted_at,
+        )
+        memory_store_module.save_new_traces(conversation)
+        completed_turn_pair = _latest_completed_identity_pair(conversation.get("messages", []))
+        record_identity_entries_for_mode(
+            conversation["id"],
+            completed_turn_pair,
+            mode=current_mode,
+            web_input=web_input,
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+            admin_logs_module=admin_logs_module,
+        )
+        if identity_ids and mode_enforces_identity(current_mode):
+            memory_store_module.reactivate_identities(identity_ids)
+        return True, persisted_at, None
+
+    if not stream_req:
+        ok, updated_at, failure_payload = persist_and_record()
+        if not ok:
+            return _json_result(failure_payload or _persistence_failure_payload(None), 503)
+        return _json_result(
+            {
+                "ok": True,
+                "text": text,
+                "conversation_id": conversation["id"],
+                "created_at": conversation["created_at"],
+                "updated_at": updated_at,
+            },
+            200,
+            conversation_headers_func(conversation, str(updated_at or "")),
+        )
+
+    stream_headers = _build_stream_headers(conversation, conversation_stream_headers_func)
+
+    def event_stream():
+        ok, updated_at, _failure_payload = persist_and_record()
+        if not ok:
+            yield chat_stream_control.build_terminal_chunk(
+                chat_stream_control.STREAM_TERMINAL_ERROR,
+                error_code=CONVERSATION_PERSIST_ERROR_CODE,
+                updated_at=None,
+            )
+            return
+        if text:
+            yield text
+        yield chat_stream_control.build_terminal_chunk(
+            chat_stream_control.STREAM_TERMINAL_DONE,
+            updated_at=updated_at,
+        )
+
+    return _stream_result(event_stream(), stream_headers)
+
+
 def run_llm_exchange(
     *,
     conversation: dict[str, Any],
@@ -115,7 +247,29 @@ def run_llm_exchange(
     mode_enforces_identity: Callable[[str], bool],
     conversation_headers_func: Callable[[Mapping[str, Any], str], dict[str, str]],
     conversation_stream_headers_func: Callable[[Mapping[str, Any]], dict[str, str]] | None = None,
+    assistant_response_override: AssistantResponseOverride | None = None,
 ) -> dict[str, Any]:
+    if assistant_response_override is not None and str(assistant_response_override.content or ""):
+        return _run_assistant_response_override(
+            override=assistant_response_override,
+            conversation=conversation,
+            runtime_main_model=runtime_main_model,
+            stream_req=stream_req,
+            current_mode=current_mode,
+            identity_ids=identity_ids,
+            web_input=web_input,
+            memory_store_module=memory_store_module,
+            conv_store_module=conv_store_module,
+            token_utils_module=token_utils_module,
+            admin_logs_module=admin_logs_module,
+            arbiter_module=arbiter_module,
+            now_iso_func=now_iso_func,
+            record_identity_entries_for_mode=record_identity_entries_for_mode,
+            mode_enforces_identity=mode_enforces_identity,
+            conversation_headers_func=conversation_headers_func,
+            conversation_stream_headers_func=conversation_stream_headers_func,
+        )
+
     try:
         runtime_settings_module.get_runtime_secret_value('main_model', 'api_key')
     except (

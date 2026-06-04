@@ -25,6 +25,7 @@ API/outils minimaux Last Chance Lot 2: 2026-06-04
 Cadrage enrichissement structurel Last Chance Lot 2 bis: 2026-06-04
 Premier cran aliases structurels Last Chance Lot 2 bis: 2026-06-04
 Premier cran answer object Last Chance Lot 3: 2026-06-04
+Verrou final assistant Last Chance L3A1: 2026-06-04
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -228,6 +229,34 @@ ne choisit pas une oeuvre, une section, un role ou une ancre ambiguë a la place
 du bibliothecaire; il rend la structure disponible ou expose la limite. La
 surface finale utilisateur et l'extraction mecanique complete restent a
 renforcer dans les lots suivants.
+
+Verrou final Last Chance L3A1 livre:
+
+- invariant: le determinisme ne juge jamais la pertinence semantique d'une
+  reponse Biblio; seul le bibliothecaire LLM decide documentairement;
+- le determinisme verifie seulement le contrat technique de restitution:
+  statut connu, statut/mode coherents, ancre ou position presente pour un
+  rendu exact, texte mecanique present quand un extrait exact est rendu,
+  hash/longueur concordants, absence de faux extrait, observabilite
+  content-free;
+- `BiblioFinalResponseLock` autorise ou bloque la surface finale sans lire la
+  demande utilisateur ni choisir entre candidats bibliographiques;
+- `BiblioChatResult` transporte `BiblioAnswerObject`, `BiblioRenderedAnswer` et
+  `BiblioFinalResponseLock`;
+- `AssistantResponseOverride` permet au chat de persister et retourner le rendu
+  Biblio autorise comme message assistant final, sans appel OpenRouter final;
+- la persistance conversationnelle, Memory, Identity et `AssistantText` restent
+  executees sur ce message final rendu;
+- la separation observable devient: lane Biblio interne, objet resultat
+  structure, rendu produit, verrou final, message assistant final;
+- si le verrou est bloque ou absent, le chemin LLM ordinaire reste le fallback;
+  ce fallback ne doit pas etre raconte comme preuve produit de restitution
+  exacte.
+
+Limite volontaire: L3A1 ne corrige pas les erreurs d'ancrage ou de pertinence
+documentaire. Il empeche seulement qu'un rendu Biblio deja produit soit ignore,
+reformule ou contredit par le LLM final quand le contrat technique est
+coherent.
 
 ## 3. Frontieres non negociables
 
