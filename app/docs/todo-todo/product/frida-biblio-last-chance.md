@@ -71,6 +71,21 @@ Regle de coche: `[x]` uniquement si le statut est `ferme_live`. Un test
 unitaire, un contrat, une probe deterministe, une brique interne ou un smoke de
 plomberie ne coche pas une capacite utilisateur.
 
+Invariant de preuve a partir de la livraison BIB suivante: le JSONL live reste
+obligatoire, mais il ne suffit plus. Pour toute nouvelle capacite cochee, la
+preuve doit passer par une vraie conversation Frida: creation d'une conversation
+neuve, envoi d'une demande utilisateur via le pipeline applicatif, appel reel du
+bibliothecaire agentique, sauvegarde verifiee du message assistant final,
+metadonnees Biblio utiles verifiees et artefact JSONL content-free conserve.
+Un harness Biblio, une probe ou un appel direct a `run_biblio_chat_turn` peut
+aider au diagnostic, mais ne peut plus cocher une capacite BIB.
+
+Le journal de preuve doit alors inscrire, pour chaque BIB coche: identifiant de
+conversation content-free ou hash court, artefact JSONL, outils appeles en noms
+seulement, statut final, reason codes et commit. Les artefacts et retours ne
+doivent contenir ni secret, ni prompt brut, ni dialogue brut, ni payload
+Catalogue brut, ni snippet brut, ni titre/auteur brut, ni texte d'ouvrage.
+
 Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
 `ferme_live`, `a_ne_pas_pretendre`.
 
@@ -157,12 +172,15 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `BIB15_SCOPED_MULTI_CANDIDATES=met`.
   - Prochain test live requis: surveillance regression; plusieurs hits ->
     candidats structures, aucun `passage_context`, aucun texte exact.
-- [ ] BIB-16 - Choisir explicitement un candidat parmi plusieurs quand le
+- [x] BIB-16 - Choisir explicitement un candidat parmi plusieurs quand le
   bibliothecaire a assez d'elements, sans choix deterministe semantique.
-  - Statut: `ouvert`
-  - Preuve live: aucune.
-  - Prochain test live requis: bibliothecaire justifie/outille son choix; le
-    code ne choisit pas le "meilleur" hit.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib16-bib18-real-conversation-20260604T192312Z.jsonl`,
+    `BIB16_BIB18_REAL_CONV_SELECT_AND_CARRY=met`.
+  - Prochain test live requis: surveillance regression; conversation reelle
+    avec candidats precedents -> choix agentique explicite -> `passage_context`;
+    le code ne choisit pas le "meilleur" hit.
 - [x] BIB-17 - Demander une clarification quand plusieurs passages restent
   possibles.
   - Statut: `ferme_live`
@@ -171,12 +189,14 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `BIB17_UNSCOPED_CLARIFICATION=met`.
   - Prochain test live requis: surveillance regression; plusieurs passages ou
     scopes restent possibles -> clarification/ambiguite visible, pas exact.
-- [ ] BIB-18 - Porter l'ancre d'un candidat choisi ou clarifie vers la suite du
+- [x] BIB-18 - Porter l'ancre d'un candidat choisi ou clarifie vers la suite du
   dialogue.
-  - Statut: `ouvert`
-  - Preuve live: aucune.
-  - Prochain test live requis: candidat choisi -> ancre persistante disponible
-    au tour suivant.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib16-bib18-real-conversation-20260604T192312Z.jsonl`,
+    `BIB16_BIB18_REAL_CONV_SELECT_AND_CARRY=met`.
+  - Prochain test live requis: surveillance regression; candidat choisi ->
+    ancre positionnee/hashable disponible au tour suivant.
 - [x] BIB-19 - Sortir exactement une page demandee.
   - Statut: `ferme_live`
   - Preuve live: `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`,
@@ -283,6 +303,24 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     execution faute de scope unique; `passage_context` absent.
   - Reason codes: `biblio_librarian_needs_clarification`,
     `scoped_search_scope_missing`
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-16 - 2026-06-04 -
+  `app/docs/states/baselines/biblio-smokes/bib16-bib18-real-conversation-20260604T192312Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `071db7b5d208`
+  - Proof case: `BIB16_BIB18_REAL_CONV_SELECT_AND_CARRY`
+  - Outils appeles: `catalog_search`, puis `passage_context`
+  - Reason codes: `biblio_librarian_tool_executed`, `ok`,
+    `biblio_final_response_authorized`
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-18 - 2026-06-04 -
+  `app/docs/states/baselines/biblio-smokes/bib16-bib18-real-conversation-20260604T192312Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `071db7b5d208`
+  - Proof case: `BIB16_BIB18_REAL_CONV_SELECT_AND_CARRY`
+  - Outils appeles: `passage_context`
+  - Statut final: message assistant sauvegarde, meta Biblio presente, ancre
+    positionnee/hashable portee dans l'etat conversationnel.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
