@@ -1559,6 +1559,8 @@ Livraison Lot 4D, 2026-06-04:
 - quand `catalog_search` a bien ete tente dans un scope documentaire unique et
   qu'aucun candidat ne reste dans ce scope, le statut mecanique est `not_found`
   avec `scoped_search_no_hits_in_scope`, pas `needs_clarification`;
+- le renderer expose le reason code produit effectif du bloc canonique actif:
+  un `not_found` scoped ne doit pas etre rendu avec `Reason: ok`;
 - recherche scoped canonique n'est pas extraction exacte: la methode
   `product_method=scoped_search` force un rendu `structured_status` et ne
   transforme ni `context_text`, ni `page_text`, ni un hit de recherche en

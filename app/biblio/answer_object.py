@@ -70,6 +70,13 @@ _STRUCTURAL_CLARIFICATION_REASONS = frozenset(
     }
 )
 
+_RENDER_LOW_PRIORITY_REASONS = frozenset(
+    {
+        librarian_tools.REASON_OK,
+        librarian_planner.REASON_TOOL_EXECUTED,
+    }
+)
+
 
 @dataclass(frozen=True, repr=False)
 class BiblioAnswerObject:
@@ -310,7 +317,7 @@ def render_biblio_answer_object(
     max_exact_chars: int = DEFAULT_MAX_RENDERED_EXACT_CHARS,
 ) -> BiblioRenderedAnswer:
     max_exact_chars = _bounded_int(max_exact_chars, minimum=0, maximum=DEFAULT_MAX_RENDERED_EXACT_CHARS)
-    reason_code = answer.reason_codes[0] if answer.reason_codes else ""
+    reason_code = _render_reason_code(answer)
     lines = [
         ANSWER_HEADER,
         "Contrat de restitution:",
@@ -368,6 +375,32 @@ def render_biblio_answer_object(
         exact_text_chars=len(exact_text) if exact_rendered else 0,
         exact_text_hash=_hash(exact_text) if exact_rendered else "",
     )
+
+
+def _render_reason_code(answer: BiblioAnswerObject) -> str:
+    family_reason_codes = _unique(
+        [
+            *_payload_reason_codes(answer.document_resolution),
+            *_payload_reason_codes(answer.document_structure),
+            *_payload_reason_codes(answer.scoped_search),
+        ]
+    )
+    for reason in family_reason_codes:
+        if reason not in _RENDER_LOW_PRIORITY_REASONS:
+            return reason
+    for reason in answer.reason_codes:
+        if reason not in _RENDER_LOW_PRIORITY_REASONS:
+            return reason
+    if answer.reason_codes:
+        return answer.reason_codes[0]
+    return family_reason_codes[0] if family_reason_codes else ""
+
+
+def _payload_reason_codes(payload: Mapping[str, Any]) -> tuple[str, ...]:
+    raw = payload.get("reason_codes") if payload else ()
+    if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes, bytearray)):
+        return ()
+    return _unique(raw)
 
 
 def _final_response_contract_reason(

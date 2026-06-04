@@ -810,6 +810,9 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
             tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE,
             result.answer_object.scoped_search["reason_codes"],
         )
+        self.assertEqual(result.rendered_answer.reason_code, tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE)
+        self.assertIn(f"Reason: {tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE}", result.rendered_answer.content)
+        self.assertNotIn("Reason: ok", result.rendered_answer.content)
         self.assertIn("aucun candidat de recherche ne reste dans le scope", result.rendered_answer.content)
         self.assertNotIn("RAW OUT OF SCOPE", result.rendered_answer.content)
         self.assertNotIn(("context", "doc-1234", 77, None, None, 0, 700), fake.calls)

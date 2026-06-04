@@ -399,6 +399,8 @@ Recherche scoped canonique Last Chance Lot 4D livree:
 - quand `catalog_search` a ete tente dans un scope documentaire unique et
   qu'aucun candidat ne reste dans ce scope, le statut mecanique est `not_found`
   avec `scoped_search_no_hits_in_scope`, pas `needs_clarification`;
+- le renderer expose le reason code produit effectif du bloc canonique actif:
+  un `not_found` scoped ne doit pas etre rendu avec `Reason: ok`;
 - recherche scoped canonique n'est pas extraction exacte. La methode
   `product_method=scoped_search` rend un `structured_status`; elle ne transforme
   pas `context_text`, `page_text` ou un hit de recherche en `exact_excerpt`. Les
