@@ -18,6 +18,7 @@ from . import librarian_tools
 
 _SUMMARY_COMPLETION_METHODS = frozenset(
     {
+        product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
         product_methods.PRODUCT_METHOD_WORK_LOOKUP,
     }
 )
@@ -124,7 +125,11 @@ def complete_product_method_loop(
         return loop_result
 
     if product_method in _SUMMARY_COMPLETION_METHODS and not _has_document_summary(loop_result):
-        doc_id = _first_document_id(loop_result)
+        doc_id = (
+            _summary_completion_document_id(loop_result)
+            if product_method == product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION
+            else _first_document_id(loop_result)
+        )
         if doc_id:
             loop_result = _append_tool_call(
                 loop_result,
@@ -266,15 +271,44 @@ def _first_document_id(loop_result: librarian_planner.BiblioLibrarianLoopResult)
         direct = _text(getattr(result, "document_id", ""))
         if direct:
             return direct
-        for item in result.items:
-            doc_id = _text(item.get("document_id"))
-            if doc_id:
-                return doc_id
         if result.document_summary:
             doc_id = _text(result.document_summary.get("document_id"))
             if doc_id:
                 return doc_id
+        for item in result.items:
+            doc_id = _text(item.get("document_id"))
+            if doc_id:
+                return doc_id
     return ""
+
+
+def _summary_completion_document_id(loop_result: librarian_planner.BiblioLibrarianLoopResult) -> str:
+    for step in loop_result.steps:
+        result = step.tool_result
+        if result is None:
+            continue
+        direct = _text(getattr(result, "document_id", ""))
+        if direct:
+            return direct
+        if result.document_summary:
+            doc_id = _text(result.document_summary.get("document_id"))
+            if doc_id:
+                return doc_id
+        item_doc_id = _unique_item_document_id(result.items)
+        if item_doc_id:
+            return item_doc_id
+    return ""
+
+
+def _unique_item_document_id(items: Sequence[Mapping[str, Any]]) -> str:
+    doc_ids: list[str] = []
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        doc_id = _text(item.get("document_id"))
+        if doc_id and doc_id not in doc_ids:
+            doc_ids.append(doc_id)
+    return doc_ids[0] if len(doc_ids) == 1 else ""
 
 
 def _first_context_params(loop_result: librarian_planner.BiblioLibrarianLoopResult) -> dict[str, Any]:

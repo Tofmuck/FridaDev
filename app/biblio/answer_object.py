@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 import hashlib
 from typing import Any, Mapping, Sequence
 
+from . import answer_resolution
 from . import librarian_planner
 from . import librarian_product_methods as product_methods
 from . import librarian_tools
@@ -85,6 +86,7 @@ class BiblioAnswerObject:
     provenance: dict[str, Any] = field(default_factory=dict)
     limits: tuple[str, ...] = field(default_factory=tuple)
     inventory_metadata: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    document_resolution: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     truth_level: str = ""
     source_tool_names: tuple[str, ...] = field(default_factory=tuple)
     render_mode: str = RENDER_STRUCTURED_STATUS
@@ -118,6 +120,7 @@ class BiblioAnswerObject:
                 "provenance": dict(self.provenance),
                 "limits": list(self.limits),
                 "inventory_metadata": _inventory_observability(self.inventory_metadata),
+                "document_resolution": answer_resolution.to_observability(self.document_resolution),
                 "truth_level": self.truth_level,
                 "source_tool_names": list(self.source_tool_names),
                 "render_mode": self.render_mode,
@@ -209,7 +212,14 @@ def build_biblio_answer_object(
     results = tuple(result for result in tool_results if result is not None)
     reason_codes = _unique([loop_reason_code, *(result.reason_code for result in results)])
     source_tool_names = _unique(result.tool_name for result in results)
-    status = _answer_status(results, loop_status=loop_status, reason_codes=reason_codes)
+    base_status = _answer_status(results, loop_status=loop_status, reason_codes=reason_codes)
+    document_resolution = answer_resolution.build_document_resolution(
+        results,
+        product_method=product_method,
+        base_status=base_status,
+        reason_codes=reason_codes,
+    )
+    status = answer_resolution.override_answer_status(document_resolution, base_status=base_status)
     exact_text = _mechanical_exact_text(results) if status == STATUS_READY else ""
     selected = _selected_candidate(results, status=status)
     document_id = _document_id(results, selected)
@@ -234,6 +244,7 @@ def build_biblio_answer_object(
         provenance=_provenance(results),
         limits=_limits(results, selected),
         inventory_metadata=inventory_metadata,
+        document_resolution=document_resolution,
         truth_level=_text(truth_level) or _default_truth(product_method),
         source_tool_names=source_tool_names,
         render_mode=render_mode,
@@ -296,6 +307,8 @@ def render_biblio_answer_object(
         lines.append(f"Section: {answer.section_id}")
     if answer.inventory_metadata:
         lines.extend(_inventory_lines(answer.inventory_metadata))
+    if answer.document_resolution:
+        lines.extend(answer_resolution.render_lines(answer.document_resolution))
     if answer.interval:
         lines.append(
             "Intervalle: "

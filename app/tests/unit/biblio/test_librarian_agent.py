@@ -331,6 +331,28 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             ),
             (
                 {
+                    "case_id": "",
+                    "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+                },
+                {
+                    "tool_name": tools.TOOL_SEARCH_DOCUMENT,
+                    "method": "GET",
+                    "params": {"query": "x", "limit": 5, "offset": 0},
+                },
+            ),
+            (
+                {
+                    "case_id": "",
+                    "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+                },
+                {
+                    "tool_name": tools.TOOL_RESOLVE_WORK,
+                    "method": "GET",
+                    "params": {"query": "x", "limit": 5},
+                },
+            ),
+            (
+                {
                     "case_id": "P05",
                     "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
                 },
@@ -444,6 +466,69 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         assert validation.plan is not None
         self.assertEqual(validation.plan.case_id, "")
         self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_INVENTORY_METADATA)
+
+    def test_document_resolution_is_canonical_family_distinct_from_legacy_p03(self) -> None:
+        spec = product_methods.get_product_method_spec(product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION)
+
+        self.assertIsNotNone(spec)
+        assert spec is not None
+        self.assertEqual(spec.case_ids, ())
+        self.assertEqual(spec.canonical_family, product_methods.CANONICAL_FAMILY_DOCUMENT_RESOLUTION)
+        self.assertEqual(
+            set(spec.allowed_tool_names),
+            {tools.TOOL_SEARCH_DOCUMENT, tools.TOOL_SEARCH_WORK, tools.TOOL_RESOLVE_WORK, tools.TOOL_DOCUMENT_OPEN_SUMMARY},
+        )
+        self.assertEqual(
+            product_methods.canonical_family_for_method(product_methods.PRODUCT_METHOD_WORK_LOOKUP),
+            product_methods.CANONICAL_FAMILY_DOCUMENT_RESOLUTION,
+        )
+        self.assertIn(
+            product_methods.CANONICAL_FAMILY_DOCUMENT_RESOLUTION,
+            product_methods.all_canonical_family_names(),
+        )
+
+    def test_document_resolution_rejects_section_resolution_as_next_lot(self) -> None:
+        validation = contract.validate_agent_payload(
+            {
+                **json.loads(_valid_json()),
+                "case_id": "",
+                "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+                "tool_calls": [
+                    {
+                        "tool_name": tools.TOOL_RESOLVE_SECTION,
+                        "method": "GET",
+                        "params": {"document_id": "doc-1", "query": "section"},
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_REJECTED)
+        self.assertEqual(validation.reason_code, contract.REASON_PRODUCT_METHOD_TOOL_MISMATCH)
+
+    def test_resolve_work_intent_repairs_to_document_resolution_method(self) -> None:
+        validation = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "resolve_work",
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_SEARCH_DOCUMENT,
+                            "method": "GET",
+                            "params": {"query": "x", "limit": "5"},
+                        }
+                    ],
+                    "answer_mode": "tool",
+                }
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.case_id, "")
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION)
 
     def test_legacy_compare_intent_repairs_to_compare_candidates_method(self) -> None:
         validation = contract.parse_and_validate_agent_json(
@@ -1103,7 +1188,9 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             "n'invente pas le texte exact",
             "window_chars",
             "inventory_metadata",
+            "document_resolution",
             "questions canoniques d'inventaire/metadonnees",
+            "questions canoniques de resolution documentaire",
             "case_id quand la demande correspond clairement",
             "choisis le case_id qui correspond a la forme reelle",
             "variante ASCII/sans accents",
@@ -1123,6 +1210,10 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(
             payload["canonical_family_by_product_method"][product_methods.PRODUCT_METHOD_INVENTORY_METADATA],
             product_methods.CANONICAL_FAMILY_INVENTORY_METADATA,
+        )
+        self.assertEqual(
+            payload["canonical_family_by_product_method"][product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION],
+            product_methods.CANONICAL_FAMILY_DOCUMENT_RESOLUTION,
         )
         rows = {row["case_id"]: row for row in payload["case_reference_signatures"]}
         self.assertEqual(rows["P03"]["product_method"], product_methods.PRODUCT_METHOD_WORK_LOOKUP)

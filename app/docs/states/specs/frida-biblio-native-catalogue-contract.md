@@ -28,6 +28,7 @@ Premier cran answer object Last Chance Lot 3: 2026-06-04
 Verrou final assistant Last Chance L3A1: 2026-06-04
 Memoire conversationnelle des lectures Last Chance Lot 3 bis: 2026-06-04
 Premiere methode canonique Last Chance Lot 4A: 2026-06-04
+Resolution documentaire canonique Last Chance Lot 4B: 2026-06-04
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -302,6 +303,38 @@ Premiere methode canonique Last Chance Lot 4A livree:
   et flags de borne. Les titres/auteurs bruts peuvent etre rendus a l'utilisateur
   quand ils sont le resultat produit, mais ne doivent pas fuiter dans les
   artefacts ou logs content-free;
+- preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
+
+Resolution documentaire canonique Last Chance Lot 4B livree:
+
+- famille canonique: `document_resolution`;
+- methode produit: `product_method=document_resolution`, `case_id=""`;
+- outils autorises: `search_document`, `search_work`, `resolve_work`,
+  `document_open_summary`;
+- ancien `work_lookup` / P03 reste une regression historique et une compatibilite
+  de transition, pas le canon principal de validation Lot 4;
+- `resolve_section`, `section_bounds` et les bornes fines de section restent
+  hors Lot 4B et relevent du cran structure/TOC;
+- le bibliothecaire LLM choisit la methode. Le deterministe ne reconnait pas les
+  phrases utilisateur a sa place et ne juge pas la pertinence bibliographique;
+- le deterministe valide seulement: methode connue, famille canonique,
+  allowlist GET-only, params bornes, statut technique, non-selection du premier
+  candidat ambigu et observabilite content-free;
+- `app/biblio/answer_resolution.py` porte la projection/rendu de resolution
+  documentaire pour eviter d'empiler toutes les familles dans
+  `answer_object.py`;
+- `BiblioAnswerObject.document_resolution` porte les statuts `resolved`,
+  `ambiguous`, `not_found`, `needs_clarification` ou `error`;
+- plusieurs candidats restent ambigus et aucun candidat n'est choisi par le
+  renderer. Zero candidat reste `not_found`;
+- un candidat de section seulement signale comme travail interne non confirme ne
+  devient pas une oeuvre interne resolue; il reste en clarification structurelle;
+- le renderer produit une surface structuree sans extrait exact; le verrou final
+  L3A1 peut l'autoriser si le contrat technique est coherent;
+- l'observabilite expose uniquement compteurs, hashes courts, ids courts, types
+  de candidats, statuts et reason codes. Les titres/auteurs bruts peuvent etre
+  rendus a l'utilisateur comme resultat produit, mais ne doivent pas fuiter dans
+  les artefacts ou logs content-free;
 - preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
 
 ## 3. Frontieres non negociables

@@ -35,6 +35,7 @@ EXECUTION_STATUS_NOT_FOUND = "not_found"
 EXECUTION_STATUS_ERROR = "error"
 
 PRODUCT_METHOD_INVENTORY_METADATA = "inventory_metadata"
+PRODUCT_METHOD_DOCUMENT_RESOLUTION = "document_resolution"
 PRODUCT_METHOD_CATALOG_LIST_FULL = "catalog_list_full"
 PRODUCT_METHOD_CATALOG_LIST_BOUNDED = "catalog_list_bounded"
 PRODUCT_METHOD_WORK_LOOKUP = "work_lookup"
@@ -78,6 +79,20 @@ METHOD_SPECS = (
             tools.TOOL_DOCUMENT_OPEN_SUMMARY,
         ),
         preconditions=("biblio_enabled",),
+        truth_levels=(TRUTH_LEVEL_EXACT, TRUTH_LEVEL_PLAUSIBLE),
+        execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
+    ),
+    BiblioProductMethodSpec(
+        product_method=PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+        canonical_family=CANONICAL_FAMILY_DOCUMENT_RESOLUTION,
+        case_ids=(),
+        allowed_tool_names=(
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_SEARCH_WORK,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+        ),
+        preconditions=("biblio_enabled", "document_or_work_signal_present"),
         truth_levels=(TRUTH_LEVEL_EXACT, TRUTH_LEVEL_PLAUSIBLE),
         execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
     ),
@@ -500,14 +515,16 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
         return PRODUCT_METHOD_CLARIFY_BIBLIO_REQUEST
     if clean_intent == CANONICAL_FAMILY_INVENTORY_METADATA:
         return PRODUCT_METHOD_INVENTORY_METADATA
+    if clean_intent == CANONICAL_FAMILY_DOCUMENT_RESOLUTION:
+        return PRODUCT_METHOD_DOCUMENT_RESOLUTION
     if clean_intent == "list_catalog":
         return PRODUCT_METHOD_CATALOG_LIST_BOUNDED
     if clean_intent == "show_table_of_contents":
         return PRODUCT_METHOD_DOCUMENT_TOC_SHOW
     if clean_intent == "resolve_work":
-        return PRODUCT_METHOD_WORK_LOOKUP
+        return PRODUCT_METHOD_DOCUMENT_RESOLUTION
     if tools.TOOL_RESOLVE_WORK in tool_set or tools.TOOL_SEARCH_WORK in tool_set or tools.TOOL_SEARCH_DOCUMENT in tool_set:
-        return PRODUCT_METHOD_WORK_LOOKUP
+        return PRODUCT_METHOD_DOCUMENT_RESOLUTION
     if clean_intent == "compare_passages":
         return PRODUCT_METHOD_PASSAGE_COMPARE_CANDIDATES
     if (

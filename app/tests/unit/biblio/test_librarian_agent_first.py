@@ -461,6 +461,67 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn(RAW_TITLE, encoded)
         self.assertNotIn(RAW_PASSAGE, encoded)
 
+    def test_document_resolution_canonical_method_keeps_ambiguous_candidates(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "total": 2,
+                "items": [
+                    {"id": "doc-1", "title": "Candidate 1"},
+                    {"id": "doc-2", "title": "Candidate 2"},
+                ],
+            },
+            context_payload={"document_id": "doc-1", "text": RAW_PASSAGE},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="document_resolution",
+                    product_method=product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+                    case_id="",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5, "offset": 0},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="resolve_work"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        encoded = json.dumps(
+            {
+                "loop": result.loop_result.to_observability() if result.loop_result else {},
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls, [("metadata_search", RAW_QUERY, 5)])
+        self.assertEqual(result.answer_object.product_method, product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION)
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_AMBIGUOUS)
+        self.assertEqual(result.answer_object.document_id, "")
+        self.assertEqual(result.answer_object.document_resolution["status"], "ambiguous")
+        self.assertTrue(lock.ok)
+        self.assertIn("ambiguite conservee", result.rendered_answer.content)
+        self.assertNotIn(("metadata", "doc-1"), fake.calls)
+        self.assertNotIn(("context", "doc-1", None, None, None, 0, 700), fake.calls)
+        self.assertNotIn(RAW_QUERY, encoded)
+        self.assertNotIn(RAW_PASSAGE, encoded)
+
     def test_toc_request_recovers_from_unanchored_toc_step_after_search(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={

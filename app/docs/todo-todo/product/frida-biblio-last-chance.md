@@ -1372,7 +1372,7 @@ effectivement memorise et metadonnees d'ancrage/provenance.
 ### Lot 4 - Methodes par questions canoniques
 
 - [x] Lot 4A: migrer un premier cran inventaire/metadonnees.
-- [ ] Migrer resolution documentaire.
+- [x] Lot 4B: migrer un premier cran resolution documentaire.
 - [ ] Migrer structure/TOC.
 - [ ] Migrer recherche scoped.
 - [ ] Migrer extraction.
@@ -1424,9 +1424,59 @@ Findings Lot 4A:
 - F5 valide: les preuves de ce lot sont unitaires et contractuelles, pas une
   preuve agentique live.
 
-Familles Lot 4 encore ouvertes: resolution documentaire, structure/TOC,
+Familles Lot 4 encore ouvertes apres Lot 4A: resolution documentaire, structure/TOC,
 recherche scoped, extraction, navigation lecteur, provenance,
 desambiguisation, etat/ancrage.
+
+Livraison Lot 4B, 2026-06-04:
+
+- famille canonique livree en premier cran: `document_resolution`;
+- methode produit canonique ajoutee: `product_method=document_resolution`,
+  `case_id=""`, distincte de l'ancien `work_lookup` / P03 qui reste une
+  regression historique et une compatibilite de transition;
+- outils autorises explicites: `search_document`, `search_work`,
+  `resolve_work`, `document_open_summary`;
+- `resolve_section` et `section_bounds` restent hors Lot 4B: la resolution fine
+  de section/TOC demeure ouverte pour le cran structure/TOC;
+- le bibliothecaire LLM choisit cette methode. Le code ne reconnait pas les
+  formulations utilisateur par regex et ne juge pas la pertinence
+  bibliographique;
+- le deterministe verifie seulement: methode connue, famille canonique, outils
+  allowlistes GET-only, params bornes, statut technique, absence de choix
+  silencieux du premier candidat ambigu et observabilite content-free;
+- `app/biblio/answer_resolution.py` porte la projection/rendu de resolution
+  documentaire pour eviter d'empiler toutes les familles dans
+  `answer_object.py`;
+- `BiblioAnswerObject.document_resolution` expose `resolved`, `ambiguous`,
+  `not_found`, `needs_clarification` ou `error` selon les tool results. Un
+  candidat unique peut etre rendu comme resolution structuree; plusieurs
+  candidats restent `ambiguous`; zero candidat reste `not_found`;
+- un candidat de section signale comme travail interne non confirme ne devient
+  pas une oeuvre interne resolue: il reste en clarification structurelle;
+- `BiblioFinalResponseLock` peut autoriser le rendu structure coherent sans
+  extrait exact; aucun texte exact n'est pretendu par ce cran;
+- l'observabilite ne contient pas les titres/auteurs bruts: seulement compteurs,
+  hashes courts, ids courts, types de candidats, statuts et reason codes;
+- preuve actuelle: tests unitaires de validation agent, outils, answer object et
+  agent-first. Ce n'est pas une preuve live agentique: aucun artefact JSONL live
+  n'est produit par ce lot.
+
+Findings Lot 4B:
+
+- F1 valide: `work_lookup` est la vieille methode P03 et ne reste pas seule
+  comme methode canonique de resolution documentaire.
+- F2 valide: Lot 4B migre seulement document/work; la resolution fine de
+  section/TOC reste ouverte.
+- F3 valide: le resultat de resolution est structure et renderable via
+  `BiblioAnswerObject` / renderer / `BiblioFinalResponseLock`, pas raconte comme
+  lane au LLM final.
+- F4 valide: `ambiguous` reste `ambiguous`; la completion metadata canonique ne
+  choisit pas le premier document quand plusieurs candidats existent.
+- F5 valide: les preuves de ce lot sont unitaires et contractuelles, pas une
+  preuve agentique live.
+
+Familles Lot 4 encore ouvertes apres Lot 4B: structure/TOC, recherche scoped,
+extraction, navigation lecteur, provenance, desambiguisation, etat/ancrage.
 
 ### Lot 5 - Nettoyage dur
 

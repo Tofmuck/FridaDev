@@ -176,6 +176,126 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertNotIn(RAW_TITLE, _json(observed))
         self.assertNotIn("RAW AUTHOR", _json(observed))
 
+    def test_document_resolution_renders_unique_candidate_without_exact_excerpt(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            items=(
+                {
+                    "candidate_type": "document",
+                    "document_id": "doc-123456",
+                    "doc_id_short": "doc-123",
+                    "title": RAW_TITLE,
+                    "authors": "RAW DOC AUTHOR MUST ONLY APPEAR IN RENDERED CONTENT",
+                    "metadata_status": "validated",
+                },
+            ),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertEqual(answer.document_id, "doc-123456")
+        self.assertEqual(answer.document_resolution["status"], "resolved")
+        self.assertTrue(lock.ok)
+        self.assertFalse(lock.exact_text_rendered)
+        self.assertIn("Resolution documentaire:", rendered.content)
+        self.assertIn("statut: resolved", rendered.content)
+        self.assertIn(RAW_TITLE, rendered.content)
+        self.assertEqual(observed["document_resolution"]["candidate_count"], 1)
+        self.assertNotIn(RAW_TITLE, _json(observed))
+        self.assertNotIn("RAW DOC AUTHOR", _json(observed))
+
+    def test_document_resolution_keeps_ambiguity_without_picking_candidate(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            items=(
+                {"candidate_type": "document", "document_id": "doc-1", "doc_id_short": "doc-1", "title": "Candidate 1"},
+                {"candidate_type": "document", "document_id": "doc-2", "doc_id_short": "doc-2", "title": "Candidate 2"},
+            ),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+
+        self.assertEqual(answer.status, answer_object.STATUS_AMBIGUOUS)
+        self.assertEqual(answer.document_id, "")
+        self.assertEqual(answer.document_resolution["status"], "ambiguous")
+        self.assertTrue(lock.ok)
+        self.assertIn("ambiguite conservee", rendered.content)
+        self.assertIn("Extraction exacte non rendue", rendered.content)
+        self.assertFalse(rendered.exact_text_rendered)
+
+    def test_document_resolution_no_candidate_is_not_found(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_RESOLVE_WORK,
+            status=tools.STATUS_NOT_FOUND,
+            reason_code=tools.REASON_NOT_FOUND,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+
+        self.assertEqual(answer.status, answer_object.STATUS_NOT_FOUND)
+        self.assertEqual(answer.document_resolution["status"], "not_found")
+        self.assertIn("aucun document ou travail documentaire", rendered.content)
+        self.assertFalse(rendered.exact_text_rendered)
+
+    def test_document_resolution_does_not_resolve_unconfirmed_section_scope_as_work(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_RESOLVE_WORK,
+            status=tools.STATUS_RESOLVED,
+            reason_code=tools.REASON_RESOLVED,
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            document_id="doc-1",
+            items=(
+                {
+                    "candidate_type": "work",
+                    "work_kind": "section_scope",
+                    "document_id": "doc-1",
+                    "doc_id_short": "doc-1",
+                    "work_id": "doc-1:section:2:work",
+                    "section_id": "doc-1:section:2",
+                    "title": RAW_TITLE,
+                    "limits": ("section_candidate_not_confirmed_internal_work",),
+                },
+            ),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+            case_id="",
+        )
+
+        self.assertEqual(answer.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(answer.work_id, "")
+        self.assertEqual(answer.document_resolution["status"], "needs_clarification")
+        self.assertNotIn(RAW_TITLE, _json(answer.to_observability()))
+
     def test_final_response_lock_authorizes_only_technical_render_contract(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_PASSAGE_CONTEXT,
@@ -261,6 +381,7 @@ def _tool_result(
     interval: dict[str, object] | None = None,
     context_text: str = "",
     page_text: str = "",
+    document_summary: dict[str, object] | None = None,
     observation_fields: dict[str, object] | None = None,
 ) -> tools.BiblioLibrarianToolResult:
     observation = tools.BiblioLibrarianToolObservation(
@@ -278,6 +399,7 @@ def _tool_result(
         observation=observation,
         document_id=document_id,
         items=items,
+        document_summary=dict(document_summary or {}),
         positions=positions,
         anchors=anchors,
         interval=dict(interval or {}),

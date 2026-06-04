@@ -62,6 +62,41 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertNotIn(RAW_QUERY, _json(observed))
         self.assertNotIn(RAW_TITLE, _json(observed))
 
+    def test_resolve_work_reports_resolved_ambiguous_or_not_found_content_free(self) -> None:
+        resolved = _FakeToolClient(catalog_payload={"items": [{"id": "doc-1", "title": RAW_TITLE}]})
+        registry = tools.build_librarian_tool_registry(resolved)
+
+        result = registry.run(tools.TOOL_RESOLVE_WORK, {"query": RAW_QUERY, "limit": 5})
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, tools.STATUS_RESOLVED)
+        self.assertEqual(result.reason_code, tools.REASON_RESOLVED)
+        self.assertEqual(result.items[0]["candidate_type"], "document")
+        self.assertNotIn(RAW_QUERY, _json(observed))
+        self.assertNotIn(RAW_TITLE, _json(observed))
+
+        ambiguous = _FakeToolClient(
+            catalog_payload={
+                "items": [
+                    {"id": "doc-1", "title": "Candidate 1"},
+                    {"id": "doc-2", "title": "Candidate 2"},
+                ]
+            }
+        )
+        registry = tools.build_librarian_tool_registry(ambiguous)
+        result = registry.run(tools.TOOL_RESOLVE_WORK, {"query": RAW_QUERY, "limit": 5})
+
+        self.assertEqual(result.status, tools.STATUS_AMBIGUOUS)
+        self.assertEqual(result.reason_code, tools.REASON_AMBIGUOUS)
+        self.assertEqual(result.document_id, "")
+
+        missing = _FakeToolClient(catalog_payload={"items": []})
+        registry = tools.build_librarian_tool_registry(missing)
+        result = registry.run(tools.TOOL_RESOLVE_WORK, {"query": RAW_QUERY, "limit": 5})
+
+        self.assertEqual(result.status, tools.STATUS_NOT_FOUND)
+        self.assertEqual(result.reason_code, tools.REASON_WORK_ALIAS_MISSING)
+
     def test_resolve_section_uses_scoped_toc_and_returns_derived_bounds(self) -> None:
         fake = _FakeToolClient(chapters_payload=_chapters_payload())
         registry = tools.build_librarian_tool_registry(fake)
