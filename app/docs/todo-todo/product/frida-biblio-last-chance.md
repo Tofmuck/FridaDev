@@ -60,6 +60,209 @@ Frontieres cible:
   des ancres et demande les outils; il ne remplace pas la structure ni
   l'extracteur.
 
+## Checklist canonique Biblio utilisateur (BIB-01 -> BIB-33)
+
+Cette checklist est la source de verite operationnelle du chantier. Les anciens
+lots et sous-lots expliquent comment on y travaille, mais ne ferment pas une
+capacite utilisateur sans preuve live agentique JSONL datee, conservee et
+content-free.
+
+Regle de coche: `[x]` uniquement si le statut est `ferme_live`. Un test
+unitaire, un contrat, une probe deterministe, une brique interne ou un smoke de
+plomberie ne coche pas une capacite utilisateur.
+
+Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
+`ferme_live`, `a_ne_pas_pretendre`.
+
+- [ ] BIB-01 - Dire quels ouvrages la bibliotheque contient.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: question naturelle d'inventaire -> methode
+    canonique `inventory_metadata` -> message final structure.
+- [ ] BIB-02 - Dire combien d'ouvrages la bibliotheque contient.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: question naturelle de comptage -> total rendu
+    sans payload brut.
+- [ ] BIB-03 - Donner les metadonnees connues d'un ouvrage: titre, auteur,
+  langue, nombre de pages, statut connu/inconnu.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: question metadonnees sur un ouvrage -> resolution
+    documentaire -> rendu final structure.
+- [ ] BIB-04 - Trouver un ouvrage demande par l'utilisateur.
+  - Statut: `partiel_live`
+  - Preuve live: resolution documentaire observee comme ancre dans
+    `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`.
+  - Prochain test live requis: demande de resolution seule -> `resolved`,
+    `ambiguous` ou `not_found`, sans extraction parasite.
+- [ ] BIB-05 - Distinguer plusieurs ouvrages possibles quand la demande est
+  ambigue.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: requete ambigue -> candidats structures ou
+    clarification, sans choix silencieux.
+- [ ] BIB-06 - Trouver une oeuvre a l'interieur d'un volume.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: oeuvre interne demandee -> resolution ou
+    clarification avec limites structurelles.
+- [ ] BIB-07 - Distinguer texte principal, commentaire, preface, notice, notes
+  ou appareil critique.
+  - Statut: `ouvert`
+  - Preuve live: aucune.
+  - Prochain test live requis: demande de role de contenu -> role connu,
+    inconnu ou derive, sans faux texte primaire.
+- [ ] BIB-08 - Donner la table des matieres d'un ouvrage.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: question TOC -> `document_structure` ->
+    `structured_status`, pas `exact_excerpt`.
+- [ ] BIB-09 - Dire ou commence un chapitre.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: chapitre resolu -> page/ancre de debut ou
+    reason code d'indisponibilite.
+- [ ] BIB-10 - Dire ou finit un chapitre.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: chapitre resolu -> borne de fin ou reason code
+    d'indisponibilite.
+- [ ] BIB-11 - Dire ou commence une section interne.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: section interne resolue -> debut structure ou
+    clarification.
+- [ ] BIB-12 - Dire ou finit une section interne.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: section interne resolue -> fin structure ou
+    clarification.
+- [ ] BIB-13 - Chercher un theme ou motif dans un ouvrage.
+  - Statut: `partiel_live`
+  - Preuve live: recherche scoped prouvee partiellement dans les proof gates
+    Lot 4E; multi-hit naturel reste partiel.
+  - Prochain test live requis: theme + ouvrage -> candidats structures,
+    zero-hit propre ou clarification.
+- [ ] BIB-14 - Chercher un theme ou motif dans une section precise.
+  - Statut: `ouvert`
+  - Preuve live: aucune.
+  - Prochain test live requis: section resolue -> recherche bornee section,
+    candidats structures, pas extraction automatique.
+- [ ] BIB-15 - Presenter plusieurs passages candidats sans les transformer en
+  extrait exact.
+  - Statut: `partiel_live`
+  - Preuve live: `PG4E_SCOPED_MULTI` reste partiel dans
+    `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`.
+  - Prochain test live requis: plusieurs hits -> candidats structures, aucun
+    `passage_context`, aucun texte exact.
+- [ ] BIB-16 - Choisir explicitement un candidat parmi plusieurs quand le
+  bibliothecaire a assez d'elements, sans choix deterministe semantique.
+  - Statut: `ouvert`
+  - Preuve live: aucune.
+  - Prochain test live requis: bibliothecaire justifie/outille son choix; le
+    code ne choisit pas le "meilleur" hit.
+- [ ] BIB-17 - Demander une clarification quand plusieurs passages restent
+  possibles.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: multi-candidat ambigu -> question de
+    clarification ou candidats, pas exact.
+- [ ] BIB-18 - Porter l'ancre d'un candidat choisi ou clarifie vers la suite du
+  dialogue.
+  - Statut: `ouvert`
+  - Preuve live: aucune.
+  - Prochain test live requis: candidat choisi -> ancre persistante disponible
+    au tour suivant.
+- [x] BIB-19 - Sortir exactement une page demandee.
+  - Statut: `ferme_live`
+  - Preuve live: `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`,
+    `PG4E_PAGE_ONE=met`.
+  - Prochain test live requis: surveillance regression Lot 5.
+- [x] BIB-20 - Sortir exactement deux ou trois pages demandees.
+  - Statut: `ferme_live`
+  - Preuve live: `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`,
+    `PG4E_PAGE_TWO=met` apres audit harness.
+  - Prochain test live requis: surveillance regression Lot 5; limite actuelle
+    1 a 3 pages / 8 000 caracteres.
+- [ ] BIB-21 - Sortir le debut d'une section quand les bornes sont connues.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: section resolue -> `section_bounds` ->
+    `page_read` compact -> final lock.
+- [ ] BIB-22 - Sortir un passage autour d'une occurrence trouvee.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: aucune preuve live agentique dediee.
+  - Prochain test live requis: hit unique scoped total et ancre ->
+    `passage_context`; snippet jamais rendu.
+- [ ] BIB-23 - Sortir une section complete, avec decoupage si elle est longue.
+  - Statut: `ouvert`
+  - Preuve live: aucune.
+  - Prochain test live requis: bornes fiables -> plan de decoupage, budget,
+    continuation ou streaming, pas lecture longue silencieuse.
+- [ ] BIB-24 - Sortir une plage canonique, par exemple un repere Stephanus.
+  - Statut: `a_ne_pas_pretendre`
+  - Preuve live: aucune preuve produit suffisante; les cas historiques restent
+    regressions severes.
+  - Prochain test live requis: resolution de plage canonique fiable ou
+    clarification, puis extraction mecanique bornee.
+- [ ] BIB-25 - Dire d'ou vient un passage: ouvrage, page, section, ancre.
+  - Statut: `partiel_live`
+  - Preuve live: les extractions page fermees portent `document_id` et ancres,
+    mais aucune question provenance dediee n'est fermee.
+  - Prochain test live requis: apres extrait rendu, demander provenance ->
+    ouvrage/page/section/ancre restitues.
+- [ ] BIB-26 - Garder l'ancre du passage courant.
+  - Statut: `ouvert`
+  - Preuve live: aucune.
+  - Prochain test live requis: tour suivant -> ancre courante disponible ou
+    absence explicite.
+- [ ] BIB-27 - Continuer a partir du passage qu'on vient de lire.
+  - Statut: `ouvert`
+  - Preuve live: aucune.
+  - Prochain test live requis: extrait rendu -> continuation page/contexte
+    suivant sous budget.
+- [ ] BIB-28 - Aller a la page suivante ou precedente.
+  - Statut: `ouvert`
+  - Preuve live: aucune.
+  - Prochain test live requis: ancre page courante -> `page_read` page suivante
+    ou precedente.
+- [ ] BIB-29 - Aller au chapitre suivant.
+  - Statut: `ouvert`
+  - Preuve live: aucune.
+  - Prochain test live requis: chapitre courant -> chapitre suivant resolu ->
+    structure ou lecture bornee.
+- [ ] BIB-30 - Revenir avant un passage.
+  - Statut: `ouvert`
+  - Preuve live: aucune.
+  - Prochain test live requis: ancre passage -> contexte precedent ou
+    clarification si non disponible.
+- [ ] BIB-31 - Comparer deux passages deja lus.
+  - Statut: `ouvert`
+  - Preuve live: aucune.
+  - Prochain test live requis: deux extraits rendus -> comparaison avec ancres
+    distinctes.
+- [ ] BIB-32 - Reprendre un extrait lu plus tot dans la conversation.
+  - Statut: `contractuel_unitaire`
+  - Preuve live: Lot 3 bis couvre le contrat conversation/Memory, pas une
+    reprise live multi-tour.
+  - Prochain test live requis: extrait Biblio rendu -> tour ulterieur ->
+    reprise depuis conversation/Memory avec meta Biblio.
+- [ ] BIB-33 - Dire clairement quand elle ne sait pas, quand c'est ambigu, ou
+  quand la structure manque.
+  - Statut: `partiel_live`
+  - Preuve live: zero-hit scoped ferme dans
+    `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`;
+    ambiguite et structure manquante restent a prouver live.
+  - Prochain test live requis: batteries live `not_found`, `ambiguous`,
+    `needs_clarification`, structure indisponible, message final verifie.
+
+Requalification: les sections historiques et sous-lots techniques ci-dessous
+restent utiles pour comprendre les briques, mais la checklist BIB-01 -> BIB-33
+prevaut pour piloter le produit. Si une ancienne section semble fermer une
+capacite sans preuve live agentique JSONL suffisante, il faut lire cette
+fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
+
 ## 0 bis. Principe de souverainete documentaire
 
 Le bibliothecaire LLM est le documentaliste central. Il decide au maximum dans
