@@ -424,6 +424,11 @@ def _with_carried_anchor(
     if call.tool_name in {
         tools.TOOL_DOCUMENT_TOC,
         tools.TOOL_SEARCH_CHAPTERS,
+        tools.TOOL_SEARCH_WORK,
+        tools.TOOL_SEARCH_SECTION,
+        tools.TOOL_RESOLVE_WORK,
+        tools.TOOL_RESOLVE_SECTION,
+        tools.TOOL_SECTION_BOUNDS,
         tools.TOOL_PAGE_READ,
         tools.TOOL_LOCATE,
         tools.TOOL_PASSAGE_CONTEXT,

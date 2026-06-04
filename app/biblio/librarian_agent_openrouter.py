@@ -269,8 +269,8 @@ def build_librarian_agent_messages(
         "allowlistes et tu respectes exactement les parametres declares. "
         "N'invente jamais work_title, title, theme, author, start_locator ou "
         "end_locator comme cle de params: utilise q/query, document_id/doc_id, "
-        "locator/label, page_no/para_no/paragraph_id, limit, offset, "
-        "char_offset ou window_chars selon l'outil. Retourne toujours un "
+        "section_id, chapter_no, locator/label, page_no/para_no/paragraph_id, "
+        "limit, offset, char_offset ou window_chars selon l'outil. Retourne toujours un "
         "product_method explicite et un "
         "case_id quand la demande correspond clairement a un cas de reference; "
         "si tu ne peux pas choisir honnetement entre plusieurs cas, laisse "
@@ -293,14 +293,15 @@ def build_librarian_agent_messages(
         "texte primaire demande: distingue texte primaire, table des matieres, "
         "notice, introduction, commentaire, candidats et passage exact. Ne "
         "prends pas un commentaire ou une notice pour le passage principal. "
-        "Strategie progressive: catalog_search pour trouver le document ou "
-        "l'oeuvre, document_open_summary ou document_toc si la structure aide, "
-        "locate pour une reference canonique, puis passage_context seulement "
-        "si une position explicite est connue ou portee par un outil precedent. "
+        "Strategie progressive: prefere search_document/search_work pour la "
+        "resolution documentaire, search_section/resolve_section/section_bounds "
+        "pour une section dans un document connu, puis locate pour une reference "
+        "canonique et passage_context seulement si une position explicite est "
+        "connue ou portee par un outil precedent. "
         "Pour le debut d'une section ou d'une oeuvre interne dans un volume/"
-        "corpus sans locator canonique, prefere search_chapters pour trouver "
-        "l'entree structurelle, puis page_read pour lire les premieres pages "
-        "si la demande les cible explicitement. "
+        "corpus sans locator canonique, prefere resolve_section puis "
+        "section_bounds pour trouver l'entree structurelle; utilise page_read "
+        "ensuite si la demande cible explicitement les premieres pages. "
         "Quand un catalog_search, document_open_summary ou locate precede un "
         "autre outil, tu peux omettre document_id si l'ancre sera portee par "
         "le runtime. Pour passage_context, tu peux omettre la position "
@@ -362,6 +363,36 @@ def build_librarian_agent_messages(
 
 def _tool_param_contracts() -> dict[str, Any]:
     return {
+        "search_document": {
+            "allowed": ["q", "query", "limit", "offset"],
+            "required_any": [["q", "query"]],
+            "note": "Recherche bornee de documents/ouvrages dans le catalogue, sans recherche plein texte de passages.",
+        },
+        "search_work": {
+            "allowed": ["document_id", "doc_id", "q", "query", "limit"],
+            "required_any": [["q", "query"]],
+            "note": "Recherche une oeuvre documentaire; avec document_id, inspecte la structure du document au lieu d'une recherche globale.",
+        },
+        "search_section": {
+            "allowed": ["document_id", "doc_id", "q", "query", "limit"],
+            "required_any": [["document_id", "doc_id"], ["q", "query"]],
+            "note": "Recherche une section dans la TOC d'un document deja cible.",
+        },
+        "resolve_work": {
+            "allowed": ["document_id", "doc_id", "q", "query", "limit"],
+            "required_any": [["document_id", "doc_id", "q", "query"]],
+            "note": "Resolution stricte: resolved si unique, ambiguous si plusieurs, not_found si aucune.",
+        },
+        "resolve_section": {
+            "allowed": ["document_id", "doc_id", "q", "query", "chapter_no", "section_id"],
+            "required_any": [["document_id", "doc_id"], ["q", "query", "chapter_no", "section_id"]],
+            "note": "Resolution stricte d'une section dans un document connu.",
+        },
+        "section_bounds": {
+            "allowed": ["document_id", "doc_id", "q", "query", "chapter_no", "section_id"],
+            "required_any": [["document_id", "doc_id"], ["q", "query", "chapter_no", "section_id"]],
+            "note": "Renvoie les ancres debut/fin derivees d'une section resolue.",
+        },
         "catalog_list": {
             "allowed": ["q", "limit", "offset"],
             "note": "Pour lister la bibliotheque entiere, omettre q et utiliser limit=100.",
@@ -463,11 +494,13 @@ def _tool_params_schema() -> dict[str, Any]:
         "query": _nullable_text_schema(max_chars=240),
         "document_id": _nullable_text_schema(max_chars=160),
         "doc_id": _nullable_text_schema(max_chars=160),
+        "section_id": _nullable_text_schema(max_chars=160),
         "locator": _nullable_text_schema(max_chars=120),
         "label": _nullable_text_schema(max_chars=120),
         "kind": _nullable_code_schema(),
         "limit": _nullable_integer_schema(minimum=0, maximum=100000),
         "offset": _nullable_integer_schema(minimum=0, maximum=100000),
+        "chapter_no": _nullable_integer_schema(minimum=0, maximum=100000),
         "page_no": _nullable_integer_schema(minimum=0, maximum=100000),
         "para_no": _nullable_integer_schema(minimum=0, maximum=100000),
         "paragraph_id": _nullable_integer_schema(minimum=0, maximum=1000000000),

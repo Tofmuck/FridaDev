@@ -29,6 +29,12 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertEqual(
             registry.tool_names,
             (
+                tools.TOOL_SEARCH_DOCUMENT,
+                tools.TOOL_SEARCH_WORK,
+                tools.TOOL_SEARCH_SECTION,
+                tools.TOOL_RESOLVE_WORK,
+                tools.TOOL_RESOLVE_SECTION,
+                tools.TOOL_SECTION_BOUNDS,
                 tools.TOOL_CATALOG_LIST,
                 tools.TOOL_CATALOG_SEARCH,
                 tools.TOOL_SEARCH_CHAPTERS,
@@ -40,6 +46,94 @@ class BiblioLibrarianToolTests(unittest.TestCase):
             ),
         )
         self.assertNotIn("export/chunk", registry.tool_names)
+
+    def test_search_document_is_bounded_catalogue_search_not_passage_search(self) -> None:
+        fake = _FakeToolClient(catalog_payload={"items": [{"id": "doc-1", "title": RAW_TITLE}]})
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(tools.TOOL_SEARCH_DOCUMENT, {"query": RAW_QUERY, "limit": 3, "offset": 0})
+        observed = result.to_observability()
+
+        self.assertEqual(fake.calls, [("catalog", RAW_QUERY, 3, 0)])
+        self.assertEqual(result.status, tools.STATUS_OK)
+        self.assertEqual(result.items[0]["candidate_type"], "document")
+        self.assertEqual(observed["endpoint_kind"], catalogue.ENDPOINT_CATALOG)
+        self.assertNotIn(("search", RAW_QUERY, 3), fake.calls)
+        self.assertNotIn(RAW_QUERY, _json(observed))
+        self.assertNotIn(RAW_TITLE, _json(observed))
+
+    def test_resolve_section_uses_scoped_toc_and_returns_derived_bounds(self) -> None:
+        fake = _FakeToolClient(chapters_payload=_chapters_payload())
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(
+            tools.TOOL_RESOLVE_SECTION,
+            {"document_id": "doc-1", "query": "Analytique transcendantale"},
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(fake.calls, [("chapters", "doc-1", 500, 0)])
+        self.assertEqual(result.status, tools.STATUS_RESOLVED)
+        self.assertEqual(result.reason_code, tools.REASON_RESOLVED)
+        self.assertEqual(result.items[0]["chapter_no"], 2)
+        self.assertEqual(result.anchors[0]["unit_no"], 10)
+        self.assertEqual(result.anchors[1]["unit_no"], 29)
+        self.assertEqual(observed["anchor_count"], 2)
+        self.assertEqual(observed["interval_type"], "section")
+        self.assertNotIn(RAW_QUERY, _json(observed))
+        self.assertNotIn("Analytique transcendantale", _json(observed))
+
+    def test_section_bounds_can_resolve_by_chapter_number_without_global_search(self) -> None:
+        fake = _FakeToolClient(chapters_payload=_chapters_payload())
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(tools.TOOL_SECTION_BOUNDS, {"document_id": "doc-1", "chapter_no": 2})
+        observed = result.to_observability()
+
+        self.assertEqual(fake.calls, [("chapters", "doc-1", 500, 0)])
+        self.assertEqual(result.status, tools.STATUS_RESOLVED)
+        self.assertEqual(result.interval["start"]["unit_no"], 10)
+        self.assertEqual(result.interval["end"]["unit_no"], 29)
+        self.assertEqual(observed["chapter_no"], 2)
+        self.assertEqual(observed["unit_start"], 10)
+        self.assertEqual(observed["unit_end"], 29)
+
+    def test_resolve_section_reports_ambiguous_or_not_found_content_free(self) -> None:
+        ambiguous = _FakeToolClient(
+            chapters_payload=_chapters_payload(
+                chapters=[
+                    {"chapter_no": 1, "title": "Livre premier", "unit_no": 1, "source": "toc"},
+                    {"chapter_no": 2, "title": "Livre second", "unit_no": 12, "source": "toc"},
+                ],
+                unit_count=40,
+            )
+        )
+        registry = tools.build_librarian_tool_registry(ambiguous)
+
+        result = registry.run(tools.TOOL_RESOLVE_SECTION, {"document_id": "doc-1", "query": "Livre"})
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, tools.STATUS_AMBIGUOUS)
+        self.assertEqual(result.reason_code, tools.REASON_AMBIGUOUS)
+        self.assertEqual(observed["displayed_count"], 2)
+        self.assertNotIn("Livre premier", _json(observed))
+
+        missing = _FakeToolClient(chapters_payload=_chapters_payload())
+        registry = tools.build_librarian_tool_registry(missing)
+        result = registry.run(tools.TOOL_RESOLVE_SECTION, {"document_id": "doc-1", "query": "Section absente"})
+
+        self.assertEqual(result.status, tools.STATUS_NOT_FOUND)
+        self.assertEqual(result.reason_code, tools.REASON_NOT_FOUND)
+
+    def test_search_section_requires_scope_before_network(self) -> None:
+        fake = _FakeToolClient(chapters_payload=_chapters_payload())
+        registry = tools.build_librarian_tool_registry(fake)
+
+        with self.assertRaises(tools.BiblioLibrarianToolError) as ctx:
+            registry.run(tools.TOOL_SEARCH_SECTION, {"query": RAW_QUERY})
+
+        self.assertEqual(ctx.exception.reason_code, tools.REASON_MISSING_DOCUMENT_ID)
+        self.assertEqual(fake.calls, [])
 
     def test_forbidden_and_unknown_tools_fail_before_network(self) -> None:
         fake = _FakeToolClient()
@@ -544,6 +638,34 @@ def _response(
 def _count(payload: dict[str, object], key: str) -> int:
     value = payload.get(key)
     return len(value) if isinstance(value, list) else 0
+
+
+def _chapters_payload(
+    *,
+    chapters: list[dict[str, object]] | None = None,
+    unit_count: int = 80,
+) -> dict[str, object]:
+    rows = chapters or [
+        {"chapter_no": 1, "title": "Introduction", "unit_no": 1, "source": "toc"},
+        {"chapter_no": 2, "title": "Analytique transcendantale", "unit_no": 10, "source": "toc"},
+        {"chapter_no": 3, "title": "Dialectique transcendantale", "unit_no": 30, "source": "toc"},
+    ]
+    return {
+        "document_id": "doc-1",
+        "document": {
+            "id": "doc-1",
+            "source_type": "pdf",
+            "unit_label": "pages",
+            "unit_count": unit_count,
+            "page_count": unit_count,
+            "paragraph_count": 120,
+            "chapter_count": len(rows),
+            "toc_source": "toc",
+        },
+        "total": len(rows),
+        "count": len(rows),
+        "chapters": rows,
+    }
 
 
 def _json(payload: object) -> str:

@@ -9,6 +9,12 @@ from typing import Any, Mapping, Sequence
 from . import catalogue_client as catalogue
 
 
+TOOL_SEARCH_DOCUMENT = "search_document"
+TOOL_SEARCH_WORK = "search_work"
+TOOL_SEARCH_SECTION = "search_section"
+TOOL_RESOLVE_WORK = "resolve_work"
+TOOL_RESOLVE_SECTION = "resolve_section"
+TOOL_SECTION_BOUNDS = "section_bounds"
 TOOL_CATALOG_LIST = "catalog_list"
 TOOL_CATALOG_SEARCH = "catalog_search"
 TOOL_SEARCH_CHAPTERS = "search_chapters"
@@ -18,7 +24,17 @@ TOOL_PAGE_READ = "page_read"
 TOOL_LOCATE = "locate"
 TOOL_PASSAGE_CONTEXT = "passage_context"
 
+LOT2_LIBRARY_TOOL_NAMES = (
+    TOOL_SEARCH_DOCUMENT,
+    TOOL_SEARCH_WORK,
+    TOOL_SEARCH_SECTION,
+    TOOL_RESOLVE_WORK,
+    TOOL_RESOLVE_SECTION,
+    TOOL_SECTION_BOUNDS,
+)
+
 LOT3_TOOL_NAMES = (
+    *LOT2_LIBRARY_TOOL_NAMES,
     TOOL_CATALOG_LIST,
     TOOL_CATALOG_SEARCH,
     TOOL_SEARCH_CHAPTERS,
@@ -48,8 +64,14 @@ FORBIDDEN_TOOL_NAMES = frozenset(
 STATUS_OK = "ok"
 STATUS_ERROR = "error"
 STATUS_INCOHERENT_CATALOGUE = "incoherent_catalogue"
+STATUS_RESOLVED = "resolved"
+STATUS_AMBIGUOUS = "ambiguous"
+STATUS_NOT_FOUND = "not_found"
 
 REASON_OK = "ok"
+REASON_RESOLVED = "resolved"
+REASON_AMBIGUOUS = "ambiguous"
+REASON_NOT_FOUND = "not_found"
 REASON_UNKNOWN_TOOL = "unknown_tool"
 REASON_FORBIDDEN_TOOL = "forbidden_tool"
 REASON_INVALID_PARAMETER = "invalid_parameter"
@@ -63,8 +85,15 @@ REASON_INVALID_JSON = "invalid_json"
 REASON_BUDGET_OR_LIMIT_EXCEEDED = "budget_or_limit_exceeded"
 REASON_CONTEXT_INCOHERENT = "biblio_librarian_context_incoherent_catalogue"
 REASON_PAGE_INCOHERENT = "biblio_librarian_page_incoherent_catalogue"
+REASON_SECTION_BOUNDS_UNAVAILABLE = "section_bounds_unavailable"
 
 _ENDPOINT_BY_TOOL = {
+    TOOL_SEARCH_DOCUMENT: catalogue.ENDPOINT_CATALOG,
+    TOOL_SEARCH_WORK: catalogue.ENDPOINT_CATALOG,
+    TOOL_SEARCH_SECTION: catalogue.ENDPOINT_CHAPTERS,
+    TOOL_RESOLVE_WORK: catalogue.ENDPOINT_CATALOG,
+    TOOL_RESOLVE_SECTION: catalogue.ENDPOINT_CHAPTERS,
+    TOOL_SECTION_BOUNDS: catalogue.ENDPOINT_CHAPTERS,
     TOOL_CATALOG_LIST: catalogue.ENDPOINT_CATALOG,
     TOOL_CATALOG_SEARCH: catalogue.ENDPOINT_SEARCH,
     TOOL_SEARCH_CHAPTERS: catalogue.ENDPOINT_CHAPTER_SEARCH,
@@ -164,6 +193,8 @@ class BiblioLibrarianToolResult:
     chapter_hint: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     chapters: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
     positions: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
+    anchors: tuple[dict[str, Any], ...] = field(default_factory=tuple, repr=False, compare=False)
+    interval: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     context_text: str = field(default="", repr=False, compare=False)
     page_text: str = field(default="", repr=False, compare=False)
 
@@ -182,6 +213,12 @@ class BiblioLibrarianToolRegistry:
     def run(self, tool_name: str, params: Mapping[str, Any] | None = None) -> BiblioLibrarianToolResult:
         clean_name = _validate_tool_name(tool_name)
         handlers = {
+            TOOL_SEARCH_DOCUMENT: self._search_document,
+            TOOL_SEARCH_WORK: self._search_work,
+            TOOL_SEARCH_SECTION: self._search_section,
+            TOOL_RESOLVE_WORK: self._resolve_work,
+            TOOL_RESOLVE_SECTION: self._resolve_section,
+            TOOL_SECTION_BOUNDS: self._section_bounds,
             TOOL_CATALOG_LIST: self._catalog_list,
             TOOL_CATALOG_SEARCH: self._catalog_search,
             TOOL_SEARCH_CHAPTERS: self._search_chapters,
@@ -192,6 +229,24 @@ class BiblioLibrarianToolRegistry:
             TOOL_PASSAGE_CONTEXT: self._passage_context,
         }
         return handlers[clean_name](dict(params or {}))
+
+    def _search_document(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
+        return _run_library_tool(self._client, TOOL_SEARCH_DOCUMENT, params)
+
+    def _search_work(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
+        return _run_library_tool(self._client, TOOL_SEARCH_WORK, params)
+
+    def _search_section(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
+        return _run_library_tool(self._client, TOOL_SEARCH_SECTION, params)
+
+    def _resolve_work(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
+        return _run_library_tool(self._client, TOOL_RESOLVE_WORK, params)
+
+    def _resolve_section(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
+        return _run_library_tool(self._client, TOOL_RESOLVE_SECTION, params)
+
+    def _section_bounds(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
+        return _run_library_tool(self._client, TOOL_SECTION_BOUNDS, params)
 
     def _catalog_list(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
         tool = TOOL_CATALOG_LIST
@@ -420,6 +475,12 @@ def build_librarian_tool_registry(client: Any | None = None) -> BiblioLibrarianT
     return BiblioLibrarianToolRegistry(client or catalogue.CatalogueClient())
 
 
+def _run_library_tool(client: Any, tool_name: str, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
+    from . import librarian_library_tools
+
+    return librarian_library_tools.run_library_tool(client, tool_name, params)
+
+
 def _validate_tool_name(tool_name: str) -> str:
     clean_name = _clean_tool_name(tool_name)
     if clean_name in FORBIDDEN_TOOL_NAMES:
@@ -438,6 +499,8 @@ def _ok_result(
     chapter_hint: dict[str, Any] | None = None,
     chapters: tuple[dict[str, Any], ...] = (),
     positions: tuple[dict[str, Any], ...] = (),
+    anchors: tuple[dict[str, Any], ...] = (),
+    interval: Mapping[str, Any] | None = None,
     context_text: str = "",
     page_text: str = "",
     offset: int = 0,
@@ -465,6 +528,9 @@ def _ok_result(
         "content_chars": len(content),
         "content_hash": _hash(content),
         "positions": [dict(position) for position in positions],
+        "anchor_count": len(anchors) if anchors else None,
+        "interval_state": _string(_mapping(interval).get("state")),
+        "interval_type": _string(_mapping(interval).get("type")),
     }
     fields.update({key: value for key, value in dict(extra_fields or {}).items() if value is not None})
     observation = BiblioLibrarianToolObservation(
@@ -486,6 +552,8 @@ def _ok_result(
         chapter_hint=dict(chapter_hint or {}),
         chapters=chapters,
         positions=positions,
+        anchors=anchors,
+        interval=dict(interval or {}),
         context_text=context_text,
         page_text=page_text,
     )

@@ -1090,15 +1090,44 @@ worker d'import nominal.
 
 ### Lot 2 - API/outils de bibliotheque minimale
 
-- [ ] Ajouter ou wrapper `search_document`.
-- [ ] Ajouter ou wrapper `search_work`.
-- [ ] Ajouter ou wrapper `search_section`.
-- [ ] Ajouter `resolve_work` et `resolve_section` outilles par manifeste.
-- [ ] Ajouter `section_bounds`.
-- [ ] Garder GET-only et budgets explicites.
+- [x] Ajouter ou wrapper `search_document`.
+- [x] Ajouter ou wrapper `search_work`.
+- [x] Ajouter ou wrapper `search_section`.
+- [x] Ajouter `resolve_work` et `resolve_section` outilles par manifeste.
+- [x] Ajouter `section_bounds`.
+- [x] Garder GET-only et budgets explicites.
 
 Critere de fermeture: le bibliothecaire peut poser les questions canoniques
 sans passer par une recherche globale puis tri opportuniste.
+
+Livraison Lot 2, 2026-06-04:
+
+- code: `app/biblio/librarian_library_tools.py` porte les primitives haut
+  niveau; `app/biblio/librarian_tools.py` garde la registry et delegue les
+  outils Lot 2;
+- outils exposes au bibliothecaire: `search_document`, `search_work`,
+  `search_section`, `resolve_work`, `resolve_section`, `section_bounds`;
+- API utilisee: uniquement routes Catalogue GET deja existantes:
+  `GET /catalog`, `GET /doc/{id}/metadata`, `GET /doc/{id}/chapters`;
+- `search_document` reste une recherche documentaire bornee dans le catalogue,
+  pas une recherche plein texte de passages;
+- `search_section`, `resolve_section` et `section_bounds` exigent un
+  `document_id` et consultent la TOC du document cible; elles ne passent pas par
+  une recherche globale de chapitres suivie d'un filtrage opportuniste;
+- `resolve_work` / `resolve_section` retournent des statuts structurels:
+  `resolved`, `ambiguous` ou `not_found`, avec observabilite content-free;
+- `section_bounds` renvoie les ancres debut/fin derivees par manifeste quand
+  une section unique est resolue;
+- contrat agent: validation JSON, schema OpenRouter et methodes produit
+  acceptent ces nouveaux outils GET-only;
+- preuves: `python3 -m unittest discover app/tests/unit/biblio` -> 363 tests
+  OK; tests cibles sur resolution section scoped, bornes derivees, ambiguite,
+  absence, et absence de recherche globale opportuniste presentee comme
+  resolution scoped.
+
+Limite volontaire: les primitives Lot 2 normalisent l'acces documentaire pour
+le bibliothecaire, mais ne livrent pas encore le renderer produit ni
+l'extraction mecanique exacte du Lot 3.
 
 ### Lot 3 - Answer object et renderer
 

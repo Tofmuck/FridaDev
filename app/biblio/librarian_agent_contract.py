@@ -63,6 +63,7 @@ _TEXT_PARAM_MAX = {
     "query": 240,
     "document_id": 160,
     "doc_id": 160,
+    "section_id": 160,
     "locator": 120,
     "label": 120,
     "kind": 40,
@@ -73,11 +74,42 @@ _INT_PARAM_BOUNDS = {
     "page_no": (1, 100_000),
     "para_no": (1, 100_000),
     "paragraph_id": (1, 2_147_483_647),
+    "chapter_no": (1, 100_000),
     "char_offset": (0, 1_000_000),
     "window_chars": (80, 2_000),
 }
 _REASONING_EFFORTS = {"xhigh", "high", "medium", "low", "minimal", "none"}
 _TOOL_PARAM_CONTRACTS = {
+    tools.TOOL_SEARCH_DOCUMENT: {
+        "allowed": {"q", "query", "limit", "offset"},
+        "required_any": (("q", "query"),),
+        "int_bounds": {"limit": (1, 50), "offset": (0, 100_000)},
+    },
+    tools.TOOL_SEARCH_WORK: {
+        "allowed": {"document_id", "doc_id", "q", "query", "limit"},
+        "required_any": (("q", "query"),),
+        "int_bounds": {"limit": (1, 50)},
+    },
+    tools.TOOL_SEARCH_SECTION: {
+        "allowed": {"document_id", "doc_id", "q", "query", "limit"},
+        "required_any": (("document_id", "doc_id"), ("q", "query")),
+        "int_bounds": {"limit": (1, 50)},
+    },
+    tools.TOOL_RESOLVE_WORK: {
+        "allowed": {"document_id", "doc_id", "q", "query", "limit"},
+        "required_any": (("document_id", "doc_id", "q", "query"),),
+        "int_bounds": {"limit": (1, 20)},
+    },
+    tools.TOOL_RESOLVE_SECTION: {
+        "allowed": {"document_id", "doc_id", "q", "query", "chapter_no", "section_id"},
+        "required_any": (("document_id", "doc_id"), ("q", "query", "chapter_no", "section_id")),
+        "int_bounds": {"chapter_no": (1, 100_000)},
+    },
+    tools.TOOL_SECTION_BOUNDS: {
+        "allowed": {"document_id", "doc_id", "q", "query", "chapter_no", "section_id"},
+        "required_any": (("document_id", "doc_id"), ("q", "query", "chapter_no", "section_id")),
+        "int_bounds": {"chapter_no": (1, 100_000)},
+    },
     tools.TOOL_CATALOG_LIST: {
         "allowed": {"q", "limit", "offset"},
         "required_any": (),
@@ -588,6 +620,12 @@ def _repair_raw_params(tool_name: str, params: Any) -> Mapping[str, Any] | None:
         return {}
     if isinstance(params, str) and params.strip():
         if tool_name in {
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_SEARCH_WORK,
+            tools.TOOL_SEARCH_SECTION,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_RESOLVE_SECTION,
+            tools.TOOL_SECTION_BOUNDS,
             tools.TOOL_CATALOG_LIST,
             tools.TOOL_CATALOG_SEARCH,
             tools.TOOL_DOCUMENT_OPEN_SUMMARY,
@@ -623,7 +661,17 @@ def _repair_params(tool_name: str, params: Mapping[str, Any]) -> dict[str, Any]:
         for key, value in params.items()
         if key in allowed and value is not None and not (isinstance(value, str) and not value.strip())
     }
-    if tool_name in {tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_OPEN_SUMMARY, tools.TOOL_CATALOG_LIST}:
+    if tool_name in {
+        tools.TOOL_SEARCH_DOCUMENT,
+        tools.TOOL_SEARCH_WORK,
+        tools.TOOL_SEARCH_SECTION,
+        tools.TOOL_RESOLVE_WORK,
+        tools.TOOL_RESOLVE_SECTION,
+        tools.TOOL_SECTION_BOUNDS,
+        tools.TOOL_CATALOG_SEARCH,
+        tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+        tools.TOOL_CATALOG_LIST,
+    }:
         if not (repaired.get("q") or repaired.get("query")):
             query = _combined_query(params)
             if not query and _safe_token(params.get("kind")) == "fulltext":

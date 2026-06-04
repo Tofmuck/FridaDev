@@ -75,7 +75,14 @@ METHOD_SPECS = (
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_WORK_LOOKUP,
         case_ids=("P03",),
-        allowed_tool_names=(tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_OPEN_SUMMARY, tools.TOOL_DOCUMENT_TOC),
+        allowed_tool_names=(
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_SEARCH_WORK,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_CATALOG_SEARCH,
+            tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+            tools.TOOL_DOCUMENT_TOC,
+        ),
         preconditions=("biblio_enabled", "work_signal_present"),
         truth_levels=(TRUTH_LEVEL_EXACT, TRUTH_LEVEL_PLAUSIBLE),
         execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
@@ -83,7 +90,13 @@ METHOD_SPECS = (
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
         case_ids=("P09",),
-        allowed_tool_names=(tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_OPEN_SUMMARY, tools.TOOL_DOCUMENT_TOC),
+        allowed_tool_names=(
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+            tools.TOOL_DOCUMENT_TOC,
+            tools.TOOL_CATALOG_SEARCH,
+        ),
         preconditions=("biblio_enabled", "resolved_document_or_unique_match"),
         truth_levels=(TRUTH_LEVEL_EXACT,),
         execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
@@ -92,6 +105,12 @@ METHOD_SPECS = (
         product_method=PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
         case_ids=("P04",),
         allowed_tool_names=(
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_SEARCH_WORK,
+            tools.TOOL_SEARCH_SECTION,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_RESOLVE_SECTION,
+            tools.TOOL_SECTION_BOUNDS,
             tools.TOOL_CATALOG_SEARCH,
             tools.TOOL_SEARCH_CHAPTERS,
             tools.TOOL_DOCUMENT_OPEN_SUMMARY,
@@ -108,6 +127,12 @@ METHOD_SPECS = (
         product_method=PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE,
         case_ids=("P10",),
         allowed_tool_names=(
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_SEARCH_WORK,
+            tools.TOOL_SEARCH_SECTION,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_RESOLVE_SECTION,
+            tools.TOOL_SECTION_BOUNDS,
             tools.TOOL_CATALOG_SEARCH,
             tools.TOOL_SEARCH_CHAPTERS,
             tools.TOOL_DOCUMENT_OPEN_SUMMARY,
@@ -124,6 +149,12 @@ METHOD_SPECS = (
         product_method=PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
         case_ids=("P05", "P06", "P07", "P08"),
         allowed_tool_names=(
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_SEARCH_WORK,
+            tools.TOOL_SEARCH_SECTION,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_RESOLVE_SECTION,
+            tools.TOOL_SECTION_BOUNDS,
             tools.TOOL_CATALOG_SEARCH,
             tools.TOOL_SEARCH_CHAPTERS,
             tools.TOOL_DOCUMENT_OPEN_SUMMARY,
@@ -182,6 +213,8 @@ METHOD_SPECS = (
         allowed_tool_names=(
             tools.TOOL_DOCUMENT_OPEN_SUMMARY,
             tools.TOOL_DOCUMENT_TOC,
+            tools.TOOL_RESOLVE_SECTION,
+            tools.TOOL_SECTION_BOUNDS,
             tools.TOOL_LOCATE,
             tools.TOOL_PASSAGE_CONTEXT,
         ),
@@ -193,6 +226,12 @@ METHOD_SPECS = (
         product_method=PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
         case_ids=("P16", "P17", "P18"),
         allowed_tool_names=(
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_SEARCH_WORK,
+            tools.TOOL_SEARCH_SECTION,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_RESOLVE_SECTION,
+            tools.TOOL_SECTION_BOUNDS,
             tools.TOOL_CATALOG_SEARCH,
             tools.TOOL_SEARCH_CHAPTERS,
             tools.TOOL_DOCUMENT_OPEN_SUMMARY,
@@ -410,9 +449,16 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
         return PRODUCT_METHOD_DOCUMENT_TOC_SHOW
     if clean_intent == "resolve_work":
         return PRODUCT_METHOD_WORK_LOOKUP
+    if tools.TOOL_RESOLVE_WORK in tool_set or tools.TOOL_SEARCH_WORK in tool_set or tools.TOOL_SEARCH_DOCUMENT in tool_set:
+        return PRODUCT_METHOD_WORK_LOOKUP
     if clean_intent == "compare_passages":
         return PRODUCT_METHOD_PASSAGE_COMPARE_CANDIDATES
-    if clean_intent in {"extract_passage", "extract_range", "document_locator"} or tools.TOOL_LOCATE in tool_set:
+    if (
+        clean_intent in {"extract_passage", "extract_range", "document_locator"}
+        or tools.TOOL_LOCATE in tool_set
+        or tools.TOOL_RESOLVE_SECTION in tool_set
+        or tools.TOOL_SECTION_BOUNDS in tool_set
+    ):
         return PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE
     if clean_intent == "search_catalog":
         return PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK
@@ -426,6 +472,8 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
         return PRODUCT_METHOD_DOCUMENT_TOC_SHOW
     if tools.TOOL_CATALOG_LIST in tool_set:
         return PRODUCT_METHOD_CATALOG_LIST_BOUNDED
+    if tools.TOOL_SEARCH_SECTION in tool_set:
+        return PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK
     if tools.TOOL_PASSAGE_CONTEXT in tool_set or tools.TOOL_CATALOG_SEARCH in tool_set:
         return PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK
     return ""

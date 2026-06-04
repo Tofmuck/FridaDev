@@ -21,6 +21,7 @@ Socle agent bibliothecaire Lot 7: 2026-06-01
 Navigation documentaire R1: 2026-06-02
 Signal faible role documentaire Lot E: 2026-06-02
 Manifeste documentaire minimal Last Chance Lot 1: 2026-06-03
+API/outils minimaux Last Chance Lot 2: 2026-06-04
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -129,6 +130,26 @@ Livraison Last Chance Lot 1:
 - limite volontaire: ce correctif ne modifie ni DB schema, ni API Catalogue, ni
   chat runtime; le worker d'import doc-pipeline a ete modifie de facon ciblee
   pour porter le gate d'entree.
+
+Livraison Last Chance Lot 2:
+
+- module haut niveau: `app/biblio/librarian_library_tools.py`;
+- registry exposee: `search_document`, `search_work`, `search_section`,
+  `resolve_work`, `resolve_section`, `section_bounds`;
+- routes Catalogue consommees: GET-only via `/catalog`, `/doc/{id}/metadata`
+  et `/doc/{id}/chapters`; aucune route mutatrice, export ou payload lourd n'est
+  introduit;
+- `search_document` cherche des documents/ouvrages dans le catalogue; il ne
+  doit pas etre confondu avec une recherche plein texte de passage;
+- `search_section`, `resolve_section` et `section_bounds` sont scopees par
+  `document_id` et derivees de la TOC/manifeste du document cible; elles ne
+  presentent pas une recherche globale de chapitres comme resolution scoped;
+- les resolutions strictes retournent `resolved`, `ambiguous` ou `not_found`;
+  ces statuts sont content-free et visibles par le planner;
+- `section_bounds` renvoie des ancres debut/fin derivees du manifeste lorsque
+  la section est unique; les bornes derivees restent signalees comme telles;
+- le schema agent OpenRouter et les methodes produit acceptent ces outils
+  comme primitives documentaires GET-only.
 
 ## 3. Frontieres non negociables
 
