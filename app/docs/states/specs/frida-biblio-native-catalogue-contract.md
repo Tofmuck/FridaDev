@@ -417,6 +417,36 @@ Recherche scoped canonique Last Chance Lot 4D livree:
   les artefacts/logs content-free;
 - preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
 
+Extraction mecanique canonique Last Chance Lot 4E livree:
+
+- famille canonique: `extraction`;
+- methode produit: `product_method=extraction`, `case_id=""`;
+- outils autorises: `search_document`, `search_work`, `search_section`,
+  `resolve_work`, `resolve_section`, `section_bounds`, `locate`, `page_read`,
+  `passage_context`;
+- P04 `passage_extract_canonical_range` reste legacy/regression historique pour
+  les plages canoniques; il n'est plus le canon principal de validation Lot 4E;
+- `catalog_search` et les snippets restent hors extraction canonique. Une
+  recherche scoped produit des candidats; elle ne produit pas le texte exact;
+- exact text = texte mecanique fourni par `page_read` ou `passage_context`,
+  avec `document_id` et ancre technique minimale (`page_no` ou `paragraph_id`).
+  Sans texte mecanique ou sans ancre, le rendu exact est bloque avec un reason
+  code content-free (`extraction_mechanical_text_missing`,
+  `extraction_anchor_missing` ou `extraction_source_tool_unsupported`);
+- `app/biblio/answer_extraction.py` porte la projection/rendu extraction pour
+  eviter d'empiler toutes les familles dans `answer_object.py`;
+- `BiblioAnswerObject.extraction` porte statut, outil source, document court,
+  type de texte, ancre, compteurs/hash du texte exact, reason codes et limites;
+- le bibliothecaire LLM choisit le sens, le document, la reference, la page ou
+  les ancres candidates. Le deterministe ne juge jamais la pertinence
+  semantique du passage: il valide seulement la methode, l'outil GET-only, les
+  params bornes, la coherence document/ancre, la presence du texte mecanique et
+  l'observabilite content-free;
+- le runtime peut completer mecaniquement une position deja portee vers
+  `passage_context`, mais il ne lance pas de recherche globale opportuniste pour
+  fabriquer une extraction canonique;
+- preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
+
 ## 3. Frontieres non negociables
 
 Biblio n'est pas `active_document`.

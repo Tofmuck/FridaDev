@@ -92,6 +92,9 @@ REASON_SECTION_ALIAS_MISSING = "section_alias_missing"
 REASON_PRIMARY_TEXT_ROLE_UNKNOWN = "primary_text_role_unknown"
 REASON_SCOPED_SEARCH_SCOPE_MISSING = "scoped_search_scope_missing"
 REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE = "scoped_search_no_hits_in_scope"
+REASON_EXTRACTION_ANCHOR_MISSING = "extraction_anchor_missing"
+REASON_EXTRACTION_MECHANICAL_TEXT_MISSING = "extraction_mechanical_text_missing"
+REASON_EXTRACTION_SOURCE_TOOL_UNSUPPORTED = "extraction_source_tool_unsupported"
 
 _ENDPOINT_BY_TOOL = {
     TOOL_SEARCH_DOCUMENT: catalogue.ENDPOINT_CATALOG,

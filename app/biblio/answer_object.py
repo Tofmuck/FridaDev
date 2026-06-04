@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 import hashlib
 from typing import Any, Mapping, Sequence
 
+from . import answer_extraction
 from . import answer_resolution
 from . import answer_search
 from . import answer_structure
@@ -98,6 +99,7 @@ class BiblioAnswerObject:
     document_resolution: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     document_structure: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     scoped_search: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    extraction: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     truth_level: str = ""
     source_tool_names: tuple[str, ...] = field(default_factory=tuple)
     render_mode: str = RENDER_STRUCTURED_STATUS
@@ -134,6 +136,7 @@ class BiblioAnswerObject:
                 "document_resolution": answer_resolution.to_observability(self.document_resolution),
                 "document_structure": answer_structure.to_observability(self.document_structure),
                 "scoped_search": answer_search.to_observability(self.scoped_search),
+                "extraction": answer_extraction.to_observability(self.extraction),
                 "truth_level": self.truth_level,
                 "source_tool_names": list(self.source_tool_names),
                 "render_mode": self.render_mode,
@@ -247,7 +250,14 @@ def build_biblio_answer_object(
         reason_codes=reason_codes,
     )
     status = answer_search.override_answer_status(scoped_search, base_status=status)
-    exact_text = _mechanical_exact_text(results) if status == STATUS_READY and _method_allows_exact_text(product_method) else ""
+    extraction = answer_extraction.build_extraction(
+        results,
+        product_method=product_method,
+        base_status=status,
+        reason_codes=reason_codes,
+    )
+    status = answer_extraction.override_answer_status(extraction, base_status=status)
+    exact_text = _exact_text_for_method(results, product_method=product_method, extraction=extraction, status=status)
     selected = _selected_candidate(results, status=status)
     document_id = _document_id(results, selected)
     interval = _interval(results)
@@ -274,6 +284,7 @@ def build_biblio_answer_object(
         document_resolution=document_resolution,
         document_structure=document_structure,
         scoped_search=scoped_search,
+        extraction=extraction,
         truth_level=_text(truth_level) or _default_truth(product_method),
         source_tool_names=source_tool_names,
         render_mode=render_mode,
@@ -342,6 +353,8 @@ def render_biblio_answer_object(
         lines.extend(answer_structure.render_lines(answer.document_structure))
     if answer.scoped_search:
         lines.extend(answer_search.render_lines(answer.scoped_search))
+    if answer.extraction:
+        lines.extend(answer_extraction.render_lines(answer.extraction))
     if answer.interval:
         lines.append(
             "Intervalle: "
@@ -383,6 +396,7 @@ def _render_reason_code(answer: BiblioAnswerObject) -> str:
             *_payload_reason_codes(answer.document_resolution),
             *_payload_reason_codes(answer.document_structure),
             *_payload_reason_codes(answer.scoped_search),
+            *_payload_reason_codes(answer.extraction),
         ]
     )
     for reason in family_reason_codes:
@@ -692,13 +706,41 @@ def _inventory_observability(payload: Mapping[str, Any]) -> dict[str, Any]:
     )
 
 
+def _exact_text_for_method(
+    results: Sequence[librarian_tools.BiblioLibrarianToolResult],
+    *,
+    product_method: str,
+    extraction: Mapping[str, Any],
+    status: str,
+) -> str:
+    if status != STATUS_READY or not _method_allows_exact_text(product_method):
+        return ""
+    if extraction:
+        return answer_extraction.mechanical_exact_text(results, extraction)
+    return _mechanical_exact_text(results)
+
+
 def _mechanical_exact_text(results: Sequence[librarian_tools.BiblioLibrarianToolResult]) -> str:
     for result in reversed(results):
-        if result.context_text:
+        if not _mechanical_result_has_anchor(result):
+            continue
+        if result.context_text and result.tool_name == librarian_tools.TOOL_PASSAGE_CONTEXT:
             return result.context_text
-        if result.page_text:
+        if result.page_text and result.tool_name == librarian_tools.TOOL_PAGE_READ:
             return result.page_text
     return ""
+
+
+def _mechanical_result_has_anchor(result: librarian_tools.BiblioLibrarianToolResult) -> bool:
+    document_id = _text(getattr(result, "document_id", ""))
+    if not document_id:
+        return False
+    for position in result.positions:
+        if not isinstance(position, Mapping):
+            continue
+        if _int(position.get("paragraph_id")) or _int(position.get("page_no")):
+            return True
+    return False
 
 
 def _method_allows_exact_text(product_method: str) -> bool:

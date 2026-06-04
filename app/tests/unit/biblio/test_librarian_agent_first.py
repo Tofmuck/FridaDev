@@ -913,6 +913,65 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn(("search", "theme", 5), fake.calls)
         self.assertNotIn(("context", "doc-1", None, None, None, 0, 700), fake.calls)
 
+    def test_extraction_canonical_method_renders_page_read_mechanical_text(self) -> None:
+        fake = _FakeAgentFirstClient(
+            page_payload={
+                "document_id": "doc-1234",
+                "raw_text": RAW_PASSAGE,
+                "paragraph_count": 4,
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_PAGE_READ,
+                            method="GET",
+                            params={"document_id": "doc-1234", "page_no": 12},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        encoded = json.dumps(
+            {
+                "loop": result.loop_result.to_observability() if result.loop_result else {},
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls, [("page", "doc-1234", 12)])
+        self.assertEqual(result.answer_object.product_method, product_methods.PRODUCT_METHOD_EXTRACTION)
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.extraction["status"], "resolved")
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn("Extraction mecanique:", result.rendered_answer.content)
+        self.assertIn(RAW_PASSAGE, result.rendered_answer.content)
+        self.assertNotIn(("context", "doc-1234", None, None, None, 0, 700), fake.calls)
+        self.assertNotIn(RAW_PASSAGE, encoded)
+
     def test_toc_request_recovers_from_unanchored_toc_step_after_search(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={
@@ -1044,12 +1103,14 @@ class _FakeAgentFirstClient:
         chapters_payload: dict[str, Any] | None = None,
         summary_payload: dict[str, Any] | None = None,
         context_payload: dict[str, Any] | None = None,
+        page_payload: dict[str, Any] | None = None,
     ) -> None:
         self.search_payload = search_payload or {"count": 0, "results": []}
         self.search_payloads = search_payloads or {}
         self.chapters_payload = chapters_payload or {"total": 0, "chapters": []}
         self.summary_payload = summary_payload or {"document_id": "doc-1234", "title": RAW_TITLE}
         self.context_payload = context_payload or {"document_id": "doc-1234", "text": ""}
+        self.page_payload = page_payload or {"document_id": "doc-1234", "raw_text": ""}
         self.calls: list[tuple[Any, ...]] = []
 
     def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
@@ -1096,6 +1157,20 @@ class _FakeAgentFirstClient:
             duration_ms=1,
             result_count=1,
             doc_id_short=catalogue.short_doc_id(doc_id),
+        )
+
+    def page(self, doc_id: str, page_no: int) -> catalogue.CatalogueResponse:
+        self.calls.append(("page", doc_id, page_no))
+        payload = dict(self.page_payload)
+        payload.setdefault("document_id", doc_id)
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_PAGE,
+            status_code=200,
+            payload=payload,
+            duration_ms=1,
+            result_count=1,
+            doc_id_short=catalogue.short_doc_id(doc_id),
+            content_chars=len(str(payload.get("raw_text") or "")),
         )
 
     def context(

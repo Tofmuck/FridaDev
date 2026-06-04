@@ -1601,6 +1601,56 @@ Findings Lot 4D:
 Familles Lot 4 encore ouvertes apres Lot 4D: extraction, navigation lecteur,
 provenance, desambiguisation, etat/ancrage.
 
+Livraison Lot 4E, 2026-06-04:
+
+- famille canonique livree en premier cran: `extraction`;
+- methode produit canonique ajoutee: `product_method=extraction`, `case_id=""`,
+  distincte de l'ancien P04 `passage_extract_canonical_range`, qui reste une
+  regression historique et une compatibilite de transition pour les plages
+  canoniques;
+- outils autorises explicites: `search_document`, `search_work`,
+  `search_section`, `resolve_work`, `resolve_section`, `section_bounds`,
+  `locate`, `page_read`, `passage_context`;
+- `catalog_search` reste hors de la methode canonique extraction: une recherche
+  ou un snippet ne sont jamais un extrait exact;
+- exact text signifie: texte mecanique fourni par `page_read` ou
+  `passage_context`, avec `document_id` et ancre technique minimale
+  (`page_no` ou `paragraph_id`) presents. Sans cette ancre, le renderer bloque
+  l'exact avec `extraction_anchor_missing`;
+- `app/biblio/answer_extraction.py` porte la projection/rendu extraction pour
+  eviter d'empiler la famille dans `answer_object.py`;
+- `BiblioAnswerObject.extraction` expose `resolved`, `ambiguous`, `not_found`,
+  `needs_clarification` ou `error`, source tool, document court, type de texte,
+  ancre, presence/hash/compteurs de texte exact, reason codes et limites;
+- le bibliothecaire LLM choisit le sens, la methode, le document, la reference,
+  la page ou les ancres candidates. Le deterministe valide seulement le contrat
+  technique: outil GET-only autorise, document/ancre coherents, texte mecanique
+  present, observabilite content-free et renderer final coherent;
+- le runtime peut completer mecaniquement une position deja portee vers
+  `passage_context`, mais il ne lance pas de recherche plein texte opportuniste
+  pour fabriquer une extraction canonique;
+- l'observabilite ne contient pas le texte brut: seulement compteurs, hashes
+  courts, ids courts, positions, statut, reason codes et flags de borne;
+- preuve actuelle: tests unitaires de validation agent, answer object et
+  agent-first. Ce n'est pas une preuve live agentique: aucun artefact JSONL live
+  n'est produit par ce lot.
+
+Findings Lot 4E:
+
+- F1 valide: l'extraction existait via P04 legacy; le canon Lot 4E est
+  `extraction` avec `case_id=""`.
+- F2 valide: `answer_object.py` savait rendre du texte mecanique, mais il
+  manquait une projection produit extraction lisible et testee.
+- F3 valide: un hit `catalog_search` ou un snippet ne devient jamais
+  `exact_excerpt`.
+- F4 valide: un texte exact sans document/ancre technique suffisante est bloque.
+- F5 valide: aucune pertinence semantique n'est codee par ce lot.
+
+Familles Lot 4 encore ouvertes apres Lot 4E: navigation lecteur, provenance,
+desambiguisation, etat/ancrage. Extraction reste ouverte pour les sections
+completes, multi-pages complexes, intervalles arbitraires et plages canoniques
+completes.
+
 ### Lot 5 - Nettoyage dur
 
 - [ ] Supprimer ou declasser les chemins legacy non appeles.

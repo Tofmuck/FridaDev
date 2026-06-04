@@ -128,6 +128,115 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(observed_answer["exact_text_chars"], len(RAW_EXACT_TEXT))
         self.assertEqual(observed_render["exact_text_hash"], observed_answer["exact_text_hash"])
 
+    def test_canonical_extraction_renders_exact_page_read_with_anchor(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_PAGE_READ,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_PAGE,
+            document_id="doc-1",
+            positions=({"page_no": 12},),
+            page_text=RAW_EXACT_TEXT,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(answer.extraction["status"], "resolved")
+        self.assertEqual(answer.extraction["source_tool_name"], tools.TOOL_PAGE_READ)
+        self.assertTrue(rendered.exact_text_rendered)
+        self.assertIn("Extraction mecanique:", rendered.content)
+        self.assertIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+
+    def test_canonical_extraction_renders_exact_context_with_anchor(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_PASSAGE_CONTEXT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CONTEXT,
+            document_id="doc-1",
+            positions=({"page_no": 12, "para_no": 3, "paragraph_id": 99},),
+            context_text=RAW_EXACT_TEXT,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(answer.extraction["status"], "resolved")
+        self.assertEqual(answer.extraction["source_tool_name"], tools.TOOL_PASSAGE_CONTEXT)
+        self.assertTrue(rendered.exact_text_rendered)
+        self.assertIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+
+    def test_canonical_extraction_blocks_text_without_anchor(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_PASSAGE_CONTEXT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CONTEXT,
+            document_id="doc-1",
+            context_text=RAW_EXACT_TEXT,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_BLOCKED_EXACT)
+        self.assertEqual(answer.exact_text, "")
+        self.assertEqual(answer.extraction["status"], "needs_clarification")
+        self.assertIn(tools.REASON_EXTRACTION_ANCHOR_MISSING, answer.extraction["reason_codes"])
+        self.assertFalse(rendered.exact_text_rendered)
+        self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+
+    def test_canonical_extraction_does_not_turn_search_snippet_into_exact_excerpt(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_CATALOG_SEARCH,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            document_id="doc-1",
+            items=({"document_id": "doc-1", "doc_id_short": "doc-1", "snippet": RAW_EXACT_TEXT, "page_no": 12},),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_BLOCKED_EXACT)
+        self.assertEqual(answer.exact_text, "")
+        self.assertEqual(answer.extraction["status"], "needs_clarification")
+        self.assertIn(tools.REASON_EXTRACTION_SOURCE_TOOL_UNSUPPORTED, answer.extraction["reason_codes"])
+        self.assertFalse(rendered.exact_text_rendered)
+        self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+
     def test_inventory_metadata_renders_structured_status_without_exact_excerpt(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_CATALOG_LIST,

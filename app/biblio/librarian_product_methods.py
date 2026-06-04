@@ -38,6 +38,7 @@ PRODUCT_METHOD_INVENTORY_METADATA = "inventory_metadata"
 PRODUCT_METHOD_DOCUMENT_RESOLUTION = "document_resolution"
 PRODUCT_METHOD_DOCUMENT_STRUCTURE = "document_structure"
 PRODUCT_METHOD_SCOPED_SEARCH = "scoped_search"
+PRODUCT_METHOD_EXTRACTION = "extraction"
 PRODUCT_METHOD_CATALOG_LIST_FULL = "catalog_list_full"
 PRODUCT_METHOD_CATALOG_LIST_BOUNDED = "catalog_list_bounded"
 PRODUCT_METHOD_WORK_LOOKUP = "work_lookup"
@@ -130,6 +131,25 @@ METHOD_SPECS = (
         ),
         preconditions=("biblio_enabled", "resolved_scope", "theme_query_present"),
         truth_levels=(TRUTH_LEVEL_PLAUSIBLE, TRUTH_LEVEL_CONTEXTUAL),
+        execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
+    ),
+    BiblioProductMethodSpec(
+        product_method=PRODUCT_METHOD_EXTRACTION,
+        canonical_family=CANONICAL_FAMILY_EXTRACTION,
+        case_ids=(),
+        allowed_tool_names=(
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_SEARCH_WORK,
+            tools.TOOL_SEARCH_SECTION,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_RESOLVE_SECTION,
+            tools.TOOL_SECTION_BOUNDS,
+            tools.TOOL_LOCATE,
+            tools.TOOL_PAGE_READ,
+            tools.TOOL_PASSAGE_CONTEXT,
+        ),
+        preconditions=("biblio_enabled", "document_anchor_or_position_present"),
+        truth_levels=(TRUTH_LEVEL_EXACT,),
         execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
     ),
     BiblioProductMethodSpec(
@@ -557,8 +577,12 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
         return PRODUCT_METHOD_DOCUMENT_STRUCTURE
     if clean_intent == CANONICAL_FAMILY_SCOPED_SEARCH:
         return PRODUCT_METHOD_SCOPED_SEARCH
+    if clean_intent == CANONICAL_FAMILY_EXTRACTION:
+        return PRODUCT_METHOD_EXTRACTION
     if clean_intent == "scoped_search":
         return PRODUCT_METHOD_SCOPED_SEARCH
+    if clean_intent == "extraction" or clean_answer_mode == "extraction":
+        return PRODUCT_METHOD_EXTRACTION
     if clean_intent == "list_catalog":
         return PRODUCT_METHOD_CATALOG_LIST_BOUNDED
     if clean_intent == "show_table_of_contents":

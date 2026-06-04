@@ -673,7 +673,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             product_methods.all_canonical_family_names(),
         )
 
-    def test_scoped_search_rejects_extraction_tools_as_next_lot(self) -> None:
+    def test_scoped_search_rejects_extraction_tools(self) -> None:
         for tool_name, params in (
             (tools.TOOL_PASSAGE_CONTEXT, {"document_id": "doc-1", "paragraph_id": 123}),
             (tools.TOOL_PAGE_READ, {"document_id": "doc-1", "page_no": 12}),
@@ -722,6 +722,110 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(validation.plan.case_id, "")
         self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_SCOPED_SEARCH)
         self.assertEqual(validation.plan.tool_calls[0].params["document_id"], "doc-1")
+
+    def test_extraction_is_canonical_family_distinct_from_legacy_p04(self) -> None:
+        spec = product_methods.get_product_method_spec(product_methods.PRODUCT_METHOD_EXTRACTION)
+
+        self.assertIsNotNone(spec)
+        assert spec is not None
+        self.assertEqual(spec.case_ids, ())
+        self.assertEqual(spec.canonical_family, product_methods.CANONICAL_FAMILY_EXTRACTION)
+        self.assertEqual(
+            set(spec.allowed_tool_names),
+            {
+                tools.TOOL_SEARCH_DOCUMENT,
+                tools.TOOL_SEARCH_WORK,
+                tools.TOOL_SEARCH_SECTION,
+                tools.TOOL_RESOLVE_WORK,
+                tools.TOOL_RESOLVE_SECTION,
+                tools.TOOL_SECTION_BOUNDS,
+                tools.TOOL_LOCATE,
+                tools.TOOL_PAGE_READ,
+                tools.TOOL_PASSAGE_CONTEXT,
+            },
+        )
+        self.assertEqual(
+            product_methods.canonical_family_for_method(product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE),
+            product_methods.CANONICAL_FAMILY_EXTRACTION,
+        )
+        self.assertIn(
+            product_methods.CANONICAL_FAMILY_EXTRACTION,
+            product_methods.all_canonical_family_names(),
+        )
+
+    def test_extraction_rejects_catalog_search_as_non_mechanical_extraction_tool(self) -> None:
+        validation = contract.validate_agent_payload(
+            {
+                **json.loads(_valid_json()),
+                "case_id": "",
+                "product_method": product_methods.PRODUCT_METHOD_EXTRACTION,
+                "tool_calls": [
+                    {
+                        "tool_name": tools.TOOL_CATALOG_SEARCH,
+                        "method": "GET",
+                        "params": {"query": "theme", "document_id": "doc-1", "limit": 10},
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_REJECTED)
+        self.assertEqual(validation.reason_code, contract.REASON_PRODUCT_METHOD_TOOL_MISMATCH)
+
+    def test_extraction_accepts_mechanical_reading_tools_with_empty_case_id(self) -> None:
+        for tool_name, params in (
+            (tools.TOOL_PAGE_READ, {"document_id": "doc-1", "page_no": 12}),
+            (tools.TOOL_PASSAGE_CONTEXT, {"document_id": "doc-1", "paragraph_id": 123}),
+            (tools.TOOL_LOCATE, {"document_id": "doc-1", "locator": "126b", "limit": 10}),
+        ):
+            with self.subTest(tool_name=tool_name):
+                validation = contract.validate_agent_payload(
+                    {
+                        **json.loads(_valid_json()),
+                        "case_id": "",
+                        "intent": "extraction",
+                        "product_method": product_methods.PRODUCT_METHOD_EXTRACTION,
+                        "tool_calls": [
+                            {
+                                "tool_name": tool_name,
+                                "method": "GET",
+                                "params": params,
+                            }
+                        ],
+                        "answer_mode": "extraction",
+                    }
+                )
+
+                self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+                self.assertIsNotNone(validation.plan)
+                assert validation.plan is not None
+                self.assertEqual(validation.plan.case_id, "")
+                self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_EXTRACTION)
+
+    def test_extraction_intent_repairs_to_canonical_method(self) -> None:
+        validation = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "extraction",
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_PAGE_READ,
+                            "method": "GET",
+                            "params": {"document_id": "doc-1", "page_no": "12"},
+                        }
+                    ],
+                    "answer_mode": "extraction",
+                }
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.case_id, "")
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_EXTRACTION)
+        self.assertEqual(validation.plan.tool_calls[0].params["page_no"], 12)
 
     def test_toc_catalog_search_repair_stays_legacy_p09(self) -> None:
         validation = contract.parse_and_validate_agent_json(
@@ -1414,6 +1518,9 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             "questions canoniques de recherche scoped",
             "N'appelle pas passage_context",
             "candidats de recherche",
+            "product_method=extraction",
+            "questions canoniques d'extraction exacte",
+            "ses snippets sont des candidats de recherche",
             "case_id quand la demande correspond clairement",
             "choisis le case_id qui correspond a la forme reelle",
             "variante ASCII/sans accents",
@@ -1446,7 +1553,12 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             payload["canonical_family_by_product_method"][product_methods.PRODUCT_METHOD_SCOPED_SEARCH],
             product_methods.CANONICAL_FAMILY_SCOPED_SEARCH,
         )
+        self.assertEqual(
+            payload["canonical_family_by_product_method"][product_methods.PRODUCT_METHOD_EXTRACTION],
+            product_methods.CANONICAL_FAMILY_EXTRACTION,
+        )
         self.assertIn(product_methods.CANONICAL_FAMILY_SCOPED_SEARCH, payload["canonical_families"])
+        self.assertIn(product_methods.CANONICAL_FAMILY_EXTRACTION, payload["canonical_families"])
         self.assertIn("document_id", payload["tool_param_contracts"][tools.TOOL_CATALOG_SEARCH]["allowed"])
         rows = {row["case_id"]: row for row in payload["case_reference_signatures"]}
         self.assertEqual(rows["P03"]["product_method"], product_methods.PRODUCT_METHOD_WORK_LOOKUP)
