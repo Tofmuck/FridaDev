@@ -183,6 +183,191 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertIn(RAW_EXACT_TEXT, rendered.content)
         self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
 
+    def test_canonical_extraction_assembles_two_pages_in_document_order(self) -> None:
+        page_12 = "RAW PAGE 12 MUST ONLY APPEAR IN RENDERED CONTENT"
+        page_13 = "RAW PAGE 13 MUST ONLY APPEAR IN RENDERED CONTENT"
+        results = (
+            _tool_result(
+                tool_name=tools.TOOL_PAGE_READ,
+                status=tools.STATUS_OK,
+                reason_code=tools.REASON_OK,
+                endpoint_kind=catalogue.ENDPOINT_PAGE,
+                document_id="doc-1",
+                positions=({"page_no": 13},),
+                page_text=page_13,
+            ),
+            _tool_result(
+                tool_name=tools.TOOL_PAGE_READ,
+                status=tools.STATUS_OK,
+                reason_code=tools.REASON_OK,
+                endpoint_kind=catalogue.ENDPOINT_PAGE,
+                document_id="doc-1",
+                positions=({"page_no": 12},),
+                page_text=page_12,
+            ),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=results,
+            product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(answer.extraction["content_kind"], "page_range")
+        self.assertEqual(answer.extraction["block_count"], 2)
+        self.assertEqual(answer.extraction["page_start"], 12)
+        self.assertEqual(answer.extraction["page_end"], 13)
+        self.assertEqual(answer.exact_text, page_12 + "\n\n" + page_13)
+        self.assertTrue(rendered.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertLess(rendered.content.index(page_12), rendered.content.index(page_13))
+        self.assertNotIn(page_12, _json(answer.extraction))
+        self.assertNotIn(page_13, _json(answer.extraction))
+        self.assertNotIn(page_12, _json(observed))
+        self.assertNotIn(page_13, _json(observed))
+
+    def test_canonical_extraction_assembles_short_three_page_interval(self) -> None:
+        results = tuple(
+            _tool_result(
+                tool_name=tools.TOOL_PAGE_READ,
+                status=tools.STATUS_OK,
+                reason_code=tools.REASON_OK,
+                endpoint_kind=catalogue.ENDPOINT_PAGE,
+                document_id="doc-1",
+                positions=({"page_no": page_no},),
+                page_text=f"RAW PAGE {page_no} MUST ONLY APPEAR IN RENDERED CONTENT",
+            )
+            for page_no in (12, 13, 14)
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=results,
+            product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.extraction["block_count"], 3)
+        self.assertEqual(answer.extraction["page_start"], 12)
+        self.assertEqual(answer.extraction["page_end"], 14)
+        self.assertTrue(rendered.exact_text_rendered)
+        self.assertIn("intervalle pages lu: 12-14", rendered.content)
+        self.assertNotIn("RAW PAGE 12", _json(observed))
+
+    def test_canonical_extraction_blocks_pages_from_different_documents(self) -> None:
+        results = (
+            _tool_result(
+                tool_name=tools.TOOL_PAGE_READ,
+                status=tools.STATUS_OK,
+                reason_code=tools.REASON_OK,
+                endpoint_kind=catalogue.ENDPOINT_PAGE,
+                document_id="doc-1",
+                positions=({"page_no": 12},),
+                page_text="RAW DOC 1 PAGE MUST NOT RENDER",
+            ),
+            _tool_result(
+                tool_name=tools.TOOL_PAGE_READ,
+                status=tools.STATUS_OK,
+                reason_code=tools.REASON_OK,
+                endpoint_kind=catalogue.ENDPOINT_PAGE,
+                document_id="doc-2",
+                positions=({"page_no": 13},),
+                page_text="RAW DOC 2 PAGE MUST NOT RENDER",
+            ),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=results,
+            product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_BLOCKED_EXACT)
+        self.assertIn(tools.REASON_EXTRACTION_DOCUMENT_MISMATCH, answer.extraction["reason_codes"])
+        self.assertFalse(rendered.exact_text_rendered)
+        self.assertNotIn("RAW DOC 1", rendered.content)
+        self.assertNotIn("RAW DOC 2", rendered.content)
+        self.assertNotIn("RAW DOC 1", _json(observed))
+        self.assertNotIn("RAW DOC 2", _json(observed))
+
+    def test_canonical_extraction_blocks_incomplete_page_interval(self) -> None:
+        results = (
+            _tool_result(
+                tool_name=tools.TOOL_PAGE_READ,
+                status=tools.STATUS_OK,
+                reason_code=tools.REASON_OK,
+                endpoint_kind=catalogue.ENDPOINT_PAGE,
+                document_id="doc-1",
+                positions=({"page_no": 12},),
+                page_text="RAW PAGE 12 MUST NOT RENDER",
+            ),
+            _tool_result(
+                tool_name=tools.TOOL_PAGE_READ,
+                status=tools.STATUS_OK,
+                reason_code=tools.REASON_OK,
+                endpoint_kind=catalogue.ENDPOINT_PAGE,
+                document_id="doc-1",
+                positions=({"page_no": 14},),
+                page_text="RAW PAGE 14 MUST NOT RENDER",
+            ),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=results,
+            product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(answer.extraction["missing_pages"], [13])
+        self.assertIn(tools.REASON_EXTRACTION_PAGE_RANGE_INCOMPLETE, answer.extraction["reason_codes"])
+        self.assertFalse(rendered.exact_text_rendered)
+        self.assertNotIn("RAW PAGE 12", rendered.content)
+        self.assertNotIn("RAW PAGE 14", rendered.content)
+        self.assertNotIn("RAW PAGE 12", _json(observed))
+
+    def test_canonical_extraction_blocks_page_interval_over_budget(self) -> None:
+        results = tuple(
+            _tool_result(
+                tool_name=tools.TOOL_PAGE_READ,
+                status=tools.STATUS_OK,
+                reason_code=tools.REASON_OK,
+                endpoint_kind=catalogue.ENDPOINT_PAGE,
+                document_id="doc-1",
+                positions=({"page_no": page_no},),
+                page_text=f"RAW PAGE {page_no} MUST NOT RENDER",
+            )
+            for page_no in (12, 13, 14, 15)
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=results,
+            product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(answer.extraction["page_count"], 4)
+        self.assertIn(tools.REASON_EXTRACTION_PAGE_RANGE_TOO_LONG, answer.extraction["reason_codes"])
+        self.assertIn("max_page_blocks=3", answer.extraction["limits"])
+        self.assertFalse(rendered.exact_text_rendered)
+        self.assertNotIn("RAW PAGE 12", rendered.content)
+        self.assertNotIn("RAW PAGE 12", _json(observed))
+
     def test_canonical_extraction_blocks_text_without_anchor(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_PASSAGE_CONTEXT,

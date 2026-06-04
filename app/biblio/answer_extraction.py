@@ -33,6 +33,8 @@ _MECHANICAL_TEXT_TOOLS = frozenset(
         librarian_tools.TOOL_PASSAGE_CONTEXT,
     }
 )
+_MAX_PAGE_BLOCKS = 3
+_MAX_EXACT_TEXT_CHARS = 8_000
 
 
 def build_extraction(
@@ -46,10 +48,10 @@ def build_extraction(
         return {}
     candidates = _candidates_from_results(results)
     extraction_attempted = any(result.tool_name in _MECHANICAL_TEXT_TOOLS for result in results)
-    selected = candidates[0] if candidates else {}
+    projection = _project_blocks(candidates, extraction_attempted=extraction_attempted)
     status = _extraction_status(
         results,
-        selected=selected,
+        projection=projection,
         extraction_attempted=extraction_attempted,
         base_status=base_status,
     )
@@ -57,18 +59,35 @@ def build_extraction(
         {
             "family": product_methods.CANONICAL_FAMILY_EXTRACTION,
             "status": status,
-            "source_tool_name": _text(selected.get("source_tool_name")),
-            "document_id": _text(selected.get("document_id")),
-            "doc_id_short": _text(selected.get("doc_id_short")),
-            "content_kind": _text(selected.get("content_kind")),
-            "exact_text_present": bool(selected.get("exact_text_present")) and _has_minimum_anchor(selected),
-            "exact_text_chars": _int(selected.get("exact_text_chars")),
-            "exact_text_hash": _text(selected.get("exact_text_hash")),
-            "anchor": _mapping(selected.get("anchor")),
+            "source_tool_name": _text(projection.get("source_tool_name")),
+            "document_id": _text(projection.get("document_id")),
+            "doc_id_short": _text(projection.get("doc_id_short")),
+            "content_kind": _text(projection.get("content_kind")),
+            "exact_text_present": (
+                bool(projection.get("exact_text_present"))
+                and _has_minimum_anchor(projection)
+                and not _text(projection.get("blocking_reason"))
+            ),
+            "exact_text_chars": _int(projection.get("exact_text_chars")),
+            "exact_text_hash": _text(projection.get("exact_text_hash")),
+            "anchor": _mapping(projection.get("anchor")),
+            "blocks": list(_sequence(projection.get("blocks"))),
+            "block_count": _int(projection.get("block_count")),
+            "page_start": _int(projection.get("page_start")),
+            "page_end": _int(projection.get("page_end")),
+            "page_count": _int(projection.get("page_count")),
+            "missing_pages": list(_sequence(projection.get("missing_pages"))),
             "candidate_count": len(candidates),
             "extraction_attempted": extraction_attempted,
-            "reason_codes": list(_reason_codes(reason_codes, status=status, selected=selected, extraction_attempted=extraction_attempted)),
-            "limits": list(_limits(selected, extraction_attempted=extraction_attempted)),
+            "reason_codes": list(
+                _reason_codes(
+                    reason_codes,
+                    status=status,
+                    projection=projection,
+                    extraction_attempted=extraction_attempted,
+                )
+            ),
+            "limits": list(_limits(projection, extraction_attempted=extraction_attempted)),
         }
     )
 
@@ -96,20 +115,15 @@ def mechanical_exact_text(
 ) -> str:
     if _text(payload.get("status")) != EXTRACTION_STATUS_RESOLVED:
         return ""
-    source_tool_name = _text(payload.get("source_tool_name"))
-    document_id = _text(payload.get("document_id"))
-    content_kind = _text(payload.get("content_kind"))
-    for result in results:
-        if result.tool_name != source_tool_name:
-            continue
-        if _text(getattr(result, "document_id", "")) != document_id:
-            continue
-        if not _has_result_anchor(result):
-            continue
-        text = _result_text(result, content_kind=content_kind)
-        if text:
-            return text
-    return ""
+    chunks: list[str] = []
+    for block in _sequence(payload.get("blocks")):
+        if not isinstance(block, Mapping):
+            return ""
+        text = _text_for_block(results, block)
+        if not text:
+            return ""
+        chunks.append(text)
+    return "\n\n".join(chunks)
 
 
 def render_lines(payload: Mapping[str, Any]) -> list[str]:
@@ -127,6 +141,16 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
     content_kind = _text(payload.get("content_kind"))
     if content_kind:
         lines.append(f"- type de texte: {content_kind}")
+    block_count = _int(payload.get("block_count"))
+    if block_count:
+        lines.append(f"- blocs mecaniques: {block_count}")
+    page_start = _int(payload.get("page_start"))
+    page_end = _int(payload.get("page_end"))
+    if page_start and page_end:
+        if page_start == page_end:
+            lines.append(f"- page lue: {page_start}")
+        else:
+            lines.append(f"- intervalle pages lu: {page_start}-{page_end}")
     anchor = _mapping(payload.get("anchor"))
     if anchor:
         parts = []
@@ -166,6 +190,20 @@ def to_observability(payload: Mapping[str, Any]) -> dict[str, Any]:
             "anchor_page_no": _int(anchor.get("page_no")),
             "anchor_para_no": _int(anchor.get("para_no")),
             "anchor_paragraph_id": _int(anchor.get("paragraph_id")),
+            "block_count": _int(payload.get("block_count")),
+            "page_start": _int(payload.get("page_start")),
+            "page_end": _int(payload.get("page_end")),
+            "page_count": _int(payload.get("page_count")),
+            "block_hashes": [
+                _text(block.get("exact_text_hash"))
+                for block in _sequence(payload.get("blocks"))
+                if isinstance(block, Mapping) and _text(block.get("exact_text_hash"))
+            ],
+            "missing_pages": [
+                _int(page)
+                for page in _sequence(payload.get("missing_pages"))
+                if _int(page)
+            ],
             "candidate_count": _int(payload.get("candidate_count")),
             "extraction_attempted": bool(payload.get("extraction_attempted")),
             "reason_codes": list(_unique(payload.get("reason_codes") or ())),
@@ -177,7 +215,7 @@ def to_observability(payload: Mapping[str, Any]) -> dict[str, Any]:
 def _extraction_status(
     results: Sequence[librarian_tools.BiblioLibrarianToolResult],
     *,
-    selected: Mapping[str, Any],
+    projection: Mapping[str, Any],
     extraction_attempted: bool,
     base_status: str,
 ) -> str:
@@ -185,8 +223,8 @@ def _extraction_status(
         return EXTRACTION_STATUS_ERROR
     if any(result.status == librarian_tools.STATUS_AMBIGUOUS for result in results):
         return EXTRACTION_STATUS_AMBIGUOUS
-    if selected:
-        if _has_minimum_anchor(selected):
+    if projection:
+        if not _text(projection.get("blocking_reason")) and _has_minimum_anchor(projection):
             return EXTRACTION_STATUS_RESOLVED
         return EXTRACTION_STATUS_NEEDS_CLARIFICATION
     if extraction_attempted:
@@ -207,7 +245,7 @@ def _candidate_from_result(result: librarian_tools.BiblioLibrarianToolResult) ->
     document_id = _text(getattr(result, "document_id", ""))
     anchor = _result_anchor(result)
     content_kind = "page" if result.tool_name == librarian_tools.TOOL_PAGE_READ else "context"
-    return _clean(
+    return _clean_candidate(
         {
             "source_tool_name": result.tool_name,
             "document_id": document_id,
@@ -217,6 +255,7 @@ def _candidate_from_result(result: librarian_tools.BiblioLibrarianToolResult) ->
             "exact_text_chars": len(text),
             "exact_text_hash": _hash(text),
             "anchor": anchor,
+            "_exact_text": text,
         }
     )
 
@@ -232,8 +271,147 @@ def _candidates_from_results(
     return tuple(candidates)
 
 
+def _project_blocks(candidates: Sequence[Mapping[str, Any]], *, extraction_attempted: bool) -> dict[str, Any]:
+    valid_blocks = tuple(candidate for candidate in candidates if _has_minimum_anchor(candidate))
+    if not valid_blocks:
+        selected = candidates[0] if candidates else {}
+        if selected:
+            return {
+                **dict(selected),
+                "blocks": (_public_block(selected),),
+                "block_count": 1,
+                "blocking_reason": librarian_tools.REASON_EXTRACTION_ANCHOR_MISSING,
+            }
+        return {}
+    documents = _unique(block.get("document_id") for block in valid_blocks)
+    if len(documents) > 1:
+        selected = dict(valid_blocks[0])
+        return {
+            **selected,
+            "blocks": tuple(_public_block(block) for block in valid_blocks),
+            "block_count": len(valid_blocks),
+            "blocking_reason": librarian_tools.REASON_EXTRACTION_DOCUMENT_MISMATCH,
+        }
+    kinds = _unique(block.get("content_kind") for block in valid_blocks)
+    if len(kinds) > 1:
+        selected = dict(valid_blocks[0])
+        return {
+            **selected,
+            "blocks": tuple(_public_block(block) for block in valid_blocks),
+            "block_count": len(valid_blocks),
+            "blocking_reason": librarian_tools.REASON_EXTRACTION_MIXED_BLOCK_TYPES,
+        }
+    kind = kinds[0] if kinds else ""
+    if kind == "page":
+        return _project_page_blocks(valid_blocks)
+    if len(valid_blocks) > 1:
+        selected = dict(valid_blocks[0])
+        return {
+            **selected,
+            "blocks": tuple(_public_block(block) for block in valid_blocks),
+            "block_count": len(valid_blocks),
+            "blocking_reason": librarian_tools.REASON_EXTRACTION_MIXED_BLOCK_TYPES,
+        }
+    return _project_single_block(valid_blocks[0], extraction_attempted=extraction_attempted)
+
+
+def _project_page_blocks(blocks: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    by_page: dict[int, Mapping[str, Any]] = {}
+    for block in blocks:
+        page_no = _int(_mapping(block.get("anchor")).get("page_no"))
+        if not page_no:
+            return {
+                **dict(block),
+                "blocks": tuple(_public_block(item) for item in blocks),
+                "block_count": len(blocks),
+                "blocking_reason": librarian_tools.REASON_EXTRACTION_ANCHOR_MISSING,
+            }
+        by_page.setdefault(page_no, block)
+    ordered_pages = tuple(sorted(by_page))
+    ordered_source_blocks = tuple(by_page[page] for page in ordered_pages)
+    ordered_blocks = tuple(_public_block(block) for block in ordered_source_blocks)
+    selected = dict(ordered_blocks[0]) if ordered_blocks else {}
+    if len(ordered_pages) > _MAX_PAGE_BLOCKS:
+        return {
+            **selected,
+            "content_kind": "page_range",
+            "blocks": ordered_blocks,
+            "block_count": len(ordered_blocks),
+            "page_start": ordered_pages[0],
+            "page_end": ordered_pages[-1],
+            "page_count": len(ordered_pages),
+            "blocking_reason": librarian_tools.REASON_EXTRACTION_PAGE_RANGE_TOO_LONG,
+        }
+    expected_pages = tuple(range(ordered_pages[0], ordered_pages[-1] + 1)) if ordered_pages else ()
+    missing_pages = tuple(page for page in expected_pages if page not in by_page)
+    if missing_pages:
+        return {
+            **selected,
+            "content_kind": "page_range" if len(ordered_blocks) > 1 else "page",
+            "blocks": ordered_blocks,
+            "block_count": len(ordered_blocks),
+            "page_start": ordered_pages[0],
+            "page_end": ordered_pages[-1],
+            "page_count": len(ordered_pages),
+            "missing_pages": missing_pages,
+            "blocking_reason": librarian_tools.REASON_EXTRACTION_PAGE_RANGE_INCOMPLETE,
+        }
+    combined_text = "\n\n".join(_text(block.get("_exact_text")) for block in ordered_source_blocks)
+    content_kind = "page_range" if len(ordered_blocks) > 1 else "page"
+    if len(combined_text) > _MAX_EXACT_TEXT_CHARS:
+        return {
+            **selected,
+            "content_kind": content_kind,
+            "blocks": ordered_blocks,
+            "block_count": len(ordered_blocks),
+            "page_start": ordered_pages[0],
+            "page_end": ordered_pages[-1],
+            "page_count": len(ordered_pages),
+            "blocking_reason": librarian_tools.REASON_BUDGET_OR_LIMIT_EXCEEDED,
+        }
+    return _clean(
+        {
+            **selected,
+            "content_kind": content_kind,
+            "exact_text_chars": len(combined_text),
+            "exact_text_hash": _hash(combined_text),
+            "blocks": ordered_blocks,
+            "block_count": len(ordered_blocks),
+            "page_start": ordered_pages[0],
+            "page_end": ordered_pages[-1],
+            "page_count": len(ordered_pages),
+            "anchor": _mapping(selected.get("anchor")),
+        }
+    )
+
+
+def _project_single_block(block: Mapping[str, Any], *, extraction_attempted: bool) -> dict[str, Any]:
+    text = _text(block.get("_exact_text"))
+    if len(text) > _MAX_EXACT_TEXT_CHARS:
+        return {
+            **dict(block),
+            "blocks": (_public_block(block),),
+            "block_count": 1,
+            "blocking_reason": librarian_tools.REASON_BUDGET_OR_LIMIT_EXCEEDED,
+        }
+    return _clean(
+        {
+            **dict(block),
+            "blocks": (_public_block(block),),
+            "block_count": 1,
+            "extraction_attempted": extraction_attempted,
+        }
+    )
+
+
+def _public_block(block: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in dict(block).items() if not str(key).startswith("_")}
+
+
 def _result_text(result: librarian_tools.BiblioLibrarianToolResult, *, content_kind: str = "") -> str:
     kind = _text(content_kind)
+    if kind == "page_range":
+        kind = "page"
     if kind == "page":
         return _text(result.page_text)
     if kind == "context":
@@ -269,31 +447,72 @@ def _has_minimum_anchor(candidate: Mapping[str, Any]) -> bool:
     return bool(_int(anchor.get("paragraph_id")) or _int(anchor.get("page_no")))
 
 
+def _text_for_block(
+    results: Sequence[librarian_tools.BiblioLibrarianToolResult],
+    block: Mapping[str, Any],
+) -> str:
+    source_tool_name = _text(block.get("source_tool_name"))
+    document_id = _text(block.get("document_id"))
+    content_kind = _text(block.get("content_kind"))
+    anchor = _mapping(block.get("anchor"))
+    expected_hash = _text(block.get("exact_text_hash"))
+    for result in results:
+        if result.tool_name != source_tool_name:
+            continue
+        if _text(getattr(result, "document_id", "")) != document_id:
+            continue
+        if not _same_anchor(anchor, _result_anchor(result)):
+            continue
+        text = _result_text(result, content_kind=content_kind)
+        if text and _hash(text) == expected_hash:
+            return text
+    return ""
+
+
+def _same_anchor(expected: Mapping[str, Any], observed: Mapping[str, Any]) -> bool:
+    if not expected or not observed:
+        return False
+    for key in ("page_no", "para_no", "paragraph_id"):
+        value = _int(expected.get(key))
+        if value and value != _int(observed.get(key)):
+            return False
+    return True
+
+
 def _reason_codes(
     reason_codes: Sequence[str],
     *,
     status: str,
-    selected: Mapping[str, Any],
+    projection: Mapping[str, Any],
     extraction_attempted: bool,
 ) -> tuple[str, ...]:
     values = list(_unique(reason_codes))
+    blocking_reason = _text(projection.get("blocking_reason"))
+    if blocking_reason:
+        values.append(blocking_reason)
     if status == EXTRACTION_STATUS_NEEDS_CLARIFICATION:
-        reason = (
-            librarian_tools.REASON_EXTRACTION_ANCHOR_MISSING
-            if selected
-            else librarian_tools.REASON_EXTRACTION_SOURCE_TOOL_UNSUPPORTED
-        )
-        values.append(reason)
+        if not blocking_reason:
+            reason = (
+                librarian_tools.REASON_EXTRACTION_ANCHOR_MISSING
+                if projection
+                else librarian_tools.REASON_EXTRACTION_SOURCE_TOOL_UNSUPPORTED
+            )
+            values.append(reason)
     elif status == EXTRACTION_STATUS_NOT_FOUND and extraction_attempted:
         values.append(librarian_tools.REASON_EXTRACTION_MECHANICAL_TEXT_MISSING)
     return _unique(values)
 
 
-def _limits(selected: Mapping[str, Any], *, extraction_attempted: bool) -> tuple[str, ...]:
+def _limits(projection: Mapping[str, Any], *, extraction_attempted: bool) -> tuple[str, ...]:
     values: list[str] = []
-    if selected and not _has_minimum_anchor(selected):
+    blocking_reason = _text(projection.get("blocking_reason"))
+    if projection and not _has_minimum_anchor(projection):
         values.append("exact_text_blocked_without_technical_anchor")
-    if not selected and not extraction_attempted:
+    if blocking_reason == librarian_tools.REASON_EXTRACTION_PAGE_RANGE_TOO_LONG:
+        values.append(f"max_page_blocks={_MAX_PAGE_BLOCKS}")
+    if blocking_reason == librarian_tools.REASON_BUDGET_OR_LIMIT_EXCEEDED:
+        values.append(f"max_exact_text_chars={_MAX_EXACT_TEXT_CHARS}")
+    if not projection and not extraction_attempted:
         values.append("no_mechanical_extraction_tool_result")
     return tuple(values)
 
@@ -333,6 +552,10 @@ def _int(value: Any) -> int:
 
 
 def _clean(data: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in data.items() if not key.startswith("_") and value not in ("", None, [], {}, ())}
+
+
+def _clean_candidate(data: Mapping[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in data.items() if value not in ("", None, [], {}, ())}
 
 

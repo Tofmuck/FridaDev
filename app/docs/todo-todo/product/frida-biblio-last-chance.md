@@ -1651,6 +1651,45 @@ desambiguisation, etat/ancrage. Extraction reste ouverte pour les sections
 completes, multi-pages complexes, intervalles arbitraires et plages canoniques
 completes.
 
+Livraison Lot 4E.1, 2026-06-04:
+
+- Lot 4E.1 reste dans la famille canonique `extraction`;
+- il livre l'extraction mecanique bornee de pages et d'intervalles courts deja
+  materialises par les appels outil du bibliothecaire;
+- page unique: `page_read(document_id, page_no)` rend exact si la page est lue,
+  ancree et coherente avec le document;
+- deux ou trois pages consecutives: plusieurs appels `page_read` sont assembles
+  mecaniquement en ordre documentaire, uniquement si tous les blocs existent,
+  portent le meme `document_id` et forment un intervalle contigu;
+- budget ferme actuel: 1 a 3 pages et 8 000 caracteres exacts assembles. Au-dela,
+  le renderer bloque avec reason code content-free;
+- un intervalle non lu n'est pas un extrait. Une page manquante entre deux pages
+  lues bloque avec `extraction_page_range_incomplete`;
+- des pages de documents differents bloquent avec `extraction_document_mismatch`;
+- `catalog_search`, snippets, TOC, titres de chapitres ou resultats de structure
+  restent hors extraction exacte;
+- `BiblioAnswerObject.extraction` porte maintenant des blocs mecaniques
+  content-free: nombre de blocs, pages debut/fin, pages manquantes, compteurs,
+  hashes courts, outil source et reason codes. Le texte brut des pages ne fuit
+  pas dans l'observabilite;
+- `BiblioFinalResponseLock` autorise le rendu exact assemble seulement si le
+  hash, la longueur et les ancres tiennent;
+- LOT 4E.1: LE BIBLIOTHECAIRE DECIDE LES BORNES DOCUMENTAIRES. LE CODE NE FAIT
+  QU'ASSEMBLER MECANIQUEMENT LES PAGES OU CONTEXTES EFFECTIVEMENT LUS, SOUS
+  BUDGET ET AVEC ANCRES. UN INTERVALLE NON LU N'EST PAS UN EXTRAIT. UNE BORNE
+  AMBIGUE N'EST PAS DEVINEE.
+
+Limites restantes Lot 4E apres 4E.1:
+
+- pas de section complete sans bornes fiables;
+- pas d'intervalle Stephanus complet ou autre plage canonique complete;
+- pas de navigation lecteur globale;
+- pas de continuation automatique depuis un etat implicite. La continuation
+  minimale est acceptee seulement si le bibliothecaire materialise le prochain
+  `page_read` ou si un futur lot expose une ancre courante explicite et fiable;
+- preuve actuelle: tests unitaires et agent-first contractuels seulement, pas de
+  smoke live agentique ni artefact JSONL.
+
 ### Lot 5 - Nettoyage dur
 
 - [ ] Supprimer ou declasser les chemins legacy non appeles.

@@ -95,6 +95,10 @@ REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE = "scoped_search_no_hits_in_scope"
 REASON_EXTRACTION_ANCHOR_MISSING = "extraction_anchor_missing"
 REASON_EXTRACTION_MECHANICAL_TEXT_MISSING = "extraction_mechanical_text_missing"
 REASON_EXTRACTION_SOURCE_TOOL_UNSUPPORTED = "extraction_source_tool_unsupported"
+REASON_EXTRACTION_DOCUMENT_MISMATCH = "extraction_document_mismatch"
+REASON_EXTRACTION_PAGE_RANGE_INCOMPLETE = "extraction_page_range_incomplete"
+REASON_EXTRACTION_PAGE_RANGE_TOO_LONG = "extraction_page_range_too_long"
+REASON_EXTRACTION_MIXED_BLOCK_TYPES = "extraction_mixed_block_types_unsupported"
 
 _ENDPOINT_BY_TOOL = {
     TOOL_SEARCH_DOCUMENT: catalogue.ENDPOINT_CATALOG,

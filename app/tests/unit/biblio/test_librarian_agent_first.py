@@ -972,6 +972,71 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn(("context", "doc-1234", None, None, None, 0, 700), fake.calls)
         self.assertNotIn(RAW_PASSAGE, encoded)
 
+    def test_extraction_canonical_method_renders_two_page_range_mechanically(self) -> None:
+        page_12 = "RAW AGENT FIRST PAGE 12 MUST NOT LEAK"
+        page_13 = "RAW AGENT FIRST PAGE 13 MUST NOT LEAK"
+        fake = _FakeAgentFirstClient(
+            page_payloads={
+                12: {"document_id": "doc-1234", "raw_text": page_12, "paragraph_count": 4},
+                13: {"document_id": "doc-1234", "raw_text": page_13, "paragraph_count": 5},
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_PAGE_READ,
+                            method="GET",
+                            params={"document_id": "doc-1234", "page_no": 13},
+                        ),
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_PAGE_READ,
+                            method="GET",
+                            params={"document_id": "doc-1234", "page_no": 12},
+                        ),
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        encoded = json.dumps(
+            {
+                "loop": result.loop_result.to_observability() if result.loop_result else {},
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(fake.calls, [("page", "doc-1234", 13), ("page", "doc-1234", 12)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.extraction["content_kind"], "page_range")
+        self.assertEqual(result.answer_object.extraction["block_count"], 2)
+        self.assertEqual(result.answer_object.extraction["page_start"], 12)
+        self.assertEqual(result.answer_object.extraction["page_end"], 13)
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertLess(result.rendered_answer.content.index(page_12), result.rendered_answer.content.index(page_13))
+        self.assertNotIn(("context", "doc-1234", None, None, None, 0, 700), fake.calls)
+        self.assertNotIn(page_12, encoded)
+        self.assertNotIn(page_13, encoded)
+
     def test_toc_request_recovers_from_unanchored_toc_step_after_search(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={
@@ -1104,6 +1169,7 @@ class _FakeAgentFirstClient:
         summary_payload: dict[str, Any] | None = None,
         context_payload: dict[str, Any] | None = None,
         page_payload: dict[str, Any] | None = None,
+        page_payloads: dict[int, dict[str, Any]] | None = None,
     ) -> None:
         self.search_payload = search_payload or {"count": 0, "results": []}
         self.search_payloads = search_payloads or {}
@@ -1111,6 +1177,7 @@ class _FakeAgentFirstClient:
         self.summary_payload = summary_payload or {"document_id": "doc-1234", "title": RAW_TITLE}
         self.context_payload = context_payload or {"document_id": "doc-1234", "text": ""}
         self.page_payload = page_payload or {"document_id": "doc-1234", "raw_text": ""}
+        self.page_payloads = page_payloads or {}
         self.calls: list[tuple[Any, ...]] = []
 
     def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
@@ -1161,7 +1228,7 @@ class _FakeAgentFirstClient:
 
     def page(self, doc_id: str, page_no: int) -> catalogue.CatalogueResponse:
         self.calls.append(("page", doc_id, page_no))
-        payload = dict(self.page_payload)
+        payload = dict(self.page_payloads.get(page_no, self.page_payload))
         payload.setdefault("document_id", doc_id)
         return catalogue.CatalogueResponse(
             endpoint_kind=catalogue.ENDPOINT_PAGE,

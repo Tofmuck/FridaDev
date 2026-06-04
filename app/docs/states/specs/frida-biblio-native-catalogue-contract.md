@@ -447,6 +447,34 @@ Extraction mecanique canonique Last Chance Lot 4E livree:
   fabriquer une extraction canonique;
 - preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
 
+Extraction mecanique bornee Last Chance Lot 4E.1 livree:
+
+- la methode canonique reste `product_method=extraction`, `case_id=""`;
+- page unique: `page_read(document_id, page_no)` peut rendre exact si le texte,
+  le document et l'ancre page sont coherents;
+- intervalle court: 2 ou 3 appels `page_read` peuvent etre assembles
+  mecaniquement, en ordre documentaire, si les pages sont consecutives et dans
+  le meme document;
+- budget actuel: 1 a 3 pages, 8 000 caracteres exacts assembles. Les warnings
+  ou refus sont content-free;
+- reason codes bloquants:
+  `extraction_page_range_too_long`, `extraction_page_range_incomplete`,
+  `extraction_document_mismatch`, `extraction_mixed_block_types_unsupported`,
+  `budget_or_limit_exceeded`;
+- un intervalle non lu n'est pas un extrait. Le systeme ne fabrique pas une page
+  manquante et ne transforme pas une recherche, un snippet, une TOC ou un titre
+  de chapitre en texte exact;
+- `BiblioAnswerObject.extraction` expose les blocs mecaniques sans texte brut:
+  `block_count`, `page_start`, `page_end`, `page_count`, `missing_pages`, hashes
+  courts, compteur de caracteres, outil source, statut et reason codes;
+- le bibliothecaire LLM decide les bornes documentaires. Le deterministe assemble
+  seulement les blocs effectivement lus et verifies; il ne devine pas une borne
+  ambigue et ne juge jamais la pertinence semantique;
+- continuation: pas de navigation lecteur globale dans ce lot. Une continuation
+  est seulement un nouvel appel `page_read` explicite par le bibliothecaire, ou
+  relevera d'un futur etat/ancrage fiable;
+- preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
+
 ## 3. Frontieres non negociables
 
 Biblio n'est pas `active_document`.
