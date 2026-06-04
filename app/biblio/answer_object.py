@@ -13,6 +13,7 @@ import hashlib
 from typing import Any, Mapping, Sequence
 
 from . import answer_resolution
+from . import answer_structure
 from . import librarian_planner
 from . import librarian_product_methods as product_methods
 from . import librarian_tools
@@ -87,6 +88,7 @@ class BiblioAnswerObject:
     limits: tuple[str, ...] = field(default_factory=tuple)
     inventory_metadata: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     document_resolution: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    document_structure: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     truth_level: str = ""
     source_tool_names: tuple[str, ...] = field(default_factory=tuple)
     render_mode: str = RENDER_STRUCTURED_STATUS
@@ -121,6 +123,7 @@ class BiblioAnswerObject:
                 "limits": list(self.limits),
                 "inventory_metadata": _inventory_observability(self.inventory_metadata),
                 "document_resolution": answer_resolution.to_observability(self.document_resolution),
+                "document_structure": answer_structure.to_observability(self.document_structure),
                 "truth_level": self.truth_level,
                 "source_tool_names": list(self.source_tool_names),
                 "render_mode": self.render_mode,
@@ -220,7 +223,14 @@ def build_biblio_answer_object(
         reason_codes=reason_codes,
     )
     status = answer_resolution.override_answer_status(document_resolution, base_status=base_status)
-    exact_text = _mechanical_exact_text(results) if status == STATUS_READY else ""
+    document_structure = answer_structure.build_document_structure(
+        results,
+        product_method=product_method,
+        base_status=status,
+        reason_codes=reason_codes,
+    )
+    status = answer_structure.override_answer_status(document_structure, base_status=status)
+    exact_text = _mechanical_exact_text(results) if status == STATUS_READY and _method_allows_exact_text(product_method) else ""
     selected = _selected_candidate(results, status=status)
     document_id = _document_id(results, selected)
     interval = _interval(results)
@@ -245,6 +255,7 @@ def build_biblio_answer_object(
         limits=_limits(results, selected),
         inventory_metadata=inventory_metadata,
         document_resolution=document_resolution,
+        document_structure=document_structure,
         truth_level=_text(truth_level) or _default_truth(product_method),
         source_tool_names=source_tool_names,
         render_mode=render_mode,
@@ -309,6 +320,8 @@ def render_biblio_answer_object(
         lines.extend(_inventory_lines(answer.inventory_metadata))
     if answer.document_resolution:
         lines.extend(answer_resolution.render_lines(answer.document_resolution))
+    if answer.document_structure:
+        lines.extend(answer_structure.render_lines(answer.document_structure))
     if answer.interval:
         lines.append(
             "Intervalle: "
@@ -640,6 +653,19 @@ def _mechanical_exact_text(results: Sequence[librarian_tools.BiblioLibrarianTool
         if result.page_text:
             return result.page_text
     return ""
+
+
+def _method_allows_exact_text(product_method: str) -> bool:
+    family = product_methods.canonical_family_for_method(_text(product_method))
+    if not family:
+        return True
+    return family in {
+        product_methods.CANONICAL_FAMILY_SCOPED_SEARCH,
+        product_methods.CANONICAL_FAMILY_EXTRACTION,
+        product_methods.CANONICAL_FAMILY_READER_NAVIGATION,
+        product_methods.CANONICAL_FAMILY_PROVENANCE,
+        product_methods.CANONICAL_FAMILY_ANCHORING_STATE,
+    }
 
 
 def _state_from_candidate(candidate: Mapping[str, Any], kind: str) -> str:

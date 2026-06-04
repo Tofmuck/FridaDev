@@ -296,6 +296,132 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(answer.document_resolution["status"], "needs_clarification")
         self.assertNotIn(RAW_TITLE, _json(answer.to_observability()))
 
+    def test_document_structure_renders_toc_without_exact_excerpt(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_DOCUMENT_TOC,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            document_id="doc-123456",
+            chapters=(
+                {"chapter_no": 1, "title": RAW_TITLE, "page_start": 4},
+                {"chapter_no": 2, "title": "RAW SECOND CHAPTER MUST ONLY APPEAR IN RENDERED CONTENT", "page_start": 12},
+            ),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertEqual(answer.document_structure["status"], "resolved")
+        self.assertEqual(answer.document_structure["chapter_count"], 2)
+        self.assertTrue(lock.ok)
+        self.assertFalse(lock.exact_text_rendered)
+        self.assertIn("Structure documentaire / table des matieres:", rendered.content)
+        self.assertIn(RAW_TITLE, rendered.content)
+        self.assertNotIn(RAW_TITLE, _json(observed))
+        self.assertNotIn("RAW SECOND CHAPTER", _json(observed))
+
+    def test_document_structure_keeps_ambiguous_documents_without_toc(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            items=(
+                {"candidate_type": "document", "document_id": "doc-1", "doc_id_short": "doc-1", "title": "Candidate 1"},
+                {"candidate_type": "document", "document_id": "doc-2", "doc_id_short": "doc-2", "title": "Candidate 2"},
+            ),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+
+        self.assertEqual(answer.status, answer_object.STATUS_AMBIGUOUS)
+        self.assertEqual(answer.document_id, "")
+        self.assertEqual(answer.document_structure["status"], "ambiguous")
+        self.assertTrue(lock.ok)
+        self.assertIn("ambiguite conservee", rendered.content)
+        self.assertFalse(rendered.exact_text_rendered)
+
+    def test_document_structure_renders_section_bounds_as_structure_not_text(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_SECTION_BOUNDS,
+            status=tools.STATUS_RESOLVED,
+            reason_code=tools.REASON_RESOLVED,
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            document_id="doc-1",
+            items=(
+                {
+                    "candidate_type": "section",
+                    "document_id": "doc-1",
+                    "doc_id_short": "doc-1",
+                    "section_id": "doc-1:section:2",
+                    "chapter_no": 2,
+                    "title": RAW_TITLE,
+                    "content_role": "primary_text",
+                    "boundary_state": "derived",
+                    "unit_start": 10,
+                    "unit_end": 29,
+                },
+            ),
+            anchors=(
+                {"document_id": "doc-1", "unit_no": 10, "section_id": "doc-1:section:2"},
+                {"document_id": "doc-1", "unit_no": 29, "section_id": "doc-1:section:2"},
+            ),
+            interval={"type": "section", "state": "derived"},
+            context_text=RAW_EXACT_TEXT,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.document_structure["section_count"], 1)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertEqual(answer.exact_text, "")
+        self.assertIn("sections structurelles:", rendered.content)
+        self.assertIn("unit_start=10", rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn(RAW_TITLE, _json(answer.to_observability()))
+
+    def test_document_structure_no_structure_is_not_found(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_DOCUMENT_TOC,
+            status=tools.STATUS_NOT_FOUND,
+            reason_code=tools.REASON_NOT_FOUND,
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            document_id="doc-1",
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+
+        self.assertEqual(answer.status, answer_object.STATUS_NOT_FOUND)
+        self.assertEqual(answer.document_structure["status"], "not_found")
+        self.assertIn("aucune structure documentaire", rendered.content)
+        self.assertFalse(rendered.exact_text_rendered)
+
     def test_final_response_lock_authorizes_only_technical_render_contract(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_PASSAGE_CONTEXT,
@@ -379,6 +505,7 @@ def _tool_result(
     positions: tuple[dict[str, object], ...] = (),
     anchors: tuple[dict[str, object], ...] = (),
     interval: dict[str, object] | None = None,
+    chapters: tuple[dict[str, object], ...] = (),
     context_text: str = "",
     page_text: str = "",
     document_summary: dict[str, object] | None = None,
@@ -400,6 +527,7 @@ def _tool_result(
         document_id=document_id,
         items=items,
         document_summary=dict(document_summary or {}),
+        chapters=chapters,
         positions=positions,
         anchors=anchors,
         interval=dict(interval or {}),

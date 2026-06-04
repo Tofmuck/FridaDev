@@ -25,6 +25,7 @@ _SUMMARY_COMPLETION_METHODS = frozenset(
 
 _TOC_COMPLETION_METHODS = frozenset(
     {
+        product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE,
         product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
     }
 )
@@ -139,7 +140,11 @@ def complete_product_method_loop(
             )
 
     if product_method in _TOC_COMPLETION_METHODS and not _has_endpoint(loop_result, "chapters"):
-        doc_id = _first_document_id(loop_result)
+        doc_id = (
+            _summary_completion_document_id(loop_result)
+            if product_method == product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE
+            else _first_document_id(loop_result)
+        )
         if not doc_id and product_method in _SEARCH_ASSISTED_TOC_METHODS:
             for _ in range(2):
                 fallback_query = _fallback_search_query(deterministic_plan, loop_result)

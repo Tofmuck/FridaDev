@@ -522,6 +522,131 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn(RAW_QUERY, encoded)
         self.assertNotIn(RAW_PASSAGE, encoded)
 
+    def test_document_structure_canonical_method_renders_toc_for_unique_document(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "total": 1,
+                "items": [
+                    {
+                        "id": "doc-1234",
+                        "title": RAW_TITLE,
+                    }
+                ],
+            },
+            chapters_payload={
+                "total": 1,
+                "chapters": [
+                    {
+                        "chapter_no": 1,
+                        "title": RAW_CHAPTER,
+                        "page_start": 7,
+                    }
+                ],
+            },
+            context_payload={"document_id": "doc-1234", "text": RAW_PASSAGE},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="document_structure",
+                    product_method=product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE,
+                    case_id="",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5, "offset": 0},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="search_catalog"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        encoded = json.dumps(
+            {
+                "loop": result.loop_result.to_observability() if result.loop_result else {},
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls, [("metadata_search", RAW_QUERY, 5), ("chapters", "doc-1234", 500, 0)])
+        self.assertEqual(result.answer_object.product_method, product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE)
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.document_structure["status"], "resolved")
+        self.assertEqual(result.answer_object.document_structure["chapter_count"], 1)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertTrue(lock.ok)
+        self.assertFalse(lock.exact_text_rendered)
+        self.assertIn("Structure documentaire / table des matieres:", result.rendered_answer.content)
+        self.assertIn(RAW_CHAPTER, result.rendered_answer.content)
+        self.assertNotIn(("context", "doc-1234", None, None, None, 0, 700), fake.calls)
+        self.assertNotIn(RAW_QUERY, encoded)
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_CHAPTER, encoded)
+        self.assertNotIn(RAW_PASSAGE, encoded)
+
+    def test_document_structure_canonical_method_keeps_ambiguous_documents(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "total": 2,
+                "items": [
+                    {"id": "doc-1", "title": "Candidate 1"},
+                    {"id": "doc-2", "title": "Candidate 2"},
+                ],
+            },
+            chapters_payload={"total": 1, "chapters": [{"chapter_no": 1, "title": RAW_CHAPTER}]},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="document_structure",
+                    product_method=product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE,
+                    case_id="",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5, "offset": 0},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="search_catalog"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls, [("metadata_search", RAW_QUERY, 5)])
+        self.assertEqual(result.answer_object.product_method, product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE)
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_AMBIGUOUS)
+        self.assertEqual(result.answer_object.document_id, "")
+        self.assertEqual(result.answer_object.document_structure["status"], "ambiguous")
+        self.assertTrue(lock.ok)
+        self.assertIn("ambiguite conservee", result.rendered_answer.content)
+        self.assertNotIn(("chapters", "doc-1", 500, 0), fake.calls)
+
     def test_toc_request_recovers_from_unanchored_toc_step_after_search(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={

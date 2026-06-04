@@ -1373,7 +1373,7 @@ effectivement memorise et metadonnees d'ancrage/provenance.
 
 - [x] Lot 4A: migrer un premier cran inventaire/metadonnees.
 - [x] Lot 4B: migrer un premier cran resolution documentaire.
-- [ ] Migrer structure/TOC.
+- [x] Lot 4C: migrer un premier cran structure/TOC.
 - [ ] Migrer recherche scoped.
 - [ ] Migrer extraction.
 - [ ] Migrer navigation lecteur.
@@ -1477,6 +1477,60 @@ Findings Lot 4B:
 
 Familles Lot 4 encore ouvertes apres Lot 4B: structure/TOC, recherche scoped,
 extraction, navigation lecteur, provenance, desambiguisation, etat/ancrage.
+
+Livraison Lot 4C, 2026-06-04:
+
+- famille canonique livree en premier cran: `document_structure`;
+- methode produit canonique ajoutee: `product_method=document_structure`,
+  `case_id=""`, distincte de l'ancien `document_toc_show` / P09 qui reste une
+  regression historique et une compatibilite de transition;
+- outils autorises explicites: `search_document`, `resolve_work`,
+  `document_open_summary`, `document_toc`, `search_section`,
+  `resolve_section`, `section_bounds`;
+- `catalog_search` reste hors de la methode canonique structure/TOC: le cran
+  canonique ne doit pas redevenir une recherche globale opportuniste suivie d'un
+  bricolage local. P09 garde cette compatibilite legacy;
+- le bibliothecaire LLM choisit cette methode. Le deterministe ne reconnait pas
+  les formulations utilisateur par regex et ne juge jamais la pertinence
+  semantique ou bibliographique;
+- le deterministe verifie seulement: methode connue, famille canonique, outils
+  allowlistes GET-only, params bornes, statut technique, absence de choix
+  silencieux d'un document/section ambigu et observabilite content-free;
+- `app/biblio/answer_structure.py` porte la projection/rendu structure/TOC pour
+  eviter d'empiler toutes les familles dans `answer_object.py`;
+- `BiblioAnswerObject.document_structure` expose `resolved`, `ambiguous`,
+  `not_found`, `needs_clarification` ou `error` selon les tool results;
+- une TOC ou une section structurelle n'est pas un texte primaire ni une
+  extraction exacte. Meme si un outil porte par ailleurs du texte mecanique, la
+  famille `document_structure` force un rendu `structured_status`, pas
+  `exact_excerpt`;
+- un document unique peut ouvrir une TOC. Plusieurs candidats restent
+  `ambiguous`; zero structure reste `not_found`; une structure insuffisante
+  reste `needs_clarification` ou porte un reason code structurel;
+- `BiblioFinalResponseLock` peut autoriser le rendu structure coherent sans
+  extrait exact; aucun texte exact n'est pretendu par ce cran;
+- l'observabilite ne contient pas les titres/auteurs/chapitres bruts: seulement
+  compteurs, hashes courts, ids courts, roles de contenu, statuts de bornes,
+  reason codes et flags de borne;
+- preuve actuelle: tests unitaires de validation agent, answer object et
+  agent-first. Ce n'est pas une preuve live agentique: aucun artefact JSONL live
+  n'est produit par ce lot.
+
+Findings Lot 4C:
+
+- F1 valide: `document_toc_show` / P09 est legacy; le canon Lot 4C est
+  `document_structure` avec `case_id=""`.
+- F2 valide: plusieurs documents ou sections restent `ambiguous`; le cran
+  canonique ne choisit pas le premier candidat.
+- F3 valide: une TOC ou une section structurelle ne devient ni texte primaire ni
+  extraction exacte.
+- F4 valide: Kant, Foucault et Stephanus restent des regressions severes, pas
+  des cas particuliers corriges par ce lot.
+- F5 valide: `answer_object.py` etait deja gros; la projection/rendu structurel
+  substantiel est separe dans `answer_structure.py`.
+
+Familles Lot 4 encore ouvertes apres Lot 4C: recherche scoped, extraction,
+navigation lecteur, provenance, desambiguisation, etat/ancrage.
 
 ### Lot 5 - Nettoyage dur
 
