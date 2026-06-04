@@ -1879,6 +1879,23 @@ Replay live apres correction:
   trajectoire, mais les pages precises doivent encore produire regulierement
   `BiblioAnswerObject` + `BiblioFinalResponseLock` exact depuis `page_read`.
 
+Proof Gate page-render isole:
+
+- artefact content-free conserve:
+  `app/docs/states/baselines/biblio-smokes/lot4e-proof-gate-live-after-page-render-20260604T151409Z.jsonl`;
+- score: `4 met`, `0 failed`, `0 partial`;
+- diagnostic: quand le document est deja explicitement ancre, le troncon
+  `page_read` -> `BiblioAnswerObject.extraction/resolved` -> `exact_excerpt`
+  -> `BiblioFinalResponseLock/authorized` -> message assistant final conforme
+  tient pour une page unique et deux pages contigues;
+- requalification: les anciens `partial` des cas page ne prouvaient pas un bug
+  du renderer page. Ils provenaient de `page_read` planifie mais non exploitable
+  faute de `document_id` porte par la resolution live;
+- limite restante: fermer le live naturel page/page-range exige encore une
+  meilleure resolution/ancrage documentaire agentique avant `page_read`. Le
+  renderer page-range minimal est prouve quand les pages ont effectivement ete
+  lues.
+
 ### Lot 5 - Nettoyage dur
 
 - [ ] Supprimer ou declasser les chemins legacy non appeles.
