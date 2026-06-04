@@ -42,19 +42,21 @@ def build_scoped_search(
     scope_doc_id = _unique_scope_document_id(scope_candidates)
     raw_hits = _dedupe_hits(_hit for result in results for _hit in _search_hits_from_result(result))
     scoped_hits = tuple(hit for hit in raw_hits if scope_doc_id and _text(hit.get("document_id")) == scope_doc_id)
+    search_attempted = _catalog_search_attempted(results)
     status = _search_status(
         results,
         scope_candidates=scope_candidates,
         scope_doc_id=scope_doc_id,
         raw_hits=raw_hits,
         scoped_hits=scoped_hits,
+        search_attempted=search_attempted,
         base_status=base_status,
         reason_codes=reason_codes,
     )
     effective_reason_codes = list(_unique(reason_codes))
     if status == SEARCH_STATUS_NEEDS_CLARIFICATION and not scope_doc_id:
         effective_reason_codes = list(_unique((*effective_reason_codes, librarian_tools.REASON_SCOPED_SEARCH_SCOPE_MISSING)))
-    if status == SEARCH_STATUS_NOT_FOUND and raw_hits:
+    if status == SEARCH_STATUS_NOT_FOUND and (raw_hits or search_attempted):
         effective_reason_codes = list(_unique((*effective_reason_codes, librarian_tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE)))
     return _clean(
         {
@@ -66,11 +68,20 @@ def build_scoped_search(
             "candidate_count": len(scoped_hits),
             "raw_candidate_count": len(raw_hits),
             "filtered_out_count": max(len(raw_hits) - len(scoped_hits), 0),
+            "search_attempted": search_attempted,
             "scope_candidates": scope_candidates[:20],
             "candidates": scoped_hits[:20],
             "truncated": len(scope_candidates) > 20 or len(scoped_hits) > 20,
             "reason_codes": effective_reason_codes,
-            "limits": list(_search_limits(scope_candidates, raw_hits, scoped_hits)),
+            "limits": list(
+                _search_limits(
+                    scope_candidates,
+                    raw_hits,
+                    scoped_hits,
+                    search_attempted=search_attempted,
+                    scope_doc_id=scope_doc_id,
+                )
+            ),
         }
     )
 
@@ -154,6 +165,7 @@ def to_observability(payload: Mapping[str, Any]) -> dict[str, Any]:
             "candidate_count": _int(payload.get("candidate_count")),
             "raw_candidate_count": _int(payload.get("raw_candidate_count")),
             "filtered_out_count": _int(payload.get("filtered_out_count")),
+            "search_attempted": bool(payload.get("search_attempted")),
             "candidate_doc_id_shorts": list(
                 _unique(
                     _text(item.get("doc_id_short")) or short_doc_id(_text(item.get("document_id")))
@@ -186,6 +198,7 @@ def _search_status(
     scope_doc_id: str,
     raw_hits: Sequence[Mapping[str, Any]],
     scoped_hits: Sequence[Mapping[str, Any]],
+    search_attempted: bool,
     base_status: str,
     reason_codes: Sequence[str],
 ) -> str:
@@ -201,6 +214,8 @@ def _search_status(
         return SEARCH_STATUS_NEEDS_CLARIFICATION
     if scoped_hits:
         return SEARCH_STATUS_RESOLVED
+    if search_attempted and scope_doc_id:
+        return SEARCH_STATUS_NOT_FOUND
     if raw_hits:
         return SEARCH_STATUS_NOT_FOUND
     if any(result.status == librarian_tools.STATUS_NOT_FOUND for result in results):
@@ -288,6 +303,10 @@ def _search_hits_from_result(result: librarian_tools.BiblioLibrarianToolResult) 
     return tuple(hits)
 
 
+def _catalog_search_attempted(results: Sequence[librarian_tools.BiblioLibrarianToolResult]) -> bool:
+    return any(result.tool_name == librarian_tools.TOOL_CATALOG_SEARCH for result in results)
+
+
 def _unique_scope_document_id(scope_candidates: Sequence[Mapping[str, Any]]) -> str:
     ids = _unique(_text(scope.get("document_id")) for scope in scope_candidates)
     return ids[0] if len(ids) == 1 else ""
@@ -357,10 +376,15 @@ def _search_limits(
     scope_candidates: Sequence[Mapping[str, Any]],
     raw_hits: Sequence[Mapping[str, Any]],
     scoped_hits: Sequence[Mapping[str, Any]],
+    *,
+    search_attempted: bool,
+    scope_doc_id: str,
 ) -> tuple[str, ...]:
     values: list[str] = []
     if raw_hits and len(scoped_hits) < len(raw_hits):
         values.append("global_hits_filtered_by_document_scope")
+    if search_attempted and scope_doc_id and not scoped_hits:
+        values.append("zero_hits_in_document_scope")
     if len(scope_candidates) > 1:
         values.append("scope_ambiguous")
     for scope in scope_candidates:

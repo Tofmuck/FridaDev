@@ -556,6 +556,37 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
         self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
 
+    def test_scoped_search_empty_catalog_search_in_unique_scope_is_not_found(self) -> None:
+        search = _tool_result(
+            tool_name=tools.TOOL_CATALOG_SEARCH,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            document_id="doc-1",
+            items=(),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(search,),
+            product_method=product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_NOT_FOUND)
+        self.assertEqual(answer.scoped_search["status"], "not_found")
+        self.assertEqual(answer.scoped_search["scope_document_id"], "doc-1")
+        self.assertEqual(answer.scoped_search["candidate_count"], 0)
+        self.assertTrue(answer.scoped_search["search_attempted"])
+        self.assertIn(tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE, answer.scoped_search["reason_codes"])
+        self.assertNotEqual(answer.scoped_search["reason_codes"], [tools.REASON_OK])
+        self.assertEqual(answer.render_mode, answer_object.RENDER_BLOCKED_EXACT)
+        self.assertFalse(rendered.exact_text_rendered)
+        self.assertIn("aucun candidat de recherche ne reste dans le scope", rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+
     def test_scoped_search_context_text_does_not_become_exact_excerpt(self) -> None:
         search = _tool_result(
             tool_name=tools.TOOL_CATALOG_SEARCH,

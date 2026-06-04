@@ -396,6 +396,9 @@ Recherche scoped canonique Last Chance Lot 4D livree:
 - `BiblioAnswerObject.scoped_search` porte les statuts `resolved`, `ambiguous`,
   `not_found`, `needs_clarification` ou `error`, ainsi que scope, compteurs,
   candidats bornes, hits filtres hors scope et reason codes;
+- quand `catalog_search` a ete tente dans un scope documentaire unique et
+  qu'aucun candidat ne reste dans ce scope, le statut mecanique est `not_found`
+  avec `scoped_search_no_hits_in_scope`, pas `needs_clarification`;
 - recherche scoped canonique n'est pas extraction exacte. La methode
   `product_method=scoped_search` rend un `structured_status`; elle ne transforme
   pas `context_text`, `page_text` ou un hit de recherche en `exact_excerpt`. Les

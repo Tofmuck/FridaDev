@@ -736,6 +736,87 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn(RAW_TITLE, encoded)
         self.assertNotIn(RAW_PASSAGE, encoded)
 
+    def test_scoped_search_canonical_method_empty_after_scope_filter_is_not_found(self) -> None:
+        scope_query = "scoped target"
+        theme_query = RAW_QUERY
+        fake = _FakeAgentFirstClient(
+            search_payloads={
+                scope_query: {
+                    "total": 1,
+                    "items": [{"id": "doc-1234", "title": RAW_TITLE}],
+                },
+                theme_query: {
+                    "count": 1,
+                    "results": [
+                        {
+                            "document_id": "doc-5678",
+                            "text": "RAW OUT OF SCOPE AGENT HIT MUST NOT RENDER",
+                            "page_no": 9,
+                            "para_no": 1,
+                            "paragraph_id": 77,
+                        }
+                    ],
+                },
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="scoped_search",
+                    product_method=product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+                    case_id="",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SEARCH_DOCUMENT,
+                            method="GET",
+                            params={"query": scope_query, "limit": 5, "offset": 0},
+                        ),
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": theme_query, "limit": 5},
+                        ),
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="search_catalog"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        encoded = json.dumps(
+            {
+                "loop": result.loop_result.to_observability() if result.loop_result else {},
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls, [("metadata_search", scope_query, 5), ("search", theme_query, 5)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_NOT_FOUND)
+        self.assertEqual(result.answer_object.scoped_search["status"], "not_found")
+        self.assertEqual(result.answer_object.scoped_search["candidate_count"], 0)
+        self.assertTrue(result.answer_object.scoped_search["search_attempted"])
+        self.assertIn(
+            tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE,
+            result.answer_object.scoped_search["reason_codes"],
+        )
+        self.assertIn("aucun candidat de recherche ne reste dans le scope", result.rendered_answer.content)
+        self.assertNotIn("RAW OUT OF SCOPE", result.rendered_answer.content)
+        self.assertNotIn(("context", "doc-1234", 77, None, None, 0, 700), fake.calls)
+        self.assertNotIn(RAW_QUERY, encoded)
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn("RAW OUT OF SCOPE", encoded)
+
     def test_scoped_search_canonical_method_blocks_unscoped_global_search(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={
