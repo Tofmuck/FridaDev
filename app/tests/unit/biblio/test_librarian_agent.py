@@ -739,6 +739,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 tools.TOOL_RESOLVE_WORK,
                 tools.TOOL_RESOLVE_SECTION,
                 tools.TOOL_SECTION_BOUNDS,
+                tools.TOOL_CATALOG_SEARCH,
                 tools.TOOL_LOCATE,
                 tools.TOOL_PAGE_READ,
                 tools.TOOL_PASSAGE_CONTEXT,
@@ -753,7 +754,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             product_methods.all_canonical_family_names(),
         )
 
-    def test_extraction_rejects_catalog_search_as_non_mechanical_extraction_tool(self) -> None:
+    def test_extraction_accepts_scoped_catalog_search_as_context_precursor(self) -> None:
         validation = contract.validate_agent_payload(
             {
                 **json.loads(_valid_json()),
@@ -769,8 +770,11 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(validation.status, contract.STATUS_REJECTED)
-        self.assertEqual(validation.reason_code, contract.REASON_PRODUCT_METHOD_TOOL_MISMATCH)
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_EXTRACTION)
+        self.assertEqual(validation.plan.tool_calls[0].params["document_id"], "doc-1")
 
     def test_extraction_accepts_mechanical_reading_tools_with_empty_case_id(self) -> None:
         for tool_name, params in (

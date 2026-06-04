@@ -1154,6 +1154,212 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertFalse(result.rendered_answer.exact_text_rendered)
         self.assertNotIn("RAW PAGE", result.rendered_answer.content)
 
+    def test_extraction_unique_scoped_search_hit_reads_mechanical_context(self) -> None:
+        snippet = "RAW SEARCH SNIPPET MUST NOT BECOME EXACT"
+        context = "RAW MECHANICAL CONTEXT MUST ONLY APPEAR IN RENDERED CONTENT"
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "title": RAW_TITLE,
+                        "text": snippet,
+                        "page_no": 12,
+                        "para_no": 3,
+                        "paragraph_id": 99,
+                    }
+                ],
+            },
+            context_payload={"document_id": "doc-1234", "text": context},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "document_id": "doc-1234", "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        encoded = json.dumps(
+            {
+                "loop": result.loop_result.to_observability() if result.loop_result else {},
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(fake.calls, [("search", RAW_QUERY, 5), ("context", "doc-1234", 99, None, None, 0, 700)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.extraction["status"], "resolved")
+        self.assertEqual(result.answer_object.extraction["source_tool_name"], tools.TOOL_PASSAGE_CONTEXT)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(result.answer_object.anchors[0]["document_id"], "doc-1234")
+        self.assertEqual(result.answer_object.anchors[0]["paragraph_id"], 99)
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn(context, result.rendered_answer.content)
+        self.assertNotIn(snippet, result.rendered_answer.content)
+        self.assertNotIn(context, encoded)
+        self.assertNotIn(snippet, encoded)
+
+    def test_extraction_multiple_scoped_search_hits_do_not_choose_first_context(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 2,
+                "results": [
+                    {"document_id": "doc-1234", "text": "RAW HIT ONE MUST NOT RENDER", "paragraph_id": 99},
+                    {"document_id": "doc-1234", "text": "RAW HIT TWO MUST NOT RENDER", "paragraph_id": 100},
+                ],
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "document_id": "doc-1234", "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+
+        self.assertEqual(fake.calls, [("search", RAW_QUERY, 5)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_BLOCKED_EXACT)
+        self.assertFalse(result.rendered_answer.exact_text_rendered)
+        self.assertNotIn("RAW HIT", result.rendered_answer.content)
+        self.assertNotIn("RAW CONTEXT", result.rendered_answer.content)
+
+    def test_extraction_unanchored_search_hit_does_not_read_context(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "results": [
+                    {
+                        "document_id": "doc-1234",
+                        "text": "RAW UNANCHORED SNIPPET MUST NOT RENDER",
+                    }
+                ],
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "document_id": "doc-1234", "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+
+        self.assertEqual(fake.calls, [("search", RAW_QUERY, 5)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_BLOCKED_EXACT)
+        self.assertFalse(result.rendered_answer.exact_text_rendered)
+        self.assertNotIn("RAW UNANCHORED", result.rendered_answer.content)
+        self.assertNotIn("RAW CONTEXT", result.rendered_answer.content)
+
+    def test_extraction_unscoped_unique_search_hit_does_not_read_context(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "count": 1,
+                "results": [
+                    {"document_id": "doc-1234", "text": "RAW GLOBAL HIT MUST NOT RENDER", "paragraph_id": 99}
+                ],
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_EXTRACTION,
+                    case_id="",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_SEARCH,
+                            method="GET",
+                            params={"query": RAW_QUERY, "limit": 5},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+
+        self.assertEqual(fake.calls, [("search", RAW_QUERY, 5)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertFalse(result.rendered_answer.exact_text_rendered)
+        self.assertNotIn("RAW GLOBAL HIT", result.rendered_answer.content)
+        self.assertNotIn("RAW CONTEXT", result.rendered_answer.content)
+
     def test_toc_request_recovers_from_unanchored_toc_step_after_search(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={

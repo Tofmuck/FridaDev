@@ -198,7 +198,11 @@ def complete_product_method_loop(
                         "limit": _positive_int(getattr(deterministic_plan, "limit", 0)) or 8,
                     },
                 )
-        context_params = _first_context_params(loop_result)
+        context_params = (
+            _unique_scoped_search_hit_context_params(loop_result)
+            if product_method == product_methods.PRODUCT_METHOD_EXTRACTION
+            else _first_context_params(loop_result)
+        )
         if context_params:
             return _append_tool_call(
                 loop_result,
@@ -340,6 +344,37 @@ def _first_context_params(loop_result: librarian_planner.BiblioLibrarianLoopResu
                     params["para_no"] = para_no
                 return params
     return {}
+
+
+def _unique_scoped_search_hit_context_params(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+) -> dict[str, Any]:
+    candidates: list[dict[str, Any]] = []
+    for step in loop_result.steps:
+        result = step.tool_result
+        if result is None or result.tool_name != librarian_tools.TOOL_CATALOG_SEARCH:
+            continue
+        scoped_doc_id = _text(getattr(result, "document_id", ""))
+        if not scoped_doc_id:
+            continue
+        for item in result.items:
+            if not isinstance(item, Mapping):
+                continue
+            doc_id = _text(item.get("document_id"))
+            if doc_id != scoped_doc_id:
+                continue
+            paragraph_id = _int(item.get("paragraph_id"))
+            page_no = _int(item.get("page_no"))
+            para_no = _int(item.get("para_no"))
+            if paragraph_id or (page_no and para_no):
+                params: dict[str, Any] = {"document_id": doc_id, "window_chars": 700}
+                if paragraph_id:
+                    params["paragraph_id"] = paragraph_id
+                else:
+                    params["page_no"] = page_no
+                    params["para_no"] = para_no
+                candidates.append(params)
+    return candidates[0] if len(candidates) == 1 else {}
 
 
 def _complete_section_start_page_block(

@@ -422,12 +422,13 @@ Extraction mecanique canonique Last Chance Lot 4E livree:
 - famille canonique: `extraction`;
 - methode produit: `product_method=extraction`, `case_id=""`;
 - outils autorises: `search_document`, `search_work`, `search_section`,
-  `resolve_work`, `resolve_section`, `section_bounds`, `locate`, `page_read`,
-  `passage_context`;
+  `resolve_work`, `resolve_section`, `section_bounds`, `catalog_search`,
+  `locate`, `page_read`, `passage_context`;
 - P04 `passage_extract_canonical_range` reste legacy/regression historique pour
   les plages canoniques; il n'est plus le canon principal de validation Lot 4E;
-- `catalog_search` et les snippets restent hors extraction canonique. Une
-  recherche scoped produit des candidats; elle ne produit pas le texte exact;
+- `catalog_search` peut preparer un candidat ancre dans un scope documentaire,
+  mais ses snippets restent hors extraction exacte. Une recherche produit des
+  candidats; elle ne produit pas le texte exact;
 - exact text = texte mecanique fourni par `page_read` ou `passage_context`,
   avec `document_id` et ancre technique minimale (`page_no` ou `paragraph_id`).
   Sans texte mecanique ou sans ancre, le rendu exact est bloque avec un reason
@@ -496,6 +497,27 @@ Extraction depuis bornes de section Last Chance Lot 4E.2 livree:
 - ambiguite, absence de document, absence de page exploitable ou bornes non-page
   bloquent/clarifient. Le deterministe ne choisit pas une section, n'invente pas
   une borne et ne juge jamais la pertinence semantique;
+- preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
+
+Extraction depuis candidat de recherche ancre Last Chance Lot 4E.3 livree:
+
+- la methode canonique reste `product_method=extraction`, `case_id=""`;
+- `catalog_search` est accepte comme outil precurseur uniquement pour localiser
+  un candidat ancre dans un scope documentaire explicite ou porte;
+- le runtime peut appeler `passage_context` seulement si le resultat de
+  recherche est document-scoped, contient exactement un candidat restant, et que
+  ce candidat porte `paragraph_id` ou `page_no` + `para_no`;
+- plusieurs candidats, zero candidat, candidat sans ancre, candidat sans
+  `document_id`, recherche globale non scopee ou document incoherent bloquent
+  l'extraction exacte. Aucun premier hit n'est choisi silencieusement;
+- le texte exact rendu vient uniquement du `context_text` retourne par
+  `passage_context`. Le snippet de `catalog_search` ne devient jamais
+  `exact_excerpt`;
+- `scoped_search` reste une surface de recherche structuree et ne declenche pas
+  automatiquement une extraction;
+- le deterministe ne juge pas le sens du hit: il verifie seulement scope,
+  unicite, ancre, outil GET-only, coherence technique et observabilite
+  content-free;
 - preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
 
 ## 3. Frontieres non negociables

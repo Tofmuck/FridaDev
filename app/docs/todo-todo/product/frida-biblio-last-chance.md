@@ -1610,9 +1610,9 @@ Livraison Lot 4E, 2026-06-04:
   canoniques;
 - outils autorises explicites: `search_document`, `search_work`,
   `search_section`, `resolve_work`, `resolve_section`, `section_bounds`,
-  `locate`, `page_read`, `passage_context`;
-- `catalog_search` reste hors de la methode canonique extraction: une recherche
-  ou un snippet ne sont jamais un extrait exact;
+  `catalog_search`, `locate`, `page_read`, `passage_context`;
+- `catalog_search` peut preparer un candidat ancre dans un scope documentaire,
+  mais une recherche ou un snippet ne sont jamais un extrait exact;
 - exact text signifie: texte mecanique fourni par `page_read` ou
   `passage_context`, avec `document_id` et ancre technique minimale
   (`page_no` ou `paragraph_id`) presents. Sans cette ancre, le renderer bloque
@@ -1742,6 +1742,54 @@ Limites restantes Lot 4E apres 4E.2:
 - pas de plage canonique complete type Stephanus;
 - pas de navigation lecteur globale ni continuation depuis etat implicite;
 - pas de nouveau filtre ou enrichissement structurel Lot 2 bis.
+
+Livraison Lot 4E.3, 2026-06-04:
+
+- Lot 4E.3 reste dans la famille canonique `extraction`;
+- il livre un premier pont depuis un candidat de recherche ancre vers une
+  extraction mecanique `passage_context`;
+- condition de declenchement: `product_method=extraction`, `case_id=""`, un
+  `catalog_search` document-scoped par `document_id` explicite ou porte, un seul
+  candidat restant apres filtrage, et une ancre technique exploitable
+  (`paragraph_id` ou `page_no` + `para_no`);
+- `catalog_search` est autorise comme precurseur de localisation dans
+  `extraction`, mais ses snippets ne sont jamais du texte exact;
+- le runtime appelle `passage_context` uniquement apres ce candidat unique
+  ancre; le rendu exact vient ensuite de `context_text`, pas du snippet;
+- zero candidat, plusieurs candidats, candidat sans ancre, candidat sans
+  `document_id`, recherche non scopee ou document incoherent restent
+  bloques/clarification. Le code ne choisit pas le premier hit;
+- `scoped_search` ne change pas de nature: il reste une methode de recherche
+  structuree et ne declenche pas `passage_context`;
+- aucun jugement semantique n'est code: le bibliothecaire choisit la requete,
+  le scope et la methode; le deterministe verifie seulement unicite, scope,
+  ancre, execution GET-only et observabilite content-free;
+- preuve actuelle: tests unitaires et agent-first contractuels seulement, pas de
+  smoke live agentique ni artefact JSONL.
+
+Findings Lot 4E.3:
+
+- F1 valide: le runtime pouvait prendre le premier candidat ancre via
+  `_first_context_params()`; le chemin canonique `extraction` exige maintenant
+  un unique hit scoped et ancre.
+- F2 valide: `scoped_search` reste recherche structuree, sans `exact_excerpt`.
+- F3 valide: le pont est limite a `product_method=extraction` et ne s'active
+  que sur un candidat unique ancre dans un scope documentaire.
+- F4 valide: le renderer savait deja rendre `passage_context`; le manque etait
+  le pont runtime strict depuis la recherche ancree.
+- F5 valide: le chemin `catalog_search` unique scoped -> `passage_context` ->
+  `exact_excerpt` -> final lock est maintenant prouve par tests.
+- F6 valide: plusieurs hits ancres bloquent; aucun premier hit n'est choisi.
+
+Limites restantes Lot 4E apres 4E.3:
+
+- pas de ranking semantique deterministe;
+- pas de choix automatique entre plusieurs hits;
+- pas de passage depuis `scoped_search` vers extraction sans decision
+  bibliothecaire explicite;
+- pas de section complete longue;
+- pas de plage canonique complete type Stephanus;
+- pas de navigation lecteur globale ni provenance/etat global.
 
 ### Lot 5 - Nettoyage dur
 
