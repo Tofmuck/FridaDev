@@ -467,6 +467,10 @@ Extraction mecanique bornee Last Chance Lot 4E.1 livree:
 - `BiblioAnswerObject.extraction` expose les blocs mecaniques sans texte brut:
   `block_count`, `page_start`, `page_end`, `page_count`, `missing_pages`, hashes
   courts, compteur de caracteres, outil source, statut et reason codes;
+- `BiblioAnswerObject.anchors` expose une ancre globale par bloc rendu pour les
+  extractions resolues, au minimum `document_id` + `page_no` pour les pages. Les
+  cas bloques ne doivent pas presenter une couverture globale partielle comme
+  valide;
 - le bibliothecaire LLM decide les bornes documentaires. Le deterministe assemble
   seulement les blocs effectivement lus et verifies; il ne devine pas une borne
   ambigue et ne juge jamais la pertinence semantique;

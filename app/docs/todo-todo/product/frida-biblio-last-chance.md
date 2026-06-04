@@ -1672,8 +1672,12 @@ Livraison Lot 4E.1, 2026-06-04:
   content-free: nombre de blocs, pages debut/fin, pages manquantes, compteurs,
   hashes courts, outil source et reason codes. Le texte brut des pages ne fuit
   pas dans l'observabilite;
+- les extractions multi-pages resolues exposent aussi au niveau global de
+  `BiblioAnswerObject.anchors` une ancre par bloc rendu, avec au minimum
+  `document_id` et `page_no`. Les extractions bloquees ne creent pas de fausse
+  couverture globale partielle;
 - `BiblioFinalResponseLock` autorise le rendu exact assemble seulement si le
-  hash, la longueur et les ancres tiennent;
+  hash, la longueur et la couverture d'ancres tiennent;
 - LOT 4E.1: LE BIBLIOTHECAIRE DECIDE LES BORNES DOCUMENTAIRES. LE CODE NE FAIT
   QU'ASSEMBLER MECANIQUEMENT LES PAGES OU CONTEXTES EFFECTIVEMENT LUS, SOUS
   BUDGET ET AVEC ANCRES. UN INTERVALLE NON LU N'EST PAS UN EXTRAIT. UNE BORNE

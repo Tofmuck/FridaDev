@@ -261,7 +261,7 @@ def build_biblio_answer_object(
     selected = _selected_candidate(results, status=status)
     document_id = _document_id(results, selected)
     interval = _interval(results)
-    anchors = _anchors(results, interval)
+    anchors = _anchors(results, interval, extraction=extraction)
     render_mode = _render_mode(status, exact_text)
     inventory_metadata = _inventory_metadata(results, product_method)
 
@@ -440,6 +440,8 @@ def _final_response_contract_reason(
             return REASON_FINAL_RESPONSE_EXACT_CONTRACT_FAILED
         if not answer.anchors:
             return REASON_FINAL_RESPONSE_ANCHOR_MISSING
+        if not _exact_rendered_anchor_coverage_ok(answer):
+            return REASON_FINAL_RESPONSE_ANCHOR_MISSING
     elif answer.status != STATUS_READY and rendered.render_mode != RENDER_BLOCKED_EXACT:
         return REASON_FINAL_RESPONSE_BLOCKED_CONTRACT_FAILED
     return REASON_FINAL_RESPONSE_AUTHORIZED
@@ -521,7 +523,12 @@ def _interval(results: Sequence[librarian_tools.BiblioLibrarianToolResult]) -> d
 def _anchors(
     results: Sequence[librarian_tools.BiblioLibrarianToolResult],
     interval: Mapping[str, Any],
+    *,
+    extraction: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], ...]:
+    extraction_anchors = _extraction_block_anchors(extraction or {})
+    if extraction:
+        return extraction_anchors
     for result in reversed(results):
         if result.anchors:
             return tuple(dict(anchor) for anchor in result.anchors)
@@ -541,6 +548,47 @@ def _anchors(
         if isinstance(anchor, Mapping) and anchor:
             anchors.append(dict(anchor))
     return tuple(anchors)
+
+
+def _extraction_block_anchors(extraction: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
+    if _text(extraction.get("status")) != "resolved":
+        return ()
+    anchors: list[dict[str, Any]] = []
+    blocks = extraction.get("blocks")
+    if not isinstance(blocks, Sequence) or isinstance(blocks, (str, bytes, bytearray)):
+        return ()
+    for block in blocks:
+        if not isinstance(block, Mapping):
+            continue
+        raw_anchor = block.get("anchor")
+        if not isinstance(raw_anchor, Mapping):
+            continue
+        anchor = dict(raw_anchor)
+        document_id = _text(block.get("document_id"))
+        if document_id:
+            anchor.setdefault("document_id", document_id)
+        if _text(anchor.get("document_id")) and (_int(anchor.get("page_no")) or _int(anchor.get("paragraph_id"))):
+            anchors.append(anchor)
+    return tuple(anchors)
+
+
+def _exact_rendered_anchor_coverage_ok(answer: BiblioAnswerObject) -> bool:
+    extraction = answer.extraction
+    if not extraction or _text(extraction.get("status")) != "resolved":
+        return True
+    required = _extraction_block_anchors(extraction)
+    if not required:
+        return False
+    available = {_anchor_key(anchor) for anchor in answer.anchors}
+    return all(_anchor_key(anchor) in available for anchor in required)
+
+
+def _anchor_key(anchor: Mapping[str, Any]) -> tuple[str, int, int]:
+    return (
+        _text(anchor.get("document_id")),
+        _int(anchor.get("page_no")),
+        _int(anchor.get("paragraph_id")),
+    )
 
 
 def _provenance(results: Sequence[librarian_tools.BiblioLibrarianToolResult]) -> dict[str, Any]:
