@@ -235,6 +235,8 @@ class BiblioLibrarianToolTests(unittest.TestCase):
                         "id": "doc-123456",
                         "title": RAW_TITLE,
                         "human_authors": RAW_AUTHOR,
+                        "language": "fr",
+                        "page_count": 170,
                         "payload": "raw payload must not be retained",
                     }
                 ],
@@ -248,6 +250,8 @@ class BiblioLibrarianToolTests(unittest.TestCase):
 
         self.assertEqual(fake.calls, [("catalog", RAW_QUERY, 1, 0)])
         self.assertEqual(result.status, tools.STATUS_OK)
+        self.assertEqual(result.items[0]["language"], "fr")
+        self.assertEqual(result.items[0]["page_count"], 170)
         self.assertEqual(observed["endpoint_kind"], catalogue.ENDPOINT_CATALOG)
         self.assertEqual(observed["result_count"], 1)
         self.assertEqual(observed["total_count"], 2)

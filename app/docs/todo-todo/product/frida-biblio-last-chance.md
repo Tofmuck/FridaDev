@@ -1371,7 +1371,7 @@ effectivement memorise et metadonnees d'ancrage/provenance.
 
 ### Lot 4 - Methodes par questions canoniques
 
-- [ ] Migrer inventaire/metadonnees.
+- [x] Lot 4A: migrer un premier cran inventaire/metadonnees.
 - [ ] Migrer resolution documentaire.
 - [ ] Migrer structure/TOC.
 - [ ] Migrer recherche scoped.
@@ -1383,6 +1383,50 @@ effectivement memorise et metadonnees d'ancrage/provenance.
 
 Critere de fermeture: chaque question canonique a une methode, des outils
 autorises, un resultat et des tests.
+
+Livraison Lot 4A, 2026-06-04:
+
+- famille canonique livree: `inventory_metadata`;
+- methode produit canonique ajoutee: `product_method=inventory_metadata`,
+  `case_id=""`, distincte des anciens P01/P02 qui restent des regressions
+  historiques et des compatibilites `catalog_list_full` / `catalog_list_bounded`;
+- outils autorises explicites: `catalog_list`, `search_document`,
+  `document_open_summary`;
+- le bibliothecaire LLM reste souverain pour choisir cette methode. Le code ne
+  reconnait pas les formulations utilisateur par regex et ne juge pas le sens de
+  la demande;
+- le deterministe valide seulement le contrat: methode connue, famille
+  canonique, outils allowlistes GET-only, budgets, params bornes,
+  observabilite content-free;
+- `BiblioAnswerObject` porte un bloc `inventory_metadata` structure depuis les
+  resultats d'outils: documents, total observe, langue, pages et statut metadata
+  quand ces champs existent;
+- le renderer produit un rendu structure sans extrait exact. `BiblioFinalResponseLock`
+  peut autoriser cette surface finale parce que le contrat technique est
+  coherent et qu'aucun texte exact n'est pretendu;
+- l'observabilite ne contient pas les titres/auteurs bruts: seulement compteurs,
+  hashes courts, statuts, ids courts et flags de borne;
+- preuve actuelle: tests unitaires de validation agent, outils, answer object et
+  agent-first. Ce n'est pas une preuve live agentique: aucun artefact JSONL live
+  n'est produit par ce lot.
+
+Findings Lot 4A:
+
+- F1 valide: `passage_search_in_work` reste trop large et ne doit pas devenir la
+  methode fourre-tout de Lot 4.
+- F2 valide: Lot 4 ne se ferme pas en un commit; seule la premiere famille est
+  migree.
+- F3 valide: inventaire/metadonnees est le meilleur premier cran car il depend
+  des endpoints Catalogue/metadonnees et pas de l'extraction mecanique complete.
+- F4 valide: un rendu final structure doit passer par
+  `BiblioAnswerObject` / renderer / `BiblioFinalResponseLock`, pas par une lane
+  racontee au LLM final.
+- F5 valide: les preuves de ce lot sont unitaires et contractuelles, pas une
+  preuve agentique live.
+
+Familles Lot 4 encore ouvertes: resolution documentaire, structure/TOC,
+recherche scoped, extraction, navigation lecteur, provenance,
+desambiguisation, etat/ancrage.
 
 ### Lot 5 - Nettoyage dur
 

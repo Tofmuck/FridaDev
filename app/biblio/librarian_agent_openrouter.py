@@ -277,7 +277,7 @@ def build_librarian_agent_messages(
         "case_id vide. Le product_method est obligatoire et doit decrire la methode "
         "produit, pas seulement l'outil. Utilise seulement des codes compacts "
         "sans espaces pour intent et answer_mode. intents autorises: "
-        "list_catalog, show_table_of_contents, resolve_work, search_catalog, "
+        "inventory_metadata, list_catalog, show_table_of_contents, resolve_work, search_catalog, "
         "extract_passage, extract_range, compare_passages, clarify. "
         "answer_mode autorises: tool_calls, clarify, catalog_list, toc, "
         "passage, conceptual_search, needs_tool_result_then_page_read, "
@@ -285,7 +285,11 @@ def build_librarian_agent_messages(
         "deliver_excerpt_context_from_section_start, section_start_page_block_2. "
         "Pour une demande de debut de section ou d'oeuvre interne suivie de "
         "premieres pages, garde un answer_mode compact de cette famille et "
-        "n'ecris jamais une phrase libre a la place d'un code. Pour lister toute la "
+        "n'ecris jamais une phrase libre a la place d'un code. Pour les questions "
+        "canoniques d'inventaire/metadonnees (quels ouvrages, combien, langue, pages, "
+        "metadonnees connues), choisis product_method=inventory_metadata avec case_id "
+        "vide; appelle catalog_list pour l'inventaire, search_document ou "
+        "document_open_summary pour un ouvrage cible. Pour lister toute la "
         "bibliotheque, appelle catalog_list sans q avec limit 100. Pour une "
         "table des matieres sans document_id, commence par catalog_search ou "
         "document_open_summary; le runtime peut porter l'ancre documentaire "
@@ -337,6 +341,11 @@ def build_librarian_agent_messages(
         "deterministic_baseline": _observation(request.deterministic_plan),
         "case_grammar": list(product_methods.CASE_IDS),
         "case_reference_signatures": list(product_methods.case_reference_signatures()),
+        "canonical_families": list(product_methods.all_canonical_family_names()),
+        "canonical_family_by_product_method": {
+            method: product_methods.canonical_family_for_method(method)
+            for method in product_methods.all_product_method_names()
+        },
         "available_product_methods": list(product_methods.all_product_method_names()),
         "available_tools": list(tools.LOT3_TOOL_NAMES),
         "forbidden_tools": sorted(tools.FORBIDDEN_TOOL_NAMES),

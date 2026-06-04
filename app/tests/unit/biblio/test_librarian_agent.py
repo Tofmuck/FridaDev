@@ -309,6 +309,28 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         cases = [
             (
                 {
+                    "case_id": "",
+                    "product_method": product_methods.PRODUCT_METHOD_INVENTORY_METADATA,
+                },
+                {
+                    "tool_name": tools.TOOL_CATALOG_LIST,
+                    "method": "GET",
+                    "params": {"limit": 50, "offset": 0},
+                },
+            ),
+            (
+                {
+                    "case_id": "",
+                    "product_method": product_methods.PRODUCT_METHOD_INVENTORY_METADATA,
+                },
+                {
+                    "tool_name": tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+                    "method": "GET",
+                    "params": {"document_id": "doc-1"},
+                },
+            ),
+            (
+                {
                     "case_id": "P05",
                     "product_method": product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
                 },
@@ -359,6 +381,69 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 self.assertIsNotNone(validation.plan)
                 assert validation.plan is not None
                 self.assertEqual(validation.plan.product_method, overrides["product_method"])
+
+    def test_inventory_metadata_is_canonical_family_distinct_from_legacy_cases(self) -> None:
+        spec = product_methods.get_product_method_spec(product_methods.PRODUCT_METHOD_INVENTORY_METADATA)
+
+        self.assertIsNotNone(spec)
+        assert spec is not None
+        self.assertEqual(spec.case_ids, ())
+        self.assertEqual(spec.canonical_family, product_methods.CANONICAL_FAMILY_INVENTORY_METADATA)
+        self.assertEqual(
+            set(spec.allowed_tool_names),
+            {tools.TOOL_CATALOG_LIST, tools.TOOL_SEARCH_DOCUMENT, tools.TOOL_DOCUMENT_OPEN_SUMMARY},
+        )
+        self.assertEqual(
+            product_methods.canonical_family_for_method(product_methods.PRODUCT_METHOD_CATALOG_LIST_BOUNDED),
+            product_methods.CANONICAL_FAMILY_INVENTORY_METADATA,
+        )
+        self.assertIn(
+            product_methods.CANONICAL_FAMILY_INVENTORY_METADATA,
+            product_methods.all_canonical_family_names(),
+        )
+
+    def test_inventory_metadata_rejects_passage_search_as_wrong_tool(self) -> None:
+        validation = contract.validate_agent_payload(
+            {
+                **json.loads(_valid_json()),
+                "case_id": "",
+                "product_method": product_methods.PRODUCT_METHOD_INVENTORY_METADATA,
+                "tool_calls": [
+                    {
+                        "tool_name": tools.TOOL_CATALOG_SEARCH,
+                        "method": "GET",
+                        "params": {"query": "x", "limit": 5},
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_REJECTED)
+        self.assertEqual(validation.reason_code, contract.REASON_PRODUCT_METHOD_TOOL_MISMATCH)
+
+    def test_catalog_list_answer_mode_repairs_to_inventory_metadata_method(self) -> None:
+        validation = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "inventory_metadata",
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_CATALOG_LIST,
+                            "method": "GET",
+                            "params": {"limit": "10"},
+                        }
+                    ],
+                    "answer_mode": "catalog_list",
+                }
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.case_id, "")
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_INVENTORY_METADATA)
 
     def test_legacy_compare_intent_repairs_to_compare_candidates_method(self) -> None:
         validation = contract.parse_and_validate_agent_json(
@@ -1017,6 +1102,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             "second locate sur la fin",
             "n'invente pas le texte exact",
             "window_chars",
+            "inventory_metadata",
+            "questions canoniques d'inventaire/metadonnees",
             "case_id quand la demande correspond clairement",
             "choisis le case_id qui correspond a la forme reelle",
             "variante ASCII/sans accents",
@@ -1032,6 +1119,11 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         payload = json.loads(messages[1]["content"])
 
         self.assertIn("case_reference_signatures", payload)
+        self.assertIn(product_methods.CANONICAL_FAMILY_INVENTORY_METADATA, payload["canonical_families"])
+        self.assertEqual(
+            payload["canonical_family_by_product_method"][product_methods.PRODUCT_METHOD_INVENTORY_METADATA],
+            product_methods.CANONICAL_FAMILY_INVENTORY_METADATA,
+        )
         rows = {row["case_id"]: row for row in payload["case_reference_signatures"]}
         self.assertEqual(rows["P03"]["product_method"], product_methods.PRODUCT_METHOD_WORK_LOOKUP)
         self.assertEqual(rows["P09"]["product_method"], product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW)

@@ -390,6 +390,77 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertEqual(observed["tool_names"], [tools.TOOL_CATALOG_SEARCH, tools.TOOL_DOCUMENT_OPEN_SUMMARY])
         self.assertNotIn(catalogue.ENDPOINT_CONTEXT, observed["endpoint_kinds"])
 
+    def test_inventory_metadata_canonical_method_renders_without_passage_context(self) -> None:
+        fake = _FakeAgentFirstClient(
+            search_payload={
+                "total": 1,
+                "items": [
+                    {
+                        "id": "doc-1234",
+                        "title": RAW_TITLE,
+                        "human_authors": "RAW AGENT FIRST AUTHOR MUST ONLY APPEAR IN RENDERED CONTENT",
+                        "language": "fr",
+                        "page_count": 88,
+                    }
+                ],
+            },
+            context_payload={"document_id": "doc-1234", "text": RAW_PASSAGE},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="inventory_metadata",
+                    product_method=product_methods.PRODUCT_METHOD_INVENTORY_METADATA,
+                    case_id="",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CATALOG_LIST,
+                            method="GET",
+                            params={"limit": 10, "offset": 0},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="search_catalog"),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        observed = result.loop_result.to_observability() if result.loop_result else {}
+        encoded = json.dumps(
+            {
+                "loop": observed,
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(result.status, agent_first.STATUS_AGENT_FIRST_EXECUTED)
+        self.assertEqual(fake.calls, [("metadata_search", "", 10)])
+        self.assertEqual(result.answer_object.product_method, product_methods.PRODUCT_METHOD_INVENTORY_METADATA)
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertEqual(
+            result.answer_object.inventory_metadata["family"],
+            product_methods.CANONICAL_FAMILY_INVENTORY_METADATA,
+        )
+        self.assertTrue(lock.ok)
+        self.assertFalse(lock.exact_text_rendered)
+        self.assertIn("Inventaire / metadonnees:", result.rendered_answer.content)
+        self.assertIn("langue=fr", result.rendered_answer.content)
+        self.assertNotIn(("context", "doc-1234", None, None, None, 0, 700), fake.calls)
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_PASSAGE, encoded)
+
     def test_toc_request_recovers_from_unanchored_toc_step_after_search(self) -> None:
         fake = _FakeAgentFirstClient(
             search_payload={

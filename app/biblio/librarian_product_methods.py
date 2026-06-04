@@ -19,11 +19,22 @@ TRUTH_LEVEL_EXACT = "exact"
 TRUTH_LEVEL_PLAUSIBLE = "plausible"
 TRUTH_LEVEL_CONTEXTUAL = "contextuel"
 
+CANONICAL_FAMILY_INVENTORY_METADATA = "inventory_metadata"
+CANONICAL_FAMILY_DOCUMENT_RESOLUTION = "document_resolution"
+CANONICAL_FAMILY_DOCUMENT_STRUCTURE = "document_structure"
+CANONICAL_FAMILY_SCOPED_SEARCH = "scoped_search"
+CANONICAL_FAMILY_EXTRACTION = "extraction"
+CANONICAL_FAMILY_READER_NAVIGATION = "reader_navigation"
+CANONICAL_FAMILY_PROVENANCE = "provenance"
+CANONICAL_FAMILY_DISAMBIGUATION = "disambiguation"
+CANONICAL_FAMILY_ANCHORING_STATE = "anchoring_state"
+
 EXECUTION_STATUS_SUCCESS = "success"
 EXECUTION_STATUS_CLARIFICATION = "clarification"
 EXECUTION_STATUS_NOT_FOUND = "not_found"
 EXECUTION_STATUS_ERROR = "error"
 
+PRODUCT_METHOD_INVENTORY_METADATA = "inventory_metadata"
 PRODUCT_METHOD_CATALOG_LIST_FULL = "catalog_list_full"
 PRODUCT_METHOD_CATALOG_LIST_BOUNDED = "catalog_list_bounded"
 PRODUCT_METHOD_WORK_LOOKUP = "work_lookup"
@@ -47,6 +58,7 @@ CASE_ID_SET = frozenset(CASE_IDS)
 @dataclass(frozen=True)
 class BiblioProductMethodSpec:
     product_method: str
+    canonical_family: str = ""
     case_ids: tuple[str, ...] = ()
     allowed_tool_names: tuple[str, ...] = ()
     preconditions: tuple[str, ...] = ()
@@ -57,7 +69,21 @@ class BiblioProductMethodSpec:
 
 METHOD_SPECS = (
     BiblioProductMethodSpec(
+        product_method=PRODUCT_METHOD_INVENTORY_METADATA,
+        canonical_family=CANONICAL_FAMILY_INVENTORY_METADATA,
+        case_ids=(),
+        allowed_tool_names=(
+            tools.TOOL_CATALOG_LIST,
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+        ),
+        preconditions=("biblio_enabled",),
+        truth_levels=(TRUTH_LEVEL_EXACT, TRUTH_LEVEL_PLAUSIBLE),
+        execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
+    ),
+    BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_CATALOG_LIST_FULL,
+        canonical_family=CANONICAL_FAMILY_INVENTORY_METADATA,
         case_ids=("P01",),
         allowed_tool_names=(tools.TOOL_CATALOG_LIST,),
         preconditions=("biblio_enabled",),
@@ -66,6 +92,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_CATALOG_LIST_BOUNDED,
+        canonical_family=CANONICAL_FAMILY_INVENTORY_METADATA,
         case_ids=("P02",),
         allowed_tool_names=(tools.TOOL_CATALOG_LIST,),
         preconditions=("biblio_enabled",),
@@ -74,6 +101,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_WORK_LOOKUP,
+        canonical_family=CANONICAL_FAMILY_DOCUMENT_RESOLUTION,
         case_ids=("P03",),
         allowed_tool_names=(
             tools.TOOL_SEARCH_DOCUMENT,
@@ -89,6 +117,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+        canonical_family=CANONICAL_FAMILY_DOCUMENT_STRUCTURE,
         case_ids=("P09",),
         allowed_tool_names=(
             tools.TOOL_SEARCH_DOCUMENT,
@@ -103,6 +132,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+        canonical_family=CANONICAL_FAMILY_EXTRACTION,
         case_ids=("P04",),
         allowed_tool_names=(
             tools.TOOL_SEARCH_DOCUMENT,
@@ -125,6 +155,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE,
+        canonical_family=CANONICAL_FAMILY_ANCHORING_STATE,
         case_ids=("P10",),
         allowed_tool_names=(
             tools.TOOL_SEARCH_DOCUMENT,
@@ -147,6 +178,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+        canonical_family=CANONICAL_FAMILY_SCOPED_SEARCH,
         case_ids=("P05", "P06", "P07", "P08"),
         allowed_tool_names=(
             tools.TOOL_SEARCH_DOCUMENT,
@@ -169,6 +201,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT,
+        canonical_family=CANONICAL_FAMILY_READER_NAVIGATION,
         case_ids=("P11",),
         allowed_tool_names=(tools.TOOL_PASSAGE_CONTEXT,),
         preconditions=("current_passage_anchor_present",),
@@ -177,6 +210,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT,
+        canonical_family=CANONICAL_FAMILY_READER_NAVIGATION,
         case_ids=("P12",),
         allowed_tool_names=(tools.TOOL_PASSAGE_CONTEXT,),
         preconditions=("current_passage_anchor_present",),
@@ -185,6 +219,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_PASSAGE_COMPARE_CANDIDATES,
+        canonical_family=CANONICAL_FAMILY_DISAMBIGUATION,
         case_ids=(),
         allowed_tool_names=(tools.TOOL_PASSAGE_CONTEXT,),
         preconditions=("candidate_context_positions_present",),
@@ -193,6 +228,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_PASSAGE_MOVE_PREVIOUS_SEGMENT,
+        canonical_family=CANONICAL_FAMILY_READER_NAVIGATION,
         case_ids=("P13",),
         allowed_tool_names=(tools.TOOL_PAGE_READ, tools.TOOL_PASSAGE_CONTEXT),
         preconditions=("current_document_anchor_present", "navigation_anchor_present"),
@@ -201,6 +237,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT,
+        canonical_family=CANONICAL_FAMILY_READER_NAVIGATION,
         case_ids=("P14",),
         allowed_tool_names=(tools.TOOL_PAGE_READ, tools.TOOL_PASSAGE_CONTEXT),
         preconditions=("current_document_anchor_present", "navigation_anchor_present"),
@@ -209,6 +246,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK,
+        canonical_family=CANONICAL_FAMILY_PROVENANCE,
         case_ids=("P15",),
         allowed_tool_names=(
             tools.TOOL_DOCUMENT_OPEN_SUMMARY,
@@ -224,6 +262,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
+        canonical_family=CANONICAL_FAMILY_SCOPED_SEARCH,
         case_ids=("P16", "P17", "P18"),
         allowed_tool_names=(
             tools.TOOL_SEARCH_DOCUMENT,
@@ -246,6 +285,7 @@ METHOD_SPECS = (
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_CLARIFY_BIBLIO_REQUEST,
+        canonical_family=CANONICAL_FAMILY_DISAMBIGUATION,
         case_ids=(),
         allowed_tool_names=(),
         preconditions=("insufficient_resolution",),
@@ -355,8 +395,23 @@ def all_product_method_names() -> tuple[str, ...]:
     return tuple(METHODS_BY_NAME.keys())
 
 
+def all_canonical_family_names() -> tuple[str, ...]:
+    return tuple(
+        dict.fromkeys(
+            spec.canonical_family
+            for spec in METHOD_SPECS
+            if spec.canonical_family
+        )
+    )
+
+
 def get_product_method_spec(product_method: str) -> BiblioProductMethodSpec | None:
     return METHODS_BY_NAME.get(str(product_method or "").strip())
+
+
+def canonical_family_for_method(product_method: str) -> str:
+    spec = get_product_method_spec(product_method)
+    return str(spec.canonical_family or "").strip() if spec else ""
 
 
 def is_known_product_method(product_method: Any) -> bool:
@@ -443,6 +498,8 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
 
     if clean_answer_mode == "clarify" or clean_intent == "clarify" or not unique_tools:
         return PRODUCT_METHOD_CLARIFY_BIBLIO_REQUEST
+    if clean_intent == CANONICAL_FAMILY_INVENTORY_METADATA:
+        return PRODUCT_METHOD_INVENTORY_METADATA
     if clean_intent == "list_catalog":
         return PRODUCT_METHOD_CATALOG_LIST_BOUNDED
     if clean_intent == "show_table_of_contents":
@@ -463,7 +520,7 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
     if clean_intent == "search_catalog":
         return PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK
     if clean_answer_mode == "catalog_list":
-        return PRODUCT_METHOD_CATALOG_LIST_BOUNDED
+        return PRODUCT_METHOD_INVENTORY_METADATA
     if clean_answer_mode == "toc":
         return PRODUCT_METHOD_DOCUMENT_TOC_SHOW
     if clean_answer_mode in {"passage", "conceptual_search"}:

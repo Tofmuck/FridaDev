@@ -84,6 +84,7 @@ class BiblioAnswerObject:
     content_role: str = ""
     provenance: dict[str, Any] = field(default_factory=dict)
     limits: tuple[str, ...] = field(default_factory=tuple)
+    inventory_metadata: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     truth_level: str = ""
     source_tool_names: tuple[str, ...] = field(default_factory=tuple)
     render_mode: str = RENDER_STRUCTURED_STATUS
@@ -116,6 +117,7 @@ class BiblioAnswerObject:
                 "content_role": self.content_role,
                 "provenance": dict(self.provenance),
                 "limits": list(self.limits),
+                "inventory_metadata": _inventory_observability(self.inventory_metadata),
                 "truth_level": self.truth_level,
                 "source_tool_names": list(self.source_tool_names),
                 "render_mode": self.render_mode,
@@ -214,6 +216,7 @@ def build_biblio_answer_object(
     interval = _interval(results)
     anchors = _anchors(results, interval)
     render_mode = _render_mode(status, exact_text)
+    inventory_metadata = _inventory_metadata(results, product_method)
 
     return BiblioAnswerObject(
         status=status,
@@ -230,6 +233,7 @@ def build_biblio_answer_object(
         content_role=_text(selected.get("content_role")),
         provenance=_provenance(results),
         limits=_limits(results, selected),
+        inventory_metadata=inventory_metadata,
         truth_level=_text(truth_level) or _default_truth(product_method),
         source_tool_names=source_tool_names,
         render_mode=render_mode,
@@ -290,6 +294,8 @@ def render_biblio_answer_object(
         lines.append(f"Document: catalogue_doc={short_doc_id(answer.document_id)}")
     if answer.section_id:
         lines.append(f"Section: {answer.section_id}")
+    if answer.inventory_metadata:
+        lines.extend(_inventory_lines(answer.inventory_metadata))
     if answer.interval:
         lines.append(
             "Intervalle: "
@@ -481,6 +487,139 @@ def _limits(
     return _unique(values)
 
 
+def _inventory_metadata(
+    results: Sequence[librarian_tools.BiblioLibrarianToolResult],
+    product_method: str,
+) -> dict[str, Any]:
+    if product_methods.canonical_family_for_method(product_method) != product_methods.CANONICAL_FAMILY_INVENTORY_METADATA:
+        return {}
+    documents: list[dict[str, Any]] = []
+    total_count = 0
+    truncated = False
+    metadata_statuses: list[str] = []
+    for result in results:
+        observed = result.to_observability()
+        total_count = max(total_count, _int(observed.get("total_count")))
+        truncated = truncated or bool(observed.get("truncated"))
+        for item in result.items:
+            document = _inventory_document(item)
+            if document:
+                documents.append(document)
+        if result.document_summary:
+            document = _inventory_document(result.document_summary)
+            if document:
+                documents.append(document)
+    deduped: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for document in documents:
+        key = _text(document.get("document_id")) or _text(document.get("doc_id_short"))
+        if key and key in seen:
+            continue
+        if key:
+            seen.add(key)
+        status = _text(document.get("metadata_status"))
+        if status and status not in metadata_statuses:
+            metadata_statuses.append(status)
+        deduped.append(document)
+    if not deduped and not total_count:
+        return {}
+    return _clean(
+        {
+            "family": product_methods.CANONICAL_FAMILY_INVENTORY_METADATA,
+            "documents": deduped,
+            "document_count": len(deduped),
+            "total_count": total_count,
+            "truncated": truncated,
+            "metadata_statuses": metadata_statuses,
+        }
+    )
+
+
+def _inventory_document(raw: Mapping[str, Any]) -> dict[str, Any]:
+    doc_id = _text(raw.get("document_id"))
+    doc_id_short = _text(raw.get("doc_id_short")) or short_doc_id(doc_id)
+    if not doc_id and not doc_id_short:
+        return {}
+    return _clean(
+        {
+            "document_id": doc_id,
+            "doc_id_short": doc_id_short,
+            "title": _text(raw.get("title")),
+            "authors": _text(raw.get("authors")),
+            "language": _text(raw.get("language")),
+            "page_count": _int(raw.get("page_count")),
+            "metadata_status": _text(raw.get("metadata_status")),
+        }
+    )
+
+
+def _inventory_lines(payload: Mapping[str, Any]) -> list[str]:
+    lines = ["Inventaire / metadonnees:"]
+    total_count = _int(payload.get("total_count"))
+    document_count = _int(payload.get("document_count"))
+    if total_count:
+        lines.append(f"- total observe: {total_count}")
+    if document_count:
+        lines.append(f"- documents rendus: {document_count}")
+    if bool(payload.get("truncated")):
+        lines.append("- resultat borne: tous les documents ne sont pas affiches dans ce rendu")
+    raw_documents = payload.get("documents")
+    documents = raw_documents if isinstance(raw_documents, Sequence) and not isinstance(raw_documents, (str, bytes, bytearray)) else ()
+    for index, raw_document in enumerate(documents[:20], 1):
+        if not isinstance(raw_document, Mapping):
+            continue
+        doc = _text(raw_document.get("doc_id_short")) or short_doc_id(_text(raw_document.get("document_id")))
+        parts = [f"{index}. catalogue_doc={doc or 'unknown'}"]
+        title = _text(raw_document.get("title"))
+        authors = _text(raw_document.get("authors"))
+        language = _text(raw_document.get("language"))
+        page_count = _int(raw_document.get("page_count"))
+        metadata_status = _text(raw_document.get("metadata_status"))
+        if title:
+            parts.append(f"titre={_neutralize(title)}")
+        if authors:
+            parts.append(f"auteur={_neutralize(authors)}")
+        if language:
+            parts.append(f"langue={_neutralize(language)}")
+        if page_count:
+            parts.append(f"pages={page_count}")
+        if metadata_status:
+            parts.append(f"metadata={_neutralize(metadata_status)}")
+        lines.append("; ".join(parts))
+    if len(documents) > 20:
+        lines.append(f"... {len(documents) - 20} documents supplementaires masques par borne.")
+    return lines
+
+
+def _inventory_observability(payload: Mapping[str, Any]) -> dict[str, Any]:
+    if not payload:
+        return {}
+    raw_documents = payload.get("documents")
+    documents = raw_documents if isinstance(raw_documents, Sequence) and not isinstance(raw_documents, (str, bytes, bytearray)) else ()
+    language_values = [
+        _text(document.get("language"))
+        for document in documents
+        if isinstance(document, Mapping) and _text(document.get("language"))
+    ]
+    page_count_known = sum(
+        1
+        for document in documents
+        if isinstance(document, Mapping) and _int(document.get("page_count")) > 0
+    )
+    return _clean(
+        {
+            "family": _text(payload.get("family")),
+            "document_count": _int(payload.get("document_count")),
+            "total_count": _int(payload.get("total_count")),
+            "truncated": bool(payload.get("truncated")),
+            "language_known_count": len(language_values),
+            "language_hashes": [_hash(value) for value in language_values],
+            "page_count_known_count": page_count_known,
+            "metadata_statuses": list(payload.get("metadata_statuses") or ()),
+        }
+    )
+
+
 def _mechanical_exact_text(results: Sequence[librarian_tools.BiblioLibrarianToolResult]) -> str:
     for result in reversed(results):
         if result.context_text:
@@ -529,6 +668,14 @@ def _bounded_int(value: Any, *, minimum: int, maximum: int) -> int:
     except (TypeError, ValueError):
         return maximum
     return min(max(parsed, minimum), maximum)
+
+
+def _int(value: Any) -> int:
+    if type(value) is int:
+        return value
+    if isinstance(value, str) and value.isdecimal():
+        return int(value)
+    return 0
 
 
 def _neutralize(value: str) -> str:

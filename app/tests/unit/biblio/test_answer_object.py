@@ -128,6 +128,54 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(observed_answer["exact_text_chars"], len(RAW_EXACT_TEXT))
         self.assertEqual(observed_render["exact_text_hash"], observed_answer["exact_text_hash"])
 
+    def test_inventory_metadata_renders_structured_status_without_exact_excerpt(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_CATALOG_LIST,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            items=(
+                {
+                    "document_id": "doc-123456",
+                    "doc_id_short": "doc-123",
+                    "title": RAW_TITLE,
+                    "authors": "RAW AUTHOR MUST ONLY APPEAR IN RENDERED CONTENT",
+                    "language": "fr",
+                    "page_count": 42,
+                    "metadata_status": "validated",
+                },
+            ),
+            observation_fields={
+                "total_count": 1,
+                "displayed_count": 1,
+                "truncated": False,
+            },
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_INVENTORY_METADATA,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertEqual(answer.exact_text, "")
+        self.assertEqual(answer.inventory_metadata["family"], product_methods.CANONICAL_FAMILY_INVENTORY_METADATA)
+        self.assertEqual(observed["inventory_metadata"]["document_count"], 1)
+        self.assertEqual(observed["inventory_metadata"]["language_known_count"], 1)
+        self.assertTrue(lock.ok)
+        self.assertFalse(lock.exact_text_rendered)
+        self.assertIn("Inventaire / metadonnees:", rendered.content)
+        self.assertIn("langue=fr", rendered.content)
+        self.assertIn("pages=42", rendered.content)
+        self.assertIn(RAW_TITLE, rendered.content)
+        self.assertNotIn(RAW_TITLE, _json(observed))
+        self.assertNotIn("RAW AUTHOR", _json(observed))
+
     def test_final_response_lock_authorizes_only_technical_render_contract(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_PASSAGE_CONTEXT,
@@ -213,13 +261,14 @@ def _tool_result(
     interval: dict[str, object] | None = None,
     context_text: str = "",
     page_text: str = "",
+    observation_fields: dict[str, object] | None = None,
 ) -> tools.BiblioLibrarianToolResult:
     observation = tools.BiblioLibrarianToolObservation(
         tool_name=tool_name,
         endpoint_kind=endpoint_kind,
         status=status,
         reason_code=reason_code,
-        fields={"doc_id_short": catalogue.short_doc_id(document_id)},
+        fields={"doc_id_short": catalogue.short_doc_id(document_id), **dict(observation_fields or {})},
     )
     return tools.BiblioLibrarianToolResult(
         tool_name=tool_name,

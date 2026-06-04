@@ -27,6 +27,7 @@ Premier cran aliases structurels Last Chance Lot 2 bis: 2026-06-04
 Premier cran answer object Last Chance Lot 3: 2026-06-04
 Verrou final assistant Last Chance L3A1: 2026-06-04
 Memoire conversationnelle des lectures Last Chance Lot 3 bis: 2026-06-04
+Premiere methode canonique Last Chance Lot 4A: 2026-06-04
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -279,6 +280,29 @@ Memoire conversationnelle Last Chance Lot 3 bis livree:
 - la rehydratation ulterieure par ancres depuis la bibliotheque est un complement
   de verification/recuperation, pas un substitut obligatoire au texte memorise
   quand la conversation est memorisee.
+
+Premiere methode canonique Last Chance Lot 4A livree:
+
+- famille canonique: `inventory_metadata`;
+- methode produit: `product_method=inventory_metadata`, `case_id=""`;
+- outils autorises: `catalog_list`, `search_document`, `document_open_summary`;
+- anciens P01/P02 restent des regressions historiques et des compatibilites de
+  liste catalogue, pas le canon principal de validation;
+- le bibliothecaire LLM choisit la methode. Le deterministe ne reconnait pas les
+  phrases utilisateur a sa place et ne juge pas la pertinence documentaire;
+- le deterministe valide seulement: methode connue, famille canonique,
+  allowlist GET-only, params bornes, budgets et observabilite content-free;
+- `BiblioAnswerObject.inventory_metadata` porte le resultat structure
+  inventaire/metadonnees: documents, total observe, langue, pages et statut
+  metadata quand disponibles;
+- le renderer produit une surface structuree sans extrait exact; le verrou final
+  L3A1 peut l'autoriser parce que le contrat technique est coherent, sans faire
+  de jugement semantique;
+- l'observabilite expose uniquement compteurs, hashes courts, statuts, ids courts
+  et flags de borne. Les titres/auteurs bruts peuvent etre rendus a l'utilisateur
+  quand ils sont le resultat produit, mais ne doivent pas fuiter dans les
+  artefacts ou logs content-free;
+- preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
 
 ## 3. Frontieres non negociables
 

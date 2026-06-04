@@ -748,6 +748,8 @@ def _catalog_item(raw: Any) -> dict[str, Any]:
         "doc_id_short": catalogue.short_doc_id(doc_id),
         "title": _string(item.get("human_canonical_title") or item.get("canonical_title") or item.get("title")),
         "authors": _string(item.get("human_authors") or item.get("authors")),
+        "language": _string(item.get("human_language") or item.get("language")),
+        "page_count": _raw_int(item.get("page_count") or item.get("unit_count")),
         "metadata_status": _string(item.get("human_metadata_status") or item.get("metadata_status")),
     }
 
@@ -806,6 +808,8 @@ def _document_summary(payload: Mapping[str, Any], fallback_doc_id: str) -> dict[
         "doc_id_short": catalogue.short_doc_id(doc_id),
         "title": _string(human.get("canonical_title") or document.get("title")),
         "authors": _string(human.get("authors") or document.get("authors")),
+        "language": _string(human.get("language") or document.get("language")),
+        "page_count": _raw_int(document.get("page_count") or document.get("unit_count")),
         "metadata_status": _string(payload.get("metadata_status") or human.get("metadata_status")),
     }
 
