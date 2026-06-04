@@ -59,6 +59,7 @@ def run_agent_first_plan(
     client: Any,
     deterministic_plan: Any = None,
     user_msg: str = "",
+    conversation_state: Any = None,
 ) -> BiblioAgentFirstExecutionResult | None:
     plan = _candidate_plan(comparison)
     if plan is None or not _is_active_comparison(comparison):
@@ -85,6 +86,7 @@ def run_agent_first_plan(
         registry=registry,
         deterministic_plan=deterministic_plan,
         user_msg=user_msg,
+        conversation_state=conversation_state,
     )
     if loop_result.status == librarian_planner.STATUS_NEEDS_CLARIFICATION:
         answer = _answer_object_from_loop(loop_result, plan=plan)

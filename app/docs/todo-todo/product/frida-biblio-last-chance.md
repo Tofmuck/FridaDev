@@ -229,17 +229,23 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     regressions severes.
   - Prochain test live requis: resolution de plage canonique fiable ou
     clarification, puis extraction mecanique bornee.
-- [ ] BIB-25 - Dire d'ou vient un passage: ouvrage, page, section, ancre.
-  - Statut: `partiel_live`
-  - Preuve live: les extractions page fermees portent `document_id` et ancres,
-    mais aucune question provenance dediee n'est fermee.
-  - Prochain test live requis: apres extrait rendu, demander provenance ->
-    ouvrage/page/section/ancre restitues.
-- [ ] BIB-26 - Garder l'ancre du passage courant.
-  - Statut: `ouvert`
-  - Preuve live: aucune.
-  - Prochain test live requis: tour suivant -> ancre courante disponible ou
-    absence explicite.
+- [x] BIB-25 - Dire d'ou vient un passage: ouvrage, page, section, ancre.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib25-bib26-real-conversation-20260604T195551Z.jsonl`,
+    `BIB25_PROVENANCE_QUERY=met`.
+  - Prochain test live requis: surveillance regression; apres extrait rendu,
+    une demande de provenance doit choisir `passage_origin_check`, rappeler le
+    document, porter page/ancre et rendre explicitement section/chapitre connu
+    ou inconnu.
+- [x] BIB-26 - Garder l'ancre du passage courant.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib25-bib26-real-conversation-20260604T195551Z.jsonl`,
+    `BIB26_CURRENT_ANCHOR_PERSISTED=met`.
+  - Prochain test live requis: surveillance regression; apres lecture exacte,
+    l'etat Biblio doit conserver document courant + position exploitable pour
+    un tour suivant.
 - [ ] BIB-27 - Continuer a partir du passage qu'on vient de lire.
   - Statut: `ouvert`
   - Preuve live: aucune.
@@ -321,6 +327,30 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
   - Outils appeles: `passage_context`
   - Statut final: message assistant sauvegarde, meta Biblio presente, ancre
     positionnee/hashable portee dans l'etat conversationnel.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-25 - 2026-06-04 -
+  `app/docs/states/baselines/biblio-smokes/bib25-bib26-real-conversation-20260604T195551Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `7e9674688425`
+  - Proof case: `BIB25_PROVENANCE_QUERY`
+  - Outils appeles: `document_open_summary`, puis `page_read`
+  - Statut final: message assistant sauvegarde, meta Biblio presente, provenance
+    rendue avec document/page/ancre et section/chapitre connu ou inconnu.
+  - Reason codes: `biblio_agent_first_plan_executed`,
+    `biblio_librarian_tool_executed`, `ok`,
+    `biblio_final_response_authorized`
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-26 - 2026-06-04 -
+  `app/docs/states/baselines/biblio-smokes/bib25-bib26-real-conversation-20260604T195551Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `7e9674688425`
+  - Proof case: `BIB26_CURRENT_ANCHOR_PERSISTED`
+  - Outils appeles: `page_read`
+  - Statut final: message assistant sauvegarde, meta Biblio presente, etat
+    conversationnel avec document courant + `page_no` exploitable.
+  - Reason codes: `biblio_agent_first_plan_executed`,
+    `biblio_librarian_tool_executed`, `ok`,
+    `biblio_final_response_authorized`
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire

@@ -326,6 +326,7 @@ METHOD_SPECS = (
             tools.TOOL_RESOLVE_SECTION,
             tools.TOOL_SECTION_BOUNDS,
             tools.TOOL_LOCATE,
+            tools.TOOL_PAGE_READ,
             tools.TOOL_PASSAGE_CONTEXT,
         ),
         preconditions=("current_passage_anchor_present",),

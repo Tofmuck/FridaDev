@@ -544,6 +544,25 @@ Correction transition agentique live 4E:
   `passage_context`: il reste une surface structuree de recherche, pas un
   extrait exact.
 
+Provenance et ancre courante BIB-25/BIB-26:
+
+- une demande utilisateur du type "d'ou vient ce passage ?" releve de
+  `product_method=passage_origin_check`, `case_id=P15`;
+- le bibliothecaire LLM decide que la question porte sur le passage courant;
+  le determinisme ne choisit pas un passage et ne juge pas sa pertinence;
+- si un passage courant est deja ancre, le runtime peut rappeler le document par
+  `document_open_summary`, puis relire mecaniquement l'ancre courante par
+  `page_read` ou `passage_context`;
+- la provenance rendue doit exposer document, page/position et le statut
+  section/chapitre connu ou inconnu; une section absente ne doit pas etre
+  inventee;
+- apres lecture exacte, l'etat conversationnel Biblio conserve le document
+  courant et la position exploitable comme ancre courante pour le tour suivant;
+- preuve live conversationnelle:
+  `app/docs/states/baselines/biblio-smokes/bib25-bib26-real-conversation-20260604T195551Z.jsonl`;
+  l'artefact reste content-free et ne contient ni prompt, ni dialogue brut, ni
+  titre/auteur brut, ni payload Catalogue brut, ni texte d'ouvrage.
+
 Verrou de preuve Last Chance Lot 4:
 
 - Lot 4 est clos comme cadrage technique quand les familles canoniques

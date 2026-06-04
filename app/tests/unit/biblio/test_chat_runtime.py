@@ -561,6 +561,47 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(fallback.product_method, librarian_product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK)
         self.assertEqual([call.tool_name for call in fallback.tool_calls], [librarian_tools.TOOL_PASSAGE_CONTEXT])
 
+    def test_agent_first_origin_check_reuses_page_anchor_after_document_summary(self) -> None:
+        fake_model = _FakeAgentModel(
+            _valid_agent_json(
+                tool_name=librarian_tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+                params={"document_id": "doc-1234"},
+                case_id="P15",
+                product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK,
+            )
+        )
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-agent-first-origin-page",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "page_no": 12},
+            page_no=12,
+            last_intent="extract_passage",
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="D'ou vient ce passage ?",
+            conversation_id="conv-agent-first-origin-page",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: _FakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+
+        self.assertTrue(result.used)
+        self.assertIsNotNone(result.answer_object)
+        assert result.answer_object is not None
+        self.assertEqual(result.answer_object.product_method, librarian_product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK)
+        self.assertIn(librarian_tools.TOOL_PAGE_READ, result.answer_object.source_tool_names)
+        self.assertEqual(result.answer_object.extraction["status"], "resolved")
+        self.assertEqual(result.answer_object.extraction["page_start"], 12)
+        self.assertEqual(result.answer_object.extraction["page_end"], 12)
+        self.assertTrue(result.rendered_answer.exact_text_rendered if result.rendered_answer else False)
+        self.assertTrue(result.biblio_state.current_document.get("document_id") if result.biblio_state else False)
+        self.assertEqual(result.biblio_state.page_no if result.biblio_state else None, 12)
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn("RAW PAGE 12 TEXT MUST NOT BE OBSERVABLE", encoded)
+
     def test_agent_first_dialogue_fallback_plan_carries_compare_candidates_method(self) -> None:
         state = conversation_state.BiblioConversationState(
             conversation_id="conv-agent-first-compare",

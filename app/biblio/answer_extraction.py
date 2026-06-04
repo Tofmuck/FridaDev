@@ -33,6 +33,12 @@ _MECHANICAL_TEXT_TOOLS = frozenset(
         librarian_tools.TOOL_PASSAGE_CONTEXT,
     }
 )
+_MECHANICAL_TEXT_PROJECTION_METHODS = frozenset(
+    {
+        product_methods.PRODUCT_METHOD_EXTRACTION,
+        product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK,
+    }
+)
 _MAX_PAGE_BLOCKS = 3
 _MAX_EXACT_TEXT_CHARS = 8_000
 
@@ -44,7 +50,7 @@ def build_extraction(
     base_status: str,
     reason_codes: Sequence[str] = (),
 ) -> dict[str, Any]:
-    if product_method != product_methods.PRODUCT_METHOD_EXTRACTION:
+    if product_method not in _MECHANICAL_TEXT_PROJECTION_METHODS:
         return {}
     candidates = _candidates_from_results(results)
     extraction_attempted = any(result.tool_name in _MECHANICAL_TEXT_TOOLS for result in results)
@@ -151,6 +157,12 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
             lines.append(f"- page lue: {page_start}")
         else:
             lines.append(f"- intervalle pages lu: {page_start}-{page_end}")
+    if status == EXTRACTION_STATUS_RESOLVED:
+        chapter_no = _int(payload.get("chapter_no"))
+        if chapter_no:
+            lines.append(f"- section/chapitre: chapter_no={chapter_no}")
+        else:
+            lines.append("- section/chapitre: inconnu ou indisponible")
     anchor = _mapping(payload.get("anchor"))
     if anchor:
         parts = []
@@ -251,6 +263,7 @@ def _candidate_from_result(result: librarian_tools.BiblioLibrarianToolResult) ->
             "document_id": document_id,
             "doc_id_short": short_doc_id(document_id),
             "content_kind": content_kind,
+            "chapter_no": _int(result.chapter_hint.get("chapter_no")),
             "exact_text_present": True,
             "exact_text_chars": len(text),
             "exact_text_hash": _hash(text),

@@ -119,6 +119,7 @@ def complete_product_method_loop(
     registry: librarian_tools.BiblioLibrarianToolRegistry,
     deterministic_plan: Any,
     user_msg: str = "",
+    conversation_state: Any = None,
 ) -> librarian_planner.BiblioLibrarianLoopResult:
     if loop_result.status not in {
         librarian_planner.STATUS_TOOL_EXECUTED,
@@ -184,6 +185,23 @@ def complete_product_method_loop(
         if _has_endpoint(repaired, "page"):
             return repaired
         loop_result = repaired
+
+    if (
+        product_method == product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK
+        and not _has_endpoint(loop_result, "context")
+        and not _has_endpoint(loop_result, "page")
+    ):
+        tool_name, params = _origin_check_current_anchor_tool(conversation_state)
+        if tool_name and params:
+            repaired = _append_tool_call(
+                loop_result,
+                registry=registry,
+                tool_name=tool_name,
+                params=params,
+            )
+            if _has_endpoint(repaired, "context") or _has_endpoint(repaired, "page"):
+                return repaired
+            loop_result = repaired
 
     if (
         product_method == product_methods.PRODUCT_METHOD_EXTRACTION
@@ -417,6 +435,41 @@ def _unique_scoped_search_hit_context_params(
         params["page_no"] = page_no
         params["para_no"] = para_no
     return params
+
+
+def _origin_check_current_anchor_tool(conversation_state: Any) -> tuple[str, dict[str, Any]]:
+    last_result = getattr(conversation_state, "last_result", None)
+    if not isinstance(last_result, Mapping):
+        last_result = {}
+    current_document = getattr(conversation_state, "current_document", None)
+    if not isinstance(current_document, Mapping):
+        current_document = {}
+    doc_id = _text(last_result.get("document_id")) or _text(current_document.get("document_id"))
+    if not doc_id:
+        return "", {}
+
+    paragraph_id = _int(last_result.get("paragraph_id")) or _int(getattr(conversation_state, "paragraph_id", None))
+    page_no = _int(last_result.get("page_no")) or _int(getattr(conversation_state, "page_no", None))
+    para_no = _int(last_result.get("para_no")) or _int(getattr(conversation_state, "para_no", None))
+    if paragraph_id:
+        return librarian_tools.TOOL_PASSAGE_CONTEXT, {
+            "document_id": doc_id,
+            "paragraph_id": paragraph_id,
+            "window_chars": 700,
+        }
+    if page_no and para_no:
+        return librarian_tools.TOOL_PASSAGE_CONTEXT, {
+            "document_id": doc_id,
+            "page_no": page_no,
+            "para_no": para_no,
+            "window_chars": 700,
+        }
+    if page_no:
+        return librarian_tools.TOOL_PAGE_READ, {
+            "document_id": doc_id,
+            "page_no": page_no,
+        }
+    return "", {}
 
 
 def _complete_section_start_page_block(
