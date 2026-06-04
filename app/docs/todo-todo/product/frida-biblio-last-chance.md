@@ -1794,6 +1794,51 @@ Limites restantes Lot 4E apres 4E.3:
 - pas de plage canonique complete type Stephanus;
 - pas de navigation lecteur globale ni provenance/etat global.
 
+Proof Gate live Lot 4E, 2026-06-04:
+
+- artefact content-free:
+  `app/docs/states/baselines/biblio-smokes/lot4e-proof-gate-live-20260604T144426Z.jsonl`;
+- 4 cas live agentiques lances: page precise, deux pages precises, recherche
+  scoped zero-hit, recherche scoped multi-hit;
+- contenu brut absent de l'artefact: pas de prompt brut, pas de dialogue brut,
+  pas de titre/auteur brut, pas de payload Catalogue brut, pas de passage
+  d'ouvrage; seulement statuts, reason codes, noms d'outils, compteurs,
+  hashes courts, ids courts et modes de rendu;
+- message final Biblio verifie via `BiblioFinalResponseLock` /
+  `AssistantResponseOverride`: quand le lock autorise une surface Biblio,
+  l'override attendu est present et son hash correspond au lock;
+- verdict global: Proof Gate non ferme. Il prouve que le verrou de rendu final
+  tient, mais pas que les chemins canoniques Lot 4E sont correctement choisis
+  par l'agent live.
+
+Findings Proof Gate Lot 4E:
+
+- `PG4E_PAGE_ONE`: partiel. Le bibliothecaire choisit bien
+  `product_method=extraction`, mais n'execute que `search_document`; aucun
+  `page_read` n'est materialise, donc l'extraction exacte reste bloquee.
+- `PG4E_PAGE_TWO`: echec canonique. Le chemin live tombe en
+  `fallback_deterministic` puis rend un `exact_excerpt` via
+  `catalog_search`/`passage_context`, pas via la methode canonique
+  `extraction` + `page_read` multi-page.
+- `PG4E_SCOPED_ZERO`: echec canonique. La demande de recherche scoped part en
+  `passage_search_in_work` legacy et execute `passage_context`; elle ne produit
+  pas le statut `scoped_search/not_found` attendu.
+- `PG4E_SCOPED_MULTI`: echec canonique. La demande reste sur
+  `passage_search_in_work` legacy et rend un extrait exact; elle ne prouve pas
+  le contrat `scoped_search` sans extraction.
+- aucun snippet n'est prouve comme rendu exact dans l'artefact, mais les
+  chemins legacy continuent de produire de l'exact via `passage_context`; ils
+  doivent etre traites avant de clore la validation produit 4E.
+
+Prochain micro-lot recommande apres Proof Gate:
+
+- corriger la transition agentique live vers les methodes canoniques, sans
+  parseur utilisateur local:
+  - page precise / deux pages -> `product_method=extraction` avec `page_read`;
+  - recherche scoped -> `product_method=scoped_search`, sans `passage_context`;
+  - legacy `passage_search_in_work` ne doit plus absorber les demandes
+    canoniques de recherche scoped ou d'extraction page/pages.
+
 ### Lot 5 - Nettoyage dur
 
 - [ ] Supprimer ou declasser les chemins legacy non appeles.
