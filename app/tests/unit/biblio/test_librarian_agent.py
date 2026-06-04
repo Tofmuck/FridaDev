@@ -1558,6 +1558,9 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             "product_method=passage_origin_check",
             "case_id=P15",
             "Ne transforme jamais une demande de provenance du passage courant",
+            "Pour la navigation lecteur depuis le passage ou la page courante",
+            "product_method=passage_continue_next_segment",
+            "product_method=passage_move_previous_segment",
             "case_id seulement pour une regression historique Pxx explicite",
             "Les methodes legacy passage_search_in_work et passage_search_external_work",
             "ne les choisis pas pour une question canonique",
@@ -1599,6 +1602,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         )
         self.assertIn(product_methods.CANONICAL_FAMILY_SCOPED_SEARCH, payload["canonical_families"])
         self.assertIn(product_methods.CANONICAL_FAMILY_EXTRACTION, payload["canonical_families"])
+        self.assertIn(product_methods.CANONICAL_FAMILY_READER_NAVIGATION, payload["canonical_families"])
         self.assertIn("document_id", payload["tool_param_contracts"][tools.TOOL_CATALOG_SEARCH]["allowed"])
         rows = {row["case_id"]: row for row in payload["case_reference_signatures"]}
         self.assertEqual(rows["P03"]["product_method"], product_methods.PRODUCT_METHOD_WORK_LOOKUP)

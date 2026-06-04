@@ -829,6 +829,78 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(result.observability_payload["lane"]["passage_count"], 1)
         self.assertTrue(observed["used_for_response"])
 
+    def test_agent_first_empty_plan_uses_reader_navigation_for_next_page(self) -> None:
+        fake_model = _FakeAgentModel(_empty_agent_plan_json())
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-agent-first-next-page",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "page_no": 12, "para_no": 2, "passage_hash": "a" * 12},
+            page_no=12,
+            para_no=2,
+            last_passage_hash="a" * 12,
+            last_intent="extract_passage",
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="montre-moi la page suivante",
+            conversation_id="conv-agent-first-next-page",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: _FakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertEqual(result.observability_payload["product_case_id"], "P14")
+        self.assertEqual(
+            result.observability_payload["product_method"],
+            librarian_product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT,
+        )
+        self.assertEqual(observed["tool_loop"]["tool_names"], [librarian_tools.TOOL_PAGE_READ])
+        self.assertEqual(result.answer_object.render_mode if result.answer_object else "", "exact_excerpt")
+        self.assertTrue(result.rendered_answer.exact_text_rendered if result.rendered_answer else False)
+        self.assertTrue(result.final_response_lock.ok if result.final_response_lock else False)
+        self.assertEqual(result.biblio_state.page_no if result.biblio_state else None, 13)
+
+    def test_agent_first_empty_plan_uses_reader_navigation_for_previous_page(self) -> None:
+        fake_model = _FakeAgentModel(_empty_agent_plan_json())
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-agent-first-previous-page",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "page_no": 12, "para_no": 2, "passage_hash": "a" * 12},
+            page_no=12,
+            para_no=2,
+            last_passage_hash="a" * 12,
+            last_intent="extract_passage",
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="montre-moi la page precedente",
+            conversation_id="conv-agent-first-previous-page",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: _FakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertEqual(result.observability_payload["product_case_id"], "P13")
+        self.assertEqual(
+            result.observability_payload["product_method"],
+            librarian_product_methods.PRODUCT_METHOD_PASSAGE_MOVE_PREVIOUS_SEGMENT,
+        )
+        self.assertEqual(observed["tool_loop"]["tool_names"], [librarian_tools.TOOL_PAGE_READ])
+        self.assertEqual(result.answer_object.render_mode if result.answer_object else "", "exact_excerpt")
+        self.assertTrue(result.rendered_answer.exact_text_rendered if result.rendered_answer else False)
+        self.assertTrue(result.final_response_lock.ok if result.final_response_lock else False)
+        self.assertEqual(result.biblio_state.page_no if result.biblio_state else None, 11)
+
     def test_agent_invalid_json_forbidden_tool_and_timeout_keep_deterministic_response(self) -> None:
         cases = [
             _FakeAgentModel("not json"),

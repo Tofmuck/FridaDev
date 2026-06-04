@@ -246,26 +246,36 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
   - Prochain test live requis: surveillance regression; apres lecture exacte,
     l'etat Biblio doit conserver document courant + position exploitable pour
     un tour suivant.
-- [ ] BIB-27 - Continuer a partir du passage qu'on vient de lire.
-  - Statut: `ouvert`
-  - Preuve live: aucune.
-  - Prochain test live requis: extrait rendu -> continuation page/contexte
-    suivant sous budget.
-- [ ] BIB-28 - Aller a la page suivante ou precedente.
-  - Statut: `ouvert`
-  - Preuve live: aucune.
-  - Prochain test live requis: ancre page courante -> `page_read` page suivante
-    ou precedente.
+- [x] BIB-27 - Continuer a partir du passage qu'on vient de lire.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib27-bib30-real-conversation-20260604T210551Z.jsonl`,
+    `BIB27_CONTINUE_FROM_CURRENT=met`.
+  - Prochain test live requis: surveillance regression; apres lecture exacte
+    ancree, `Continue.` doit appeler `page_read` sur la suite bornee et rendre
+    seulement du texte mecanique verrouille.
+- [x] BIB-28 - Aller a la page suivante ou precedente.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib27-bib30-real-conversation-20260604T210551Z.jsonl`,
+    `BIB28_NEXT_PAGE=met`, `BIB28_PREVIOUS_PAGE=met`.
+  - Prochain test live requis: surveillance regression; ancre page courante ->
+    `page_read` page suivante ou precedente, sans recherche opportuniste.
 - [ ] BIB-29 - Aller au chapitre suivant.
   - Statut: `ouvert`
-  - Preuve live: aucune.
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib27-bib30-real-conversation-20260604T210551Z.jsonl`,
+    `BIB29_NEXT_CHAPTER_NOT_CLOSED=not_applicable`.
   - Prochain test live requis: chapitre courant -> chapitre suivant resolu ->
-    structure ou lecture bornee.
-- [ ] BIB-30 - Revenir avant un passage.
-  - Statut: `ouvert`
-  - Preuve live: aucune.
-  - Prochain test live requis: ancre passage -> contexte precedent ou
-    clarification si non disponible.
+    structure ou lecture bornee. Ne pas cocher tant qu'un chapitre courant
+    exploitable n'est pas porte dans l'etat.
+- [x] BIB-30 - Revenir avant un passage.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib27-bib30-real-conversation-20260604T210551Z.jsonl`,
+    `BIB30_BEFORE_PASSAGE=met`.
+  - Prochain test live requis: surveillance regression; ancre passage/page ->
+    lecture mecanique precedente ou clarification si l'ancre ne suffit pas.
 - [ ] BIB-31 - Comparer deux passages deja lus.
   - Statut: `ouvert`
   - Preuve live: aucune.
@@ -351,6 +361,40 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
   - Reason codes: `biblio_agent_first_plan_executed`,
     `biblio_librarian_tool_executed`, `ok`,
     `biblio_final_response_authorized`
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-27 - 2026-06-04 -
+  `app/docs/states/baselines/biblio-smokes/bib27-bib30-real-conversation-20260604T210551Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `0e42e37db9df`
+  - Proof case: `BIB27_CONTINUE_FROM_CURRENT`
+  - Outils appeles: `page_read`
+  - Statut final: message assistant sauvegarde, meta Biblio presente,
+    `exact_excerpt`, ancre page courante avancee.
+  - Reason codes: `biblio_agent_first_plan_executed`,
+    `biblio_librarian_tool_executed`, `ok`
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-28 - 2026-06-04 -
+  `app/docs/states/baselines/biblio-smokes/bib27-bib30-real-conversation-20260604T210551Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `0e42e37db9df`
+  - Proof cases: `BIB28_NEXT_PAGE`, `BIB28_PREVIOUS_PAGE`
+  - Outils appeles: `page_read`
+  - Statut final: message assistant sauvegarde, meta Biblio presente,
+    `exact_excerpt`; page suivante puis precedente prouves depuis l'ancre
+    courante.
+  - Reason codes: `biblio_agent_first_plan_executed`,
+    `biblio_librarian_tool_executed`, `ok`
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-30 - 2026-06-04 -
+  `app/docs/states/baselines/biblio-smokes/bib27-bib30-real-conversation-20260604T210551Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `0e42e37db9df`
+  - Proof case: `BIB30_BEFORE_PASSAGE`
+  - Outils appeles: `page_read`
+  - Statut final: message assistant sauvegarde, meta Biblio presente,
+    `exact_excerpt`; lecture mecanique avant l'ancre courante.
+  - Reason codes: `biblio_agent_first_plan_executed`,
+    `biblio_librarian_tool_executed`, `ok`
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire

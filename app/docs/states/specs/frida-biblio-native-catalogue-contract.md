@@ -563,6 +563,28 @@ Provenance et ancre courante BIB-25/BIB-26:
   l'artefact reste content-free et ne contient ni prompt, ni dialogue brut, ni
   titre/auteur brut, ni payload Catalogue brut, ni texte d'ouvrage.
 
+Navigation lecteur BIB-27/BIB-30:
+
+- depuis une ancre courante deja portee par l'etat Biblio, les demandes
+  "continue", "page suivante", "page precedente" et "avant ce passage"
+  relevent de `reader_navigation`;
+- le bibliothecaire LLM reste souverain sur l'intention de navigation. Le
+  determinisme ne juge pas le sens du passage; il verifie seulement document
+  courant, page/ancre, budget, outil GET-only, lecture mecanique et final lock;
+- `passage_continue_next_segment` (`P14`) couvre `continue` et page suivante
+  quand une ancre page courante existe; `passage_move_previous_segment` (`P13`)
+  couvre page precedente et retour avant le passage;
+- le texte exact rendu vient uniquement de `page_read` ou `passage_context`
+  effectivement executes. Une TOC, un snippet ou un resultat de recherche ne
+  devient jamais un extrait exact de navigation;
+- preuve live conversationnelle:
+  `app/docs/states/baselines/biblio-smokes/bib27-bib30-real-conversation-20260604T210551Z.jsonl`;
+  `BIB27_CONTINUE_FROM_CURRENT`, `BIB28_NEXT_PAGE`,
+  `BIB28_PREVIOUS_PAGE` et `BIB30_BEFORE_PASSAGE` sont `met`;
+- BIB-29 ("chapitre suivant") reste ouvert: il demande une ancre de chapitre
+  courant et une resolution de chapitre suivant que ce lot ne prouve pas. Le
+  code ne doit pas simuler cette capacite en lisant seulement la page suivante.
+
 Verrou de preuve Last Chance Lot 4:
 
 - Lot 4 est clos comme cadrage technique quand les familles canoniques

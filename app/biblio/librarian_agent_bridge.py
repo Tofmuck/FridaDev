@@ -361,9 +361,15 @@ def _fallback_product_method(
     clean_query_kind = str(query_kind or "").strip()
     clean_scope_mode = str(scope_mode or "").strip()
     if clean_intent == librarian_dialogue_planner.INTENT_NAVIGATE and clean_query_kind == "passage_context":
-        if clean_scope_mode == librarian_dialogue_navigation.NAVIGATION_UP:
+        if clean_scope_mode in {
+            librarian_dialogue_navigation.NAVIGATION_UP,
+            librarian_dialogue_navigation.NAVIGATION_PAGE_PREVIOUS,
+        }:
             return librarian_product_methods.PRODUCT_METHOD_PASSAGE_MOVE_PREVIOUS_SEGMENT
-        if clean_scope_mode == librarian_dialogue_navigation.NAVIGATION_CONTINUE:
+        if clean_scope_mode in {
+            librarian_dialogue_navigation.NAVIGATION_CONTINUE,
+            librarian_dialogue_navigation.NAVIGATION_PAGE_NEXT,
+        }:
             return librarian_product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT
     if clean_intent == librarian_dialogue_planner.INTENT_ORIGIN_CHECK:
@@ -375,7 +381,10 @@ def _fallback_product_method(
     if clean_query_kind == "passage_context":
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT
     if clean_intent == librarian_dialogue_planner.INTENT_NAVIGATE and clean_query_kind == "page_read":
-        if clean_scope_mode == librarian_dialogue_navigation.NAVIGATION_UP:
+        if clean_scope_mode in {
+            librarian_dialogue_navigation.NAVIGATION_UP,
+            librarian_dialogue_navigation.NAVIGATION_PAGE_PREVIOUS,
+        }:
             return librarian_product_methods.PRODUCT_METHOD_PASSAGE_MOVE_PREVIOUS_SEGMENT
         return librarian_product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT
     return librarian_product_methods.infer_product_method(

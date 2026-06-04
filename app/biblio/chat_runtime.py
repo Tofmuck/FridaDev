@@ -195,6 +195,7 @@ def run_biblio_chat_turn(
             )
             product_projection = _agent_first_product_projection(
                 librarian_agent_result=librarian_agent_result,
+                answer_object=agent_first_result.answer_object,
                 state_after=state_after,
                 state_transition=state_transition,
             )
@@ -493,12 +494,17 @@ def _fallback_limit(query_plan: Any, *, default: int) -> int:
 def _agent_first_product_projection(
     *,
     librarian_agent_result: Any,
+    answer_object: biblio_answer_object.BiblioAnswerObject | None = None,
     state_after: BiblioConversationState,
     state_transition: BiblioStateTransition | None,
 ) -> dict[str, str]:
     validation_plan = _agent_validation_plan(librarian_agent_result)
-    product_method = str(validation_plan.get("product_method") or "").strip()
-    case_id = librarian_product_methods.normalize_case_id(validation_plan.get("case_id"))
+    product_method = str(
+        getattr(answer_object, "product_method", "") or validation_plan.get("product_method") or ""
+    ).strip()
+    case_id = librarian_product_methods.normalize_case_id(
+        getattr(answer_object, "case_id", "") or validation_plan.get("case_id")
+    )
     if not case_id:
         case_id = librarian_product_methods.default_case_id_for_method(product_method)
     execution_status = librarian_product_methods.EXECUTION_STATUS_SUCCESS
