@@ -980,6 +980,15 @@ Cas Platon / Stephanus:
   reason code courant devient `safe_backfill_candidate_missing`; aucune preuve
   live BIB-11/BIB-12/BIB-14 ne doit etre relancee tant qu'une source avec vraie
   hierarchie interne n'est pas restauree ou reimportee.
+- Le diagnostic PDF texte structure du 2026-06-05
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-pdf-structured-diagnostic-20260605T153733Z.jsonl`
+  teste deux PDF fournis explicitement. Ils ont les SHA attendus et du texte
+  extractible, mais aucun outline/bookmark, aucun signal typographique
+  exploitable et des lignes candidates assimilees a des en-tetes/repères
+  repetes plutot qu'a une hierarchie interne. Le reason code courant devient
+  `pdf_internal_hierarchy_signal_missing`: un PDF texte sans outline, TOC
+  concentree ou manifeste de sections verifie ne suffit pas a peupler
+  `document_sections` ni a fermer BIB-11/BIB-12/BIB-14.
 - Le diagnostic plateforme/Sauron du 2026-06-05
   `app/docs/states/baselines/biblio-smokes/bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl`
   confirme que `milestones` expose des labels Stephanus et un `order_index`
@@ -1371,7 +1380,9 @@ Route hierarchie TOC du 2026-06-05:
   `document_sections`, le statut produit reste bloque par
   `catalogue_hierarchy_rows_missing_for_existing_documents`; apres le dry-run
   backfill du 2026-06-05, le blocker operationnel est
-  `safe_backfill_candidate_missing`.
+  `safe_backfill_candidate_missing`; apres le diagnostic PDF structure du
+  2026-06-05, le blocker operationnel est
+  `pdf_internal_hierarchy_signal_missing`.
 
 Validation finale Lot 8 du 2026-05-29:
 

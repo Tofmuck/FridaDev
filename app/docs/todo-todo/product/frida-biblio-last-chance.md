@@ -194,9 +194,14 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-sections-backfill-diagnostic-20260605T144939Z.jsonl`
     (`safe_backfill_candidate_missing`; 1 source hash-match retrouvee mais
     sans TOC exploitable, 0 entree `document_sections`, aucun write DB).
+    Diagnostic PDF texte structure:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-pdf-structured-diagnostic-20260605T153733Z.jsonl`
+    (`candidate_rejected` sur les 2 PDF fournis: texte extractible, mais
+    absence d'outline, typographie non exploitable et signaux de titres
+    assimiles a des en-tetes/repères repetes, pas a une hierarchie interne).
   - Prochain test live requis: section interne resolue, distincte d'un simple
     chapitre, issue de `document_sections`, avec debut structure; blocker
-    courant: `safe_backfill_candidate_missing`.
+    courant: `pdf_internal_hierarchy_signal_missing`.
 - [ ] BIB-12 - Dire ou finit une section interne.
   - Statut: `partiel_live`
   - Preuve live:
@@ -221,10 +226,15 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-sections-backfill-diagnostic-20260605T144939Z.jsonl`
     (`safe_backfill_candidate_missing`; 1 source hash-match retrouvee mais
     sans TOC exploitable, 0 entree `document_sections`, aucun write DB).
+    Diagnostic PDF texte structure:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-pdf-structured-diagnostic-20260605T153733Z.jsonl`
+    (`candidate_rejected` sur les 2 PDF fournis: texte extractible, mais
+    absence d'outline, typographie non exploitable et signaux de titres
+    assimiles a des en-tetes/repères repetes, pas a une hierarchie interne).
   - Prochain test live requis: section interne resolue, distincte d'un simple
     chapitre, issue de `document_sections`, avec fin structure ou derivee
     honnetement; blocker courant:
-    `safe_backfill_candidate_missing`.
+    `pdf_internal_hierarchy_signal_missing`.
 - [x] BIB-13 - Chercher un theme ou motif dans un ouvrage.
   - Statut: `ferme_live`
   - Preuve live:
@@ -256,9 +266,13 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-sections-backfill-diagnostic-20260605T144939Z.jsonl`
     (`safe_backfill_candidate_missing`; aucune section interne precise
     backfillee, donc aucun scope section pour recherche BIB-14).
+    Diagnostic PDF texte structure:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-pdf-structured-diagnostic-20260605T153733Z.jsonl`
+    (`candidate_rejected` sur les 2 PDF fournis; aucune section interne
+    precise n'est backfillee, donc aucun scope section fiable).
   - Prochain test live requis: section resolue -> recherche bornee section,
     candidats structures, pas extraction automatique; blocker courant:
-    `safe_backfill_candidate_missing`.
+    `pdf_internal_hierarchy_signal_missing`.
 - [x] BIB-15 - Presenter plusieurs passages candidats sans les transformer en
   extrait exact.
   - Statut: `ferme_live`
@@ -774,6 +788,28 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     sources EPUB/PDF originales avec TOC recursive ou reimport controle d'un
     document source reel; ensuite seulement backfill, integration FridaDev
     `sections()` et preuve live conversationnelle.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-11/BIB-12/BIB-14 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-pdf-structured-diagnostic-20260605T153733Z.jsonl`
+  - Statut: `blocked` diagnostique; cases toujours `partiel_live` et
+    decochees.
+  - Dry-run content-free: les 2 PDF fournis ont les SHA attendus et du texte
+    extractible sur toutes ou presque toutes les pages; aucun outline/bookmark
+    n'est expose, pypdf ne fournit qu'un signal typographique non exploitable
+    et les lignes candidates reperees par `pdftotext -layout` ressemblent a
+    des en-tetes/repères repetes sur presque toutes les pages.
+  - Ecriture DB: non effectuee. Aucun backup DB nouveau n'est cree car aucune
+    ecriture n'a ete lancee; `document_sections` reste vide.
+  - Reason codes:
+    `pdf_sources_text_extractible`,
+    `pdf_outline_missing`,
+    `pdf_typography_signal_unusable`,
+    `toc_signal_not_concentrated`,
+    `running_header_like_candidates`,
+    `db_write_not_performed`.
+  - Prochain lot requis: fournir/importer une source avec outline PDF, TOC
+    recursive EPUB/PDF ou manifeste de sections verifie; ensuite seulement
+    backfill, integration FridaDev `sections()` et preuve live.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
