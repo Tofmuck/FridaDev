@@ -208,15 +208,18 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `PG4E_PAGE_TWO=met` apres audit harness.
   - Prochain test live requis: surveillance regression Lot 5; limite actuelle
     1 a 3 pages / 8 000 caracteres.
-- [ ] BIB-21 - Sortir le debut d'une section quand les bornes sont connues.
-  - Statut: `partiel_live`
+- [x] BIB-21 - Sortir le debut d'une section quand les bornes sont connues.
+  - Statut: `ferme_live`
   - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib21-real-conversation-20260605T082358Z.jsonl`,
+    `BIB21_SECTION_START_KNOWN_BOUNDS_MICROLOT=met`.
+  - Preuve partielle precedente:
     `app/docs/states/baselines/biblio-smokes/bib21-bib23-real-conversation-20260605T072804Z.jsonl`,
     `BIB21_SECTION_START_KNOWN_BOUNDS=partial`.
-  - Prochain test live requis: l'agent doit choisir `extraction` +
-    `section_bounds` + `page_read` compact. Le live du 2026-06-05 appelle
-    encore `document_toc_show` (`catalog_search`, `document_toc`) et ne rend
-    pas d'extrait exact.
+  - Prochain test live requis: surveillance regression; quand les bornes sont
+    connues, `extraction` + `section_bounds` + `page_read` compact doit rendre
+    un `exact_excerpt`. La preuve fermee isole BIB-21 avec document deja ancre:
+    elle ne requalifie pas BIB-04.
 - [x] BIB-22 - Sortir un passage autour d'une occurrence trouvee.
   - Statut: `ferme_live`
   - Preuve live:
@@ -431,15 +434,31 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     `biblio_librarian_tool_executed`, `ok`,
     `biblio_final_response_authorized`
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-21 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib21-real-conversation-20260605T082358Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `ce0df44aeaea`
+  - Proof case: `BIB21_SECTION_START_KNOWN_BOUNDS_MICROLOT`
+  - Outils appeles: `resolve_section`, `section_bounds`, `page_read`
+  - Statut final: message assistant sauvegarde, `final_response_lock`
+    autorise, meta Biblio presente, `exact_excerpt` rendu depuis deux
+    `page_read`, surface visible propre.
+  - Reason codes: `biblio_agent_first_plan_executed`,
+    `biblio_librarian_agent_json_validated`,
+    `biblio_librarian_tool_executed`, `biblio_final_response_authorized`
+  - Requalification: ferme BIB-21 pour le cas utilisateur "debut de section
+    avec bornes connues" et document deja ancre. Ne ferme pas la resolution
+    naturelle d'ouvrage BIB-04, ni la section complete BIB-23.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 - BIB-21/BIB-23 - 2026-06-05 -
   `app/docs/states/baselines/biblio-smokes/bib21-bib23-real-conversation-20260605T072804Z.jsonl`
   - Statut: `partiel_live`
   - Proof cases: `BIB21_SECTION_START_KNOWN_BOUNDS=partial`,
     `BIB23_COMPLETE_SECTION_LIMITED=partial`
-  - Requalification: BIB-21 reste bloque sur transition agentique live
-    (`document_toc_show` au lieu de `extraction` + `section_bounds` +
-    `page_read`). BIB-23 reste ouvert fonctionnellement: pas encore de moteur
-    de section complete budgetee/decoupee.
+  - Requalification: entree conservee comme preuve partielle historique.
+    BIB-21 est desormais ferme par
+    `bib21-real-conversation-20260605T082358Z.jsonl`; BIB-23 reste ouvert
+    fonctionnellement, sans moteur de section complete budgetee/decoupee.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
@@ -2328,8 +2347,8 @@ Inventaire de verite Lot 4:
 | 4D `scoped_search` | livre mais validation live partielle | oui | oui, zero-hit prouve; multi-hit encore partiel dans le dernier replay | candidats multiples a clarifier/rendre sans exact; ne pas revenir a `passage_search_in_work`. |
 | 4E `extraction` | livre | oui | oui pour pages apres ancrage; non pour toutes les variantes | exact seulement depuis `page_read` ou `passage_context`; aucune section longue. |
 | 4E.1 pages courtes | livre | oui | oui: page unique et deux pages contigues quand les pages sont lues | budget 1 a 3 pages / 8 000 caracteres; pas d'intervalle arbitraire. |
-| 4E.2 `section_bounds` -> `page_read` | livre contractuel | oui | non | uniquement debut de section compact explicitement borne; pas section complete. |
-| 4E.3 hit unique ancre -> `passage_context` | livre contractuel | oui | non | un seul hit scoped total ancre; pas ranking ni choix du meilleur hit. |
+| 4E.2 `section_bounds` -> `page_read` | livre + ferme live BIB-21 | oui | `bib21-real-conversation-20260605T082358Z.jsonl` | uniquement debut de section compact explicitement borne; document deja ancre; pas section complete. |
+| 4E.3 hit unique ancre -> `passage_context` | livre + ferme live BIB-22 | oui | `bib21-bib23-real-conversation-20260605T072804Z.jsonl` | un seul hit scoped total ancre; pas ranking ni choix du meilleur hit. |
 | Proof Gate initial 4E | diagnostic livre | n/a | `lot4e-proof-gate-live-20260604T144426Z.jsonl`: `0 met`, `3 failed`, `1 partial` | prouve surtout l'ecart agentique live initial. |
 | Replay transition agentique | diagnostic livre | n/a | `lot4e-proof-gate-live-after-agentic-transition-20260604T145952Z.jsonl`: `1 met`, `0 failed`, `3 partial` | trajectoires ameliorees, rendu page encore non ferme. |
 | Proof Gate page-render isole | preuve live ciblee | n/a | `lot4e-proof-gate-live-after-page-render-20260604T151409Z.jsonl`: `4 met` | preuve avec document deja ancre; pas preuve de resolution naturelle. |
@@ -2366,8 +2385,10 @@ Definition stricte de fin Lot 4:
   contigues lues par `page_read`, avec ancrage documentaire naturel, final lock
   et message assistant verifies; scoped zero-hit est prouve sans exact; scoped
   multi-hit reste partiel;
-- 4E.2 et 4E.3 restent prouves contractuellement seulement. Les vendre comme
-  comportements live fermes serait un faux vert;
+- 4E.2 est ferme live pour BIB-21 sur document deja ancre et bornes page
+  exploitables; 4E.3 est ferme live pour BIB-22 sur candidat unique ancre. Les
+  vendre comme section complete, resolution naturelle d'ouvrage ou ranking
+  multi-candidats serait un faux vert;
 - toute nouvelle extension apres ce verrou doit etre nommee comme lot separe:
   pas de `4E.x` opportuniste si le besoin touche navigation, provenance, etat,
   section longue, plages canoniques, clarification multi-candidats ou nettoyage.
@@ -2445,9 +2466,9 @@ Matrice:
 | Recherche dans une section | `ouvert` | structure et scoped_search existent separement | section resolue -> recherche bornee section, candidats structures, pas extraction automatique | Lot 4D-bis / Lot 2 bis bornes riches |
 | Extraction page X | `ferme_live` | `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`, `PG4E_PAGE_ONE=met` | deja ferme pour page unique courte via `page_read`, final lock et message final | surveiller Lot 5 |
 | Extraction pages X-Y courtes | `ferme_live` | meme artefact, `PG4E_PAGE_TWO=met` apres audit harness | deja ferme pour deux pages contigues; limite actuelle 1 a 3 pages / 8 000 caracteres | surveiller Lot 5 |
-| Extraction deux premieres pages d'une section | `contractuel_unitaire` | Lot 4E.2 tests: `section_bounds` -> `page_read` compact | live section explicite -> bornes -> pages lues -> exact lock | Lot 4E.2 proof live dedie si priorise |
+| Extraction deux premieres pages d'une section | `ferme_live` | Lot 4E.2 tests + `bib21-real-conversation-20260605T082358Z.jsonl` | document deja ancre + section explicite -> `section_bounds` -> deux `page_read` -> exact lock | surveiller; ne ferme pas section complete longue |
 | Extraction section complete longue | `ouvert` | hors scope Lot 4E.1/4E.2 | section debut/fin resolues -> plan decoupage/budget/continuation/streaming; pas de lecture longue silencieuse | Lot extraction longue separe |
-| Extraction autour d'une occurrence unique ancree | `contractuel_unitaire` | Lot 4E.3 tests: unique hit scoped total -> `passage_context` | live extraction explicite -> `catalog_search` scoped unique -> `passage_context` -> exact lock; snippet jamais rendu | Lot 4E.3 proof live dedie |
+| Extraction autour d'une occurrence unique ancree | `ferme_live` | Lot 4E.3 tests + `bib21-bib23-real-conversation-20260605T072804Z.jsonl` | live extraction explicite -> `catalog_search` scoped unique -> `passage_context` -> exact lock; snippet jamais rendu | surveiller |
 | Plage canonique type Stephanus | `a_ne_pas_pretendre` | legacy/regression historique seulement | locator/range canonique fiable -> extraction mecanique bornee; sinon clarification | Lot references canoniques separe |
 | Navigation lecteur: continue, page suivante/precedente | `ouvert` | ancrage page existe dans resultats; pas d'etat lecteur global ferme | message avec ancre courante -> page suivante/precedente lue, message final verifie | Lot navigation lecteur |
 | Navigation: chapitre suivant, dix pages plus loin, remonte avant | `a_ne_pas_pretendre` | pas de preuve produit | etat lecteur + bornes + budgets + clarification si ambigu | Lot navigation lecteur |

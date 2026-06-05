@@ -431,6 +431,7 @@ def validate_agent_payload(
     invalid_tool_names: list[str] = []
     carry_document_available = False
     carry_position_available = False
+    carry_section_available = False
     for raw_call in raw_calls:
         if not isinstance(raw_call, Mapping):
             return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
@@ -484,6 +485,7 @@ def validate_agent_payload(
             params,
             carry_document_available=carry_document_available,
             carry_position_available=carry_position_available,
+            carry_section_available=carry_section_available,
         ):
             return _rejected(REASON_TOOL_NOT_EXECUTABLE, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
         calls.append(
@@ -508,6 +510,9 @@ def validate_agent_payload(
             carry_document_available = True
         if tool_name in {tools.TOOL_CATALOG_SEARCH, tools.TOOL_LOCATE, tools.TOOL_PASSAGE_CONTEXT}:
             carry_position_available = True
+            carry_document_available = True
+        if tool_name in {tools.TOOL_SEARCH_SECTION, tools.TOOL_RESOLVE_SECTION, tools.TOOL_SECTION_BOUNDS}:
+            carry_section_available = True
             carry_document_available = True
 
     resolved_case_id = case_id or product_methods.default_case_id_for_method(product_method)
@@ -553,7 +558,10 @@ def _rejected(
 def _repair_agent_payload(payload: Any) -> Any:
     if not isinstance(payload, Mapping):
         return payload
+    payload = _unwrap_agent_payload(payload)
     raw_calls = payload.get("tool_calls")
+    if raw_calls is None:
+        raw_calls = payload.get("tools") or payload.get("calls")
     changed = False
     if isinstance(raw_calls, Mapping):
         raw_calls = (raw_calls,)
@@ -568,6 +576,8 @@ def _repair_agent_payload(payload: Any) -> Any:
         if tool_name not in tools.LOT3_TOOL_NAMES:
             return payload
         params = raw_call.get("params")
+        if params is None:
+            params = raw_call.get("parameters") or raw_call.get("args")
         params = _repair_raw_params(tool_name, params)
         if params is None:
             return payload
@@ -603,7 +613,11 @@ def _repair_agent_payload(payload: Any) -> Any:
         answer_mode=repaired_payload["answer_mode"],
         tool_names=[str(call.get("tool_name") or "") for call in repaired_calls],
     )
-    repaired_payload["product_method"] = _safe_token(payload.get("product_method")) or inferred_product_method
+    explicit_product_method = _safe_token(payload.get("product_method"))
+    if product_methods.is_section_start_extraction_answer_mode(repaired_payload["answer_mode"]):
+        repaired_payload["product_method"] = product_methods.PRODUCT_METHOD_EXTRACTION
+    else:
+        repaired_payload["product_method"] = explicit_product_method or inferred_product_method
     explicit_case_id = product_methods.normalize_case_id(payload.get("case_id"))
     if explicit_case_id and product_methods.is_known_case_id(explicit_case_id):
         if product_methods.method_accepts_case_id(repaired_payload["product_method"], explicit_case_id):
@@ -621,6 +635,24 @@ def _repair_agent_payload(payload: Any) -> Any:
         )
     changed = changed or set(payload.keys()) != _ROOT_KEYS
     return repaired_payload if changed else payload
+
+
+def _unwrap_agent_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    if payload.get("tool_calls") is not None:
+        return payload
+    for key in ("plan", "agent_plan", "biblio_plan", "result", "answer"):
+        nested = payload.get(key)
+        if not isinstance(nested, Mapping):
+            continue
+        if nested.get("tool_calls") is None and nested.get("tools") is None and nested.get("calls") is None:
+            continue
+        merged = dict(payload)
+        merged.update(nested)
+        for wrapper_key in ("plan", "agent_plan", "biblio_plan", "result", "answer"):
+            if wrapper_key not in _ROOT_KEYS:
+                merged.pop(wrapper_key, None)
+        return merged
+    return payload
 
 
 def _repair_raw_params(tool_name: str, params: Any) -> Mapping[str, Any] | None:
@@ -741,6 +773,10 @@ def _has_context_position(params: Mapping[str, Any]) -> bool:
     return has_paragraph or has_page_pair
 
 
+def _has_section_anchor(params: Mapping[str, Any]) -> bool:
+    return bool(_first_text(params, ("section_id", "q", "query")) or _present_like(params.get("chapter_no")))
+
+
 def _present_like(value: Any) -> bool:
     if isinstance(value, str):
         return bool(value.strip())
@@ -838,6 +874,7 @@ def _valid_deferred_params(
     *,
     carry_document_available: bool,
     carry_position_available: bool,
+    carry_section_available: bool,
 ) -> bool:
     synthetic = dict(params)
     if tool_name == tools.TOOL_PASSAGE_CONTEXT:
@@ -848,10 +885,26 @@ def _valid_deferred_params(
         if not _has_context_position(synthetic):
             synthetic["paragraph_id"] = 1
         return _valid_params(tool_name, synthetic)
-    if tool_name in {tools.TOOL_DOCUMENT_TOC, tools.TOOL_PAGE_READ, tools.TOOL_LOCATE}:
+    if tool_name in {
+        tools.TOOL_DOCUMENT_TOC,
+        tools.TOOL_SEARCH_SECTION,
+        tools.TOOL_RESOLVE_SECTION,
+        tools.TOOL_PAGE_READ,
+        tools.TOOL_LOCATE,
+    }:
         if _has_document_id(synthetic) or not carry_document_available:
             return False
         synthetic["document_id"] = "doc-carried"
+        return _valid_params(tool_name, synthetic)
+    if tool_name == tools.TOOL_SECTION_BOUNDS:
+        if not _has_document_id(synthetic):
+            if not carry_document_available:
+                return False
+            synthetic["document_id"] = "doc-carried"
+        if not _has_section_anchor(synthetic):
+            if not carry_section_available:
+                return False
+            synthetic["section_id"] = "section-carried"
         return _valid_params(tool_name, synthetic)
     return False
 

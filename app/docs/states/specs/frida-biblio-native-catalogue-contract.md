@@ -512,7 +512,13 @@ Extraction depuis bornes de section Last Chance Lot 4E.2 livree:
 - ambiguite, absence de document, absence de page exploitable ou bornes non-page
   bloquent/clarifient. Le deterministe ne choisit pas une section, n'invente pas
   une borne et ne juge jamais la pertinence semantique;
-- preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
+- preuve live BIB-21: la conversation reelle
+  `app/docs/states/baselines/biblio-smokes/bib21-real-conversation-20260605T082358Z.jsonl`
+  ferme `BIB21_SECTION_START_KNOWN_BOUNDS_MICROLOT=met` pour le cas document
+  deja ancre + debut de section avec bornes page exploitables:
+  `product_method=extraction`, `resolve_section`, `section_bounds`,
+  `page_read`, `exact_excerpt`, final lock autorise et surface visible propre.
+  L'artefact reste content-free et ne requalifie pas BIB-04 ni BIB-23.
 
 Extraction depuis candidat de recherche ancre Last Chance Lot 4E.3 livree:
 
@@ -613,10 +619,10 @@ Verrou de preuve Last Chance Lot 4:
   dernier replay et ne doit pas etre vendu comme ferme;
 - hit unique ancre -> `passage_context` est ferme live pour BIB-22 par
   `bib21-bib23-real-conversation-20260605T072804Z.jsonl`;
-- `section_bounds` -> `page_read` reste partiel live pour BIB-21: le contrat
-  unitaire existe, mais le replay conversationnel du 2026-06-05 montre encore
-  une transition agentique vers `document_toc_show` au lieu de
-  `extraction` + `section_bounds` + `page_read`;
+- `section_bounds` -> `page_read` est ferme live pour BIB-21 par
+  `bib21-real-conversation-20260605T082358Z.jsonl`, avec document deja ancre,
+  section resolue, deux `page_read`, `exact_excerpt`, final lock autorise et
+  surface visible propre;
 - section complete BIB-23 reste partielle/ouverte: pas encore de moteur de
   section complete budgetee/decoupee ni de preuve live de fermeture;
 - apres ce verrou, aucun nouveau `4E.x` opportuniste ne doit etre ajoute pour

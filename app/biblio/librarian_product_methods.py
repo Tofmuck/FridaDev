@@ -55,6 +55,14 @@ PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK = "passage_origin_check"
 PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK = "passage_search_external_work"
 PRODUCT_METHOD_CLARIFY_BIBLIO_REQUEST = "clarify_biblio_request"
 
+SECTION_START_EXTRACTION_ANSWER_MODES = frozenset(
+    {
+        "bounded_context_extract_start_of_section",
+        "deliver_excerpt_context_from_section_start",
+        "section_start_page_block_2",
+    }
+)
+
 CASE_IDS = tuple(f"P{index:02d}" for index in range(1, 19))
 CASE_ID_SET = frozenset(CASE_IDS)
 
@@ -522,6 +530,10 @@ def method_requires_tool_calls(product_method: str) -> bool:
     return bool(spec and spec.requires_tool_calls)
 
 
+def is_section_start_extraction_answer_mode(answer_mode: Any) -> bool:
+    return str(answer_mode or "").strip() in SECTION_START_EXTRACTION_ANSWER_MODES
+
+
 def default_case_id_for_method(product_method: str) -> str:
     spec = get_product_method_spec(product_method)
     if spec is None or len(spec.case_ids) != 1:
@@ -583,7 +595,11 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
         return PRODUCT_METHOD_EXTRACTION
     if clean_intent == "scoped_search":
         return PRODUCT_METHOD_SCOPED_SEARCH
-    if clean_intent == "extraction" or clean_answer_mode == "extraction":
+    if (
+        clean_intent == "extraction"
+        or clean_answer_mode == "extraction"
+        or is_section_start_extraction_answer_mode(clean_answer_mode)
+    ):
         return PRODUCT_METHOD_EXTRACTION
     if clean_intent == "list_catalog":
         return PRODUCT_METHOD_CATALOG_LIST_BOUNDED

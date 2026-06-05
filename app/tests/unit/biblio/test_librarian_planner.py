@@ -93,6 +93,68 @@ class BiblioLibrarianPlannerTests(unittest.TestCase):
         self.assertEqual(observed["positions"][0]["page_no"], 28)
         self.assertNotIn(RAW_PASSAGE, _json(observed))
 
+    def test_carries_unique_section_anchor_to_deferred_section_bounds(self) -> None:
+        fake = _FakeToolClient(
+            catalog_payload={"items": [{"id": "doc-1", "title": "Document"}]},
+            chapters_payload={
+                "chapters": [
+                    {"chapter_no": 1, "title": "Intro", "unit_no": 1},
+                    {"chapter_no": 2, "title": "Alpha", "unit_no": 12},
+                    {"chapter_no": 3, "title": "Beta", "unit_no": 16},
+                ]
+            },
+        )
+
+        result = _planner(fake).run(
+            proposed_tool_calls=[
+                {"tool_name": tools.TOOL_RESOLVE_WORK, "params": {"query": "Document"}},
+                {"tool_name": tools.TOOL_RESOLVE_SECTION, "params": {"query": "Alpha"}},
+                {"tool_name": tools.TOOL_SECTION_BOUNDS, "params": {}},
+            ]
+        )
+
+        self.assertEqual(result.status, planner.STATUS_TOOL_EXECUTED)
+        self.assertEqual(
+            fake.calls,
+            [
+                ("catalog", "Document", 5, 0),
+                ("chapters", "doc-1", 500, 0),
+                ("chapters", "doc-1", 500, 0),
+            ],
+        )
+        self.assertEqual(result.steps[-1].tool_name, tools.TOOL_SECTION_BOUNDS)
+        self.assertEqual(result.steps[-1].status, planner.STATUS_TOOL_EXECUTED)
+
+    def test_does_not_carry_section_anchor_from_multiple_section_candidates(self) -> None:
+        fake = _FakeToolClient(
+            catalog_payload={"items": [{"id": "doc-1", "title": "Document"}]},
+            chapters_payload={
+                "chapters": [
+                    {"chapter_no": 1, "title": "Shared one", "unit_no": 1},
+                    {"chapter_no": 2, "title": "Shared two", "unit_no": 12},
+                ]
+            },
+        )
+
+        result = _planner(fake).run(
+            proposed_tool_calls=[
+                {"tool_name": tools.TOOL_RESOLVE_WORK, "params": {"query": "Document"}},
+                {"tool_name": tools.TOOL_SEARCH_SECTION, "params": {"query": "Shared"}},
+                {"tool_name": tools.TOOL_SECTION_BOUNDS, "params": {}},
+            ]
+        )
+
+        self.assertEqual(result.status, planner.STATUS_TOOL_REJECTED)
+        self.assertEqual(result.steps[-1].tool_name, tools.TOOL_SECTION_BOUNDS)
+        self.assertEqual(result.steps[-1].reason_code, tools.REASON_MISSING_QUERY)
+        self.assertEqual(
+            fake.calls,
+            [
+                ("catalog", "Document", 5, 0),
+                ("chapters", "doc-1", 500, 0),
+            ],
+        )
+
     def test_unknown_tool_is_rejected_before_network(self) -> None:
         fake = _FakeToolClient()
         result = _planner(fake).run(proposed_tool_calls=[{"tool_name": "catalog_delete", "params": {}}])

@@ -831,6 +831,113 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_EXTRACTION)
         self.assertEqual(validation.plan.tool_calls[0].params["page_no"], 12)
 
+    def test_section_start_answer_mode_repairs_to_canonical_extraction(self) -> None:
+        validation = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "case_id": "P09",
+                    "intent": "document_structure",
+                    "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_SECTION_BOUNDS,
+                            "method": "GET",
+                            "params": {"document_id": "doc-1", "chapter_no": "2"},
+                        }
+                    ],
+                    "answer_mode": "section_start_page_block_2",
+                    "risk_flags": [],
+                    "fallback_reason": "",
+                }
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.case_id, "")
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_EXTRACTION)
+        self.assertEqual(validation.plan.answer_mode, "section_start_page_block_2")
+        self.assertEqual(validation.plan.tool_calls[0].tool_name, tools.TOOL_SECTION_BOUNDS)
+        self.assertEqual(validation.plan.tool_calls[0].params["chapter_no"], 2)
+
+    def test_section_start_repair_unwraps_agent_plan_and_parameter_aliases(self) -> None:
+        validation = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "plan": {
+                        "case_id": "P09",
+                        "intent": "document_structure",
+                        "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_TOC_SHOW,
+                        "tools": [
+                            {
+                                "tool": tools.TOOL_SECTION_BOUNDS,
+                                "method": "GET",
+                                "parameters": {"document_id": "doc-1", "chapter_no": "2"},
+                            }
+                        ],
+                        "answer_mode": "section_start_page_block_2",
+                        "risk_flags": [],
+                        "fallback_reason": "",
+                    },
+                }
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.case_id, "")
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_EXTRACTION)
+        self.assertEqual(validation.plan.answer_mode, "section_start_page_block_2")
+        self.assertEqual(validation.plan.tool_calls[0].tool_name, tools.TOOL_SECTION_BOUNDS)
+        self.assertEqual(validation.plan.tool_calls[0].params["chapter_no"], 2)
+
+    def test_section_start_allows_deferred_section_bounds_after_section_resolution(self) -> None:
+        validation = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "case_id": "",
+                    "intent": "extraction",
+                    "product_method": product_methods.PRODUCT_METHOD_EXTRACTION,
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_RESOLVE_WORK,
+                            "method": "GET",
+                            "params": {"q": "document"},
+                        },
+                        {
+                            "tool_name": tools.TOOL_RESOLVE_SECTION,
+                            "method": "GET",
+                            "params": {"q": "section"},
+                        },
+                        {
+                            "tool_name": tools.TOOL_SECTION_BOUNDS,
+                            "method": "GET",
+                            "params": {},
+                        },
+                    ],
+                    "answer_mode": "section_start_page_block_2",
+                    "risk_flags": [],
+                    "fallback_reason": "",
+                }
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_EXTRACTION)
+        self.assertEqual(
+            tuple(call.tool_name for call in validation.plan.tool_calls),
+            (tools.TOOL_RESOLVE_WORK, tools.TOOL_RESOLVE_SECTION, tools.TOOL_SECTION_BOUNDS),
+        )
+        self.assertEqual(validation.plan.tool_calls[1].params, {"q": "section"})
+        self.assertEqual(validation.plan.tool_calls[2].params, {})
+
     def test_extraction_accepts_page_read_deferred_after_document_search(self) -> None:
         validation = contract.validate_agent_payload(
             {

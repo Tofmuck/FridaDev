@@ -229,6 +229,7 @@ class BiblioLibrarianPlanner:
         tool_calls = 0
         carried_document_id = ""
         carried_position: dict[str, Any] = {}
+        carried_section_anchor: dict[str, Any] = {}
         terminal_status = ""
         terminal_reason = ""
         if _plan_requests_clarification(
@@ -311,6 +312,7 @@ class BiblioLibrarianPlanner:
                 call,
                 document_id=carried_document_id,
                 position=carried_position,
+                section_anchor=carried_section_anchor,
             )
             step = self.run_tool_call(len(steps), call)
             steps.append(step)
@@ -318,6 +320,7 @@ class BiblioLibrarianPlanner:
                 tool_calls += 1
                 carried_document_id = _carried_document_id(step.tool_result) or carried_document_id
                 carried_position = _carried_position(step.tool_result) or carried_position
+                carried_section_anchor = _carried_section_anchor(step.tool_result) or carried_section_anchor
             context_chars += _int(step.observation.get("content_chars")) or 0
             if context_chars > loop_request.options.max_context_chars:
                 steps = _with_budget_step_if_room(steps, call, loop_request.options, "max_context_chars")
@@ -425,6 +428,7 @@ def _with_carried_anchor(
     *,
     document_id: str,
     position: Mapping[str, Any],
+    section_anchor: Mapping[str, Any],
 ) -> BiblioLibrarianToolCall:
     params = dict(call.params)
     changed = False
@@ -454,6 +458,13 @@ def _with_carried_anchor(
             if key not in params and position.get(key) is not None:
                 params[key] = position[key]
                 changed = True
+    if call.tool_name == tools.TOOL_SECTION_BOUNDS and section_anchor:
+        if not (params.get("section_id") or params.get("chapter_no") or params.get("q") or params.get("query")):
+            for key in ("section_id", "chapter_no"):
+                if section_anchor.get(key) is not None:
+                    params[key] = section_anchor[key]
+                    changed = True
+                    break
     if not changed:
         return call
     return BiblioLibrarianToolCall(
@@ -565,6 +576,27 @@ def _carried_position(result: tools.BiblioLibrarianToolResult) -> dict[str, Any]
         for key in ("paragraph_id", "page_no", "para_no")
         if position.get(key) is not None
     }
+
+
+def _carried_section_anchor(result: tools.BiblioLibrarianToolResult) -> dict[str, Any]:
+    if result.tool_name not in {
+        tools.TOOL_SEARCH_SECTION,
+        tools.TOOL_RESOLVE_SECTION,
+        tools.TOOL_SECTION_BOUNDS,
+    }:
+        return {}
+    if len(result.items) != 1:
+        return {}
+    item = result.items[0]
+    if not isinstance(item, Mapping):
+        return {}
+    section_id = str(item.get("section_id") or "").strip()
+    if section_id:
+        return {"section_id": section_id}
+    chapter_no = _int(item.get("chapter_no"))
+    if chapter_no is not None:
+        return {"chapter_no": chapter_no}
+    return {}
 
 
 def _step_status(tool_status: str) -> str:
