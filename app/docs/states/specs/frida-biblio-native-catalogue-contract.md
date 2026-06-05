@@ -904,6 +904,15 @@ Cas Platon / Stephanus:
   document/oeuvre/locator reste `ambiguous_document` en vraie conversation.
   BIB-24 reste donc non pretendu tant que la structure Catalogue / resolution
   d'oeuvre interne ne fournit pas des bornes debut/fin non ambigues.
+- Le diagnostic plateforme/Sauron du 2026-06-05
+  `app/docs/states/baselines/biblio-smokes/bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl`
+  confirme que `milestones` expose des labels Stephanus et un `order_index`
+  permettant d'ordonner deux bornes dans un document non ambigu. Il confirme
+  aussi le blocker BIB-24 courant: dans les documents agreges, les memes labels
+  ont plusieurs occurrences et `document_chapters` ne fournit pas encore un
+  scope d'oeuvre interne fiable. Le Catalogue ne doit donc pas exposer une route
+  qui choisirait silencieusement la premiere occurrence; le prochain contrat
+  attendu est une resolution d'oeuvre interne / locator non ambigue.
 
 ## 8. Extraction bornee
 
