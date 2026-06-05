@@ -237,8 +237,15 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     2026-06-05 ne prouve pas encore section complete.
 - [ ] BIB-24 - Sortir une plage canonique, par exemple un repere Stephanus.
   - Statut: `a_ne_pas_pretendre`
-  - Preuve live: aucune preuve produit suffisante; les cas historiques restent
-    regressions severes.
+  - Preuve live negative:
+    `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`,
+    `BIB24_CANONICAL_RANGE_REAL_CONVERSATION=failed`.
+  - Requalification: la conversation live appelle bien le bibliothecaire
+    agentique, mais le chemin observe reste `passage_extract_canonical_range`
+    legacy/P04 avec `passage_context` autour d'une occurrence. Aucune borne
+    debut/fin ni extraction mecanique complete d'intervalle canonique n'est
+    prouvee. Le rendu exact est donc bloque; BIB-24 ne doit pas etre coche.
+    Les cas historiques restent des regressions severes.
   - Prochain test live requis: resolution de plage canonique fiable ou
     clarification, puis extraction mecanique bornee.
 - [x] BIB-25 - Dire d'ou vient un passage: ouvrage, page, section, ancre.
@@ -459,6 +466,21 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     BIB-21 est desormais ferme par
     `bib21-real-conversation-20260605T082358Z.jsonl`; BIB-23 reste ouvert
     fonctionnellement, sans moteur de section complete budgetee/decoupee.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-24 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`
+  - Statut: `a_ne_pas_pretendre`
+  - Conversation: hash `f004ac98e31e`
+  - Proof case: `BIB24_CANONICAL_RANGE_REAL_CONVERSATION`
+  - Outils appeles: `resolve_work`, `locate`, `catalog_search`,
+    `passage_context`
+  - Statut final: message assistant sauvegarde, meta Biblio presente,
+    `final_response_lock` autorise mais aucun `exact_excerpt` rendu; le
+    garde-fou bloque le contexte unique comme preuve de plage canonique.
+  - Reason codes: `canonical_range_complete_interval_not_proven`,
+    `biblio_agent_first_plan_executed`, `biblio_librarian_tool_executed`
+  - Requalification: start/end non resolus, intervalle canonique absent,
+    extraction mecanique complete absente. BIB-24 reste non coche.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
@@ -2469,7 +2491,7 @@ Matrice:
 | Extraction deux premieres pages d'une section | `ferme_live` | Lot 4E.2 tests + `bib21-real-conversation-20260605T082358Z.jsonl` | document deja ancre + section explicite -> `section_bounds` -> deux `page_read` -> exact lock | surveiller; ne ferme pas section complete longue |
 | Extraction section complete longue | `ouvert` | hors scope Lot 4E.1/4E.2 | section debut/fin resolues -> plan decoupage/budget/continuation/streaming; pas de lecture longue silencieuse | Lot extraction longue separe |
 | Extraction autour d'une occurrence unique ancree | `ferme_live` | Lot 4E.3 tests + `bib21-bib23-real-conversation-20260605T072804Z.jsonl` | live extraction explicite -> `catalog_search` scoped unique -> `passage_context` -> exact lock; snippet jamais rendu | surveiller |
-| Plage canonique type Stephanus | `a_ne_pas_pretendre` | legacy/regression historique seulement | locator/range canonique fiable -> extraction mecanique bornee; sinon clarification | Lot references canoniques separe |
+| Plage canonique type Stephanus | `a_ne_pas_pretendre` | live negatif `bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`; legacy/regression historique seulement | locator/range canonique fiable -> extraction mecanique bornee; sinon clarification | Lot references canoniques separe |
 | Navigation lecteur: continue, page suivante/precedente | `ouvert` | ancrage page existe dans resultats; pas d'etat lecteur global ferme | message avec ancre courante -> page suivante/precedente lue, message final verifie | Lot navigation lecteur |
 | Navigation: chapitre suivant, dix pages plus loin, remonte avant | `a_ne_pas_pretendre` | pas de preuve produit | etat lecteur + bornes + budgets + clarification si ambigu | Lot navigation lecteur |
 | Provenance: ouvrage/page/section d'un passage rendu | `partiel_live` | extractions page portent ancres et `document_id`; final lock prouve message exact | question "d'ou vient ce passage ?" apres rendu -> provenance structuree depuis ancres, sans relire texte brut | Lot 4F provenance/ancrage |

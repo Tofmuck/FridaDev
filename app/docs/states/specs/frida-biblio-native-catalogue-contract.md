@@ -887,6 +887,13 @@ Cas Platon / Stephanus:
 - si plusieurs occurrences ou editions restent plausibles, le resultat doit etre `ambiguous`;
 - si aucun locator compatible n'est trouve, le resultat doit etre `not_found`;
 - si Catalogue echoue, le resultat doit etre `catalogue_unavailable`.
+- Une plage canonique type Stephanus n'est fermee que si le chemin prouve
+  techniquement les deux bornes debut/fin et l'extraction mecanique complete de
+  l'intervalle. Un `passage_context` autour d'un seul locator, un hit de
+  recherche ou un snippet ne doivent jamais etre rendus comme plage complete.
+  Le live BIB-24 du 2026-06-05
+  `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`
+  conserve ce blocage comme preuve negative content-free.
 
 ## 8. Extraction bornee
 

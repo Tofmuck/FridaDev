@@ -365,6 +365,14 @@ def _structured_answer_lines(answer: BiblioAnswerObject) -> list[str]:
         lines.extend(answer_search.render_lines(answer.scoped_search))
     if answer.extraction:
         lines.extend(answer_extraction.render_lines(answer.extraction))
+    if (
+        answer.product_method == product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE
+        and answer.status == STATUS_READY
+        and not answer.exact_text
+    ):
+        lines.append(
+            "Plage canonique non rendue: l'intervalle complet debut/fin n'a pas ete extrait mecaniquement."
+        )
     if answer.interval:
         interval = _visible_interval_line(answer.interval)
         if interval:
@@ -776,6 +784,8 @@ def _exact_text_for_method(
     status: str,
 ) -> str:
     if status != STATUS_READY or not _method_allows_exact_text(product_method):
+        return ""
+    if product_method == product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE and not extraction:
         return ""
     if extraction:
         return answer_extraction.mechanical_exact_text(results, extraction)

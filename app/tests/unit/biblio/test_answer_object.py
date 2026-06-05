@@ -128,6 +128,36 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(observed_answer["exact_text_chars"], len(RAW_EXACT_TEXT))
         self.assertEqual(observed_render["exact_text_hash"], observed_answer["exact_text_hash"])
 
+    def test_canonical_range_does_not_render_single_context_as_complete_exact_range(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_PASSAGE_CONTEXT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CONTEXT,
+            document_id="doc-1",
+            positions=({"page_no": 12, "para_no": 3},),
+            context_text=RAW_EXACT_TEXT,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+            case_id="P04",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.exact_text, "")
+        self.assertEqual(answer.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertFalse(rendered.exact_text_rendered)
+        self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertIn("Plage canonique non rendue", rendered.content)
+        self.assertTrue(lock.ok)
+        self.assertFalse(lock.exact_text_rendered)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(answer.to_observability()))
+        self.assertNotIn(RAW_EXACT_TEXT, _json(rendered.to_observability()))
+
     def test_canonical_extraction_renders_exact_page_read_with_anchor(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_PAGE_READ,
