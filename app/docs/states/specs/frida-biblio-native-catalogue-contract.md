@@ -31,6 +31,7 @@ Premiere methode canonique Last Chance Lot 4A: 2026-06-04
 Resolution documentaire canonique Last Chance Lot 4B: 2026-06-04
 Structure/TOC canonique Last Chance Lot 4C: 2026-06-04
 Recherche scoped canonique Last Chance Lot 4D: 2026-06-04
+Nettoyage surface visible Biblio Last Chance: 2026-06-05
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -221,6 +222,12 @@ Premier cran Last Chance Lot 3 livre:
 - le renderer ne produit un extrait exact que si le texte est deja
   mecaniquement present dans un resultat borne (`context_text` ou
   `page_text`);
+- la surface assistant visible doit rester lisible par un utilisateur: pas de
+  wrapper `[RESULTAT BIBLIO STRUCTURE]`, pas de contrat de restitution, pas de
+  `Status`, `Render mode`, `Reason`, `Product method` ni de plomberie interne
+  dans le texte final normal. Les statuts, reason codes, modes de rendu,
+  hashes, longueurs, source et signaux Biblio restent dans `message.meta`,
+  `to_observability()` et les artefacts JSONL content-free;
 - `ambiguous`, `not_found`, `section_alias_missing`,
   `internal_work_unresolved`, `work_alias_missing` et autres manques
   structurels ne doivent pas devenir des sorties pseudo-exactes;

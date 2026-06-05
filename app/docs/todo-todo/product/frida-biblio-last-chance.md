@@ -396,6 +396,19 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
   - Reason codes: `biblio_agent_first_plan_executed`,
     `biblio_librarian_tool_executed`, `ok`
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- Rejeu surface visible BIB-27/BIB-28/BIB-30 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib27-bib30-visible-clean-real-conversation-20260605T064225Z.jsonl`
+  - Statut: regression live `met` sur 5 tours conversationnels reels:
+    page exacte, continuer, page suivante, page precedente, revenir avant.
+  - Conversation: hash `5bfed18b8fd5`
+  - Outils appeles: `search_document`, `page_read`.
+  - Statut final: messages assistant sauvegardes, `final_response_lock`
+    autorise, meta Biblio presente, Memory observee via stages de tour,
+    surface visible sans wrapper `[RESULTAT BIBLIO STRUCTURE]`, sans contrat de
+    restitution, sans `Status`, `Render mode`, `Reason` ni `Product method`.
+  - Requalification: ce rejeu ne coche pas BIB-29; il confirme seulement que le
+    nettoyage de surface ne casse pas les BIB deja fermes.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
 
@@ -1576,10 +1589,17 @@ Livraison premier cran Lot 3, 2026-06-04:
   `needs_clarification`, `error`;
 - render modes minimaux: `structured_status`, `exact_excerpt`,
   `blocked_exact`;
-- renderer: `render_biblio_answer_object()` produit un bloc mecanique
-  `[RESULTAT BIBLIO STRUCTURE]` qui rend le statut, la provenance courte,
-  l'intervalle et, seulement si disponible, un texte exact deja present dans
-  `context_text` ou `page_text`;
+- renderer: `render_biblio_answer_object()` produit une surface Biblio
+  autorisable par le verrou final. Depuis le nettoyage de surface du
+  2026-06-05, le message utilisateur visible ne doit plus exposer le wrapper
+  `[RESULTAT BIBLIO STRUCTURE]`, le contrat de restitution, `Status`,
+  `Render mode`, `Reason`, `Product method` ni les champs de plomberie
+  internes. Ces signaux restent disponibles dans `message.meta`,
+  l'observabilite et les artefacts JSONL content-free;
+- pour un extrait exact, la surface visible porte une provenance courte
+  (`catalogue_doc`, page/ancres, section/chapitre si connu ou indique comme non
+  renseigne) puis seulement le texte exact deja present dans `context_text` ou
+  `page_text`;
 - garde-fou: `ambiguous`, `not_found`, `section_alias_missing`,
   `internal_work_unresolved`, `work_alias_missing` et autres manques
   structurels ne deviennent pas des extraits exacts;

@@ -76,10 +76,9 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertIsNotNone(result.answer_object)
         self.assertIsNotNone(result.rendered_answer)
         self.assertEqual(result.answer_object.status if result.answer_object else "", answer_object.STATUS_READY)
-        self.assertIn(
-            answer_object.ANSWER_HEADER,
-            result.consultation_message.message["content"] if result.consultation_message else "",
-        )
+        consultation_content = result.consultation_message.message["content"] if result.consultation_message else ""
+        self.assertIn("Source: catalogue_doc=doc-1234", consultation_content)
+        self.assertNotIn(answer_object.ANSWER_HEADER, consultation_content)
         self.assertNotIn(RAW_QUERY, encoded)
         self.assertNotIn(RAW_TITLE, encoded)
         self.assertNotIn(RAW_PASSAGE, encoded)
@@ -811,7 +810,7 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
             result.answer_object.scoped_search["reason_codes"],
         )
         self.assertEqual(result.rendered_answer.reason_code, tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE)
-        self.assertIn(f"Reason: {tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE}", result.rendered_answer.content)
+        self.assertNotIn(f"Reason: {tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE}", result.rendered_answer.content)
         self.assertNotIn("Reason: ok", result.rendered_answer.content)
         self.assertIn("aucun candidat de recherche ne reste dans le scope", result.rendered_answer.content)
         self.assertNotIn("RAW OUT OF SCOPE", result.rendered_answer.content)
@@ -967,7 +966,13 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_EXACT_EXCERPT)
         self.assertTrue(result.rendered_answer.exact_text_rendered)
         self.assertTrue(lock.ok)
-        self.assertIn("Extraction mecanique:", result.rendered_answer.content)
+        self.assertIn("Source: catalogue_doc=doc-1234, page 12", result.rendered_answer.content)
+        self.assertNotIn(answer_object.ANSWER_HEADER, result.rendered_answer.content)
+        self.assertNotIn("Contrat de restitution", result.rendered_answer.content)
+        self.assertNotIn("Status:", result.rendered_answer.content)
+        self.assertNotIn("Render mode:", result.rendered_answer.content)
+        self.assertNotIn("Reason:", result.rendered_answer.content)
+        self.assertNotIn("Product method:", result.rendered_answer.content)
         self.assertIn(RAW_PASSAGE, result.rendered_answer.content)
         self.assertNotIn(("context", "doc-1234", None, None, None, 0, 700), fake.calls)
         self.assertNotIn(RAW_PASSAGE, encoded)

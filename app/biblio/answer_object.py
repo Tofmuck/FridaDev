@@ -14,6 +14,7 @@ from typing import Any, Mapping, Sequence
 
 from . import answer_extraction
 from . import answer_resolution
+from . import answer_surface
 from . import answer_search
 from . import answer_structure
 from . import librarian_planner
@@ -329,22 +330,31 @@ def render_biblio_answer_object(
 ) -> BiblioRenderedAnswer:
     max_exact_chars = _bounded_int(max_exact_chars, minimum=0, maximum=DEFAULT_MAX_RENDERED_EXACT_CHARS)
     reason_code = _render_reason_code(answer)
-    lines = [
-        ANSWER_HEADER,
-        "Contrat de restitution:",
-        "- Ceci est le resultat structure Biblio, pas une generation libre.",
-        "- Le renderer ne choisit pas une oeuvre, une section ou une ancre ambigue.",
-        f"Status: {answer.status}",
-        f"Render mode: {answer.render_mode}",
-    ]
-    if reason_code:
-        lines.append(f"Reason: {reason_code}")
-    if answer.product_method:
-        lines.append(f"Product method: {answer.product_method}")
-    if answer.document_id:
-        lines.append(f"Document: catalogue_doc={short_doc_id(answer.document_id)}")
-    if answer.section_id:
-        lines.append(f"Section: {answer.section_id}")
+    exact_text = answer.exact_text if answer.status == STATUS_READY else ""
+    exact_rendered = False
+    if answer.render_mode == RENDER_EXACT_EXCERPT and exact_text and len(exact_text) <= max_exact_chars:
+        lines = answer_surface.exact_excerpt_lines(answer, exact_text)
+        exact_rendered = True
+    else:
+        lines = _structured_answer_lines(answer)
+        if answer.status == STATUS_READY:
+            lines.append("Resultat Biblio pret, mais aucun texte exact mecanique n'est disponible pour ce rendu.")
+        else:
+            lines.append(_blocked_exact_line(answer.status))
+    content = "\n".join(lines)
+    return BiblioRenderedAnswer(
+        status=answer.status,
+        reason_code=reason_code,
+        render_mode=answer.render_mode,
+        content=content,
+        exact_text_rendered=exact_rendered,
+        exact_text_chars=len(exact_text) if exact_rendered else 0,
+        exact_text_hash=_hash(exact_text) if exact_rendered else "",
+    )
+
+
+def _structured_answer_lines(answer: BiblioAnswerObject) -> list[str]:
+    lines: list[str] = []
     if answer.inventory_metadata:
         lines.extend(_inventory_lines(answer.inventory_metadata))
     if answer.document_resolution:
@@ -356,38 +366,42 @@ def render_biblio_answer_object(
     if answer.extraction:
         lines.extend(answer_extraction.render_lines(answer.extraction))
     if answer.interval:
-        lines.append(
-            "Intervalle: "
-            + ", ".join(
-                part
-                for part in (
-                    f"type={_text(answer.interval.get('type'))}" if _text(answer.interval.get("type")) else "",
-                    f"state={_text(answer.interval.get('state'))}" if _text(answer.interval.get("state")) else "",
-                )
-                if part
-            )
-        )
+        interval = _visible_interval_line(answer.interval)
+        if interval:
+            lines.append(interval)
+    if not lines:
+        status_line = _visible_status_line(answer.status)
+        if status_line:
+            lines.append(status_line)
+    return lines
 
-    exact_text = answer.exact_text if answer.status == STATUS_READY else ""
-    exact_rendered = False
-    if answer.render_mode == RENDER_EXACT_EXCERPT and exact_text and len(exact_text) <= max_exact_chars:
-        lines.extend(["Texte exact rendu mecaniquement:", _neutralize(exact_text)])
-        exact_rendered = True
-    elif answer.status == STATUS_READY:
-        lines.append("Resultat structure pret; aucun texte exact n'est rendu par ce cran.")
-    else:
-        lines.append("Extraction exacte non rendue: statut ou structure insuffisante.")
-    lines.append(ANSWER_FOOTER)
-    content = "\n".join(lines)
-    return BiblioRenderedAnswer(
-        status=answer.status,
-        reason_code=reason_code,
-        render_mode=answer.render_mode,
-        content=content,
-        exact_text_rendered=exact_rendered,
-        exact_text_chars=len(exact_text) if exact_rendered else 0,
-        exact_text_hash=_hash(exact_text) if exact_rendered else "",
-    )
+
+def _visible_interval_line(interval: Mapping[str, Any]) -> str:
+    parts = []
+    for label, key in (("type", "type"), ("etat", "state")):
+        value = _text(interval.get(key))
+        if value:
+            parts.append(f"{label}={_neutralize(value)}")
+    return "Intervalle: " + ", ".join(parts) if parts else ""
+
+
+def _visible_status_line(status: str) -> str:
+    if status == STATUS_AMBIGUOUS:
+        return "Plusieurs possibilites restent ouvertes; il faut clarifier avant de rendre un extrait exact."
+    if status == STATUS_NOT_FOUND:
+        return "Aucun resultat exploitable n'a ete trouve dans le scope demande."
+    if status == STATUS_NEEDS_CLARIFICATION:
+        return "Je ne peux pas rendre un extrait exact sans precision ou ancre supplementaire."
+    if status == STATUS_ERROR:
+        return "La lecture Biblio n'a pas pu aboutir."
+    return ""
+
+
+def _blocked_exact_line(status: str) -> str:
+    status_line = _visible_status_line(status)
+    if status_line:
+        return status_line
+    return "Extraction exacte non rendue: structure ou ancre insuffisante."
 
 
 def _render_reason_code(answer: BiblioAnswerObject) -> str:

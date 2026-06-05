@@ -159,11 +159,8 @@ class ServerChatBiblioContractTests(unittest.TestCase):
     def test_biblio_final_response_lock_controls_assistant_message(self) -> None:
         observed = {"events": []}
         final_text = (
-            "[RESULTAT BIBLIO STRUCTURE]\n"
-            "Status: ready\n"
-            "Texte exact rendu mecaniquement:\n"
+            "Source: catalogue_doc=doc-1, page 12.\n\n"
             f"{BIBLIO_SECRET_PASSAGE}\n"
-            "[/RESULTAT BIBLIO STRUCTURE]"
         )
         answer = answer_object.BiblioAnswerObject(
             status=answer_object.STATUS_READY,

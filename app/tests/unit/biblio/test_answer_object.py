@@ -155,7 +155,13 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(answer.anchors[0]["document_id"], "doc-1")
         self.assertEqual(answer.anchors[0]["page_no"], 12)
         self.assertTrue(rendered.exact_text_rendered)
-        self.assertIn("Extraction mecanique:", rendered.content)
+        self.assertIn("Source: catalogue_doc=doc-1, page 12", rendered.content)
+        self.assertNotIn(answer_object.ANSWER_HEADER, rendered.content)
+        self.assertNotIn("Contrat de restitution", rendered.content)
+        self.assertNotIn("Status:", rendered.content)
+        self.assertNotIn("Render mode:", rendered.content)
+        self.assertNotIn("Reason:", rendered.content)
+        self.assertNotIn("Product method:", rendered.content)
         self.assertIn(RAW_EXACT_TEXT, rendered.content)
         self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
 
@@ -266,7 +272,7 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(len(answer.anchors), 3)
         self.assertEqual([anchor["page_no"] for anchor in answer.anchors], [12, 13, 14])
         self.assertTrue(rendered.exact_text_rendered)
-        self.assertIn("intervalle pages lu: 12-14", rendered.content)
+        self.assertIn("Source: catalogue_doc=doc-1, pages 12-14", rendered.content)
         self.assertNotIn("RAW PAGE 12", _json(observed))
 
     def test_canonical_extraction_blocks_pages_from_different_documents(self) -> None:
@@ -546,7 +552,7 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(answer.document_resolution["status"], "ambiguous")
         self.assertTrue(lock.ok)
         self.assertIn("ambiguite conservee", rendered.content)
-        self.assertIn("Extraction exacte non rendue", rendered.content)
+        self.assertIn("Plusieurs possibilites restent ouvertes", rendered.content)
         self.assertFalse(rendered.exact_text_rendered)
 
     def test_document_resolution_no_candidate_is_not_found(self) -> None:
@@ -889,7 +895,7 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(answer.render_mode, answer_object.RENDER_BLOCKED_EXACT)
         self.assertEqual(rendered.reason_code, tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE)
         self.assertFalse(rendered.exact_text_rendered)
-        self.assertIn(f"Reason: {tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE}", rendered.content)
+        self.assertNotIn(f"Reason: {tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE}", rendered.content)
         self.assertNotIn("Reason: ok", rendered.content)
         self.assertIn("aucun candidat de recherche ne reste dans le scope", rendered.content)
         self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
@@ -985,8 +991,9 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         answer = answer_object.build_biblio_answer_object(tool_results=(result,))
         rendered = answer_object.render_biblio_answer_object(answer)
 
-        self.assertEqual(rendered.content.count(answer_object.ANSWER_HEADER), 1)
-        self.assertEqual(rendered.content.count(answer_object.ANSWER_FOOTER), 1)
+        self.assertEqual(rendered.content.count(answer_object.ANSWER_HEADER), 0)
+        self.assertEqual(rendered.content.count(answer_object.ANSWER_FOOTER), 0)
+        self.assertIn("[/RESULTAT BIBLIO STRUCTURE neutralise]", rendered.content)
         self.assertIn(RAW_PROMPT, rendered.content)
         self.assertNotIn(RAW_PROMPT, _json(rendered.to_observability()))
 

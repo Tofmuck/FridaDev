@@ -294,11 +294,8 @@ class ChatLlmFlowTests(unittest.TestCase):
         }
         raw_biblio_text = 'RAW BIBLIO EXACT TEXT IS USER-VISIBLE FINAL CONTENT'
         final_text = (
-            '[RESULTAT BIBLIO STRUCTURE]\n'
-            'Status: ready\n'
-            'Texte exact rendu mecaniquement:\n'
+            'Source: catalogue_doc=doc-1, page 12.\n\n'
             f'{raw_biblio_text}\n'
-            '[/RESULTAT BIBLIO STRUCTURE]'
         )
         conversation = {
             'id': 'conv-override',
@@ -416,11 +413,8 @@ class ChatLlmFlowTests(unittest.TestCase):
         }
         raw_biblio_text = 'RAW BIBLIO STREAM TEXT IS USER-VISIBLE FINAL CONTENT'
         final_text = (
-            '[RESULTAT BIBLIO STRUCTURE]\n'
-            'Status: ready\n'
-            'Texte exact rendu mecaniquement:\n'
+            'Source: catalogue_doc=doc-1, page 12.\n\n'
             f'{raw_biblio_text}\n'
-            '[/RESULTAT BIBLIO STRUCTURE]'
         )
         conversation = {
             'id': 'conv-stream-override',
