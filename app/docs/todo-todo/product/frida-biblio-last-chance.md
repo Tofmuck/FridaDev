@@ -209,20 +209,29 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
   - Prochain test live requis: surveillance regression Lot 5; limite actuelle
     1 a 3 pages / 8 000 caracteres.
 - [ ] BIB-21 - Sortir le debut d'une section quand les bornes sont connues.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: section resolue -> `section_bounds` ->
-    `page_read` compact -> final lock.
-- [ ] BIB-22 - Sortir un passage autour d'une occurrence trouvee.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: hit unique scoped total et ancre ->
-    `passage_context`; snippet jamais rendu.
+  - Statut: `partiel_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib21-bib23-real-conversation-20260605T072804Z.jsonl`,
+    `BIB21_SECTION_START_KNOWN_BOUNDS=partial`.
+  - Prochain test live requis: l'agent doit choisir `extraction` +
+    `section_bounds` + `page_read` compact. Le live du 2026-06-05 appelle
+    encore `document_toc_show` (`catalog_search`, `document_toc`) et ne rend
+    pas d'extrait exact.
+- [x] BIB-22 - Sortir un passage autour d'une occurrence trouvee.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib21-bib23-real-conversation-20260605T072804Z.jsonl`,
+    `BIB22_UNIQUE_ANCHORED_OCCURRENCE=met`.
+  - Prochain test live requis: surveillance regression; hit unique scoped total
+    et ancre -> `passage_context`; snippet jamais rendu.
 - [ ] BIB-23 - Sortir une section complete, avec decoupage si elle est longue.
-  - Statut: `ouvert`
-  - Preuve live: aucune.
+  - Statut: `partiel_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib21-bib23-real-conversation-20260605T072804Z.jsonl`,
+    `BIB23_COMPLETE_SECTION_LIMITED=partial`.
   - Prochain test live requis: bornes fiables -> plan de decoupage, budget,
-    continuation ou streaming, pas lecture longue silencieuse.
+    continuation ou streaming, pas lecture longue silencieuse. Le live du
+    2026-06-05 ne prouve pas encore section complete.
 - [ ] BIB-24 - Sortir une plage canonique, par exemple un repere Stephanus.
   - Statut: `a_ne_pas_pretendre`
   - Preuve live: aucune preuve produit suffisante; les cas historiques restent
@@ -408,6 +417,29 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     restitution, sans `Status`, `Render mode`, `Reason` ni `Product method`.
   - Requalification: ce rejeu ne coche pas BIB-29; il confirme seulement que le
     nettoyage de surface ne casse pas les BIB deja fermes.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-22 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib21-bib23-real-conversation-20260605T072804Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `64ebf9fe0af4`
+  - Proof case: `BIB22_UNIQUE_ANCHORED_OCCURRENCE`
+  - Outils appeles: `resolve_work`, `catalog_search`, `passage_context`
+  - Statut final: message assistant sauvegarde, `final_response_lock`
+    autorise, meta Biblio presente, `exact_excerpt` rendu depuis
+    `passage_context`, surface visible propre.
+  - Reason codes: `biblio_agent_first_plan_executed`,
+    `biblio_librarian_tool_executed`, `ok`,
+    `biblio_final_response_authorized`
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-21/BIB-23 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib21-bib23-real-conversation-20260605T072804Z.jsonl`
+  - Statut: `partiel_live`
+  - Proof cases: `BIB21_SECTION_START_KNOWN_BOUNDS=partial`,
+    `BIB23_COMPLETE_SECTION_LIMITED=partial`
+  - Requalification: BIB-21 reste bloque sur transition agentique live
+    (`document_toc_show` au lieu de `extraction` + `section_bounds` +
+    `page_read`). BIB-23 reste ouvert fonctionnellement: pas encore de moteur
+    de section complete budgetee/decoupee.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire

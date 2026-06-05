@@ -535,7 +535,12 @@ Extraction depuis candidat de recherche ancre Last Chance Lot 4E.3 livree:
 - le deterministe ne juge pas le sens du hit: il verifie seulement scope,
   unicite, ancre, outil GET-only, coherence technique et observabilite
   content-free;
-- preuve actuelle: unitaires contractuels seulement, pas smoke live agentique.
+- preuve live BIB-22: la conversation reelle
+  `app/docs/states/baselines/biblio-smokes/bib21-bib23-real-conversation-20260605T072804Z.jsonl`
+  ferme `BIB22_UNIQUE_ANCHORED_OCCURRENCE=met` avec
+  `product_method=extraction`, `resolve_work`, `catalog_search`,
+  `passage_context`, `exact_excerpt`, final lock autorise et surface visible
+  propre. L'artefact reste content-free.
 
 Correction transition agentique live 4E:
 
@@ -606,8 +611,14 @@ Verrou de preuve Last Chance Lot 4:
   page-range courte via `page_read`, avec ancrage documentaire naturel. Le zero
   hit scoped est prouve sans exact; le multi-hit scoped reste partiel dans le
   dernier replay et ne doit pas etre vendu comme ferme;
-- `section_bounds` -> `page_read` et hit unique ancre -> `passage_context` sont
-  des contrats unitaires tant qu'aucun replay live JSONL dedie ne les couvre;
+- hit unique ancre -> `passage_context` est ferme live pour BIB-22 par
+  `bib21-bib23-real-conversation-20260605T072804Z.jsonl`;
+- `section_bounds` -> `page_read` reste partiel live pour BIB-21: le contrat
+  unitaire existe, mais le replay conversationnel du 2026-06-05 montre encore
+  une transition agentique vers `document_toc_show` au lieu de
+  `extraction` + `section_bounds` + `page_read`;
+- section complete BIB-23 reste partielle/ouverte: pas encore de moteur de
+  section complete budgetee/decoupee ni de preuve live de fermeture;
 - apres ce verrou, aucun nouveau `4E.x` opportuniste ne doit etre ajoute pour
   section longue, Stephanus complet, ranking semantique, navigation lecteur,
   provenance ou etat de lecture. Ces sujets relevent d'un lot separe ou du
