@@ -894,6 +894,16 @@ Cas Platon / Stephanus:
   Le live BIB-24 du 2026-06-05
   `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`
   conserve ce blocage comme preuve negative content-free.
+- BIB-24 bis ajoute le pont FridaDev `canonical_range_extract`: il peut rendre
+  exact uniquement si les deux bornes canoniques sont resolues dans le meme
+  document et si l'intervalle complet est extrait mecaniquement sous budget. Le
+  live
+  `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-complete-real-conversation-20260605T101356Z.jsonl`
+  reste negatif: l'agent appelle la bonne famille P04 et l'outil
+  `canonical_range_extract`, sans `passage_context`, mais la resolution
+  document/oeuvre/locator reste `ambiguous_document` en vraie conversation.
+  BIB-24 reste donc non pretendu tant que la structure Catalogue / resolution
+  d'oeuvre interne ne fournit pas des bornes debut/fin non ambigues.
 
 ## 8. Extraction bornee
 

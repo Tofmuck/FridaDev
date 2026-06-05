@@ -582,15 +582,20 @@ def _extraction_block_anchors(extraction: Mapping[str, Any]) -> tuple[dict[str, 
     for block in blocks:
         if not isinstance(block, Mapping):
             continue
-        raw_anchor = block.get("anchor")
-        if not isinstance(raw_anchor, Mapping):
-            continue
-        anchor = dict(raw_anchor)
         document_id = _text(block.get("document_id"))
-        if document_id:
-            anchor.setdefault("document_id", document_id)
-        if _text(anchor.get("document_id")) and (_int(anchor.get("page_no")) or _int(anchor.get("paragraph_id"))):
-            anchors.append(anchor)
+        for key in ("anchor", "anchor_end"):
+            raw_anchor = block.get(key)
+            if not isinstance(raw_anchor, Mapping):
+                continue
+            anchor = dict(raw_anchor)
+            if document_id:
+                anchor.setdefault("document_id", document_id)
+            if (
+                _text(anchor.get("document_id"))
+                and (_int(anchor.get("page_no")) or _int(anchor.get("paragraph_id")))
+                and anchor not in anchors
+            ):
+                anchors.append(anchor)
     return tuple(anchors)
 
 

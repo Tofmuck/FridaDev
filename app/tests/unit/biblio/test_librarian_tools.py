@@ -43,6 +43,7 @@ class BiblioLibrarianToolTests(unittest.TestCase):
                 tools.TOOL_PAGE_READ,
                 tools.TOOL_LOCATE,
                 tools.TOOL_PASSAGE_CONTEXT,
+                tools.TOOL_CANONICAL_RANGE_EXTRACT,
             ),
         )
         self.assertNotIn("export/chunk", registry.tool_names)

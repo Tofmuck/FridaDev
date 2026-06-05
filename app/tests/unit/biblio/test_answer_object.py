@@ -22,7 +22,7 @@ RAW_PROMPT = "RAW PROMPT MUST NOT LEAK"
 
 
 class BiblioAnswerObjectTests(unittest.TestCase):
-    def test_builds_ready_object_from_resolved_section_bounds_content_free(self) -> None:
+    def test_p04_section_bounds_stays_structured_without_complete_range_content_free(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_SECTION_BOUNDS,
             status=tools.STATUS_RESOLVED,
@@ -51,12 +51,13 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         )
         observed = answer.to_observability()
 
-        self.assertEqual(answer.status, answer_object.STATUS_READY)
-        self.assertEqual(answer.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertEqual(answer.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_BLOCKED_EXACT)
         self.assertEqual(answer.document_id, "doc-123456")
-        self.assertEqual(answer.section_id, "doc-1234:section:2")
-        self.assertEqual(answer.content_role, "primary_text")
-        self.assertEqual(observed["anchor_count"], 2)
+        self.assertEqual(answer.section_id, "")
+        self.assertEqual(answer.content_role, "")
+        self.assertEqual(observed["anchor_count"], 0)
+        self.assertIn(tools.REASON_EXTRACTION_SOURCE_TOOL_UNSUPPORTED, answer.extraction["reason_codes"])
         self.assertNotIn(RAW_TITLE, _json(observed))
 
     def test_ambiguous_result_stays_ambiguous_and_renderer_does_not_choose_candidate(self) -> None:
@@ -147,15 +148,68 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         rendered = answer_object.render_biblio_answer_object(answer)
         lock = answer_object.build_final_response_lock(answer, rendered)
 
-        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.status, answer_object.STATUS_NEEDS_CLARIFICATION)
         self.assertEqual(answer.exact_text, "")
-        self.assertEqual(answer.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_BLOCKED_EXACT)
         self.assertFalse(rendered.exact_text_rendered)
         self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
-        self.assertIn("Plage canonique non rendue", rendered.content)
         self.assertTrue(lock.ok)
         self.assertFalse(lock.exact_text_rendered)
         self.assertNotIn(RAW_EXACT_TEXT, _json(answer.to_observability()))
+        self.assertNotIn(RAW_EXACT_TEXT, _json(rendered.to_observability()))
+
+    def test_canonical_range_extract_renders_complete_mechanical_range(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_CANONICAL_RANGE_EXTRACT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=tools.ENDPOINT_CANONICAL_RANGE,
+            document_id="doc-1",
+            positions=({"page_no": 12, "para_no": 3, "paragraph_id": 99},),
+            anchors=(
+                {"document_id": "doc-1", "page_no": 12, "para_no": 3, "paragraph_id": 99},
+                {"document_id": "doc-1", "page_no": 12, "para_no": 5, "paragraph_id": 101},
+            ),
+            interval={
+                "kind": "range",
+                "mode": "same_page_range",
+                "start_page_no": 12,
+                "start_para_no": 3,
+                "start_paragraph_id": 99,
+                "end_page_no": 12,
+                "end_para_no": 5,
+                "end_paragraph_id": 101,
+                "page_span": 1,
+                "paragraph_span": 3,
+            },
+            context_text=RAW_EXACT_TEXT,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+            case_id="P04",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(answer.extraction["status"], "resolved")
+        self.assertEqual(answer.extraction["source_tool_name"], tools.TOOL_CANONICAL_RANGE_EXTRACT)
+        self.assertEqual(answer.extraction["content_kind"], "canonical_range")
+        self.assertEqual(answer.extraction["page_start"], 12)
+        self.assertEqual(answer.extraction["page_end"], 12)
+        self.assertEqual(len(answer.anchors), 2)
+        self.assertEqual(answer.anchors[0]["document_id"], "doc-1")
+        self.assertEqual(answer.anchors[0]["paragraph_id"], 99)
+        self.assertEqual(answer.anchors[1]["paragraph_id"], 101)
+        self.assertTrue(rendered.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn("Plage canonique non rendue", rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
         self.assertNotIn(RAW_EXACT_TEXT, _json(rendered.to_observability()))
 
     def test_canonical_extraction_renders_exact_page_read_with_anchor(self) -> None:

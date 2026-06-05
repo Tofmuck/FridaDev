@@ -61,10 +61,15 @@ _CODE_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ012345678
 _TEXT_PARAM_MAX = {
     "q": 240,
     "query": 240,
+    "title": 240,
+    "document_title": 240,
+    "work_title": 240,
+    "author": 240,
     "document_id": 160,
     "doc_id": 160,
     "section_id": 160,
     "locator": 120,
+    "locator_end": 120,
     "label": 120,
     "kind": 40,
 }
@@ -77,6 +82,9 @@ _INT_PARAM_BOUNDS = {
     "chapter_no": (1, 100_000),
     "char_offset": (0, 1_000_000),
     "window_chars": (80, 2_000),
+    "max_passage_chars": (80, 8_000),
+    "locator_anchor_page": (1, 100_000),
+    "locator_anchor_para": (1, 100_000),
 }
 _REASONING_EFFORTS = {"xhigh", "high", "medium", "low", "minimal", "none"}
 _TOOL_PARAM_CONTRACTS = {
@@ -155,6 +163,31 @@ _TOOL_PARAM_CONTRACTS = {
             "paragraph_id": (1, 2_147_483_647),
             "char_offset": (0, 1_000_000),
             "window_chars": (80, 2_000),
+        },
+    },
+    tools.TOOL_CANONICAL_RANGE_EXTRACT: {
+        "allowed": {
+            "document_id",
+            "doc_id",
+            "q",
+            "query",
+            "title",
+            "document_title",
+            "work_title",
+            "author",
+            "locator",
+            "label",
+            "locator_end",
+            "kind",
+            "locator_anchor_page",
+            "locator_anchor_para",
+            "max_passage_chars",
+        },
+        "required_any": (("document_id", "doc_id", "q", "query", "title", "document_title", "work_title", "author"), ("locator", "label"), ("locator_end",)),
+        "int_bounds": {
+            "locator_anchor_page": (1, 100_000),
+            "locator_anchor_para": (1, 100_000),
+            "max_passage_chars": (80, 8_000),
         },
     },
 }
@@ -677,6 +710,8 @@ def _repair_raw_params(tool_name: str, params: Any) -> Mapping[str, Any] | None:
             return {"query": params.strip()[:240]}
         if tool_name == tools.TOOL_LOCATE:
             return {"locator": params.strip()[:120]}
+        if tool_name == tools.TOOL_CANONICAL_RANGE_EXTRACT:
+            return {"query": params.strip()[:240]}
     return None
 
 
@@ -891,6 +926,7 @@ def _valid_deferred_params(
         tools.TOOL_RESOLVE_SECTION,
         tools.TOOL_PAGE_READ,
         tools.TOOL_LOCATE,
+        tools.TOOL_CANONICAL_RANGE_EXTRACT,
     }:
         if _has_document_id(synthetic) or not carry_document_available:
             return False

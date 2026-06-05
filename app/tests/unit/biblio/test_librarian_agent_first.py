@@ -1242,6 +1242,145 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertFalse(result.rendered_answer.exact_text_rendered)
         self.assertNotIn("RAW PAGE", result.rendered_answer.content)
 
+    def test_canonical_range_runtime_extracts_complete_interval_without_context_shortcut(self) -> None:
+        range_text = "RAW COMPLETE CANONICAL RANGE MUST ONLY APPEAR IN RENDERED CONTENT"
+        fake = _FakeAgentFirstClient(
+            locate_payloads={
+                "126b": {
+                    "best": {"kind": "stephanus", "label": "126b", "page_no": 12, "para_no": 3, "paragraph_id": 99}
+                },
+                "126e": {
+                    "best": {"kind": "stephanus", "label": "126e", "page_no": 12, "para_no": 4, "paragraph_id": 100}
+                },
+            },
+            context_payload={"document_id": "doc-1234", "text": range_text},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extract_range",
+                    product_method=product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+                    case_id="P04",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_LOCATE,
+                            method="GET",
+                            params={"document_id": "doc-1234", "locator": "126b", "kind": "stephanus"},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(
+                intent="extract_range",
+                locator="126b",
+                locator_end="126e",
+                locator_kind="stephanus",
+            ),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        encoded = json.dumps(
+            {
+                "loop": result.loop_result.to_observability() if result.loop_result else {},
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertIn(("locate", "doc-1234", "126b", "stephanus", 200), fake.calls)
+        self.assertIn(("metadata", "doc-1234"), fake.calls)
+        self.assertIn(("locate", "doc-1234", "126e", "stephanus", 20), fake.calls)
+        self.assertIn(("context", "doc-1234", None, 12, 3, 0, 2000), fake.calls)
+        self.assertIn(("context", "doc-1234", None, 12, 4, 0, 2000), fake.calls)
+        self.assertNotIn(("context", "doc-1234", 99, None, None, 0, 700), fake.calls)
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(result.answer_object.extraction["status"], "resolved")
+        self.assertEqual(result.answer_object.extraction["source_tool_name"], tools.TOOL_CANONICAL_RANGE_EXTRACT)
+        self.assertEqual(result.answer_object.extraction["content_kind"], "canonical_range")
+        self.assertEqual(len(result.answer_object.anchors), 2)
+        self.assertEqual([anchor["paragraph_id"] for anchor in result.answer_object.anchors], [99, 100])
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn(range_text, result.rendered_answer.content)
+        self.assertNotIn("Plage canonique non rendue", result.rendered_answer.content)
+        self.assertNotIn(range_text, encoded)
+
+    def test_canonical_range_runtime_repairs_missing_document_signal_from_deterministic_plan(self) -> None:
+        range_text = "RAW COMPLETE CANONICAL RANGE MUST ONLY APPEAR AFTER REPAIR"
+        fake = _FakeAgentFirstClient(
+            locate_payloads={
+                "126b": {
+                    "best": {"kind": "stephanus", "label": "126b", "page_no": 12, "para_no": 3, "paragraph_id": 99}
+                },
+                "126e": {
+                    "best": {"kind": "stephanus", "label": "126e", "page_no": 12, "para_no": 4, "paragraph_id": 100}
+                },
+            },
+            context_payload={"document_id": "doc-1234", "text": range_text},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extract_range",
+                    product_method=product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+                    case_id="P04",
+                    answer_mode="extraction",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CANONICAL_RANGE_EXTRACT,
+                            method="GET",
+                            params={"locator": "126b", "locator_end": "126e", "kind": "stephanus"},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(
+                intent="extract_range",
+                document_id="doc-1234",
+                locator="126b",
+                locator_end="126e",
+                locator_kind="stephanus",
+            ),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.loop_result)
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.loop_result is not None
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        observed = result.loop_result.to_observability()
+
+        self.assertEqual(
+            [step["tool_name"] for step in observed["steps"]].count(tools.TOOL_CANONICAL_RANGE_EXTRACT),
+            2,
+        )
+        self.assertEqual(observed["steps"][0]["reason_code"], "locator_requires_document")
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(result.answer_object.extraction["source_tool_name"], tools.TOOL_CANONICAL_RANGE_EXTRACT)
+        self.assertEqual(result.answer_object.extraction["content_kind"], "canonical_range")
+        self.assertEqual(len(result.answer_object.anchors), 2)
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn(range_text, result.rendered_answer.content)
+
     def test_extraction_unique_scoped_search_hit_reads_mechanical_context(self) -> None:
         snippet = "RAW SEARCH SNIPPET MUST NOT BECOME EXACT"
         context = "RAW MECHANICAL CONTEXT MUST ONLY APPEAR IN RENDERED CONTENT"
@@ -1920,6 +2059,7 @@ class _FakeAgentFirstClient:
         context_payload: dict[str, Any] | None = None,
         page_payload: dict[str, Any] | None = None,
         page_payloads: dict[int, dict[str, Any]] | None = None,
+        locate_payloads: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self.search_payload = search_payload or {"count": 0, "results": []}
         self.search_payloads = search_payloads or {}
@@ -1928,6 +2068,7 @@ class _FakeAgentFirstClient:
         self.context_payload = context_payload or {"document_id": "doc-1234", "text": ""}
         self.page_payload = page_payload or {"document_id": "doc-1234", "raw_text": ""}
         self.page_payloads = page_payloads or {}
+        self.locate_payloads = locate_payloads or {}
         self.calls: list[tuple[Any, ...]] = []
 
     def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
@@ -1969,6 +2110,21 @@ class _FakeAgentFirstClient:
         payload.setdefault("document_id", doc_id)
         return catalogue.CatalogueResponse(
             endpoint_kind=catalogue.ENDPOINT_METADATA,
+            status_code=200,
+            payload=payload,
+            duration_ms=1,
+            result_count=1,
+            doc_id_short=catalogue.short_doc_id(doc_id),
+        )
+
+    def locate(self, doc_id: str, locator: str, *, kind: str = "stephanus", limit: int = 200) -> catalogue.CatalogueResponse:
+        self.calls.append(("locate", doc_id, locator, kind, limit))
+        payload = self.locate_payloads.get(
+            locator,
+            {"best": {"kind": kind, "label": locator, "page_no": 12, "para_no": 3, "paragraph_id": 99}},
+        )
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_LOCATE,
             status_code=200,
             payload=payload,
             duration_ms=1,

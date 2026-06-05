@@ -228,6 +228,7 @@ METHOD_SPECS = (
             tools.TOOL_LOCATE,
             tools.TOOL_PAGE_READ,
             tools.TOOL_PASSAGE_CONTEXT,
+            tools.TOOL_CANONICAL_RANGE_EXTRACT,
         ),
         preconditions=("biblio_enabled", "canonical_locator_present", "resolved_document_or_unique_match"),
         truth_levels=(TRUTH_LEVEL_EXACT, TRUTH_LEVEL_CONTEXTUAL),
@@ -615,6 +616,7 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
         return PRODUCT_METHOD_DOCUMENT_STRUCTURE
     if (
         clean_intent in {"extract_passage", "extract_range", "document_locator"}
+        or tools.TOOL_CANONICAL_RANGE_EXTRACT in tool_set
         or tools.TOOL_LOCATE in tool_set
         or tools.TOOL_RESOLVE_SECTION in tool_set
         or tools.TOOL_SECTION_BOUNDS in tool_set

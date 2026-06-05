@@ -424,14 +424,20 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         fake_model = _FakeAgentModel(
             _valid_agent_json(
                 product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
-                tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
-                params={"query": "RAW AGENT QUERY MUST NOT LEAK", "limit": 5},
+                tool_name=librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT,
+                params={
+                    "document_id": "doc-1234",
+                    "locator": "126b",
+                    "locator_end": "126e",
+                    "kind": "stephanus",
+                    "max_passage_chars": 8000,
+                },
             )
         )
         result = chat_runtime.run_biblio_chat_turn(
             {"biblio_enabled": True},
             user_msg="Bon, vas-y, tu me balances ici un extrait du Théétète de Platon. On va dire 126b à 128a.",
-            client_factory=lambda **_kwargs: _FakeClient(),
+            client_factory=lambda **_kwargs: _CanonicalRangeFakeClient(),
             config_module=_agent_config("active"),
             librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
         )
@@ -444,9 +450,9 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertTrue(agent_observed["used_for_response"])
         self.assertFalse(agent_observed["deterministic_controller"])
         self.assertTrue(agent_observed["agent_loop_executed"])
-        self.assertGreaterEqual(agent_observed["tool_call_event_count"], 2)
+        self.assertGreaterEqual(agent_observed["tool_call_event_count"], 1)
         self.assertEqual(agent_observed["tool_execution_status"], "executed")
-        self.assertIn("context", agent_observed["tool_loop"]["endpoint_kinds"])
+        self.assertIn(librarian_tools.ENDPOINT_CANONICAL_RANGE, agent_observed["tool_loop"]["endpoint_kinds"])
         self.assertEqual(result.observability_payload["product_case_id"], "P04")
         self.assertEqual(
             result.observability_payload["product_method"],
@@ -454,6 +460,41 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         )
         self.assertEqual(result.observability_payload["product_truth"], librarian_product_methods.TRUTH_LEVEL_EXACT)
         self.assertTrue(result.biblio_state is not None and result.biblio_state.present)
+
+    def test_agent_first_repairs_preparatory_resolution_for_explicit_locator_range(self) -> None:
+        fake_model = _FakeAgentModel(
+            _valid_agent_json(
+                product_method=librarian_product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+                tool_name=librarian_tools.TOOL_RESOLVE_WORK,
+                params={"query": "RAW AGENT QUERY MUST NOT LEAK", "limit": 5},
+            )
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Dans le Théétète de Platon, extrais le passage 126b à 128a.",
+            client_factory=lambda **_kwargs: _CanonicalRangeFakeClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        agent_observed = result.observability_payload["librarian_agent"]
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.rendered_answer is not None
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(agent_observed["used_for_response"])
+        self.assertIn(librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT, agent_observed["tool_loop"]["tool_names"])
+        self.assertIn(librarian_tools.ENDPOINT_CANONICAL_RANGE, agent_observed["tool_loop"]["endpoint_kinds"])
+        self.assertEqual(result.observability_payload["product_case_id"], "P04")
+        self.assertEqual(
+            result.observability_payload["product_method"],
+            librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+        )
+        self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", encoded)
 
     def test_agent_first_uses_bounded_fallback_plan_when_active_model_returns_invalid_json(self) -> None:
         fake_model = _FakeAgentModel("not json")
@@ -1879,6 +1920,35 @@ class _FakeClient:
         )
 
 
+class _CanonicalRangeFakeClient(_FakeClient):
+    def locate(
+        self,
+        doc_id: str,
+        locator: str,
+        *,
+        kind: str = "stephanus",
+        limit: int = 200,
+    ) -> catalogue.CatalogueResponse:
+        para_no = 3 if locator == "126b" else 4
+        paragraph_id = 99 if locator == "126b" else 100
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_LOCATE,
+            status_code=200,
+            payload={
+                "best": {
+                    "kind": kind,
+                    "label": locator,
+                    "page_no": 12,
+                    "para_no": para_no,
+                    "paragraph_id": paragraph_id,
+                }
+            },
+            duration_ms=1,
+            result_count=1,
+            doc_id_short=catalogue.short_doc_id(doc_id),
+        )
+
+
 class _ParagraphIdFailingContextClient(_FakeClient):
     def context(
         self,
@@ -2345,6 +2415,7 @@ def _product_method_for_tool(tool_name: str) -> str:
         librarian_tools.TOOL_PAGE_READ: librarian_product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT,
         librarian_tools.TOOL_LOCATE: librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
         librarian_tools.TOOL_PASSAGE_CONTEXT: librarian_product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT,
+        librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT: librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
     }
     return mapping.get(tool_name, librarian_product_methods.PRODUCT_METHOD_CATALOG_LIST_BOUNDED)
 

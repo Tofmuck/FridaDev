@@ -41,7 +41,6 @@ _SEARCH_ASSISTED_TOC_METHODS = frozenset(
 _CONTEXT_COMPLETION_METHODS = frozenset(
     {
         product_methods.PRODUCT_METHOD_EXTRACTION,
-        product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
         product_methods.PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE,
         product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
         product_methods.PRODUCT_METHOD_PASSAGE_EXPLAIN_CURRENT,
@@ -53,7 +52,6 @@ _CONTEXT_COMPLETION_METHODS = frozenset(
 
 _SEARCH_ASSISTED_CONTEXT_METHODS = frozenset(
     {
-        product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
         product_methods.PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE,
         product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
         product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
@@ -217,6 +215,17 @@ def complete_product_method_loop(
             return repaired
         loop_result = repaired
 
+    if product_method == product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE:
+        repaired = _complete_canonical_range_extraction(
+            loop_result,
+            plan=plan,
+            registry=registry,
+            deterministic_plan=deterministic_plan,
+        )
+        if _has_tool(repaired, librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT):
+            return repaired
+        loop_result = repaired
+
     if product_method in _CONTEXT_COMPLETION_METHODS and not _has_endpoint(loop_result, "context"):
         if product_method in _SEARCH_ASSISTED_CONTEXT_METHODS and _method_allows_context_completion(plan):
             for _ in range(3):
@@ -298,6 +307,10 @@ def _has_endpoint(loop_result: librarian_planner.BiblioLibrarianLoopResult, endp
         step.endpoint_kind == endpoint_kind and step.status == librarian_planner.STATUS_TOOL_EXECUTED
         for step in loop_result.steps
     )
+
+
+def _has_tool(loop_result: librarian_planner.BiblioLibrarianLoopResult, tool_name: str) -> bool:
+    return any(step.tool_name == tool_name for step in loop_result.steps)
 
 
 def _has_step_reason(loop_result: librarian_planner.BiblioLibrarianLoopResult, reason_code: str) -> bool:
@@ -530,6 +543,98 @@ def _complete_explicit_page_extraction(
     return loop_result
 
 
+def _complete_canonical_range_extraction(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    plan: librarian_planner.BiblioLibrarianPlan,
+    registry: librarian_tools.BiblioLibrarianToolRegistry,
+    deterministic_plan: Any,
+) -> librarian_planner.BiblioLibrarianLoopResult:
+    if _has_tool(loop_result, librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT) and not _has_tool_reason(
+        loop_result,
+        librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT,
+        "locator_requires_document",
+    ):
+        return loop_result
+    params = _canonical_range_extract_params(plan, deterministic_plan, loop_result)
+    if not params:
+        return loop_result
+    return _append_tool_call(
+        loop_result,
+        registry=registry,
+        tool_name=librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT,
+        params=params,
+    )
+
+
+def _canonical_range_extract_params(
+    plan: librarian_planner.BiblioLibrarianPlan,
+    deterministic_plan: Any,
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+) -> dict[str, Any]:
+    locator = _text(getattr(deterministic_plan, "locator", ""))
+    locator_end = _text(getattr(deterministic_plan, "locator_end", ""))
+    if not locator or not locator_end:
+        planned = _planned_locators(plan)
+        locator = locator or (planned[0] if planned else "")
+        locator_end = locator_end or (planned[1] if len(planned) > 1 else "")
+    if not locator or not locator_end:
+        return {}
+
+    doc_id = _summary_completion_document_id(loop_result)
+    params: dict[str, Any] = {
+        "locator": locator,
+        "locator_end": locator_end,
+        "kind": _text(getattr(deterministic_plan, "locator_kind", "")) or "stephanus",
+        "max_passage_chars": 8000,
+    }
+    if doc_id:
+        params["document_id"] = doc_id
+    deterministic_doc_id = _text(getattr(deterministic_plan, "document_id", ""))
+    if deterministic_doc_id and not params.get("document_id"):
+        params["document_id"] = deterministic_doc_id
+    for attr, key in (
+        ("document_title", "document_title"),
+        ("work_title", "work_title"),
+        ("author", "author"),
+    ):
+        value = _text(getattr(deterministic_plan, attr, ""))
+        if value:
+            params[key] = value
+    title = _text(getattr(deterministic_plan, "title", ""))
+    if title and not (params.get("document_title") or params.get("work_title")):
+        params["title"] = title
+    query = _text(getattr(deterministic_plan, "catalogue_query", "")) or _text(
+        getattr(deterministic_plan, "theme_query", "")
+    )
+    if query and not (doc_id or params.get("document_title") or params.get("work_title") or params.get("title")):
+        params["query"] = query
+    for attr, key in (
+        ("locator_anchor_page", "locator_anchor_page"),
+        ("locator_anchor_para", "locator_anchor_para"),
+    ):
+        value = _positive_int(getattr(deterministic_plan, attr, 0))
+        if value:
+            params[key] = value
+    return (
+        params
+        if any(params.get(key) for key in ("document_id", "query", "title", "document_title", "work_title", "author"))
+        else {}
+    )
+
+
+def _planned_locators(plan: librarian_planner.BiblioLibrarianPlan) -> tuple[str, ...]:
+    values: list[str] = []
+    for call in getattr(plan, "tool_calls", ()) or ():
+        if call.tool_name not in {librarian_tools.TOOL_LOCATE, librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT}:
+            continue
+        for key in ("locator", "label", "locator_end"):
+            value = _text(call.params.get(key))
+            if value and value not in values:
+                values.append(value)
+    return tuple(values[:2])
+
+
 def _explicit_page_numbers(user_msg: str) -> tuple[int, ...]:
     folded = fold_text(str(user_msg or ""))
     request = librarian_dialogue_navigation.page_request(folded)
@@ -730,6 +835,17 @@ def _deterministic_queries(deterministic_plan: Any) -> tuple[str, ...]:
             values.append(value)
     values.sort(key=_query_priority)
     return tuple(values)
+
+
+def _has_tool_reason(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    tool_name: str,
+    reason_code: str,
+) -> bool:
+    return any(
+        step.tool_name == tool_name and str(step.reason_code or "") == reason_code
+        for step in loop_result.steps
+    )
 
 
 def _query_priority(value: str) -> tuple[int, int]:

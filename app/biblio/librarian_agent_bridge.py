@@ -101,16 +101,31 @@ def run_agent_first_bridge(
             )
         except Exception:
             agent_first_result = None
-        if not _agent_first_result_is_usable(agent_first_result):
-            repaired = _repair_agent_first_with_dialogue_fallback(
+        repaired = _repair_agent_first_with_query_fallback(
+            librarian_agent_result=result,
+            query_plan=query_plan,
+            client_factory=client_factory,
+            config_module=config_module,
+        )
+        if repaired is not None:
+            result, agent_first_result = repaired
+        elif not _agent_first_result_is_usable(agent_first_result):
+            repaired = _repair_agent_first_with_query_fallback(
                 librarian_agent_result=result,
-                user_msg=user_msg,
-                state=state,
-                recent_dialogue=recent_dialogue,
+                query_plan=query_plan,
                 client_factory=client_factory,
                 config_module=config_module,
-                deterministic_plan=query_plan,
             )
+            if repaired is None:
+                repaired = _repair_agent_first_with_dialogue_fallback(
+                    librarian_agent_result=result,
+                    user_msg=user_msg,
+                    state=state,
+                    recent_dialogue=recent_dialogue,
+                    client_factory=client_factory,
+                    config_module=config_module,
+                    deterministic_plan=query_plan,
+                )
             if repaired is not None:
                 result, agent_first_result = repaired
     elif eligible and _agent_first_fallback_allowed(result):
@@ -147,8 +162,109 @@ def run_agent_first_bridge(
     return BiblioAgentBridgeResult(librarian_agent_result=result, agent_first_result=agent_first_result)
 
 
+def _execute_agent_first_fallback_plan(
+    *,
+    librarian_agent_result: Any,
+    plan: librarian_planner.BiblioLibrarianPlan,
+    query_plan: Any,
+    client_factory: Any,
+    config_module: Any,
+) -> tuple[Any, Any] | None:
+    repaired_result = _with_agent_first_fallback_plan(librarian_agent_result, plan)
+    try:
+        client = client_factory(config_module=config_module)
+        repaired_execution = librarian_agent_first.run_agent_first_plan(
+            comparison=repaired_result,
+            client=client,
+            deterministic_plan=query_plan,
+        )
+    except Exception:
+        return None
+    if not _agent_first_result_is_usable(repaired_execution):
+        return None
+    return repaired_result, repaired_execution
+
+
+def _repair_agent_first_with_query_fallback(
+    *,
+    librarian_agent_result: Any,
+    query_plan: Any,
+    client_factory: Any,
+    config_module: Any,
+) -> tuple[Any, Any] | None:
+    fallback_plan = build_query_fallback_plan(query_plan)
+    if fallback_plan is None:
+        return None
+    if str(getattr(fallback_plan, "fallback_reason", "") or "") != "agent_query_fallback_canonical_range":
+        return None
+    candidate_plan = _candidate_plan(librarian_agent_result)
+    if candidate_plan is not None:
+        candidate_method = str(getattr(candidate_plan, "product_method", "") or "").strip()
+        fallback_method = str(getattr(fallback_plan, "product_method", "") or "").strip()
+        if candidate_method == fallback_method:
+            return None
+    return _execute_agent_first_fallback_plan(
+        librarian_agent_result=librarian_agent_result,
+        plan=fallback_plan,
+        query_plan=query_plan,
+        client_factory=client_factory,
+        config_module=config_module,
+    )
+
+
+def _canonical_range_fallback_params(query_plan: Any) -> dict[str, Any]:
+    locator = str(getattr(query_plan, "locator", "") or "").strip()
+    locator_end = str(getattr(query_plan, "locator_end", "") or "").strip()
+    if not locator or not locator_end:
+        return {}
+    params: dict[str, Any] = {
+        "locator": locator,
+        "locator_end": locator_end,
+        "kind": str(getattr(query_plan, "locator_kind", "") or "stephanus").strip() or "stephanus",
+        "max_passage_chars": 8000,
+    }
+    for attr, key in (
+        ("document_id", "document_id"),
+        ("document_title", "document_title"),
+        ("work_title", "work_title"),
+        ("author", "author"),
+    ):
+        value = str(getattr(query_plan, attr, "") or "").strip()
+        if value:
+            params[key] = value
+    query = str(getattr(query_plan, "catalogue_query", "") or "").strip()
+    if query and not any(params.get(key) for key in ("document_id", "document_title", "work_title", "author")):
+        params["query"] = query
+    return params if any(params.get(key) for key in ("document_id", "document_title", "work_title", "author", "query")) else {}
+
+
+def _build_canonical_range_fallback_plan(query_plan: Any) -> librarian_planner.BiblioLibrarianPlan | None:
+    params = _canonical_range_fallback_params(query_plan)
+    if not params:
+        return None
+    return librarian_planner.BiblioLibrarianPlan(
+        schema_version=librarian_planner.SCHEMA_VERSION,
+        case_id="P04",
+        intent=str(getattr(query_plan, "intent", "") or "extract_range"),
+        product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+        tool_calls=(
+            librarian_planner.BiblioLibrarianToolCall(
+                tool_name=librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT,
+                method="GET",
+                params=params,
+            ),
+        ),
+        answer_mode="canonical_range_extract",
+        fallback_reason="agent_query_fallback_canonical_range",
+    )
+
+
 def build_query_fallback_plan(query_plan: Any) -> librarian_planner.BiblioLibrarianPlan | None:
     intent = str(getattr(query_plan, "intent", "") or "")
+    if intent == "extract_range":
+        canonical_range_plan = _build_canonical_range_fallback_plan(query_plan)
+        if canonical_range_plan is not None:
+            return canonical_range_plan
     calls: list[librarian_planner.BiblioLibrarianToolCall] = []
     if intent == "list_catalog":
         calls.append(
@@ -196,6 +312,48 @@ def build_query_fallback_plan(query_plan: Any) -> librarian_planner.BiblioLibrar
         fallback_reason="agent_json_invalid_fallback_plan",
     )
 
+
+def _repair_agent_first_with_dialogue_fallback(
+    *,
+    librarian_agent_result: Any,
+    user_msg: str,
+    state: BiblioConversationState,
+    recent_dialogue: Sequence[Mapping[str, Any]],
+    client_factory: Any,
+    config_module: Any,
+    deterministic_plan: Any,
+) -> tuple[Any, Any] | None:
+    candidate_plan = _candidate_plan(librarian_agent_result)
+    if candidate_plan is None:
+        return None
+    fallback_plan = build_dialogue_fallback_plan(
+        user_msg=user_msg,
+        state=state,
+        recent_dialogue=recent_dialogue,
+    )
+    if fallback_plan is None or not _dialogue_fallback_matches_candidate(candidate_plan, fallback_plan):
+        return None
+    repaired_plan = replace(
+        fallback_plan,
+        case_id=str(getattr(candidate_plan, "case_id", "") or ""),
+        product_method=str(getattr(candidate_plan, "product_method", "") or fallback_plan.product_method or ""),
+        fallback_reason="agent_dialogue_fallback_repaired_plan",
+    )
+    repaired_result = _with_agent_first_fallback_plan(librarian_agent_result, repaired_plan)
+    try:
+        client = client_factory(config_module=config_module)
+        repaired_execution = librarian_agent_first.run_agent_first_plan(
+            comparison=repaired_result,
+            client=client,
+            deterministic_plan=deterministic_plan,
+            user_msg=user_msg,
+            conversation_state=state,
+        )
+    except Exception:
+        return None
+    if not _agent_first_result_is_usable(repaired_execution):
+        return None
+    return repaired_result, repaired_execution
 
 def build_dialogue_fallback_plan(
     *,
@@ -266,49 +424,6 @@ def _with_agent_first_fallback_plan(librarian_agent_result: Any, plan: librarian
     if agent_result is None:
         return librarian_agent_result
     return replace(librarian_agent_result, agent_result=replace(agent_result, candidate_plan=plan))
-
-
-def _repair_agent_first_with_dialogue_fallback(
-    *,
-    librarian_agent_result: Any,
-    user_msg: str,
-    state: BiblioConversationState,
-    recent_dialogue: Sequence[Mapping[str, Any]],
-    client_factory: Any,
-    config_module: Any,
-    deterministic_plan: Any,
-) -> tuple[Any, Any] | None:
-    candidate_plan = _candidate_plan(librarian_agent_result)
-    if candidate_plan is None:
-        return None
-    fallback_plan = build_dialogue_fallback_plan(
-        user_msg=user_msg,
-        state=state,
-        recent_dialogue=recent_dialogue,
-    )
-    if fallback_plan is None or not _dialogue_fallback_matches_candidate(candidate_plan, fallback_plan):
-        return None
-    repaired_plan = replace(
-        fallback_plan,
-        case_id=str(getattr(candidate_plan, "case_id", "") or ""),
-        product_method=str(getattr(candidate_plan, "product_method", "") or fallback_plan.product_method or ""),
-        fallback_reason="agent_dialogue_fallback_repaired_plan",
-    )
-    repaired_result = _with_agent_first_fallback_plan(librarian_agent_result, repaired_plan)
-    try:
-        client = client_factory(config_module=config_module)
-        repaired_execution = librarian_agent_first.run_agent_first_plan(
-            comparison=repaired_result,
-            client=client,
-            deterministic_plan=deterministic_plan,
-            user_msg=user_msg,
-            conversation_state=state,
-        )
-    except Exception:
-        return None
-    if not _agent_first_result_is_usable(repaired_execution):
-        return None
-    return repaired_result, repaired_execution
 
 
 def _candidate_plan(librarian_agent_result: Any) -> librarian_planner.BiblioLibrarianPlan | None:

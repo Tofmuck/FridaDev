@@ -239,15 +239,19 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
   - Statut: `a_ne_pas_pretendre`
   - Preuve live negative:
     `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`,
-    `BIB24_CANONICAL_RANGE_REAL_CONVERSATION=failed`.
+    `BIB24_CANONICAL_RANGE_REAL_CONVERSATION=failed`;
+    `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-complete-real-conversation-20260605T101356Z.jsonl`,
+    `BIB24_CANONICAL_RANGE_COMPLETE_REAL_CONVERSATION=failed`.
   - Requalification: la conversation live appelle bien le bibliothecaire
-    agentique, mais le chemin observe reste `passage_extract_canonical_range`
-    legacy/P04 avec `passage_context` autour d'une occurrence. Aucune borne
-    debut/fin ni extraction mecanique complete d'intervalle canonique n'est
-    prouvee. Le rendu exact est donc bloque; BIB-24 ne doit pas etre coche.
-    Les cas historiques restent des regressions severes.
+    agentique. Le faux exact historique via `passage_context` est bloque et le
+    pont `canonical_range_extract` existe, mais la preuve complete reste
+    bloquee par resolution documentaire/interne: `ambiguous_document` sur la
+    demande naturelle; le diagnostic borne avec volume explicite descend a
+    `internal_work_unresolved` / `ambiguous_locator`. Aucune extraction
+    mecanique complete de l'intervalle canonique n'est prouvee en vraie
+    conversation. BIB-24 ne doit pas etre coche.
   - Prochain test live requis: resolution de plage canonique fiable ou
-    clarification, puis extraction mecanique bornee.
+    clarification document/oeuvre/locator, puis extraction mecanique bornee.
 - [x] BIB-25 - Dire d'ou vient un passage: ouvrage, page, section, ancre.
   - Statut: `ferme_live`
   - Preuve live:
@@ -481,6 +485,21 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     `biblio_agent_first_plan_executed`, `biblio_librarian_tool_executed`
   - Requalification: start/end non resolus, intervalle canonique absent,
     extraction mecanique complete absente. BIB-24 reste non coche.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-24 bis - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-complete-real-conversation-20260605T101356Z.jsonl`
+  - Statut: `a_ne_pas_pretendre`
+  - Conversation: hash `5451260fd52b`
+  - Proof case: `BIB24_CANONICAL_RANGE_COMPLETE_REAL_CONVERSATION`
+  - Outils appeles: `resolve_work`, `canonical_range_extract`
+  - Statut final: message assistant sauvegarde, surface visible propre, pas de
+    `passage_context`, pas de snippet exact, mais pas de `final_response_lock`
+    Biblio autorise parce que la plage complete n'est pas extraite.
+  - Reason codes: `biblio_passage_lane_ready`,
+    `biblio_librarian_agent_compared`, `ambiguous_document`
+  - Requalification: `canonical_range_extract` est desormais le chemin vise,
+    mais la resolution document/oeuvre/locator reste ambigue en live. BIB-24
+    reste non coche.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
@@ -2371,6 +2390,7 @@ Inventaire de verite Lot 4:
 | 4E.1 pages courtes | livre | oui | oui: page unique et deux pages contigues quand les pages sont lues | budget 1 a 3 pages / 8 000 caracteres; pas d'intervalle arbitraire. |
 | 4E.2 `section_bounds` -> `page_read` | livre + ferme live BIB-21 | oui | `bib21-real-conversation-20260605T082358Z.jsonl` | uniquement debut de section compact explicitement borne; document deja ancre; pas section complete. |
 | 4E.3 hit unique ancre -> `passage_context` | livre + ferme live BIB-22 | oui | `bib21-bib23-real-conversation-20260605T072804Z.jsonl` | un seul hit scoped total ancre; pas ranking ni choix du meilleur hit. |
+| BIB-24 bis plage canonique complete | diagnostic + garde livre, non ferme live | oui | `bib24-canonical-range-complete-real-conversation-20260605T101356Z.jsonl` | `canonical_range_extract` remplace le faux `passage_context`, mais la resolution document/oeuvre/locator reste ambigue; BIB-24 non coche. |
 | Proof Gate initial 4E | diagnostic livre | n/a | `lot4e-proof-gate-live-20260604T144426Z.jsonl`: `0 met`, `3 failed`, `1 partial` | prouve surtout l'ecart agentique live initial. |
 | Replay transition agentique | diagnostic livre | n/a | `lot4e-proof-gate-live-after-agentic-transition-20260604T145952Z.jsonl`: `1 met`, `0 failed`, `3 partial` | trajectoires ameliorees, rendu page encore non ferme. |
 | Proof Gate page-render isole | preuve live ciblee | n/a | `lot4e-proof-gate-live-after-page-render-20260604T151409Z.jsonl`: `4 met` | preuve avec document deja ancre; pas preuve de resolution naturelle. |
@@ -2491,7 +2511,7 @@ Matrice:
 | Extraction deux premieres pages d'une section | `ferme_live` | Lot 4E.2 tests + `bib21-real-conversation-20260605T082358Z.jsonl` | document deja ancre + section explicite -> `section_bounds` -> deux `page_read` -> exact lock | surveiller; ne ferme pas section complete longue |
 | Extraction section complete longue | `ouvert` | hors scope Lot 4E.1/4E.2 | section debut/fin resolues -> plan decoupage/budget/continuation/streaming; pas de lecture longue silencieuse | Lot extraction longue separe |
 | Extraction autour d'une occurrence unique ancree | `ferme_live` | Lot 4E.3 tests + `bib21-bib23-real-conversation-20260605T072804Z.jsonl` | live extraction explicite -> `catalog_search` scoped unique -> `passage_context` -> exact lock; snippet jamais rendu | surveiller |
-| Plage canonique type Stephanus | `a_ne_pas_pretendre` | live negatif `bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`; legacy/regression historique seulement | locator/range canonique fiable -> extraction mecanique bornee; sinon clarification | Lot references canoniques separe |
+| Plage canonique type Stephanus | `a_ne_pas_pretendre` | live negatif `bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`; live BIB-24 bis `bib24-canonical-range-complete-real-conversation-20260605T101356Z.jsonl` | `canonical_range_extract` existe et interdit le faux exact, mais resolution document/oeuvre/locator encore ambigue; extraction mecanique complete absente | Lot references canoniques / structure interne Catalogue separe |
 | Navigation lecteur: continue, page suivante/precedente | `ouvert` | ancrage page existe dans resultats; pas d'etat lecteur global ferme | message avec ancre courante -> page suivante/precedente lue, message final verifie | Lot navigation lecteur |
 | Navigation: chapitre suivant, dix pages plus loin, remonte avant | `a_ne_pas_pretendre` | pas de preuve produit | etat lecteur + bornes + budgets + clarification si ambigu | Lot navigation lecteur |
 | Provenance: ouvrage/page/section d'un passage rendu | `partiel_live` | extractions page portent ancres et `document_id`; final lock prouve message exact | question "d'ou vient ce passage ?" apres rendu -> provenance structuree depuis ancres, sans relire texte brut | Lot 4F provenance/ancrage |

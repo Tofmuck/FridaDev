@@ -450,6 +450,7 @@ def _with_carried_anchor(
         tools.TOOL_PAGE_READ,
         tools.TOOL_LOCATE,
         tools.TOOL_PASSAGE_CONTEXT,
+        tools.TOOL_CANONICAL_RANGE_EXTRACT,
     } and document_id and not (params.get("document_id") or params.get("doc_id")):
         params["document_id"] = document_id
         changed = True

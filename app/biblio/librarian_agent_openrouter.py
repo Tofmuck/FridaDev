@@ -332,7 +332,9 @@ def build_librarian_agent_messages(
         "d'un passage trouve, catalog_search peut preparer un candidat ancre "
         "avec document_id explicite; le runtime n'appellera passage_context que "
         "s'il reste un candidat unique avec paragraph_id ou page_no+para_no. "
-        "Le texte exact ne vient que de page_read ou passage_context. "
+        "Le texte exact ne vient que de page_read, passage_context ou "
+        "canonical_range_extract quand une plage canonique complete est "
+        "mecaniquement extraite depuis deux bornes. "
         "catalog_search peut preparer une position; ses snippets sont des "
         "candidats de recherche, jamais un extrait exact. "
         "Pour les questions de provenance du passage courant (d'ou vient ce "
@@ -407,13 +409,18 @@ def build_librarian_agent_messages(
         "exacte depuis candidat unique ancre doit choisir product_method=extraction, "
         "case_id vide. "
         "References Stephanus et plages: reconnais des labels comme 148e, "
-        "151d, 126b ou des plages comme 148e-151d et 126b-128a. Pour une plage, "
-        "n'envoie pas start_locator/end_locator: utilise locate sur le debut "
-        "et, si necessaire, un second locate sur la fin quand un document_id "
-        "est disponible ou porte. Si la plage directe n'est pas exploitable, "
-        "n'invente pas le texte exact; propose un contexte borne au debut si "
-        "possible et signale la limite par un answer_mode ou fallback_reason "
-        "compact."
+        "151d, 126b ou des plages comme 148e-151d et 126b-128a. Pour une plage "
+        "canonique complete, choisis product_method=passage_extract_canonical_range "
+        "avec case_id=P04 et utilise canonical_range_extract si les deux bornes "
+        "sont explicites: locator pour le debut, locator_end pour la fin, kind "
+        "si necessaire. Pour une formulation du type 'dans [oeuvre] de "
+        "[auteur/corpus], extrais X a Y', separe les signaux: work_title porte "
+        "l'oeuvre, document_title ou author porte le corpus/auteur; ne mets pas "
+        "toute la phrase dans query. Si tu dois d'abord resoudre le document, "
+        "fais search_document/resolve_work puis canonical_range_extract sans "
+        "inventer de texte. N'utilise pas passage_context pour vendre une plage complete; "
+        "si la plage directe n'est pas exploitable, signale la limite par un "
+        "answer_mode ou fallback_reason compact."
     )
     user_payload = {
         "schema_version": SCHEMA_VERSION,
@@ -523,6 +530,31 @@ def _tool_param_contracts() -> dict[str, Any]:
             "required_position": True,
             "note": "Une position peut etre portee depuis locate ou catalog_search si elle est unique.",
         },
+        "canonical_range_extract": {
+            "allowed": [
+                "document_id",
+                "doc_id",
+                "q",
+                "query",
+                "title",
+                "document_title",
+                "work_title",
+                "author",
+                "locator",
+                "label",
+                "locator_end",
+                "kind",
+                "locator_anchor_page",
+                "locator_anchor_para",
+                "max_passage_chars",
+            ],
+            "required_any": [
+                ["document_id", "doc_id", "q", "query", "title", "document_title", "work_title", "author"],
+                ["locator", "label"],
+                ["locator_end"],
+            ],
+            "note": "Extraction mecanique d'une plage canonique complete; jamais un simple contexte autour du debut.",
+        },
     }
 
 
@@ -589,7 +621,12 @@ def _tool_params_schema() -> dict[str, Any]:
         "doc_id": _nullable_text_schema(max_chars=160),
         "section_id": _nullable_text_schema(max_chars=160),
         "locator": _nullable_text_schema(max_chars=120),
+        "locator_end": _nullable_text_schema(max_chars=120),
         "label": _nullable_text_schema(max_chars=120),
+        "title": _nullable_text_schema(max_chars=240),
+        "document_title": _nullable_text_schema(max_chars=240),
+        "work_title": _nullable_text_schema(max_chars=240),
+        "author": _nullable_text_schema(max_chars=240),
         "kind": _nullable_code_schema(),
         "limit": _nullable_integer_schema(minimum=0, maximum=100000),
         "offset": _nullable_integer_schema(minimum=0, maximum=100000),
@@ -599,6 +636,9 @@ def _tool_params_schema() -> dict[str, Any]:
         "paragraph_id": _nullable_integer_schema(minimum=0, maximum=1000000000),
         "char_offset": _nullable_integer_schema(minimum=0, maximum=100000000),
         "window_chars": _nullable_integer_schema(minimum=0, maximum=1000000),
+        "locator_anchor_page": _nullable_integer_schema(minimum=0, maximum=100000),
+        "locator_anchor_para": _nullable_integer_schema(minimum=0, maximum=100000),
+        "max_passage_chars": _nullable_integer_schema(minimum=0, maximum=8000),
     }
     return {
         "type": "object",

@@ -31,12 +31,14 @@ _MECHANICAL_TEXT_TOOLS = frozenset(
     {
         librarian_tools.TOOL_PAGE_READ,
         librarian_tools.TOOL_PASSAGE_CONTEXT,
+        librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT,
     }
 )
 _MECHANICAL_TEXT_PROJECTION_METHODS = frozenset(
     {
         product_methods.PRODUCT_METHOD_EXTRACTION,
         product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK,
+        product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
     }
 )
 _MAX_PAGE_BLOCKS = 3
@@ -52,8 +54,8 @@ def build_extraction(
 ) -> dict[str, Any]:
     if product_method not in _MECHANICAL_TEXT_PROJECTION_METHODS:
         return {}
-    candidates = _candidates_from_results(results)
-    extraction_attempted = any(result.tool_name in _MECHANICAL_TEXT_TOOLS for result in results)
+    candidates = _candidates_from_results(results, product_method=product_method)
+    extraction_attempted = any(_is_allowed_text_tool(result.tool_name, product_method) for result in results)
     projection = _project_blocks(candidates, extraction_attempted=extraction_attempted)
     status = _extraction_status(
         results,
@@ -231,14 +233,14 @@ def _extraction_status(
     extraction_attempted: bool,
     base_status: str,
 ) -> str:
-    if any(result.status in {librarian_tools.STATUS_ERROR, librarian_tools.STATUS_INCOHERENT_CATALOGUE} for result in results):
-        return EXTRACTION_STATUS_ERROR
-    if any(result.status == librarian_tools.STATUS_AMBIGUOUS for result in results):
-        return EXTRACTION_STATUS_AMBIGUOUS
     if projection:
         if not _text(projection.get("blocking_reason")) and _has_minimum_anchor(projection):
             return EXTRACTION_STATUS_RESOLVED
         return EXTRACTION_STATUS_NEEDS_CLARIFICATION
+    if any(result.status in {librarian_tools.STATUS_ERROR, librarian_tools.STATUS_INCOHERENT_CATALOGUE} for result in results):
+        return EXTRACTION_STATUS_ERROR
+    if any(result.status == librarian_tools.STATUS_AMBIGUOUS for result in results):
+        return EXTRACTION_STATUS_AMBIGUOUS
     if extraction_attempted:
         return EXTRACTION_STATUS_NOT_FOUND
     if any(result.status == librarian_tools.STATUS_NOT_FOUND for result in results):
@@ -248,15 +250,25 @@ def _extraction_status(
     return EXTRACTION_STATUS_NEEDS_CLARIFICATION
 
 
-def _candidate_from_result(result: librarian_tools.BiblioLibrarianToolResult) -> dict[str, Any]:
-    if result.tool_name not in _MECHANICAL_TEXT_TOOLS:
+def _candidate_from_result(
+    result: librarian_tools.BiblioLibrarianToolResult,
+    *,
+    product_method: str,
+) -> dict[str, Any]:
+    if not _is_allowed_text_tool(result.tool_name, product_method):
         return {}
     text = _result_text(result)
     if not text:
         return {}
     document_id = _text(getattr(result, "document_id", ""))
     anchor = _result_anchor(result)
-    content_kind = "page" if result.tool_name == librarian_tools.TOOL_PAGE_READ else "context"
+    if result.tool_name == librarian_tools.TOOL_PAGE_READ:
+        content_kind = "page"
+    elif result.tool_name == librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT:
+        content_kind = "canonical_range"
+    else:
+        content_kind = "context"
+    interval = _mapping(getattr(result, "interval", {}))
     return _clean_candidate(
         {
             "source_tool_name": result.tool_name,
@@ -264,10 +276,14 @@ def _candidate_from_result(result: librarian_tools.BiblioLibrarianToolResult) ->
             "doc_id_short": short_doc_id(document_id),
             "content_kind": content_kind,
             "chapter_no": _int(result.chapter_hint.get("chapter_no")),
+            "page_start": _int(interval.get("start_page_no")),
+            "page_end": _int(interval.get("end_page_no")),
+            "page_count": _int(interval.get("page_span")),
             "exact_text_present": True,
             "exact_text_chars": len(text),
             "exact_text_hash": _hash(text),
             "anchor": anchor,
+            "anchor_end": _interval_anchor(interval, "end"),
             "_exact_text": text,
         }
     )
@@ -275,13 +291,21 @@ def _candidate_from_result(result: librarian_tools.BiblioLibrarianToolResult) ->
 
 def _candidates_from_results(
     results: Sequence[librarian_tools.BiblioLibrarianToolResult],
+    *,
+    product_method: str,
 ) -> tuple[dict[str, Any], ...]:
     candidates: list[dict[str, Any]] = []
     for result in results:
-        candidate = _candidate_from_result(result)
+        candidate = _candidate_from_result(result, product_method=product_method)
         if candidate:
             candidates.append(candidate)
     return tuple(candidates)
+
+
+def _is_allowed_text_tool(tool_name: str, product_method: str) -> bool:
+    if product_method == product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE:
+        return tool_name == librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT
+    return tool_name in _MECHANICAL_TEXT_TOOLS
 
 
 def _project_blocks(candidates: Sequence[Mapping[str, Any]], *, extraction_attempted: bool) -> dict[str, Any]:
@@ -429,9 +453,13 @@ def _result_text(result: librarian_tools.BiblioLibrarianToolResult, *, content_k
         return _text(result.page_text)
     if kind == "context":
         return _text(result.context_text)
+    if kind == "canonical_range":
+        return _text(result.context_text)
     if result.tool_name == librarian_tools.TOOL_PAGE_READ:
         return _text(result.page_text)
     if result.tool_name == librarian_tools.TOOL_PASSAGE_CONTEXT:
+        return _text(result.context_text)
+    if result.tool_name == librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT:
         return _text(result.context_text)
     return ""
 
@@ -447,6 +475,15 @@ def _result_anchor(result: librarian_tools.BiblioLibrarianToolResult) -> dict[st
             if anchor:
                 return anchor
     return {}
+
+
+def _interval_anchor(interval: Mapping[str, Any], prefix: str) -> dict[str, Any]:
+    anchor = {
+        "page_no": _int(interval.get(f"{prefix}_page_no")),
+        "para_no": _int(interval.get(f"{prefix}_para_no")),
+        "paragraph_id": _int(interval.get(f"{prefix}_paragraph_id")),
+    }
+    return {key: value for key, value in anchor.items() if value}
 
 
 def _has_result_anchor(result: librarian_tools.BiblioLibrarianToolResult) -> bool:

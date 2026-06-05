@@ -7,6 +7,9 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
 from . import catalogue_client as catalogue
+from . import passage_extractor
+from .document_resolver import BiblioResolveRequest
+from .passage_extractor import BiblioPassageRequest
 
 
 TOOL_SEARCH_DOCUMENT = "search_document"
@@ -23,6 +26,7 @@ TOOL_DOCUMENT_TOC = "document_toc"
 TOOL_PAGE_READ = "page_read"
 TOOL_LOCATE = "locate"
 TOOL_PASSAGE_CONTEXT = "passage_context"
+TOOL_CANONICAL_RANGE_EXTRACT = "canonical_range_extract"
 
 LOT2_LIBRARY_TOOL_NAMES = (
     TOOL_SEARCH_DOCUMENT,
@@ -43,6 +47,7 @@ LOT3_TOOL_NAMES = (
     TOOL_PAGE_READ,
     TOOL_LOCATE,
     TOOL_PASSAGE_CONTEXT,
+    TOOL_CANONICAL_RANGE_EXTRACT,
 )
 
 FORBIDDEN_TOOL_NAMES = frozenset(
@@ -100,6 +105,10 @@ REASON_EXTRACTION_DOCUMENT_MISMATCH = "extraction_document_mismatch"
 REASON_EXTRACTION_PAGE_RANGE_INCOMPLETE = "extraction_page_range_incomplete"
 REASON_EXTRACTION_PAGE_RANGE_TOO_LONG = "extraction_page_range_too_long"
 REASON_EXTRACTION_MIXED_BLOCK_TYPES = "extraction_mixed_block_types_unsupported"
+REASON_CANONICAL_RANGE_BOUND_MISSING = "canonical_range_bound_missing"
+REASON_CANONICAL_RANGE_INCOMPLETE = "canonical_range_incomplete"
+
+ENDPOINT_CANONICAL_RANGE = "canonical_range"
 
 _ENDPOINT_BY_TOOL = {
     TOOL_SEARCH_DOCUMENT: catalogue.ENDPOINT_CATALOG,
@@ -116,12 +125,14 @@ _ENDPOINT_BY_TOOL = {
     TOOL_PAGE_READ: catalogue.ENDPOINT_PAGE,
     TOOL_LOCATE: catalogue.ENDPOINT_LOCATE,
     TOOL_PASSAGE_CONTEXT: catalogue.ENDPOINT_CONTEXT,
+    TOOL_CANONICAL_RANGE_EXTRACT: ENDPOINT_CANONICAL_RANGE,
 }
 _QUERY_MAX = 240
 _LOCATOR_MAX = 120
 _DOC_ID_MAX = 160
 _OFFSET_MAX = 100_000
 _PAGE_TEXT_MAX_CHARS = 2_500
+_MAX_CANONICAL_RANGE_CHARS = passage_extractor.MAX_MAX_PASSAGE_CHARS
 
 
 class BiblioLibrarianToolError(Exception):
@@ -241,6 +252,7 @@ class BiblioLibrarianToolRegistry:
             TOOL_PAGE_READ: self._page_read,
             TOOL_LOCATE: self._locate,
             TOOL_PASSAGE_CONTEXT: self._passage_context,
+            TOOL_CANONICAL_RANGE_EXTRACT: self._canonical_range_extract,
         }
         return handlers[clean_name](dict(params or {}))
 
@@ -487,6 +499,61 @@ class BiblioLibrarianToolRegistry:
             },
         )
 
+    def _canonical_range_extract(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
+        tool = TOOL_CANONICAL_RANGE_EXTRACT
+        locator = _required_text(params, ("locator", "label"), tool=tool, max_chars=_LOCATOR_MAX)
+        locator_end = _required_text(params, ("locator_end",), tool=tool, max_chars=_LOCATOR_MAX)
+        kind = _text(params, "kind", tool=tool, max_chars=40) or "stephanus"
+        doc_id = _doc_id(params, tool=tool)
+        query = _text(params, "query", tool=tool, max_chars=_QUERY_MAX) or _text(
+            params,
+            "q",
+            tool=tool,
+            max_chars=_QUERY_MAX,
+        )
+        title = _text(params, "title", tool=tool, max_chars=_QUERY_MAX)
+        document_title = _text(params, "document_title", tool=tool, max_chars=_QUERY_MAX) or query
+        work_title = _text(params, "work_title", tool=tool, max_chars=_QUERY_MAX)
+        author = _text(params, "author", tool=tool, max_chars=_QUERY_MAX)
+        locator_anchor_page = _optional_integer(
+            params,
+            "locator_anchor_page",
+            tool=tool,
+            minimum=catalogue.PAGE_NO_MIN,
+            maximum=catalogue.PAGE_NO_MAX,
+        )
+        locator_anchor_para = _optional_integer(
+            params,
+            "locator_anchor_para",
+            tool=tool,
+            minimum=catalogue.CONTEXT_PARA_NO_MIN,
+            maximum=catalogue.CONTEXT_PARA_NO_MAX,
+        )
+        max_passage_chars = _integer(
+            params.get("max_passage_chars", _MAX_CANONICAL_RANGE_CHARS),
+            tool=tool,
+            name="max_passage_chars",
+            minimum=passage_extractor.MIN_MAX_PASSAGE_CHARS,
+            maximum=_MAX_CANONICAL_RANGE_CHARS,
+        )
+        request = BiblioPassageRequest(
+            resolve_request=BiblioResolveRequest(
+                document_id=doc_id,
+                title=title,
+                document_title=document_title,
+                work_title=work_title,
+                author=author,
+                locator=locator,
+                locator_end=locator_end,
+                locator_kind=kind,
+                locator_anchor_page=locator_anchor_page,
+                locator_anchor_para=locator_anchor_para,
+            ),
+            max_passage_chars=max_passage_chars,
+        )
+        result = passage_extractor.BiblioPassageExtractor(self._client).extract(request)
+        return _canonical_range_result(tool, result)
+
 
 def build_librarian_tool_registry(client: Any | None = None) -> BiblioLibrarianToolRegistry:
     return BiblioLibrarianToolRegistry(client or catalogue.CatalogueClient())
@@ -653,6 +720,126 @@ def _error_result(
         endpoint_kind=observation.endpoint_kind,
         observation=observation,
     )
+
+
+def _canonical_range_result(
+    tool: str,
+    result: passage_extractor.BiblioPassageResult,
+) -> BiblioLibrarianToolResult:
+    document_id = _canonical_range_document_id(result)
+    interval = result.interval_hint.to_observability() if result.interval_hint else {}
+    positions = (_canonical_range_position(result),) if _canonical_range_position(result) else ()
+    anchors = _canonical_range_anchors(result)
+    doc_id_short = result.doc_id_short or catalogue.short_doc_id(document_id)
+    fields = _clean_observation(
+        {
+            "status_code": 200,
+            "doc_id_short": doc_id_short,
+            "content_chars": result.passage_chars,
+            "content_hash": result.passage_hash,
+            "range_reason_code": result.reason_code,
+            "range_status": result.status,
+            "range_complete": result.status == passage_extractor.STATUS_EXTRACTED and bool(result.passage),
+            "start_bound_resolved": bool(result.page_no or result.para_no or result.paragraph_id),
+            "end_bound_resolved": bool(interval.get("end_page_no") or interval.get("end_para_no") or interval.get("end_paragraph_id")),
+            "page_start": _raw_int(interval.get("start_page_no")),
+            "page_end": _raw_int(interval.get("end_page_no")),
+            "page_span": _raw_int(interval.get("page_span")),
+            "paragraph_span": _raw_int(interval.get("paragraph_span")),
+            "interval_mode": _string(interval.get("mode")),
+        }
+    )
+    if result.status == passage_extractor.STATUS_EXTRACTED and result.passage:
+        response = catalogue.CatalogueResponse(
+            endpoint_kind=ENDPOINT_CANONICAL_RANGE,
+            status_code=200,
+            payload={"result_count": 1},
+            duration_ms=0,
+            result_count=1,
+            doc_id_short=doc_id_short,
+            content_chars=result.passage_chars,
+        )
+        return _ok_result(
+            tool,
+            response,
+            positions=positions,
+            anchors=anchors,
+            interval=interval,
+            context_text=result.passage,
+            doc_id=document_id,
+            content=result.passage,
+            extra_fields=fields,
+        )
+
+    status = _canonical_range_status(result.status)
+    reason_code = result.reason_code or REASON_CANONICAL_RANGE_INCOMPLETE
+    observation = BiblioLibrarianToolObservation(
+        tool_name=tool,
+        endpoint_kind=ENDPOINT_CANONICAL_RANGE,
+        status=status,
+        reason_code=reason_code,
+        fields=fields,
+    )
+    return BiblioLibrarianToolResult(
+        tool_name=tool,
+        status=status,
+        reason_code=reason_code,
+        endpoint_kind=ENDPOINT_CANONICAL_RANGE,
+        observation=observation,
+        document_id=document_id,
+        positions=positions,
+        anchors=anchors,
+        interval=interval,
+    )
+
+
+def _canonical_range_status(status: str) -> str:
+    if status == passage_extractor.STATUS_AMBIGUOUS:
+        return STATUS_AMBIGUOUS
+    if status in {passage_extractor.STATUS_NOT_FOUND, passage_extractor.STATUS_EMPTY}:
+        return STATUS_NOT_FOUND
+    return STATUS_ERROR
+
+
+def _canonical_range_document_id(result: passage_extractor.BiblioPassageResult) -> str:
+    resolution = result.resolution
+    document = getattr(resolution, "document", None) if resolution is not None else None
+    return _string(getattr(document, "document_id", ""))
+
+
+def _canonical_range_position(result: passage_extractor.BiblioPassageResult) -> dict[str, Any]:
+    return _position(
+        {
+            "page_no": result.page_no,
+            "para_no": result.para_no,
+            "paragraph_id": result.paragraph_id,
+        }
+    )
+
+
+def _canonical_range_anchors(result: passage_extractor.BiblioPassageResult) -> tuple[dict[str, Any], ...]:
+    document_id = _canonical_range_document_id(result)
+    if not document_id:
+        return ()
+    interval = result.interval_hint.to_observability() if result.interval_hint else {}
+    anchors: list[dict[str, Any]] = []
+    for prefix in ("start", "end"):
+        anchor = _clean_observation(
+            {
+                "document_id": document_id,
+                "page_no": _raw_int(interval.get(f"{prefix}_page_no")),
+                "para_no": _raw_int(interval.get(f"{prefix}_para_no")),
+                "paragraph_id": _raw_int(interval.get(f"{prefix}_paragraph_id")),
+            }
+        )
+        if anchor and anchor not in anchors:
+            anchors.append(anchor)
+    if not anchors:
+        position = _canonical_range_position(result)
+        if position:
+            position["document_id"] = document_id
+            anchors.append(position)
+    return tuple(anchors)
 
 
 def _map_client_reason(exc: catalogue.CatalogueClientError) -> str:
