@@ -107,6 +107,7 @@ REASON_EXTRACTION_PAGE_RANGE_TOO_LONG = "extraction_page_range_too_long"
 REASON_EXTRACTION_MIXED_BLOCK_TYPES = "extraction_mixed_block_types_unsupported"
 REASON_CANONICAL_RANGE_BOUND_MISSING = "canonical_range_bound_missing"
 REASON_CANONICAL_RANGE_INCOMPLETE = "canonical_range_incomplete"
+REASON_CANONICAL_RANGE_SEGMENT_EXTRACTED = "canonical_range_segment_extracted"
 
 ENDPOINT_CANONICAL_RANGE = "canonical_range"
 
@@ -133,6 +134,7 @@ _DOC_ID_MAX = 160
 _OFFSET_MAX = 100_000
 _PAGE_TEXT_MAX_CHARS = 2_500
 _MAX_CANONICAL_RANGE_CHARS = passage_extractor.MAX_MAX_PASSAGE_CHARS
+_MAX_CANONICAL_RANGE_RUNTIME_CHARS = 5_600
 
 
 class BiblioLibrarianToolError(Exception):
@@ -536,6 +538,7 @@ class BiblioLibrarianToolRegistry:
             minimum=passage_extractor.MIN_MAX_PASSAGE_CHARS,
             maximum=_MAX_CANONICAL_RANGE_CHARS,
         )
+        max_passage_chars = min(max_passage_chars, _MAX_CANONICAL_RANGE_RUNTIME_CHARS)
         request = BiblioPassageRequest(
             resolve_request=BiblioResolveRequest(
                 document_id=doc_id,
@@ -578,6 +581,7 @@ def _ok_result(
     tool: str,
     response: catalogue.CatalogueResponse,
     *,
+    reason_code: str = REASON_OK,
     items: tuple[dict[str, Any], ...] = (),
     document_summary: dict[str, Any] | None = None,
     chapter_hint: dict[str, Any] | None = None,
@@ -621,13 +625,13 @@ def _ok_result(
         tool_name=tool,
         endpoint_kind=response.endpoint_kind,
         status=STATUS_OK,
-        reason_code=REASON_OK,
+        reason_code=reason_code,
         fields=fields,
     )
     return BiblioLibrarianToolResult(
         tool_name=tool,
         status=STATUS_OK,
-        reason_code=REASON_OK,
+        reason_code=reason_code,
         endpoint_kind=response.endpoint_kind,
         observation=observation,
         document_id=doc_id,
@@ -728,6 +732,13 @@ def _canonical_range_result(
 ) -> BiblioLibrarianToolResult:
     document_id = _canonical_range_document_id(result)
     interval = result.interval_hint.to_observability() if result.interval_hint else {}
+    interval_state = _string(interval.get("state"))
+    range_segment = result.status == passage_extractor.STATUS_SEGMENT_EXTRACTED
+    range_complete = (
+        result.status == passage_extractor.STATUS_EXTRACTED
+        and bool(result.passage)
+        and interval_state != "segment"
+    )
     positions = (_canonical_range_position(result),) if _canonical_range_position(result) else ()
     anchors = _canonical_range_anchors(result)
     doc_id_short = result.doc_id_short or catalogue.short_doc_id(document_id)
@@ -739,17 +750,34 @@ def _canonical_range_result(
             "content_hash": result.passage_hash,
             "range_reason_code": result.reason_code,
             "range_status": result.status,
-            "range_complete": result.status == passage_extractor.STATUS_EXTRACTED and bool(result.passage),
+            "range_complete": range_complete,
+            "range_segment": range_segment,
             "start_bound_resolved": bool(result.page_no or result.para_no or result.paragraph_id),
             "end_bound_resolved": bool(interval.get("end_page_no") or interval.get("end_para_no") or interval.get("end_paragraph_id")),
+            "requested_end_bound_resolved": bool(
+                interval.get("requested_end_page_no")
+                or interval.get("requested_end_para_no")
+                or interval.get("requested_end_paragraph_id")
+                or interval.get("end_page_no")
+                or interval.get("end_para_no")
+                or interval.get("end_paragraph_id")
+            ),
+            "next_anchor_present": bool(
+                interval.get("next_page_no")
+                or interval.get("next_para_no")
+                or interval.get("next_paragraph_id")
+            ),
             "page_start": _raw_int(interval.get("start_page_no")),
             "page_end": _raw_int(interval.get("end_page_no")),
+            "requested_page_end": _raw_int(interval.get("requested_end_page_no")),
+            "next_page_no": _raw_int(interval.get("next_page_no")),
             "page_span": _raw_int(interval.get("page_span")),
             "paragraph_span": _raw_int(interval.get("paragraph_span")),
             "interval_mode": _string(interval.get("mode")),
+            "interval_state": interval_state,
         }
     )
-    if result.status == passage_extractor.STATUS_EXTRACTED and result.passage:
+    if result.status in {passage_extractor.STATUS_EXTRACTED, passage_extractor.STATUS_SEGMENT_EXTRACTED} and result.passage:
         response = catalogue.CatalogueResponse(
             endpoint_kind=ENDPOINT_CANONICAL_RANGE,
             status_code=200,
@@ -762,6 +790,7 @@ def _canonical_range_result(
         return _ok_result(
             tool,
             response,
+            reason_code=REASON_CANONICAL_RANGE_SEGMENT_EXTRACTED if range_segment else REASON_OK,
             positions=positions,
             anchors=anchors,
             interval=interval,

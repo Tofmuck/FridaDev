@@ -912,6 +912,14 @@ Cas Platon / Stephanus:
   `final_response_lock` autorise et message assistant final sauvegarde. Cette
   fermeture ne cree pas de droit a choisir silencieusement une occurrence
   canonique ambigue et ne ferme pas les plages longues sans decoupage explicite.
+- BIB-24 long est prouve le 2026-06-05 par
+  `app/docs/states/baselines/biblio-smokes/bib24-long-canonical-range-real-conversation-20260605T121503Z.jsonl`
+  pour le comportement segmente: `canonical_range_extract` peut rendre un
+  premier segment exact mecanique avec `range_complete=false`,
+  `next_anchor_present=true` et une limite visible, puis le tour suivant peut
+  continuer depuis l'ancre portee par l'etat courant. Ce contrat ne transforme
+  jamais un segment en plage complete et ne vaut pas export illimite d'une
+  longue plage canonique.
 - Le diagnostic plateforme/Sauron du 2026-06-05
   `app/docs/states/baselines/biblio-smokes/bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl`
   confirme que `milestones` expose des labels Stephanus et un `order_index`

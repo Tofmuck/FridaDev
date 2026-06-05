@@ -111,6 +111,8 @@ def state_anchor_from_tool_results(
             "para_no": _int(position.get("para_no")),
             "paragraph_id": _int(position.get("paragraph_id")),
         }
+        if result.interval:
+            anchor["interval_hint"] = dict(result.interval)
         if result.context_text:
             anchor["passage_hash"] = hashlib.sha256(result.context_text.encode("utf-8")).hexdigest()[:12]
             anchor["passage_chars"] = len(result.context_text)

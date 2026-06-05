@@ -71,6 +71,8 @@ def build_extraction(
             "document_id": _text(projection.get("document_id")),
             "doc_id_short": _text(projection.get("doc_id_short")),
             "content_kind": _text(projection.get("content_kind")),
+            "range_state": _text(projection.get("range_state")),
+            "range_complete": bool(projection.get("range_complete")),
             "exact_text_present": (
                 bool(projection.get("exact_text_present"))
                 and _has_minimum_anchor(projection)
@@ -84,6 +86,8 @@ def build_extraction(
             "page_start": _int(projection.get("page_start")),
             "page_end": _int(projection.get("page_end")),
             "page_count": _int(projection.get("page_count")),
+            "requested_page_end": _int(projection.get("requested_page_end")),
+            "next_anchor": _mapping(projection.get("next_anchor")),
             "missing_pages": list(_sequence(projection.get("missing_pages"))),
             "candidate_count": len(candidates),
             "extraction_attempted": extraction_attempted,
@@ -149,6 +153,9 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
     content_kind = _text(payload.get("content_kind"))
     if content_kind:
         lines.append(f"- type de texte: {content_kind}")
+    range_state = _text(payload.get("range_state"))
+    if range_state:
+        lines.append(f"- etat plage canonique: {range_state}")
     block_count = _int(payload.get("block_count"))
     if block_count:
         lines.append(f"- blocs mecaniques: {block_count}")
@@ -159,6 +166,9 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
             lines.append(f"- page lue: {page_start}")
         else:
             lines.append(f"- intervalle pages lu: {page_start}-{page_end}")
+    requested_page_end = _int(payload.get("requested_page_end"))
+    if requested_page_end and requested_page_end != page_end:
+        lines.append(f"- borne finale demandee: page {requested_page_end}")
     if status == EXTRACTION_STATUS_RESOLVED:
         chapter_no = _int(payload.get("chapter_no"))
         if chapter_no:
@@ -197,6 +207,8 @@ def to_observability(payload: Mapping[str, Any]) -> dict[str, Any]:
             "source_tool_name": _text(payload.get("source_tool_name")),
             "doc_id_short": _text(payload.get("doc_id_short")) or short_doc_id(_text(payload.get("document_id"))),
             "content_kind": _text(payload.get("content_kind")),
+            "range_state": _text(payload.get("range_state")),
+            "range_complete": bool(payload.get("range_complete")),
             "exact_text_present": bool(payload.get("exact_text_present")),
             "exact_text_chars": _int(payload.get("exact_text_chars")),
             "exact_text_hash": _text(payload.get("exact_text_hash")),
@@ -208,6 +220,11 @@ def to_observability(payload: Mapping[str, Any]) -> dict[str, Any]:
             "page_start": _int(payload.get("page_start")),
             "page_end": _int(payload.get("page_end")),
             "page_count": _int(payload.get("page_count")),
+            "requested_page_end": _int(payload.get("requested_page_end")),
+            "next_anchor_present": bool(_mapping(payload.get("next_anchor"))),
+            "next_anchor_page_no": _int(_mapping(payload.get("next_anchor")).get("page_no")),
+            "next_anchor_para_no": _int(_mapping(payload.get("next_anchor")).get("para_no")),
+            "next_anchor_paragraph_id": _int(_mapping(payload.get("next_anchor")).get("paragraph_id")),
             "block_hashes": [
                 _text(block.get("exact_text_hash"))
                 for block in _sequence(payload.get("blocks"))
@@ -265,7 +282,8 @@ def _candidate_from_result(
     if result.tool_name == librarian_tools.TOOL_PAGE_READ:
         content_kind = "page"
     elif result.tool_name == librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT:
-        content_kind = "canonical_range"
+        interval = _mapping(getattr(result, "interval", {}))
+        content_kind = "canonical_range_segment" if _text(interval.get("state")) == "segment" else "canonical_range"
     else:
         content_kind = "context"
     interval = _mapping(getattr(result, "interval", {}))
@@ -276,14 +294,21 @@ def _candidate_from_result(
             "doc_id_short": short_doc_id(document_id),
             "content_kind": content_kind,
             "chapter_no": _int(result.chapter_hint.get("chapter_no")),
+            "range_state": _text(interval.get("state")),
+            "range_complete": result.tool_name == librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT
+            and _text(interval.get("state")) != "segment",
             "page_start": _int(interval.get("start_page_no")),
             "page_end": _int(interval.get("end_page_no")),
             "page_count": _int(interval.get("page_span")),
+            "requested_page_end": _int(interval.get("requested_end_page_no")),
             "exact_text_present": True,
             "exact_text_chars": len(text),
             "exact_text_hash": _hash(text),
             "anchor": anchor,
             "anchor_end": _interval_anchor(interval, "end"),
+            "requested_anchor_end": _interval_anchor(interval, "requested_end"),
+            "next_anchor": _interval_anchor(interval, "next"),
+            "limits": _canonical_range_limits(interval),
             "_exact_text": text,
         }
     )
@@ -453,7 +478,7 @@ def _result_text(result: librarian_tools.BiblioLibrarianToolResult, *, content_k
         return _text(result.page_text)
     if kind == "context":
         return _text(result.context_text)
-    if kind == "canonical_range":
+    if kind in {"canonical_range", "canonical_range_segment"}:
         return _text(result.context_text)
     if result.tool_name == librarian_tools.TOOL_PAGE_READ:
         return _text(result.page_text)
@@ -555,6 +580,9 @@ def _reason_codes(
 
 def _limits(projection: Mapping[str, Any], *, extraction_attempted: bool) -> tuple[str, ...]:
     values: list[str] = []
+    for limit in _sequence(projection.get("limits")):
+        if _text(limit):
+            values.append(_text(limit))
     blocking_reason = _text(projection.get("blocking_reason"))
     if projection and not _has_minimum_anchor(projection):
         values.append("exact_text_blocked_without_technical_anchor")
@@ -564,6 +592,17 @@ def _limits(projection: Mapping[str, Any], *, extraction_attempted: bool) -> tup
         values.append(f"max_exact_text_chars={_MAX_EXACT_TEXT_CHARS}")
     if not projection and not extraction_attempted:
         values.append("no_mechanical_extraction_tool_result")
+    return tuple(values)
+
+
+def _canonical_range_limits(interval: Mapping[str, Any]) -> tuple[str, ...]:
+    if not interval or _text(interval.get("state")) != "segment":
+        return ()
+    values = ["canonical_range_segment_partial"]
+    if _interval_anchor(interval, "next"):
+        values.append("canonical_range_continuation_anchor_present")
+    else:
+        values.append("canonical_range_continuation_anchor_missing")
     return tuple(values)
 
 

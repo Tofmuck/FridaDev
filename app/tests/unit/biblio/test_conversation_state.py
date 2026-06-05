@@ -14,6 +14,8 @@ if str(APP_DIR) not in sys.path:
 from biblio import conversation_followup
 from biblio import conversation_state
 from biblio import document_resolver as resolver
+from biblio import librarian_runtime_projection
+from biblio import librarian_tools as tools
 from biblio import passage_candidate_search as candidate_search
 from biblio import passage_context_search as context_search
 from biblio import passage_extractor as extractor
@@ -106,6 +108,80 @@ class BiblioConversationStateTests(unittest.TestCase):
         encoded = _json(state.to_dict())
         self.assertNotIn(RAW_PASSAGE, encoded)
         self.assertNotIn(RAW_QUERY, encoded)
+
+    def test_update_after_range_segment_persists_next_anchor_without_text(self) -> None:
+        previous = conversation_state.BiblioConversationState.empty(conversation_id="conv-123")
+        runtime = _RuntimeResult(passage_result=_range_segment_passage(RAW_PASSAGE), status="extracted")
+
+        state, _transition = conversation_state.update_state_from_runtime(
+            previous,
+            query_plan=_Plan(intent="extract_range", work_title=RAW_QUERY),
+            library_result=runtime,
+            conversation_id="conv-123",
+            now_iso="2026-05-31T12:00:00Z",
+        )
+        observed = state.to_observability()
+
+        self.assertEqual(state.last_result["interval_hint"]["kind"], "range")
+        self.assertEqual(state.last_result["interval_hint"]["state"], "segment")
+        self.assertEqual(state.last_result["interval_hint"]["end_page_no"], 14)
+        self.assertEqual(state.last_result["interval_hint"]["requested_end_page_no"], 15)
+        self.assertEqual(state.last_result["interval_hint"]["next_page_no"], 14)
+        self.assertEqual(state.last_result["interval_hint"]["next_para_no"], 3)
+        self.assertEqual(observed["last_result_interval_state"], "segment")
+        self.assertEqual(observed["last_result_interval_next_page_no"], 14)
+        self.assertEqual(observed["last_result_interval_next_para_no"], 3)
+        encoded = _json(state.to_dict())
+        self.assertNotIn(RAW_PASSAGE, encoded)
+        self.assertNotIn(RAW_QUERY, encoded)
+
+    def test_agent_first_state_anchor_carries_range_segment_interval_hint(self) -> None:
+        tool_result = tools.BiblioLibrarianToolResult(
+            tool_name=tools.TOOL_CANONICAL_RANGE_EXTRACT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_CANONICAL_RANGE_SEGMENT_EXTRACTED,
+            endpoint_kind=tools.ENDPOINT_CANONICAL_RANGE,
+            observation=tools.BiblioLibrarianToolObservation(
+                tool_name=tools.TOOL_CANONICAL_RANGE_EXTRACT,
+                endpoint_kind=tools.ENDPOINT_CANONICAL_RANGE,
+                status=tools.STATUS_OK,
+                reason_code=tools.REASON_CANONICAL_RANGE_SEGMENT_EXTRACTED,
+            ),
+            document_id="doc-123456",
+            positions=({"page_no": 12, "para_no": 3, "paragraph_id": 99},),
+            interval={
+                "kind": "range",
+                "mode": "multi_page_range_segment",
+                "state": "segment",
+                "start_page_no": 12,
+                "end_page_no": 14,
+                "end_para_no": 2,
+                "requested_end_page_no": 15,
+                "requested_end_para_no": 4,
+                "next_page_no": 14,
+                "next_para_no": 3,
+            },
+            context_text=RAW_PASSAGE,
+        )
+        state_anchor = librarian_runtime_projection.state_anchor_from_tool_results(
+            (tool_result,),
+            status="agent_first_executed",
+            reason_code="biblio_agent_first_plan_executed",
+        )
+        runtime = _RuntimeResult(status="extracted")
+        runtime.state_anchor = state_anchor
+
+        state, _transition = conversation_state.update_state_from_runtime(
+            conversation_state.BiblioConversationState.empty(conversation_id="conv-123"),
+            library_result=runtime,
+            conversation_id="conv-123",
+            now_iso="2026-05-31T12:00:00Z",
+        )
+
+        self.assertEqual(state.last_result["interval_hint"]["state"], "segment")
+        self.assertEqual(state.last_result["interval_hint"]["next_page_no"], 14)
+        self.assertEqual(state.last_result["interval_hint"]["next_para_no"], 3)
+        self.assertNotIn(RAW_PASSAGE, _json(state.to_dict()))
 
     def test_state_round_trips_through_latest_user_message_meta(self) -> None:
         state, _transition = conversation_state.update_state_from_runtime(
@@ -351,6 +427,44 @@ def _range_passage(passage: str) -> extractor.BiblioPassageResult:
             start_paragraph_id=99,
             end_page_no=14,
             end_para_no=2,
+            page_span=3,
+            paragraph_span=5,
+        ),
+    )
+
+
+def _range_segment_passage(passage: str) -> extractor.BiblioPassageResult:
+    result = _passage(passage)
+    return extractor.BiblioPassageResult(
+        status=extractor.STATUS_SEGMENT_EXTRACTED,
+        reason_code=extractor.REASON_RANGE_SEGMENT_EXTRACTED,
+        resolution=result.resolution,
+        passage=result.passage,
+        doc_id_short=result.doc_id_short,
+        passage_chars=result.passage_chars,
+        passage_hash=result.passage_hash,
+        char_offset=result.char_offset,
+        window_chars=result.window_chars,
+        max_passage_chars=result.max_passage_chars,
+        excerpt_start=result.excerpt_start,
+        excerpt_end=result.excerpt_end,
+        text_length=result.text_length,
+        page_no=12,
+        para_no=3,
+        paragraph_id=99,
+        interval_hint=extractor.BiblioCanonicalIntervalHint(
+            kind="range",
+            mode="multi_page_range_segment",
+            state="segment",
+            start_page_no=12,
+            start_para_no=3,
+            start_paragraph_id=99,
+            end_page_no=14,
+            end_para_no=2,
+            requested_end_page_no=15,
+            requested_end_para_no=4,
+            next_page_no=14,
+            next_para_no=3,
             page_span=3,
             paragraph_span=5,
         ),

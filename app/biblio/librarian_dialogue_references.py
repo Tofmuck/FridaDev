@@ -51,6 +51,16 @@ def last_result_interval_end_context_params(
     if not isinstance(interval_hint, Mapping) or str(interval_hint.get("kind") or "").strip() != "range":
         return {}
     params: dict[str, Any] = {"document_id": doc_id, "window_chars": window_chars}
+    if str(interval_hint.get("state") or "").strip() == "segment":
+        if interval_hint.get("next_paragraph_id") is not None:
+            params["paragraph_id"] = interval_hint.get("next_paragraph_id")
+            return params
+        next_page_no = interval_hint.get("next_page_no")
+        next_para_no = interval_hint.get("next_para_no")
+        if next_page_no is not None and next_para_no is not None:
+            params["page_no"] = next_page_no
+            params["para_no"] = next_para_no
+            return params
     if interval_hint.get("end_paragraph_id") is not None:
         params["paragraph_id"] = interval_hint.get("end_paragraph_id")
         return params

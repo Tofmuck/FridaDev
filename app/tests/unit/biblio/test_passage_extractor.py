@@ -303,6 +303,84 @@ class PassageExtractorTests(unittest.TestCase):
             ],
         )
 
+    def test_long_multi_page_range_returns_bounded_segment_with_next_anchor(self) -> None:
+        raw_a = "A" * 60
+        raw_b = "B" * 60
+        fake = FakeCatalogueClient(
+            metadata={"doc-1": {"document": {"id": "doc-1"}, "human_metadata": {}}},
+            locate_payloads={
+                ("doc-1", "stephanus", "126b"): {
+                    "match_count": 1,
+                    "best": {
+                        "kind": "stephanus",
+                        "label": "126b",
+                        "page_no": 7,
+                        "para_no": 2,
+                        "paragraph_id": 72,
+                        "order_index": 10,
+                    },
+                },
+                ("doc-1", "stephanus", "128a"): {
+                    "match_count": 1,
+                    "best": {
+                        "kind": "stephanus",
+                        "label": "128a",
+                        "page_no": 8,
+                        "para_no": 2,
+                        "paragraph_id": 82,
+                        "order_index": 13,
+                    },
+                },
+            },
+            page_payloads={
+                ("doc-1", 7): {
+                    "document_id": "doc-1",
+                    "page_no": 7,
+                    "paragraphs": [
+                        {"para_no": 1, "paragraph_id": 71, "text": "IGNORE BEFORE START"},
+                        {"para_no": 2, "paragraph_id": 72, "text": raw_a},
+                    ],
+                },
+                ("doc-1", 8): {
+                    "document_id": "doc-1",
+                    "page_no": 8,
+                    "paragraphs": [
+                        {"para_no": 1, "paragraph_id": 81, "text": raw_b},
+                        {"para_no": 2, "paragraph_id": 82, "text": "END"},
+                    ],
+                },
+            },
+        )
+
+        result = extractor.BiblioPassageExtractor(fake).extract(
+            extractor.BiblioPassageRequest(
+                resolve_request=resolver.BiblioResolveRequest(
+                    document_id="doc-1",
+                    locator="126b",
+                    locator_end="128a",
+                ),
+                max_passage_chars=90,
+            )
+        )
+        observed = result.to_observability()
+
+        self.assertEqual(result.status, extractor.STATUS_SEGMENT_EXTRACTED)
+        self.assertEqual(result.reason_code, extractor.REASON_RANGE_SEGMENT_EXTRACTED)
+        self.assertEqual(result.passage, raw_a)
+        self.assertNotIn(raw_b, result.passage)
+        self.assertNotIn(raw_a, str(observed))
+        self.assertNotIn(raw_b, str(observed))
+        self.assertEqual(observed["interval_hint"]["kind"], "range")
+        self.assertEqual(observed["interval_hint"]["state"], "segment")
+        self.assertEqual(observed["interval_hint"]["mode"], "multi_page_range_segment")
+        self.assertEqual(observed["interval_hint"]["end_page_no"], 7)
+        self.assertEqual(observed["interval_hint"]["end_para_no"], 2)
+        self.assertEqual(observed["interval_hint"]["requested_end_page_no"], 8)
+        self.assertEqual(observed["interval_hint"]["requested_end_para_no"], 2)
+        self.assertEqual(observed["interval_hint"]["next_page_no"], 8)
+        self.assertEqual(observed["interval_hint"]["next_para_no"], 1)
+        self.assertEqual(observed["interval_hint"]["next_paragraph_id"], 81)
+
     def test_locator_without_context_target_is_invalid(self) -> None:
         fake = FakeCatalogueClient(
             documents={"doc-1": {"document": {"id": "doc-1"}}},

@@ -212,6 +212,67 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
         self.assertNotIn(RAW_EXACT_TEXT, _json(rendered.to_observability()))
 
+    def test_canonical_range_segment_renders_exact_text_without_claiming_complete_range(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_CANONICAL_RANGE_EXTRACT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_CANONICAL_RANGE_SEGMENT_EXTRACTED,
+            endpoint_kind=tools.ENDPOINT_CANONICAL_RANGE,
+            document_id="doc-1",
+            positions=({"page_no": 12, "para_no": 3, "paragraph_id": 99},),
+            anchors=(
+                {"document_id": "doc-1", "page_no": 12, "para_no": 3, "paragraph_id": 99},
+                {"document_id": "doc-1", "page_no": 12, "para_no": 4, "paragraph_id": 100},
+            ),
+            interval={
+                "kind": "range",
+                "mode": "same_page_range_segment",
+                "state": "segment",
+                "start_page_no": 12,
+                "start_para_no": 3,
+                "start_paragraph_id": 99,
+                "end_page_no": 12,
+                "end_para_no": 4,
+                "end_paragraph_id": 100,
+                "requested_end_page_no": 13,
+                "requested_end_para_no": 2,
+                "requested_end_paragraph_id": 112,
+                "next_page_no": 12,
+                "next_para_no": 5,
+                "next_paragraph_id": 101,
+                "page_span": 1,
+                "paragraph_span": 2,
+            },
+            context_text=RAW_EXACT_TEXT,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+            case_id="P04",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(answer.extraction["content_kind"], "canonical_range_segment")
+        self.assertEqual(answer.extraction["range_state"], "segment")
+        self.assertFalse(answer.extraction["range_complete"])
+        self.assertEqual(answer.extraction["requested_page_end"], 13)
+        self.assertEqual(answer.extraction["next_anchor"]["page_no"], 12)
+        self.assertIn("canonical_range_segment_partial", answer.extraction["limits"])
+        self.assertIn("canonical_range_continuation_anchor_present", answer.extraction["limits"])
+        self.assertEqual([anchor["paragraph_id"] for anchor in answer.anchors], [99, 100])
+        self.assertTrue(rendered.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertIn("plage canonique rendue par segment", rendered.content)
+        self.assertNotIn("Plage canonique non rendue", rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+        self.assertNotIn(RAW_EXACT_TEXT, _json(rendered.to_observability()))
+
     def test_canonical_extraction_renders_exact_page_read_with_anchor(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_PAGE_READ,

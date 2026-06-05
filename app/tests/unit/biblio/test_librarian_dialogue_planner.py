@@ -392,6 +392,39 @@ class BiblioLibrarianDialoguePlannerTests(unittest.TestCase):
             {"document_id": "doc-1", "page_no": 14, "para_no": 2, "window_chars": 1400},
         )
 
+    def test_navigation_continue_after_canonical_range_segment_uses_next_anchor(self) -> None:
+        state = _state_with_document(
+            last_result={
+                "document_id": "doc-1",
+                "page_no": 12,
+                "para_no": 3,
+                "interval_hint": {
+                    "kind": "range",
+                    "mode": "multi_page_range_segment",
+                    "state": "segment",
+                    "start_page_no": 12,
+                    "end_page_no": 14,
+                    "end_para_no": 2,
+                    "requested_end_page_no": 15,
+                    "requested_end_para_no": 4,
+                    "next_page_no": 14,
+                    "next_para_no": 3,
+                    "page_span": 3,
+                },
+            }
+        )
+
+        result = dialogue.plan_biblio_dialogue("Continue apres ce passage.", state=state)
+
+        self.assertEqual(result.status, dialogue.STATUS_PLANNED)
+        self.assertEqual(result.reason_code, dialogue.REASON_NAVIGATION_CONTINUE_FROM_RANGE_END)
+        self.assertEqual(result.intent.query_kind, "passage_context")
+        self.assertEqual(_tool_names(result), [tools.TOOL_PASSAGE_CONTEXT])
+        self.assertEqual(
+            result.plan.tool_calls[0].params,
+            {"document_id": "doc-1", "page_no": 14, "para_no": 3, "window_chars": 1400},
+        )
+
     def test_navigation_page_next_after_range_stays_page_granular(self) -> None:
         state = _state_with_document(
             last_result={

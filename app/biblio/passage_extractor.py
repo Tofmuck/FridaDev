@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from .catalogue_client import (
     CatalogueClient,
@@ -32,6 +32,7 @@ from .document_resolver import (
 
 
 STATUS_EXTRACTED = "extracted"
+STATUS_SEGMENT_EXTRACTED = "segment_extracted"
 STATUS_EMPTY = "empty"
 STATUS_TOO_LONG = "too_long"
 STATUS_INCOHERENT_CATALOGUE = "incoherent_catalogue"
@@ -41,6 +42,7 @@ REASON_LOCATOR_REQUIRED = "locator_required_for_passage"
 REASON_LOCATOR_CONTEXT_TARGET_MISSING = "locator_context_target_missing"
 REASON_RANGE_EXTRACTION_NOT_SUPPORTED = "range_extraction_not_supported"
 REASON_RANGE_EXTRACTED = "range_extracted"
+REASON_RANGE_SEGMENT_EXTRACTED = "range_segment_extracted"
 REASON_PASSAGE_NOT_FOUND = "passage_not_found"
 REASON_PASSAGE_EMPTY = "passage_empty"
 REASON_PASSAGE_TOO_LONG = "passage_too_long"
@@ -65,12 +67,19 @@ MAX_RANGE_PAGES = 12
 class BiblioCanonicalIntervalHint:
     kind: str = "point"
     mode: str = "single_locator"
+    state: str = "complete"
     start_page_no: int | None = None
     start_para_no: int | None = None
     start_paragraph_id: int | None = None
     end_page_no: int | None = None
     end_para_no: int | None = None
     end_paragraph_id: int | None = None
+    requested_end_page_no: int | None = None
+    requested_end_para_no: int | None = None
+    requested_end_paragraph_id: int | None = None
+    next_page_no: int | None = None
+    next_para_no: int | None = None
+    next_paragraph_id: int | None = None
     page_span: int | None = None
     paragraph_span: int | None = None
 
@@ -78,12 +87,19 @@ class BiblioCanonicalIntervalHint:
         observed = {
             "kind": str(self.kind or "").strip(),
             "mode": str(self.mode or "").strip(),
+            "state": str(self.state or "").strip(),
             "start_page_no": self.start_page_no,
             "start_para_no": self.start_para_no,
             "start_paragraph_id": self.start_paragraph_id,
             "end_page_no": self.end_page_no,
             "end_para_no": self.end_para_no,
             "end_paragraph_id": self.end_paragraph_id,
+            "requested_end_page_no": self.requested_end_page_no,
+            "requested_end_para_no": self.requested_end_para_no,
+            "requested_end_paragraph_id": self.requested_end_paragraph_id,
+            "next_page_no": self.next_page_no,
+            "next_para_no": self.next_para_no,
+            "next_paragraph_id": self.next_paragraph_id,
             "page_span": self.page_span,
             "paragraph_span": self.paragraph_span,
         }
@@ -124,7 +140,7 @@ class BiblioPassageResult:
             "reason_code": self.reason_code,
             "resolution": self.resolution.to_observability() if self.resolution else None,
             "doc_id_short": self.doc_id_short,
-            "passage_present": self.status == STATUS_EXTRACTED and bool(self.passage),
+            "passage_present": self.status in _EXTRACTED_STATUSES and bool(self.passage),
             "passage_chars": self.passage_chars,
             "passage_hash": self.passage_hash,
             "char_offset": self.char_offset,
@@ -138,6 +154,9 @@ class BiblioPassageResult:
             "paragraph_id": self.paragraph_id,
             "interval_hint": self.interval_hint.to_observability() if self.interval_hint else None,
         }
+
+
+_EXTRACTED_STATUSES = {STATUS_EXTRACTED, STATUS_SEGMENT_EXTRACTED}
 
 
 @dataclass(frozen=True)
@@ -269,6 +288,7 @@ class BiblioPassageExtractor:
         paragraph_targets: list[dict[str, int]],
     ) -> BiblioPassageResult:
         excerpts: list[str] = []
+        included_targets: list[dict[str, int]] = []
         range_options = _ExtractionOptions(
             char_offset=0,
             window_chars=max(options.window_chars, MAX_CONTEXT_WINDOW_CHARS),
@@ -301,9 +321,37 @@ class BiblioPassageExtractor:
                         payload=payload,
                     )
                 if passage.strip():
+                    observed_target = _target_from_payload(payload, fallback=target)
                     candidate_excerpts = [*excerpts, passage]
                     candidate_passage = "\n\n".join(candidate_excerpts)
                     if len(candidate_passage) > options.max_passage_chars:
+                        if excerpts and included_targets:
+                            segment_passage = "\n\n".join(excerpts)
+                            return _result(
+                                STATUS_SEGMENT_EXTRACTED,
+                                REASON_RANGE_SEGMENT_EXTRACTED,
+                                options=options,
+                                resolution=resolution,
+                                doc_id_short=resolution.document.doc_id_short,
+                                locator=start,
+                                passage=segment_passage,
+                                passage_chars=len(segment_passage),
+                                passage_hash=_short_hash(segment_passage),
+                                payload=_payload_for_target(
+                                    resolution.document.document_id,
+                                    included_targets[0],
+                                    segment_passage,
+                                ),
+                                interval_hint=_range_segment_interval_hint(
+                                    mode="same_page_range_segment",
+                                    start=start,
+                                    segment_end=included_targets[-1],
+                                    requested_end=resolution.locator_end,
+                                    next_target=observed_target,
+                                    page_span=_page_span(included_targets),
+                                    paragraph_span=len(included_targets),
+                                ),
+                            )
                         return _result(
                             STATUS_TOO_LONG,
                             REASON_PASSAGE_TOO_LONG,
@@ -315,6 +363,7 @@ class BiblioPassageExtractor:
                             passage_hash=_short_hash(candidate_passage),
                         )
                     excerpts = candidate_excerpts
+                    included_targets.append(observed_target)
         except CatalogueNotFound:
             return _result(
                 STATUS_NOT_FOUND,
@@ -393,6 +442,7 @@ class BiblioPassageExtractor:
         page_numbers: list[int],
     ) -> BiblioPassageResult:
         excerpts: list[str] = []
+        included_targets: list[dict[str, int]] = []
         selected_paragraph_count = 0
         try:
             for page_no in page_numbers:
@@ -443,11 +493,39 @@ class BiblioPassageExtractor:
                         locator=start,
                     )
 
-                for _para_no, text in page_paragraphs:
+                for paragraph in page_paragraphs:
+                    text = _text(paragraph.get("text"))
                     if text.strip():
                         candidate_excerpts = [*excerpts, text]
                         candidate_passage = "\n\n".join(candidate_excerpts)
                         if len(candidate_passage) > options.max_passage_chars:
+                            if excerpts and included_targets:
+                                segment_passage = "\n\n".join(excerpts)
+                                return _result(
+                                    STATUS_SEGMENT_EXTRACTED,
+                                    REASON_RANGE_SEGMENT_EXTRACTED,
+                                    options=options,
+                                    resolution=resolution,
+                                    doc_id_short=resolution.document.doc_id_short,
+                                    locator=start,
+                                    passage=segment_passage,
+                                    passage_chars=len(segment_passage),
+                                    passage_hash=_short_hash(segment_passage),
+                                    payload=_payload_for_target(
+                                        resolution.document.document_id,
+                                        included_targets[0],
+                                        segment_passage,
+                                    ),
+                                    interval_hint=_range_segment_interval_hint(
+                                        mode="multi_page_range_segment",
+                                        start=start,
+                                        segment_end=included_targets[-1],
+                                        requested_end=end,
+                                        next_target=_target_from_paragraph(paragraph),
+                                        page_span=_page_span(included_targets),
+                                        paragraph_span=len(included_targets),
+                                    ),
+                                )
                             return _result(
                                 STATUS_TOO_LONG,
                                 REASON_PASSAGE_TOO_LONG,
@@ -459,6 +537,7 @@ class BiblioPassageExtractor:
                                 passage_hash=_short_hash(candidate_passage),
                             )
                         excerpts = candidate_excerpts
+                        included_targets.append(_target_from_paragraph(paragraph))
         except CatalogueNotFound:
             return _result(
                 STATUS_NOT_FOUND,
@@ -737,12 +816,12 @@ def _page_paragraphs(
     page_no: int,
     start: LocatorCandidate,
     end: LocatorCandidate,
-) -> list[tuple[int, str]] | None:
+) -> list[dict[str, Any]] | None:
     raw_paragraphs = payload.get("paragraphs")
     if not isinstance(raw_paragraphs, list):
         return None
 
-    selected: list[tuple[int, str]] = []
+    selected: list[dict[str, Any]] = []
     start_found = page_no != start.page_no
     end_found = page_no != end.page_no
     for row in raw_paragraphs:
@@ -760,7 +839,14 @@ def _page_paragraphs(
             continue
         if page_no == end.page_no and para_no > end.para_no:
             continue
-        selected.append((para_no, text))
+        selected.append(
+            {
+                "page_no": page_no,
+                "para_no": para_no,
+                "paragraph_id": _optional_int(row.get("paragraph_id")),
+                "text": text,
+            }
+        )
 
     if not start_found or not end_found:
         return None
@@ -852,6 +938,7 @@ def _range_interval_hint(
     return BiblioCanonicalIntervalHint(
         kind="range",
         mode=mode,
+        state="complete",
         start_page_no=start.page_no,
         start_para_no=start.para_no,
         start_paragraph_id=start.paragraph_id,
@@ -861,3 +948,73 @@ def _range_interval_hint(
         page_span=page_span,
         paragraph_span=paragraph_span,
     )
+
+
+def _range_segment_interval_hint(
+    *,
+    mode: str,
+    start: LocatorCandidate,
+    segment_end: Mapping[str, int],
+    requested_end: LocatorCandidate,
+    next_target: Mapping[str, int],
+    page_span: int,
+    paragraph_span: int,
+) -> BiblioCanonicalIntervalHint:
+    return BiblioCanonicalIntervalHint(
+        kind="range",
+        mode=mode,
+        state="segment",
+        start_page_no=start.page_no,
+        start_para_no=start.para_no,
+        start_paragraph_id=start.paragraph_id,
+        end_page_no=_optional_int(segment_end.get("page_no")),
+        end_para_no=_optional_int(segment_end.get("para_no")),
+        end_paragraph_id=_optional_int(segment_end.get("paragraph_id")),
+        requested_end_page_no=requested_end.page_no,
+        requested_end_para_no=requested_end.para_no,
+        requested_end_paragraph_id=requested_end.paragraph_id,
+        next_page_no=_optional_int(next_target.get("page_no")),
+        next_para_no=_optional_int(next_target.get("para_no")),
+        next_paragraph_id=_optional_int(next_target.get("paragraph_id")),
+        page_span=page_span,
+        paragraph_span=paragraph_span,
+    )
+
+
+def _target_from_payload(payload: Mapping[str, Any], *, fallback: Mapping[str, int]) -> dict[str, int]:
+    target = {
+        "page_no": _optional_int(payload.get("page_no")) or _optional_int(fallback.get("page_no")),
+        "para_no": _optional_int(payload.get("para_no")) or _optional_int(fallback.get("para_no")),
+        "paragraph_id": _optional_int(payload.get("paragraph_id")) or _optional_int(fallback.get("paragraph_id")),
+    }
+    return {key: value for key, value in target.items() if value is not None}
+
+
+def _target_from_paragraph(paragraph: Mapping[str, Any]) -> dict[str, int]:
+    target = {
+        "page_no": _optional_int(paragraph.get("page_no")),
+        "para_no": _optional_int(paragraph.get("para_no")),
+        "paragraph_id": _optional_int(paragraph.get("paragraph_id")),
+    }
+    return {key: value for key, value in target.items() if value is not None}
+
+
+def _payload_for_target(document_id: str, target: Mapping[str, int], passage: str) -> dict[str, Any]:
+    return {
+        "document_id": document_id,
+        "page_no": _optional_int(target.get("page_no")),
+        "para_no": _optional_int(target.get("para_no")),
+        "paragraph_id": _optional_int(target.get("paragraph_id")),
+        "excerpt_start": 0,
+        "excerpt_end": len(passage),
+        "text_length": len(passage),
+    }
+
+
+def _page_span(targets: Sequence[Mapping[str, int]]) -> int:
+    pages = {
+        page
+        for page in (_optional_int(target.get("page_no")) for target in targets)
+        if page is not None
+    }
+    return len(pages)

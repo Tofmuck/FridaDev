@@ -109,13 +109,24 @@ def _section_label(answer: Any) -> str:
 
 
 def _limit_lines(answer: Any) -> list[str]:
-    limits = [_neutralize(limit) for limit in _sequence(getattr(answer, "limits", ())) if _text(limit)]
+    limits = [_visible_limit(limit) for limit in _sequence(getattr(answer, "limits", ())) if _text(limit)]
     extraction = _mapping(getattr(answer, "extraction", {}))
     if not limits:
-        limits = [_neutralize(limit) for limit in _sequence(extraction.get("limits")) if _text(limit)]
+        limits = [_visible_limit(limit) for limit in _sequence(extraction.get("limits")) if _text(limit)]
     if not limits:
         return []
     return ["Limite: " + ", ".join(limits)]
+
+
+def _visible_limit(value: Any) -> str:
+    text = _text(value)
+    if text == "canonical_range_segment_partial":
+        return "plage canonique rendue par segment; la plage complete n'est pas entierement affichee"
+    if text == "canonical_range_continuation_anchor_present":
+        return "suite disponible depuis l'ancre de continuation"
+    if text == "canonical_range_continuation_anchor_missing":
+        return "suite non garantie: ancre de continuation absente"
+    return _neutralize(text)
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:

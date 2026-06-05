@@ -240,6 +240,10 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
   - Preuve live:
     `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-closed-real-conversation-20260605T114227Z.jsonl`,
     `BIB24_CANONICAL_RANGE_SHORT_REAL_CONVERSATION=met`.
+  - Preuve live segment long:
+    `app/docs/states/baselines/biblio-smokes/bib24-long-canonical-range-real-conversation-20260605T121503Z.jsonl`,
+    `BIB24_LONG_CANONICAL_RANGE_SEGMENT=met`,
+    `BIB24_LONG_CANONICAL_RANGE_CONTINUATION=met`.
   - Preuves live negatives conservees comme historique et limites:
     `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`,
     `BIB24_CANONICAL_RANGE_REAL_CONVERSATION=failed`;
@@ -253,9 +257,14 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     mecaniquement une plage courte complete, autorise le final lock et sauvegarde
     le message assistant final avec meta Biblio utile. Le faux exact historique
     via `passage_context` reste bloque.
-  - Prochain test live requis: plages plus longues avec decoupage/budget
-    explicite. Une occurrence canonique ambigue ou un scope interne absent doit
-    rester `ambiguous` / `not_found`, sans choix silencieux.
+  - Requalification plages longues: la conversation live du segment long prouve
+    `canonical_range_extract` -> `canonical_range_segment` avec
+    `range_complete=false`, `next_anchor_present=true`, limite visible, puis
+    continuation mecanique depuis l'ancre portee. Ce n'est pas une preuve
+    d'export complet illimite de longues plages.
+  - Prochain test live requis: surveiller le decoupage sur d'autres scopes
+    canoniques non ambigus. Une occurrence canonique ambigue ou un scope interne
+    absent doit rester `ambiguous` / `not_found`, sans choix silencieux.
   - Diagnostic Catalogue/Sauron: les tables `milestones`, `paragraphs`,
     `pages`, `raw_units` et `document_chapters` existent et `order_index`
     permet de verifier un ordre documentaire. En revanche, pour les documents
@@ -542,6 +551,23 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     contenu brut dans l'artefact.
   - Limite: les plages longues restent a decouper explicitement; la fermeture
     ne permet aucun choix silencieux d'une occurrence canonique ambigue.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-24 plage longue segmentee - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib24-long-canonical-range-real-conversation-20260605T121503Z.jsonl`
+  - Statut: `ferme_live` pour le comportement segmente sous budget, sans
+    pretendre fermer l'export complet des longues plages.
+  - Conversation: hash `4961a35b1207`
+  - Proof cases: `BIB24_LONG_CANONICAL_RANGE_SEGMENT=met`,
+    `BIB24_LONG_CANONICAL_RANGE_CONTINUATION=met`.
+  - Outils appeles: premier tour `canonical_range_extract`; second tour
+    `passage_context` depuis l'ancre de continuation portee.
+  - Statut final: vraie conversation Frida, bibliothecaire agentique live,
+    premier segment exact mecanique, `range_complete=false`,
+    `next_anchor_present=true`, suite mecanique depuis l'ancre, final lock
+    autorise, messages assistants sauvegardes, surface visible propre, meta
+    Biblio presente.
+  - Limite: la preuve ne vend pas la plage longue comme complete; elle ferme le
+    contrat "segment exact + continuation", pas un export illimite.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
@@ -2433,6 +2459,7 @@ Inventaire de verite Lot 4:
 | 4E.2 `section_bounds` -> `page_read` | livre + ferme live BIB-21 | oui | `bib21-real-conversation-20260605T082358Z.jsonl` | uniquement debut de section compact explicitement borne; document deja ancre; pas section complete. |
 | 4E.3 hit unique ancre -> `passage_context` | livre + ferme live BIB-22 | oui | `bib21-bib23-real-conversation-20260605T072804Z.jsonl` | un seul hit scoped total ancre; pas ranking ni choix du meilleur hit. |
 | BIB-24 plage canonique courte | ferme live | oui | `bib24-canonical-range-closed-real-conversation-20260605T114227Z.jsonl` | ferme une plage canonique courte sous budget via `resolve_work` -> `canonical_range_extract` -> final lock; les plages longues restent a decouper explicitement. |
+| BIB-24 plage canonique longue segmentee | ferme live pour segment + continuation | oui | `bib24-long-canonical-range-real-conversation-20260605T121503Z.jsonl` | plage longue rendue en segment exact avec `range_complete=false`, ancre de continuation portee, puis suite mecanique; ne vaut pas export complet illimite. |
 | BIB-24 Catalogue/Sauron bornes canoniques | diagnostic plateforme livre, limite generale conservee | oui | `bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl` | `milestones.order_index` suffit pour ordonner des bornes non ambigues; les documents agreges peuvent encore exiger un scope d'oeuvre interne fiable pour eviter tout choix silencieux. |
 | Proof Gate initial 4E | diagnostic livre | n/a | `lot4e-proof-gate-live-20260604T144426Z.jsonl`: `0 met`, `3 failed`, `1 partial` | prouve surtout l'ecart agentique live initial. |
 | Replay transition agentique | diagnostic livre | n/a | `lot4e-proof-gate-live-after-agentic-transition-20260604T145952Z.jsonl`: `1 met`, `0 failed`, `3 partial` | trajectoires ameliorees, rendu page encore non ferme. |
@@ -2554,7 +2581,7 @@ Matrice:
 | Extraction deux premieres pages d'une section | `ferme_live` | Lot 4E.2 tests + `bib21-real-conversation-20260605T082358Z.jsonl` | document deja ancre + section explicite -> `section_bounds` -> deux `page_read` -> exact lock | surveiller; ne ferme pas section complete longue |
 | Extraction section complete longue | `ouvert` | hors scope Lot 4E.1/4E.2 | section debut/fin resolues -> plan decoupage/budget/continuation/streaming; pas de lecture longue silencieuse | Lot extraction longue separe |
 | Extraction autour d'une occurrence unique ancree | `ferme_live` | Lot 4E.3 tests + `bib21-bib23-real-conversation-20260605T072804Z.jsonl` | live extraction explicite -> `catalog_search` scoped unique -> `passage_context` -> exact lock; snippet jamais rendu | surveiller |
-| Plage canonique type Stephanus | `ferme_live` pour plage courte bornee | `bib24-canonical-range-closed-real-conversation-20260605T114227Z.jsonl`; negatives historiques `bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`, `bib24-canonical-range-complete-real-conversation-20260605T101356Z.jsonl`, diagnostic Catalogue `bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl` | `canonical_range_extract` ferme une plage courte complete sous budget; un `passage_context` ou snippet ne vaut toujours jamais plage canonique; les longues plages restent a decouper explicitement | Lot plages longues / decoupage canonique si besoin |
+| Plage canonique type Stephanus | `ferme_live` pour plage courte bornee + segment long continuable | `bib24-canonical-range-closed-real-conversation-20260605T114227Z.jsonl`; `bib24-long-canonical-range-real-conversation-20260605T121503Z.jsonl`; negatives historiques `bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`, `bib24-canonical-range-complete-real-conversation-20260605T101356Z.jsonl`, diagnostic Catalogue `bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl` | `canonical_range_extract` ferme une plage courte complete sous budget; une plage longue fiable devient un segment exact avec `range_complete=false` et continuation; un `passage_context` ou snippet ne vaut toujours jamais plage complete | surveiller scopes ambigus et export complet long |
 | Navigation lecteur: continue, page suivante/precedente | `ouvert` | ancrage page existe dans resultats; pas d'etat lecteur global ferme | message avec ancre courante -> page suivante/precedente lue, message final verifie | Lot navigation lecteur |
 | Navigation: chapitre suivant, dix pages plus loin, remonte avant | `a_ne_pas_pretendre` | pas de preuve produit | etat lecteur + bornes + budgets + clarification si ambigu | Lot navigation lecteur |
 | Provenance: ouvrage/page/section d'un passage rendu | `partiel_live` | extractions page portent ancres et `document_id`; final lock prouve message exact | question "d'ou vient ce passage ?" apres rendu -> provenance structuree depuis ancres, sans relire texte brut | Lot 4F provenance/ancrage |
