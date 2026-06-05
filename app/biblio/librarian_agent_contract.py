@@ -647,7 +647,9 @@ def _repair_agent_payload(payload: Any) -> Any:
         tool_names=[str(call.get("tool_name") or "") for call in repaired_calls],
     )
     explicit_product_method = _safe_token(payload.get("product_method"))
-    if product_methods.is_section_start_extraction_answer_mode(repaired_payload["answer_mode"]):
+    if product_methods.is_section_complete_extraction_answer_mode(repaired_payload["answer_mode"]):
+        repaired_payload["product_method"] = product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION
+    elif product_methods.is_section_start_extraction_answer_mode(repaired_payload["answer_mode"]):
         repaired_payload["product_method"] = product_methods.PRODUCT_METHOD_EXTRACTION
     else:
         repaired_payload["product_method"] = explicit_product_method or inferred_product_method

@@ -292,6 +292,139 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
         self.assertNotIn(RAW_EXACT_TEXT, _json(rendered.to_observability()))
 
+    def test_section_complete_extraction_renders_complete_section_pages(self) -> None:
+        page_12 = "RAW SECTION COMPLETE PAGE 12 MUST ONLY RENDER VISIBLY"
+        page_13 = "RAW SECTION COMPLETE PAGE 13 MUST ONLY RENDER VISIBLY"
+        section_interval = {
+            "type": "section_bounds",
+            "state": "derived",
+            "start": {"page_no": 12},
+            "end": {"page_no": 13},
+        }
+        bounds = _tool_result(
+            tool_name=tools.TOOL_SECTION_BOUNDS,
+            status=tools.STATUS_RESOLVED,
+            reason_code=tools.REASON_RESOLVED,
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            document_id="doc-1",
+            items=({"section_id": "sec-1", "document_id": "doc-1", "interval": section_interval},),
+            anchors=({"page_no": 12}, {"page_no": 13}),
+            interval=section_interval,
+        )
+        page_read_12 = _tool_result(
+            tool_name=tools.TOOL_PAGE_READ,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_PAGE,
+            document_id="doc-1",
+            positions=({"page_no": 12},),
+            page_text=page_12,
+        )
+        page_read_13 = _tool_result(
+            tool_name=tools.TOOL_PAGE_READ,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_PAGE,
+            document_id="doc-1",
+            positions=({"page_no": 13},),
+            page_text=page_13,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(bounds, page_read_12, page_read_13),
+            product_method=product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION,
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(answer.extraction["content_kind"], "section_complete")
+        self.assertEqual(answer.extraction["range_state"], "complete")
+        self.assertTrue(answer.extraction["range_complete"])
+        self.assertEqual(answer.extraction["page_start"], 12)
+        self.assertEqual(answer.extraction["page_end"], 13)
+        self.assertEqual(answer.extraction["requested_page_end"], 13)
+        self.assertEqual([anchor["page_no"] for anchor in answer.anchors], [12, 13])
+        self.assertTrue(rendered.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn("Section complete.", rendered.content)
+        self.assertIn(page_12, rendered.content)
+        self.assertIn(page_13, rendered.content)
+        self.assertLess(rendered.content.index(page_12), rendered.content.index(page_13))
+        _assert_visible_surface_clean(self, rendered.content)
+        self.assertNotIn(page_12, _json(observed))
+        self.assertNotIn(page_13, _json(observed))
+        self.assertNotIn(page_12, _json(rendered.to_observability()))
+        self.assertNotIn(page_13, _json(rendered.to_observability()))
+
+    def test_section_segment_extraction_renders_exact_segment_without_claiming_complete_section(self) -> None:
+        page_12 = "RAW SECTION SEGMENT PAGE 12 MUST ONLY RENDER VISIBLY"
+        page_13 = "RAW SECTION SEGMENT PAGE 13 MUST ONLY RENDER VISIBLY"
+        section_interval = {
+            "type": "section_bounds",
+            "state": "derived",
+            "start": {"page_no": 12},
+            "end": {"page_no": 14},
+        }
+        bounds = _tool_result(
+            tool_name=tools.TOOL_SECTION_BOUNDS,
+            status=tools.STATUS_RESOLVED,
+            reason_code=tools.REASON_RESOLVED,
+            endpoint_kind=catalogue.ENDPOINT_CHAPTERS,
+            document_id="doc-1",
+            items=({"section_id": "sec-1", "document_id": "doc-1", "interval": section_interval},),
+            anchors=({"page_no": 12}, {"page_no": 14}),
+            interval=section_interval,
+        )
+        page_read_12 = _tool_result(
+            tool_name=tools.TOOL_PAGE_READ,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_PAGE,
+            document_id="doc-1",
+            positions=({"page_no": 12},),
+            page_text=page_12,
+        )
+        page_read_13 = _tool_result(
+            tool_name=tools.TOOL_PAGE_READ,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_PAGE,
+            document_id="doc-1",
+            positions=({"page_no": 13},),
+            page_text=page_13,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(bounds, page_read_12, page_read_13),
+            product_method=product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION,
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(answer.extraction["content_kind"], "section_segment")
+        self.assertEqual(answer.extraction["range_state"], "segment")
+        self.assertFalse(answer.extraction["range_complete"])
+        self.assertEqual(answer.extraction["requested_page_end"], 14)
+        self.assertEqual(answer.extraction["next_anchor"]["page_no"], 14)
+        self.assertIn("section_segment_partial", answer.extraction["limits"])
+        self.assertIn("section_continuation_anchor_present", answer.extraction["limits"])
+        self.assertTrue(rendered.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn("Segment de section.", rendered.content)
+        self.assertIn("section rendue par segment", rendered.content)
+        self.assertNotIn("Section complete.", rendered.content)
+        self.assertIn(page_12, rendered.content)
+        self.assertIn(page_13, rendered.content)
+        _assert_visible_surface_clean(self, rendered.content)
+        self.assertNotIn(page_12, _json(observed))
+        self.assertNotIn(page_13, _json(observed))
+
     def test_canonical_extraction_renders_exact_page_read_with_anchor(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_PAGE_READ,

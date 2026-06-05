@@ -91,7 +91,9 @@ def state_anchor_from_tool_results(
     *,
     status: str,
     reason_code: str | None = None,
+    answer: Any = None,
 ) -> dict[str, Any]:
+    answer_interval = _interval_hint_from_answer(answer)
     for result in reversed(tool_results):
         if result is None:
             continue
@@ -111,13 +113,44 @@ def state_anchor_from_tool_results(
             "para_no": _int(position.get("para_no")),
             "paragraph_id": _int(position.get("paragraph_id")),
         }
-        if result.interval:
+        if answer_interval:
+            anchor["interval_hint"] = answer_interval
+        elif result.interval:
             anchor["interval_hint"] = dict(result.interval)
         if result.context_text:
             anchor["passage_hash"] = hashlib.sha256(result.context_text.encode("utf-8")).hexdigest()[:12]
             anchor["passage_chars"] = len(result.context_text)
         return {key: value for key, value in anchor.items() if value not in ("", None)}
     return {}
+
+
+def _interval_hint_from_answer(answer: Any) -> dict[str, Any]:
+    extraction = getattr(answer, "extraction", None)
+    if not isinstance(extraction, dict) or not extraction:
+        return {}
+    content_kind = _text(extraction.get("content_kind"))
+    if content_kind not in {"section_complete", "section_segment", "canonical_range", "canonical_range_segment"}:
+        return {}
+    next_anchor = extraction.get("next_anchor")
+    if not isinstance(next_anchor, dict):
+        next_anchor = {}
+    kind = "section" if content_kind in {"section_complete", "section_segment"} else "range"
+    return {
+        key: value
+        for key, value in {
+            "kind": kind,
+            "mode": content_kind,
+            "state": _text(extraction.get("range_state")) or ("segment" if content_kind.endswith("_segment") else "complete"),
+            "start_page_no": _int(extraction.get("page_start")),
+            "end_page_no": _int(extraction.get("page_end")),
+            "requested_end_page_no": _int(extraction.get("requested_page_end")),
+            "next_page_no": _int(next_anchor.get("page_no")),
+            "next_para_no": _int(next_anchor.get("para_no")),
+            "next_paragraph_id": _int(next_anchor.get("paragraph_id")),
+            "page_span": _int(extraction.get("page_count")),
+        }.items()
+        if value not in ("", None)
+    }
 
 
 def _text(value: Any) -> str:

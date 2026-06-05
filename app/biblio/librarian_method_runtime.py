@@ -74,6 +74,7 @@ _SECTION_START_PAGE_BLOCK_ANSWER_MODES = frozenset(
 )
 
 _SECTION_START_PAGE_COUNT = 2
+_SECTION_COMPLETE_PAGE_SEGMENT_MAX = 3
 _EXTRACTION_PAGE_REQUEST_MAX_PAGES = 3
 
 _THEME_QUERY_STOPWORDS = frozenset(
@@ -178,6 +179,15 @@ def complete_product_method_loop(
         repaired = _complete_section_start_page_block(
             loop_result,
             plan=plan,
+            registry=registry,
+        )
+        if _has_endpoint(repaired, "page"):
+            return repaired
+        loop_result = repaired
+
+    if _wants_section_complete_extraction(product_method, plan):
+        repaired = _complete_section_complete_extraction(
+            loop_result,
             registry=registry,
         )
         if _has_endpoint(repaired, "page"):
@@ -341,6 +351,17 @@ def _wants_section_start_page_block(
         if call.tool_name == librarian_tools.TOOL_LOCATE and _text(call.params.get("kind")) == "section":
             return True
     return False
+
+
+def _wants_section_complete_extraction(
+    product_method: str,
+    plan: librarian_planner.BiblioLibrarianPlan,
+) -> bool:
+    answer_mode = _text(getattr(plan, "answer_mode", ""))
+    return (
+        product_method == product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION
+        or product_methods.is_section_complete_extraction_answer_mode(answer_mode)
+    )
 
 
 def _first_document_id(loop_result: librarian_planner.BiblioLibrarianLoopResult) -> str:
@@ -511,6 +532,39 @@ def _complete_section_start_page_block(
     if start_page is None:
         return loop_result
     return _append_section_start_pages(loop_result, registry=registry, document_id=doc_id, start_page=start_page)
+
+
+def _complete_section_complete_extraction(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    registry: librarian_tools.BiblioLibrarianToolRegistry,
+) -> librarian_planner.BiblioLibrarianLoopResult:
+    doc_id = _first_document_id(loop_result)
+    if not doc_id:
+        return loop_result
+    start_page = _first_section_start_page(loop_result, document_id=doc_id)
+    end_page = _first_section_end_page(loop_result, document_id=doc_id)
+    if start_page is None or end_page is None or end_page < start_page:
+        return loop_result
+    available = max(0, loop_result.options.max_tool_calls - loop_result.tool_call_count)
+    if available <= 0:
+        return loop_result
+    segment_end = min(end_page, start_page + _SECTION_COMPLETE_PAGE_SEGMENT_MAX - 1, start_page + available - 1)
+    pages_to_read = tuple(
+        page_no
+        for page_no in range(start_page, segment_end + 1)
+        if not _has_page_read(loop_result, document_id=doc_id, page_no=page_no)
+    )
+    if not pages_to_read:
+        return loop_result
+    for page_no in pages_to_read:
+        loop_result = _append_tool_call(
+            loop_result,
+            registry=registry,
+            tool_name=librarian_tools.TOOL_PAGE_READ,
+            params={"document_id": doc_id, "page_no": page_no},
+        )
+    return loop_result
 
 
 def _complete_explicit_page_extraction(

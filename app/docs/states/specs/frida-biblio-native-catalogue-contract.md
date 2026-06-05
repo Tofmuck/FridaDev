@@ -552,6 +552,37 @@ Extraction depuis candidat de recherche ancre Last Chance Lot 4E.3 livree:
   `passage_context`, `exact_excerpt`, final lock autorise et surface visible
   propre. L'artefact reste content-free.
 
+Extraction de section complete budgetee BIB-23:
+
+- la methode dediee est `product_method=section_complete_extraction`, dans la
+  famille canonique `extraction`;
+- le bibliothecaire choisit documentairement le document et la section. Le
+  determinisme ne choisit pas une section parmi plusieurs et ne juge jamais sa
+  pertinence semantique;
+- `section_bounds` reste une preuve de bornes, pas une extraction. Le texte
+  exact vient uniquement de `page_read` effectivement execute sur les pages
+  bornees;
+- si la section tient dans le budget outille, le rendu peut etre
+  `section_complete` avec `range_complete=true`;
+- si la section est longue, le runtime rend un segment exact mecanique avec
+  `range_complete=false`, une ancre de continuation et une surface visible qui
+  dit clairement que ce n'est pas toute la section. Le segment ne doit jamais
+  etre vendu comme section complete;
+- la continuation utilise l'etat courant et relit mecaniquement la suite par
+  outil GET-only (`page_read` dans la preuve live actuelle), sans re-resoudre au
+  hasard une nouvelle section;
+- le message visible garde seulement provenance courte, statut de segment ou
+  complet et texte exact. Les `document_id`, `unit_start`, `unit_end`,
+  `boundary_state`, statuts machine, reason codes et hashes restent en
+  `message.meta`, observabilite et JSONL content-free;
+- preuve live BIB-23:
+  `app/docs/states/baselines/biblio-smokes/bib23-section-complete-real-conversation-20260605T210700Z.jsonl`;
+  `BIB23_LONG_SECTION_SEGMENT_REAL_CONVERSATION=met` et
+  `BIB23_LONG_SECTION_CONTINUATION_REAL_CONVERSATION=met` prouvent une section
+  longue bornee, un premier segment exact, `range_complete=false`, ancre de
+  continuation, continuation mecanique, final lock autorise, message assistant
+  sauvegarde, meta Biblio presente et surface visible propre.
+
 Correction transition agentique live 4E:
 
 - les familles canoniques live doivent etre exposees au bibliothecaire comme
@@ -627,8 +658,12 @@ Verrou de preuve Last Chance Lot 4:
   `bib21-real-conversation-20260605T082358Z.jsonl`, avec document deja ancre,
   section resolue, deux `page_read`, `exact_excerpt`, final lock autorise et
   surface visible propre;
-- section complete BIB-23 reste partielle/ouverte: pas encore de moteur de
-  section complete budgetee/decoupee ni de preuve live de fermeture;
+- section complete budgetee BIB-23 est fermee live par
+  `bib23-section-complete-real-conversation-20260605T210700Z.jsonl`: section
+  longue bornee -> segment exact, `range_complete=false`, ancre de
+  continuation, puis continuation mecanique. Cette fermeture ne permet pas de
+  vendre un segment comme section complete ni d'exporter silencieusement une
+  section hors budget;
 - apres ce verrou, aucun nouveau `4E.x` opportuniste ne doit etre ajoute pour
   section longue, Stephanus complet, ranking semantique, navigation lecteur,
   provenance ou etat de lecture. Ces sujets relevent d'un lot separe ou du

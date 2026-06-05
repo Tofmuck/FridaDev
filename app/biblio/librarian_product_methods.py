@@ -43,6 +43,7 @@ PRODUCT_METHOD_CATALOG_LIST_FULL = "catalog_list_full"
 PRODUCT_METHOD_CATALOG_LIST_BOUNDED = "catalog_list_bounded"
 PRODUCT_METHOD_WORK_LOOKUP = "work_lookup"
 PRODUCT_METHOD_DOCUMENT_TOC_SHOW = "document_toc_show"
+PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION = "section_complete_extraction"
 PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE = "passage_extract_canonical_range"
 PRODUCT_METHOD_PASSAGE_SET_CURRENT_REFERENCE = "passage_set_current_reference"
 PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK = "passage_search_in_work"
@@ -60,6 +61,13 @@ SECTION_START_EXTRACTION_ANSWER_MODES = frozenset(
         "bounded_context_extract_start_of_section",
         "deliver_excerpt_context_from_section_start",
         "section_start_page_block_2",
+    }
+)
+
+SECTION_COMPLETE_EXTRACTION_ANSWER_MODES = frozenset(
+    {
+        "section_complete_budgeted",
+        "section_complete_or_segment",
     }
 )
 
@@ -158,6 +166,23 @@ METHOD_SPECS = (
             tools.TOOL_PASSAGE_CONTEXT,
         ),
         preconditions=("biblio_enabled", "document_anchor_or_position_present"),
+        truth_levels=(TRUTH_LEVEL_EXACT,),
+        execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
+    ),
+    BiblioProductMethodSpec(
+        product_method=PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION,
+        canonical_family=CANONICAL_FAMILY_EXTRACTION,
+        case_ids=(),
+        allowed_tool_names=(
+            tools.TOOL_SEARCH_DOCUMENT,
+            tools.TOOL_SEARCH_WORK,
+            tools.TOOL_SEARCH_SECTION,
+            tools.TOOL_RESOLVE_WORK,
+            tools.TOOL_RESOLVE_SECTION,
+            tools.TOOL_SECTION_BOUNDS,
+            tools.TOOL_PAGE_READ,
+        ),
+        preconditions=("biblio_enabled", "resolved_document", "resolved_section", "section_bounds_known"),
         truth_levels=(TRUTH_LEVEL_EXACT,),
         execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
     ),
@@ -535,6 +560,10 @@ def is_section_start_extraction_answer_mode(answer_mode: Any) -> bool:
     return str(answer_mode or "").strip() in SECTION_START_EXTRACTION_ANSWER_MODES
 
 
+def is_section_complete_extraction_answer_mode(answer_mode: Any) -> bool:
+    return str(answer_mode or "").strip() in SECTION_COMPLETE_EXTRACTION_ANSWER_MODES
+
+
 def default_case_id_for_method(product_method: str) -> str:
     spec = get_product_method_spec(product_method)
     if spec is None or len(spec.case_ids) != 1:
@@ -584,6 +613,8 @@ def infer_product_method(*, intent: Any, answer_mode: Any, tool_names: list[str]
 
     if clean_answer_mode == "clarify" or clean_intent == "clarify" or not unique_tools:
         return PRODUCT_METHOD_CLARIFY_BIBLIO_REQUEST
+    if is_section_complete_extraction_answer_mode(clean_answer_mode):
+        return PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION
     if clean_intent == CANONICAL_FAMILY_INVENTORY_METADATA:
         return PRODUCT_METHOD_INVENTORY_METADATA
     if clean_intent == CANONICAL_FAMILY_DOCUMENT_RESOLUTION:

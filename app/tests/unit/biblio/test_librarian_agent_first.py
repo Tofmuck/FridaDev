@@ -1242,6 +1242,161 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertFalse(result.rendered_answer.exact_text_rendered)
         self.assertNotIn("RAW PAGE", result.rendered_answer.content)
 
+    def test_section_complete_extraction_reads_all_bounded_pages_when_short(self) -> None:
+        page_12 = "RAW COMPLETE SECTION PAGE 12 MUST NOT LEAK"
+        page_13 = "RAW COMPLETE SECTION PAGE 13 MUST NOT LEAK"
+        chapters_payload = _section_chapters_payload(unit_no_by_chapter={3: 14})
+        fake = _FakeAgentFirstClient(
+            chapters_payload=chapters_payload,
+            page_payloads={
+                12: {"document_id": "doc-1234", "raw_text": page_12, "paragraph_count": 4},
+                13: {"document_id": "doc-1234", "raw_text": page_13, "paragraph_count": 5},
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION,
+                    case_id="",
+                    answer_mode="section_complete_budgeted",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SECTION_BOUNDS,
+                            method="GET",
+                            params={"document_id": "doc-1234", "chapter_no": 2},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        encoded = json.dumps(
+            {
+                "loop": result.loop_result.to_observability() if result.loop_result else {},
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(
+            fake.calls,
+            [
+                ("chapters", "doc-1234", 500, 0),
+                ("page", "doc-1234", 12),
+                ("page", "doc-1234", 13),
+            ],
+        )
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.extraction["content_kind"], "section_complete")
+        self.assertTrue(result.answer_object.extraction["range_complete"])
+        self.assertEqual(result.answer_object.extraction["page_start"], 12)
+        self.assertEqual(result.answer_object.extraction["page_end"], 13)
+        self.assertEqual(result.answer_object.extraction["requested_page_end"], 13)
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn("Section complete.", result.rendered_answer.content)
+        self.assertLess(result.rendered_answer.content.index(page_12), result.rendered_answer.content.index(page_13))
+        self.assertNotIn(("context", "doc-1234", None, None, None, 0, 700), fake.calls)
+        self.assertNotIn(page_12, encoded)
+        self.assertNotIn(page_13, encoded)
+
+    def test_section_complete_extraction_reads_segment_when_section_exceeds_page_budget(self) -> None:
+        page_12 = "RAW SEGMENTED SECTION PAGE 12 MUST NOT LEAK"
+        page_13 = "RAW SEGMENTED SECTION PAGE 13 MUST NOT LEAK"
+        page_14 = "RAW SEGMENTED SECTION PAGE 14 MUST NOT LEAK"
+        fake = _FakeAgentFirstClient(
+            chapters_payload=_section_chapters_payload(),
+            page_payloads={
+                12: {"document_id": "doc-1234", "raw_text": page_12, "paragraph_count": 4},
+                13: {"document_id": "doc-1234", "raw_text": page_13, "paragraph_count": 5},
+                14: {"document_id": "doc-1234", "raw_text": page_14, "paragraph_count": 5},
+            },
+            context_payload={"document_id": "doc-1234", "text": "RAW CONTEXT MUST NOT BE CALLED"},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION,
+                    case_id="",
+                    answer_mode="section_complete_budgeted",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SECTION_BOUNDS,
+                            method="GET",
+                            params={"document_id": "doc-1234", "chapter_no": 2},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        encoded = json.dumps(
+            {
+                "loop": result.loop_result.to_observability() if result.loop_result else {},
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+                "state_anchor": result.state_anchor,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(
+            fake.calls,
+            [
+                ("chapters", "doc-1234", 500, 0),
+                ("page", "doc-1234", 12),
+                ("page", "doc-1234", 13),
+                ("page", "doc-1234", 14),
+            ],
+        )
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.extraction["content_kind"], "section_segment")
+        self.assertFalse(result.answer_object.extraction["range_complete"])
+        self.assertEqual(result.answer_object.extraction["page_start"], 12)
+        self.assertEqual(result.answer_object.extraction["page_end"], 14)
+        self.assertEqual(result.answer_object.extraction["requested_page_end"], 15)
+        self.assertEqual(result.answer_object.extraction["next_anchor"]["page_no"], 15)
+        self.assertEqual(result.state_anchor["interval_hint"]["kind"], "section")
+        self.assertEqual(result.state_anchor["interval_hint"]["state"], "segment")
+        self.assertEqual(result.state_anchor["interval_hint"]["next_page_no"], 15)
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn("Segment de section.", result.rendered_answer.content)
+        self.assertIn("section rendue par segment", result.rendered_answer.content)
+        self.assertNotIn("Section complete.", result.rendered_answer.content)
+        self.assertNotIn(("context", "doc-1234", None, None, None, 0, 700), fake.calls)
+        self.assertNotIn(page_12, encoded)
+        self.assertNotIn(page_13, encoded)
+        self.assertNotIn(page_14, encoded)
+
     def test_canonical_range_runtime_extracts_complete_interval_without_context_shortcut(self) -> None:
         range_text = "RAW COMPLETE CANONICAL RANGE MUST ONLY APPEAR IN RENDERED CONTENT"
         fake = _FakeAgentFirstClient(
@@ -2141,7 +2296,8 @@ def _plan(
     )
 
 
-def _section_chapters_payload() -> dict[str, Any]:
+def _section_chapters_payload(*, unit_no_by_chapter: dict[int, int] | None = None) -> dict[str, Any]:
+    units = {1: 1, 2: 12, 3: 16, **dict(unit_no_by_chapter or {})}
     return {
         "document": {
             "id": "doc-1234",
@@ -2155,9 +2311,9 @@ def _section_chapters_payload() -> dict[str, Any]:
         },
         "total": 3,
         "chapters": [
-            {"chapter_no": 1, "title": "RAW SECTION ONE MUST STAY INTERNAL", "unit_no": 1, "source": "toc"},
-            {"chapter_no": 2, "title": "RAW SECTION TWO MUST STAY INTERNAL", "unit_no": 12, "source": "toc"},
-            {"chapter_no": 3, "title": "RAW SECTION THREE MUST STAY INTERNAL", "unit_no": 16, "source": "toc"},
+            {"chapter_no": 1, "title": "RAW SECTION ONE MUST STAY INTERNAL", "unit_no": units[1], "source": "toc"},
+            {"chapter_no": 2, "title": "RAW SECTION TWO MUST STAY INTERNAL", "unit_no": units[2], "source": "toc"},
+            {"chapter_no": 3, "title": "RAW SECTION THREE MUST STAY INTERNAL", "unit_no": units[3], "source": "toc"},
         ],
     }
 

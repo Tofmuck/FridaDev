@@ -20,6 +20,9 @@ def exact_excerpt_lines(answer: Any, exact_text: str) -> list[str]:
     source = _source_line(answer)
     if source:
         lines.append(source)
+    scope = _scope_line(answer)
+    if scope:
+        lines.append(scope)
     limits = _limit_lines(answer)
     if limits:
         lines.extend(limits)
@@ -44,6 +47,16 @@ def _source_line(answer: Any) -> str:
     if section:
         parts.append(section)
     return "Source: " + ", ".join(parts) + "." if parts else ""
+
+
+def _scope_line(answer: Any) -> str:
+    extraction = _mapping(getattr(answer, "extraction", {}))
+    content_kind = _text(extraction.get("content_kind"))
+    if content_kind == "section_complete":
+        return "Section complete."
+    if content_kind == "section_segment":
+        return "Segment de section."
+    return ""
 
 
 def _doc_id(answer: Any) -> str:
@@ -125,6 +138,12 @@ def _visible_limit(value: Any) -> str:
     if text == "canonical_range_continuation_anchor_present":
         return "suite disponible depuis l'ancre de continuation"
     if text == "canonical_range_continuation_anchor_missing":
+        return "suite non garantie: ancre de continuation absente"
+    if text == "section_segment_partial":
+        return "section rendue par segment; la section complete n'est pas entierement affichee"
+    if text == "section_continuation_anchor_present":
+        return "suite disponible depuis l'ancre de continuation"
+    if text == "section_continuation_anchor_missing":
         return "suite non garantie: ancre de continuation absente"
     return ""
 

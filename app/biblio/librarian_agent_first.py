@@ -134,6 +134,7 @@ def run_agent_first_plan(
             tool_results,
             status=STATUS_AGENT_FIRST_EXECUTED,
             reason_code=REASON_AGENT_FIRST_EXECUTED,
+            answer=answer,
         ),
         executed=True,
     )

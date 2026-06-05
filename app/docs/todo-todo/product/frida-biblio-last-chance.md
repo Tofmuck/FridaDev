@@ -350,14 +350,20 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `BIB22_UNIQUE_ANCHORED_OCCURRENCE=met`.
   - Prochain test live requis: surveillance regression; hit unique scoped total
     et ancre -> `passage_context`; snippet jamais rendu.
-- [ ] BIB-23 - Sortir une section complete, avec decoupage si elle est longue.
-  - Statut: `partiel_live`
+- [x] BIB-23 - Sortir une section complete, avec decoupage si elle est longue.
+  - Statut: `ferme_live`
   - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib23-section-complete-real-conversation-20260605T210700Z.jsonl`,
+    `BIB23_LONG_SECTION_SEGMENT_REAL_CONVERSATION=met`,
+    `BIB23_LONG_SECTION_CONTINUATION_REAL_CONVERSATION=met`.
+  - Preuve partielle precedente:
     `app/docs/states/baselines/biblio-smokes/bib21-bib23-real-conversation-20260605T072804Z.jsonl`,
     `BIB23_COMPLETE_SECTION_LIMITED=partial`.
-  - Prochain test live requis: bornes fiables -> plan de decoupage, budget,
-    continuation ou streaming, pas lecture longue silencieuse. Le live du
-    2026-06-05 ne prouve pas encore section complete.
+  - Prochain test live requis: surveillance regression. La fermeture prouve
+    une section longue avec bornes fiables rendue comme segment exact
+    budgete, `range_complete=false`, ancre de continuation portee, puis
+    continuation mecanique par `page_read`. Le premier segment ne doit jamais
+    etre vendu comme la section complete.
 - [x] BIB-24 - Sortir une plage canonique, par exemple un repere Stephanus.
   - Statut: `ferme_live`
   - Preuve live:
@@ -630,8 +636,27 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     `BIB23_COMPLETE_SECTION_LIMITED=partial`
   - Requalification: entree conservee comme preuve partielle historique.
     BIB-21 est desormais ferme par
-    `bib21-real-conversation-20260605T082358Z.jsonl`; BIB-23 reste ouvert
-    fonctionnellement, sans moteur de section complete budgetee/decoupee.
+    `bib21-real-conversation-20260605T082358Z.jsonl`; BIB-23 est desormais
+    ferme par
+    `bib23-section-complete-real-conversation-20260605T210700Z.jsonl`.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-23 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib23-section-complete-real-conversation-20260605T210700Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `813adc8cad49`
+  - Proof cases: `BIB23_LONG_SECTION_SEGMENT_REAL_CONVERSATION`,
+    `BIB23_LONG_SECTION_CONTINUATION_REAL_CONVERSATION`
+  - Outils appeles: `resolve_work`, `resolve_section`, `section_bounds`,
+    `page_read`.
+  - Statut final: messages assistant sauvegardes, `final_response_lock`
+    autorise, meta Biblio presente, `exact_excerpt`, surface visible propre.
+  - Contrat ferme: section longue avec bornes fiables -> premier segment
+    exact sous budget, `range_complete=false`, ancre de continuation presente;
+    le tour suivant continue mecaniquement par `page_read`. Le segment n'est
+    pas presente comme la section complete.
+  - Reason codes: `biblio_agent_first_plan_executed`,
+    `biblio_librarian_agent_json_validated`,
+    `biblio_librarian_tool_executed`, `biblio_final_response_authorized`.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 - BIB-24 - 2026-06-05 -
   `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`
@@ -2879,7 +2904,7 @@ Matrice:
 | Extraction page X | `ferme_live` | `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`, `PG4E_PAGE_ONE=met` | deja ferme pour page unique courte via `page_read`, final lock et message final | surveiller Lot 5 |
 | Extraction pages X-Y courtes | `ferme_live` | meme artefact, `PG4E_PAGE_TWO=met` apres audit harness | deja ferme pour deux pages contigues; limite actuelle 1 a 3 pages / 8 000 caracteres | surveiller Lot 5 |
 | Extraction deux premieres pages d'une section | `ferme_live` | Lot 4E.2 tests + `bib21-real-conversation-20260605T082358Z.jsonl` | document deja ancre + section explicite -> `section_bounds` -> deux `page_read` -> exact lock | surveiller; ne ferme pas section complete longue |
-| Extraction section complete longue | `ouvert` | hors scope Lot 4E.1/4E.2 | section debut/fin resolues -> plan decoupage/budget/continuation/streaming; pas de lecture longue silencieuse | Lot extraction longue separe |
+| Extraction section complete longue | `ferme_live` | `bib23-section-complete-real-conversation-20260605T210700Z.jsonl` | section debut/fin resolues -> segment exact budgete avec `range_complete=false`, ancre de continuation, puis continuation mecanique; pas de lecture longue silencieuse ni segment vendu comme section complete | surveiller budget/continuation |
 | Extraction autour d'une occurrence unique ancree | `ferme_live` | Lot 4E.3 tests + `bib21-bib23-real-conversation-20260605T072804Z.jsonl` | live extraction explicite -> `catalog_search` scoped unique -> `passage_context` -> exact lock; snippet jamais rendu | surveiller |
 | Plage canonique type Stephanus | `ferme_live` pour plage courte bornee + segment long continuable | `bib24-canonical-range-closed-real-conversation-20260605T114227Z.jsonl`; `bib24-long-canonical-range-real-conversation-20260605T121503Z.jsonl`; negatives historiques `bib24-canonical-range-real-conversation-20260605T084309Z.jsonl`, `bib24-canonical-range-complete-real-conversation-20260605T101356Z.jsonl`, diagnostic Catalogue `bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl` | `canonical_range_extract` ferme une plage courte complete sous budget; une plage longue fiable devient un segment exact avec `range_complete=false` et continuation; un `passage_context` ou snippet ne vaut toujours jamais plage complete | surveiller scopes ambigus et export complet long |
 | Navigation lecteur: continue, page suivante/precedente | `ouvert` | ancrage page existe dans resultats; pas d'etat lecteur global ferme | message avec ancre courante -> page suivante/precedente lue, message final verifie | Lot navigation lecteur |

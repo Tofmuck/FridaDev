@@ -37,6 +37,7 @@ _MECHANICAL_TEXT_TOOLS = frozenset(
 _MECHANICAL_TEXT_PROJECTION_METHODS = frozenset(
     {
         product_methods.PRODUCT_METHOD_EXTRACTION,
+        product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION,
         product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK,
         product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
     }
@@ -56,7 +57,8 @@ def build_extraction(
         return {}
     candidates = _candidates_from_results(results, product_method=product_method)
     extraction_attempted = any(_is_allowed_text_tool(result.tool_name, product_method) for result in results)
-    projection = _project_blocks(candidates, extraction_attempted=extraction_attempted)
+    section_interval = _section_interval_from_results(results) if product_method == product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION else {}
+    projection = _project_blocks(candidates, extraction_attempted=extraction_attempted, section_interval=section_interval)
     status = _extraction_status(
         results,
         projection=projection,
@@ -186,6 +188,10 @@ def _content_kind_line(content_kind: str, range_state: str) -> str:
         return "Plage canonique complete." if range_state != "segment" else "Segment de plage canonique."
     if content_kind == "canonical_range_segment":
         return "Segment de plage canonique."
+    if content_kind == "section_complete":
+        return "Section complete."
+    if content_kind == "section_segment":
+        return "Segment de section."
     return ""
 
 
@@ -196,6 +202,12 @@ def _visible_limit(value: Any) -> str:
     if text == "canonical_range_continuation_anchor_present":
         return "suite disponible"
     if text == "canonical_range_continuation_anchor_missing":
+        return "suite non garantie"
+    if text == "section_segment_partial":
+        return "section affichee par segment"
+    if text == "section_continuation_anchor_present":
+        return "suite disponible"
+    if text == "section_continuation_anchor_missing":
         return "suite non garantie"
     if text == librarian_tools.REASON_BUDGET_OR_LIMIT_EXCEEDED:
         return "budget de rendu depasse"
@@ -343,7 +355,12 @@ def _is_allowed_text_tool(tool_name: str, product_method: str) -> bool:
     return tool_name in _MECHANICAL_TEXT_TOOLS
 
 
-def _project_blocks(candidates: Sequence[Mapping[str, Any]], *, extraction_attempted: bool) -> dict[str, Any]:
+def _project_blocks(
+    candidates: Sequence[Mapping[str, Any]],
+    *,
+    extraction_attempted: bool,
+    section_interval: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     valid_blocks = tuple(candidate for candidate in candidates if _has_minimum_anchor(candidate))
     if not valid_blocks:
         selected = candidates[0] if candidates else {}
@@ -375,7 +392,7 @@ def _project_blocks(candidates: Sequence[Mapping[str, Any]], *, extraction_attem
         }
     kind = kinds[0] if kinds else ""
     if kind == "page":
-        return _project_page_blocks(valid_blocks)
+        return _project_page_blocks(valid_blocks, section_interval=section_interval or {})
     if len(valid_blocks) > 1:
         selected = dict(valid_blocks[0])
         return {
@@ -387,7 +404,11 @@ def _project_blocks(candidates: Sequence[Mapping[str, Any]], *, extraction_attem
     return _project_single_block(valid_blocks[0], extraction_attempted=extraction_attempted)
 
 
-def _project_page_blocks(blocks: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def _project_page_blocks(
+    blocks: Sequence[Mapping[str, Any]],
+    *,
+    section_interval: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     by_page: dict[int, Mapping[str, Any]] = {}
     for block in blocks:
         page_no = _int(_mapping(block.get("anchor")).get("page_no"))
@@ -429,7 +450,8 @@ def _project_page_blocks(blocks: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "blocking_reason": librarian_tools.REASON_EXTRACTION_PAGE_RANGE_INCOMPLETE,
         }
     combined_text = "\n\n".join(_text(block.get("_exact_text")) for block in ordered_source_blocks)
-    content_kind = "page_range" if len(ordered_blocks) > 1 else "page"
+    section_projection = _section_projection(ordered_pages, ordered_blocks, section_interval or {})
+    content_kind = _text(section_projection.get("content_kind")) or ("page_range" if len(ordered_blocks) > 1 else "page")
     if len(combined_text) > _MAX_EXACT_TEXT_CHARS:
         return {
             **selected,
@@ -439,12 +461,14 @@ def _project_page_blocks(blocks: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "page_start": ordered_pages[0],
             "page_end": ordered_pages[-1],
             "page_count": len(ordered_pages),
+            **section_projection,
             "blocking_reason": librarian_tools.REASON_BUDGET_OR_LIMIT_EXCEEDED,
         }
     return _clean(
         {
             **selected,
             "content_kind": content_kind,
+            **section_projection,
             "exact_text_chars": len(combined_text),
             "exact_text_hash": _hash(combined_text),
             "blocks": ordered_blocks,
@@ -510,6 +534,79 @@ def _result_anchor(result: librarian_tools.BiblioLibrarianToolResult) -> dict[st
             if anchor:
                 return anchor
     return {}
+
+
+def _section_interval_from_results(
+    results: Sequence[librarian_tools.BiblioLibrarianToolResult],
+) -> dict[str, Any]:
+    for result in reversed(results):
+        if result.tool_name != librarian_tools.TOOL_SECTION_BOUNDS or result.status != librarian_tools.STATUS_RESOLVED:
+            continue
+        document_id = _text(getattr(result, "document_id", ""))
+        interval = _mapping(getattr(result, "interval", {}))
+        start_page = _section_interval_page(interval, "start")
+        end_page = _section_interval_page(interval, "end")
+        if not document_id or not start_page or not end_page or end_page < start_page:
+            continue
+        return _clean(
+            {
+                "document_id": document_id,
+                "start_page_no": start_page,
+                "end_page_no": end_page,
+                "state": _text(interval.get("state")) or _text(interval.get("boundary_state")),
+                "section_id": _first_item_text(result.items, "section_id"),
+            }
+        )
+    return {}
+
+
+def _section_interval_page(interval: Mapping[str, Any], key: str) -> int:
+    anchor = _mapping(interval.get(key))
+    page_no = _int(anchor.get("page_no"))
+    if page_no:
+        return page_no
+    unit_label = _text(anchor.get("unit_label"))
+    unit_no = _int(anchor.get("unit_no"))
+    if unit_label == "pages" and unit_no:
+        return unit_no
+    return 0
+
+
+def _section_projection(
+    ordered_pages: Sequence[int],
+    ordered_blocks: Sequence[Mapping[str, Any]],
+    section_interval: Mapping[str, Any],
+) -> dict[str, Any]:
+    if not ordered_pages or not section_interval:
+        return {}
+    document_id = _text(section_interval.get("document_id"))
+    block_document_id = _text(ordered_blocks[0].get("document_id")) if ordered_blocks else ""
+    start_page = _int(section_interval.get("start_page_no"))
+    requested_end = _int(section_interval.get("end_page_no"))
+    if not document_id or document_id != block_document_id or not start_page or not requested_end:
+        return {}
+    if ordered_pages[0] != start_page or requested_end < start_page:
+        return {}
+    page_end = ordered_pages[-1]
+    if page_end >= requested_end:
+        return {
+            "content_kind": "section_complete",
+            "range_state": "complete",
+            "range_complete": True,
+            "requested_page_end": requested_end,
+        }
+    next_page = page_end + 1
+    return {
+        "content_kind": "section_segment",
+        "range_state": "segment",
+        "range_complete": False,
+        "requested_page_end": requested_end,
+        "next_anchor": {"page_no": next_page},
+        "limits": (
+            "section_segment_partial",
+            "section_continuation_anchor_present" if next_page <= requested_end else "section_continuation_anchor_missing",
+        ),
+    }
 
 
 def _interval_anchor(interval: Mapping[str, Any], prefix: str) -> dict[str, Any]:
@@ -614,6 +711,16 @@ def _canonical_range_limits(interval: Mapping[str, Any]) -> tuple[str, ...]:
     else:
         values.append("canonical_range_continuation_anchor_missing")
     return tuple(values)
+
+
+def _first_item_text(items: Sequence[Mapping[str, Any]], key: str) -> str:
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        text = _text(item.get(key))
+        if text:
+            return text
+    return ""
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
