@@ -496,6 +496,46 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         )
         self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", encoded)
 
+    def test_agent_first_repairs_same_canonical_range_method_with_work_anchor(self) -> None:
+        fake_model = _FakeAgentModel(
+            _valid_agent_json(
+                product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+                tool_name=librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT,
+                params={"locator": "126b", "locator_end": "128a", "kind": "stephanus"},
+            )
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Dans le Théétète de Platon, extrais le passage 126b à 128a.",
+            client_factory=lambda **_kwargs: _VariantRequiredCanonicalRangeWorkClient(),
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        agent_observed = result.observability_payload["librarian_agent"]
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        self.assertEqual(result.answer_object.render_mode, "exact_excerpt")
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(agent_observed["used_for_response"])
+        self.assertEqual(
+            agent_observed["tool_loop"]["tool_names"],
+            [librarian_tools.TOOL_RESOLVE_WORK, librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT],
+        )
+        self.assertIn(librarian_tools.ENDPOINT_CANONICAL_RANGE, agent_observed["tool_loop"]["endpoint_kinds"])
+        self.assertEqual(
+            result.observability_payload["product_method"],
+            librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+        )
+        self.assertNotIn("RAW SEARCH TEXT MUST NOT BE OBSERVABLE", encoded)
+        self.assertNotIn("RAW CONTEXT TEXT MUST NOT BE OBSERVABLE", encoded)
+
     def test_agent_first_uses_bounded_fallback_plan_when_active_model_returns_invalid_json(self) -> None:
         fake_model = _FakeAgentModel("not json")
         result = chat_runtime.run_biblio_chat_turn(
@@ -1947,6 +1987,59 @@ class _CanonicalRangeFakeClient(_FakeClient):
             result_count=1,
             doc_id_short=catalogue.short_doc_id(doc_id),
         )
+
+
+class _AmbiguousCanonicalRangeWorkClient(_FakeClient):
+    def locate(
+        self,
+        doc_id: str,
+        locator: str,
+        *,
+        kind: str = "stephanus",
+        limit: int = 200,
+    ) -> catalogue.CatalogueResponse:
+        if locator == "126b":
+            anchored = {"kind": kind, "label": locator, "page_no": 131, "para_no": 230, "paragraph_id": 77639}
+            decoy = {"kind": kind, "label": locator, "page_no": 1, "para_no": 1, "paragraph_id": 10}
+        else:
+            anchored = {"kind": kind, "label": locator, "page_no": 131, "para_no": 246, "paragraph_id": 77655}
+            decoy = {"kind": kind, "label": locator, "page_no": 1, "para_no": 2, "paragraph_id": 11}
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_LOCATE,
+            status_code=200,
+            payload={
+                "match_count": 2,
+                "best": decoy,
+                "alternatives": [anchored],
+            },
+            duration_ms=1,
+            result_count=2,
+            doc_id_short=catalogue.short_doc_id(doc_id),
+        )
+
+
+class _VariantRequiredCanonicalRangeWorkClient(_AmbiguousCanonicalRangeWorkClient):
+    def search(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        if q != "Théétète":
+            return catalogue.CatalogueResponse(
+                endpoint_kind=catalogue.ENDPOINT_SEARCH,
+                status_code=200,
+                payload={"count": 0, "results": []},
+                duration_ms=1,
+                result_count=0,
+            )
+        return super().search(q, limit=limit)
+
+    def search_chapters(self, q: str, *, limit: int = 20) -> catalogue.CatalogueResponse:
+        if q != "Théétète":
+            return catalogue.CatalogueResponse(
+                endpoint_kind=catalogue.ENDPOINT_CHAPTER_SEARCH,
+                status_code=200,
+                payload={"count": 0, "results": []},
+                duration_ms=1,
+                result_count=0,
+            )
+        return super().search_chapters(q, limit=limit)
 
 
 class _ParagraphIdFailingContextClient(_FakeClient):

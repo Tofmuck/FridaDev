@@ -459,6 +459,15 @@ def _with_carried_anchor(
             if key not in params and position.get(key) is not None:
                 params[key] = position[key]
                 changed = True
+    if call.tool_name == tools.TOOL_CANONICAL_RANGE_EXTRACT and position:
+        page_no = position.get("page_no")
+        para_no = position.get("para_no")
+        if "locator_anchor_page" not in params and page_no is not None:
+            params["locator_anchor_page"] = page_no
+            changed = True
+        if "locator_anchor_para" not in params and para_no is not None:
+            params["locator_anchor_para"] = para_no
+            changed = True
     if call.tool_name == tools.TOOL_SECTION_BOUNDS and section_anchor:
         if not (params.get("section_id") or params.get("chapter_no") or params.get("q") or params.get("query")):
             for key in ("section_id", "chapter_no"):

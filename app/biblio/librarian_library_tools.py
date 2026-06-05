@@ -11,7 +11,9 @@ import unicodedata
 from typing import Any, Mapping, Sequence
 
 from . import catalogue_client as catalogue
+from . import query_planner
 from . import librarian_tools as tools
+from . import work_resolver
 from .structure import schema as structure_schema
 from .structure.builder import build_document_manifest
 
@@ -75,6 +77,10 @@ def _resolve_work(client: Any, params: Mapping[str, Any]) -> tools.BiblioLibrari
         tool=tool,
         max_chars=tools._QUERY_MAX,
     )
+    structured_plan = _structured_work_resolution_plan(params, doc_id=doc_id, query=query)
+    if structured_plan is not None:
+        structured = work_resolver.BiblioWorkResolver(client).resolve(structured_plan)
+        return _work_resolver_tool_result(tool, structured, query=query, doc_id=doc_id)
     limit = tools._integer(params.get("limit", 5), tool=tool, name="limit", minimum=1, maximum=20)
     if not doc_id and not query:
         raise tools._tool_error(tool, tools.REASON_MISSING_QUERY)
@@ -193,6 +199,127 @@ def _section_bounds(client: Any, params: Mapping[str, Any]) -> tools.BiblioLibra
             "unit_start": tools._raw_int(item.get("unit_start")),
             "unit_end": tools._raw_int(item.get("unit_end")),
         },
+    )
+
+
+def _structured_work_resolution_plan(
+    params: Mapping[str, Any],
+    *,
+    doc_id: str,
+    query: str,
+) -> query_planner.BiblioQueryPlan | None:
+    tool = tools.TOOL_RESOLVE_WORK
+    document_title = tools._text(params, "document_title", tool=tool, max_chars=tools._QUERY_MAX)
+    work_title = tools._text(params, "work_title", tool=tool, max_chars=tools._QUERY_MAX)
+    author = tools._text(params, "author", tool=tool, max_chars=tools._QUERY_MAX)
+    locator = tools._text(params, "locator", tool=tool, max_chars=tools._LOCATOR_MAX)
+    locator_end = tools._text(params, "locator_end", tool=tool, max_chars=tools._LOCATOR_MAX)
+    locator_kind = tools._text(params, "kind", tool=tool, max_chars=40) or "stephanus"
+    if not any((document_title, work_title, author, locator, locator_end)):
+        return None
+    plan = query_planner.BiblioQueryPlan(
+        should_consult=True,
+        intent=query_planner.INTENT_RESOLVE_WORK,
+        reason_code=query_planner.REASON_WORK_REQUESTED,
+        query_kind=query_planner.INTENT_RESOLVE_WORK,
+        document_id=doc_id,
+        catalogue_query=query or document_title or author or work_title,
+        document_title=document_title,
+        work_title=work_title or (query if not document_title else ""),
+        author=author,
+        locator=locator,
+        locator_end=locator_end,
+        locator_kind=locator_kind,
+        limit=5,
+    )
+    with_variants = getattr(query_planner, "_with_variants", None)
+    return with_variants(plan) if callable(with_variants) else plan
+
+
+def _work_resolver_tool_result(
+    tool: str,
+    resolution: work_resolver.BiblioWorkResolution,
+    *,
+    query: str,
+    doc_id: str,
+) -> tools.BiblioLibrarianToolResult:
+    if resolution.status == work_resolver.STATUS_CATALOGUE_UNAVAILABLE:
+        status = tools.STATUS_ERROR
+        reason_code = tools.REASON_CATALOGUE_UNAVAILABLE
+    elif resolution.status == work_resolver.STATUS_AMBIGUOUS:
+        status = tools.STATUS_AMBIGUOUS
+        reason_code = tools.REASON_AMBIGUOUS
+    elif resolution.status == work_resolver.STATUS_NOT_FOUND:
+        status = tools.STATUS_NOT_FOUND
+        reason_code = tools.REASON_WORK_ALIAS_MISSING
+    elif resolution.status in {work_resolver.STATUS_RESOLVED, work_resolver.STATUS_SEARCHED}:
+        status = tools.STATUS_RESOLVED if resolution.status == work_resolver.STATUS_RESOLVED else tools.STATUS_OK
+        reason_code = tools.REASON_RESOLVED if resolution.status == work_resolver.STATUS_RESOLVED else tools.REASON_OK
+    else:
+        status = tools.STATUS_ERROR
+        reason_code = tools.REASON_UNEXPECTED_STATUS
+
+    request = resolution.resolve_request
+    request_doc_id = tools._string(getattr(request, "document_id", "")) if request is not None else ""
+    effective_doc_id = request_doc_id or doc_id
+    position = tools._clean_observation(
+        {
+            "document_id": effective_doc_id,
+            "page_no": tools._raw_int(getattr(request, "locator_anchor_page", None)) if request is not None else None,
+            "para_no": tools._raw_int(getattr(request, "locator_anchor_para", None)) if request is not None else None,
+        }
+    )
+    positions = (position,) if position.get("page_no") or position.get("para_no") else ()
+    items: tuple[dict[str, Any], ...] = ()
+    if effective_doc_id:
+        items = (
+            tools._clean_observation(
+                {
+                    "candidate_type": "work",
+                    "work_kind": resolution.documentary_target or "work_scope",
+                    "document_id": effective_doc_id,
+                    "doc_id_short": catalogue.short_doc_id(effective_doc_id),
+                    "page_no": position.get("page_no"),
+                    "para_no": position.get("para_no"),
+                }
+            ),
+        )
+    fields = tools._clean_observation(
+        {
+            "status_code": 200,
+            "result_count": len(items),
+            "displayed_count": len(items),
+            "doc_id_short": catalogue.short_doc_id(effective_doc_id),
+            "doc_id_shorts": [catalogue.short_doc_id(effective_doc_id)] if effective_doc_id else [],
+            "query_chars": len(query),
+            "query_hash": tools._hash(query),
+            "catalog_result_count": resolution.catalog_result_count,
+            "search_result_count": resolution.search_result_count,
+            "document_candidate_count": len(resolution.document_candidate_ids),
+            "anchor_count": len(positions) if positions else None,
+            "positions": [dict(position) for position in positions],
+            "documentary_target": tools._string(resolution.documentary_target),
+            "work_hint_present": bool(resolution.work_hint_present),
+            "document_hint_present": bool(resolution.document_hint_present),
+        }
+    )
+    observation = tools.BiblioLibrarianToolObservation(
+        tool_name=tool,
+        endpoint_kind=catalogue.ENDPOINT_CATALOG,
+        status=status,
+        reason_code=reason_code,
+        fields=fields,
+    )
+    return tools.BiblioLibrarianToolResult(
+        tool_name=tool,
+        status=status,
+        reason_code=reason_code,
+        endpoint_kind=catalogue.ENDPOINT_CATALOG,
+        observation=observation,
+        document_id=effective_doc_id,
+        items=items,
+        positions=positions,
+        anchors=positions,
     )
 
 

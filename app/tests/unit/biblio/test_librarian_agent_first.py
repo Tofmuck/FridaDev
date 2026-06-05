@@ -1381,6 +1381,120 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertTrue(lock.ok)
         self.assertIn(range_text, result.rendered_answer.content)
 
+    def test_canonical_range_carries_resolved_work_anchor_to_ambiguous_locators(self) -> None:
+        range_text = "RAW COMPLETE INTERNAL WORK RANGE MUST ONLY APPEAR AFTER ANCHORED RANGE"
+        fake = _FakeAgentFirstClient(
+            search_payloads={
+                RAW_TITLE: {"items": [{"id": "doc-1234", "title": RAW_TITLE}]},
+                RAW_QUERY: {
+                    "count": 1,
+                    "results": [
+                        {
+                            "document_id": "doc-1234",
+                            "title": RAW_TITLE,
+                            "text": RAW_PASSAGE,
+                            "page_no": 20,
+                            "para_no": 4,
+                        }
+                    ],
+                },
+            },
+            chapters_payload={"total": 0, "chapters": []},
+            locate_payloads={
+                "126b": {
+                    "match_count": 2,
+                    "best": {"kind": "stephanus", "label": "126b", "page_no": 1, "para_no": 1, "paragraph_id": 10},
+                    "alternatives": [
+                        {"kind": "stephanus", "label": "126b", "page_no": 20, "para_no": 4, "paragraph_id": 99}
+                    ],
+                },
+                "126e": {
+                    "match_count": 2,
+                    "best": {"kind": "stephanus", "label": "126e", "page_no": 1, "para_no": 2, "paragraph_id": 11},
+                    "alternatives": [
+                        {"kind": "stephanus", "label": "126e", "page_no": 20, "para_no": 5, "paragraph_id": 100}
+                    ],
+                },
+            },
+            context_payload={"document_id": "doc-1234", "text": range_text},
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extract_range",
+                    product_method=product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+                    case_id="P04",
+                    answer_mode="canonical_range_extract",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_RESOLVE_WORK,
+                            method="GET",
+                            params={
+                                "document_title": RAW_TITLE,
+                                "work_title": RAW_QUERY,
+                                "locator": "126b",
+                                "locator_end": "126e",
+                                "kind": "stephanus",
+                            },
+                        ),
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_CANONICAL_RANGE_EXTRACT,
+                            method="GET",
+                            params={"locator": "126b", "locator_end": "126e", "kind": "stephanus"},
+                        ),
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(
+                intent="extract_range",
+                locator="126b",
+                locator_end="126e",
+                locator_kind="stephanus",
+            ),
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.loop_result)
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.loop_result is not None
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        observed = result.loop_result.to_observability()
+        encoded = json.dumps(
+            {
+                "loop": observed,
+                "answer": result.answer_object.to_observability(),
+                "render": result.rendered_answer.to_observability(),
+                "lock": lock.to_observability(),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertEqual(fake.calls[0], ("metadata_search", RAW_TITLE, 20))
+        self.assertIn(("search", RAW_QUERY, 20), fake.calls)
+        self.assertIn(("locate", "doc-1234", "126b", "stephanus", 20), fake.calls)
+        self.assertIn(("locate", "doc-1234", "126e", "stephanus", 20), fake.calls)
+        self.assertIn(("context", "doc-1234", None, 20, 4, 0, 2000), fake.calls)
+        self.assertIn(("context", "doc-1234", None, 20, 5, 0, 2000), fake.calls)
+        self.assertEqual(observed["tool_names"], [tools.TOOL_RESOLVE_WORK, tools.TOOL_CANONICAL_RANGE_EXTRACT])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.render_mode, answer_object.RENDER_EXACT_EXCERPT)
+        self.assertEqual(result.answer_object.extraction["status"], "resolved")
+        self.assertEqual(result.answer_object.extraction["content_kind"], "canonical_range")
+        self.assertEqual([anchor["paragraph_id"] for anchor in result.answer_object.anchors], [99, 100])
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn(range_text, result.rendered_answer.content)
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_QUERY, encoded)
+        self.assertNotIn(RAW_PASSAGE, encoded)
+        self.assertNotIn(range_text, encoded)
+
     def test_extraction_unique_scoped_search_hit_reads_mechanical_context(self) -> None:
         snippet = "RAW SEARCH SNIPPET MUST NOT BECOME EXACT"
         context = "RAW MECHANICAL CONTEXT MUST ONLY APPEAR IN RENDERED CONTENT"

@@ -581,7 +581,8 @@ def _canonical_range_extract_params(
     if not locator or not locator_end:
         return {}
 
-    doc_id = _summary_completion_document_id(loop_result)
+    scope = _canonical_range_scope(loop_result)
+    doc_id = _text(scope.get("document_id")) or _summary_completion_document_id(loop_result)
     params: dict[str, Any] = {
         "locator": locator,
         "locator_end": locator_end,
@@ -616,11 +617,50 @@ def _canonical_range_extract_params(
         value = _positive_int(getattr(deterministic_plan, attr, 0))
         if value:
             params[key] = value
+    if not params.get("locator_anchor_page"):
+        page_no = _positive_int(scope.get("page_no"))
+        if page_no:
+            params["locator_anchor_page"] = page_no
+    if not params.get("locator_anchor_para"):
+        para_no = _positive_int(scope.get("para_no"))
+        if para_no:
+            params["locator_anchor_para"] = para_no
     return (
         params
         if any(params.get(key) for key in ("document_id", "query", "title", "document_title", "work_title", "author"))
         else {}
     )
+
+
+def _canonical_range_scope(loop_result: librarian_planner.BiblioLibrarianLoopResult) -> dict[str, Any]:
+    for step in reversed(loop_result.steps):
+        result = step.tool_result
+        if result is None:
+            continue
+        if result.status not in {
+            librarian_tools.STATUS_OK,
+            librarian_tools.STATUS_RESOLVED,
+        }:
+            continue
+        doc_id = _text(getattr(result, "document_id", ""))
+        position: Mapping[str, Any] | None = None
+        if len(result.positions) == 1:
+            position = result.positions[0]
+        elif len(result.items) == 1 and isinstance(result.items[0], Mapping):
+            position = result.items[0]
+        if not isinstance(position, Mapping):
+            continue
+        page_no = _positive_int(position.get("page_no"))
+        para_no = _positive_int(position.get("para_no"))
+        if not doc_id:
+            doc_id = _text(position.get("document_id"))
+        if doc_id and page_no:
+            return {
+                "document_id": doc_id,
+                "page_no": page_no,
+                "para_no": para_no,
+            }
+    return {}
 
 
 def _planned_locators(plan: librarian_planner.BiblioLibrarianPlan) -> tuple[str, ...]:

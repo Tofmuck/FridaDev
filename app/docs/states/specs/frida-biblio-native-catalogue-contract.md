@@ -902,8 +902,16 @@ Cas Platon / Stephanus:
   reste negatif: l'agent appelle la bonne famille P04 et l'outil
   `canonical_range_extract`, sans `passage_context`, mais la resolution
   document/oeuvre/locator reste `ambiguous_document` en vraie conversation.
-  BIB-24 reste donc non pretendu tant que la structure Catalogue / resolution
-  d'oeuvre interne ne fournit pas des bornes debut/fin non ambigues.
+  Ce resultat est requalifie comme preuve negative historique et comme limite
+  des plages longues ou mal scopees.
+- BIB-24 est ferme live le 2026-06-05 par
+  `app/docs/states/baselines/biblio-smokes/bib24-canonical-range-closed-real-conversation-20260605T114227Z.jsonl`
+  pour une plage canonique courte: vraie conversation Frida, bibliothecaire
+  agentique live, `resolve_work` puis `canonical_range_extract`, deux bornes
+  resolues dans le meme scope, extraction mecanique complete sous budget,
+  `final_response_lock` autorise et message assistant final sauvegarde. Cette
+  fermeture ne cree pas de droit a choisir silencieusement une occurrence
+  canonique ambigue et ne ferme pas les plages longues sans decoupage explicite.
 - Le diagnostic plateforme/Sauron du 2026-06-05
   `app/docs/states/baselines/biblio-smokes/bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl`
   confirme que `milestones` expose des labels Stephanus et un `order_index`
@@ -911,8 +919,9 @@ Cas Platon / Stephanus:
   aussi le blocker BIB-24 courant: dans les documents agreges, les memes labels
   ont plusieurs occurrences et `document_chapters` ne fournit pas encore un
   scope d'oeuvre interne fiable. Le Catalogue ne doit donc pas exposer une route
-  qui choisirait silencieusement la premiere occurrence; le prochain contrat
-  attendu est une resolution d'oeuvre interne / locator non ambigue.
+  qui choisirait silencieusement la premiere occurrence; le contrat attendu
+  reste une resolution d'oeuvre interne / locator non ambigue pour les cas qui
+  ne sont pas resolus par `resolve_work`.
 
 ## 8. Extraction bornee
 

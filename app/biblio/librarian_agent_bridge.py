@@ -109,12 +109,15 @@ def run_agent_first_bridge(
         )
         if repaired is not None:
             result, agent_first_result = repaired
-        elif not _agent_first_result_is_usable(agent_first_result):
+        elif not _agent_first_result_is_usable(
+            agent_first_result
+        ) or _agent_first_canonical_range_needs_query_repair(agent_first_result, query_plan):
             repaired = _repair_agent_first_with_query_fallback(
                 librarian_agent_result=result,
                 query_plan=query_plan,
                 client_factory=client_factory,
                 config_module=config_module,
+                allow_same_method=True,
             )
             if repaired is None:
                 repaired = _repair_agent_first_with_dialogue_fallback(
@@ -191,6 +194,7 @@ def _repair_agent_first_with_query_fallback(
     query_plan: Any,
     client_factory: Any,
     config_module: Any,
+    allow_same_method: bool = False,
 ) -> tuple[Any, Any] | None:
     fallback_plan = build_query_fallback_plan(query_plan)
     if fallback_plan is None:
@@ -198,7 +202,7 @@ def _repair_agent_first_with_query_fallback(
     if str(getattr(fallback_plan, "fallback_reason", "") or "") != "agent_query_fallback_canonical_range":
         return None
     candidate_plan = _candidate_plan(librarian_agent_result)
-    if candidate_plan is not None:
+    if candidate_plan is not None and not allow_same_method:
         candidate_method = str(getattr(candidate_plan, "product_method", "") or "").strip()
         fallback_method = str(getattr(fallback_plan, "product_method", "") or "").strip()
         if candidate_method == fallback_method:
@@ -242,18 +246,33 @@ def _build_canonical_range_fallback_plan(query_plan: Any) -> librarian_planner.B
     params = _canonical_range_fallback_params(query_plan)
     if not params:
         return None
+    calls: list[librarian_planner.BiblioLibrarianToolCall] = []
+    resolve_params = {
+        key: params[key]
+        for key in ("document_id", "document_title", "work_title", "author", "locator", "locator_end", "kind")
+        if params.get(key)
+    }
+    if any(resolve_params.get(key) for key in ("document_id", "document_title", "work_title", "author")):
+        calls.append(
+            librarian_planner.BiblioLibrarianToolCall(
+                tool_name=librarian_tools.TOOL_RESOLVE_WORK,
+                method="GET",
+                params=resolve_params,
+            )
+        )
+    calls.append(
+        librarian_planner.BiblioLibrarianToolCall(
+            tool_name=librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT,
+            method="GET",
+            params=params,
+        )
+    )
     return librarian_planner.BiblioLibrarianPlan(
         schema_version=librarian_planner.SCHEMA_VERSION,
         case_id="P04",
         intent=str(getattr(query_plan, "intent", "") or "extract_range"),
         product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
-        tool_calls=(
-            librarian_planner.BiblioLibrarianToolCall(
-                tool_name=librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT,
-                method="GET",
-                params=params,
-            ),
-        ),
+        tool_calls=tuple(calls),
         answer_mode="canonical_range_extract",
         fallback_reason="agent_query_fallback_canonical_range",
     )
@@ -462,6 +481,23 @@ def _agent_first_result_is_usable(agent_first_result: Any) -> bool:
         librarian_agent_first.STATUS_AGENT_FIRST_EXECUTED,
         librarian_agent_first.STATUS_AGENT_FIRST_NEEDS_CLARIFICATION,
     }
+
+
+def _agent_first_canonical_range_needs_query_repair(agent_first_result: Any, query_plan: Any) -> bool:
+    if str(getattr(query_plan, "intent", "") or "") != "extract_range":
+        return False
+    if agent_first_result is None:
+        return False
+    answer = getattr(agent_first_result, "answer_object", None)
+    rendered = getattr(agent_first_result, "rendered_answer", None)
+    if answer is not None and rendered is not None:
+        if (
+            str(getattr(answer, "status", "") or "") == "ready"
+            and str(getattr(answer, "render_mode", "") or "") == "exact_excerpt"
+            and bool(getattr(rendered, "exact_text_rendered", False))
+        ):
+            return False
+    return build_query_fallback_plan(query_plan) is not None
 
 
 def _fallback_product_method(
