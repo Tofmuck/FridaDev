@@ -176,18 +176,28 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
     (`BIB11_INTERNAL_SECTION_START=partial`; la demande live ne prouve pas
     encore une section interne distincte du chapitre et finit sur
-    `locator_not_found`).
+    `locator_not_found`);
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-internal-section-bounds-real-conversation-20260605T134722Z.jsonl`
+    (`BIB11_INTERNAL_SECTION_START_REAL_CONVERSATION=partial`; vraie
+    conversation Frida, agent live, surface propre, mais le manifeste expose
+    809 entrees de niveau chapitre et 0 section interne distincte exploitable).
   - Prochain test live requis: section interne resolue, distincte d'un simple
-    chapitre, avec debut structure ou clarification propre.
+    chapitre, avec debut structure; blocker courant:
+    `internal_section_scope_missing_from_catalogue_manifest`.
 - [ ] BIB-12 - Dire ou finit une section interne.
   - Statut: `partiel_live`
   - Preuve live:
     `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
     (`BIB12_INTERNAL_SECTION_END=partial`; la demande live ne prouve pas
     encore une section interne distincte du chapitre et finit sur
-    `locator_not_found`).
+    `locator_not_found`);
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-internal-section-bounds-real-conversation-20260605T134722Z.jsonl`
+    (`BIB12_INTERNAL_SECTION_END_REAL_CONVERSATION=partial`; vraie
+    conversation Frida, agent live, surface propre, mais le manifeste expose
+    809 entrees de niveau chapitre et 0 section interne distincte exploitable).
   - Prochain test live requis: section interne resolue, distincte d'un simple
-    chapitre, avec fin structure ou clarification propre.
+    chapitre, avec fin structure ou derivee honnetement; blocker courant:
+    `internal_section_scope_missing_from_catalogue_manifest`.
 - [x] BIB-13 - Chercher un theme ou motif dans un ouvrage.
   - Statut: `ferme_live`
   - Preuve live:
@@ -643,6 +653,23 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     `biblio_final_response_authorized`
   - Requalification: l'artefact Livraison 7 precedent reste une preuve
     partielle historique; BIB-05 est desormais ferme par ce micro-lot.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-11/BIB-12 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-internal-section-bounds-real-conversation-20260605T134722Z.jsonl`
+  - Statut: `partiel_live`
+  - Conversation: hash `bce4a12e5ec2`
+  - Proof cases: `BIB11_INTERNAL_SECTION_START_REAL_CONVERSATION`,
+    `BIB12_INTERNAL_SECTION_END_REAL_CONVERSATION`
+  - Outils appeles: `document_toc`
+  - Statut final: vraie conversation Frida, bibliothecaire agentique live,
+    `document_structure`, message assistant sauvegarde, surface visible propre,
+    aucun extrait exact, aucun choix semantique deterministe.
+  - Blocker: le manifeste Catalogue courant expose 809 entrees de niveau
+    chapitre et 0 section interne distincte; BIB-11/BIB-12 restent donc
+    decoches jusqu'a un scope structurel interne exploitable.
+  - Reason codes: `biblio_agent_first_plan_executed`, `ok`,
+    `biblio_final_response_authorized`,
+    `internal_section_scope_missing_from_catalogue_manifest`.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire

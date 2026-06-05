@@ -937,6 +937,17 @@ Cas Platon / Stephanus:
   aucun candidat selectionne, pas d'extrait exact, message assistant sauvegarde
   et meta Biblio presente. Les partiels courants de Livraison 7 sont donc
   BIB-11, BIB-12 et BIB-14.
+- Le micro-lot BIB-11/BIB-12 du 2026-06-05
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-internal-section-bounds-real-conversation-20260605T134722Z.jsonl`
+  confirme en vraie conversation Frida que les sections internes distinctes ne
+  sont pas encore fermables: le manifeste courant expose des entrees de niveau
+  chapitre avec fins derivees, mais aucun scope de section interne distinct du
+  chapitre. `section_bounds` reste donc valide pour les bornes de chapitre et
+  les sections de niveau 1 exposees, mais ne doit pas etre presente comme
+  preuve de BIB-11/BIB-12 tant que le Catalogue ne fournit pas une hierarchie
+  ou un scope interne exploitable. Les cases BIB-11 et BIB-12 restent
+  `partiel_live` avec le blocker
+  `internal_section_scope_missing_from_catalogue_manifest`.
 - Le diagnostic plateforme/Sauron du 2026-06-05
   `app/docs/states/baselines/biblio-smokes/bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl`
   confirme que `milestones` expose des labels Stephanus et un `order_index`
