@@ -181,6 +181,10 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     (`BIB11_INTERNAL_SECTION_START_REAL_CONVERSATION=partial`; vraie
     conversation Frida, agent live, surface propre, mais le manifeste expose
     809 entrees de niveau chapitre et 0 section interne distincte exploitable).
+    Diagnostic structurel:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-section-scope-diagnostic-20260605T135647Z.jsonl`
+    (`BIB11_INTERNAL_SECTION_START_BLOCKER=blocked`; `document_chapters`
+    est plat et ne porte pas de champ niveau/parent/type de section).
   - Prochain test live requis: section interne resolue, distincte d'un simple
     chapitre, avec debut structure; blocker courant:
     `internal_section_scope_missing_from_catalogue_manifest`.
@@ -195,6 +199,10 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     (`BIB12_INTERNAL_SECTION_END_REAL_CONVERSATION=partial`; vraie
     conversation Frida, agent live, surface propre, mais le manifeste expose
     809 entrees de niveau chapitre et 0 section interne distincte exploitable).
+    Diagnostic structurel:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-section-scope-diagnostic-20260605T135647Z.jsonl`
+    (`BIB12_INTERNAL_SECTION_END_BLOCKER=blocked`; `document_chapters`
+    est plat et ne porte pas de champ niveau/parent/type de section).
   - Prochain test live requis: section interne resolue, distincte d'un simple
     chapitre, avec fin structure ou derivee honnetement; blocker courant:
     `internal_section_scope_missing_from_catalogue_manifest`.
@@ -214,8 +222,14 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     (`BIB14_THEME_SEARCH_SECTION=partial`; l'agent choisit `scoped_search`,
     mais la section precise n'est pas resolue proprement et aucun rendu final
     Biblio n'est sauvegarde pour ce tour).
+    Diagnostic structurel:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-section-scope-diagnostic-20260605T135647Z.jsonl`
+    (`BIB14_SECTION_SCOPED_THEME_SEARCH_BLOCKER=blocked`; aucune recherche ne
+    peut etre honnetement scopee a une section interne precise tant que
+    Catalogue n'expose pas un scope niveau/parent/type).
   - Prochain test live requis: section resolue -> recherche bornee section,
-    candidats structures, pas extraction automatique.
+    candidats structures, pas extraction automatique; blocker courant:
+    `internal_section_scope_missing_from_catalogue_manifest`.
 - [x] BIB-15 - Presenter plusieurs passages candidats sans les transformer en
   extrait exact.
   - Statut: `ferme_live`
@@ -670,6 +684,24 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
   - Reason codes: `biblio_agent_first_plan_executed`, `ok`,
     `biblio_final_response_authorized`,
     `internal_section_scope_missing_from_catalogue_manifest`.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-11/BIB-12/BIB-14 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-section-scope-diagnostic-20260605T135647Z.jsonl`
+  - Statut: `blocked` diagnostique, cases toujours `partiel_live` et
+    decochees.
+  - Diagnostic Sauron/Celebrimbor: `document_chapters` porte seulement
+    `document_id`, `chapter_no`, `title`, `unit_no`, `source`; aucun champ
+    `level`, `parent_section_id`, `section_kind` ou `boundary_state` n'est
+    expose en DB/API.
+  - Donnees courantes: 1001 lignes `document_chapters`, sources `epub_toc`,
+    `llm_fallback`, `pdf_outline`; l'import parcourt les TOC imbriquees mais
+    les aplatit avant stockage; les fichiers source courants ne sont pas
+    retrouvables dans le montage runtime pour un backfill honnete.
+  - Consequence: BIB-11/BIB-12 ne peuvent pas etre fermes avec une simple ligne
+    niveau chapitre; BIB-14 ne peut pas etre ferme avec une recherche large ou
+    un scope chapitre maquille en section precise.
+  - Prochain lot requis: import/backfill Catalogue de hierarchie TOC interne
+    avec champs niveau/parent/type/bornes, puis nouvelle preuve live Frida.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire

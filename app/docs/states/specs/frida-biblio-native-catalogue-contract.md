@@ -948,6 +948,18 @@ Cas Platon / Stephanus:
   ou un scope interne exploitable. Les cases BIB-11 et BIB-12 restent
   `partiel_live` avec le blocker
   `internal_section_scope_missing_from_catalogue_manifest`.
+- Le diagnostic Sauron/Celebrimbor du 2026-06-05
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-section-scope-diagnostic-20260605T135647Z.jsonl`
+  etend ce blocker a BIB-14: la table/API `document_chapters` actuelle est
+  plate (`chapter_no`, `title`, `unit_no`, `source`) et ne porte pas de
+  `level`, `parent_section_id`, `section_kind` ni `boundary_state`. Le code
+  d'import parcourt les TOC EPUB/PDF recursivement mais les aplatit avant
+  stockage. Les fichiers source courants ne sont pas retrouvables dans le
+  montage runtime pour un backfill honnete. En consequence, FridaDev ne doit
+  pas presenter une ligne chapitre comme section interne, ni fermer une
+  recherche de theme dans une section precise sans scope interne non ambigu.
+  Le prochain lot necessaire est cote Catalogue/doc-pipeline: import ou
+  backfill explicite d'une hierarchie TOC avec niveau, parent, type et bornes.
 - Le diagnostic plateforme/Sauron du 2026-06-05
   `app/docs/states/baselines/biblio-smokes/bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl`
   confirme que `milestones` expose des labels Stephanus et un `order_index`
