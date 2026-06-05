@@ -925,10 +925,18 @@ Cas Platon / Stephanus:
   ferme live les capacites utilisateur simples BIB-01, BIB-02, BIB-03,
   BIB-04, BIB-08, BIB-09, BIB-10 et BIB-13: inventaire, comptage,
   metadonnees, resolution documentaire simple, table des matieres, bornes de
-  chapitre et recherche scoped dans un ouvrage. La meme preuve garde BIB-05,
-  BIB-11, BIB-12 et BIB-14 en `partiel_live`: ambiguite multi-ouvrage,
-  section interne distincte du chapitre et recherche dans une section precise
-  ne sont pas encore fermes. Cette livraison ne rouvre pas BIB-24.
+  chapitre et recherche scoped dans un ouvrage. La meme preuve garde alors
+  BIB-05, BIB-11, BIB-12 et BIB-14 en `partiel_live`: ambiguite
+  multi-ouvrage, section interne distincte du chapitre et recherche dans une
+  section precise ne sont pas encore fermes. Cette livraison ne rouvre pas
+  BIB-24.
+- Le micro-lot BIB-05 du 2026-06-05
+  `app/docs/states/baselines/biblio-smokes/bib05-document-ambiguity-real-conversation-20260605T133539Z.jsonl`
+  ferme l'ambiguite multi-ouvrage en vraie conversation Frida:
+  `document_resolution`, `search_document`, 4 candidats, statut `ambiguous`,
+  aucun candidat selectionne, pas d'extrait exact, message assistant sauvegarde
+  et meta Biblio presente. Les partiels courants de Livraison 7 sont donc
+  BIB-11, BIB-12 et BIB-14.
 - Le diagnostic plateforme/Sauron du 2026-06-05
   `app/docs/states/baselines/biblio-smokes/bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl`
   confirme que `milestones` expose des labels Stephanus et un `order_index`

@@ -124,15 +124,16 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     parasite).
   - Prochain test live requis: regression seulement si resolution
     documentaire ou portage d'ancre changent.
-- [ ] BIB-05 - Distinguer plusieurs ouvrages possibles quand la demande est
+- [x] BIB-05 - Distinguer plusieurs ouvrages possibles quand la demande est
   ambigue.
-  - Statut: `partiel_live`
+  - Statut: `ferme_live`
   - Preuve live:
-    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
-    (`BIB05_AMBIGUOUS_DOCUMENTS=partial`; la conversation live appelle bien
-    l'agent, mais ne prouve pas encore une ambiguite multi-ouvrage conservee).
-  - Prochain test live requis: requete ambigue produisant plusieurs documents
-    reels -> candidats structures ou clarification, sans choix silencieux.
+    `app/docs/states/baselines/biblio-smokes/bib05-document-ambiguity-real-conversation-20260605T133539Z.jsonl`
+    (`BIB05_DOCUMENT_AMBIGUITY_REAL_CONVERSATION=met`, vraie conversation
+    Frida, agent live, `document_resolution`, `search_document`, 4 candidats,
+    statut `ambiguous`, aucun candidat selectionne, pas d'extrait exact).
+  - Prochain test live requis: regression seulement si resolution
+    documentaire, ambiguite ou surface visible changent.
 - [ ] BIB-06 - Trouver une oeuvre a l'interieur d'un volume.
   - Statut: `contractuel_unitaire`
   - Preuve live: aucune preuve live agentique dediee.
@@ -627,6 +628,21 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     BIB-11/BIB-12 (section interne distincte du chapitre non prouvee),
     BIB-14 (scope de section precise non ferme; `locator_not_found`).
   - Requalification: BIB-24 n'a pas ete rouvert par cette livraison.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-05 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib05-document-ambiguity-real-conversation-20260605T133539Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `c1715ddcf238`
+  - Proof case: `BIB05_DOCUMENT_AMBIGUITY_REAL_CONVERSATION`
+  - Outils appeles: `search_document`
+  - Statut final: vraie conversation Frida, bibliothecaire agentique live,
+    `document_resolution`, 4 candidats documentaires, statut `ambiguous`,
+    aucun candidat selectionne, message assistant sauvegarde, meta Biblio
+    presente, surface visible propre, aucun extrait exact.
+  - Reason codes: `biblio_agent_first_plan_executed`, `ok`,
+    `biblio_final_response_authorized`
+  - Requalification: l'artefact Livraison 7 precedent reste une preuve
+    partielle historique; BIB-05 est desormais ferme par ce micro-lot.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
@@ -2521,6 +2537,7 @@ Inventaire de verite Lot 4:
 | BIB-24 plage canonique longue segmentee | ferme live pour segment + continuation | oui | `bib24-long-canonical-range-real-conversation-20260605T121503Z.jsonl` | plage longue rendue en segment exact avec `range_complete=false`, ancre de continuation portee, puis suite mecanique; ne vaut pas export complet illimite. |
 | BIB-24 Catalogue/Sauron bornes canoniques | diagnostic plateforme livre, limite generale conservee | oui | `bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl` | `milestones.order_index` suffit pour ordonner des bornes non ambigues; les documents agreges peuvent encore exiger un scope d'oeuvre interne fiable pour eviter tout choix silencieux. |
 | Livraison 7 BIB-01/BIB-14 simples | 8 fermes live, 4 partiels | oui | `bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl` | ferme inventaire, comptage, metadonnees, resolution simple, TOC, bornes chapitre et recherche scoped ouvrage; garde partiels ambiguite multi-ouvrage, sections internes distinctes et recherche dans section precise. |
+| Micro-lot BIB-05 ambiguite multi-ouvrage | ferme live | oui | `bib05-document-ambiguity-real-conversation-20260605T133539Z.jsonl` | prouve `document_resolution` avec 4 candidats, statut `ambiguous`, aucun candidat selectionne silencieusement, pas d'extrait exact. |
 | Proof Gate initial 4E | diagnostic livre | n/a | `lot4e-proof-gate-live-20260604T144426Z.jsonl`: `0 met`, `3 failed`, `1 partial` | prouve surtout l'ecart agentique live initial. |
 | Replay transition agentique | diagnostic livre | n/a | `lot4e-proof-gate-live-after-agentic-transition-20260604T145952Z.jsonl`: `1 met`, `0 failed`, `3 partial` | trajectoires ameliorees, rendu page encore non ferme. |
 | Proof Gate page-render isole | preuve live ciblee | n/a | `lot4e-proof-gate-live-after-page-render-20260604T151409Z.jsonl`: `4 met` | preuve avec document deja ancre; pas preuve de resolution naturelle. |
