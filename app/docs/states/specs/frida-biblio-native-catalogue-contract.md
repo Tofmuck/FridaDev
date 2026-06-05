@@ -971,6 +971,15 @@ Cas Platon / Stephanus:
   live contient 0 ligne hierarchique au moment du patch. FridaDev ne doit donc
   consommer cette route pour fermer une capacite utilisateur qu'apres
   reimport/backfill honnete et preuve live conversationnelle.
+- Le diagnostic backfill prudent du 2026-06-05
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-sections-backfill-diagnostic-20260605T144939Z.jsonl`
+  bloque l'ecriture DB: le scan runtime retrouve 5 sources PDF, 0 EPUB et un
+  seul hash-match, mais ce candidat ne fournit aucune entree TOC/section en
+  dry-run. Les JSON d'import existants rattaches aux documents ne portent pas
+  non plus de `chapters`, `toc_entries` ou `document_sections` exploitable. Le
+  reason code courant devient `safe_backfill_candidate_missing`; aucune preuve
+  live BIB-11/BIB-12/BIB-14 ne doit etre relancee tant qu'une source avec vraie
+  hierarchie interne n'est pas restauree ou reimportee.
 - Le diagnostic plateforme/Sauron du 2026-06-05
   `app/docs/states/baselines/biblio-smokes/bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl`
   confirme que `milestones` expose des labels Stephanus et un `order_index`
@@ -1360,7 +1369,9 @@ Route hierarchie TOC du 2026-06-05:
 - cette route n'autorise pas encore FridaDev a cocher BIB-11/BIB-12/BIB-14:
   tant que les documents existants ne contiennent aucune ligne
   `document_sections`, le statut produit reste bloque par
-  `catalogue_hierarchy_rows_missing_for_existing_documents`.
+  `catalogue_hierarchy_rows_missing_for_existing_documents`; apres le dry-run
+  backfill du 2026-06-05, le blocker operationnel est
+  `safe_backfill_candidate_missing`.
 
 Validation finale Lot 8 du 2026-05-29:
 

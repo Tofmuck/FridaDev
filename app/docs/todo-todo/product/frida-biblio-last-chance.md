@@ -190,9 +190,13 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     (`document_sections` + `GET /doc/{id}/sections` livres cote
     Catalogue/doc-pipeline; 0 section hierarchique existante, aucun backfill
     sans sources, pas encore de nouvelle preuve live Frida).
+    Diagnostic backfill prudent:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-sections-backfill-diagnostic-20260605T144939Z.jsonl`
+    (`safe_backfill_candidate_missing`; 1 source hash-match retrouvee mais
+    sans TOC exploitable, 0 entree `document_sections`, aucun write DB).
   - Prochain test live requis: section interne resolue, distincte d'un simple
     chapitre, issue de `document_sections`, avec debut structure; blocker
-    courant: `catalogue_hierarchy_rows_missing_for_existing_documents`.
+    courant: `safe_backfill_candidate_missing`.
 - [ ] BIB-12 - Dire ou finit une section interne.
   - Statut: `partiel_live`
   - Preuve live:
@@ -213,10 +217,14 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     (`document_sections` + `GET /doc/{id}/sections` livres cote
     Catalogue/doc-pipeline; 0 section hierarchique existante, aucun backfill
     sans sources, pas encore de nouvelle preuve live Frida).
+    Diagnostic backfill prudent:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-sections-backfill-diagnostic-20260605T144939Z.jsonl`
+    (`safe_backfill_candidate_missing`; 1 source hash-match retrouvee mais
+    sans TOC exploitable, 0 entree `document_sections`, aucun write DB).
   - Prochain test live requis: section interne resolue, distincte d'un simple
     chapitre, issue de `document_sections`, avec fin structure ou derivee
     honnetement; blocker courant:
-    `catalogue_hierarchy_rows_missing_for_existing_documents`.
+    `safe_backfill_candidate_missing`.
 - [x] BIB-13 - Chercher un theme ou motif dans un ouvrage.
   - Statut: `ferme_live`
   - Preuve live:
@@ -244,9 +252,13 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     Catalogue/doc-pipeline; 0 section hierarchique existante, aucun backfill
     sans sources, pas encore de recherche scoped section en vraie
     conversation).
+    Diagnostic backfill prudent:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-sections-backfill-diagnostic-20260605T144939Z.jsonl`
+    (`safe_backfill_candidate_missing`; aucune section interne precise
+    backfillee, donc aucun scope section pour recherche BIB-14).
   - Prochain test live requis: section resolue -> recherche bornee section,
     candidats structures, pas extraction automatique; blocker courant:
-    `catalogue_hierarchy_rows_missing_for_existing_documents`.
+    `safe_backfill_candidate_missing`.
 - [x] BIB-15 - Presenter plusieurs passages candidats sans les transformer en
   extrait exact.
   - Statut: `ferme_live`
@@ -739,6 +751,29 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
   - Prochain lot requis: reimport/backfill explicite et sauvegarde des
     documents sources disponibles, puis integration FridaDev `sections()` et
     nouvelle preuve live BIB-11/BIB-12/BIB-14.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-11/BIB-12/BIB-14 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-sections-backfill-diagnostic-20260605T144939Z.jsonl`
+  - Statut: `blocked` diagnostique; cases toujours `partiel_live` et
+    decochees.
+  - Dry-run content-free: 11 documents Catalogue, 0 ligne `document_sections`,
+    5 sources PDF disponibles dans le montage runtime, 0 EPUB; 1 source
+    hash-match retrouvee mais son dry-run donne 0 entree TOC, 0 section et 0
+    section interne exploitable.
+  - Artefacts import existants: 12 JSON inspectes, 10 rattaches aux hashes
+    documentaires, aucun ne porte `chapters`, `toc_entries` ou
+    `document_sections` exploitable pour backfill.
+  - Ecriture DB: non effectuee. Aucun backup DB nouveau n'est cree car aucune
+    ecriture n'a ete lancee; le rollback reste donc l'etat courant.
+  - Reason codes:
+    `safe_backfill_candidate_missing`,
+    `hash_matched_source_without_hierarchy`,
+    `import_artifacts_without_toc_payload`,
+    `db_write_not_performed`.
+  - Prochain lot requis: decision operateur de restauration/localisation des
+    sources EPUB/PDF originales avec TOC recursive ou reimport controle d'un
+    document source reel; ensuite seulement backfill, integration FridaDev
+    `sections()` et preuve live conversationnelle.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
