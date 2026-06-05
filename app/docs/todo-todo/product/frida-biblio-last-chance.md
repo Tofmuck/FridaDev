@@ -185,9 +185,14 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-section-scope-diagnostic-20260605T135647Z.jsonl`
     (`BIB11_INTERNAL_SECTION_START_BLOCKER=blocked`; `document_chapters`
     est plat et ne porte pas de champ niveau/parent/type de section).
+    Patch plateforme futur-import:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-toc-hierarchy-platform-patch-20260605T143823Z.jsonl`
+    (`document_sections` + `GET /doc/{id}/sections` livres cote
+    Catalogue/doc-pipeline; 0 section hierarchique existante, aucun backfill
+    sans sources, pas encore de nouvelle preuve live Frida).
   - Prochain test live requis: section interne resolue, distincte d'un simple
-    chapitre, avec debut structure; blocker courant:
-    `internal_section_scope_missing_from_catalogue_manifest`.
+    chapitre, issue de `document_sections`, avec debut structure; blocker
+    courant: `catalogue_hierarchy_rows_missing_for_existing_documents`.
 - [ ] BIB-12 - Dire ou finit une section interne.
   - Statut: `partiel_live`
   - Preuve live:
@@ -203,9 +208,15 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-internal-section-scope-diagnostic-20260605T135647Z.jsonl`
     (`BIB12_INTERNAL_SECTION_END_BLOCKER=blocked`; `document_chapters`
     est plat et ne porte pas de champ niveau/parent/type de section).
+    Patch plateforme futur-import:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-toc-hierarchy-platform-patch-20260605T143823Z.jsonl`
+    (`document_sections` + `GET /doc/{id}/sections` livres cote
+    Catalogue/doc-pipeline; 0 section hierarchique existante, aucun backfill
+    sans sources, pas encore de nouvelle preuve live Frida).
   - Prochain test live requis: section interne resolue, distincte d'un simple
-    chapitre, avec fin structure ou derivee honnetement; blocker courant:
-    `internal_section_scope_missing_from_catalogue_manifest`.
+    chapitre, issue de `document_sections`, avec fin structure ou derivee
+    honnetement; blocker courant:
+    `catalogue_hierarchy_rows_missing_for_existing_documents`.
 - [x] BIB-13 - Chercher un theme ou motif dans un ouvrage.
   - Statut: `ferme_live`
   - Preuve live:
@@ -227,9 +238,15 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     (`BIB14_SECTION_SCOPED_THEME_SEARCH_BLOCKER=blocked`; aucune recherche ne
     peut etre honnetement scopee a une section interne precise tant que
     Catalogue n'expose pas un scope niveau/parent/type).
+    Patch plateforme futur-import:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-toc-hierarchy-platform-patch-20260605T143823Z.jsonl`
+    (`document_sections` + `GET /doc/{id}/sections` livres cote
+    Catalogue/doc-pipeline; 0 section hierarchique existante, aucun backfill
+    sans sources, pas encore de recherche scoped section en vraie
+    conversation).
   - Prochain test live requis: section resolue -> recherche bornee section,
     candidats structures, pas extraction automatique; blocker courant:
-    `internal_section_scope_missing_from_catalogue_manifest`.
+    `catalogue_hierarchy_rows_missing_for_existing_documents`.
 - [x] BIB-15 - Presenter plusieurs passages candidats sans les transformer en
   extrait exact.
   - Statut: `ferme_live`
@@ -702,6 +719,26 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     un scope chapitre maquille en section precise.
   - Prochain lot requis: import/backfill Catalogue de hierarchie TOC interne
     avec champs niveau/parent/type/bornes, puis nouvelle preuve live Frida.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-11/BIB-12/BIB-14 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-toc-hierarchy-platform-patch-20260605T143823Z.jsonl`
+  - Statut: `partiel_live`; cases toujours decochees.
+  - Patch Sauron: Catalogue/doc-pipeline ajoute `document_sections` et la
+    route GET-only `GET /doc/{id}/sections`; les imports futurs peuvent porter
+    `level`, `parent_section_id`, `section_kind`, `boundary_state` et bornes
+    `unit_start`/`unit_end` sans casser `/chapters`.
+  - Backfill: non effectue. Les sources runtime existantes ne sont pas
+    retrouvees de facon fiable; la table live contient 0 ligne
+    `document_sections`, donc aucune section interne existante ne peut encore
+    etre prouvee en vraie conversation Frida.
+  - Reason codes:
+    `future_import_hierarchy_supported`,
+    `existing_documents_not_backfilled`,
+    `source_files_missing_for_honest_backfill`,
+    `catalogue_hierarchy_rows_missing_for_existing_documents`.
+  - Prochain lot requis: reimport/backfill explicite et sauvegarde des
+    documents sources disponibles, puis integration FridaDev `sections()` et
+    nouvelle preuve live BIB-11/BIB-12/BIB-14.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire

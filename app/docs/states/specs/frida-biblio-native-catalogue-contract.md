@@ -960,6 +960,17 @@ Cas Platon / Stephanus:
   recherche de theme dans une section precise sans scope interne non ambigu.
   Le prochain lot necessaire est cote Catalogue/doc-pipeline: import ou
   backfill explicite d'une hierarchie TOC avec niveau, parent, type et bornes.
+- Le patch plateforme/Sauron du 2026-06-05
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-toc-hierarchy-platform-patch-20260605T143823Z.jsonl`
+  ajoute cote Catalogue/doc-pipeline une table `document_sections` et une route
+  GET-only `GET /doc/{id}/sections` pour les imports futurs. Cette projection
+  porte `section_id`, `parent_section_id`, `level`, `section_kind`,
+  `unit_start`, `unit_end`, `boundary_state`, `source` et `source_ref`, sans
+  casser `GET /doc/{id}/chapters`. Elle ne ferme pas BIB-11/BIB-12/BIB-14:
+  aucun backfill n'a ete applique faute de sources runtime fiables, et la table
+  live contient 0 ligne hierarchique au moment du patch. FridaDev ne doit donc
+  consommer cette route pour fermer une capacite utilisateur qu'apres
+  reimport/backfill honnete et preuve live conversationnelle.
 - Le diagnostic plateforme/Sauron du 2026-06-05
   `app/docs/states/baselines/biblio-smokes/bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl`
   confirme que `milestones` expose des labels Stephanus et un `order_index`
@@ -1331,6 +1342,25 @@ Route legere table des matieres du 2026-05-30:
 - FridaDev expose les titres/chapitres seulement dans la lane produit `[CONSULTATION DE BIBLIOTHEQUE]` quand l'utilisateur demande la table des matieres;
 - observabilite/admin/dashboard/read-model ne gardent que endpoint kind, status, duree, counts, id court, longueurs et reason codes, jamais les titres de chapitres ni le payload Catalogue brut;
 - `library_runtime.py` delegue l'ouverture document / TOC a `table_of_contents_runtime.py` pour garder la responsabilite du runtime bibliothecaire lisible.
+
+Route hierarchie TOC du 2026-06-05:
+
+- plateforme Catalogue: `GET /doc/{id}/sections`;
+- lecture seule: `documents` + `document_sections`;
+- compatibilite: `/chapters` reste la route canonique pour les tables des
+  matieres plates et les consommateurs existants;
+- payload autorise: `document_id`, compteurs documentaires, `total`, `limit`,
+  `offset`, `count`, `truncated`, `section_kind` filtre eventuel, et une liste
+  de sections `{section_id, parent_section_id, section_no, level,
+  section_kind, title, unit_start, unit_end, boundary_state, source,
+  source_ref}`;
+- payload interdit dans observabilite/preuves: texte OCR, paragraphes,
+  excerpts, page text, raw units, fichiers, prompt, secret, cookie, token,
+  DSN, titres/auteurs bruts et payload Catalogue brut;
+- cette route n'autorise pas encore FridaDev a cocher BIB-11/BIB-12/BIB-14:
+  tant que les documents existants ne contiennent aucune ligne
+  `document_sections`, le statut produit reste bloque par
+  `catalogue_hierarchy_rows_missing_for_existing_documents`.
 
 Validation finale Lot 8 du 2026-05-29:
 
