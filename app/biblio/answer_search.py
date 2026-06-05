@@ -27,6 +27,7 @@ SEARCH_STATUS_AMBIGUOUS = "ambiguous"
 SEARCH_STATUS_NOT_FOUND = "not_found"
 SEARCH_STATUS_NEEDS_CLARIFICATION = "needs_clarification"
 SEARCH_STATUS_ERROR = "error"
+REASON_SCOPED_SEARCH_SECTION_BOUNDS_MISSING = "scoped_search_section_bounds_missing"
 
 
 def build_scoped_search(
@@ -40,13 +41,21 @@ def build_scoped_search(
         return {}
     scope_candidates = _dedupe_scopes(_scope for result in results for _scope in _scope_candidates_from_result(result))
     scope_doc_id = _unique_scope_document_id(scope_candidates)
+    section_scope = _unique_section_scope(scope_candidates)
     raw_hits = _dedupe_hits(_hit for result in results for _hit in _search_hits_from_result(result))
-    scoped_hits = tuple(hit for hit in raw_hits if scope_doc_id and _text(hit.get("document_id")) == scope_doc_id)
+    scoped_hits = tuple(
+        hit
+        for hit in raw_hits
+        if scope_doc_id
+        and _text(hit.get("document_id")) == scope_doc_id
+        and _hit_in_section_scope(hit, section_scope)
+    )
     search_attempted = _catalog_search_attempted(results)
     status = _search_status(
         results,
         scope_candidates=scope_candidates,
         scope_doc_id=scope_doc_id,
+        section_scope=section_scope,
         raw_hits=raw_hits,
         scoped_hits=scoped_hits,
         search_attempted=search_attempted,
@@ -58,12 +67,19 @@ def build_scoped_search(
         effective_reason_codes = list(_unique((*effective_reason_codes, librarian_tools.REASON_SCOPED_SEARCH_SCOPE_MISSING)))
     if status == SEARCH_STATUS_NOT_FOUND and (raw_hits or search_attempted):
         effective_reason_codes = list(_unique((*effective_reason_codes, librarian_tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE)))
+    if section_scope and not _section_scope_has_bounds(section_scope):
+        effective_reason_codes = list(_unique((*effective_reason_codes, REASON_SCOPED_SEARCH_SECTION_BOUNDS_MISSING)))
     return _clean(
         {
             "family": product_methods.CANONICAL_FAMILY_SCOPED_SEARCH,
             "status": status,
             "scope_document_id": scope_doc_id,
             "scope_doc_id_short": short_doc_id(scope_doc_id),
+            "section_scope_id": _text(section_scope.get("section_id")) if section_scope else "",
+            "section_scope_kind": _text(section_scope.get("section_kind")) if section_scope else "",
+            "section_scope_level": _int(section_scope.get("level")) if section_scope else 0,
+            "section_scope_unit_start": _int(section_scope.get("unit_start")) if section_scope else 0,
+            "section_scope_unit_end": _int(section_scope.get("unit_end")) if section_scope else 0,
             "scope_count": len(scope_candidates),
             "candidate_count": len(scoped_hits),
             "raw_candidate_count": len(raw_hits),
@@ -122,7 +138,11 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
     if status == SEARCH_STATUS_AMBIGUOUS:
         lines.append("- ambiguite conservee: aucun scope documentaire n'est choisi par le renderer")
     elif status == SEARCH_STATUS_NEEDS_CLARIFICATION:
-        lines.append("- clarification requise: la recherche scoped n'a pas de scope documentaire unique")
+        reason_codes = set(_text(item) for item in _sequence(payload.get("reason_codes")))
+        if REASON_SCOPED_SEARCH_SECTION_BOUNDS_MISSING in reason_codes:
+            lines.append("- clarification requise: la section precise n'a pas de bornes techniques exploitables")
+        else:
+            lines.append("- clarification requise: la recherche scoped n'a pas de scope documentaire unique")
     elif status == SEARCH_STATUS_NOT_FOUND:
         lines.append("- aucun candidat de recherche ne reste dans le scope")
 
@@ -161,6 +181,12 @@ def to_observability(payload: Mapping[str, Any]) -> dict[str, Any]:
             "status": _text(payload.get("status")),
             "scope_doc_id_short": _text(payload.get("scope_doc_id_short"))
             or short_doc_id(_text(payload.get("scope_document_id"))),
+            "section_scope_present": bool(_text(payload.get("section_scope_id"))),
+            "section_scope_kind": _text(payload.get("section_scope_kind")),
+            "section_scope_level": _int(payload.get("section_scope_level")),
+            "section_scope_bounds_present": bool(
+                _int(payload.get("section_scope_unit_start")) and _int(payload.get("section_scope_unit_end"))
+            ),
             "scope_count": _int(payload.get("scope_count")),
             "candidate_count": _int(payload.get("candidate_count")),
             "raw_candidate_count": _int(payload.get("raw_candidate_count")),
@@ -196,6 +222,7 @@ def _search_status(
     *,
     scope_candidates: Sequence[Mapping[str, Any]],
     scope_doc_id: str,
+    section_scope: Mapping[str, Any],
     raw_hits: Sequence[Mapping[str, Any]],
     scoped_hits: Sequence[Mapping[str, Any]],
     search_attempted: bool,
@@ -208,7 +235,11 @@ def _search_status(
         return SEARCH_STATUS_AMBIGUOUS
     if len(_unique(_text(scope.get("document_id")) for scope in scope_candidates)) > 1:
         return SEARCH_STATUS_AMBIGUOUS
+    if len(_unique(_text(scope.get("section_id")) for scope in scope_candidates if _text(scope.get("section_id")))) > 1:
+        return SEARCH_STATUS_AMBIGUOUS
     if librarian_tools.REASON_SCOPED_SEARCH_SCOPE_MISSING in set(_text(reason) for reason in reason_codes):
+        return SEARCH_STATUS_NEEDS_CLARIFICATION
+    if section_scope and not _section_scope_has_bounds(section_scope):
         return SEARCH_STATUS_NEEDS_CLARIFICATION
     if raw_hits and not scope_doc_id:
         return SEARCH_STATUS_NEEDS_CLARIFICATION
@@ -266,6 +297,10 @@ def _scope_from_mapping(raw: Mapping[str, Any], *, source: str) -> dict[str, Any
             "work_id": _text(raw.get("work_id")),
             "section_id": _text(raw.get("section_id")),
             "title": _text(raw.get("title")),
+            "section_kind": _text(raw.get("section_kind")),
+            "level": _int(raw.get("level")),
+            "unit_start": _int(raw.get("unit_start") or raw.get("page_start")),
+            "unit_end": _int(raw.get("unit_end") or raw.get("page_end")),
             "scope_source": source,
             "limits": tuple(_text(item) for item in _sequence(raw.get("limits")) if _text(item)),
         }
@@ -310,6 +345,36 @@ def _catalog_search_attempted(results: Sequence[librarian_tools.BiblioLibrarianT
 def _unique_scope_document_id(scope_candidates: Sequence[Mapping[str, Any]]) -> str:
     ids = _unique(_text(scope.get("document_id")) for scope in scope_candidates)
     return ids[0] if len(ids) == 1 else ""
+
+
+def _unique_section_scope(scope_candidates: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    section_scopes = [scope for scope in scope_candidates if _text(scope.get("section_id"))]
+    section_ids = _unique(_text(scope.get("section_id")) for scope in section_scopes)
+    if len(section_ids) != 1:
+        return {}
+    for scope in section_scopes:
+        if _text(scope.get("section_id")) == section_ids[0]:
+            return dict(scope)
+    return {}
+
+
+def _section_scope_has_bounds(section_scope: Mapping[str, Any]) -> bool:
+    if not section_scope:
+        return False
+    return bool(_int(section_scope.get("unit_start")) and _int(section_scope.get("unit_end")))
+
+
+def _hit_in_section_scope(hit: Mapping[str, Any], section_scope: Mapping[str, Any]) -> bool:
+    if not section_scope:
+        return True
+    start = _int(section_scope.get("unit_start"))
+    end = _int(section_scope.get("unit_end"))
+    if not start or not end:
+        return False
+    page_no = _int(hit.get("page_no"))
+    if not page_no:
+        return False
+    return start <= page_no <= end
 
 
 def _dedupe_scopes(scopes: Iterable[Mapping[str, Any]]) -> tuple[dict[str, Any], ...]:

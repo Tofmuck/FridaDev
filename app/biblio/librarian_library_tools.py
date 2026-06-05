@@ -332,25 +332,26 @@ def _work_candidates(
 ) -> tuple[catalogue.CatalogueResponse, tuple[dict[str, Any], ...]]:
     if doc_id:
         metadata_response = client.metadata(doc_id)
-        chapters_response = client.chapters(doc_id, limit=500, offset=0)
+        structure_response, sections_payload, chapters_payload = _structure_payload(client, doc_id)
         manifest = _manifest_from_payloads(
             doc_id=doc_id,
             metadata_payload=metadata_response.payload,
-            chapters_payload=chapters_response.payload,
+            sections_payload=sections_payload,
+            chapters_payload=chapters_payload,
         )
         candidates = []
         document_candidate = _document_scope_work_candidate(metadata_response.payload, doc_id)
         if _candidate_matches(document_candidate, query):
             candidates.append(document_candidate)
         section_by_no = {section.sequence_no: section for section in manifest.sections}
-        for row in _raw_chapter_rows(chapters_response.payload):
-            section = section_by_no.get(tools._raw_int(row.get("chapter_no")) or 0)
+        for row in _raw_structure_rows(sections_payload, chapters_payload):
+            section = section_by_no.get(_row_sequence_no(row))
             if section is None:
                 continue
             candidate = _manifest_section_work_candidate(section, manifest, row)
             if _candidate_matches(candidate, query):
                 candidates.append(_public_candidate(candidate))
-        return chapters_response, tuple(candidates[:limit])
+        return structure_response, tuple(candidates[:limit])
 
     response = client.catalog(q=query, limit=limit, offset=0)
     candidates = tuple(_document_candidate(item, work_kind="document_scope") for item in tools._items(response.payload, "items"))
@@ -366,12 +367,12 @@ def _section_candidates(
     section_id: str = "",
     limit: int = 20,
 ) -> tuple[catalogue.CatalogueResponse, tuple[dict[str, Any], ...]]:
-    response = client.chapters(doc_id, limit=500, offset=0)
-    manifest = _manifest_from_payloads(doc_id=doc_id, chapters_payload=response.payload)
+    response, sections_payload, chapters_payload = _structure_payload(client, doc_id)
+    manifest = _manifest_from_payloads(doc_id=doc_id, sections_payload=sections_payload, chapters_payload=chapters_payload)
     candidates = []
     section_by_no = {section.sequence_no: section for section in manifest.sections}
-    for row in _raw_chapter_rows(response.payload):
-        section = section_by_no.get(tools._raw_int(row.get("chapter_no")) or 0)
+    for row in _raw_structure_rows(sections_payload, chapters_payload):
+        section = section_by_no.get(_row_sequence_no(row))
         if section is None:
             continue
         candidate = _manifest_section_candidate(section, manifest, row)
@@ -487,11 +488,13 @@ def _manifest_from_payloads(
     *,
     doc_id: str,
     metadata_payload: Mapping[str, Any] | None = None,
+    sections_payload: Mapping[str, Any] | None = None,
     chapters_payload: Mapping[str, Any] | None = None,
 ) -> structure_schema.DocumentManifest:
     return build_document_manifest(
         catalog_item={"id": doc_id},
         metadata_payload=metadata_payload,
+        sections_payload=sections_payload,
         chapters_payload=chapters_payload,
     )
 
@@ -566,6 +569,10 @@ def _manifest_section_candidate(
             "doc_id_short": catalogue.short_doc_id(doc_id),
             "section_id": section.section_id,
             "chapter_no": section.sequence_no,
+            "section_no": section.sequence_no,
+            "level": section.level,
+            "parent_section_id": section.parent_id,
+            "section_kind": tools._string(raw.get("section_kind")) or ("chapter" if section.level <= 1 else "section"),
             "title": tools._string(raw.get("title")),
             "source": section.source,
             "content_role": section.content_role.value,
@@ -599,6 +606,45 @@ def _raw_chapter_rows(payload: Mapping[str, Any]) -> tuple[Mapping[str, Any], ..
         if isinstance(row, Mapping) and tools._raw_int(row.get("chapter_no")) and tools._raw_int(row.get("unit_no")):
             cleaned.append(row)
     return tuple(cleaned)
+
+
+def _raw_section_rows(payload: Mapping[str, Any]) -> tuple[Mapping[str, Any], ...]:
+    rows = payload.get("sections")
+    if not isinstance(rows, list):
+        return ()
+    cleaned = []
+    for row in rows:
+        if isinstance(row, Mapping) and tools._raw_int(row.get("section_no")) and tools._raw_int(row.get("unit_start")):
+            cleaned.append(row)
+    return tuple(cleaned)
+
+
+def _raw_structure_rows(
+    sections_payload: Mapping[str, Any],
+    chapters_payload: Mapping[str, Any],
+) -> tuple[Mapping[str, Any], ...]:
+    return _raw_section_rows(sections_payload) or _raw_chapter_rows(chapters_payload)
+
+
+def _row_sequence_no(row: Mapping[str, Any]) -> int:
+    return tools._raw_int(row.get("section_no") or row.get("chapter_no")) or 0
+
+
+def _structure_payload(
+    client: Any,
+    doc_id: str,
+) -> tuple[catalogue.CatalogueResponse, Mapping[str, Any], Mapping[str, Any]]:
+    sections_fn = getattr(client, "sections", None)
+    if callable(sections_fn):
+        try:
+            sections_response = sections_fn(doc_id, limit=500, offset=0)
+        except catalogue.CatalogueNotFound:
+            sections_response = None
+        if sections_response is not None and _raw_section_rows(sections_response.payload):
+            return sections_response, sections_response.payload, {}
+
+    chapters_response = client.chapters(doc_id, limit=500, offset=0)
+    return chapters_response, {}, chapters_response.payload
 
 
 def _candidate_matches(candidate: Mapping[str, Any], query: str) -> bool:

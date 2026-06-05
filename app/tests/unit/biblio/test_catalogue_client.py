@@ -78,6 +78,29 @@ class CatalogueClientTests(unittest.TestCase):
         self.assertEqual(fake.calls[0]["params"], {"limit": 500, "offset": 2})
         self.assertNotIn("chapters", result.to_observability())
 
+    def test_sections_ok_is_get_allowlisted_without_ocr_content(self) -> None:
+        fake = FakeRequests(
+            FakeResponse(
+                {
+                    "document_id": "doc-1",
+                    "total": 1,
+                    "sections": [{"section_no": 2, "title": "RAW SECTION TITLE"}],
+                }
+            )
+        )
+        api = _client(fake)
+
+        result = api.sections("doc-1", limit=500, offset=2, kind="section")
+
+        self.assertEqual(result.endpoint_kind, client.ENDPOINT_SECTIONS)
+        self.assertEqual(result.result_count, 1)
+        self.assertEqual(result.doc_id_short, "doc-1")
+        self.assertEqual(fake.calls[0]["method"], "GET")
+        self.assertEqual(fake.calls[0]["url"], "http://catalogue.example/api/doc/doc-1/sections")
+        self.assertEqual(fake.calls[0]["params"], {"limit": 500, "offset": 2, "kind": "section"})
+        self.assertNotIn("sections", result.to_observability())
+        self.assertNotIn("RAW SECTION TITLE", str(result.to_observability()))
+
     def test_page_ok_is_get_allowlisted_and_content_free_in_observability(self) -> None:
         fake = FakeRequests(
             FakeResponse(

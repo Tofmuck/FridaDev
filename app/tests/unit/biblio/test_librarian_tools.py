@@ -119,6 +119,66 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertNotIn(RAW_QUERY, _json(observed))
         self.assertNotIn("Analytique transcendantale", _json(observed))
 
+    def test_resolve_section_prefers_parented_document_sections(self) -> None:
+        fake = _FakeSectionsToolClient(
+            sections_payload={
+                "document_id": "doc-1",
+                "document": {
+                    "id": "doc-1",
+                    "source_type": "pdf",
+                    "unit_label": "pages",
+                    "unit_count": 40,
+                    "page_count": 40,
+                    "paragraph_count": 120,
+                    "chapter_count": 2,
+                    "toc_source": "pdf_outline",
+                },
+                "total": 2,
+                "count": 2,
+                "sections": [
+                    {
+                        "section_id": "s-1",
+                        "section_no": 1,
+                        "level": 1,
+                        "section_kind": "chapter",
+                        "title": "Parent",
+                        "unit_start": 1,
+                        "unit_end": 20,
+                        "boundary_state": "derived",
+                        "source": "pdf_outline",
+                    },
+                    {
+                        "section_id": "s-2",
+                        "parent_section_id": "s-1",
+                        "section_no": 2,
+                        "level": 2,
+                        "section_kind": "section",
+                        "title": "Internal Section",
+                        "unit_start": 5,
+                        "unit_end": 7,
+                        "boundary_state": "derived",
+                        "source": "pdf_outline",
+                    },
+                ],
+            },
+            chapters_payload=_chapters_payload(),
+        )
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(tools.TOOL_RESOLVE_SECTION, {"document_id": "doc-1", "query": "Internal Section"})
+        observed = result.to_observability()
+
+        self.assertEqual(fake.calls, [("sections", "doc-1", 500, 0, None)])
+        self.assertEqual(result.status, tools.STATUS_RESOLVED)
+        self.assertEqual(result.reason_code, tools.REASON_RESOLVED)
+        self.assertEqual(result.endpoint_kind, catalogue.ENDPOINT_SECTIONS)
+        self.assertEqual(result.items[0]["section_kind"], "section")
+        self.assertEqual(result.items[0]["level"], 2)
+        self.assertEqual(result.items[0]["parent_section_id"], "s-1")
+        self.assertEqual(result.anchors[0]["unit_no"], 5)
+        self.assertEqual(result.anchors[1]["unit_no"], 7)
+        self.assertNotIn("Internal Section", _json(observed))
+
     def test_resolve_section_uses_manifest_alias_without_global_search(self) -> None:
         fake = _FakeToolClient(
             chapters_payload=_chapters_payload(
@@ -719,6 +779,28 @@ class _FakeToolClient:
             self.context_payload,
             doc_id=doc_id,
             content_chars=len(str(self.context_payload.get("text") or "")),
+        )
+
+
+class _FakeSectionsToolClient(_FakeToolClient):
+    def __init__(self, *, sections_payload: dict[str, object] | None = None, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self.sections_payload = sections_payload or {"total": 0, "count": 0, "sections": []}
+
+    def sections(
+        self,
+        doc_id: str,
+        *,
+        limit: int = 500,
+        offset: int = 0,
+        kind: str | None = None,
+    ) -> catalogue.CatalogueResponse:
+        self.calls.append(("sections", doc_id, limit, offset, kind))
+        return _response(
+            catalogue.ENDPOINT_SECTIONS,
+            self.sections_payload,
+            doc_id=doc_id,
+            result_count=_count(self.sections_payload, "sections"),
         )
 
 

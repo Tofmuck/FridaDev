@@ -11,6 +11,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from biblio import answer_object
+from biblio import answer_search
 from biblio import catalogue_client as catalogue
 from biblio import librarian_product_methods as product_methods
 from biblio import librarian_tools as tools
@@ -1010,6 +1011,105 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertIn(tools.REASON_SCOPED_SEARCH_NO_HITS_IN_SCOPE, answer.scoped_search["reason_codes"])
         self.assertIn("aucun candidat de recherche ne reste dans le scope", rendered.content)
         self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+
+    def test_scoped_search_filters_hits_to_unique_section_bounds(self) -> None:
+        scope = _tool_result(
+            tool_name=tools.TOOL_RESOLVE_SECTION,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_RESOLVED,
+            endpoint_kind=catalogue.ENDPOINT_SECTIONS,
+            items=(
+                {
+                    "candidate_type": "section",
+                    "document_id": "doc-1",
+                    "doc_id_short": "doc-1",
+                    "section_id": "sec-2",
+                    "section_kind": "section",
+                    "level": 2,
+                    "unit_start": 10,
+                    "unit_end": 12,
+                    "title": RAW_TITLE,
+                },
+            ),
+        )
+        search = _tool_result(
+            tool_name=tools.TOOL_CATALOG_SEARCH,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            document_id="doc-1",
+            items=(
+                {"document_id": "doc-1", "doc_id_short": "doc-1", "snippet": RAW_EXACT_TEXT, "page_no": 11},
+                {"document_id": "doc-1", "doc_id_short": "doc-1", "snippet": "RAW OUTSIDE SECTION", "page_no": 14},
+            ),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(scope, search),
+            product_method=product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.scoped_search["status"], "resolved")
+        self.assertEqual(answer.scoped_search["candidate_count"], 1)
+        self.assertEqual(answer.scoped_search["raw_candidate_count"], 2)
+        self.assertEqual(answer.scoped_search["filtered_out_count"], 1)
+        self.assertEqual(answer.scoped_search["section_scope_id"], "sec-2")
+        self.assertEqual(answer.scoped_search["section_scope_unit_start"], 10)
+        self.assertEqual(observed["scoped_search"]["section_scope_kind"], "section")
+        self.assertTrue(observed["scoped_search"]["section_scope_bounds_present"])
+        self.assertIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn("RAW OUTSIDE SECTION", rendered.content)
+        self.assertNotIn(RAW_TITLE, _json(observed))
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+
+    def test_scoped_search_section_scope_without_bounds_needs_clarification(self) -> None:
+        scope = _tool_result(
+            tool_name=tools.TOOL_RESOLVE_SECTION,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_RESOLVED,
+            endpoint_kind=catalogue.ENDPOINT_SECTIONS,
+            items=(
+                {
+                    "candidate_type": "section",
+                    "document_id": "doc-1",
+                    "doc_id_short": "doc-1",
+                    "section_id": "sec-2",
+                    "section_kind": "section",
+                    "level": 2,
+                    "title": RAW_TITLE,
+                },
+            ),
+        )
+        search = _tool_result(
+            tool_name=tools.TOOL_CATALOG_SEARCH,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_SEARCH,
+            document_id="doc-1",
+            items=({"document_id": "doc-1", "doc_id_short": "doc-1", "snippet": RAW_EXACT_TEXT, "page_no": 11},),
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(scope, search),
+            product_method=product_methods.PRODUCT_METHOD_SCOPED_SEARCH,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(answer.scoped_search["status"], "needs_clarification")
+        self.assertEqual(answer.scoped_search["candidate_count"], 0)
+        self.assertIn(answer_search.REASON_SCOPED_SEARCH_SECTION_BOUNDS_MISSING, answer.scoped_search["reason_codes"])
+        self.assertFalse(observed["scoped_search"]["section_scope_bounds_present"])
+        self.assertIn("section precise n'a pas de bornes techniques exploitables", rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn(RAW_TITLE, _json(observed))
         self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
 
     def test_scoped_search_empty_catalog_search_in_unique_scope_is_not_found(self) -> None:

@@ -170,9 +170,15 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `document_structure`, `section_bounds`, ancre de fin exposee en meta).
   - Prochain test live requis: regression seulement si bornes de chapitre ou
     rendu structurel changent.
-- [ ] BIB-11 - Dire ou commence une section interne.
-  - Statut: `partiel_live`
+- [x] BIB-11 - Dire ou commence une section interne.
+  - Statut: `ferme_live`
   - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-pdf-outline-real-conversation-20260605T183634Z.jsonl`
+    (`BIB-11_PDF_OUTLINE_REAL_CONVERSATION=met`; vraie conversation Frida,
+    agent live confirme par logs Biblio, PDF outline reel importe en
+    `document_sections`, section interne distincte du chapitre: `level=2`,
+    `section_kind=section`, bornes `unit_start`/`unit_end` presentes,
+    surface visible propre, meta Biblio sauvegardee);
     `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
     (`BIB11_INTERNAL_SECTION_START=partial`; la demande live ne prouve pas
     encore une section interne distincte du chapitre et finit sur
@@ -199,12 +205,17 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     (`candidate_rejected` sur les 2 PDF fournis: texte extractible, mais
     absence d'outline, typographie non exploitable et signaux de titres
     assimiles a des en-tetes/repères repetes, pas a une hierarchie interne).
-  - Prochain test live requis: section interne resolue, distincte d'un simple
-    chapitre, issue de `document_sections`, avec debut structure; blocker
-    courant: `pdf_internal_hierarchy_signal_missing`.
-- [ ] BIB-12 - Dire ou finit une section interne.
-  - Statut: `partiel_live`
+  - Prochain test live requis: regression seulement si `/sections`,
+    `resolve_section`, `section_bounds` ou la surface structurelle changent.
+- [x] BIB-12 - Dire ou finit une section interne.
+  - Statut: `ferme_live`
   - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-pdf-outline-real-conversation-20260605T183634Z.jsonl`
+    (`BIB-12_PDF_OUTLINE_REAL_CONVERSATION=met`; vraie conversation Frida,
+    agent live confirme par logs Biblio, meme section interne issue de
+    `document_sections`, fin derivee honnetement par outline PDF avec
+    `boundary_state=derived`, bornes presentes, surface visible propre, meta
+    Biblio sauvegardee);
     `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
     (`BIB12_INTERNAL_SECTION_END=partial`; la demande live ne prouve pas
     encore une section interne distincte du chapitre et finit sur
@@ -231,10 +242,8 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     (`candidate_rejected` sur les 2 PDF fournis: texte extractible, mais
     absence d'outline, typographie non exploitable et signaux de titres
     assimiles a des en-tetes/repères repetes, pas a une hierarchie interne).
-  - Prochain test live requis: section interne resolue, distincte d'un simple
-    chapitre, issue de `document_sections`, avec fin structure ou derivee
-    honnetement; blocker courant:
-    `pdf_internal_hierarchy_signal_missing`.
+  - Prochain test live requis: regression seulement si `/sections`,
+    `resolve_section`, `section_bounds` ou la surface structurelle changent.
 - [x] BIB-13 - Chercher un theme ou motif dans un ouvrage.
   - Statut: `ferme_live`
   - Preuve live:
@@ -244,9 +253,15 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `passage_context` ni extrait exact).
   - Prochain test live requis: regression seulement si recherche scoped ou
     surface candidates changent.
-- [ ] BIB-14 - Chercher un theme ou motif dans une section precise.
-  - Statut: `partiel_live`
+- [x] BIB-14 - Chercher un theme ou motif dans une section precise.
+  - Statut: `ferme_live`
   - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-pdf-outline-real-conversation-20260605T183634Z.jsonl`
+    (`BIB-14_PDF_OUTLINE_REAL_CONVERSATION=met`; vraie conversation Frida,
+    agent live confirme par logs Biblio, `scoped_search` resolu dans une
+    section precise issue de `document_sections`, `section_scope_present=true`,
+    `section_scope_bounds_present=true`, candidats structures, pas
+    d'`exact_excerpt`, snippet non vendu comme exact);
     `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
     (`BIB14_THEME_SEARCH_SECTION=partial`; l'agent choisit `scoped_search`,
     mais la section precise n'est pas resolue proprement et aucun rendu final
@@ -270,9 +285,8 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-pdf-structured-diagnostic-20260605T153733Z.jsonl`
     (`candidate_rejected` sur les 2 PDF fournis; aucune section interne
     precise n'est backfillee, donc aucun scope section fiable).
-  - Prochain test live requis: section resolue -> recherche bornee section,
-    candidats structures, pas extraction automatique; blocker courant:
-    `pdf_internal_hierarchy_signal_missing`.
+  - Prochain test live requis: regression seulement si `/sections`,
+    `scoped_search` ou le filtrage technique par bornes de section changent.
 - [x] BIB-15 - Presenter plusieurs passages candidats sans les transformer en
   extrait exact.
   - Statut: `ferme_live`
@@ -810,6 +824,27 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
   - Prochain lot requis: fournir/importer une source avec outline PDF, TOC
     recursive EPUB/PDF ou manifeste de sections verifie; ensuite seulement
     backfill, integration FridaDev `sections()` et preuve live.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-11/BIB-12/BIB-14 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-pdf-outline-real-conversation-20260605T183634Z.jsonl`
+  - Statut: `ferme_live`; BIB-11, BIB-12 et BIB-14 cochees.
+  - Source controlee: PDF outline reel SHA `b7a6e38e756d`; import nominal
+    limite a un document, backup DB prealable
+    `/opt/platform/_codex_backups/bib11-bib12-bib14-outline-20260605T170216Z/doc-pipeline-before-simondon-backfill.sql.gz`.
+  - Catalogue live: document `88ab236b`, 182 pages, 356 paragraphes,
+    186 `document_sections`; niveaux `1=2`, `2=3`, `3=181`,
+    `parented_count=184`, `boundary_state=derived`, route GET-only
+    `/doc/{id}/sections` verifiee sans payload brut.
+  - FridaDev: `CatalogueClient.sections()` consomme `/sections`; le manifeste
+    prefere `document_sections` a `document_chapters` quand present et garde
+    `/chapters` comme fallback plat; `scoped_search` filtre les hits par
+    bornes techniques de section unique avant de declarer BIB-14 resolu.
+  - Preuve conversationnelle: vraie conversation Frida, agent live confirme
+    par 4 evenements Biblio, message assistant sauvegarde, final lock autorise,
+    meta Biblio presente, surface visible propre, JSONL content-free.
+  - Reason codes / statuts: `internal_section_bounds_live_from_pdf_outline`,
+    `section_scoped_search_live_from_pdf_outline`; aucun snippet ni contexte
+    local vendu comme exact.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire

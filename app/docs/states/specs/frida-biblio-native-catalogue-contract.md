@@ -1375,14 +1375,27 @@ Route hierarchie TOC du 2026-06-05:
 - payload interdit dans observabilite/preuves: texte OCR, paragraphes,
   excerpts, page text, raw units, fichiers, prompt, secret, cookie, token,
   DSN, titres/auteurs bruts et payload Catalogue brut;
-- cette route n'autorise pas encore FridaDev a cocher BIB-11/BIB-12/BIB-14:
-  tant que les documents existants ne contiennent aucune ligne
-  `document_sections`, le statut produit reste bloque par
-  `catalogue_hierarchy_rows_missing_for_existing_documents`; apres le dry-run
-  backfill du 2026-06-05, le blocker operationnel est
-  `safe_backfill_candidate_missing`; apres le diagnostic PDF structure du
-  2026-06-05, le blocker operationnel est
-  `pdf_internal_hierarchy_signal_missing`.
+- depuis le backfill/import controle du 2026-06-05
+  `app/docs/states/baselines/biblio-smokes/bib11-bib12-bib14-pdf-outline-real-conversation-20260605T183634Z.jsonl`,
+  FridaDev consomme cette route via `CatalogueClient.sections()` et prefere
+  `document_sections` a `document_chapters` quand des sections parentées sont
+  presentes;
+- preuve Catalogue live: document `88ab236b`, SHA source `b7a6e38e756d`,
+  186 `document_sections`, niveaux `1=2`, `2=3`, `3=181`,
+  `parented_count=184`, `boundary_state=derived`; `/chapters` reste le fallback
+  compatible pour les documents sans hierarchy;
+- BIB-11/BIB-12 sont fermes uniquement parce que la preuve live Frida montre
+  une section interne distincte du niveau chapitre (`level=2`,
+  `section_kind=section`) avec bornes `unit_start`/`unit_end`;
+- BIB-14 est ferme uniquement pour une recherche dont le scope section est
+  unique et borne: `scoped_search` filtre mecaniquement les hits par
+  `page_no` dans l'intervalle `unit_start..unit_end`; si la section n'a pas de
+  bornes exploitables, le statut reste `needs_clarification` avec reason code
+  `scoped_search_section_bounds_missing`;
+- les blockers historiques `catalogue_hierarchy_rows_missing_for_existing_documents`,
+  `safe_backfill_candidate_missing` et `pdf_internal_hierarchy_signal_missing`
+  restent valables pour les documents non backfilles ou sans outline/TOC
+  exploitable, mais ne decrivent plus le document backfille et prouve live.
 
 Validation finale Lot 8 du 2026-05-29:
 

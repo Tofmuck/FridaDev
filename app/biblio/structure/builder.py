@@ -38,9 +38,10 @@ def build_document_manifest(
     metadata_payload: Mapping[str, Any] | None = None,
     overview_payload: Mapping[str, Any] | None = None,
     chapters_payload: Mapping[str, Any] | None = None,
+    sections_payload: Mapping[str, Any] | None = None,
     raw_unit_stats: Mapping[str, Any] | None = None,
 ) -> DocumentManifest:
-    document_row = _document_row(catalog_item, metadata_payload, overview_payload, chapters_payload)
+    document_row = _document_row(catalog_item, metadata_payload, overview_payload, sections_payload, chapters_payload)
     document_id = _string(document_row.get("id") or catalog_item.get("id") or catalog_item.get("document_id"))
     if not document_id:
         raise ValueError("document_id_required")
@@ -94,7 +95,8 @@ def build_document_manifest(
     )
 
     chapters = _chapter_rows(overview_payload, chapters_payload)
-    sections = _section_nodes(document_id, unit_label, unit_count or page_count, chapters)
+    structure_rows = _section_rows(sections_payload) or _section_rows_from_chapters(chapters)
+    sections = _section_nodes(document_id, unit_label, unit_count or page_count, structure_rows)
     works = (
         _document_scope_work(
             document_id,
@@ -129,7 +131,7 @@ def build_document_manifest(
         canonical_references=canonical_references,
     )
     ambiguities = _ambiguities(source_type, unit_label, chapters, raw_unit_stats)
-    limits = _limits(source_type, unit_label, chapters, raw_unit_stats)
+    limits = _limits(source_type, unit_label, chapters, structure_rows, raw_unit_stats)
 
     return DocumentManifest(
         manifest_version=MANIFEST_SCHEMA_VERSION,
@@ -237,9 +239,10 @@ def _document_row(
     catalog_item: Mapping[str, Any],
     metadata_payload: Mapping[str, Any] | None,
     overview_payload: Mapping[str, Any] | None,
+    sections_payload: Mapping[str, Any] | None,
     chapters_payload: Mapping[str, Any] | None,
 ) -> Mapping[str, Any]:
-    for payload in (metadata_payload, overview_payload, chapters_payload):
+    for payload in (metadata_payload, overview_payload, sections_payload, chapters_payload):
         row = _mapping((payload or {}).get("document"))
         if row:
             return row
@@ -262,19 +265,56 @@ def _chapter_rows(
     return tuple(sorted(cleaned, key=lambda item: (_int(item.get("chapter_no")), _int(item.get("unit_no")))))
 
 
+def _section_rows(sections_payload: Mapping[str, Any] | None) -> tuple[Mapping[str, Any], ...]:
+    rows = (sections_payload or {}).get("sections")
+    if not isinstance(rows, list):
+        return ()
+    cleaned = []
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        sequence_no = _int(row.get("section_no"))
+        start_unit = _int(row.get("unit_start"))
+        if sequence_no > 0 and start_unit > 0:
+            cleaned.append(row)
+    return tuple(sorted(cleaned, key=lambda item: (_int(item.get("unit_start")), _int(item.get("level")), _int(item.get("section_no")))))
+
+
+def _section_rows_from_chapters(chapters: Sequence[Mapping[str, Any]]) -> tuple[Mapping[str, Any], ...]:
+    rows = []
+    for row in chapters:
+        rows.append(
+            {
+                **dict(row),
+                "section_id": "",
+                "section_no": _int(row.get("chapter_no")),
+                "level": 1,
+                "section_kind": "chapter",
+                "unit_start": _int(row.get("unit_no")),
+                "unit_end": None,
+                "boundary_state": STATE_UNKNOWN,
+            }
+        )
+    return tuple(rows)
+
+
 def _section_nodes(
     document_id: str,
     unit_label: str,
     document_unit_count: int,
-    chapters: Sequence[Mapping[str, Any]],
+    rows: Sequence[Mapping[str, Any]],
 ) -> tuple[SectionNode, ...]:
     sections: list[SectionNode] = []
-    for index, row in enumerate(chapters):
-        chapter_no = _int(row.get("chapter_no"))
-        start_unit = _int(row.get("unit_no"))
-        next_start = _int(chapters[index + 1].get("unit_no")) if index + 1 < len(chapters) else 0
-        end_unit = _derived_end_unit(start_unit, next_start, document_unit_count)
-        section_id = f"{short_doc_id(document_id)}:section:{chapter_no}"
+    for index, row in enumerate(rows):
+        sequence_no = _int(row.get("section_no") or row.get("chapter_no"))
+        start_unit = _int(row.get("unit_start") or row.get("unit_no"))
+        next_start = _int(rows[index + 1].get("unit_start") or rows[index + 1].get("unit_no")) if index + 1 < len(rows) else 0
+        explicit_end = _int(row.get("unit_end"))
+        end_unit = explicit_end or _derived_end_unit(start_unit, next_start, document_unit_count)
+        section_id = _string(row.get("section_id")) or f"{short_doc_id(document_id)}:section:{sequence_no}"
+        level = _int(row.get("level")) or 1
+        source = _string(row.get("source") or ("document_sections" if row.get("section_id") else "document_chapters")) or "document_chapters"
+        boundary_state_value = _boundary_state(row.get("boundary_state"), has_end=bool(end_unit), explicit_end=bool(explicit_end))
         start_anchor = Anchor(
             document_id=document_id,
             section_id=section_id,
@@ -282,10 +322,10 @@ def _section_nodes(
             unit_no=start_unit,
             page_no=start_unit if unit_label == "pages" else None,
             source_state=STATE_KNOWN,
-            source=_string(row.get("source") or "document_chapters"),
+            source=source,
         )
         end_anchor = None
-        boundary_state = STATE_UNKNOWN
+        boundary_state = boundary_state_value
         boundary_note = "section_end_unknown"
         if end_unit:
             end_anchor = Anchor(
@@ -294,14 +334,13 @@ def _section_nodes(
                 unit_label=unit_label,
                 unit_no=end_unit,
                 page_no=end_unit if unit_label == "pages" else None,
-                source_state=STATE_DERIVED,
-                source="next_chapter_or_document_end",
+                source_state=STATE_KNOWN if boundary_state_value == STATE_KNOWN else STATE_DERIVED,
+                source=source if explicit_end else "next_section_or_document_end",
             )
-            boundary_state = STATE_DERIVED
-            boundary_note = "end_derived_from_next_chapter_or_document_end"
+            boundary_note = "end_known_from_document_sections" if boundary_state_value == STATE_KNOWN else "end_derived_from_next_section_or_document_end"
         role = _content_role(row)
         aliases = _alias_signal(
-            "document_chapters",
+            source,
             row.get("title"),
             row.get("chapter_title"),
             row.get("label"),
@@ -313,10 +352,10 @@ def _section_nodes(
         sections.append(
             SectionNode(
                 section_id=section_id,
-                sequence_no=chapter_no,
-                level=1,
+                sequence_no=sequence_no,
+                level=level,
                 title_signal=text_signal(row.get("title") or row.get("chapter_title")),
-                source=_string(row.get("source") or "document_chapters") or "document_chapters",
+                source=source,
                 content_role=role,
                 start_anchor=start_anchor,
                 end_anchor=end_anchor,
@@ -325,10 +364,11 @@ def _section_nodes(
                     end=end_anchor,
                     interval_type="section",
                     state=boundary_state,
-                    source="document_chapters",
+                    source=source,
                     boundary_note=boundary_note,
                 ),
                 boundary_state=boundary_state,
+                parent_id=_string(row.get("parent_section_id") or row.get("parent_id")),
                 limits=tuple(_section_limits(row, end_anchor)),
                 aliases=aliases,
             )
@@ -489,9 +529,12 @@ def _limits(
     source_type: str,
     unit_label: str,
     chapters: Sequence[Mapping[str, Any]],
+    structure_rows: Sequence[Mapping[str, Any]],
     raw_unit_stats: Mapping[str, Any] | None,
 ) -> list[str]:
-    items = ["no_raw_book_text_in_manifest", "section_hierarchy_not_available"]
+    items = ["no_raw_book_text_in_manifest"]
+    if not _has_internal_section_hierarchy(structure_rows):
+        items.append("section_hierarchy_not_available")
     if source_type == "pdf":
         items.append("pdf_quality_requires_external_ocr_text_audit")
     if unit_label == "sections":
@@ -558,6 +601,9 @@ def _content_role(row: Mapping[str, Any]) -> ContentRole:
 
 def _section_limits(row: Mapping[str, Any], end_anchor: Anchor | None) -> list[str]:
     limits = []
+    section_kind = _string(row.get("section_kind"))
+    if section_kind == "chapter" and (_int(row.get("level")) or 1) <= 1:
+        limits.append("chapter_level_not_internal_section")
     if end_anchor is None:
         limits.append("section_end_unknown")
     if not row.get("document_role_signal"):
@@ -573,6 +619,26 @@ def _section_limits(row: Mapping[str, Any], end_anchor: Anchor | None) -> list[s
     ):
         limits.append("section_alias_missing")
     return limits
+
+
+def _boundary_state(value: Any, *, has_end: bool, explicit_end: bool) -> str:
+    state = _string(value)
+    if state in {STATE_KNOWN, STATE_DERIVED, STATE_UNKNOWN, STATE_AMBIGUOUS}:
+        if state == STATE_UNKNOWN and has_end:
+            return STATE_KNOWN if explicit_end else STATE_DERIVED
+        return state
+    if has_end:
+        return STATE_KNOWN if explicit_end else STATE_DERIVED
+    return STATE_UNKNOWN
+
+
+def _has_internal_section_hierarchy(rows: Sequence[Mapping[str, Any]]) -> bool:
+    for row in rows:
+        if _int(row.get("level")) > 1:
+            return True
+        if _string(row.get("parent_section_id") or row.get("parent_id")):
+            return True
+    return False
 
 
 def _derived_end_unit(start_unit: int, next_start: int, document_unit_count: int) -> int:

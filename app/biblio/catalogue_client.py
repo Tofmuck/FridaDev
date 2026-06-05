@@ -28,6 +28,7 @@ ENDPOINT_CATALOG = "catalog"
 ENDPOINT_DOCUMENT = "document"
 ENDPOINT_METADATA = "metadata"
 ENDPOINT_CHAPTERS = "chapters"
+ENDPOINT_SECTIONS = "sections"
 ENDPOINT_PAGE = "page"
 ENDPOINT_LOCATE = "locate"
 ENDPOINT_CONTEXT = "context"
@@ -314,6 +315,31 @@ class CatalogueClient:
         }
         return self._get(ENDPOINT_CHAPTERS, path, params=params, doc_id=doc_id)
 
+    def sections(self, doc_id: str, *, limit: int = 500, offset: int = 0, kind: str | None = None) -> CatalogueResponse:
+        path = f"/doc/{_quote_path_segment(doc_id)}/sections"
+        params = {
+            "limit": _bounded_int(
+                limit,
+                endpoint_kind=ENDPOINT_SECTIONS,
+                name="limit",
+                minimum=CHAPTERS_LIMIT_MIN,
+                maximum=CHAPTERS_LIMIT_MAX,
+                doc_id=doc_id,
+            ),
+            "offset": _bounded_int(
+                offset,
+                endpoint_kind=ENDPOINT_SECTIONS,
+                name="offset",
+                minimum=CHAPTERS_OFFSET_MIN,
+                maximum=CHAPTERS_OFFSET_MAX,
+                doc_id=doc_id,
+            ),
+        }
+        clean_kind = str(kind or "").strip()
+        if clean_kind:
+            params["kind"] = clean_kind
+        return self._get(ENDPOINT_SECTIONS, path, params=params, doc_id=doc_id)
+
     def page(self, doc_id: str, page_no: int) -> CatalogueResponse:
         safe_page_no = _bounded_int(
             page_no,
@@ -582,7 +608,7 @@ def _validate_get_path(path: str, *, endpoint_kind: str = "", doc_id: str = "") 
     if len(parts) >= 2 and parts[0] == "doc" and parts[1]:
         if len(parts) == 2:
             return normalized
-        if len(parts) == 3 and parts[2] in {"metadata", "chapters", "locate", "context"}:
+        if len(parts) == 3 and parts[2] in {"metadata", "chapters", "sections", "locate", "context"}:
             return normalized
         if len(parts) == 4 and parts[2] == "page" and parts[3].isdigit():
             return normalized
@@ -615,7 +641,7 @@ def _result_count(payload: Mapping[str, Any]) -> int | None:
     count = payload.get("count")
     if isinstance(count, int):
         return count
-    for key in ("items", "results", "chapters"):
+    for key in ("items", "results", "chapters", "sections"):
         value = payload.get(key)
         if isinstance(value, list):
             return len(value)
