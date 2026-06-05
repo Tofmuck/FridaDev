@@ -294,7 +294,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         }
         raw_biblio_text = 'RAW BIBLIO EXACT TEXT IS USER-VISIBLE FINAL CONTENT'
         final_text = (
-            'Source: catalogue_doc=doc-1, page 12.\n\n'
+            'Source: document du catalogue, page 12.\n\n'
             f'{raw_biblio_text}\n'
         )
         conversation = {
@@ -413,7 +413,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         }
         raw_biblio_text = 'RAW BIBLIO STREAM TEXT IS USER-VISIBLE FINAL CONTENT'
         final_text = (
-            'Source: catalogue_doc=doc-1, page 12.\n\n'
+            'Source: document du catalogue, page 12.\n\n'
             f'{raw_biblio_text}\n'
         )
         conversation = {

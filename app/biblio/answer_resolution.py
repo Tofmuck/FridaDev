@@ -79,33 +79,37 @@ def override_answer_status(payload: Mapping[str, Any], *, base_status: str) -> s
 def render_lines(payload: Mapping[str, Any]) -> list[str]:
     if not payload:
         return []
-    lines = ["Resolution documentaire:"]
     status = _text(payload.get("status")) or "unknown"
-    lines.append(f"- statut: {status}")
+    lines: list[str]
     candidate_count = _int(payload.get("candidate_count"))
-    lines.append(f"- candidats: {candidate_count}")
     selected = payload.get("selected")
     if isinstance(selected, Mapping) and selected:
-        lines.append("- selection structurelle:")
+        lines = ["Ouvrage trouve:"]
         lines.append("  " + _candidate_line(selected))
     elif status == RESOLUTION_STATUS_AMBIGUOUS:
-        lines.append("- ambiguite conservee: aucun candidat n'est choisi par le renderer")
+        lines = ["Plusieurs ouvrages peuvent correspondre. Peux-tu preciser ?"]
+        if candidate_count:
+            lines.append(f"{candidate_count} possibilites sont disponibles.")
     elif status == RESOLUTION_STATUS_NOT_FOUND:
-        lines.append("- aucun document ou travail documentaire n'est resolu")
+        lines = ["Aucun ouvrage correspondant n'a ete trouve."]
     elif status == RESOLUTION_STATUS_NEEDS_CLARIFICATION:
-        lines.append("- clarification requise: la structure disponible ne suffit pas a fermer la resolution")
+        lines = ["Il faut une precision supplementaire pour identifier l'ouvrage ou la section."]
+    else:
+        lines = ["Resolution documentaire en cours."]
     raw_candidates = payload.get("candidates")
     candidates = raw_candidates if isinstance(raw_candidates, Sequence) and not isinstance(raw_candidates, (str, bytes, bytearray)) else ()
     if candidates and not selected:
-        lines.append("- candidats exposes:")
+        lines.append("Candidats possibles:")
         for item in candidates[:10]:
             if isinstance(item, Mapping):
                 lines.append("  " + _candidate_line(item))
     if bool(payload.get("truncated")):
-        lines.append("- resultat borne: candidats supplementaires masques")
+        lines.append("D'autres candidats existent mais ne sont pas affiches ici.")
     limits = payload.get("limits")
     if isinstance(limits, Sequence) and not isinstance(limits, (str, bytes, bytearray)) and limits:
-        lines.append("- limites: " + ", ".join(_neutralize(_text(item)) for item in limits if _text(item)))
+        visible_limits = [_visible_limit(item) for item in limits if _visible_limit(item)]
+        if visible_limits:
+            lines.append("Limite: " + ", ".join(visible_limits))
     return lines
 
 
@@ -214,21 +218,28 @@ def _dedupe_candidates(candidates: Iterable[Mapping[str, Any]]) -> tuple[dict[st
 
 
 def _candidate_line(candidate: Mapping[str, Any]) -> str:
-    doc = _text(candidate.get("doc_id_short")) or short_doc_id(_text(candidate.get("document_id"))) or "unknown"
-    parts = [f"catalogue_doc={doc}"]
-    for label, key in (
-        ("type", "candidate_type"),
-        ("work_kind", "work_kind"),
-        ("work_id", "work_id"),
-        ("section", "section_id"),
-        ("titre", "title"),
-        ("auteur", "authors"),
-        ("metadata", "metadata_status"),
-    ):
-        value = _text(candidate.get(key))
-        if value:
-            parts.append(f"{label}={_neutralize(value)}")
+    title = _text(candidate.get("title"))
+    parts = [_neutralize(title) if title else "Ouvrage du catalogue"]
+    authors = _text(candidate.get("authors"))
+    if authors:
+        parts.append(f"auteur: {_neutralize(authors)}")
+    metadata_status = _visible_metadata_status(candidate.get("metadata_status"))
+    if metadata_status:
+        parts.append(metadata_status)
+    if _text(candidate.get("section_id")):
+        parts.append("section ou oeuvre interne a confirmer")
     return "; ".join(parts)
+
+
+def _visible_metadata_status(value: Any) -> str:
+    text = _text(value)
+    if text in {"validated", "known", "complete"}:
+        return "metadonnees connues"
+    if text in {"unknown", "missing"}:
+        return "metadonnees incompletes"
+    if text:
+        return "metadonnees disponibles"
+    return ""
 
 
 def _resolution_limits(candidates: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
@@ -239,6 +250,13 @@ def _resolution_limits(candidates: Sequence[Mapping[str, Any]]) -> tuple[str, ..
             if value and value not in values:
                 values.append(value)
     return tuple(values)
+
+
+def _visible_limit(value: Any) -> str:
+    text = _text(value)
+    if text == _UNCONFIRMED_INTERNAL_WORK_LIMIT:
+        return "la section doit etre confirmee avant d'etre traitee comme oeuvre interne"
+    return ""
 
 
 def _has_unconfirmed_internal_work_limit(candidate: Mapping[str, Any]) -> bool:

@@ -33,7 +33,7 @@ def _source_line(answer: Any) -> str:
     parts: list[str] = []
     doc = _doc_id(answer)
     if doc:
-        parts.append(f"catalogue_doc={doc}")
+        parts.append("document du catalogue")
     page = _page_label(answer)
     if page:
         parts.append(page)
@@ -43,8 +43,6 @@ def _source_line(answer: Any) -> str:
     section = _section_label(answer)
     if section:
         parts.append(section)
-    elif doc:
-        parts.append("section/chapitre non renseigne")
     return "Source: " + ", ".join(parts) + "." if parts else ""
 
 
@@ -94,25 +92,27 @@ def _anchor_label(answer: Any) -> str:
             continue
         paragraph_id = _int(anchor.get("paragraph_id"))
         if paragraph_id:
-            return f"paragraph_id={paragraph_id}"
+            return "passage ancre"
         para_no = _int(anchor.get("para_no"))
         if para_no:
-            return f"para {para_no}"
+            return f"paragraphe {para_no}"
     return ""
 
 
 def _section_label(answer: Any) -> str:
     section_id = _text(getattr(answer, "section_id", ""))
     if section_id:
-        return f"section={_neutralize(section_id)}"
+        return "section reperee"
     return ""
 
 
 def _limit_lines(answer: Any) -> list[str]:
     limits = [_visible_limit(limit) for limit in _sequence(getattr(answer, "limits", ())) if _text(limit)]
+    limits = [limit for limit in limits if limit]
     extraction = _mapping(getattr(answer, "extraction", {}))
     if not limits:
         limits = [_visible_limit(limit) for limit in _sequence(extraction.get("limits")) if _text(limit)]
+        limits = [limit for limit in limits if limit]
     if not limits:
         return []
     return ["Limite: " + ", ".join(limits)]
@@ -126,7 +126,7 @@ def _visible_limit(value: Any) -> str:
         return "suite disponible depuis l'ancre de continuation"
     if text == "canonical_range_continuation_anchor_missing":
         return "suite non garantie: ancre de continuation absente"
-    return _neutralize(text)
+    return ""
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:

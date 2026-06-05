@@ -227,7 +227,11 @@ Premier cran Last Chance Lot 3 livre:
   `Status`, `Render mode`, `Reason`, `Product method` ni de plomberie interne
   dans le texte final normal. Les statuts, reason codes, modes de rendu,
   hashes, longueurs, source et signaux Biblio restent dans `message.meta`,
-  `to_observability()` et les artefacts JSONL content-free;
+  `to_observability()` et les artefacts JSONL content-free. La provenance
+  visible emploie des libelles humains courts (`document du catalogue`, page(s),
+  section/chapitre connu, borne derivee si utile) et non des champs bruts comme
+  `document_id`, `catalogue_doc`, `paragraph_id`, `unit_start`, `unit_end`,
+  `boundary_state`, compteurs internes ou noms d'objets Biblio;
 - `ambiguous`, `not_found`, `section_alias_missing`,
   `internal_work_unresolved`, `work_alias_missing` et autres manques
   structurels ne doivent pas devenir des sorties pseudo-exactes;

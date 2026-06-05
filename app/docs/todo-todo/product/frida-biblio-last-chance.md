@@ -576,6 +576,24 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
   - Requalification: ce rejeu ne coche pas BIB-29; il confirme seulement que le
     nettoyage de surface ne casse pas les BIB deja fermes.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- Nettoyage transversal surface visible Biblio - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/biblio-visible-surface-cleanup-real-conversation-20260605T202140Z.jsonl`
+  - Statut: regression live `met` sur 4 tours conversationnels reels:
+    inventaire, page exacte, bornes de section interne, recherche scoped dans
+    section.
+  - Conversation: hash `6034d889333c`
+  - Outils appeles: `catalog_list`, `search_document`, `page_read`,
+    `section_bounds`, `document_toc`, `resolve_section`, `catalog_search`.
+  - Statut final: messages assistant sauvegardes, `final_response_lock`
+    autorise, meta Biblio presente, Memory observee via stages de tour,
+    surface visible sans wrapper, sans contrat de restitution, sans
+    `catalogue_doc=`, `document_id=`, `paragraph_id=`, `unit_start`,
+    `unit_end`, `boundary_state`, `Status`, `Render mode`, `Reason` ni
+    `Product method`.
+  - Requalification: ce nettoyage ne coche ni ne decoche aucune BIB; il
+    confirme que les familles fermees critiques gardent leurs metas sans
+    exposer la plomberie dans le message utilisateur normal.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 - BIB-22 - 2026-06-05 -
   `app/docs/states/baselines/biblio-smokes/bib21-bib23-real-conversation-20260605T072804Z.jsonl`
   - Statut: `ferme_live`
@@ -2034,9 +2052,12 @@ Livraison premier cran Lot 3, 2026-06-04:
   internes. Ces signaux restent disponibles dans `message.meta`,
   l'observabilite et les artefacts JSONL content-free;
 - pour un extrait exact, la surface visible porte une provenance courte
-  (`catalogue_doc`, page/ancres, section/chapitre si connu ou indique comme non
-  renseigne) puis seulement le texte exact deja present dans `context_text` ou
-  `page_text`;
+  lisible (`document du catalogue`, page(s), section/chapitre si connu ou
+  indique comme borne derivee), puis seulement le texte exact deja present dans
+  `context_text` ou `page_text`. Les identifiants techniques (`document_id`,
+  `catalogue_doc`, `paragraph_id`, `unit_start`, `unit_end`, `boundary_state`,
+  reason codes, modes de rendu et compteurs internes) restent en meta,
+  observabilite et JSONL, pas dans le message assistant normal;
 - garde-fou: `ambiguous`, `not_found`, `section_alias_missing`,
   `internal_work_unresolved`, `work_alias_missing` et autres manques
   structurels ne deviennent pas des extraits exacts;

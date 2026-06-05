@@ -122,33 +122,36 @@ def override_answer_status(payload: Mapping[str, Any], *, base_status: str) -> s
 def render_lines(payload: Mapping[str, Any]) -> list[str]:
     if not payload:
         return []
-    lines = ["Recherche scoped:"]
     status = _text(payload.get("status")) or "unknown"
-    lines.append(f"- statut: {status}")
-    scope = _text(payload.get("scope_doc_id_short")) or short_doc_id(_text(payload.get("scope_document_id")))
-    if scope:
-        lines.append(f"- scope: catalogue_doc={scope}")
-    lines.append(f"- candidats dans scope: {_int(payload.get('candidate_count'))}")
+    lines = ["Recherche dans le document:"]
+    candidate_count = _int(payload.get("candidate_count"))
+    if status == SEARCH_STATUS_RESOLVED:
+        if candidate_count == 1:
+            lines.append("1 passage candidat trouve dans le scope demande.")
+        elif candidate_count > 1:
+            lines.append(f"{candidate_count} passages candidats trouves dans le scope demande.")
+        else:
+            lines.append("Recherche terminee dans le scope demande.")
+        if bool(_text(payload.get("section_scope_id"))):
+            lines.append("Recherche bornee a la section demandee.")
     raw_count = _int(payload.get("raw_candidate_count"))
     filtered = _int(payload.get("filtered_out_count"))
-    if raw_count:
-        lines.append(f"- candidats bruts controles: {raw_count}")
-    if filtered:
-        lines.append(f"- candidats hors scope filtres: {filtered}")
+    if raw_count and filtered:
+        lines.append("Des resultats hors scope ont ete ecartes.")
     if status == SEARCH_STATUS_AMBIGUOUS:
-        lines.append("- ambiguite conservee: aucun scope documentaire n'est choisi par le renderer")
+        lines.append("Plusieurs scopes de recherche restent possibles; precise lequel viser.")
     elif status == SEARCH_STATUS_NEEDS_CLARIFICATION:
         reason_codes = set(_text(item) for item in _sequence(payload.get("reason_codes")))
         if REASON_SCOPED_SEARCH_SECTION_BOUNDS_MISSING in reason_codes:
-            lines.append("- clarification requise: la section precise n'a pas de bornes techniques exploitables")
+            lines.append("La section precise n'a pas de bornes exploitables pour une recherche bornee.")
         else:
-            lines.append("- clarification requise: la recherche scoped n'a pas de scope documentaire unique")
+            lines.append("Il faut un document ou une section plus precise pour lancer la recherche.")
     elif status == SEARCH_STATUS_NOT_FOUND:
-        lines.append("- aucun candidat de recherche ne reste dans le scope")
+        lines.append("Aucun passage candidat ne reste dans le scope demande.")
 
     candidates = _sequence(payload.get("candidates"))
     if candidates:
-        lines.append("- candidats de recherche bornes:")
+        lines.append("Candidats de recherche:")
         for index, candidate in enumerate(candidates[:10], 1):
             if isinstance(candidate, Mapping):
                 lines.append(f"  {index}. " + _candidate_line(candidate))
@@ -157,16 +160,18 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
     elif status == SEARCH_STATUS_AMBIGUOUS:
         scopes = _sequence(payload.get("scope_candidates"))
         if scopes:
-            lines.append("- scopes possibles:")
+            lines.append("Scopes possibles:")
             for scope_candidate in scopes[:10]:
                 if isinstance(scope_candidate, Mapping):
                     lines.append("  " + _scope_line(scope_candidate))
 
     limits = _sequence(payload.get("limits"))
     if limits:
-        lines.append("- limites: " + ", ".join(_neutralize(_text(item)) for item in limits if _text(item)))
+        visible_limits = [_visible_limit(item) for item in limits if _visible_limit(item)]
+        if visible_limits:
+            lines.append("Limite: " + ", ".join(visible_limits))
     if bool(payload.get("truncated")):
-        lines.append("- resultat borne: candidats supplementaires masques")
+        lines.append("Resultat borne: candidats supplementaires masques.")
     return lines
 
 
@@ -408,32 +413,29 @@ def _dedupe_hits(hits: Iterable[Mapping[str, Any]]) -> tuple[dict[str, Any], ...
 
 
 def _candidate_line(candidate: Mapping[str, Any]) -> str:
-    doc = _text(candidate.get("doc_id_short")) or short_doc_id(_text(candidate.get("document_id"))) or "unknown"
-    parts = [f"catalogue_doc={doc}"]
-    for label, key in (
-        ("page", "page_no"),
-        ("para", "para_no"),
-        ("paragraph_id", "paragraph_id"),
-        ("rank", "rank"),
-        ("score", "score"),
-        ("titre", "title"),
-        ("snippet", "snippet"),
-    ):
-        value = _number(candidate.get(key)) if key in {"rank", "score"} else _text(candidate.get(key))
-        if key in {"page_no", "para_no", "paragraph_id"}:
-            value = str(_int(candidate.get(key)) or "")
-        if value:
-            parts.append(f"{label}={_neutralize(str(value))}")
+    parts = []
+    page = _int(candidate.get("page_no"))
+    para = _int(candidate.get("para_no"))
+    if page:
+        parts.append(f"page {page}")
+    if para:
+        parts.append(f"paragraphe {para}")
+    snippet = _text(candidate.get("snippet"))
+    if snippet:
+        parts.append("apercu candidat, pas extrait exact: " + _neutralize(snippet))
+    title = _text(candidate.get("title"))
+    if title and not snippet:
+        parts.append(_neutralize(title))
+    if not parts:
+        parts.append("passage candidat ancre")
     return "; ".join(parts)
 
 
 def _scope_line(candidate: Mapping[str, Any]) -> str:
-    doc = _text(candidate.get("doc_id_short")) or short_doc_id(_text(candidate.get("document_id"))) or "unknown"
-    parts = [f"catalogue_doc={doc}"]
-    for label, key in (("type", "candidate_type"), ("work", "work_id"), ("section", "section_id"), ("titre", "title")):
-        value = _text(candidate.get(key))
-        if value:
-            parts.append(f"{label}={_neutralize(value)}")
+    title = _text(candidate.get("title"))
+    parts = [_neutralize(title) if title else "Scope documentaire possible"]
+    if _text(candidate.get("section_id")):
+        parts.append("section precise")
     return "; ".join(parts)
 
 
@@ -458,6 +460,17 @@ def _search_limits(
             if value and value not in values:
                 values.append(value)
     return tuple(values)
+
+
+def _visible_limit(value: Any) -> str:
+    text = _text(value)
+    if text == "global_hits_filtered_by_document_scope":
+        return "des resultats hors document ont ete ecartes"
+    if text == "zero_hits_in_document_scope":
+        return "aucun resultat dans le document vise"
+    if text == "scope_ambiguous":
+        return "scope de recherche ambigu"
+    return ""
 
 
 def _has_position(candidate: Mapping[str, Any]) -> bool:

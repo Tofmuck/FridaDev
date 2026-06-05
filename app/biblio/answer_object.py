@@ -337,9 +337,9 @@ def render_biblio_answer_object(
         exact_rendered = True
     else:
         lines = _structured_answer_lines(answer)
-        if answer.status == STATUS_READY:
-            lines.append("Resultat Biblio pret, mais aucun texte exact mecanique n'est disponible pour ce rendu.")
-        else:
+        if answer.status == STATUS_READY and not lines:
+            lines.append("Resultat documentaire pret, sans extrait exact a afficher ici.")
+        elif answer.status != STATUS_READY and not lines:
             lines.append(_blocked_exact_line(answer.status))
     content = "\n".join(lines)
     return BiblioRenderedAnswer(
@@ -373,7 +373,7 @@ def _structured_answer_lines(answer: BiblioAnswerObject) -> list[str]:
         lines.append(
             "Plage canonique non rendue: l'intervalle complet debut/fin n'a pas ete extrait mecaniquement."
         )
-    if answer.interval:
+    if answer.interval and not answer.document_structure:
         interval = _visible_interval_line(answer.interval)
         if interval:
             lines.append(interval)
@@ -385,12 +385,14 @@ def _structured_answer_lines(answer: BiblioAnswerObject) -> list[str]:
 
 
 def _visible_interval_line(interval: Mapping[str, Any]) -> str:
-    parts = []
-    for label, key in (("type", "type"), ("etat", "state")):
-        value = _text(interval.get(key))
-        if value:
-            parts.append(f"{label}={_neutralize(value)}")
-    return "Intervalle: " + ", ".join(parts) if parts else ""
+    state = _text(interval.get("state"))
+    if state == "derived":
+        return "Bornes documentaires derivees."
+    if state == "known":
+        return "Bornes documentaires connues."
+    if state == "ambiguous":
+        return "Bornes documentaires ambigues."
+    return ""
 
 
 def _visible_status_line(status: str) -> str:
@@ -715,41 +717,55 @@ def _inventory_document(raw: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _inventory_lines(payload: Mapping[str, Any]) -> list[str]:
-    lines = ["Inventaire / metadonnees:"]
+    lines = ["Bibliotheque:"]
     total_count = _int(payload.get("total_count"))
     document_count = _int(payload.get("document_count"))
     if total_count:
-        lines.append(f"- total observe: {total_count}")
+        lines.append(f"- {total_count} ouvrages repertories.")
     if document_count:
-        lines.append(f"- documents rendus: {document_count}")
+        lines.append(f"- {document_count} ouvrages affiches dans cette reponse.")
     if bool(payload.get("truncated")):
-        lines.append("- resultat borne: tous les documents ne sont pas affiches dans ce rendu")
+        lines.append("- Liste bornee: certains ouvrages ne sont pas affiches ici.")
     raw_documents = payload.get("documents")
     documents = raw_documents if isinstance(raw_documents, Sequence) and not isinstance(raw_documents, (str, bytes, bytearray)) else ()
     for index, raw_document in enumerate(documents[:20], 1):
         if not isinstance(raw_document, Mapping):
             continue
-        doc = _text(raw_document.get("doc_id_short")) or short_doc_id(_text(raw_document.get("document_id")))
-        parts = [f"{index}. catalogue_doc={doc or 'unknown'}"]
+        parts = [f"{index}. "]
         title = _text(raw_document.get("title"))
         authors = _text(raw_document.get("authors"))
         language = _text(raw_document.get("language"))
         page_count = _int(raw_document.get("page_count"))
         metadata_status = _text(raw_document.get("metadata_status"))
         if title:
-            parts.append(f"titre={_neutralize(title)}")
+            parts[0] += _neutralize(title)
+        else:
+            parts[0] += "Ouvrage du catalogue"
         if authors:
-            parts.append(f"auteur={_neutralize(authors)}")
+            parts.append(f"auteur: {_neutralize(authors)}")
         if language:
-            parts.append(f"langue={_neutralize(language)}")
+            parts.append(f"langue: {_neutralize(language)}")
         if page_count:
-            parts.append(f"pages={page_count}")
+            parts.append(f"{page_count} pages")
         if metadata_status:
-            parts.append(f"metadata={_neutralize(metadata_status)}")
+            visible_status = _visible_metadata_status(metadata_status)
+            if visible_status:
+                parts.append(visible_status)
         lines.append("; ".join(parts))
     if len(documents) > 20:
         lines.append(f"... {len(documents) - 20} documents supplementaires masques par borne.")
     return lines
+
+
+def _visible_metadata_status(value: str) -> str:
+    text = _text(value)
+    if text in {"validated", "known", "complete"}:
+        return "metadonnees connues"
+    if text in {"unknown", "missing"}:
+        return "metadonnees incompletes"
+    if text:
+        return "metadonnees disponibles"
+    return ""
 
 
 def _inventory_observability(payload: Mapping[str, Any]) -> dict[str, Any]:

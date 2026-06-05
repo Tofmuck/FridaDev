@@ -141,59 +141,69 @@ def mechanical_exact_text(
 def render_lines(payload: Mapping[str, Any]) -> list[str]:
     if not payload:
         return []
-    lines = ["Extraction mecanique:"]
+    lines = ["Lecture demandee:"]
     status = _text(payload.get("status")) or "unknown"
-    lines.append(f"- statut: {status}")
-    source_tool = _text(payload.get("source_tool_name"))
-    if source_tool:
-        lines.append(f"- outil source: {source_tool}")
-    doc = _text(payload.get("doc_id_short")) or short_doc_id(_text(payload.get("document_id")))
-    if doc:
-        lines.append(f"- document: catalogue_doc={doc}")
     content_kind = _text(payload.get("content_kind"))
-    if content_kind:
-        lines.append(f"- type de texte: {content_kind}")
     range_state = _text(payload.get("range_state"))
-    if range_state:
-        lines.append(f"- etat plage canonique: {range_state}")
-    block_count = _int(payload.get("block_count"))
-    if block_count:
-        lines.append(f"- blocs mecaniques: {block_count}")
+    kind_line = _content_kind_line(content_kind, range_state)
+    if kind_line:
+        lines.append(kind_line)
     page_start = _int(payload.get("page_start"))
     page_end = _int(payload.get("page_end"))
     if page_start and page_end:
         if page_start == page_end:
-            lines.append(f"- page lue: {page_start}")
+            lines.append(f"Page lue: {page_start}.")
         else:
-            lines.append(f"- intervalle pages lu: {page_start}-{page_end}")
+            lines.append(f"Pages lues: {page_start}-{page_end}.")
     requested_page_end = _int(payload.get("requested_page_end"))
     if requested_page_end and requested_page_end != page_end:
-        lines.append(f"- borne finale demandee: page {requested_page_end}")
+        lines.append(f"La demande allait jusqu'a la page {requested_page_end}; seule une partie est affichee ici.")
     if status == EXTRACTION_STATUS_RESOLVED:
-        chapter_no = _int(payload.get("chapter_no"))
-        if chapter_no:
-            lines.append(f"- section/chapitre: chapter_no={chapter_no}")
-        else:
-            lines.append("- section/chapitre: inconnu ou indisponible")
-    anchor = _mapping(payload.get("anchor"))
-    if anchor:
-        parts = []
-        for label, key in (("page", "page_no"), ("para", "para_no"), ("paragraph_id", "paragraph_id")):
-            value = _int(anchor.get(key))
-            if value:
-                parts.append(f"{label}={value}")
-        if parts:
-            lines.append("- ancre technique: " + ", ".join(parts))
+        if _mapping(payload.get("anchor")):
+            lines.append("Passage ancre.")
     if bool(payload.get("exact_text_present")):
-        lines.append(f"- texte mecanique disponible: {_int(payload.get('exact_text_chars'))} caracteres")
+        lines.append("Texte exact disponible.")
     elif status == EXTRACTION_STATUS_NEEDS_CLARIFICATION:
-        lines.append("- extraction bloquee: ancre ou texte mecanique insuffisant")
+        lines.append("Je ne peux pas rendre l'extrait exact: ancre ou texte mecanique insuffisant.")
     elif status == EXTRACTION_STATUS_NOT_FOUND:
-        lines.append("- aucun texte mecanique n'a ete extrait par les outils autorises")
+        lines.append("Aucun texte exact n'a ete extrait par les outils autorises.")
     limits = _sequence(payload.get("limits"))
     if limits:
-        lines.append("- limites: " + ", ".join(_text(item) for item in limits if _text(item)))
+        visible_limits = [_visible_limit(item) for item in limits if _visible_limit(item)]
+        if visible_limits:
+            lines.append("Limite: " + ", ".join(visible_limits))
     return lines
+
+
+def _content_kind_line(content_kind: str, range_state: str) -> str:
+    if content_kind == "page":
+        return "Lecture d'une page."
+    if content_kind == "page_range":
+        return "Lecture de plusieurs pages."
+    if content_kind == "context":
+        return "Lecture autour d'un passage ancre."
+    if content_kind == "canonical_range":
+        return "Plage canonique complete." if range_state != "segment" else "Segment de plage canonique."
+    if content_kind == "canonical_range_segment":
+        return "Segment de plage canonique."
+    return ""
+
+
+def _visible_limit(value: Any) -> str:
+    text = _text(value)
+    if text == "canonical_range_segment_partial":
+        return "plage canonique affichee par segment"
+    if text == "canonical_range_continuation_anchor_present":
+        return "suite disponible"
+    if text == "canonical_range_continuation_anchor_missing":
+        return "suite non garantie"
+    if text == librarian_tools.REASON_BUDGET_OR_LIMIT_EXCEEDED:
+        return "budget de rendu depasse"
+    if text == librarian_tools.REASON_EXTRACTION_PAGE_RANGE_INCOMPLETE:
+        return "plage de pages incomplete"
+    if text == librarian_tools.REASON_EXTRACTION_PAGE_RANGE_TOO_LONG:
+        return "plage de pages trop longue"
+    return ""
 
 
 def to_observability(payload: Mapping[str, Any]) -> dict[str, Any]:

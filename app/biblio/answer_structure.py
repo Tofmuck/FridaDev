@@ -102,33 +102,27 @@ def override_answer_status(payload: Mapping[str, Any], *, base_status: str) -> s
 def render_lines(payload: Mapping[str, Any]) -> list[str]:
     if not payload:
         return []
-    lines = ["Structure documentaire / table des matieres:"]
     status = _text(payload.get("status")) or "unknown"
-    lines.append(f"- statut: {status}")
-    doc = _text(payload.get("doc_id_short")) or short_doc_id(_text(payload.get("document_id")))
-    if doc:
-        lines.append(f"- document: catalogue_doc={doc}")
-    lines.append(f"- chapitres: {_int(payload.get('chapter_count'))}")
-    lines.append(f"- sections: {_int(payload.get('section_count'))}")
+    lines = ["Structure du document:"]
     if status == STRUCTURE_STATUS_AMBIGUOUS:
-        lines.append("- ambiguite conservee: aucun document ou section n'est choisi par le renderer")
+        lines.append("Plusieurs documents ou sections restent possibles; precise lequel viser.")
     elif status == STRUCTURE_STATUS_NOT_FOUND:
-        lines.append("- aucune structure documentaire n'est resolue")
+        lines.append("Aucune structure documentaire exploitable n'a ete trouvee.")
     elif status == STRUCTURE_STATUS_NEEDS_CLARIFICATION:
-        lines.append("- clarification requise: la structure disponible ne suffit pas a fermer la demande")
+        lines.append("La structure disponible ne suffit pas encore a fermer la demande.")
 
     chapters = _sequence(payload.get("chapters"))
     if chapters:
-        lines.append("- table des matieres:")
+        lines.append("Table des matieres:")
         for chapter in chapters[:40]:
             if isinstance(chapter, Mapping):
                 lines.append("  " + _chapter_line(chapter))
         if len(chapters) > 40:
-            lines.append(f"  ... {len(chapters) - 40} chapitres supplementaires masques par borne")
+            lines.append(f"  ... {len(chapters) - 40} entrees supplementaires masquees par borne")
 
     sections = _sequence(payload.get("sections"))
     if sections:
-        lines.append("- sections structurelles:")
+        lines.append("Sections reperees:")
         for section in sections[:20]:
             if isinstance(section, Mapping):
                 lines.append("  " + _section_line(section))
@@ -137,28 +131,23 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
 
     candidates = _sequence(payload.get("document_candidates"))
     if candidates and not chapters and not sections:
-        lines.append("- candidats documentaires:")
+        lines.append("Candidats documentaires:")
         for candidate in candidates[:10]:
             if isinstance(candidate, Mapping):
                 lines.append("  " + _candidate_line(candidate))
 
     interval = payload.get("interval")
     if isinstance(interval, Mapping) and interval:
-        parts = []
-        for key in ("type", "state"):
-            value = _text(interval.get(key))
-            if value:
-                parts.append(f"{key}={_neutralize(value)}")
-        if parts:
-            lines.append("- intervalle structurel: " + ", ".join(parts))
-    anchor_count = _int(payload.get("anchor_count"))
-    if anchor_count:
-        lines.append(f"- ancres structurelles: {anchor_count}")
+        visible_interval = _interval_line(interval)
+        if visible_interval:
+            lines.append(visible_interval)
     limits = _sequence(payload.get("limits"))
     if limits:
-        lines.append("- limites: " + ", ".join(_neutralize(_text(item)) for item in limits if _text(item)))
+        visible_limits = [_visible_limit(item) for item in limits if _visible_limit(item)]
+        if visible_limits:
+            lines.append("Limite: " + ", ".join(visible_limits))
     if bool(payload.get("truncated")):
-        lines.append("- resultat borne: elements structurels supplementaires masques")
+        lines.append("Resultat borne: elements structurels supplementaires masques.")
     return lines
 
 
@@ -382,45 +371,90 @@ def _dedupe_candidates(candidates: Iterable[Mapping[str, Any]]) -> tuple[dict[st
 def _chapter_line(chapter: Mapping[str, Any]) -> str:
     parts = []
     number = _int(chapter.get("chapter_no"))
+    label = "Chapitre" if number else "Entree"
     if number:
-        parts.append(f"chapitre={number}")
+        label = f"Chapitre {number}"
     title = _text(chapter.get("title"))
     if title:
-        parts.append(f"titre={_neutralize(title)}")
-    for label, key in (("page_start", "page_start"), ("page_end", "page_end")):
-        value = _int(chapter.get(key))
-        if value:
-            parts.append(f"{label}={value}")
-    return "; ".join(parts) if parts else "chapitre=unknown"
+        label = f"{label}: {_neutralize(title)}"
+    page_start = _int(chapter.get("page_start"))
+    page_end = _int(chapter.get("page_end"))
+    if page_start and page_end:
+        parts.append(f"pages {page_start}-{page_end}" if page_start != page_end else f"page {page_start}")
+    elif page_start:
+        parts.append(f"commence page {page_start}")
+    return label + (f" ({'; '.join(parts)})" if parts else "")
 
 
 def _section_line(section: Mapping[str, Any]) -> str:
-    parts = []
-    for label, key in (
-        ("section", "section_id"),
-        ("chapitre", "chapter_no"),
-        ("titre", "title"),
-        ("role", "content_role"),
-        ("boundary", "boundary_state"),
-        ("unit_start", "unit_start"),
-        ("unit_end", "unit_end"),
-        ("page_start", "page_start"),
-        ("page_end", "page_end"),
-    ):
-        value = _text(section.get(key)) if key not in {"chapter_no", "unit_start", "unit_end", "page_start", "page_end"} else str(_int(section.get(key)) or "")
-        if value:
-            parts.append(f"{label}={_neutralize(value)}")
-    return "; ".join(parts) if parts else "section=unknown"
+    label = _section_label(section)
+    title = _text(section.get("title"))
+    if title:
+        label = f"{label}: {_neutralize(title)}"
+    start = _int(section.get("unit_start") or section.get("page_start"))
+    end = _int(section.get("unit_end") or section.get("page_end"))
+    details = []
+    if start and end:
+        details.append(f"pages {start}-{end}" if start != end else f"page {start}")
+    elif start:
+        details.append(f"commence page {start}")
+    boundary = _boundary_note(section.get("boundary_state"))
+    if boundary:
+        details.append(boundary)
+    return label + (f" ({'; '.join(details)})" if details else "")
 
 
 def _candidate_line(candidate: Mapping[str, Any]) -> str:
-    doc = _text(candidate.get("doc_id_short")) or short_doc_id(_text(candidate.get("document_id"))) or "unknown"
-    parts = [f"catalogue_doc={doc}"]
-    for label, key in (("titre", "title"), ("auteur", "authors"), ("metadata", "metadata_status")):
-        value = _text(candidate.get(key))
-        if value:
-            parts.append(f"{label}={_neutralize(value)}")
+    title = _text(candidate.get("title"))
+    parts = [_neutralize(title) if title else "Document du catalogue"]
+    authors = _text(candidate.get("authors"))
+    if authors:
+        parts.append(f"auteur: {_neutralize(authors)}")
     return "; ".join(parts)
+
+
+def _section_label(section: Mapping[str, Any]) -> str:
+    kind = _text(section.get("section_kind"))
+    level = _int(section.get("level"))
+    if kind == "chapter" and level <= 1:
+        number = _int(section.get("chapter_no"))
+        return f"Chapitre {number}" if number else "Chapitre"
+    if kind == "subsection" or level > 2:
+        return "Sous-section"
+    if kind == "section" or level == 2:
+        return "Section interne"
+    return "Section"
+
+
+def _boundary_note(value: Any) -> str:
+    state = _text(value)
+    if state == "derived":
+        return "fin derivee"
+    if state == "known":
+        return "borne connue"
+    if state == "ambiguous":
+        return "borne ambigue"
+    return ""
+
+
+def _interval_line(interval: Mapping[str, Any]) -> str:
+    state = _text(interval.get("state"))
+    if state == "derived":
+        return "Bornes documentaires derivees."
+    if state == "known":
+        return "Bornes documentaires connues."
+    if state == "ambiguous":
+        return "Bornes documentaires ambigues."
+    return ""
+
+
+def _visible_limit(value: Any) -> str:
+    text = _text(value)
+    if text == "section_end_unknown":
+        return "fin de section inconnue"
+    if text == "chapter_level_not_internal_section":
+        return "niveau chapitre, pas section interne distincte"
+    return ""
 
 
 def _structure_limits(sections: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
