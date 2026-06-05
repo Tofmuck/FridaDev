@@ -89,34 +89,50 @@ Catalogue brut, ni snippet brut, ni titre/auteur brut, ni texte d'ouvrage.
 Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
 `ferme_live`, `a_ne_pas_pretendre`.
 
-- [ ] BIB-01 - Dire quels ouvrages la bibliotheque contient.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: question naturelle d'inventaire -> methode
-    canonique `inventory_metadata` -> message final structure.
-- [ ] BIB-02 - Dire combien d'ouvrages la bibliotheque contient.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: question naturelle de comptage -> total rendu
-    sans payload brut.
-- [ ] BIB-03 - Donner les metadonnees connues d'un ouvrage: titre, auteur,
+- [x] BIB-01 - Dire quels ouvrages la bibliotheque contient.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB01_INVENTORY_LIST=met`, vraie conversation Frida, agent live,
+    `inventory_metadata`, `catalog_list`, message final sauvegarde).
+  - Prochain test live requis: regression seulement si inventaire ou surface
+    Biblio change.
+- [x] BIB-02 - Dire combien d'ouvrages la bibliotheque contient.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB02_INVENTORY_COUNT=met`, vraie conversation Frida, agent live,
+    `inventory_metadata`, `catalog_list`, total/compteurs en meta content-free).
+  - Prochain test live requis: regression seulement si inventaire ou surface
+    Biblio change.
+- [x] BIB-03 - Donner les metadonnees connues d'un ouvrage: titre, auteur,
   langue, nombre de pages, statut connu/inconnu.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: question metadonnees sur un ouvrage -> resolution
-    documentaire -> rendu final structure.
-- [ ] BIB-04 - Trouver un ouvrage demande par l'utilisateur.
-  - Statut: `partiel_live`
-  - Preuve live: resolution documentaire observee comme ancre dans
-    `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`.
-  - Prochain test live requis: demande de resolution seule -> `resolved`,
-    `ambiguous` ou `not_found`, sans extraction parasite.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB03_DOCUMENT_METADATA=met`, vraie conversation Frida, agent live,
+    `inventory_metadata`, `document_open_summary`, metadonnees rendues sans
+    extraction exacte).
+  - Prochain test live requis: regression seulement si metadonnees Catalogue
+    ou rendu visible changent.
+- [x] BIB-04 - Trouver un ouvrage demande par l'utilisateur.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB04_FIND_REQUESTED_DOCUMENT=met`, vraie conversation Frida, agent live,
+    `document_resolution`, `document_open_summary`, `resolved` sans extraction
+    parasite).
+  - Prochain test live requis: regression seulement si resolution
+    documentaire ou portage d'ancre changent.
 - [ ] BIB-05 - Distinguer plusieurs ouvrages possibles quand la demande est
   ambigue.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: requete ambigue -> candidats structures ou
-    clarification, sans choix silencieux.
+  - Statut: `partiel_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB05_AMBIGUOUS_DOCUMENTS=partial`; la conversation live appelle bien
+    l'agent, mais ne prouve pas encore une ambiguite multi-ouvrage conservee).
+  - Prochain test live requis: requete ambigue produisant plusieurs documents
+    reels -> candidats structures ou clarification, sans choix silencieux.
 - [ ] BIB-06 - Trouver une oeuvre a l'interieur d'un volume.
   - Statut: `contractuel_unitaire`
   - Preuve live: aucune preuve live agentique dediee.
@@ -128,40 +144,65 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
   - Preuve live: aucune.
   - Prochain test live requis: demande de role de contenu -> role connu,
     inconnu ou derive, sans faux texte primaire.
-- [ ] BIB-08 - Donner la table des matieres d'un ouvrage.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: question TOC -> `document_structure` ->
-    `structured_status`, pas `exact_excerpt`.
-- [ ] BIB-09 - Dire ou commence un chapitre.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: chapitre resolu -> page/ancre de debut ou
-    reason code d'indisponibilite.
-- [ ] BIB-10 - Dire ou finit un chapitre.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: chapitre resolu -> borne de fin ou reason code
-    d'indisponibilite.
+- [x] BIB-08 - Donner la table des matieres d'un ouvrage.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB08_DOCUMENT_TOC=met`, vraie conversation Frida, agent live,
+    `document_structure`, `document_toc`, surface structurelle sans
+    `exact_excerpt`).
+  - Prochain test live requis: regression seulement si TOC ou surface
+    structurelle changent.
+- [x] BIB-09 - Dire ou commence un chapitre.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB09_CHAPTER_START=met`, vraie conversation Frida, agent live,
+    `document_structure`, `section_bounds`, ancre de debut exposee en meta).
+  - Prochain test live requis: regression seulement si bornes de chapitre ou
+    rendu structurel changent.
+- [x] BIB-10 - Dire ou finit un chapitre.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB10_CHAPTER_END=met`, vraie conversation Frida, agent live,
+    `document_structure`, `section_bounds`, ancre de fin exposee en meta).
+  - Prochain test live requis: regression seulement si bornes de chapitre ou
+    rendu structurel changent.
 - [ ] BIB-11 - Dire ou commence une section interne.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: section interne resolue -> debut structure ou
-    clarification.
-- [ ] BIB-12 - Dire ou finit une section interne.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: section interne resolue -> fin structure ou
-    clarification.
-- [ ] BIB-13 - Chercher un theme ou motif dans un ouvrage.
   - Statut: `partiel_live`
-  - Preuve live: recherche scoped prouvee partiellement dans les proof gates
-    Lot 4E; multi-hit naturel reste partiel.
-  - Prochain test live requis: theme + ouvrage -> candidats structures,
-    zero-hit propre ou clarification.
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB11_INTERNAL_SECTION_START=partial`; la demande live ne prouve pas
+    encore une section interne distincte du chapitre et finit sur
+    `locator_not_found`).
+  - Prochain test live requis: section interne resolue, distincte d'un simple
+    chapitre, avec debut structure ou clarification propre.
+- [ ] BIB-12 - Dire ou finit une section interne.
+  - Statut: `partiel_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB12_INTERNAL_SECTION_END=partial`; la demande live ne prouve pas
+    encore une section interne distincte du chapitre et finit sur
+    `locator_not_found`).
+  - Prochain test live requis: section interne resolue, distincte d'un simple
+    chapitre, avec fin structure ou clarification propre.
+- [x] BIB-13 - Chercher un theme ou motif dans un ouvrage.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB13_THEME_SEARCH_DOCUMENT=met`, vraie conversation Frida, agent live,
+    `scoped_search`, `catalog_search`, candidats structures sans
+    `passage_context` ni extrait exact).
+  - Prochain test live requis: regression seulement si recherche scoped ou
+    surface candidates changent.
 - [ ] BIB-14 - Chercher un theme ou motif dans une section precise.
-  - Statut: `ouvert`
-  - Preuve live: aucune.
+  - Statut: `partiel_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+    (`BIB14_THEME_SEARCH_SECTION=partial`; l'agent choisit `scoped_search`,
+    mais la section precise n'est pas resolue proprement et aucun rendu final
+    Biblio n'est sauvegarde pour ce tour).
   - Prochain test live requis: section resolue -> recherche bornee section,
     candidats structures, pas extraction automatique.
 - [x] BIB-15 - Presenter plusieurs passages candidats sans les transformer en
@@ -568,6 +609,24 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     Biblio presente.
   - Limite: la preuve ne vend pas la plage longue comme complete; elle ferme le
     contrat "segment exact + continuation", pas un export illimite.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- Livraison 7 BIB-01/BIB-14 - 2026-06-05 -
+  `app/docs/states/baselines/biblio-smokes/bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl`
+  - Statut: vraie conversation Frida, bibliothecaire agentique live,
+    12 tours utilisateur, 12 messages assistant sauvegardes, surface visible
+    propre, artefact content-free.
+  - Conversation: hash `472de32df47d`
+  - BIB fermes live: BIB-01, BIB-02, BIB-03, BIB-04, BIB-08, BIB-09,
+    BIB-10, BIB-13.
+  - Outils appeles pour les BIB fermes: `catalog_list`,
+    `document_open_summary`, `document_toc`, `section_bounds`,
+    `catalog_search`.
+  - Reason codes principaux: `biblio_agent_first_plan_executed`,
+    `biblio_final_response_authorized`, `ok`, `resolved`.
+  - BIB gardes partiels: BIB-05 (ambiguite multi-ouvrage non prouvee),
+    BIB-11/BIB-12 (section interne distincte du chapitre non prouvee),
+    BIB-14 (scope de section precise non ferme; `locator_not_found`).
+  - Requalification: BIB-24 n'a pas ete rouvert par cette livraison.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
@@ -2461,6 +2520,7 @@ Inventaire de verite Lot 4:
 | BIB-24 plage canonique courte | ferme live | oui | `bib24-canonical-range-closed-real-conversation-20260605T114227Z.jsonl` | ferme une plage canonique courte sous budget via `resolve_work` -> `canonical_range_extract` -> final lock; les plages longues restent a decouper explicitement. |
 | BIB-24 plage canonique longue segmentee | ferme live pour segment + continuation | oui | `bib24-long-canonical-range-real-conversation-20260605T121503Z.jsonl` | plage longue rendue en segment exact avec `range_complete=false`, ancre de continuation portee, puis suite mecanique; ne vaut pas export complet illimite. |
 | BIB-24 Catalogue/Sauron bornes canoniques | diagnostic plateforme livre, limite generale conservee | oui | `bib24-catalogue-canonical-bounds-diagnostic-20260605T103249Z.jsonl` | `milestones.order_index` suffit pour ordonner des bornes non ambigues; les documents agreges peuvent encore exiger un scope d'oeuvre interne fiable pour eviter tout choix silencieux. |
+| Livraison 7 BIB-01/BIB-14 simples | 8 fermes live, 4 partiels | oui | `bib01-bib14-simple-capabilities-real-conversation-20260605T125932Z.jsonl` | ferme inventaire, comptage, metadonnees, resolution simple, TOC, bornes chapitre et recherche scoped ouvrage; garde partiels ambiguite multi-ouvrage, sections internes distinctes et recherche dans section precise. |
 | Proof Gate initial 4E | diagnostic livre | n/a | `lot4e-proof-gate-live-20260604T144426Z.jsonl`: `0 met`, `3 failed`, `1 partial` | prouve surtout l'ecart agentique live initial. |
 | Replay transition agentique | diagnostic livre | n/a | `lot4e-proof-gate-live-after-agentic-transition-20260604T145952Z.jsonl`: `1 met`, `0 failed`, `3 partial` | trajectoires ameliorees, rendu page encore non ferme. |
 | Proof Gate page-render isole | preuve live ciblee | n/a | `lot4e-proof-gate-live-after-page-render-20260604T151409Z.jsonl`: `4 met` | preuve avec document deja ancre; pas preuve de resolution naturelle. |
