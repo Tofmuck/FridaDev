@@ -44,13 +44,21 @@ Pour Biblio:
 
 Decision technique de restitution:
 
-> L'introduction vernaculaire est produite par une phase de restitution Frida bornee, pas par le bibliothecaire comme locuteur visible et pas par le LLM principal libre. Cette phase recoit le paquet de restitution, ecrit seulement l'enveloppe dialogique, puis le code insere les blocs verrouilles.
+> L'enveloppe vernaculaire est proposee par l'agent specialise dans son resultat
+> structure, sous forme de champs bornes comme `surface_intro` et
+> `surface_outro`. Elle n'est pas un message visible autonome. Le code valide
+> cette enveloppe, assemble les blocs exacts verrouilles verbatim, puis persiste
+> le tout comme une reponse assistant Frida normale.
 
-La decision produit est donc fixee: par defaut, une phase de restitution Frida
-bornee produit l'introduction et la relance eventuelle. Ce n'est pas un nouveau
-locuteur, ce n'est pas "le bibliothecaire dit", et ce n'est pas le LLM principal
-qui reprend tout le contexte pour improviser. Le modele ou runtime exact de
-cette phase pourra etre choisi plus tard, mais son role produit est fixe.
+La decision produit est donc fixee: par defaut, le modele cible est le **modele B avec garde deterministe**. L'agent specialise qui a fait le travail produit
+une enveloppe vernaculaire courte et bornee dans son JSON. Le code reste
+responsable de l'assemblage final, des blocs exacts, des limites et des metas.
+
+Ce n'est pas un nouveau locuteur, ce n'est pas "le bibliothecaire dit", ce n'est
+pas un nouveau LLM, et ce n'est pas le LLM principal libre qui reprend tout le
+contexte pour improviser. Le role produit est fixe; le schema exact, la
+validation et les strategies de fallback pourront etre definis dans les lots de
+design.
 
 Formule a graver:
 
@@ -133,9 +141,9 @@ Pour Agenda futur:
 
 ### Restitution vernaculaire
 
-La restitution vernaculaire est produite par une phase de restitution Frida
-bornee. Elle transforme le resultat specialise en message assistant Frida
-lisible, sans devenir un locuteur separe:
+La restitution vernaculaire est une enveloppe courte proposee par l'agent
+specialise dans son resultat structure. Elle transforme le resultat specialise
+en message assistant Frida lisible, sans devenir un locuteur separe:
 
 - introduction naturelle;
 - contexte bref;
@@ -146,18 +154,32 @@ lisible, sans devenir un locuteur separe:
 - aucune plomberie technique;
 - aucune reecriture des blocs exacts verrouilles.
 
-Cette phase recoit le paquet de restitution Biblio, pas le pouvoir documentaire
-brut. Elle ne choisit pas un document, une section, un role ou une ancre; elle
-n'interprete pas librement le fonds; elle ecrit seulement l'enveloppe
-dialogique autorisee autour du resultat prepare.
+L'agent specialise peut proposer cette enveloppe parce qu'il a deja recu la
+requete, le contexte utile et les resultats de ses outils. Mais il la propose
+comme champ structure, pas comme parole visible autonome. Le code peut refuser
+ou remplacer cette enveloppe si elle viole le contrat: trop longue, jargon outil,
+provenance inventee, faux exact, confusion complet/partiel ou reecriture d'un
+bloc verrouille.
 
 Pour Biblio, la composition cible est:
 
-1. phrase d'introduction naturelle;
+1. `surface_intro` courte;
 2. provenance courte si utile;
 3. bloc exact verrouille si un extrait mecanique est rendu;
 4. limite ou continuation si le resultat est partiel;
-5. relance naturelle si clarification ou suite utile.
+5. `surface_outro` courte si clarification ou suite utile.
+
+Comparaison A / B:
+
+- Modele A, phase de restitution Frida separee: voix Frida homogene, mais appel
+  LLM supplementaire ou retour au LLM principal, donc cout plus eleve et risque
+  de refaire le sens documentaire.
+- Modele B, enveloppe produite par l'agent specialise: plus simple, moins cher,
+  plus proche du contexte reel de recherche, sans nouveau locuteur si le champ
+  reste structure et si le code assemble le message final.
+- Decision: B est meilleur par defaut, a condition d'ajouter une validation
+  deterministe stricte de `surface_intro` / `surface_outro` et un fallback sans
+  nouveau LLM si l'enveloppe est invalide.
 
 ### Transparence conversationnelle
 
@@ -189,7 +211,8 @@ Ce paquet doit contenir au minimum:
   `needs_clarification`, `blocked`, `error`;
 - type de resultat: `exact_excerpt`, `candidates`, `provenance`,
   `continuation`, `clarification` ou equivalent;
-- resume humain court du resultat;
+- `surface_intro` courte proposee par l'agent specialise;
+- `surface_outro` courte si utile;
 - provenance lisible;
 - limites a mentionner;
 - blocs exacts verrouilles;
@@ -204,7 +227,8 @@ Exemple indicatif, non contractuel pour le schema runtime:
   "user_intent": "lire le debut de cette section",
   "result_status": "ready",
   "result_kind": "exact_excerpt",
-  "human_context": "J'ai retrouve le debut de la section demandee.",
+  "surface_intro": "J'ai retrouve le debut de la section. Je te donne les premieres pages.",
+  "surface_outro": "Je peux continuer si tu veux.",
   "provenance": {
     "work": "ouvrage resolu",
     "section": "section resolue",
@@ -242,6 +266,12 @@ Exemple indicatif, non contractuel pour le schema runtime:
 Les JSONL de preuve ne doivent jamais inclure le texte brut des blocs exacts:
 ils portent hashes, tailles, statuts, ancres et reason codes content-free.
 
+`surface_intro` et `surface_outro` sont des contenus conversationnels candidats:
+ils peuvent etre visibles dans le message final, mais ils restent soumis a
+validation. Les JSONL de preuve doivent les resumer par presence, longueurs,
+hashes et reason codes, pas par texte brut si le lot exige un artefact
+content-free strict.
+
 ### Assemblage cible
 
 Le flow cible n'est pas:
@@ -265,13 +295,12 @@ assistant_message = compose_frida_answer(
 
 Le plus sur:
 
-- une phase de restitution Frida bornee genere seulement l'introduction
-  vernaculaire, le contexte bref, la limite honnete et eventuellement la
-  relance;
-- cette phase n'est pas le LLM principal libre avec tout le pouvoir de
-  relecture;
-- cette phase n'est pas un mini-agent visible ni un personnage separe;
-- cette phase n'est pas le bibliothecaire comme locuteur;
+- l'agent specialise propose `surface_intro` et `surface_outro` dans le paquet
+  structure;
+- le code valide ces champs: longueur, absence de jargon outil, absence de faux
+  exact, respect des limites, absence de provenance inventee;
+- si l'enveloppe est invalide, le code la bloque ou utilise une formulation
+  minimale determinee, sans nouvel appel LLM;
 - le code assemble deterministiquement les blocs exacts verrouilles;
 - les blocs exacts sont copies verbatim;
 - un hash ou un garde-fou verifie qu'ils n'ont pas ete modifies si necessaire;
@@ -284,14 +313,15 @@ Le plus sur:
 
 - Decision proposee: Frida parle. Reste a valider humainement que cette voix
   unique ne rend pas invisible une limite utile de l'agent specialise.
-- Decision proposee: l'introduction vernaculaire vient d'une phase de
-  restitution Frida bornee. Reste ouvert: quel modele/runtime exact porte cette
-  phase, avec quel prompt, budget, format d'entree et garde-fou?
-- Quel contexte minimal donner a la phase de restitution Frida bornee?
+- Decision proposee: `surface_intro` / `surface_outro` sont produits par l'agent
+  specialise dans son JSON, puis valides et assembles par le code. Reste ouvert:
+  schema exact, limites de taille, validation et fallback sans nouveau LLM.
+- Quel contexte minimal donner a l'agent specialise pour produire une enveloppe
+  courte sans lui donner un pouvoir de locuteur autonome?
 - Comment empecher toute reecriture des extraits exacts?
 - Comment composer proprement introduction + bloc exact verrouille?
-- Comment representer un bloc exact dans le prompt de restitution sans
-  autoriser le modele a le modifier?
+- Comment s'assurer que l'agent specialise ne paraphrase jamais un bloc exact
+  dans `surface_intro` ou `surface_outro`?
 - Comment preserver les metas sans les afficher brutalement?
 - Comment garantir que le message final entre dans toute la chaine
   conversationnelle: DB, contexte recent, Memory, embeddings, resume?
@@ -313,10 +343,14 @@ Le plus sur:
 - [ ] Decrire le contrat general `agent_result -> assistant_message`.
 - [ ] Acter la decision de voix visible: Frida parle, les agents travaillent en
   coulisses.
-- [ ] Acter la decision de restitution: phase Frida bornee par paquet, pas LLM principal libre, pas agent visible, pas bibliothecaire locuteur.
+- [ ] Acter la decision de restitution: enveloppe courte produite par l'agent
+  specialise dans son JSON, puis validee et assemblee par le code.
+- [ ] Acter l'interdit: pas de nouveau LLM, pas de LLM principal libre, pas de
+  mini-agent visible, pas de bibliothecaire locuteur.
 - [ ] Stabiliser le vocabulaire: resultat mecanique, restitution vernaculaire,
   bloc verrouille, metas, message assistant normal.
-- [ ] Stabiliser le vocabulaire du paquet de restitution structure.
+- [ ] Stabiliser le vocabulaire du paquet de restitution structure, notamment
+  `surface_intro`, `surface_outro` et `locked_blocks`.
 - [ ] Definir les interdits: reecriture d'exact, canal parallele, double
   reponse, fuite de plomberie.
 - [ ] Definir le modele d'assemblage deterministe des blocs exacts.
@@ -342,7 +376,10 @@ Le plus sur:
 
 - [ ] Proposer le format interne `introduction_vernaculaire + result_lock`.
 - [ ] Proposer le format interne du paquet de restitution structure.
-- [ ] Definir la phase de restitution Frida bornee et son contrat d'entree.
+- [ ] Definir le contrat `surface_intro` / `surface_outro` produit par l'agent
+  specialise.
+- [ ] Definir la validation deterministe de cette enveloppe.
+- [ ] Definir le fallback sans nouveau LLM si l'enveloppe est invalide.
 - [ ] Definir comment un extrait exact verrouille est transporte.
 - [ ] Definir comment le code assemble les blocs exacts verbatim.
 - [ ] Definir comment verifier hash ou garde-fou de non-reecriture.
@@ -360,9 +397,9 @@ Le plus sur:
 - [ ] Choisir un seul flux Biblio pilote a faible risque.
 - [ ] Prouver l'etat avant patch par vraie conversation Frida.
 - [ ] Ajouter le plus petit mecanisme de composition si necessaire.
-- [ ] Produire un paquet de restitution structure pour ce flux.
-- [ ] Brancher une phase de restitution Frida bornee pour l'enveloppe
-  dialogique.
+- [ ] Faire produire `surface_intro` / `surface_outro` par le bibliothecaire
+  dans son resultat structure.
+- [ ] Valider deterministiquement cette enveloppe avant affichage.
 - [ ] Garantir que le LLM ne reecrit pas l'extrait exact.
 - [ ] Garantir que le code copie les blocs exacts verbatim.
 - [ ] Garantir que la surface visible reste une reponse assistant normale.
@@ -437,9 +474,12 @@ Le plus sur:
 - L'agent specialise n'est pas un locuteur separe.
 - Le resultat specialise n'apparait pas comme un canal parallele.
 - Frida recoit un paquet de restitution structure.
-- L'introduction vernaculaire vient d'une phase de restitution Frida bornee.
-- Cette phase n'est ni le LLM principal libre, ni un mini-agent visible, ni le
-  bibliothecaire comme locuteur.
+- `surface_intro` et `surface_outro` sont produits par l'agent specialise comme
+  champs du resultat structure, pas comme message visible autonome.
+- Aucun nouveau LLM n'est appele pour l'enveloppe vernaculaire.
+- Le LLM principal libre ne reprend pas tout le contexte pour improviser
+  l'enveloppe.
+- L'agent specialise n'est ni un mini-agent visible ni un locuteur separe.
 - Le message est sauvegarde en base.
 - Le message entre dans le contexte recent.
 - Le message est disponible pour Memory, embeddings et resume selon les
@@ -473,8 +513,9 @@ Pour tout lot runtime futur:
 - preuve Memory / embeddings / resume ou reason code indiquant le cran non
   applicable;
 - preuve du paquet de restitution structure en content-free;
-- preuve que la phase de restitution est bornee au paquet et a l'enveloppe
-  dialogique;
+- preuve que `surface_intro` / `surface_outro` viennent du resultat structure et
+  passent par validation;
+- preuve qu'aucun nouvel appel LLM n'a produit l'enveloppe;
 - preuve d'assemblage deterministe des blocs exacts;
 - vraie conversation Frida;
 - artefact JSONL content-free;
@@ -488,8 +529,9 @@ Pour tout lot runtime futur:
 - Double reponse: une sortie agent et une sortie Frida peuvent coexister.
 - Canal parallele: le resultat agentique peut rester en meta sans devenir
   contenu conversationnel.
-- Faux exact: la phase de restitution peut reformuler un extrait qui devait
-  rester verrouille si le code n'assemble pas deterministiquement les blocs.
+- Faux exact: `surface_intro` ou `surface_outro` peuvent reformuler un extrait
+  qui devait rester verrouille si le contrat et la validation ne l'interdisent
+  pas.
 - Jargon outil: le message peut redevenir un rapport de pipeline.
 - Perte de metas: rendre la surface naturelle peut faire disparaitre les
   signaux necessaires a l'observabilite.
