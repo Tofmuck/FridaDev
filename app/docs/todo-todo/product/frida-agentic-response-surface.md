@@ -6,6 +6,7 @@ Classement: `app/docs/todo-todo/product/`
 
 Sources:
 
+- `app/docs/states/specs/agentic-response-surface-contract.md`
 - `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - `app/docs/todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
@@ -69,7 +70,7 @@ Formules a garder:
 - Pas de modification doc-pipeline ou plateforme.
 - Pas de reouverture de BIB-01 -> BIB-33.
 - Pas de restitution speciale par BIB.
-- Pas de branche locale du type `if BIB-17 then phrase speciale`.
+- Pas de branche locale specialisee par numero BIB.
 - Pas de validateur regex de surface.
 - Pas de filtre stylistique local.
 - Pas de liste locale de vocabulaire interdit.
@@ -161,16 +162,18 @@ Objectif: comprendre ou se fabrique aujourd'hui la reponse Biblio visible.
 
 Objectif: fixer le contrat generique.
 
-- [ ] Definir `surface_intro` comme champ du contrat, vide seulement si le
+- Spec normative: `app/docs/states/specs/agentic-response-surface-contract.md`.
+
+- [x] Definir `surface_intro` comme champ du contrat, vide seulement si le
   statut ou le type de resultat le justifie.
-- [ ] Definir `surface_outro` comme champ du contrat, vide seulement si le
+- [x] Definir `surface_outro` comme champ du contrat, vide seulement si le
   statut ou le type de resultat le justifie.
-- [ ] Definir le comportement si l'enveloppe est absente.
-- [ ] Confirmer que les exacts verrouilles ne sont pas reecrits.
-- [ ] Confirmer l'absence de nouveau LLM.
-- [ ] Confirmer l'absence de validateur regex ou de filtre de style.
-- [ ] Confirmer l'absence de branche par BIB.
-- [ ] Confirmer les familles Biblio couvertes.
+- [x] Definir le comportement si l'enveloppe est absente.
+- [x] Confirmer que les exacts verrouilles ne sont pas reecrits.
+- [x] Confirmer l'absence de nouveau LLM.
+- [x] Confirmer l'absence de validateur regex ou de filtre de style.
+- [x] Confirmer l'absence de branche par BIB.
+- [x] Confirmer les familles Biblio couvertes.
 
 ### Lot 2 - Implementation generique Biblio
 
