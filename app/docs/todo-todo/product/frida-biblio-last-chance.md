@@ -135,16 +135,33 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
   - Prochain test live requis: regression seulement si resolution
     documentaire, ambiguite ou surface visible changent.
 - [ ] BIB-06 - Trouver une oeuvre a l'interieur d'un volume.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: aucune preuve live agentique dediee.
-  - Prochain test live requis: oeuvre interne demandee -> resolution ou
-    clarification avec limites structurelles.
+  - Statut: `partiel_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl`
+    (`BIB06_INTERNAL_WORK_LOOKUP=met` dans une vraie conversation Frida,
+    agent live, `document_resolution`, `search_document`,
+    `document_open_summary`, candidat unique, message sauvegarde, sans extrait
+    exact). Requalification prudente: l'artefact prouve une resolution
+    documentaire/volume unique, mais ne prouve pas encore un `work_state` ou
+    `resolve_work` explicite portant une oeuvre interne distincte a travers le
+    fil.
+  - Prochain test live requis: demande explicite d'oeuvre interne dans un
+    volume agrege -> `search_work`/`resolve_work` ou clarification, avec
+    `work_state` exploitable et aucun choix silencieux.
 - [ ] BIB-07 - Distinguer texte principal, commentaire, preface, notice, notes
   ou appareil critique.
-  - Statut: `ouvert`
-  - Preuve live: aucune.
-  - Prochain test live requis: demande de role de contenu -> role connu,
-    inconnu ou derive, sans faux texte primaire.
+  - Statut: `partiel_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl`
+    (`BIB07_DOCUMENTARY_ROLES=partial`, vraie conversation Frida, agent live,
+    role inconnu rendu honnetement, aucun faux `primary_text`, surface visible
+    propre). Blocker: le Catalogue ne fournit pas encore de signal de role
+    positif suffisant; le tour live derive en `passage_search_in_work` +
+    `passage_context`, donc il ne prouve pas une distinction reelle des roles.
+  - Prochain test live requis: role documentaire connu ou explicitement derive
+    par Catalogue/structure -> distinction visible entre texte principal,
+    commentaire, preface, notice, notes ou appareil critique; `unknown` doit
+    rester `unknown`.
 - [x] BIB-08 - Donner la table des matieres d'un ouvrage.
   - Statut: `ferme_live`
   - Preuve live:
@@ -450,16 +467,32 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
   - Prochain test live requis: surveillance regression; ancre passage/page ->
     lecture mecanique precedente ou clarification si l'ancre ne suffit pas.
 - [ ] BIB-31 - Comparer deux passages deja lus.
-  - Statut: `ouvert`
-  - Preuve live: aucune.
-  - Prochain test live requis: deux extraits rendus -> comparaison avec ancres
-    distinctes.
+  - Statut: `partiel_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl`
+    (`BIB31_COMPARE_READ_PASSAGES=partial`, vraie conversation Frida, agent
+    live, deux passages exacts non prouves proprement comme preconditions
+    completes, puis comparaison reroutee vers `catalog_search` +
+    `passage_context`). Blocker: la comparaison intellectuelle ne reste pas
+    encore sur les passages deja lus dans le fil; elle repart en extraction
+    contexte et ne peut donc pas fermer BIB-31.
+  - Prochain test live requis: deux extraits exacts verrouilles dans la meme
+    conversation -> demande de comparaison -> reponse LLM visible fondee sur
+    le fil/memoire, sans nouvel `exact_excerpt`, sans `catalog_search` ou
+    `passage_context` opportuniste.
 - [ ] BIB-32 - Reprendre un extrait lu plus tot dans la conversation.
-  - Statut: `contractuel_unitaire`
-  - Preuve live: Lot 3 bis couvre le contrat conversation/Memory, pas une
-    reprise live multi-tour.
-  - Prochain test live requis: extrait Biblio rendu -> tour ulterieur ->
-    reprise depuis conversation/Memory avec meta Biblio.
+  - Statut: `partiel_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl`
+    (`BIB32_REPRISE_EARLIER_EXCERPT=partial`, vraie conversation Frida, agent
+    live, message sauvegarde, Memory observee, rendu exact mecanique au tour de
+    reprise). Requalification prudente: la reprise rend du texte et pas une
+    simple ancre, mais la precondition "extrait exact lu plus tot" n'est pas
+    assez propre dans ce run pour cocher BIB-32.
+  - Prochain test live requis: extrait exact Biblio verrouille dans le fil ->
+    tour intermediaire -> "reprends l'extrait lu plus tot" -> reprise visible
+    du texte conversationnel ou relecture mecanique explicitement rattachee a
+    l'extrait anterieur, avec meta Biblio et Memory observees.
 - [ ] BIB-33 - Dire clairement quand elle ne sait pas, quand c'est ambigu, ou
   quand la structure manque.
   - Statut: `partiel_live`
@@ -888,6 +921,26 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
   - Reason codes / statuts: `internal_section_bounds_live_from_pdf_outline`,
     `section_scoped_search_live_from_pdf_outline`; aucun snippet ni contexte
     local vendu comme exact.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- Livraison 8 BIB-06/BIB-07/BIB-31/BIB-32 - 2026-06-06 -
+  `app/docs/states/baselines/biblio-smokes/bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl`
+  - Statut: `partiel_live`; aucune nouvelle case cochee.
+  - Conversation: hash `9b4ac2e5edba`
+  - Proof cases: `BIB06_INTERNAL_WORK_LOOKUP=met`,
+    `BIB07_DOCUMENTARY_ROLES=partial`,
+    `BIB31_COMPARE_READ_PASSAGES=partial`,
+    `BIB32_REPRISE_EARLIER_EXCERPT=partial`.
+  - Outils appeles: `search_document`, `document_open_summary`,
+    `catalog_search`, `passage_context`, `page_read`.
+  - Statut final: vraie conversation Frida, toggle Biblio active,
+    bibliothecaire agentique appele, messages assistant sauvegardes, Memory
+    observee, surface visible propre, JSONL content-free.
+  - Requalification: BIB-06 prouve une resolution documentaire/volume unique,
+    mais pas encore un `work_state` interne explicite; BIB-07 reste bloque par
+    signal de role inconnu/insuffisant; BIB-31 repart en `catalog_search` +
+    `passage_context` au lieu de comparer seulement les passages deja lus;
+    BIB-32 rend du texte mecanique mais la precondition d'extrait exact
+    anterieur propre n'est pas assez prouvee dans ce run.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire

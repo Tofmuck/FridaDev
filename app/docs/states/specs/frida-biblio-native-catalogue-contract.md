@@ -295,6 +295,32 @@ Memoire conversationnelle Last Chance Lot 3 bis livree:
   de verification/recuperation, pas un substitut obligatoire au texte memorise
   quand la conversation est memorisee.
 
+Diagnostic Livraison 8 BIB-06/BIB-07/BIB-31/BIB-32 du 2026-06-06:
+
+- artefact live:
+  `app/docs/states/baselines/biblio-smokes/bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl`;
+- BIB-06 reste `partiel_live`: une resolution documentaire/volume unique avec
+  `search_document` + `document_open_summary` ne suffit pas a fermer "oeuvre
+  interne" tant que le run ne porte pas explicitement un `work_state`, un
+  `resolve_work` ou une clarification d'oeuvre interne distincte;
+- BIB-07 reste `partiel_live`: un role documentaire inconnu doit rester
+  `unknown`. L'absence de faux `primary_text` est necessaire, mais ne prouve pas
+  encore une distinction positive entre texte principal, commentaire, preface,
+  notice, notes ou appareil critique;
+- BIB-31 reste `partiel_live`: une comparaison de passages deja lus doit
+  utiliser le fil conversationnel et le LLM pour la comparaison intellectuelle.
+  Un reroutage vers `catalog_search` + `passage_context` produit une nouvelle
+  extraction; il ne ferme pas la capacite "comparer deux passages deja lus";
+- BIB-32 reste `partiel_live`: reprendre un extrait lu plus tot doit restituer
+  du texte conversationnel deja rendu, ou relire mecaniquement une ancre
+  explicitement rattachee a cet extrait anterieur. Une simple ancre ne suffit
+  pas, et un run dont la precondition d'extrait exact anterieur est incomplete
+  ne doit pas cocher la capacite;
+- ces limites ne modifient pas le contrat Lot 3 bis: les messages Biblio rendus
+  restent eligibles a Memory et les ancres restent des complements de
+  verification. Elles delimitent seulement ce qui manque pour fermer les
+  capacites utilisateur BIB-06/BIB-07/BIB-31/BIB-32.
+
 Premiere methode canonique Last Chance Lot 4A livree:
 
 - famille canonique: `inventory_metadata`;
