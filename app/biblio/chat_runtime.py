@@ -66,6 +66,11 @@ READ_PASSAGES_MODE_RESUME = "resume_read_passage"
 REASON_READ_PASSAGES_COMPARE = "biblio_read_passages_compare_from_conversation"
 REASON_READ_PASSAGES_RESUME = "biblio_read_passages_resume_from_conversation"
 REASON_READ_PASSAGES_NO_EXACT = "biblio_read_passages_no_exact_conversation_content"
+READ_PASSAGES_RESPONSE_SOURCE = "biblio_read_passages_response"
+REASON_READ_PASSAGES_RESPONSE_META = "biblio_read_passages_response_meta"
+REASON_READ_PASSAGES_SURFACE_INTRO_EMPTY = "biblio_read_passages_surface_intro_empty"
+REASON_READ_PASSAGES_SURFACE_OUTRO_EMPTY = "biblio_read_passages_surface_outro_empty"
+REASON_READ_PASSAGES_SURFACE_PLAN_MISSING = "biblio_read_passages_surface_plan_missing"
 
 _READ_PASSAGES_HEADER = "[PASSAGES BIBLIO DEJA LUS]"
 _READ_PASSAGES_FOOTER = "[/PASSAGES BIBLIO DEJA LUS]"
@@ -543,6 +548,60 @@ def final_response_lock_for_result(result: BiblioChatResult) -> biblio_answer_ob
     return biblio_answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
 
 
+def assistant_response_meta_for_result(result: BiblioChatResult) -> dict[str, Any] | None:
+    if not (result.enabled and result.used and result.query_kind == QUERY_KIND_READ_PASSAGES):
+        return None
+    lane = result.prompt_lane
+    if not isinstance(lane, BiblioReadPassagesPromptLane):
+        return None
+    surface_intro, surface_outro, surface_source = _agent_surface_envelope(result.librarian_agent_result)
+    empty_reasons: list[str] = []
+    if surface_source == "missing":
+        empty_reasons.append(REASON_READ_PASSAGES_SURFACE_PLAN_MISSING)
+    if not surface_intro:
+        empty_reasons.append(REASON_READ_PASSAGES_SURFACE_INTRO_EMPTY)
+    if not surface_outro:
+        empty_reasons.append(REASON_READ_PASSAGES_SURFACE_OUTRO_EMPTY)
+    return {
+        "source": READ_PASSAGES_RESPONSE_SOURCE,
+        "reason_code": REASON_READ_PASSAGES_RESPONSE_META,
+        "biblio_answer_status": "ready",
+        "biblio_render_mode": "read_passages_llm_response",
+        "biblio_query_kind": QUERY_KIND_READ_PASSAGES,
+        "biblio_read_passages_mode": _safe_token(lane.mode),
+        "biblio_read_passages_reason_code": _safe_token(lane.reason_code),
+        "biblio_read_passages_count": lane.passage_count,
+        "biblio_read_passages_chars": lane.chars,
+        "biblio_read_passages_hashes": [passage.content_hash for passage in lane.passages],
+        "biblio_exact_text_rendered": False,
+        "biblio_exact_text_chars": 0,
+        "biblio_exact_text_hash": "",
+        "biblio_final_lock_authorized": False,
+        "biblio_final_lock_reason_code": "read_passages_llm_response_no_exact_lock",
+        "biblio_surface_intro_present": bool(surface_intro),
+        "biblio_surface_intro_chars": len(surface_intro),
+        "biblio_surface_intro_hash": _short_hash(surface_intro) if surface_intro else "",
+        "biblio_surface_outro_present": bool(surface_outro),
+        "biblio_surface_outro_chars": len(surface_outro),
+        "biblio_surface_outro_hash": _short_hash(surface_outro) if surface_outro else "",
+        "biblio_surface_empty_reason_codes": empty_reasons,
+    }
+
+
+def assistant_response_envelope_for_result(result: BiblioChatResult) -> dict[str, str] | None:
+    if not (result.enabled and result.used and result.query_kind == QUERY_KIND_READ_PASSAGES):
+        return None
+    if not isinstance(result.prompt_lane, BiblioReadPassagesPromptLane):
+        return None
+    surface_intro, surface_outro, _surface_source = _agent_surface_envelope(result.librarian_agent_result)
+    if not surface_intro and not surface_outro:
+        return None
+    return {
+        "surface_intro": surface_intro,
+        "surface_outro": surface_outro,
+    }
+
+
 def _resolve_request_from_plan(plan: BiblioQueryPlan) -> BiblioResolveRequest | None:
     if not (plan.document_id or plan.document_title or plan.work_title or plan.author or plan.locator):
         return None
@@ -626,6 +685,22 @@ def _agent_validation_plan(librarian_agent_result: Any) -> Mapping[str, Any]:
         if isinstance(plan, Mapping):
             return plan
     return {}
+
+
+def _agent_surface_envelope(librarian_agent_result: Any) -> tuple[str, str, str]:
+    comparison = getattr(librarian_agent_result, "agent_result", None)
+    if comparison is None:
+        return "", "", "missing"
+    plan = getattr(comparison, "candidate_plan", None)
+    if plan is not None:
+        intro = _surface_text(getattr(plan, "surface_intro", ""))
+        outro = _surface_text(getattr(plan, "surface_outro", ""))
+        return intro, outro, "candidate_plan"
+    intro = _surface_text(getattr(comparison, "surface_intro", ""))
+    outro = _surface_text(getattr(comparison, "surface_outro", ""))
+    if intro or outro:
+        return intro, outro, "agent_validation"
+    return "", "", "missing"
 
 
 def _with_answer_object_observability(
@@ -842,6 +917,15 @@ def _optional_positive_int(value: Any) -> int | None:
         number = int(text)
         return number if number > 0 else None
     return None
+
+
+def _surface_text(value: Any, *, max_chars: int = 600) -> str:
+    if not isinstance(value, str):
+        return ""
+    text = value.strip()
+    if not text or len(text) > max_chars:
+        return ""
+    return text
 
 
 def _strict_hash_12(value: Any) -> str:

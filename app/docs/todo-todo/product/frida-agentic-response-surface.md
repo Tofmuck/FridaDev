@@ -1,7 +1,7 @@
 # Frida - Reponses agentiques integrees
 
 Date: 2026-06-06
-Statut: TODO produit decidee, docs-only pour le present lot
+Statut: TODO produit decidee; Lots 0-3 livres, prouves et documentes
 Classement: `app/docs/todo-todo/product/`
 
 Sources:
@@ -63,7 +63,7 @@ Formules a garder:
 
 ## Interdits
 
-- Pas de patch runtime dans ce lot documentaire.
+- Pas de patch runtime hors lot explicitement runtime et preuve live.
 - Pas de modification Biblio.
 - Pas de modification Memory.
 - Pas de modification DB.
@@ -201,13 +201,16 @@ Objectif: brancher le mecanisme simple.
 
 Objectif: verifier la couverture sans refaire trente-trois micro-tests.
 
-- Statut: partiel. La famille `comparaison / reprise` prouve le chemin
-  conversationnel `read_passages`, mais pas encore le contrat de surface
-  agentique `surface_intro` / `surface_outro` avec meta Biblio et final lock.
-- Preuve live partielle:
+- Statut: ferme live. Les neuf familles sont prouvees par artefacts
+  JSONL content-free, y compris `comparaison / reprise` via le chemin
+  conversationnel `read_passages` avec meta Biblio, `surface_intro` /
+  `surface_outro`, timestamp, Delta-T et absence de final lock exact abusif.
+- Preuve live principale:
   `app/docs/states/baselines/biblio-smokes/agentic-response-surface-lot3-family-live-20260606T191014Z.jsonl`.
 - Correction / diagnostic:
   `app/docs/states/baselines/biblio-smokes/agentic-response-surface-lot3-correction-20260606T191907Z.jsonl`.
+- Preuve live de fermeture `comparaison / reprise`:
+  `app/docs/states/baselines/biblio-smokes/agentic-response-surface-lot3-comparison-reprise-live-20260606T195023Z.jsonl`.
 
 - [x] Couvrir inventaire / metadonnees.
 - [x] Couvrir resolution / ambiguite.
@@ -216,9 +219,9 @@ Objectif: verifier la couverture sans refaire trente-trois micro-tests.
 - [x] Couvrir extraction exacte.
 - [x] Couvrir extraction segmentee / continuation.
 - [x] Couvrir provenance / navigation.
-- [ ] Couvrir comparaison / reprise.
+- [x] Couvrir comparaison / reprise.
 - [x] Couvrir echec propre.
-- [ ] Prouver que les familles couvrent BIB-01 -> BIB-33.
+- [x] Prouver que les familles couvrent BIB-01 -> BIB-33.
 - [x] Verifier que la reponse agentique finale possede un timestamp.
 - [x] Verifier que cette reponse est reprise ensuite dans le contexte envoye au
   LLM avec le traitement temporel normal.

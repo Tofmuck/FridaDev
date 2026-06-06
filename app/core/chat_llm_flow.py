@@ -90,6 +90,20 @@ def _mark_next_persist_phase(conv_store_module: Any, phase: str) -> None:
         marker(phase)
 
 
+def _compose_assistant_response(
+    content: str,
+    *,
+    intro: str = "",
+    outro: str = "",
+) -> str:
+    parts = [
+        text
+        for text in (str(intro or "").strip(), str(content or "").strip(), str(outro or "").strip())
+        if text
+    ]
+    return "\n\n".join(parts)
+
+
 def _latest_completed_identity_pair(messages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     dialog_messages = [
         dict(message or {})
@@ -248,6 +262,9 @@ def run_llm_exchange(
     conversation_headers_func: Callable[[Mapping[str, Any], str], dict[str, str]],
     conversation_stream_headers_func: Callable[[Mapping[str, Any]], dict[str, str]] | None = None,
     assistant_response_override: AssistantResponseOverride | None = None,
+    assistant_response_meta: Mapping[str, Any] | None = None,
+    assistant_response_intro: str = "",
+    assistant_response_outro: str = "",
 ) -> dict[str, Any]:
     if assistant_response_override is not None and str(assistant_response_override.content or ""):
         return _run_assistant_response_override(
@@ -338,8 +355,16 @@ def run_llm_exchange(
                 raw_text,
                 assistant_output_policy,
             )
+            text = _compose_assistant_response(
+                text,
+                intro=assistant_response_intro,
+                outro=assistant_response_outro,
+            )
             updated_at = now_iso_func()
-            conv_store_module.append_message(conversation, 'assistant', text, timestamp=updated_at)
+            append_kwargs: dict[str, Any] = {'timestamp': updated_at}
+            if assistant_response_meta is not None:
+                append_kwargs['meta'] = dict(assistant_response_meta)
+            conv_store_module.append_message(conversation, 'assistant', text, **append_kwargs)
             _mark_next_persist_phase(conv_store_module, 'assistant_final')
             save_result = conv_store_module.save_conversation(conversation, updated_at=updated_at)
             if not _save_result_ok(save_result):
@@ -390,9 +415,13 @@ def run_llm_exchange(
             appended_assistant_content = ''
             appended_assistant_timestamp: str | None = None
             appended_assistant_meta: dict[str, Any] | None = None
+            assistant_final_meta = dict(assistant_response_meta) if assistant_response_meta is not None else None
+            assistant_has_envelope = bool(
+                str(assistant_response_intro or "").strip() or str(assistant_response_outro or "").strip()
+            )
             buffer_stream_output = assistant_output_contract.should_buffer_plain_text_stream(
                 assistant_output_policy,
-            )
+            ) or assistant_has_envelope
 
             def _rollback_appended_assistant() -> None:
                 nonlocal assistant_appended, terminal_final_text
@@ -547,7 +576,7 @@ def run_llm_exchange(
                             assistant_chunks.append(sanitized_content)
                             if not buffer_stream_output:
                                 yield sanitized_content
-                            else:
+                            elif not assistant_has_envelope:
                                 draft_delta = _stream_plain_text_draft()
                                 if draft_delta:
                                     yield draft_delta
@@ -586,12 +615,18 @@ def run_llm_exchange(
                             assistant_text,
                             assistant_output_policy,
                         )
+                        assistant_text = _compose_assistant_response(
+                            assistant_text,
+                            intro=assistant_response_intro,
+                            outro=assistant_response_outro,
+                        )
                         if assistant_text != stream_visible_output:
                             terminal_final_text = assistant_text
                     if assistant_text:
                         _append_persisted_assistant_message(
                             assistant_text,
                             timestamp=final_updated_at,
+                            meta=assistant_final_meta,
                         )
                 elif terminal_event == chat_stream_control.STREAM_TERMINAL_ERROR:
                     _append_persisted_assistant_message(

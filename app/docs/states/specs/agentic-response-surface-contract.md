@@ -114,6 +114,19 @@ Ordre cible du message visible:
 
 Les exacts verrouilles sont copies verbatim.
 
+Pour `comparaison / reprise` de passages deja lus, le message final reste une
+reponse conversationnelle LLM fondee sur les passages deja presents dans le fil.
+Ce chemin peut porter la meta Biblio de surface, avec `surface_intro` /
+`surface_outro` observes en content-free, sans creer de final lock exact: il ne
+produit pas un nouvel extrait mecanique. L'absence de final lock exact est alors
+explicite en meta et ne doit pas etre vendue comme un extrait verrouille.
+
+Si le JSON agentique porte une enveloppe de surface valide mais que le plan
+d'outils est rejete, cette enveloppe peut etre conservee pour ce chemin
+conversationnel. Le plan reste rejete: aucun outil n'est execute a partir de lui,
+aucun extrait n'est vendu comme exact et aucune phrase locale ne remplace la voix
+agentique.
+
 Le message final assemble devient `assistant_message.content`. Il passe par le
 chemin assistant normal: DB, timestamp, fenetre de contexte, labels temporels /
 Delta-T, Memory, embeddings et resume selon les contrats existants.
@@ -148,7 +161,9 @@ Les lots runtime futurs doivent prouver au minimum:
 - timestamp present;
 - reprise dans contexte / payload avec Delta-T;
 - metas conservees;
-- final lock conserve;
+- final lock conserve quand le resultat produit un bloc mecanique verrouille;
+- absence de final lock exact explicite quand le resultat est conversationnel,
+  par exemple `comparaison / reprise`;
 - exacts non reecrits;
 - absence de double reponse;
 - absence de canal parallele;

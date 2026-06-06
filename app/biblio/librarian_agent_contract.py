@@ -336,6 +336,8 @@ class BiblioLibrarianAgentValidation:
     status: str
     reason_code: str
     plan: planner.BiblioLibrarianPlan | None = field(default=None, repr=False, compare=False)
+    surface_intro: str = field(default="", repr=False, compare=False)
+    surface_outro: str = field(default="", repr=False, compare=False)
     tool_call_count: int = 0
     tool_names: tuple[str, ...] = ()
     invalid_tool_names: tuple[str, ...] = ()
@@ -355,6 +357,12 @@ class BiblioLibrarianAgentValidation:
                 "json_chars": self.json_chars,
                 "json_hash": self.json_hash,
                 "finish_reason": _safe_token(self.finish_reason),
+                "surface_intro_present": bool(self.surface_intro),
+                "surface_intro_chars": len(self.surface_intro),
+                "surface_intro_hash": _hash(self.surface_intro),
+                "surface_outro_present": bool(self.surface_outro),
+                "surface_outro_chars": len(self.surface_outro),
+                "surface_outro_hash": _hash(self.surface_outro),
                 "plan": self.plan.to_observability() if self.plan else {},
             }
         )
@@ -476,6 +484,8 @@ def validate_agent_payload(
     if not raw_calls and product_methods.method_requires_tool_calls(product_method):
         return _rejected(
             REASON_PRODUCT_METHOD_TOOL_MISMATCH,
+            surface_intro=surface_intro,
+            surface_outro=surface_outro,
             json_chars=json_chars,
             json_hash=json_hash,
             finish_reason=finish_reason,
@@ -527,6 +537,8 @@ def validate_agent_payload(
         if not product_methods.method_allows_tool(product_method, tool_name):
             return _rejected(
                 REASON_PRODUCT_METHOD_TOOL_MISMATCH,
+                surface_intro=surface_intro,
+                surface_outro=surface_outro,
                 json_chars=json_chars,
                 json_hash=json_hash,
                 finish_reason=finish_reason,
@@ -585,6 +597,8 @@ def validate_agent_payload(
         status=STATUS_VALIDATED,
         reason_code=REASON_VALIDATED,
         plan=plan,
+        surface_intro=surface_intro,
+        surface_outro=surface_outro,
         tool_call_count=len(calls),
         tool_names=tuple(call.tool_name for call in calls),
         json_chars=json_chars,
@@ -597,6 +611,8 @@ def _rejected(
     reason_code: str,
     *,
     invalid_tool_names: tuple[str, ...] = (),
+    surface_intro: str = "",
+    surface_outro: str = "",
     json_chars: int = 0,
     json_hash: str = "",
     finish_reason: str = "",
@@ -604,6 +620,8 @@ def _rejected(
     return BiblioLibrarianAgentValidation(
         status=STATUS_REJECTED,
         reason_code=reason_code,
+        surface_intro=surface_intro,
+        surface_outro=surface_outro,
         invalid_tool_names=invalid_tool_names,
         json_chars=json_chars,
         json_hash=json_hash,

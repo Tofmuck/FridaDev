@@ -469,6 +469,23 @@ def _biblio_assistant_response_override(result: Any) -> chat_llm_flow.AssistantR
     )
 
 
+def _biblio_assistant_response_meta(result: Any) -> dict[str, Any] | None:
+    meta_builder = getattr(biblio_chat_runtime, 'assistant_response_meta_for_result', None)
+    meta = meta_builder(result) if callable(meta_builder) else None
+    return dict(meta) if isinstance(meta, Mapping) else None
+
+
+def _biblio_assistant_response_envelope(result: Any) -> dict[str, str]:
+    envelope_builder = getattr(biblio_chat_runtime, 'assistant_response_envelope_for_result', None)
+    envelope = envelope_builder(result) if callable(envelope_builder) else None
+    if not isinstance(envelope, Mapping):
+        return {}
+    return {
+        'surface_intro': str(envelope.get('surface_intro') or ''),
+        'surface_outro': str(envelope.get('surface_outro') or ''),
+    }
+
+
 def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> tuple[dict[str, Any], ...]:
     messages = conversation.get('messages')
     if not isinstance(messages, list):
@@ -942,6 +959,8 @@ def chat_response(
         biblio_result,
     )
     biblio_final_response_override = _biblio_assistant_response_override(biblio_result)
+    biblio_assistant_response_meta = _biblio_assistant_response_meta(biblio_result)
+    biblio_assistant_response_envelope = _biblio_assistant_response_envelope(biblio_result)
     adobe_lane = adobe_docs_prompt_lane.inject_adobe_prompt_lane(
         prompt_messages,
         adobe_context,
@@ -976,4 +995,7 @@ def chat_response(
         conversation_headers_func=chat_session_flow.conversation_headers,
         conversation_stream_headers_func=chat_session_flow.conversation_stream_headers,
         assistant_response_override=biblio_final_response_override,
+        assistant_response_meta=biblio_assistant_response_meta,
+        assistant_response_intro=biblio_assistant_response_envelope.get('surface_intro', ''),
+        assistant_response_outro=biblio_assistant_response_envelope.get('surface_outro', ''),
     )
