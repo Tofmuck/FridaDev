@@ -224,6 +224,38 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 self.assertEqual(validation.status, contract.STATUS_REJECTED)
                 self.assertEqual(validation.reason_code, reason)
 
+    def test_parse_rejects_missing_or_invalid_surface_fields_without_repair(self) -> None:
+        base = json.loads(_valid_json())
+        rejected_cases = [
+            ("missing_surface_intro", {key: value for key, value in base.items() if key != "surface_intro"}),
+            ("missing_surface_outro", {key: value for key, value in base.items() if key != "surface_outro"}),
+            (
+                "missing_both_surface_fields",
+                {key: value for key, value in base.items() if key not in {"surface_intro", "surface_outro"}},
+            ),
+            ("null_surface_intro", {**base, "surface_intro": None}),
+            ("null_surface_outro", {**base, "surface_outro": None}),
+            ("surface_intro_too_long", {**base, "surface_intro": "x" * 601}),
+            ("surface_outro_too_long", {**base, "surface_outro": "x" * 601}),
+        ]
+        for label, payload in rejected_cases:
+            with self.subTest(case=label):
+                validation = contract.parse_and_validate_agent_json(json.dumps(payload))
+                self.assertEqual(validation.status, contract.STATUS_REJECTED)
+                self.assertEqual(validation.reason_code, contract.REASON_SCHEMA_INVALID)
+                self.assertIsNone(validation.plan)
+
+        accepted_cases = [
+            ("empty_surface_intro_present", {**base, "surface_intro": ""}),
+            ("empty_surface_outro_present", {**base, "surface_outro": ""}),
+            ("both_empty_surface_fields_present", {**base, "surface_intro": "", "surface_outro": ""}),
+        ]
+        for label, payload in accepted_cases:
+            with self.subTest(case=label):
+                validation = contract.parse_and_validate_agent_json(json.dumps(payload))
+                self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+                self.assertIsNotNone(validation.plan)
+
     def test_local_validation_rejects_non_object_params_without_normalizing_to_empty(self) -> None:
         base = json.loads(_valid_json())
         for raw_params in [None, [], "", 0, False]:
@@ -534,6 +566,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "catalog_list",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -556,6 +590,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "tool_calls",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -619,6 +655,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -692,6 +730,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "tool_calls",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -785,6 +825,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "toc",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -862,6 +904,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "scoped_search",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -970,6 +1014,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "extraction",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -999,6 +1045,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "section_start_page_block_2",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1031,6 +1079,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         "answer_mode": "section_start_page_block_2",
                         "risk_flags": [],
                         "fallback_reason": "",
+                        "surface_intro": "",
+                        "surface_outro": "",
                     },
                 }
             )
@@ -1073,6 +1123,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "section_start_page_block_2",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1131,6 +1183,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "toc",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1158,6 +1212,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "tool",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1340,6 +1396,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1365,6 +1423,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1389,6 +1449,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1413,6 +1475,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1437,6 +1501,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         "params": RAW_TITLE,
                     },
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1460,6 +1526,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1497,6 +1565,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "tool",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1525,6 +1595,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )

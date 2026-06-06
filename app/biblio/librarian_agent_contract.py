@@ -615,11 +615,8 @@ def _repair_agent_payload(payload: Any) -> Any:
     if not isinstance(payload, Mapping):
         return payload
     payload = _unwrap_agent_payload(payload)
-    surface_only = _repair_surface_only_payload(payload)
-    if surface_only is not payload:
-        if validate_agent_payload(surface_only).status == STATUS_VALIDATED:
-            return surface_only
-        payload = surface_only
+    if _surface_text(payload.get("surface_intro")) is None or _surface_text(payload.get("surface_outro")) is None:
+        return payload
     raw_calls = payload.get("tool_calls")
     if raw_calls is None:
         if "tools" in payload:
@@ -703,20 +700,6 @@ def _repair_agent_payload(payload: Any) -> Any:
         )
     changed = changed or set(payload.keys()) != _ROOT_KEYS
     return repaired_payload if changed else payload
-
-
-def _repair_surface_only_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
-    keys = set(payload.keys())
-    if not keys.issubset(_ROOT_KEYS):
-        return payload
-    missing = _ROOT_KEYS - keys
-    if not missing or not missing.issubset({"surface_intro", "surface_outro"}):
-        return payload
-    repaired = dict(payload)
-    repaired.setdefault("surface_intro", "")
-    repaired.setdefault("surface_outro", "")
-    return repaired
-
 
 def _unwrap_agent_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     if payload.get("tool_calls") is not None:

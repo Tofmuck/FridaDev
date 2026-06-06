@@ -333,6 +333,8 @@ class BiblioChatRuntimeTests(unittest.TestCase):
             "answer_mode": "bounded_context_extract_start_of_section",
             "risk_flags": [],
             "fallback_reason": "section_start_pages_requested",
+            "surface_intro": "",
+            "surface_outro": "",
         }
         fake_model = _FakeAgentModel(json.dumps(payload, ensure_ascii=False))
         result = chat_runtime.run_biblio_chat_turn(
@@ -394,6 +396,8 @@ class BiblioChatRuntimeTests(unittest.TestCase):
             "answer_mode": "needs_tool_result_then_page_read",
             "risk_flags": [],
             "fallback_reason": "section_start_pages_requested",
+            "surface_intro": "",
+            "surface_outro": "",
         }
         fake_model = _FakeAgentModel(json.dumps(payload, ensure_ascii=False))
         result = chat_runtime.run_biblio_chat_turn(
@@ -2743,6 +2747,8 @@ def _valid_agent_json(
             "answer_mode": "tool",
             "risk_flags": [],
             "fallback_reason": "",
+            "surface_intro": "",
+            "surface_outro": "",
         },
         ensure_ascii=False,
     )
@@ -2765,6 +2771,8 @@ def _agent_json(
             "answer_mode": answer_mode,
             "risk_flags": [],
             "fallback_reason": "",
+            "surface_intro": "",
+            "surface_outro": "",
         },
         ensure_ascii=False,
     )
@@ -2781,6 +2789,8 @@ def _empty_agent_plan_json() -> str:
             "answer_mode": "clarify",
             "risk_flags": [],
             "fallback_reason": "model_requested_clarification",
+            "surface_intro": "",
+            "surface_outro": "",
         },
         ensure_ascii=False,
     )
