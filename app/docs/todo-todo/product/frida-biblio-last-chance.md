@@ -134,9 +134,18 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     statut `ambiguous`, aucun candidat selectionne, pas d'extrait exact).
   - Prochain test live requis: regression seulement si resolution
     documentaire, ambiguite ou surface visible changent.
-- [ ] BIB-06 - Trouver une oeuvre a l'interieur d'un volume.
-  - Statut: `partiel_live`
+- [x] BIB-06 - Trouver une oeuvre a l'interieur d'un volume.
+  - Statut: `ferme_live`
   - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib06-internal-work-real-conversation-20260606T091906Z.jsonl`
+    (`BIB-06-internal-work=met`, vraie conversation Frida, bibliothecaire
+    agentique live utilise pour la reponse, `product_method=document_resolution`,
+    outils `resolve_work` puis `document_open_summary`, candidat
+    `work_in_document` unique, `work_id`/`work_state` presents en
+    observabilite content-free, `current_work` et document courant portes dans
+    l'etat, message assistant sauvegarde, surface visible propre, aucun
+    extrait exact).
+  - Preuve historique requalifiee:
     `app/docs/states/baselines/biblio-smokes/bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl`
     (`BIB06_INTERNAL_WORK_LOOKUP=met` dans une vraie conversation Frida,
     agent live, `document_resolution`, `search_document`,
@@ -145,9 +154,10 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     documentaire/volume unique, mais ne prouve pas encore un `work_state` ou
     `resolve_work` explicite portant une oeuvre interne distincte a travers le
     fil.
-  - Prochain test live requis: demande explicite d'oeuvre interne dans un
-    volume agrege -> `search_work`/`resolve_work` ou clarification, avec
-    `work_state` exploitable et aucun choix silencieux.
+  - Prochain test live requis: regression seulement si `resolve_work`,
+    `document_resolution`, `work_state`, etat conversationnel ou surface visible
+    changent. Si plusieurs oeuvres internes candidates existent, la reponse doit
+    rester clarification/candidats, sans choix silencieux.
 - [ ] BIB-07 - Distinguer texte principal, commentaire, preface, notice, notes
   ou appareil critique.
   - Statut: `partiel_live`
@@ -941,6 +951,27 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     `passage_context` au lieu de comparer seulement les passages deja lus;
     BIB-32 rend du texte mecanique mais la precondition d'extrait exact
     anterieur propre n'est pas assez prouvee dans ce run.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- Micro-lot BIB-06 oeuvre interne - 2026-06-06 -
+  `app/docs/states/baselines/biblio-smokes/bib06-internal-work-real-conversation-20260606T091906Z.jsonl`
+  - Statut: `ferme_live`; BIB-06 cochee.
+  - Conversation: hash `39a3427b0e27`
+  - Proof case: `BIB-06-internal-work`
+  - Outils appeles: `resolve_work`, puis `document_open_summary`
+  - Statut final: vraie conversation Frida, toggle Biblio active,
+    bibliothecaire agentique appele et utilise pour la reponse,
+    `product_method=document_resolution`, resolution `work_in_document`,
+    `work_id`/`work_state` presents en observabilite hashée, `current_work`
+    persiste, message assistant sauvegarde, meta Biblio presente, surface
+    visible propre, aucun extrait exact.
+  - Reason codes: `biblio_agent_first_plan_executed`,
+    `biblio_librarian_tool_executed`, `resolved`, `ok`.
+  - Requalification: le micro-lot corrige le trou du premier artefact
+    Livraison 8: l'oeuvre interne n'est plus seulement un document/volume
+    unique, elle est portee explicitement par `resolve_work` et par l'etat
+    conversationnel. Le code ne choisit pas semantiquement entre plusieurs
+    oeuvres; s'il y a plusieurs candidats, le statut doit rester
+    ambigu/clarification.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 - Micro-lot BIB-31/BIB-32 passages deja lus - 2026-06-06 -
   `app/docs/states/baselines/biblio-smokes/bib31-bib32-read-passages-real-conversation-20260606T082548Z.jsonl`

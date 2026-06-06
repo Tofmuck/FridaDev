@@ -220,11 +220,11 @@ def update_state_from_runtime(
     last_ambiguity = dict(before.last_ambiguity)
     last_intent = _safe_token(getattr(query_plan, "intent", None)) or before.last_intent
 
-    work_signal = _work_signal_from_plan(query_plan)
+    runtime_result = library_result or chat_result
+    work_signal = _work_signal_from_plan(query_plan) or _work_signal_from_runtime(runtime_result)
     if work_signal:
         current_work = work_signal
 
-    runtime_result = library_result or chat_result
     anchor = _anchor_from_runtime_result(runtime_result)
     if anchor:
         last_result = anchor
@@ -491,6 +491,23 @@ def _work_signal_from_plan(plan: Any) -> dict[str, Any]:
         "label_sha256_12": _sha256_12(text),
         "label_chars": len(text),
         "source": "query_plan",
+    }
+
+
+def _work_signal_from_runtime(value: Any) -> dict[str, Any]:
+    answer = getattr(value, "answer_object", None)
+    if answer is None:
+        return {}
+    if _safe_token(getattr(answer, "work_state", "")) != "ready":
+        return {}
+    work_id = _safe_token(getattr(answer, "work_id", ""))
+    if not work_id:
+        return {}
+    return {
+        "present": True,
+        "label_sha256_12": _sha256_12(work_id),
+        "label_chars": len(work_id),
+        "source": "answer_object",
     }
 
 

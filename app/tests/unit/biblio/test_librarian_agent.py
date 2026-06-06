@@ -24,6 +24,8 @@ from biblio import librarian_tools as tools
 RAW_USER = "RAW USER QUERY MUST NOT LEAK"
 RAW_DIALOGUE = "RAW DIALOGUE TURN MUST NOT LEAK"
 RAW_TITLE = "RAW TITLE MUST NOT LEAK"
+RAW_WORK = "RAW WORK TITLE MUST NOT LEAK"
+RAW_AUTHOR = "RAW AUTHOR MUST NOT LEAK"
 RAW_PASSAGE = "RAW PASSAGE MUST NOT LEAK"
 
 
@@ -573,6 +575,80 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         assert validation.plan is not None
         self.assertEqual(validation.plan.case_id, "")
         self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION)
+
+    def test_resolve_work_accepts_structured_internal_work_params(self) -> None:
+        validation = contract.validate_agent_payload(
+            {
+                "schema_version": contract.SCHEMA_VERSION,
+                "case_id": "",
+                "intent": "resolve_work",
+                "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+                "tool_calls": [
+                    {
+                        "tool_name": tools.TOOL_RESOLVE_WORK,
+                        "method": "GET",
+                        "params": {
+                            "document_title": RAW_TITLE,
+                            "work_title": RAW_WORK,
+                            "author": RAW_AUTHOR,
+                            "limit": 5,
+                        },
+                    }
+                ],
+                "answer_mode": "tool_calls",
+                "risk_flags": [],
+                "fallback_reason": "",
+            }
+        )
+        observed = validation.to_observability()
+        encoded = _json(observed)
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION)
+        self.assertEqual(validation.plan.tool_calls[0].tool_name, tools.TOOL_RESOLVE_WORK)
+        self.assertEqual(validation.plan.tool_calls[0].params["document_title"], RAW_TITLE)
+        self.assertEqual(validation.plan.tool_calls[0].params["work_title"], RAW_WORK)
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_WORK, encoded)
+        self.assertNotIn(RAW_AUTHOR, encoded)
+
+    def test_resolve_work_repairs_placeholder_document_id_without_losing_work_scope(self) -> None:
+        repaired = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "intent": "resolve_work",
+                    "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+                    "tool_calls": [
+                        {
+                            "tool_name": tools.TOOL_RESOLVE_WORK,
+                            "method": "GET",
+                            "params": {
+                                "document_id": "doc_id",
+                                "document_title": RAW_TITLE,
+                                "work_title": RAW_WORK,
+                                "author": RAW_AUTHOR,
+                                "limit": "5",
+                            },
+                        }
+                    ],
+                    "answer_mode": "tool_calls",
+                    "risk_flags": [],
+                    "fallback_reason": "",
+                }
+            )
+        )
+
+        self.assertEqual(repaired.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(repaired.plan)
+        assert repaired.plan is not None
+        self.assertEqual(repaired.plan.tool_calls[0].tool_name, tools.TOOL_RESOLVE_WORK)
+        self.assertNotIn("document_id", repaired.plan.tool_calls[0].params)
+        self.assertEqual(repaired.plan.tool_calls[0].params["document_title"], RAW_TITLE)
+        self.assertEqual(repaired.plan.tool_calls[0].params["work_title"], RAW_WORK)
+        self.assertEqual(repaired.plan.tool_calls[0].params["limit"], 5)
 
     def test_document_structure_is_canonical_family_distinct_from_legacy_p09(self) -> None:
         spec = product_methods.get_product_method_spec(product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE)

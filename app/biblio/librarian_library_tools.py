@@ -272,13 +272,19 @@ def _work_resolver_tool_result(
     positions = (position,) if position.get("page_no") or position.get("para_no") else ()
     items: tuple[dict[str, Any], ...] = ()
     if effective_doc_id:
+        work_title = tools._string(getattr(request, "work_title", "")) if request is not None else ""
+        author = tools._string(getattr(request, "author", "")) if request is not None else ""
+        work_key = tools._hash(work_title or resolution.documentary_target or effective_doc_id)
         items = (
             tools._clean_observation(
                 {
                     "candidate_type": "work",
                     "work_kind": resolution.documentary_target or "work_scope",
+                    "work_id": f"{catalogue.short_doc_id(effective_doc_id)}:work:{work_key}",
                     "document_id": effective_doc_id,
                     "doc_id_short": catalogue.short_doc_id(effective_doc_id),
+                    "title": work_title,
+                    "authors": author,
                     "page_no": position.get("page_no"),
                     "para_no": position.get("para_no"),
                 }

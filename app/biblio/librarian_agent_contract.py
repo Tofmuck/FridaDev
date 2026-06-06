@@ -104,8 +104,20 @@ _TOOL_PARAM_CONTRACTS = {
         "int_bounds": {"limit": (1, 50)},
     },
     tools.TOOL_RESOLVE_WORK: {
-        "allowed": {"document_id", "doc_id", "q", "query", "limit"},
-        "required_any": (("document_id", "doc_id", "q", "query"),),
+        "allowed": {
+            "document_id",
+            "doc_id",
+            "q",
+            "query",
+            "document_title",
+            "work_title",
+            "author",
+            "locator",
+            "locator_end",
+            "kind",
+            "limit",
+        },
+        "required_any": (("document_id", "doc_id", "q", "query", "document_title", "work_title", "author", "locator"),),
         "int_bounds": {"limit": (1, 20)},
     },
     tools.TOOL_RESOLVE_SECTION: {
@@ -738,7 +750,10 @@ def _repair_params(tool_name: str, params: Mapping[str, Any]) -> dict[str, Any]:
     repaired = {
         key: value
         for key, value in params.items()
-        if key in allowed and value is not None and not (isinstance(value, str) and not value.strip())
+        if key in allowed
+        and value is not None
+        and not (isinstance(value, str) and not value.strip())
+        and not (key in {"document_id", "doc_id"} and _weak_document_id_placeholder(value))
     }
     if tool_name in {
         tools.TOOL_SEARCH_DOCUMENT,
@@ -801,7 +816,8 @@ def _combined_query(params: Mapping[str, Any]) -> str:
 
 
 def _has_document_id(params: Mapping[str, Any]) -> bool:
-    return bool(_first_text(params, ("document_id", "doc_id")))
+    value = _first_text(params, ("document_id", "doc_id"))
+    return bool(value and not _weak_document_id_placeholder(value))
 
 
 def _has_context_position(params: Mapping[str, Any]) -> bool:
@@ -818,6 +834,10 @@ def _present_like(value: Any) -> bool:
     if isinstance(value, str):
         return bool(value.strip())
     return value is not None
+
+
+def _weak_document_id_placeholder(value: Any) -> bool:
+    return str(value or "").strip().casefold() in {"doc_id", "document_id"}
 
 
 def _first_text(params: Mapping[str, Any], names: Sequence[str]) -> str:
@@ -888,6 +908,8 @@ def _valid_params(tool_name: str, params: Mapping[str, Any]) -> bool:
                 return False
             stripped = value.strip()
             if len(stripped) > _TEXT_PARAM_MAX[key]:
+                return False
+            if key in {"document_id", "doc_id"} and _weak_document_id_placeholder(stripped):
                 return False
             if key in {"document_id", "doc_id", "q", "query", "locator", "label"} and not stripped:
                 return False

@@ -267,10 +267,13 @@ def build_librarian_agent_messages(
         "Tu ne reponds jamais en prose libre. Tu produis uniquement un JSON "
         f"conforme a {SCHEMA_VERSION}. Tu choisis seulement des outils GET-only "
         "allowlistes et tu respectes exactement les parametres declares. "
-        "N'invente jamais work_title, title, theme, author, start_locator ou "
-        "end_locator comme cle de params: utilise q/query, document_id/doc_id, "
-        "section_id, chapter_no, locator/label, page_no/para_no/paragraph_id, "
-        "limit, offset, char_offset ou window_chars selon l'outil. Retourne toujours un "
+        "N'invente jamais theme, start_locator ou end_locator comme cle de "
+        "params. Pour resolve_work et canonical_range_extract seulement, tu "
+        "peux utiliser document_title, work_title et author quand l'utilisateur "
+        "distingue clairement volume/corpus, oeuvre et auteur; sinon utilise "
+        "q/query, document_id/doc_id, section_id, chapter_no, locator/label, "
+        "page_no/para_no/paragraph_id, limit, offset, char_offset ou "
+        "window_chars selon l'outil. Retourne toujours un "
         "product_method explicite et un "
         "case_id seulement pour une regression historique Pxx explicite; "
         "pour les familles canoniques inventory_metadata, document_resolution, "
@@ -296,6 +299,10 @@ def build_librarian_agent_messages(
         "de resolution documentaire (trouver/resoudre un document, une oeuvre ou "
         "un volume), choisis product_method=document_resolution avec case_id vide; "
         "utilise search_document, search_work, resolve_work ou document_open_summary. "
+        "Pour trouver une oeuvre interne dans un volume/corpus, utilise "
+        "resolve_work avec document_title ou author pour le volume/corpus et "
+        "work_title pour l'oeuvre quand ces signaux sont presents; ne remplace "
+        "pas cette preuve par search_document + document_open_summary seul. "
         "Ne choisis jamais un premier candidat si plusieurs restent possibles: "
         "laisse le statut ambiguous visible. Pour les questions canoniques de "
         "structure documentaire (table des matieres, chapitres, sections, bornes "
@@ -486,9 +493,21 @@ def _tool_param_contracts() -> dict[str, Any]:
             "note": "Recherche une section dans la TOC d'un document deja cible.",
         },
         "resolve_work": {
-            "allowed": ["document_id", "doc_id", "q", "query", "limit"],
-            "required_any": [["document_id", "doc_id", "q", "query"]],
-            "note": "Resolution stricte: resolved si unique, ambiguous si plusieurs, not_found si aucune.",
+            "allowed": [
+                "document_id",
+                "doc_id",
+                "q",
+                "query",
+                "document_title",
+                "work_title",
+                "author",
+                "locator",
+                "locator_end",
+                "kind",
+                "limit",
+            ],
+            "required_any": [["document_id", "doc_id", "q", "query", "document_title", "work_title", "author", "locator"]],
+            "note": "Resolution stricte d'une oeuvre/document. Pour une oeuvre interne, separer work_title de document_title/author si l'utilisateur les distingue.",
         },
         "resolve_section": {
             "allowed": ["document_id", "doc_id", "q", "query", "chapter_no", "section_id"],

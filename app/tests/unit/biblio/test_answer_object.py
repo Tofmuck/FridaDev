@@ -908,6 +908,55 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(answer.document_resolution["status"], "needs_clarification")
         self.assertNotIn(RAW_TITLE, _json(answer.to_observability()))
 
+    def test_document_resolution_same_document_summary_does_not_ambiguate_unique_work(self) -> None:
+        work = _tool_result(
+            tool_name=tools.TOOL_RESOLVE_WORK,
+            status=tools.STATUS_RESOLVED,
+            reason_code=tools.REASON_RESOLVED,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            document_id="doc-123456",
+            items=(
+                {
+                    "candidate_type": "work",
+                    "work_kind": "work_in_document",
+                    "document_id": "doc-123456",
+                    "doc_id_short": "doc-123",
+                    "work_id": "doc-123:work:abcd",
+                    "title": RAW_TITLE,
+                },
+            ),
+        )
+        summary = _tool_result(
+            tool_name=tools.TOOL_DOCUMENT_OPEN_SUMMARY,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_METADATA,
+            document_id="doc-123456",
+            document_summary={
+                "candidate_type": "document",
+                "document_id": "doc-123456",
+                "doc_id_short": "doc-123",
+                "title": "RAW DOCUMENT SUMMARY TITLE MUST NOT AMBIGUATE",
+            },
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(work, summary),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.work_state, answer_object.STATUS_READY)
+        self.assertEqual(answer.document_resolution["status"], "resolved")
+        self.assertEqual(observed["document_resolution"]["candidate_count"], 1)
+        self.assertEqual(observed["document_resolution"]["work_kind_counts"], {"work_in_document": 1})
+        self.assertIn(RAW_TITLE, rendered.content)
+        self.assertNotIn("RAW DOCUMENT SUMMARY", rendered.content)
+        self.assertNotIn(RAW_TITLE, _json(observed))
+
     def test_document_structure_renders_toc_without_exact_excerpt(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_DOCUMENT_TOC,

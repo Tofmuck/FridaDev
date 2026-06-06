@@ -39,7 +39,9 @@ def build_document_resolution(
 ) -> dict[str, Any]:
     if product_methods.canonical_family_for_method(product_method) != product_methods.CANONICAL_FAMILY_DOCUMENT_RESOLUTION:
         return {}
-    candidates = _dedupe_candidates(_candidate for result in results for _candidate in _result_candidates(result))
+    candidates = _collapse_same_document_summary_for_unique_work(
+        _dedupe_candidates(_candidate for result in results for _candidate in _result_candidates(result))
+    )
     status = _resolution_status(results, candidates, base_status=base_status)
     selected = candidates[0] if status == RESOLUTION_STATUS_RESOLVED and len(candidates) == 1 else {}
     if selected and _has_unconfirmed_internal_work_limit(selected):
@@ -215,6 +217,34 @@ def _dedupe_candidates(candidates: Iterable[Mapping[str, Any]]) -> tuple[dict[st
         seen.add(key)
         deduped.append(dict(candidate))
     return tuple(deduped)
+
+
+def _collapse_same_document_summary_for_unique_work(
+    candidates: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], ...]:
+    work_candidates = tuple(
+        candidate
+        for candidate in candidates
+        if _text(candidate.get("candidate_type")) == "work" and _text(candidate.get("work_id"))
+    )
+    if len(work_candidates) != 1:
+        return tuple(dict(candidate) for candidate in candidates)
+    work = dict(work_candidates[0])
+    work_doc_key = _document_key(work)
+    if not work_doc_key:
+        return tuple(dict(candidate) for candidate in candidates)
+    for candidate in candidates:
+        if candidate is work_candidates[0]:
+            continue
+        if _text(candidate.get("candidate_type")) != "document":
+            return tuple(dict(item) for item in candidates)
+        if _document_key(candidate) != work_doc_key:
+            return tuple(dict(item) for item in candidates)
+    return (work,)
+
+
+def _document_key(candidate: Mapping[str, Any]) -> str:
+    return _text(candidate.get("document_id")) or _text(candidate.get("doc_id_short"))
 
 
 def _candidate_line(candidate: Mapping[str, Any]) -> str:

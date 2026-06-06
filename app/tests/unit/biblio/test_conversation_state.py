@@ -13,6 +13,7 @@ if str(APP_DIR) not in sys.path:
 
 from biblio import conversation_followup
 from biblio import conversation_state
+from biblio import answer_object
 from biblio import document_resolver as resolver
 from biblio import librarian_runtime_projection
 from biblio import librarian_tools as tools
@@ -108,6 +109,30 @@ class BiblioConversationStateTests(unittest.TestCase):
         encoded = _json(state.to_dict())
         self.assertNotIn(RAW_PASSAGE, encoded)
         self.assertNotIn(RAW_QUERY, encoded)
+
+    def test_update_can_persist_current_work_from_ready_answer_object_without_text(self) -> None:
+        previous = conversation_state.BiblioConversationState.empty(conversation_id="conv-123")
+        answer = answer_object.BiblioAnswerObject(
+            status=answer_object.STATUS_READY,
+            document_id="doc-123456",
+            work_id="doc-123:work:RAW_WORK_ID_MUST_HASH",
+            work_state=answer_object.STATUS_READY,
+        )
+        runtime = _RuntimeResult(status="ready", answer=answer)
+
+        state, _transition = conversation_state.update_state_from_runtime(
+            previous,
+            query_plan=_Plan(intent="resolve_work"),
+            library_result=runtime,
+            conversation_id="conv-123",
+            now_iso="2026-05-31T12:00:00Z",
+        )
+        encoded = _json(state.to_dict())
+
+        self.assertTrue(state.current_work)
+        self.assertEqual(state.current_work["source"], "answer_object")
+        self.assertEqual(len(state.current_work["label_sha256_12"]), 12)
+        self.assertNotIn("RAW_WORK_ID_MUST_HASH", encoded)
 
     def test_update_after_range_segment_persists_next_anchor_without_text(self) -> None:
         previous = conversation_state.BiblioConversationState.empty(conversation_id="conv-123")
@@ -345,6 +370,7 @@ class _RuntimeResult:
         passage_result=None,
         context_result=None,
         status: str,
+        answer=None,
     ) -> None:
         self.status = status
         self.reason_code = f"biblio_{status}"
@@ -352,6 +378,7 @@ class _RuntimeResult:
         self.context_result = context_result
         self.passage_results = (passage_result,) if passage_result is not None else ()
         self.consultation_message = None
+        self.answer_object = answer
 
 
 def _passage(passage: str) -> extractor.BiblioPassageResult:

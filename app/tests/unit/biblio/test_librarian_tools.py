@@ -12,6 +12,8 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from biblio import catalogue_client as catalogue
+from biblio import answer_object
+from biblio import librarian_product_methods as product_methods
 from biblio import librarian_tools as tools
 
 
@@ -97,6 +99,48 @@ class BiblioLibrarianToolTests(unittest.TestCase):
 
         self.assertEqual(result.status, tools.STATUS_NOT_FOUND)
         self.assertEqual(result.reason_code, tools.REASON_WORK_ALIAS_MISSING)
+
+    def test_resolve_work_structured_internal_work_builds_work_state_content_free(self) -> None:
+        fake = _FakeToolClient(
+            catalog_payload={"items": [{"id": "doc-1", "title": RAW_TITLE}]},
+            chapters_payload={
+                "total": 1,
+                "chapters": [{"chapter_no": 1, "unit_no": 10, "title": RAW_QUERY}],
+            },
+        )
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(
+            tools.TOOL_RESOLVE_WORK,
+            {"document_title": RAW_TITLE, "work_title": RAW_QUERY, "author": RAW_AUTHOR, "limit": 5},
+        )
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = {
+            "tool": result.to_observability(),
+            "answer": answer.to_observability(),
+            "rendered": rendered.to_observability(),
+        }
+        encoded = _json(observed)
+
+        self.assertEqual(fake.calls, [("catalog", RAW_TITLE, 20, 0), ("chapters", "doc-1", 500, 0)])
+        self.assertEqual(result.status, tools.STATUS_RESOLVED)
+        self.assertEqual(result.items[0]["candidate_type"], "work")
+        self.assertEqual(result.items[0]["work_kind"], "work_in_document")
+        self.assertTrue(result.items[0]["work_id"])
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.work_state, answer_object.STATUS_READY)
+        self.assertEqual(answer.document_resolution["status"], "resolved")
+        self.assertIn(RAW_QUERY, rendered.content)
+        self.assertNotIn("document_id=", rendered.content)
+        self.assertNotIn("unit_start", rendered.content)
+        self.assertNotIn(RAW_TITLE, encoded)
+        self.assertNotIn(RAW_QUERY, encoded)
+        self.assertNotIn(RAW_AUTHOR, encoded)
 
     def test_resolve_section_uses_scoped_toc_and_returns_derived_bounds(self) -> None:
         fake = _FakeToolClient(chapters_payload=_chapters_payload())

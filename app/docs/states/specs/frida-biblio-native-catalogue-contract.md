@@ -322,6 +322,32 @@ Diagnostic initial Livraison 8 BIB-06/BIB-07/BIB-31/BIB-32 du 2026-06-06:
   verification. Elles delimitent seulement ce qui manque pour fermer les
   capacites utilisateur BIB-06/BIB-07/BIB-31/BIB-32.
 
+Micro-lot BIB-06 oeuvre interne du 2026-06-06:
+
+- artefact live:
+  `app/docs/states/baselines/biblio-smokes/bib06-internal-work-real-conversation-20260606T091906Z.jsonl`;
+- BIB-06 est `ferme_live`: une vraie conversation Frida prouve le chemin
+  agent-first `product_method=document_resolution`, `resolve_work`, puis
+  `document_open_summary` comme enrichissement de surface. La resolution porte
+  un candidat unique `work_in_document`, un `work_id` et un `work_state`
+  presents en observabilite content-free, avec `current_work` conserve dans
+  l'etat conversationnel, meta Biblio presente et surface visible propre;
+- le contrat agentique accepte maintenant les params structures de
+  `resolve_work`: `document_title`, `work_title`, `author`, `locator`,
+  `locator_end` et `kind`, en plus de `q/query` et `document_id/doc_id`. Ces
+  champs ne remplacent pas la comprehension du bibliothecaire: ils ne sont
+  autorises que lorsque l'agent distingue deja les signaux volume/corpus,
+  oeuvre et auteur;
+- les placeholders litteraux de document id (`doc_id`, `document_id`) ne sont
+  pas des ancres documentaires valides. Le validateur les rejette et le repair
+  peut les retirer quand des signaux structures exploitables restent presents;
+- un `document_open_summary` du meme document ne doit pas devenir un candidat
+  concurrent qui rend ambigu un `resolve_work` unique. Il enrichit la surface et
+  les metas; il ne choisit pas semantiquement l'oeuvre;
+- si plusieurs oeuvres internes candidates restent possibles, le statut produit
+  doit rester `ambiguous` / clarification. Le code ne choisit pas le premier
+  candidat et ne vend pas une section non confirmee comme oeuvre interne.
+
 Micro-lot BIB-31/BIB-32 passages deja lus du 2026-06-06:
 
 - artefact live:
