@@ -32,6 +32,7 @@ Resolution documentaire canonique Last Chance Lot 4B: 2026-06-04
 Structure/TOC canonique Last Chance Lot 4C: 2026-06-04
 Recherche scoped canonique Last Chance Lot 4D: 2026-06-04
 Nettoyage surface visible Biblio Last Chance: 2026-06-05
+Passages deja lus BIB-31/BIB-32: 2026-06-06
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -295,7 +296,7 @@ Memoire conversationnelle Last Chance Lot 3 bis livree:
   de verification/recuperation, pas un substitut obligatoire au texte memorise
   quand la conversation est memorisee.
 
-Diagnostic Livraison 8 BIB-06/BIB-07/BIB-31/BIB-32 du 2026-06-06:
+Diagnostic initial Livraison 8 BIB-06/BIB-07/BIB-31/BIB-32 du 2026-06-06:
 
 - artefact live:
   `app/docs/states/baselines/biblio-smokes/bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl`;
@@ -307,19 +308,41 @@ Diagnostic Livraison 8 BIB-06/BIB-07/BIB-31/BIB-32 du 2026-06-06:
   `unknown`. L'absence de faux `primary_text` est necessaire, mais ne prouve pas
   encore une distinction positive entre texte principal, commentaire, preface,
   notice, notes ou appareil critique;
-- BIB-31 reste `partiel_live`: une comparaison de passages deja lus doit
-  utiliser le fil conversationnel et le LLM pour la comparaison intellectuelle.
-  Un reroutage vers `catalog_search` + `passage_context` produit une nouvelle
-  extraction; il ne ferme pas la capacite "comparer deux passages deja lus";
-- BIB-32 reste `partiel_live`: reprendre un extrait lu plus tot doit restituer
-  du texte conversationnel deja rendu, ou relire mecaniquement une ancre
-  explicitement rattachee a cet extrait anterieur. Une simple ancre ne suffit
-  pas, et un run dont la precondition d'extrait exact anterieur est incomplete
-  ne doit pas cocher la capacite;
+- BIB-31 et BIB-32 etaient `partiel_live` dans cet artefact initial: une
+  comparaison de passages deja lus doit utiliser le fil conversationnel et le
+  LLM pour la comparaison intellectuelle. Un reroutage vers `catalog_search` +
+  `passage_context` produit une nouvelle extraction; il ne ferme pas la
+  capacite "comparer deux passages deja lus". Reprendre un extrait lu plus tot
+  doit restituer du texte conversationnel deja rendu, ou relire mecaniquement
+  une ancre explicitement rattachee a cet extrait anterieur. Une simple ancre ne
+  suffit pas, et un run dont la precondition d'extrait exact anterieur est
+  incomplete ne doit pas cocher la capacite;
 - ces limites ne modifient pas le contrat Lot 3 bis: les messages Biblio rendus
   restent eligibles a Memory et les ancres restent des complements de
   verification. Elles delimitent seulement ce qui manque pour fermer les
   capacites utilisateur BIB-06/BIB-07/BIB-31/BIB-32.
+
+Micro-lot BIB-31/BIB-32 passages deja lus du 2026-06-06:
+
+- artefact live:
+  `app/docs/states/baselines/biblio-smokes/bib31-bib32-read-passages-real-conversation-20260606T082548Z.jsonl`;
+- BIB-31 est `ferme_live`: apres deux extraits exacts Biblio rendus et
+  sauvegardes dans la vraie conversation Frida, la demande de comparaison passe
+  par une lane conversationnelle `read_passages`. Cette lane fournit au LLM
+  final les passages deja rendus dans le fil et leurs metas utiles; elle ne
+  relance aucun endpoint Catalogue et ne produit pas de `final_response_lock`;
+- BIB-32 est `ferme_live`: apres un extrait exact Biblio rendu, sauvegarde et
+  separe par un tour intermediaire, la demande de reprise passe par la meme lane
+  `read_passages`, sans recherche libre ni remplacement par une simple ancre;
+- le deterministe valide seulement la presence de messages assistant Biblio
+  exacts deja rendus, leurs ancres/metas, tailles et hashes courts. Il ne
+  compare pas semantiquement les passages et ne decide pas quoi en penser;
+- le message final de comparaison ou reprise est une reponse LLM normale. Il
+  peut citer/reprendre le contenu deja visible dans le fil conversationnel, mais
+  il n'est pas vendu comme nouvel `exact_excerpt` Biblio;
+- l'observabilite et les artefacts JSONL restent content-free: aucun texte
+  d'ouvrage, prompt brut, dialogue brut, payload Catalogue brut, snippet, titre
+  ou auteur brut.
 
 Premiere methode canonique Last Chance Lot 4A livree:
 

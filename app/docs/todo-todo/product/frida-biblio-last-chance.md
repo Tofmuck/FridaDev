@@ -466,33 +466,33 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `BIB30_BEFORE_PASSAGE=met`.
   - Prochain test live requis: surveillance regression; ancre passage/page ->
     lecture mecanique precedente ou clarification si l'ancre ne suffit pas.
-- [ ] BIB-31 - Comparer deux passages deja lus.
-  - Statut: `partiel_live`
+- [x] BIB-31 - Comparer deux passages deja lus.
+  - Statut: `ferme_live`
   - Preuve live:
-    `app/docs/states/baselines/biblio-smokes/bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl`
-    (`BIB31_COMPARE_READ_PASSAGES=partial`, vraie conversation Frida, agent
-    live, deux passages exacts non prouves proprement comme preconditions
-    completes, puis comparaison reroutee vers `catalog_search` +
-    `passage_context`). Blocker: la comparaison intellectuelle ne reste pas
-    encore sur les passages deja lus dans le fil; elle repart en extraction
-    contexte et ne peut donc pas fermer BIB-31.
-  - Prochain test live requis: deux extraits exacts verrouilles dans la meme
-    conversation -> demande de comparaison -> reponse LLM visible fondee sur
-    le fil/memoire, sans nouvel `exact_excerpt`, sans `catalog_search` ou
-    `passage_context` opportuniste.
-- [ ] BIB-32 - Reprendre un extrait lu plus tot dans la conversation.
-  - Statut: `partiel_live`
+    `app/docs/states/baselines/biblio-smokes/bib31-bib32-read-passages-real-conversation-20260606T082548Z.jsonl`
+    (`BIB31_COMPARE_READ_PASSAGES=met`, vraie conversation Frida, agent live,
+    deux extraits exacts Biblio deja rendus et sauvegardes, lane
+    `read_passages`, aucun endpoint Catalogue opportuniste sur le tour de
+    comparaison, message final LLM sauvegarde et fonde sur les passages du
+    fil). L'ancien artefact
+    `bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl` reste un
+    diagnostic stale du reroutage vers `catalog_search` + `passage_context`.
+  - Prochain test live requis: surveillance regression; deux extraits exacts
+    verrouilles dans la meme conversation -> demande de comparaison -> reponse
+    LLM visible fondee sur le fil/memoire, sans nouvel `exact_excerpt`, sans
+    `catalog_search` ou `passage_context` opportuniste.
+- [x] BIB-32 - Reprendre un extrait lu plus tot dans la conversation.
+  - Statut: `ferme_live`
   - Preuve live:
-    `app/docs/states/baselines/biblio-smokes/bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl`
-    (`BIB32_REPRISE_EARLIER_EXCERPT=partial`, vraie conversation Frida, agent
-    live, message sauvegarde, Memory observee, rendu exact mecanique au tour de
-    reprise). Requalification prudente: la reprise rend du texte et pas une
-    simple ancre, mais la precondition "extrait exact lu plus tot" n'est pas
-    assez propre dans ce run pour cocher BIB-32.
-  - Prochain test live requis: extrait exact Biblio verrouille dans le fil ->
-    tour intermediaire -> "reprends l'extrait lu plus tot" -> reprise visible
-    du texte conversationnel ou relecture mecanique explicitement rattachee a
-    l'extrait anterieur, avec meta Biblio et Memory observees.
+    `app/docs/states/baselines/biblio-smokes/bib31-bib32-read-passages-real-conversation-20260606T082548Z.jsonl`
+    (`BIB32_REPRISE_EARLIER_EXCERPT=met`, vraie conversation Frida, agent live,
+    extrait exact Biblio deja rendu et sauvegarde, tour intermediaire, lane
+    `read_passages`, aucun endpoint Catalogue opportuniste sur le tour de
+    reprise, message final sauvegarde et rattache au contenu deja lu).
+  - Prochain test live requis: surveillance regression; extrait exact Biblio
+    verrouille dans le fil -> tour intermediaire -> "reprends l'extrait lu plus
+    tot" -> reprise visible du texte conversationnel ou relecture mecanique
+    explicitement rattachee a l'extrait anterieur, avec Memory observee.
 - [ ] BIB-33 - Dire clairement quand elle ne sait pas, quand c'est ambigu, ou
   quand la structure manque.
   - Statut: `partiel_live`
@@ -941,6 +941,28 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     `passage_context` au lieu de comparer seulement les passages deja lus;
     BIB-32 rend du texte mecanique mais la precondition d'extrait exact
     anterieur propre n'est pas assez prouvee dans ce run.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- Micro-lot BIB-31/BIB-32 passages deja lus - 2026-06-06 -
+  `app/docs/states/baselines/biblio-smokes/bib31-bib32-read-passages-real-conversation-20260606T082548Z.jsonl`
+  - Statut: `ferme_live`; BIB-31 et BIB-32 cochees.
+  - Conversation: hash `081d2466eb11`
+  - Proof cases: `BIB31_COMPARE_READ_PASSAGES=met`,
+    `BIB32_REPRISE_EARLIER_EXCERPT=met`.
+  - Outils appeles: preconditions de lecture exacte avec `search_document` et
+    `page_read`; tours comparaison/reprise en lane `read_passages` sans
+    endpoint Catalogue, sans `catalog_search` ni `passage_context`
+    opportuniste.
+  - Statut final: vraie conversation Frida, toggle Biblio active,
+    bibliothecaire agentique appele, deux extraits exacts rendus et
+    sauvegardes pour BIB-31, au moins un extrait exact deja rendu pour BIB-32,
+    messages assistants sauvegardes, Memory observee, surface visible propre,
+    JSONL content-free.
+  - Reason codes: `biblio_read_passages_compare_from_conversation`,
+    `biblio_read_passages_resume_from_conversation`.
+  - Requalification: l'ancien artefact Livraison 8 garde la trace du blocker
+    initial. La fermeture vient du chemin conversationnel: le deterministe
+    fournit au LLM final les passages deja rendus dans le fil; il ne compare
+    pas semantiquement et ne relance pas une recherche documentaire libre.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire

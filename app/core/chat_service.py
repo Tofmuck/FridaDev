@@ -469,11 +469,11 @@ def _biblio_assistant_response_override(result: Any) -> chat_llm_flow.AssistantR
     )
 
 
-def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> tuple[dict[str, str], ...]:
+def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> tuple[dict[str, Any], ...]:
     messages = conversation.get('messages')
     if not isinstance(messages, list):
         return ()
-    selected: list[dict[str, str]] = []
+    selected: list[dict[str, Any]] = []
     for raw_message in messages[-12:]:
         if not isinstance(raw_message, Mapping):
             continue
@@ -483,7 +483,22 @@ def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> t
         content = str(raw_message.get('content') or '')
         if role == 'user' and content == user_msg and raw_message is messages[-1]:
             continue
-        selected.append({'role': role, 'content': content})
+        turn: dict[str, Any] = {'role': role, 'content': content}
+        meta = raw_message.get('meta')
+        if isinstance(meta, Mapping) and str(meta.get('source') or '') == 'biblio_rendered_answer':
+            turn['meta'] = {
+                key: meta.get(key)
+                for key in (
+                    'source',
+                    'biblio_exact_text_rendered',
+                    'biblio_exact_text_chars',
+                    'biblio_exact_text_hash',
+                    'biblio_render_mode',
+                    'biblio_answer_status',
+                )
+                if key in meta
+            }
+        selected.append(turn)
     return tuple(selected[-8:])
 
 

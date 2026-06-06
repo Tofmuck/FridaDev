@@ -710,6 +710,87 @@ class BiblioChatRuntimeTests(unittest.TestCase):
             [librarian_tools.TOOL_PASSAGE_CONTEXT, librarian_tools.TOOL_PASSAGE_CONTEXT],
         )
 
+    def test_read_passages_compare_uses_previous_exact_assistant_messages_without_catalogue(self) -> None:
+        first = "RAW PREVIOUS EXACT PASSAGE ONE MUST ONLY APPEAR IN PROMPT"
+        second = "RAW PREVIOUS EXACT PASSAGE TWO MUST ONLY APPEAR IN PROMPT"
+        fake_model = _FakeAgentModel(
+            _valid_agent_json(
+                product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
+                tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
+                params={"query": "RAW AGENT QUERY MUST NOT LEAK", "limit": 5},
+            )
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Compare les deux passages deja lus.",
+            recent_dialogue=(
+                _exact_biblio_turn(first),
+                {"role": "user", "content": "encore"},
+                _exact_biblio_turn(second),
+            ),
+            client_factory=_raising_client_factory,
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_READ_PASSAGES)
+        self.assertEqual(result.reason_code, chat_runtime.REASON_READ_PASSAGES_COMPARE)
+        self.assertEqual(fake_model.calls, 1)
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn(first, result.prompt_message["content"])
+        self.assertIn(second, result.prompt_message["content"])
+        self.assertIsNone(result.answer_object)
+        self.assertIsNone(result.final_response_lock)
+        self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+        self.assertEqual(result.observability_payload["lane"]["mode"], chat_runtime.READ_PASSAGES_MODE_COMPARE)
+        self.assertEqual(result.observability_payload["lane"]["passage_count"], 2)
+        self.assertTrue(result.observability_payload["librarian_agent"]["model_called"])
+        self.assertNotIn(first, encoded)
+        self.assertNotIn(second, encoded)
+        self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", encoded)
+
+    def test_read_passages_resume_uses_previous_exact_assistant_message_without_catalogue(self) -> None:
+        passage = "RAW PREVIOUS EXACT PASSAGE FOR RESUME MUST ONLY APPEAR IN PROMPT"
+        fake_model = _FakeAgentModel(
+            _valid_agent_json(
+                product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT,
+                tool_name=librarian_tools.TOOL_PASSAGE_CONTEXT,
+                params={"document_id": "doc-1234", "paragraph_id": 99, "window_chars": 1200},
+            )
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Reprends ce passage exact lu plus tot.",
+            recent_dialogue=(
+                _exact_biblio_turn(passage),
+                {"role": "user", "content": "un tour intermediaire"},
+                {"role": "assistant", "content": "reponse intermediaire"},
+            ),
+            client_factory=_raising_client_factory,
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        encoded = json.dumps(result.observability_payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_READ_PASSAGES)
+        self.assertEqual(result.reason_code, chat_runtime.REASON_READ_PASSAGES_RESUME)
+        self.assertEqual(fake_model.calls, 1)
+        self.assertIsNotNone(result.prompt_message)
+        self.assertIn(passage, result.prompt_message["content"])
+        self.assertIsNone(result.answer_object)
+        self.assertIsNone(result.final_response_lock)
+        self.assertEqual(result.observability_payload["client"]["event_count"], 0)
+        self.assertEqual(result.observability_payload["lane"]["mode"], chat_runtime.READ_PASSAGES_MODE_RESUME)
+        self.assertEqual(result.observability_payload["lane"]["passage_count"], 1)
+        self.assertTrue(result.observability_payload["librarian_agent"]["model_called"])
+        self.assertNotIn(passage, encoded)
+        self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", encoded)
+
     def test_agent_first_repairs_state_followup_with_matching_dialogue_plan(self) -> None:
         fake_model = _FakeAgentModel(
             _valid_agent_json(
@@ -2449,6 +2530,20 @@ def _agent_config(mode: str) -> SimpleNamespace:
         BIBLIO_LIBRARIAN_AGENT_MODEL="model/x",
         BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS=3,
     )
+
+
+def _exact_biblio_turn(content: str) -> dict[str, object]:
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()[:12]
+    return {
+        "role": "assistant",
+        "content": content,
+        "meta": {
+            "source": "biblio_rendered_answer",
+            "biblio_exact_text_rendered": True,
+            "biblio_exact_text_hash": digest,
+            "biblio_exact_text_chars": len(content),
+        },
+    }
 
 
 def _valid_agent_json(

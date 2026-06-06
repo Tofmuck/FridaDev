@@ -8,6 +8,7 @@ extract a bounded passage.
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field, replace
 from typing import Any, Mapping, Sequence
 
@@ -58,6 +59,75 @@ QUERY_KIND_DOCUMENT = "document"
 QUERY_KIND_DOCUMENT_LOCATOR = "document_locator"
 QUERY_KIND_STATE_FOLLOWUP = "state_followup"
 QUERY_KIND_AGENT_FIRST = "agent_first"
+QUERY_KIND_READ_PASSAGES = "read_passages"
+
+READ_PASSAGES_MODE_COMPARE = "compare_read_passages"
+READ_PASSAGES_MODE_RESUME = "resume_read_passage"
+REASON_READ_PASSAGES_COMPARE = "biblio_read_passages_compare_from_conversation"
+REASON_READ_PASSAGES_RESUME = "biblio_read_passages_resume_from_conversation"
+REASON_READ_PASSAGES_NO_EXACT = "biblio_read_passages_no_exact_conversation_content"
+
+_READ_PASSAGES_HEADER = "[PASSAGES BIBLIO DEJA LUS]"
+_READ_PASSAGES_FOOTER = "[/PASSAGES BIBLIO DEJA LUS]"
+_READ_PASSAGES_MAX_PASSAGES = 2
+_READ_PASSAGES_MAX_TOTAL_CHARS = 12_000
+_HASH_LEN = 12
+
+
+@dataclass(frozen=True)
+class BiblioReadPassage:
+    index: int
+    content: str = field(repr=False, compare=False)
+    content_hash: str = ""
+    content_chars: int = 0
+    source: str = ""
+    exact_text_rendered: bool = False
+    exact_text_hash: str = ""
+    exact_text_chars: int = 0
+
+    def to_observability(self) -> dict[str, Any]:
+        return {
+            "index": self.index,
+            "content_hash": self.content_hash,
+            "content_chars": self.content_chars,
+            "source": _safe_token(self.source),
+            "exact_text_rendered": self.exact_text_rendered,
+            "exact_text_hash": _strict_hash_12(self.exact_text_hash) or self.content_hash,
+            "exact_text_chars": self.exact_text_chars or self.content_chars,
+        }
+
+
+@dataclass(frozen=True)
+class BiblioReadPassagesPromptLane:
+    message: dict[str, Any] | None = field(default=None, repr=False, compare=False)
+    mode: str = ""
+    reason_code: str = ""
+    passages: tuple[BiblioReadPassage, ...] = field(default_factory=tuple, repr=False, compare=False)
+    chars: int = 0
+    max_passages: int = _READ_PASSAGES_MAX_PASSAGES
+    max_total_chars: int = _READ_PASSAGES_MAX_TOTAL_CHARS
+
+    @property
+    def passage_count(self) -> int:
+        return len(self.passages)
+
+    def to_observability(self) -> dict[str, Any]:
+        return {
+            "present": self.message is not None,
+            "mode": _safe_token(self.mode),
+            "reason_code": _safe_token(self.reason_code),
+            "passage_count": len(self.passages),
+            "chars": self.chars,
+            "max_passages": self.max_passages,
+            "max_total_chars": self.max_total_chars,
+            "hashes": [passage.content_hash for passage in self.passages],
+            "exact_text_hashes": [
+                _strict_hash_12(passage.exact_text_hash) or passage.content_hash
+                for passage in self.passages
+            ],
+            "passage_chars": [passage.content_chars for passage in self.passages],
+            "source": "conversation_assistant_messages",
+        }
 
 @dataclass(frozen=True)
 class BiblioChatDecision:
@@ -166,6 +236,32 @@ def run_biblio_chat_turn(
             deterministic_query_kind=decision.query_kind,
             config_module=config_module,
         )
+        read_passages_lane = _build_read_passages_prompt_lane(
+            user_msg=user_msg,
+            state=state_before,
+            recent_dialogue=recent_dialogue,
+        )
+        if read_passages_lane is not None:
+            payload = observability_builder(
+                enabled=True,
+                used=True,
+                query_kind=QUERY_KIND_READ_PASSAGES,
+                prompt_lane=read_passages_lane,
+                biblio_state=state_before if state_before.present else None,
+                librarian_agent=librarian_agent_result,
+                status="ready",
+                reason_code=read_passages_lane.reason_code,
+            )
+            return BiblioChatResult(
+                enabled=True,
+                used=True,
+                reason_code=read_passages_lane.reason_code,
+                query_kind=QUERY_KIND_READ_PASSAGES,
+                prompt_lane=read_passages_lane,
+                biblio_state=state_before if state_before.present else None,
+                librarian_agent_result=librarian_agent_result,
+                observability_payload=payload,
+            )
         bridge_result = librarian_agent_bridge.run_agent_first_bridge(
             librarian_agent_result=librarian_agent_result,
             query_plan=decision.query_plan,
@@ -605,3 +701,167 @@ def _before_last_user_index(prompt_messages: Sequence[Mapping[str, Any]]) -> int
         if str(prompt_messages[index].get("role") or "") == "user":
             return index
     return len(prompt_messages)
+
+
+def _build_read_passages_prompt_lane(
+    *,
+    user_msg: str,
+    state: BiblioConversationState,
+    recent_dialogue: Sequence[Mapping[str, Any]],
+) -> BiblioReadPassagesPromptLane | None:
+    passages = _recent_exact_biblio_passages(recent_dialogue)
+    if not passages:
+        return None
+    dialogue_plan = librarian_dialogue_planner.plan_biblio_dialogue(
+        user_msg,
+        state=state,
+        recent_dialogue=recent_dialogue,
+    )
+    intent = getattr(getattr(dialogue_plan, "intent", None), "intent", "")
+    if intent == librarian_dialogue_planner.INTENT_COMPARE_PASSAGES:
+        if len(passages) < 2:
+            return None
+        selected = passages[-2:]
+        lane = _read_passages_lane(
+            mode=READ_PASSAGES_MODE_COMPARE,
+            reason_code=REASON_READ_PASSAGES_COMPARE,
+            passages=selected,
+        )
+        return lane if lane.message is not None else None
+    if intent == librarian_dialogue_planner.INTENT_EXPLAIN_PASSAGE:
+        selected = passages[-1:]
+        lane = _read_passages_lane(
+            mode=READ_PASSAGES_MODE_RESUME,
+            reason_code=REASON_READ_PASSAGES_RESUME,
+            passages=selected,
+        )
+        return lane if lane.message is not None else None
+    return None
+
+
+def _recent_exact_biblio_passages(
+    recent_dialogue: Sequence[Mapping[str, Any]],
+) -> tuple[BiblioReadPassage, ...]:
+    passages: list[BiblioReadPassage] = []
+    for turn in recent_dialogue:
+        if not isinstance(turn, Mapping):
+            continue
+        if str(turn.get("role") or "").strip() != "assistant":
+            continue
+        content = str(turn.get("content") or "")
+        if not content:
+            continue
+        meta = _mapping(turn.get("meta"))
+        source = str(turn.get("biblio_source") or meta.get("source") or "").strip()
+        exact_text_rendered = _truthy(turn.get("biblio_exact_text_rendered")) or _truthy(
+            meta.get("biblio_exact_text_rendered")
+        )
+        if source != biblio_answer_object.FINAL_RESPONSE_SOURCE or not exact_text_rendered:
+            continue
+        content_hash = _short_hash(content)
+        exact_text_hash = _strict_hash_12(turn.get("biblio_exact_text_hash")) or _strict_hash_12(
+            meta.get("biblio_exact_text_hash")
+        )
+        exact_text_chars = _optional_positive_int(turn.get("biblio_exact_text_chars")) or _optional_positive_int(
+            meta.get("biblio_exact_text_chars")
+        )
+        passages.append(
+            BiblioReadPassage(
+                index=len(passages) + 1,
+                content=content,
+                content_hash=content_hash,
+                content_chars=len(content),
+                source=source,
+                exact_text_rendered=True,
+                exact_text_hash=exact_text_hash or content_hash,
+                exact_text_chars=exact_text_chars or len(content),
+            )
+        )
+    return tuple(passages[-_READ_PASSAGES_MAX_PASSAGES:])
+
+
+def _read_passages_lane(
+    *,
+    mode: str,
+    reason_code: str,
+    passages: Sequence[BiblioReadPassage],
+) -> BiblioReadPassagesPromptLane:
+    selected = tuple(passages[:_READ_PASSAGES_MAX_PASSAGES])
+    body_lines = [
+        "Contrat de lecture conversationnelle:",
+        "- Les textes ci-dessous sont des extraits Biblio exacts deja rendus dans cette conversation.",
+        "- Utilise ces textes comme contenu conversationnel deja lu.",
+        "- Ne lance pas de nouvelle recherche documentaire pour remplacer ces passages deja lus.",
+        "- Reponds au dernier message utilisateur a partir de ces passages deja lus.",
+        "- Pour comparer, donne une comparaison concise en prose ou en points; ne pretends pas produire un nouvel extrait exact.",
+        "- Pour reprendre, repars du passage fourni et signale clairement toute limite de longueur si necessaire.",
+    ]
+    for index, passage in enumerate(selected, start=1):
+        body_lines.extend(
+            [
+                f"Passage deja lu {index}",
+                f"Signal: hash={passage.content_hash}; chars={passage.content_chars}",
+                "Texte:",
+                _neutralize_read_passage_tags(passage.content),
+            ]
+        )
+    content = "\n".join([_READ_PASSAGES_HEADER, *body_lines, _READ_PASSAGES_FOOTER])
+    if len(content) > _READ_PASSAGES_MAX_TOTAL_CHARS:
+        return BiblioReadPassagesPromptLane(
+            mode=mode,
+            reason_code=REASON_READ_PASSAGES_NO_EXACT,
+            passages=selected,
+            chars=len(content),
+        )
+    return BiblioReadPassagesPromptLane(
+        message={"role": "system", "content": content},
+        mode=mode,
+        reason_code=reason_code,
+        passages=selected,
+        chars=len(content),
+    )
+
+
+def _mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def _safe_token(value: Any, *, max_chars: int = 96) -> str:
+    text = str(value or "").strip().lower()
+    if not text:
+        return ""
+    allowed = "abcdefghijklmnopqrstuvwxyz0123456789_-.:/"
+    return "".join(char for char in text[:max_chars] if char in allowed)
+
+
+def _optional_positive_int(value: Any) -> int | None:
+    if type(value) is int and value > 0:
+        return value
+    text = str(value or "").strip()
+    if text.isdecimal():
+        number = int(text)
+        return number if number > 0 else None
+    return None
+
+
+def _strict_hash_12(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    if len(text) != _HASH_LEN:
+        return ""
+    if any(char not in "0123456789abcdef" for char in text):
+        return ""
+    return text
+
+
+def _short_hash(value: str) -> str:
+    return hashlib.sha256(str(value or "").encode("utf-8")).hexdigest()[:_HASH_LEN]
+
+
+def _neutralize_read_passage_tags(value: str) -> str:
+    return str(value or "").replace(
+        _READ_PASSAGES_FOOTER,
+        "[BALISE BIBLIO NEUTRALISEE: /PASSAGES BIBLIO DEJA LUS]",
+    ).replace(
+        _READ_PASSAGES_HEADER,
+        "[BALISE BIBLIO NEUTRALISEE: PASSAGES BIBLIO DEJA LUS]",
+    )
