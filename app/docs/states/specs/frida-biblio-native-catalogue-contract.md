@@ -33,6 +33,7 @@ Structure/TOC canonique Last Chance Lot 4C: 2026-06-04
 Recherche scoped canonique Last Chance Lot 4D: 2026-06-04
 Nettoyage surface visible Biblio Last Chance: 2026-06-05
 Passages deja lus BIB-31/BIB-32: 2026-06-06
+Echecs propres BIB-33: 2026-06-06
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -393,6 +394,27 @@ Micro-lot BIB-31/BIB-32 passages deja lus du 2026-06-06:
 - l'observabilite et les artefacts JSONL restent content-free: aucun texte
   d'ouvrage, prompt brut, dialogue brut, payload Catalogue brut, snippet, titre
   ou auteur brut.
+
+Livraison 9 BIB-33 echecs propres du 2026-06-06:
+
+- artefact live:
+  `app/docs/states/baselines/biblio-smokes/bib33-clean-failures-real-conversation-20260606T101042Z.jsonl`;
+- BIB-33 est `ferme_live`: une vraie conversation Frida transversale couvre
+  `not_found`, document/scope ambigu, structure manquante, role documentaire non
+  prouve et extraction bloquee;
+- pour ces familles, le message assistant visible doit rester une reponse
+  utilisateur lisible: pas de silence, pas de faux refus juridique/politique,
+  pas de `reason_code`, `status`, `render_mode`, `document_id`, `unit_start`,
+  `unit_end` ou autre plomberie affichee comme texte principal;
+- aucun cas bloque ne doit produire `exact_excerpt`. Les snippets, recherches,
+  TOC, candidats ou contextes approximatifs restent des surfaces structurees ou
+  des demandes de clarification, jamais un extrait exact;
+- les reason codes, statuts, ancrages, compteurs, hashes et verrous restent en
+  `message.meta`, observabilite et JSONL content-free quand le chemin les
+  produit. Ils ne sont pas supprimes, seulement retires de la surface visible;
+- `BiblioFinalResponseLock` peut autoriser la surface structuree d'echec quand
+  le contrat technique est coherent. Cette autorisation ne transforme pas
+  l'echec en succes documentaire et ne valide aucune pertinence semantique.
 
 Premiere methode canonique Last Chance Lot 4A livree:
 

@@ -512,14 +512,20 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     verrouille dans le fil -> tour intermediaire -> "reprends l'extrait lu plus
     tot" -> reprise visible du texte conversationnel ou relecture mecanique
     explicitement rattachee a l'extrait anterieur, avec Memory observee.
-- [ ] BIB-33 - Dire clairement quand elle ne sait pas, quand c'est ambigu, ou
+- [x] BIB-33 - Dire clairement quand elle ne sait pas, quand c'est ambigu, ou
   quand la structure manque.
-  - Statut: `partiel_live`
-  - Preuve live: zero-hit scoped ferme dans
-    `lot4e-proof-gate-live-after-document-anchor-20260604T154046Z.jsonl`;
-    ambiguite et structure manquante restent a prouver live.
-  - Prochain test live requis: batteries live `not_found`, `ambiguous`,
-    `needs_clarification`, structure indisponible, message final verifie.
+  - Statut: `ferme_live`
+  - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib33-clean-failures-real-conversation-20260606T101042Z.jsonl`
+    (`BIB33_SUMMARY=met`, vraie conversation Frida, agent live, 5 familles
+    d'echec representatives: `not_found`, `ambiguous`, structure manquante,
+    role documentaire non prouve, extraction bloquee; messages assistants
+    sauvegardes, surfaces visibles propres, aucun `exact_excerpt` sur les cas
+    bloques, final lock autorise quand applicable, Memory observee, JSONL
+    content-free).
+  - Prochain test live requis: surveillance regression transversale; verifier
+    que les echecs Biblio restent lisibles, non vides, non juridiques/politiques
+    a tort, sans reason codes visibles et sans faux extrait exact.
 
 Requalification: les sections historiques et sous-lots techniques ci-dessous
 restent utiles pour comprendre les briques, mais la checklist BIB-01 -> BIB-33
@@ -1027,6 +1033,31 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     initial. La fermeture vient du chemin conversationnel: le deterministe
     fournit au LLM final les passages deja rendus dans le fil; il ne compare
     pas semantiquement et ne relance pas une recherche documentaire libre.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- Livraison 9 BIB-33 echecs propres - 2026-06-06 -
+  `app/docs/states/baselines/biblio-smokes/bib33-clean-failures-real-conversation-20260606T101042Z.jsonl`
+  - Statut: `ferme_live`; BIB-33 cochee.
+  - Conversations: hashes `1ddab0de0f79`, `de7ed39c012b`,
+    `9e682619a27a`, `e121a2afe790`, `a2f4cc3eb701`
+  - Proof cases: `BIB33_NOT_FOUND_SCOPED_SEARCH=met`,
+    `BIB33_AMBIGUOUS_DOCUMENT=met`, `BIB33_STRUCTURE_MISSING=met`,
+    `BIB33_ROLE_UNKNOWN=met`, `BIB33_EXTRACTION_BLOCKED=met`.
+  - Outils appeles: `catalog_search`, `resolve_work`, `search_document`,
+    `document_open_summary`, `search_section`, `section_bounds`,
+    `resolve_section`.
+  - Statut final: vraie conversation Frida, toggle Biblio actif,
+    bibliothecaire agentique live appele, messages assistants sauvegardes,
+    Memory observee, surfaces visibles propres, aucun faux refus, aucun silence,
+    aucun `exact_excerpt` sur les cas bloques, final lock autorise quand
+    applicable, artefact JSONL content-free.
+  - Reason codes representatifs: `scoped_search_no_hits_in_scope`,
+    `biblio_librarian_needs_clarification`,
+    `extraction_source_tool_unsupported`, `missing_document_id`,
+    `biblio_context_candidates_ambiguous`.
+  - Requalification: l'ancien zero-hit live reste une preuve partielle
+    historique. La fermeture vient du live transversal: le produit explique
+    proprement `not_found`, ambiguite, structure manquante, role non prouve et
+    extraction bloquee sans transformer l'echec en faux succes documentaire.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 
 ## 0 bis. Principe de souverainete documentaire
