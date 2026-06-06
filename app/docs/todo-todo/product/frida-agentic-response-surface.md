@@ -18,7 +18,9 @@ par artefacts JSONL content-free. Cette TODO ne rouvre pas Biblio. Elle cadre un
 mecanisme simple de restitution agentique visible.
 
 Le bibliothecaire fait son travail. Il produit son resultat structure habituel.
-Il ajoute eventuellement `surface_intro` et `surface_outro`. Le runtime assemble:
+Il renseigne le contrat `surface_intro` / `surface_outro`; leur contenu peut
+rester vide seulement si le statut ou le type de resultat le justifie. Le
+runtime assemble:
 
 1. intro;
 2. provenance lisible;
@@ -39,14 +41,21 @@ Formules a garder:
 - Le bibliothecaire est interne et ne devient pas un personnage visible.
 - Aucun nouveau LLM n'ecrit l'enveloppe.
 - Aucun nouveau locuteur visible n'est cree.
-- Le resultat agentique Biblio peut porter `surface_intro` et `surface_outro`.
-- `surface_intro` et `surface_outro` sont optionnels.
+- `surface_intro` et `surface_outro` font partie du contrat de restitution
+  agentique.
+- Leur contenu peut etre vide seulement si le type de resultat ou le statut le
+  justifie.
+- L'absence d'enveloppe ne doit pas redevenir la norme silencieuse.
 - Le runtime assemble, conserve et verrouille.
 - Les exacts verrouilles sont copies verbatim.
 - Les metas restent en observabilite et dans `message.meta`, pas en surface
   brute.
 - Le message final est une reponse assistant normale: DB, contexte recent,
   Memory, embeddings et resume suivent les contrats existants.
+- Le message final agentique est timestampé comme toute reponse assistant Frida
+  normale et passe par le meme chemin temporel: sauvegarde conversationnelle,
+  fenetre de contexte, labels temporels / Delta-T, Memory, embeddings et resume
+  selon les contrats existants.
 - La couverture Biblio reste generique par familles de resultats.
 - Ne pas concevoir une solution Biblio impossible a reutiliser plus tard pour
   Agenda.
@@ -82,10 +91,11 @@ vise seulement la surface visible:
 
 - l'agent Biblio recoit la demande utilisateur et le contexte utile;
 - il choisit ses outils et produit son resultat structure;
-- il ajoute, si utile, une intro et une relance courtes;
+- il renseigne l'intro et la relance, ou justifie leur absence dans les metas;
 - le deterministe garde les exacts, ancres, limites, final lock et metas;
 - le runtime assemble le message visible;
-- le message assemble est sauve comme assistant Frida normal.
+- le message assemble est sauve comme assistant Frida normal;
+- aucune reponse agentique visible ne doit exister hors de ce chemin timestampé.
 
 Garde-fous structurels autorises:
 
@@ -97,6 +107,14 @@ Garde-fous structurels autorises:
 
 Le code ne corrige pas le style. Il ne standardise pas la voix. Il ne fabrique
 pas une phrase locale pour remplacer l'enveloppe.
+
+Si l'enveloppe est absente, le comportement reste sobre, explicite cote
+meta/observabilite, et ne doit pas casser la reponse.
+
+Tout patch runtime de ce chantier exige une preuve live en vraie conversation
+Frida, meme si la surface semble inchangee. La raison est simple: ce chantier
+touche le chemin assistant normal, le contexte, Memory, les metas ou
+l'assemblage de reponse. L'artefact JSONL reste content-free.
 
 ## Couverture BIB par familles
 
@@ -129,6 +147,8 @@ Objectif: comprendre ou se fabrique aujourd'hui la reponse Biblio visible.
 - [ ] Localiser les metas Biblio.
 - [ ] Verifier le message assistant en DB.
 - [ ] Verifier le contexte recent.
+- [ ] Verifier que le message assistant timestampé entre dans le contexte
+  envoye au LLM avec le traitement temporel normal.
 - [ ] Verifier Memory si le chemin est deja branche.
 - [ ] Verifier embeddings si le chemin est deja branche.
 - [ ] Verifier resume si le chemin est deja branche.
@@ -139,8 +159,10 @@ Objectif: comprendre ou se fabrique aujourd'hui la reponse Biblio visible.
 
 Objectif: fixer le contrat generique.
 
-- [ ] Definir `surface_intro` optionnel.
-- [ ] Definir `surface_outro` optionnel.
+- [ ] Definir `surface_intro` comme champ du contrat, vide seulement si le
+  statut ou le type de resultat le justifie.
+- [ ] Definir `surface_outro` comme champ du contrat, vide seulement si le
+  statut ou le type de resultat le justifie.
 - [ ] Definir le comportement si l'enveloppe est absente.
 - [ ] Confirmer que les exacts verrouilles ne sont pas reecrits.
 - [ ] Confirmer l'absence de nouveau LLM.
@@ -158,8 +180,11 @@ Objectif: brancher le mecanisme simple.
 - [ ] Conserver final lock.
 - [ ] Conserver metas, provenance et observabilite.
 - [ ] Conserver le message assistant normal.
+- [ ] Conserver le timestamp et le chemin temporel normal: DB, contexte,
+  labels temporels / Delta-T, Memory, embeddings et resume selon contrats.
 - [ ] Ajouter ou ajuster les tests unitaires cibles.
-- [ ] Produire une preuve live si la surface visible change.
+- [ ] Produire une preuve live en vraie conversation Frida pour tout patch
+  runtime de ce chantier.
 
 ### Lot 3 - Preuve live par familles
 
@@ -175,6 +200,11 @@ Objectif: verifier la couverture sans refaire trente-trois micro-tests.
 - [ ] Couvrir comparaison / reprise.
 - [ ] Couvrir echec propre.
 - [ ] Prouver que les familles couvrent BIB-01 -> BIB-33.
+- [ ] Verifier que la reponse agentique finale possede un timestamp.
+- [ ] Verifier que cette reponse est reprise ensuite dans le contexte envoye au
+  LLM avec le traitement temporel normal.
+- [ ] Verifier que le timestamp n'est pas seulement une meta ou une ligne DB
+  isolee.
 - [ ] Produire un JSONL live content-free.
 
 ### Lot X - Arret no-op
@@ -194,8 +224,12 @@ Objectif: verifier la couverture sans refaire trente-trois micro-tests.
 - Exacts verrouilles copies verbatim.
 - Metas conservees hors surface brute.
 - Message final assistant normal.
+- Timestamp, contexte / payload, labels temporels / Delta-T, Memory, embeddings
+  et resume suivent le chemin conversationnel normal.
 - BIB-01 -> BIB-33 couverts par familles.
-- JSONL live content-free pour tout changement visible.
+- Preuve live en vraie conversation Frida pour tout patch runtime de ce
+  chantier.
+- JSONL live content-free.
 
 ## Point d'arret
 
