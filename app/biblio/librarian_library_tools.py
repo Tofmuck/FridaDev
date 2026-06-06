@@ -107,6 +107,9 @@ def _resolve_section(client: Any, params: Mapping[str, Any]) -> tools.BiblioLibr
     )
     chapter_no = tools._optional_integer(params, "chapter_no", tool=tool, minimum=1, maximum=100_000)
     section_id = tools._text(params, "section_id", tool=tool, max_chars=160)
+    if chapter_no is None and section_id.isdecimal():
+        chapter_no = int(section_id)
+        section_id = ""
     if chapter_no is None and not section_id and not query:
         raise tools._tool_error(tool, tools.REASON_MISSING_QUERY)
     try:
@@ -141,6 +144,9 @@ def _section_bounds(client: Any, params: Mapping[str, Any]) -> tools.BiblioLibra
     )
     chapter_no = tools._optional_integer(params, "chapter_no", tool=tool, minimum=1, maximum=100_000)
     section_id = tools._text(params, "section_id", tool=tool, max_chars=160)
+    if chapter_no is None and section_id.isdecimal():
+        chapter_no = int(section_id)
+        section_id = ""
     if chapter_no is None and not section_id and not query:
         raise tools._tool_error(tool, tools.REASON_MISSING_QUERY)
     try:

@@ -606,7 +606,10 @@ def _repair_agent_payload(payload: Any) -> Any:
     payload = _unwrap_agent_payload(payload)
     raw_calls = payload.get("tool_calls")
     if raw_calls is None:
-        raw_calls = payload.get("tools") or payload.get("calls")
+        if "tools" in payload:
+            raw_calls = payload.get("tools")
+        elif "calls" in payload:
+            raw_calls = payload.get("calls")
     changed = False
     if isinstance(raw_calls, Mapping):
         raw_calls = (raw_calls,)

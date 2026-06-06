@@ -94,6 +94,7 @@ def state_anchor_from_tool_results(
     answer: Any = None,
 ) -> dict[str, Any]:
     answer_interval = _interval_hint_from_answer(answer)
+    section_interval_doc_id, section_interval = _section_interval_hint_from_tool_results(tool_results)
     for result in reversed(tool_results):
         if result is None:
             continue
@@ -116,7 +117,9 @@ def state_anchor_from_tool_results(
         if answer_interval:
             anchor["interval_hint"] = answer_interval
         elif result.interval:
-            anchor["interval_hint"] = dict(result.interval)
+            anchor["interval_hint"] = _interval_hint_from_section_result(result) or dict(result.interval)
+        elif section_interval and (not section_interval_doc_id or section_interval_doc_id == doc_id):
+            anchor["interval_hint"] = section_interval
         if result.context_text:
             anchor["passage_hash"] = hashlib.sha256(result.context_text.encode("utf-8")).hexdigest()[:12]
             anchor["passage_chars"] = len(result.context_text)
@@ -144,6 +147,12 @@ def _interval_hint_from_answer(answer: Any) -> dict[str, Any]:
             "start_page_no": _int(extraction.get("page_start")),
             "end_page_no": _int(extraction.get("page_end")),
             "requested_end_page_no": _int(extraction.get("requested_page_end")),
+            "section_id": _text(extraction.get("section_id")),
+            "section_no": _int(extraction.get("section_no")),
+            "chapter_no": _int(extraction.get("chapter_no")),
+            "section_kind": _text(extraction.get("section_kind")),
+            "section_level": _int(extraction.get("section_level")),
+            "parent_section_id": _text(extraction.get("parent_section_id")),
             "next_page_no": _int(next_anchor.get("page_no")),
             "next_para_no": _int(next_anchor.get("para_no")),
             "next_paragraph_id": _int(next_anchor.get("paragraph_id")),
@@ -151,6 +160,48 @@ def _interval_hint_from_answer(answer: Any) -> dict[str, Any]:
         }.items()
         if value not in ("", None)
     }
+
+
+def _interval_hint_from_section_result(result: Any) -> dict[str, Any]:
+    if getattr(result, "tool_name", "") != librarian_tools.TOOL_SECTION_BOUNDS:
+        return {}
+    interval = getattr(result, "interval", None)
+    if not isinstance(interval, dict) or not interval:
+        return {}
+    item = result.items[0] if getattr(result, "items", None) else {}
+    if not isinstance(item, dict):
+        item = {}
+    start = interval.get("start") if isinstance(interval.get("start"), dict) else {}
+    end = interval.get("end") if isinstance(interval.get("end"), dict) else {}
+    return {
+        key: value
+        for key, value in {
+            "kind": "section",
+            "mode": "section_bounds",
+            "state": _text(interval.get("state") or interval.get("boundary_state")),
+            "start_page_no": _int(start.get("page_no") or start.get("unit_no")),
+            "end_page_no": _int(end.get("page_no") or end.get("unit_no")),
+            "section_id": _text(item.get("section_id")),
+            "section_no": _int(item.get("section_no")),
+            "chapter_no": _int(item.get("chapter_no")),
+            "section_kind": _text(item.get("section_kind")),
+            "section_level": _int(item.get("level")),
+            "parent_section_id": _text(item.get("parent_section_id")),
+        }.items()
+        if value not in ("", None)
+    }
+
+
+def _section_interval_hint_from_tool_results(
+    tool_results: Sequence[librarian_tools.BiblioLibrarianToolResult | None],
+) -> tuple[str, dict[str, Any]]:
+    for result in reversed(tool_results):
+        if result is None or getattr(result, "tool_name", "") != librarian_tools.TOOL_SECTION_BOUNDS:
+            continue
+        interval = _interval_hint_from_section_result(result)
+        if interval:
+            return _text(getattr(result, "document_id", "")), interval
+    return "", {}
 
 
 def _text(value: Any) -> str:

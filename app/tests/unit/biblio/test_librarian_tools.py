@@ -296,6 +296,17 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertEqual(observed["unit_start"], 10)
         self.assertEqual(observed["unit_end"], 29)
 
+    def test_section_bounds_treats_numeric_section_id_as_section_number(self) -> None:
+        fake = _FakeToolClient(chapters_payload=_chapters_payload())
+        registry = tools.build_librarian_tool_registry(fake)
+
+        result = registry.run(tools.TOOL_SECTION_BOUNDS, {"document_id": "doc-1", "section_id": "2"})
+
+        self.assertEqual(fake.calls, [("chapters", "doc-1", 500, 0)])
+        self.assertEqual(result.status, tools.STATUS_RESOLVED)
+        self.assertEqual(result.interval["start"]["unit_no"], 10)
+        self.assertEqual(result.items[0]["section_no"], 2)
+
     def test_resolve_section_reports_ambiguous_or_not_found_content_free(self) -> None:
         ambiguous = _FakeToolClient(
             chapters_payload=_chapters_payload(

@@ -52,6 +52,7 @@ PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT = "passage_show_around_current"
 PRODUCT_METHOD_PASSAGE_COMPARE_CANDIDATES = "passage_compare_candidates"
 PRODUCT_METHOD_PASSAGE_MOVE_PREVIOUS_SEGMENT = "passage_move_previous_segment"
 PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT = "passage_continue_next_segment"
+PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER = "passage_move_next_chapter"
 PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK = "passage_origin_check"
 PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK = "passage_search_external_work"
 PRODUCT_METHOD_CLARIFY_BIBLIO_REQUEST = "clarify_biblio_request"
@@ -350,6 +351,16 @@ METHOD_SPECS = (
         preconditions=("current_document_anchor_present", "navigation_anchor_present"),
         truth_levels=(TRUTH_LEVEL_CONTEXTUAL, TRUTH_LEVEL_PLAUSIBLE),
         execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
+    ),
+    BiblioProductMethodSpec(
+        product_method=PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER,
+        canonical_family=CANONICAL_FAMILY_READER_NAVIGATION,
+        case_ids=(),
+        allowed_tool_names=(tools.TOOL_SECTION_BOUNDS, tools.TOOL_PAGE_READ),
+        preconditions=("current_document_anchor_present", "current_section_anchor_present", "next_section_resolvable"),
+        truth_levels=(TRUTH_LEVEL_EXACT, TRUTH_LEVEL_CONTEXTUAL),
+        execution_statuses=(EXECUTION_STATUS_SUCCESS, EXECUTION_STATUS_CLARIFICATION, EXECUTION_STATUS_NOT_FOUND, EXECUTION_STATUS_ERROR),
+        requires_tool_calls=False,
     ),
     BiblioProductMethodSpec(
         product_method=PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK,

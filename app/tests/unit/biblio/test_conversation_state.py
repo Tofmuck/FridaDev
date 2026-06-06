@@ -208,6 +208,78 @@ class BiblioConversationStateTests(unittest.TestCase):
         self.assertEqual(state.last_result["interval_hint"]["next_para_no"], 3)
         self.assertNotIn(RAW_PASSAGE, _json(state.to_dict()))
 
+    def test_agent_first_state_anchor_carries_section_interval_through_page_read(self) -> None:
+        section_result = tools.BiblioLibrarianToolResult(
+            tool_name=tools.TOOL_SECTION_BOUNDS,
+            status=tools.STATUS_RESOLVED,
+            reason_code=tools.REASON_RESOLVED,
+            endpoint_kind="chapters",
+            observation=tools.BiblioLibrarianToolObservation(
+                tool_name=tools.TOOL_SECTION_BOUNDS,
+                endpoint_kind="chapters",
+                status=tools.STATUS_RESOLVED,
+                reason_code=tools.REASON_RESOLVED,
+            ),
+            document_id="doc-123456",
+            items=(
+                {
+                    "section_id": "section-2",
+                    "section_no": 2,
+                    "chapter_no": 2,
+                    "section_kind": "section",
+                    "level": 2,
+                    "parent_section_id": "parent-1",
+                },
+            ),
+            anchors=({"page_no": 20}, {"page_no": 24}),
+            interval={
+                "state": "derived",
+                "start": {"page_no": 20},
+                "end": {"page_no": 24},
+            },
+        )
+        page_result = tools.BiblioLibrarianToolResult(
+            tool_name=tools.TOOL_PAGE_READ,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind="page",
+            observation=tools.BiblioLibrarianToolObservation(
+                tool_name=tools.TOOL_PAGE_READ,
+                endpoint_kind="page",
+                status=tools.STATUS_OK,
+                reason_code=tools.REASON_OK,
+            ),
+            document_id="doc-123456",
+            positions=({"page_no": 20},),
+            page_text=RAW_PASSAGE,
+        )
+        state_anchor = librarian_runtime_projection.state_anchor_from_tool_results(
+            (section_result, page_result),
+            status="agent_first_executed",
+            reason_code="biblio_agent_first_plan_executed",
+        )
+        runtime = _RuntimeResult(status="extracted")
+        runtime.state_anchor = state_anchor
+
+        state, _transition = conversation_state.update_state_from_runtime(
+            conversation_state.BiblioConversationState.empty(conversation_id="conv-123"),
+            library_result=runtime,
+            conversation_id="conv-123",
+            now_iso="2026-05-31T12:00:00Z",
+        )
+
+        interval = state.last_result["interval_hint"]
+        self.assertEqual(state.page_no, 20)
+        self.assertEqual(interval["kind"], "section")
+        self.assertEqual(interval["mode"], "section_bounds")
+        self.assertEqual(interval["section_id"], "section-2")
+        self.assertEqual(interval["section_no"], 2)
+        self.assertEqual(interval["chapter_no"], 2)
+        self.assertEqual(interval["section_kind"], "section")
+        self.assertEqual(interval["section_level"], 2)
+        self.assertEqual(interval["parent_section_id"], "parent-1")
+        self.assertNotIn(RAW_PASSAGE, _json(state.to_dict()))
+
     def test_state_round_trips_through_latest_user_message_meta(self) -> None:
         state, _transition = conversation_state.update_state_from_runtime(
             conversation_state.BiblioConversationState.empty(conversation_id="conv-123"),

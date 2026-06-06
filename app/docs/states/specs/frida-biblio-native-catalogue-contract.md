@@ -755,9 +755,15 @@ Navigation lecteur BIB-27/BIB-30:
   `app/docs/states/baselines/biblio-smokes/bib27-bib30-real-conversation-20260604T210551Z.jsonl`;
   `BIB27_CONTINUE_FROM_CURRENT`, `BIB28_NEXT_PAGE`,
   `BIB28_PREVIOUS_PAGE` et `BIB30_BEFORE_PASSAGE` sont `met`;
-- BIB-29 ("chapitre suivant") reste ouvert: il demande une ancre de chapitre
-  courant et une resolution de chapitre suivant que ce lot ne prouve pas. Le
-  code ne doit pas simuler cette capacite en lisant seulement la page suivante.
+- BIB-29 ("chapitre suivant") est ferme live par
+  `app/docs/states/baselines/biblio-smokes/bib29-next-chapter-real-conversation-20260606T120102Z.jsonl`:
+  depuis une ancre structurelle courante, le bibliothecaire choisit
+  `passage_move_next_chapter`; le runtime verifie le document/scope courant,
+  resout le frere structurel suivant via la structure Catalogue, puis lit le
+  debut par `section_bounds` et `page_read`. Cette capacite n'est pas un
+  alias de BIB-28: une ancre page seule doit produire une clarification
+  (`biblio_next_chapter_anchor_missing`) et ne doit pas etre transformee en
+  simple "page suivante".
 
 Verrou de preuve Last Chance Lot 4:
 

@@ -419,7 +419,11 @@ def _agent_first_candidate_allowed(
     plan = getattr(agent_result, "candidate_plan", None)
     tool_calls = tuple(getattr(plan, "tool_calls", ()) or ())
     if not tool_calls:
-        return False
+        product_method = str(getattr(plan, "product_method", "") or "").strip()
+        return (
+            product_method == librarian_product_methods.PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER
+            and not librarian_product_methods.method_requires_tool_calls(product_method)
+        )
     return all(str(getattr(call, "method", "") or "").strip().upper() == "GET" for call in tool_calls)
 
 

@@ -935,6 +935,96 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(observed["tool_loop"]["tool_names"], [librarian_tools.TOOL_PAGE_READ])
         self.assertEqual(observed["tool_loop"]["endpoint_kinds"], ["page"])
 
+    def test_agent_first_moves_to_next_chapter_from_structural_state(self) -> None:
+        fake_model = _FakeAgentModel(
+            _agent_json(
+                product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER,
+                answer_mode="reader_navigation",
+                tool_calls=[],
+            )
+        )
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-agent-first-next-chapter",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={
+                "document_id": "doc-1234",
+                "page_no": 12,
+                "interval_hint": {
+                    "kind": "section",
+                    "mode": "section_segment",
+                    "state": "segment",
+                    "section_id": "section-2",
+                    "section_no": 2,
+                    "section_level": 2,
+                    "parent_section_id": "root",
+                    "start_page_no": 12,
+                    "end_page_no": 18,
+                },
+            },
+            page_no=12,
+            last_intent="extract_passage",
+        )
+        fake_client = _NextChapterClient()
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Va au chapitre suivant.",
+            conversation_id="conv-agent-first-next-chapter",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: fake_client,
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_AGENT_FIRST)
+        self.assertEqual(result.observability_payload["status"], "agent_first_executed")
+        self.assertEqual(
+            result.observability_payload["product_method"],
+            librarian_product_methods.PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER,
+        )
+        self.assertEqual(observed["tool_loop"]["tool_names"], [librarian_tools.TOOL_SECTION_BOUNDS, librarian_tools.TOOL_PAGE_READ])
+        self.assertEqual(fake_client.page_calls, [21])
+        self.assertNotIn(13, fake_client.page_calls)
+
+    def test_agent_first_next_chapter_clarifies_without_section_anchor(self) -> None:
+        fake_model = _FakeAgentModel(
+            _agent_json(
+                product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER,
+                answer_mode="reader_navigation",
+                tool_calls=[],
+            )
+        )
+        state = conversation_state.BiblioConversationState(
+            conversation_id="conv-agent-first-next-chapter-missing-anchor",
+            current_document={"document_id": "doc-1234", "doc_id_short": "doc-1234"},
+            last_result={"document_id": "doc-1234", "page_no": 12},
+            page_no=12,
+            last_intent="extract_passage",
+        )
+        fake_client = _NextChapterClient()
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Va au chapitre suivant.",
+            conversation_id="conv-agent-first-next-chapter-missing-anchor",
+            conversation_state=state,
+            client_factory=lambda **_kwargs: fake_client,
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+        observed = result.observability_payload["librarian_agent"]
+
+        self.assertTrue(result.used)
+        self.assertEqual(
+            result.observability_payload["product_method"],
+            librarian_product_methods.PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER,
+        )
+        self.assertEqual(observed["tool_loop"]["status"], "needs_clarification")
+        self.assertEqual(observed["tool_loop"]["tool_call_count"], 0)
+        self.assertEqual(fake_client.page_calls, [])
+
     def test_agent_first_invalid_json_uses_dialogue_state_fallback_for_origin_check(self) -> None:
         fake_model = _FakeAgentModel("not json")
         state = conversation_state.BiblioConversationState(
@@ -2151,6 +2241,86 @@ class _ParagraphIdFailingContextClient(_FakeClient):
         )
 
 
+class _NextChapterClient(_FakeClient):
+    def __init__(self) -> None:
+        self.calls: list[tuple[Any, ...]] = []
+        self.page_calls: list[int] = []
+
+    def sections(self, doc_id: str, *, limit: int = 500, offset: int = 0, kind: str | None = None) -> catalogue.CatalogueResponse:
+        self.calls.append(("sections", doc_id, limit, offset, kind))
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_SECTIONS,
+            status_code=200,
+            payload={
+                "document": {
+                    "id": doc_id,
+                    "unit_label": "pages",
+                    "unit_count": 40,
+                    "page_count": 40,
+                    "source_type": "pdf",
+                    "toc_source": "document_sections",
+                },
+                "sections": [
+                    {
+                        "section_id": "section-1",
+                        "section_no": 1,
+                        "level": 1,
+                        "parent_section_id": "",
+                        "section_kind": "chapter",
+                        "title": "RAW LEVEL 1 TITLE MUST NOT LEAK",
+                        "unit_start": 1,
+                        "unit_end": 40,
+                        "boundary_state": "derived",
+                        "source": "document_sections",
+                    },
+                    {
+                        "section_id": "section-2",
+                        "section_no": 2,
+                        "level": 2,
+                        "parent_section_id": "root",
+                        "section_kind": "section",
+                        "title": "RAW CURRENT TITLE MUST NOT LEAK",
+                        "unit_start": 12,
+                        "unit_end": 18,
+                        "boundary_state": "derived",
+                        "source": "document_sections",
+                    },
+                    {
+                        "section_id": "section-3",
+                        "section_no": 3,
+                        "level": 2,
+                        "parent_section_id": "root",
+                        "section_kind": "section",
+                        "title": "RAW NEXT TITLE MUST NOT LEAK",
+                        "unit_start": 21,
+                        "unit_end": 25,
+                        "boundary_state": "derived",
+                        "source": "document_sections",
+                    },
+                    {
+                        "section_id": "section-4",
+                        "section_no": 4,
+                        "level": 3,
+                        "parent_section_id": "section-3",
+                        "section_kind": "subsection",
+                        "title": "RAW CHILD TITLE MUST NOT LEAK",
+                        "unit_start": 22,
+                        "unit_end": 23,
+                        "boundary_state": "derived",
+                        "source": "document_sections",
+                    },
+                ],
+            },
+            duration_ms=1,
+            result_count=4,
+            doc_id_short=catalogue.short_doc_id(doc_id),
+        )
+
+    def page(self, doc_id: str, page_no: int) -> catalogue.CatalogueResponse:
+        self.page_calls.append(page_no)
+        return super().page(doc_id, page_no)
+
+
 class _NamedDocumentPageClient(_FakeClient):
     def __init__(self, documents: dict[str, str]) -> None:
         self._documents = dict(documents)
@@ -2571,6 +2741,28 @@ def _valid_agent_json(
                 }
             ],
             "answer_mode": "tool",
+            "risk_flags": [],
+            "fallback_reason": "",
+        },
+        ensure_ascii=False,
+    )
+
+
+def _agent_json(
+    *,
+    product_method: str,
+    answer_mode: str = "tool",
+    case_id: str = "",
+    tool_calls: list[dict[str, object]] | None = None,
+) -> str:
+    return json.dumps(
+        {
+            "schema_version": agent_contract.SCHEMA_VERSION,
+            "case_id": case_id,
+            "intent": "reader_navigation",
+            "product_method": product_method,
+            "tool_calls": list(tool_calls or ()),
+            "answer_mode": answer_mode,
             "risk_flags": [],
             "fallback_reason": "",
         },

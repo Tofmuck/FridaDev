@@ -76,6 +76,8 @@ _SECTION_START_PAGE_BLOCK_ANSWER_MODES = frozenset(
 _SECTION_START_PAGE_COUNT = 2
 _SECTION_COMPLETE_PAGE_SEGMENT_MAX = 3
 _EXTRACTION_PAGE_REQUEST_MAX_PAGES = 3
+_NEXT_CHAPTER_ANCHOR_MISSING = "biblio_next_chapter_anchor_missing"
+_NEXT_CHAPTER_UNRESOLVED = "biblio_next_chapter_unresolved"
 
 _THEME_QUERY_STOPWORDS = frozenset(
     {
@@ -120,14 +122,20 @@ def complete_product_method_loop(
     user_msg: str = "",
     conversation_state: Any = None,
 ) -> librarian_planner.BiblioLibrarianLoopResult:
+    product_method = str(getattr(plan, "product_method", "") or "")
+    if not product_method:
+        return loop_result
     if loop_result.status not in {
         librarian_planner.STATUS_TOOL_EXECUTED,
         librarian_planner.STATUS_TOOL_FAILED,
         librarian_planner.STATUS_TOOL_REJECTED,
     }:
-        return loop_result
-    product_method = str(getattr(plan, "product_method", "") or "")
-    if not product_method:
+        if product_method == product_methods.PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER:
+            return _complete_next_chapter_navigation(
+                loop_result,
+                registry=registry,
+                conversation_state=conversation_state,
+            )
         return loop_result
 
     if product_method in _SUMMARY_COMPLETION_METHODS and not _has_document_summary(loop_result):
@@ -233,6 +241,16 @@ def complete_product_method_loop(
             deterministic_plan=deterministic_plan,
         )
         if _has_tool(repaired, librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT):
+            return repaired
+        loop_result = repaired
+
+    if product_method == product_methods.PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER:
+        repaired = _complete_next_chapter_navigation(
+            loop_result,
+            registry=registry,
+            conversation_state=conversation_state,
+        )
+        if _has_endpoint(repaired, "page") or repaired.status == librarian_planner.STATUS_NEEDS_CLARIFICATION:
             return repaired
         loop_result = repaired
 
@@ -618,6 +636,149 @@ def _complete_canonical_range_extraction(
         registry=registry,
         tool_name=librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT,
         params=params,
+    )
+
+
+def _complete_next_chapter_navigation(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    registry: librarian_tools.BiblioLibrarianToolRegistry,
+    conversation_state: Any,
+) -> librarian_planner.BiblioLibrarianLoopResult:
+    doc_id, interval = _state_section_scope(conversation_state)
+    if not doc_id or not interval:
+        return _clarification_loop(loop_result, reason_code=_NEXT_CHAPTER_ANCHOR_MISSING)
+    next_params = _next_structural_sibling_params(registry, document_id=doc_id, interval=interval)
+    if not next_params:
+        return _clarification_loop(loop_result, reason_code=_NEXT_CHAPTER_UNRESOLVED)
+    repaired = _append_tool_call(
+        loop_result,
+        registry=registry,
+        tool_name=librarian_tools.TOOL_SECTION_BOUNDS,
+        params={"document_id": doc_id, **next_params},
+    )
+    start_page = _first_section_start_page(repaired, document_id=doc_id)
+    if start_page is None:
+        return repaired
+    return _append_tool_call(
+        repaired,
+        registry=registry,
+        tool_name=librarian_tools.TOOL_PAGE_READ,
+        params={"document_id": doc_id, "page_no": start_page},
+    )
+
+
+def _state_section_scope(conversation_state: Any) -> tuple[str, Mapping[str, Any]]:
+    last_result = getattr(conversation_state, "last_result", None)
+    if not isinstance(last_result, Mapping):
+        last_result = {}
+    current_document = getattr(conversation_state, "current_document", None)
+    if not isinstance(current_document, Mapping):
+        current_document = {}
+    doc_id = _text(last_result.get("document_id")) or _text(current_document.get("document_id"))
+    interval = last_result.get("interval_hint")
+    if not isinstance(interval, Mapping):
+        return doc_id, {}
+    if _text(interval.get("kind")) != "section":
+        return doc_id, {}
+    if not (
+        _text(interval.get("section_id"))
+        or _positive_int(interval.get("section_no"))
+        or _positive_int(interval.get("chapter_no"))
+    ):
+        return doc_id, {}
+    return doc_id, interval
+
+
+def _next_structural_sibling_params(
+    registry: librarian_tools.BiblioLibrarianToolRegistry,
+    *,
+    document_id: str,
+    interval: Mapping[str, Any],
+) -> dict[str, Any]:
+    rows = _structure_rows(registry, document_id=document_id)
+    if not rows:
+        return {}
+    current_index = _current_section_index(rows, interval=interval)
+    if current_index < 0:
+        return {}
+    current_row = rows[current_index]
+    current_level = _positive_int(current_row.get("level")) or _positive_int(interval.get("section_level")) or 1
+    current_parent = _text(current_row.get("parent_section_id")) or _text(interval.get("parent_section_id"))
+    for row in rows[current_index + 1 :]:
+        level = _positive_int(row.get("level")) or 1
+        parent = _text(row.get("parent_section_id"))
+        if level != current_level or parent != current_parent:
+            continue
+        section_id = _text(row.get("section_id"))
+        if section_id:
+            return {"section_id": section_id}
+        section_no = _positive_int(row.get("section_no") or row.get("chapter_no"))
+        if section_no:
+            return {"chapter_no": section_no}
+    return {}
+
+
+def _structure_rows(
+    registry: librarian_tools.BiblioLibrarianToolRegistry,
+    *,
+    document_id: str,
+) -> tuple[Mapping[str, Any], ...]:
+    client = getattr(registry, "_client", None)
+    sections_fn = getattr(client, "sections", None)
+    if callable(sections_fn):
+        try:
+            response = sections_fn(document_id, limit=500, offset=0)
+        except Exception:
+            response = None
+        rows = _payload_rows(getattr(response, "payload", {}), "sections") if response is not None else ()
+        if rows:
+            return rows
+    chapters_fn = getattr(client, "chapters", None)
+    if callable(chapters_fn):
+        try:
+            response = chapters_fn(document_id, limit=500, offset=0)
+        except Exception:
+            response = None
+        rows = _payload_rows(getattr(response, "payload", {}), "chapters") if response is not None else ()
+        if rows:
+            return rows
+    return ()
+
+
+def _payload_rows(payload: Any, key: str) -> tuple[Mapping[str, Any], ...]:
+    if not isinstance(payload, Mapping):
+        return ()
+    rows = payload.get(key)
+    if not isinstance(rows, Sequence) or isinstance(rows, (str, bytes, bytearray)):
+        return ()
+    return tuple(row for row in rows if isinstance(row, Mapping))
+
+
+def _current_section_index(rows: Sequence[Mapping[str, Any]], *, interval: Mapping[str, Any]) -> int:
+    section_id = _text(interval.get("section_id"))
+    section_no = _positive_int(interval.get("section_no")) or _positive_int(interval.get("chapter_no"))
+    for index, row in enumerate(rows):
+        if section_id and _text(row.get("section_id")) == section_id:
+            return index
+        row_no = _positive_int(row.get("section_no")) or _positive_int(row.get("chapter_no"))
+        if section_no and row_no == section_no:
+            return index
+    return -1
+
+
+def _clarification_loop(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    reason_code: str,
+) -> librarian_planner.BiblioLibrarianLoopResult:
+    return librarian_planner.BiblioLibrarianLoopResult(
+        status=librarian_planner.STATUS_NEEDS_CLARIFICATION,
+        reason_code=reason_code,
+        steps=loop_result.steps,
+        options=loop_result.options,
+        duration_ms=loop_result.duration_ms,
+        fallback_deterministic=loop_result.fallback_deterministic,
     )
 
 

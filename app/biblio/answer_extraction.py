@@ -40,6 +40,7 @@ _MECHANICAL_TEXT_PROJECTION_METHODS = frozenset(
         product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION,
         product_methods.PRODUCT_METHOD_PASSAGE_ORIGIN_CHECK,
         product_methods.PRODUCT_METHOD_PASSAGE_EXTRACT_CANONICAL_RANGE,
+        product_methods.PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER,
     }
 )
 _MAX_PAGE_BLOCKS = 3
@@ -89,6 +90,12 @@ def build_extraction(
             "page_end": _int(projection.get("page_end")),
             "page_count": _int(projection.get("page_count")),
             "requested_page_end": _int(projection.get("requested_page_end")),
+            "section_id": _text(projection.get("section_id")),
+            "section_no": _int(projection.get("section_no")),
+            "chapter_no": _int(projection.get("chapter_no")),
+            "section_kind": _text(projection.get("section_kind")),
+            "section_level": _int(projection.get("section_level")),
+            "parent_section_id": _text(projection.get("parent_section_id")),
             "next_anchor": _mapping(projection.get("next_anchor")),
             "missing_pages": list(_sequence(projection.get("missing_pages"))),
             "candidate_count": len(candidates),
@@ -243,6 +250,12 @@ def to_observability(payload: Mapping[str, Any]) -> dict[str, Any]:
             "page_end": _int(payload.get("page_end")),
             "page_count": _int(payload.get("page_count")),
             "requested_page_end": _int(payload.get("requested_page_end")),
+            "section_id_present": bool(_text(payload.get("section_id"))),
+            "section_no": _int(payload.get("section_no")),
+            "chapter_no": _int(payload.get("chapter_no")),
+            "section_kind": _text(payload.get("section_kind")),
+            "section_level": _int(payload.get("section_level")),
+            "parent_section_id_present": bool(_text(payload.get("parent_section_id"))),
             "next_anchor_present": bool(_mapping(payload.get("next_anchor"))),
             "next_anchor_page_no": _int(_mapping(payload.get("next_anchor")).get("page_no")),
             "next_anchor_para_no": _int(_mapping(payload.get("next_anchor")).get("para_no")),
@@ -555,6 +568,11 @@ def _section_interval_from_results(
                 "end_page_no": end_page,
                 "state": _text(interval.get("state")) or _text(interval.get("boundary_state")),
                 "section_id": _first_item_text(result.items, "section_id"),
+                "section_no": _first_item_int(result.items, "section_no"),
+                "chapter_no": _first_item_int(result.items, "chapter_no"),
+                "section_kind": _first_item_text(result.items, "section_kind"),
+                "section_level": _first_item_int(result.items, "level"),
+                "parent_section_id": _first_item_text(result.items, "parent_section_id"),
             }
         )
     return {}
@@ -594,6 +612,7 @@ def _section_projection(
             "range_state": "complete",
             "range_complete": True,
             "requested_page_end": requested_end,
+            **_section_identity_projection(section_interval),
         }
     next_page = page_end + 1
     return {
@@ -601,12 +620,26 @@ def _section_projection(
         "range_state": "segment",
         "range_complete": False,
         "requested_page_end": requested_end,
+        **_section_identity_projection(section_interval),
         "next_anchor": {"page_no": next_page},
         "limits": (
             "section_segment_partial",
             "section_continuation_anchor_present" if next_page <= requested_end else "section_continuation_anchor_missing",
         ),
     }
+
+
+def _section_identity_projection(section_interval: Mapping[str, Any]) -> dict[str, Any]:
+    return _clean(
+        {
+            "section_id": _text(section_interval.get("section_id")),
+            "section_no": _int(section_interval.get("section_no")),
+            "chapter_no": _int(section_interval.get("chapter_no")),
+            "section_kind": _text(section_interval.get("section_kind")),
+            "section_level": _int(section_interval.get("section_level")),
+            "parent_section_id": _text(section_interval.get("parent_section_id")),
+        }
+    )
 
 
 def _interval_anchor(interval: Mapping[str, Any], prefix: str) -> dict[str, Any]:
@@ -721,6 +754,16 @@ def _first_item_text(items: Sequence[Mapping[str, Any]], key: str) -> str:
         if text:
             return text
     return ""
+
+
+def _first_item_int(items: Sequence[Mapping[str, Any]], key: str) -> int:
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        value = _int(item.get(key))
+        if value:
+            return value
+    return 0
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:

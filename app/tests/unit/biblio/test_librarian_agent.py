@@ -513,6 +513,28 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertEqual(validation.plan.case_id, "")
         self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_INVENTORY_METADATA)
 
+    def test_empty_tools_alias_keeps_next_chapter_navigation_plan_valid(self) -> None:
+        validation = contract.parse_and_validate_agent_json(
+            json.dumps(
+                {
+                    "schema_version": contract.SCHEMA_VERSION,
+                    "case_id": "",
+                    "intent": "reader_navigation",
+                    "product_method": product_methods.PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER,
+                    "tools": [],
+                    "answer_mode": "tool_calls",
+                    "risk_flags": [],
+                    "fallback_reason": "",
+                }
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.product_method, product_methods.PRODUCT_METHOD_PASSAGE_MOVE_NEXT_CHAPTER)
+        self.assertEqual(validation.plan.tool_calls, ())
+
     def test_document_resolution_is_canonical_family_distinct_from_legacy_p03(self) -> None:
         spec = product_methods.get_product_method_spec(product_methods.PRODUCT_METHOD_DOCUMENT_RESOLUTION)
 
@@ -1772,6 +1794,11 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             "Pour la navigation lecteur depuis le passage ou la page courante",
             "product_method=passage_continue_next_segment",
             "product_method=passage_move_previous_segment",
+            "product_method=passage_move_next_chapter",
+            "ce n'est pas une page suivante",
+            "tool_calls=[]",
+            "Ne mets pas page_read",
+            "document_toc",
             "case_id seulement pour une regression historique Pxx explicite",
             "Les methodes legacy passage_search_in_work et passage_search_external_work",
             "ne les choisis pas pour une question canonique",

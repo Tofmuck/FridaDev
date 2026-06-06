@@ -470,14 +470,14 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `BIB28_NEXT_PAGE=met`, `BIB28_PREVIOUS_PAGE=met`.
   - Prochain test live requis: surveillance regression; ancre page courante ->
     `page_read` page suivante ou precedente, sans recherche opportuniste.
-- [ ] BIB-29 - Aller au chapitre suivant.
-  - Statut: `ouvert`
+- [x] BIB-29 - Aller au chapitre suivant.
+  - Statut: `ferme_live`
   - Preuve live:
-    `app/docs/states/baselines/biblio-smokes/bib27-bib30-real-conversation-20260604T210551Z.jsonl`,
-    `BIB29_NEXT_CHAPTER_NOT_CLOSED=not_applicable`.
-  - Prochain test live requis: chapitre courant -> chapitre suivant resolu ->
-    structure ou lecture bornee. Ne pas cocher tant qu'un chapitre courant
-    exploitable n'est pas porte dans l'etat.
+    `app/docs/states/baselines/biblio-smokes/bib29-next-chapter-real-conversation-20260606T120102Z.jsonl`,
+    `BIB29_SUMMARY=met`.
+  - Prochain test live requis: surveillance regression; ancre structurelle
+    courante -> chapitre/section suivant resolu dans le meme scope ->
+    `section_bounds` puis `page_read`, sans fallback "page suivante".
 - [x] BIB-30 - Revenir avant un passage.
   - Statut: `ferme_live`
   - Preuve live:
@@ -615,6 +615,25 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     courante.
   - Reason codes: `biblio_agent_first_plan_executed`,
     `biblio_librarian_tool_executed`, `ok`
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- BIB-29 - 2026-06-06 -
+  `app/docs/states/baselines/biblio-smokes/bib29-next-chapter-real-conversation-20260606T120102Z.jsonl`
+  - Statut: `ferme_live`
+  - Conversation: hash `09b346f57eb3`; negatif page seule: hash
+    `249a1a2acafc`
+  - Proof cases: `BIB29_CURRENT_SECTION_ANCHOR`,
+    `BIB29_NEXT_CHAPTER_NAVIGATION`,
+    `BIB29_NEGATIVE_PAGE_ONLY_ANCHOR`, `BIB29_SUMMARY=met`.
+  - Outils appeles: `section_bounds`, `page_read`.
+  - Statut final: messages assistant sauvegardes, meta Biblio presente,
+    Memory observee, surface visible propre, ancre structurelle courante
+    portee puis frere structurel suivant resolu dans le meme document/scope.
+    Le test positif n'utilise pas le fallback "page suivante"; le test negatif
+    page seule rend `needs_clarification`.
+  - Reason codes: `biblio_agent_first_plan_executed`,
+    `biblio_librarian_tool_executed`, `resolved`, `ok`,
+    `biblio_next_chapter_anchor_missing`,
+    `biblio_final_response_authorized`.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 - BIB-30 - 2026-06-04 -
   `app/docs/states/baselines/biblio-smokes/bib27-bib30-real-conversation-20260604T210551Z.jsonl`
@@ -3057,6 +3076,13 @@ Invariants a relire avec cette matrice:
 
 Matrice:
 
+Note de requalification 2026-06-06: cette matrice est historique et ne porte
+plus le statut operationnel des capacites utilisateur. La checklist canonique
+BIB-01 -> BIB-33 et le Journal de preuve live BIB ci-dessus sont la source de
+verite: les lignes ci-dessous expliquent l'origine des lots, mais ne doivent
+pas etre lues comme des ouvertures actives quand une BIB correspondante est
+desormais `ferme_live`.
+
 | Capacite utilisateur | Statut | Preuve actuelle | Test live JSONL requis pour fermer | Prochain lot probable |
 | --- | --- | --- | --- | --- |
 | Inventaire: "Quels ouvrages as-tu ?", "Combien ?" | `contractuel_unitaire` | Lot 4A `inventory_metadata`, tests contractuels | question naturelle inventaire -> `product_method=inventory_metadata` -> rendu final structure, sans payload brut | Lot 6 validation live ou Lot 5 proof harness |
@@ -3086,6 +3112,12 @@ Matrice:
 | Continuer depuis ce qu'on a lu | `ouvert` | pas d'etat lecteur global ferme | ancre de lecture -> continuation explicite, budget, page suivante ou contexte suivant | Lot navigation lecteur + memoire |
 
 Capacites a ne pas pretendre:
+
+Note de requalification 2026-06-06: cette liste est conservee comme garde-fou
+historique. Les capacites fermees depuis par preuve live canonique (notamment
+section longue budgetee, plage canonique segmentee, navigation lecteur et
+reprise/comparaison conversationnelles) sont qualifiees par les BIB fermees
+plus haut; ne pas utiliser cette liste pour contredire la checklist.
 
 - rendre une section longue complete;
 - rendre une plage Stephanus complete;
