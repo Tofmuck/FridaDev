@@ -24,6 +24,24 @@ embeddings et dans les resumes comme tout autre message assistant. Les metas
 restent un complement observable, jamais un substitut au contenu
 conversationnel.
 
+Decision de voix visible:
+
+> Frida parle. Le bibliothécaire travaille. Le déterministe verrouille. Les metas prouvent.
+
+La voix visible est Frida seule. Les agents specialises ne deviennent pas des
+locuteurs visibles separes. Le bibliothecaire n'apparait pas comme personnage
+dans le dialogue utilisateur: il est une capacite interne de Frida.
+
+Formulation generale:
+
+> Frida est l'unique voix visible. Les agents spécialisés travaillent en
+> coulisses ; ils ne deviennent pas des locuteurs séparés.
+
+Pour Biblio:
+
+> Le bibliothécaire ne parle pas à côté de Frida : il fournit à Frida le
+> résultat de bibliothèque que Frida restitue naturellement.
+
 Formule a graver:
 
 > Le bibliothécaire ne raconte pas ses outils ; il restitue leur résultat dans le dialogue.
@@ -57,7 +75,15 @@ Biblio maintenant, Agenda plus tard, puis les autres agents specialises.
 - Pas de faux exact: un snippet, un contexte local ou une recherche ne devient
   jamais un extrait exact.
 - Pas de faux `primary_text`.
+- Frida ne refait pas le travail de bibliotheque.
+- Frida ne choisit pas la verite documentaire.
+- Frida ne reecrit pas les extraits exacts.
+- Frida enonce le resultat dans le dialogue.
+- Le bibliothecaire choisit et prepare le resultat.
+- Le deterministe verrouille les extraits, ancres, limites et metas.
 - Les metas ne remplacent jamais le contenu conversationnel.
+- Le message final est un message assistant normal.
+- Aucun canal parallele bibliothecaire ne doit exister.
 - Le modele cible doit rester reutilisable pour Agenda et pour d'autres agents
   specialises, sans creer un cas special Biblio impossible a generaliser.
 
@@ -134,13 +160,112 @@ Le message visible final doit etre un message assistant normal:
 Le contenu conversationnel est la surface assistant. Les metas portent le
 contrat technique, les preuves et les garde-fous.
 
+### Paquet de restitution structure
+
+Frida sait quoi dire parce qu'elle ne recoit pas seulement un extrait brut. Elle
+recoit un paquet de restitution structure qui dit ce qui est vrai, ce qui est
+verrouille, ce qui peut etre formule et ce qui est interdit.
+
+Ce paquet doit contenir au minimum:
+
+- intention utilisateur;
+- statut du resultat: `ready`, `ambiguous`, `not_found`,
+  `needs_clarification`, `blocked`, `error`;
+- type de resultat: `exact_excerpt`, `candidates`, `provenance`,
+  `continuation`, `clarification` ou equivalent;
+- resume humain court du resultat;
+- provenance lisible;
+- limites a mentionner;
+- blocs exacts verrouilles;
+- actions discursives autorisees;
+- actions discursives interdites;
+- metas techniques content-free.
+
+Exemple indicatif, non contractuel pour le schema runtime:
+
+```json
+{
+  "user_intent": "lire le debut de cette section",
+  "result_status": "ready",
+  "result_kind": "exact_excerpt",
+  "human_context": "J'ai retrouve le debut de la section demandee.",
+  "provenance": {
+    "work": "ouvrage resolu",
+    "section": "section resolue",
+    "page_range": "pages 12-13"
+  },
+  "limits": {
+    "partial": true,
+    "continuation_available": true
+  },
+  "locked_blocks": [
+    {
+      "type": "exact_excerpt",
+      "text": "...",
+      "hash": "..."
+    }
+  ],
+  "allowed_moves": [
+    "introduce",
+    "mention provenance briefly",
+    "mention partiality",
+    "offer continuation"
+  ],
+  "forbidden_moves": [
+    "rewrite exact excerpt",
+    "invent missing provenance",
+    "mention internal tools",
+    "claim section complete if partial"
+  ],
+  "technical_meta": {
+    "content_free": true
+  }
+}
+```
+
+Les JSONL de preuve ne doivent jamais inclure le texte brut des blocs exacts:
+ils portent hashes, tailles, statuts, ancres et reason codes content-free.
+
+### Assemblage cible
+
+Le flow cible n'est pas:
+
+```text
+assistant_message = rendered_biblio_answer
+```
+
+Il est:
+
+```text
+assistant_message = compose_frida_answer(
+  user_message,
+  recent_dialogue,
+  restitution_packet,
+  locked_exact_blocks,
+  provenance,
+  limits
+)
+```
+
+Le plus sur:
+
+- Frida ou le LLM de restitution genere seulement l'introduction vernaculaire,
+  le contexte bref, la limite honnete et eventuellement la relance;
+- le code assemble deterministiquement les blocs exacts verrouilles;
+- les blocs exacts sont copies verbatim;
+- un hash ou un garde-fou verifie qu'ils n'ont pas ete modifies si necessaire;
+- le message final assemble devient `assistant_message.content`;
+- ce message est persiste comme message assistant normal;
+- il entre dans le contexte recent, Memory, embeddings et resume comme
+  n'importe quelle reponse assistant.
+
 ## Questions ouvertes
 
-- Qui parle dans la surface visible: Frida, le bibliothecaire, ou "Frida via le
-  bibliothecaire"?
+- Decision proposee: Frida parle. Reste a valider humainement que cette voix
+  unique ne rend pas invisible une limite utile de l'agent specialise.
 - Quel contexte minimal donner au mini-agent de restitution?
-- Faut-il un mini-agent de restitution separe, ou le bibliothecaire doit-il
-  produire directement l'introduction vernaculaire?
+- Quel modele ou quelle phase produit l'introduction vernaculaire: LLM
+  principal, mini-agent de restitution, bibliothecaire, ou assemblage hybride?
 - Comment empecher toute reecriture des extraits exacts?
 - Comment composer proprement introduction + bloc exact verrouille?
 - Comment representer un bloc exact dans le prompt de restitution sans
@@ -154,6 +279,8 @@ contrat technique, les preuves et les garde-fous.
 - Quels tests prouvent la persistance, Memory, embeddings, resume et contexte?
 - Quels risques de rupture de voix Frida?
 - Quels risques de double reponse ou de reponse parallele?
+- Comment generaliser a Agenda sans copier Biblio ni masquer les differences de
+  temps, conflit et mutation?
 - Quelle limite poser si la restitution agentique rend Frida moins naturelle?
 
 ## Lots
@@ -162,12 +289,14 @@ contrat technique, les preuves et les garde-fous.
 
 - [ ] Relire les specs Biblio, chat, Memory et response arbiter pertinentes.
 - [ ] Decrire le contrat general `agent_result -> assistant_message`.
+- [ ] Acter la decision de voix visible: Frida parle, les agents travaillent en
+  coulisses.
 - [ ] Stabiliser le vocabulaire: resultat mecanique, restitution vernaculaire,
   bloc verrouille, metas, message assistant normal.
-- [ ] Decider si la voix visible est Frida seule, Frida via agent, ou agent
-  specialise explicitement nomme.
+- [ ] Stabiliser le vocabulaire du paquet de restitution structure.
 - [ ] Definir les interdits: reecriture d'exact, canal parallele, double
   reponse, fuite de plomberie.
+- [ ] Definir le modele d'assemblage deterministe des blocs exacts.
 - [ ] Identifier les consequences attendues pour Biblio.
 - [ ] Identifier les consequences attendues pour Agenda futur.
 - [ ] Produire une note de decision ou promouvoir ce document en spec si le
@@ -189,7 +318,10 @@ contrat technique, les preuves et les garde-fous.
 ### Lot 2 - Design de composition
 
 - [ ] Proposer le format interne `introduction_vernaculaire + result_lock`.
+- [ ] Proposer le format interne du paquet de restitution structure.
 - [ ] Definir comment un extrait exact verrouille est transporte.
+- [ ] Definir comment le code assemble les blocs exacts verbatim.
+- [ ] Definir comment verifier hash ou garde-fou de non-reecriture.
 - [ ] Definir comment un segment partiel est annonce.
 - [ ] Definir comment une clarification est formulee sans plomberie.
 - [ ] Definir comment une erreur propre est formulee sans faux refus.
@@ -204,7 +336,9 @@ contrat technique, les preuves et les garde-fous.
 - [ ] Choisir un seul flux Biblio pilote a faible risque.
 - [ ] Prouver l'etat avant patch par vraie conversation Frida.
 - [ ] Ajouter le plus petit mecanisme de composition si necessaire.
+- [ ] Produire un paquet de restitution structure pour ce flux.
 - [ ] Garantir que le LLM ne reecrit pas l'extrait exact.
+- [ ] Garantir que le code copie les blocs exacts verbatim.
 - [ ] Garantir que la surface visible reste une reponse assistant normale.
 - [ ] Conserver les metas Biblio existantes.
 - [ ] Conserver final lock.
@@ -273,7 +407,10 @@ contrat technique, les preuves et les garde-fous.
 ## Criteres de validation
 
 - La reponse visible est un message assistant Frida normal.
+- La voix visible est Frida seule.
+- L'agent specialise n'est pas un locuteur separe.
 - Le resultat specialise n'apparait pas comme un canal parallele.
+- Frida recoit un paquet de restitution structure.
 - Le message est sauvegarde en base.
 - Le message entre dans le contexte recent.
 - Le message est disponible pour Memory, embeddings et resume selon les
@@ -282,7 +419,10 @@ contrat technique, les preuves et les garde-fous.
 - Les metas ne remplacent pas le contenu conversationnel.
 - La surface visible ne raconte pas les outils.
 - La surface visible ne fuit pas la plomberie.
+- Le code assemble les blocs exacts verrouilles.
 - Les extraits exacts mecaniques ne sont jamais reecrits par LLM.
+- Les hashes ou garde-fous prouvent la non-modification si le lot runtime le
+  requiert.
 - Les limites et incertitudes restent honnetes.
 - Le modele est reutilisable pour Agenda sans decision cachee.
 
@@ -303,6 +443,8 @@ Pour tout lot runtime futur:
 - preuve contexte recent;
 - preuve Memory / embeddings / resume ou reason code indiquant le cran non
   applicable;
+- preuve du paquet de restitution structure en content-free;
+- preuve d'assemblage deterministe des blocs exacts;
 - vraie conversation Frida;
 - artefact JSONL content-free;
 - verification surface visible propre;
