@@ -1,7 +1,7 @@
 # Frida - Reponses agentiques integrees
 
 Date: 2026-06-06
-Statut: TODO produit de cadrage, proposition docs-only
+Statut: TODO produit decidee, docs-only pour le present lot
 Classement: `app/docs/todo-todo/product/`
 
 Sources:
@@ -14,91 +14,79 @@ Sources:
 ## Decision courte
 
 Le chantier Biblio fonctionnel est ferme live: BIB-01 -> BIB-33 sont prouves
-par artefacts JSONL content-free. Le prochain besoin produit n'est pas de
-rouvrir Biblio, mais de cadrer comment une reponse d'agent specialise devient
-une reponse assistant Frida normale.
+par artefacts JSONL content-free. Le prochain chantier produit n'est pas de
+rouvrir Biblio, ni d'ajouter une regle locale par capacite, mais de cadrer un
+systeme generique de restitution agentique integree.
 
-Une reponse d'agent specialise visible doit entrer dans le dialogue, dans la
-base conversationnelle, dans le contexte recent, dans Memory, dans les
-embeddings et dans les resumes comme tout autre message assistant. Les metas
-restent un complement observable, jamais un substitut au contenu
-conversationnel.
-
-Decision de voix visible:
+Formule source:
 
 > Frida parle. Le bibliothécaire travaille. Le déterministe verrouille. Les metas prouvent.
 
-La voix visible est Frida seule. Les agents specialises ne deviennent pas des
-locuteurs visibles separes. Le bibliothecaire n'apparait pas comme personnage
-dans le dialogue utilisateur: il est une capacite interne de Frida.
-
-Formulation generale:
-
-> Frida est l'unique voix visible. Les agents spécialisés travaillent en
-> coulisses ; ils ne deviennent pas des locuteurs séparés.
-
-Pour Biblio:
-
-> Le bibliothécaire ne parle pas à côté de Frida : il fournit à Frida le
-> résultat de bibliothèque que Frida restitue naturellement.
-
-Decision technique de restitution:
-
-> L'enveloppe vernaculaire est proposee par l'agent specialise dans son resultat
-> structure, sous forme de champs bornes comme `surface_intro` et
-> `surface_outro`. Elle n'est pas un message visible autonome. Le code applique
-> seulement des garde-fous structurels minimaux, assemble les blocs exacts
-> verrouilles verbatim, puis persiste le tout comme une reponse assistant Frida
-> normale.
-
-La decision produit est donc fixee: par defaut, le modele cible est le **modele B avec garde deterministe**. L'agent specialise qui a fait le travail produit
-une enveloppe vernaculaire courte et bornee dans son JSON. Le code reste
-responsable de l'assemblage final, des blocs exacts, des limites et des metas.
-
-Ce n'est pas un nouveau locuteur, ce n'est pas "le bibliothecaire dit", ce n'est
-pas un nouveau LLM, et ce n'est pas le LLM principal libre qui reprend tout le
-contexte pour improviser. Le role produit est fixe; le schema exact, la
-generation agentique, les garde-fous structurels minimaux et le comportement en
-cas d'enveloppe absente pourront etre definis dans les lots de design.
-
-Formules a graver:
-
-> La qualité vernaculaire de l'enveloppe relève du contrat de l'agent, pas d'un validateur regex de surface.
-
-> Le déterministe assemble et protège ; il ne stylise pas, ne paraphrase pas, ne moralise pas et ne remplace pas la voix.
+La voix visible est Frida seule. Les agents specialises travaillent en coulisses
+et ne deviennent jamais des locuteurs visibles separes. Le bibliothecaire est
+une capacite interne de Frida: il recoit la demande, le contexte utile, choisit
+sa methode, execute ou pilote les outils, puis produit un resultat structure.
 
 Formule a graver:
 
-> Le bibliothécaire ne raconte pas ses outils ; il restitue leur résultat dans le dialogue.
+> Le bibliothécaire sait quoi dire parce qu'il sait ce qu'il vient de faire. La restitution visible est donc produite depuis son résultat structuré, puis assemblée comme message assistant Frida normal.
 
-Invariant conversationnel a graver:
+Decision technique:
 
-> Une réponse bibliothécaire visible est une réponse assistant Frida à part entière. Elle circule dans le contexte, la mémoire, les embeddings et les résumés comme tout autre message assistant.
+- Par defaut, l'agent specialise propose `surface_intro` et `surface_outro` dans
+  son resultat structure.
+- Le runtime assemble le message assistant final avec les blocs verrouilles.
+- Frida reste l'unique voix visible.
+- Le message final est persiste comme `assistant_message.content` normal.
+- Le message final circule dans le contexte recent, Memory, les embeddings et
+  les resumes comme tout autre message assistant.
+- Les metas restent en complement observable, jamais en remplacement du contenu
+  conversationnel.
 
-Ce document ne lance aucun patch runtime. Il cadre un modele cible general pour
-Biblio maintenant, Agenda plus tard, puis les autres agents specialises.
+Le systeme de restitution doit etre generique pour Biblio. Il doit couvrir
+BIB-01 -> BIB-33 avec le meme mecanisme general. Les tests peuvent etre groupes
+par familles de resultats, mais aucune capacite BIB fermee ne doit etre exclue.
 
-## Invariants non negociables
+## Decisions actees
 
-- Pas de patch runtime dans ce lot de cadrage.
+- Frida est l'unique voix visible.
+- L'agent specialise ne parle pas a cote de Frida.
+- L'agent specialise produit une enveloppe vernaculaire courte dans son resultat
+  structure.
+- Le code assemble la surface finale.
+- Le deterministe assemble et protege; il ne stylise pas, ne paraphrase pas, ne
+  moralise pas et ne remplace pas la voix.
+- La qualite vernaculaire de l'enveloppe releve du contrat de l'agent, pas d'un
+  validateur regex de surface.
+- Le code ne cree pas une restitution speciale par BIB.
+- Le contrat agentique doit permettre a l'agent de produire l'enveloppe en
+  fonction de la demande utilisateur, du contexte recu, du travail realise, du
+  statut du resultat, du type de resultat et des limites eventuelles.
+- Les blocs exacts verrouilles sont copies verbatim.
+- Les limites, incertitudes et continuations sont portees par le paquet de
+  restitution et restituees honnetement.
+- Le modele doit rester reusable pour Agenda et les autres agents specialises.
+
+## Interdits
+
+- Pas de patch runtime dans ce lot documentaire.
 - Pas de modification Biblio.
 - Pas de modification Memory.
 - Pas de modification DB.
 - Pas de modification doc-pipeline ou plateforme.
 - Pas de nouvelle route.
-- Pas de decision produit cachee dans le code.
-- Pas de suppression d'artefacts Biblio.
 - Pas de reouverture de BIB-01 -> BIB-33.
-- Pas de reponse d'agent hors conversation.
+- Pas de nouveau LLM pour ecrire l'enveloppe.
+- Pas de LLM principal libre qui reprend tout le contexte pour improviser.
+- Pas de nouveau locuteur visible.
 - Pas de canal parallele qui remplace le message assistant final.
 - Pas de double reponse visible.
-- Pas de jargon outil dans la surface visible normale.
-- Pas de fuite de plomberie: ids techniques, reason codes, render modes,
-  statuts machine, budgets, compteurs et noms d'outils restent en metas,
-  observabilite et JSONL.
+- Pas de branche locale du type `if BIB-17 then phrase speciale`.
+- Pas de restitution speciale par BIB.
+- Pas de regex utilisateur.
 - Pas de validateur regex de surface.
 - Pas de filtre stylistique local.
-- Pas de liste locale de vocabulaire interdit pour corriger la voix apres coup.
+- Pas de liste locale de vocabulaire interdit pour corriger la voix.
 - Pas de remplacement automatique de `surface_intro` ou `surface_outro`.
 - Pas de reformulation deterministe.
 - Pas de sanitizer qui transforme le texte.
@@ -107,151 +95,63 @@ Biblio maintenant, Agenda plus tard, puis les autres agents specialises.
 - Pas de faux exact: un snippet, un contexte local ou une recherche ne devient
   jamais un extrait exact.
 - Pas de faux `primary_text`.
-- Frida ne refait pas le travail de bibliotheque.
-- Frida ne choisit pas la verite documentaire.
-- Frida ne reecrit pas les extraits exacts.
-- Frida enonce le resultat dans le dialogue.
-- Le bibliothecaire choisit et prepare le resultat.
-- Le deterministe verrouille les extraits, ancres, limites et metas.
-- Le deterministe assemble et protege; il ne stylise pas, ne paraphrase pas, ne
-  moralise pas et ne remplace pas la voix.
-- Les metas ne remplacent jamais le contenu conversationnel.
-- Le message final est un message assistant normal.
-- Aucun canal parallele bibliothecaire ne doit exister.
-- Le modele cible doit rester reutilisable pour Agenda et pour d'autres agents
-  specialises, sans creer un cas special Biblio impossible a generaliser.
+- Pas de jargon outil dans la surface visible normale.
+- Pas de fuite de plomberie: ids techniques, reason codes, render modes,
+  statuts machine, budgets, compteurs et noms d'outils restent en metas,
+  observabilite et JSONL.
 
-## Modele cible
+## Contrat cible
 
-### Verite metier / mecanique
+### Chaine de responsabilite
 
-La verite metier est produite ou verrouillee par l'agent specialise et les
-garde-fous deterministes. Elle peut contenir:
+1. L'utilisateur parle a Frida.
+2. Frida route vers un agent specialise quand le besoin produit le justifie.
+3. L'agent specialise recoit la demande et le contexte conversationnel utile.
+4. L'agent specialise choisit une methode et des outils autorises.
+5. L'agent specialise produit un resultat structure.
+6. Le deterministe verrouille ce qui doit l'etre: exact, ancres, provenance,
+   limites, statuts et metas.
+7. Le runtime assemble `surface_intro`, provenance lisible, blocs verrouilles,
+   limites et `surface_outro`.
+8. Le message assemble devient une reponse assistant Frida normale.
+9. Le message entre dans la DB, le contexte recent, Memory, les embeddings et
+   les resumes selon les contrats existants.
 
-- resultat structure;
-- extrait exact mecanique;
-- ancre;
-- provenance;
-- statut;
-- limites;
-- budget;
-- final lock eventuel;
-- metas d'observabilite content-free.
+### Paquet de restitution generique
 
-Pour Biblio:
+Le paquet de restitution doit etre valable pour toutes les familles Biblio et
+preparer la reutilisation Agenda. Il porte au moins:
 
-- le bibliothecaire choisit les outils;
-- le deterministe produit ou verrouille le resultat mecanique: extrait exact,
-  ancre, provenance, statut et limites;
-- le final lock protege ce qui est exact;
-- les details techniques restent dans `message.meta`, l'observabilite et les
-  JSONL.
+- `agent_kind`: agent specialise source, par exemple `biblio` ou `agenda`;
+- `user_intent`: intention utilisateur resumee;
+- `result_status`: `ready`, `ambiguous`, `not_found`, `needs_clarification`,
+  `blocked` ou `error`;
+- `result_kind`: `inventory`, `metadata`, `candidates`, `structure`,
+  `scoped_search`, `exact_excerpt`, `segmented_excerpt`, `canonical_range`,
+  `navigation`, `provenance`, `comparison_context`, `resume_previous`,
+  `clean_failure` ou famille equivalente;
+- `surface_intro`: enveloppe courte produite par l'agent specialise;
+- `surface_outro`: relance ou limite courte produite par l'agent specialise;
+- `human_context`: resume humain court du resultat;
+- `readable_provenance`: provenance lisible et non technique;
+- `limits`: limites utiles, partialite, continuation, budget, ambiguite;
+- `locked_blocks`: blocs exacts verrouilles a copier verbatim;
+- `allowed_moves`: actions discursives autorisees;
+- `forbidden_moves`: actions interdites;
+- `technical_meta`: metas content-free pour observabilite et JSONL.
 
-Pour Agenda futur:
-
-- l'agent agenda choisit les outils de calendrier autorises;
-- le deterministe verifie horaires, conflits, fuseaux, droits, mutation
-  autorisee ou lecture seule selon le contrat futur;
-- la surface visible restitue le resultat utile sans raconter les appels
-  internes.
-
-### Restitution vernaculaire
-
-La restitution vernaculaire est une enveloppe courte proposee par l'agent
-specialise dans son resultat structure. Elle transforme le resultat specialise
-en message assistant Frida lisible, sans devenir un locuteur separe:
-
-- introduction naturelle;
-- contexte bref;
-- limite honnete;
-- relance eventuelle;
-- provenance utile quand elle aide l'utilisateur;
-- aucun jargon outil;
-- aucune plomberie technique;
-- aucune reecriture des blocs exacts verrouilles.
-
-L'agent specialise peut proposer cette enveloppe parce qu'il a deja recu la
-requete, le contexte utile et les resultats de ses outils. Mais il la propose
-comme champ structure, pas comme parole visible autonome. La qualite
-vernaculaire releve du contrat de l'agent, pas d'un validateur regex de surface
-applique apres coup.
-
-Le code ne corrige pas le style de cette enveloppe. Il ne la paraphrase pas, ne
-la moralise pas, ne la standardise pas et ne la remplace pas par une voix locale.
-Il peut seulement appliquer des garde-fous structurels minimaux: champ present
-ou absent, type attendu `string`, taille raisonnable pour eviter un champ enorme,
-et champ vide si l'agent ne propose rien.
-
-Pour Biblio, la composition cible est:
-
-1. `surface_intro` courte;
-2. provenance courte si utile;
-3. bloc exact verrouille si un extrait mecanique est rendu;
-4. limite ou continuation si le resultat est partiel;
-5. `surface_outro` courte si clarification ou suite utile.
-
-Comparaison A / B:
-
-- Modele A, phase de restitution Frida separee: voix Frida homogene, mais appel
-  LLM supplementaire ou retour au LLM principal, donc cout plus eleve et risque
-  de refaire le sens documentaire.
-- Modele B, enveloppe produite par l'agent specialise: plus simple, moins cher,
-  plus proche du contexte reel de recherche, sans nouveau locuteur si le champ
-  reste structure et si le code assemble le message final.
-- Decision: B est meilleur par defaut, a condition de borner le contrat
-  agentique et de limiter le deterministe a des garde-fous structurels minimaux,
-  sans validateur regex de surface, sans filtre stylistique et sans fallback
-  uniforme qui ecrase la voix.
-
-### Transparence conversationnelle
-
-Le message visible final doit etre un message assistant normal:
-
-- persiste en base comme assistant;
-- accessible dans le contexte recent;
-- eligible Memory selon les regles existantes;
-- indexable par embeddings si le pipeline le fait deja pour les messages
-  assistant;
-- resumable / compressible comme le reste du dialogue;
-- reutilisable plus tard par Frida, notamment pour "reprends ce passage" ou
-  "compare avec ce que tu as dit avant";
-- accompagne de metas, mais non remplace par elles.
-
-Le contenu conversationnel est la surface assistant. Les metas portent le
-contrat technique, les preuves et les garde-fous.
-
-### Paquet de restitution structure
-
-Frida sait quoi dire parce qu'elle ne recoit pas seulement un extrait brut. Elle
-recoit un paquet de restitution structure qui dit ce qui est vrai, ce qui est
-verrouille, ce qui peut etre formule et ce qui est interdit.
-
-Ce paquet doit contenir au minimum:
-
-- intention utilisateur;
-- statut du resultat: `ready`, `ambiguous`, `not_found`,
-  `needs_clarification`, `blocked`, `error`;
-- type de resultat: `exact_excerpt`, `candidates`, `provenance`,
-  `continuation`, `clarification` ou equivalent;
-- `surface_intro` courte proposee par l'agent specialise;
-- `surface_outro` courte si utile;
-- provenance lisible;
-- limites a mentionner;
-- blocs exacts verrouilles;
-- actions discursives autorisees;
-- actions discursives interdites;
-- metas techniques content-free.
-
-Exemple indicatif, non contractuel pour le schema runtime:
+Exemple indicatif:
 
 ```json
 {
-  "user_intent": "lire le debut de cette section",
+  "agent_kind": "biblio",
+  "user_intent": "lire le debut d'une section resolue",
   "result_status": "ready",
   "result_kind": "exact_excerpt",
-  "surface_intro": "J'ai retrouve le debut de la section. Je te donne les premieres pages.",
-  "surface_outro": "Je peux continuer si tu veux.",
-  "provenance": {
+  "surface_intro": "J'ai retrouve le debut de la section. Je te le donne ici.",
+  "surface_outro": "Je peux continuer la lecture si tu veux.",
+  "human_context": "section resolue, lecture partielle disponible",
+  "readable_provenance": {
     "work": "ouvrage resolu",
     "section": "section resolue",
     "page_range": "pages 12-13"
@@ -277,7 +177,7 @@ Exemple indicatif, non contractuel pour le schema runtime:
     "rewrite exact excerpt",
     "invent missing provenance",
     "mention internal tools",
-    "claim section complete if partial"
+    "claim complete if partial"
   ],
   "technical_meta": {
     "content_free": true
@@ -288,11 +188,20 @@ Exemple indicatif, non contractuel pour le schema runtime:
 Les JSONL de preuve ne doivent jamais inclure le texte brut des blocs exacts:
 ils portent hashes, tailles, statuts, ancres et reason codes content-free.
 
-`surface_intro` et `surface_outro` sont des contenus conversationnels candidats:
-ils peuvent etre visibles dans le message final, mais ils ne sont pas corriges
-par un validateur de style. Les JSONL de preuve doivent les resumer par
-presence, longueurs, hashes et reason codes, pas par texte brut si le lot exige
-un artefact content-free strict.
+### Garde-fous structurels autorises
+
+Le code peut seulement verifier:
+
+- champ present ou absent;
+- type attendu, notamment `string` pour `surface_intro` et `surface_outro`;
+- taille raisonnable pour eviter un champ enorme;
+- champ vide si l'agent ne propose pas d'enveloppe;
+- presence des blocs verrouilles quand le statut annonce un exact;
+- coherence structurelle entre statut, type de resultat, limites et blocs.
+
+Le code ne corrige pas le style, ne remplace pas la voix et ne fabrique pas une
+formulation uniforme. Si l'enveloppe est absente ou structurellement inutilisable,
+le comportement futur doit rester sobre, documente et sans nouveau LLM.
 
 ### Assemblage cible
 
@@ -315,172 +224,163 @@ assistant_message = compose_frida_answer(
 )
 ```
 
-Le plus sur:
+Le runtime:
 
-- l'agent specialise propose `surface_intro` et `surface_outro` dans le paquet
-  structure;
-- le code verifie seulement les garde-fous structurels minimaux: presence ou
-  absence, type `string`, taille raisonnable, champ vide accepte;
-- si l'enveloppe est absente ou structurellement inutilisable, le comportement
-  doit etre defini sobrement sans fabriquer une voix generique qui remplace
-  tout;
-- le code n'utilise ni regex de style, ni liste de vocabulaire interdit, ni
-  remplacement automatique, ni reformulation deterministe;
-- le code assemble deterministiquement les blocs exacts verrouilles;
-- les blocs exacts sont copies verbatim;
-- un hash ou un garde-fou verifie qu'ils n'ont pas ete modifies si necessaire;
-- le message final assemble devient `assistant_message.content`;
-- ce message est persiste comme message assistant normal;
-- il entre dans le contexte recent, Memory, embeddings et resume comme
-  n'importe quelle reponse assistant.
+- prend le paquet de restitution;
+- verifie les garde-fous structurels autorises;
+- assemble `surface_intro`, provenance lisible, blocs verrouilles, limites et
+  `surface_outro`;
+- copie les blocs exacts verbatim;
+- verifie la non-modification des blocs si le lot runtime l'exige;
+- persiste le contenu final comme message assistant normal;
+- conserve les metas techniques dans `message.meta` et l'observabilite.
 
-## Questions ouvertes
+## Couverture BIB-01 -> BIB-33
 
-- Decision proposee: Frida parle. Reste a valider humainement que cette voix
-  unique ne rend pas invisible une limite utile de l'agent specialise.
-- Decision proposee: `surface_intro` / `surface_outro` sont produits par l'agent
-  specialise dans son JSON, puis assembles par le code. Reste ouvert: schema
-  exact, limites de taille, champs optionnels et comportement si l'enveloppe est
-  absente ou structurellement inutilisable.
-- Decision proposee: pas de validateur regex de surface, pas de filtre
-  stylistique, pas de sanitizer et pas de remplacement automatique de la voix.
-- Quel contexte minimal donner a l'agent specialise pour produire une enveloppe
-  courte sans lui donner un pouvoir de locuteur autonome?
-- Comment empecher toute reecriture des extraits exacts?
-- Comment composer proprement introduction + bloc exact verrouille?
-- Comment s'assurer que l'agent specialise ne paraphrase jamais un bloc exact
-  dans `surface_intro` ou `surface_outro`?
-- Comment preserver les metas sans les afficher brutalement?
-- Comment garantir que le message final entre dans toute la chaine
-  conversationnelle: DB, contexte recent, Memory, embeddings, resume?
-- Quels signaux prouvent qu'une reponse d'agent n'a pas ete stockee dans un
-  canal parallele?
-- Comment reutiliser le meme modele pour Agenda?
-- Quels tests prouvent la persistance, Memory, embeddings, resume et contexte?
-- Quels risques de rupture de voix Frida?
-- Quels risques de double reponse ou de reponse parallele?
-- Comment generaliser a Agenda sans copier Biblio ni masquer les differences de
-  temps, conflit et mutation?
-- Quelle limite poser si la restitution agentique rend Frida moins naturelle?
+BIB-01 -> BIB-33 doivent passer par le meme mecanisme general de restitution.
+Les tests peuvent etre organises par familles produit, mais la couverture doit
+prouver qu'aucune capacite BIB fermee n'est exclue.
 
-## Lots
+Familles de resultats a couvrir:
 
-### Lot 0 - Cadrage du contrat
+- inventaire et compteur;
+- metadonnees connues ou inconnues;
+- resolution documentaire;
+- ambiguite documentaire;
+- oeuvre interne;
+- role documentaire;
+- structure, table des matieres, chapitres et sections;
+- recherche scoped;
+- extraction exacte courte;
+- section complete ou segmentee;
+- plage canonique courte;
+- plage canonique longue segmentee;
+- provenance et ancre courante;
+- navigation lecteur, dont chapitre suivant;
+- comparaison de passages deja lus;
+- reprise d'un extrait lu plus tot;
+- echec propre: introuvable, ambigu, structure manquante, extraction bloquee,
+  role non prouve.
 
-- [ ] Relire les specs Biblio, chat, Memory et response arbiter pertinentes.
-- [ ] Decrire le contrat general `agent_result -> assistant_message`.
-- [ ] Acter la decision de voix visible: Frida parle, les agents travaillent en
-  coulisses.
-- [ ] Acter la decision de restitution: enveloppe courte produite par l'agent
-  specialise dans son JSON, puis validee et assemblee par le code.
-- [ ] Acter l'interdit: pas de nouveau LLM, pas de LLM principal libre, pas de
-  mini-agent visible, pas de bibliothecaire locuteur.
-- [ ] Acter l'interdit: pas de validateur regex de surface, pas de filtre
-  stylistique, pas de sanitizer, pas de remplacement automatique de la voix.
-- [ ] Stabiliser le vocabulaire: resultat mecanique, restitution vernaculaire,
-  bloc verrouille, metas, message assistant normal.
-- [ ] Stabiliser le vocabulaire du paquet de restitution structure, notamment
-  `surface_intro`, `surface_outro` et `locked_blocks`.
-- [ ] Definir les interdits: reecriture d'exact, canal parallele, double
-  reponse, fuite de plomberie.
-- [ ] Definir le modele d'assemblage deterministe des blocs exacts.
-- [ ] Identifier les consequences attendues pour Biblio.
-- [ ] Identifier les consequences attendues pour Agenda futur.
-- [ ] Produire une note de decision ou promouvoir ce document en spec si le
-  modele est valide humainement.
+Regles de couverture:
 
-### Lot 1 - Preuve du chemin actuel
+- aucune famille ne doit introduire une phrase codee par numero BIB;
+- les familles peuvent utiliser les methodes produit existantes;
+- les tests doivent prouver que les capacites fermees restent atteignables;
+- les preuves live doivent rester content-free;
+- la checklist BIB archivee reste fermee, sans reouverture dans cette TODO.
+
+## Lots d'execution
+
+### Lot 0 - Contrat generique decide
+
+- [ ] Relire les specs chat, Biblio, Memory et response arbiter pertinentes.
+- [ ] Confirmer que cette TODO ne rouvre pas Biblio Last Chance.
+- [ ] Promouvoir les decisions de ce document en contrat de travail actif.
+- [ ] Stabiliser le vocabulaire: agent specialise, paquet de restitution,
+  enveloppe vernaculaire, bloc verrouille, metas, message assistant normal.
+- [ ] Stabiliser le schema cible du paquet de restitution.
+- [ ] Stabiliser les garde-fous structurels autorises.
+- [ ] Stabiliser les interdits de surface et de style.
+- [ ] Relier le contrat aux familles BIB-01 -> BIB-33.
+- [ ] Definir les conditions de no-op si le risque depasse le benefice.
+
+### Lot 1 - Audit du chemin actuel
 
 - [ ] Cartographier ou vont deja les reponses Biblio visibles.
+- [ ] Cartographier les metas Biblio conservees.
 - [ ] Verifier la persistence DB des messages assistant Biblio.
 - [ ] Verifier l'entree dans le contexte recent.
 - [ ] Verifier l'observation Memory actuelle.
-- [ ] Verifier ce qui part ou ne part pas aux embeddings.
-- [ ] Verifier ce qui part ou ne part pas au resume / compression.
-- [ ] Identifier les metas Biblio deja conservees.
-- [ ] Identifier les surfaces qui restent purement techniques.
+- [ ] Verifier le chemin embeddings quand il existe.
+- [ ] Verifier le chemin resume / compression quand il existe.
+- [ ] Identifier les surfaces encore trop techniques.
+- [ ] Identifier les points ou le contenu agentique reste en canal parallele.
 - [ ] Produire un artefact content-free du chemin actuel.
 - [ ] Ne modifier aucun runtime dans ce lot.
 
-### Lot 2 - Design de composition
+### Lot 2 - Design du paquet et de l'assemblage
 
-- [ ] Proposer le format interne `introduction_vernaculaire + result_lock`.
-- [ ] Proposer le format interne du paquet de restitution structure.
-- [ ] Definir le contrat `surface_intro` / `surface_outro` produit par l'agent
-  specialise.
-- [ ] Definir les garde-fous structurels minimaux de cette enveloppe: presence,
-  type `string`, taille raisonnable, champ vide accepte.
-- [ ] Definir le comportement sans nouveau LLM si l'enveloppe est absente ou
-  structurellement inutilisable, sans fallback uniforme qui ecrase la voix.
-- [ ] Interdire explicitement regex de style, filtre stylistique, sanitizer,
-  liste locale de vocabulaire interdit et reformulation deterministe.
-- [ ] Definir comment un extrait exact verrouille est transporte.
-- [ ] Definir comment le code assemble les blocs exacts verbatim.
-- [ ] Definir comment verifier hash ou garde-fou de non-reecriture.
-- [ ] Definir comment un segment partiel est annonce.
-- [ ] Definir comment une clarification est formulee sans plomberie.
-- [ ] Definir comment une erreur propre est formulee sans faux refus.
-- [ ] Definir comment les metas restent consultables sans etre affichees.
-- [ ] Definir les hooks de preuve content-free.
-- [ ] Definir les tests unitaires minimaux.
-- [ ] Definir les tests live minimaux.
-- [ ] Obtenir validation humaine avant prototype.
+- [ ] Definir le schema interne du paquet de restitution.
+- [ ] Definir les champs `surface_intro` et `surface_outro`.
+- [ ] Definir comment l'agent specialise produit l'enveloppe depuis son travail.
+- [ ] Definir les familles de `result_kind`.
+- [ ] Definir les statuts `result_status`.
+- [ ] Definir le transport des blocs verrouilles.
+- [ ] Definir l'assemblage deterministe.
+- [ ] Definir la preservation des metas sans affichage brutal.
+- [ ] Definir le comportement sobre si l'enveloppe est absente.
+- [ ] Definir les preuves content-free.
+- [ ] Definir les tests unitaires cibles.
+- [ ] Definir les preuves live attendues.
+- [ ] Valider que le design ne cree aucune branche par numero BIB.
 
-### Lot 3 - Prototype Biblio minimal
+### Lot 3 - Implementation generique Biblio
 
-- [ ] Choisir un seul flux Biblio pilote a faible risque.
-- [ ] Prouver l'etat avant patch par vraie conversation Frida.
-- [ ] Ajouter le plus petit mecanisme de composition si necessaire.
-- [ ] Faire produire `surface_intro` / `surface_outro` par le bibliothecaire
+- [ ] Ajouter le paquet de restitution generique au chemin Biblio si necessaire.
+- [ ] Faire produire `surface_intro` et `surface_outro` par le bibliothecaire
   dans son resultat structure.
-- [ ] Verifier seulement la structure minimale de cette enveloppe avant
-  affichage.
-- [ ] Prouver qu'aucun validateur regex de surface ne transforme l'enveloppe.
-- [ ] Garantir que le LLM ne reecrit pas l'extrait exact.
-- [ ] Garantir que le code copie les blocs exacts verbatim.
-- [ ] Garantir que la surface visible reste une reponse assistant normale.
-- [ ] Conserver les metas Biblio existantes.
+- [ ] Assembler le message final comme reponse assistant Frida normale.
+- [ ] Copier les blocs exacts verbatim.
 - [ ] Conserver final lock.
-- [ ] Conserver Memory et contexte recent.
-- [ ] Lancer tests Biblio/chat cibles.
-- [ ] Produire JSONL live content-free.
-- [ ] Ne pas generaliser avant preuve.
+- [ ] Conserver metas, provenance et observabilite.
+- [ ] Conserver contexte recent et Memory.
+- [ ] Garantir absence de nouveau LLM.
+- [ ] Garantir absence de locuteur visible separe.
+- [ ] Garantir absence de validateur regex de surface.
+- [ ] Garantir absence de restitution speciale par BIB.
+- [ ] Lancer les tests Biblio/chat cibles.
+- [ ] Produire une preuve live content-free si la surface utilisateur change.
 
-### Lot 4 - Preuve contexte / DB / Memory / embeddings / resume
+### Lot 4 - Couverture BIB par familles produit
 
-- [ ] Creer une conversation live avec reponse Biblio agentique integree.
-- [ ] Verifier message assistant sauvegarde.
-- [ ] Verifier presence dans le contexte recent.
-- [ ] Verifier Memory observee quand le pipeline le permet.
-- [ ] Verifier embeddings ou documenter pourquoi le chemin ne les produit pas.
-- [ ] Verifier resume / compression ou documenter pourquoi le chemin ne passe
-  pas encore par ce cran.
-- [ ] Verifier qu'une reprise ulterieure utilise le contenu conversationnel, pas
-  seulement les metas.
-- [ ] Verifier que les metas restent conservees.
-- [ ] Verifier que le JSONL reste content-free.
-- [ ] Documenter les limites restantes.
+- [ ] Couvrir inventaire et metadonnees.
+- [ ] Couvrir resolution et ambiguite documentaire.
+- [ ] Couvrir oeuvre interne et role documentaire.
+- [ ] Couvrir structure, chapitres et sections.
+- [ ] Couvrir recherche scoped.
+- [ ] Couvrir extraction exacte.
+- [ ] Couvrir section complete ou segmentee.
+- [ ] Couvrir plage canonique courte.
+- [ ] Couvrir plage canonique longue segmentee.
+- [ ] Couvrir provenance et ancre courante.
+- [ ] Couvrir navigation lecteur.
+- [ ] Couvrir chapitre suivant.
+- [ ] Couvrir comparaison de passages deja lus.
+- [ ] Couvrir reprise d'un extrait lu plus tot.
+- [ ] Couvrir echecs propres.
+- [ ] Prouver que BIB-01 -> BIB-33 restent couverts par familles.
+- [ ] Documenter tout cran non applicable avec reason code content-free.
 
-### Lot 5 - Generalisation agent specialise pour Agenda
+### Lot 5 - Transparence conversationnelle
 
-- [ ] Identifier les resultats Agenda futurs analogues aux resultats Biblio.
+- [ ] Verifier que le message final est persiste en DB.
+- [ ] Verifier que le message final entre dans le contexte recent.
+- [ ] Verifier Memory quand le pipeline le permet.
+- [ ] Verifier embeddings quand le pipeline le permet.
+- [ ] Verifier resume / compression quand le pipeline le permet.
+- [ ] Verifier qu'une reprise ulterieure utilise le contenu conversationnel.
+- [ ] Verifier que les metas restent disponibles.
+- [ ] Verifier que les metas ne remplacent pas le contenu visible.
+- [ ] Verifier absence de canal parallele.
+- [ ] Verifier absence de double reponse.
+
+### Lot 6 - Generalisation Agenda et autres agents
+
+- [ ] Identifier les resultats Agenda analogues aux resultats Biblio.
 - [ ] Distinguer verite metier Agenda et restitution vernaculaire.
-- [ ] Definir les garde-fous specifiques Agenda: temps, fuseaux, conflits,
-  permissions et mutations.
-- [ ] Verifier que le contrat `agent_result -> assistant_message` reste valable.
-- [ ] Identifier ce qui doit etre different entre Biblio et Agenda.
+- [ ] Definir les garde-fous Agenda: temps, fuseaux, conflits, permissions,
+  mutations et lecture seule.
+- [ ] Verifier que `agent_result -> assistant_message` reste valable.
+- [ ] Identifier ce qui doit differer entre Biblio et Agenda.
 - [ ] Refuser toute generalisation qui force Agenda dans un moule Biblio.
 - [ ] Produire une proposition Agenda docs-only.
 - [ ] Obtenir validation humaine avant patch Agenda.
 
-### Lot 6 - Validation live
+### Lot 7 - Validation live finale
 
-- [ ] Rejouer un panel Biblio representatif.
-- [ ] Couvrir extrait exact court.
-- [ ] Couvrir extrait segmente ou continuation.
-- [ ] Couvrir ambiguite / clarification.
-- [ ] Couvrir erreur propre.
-- [ ] Couvrir passage deja lu.
+- [ ] Rejouer un panel Biblio representatif couvrant BIB-01 -> BIB-33 par
+  familles.
 - [ ] Verifier vraie conversation Frida.
 - [ ] Verifier agent specialise appele.
 - [ ] Verifier message assistant sauvegarde.
@@ -488,18 +388,20 @@ Le plus sur:
 - [ ] Verifier aucun jargon outil.
 - [ ] Verifier aucun faux exact.
 - [ ] Verifier aucun extrait exact reecrit.
+- [ ] Verifier aucun faux `primary_text`.
 - [ ] Verifier metas conservees.
-- [ ] Verifier Memory / contexte / resume selon le contrat du lot.
+- [ ] Verifier contexte recent.
+- [ ] Verifier Memory / embeddings / resume selon contrat.
 - [ ] Produire JSONL live content-free.
 - [ ] Documenter les limites restantes.
 
-### Lot X - Abandon / no-op
+### Lot X - Arret no-op
 
 - [ ] Evaluer si le modele complique trop Frida.
 - [ ] Evaluer si la voix Frida devient moins naturelle.
 - [ ] Evaluer si le risque de double reponse est trop eleve.
 - [ ] Evaluer si la separation metas / surface devient trop fragile.
-- [ ] Si le risque depasse le benefice, arreter sans patch runtime.
+- [ ] Arreter sans patch runtime si le risque depasse le benefice.
 - [ ] Documenter que le systeme actuel est conserve.
 - [ ] Archiver cette TODO si elle ne pilote plus de travail actif.
 
@@ -509,36 +411,25 @@ Le plus sur:
 - La voix visible est Frida seule.
 - L'agent specialise n'est pas un locuteur separe.
 - Le resultat specialise n'apparait pas comme un canal parallele.
-- Frida recoit un paquet de restitution structure.
-- `surface_intro` et `surface_outro` sont produits par l'agent specialise comme
-  champs du resultat structure, pas comme message visible autonome.
-- La qualite vernaculaire de l'enveloppe releve du contrat de l'agent, pas d'un
-  validateur regex de surface.
-- Le deterministe assemble et protege; il ne stylise pas, ne paraphrase pas, ne
-  moralise pas et ne remplace pas la voix.
-- Les seuls garde-fous structurels autorises sur `surface_intro` /
-  `surface_outro` sont: presence ou absence, type `string`, taille raisonnable,
-  champ vide accepte.
-- Aucun filtre stylistique, sanitizer, liste locale de vocabulaire interdit ou
-  transformation deterministe de l'enveloppe n'est utilise.
-- Aucun nouveau LLM n'est appele pour l'enveloppe vernaculaire.
-- Le LLM principal libre ne reprend pas tout le contexte pour improviser
-  l'enveloppe.
-- L'agent specialise n'est ni un mini-agent visible ni un locuteur separe.
-- Le message est sauvegarde en base.
-- Le message entre dans le contexte recent.
-- Le message est disponible pour Memory, embeddings et resume selon les
-  contrats runtime existants.
+- Le paquet de restitution est generique pour Biblio.
+- BIB-01 -> BIB-33 restent couverts par familles produit.
+- Aucune phrase locale n'est codee par numero BIB.
+- `surface_intro` et `surface_outro` viennent du resultat structure de l'agent.
+- La qualite vernaculaire releve du contrat agentique.
+- Le deterministe assemble et protege sans styliser.
+- Aucun validateur regex de surface n'est utilise.
+- Aucun filtre de vocabulaire local n'est utilise.
+- Aucun sanitizer ne transforme la voix.
+- Aucun nouveau LLM n'ecrit l'enveloppe.
+- Les blocs exacts verrouilles sont copies verbatim.
+- Les limites et incertitudes restent honnetes.
 - Les metas restent conservees.
 - Les metas ne remplacent pas le contenu conversationnel.
-- La surface visible ne raconte pas les outils.
-- La surface visible ne fuit pas la plomberie.
-- Le code assemble les blocs exacts verrouilles.
-- Les extraits exacts mecaniques ne sont jamais reecrits par LLM.
-- Les hashes ou garde-fous prouvent la non-modification si le lot runtime le
-  requiert.
-- Les limites et incertitudes restent honnetes.
-- Le modele est reutilisable pour Agenda sans decision cachee.
+- Le message est sauvegarde en base.
+- Le message entre dans le contexte recent.
+- Le message reste disponible pour Memory, embeddings et resume selon les
+  contrats existants.
+- Le modele reste reusable pour Agenda.
 
 ## Tests et preuves attendus
 
@@ -558,11 +449,11 @@ Pour tout lot runtime futur:
 - preuve Memory / embeddings / resume ou reason code indiquant le cran non
   applicable;
 - preuve du paquet de restitution structure en content-free;
-- preuve que `surface_intro` / `surface_outro` viennent du resultat structure et
-  ne sont pas transformes par un validateur regex de surface;
+- preuve que `surface_intro` et `surface_outro` viennent du resultat structure;
 - preuve que les garde-fous appliques a l'enveloppe sont seulement structurels;
 - preuve qu'aucun nouvel appel LLM n'a produit l'enveloppe;
 - preuve d'assemblage deterministe des blocs exacts;
+- preuve de couverture BIB-01 -> BIB-33 par familles produit;
 - vraie conversation Frida;
 - artefact JSONL content-free;
 - verification surface visible propre;
@@ -575,8 +466,8 @@ Pour tout lot runtime futur:
 - Double reponse: une sortie agent et une sortie Frida peuvent coexister.
 - Canal parallele: le resultat agentique peut rester en meta sans devenir
   contenu conversationnel.
-- Faux exact: `surface_intro` ou `surface_outro` peuvent reformuler un extrait
-  qui devait rester verrouille si le contrat agentique ne l'interdit pas.
+- Faux exact: l'enveloppe peut reformuler un extrait qui devait rester
+  verrouille si le contrat agentique ne l'interdit pas.
 - Police de style locale: un validateur regex, un filtre stylistique ou un
   sanitizer peut standardiser la voix, aplatir les reponses et remplacer peu a
   peu le contrat agentique par une police deterministe.
