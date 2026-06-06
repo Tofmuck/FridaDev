@@ -1,8 +1,40 @@
 # Frida - Reponses agentiques integrees
 
 Date: 2026-06-06
-Statut: TODO produit decidee; Lots 0-3 livres, prouves et documentes
-Classement: `app/docs/todo-todo/product/`
+Statut: ARCHIVE - chantier clos; Lots 0-3 livres, prouves et documentes
+Classement: `app/docs/todo-done/product/`
+
+## Archive
+
+Cette roadmap ne pilote plus le travail actif. Elle est archivee parce que le
+mecanisme de restitution agentique Biblio est livre, verifie et corrige apres
+les derniers findings Lot 3.
+
+Source de verite runtime encore vivante:
+
+- `app/docs/states/specs/agentic-response-surface-contract.md`
+
+Ne pas rouvrir cette roadmap sans decision explicite. Les cases restantes non
+cochees, notamment le Lot X no-op, sont historiques et non applicables apres la
+fermeture effective des Lots 0-3.
+
+Commits principaux:
+
+- `e1423ea` - implementation de l'enveloppe agentique Biblio.
+- `b24fed4` - durcissement du contrat parseur `surface_intro` /
+  `surface_outro`.
+- `48ae9ff` - fermeture de la preuve `comparaison / reprise`.
+- `8158209` - correction de la reinjection meta read-passages dans le dialogue
+  Biblio recent et documentation streaming bufferise.
+
+Etat final:
+
+- Frida reste l'unique voix visible.
+- Le bibliothecaire reste interne.
+- Le runtime assemble les enveloppes et surfaces verrouillees sans styliser.
+- Les metas Biblio restent exploitables en content-free.
+- Les artefacts JSONL Lot 2 / Lot 3 sont conserves ci-dessous.
+- La spec contractuelle reste vivante; cette archive conserve l'execution.
 
 Sources:
 
@@ -235,12 +267,15 @@ Objectif: verifier la couverture sans refaire trente-trois micro-tests.
   isolee.
 - [x] Produire un JSONL live content-free.
 
-### Lot X - Arret no-op
+### Lot X - Arret no-op historique
 
-- [ ] Evaluer si le mecanisme ajoute trop de complexite.
-- [ ] Arreter sans patch runtime si le risque depasse le benefice.
-- [ ] Conserver le systeme actuel.
-- [ ] Archiver cette TODO avec decision explicite.
+Statut: non applique. Le mecanisme a ete livre et prouve par les Lots 0-3; ce
+point d'arret reste une trace de gouvernance, pas une action ouverte.
+
+- Evaluer si le mecanisme ajoute trop de complexite.
+- Arreter sans patch runtime si le risque depasse le benefice.
+- Conserver le systeme actuel.
+- Archiver cette TODO avec decision explicite.
 
 ## Validation attendue
 

@@ -8,7 +8,7 @@ avec Biblio comme premier chantier.
 
 Sources:
 
-- `app/docs/todo-todo/product/frida-agentic-response-surface.md`
+- `app/docs/todo-done/product/frida-agentic-response-surface-2026-06-06.md`
 - `app/docs/states/audits/frida-agentic-response-surface-lot0-audit-2026-06-06.md`
 - `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
