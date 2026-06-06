@@ -115,6 +115,12 @@ pas une phrase locale pour remplacer l'enveloppe.
 Si l'enveloppe est vide, le comportement reste sobre, explicite cote
 meta/observabilite, et ne doit pas casser la reponse.
 
+En streaming, une reponse avec enveloppe peut etre bufferisee jusqu'au
+`final_text` terminal afin de ne pas envoyer un corps provisoire puis une version
+recomposee avec intro/outro. Ce choix reste compatible avec le contrat si le
+message final sauvegarde est unique, timestampé, repris dans le contexte normal,
+et qu'il n'existe ni double reponse ni canal parallele.
+
 Tout patch runtime de ce chantier exige une preuve live en vraie conversation
 Frida, meme si la surface semble inchangee. La raison est simple: ce chantier
 touche le chemin assistant normal, le contexte, Memory, les metas ou

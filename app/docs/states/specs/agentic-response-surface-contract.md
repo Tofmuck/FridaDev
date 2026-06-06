@@ -131,6 +131,13 @@ Le message final assemble devient `assistant_message.content`. Il passe par le
 chemin assistant normal: DB, timestamp, fenetre de contexte, labels temporels /
 Delta-T, Memory, embeddings et resume selon les contrats existants.
 
+En streaming, une reponse qui porte une enveloppe `surface_intro` /
+`surface_outro` peut etre bufferisee jusqu'au `final_text` terminal. Ce
+comportement est acceptable quand il evite d'envoyer un corps provisoire puis de
+le remplacer par une reponse recomposee. La garantie prioritaire reste: un seul
+message assistant final, assemble dans l'ordre du contrat, sans double reponse
+et sans canal parallele.
+
 ## 6. Couverture Biblio par familles
 
 Le mecanisme couvre BIB-01 -> BIB-33 sans restitution speciale par numero BIB.

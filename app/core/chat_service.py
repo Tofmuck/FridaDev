@@ -486,6 +486,49 @@ def _biblio_assistant_response_envelope(result: Any) -> dict[str, str]:
     }
 
 
+_BIBLIO_RECENT_DIALOGUE_META_SOURCES = {
+    'biblio_rendered_answer',
+    'biblio_read_passages_response',
+}
+
+_BIBLIO_RECENT_DIALOGUE_META_KEYS = (
+    'source',
+    'reason_code',
+    'biblio_exact_text_rendered',
+    'biblio_exact_text_chars',
+    'biblio_exact_text_hash',
+    'biblio_render_mode',
+    'biblio_answer_status',
+    'biblio_query_kind',
+    'biblio_final_lock_authorized',
+    'biblio_final_lock_reason_code',
+    'biblio_read_passages_mode',
+    'biblio_read_passages_reason_code',
+    'biblio_read_passages_count',
+    'biblio_read_passages_chars',
+    'biblio_read_passages_hashes',
+    'biblio_surface_intro_present',
+    'biblio_surface_intro_chars',
+    'biblio_surface_intro_hash',
+    'biblio_surface_outro_present',
+    'biblio_surface_outro_chars',
+    'biblio_surface_outro_hash',
+    'biblio_surface_empty_reason_codes',
+)
+
+
+def _biblio_recent_dialogue_meta(meta: Mapping[str, Any]) -> dict[str, Any] | None:
+    source = str(meta.get('source') or '')
+    if source not in _BIBLIO_RECENT_DIALOGUE_META_SOURCES:
+        return None
+    copied = {
+        key: meta.get(key)
+        for key in _BIBLIO_RECENT_DIALOGUE_META_KEYS
+        if key in meta
+    }
+    return copied or None
+
+
 def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> tuple[dict[str, Any], ...]:
     messages = conversation.get('messages')
     if not isinstance(messages, list):
@@ -502,26 +545,10 @@ def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> t
             continue
         turn: dict[str, Any] = {'role': role, 'content': content}
         meta = raw_message.get('meta')
-        if isinstance(meta, Mapping) and str(meta.get('source') or '') == 'biblio_rendered_answer':
-            turn['meta'] = {
-                key: meta.get(key)
-                for key in (
-                    'source',
-                    'biblio_exact_text_rendered',
-                    'biblio_exact_text_chars',
-                    'biblio_exact_text_hash',
-                    'biblio_render_mode',
-                    'biblio_answer_status',
-                    'biblio_surface_intro_present',
-                    'biblio_surface_intro_chars',
-                    'biblio_surface_intro_hash',
-                    'biblio_surface_outro_present',
-                    'biblio_surface_outro_chars',
-                    'biblio_surface_outro_hash',
-                    'biblio_surface_empty_reason_codes',
-                )
-                if key in meta
-            }
+        if isinstance(meta, Mapping):
+            biblio_meta = _biblio_recent_dialogue_meta(meta)
+            if biblio_meta is not None:
+                turn['meta'] = biblio_meta
         selected.append(turn)
     return tuple(selected[-8:])
 
