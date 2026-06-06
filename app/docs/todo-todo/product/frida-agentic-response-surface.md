@@ -201,22 +201,25 @@ Objectif: brancher le mecanisme simple.
 
 Objectif: verifier la couverture sans refaire trente-trois micro-tests.
 
-- [ ] Couvrir inventaire / metadonnees.
-- [ ] Couvrir resolution / ambiguite.
-- [ ] Couvrir structure / sections.
-- [ ] Couvrir recherche scoped.
-- [ ] Couvrir extraction exacte.
-- [ ] Couvrir extraction segmentee / continuation.
-- [ ] Couvrir provenance / navigation.
-- [ ] Couvrir comparaison / reprise.
-- [ ] Couvrir echec propre.
-- [ ] Prouver que les familles couvrent BIB-01 -> BIB-33.
-- [ ] Verifier que la reponse agentique finale possede un timestamp.
-- [ ] Verifier que cette reponse est reprise ensuite dans le contexte envoye au
+- Preuve live:
+  `app/docs/states/baselines/biblio-smokes/agentic-response-surface-lot3-family-live-20260606T191014Z.jsonl`.
+
+- [x] Couvrir inventaire / metadonnees.
+- [x] Couvrir resolution / ambiguite.
+- [x] Couvrir structure / sections.
+- [x] Couvrir recherche scoped.
+- [x] Couvrir extraction exacte.
+- [x] Couvrir extraction segmentee / continuation.
+- [x] Couvrir provenance / navigation.
+- [x] Couvrir comparaison / reprise.
+- [x] Couvrir echec propre.
+- [x] Prouver que les familles couvrent BIB-01 -> BIB-33.
+- [x] Verifier que la reponse agentique finale possede un timestamp.
+- [x] Verifier que cette reponse est reprise ensuite dans le contexte envoye au
   LLM avec le traitement temporel normal.
-- [ ] Verifier que le timestamp n'est pas seulement une meta ou une ligne DB
+- [x] Verifier que le timestamp n'est pas seulement une meta ou une ligne DB
   isolee.
-- [ ] Produire un JSONL live content-free.
+- [x] Produire un JSONL live content-free.
 
 ### Lot X - Arret no-op
 
