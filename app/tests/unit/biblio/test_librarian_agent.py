@@ -664,6 +664,7 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 tools.TOOL_RESOLVE_WORK,
                 tools.TOOL_DOCUMENT_OPEN_SUMMARY,
                 tools.TOOL_DOCUMENT_TOC,
+                tools.TOOL_SEARCH_CHAPTERS,
                 tools.TOOL_SEARCH_SECTION,
                 tools.TOOL_RESOLVE_SECTION,
                 tools.TOOL_SECTION_BOUNDS,
@@ -696,6 +697,24 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
 
         self.assertEqual(validation.status, contract.STATUS_REJECTED)
         self.assertEqual(validation.reason_code, contract.REASON_PRODUCT_METHOD_TOOL_MISMATCH)
+
+    def test_document_structure_accepts_search_chapters_for_documentary_roles(self) -> None:
+        validation = contract.validate_agent_payload(
+            {
+                **json.loads(_valid_json()),
+                "case_id": "",
+                "product_method": product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE,
+                "tool_calls": [
+                    {
+                        "tool_name": tools.TOOL_SEARCH_CHAPTERS,
+                        "method": "GET",
+                        "params": {"query": RAW_USER, "limit": 10},
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
 
     def test_toc_intent_repairs_to_document_structure_method(self) -> None:
         validation = contract.parse_and_validate_agent_json(
@@ -1730,6 +1749,9 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             "questions canoniques d'inventaire/metadonnees",
             "questions canoniques de resolution documentaire",
             "questions canoniques de structure documentaire",
+            "roles documentaires",
+            "search_chapters",
+            "ne prouve jamais a lui seul primary_text",
             "scoped_search",
             "questions canoniques de recherche scoped",
             "scoped_search sert a trouver ou presenter des candidats",

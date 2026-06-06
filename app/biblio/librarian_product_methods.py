@@ -124,6 +124,7 @@ METHOD_SPECS = (
             tools.TOOL_RESOLVE_WORK,
             tools.TOOL_DOCUMENT_OPEN_SUMMARY,
             tools.TOOL_DOCUMENT_TOC,
+            tools.TOOL_SEARCH_CHAPTERS,
             tools.TOOL_SEARCH_SECTION,
             tools.TOOL_RESOLVE_SECTION,
             tools.TOOL_SECTION_BOUNDS,

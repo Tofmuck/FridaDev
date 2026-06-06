@@ -348,6 +348,30 @@ Micro-lot BIB-06 oeuvre interne du 2026-06-06:
   doit rester `ambiguous` / clarification. Le code ne choisit pas le premier
   candidat et ne vend pas une section non confirmee comme oeuvre interne.
 
+Micro-lot BIB-07 roles documentaires du 2026-06-06:
+
+- artefact live:
+  `app/docs/states/baselines/biblio-smokes/bib07-documentary-roles-real-conversation-20260606T093550Z.jsonl`;
+- BIB-07 est `ferme_live` sur une distinction positive limitee et honnete:
+  une vraie conversation Frida prouve le chemin agent-first
+  `product_method=document_structure`, outil `search_chapters`, avec role
+  documentaire non primaire `introduction` derive par signal structurel faible;
+- `search_chapters` est autorise pour `document_structure` quand la demande
+  porte sur les roles documentaires. Les resultats peuvent etre projetes en
+  entrees structurelles avec `content_role`, `content_role_state=derived` et
+  confiance faible en observabilite content-free;
+- un signal faible de role ne prouve jamais a lui seul `primary_text`. Le
+  systeme peut distinguer un role non primaire derive, mais doit garder
+  `unknown` ou `ambiguous` quand le role manque ou reste insuffisant;
+- la surface visible peut nommer le role documentaire lisiblement, sans afficher
+  `document_id`, `section_id`, `unit_start`, `unit_end`, `boundary_state`,
+  `status`, `reason`, `render_mode` ou `product_method` comme plomberie brute;
+- le JSONL et les logs restent content-free: compteurs de roles, hashes courts,
+  noms d'outils, endpoint kinds et reason codes; pas de titre/auteur brut, pas
+  de prompt brut, pas de dialogue brut, pas de snippet et pas de texte
+  d'ouvrage;
+- BIB-06, BIB-31 et BIB-32 ne sont pas rouverts par ce micro-lot.
+
 Micro-lot BIB-31/BIB-32 passages deja lus du 2026-06-06:
 
 - artefact live:

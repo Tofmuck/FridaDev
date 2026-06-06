@@ -1068,6 +1068,49 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
         self.assertNotIn(RAW_TITLE, _json(answer.to_observability()))
 
+    def test_document_structure_projects_chapter_role_signal_without_primary_text_claim(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_SEARCH_CHAPTERS,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CHAPTER_SEARCH,
+            document_id="doc-1",
+            items=(
+                {
+                    "document_id": "doc-1",
+                    "doc_id_short": "doc-1",
+                    "chapter_no": 1,
+                    "title": RAW_TITLE,
+                    "page_no": 4,
+                    "document_role_signal": "introduction",
+                    "document_role_signal_source": "chapter_title",
+                    "document_role_signal_strength": "weak",
+                },
+            ),
+            context_text=RAW_EXACT_TEXT,
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+
+        self.assertEqual(answer.status, answer_object.STATUS_READY)
+        self.assertEqual(answer.render_mode, answer_object.RENDER_STRUCTURED_STATUS)
+        self.assertEqual(answer.exact_text, "")
+        self.assertEqual(answer.document_structure["section_count"], 1)
+        self.assertEqual(answer.document_structure["sections"][0]["content_role"], "introduction")
+        self.assertEqual(answer.document_structure["sections"][0]["content_role_state"], "derived")
+        self.assertIn("role: introduction, derive", rendered.content)
+        self.assertNotIn("primary_text", rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, rendered.content)
+        self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+        self.assertNotIn(RAW_TITLE, _json(observed))
+        _assert_visible_surface_clean(self, rendered.content)
+
     def test_document_structure_no_structure_is_not_found(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_DOCUMENT_TOC,

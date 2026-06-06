@@ -158,20 +158,29 @@ Statuts autorises: `ouvert`, `contractuel_unitaire`, `partiel_live`,
     `document_resolution`, `work_state`, etat conversationnel ou surface visible
     changent. Si plusieurs oeuvres internes candidates existent, la reponse doit
     rester clarification/candidats, sans choix silencieux.
-- [ ] BIB-07 - Distinguer texte principal, commentaire, preface, notice, notes
+- [x] BIB-07 - Distinguer texte principal, commentaire, preface, notice, notes
   ou appareil critique.
-  - Statut: `partiel_live`
+  - Statut: `ferme_live`
   - Preuve live:
+    `app/docs/states/baselines/biblio-smokes/bib07-documentary-roles-real-conversation-20260606T093550Z.jsonl`
+    (`BIB07_DOCUMENTARY_ROLES_DERIVED_INTRODUCTION=met`, vraie conversation
+    Frida, bibliothecaire agentique live, `product_method=document_structure`,
+    outil `search_chapters`, role documentaire positif non primaire
+    `introduction` derive avec confiance faible, aucun `primary_text` pretendu,
+    aucun extrait exact, message assistant sauvegarde, meta Biblio presente,
+    surface visible propre, JSONL content-free).
+  - Preuve historique requalifiee:
     `app/docs/states/baselines/biblio-smokes/bib06-bib07-bib31-bib32-real-conversation-20260606T072721Z.jsonl`
     (`BIB07_DOCUMENTARY_ROLES=partial`, vraie conversation Frida, agent live,
     role inconnu rendu honnetement, aucun faux `primary_text`, surface visible
     propre). Blocker: le Catalogue ne fournit pas encore de signal de role
     positif suffisant; le tour live derive en `passage_search_in_work` +
     `passage_context`, donc il ne prouve pas une distinction reelle des roles.
-  - Prochain test live requis: role documentaire connu ou explicitement derive
-    par Catalogue/structure -> distinction visible entre texte principal,
-    commentaire, preface, notice, notes ou appareil critique; `unknown` doit
-    rester `unknown`.
+  - Prochain test live requis: regression seulement si `document_structure`,
+    `search_chapters`, projection des roles ou surface visible changent. Limite
+    volontaire: seul un role positif derive par Catalogue/structure est
+    revendique; `primary_text` n'est jamais prouve par signal faible et
+    `unknown` doit rester `unknown`.
 - [x] BIB-08 - Donner la table des matieres d'un ouvrage.
   - Statut: `ferme_live`
   - Preuve live:
@@ -972,6 +981,30 @@ fermeture comme contractuelle ou partielle, pas comme une coche utilisateur.
     conversationnel. Le code ne choisit pas semantiquement entre plusieurs
     oeuvres; s'il y a plusieurs candidats, le statut doit rester
     ambigu/clarification.
+  - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
+- Micro-lot BIB-07 roles documentaires - 2026-06-06 -
+  `app/docs/states/baselines/biblio-smokes/bib07-documentary-roles-real-conversation-20260606T093550Z.jsonl`
+  - Statut: `ferme_live`; BIB-07 cochee.
+  - Conversation: hash `036b2da902bf`
+  - Proof case: `BIB07_DOCUMENTARY_ROLES_DERIVED_INTRODUCTION`
+  - Outils appeles: `search_chapters`
+  - Statut final: vraie conversation Frida, toggle Biblio active,
+    bibliothecaire agentique live appele et utilise pour la reponse,
+    `product_method=document_structure`, 10 entrees structurelles avec role
+    positif `introduction` derive, aucun extrait exact, `primary_text` non
+    pretendu, message assistant sauvegarde, meta Biblio presente, Memory
+    observee, surface visible propre, JSONL content-free.
+  - Reason codes: `biblio_agent_first_plan_executed`,
+    `biblio_librarian_agent_active_validated`,
+    `biblio_librarian_agent_json_validated`,
+    `biblio_librarian_tool_executed`,
+    `biblio_final_response_authorized`, `ok`.
+  - Requalification: l'ancien artefact Livraison 8 reste le diagnostic du
+    blocker initial (`role=unknown` honnete mais pas de distinction positive).
+    La fermeture vient de la projection structurelle `search_chapters`: l'agent
+    trouve un signal de role non primaire derive. Le code ne decide pas
+    semantiquement que le contenu est texte principal; les roles absents restent
+    inconnus/ambigus.
   - Commit: commit de cette livraison; hash exact reporte dans le retour Codex.
 - Micro-lot BIB-31/BIB-32 passages deja lus - 2026-06-06 -
   `app/docs/states/baselines/biblio-smokes/bib31-bib32-read-passages-real-conversation-20260606T082548Z.jsonl`

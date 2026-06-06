@@ -35,6 +35,12 @@ _STRUCTURAL_CLARIFICATION_REASONS = frozenset(
     }
 )
 
+_ROLE_SIGNAL_TO_CONTENT_ROLE = {
+    "commentary": "commentary",
+    "introduction": "introduction",
+    "notice": "notice",
+}
+
 
 def build_document_structure(
     results: Sequence[librarian_tools.BiblioLibrarianToolResult],
@@ -237,7 +243,8 @@ def _sections_from_result(result: librarian_tools.BiblioLibrarianToolResult) -> 
     for item in result.items:
         if not isinstance(item, Mapping):
             continue
-        if _text(item.get("candidate_type")) != "section" and not _text(item.get("section_id")):
+        role_signal = _chapter_role_signal(item)
+        if _text(item.get("candidate_type")) != "section" and not _text(item.get("section_id")) and not role_signal:
             continue
         sections.append(
             _clean(
@@ -247,8 +254,10 @@ def _sections_from_result(result: librarian_tools.BiblioLibrarianToolResult) -> 
                     "section_id": _text(item.get("section_id")),
                     "chapter_no": _int(item.get("chapter_no")),
                     "title": _text(item.get("title")),
-                    "content_role": _text(item.get("content_role")),
-                    "content_role_state": _text(item.get("content_role_state")),
+                    "content_role": _text(item.get("content_role")) or _ROLE_SIGNAL_TO_CONTENT_ROLE.get(role_signal, ""),
+                    "content_role_state": _text(item.get("content_role_state")) or ("derived" if role_signal else ""),
+                    "content_role_confidence": _text(item.get("document_role_signal_strength")),
+                    "content_role_source": _text(item.get("document_role_signal_source")),
                     "boundary_state": _text(item.get("boundary_state")),
                     "unit_start": _int(item.get("unit_start")),
                     "unit_end": _int(item.get("unit_end")),
@@ -401,6 +410,9 @@ def _section_line(section: Mapping[str, Any]) -> str:
     boundary = _boundary_note(section.get("boundary_state"))
     if boundary:
         details.append(boundary)
+    role = _role_note(section)
+    if role:
+        details.append(role)
     return label + (f" ({'; '.join(details)})" if details else "")
 
 
@@ -437,6 +449,32 @@ def _boundary_note(value: Any) -> str:
     return ""
 
 
+def _role_note(section: Mapping[str, Any]) -> str:
+    role = _text(section.get("content_role"))
+    state = _text(section.get("content_role_state"))
+    if role == "introduction":
+        label = "role: introduction"
+    elif role == "commentary":
+        label = "role: commentaire"
+    elif role == "notice":
+        label = "role: notice"
+    elif role == "preface":
+        label = "role: preface"
+    elif role == "note":
+        label = "role: notes"
+    elif role == "apparatus":
+        label = "role: appareil critique"
+    elif role == "primary_text":
+        label = "role: texte principal"
+    else:
+        return ""
+    if state == "derived":
+        return f"{label}, derive"
+    if state == "ambiguous":
+        return f"{label}, ambigu"
+    return label
+
+
 def _interval_line(interval: Mapping[str, Any]) -> str:
     state = _text(interval.get("state"))
     if state == "derived":
@@ -465,6 +503,11 @@ def _structure_limits(sections: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
             if value and value not in values:
                 values.append(value)
     return tuple(values)
+
+
+def _chapter_role_signal(item: Mapping[str, Any]) -> str:
+    signal = _text(item.get("document_role_signal"))
+    return signal if signal in _ROLE_SIGNAL_TO_CONTENT_ROLE else ""
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
