@@ -143,17 +143,19 @@ traitement BIB par BIB.
 
 Objectif: comprendre ou se fabrique aujourd'hui la reponse Biblio visible.
 
-- [ ] Localiser l'assemblage de la reponse visible.
-- [ ] Localiser les metas Biblio.
-- [ ] Verifier le message assistant en DB.
-- [ ] Verifier le contexte recent.
-- [ ] Verifier que le message assistant timestampé entre dans le contexte
+- Audit produit: `app/docs/states/audits/frida-agentic-response-surface-lot0-audit-2026-06-06.md`.
+
+- [x] Localiser l'assemblage de la reponse visible.
+- [x] Localiser les metas Biblio.
+- [x] Verifier le message assistant en DB.
+- [x] Verifier le contexte recent.
+- [x] Verifier que le message assistant timestampé entre dans le contexte
   envoye au LLM avec le traitement temporel normal.
-- [ ] Verifier Memory si le chemin est deja branche.
-- [ ] Verifier embeddings si le chemin est deja branche.
-- [ ] Verifier resume si le chemin est deja branche.
-- [ ] Produire un diagnostic content-free.
-- [ ] Ne modifier aucun runtime.
+- [x] Verifier Memory si le chemin est deja branche.
+- [x] Verifier embeddings si le chemin est deja branche.
+- [x] Verifier resume si le chemin est deja branche.
+- [x] Produire un diagnostic content-free.
+- [x] Ne modifier aucun runtime.
 
 ### Lot 1 - Contrat court
 
