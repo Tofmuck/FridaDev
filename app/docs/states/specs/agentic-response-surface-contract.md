@@ -45,8 +45,11 @@ Regles:
 - les champs font partie du contrat;
 - une chaine vide est autorisee seulement si le statut ou le type de resultat le
   justifie;
-- si le format local permet une chaine vide, eviter `null`, qui rend l'absence
-  ambigue;
+- `null` est invalide;
+- l'absence justifiee d'enveloppe se represente par une chaine vide;
+- la raison de cette chaine vide reste en meta / observabilite content-free;
+- ne pas introduire un troisieme etat ambigu entre champ absent, `null` et
+  chaine vide;
 - `surface_intro` et `surface_outro` restent courts;
 - ils ne contiennent pas de jargon outil;
 - ils ne promettent pas ce que le resultat ne tient pas;
@@ -67,7 +70,7 @@ Regle simple:
 - `blocked` / `error`: intro sobre attendue, sauf si le renderer existant
   produit deja une surface suffisante.
 
-Si l'enveloppe est absente ou vide, le runtime ne fabrique pas une voix locale
+Si l'enveloppe est vide, le runtime ne fabrique pas une voix locale
 standardisee. Il garde un comportement sobre, conserve la preuve en meta /
 observabilite, et ne casse pas la reponse.
 
@@ -75,7 +78,7 @@ observabilite, et ne casse pas la reponse.
 
 Le deterministe peut verifier:
 
-- presence ou absence des champs;
+- presence des champs;
 - type `string`;
 - taille maximale large;
 - coherence structurelle entre statut, type de resultat, limites et

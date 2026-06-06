@@ -46,7 +46,7 @@ Formules a garder:
   agentique.
 - Leur contenu peut etre vide seulement si le type de resultat ou le statut le
   justifie.
-- L'absence d'enveloppe ne doit pas redevenir la norme silencieuse.
+- La chaine vide ne doit pas redevenir la norme silencieuse.
 - Le runtime assemble, conserve et verrouille.
 - Les exacts verrouilles sont copies verbatim.
 - Les metas restent en observabilite et dans `message.meta`, pas en surface
@@ -92,7 +92,8 @@ vise seulement la surface visible:
 
 - l'agent Biblio recoit la demande utilisateur et le contexte utile;
 - il choisit ses outils et produit son resultat structure;
-- il renseigne l'intro et la relance, ou justifie leur absence dans les metas;
+- il renseigne l'intro et la relance, ou justifie leur chaine vide dans les
+  metas;
 - le deterministe garde les exacts, ancres, limites, final lock et metas;
 - le runtime assemble le message visible;
 - le message assemble est sauve comme assistant Frida normal;
@@ -100,16 +101,18 @@ vise seulement la surface visible:
 
 Garde-fous structurels autorises:
 
-- champ present ou absent;
+- champ present;
 - type `string` pour `surface_intro` et `surface_outro`;
+- `null` invalide;
 - taille raisonnable;
-- champ vide accepte;
+- chaine vide acceptee seulement si le statut ou le type de resultat le
+  justifie, avec raison conservee en meta / observabilite content-free;
 - coherence entre statut, exact verrouille, limites et continuation.
 
 Le code ne corrige pas le style. Il ne standardise pas la voix. Il ne fabrique
 pas une phrase locale pour remplacer l'enveloppe.
 
-Si l'enveloppe est absente, le comportement reste sobre, explicite cote
+Si l'enveloppe est vide, le comportement reste sobre, explicite cote
 meta/observabilite, et ne doit pas casser la reponse.
 
 Tout patch runtime de ce chantier exige une preuve live en vraie conversation
@@ -168,7 +171,7 @@ Objectif: fixer le contrat generique.
   statut ou le type de resultat le justifie.
 - [x] Definir `surface_outro` comme champ du contrat, vide seulement si le
   statut ou le type de resultat le justifie.
-- [x] Definir le comportement si l'enveloppe est absente.
+- [x] Definir le comportement si l'enveloppe est vide.
 - [x] Confirmer que les exacts verrouilles ne sont pas reecrits.
 - [x] Confirmer l'absence de nouveau LLM.
 - [x] Confirmer l'absence de validateur regex ou de filtre de style.
