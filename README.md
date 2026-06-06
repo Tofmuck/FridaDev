@@ -117,8 +117,8 @@ Frontend rehydration and operator observability
 - Native Biblio / Frida Catalogue contract: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - Biblio librarian-agent contract: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Biblio / Catalogue librarian-agent architecture audit: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
-- Frida Biblio Last Chance structural roadmap: `app/docs/todo-todo/product/frida-biblio-last-chance.md`
-- Active Biblio librarian-agent roadmap: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+- Archived Frida Biblio Last Chance closure: `app/docs/todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`
+- Archived Biblio librarian-agent roadmap: `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
 - Archived Biblio native / Frida Catalogue audit-plan: `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
 - Archived Biblio native / Frida Catalogue roadmap: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 - Final Biblio native / Frida Catalogue validation: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -301,8 +301,8 @@ Rehydratation frontend et observabilite operateur
 - Contrat Biblio native / Frida Catalogue: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - Contrat agent bibliothecaire Biblio: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Audit architecture agent bibliothecaire Biblio: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
-- Roadmap structurante Frida Biblio Last Chance: `app/docs/todo-todo/product/frida-biblio-last-chance.md`
-- Roadmap active agent bibliothecaire Biblio: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+- Archive Frida Biblio Last Chance: `app/docs/todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`
+- Archive agent bibliothecaire Biblio: `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
 - Audit-plan archive Biblio native / Frida Catalogue: `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
 - Roadmap archivee Biblio native / Frida Catalogue: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 - Validation finale Biblio native / Frida Catalogue: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`

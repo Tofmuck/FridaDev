@@ -2,7 +2,7 @@
 
 Statut: audit serre content-free
 Classement: `app/docs/states/audits/`
-Roadmap active: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+Roadmap archivee: `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
 
 ## Portee
 
@@ -22,7 +22,7 @@ Catalogue / index / mapping.
 ## Sources lues
 
 - `AGENTS.md`
-- `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+- `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
 - `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - `app/docs/states/baselines/biblio-smokes/stephanus-locate-diagnostic-20260601T195136Z.md`
 - `app/docs/states/baselines/biblio-smokes/agent-live-primary-text-stephanus-20260601T200249Z.jsonl`

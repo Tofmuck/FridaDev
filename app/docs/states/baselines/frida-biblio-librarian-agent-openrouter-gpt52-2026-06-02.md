@@ -2,7 +2,7 @@
 
 Date: 2026-06-02
 Classement: `app/docs/states/baselines/`
-Roadmap: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+Roadmap: `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
 Spec: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 Scope: verification documentaire + runtime de la bascule Biblio agentique
 `deepseek/deepseek-v4-pro` -> `openai/gpt-5.2`, sans refonte prompt ni

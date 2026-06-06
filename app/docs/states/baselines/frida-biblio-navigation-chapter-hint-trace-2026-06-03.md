@@ -12,7 +12,7 @@ Le cran navigation Lot E du commit `08e9a58` a modifie exactement les fichiers F
 - `app/biblio/librarian_tools.py`
 - `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
-- `app/docs/todo-todo/product/frida-biblio-refonte.md`
+- `app/docs/todo-done/product/frida-biblio-refonte-archive-2026-06-06.md`
 - `app/tests/unit/biblio/test_librarian_navigation_runtime.py`
 - `app/tests/unit/biblio/test_librarian_tools.py`
 

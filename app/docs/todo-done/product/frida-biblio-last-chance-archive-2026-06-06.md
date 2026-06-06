@@ -1,8 +1,23 @@
 # Frida Biblio Last Chance
 
+> **ARCHIVE - 2026-06-06**
+>
+> Statut: clos / obsolete; ne pilote plus le travail actif.
+>
+> Raison: la checklist canonique BIB-01 -> BIB-33 est fermee live et conservee
+> ci-dessous avec ses artefacts JSONL content-free. Les sections Lot 5 / Lot 6
+> ouvertes dans l'ancienne TODO active ont ete neutralisees: elles ne doivent
+> plus etre lues comme travail a faire.
+>
+> Verite courante: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+> pour le contrat vivant; artefacts de preuve dans
+> `app/docs/states/baselines/biblio-smokes/`.
+>
+> Ne pas rouvrir sans decision explicite.
+
 Date: 2026-06-06
-Statut: TODO active de pilotage apres fermeture BIB 33/33
-Classement: `app/docs/todo-todo/product/`
+Statut historique: checklist BIB fermee live, desormais archivee.
+Classement: `app/docs/todo-done/product/`
 
 Archive courte du nettoyage:
 `app/docs/todo-done/product/frida-biblio-last-chance-historical-cleanup-2026-06-06.md`.
@@ -16,15 +31,10 @@ chronique des lots intermediaires.
 La checklist canonique Biblio utilisateur BIB-01 -> BIB-33 est fermee live:
 33 items, 33 `ferme_live`, 0 ouvert.
 
-Le chantier actif n'est plus de fermer des capacites BIB. Les prochains travaux
-serieux sont:
-
-- **Nettoyage dur (L5)**: auditer les responsabilites, identifier le code
-  mort probable et supprimer progressivement, par preuves, ce qui ne sert plus
-  a tenir BIB-01 -> BIB-33.
-- **Validation produit live (L6)**: rejouer une validation conversationnelle
-  controlee apres L5 pour prouver que le cleanup n'a casse aucune famille
-  BIB.
+Le chantier actif n'est plus de fermer des capacites BIB. Le faux prolongement
+Lot 5 / Lot 6 a ete abandonne: la branche `Biblio-lot-5` a ete supprimee sans
+merge le 2026-06-06, apres verification qu'elle ne contenait que des reflexions
+docs-only. Aucun nettoyage runtime n'a ete integre.
 
 Source normative principale:
 `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`.
@@ -184,120 +194,18 @@ noms seulement. Les details content-free complets restent dans les JSONL.
 | 2026-06-06 | `app/docs/states/baselines/biblio-smokes/bib33-clean-failures-real-conversation-20260606T101042Z.jsonl` | BIB-33 | `met` | familles d'echec Biblio |
 | 2026-06-06 | `app/docs/states/baselines/biblio-smokes/bib29-next-chapter-real-conversation-20260606T120102Z.jsonl` | BIB-29 | `met` | `section_bounds`, `page_read` |
 
-## Lot 5 - Nettoyage dur
+## Note de cloture Lot 5 / Lot 6
 
-But: audit de responsabilites + chasse au code mort + suppressions progressives
-prouvees dans `app/biblio/`, sans changer le produit.
+Les sections ouvertes Lot 5 et Lot 6 de l'ancienne TODO active ont ete retirees
+de cette archive pour eviter toute ambiguite de pilotage.
 
-Le produit est desormais defini par BIB-01 -> BIB-33. Lot 5 n'a pas le droit de
-le redefinir, de reduire les capacites utilisateur, ni de remplacer le
-bibliothecaire par du determinisme local. Lot 5 a seulement le droit d'enlever,
-de deplacer ou de simplifier ce qui ne sert plus a tenir ces capacites.
-
-### Contraintes Lot 5
-
-Ces contraintes s'appliquent a Lot 5A et a chaque micro-lot Lot 5B+. Elles
-doivent etre reprises explicitement dans les prompts, puis cochees ou invalidees
-dans le retour de livraison.
-
-- [ ] Pas de changement de sens documentaire.
-- [ ] Pas de reduction de surface visible.
-- [ ] Pas de perte de meta observable.
-- [ ] Pas de perte de provenance, d'ancre ou d'etat Biblio conversationnel.
-- [ ] Pas de nouveau parseur utilisateur.
-- [ ] Pas de mutation cote doc-pipeline, DB ou plateforme.
-- [ ] Pas de suppression de garde-fou deterministe sans remplacement explicite.
-- [ ] Pas de changement de statut BIB sans vraie preuve live JSONL.
-- [ ] Pas de redefinition du produit: BIB-01 -> BIB-33 reste la reference.
-- [ ] Pas de refactor cosmetique: chaque changement doit supprimer, migrer ou
-  isoler une responsabilite prouvee.
-
-### Lot 5A - Audit docs-only
-
-- [ ] Inventorier tous les modules `app/biblio/`.
-- [ ] Identifier les entrees publiques reellement appelees.
-- [ ] Identifier les methodes produit encore vivantes.
-- [ ] Relier chaque methode produit aux BIB qu'elle sert.
-- [ ] Identifier les chemins legacy encore necessaires.
-- [ ] Identifier les chemins legacy probablement morts.
-- [ ] Identifier les doublons de responsabilite.
-- [ ] Identifier les modules ou fonctions trop gros ou trop mixtes.
-- [ ] Identifier les zones dangereuses a ne pas toucher.
-- [ ] Identifier les tests qui protegent des comportements morts.
-- [ ] Produire une matrice module -> responsabilite -> BIB -> tests.
-- [ ] Produire un plan de suppression par micro-lots.
-- [ ] Confirmer qu'aucune suppression runtime n'est faite dans Lot 5A.
-- [ ] Verifier que l'audit ne change aucun statut BIB.
-- [ ] Commit/push l'audit docs-only separement.
-
-### Lot 5B+ - Suppressions reversibles par micro-lots
-
-Pour chaque micro-lot de suppression ou migration:
-
-- [ ] Formuler l'hypothese de code mort ou de doublon.
-- [ ] Prouver statiquement les appels ou non-appels.
-- [ ] Verifier les tests associes.
-- [ ] Relier la zone touchee aux BIB, methodes produit, metas et surfaces concernees.
-- [ ] Decider explicitement: supprimer, migrer ou garder.
-- [ ] Supprimer le minimum.
-- [ ] Lancer les tests cibles.
-- [ ] Lancer la suite Biblio/chat si un chemin commun est touche.
-- [ ] Lancer un live regression si une BIB ou surface utilisateur est touchee.
-- [ ] Verifier absence de changement de sens documentaire.
-- [ ] Verifier absence de reduction de surface visible.
-- [ ] Verifier absence de perte de meta/provenance/observabilite.
-- [ ] Verifier absence de perte d'etat Biblio conversationnel.
-- [ ] Verifier absence de nouveau parseur utilisateur.
-- [ ] Verifier que doc-pipeline/DB/plateforme ne sont pas touches.
-- [ ] Verifier qu'aucun garde-fou n'est supprime sans remplacement explicite.
-- [ ] Verifier qu'un chemin legacy encore utile a une BIB est garde ou migre explicitement.
-- [ ] Mettre a jour TODO/spec seulement si une limite ou un contrat change.
-- [ ] Auto-auditer le micro-lot.
-- [ ] Commit/push separement.
-
-### Interdits Lot 5
-
-- [ ] Ne pas changer le produit defini par BIB-01 -> BIB-33.
-- [ ] Ne pas supprimer un garde-fou parce qu'il semble laid.
-- [ ] Ne pas supprimer un chemin legacy encore utile sans migration explicite.
-- [ ] Ne pas refactorer au-dela du micro-lot.
-- [ ] Ne pas creer de nouveau `utils.py` ou `helpers.py`.
-
-## Lot 6 - Validation produit live
-
-But: validation produit live complete post-L5. Lot 6 prouve que le nettoyage Lot
-5 n'a pas casse les capacites BIB fermees. La checklist doit rester 33/33.
-
-- [ ] Preparer un panel live representatif BIB-01 -> BIB-33.
-- [ ] Couvrir inventaire / metadonnees.
-- [ ] Couvrir resolution documentaire.
-- [ ] Couvrir structure documentaire.
-- [ ] Couvrir recherche scoped.
-- [ ] Couvrir extraction exacte.
-- [ ] Couvrir section complete / segmentee.
-- [ ] Couvrir plage canonique courte.
-- [ ] Couvrir plage canonique longue segmentee.
-- [ ] Couvrir navigation lecteur.
-- [ ] Couvrir chapitre suivant BIB-29.
-- [ ] Couvrir provenance / ancre courante.
-- [ ] Couvrir memoire de lecture BIB-31/BIB-32.
-- [ ] Couvrir roles documentaires sans faux `primary_text`.
-- [ ] Couvrir echecs propres BIB-33.
-- [ ] Produire un JSONL live date.
-- [ ] Verifier vraie conversation Frida.
-- [ ] Verifier agent Biblio live appele.
-- [ ] Verifier messages assistant sauvegardes.
-- [ ] Verifier surfaces visibles propres.
-- [ ] Verifier metas/provenance conservees.
-- [ ] Verifier Memory observee sur les chemins multi-tour.
-- [ ] Verifier aucun faux exact.
-- [ ] Verifier aucun snippet rendu comme exact.
-- [ ] Verifier aucun faux `primary_text`.
-- [ ] Verifier aucune regression BIB-29.
-- [ ] Verifier aucune regression BIB-31/BIB-32.
-- [ ] Verifier checklist BIB reste 33/33.
-- [ ] Documenter les limites restantes.
-- [ ] Commit/push.
+- Lot 5 a ete abandonne en no-op runtime: la branche `Biblio-lot-5`, qui ne
+  contenait que des reflexions docs-only, a ete supprimee sans merge le
+  2026-06-06.
+- Aucun nettoyage runtime Biblio n'a ete integre.
+- Lot 6 n'est pas lance par cette archive et ne constitue plus une TODO active.
+- Les preuves utiles restent la checklist BIB-01 -> BIB-33 et le journal JSONL
+  ci-dessus.
 
 ## Preuves de fermeture minimales
 

@@ -3,9 +3,10 @@
 Date: 2026-06-06
 Classement: `app/docs/todo-done/product/`
 
-Cette note archive le nettoyage docs-only de
-`app/docs/todo-todo/product/frida-biblio-last-chance.md` apres fermeture live de
-la checklist BIB-01 -> BIB-33.
+Cette note archive le nettoyage docs-only initial de l'ancienne TODO Last
+Chance, maintenant archivee dans
+`app/docs/todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`,
+apres fermeture live de la checklist BIB-01 -> BIB-33.
 
 Le fichier actif faisait 3217 lignes et contenait:
 
@@ -19,10 +20,10 @@ Decision:
 
 - ne pas dupliquer ces 3000 lignes dans une seconde archive Markdown;
 - conserver l'historique complet via Git, commit pre-nettoyage `645f108`;
-- conserver les preuves produit via les artefacts JSONL cites dans la TODO
-  active;
-- garder dans la TODO active seulement l'etat courant, les invariants, la
-  checklist 33/33, le journal compact, Lot 5, Lot 6 et les risques utiles.
+- conserver les preuves produit via les artefacts JSONL cites dans l'archive
+  Last Chance;
+- garder dans l'archive Last Chance seulement l'etat de cloture, les invariants,
+  la checklist 33/33, le journal compact et les risques utiles.
 
-La TODO active apres nettoyage est:
-`app/docs/todo-todo/product/frida-biblio-last-chance.md`.
+L'archive Last Chance apres nettoyage est:
+`app/docs/todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`.

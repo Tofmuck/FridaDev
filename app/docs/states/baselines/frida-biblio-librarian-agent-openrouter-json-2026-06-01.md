@@ -2,7 +2,7 @@
 
 Date: 2026-06-01
 Classement: `app/docs/states/baselines/`
-Roadmap: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+Roadmap: `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
 Spec: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 Scope: verification provider pour le Lot 7 agent bibliothecaire, sans smoke
 modele reel et sans activation produit.

@@ -3,7 +3,7 @@
 Date: 2026-05-31
 Statut: baseline Lot 0 validee
 Classement: `app/docs/states/baselines/`
-Roadmap active: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+Roadmap archivee: `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
 Audit source: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 Contrat source: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Scope: docs-only, content-free, sans patch runtime, sans modification plateforme, sans rebuild.
@@ -28,7 +28,7 @@ Ce plan reduit le risque de confondre une limite deja presente avec une regressi
 - `app/docs/README.md`
 - `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
-- `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+- `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
 - `app/biblio/smoke_live.py`
 - `app/biblio/chat_runtime.py`
 - `app/biblio/library_runtime.py`
@@ -57,7 +57,8 @@ Endpoint kinds observes dans les smokes: `catalog`, `search`, `context`, `chapte
 
 ## Matrice produit content-free
 
-Les cas ci-dessous reprennent les cas obligatoires de la roadmap active sous libelles courts, sans requete brute ni passage brut.
+Les cas ci-dessous reprennent les cas obligatoires de la roadmap alors active,
+desormais archivee, sous libelles courts, sans requete brute ni passage brut.
 
 | Cas | Statut courant | Reason code | Query kind | Endpoint kinds | Etat Biblio | Diagnostic |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -159,7 +160,7 @@ Aucun P0 confirme dans Lot 0. Le smoke strict passe, aucune fuite brute n'a ete 
 
 ### P3
 
-- La baseline Lot 0 manquait avant ce patch; elle est maintenant indexee et rattachee a la roadmap active.
+- La baseline Lot 0 manquait avant ce patch; elle est maintenant indexee et rattachee a la roadmap alors active, desormais archivee.
 - La verification OpenRouter/JSON reste volontairement non faite: elle appartient a un lot runtime futur, pas a Lot 0.
 
 ## Decision Lot 0

@@ -1,12 +1,27 @@
 # Frida Biblio refonte
 
+> **ARCHIVE - 2026-06-06**
+>
+> Statut: clos / obsolete; ne pilote plus le travail actif.
+>
+> Raison: le travail Biblio a ete requalifie puis ferme par la checklist
+> canonique BIB-01 -> BIB-33. Ce document conserve seulement l'historique de la
+> transition P01-P18, des methodes produit et des faux verts.
+>
+> Verite courante: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+> pour le contrat vivant, et les artefacts JSONL BIB conserves dans
+> `app/docs/states/baselines/biblio-smokes/`.
+>
+> Ne pas rouvrir sans decision explicite.
+
 Date: 2026-06-02
-Statut: TODO active de transition, requalifiee par `frida-biblio-last-chance.md`
-Classement: `app/docs/todo-todo/product/`
+Statut historique: TODO de transition requalifiee par
+`frida-biblio-last-chance-archive-2026-06-06.md`.
+Classement: `app/docs/todo-done/product/`
 Sources:
 
-- `app/docs/todo-todo/product/frida-biblio-last-chance.md`
-- `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+- `app/docs/todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`
+- `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
 - `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - `app/docs/states/audits/frida-biblio-stephanus-library-audit-2026-06-02.md`
@@ -17,15 +32,15 @@ Sources:
 
 Portee: document de transition pour la refonte Biblio. Ce document ne remplace
 ni la spec agent, ni la spec Catalogue, ni le plan structurant
-`frida-biblio-last-chance.md`. Il conserve la matrice de regression P01-P18, la
+`frida-biblio-last-chance-archive-2026-06-06.md`. Il conserve la matrice de regression P01-P18, la
 couche "methode produit", les verites actuelles, les faux verts historiques et
 l'ordre reel des lots deja executes.
 
 Requalification 2026-06-03:
 
-- `frida-biblio-last-chance.md` devient le plan structurant prioritaire pour
+- `frida-biblio-last-chance-archive-2026-06-06.md` etait le plan structurant prioritaire pour
   repenser Biblio depuis les questions canoniques d'une bibliotheque;
-- le present document reste une trace active de transition pour la matrice
+- le present document reste une trace historique de transition pour la matrice
   P01-P18, les faux verts historiques, le registre initial de methodes et les
   dettes constatees;
 - aucune cloture future ne doit repartir des 18 cas comme canon principal sans
@@ -37,7 +52,7 @@ Requalification 2026-06-03:
 Invariant durable:
 
 - les questions canoniques d'une bibliotheque forment le canon de travail
-  prioritaire, selon `frida-biblio-last-chance.md`;
+  prioritaire, selon `frida-biblio-last-chance-archive-2026-06-06.md`;
 - il existe 18 cas Biblio de reference historique et de regression;
 - ces 18 cas ne forment plus la grammaire produit principale: ils restent une
   matrice de transition utile pour surveiller les regressions, les faux verts

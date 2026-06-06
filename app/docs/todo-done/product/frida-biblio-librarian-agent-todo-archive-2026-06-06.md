@@ -1,16 +1,30 @@
 # Frida Biblio librarian agent TODO
 
+> **ARCHIVE - 2026-06-06**
+>
+> Statut: clos / obsolete; ne pilote plus le travail actif.
+>
+> Raison: le chantier agent bibliothecaire a ete absorbe par la fermeture live
+> BIB-01 -> BIB-33 et par le contrat Biblio/Catalogue vivant. Cette roadmap
+> conserve l'historique du socle agentique, des smokes, du mode OpenRouter/JSON
+> et des invariants GET-only/content-free.
+>
+> Verite courante: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+> et `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`.
+>
+> Ne pas rouvrir sans decision explicite.
+
 Date: 2026-05-31
-Statut: TODO active canonique
-Classement: `app/docs/todo-todo/product/`
+Statut historique: TODO active canonique, desormais archivee.
+Classement: `app/docs/todo-done/product/`
 Audit source: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 Contrat source Biblio native: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Contrat source agent Lot 2: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
-Matrice d'action produit complementaire: `app/docs/todo-todo/product/frida-biblio-refonte.md`
+Matrice d'action produit complementaire archivee: `app/docs/todo-done/product/frida-biblio-refonte-archive-2026-06-06.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 Verification OpenRouter courante: `app/docs/states/baselines/frida-biblio-librarian-agent-openrouter-gpt52-2026-06-02.md`
 Scope: plan produit/runtime pour agent bibliothecaire Frida, lots docs et runtime bornes.
-Gel de verite Biblio courant: `app/docs/todo-todo/product/frida-biblio-last-chance.md`.
+Gel de verite Biblio archive: `app/docs/todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`.
 
 Requalification Lot 0 Last Chance, 2026-06-03:
 
