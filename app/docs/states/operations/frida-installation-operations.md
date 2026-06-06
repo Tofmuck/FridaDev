@@ -222,4 +222,4 @@ Ce guide:
 - ne promet pas une installation one-click.
 
 Le chantier produit reste ouvert dans:
-- `app/docs/todo-todo/product/Frida-installation-config.md`.
+- `app/docs/todo-done/product/Frida-installation-config.md`.

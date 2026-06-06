@@ -7,6 +7,9 @@ from urllib.parse import urlparse
 from core import main_llm_reasoning
 from identity import static_identity_paths
 
+_BIBLIO_AGENT_MODES = {'off', 'shadow', 'candidate', 'active'}
+_BIBLIO_AGENT_REASONING_EFFORTS = {'none', 'minimal', 'low', 'medium', 'high', 'xhigh'}
+
 
 def _validation_check(name: str, ok: bool, detail: str) -> dict[str, Any]:
     return {
@@ -380,6 +383,71 @@ def validate_runtime_section(
                     f'top_p={top_p!r}',
                 ),
                 _validation_check('max_tokens', max_tokens_ok, max_tokens_detail),
+                _validation_check('shared_transport_runtime', shared_transport_ok, shared_transport_detail),
+            )
+        )
+    elif section == 'biblio_librarian_agent':
+        mode = _runtime_text_value(view, 'mode')
+        primary_model = _runtime_text_value(view, 'primary_model')
+        timeout_s = _runtime_int_value(view, 'timeout_s')
+        temperature = _runtime_float_value(view, 'temperature')
+        top_p = _runtime_float_value(view, 'top_p')
+        max_tokens = _runtime_int_value(view, 'max_tokens')
+        max_tool_calls = _runtime_int_value(view, 'max_tool_calls')
+        max_model_calls = _runtime_int_value(view, 'max_model_calls')
+        max_recent_turns = _runtime_int_value(view, 'max_recent_turns')
+        reasoning_effort = _runtime_text_value(view, 'reasoning_effort')
+        main_model_view = candidate_runtime_section('main_model', fetcher=fetcher)
+        base_url = _runtime_text_value(main_model_view, 'base_url')
+        try:
+            api_key_secret = resolve_runtime_secret_from_view(main_model_view, 'api_key')
+            shared_transport_ok = _is_http_url(base_url) and bool(str(api_key_secret.value).strip())
+            shared_transport_detail = (
+                f'main_model.base_url={base_url or "missing"}; '
+                f'main_model.api_key available from {api_key_secret.source}'
+            )
+        except (secret_required_error_cls, secret_resolution_error_cls) as exc:
+            shared_transport_ok = False
+            shared_transport_detail = str(exc)
+        checks.extend(
+            (
+                _validation_check('mode', mode in _BIBLIO_AGENT_MODES, f'mode={mode or "missing"}'),
+                _validation_check('primary_model', bool(primary_model), f'primary_model={primary_model or "missing"}'),
+                _validation_check('timeout_s', timeout_s is not None and timeout_s > 0, f'timeout_s={timeout_s!r}'),
+                _validation_check(
+                    'temperature',
+                    temperature is not None and 0.0 <= temperature <= 2.0,
+                    f'temperature={temperature!r}',
+                ),
+                _validation_check(
+                    'top_p',
+                    top_p is not None and 0.0 < top_p <= 1.0,
+                    f'top_p={top_p!r}',
+                ),
+                _validation_check('max_tokens', max_tokens is not None and max_tokens > 0, f'max_tokens={max_tokens!r}'),
+                _validation_check(
+                    'max_tool_calls',
+                    max_tool_calls is not None and max_tool_calls > 0,
+                    f'max_tool_calls={max_tool_calls!r}',
+                ),
+                _validation_check(
+                    'max_model_calls',
+                    max_model_calls is not None and max_model_calls > 0,
+                    f'max_model_calls={max_model_calls!r}',
+                ),
+                _validation_check(
+                    'max_recent_turns',
+                    max_recent_turns is not None and max_recent_turns >= 0,
+                    f'max_recent_turns={max_recent_turns!r}',
+                ),
+                _validation_check(
+                    'reasoning_effort',
+                    reasoning_effort in _BIBLIO_AGENT_REASONING_EFFORTS,
+                    (
+                        f'reasoning_effort={reasoning_effort or "missing"}; '
+                        f'allowed={",".join(sorted(_BIBLIO_AGENT_REASONING_EFFORTS))}'
+                    ),
+                ),
                 _validation_check('shared_transport_runtime', shared_transport_ok, shared_transport_detail),
             )
         )

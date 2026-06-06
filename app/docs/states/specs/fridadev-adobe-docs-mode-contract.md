@@ -2,7 +2,7 @@
 
 Statut: spec vivante
 Date: 2026-05-23
-TODO source: `app/docs/todo-todo/product/Adobe to do.md`
+Roadmap archivee source: `app/docs/todo-done/product/Adobe to do.md`
 Portee: contrat UI, payload, backend, lecture HelpX, prompt, non-contamination et observabilite du mode Adobe Photoshop / Illustrator.
 
 ## 1. Verdict de plan
@@ -347,7 +347,7 @@ Perimetre automatise:
 Ce que ces tests prouvent:
 
 - le mini-pipeline sait selectionner le bon type de source et un passage pertinent quand une preuve synthetique existe;
-- les alias metier FR/EN bornes couvrent les demandes francaises probables d'Amandine face a des docs anglaises;
+- les alias metier FR/EN bornes couvrent des demandes francaises probables face a des docs anglaises;
 - le mode Adobe ne se confond pas avec une reponse par connaissance generale: les tests regardent les sources et l'evidence, pas seulement le texte final du modele.
 
 Ce que ces tests ne prouvent pas:
@@ -355,9 +355,9 @@ Ce que ces tests ne prouvent pas:
 - qualite finale de la reponse LLM sur un cas reel d'atelier;
 - exhaustivite HelpX;
 - exactitude des libelles de menu localises;
-- validation metier par Amandine.
+- validation metier reelle. La validation Amandine initialement prevue est sans objet depuis l'annulation produit du 2026-05-28.
 
-La validation Amandine reste necessaire avant cloture produit forte: au moins un cas Photoshop reel et un cas Illustrator reel doivent etre verifies avec sources visibles ou insuffisance clairement signalee.
+La validation Amandine n'est plus une condition active. Toute nouvelle cloture produit forte devra definir un nouveau validateur metier et des cas reels explicites.
 
 ## 12. Decisions utilisateur restantes avant code
 

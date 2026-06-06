@@ -77,6 +77,14 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
         self.assertEqual(bundle.payload['max_tokens']['value'], config.WEB_REFORMULATION_MAX_TOKENS)
         self.assertEqual(bundle.payload['timeout_s']['value'], config.WEB_REFORMULATION_TIMEOUT_S)
 
+    def test_build_env_seed_bundle_uses_dedicated_biblio_librarian_agent_values(self) -> None:
+        bundle = runtime_settings.build_env_seed_bundle('biblio_librarian_agent')
+        self.assertEqual(bundle.payload['mode']['value'], config.BIBLIO_LIBRARIAN_AGENT_MODE)
+        self.assertEqual(bundle.payload['primary_model']['value'], config.BIBLIO_LIBRARIAN_AGENT_MODEL)
+        self.assertEqual(bundle.payload['max_tokens']['value'], config.BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS)
+        self.assertEqual(bundle.payload['timeout_s']['value'], config.BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S)
+        self.assertEqual(bundle.payload['reasoning_effort']['value'], config.BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT)
+
     def test_build_env_seed_bundle_uses_dedicated_memory_arbiter_model_values(self) -> None:
         bundle = runtime_settings.build_env_seed_bundle('memory_arbiter_model')
         self.assertEqual(bundle.payload['model']['value'], config.MEMORY_ARBITER_MODEL)
@@ -164,6 +172,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
                 'web_reformulation_model',
                 'stimmung_agent_model',
                 'validation_agent_model',
+                'biblio_librarian_agent',
                 'embedding',
                 'database',
                 'resources',
@@ -184,6 +193,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
                 'web_reformulation_model',
                 'stimmung_agent_model',
                 'validation_agent_model',
+                'biblio_librarian_agent',
                 'database',
                 'resources',
                 'identity_governance',
@@ -203,13 +213,15 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
                 'web_reformulation_model',
                 'stimmung_agent_model',
                 'validation_agent_model',
+                'biblio_librarian_agent',
                 'database',
                 'resources',
                 'identity_governance',
             ),
         )
         self.assertEqual(plan[0].payload['model']['origin'], 'db_seed')
-        self.assertEqual(plan[8].payload['backend']['origin'], 'db_seed')
+        self.assertEqual(plan[8].payload['primary_model']['origin'], 'db_seed')
+        self.assertEqual(plan[9].payload['backend']['origin'], 'db_seed')
 
 
 if __name__ == '__main__':

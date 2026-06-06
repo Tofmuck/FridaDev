@@ -759,6 +759,103 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertIn('Aucun texte de document actif n est affiche', story_text)
         self.assertNotIn('RAW DOCUMENT TEXT MUST NOT LEAK', story_text)
 
+    def test_turn_story_tells_biblio_without_raw_passage(self) -> None:
+        fact = {
+            'conversation_id': 'conv-biblio',
+            'turn_id': 'turn-biblio',
+            'classification': 'complete',
+            'score': 96,
+            'source_event_count': 9,
+            'persistence': {'status': 'saved', 'assistant_final_saved': True},
+            'providers': {'main': {'present': True, 'status': 'ok'}, 'secondary': {}},
+            'rag': {'retrieved': 0, 'kept': 0, 'injected': 0},
+            'identity': {'block_present': False, 'status': 'missing'},
+            'hermeneutic': {'block_present': False, 'status': 'missing'},
+            'web': {'requested': False, 'success': False, 'injected': False, 'status': 'not_applicable'},
+            'documents': {},
+            'biblio': {
+                'source_kind': 'biblio_native_catalogue',
+                'event_present': True,
+                'enabled': True,
+                'used': True,
+                'status': 'ok',
+                'document_status': 'resolved',
+                'passage_status': 'extracted',
+                'passage_count': 1,
+                'lane_chars': 300,
+                'hashes': ['abcdef123456'],
+                'raw_content_included': False,
+                'message': {'content': 'RAW BIBLIO PASSAGE MUST NOT LEAK'},
+                'librarian_agent': {
+                    'present': True,
+                    'mode': 'shadow',
+                    'model_called': True,
+                    'candidate_plan_present': True,
+                    'deterministic_controller': True,
+                    'used_for_response': False,
+                    'tool_execution_status': 'not_executed',
+                    'message': 'RAW AGENT MESSAGE MUST NOT LEAK',
+                },
+            },
+            'node_state': {},
+            'errors': {'error_count': 0, 'skipped_count': 0, 'fallback_count': 0, 'reason_code_counts': {}},
+            'flags': {'events_truncated': False},
+            'content_availability': {'content_comprehension_status': 'compact_only'},
+        }
+
+        story = dashboard_read_model._turn_story(fact)
+        story_text = json.dumps(story, ensure_ascii=False, sort_keys=True)
+
+        self.assertIn('1 passage(s) Biblio observe(s)', story_text)
+        self.assertIn('comparaison agent bibliothecaire observee', story_text)
+        self.assertIn('Biblio: consultee oui, etat reussi, document resolu', story_text)
+        self.assertIn('Agent Biblio: present oui, mode shadow, modele appele oui', story_text)
+        self.assertNotIn('abcdef123456', story_text)
+        self.assertNotIn('RAW BIBLIO PASSAGE MUST NOT LEAK', story_text)
+        self.assertNotIn('RAW AGENT MESSAGE MUST NOT LEAK', story_text)
+
+    def test_turn_fact_row_reads_persisted_biblio_json(self) -> None:
+        row = (
+            'conv-biblio-row',
+            'turn-biblio-row',
+            datetime(2026, 5, 15, 10, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 15, 10, 1, tzinfo=timezone.utc),
+            'complete',
+            100,
+            9,
+            'evt-first',
+            'evt-latest',
+            {'status': 'saved'},
+            {'main': {'present': True}},
+            {'retrieved': 0},
+            {'status': 'missing'},
+            {'status': 'missing'},
+            {'requested': False},
+            {},
+            {
+                'source_kind': 'biblio_native_catalogue',
+                'used': True,
+                'passage_count': 1,
+                'hashes': ['abcdef123456'],
+            },
+            {},
+            {},
+            {'error_count': 0},
+            {'biblio': 1},
+            {'raw_event_payloads_included': False},
+            {'content_comprehension_status': 'compact_only'},
+            'dashboard_analytics_v1',
+            datetime(2026, 5, 15, 10, 2, tzinfo=timezone.utc),
+        )
+
+        fact = dashboard_read_model._turn_fact_row(row)
+        encoded = json.dumps(fact, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(fact['biblio']['used'])
+        self.assertEqual(fact['biblio']['passage_count'], 1)
+        self.assertEqual(fact['biblio']['hashes'], ['abcdef123456'])
+        self.assertNotIn('RAW BIBLIO PASSAGE MUST NOT LEAK', encoded)
+
     def test_turn_story_does_not_invent_parent_summary_window_when_only_count_exists(self) -> None:
         fact = {
             'conversation_id': 'conv-summary-count-only',

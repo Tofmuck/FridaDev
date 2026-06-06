@@ -26,13 +26,25 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Validation live Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-live-validation-2026-05-23.md`
 - Evaluation metier Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-business-evaluation-2026-05-23.md`
 - Cloture provisoire MVP Adobe Docs Mode 2026-05-23: `states/audits/fridadev-adobe-docs-mode-provisional-closure-2026-05-23.md`
+- Audit cible Catalogue humain editable et livraison Lot 0 2026-05-28: `states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
+- Contrat Biblio native / Frida Catalogue 2026-05-28: `states/specs/frida-biblio-native-catalogue-contract.md`
+- Contrat agent bibliothecaire Biblio 2026-05-31: `states/specs/frida-biblio-librarian-agent-contract.md`
+- Audit Biblio / Catalogue et architecture agent bibliothecaire 2026-05-31: `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
+- Baseline Lot 0 agent bibliothecaire Frida 2026-05-31: `states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
+- Verification OpenRouter / JSON du socle agent bibliothecaire 2026-06-01: `states/baselines/frida-biblio-librarian-agent-openrouter-json-2026-06-01.md`
+- TODO structurante Frida Biblio Last Chance 2026-06-03: `todo-todo/product/frida-biblio-last-chance.md`
+- TODO active agent bibliothecaire Frida 2026-05-31: `todo-todo/product/frida-biblio-librarian-agent-todo.md`
+- Validation finale Biblio native / Frida Catalogue 2026-05-29: `todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
+- Roadmap archivee Biblio vraie bibliotheque / recherche de passages 2026-05-30: `todo-done/product/frida-biblio-real-library-passage-search-todo.md`
+- Validation requalifiee Biblio vraie bibliotheque / recherche de passages 2026-05-30: `todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
+- Remediation archivee Biblio vraie bibliotheque / ecart produit et route TOC 2026-05-30: `todo-done/product/frida-biblio-real-library-product-gap-todo.md`
 - Decision produit OpenRouter/Exa comme provider de decouverte web ouverte 2026-05-22: `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 - Archive du renforcement web local V0 SearXNG/Crawl4AI: `todo-done/product/fridadev-local-web-search-hardening-todo.md`
 - Archive A-Z web discovery local-first + Exa: `todo-done/product/fridadev-local-web-search-rebuild-todo.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
-- TODO actif jobs divers produit: `todo-todo/product/job-divers-todo.md`
+- Archive jobs divers produit: `todo-done/product/job-divers-todo.md`
 - Archive polish UI chat: `todo-done/product/Polish to do.md`
-- TODO actif Adobe Photoshop / Illustrator: `todo-todo/product/Adobe to do.md`
+- Archive Adobe Photoshop / Illustrator: `todo-done/product/Adobe to do.md`
 - Contrat actif du mode Adobe Photoshop / Illustrator: `states/specs/fridadev-adobe-docs-mode-contract.md`
 - Contrat actif du reglage global reasoning du LLM principal: `states/specs/fridadev-main-llm-reasoning-contract.md`
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
@@ -42,7 +54,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Archive refonte des mutables identity judge-first: `todo-done/refactors/mutable-identity-judge-refactor-todo.md`
 - Contrat source-of-truth juge mutable: `states/specs/mutable-identity-judge-contract.md`
 - Validation finale refonte mutable judge-first 2026-05-25: `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`
-- Boussole produit finale des cinq derniers gros chantiers FridaDev: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Boussole produit finale nettoyee avant Biblio: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Index migration: `todo-todo/migration/README.md` (aucun chantier actif Amandine)
 - Archive annulation duplication Amandine 2026-05-28: `todo-done/migrations/amandine-duplication-annulee-2026-05-28.md`
 - Validation finale freeze sante Frida 2026-05-27: `todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md` (baseline Frida utile, sans duplication Amandine a executer)
@@ -105,7 +117,7 @@ But: relire le cleanup priorise livre et les decisions de sortie sans reouvrir u
 ### Runtime courant / chat
 
 Lire d'abord:
-- `todo-todo/product/job-divers-todo.md` pour les jobs produit courts actifs: historique livre du reglage borne du reasoning GPT-5.1, interdiction stricte d'afficher/persister `reasoning_details`, correction du streaming visuel, dictee Whisper longue sous surveillance et petits ajustements UI bornes.
+- `todo-done/product/job-divers-todo.md` pour l'archive des jobs produit courts livres: reasoning GPT-5.1, interdiction stricte d'afficher/persister `reasoning_details`, streaming visuel, dictee Whisper longue sous surveillance et petits ajustements UI bornes.
 - `states/specs/fridadev-main-llm-reasoning-contract.md` pour le comportement livre du reglage global `main_model.reasoning_effort`, le payload OpenRouter `reasoning.exclude=true`, l'observabilite content-free et l'interdiction d'exposer le raisonnement interne.
 - `todo-done/refactors/fridadev-main-model-gpt51-switch-todo.md` pour l'archive de bascule runtime vers `openai/gpt-5.1`.
 - `todo-done/refactors/fridadev-main-model-gpt51-switch-plan.md` pour relire le plan de bascule du modele principal vers `openai/gpt-5.1`, cout, compatibilite images actives, smoke live et rollback.
@@ -131,7 +143,7 @@ Archives utiles:
 
 Lire d'abord:
 - `states/specs/fridadev-adobe-docs-mode-contract.md` pour le contrat normatif du mode Adobe Photoshop / Illustrator: payload explicite, separation du web search general, lecture HelpX `raw`, cache restrictif, lane prompt dediee et observabilite content-free.
-- `todo-todo/product/Adobe to do.md` pour le mini-pipeline Adobe Photoshop / Illustrator dedie a Amandine: pas de mode Auto, pas d'index durable, lecture HelpX a la demande via Crawl4AI `raw`, registre d'URLs officielles et non-contamination.
+- `todo-done/product/Adobe to do.md` pour l'archive du mini-pipeline Adobe Photoshop / Illustrator: pas de mode Auto, pas d'index durable, lecture HelpX a la demande via Crawl4AI `raw`, registre d'URLs officielles et non-contamination; les validations Amandine sont sans objet depuis l'annulation produit.
 - `states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md` pour la decision active: FridaDev reste local-first pour lire/qualifier/auditer, mais la recherche ouverte peut utiliser OpenRouter/Exa comme provider de decouverte URL configure.
 - `todo-done/product/fridadev-local-web-search-rebuild-todo.md` pour relire l'archive A-Z web discovery local-first + Exa: historique SearXNG local, decision Exa discovery, Phase 9 de validation/deploiement et rollback.
 - `todo-done/product/fridadev-local-web-search-hardening-todo.md` pour l'archive du contrat V0, les lots d'implementation et le bras benchmark `local_profiled`; ce document ne porte plus la doctrine active.
@@ -166,17 +178,27 @@ Lire d'abord:
 
 But: relire le chantier livre permettant a l'utilisateur de fournir des documents textuels, ou certains PDF scannes apres OCR V1 bornee, a une conversation active, sans RAG documentaire, sans contamination Memory/RAG/Identity/Summary, et sans promesse d'ouverture du texte complet du document dans le dashboard.
 
-Frontiere importante: ce chantier concerne les `active_document` temporaires, pas la future Biblio persistante.
+Frontiere importante: ce chantier concerne les `active_document` temporaires, pas la Biblio persistante.
 
 Extension livree: l'OCR bornee des PDF scannes est archivee dans `todo-done/product/active-conversation-documents-ocr-todo.md`; elle prolonge `active_document` via Stirling seulement apres `document_ocr_required`, avec limites `25 pages`, `25 Mo`, `180` secondes, `fra+eng+deu`, sans ouvrir Biblio, n8n ni doc-pipeline nominal.
 
 ### Biblio native / Frida Catalogue
 
 Lire d'abord:
-- `todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
-- `todo-todo/product/frida-biblio-native-catalogue-todo.md`
+- `todo-todo/product/frida-biblio-last-chance.md` pour le recadrage actif du chantier Biblio depuis les questions canoniques d'une bibliotheque: structure documentaire minimale, API/outils, extraction mecanique, renderer produit, place du bibliothecaire LLM, migration et nettoyage strict du module `app/biblio/`.
+- `states/specs/frida-biblio-native-catalogue-contract.md` pour le contrat source-of-truth: Biblio persistante separee, client FridaDev read-only / GET-only, toggle frontend, lane prompt dediee, observabilite content-free, frontieres avec `active_document`, workspace, Memory/RAG, Identity, Summary, Web, Hermeneutic et AnythingLLM.
+- `states/specs/frida-biblio-librarian-agent-contract.md` pour le contrat source-of-truth du futur agent bibliothecaire: entrees/sorties versionnees, modele runtime-configurable, feature flag/rollback, OpenRouter/JSON gate, outils GET-only, fallback deterministe et observabilite content-free.
+- `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md` pour l'audit courant Biblio/Catalogue et la proposition d'agent bibliothecaire borne: cartographie plateforme, repros live, findings P0/P1/P2/P3, routes lourdes/manquantes, et plan de migration depuis les modules existants.
+- `states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md` pour la baseline Lot 0 validee: smoke strict, matrice produit P01-P11 content-free, matrice Catalogue/API/plateforme, counts DB, routes lourdes/interdites et GO Lot 1.
+- `todo-todo/product/frida-biblio-librarian-agent-todo.md` pour la roadmap active de l'agent bibliothecaire Frida: etat conversationnel Biblio explicite, modele agent runtime-configurable, outils Catalogue GET-only, boucle agentique, OpenRouter/JSON, observabilite content-free et smokes produit.
+- `states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md` pour le constat cible et la livraison Lot 0: surface Catalogue hors FridaDev, tables metadata humaines, audit minimal, routes GET/PUT metadata, UI d'edition, routes DELETE existantes separees.
+- `todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
+- `todo-done/product/frida-biblio-native-catalogue-todo.md`
+- `todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
+- `todo-done/product/frida-biblio-real-library-passage-search-todo.md` et `todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md` pour l'archive technique requalifiee du chantier P1: recherche conceptuelle de passages, ranking de candidats, extraction bornee via `/context`, variantes sans accents et smokes live.
+- `todo-done/product/frida-biblio-real-library-product-gap-todo.md` pour la remediation archivee de l'ecart produit et sa livraison route TOC: liste catalogue complete jusqu'a 100, ouverture de documents, table des matieres via `GET /doc/{id}/chapters` et garde content-free.
 
-But: cadrer le chantier separe permettant a Frida de consulter une bibliotheque persistante native, identifier un `library_document` / `catalogue_document`, resoudre un locator et extraire un `passage documentaire` sans confondre cette capacite avec les documents actifs de conversation.
+But: relire le chantier livre permettant a Frida de consulter explicitement une bibliotheque persistante native, puis la remediation produit qui a ajoute la liste catalogue complete et la table des matieres legere, sans confondre cette capacite avec les documents actifs de conversation.
 
 ### Identity / doctrine
 
@@ -238,7 +260,7 @@ Doctrine livree:
 
 Lire d'abord:
 - `states/operations/frida-installation-operations.md`
-- `todo-todo/product/Frida-installation-config.md`
+- `todo-done/product/Frida-installation-config.md`
 - `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
 
 Rappel: les secrets, `.env`, DSN complets et tokens runtime ne doivent pas etre affiches dans les docs, commits ou reponses.
@@ -279,10 +301,10 @@ Surfaces a distinguer:
 - `todo-done/product/`: roadmaps produit cloturees
 
 - `todo-todo/memory/`: roadmaps memoire/hermeneutique ouvertes
-- `todo-todo/product/`: roadmaps produit/installation ouvertes
+- `todo-todo/product/`: roadmaps produit ouvertes
 - `todo-todo/admin/`: roadmaps admin ouvertes
 - `todo-todo/audits/`: plans actifs de remediation issus d'audits
-- `todo-todo/migration/`: chantiers ouverts de migration, duplication, purge et bascule d'instance
+- `todo-todo/migration/`: index et chantiers eventuels de migration, duplication, purge et bascule d'instance
 - `todo-todo/refactors/`: roadmaps de refactor structurel ouvertes
 
 ## Autres references utiles
@@ -291,7 +313,7 @@ Surfaces a distinguer:
 - Decision projet reranker memoire/RAG 2026-04-11: `states/project/memory-rag-reranker-decision-2026-04-11.md`
 - Design du candidate generation memoire/RAG: `states/architecture/memory-rag-candidate-generation-design.md`
 - Validation de cloture Phase 10E Memory Admin: `todo-done/validations/memory-admin-phase10e-validation-2026-04-12.md`
-- Note de travail ouverte externalisation reglee des facultes: `todo-todo/product/fridadev-externalisation-reglee-des-facultes-todo.md`
+- Note archivee externalisation reglee des facultes: `todo-done/product/fridadev-externalisation-reglee-des-facultes-todo.md`
 - Note archivee Whisper V1: `todo-done/notes/integration-whisper-v1-closure.md`
 - Roadmap archivee surface `/identity` canonique: `todo-done/refactors/identity-surface-canonical-layout-todo.md`
 - Roadmap archivee separation doctrinale `identity` / `prompt`: `todo-done/refactors/identity-vs-prompt-separation-todo.md`

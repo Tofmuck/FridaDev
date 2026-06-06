@@ -21,6 +21,8 @@ from core.hermeneutic_node.runtime import primary_node
 from core.hermeneutic_node.validation import validation_agent
 from core.hermeneutic_node.inputs import stimmung_input as canonical_stimmung_input
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
+from biblio import chat_runtime as biblio_chat_runtime
+from biblio import observability as biblio_observability
 from observability import active_documents_observability
 from observability import chat_turn_logger
 from observability import hermeneutic_node_logger
@@ -436,6 +438,70 @@ def _emit_adobe_prompt_lane_observability(lane: Any) -> None:
     )
 
 
+def _emit_biblio_observability(result: Any) -> None:
+    payload = getattr(result, 'observability_payload', None)
+    if not isinstance(payload, Mapping):
+        return
+    clean_payload = dict(payload)
+    chat_turn_logger.set_state('biblio', clean_payload)
+    biblio_observability.emit_biblio_event(
+        clean_payload,
+        chat_turn_logger_module=chat_turn_logger,
+    )
+
+
+def _biblio_assistant_response_override(result: Any) -> chat_llm_flow.AssistantResponseOverride | None:
+    lock_reader = getattr(biblio_chat_runtime, 'final_response_lock_for_result', None)
+    lock = lock_reader(result) if callable(lock_reader) else getattr(result, 'final_response_lock', None)
+    if lock is None or not bool(getattr(lock, 'ok', False)):
+        return None
+    content = str(getattr(lock, 'content', '') or '')
+    if not content:
+        return None
+    meta_builder = getattr(lock, 'to_message_meta', None)
+    observability_builder = getattr(lock, 'to_observability', None)
+    return chat_llm_flow.AssistantResponseOverride(
+        content=content,
+        source=str(getattr(lock, 'source', '') or ''),
+        reason_code=str(getattr(lock, 'reason_code', '') or ''),
+        meta=meta_builder() if callable(meta_builder) else None,
+        observability=observability_builder() if callable(observability_builder) else {},
+    )
+
+
+def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> tuple[dict[str, Any], ...]:
+    messages = conversation.get('messages')
+    if not isinstance(messages, list):
+        return ()
+    selected: list[dict[str, Any]] = []
+    for raw_message in messages[-12:]:
+        if not isinstance(raw_message, Mapping):
+            continue
+        role = str(raw_message.get('role') or '').strip()
+        if role not in {'user', 'assistant'}:
+            continue
+        content = str(raw_message.get('content') or '')
+        if role == 'user' and content == user_msg and raw_message is messages[-1]:
+            continue
+        turn: dict[str, Any] = {'role': role, 'content': content}
+        meta = raw_message.get('meta')
+        if isinstance(meta, Mapping) and str(meta.get('source') or '') == 'biblio_rendered_answer':
+            turn['meta'] = {
+                key: meta.get(key)
+                for key in (
+                    'source',
+                    'biblio_exact_text_rendered',
+                    'biblio_exact_text_chars',
+                    'biblio_exact_text_hash',
+                    'biblio_render_mode',
+                    'biblio_answer_status',
+                )
+                if key in meta
+            }
+        selected.append(turn)
+    return tuple(selected[-8:])
+
+
 def _run_hermeneutic_node_insertion_point(
     *,
     conversation: Mapping[str, Any],
@@ -721,6 +787,19 @@ def chat_response(
             admin_logs_module=admin_logs_module,
         )
 
+    biblio_state = biblio_chat_runtime.read_biblio_conversation_state(conversation)
+    biblio_result = biblio_chat_runtime.run_biblio_chat_turn(
+        data,
+        user_msg=user_msg,
+        conversation_id=conversation.get('id'),
+        conversation_state=biblio_state,
+        recent_dialogue=_biblio_recent_dialogue(conversation, user_msg),
+        now_iso=now_iso_value,
+        config_module=config_module,
+    )
+    biblio_chat_runtime.attach_biblio_conversation_state(conversation, biblio_result)
+    _emit_biblio_observability(biblio_result)
+
     hermeneutic_node_runtime = _run_hermeneutic_node_insertion_point(
         conversation=conversation,
         user_msg=user_msg,
@@ -851,6 +930,11 @@ def chat_response(
         active_document_lane,
         chat_turn_logger_module=chat_turn_logger,
     )
+    biblio_chat_runtime.inject_biblio_prompt_lane(
+        prompt_messages,
+        biblio_result,
+    )
+    biblio_final_response_override = _biblio_assistant_response_override(biblio_result)
     adobe_lane = adobe_docs_prompt_lane.inject_adobe_prompt_lane(
         prompt_messages,
         adobe_context,
@@ -884,4 +968,5 @@ def chat_response(
         mode_enforces_identity=chat_memory_flow.mode_enforces_identity,
         conversation_headers_func=chat_session_flow.conversation_headers,
         conversation_stream_headers_func=chat_session_flow.conversation_stream_headers,
+        assistant_response_override=biblio_final_response_override,
     )

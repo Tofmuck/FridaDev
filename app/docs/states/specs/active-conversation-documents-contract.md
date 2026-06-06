@@ -5,7 +5,7 @@ Date: 2026-05-17
 Roadmap archivee: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 Roadmap OCR archivee: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 Audit-plan source archive: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
-Chantier distinct: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
+Chantier distinct archive: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Portee: contrat produit, prompt, frontieres et observabilite des documents actifs de conversation
 Extension OCR V1: OCR bornee des PDF scannes via Stirling, seulement apres `document_ocr_required`, puis repassage par l'extracteur FridaDev.
 Limites conservees: Biblio native, RAG documentaire, stockage documentaire persistant, ouverture automatique du texte complet dans le dashboard
@@ -22,7 +22,7 @@ Non pour le Lot 1. Le bon plan est de graver une spec fondatrice avant tout code
 - web;
 - identite;
 - hermeneutique;
-- future Biblio native.
+- Biblio native.
 
 Cette spec ne livre aucune implementation. Elle fixe les mots, les frontieres, les lanes prompt et les preuves attendues.
 
@@ -69,9 +69,9 @@ Un `active_document` n'est pas:
 - signal non injecte: preuve structuree qu'un document actif existe mais n'a pas ete injecte.
 - document actif non injecte: etat visible cote modele et observabilite quand le fichier est actif mais absent du payload modele du tour.
 
-### 3.2 Future Biblio native
+### 3.2 Biblio native
 
-Ces termes sont reserves pour le chantier separe Biblio native / Frida Catalogue:
+Ces termes sont reserves pour la capacite separee Biblio native / Frida Catalogue:
 
 - `library_document`: document persistant connu d'une bibliotheque native.
 - `catalogue_document`: document persistant resolu via Frida Catalogue / doc-pipeline.
@@ -186,7 +186,7 @@ Lot 3 branche ce client dans `app/core/active_document_upload_service.py`:
 - si l'OCR echoue, expire, retourne vide, depasse les limites ou produit un PDF non extractible en `complete`, l'upload est refuse avec reason compact;
 - les reponses ordinaires d'upload restent content-free et ne contiennent ni texte OCR brut, ni PDF OCRise.
 
-Au-dela de `25 pages` ou `25 Mo`, le document doit etre refuse pour ce chantier avec un motif clair. A cette echelle, le besoin releve du futur chantier Biblio / Catalogue, pas du document actif ponctuel.
+Au-dela de `25 pages` ou `25 Mo`, le document doit etre refuse pour ce chantier avec un motif clair. A cette echelle, le besoin releve de Biblio / Catalogue, pas du document actif ponctuel.
 
 Frontieres OCR:
 
@@ -485,12 +485,12 @@ Les documents actifs ne sont pas des resultats web. Le prompt et l'observabilite
 
 Les documents actifs ne sont pas un jugement hermeneutique. Le jugement hermeneutique peut coexister dans le prompt, mais il ne decrit pas la provenance documentaire.
 
-### 6.6 Future Biblio native
+### 6.6 Biblio native
 
-La future Biblio native est separee:
+La Biblio native est separee:
 
 - lane documents actifs: fichiers fournis par l'utilisateur, actifs jusqu'au retrait manuel;
-- future lane Biblio / Catalogue: passages recuperes a la demande depuis une bibliotheque persistante.
+- lane Biblio / Catalogue: passages recuperes a la demande depuis une bibliotheque persistante.
 
 Le chantier documents actifs ne cree pas:
 
@@ -639,7 +639,7 @@ Implementation courante:
 - la materialisation dashboard persistante expose `dashboard_turn_facts.documents_json`;
 - le module observable dashboard `documents` est reel pour les documents actifs de conversation;
 - les metadonnees OCR compactes sont propagees dans les events de tour et les logs admin quand elles existent;
-- cette observabilite ne couvre pas la future Biblio native.
+- cette observabilite ne couvre pas la Biblio native.
 
 Par defaut, logs, read-models et dashboard peuvent exposer:
 
@@ -851,7 +851,7 @@ Cette spec devra etre revisee si:
 
 - un format supporte change;
 - une decision produit autorise le texte complet des documents dans un gate dedie;
-- le chantier Biblio native commence a definir sa lane prompt;
+- le contrat de lane Biblio native change;
 - l'etat actif serveur change de retention;
 - l'architecture OCR V1, ses limites ou son moteur changent.
 

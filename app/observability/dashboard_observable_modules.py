@@ -23,6 +23,8 @@ _STATE_LABELS_FR = {
     'skipped': 'Ignore',
     'not_applicable': 'Non concerne',
 }
+_TRUE_TOKENS = {'1', 'true', 'yes', 'y', 'on'}
+_FALSE_TOKENS = {'0', 'false', 'no', 'n', 'off'}
 
 BucketMetricsReducer = Callable[[dict[str, Any], Mapping[str, Any]], None]
 BucketMetricsFinalizer = Callable[[dict[str, Any]], None]
@@ -42,6 +44,20 @@ def _to_float(value: Any) -> float:
         return float(value or 0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _to_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value == 1
+    if isinstance(value, str):
+        token = value.strip().lower()
+        if token in _TRUE_TOKENS:
+            return True
+        if token in _FALSE_TOKENS:
+            return False
+    return False
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -179,6 +195,80 @@ def _reduce_documents_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) 
         _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
 
 
+def _reduce_biblio_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    biblio = _mapping(fact.get('biblio'))
+    librarian_agent = _mapping(biblio.get('librarian_agent'))
+    _add_metric_label(metrics, 'status_counts', biblio.get('status'))
+    _add_metric_count(metrics, 'enabled_turns', 1 if biblio.get('enabled') else 0)
+    _add_metric_count(metrics, 'used_turns', 1 if biblio.get('used') else 0)
+    _add_metric_count(metrics, 'passages_total', _to_int(biblio.get('passage_count')))
+    _add_metric_count(metrics, 'skipped_total', _to_int(biblio.get('skipped_count')))
+    _add_metric_count(metrics, 'lane_chars_total', _to_int(biblio.get('lane_chars')))
+    _add_metric_count(metrics, 'search_candidates_total', _to_int(biblio.get('search_candidate_count')))
+    _add_metric_count(metrics, 'context_fetch_total', _to_int(biblio.get('context_fetch_count')))
+    _add_metric_count(metrics, 'selected_passages_total', _to_int(biblio.get('selected_passage_count')))
+    _add_metric_count(metrics, 'ambiguous_turns', 1 if biblio.get('ambiguous') else 0)
+    _add_metric_count(metrics, 'ranking_available_turns', 1 if biblio.get('ranking_available') else 0)
+    document_status = biblio.get('document_status')
+    if document_status:
+        _add_metric_label(metrics, 'document_status_counts', document_status)
+    passage_status = biblio.get('passage_status')
+    if passage_status:
+        _add_metric_label(metrics, 'passage_status_counts', passage_status)
+    for endpoint_kind in biblio.get('endpoint_kinds') or []:
+        _add_metric_label(metrics, 'endpoint_kind_counts', endpoint_kind)
+    for reason in biblio.get('selection_reason_codes') or []:
+        _add_metric_label(metrics, 'selection_reason_counts', reason)
+    reason_counts = _mapping(biblio.get('reason_code_counts'))
+    for reason, count in reason_counts.items():
+        _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
+    agent_present = _to_bool(librarian_agent.get('present'))
+    if agent_present:
+        _add_metric_count(metrics, 'librarian_agent_present_turns', 1)
+        _add_metric_count(metrics, 'librarian_agent_model_called_turns', 1 if _to_bool(librarian_agent.get('model_called')) else 0)
+        _add_metric_count(
+            metrics,
+            'librarian_agent_candidate_plan_turns',
+            1 if _to_bool(librarian_agent.get('candidate_plan_present')) else 0,
+        )
+        _add_metric_count(
+            metrics,
+            'librarian_agent_deterministic_controlled_turns',
+            1 if _to_bool(librarian_agent.get('deterministic_controller')) else 0,
+        )
+        _add_metric_count(
+            metrics,
+            'librarian_agent_used_for_response_turns',
+            1 if _to_bool(librarian_agent.get('used_for_response')) else 0,
+        )
+        _add_metric_count(
+            metrics,
+            'librarian_agent_product_response_changed_turns',
+            1 if _to_bool(librarian_agent.get('product_response_changed')) else 0,
+        )
+        _add_metric_count(metrics, 'librarian_agent_attempts_total', _to_int(librarian_agent.get('attempt_count')))
+        _add_metric_count(metrics, 'librarian_agent_duration_ms_total', _to_int(librarian_agent.get('duration_ms')))
+        _add_metric_count(metrics, 'librarian_agent_response_chars_total', _to_int(librarian_agent.get('response_chars')))
+        _add_metric_count(
+            metrics,
+            'librarian_agent_tool_call_events_total',
+            _to_int(librarian_agent.get('tool_call_event_count')),
+        )
+        _add_metric_count(
+            metrics,
+            'librarian_agent_validation_tool_calls_total',
+            _to_int(librarian_agent.get('validation_tool_call_count')),
+        )
+        _add_metric_label(metrics, 'librarian_agent_mode_counts', librarian_agent.get('mode'))
+        _add_metric_label(metrics, 'librarian_agent_status_counts', librarian_agent.get('status'))
+        _add_metric_label(metrics, 'librarian_agent_reason_counts', librarian_agent.get('reason_code'))
+        _add_metric_label(metrics, 'librarian_agent_model_status_counts', librarian_agent.get('model_status'))
+        _add_metric_label(metrics, 'librarian_agent_validation_status_counts', librarian_agent.get('validation_status'))
+        _add_metric_label(metrics, 'librarian_agent_tool_execution_status_counts', librarian_agent.get('tool_execution_status'))
+        for tool_name in librarian_agent.get('validation_tool_names') or []:
+            _add_metric_label(metrics, 'librarian_agent_tool_name_counts', tool_name)
+
+
 def _reduce_provider_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
     providers = _mapping(fact.get('providers'))
     main = _mapping(providers.get('main'))
@@ -309,6 +399,50 @@ def _summarize_documents_turn(fact: Mapping[str, Any]) -> str:
     return f'{active_count} document(s) actif(s) etaient visibles sur ce tour.{ocr_sentence}'
 
 
+def _summarize_biblio_turn(fact: Mapping[str, Any]) -> str:
+    biblio = _mapping(fact.get('biblio'))
+    if not biblio.get('event_present'):
+        return 'Aucune consultation Biblio n est observee sur ce tour.'
+    if not biblio.get('used'):
+        return 'La Biblio etait visible en observabilite mais aucun passage n a ete consulte.'
+    status = str(biblio.get('status') or '').strip().lower()
+    reason_counts = _mapping(biblio.get('reason_code_counts'))
+    preferred_ambiguity_reason = next(
+        (
+            reason
+            for reason in (
+                'biblio_context_candidates_ambiguous',
+                'selection_gap_too_small',
+                'selection_evidence_insufficient',
+            )
+            if _to_int(reason_counts.get(reason)) > 0
+        ),
+        None,
+    )
+    reason = str(
+        preferred_ambiguity_reason
+        or biblio.get('passage_reason_code')
+        or biblio.get('document_reason_code')
+        or biblio.get('confidence_reason_code')
+        or ''
+    ).strip()
+    if status == 'ambiguous':
+        passage_count = _to_int(biblio.get('passage_count'))
+        context_count = _to_int(biblio.get('context_fetch_count'))
+        selected_count = _to_int(biblio.get('selected_passage_count'))
+        return (
+            'La Biblio a ete consultee mais la resolution est ambigue; '
+            f'{passage_count} passage(s) candidat(s), {context_count} contexte(s) consulte(s), '
+            f'{selected_count} selection certaine; raison compacte: {reason or "unknown"}.'
+        )
+    if status in {'error', 'not_found'}:
+        return f'La Biblio a ete consultee sans passage injectable; raison compacte: {reason or status}.'
+    passage_count = _to_int(biblio.get('passage_count'))
+    if passage_count > 0:
+        return f'La Biblio a ete consultee; {passage_count} passage(s) de bibliotheque sont observes en lane compacte.'
+    return 'La Biblio a ete consultee, sans passage injecte dans les signaux compacts.'
+
+
 def _summarize_providers_turn(fact: Mapping[str, Any]) -> str:
     main = _mapping(_mapping(fact.get('providers')).get('main'))
     if main.get('present'):
@@ -357,6 +491,26 @@ def _resolve_documents_reason(fact: Mapping[str, Any]) -> str | None:
         'active_documents_reader_unavailable',
         'document_too_large_for_turn',
         'document_empty_text',
+    ):
+        if _to_int(reason_counts.get(reason)) > 0:
+            return reason
+    return next(iter(reason_counts.keys()), None)
+
+
+def _resolve_biblio_reason(fact: Mapping[str, Any]) -> str | None:
+    reason_counts = _mapping(_mapping(fact.get('biblio')).get('reason_code_counts'))
+    for reason in (
+        'biblio_context_candidates_ambiguous',
+        'selection_gap_too_small',
+        'selection_evidence_insufficient',
+        'ambiguous_document',
+        'ambiguous_locator',
+        'document_not_found',
+        'locator_not_found',
+        'catalogue_unavailable',
+        'passage_too_long',
+        'biblio_prompt_max_total_chars_reached',
+        'biblio_prompt_max_passages_reached',
     ):
         if _to_int(reason_counts.get(reason)) > 0:
             return reason
@@ -620,6 +774,85 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         bucket_metrics_reducer=_reduce_documents_metrics,
         turn_summary_renderer=_summarize_documents_turn,
         turn_degradation_reason_resolver=_resolve_documents_reason,
+    ),
+    _module(
+        module_key='biblio',
+        label_fr='Biblio native',
+        description_fr='Observe les consultations Catalogue Biblio, resolutions et lanes sans contenu de passage.',
+        global_metrics=_fields(
+            ('enabled_turns', 'Tours avec Biblio activee'),
+            ('used_turns', 'Tours avec consultation Biblio'),
+            ('passages_total', 'Passages Biblio observes'),
+            ('skipped_total', 'Passages ignores'),
+            ('lane_chars_total', 'Taille totale des lanes Biblio'),
+            ('search_candidates_total', 'Candidats de recherche observes'),
+            ('context_fetch_total', 'Contextes Catalogue consultes'),
+            ('selected_passages_total', 'Passages selectionnes avec certitude'),
+            ('ambiguous_turns', 'Tours Biblio ambigus'),
+            ('librarian_agent_present_turns', 'Tours avec comparaison agent bibliothecaire observee'),
+            ('librarian_agent_model_called_turns', 'Tours avec appel modele agent bibliothecaire'),
+            ('librarian_agent_candidate_plan_turns', 'Tours avec plan candidat agent observe'),
+            ('librarian_agent_deterministic_controlled_turns', 'Tours ou le deterministe reste controleur'),
+            ('librarian_agent_used_for_response_turns', 'Tours ou l agent controle la reponse produit'),
+            ('librarian_agent_product_response_changed_turns', 'Tours ou l agent modifie la reponse produit'),
+            ('librarian_agent_attempts_total', 'Tentatives modele agent bibliothecaire'),
+            ('librarian_agent_duration_ms_total', 'Duree totale modele agent bibliothecaire'),
+            ('librarian_agent_response_chars_total', 'Taille totale des sorties modele agent'),
+            ('librarian_agent_tool_call_events_total', 'Evenements outil agentique executes'),
+            ('librarian_agent_validation_tool_calls_total', 'Appels outil proposes par le JSON valide'),
+            ('librarian_agent_mode_counts', 'Modes agent bibliothecaire observes'),
+            ('librarian_agent_status_counts', 'Etats agent bibliothecaire observes'),
+            ('librarian_agent_reason_counts', 'Raisons agent bibliothecaire observees'),
+            ('librarian_agent_model_status_counts', 'Etats modele agent observes'),
+            ('librarian_agent_validation_status_counts', 'Etats validation JSON agent observes'),
+            ('librarian_agent_tool_execution_status_counts', 'Etats execution outils agentiques'),
+            ('librarian_agent_tool_name_counts', 'Noms outils agentiques allowlistes proposes'),
+        ),
+        conversation_summary=_fields(
+            ('biblio_used_turns', 'Tours avec Biblio consultee'),
+            ('biblio_passages_total', 'Passages Biblio observes'),
+            ('modules_involved.biblio', 'Biblio impliquee'),
+        ),
+        turn_summary=_fields(
+            ('used', 'Biblio consultee'),
+            ('status', 'Etat Biblio'),
+            ('document_status', 'Resolution document'),
+            ('passage_count', 'Passages observes'),
+            ('search_candidate_count', 'Candidats de recherche'),
+            ('context_fetch_count', 'Contextes consultes'),
+            ('selected_passage_count', 'Passages selectionnes'),
+            ('ambiguous', 'Ambiguite conservee'),
+            ('reason_code_counts', 'Raisons compactes'),
+        ),
+        human_detail=_fields(
+            ('biblio_flow', 'Explique document resolu, ambiguite, passage extrait ou skip sans afficher le passage.'),
+        ),
+        sources=('biblio events', 'dashboard_turn_facts.biblio', 'biblio observability projection'),
+        limits=(
+            'N active pas l agent bibliothecaire comme controleur de reponse produit.',
+            'N execute pas les outils agentiques proposes par le comparateur.',
+            'Le toggle frontend Biblio et le branchement chat deterministe existent deja mais sont hors perimetre de cette observabilite.',
+            'Ne contient jamais le passage, le payload Catalogue, le prompt complet, le locator brut, titre ou auteur.',
+            'Les recherches de passages exposent seulement counts, endpoint kinds, ids courts, hashes courts et raisons compactes.',
+            'Reste separe des documents actifs, Memory/RAG, workspace, Identity, Summary, Web et OCR.',
+        ),
+        degradation_reasons=(
+            ('biblio_context_candidates_ambiguous', 'Plusieurs contextes Catalogue restent plausibles.'),
+            ('biblio_selection_gap_too_small', 'Le meilleur passage candidat ne domine pas assez les suivants.'),
+            ('biblio_selection_evidence_insufficient', 'Les signaux de ranking ne suffisent pas a selectionner un passage.'),
+            ('ambiguous_document', 'Plusieurs documents Catalogue restent plausibles.'),
+            ('ambiguous_locator', 'Plusieurs locators restent plausibles.'),
+            ('document_not_found', 'Aucun document Catalogue compatible n a ete trouve.'),
+            ('locator_not_found', 'Aucun locator compatible n a ete trouve.'),
+            ('catalogue_unavailable', 'Catalogue etait indisponible ou en erreur.'),
+            ('passage_too_long', 'Le passage extrait depassait la borne autorisee.'),
+            ('biblio_prompt_max_total_chars_reached', 'La lane Biblio aurait depasse sa taille maximale.'),
+            ('biblio_prompt_max_passages_reached', 'La lane Biblio avait atteint son nombre maximal de passages.'),
+        ),
+        gated_content=('Passage Biblio brut', 'Payload Catalogue brut', 'Prompt Biblio complet'),
+        bucket_metrics_reducer=_reduce_biblio_metrics,
+        turn_summary_renderer=_summarize_biblio_turn,
+        turn_degradation_reason_resolver=_resolve_biblio_reason,
     ),
     _module(
         module_key='providers',

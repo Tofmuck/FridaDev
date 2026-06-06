@@ -131,6 +131,48 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
                 'future_biblio_included': False,
                 'raw_content_included': False,
             },
+            'biblio': {
+                'source_kind': 'biblio_native_catalogue',
+                'event_present': True,
+                'enabled': True,
+                'used': True,
+                'status': 'ok',
+                'query_kind': 'document_locator',
+                'document_status': 'resolved',
+                'document_reason_code': 'document_and_locator_resolved',
+                'document_candidate_count': 1,
+                'document_candidate_ids': ['doc-1234'],
+                'doc_id_shorts': ['doc-1234'],
+                'locator_kind': 'stephanus',
+                'locator_candidate_count': 1,
+                'requested_locator_kind': 'stephanus',
+                'passage_status': 'extracted',
+                'passage_reason_code': 'passage_extracted',
+                'passage_chars': 42,
+                'passage_hash': 'abcdef123456',
+                'passage_count': 1,
+                'skipped_count': 0,
+                'lane_present': True,
+                'lane_chars': 300,
+                'hashes': ['abcdef123456'],
+                'positions': [{'page_no': 12, 'para_no': 3, 'paragraph_id': 99}],
+                'search_candidate_count': 3,
+                'context_fetch_count': 2,
+                'selected_passage_count': 1,
+                'passage_result_count': 1,
+                'ambiguous': False,
+                'endpoint_count': 3,
+                'endpoint_kinds': ['search', 'context'],
+                'ranking_available': True,
+                'selection_reason_codes': ['dominant_context'],
+                'confidence_available': False,
+                'confidence_reason_code': 'biblio_confidence_not_implemented',
+                'reason_code_counts': {
+                    'document_and_locator_resolved': 1,
+                    'passage_extracted': 1,
+                },
+                'raw_content_included': False,
+            },
             'node_state': {
                 'read_present': True,
                 'read_valid': True,
@@ -162,6 +204,7 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
                 'memory',
                 'web',
                 'documents',
+                'biblio',
                 'providers',
                 'identity',
                 'hermeneutic',
@@ -272,6 +315,16 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
         self.assertEqual(by_key['documents']['metrics']['ocr_applied_documents_total'], 1)
         self.assertEqual(by_key['documents']['metrics']['ocr_duration_ms_total'], 1200)
         self.assertEqual(by_key['documents']['metrics']['ocr_engine_counts']['stirling-pdf'], 1)
+        self.assertEqual(by_key['biblio']['metrics']['used_turns'], 1)
+        self.assertEqual(by_key['biblio']['metrics']['passages_total'], 1)
+        self.assertEqual(by_key['biblio']['metrics']['lane_chars_total'], 300)
+        self.assertEqual(by_key['biblio']['metrics']['document_status_counts']['resolved'], 1)
+        self.assertEqual(by_key['biblio']['metrics']['search_candidates_total'], 3)
+        self.assertEqual(by_key['biblio']['metrics']['context_fetch_total'], 2)
+        self.assertEqual(by_key['biblio']['metrics']['selected_passages_total'], 1)
+        self.assertEqual(by_key['biblio']['metrics']['ranking_available_turns'], 1)
+        self.assertEqual(by_key['biblio']['metrics']['endpoint_kind_counts']['search'], 1)
+        self.assertEqual(by_key['biblio']['metrics']['selection_reason_counts']['dominant_context'], 1)
         self.assertEqual(by_key['providers']['metrics']['main_call_present_count'], 1)
         self.assertEqual(by_key['providers']['metrics']['main_duration_ms_p50'], 120)
         self.assertEqual(by_key['identity']['metrics']['block_present_turns'], 1)
@@ -333,6 +386,55 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
         self.assertIn('document_empty_text', document_module['degradation_reasons'])
         self.assertNotIn('document_parse_error', document_module['degradation_reasons'])
         self.assertNotIn('manual_remove', document_module['degradation_reasons'])
+
+    def test_biblio_module_has_specialized_summary_and_reason(self) -> None:
+        summary = dashboard_analytics.summarize_module_turn(
+            'biblio',
+            self._turn_fact(),
+        )
+        reason = dashboard_analytics.resolve_module_turn_degradation_reason(
+            'biblio',
+            self._turn_fact(),
+        )
+
+        self.assertEqual(
+            summary,
+            'La Biblio a ete consultee; 1 passage(s) de bibliotheque sont observes en lane compacte.',
+        )
+        self.assertEqual(reason, 'document_and_locator_resolved')
+        self.assertNotIn('abcdef123456', summary)
+        self.assertNotIn('doc-1234', summary)
+        self.assertNotIn('RAW', summary)
+
+    def test_biblio_module_tells_ambiguity_without_document_content(self) -> None:
+        fact = self._turn_fact()
+        fact['biblio'] = {
+            'source_kind': 'biblio_native_catalogue',
+            'event_present': True,
+            'enabled': True,
+            'used': True,
+            'status': 'ambiguous',
+            'document_status': 'ambiguous',
+            'document_reason_code': 'ambiguous_document',
+            'passage_count': 3,
+            'search_candidate_count': 8,
+            'context_fetch_count': 3,
+            'selected_passage_count': 0,
+            'ambiguous': True,
+            'selection_reason_codes': ['selection_gap_too_small'],
+            'reason_code_counts': {'biblio_context_candidates_ambiguous': 1, 'selection_gap_too_small': 1},
+            'raw_content_included': False,
+        }
+
+        summary = dashboard_analytics.summarize_module_turn('biblio', fact)
+        reason = dashboard_analytics.resolve_module_turn_degradation_reason('biblio', fact)
+
+        self.assertIn('resolution est ambigue', summary)
+        self.assertIn('3 passage(s) candidat(s)', summary)
+        self.assertIn('3 contexte(s)', summary)
+        self.assertIn('biblio_context_candidates_ambiguous', summary)
+        self.assertEqual(reason, 'biblio_context_candidates_ambiguous')
+        self.assertNotIn('RAW', summary)
 
     def test_catalog_public_labels_do_not_include_runtime_content(self) -> None:
         raw_values = (

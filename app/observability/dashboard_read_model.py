@@ -617,6 +617,8 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
     documents_active_turns = 0
     documents_injected_total = 0
     documents_not_injected_total = 0
+    biblio_used_turns = 0
+    biblio_passages_total = 0
     error_count = 0
     fallback_count = 0
     last_turn_id = None
@@ -627,7 +629,8 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
         rag = _mapping(row[7])
         web = _mapping(row[8])
         documents = _mapping(row[9])
-        errors = _mapping(row[10])
+        biblio = _mapping(row[10])
+        errors = _mapping(row[11])
         if _to_int(rag.get('injected')) > 0 or _to_int(rag.get('retrieved')) > 0:
             memory_used_turns += 1
         if bool(web.get('requested')):
@@ -638,6 +641,9 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
             documents_active_turns += 1
         documents_injected_total += _to_int(documents.get('injected_count'))
         documents_not_injected_total += _to_int(documents.get('not_injected_count'))
+        if bool(biblio.get('used')):
+            biblio_used_turns += 1
+        biblio_passages_total += _to_int(biblio.get('passage_count'))
         error_count += _to_int(errors.get('error_count'))
         fallback_count += _to_int(errors.get('fallback_count'))
     return {
@@ -655,6 +661,8 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
         'documents_active_turns': documents_active_turns,
         'documents_injected_total': documents_injected_total,
         'documents_not_injected_total': documents_not_injected_total,
+        'biblio_used_turns': biblio_used_turns,
+        'biblio_passages_total': biblio_passages_total,
         'error_count': error_count,
         'fallback_count': fallback_count,
         'redaction': {'raw_content_included': False},
@@ -687,6 +695,7 @@ def read_dashboard_conversations(
                         f.rag_json,
                         f.web_json,
                         f.documents_json,
+                        f.biblio_json,
                         f.errors_json
                     FROM observability.dashboard_turn_facts AS f
                     LEFT JOIN observability.dashboard_conversation_summaries AS s
@@ -740,6 +749,8 @@ def read_dashboard_conversations(
 
 
 def _turn_fact_row(row: Sequence[Any]) -> dict[str, Any]:
+    if len(row) == 24:
+        row = (*row[:16], {}, *row[16:])
     return {
         'conversation_id': str(row[0] or ''),
         'turn_id': str(row[1] or ''),
@@ -757,14 +768,15 @@ def _turn_fact_row(row: Sequence[Any]) -> dict[str, Any]:
         'hermeneutic': _json_mapping(row[13]),
         'web': _json_mapping(row[14]),
         'documents': _json_mapping(row[15]),
-        'node_state': _json_mapping(row[16]),
-        'latencies': _json_mapping(row[17]),
-        'errors': _json_mapping(row[18]),
-        'stage_counts': _json_mapping(row[19]),
-        'flags': _json_mapping(row[20]),
-        'content_availability': _json_mapping(row[21]),
-        'calculation_version': str(row[22] or ''),
-        'materialized_ts': _iso(row[23]),
+        'biblio': _json_mapping(row[16]),
+        'node_state': _json_mapping(row[17]),
+        'latencies': _json_mapping(row[18]),
+        'errors': _json_mapping(row[19]),
+        'stage_counts': _json_mapping(row[20]),
+        'flags': _json_mapping(row[21]),
+        'content_availability': _json_mapping(row[22]),
+        'calculation_version': str(row[23] or ''),
+        'materialized_ts': _iso(row[24]),
         'redaction': {'raw_content_included': False},
     }
 
@@ -788,6 +800,7 @@ def _turn_fact_select_sql() -> str:
             hermeneutic_json,
             web_json,
             documents_json,
+            biblio_json,
             node_state_json,
             latencies_json,
             errors_json,
@@ -1015,6 +1028,9 @@ def _status_fr(value: Any) -> str:
         'skipped': 'ignore',
         'not_applicable': 'non utilise',
         'missing': 'non observe',
+        'resolved': 'resolu',
+        'ambiguous': 'ambigu',
+        'not_found': 'introuvable',
         'unknown': 'a verifier',
     }
     return labels.get(str(value or '').strip().lower(), 'a verifier')
@@ -1195,6 +1211,8 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
     hermeneutic = _mapping(fact.get('hermeneutic'))
     web = _mapping(fact.get('web'))
     documents = _mapping(fact.get('documents'))
+    biblio = _mapping(fact.get('biblio'))
+    librarian_agent = _mapping(biblio.get('librarian_agent'))
     node_state = _mapping(fact.get('node_state'))
     persistence = _mapping(fact.get('persistence'))
     errors = _mapping(fact.get('errors'))
@@ -1246,6 +1264,14 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
         context_parts.append('document actif observe mais non injecte')
     else:
         context_parts.append('pas de document actif observe')
+    if biblio.get('used') and _to_int(biblio.get('passage_count')) > 0:
+        context_parts.append(f"{_to_int(biblio.get('passage_count'))} passage(s) Biblio observe(s)")
+    elif biblio.get('used'):
+        context_parts.append('Biblio consultee sans passage injecte observe')
+    else:
+        context_parts.append('pas de consultation Biblio observee')
+    if librarian_agent.get('present'):
+        context_parts.append('comparaison agent bibliothecaire observee')
 
     embeddings_requested, embeddings_requested_present = _first_present_int(
         rag,
@@ -1343,6 +1369,23 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
                     f"injecte {_yes_no(web.get('injected'))}, resultats comptes {_to_int(web.get('results_count'))}."
                 ),
                 *_document_story_lines(documents),
+                (
+                    f"Biblio: consultee {_yes_no(biblio.get('used'))}, etat {_status_fr(biblio.get('status'))}, "
+                    f"document {_status_fr(biblio.get('document_status'))}, passages {_to_int(biblio.get('passage_count'))}, "
+                    f"candidats {_to_int(biblio.get('search_candidate_count'))}, "
+                    f"contextes {_to_int(biblio.get('context_fetch_count'))}, "
+                    f"selectionnes {_to_int(biblio.get('selected_passage_count'))}, "
+                    f"ambigue {_yes_no(biblio.get('ambiguous'))}."
+                ),
+                (
+                    f"Agent Biblio: present {_yes_no(librarian_agent.get('present'))}, "
+                    f"mode {str(librarian_agent.get('mode') or 'non observe')}, "
+                    f"modele appele {_yes_no(librarian_agent.get('model_called'))}, "
+                    f"plan candidat {_yes_no(librarian_agent.get('candidate_plan_present'))}, "
+                    f"controleur deterministe {_yes_no(librarian_agent.get('deterministic_controller'))}, "
+                    f"utilise pour reponse {_yes_no(librarian_agent.get('used_for_response'))}, "
+                    f"outils agentiques {str(librarian_agent.get('tool_execution_status') or 'not_executed')}."
+                ),
                 f"Persistence: etat {_status_fr(persistence.get('status'))}.",
             ],
         },

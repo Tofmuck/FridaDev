@@ -1,7 +1,7 @@
 # Frida
 
-Current repository state as of Sunday, May 17, 2026.
-Etat courant du depot au dimanche 17 mai 2026.
+Current repository state as of Friday, May 29, 2026.
+Etat courant du depot au vendredi 29 mai 2026.
 
 ## English
 
@@ -16,6 +16,7 @@ Primary current-state references:
 - Archived model temporal truth remediation: `app/docs/todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
 - Active conversation documents contract: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Archived active conversation documents OCR roadmap: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
+- Biblio librarian agent contract: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Memory Admin contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Log module contract: `app/docs/states/specs/log-module-contract.md`
@@ -77,7 +78,7 @@ Frontend rehydration and operator observability
 - On `done`, Frida saves the complete assistant text, verifies canonical persistence, then emits derived writes. On `error`, it stores an interrupted marker when that marker save is proven; it does not canonicalize partial assistant text.
 - `/dashboard` is the long-term operator dashboard: recent health, materialized metrics, conversation comparison, translated inspection, and content-free summaries.
 - `/log` remains the technical debug timeline. Memory Admin, Hermeneutic Admin, and Identity remain specialized domain or editing surfaces.
-- The future Biblio native / Frida Catalogue workstream is separate: it concerns persistent `library_document` / `catalogue_document` lookup and bounded `passage documentaire` extraction. It is not implemented by the active conversation documents feature.
+- The Biblio native / Frida Catalogue workstream is separate from active conversation documents: its platform Lot 0 delivered human Catalogue metadata editing, and FridaDev now has a GET-only Catalogue client, resolver, bounded extractor, dedicated prompt lane, content-free observability, dashboard persistence, frontend toggle, chat wiring, bounded passage search through `/search` then `/context`, complete catalogue listing up to the product limit, and a lightweight table-of-contents route through `GET /doc/{id}/chapters`. The feature remains explicit per turn through `biblio_enabled` and is not Memory/RAG, not Web, not workspace, and not an active document.
 
 ### What the repository contains
 
@@ -112,7 +113,18 @@ Frontend rehydration and operator observability
 - Archived active conversation documents roadmap: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 - Archived active conversation documents audit-plan: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
 - Archived active conversation documents OCR roadmap: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
-- Active Biblio native / Frida Catalogue roadmap: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
+- Frida Catalogue metadata editing audit and Lot 0 delivery note: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
+- Native Biblio / Frida Catalogue contract: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+- Biblio librarian-agent contract: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
+- Biblio / Catalogue librarian-agent architecture audit: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
+- Frida Biblio Last Chance structural roadmap: `app/docs/todo-todo/product/frida-biblio-last-chance.md`
+- Active Biblio librarian-agent roadmap: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+- Archived Biblio native / Frida Catalogue audit-plan: `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
+- Archived Biblio native / Frida Catalogue roadmap: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
+- Final Biblio native / Frida Catalogue validation: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
+- Archived Biblio real-library passage search roadmap: `app/docs/todo-done/product/frida-biblio-real-library-passage-search-todo.md`
+- Requalified Biblio real-library passage search validation: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
+- Archived Biblio real-library product-gap remediation and TOC route delivery: `app/docs/todo-done/product/frida-biblio-real-library-product-gap-todo.md`
 - Archived cancelled Amandine duplication plan: `app/docs/todo-done/migrations/amandine-duplication-annulee-2026-05-28.md`
 - Frida health freeze baseline: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
@@ -126,7 +138,7 @@ Frontend rehydration and operator observability
 - Response arbiter power contract: `app/docs/states/specs/response-arbiter-power-contract.md`
 - Global audit dated 2026-05-03: `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
 - Archived global audit remediation: `app/docs/todo-done/audits/fridadev-global-audit-remediation-todo.md`
-- Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
+- Archived installation roadmap: `app/docs/todo-done/product/Frida-installation-config.md`
 
 ### Versioned vs runtime-local
 
@@ -188,6 +200,7 @@ References principales pour l'etat courant:
 - Remediation archivee de comprehension temporelle modele: `app/docs/todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
 - Contrat des documents actifs de conversation: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Roadmap archivee OCR des documents actifs: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
+- Contrat agent bibliothecaire Biblio: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Contrat du dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Contrat Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Contrat du module logs: `app/docs/states/specs/log-module-contract.md`
@@ -249,7 +262,7 @@ Rehydratation frontend et observabilite operateur
 - Sur `done`, Frida sauvegarde le texte assistant complet, verifie la persistance canonique, puis emet les ecritures derivees. Sur `error`, Frida sauvegarde un marqueur interrompu lorsque cette sauvegarde est prouvee; elle ne canonise pas de texte assistant partiel.
 - `/dashboard` est le dashboard operateur long terme: sante recente, metriques materialisees, comparaison des conversations, inspection traduite et statut du content gate.
 - `/log` reste la timeline technique de debug. Memory Admin, Hermeneutic Admin et Identity restent des surfaces specialisees de domaine ou d'edition.
-- Le futur chantier Biblio native / Frida Catalogue est separe: il concerne la consultation de `library_document` / `catalogue_document` persistants et l'extraction bornee de `passage documentaire`. Il n'est pas implemente par la fonctionnalite documents actifs.
+- Le chantier Biblio native / Frida Catalogue est separe des documents actifs de conversation: son Lot 0 plateforme a livre l'edition humaine des metadonnees Catalogue, et FridaDev dispose maintenant d'un client Catalogue GET-only, d'un resolver, d'un extracteur borne, d'une lane prompt dediee, d'une observabilite content-free, d'une persistence dashboard, d'un toggle frontend, d'un branchement chat, d'une recherche de passages bornee via `/search` puis `/context`, d'une liste catalogue complete jusqu'a la limite produit et d'une table des matieres legere via `GET /doc/{id}/chapters`. La capacite reste explicite par tour via `biblio_enabled` et n'est ni Memory/RAG, ni Web, ni workspace, ni document actif.
 
 ### Ce que contient le depot
 
@@ -284,7 +297,18 @@ Rehydratation frontend et observabilite operateur
 - Roadmap archivee documents actifs de conversation: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 - Audit-plan archive documents actifs de conversation: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
 - Roadmap archivee OCR des documents actifs: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
-- Roadmap active Biblio native / Frida Catalogue: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
+- Audit edition metadonnees Frida Catalogue et note de livraison Lot 0: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
+- Contrat Biblio native / Frida Catalogue: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
+- Contrat agent bibliothecaire Biblio: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
+- Audit architecture agent bibliothecaire Biblio: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
+- Roadmap structurante Frida Biblio Last Chance: `app/docs/todo-todo/product/frida-biblio-last-chance.md`
+- Roadmap active agent bibliothecaire Biblio: `app/docs/todo-todo/product/frida-biblio-librarian-agent-todo.md`
+- Audit-plan archive Biblio native / Frida Catalogue: `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
+- Roadmap archivee Biblio native / Frida Catalogue: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
+- Validation finale Biblio native / Frida Catalogue: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
+- Roadmap archivee Biblio vraie bibliotheque / recherche de passages: `app/docs/todo-done/product/frida-biblio-real-library-passage-search-todo.md`
+- Validation requalifiee Biblio vraie bibliotheque / recherche de passages: `app/docs/todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md`
+- Remediation archivee Biblio vraie bibliotheque / ecart produit et route TOC: `app/docs/todo-done/product/frida-biblio-real-library-product-gap-todo.md`
 - Archive annulation duplication Amandine: `app/docs/todo-done/migrations/amandine-duplication-annulee-2026-05-28.md`
 - Baseline freeze sante Frida: `app/docs/todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md`
 - Contrat dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
@@ -298,7 +322,7 @@ Rehydratation frontend et observabilite operateur
 - Contrat de pouvoir de l'arbitre de reponse: `app/docs/states/specs/response-arbiter-power-contract.md`
 - Audit global date du 2026-05-03: `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
 - Remediation archivee de l'audit global: `app/docs/todo-done/audits/fridadev-global-audit-remediation-todo.md`
-- Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`
+- Roadmap installation archivee: `app/docs/todo-done/product/Frida-installation-config.md`
 
 ### Ce qui est versionne vs local runtime
 

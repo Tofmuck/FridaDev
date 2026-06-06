@@ -2,7 +2,7 @@
 
 Statut: MVP clos provisoirement, sous surveillance
 Date: 2026-05-23
-TODO source: `app/docs/todo-todo/product/Adobe to do.md`
+Roadmap archivee source: `app/docs/todo-done/product/Adobe to do.md`
 Spec source: `app/docs/states/specs/fridadev-adobe-docs-mode-contract.md`
 Validation live source: `app/docs/states/audits/fridadev-adobe-docs-mode-live-validation-2026-05-23.md`
 Evaluation metier source: `app/docs/states/audits/fridadev-adobe-docs-mode-business-evaluation-2026-05-23.md`
@@ -26,10 +26,10 @@ Ce qui est clos:
 - non-stockage durable du markdown, des passages et de la lane Adobe;
 - tests metier synthetiques pour Photoshop, Illustrator, release notes, known issues et preuve insuffisante.
 
-Ce qui n'est pas clos:
+Ce qui n'etait pas clos au 2026-05-23:
 
-- validation metier reelle par Amandine sur un cas Photoshop;
-- validation metier reelle par Amandine sur un cas Illustrator;
+- validation metier reelle par Amandine sur un cas Photoshop, devenue sans objet le 2026-05-28;
+- validation metier reelle par Amandine sur un cas Illustrator, devenue sans objet le 2026-05-28;
 - garantie d'exhaustivite HelpX;
 - extension Learn, Community, PDF, GitHub AdobeDocs, Biblio ou index durable.
 
@@ -41,9 +41,9 @@ Le plan le plus sur etait une cloture docs-only apres preuves techniques:
 - ne pas patcher runtime;
 - ne pas relancer de crawl massif;
 - faire un smoke live borne;
-- garder la TODO active tant que la validation Amandine reelle reste ouverte.
+- garder la TODO active tant que la validation Amandine reelle reste ouverte. Supersede le 2026-05-28: la TODO est archivee et la validation est sans objet.
 
-La TODO n'est pas deplacee en `todo-done` pour eviter de maquiller la limite metier restante.
+Decision supersedee le 2026-05-28: la TODO est deplacee en `todo-done` parce que la limite metier Amandine est devenue sans objet, pas validee.
 
 ## Smoke final
 
@@ -93,4 +93,4 @@ Limite clarifiee:
 
 Le chantier Adobe Docs Mode peut etre considere livre en MVP technique, sous surveillance.
 
-La validation produit forte reste volontairement ouverte jusqu'a validation Amandine sur au moins un cas Photoshop reel et un cas Illustrator reel.
+La validation produit forte par Amandine est devenue sans objet le 2026-05-28. Toute nouvelle validation forte devra definir un nouveau validateur metier.

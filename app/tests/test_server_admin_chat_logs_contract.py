@@ -269,6 +269,42 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.assertEqual(observed['kwargs']['ts_to'], '2026-05-15T00:00:00Z')
         self.assertEqual(observed['kwargs']['event_limit'], 50)
 
+    def test_admin_biblio_observability_route_is_content_free_and_read_only(self) -> None:
+        original_base_url = getattr(self.server.config, 'BIBLIO_CATALOGUE_BASE_URL', None)
+        original_timeout = getattr(self.server.config, 'BIBLIO_CATALOGUE_TIMEOUT_S', None)
+        self.server.config.BIBLIO_CATALOGUE_BASE_URL = (
+            'https://human-user:human-secret@catalogue.example.test:9443/doc-api?token=hidden#frag'
+        )
+        self.server.config.BIBLIO_CATALOGUE_TIMEOUT_S = 13
+        try:
+            response = self.client.get('/api/admin/biblio/observability')
+        finally:
+            if original_base_url is None:
+                delattr(self.server.config, 'BIBLIO_CATALOGUE_BASE_URL')
+            else:
+                self.server.config.BIBLIO_CATALOGUE_BASE_URL = original_base_url
+            if original_timeout is None:
+                delattr(self.server.config, 'BIBLIO_CATALOGUE_TIMEOUT_S')
+            else:
+                self.server.config.BIBLIO_CATALOGUE_TIMEOUT_S = original_timeout
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        encoded = str(data)
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['kind'], 'biblio_admin_observability')
+        self.assertEqual(data['config']['catalogue_base_url'], 'https://catalogue.example.test:9443/doc-api')
+        self.assertEqual(data['config']['timeout_s'], 13)
+        self.assertTrue(data['config']['get_only'])
+        self.assertTrue(data['module_state']['chat_wired'])
+        self.assertTrue(data['module_state']['frontend_wired'])
+        self.assertTrue(data['module_state']['toggle_wired'])
+        self.assertFalse(data['module_state']['db_write'])
+        self.assertFalse(data['module_state']['automatic_catalogue_call'])
+        self.assertFalse(data['redaction']['raw_content_included'])
+        self.assertNotIn('human-secret', encoded)
+        self.assertNotIn('token=hidden', encoded)
+
     def test_admin_chat_logs_metrics_route_rejects_invalid_event_limit(self) -> None:
         response = self.client.get('/api/admin/logs/chat/metrics?event_limit=bad')
 

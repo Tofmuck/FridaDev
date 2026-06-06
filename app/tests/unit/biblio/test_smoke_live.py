@@ -1,0 +1,158 @@
+from __future__ import annotations
+
+import contextlib
+import io
+import json
+import sys
+import unittest
+from pathlib import Path
+from unittest import mock
+
+
+APP_DIR = Path(__file__).resolve().parents[3]
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+from biblio import chat_runtime
+from biblio import observability
+from biblio import passage_extractor as extractor
+from biblio import prompt_lane
+from biblio import smoke_live
+
+
+RAW_PASSAGE = "RAW_SMOKE_PASSAGE_MUST_NOT_APPEAR_IN_RECORD"
+
+
+class BiblioSmokeLiveTests(unittest.TestCase):
+    def test_smoke_record_is_content_free_even_when_lane_contains_passage(self) -> None:
+        records = smoke_live.run_smokes(
+            cases=(smoke_live.BiblioSmokeCase("S1", "RAW USER QUERY MUST NOT APPEAR"),),
+            turn_runner=_fake_turn_runner,
+            raw_markers=(RAW_PASSAGE, "RAW USER QUERY MUST NOT APPEAR"),
+        )
+
+        self.assertEqual(len(records), 1)
+        record = records[0]
+        encoded = json.dumps(record, ensure_ascii=False, sort_keys=True)
+        self.assertEqual(record["case_id"], "S1")
+        self.assertEqual(record["status"], "extracted")
+        self.assertEqual(record["query_kind"], "search_catalog")
+        self.assertTrue(record["lane_injected"])
+        self.assertEqual(record["passage_count"], 1)
+        self.assertGreater(record["lane_chars"], 0)
+        self.assertEqual(record["payload_objects_retained"], 0)
+        self.assertFalse(record["raw_marker_leaks"])
+        self.assertNotIn(RAW_PASSAGE, encoded)
+        self.assertNotIn("RAW USER QUERY MUST NOT APPEAR", encoded)
+
+    def test_default_case_ids_do_not_expose_queries(self) -> None:
+        encoded = json.dumps(
+            [{"case_id": case.case_id} for case in smoke_live.DEFAULT_SMOKE_CASES],
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        self.assertNotIn("Theetete", encoded)
+        self.assertNotIn("maieutique", encoded)
+        self.assertNotIn("Platon", encoded)
+
+    def test_final_record_marker_leak_is_detected_without_emitting_unknown_field(self) -> None:
+        record = smoke_live._finalize_record(
+            {
+                "case_id": "S1",
+                "status": "extracted",
+                "payload_objects_retained": 0,
+                "debug_raw": RAW_PASSAGE,
+            },
+            raw_markers=(RAW_PASSAGE,),
+            source_projection={},
+        )
+        encoded = json.dumps(record, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(record["raw_marker_leaks"])
+        self.assertNotIn("debug_raw", record)
+        self.assertNotIn(RAW_PASSAGE, encoded)
+
+    def test_strict_exit_code_fails_on_raw_marker_or_payload_retention(self) -> None:
+        safe = {
+            "case_id": "S1",
+            "raw_marker_leaks": False,
+            "payload_objects_retained": 0,
+        }
+        raw_leak = {
+            "case_id": "S2",
+            "raw_marker_leaks": True,
+            "payload_objects_retained": 0,
+        }
+        retained_payload = {
+            "case_id": "S3",
+            "raw_marker_leaks": False,
+            "payload_objects_retained": 1,
+        }
+
+        self.assertEqual(smoke_live.smoke_exit_code([safe]), smoke_live.EXIT_OK)
+        self.assertEqual(smoke_live.smoke_exit_code([raw_leak]), smoke_live.EXIT_CONTENT_FREE_VIOLATION)
+        self.assertEqual(smoke_live.smoke_exit_code([retained_payload]), smoke_live.EXIT_CONTENT_FREE_VIOLATION)
+        self.assertEqual(smoke_live.smoke_exit_code([raw_leak], strict=False), smoke_live.EXIT_OK)
+
+    def test_main_is_strict_by_default_and_no_strict_is_explicit(self) -> None:
+        records = [
+            {
+                "case_id": "S1",
+                "raw_marker_leaks": True,
+                "payload_objects_retained": 0,
+            }
+        ]
+
+        with mock.patch("biblio.smoke_live.run_smokes", return_value=records):
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(smoke_live.main(["--jsonl"]), smoke_live.EXIT_CONTENT_FREE_VIOLATION)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(smoke_live.main(["--jsonl", "--no-strict"]), smoke_live.EXIT_OK)
+
+
+def _fake_turn_runner(data, *, user_msg, client_factory=None, config_module=None):
+    passage = _passage(RAW_PASSAGE)
+    lane = prompt_lane.build_biblio_prompt_lane([passage])
+    payload = observability.build_biblio_event_payload(
+        enabled=bool(data.get("biblio_enabled")),
+        used=True,
+        query_kind="search_catalog",
+        passage_result=passage,
+        prompt_lane=lane,
+        status="extracted",
+        reason_code="biblio_context_passage_extracted",
+    )
+    return chat_runtime.BiblioChatResult(
+        enabled=True,
+        used=True,
+        reason_code="biblio_context_passage_extracted",
+        query_kind="search_catalog",
+        passage_result=passage,
+        prompt_lane=lane,
+        observability_payload=payload,
+    )
+
+
+def _passage(passage: str) -> extractor.BiblioPassageResult:
+    return extractor.BiblioPassageResult(
+        status=extractor.STATUS_EXTRACTED,
+        reason_code=extractor.REASON_PASSAGE_EXTRACTED,
+        passage=passage,
+        doc_id_short="doc-1234",
+        passage_chars=len(passage),
+        passage_hash="",
+        char_offset=0,
+        window_chars=700,
+        max_passage_chars=4_000,
+        excerpt_start=0,
+        excerpt_end=len(passage),
+        text_length=len(passage),
+        page_no=12,
+        para_no=3,
+        paragraph_id=99,
+    )
+
+
+if __name__ == "__main__":
+    unittest.main()

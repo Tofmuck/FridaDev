@@ -2,37 +2,44 @@
 
 Ce document fige la fin de la grande roadmap produit FridaDev.
 
-Il ne lance pas cinq implementations maintenant. Il sert de boussole de fin de cycle: les gros chantiers produit restants sont limites aux cinq points ci-dessous. Il pourra encore y avoir des correctifs, des ajustements de comportement, du polish, des preuves operateur ou de petites ameliorations locales, mais aucun nouveau gros chantier produit ne doit etre ajoute par inertie avant decision explicite.
+Mise a jour 2026-05-28: la duplication Amandine est annulee par decision
+produit et retiree de cette boussole active. Les paniers Adobe, installation,
+externalisation et jobs divers sont archives dans `app/docs/todo-done/product/`.
+
+Mise a jour 2026-05-29: Biblio native / Frida Catalogue est livre et archive.
+Il ne reste plus comme grand chantier produit potentiel que Text-to-speech, si
+la priorite est confirmee.
+
+Il ne lance pas plusieurs implementations maintenant. Il sert de boussole de fin de cycle: les gros chantiers produit restants sont limites aux points ci-dessous. Il pourra encore y avoir des correctifs, des ajustements de comportement, du polish, des preuves operateur ou de petites ameliorations locales, mais aucun nouveau gros chantier produit ne doit etre ajoute par inertie avant decision explicite.
 
 ## Perimetre fige
 
-Les cinq chantiers produit majeurs restants sont:
+Les chantiers produit majeurs suivis par cette boussole sont:
 
-1. Atelier documentaire / repertoire de travail.
-2. Recherche internet.
-3. Biblio native / catalogue Tulu.
+1. Atelier documentaire / repertoire de travail, livre et archive.
+2. Recherche internet, livree avec archives et policy active.
+3. Biblio native / catalogue Tulu, livre et archive.
 4. Text-to-speech.
-5. Duplication FridaDev pour Amandine.
 
-L'ordre peut etre ajuste par decision explicite, mais le perimetre produit majeur reste fige a ces cinq chantiers.
+Le vrai chantier encore ouvert depuis cette boussole est Text-to-speech, si la
+priorite est confirmee.
 
-## Chantier transversal actif hors perimetre majeur
+## Ancien chantier transversal archive
 
-Un chantier transversal court est ouvert sans etendre la liste des cinq gros chantiers produit:
+Le panier transversal court est archive:
 
-- `app/docs/todo-todo/product/job-divers-todo.md`
+- `app/docs/todo-done/product/job-divers-todo.md`
 
 Portee: jobs produit courts hors perimetre majeur, avec historique livre du reglage avance borne du reasoning GPT-5.1, du streaming visuel, de la dictee Whisper longue sous surveillance et des petits ajustements UI bornes.
 
-Garde-fou: ce chantier ne doit jamais rendre visible, streamer, stocker, persister, exporter ou injecter le raisonnement interne du modele (`reasoning_details` ou equivalent). Les nouveaux jobs doivent rester petits, explicites et ne pas elargir la liste des cinq gros chantiers produit.
+Garde-fou conserve comme historique: un nouveau panier futur ne devra jamais rendre visible, streamer, stocker, persister, exporter ou injecter le raisonnement interne du modele (`reasoning_details` ou equivalent). Les nouveaux jobs devront rester petits, explicites et ne pas elargir la liste des gros chantiers produit.
 
 ## Ordre provisoire recommande
 
 1. Atelier documentaire / repertoire de travail.
 2. Audit et fiabilisation de la recherche internet.
-3. Preparation de la duplication Amandine.
-4. Duplication effective Amandine.
-5. Ensuite seulement: Biblio native Tulu ou Text-to-speech selon priorite.
+3. Biblio native Tulu, livre et archive.
+4. Text-to-speech selon priorite explicite.
 
 ## 1. Atelier documentaire / repertoire de travail
 
@@ -81,11 +88,9 @@ Archive source-of-truth du chantier de reconstruction web discovery local-first 
 - `app/docs/todo-done/product/fridadev-local-web-search-rebuild-todo.md`
 - Decision produit associee: `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
 
-Piste produit a garder pour Amandine:
-
-- le sous-chantier specialise Adobe Photoshop / Illustrator est ouvert dans `app/docs/todo-todo/product/Adobe to do.md`;
-- il cible un mini-pipeline dedie pour Amandine, sans mode Auto, sans index durable Adobe, sans Biblio, avec lecture HelpX a la demande via Crawl4AI `raw`, registre d'URLs officielles et non-contamination;
-- ce sous-chantier ne remplace pas la recherche web generale et ne doit pas rouvrir le perimetre produit majeur sans decision explicite.
+Note Adobe: le mode Photoshop / Illustrator existe et son TODO est archive dans
+`app/docs/todo-done/product/Adobe to do.md`. Il ne constitue plus une condition
+active de cette roadmap.
 
 ## 3. Biblio native / catalogue Tulu
 
@@ -97,12 +102,11 @@ Ce chantier est separe de l'atelier documentaire:
 - la Biblio conserve un fonds durable et cataloguable;
 - les documents actifs restent ce que Frida peut lire maintenant dans un tour donne.
 
-Pour Amandine, le besoin est different: une bibliotheque existe deja cote stack Docker. Son chantier devrait donc plutot etre un branchement ou une integration de l'existant, pas la creation de la Biblio Tulu.
+References archivees:
 
-References deja ouvertes:
-
-- `frida-biblio-native-catalogue-audit-plan.md`
-- `frida-biblio-native-catalogue-todo.md`
+- `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
+- `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
+- `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
 
 ## 4. Text-to-speech
 
@@ -114,31 +118,7 @@ Sources a relire plus tard:
 - plan Swift existant;
 - modele, chunks et strategie deja prets cote Swift.
 
-Note produit: ce chantier n'est pas indispensable pour Amandine. S'il est implemente, il peut rester disponible dans l'instance Tof et eventuellement devenir reutilisable ailleurs.
-
-## 5. Duplication FridaDev pour Amandine
-
-Objectif: creer une instance soeur plutot qu'un multi-utilisateur.
-
-Principe:
-
-- duplication applicative;
-- nouvelle base de donnees separee;
-- purge ou seed propre;
-- nouveaux conteneurs;
-- nouveau lien;
-- projet OpenRouter separe;
-- adaptation utilisateur/personnalisation;
-- separation nette des donnees.
-
-Besoin specialise a conserver pour Amandine:
-
-- acces fiable aux documentations Adobe Photoshop / Illustrator, idealement via un mode ou connecteur explicite Adobe Docs plutot que par une recherche web generale fragile.
-
-Responsabilites:
-
-- Sauron: conteneurs, DB, hostname, Caddy/Authelia, secrets, reseau, backups, projet OpenRouter et runtime plateforme.
-- Celebrimbor: code applicatif, seed/purge, identite utilisateur, settings, docs et differences produit eventuelles.
+Note produit: si ce chantier est implemente, il peut rester disponible dans l'instance Tof et eventuellement devenir reutilisable ailleurs.
 
 ## Hors scope de ce TODO
 
@@ -146,7 +126,7 @@ Ce TODO global ne doit pas implementer les chantiers.
 
 Il ne doit pas:
 
-- creer les cinq TODO detailles maintenant;
+- creer les TODO detailles maintenant;
 - modifier le runtime;
 - modifier la DB;
 - modifier les prompts;

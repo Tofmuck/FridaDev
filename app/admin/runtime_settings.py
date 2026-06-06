@@ -206,6 +206,17 @@ def _seed_value(section: str, field: str) -> Any:
         ('web_reformulation_model', 'temperature'): config.WEB_REFORMULATION_TEMPERATURE,
         ('web_reformulation_model', 'max_tokens'): config.WEB_REFORMULATION_MAX_TOKENS,
         ('web_reformulation_model', 'timeout_s'): config.WEB_REFORMULATION_TIMEOUT_S,
+        ('biblio_librarian_agent', 'mode'): config.BIBLIO_LIBRARIAN_AGENT_MODE,
+        ('biblio_librarian_agent', 'primary_model'): config.BIBLIO_LIBRARIAN_AGENT_MODEL,
+        ('biblio_librarian_agent', 'fallback_model'): config.BIBLIO_LIBRARIAN_AGENT_FALLBACK_MODEL,
+        ('biblio_librarian_agent', 'timeout_s'): config.BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S,
+        ('biblio_librarian_agent', 'temperature'): config.BIBLIO_LIBRARIAN_AGENT_TEMPERATURE,
+        ('biblio_librarian_agent', 'top_p'): config.BIBLIO_LIBRARIAN_AGENT_TOP_P,
+        ('biblio_librarian_agent', 'max_tokens'): config.BIBLIO_LIBRARIAN_AGENT_MAX_TOKENS,
+        ('biblio_librarian_agent', 'max_tool_calls'): config.BIBLIO_LIBRARIAN_AGENT_MAX_TOOL_CALLS,
+        ('biblio_librarian_agent', 'max_model_calls'): config.BIBLIO_LIBRARIAN_AGENT_MAX_MODEL_CALLS,
+        ('biblio_librarian_agent', 'max_recent_turns'): config.BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS,
+        ('biblio_librarian_agent', 'reasoning_effort'): config.BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT,
         ('embedding', 'endpoint'): config.EMBED_BASE_URL,
         ('embedding', 'model'): 'intfloat/multilingual-e5-small',
         ('embedding', 'token'): config.EMBED_TOKEN,
@@ -500,6 +511,10 @@ def get_stimmung_agent_model_settings(*, fetcher: Callable[[], dict[str, dict[st
 
 def get_validation_agent_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('validation_agent_model', fetcher=fetcher)
+
+
+def get_biblio_librarian_agent_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+    return get_runtime_section('biblio_librarian_agent', fetcher=fetcher)
 
 
 def get_database_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:

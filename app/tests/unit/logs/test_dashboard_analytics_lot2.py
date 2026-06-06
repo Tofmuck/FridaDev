@@ -20,6 +20,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from observability import dashboard_analytics
+from observability.biblio_librarian_agent_read_model import build_biblio_librarian_agent_summary
 
 
 class _NoopLogger:
@@ -205,6 +206,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
             fact.get('hermeneutic') or {},
             fact.get('web') or {},
             fact.get('documents') or {},
+            fact.get('biblio') or {},
             fact.get('node_state') or {},
             fact.get('latencies') or {},
             fact.get('errors') or {},
@@ -218,7 +220,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         return {
             'kind': 'dashboard_turn_fact',
             'schema_version': '1',
-            'calculation_version': params[23],
+            'calculation_version': params[24],
             'conversation_id': params[0],
             'turn_id': params[1],
             'first_ts': params[2],
@@ -236,12 +238,13 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
             'hermeneutic': json.loads(params[14]),
             'web': json.loads(params[15]),
             'documents': json.loads(params[16]),
-            'node_state': json.loads(params[17]),
-            'latencies': json.loads(params[18]),
-            'errors': json.loads(params[19]),
-            'stage_counts': json.loads(params[20]),
-            'flags': json.loads(params[21]),
-            'content_availability': json.loads(params[22]),
+            'biblio': json.loads(params[17]),
+            'node_state': json.loads(params[18]),
+            'latencies': json.loads(params[19]),
+            'errors': json.loads(params[20]),
+            'stage_counts': json.loads(params[21]),
+            'flags': json.loads(params[22]),
+            'content_availability': json.loads(params[23]),
             'redaction': {'raw_content_stored': False, 'raw_event_payloads_included': False},
         }
 
@@ -636,6 +639,447 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertNotIn('RAW LARGE DOCUMENT TEXT MUST NOT LEAK', serialized)
         self.assertNotIn('text_content', self._collect_keys(fact))
 
+    def test_turn_fact_materializes_biblio_content_free(self) -> None:
+        events = [
+            *self._complete_turn(),
+            self._event(
+                'biblio',
+                payload={
+                    'source_kind': 'biblio_native_catalogue',
+                    'enabled': True,
+                    'used': True,
+                    'query_kind': 'document_locator',
+                    'status': 'ok',
+                    'resolver': {
+                        'status': 'resolved',
+                        'reason_code': 'document_and_locator_resolved',
+                        'document': {'doc_id_short': 'doc-1234'},
+                        'document_candidate_count': 1,
+                        'document_candidate_ids': ['doc-1234'],
+                        'locator': {'kind': 'stephanus', 'label': {'present': True, 'length': 4, 'hash': 'abcdef123456'}},
+                        'locator_candidate_count': 1,
+                        'requested_locator_kind': 'stephanus',
+                        'requested_locator': {'present': True, 'length': 4, 'hash': 'abcdef123456'},
+                    },
+                    'extractor': {
+                        'status': 'extracted',
+                        'reason_code': 'passage_extracted',
+                        'doc_id_short': 'doc-1234',
+                        'passage_chars': 42,
+                        'passage_hash': 'abcdef123456',
+                        'passage': 'RAW BIBLIO PASSAGE MUST NOT LEAK',
+                    },
+                    'lane': {
+                        'present': True,
+                        'passage_count': 1,
+                        'skipped_count': 0,
+                        'chars': 300,
+                        'hashes': ['abcdef123456'],
+                        'doc_id_shorts': ['doc-1234'],
+                        'positions': [{'page_no': 12, 'para_no': 3, 'paragraph_id': 99}],
+                        'message': {'content': 'RAW BIBLIO LANE MUST NOT LEAK'},
+                    },
+                    'passage_search': {
+                        'candidate_count': 3,
+                        'total_candidate_count': 5,
+                        'context_call_count': 2,
+                        'plausible_context_count': 1,
+                        'selected_count': 1,
+                        'passage_result_count': 1,
+                        'passage_count': 1,
+                        'ambiguous': False,
+                        'lane_injected': True,
+                        'lane_chars': 300,
+                        'endpoint_count': 3,
+                        'endpoint_kinds': ['search', 'context'],
+                        'ranking_available': True,
+                        'selection_reason_codes': ['dominant_context'],
+                        'top_score': 42.5,
+                        'score_gap': 7.0,
+                        'candidate_top_score': 34.0,
+                        'candidate_query_variant_count': 4,
+                        'doc_id_shorts': ['doc-1234'],
+                        'hashes': ['abcdef123456'],
+                        'positions': [{'page_no': 12, 'para_no': 3, 'paragraph_id': 99}],
+                        'theme_query_signal': {'available': False, 'reason_code': 'biblio_raw_query_not_observed'},
+                        'raw_theme_query': 'RAW QUERY MUST NOT LEAK',
+                    },
+                    'librarian_agent': {
+                        'present': True,
+                        'comparison_kind': 'deterministic_comparison',
+                        'status': 'evaluated',
+                        'reason_code': 'biblio_librarian_agent_compared',
+                        'mode': 'shadow',
+                        'model_called': True,
+                        'candidate_plan_present': True,
+                        'used_for_response': False,
+                        'deterministic_controller': True,
+                        'product_response_changed': False,
+                        'fallback_deterministic': True,
+                        'tool_execution_status': 'not_executed',
+                        'tool_call_event_count': 0,
+                        'selection_event_count': 0,
+                        'state_update_event_count': 0,
+                        'final_event_count': 0,
+                        'agent_loop_executed': False,
+                        'request_observation': {
+                            'user_message_present': True,
+                            'user_message_chars': 32,
+                            'user_message_hash': '123456abcdef',
+                            'recent_dialogue_count': 1,
+                            'bounded_recent_dialogue_count': 1,
+                            'recent_dialogue_hashes': ['abcdef123456'],
+                            'message': 'RAW AGENT MESSAGE MUST NOT LEAK',
+                        },
+                        'agent': {
+                            'status': 'shadow_ready',
+                            'reason_code': 'biblio_librarian_agent_shadow_validated',
+                            'validation': {
+                                'status': 'validated',
+                                'reason_code': 'biblio_librarian_agent_json_validated',
+                                'tool_call_count': 1,
+                                'tool_names': ['catalog_search'],
+                                'json_chars': 200,
+                                'json_hash': 'fedcba654321',
+                                'raw': 'RAW MODEL JSON MUST NOT LEAK',
+                                'plan': {
+                                    'intent': 'list_catalog',
+                                    'answer_mode': 'tool',
+                                    'tool_call_count': 1,
+                                    'tool_names': ['catalog_search'],
+                                    'params': 'RAW TOOL PARAMS MUST NOT LEAK',
+                                },
+                            },
+                            'model': {
+                                'status': 'ok',
+                                'reason_code': 'biblio_librarian_agent_model_ok',
+                                'model_effective': 'model/x',
+                                'finish_reason': 'stop',
+                                'duration_ms': 12,
+                                'status_code': 200,
+                                'response_chars': 200,
+                                'attempt_count': 1,
+                                'fallback_model_used': False,
+                                'payload': 'RAW MODEL PAYLOAD MUST NOT LEAK',
+                            },
+                        },
+                    },
+                    'counts': {
+                        'passage_count': 1,
+                        'lane_chars': 300,
+                        'candidate_count': 3,
+                        'context_call_count': 2,
+                        'selected_count': 1,
+                    },
+                    'reason_code_counts': {
+                        'document_and_locator_resolved': 1,
+                        'passage_extracted': 1,
+                    },
+                    'payload': {'text': 'RAW CATALOGUE PAYLOAD MUST NOT LEAK'},
+                    'redaction': {'raw_content_included': False},
+                },
+                event_id='turn-dashboard:0009:biblio',
+            ),
+        ]
+
+        fact = dashboard_analytics.build_dashboard_turn_fact(events)
+        biblio = fact['biblio']
+
+        self.assertEqual(biblio['source_kind'], 'biblio_native_catalogue')
+        self.assertTrue(biblio['event_present'])
+        self.assertTrue(biblio['enabled'])
+        self.assertTrue(biblio['used'])
+        self.assertEqual(biblio['status'], 'ok')
+        self.assertEqual(biblio['document_status'], 'resolved')
+        self.assertEqual(biblio['passage_status'], 'extracted')
+        self.assertEqual(biblio['passage_count'], 1)
+        self.assertEqual(biblio['lane_chars'], 300)
+        self.assertEqual(biblio['hashes'], ['abcdef123456'])
+        self.assertEqual(biblio['search_candidate_count'], 3)
+        self.assertEqual(biblio['search_total_candidate_count'], 5)
+        self.assertEqual(biblio['context_fetch_count'], 2)
+        self.assertEqual(biblio['selected_passage_count'], 1)
+        self.assertEqual(biblio['passage_result_count'], 1)
+        self.assertTrue(biblio['lane_injected'])
+        self.assertTrue(biblio['ranking_available'])
+        self.assertEqual(biblio['endpoint_count'], 3)
+        self.assertEqual(biblio['endpoint_kinds'], ['search', 'context'])
+        self.assertEqual(biblio['selection_reason_codes'], ['dominant_context'])
+        self.assertEqual(biblio['top_score'], 42.5)
+        self.assertEqual(biblio['score_gap'], 7.0)
+        self.assertFalse(biblio['raw_content_included'])
+        agent = biblio['librarian_agent']
+        self.assertTrue(agent['present'])
+        self.assertEqual(agent['mode'], 'shadow')
+        self.assertTrue(agent['model_called'])
+        self.assertTrue(agent['candidate_plan_present'])
+        self.assertFalse(agent['used_for_response'])
+        self.assertFalse(agent['product_response_changed'])
+        self.assertTrue(agent['deterministic_controller'])
+        self.assertEqual(agent['tool_execution_status'], 'not_executed')
+        self.assertEqual(agent['tool_call_event_count'], 0)
+        self.assertEqual(agent['attempt_count'], 1)
+        self.assertEqual(agent['duration_ms'], 12)
+        self.assertEqual(agent['response_chars'], 200)
+        self.assertEqual(agent['validation_tool_call_count'], 1)
+        self.assertEqual(agent['validation_tool_names'], ['catalog_search'])
+        self.assertEqual(agent['json_hash'], 'fedcba654321')
+        self.assertEqual(agent['user_message_hash'], '123456abcdef')
+        self.assertEqual(agent['recent_dialogue_hashes'], ['abcdef123456'])
+
+        summaries = dashboard_analytics.build_dashboard_conversation_summaries([fact])
+        self.assertEqual(summaries[0]['biblio_used_turns'], 1)
+        self.assertEqual(summaries[0]['biblio_passages_total'], 1)
+        self.assertEqual(summaries[0]['modules_involved']['biblio'], 1)
+
+        buckets = dashboard_analytics.build_dashboard_metric_buckets(
+            [fact],
+            now=datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+        biblio_hour_bucket = next(
+            bucket for bucket in buckets
+            if bucket['module_key'] == 'biblio' and bucket['granularity'] == 'hour'
+        )
+        self.assertEqual(biblio_hour_bucket['metrics']['used_turns'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['passages_total'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['lane_chars_total'], 300)
+        self.assertEqual(biblio_hour_bucket['metrics']['search_candidates_total'], 3)
+        self.assertEqual(biblio_hour_bucket['metrics']['context_fetch_total'], 2)
+        self.assertEqual(biblio_hour_bucket['metrics']['selected_passages_total'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_present_turns'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_model_called_turns'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_candidate_plan_turns'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_deterministic_controlled_turns'], 1)
+        self.assertNotIn('librarian_agent_fallback_turns', biblio_hour_bucket['metrics'])
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_tool_call_events_total'], 0)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_validation_tool_calls_total'], 1)
+        self.assertEqual(biblio_hour_bucket['metrics']['librarian_agent_mode_counts']['shadow'], 1)
+
+        serialized = json.dumps({'fact': fact, 'summaries': summaries, 'buckets': buckets}, sort_keys=True)
+        self.assertNotIn('RAW BIBLIO PASSAGE MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW BIBLIO LANE MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW CATALOGUE PAYLOAD MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW QUERY MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW AGENT MESSAGE MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW MODEL JSON MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW TOOL PARAMS MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW MODEL PAYLOAD MUST NOT LEAK', serialized)
+        self.assertNotIn('message', self._collect_keys(fact))
+        self.assertNotIn('payload', self._collect_keys(fact))
+        self.assertNotIn('params', self._collect_keys(fact))
+
+    def test_biblio_module_declares_librarian_agent_metrics_and_current_limits(self) -> None:
+        catalog = dashboard_analytics.build_dashboard_module_catalog()
+        biblio_module = next(module for module in catalog['modules'] if module['module_key'] == 'biblio')
+        global_metrics = biblio_module['global_metrics']
+        limits = ' '.join(biblio_module['limits'])
+
+        for metric in (
+            'librarian_agent_present_turns',
+            'librarian_agent_model_called_turns',
+            'librarian_agent_candidate_plan_turns',
+            'librarian_agent_deterministic_controlled_turns',
+            'librarian_agent_used_for_response_turns',
+            'librarian_agent_product_response_changed_turns',
+            'librarian_agent_attempts_total',
+            'librarian_agent_duration_ms_total',
+            'librarian_agent_response_chars_total',
+            'librarian_agent_tool_call_events_total',
+            'librarian_agent_validation_tool_calls_total',
+            'librarian_agent_mode_counts',
+            'librarian_agent_status_counts',
+            'librarian_agent_reason_counts',
+            'librarian_agent_model_status_counts',
+            'librarian_agent_validation_status_counts',
+            'librarian_agent_tool_execution_status_counts',
+            'librarian_agent_tool_name_counts',
+        ):
+            self.assertIn(metric, global_metrics)
+        self.assertNotIn('librarian_agent_fallback_turns', global_metrics)
+        self.assertIn('controleur de reponse produit', limits)
+        self.assertIn('N execute pas les outils agentiques', limits)
+        self.assertNotIn('Ne branche pas le chat ni le frontend Biblio', limits)
+
+    def test_biblio_agent_bucket_booleans_are_strict_and_control_metric_uses_controller(self) -> None:
+        facts = [
+            {
+                'latest_ts': '2026-05-15T12:00:00+00:00',
+                'source_event_count': 1,
+                'biblio': {
+                    'librarian_agent': {
+                        'present': True,
+                        'model_called': False,
+                        'candidate_plan_present': False,
+                        'deterministic_controller': True,
+                        'fallback_deterministic': False,
+                        'used_for_response': False,
+                        'product_response_changed': False,
+                    },
+                },
+            },
+            {
+                'latest_ts': '2026-05-15T12:05:00+00:00',
+                'source_event_count': 1,
+                'biblio': {
+                    'librarian_agent': {
+                        'present': 'true',
+                        'model_called': 'false',
+                        'candidate_plan_present': '0',
+                        'deterministic_controller': 'false',
+                        'fallback_deterministic': 'true',
+                        'used_for_response': 'no',
+                        'product_response_changed': 'off',
+                    },
+                },
+            },
+            {
+                'latest_ts': '2026-05-15T12:10:00+00:00',
+                'source_event_count': 1,
+                'biblio': {
+                    'librarian_agent': {
+                        'present': 'false',
+                        'model_called': 'true',
+                        'candidate_plan_present': 'true',
+                        'deterministic_controller': 'true',
+                        'used_for_response': 'true',
+                        'product_response_changed': 'true',
+                    },
+                },
+            },
+        ]
+
+        buckets = dashboard_analytics.build_dashboard_metric_buckets(
+            facts,
+            now=datetime(2026, 5, 15, 12, 30, tzinfo=timezone.utc),
+        )
+        biblio_hour_bucket = next(
+            bucket for bucket in buckets
+            if bucket['module_key'] == 'biblio' and bucket['granularity'] == 'hour'
+        )
+        metrics = biblio_hour_bucket['metrics']
+
+        self.assertEqual(metrics['librarian_agent_present_turns'], 2)
+        self.assertEqual(metrics['librarian_agent_deterministic_controlled_turns'], 1)
+        self.assertEqual(metrics['librarian_agent_model_called_turns'], 0)
+        self.assertEqual(metrics['librarian_agent_candidate_plan_turns'], 0)
+        self.assertEqual(metrics['librarian_agent_used_for_response_turns'], 0)
+        self.assertEqual(metrics['librarian_agent_product_response_changed_turns'], 0)
+        self.assertNotIn('librarian_agent_fallback_turns', metrics)
+
+    def test_librarian_agent_read_model_parses_boolean_tokens_strictly(self) -> None:
+        summary = build_biblio_librarian_agent_summary(
+            {
+                'librarian_agent': {
+                    'present': 'false',
+                    'model_called': 'false',
+                    'candidate_plan_present': '0',
+                    'used_for_response': 'no',
+                    'product_response_changed': 'off',
+                    'deterministic_controller': 'false',
+                    'fallback_deterministic': 'yes',
+                    'agent_loop_executed': 'not really',
+                    'request_observation': {
+                        'user_message_present': 'false',
+                        'biblio_state_present': '0',
+                        'deterministic_plan_present': 'no',
+                    },
+                    'agent': {
+                        'model': {'fallback_model_used': 'false'},
+                    },
+                },
+            }
+        )
+
+        self.assertFalse(summary['present'])
+        self.assertFalse(summary['model_called'])
+        self.assertFalse(summary['candidate_plan_present'])
+        self.assertFalse(summary['used_for_response'])
+        self.assertFalse(summary['product_response_changed'])
+        self.assertFalse(summary['deterministic_controller'])
+        self.assertTrue(summary['fallback_deterministic'])
+        self.assertFalse(summary['agent_loop_executed'])
+        self.assertFalse(summary['user_message_present'])
+        self.assertFalse(summary['biblio_state_present'])
+        self.assertFalse(summary['deterministic_plan_present'])
+        self.assertFalse(summary['fallback_model_used'])
+
+    def test_persisted_turn_fact_preserves_biblio_json_content_free(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        observed: dict[str, Any] = {'queries': [], 'params': [], 'commits': 0}
+        state: dict[tuple[str, str], dict[str, Any]] = {}
+        raw_values = (
+            'RAW BIBLIO PASSAGE MUST NOT LEAK',
+            'RAW BIBLIO LANE MUST NOT LEAK',
+            'RAW CATALOGUE PAYLOAD MUST NOT LEAK',
+        )
+        events = [
+            *self._complete_turn(),
+            self._event(
+                'biblio',
+                payload={
+                    'source_kind': 'biblio_native_catalogue',
+                    'enabled': True,
+                    'used': True,
+                    'query_kind': 'document_locator',
+                    'status': 'ok',
+                    'resolver': {
+                        'status': 'resolved',
+                        'reason_code': 'document_and_locator_resolved',
+                        'document': {'doc_id_short': 'doc-1234'},
+                    },
+                    'extractor': {
+                        'status': 'extracted',
+                        'reason_code': 'passage_extracted',
+                        'doc_id_short': 'doc-1234',
+                        'passage_chars': 42,
+                        'passage_hash': 'abcdef123456',
+                        'passage': raw_values[0],
+                    },
+                    'lane': {
+                        'present': True,
+                        'passage_count': 1,
+                        'skipped_count': 0,
+                        'chars': 300,
+                        'hashes': ['abcdef123456'],
+                        'doc_id_shorts': ['doc-1234'],
+                        'message': {'content': raw_values[1]},
+                    },
+                    'counts': {'passage_count': 1, 'lane_chars': 300},
+                    'reason_code_counts': {'passage_extracted': 1},
+                    'payload': {'text': raw_values[2]},
+                    'redaction': {'raw_content_included': False},
+                },
+                event_id='turn-dashboard:0009:biblio',
+            ),
+        ]
+        analytics = dashboard_analytics.build_dashboard_analytics(events, now=now)
+        FakeConn = self._window_state_fake_conn(state=state, observed=observed)
+
+        result = dashboard_analytics.persist_dashboard_analytics(
+            analytics,
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertTrue(result['ok'])
+        persisted = state[('conv-dashboard', 'turn-dashboard')]
+        self.assertEqual(persisted['biblio']['source_kind'], 'biblio_native_catalogue')
+        self.assertTrue(persisted['biblio']['used'])
+        self.assertEqual(persisted['biblio']['passage_count'], 1)
+        self.assertEqual(persisted['biblio']['hashes'], ['abcdef123456'])
+        biblio_buckets = [
+            json.loads(params[6])
+            for params in observed['bucket_params']
+            if params[3] == 'biblio'
+        ]
+        self.assertTrue(any(metrics.get('used_turns') == 1 for metrics in biblio_buckets))
+        self.assertTrue(any(metrics.get('passages_total') == 1 for metrics in biblio_buckets))
+        serialized = json.dumps({'state': list(state.values()), 'observed': observed}, sort_keys=True)
+        for raw in raw_values:
+            self.assertNotIn(raw, serialized)
+        self.assertNotIn('message', self._collect_keys(persisted))
+        self.assertNotIn('payload', self._collect_keys(persisted))
+
     def test_materialization_status_tracks_lag_without_raw_error_message(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
         error = RuntimeError('RAW SECRET DSN MUST NOT LEAK')
@@ -863,6 +1307,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
 
         self.assertIn('observability.dashboard_turn_facts', joined)
         self.assertIn('documents_json', joined)
+        self.assertIn('biblio_json', joined)
         self.assertIn('observability.dashboard_conversation_summaries', joined)
         self.assertIn('observability.dashboard_metric_buckets', joined)
         self.assertIn('observability.dashboard_materialization_status', joined)
