@@ -194,6 +194,24 @@ le redefinir, de reduire les capacites utilisateur, ni de remplacer le
 bibliothecaire par du determinisme local. Lot 5 a seulement le droit d'enlever,
 de deplacer ou de simplifier ce qui ne sert plus a tenir ces capacites.
 
+### Contraintes Lot 5
+
+Ces contraintes s'appliquent a Lot 5A et a chaque micro-lot Lot 5B+. Elles
+doivent etre reprises explicitement dans les prompts, puis cochees ou invalidees
+dans le retour de livraison.
+
+- [ ] Pas de changement de sens documentaire.
+- [ ] Pas de reduction de surface visible.
+- [ ] Pas de perte de meta observable.
+- [ ] Pas de perte de provenance, d'ancre ou d'etat Biblio conversationnel.
+- [ ] Pas de nouveau parseur utilisateur.
+- [ ] Pas de mutation cote doc-pipeline, DB ou plateforme.
+- [ ] Pas de suppression de garde-fou deterministe sans remplacement explicite.
+- [ ] Pas de changement de statut BIB sans vraie preuve live JSONL.
+- [ ] Pas de redefinition du produit: BIB-01 -> BIB-33 reste la reference.
+- [ ] Pas de refactor cosmetique: chaque changement doit supprimer, migrer ou
+  isoler une responsabilite prouvee.
+
 ### Lot 5A - Audit docs-only
 
 - [ ] Inventorier tous les modules `app/biblio/`.
