@@ -453,7 +453,16 @@ def build_librarian_agent_messages(
         "fais search_document/resolve_work puis canonical_range_extract sans "
         "inventer de texte. N'utilise pas passage_context pour vendre une plage complete; "
         "si la plage directe n'est pas exploitable, signale la limite par un "
-        "answer_mode ou fallback_reason compact."
+        "answer_mode ou fallback_reason compact. "
+        "Renseigne toujours surface_intro et surface_outro comme strings, "
+        "jamais null. Ces deux champs forment l'enveloppe vernaculaire courte "
+        "que Frida affichera autour du resultat verrouille: parle depuis ce "
+        "que tu viens de faire, le statut obtenu et les limites observees. "
+        "Ils peuvent etre chaine vide seulement si le statut ou le type de "
+        "resultat le justifie. N'y mets pas de jargon outil, pas de snippet, "
+        "pas de contenu exact mecanique et pas de promesse que le resultat ne "
+        "tient pas. N'ecris pas une phrase speciale par numero BIB: l'enveloppe "
+        "vient de ton travail bibliothecaire reel."
     )
     user_payload = {
         "schema_version": SCHEMA_VERSION,
@@ -478,6 +487,13 @@ def build_librarian_agent_messages(
         "budgets": {
             "max_tool_calls": effective_settings.max_tool_calls,
             "max_recent_turns": effective_settings.max_recent_turns,
+        },
+        "surface_contract": {
+            "surface_intro": "string obligatoire, null interdit, court, vide seulement si justifie",
+            "surface_outro": "string obligatoire, null interdit, court, vide seulement si justifie",
+            "no_tool_jargon": True,
+            "no_exact_text_in_surface_fields": True,
+            "no_bib_number_templates": True,
         },
         "case_selection_note": (
             "Les P-cases sont une matrice historique/regression, pas le canon "
@@ -624,6 +640,8 @@ def build_librarian_agent_response_format(*, max_tool_calls: int = 5) -> dict[st
                     "answer_mode",
                     "risk_flags",
                     "fallback_reason",
+                    "surface_intro",
+                    "surface_outro",
                 ],
                 "properties": {
                     "schema_version": {"type": "string", "enum": [SCHEMA_VERSION]},
@@ -638,6 +656,8 @@ def build_librarian_agent_response_format(*, max_tool_calls: int = 5) -> dict[st
                     "answer_mode": _CODE_SCHEMA,
                     "risk_flags": {"type": "array", "items": _CODE_SCHEMA, "maxItems": 12},
                     "fallback_reason": _CODE_SCHEMA,
+                    "surface_intro": {"type": "string", "maxLength": 600},
+                    "surface_outro": {"type": "string", "maxLength": 600},
                 },
             },
         },

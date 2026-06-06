@@ -46,6 +46,7 @@ REASON_BUDGET_EXCEEDED = "biblio_librarian_agent_budget_exceeded"
 
 _HASH_LEN = 12
 _RECENT_DIALOGUE_CONTENT_MAX_CHARS = 1200
+_SURFACE_TEXT_MAX_CHARS = 600
 _ROOT_KEYS = {
     "schema_version",
     "case_id",
@@ -55,6 +56,8 @@ _ROOT_KEYS = {
     "answer_mode",
     "risk_flags",
     "fallback_reason",
+    "surface_intro",
+    "surface_outro",
 }
 _CALL_KEYS = {"tool_name", "method", "params", "call_id"}
 _CODE_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:-")
@@ -457,6 +460,12 @@ def validate_agent_payload(
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     if not _valid_code(payload.get("fallback_reason")):
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    surface_intro = _surface_text(payload.get("surface_intro"))
+    if surface_intro is None:
+        return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    surface_outro = _surface_text(payload.get("surface_outro"))
+    if surface_outro is None:
+        return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     if not _valid_risk_flags(payload.get("risk_flags")):
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     raw_calls = payload.get("tool_calls")
@@ -569,6 +578,8 @@ def validate_agent_payload(
         tool_calls=tuple(calls),
         answer_mode=_safe_token(payload.get("answer_mode")),
         fallback_reason=_safe_token(payload.get("fallback_reason")),
+        surface_intro=surface_intro,
+        surface_outro=surface_outro,
     )
     return BiblioLibrarianAgentValidation(
         status=STATUS_VALIDATED,
@@ -604,6 +615,11 @@ def _repair_agent_payload(payload: Any) -> Any:
     if not isinstance(payload, Mapping):
         return payload
     payload = _unwrap_agent_payload(payload)
+    surface_only = _repair_surface_only_payload(payload)
+    if surface_only is not payload:
+        if validate_agent_payload(surface_only).status == STATUS_VALIDATED:
+            return surface_only
+        payload = surface_only
     raw_calls = payload.get("tool_calls")
     if raw_calls is None:
         if "tools" in payload:
@@ -655,6 +671,8 @@ def _repair_agent_payload(payload: Any) -> Any:
         "answer_mode": _safe_token(payload.get("answer_mode")) or "tool",
         "risk_flags": payload.get("risk_flags") if isinstance(payload.get("risk_flags"), list) else [],
         "fallback_reason": _safe_token(payload.get("fallback_reason")),
+        "surface_intro": _repair_surface_text(payload.get("surface_intro")),
+        "surface_outro": _repair_surface_text(payload.get("surface_outro")),
     }
     inferred_product_method = product_methods.infer_product_method(
         intent=repaired_payload["intent"],
@@ -685,6 +703,19 @@ def _repair_agent_payload(payload: Any) -> Any:
         )
     changed = changed or set(payload.keys()) != _ROOT_KEYS
     return repaired_payload if changed else payload
+
+
+def _repair_surface_only_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    keys = set(payload.keys())
+    if not keys.issubset(_ROOT_KEYS):
+        return payload
+    missing = _ROOT_KEYS - keys
+    if not missing or not missing.issubset({"surface_intro", "surface_outro"}):
+        return payload
+    repaired = dict(payload)
+    repaired.setdefault("surface_intro", "")
+    repaired.setdefault("surface_outro", "")
+    return repaired
 
 
 def _unwrap_agent_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -849,6 +880,20 @@ def _first_text(params: Mapping[str, Any], names: Sequence[str]) -> str:
         if isinstance(value, str) and value.strip():
             return value.strip()[:240]
     return ""
+
+
+def _surface_text(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if len(text) > _SURFACE_TEXT_MAX_CHARS:
+        return None
+    return text
+
+
+def _repair_surface_text(value: Any) -> str:
+    text = _surface_text(value)
+    return text if text is not None else ""
 
 
 def _bounded_turn(turn: Mapping[str, Any]) -> dict[str, Any]:

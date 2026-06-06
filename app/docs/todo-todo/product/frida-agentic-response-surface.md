@@ -182,16 +182,19 @@ Objectif: fixer le contrat generique.
 
 Objectif: brancher le mecanisme simple.
 
-- [ ] Faire porter `surface_intro` et `surface_outro` par le resultat agentique
+- Preuve live:
+  `app/docs/states/baselines/biblio-smokes/agentic-response-surface-lot2-real-conversation-20260606T165059Z.jsonl`.
+
+- [x] Faire porter `surface_intro` et `surface_outro` par le resultat agentique
   Biblio.
-- [ ] Assembler intro, surface existante, limites et relance.
-- [ ] Conserver final lock.
-- [ ] Conserver metas, provenance et observabilite.
-- [ ] Conserver le message assistant normal.
-- [ ] Conserver le timestamp et le chemin temporel normal: DB, contexte,
+- [x] Assembler intro, surface existante, limites et relance.
+- [x] Conserver final lock.
+- [x] Conserver metas, provenance et observabilite.
+- [x] Conserver le message assistant normal.
+- [x] Conserver le timestamp et le chemin temporel normal: DB, contexte,
   labels temporels / Delta-T, Memory, embeddings et resume selon contrats.
-- [ ] Ajouter ou ajuster les tests unitaires cibles.
-- [ ] Produire une preuve live en vraie conversation Frida pour tout patch
+- [x] Ajouter ou ajuster les tests unitaires cibles.
+- [x] Produire une preuve live en vraie conversation Frida pour tout patch
   runtime de ce chantier.
 
 ### Lot 3 - Preuve live par familles

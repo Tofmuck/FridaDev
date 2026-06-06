@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import time
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
@@ -99,6 +100,8 @@ class BiblioLibrarianPlan:
     )
     answer_mode: str = ""
     fallback_reason: str = ""
+    surface_intro: str = field(default="", repr=False, compare=False)
+    surface_outro: str = field(default="", repr=False, compare=False)
 
     def to_observability(self) -> dict[str, Any]:
         return _clean(
@@ -111,6 +114,12 @@ class BiblioLibrarianPlan:
                 "tool_call_count": len(self.tool_calls),
                 "tool_names": [_safe_tool_name(call.tool_name) for call in self.tool_calls],
                 "fallback_reason": _safe_token(self.fallback_reason),
+                "surface_intro_present": bool(self.surface_intro),
+                "surface_intro_chars": len(self.surface_intro),
+                "surface_intro_hash": _hash(self.surface_intro),
+                "surface_outro_present": bool(self.surface_outro),
+                "surface_outro_chars": len(self.surface_outro),
+                "surface_outro_hash": _hash(self.surface_outro),
             }
         )
 
@@ -699,3 +708,10 @@ def _final_result(
 
 def _duration_ms(started: float, monotonic: Any) -> int:
     return int(max((monotonic() - started) * 1000, 0))
+
+
+def _hash(value: str) -> str:
+    text = str(value or "")
+    if not text:
+        return ""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]

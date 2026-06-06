@@ -495,6 +495,13 @@ def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> t
                     'biblio_exact_text_hash',
                     'biblio_render_mode',
                     'biblio_answer_status',
+                    'biblio_surface_intro_present',
+                    'biblio_surface_intro_chars',
+                    'biblio_surface_intro_hash',
+                    'biblio_surface_outro_present',
+                    'biblio_surface_outro_chars',
+                    'biblio_surface_outro_hash',
+                    'biblio_surface_empty_reason_codes',
                 )
                 if key in meta
             }

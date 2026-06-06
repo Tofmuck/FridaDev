@@ -50,6 +50,8 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
             comparison=_comparison(
                 _plan(
                     intent="search_passage",
+                    surface_intro="J'ai retrouve un passage candidat.",
+                    surface_outro="Je peux poursuivre depuis cette ancre.",
                     calls=[
                         planner.BiblioLibrarianToolCall(
                             tool_name=tools.TOOL_CATALOG_SEARCH,
@@ -76,6 +78,16 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertIsNotNone(result.answer_object)
         self.assertIsNotNone(result.rendered_answer)
         self.assertEqual(result.answer_object.status if result.answer_object else "", answer_object.STATUS_READY)
+        self.assertTrue(
+            result.rendered_answer.content.startswith("J'ai retrouve un passage candidat.")
+            if result.rendered_answer
+            else False
+        )
+        self.assertTrue(
+            result.rendered_answer.content.endswith("Je peux poursuivre depuis cette ancre.")
+            if result.rendered_answer
+            else False
+        )
         consultation_content = result.consultation_message.message["content"] if result.consultation_message else ""
         self.assertIn("Source: document du catalogue", consultation_content)
         self.assertNotIn(answer_object.ANSWER_HEADER, consultation_content)
@@ -2279,6 +2291,8 @@ def _plan(
     product_method: str = "",
     case_id: str | None = None,
     answer_mode: str = "tool",
+    surface_intro: str = "",
+    surface_outro: str = "",
 ) -> planner.BiblioLibrarianPlan:
     effective_product_method = product_method or product_methods.infer_product_method(
         intent=intent,
@@ -2293,6 +2307,8 @@ def _plan(
         product_method=effective_product_method,
         tool_calls=tuple(calls),
         answer_mode=answer_mode,
+        surface_intro=surface_intro,
+        surface_outro=surface_outro,
     )
 
 

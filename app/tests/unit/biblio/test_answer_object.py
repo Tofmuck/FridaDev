@@ -20,6 +20,8 @@ from biblio import librarian_tools as tools
 RAW_EXACT_TEXT = "RAW EXACT PASSAGE MUST ONLY APPEAR IN RENDERED CONTENT"
 RAW_TITLE = "RAW TITLE MUST NOT LEAK"
 RAW_PROMPT = "RAW PROMPT MUST NOT LEAK"
+RAW_SURFACE_INTRO = "RAW SURFACE INTRO MUST NOT LEAK"
+RAW_SURFACE_OUTRO = "RAW SURFACE OUTRO MUST NOT LEAK"
 VISIBLE_BIBLIO_PLUMBING = (
     "[RESULTAT BIBLIO STRUCTURE]",
     "catalogue_doc=",
@@ -1450,6 +1452,91 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertTrue(lock.exact_text_rendered)
         self.assertFalse(observed["semantic_judgment"])
         self.assertNotIn(RAW_EXACT_TEXT, _json(observed))
+
+    def test_surface_envelope_wraps_structured_status_without_raw_meta_leak(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_RESOLVE_SECTION,
+            status=tools.STATUS_AMBIGUOUS,
+            reason_code=tools.REASON_AMBIGUOUS,
+            document_id="doc-1",
+            items=(
+                {"document_id": "doc-1", "section_id": "s1", "title": "Candidate 1"},
+                {"document_id": "doc-1", "section_id": "s2", "title": "Candidate 2"},
+            ),
+        )
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_DOCUMENT_STRUCTURE,
+            surface_intro=RAW_SURFACE_INTRO,
+            surface_outro=RAW_SURFACE_OUTRO,
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+
+        self.assertTrue(rendered.content.startswith(RAW_SURFACE_INTRO + "\n\n"))
+        self.assertTrue(rendered.content.endswith("\n\n" + RAW_SURFACE_OUTRO))
+        self.assertTrue(lock.ok)
+        self.assertFalse(rendered.exact_text_rendered)
+        _assert_visible_surface_clean(self, rendered.content)
+        self.assertTrue(rendered.to_observability()["surface_intro_present"])
+        self.assertTrue(rendered.to_observability()["surface_outro_present"])
+        self.assertNotIn(RAW_SURFACE_INTRO, _json(answer.to_observability()))
+        self.assertNotIn(RAW_SURFACE_OUTRO, _json(rendered.to_observability()))
+        self.assertNotIn(RAW_SURFACE_INTRO, _json(lock.to_message_meta()))
+        self.assertNotIn(RAW_SURFACE_OUTRO, _json(lock.to_observability()))
+
+    def test_surface_envelope_wraps_exact_excerpt_without_rewriting_exact(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_PASSAGE_CONTEXT,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CONTEXT,
+            document_id="doc-1",
+            positions=({"page_no": 12, "para_no": 3},),
+            context_text=RAW_EXACT_TEXT,
+        )
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            surface_intro="J'ai retrouve le passage demande.",
+            surface_outro="Je peux continuer a partir de cette ancre.",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        lock = answer_object.build_final_response_lock(answer, rendered)
+
+        self.assertTrue(lock.ok)
+        self.assertTrue(rendered.exact_text_rendered)
+        self.assertEqual(rendered.exact_text_hash, answer.exact_text_hash)
+        self.assertEqual(rendered.exact_text_chars, answer.exact_text_chars)
+        self.assertEqual(rendered.content.count(RAW_EXACT_TEXT), 1)
+        self.assertIn("\n" + RAW_EXACT_TEXT + "\n", rendered.content)
+        self.assertTrue(rendered.content.startswith("J'ai retrouve le passage demande."))
+        self.assertTrue(rendered.content.endswith("Je peux continuer a partir de cette ancre."))
+        self.assertEqual(lock.content, rendered.content)
+        self.assertEqual(lock.to_message_meta()["biblio_surface_intro_chars"], len("J'ai retrouve le passage demande."))
+
+    def test_invalid_surface_envelope_keeps_existing_surface_and_records_content_free_reason(self) -> None:
+        result = _tool_result(
+            tool_name=tools.TOOL_CATALOG_LIST,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            items=({"document_id": "doc-1", "title": RAW_TITLE},),
+            observation_fields={"total_count": 1, "displayed_count": 1},
+        )
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_INVENTORY_METADATA,
+            surface_intro=None,
+            surface_outro="x" * (answer_object.DEFAULT_MAX_SURFACE_ENVELOPE_CHARS + 1),
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+
+        self.assertFalse(rendered.surface_intro_present)
+        self.assertFalse(rendered.surface_outro_present)
+        self.assertIn(answer_object.REASON_SURFACE_INTRO_INVALID_TYPE, rendered.surface_empty_reason_codes)
+        self.assertIn(answer_object.REASON_SURFACE_OUTRO_TOO_LONG, rendered.surface_empty_reason_codes)
+        self.assertIn("Bibliotheque:", rendered.content)
+        self.assertNotIn("x" * 20, rendered.content)
+        self.assertNotIn(RAW_TITLE, _json(rendered.to_observability()))
 
     def test_final_response_lock_blocks_exact_mismatch_without_semantic_judgment(self) -> None:
         result = _tool_result(

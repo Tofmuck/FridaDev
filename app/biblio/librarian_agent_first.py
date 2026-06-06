@@ -220,6 +220,8 @@ def _answer_object_from_loop(
         product_method=plan.product_method,
         case_id=plan.case_id,
         truth_level=truth_level,
+        surface_intro=plan.surface_intro,
+        surface_outro=plan.surface_outro,
     )
 
 
