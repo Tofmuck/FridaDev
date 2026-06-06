@@ -19,10 +19,12 @@ La checklist canonique Biblio utilisateur BIB-01 -> BIB-33 est fermee live:
 Le chantier actif n'est plus de fermer des capacites BIB. Les prochains travaux
 serieux sont:
 
-- **Lot 5 - Nettoyage dur**: reduire la surface interne Biblio sans changer les
-  comportements prouves.
+- **Lot 5 - Nettoyage dur**: auditer les responsabilites, identifier le code
+  mort probable et supprimer progressivement, par preuves, ce qui ne sert plus
+  a tenir BIB-01 -> BIB-33.
 - **Lot 6 - Validation produit live**: rejouer une validation conversationnelle
-  produit representative apres nettoyage.
+  controlee apres Lot 5 pour prouver que le cleanup n'a casse aucune famille
+  BIB.
 
 Source normative principale:
 `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`.
@@ -184,45 +186,103 @@ noms seulement. Les details content-free complets restent dans les JSONL.
 
 ## Lot 5 - Nettoyage dur
 
-But: nettoyer `app/biblio/` sans changer les capacites fermees.
+But: audit de responsabilites + chasse au code mort + suppressions progressives
+prouvees dans `app/biblio/`, sans changer le produit.
+
+Le produit est desormais defini par BIB-01 -> BIB-33. Lot 5 n'a pas le droit de
+le redefinir, de reduire les capacites utilisateur, ni de remplacer le
+bibliothecaire par du determinisme local. Lot 5 a seulement le droit d'enlever,
+de deplacer ou de simplifier ce qui ne sert plus a tenir ces capacites.
 
 Contraintes:
 
-- docs/code petits et reversibles;
+- petits pas reversibles;
 - pas de changement de sens documentaire;
-- pas de regression de surface visible;
-- pas de perte de meta/observabilite/JSONL;
-- pas de nouveau parser utilisateur;
+- pas de reduction de surface visible;
+- pas de perte de meta observable;
+- pas de perte de provenance;
+- pas de perte d'etat Biblio conversationnel;
+- pas de perte d'observabilite content-free ni de JSONL;
+- pas de nouveaux parseurs utilisateur;
 - pas de mutation Catalogue/doc-pipeline/DB/plateforme.
+- pas de suppression de garde-fous parce qu'ils semblent moches;
+- pas de suppression sans preuve d'appel ou de non-appel;
+- chaque suppression doit etre reliee a des tests;
+- si un chemin legacy est encore utile a une BIB, on le garde ou on le migre
+  explicitement avant suppression.
 
-Axes prioritaires:
+### Lot 5A - Audit de responsabilites et code mort
 
-1. Clarifier les responsabilites entre agent contract, bridge, runtime method,
-   projection d'answer object, surface visible et state conversationnel.
-2. Reduire les chemins historiques gardes seulement pour anciennes preuves si
-   les tests et BIB ferment deja le comportement autrement.
-3. Conserver les reason codes content-free et supprimer seulement les doublons
-   ou abstractions devenues opaques.
-4. Ajouter des tests de non-regression quand un nettoyage touche une famille BIB.
-5. Ne jamais requalifier une BIB sans preuve live.
+Nature: docs-only, aucun patch runtime.
 
-Sortie attendue Lot 5:
+Objectif:
 
-- diff lisible par responsabilite;
-- suites unitaires Biblio/chat vertes;
-- au moins un replay conversationnel de regression representative si la surface
-  ou le runtime visible change;
-- TODO/spec mises a jour si une limite ou un contrat bouge.
+- cartographier `app/biblio/`;
+- lister les modules vivants;
+- lister les entrees publiques reellement appelees;
+- lister les chemins legacy encore necessaires;
+- lister le code mort probable;
+- lister les doublons;
+- lister les zones dangereuses a ne pas toucher;
+- relier chaque zone aux BIB, methodes produit, outils et tests qui la
+  protegent.
+
+Livrable:
+
+- audit ecrit dans `app/docs/todo-todo/` ou `app/docs/states/audits/` selon son
+  statut;
+- aucun fichier runtime modifie;
+- plan de suppression par micro-lots, avec ordre, risque, preuve statique,
+  tests et besoin eventuel de live regression.
+
+### Lot 5B+ - Suppressions reversibles par micro-lots
+
+Chaque micro-lot doit rester petit, reversible et commit/push separe.
+
+Structure obligatoire:
+
+1. Hypothese de code mort ou de doublon.
+2. Preuve statique: appels entrants, imports, tests, observabilite, chemins BIB
+   concernes.
+3. Decision: supprimer, migrer explicitement ou garder.
+4. Suppression minimale si et seulement si la preuve tient.
+5. Tests unitaires et checks docs.
+6. Live regression si une surface, un renderer, une meta, une provenance, un
+   etat conversationnel ou un chemin BIB peut etre touche.
+7. Auto-audit: pas de changement produit, pas de faux exact, pas de perte de
+   meta/provenance/etat, pas de parser utilisateur ajoute.
+
+Sortie attendue de Lot 5:
+
+- `app/biblio/` plus lisible par responsabilite;
+- suppressions justifiees et testees;
+- aucune BIB requalifiee sans preuve live;
+- TODO/spec mises a jour seulement si une limite ou un contrat bouge.
 
 ## Lot 6 - Validation produit live
 
-But: valider apres Lot 5 que les capacites BIB fermees restent utilisables en
-conversation reelle, sans relancer 33 scripts separes si les familles partagent
-les memes renderers/outils.
+But: validation produit live complete post-L5.
+
+Lot 6 n'est pas une validation vague. C'est un rejeu live controle qui prouve
+que le nettoyage Lot 5 n'a pas casse les capacites BIB fermees. La checklist
+doit rester 33/33.
 
 Echantillon minimal recommande:
 
+- inventaire;
+- resolution;
+- structure;
+- recherche;
+- extraction;
+- navigation;
+- provenance;
+- memoire de lecture;
+- echecs propres.
+
+Panel BIB a couvrir:
+
 - inventaire/metadonnees/resolution: BIB-01 -> BIB-05;
+- oeuvres internes/roles: BIB-06 -> BIB-07;
 - structure/sections/recherche scoped: BIB-08 -> BIB-14;
 - candidats/clarification/ancre: BIB-15 -> BIB-18;
 - extraction/navigation/provenance: BIB-19 -> BIB-30;
@@ -230,15 +290,22 @@ Echantillon minimal recommande:
 
 Preuve attendue:
 
+- JSONL live obligatoire;
 - vraie conversation Frida;
-- bibliothecaire agentique live appele;
+- agent Biblio live appele;
 - messages assistant sauvegardes;
 - meta Biblio presente;
+- provenance conservee;
 - Memory observee sur les chemins multi-tour;
 - surface visible propre;
-- JSONL content-free conserve dans
-  `app/docs/states/baselines/biblio-smokes/`;
-- aucune BIB cochee/decocher sans preuve.
+- aucun faux exact;
+- aucun snippet exact;
+- aucun faux `primary_text`;
+- aucune regression BIB-29;
+- aucune regression BIB-31/BIB-32;
+- checklist BIB-01 -> BIB-33 toujours 33/33;
+- artefact content-free conserve dans `app/docs/states/baselines/biblio-smokes/`;
+- aucune BIB cochee ou decochee sans preuve.
 
 ## Preuves de fermeture minimales
 
