@@ -19,11 +19,11 @@ La checklist canonique Biblio utilisateur BIB-01 -> BIB-33 est fermee live:
 Le chantier actif n'est plus de fermer des capacites BIB. Les prochains travaux
 serieux sont:
 
-- **Lot 5 - Nettoyage dur**: auditer les responsabilites, identifier le code
+- **Nettoyage dur (L5)**: auditer les responsabilites, identifier le code
   mort probable et supprimer progressivement, par preuves, ce qui ne sert plus
   a tenir BIB-01 -> BIB-33.
-- **Lot 6 - Validation produit live**: rejouer une validation conversationnelle
-  controlee apres Lot 5 pour prouver que le cleanup n'a casse aucune famille
+- **Validation produit live (L6)**: rejouer une validation conversationnelle
+  controlee apres L5 pour prouver que le cleanup n'a casse aucune famille
   BIB.
 
 Source normative principale:
@@ -194,118 +194,92 @@ le redefinir, de reduire les capacites utilisateur, ni de remplacer le
 bibliothecaire par du determinisme local. Lot 5 a seulement le droit d'enlever,
 de deplacer ou de simplifier ce qui ne sert plus a tenir ces capacites.
 
-Contraintes:
+### Lot 5A - Audit docs-only
 
-- petits pas reversibles;
-- pas de changement de sens documentaire;
-- pas de reduction de surface visible;
-- pas de perte de meta observable;
-- pas de perte de provenance;
-- pas de perte d'etat Biblio conversationnel;
-- pas de perte d'observabilite content-free ni de JSONL;
-- pas de nouveaux parseurs utilisateur;
-- pas de mutation Catalogue/doc-pipeline/DB/plateforme.
-- pas de suppression de garde-fous parce qu'ils semblent moches;
-- pas de suppression sans preuve d'appel ou de non-appel;
-- chaque suppression doit etre reliee a des tests;
-- si un chemin legacy est encore utile a une BIB, on le garde ou on le migre
-  explicitement avant suppression.
-
-### Lot 5A - Audit de responsabilites et code mort
-
-Nature: docs-only, aucun patch runtime.
-
-Objectif:
-
-- cartographier `app/biblio/`;
-- lister les modules vivants;
-- lister les entrees publiques reellement appelees;
-- lister les chemins legacy encore necessaires;
-- lister le code mort probable;
-- lister les doublons;
-- lister les zones dangereuses a ne pas toucher;
-- relier chaque zone aux BIB, methodes produit, outils et tests qui la
-  protegent.
-
-Livrable:
-
-- audit ecrit dans `app/docs/todo-todo/` ou `app/docs/states/audits/` selon son
-  statut;
-- aucun fichier runtime modifie;
-- plan de suppression par micro-lots, avec ordre, risque, preuve statique,
-  tests et besoin eventuel de live regression.
+- [ ] Inventorier tous les modules `app/biblio/`.
+- [ ] Identifier les entrees publiques reellement appelees.
+- [ ] Identifier les methodes produit encore vivantes.
+- [ ] Relier chaque methode produit aux BIB qu'elle sert.
+- [ ] Identifier les chemins legacy encore necessaires.
+- [ ] Identifier les chemins legacy probablement morts.
+- [ ] Identifier les doublons de responsabilite.
+- [ ] Identifier les modules ou fonctions trop gros ou trop mixtes.
+- [ ] Identifier les zones dangereuses a ne pas toucher.
+- [ ] Identifier les tests qui protegent des comportements morts.
+- [ ] Produire une matrice module -> responsabilite -> BIB -> tests.
+- [ ] Produire un plan de suppression par micro-lots.
+- [ ] Confirmer qu'aucune suppression runtime n'est faite dans Lot 5A.
+- [ ] Verifier que l'audit ne change aucun statut BIB.
+- [ ] Commit/push l'audit docs-only separement.
 
 ### Lot 5B+ - Suppressions reversibles par micro-lots
 
-Chaque micro-lot doit rester petit, reversible et commit/push separe.
+Pour chaque micro-lot de suppression ou migration:
 
-Structure obligatoire:
+- [ ] Formuler l'hypothese de code mort ou de doublon.
+- [ ] Prouver statiquement les appels ou non-appels.
+- [ ] Verifier les tests associes.
+- [ ] Relier la zone touchee aux BIB, methodes produit, metas et surfaces concernees.
+- [ ] Decider explicitement: supprimer, migrer ou garder.
+- [ ] Supprimer le minimum.
+- [ ] Lancer les tests cibles.
+- [ ] Lancer la suite Biblio/chat si un chemin commun est touche.
+- [ ] Lancer un live regression si une BIB ou surface utilisateur est touchee.
+- [ ] Verifier absence de changement de sens documentaire.
+- [ ] Verifier absence de reduction de surface visible.
+- [ ] Verifier absence de perte de meta/provenance/observabilite.
+- [ ] Verifier absence de perte d'etat Biblio conversationnel.
+- [ ] Verifier absence de nouveau parseur utilisateur.
+- [ ] Verifier que doc-pipeline/DB/plateforme ne sont pas touches.
+- [ ] Verifier qu'aucun garde-fou n'est supprime sans remplacement explicite.
+- [ ] Verifier qu'un chemin legacy encore utile a une BIB est garde ou migre explicitement.
+- [ ] Mettre a jour TODO/spec seulement si une limite ou un contrat change.
+- [ ] Auto-auditer le micro-lot.
+- [ ] Commit/push separement.
 
-1. Hypothese de code mort ou de doublon.
-2. Preuve statique: appels entrants, imports, tests, observabilite, chemins BIB
-   concernes.
-3. Decision: supprimer, migrer explicitement ou garder.
-4. Suppression minimale si et seulement si la preuve tient.
-5. Tests unitaires et checks docs.
-6. Live regression si une surface, un renderer, une meta, une provenance, un
-   etat conversationnel ou un chemin BIB peut etre touche.
-7. Auto-audit: pas de changement produit, pas de faux exact, pas de perte de
-   meta/provenance/etat, pas de parser utilisateur ajoute.
+### Interdits Lot 5
 
-Sortie attendue de Lot 5:
-
-- `app/biblio/` plus lisible par responsabilite;
-- suppressions justifiees et testees;
-- aucune BIB requalifiee sans preuve live;
-- TODO/spec mises a jour seulement si une limite ou un contrat bouge.
+- [ ] Ne pas changer le produit defini par BIB-01 -> BIB-33.
+- [ ] Ne pas supprimer un garde-fou parce qu'il semble laid.
+- [ ] Ne pas supprimer un chemin legacy encore utile sans migration explicite.
+- [ ] Ne pas refactorer au-dela du micro-lot.
+- [ ] Ne pas creer de nouveau `utils.py` ou `helpers.py`.
 
 ## Lot 6 - Validation produit live
 
-But: validation produit live complete post-L5.
+But: validation produit live complete post-L5. Lot 6 prouve que le nettoyage Lot
+5 n'a pas casse les capacites BIB fermees. La checklist doit rester 33/33.
 
-Lot 6 n'est pas une validation vague. C'est un rejeu live controle qui prouve
-que le nettoyage Lot 5 n'a pas casse les capacites BIB fermees. La checklist
-doit rester 33/33.
-
-Echantillon minimal recommande:
-
-- inventaire;
-- resolution;
-- structure;
-- recherche;
-- extraction;
-- navigation;
-- provenance;
-- memoire de lecture;
-- echecs propres.
-
-Panel BIB a couvrir:
-
-- inventaire/metadonnees/resolution: BIB-01 -> BIB-05;
-- oeuvres internes/roles: BIB-06 -> BIB-07;
-- structure/sections/recherche scoped: BIB-08 -> BIB-14;
-- candidats/clarification/ancre: BIB-15 -> BIB-18;
-- extraction/navigation/provenance: BIB-19 -> BIB-30;
-- passages deja lus/memoire/echecs propres: BIB-31 -> BIB-33.
-
-Preuve attendue:
-
-- JSONL live obligatoire;
-- vraie conversation Frida;
-- agent Biblio live appele;
-- messages assistant sauvegardes;
-- meta Biblio presente;
-- provenance conservee;
-- Memory observee sur les chemins multi-tour;
-- surface visible propre;
-- aucun faux exact;
-- aucun snippet exact;
-- aucun faux `primary_text`;
-- aucune regression BIB-29;
-- aucune regression BIB-31/BIB-32;
-- checklist BIB-01 -> BIB-33 toujours 33/33;
-- artefact content-free conserve dans `app/docs/states/baselines/biblio-smokes/`;
-- aucune BIB cochee ou decochee sans preuve.
+- [ ] Preparer un panel live representatif BIB-01 -> BIB-33.
+- [ ] Couvrir inventaire / metadonnees.
+- [ ] Couvrir resolution documentaire.
+- [ ] Couvrir structure documentaire.
+- [ ] Couvrir recherche scoped.
+- [ ] Couvrir extraction exacte.
+- [ ] Couvrir section complete / segmentee.
+- [ ] Couvrir plage canonique courte.
+- [ ] Couvrir plage canonique longue segmentee.
+- [ ] Couvrir navigation lecteur.
+- [ ] Couvrir chapitre suivant BIB-29.
+- [ ] Couvrir provenance / ancre courante.
+- [ ] Couvrir memoire de lecture BIB-31/BIB-32.
+- [ ] Couvrir roles documentaires sans faux `primary_text`.
+- [ ] Couvrir echecs propres BIB-33.
+- [ ] Produire un JSONL live date.
+- [ ] Verifier vraie conversation Frida.
+- [ ] Verifier agent Biblio live appele.
+- [ ] Verifier messages assistant sauvegardes.
+- [ ] Verifier surfaces visibles propres.
+- [ ] Verifier metas/provenance conservees.
+- [ ] Verifier Memory observee sur les chemins multi-tour.
+- [ ] Verifier aucun faux exact.
+- [ ] Verifier aucun snippet rendu comme exact.
+- [ ] Verifier aucun faux `primary_text`.
+- [ ] Verifier aucune regression BIB-29.
+- [ ] Verifier aucune regression BIB-31/BIB-32.
+- [ ] Verifier checklist BIB reste 33/33.
+- [ ] Documenter les limites restantes.
+- [ ] Commit/push.
 
 ## Preuves de fermeture minimales
 
