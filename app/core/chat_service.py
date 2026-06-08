@@ -484,6 +484,25 @@ def _biblio_assistant_response_override(result: Any) -> chat_llm_flow.AssistantR
     )
 
 
+def _agenda_assistant_response_override(result: Any) -> chat_llm_flow.AssistantResponseOverride | None:
+    lock_reader = getattr(agenda_chat_runtime, 'final_response_lock_for_result', None)
+    lock = lock_reader(result) if callable(lock_reader) else getattr(result, 'final_response_lock', None)
+    if lock is None or not bool(getattr(lock, 'ok', False)):
+        return None
+    content = str(getattr(lock, 'content', '') or '')
+    if not content:
+        return None
+    meta_builder = getattr(lock, 'to_message_meta', None)
+    observability_builder = getattr(lock, 'to_observability', None)
+    return chat_llm_flow.AssistantResponseOverride(
+        content=content,
+        source=str(getattr(lock, 'source', '') or ''),
+        reason_code=str(getattr(lock, 'reason_code', '') or ''),
+        meta=meta_builder() if callable(meta_builder) else None,
+        observability=observability_builder() if callable(observability_builder) else {},
+    )
+
+
 def _biblio_assistant_response_meta(result: Any) -> dict[str, Any] | None:
     meta_builder = getattr(biblio_chat_runtime, 'assistant_response_meta_for_result', None)
     meta = meta_builder(result) if callable(meta_builder) else None
@@ -884,6 +903,7 @@ def chat_response(
     biblio_chat_runtime.attach_biblio_conversation_state(conversation, biblio_result)
     _emit_biblio_observability(biblio_result)
 
+    agenda_result = None
     if agenda_chat_runtime.normalize_agenda_enabled(data.get('agenda_enabled')):
         agenda_result = agenda_chat_runtime.run_agenda_chat_turn(
             data,
@@ -893,6 +913,8 @@ def chat_response(
             now_iso=now_iso_value,
             config_module=config_module,
             runtime_settings_module=runtime_settings_module,
+            llm_module=llm_module,
+            requests_module=requests_module,
         )
         _emit_agenda_observability(agenda_result)
 
@@ -1031,6 +1053,7 @@ def chat_response(
         biblio_result,
     )
     biblio_final_response_override = _biblio_assistant_response_override(biblio_result)
+    agenda_final_response_override = _agenda_assistant_response_override(agenda_result)
     biblio_assistant_response_meta = _biblio_assistant_response_meta(biblio_result)
     biblio_assistant_response_envelope = _biblio_assistant_response_envelope(biblio_result)
     adobe_lane = adobe_docs_prompt_lane.inject_adobe_prompt_lane(
@@ -1066,7 +1089,7 @@ def chat_response(
         mode_enforces_identity=chat_memory_flow.mode_enforces_identity,
         conversation_headers_func=chat_session_flow.conversation_headers,
         conversation_stream_headers_func=chat_session_flow.conversation_stream_headers,
-        assistant_response_override=biblio_final_response_override,
+        assistant_response_override=agenda_final_response_override or biblio_final_response_override,
         assistant_response_meta=biblio_assistant_response_meta,
         assistant_response_intro=biblio_assistant_response_envelope.get('surface_intro', ''),
         assistant_response_outro=biblio_assistant_response_envelope.get('surface_outro', ''),

@@ -1,0 +1,357 @@
+from __future__ import annotations
+
+import json
+import time
+from collections.abc import Callable, Mapping
+from typing import Any
+
+from agenda import agent_contract as contract
+from agenda import agent_runtime
+from agenda import product_methods
+
+
+STATUS_OK = 'ok'
+STATUS_ERROR = 'error'
+
+REASON_OK = 'agenda_agent_model_ok'
+REASON_MODEL_NOT_CONFIGURED = 'agenda_agent_model_not_configured'
+REASON_PROVIDER_NOT_CONFIGURED = 'agenda_agent_provider_not_configured'
+REASON_PROVIDER_ERROR = 'agenda_agent_provider_error'
+REASON_INVALID_RESPONSE = 'agenda_agent_provider_invalid_response'
+
+
+class OpenRouterAgendaAgentClient:
+    def __init__(
+        self,
+        *,
+        llm_module: Any,
+        runtime_settings_module: Any,
+        requests_post: Callable[..., Any],
+        config_module: Any = None,
+        monotonic: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._llm = llm_module
+        self._runtime_settings = runtime_settings_module
+        self._requests_post = requests_post
+        self._config = config_module
+        self._monotonic = monotonic
+
+    def complete(
+        self,
+        request: contract.AgendaAgentRequest,
+        *,
+        settings: contract.AgendaAgentSettings,
+    ) -> agent_runtime.AgendaAgentModelResponse:
+        del settings
+        try:
+            model, max_tokens = _main_model_fields(self._runtime_settings)
+        except Exception:
+            return _model_error(REASON_MODEL_NOT_CONFIGURED)
+        if not model:
+            return _model_error(REASON_MODEL_NOT_CONFIGURED)
+        try:
+            headers = self._provider_headers()
+            url = self._chat_completions_url()
+        except Exception:
+            return _model_error(REASON_PROVIDER_NOT_CONFIGURED)
+
+        started = self._monotonic()
+        try:
+            response = self._requests_post(
+                url,
+                headers=headers,
+                json=build_agenda_agent_payload(
+                    request,
+                    model=model,
+                    max_tokens=max_tokens,
+                ),
+                timeout=_timeout_s(self._config),
+            )
+        except Exception:
+            return _model_error(REASON_PROVIDER_ERROR, attempt_count=1)
+        status_code = getattr(response, 'status_code', None)
+        if status_code is not None and int(status_code) >= 400:
+            return _model_error(REASON_PROVIDER_ERROR, attempt_count=1)
+        try:
+            data = response.json()
+        except (TypeError, ValueError):
+            return _model_error(REASON_INVALID_RESPONSE, attempt_count=1)
+        choice = _first_choice(data)
+        message = choice.get('message') if isinstance(choice.get('message'), Mapping) else {}
+        content = str(message.get('content') or '')
+        finish_reason = str(choice.get('finish_reason') or '')
+        if not content:
+            return _model_error(REASON_INVALID_RESPONSE, attempt_count=1)
+        _ = int((self._monotonic() - started) * 1000)
+        return agent_runtime.AgendaAgentModelResponse(
+            status=STATUS_OK,
+            reason_code=REASON_OK,
+            content=content,
+            finish_reason=finish_reason,
+            attempt_count=1,
+        )
+
+    def _provider_headers(self) -> dict[str, Any]:
+        custom = getattr(self._llm, 'or_headers_custom', None)
+        if callable(custom):
+            return custom(
+                caller='agenda_agent',
+                referer='https://fridadev.frida-system.fr/openrouter/agenda-agent',
+                title='FridaDev / Agenda Agent',
+            )
+        headers = getattr(self._llm, 'or_headers', None)
+        if callable(headers):
+            return headers(caller='llm')
+        raise RuntimeError('llm headers unavailable')
+
+    def _chat_completions_url(self) -> str:
+        url_builder = getattr(self._llm, 'or_chat_completions_url', None)
+        if callable(url_builder):
+            return str(url_builder())
+        base = str(getattr(self._config, 'OR_BASE', '') or '').rstrip('/')
+        if not base:
+            raise RuntimeError('OpenRouter base URL unavailable')
+        return f'{base}/chat/completions'
+
+
+def build_agenda_agent_payload(
+    request: contract.AgendaAgentRequest,
+    *,
+    model: str,
+    max_tokens: int,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        'model': str(model or ''),
+        'messages': build_agenda_agent_messages(request),
+        'max_tokens': int(max_tokens or 700),
+        'response_format': build_agenda_agent_response_format(
+            max_tool_calls=int(request.settings.max_tool_calls or 4),
+        ),
+        'provider': {'require_parameters': True},
+        'metadata': {
+            'frida_caller': 'agenda_agent',
+            'frida_contract': contract.SCHEMA_VERSION,
+        },
+        'trace': {
+            'trace_name': 'FridaDev',
+            'generation_name': 'FridaDev / Agenda Agent',
+        },
+    }
+    if _model_supports_sampling(str(model or '')):
+        payload['temperature'] = 0.0
+        payload['top_p'] = 1.0
+    return payload
+
+
+def build_agenda_agent_messages(request: contract.AgendaAgentRequest) -> list[dict[str, str]]:
+    recent = [
+        {
+            'role': str(turn.get('role') or ''),
+            'content': str(turn.get('content') or ''),
+        }
+        for turn in request.bounded_recent_dialogue()
+    ]
+    user_payload = {
+        'user_message': request.user_message,
+        'recent_dialogue': recent,
+        'now_iso': request.now_iso,
+        'timezone': request.timezone,
+        'available_calendars': list(request.available_calendars),
+        'agenda_state': dict(request.agenda_state or {}),
+    }
+    system = (
+        'Tu es le planificateur Agenda de FridaDev. '
+        'Tu produis uniquement un JSON strict conforme a frida_agenda_agent_v1. '
+        'Tu choisis une methode produit Agenda et seulement des outils GET '
+        'read-only allowlistes. Tu ne demandes jamais de mutation executee. '
+        'Pour lire une fenetre, utilise event_query_range avec start et end ISO '
+        'explicites. Si le calendrier cible est inconnu, omets calendar_id: '
+        'le deterministe interrogera les calendriers accessibles. '
+        'Pour search_events, utilise une fenetre bornee et event_search. '
+        'surface_intro et surface_outro sont toujours des strings, eventuellement vides.'
+    )
+    return [
+        {'role': 'system', 'content': system},
+        {'role': 'user', 'content': json.dumps(user_payload, ensure_ascii=False, sort_keys=True)},
+    ]
+
+
+def build_agenda_agent_response_format(*, max_tool_calls: int) -> dict[str, Any]:
+    return {
+        'type': 'json_schema',
+        'json_schema': {
+            'name': contract.SCHEMA_VERSION,
+            'strict': True,
+            'schema': _agenda_agent_json_schema(max_tool_calls=max_tool_calls),
+        },
+    }
+
+
+def _agenda_agent_json_schema(*, max_tool_calls: int) -> dict[str, Any]:
+    return {
+        'type': 'object',
+        'additionalProperties': False,
+        'required': [
+            'schema_version',
+            'product_method',
+            'intent',
+            'calendar_scope',
+            'time_scope',
+            'tool_calls',
+            'mutation',
+            'answer_mode',
+            'risk_flags',
+            'fallback_reason',
+            'surface_intro',
+            'surface_outro',
+        ],
+        'properties': {
+            'schema_version': {'type': 'string', 'enum': [contract.SCHEMA_VERSION]},
+            'product_method': {'type': 'string', 'enum': sorted(product_methods.PRODUCT_METHODS)},
+            'intent': {'type': 'string', 'maxLength': 400},
+            'calendar_scope': _calendar_scope_schema(),
+            'time_scope': _time_scope_schema(),
+            'tool_calls': _tool_calls_schema(max_tool_calls=max_tool_calls),
+            'mutation': _mutation_schema(),
+            'answer_mode': {
+                'type': 'string',
+                'enum': [
+                    'agenda_summary',
+                    'agenda_details',
+                    'clarify',
+                    'proposal',
+                    'mutation_pending_confirmation',
+                    'mutation_refused',
+                    'fallback',
+                ],
+            },
+            'risk_flags': {'type': 'array', 'items': {'type': 'string'}, 'maxItems': 12},
+            'fallback_reason': {'type': 'string', 'maxLength': 120},
+            'surface_intro': {'type': 'string', 'maxLength': 600},
+            'surface_outro': {'type': 'string', 'maxLength': 600},
+        },
+    }
+
+
+def _calendar_scope_schema() -> dict[str, Any]:
+    return {
+        'type': 'object',
+        'additionalProperties': False,
+        'required': ['calendar_ids', 'family_calendar', 'ambiguity'],
+        'properties': {
+            'calendar_ids': {'type': 'array', 'items': {'type': 'string'}, 'maxItems': 20},
+            'family_calendar': {'type': 'boolean'},
+            'ambiguity': {'type': 'string', 'maxLength': 80},
+        },
+    }
+
+
+def _time_scope_schema() -> dict[str, Any]:
+    return {
+        'type': 'object',
+        'additionalProperties': False,
+        'required': ['kind', 'start', 'end', 'timezone', 'ambiguity'],
+        'properties': {
+            'kind': {'type': 'string', 'maxLength': 80},
+            'start': {'type': 'string', 'maxLength': 64},
+            'end': {'type': 'string', 'maxLength': 64},
+            'timezone': {'type': 'string', 'maxLength': 80},
+            'ambiguity': {'type': 'string', 'maxLength': 80},
+        },
+    }
+
+
+def _tool_calls_schema(*, max_tool_calls: int) -> dict[str, Any]:
+    return {
+        'type': 'array',
+        'maxItems': int(max_tool_calls or 4),
+        'items': {
+            'type': 'object',
+            'additionalProperties': False,
+            'required': ['tool_name', 'method', 'params', 'call_id'],
+            'properties': {
+                'tool_name': {'type': 'string', 'enum': sorted(product_methods.READ_ONLY_TOOLS)},
+                'method': {'type': 'string', 'enum': ['GET']},
+                'params': _tool_params_schema(),
+                'call_id': {'type': 'string', 'maxLength': 120},
+            },
+        },
+    }
+
+
+def _tool_params_schema() -> dict[str, Any]:
+    return {
+        'type': 'object',
+        'additionalProperties': False,
+        'properties': {
+            'calendar_id': {'type': 'string', 'maxLength': 80},
+            'event_id': {'type': 'string', 'maxLength': 80},
+            'start': {'type': 'string', 'maxLength': 64},
+            'end': {'type': 'string', 'maxLength': 64},
+            'timezone': {'type': 'string', 'maxLength': 80},
+            'query': {'type': 'string', 'maxLength': 160},
+            'max_days': {'type': 'integer', 'minimum': 1, 'maximum': 31},
+            'limit': {'type': 'integer', 'minimum': 1, 'maximum': 50},
+        },
+    }
+
+
+def _mutation_schema() -> dict[str, Any]:
+    return {
+        'type': 'object',
+        'additionalProperties': False,
+        'required': ['requested', 'kind', 'confirmation_required', 'confirmation_level', 'pending_action_id'],
+        'properties': {
+            'requested': {'type': 'boolean'},
+            'kind': {'type': 'string', 'enum': ['none', 'create', 'update', 'delete']},
+            'confirmation_required': {'type': 'boolean'},
+            'confirmation_level': {'type': 'string', 'enum': ['none', 'simple', 'reinforced']},
+            'pending_action_id': {'type': 'string', 'maxLength': 120},
+        },
+    }
+
+
+def _main_model_fields(runtime_settings_module: Any) -> tuple[str, int]:
+    getter = getattr(runtime_settings_module, 'get_main_model_settings', None)
+    if not callable(getter):
+        return '', 700
+    view = getter()
+    payload = getattr(view, 'payload', {}) or {}
+    model = str(((payload.get('model') or {}).get('value')) or '').strip()
+    max_tokens = _int_value((payload.get('response_max_tokens') or {}).get('value'), default=700)
+    return model, min(max_tokens, 900)
+
+
+def _timeout_s(config_module: Any) -> int:
+    return _int_value(getattr(config_module, 'TIMEOUT_S', 20), default=20)
+
+
+def _int_value(value: Any, *, default: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
+def _model_supports_sampling(model: str) -> bool:
+    return not str(model or '').strip().lower().startswith('openai/gpt-5')
+
+
+def _first_choice(data: Any) -> Mapping[str, Any]:
+    if not isinstance(data, Mapping):
+        return {}
+    choices = data.get('choices')
+    if not isinstance(choices, list) or not choices:
+        return {}
+    first = choices[0]
+    return first if isinstance(first, Mapping) else {}
+
+
+def _model_error(reason_code: str, *, attempt_count: int = 0) -> agent_runtime.AgendaAgentModelResponse:
+    return agent_runtime.AgendaAgentModelResponse(
+        status=STATUS_ERROR,
+        reason_code=reason_code,
+        content='',
+        attempt_count=attempt_count,
+    )

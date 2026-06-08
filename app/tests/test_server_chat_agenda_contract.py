@@ -4,6 +4,7 @@ import sys
 import types
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -133,7 +134,7 @@ class ServerChatAgendaContractTests(unittest.TestCase):
         agenda_events = [payload for event, payload in events if event == 'agenda']
         self.assertEqual(len(agenda_events), 1)
         agenda_payload = agenda_events[0]['payload']
-        self.assertEqual(agenda_payload['schema_version'], 'frida_agenda_lot4_agent_v1')
+        self.assertEqual(agenda_payload['schema_version'], 'frida_agenda_lot5_readonly_v1')
         self.assertEqual(agenda_payload['agent_schema_version'], 'frida_agenda_agent_v1')
         self.assertTrue(agenda_payload['enabled'])
         self.assertFalse(agenda_payload['used'])
@@ -151,6 +152,122 @@ class ServerChatAgendaContractTests(unittest.TestCase):
         self.assertNotIn('BEGIN:VEVENT', prompt_text)
         self.assertNotIn('Fixture Focus Block', repr(events))
         self.assertNotIn('Est-ce que tu peux lire mon agenda demain ?', repr(agenda_payload))
+
+    def test_agenda_final_response_override_persists_as_normal_assistant_message(self) -> None:
+        conversation = {
+            'id': 'conv-agenda-final',
+            'created_at': '2026-06-08T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+        observed_state, restore = self._patch_chat_pipeline(conversation=conversation)
+        original_agenda_turn = self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn
+        original_emit = self.server.chat_service.chat_turn_logger.emit
+        events = []
+
+        def fake_agenda_turn(*_args, **_kwargs):
+            lock = _FakeAgendaFinalLock('Voila ce que je vois dans ton agenda :\n- 09:00-10:00 - Fixture Focus Block')
+            return SimpleNamespace(
+                enabled=True,
+                used=True,
+                status='active_ready',
+                reason_code='agenda_agent_active_validated',
+                observability_payload={
+                    'schema_version': 'frida_agenda_lot5_readonly_v1',
+                    'enabled': True,
+                    'used': True,
+                    'mode': 'active',
+                    'runtime_available': True,
+                    'agent_json_validated': True,
+                    'read_execution_status': 'ok',
+                    'read_event_count': 1,
+                    'caldav_access': False,
+                    'nextcloud_access': False,
+                    'secret_access': False,
+                    'mutation_attempted': False,
+                    'final_response_override': True,
+                    'content_free': True,
+                },
+                final_response_lock=lock,
+            )
+
+        self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn = fake_agenda_turn
+        self.server.chat_service.chat_turn_logger.emit = (
+            lambda event, **kwargs: events.append((event, kwargs))
+        )
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={
+                    'message': 'Lis mon agenda aujourd hui',
+                    'agenda_enabled': True,
+                    'web_search': False,
+                },
+            )
+        finally:
+            self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn = original_agenda_turn
+            self.server.chat_service.chat_turn_logger.emit = original_emit
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload['ok'])
+        self.assertEqual(payload['text'], 'Voila ce que je vois dans ton agenda :\n- 09:00-10:00 - Fixture Focus Block')
+        assistant_messages = [
+            message for message in conversation['messages'] if message.get('role') == 'assistant'
+        ]
+        self.assertEqual(len(assistant_messages), 1)
+        assistant_message = assistant_messages[0]
+        self.assertEqual(assistant_message['content'], payload['text'])
+        self.assertIn('timestamp', assistant_message)
+        self.assertEqual(assistant_message['meta']['source'], 'agenda_readonly_response')
+        self.assertTrue(assistant_message['meta']['content_free_meta'])
+        self.assertEqual(len(observed_state['save_new_traces_calls']), 1)
+        self.assertEqual(observed_state['save_new_traces_calls'][0][-1], assistant_message)
+        agenda_events = [item for event, item in events if event == 'agenda']
+        self.assertEqual(len(agenda_events), 1)
+        self.assertNotIn('Fixture Focus Block', repr(agenda_events))
+        self.assertNotIn('BEGIN:VEVENT', repr(events))
+        override_events = [item for event, item in events if event == 'assistant_response_override']
+        self.assertEqual(len(override_events), 0)
+
+
+class _FakeAgendaFinalLock:
+    ok = True
+    source = 'agenda_readonly_response'
+    reason_code = 'agenda_readonly_final_response'
+
+    def __init__(self, content: str) -> None:
+        self.content = content
+
+    def to_message_meta(self):
+        return {
+            'source': self.source,
+            'reason_code': self.reason_code,
+            'agenda_schema_version': 'frida_agenda_agent_v1',
+            'agenda_product_method': 'read_today',
+            'agenda_tool_names': ['event_query_range'],
+            'agenda_tool_count': 1,
+            'agenda_event_count': 1,
+            'agenda_calendar_count': 1,
+            'agenda_event_id_hashes': ['eventhash12'],
+            'agenda_calendar_id_hashes': ['calhash12'],
+            'agenda_caldav_access': False,
+            'agenda_nextcloud_access': False,
+            'agenda_mutation_attempted': False,
+            'agenda_final_lock_authorized': True,
+            'agenda_final_lock_reason_code': self.reason_code,
+            'content_free_meta': True,
+        }
+
+    def to_observability(self):
+        return {
+            'source': self.source,
+            'reason_code': self.reason_code,
+            'content_present': True,
+            'content_chars': len(self.content),
+            'content_hash': 'contenthash12',
+            'content_free': True,
+        }
 
 
 if __name__ == '__main__':

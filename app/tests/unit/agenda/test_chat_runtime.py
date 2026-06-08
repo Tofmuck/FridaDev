@@ -4,6 +4,7 @@ import json
 import unittest
 
 from agenda import agent_contract, agent_runtime, chat_runtime, product_methods
+from agenda.caldav_models import CalendarEvent, CalendarSummary
 
 
 class AgendaChatRuntimeLot1Tests(unittest.TestCase):
@@ -28,7 +29,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertEqual(result.status, agent_runtime.STATUS_SKIPPED)
         self.assertEqual(result.reason_code, agent_runtime.REASON_MODE_OFF)
         payload = result.observability_payload
-        self.assertEqual(payload['schema_version'], 'frida_agenda_lot4_agent_v1')
+        self.assertEqual(payload['schema_version'], 'frida_agenda_lot5_readonly_v1')
         self.assertEqual(payload['agent_schema_version'], agent_contract.SCHEMA_VERSION)
         self.assertTrue(payload['runtime_available'])
         self.assertEqual(payload['mode'], agent_contract.MODE_OFF)
@@ -53,7 +54,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertEqual(result.reason_code, 'agenda_toggle_off')
         self.assertFalse(result.observability_payload['caldav_access'])
 
-    def test_active_runtime_validates_injected_json_agent_without_using_chat_response_or_caldav(self) -> None:
+    def test_active_runtime_validates_injected_json_agent_without_caldav_when_read_client_missing(self) -> None:
         fake = _FakeModelClient(_valid_payload(intent='RAW INTENT MUST NOT LEAK'))
         result = chat_runtime.run_agenda_chat_turn(
             {'agenda_enabled': True},
@@ -70,13 +71,19 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertEqual(result.status, agent_runtime.STATUS_ACTIVE_READY)
         self.assertEqual(result.reason_code, agent_runtime.REASON_ACTIVE_VALIDATED)
         self.assertFalse(result.used)
+        self.assertIsNone(result.final_response_lock)
+        self.assertIsNotNone(result.read_execution_result)
         self.assertEqual(fake.calls, 1)
         payload = result.observability_payload
         encoded = json.dumps(payload, sort_keys=True)
+        self.assertEqual(payload['schema_version'], 'frida_agenda_lot5_readonly_v1')
         self.assertTrue(payload['agent_json_validated'])
         self.assertTrue(payload['model_called'])
         self.assertEqual(payload['product_method'], product_methods.METHOD_READ_TODAY)
         self.assertEqual(payload['tool_names'], [product_methods.TOOL_EVENT_QUERY_RANGE])
+        self.assertTrue(payload['read_execution_attempted'])
+        self.assertEqual(payload['read_execution_status'], 'skipped')
+        self.assertEqual(payload['read_execution_reason_code'], 'agenda_readonly_client_unavailable')
         self.assertFalse(payload['caldav_access'])
         self.assertFalse(payload['nextcloud_access'])
         self.assertFalse(payload['secret_access'])
@@ -86,6 +93,45 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded)
         self.assertNotIn('RAW INTENT MUST NOT LEAK', encoded)
         self.assertNotIn('RAW DIALOGUE MUST NOT LEAK', encoded)
+
+    def test_active_runtime_executes_readonly_plan_with_injected_client_and_final_response_lock(self) -> None:
+        fake_model = _FakeModelClient(_valid_payload(intent='RAW INTENT MUST NOT LEAK'))
+        read_client = _FakeReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(read_client.calls, ['list_calendars', 'query_calendar_events'])
+        lock = result.final_response_lock
+        self.assertIsNotNone(lock)
+        self.assertTrue(lock.ok)
+        self.assertIn('Fixture Focus Block', lock.content)
+        self.assertIn('09:00-10:00', lock.content)
+        meta = lock.to_message_meta()
+        self.assertEqual(meta['source'], 'agenda_readonly_response')
+        self.assertEqual(meta['agenda_product_method'], product_methods.METHOD_READ_TODAY)
+        self.assertEqual(meta['agenda_event_count'], 1)
+        self.assertFalse(meta['agenda_caldav_access'])
+        self.assertFalse(meta['agenda_mutation_attempted'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertTrue(result.observability_payload['final_response_override'])
+        self.assertEqual(result.observability_payload['read_execution_status'], 'ok')
+        self.assertEqual(result.observability_payload['read_event_count'], 1)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+        self.assertNotIn('RAW INTENT MUST NOT LEAK', encoded_payload)
+        self.assertNotIn('Fixture Focus Block', encoded_payload)
+        self.assertNotIn('fixture-event-001', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
 
     def test_active_runtime_invalid_json_falls_back_cleanly(self) -> None:
         fake = _FakeTextModelClient('{not-json')
@@ -153,6 +199,48 @@ class _FakeTextModelClient:
             content=self.content,
             attempt_count=1,
         )
+
+
+class _FakeReadClient:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+        self._calendar = CalendarSummary(
+            local_id='primary',
+            display_name='Fixture Primary Calendar',
+            permissions=('read',),
+            color='#1166aa',
+            enabled=True,
+            readonly=True,
+            family_calendar=False,
+            caldav_path='/remote.php/dav/calendars/tof/fixture-primary/',
+        )
+        self._event = CalendarEvent(
+            event_id='event-1',
+            calendar_id='primary',
+            uid='fixture-event-001@example.invalid',
+            summary='Fixture Focus Block',
+            location='Fixture Location Alpha',
+            description='Fixture description, no personal data.',
+            start_iso='2026-06-08T09:00:00Z',
+            end_iso='2026-06-08T10:00:00Z',
+            timezone='UTC',
+            etag='fixture-etag-001',
+            caldav_path='/remote.php/dav/calendars/tof/fixture-primary/event-1.ics',
+        )
+
+    def list_calendars(self):
+        self.calls.append('list_calendars')
+        return (self._calendar,)
+
+    def query_calendar_events(self, calendar, *, start_iso, end_iso, timezone_name='UTC'):
+        del calendar, start_iso, end_iso, timezone_name
+        self.calls.append('query_calendar_events')
+        return (self._event,)
+
+    def get_event(self, event):
+        del event
+        self.calls.append('get_event')
+        return self._event
 
 
 def _valid_payload(**overrides) -> dict:

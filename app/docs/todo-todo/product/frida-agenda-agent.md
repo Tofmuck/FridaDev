@@ -4,9 +4,10 @@ Statut: TODO actif au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
-Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-4 livrent
-toggle no-op, configuration redacted, outils read-only non branches et agent
-JSON valide sous garde-fous, sans lecture CalDAV live ni mutation.
+Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-5A livrent
+toggle no-op, configuration redacted, outils read-only, agent JSON valide sous
+garde-fous et branchement applicatif read-only non-live, sans preuve CalDAV
+live ni mutation.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -27,7 +28,8 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Creation/modification seulement apres confirmation explicite.
 - [x] Suppression jamais autonome, confirmation renforcee obligatoire.
 - [x] Calendrier familial: prudence renforcee.
-- [x] Aucun agent Agenda reel ni acces CalDAV n'est livre par ce document.
+- [x] Aucun acces CalDAV live ni mutation n'est livre par Lot 5A; Lot 5B reste
+  requis pour la preuve serveur reelle.
 
 ## Audit existant FridaDev
 
@@ -169,19 +171,27 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   separees: runtime chat no-op, runtime config, modeles CalDAV, client read-only,
   parser ICS, tools read-only et observability.
   Preuve livree: fichiers separes par responsabilite, pas de `utils.py`.
-- [ ] Ajouter les composants Agenda futurs non livres dans `app/agenda/`:
-  agent contract, methodes produit, pending store, rendu/final lock.
-  Preuve attendue: aucun fichier fourre-tout et branchements minimaux.
+- [x] Ajouter les composants Agenda `app/agenda/` de Lot 4/5A: agent contract,
+  methodes produit, client modele injectable, execution read-only, rendu et
+  final lock.
+  Preuve livree: fichiers separes par responsabilite, aucun fichier
+  fourre-tout, pas de `utils.py`.
+- [ ] Ajouter le pending store futur dans `app/agenda/`.
+  Preuve attendue: TTL, meta content-free et refus mutation hors confirmation.
 - [x] Brancher l'Agenda dans `chat_service` a cote de Biblio.
   Preuve livree: toggle absent/off = no-op strict; toggle on = appel runtime
-  Agenda borne, sans prompt lane ni final response override.
-- [ ] Faire passer les reponses finales Agenda par `AssistantResponseOverride`.
-  Preuve attendue: message assistant DB, timestamp, meta, Memory et contexte
-  suivant prouves.
-- [ ] Ne pas brancher l'Agenda dans Memory, summary ou prompt window directement.
-  Preuve attendue: aucun canal parallele; message assistant normal suffit.
-- [ ] Definir un final lock Agenda.
-  Preuve attendue: pas de double reponse, pas de contenu technique visible.
+  Agenda borne; Lot 5A ajoute override final seulement quand lecture read-only
+  validee produit une reponse.
+- [x] Faire passer les reponses finales Agenda par `AssistantResponseOverride`.
+  Preuve livree: test serveur fake de message assistant normal avec timestamp,
+  meta content-free et sauvegarde conversation/memory path.
+- [x] Ne pas brancher l'Agenda dans Memory, summary ou prompt window
+  directement.
+  Preuve livree: le message assistant normal suffit; aucun canal Memory
+  parallele ajoute.
+- [x] Definir un final lock Agenda.
+  Preuve livree: `agenda_readonly_response`, pas de double reponse, meta et
+  observabilite content-free.
 - [ ] Definir une lane prompt Agenda seulement pour les cas sans final lock, si
   elle est necessaire.
   Preuve attendue: lane bornee, pas de payload ICS brut, pas de prompt complet
@@ -448,12 +458,32 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ### Lot 5 - Lecture read-only active
 
-- [ ] Brancher lecture Agenda quand toggle on et mode autorise.
-- [ ] Prouver lire aujourd'hui.
-- [ ] Prouver lire demain.
-- [ ] Prouver recherche evenement.
-- [ ] Prouver details evenement unique.
-- [ ] Prouver contexte suivant, timestamp, Memory eligible.
+- [x] Lot 5A: brancher lecture Agenda applicative non-live quand toggle on,
+  mode `active`, secret redacted present, plan JSON valide et methode read-only.
+  Preuve livree: tests unitaires avec agent fake et client read-only injecte.
+- [x] Lot 5A: executer uniquement les outils read-only autorises
+  `calendar_list`, `event_query_range`, `event_search` et `event_get`.
+  Preuve livree: execution deterministe allowlistee, sans mutation ni pending
+  store.
+- [x] Lot 5A: rendre la reponse visible comme reponse normale de Frida via
+  `AssistantResponseOverride`.
+  Preuve livree: test serveur fake avec message assistant, timestamp,
+  `message.meta` content-free et chemin Memory eligible.
+- [x] Lot 5A: garder les artefacts/meta/observabilite content-free.
+  Preuve livree: pas de titre/lieu/description/UID/ETag/URL CalDAV/ICS dans
+  l'observabilite testee.
+- [x] Lot 5A: ne faire aucun acces CalDAV/Nextcloud live.
+  Preuve livree: transports fake/injectes en tests; aucun app-password lu en
+  clair.
+- [ ] Lot 5B: configuration runtime Sauron redacted, mode `active`, compte
+  `tof`, secret CalDAV dedie present sans affichage.
+- [ ] Lot 5B: preuve live lire aujourd'hui.
+- [ ] Lot 5B: preuve live lire demain.
+- [ ] Lot 5B: preuve live recherche evenement.
+- [ ] Lot 5B: preuve live details evenement unique si candidat unique existe.
+- [ ] Lot 5B: preuve live contexte suivant, timestamp, Delta-T et Memory
+  eligible.
+- [ ] Lot 5B: artefact JSONL content-free date, sans contenu Agenda brut.
 
 ### Lot 6 - Propositions et pending store
 

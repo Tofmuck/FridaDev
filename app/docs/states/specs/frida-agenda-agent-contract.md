@@ -4,9 +4,9 @@ Statut: spec vivante
 Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
-Portee: contrat cible du futur agent Agenda Frida. Lots 1-3.2 livrent seulement
-toggle no-op, configuration redacted et outils read-only non branches, sans
-agent Agenda reel ni acces CalDAV live.
+Portee: contrat cible du futur agent Agenda Frida. Lots 1-5A livrent toggle
+no-op, configuration redacted, outils read-only, agent JSON valide et
+branchement applicatif read-only non-live, sans preuve CalDAV live ni mutation.
 
 Sources:
 
@@ -46,7 +46,8 @@ integree est un message assistant Frida normal, pas un canal visible parallele.
 
 ## 2. Hors-scope du lot courant
 
-Ce contrat ne code pas l'agent Agenda reel.
+Lot 5A branche l'execution applicative read-only avec transports injectables,
+mais ne ferme pas la preuve live CalDAV.
 
 Interdits pour le lot de cadrage:
 
@@ -451,6 +452,32 @@ Comportement Lot 4:
 - Lot 4 ne lit aucun secret, ne contacte ni CalDAV ni Nextcloud, ne cree pas de
   pending action, ne fait aucune mutation et n'installe aucun final lock.
 
+Etat livre Lot 5A:
+
+- `app/agenda/agent_openrouter.py` ajoute un client modele Agenda injectable
+  reutilisant le transport OpenRouter existant de FridaDev, sans nouveau secret
+  provider;
+- `app/agenda/read_execution.py` execute les plans read-only valides via
+  `calendar_list`, `event_query_range`, `event_search` et `event_get`;
+- `app/agenda/response_rendering.py` produit un `AgendaFinalResponseLock`
+  content-free en meta/observabilite et visible en langage naturel;
+- `app/agenda/caldav_transport.py` prepare le transport CalDAV read-only
+  `PROPFIND`, `REPORT` et `GET`, mais les tests Lot 5A utilisent seulement un
+  client injecte/fake;
+- `app/core/chat_service.py` convertit un final lock Agenda valide en
+  `AssistantResponseOverride`, donc la reponse Agenda est persistee comme
+  message assistant Frida normal avec timestamp;
+- le toggle conversationnel, le mode runtime `active` et la presence redacted
+  du secret restent trois garde-fous separes;
+- `agenda_agent.mode=off` reste un no-op, meme si le toggle est actif;
+- `agenda_enabled=false` ou absent reste un no-op, meme si le mode runtime est
+  actif;
+- Lot 5A ne fait aucun acces CalDAV/Nextcloud live, ne lit aucun evenement
+  personnel, ne cree pas d'app-password, ne fait aucune mutation et ne cree pas
+  de pending store;
+- Lot 5 complet reste ouvert jusqu'a une configuration Sauron redacted et une
+  preuve live JSONL content-free.
+
 ## 8. Methodes produit Agenda
 
 Familles minimales:
@@ -783,6 +810,23 @@ Preuve Lot 4 locale:
   UID brut, titre, lieu, description, URL CalDAV brute ou payload ICS personnel;
 - Lot 4 ne branche pas encore de lecture active, pending store, mutation,
   final lock Agenda ou reponse visible Agenda.
+
+Preuve Lot 5A locale:
+
+- l'agent JSON reste fakeable/injectable en test et le provider live n'est pas
+  requis pour fermer Lot 5A;
+- le client read-only reste injectable en test; aucun transport CalDAV live
+  n'est utilise dans les preuves Lot 5A;
+- un plan `read_today` valide execute `event_query_range` avec client fake et
+  produit un `AgendaFinalResponseLock`;
+- le chemin serveur fake prouve que le final lock devient un
+  `AssistantResponseOverride`, puis un message assistant normal avec timestamp,
+  `message.meta` content-free et sauvegarde de conversation;
+- les observations Lot 5A ne contiennent pas titre, lieu, description, UID,
+  ETag, URL/path CalDAV, payload ICS, Authorization, cookie, token ou
+  app-password;
+- Lot 5A ne prouve pas encore `today`, `tomorrow`, `search`, `details`,
+  Delta-T et Memory eligible en live CalDAV: ces preuves restent Lot 5B.
 
 Preuve content-free minimale:
 
