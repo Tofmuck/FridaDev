@@ -85,6 +85,18 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
         self.assertEqual(bundle.payload['timeout_s']['value'], config.BIBLIO_LIBRARIAN_AGENT_TIMEOUT_S)
         self.assertEqual(bundle.payload['reasoning_effort']['value'], config.BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT)
 
+    def test_build_env_seed_bundle_uses_safe_agenda_agent_defaults_without_secret_value(self) -> None:
+        bundle = runtime_settings.build_env_seed_bundle('agenda_agent')
+        self.assertEqual(bundle.payload['mode']['value'], 'off')
+        self.assertEqual(bundle.payload['mode']['origin'], 'seed_default')
+        self.assertEqual(bundle.payload['caldav_account']['value'], 'tof')
+        self.assertEqual(bundle.payload['caldav_account']['origin'], 'seed_default')
+        self.assertEqual(bundle.payload['caldav_app_password']['is_secret'], True)
+        self.assertFalse(bundle.payload['caldav_app_password']['is_set'])
+        self.assertNotIn('value', bundle.payload['caldav_app_password'])
+        self.assertNotIn('value_encrypted', bundle.payload['caldav_app_password'])
+        self.assertEqual(bundle.secret_values, {})
+
     def test_build_env_seed_bundle_uses_dedicated_memory_arbiter_model_values(self) -> None:
         bundle = runtime_settings.build_env_seed_bundle('memory_arbiter_model')
         self.assertEqual(bundle.payload['model']['value'], config.MEMORY_ARBITER_MODEL)
@@ -173,6 +185,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
                 'stimmung_agent_model',
                 'validation_agent_model',
                 'biblio_librarian_agent',
+                'agenda_agent',
                 'embedding',
                 'database',
                 'resources',
@@ -194,6 +207,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
                 'stimmung_agent_model',
                 'validation_agent_model',
                 'biblio_librarian_agent',
+                'agenda_agent',
                 'database',
                 'resources',
                 'identity_governance',
@@ -214,14 +228,17 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
                 'stimmung_agent_model',
                 'validation_agent_model',
                 'biblio_librarian_agent',
+                'agenda_agent',
                 'database',
                 'resources',
                 'identity_governance',
             ),
         )
         self.assertEqual(plan[0].payload['model']['origin'], 'db_seed')
-        self.assertEqual(plan[8].payload['primary_model']['origin'], 'db_seed')
-        self.assertEqual(plan[9].payload['backend']['origin'], 'db_seed')
+        plan_by_section = {bundle.section: bundle for bundle in plan}
+        self.assertEqual(plan_by_section['biblio_librarian_agent'].payload['primary_model']['origin'], 'db_seed')
+        self.assertEqual(plan_by_section['agenda_agent'].payload['mode']['origin'], 'db_seed')
+        self.assertEqual(plan_by_section['database'].payload['backend']['origin'], 'db_seed')
 
 
 if __name__ == '__main__':

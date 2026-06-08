@@ -1,11 +1,11 @@
 # Frida Agenda Agent Contract
 
-Statut: spec vivante docs-only
+Statut: spec vivante
 Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
-Portee: contrat cible du futur agent Agenda Frida, sans patch runtime dans ce
-lot.
+Portee: contrat cible du futur agent Agenda Frida. Lots 1-2 livrent seulement
+toggle no-op et configuration redacted, sans agent Agenda reel ni acces CalDAV.
 
 Sources:
 
@@ -45,7 +45,7 @@ integree est un message assistant Frida normal, pas un canal visible parallele.
 
 ## 2. Hors-scope du lot courant
 
-Ce contrat ne code pas l'agent Agenda.
+Ce contrat ne code pas l'agent Agenda reel.
 
 Interdits pour le lot de cadrage:
 
@@ -210,6 +210,22 @@ Etat livre Lot 1:
 - aucun prompt lane, final lock, outil CalDAV, secret ou acces Nextcloud n'est
   cree dans Lot 1.
 
+Etat livre Lot 2:
+
+- `agenda_agent` existe comme section runtime settings;
+- le mode par defaut est `off`;
+- les modes admis sont `off`, `shadow`, `candidate` et `active`;
+- `caldav_account` est borne a l'identite V1 `tof`;
+- `caldav_app_password` est un champ secret dedie, associe a la source
+  operateur `FRIDA_AGENDA_CALDAV_TOF_APP_PASSWORD`, non seede depuis
+  l'environnement dans Lot 2;
+- le read-model admin expose seulement les booleens/presence et sources
+  redacted: `is_secret`, `is_set`, `origin` et `secret_sources`;
+- la validation admin des modes non `off` exige une presence de secret, mais
+  ne decrypt pas et ne lit jamais la valeur de l'app-password;
+- aucun acces CalDAV, Nextcloud, app-password en clair, prompt agent ou outil
+  Agenda n'est cree dans Lot 2.
+
 Mode runtime agent:
 
 - section cible: `agenda_agent`;
@@ -226,6 +242,8 @@ Secrets runtime:
 
 - l'app-password CalDAV dediee Frida Agenda pour le compte `tof` est un secret
   serveur;
+- la source dediee V1 est `FRIDA_AGENDA_CALDAV_TOF_APP_PASSWORD`, conservee
+  comme metadonnee operateur et non lue par Lot 2;
 - elle ne doit pas apparaitre dans le payload agent, le prompt LLM, la reponse,
   les logs, les JSONL, les docs ou les sorties terminal;
 - les read-models admin peuvent exposer seulement des booleens de presence et

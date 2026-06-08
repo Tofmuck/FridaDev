@@ -2,17 +2,28 @@ from __future__ import annotations
 
 from typing import Any, Dict, Mapping, Tuple
 
+from agenda import runtime_config as agenda_runtime_config
+
 
 def section_response(section: str, *, runtime_settings_module: Any) -> Dict[str, Any]:
     view = runtime_settings_module.get_runtime_section_for_api(section)
-    return {
+    secret_sources = runtime_settings_module.describe_secret_sources(section, view.payload)
+    response = {
         'section': section,
         'payload': view.payload,
         'readonly_info': runtime_settings_module.get_section_readonly_info(section),
-        'secret_sources': runtime_settings_module.describe_secret_sources(section, view.payload),
+        'secret_sources': secret_sources,
         'source': view.source,
         'source_reason': view.source_reason,
     }
+    if section == agenda_runtime_config.AGENDA_AGENT_SECTION:
+        response['runtime_read_model'] = agenda_runtime_config.build_admin_read_model(
+            view.payload,
+            source=view.source,
+            source_reason=view.source_reason,
+            secret_sources=secret_sources,
+        )
+    return response
 
 
 def single_section_response(section: str, *, runtime_settings_module: Any) -> Dict[str, Any]:

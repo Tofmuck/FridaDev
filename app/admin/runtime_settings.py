@@ -517,6 +517,10 @@ def get_biblio_librarian_agent_settings(*, fetcher: Callable[[], dict[str, dict[
     return get_runtime_section('biblio_librarian_agent', fetcher=fetcher)
 
 
+def get_agenda_agent_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+    return get_runtime_section('agenda_agent', fetcher=fetcher)
+
+
 def get_database_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('database', fetcher=fetcher)
 

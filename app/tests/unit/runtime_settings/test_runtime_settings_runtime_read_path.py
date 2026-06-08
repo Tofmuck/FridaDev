@@ -96,6 +96,19 @@ class RuntimeSettingsRuntimeReadPathTests(unittest.TestCase):
         self.assertEqual(view.payload['model']['value'], 'custom-embed-model')
         self.assertEqual(view.payload['dimensions']['value'], 768)
 
+    def test_agenda_agent_runtime_section_defaults_to_off_with_missing_redacted_secret(self) -> None:
+        view = runtime_settings.get_agenda_agent_settings(fetcher=lambda: {})
+        api_view = runtime_settings.get_runtime_section_for_api('agenda_agent', fetcher=lambda: {})
+        secret_sources = runtime_settings.describe_secret_sources('agenda_agent', api_view.payload)
+
+        self.assertEqual(view.payload['mode']['value'], 'off')
+        self.assertEqual(view.payload['caldav_account']['value'], 'tof')
+        self.assertEqual(
+            api_view.payload['caldav_app_password'],
+            {'is_secret': True, 'is_set': False, 'origin': 'env_seed'},
+        )
+        self.assertEqual(secret_sources['caldav_app_password'], 'missing')
+
     def test_runtime_section_marks_missing_section_when_other_rows_exist(self) -> None:
         def fetcher():
             return {

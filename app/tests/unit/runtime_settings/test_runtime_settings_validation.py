@@ -156,6 +156,79 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         self.assertTrue(checks['shared_transport_runtime']['ok'])
         self.assertIn('main_model.api_key available from env_fallback', checks['shared_transport_runtime']['detail'])
 
+    def test_validate_runtime_section_accepts_agenda_agent_default_off_without_secret(self) -> None:
+        result = runtime_settings.validate_runtime_section('agenda_agent', fetcher=lambda: {})
+
+        self.assertTrue(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['mode']['ok'])
+        self.assertIn('mode=off', checks['mode']['detail'])
+        self.assertTrue(checks['caldav_identity']['ok'])
+        self.assertIn('expected=tof', checks['caldav_identity']['detail'])
+        self.assertTrue(checks['caldav_app_password_presence']['ok'])
+        self.assertIn('configured=False', checks['caldav_app_password_presence']['detail'])
+        self.assertNotIn('app-password', repr(result).lower())
+
+    def test_validate_runtime_section_rejects_invalid_agenda_agent_mode(self) -> None:
+        result = runtime_settings.validate_runtime_section(
+            'agenda_agent',
+            {'mode': {'value': 'run-all-calendars'}},
+            fetcher=lambda: {},
+        )
+
+        self.assertFalse(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertFalse(checks['mode']['ok'])
+        self.assertIn('allowed=off,shadow,candidate,active', checks['mode']['detail'])
+
+    def test_validate_runtime_section_requires_agenda_secret_for_non_off_modes_without_resolving_it(self) -> None:
+        original_resolve = runtime_settings._resolve_runtime_secret_from_view
+        calls = []
+
+        def fail_secret_resolution(*args, **kwargs):
+            calls.append((args, kwargs))
+            raise AssertionError('Agenda Lot 2 validation must not decrypt or read the CalDAV secret')
+
+        runtime_settings._resolve_runtime_secret_from_view = fail_secret_resolution
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'agenda_agent',
+                {'mode': {'value': 'shadow'}},
+                fetcher=lambda: {},
+            )
+        finally:
+            runtime_settings._resolve_runtime_secret_from_view = original_resolve
+
+        self.assertFalse(result['valid'])
+        self.assertEqual(calls, [])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertFalse(checks['caldav_app_password_presence']['ok'])
+        self.assertIn('value=redacted', checks['caldav_app_password_presence']['detail'])
+
+    def test_validate_runtime_section_accepts_agenda_present_secret_without_exposing_fixture_value(self) -> None:
+        fake_secret = 'fake-agenda-secret-must-not-leak'
+        original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value
+        runtime_settings.runtime_secrets.encrypt_runtime_secret_value = lambda value: 'cipher-agenda-secret'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'agenda_agent',
+                {
+                    'mode': {'value': 'shadow'},
+                    'caldav_app_password': {'replace_value': fake_secret},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            runtime_settings.runtime_secrets.encrypt_runtime_secret_value = original_encrypt
+
+        rendered = repr(result)
+        self.assertTrue(result['valid'])
+        self.assertNotIn(fake_secret, rendered)
+        self.assertNotIn('cipher-agenda-secret', rendered)
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['caldav_app_password_presence']['ok'])
+        self.assertIn('configured=True', checks['caldav_app_password_presence']['detail'])
+
     def test_validate_runtime_section_rejects_invalid_component_referer(self) -> None:
         original_api_key = config.OR_KEY
         config.OR_KEY = 'sk-phase5-validation'

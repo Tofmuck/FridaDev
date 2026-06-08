@@ -99,6 +99,7 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
                 'stimmung_agent_model',
                 'validation_agent_model',
                 'biblio_librarian_agent',
+                'agenda_agent',
                 'database',
                 'services',
                 'resources',
@@ -113,20 +114,22 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
             for query, params in zip(observed['queries'], observed['params'])
             if params and 'INSERT INTO runtime_settings (section' in query
         ]
-        self.assertEqual(len(runtime_payloads), 13)
-        self.assertEqual(runtime_payloads[0]['model']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[0]['timeout_s']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[1]['max_tokens']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[2]['max_tokens']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[3]['max_tokens']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[4]['model']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[6]['primary_model']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[7]['fallback_model']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[8]['primary_model']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[9]['backend']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[10]['searxng_url']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[11]['llm_identity_path']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[-1]['CONTEXT_HINTS_MAX_ITEMS']['origin'], 'db_seed')
+        self.assertEqual(len(runtime_payloads), 14)
+        payload_by_section = dict(zip(result['inserted_sections'], runtime_payloads))
+        self.assertEqual(payload_by_section['arbiter_model']['model']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['arbiter_model']['timeout_s']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['identity_extractor_model']['max_tokens']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['identity_periodic_model']['max_tokens']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['memory_arbiter_model']['max_tokens']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['summary_model']['model']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['stimmung_agent_model']['primary_model']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['validation_agent_model']['fallback_model']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['biblio_librarian_agent']['primary_model']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['agenda_agent']['mode']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['database']['backend']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['services']['searxng_url']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['resources']['llm_identity_path']['origin'], 'db_seed')
+        self.assertEqual(payload_by_section['identity_governance']['CONTEXT_HINTS_MAX_ITEMS']['origin'], 'db_seed')
 
     def test_bootstrap_runtime_settings_from_env_does_not_overwrite_existing_sections(self) -> None:
         observed = {

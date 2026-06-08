@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 from urllib.parse import urlparse
 
+from agenda import runtime_config as agenda_runtime_config
 from core import main_llm_reasoning
 from identity import static_identity_paths
 
@@ -449,6 +450,44 @@ def validate_runtime_section(
                     ),
                 ),
                 _validation_check('shared_transport_runtime', shared_transport_ok, shared_transport_detail),
+            )
+        )
+    elif section == 'agenda_agent':
+        mode = agenda_runtime_config.normalize_agent_mode(_runtime_text_value(view, 'mode'))
+        caldav_account = _runtime_text_value(view, 'caldav_account')
+        secret_payload = view.payload.get(agenda_runtime_config.CALDAV_APP_PASSWORD_FIELD) or {}
+        secret_configured = bool(secret_payload.get('is_set')) if isinstance(secret_payload, Mapping) else False
+        secret_required = mode != 'off'
+        checks.extend(
+            (
+                _validation_check(
+                    'mode',
+                    mode in agenda_runtime_config.AGENDA_AGENT_MODES,
+                    f'mode={mode or "missing"}; allowed={",".join(agenda_runtime_config.AGENDA_AGENT_MODES)}',
+                ),
+                _validation_check(
+                    'caldav_identity',
+                    caldav_account == agenda_runtime_config.CALDAV_ACCOUNT_V1,
+                    (
+                        f'caldav_account={caldav_account or "missing"}; '
+                        f'expected={agenda_runtime_config.CALDAV_ACCOUNT_V1}; '
+                        'service_account=false'
+                    ),
+                ),
+                _validation_check(
+                    'caldav_app_password_presence',
+                    (not secret_required) or secret_configured,
+                    (
+                        f'configured={secret_configured}; '
+                        f'required_for_mode={secret_required}; '
+                        'value=redacted'
+                    ),
+                ),
+                _validation_check(
+                    'caldav_runtime_access',
+                    True,
+                    'lot2 configuration only; caldav_access=false; nextcloud_access=false',
+                ),
             )
         )
     elif section == 'embedding':

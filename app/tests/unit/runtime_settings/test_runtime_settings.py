@@ -42,6 +42,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'stimmung_agent_model',
                 'validation_agent_model',
                 'biblio_librarian_agent',
+                'agenda_agent',
                 'embedding',
                 'database',
                 'services',
@@ -58,6 +59,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 ('embedding', 'token'),
                 ('services', 'crawl4ai_token'),
                 ('database', 'dsn'),
+                ('agenda_agent', 'caldav_app_password'),
             ),
         )
 
@@ -152,6 +154,20 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         )
         self.assertEqual(runtime_settings.get_field_spec('biblio_librarian_agent', 'primary_model').env_var, 'BIBLIO_LIBRARIAN_AGENT_MODEL')
         self.assertFalse(runtime_settings.get_field_spec('biblio_librarian_agent', 'primary_model').is_secret)
+
+    def test_agenda_agent_has_dedicated_runtime_section_with_redacted_secret(self) -> None:
+        spec = runtime_settings.get_section_spec('agenda_agent')
+        self.assertEqual(
+            spec.field_names(),
+            ('mode', 'caldav_account', 'caldav_app_password'),
+        )
+        self.assertEqual(runtime_settings.get_field_spec('agenda_agent', 'mode').seed_default, 'off')
+        self.assertFalse(runtime_settings.get_field_spec('agenda_agent', 'mode').seed_from_env)
+        self.assertEqual(runtime_settings.get_field_spec('agenda_agent', 'caldav_account').seed_default, 'tof')
+        secret_spec = runtime_settings.get_field_spec('agenda_agent', 'caldav_app_password')
+        self.assertTrue(secret_spec.is_secret)
+        self.assertFalse(secret_spec.seed_from_env)
+        self.assertEqual(secret_spec.env_var, 'FRIDA_AGENDA_CALDAV_TOF_APP_PASSWORD')
 
     def test_web_reformulation_model_has_dedicated_runtime_section(self) -> None:
         spec = runtime_settings.get_section_spec('web_reformulation_model')

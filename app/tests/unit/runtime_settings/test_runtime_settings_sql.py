@@ -43,6 +43,7 @@ class RuntimeSettingsSqlTests(unittest.TestCase):
             "'stimmung_agent_model'",
             "'validation_agent_model'",
             "'biblio_librarian_agent'",
+            "'agenda_agent'",
             "'embedding'",
             "'database'",
             "'services'",

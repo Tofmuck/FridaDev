@@ -828,6 +828,14 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
                     'crawl4ai_explicit_url_max_chars': {'value': 25000, 'origin': 'db'},
                 },
             ),
+            'agenda_agent': runtime_settings.normalize_stored_payload(
+                'agenda_agent',
+                {
+                    'mode': {'value': 'shadow', 'origin': 'db'},
+                    'caldav_account': {'value': 'tof', 'origin': 'db'},
+                    'caldav_app_password': {'value_encrypted': 'cipher-agenda', 'origin': 'db'},
+                },
+            ),
         }
 
         def fake_fetcher():
@@ -856,11 +864,23 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             self.assertEqual(aggregated.status_code, 200)
             aggregated_data = aggregated.get_json()
             self.assertTrue(aggregated_data['ok'])
-            for section in ('main_model', 'embedding', 'database', 'services'):
+            for section in ('main_model', 'embedding', 'database', 'services', 'agenda_agent'):
                 assert_secret_payload_masked(
                     section,
                     aggregated_data['sections'][section]['payload'],
                 )
+            self.assertEqual(
+                aggregated_data['sections']['agenda_agent']['secret_sources']['caldav_app_password'],
+                'db_encrypted',
+            )
+            agenda_read_model = aggregated_data['sections']['agenda_agent']['runtime_read_model']
+            self.assertEqual(agenda_read_model['mode'], 'shadow')
+            self.assertEqual(agenda_read_model['caldav_identity']['account'], 'tof')
+            self.assertTrue(agenda_read_model['caldav_secret']['configured'])
+            self.assertTrue(agenda_read_model['caldav_secret']['source_configured'])
+            self.assertEqual(agenda_read_model['caldav_secret']['source'], 'db_encrypted')
+            self.assertTrue(agenda_read_model['content_free'])
+            self.assertNotIn('cipher-agenda', repr(aggregated_data['sections']['agenda_agent']))
 
             for path, section in (
                 ('/api/admin/settings/main-model', 'main_model'),

@@ -1,10 +1,12 @@
 # Frida Agenda Agent - TODO produit
 
-Statut: TODO actif docs-only au 2026-06-08
+Statut: TODO actif au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
-Portee: cadrage A -> Z du futur agent Agenda, sans implementation dans ce lot.
+Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-2 livrent
+seulement toggle no-op et configuration redacted, sans agent Agenda reel ni
+acces CalDAV.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -25,7 +27,7 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Creation/modification seulement apres confirmation explicite.
 - [x] Suppression jamais autonome, confirmation renforcee obligatoire.
 - [x] Calendrier familial: prudence renforcee.
-- [x] Aucun code runtime Agenda n'est livre par ce document.
+- [x] Aucun agent Agenda reel ni acces CalDAV n'est livre par ce document.
 
 ## Audit existant FridaDev
 
@@ -341,11 +343,11 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ### Lot 2 - Runtime settings et secrets redacted
 
-- [ ] Ajouter section `agenda_agent`.
-- [ ] Ajouter source secret CalDAV dediee au compte `tof`, redacted.
-- [ ] Ajouter validations admin.
-- [ ] Ajouter tests anti-fuite.
-- [ ] Ne pas creer d'app-password dans le code.
+- [x] Ajouter section `agenda_agent`.
+- [x] Ajouter source secret CalDAV dediee au compte `tof`, redacted.
+- [x] Ajouter validations admin.
+- [x] Ajouter tests anti-fuite.
+- [x] Ne pas creer d'app-password dans le code.
 
 ### Lot 3 - Outils CalDAV read-only
 

@@ -15,6 +15,7 @@ SECTION_NAMES: tuple[str, ...] = (
     'stimmung_agent_model',
     'validation_agent_model',
     'biblio_librarian_agent',
+    'agenda_agent',
     'embedding',
     'database',
     'services',
@@ -69,6 +70,7 @@ SECRET_V1_FIELDS: tuple[tuple[str, str], ...] = (
     ('embedding', 'token'),
     ('services', 'crawl4ai_token'),
     ('database', 'dsn'),
+    ('agenda_agent', 'caldav_app_password'),
 )
 
 
@@ -199,6 +201,20 @@ SECTION_SPECS: dict[str, SectionSpec] = {
             FieldSpec('max_model_calls', 'int', env_var='BIBLIO_LIBRARIAN_AGENT_MAX_MODEL_CALLS'),
             FieldSpec('max_recent_turns', 'int', env_var='BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS'),
             FieldSpec('reasoning_effort', 'text', env_var='BIBLIO_LIBRARIAN_AGENT_REASONING_EFFORT'),
+        ),
+    ),
+    'agenda_agent': SectionSpec(
+        name='agenda_agent',
+        fields=(
+            FieldSpec('mode', 'text', env_var='AGENDA_AGENT_MODE', seed_from_env=False, seed_default='off'),
+            FieldSpec('caldav_account', 'text', seed_from_env=False, seed_default='tof'),
+            FieldSpec(
+                'caldav_app_password',
+                'text',
+                is_secret=True,
+                env_var='FRIDA_AGENDA_CALDAV_TOF_APP_PASSWORD',
+                seed_from_env=False,
+            ),
         ),
     ),
     'embedding': SectionSpec(
