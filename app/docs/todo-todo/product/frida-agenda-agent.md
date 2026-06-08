@@ -4,9 +4,9 @@ Statut: TODO actif au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
-Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-2 livrent
-seulement toggle no-op et configuration redacted, sans agent Agenda reel ni
-acces CalDAV.
+Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-3 livrent
+seulement toggle no-op, configuration redacted et outils read-only non branches,
+sans agent Agenda reel ni acces CalDAV live.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -296,15 +296,15 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ## Tools CalDAV cibles
 
-- [ ] `calendar_list`.
+- [x] `calendar_list`.
   Preuve attendue: calendriers accessibles, ids courts, permissions.
 - [ ] `calendar_get`.
   Preuve attendue: verification calendrier cible et droits.
-- [ ] `event_query_range`.
+- [x] `event_query_range`.
   Preuve attendue: requete bornee par calendrier et fenetre.
-- [ ] `event_search`.
+- [x] `event_search`.
   Preuve attendue: recherche bornee, limite de resultats.
-- [ ] `event_get`.
+- [x] `event_get`.
   Preuve attendue: evenement cible relu avec ETag ou equivalent.
 - [ ] `availability_query`.
   Preuve attendue: disponibilites derivees sans route non prouvee.
@@ -354,12 +354,12 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ### Lot 3 - Outils CalDAV read-only
 
-- [ ] Implementer `calendar_list`.
-- [ ] Implementer `event_query_range`.
-- [ ] Implementer `event_get`.
-- [ ] Implementer `event_search`.
-- [ ] Implementer observations content-free.
-- [ ] Prouver aucun payload ICS dans logs.
+- [x] Implementer `calendar_list`.
+- [x] Implementer `event_query_range`.
+- [x] Implementer `event_get`.
+- [x] Implementer `event_search`.
+- [x] Implementer observations content-free.
+- [x] Prouver aucun payload ICS dans logs, metas ou read-models de test.
 
 ### Lot 4 - Agent JSON active sous garde-fous
 

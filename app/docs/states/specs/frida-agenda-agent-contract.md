@@ -4,8 +4,9 @@ Statut: spec vivante
 Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
-Portee: contrat cible du futur agent Agenda Frida. Lots 1-2 livrent seulement
-toggle no-op et configuration redacted, sans agent Agenda reel ni acces CalDAV.
+Portee: contrat cible du futur agent Agenda Frida. Lots 1-3 livrent seulement
+toggle no-op, configuration redacted et outils read-only non branches, sans
+agent Agenda reel ni acces CalDAV live.
 
 Sources:
 
@@ -253,6 +254,24 @@ Secrets runtime:
 - les read-models admin peuvent exposer seulement des booleens de presence et
   sources redacted.
 
+Etat livre Lot 3:
+
+- les briques techniques read-only vivent sous `app/agenda/`;
+- `app/agenda/caldav_models.py` porte les modeles structures internes;
+- `app/agenda/caldav_read_client.py` construit les requetes CalDAV read-only
+  `PROPFIND`, `REPORT` et `GET` avec transport injectable;
+- `app/agenda/ics_reader.py` parse les fixtures ICS anonymes vers evenements
+  normalises;
+- `app/agenda/read_tools.py` expose `calendar_list`, `event_query_range`,
+  `event_get` et `event_search`;
+- `app/agenda/observability.py` produit des observations content-free avec
+  counts, fenetres et hashes courts;
+- les tests Lot 3 utilisent seulement des fixtures anonymes et un transport
+  fake;
+- aucun branchement `/api/chat`, agent JSON, secret, CalDAV live, Nextcloud live
+  ou mutation calendrier n'est cree dans Lot 3;
+- le toggle conversationnel Agenda reste le no-op livre au Lot 1.
+
 ## 6. Entrees agent cible
 
 L'agent Agenda recoit des entrees structurees et bornees:
@@ -373,11 +392,13 @@ Methodes produit cibles:
 Outils read-only:
 
 - `calendar_list`: lister les calendriers accessibles, permissions et ids
-  courts;
+  courts; livre en Lot 3 avec reponse CalDAV synthetique et transport fake;
 - `calendar_get`: verifier un calendrier cible et ses droits;
 - `event_query_range`: requete CalDAV bornee par calendrier et fenetre temps;
-- `event_search`: recherche bornee derivee de `event_query_range`;
-- `event_get`: relire un evenement cible par URL/UID/ETag deja connus;
+- `event_search`: recherche bornee derivee de `event_query_range`, sans scan
+  global ni nouvel acces large;
+- `event_get`: relire un evenement cible deja connu dans l'etat interne, sans
+  exposer UID, ETag, URL brute ou ICS dans l'observation;
 - `availability_query`: derivation bornee de disponibilites depuis les
   evenements lus, sans promettre une route free-busy tant qu'elle n'est pas
   prouvee.
@@ -592,6 +613,21 @@ Baseline et fixtures Lot 0:
 - aucun lot runtime ne doit recopier les titres, descriptions, lieux, UID,
   ETag, URL CalDAV ou payload ICS dans les logs, JSONL, read-models ou docs de
   preuve.
+
+Preuve Lot 3 locale:
+
+- `calendar_list` est prouve avec une reponse PROPFIND synthetique;
+- `event_query_range` est prouve avec fixtures ICS anonymes et fenetres ISO
+  explicites;
+- `event_get` est prouve depuis un identifiant deja present dans l'etat interne
+  de test;
+- `event_search` est prouve comme recherche locale bornee sur evenements deja
+  lus;
+- le client read-only construit `PROPFIND`, `REPORT` et `GET` mais les tests
+  n'utilisent qu'un transport fake;
+- les observations de test ne contiennent pas ICS brut, UID brut, ETag brut,
+  URL CalDAV brute, header Authorization, cookie, app-password, titre, lieu ou
+  description.
 
 Preuve content-free minimale:
 
