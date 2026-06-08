@@ -175,20 +175,74 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
                 self.assertNotIn(raw_uid, observation)
                 self.assertNotIn(raw_query, observation)
 
+    def test_tool_param_values_reject_case_insensitive_technical_markers_content_free(self) -> None:
+        raw_ics = 'begin:VEVENT summary: secret appointment'
+        raw_summary = 'summary: rendez-vous'
+        raw_auth = 'authorization bearer token'
+        cases = (raw_ics, raw_summary, raw_auth)
+        for raw_query in cases:
+            with self.subTest(raw_query=raw_query):
+                validation = contract.validate_agent_payload(
+                    _valid_payload(
+                        product_method=product_methods.METHOD_SEARCH_EVENTS,
+                        tool_calls=[
+                            {
+                                'tool_name': product_methods.TOOL_EVENT_SEARCH,
+                                'method': 'GET',
+                                'params': {'query': raw_query, 'limit': 5},
+                                'call_id': 'call-1',
+                            }
+                        ],
+                    )
+                )
+                observation = json.dumps(validation.to_observability(), sort_keys=True)
+                self.assertEqual(validation.status, contract.STATUS_REJECTED)
+                self.assertEqual(validation.reason_code, contract.REASON_TOOL_NOT_EXECUTABLE)
+                self.assertNotIn(raw_query, observation)
+
+    def test_event_id_rejects_uid_like_values_but_keeps_local_short_ids(self) -> None:
+        for raw_event_id in ('uid:abc123', 'UID:abc123', 'uid=abc123'):
+            with self.subTest(raw_event_id=raw_event_id):
+                validation = contract.validate_agent_payload(
+                    _valid_payload(
+                        product_method=product_methods.METHOD_EVENT_DETAILS,
+                        tool_calls=[
+                            {
+                                'tool_name': product_methods.TOOL_EVENT_GET,
+                                'method': 'GET',
+                                'params': {'event_id': raw_event_id},
+                                'call_id': 'call-1',
+                            }
+                        ],
+                    )
+                )
+                observation = json.dumps(validation.to_observability(), sort_keys=True)
+                self.assertEqual(validation.status, contract.STATUS_REJECTED)
+                self.assertEqual(validation.reason_code, contract.REASON_TOOL_NOT_EXECUTABLE)
+                self.assertNotIn(raw_event_id, observation)
+
+        self.assertEqual(_event_details_validation('event-1').status, contract.STATUS_VALIDATED)
+
+    def test_ordinary_vernacular_event_search_query_remains_valid(self) -> None:
+        for query in ('docteur demain', 'rendez-vous docteur'):
+            with self.subTest(query=query):
+                validation = contract.validate_agent_payload(
+                    _valid_payload(
+                        product_method=product_methods.METHOD_SEARCH_EVENTS,
+                        tool_calls=[
+                            {
+                                'tool_name': product_methods.TOOL_EVENT_SEARCH,
+                                'method': 'GET',
+                                'params': {'query': query, 'limit': 5},
+                                'call_id': 'call-1',
+                            }
+                        ],
+                    )
+                )
+                self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+
     def test_local_short_event_id_remains_valid_for_known_state_references(self) -> None:
-        validation = contract.validate_agent_payload(
-            _valid_payload(
-                product_method=product_methods.METHOD_EVENT_DETAILS,
-                tool_calls=[
-                    {
-                        'tool_name': product_methods.TOOL_EVENT_GET,
-                        'method': 'GET',
-                        'params': {'event_id': 'event-1'},
-                        'call_id': 'call-1',
-                    }
-                ],
-            )
-        )
+        validation = _event_details_validation('event-1')
 
         self.assertEqual(validation.status, contract.STATUS_VALIDATED)
         self.assertEqual(validation.reason_code, contract.REASON_VALIDATED)
@@ -356,6 +410,22 @@ def _request(*, settings: contract.AgendaAgentSettings) -> contract.AgendaAgentR
         now_iso='2026-06-08T12:00:00Z',
         timezone='Europe/Paris',
         settings=settings,
+    )
+
+
+def _event_details_validation(event_id: str):
+    return contract.validate_agent_payload(
+        _valid_payload(
+            product_method=product_methods.METHOD_EVENT_DETAILS,
+            tool_calls=[
+                {
+                    'tool_name': product_methods.TOOL_EVENT_GET,
+                    'method': 'GET',
+                    'params': {'event_id': event_id},
+                    'call_id': 'call-1',
+                }
+            ],
+        )
     )
 
 

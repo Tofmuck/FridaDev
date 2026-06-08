@@ -207,7 +207,8 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Definir `tool_calls` comme sous-plan technique allowliste.
   Preuve livree: outil inconnu, outil hors methode, methode non-GET et params
   interdits refuses avant reseau; URLs/paths CalDAV bruts, UID/e-mail brut et
-  marqueurs secret/ICS rejetes dans les valeurs techniques.
+  marqueurs secret/ICS rejetes dans les valeurs techniques, sans dependance a
+  la casse; `event_id` refuse aussi les formes UID-like `uid:*` et `uid=*`.
 - [x] Definir `mutation`.
   Preuve livree: mutation demandee sans confirmation rejetee; suppression
   exige confirmation renforcee; `kind=create|update|delete` incoherent sur une
@@ -436,7 +437,8 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   secret et ne tente aucune mutation.
 - [x] Durcir la validation des params Lot 4.
   Preuve livree: `calendar_id` URL/path CalDAV brut rejete, `event_id`
-  UID/e-mail brut rejete, `event_id` local court accepte.
+  UID/e-mail brut ou UID-like rejete, `event_id` local court accepte, marqueurs
+  ICS/secrets case-insensitive rejetes dans `query`.
 - [x] Durcir la coherence mutations/methodes Lot 4.
   Preuve livree: methode read-only avec `mutation.kind=create` et
   `requested=false` rejetee; propositions et confirmations restent bornees.

@@ -236,7 +236,8 @@ def _valid_text(value: Any, *, max_chars: int) -> bool:
 
 def _contains_forbidden_marker(value: Any) -> bool:
     text = str(value or '')
-    return any(marker in text for marker in _FORBIDDEN_MARKERS)
+    lower = text.lower()
+    return any(marker.lower() in lower for marker in _FORBIDDEN_MARKERS)
 
 
 def _valid_calendar_scope(value: Any) -> bool:
@@ -411,6 +412,9 @@ def _valid_local_identifier(value: Any) -> bool:
         return False
     if _dangerous_param_text(text):
         return False
+    lowered = text.lower()
+    if lowered.startswith(('uid:', 'uid=', 'etag:', 'etag=')):
+        return False
     local_id_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:-')
     return all(char in local_id_chars for char in text)
 
@@ -441,6 +445,8 @@ def _dangerous_param_text(value: Any) -> bool:
     if lower.startswith('/remote.php/') or '/remote.php/dav' in lower or '/calendars/' in lower:
         return True
     if '@' in text:
+        return True
+    if lower.startswith(('uid:', 'uid=', 'etag:', 'etag=')):
         return True
     if '"' in text or lower.startswith('w/'):
         return True
