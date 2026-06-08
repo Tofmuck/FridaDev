@@ -399,7 +399,10 @@ Regles:
   `tool_calls`;
 - la validation locale refuse les params techniques qui portent URL CalDAV,
   UID, ETag, ICS brut, Authorization, cookie, token ou app-password, quelle que
-  soit la casse des marqueurs techniques;
+  soit la casse des marqueurs techniques; les proprietes ICS techniques
+  usuelles (`RRULE`, `RECURRENCE-ID`, `RDATE`, `EXDATE`, `DTSTART`, `DTEND`,
+  `DTSTAMP`, `CREATED`, `LAST-MODIFIED`, `SEQUENCE`, `STATUS`, `TRANSP`,
+  `CATEGORIES`, `CLASS`, `PRIORITY`) sont interdites dans les params agent;
 - `calendar_id` et `event_id` sont des identifiants locaux courts, jamais une
   URL complete, un chemin `/remote.php/dav/...`, un UID/e-mail brut, un ETag ou
   une valeur contenant un secret; `event_id` refuse aussi les formes UID-like
@@ -761,7 +764,9 @@ Preuve Lot 4 locale:
 - les valeurs dangereuses dans des params autorises sont refusees: URL/path
   CalDAV brut dans `calendar_id`, UID/e-mail brut dans `event_id`, marqueurs
   secret/ICS case-insensitive dans `query`, `start`, `end` ou `timezone`, et
-  formes UID-like dans `event_id`;
+  proprietes ICS techniques usuelles case-insensitive (`RRULE`,
+  `RECURRENCE-ID`, `DTSTART`, `LAST-MODIFIED`, etc.), et formes UID-like dans
+  `event_id`;
 - les mutations demandees exigent confirmation humaine et les suppressions
   exigent confirmation renforcee;
 - les mutations incoherentes sont refusees: une methode read-only ne peut pas

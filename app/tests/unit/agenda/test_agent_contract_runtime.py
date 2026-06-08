@@ -200,8 +200,40 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
                 self.assertEqual(validation.reason_code, contract.REASON_TOOL_NOT_EXECUTABLE)
                 self.assertNotIn(raw_query, observation)
 
+    def test_tool_param_values_reject_remaining_ics_markers_content_free(self) -> None:
+        cases = (
+            'rrule:FREQ=DAILY',
+            'dtstart:20260608T100000Z',
+            'last-modified:20260608T100000Z',
+        )
+        for raw_query in cases:
+            with self.subTest(raw_query=raw_query):
+                validation = contract.validate_agent_payload(
+                    _valid_payload(
+                        product_method=product_methods.METHOD_SEARCH_EVENTS,
+                        tool_calls=[
+                            {
+                                'tool_name': product_methods.TOOL_EVENT_SEARCH,
+                                'method': 'GET',
+                                'params': {'query': raw_query, 'limit': 5},
+                                'call_id': 'call-1',
+                            }
+                        ],
+                    )
+                )
+                observation = json.dumps(validation.to_observability(), sort_keys=True)
+                self.assertEqual(validation.status, contract.STATUS_REJECTED)
+                self.assertEqual(validation.reason_code, contract.REASON_TOOL_NOT_EXECUTABLE)
+                self.assertNotIn(raw_query, observation)
+
     def test_event_id_rejects_uid_like_values_but_keeps_local_short_ids(self) -> None:
-        for raw_event_id in ('uid:abc123', 'UID:abc123', 'uid=abc123'):
+        for raw_event_id in (
+            'uid:abc123',
+            'UID:abc123',
+            'uid=abc123',
+            'recurrence-id:abc123',
+            'rrule:abc123',
+        ):
             with self.subTest(raw_event_id=raw_event_id):
                 validation = contract.validate_agent_payload(
                     _valid_payload(
@@ -224,7 +256,7 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertEqual(_event_details_validation('event-1').status, contract.STATUS_VALIDATED)
 
     def test_ordinary_vernacular_event_search_query_remains_valid(self) -> None:
-        for query in ('docteur demain', 'rendez-vous docteur'):
+        for query in ('docteur demain', 'rendez-vous docteur', 'réunion association'):
             with self.subTest(query=query):
                 validation = contract.validate_agent_payload(
                     _valid_payload(
