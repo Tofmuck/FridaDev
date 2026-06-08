@@ -469,6 +469,66 @@ def _biblio_assistant_response_override(result: Any) -> chat_llm_flow.AssistantR
     )
 
 
+def _biblio_assistant_response_meta(result: Any) -> dict[str, Any] | None:
+    meta_builder = getattr(biblio_chat_runtime, 'assistant_response_meta_for_result', None)
+    meta = meta_builder(result) if callable(meta_builder) else None
+    return dict(meta) if isinstance(meta, Mapping) else None
+
+
+def _biblio_assistant_response_envelope(result: Any) -> dict[str, str]:
+    envelope_builder = getattr(biblio_chat_runtime, 'assistant_response_envelope_for_result', None)
+    envelope = envelope_builder(result) if callable(envelope_builder) else None
+    if not isinstance(envelope, Mapping):
+        return {}
+    return {
+        'surface_intro': str(envelope.get('surface_intro') or ''),
+        'surface_outro': str(envelope.get('surface_outro') or ''),
+    }
+
+
+_BIBLIO_RECENT_DIALOGUE_META_SOURCES = {
+    'biblio_rendered_answer',
+    'biblio_read_passages_response',
+}
+
+_BIBLIO_RECENT_DIALOGUE_META_KEYS = (
+    'source',
+    'reason_code',
+    'biblio_exact_text_rendered',
+    'biblio_exact_text_chars',
+    'biblio_exact_text_hash',
+    'biblio_render_mode',
+    'biblio_answer_status',
+    'biblio_query_kind',
+    'biblio_final_lock_authorized',
+    'biblio_final_lock_reason_code',
+    'biblio_read_passages_mode',
+    'biblio_read_passages_reason_code',
+    'biblio_read_passages_count',
+    'biblio_read_passages_chars',
+    'biblio_read_passages_hashes',
+    'biblio_surface_intro_present',
+    'biblio_surface_intro_chars',
+    'biblio_surface_intro_hash',
+    'biblio_surface_outro_present',
+    'biblio_surface_outro_chars',
+    'biblio_surface_outro_hash',
+    'biblio_surface_empty_reason_codes',
+)
+
+
+def _biblio_recent_dialogue_meta(meta: Mapping[str, Any]) -> dict[str, Any] | None:
+    source = str(meta.get('source') or '')
+    if source not in _BIBLIO_RECENT_DIALOGUE_META_SOURCES:
+        return None
+    copied = {
+        key: meta.get(key)
+        for key in _BIBLIO_RECENT_DIALOGUE_META_KEYS
+        if key in meta
+    }
+    return copied or None
+
+
 def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> tuple[dict[str, Any], ...]:
     messages = conversation.get('messages')
     if not isinstance(messages, list):
@@ -485,19 +545,10 @@ def _biblio_recent_dialogue(conversation: Mapping[str, Any], user_msg: str) -> t
             continue
         turn: dict[str, Any] = {'role': role, 'content': content}
         meta = raw_message.get('meta')
-        if isinstance(meta, Mapping) and str(meta.get('source') or '') == 'biblio_rendered_answer':
-            turn['meta'] = {
-                key: meta.get(key)
-                for key in (
-                    'source',
-                    'biblio_exact_text_rendered',
-                    'biblio_exact_text_chars',
-                    'biblio_exact_text_hash',
-                    'biblio_render_mode',
-                    'biblio_answer_status',
-                )
-                if key in meta
-            }
+        if isinstance(meta, Mapping):
+            biblio_meta = _biblio_recent_dialogue_meta(meta)
+            if biblio_meta is not None:
+                turn['meta'] = biblio_meta
         selected.append(turn)
     return tuple(selected[-8:])
 
@@ -935,6 +986,8 @@ def chat_response(
         biblio_result,
     )
     biblio_final_response_override = _biblio_assistant_response_override(biblio_result)
+    biblio_assistant_response_meta = _biblio_assistant_response_meta(biblio_result)
+    biblio_assistant_response_envelope = _biblio_assistant_response_envelope(biblio_result)
     adobe_lane = adobe_docs_prompt_lane.inject_adobe_prompt_lane(
         prompt_messages,
         adobe_context,
@@ -969,4 +1022,7 @@ def chat_response(
         conversation_headers_func=chat_session_flow.conversation_headers,
         conversation_stream_headers_func=chat_session_flow.conversation_stream_headers,
         assistant_response_override=biblio_final_response_override,
+        assistant_response_meta=biblio_assistant_response_meta,
+        assistant_response_intro=biblio_assistant_response_envelope.get('surface_intro', ''),
+        assistant_response_outro=biblio_assistant_response_envelope.get('surface_outro', ''),
     )

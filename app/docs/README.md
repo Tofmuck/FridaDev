@@ -29,6 +29,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit cible Catalogue humain editable et livraison Lot 0 2026-05-28: `states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 - Contrat Biblio native / Frida Catalogue 2026-05-28: `states/specs/frida-biblio-native-catalogue-contract.md`
 - Contrat agent bibliothecaire Biblio 2026-05-31: `states/specs/frida-biblio-librarian-agent-contract.md`
+- Contrat agent Agenda Frida 2026-06-08: `states/specs/frida-agenda-agent-contract.md`
+- TODO produit agent Agenda Frida 2026-06-08: `todo-todo/product/frida-agenda-agent.md`
 - Audit Biblio / Catalogue et architecture agent bibliothecaire 2026-05-31: `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 - Baseline Lot 0 agent bibliothecaire Frida 2026-05-31: `states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 - Verification OpenRouter / JSON du socle agent bibliothecaire 2026-06-01: `states/baselines/frida-biblio-librarian-agent-openrouter-json-2026-06-01.md`
@@ -79,6 +81,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Plan doctrinal identity `static` / `mutable`: `states/policies/identity-new-contract-plan.md`
 - Contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
 - Protocole streaming public: `states/specs/streaming-protocol.md`
+- Contrat de surface agentique: `states/specs/agentic-response-surface-contract.md`
+- Contrat source-of-truth du futur agent Agenda: `states/specs/frida-agenda-agent-contract.md`
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
 - Contrat atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
 - Contrat du mode Adobe Photoshop / Illustrator: `states/specs/fridadev-adobe-docs-mode-contract.md`
@@ -199,6 +203,19 @@ Lire d'abord:
 - `todo-done/product/frida-biblio-real-library-product-gap-todo.md` pour la remediation archivee de l'ecart produit et sa livraison route TOC: liste catalogue complete jusqu'a 100, ouverture de documents, table des matieres via `GET /doc/{id}/chapters` et garde content-free.
 
 But: relire le chantier livre permettant a Frida de consulter explicitement une bibliotheque persistante native, puis la remediation produit qui a ajoute la liste catalogue complete et la table des matieres legere, sans confondre cette capacite avec les documents actifs de conversation.
+
+### Agent Agenda Frida
+
+Lire d'abord:
+- `states/specs/frida-agenda-agent-contract.md` pour le contrat cible du futur agent Agenda: toggle `agenda_enabled`, agent borne, methodes produit, outils CalDAV, confirmations humaines, pending store temporaire, observabilite content-free et invariants securite.
+- `todo-todo/product/frida-agenda-agent.md` pour la TODO produit active et cochable: familles lecture, clarification, proposition, ecriture confirmee, contexte/memoire et lots runtime futurs.
+- `states/specs/agentic-response-surface-contract.md` pour conserver le principe "Frida parle, l'agent travaille, le deterministe protege" sans canal visible parallele.
+- `states/specs/frida-biblio-librarian-agent-contract.md` pour le modele voisin: toggle utilisateur separe du mode runtime agent, schema JSON, product methods, tools allowlistes et fallback deterministe.
+- `states/audits/frida-agentic-response-surface-lot0-audit-2026-06-06.md` pour le chemin message assistant normal: timestamp, `message.meta`, contexte suivant, Memory et resumes.
+
+But: ouvrir le chantier Agenda comme decision produit explicite, sans coder
+l'agent dans le lot de cadrage, sans lire d'evenements reels, sans creer
+d'app-password et sans toucher a Nextcloud/Caddy/Authelia.
 
 ### Identity / doctrine
 

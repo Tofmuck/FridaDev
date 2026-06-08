@@ -1,11 +1,44 @@
 # Frida - Reponses agentiques integrees
 
 Date: 2026-06-06
-Statut: TODO produit decidee, docs-only pour le present lot
-Classement: `app/docs/todo-todo/product/`
+Statut: ARCHIVE - chantier clos; Lots 0-3 livres, prouves et documentes
+Classement: `app/docs/todo-done/product/`
+
+## Archive
+
+Cette roadmap ne pilote plus le travail actif. Elle est archivee parce que le
+mecanisme de restitution agentique Biblio est livre, verifie et corrige apres
+les derniers findings Lot 3.
+
+Source de verite runtime encore vivante:
+
+- `app/docs/states/specs/agentic-response-surface-contract.md`
+
+Ne pas rouvrir cette roadmap sans decision explicite. Les cases restantes non
+cochees, notamment le Lot X no-op, sont historiques et non applicables apres la
+fermeture effective des Lots 0-3.
+
+Commits principaux:
+
+- `e1423ea` - implementation de l'enveloppe agentique Biblio.
+- `b24fed4` - durcissement du contrat parseur `surface_intro` /
+  `surface_outro`.
+- `48ae9ff` - fermeture de la preuve `comparaison / reprise`.
+- `8158209` - correction de la reinjection meta read-passages dans le dialogue
+  Biblio recent et documentation streaming bufferise.
+
+Etat final:
+
+- Frida reste l'unique voix visible.
+- Le bibliothecaire reste interne.
+- Le runtime assemble les enveloppes et surfaces verrouillees sans styliser.
+- Les metas Biblio restent exploitables en content-free.
+- Les artefacts JSONL Lot 2 / Lot 3 sont conserves ci-dessous.
+- La spec contractuelle reste vivante; cette archive conserve l'execution.
 
 Sources:
 
+- `app/docs/states/specs/agentic-response-surface-contract.md`
 - `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - `app/docs/todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
@@ -45,7 +78,7 @@ Formules a garder:
   agentique.
 - Leur contenu peut etre vide seulement si le type de resultat ou le statut le
   justifie.
-- L'absence d'enveloppe ne doit pas redevenir la norme silencieuse.
+- La chaine vide ne doit pas redevenir la norme silencieuse.
 - Le runtime assemble, conserve et verrouille.
 - Les exacts verrouilles sont copies verbatim.
 - Les metas restent en observabilite et dans `message.meta`, pas en surface
@@ -62,14 +95,14 @@ Formules a garder:
 
 ## Interdits
 
-- Pas de patch runtime dans ce lot documentaire.
+- Pas de patch runtime hors lot explicitement runtime et preuve live.
 - Pas de modification Biblio.
 - Pas de modification Memory.
 - Pas de modification DB.
 - Pas de modification doc-pipeline ou plateforme.
 - Pas de reouverture de BIB-01 -> BIB-33.
 - Pas de restitution speciale par BIB.
-- Pas de branche locale du type `if BIB-17 then phrase speciale`.
+- Pas de branche locale specialisee par numero BIB.
 - Pas de validateur regex de surface.
 - Pas de filtre stylistique local.
 - Pas de liste locale de vocabulaire interdit.
@@ -91,7 +124,8 @@ vise seulement la surface visible:
 
 - l'agent Biblio recoit la demande utilisateur et le contexte utile;
 - il choisit ses outils et produit son resultat structure;
-- il renseigne l'intro et la relance, ou justifie leur absence dans les metas;
+- il renseigne l'intro et la relance, ou justifie leur chaine vide dans les
+  metas;
 - le deterministe garde les exacts, ancres, limites, final lock et metas;
 - le runtime assemble le message visible;
 - le message assemble est sauve comme assistant Frida normal;
@@ -99,17 +133,25 @@ vise seulement la surface visible:
 
 Garde-fous structurels autorises:
 
-- champ present ou absent;
+- champ present;
 - type `string` pour `surface_intro` et `surface_outro`;
+- `null` invalide;
 - taille raisonnable;
-- champ vide accepte;
+- chaine vide acceptee seulement si le statut ou le type de resultat le
+  justifie, avec raison conservee en meta / observabilite content-free;
 - coherence entre statut, exact verrouille, limites et continuation.
 
 Le code ne corrige pas le style. Il ne standardise pas la voix. Il ne fabrique
 pas une phrase locale pour remplacer l'enveloppe.
 
-Si l'enveloppe est absente, le comportement reste sobre, explicite cote
+Si l'enveloppe est vide, le comportement reste sobre, explicite cote
 meta/observabilite, et ne doit pas casser la reponse.
+
+En streaming, une reponse avec enveloppe peut etre bufferisee jusqu'au
+`final_text` terminal afin de ne pas envoyer un corps provisoire puis une version
+recomposee avec intro/outro. Ce choix reste compatible avec le contrat si le
+message final sauvegarde est unique, timestampé, repris dans le contexte normal,
+et qu'il n'existe ni double reponse ni canal parallele.
 
 Tout patch runtime de ce chantier exige une preuve live en vraie conversation
 Frida, meme si la surface semble inchangee. La raison est simple: ce chantier
@@ -143,76 +185,97 @@ traitement BIB par BIB.
 
 Objectif: comprendre ou se fabrique aujourd'hui la reponse Biblio visible.
 
-- [ ] Localiser l'assemblage de la reponse visible.
-- [ ] Localiser les metas Biblio.
-- [ ] Verifier le message assistant en DB.
-- [ ] Verifier le contexte recent.
-- [ ] Verifier que le message assistant timestampé entre dans le contexte
+- Audit produit: `app/docs/states/audits/frida-agentic-response-surface-lot0-audit-2026-06-06.md`.
+
+- [x] Localiser l'assemblage de la reponse visible.
+- [x] Localiser les metas Biblio.
+- [x] Verifier le message assistant en DB.
+- [x] Verifier le contexte recent.
+- [x] Verifier que le message assistant timestampé entre dans le contexte
   envoye au LLM avec le traitement temporel normal.
-- [ ] Verifier Memory si le chemin est deja branche.
-- [ ] Verifier embeddings si le chemin est deja branche.
-- [ ] Verifier resume si le chemin est deja branche.
-- [ ] Produire un diagnostic content-free.
-- [ ] Ne modifier aucun runtime.
+- [x] Verifier Memory si le chemin est deja branche.
+- [x] Verifier embeddings si le chemin est deja branche.
+- [x] Verifier resume si le chemin est deja branche.
+- [x] Produire un diagnostic content-free.
+- [x] Ne modifier aucun runtime.
 
 ### Lot 1 - Contrat court
 
 Objectif: fixer le contrat generique.
 
-- [ ] Definir `surface_intro` comme champ du contrat, vide seulement si le
+- Spec normative: `app/docs/states/specs/agentic-response-surface-contract.md`.
+
+- [x] Definir `surface_intro` comme champ du contrat, vide seulement si le
   statut ou le type de resultat le justifie.
-- [ ] Definir `surface_outro` comme champ du contrat, vide seulement si le
+- [x] Definir `surface_outro` comme champ du contrat, vide seulement si le
   statut ou le type de resultat le justifie.
-- [ ] Definir le comportement si l'enveloppe est absente.
-- [ ] Confirmer que les exacts verrouilles ne sont pas reecrits.
-- [ ] Confirmer l'absence de nouveau LLM.
-- [ ] Confirmer l'absence de validateur regex ou de filtre de style.
-- [ ] Confirmer l'absence de branche par BIB.
-- [ ] Confirmer les familles Biblio couvertes.
+- [x] Definir le comportement si l'enveloppe est vide.
+- [x] Confirmer que les exacts verrouilles ne sont pas reecrits.
+- [x] Confirmer l'absence de nouveau LLM.
+- [x] Confirmer l'absence de validateur regex ou de filtre de style.
+- [x] Confirmer l'absence de branche par BIB.
+- [x] Confirmer les familles Biblio couvertes.
 
 ### Lot 2 - Implementation generique Biblio
 
 Objectif: brancher le mecanisme simple.
 
-- [ ] Faire porter `surface_intro` et `surface_outro` par le resultat agentique
+- Preuve live:
+  `app/docs/states/baselines/biblio-smokes/agentic-response-surface-lot2-real-conversation-20260606T165059Z.jsonl`.
+
+- [x] Faire porter `surface_intro` et `surface_outro` par le resultat agentique
   Biblio.
-- [ ] Assembler intro, surface existante, limites et relance.
-- [ ] Conserver final lock.
-- [ ] Conserver metas, provenance et observabilite.
-- [ ] Conserver le message assistant normal.
-- [ ] Conserver le timestamp et le chemin temporel normal: DB, contexte,
+- [x] Assembler intro, surface existante, limites et relance.
+- [x] Conserver final lock.
+- [x] Conserver metas, provenance et observabilite.
+- [x] Conserver le message assistant normal.
+- [x] Conserver le timestamp et le chemin temporel normal: DB, contexte,
   labels temporels / Delta-T, Memory, embeddings et resume selon contrats.
-- [ ] Ajouter ou ajuster les tests unitaires cibles.
-- [ ] Produire une preuve live en vraie conversation Frida pour tout patch
+- [x] Ajouter ou ajuster les tests unitaires cibles.
+- [x] Produire une preuve live en vraie conversation Frida pour tout patch
   runtime de ce chantier.
 
 ### Lot 3 - Preuve live par familles
 
 Objectif: verifier la couverture sans refaire trente-trois micro-tests.
 
-- [ ] Couvrir inventaire / metadonnees.
-- [ ] Couvrir resolution / ambiguite.
-- [ ] Couvrir structure / sections.
-- [ ] Couvrir recherche scoped.
-- [ ] Couvrir extraction exacte.
-- [ ] Couvrir extraction segmentee / continuation.
-- [ ] Couvrir provenance / navigation.
-- [ ] Couvrir comparaison / reprise.
-- [ ] Couvrir echec propre.
-- [ ] Prouver que les familles couvrent BIB-01 -> BIB-33.
-- [ ] Verifier que la reponse agentique finale possede un timestamp.
-- [ ] Verifier que cette reponse est reprise ensuite dans le contexte envoye au
+- Statut: ferme live. Les neuf familles sont prouvees par artefacts
+  JSONL content-free, y compris `comparaison / reprise` via le chemin
+  conversationnel `read_passages` avec meta Biblio, `surface_intro` /
+  `surface_outro`, timestamp, Delta-T et absence de final lock exact abusif.
+- Preuve live principale:
+  `app/docs/states/baselines/biblio-smokes/agentic-response-surface-lot3-family-live-20260606T191014Z.jsonl`.
+- Correction / diagnostic:
+  `app/docs/states/baselines/biblio-smokes/agentic-response-surface-lot3-correction-20260606T191907Z.jsonl`.
+- Preuve live de fermeture `comparaison / reprise`:
+  `app/docs/states/baselines/biblio-smokes/agentic-response-surface-lot3-comparison-reprise-live-20260606T195023Z.jsonl`.
+
+- [x] Couvrir inventaire / metadonnees.
+- [x] Couvrir resolution / ambiguite.
+- [x] Couvrir structure / sections.
+- [x] Couvrir recherche scoped.
+- [x] Couvrir extraction exacte.
+- [x] Couvrir extraction segmentee / continuation.
+- [x] Couvrir provenance / navigation.
+- [x] Couvrir comparaison / reprise.
+- [x] Couvrir echec propre.
+- [x] Prouver que les familles couvrent BIB-01 -> BIB-33.
+- [x] Verifier que la reponse agentique finale possede un timestamp.
+- [x] Verifier que cette reponse est reprise ensuite dans le contexte envoye au
   LLM avec le traitement temporel normal.
-- [ ] Verifier que le timestamp n'est pas seulement une meta ou une ligne DB
+- [x] Verifier que le timestamp n'est pas seulement une meta ou une ligne DB
   isolee.
-- [ ] Produire un JSONL live content-free.
+- [x] Produire un JSONL live content-free.
 
-### Lot X - Arret no-op
+### Lot X - Arret no-op historique
 
-- [ ] Evaluer si le mecanisme ajoute trop de complexite.
-- [ ] Arreter sans patch runtime si le risque depasse le benefice.
-- [ ] Conserver le systeme actuel.
-- [ ] Archiver cette TODO avec decision explicite.
+Statut: non applique. Le mecanisme a ete livre et prouve par les Lots 0-3; ce
+point d'arret reste une trace de gouvernance, pas une action ouverte.
+
+- Evaluer si le mecanisme ajoute trop de complexite.
+- Arreter sans patch runtime si le risque depasse le benefice.
+- Conserver le systeme actuel.
+- Archiver cette TODO avec decision explicite.
 
 ## Validation attendue
 

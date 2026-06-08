@@ -86,6 +86,31 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertIsNotNone(result.candidate_plan)
         self.assertEqual(fake.calls, 1)
 
+    def test_validated_plan_carries_surface_envelope_without_observable_raw_text(self) -> None:
+        raw_intro = "RAW SURFACE INTRO MUST NOT LEAK"
+        raw_outro = "RAW SURFACE OUTRO MUST NOT LEAK"
+        validation = contract.validate_agent_payload(
+            {
+                **json.loads(_valid_json()),
+                "surface_intro": raw_intro,
+                "surface_outro": raw_outro,
+            }
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertIsNotNone(validation.plan)
+        assert validation.plan is not None
+        self.assertEqual(validation.plan.surface_intro, raw_intro)
+        self.assertEqual(validation.plan.surface_outro, raw_outro)
+        observed = validation.to_observability()
+        encoded = _json(observed)
+        self.assertTrue(observed["plan"]["surface_intro_present"])
+        self.assertTrue(observed["plan"]["surface_outro_present"])
+        self.assertEqual(observed["plan"]["surface_intro_chars"], len(raw_intro))
+        self.assertEqual(observed["plan"]["surface_outro_chars"], len(raw_outro))
+        self.assertNotIn(raw_intro, encoded)
+        self.assertNotIn(raw_outro, encoded)
+
     def test_invalid_json_and_free_text_fall_back(self) -> None:
         cases = [
             ("{not-json", contract.REASON_JSON_INVALID),
@@ -139,6 +164,12 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
             ("extra_root", {**base, "extra": "oops"}, contract.REASON_SCHEMA_INVALID),
             ("missing_intent", {key: value for key, value in base.items() if key != "intent"}, contract.REASON_SCHEMA_INVALID),
             ("missing_answer_mode", {key: value for key, value in base.items() if key != "answer_mode"}, contract.REASON_SCHEMA_INVALID),
+            ("missing_surface_intro", {key: value for key, value in base.items() if key != "surface_intro"}, contract.REASON_SCHEMA_INVALID),
+            ("missing_surface_outro", {key: value for key, value in base.items() if key != "surface_outro"}, contract.REASON_SCHEMA_INVALID),
+            ("null_surface_intro", {**base, "surface_intro": None}, contract.REASON_SCHEMA_INVALID),
+            ("null_surface_outro", {**base, "surface_outro": None}, contract.REASON_SCHEMA_INVALID),
+            ("surface_intro_too_long", {**base, "surface_intro": "x" * 601}, contract.REASON_SCHEMA_INVALID),
+            ("surface_outro_too_long", {**base, "surface_outro": "x" * 601}, contract.REASON_SCHEMA_INVALID),
             ("bad_risk_flags_type", {**base, "risk_flags": "oops"}, contract.REASON_SCHEMA_INVALID),
             ("too_many_risk_flags", {**base, "risk_flags": [f"flag_{index}" for index in range(13)]}, contract.REASON_SCHEMA_INVALID),
             (
@@ -192,6 +223,38 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 validation = contract.validate_agent_payload(payload)
                 self.assertEqual(validation.status, contract.STATUS_REJECTED)
                 self.assertEqual(validation.reason_code, reason)
+
+    def test_parse_rejects_missing_or_invalid_surface_fields_without_repair(self) -> None:
+        base = json.loads(_valid_json())
+        rejected_cases = [
+            ("missing_surface_intro", {key: value for key, value in base.items() if key != "surface_intro"}),
+            ("missing_surface_outro", {key: value for key, value in base.items() if key != "surface_outro"}),
+            (
+                "missing_both_surface_fields",
+                {key: value for key, value in base.items() if key not in {"surface_intro", "surface_outro"}},
+            ),
+            ("null_surface_intro", {**base, "surface_intro": None}),
+            ("null_surface_outro", {**base, "surface_outro": None}),
+            ("surface_intro_too_long", {**base, "surface_intro": "x" * 601}),
+            ("surface_outro_too_long", {**base, "surface_outro": "x" * 601}),
+        ]
+        for label, payload in rejected_cases:
+            with self.subTest(case=label):
+                validation = contract.parse_and_validate_agent_json(json.dumps(payload))
+                self.assertEqual(validation.status, contract.STATUS_REJECTED)
+                self.assertEqual(validation.reason_code, contract.REASON_SCHEMA_INVALID)
+                self.assertIsNone(validation.plan)
+
+        accepted_cases = [
+            ("empty_surface_intro_present", {**base, "surface_intro": ""}),
+            ("empty_surface_outro_present", {**base, "surface_outro": ""}),
+            ("both_empty_surface_fields_present", {**base, "surface_intro": "", "surface_outro": ""}),
+        ]
+        for label, payload in accepted_cases:
+            with self.subTest(case=label):
+                validation = contract.parse_and_validate_agent_json(json.dumps(payload))
+                self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+                self.assertIsNotNone(validation.plan)
 
     def test_local_validation_rejects_non_object_params_without_normalizing_to_empty(self) -> None:
         base = json.loads(_valid_json())
@@ -503,6 +566,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "catalog_list",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -525,6 +590,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "tool_calls",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -588,6 +655,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -620,6 +689,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 "answer_mode": "tool_calls",
                 "risk_flags": [],
                 "fallback_reason": "",
+                "surface_intro": "J'ai retrouve une oeuvre interne candidate.",
+                "surface_outro": "",
             }
         )
         observed = validation.to_observability()
@@ -659,6 +730,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "tool_calls",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -752,6 +825,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "toc",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -829,6 +904,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "scoped_search",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -937,6 +1014,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "extraction",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -966,6 +1045,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "section_start_page_block_2",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -998,6 +1079,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         "answer_mode": "section_start_page_block_2",
                         "risk_flags": [],
                         "fallback_reason": "",
+                        "surface_intro": "",
+                        "surface_outro": "",
                     },
                 }
             )
@@ -1040,6 +1123,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "section_start_page_block_2",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1098,6 +1183,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "toc",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1125,6 +1212,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "tool",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1307,6 +1396,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1332,6 +1423,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1356,6 +1449,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1380,6 +1475,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1404,6 +1501,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         "params": RAW_TITLE,
                     },
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1427,6 +1526,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1464,6 +1565,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                     "answer_mode": "tool",
                     "risk_flags": [],
                     "fallback_reason": "",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1492,6 +1595,8 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                         }
                     ],
                     "answer_mode": "tool",
+                    "surface_intro": "",
+                    "surface_outro": "",
                 }
             )
         )
@@ -1657,8 +1762,14 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
                 "answer_mode",
                 "risk_flags",
                 "fallback_reason",
+                "surface_intro",
+                "surface_outro",
             },
         )
+        self.assertEqual(response_format["json_schema"]["schema"]["properties"]["surface_intro"]["type"], "string")
+        self.assertEqual(response_format["json_schema"]["schema"]["properties"]["surface_outro"]["type"], "string")
+        self.assertEqual(response_format["json_schema"]["schema"]["properties"]["surface_intro"]["maxLength"], 600)
+        self.assertEqual(response_format["json_schema"]["schema"]["properties"]["surface_outro"]["maxLength"], 600)
         self.assertEqual(
             response_format["json_schema"]["schema"]["properties"]["case_id"]["enum"],
             ["", *product_methods.CASE_IDS],
@@ -1854,6 +1965,12 @@ class BiblioLibrarianAgentTests(unittest.TestCase):
         self.assertIn("P05-P08/P16-P18", payload["case_selection_note"])
         self.assertIn("current_user_message_folded_ascii", payload)
         self.assertIn("current_user_message_has_non_ascii", payload)
+        self.assertEqual(
+            payload["surface_contract"]["surface_intro"],
+            "string obligatoire, null interdit, court, vide seulement si justifie",
+        )
+        self.assertTrue(payload["surface_contract"]["no_exact_text_in_surface_fields"])
+        self.assertTrue(payload["surface_contract"]["no_bib_number_templates"])
 
     def test_openrouter_payload_omits_reasoning_effort_when_disabled(self) -> None:
         settings = contract.BiblioLibrarianAgentSettings(
@@ -2076,6 +2193,8 @@ def _valid_json(
             "answer_mode": "catalog_list",
             "risk_flags": [],
             "fallback_reason": "",
+            "surface_intro": "J'ai retrouve le resultat demande.",
+            "surface_outro": "Je peux continuer si besoin.",
         },
         ensure_ascii=False,
     )

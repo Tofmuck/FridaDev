@@ -46,11 +46,18 @@ REASON_FINAL_RESPONSE_RENDER_MODE_MISMATCH = "biblio_final_response_render_mode_
 REASON_FINAL_RESPONSE_EXACT_CONTRACT_FAILED = "biblio_final_response_exact_contract_failed"
 REASON_FINAL_RESPONSE_ANCHOR_MISSING = "biblio_final_response_anchor_missing"
 REASON_FINAL_RESPONSE_BLOCKED_CONTRACT_FAILED = "biblio_final_response_blocked_contract_failed"
+REASON_SURFACE_INTRO_EMPTY = "biblio_surface_intro_empty"
+REASON_SURFACE_OUTRO_EMPTY = "biblio_surface_outro_empty"
+REASON_SURFACE_INTRO_INVALID_TYPE = "biblio_surface_intro_invalid_type"
+REASON_SURFACE_OUTRO_INVALID_TYPE = "biblio_surface_outro_invalid_type"
+REASON_SURFACE_INTRO_TOO_LONG = "biblio_surface_intro_too_long"
+REASON_SURFACE_OUTRO_TOO_LONG = "biblio_surface_outro_too_long"
 
 ANSWER_HEADER = "[RESULTAT BIBLIO STRUCTURE]"
 ANSWER_FOOTER = "[/RESULTAT BIBLIO STRUCTURE]"
 
 DEFAULT_MAX_RENDERED_EXACT_CHARS = 8_000
+DEFAULT_MAX_SURFACE_ENVELOPE_CHARS = 600
 
 _KNOWN_STATUSES = frozenset(
     {
@@ -105,6 +112,9 @@ class BiblioAnswerObject:
     source_tool_names: tuple[str, ...] = field(default_factory=tuple)
     render_mode: str = RENDER_STRUCTURED_STATUS
     exact_text: str = field(default="", repr=False, compare=False)
+    surface_intro: str = field(default="", repr=False, compare=False)
+    surface_outro: str = field(default="", repr=False, compare=False)
+    surface_empty_reason_codes: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def exact_text_hash(self) -> str:
@@ -144,6 +154,11 @@ class BiblioAnswerObject:
                 "exact_text_present": bool(self.exact_text),
                 "exact_text_chars": self.exact_text_chars,
                 "exact_text_hash": self.exact_text_hash,
+                "surface_envelope": _surface_observability(
+                    self.surface_intro,
+                    self.surface_outro,
+                    self.surface_empty_reason_codes,
+                ),
             }
         )
 
@@ -157,6 +172,13 @@ class BiblioRenderedAnswer:
     exact_text_rendered: bool = False
     exact_text_chars: int = 0
     exact_text_hash: str = ""
+    surface_intro_present: bool = False
+    surface_intro_chars: int = 0
+    surface_intro_hash: str = ""
+    surface_outro_present: bool = False
+    surface_outro_chars: int = 0
+    surface_outro_hash: str = ""
+    surface_empty_reason_codes: tuple[str, ...] = ()
 
     def to_observability(self) -> dict[str, Any]:
         return _clean(
@@ -169,6 +191,13 @@ class BiblioRenderedAnswer:
                 "exact_text_rendered": self.exact_text_rendered,
                 "exact_text_chars": self.exact_text_chars,
                 "exact_text_hash": self.exact_text_hash,
+                "surface_intro_present": self.surface_intro_present,
+                "surface_intro_chars": self.surface_intro_chars,
+                "surface_intro_hash": self.surface_intro_hash,
+                "surface_outro_present": self.surface_outro_present,
+                "surface_outro_chars": self.surface_outro_chars,
+                "surface_outro_hash": self.surface_outro_hash,
+                "surface_empty_reason_codes": list(self.surface_empty_reason_codes),
             }
         )
 
@@ -184,6 +213,13 @@ class BiblioFinalResponseLock:
     exact_text_rendered: bool = False
     exact_text_chars: int = 0
     exact_text_hash: str = ""
+    surface_intro_present: bool = False
+    surface_intro_chars: int = 0
+    surface_intro_hash: str = ""
+    surface_outro_present: bool = False
+    surface_outro_chars: int = 0
+    surface_outro_hash: str = ""
+    surface_empty_reason_codes: tuple[str, ...] = ()
 
     def to_message_meta(self) -> dict[str, Any]:
         return _clean(
@@ -195,6 +231,13 @@ class BiblioFinalResponseLock:
                 "biblio_exact_text_rendered": self.exact_text_rendered,
                 "biblio_exact_text_chars": self.exact_text_chars,
                 "biblio_exact_text_hash": self.exact_text_hash,
+                "biblio_surface_intro_present": self.surface_intro_present,
+                "biblio_surface_intro_chars": self.surface_intro_chars,
+                "biblio_surface_intro_hash": self.surface_intro_hash,
+                "biblio_surface_outro_present": self.surface_outro_present,
+                "biblio_surface_outro_chars": self.surface_outro_chars,
+                "biblio_surface_outro_hash": self.surface_outro_hash,
+                "biblio_surface_empty_reason_codes": list(self.surface_empty_reason_codes),
             }
         )
 
@@ -212,6 +255,13 @@ class BiblioFinalResponseLock:
                 "exact_text_rendered": self.exact_text_rendered,
                 "exact_text_chars": self.exact_text_chars,
                 "exact_text_hash": self.exact_text_hash,
+                "surface_intro_present": self.surface_intro_present,
+                "surface_intro_chars": self.surface_intro_chars,
+                "surface_intro_hash": self.surface_intro_hash,
+                "surface_outro_present": self.surface_outro_present,
+                "surface_outro_chars": self.surface_outro_chars,
+                "surface_outro_hash": self.surface_outro_hash,
+                "surface_empty_reason_codes": list(self.surface_empty_reason_codes),
                 "semantic_judgment": False,
             }
         )
@@ -225,6 +275,8 @@ def build_biblio_answer_object(
     product_method: str = "",
     case_id: str = "",
     truth_level: str = "",
+    surface_intro: Any = "",
+    surface_outro: Any = "",
 ) -> BiblioAnswerObject:
     results = tuple(result for result in tool_results if result is not None)
     reason_codes = _unique([loop_reason_code, *(result.reason_code for result in results)])
@@ -265,6 +317,10 @@ def build_biblio_answer_object(
     anchors = _anchors(results, interval, extraction=extraction)
     render_mode = _render_mode(status, exact_text)
     inventory_metadata = _inventory_metadata(results, product_method)
+    surface_intro_text, surface_outro_text, surface_empty_reasons = _surface_envelope(
+        surface_intro,
+        surface_outro,
+    )
 
     return BiblioAnswerObject(
         status=status,
@@ -290,6 +346,9 @@ def build_biblio_answer_object(
         source_tool_names=source_tool_names,
         render_mode=render_mode,
         exact_text=exact_text,
+        surface_intro=surface_intro_text,
+        surface_outro=surface_outro_text,
+        surface_empty_reason_codes=surface_empty_reasons,
     )
 
 
@@ -320,6 +379,13 @@ def build_final_response_lock(
         exact_text_rendered=rendered.exact_text_rendered,
         exact_text_chars=rendered.exact_text_chars,
         exact_text_hash=rendered.exact_text_hash,
+        surface_intro_present=rendered.surface_intro_present,
+        surface_intro_chars=rendered.surface_intro_chars,
+        surface_intro_hash=rendered.surface_intro_hash,
+        surface_outro_present=rendered.surface_outro_present,
+        surface_outro_chars=rendered.surface_outro_chars,
+        surface_outro_hash=rendered.surface_outro_hash,
+        surface_empty_reason_codes=rendered.surface_empty_reason_codes,
     )
 
 
@@ -341,7 +407,7 @@ def render_biblio_answer_object(
             lines.append("Resultat documentaire pret, sans extrait exact a afficher ici.")
         elif answer.status != STATUS_READY and not lines:
             lines.append(_blocked_exact_line(answer.status))
-    content = "\n".join(lines)
+    content = "\n".join(_surface_wrapped_lines(answer, lines))
     return BiblioRenderedAnswer(
         status=answer.status,
         reason_code=reason_code,
@@ -350,6 +416,78 @@ def render_biblio_answer_object(
         exact_text_rendered=exact_rendered,
         exact_text_chars=len(exact_text) if exact_rendered else 0,
         exact_text_hash=_hash(exact_text) if exact_rendered else "",
+        surface_intro_present=bool(answer.surface_intro),
+        surface_intro_chars=len(answer.surface_intro),
+        surface_intro_hash=_hash(answer.surface_intro),
+        surface_outro_present=bool(answer.surface_outro),
+        surface_outro_chars=len(answer.surface_outro),
+        surface_outro_hash=_hash(answer.surface_outro),
+        surface_empty_reason_codes=answer.surface_empty_reason_codes,
+    )
+
+
+def _surface_envelope(surface_intro: Any, surface_outro: Any) -> tuple[str, str, tuple[str, ...]]:
+    intro, intro_reason = _surface_text(
+        surface_intro,
+        empty_reason=REASON_SURFACE_INTRO_EMPTY,
+        invalid_type_reason=REASON_SURFACE_INTRO_INVALID_TYPE,
+        too_long_reason=REASON_SURFACE_INTRO_TOO_LONG,
+    )
+    outro, outro_reason = _surface_text(
+        surface_outro,
+        empty_reason=REASON_SURFACE_OUTRO_EMPTY,
+        invalid_type_reason=REASON_SURFACE_OUTRO_INVALID_TYPE,
+        too_long_reason=REASON_SURFACE_OUTRO_TOO_LONG,
+    )
+    return intro, outro, _unique([intro_reason, outro_reason])
+
+
+def _surface_text(
+    value: Any,
+    *,
+    empty_reason: str,
+    invalid_type_reason: str,
+    too_long_reason: str,
+) -> tuple[str, str]:
+    if not isinstance(value, str):
+        return "", invalid_type_reason
+    text = value.strip()
+    if not text:
+        return "", empty_reason
+    if len(text) > DEFAULT_MAX_SURFACE_ENVELOPE_CHARS:
+        return "", too_long_reason
+    return text, ""
+
+
+def _surface_wrapped_lines(answer: BiblioAnswerObject, base_lines: Sequence[str]) -> list[str]:
+    lines: list[str] = []
+    if answer.surface_intro:
+        lines.extend(answer.surface_intro.splitlines())
+        if base_lines:
+            lines.append("")
+    lines.extend(base_lines)
+    if answer.surface_outro:
+        if lines:
+            lines.append("")
+        lines.extend(answer.surface_outro.splitlines())
+    return lines
+
+
+def _surface_observability(
+    surface_intro: str,
+    surface_outro: str,
+    empty_reason_codes: Sequence[str],
+) -> dict[str, Any]:
+    return _clean(
+        {
+            "intro_present": bool(surface_intro),
+            "intro_chars": len(surface_intro),
+            "intro_hash": _hash(surface_intro),
+            "outro_present": bool(surface_outro),
+            "outro_chars": len(surface_outro),
+            "outro_hash": _hash(surface_outro),
+            "empty_reason_codes": list(empty_reason_codes),
+        }
     )
 
 

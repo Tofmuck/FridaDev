@@ -46,6 +46,7 @@ REASON_BUDGET_EXCEEDED = "biblio_librarian_agent_budget_exceeded"
 
 _HASH_LEN = 12
 _RECENT_DIALOGUE_CONTENT_MAX_CHARS = 1200
+_SURFACE_TEXT_MAX_CHARS = 600
 _ROOT_KEYS = {
     "schema_version",
     "case_id",
@@ -55,6 +56,8 @@ _ROOT_KEYS = {
     "answer_mode",
     "risk_flags",
     "fallback_reason",
+    "surface_intro",
+    "surface_outro",
 }
 _CALL_KEYS = {"tool_name", "method", "params", "call_id"}
 _CODE_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:-")
@@ -333,6 +336,8 @@ class BiblioLibrarianAgentValidation:
     status: str
     reason_code: str
     plan: planner.BiblioLibrarianPlan | None = field(default=None, repr=False, compare=False)
+    surface_intro: str = field(default="", repr=False, compare=False)
+    surface_outro: str = field(default="", repr=False, compare=False)
     tool_call_count: int = 0
     tool_names: tuple[str, ...] = ()
     invalid_tool_names: tuple[str, ...] = ()
@@ -352,6 +357,12 @@ class BiblioLibrarianAgentValidation:
                 "json_chars": self.json_chars,
                 "json_hash": self.json_hash,
                 "finish_reason": _safe_token(self.finish_reason),
+                "surface_intro_present": bool(self.surface_intro),
+                "surface_intro_chars": len(self.surface_intro),
+                "surface_intro_hash": _hash(self.surface_intro),
+                "surface_outro_present": bool(self.surface_outro),
+                "surface_outro_chars": len(self.surface_outro),
+                "surface_outro_hash": _hash(self.surface_outro),
                 "plan": self.plan.to_observability() if self.plan else {},
             }
         )
@@ -457,6 +468,12 @@ def validate_agent_payload(
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     if not _valid_code(payload.get("fallback_reason")):
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    surface_intro = _surface_text(payload.get("surface_intro"))
+    if surface_intro is None:
+        return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
+    surface_outro = _surface_text(payload.get("surface_outro"))
+    if surface_outro is None:
+        return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     if not _valid_risk_flags(payload.get("risk_flags")):
         return _rejected(REASON_SCHEMA_INVALID, json_chars=json_chars, json_hash=json_hash, finish_reason=finish_reason)
     raw_calls = payload.get("tool_calls")
@@ -467,6 +484,8 @@ def validate_agent_payload(
     if not raw_calls and product_methods.method_requires_tool_calls(product_method):
         return _rejected(
             REASON_PRODUCT_METHOD_TOOL_MISMATCH,
+            surface_intro=surface_intro,
+            surface_outro=surface_outro,
             json_chars=json_chars,
             json_hash=json_hash,
             finish_reason=finish_reason,
@@ -518,6 +537,8 @@ def validate_agent_payload(
         if not product_methods.method_allows_tool(product_method, tool_name):
             return _rejected(
                 REASON_PRODUCT_METHOD_TOOL_MISMATCH,
+                surface_intro=surface_intro,
+                surface_outro=surface_outro,
                 json_chars=json_chars,
                 json_hash=json_hash,
                 finish_reason=finish_reason,
@@ -569,11 +590,15 @@ def validate_agent_payload(
         tool_calls=tuple(calls),
         answer_mode=_safe_token(payload.get("answer_mode")),
         fallback_reason=_safe_token(payload.get("fallback_reason")),
+        surface_intro=surface_intro,
+        surface_outro=surface_outro,
     )
     return BiblioLibrarianAgentValidation(
         status=STATUS_VALIDATED,
         reason_code=REASON_VALIDATED,
         plan=plan,
+        surface_intro=surface_intro,
+        surface_outro=surface_outro,
         tool_call_count=len(calls),
         tool_names=tuple(call.tool_name for call in calls),
         json_chars=json_chars,
@@ -586,6 +611,8 @@ def _rejected(
     reason_code: str,
     *,
     invalid_tool_names: tuple[str, ...] = (),
+    surface_intro: str = "",
+    surface_outro: str = "",
     json_chars: int = 0,
     json_hash: str = "",
     finish_reason: str = "",
@@ -593,6 +620,8 @@ def _rejected(
     return BiblioLibrarianAgentValidation(
         status=STATUS_REJECTED,
         reason_code=reason_code,
+        surface_intro=surface_intro,
+        surface_outro=surface_outro,
         invalid_tool_names=invalid_tool_names,
         json_chars=json_chars,
         json_hash=json_hash,
@@ -604,6 +633,8 @@ def _repair_agent_payload(payload: Any) -> Any:
     if not isinstance(payload, Mapping):
         return payload
     payload = _unwrap_agent_payload(payload)
+    if _surface_text(payload.get("surface_intro")) is None or _surface_text(payload.get("surface_outro")) is None:
+        return payload
     raw_calls = payload.get("tool_calls")
     if raw_calls is None:
         if "tools" in payload:
@@ -655,6 +686,8 @@ def _repair_agent_payload(payload: Any) -> Any:
         "answer_mode": _safe_token(payload.get("answer_mode")) or "tool",
         "risk_flags": payload.get("risk_flags") if isinstance(payload.get("risk_flags"), list) else [],
         "fallback_reason": _safe_token(payload.get("fallback_reason")),
+        "surface_intro": _repair_surface_text(payload.get("surface_intro")),
+        "surface_outro": _repair_surface_text(payload.get("surface_outro")),
     }
     inferred_product_method = product_methods.infer_product_method(
         intent=repaired_payload["intent"],
@@ -685,7 +718,6 @@ def _repair_agent_payload(payload: Any) -> Any:
         )
     changed = changed or set(payload.keys()) != _ROOT_KEYS
     return repaired_payload if changed else payload
-
 
 def _unwrap_agent_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     if payload.get("tool_calls") is not None:
@@ -849,6 +881,20 @@ def _first_text(params: Mapping[str, Any], names: Sequence[str]) -> str:
         if isinstance(value, str) and value.strip():
             return value.strip()[:240]
     return ""
+
+
+def _surface_text(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if len(text) > _SURFACE_TEXT_MAX_CHARS:
+        return None
+    return text
+
+
+def _repair_surface_text(value: Any) -> str:
+    text = _surface_text(value)
+    return text if text is not None else ""
 
 
 def _bounded_turn(turn: Mapping[str, Any]) -> dict[str, Any]:

@@ -207,6 +207,12 @@ class ChatLlmFlowTests(unittest.TestCase):
                 'X-Conversation-Created-At': '2026-03-26T00:00:00Z',
                 'X-Conversation-Updated-At': updated_at,
             },
+            assistant_response_meta={
+                'source': 'biblio_read_passages_response',
+                'biblio_render_mode': 'read_passages_llm_response',
+            },
+            assistant_response_intro='Intro agentique',
+            assistant_response_outro='Relance agentique',
         )
 
         self.assertEqual(result['kind'], 'json')
@@ -215,7 +221,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             result['payload'],
             {
                 'ok': True,
-                'text': 'reponse test',
+                'text': 'Intro agentique\n\nreponse test\n\nRelance agentique',
                 'conversation_id': 'conv-sync',
                 'created_at': '2026-03-26T00:00:00Z',
                 'updated_at': '2026-03-26T00:10:00Z',
@@ -228,6 +234,17 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(observed['sanitize_calls'], [])
         self.assertTrue(observed['identity_callback_called'])
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:10:00Z')
+        self.assertEqual(
+            conversation['messages'][-1]['meta'],
+            {
+                'source': 'biblio_read_passages_response',
+                'biblio_render_mode': 'read_passages_llm_response',
+            },
+        )
+        self.assertEqual(
+            conversation['messages'][-1]['content'],
+            'Intro agentique\n\nreponse test\n\nRelance agentique',
+        )
         self.assertEqual(
             observed['sequence'],
             ['save_conversation', 'AssistantText', 'save_new_traces', 'identity_write', 'reactivate_identities'],
@@ -784,6 +801,12 @@ class ChatLlmFlowTests(unittest.TestCase):
                 'X-Conversation-Id': 'conv-stream',
                 'X-Conversation-Created-At': '2026-03-26T00:00:00Z',
             },
+            assistant_response_meta={
+                'source': 'biblio_read_passages_response',
+                'biblio_render_mode': 'read_passages_llm_response',
+            },
+            assistant_response_intro='Intro stream',
+            assistant_response_outro='Outro stream',
         )
 
         self.assertEqual(result['kind'], 'stream')
@@ -795,12 +818,26 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(_event_payloads(events, 'llm_call')[0]['provider_title'], 'FridaDev/llm')
 
         streamed, terminal = _collect_stream_output(result['stream'])
-        self.assertEqual(streamed, 'Bonjour')
-        self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-03-26T00:11:59Z'})
+        self.assertEqual(streamed, '')
+        self.assertEqual(
+            terminal,
+            {
+                'event': 'done',
+                'updated_at': '2026-03-26T00:11:59Z',
+                'final_text': 'Intro stream\n\nBonjour\n\nOutro stream',
+            },
+        )
         self.assertTrue(observed['request_stream_flag'])
         self.assertEqual(conversation['messages'][-1]['role'], 'assistant')
-        self.assertEqual(conversation['messages'][-1]['content'], 'Bonjour')
+        self.assertEqual(conversation['messages'][-1]['content'], 'Intro stream\n\nBonjour\n\nOutro stream')
         self.assertEqual(conversation['messages'][-1]['timestamp'], '2026-03-26T00:11:59Z')
+        self.assertEqual(
+            conversation['messages'][-1]['meta'],
+            {
+                'source': 'biblio_read_passages_response',
+                'biblio_render_mode': 'read_passages_llm_response',
+            },
+        )
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:59Z')
         self.assertEqual(observed['now_iso_flags'], [True])
         self.assertEqual(observed['sanitize_calls'], ['Bon', 'jour', 'Bonjour'])

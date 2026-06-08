@@ -333,6 +333,8 @@ class BiblioChatRuntimeTests(unittest.TestCase):
             "answer_mode": "bounded_context_extract_start_of_section",
             "risk_flags": [],
             "fallback_reason": "section_start_pages_requested",
+            "surface_intro": "",
+            "surface_outro": "",
         }
         fake_model = _FakeAgentModel(json.dumps(payload, ensure_ascii=False))
         result = chat_runtime.run_biblio_chat_turn(
@@ -394,6 +396,8 @@ class BiblioChatRuntimeTests(unittest.TestCase):
             "answer_mode": "needs_tool_result_then_page_read",
             "risk_flags": [],
             "fallback_reason": "section_start_pages_requested",
+            "surface_intro": "",
+            "surface_outro": "",
         }
         fake_model = _FakeAgentModel(json.dumps(payload, ensure_ascii=False))
         result = chat_runtime.run_biblio_chat_turn(
@@ -718,6 +722,8 @@ class BiblioChatRuntimeTests(unittest.TestCase):
                 product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
                 tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
                 params={"query": "RAW AGENT QUERY MUST NOT LEAK", "limit": 5},
+                surface_intro="Intro compare from agent contract",
+                surface_outro="Outro compare from agent contract",
             )
         )
 
@@ -748,9 +754,92 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(result.observability_payload["lane"]["mode"], chat_runtime.READ_PASSAGES_MODE_COMPARE)
         self.assertEqual(result.observability_payload["lane"]["passage_count"], 2)
         self.assertTrue(result.observability_payload["librarian_agent"]["model_called"])
+        meta = chat_runtime.assistant_response_meta_for_result(result)
+        self.assertIsNotNone(meta)
+        assert meta is not None
+        meta_encoded = json.dumps(meta, ensure_ascii=False, sort_keys=True)
+        self.assertEqual(meta["source"], chat_runtime.READ_PASSAGES_RESPONSE_SOURCE)
+        self.assertEqual(meta["biblio_render_mode"], "read_passages_llm_response")
+        self.assertEqual(meta["biblio_read_passages_mode"], chat_runtime.READ_PASSAGES_MODE_COMPARE)
+        self.assertEqual(meta["biblio_read_passages_count"], 2)
+        self.assertFalse(meta["biblio_exact_text_rendered"])
+        self.assertFalse(meta["biblio_final_lock_authorized"])
+        self.assertTrue(meta["biblio_surface_intro_present"])
+        self.assertTrue(meta["biblio_surface_outro_present"])
+        self.assertEqual(meta["biblio_surface_empty_reason_codes"], [])
+        envelope = chat_runtime.assistant_response_envelope_for_result(result)
+        self.assertEqual(
+            envelope,
+            {
+                "surface_intro": "Intro compare from agent contract",
+                "surface_outro": "Outro compare from agent contract",
+            },
+        )
         self.assertNotIn(first, encoded)
         self.assertNotIn(second, encoded)
         self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", encoded)
+        self.assertNotIn(first, meta_encoded)
+        self.assertNotIn(second, meta_encoded)
+        self.assertNotIn("Intro compare from agent contract", meta_encoded)
+        self.assertNotIn("Outro compare from agent contract", meta_encoded)
+
+    def test_read_passages_compare_keeps_agent_surface_when_tool_plan_rejected(self) -> None:
+        first = "RAW PREVIOUS EXACT PASSAGE ONE MUST ONLY APPEAR IN PROMPT"
+        second = "RAW PREVIOUS EXACT PASSAGE TWO MUST ONLY APPEAR IN PROMPT"
+        fake_model = _FakeAgentModel(
+            _valid_agent_json(
+                product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_COMPARE_CANDIDATES,
+                tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
+                params={"query": "RAW AGENT QUERY MUST NOT LEAK", "limit": 5},
+                surface_intro="Intro compare from rejected agent plan",
+                surface_outro="Outro compare from rejected agent plan",
+            )
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg="Compare les deux passages deja lus.",
+            recent_dialogue=(
+                _exact_biblio_turn(first),
+                {"role": "user", "content": "encore"},
+                _exact_biblio_turn(second),
+            ),
+            client_factory=_raising_client_factory,
+            config_module=_agent_config("active"),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(fake_model),
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.query_kind, chat_runtime.QUERY_KIND_READ_PASSAGES)
+        self.assertEqual(fake_model.calls, 1)
+        observed_agent = result.observability_payload["librarian_agent"]["agent"]
+        self.assertEqual(
+            observed_agent["validation"]["reason_code"],
+            agent_contract.REASON_PRODUCT_METHOD_TOOL_MISMATCH,
+        )
+        self.assertFalse(observed_agent["candidate_plan_present"])
+        self.assertTrue(observed_agent["surface_intro_present"])
+        self.assertTrue(observed_agent["surface_outro_present"])
+        meta = chat_runtime.assistant_response_meta_for_result(result)
+        self.assertIsNotNone(meta)
+        assert meta is not None
+        self.assertTrue(meta["biblio_surface_intro_present"])
+        self.assertTrue(meta["biblio_surface_outro_present"])
+        self.assertEqual(meta["biblio_surface_empty_reason_codes"], [])
+        envelope = chat_runtime.assistant_response_envelope_for_result(result)
+        self.assertEqual(
+            envelope,
+            {
+                "surface_intro": "Intro compare from rejected agent plan",
+                "surface_outro": "Outro compare from rejected agent plan",
+            },
+        )
+        meta_encoded = json.dumps(meta, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn(first, meta_encoded)
+        self.assertNotIn(second, meta_encoded)
+        self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", meta_encoded)
+        self.assertNotIn("Intro compare from rejected agent plan", meta_encoded)
+        self.assertNotIn("Outro compare from rejected agent plan", meta_encoded)
 
     def test_read_passages_resume_uses_previous_exact_assistant_message_without_catalogue(self) -> None:
         passage = "RAW PREVIOUS EXACT PASSAGE FOR RESUME MUST ONLY APPEAR IN PROMPT"
@@ -759,6 +848,8 @@ class BiblioChatRuntimeTests(unittest.TestCase):
                 product_method=librarian_product_methods.PRODUCT_METHOD_PASSAGE_SHOW_AROUND_CURRENT,
                 tool_name=librarian_tools.TOOL_PASSAGE_CONTEXT,
                 params={"document_id": "doc-1234", "paragraph_id": 99, "window_chars": 1200},
+                surface_intro="Intro resume from agent contract",
+                surface_outro="Outro resume from agent contract",
             )
         )
 
@@ -788,6 +879,24 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertEqual(result.observability_payload["lane"]["mode"], chat_runtime.READ_PASSAGES_MODE_RESUME)
         self.assertEqual(result.observability_payload["lane"]["passage_count"], 1)
         self.assertTrue(result.observability_payload["librarian_agent"]["model_called"])
+        meta = chat_runtime.assistant_response_meta_for_result(result)
+        self.assertIsNotNone(meta)
+        assert meta is not None
+        self.assertEqual(meta["source"], chat_runtime.READ_PASSAGES_RESPONSE_SOURCE)
+        self.assertEqual(meta["biblio_read_passages_mode"], chat_runtime.READ_PASSAGES_MODE_RESUME)
+        self.assertEqual(meta["biblio_read_passages_count"], 1)
+        self.assertFalse(meta["biblio_exact_text_rendered"])
+        self.assertFalse(meta["biblio_final_lock_authorized"])
+        self.assertTrue(meta["biblio_surface_intro_present"])
+        self.assertTrue(meta["biblio_surface_outro_present"])
+        envelope = chat_runtime.assistant_response_envelope_for_result(result)
+        self.assertEqual(
+            envelope,
+            {
+                "surface_intro": "Intro resume from agent contract",
+                "surface_outro": "Outro resume from agent contract",
+            },
+        )
         self.assertNotIn(passage, encoded)
         self.assertNotIn("RAW AGENT QUERY MUST NOT LEAK", encoded)
 
@@ -2722,6 +2831,8 @@ def _valid_agent_json(
     params: dict[str, object] | None = None,
     case_id: str | None = None,
     product_method: str | None = None,
+    surface_intro: str = "",
+    surface_outro: str = "",
 ) -> str:
     effective_product_method = product_method or _product_method_for_tool(tool_name)
     effective_case_id = (
@@ -2743,6 +2854,8 @@ def _valid_agent_json(
             "answer_mode": "tool",
             "risk_flags": [],
             "fallback_reason": "",
+            "surface_intro": surface_intro,
+            "surface_outro": surface_outro,
         },
         ensure_ascii=False,
     )
@@ -2765,6 +2878,8 @@ def _agent_json(
             "answer_mode": answer_mode,
             "risk_flags": [],
             "fallback_reason": "",
+            "surface_intro": "",
+            "surface_outro": "",
         },
         ensure_ascii=False,
     )
@@ -2781,6 +2896,8 @@ def _empty_agent_plan_json() -> str:
             "answer_mode": "clarify",
             "risk_flags": [],
             "fallback_reason": "model_requested_clarification",
+            "surface_intro": "",
+            "surface_outro": "",
         },
         ensure_ascii=False,
     )

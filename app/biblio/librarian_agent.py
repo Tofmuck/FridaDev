@@ -33,6 +33,8 @@ class BiblioLibrarianAgentResult:
     used_for_response: bool = False
     fallback_deterministic: bool = True
     candidate_plan: Any = field(default=None, repr=False, compare=False)
+    surface_intro: str = field(default="", repr=False, compare=False)
+    surface_outro: str = field(default="", repr=False, compare=False)
     validation_observation: dict[str, Any] = field(default_factory=dict)
     model_observation: dict[str, Any] = field(default_factory=dict)
 
@@ -47,6 +49,12 @@ class BiblioLibrarianAgentResult:
                 "used_for_response": self.used_for_response,
                 "fallback_deterministic": self.fallback_deterministic,
                 "candidate_plan_present": self.candidate_plan is not None,
+                "surface_intro_present": bool(self.surface_intro),
+                "surface_intro_chars": len(self.surface_intro),
+                "surface_intro_hash": contract._hash(self.surface_intro),
+                "surface_outro_present": bool(self.surface_outro),
+                "surface_outro_chars": len(self.surface_outro),
+                "surface_outro_hash": contract._hash(self.surface_outro),
                 "validation": self.validation_observation,
                 "model": self.model_observation,
             }
@@ -105,6 +113,8 @@ class BiblioLibrarianAgent:
                 mode=mode,
                 model_called=provider_called,
                 fallback_deterministic=True,
+                surface_intro=validation.surface_intro,
+                surface_outro=validation.surface_outro,
                 validation_observation=validation_observation,
                 model_observation=model_observation,
             )
@@ -117,6 +127,8 @@ class BiblioLibrarianAgent:
                 model_called=provider_called,
                 fallback_deterministic=True,
                 candidate_plan=validation.plan,
+                surface_intro=validation.surface_intro,
+                surface_outro=validation.surface_outro,
                 validation_observation=validation_observation,
                 model_observation=model_observation,
             )
@@ -128,6 +140,8 @@ class BiblioLibrarianAgent:
                 model_called=provider_called,
                 fallback_deterministic=True,
                 candidate_plan=validation.plan,
+                surface_intro=validation.surface_intro,
+                surface_outro=validation.surface_outro,
                 validation_observation=validation_observation,
                 model_observation=model_observation,
             )
@@ -139,6 +153,8 @@ class BiblioLibrarianAgent:
                 model_called=provider_called,
                 fallback_deterministic=True,
                 candidate_plan=validation.plan,
+                surface_intro=validation.surface_intro,
+                surface_outro=validation.surface_outro,
                 validation_observation=validation_observation,
                 model_observation=model_observation,
             )
