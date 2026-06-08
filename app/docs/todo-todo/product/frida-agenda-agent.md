@@ -509,6 +509,18 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [ ] Lot 5A.3: ajouter `current_week` canonique.
   Hors scope volontaire: a traiter avec le lot semaine/disponibilites, pour ne
   pas ouvrir la politique de debut de semaine dans ce micro-correctif.
+- [x] Lot 5B preflight: rendre le schema OpenRouter Agenda compatible avec le
+  mode `json_schema.strict` du provider.
+  Preuve livree: `params` declare maintenant toutes ses proprietes en
+  `required` nullable, le validateur ignore les `null` et le probe provider
+  content-free passe de `status_code=400` a `status_code=200`.
+- [x] Lot 5B tentative partielle content-free du 2026-06-08.
+  Preuve livree:
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-lot5b-live-readonly-20260608T162407Z.jsonl`.
+  Resultat: runtime redacted OK (`tof`, secret configure, aucune valeur
+  exposee), agent JSON valide, CalDAV read-only atteint, mutation=false,
+  JSONL content-free. No-go restant: Nextcloud repond `caldav_unauthorized`
+  au PROPFIND; le mode a ete remis `off`; Lot 5B n'est pas ferme.
 - [ ] Lot 5B: configuration runtime Sauron redacted, mode `active`, compte
   `tof`, secret CalDAV dedie present sans affichage.
 - [ ] Lot 5B: preuve live lire aujourd'hui.

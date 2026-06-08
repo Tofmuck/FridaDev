@@ -6,7 +6,9 @@ Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
 Portee: contrat cible du futur agent Agenda Frida. Lots 1-5A livrent toggle
 no-op, configuration redacted, outils read-only, agent JSON valide et
-branchement applicatif read-only non-live, sans preuve CalDAV live ni mutation.
+branchement applicatif read-only non-live. Lot 5B a une tentative live
+partielle content-free: le provider JSON et l'acces CalDAV read-only sont
+atteints, mais Nextcloud repond `caldav_unauthorized`; Lot 5B reste ouvert.
 
 Sources:
 
@@ -895,6 +897,35 @@ Preuve Lot 5A.3 locale:
 - un evenement journee entiere de test n'est lu/rendu que via la fenetre locale
   canonique;
 - aucune preuve Lot 5A.3 ne lit Nextcloud live, CalDAV live ou secret reel.
+
+Preuve Lot 5B partielle:
+
+- artefact:
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-lot5b-live-readonly-20260608T162407Z.jsonl`;
+- le schema OpenRouter Agenda est rendu compatible avec
+  `response_format.type=json_schema` et `strict=true`: les params d'outils
+  declarent toutes leurs proprietes comme `required` nullable, et le
+  validateur ignore les `null` avant execution;
+- le probe provider content-free observe `status_code=200` apres correction,
+  sans prompt brut ni payload modele brut dans l'artefact;
+- runtime settings redacted OK: `agenda_agent.mode` peut passer
+  temporairement a `active`, `caldav_account=tof`, secret CalDAV dedie
+  configure via source `db_encrypted`, aucune valeur ni `value_encrypted`
+  exposee;
+- les cas `read_today` et `read_tomorrow` produisent un JSON agent valide et
+  declenchent un acces CalDAV/Nextcloud read-only, sans mutation;
+- le transport CalDAV echoue ensuite en `caldav_unauthorized` sur le PROPFIND:
+  aucun final lock Agenda n'est autorise, aucun message assistant Agenda avec
+  meta Agenda n'est persiste pour ces lectures, et les cases Lot 5B restent
+  ouvertes;
+- le smoke de reprise contexte prouve un tour suivant avec timestamp et
+  Delta-T, mais cette preuve seule ne ferme pas Lot 5B sans lecture CalDAV
+  reussie;
+- politique appliquee: comme le verdict global est `partial`, le mode runtime
+  est remis `off`;
+- aucun titre, lieu, description, UID, ETag, URL/path CalDAV, ICS, prompt brut,
+  dialogue brut, cookie, Authorization, token ou app-password n'est stocke dans
+  l'artefact.
 
 Preuve content-free minimale:
 
