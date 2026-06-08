@@ -571,13 +571,13 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve livree: `propose_create_event` exige un draft structure suffisant,
   cree une pending action, final lock assistant normal, aucune ecriture.
 - [x] Ajouter proposition modification.
-  Preuve livree: Lots 6.1/6.2, `propose_update_event` exige une cible
+  Preuve livree: Lots 6.1/6.2/6.3, `propose_update_event` exige une cible
   reellement relue par chemin read-only effectif; un `event_get` seulement
-  declare est refuse.
+  declare est refuse sans resolution secret/client CalDAV.
 - [x] Ajouter proposition suppression.
-  Preuve livree: Lots 6.1/6.2, `propose_delete_event` exige une cible
-  reellement relue par chemin read-only effectif et cree une pending action
-  renforcee; suppression non executee.
+  Preuve livree: Lots 6.1/6.2/6.3, `propose_delete_event` exige une cible
+  reellement relue par chemin read-only effectif; une sequence non executable
+  est refusee avant resolution secret/client CalDAV; suppression non executee.
 - [x] Rendre les propositions visibles concretes sans fuite meta.
   Preuve livree: Lot 6.1, la reponse Frida explicite quoi/quand/cible; meta,
   observabilite et etat conversationnel restent content-free.

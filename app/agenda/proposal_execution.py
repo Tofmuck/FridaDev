@@ -103,11 +103,16 @@ def plan_needs_target_verification(plan: agent_contract.AgendaAgentPlan) -> bool
     )
 
 
-def plan_can_attempt_target_verification(plan: agent_contract.AgendaAgentPlan) -> bool:
-    return bool(
-        plan_needs_target_verification(plan)
-        and proposal_target_verification.target_event_id_for_plan(plan)
-    )
+def plan_can_attempt_target_verification(
+    plan: agent_contract.AgendaAgentPlan,
+    *,
+    injected_client: bool = False,
+) -> bool:
+    if not plan_needs_target_verification(plan):
+        return False
+    if injected_client:
+        return bool(proposal_target_verification.target_event_id_for_plan(plan))
+    return proposal_target_verification.has_executable_target_verification_sequence(plan)
 
 
 def execute_pending_plan(

@@ -502,9 +502,12 @@ Etat livre Lot 5A:
   allowliste; la validation et l'execution refusent toutes deux les plans
   read-only sans outil;
 - le secret CalDAV et le client CalDAV ne sont resolus que pour un plan
-  read-only valide et executable;
-- les methodes `clarify_*`, `propose_*`, `confirm_*` et contexte ne doivent
-  jamais provoquer de lecture de secret ni construction de client CalDAV;
+  read-only valide et executable, ou pour la verification read-only d'une
+  cible de proposition update/delete/reschedule lorsque le plan de
+  verification est lui-meme executable;
+- les methodes `clarify_*`, `confirm_*`, contexte et les propositions sans
+  sequence de verification cible executable ne doivent jamais provoquer de
+  lecture de secret ni construction de client CalDAV;
 - `secret_access` en observabilite vaut vrai seulement si le secret runtime a
   ete effectivement resolu;
 - les heures visibles sont rendues dans la timezone portee par l'evenement ou
@@ -668,6 +671,12 @@ Preuve Lot 6:
   `propose_delete_event` ne reposent plus sur un resolver fake-only:
   le runtime peut executer les tool calls read-only bornes nécessaires
   (`event_query_range`, `event_search`, `event_get`) pour verifier la cible;
+- Lot 6.3: la resolution du secret/client CalDAV pour verifier une cible
+  update/delete/reschedule est interdite tant que le plan ne porte pas une
+  sequence read-only executable, au minimum `event_query_range` puis
+  `event_get`, avec `event_search` optionnel entre les deux; un `event_get`
+  seul est refuse avec `agenda_pending_target_not_verified`,
+  `secret_access=false` et `caldav_access=false`;
 - Lot 6.2: `propose_delete_event` cree une pending action delete avec
   confirmation renforcee seulement apres cible relue, sans suppression;
 - Lot 6.1: le rendu visible est concret, mais meta/observabilite restent

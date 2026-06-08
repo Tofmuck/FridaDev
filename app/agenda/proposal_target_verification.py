@@ -110,6 +110,18 @@ def target_event_id_for_plan(plan: agent_contract.AgendaAgentPlan) -> str:
     return event_ids[0] if len(event_ids) == 1 else ''
 
 
+def has_executable_target_verification_sequence(plan: agent_contract.AgendaAgentPlan) -> bool:
+    if not target_event_id_for_plan(plan):
+        return False
+    tool_names = [str(call.tool_name or '') for call in plan.tool_calls]
+    try:
+        range_index = tool_names.index(product_methods.TOOL_EVENT_QUERY_RANGE)
+        get_index = tool_names.index(product_methods.TOOL_EVENT_GET)
+    except ValueError:
+        return False
+    return range_index < get_index
+
+
 def _ensure_calendars(client: Any, state: AgendaReadState) -> None:
     if state.calendars:
         return

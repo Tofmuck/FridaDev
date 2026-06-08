@@ -672,6 +672,61 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('/remote.php/dav', encoded_payload)
         self.assertNotIn('fixture-etag-001', encoded_payload)
 
+    def test_propose_update_runtime_caldav_fake_transport_allows_search_before_target_get(self) -> None:
+        event_id = _live_fixture_event_id()
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
+                operation='update',
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': {
+                            'start': '2026-06-08T00:00:00Z',
+                            'end': '2026-06-09T00:00:00Z',
+                            'timezone': 'Europe/Paris',
+                        },
+                        'call_id': 'range-1',
+                    },
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_SEARCH,
+                        'method': 'GET',
+                        'params': {'query': 'Local'},
+                        'call_id': 'search-1',
+                    },
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': event_id},
+                        'call_id': 'target-1',
+                    },
+                ],
+            )
+        )
+        runtime_settings = _SecretCountingRuntimeSettings(value='fixture-secret-value')
+        requests_module = _FakeRequestsModule()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Deplace ce rendez-vous',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+            requests_module=requests_module,
+            pending_id_factory=lambda: 'agenda-pending-update-caldav-search-1',
+        )
+
+        self.assertEqual(runtime_settings.secret_reads, 1)
+        self.assertEqual([call['method'] for call in requests_module.calls], ['PROPFIND', 'REPORT', 'GET'])
+        self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_PENDING_CREATED)
+        self.assertTrue(result.proposal_execution_result.target_clear)
+        self.assertTrue(result.observability_payload['caldav_access'])
+
     def test_propose_update_without_clear_target_does_not_create_pending_action(self) -> None:
         fake_model = _FakeModelClient(
             _proposal_payload(
@@ -718,6 +773,8 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                 ],
             )
         )
+        runtime_settings = _SecretCountingRuntimeSettings(value='fixture-secret-value')
+        requests_module = _FakeRequestsModule()
 
         result = chat_runtime.run_agenda_chat_turn(
             {'agenda_enabled': True},
@@ -727,13 +784,19 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                 mode=agent_contract.MODE_ACTIVE,
                 caldav_secret_configured=True,
             ),
+            runtime_settings_module=runtime_settings,
             agent_model_client=fake_model,
+            requests_module=requests_module,
             pending_id_factory=lambda: 'agenda-pending-update-unverified',
         )
 
         self.assertTrue(result.used)
+        self.assertEqual(runtime_settings.secret_reads, 0)
+        self.assertEqual(requests_module.calls, [])
         self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_TARGET_NOT_VERIFIED)
         self.assertEqual(result.pending_state.actions, ())
+        self.assertFalse(result.observability_payload['caldav_access'])
+        self.assertFalse(result.observability_payload['secret_access'])
         self.assertFalse(result.observability_payload['mutation_attempted'])
 
     def test_propose_delete_creates_reinforced_pending_action_without_calendar_mutation(self) -> None:

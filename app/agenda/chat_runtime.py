@@ -467,7 +467,10 @@ def _resolve_proposal_read_client(
     requests_module: Any = None,
     config_module: Any = None,
 ) -> tuple[Any, bool]:
-    if not proposal_execution.plan_can_attempt_target_verification(plan):
+    if not proposal_execution.plan_can_attempt_target_verification(
+        plan,
+        injected_client=injected_client is not None,
+    ):
         return None, False
     return _resolve_read_client(
         settings=settings,
