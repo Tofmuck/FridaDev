@@ -905,10 +905,12 @@ def chat_response(
 
     agenda_result = None
     if agenda_chat_runtime.normalize_agenda_enabled(data.get('agenda_enabled')):
+        agenda_state = agenda_chat_runtime.read_agenda_conversation_state(conversation)
         agenda_result = agenda_chat_runtime.run_agenda_chat_turn(
             data,
             user_msg=user_msg,
             conversation_id=conversation.get('id'),
+            conversation_state=agenda_state,
             recent_dialogue=_agenda_recent_dialogue(conversation, user_msg),
             now_iso=now_iso_value,
             config_module=config_module,
@@ -916,6 +918,7 @@ def chat_response(
             llm_module=llm_module,
             requests_module=requests_module,
         )
+        agenda_chat_runtime.attach_agenda_conversation_state(conversation, agenda_result)
         _emit_agenda_observability(agenda_result)
 
     hermeneutic_node_runtime = _run_hermeneutic_node_insertion_point(

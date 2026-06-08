@@ -4,7 +4,16 @@ import json
 import unittest
 from types import SimpleNamespace
 
-from agenda import agent_contract, agent_runtime, chat_runtime, product_methods, read_execution, response_rendering
+from agenda import (
+    agent_contract,
+    agent_runtime,
+    chat_runtime,
+    pending_store,
+    product_methods,
+    proposal_execution,
+    read_execution,
+    response_rendering,
+)
 from agenda.caldav_models import CalendarEvent, CalendarSummary
 
 
@@ -466,6 +475,313 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                 self.assertEqual(result.reason_code, agent_runtime.REASON_MODE_UNSUPPORTED)
                 self.assertEqual(fake.calls, 0)
 
+    def test_propose_create_creates_pending_action_without_caldav_or_secret_access(self) -> None:
+        raw_intent = 'RAW EVENT DETAILS MUST NOT LEAK'
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_CREATE_EVENT,
+                operation='create',
+                intent=raw_intent,
+            )
+        )
+        runtime_settings = _SecretCountingRuntimeSettings(value='fixture-secret-value')
+        read_client = _FakeReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+            read_client=read_client,
+            pending_id_factory=lambda: 'agenda-pending-create-1',
+        )
+
+        self.assertTrue(result.used)
+        self.assertIsNone(result.read_execution_result)
+        self.assertIsNotNone(result.proposal_execution_result)
+        self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_PENDING_CREATED)
+        self.assertEqual(result.proposal_execution_result.operation, 'create')
+        self.assertEqual(runtime_settings.secret_reads, 0)
+        self.assertEqual(read_client.calls, [])
+        self.assertEqual(len(result.pending_state.actions), 1)
+        action = result.pending_state.actions[0]
+        self.assertEqual(action.pending_action_id, 'agenda-pending-create-1')
+        self.assertEqual(action.operation, 'create')
+        self.assertEqual(action.confirmation_level, 'simple')
+        lock = result.final_response_lock
+        self.assertIn('Reference de confirmation : agenda-pending-create-1', lock.content)
+        self.assertIn('Confirme-moi', lock.content)
+        self.assertNotIn("J'ai ajoute", lock.content)
+        meta = lock.to_message_meta()
+        self.assertEqual(meta['agenda_pending_action_id'], 'agenda-pending-create-1')
+        self.assertEqual(meta['agenda_operation'], 'create')
+        self.assertFalse(meta['agenda_mutation_attempted'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertEqual(result.observability_payload['schema_version'], 'frida_agenda_lot6_pending_v1')
+        self.assertFalse(result.observability_payload['caldav_access'])
+        self.assertFalse(result.observability_payload['nextcloud_access'])
+        self.assertFalse(result.observability_payload['secret_access'])
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        self.assertTrue(result.observability_payload['final_response_override'])
+        self.assertNotIn('fixture-secret-value', encoded_payload)
+        self.assertNotIn(raw_intent, encoded_payload)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+
+    def test_propose_update_requires_clear_local_event_target_and_creates_pending_action(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
+                operation='update',
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': 'event-1'},
+                        'call_id': 'target-1',
+                    }
+                ],
+            )
+        )
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Deplace ce rendez-vous',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=_FakeReadClient(),
+            pending_id_factory=lambda: 'agenda-pending-update-1',
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.proposal_execution_result.operation, 'update')
+        self.assertTrue(result.proposal_execution_result.target_clear)
+        self.assertEqual(result.pending_state.actions[0].operation, 'update')
+        self.assertIn('modification', result.final_response_lock.content)
+        self.assertFalse(result.observability_payload['caldav_access'])
+        self.assertEqual(result.observability_payload['pending_operation'], 'update')
+
+    def test_propose_update_without_clear_target_does_not_create_pending_action(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
+                operation='update',
+                tool_calls=[],
+            )
+        )
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Deplace ce rendez-vous',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            pending_id_factory=lambda: 'agenda-pending-update-ambiguous',
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_TARGET_AMBIGUOUS)
+        self.assertFalse(result.proposal_execution_result.target_clear)
+        self.assertEqual(result.pending_state.actions, ())
+        self.assertIn('cible', result.final_response_lock.content)
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+
+    def test_propose_delete_creates_reinforced_pending_action_without_calendar_mutation(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_DELETE_EVENT,
+                operation='delete',
+                confirmation_level='reinforced',
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': 'event-1'},
+                        'call_id': 'target-1',
+                    }
+                ],
+            )
+        )
+        read_client = _FakeReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Supprime ce rendez-vous',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+            pending_id_factory=lambda: 'agenda-pending-delete-1',
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(read_client.calls, [])
+        self.assertEqual(result.pending_state.actions[0].operation, 'delete')
+        self.assertEqual(result.pending_state.actions[0].confirmation_level, 'reinforced')
+        self.assertIn('confirmation renforcee', result.final_response_lock.content)
+        self.assertIn("Rien n'a ete supprime", result.final_response_lock.content)
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+
+    def test_confirm_pending_action_is_refused_before_lot7_without_any_calendar_write(self) -> None:
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='create',
+            confirmation_level='simple',
+            draft={'schema_version': 'fixture', 'content_free': True},
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-create-1',
+        )
+        fake_model = _FakeModelClient(
+            _confirm_payload(
+                product_method=product_methods.METHOD_CONFIRM_CREATE_EVENT,
+                operation='create',
+                pending_action_id='agenda-pending-create-1',
+            )
+        )
+        runtime_settings = _SecretCountingRuntimeSettings(value='fixture-secret-value')
+        read_client = _FakeReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_CONFIRMATION_NOT_EXECUTABLE)
+        self.assertEqual(runtime_settings.secret_reads, 0)
+        self.assertEqual(read_client.calls, [])
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        self.assertFalse(result.observability_payload['caldav_access'])
+        self.assertIn("Je n'ai rien cree", result.final_response_lock.content)
+
+    def test_expired_or_cancelled_pending_action_cannot_be_executed(self) -> None:
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='delete',
+            confirmation_level='reinforced',
+            draft={'schema_version': 'fixture', 'content_free': True},
+            now_iso='2026-06-08T12:00:00Z',
+            ttl_seconds=1,
+            id_factory=lambda: 'agenda-pending-delete-1',
+        )
+        expired_confirm = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme',
+            now_iso='2026-06-08T12:01:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_DELETE_EVENT,
+                    operation='delete',
+                    pending_action_id='agenda-pending-delete-1',
+                    confirmation_level='reinforced',
+                )
+            ),
+        )
+
+        self.assertEqual(expired_confirm.proposal_execution_result.reason_code, proposal_execution.REASON_PENDING_EXPIRED)
+        self.assertIn('expiree', expired_confirm.final_response_lock.content)
+        self.assertFalse(expired_confirm.observability_payload['mutation_attempted'])
+
+        fresh_state, _fresh_action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='create',
+            confirmation_level='simple',
+            draft={'schema_version': 'fixture', 'content_free': True},
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-create-2',
+        )
+        cancelled = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Annule',
+            now_iso='2026-06-08T12:01:00Z',
+            conversation_state=fresh_state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(_cancel_payload('agenda-pending-create-2')),
+        )
+        self.assertEqual(cancelled.proposal_execution_result.reason_code, proposal_execution.REASON_PENDING_CANCELLED)
+        self.assertEqual(cancelled.pending_state.actions[0].status, pending_store.STATUS_CANCELLED)
+
+        confirm_cancelled = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme',
+            now_iso='2026-06-08T12:02:00Z',
+            conversation_state=cancelled.pending_state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_CREATE_EVENT,
+                    operation='create',
+                    pending_action_id='agenda-pending-create-2',
+                )
+            ),
+        )
+        self.assertEqual(confirm_cancelled.proposal_execution_result.reason_code, proposal_execution.REASON_PENDING_NOT_FOUND)
+        self.assertFalse(confirm_cancelled.observability_payload['mutation_attempted'])
+
+    def test_agenda_pending_state_is_attached_to_latest_user_message_content_free(self) -> None:
+        conversation = {
+            'id': 'conv-agenda',
+            'messages': [{'role': 'user', 'content': 'RAW USER MESSAGE MUST NOT LEAK'}],
+        }
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _proposal_payload(
+                    product_method=product_methods.METHOD_PROPOSE_CREATE_EVENT,
+                    operation='create',
+                    intent='RAW EVENT DETAILS MUST NOT LEAK',
+                )
+            ),
+            pending_id_factory=lambda: 'agenda-pending-create-1',
+        )
+
+        self.assertTrue(chat_runtime.attach_agenda_conversation_state(conversation, result))
+        loaded = chat_runtime.read_agenda_conversation_state(conversation)
+        self.assertEqual(loaded.actions[0].pending_action_id, 'agenda-pending-create-1')
+        encoded_meta = json.dumps(conversation['messages'][0]['meta'], sort_keys=True)
+        self.assertNotIn('RAW EVENT DETAILS MUST NOT LEAK', encoded_meta)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_meta)
+
 
 class _FakeModelClient:
     def __init__(self, payload: dict) -> None:
@@ -712,6 +1028,65 @@ def _valid_payload(**overrides) -> dict:
     }
     payload.update(overrides)
     return payload
+
+
+def _proposal_payload(
+    *,
+    product_method: str,
+    operation: str,
+    intent: str = 'prepare agenda proposal',
+    confirmation_level: str = 'simple',
+    tool_calls=None,
+) -> dict:
+    return _valid_payload(
+        product_method=product_method,
+        intent=intent,
+        tool_calls=list(tool_calls or []),
+        mutation={
+            'requested': False,
+            'kind': operation,
+            'confirmation_required': True,
+            'confirmation_level': confirmation_level,
+            'pending_action_id': '',
+        },
+        answer_mode='proposal',
+    )
+
+
+def _confirm_payload(
+    *,
+    product_method: str,
+    operation: str,
+    pending_action_id: str,
+    confirmation_level: str = 'simple',
+) -> dict:
+    return _valid_payload(
+        product_method=product_method,
+        tool_calls=[],
+        mutation={
+            'requested': True,
+            'kind': operation,
+            'confirmation_required': True,
+            'confirmation_level': confirmation_level,
+            'pending_action_id': pending_action_id,
+        },
+        answer_mode='mutation_pending_confirmation',
+    )
+
+
+def _cancel_payload(pending_action_id: str) -> dict:
+    return _valid_payload(
+        product_method=product_methods.METHOD_CANCEL_PENDING_AGENDA_ACTION,
+        tool_calls=[],
+        mutation={
+            'requested': False,
+            'kind': 'none',
+            'confirmation_required': False,
+            'confirmation_level': 'none',
+            'pending_action_id': pending_action_id,
+        },
+        answer_mode='mutation_refused',
+    )
 
 
 def _payload_with_window(*, product_method: str, start: str, end: str) -> dict:

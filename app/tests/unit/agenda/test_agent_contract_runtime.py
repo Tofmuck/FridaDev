@@ -580,6 +580,43 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
             contract.REASON_MUTATION_REQUIRES_CONFIRMATION,
         )
 
+    def test_cancel_pending_action_accepts_only_safe_pending_id_without_mutation(self) -> None:
+        valid_cancel = _valid_payload(
+            product_method=product_methods.METHOD_CANCEL_PENDING_AGENDA_ACTION,
+            tool_calls=[],
+            mutation={
+                'requested': False,
+                'kind': 'none',
+                'confirmation_required': False,
+                'confirmation_level': 'none',
+                'pending_action_id': 'agenda-pending-create-1',
+            },
+            answer_mode='mutation_refused',
+        )
+        missing_pending = {
+            **valid_cancel,
+            'mutation': {**valid_cancel['mutation'], 'pending_action_id': ''},
+        }
+        unsafe_pending = {
+            **valid_cancel,
+            'mutation': {**valid_cancel['mutation'], 'pending_action_id': 'uid:abc123'},
+        }
+        incoherent_cancel = {
+            **valid_cancel,
+            'mutation': {**valid_cancel['mutation'], 'kind': 'delete', 'confirmation_required': True},
+        }
+
+        self.assertEqual(contract.validate_agent_payload(valid_cancel).status, contract.STATUS_VALIDATED)
+        self.assertEqual(
+            contract.validate_agent_payload(missing_pending).reason_code,
+            contract.REASON_MUTATION_METHOD_MISMATCH,
+        )
+        self.assertEqual(contract.validate_agent_payload(unsafe_pending).reason_code, contract.REASON_SCHEMA_INVALID)
+        self.assertEqual(
+            contract.validate_agent_payload(incoherent_cancel).reason_code,
+            contract.REASON_MUTATION_METHOD_MISMATCH,
+        )
+
     def test_agent_runtime_off_active_invalid_and_secret_guards(self) -> None:
         fake = _FakeModelClient(_valid_payload())
         off_result = agent_runtime.AgendaJsonAgent(fake).run(

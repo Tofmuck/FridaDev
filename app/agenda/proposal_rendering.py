@@ -1,0 +1,154 @@
+from __future__ import annotations
+
+from typing import Any, Mapping
+
+from agenda import agent_contract
+from agenda import pending_store
+from agenda import product_methods
+from agenda import proposal_execution
+from agenda.response_rendering import AgendaFinalResponseLock
+
+
+SOURCE_AGENDA_PENDING_RESPONSE = 'agenda_pending_proposal_response'
+REASON_AGENDA_PENDING_FINAL = 'agenda_pending_final_response'
+
+
+def build_proposal_response_lock(
+    *,
+    plan: agent_contract.AgendaAgentPlan,
+    proposal_result: proposal_execution.AgendaProposalExecutionResult,
+) -> AgendaFinalResponseLock | None:
+    content = render_proposal_answer(plan=plan, proposal_result=proposal_result)
+    if not content:
+        return None
+    meta = _message_meta(plan=plan, proposal_result=proposal_result)
+    observability = _lock_observability(meta)
+    return AgendaFinalResponseLock(
+        ok=True,
+        content=_compose_surface(plan.surface_intro, content, plan.surface_outro),
+        source=SOURCE_AGENDA_PENDING_RESPONSE,
+        reason_code=REASON_AGENDA_PENDING_FINAL,
+        meta=meta,
+        observability=observability,
+    )
+
+
+def render_proposal_answer(
+    *,
+    plan: agent_contract.AgendaAgentPlan,
+    proposal_result: proposal_execution.AgendaProposalExecutionResult,
+) -> str:
+    reason = str(proposal_result.reason_code or '')
+    if reason == proposal_execution.REASON_PENDING_CREATED:
+        return _render_created(proposal_result)
+    if reason == proposal_execution.REASON_PENDING_CANCELLED:
+        return _render_cancelled(proposal_result)
+    if reason == proposal_execution.REASON_TARGET_AMBIGUOUS:
+        return (
+            "Je ne peux pas preparer cette proposition sans cible d'evenement claire. "
+            "Dis-moi lequel viser, et je te preparerai une proposition sans rien modifier."
+        )
+    if reason == proposal_execution.REASON_PENDING_EXPIRED:
+        return "Cette proposition est expiree. Je n'ai rien modifie dans ton agenda."
+    if reason == proposal_execution.REASON_PENDING_NOT_FOUND:
+        return "Je ne retrouve pas cette proposition en attente. Je n'ai rien modifie dans ton agenda."
+    if reason == proposal_execution.REASON_CONFIRMATION_NOT_EXECUTABLE:
+        return (
+            "Je ne peux pas encore executer cette confirmation dans ce lot. "
+            "Je n'ai rien cree, modifie ni supprime dans ton agenda."
+        )
+    if str(plan.product_method or '') in product_methods.CONFIRMED_MUTATION_METHODS:
+        return (
+            "La confirmation est bien bornee, mais l'ecriture Agenda n'est pas active dans ce lot. "
+            "Je n'ai rien modifie dans ton agenda."
+        )
+    return ''
+
+
+def _render_created(result: proposal_execution.AgendaProposalExecutionResult) -> str:
+    reference = str(result.pending_action_id or '')
+    expires = str(result.pending_expires_at or '')
+    if result.operation == pending_store.OPERATION_CREATE:
+        lines = [
+            "Je peux te preparer cette creation d'evenement.",
+            "Rien n'a encore ete ajoute au calendrier.",
+            "Confirme-moi si tu veux que je le fasse.",
+        ]
+    elif result.operation == pending_store.OPERATION_UPDATE:
+        lines = [
+            "Je peux te preparer cette modification d'evenement.",
+            "Rien n'a encore ete modifie dans le calendrier.",
+            "Confirme-moi si tu veux que je le fasse.",
+        ]
+    elif result.operation == pending_store.OPERATION_DELETE:
+        lines = [
+            "Je peux te preparer cette suppression, mais elle demande une confirmation renforcee.",
+            "Rien n'a ete supprime du calendrier.",
+            "Confirme explicitement si tu veux vraiment que je le fasse.",
+        ]
+    else:
+        return ''
+    if reference:
+        lines.append(f"Reference de confirmation : {reference}.")
+    if expires:
+        lines.append(f"Expiration : {expires}.")
+    return "\n".join(lines)
+
+
+def _render_cancelled(result: proposal_execution.AgendaProposalExecutionResult) -> str:
+    reference = str(result.pending_action_id or '')
+    suffix = f" ({reference})" if reference else ''
+    return f"J'ai annule la proposition en attente{suffix}. Rien n'a ete modifie dans ton agenda."
+
+
+def _message_meta(
+    *,
+    plan: agent_contract.AgendaAgentPlan,
+    proposal_result: proposal_execution.AgendaProposalExecutionResult,
+) -> dict[str, Any]:
+    observation = dict(proposal_result.observation)
+    return {
+        'source': SOURCE_AGENDA_PENDING_RESPONSE,
+        'reason_code': REASON_AGENDA_PENDING_FINAL,
+        'agenda_schema_version': agent_contract.SCHEMA_VERSION,
+        'agenda_product_method': str(plan.product_method or ''),
+        'agenda_pending_action_id': str(observation.get('pending_action_id') or ''),
+        'agenda_pending_action_hash': str(observation.get('pending_action_hash') or ''),
+        'agenda_operation': str(observation.get('operation') or ''),
+        'agenda_pending_status': str(observation.get('pending_status') or ''),
+        'agenda_pending_expires_at': str(observation.get('pending_expires_at') or ''),
+        'agenda_confirmation_level': str(observation.get('confirmation_level') or ''),
+        'agenda_risk_flags': list(observation.get('risk_flags') or []),
+        'agenda_caldav_access': False,
+        'agenda_nextcloud_access': False,
+        'agenda_secret_access': False,
+        'agenda_mutation_attempted': False,
+        'agenda_final_lock_authorized': True,
+        'agenda_final_lock_reason_code': REASON_AGENDA_PENDING_FINAL,
+        'content_free_meta': True,
+    }
+
+
+def _lock_observability(meta: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        'agenda_product_method': str(meta.get('agenda_product_method') or ''),
+        'agenda_pending_action_present': bool(meta.get('agenda_pending_action_id')),
+        'agenda_pending_action_hash': str(meta.get('agenda_pending_action_hash') or ''),
+        'agenda_operation': str(meta.get('agenda_operation') or ''),
+        'agenda_pending_status': str(meta.get('agenda_pending_status') or ''),
+        'agenda_confirmation_level': str(meta.get('agenda_confirmation_level') or ''),
+        'agenda_risk_flags': list(meta.get('agenda_risk_flags') or []),
+        'agenda_caldav_access': False,
+        'agenda_nextcloud_access': False,
+        'agenda_secret_access': False,
+        'agenda_mutation_attempted': False,
+        'content_free': True,
+    }
+
+
+def _compose_surface(intro: str, content: str, outro: str) -> str:
+    return "\n\n".join(
+        part
+        for part in (str(intro or '').strip(), str(content or '').strip(), str(outro or '').strip())
+        if part
+    )

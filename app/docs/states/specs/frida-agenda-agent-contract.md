@@ -4,10 +4,11 @@ Statut: spec vivante
 Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
-Portee: contrat cible du futur agent Agenda Frida. Lots 1-5B livrent toggle
+Portee: contrat cible du futur agent Agenda Frida. Lots 1-6 livrent toggle
 no-op, configuration redacted, outils read-only, agent JSON valide,
 branchement applicatif read-only et preuve CalDAV live content-free. Les
-mutations, propositions confirmees et pending actions restent hors scope.
+propositions Agenda creent des pending actions temporaires; les mutations
+CalDAV confirmees restent hors scope jusqu'au Lot 7.
 
 Sources:
 
@@ -595,7 +596,7 @@ Proposition:
 
 - autorisee avec toggle Agenda on;
 - ne modifie pas Nextcloud;
-- cree une action pending avec expiration;
+- cree une action pending avec expiration TTL cote FridaDev;
 - la reponse visible doit expliciter ce qui serait cree, modifie ou supprime;
 - la meta durable reste content-free autant que possible.
 
@@ -613,23 +614,36 @@ Mutation:
 Le stockage cible des propositions ne doit pas etre un dump permanent de
 calendrier.
 
-Modele recommande:
+Modele livre Lot 6:
 
-- table ou store futur `agenda_pending_actions`;
-- TTL court obligatoire;
-- contenu minimal necessaire a l'execution: operation, calendrier cible,
-  champs normalises du brouillon, identifiants CalDAV cibles, ETag si utile,
-  create/update/delete, risques, create_ts, expires_ts;
-- suppression du pending apres confirmation, annulation ou expiration;
+- store temporaire attache a l'etat de conversation FridaDev
+  (`agenda_pending_state`);
+- TTL court obligatoire, 30 minutes par defaut;
+- contenu durable content-free: operation, hashes courts, calendrier cible
+  hash, fenetre temporelle normalisee, risques, create_ts, expires_ts;
+- annulation et expiration sans mutation;
+- une confirmation Lot 6 relit la pending action mais refuse toute execution;
 - `message.meta` ne porte qu'un pointeur content-free:
   `pending_action_id`, operation, calendar id court, confirmation level,
   risk flags, hash court, expiration;
 - les details humains restent dans la reponse visible et, si necessaire, dans
   le pending store temporaire, pas dans les logs/dashboard/JSONL.
 
-Si aucun store temporaire n'est livre dans un premier lot runtime, les mutations
-doivent rester NO-GO. Relire uniquement le dialogue pour reconstruire une
-mutation est trop fragile.
+Lot 7 seulement pourra executer une confirmation. Relire uniquement le dialogue
+pour reconstruire une mutation reste trop fragile.
+
+Preuve Lot 6:
+
+- `propose_create_event` cree une pending action create sans ecriture CalDAV;
+- `propose_update_event` exige une cible locale claire et cree une pending
+  action update sans ecriture;
+- `propose_delete_event` cree une pending action delete avec confirmation
+  renforcee, sans suppression;
+- `confirm_*` avec pending action valide repond que l'execution est hors Lot 6;
+- `cancel_pending_agenda_action` annule une pending action sans mutation;
+- expiration/cancel empechent toute execution;
+- observabilite et meta restent content-free: id, operation, expiration,
+  confirmation level, risk flags, hash court, booleens.
 
 ## 12. Restitution visible et contexte suivant
 
@@ -994,7 +1008,7 @@ Mutation:
 NO-GO mutation tant que:
 
 - le secret runtime dedie n'est pas configure;
-- le pending store n'existe pas;
+- la confirmation humaine executable Lot 7 n'est pas livree;
 - la confirmation humaine n'est pas testee;
 - les logs content-free ne sont pas prouves;
 - le calendrier familial n'est pas protege par une confirmation claire.

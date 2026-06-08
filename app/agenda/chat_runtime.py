@@ -9,6 +9,9 @@ from agenda import (
     agent_openrouter,
     agent_runtime,
     caldav_transport,
+    pending_store,
+    proposal_execution,
+    proposal_rendering,
     read_execution,
     response_rendering,
     runtime_config,
@@ -39,6 +42,8 @@ class AgendaChatResult:
     observability_payload: dict[str, Any]
     final_response_lock: Any = field(default=None, repr=False, compare=False)
     read_execution_result: Any = field(default=None, repr=False, compare=False)
+    proposal_execution_result: Any = field(default=None, repr=False, compare=False)
+    pending_state: Any = field(default=None, repr=False, compare=False)
 
 
 def build_lot1_observability_payload(
@@ -154,6 +159,68 @@ def build_lot5_observability_payload(
     return payload
 
 
+def build_lot6_observability_payload(
+    *,
+    enabled: bool,
+    status: str,
+    reason_code: str,
+    mode: str,
+    agent_observation: Mapping[str, Any] | None = None,
+    proposal_observation: Mapping[str, Any] | None = None,
+    final_lock_observation: Mapping[str, Any] | None = None,
+    pending_state_observation: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = build_lot4_observability_payload(
+        enabled=enabled,
+        status=status,
+        reason_code=reason_code,
+        mode=mode,
+        agent_observation=agent_observation,
+    )
+    proposal = dict(proposal_observation or {})
+    final_lock = dict(final_lock_observation or {})
+    pending_state_payload = dict(pending_state_observation or {})
+    payload.update(
+        {
+            'schema_version': 'frida_agenda_lot6_pending_v1',
+            'used': bool(final_lock.get('content_present')),
+            'pending_execution_attempted': bool(proposal),
+            'pending_execution_status': str(proposal.get('status') or ''),
+            'pending_execution_reason_code': str(proposal.get('reason_code') or ''),
+            'pending_action_id': str(proposal.get('pending_action_id') or ''),
+            'pending_action_hash': str(proposal.get('pending_action_hash') or ''),
+            'pending_operation': str(proposal.get('operation') or ''),
+            'pending_status': str(proposal.get('pending_status') or ''),
+            'pending_expires_at': str(proposal.get('pending_expires_at') or ''),
+            'pending_confirmation_level': str(proposal.get('confirmation_level') or ''),
+            'pending_risk_flags': list(proposal.get('risk_flags') or []),
+            'pending_target_clear': bool(proposal.get('target_clear')),
+            'pending_cancelled': bool(proposal.get('cancelled')),
+            'pending_expired': bool(proposal.get('expired')),
+            'pending_state': pending_state_payload,
+            'read_execution_attempted': False,
+            'read_execution_status': '',
+            'read_execution_reason_code': '',
+            'read_tool_names': [],
+            'read_tool_count': 0,
+            'read_calendar_count': 0,
+            'read_event_count': 0,
+            'read_calendar_id_hashes': [],
+            'read_event_id_hashes': [],
+            'error_class': '',
+            'caldav_access': False,
+            'nextcloud_access': False,
+            'secret_access': False,
+            'mutation_attempted': False,
+            'final_response_override': bool(final_lock.get('content_present')),
+            'final_response': final_lock,
+            'pending_execution': proposal,
+        }
+    )
+    payload['content_free'] = True
+    return payload
+
+
 def run_agenda_chat_turn(
     data: Mapping[str, Any],
     *,
@@ -166,6 +233,8 @@ def run_agenda_chat_turn(
     settings_override: agent_contract.AgendaAgentSettings | None = None,
     agent_model_client: Any = None,
     read_client: Any = None,
+    conversation_state: Any = None,
+    pending_id_factory: Any = None,
     llm_module: Any = None,
     requests_module: Any = None,
 ) -> AgendaChatResult:
@@ -194,12 +263,14 @@ def run_agenda_chat_turn(
         now_iso=str(now_iso or ''),
         timezone_name=timezone,
     )
+    pending_state = _pending_state_from_input(conversation_state)
     request = agent_contract.AgendaAgentRequest(
         user_message=str(user_msg or ''),
         recent_dialogue=tuple(recent_dialogue or ()),
         now_iso=str(now_iso or ''),
         timezone=timezone,
         canonical_time_windows=canonical_time_windows,
+        agenda_state=pending_state.to_agent_state(now_iso=str(now_iso or '')),
         settings=settings,
     )
     model_client = agent_model_client or _default_agent_model_client(
@@ -211,9 +282,22 @@ def run_agenda_chat_turn(
     )
     result = agent_runtime.AgendaJsonAgent(model_client).run(request)
     execution_result = None
+    proposal_result = None
     final_lock = None
     if result.validated_plan is not None and result.status == agent_runtime.STATUS_ACTIVE_READY:
-        if read_execution.plan_needs_read_client(result.validated_plan):
+        if proposal_execution.plan_needs_pending_store(result.validated_plan):
+            proposal_result = proposal_execution.execute_pending_plan(
+                result.validated_plan,
+                conversation_state=pending_state,
+                now_iso=str(now_iso or ''),
+                id_factory=pending_id_factory,
+            )
+            pending_state = proposal_result.state or pending_state
+            final_lock = proposal_rendering.build_proposal_response_lock(
+                plan=result.validated_plan,
+                proposal_result=proposal_result,
+            )
+        elif read_execution.plan_needs_read_client(result.validated_plan):
             resolved_client, live_caldav = _resolve_read_client(
                 settings=settings,
                 injected_client=read_client,
@@ -221,30 +305,49 @@ def run_agenda_chat_turn(
                 requests_module=requests_module,
                 config_module=config_module,
             )
+            execution_result = read_execution.execute_readonly_plan(
+                result.validated_plan,
+                client=resolved_client,
+                live_caldav=live_caldav,
+            )
+            final_lock = response_rendering.build_final_response_lock(
+                plan=result.validated_plan,
+                execution_result=execution_result,
+            )
         else:
-            resolved_client, live_caldav = None, False
-        execution_result = read_execution.execute_readonly_plan(
-            result.validated_plan,
-            client=resolved_client,
-            live_caldav=live_caldav,
-        )
-        final_lock = response_rendering.build_final_response_lock(
-            plan=result.validated_plan,
-            execution_result=execution_result,
-        )
+            execution_result = read_execution.execute_readonly_plan(
+                result.validated_plan,
+                client=None,
+                live_caldav=False,
+            )
     execution_observation = (
         execution_result.observation if execution_result is not None else None
     )
-    final_lock_observation = final_lock.to_observability() if final_lock is not None else None
-    payload = build_lot5_observability_payload(
-        enabled=True,
-        status=result.status,
-        reason_code=result.reason_code,
-        mode=result.mode,
-        agent_observation=result.to_observability(),
-        execution_observation=execution_observation,
-        final_lock_observation=final_lock_observation,
+    proposal_observation = (
+        proposal_result.observation if proposal_result is not None else None
     )
+    final_lock_observation = final_lock.to_observability() if final_lock is not None else None
+    if proposal_result is not None:
+        payload = build_lot6_observability_payload(
+            enabled=True,
+            status=result.status,
+            reason_code=result.reason_code,
+            mode=result.mode,
+            agent_observation=result.to_observability(),
+            proposal_observation=proposal_observation,
+            final_lock_observation=final_lock_observation,
+            pending_state_observation=pending_state.to_observability(now_iso=str(now_iso or '')),
+        )
+    else:
+        payload = build_lot5_observability_payload(
+            enabled=True,
+            status=result.status,
+            reason_code=result.reason_code,
+            mode=result.mode,
+            agent_observation=result.to_observability(),
+            execution_observation=execution_observation,
+            final_lock_observation=final_lock_observation,
+        )
     return AgendaChatResult(
         enabled=True,
         used=bool(final_lock is not None and final_lock.ok and final_lock.content),
@@ -253,11 +356,33 @@ def run_agenda_chat_turn(
         observability_payload=payload,
         final_response_lock=final_lock,
         read_execution_result=execution_result,
+        proposal_execution_result=proposal_result,
+        pending_state=pending_state,
     )
 
 
 def final_response_lock_for_result(result: Any) -> Any:
     return getattr(result, 'final_response_lock', None)
+
+
+def read_agenda_conversation_state(conversation: Mapping[str, Any]) -> pending_store.AgendaPendingState:
+    return pending_store.read_state_from_conversation(conversation)
+
+
+def attach_agenda_conversation_state(conversation: dict[str, Any], result: Any) -> bool:
+    proposal_result = getattr(result, 'proposal_execution_result', None)
+    if proposal_result is None:
+        return False
+    state = getattr(result, 'pending_state', None)
+    if state is None:
+        return False
+    return pending_store.attach_state_to_latest_user_message(conversation, state)
+
+
+def _pending_state_from_input(value: Any) -> pending_store.AgendaPendingState:
+    if isinstance(value, pending_store.AgendaPendingState):
+        return value
+    return pending_store.AgendaPendingState.from_mapping(value or {})
 
 
 def _default_agent_model_client(

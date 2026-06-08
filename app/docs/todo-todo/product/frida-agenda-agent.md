@@ -4,10 +4,10 @@ Statut: TODO actif au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
-Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-5B livrent
+Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-6 livrent
 toggle no-op, configuration redacted, outils read-only, agent JSON valide sous
 garde-fous, branchement applicatif read-only et preuve CalDAV live content-free,
-sans mutation.
+ainsi que propositions/pending store temporaire sans mutation.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -176,8 +176,9 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   final lock.
   Preuve livree: fichiers separes par responsabilite, aucun fichier
   fourre-tout, pas de `utils.py`.
-- [ ] Ajouter le pending store futur dans `app/agenda/`.
-  Preuve attendue: TTL, meta content-free et refus mutation hors confirmation.
+- [x] Ajouter le pending store temporaire dans `app/agenda/`.
+  Preuve livree: Lot 6, `pending_store.py`, TTL, meta content-free,
+  annulation/expiration et refus d'execution avant Lot 7.
 - [x] Brancher l'Agenda dans `chat_service` a cote de Biblio.
   Preuve livree: toggle absent/off = no-op strict; toggle on = appel runtime
   Agenda borne; Lot 5A ajoute override final seulement quand lecture read-only
@@ -196,11 +197,12 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   elle est necessaire.
   Preuve attendue: lane bornee, pas de payload ICS brut, pas de prompt complet
   dans observabilite.
-- [ ] Ajouter un pending store temporaire pour propositions.
-  Preuve attendue: TTL, suppression apres confirm/cancel/expire, meta
-  content-free.
-- [ ] Refuser les mutations tant que le pending store n'existe pas.
-  Preuve attendue: tests de no-go mutation.
+- [x] Ajouter un pending store temporaire pour propositions.
+  Preuve livree: Lot 6, actions create/update/delete temporaires avec TTL,
+  persistence conversation FridaDev et meta content-free.
+- [x] Refuser les confirmations/mutations tant que Lot 7 n'est pas livre.
+  Preuve livree: Lot 6, `confirm_*` cible une pending action mais ne fait
+  aucune ecriture CalDAV.
 
 ## Contrat JSON agent
 
@@ -274,13 +276,15 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ### Proposition sans ecriture
 
-- [ ] `AG-PROP-01` proposer un evenement a creer.
-  Preuve attendue: pending action creee, aucune ecriture CalDAV.
-- [ ] `AG-PROP-02` proposer une modification.
-  Preuve attendue: cible relue, proposition affichee, aucune ecriture.
-- [ ] `AG-PROP-03` proposer une suppression.
-  Preuve attendue: suppression indiquee comme non executee, confirmation
-  renforcee demandee.
+- [x] `AG-PROP-01` proposer un evenement a creer.
+  Preuve livree: pending action create creee, reponse assistant normale,
+  aucune ecriture CalDAV.
+- [x] `AG-PROP-02` proposer une modification.
+  Preuve livree: cible locale claire requise via `event_get`, pending action
+  update creee, aucune ecriture.
+- [x] `AG-PROP-03` proposer une suppression.
+  Preuve livree: pending action delete creee avec confirmation renforcee,
+  suppression explicitement non executee.
 - [ ] `AG-PROP-04` proposer un creneau libre.
   Preuve attendue: range borne, calendrier explicite.
 - [ ] `AG-PROP-05` proposer un deplacement.
@@ -336,12 +340,13 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve attendue: disponibilites derivees sans route non prouvee.
 - [ ] `event_draft_validate`.
   Preuve attendue: normalisation sans ecriture.
-- [ ] `pending_action_create`.
-  Preuve attendue: TTL et meta content-free.
-- [ ] `pending_action_get`.
-  Preuve attendue: confirmation cible une proposition precise.
-- [ ] `pending_action_cancel`.
-  Preuve attendue: annulation/expiration sans mutation.
+- [x] `pending_action_create`.
+  Preuve livree: Lot 6, ID local, TTL, hash court, meta content-free.
+- [x] `pending_action_get`.
+  Preuve livree: Lot 6, `confirm_*` relit une pending action precise mais
+  refuse toute execution avant Lot 7.
+- [x] `pending_action_cancel`.
+  Preuve livree: Lot 6, annulation et expiration sans mutation.
 - [ ] `event_create_confirmed`.
   Preuve attendue: CalDAV PUT apres confirmation.
 - [ ] `event_update_confirmed`.
@@ -557,11 +562,21 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ### Lot 6 - Propositions et pending store
 
-- [ ] Ajouter pending store temporaire avec TTL.
-- [ ] Ajouter proposition creation.
-- [ ] Ajouter proposition modification.
-- [ ] Ajouter proposition suppression.
-- [ ] Prouver aucune ecriture CalDAV dans les propositions.
+- [x] Ajouter pending store temporaire avec TTL.
+  Preuve livree: `app/agenda/pending_store.py`, TTL 30 minutes par defaut,
+  expiration/cancel content-free.
+- [x] Ajouter proposition creation.
+  Preuve livree: `propose_create_event` cree une pending action, final lock
+  assistant normal, aucune ecriture.
+- [x] Ajouter proposition modification.
+  Preuve livree: `propose_update_event` exige une cible locale claire et cree
+  une pending action, aucune ecriture.
+- [x] Ajouter proposition suppression.
+  Preuve livree: `propose_delete_event` cree une pending action renforcee,
+  suppression non executee.
+- [x] Prouver aucune ecriture CalDAV dans les propositions.
+  Preuve livree: tests fake sans client CalDAV/secret; confirmations Lot 7
+  refusees avec `mutation_attempted=false`.
 
 ### Lot 7 - Confirmations et mutations
 

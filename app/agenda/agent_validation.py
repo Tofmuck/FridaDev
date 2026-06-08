@@ -333,6 +333,12 @@ def _validate_mutation(
     pending_action_id = _safe_code(mutation.get('pending_action_id'), allow_empty=True, max_chars=120)
     if kind not in _MUTATION_KINDS or level not in _CONFIRMATION_LEVELS or pending_action_id is None:
         return contract.REASON_SCHEMA_INVALID
+    if pending_action_id and not _valid_pending_action_id(pending_action_id):
+        return contract.REASON_SCHEMA_INVALID
+    if method.name == product_methods.METHOD_CANCEL_PENDING_AGENDA_ACTION:
+        if kind != 'none' or requested or confirmation_required or level != 'none' or not pending_action_id:
+            return contract.REASON_MUTATION_METHOD_MISMATCH
+        return ''
     if method.family in {product_methods.FAMILY_READ, product_methods.FAMILY_CLARIFY, product_methods.FAMILY_CONTEXT}:
         if kind != 'none' or requested or confirmation_required or level != 'none' or pending_action_id:
             return contract.REASON_MUTATION_METHOD_MISMATCH
@@ -493,6 +499,16 @@ def _valid_local_identifier(value: Any) -> bool:
         return False
     lowered = text.lower()
     if lowered.startswith(('uid:', 'uid=', 'etag:', 'etag=')):
+        return False
+    local_id_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:-')
+    return all(char in local_id_chars for char in text)
+
+
+def _valid_pending_action_id(value: Any) -> bool:
+    text = str(value or '').strip()
+    if not text or len(text) > 120:
+        return False
+    if _dangerous_param_text(text):
         return False
     local_id_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:-')
     return all(char in local_id_chars for char in text)
