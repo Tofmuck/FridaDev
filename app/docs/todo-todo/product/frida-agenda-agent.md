@@ -571,19 +571,22 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve livree: `propose_create_event` exige un draft structure suffisant,
   cree une pending action, final lock assistant normal, aucune ecriture.
 - [x] Ajouter proposition modification.
-  Preuve livree: Lot 6.1, `propose_update_event` exige une cible reellement
-  relue par client fake/injecte; un `event_get` seulement declare est refuse.
+  Preuve livree: Lots 6.1/6.2, `propose_update_event` exige une cible
+  reellement relue par chemin read-only effectif; un `event_get` seulement
+  declare est refuse.
 - [x] Ajouter proposition suppression.
-  Preuve livree: Lot 6.1, `propose_delete_event` exige une cible reellement
-  relue et cree une pending action renforcee; suppression non executee.
+  Preuve livree: Lots 6.1/6.2, `propose_delete_event` exige une cible
+  reellement relue par chemin read-only effectif et cree une pending action
+  renforcee; suppression non executee.
 - [x] Rendre les propositions visibles concretes sans fuite meta.
   Preuve livree: Lot 6.1, la reponse Frida explicite quoi/quand/cible; meta,
   observabilite et etat conversationnel restent content-free.
 - [x] Proteger le draft Lot 7 futur.
-  Preuve livree: Lot 6.1, brouillon structure prive avec operation,
+  Preuve livree: Lots 6.1/6.2, brouillon structure prive avec operation,
   calendrier, timezone, creneau, details humains et cible verifiee si besoin;
   JSONL/logs/meta ne contiennent pas titre, lieu, description, UID, ETag,
-  path CalDAV ou ICS.
+  path CalDAV ou ICS; les drafts prives tronques, expires ou annules sont
+  oublies.
 - [x] Prouver aucune ecriture CalDAV dans les propositions.
   Preuve livree: tests fake sans client CalDAV/secret; confirmations Lot 7
   refusees avec `mutation_attempted=false`.

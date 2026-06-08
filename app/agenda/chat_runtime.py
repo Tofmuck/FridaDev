@@ -208,9 +208,9 @@ def build_lot6_observability_payload(
             'read_calendar_id_hashes': [],
             'read_event_id_hashes': [],
             'error_class': '',
-            'caldav_access': False,
-            'nextcloud_access': False,
-            'secret_access': False,
+            'caldav_access': bool(proposal.get('caldav_access')),
+            'nextcloud_access': bool(proposal.get('nextcloud_access')),
+            'secret_access': bool(proposal.get('secret_access')),
             'mutation_attempted': False,
             'final_response_override': bool(final_lock.get('content_present')),
             'final_response': final_lock,
@@ -286,12 +286,21 @@ def run_agenda_chat_turn(
     final_lock = None
     if result.validated_plan is not None and result.status == agent_runtime.STATUS_ACTIVE_READY:
         if proposal_execution.plan_needs_pending_store(result.validated_plan):
+            proposal_client, proposal_live_caldav = _resolve_proposal_read_client(
+                settings=settings,
+                plan=result.validated_plan,
+                injected_client=read_client,
+                runtime_settings_module=runtime_settings_module,
+                requests_module=requests_module,
+                config_module=config_module,
+            )
             proposal_result = proposal_execution.execute_pending_plan(
                 result.validated_plan,
                 conversation_state=pending_state,
                 now_iso=str(now_iso or ''),
                 id_factory=pending_id_factory,
-                read_client=read_client,
+                read_client=proposal_client,
+                live_caldav=proposal_live_caldav,
             )
             pending_state = proposal_result.state or pending_state
             final_lock = proposal_rendering.build_proposal_response_lock(
@@ -446,4 +455,24 @@ def _resolve_read_client(
             config_module=config_module,
         ),
         True,
+    )
+
+
+def _resolve_proposal_read_client(
+    *,
+    settings: agent_contract.AgendaAgentSettings,
+    plan: agent_contract.AgendaAgentPlan,
+    injected_client: Any = None,
+    runtime_settings_module: Any = None,
+    requests_module: Any = None,
+    config_module: Any = None,
+) -> tuple[Any, bool]:
+    if not proposal_execution.plan_can_attempt_target_verification(plan):
+        return None, False
+    return _resolve_read_client(
+        settings=settings,
+        injected_client=injected_client,
+        runtime_settings_module=runtime_settings_module,
+        requests_module=requests_module,
+        config_module=config_module,
     )

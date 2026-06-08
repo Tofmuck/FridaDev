@@ -229,7 +229,12 @@ def create_pending_action(
         draft=safe_draft,
     )
     _remember_private_draft(action)
-    actions = tuple([*base.actions, action])[-MAX_ACTIONS:]
+    all_actions = tuple([*base.actions, action])
+    actions = all_actions[-MAX_ACTIONS:]
+    kept_ids = {item.pending_action_id for item in actions}
+    for removed in all_actions:
+        if removed.pending_action_id not in kept_ids:
+            _forget_private_draft(removed.pending_action_id)
     return (
         AgendaPendingState(
             conversation_id=base.conversation_id,

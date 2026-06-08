@@ -111,7 +111,7 @@ _METHODS = {
         METHOD_PROPOSE_DELETE_EVENT,
         FAMILY_PROPOSE,
         mutation_kind='delete',
-        allowed_tools=frozenset({TOOL_EVENT_GET, TOOL_EVENT_SEARCH}),
+        allowed_tools=frozenset({TOOL_EVENT_GET, TOOL_EVENT_SEARCH, TOOL_EVENT_QUERY_RANGE}),
     ),
     METHOD_PROPOSE_FREE_SLOT: AgendaProductMethod(
         METHOD_PROPOSE_FREE_SLOT,

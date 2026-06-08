@@ -7,6 +7,7 @@ from agenda import agent_contract
 from agenda import pending_drafts
 from agenda import pending_store
 from agenda import product_methods
+from agenda import proposal_target_verification
 from agenda.caldav_models import CalendarEvent
 
 
@@ -21,7 +22,7 @@ REASON_PENDING_CANCELLED = 'agenda_pending_action_cancelled'
 REASON_PENDING_NOT_FOUND = 'agenda_pending_action_not_found'
 REASON_PENDING_EXPIRED = 'agenda_pending_action_expired'
 REASON_CONFIRMATION_NOT_EXECUTABLE = 'agenda_pending_confirmation_not_executable_lot7'
-REASON_TARGET_NOT_VERIFIED = 'agenda_pending_target_not_verified'
+REASON_TARGET_NOT_VERIFIED = proposal_target_verification.REASON_TARGET_NOT_VERIFIED
 REASON_PENDING_DRAFT_INVALID = pending_drafts.REASON_PENDING_DRAFT_INVALID
 
 
@@ -47,6 +48,8 @@ class AgendaProposalExecutionResult:
     expired: bool = False
     draft: Mapping[str, Any] = field(default_factory=dict, repr=False, compare=False)
     verified_event: CalendarEvent | None = field(default=None, repr=False, compare=False)
+    target_verification_tool_names: tuple[str, ...] = ()
+    target_verification_error_class: str = ''
 
     @property
     def observation(self) -> dict[str, Any]:
@@ -68,9 +71,11 @@ class AgendaProposalExecutionResult:
             'expired': bool(self.expired),
             'draft_private': bool(self.draft),
             'draft_summary': draft_summary,
-            'caldav_access': False,
-            'nextcloud_access': False,
-            'secret_access': False,
+            'target_verification_tool_names': list(self.target_verification_tool_names),
+            'target_verification_error_class': self.target_verification_error_class,
+            'caldav_access': bool(self.caldav_access),
+            'nextcloud_access': bool(self.nextcloud_access),
+            'secret_access': bool(self.secret_access),
             'mutation_attempted': False,
             'content_free': True,
             'redacted': True,
@@ -89,6 +94,22 @@ def plan_needs_pending_store(plan: agent_contract.AgendaAgentPlan) -> bool:
     )
 
 
+def plan_needs_target_verification(plan: agent_contract.AgendaAgentPlan) -> bool:
+    method = product_methods.get_method(str(getattr(plan, 'product_method', '') or ''))
+    return bool(
+        method is not None
+        and method.family == product_methods.FAMILY_PROPOSE
+        and method.mutation_kind in {pending_store.OPERATION_UPDATE, pending_store.OPERATION_DELETE}
+    )
+
+
+def plan_can_attempt_target_verification(plan: agent_contract.AgendaAgentPlan) -> bool:
+    return bool(
+        plan_needs_target_verification(plan)
+        and proposal_target_verification.target_event_id_for_plan(plan)
+    )
+
+
 def execute_pending_plan(
     plan: agent_contract.AgendaAgentPlan,
     *,
@@ -96,6 +117,7 @@ def execute_pending_plan(
     now_iso: str,
     id_factory: Callable[[], str] | None = None,
     read_client: Any = None,
+    live_caldav: bool = False,
 ) -> AgendaProposalExecutionResult:
     state = _state_from_input(conversation_state)
     method = product_methods.get_method(plan.product_method)
@@ -109,6 +131,7 @@ def execute_pending_plan(
             now_iso=now_iso,
             id_factory=id_factory,
             read_client=read_client,
+            live_caldav=live_caldav,
         )
     if method.family == product_methods.FAMILY_MUTATE:
         return _refuse_confirmation(plan, method=method, state=state, now_iso=now_iso)
@@ -125,11 +148,18 @@ def _execute_proposal(
     now_iso: str,
     id_factory: Callable[[], str] | None,
     read_client: Any,
+    live_caldav: bool,
 ) -> AgendaProposalExecutionResult:
     operation = method.mutation_kind
     if operation not in pending_store.OPERATIONS:
         return _blocked(plan, state=state, reason_code=REASON_NOT_PENDING_METHOD)
-    verified_event = _verified_target_for_proposal(plan, operation=operation, read_client=read_client)
+    verification = _verified_target_for_proposal(
+        plan,
+        operation=operation,
+        read_client=read_client,
+        live_caldav=live_caldav,
+    )
+    verified_event = verification.event
     target_clear = operation == pending_store.OPERATION_CREATE or verified_event is not None
     if operation in {pending_store.OPERATION_UPDATE, pending_store.OPERATION_DELETE} and verified_event is None:
         return _blocked(
@@ -138,6 +168,11 @@ def _execute_proposal(
             reason_code=REASON_TARGET_NOT_VERIFIED,
             operation=operation,
             target_clear=False,
+            caldav_access=verification.caldav_access,
+            nextcloud_access=verification.nextcloud_access,
+            secret_access=bool(verification.caldav_access),
+            target_verification_tool_names=verification.attempted_tool_names,
+            target_verification_error_class=verification.error_class,
         )
     risk_flags = _risk_flags(plan)
     confirmation_level = _confirmation_level(plan=plan, operation=operation, risk_flags=risk_flags)
@@ -178,6 +213,11 @@ def _execute_proposal(
         target_clear=target_clear,
         draft=draft,
         verified_event=verified_event,
+        caldav_access=verification.caldav_access,
+        nextcloud_access=verification.nextcloud_access,
+        secret_access=bool(verification.caldav_access),
+        target_verification_tool_names=verification.attempted_tool_names,
+        target_verification_error_class=verification.error_class,
     )
 
 
@@ -249,6 +289,11 @@ def _blocked(
     action: pending_store.AgendaPendingAction | None = None,
     target_clear: bool = False,
     expired: bool = False,
+    caldav_access: bool = False,
+    nextcloud_access: bool = False,
+    secret_access: bool = False,
+    target_verification_tool_names: tuple[str, ...] = (),
+    target_verification_error_class: str = '',
 ) -> AgendaProposalExecutionResult:
     return AgendaProposalExecutionResult(
         status=STATUS_BLOCKED,
@@ -264,6 +309,11 @@ def _blocked(
         state=state,
         target_clear=target_clear,
         expired=expired,
+        caldav_access=bool(caldav_access),
+        nextcloud_access=bool(nextcloud_access),
+        secret_access=bool(secret_access),
+        target_verification_tool_names=tuple(target_verification_tool_names),
+        target_verification_error_class=target_verification_error_class,
     )
 
 
@@ -278,25 +328,15 @@ def _verified_target_for_proposal(
     *,
     operation: str,
     read_client: Any,
-) -> CalendarEvent | None:
+    live_caldav: bool,
+) -> proposal_target_verification.ProposalTargetVerificationResult:
     if operation == pending_store.OPERATION_CREATE:
-        return None
-    event_ids = [
-        str(dict(call.params or {}).get('event_id') or '').strip()
-        for call in plan.tool_calls
-        if call.tool_name == product_methods.TOOL_EVENT_GET
-    ]
-    event_ids = [event_id for event_id in event_ids if event_id]
-    if len(event_ids) != 1:
-        return None
-    getter = getattr(read_client, 'get_event_by_local_id', None)
-    if not callable(getter):
-        return None
-    try:
-        event = getter(event_ids[0])
-    except Exception:
-        return None
-    return event if isinstance(event, CalendarEvent) else None
+        return proposal_target_verification.ProposalTargetVerificationResult()
+    return proposal_target_verification.verify_target_event(
+        plan,
+        client=read_client,
+        live_caldav=live_caldav,
+    )
 
 
 def _confirmation_level(

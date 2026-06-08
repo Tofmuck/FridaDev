@@ -611,14 +611,34 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('fixture-event-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
 
-    def test_propose_update_without_clear_target_does_not_create_pending_action(self) -> None:
+    def test_propose_update_runtime_caldav_fake_transport_verifies_target_before_pending_action(self) -> None:
+        event_id = _live_fixture_event_id()
         fake_model = _FakeModelClient(
             _proposal_payload(
                 product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
                 operation='update',
-                tool_calls=[],
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': {
+                            'start': '2026-06-08T00:00:00Z',
+                            'end': '2026-06-09T00:00:00Z',
+                            'timezone': 'Europe/Paris',
+                        },
+                        'call_id': 'range-1',
+                    },
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': event_id},
+                        'call_id': 'target-1',
+                    },
+                ],
             )
         )
+        runtime_settings = _SecretCountingRuntimeSettings(value='fixture-secret-value')
+        requests_module = _FakeRequestsModule()
 
         result = chat_runtime.run_agenda_chat_turn(
             {'agenda_enabled': True},
@@ -628,11 +648,55 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                 mode=agent_contract.MODE_ACTIVE,
                 caldav_secret_configured=True,
             ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+            requests_module=requests_module,
+            pending_id_factory=lambda: 'agenda-pending-update-caldav-1',
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(runtime_settings.secret_reads, 1)
+        self.assertEqual([call['method'] for call in requests_module.calls], ['PROPFIND', 'REPORT', 'GET'])
+        self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_PENDING_CREATED)
+        self.assertTrue(result.proposal_execution_result.target_clear)
+        self.assertTrue(result.observability_payload['caldav_access'])
+        self.assertTrue(result.observability_payload['nextcloud_access'])
+        self.assertTrue(result.observability_payload['secret_access'])
+        self.assertEqual(result.observability_payload['pending_operation'], 'update')
+        self.assertIn('Fixture Local Time Block', result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('fixture-secret-value', encoded_payload)
+        self.assertNotIn('Fixture Local Time Block', encoded_payload)
+        self.assertNotIn('Fixture Location Alpha', encoded_payload)
+        self.assertNotIn('fixture-local-time-001', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+        self.assertNotIn('fixture-etag-001', encoded_payload)
+
+    def test_propose_update_without_clear_target_does_not_create_pending_action(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
+                operation='update',
+                tool_calls=[],
+            )
+        )
+        runtime_settings = _SecretCountingRuntimeSettings(value='fixture-secret-value')
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Deplace ce rendez-vous',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
             agent_model_client=fake_model,
             pending_id_factory=lambda: 'agenda-pending-update-ambiguous',
         )
 
         self.assertTrue(result.used)
+        self.assertEqual(runtime_settings.secret_reads, 0)
         self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_TARGET_NOT_VERIFIED)
         self.assertFalse(result.proposal_execution_result.target_clear)
         self.assertEqual(result.pending_state.actions, ())
@@ -751,6 +815,60 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertEqual(result.pending_state.actions, ())
         self.assertFalse(result.observability_payload['mutation_attempted'])
 
+    def test_propose_delete_runtime_caldav_fake_transport_keeps_missing_target_refused(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_DELETE_EVENT,
+                operation='delete',
+                confirmation_level='reinforced',
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': {
+                            'start': '2026-06-08T00:00:00Z',
+                            'end': '2026-06-09T00:00:00Z',
+                            'timezone': 'Europe/Paris',
+                        },
+                        'call_id': 'range-1',
+                    },
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': 'event-missing'},
+                        'call_id': 'target-1',
+                    },
+                ],
+            )
+        )
+        runtime_settings = _SecretCountingRuntimeSettings(value='fixture-secret-value')
+        requests_module = _FakeRequestsModule()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Supprime ce rendez-vous',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+            requests_module=requests_module,
+            pending_id_factory=lambda: 'agenda-pending-delete-missing',
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual([call['method'] for call in requests_module.calls], ['PROPFIND', 'REPORT'])
+        self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_TARGET_NOT_VERIFIED)
+        self.assertEqual(result.pending_state.actions, ())
+        self.assertTrue(result.observability_payload['caldav_access'])
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('fixture-secret-value', encoded_payload)
+        self.assertNotIn('Fixture Local Time Block', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+
     def test_confirm_pending_action_is_refused_before_lot7_without_any_calendar_write(self) -> None:
         state, _action = pending_store.create_pending_action(
             pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
@@ -825,6 +943,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertIn('expiree', expired_confirm.final_response_lock.content)
         self.assertFalse(expired_confirm.observability_payload['mutation_attempted'])
         self.assertEqual(expired_confirm.pending_state.actions[0].draft, {})
+        self.assertNotIn('agenda-pending-delete-1', pending_store._PRIVATE_DRAFTS)
 
         fresh_state, _fresh_action = pending_store.create_pending_action(
             pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
@@ -848,6 +967,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertEqual(cancelled.proposal_execution_result.reason_code, proposal_execution.REASON_PENDING_CANCELLED)
         self.assertEqual(cancelled.pending_state.actions[0].status, pending_store.STATUS_CANCELLED)
         self.assertEqual(cancelled.pending_state.actions[0].draft, {})
+        self.assertNotIn('agenda-pending-create-2', pending_store._PRIVATE_DRAFTS)
 
         confirm_cancelled = chat_runtime.run_agenda_chat_turn(
             {'agenda_enabled': True},
@@ -868,6 +988,23 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         )
         self.assertEqual(confirm_cancelled.proposal_execution_result.reason_code, proposal_execution.REASON_PENDING_NOT_FOUND)
         self.assertFalse(confirm_cancelled.observability_payload['mutation_attempted'])
+
+    def test_private_drafts_are_forgotten_when_pending_action_is_truncated(self) -> None:
+        state = pending_store.AgendaPendingState.empty(conversation_id='conv-agenda')
+        for index in range(pending_store.MAX_ACTIONS + 1):
+            state, _action = pending_store.create_pending_action(
+                state,
+                operation='create',
+                confirmation_level='simple',
+                draft={'schema_version': 'fixture', 'title': f'Fixture {index}'},
+                now_iso='2026-06-08T12:00:00Z',
+                id_factory=lambda index=index: f'agenda-pending-create-{index}',
+            )
+
+        self.assertEqual(len(state.actions), pending_store.MAX_ACTIONS)
+        self.assertNotIn('agenda-pending-create-0', [action.pending_action_id for action in state.actions])
+        self.assertNotIn('agenda-pending-create-0', pending_store._PRIVATE_DRAFTS)
+        self.assertIn('agenda-pending-create-12', pending_store._PRIVATE_DRAFTS)
 
     def test_agenda_pending_state_is_attached_to_latest_user_message_content_free(self) -> None:
         conversation = {
@@ -1068,7 +1205,9 @@ class _FakeRequestsModule:
         if method == 'PROPFIND':
             return _FakeHttpResponse(status_code=207, text=_CALENDAR_PROPFIND_XML)
         if method == 'REPORT':
-            return _FakeHttpResponse(status_code=207, text=_PRIMARY_ICS)
+            return _FakeHttpResponse(status_code=207, text=_PRIMARY_REPORT_XML)
+        if method == 'GET':
+            return _FakeHttpResponse(status_code=200, text=_PRIMARY_ICS)
         raise AssertionError(f'unexpected method: {method}')
 
 
@@ -1108,6 +1247,21 @@ LOCATION:Fixture Location Alpha
 DESCRIPTION:Synthetic fixture event. No personal data.
 END:VEVENT
 END:VCALENDAR
+"""
+
+
+_PRIMARY_REPORT_XML = f"""<?xml version="1.0" encoding="UTF-8"?>
+<d:multistatus xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+  <d:response>
+    <d:href>/remote.php/dav/calendars/tof/fixture-primary/event-1.ics</d:href>
+    <d:propstat>
+      <d:prop>
+        <d:getetag>fixture-etag-001</d:getetag>
+        <cal:calendar-data>{_PRIMARY_ICS}</cal:calendar-data>
+      </d:prop>
+    </d:propstat>
+  </d:response>
+</d:multistatus>
 """
 
 
@@ -1157,6 +1311,14 @@ def _valid_payload(**overrides) -> dict:
     }
     payload.update(overrides)
     return payload
+
+
+def _live_fixture_calendar_id() -> str:
+    return f"cal_{agent_contract.sha256_12('/remote.php/dav/calendars/tof/fixture-primary/')}"
+
+
+def _live_fixture_event_id() -> str:
+    return f"evt_{agent_contract.sha256_12(f'{_live_fixture_calendar_id()}:fixture-local-time-001@example.invalid')}"
 
 
 def _proposal_payload(

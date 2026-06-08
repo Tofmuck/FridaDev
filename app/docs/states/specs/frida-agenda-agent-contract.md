@@ -434,8 +434,9 @@ Regles:
 - les methodes `propose_*` portent un `draft` structure borne; pour une creation
   il doit contenir au minimum titre, calendrier cible, debut, fin et timezone;
 - pour modification, deplacement ou suppression, un `event_get` declare par
-  l'agent ne suffit pas: la cible doit etre reellement relue par un client
-  read-only injecte ou un etat interne fiable avant pending action;
+  l'agent ne suffit pas: la cible doit etre reellement relue par un chemin
+  read-only effectif, injecte/fake en test ou CalDAV read-only en runtime,
+  avant pending action;
 - les methodes `confirm_*` exigent `requested=true`, confirmation humaine,
   `pending_action_id` non vide et kind coherent;
 - une suppression exige `confirmation_level=reinforced`;
@@ -663,13 +664,17 @@ Preuve Lot 6:
 - `propose_create_event` cree une pending action create sans ecriture CalDAV;
 - Lot 6.1: `propose_create_event` exige un draft structure suffisant avant de
   creer une pending action;
-- Lot 6.1: `propose_update_event` et `propose_reschedule` exigent une cible
-  relue/verifiee, pas seulement un `event_get` declare;
-- Lot 6.1: `propose_delete_event` exige une cible relue/verifiee et cree une
-  pending action delete avec confirmation renforcee, sans suppression;
+- Lot 6.2: `propose_update_event`, `propose_reschedule` et
+  `propose_delete_event` ne reposent plus sur un resolver fake-only:
+  le runtime peut executer les tool calls read-only bornes nécessaires
+  (`event_query_range`, `event_search`, `event_get`) pour verifier la cible;
+- Lot 6.2: `propose_delete_event` cree une pending action delete avec
+  confirmation renforcee seulement apres cible relue, sans suppression;
 - Lot 6.1: le rendu visible est concret, mais meta/observabilite restent
   content-free et ne contiennent pas titre, lieu, description, UID, ETag, path
   CalDAV ou ICS;
+- Lot 6.2: les drafts prives sortis de l'etat par tronquage `MAX_ACTIONS`,
+  expiration ou annulation sont oublies.
 - `confirm_*` avec pending action valide repond que l'execution est hors Lot 6;
 - `cancel_pending_agenda_action` annule une pending action sans mutation;
 - expiration/cancel empechent toute execution;
