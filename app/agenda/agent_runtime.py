@@ -140,6 +140,7 @@ class AgendaJsonAgent:
         validation = contract.parse_and_validate_agent_json(
             model_response.content,
             settings=settings,
+            canonical_time_windows=request.canonical_time_windows,
             finish_reason=model_response.finish_reason,
         )
         validation_observation = validation.to_observability()

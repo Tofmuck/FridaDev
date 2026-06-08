@@ -32,6 +32,7 @@ REASON_TOOL_NOT_EXECUTABLE = 'agenda_agent_tool_not_executable'
 REASON_MUTATION_REQUIRES_CONFIRMATION = 'agenda_agent_mutation_requires_confirmation'
 REASON_MUTATION_METHOD_MISMATCH = 'agenda_agent_mutation_method_mismatch'
 REASON_DELETION_REQUIRES_REINFORCED_CONFIRMATION = 'agenda_agent_deletion_requires_reinforced_confirmation'
+REASON_TIME_WINDOW_MISMATCH = 'agenda_agent_time_window_mismatch'
 
 _RECENT_DIALOGUE_MAX_TURNS = 8
 
@@ -88,6 +89,7 @@ class AgendaAgentRequest:
     recent_dialogue: tuple[dict[str, Any], ...] = ()
     now_iso: str = ''
     timezone: str = 'UTC'
+    canonical_time_windows: Mapping[str, Any] | None = None
     available_calendars: tuple[dict[str, Any], ...] = ()
     agenda_state: Mapping[str, Any] | None = None
     settings: AgendaAgentSettings = field(default_factory=AgendaAgentSettings)
@@ -106,6 +108,8 @@ class AgendaAgentRequest:
             'recent_turn_hashes': [sha256_12(turn.get('content')) for turn in recent],
             'now_iso_present': bool(self.now_iso),
             'timezone': str(self.timezone or ''),
+            'canonical_time_window_keys': sorted((self.canonical_time_windows or {}).keys()),
+            'canonical_time_windows_present': bool(self.canonical_time_windows),
             'available_calendar_count': len(self.available_calendars),
             'agenda_state_present': bool(self.agenda_state),
             'content_free': True,
@@ -209,6 +213,7 @@ def parse_and_validate_agent_json(
     text: str,
     *,
     settings: AgendaAgentSettings | None = None,
+    canonical_time_windows: Mapping[str, Any] | None = None,
     finish_reason: str = '',
 ) -> AgendaAgentValidation:
     from agenda import agent_validation
@@ -216,6 +221,7 @@ def parse_and_validate_agent_json(
     return agent_validation.parse_and_validate_agent_json(
         text,
         settings=settings,
+        canonical_time_windows=canonical_time_windows,
         finish_reason=finish_reason,
     )
 
@@ -224,10 +230,15 @@ def validate_agent_payload(
     payload: Mapping[str, Any],
     *,
     settings: AgendaAgentSettings | None = None,
+    canonical_time_windows: Mapping[str, Any] | None = None,
 ) -> AgendaAgentValidation:
     from agenda import agent_validation
 
-    return agent_validation.validate_agent_payload(payload, settings=settings)
+    return agent_validation.validate_agent_payload(
+        payload,
+        settings=settings,
+        canonical_time_windows=canonical_time_windows,
+    )
 
 
 def _field_value(payload: Mapping[str, Any], field: str) -> Any:

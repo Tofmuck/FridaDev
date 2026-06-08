@@ -496,6 +496,19 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve livree: `DTSTART;VALUE=DATE` / `DTEND;VALUE=DATE` produit un seul
   evenement `all_day` affiche `Toute la journee`, sans heure inventee
   `02:00-02:00`.
+- [x] Lot 5A.3: calculer et injecter des fenetres temporelles canoniques
+  `today` et `tomorrow` selon `FRIDA_TIMEZONE`.
+  Preuve livree: avec `FRIDA_TIMEZONE=Europe/Paris` et
+  `now=2026-06-08T10:00:00Z`, `today` vaut
+  `2026-06-07T22:00:00Z -> 2026-06-08T22:00:00Z` et `tomorrow`
+  `2026-06-08T22:00:00Z -> 2026-06-09T22:00:00Z`.
+- [x] Lot 5A.3: refuser `read_today` / `read_tomorrow` si la fenetre du plan
+  ne correspond pas a la fenetre canonique disponible.
+  Preuve livree: une fenetre UTC brute `00Z -> 00Z` est rejetee en
+  `agenda_agent_time_window_mismatch`, sans lecture ni fuite d'observabilite.
+- [ ] Lot 5A.3: ajouter `current_week` canonique.
+  Hors scope volontaire: a traiter avec le lot semaine/disponibilites, pour ne
+  pas ouvrir la politique de debut de semaine dans ce micro-correctif.
 - [ ] Lot 5B: configuration runtime Sauron redacted, mode `active`, compte
   `tof`, secret CalDAV dedie present sans affichage.
 - [ ] Lot 5B: preuve live lire aujourd'hui.

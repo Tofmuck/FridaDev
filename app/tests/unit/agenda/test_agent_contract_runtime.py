@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 
+from agenda import agent_openrouter, time_windows
 from agenda import agent_contract as contract
 from agenda import agent_runtime, product_methods
 
@@ -10,6 +11,20 @@ from agenda import agent_runtime, product_methods
 RAW_USER = 'RAW USER AGENDA REQUEST MUST NOT LEAK'
 RAW_QUERY = 'RAW QUERY MUST NOT LEAK'
 RAW_SURFACE = 'RAW SURFACE MUST NOT LEAK'
+CANONICAL_WINDOWS_PARIS = {
+    'today': {
+        'start': '2026-06-07T22:00:00Z',
+        'end': '2026-06-08T22:00:00Z',
+        'timezone': 'Europe/Paris',
+        'local_date': '2026-06-08',
+    },
+    'tomorrow': {
+        'start': '2026-06-08T22:00:00Z',
+        'end': '2026-06-09T22:00:00Z',
+        'timezone': 'Europe/Paris',
+        'local_date': '2026-06-09',
+    },
+}
 
 
 class AgendaAgentContractRuntimeTests(unittest.TestCase):
@@ -111,6 +126,89 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertEqual(validation.status, contract.STATUS_REJECTED)
         self.assertEqual(validation.reason_code, contract.REASON_TOOL_NOT_EXECUTABLE)
         self.assertNotIn('Je ne vois rien', json.dumps(validation.to_observability(), sort_keys=True))
+
+    def test_canonical_time_windows_are_computed_from_frida_timezone(self) -> None:
+        windows = time_windows.build_canonical_time_windows(
+            now_iso='2026-06-08T10:00:00Z',
+            timezone_name='Europe/Paris',
+        )
+
+        self.assertEqual(windows['today']['start'], '2026-06-07T22:00:00Z')
+        self.assertEqual(windows['today']['end'], '2026-06-08T22:00:00Z')
+        self.assertEqual(windows['tomorrow']['start'], '2026-06-08T22:00:00Z')
+        self.assertEqual(windows['tomorrow']['end'], '2026-06-09T22:00:00Z')
+
+    def test_agent_payload_includes_canonical_time_windows(self) -> None:
+        request = _request(
+            settings=contract.AgendaAgentSettings(
+                mode=contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+        )
+
+        messages = agent_openrouter.build_agenda_agent_messages(request)
+        user_payload = json.loads(messages[1]['content'])
+
+        self.assertEqual(user_payload['canonical_time_windows']['today']['start'], '2026-06-07T22:00:00Z')
+        self.assertEqual(user_payload['canonical_time_windows']['tomorrow']['end'], '2026-06-09T22:00:00Z')
+        self.assertNotIn('RAW USER', messages[0]['content'])
+
+    def test_read_today_requires_canonical_today_window_when_context_is_present(self) -> None:
+        canonical_payload = _payload_with_window(
+            product_method=product_methods.METHOD_READ_TODAY,
+            start='2026-06-07T22:00:00Z',
+            end='2026-06-08T22:00:00Z',
+        )
+        raw_utc_payload = _payload_with_window(
+            product_method=product_methods.METHOD_READ_TODAY,
+            start='2026-06-08T00:00:00Z',
+            end='2026-06-09T00:00:00Z',
+        )
+
+        self.assertEqual(
+            contract.validate_agent_payload(
+                canonical_payload,
+                canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+            ).status,
+            contract.STATUS_VALIDATED,
+        )
+        rejected = contract.validate_agent_payload(
+            raw_utc_payload,
+            canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+        )
+        encoded = json.dumps(rejected.to_observability(), sort_keys=True)
+        self.assertEqual(rejected.status, contract.STATUS_REJECTED)
+        self.assertEqual(rejected.reason_code, contract.REASON_TIME_WINDOW_MISMATCH)
+        self.assertNotIn('2026-06-08T00:00:00Z', encoded)
+
+    def test_read_tomorrow_requires_canonical_tomorrow_window_when_context_is_present(self) -> None:
+        canonical_payload = _payload_with_window(
+            product_method=product_methods.METHOD_READ_TOMORROW,
+            start='2026-06-08T22:00:00Z',
+            end='2026-06-09T22:00:00Z',
+        )
+        raw_utc_payload = _payload_with_window(
+            product_method=product_methods.METHOD_READ_TOMORROW,
+            start='2026-06-09T00:00:00Z',
+            end='2026-06-10T00:00:00Z',
+        )
+
+        self.assertEqual(
+            contract.validate_agent_payload(
+                canonical_payload,
+                canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+            ).status,
+            contract.STATUS_VALIDATED,
+        )
+        rejected = contract.validate_agent_payload(
+            raw_utc_payload,
+            canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+        )
+        encoded = json.dumps(rejected.to_observability(), sort_keys=True)
+        self.assertEqual(rejected.status, contract.STATUS_REJECTED)
+        self.assertEqual(rejected.reason_code, contract.REASON_TIME_WINDOW_MISMATCH)
+        self.assertNotIn('2026-06-09T00:00:00Z', encoded)
 
     def test_tool_param_values_reject_raw_caldav_uid_and_secret_shapes_content_free(self) -> None:
         raw_url = 'https://cloud.frida-system.fr/remote.php/dav/calendars/tof/Famille/'
@@ -442,12 +540,17 @@ class _FakeModelClient:
         )
 
 
-def _request(*, settings: contract.AgendaAgentSettings) -> contract.AgendaAgentRequest:
+def _request(
+    *,
+    settings: contract.AgendaAgentSettings,
+    canonical_time_windows=None,
+) -> contract.AgendaAgentRequest:
     return contract.AgendaAgentRequest(
         user_message=RAW_USER,
         recent_dialogue=({'role': 'assistant', 'content': 'RAW DIALOGUE MUST NOT LEAK'},),
         now_iso='2026-06-08T12:00:00Z',
         timezone='Europe/Paris',
+        canonical_time_windows=canonical_time_windows,
         settings=settings,
     )
 
@@ -513,6 +616,32 @@ def _valid_payload(**overrides) -> dict:
     }
     payload.update(overrides)
     return payload
+
+
+def _payload_with_window(*, product_method: str, start: str, end: str) -> dict:
+    return _valid_payload(
+        product_method=product_method,
+        time_scope={
+            'kind': 'day',
+            'start': start,
+            'end': end,
+            'timezone': 'Europe/Paris',
+            'ambiguity': 'none',
+        },
+        tool_calls=[
+            {
+                'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                'method': 'GET',
+                'params': {
+                    'calendar_id': 'primary',
+                    'start': start,
+                    'end': end,
+                    'timezone': 'Europe/Paris',
+                },
+                'call_id': 'call-1',
+            }
+        ],
+    )
 
 
 if __name__ == '__main__':

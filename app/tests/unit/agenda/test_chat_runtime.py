@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from types import SimpleNamespace
 
 from agenda import agent_contract, agent_runtime, chat_runtime, product_methods, read_execution, response_rendering
 from agenda.caldav_models import CalendarEvent, CalendarSummary
@@ -133,6 +134,64 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('Fixture Focus Block', encoded_payload)
         self.assertNotIn('fixture-event-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_active_runtime_rejects_raw_utc_day_when_frida_timezone_requires_canonical_window(self) -> None:
+        fake_model = _FakeModelClient(_valid_payload(intent='RAW INTENT MUST NOT LEAK'))
+        read_client = _FakeReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertEqual(result.status, agent_runtime.STATUS_FALLBACK)
+        self.assertEqual(result.reason_code, agent_contract.REASON_TIME_WINDOW_MISMATCH)
+        self.assertFalse(result.used)
+        self.assertIsNone(result.read_execution_result)
+        self.assertEqual(read_client.calls, [])
+        self.assertEqual(fake_model.last_request.canonical_time_windows['today']['start'], '2026-06-07T22:00:00Z')
+        self.assertEqual(fake_model.last_request.canonical_time_windows['tomorrow']['end'], '2026-06-09T22:00:00Z')
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('2026-06-08T00:00:00Z', encoded_payload)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+
+    def test_active_runtime_uses_canonical_window_for_all_day_events(self) -> None:
+        fake_model = _FakeModelClient(
+            _payload_with_window(
+                product_method=product_methods.METHOD_READ_TODAY,
+                start='2026-06-07T22:00:00Z',
+                end='2026-06-08T22:00:00Z',
+            )
+        )
+        read_client = _AllDayReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(read_client.query_ranges, [('2026-06-07T22:00:00Z', '2026-06-08T22:00:00Z', 'Europe/Paris')])
+        self.assertIn('Toute la journee', result.final_response_lock.content)
+        self.assertNotIn('02:00-02:00', result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture All Day Block', encoded_payload)
 
     def test_active_runtime_rejects_read_plan_without_tools_before_empty_agenda_answer(self) -> None:
         fake_model = _FakeModelClient(_valid_payload(tool_calls=[]))
@@ -380,6 +439,51 @@ class _FakeReadClient:
         return self._event
 
 
+class _AllDayReadClient:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+        self.query_ranges: list[tuple[str, str, str]] = []
+        self._calendar = CalendarSummary(
+            local_id='primary',
+            display_name='Fixture Primary Calendar',
+            permissions=('read',),
+            color='#1166aa',
+            enabled=True,
+            readonly=True,
+            family_calendar=False,
+            caldav_path='/remote.php/dav/calendars/tof/fixture-primary/',
+        )
+        self._event = CalendarEvent(
+            event_id='event-all-day',
+            calendar_id='primary',
+            uid='fixture-all-day-001@example.invalid',
+            summary='Fixture All Day Block',
+            location='Fixture Location Day',
+            description='Fixture description, no personal data.',
+            start_iso='2026-06-07T22:00:00Z',
+            end_iso='2026-06-08T22:00:00Z',
+            timezone='Europe/Paris',
+            etag='fixture-etag-all-day',
+            caldav_path='/remote.php/dav/calendars/tof/fixture-primary/event-all-day.ics',
+            all_day=True,
+        )
+
+    def list_calendars(self):
+        self.calls.append('list_calendars')
+        return (self._calendar,)
+
+    def query_calendar_events(self, calendar, *, start_iso, end_iso, timezone_name='UTC'):
+        del calendar
+        self.calls.append('query_calendar_events')
+        self.query_ranges.append((start_iso, end_iso, timezone_name))
+        return (self._event,)
+
+    def get_event(self, event):
+        del event
+        self.calls.append('get_event')
+        return self._event
+
+
 class _SecretCountingRuntimeSettings:
     def __init__(self, *, value: str = '') -> None:
         self.value = value
@@ -499,6 +603,32 @@ def _valid_payload(**overrides) -> dict:
     }
     payload.update(overrides)
     return payload
+
+
+def _payload_with_window(*, product_method: str, start: str, end: str) -> dict:
+    return _valid_payload(
+        product_method=product_method,
+        time_scope={
+            'kind': 'day',
+            'start': start,
+            'end': end,
+            'timezone': 'Europe/Paris',
+            'ambiguity': 'none',
+        },
+        tool_calls=[
+            {
+                'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                'method': 'GET',
+                'params': {
+                    'calendar_id': 'primary',
+                    'start': start,
+                    'end': end,
+                    'timezone': 'Europe/Paris',
+                },
+                'call_id': 'call-1',
+            }
+        ],
+    )
 
 
 if __name__ == '__main__':

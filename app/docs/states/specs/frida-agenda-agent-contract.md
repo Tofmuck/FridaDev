@@ -494,6 +494,14 @@ Etat livre Lot 5A:
   local;
 - Lot 5A.2 marque `VALUE=DATE` comme evenement journee entiere et interdit au
   rendu d'inventer une heure visible pour ces evenements;
+- Lot 5A.3 calcule des fenetres canoniques `today` et `tomorrow` depuis
+  `now_iso` et `FRIDA_TIMEZONE`, puis les injecte dans le payload agent sous
+  `canonical_time_windows`;
+- Lot 5A.3 impose que `read_today` et `read_tomorrow` utilisent exactement la
+  fenetre canonique disponible, cote `time_scope` et `event_query_range`; une
+  fenetre UTC brute incompatible est rejetee avant lecture;
+- `current_week` canonique reste hors scope du micro-correctif 5A.3 et devra
+  etre tranche avec la politique de lecture semaine/disponibilites;
 - Lot 5 complet reste ouvert jusqu'a une configuration Sauron redacted et une
   preuve live JSONL content-free.
 
@@ -872,6 +880,21 @@ Preuve Lot 5A.2 locale:
 - un evenement UTC `07:00Z` continue de se rendre `09:00` en timezone
   `Europe/Paris`;
 - aucune preuve Lot 5A.2 ne lit Nextcloud live, CalDAV live ou secret reel.
+
+Preuve Lot 5A.3 locale:
+
+- avec `FRIDA_TIMEZONE=Europe/Paris` et `now=2026-06-08T10:00:00Z`,
+  `today` est `2026-06-07T22:00:00Z -> 2026-06-08T22:00:00Z` et `tomorrow`
+  est `2026-06-08T22:00:00Z -> 2026-06-09T22:00:00Z`;
+- `canonical_time_windows` est transmis a l'agent Agenda dans le payload modele;
+- un plan `read_today` / `read_tomorrow` utilisant la fenetre canonique est
+  accepte, tandis qu'une fenetre UTC brute `00Z -> 00Z` est rejetee avec
+  `agenda_agent_time_window_mismatch`;
+- le rejet precede toute lecture CalDAV/client read-only et son observabilite
+  ne contient pas la fenetre brute rejetee;
+- un evenement journee entiere de test n'est lu/rendu que via la fenetre locale
+  canonique;
+- aucune preuve Lot 5A.3 ne lit Nextcloud live, CalDAV live ou secret reel.
 
 Preuve content-free minimale:
 

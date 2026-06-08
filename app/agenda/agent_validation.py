@@ -119,6 +119,7 @@ def parse_and_validate_agent_json(
     text: str,
     *,
     settings: contract.AgendaAgentSettings | None = None,
+    canonical_time_windows: Mapping[str, Any] | None = None,
     finish_reason: str = '',
 ) -> contract.AgendaAgentValidation:
     raw = str(text or '')
@@ -133,7 +134,11 @@ def parse_and_validate_agent_json(
         payload = json.loads(raw)
     except json.JSONDecodeError:
         return _rejected(contract.REASON_JSON_INVALID, raw, json_hash=json_hash, finish_reason=finish_reason)
-    validation = validate_agent_payload(payload, settings=settings)
+    validation = validate_agent_payload(
+        payload,
+        settings=settings,
+        canonical_time_windows=canonical_time_windows,
+    )
     return contract.AgendaAgentValidation(
         status=validation.status,
         reason_code=validation.reason_code,
@@ -151,6 +156,7 @@ def validate_agent_payload(
     payload: Mapping[str, Any],
     *,
     settings: contract.AgendaAgentSettings | None = None,
+    canonical_time_windows: Mapping[str, Any] | None = None,
 ) -> contract.AgendaAgentValidation:
     settings = settings or contract.AgendaAgentSettings()
     if not isinstance(payload, Mapping) or set(payload.keys()) != _ROOT_KEYS:
@@ -187,6 +193,14 @@ def validate_agent_payload(
     tool_calls = _validate_tool_calls(payload.get('tool_calls'), product_method, settings)
     if isinstance(tool_calls, str):
         return _rejected(tool_calls, '')
+    window_reason = _validate_canonical_time_window(
+        product_method=product_method,
+        time_scope=time_scope,
+        tool_calls=tool_calls,
+        canonical_time_windows=canonical_time_windows,
+    )
+    if window_reason:
+        return _rejected(window_reason, '')
     surface_intro = str(payload.get('surface_intro') or '')
     surface_outro = str(payload.get('surface_outro') or '')
     plan = contract.AgendaAgentPlan(
@@ -387,6 +401,42 @@ def _validate_tool_calls(
             )
         )
     return tuple(calls)
+
+
+def _validate_canonical_time_window(
+    *,
+    product_method: str,
+    time_scope: Mapping[str, Any],
+    tool_calls: tuple[contract.AgendaToolCall, ...],
+    canonical_time_windows: Mapping[str, Any] | None,
+) -> str:
+    window_key = {
+        product_methods.METHOD_READ_TODAY: 'today',
+        product_methods.METHOD_READ_TOMORROW: 'tomorrow',
+    }.get(product_method)
+    if not window_key:
+        return ''
+    if not isinstance(canonical_time_windows, Mapping):
+        return ''
+    expected = canonical_time_windows.get(window_key)
+    if not isinstance(expected, Mapping):
+        return ''
+    expected_start = str(expected.get('start') or '')
+    expected_end = str(expected.get('end') or '')
+    if not expected_start or not expected_end:
+        return ''
+    if str(time_scope.get('start') or '') != expected_start or str(time_scope.get('end') or '') != expected_end:
+        return contract.REASON_TIME_WINDOW_MISMATCH
+    query_calls = [call for call in tool_calls if call.tool_name == product_methods.TOOL_EVENT_QUERY_RANGE]
+    if not query_calls:
+        return contract.REASON_TIME_WINDOW_MISMATCH
+    for call in query_calls:
+        params = dict(call.params or {})
+        call_start = str(params.get('start') or time_scope.get('start') or '')
+        call_end = str(params.get('end') or time_scope.get('end') or '')
+        if call_start != expected_start or call_end != expected_end:
+            return contract.REASON_TIME_WINDOW_MISMATCH
+    return ''
 
 
 def _validate_tool_params(tool_name: str, value: Any) -> str:

@@ -156,6 +156,7 @@ def build_agenda_agent_messages(request: contract.AgendaAgentRequest) -> list[di
         'recent_dialogue': recent,
         'now_iso': request.now_iso,
         'timezone': request.timezone,
+        'canonical_time_windows': dict(request.canonical_time_windows or {}),
         'available_calendars': list(request.available_calendars),
         'agenda_state': dict(request.agenda_state or {}),
     }
@@ -167,6 +168,8 @@ def build_agenda_agent_messages(request: contract.AgendaAgentRequest) -> list[di
         'Pour lire une fenetre, utilise event_query_range avec start et end ISO '
         'explicites. Si le calendrier cible est inconnu, omets calendar_id: '
         'le deterministe interrogera les calendriers accessibles. '
+        'Pour read_today et read_tomorrow, utilise exactement les fenetres '
+        'canonical_time_windows.today ou canonical_time_windows.tomorrow. '
         'Pour search_events, utilise une fenetre bornee et event_search. '
         'surface_intro et surface_outro sont toujours des strings, eventuellement vides.'
     )

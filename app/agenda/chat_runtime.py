@@ -12,6 +12,7 @@ from agenda import (
     read_execution,
     response_rendering,
     runtime_config,
+    time_windows,
 )
 
 
@@ -188,11 +189,16 @@ def run_agenda_chat_turn(
         runtime_settings_module=runtime_settings_module,
     )
     timezone = str(getattr(config_module, 'FRIDA_TIMEZONE', '') or 'UTC')
+    canonical_time_windows = time_windows.build_canonical_time_windows(
+        now_iso=str(now_iso or ''),
+        timezone_name=timezone,
+    )
     request = agent_contract.AgendaAgentRequest(
         user_message=str(user_msg or ''),
         recent_dialogue=tuple(recent_dialogue or ()),
         now_iso=str(now_iso or ''),
         timezone=timezone,
+        canonical_time_windows=canonical_time_windows,
         settings=settings,
     )
     model_client = agent_model_client or _default_agent_model_client(
