@@ -356,6 +356,9 @@ def _validate_tool_calls(
         return contract.REASON_SCHEMA_INVALID
     if len(value) > int(settings.max_tool_calls or 0):
         return contract.REASON_TOOL_NOT_EXECUTABLE
+    method = product_methods.get_method(product_method)
+    if method is not None and method.family == product_methods.FAMILY_READ and not value:
+        return contract.REASON_TOOL_NOT_EXECUTABLE
     allowed_for_method = product_methods.allowed_tools_for_method(product_method)
     calls: list[contract.AgendaToolCall] = []
     for raw_call in value:

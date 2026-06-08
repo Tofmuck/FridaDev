@@ -475,6 +475,19 @@ Etat livre Lot 5A:
 - Lot 5A ne fait aucun acces CalDAV/Nextcloud live, ne lit aucun evenement
   personnel, ne cree pas d'app-password, ne fait aucune mutation et ne cree pas
   de pending store;
+- Lot 5A.1 interdit toute reponse finale indiquant un agenda vide si aucun
+  outil read-only n'a ete execute;
+- une methode read-only executable doit porter au moins un `tool_call`
+  allowliste; la validation et l'execution refusent toutes deux les plans
+  read-only sans outil;
+- le secret CalDAV et le client CalDAV ne sont resolus que pour un plan
+  read-only valide et executable;
+- les methodes `clarify_*`, `propose_*`, `confirm_*` et contexte ne doivent
+  jamais provoquer de lecture de secret ni construction de client CalDAV;
+- `secret_access` en observabilite vaut vrai seulement si le secret runtime a
+  ete effectivement resolu;
+- les heures visibles sont rendues dans la timezone portee par l'evenement ou
+  la lecture, avec fallback UTC si la timezone est invalide;
 - Lot 5 complet reste ouvert jusqu'a une configuration Sauron redacted et une
   preuve live JSONL content-free.
 
@@ -827,6 +840,20 @@ Preuve Lot 5A locale:
   app-password;
 - Lot 5A ne prouve pas encore `today`, `tomorrow`, `search`, `details`,
   Delta-T et Memory eligible en live CalDAV: ces preuves restent Lot 5B.
+
+Preuve Lot 5A.1 locale:
+
+- un payload read-only sans `tool_calls` est rejete avec
+  `agenda_agent_tool_not_executable`;
+- `read_execution` retourne `agenda_readonly_no_tool_calls` si un plan
+  read-only sans outil atteint l'execution par defense en profondeur;
+- un plan `clarify_agenda_request` valide n'appelle pas
+  `get_runtime_secret_value()`;
+- l'observabilite `secret_access` reste fausse sans secret resolu et devient
+  vraie seulement quand un secret fake de test est resolu via runtime settings;
+- un evenement `07:00Z` en timezone `Europe/Paris` pendant juin est rendu
+  `09:00`, pas `07:00`;
+- aucune preuve Lot 5A.1 ne lit Nextcloud live, CalDAV live ou secret reel.
 
 Preuve content-free minimale:
 

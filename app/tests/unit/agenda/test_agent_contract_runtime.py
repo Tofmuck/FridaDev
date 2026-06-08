@@ -105,6 +105,13 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
                 self.assertEqual(validation.status, contract.STATUS_REJECTED)
                 self.assertEqual(validation.reason_code, reason)
 
+    def test_read_only_methods_require_at_least_one_executable_tool_call(self) -> None:
+        validation = contract.validate_agent_payload(_valid_payload(tool_calls=[]))
+
+        self.assertEqual(validation.status, contract.STATUS_REJECTED)
+        self.assertEqual(validation.reason_code, contract.REASON_TOOL_NOT_EXECUTABLE)
+        self.assertNotIn('Je ne vois rien', json.dumps(validation.to_observability(), sort_keys=True))
+
     def test_tool_param_values_reject_raw_caldav_uid_and_secret_shapes_content_free(self) -> None:
         raw_url = 'https://cloud.frida-system.fr/remote.php/dav/calendars/tof/Famille/'
         raw_path = '/remote.php/dav/calendars/tof/Famille/'

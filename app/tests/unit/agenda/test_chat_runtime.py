@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from agenda import agent_contract, agent_runtime, chat_runtime, product_methods
+from agenda import agent_contract, agent_runtime, chat_runtime, product_methods, read_execution, response_rendering
 from agenda.caldav_models import CalendarEvent, CalendarSummary
 
 
@@ -117,6 +117,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertTrue(lock.ok)
         self.assertIn('Fixture Focus Block', lock.content)
         self.assertIn('09:00-10:00', lock.content)
+        self.assertNotIn('07:00-08:00', lock.content)
         meta = lock.to_message_meta()
         self.assertEqual(meta['source'], 'agenda_readonly_response')
         self.assertEqual(meta['agenda_product_method'], product_methods.METHOD_READ_TODAY)
@@ -132,6 +133,142 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('Fixture Focus Block', encoded_payload)
         self.assertNotIn('fixture-event-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_active_runtime_rejects_read_plan_without_tools_before_empty_agenda_answer(self) -> None:
+        fake_model = _FakeModelClient(_valid_payload(tool_calls=[]))
+        read_client = _FakeReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Lis mon agenda',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertEqual(result.status, agent_runtime.STATUS_FALLBACK)
+        self.assertEqual(result.reason_code, agent_contract.REASON_TOOL_NOT_EXECUTABLE)
+        self.assertFalse(result.used)
+        self.assertIsNone(result.final_response_lock)
+        self.assertIsNone(result.read_execution_result)
+        self.assertEqual(read_client.calls, [])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertFalse(result.observability_payload['final_response_override'])
+        self.assertFalse(result.observability_payload['secret_access'])
+        self.assertNotIn('Je ne vois rien', encoded_payload)
+
+    def test_read_execution_defense_in_depth_rejects_read_plan_without_tools(self) -> None:
+        plan = agent_contract.AgendaAgentPlan(
+            product_method=product_methods.METHOD_READ_TODAY,
+            intent='read agenda',
+            calendar_scope={'calendar_ids': ['primary'], 'family_calendar': False, 'ambiguity': 'none'},
+            time_scope={
+                'kind': 'day',
+                'start': '2026-06-08T00:00:00Z',
+                'end': '2026-06-09T00:00:00Z',
+                'timezone': 'Europe/Paris',
+                'ambiguity': 'none',
+            },
+            tool_calls=(),
+            mutation={
+                'requested': False,
+                'kind': 'none',
+                'confirmation_required': False,
+                'confirmation_level': 'none',
+                'pending_action_id': '',
+            },
+            answer_mode='agenda_summary',
+            risk_flags=(),
+            fallback_reason='',
+            surface_intro='',
+            surface_outro='',
+        )
+        read_client = _FakeReadClient()
+
+        execution = read_execution.execute_readonly_plan(plan, client=read_client)
+
+        self.assertEqual(execution.status, 'skipped')
+        self.assertEqual(execution.reason_code, 'agenda_readonly_no_tool_calls')
+        self.assertEqual(read_client.calls, [])
+        self.assertIsNone(response_rendering.build_final_response_lock(plan=plan, execution_result=execution))
+
+    def test_active_runtime_does_not_resolve_secret_for_clarification_plan(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                product_method=product_methods.METHOD_CLARIFY_AGENDA_REQUEST,
+                tool_calls=[],
+                answer_mode='clarify',
+            )
+        )
+        runtime_settings = _SecretCountingRuntimeSettings()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Quelle date ?',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+        )
+
+        self.assertEqual(result.status, agent_runtime.STATUS_ACTIVE_READY)
+        self.assertEqual(result.read_execution_result.reason_code, 'agenda_readonly_method_not_read')
+        self.assertEqual(runtime_settings.secret_reads, 0)
+        self.assertFalse(result.used)
+        self.assertIsNone(result.final_response_lock)
+        self.assertFalse(result.observability_payload['secret_access'])
+        self.assertFalse(result.observability_payload['caldav_access'])
+
+    def test_active_runtime_marks_secret_access_only_when_secret_is_resolved(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': {
+                            'start': '2026-06-08T00:00:00Z',
+                            'end': '2026-06-09T00:00:00Z',
+                            'timezone': 'Europe/Paris',
+                        },
+                        'call_id': 'call-1',
+                    }
+                ]
+            )
+        )
+        runtime_settings = _SecretCountingRuntimeSettings(value='fixture-secret-value')
+        requests_module = _FakeRequestsModule()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Lis mon agenda',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+            requests_module=requests_module,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(runtime_settings.secret_reads, 1)
+        self.assertEqual([call['method'] for call in requests_module.calls], ['PROPFIND', 'REPORT'])
+        self.assertTrue(result.observability_payload['secret_access'])
+        self.assertTrue(result.observability_payload['caldav_access'])
+        self.assertTrue(result.observability_payload['nextcloud_access'])
+        self.assertIn('09:00-10:00', result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('fixture-secret-value', encoded_payload)
+        self.assertNotIn('Authorization', encoded_payload)
 
     def test_active_runtime_invalid_json_falls_back_cleanly(self) -> None:
         fake = _FakeTextModelClient('{not-json')
@@ -221,9 +358,9 @@ class _FakeReadClient:
             summary='Fixture Focus Block',
             location='Fixture Location Alpha',
             description='Fixture description, no personal data.',
-            start_iso='2026-06-08T09:00:00Z',
-            end_iso='2026-06-08T10:00:00Z',
-            timezone='UTC',
+            start_iso='2026-06-08T07:00:00Z',
+            end_iso='2026-06-08T08:00:00Z',
+            timezone='Europe/Paris',
             etag='fixture-etag-001',
             caldav_path='/remote.php/dav/calendars/tof/fixture-primary/event-1.ics',
         )
@@ -241,6 +378,80 @@ class _FakeReadClient:
         del event
         self.calls.append('get_event')
         return self._event
+
+
+class _SecretCountingRuntimeSettings:
+    def __init__(self, *, value: str = '') -> None:
+        self.value = value
+        self.secret_reads = 0
+
+    def get_runtime_secret_value(self, section, field):
+        self.secret_reads += 1
+        return type(
+            'RuntimeSecretValueFixture',
+            (),
+            {'section': section, 'field': field, 'value': self.value},
+        )()
+
+
+class _FakeHttpResponse:
+    def __init__(self, *, status_code: int, text: str) -> None:
+        self.status_code = status_code
+        self.text = text
+
+
+class _FakeRequestsModule:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, str]] = []
+
+    def request(self, method, url, *, headers, data, timeout):
+        self.calls.append(
+            {
+                'method': str(method),
+                'url_hash': agent_contract.sha256_12(str(url)),
+                'auth_present': str(bool(headers.get('Authorization'))),
+                'data_present': str(bool(data)),
+                'timeout': str(timeout),
+            }
+        )
+        if method == 'PROPFIND':
+            return _FakeHttpResponse(status_code=207, text=_CALENDAR_PROPFIND_XML)
+        if method == 'REPORT':
+            return _FakeHttpResponse(status_code=207, text=_PRIMARY_ICS)
+        raise AssertionError(f'unexpected method: {method}')
+
+
+_CALENDAR_PROPFIND_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<d:multistatus xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/">
+  <d:response>
+    <d:href>/remote.php/dav/calendars/tof/fixture-primary/</d:href>
+    <d:propstat>
+      <d:prop>
+        <d:displayname>Fixture Primary Calendar</d:displayname>
+        <cs:calendar-color>#1166aa</cs:calendar-color>
+        <d:current-user-privilege-set>
+          <d:privilege><d:read/></d:privilege>
+        </d:current-user-privilege-set>
+      </d:prop>
+    </d:propstat>
+  </d:response>
+</d:multistatus>
+"""
+
+
+_PRIMARY_ICS = """BEGIN:VCALENDAR
+VERSION:2.0
+X-WR-CALNAME:Fixture Primary Calendar
+BEGIN:VEVENT
+UID:fixture-local-time-001@example.invalid
+DTSTART:20260608T070000Z
+DTEND:20260608T080000Z
+SUMMARY:Fixture Local Time Block
+LOCATION:Fixture Location Alpha
+DESCRIPTION:Synthetic fixture event. No personal data.
+END:VEVENT
+END:VCALENDAR
+"""
 
 
 def _valid_payload(**overrides) -> dict:

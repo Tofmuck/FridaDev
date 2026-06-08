@@ -206,13 +206,16 @@ def run_agenda_chat_turn(
     execution_result = None
     final_lock = None
     if result.validated_plan is not None and result.status == agent_runtime.STATUS_ACTIVE_READY:
-        resolved_client, live_caldav = _resolve_read_client(
-            settings=settings,
-            injected_client=read_client,
-            runtime_settings_module=runtime_settings_module,
-            requests_module=requests_module,
-            config_module=config_module,
-        )
+        if read_execution.plan_needs_read_client(result.validated_plan):
+            resolved_client, live_caldav = _resolve_read_client(
+                settings=settings,
+                injected_client=read_client,
+                runtime_settings_module=runtime_settings_module,
+                requests_module=requests_module,
+                config_module=config_module,
+            )
+        else:
+            resolved_client, live_caldav = None, False
         execution_result = read_execution.execute_readonly_plan(
             result.validated_plan,
             client=resolved_client,

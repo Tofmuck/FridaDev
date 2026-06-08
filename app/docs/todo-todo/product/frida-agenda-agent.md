@@ -475,6 +475,18 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Lot 5A: ne faire aucun acces CalDAV/Nextcloud live.
   Preuve livree: transports fake/injectes en tests; aucun app-password lu en
   clair.
+- [x] Lot 5A.1: refuser toute reponse finale "agenda vide" sans outil read-only
+  execute.
+  Preuve livree: un plan `read_today` sans `tool_calls` est rejete avant final
+  lock; l'execution read-only refuse aussi les plans sans outil.
+- [x] Lot 5A.1: ne resoudre le secret CalDAV que pour un plan read-only
+  executable.
+  Preuve livree: `clarify_agenda_request` valide ne lit pas le secret et
+  `secret_access` ne devient vrai que si le secret est effectivement resolu.
+- [x] Lot 5A.1: rendre les heures visibles dans la timezone de l'evenement /
+  de la lecture.
+  Preuve livree: evenement stocke `07:00Z` avec timezone `Europe/Paris` en juin
+  affiche `09:00`.
 - [ ] Lot 5B: configuration runtime Sauron redacted, mode `active`, compte
   `tof`, secret CalDAV dedie present sans affichage.
 - [ ] Lot 5B: preuve live lire aujourd'hui.

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Mapping
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from agenda import agent_contract
 from agenda import product_methods
@@ -139,8 +140,8 @@ def _event_line(event: CalendarEvent) -> str:
 
 
 def _time_label(event: CalendarEvent) -> str:
-    start = _parse_iso(event.start_iso)
-    end = _parse_iso(event.end_iso)
+    start = _parse_iso(event.start_iso, timezone_name=event.timezone)
+    end = _parse_iso(event.end_iso, timezone_name=event.timezone)
     if start is None:
         return ''
     if end is None:
@@ -148,11 +149,24 @@ def _time_label(event: CalendarEvent) -> str:
     return f"{start.strftime('%H:%M')}-{end.strftime('%H:%M')}"
 
 
-def _parse_iso(value: str) -> datetime | None:
+def _parse_iso(value: str, *, timezone_name: str = '') -> datetime | None:
     try:
-        return datetime.fromisoformat(str(value or '').replace('Z', '+00:00'))
+        parsed = datetime.fromisoformat(str(value or '').replace('Z', '+00:00'))
     except ValueError:
         return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(_display_timezone(timezone_name))
+
+
+def _display_timezone(timezone_name: str):
+    raw = str(timezone_name or '').strip()
+    if not raw:
+        return timezone.utc
+    try:
+        return ZoneInfo(raw)
+    except (ZoneInfoNotFoundError, ValueError):
+        return timezone.utc
 
 
 def _compose_surface(intro: str, content: str, outro: str) -> str:

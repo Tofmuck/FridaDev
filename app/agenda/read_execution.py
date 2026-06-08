@@ -24,9 +24,15 @@ STATUS_ERROR = 'error'
 
 REASON_EXECUTED = 'agenda_readonly_executed'
 REASON_NOT_READ_METHOD = 'agenda_readonly_method_not_read'
+REASON_NO_TOOL_CALLS = 'agenda_readonly_no_tool_calls'
 REASON_CLIENT_UNAVAILABLE = 'agenda_readonly_client_unavailable'
 REASON_TOOL_ERROR = 'agenda_readonly_tool_error'
 REASON_TOOL_UNSUPPORTED = 'agenda_readonly_tool_unsupported'
+
+
+def plan_needs_read_client(plan: agent_contract.AgendaAgentPlan) -> bool:
+    method = product_methods.get_method(str(getattr(plan, 'product_method', '') or ''))
+    return bool(method is not None and method.family == product_methods.FAMILY_READ and plan.tool_calls)
 
 
 @dataclass(frozen=True)
@@ -82,6 +88,12 @@ def execute_readonly_plan(
         return AgendaReadExecutionResult(
             status=STATUS_SKIPPED,
             reason_code=REASON_NOT_READ_METHOD,
+            product_method=str(plan.product_method or ''),
+        )
+    if not plan.tool_calls:
+        return AgendaReadExecutionResult(
+            status=STATUS_SKIPPED,
+            reason_code=REASON_NO_TOOL_CALLS,
             product_method=str(plan.product_method or ''),
         )
     if client is None:
