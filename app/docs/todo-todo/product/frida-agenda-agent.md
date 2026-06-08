@@ -4,7 +4,7 @@ Statut: TODO actif au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
-Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-3 livrent
+Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-3.2 livrent
 seulement toggle no-op, configuration redacted et outils read-only non branches,
 sans agent Agenda reel ni acces CalDAV live.
 
@@ -389,6 +389,33 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Corriger les cases TODO hautes deja livrees par Lots 1-3.
   Preuve livree: toggle, runtime settings, source redacted et module
   `app/agenda/` coches sans cocher Lot 4+.
+
+### Lot 3.2 - RRULE realistes avant agent
+
+- [x] Auditer les bibliotheques RRULE disponibles sans installer de dependance
+  lourde.
+  Preuve livree: `dateutil.rrule` absent cote hote et conteneur
+  `platform-fridadev`.
+- [x] Ne pas faire de probe live CalDAV.
+  Preuve livree: aucune configuration secret/app-password lue, aucun acces
+  Nextcloud/CalDAV live, tests synthetiques uniquement.
+- [x] Decouper l'expansion RRULE dans un fichier Agenda dedie.
+  Preuve livree: `app/agenda/rrule_expander.py`, pas de `utils.py` ni
+  `helpers.py`, fichiers applicatifs Agenda sous 600 lignes.
+- [x] Supporter les formes hebdomadaires realistes `BYDAY`.
+  Preuve livree: tests `FREQ=WEEKLY;BYDAY=MO` et `BYDAY=MO,WE`.
+- [x] Supporter les formes mensuelles realistes `BYMONTHDAY`, `BYDAY` et
+  `BYSETPOS`.
+  Preuve livree: tests `FREQ=MONTHLY;BYMONTHDAY=...`,
+  `FREQ=MONTHLY;BYDAY=...` et `FREQ=MONTHLY;BYDAY=...;BYSETPOS=...`.
+- [x] Supporter la forme annuelle `BYMONTH` + `BYMONTHDAY`.
+  Preuve livree: test `FREQ=YEARLY;BYMONTH=...;BYMONTHDAY=...`.
+- [x] Garder `COUNT`, `UNTIL`, `INTERVAL`, `EXDATE` et `RECURRENCE-ID` bornes.
+  Preuve livree: tests de fenetre bornee, intervalle, until, exclusion et
+  override recurrent.
+- [x] Garder les erreurs RRULE non supportees content-free.
+  Preuve livree: test d'erreur sur partie non supportee sans payload ICS, UID,
+  titre, lieu ou description.
 
 ### Lot 4 - Agent JSON active sous garde-fous
 

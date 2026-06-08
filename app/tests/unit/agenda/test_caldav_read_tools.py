@@ -232,21 +232,120 @@ class AgendaCalDavReadToolsTests(unittest.TestCase):
                 self.assertEqual(events[1].start_iso, expected_second_start)
                 self.assertEqual(len({event.event_id for event in events[:2]}), 2)
 
+    def test_parse_ics_events_supports_realistic_byday_and_bymonth_rules(self) -> None:
+        cases = (
+            (
+                'weekly_byday_monday',
+                'FREQ=WEEKLY;COUNT=2;BYDAY=MO',
+                '20260601T070000Z',
+                '20260601T073000Z',
+                '2026-06-01T00:00:00Z',
+                '2026-06-16T00:00:00Z',
+                ['2026-06-01T07:00:00Z', '2026-06-08T07:00:00Z'],
+            ),
+            (
+                'weekly_byday_monday_wednesday',
+                'FREQ=WEEKLY;COUNT=4;BYDAY=MO,WE',
+                '20260601T070000Z',
+                '20260601T073000Z',
+                '2026-06-01T00:00:00Z',
+                '2026-06-11T00:00:00Z',
+                [
+                    '2026-06-01T07:00:00Z',
+                    '2026-06-03T07:00:00Z',
+                    '2026-06-08T07:00:00Z',
+                    '2026-06-10T07:00:00Z',
+                ],
+            ),
+            (
+                'monthly_bymonthday',
+                'FREQ=MONTHLY;COUNT=2;BYMONTHDAY=15',
+                '20260601T070000Z',
+                '20260601T073000Z',
+                '2026-06-01T00:00:00Z',
+                '2026-08-01T00:00:00Z',
+                ['2026-06-15T07:00:00Z', '2026-07-15T07:00:00Z'],
+            ),
+            (
+                'monthly_byday',
+                'FREQ=MONTHLY;COUNT=3;BYDAY=MO',
+                '20260601T070000Z',
+                '20260601T073000Z',
+                '2026-06-01T00:00:00Z',
+                '2026-07-01T00:00:00Z',
+                ['2026-06-01T07:00:00Z', '2026-06-08T07:00:00Z', '2026-06-15T07:00:00Z'],
+            ),
+            (
+                'monthly_byday_bysetpos',
+                'FREQ=MONTHLY;COUNT=2;BYDAY=MO;BYSETPOS=1',
+                '20260601T070000Z',
+                '20260601T073000Z',
+                '2026-06-01T00:00:00Z',
+                '2026-08-01T00:00:00Z',
+                ['2026-06-01T07:00:00Z', '2026-07-06T07:00:00Z'],
+            ),
+            (
+                'yearly_bymonth_bymonthday',
+                'FREQ=YEARLY;COUNT=2;BYMONTH=6;BYMONTHDAY=15',
+                '20260601T070000Z',
+                '20260601T073000Z',
+                '2026-06-01T00:00:00Z',
+                '2028-01-01T00:00:00Z',
+                ['2026-06-15T07:00:00Z', '2027-06-15T07:00:00Z'],
+            ),
+            (
+                'weekly_interval',
+                'FREQ=WEEKLY;COUNT=2;INTERVAL=2;BYDAY=MO',
+                '20260601T070000Z',
+                '20260601T073000Z',
+                '2026-06-01T00:00:00Z',
+                '2026-06-22T00:00:00Z',
+                ['2026-06-01T07:00:00Z', '2026-06-15T07:00:00Z'],
+            ),
+            (
+                'weekly_until',
+                'FREQ=WEEKLY;UNTIL=20260615T070000Z;BYDAY=MO',
+                '20260601T070000Z',
+                '20260601T073000Z',
+                '2026-06-01T00:00:00Z',
+                '2026-06-30T00:00:00Z',
+                ['2026-06-01T07:00:00Z', '2026-06-08T07:00:00Z', '2026-06-15T07:00:00Z'],
+            ),
+        )
+
+        for label, rule, start, end, window_start, window_end, expected_starts in cases:
+            with self.subTest(label=label):
+                events = ics_reader.parse_ics_events(
+                    self._recurrence_ics(freq=label, start=start, end=end, rule=rule),
+                    calendar_id='fixture_recurrence',
+                    window_start_iso=window_start,
+                    window_end_iso=window_end,
+                )
+                self.assertEqual([event.start_iso for event in events], expected_starts)
+                self.assertEqual(len({event.event_id for event in events}), len(events))
+                self.assertTrue(all(window_start <= event.start_iso < window_end for event in events))
+
     def test_unsupported_recurrence_rule_fails_without_raw_payload(self) -> None:
-        with self.assertRaises(ics_reader.IcsRecurrenceUnsupportedError) as raised:
-            ics_reader.parse_ics_events(
-                self._recurrence_ics(
-                    freq='DAILY',
-                    start='20260601T070000Z',
-                    end='20260601T073000Z',
-                    extra_rule='BYDAY=MO',
-                ),
-                calendar_id='fixture_recurrence',
-                window_start_iso='2026-06-01T00:00:00Z',
-                window_end_iso='2026-06-03T00:00:00Z',
-            )
-        self.assertNotIn('BEGIN:VEVENT', str(raised.exception))
-        self.assertNotIn('fixture-recurring', str(raised.exception))
+        cases = (
+            ('unsupported_part', 'FREQ=DAILY;COUNT=2;BYHOUR=7'),
+            ('unsupported_bysetpos_frequency', 'FREQ=WEEKLY;COUNT=2;BYDAY=MO,WE;BYSETPOS=1'),
+        )
+        for label, rule in cases:
+            with self.subTest(label=label):
+                with self.assertRaises(ics_reader.IcsRecurrenceUnsupportedError) as raised:
+                    ics_reader.parse_ics_events(
+                        self._recurrence_ics(
+                            freq=label,
+                            start='20260601T070000Z',
+                            end='20260601T073000Z',
+                            rule=rule,
+                        ),
+                        calendar_id='fixture_recurrence',
+                        window_start_iso='2026-06-01T00:00:00Z',
+                        window_end_iso='2026-06-03T00:00:00Z',
+                    )
+                self.assertNotIn('BEGIN:VEVENT', str(raised.exception))
+                self.assertNotIn('fixture-recurring', str(raised.exception))
 
     def test_event_query_range_rejects_missing_inverted_too_large_or_unknown_windows(self) -> None:
         client, state, _transport = self._client_and_state()
@@ -504,8 +603,10 @@ class AgendaCalDavReadToolsTests(unittest.TestCase):
             import agenda.ics_reader as ics_reader_module
             import agenda.observability as observability_module
             import agenda.read_tools as read_tools_module
+            import agenda.rrule_expander as rrule_expander_module
 
             importlib.reload(observability_module)
+            importlib.reload(rrule_expander_module)
             importlib.reload(ics_reader_module)
             importlib.reload(read_client_module)
             importlib.reload(read_tools_module)
@@ -524,8 +625,16 @@ class AgendaCalDavReadToolsTests(unittest.TestCase):
                 return calendar.local_id
         raise AssertionError(f'missing calendar {display_name}')
 
-    def _recurrence_ics(self, *, freq: str, start: str, end: str, extra_rule: str = '') -> str:
-        rule = f'FREQ={freq};COUNT=2;INTERVAL=1'
+    def _recurrence_ics(
+        self,
+        *,
+        freq: str,
+        start: str,
+        end: str,
+        extra_rule: str = '',
+        rule: str = '',
+    ) -> str:
+        rule = rule or f'FREQ={freq};COUNT=2;INTERVAL=1'
         if extra_rule:
             rule = f'{rule};{extra_rule}'
         return f"""BEGIN:VCALENDAR

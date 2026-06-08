@@ -1,20 +1,15 @@
 from __future__ import annotations
 
-import calendar
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Mapping
 
 from agenda.caldav_models import CalendarEvent
 from agenda.observability import sha256_12
-
-
-MAX_RECURRENCE_OCCURRENCES = 512
-SUPPORTED_FREQS = {'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'}
-SUPPORTED_RRULE_KEYS = {'FREQ', 'COUNT', 'UNTIL', 'INTERVAL'}
-
-
-class IcsRecurrenceUnsupportedError(ValueError):
-    pass
+from agenda.rrule_expander import (
+    MAX_RECURRENCE_OCCURRENCES,
+    IcsRecurrenceUnsupportedError,
+    expand_recurrence_starts,
+)
 
 
 def _unfold_ics_lines(text: str) -> list[str]:
@@ -288,7 +283,7 @@ def _events_from_recurring_props(
     exdates = _exdates_from_props(props)
     events: list[CalendarEvent] = []
     consumed: set[tuple[str, datetime]] = set()
-    for occurrence_start in _expand_recurrence_starts(
+    for occurrence_start in expand_recurrence_starts(
         start_dt=start_dt,
         duration=duration,
         rrule_value=_first(props, 'RRULE'),
@@ -331,105 +326,6 @@ def _events_from_recurring_props(
         if _event_is_in_window(event, window_start=window_start, window_end=window_end):
             events.append(event)
     return events, consumed
-
-
-def _expand_recurrence_starts(
-    *,
-    start_dt: datetime,
-    duration: timedelta,
-    rrule_value: str,
-    window_start: datetime | None,
-    window_end: datetime | None,
-    max_occurrences: int,
-) -> list[datetime]:
-    rule = _parse_rrule(rrule_value)
-    freq = rule['FREQ']
-    count = _positive_int(rule.get('COUNT', ''), field='COUNT') if rule.get('COUNT') else None
-    interval = _positive_int(rule.get('INTERVAL', '1'), field='INTERVAL')
-    until = _parse_ics_datetime_to_dt(rule.get('UNTIL', '')) if rule.get('UNTIL') else None
-    limit = int(max_occurrences)
-    if limit <= 0:
-        raise IcsRecurrenceUnsupportedError('recurrence expansion limit must be positive')
-
-    occurrences: list[datetime] = []
-    cursor = start_dt
-    generated_by_rule = 0
-    window_floor = window_start - duration if window_start is not None else None
-    while generated_by_rule < limit:
-        if count is not None and generated_by_rule >= count:
-            break
-        if until is not None and cursor > until:
-            break
-        generated_by_rule += 1
-        if _recurrence_start_is_needed(cursor, window_floor=window_floor, window_end=window_end):
-            occurrences.append(cursor)
-        if window_end is not None and cursor >= window_end:
-            break
-        cursor = _add_interval(cursor, freq=freq, interval=interval)
-    if generated_by_rule >= limit and (window_end is None or cursor < window_end):
-        raise IcsRecurrenceUnsupportedError('recurrence expansion exceeded bounded limit')
-    return occurrences
-
-
-def _parse_rrule(value: str) -> dict[str, str]:
-    rule: dict[str, str] = {}
-    for part in str(value or '').split(';'):
-        if not part:
-            continue
-        if '=' not in part:
-            raise IcsRecurrenceUnsupportedError('recurrence rule is malformed')
-        key, raw_value = part.split('=', 1)
-        key = key.strip().upper()
-        if key not in SUPPORTED_RRULE_KEYS:
-            raise IcsRecurrenceUnsupportedError('recurrence rule part is not supported')
-        rule[key] = raw_value.strip().upper()
-    freq = rule.get('FREQ', '')
-    if freq not in SUPPORTED_FREQS:
-        raise IcsRecurrenceUnsupportedError('recurrence frequency is not supported')
-    return rule
-
-
-def _positive_int(value: str, *, field: str) -> int:
-    try:
-        parsed = int(str(value or ''))
-    except ValueError as exc:
-        raise IcsRecurrenceUnsupportedError(f'recurrence {field} must be an integer') from exc
-    if parsed <= 0:
-        raise IcsRecurrenceUnsupportedError(f'recurrence {field} must be positive')
-    return parsed
-
-
-def _add_interval(value: datetime, *, freq: str, interval: int) -> datetime:
-    if freq == 'DAILY':
-        return value + timedelta(days=interval)
-    if freq == 'WEEKLY':
-        return value + timedelta(weeks=interval)
-    if freq == 'MONTHLY':
-        return _add_months(value, interval)
-    if freq == 'YEARLY':
-        return _add_months(value, interval * 12)
-    raise IcsRecurrenceUnsupportedError('recurrence frequency is not supported')
-
-
-def _add_months(value: datetime, months: int) -> datetime:
-    month_index = value.month - 1 + int(months)
-    year = value.year + month_index // 12
-    month = month_index % 12 + 1
-    day = min(value.day, calendar.monthrange(year, month)[1])
-    return value.replace(year=year, month=month, day=day)
-
-
-def _recurrence_start_is_needed(
-    value: datetime,
-    *,
-    window_floor: datetime | None,
-    window_end: datetime | None,
-) -> bool:
-    if window_floor is not None and value < window_floor:
-        return False
-    if window_end is not None and value >= window_end:
-        return False
-    return True
 
 
 def _exdates_from_props(props: Mapping[str, tuple[str, ...]]) -> set[datetime]:

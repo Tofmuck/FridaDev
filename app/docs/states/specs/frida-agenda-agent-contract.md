@@ -4,7 +4,7 @@ Statut: spec vivante
 Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
-Portee: contrat cible du futur agent Agenda Frida. Lots 1-3 livrent seulement
+Portee: contrat cible du futur agent Agenda Frida. Lots 1-3.2 livrent seulement
 toggle no-op, configuration redacted et outils read-only non branches, sans
 agent Agenda reel ni acces CalDAV live.
 
@@ -295,6 +295,30 @@ Etat livre Lot 3.1:
   body brut;
 - aucun branchement chat, agent JSON, secret, CalDAV live, Nextcloud live ou
   mutation calendrier n'est ajoute par Lot 3.1.
+
+Etat livre Lot 3.2:
+
+- `dateutil.rrule` n'est pas disponible cote hote ni dans le conteneur
+  `platform-fridadev`; aucune dependance nouvelle n'est ajoutee dans ce lot;
+- aucun probe CalDAV live n'est fait: les preuves restent synthetiques,
+  anonymes et sans secret;
+- l'expansion recurrente vit dans `app/agenda/rrule_expander.py`, appelee par
+  `app/agenda/ics_reader.py`, pour garder les responsabilites separees;
+- le support borne couvre les formes iCalendar realistes suivantes:
+  `FREQ=WEEKLY;BYDAY=MO`, `FREQ=WEEKLY;BYDAY=MO,WE`,
+  `FREQ=MONTHLY;BYMONTHDAY=...`, `FREQ=MONTHLY;BYDAY=...`,
+  `FREQ=MONTHLY;BYDAY=...;BYSETPOS=...` et
+  `FREQ=YEARLY;BYMONTH=...;BYMONTHDAY=...`;
+- `COUNT`, `UNTIL`, `INTERVAL`, `EXDATE` et `RECURRENCE-ID` restent appliques
+  dans une fenetre bornee;
+- aucune occurrence hors fenetre ne doit etre retournee par le read path;
+- les identifiants d'occurrences restent stables et distincts, sans exposition
+  de l'UID brut en observabilite;
+- les parties RRULE non supportees continuent de produire une erreur locale
+  content-free au lieu d'une lecture silencieusement fausse;
+- les limites restantes avant live sont documentees: pas de prise en charge
+  complete RFC 5545, pas de `VTIMEZONE`/`TZID` avance, pas de validation live
+  Nextcloud/macOS tant qu'un probe content-free separe n'est pas autorise.
 
 ## 6. Entrees agent cible
 
@@ -665,6 +689,18 @@ Preuve Lot 3.1 locale:
   CalDAV read-only structuree, redacted et content-free;
 - aucune preuve Lot 3.1 ne depend de Nextcloud live, CalDAV live, secret,
   app-password ou evenement personnel.
+
+Preuve Lot 3.2 locale:
+
+- les bibliotheques de recurrence sont probees sans installer de dependance:
+  `dateutil.rrule` est absent cote hote et conteneur;
+- les tests synthetiques couvrent les familles `BYDAY`, `BYMONTHDAY`,
+  `BYSETPOS`, `BYMONTH`, `COUNT`, `UNTIL`, `INTERVAL`, `EXDATE` et
+  `RECURRENCE-ID`;
+- les tests verifient des fenetres explicites, l'absence d'occurrence hors
+  fenetre et des ids d'occurrence distincts;
+- aucune preuve Lot 3.2 ne lit Nextcloud live, CalDAV live, secret,
+  app-password, UID brut, titre, lieu, description ou payload ICS personnel.
 
 Preuve content-free minimale:
 
