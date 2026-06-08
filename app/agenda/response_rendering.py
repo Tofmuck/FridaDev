@@ -140,6 +140,8 @@ def _event_line(event: CalendarEvent) -> str:
 
 
 def _time_label(event: CalendarEvent) -> str:
+    if bool(getattr(event, 'all_day', False)):
+        return 'Toute la journee'
     start = _parse_iso(event.start_iso, timezone_name=event.timezone)
     end = _parse_iso(event.end_iso, timezone_name=event.timezone)
     if start is None:

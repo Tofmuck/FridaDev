@@ -318,8 +318,9 @@ Etat livre Lot 3.2:
 - les parties RRULE non supportees continuent de produire une erreur locale
   content-free au lieu d'une lecture silencieusement fausse;
 - les limites restantes avant live sont documentees: pas de prise en charge
-  complete RFC 5545, pas de `VTIMEZONE`/`TZID` avance, pas de validation live
-  Nextcloud/macOS tant qu'un probe content-free separe n'est pas autorise.
+  complete RFC 5545, pas de `VTIMEZONE` avance, support `TZID` simple complete
+  en Lot 5A.2, pas de validation live Nextcloud/macOS tant qu'un probe
+  content-free separe n'est pas autorise.
 
 ## 6. Entrees agent cible
 
@@ -488,6 +489,11 @@ Etat livre Lot 5A:
   ete effectivement resolu;
 - les heures visibles sont rendues dans la timezone portee par l'evenement ou
   la lecture, avec fallback UTC si la timezone est invalide;
+- Lot 5A.2 conserve les parametres ICS utiles et supporte `TZID` pour
+  `DTSTART`, `DTEND`, `RECURRENCE-ID` et `EXDATE` dans le chemin read-only
+  local;
+- Lot 5A.2 marque `VALUE=DATE` comme evenement journee entiere et interdit au
+  rendu d'inventer une heure visible pour ces evenements;
 - Lot 5 complet reste ouvert jusqu'a une configuration Sauron redacted et une
   preuve live JSONL content-free.
 
@@ -854,6 +860,18 @@ Preuve Lot 5A.1 locale:
 - un evenement `07:00Z` en timezone `Europe/Paris` pendant juin est rendu
   `09:00`, pas `07:00`;
 - aucune preuve Lot 5A.1 ne lit Nextcloud live, CalDAV live ou secret reel.
+
+Preuve Lot 5A.2 locale:
+
+- un evenement `DTSTART;TZID=Europe/Paris:20260608T090000` /
+  `DTEND;TZID=Europe/Paris:20260608T100000` est stocke en UTC interne
+  `07:00Z-08:00Z` et rendu `09:00-10:00`, pas `11:00-12:00`;
+- un evenement `DTSTART;VALUE=DATE:20260608` /
+  `DTEND;VALUE=DATE:20260609` produit un seul `CalendarEvent.all_day` et le
+  rendu affiche `Toute la journee`, sans `02:00-02:00`;
+- un evenement UTC `07:00Z` continue de se rendre `09:00` en timezone
+  `Europe/Paris`;
+- aucune preuve Lot 5A.2 ne lit Nextcloud live, CalDAV live ou secret reel.
 
 Preuve content-free minimale:
 

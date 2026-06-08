@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Mapping
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from agenda.caldav_models import CalendarEvent
 from agenda.observability import sha256_12
@@ -10,6 +12,12 @@ from agenda.rrule_expander import (
     IcsRecurrenceUnsupportedError,
     expand_recurrence_starts,
 )
+
+
+@dataclass(frozen=True)
+class _IcsProperty:
+    value: str
+    params: Mapping[str, str]
 
 
 def _unfold_ics_lines(text: str) -> list[str]:
@@ -25,11 +33,23 @@ def _unfold_ics_lines(text: str) -> list[str]:
 
 
 def _split_property(line: str) -> tuple[str, str]:
+    name, _params, value = _split_property_parts(line)
+    return name, value
+
+
+def _split_property_parts(line: str) -> tuple[str, dict[str, str], str]:
     if ':' not in line:
-        return line.strip().upper(), ''
+        return line.strip().upper(), {}, ''
     key, value = line.split(':', 1)
-    name = key.split(';', 1)[0].strip().upper()
-    return name, _unescape_text(value.strip())
+    parts = key.split(';')
+    name = parts[0].strip().upper()
+    params: dict[str, str] = {}
+    for part in parts[1:]:
+        if '=' not in part:
+            continue
+        param_name, raw_param_value = part.split('=', 1)
+        params[param_name.strip().upper()] = raw_param_value.strip().strip('"')
+    return name, params, _unescape_text(value.strip())
 
 
 def _unescape_text(value: str) -> str:
@@ -48,17 +68,27 @@ def _parse_ics_datetime(value: str) -> str:
     return _to_utc_iso(parsed) if parsed is not None else ''
 
 
-def _parse_ics_datetime_to_dt(value: str) -> datetime | None:
+def _parse_ics_datetime_to_dt(
+    value: str,
+    *,
+    params: Mapping[str, str] | None = None,
+    default_timezone_name: str = 'UTC',
+    normalize_utc: bool = True,
+) -> datetime | None:
     raw = str(value or '').strip()
     if not raw:
         return None
     if raw.endswith('Z'):
         parsed = datetime.strptime(raw, '%Y%m%dT%H%M%SZ').replace(tzinfo=timezone.utc)
     elif 'T' in raw:
-        parsed = datetime.strptime(raw, '%Y%m%dT%H%M%S').replace(tzinfo=timezone.utc)
+        parsed = datetime.strptime(raw, '%Y%m%dT%H%M%S').replace(
+            tzinfo=_property_timezone(params, default_timezone_name=default_timezone_name)
+        )
     else:
-        parsed = datetime.strptime(raw, '%Y%m%d').replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        parsed = datetime.strptime(raw, '%Y%m%d').replace(
+            tzinfo=_property_timezone(params, default_timezone_name=default_timezone_name)
+        )
+    return parsed.astimezone(timezone.utc) if normalize_utc else parsed
 
 
 def _parse_iso_datetime(value: str) -> datetime | None:
@@ -102,11 +132,11 @@ def parse_ics_events(
     window_end_iso: str = '',
     max_occurrences: int = MAX_RECURRENCE_OCCURRENCES,
 ) -> tuple[CalendarEvent, ...]:
-    components: list[dict[str, tuple[str, ...]]] = []
+    components: list[dict[str, tuple[_IcsProperty, ...]]] = []
     in_event = False
-    current: dict[str, list[str]] = {}
+    current: dict[str, list[_IcsProperty]] = {}
     for line in _unfold_ics_lines(ics_text):
-        name, value = _split_property(line)
+        name, params, value = _split_property_parts(line)
         if name == 'BEGIN' and value.upper() == 'VEVENT':
             in_event = True
             current = {}
@@ -118,7 +148,7 @@ def parse_ics_events(
             current = {}
             continue
         if in_event:
-            current.setdefault(name, []).append(value)
+            current.setdefault(name, []).append(_IcsProperty(value=value, params=params))
     events = _events_from_components(
         components,
         calendar_id=calendar_id,
@@ -133,7 +163,7 @@ def parse_ics_events(
 
 
 def _events_from_components(
-    components: list[Mapping[str, tuple[str, ...]]],
+    components: list[Mapping[str, tuple[_IcsProperty, ...]]],
     *,
     calendar_id: str,
     timezone_name: str,
@@ -144,16 +174,20 @@ def _events_from_components(
     max_occurrences: int,
 ) -> list[CalendarEvent]:
     events: list[CalendarEvent] = []
-    overrides: dict[str, dict[datetime, Mapping[str, tuple[str, ...]]]] = {}
+    overrides: dict[str, dict[datetime, Mapping[str, tuple[_IcsProperty, ...]]]] = {}
     override_keys: set[tuple[str, datetime]] = set()
-    masters: list[Mapping[str, tuple[str, ...]]] = []
-    standalone: list[Mapping[str, tuple[str, ...]]] = []
+    masters: list[Mapping[str, tuple[_IcsProperty, ...]]] = []
+    standalone: list[Mapping[str, tuple[_IcsProperty, ...]]] = []
     window_start = _parse_iso_datetime(window_start_iso)
     window_end = _parse_iso_datetime(window_end_iso)
 
     for props in components:
         uid = _first(props, 'UID')
-        recurrence_id = _parse_ics_datetime_to_dt(_first(props, 'RECURRENCE-ID'))
+        recurrence_id = _parse_ics_property_datetime_to_dt(
+            _first_prop(props, 'RECURRENCE-ID'),
+            default_timezone_name=timezone_name,
+            normalize_utc=False,
+        )
         if recurrence_id is not None and uid:
             overrides.setdefault(uid, {})[recurrence_id] = props
             continue
@@ -207,7 +241,7 @@ def _events_from_components(
 
 
 def _event_from_props(
-    props: Mapping[str, tuple[str, ...]],
+    props: Mapping[str, tuple[_IcsProperty, ...]],
     *,
     calendar_id: str,
     timezone_name: str,
@@ -216,8 +250,10 @@ def _event_from_props(
     event_id_seed: str = '',
 ) -> CalendarEvent | None:
     uid = _first(props, 'UID')
-    start_dt = _parse_ics_datetime_to_dt(_first(props, 'DTSTART'))
-    end_dt = _parse_ics_datetime_to_dt(_first(props, 'DTEND'))
+    start_prop = _first_prop(props, 'DTSTART')
+    end_prop = _first_prop(props, 'DTEND')
+    start_dt = _parse_ics_property_datetime_to_dt(start_prop, default_timezone_name=timezone_name)
+    end_dt = _parse_ics_property_datetime_to_dt(end_prop, default_timezone_name=timezone_name)
     if not uid or start_dt is None or end_dt is None:
         return None
     return _event_from_datetimes(
@@ -226,15 +262,16 @@ def _event_from_props(
         uid=uid,
         start_dt=start_dt,
         end_dt=end_dt,
-        timezone_name=timezone_name,
+        timezone_name=_event_timezone_name(start_prop, default_timezone_name=timezone_name),
         default_etag=default_etag,
         default_caldav_path=default_caldav_path,
         event_id_seed=event_id_seed,
+        all_day=_property_is_all_day(start_prop),
     )
 
 
 def _event_from_datetimes(
-    props: Mapping[str, tuple[str, ...]],
+    props: Mapping[str, tuple[_IcsProperty, ...]],
     *,
     calendar_id: str,
     uid: str,
@@ -244,6 +281,7 @@ def _event_from_datetimes(
     default_etag: str,
     default_caldav_path: str,
     event_id_seed: str,
+    all_day: bool = False,
 ) -> CalendarEvent:
     event_id_source = f'{calendar_id}:{uid}:{event_id_seed}' if event_id_seed else f'{calendar_id}:{uid}'
     event_id = f'evt_{sha256_12(event_id_source)}'
@@ -259,13 +297,14 @@ def _event_from_datetimes(
         timezone=str(timezone_name or 'UTC'),
         etag=str(default_etag or ''),
         caldav_path=str(default_caldav_path or ''),
+        all_day=bool(all_day),
     )
 
 
 def _events_from_recurring_props(
-    props: Mapping[str, tuple[str, ...]],
+    props: Mapping[str, tuple[_IcsProperty, ...]],
     *,
-    overrides: Mapping[datetime, Mapping[str, tuple[str, ...]]],
+    overrides: Mapping[datetime, Mapping[str, tuple[_IcsProperty, ...]]],
     calendar_id: str,
     timezone_name: str,
     default_etag: str,
@@ -275,12 +314,24 @@ def _events_from_recurring_props(
     max_occurrences: int,
 ) -> tuple[list[CalendarEvent], set[tuple[str, datetime]]]:
     uid = _first(props, 'UID')
-    start_dt = _parse_ics_datetime_to_dt(_first(props, 'DTSTART'))
-    end_dt = _parse_ics_datetime_to_dt(_first(props, 'DTEND'))
+    start_prop = _first_prop(props, 'DTSTART')
+    end_prop = _first_prop(props, 'DTEND')
+    start_dt = _parse_ics_property_datetime_to_dt(
+        start_prop,
+        default_timezone_name=timezone_name,
+        normalize_utc=False,
+    )
+    end_dt = _parse_ics_property_datetime_to_dt(
+        end_prop,
+        default_timezone_name=timezone_name,
+        normalize_utc=False,
+    )
     if not uid or start_dt is None or end_dt is None:
         return [], set()
     duration = end_dt - start_dt
-    exdates = _exdates_from_props(props)
+    event_timezone_name = _event_timezone_name(start_prop, default_timezone_name=timezone_name)
+    all_day = _property_is_all_day(start_prop)
+    exdates = _exdates_from_props(props, default_timezone_name=event_timezone_name)
     events: list[CalendarEvent] = []
     consumed: set[tuple[str, datetime]] = set()
     for occurrence_start in expand_recurrence_starts(
@@ -318,21 +369,31 @@ def _events_from_recurring_props(
             uid=uid,
             start_dt=occurrence_start,
             end_dt=occurrence_end,
-            timezone_name=timezone_name,
+            timezone_name=event_timezone_name,
             default_etag=default_etag,
             default_caldav_path=default_caldav_path,
             event_id_seed=f'recurrence:{_to_utc_iso(occurrence_start)}',
+            all_day=all_day,
         )
         if _event_is_in_window(event, window_start=window_start, window_end=window_end):
             events.append(event)
     return events, consumed
 
 
-def _exdates_from_props(props: Mapping[str, tuple[str, ...]]) -> set[datetime]:
+def _exdates_from_props(
+    props: Mapping[str, tuple[_IcsProperty, ...]],
+    *,
+    default_timezone_name: str,
+) -> set[datetime]:
     exdates: set[datetime] = set()
-    for value in props.get('EXDATE', ()):
-        for item in str(value or '').split(','):
-            parsed = _parse_ics_datetime_to_dt(item)
+    for prop in props.get('EXDATE', ()):
+        for item in str(prop.value or '').split(','):
+            parsed = _parse_ics_datetime_to_dt(
+                item,
+                params=prop.params,
+                default_timezone_name=default_timezone_name,
+                normalize_utc=False,
+            )
             if parsed is not None:
                 exdates.add(parsed)
     return exdates
@@ -353,6 +414,48 @@ def _event_is_in_window(
     return event_start < window_end and event_end > window_start
 
 
-def _first(props: Mapping[str, tuple[str, ...]], name: str) -> str:
+def _first(props: Mapping[str, tuple[_IcsProperty, ...]], name: str) -> str:
+    prop = _first_prop(props, name)
+    return str(prop.value).strip() if prop is not None else ''
+
+
+def _first_prop(props: Mapping[str, tuple[_IcsProperty, ...]], name: str) -> _IcsProperty | None:
     values = props.get(name, ())
-    return str(values[0]).strip() if values else ''
+    return values[0] if values else None
+
+
+def _parse_ics_property_datetime_to_dt(
+    prop: _IcsProperty | None,
+    *,
+    default_timezone_name: str,
+    normalize_utc: bool = True,
+) -> datetime | None:
+    if prop is None:
+        return None
+    return _parse_ics_datetime_to_dt(
+        prop.value,
+        params=prop.params,
+        default_timezone_name=default_timezone_name,
+        normalize_utc=normalize_utc,
+    )
+
+
+def _property_is_all_day(prop: _IcsProperty | None) -> bool:
+    if prop is None:
+        return False
+    return str(prop.params.get('VALUE', '') or '').strip().upper() == 'DATE' or 'T' not in str(prop.value or '')
+
+
+def _event_timezone_name(prop: _IcsProperty | None, *, default_timezone_name: str) -> str:
+    tzid = str((prop.params if prop is not None else {}).get('TZID', '') or '').strip()
+    return tzid or str(default_timezone_name or 'UTC')
+
+
+def _property_timezone(params: Mapping[str, str] | None, *, default_timezone_name: str):
+    timezone_name = str((params or {}).get('TZID', '') or default_timezone_name or 'UTC').strip()
+    if not timezone_name:
+        return timezone.utc
+    try:
+        return ZoneInfo(timezone_name)
+    except (ZoneInfoNotFoundError, ValueError):
+        return timezone.utc

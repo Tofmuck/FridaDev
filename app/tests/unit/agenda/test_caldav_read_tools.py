@@ -12,7 +12,7 @@ APP_DIR = Path(__file__).resolve().parents[3]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from agenda import caldav_read_client, ics_reader, read_tools
+from agenda import agent_contract, caldav_read_client, ics_reader, product_methods, read_tools, response_rendering
 from agenda.caldav_models import (
     AgendaReadState,
     CalDavReadError,
@@ -141,6 +141,99 @@ class AgendaCalDavReadToolsTests(unittest.TestCase):
         self.assertEqual(events[0].start_iso, '2026-06-09T07:00:00Z')
         self.assertLess(events[0].start_iso, events[1].start_iso)
         self.assertEqual(events[0].summary, 'Fixture Focus Block')
+
+    def test_parse_ics_events_preserves_tzid_for_local_time_rendering(self) -> None:
+        ics_text = """BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:fixture-tzid-001@example.invalid
+DTSTART;TZID=Europe/Paris:20260608T090000
+DTEND;TZID=Europe/Paris:20260608T100000
+SUMMARY:Fixture TZID Block
+LOCATION:Fixture Location TZ
+DESCRIPTION:Synthetic fixture event. No personal data.
+END:VEVENT
+END:VCALENDAR
+"""
+
+        events = ics_reader.parse_ics_events(
+            ics_text,
+            calendar_id='fixture_primary',
+            timezone_name='UTC',
+        )
+        rendered = response_rendering.render_readonly_answer(
+            plan=self._read_today_plan(),
+            execution_result=_ExecutionResultFixture(events),
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].start_iso, '2026-06-08T07:00:00Z')
+        self.assertEqual(events[0].end_iso, '2026-06-08T08:00:00Z')
+        self.assertEqual(events[0].timezone, 'Europe/Paris')
+        self.assertFalse(events[0].all_day)
+        self.assertIn('09:00-10:00', rendered)
+        self.assertNotIn('11:00-12:00', rendered)
+
+    def test_parse_ics_events_renders_value_date_as_all_day(self) -> None:
+        ics_text = """BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:fixture-all-day-001@example.invalid
+DTSTART;VALUE=DATE:20260608
+DTEND;VALUE=DATE:20260609
+SUMMARY:Fixture All Day Block
+LOCATION:Fixture Location Day
+DESCRIPTION:Synthetic fixture event. No personal data.
+END:VEVENT
+END:VCALENDAR
+"""
+
+        events = ics_reader.parse_ics_events(
+            ics_text,
+            calendar_id='fixture_primary',
+            timezone_name='Europe/Paris',
+        )
+        rendered = response_rendering.render_readonly_answer(
+            plan=self._read_today_plan(),
+            execution_result=_ExecutionResultFixture(events),
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertTrue(events[0].all_day)
+        self.assertEqual(events[0].start_iso, '2026-06-07T22:00:00Z')
+        self.assertEqual(events[0].end_iso, '2026-06-08T22:00:00Z')
+        self.assertIn('Toute la journee', rendered)
+        self.assertNotIn('02:00-02:00', rendered)
+
+    def test_utc_event_still_renders_in_requested_timezone(self) -> None:
+        ics_text = """BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:fixture-utc-001@example.invalid
+DTSTART:20260608T070000Z
+DTEND:20260608T080000Z
+SUMMARY:Fixture UTC Block
+LOCATION:Fixture Location UTC
+DESCRIPTION:Synthetic fixture event. No personal data.
+END:VEVENT
+END:VCALENDAR
+"""
+
+        events = ics_reader.parse_ics_events(
+            ics_text,
+            calendar_id='fixture_primary',
+            timezone_name='Europe/Paris',
+        )
+        rendered = response_rendering.render_readonly_answer(
+            plan=self._read_today_plan(),
+            execution_result=_ExecutionResultFixture(events),
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].start_iso, '2026-06-08T07:00:00Z')
+        self.assertEqual(events[0].timezone, 'Europe/Paris')
+        self.assertIn('09:00-10:00', rendered)
+        self.assertNotIn('07:00-08:00', rendered)
 
     def test_calendar_list_returns_two_anonymous_calendars_with_content_free_observation(self) -> None:
         transport = FakeReadTransport()
@@ -651,6 +744,33 @@ END:VEVENT
 END:VCALENDAR
 """
 
+    def _read_today_plan(self) -> agent_contract.AgendaAgentPlan:
+        return agent_contract.AgendaAgentPlan(
+            product_method=product_methods.METHOD_READ_TODAY,
+            intent='read agenda day',
+            calendar_scope={'calendar_ids': ['fixture_primary'], 'family_calendar': False, 'ambiguity': 'none'},
+            time_scope={
+                'kind': 'day',
+                'start': '2026-06-08T00:00:00Z',
+                'end': '2026-06-09T00:00:00Z',
+                'timezone': 'Europe/Paris',
+                'ambiguity': 'none',
+            },
+            tool_calls=(),
+            mutation={
+                'requested': False,
+                'kind': 'none',
+                'confirmation_required': False,
+                'confirmation_level': 'none',
+                'pending_action_id': '',
+            },
+            answer_mode='agenda_summary',
+            risk_flags=(),
+            fallback_reason='',
+            surface_intro='',
+            surface_outro='',
+        )
+
     def assertContentFreeObservation(self, observation: dict) -> None:
         self.assertTrue(observation['content_free'])
         self.assertFalse(observation_has_forbidden_shape(observation))
@@ -660,6 +780,13 @@ END:VCALENDAR
         self.assertNotIn('LOCATION:', rendered)
         self.assertNotIn('DESCRIPTION:', rendered)
         self.assertNotIn('UID:', rendered)
+
+
+class _ExecutionResultFixture:
+    def __init__(self, events: tuple[CalendarEvent, ...]) -> None:
+        self.status = 'ok'
+        self.events = tuple(events)
+        self.observation = {'content_free': True}
 
 
 if __name__ == '__main__':

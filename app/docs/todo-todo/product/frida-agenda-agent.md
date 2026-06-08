@@ -487,6 +487,15 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   de la lecture.
   Preuve livree: evenement stocke `07:00Z` avec timezone `Europe/Paris` en juin
   affiche `09:00`.
+- [x] Lot 5A.2: conserver `TZID` dans le parsing ICS local pour les proprietes
+  temporelles necessaires.
+  Preuve livree: `DTSTART;TZID=Europe/Paris:20260608T090000` et `DTEND`
+  associe sont stockes en UTC interne et rendus `09:00-10:00`, pas
+  `11:00-12:00`.
+- [x] Lot 5A.2: rendre `VALUE=DATE` comme evenement journee entiere.
+  Preuve livree: `DTSTART;VALUE=DATE` / `DTEND;VALUE=DATE` produit un seul
+  evenement `all_day` affiche `Toute la journee`, sans heure inventee
+  `02:00-02:00`.
 - [ ] Lot 5B: configuration runtime Sauron redacted, mode `active`, compte
   `tof`, secret CalDAV dedie present sans affichage.
 - [ ] Lot 5B: preuve live lire aujourd'hui.

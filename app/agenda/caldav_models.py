@@ -29,6 +29,7 @@ class CalendarEvent:
     timezone: str = 'UTC'
     etag: str = ''
     caldav_path: str = ''
+    all_day: bool = False
 
 
 @dataclass
