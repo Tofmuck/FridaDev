@@ -23,6 +23,9 @@ class AgendaAgentModelResponse:
     reason_code: str
     content: str = ''
     finish_reason: str = ''
+    status_code: int | None = None
+    response_chars: int = 0
+    duration_ms: int = 0
     attempt_count: int = 0
 
     def to_observability(self) -> dict[str, Any]:
@@ -33,6 +36,9 @@ class AgendaAgentModelResponse:
             'content_chars': len(self.content),
             'content_hash': contract.sha256_12(self.content),
             'finish_reason': str(self.finish_reason or ''),
+            'status_code': self.status_code,
+            'response_chars': int(self.response_chars or 0),
+            'duration_ms': int(self.duration_ms or 0),
             'attempt_count': int(self.attempt_count or 0),
             'content_free': True,
         }

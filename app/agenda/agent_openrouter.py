@@ -70,24 +70,27 @@ class OpenRouterAgendaAgentClient:
         except Exception:
             return _model_error(REASON_PROVIDER_ERROR, attempt_count=1)
         status_code = getattr(response, 'status_code', None)
+        duration_ms = int((self._monotonic() - started) * 1000)
         if status_code is not None and int(status_code) >= 400:
-            return _model_error(REASON_PROVIDER_ERROR, attempt_count=1)
+            return _model_error(REASON_PROVIDER_ERROR, status_code=int(status_code), duration_ms=duration_ms, attempt_count=1)
         try:
             data = response.json()
         except (TypeError, ValueError):
-            return _model_error(REASON_INVALID_RESPONSE, attempt_count=1)
+            return _model_error(REASON_INVALID_RESPONSE, status_code=status_code, duration_ms=duration_ms, attempt_count=1)
         choice = _first_choice(data)
         message = choice.get('message') if isinstance(choice.get('message'), Mapping) else {}
         content = str(message.get('content') or '')
         finish_reason = str(choice.get('finish_reason') or '')
         if not content:
-            return _model_error(REASON_INVALID_RESPONSE, attempt_count=1)
-        _ = int((self._monotonic() - started) * 1000)
+            return _model_error(REASON_INVALID_RESPONSE, status_code=status_code, duration_ms=duration_ms, attempt_count=1)
         return agent_runtime.AgendaAgentModelResponse(
             status=STATUS_OK,
             reason_code=REASON_OK,
             content=content,
             finish_reason=finish_reason,
+            status_code=status_code,
+            response_chars=len(content),
+            duration_ms=duration_ms,
             attempt_count=1,
         )
 
@@ -283,19 +286,22 @@ def _tool_calls_schema(*, max_tool_calls: int) -> dict[str, Any]:
 
 
 def _tool_params_schema() -> dict[str, Any]:
+    properties = {
+        'calendar_id': _nullable_text_schema(max_chars=80),
+        'event_id': _nullable_text_schema(max_chars=80),
+        'start': _nullable_text_schema(max_chars=64),
+        'end': _nullable_text_schema(max_chars=64),
+        'timezone': _nullable_text_schema(max_chars=80),
+        'query': _nullable_text_schema(max_chars=160),
+        'max_days': _nullable_integer_schema(minimum=1, maximum=31),
+        'limit': _nullable_integer_schema(minimum=1, maximum=50),
+    }
     return {
         'type': 'object',
         'additionalProperties': False,
-        'properties': {
-            'calendar_id': {'type': 'string', 'maxLength': 80},
-            'event_id': {'type': 'string', 'maxLength': 80},
-            'start': {'type': 'string', 'maxLength': 64},
-            'end': {'type': 'string', 'maxLength': 64},
-            'timezone': {'type': 'string', 'maxLength': 80},
-            'query': {'type': 'string', 'maxLength': 160},
-            'max_days': {'type': 'integer', 'minimum': 1, 'maximum': 31},
-            'limit': {'type': 'integer', 'minimum': 1, 'maximum': 50},
-        },
+        'description': 'Utilise null pour toute cle non employee; ne fournis une valeur que pour les params reels de l outil choisi.',
+        'required': sorted(properties.keys()),
+        'properties': properties,
     }
 
 
@@ -341,6 +347,21 @@ def _model_supports_sampling(model: str) -> bool:
     return not str(model or '').strip().lower().startswith('openai/gpt-5')
 
 
+def _nullable_text_schema(*, max_chars: int) -> dict[str, Any]:
+    return {
+        'type': ['string', 'null'],
+        'maxLength': int(max_chars),
+    }
+
+
+def _nullable_integer_schema(*, minimum: int, maximum: int) -> dict[str, Any]:
+    return {
+        'type': ['integer', 'null'],
+        'minimum': int(minimum),
+        'maximum': int(maximum),
+    }
+
+
 def _first_choice(data: Any) -> Mapping[str, Any]:
     if not isinstance(data, Mapping):
         return {}
@@ -351,10 +372,24 @@ def _first_choice(data: Any) -> Mapping[str, Any]:
     return first if isinstance(first, Mapping) else {}
 
 
-def _model_error(reason_code: str, *, attempt_count: int = 0) -> agent_runtime.AgendaAgentModelResponse:
+def _model_error(
+    reason_code: str,
+    *,
+    status_code: Any = None,
+    response_chars: int = 0,
+    duration_ms: int = 0,
+    attempt_count: int = 0,
+) -> agent_runtime.AgendaAgentModelResponse:
+    try:
+        normalized_status_code = int(status_code) if status_code is not None else None
+    except (TypeError, ValueError):
+        normalized_status_code = None
     return agent_runtime.AgendaAgentModelResponse(
         status=STATUS_ERROR,
         reason_code=reason_code,
         content='',
+        status_code=normalized_status_code,
+        response_chars=int(response_chars or 0),
+        duration_ms=int(duration_ms or 0),
         attempt_count=attempt_count,
     )

@@ -154,6 +154,55 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertEqual(user_payload['canonical_time_windows']['tomorrow']['end'], '2026-06-09T22:00:00Z')
         self.assertNotIn('RAW USER', messages[0]['content'])
 
+    def test_openrouter_tool_params_schema_is_strict_provider_compatible(self) -> None:
+        response_format = agent_openrouter.build_agenda_agent_response_format(max_tool_calls=4)
+        params_schema = (
+            response_format['json_schema']['schema']['properties']['tool_calls']['items']
+            ['properties']['params']
+        )
+
+        self.assertEqual(params_schema['required'], sorted(params_schema['properties'].keys()))
+        for field_schema in params_schema['properties'].values():
+            field_types = field_schema.get('type')
+            self.assertIsInstance(field_types, list)
+            self.assertIn('null', field_types)
+
+    def test_nullable_openrouter_tool_params_are_ignored_by_validator(self) -> None:
+        nullable_params = {
+            'calendar_id': None,
+            'event_id': None,
+            'start': '2026-06-08T00:00:00Z',
+            'end': '2026-06-09T00:00:00Z',
+            'timezone': 'Europe/Paris',
+            'query': None,
+            'max_days': None,
+            'limit': None,
+        }
+
+        validation = contract.validate_agent_payload(
+            _valid_payload(
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': nullable_params,
+                        'call_id': 'call-1',
+                    }
+                ],
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertEqual(validation.reason_code, contract.REASON_VALIDATED)
+        self.assertEqual(
+            validation.plan.tool_calls[0].params,
+            {
+                'start': '2026-06-08T00:00:00Z',
+                'end': '2026-06-09T00:00:00Z',
+                'timezone': 'Europe/Paris',
+            },
+        )
+
     def test_read_today_requires_canonical_today_window_when_context_is_present(self) -> None:
         canonical_payload = _payload_with_window(
             product_method=product_methods.METHOD_READ_TODAY,

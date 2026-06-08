@@ -389,14 +389,14 @@ def _validate_tool_calls(
         call_id = _safe_code(raw_call.get('call_id'), allow_empty=True, max_chars=120)
         if call_id is None:
             return contract.REASON_SCHEMA_INVALID
-        param_error = _validate_tool_params(tool_name, raw_call.get('params'))
-        if param_error:
-            return param_error
+        param_result = _validate_tool_params(tool_name, raw_call.get('params'))
+        if isinstance(param_result, str):
+            return param_result
         calls.append(
             contract.AgendaToolCall(
                 tool_name=tool_name,
                 method=method,
-                params=dict(raw_call.get('params') or {}),
+                params=param_result,
                 call_id=call_id,
             )
         )
@@ -439,16 +439,27 @@ def _validate_canonical_time_window(
     return ''
 
 
-def _validate_tool_params(tool_name: str, value: Any) -> str:
+def _validate_tool_params(tool_name: str, value: Any) -> dict[str, Any] | str:
     if not isinstance(value, Mapping):
         return contract.REASON_SCHEMA_INVALID
     tool_contract = _TOOL_PARAM_CONTRACTS[tool_name]
-    keys = set(str(key) for key in value.keys())
-    if keys & _FORBIDDEN_PARAM_KEYS or not keys.issubset(tool_contract['allowed']):
+    active_params: dict[str, Any] = {}
+    for raw_key, item in value.items():
+        key_text = str(raw_key)
+        if key_text in _FORBIDDEN_PARAM_KEYS:
+            return contract.REASON_TOOL_NOT_EXECUTABLE
+        if item is None:
+            continue
+        if key_text not in tool_contract['allowed']:
+            return contract.REASON_TOOL_NOT_EXECUTABLE
+        active_params[key_text] = item
+
+    keys = set(active_params)
+    if not keys.issubset(tool_contract['allowed']):
         return contract.REASON_TOOL_NOT_EXECUTABLE
     if not set(tool_contract['required']).issubset(keys):
         return contract.REASON_TOOL_NOT_EXECUTABLE
-    for key, item in value.items():
+    for key, item in active_params.items():
         key_text = str(key)
         if key_text in tool_contract['int_bounds']:
             if not isinstance(item, int):
@@ -459,7 +470,7 @@ def _validate_tool_params(tool_name: str, value: Any) -> str:
             continue
         if not _validate_tool_param_value(key_text, item):
             return contract.REASON_TOOL_NOT_EXECUTABLE
-    return ''
+    return active_params
 
 
 def _validate_tool_param_value(key: str, value: Any) -> bool:
