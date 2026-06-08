@@ -19,6 +19,7 @@ Primary current-state references:
 - Biblio librarian agent contract: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Agenda agent contract: `app/docs/states/specs/frida-agenda-agent-contract.md`
 - Agenda agent active TODO: `app/docs/todo-todo/product/frida-agenda-agent.md`
+- Agenda agent Lot 0 baseline and anonymous fixtures: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`, `app/docs/states/baselines/agenda-fixtures/`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Memory Admin contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Log module contract: `app/docs/states/specs/log-module-contract.md`
@@ -120,6 +121,7 @@ Frontend rehydration and operator observability
 - Biblio librarian-agent contract: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Agenda agent contract: `app/docs/states/specs/frida-agenda-agent-contract.md`
 - Agenda agent active TODO: `app/docs/todo-todo/product/frida-agenda-agent.md`
+- Agenda agent Lot 0 baseline and anonymous fixtures: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`, `app/docs/states/baselines/agenda-fixtures/`
 - Biblio / Catalogue librarian-agent architecture audit: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 - Archived Frida Biblio Last Chance closure: `app/docs/todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`
 - Archived Biblio librarian-agent roadmap: `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
@@ -207,6 +209,7 @@ References principales pour l'etat courant:
 - Contrat agent bibliothecaire Biblio: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Contrat agent Agenda: `app/docs/states/specs/frida-agenda-agent-contract.md`
 - TODO actif agent Agenda: `app/docs/todo-todo/product/frida-agenda-agent.md`
+- Baseline Lot 0 agent Agenda et fixtures anonymes: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`, `app/docs/states/baselines/agenda-fixtures/`
 - Contrat du dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Contrat Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Contrat du module logs: `app/docs/states/specs/log-module-contract.md`

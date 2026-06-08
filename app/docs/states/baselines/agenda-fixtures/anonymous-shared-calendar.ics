@@ -1,0 +1,26 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FridaDev//Agenda Lot 0 Anonymous Fixtures//EN
+CALSCALE:GREGORIAN
+X-WR-CALNAME:Fixture Shared Calendar
+X-FRIDA-FIXTURE:synthetic-anonymous
+X-FRIDA-RISK-FLAG:family_calendar
+BEGIN:VEVENT
+UID:fixture-shared-001@example.invalid
+DTSTAMP:20260608T000000Z
+DTSTART:20260610T090000Z
+DTEND:20260610T100000Z
+SUMMARY:Fixture Shared Window
+LOCATION:Fixture Location Gamma
+DESCRIPTION:Synthetic fixture event. No personal data.
+END:VEVENT
+BEGIN:VEVENT
+UID:fixture-shared-002@example.invalid
+DTSTAMP:20260608T000000Z
+DTSTART:20260610T150000Z
+DTEND:20260610T153000Z
+SUMMARY:Fixture Logistics Placeholder
+LOCATION:Fixture Location Delta
+DESCRIPTION:Synthetic fixture event. No personal data.
+END:VEVENT
+END:VCALENDAR

@@ -31,6 +31,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat agent bibliothecaire Biblio 2026-05-31: `states/specs/frida-biblio-librarian-agent-contract.md`
 - Contrat agent Agenda Frida 2026-06-08: `states/specs/frida-agenda-agent-contract.md`
 - TODO produit agent Agenda Frida 2026-06-08: `todo-todo/product/frida-agenda-agent.md`
+- Baseline Lot 0 agent Agenda Frida 2026-06-08: `states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
+- Fixtures anonymes Lot 0 agent Agenda Frida 2026-06-08: `states/baselines/agenda-fixtures/`
 - Audit Biblio / Catalogue et architecture agent bibliothecaire 2026-05-31: `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 - Baseline Lot 0 agent bibliothecaire Frida 2026-05-31: `states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md`
 - Verification OpenRouter / JSON du socle agent bibliothecaire 2026-06-01: `states/baselines/frida-biblio-librarian-agent-openrouter-json-2026-06-01.md`
@@ -209,6 +211,7 @@ But: relire le chantier livre permettant a Frida de consulter explicitement une 
 Lire d'abord:
 - `states/specs/frida-agenda-agent-contract.md` pour le contrat cible du futur agent Agenda: toggle `agenda_enabled`, agent borne, methodes produit, outils CalDAV, confirmations humaines, pending store temporaire, observabilite content-free et invariants securite.
 - `todo-todo/product/frida-agenda-agent.md` pour la TODO produit active et cochable: familles lecture, clarification, proposition, ecriture confirmee, contexte/memoire et lots runtime futurs.
+- `states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md` et `states/baselines/agenda-fixtures/` pour la baseline Lot 0, les fixtures CalDAV anonymes locales et la preuve content-free attendue.
 - `states/specs/agentic-response-surface-contract.md` pour conserver le principe "Frida parle, l'agent travaille, le deterministe protege" sans canal visible parallele.
 - `states/specs/frida-biblio-librarian-agent-contract.md` pour le modele voisin: toggle utilisateur separe du mode runtime agent, schema JSON, product methods, tools allowlistes et fallback deterministe.
 - `states/audits/frida-agentic-response-surface-lot0-audit-2026-06-06.md` pour le chemin message assistant normal: timestamp, `message.meta`, contexte suivant, Memory et resumes.

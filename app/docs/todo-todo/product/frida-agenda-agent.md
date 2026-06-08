@@ -2,6 +2,8 @@
 
 Statut: TODO actif docs-only au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
+Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
+Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
 Portee: cadrage A -> Z du futur agent Agenda, sans implementation dans ce lot.
 
 Question prealable: existe-t-il un meilleur plan ?
@@ -308,10 +310,11 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ### Lot 0 - Baseline docs et fixtures anonymes
 
-- [ ] Relire spec Agenda et TODO.
-- [ ] Creer des fixtures CalDAV anonymes ou un calendrier de test.
-- [ ] Definir la preuve content-free attendue.
-- [ ] Confirmer le no-go sur evenements personnels.
+- [x] Relire spec Agenda et TODO.
+- [x] Creer des fixtures CalDAV anonymes cote repo, sans calendrier test
+  Nextcloud reel.
+- [x] Definir la preuve content-free attendue.
+- [x] Confirmer le no-go sur evenements personnels.
 
 ### Lot 1 - Toggle UI et no-op backend
 

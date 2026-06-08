@@ -1,0 +1,74 @@
+{
+  "schema_version": "frida_agenda_lot0_fixture_meta_v1",
+  "fixture_set": "agenda_lot0_anonymous_2026_06_08",
+  "source": "synthetic_repo_fixture",
+  "nextcloud_access": false,
+  "caldav_access": false,
+  "app_password_created": false,
+  "contains_personal_data": false,
+  "calendars": [
+    {
+      "calendar_id_short": "fixture_primary",
+      "family_calendar": false,
+      "event_count": 2,
+      "window_start": "2026-06-09T00:00:00Z",
+      "window_end": "2026-06-10T00:00:00Z"
+    },
+    {
+      "calendar_id_short": "fixture_shared",
+      "family_calendar": true,
+      "event_count": 2,
+      "window_start": "2026-06-10T00:00:00Z",
+      "window_end": "2026-06-11T00:00:00Z"
+    }
+  ],
+  "future_observability_allowed": [
+    "schema_version",
+    "toggle",
+    "mode",
+    "product_method",
+    "tool_names",
+    "status",
+    "reason_code",
+    "calendar_id_short",
+    "family_calendar",
+    "window_start",
+    "window_end",
+    "timezone",
+    "event_count",
+    "candidate_count",
+    "selected_count",
+    "pending_action_id",
+    "confirmation_level",
+    "etag_hash_short",
+    "payload_hash_short",
+    "duration_bucket",
+    "secret_present",
+    "redacted"
+  ],
+  "future_observability_forbidden": [
+    "app_password",
+    "primary_password",
+    "cookie",
+    "authorization_header",
+    "token",
+    "full_caldav_url",
+    "raw_uid",
+    "raw_etag",
+    "raw_ics",
+    "event_title",
+    "event_description",
+    "event_location",
+    "attendee",
+    "raw_model_payload",
+    "full_prompt",
+    "full_dialogue",
+    "personal_event"
+  ],
+  "runtime_lot_gate": {
+    "lot_1_caldav_access_allowed": false,
+    "lot_2_secret_value_loggable": false,
+    "lot_3_raw_ics_loggable": false,
+    "lot_7_mutation_without_confirmation_allowed": false
+  }
+}

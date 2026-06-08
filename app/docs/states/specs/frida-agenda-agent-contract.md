@@ -527,6 +527,33 @@ Invariants durs:
 
 Les preuves futures doivent rester content-free.
 
+Baseline et fixtures Lot 0:
+
+- baseline source:
+  `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`;
+- fixtures anonymes:
+  `app/docs/states/baselines/agenda-fixtures/`;
+- les fixtures sont synthetiques, versionnees, non personnelles et locales au
+  repo;
+- elles peuvent servir aux tests unitaires locaux de parsing, fenetres, counts,
+  hashes courts et redaction;
+- elles ne sont pas une preuve live CalDAV et ne doivent pas etre importees dans
+  Nextcloud;
+- aucun lot runtime ne doit recopier les titres, descriptions, lieux, UID,
+  ETag, URL CalDAV ou payload ICS dans les logs, JSONL, read-models ou docs de
+  preuve.
+
+Preuve content-free minimale:
+
+- autorise: schema version, toggle, mode, methode produit, noms d'outils,
+  statut, reason code, calendar id court, flag calendrier familial, fenetre
+  start/end, timezone, counts, hashes courts, pending action id, niveau de
+  confirmation, booleens de presence et valeurs redacted;
+- interdit: app-password, mot de passe principal, cookie, header Authorization,
+  token, URL CalDAV complete, UID brut, ETag brut, ICS brut, titre,
+  description, lieu, invite, payload modele brut, prompt complet, dialogue
+  complet et evenement personnel brut.
+
 Read-only:
 
 - lister les calendriers sous forme ids courts et counts;

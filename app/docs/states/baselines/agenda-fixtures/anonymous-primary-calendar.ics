@@ -1,0 +1,25 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FridaDev//Agenda Lot 0 Anonymous Fixtures//EN
+CALSCALE:GREGORIAN
+X-WR-CALNAME:Fixture Primary Calendar
+X-FRIDA-FIXTURE:synthetic-anonymous
+BEGIN:VEVENT
+UID:fixture-primary-001@example.invalid
+DTSTAMP:20260608T000000Z
+DTSTART:20260609T070000Z
+DTEND:20260609T080000Z
+SUMMARY:Fixture Focus Block
+LOCATION:Fixture Location Alpha
+DESCRIPTION:Synthetic fixture event. No personal data.
+END:VEVENT
+BEGIN:VEVENT
+UID:fixture-primary-002@example.invalid
+DTSTAMP:20260608T000000Z
+DTSTART:20260609T123000Z
+DTEND:20260609T130000Z
+SUMMARY:Fixture Planning Hold
+LOCATION:Fixture Location Beta
+DESCRIPTION:Synthetic fixture event. No personal data.
+END:VEVENT
+END:VCALENDAR
