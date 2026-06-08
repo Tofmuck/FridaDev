@@ -32,6 +32,10 @@
   if (!biblioMode) {
     throw new Error("FridaBiblioMode module missing");
   }
+  const agendaMode = window.FridaAgendaMode;
+  if (!agendaMode) {
+    throw new Error("FridaAgendaMode module missing");
+  }
   const {
     STREAMING_UI_STATE_INTERRUPTED,
     STREAMING_UI_EVENT_REQUEST_STARTED,
@@ -62,6 +66,7 @@
   const btnImageGeneration = $("#btnImageGeneration");
   const btnAdobeMode = $("#btnAdobeMode");
   const btnBiblioMode = $("#btnBiblioMode");
+  const btnAgendaMode = $("#btnAgendaMode");
   const adobeProductChoices = $("#adobeProductChoices");
   const btnExportConversation = $("#btnExportConversation");
   const activeDocumentFileInput = $("#activeDocumentFileInput");
@@ -102,6 +107,7 @@
   let webSearchEnabled = localStorage.getItem("frida.webSearch") === "1";
   let adobeModeController = null;
   let biblioModeController = null;
+  let agendaModeController = null;
   const isAdobeModeActive = () => Boolean(adobeModeController && adobeModeController.isActive());
   const updateWebSearchBtn = () => {
     if (!btnWebSearch) return;
@@ -424,6 +430,9 @@
   biblioModeController = biblioMode.createBiblioModeController({
     buttonEl: btnBiblioMode,
   });
+  agendaModeController = agendaMode.createAgendaModeController({
+    buttonEl: btnAgendaMode,
+  });
   updateWebSearchBtn();
 
   // ---- Nouveau chat
@@ -584,6 +593,7 @@
     const thread = threadId ? getThreadById(threadId) : null;
     const adobePayload = adobeModeController ? adobeModeController.getPayload() : {};
     const biblioPayload = biblioModeController ? biblioModeController.getPayload() : { biblio_enabled: false };
+    const agendaPayload = agendaModeController ? agendaModeController.getPayload() : { agenda_enabled: false };
     const adobeActive = Boolean(adobePayload.specialization_profile);
     const emitStreamEvent = (event) => {
       if (typeof options?.onStreamEvent === "function") {
@@ -600,6 +610,7 @@
         web_search: adobeActive ? false : webSearchEnabled,
         input_mode: inputMode === "voice" ? "voice" : "keyboard",
         ...biblioPayload,
+        ...agendaPayload,
         ...adobePayload,
       })
     });

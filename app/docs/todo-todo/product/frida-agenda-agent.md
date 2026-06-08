@@ -333,11 +333,11 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ### Lot 1 - Toggle UI et no-op backend
 
-- [ ] Ajouter le bouton Agenda off par defaut.
-- [ ] Envoyer `agenda_enabled`.
-- [ ] Backend toggle off = no-op prouve.
-- [ ] Backend toggle on sans runtime agent = degradation propre.
-- [ ] Aucun acces CalDAV dans ce lot.
+- [x] Ajouter le bouton Agenda off par defaut.
+- [x] Envoyer `agenda_enabled`.
+- [x] Backend toggle off = no-op prouve.
+- [x] Backend toggle on sans runtime agent = degradation propre.
+- [x] Aucun acces CalDAV dans ce lot.
 
 ### Lot 2 - Runtime settings et secrets redacted
 

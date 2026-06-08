@@ -1281,6 +1281,7 @@ body {
 .btn-image-generation,
 .btn-adobe-mode,
 .btn-biblio-mode,
+.btn-agenda-mode,
 .btn-web-search {
   display: flex;
   align-items: center;
@@ -1301,6 +1302,7 @@ body {
 .btn-image-generation:hover,
 .btn-adobe-mode:hover,
 .btn-biblio-mode:hover,
+.btn-agenda-mode:hover,
 .btn-web-search:hover {
   color: var(--fg-muted);
 }
@@ -1346,6 +1348,11 @@ body {
   grid-row: 2;
 }
 
+.btn-agenda-mode {
+  grid-column: 4;
+  grid-row: 1;
+}
+
 .btn-dictation[data-dictation-state="recording"] {
   color: #a33a32;
   border-color: rgba(163, 58, 50, 0.45);
@@ -1370,6 +1377,7 @@ body {
 .btn-image-generation:disabled,
 .btn-adobe-mode:disabled,
 .btn-biblio-mode:disabled,
+.btn-agenda-mode:disabled,
 .btn-web-search:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -1397,6 +1405,13 @@ body {
 }
 
 .btn-biblio-mode.active {
+  color: var(--fg);
+  border-color: var(--border-strong);
+  background: var(--surface-active);
+  box-shadow: inset 0 0 0 1px rgba(25, 23, 20, 0.035);
+}
+
+.btn-agenda-mode.active {
   color: var(--fg);
   border-color: var(--border-strong);
   background: var(--surface-active);
@@ -1763,6 +1778,7 @@ body {
   .btn-image-generation,
   .btn-adobe-mode,
   .btn-biblio-mode,
+  .btn-agenda-mode,
   .btn-web-search {
     width: 36px;
     min-width: 36px;

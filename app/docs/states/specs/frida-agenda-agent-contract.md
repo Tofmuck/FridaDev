@@ -195,6 +195,21 @@ Toggle conversationnel:
   Agenda;
 - si on, Frida peut appeler l'agent Agenda, sans garantir une mutation.
 
+Etat livre Lot 1:
+
+- `agenda_enabled` est accepte dans le payload `/api/chat`;
+- le frontend expose un toggle Agenda off par defaut avec persistance navigateur
+  locale, voisin du toggle Biblio;
+- `agenda_enabled` absent ou false reste un no-op strict cote backend;
+- `agenda_enabled=true` appelle seulement un runtime no-op local
+  `app/agenda/chat_runtime.py`;
+- ce runtime no-op produit une observabilite content-free
+  `frida_agenda_lot1_noop_v1` avec `caldav_access=false`,
+  `nextcloud_access=false`, `secret_access=false` et
+  `mutation_attempted=false`;
+- aucun prompt lane, final lock, outil CalDAV, secret ou acces Nextcloud n'est
+  cree dans Lot 1.
+
 Mode runtime agent:
 
 - section cible: `agenda_agent`;

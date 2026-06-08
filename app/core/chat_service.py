@@ -21,6 +21,7 @@ from core.hermeneutic_node.runtime import primary_node
 from core.hermeneutic_node.validation import validation_agent
 from core.hermeneutic_node.inputs import stimmung_input as canonical_stimmung_input
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
+from agenda import chat_runtime as agenda_chat_runtime
 from biblio import chat_runtime as biblio_chat_runtime
 from biblio import observability as biblio_observability
 from observability import active_documents_observability
@@ -450,6 +451,20 @@ def _emit_biblio_observability(result: Any) -> None:
     )
 
 
+def _emit_agenda_observability(result: Any) -> None:
+    payload = getattr(result, 'observability_payload', None)
+    if not isinstance(payload, Mapping):
+        return
+    clean_payload = dict(payload)
+    chat_turn_logger.set_state('agenda', clean_payload)
+    chat_turn_logger.emit(
+        'agenda',
+        status='ok',
+        reason_code=str(clean_payload.get('reason_code') or '') or None,
+        payload=clean_payload,
+    )
+
+
 def _biblio_assistant_response_override(result: Any) -> chat_llm_flow.AssistantResponseOverride | None:
     lock_reader = getattr(biblio_chat_runtime, 'final_response_lock_for_result', None)
     lock = lock_reader(result) if callable(lock_reader) else getattr(result, 'final_response_lock', None)
@@ -850,6 +865,16 @@ def chat_response(
     )
     biblio_chat_runtime.attach_biblio_conversation_state(conversation, biblio_result)
     _emit_biblio_observability(biblio_result)
+
+    if agenda_chat_runtime.normalize_agenda_enabled(data.get('agenda_enabled')):
+        agenda_result = agenda_chat_runtime.run_agenda_chat_turn(
+            data,
+            user_msg=user_msg,
+            conversation_id=conversation.get('id'),
+            now_iso=now_iso_value,
+            config_module=config_module,
+        )
+        _emit_agenda_observability(agenda_result)
 
     hermeneutic_node_runtime = _run_hermeneutic_node_insertion_point(
         conversation=conversation,
