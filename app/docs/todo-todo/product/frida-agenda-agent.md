@@ -77,6 +77,26 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   blocage d'architecture serveur.
 - [x] Les preuves serveur futures ne doivent pas dependre d'iOS ou macOS.
 
+## Decisions V1 tranchees
+
+- [x] Identite CalDAV V1: compte humain `tof` + app-password dedie Frida
+  Agenda.
+- [x] Pas de compte service Nextcloud `frida` pour l'Agenda V1.
+- [x] Un utilisateur `frida` pourra etre envisage plus tard pour Files /
+  repertoire Frida, mais ce n'est pas le sujet Agenda actuel.
+- [x] Ne pas creer l'app-password dans ce lot.
+- [x] Ne jamais afficher ni stocker la valeur de l'app-password dans docs,
+  logs, JSONL, prompt LLM, sortie terminal ou reponse.
+- [x] Privacy V1: instance personnelle locale/OVH privee; les reponses Agenda
+  visibles suivent le contrat memoire normal de Frida.
+- [x] Pas de redaction speciale memoire pour l'Agenda V1, hors secrets et
+  observabilite content-free.
+- [x] Le contenu visible que l'utilisateur demande a Frida peut etre memorise
+  comme dialogue normal.
+- [x] Les frottements Amandine/macOS/iOS restent de l'administration client.
+- [x] Amandine/Apple ne bloque pas le chantier code Agenda.
+- [x] Les preuves serveur futures ne dependent toujours pas d'iOS/macOS.
+
 ## Invariants securite
 
 - [ ] Ne jamais utiliser la DB Nextcloud depuis Frida.
@@ -85,8 +105,10 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [ ] Ne jamais utiliser de mot de passe principal.
   Preuve attendue: runtime settings/secrets n'acceptent qu'un secret dedie et
   redacted.
-- [ ] Utiliser un app-password dedie Frida, nomme et revocable.
-  Preuve attendue: presence booleenne redacted, aucune valeur en logs/docs.
+- [ ] Utiliser le compte humain `tof` avec un app-password dedie Frida Agenda,
+  nomme et revocable.
+  Preuve attendue: presence booleenne redacted, aucune valeur en logs/docs, pas
+  de compte service `frida` pour Agenda V1.
 - [ ] Garder les secrets uniquement cote runtime/config serveur.
   Preuve attendue: payload agent et observabilite sans secret.
 - [ ] Utiliser CalDAV comme frontiere d'acces.
@@ -118,8 +140,10 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve attendue: test frontend payload `agenda_enabled=false/true`.
 - [ ] Ajouter une section runtime `agenda_agent`.
   Preuve attendue: schema runtime settings, seed, API admin redacted.
-- [ ] Ajouter une source de secret CalDAV dediee, jamais exposee au LLM.
-  Preuve attendue: resolution secret avec read path redacted.
+- [ ] Ajouter une source de secret CalDAV dediee au compte `tof`, jamais
+  exposee au LLM.
+  Preuve attendue: resolution secret avec read path redacted, aucun
+  app-password cree par le code.
 - [ ] Ajouter un module futur `app/agenda/` avec responsabilites explicites:
   agent contract, product methods, CalDAV tools, chat runtime, observability.
   Preuve attendue: fichiers separes par responsabilite, pas de `utils.py`.
@@ -241,6 +265,10 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve attendue: payload de reprise avec Delta-T, content-free si exporte.
 - [ ] `AG-CTX-04` Memory/resume/embeddings suivent les contrats Frida.
   Preuve attendue: trace eligible ou echec embedding non bloquant.
+- [ ] `AG-CTX-04bis` Privacy V1: pas de redaction speciale memoire pour les
+  reponses Agenda visibles.
+  Preuve attendue: reponse visible traitee comme dialogue normal, secrets
+  exclus, observabilite content-free.
 - [ ] `AG-CTX-05` pas de dump brut permanent de calendrier.
   Preuve attendue: pas d'ICS, pas de liste brute non demandee, pas de payload
   CalDAV dans meta/logs.
@@ -296,7 +324,7 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 ### Lot 2 - Runtime settings et secrets redacted
 
 - [ ] Ajouter section `agenda_agent`.
-- [ ] Ajouter source secret CalDAV dediee redacted.
+- [ ] Ajouter source secret CalDAV dediee au compte `tof`, redacted.
 - [ ] Ajouter validations admin.
 - [ ] Ajouter tests anti-fuite.
 - [ ] Ne pas creer d'app-password dans le code.

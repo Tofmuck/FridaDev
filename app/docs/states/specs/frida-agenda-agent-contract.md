@@ -99,8 +99,9 @@ Insertion cible:
   et runtime chat, appele depuis `chat_service` a cote de Biblio;
 - runtime settings: une section future `agenda_agent` pour le mode, le modele,
   les budgets, timeouts et limites;
-- secrets: une section ou source runtime dediee pour l'identifiant CalDAV et
-  l'app-password, jamais exposee au LLM ni aux logs;
+- identite CalDAV V1: compte humain `tof` + app-password dedie Frida Agenda;
+- secrets: une section ou source runtime dediee pour l'app-password, jamais
+  exposee au LLM ni aux logs;
 - surface finale: `AssistantResponseOverride` quand le resultat Agenda produit
   une reponse finale verrouillee; sinon lane prompt bornee ou clarification
   normale selon le cas.
@@ -128,9 +129,45 @@ Etat issu du rapport plateforme du 2026-06-07 et du contexte produit courant:
 Consequences pour FridaDev:
 
 - la preuve serveur future ne doit pas dependre de macOS ou iOS;
+- les frottements Amandine / Apple restent de l'administration client et ne
+  bloquent pas le chantier code Agenda;
 - CalDAV est la frontiere d'acces;
 - aucune lecture DB Nextcloud n'est autorisee;
 - aucune action par scraping de l'UI Nextcloud n'est autorisee.
+
+## 4 bis. Decisions V1 tranchees
+
+Identite CalDAV V1:
+
+- Frida Agenda utilise le compte Nextcloud humain `tof` pour le premier
+  chantier Agenda;
+- elle utilisera un app-password dedie, nomme et revocable;
+- pas de compte service Nextcloud `frida` pour l'Agenda V1;
+- un utilisateur `frida` pourra etre envisage plus tard pour Files /
+  repertoire Frida, mais ce n'est pas le sujet Agenda actuel;
+- ce lot ne cree pas l'app-password;
+- la valeur de l'app-password ne doit jamais etre affichee ni stockee dans les
+  docs, logs, JSONL, prompts LLM, sorties terminal ou reponses.
+
+Privacy V1:
+
+- l'instance est une instance personnelle locale/OVH privee;
+- les reponses Agenda visibles sont des reponses normales de Frida;
+- elles entrent normalement dans le contexte, les resumes, embeddings et la
+  memoire longue selon les contrats Frida existants;
+- pas de politique speciale de redaction memoire pour l'Agenda V1;
+- le contenu visible que l'utilisateur demande a Frida peut etre memorise comme
+  dialogue normal;
+- les secrets restent exclus partout;
+- les logs, JSONL, read-models et observabilite restent content-free.
+
+Amandine / Apple:
+
+- les frottements Amandine, macOS et iOS restent de l'administration client;
+- ils ne bloquent pas le chantier code Agenda;
+- les preuves serveur futures ne dependent toujours pas d'iOS ou macOS;
+- ce point ne doit pas etre traite dans un lot applicatif Agenda sans demande
+  explicite.
 
 ## 5. Toggle et modes
 
@@ -159,7 +196,8 @@ Mode runtime agent:
 
 Secrets runtime:
 
-- l'app-password CalDAV dediee Frida est un secret serveur;
+- l'app-password CalDAV dediee Frida Agenda pour le compte `tof` est un secret
+  serveur;
 - elle ne doit pas apparaitre dans le payload agent, le prompt LLM, la reponse,
   les logs, les JSONL, les docs ou les sorties terminal;
 - les read-models admin peuvent exposer seulement des booleens de presence et
@@ -466,7 +504,9 @@ Invariants durs:
 
 - pas de DB directe Nextcloud;
 - pas de mot de passe principal;
-- app-password dedie Frida, jamais expose au LLM;
+- identite CalDAV V1 = compte humain `tof` + app-password dedie Frida Agenda;
+- pas de compte service Nextcloud `frida` pour l'Agenda V1;
+- app-password dedie Frida Agenda, jamais expose au LLM;
 - secrets uniquement cote runtime/config serveur;
 - CalDAV comme frontiere d'acces;
 - pas d'ecriture sans confirmation humaine;
@@ -478,6 +518,8 @@ Invariants durs:
 - tout live proof doit etre content-free ou anonymise;
 - aucun secret, token, app-password, cookie ou evenement personnel brut dans
   JSONL/docs;
+- pas de redaction speciale memoire pour les reponses Agenda visibles en V1,
+  hors secrets et observabilite content-free;
 - aucune mutation si le calendrier cible ou le fuseau horaire sont ambigus;
 - aucune suppression si l'evenement cible n'est pas relu juste avant execution.
 
