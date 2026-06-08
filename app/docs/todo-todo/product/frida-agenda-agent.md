@@ -99,6 +99,21 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Amandine/Apple ne bloque pas le chantier code Agenda.
 - [x] Les preuves serveur futures ne dependent toujours pas d'iOS/macOS.
 
+## Verrou architecture applicative Agenda
+
+- [x] Tous les nouveaux fichiers applicatifs Agenda doivent etre ranges dans un
+  module dedie au meme niveau que `app/biblio/`.
+  Nom cible actuel: `app/agenda/`.
+- [x] `app/agenda/` est le repertoire calendrier/agenda. La logique Agenda ne
+  doit pas etre dispersee dans `app/core/`, `app/web/`, `app/admin/` ou ailleurs,
+  sauf pour les points de branchement strictement necessaires.
+- [x] Pour les nouveaux fichiers Agenda, aucun fichier ne doit devenir un gros
+  fichier fourre-tout.
+- [x] Regle pratique: si un nouveau fichier Agenda approche ou depasse 600
+  lignes, le decouper par responsabilite avant commit.
+- [x] Interdits: `utils.py`, `helpers.py` generique, ou module qui melange agent
+  contract, CalDAV, runtime chat, pending store, observabilite et rendu.
+
 ## Invariants securite
 
 - [ ] Ne jamais utiliser la DB Nextcloud depuis Frida.

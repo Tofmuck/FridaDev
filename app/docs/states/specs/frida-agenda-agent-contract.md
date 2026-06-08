@@ -106,6 +106,19 @@ Insertion cible:
   une reponse finale verrouillee; sinon lane prompt bornee ou clarification
   normale selon le cas.
 
+Frontieres module Agenda:
+
+- tous les nouveaux fichiers applicatifs Agenda vivent dans `app/agenda/`, au
+  meme niveau que `app/biblio/`;
+- `app/agenda/` est le repertoire calendrier/agenda: la logique Agenda ne doit
+  pas etre dispersee dans `app/core/`, `app/web/`, `app/admin/` ou ailleurs,
+  sauf pour les points de branchement strictement necessaires;
+- les fichiers de `app/agenda/` restent separes par responsabilite;
+- si un nouveau fichier Agenda approche ou depasse 600 lignes, il doit etre
+  decoupe avant commit;
+- ne pas creer de `utils.py`, de `helpers.py` generique, ni de fichier melant
+  agent contract, CalDAV, runtime chat, pending store, observabilite et rendu.
+
 ## 4. Cartographie Nextcloud / Agenda
 
 Etat issu du rapport plateforme du 2026-06-07 et du contexte produit courant:
