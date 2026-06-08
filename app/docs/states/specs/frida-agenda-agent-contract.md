@@ -399,7 +399,19 @@ Regles:
   `tool_calls`;
 - la validation locale refuse les params techniques qui portent URL CalDAV,
   UID, ETag, ICS brut, Authorization, cookie, token ou app-password;
+- `calendar_id` et `event_id` sont des identifiants locaux courts, jamais une
+  URL complete, un chemin `/remote.php/dav/...`, un UID/e-mail brut, un ETag ou
+  une valeur contenant un secret;
+- `query`, `start`, `end` et `timezone` restent bornes par type et forme:
+  aucun payload ICS, URL/path CalDAV, Authorization, cookie, token,
+  app-password, UID/e-mail ou marqueur `SUMMARY`/`LOCATION`/`DESCRIPTION`;
 - une mutation sans `confirmation_required=true` est invalide;
+- une methode read-only, clarification ou contexte doit porter
+  `mutation.kind=none` quand aucune mutation n'est demandee;
+- les methodes `propose_*` peuvent porter l'intention de mutation associee a la
+  methode produit, mais ne doivent pas devenir des mutations executees;
+- les methodes `confirm_*` exigent `requested=true`, confirmation humaine,
+  `pending_action_id` non vide et kind coherent;
 - une suppression exige `confirmation_level=reinforced`;
 - le calendrier familial exige un risk flag dedie et une confirmation claire
   pour toute mutation;
@@ -744,8 +756,14 @@ Preuve Lot 4 locale:
   `null`;
 - les outils inconnus, hors methode produit, mutatifs ou avec params interdits
   sont refuses avant tout reseau;
+- les valeurs dangereuses dans des params autorises sont refusees: URL/path
+  CalDAV brut dans `calendar_id`, UID/e-mail brut dans `event_id`, marqueurs
+  secret/ICS dans `query`, `start`, `end` ou `timezone`;
 - les mutations demandees exigent confirmation humaine et les suppressions
   exigent confirmation renforcee;
+- les mutations incoherentes sont refusees: une methode read-only ne peut pas
+  porter `kind=create|update|delete`, meme avec `requested=false`;
+- les confirmations exigent un pending action id non vide;
 - le runtime agent est fakeable/injectable en test et le client par defaut ne
   contacte aucun provider;
 - le toggle conversationnel et le mode runtime restent deux conditions

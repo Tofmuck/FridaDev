@@ -105,6 +105,94 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
                 self.assertEqual(validation.status, contract.STATUS_REJECTED)
                 self.assertEqual(validation.reason_code, reason)
 
+    def test_tool_param_values_reject_raw_caldav_uid_and_secret_shapes_content_free(self) -> None:
+        raw_url = 'https://cloud.frida-system.fr/remote.php/dav/calendars/tof/Famille/'
+        raw_path = '/remote.php/dav/calendars/tof/Famille/'
+        raw_uid = 'abc123@example.invalid'
+        raw_query = 'Authorization bearer token should-not-leak'
+        cases = [
+            _valid_payload(
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': {
+                            'calendar_id': raw_url,
+                            'start': '2026-06-08T00:00:00Z',
+                            'end': '2026-06-09T00:00:00Z',
+                            'timezone': 'Europe/Paris',
+                        },
+                        'call_id': 'call-1',
+                    }
+                ],
+            ),
+            _valid_payload(
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': {
+                            'calendar_id': raw_path,
+                            'start': '2026-06-08T00:00:00Z',
+                            'end': '2026-06-09T00:00:00Z',
+                            'timezone': 'Europe/Paris',
+                        },
+                        'call_id': 'call-1',
+                    }
+                ],
+            ),
+            _valid_payload(
+                product_method=product_methods.METHOD_EVENT_DETAILS,
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': raw_uid},
+                        'call_id': 'call-1',
+                    }
+                ],
+            ),
+            _valid_payload(
+                product_method=product_methods.METHOD_SEARCH_EVENTS,
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_SEARCH,
+                        'method': 'GET',
+                        'params': {'query': raw_query, 'limit': 5},
+                        'call_id': 'call-1',
+                    }
+                ],
+            ),
+        ]
+        for payload in cases:
+            with self.subTest(payload=payload['tool_calls'][0]['params']):
+                validation = contract.validate_agent_payload(payload)
+                observation = json.dumps(validation.to_observability(), sort_keys=True)
+                self.assertEqual(validation.status, contract.STATUS_REJECTED)
+                self.assertEqual(validation.reason_code, contract.REASON_TOOL_NOT_EXECUTABLE)
+                self.assertNotIn(raw_url, observation)
+                self.assertNotIn(raw_path, observation)
+                self.assertNotIn(raw_uid, observation)
+                self.assertNotIn(raw_query, observation)
+
+    def test_local_short_event_id_remains_valid_for_known_state_references(self) -> None:
+        validation = contract.validate_agent_payload(
+            _valid_payload(
+                product_method=product_methods.METHOD_EVENT_DETAILS,
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': 'event-1'},
+                        'call_id': 'call-1',
+                    }
+                ],
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertEqual(validation.reason_code, contract.REASON_VALIDATED)
+
     def test_mutation_and_delete_payloads_require_human_confirmation_contract(self) -> None:
         delete_without_reinforced = _valid_payload(
             product_method=product_methods.METHOD_PROPOSE_DELETE_EVENT,
@@ -151,6 +239,60 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
             answer_mode='mutation_pending_confirmation',
         )
         self.assertEqual(contract.validate_agent_payload(confirmed_delete).status, contract.STATUS_VALIDATED)
+
+    def test_read_only_methods_reject_incoherent_mutation_kind_even_when_not_requested(self) -> None:
+        incoherent = _valid_payload(
+            mutation={
+                'requested': False,
+                'kind': 'create',
+                'confirmation_required': False,
+                'confirmation_level': 'none',
+                'pending_action_id': '',
+            }
+        )
+        validation = contract.validate_agent_payload(incoherent)
+
+        self.assertEqual(validation.status, contract.STATUS_REJECTED)
+        self.assertEqual(validation.reason_code, contract.REASON_MUTATION_METHOD_MISMATCH)
+        self.assertNotIn('create', json.dumps(validation.to_observability(), sort_keys=True))
+        self.assertEqual(contract.validate_agent_payload(_valid_payload()).status, contract.STATUS_VALIDATED)
+
+    def test_propose_and_confirm_mutation_methods_keep_strict_confirmation_contract(self) -> None:
+        proposed_create = _valid_payload(
+            product_method=product_methods.METHOD_PROPOSE_CREATE_EVENT,
+            tool_calls=[],
+            mutation={
+                'requested': False,
+                'kind': 'create',
+                'confirmation_required': False,
+                'confirmation_level': 'none',
+                'pending_action_id': '',
+            },
+            answer_mode='proposal',
+        )
+        confirmed_create = _valid_payload(
+            product_method=product_methods.METHOD_CONFIRM_CREATE_EVENT,
+            tool_calls=[],
+            mutation={
+                'requested': True,
+                'kind': 'create',
+                'confirmation_required': True,
+                'confirmation_level': 'simple',
+                'pending_action_id': 'pending-create-1',
+            },
+            answer_mode='mutation_pending_confirmation',
+        )
+        missing_pending = {
+            **confirmed_create,
+            'mutation': {**confirmed_create['mutation'], 'pending_action_id': ''},
+        }
+
+        self.assertEqual(contract.validate_agent_payload(proposed_create).status, contract.STATUS_VALIDATED)
+        self.assertEqual(contract.validate_agent_payload(confirmed_create).status, contract.STATUS_VALIDATED)
+        self.assertEqual(
+            contract.validate_agent_payload(missing_pending).reason_code,
+            contract.REASON_MUTATION_REQUIRES_CONFIRMATION,
+        )
 
     def test_agent_runtime_off_active_invalid_and_secret_guards(self) -> None:
         fake = _FakeModelClient(_valid_payload())

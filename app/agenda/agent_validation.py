@@ -48,9 +48,15 @@ _FORBIDDEN_MARKERS = (
     'END:VEVENT',
     'UID:',
     'ETag:',
+    'SUMMARY:',
+    'LOCATION:',
+    'DESCRIPTION:',
+    'ATTENDEE:',
+    'ORGANIZER:',
     'Authorization',
     'Cookie:',
     'app-password',
+    'app_password',
     'value_encrypted',
     'caldav_path',
     'caldav_url',
@@ -297,6 +303,16 @@ def _validate_mutation(
     pending_action_id = _safe_code(mutation.get('pending_action_id'), allow_empty=True, max_chars=120)
     if kind not in _MUTATION_KINDS or level not in _CONFIRMATION_LEVELS or pending_action_id is None:
         return contract.REASON_SCHEMA_INVALID
+    if method.family in {product_methods.FAMILY_READ, product_methods.FAMILY_CLARIFY, product_methods.FAMILY_CONTEXT}:
+        if kind != 'none' or requested or confirmation_required or level != 'none' or pending_action_id:
+            return contract.REASON_MUTATION_METHOD_MISMATCH
+    if method.family == product_methods.FAMILY_PROPOSE:
+        if requested:
+            return contract.REASON_MUTATION_REQUIRES_CONFIRMATION
+        if kind not in {method.mutation_kind, 'none'}:
+            return contract.REASON_MUTATION_METHOD_MISMATCH
+        if kind == 'none' and (confirmation_required or level != 'none' or pending_action_id):
+            return contract.REASON_MUTATION_METHOD_MISMATCH
     if kind == 'delete' and (not confirmation_required or level != 'reinforced'):
         return contract.REASON_DELETION_REQUIRES_REINFORCED_CONFIRMATION
     if requested and (not confirmation_required or level == 'none'):
@@ -306,8 +322,8 @@ def _validate_mutation(
     if method.name in product_methods.CONFIRMED_MUTATION_METHODS:
         if not requested or method.mutation_kind != kind:
             return contract.REASON_MUTATION_REQUIRES_CONFIRMATION
-    if method.family == product_methods.FAMILY_PROPOSE and requested:
-        return contract.REASON_MUTATION_REQUIRES_CONFIRMATION
+        if not pending_action_id:
+            return contract.REASON_MUTATION_REQUIRES_CONFIRMATION
     if method.mutation_kind != 'none' and kind not in {method.mutation_kind, 'none'}:
         return contract.REASON_SCHEMA_INVALID
     if bool(calendar_scope.get('family_calendar')) and kind != 'none':
@@ -372,6 +388,61 @@ def _validate_tool_params(tool_name: str, value: Any) -> str:
             if item < lower or item > upper:
                 return contract.REASON_TOOL_NOT_EXECUTABLE
             continue
-        if not isinstance(item, str) or len(item) > 240 or _contains_forbidden_marker(item):
+        if not _validate_tool_param_value(key_text, item):
             return contract.REASON_TOOL_NOT_EXECUTABLE
     return ''
+
+
+def _validate_tool_param_value(key: str, value: Any) -> bool:
+    if key in {'calendar_id', 'event_id'}:
+        return _valid_local_identifier(value)
+    if key in {'start', 'end'}:
+        return isinstance(value, str) and len(value) <= 64 and not _dangerous_param_text(value) and _valid_iso(value)
+    if key == 'timezone':
+        return _valid_timezone(value)
+    if key == 'query':
+        return _valid_query(value)
+    return isinstance(value, str) and len(value) <= 240 and not _dangerous_param_text(value)
+
+
+def _valid_local_identifier(value: Any) -> bool:
+    text = str(value or '').strip()
+    if not text or len(text) > 80:
+        return False
+    if _dangerous_param_text(text):
+        return False
+    local_id_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:-')
+    return all(char in local_id_chars for char in text)
+
+
+def _valid_timezone(value: Any) -> bool:
+    text = str(value or '').strip()
+    if not text or len(text) > 80 or _dangerous_param_text(text):
+        return False
+    return _safe_code(text, max_chars=80) is not None
+
+
+def _valid_query(value: Any) -> bool:
+    text = str(value or '').strip()
+    if not text or len(text) > 160:
+        return False
+    if any(char in text for char in '\r\n\t'):
+        return False
+    return not _dangerous_param_text(text)
+
+
+def _dangerous_param_text(value: Any) -> bool:
+    text = str(value or '').strip()
+    lower = text.lower()
+    if _contains_forbidden_marker(text):
+        return True
+    if '://' in lower or lower.startswith(('http:', 'https:', 'webcal:', 'caldav:')):
+        return True
+    if lower.startswith('/remote.php/') or '/remote.php/dav' in lower or '/calendars/' in lower:
+        return True
+    if '@' in text:
+        return True
+    if '"' in text or lower.startswith('w/'):
+        return True
+    secret_markers = ('authorization', 'bearer ', 'cookie', 'token', 'app-password', 'app_password')
+    return any(marker in lower for marker in secret_markers)

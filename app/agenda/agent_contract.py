@@ -30,6 +30,7 @@ REASON_TOOL_FORBIDDEN = 'agenda_agent_forbidden_tool'
 REASON_METHOD_FORBIDDEN = 'agenda_agent_forbidden_method'
 REASON_TOOL_NOT_EXECUTABLE = 'agenda_agent_tool_not_executable'
 REASON_MUTATION_REQUIRES_CONFIRMATION = 'agenda_agent_mutation_requires_confirmation'
+REASON_MUTATION_METHOD_MISMATCH = 'agenda_agent_mutation_method_mismatch'
 REASON_DELETION_REQUIRES_REINFORCED_CONFIRMATION = 'agenda_agent_deletion_requires_reinforced_confirmation'
 
 _RECENT_DIALOGUE_MAX_TURNS = 8

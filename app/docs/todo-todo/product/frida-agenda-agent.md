@@ -206,10 +206,12 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   `ambiguity`; la resolution produit de `today/tomorrow` reste Lot 5.
 - [x] Definir `tool_calls` comme sous-plan technique allowliste.
   Preuve livree: outil inconnu, outil hors methode, methode non-GET et params
-  interdits refuses avant reseau.
+  interdits refuses avant reseau; URLs/paths CalDAV bruts, UID/e-mail brut et
+  marqueurs secret/ICS rejetes dans les valeurs techniques.
 - [x] Definir `mutation`.
   Preuve livree: mutation demandee sans confirmation rejetee; suppression
-  exige confirmation renforcee.
+  exige confirmation renforcee; `kind=create|update|delete` incoherent sur une
+  methode read-only rejete meme si `requested=false`.
 - [x] Definir `answer_mode`, `risk_flags`, `fallback_reason`.
   Preuve livree: champs codes stricts et observations content-free.
 - [x] Definir `surface_intro` et `surface_outro`.
@@ -432,6 +434,12 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Prouver JSON absent/invalide/hors schema.
 - [x] Prouver que Lot 4 ne fait aucun acces CalDAV/Nextcloud live, ne lit aucun
   secret et ne tente aucune mutation.
+- [x] Durcir la validation des params Lot 4.
+  Preuve livree: `calendar_id` URL/path CalDAV brut rejete, `event_id`
+  UID/e-mail brut rejete, `event_id` local court accepte.
+- [x] Durcir la coherence mutations/methodes Lot 4.
+  Preuve livree: methode read-only avec `mutation.kind=create` et
+  `requested=false` rejetee; propositions et confirmations restent bornees.
 
 ### Lot 5 - Lecture read-only active
 
