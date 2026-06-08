@@ -177,8 +177,9 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve livree: fichiers separes par responsabilite, aucun fichier
   fourre-tout, pas de `utils.py`.
 - [x] Ajouter le pending store temporaire dans `app/agenda/`.
-  Preuve livree: Lot 6, `pending_store.py`, TTL, meta content-free,
-  annulation/expiration et refus d'execution avant Lot 7.
+  Preuve livree: Lot 6/6.1, `pending_store.py`, TTL, meta content-free,
+  draft prive temporaire, annulation/expiration et refus d'execution avant
+  Lot 7.
 - [x] Brancher l'Agenda dans `chat_service` a cote de Biblio.
   Preuve livree: toggle absent/off = no-op strict; toggle on = appel runtime
   Agenda borne; Lot 5A ajoute override final seulement quand lecture read-only
@@ -198,8 +199,8 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve attendue: lane bornee, pas de payload ICS brut, pas de prompt complet
   dans observabilite.
 - [x] Ajouter un pending store temporaire pour propositions.
-  Preuve livree: Lot 6, actions create/update/delete temporaires avec TTL,
-  persistence conversation FridaDev et meta content-free.
+  Preuve livree: Lot 6/6.1, actions create/update/delete temporaires avec TTL,
+  pointeur conversation FridaDev content-free et draft structure prive.
 - [x] Refuser les confirmations/mutations tant que Lot 7 n'est pas livre.
   Preuve livree: Lot 6, `confirm_*` cible une pending action mais ne fait
   aucune ecriture CalDAV.
@@ -564,16 +565,25 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 - [x] Ajouter pending store temporaire avec TTL.
   Preuve livree: `app/agenda/pending_store.py`, TTL 30 minutes par defaut,
-  expiration/cancel content-free.
+  expiration/cancel content-free; Lot 6.1 garde le draft brut dans le store
+  prive temporaire et jamais dans `message.meta`.
 - [x] Ajouter proposition creation.
-  Preuve livree: `propose_create_event` cree une pending action, final lock
-  assistant normal, aucune ecriture.
+  Preuve livree: `propose_create_event` exige un draft structure suffisant,
+  cree une pending action, final lock assistant normal, aucune ecriture.
 - [x] Ajouter proposition modification.
-  Preuve livree: `propose_update_event` exige une cible locale claire et cree
-  une pending action, aucune ecriture.
+  Preuve livree: Lot 6.1, `propose_update_event` exige une cible reellement
+  relue par client fake/injecte; un `event_get` seulement declare est refuse.
 - [x] Ajouter proposition suppression.
-  Preuve livree: `propose_delete_event` cree une pending action renforcee,
-  suppression non executee.
+  Preuve livree: Lot 6.1, `propose_delete_event` exige une cible reellement
+  relue et cree une pending action renforcee; suppression non executee.
+- [x] Rendre les propositions visibles concretes sans fuite meta.
+  Preuve livree: Lot 6.1, la reponse Frida explicite quoi/quand/cible; meta,
+  observabilite et etat conversationnel restent content-free.
+- [x] Proteger le draft Lot 7 futur.
+  Preuve livree: Lot 6.1, brouillon structure prive avec operation,
+  calendrier, timezone, creneau, details humains et cible verifiee si besoin;
+  JSONL/logs/meta ne contiennent pas titre, lieu, description, UID, ETag,
+  path CalDAV ou ICS.
 - [x] Prouver aucune ecriture CalDAV dans les propositions.
   Preuve livree: tests fake sans client CalDAV/secret; confirmations Lot 7
   refusees avec `mutation_attempted=false`.

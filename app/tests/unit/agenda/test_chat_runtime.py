@@ -242,6 +242,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                 'ambiguity': 'none',
             },
             tool_calls=(),
+            draft=_empty_draft(),
             mutation={
                 'requested': False,
                 'kind': 'none',
@@ -514,6 +515,8 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertEqual(action.operation, 'create')
         self.assertEqual(action.confirmation_level, 'simple')
         lock = result.final_response_lock
+        self.assertIn('Fixture Agenda Proposal', lock.content)
+        self.assertIn('Fixture Room', lock.content)
         self.assertIn('Reference de confirmation : agenda-pending-create-1', lock.content)
         self.assertIn('Confirme-moi', lock.content)
         self.assertNotIn("J'ai ajoute", lock.content)
@@ -531,8 +534,112 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('fixture-secret-value', encoded_payload)
         self.assertNotIn(raw_intent, encoded_payload)
         self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+        self.assertNotIn('Fixture Agenda Proposal', encoded_payload)
+        self.assertNotIn('Fixture Room', encoded_payload)
+        self.assertNotIn('Synthetic pending draft', encoded_payload)
+
+    def test_propose_create_without_structured_draft_is_rejected_before_pending_action(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_CREATE_EVENT,
+                operation='create',
+                draft=_empty_draft(),
+            )
+        )
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Ajoute un rendez-vous',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            pending_id_factory=lambda: 'agenda-pending-create-missing-draft',
+        )
+
+        self.assertEqual(result.status, agent_runtime.STATUS_FALLBACK)
+        self.assertEqual(result.reason_code, agent_contract.REASON_DRAFT_INVALID)
+        self.assertFalse(result.used)
+        self.assertIsNone(result.proposal_execution_result)
+        self.assertFalse(result.observability_payload['mutation_attempted'])
 
     def test_propose_update_requires_clear_local_event_target_and_creates_pending_action(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
+                operation='update',
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': 'event-1'},
+                        'call_id': 'target-1',
+                    }
+                ],
+            )
+        )
+        read_client = _FakeReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Deplace ce rendez-vous',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+            pending_id_factory=lambda: 'agenda-pending-update-1',
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.proposal_execution_result.operation, 'update')
+        self.assertEqual(read_client.calls, ['get_event_by_local_id'])
+        self.assertTrue(result.proposal_execution_result.target_clear)
+        self.assertEqual(result.pending_state.actions[0].operation, 'update')
+        self.assertIn('modification', result.final_response_lock.content)
+        self.assertIn('Fixture Focus Block', result.final_response_lock.content)
+        self.assertIn('Deplacer le creneau propose', result.final_response_lock.content)
+        self.assertFalse(result.observability_payload['caldav_access'])
+        self.assertEqual(result.observability_payload['pending_operation'], 'update')
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture Focus Block', encoded_payload)
+        self.assertNotIn('Fixture Location Alpha', encoded_payload)
+        self.assertNotIn('fixture-event-001', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_propose_update_without_clear_target_does_not_create_pending_action(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
+                operation='update',
+                tool_calls=[],
+            )
+        )
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Deplace ce rendez-vous',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            pending_id_factory=lambda: 'agenda-pending-update-ambiguous',
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_TARGET_NOT_VERIFIED)
+        self.assertFalse(result.proposal_execution_result.target_clear)
+        self.assertEqual(result.pending_state.actions, ())
+        self.assertIn('verifie', result.final_response_lock.content)
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+
+    def test_propose_update_declared_event_get_without_verified_read_is_rejected(self) -> None:
         fake_model = _FakeModelClient(
             _proposal_payload(
                 product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
@@ -557,44 +664,12 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                 caldav_secret_configured=True,
             ),
             agent_model_client=fake_model,
-            read_client=_FakeReadClient(),
-            pending_id_factory=lambda: 'agenda-pending-update-1',
+            pending_id_factory=lambda: 'agenda-pending-update-unverified',
         )
 
         self.assertTrue(result.used)
-        self.assertEqual(result.proposal_execution_result.operation, 'update')
-        self.assertTrue(result.proposal_execution_result.target_clear)
-        self.assertEqual(result.pending_state.actions[0].operation, 'update')
-        self.assertIn('modification', result.final_response_lock.content)
-        self.assertFalse(result.observability_payload['caldav_access'])
-        self.assertEqual(result.observability_payload['pending_operation'], 'update')
-
-    def test_propose_update_without_clear_target_does_not_create_pending_action(self) -> None:
-        fake_model = _FakeModelClient(
-            _proposal_payload(
-                product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
-                operation='update',
-                tool_calls=[],
-            )
-        )
-
-        result = chat_runtime.run_agenda_chat_turn(
-            {'agenda_enabled': True},
-            user_msg='Deplace ce rendez-vous',
-            now_iso='2026-06-08T12:00:00Z',
-            settings_override=agent_contract.AgendaAgentSettings(
-                mode=agent_contract.MODE_ACTIVE,
-                caldav_secret_configured=True,
-            ),
-            agent_model_client=fake_model,
-            pending_id_factory=lambda: 'agenda-pending-update-ambiguous',
-        )
-
-        self.assertTrue(result.used)
-        self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_TARGET_AMBIGUOUS)
-        self.assertFalse(result.proposal_execution_result.target_clear)
+        self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_TARGET_NOT_VERIFIED)
         self.assertEqual(result.pending_state.actions, ())
-        self.assertIn('cible', result.final_response_lock.content)
         self.assertFalse(result.observability_payload['mutation_attempted'])
 
     def test_propose_delete_creates_reinforced_pending_action_without_calendar_mutation(self) -> None:
@@ -629,11 +704,51 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         )
 
         self.assertTrue(result.used)
-        self.assertEqual(read_client.calls, [])
+        self.assertEqual(read_client.calls, ['get_event_by_local_id'])
         self.assertEqual(result.pending_state.actions[0].operation, 'delete')
         self.assertEqual(result.pending_state.actions[0].confirmation_level, 'reinforced')
+        self.assertTrue(result.proposal_execution_result.target_clear)
+        self.assertIn('Fixture Focus Block', result.final_response_lock.content)
         self.assertIn('confirmation renforcee', result.final_response_lock.content)
         self.assertIn("Rien n'a ete supprime", result.final_response_lock.content)
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture Focus Block', encoded_payload)
+        self.assertNotIn('fixture-etag-001', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_propose_delete_declared_event_get_without_verified_read_is_rejected(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_DELETE_EVENT,
+                operation='delete',
+                confirmation_level='reinforced',
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': 'event-1'},
+                        'call_id': 'target-1',
+                    }
+                ],
+            )
+        )
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Supprime ce rendez-vous',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            pending_id_factory=lambda: 'agenda-pending-delete-unverified',
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.proposal_execution_result.reason_code, proposal_execution.REASON_TARGET_NOT_VERIFIED)
+        self.assertEqual(result.pending_state.actions, ())
         self.assertFalse(result.observability_payload['mutation_attempted'])
 
     def test_confirm_pending_action_is_refused_before_lot7_without_any_calendar_write(self) -> None:
@@ -709,6 +824,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertEqual(expired_confirm.proposal_execution_result.reason_code, proposal_execution.REASON_PENDING_EXPIRED)
         self.assertIn('expiree', expired_confirm.final_response_lock.content)
         self.assertFalse(expired_confirm.observability_payload['mutation_attempted'])
+        self.assertEqual(expired_confirm.pending_state.actions[0].draft, {})
 
         fresh_state, _fresh_action = pending_store.create_pending_action(
             pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
@@ -731,6 +847,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         )
         self.assertEqual(cancelled.proposal_execution_result.reason_code, proposal_execution.REASON_PENDING_CANCELLED)
         self.assertEqual(cancelled.pending_state.actions[0].status, pending_store.STATUS_CANCELLED)
+        self.assertEqual(cancelled.pending_state.actions[0].draft, {})
 
         confirm_cancelled = chat_runtime.run_agenda_chat_turn(
             {'agenda_enabled': True},
@@ -781,6 +898,9 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         encoded_meta = json.dumps(conversation['messages'][0]['meta'], sort_keys=True)
         self.assertNotIn('RAW EVENT DETAILS MUST NOT LEAK', encoded_meta)
         self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_meta)
+        self.assertNotIn('Fixture Agenda Proposal', encoded_meta)
+        self.assertNotIn('Fixture Room', encoded_meta)
+        self.assertNotIn('Synthetic pending draft', encoded_meta)
 
 
 class _FakeModelClient:
@@ -857,6 +977,10 @@ class _FakeReadClient:
         self.calls.append('get_event')
         return self._event
 
+    def get_event_by_local_id(self, event_id):
+        self.calls.append('get_event_by_local_id')
+        return self._event if str(event_id or '') == self._event.event_id else None
+
 
 class _AllDayReadClient:
     def __init__(self) -> None:
@@ -901,6 +1025,10 @@ class _AllDayReadClient:
         del event
         self.calls.append('get_event')
         return self._event
+
+    def get_event_by_local_id(self, event_id):
+        self.calls.append('get_event_by_local_id')
+        return self._event if str(event_id or '') == self._event.event_id else None
 
 
 class _SecretCountingRuntimeSettings:
@@ -1013,6 +1141,7 @@ def _valid_payload(**overrides) -> dict:
                 'call_id': 'call-1',
             }
         ],
+        'draft': _empty_draft(),
         'mutation': {
             'requested': False,
             'kind': 'none',
@@ -1037,11 +1166,13 @@ def _proposal_payload(
     intent: str = 'prepare agenda proposal',
     confirmation_level: str = 'simple',
     tool_calls=None,
+    draft=None,
 ) -> dict:
     return _valid_payload(
         product_method=product_method,
         intent=intent,
         tool_calls=list(tool_calls or []),
+        draft=dict(draft if draft is not None else _default_proposal_draft(operation)),
         mutation={
             'requested': False,
             'kind': operation,
@@ -1051,6 +1182,50 @@ def _proposal_payload(
         },
         answer_mode='proposal',
     )
+
+
+def _empty_draft() -> dict:
+    return {
+        'title': None,
+        'location': None,
+        'description': None,
+        'calendar_id': None,
+        'start': None,
+        'end': None,
+        'timezone': None,
+        'all_day': None,
+        'target_event_id': None,
+        'change_summary': None,
+    }
+
+
+def _default_proposal_draft(operation: str) -> dict:
+    draft = _empty_draft()
+    if operation == 'create':
+        draft.update(
+            {
+                'title': 'Fixture Agenda Proposal',
+                'calendar_id': 'primary',
+                'start': '2026-06-09T08:00:00Z',
+                'end': '2026-06-09T09:00:00Z',
+                'timezone': 'Europe/Paris',
+                'all_day': False,
+                'location': 'Fixture Room',
+                'description': 'Synthetic pending draft.',
+            }
+        )
+    elif operation == 'update':
+        draft.update(
+            {
+                'change_summary': 'Deplacer le creneau propose',
+                'start': '2026-06-09T08:00:00Z',
+                'end': '2026-06-09T09:00:00Z',
+                'timezone': 'Europe/Paris',
+            }
+        )
+    elif operation == 'delete':
+        draft.update({'change_summary': 'Suppression demandee'})
+    return draft
 
 
 def _confirm_payload(

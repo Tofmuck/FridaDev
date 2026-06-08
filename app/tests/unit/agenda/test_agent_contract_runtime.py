@@ -547,6 +547,7 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         proposed_create = _valid_payload(
             product_method=product_methods.METHOD_PROPOSE_CREATE_EVENT,
             tool_calls=[],
+            draft=_create_draft(),
             mutation={
                 'requested': False,
                 'kind': 'create',
@@ -579,6 +580,45 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
             contract.validate_agent_payload(missing_pending).reason_code,
             contract.REASON_MUTATION_REQUIRES_CONFIRMATION,
         )
+
+    def test_proposed_create_requires_structured_draft_and_observes_it_content_free(self) -> None:
+        missing = contract.validate_agent_payload(
+            _valid_payload(
+                product_method=product_methods.METHOD_PROPOSE_CREATE_EVENT,
+                tool_calls=[],
+                mutation={
+                    'requested': False,
+                    'kind': 'create',
+                    'confirmation_required': False,
+                    'confirmation_level': 'none',
+                    'pending_action_id': '',
+                },
+                answer_mode='proposal',
+            )
+        )
+        self.assertEqual(missing.status, contract.STATUS_REJECTED)
+        self.assertEqual(missing.reason_code, contract.REASON_DRAFT_INVALID)
+
+        raw_title = 'Fixture Agenda Proposal'
+        valid = contract.validate_agent_payload(
+            _valid_payload(
+                product_method=product_methods.METHOD_PROPOSE_CREATE_EVENT,
+                tool_calls=[],
+                draft=_create_draft(title=raw_title),
+                mutation={
+                    'requested': False,
+                    'kind': 'create',
+                    'confirmation_required': False,
+                    'confirmation_level': 'none',
+                    'pending_action_id': '',
+                },
+                answer_mode='proposal',
+            )
+        )
+        observed = json.dumps(valid.to_observability(), sort_keys=True)
+        self.assertEqual(valid.status, contract.STATUS_VALIDATED)
+        self.assertNotIn(raw_title, observed)
+        self.assertNotIn('Fixture Room', observed)
 
     def test_cancel_pending_action_accepts_only_safe_pending_id_without_mutation(self) -> None:
         valid_cancel = _valid_payload(
@@ -733,6 +773,7 @@ def _valid_payload(**overrides) -> dict:
                 'call_id': 'call-1',
             }
         ],
+        'draft': _empty_draft(),
         'mutation': {
             'requested': False,
             'kind': 'none',
@@ -748,6 +789,38 @@ def _valid_payload(**overrides) -> dict:
     }
     payload.update(overrides)
     return payload
+
+
+def _empty_draft() -> dict:
+    return {
+        'title': None,
+        'location': None,
+        'description': None,
+        'calendar_id': None,
+        'start': None,
+        'end': None,
+        'timezone': None,
+        'all_day': None,
+        'target_event_id': None,
+        'change_summary': None,
+    }
+
+
+def _create_draft(*, title: str = 'Fixture Agenda Proposal') -> dict:
+    draft = _empty_draft()
+    draft.update(
+        {
+            'title': title,
+            'location': 'Fixture Room',
+            'description': 'Synthetic pending draft.',
+            'calendar_id': 'primary',
+            'start': '2026-06-09T08:00:00Z',
+            'end': '2026-06-09T09:00:00Z',
+            'timezone': 'Europe/Paris',
+            'all_day': False,
+        }
+    )
+    return draft
 
 
 def _payload_with_window(*, product_method: str, start: str, end: str) -> dict:

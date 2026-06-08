@@ -171,6 +171,11 @@ def build_agenda_agent_messages(request: contract.AgendaAgentRequest) -> list[di
         'Pour preparer une creation, modification ou suppression future, utilise '
         'propose_create_event, propose_update_event ou propose_delete_event: '
         'cela cree une proposition en attente cote FridaDev, sans ecriture CalDAV. '
+        'Pour propose_create_event, remplis draft avec title, start, end, timezone '
+        'et calendar_id si connu. Pour propose_update_event ou propose_reschedule, '
+        'fournis event_get sur la cible locale et remplis draft avec change_summary '
+        'et les nouveaux champs proposes. Pour propose_delete_event, fournis event_get '
+        'sur la cible locale; la suppression ne sera pas executee. '
         'Pour une suppression, confirmation_level doit etre reinforced. '
         'Pour confirm_create_event, confirm_update_event et confirm_delete_event, '
         'fournis seulement un pending_action_id deja connu; le deterministe ne '
@@ -216,6 +221,7 @@ def _agenda_agent_json_schema(*, max_tool_calls: int) -> dict[str, Any]:
             'calendar_scope',
             'time_scope',
             'tool_calls',
+            'draft',
             'mutation',
             'answer_mode',
             'risk_flags',
@@ -230,6 +236,7 @@ def _agenda_agent_json_schema(*, max_tool_calls: int) -> dict[str, Any]:
             'calendar_scope': _calendar_scope_schema(),
             'time_scope': _time_scope_schema(),
             'tool_calls': _tool_calls_schema(max_tool_calls=max_tool_calls),
+            'draft': _draft_schema(),
             'mutation': _mutation_schema(),
             'answer_mode': {
                 'type': 'string',
@@ -329,6 +336,28 @@ def _mutation_schema() -> dict[str, Any]:
             'confirmation_level': {'type': 'string', 'enum': ['none', 'simple', 'reinforced']},
             'pending_action_id': {'type': 'string', 'maxLength': 120},
         },
+    }
+
+
+def _draft_schema() -> dict[str, Any]:
+    properties = {
+        'title': _nullable_text_schema(max_chars=160),
+        'location': _nullable_text_schema(max_chars=240),
+        'description': _nullable_text_schema(max_chars=800),
+        'calendar_id': _nullable_text_schema(max_chars=80),
+        'start': _nullable_text_schema(max_chars=64),
+        'end': _nullable_text_schema(max_chars=64),
+        'timezone': _nullable_text_schema(max_chars=80),
+        'all_day': {'type': ['boolean', 'null']},
+        'target_event_id': _nullable_text_schema(max_chars=80),
+        'change_summary': _nullable_text_schema(max_chars=400),
+    }
+    return {
+        'type': 'object',
+        'additionalProperties': False,
+        'description': 'Brouillon structure pour les propositions futures; null pour les champs non employes.',
+        'required': sorted(properties.keys()),
+        'properties': properties,
     }
 
 

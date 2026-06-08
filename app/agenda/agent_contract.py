@@ -33,6 +33,7 @@ REASON_MUTATION_REQUIRES_CONFIRMATION = 'agenda_agent_mutation_requires_confirma
 REASON_MUTATION_METHOD_MISMATCH = 'agenda_agent_mutation_method_mismatch'
 REASON_DELETION_REQUIRES_REINFORCED_CONFIRMATION = 'agenda_agent_deletion_requires_reinforced_confirmation'
 REASON_TIME_WINDOW_MISMATCH = 'agenda_agent_time_window_mismatch'
+REASON_DRAFT_INVALID = 'agenda_agent_draft_invalid'
 
 _RECENT_DIALOGUE_MAX_TURNS = 8
 
@@ -131,6 +132,7 @@ class AgendaAgentPlan:
     calendar_scope: Mapping[str, Any]
     time_scope: Mapping[str, Any]
     tool_calls: tuple[AgendaToolCall, ...]
+    draft: Mapping[str, Any]
     mutation: Mapping[str, Any]
     answer_mode: str
     risk_flags: tuple[str, ...]
@@ -157,6 +159,11 @@ class AgendaAgentPlan:
             'time_ambiguity': str(self.time_scope.get('ambiguity') or ''),
             'tool_count': len(self.tool_calls),
             'tool_names': [call.tool_name for call in self.tool_calls],
+            'draft_present': bool(self.draft),
+            'draft_field_names': sorted(str(key) for key, value in self.draft.items() if value not in ('', None, False)),
+            'draft_title_hash': sha256_12(self.draft.get('title')),
+            'draft_title_chars': len(str(self.draft.get('title') or '')),
+            'draft_description_present': bool(self.draft.get('description')),
             'mutation_requested': bool(self.mutation.get('requested')),
             'mutation_kind': str(self.mutation.get('kind') or ''),
             'confirmation_required': bool(self.mutation.get('confirmation_required')),

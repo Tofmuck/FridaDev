@@ -5,6 +5,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
+from agenda import agent_draft_validation
 from agenda import agent_contract as contract
 from agenda import product_methods
 from agenda.observability import sha256_12
@@ -19,6 +20,7 @@ _ROOT_KEYS = {
     'calendar_scope',
     'time_scope',
     'tool_calls',
+    'draft',
     'mutation',
     'answer_mode',
     'risk_flags',
@@ -173,6 +175,7 @@ def validate_agent_payload(
         return _rejected(contract.REASON_SCHEMA_INVALID, '')
     calendar_scope = payload.get('calendar_scope')
     time_scope = payload.get('time_scope')
+    draft_payload = payload.get('draft')
     mutation = payload.get('mutation')
     if not _valid_calendar_scope(calendar_scope) or not _valid_time_scope(time_scope):
         return _rejected(contract.REASON_SCHEMA_INVALID, '')
@@ -190,6 +193,12 @@ def validate_agent_payload(
     mutation_reason = _validate_mutation(method, mutation, calendar_scope, risk_flags)
     if mutation_reason:
         return _rejected(mutation_reason, '')
+    draft = agent_draft_validation.normalize_draft(draft_payload)
+    if isinstance(draft, str):
+        return _rejected(draft, '')
+    draft_reason = agent_draft_validation.validate_product_draft(method, draft, calendar_scope)
+    if draft_reason:
+        return _rejected(draft_reason, '')
     tool_calls = _validate_tool_calls(payload.get('tool_calls'), product_method, settings)
     if isinstance(tool_calls, str):
         return _rejected(tool_calls, '')
@@ -209,6 +218,7 @@ def validate_agent_payload(
         calendar_scope=dict(calendar_scope),
         time_scope=dict(time_scope),
         tool_calls=tuple(tool_calls),
+        draft=dict(draft),
         mutation=dict(mutation),
         answer_mode=answer_mode,
         risk_flags=tuple(risk_flags),

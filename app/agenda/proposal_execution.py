@@ -4,8 +4,10 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping
 
 from agenda import agent_contract
+from agenda import pending_drafts
 from agenda import pending_store
 from agenda import product_methods
+from agenda.caldav_models import CalendarEvent
 
 
 STATUS_OK = 'ok'
@@ -19,6 +21,8 @@ REASON_PENDING_CANCELLED = 'agenda_pending_action_cancelled'
 REASON_PENDING_NOT_FOUND = 'agenda_pending_action_not_found'
 REASON_PENDING_EXPIRED = 'agenda_pending_action_expired'
 REASON_CONFIRMATION_NOT_EXECUTABLE = 'agenda_pending_confirmation_not_executable_lot7'
+REASON_TARGET_NOT_VERIFIED = 'agenda_pending_target_not_verified'
+REASON_PENDING_DRAFT_INVALID = pending_drafts.REASON_PENDING_DRAFT_INVALID
 
 
 @dataclass(frozen=True)
@@ -41,9 +45,12 @@ class AgendaProposalExecutionResult:
     target_clear: bool = False
     cancelled: bool = False
     expired: bool = False
+    draft: Mapping[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    verified_event: CalendarEvent | None = field(default=None, repr=False, compare=False)
 
     @property
     def observation(self) -> dict[str, Any]:
+        draft_summary = pending_drafts.content_free_draft_summary(self.draft) if self.draft else {}
         return {
             'schema_version': 'frida_agenda_proposal_execution_v1',
             'status': self.status,
@@ -59,6 +66,8 @@ class AgendaProposalExecutionResult:
             'target_clear': bool(self.target_clear),
             'cancelled': bool(self.cancelled),
             'expired': bool(self.expired),
+            'draft_private': bool(self.draft),
+            'draft_summary': draft_summary,
             'caldav_access': False,
             'nextcloud_access': False,
             'secret_access': False,
@@ -86,13 +95,21 @@ def execute_pending_plan(
     conversation_state: pending_store.AgendaPendingState | Mapping[str, Any] | None,
     now_iso: str,
     id_factory: Callable[[], str] | None = None,
+    read_client: Any = None,
 ) -> AgendaProposalExecutionResult:
     state = _state_from_input(conversation_state)
     method = product_methods.get_method(plan.product_method)
     if method is None:
         return _blocked(plan, state=state, reason_code=REASON_NOT_PENDING_METHOD)
     if method.family == product_methods.FAMILY_PROPOSE:
-        return _execute_proposal(plan, method=method, state=state, now_iso=now_iso, id_factory=id_factory)
+        return _execute_proposal(
+            plan,
+            method=method,
+            state=state,
+            now_iso=now_iso,
+            id_factory=id_factory,
+            read_client=read_client,
+        )
     if method.family == product_methods.FAMILY_MUTATE:
         return _refuse_confirmation(plan, method=method, state=state, now_iso=now_iso)
     if method.name == product_methods.METHOD_CANCEL_PENDING_AGENDA_ACTION:
@@ -107,22 +124,36 @@ def _execute_proposal(
     state: pending_store.AgendaPendingState,
     now_iso: str,
     id_factory: Callable[[], str] | None,
+    read_client: Any,
 ) -> AgendaProposalExecutionResult:
     operation = method.mutation_kind
     if operation not in pending_store.OPERATIONS:
         return _blocked(plan, state=state, reason_code=REASON_NOT_PENDING_METHOD)
-    target_clear = _target_clear_for_proposal(plan, operation=operation)
-    if operation in {pending_store.OPERATION_UPDATE, pending_store.OPERATION_DELETE} and not target_clear:
+    verified_event = _verified_target_for_proposal(plan, operation=operation, read_client=read_client)
+    target_clear = operation == pending_store.OPERATION_CREATE or verified_event is not None
+    if operation in {pending_store.OPERATION_UPDATE, pending_store.OPERATION_DELETE} and verified_event is None:
         return _blocked(
             plan,
             state=pending_store.expire_pending_actions(state, now_iso=now_iso),
-            reason_code=REASON_TARGET_AMBIGUOUS,
+            reason_code=REASON_TARGET_NOT_VERIFIED,
             operation=operation,
             target_clear=False,
         )
     risk_flags = _risk_flags(plan)
     confirmation_level = _confirmation_level(plan=plan, operation=operation, risk_flags=risk_flags)
-    draft = pending_store.build_content_free_draft(plan, operation=operation)
+    draft = pending_drafts.build_private_pending_draft(
+        plan,
+        operation=operation,
+        verified_event=verified_event,
+    )
+    if isinstance(draft, str):
+        return _blocked(
+            plan,
+            state=pending_store.expire_pending_actions(state, now_iso=now_iso),
+            reason_code=draft,
+            operation=operation,
+            target_clear=target_clear,
+        )
     next_state, action = pending_store.create_pending_action(
         state,
         operation=operation,
@@ -145,6 +176,8 @@ def _execute_proposal(
         pending_status=action.status,
         state=next_state,
         target_clear=target_clear,
+        draft=draft,
+        verified_event=verified_event,
     )
 
 
@@ -240,15 +273,30 @@ def _state_from_input(value: pending_store.AgendaPendingState | Mapping[str, Any
     return pending_store.AgendaPendingState.from_mapping(value or {})
 
 
-def _target_clear_for_proposal(plan: agent_contract.AgendaAgentPlan, *, operation: str) -> bool:
+def _verified_target_for_proposal(
+    plan: agent_contract.AgendaAgentPlan,
+    *,
+    operation: str,
+    read_client: Any,
+) -> CalendarEvent | None:
     if operation == pending_store.OPERATION_CREATE:
-        return True
-    event_get_calls = [
-        call
+        return None
+    event_ids = [
+        str(dict(call.params or {}).get('event_id') or '').strip()
         for call in plan.tool_calls
-        if call.tool_name == product_methods.TOOL_EVENT_GET and str(dict(call.params or {}).get('event_id') or '')
+        if call.tool_name == product_methods.TOOL_EVENT_GET
     ]
-    return len(event_get_calls) == 1
+    event_ids = [event_id for event_id in event_ids if event_id]
+    if len(event_ids) != 1:
+        return None
+    getter = getattr(read_client, 'get_event_by_local_id', None)
+    if not callable(getter):
+        return None
+    try:
+        event = getter(event_ids[0])
+    except Exception:
+        return None
+    return event if isinstance(event, CalendarEvent) else None
 
 
 def _confirmation_level(

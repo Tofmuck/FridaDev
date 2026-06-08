@@ -378,6 +378,18 @@ Schema livre en Lot 4:
     "ambiguity": "none"
   },
   "tool_calls": [],
+  "draft": {
+    "title": null,
+    "location": null,
+    "description": null,
+    "calendar_id": null,
+    "start": null,
+    "end": null,
+    "timezone": null,
+    "all_day": null,
+    "target_event_id": null,
+    "change_summary": null
+  },
   "mutation": {
     "requested": false,
     "kind": "none",
@@ -419,6 +431,11 @@ Regles:
   `mutation.kind=none` quand aucune mutation n'est demandee;
 - les methodes `propose_*` peuvent porter l'intention de mutation associee a la
   methode produit, mais ne doivent pas devenir des mutations executees;
+- les methodes `propose_*` portent un `draft` structure borne; pour une creation
+  il doit contenir au minimum titre, calendrier cible, debut, fin et timezone;
+- pour modification, deplacement ou suppression, un `event_get` declare par
+  l'agent ne suffit pas: la cible doit etre reellement relue par un client
+  read-only injecte ou un etat interne fiable avant pending action;
 - les methodes `confirm_*` exigent `requested=true`, confirmation humaine,
   `pending_action_id` non vide et kind coherent;
 - une suppression exige `confirmation_level=reinforced`;
@@ -597,6 +614,9 @@ Proposition:
 - autorisee avec toggle Agenda on;
 - ne modifie pas Nextcloud;
 - cree une action pending avec expiration TTL cote FridaDev;
+- utilise un draft structure prive pour eviter de reconstruire la mutation
+  depuis le dialogue au Lot 7;
+- exige une cible reellement verifiee pour update/delete/reschedule;
 - la reponse visible doit expliciter ce qui serait cree, modifie ou supprime;
 - la meta durable reste content-free autant que possible.
 
@@ -619,15 +639,21 @@ Modele livre Lot 6:
 - store temporaire attache a l'etat de conversation FridaDev
   (`agenda_pending_state`);
 - TTL court obligatoire, 30 minutes par defaut;
-- contenu durable content-free: operation, hashes courts, calendrier cible
-  hash, fenetre temporelle normalisee, risques, create_ts, expires_ts;
+- contenu durable content-free: operation, hashes courts, risques, create_ts,
+  expires_ts, pointeur de draft prive et hash court;
 - annulation et expiration sans mutation;
 - une confirmation Lot 6 relit la pending action mais refuse toute execution;
 - `message.meta` ne porte qu'un pointeur content-free:
-  `pending_action_id`, operation, calendar id court, confirmation level,
-  risk flags, hash court, expiration;
-- les details humains restent dans la reponse visible et, si necessaire, dans
-  le pending store temporaire, pas dans les logs/dashboard/JSONL.
+  `pending_action_id`, operation, confirmation level, risk flags, hash court,
+  expiration et booleen `draft_private`;
+- le draft structure prive temporaire peut contenir les details necessaires a
+  une future execution Lot 7: operation, calendrier cible, timezone, start/end,
+  all_day, titre, lieu, description, changement propose et cible verifiee;
+- si disponible, une reference technique interne de cible peut rester dans le
+  store prive temporaire, mais jamais dans `message.meta`, observabilite,
+  dashboard, logs ou JSONL;
+- les details humains restent dans la reponse visible et dans le pending store
+  temporaire prive, pas dans les logs/dashboard/JSONL.
 
 Lot 7 seulement pourra executer une confirmation. Relire uniquement le dialogue
 pour reconstruire une mutation reste trop fragile.
@@ -635,10 +661,15 @@ pour reconstruire une mutation reste trop fragile.
 Preuve Lot 6:
 
 - `propose_create_event` cree une pending action create sans ecriture CalDAV;
-- `propose_update_event` exige une cible locale claire et cree une pending
-  action update sans ecriture;
-- `propose_delete_event` cree une pending action delete avec confirmation
-  renforcee, sans suppression;
+- Lot 6.1: `propose_create_event` exige un draft structure suffisant avant de
+  creer une pending action;
+- Lot 6.1: `propose_update_event` et `propose_reschedule` exigent une cible
+  relue/verifiee, pas seulement un `event_get` declare;
+- Lot 6.1: `propose_delete_event` exige une cible relue/verifiee et cree une
+  pending action delete avec confirmation renforcee, sans suppression;
+- Lot 6.1: le rendu visible est concret, mais meta/observabilite restent
+  content-free et ne contiennent pas titre, lieu, description, UID, ETag, path
+  CalDAV ou ICS;
 - `confirm_*` avec pending action valide repond que l'execution est hors Lot 6;
 - `cancel_pending_agenda_action` annule une pending action sans mutation;
 - expiration/cancel empechent toute execution;

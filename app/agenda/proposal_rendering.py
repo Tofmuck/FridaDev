@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any, Mapping
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from agenda import agent_contract
 from agenda import pending_store
@@ -43,10 +45,15 @@ def render_proposal_answer(
         return _render_created(proposal_result)
     if reason == proposal_execution.REASON_PENDING_CANCELLED:
         return _render_cancelled(proposal_result)
-    if reason == proposal_execution.REASON_TARGET_AMBIGUOUS:
+    if reason in {proposal_execution.REASON_TARGET_AMBIGUOUS, proposal_execution.REASON_TARGET_NOT_VERIFIED}:
         return (
-            "Je ne peux pas preparer cette proposition sans cible d'evenement claire. "
+            "Je ne peux pas preparer cette proposition sans avoir verifie l'evenement cible. "
             "Dis-moi lequel viser, et je te preparerai une proposition sans rien modifier."
+        )
+    if reason == proposal_execution.REASON_PENDING_DRAFT_INVALID:
+        return (
+            "Je ne peux pas preparer une proposition fiable avec ces informations. "
+            "Donne-moi les details manquants, et je te preparerai un brouillon sans rien modifier."
         )
     if reason == proposal_execution.REASON_PENDING_EXPIRED:
         return "Cette proposition est expiree. Je n'ai rien modifie dans ton agenda."
@@ -68,21 +75,25 @@ def render_proposal_answer(
 def _render_created(result: proposal_execution.AgendaProposalExecutionResult) -> str:
     reference = str(result.pending_action_id or '')
     expires = str(result.pending_expires_at or '')
+    draft = dict(result.draft or {})
     if result.operation == pending_store.OPERATION_CREATE:
         lines = [
-            "Je peux te preparer cette creation d'evenement.",
+            "Je peux te preparer cette creation d'evenement :",
+            *_creation_lines(draft),
             "Rien n'a encore ete ajoute au calendrier.",
             "Confirme-moi si tu veux que je le fasse.",
         ]
     elif result.operation == pending_store.OPERATION_UPDATE:
         lines = [
-            "Je peux te preparer cette modification d'evenement.",
+            "Je peux te preparer cette modification d'evenement :",
+            *_update_lines(draft),
             "Rien n'a encore ete modifie dans le calendrier.",
             "Confirme-moi si tu veux que je le fasse.",
         ]
     elif result.operation == pending_store.OPERATION_DELETE:
         lines = [
-            "Je peux te preparer cette suppression, mais elle demande une confirmation renforcee.",
+            "Je peux te preparer cette suppression, mais elle demande une confirmation renforcee :",
+            *_delete_lines(draft),
             "Rien n'a ete supprime du calendrier.",
             "Confirme explicitement si tu veux vraiment que je le fasse.",
         ]
@@ -93,6 +104,95 @@ def _render_created(result: proposal_execution.AgendaProposalExecutionResult) ->
     if expires:
         lines.append(f"Expiration : {expires}.")
     return "\n".join(lines)
+
+
+def _creation_lines(draft: Mapping[str, Any]) -> list[str]:
+    lines = []
+    title = _text(draft.get('title')) or 'Evenement sans titre'
+    lines.append(f"- Quoi : {title}")
+    when = _time_range(draft)
+    if when:
+        lines.append(f"- Quand : {when}")
+    calendar = _text(draft.get('calendar_id'))
+    if calendar:
+        lines.append(f"- Calendrier : {calendar}")
+    location = _text(draft.get('location'))
+    if location:
+        lines.append(f"- Lieu : {location}")
+    description = _text(draft.get('description'))
+    if description:
+        lines.append(f"- Note : {description}")
+    return lines
+
+
+def _update_lines(draft: Mapping[str, Any]) -> list[str]:
+    lines = _target_lines(draft)
+    change = _text(draft.get('change_summary'))
+    if change:
+        lines.append(f"- Changement : {change}")
+    when = _time_range(draft)
+    if when:
+        lines.append(f"- Nouveau creneau : {when}")
+    for label, key in (('Nouveau titre', 'title'), ('Nouveau lieu', 'location'), ('Nouvelle note', 'description')):
+        value = _text(draft.get(key))
+        if value:
+            lines.append(f"- {label} : {value}")
+    return lines or ["- Cible verifiee, changement a confirmer."]
+
+
+def _delete_lines(draft: Mapping[str, Any]) -> list[str]:
+    lines = _target_lines(draft)
+    return lines or ["- Evenement cible verifie."]
+
+
+def _target_lines(draft: Mapping[str, Any]) -> list[str]:
+    target = dict(draft.get('target') or {})
+    lines = []
+    title = _text(target.get('title')) or 'Evenement sans titre'
+    lines.append(f"- Cible : {title}")
+    when = _time_range(target)
+    if when:
+        lines.append(f"- Creneau actuel : {when}")
+    location = _text(target.get('location'))
+    if location:
+        lines.append(f"- Lieu actuel : {location}")
+    return lines
+
+
+def _time_range(value: Mapping[str, Any]) -> str:
+    if bool(value.get('all_day')):
+        return 'toute la journee'
+    start = _parse_iso(value.get('start'), timezone_name=_text(value.get('timezone')))
+    end = _parse_iso(value.get('end'), timezone_name=_text(value.get('timezone')))
+    if start is None:
+        return ''
+    if end is None:
+        return start.strftime('%H:%M')
+    return f"{start.strftime('%H:%M')}-{end.strftime('%H:%M')}"
+
+
+def _parse_iso(value: Any, *, timezone_name: str = ''):
+    try:
+        parsed = datetime.fromisoformat(str(value or '').replace('Z', '+00:00'))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(_display_timezone(timezone_name))
+
+
+def _display_timezone(timezone_name: str):
+    raw = str(timezone_name or '').strip()
+    if not raw:
+        return timezone.utc
+    try:
+        return ZoneInfo(raw)
+    except (ZoneInfoNotFoundError, ValueError):
+        return timezone.utc
+
+
+def _text(value: Any) -> str:
+    return str(value or '').strip()
 
 
 def _render_cancelled(result: proposal_execution.AgendaProposalExecutionResult) -> str:

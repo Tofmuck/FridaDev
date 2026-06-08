@@ -28,6 +28,7 @@ CONFIRMATION_SIMPLE = 'simple'
 CONFIRMATION_REINFORCED = 'reinforced'
 
 _SAFE_TOKEN_CHARS = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:-')
+_PRIVATE_DRAFTS: dict[str, dict[str, Any]] = {}
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class AgendaPendingAction:
         return bool(expires is not None and now is not None and expires <= now)
 
     def with_status(self, status: str) -> 'AgendaPendingAction':
+        next_status = status if status in {STATUS_PENDING, STATUS_CANCELLED, STATUS_EXPIRED} else self.status
         return AgendaPendingAction(
             pending_action_id=self.pending_action_id,
             operation=self.operation,
@@ -59,9 +61,9 @@ class AgendaPendingAction:
             risk_flags=self.risk_flags,
             created_at=self.created_at,
             expires_at=self.expires_at,
-            status=status if status in {STATUS_PENDING, STATUS_CANCELLED, STATUS_EXPIRED} else self.status,
+            status=next_status,
             action_hash=self.action_hash,
-            draft=dict(self.draft),
+            draft=dict(self.draft) if next_status == STATUS_PENDING else {},
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -74,7 +76,8 @@ class AgendaPendingAction:
             'expires_at': self.expires_at,
             'status': self.status,
             'action_hash': self.action_hash,
-            'draft': dict(self.draft),
+            'draft_private': bool(self.draft),
+            'draft_hash': self.action_hash,
         }
 
     def to_content_free_dict(self) -> dict[str, Any]:
@@ -87,6 +90,7 @@ class AgendaPendingAction:
             'expires_at': self.expires_at,
             'status': self.status,
             'action_hash': self.action_hash,
+            'draft_private': bool(self.draft),
             'content_free': True,
         }
 
@@ -224,6 +228,7 @@ def create_pending_action(
         action_hash=_draft_hash(safe_draft),
         draft=safe_draft,
     )
+    _remember_private_draft(action)
     actions = tuple([*base.actions, action])[-MAX_ACTIONS:]
     return (
         AgendaPendingState(
@@ -263,6 +268,7 @@ def cancel_pending_action(
         for item in current.actions
     )
     cancelled = next(item for item in updated_actions if item.pending_action_id == action.pending_action_id)
+    _forget_private_draft(cancelled.pending_action_id)
     return (
         AgendaPendingState(
             conversation_id=current.conversation_id,
@@ -280,6 +286,7 @@ def expire_pending_actions(state: AgendaPendingState, *, now_iso: str) -> Agenda
     actions: list[AgendaPendingAction] = []
     for action in state.actions:
         if action.status == STATUS_PENDING and action.expired_at(now_iso):
+            _forget_private_draft(action.pending_action_id)
             actions.append(action.with_status(STATUS_EXPIRED))
             changed = True
         else:
@@ -324,6 +331,18 @@ def build_content_free_draft(plan: agent_contract.AgendaAgentPlan, *, operation:
     }
 
 
+def private_draft_for_action(action: AgendaPendingAction | None) -> dict[str, Any]:
+    if action is None:
+        return {}
+    draft = dict(action.draft or {})
+    if draft:
+        return draft
+    stored = _PRIVATE_DRAFTS.get(action.pending_action_id) or {}
+    if stored and _draft_hash(stored) == action.action_hash:
+        return dict(stored)
+    return {}
+
+
 def _action_from_mapping(value: Any) -> AgendaPendingAction | None:
     data = _mapping(value)
     pending_action_id = _safe_token(data.get('pending_action_id'), max_chars=160)
@@ -345,7 +364,7 @@ def _action_from_mapping(value: Any) -> AgendaPendingAction | None:
         expires_at=_safe_timestamp(data.get('expires_at')),
         status=status,
         action_hash=_safe_hash(data.get('action_hash')),
-        draft=_safe_draft(data.get('draft')),
+        draft=_private_draft_from_mapping(pending_action_id, data),
     )
 
 
@@ -355,6 +374,22 @@ def _safe_draft(value: Any) -> dict[str, Any]:
     if len(encoded) > 4000:
         return {'schema_version': 'frida_agenda_pending_draft_v1', 'truncated': True, 'content_free': True}
     return json.loads(encoded) if encoded else {}
+
+
+def _remember_private_draft(action: AgendaPendingAction) -> None:
+    if action.draft:
+        _PRIVATE_DRAFTS[action.pending_action_id] = dict(action.draft)
+
+
+def _forget_private_draft(pending_action_id: str) -> None:
+    _PRIVATE_DRAFTS.pop(str(pending_action_id or ''), None)
+
+
+def _private_draft_from_mapping(pending_action_id: str, data: Mapping[str, Any]) -> dict[str, Any]:
+    stored = _PRIVATE_DRAFTS.get(pending_action_id) or {}
+    if stored and _draft_hash(stored) == _safe_hash(data.get('action_hash')):
+        return dict(stored)
+    return {}
 
 
 def _draft_hash(value: Mapping[str, Any]) -> str:

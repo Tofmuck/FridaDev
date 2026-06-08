@@ -757,6 +757,18 @@ END:VCALENDAR
                 'ambiguity': 'none',
             },
             tool_calls=(),
+            draft={
+                'title': None,
+                'location': None,
+                'description': None,
+                'calendar_id': None,
+                'start': None,
+                'end': None,
+                'timezone': None,
+                'all_day': None,
+                'target_event_id': None,
+                'change_summary': None,
+            },
             mutation={
                 'requested': False,
                 'kind': 'none',

@@ -291,6 +291,7 @@ def run_agenda_chat_turn(
                 conversation_state=pending_state,
                 now_iso=str(now_iso or ''),
                 id_factory=pending_id_factory,
+                read_client=read_client,
             )
             pending_state = proposal_result.state or pending_state
             final_lock = proposal_rendering.build_proposal_response_lock(
