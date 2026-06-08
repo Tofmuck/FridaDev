@@ -154,18 +154,24 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ## Architecture cible
 
-- [ ] Ajouter un toggle frontend `agenda_enabled`, off par defaut, voisin de
+- [x] Ajouter un toggle frontend `agenda_enabled`, off par defaut, voisin de
   Biblio.
-  Preuve attendue: test frontend payload `agenda_enabled=false/true`.
-- [ ] Ajouter une section runtime `agenda_agent`.
-  Preuve attendue: schema runtime settings, seed, API admin redacted.
-- [ ] Ajouter une source de secret CalDAV dediee au compte `tof`, jamais
+  Preuve livree: Lot 1, payload `agenda_enabled`, off no-op et on degradant
+  proprement sans runtime agent.
+- [x] Ajouter une section runtime `agenda_agent`.
+  Preuve livree: Lot 2, schema runtime settings, seed, API admin dediee et
+  read-model redacted.
+- [x] Ajouter une source de secret CalDAV dediee au compte `tof`, jamais
   exposee au LLM.
-  Preuve attendue: resolution secret avec read path redacted, aucun
-  app-password cree par le code.
-- [ ] Ajouter un module futur `app/agenda/` avec responsabilites explicites:
-  agent contract, product methods, CalDAV tools, chat runtime, observability.
-  Preuve attendue: fichiers separes par responsabilite, pas de `utils.py`.
+  Preuve livree: source dediee redacted/source-only, aucun app-password cree
+  par le code.
+- [x] Ajouter le module applicatif `app/agenda/` avec responsabilites livrees
+  separees: runtime chat no-op, runtime config, modeles CalDAV, client read-only,
+  parser ICS, tools read-only et observability.
+  Preuve livree: fichiers separes par responsabilite, pas de `utils.py`.
+- [ ] Ajouter les composants Agenda futurs non livres dans `app/agenda/`:
+  agent contract, methodes produit, pending store, rendu/final lock.
+  Preuve attendue: aucun fichier fourre-tout et branchements minimaux.
 - [ ] Brancher l'Agenda dans `chat_service` a cote de Biblio.
   Preuve attendue: toggle off = no-op; toggle on = appel runtime Agenda borne.
 - [ ] Faire passer les reponses finales Agenda par `AssistantResponseOverride`.
@@ -360,6 +366,29 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Implementer `event_search`.
 - [x] Implementer observations content-free.
 - [x] Prouver aucun payload ICS dans logs, metas ou read-models de test.
+
+### Lot 3.1 - Correctifs outils read-only avant agent
+
+- [x] Ajouter un support borne des occurrences ICS recurrentes dans la fenetre
+  demandee.
+  Preuve livree: tests RRULE `DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY`, `COUNT`,
+  `INTERVAL`, `EXDATE` et `RECURRENCE-ID` sur fixtures synthetiques.
+- [x] Refuser proprement les regles recurrentes non supportees.
+  Preuve livree: test d'erreur `IcsRecurrenceUnsupportedError` sans payload ICS
+  brut ni UID dans l'erreur.
+- [x] Brancher `event_get` sur le client read-only quand l'evenement connu porte
+  un `caldav_path` exploitable.
+  Preuve livree: test `event_get` avec transport fake `GET`, sans accepter UID
+  ou URL arbitraire.
+- [x] Refuser un `event_get` CalDAV sans `caldav_path` connu.
+  Preuve livree: test d'erreur propre depuis un evenement deja en state mais
+  sans chemin CalDAV.
+- [x] Valider les statuts HTTP CalDAV attendus.
+  Preuve livree: tests 401/403/404/500 et GET 404 avec erreur structuree
+  content-free, sans body brut.
+- [x] Corriger les cases TODO hautes deja livrees par Lots 1-3.
+  Preuve livree: toggle, runtime settings, source redacted et module
+  `app/agenda/` coches sans cocher Lot 4+.
 
 ### Lot 4 - Agent JSON active sous garde-fous
 

@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 from xml.etree import ElementTree
 
 from agenda.caldav_models import (
+    CalDavReadError,
     CalDavRequest,
     CalDavResponse,
     CalDavTransportUnavailable,
@@ -50,7 +51,8 @@ class CalDavReadClient:
                 headers={'Depth': '1', 'Content-Type': 'application/xml; charset=utf-8'},
                 body=_calendar_list_body(),
                 kind='calendar_list',
-            )
+            ),
+            expected_statuses=(207,),
         )
         return parse_calendar_propfind(response.text)
 
@@ -69,12 +71,15 @@ class CalDavReadClient:
                 headers={'Depth': '1', 'Content-Type': 'application/xml; charset=utf-8'},
                 body=_calendar_query_body(start_iso=start_iso, end_iso=end_iso),
                 kind='event_query_range',
-            )
+            ),
+            expected_statuses=(207,),
         )
         return parse_event_report(
             response.text,
             calendar=calendar,
             timezone_name=timezone_name,
+            window_start_iso=start_iso,
+            window_end_iso=end_iso,
         )
 
     def get_event(self, event: CalendarEvent) -> CalendarEvent:
@@ -85,7 +90,8 @@ class CalDavReadClient:
                 headers={'Accept': 'text/calendar'},
                 body='',
                 kind='event_get',
-            )
+            ),
+            expected_statuses=(200,),
         )
         events = parse_ics_events(
             response.text,
@@ -93,16 +99,29 @@ class CalDavReadClient:
             timezone_name=event.timezone,
             default_etag=event.etag,
             default_caldav_path=event.caldav_path,
+            window_start_iso=event.start_iso,
+            window_end_iso=event.end_iso,
         )
+        for candidate in events:
+            if candidate.event_id == event.event_id:
+                return candidate
         for candidate in events:
             if candidate.uid == event.uid:
                 return candidate
         return event
 
-    def _send(self, request: CalDavRequest) -> CalDavResponse:
+    def _send(self, request: CalDavRequest, *, expected_statuses: tuple[int, ...]) -> CalDavResponse:
         if self._transport is None:
             raise CalDavTransportUnavailable('CalDAV read client requires an injected transport')
-        return self._transport(request)
+        response = self._transport(request)
+        if int(response.status_code) not in expected_statuses:
+            raise CalDavReadError(
+                method=request.method,
+                kind=request.kind,
+                status_code=int(response.status_code),
+                reason_code=_status_reason(int(response.status_code)),
+            )
+        return response
 
     def _absolute_url(self, path_or_url: str) -> str:
         value = str(path_or_url or '')
@@ -144,10 +163,18 @@ def parse_event_report(
     *,
     calendar: CalendarSummary,
     timezone_name: str = 'UTC',
+    window_start_iso: str = '',
+    window_end_iso: str = '',
 ) -> tuple[CalendarEvent, ...]:
     text = str(response_text or '').strip()
     if text.startswith('BEGIN:VCALENDAR'):
-        return parse_ics_events(text, calendar_id=calendar.local_id, timezone_name=timezone_name)
+        return parse_ics_events(
+            text,
+            calendar_id=calendar.local_id,
+            timezone_name=timezone_name,
+            window_start_iso=window_start_iso,
+            window_end_iso=window_end_iso,
+        )
     root = ElementTree.fromstring(text)
     events: list[CalendarEvent] = []
     for response in (item for item in root.iter() if _local_name(item.tag) == 'response'):
@@ -163,6 +190,8 @@ def parse_event_report(
                 timezone_name=timezone_name,
                 default_etag=etag,
                 default_caldav_path=href,
+                window_start_iso=window_start_iso,
+                window_end_iso=window_end_iso,
             )
         )
     return tuple(sorted(events, key=lambda event: (event.start_iso, event.end_iso, event.event_id)))
@@ -206,3 +235,15 @@ def _calendar_query_body(*, start_iso: str, end_iso: str) -> str:
 
 def _caldav_timestamp(iso_value: str) -> str:
     return str(iso_value or '').replace('-', '').replace(':', '').replace('+00:00', 'Z')
+
+
+def _status_reason(status_code: int) -> str:
+    if status_code == 401:
+        return 'caldav_unauthorized'
+    if status_code == 403:
+        return 'caldav_forbidden'
+    if status_code == 404:
+        return 'caldav_not_found'
+    if status_code >= 500:
+        return 'caldav_server_error'
+    return 'caldav_unexpected_status'

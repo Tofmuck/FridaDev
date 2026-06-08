@@ -15,9 +15,11 @@ if str(APP_DIR) not in sys.path:
 from agenda import caldav_read_client, ics_reader, read_tools
 from agenda.caldav_models import (
     AgendaReadState,
+    CalDavReadError,
     CalDavResponse,
     CalDavTransportUnavailable,
     CalendarEvent,
+    CalendarSummary,
     ReadToolValidationError,
 )
 from agenda.observability import observation_has_forbidden_shape
@@ -26,6 +28,31 @@ from agenda.observability import observation_has_forbidden_shape
 FIXTURE_DIR = APP_DIR / 'docs' / 'states' / 'baselines' / 'agenda-fixtures'
 PRIMARY_ICS = (FIXTURE_DIR / 'anonymous-primary-calendar.ics').read_text(encoding='utf-8')
 SHARED_ICS = (FIXTURE_DIR / 'anonymous-shared-calendar.ics').read_text(encoding='utf-8')
+
+RECURRENCE_ICS = """BEGIN:VCALENDAR
+VERSION:2.0
+X-WR-CALNAME:Fixture Recurrence Calendar
+BEGIN:VEVENT
+UID:fixture-recurring-001@example.invalid
+DTSTART:20260601T070000Z
+DTEND:20260601T073000Z
+RRULE:FREQ=DAILY;COUNT=10
+EXDATE:20260603T070000Z
+SUMMARY:Fixture Daily Check
+LOCATION:Fixture Location Gamma
+DESCRIPTION:Synthetic recurring fixture event. No personal data.
+END:VEVENT
+BEGIN:VEVENT
+UID:fixture-recurring-001@example.invalid
+RECURRENCE-ID:20260604T070000Z
+DTSTART:20260604T090000Z
+DTEND:20260604T093000Z
+SUMMARY:Fixture Daily Check Moved
+LOCATION:Fixture Location Delta
+DESCRIPTION:Synthetic recurring override. No personal data.
+END:VEVENT
+END:VCALENDAR
+"""
 
 
 CALENDAR_PROPFIND_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -61,19 +88,36 @@ CALENDAR_PROPFIND_XML = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 class FakeReadTransport:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        report_text: str | None = None,
+        event_get_text: str | None = None,
+        status_by_kind: dict[str, int] | None = None,
+        body_by_kind: dict[str, str] | None = None,
+    ) -> None:
         self.calls = []
+        self.report_text = report_text
+        self.event_get_text = event_get_text
+        self.status_by_kind = status_by_kind or {}
+        self.body_by_kind = body_by_kind or {}
 
     def __call__(self, request):
         self.calls.append(request)
+        status_code = self.status_by_kind.get(request.kind)
+        body = self.body_by_kind.get(request.kind)
         if request.kind == 'calendar_list':
-            return CalDavResponse(status_code=207, text=CALENDAR_PROPFIND_XML)
+            return CalDavResponse(status_code=status_code or 207, text=body or CALENDAR_PROPFIND_XML)
         if request.kind == 'event_query_range':
+            if body is not None:
+                return CalDavResponse(status_code=status_code or 207, text=body)
+            if self.report_text is not None:
+                return CalDavResponse(status_code=status_code or 207, text=self.report_text)
             if 'fixture-shared' in request.url:
-                return CalDavResponse(status_code=207, text=SHARED_ICS)
-            return CalDavResponse(status_code=207, text=PRIMARY_ICS)
+                return CalDavResponse(status_code=status_code or 207, text=SHARED_ICS)
+            return CalDavResponse(status_code=status_code or 207, text=PRIMARY_ICS)
         if request.kind == 'event_get':
-            return CalDavResponse(status_code=200, text=PRIMARY_ICS)
+            return CalDavResponse(status_code=status_code or 200, text=body or self.event_get_text or PRIMARY_ICS)
         raise AssertionError(f'unexpected request kind: {request.kind}')
 
 
@@ -144,6 +188,66 @@ class AgendaCalDavReadToolsTests(unittest.TestCase):
         self.assertTrue(result.observation['content_free'])
         self.assertContentFreeObservation(result.observation)
 
+    def test_event_query_range_expands_bounded_recurrences_and_overrides(self) -> None:
+        transport = FakeReadTransport(report_text=RECURRENCE_ICS)
+        client = caldav_read_client.CalDavReadClient(transport=transport)
+        state = AgendaReadState()
+        read_tools.calendar_list(client, state=state)
+        primary_id = self._calendar_id_by_name(state, 'Fixture Primary Calendar')
+
+        result = read_tools.event_query_range(
+            client,
+            state=state,
+            calendar_id=primary_id,
+            start_iso='2026-06-02T00:00:00Z',
+            end_iso='2026-06-05T00:00:00Z',
+        )
+
+        self.assertEqual([event.start_iso for event in result.items], [
+            '2026-06-02T07:00:00Z',
+            '2026-06-04T09:00:00Z',
+        ])
+        self.assertEqual(len({event.event_id for event in result.items}), 2)
+        self.assertEqual(result.items[1].summary, 'Fixture Daily Check Moved')
+        self.assertNotIn('2026-06-03T07:00:00Z', [event.start_iso for event in result.items])
+        self.assertContentFreeObservation(result.observation)
+
+    def test_parse_ics_events_supports_basic_rrule_frequencies(self) -> None:
+        cases = (
+            ('DAILY', '20260601T070000Z', '20260601T073000Z', '2026-06-02T07:00:00Z'),
+            ('WEEKLY', '20260601T070000Z', '20260601T073000Z', '2026-06-08T07:00:00Z'),
+            ('MONTHLY', '20260601T070000Z', '20260601T073000Z', '2026-07-01T07:00:00Z'),
+            ('YEARLY', '20260601T070000Z', '20260601T073000Z', '2027-06-01T07:00:00Z'),
+        )
+
+        for freq, start, end, expected_second_start in cases:
+            with self.subTest(freq=freq):
+                events = ics_reader.parse_ics_events(
+                    self._recurrence_ics(freq=freq, start=start, end=end),
+                    calendar_id='fixture_recurrence',
+                    window_start_iso='2026-06-01T00:00:00Z',
+                    window_end_iso='2028-01-01T00:00:00Z',
+                )
+                self.assertGreaterEqual(len(events), 2)
+                self.assertEqual(events[1].start_iso, expected_second_start)
+                self.assertEqual(len({event.event_id for event in events[:2]}), 2)
+
+    def test_unsupported_recurrence_rule_fails_without_raw_payload(self) -> None:
+        with self.assertRaises(ics_reader.IcsRecurrenceUnsupportedError) as raised:
+            ics_reader.parse_ics_events(
+                self._recurrence_ics(
+                    freq='DAILY',
+                    start='20260601T070000Z',
+                    end='20260601T073000Z',
+                    extra_rule='BYDAY=MO',
+                ),
+                calendar_id='fixture_recurrence',
+                window_start_iso='2026-06-01T00:00:00Z',
+                window_end_iso='2026-06-03T00:00:00Z',
+            )
+        self.assertNotIn('BEGIN:VEVENT', str(raised.exception))
+        self.assertNotIn('fixture-recurring', str(raised.exception))
+
     def test_event_query_range_rejects_missing_inverted_too_large_or_unknown_windows(self) -> None:
         client, state, _transport = self._client_and_state()
         primary_id = self._calendar_id_by_name(state, 'Fixture Primary Calendar')
@@ -180,6 +284,51 @@ class AgendaCalDavReadToolsTests(unittest.TestCase):
         with self.assertRaises(ReadToolValidationError):
             read_tools.event_get(state=state, event_id='evt_missing')
 
+    def test_event_get_uses_fake_transport_get_when_caldav_path_is_known(self) -> None:
+        client, state, transport = self._client_and_state()
+        primary_id = self._calendar_id_by_name(state, 'Fixture Primary Calendar')
+        event = CalendarEvent(
+            event_id='evt_5d91a151b0b7',
+            calendar_id=primary_id,
+            uid='fixture-primary-001@example.invalid',
+            summary='Fixture Focus Block',
+            location='Fixture Location Alpha',
+            description='Synthetic fixture event. No personal data.',
+            start_iso='2026-06-09T07:00:00Z',
+            end_iso='2026-06-09T08:00:00Z',
+            etag='"fixture-etag-001"',
+            caldav_path='/remote.php/dav/calendars/tof/fixture-primary/fixture-primary-001.ics',
+        )
+        state.add_events((event,))
+
+        get_result = read_tools.event_get(
+            state=state,
+            event_id=event.event_id,
+            client=client,
+        )
+
+        self.assertEqual(transport.calls[-1].kind, 'event_get')
+        self.assertEqual(transport.calls[-1].method, 'GET')
+        self.assertEqual(get_result.observation['reason_code'], 'caldav_get')
+        self.assertContentFreeObservation(get_result.observation)
+
+    def test_event_get_with_client_rejects_missing_caldav_path(self) -> None:
+        client, state, _transport = self._client_and_state()
+        event = CalendarEvent(
+            event_id='evt_fixture_without_path',
+            calendar_id=next(iter(state.calendars)),
+            uid='fixture-without-path@example.invalid',
+            summary='Fixture Missing Path',
+            location='Fixture Location',
+            description='Synthetic fixture event. No personal data.',
+            start_iso='2026-06-09T07:00:00Z',
+            end_iso='2026-06-09T08:00:00Z',
+        )
+        state.add_events((event,))
+
+        with self.assertRaises(ReadToolValidationError):
+            read_tools.event_get(state=state, event_id=event.event_id, client=client)
+
     def test_read_client_constructs_get_with_fake_transport_only(self) -> None:
         transport = FakeReadTransport()
         client = caldav_read_client.CalDavReadClient(
@@ -205,6 +354,76 @@ class AgendaCalDavReadToolsTests(unittest.TestCase):
         self.assertEqual(transport.calls[-1].method, 'GET')
         self.assertEqual(refreshed.uid, event.uid)
         self.assertEqual(refreshed.summary, event.summary)
+
+    def test_read_client_rejects_http_statuses_with_content_free_error(self) -> None:
+        raw_body = 'RAW SERVER BODY BEGIN:VEVENT UID:fixture-leak SUMMARY:should-not-leak'
+        for status_code in (401, 403, 404, 500):
+            with self.subTest(status_code=status_code):
+                transport = FakeReadTransport(
+                    status_by_kind={'calendar_list': status_code},
+                    body_by_kind={'calendar_list': raw_body},
+                )
+                client = caldav_read_client.CalDavReadClient(transport=transport)
+
+                with self.assertRaises(CalDavReadError) as raised:
+                    client.list_calendars()
+
+                rendered = str(raised.exception)
+                self.assertNotIn(raw_body, rendered)
+                self.assertNotIn('BEGIN:VEVENT', rendered)
+                self.assertContentFreeObservation(raised.exception.to_observation())
+
+    def test_read_client_get_requires_http_200_without_body_leak(self) -> None:
+        raw_body = 'RAW SERVER BODY LOCATION:should-not-leak app-password'
+        transport = FakeReadTransport(
+            status_by_kind={'event_get': 404},
+            body_by_kind={'event_get': raw_body},
+        )
+        client = caldav_read_client.CalDavReadClient(transport=transport)
+        event = CalendarEvent(
+            event_id='evt_fixture_known',
+            calendar_id='fixture_primary',
+            uid='fixture-primary-001@example.invalid',
+            summary='Fixture Focus Block',
+            location='Fixture Location Alpha',
+            description='Synthetic fixture event. No personal data.',
+            start_iso='2026-06-09T07:00:00Z',
+            end_iso='2026-06-09T08:00:00Z',
+            caldav_path='/remote.php/dav/calendars/tof/fixture-primary/fixture-primary-001.ics',
+        )
+
+        with self.assertRaises(CalDavReadError) as raised:
+            client.get_event(event)
+
+        rendered = str(raised.exception)
+        self.assertNotIn(raw_body, rendered)
+        self.assertNotIn('app-password', rendered)
+        self.assertContentFreeObservation(raised.exception.to_observation())
+
+    def test_read_client_report_requires_http_207_without_body_leak(self) -> None:
+        raw_body = 'RAW REPORT BODY UID:fixture-leak LOCATION:should-not-leak'
+        transport = FakeReadTransport(
+            status_by_kind={'event_query_range': 500},
+            body_by_kind={'event_query_range': raw_body},
+        )
+        client = caldav_read_client.CalDavReadClient(transport=transport)
+        calendar = CalendarSummary(
+            local_id='cal_fixture_primary',
+            display_name='Fixture Primary Calendar',
+            caldav_path='/remote.php/dav/calendars/tof/fixture-primary/',
+        )
+
+        with self.assertRaises(CalDavReadError) as raised:
+            client.query_calendar_events(
+                calendar,
+                start_iso='2026-06-09T00:00:00Z',
+                end_iso='2026-06-10T00:00:00Z',
+            )
+
+        rendered = str(raised.exception)
+        self.assertNotIn(raw_body, rendered)
+        self.assertNotIn('LOCATION:', rendered)
+        self.assertContentFreeObservation(raised.exception.to_observation())
 
     def test_event_search_is_local_bounded_and_does_not_call_transport_again(self) -> None:
         client, state, transport = self._client_and_state()
@@ -304,6 +523,24 @@ class AgendaCalDavReadToolsTests(unittest.TestCase):
             if calendar.display_name == display_name:
                 return calendar.local_id
         raise AssertionError(f'missing calendar {display_name}')
+
+    def _recurrence_ics(self, *, freq: str, start: str, end: str, extra_rule: str = '') -> str:
+        rule = f'FREQ={freq};COUNT=2;INTERVAL=1'
+        if extra_rule:
+            rule = f'{rule};{extra_rule}'
+        return f"""BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:fixture-recurring-{freq.lower()}@example.invalid
+DTSTART:{start}
+DTEND:{end}
+RRULE:{rule}
+SUMMARY:Fixture Recurrence {freq}
+LOCATION:Fixture Location
+DESCRIPTION:Synthetic fixture event. No personal data.
+END:VEVENT
+END:VCALENDAR
+"""
 
     def assertContentFreeObservation(self, observation: dict) -> None:
         self.assertTrue(observation['content_free'])

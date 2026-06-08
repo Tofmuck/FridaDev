@@ -80,5 +80,31 @@ class CalDavTransportUnavailable(RuntimeError):
     pass
 
 
+class CalDavReadError(RuntimeError):
+    def __init__(self, *, method: str, kind: str, status_code: int, reason_code: str) -> None:
+        self.method = str(method or '')
+        self.kind = str(kind or '')
+        self.status_code = int(status_code)
+        self.reason_code = str(reason_code or 'unexpected_status')
+        super().__init__(
+            f'CalDAV read request failed: method={self.method} '
+            f'kind={self.kind} status={self.status_code} reason={self.reason_code}'
+        )
+
+    def to_observation(self) -> dict[str, Any]:
+        return {
+            'schema_version': 'frida_agenda_caldav_read_error_v1',
+            'status': 'error',
+            'reason_code': self.reason_code,
+            'method': self.method,
+            'kind': self.kind,
+            'http_status': self.status_code,
+            'caldav_access': False,
+            'nextcloud_access': False,
+            'content_free': True,
+            'redacted': True,
+        }
+
+
 class ReadToolValidationError(ValueError):
     pass

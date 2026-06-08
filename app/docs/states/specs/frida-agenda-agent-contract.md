@@ -272,6 +272,30 @@ Etat livre Lot 3:
   ou mutation calendrier n'est cree dans Lot 3;
 - le toggle conversationnel Agenda reste le no-op livre au Lot 1.
 
+Etat livre Lot 3.1:
+
+- le parseur ICS developpe les occurrences recurrentes dans la fenetre demandee,
+  sans scan infini;
+- le support borne couvre `RRULE` avec `FREQ=DAILY|WEEKLY|MONTHLY|YEARLY`,
+  `COUNT`, `UNTIL`, `INTERVAL`, `EXDATE` et `RECURRENCE-ID`;
+- les identifiants internes d'occurrences sont stables et distincts, derives
+  sans exposer l'UID brut dans l'observabilite;
+- les parties `RRULE` non supportees, par exemple les familles `BY*`, doivent
+  lever une erreur locale content-free au lieu de produire une lecture fausse;
+- `event_get` refuse tout UID ou URL arbitraire utilisateur: la cible doit deja
+  exister dans `AgendaReadState`;
+- si la cible connue porte un `caldav_path` exploitable et qu'un client
+  read-only est fourni, `event_get` relit l'evenement par `GET` via transport
+  injectable;
+- si un client read-only est fourni mais que la cible connue n'a pas de
+  `caldav_path`, `event_get` echoue proprement au lieu de pretendre avoir fait
+  un `GET`;
+- les statuts HTTP CalDAV sont valides: `PROPFIND` et `REPORT` attendent 207,
+  `GET` attend 200, et 401/403/404/5xx produisent une erreur structuree sans
+  body brut;
+- aucun branchement chat, agent JSON, secret, CalDAV live, Nextcloud live ou
+  mutation calendrier n'est ajoute par Lot 3.1.
+
 ## 6. Entrees agent cible
 
 L'agent Agenda recoit des entrees structurees et bornees:
@@ -397,8 +421,10 @@ Outils read-only:
 - `event_query_range`: requete CalDAV bornee par calendrier et fenetre temps;
 - `event_search`: recherche bornee derivee de `event_query_range`, sans scan
   global ni nouvel acces large;
-- `event_get`: relire un evenement cible deja connu dans l'etat interne, sans
-  exposer UID, ETag, URL brute ou ICS dans l'observation;
+- `event_get`: relire un evenement cible deja connu dans l'etat interne; si un
+  `caldav_path` connu existe et qu'un client read-only est fourni, faire un
+  `GET` borne via transport injectable; ne jamais exposer UID, ETag, URL brute
+  ou ICS dans l'observation;
 - `availability_query`: derivation bornee de disponibilites depuis les
   evenements lus, sans promettre une route free-busy tant qu'elle n'est pas
   prouvee.
@@ -620,7 +646,7 @@ Preuve Lot 3 locale:
 - `event_query_range` est prouve avec fixtures ICS anonymes et fenetres ISO
   explicites;
 - `event_get` est prouve depuis un identifiant deja present dans l'etat interne
-  de test;
+  de test, puis par `GET` fake quand un `caldav_path` connu existe;
 - `event_search` est prouve comme recherche locale bornee sur evenements deja
   lus;
 - le client read-only construit `PROPFIND`, `REPORT` et `GET` mais les tests
@@ -628,6 +654,17 @@ Preuve Lot 3 locale:
 - les observations de test ne contiennent pas ICS brut, UID brut, ETag brut,
   URL CalDAV brute, header Authorization, cookie, app-password, titre, lieu ou
   description.
+
+Preuve Lot 3.1 locale:
+
+- les recurrences ICS sont testees avec fenetre bornee, `RRULE`, `EXDATE` et
+  `RECURRENCE-ID`;
+- les erreurs de recurrence non supportee ne contiennent pas de payload ICS,
+  UID, titre, lieu ou description;
+- 401/403/404/500 sont testes avec un transport fake et produisent une erreur
+  CalDAV read-only structuree, redacted et content-free;
+- aucune preuve Lot 3.1 ne depend de Nextcloud live, CalDAV live, secret,
+  app-password ou evenement personnel.
 
 Preuve content-free minimale:
 

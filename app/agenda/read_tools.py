@@ -85,10 +85,18 @@ def event_get(
     *,
     state: AgendaReadState,
     event_id: str,
+    client: CalDavReadClient | None = None,
 ) -> ReadToolResult:
     event = state.events.get(str(event_id or ''))
     if event is None:
         raise ReadToolValidationError('event_get requires an event_id already present in read state')
+    reason_code = 'state_only'
+    if client is not None:
+        if not event.caldav_path:
+            raise ReadToolValidationError('event_get with a CalDAV client requires known caldav_path')
+        event = client.get_event(event)
+        state.add_events((event,))
+        reason_code = 'caldav_get'
     calendar = state.calendars.get(event.calendar_id)
     calendars = (calendar,) if calendar else ()
     return ReadToolResult(
@@ -99,6 +107,7 @@ def event_get(
             status='ok',
             calendars=calendars,
             events=(event,),
+            reason_code=reason_code,
             selected_event_id=event.event_id,
         ),
     )
