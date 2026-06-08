@@ -4,9 +4,9 @@ Statut: TODO actif au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
-Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-3.2 livrent
-seulement toggle no-op, configuration redacted et outils read-only non branches,
-sans agent Agenda reel ni acces CalDAV live.
+Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-4 livrent
+toggle no-op, configuration redacted, outils read-only non branches et agent
+JSON valide sous garde-fous, sans lecture CalDAV live ni mutation.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -172,8 +172,9 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [ ] Ajouter les composants Agenda futurs non livres dans `app/agenda/`:
   agent contract, methodes produit, pending store, rendu/final lock.
   Preuve attendue: aucun fichier fourre-tout et branchements minimaux.
-- [ ] Brancher l'Agenda dans `chat_service` a cote de Biblio.
-  Preuve attendue: toggle off = no-op; toggle on = appel runtime Agenda borne.
+- [x] Brancher l'Agenda dans `chat_service` a cote de Biblio.
+  Preuve livree: toggle absent/off = no-op strict; toggle on = appel runtime
+  Agenda borne, sans prompt lane ni final response override.
 - [ ] Faire passer les reponses finales Agenda par `AssistantResponseOverride`.
   Preuve attendue: message assistant DB, timestamp, meta, Memory et contexte
   suivant prouves.
@@ -193,24 +194,28 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ## Contrat JSON agent
 
-- [ ] Definir `schema_version=frida_agenda_agent_v1`.
-  Preuve attendue: validation accepte version exacte et refuse autre version.
-- [ ] Definir `product_method` obligatoire.
-  Preuve attendue: sortie sans methode rejetee.
-- [ ] Definir `calendar_scope`.
-  Preuve attendue: calendrier ambigu -> clarification.
-- [ ] Definir `time_scope`.
-  Preuve attendue: date relative resolue via `FRIDA_TIMEZONE`.
-- [ ] Definir `tool_calls` comme sous-plan technique allowliste.
-  Preuve attendue: outil inconnu refuse avant reseau.
-- [ ] Definir `mutation`.
-  Preuve attendue: mutation demandee sans confirmation -> rejet.
-- [ ] Definir `answer_mode`, `risk_flags`, `fallback_reason`.
-  Preuve attendue: reason codes content-free.
-- [ ] Definir `surface_intro` et `surface_outro`.
-  Preuve attendue: champs string, courts, jamais `null`.
-- [ ] Interdire le raw JSON modele en logs.
-  Preuve attendue: observabilite compacte seulement.
+- [x] Definir `schema_version=frida_agenda_agent_v1`.
+  Preuve livree: validation accepte version exacte et refuse autre version.
+- [x] Definir `product_method` obligatoire.
+  Preuve livree: sortie sans methode connue rejetee.
+- [x] Definir `calendar_scope` structurel.
+  Preuve livree: champs stricts `calendar_ids`, `family_calendar`,
+  `ambiguity`; les clarifications produit restent Lot 5+.
+- [x] Definir `time_scope` structurel.
+  Preuve livree: champs stricts `kind`, `start`, `end`, `timezone`,
+  `ambiguity`; la resolution produit de `today/tomorrow` reste Lot 5.
+- [x] Definir `tool_calls` comme sous-plan technique allowliste.
+  Preuve livree: outil inconnu, outil hors methode, methode non-GET et params
+  interdits refuses avant reseau.
+- [x] Definir `mutation`.
+  Preuve livree: mutation demandee sans confirmation rejetee; suppression
+  exige confirmation renforcee.
+- [x] Definir `answer_mode`, `risk_flags`, `fallback_reason`.
+  Preuve livree: champs codes stricts et observations content-free.
+- [x] Definir `surface_intro` et `surface_outro`.
+  Preuve livree: champs string, courts, jamais `null`.
+- [x] Interdire le raw JSON modele en logs.
+  Preuve livree: observabilite compacte avec hashes, counts et flags.
 
 ## Methodes produit Agenda
 
@@ -388,7 +393,7 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   content-free, sans body brut.
 - [x] Corriger les cases TODO hautes deja livrees par Lots 1-3.
   Preuve livree: toggle, runtime settings, source redacted et module
-  `app/agenda/` coches sans cocher Lot 4+.
+  `app/agenda/` coches sans anticiper les lectures live Lot 5+.
 
 ### Lot 3.2 - RRULE realistes avant agent
 
@@ -419,12 +424,14 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ### Lot 4 - Agent JSON active sous garde-fous
 
-- [ ] Definir schema `frida_agenda_agent_v1`.
-- [ ] Ajouter validation stricte.
-- [ ] Consommer les modes runtime Lot 2 `off/active` sans reintroduire
+- [x] Definir schema `frida_agenda_agent_v1`.
+- [x] Ajouter validation stricte.
+- [x] Consommer les modes runtime Lot 2 `off/active` sans reintroduire
   `shadow` ou `candidate`.
-- [ ] Ajouter fallback deterministe propre.
-- [ ] Prouver JSON absent/invalide/hors schema.
+- [x] Ajouter fallback deterministe propre.
+- [x] Prouver JSON absent/invalide/hors schema.
+- [x] Prouver que Lot 4 ne fait aucun acces CalDAV/Nextcloud live, ne lit aucun
+  secret et ne tente aucune mutation.
 
 ### Lot 5 - Lecture read-only active
 

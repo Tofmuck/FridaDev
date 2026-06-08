@@ -70,6 +70,20 @@ def patch_server_chat_pipeline(
             source_reason='db_row',
         ),
     )
+    patch_attr(
+        server_module.runtime_settings,
+        'get_agenda_agent_settings',
+        lambda: runtime_settings.RuntimeSectionView(
+            section='agenda_agent',
+            payload={
+                'mode': {'value': 'off', 'origin': 'db_seed'},
+                'caldav_account': {'value': 'tof', 'origin': 'db_seed'},
+                'caldav_app_password': {'is_secret': True, 'is_set': False, 'origin': 'missing'},
+            },
+            source='db',
+            source_reason='test_default_off',
+        ),
+    )
     patch_attr(server_module.conv_store, 'normalize_conversation_id', lambda _raw: None)
     patch_attr(server_module.conv_store, 'load_conversation', lambda *_args, **_kwargs: None)
     patch_attr(server_module.conv_store, 'new_conversation', lambda _system: conversation)

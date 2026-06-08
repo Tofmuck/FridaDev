@@ -103,7 +103,7 @@ class ServerChatAgendaContractTests(unittest.TestCase):
                 self.assertNotIn('BEGIN:VEVENT', prompt_text)
                 self.assertFalse([event for event in events if event[0] == 'agenda'])
 
-    def test_agenda_true_is_observed_as_content_free_noop_without_prompt_lane(self) -> None:
+    def test_agenda_true_with_runtime_off_is_observed_as_content_free_noop_without_prompt_lane(self) -> None:
         conversation = {
             'id': 'conv-agenda-enabled',
             'created_at': '2026-06-08T00:00:00Z',
@@ -133,14 +133,19 @@ class ServerChatAgendaContractTests(unittest.TestCase):
         agenda_events = [payload for event, payload in events if event == 'agenda']
         self.assertEqual(len(agenda_events), 1)
         agenda_payload = agenda_events[0]['payload']
-        self.assertEqual(agenda_payload['schema_version'], 'frida_agenda_lot1_noop_v1')
+        self.assertEqual(agenda_payload['schema_version'], 'frida_agenda_lot4_agent_v1')
+        self.assertEqual(agenda_payload['agent_schema_version'], 'frida_agenda_agent_v1')
         self.assertTrue(agenda_payload['enabled'])
         self.assertFalse(agenda_payload['used'])
-        self.assertFalse(agenda_payload['runtime_available'])
+        self.assertTrue(agenda_payload['runtime_available'])
+        self.assertEqual(agenda_payload['mode'], 'off')
+        self.assertFalse(agenda_payload['agent_json_validated'])
         self.assertFalse(agenda_payload['caldav_access'])
         self.assertFalse(agenda_payload['nextcloud_access'])
         self.assertFalse(agenda_payload['secret_access'])
         self.assertFalse(agenda_payload['mutation_attempted'])
+        self.assertFalse(agenda_payload['prompt_lane_injected'])
+        self.assertFalse(agenda_payload['final_response_override'])
         self.assertTrue(agenda_payload['content_free'])
         prompt_text = '\n'.join(message['content'] for message in observed_state['payload_messages'])
         self.assertNotIn('BEGIN:VEVENT', prompt_text)

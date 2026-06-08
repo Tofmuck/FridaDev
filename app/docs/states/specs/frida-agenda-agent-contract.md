@@ -354,7 +354,7 @@ Les entrees d'observabilite ne contiennent jamais:
 
 ## 7. Sortie agent JSON cible
 
-Schema cible minimal:
+Schema livre en Lot 4:
 
 ```json
 {
@@ -395,12 +395,44 @@ Regles:
   sous-plan technique;
 - la validation locale refuse toute methode inconnue;
 - la validation locale refuse tout outil non allowliste;
+- la validation locale refuse toute methode HTTP autre que `GET` dans
+  `tool_calls`;
+- la validation locale refuse les params techniques qui portent URL CalDAV,
+  UID, ETag, ICS brut, Authorization, cookie, token ou app-password;
 - une mutation sans `confirmation_required=true` est invalide;
 - une suppression exige `confirmation_level=reinforced`;
 - le calendrier familial exige un risk flag dedie et une confirmation claire
   pour toute mutation;
 - les champs de surface restent courts et ne remplacent pas le contenu
   verrouille ni les metas.
+
+Implementation Lot 4:
+
+- `app/agenda/product_methods.py` porte le registre des methodes produit et
+  outils Agenda read-only autorises;
+- `app/agenda/agent_contract.py` porte `frida_agenda_agent_v1`, la validation
+  publique et les observations content-free;
+- `app/agenda/agent_validation.py` porte les regles strictes de schema,
+  methodes, outils, params et mutations;
+- `app/agenda/agent_runtime.py` porte le runtime agent injectable/fakeable;
+- `app/agenda/chat_runtime.py` consomme le toggle conversationnel et le mode
+  runtime `agenda_agent` comme deux garde-fous separes.
+
+Comportement Lot 4:
+
+- `agenda_enabled` absent ou false: no-op strict, le runtime Agenda n'est pas
+  appele;
+- `agenda_enabled=true` et `agenda_agent.mode=off`: no-op propre et
+  content-free;
+- `agenda_enabled=true` et `agenda_agent.mode=active`: le runtime peut appeler
+  un client modele injecte et valider un JSON agent, sans executer les outils
+  CalDAV;
+- `shadow` et `candidate` restent invalides pour Agenda V1 et produisent un
+  fallback propre s'ils apparaissent par injection ou config corrompue;
+- JSON absent, invalide, tronque ou hors schema: fallback propre, aucune
+  exception utilisateur brute, aucun raw JSON modele en observabilite;
+- Lot 4 ne lit aucun secret, ne contacte ni CalDAV ni Nextcloud, ne cree pas de
+  pending action, ne fait aucune mutation et n'installe aucun final lock.
 
 ## 8. Methodes produit Agenda
 
@@ -701,6 +733,30 @@ Preuve Lot 3.2 locale:
   fenetre et des ids d'occurrence distincts;
 - aucune preuve Lot 3.2 ne lit Nextcloud live, CalDAV live, secret,
   app-password, UID brut, titre, lieu, description ou payload ICS personnel.
+
+Preuve Lot 4 locale:
+
+- `frida_agenda_agent_v1` est valide strictement: version exacte, root keys
+  strictes, `product_method`, `calendar_scope`, `time_scope`, `tool_calls`,
+  `mutation`, `answer_mode`, `risk_flags`, `fallback_reason`,
+  `surface_intro` et `surface_outro`;
+- `surface_intro` et `surface_outro` doivent etre des strings courts, jamais
+  `null`;
+- les outils inconnus, hors methode produit, mutatifs ou avec params interdits
+  sont refuses avant tout reseau;
+- les mutations demandees exigent confirmation humaine et les suppressions
+  exigent confirmation renforcee;
+- le runtime agent est fakeable/injectable en test et le client par defaut ne
+  contacte aucun provider;
+- le toggle conversationnel et le mode runtime restent deux conditions
+  separees: toggle off = no-op, mode off = no-op, mode actif seul ne suffit pas
+  si le toggle est off;
+- `shadow` et `candidate` restent rejetes comme modes Agenda V1;
+- JSON absent, invalide, tronque ou hors schema produit un fallback propre;
+- aucune preuve Lot 4 ne lit Nextcloud live, CalDAV live, secret, app-password,
+  UID brut, titre, lieu, description, URL CalDAV brute ou payload ICS personnel;
+- Lot 4 ne branche pas encore de lecture active, pending store, mutation,
+  final lock Agenda ou reponse visible Agenda.
 
 Preuve content-free minimale:
 
