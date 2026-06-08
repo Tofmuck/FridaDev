@@ -10,6 +10,12 @@ Mise a jour 2026-05-29: Biblio native / Frida Catalogue est livre et archive.
 Il ne reste plus comme grand chantier produit potentiel que Text-to-speech, si
 la priorite est confirmee.
 
+Mise a jour 2026-06-08: la demande explicite "Frida Agenda Agent" ouvre un
+chantier produit separe, d'abord docs-only. Ce n'est pas une reouverture par
+inertie de la boussole: le cadrage actif vit dans
+`app/docs/todo-todo/product/frida-agenda-agent.md` et son contrat source dans
+`app/docs/states/specs/frida-agenda-agent-contract.md`.
+
 Il ne lance pas plusieurs implementations maintenant. Il sert de boussole de fin de cycle: les gros chantiers produit restants sont limites aux points ci-dessous. Il pourra encore y avoir des correctifs, des ajustements de comportement, du polish, des preuves operateur ou de petites ameliorations locales, mais aucun nouveau gros chantier produit ne doit etre ajoute par inertie avant decision explicite.
 
 ## Perimetre fige
@@ -20,9 +26,11 @@ Les chantiers produit majeurs suivis par cette boussole sont:
 2. Recherche internet, livree avec archives et policy active.
 3. Biblio native / catalogue Tulu, livre et archive.
 4. Text-to-speech.
+5. Frida Agenda Agent, ouvert explicitement en cadrage docs-only.
 
-Le vrai chantier encore ouvert depuis cette boussole est Text-to-speech, si la
-priorite est confirmee.
+Les vrais chantiers encore ouverts depuis cette boussole sont Text-to-speech,
+si la priorite est confirmee, et Frida Agenda Agent selon le cadrage explicite
+du 2026-06-08.
 
 ## Ancien chantier transversal archive
 
@@ -39,7 +47,8 @@ Garde-fou conserve comme historique: un nouveau panier futur ne devra jamais ren
 1. Atelier documentaire / repertoire de travail.
 2. Audit et fiabilisation de la recherche internet.
 3. Biblio native Tulu, livre et archive.
-4. Text-to-speech selon priorite explicite.
+4. Frida Agenda Agent, docs-only puis lots runtime separes si GO.
+5. Text-to-speech selon priorite explicite.
 
 ## 1. Atelier documentaire / repertoire de travail
 
@@ -119,6 +128,29 @@ Sources a relire plus tard:
 - modele, chunks et strategie deja prets cote Swift.
 
 Note produit: si ce chantier est implemente, il peut rester disponible dans l'instance Tof et eventuellement devenir reutilisable ailleurs.
+
+## 5. Frida Agenda Agent
+
+Objectif: permettre a Frida de consulter et proposer autour de l'agenda
+Nextcloud/CalDAV sans devenir proprietaire cachee du calendrier familial et
+sans ecriture non confirmee.
+
+References actives:
+
+- `app/docs/states/specs/frida-agenda-agent-contract.md`
+- `app/docs/todo-todo/product/frida-agenda-agent.md`
+
+Garde-fous:
+
+- toggle Agenda obligatoire, off par defaut;
+- CalDAV comme frontiere d'acces;
+- pas de DB directe Nextcloud;
+- app-password dedie Frida, jamais expose au LLM;
+- lecture/proposition separees de l'ecriture;
+- creation/modification seulement apres confirmation explicite;
+- suppression seulement apres confirmation renforcee;
+- calendrier familial sous prudence renforcee;
+- preuves live content-free ou anonymisees.
 
 ## Hors scope de ce TODO
 

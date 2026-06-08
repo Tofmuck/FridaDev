@@ -17,6 +17,8 @@ Primary current-state references:
 - Active conversation documents contract: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Archived active conversation documents OCR roadmap: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Biblio librarian agent contract: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
+- Agenda agent contract: `app/docs/states/specs/frida-agenda-agent-contract.md`
+- Agenda agent active TODO: `app/docs/todo-todo/product/frida-agenda-agent.md`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Memory Admin contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Log module contract: `app/docs/states/specs/log-module-contract.md`
@@ -116,6 +118,8 @@ Frontend rehydration and operator observability
 - Frida Catalogue metadata editing audit and Lot 0 delivery note: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 - Native Biblio / Frida Catalogue contract: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - Biblio librarian-agent contract: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
+- Agenda agent contract: `app/docs/states/specs/frida-agenda-agent-contract.md`
+- Agenda agent active TODO: `app/docs/todo-todo/product/frida-agenda-agent.md`
 - Biblio / Catalogue librarian-agent architecture audit: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 - Archived Frida Biblio Last Chance closure: `app/docs/todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`
 - Archived Biblio librarian-agent roadmap: `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
@@ -201,6 +205,8 @@ References principales pour l'etat courant:
 - Contrat des documents actifs de conversation: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Roadmap archivee OCR des documents actifs: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Contrat agent bibliothecaire Biblio: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
+- Contrat agent Agenda: `app/docs/states/specs/frida-agenda-agent-contract.md`
+- TODO actif agent Agenda: `app/docs/todo-todo/product/frida-agenda-agent.md`
 - Contrat du dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Contrat Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Contrat du module logs: `app/docs/states/specs/log-module-contract.md`
@@ -300,6 +306,8 @@ Rehydratation frontend et observabilite operateur
 - Audit edition metadonnees Frida Catalogue et note de livraison Lot 0: `app/docs/states/audits/frida-catalogue-human-metadata-editing-audit-2026-05-28.md`
 - Contrat Biblio native / Frida Catalogue: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - Contrat agent bibliothecaire Biblio: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
+- Contrat agent Agenda: `app/docs/states/specs/frida-agenda-agent-contract.md`
+- TODO actif agent Agenda: `app/docs/todo-todo/product/frida-agenda-agent.md`
 - Audit architecture agent bibliothecaire Biblio: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
 - Archive Frida Biblio Last Chance: `app/docs/todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`
 - Archive agent bibliothecaire Biblio: `app/docs/todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md`
