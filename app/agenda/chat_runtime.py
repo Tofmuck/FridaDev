@@ -140,6 +140,7 @@ def build_lot5_observability_payload(
             'read_event_count': int(execution.get('event_count') or 0),
             'read_calendar_id_hashes': list(execution.get('calendar_id_hashes') or []),
             'read_event_id_hashes': list(execution.get('event_id_hashes') or []),
+            'error_class': str(execution.get('error_class') or ''),
             'caldav_access': bool(execution.get('caldav_access')),
             'nextcloud_access': bool(execution.get('nextcloud_access')),
             'secret_access': bool(execution.get('caldav_access')),

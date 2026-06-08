@@ -329,6 +329,109 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('fixture-secret-value', encoded_payload)
         self.assertNotIn('Authorization', encoded_payload)
 
+    def test_active_runtime_records_attempted_read_tool_and_error_class_on_caldav_error(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': {
+                            'start': '2026-06-08T00:00:00Z',
+                            'end': '2026-06-09T00:00:00Z',
+                            'timezone': 'Europe/Paris',
+                        },
+                        'call_id': 'call-1',
+                    }
+                ]
+            )
+        )
+        runtime_settings = _SecretCountingRuntimeSettings(value='fixture-secret-value')
+        requests_module = _UnauthorizedRequestsModule()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Lis mon agenda',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+            requests_module=requests_module,
+        )
+
+        self.assertFalse(result.used)
+        self.assertEqual(result.observability_payload['read_execution_status'], 'error')
+        self.assertEqual(result.observability_payload['read_execution_reason_code'], 'caldav_unauthorized')
+        self.assertEqual(result.observability_payload['read_tool_count'], 1)
+        self.assertEqual(result.observability_payload['read_tool_names'], [product_methods.TOOL_EVENT_QUERY_RANGE])
+        self.assertEqual(result.observability_payload['error_class'], 'CalDavReadError')
+        self.assertTrue(result.observability_payload['caldav_access'])
+        self.assertTrue(result.observability_payload['nextcloud_access'])
+        self.assertTrue(result.observability_payload['secret_access'])
+        self.assertFalse(result.observability_payload['final_response_override'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('fixture-secret-value', encoded_payload)
+        self.assertNotIn('Authorization', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_active_runtime_executes_search_events_as_bounded_range_then_local_search(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                product_method=product_methods.METHOD_SEARCH_EVENTS,
+                answer_mode='agenda_summary',
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': {
+                            'start': '2026-06-08T00:00:00Z',
+                            'end': '2026-06-09T00:00:00Z',
+                            'timezone': 'Europe/Paris',
+                        },
+                        'call_id': 'range-1',
+                    },
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_SEARCH,
+                        'method': 'GET',
+                        'params': {
+                            'query': 'Focus',
+                            'limit': 5,
+                        },
+                        'call_id': 'search-1',
+                    },
+                ],
+            )
+        )
+        read_client = _FakeReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Cherche focus dans mon agenda',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(read_client.calls, ['list_calendars', 'query_calendar_events'])
+        self.assertEqual(result.observability_payload['read_execution_status'], 'ok')
+        self.assertEqual(result.observability_payload['read_tool_count'], 2)
+        self.assertEqual(
+            result.observability_payload['read_tool_names'],
+            [product_methods.TOOL_EVENT_QUERY_RANGE, product_methods.TOOL_EVENT_SEARCH],
+        )
+        self.assertIn("J'ai trouve un evenement correspondant", result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Focus', encoded_payload)
+        self.assertNotIn('Fixture Focus Block', encoded_payload)
+
     def test_active_runtime_invalid_json_falls_back_cleanly(self) -> None:
         fake = _FakeTextModelClient('{not-json')
         result = chat_runtime.run_agenda_chat_turn(
@@ -523,6 +626,12 @@ class _FakeRequestsModule:
         if method == 'REPORT':
             return _FakeHttpResponse(status_code=207, text=_PRIMARY_ICS)
         raise AssertionError(f'unexpected method: {method}')
+
+
+class _UnauthorizedRequestsModule:
+    def request(self, method, url, *, headers, data, timeout):
+        del url, headers, data, timeout
+        return _FakeHttpResponse(status_code=401, text='RAW BODY MUST NOT LEAK')
 
 
 _CALENDAR_PROPFIND_XML = """<?xml version="1.0" encoding="UTF-8"?>

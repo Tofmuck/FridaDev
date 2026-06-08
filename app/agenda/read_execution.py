@@ -47,16 +47,19 @@ class AgendaReadExecutionResult:
     nextcloud_access: bool = False
     mutation_attempted: bool = False
     error_class: str = ''
+    attempted_tool_names: tuple[str, ...] = ()
 
     @property
     def observation(self) -> dict[str, Any]:
         calendar_ids = tuple(calendar.local_id for calendar in self.calendars)
         event_ids = tuple(event.event_id for event in self.events)
-        tool_names = [
-            str(observation.get('tool_name') or '')
-            for observation in self.tool_observations
-            if isinstance(observation, Mapping)
-        ]
+        tool_names = list(self.attempted_tool_names)
+        if not tool_names:
+            tool_names = [
+                str(observation.get('tool_name') or '')
+                for observation in self.tool_observations
+                if isinstance(observation, Mapping)
+            ]
         return {
             'schema_version': 'frida_agenda_read_execution_v1',
             'status': self.status,
@@ -105,9 +108,11 @@ def execute_readonly_plan(
 
     state = AgendaReadState()
     observations: list[Mapping[str, Any]] = []
+    attempted_tool_names: list[str] = []
     selected_events: tuple[CalendarEvent, ...] = ()
     try:
         for call in plan.tool_calls:
+            attempted_tool_names.append(str(call.tool_name or ''))
             result = _execute_tool_call(call, client=client, state=state, plan=plan)
             observations.append(dict(result.observation))
             if result.items and isinstance(result.items[0], CalendarEvent):
@@ -125,6 +130,7 @@ def execute_readonly_plan(
             caldav_access=bool(live_caldav),
             nextcloud_access=bool(live_caldav),
             mutation_attempted=False,
+            attempted_tool_names=tuple(attempted_tool_names),
         )
     except (ReadToolValidationError, CalDavReadError, CalDavTransportUnavailable) as exc:
         return AgendaReadExecutionResult(
@@ -138,6 +144,7 @@ def execute_readonly_plan(
             nextcloud_access=bool(live_caldav),
             mutation_attempted=False,
             error_class=exc.__class__.__name__,
+            attempted_tool_names=tuple(attempted_tool_names),
         )
 
 

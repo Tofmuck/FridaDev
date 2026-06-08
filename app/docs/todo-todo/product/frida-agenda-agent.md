@@ -4,10 +4,10 @@ Statut: TODO actif au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
-Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-5A livrent
+Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-5B livrent
 toggle no-op, configuration redacted, outils read-only, agent JSON valide sous
-garde-fous et branchement applicatif read-only non-live, sans preuve CalDAV
-live ni mutation.
+garde-fous, branchement applicatif read-only et preuve CalDAV live content-free,
+sans mutation.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -28,8 +28,8 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Creation/modification seulement apres confirmation explicite.
 - [x] Suppression jamais autonome, confirmation renforcee obligatoire.
 - [x] Calendrier familial: prudence renforcee.
-- [x] Aucun acces CalDAV live ni mutation n'est livre par Lot 5A; Lot 5B reste
-  requis pour la preuve serveur reelle.
+- [x] Lot 5B livre l'acces CalDAV live read-only sous garde-fous; les mutations
+  restent interdites hors lots de confirmation futurs.
 
 ## Audit existant FridaDev
 
@@ -521,15 +521,39 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   exposee), agent JSON valide, CalDAV read-only atteint, mutation=false,
   JSONL content-free. No-go restant: Nextcloud repond `caldav_unauthorized`
   au PROPFIND; le mode a ete remis `off`; Lot 5B n'est pas ferme.
-- [ ] Lot 5B: configuration runtime Sauron redacted, mode `active`, compte
+- [x] Lot 5B relance: configuration Sauron redacted du nouvel app-password
+  dedie `frida-agenda-agent`.
+  Preuve livree: compte `tof`, stockage `db_encrypted`, valeur jamais
+  affichee, mode laisse `off` avant smoke, PROPFIND status-only `207`.
+- [x] Lot 5B relance: instrumentation JSONL enrichie avant nouvelle preuve.
+  Preuve livree: les payloads Lot 5 exposent `read_execution_status`,
+  `read_execution_reason_code`, `read_tool_count`, `read_tool_names`,
+  `error_class`, acces CalDAV/Nextcloud, final override et meta content-free
+  sans valeur brute.
+- [x] Lot 5B relance: `search_events` clarifie comme sequence bornee
+  `event_query_range` puis `event_search`.
+  Preuve livree: tests unitaires du prompt et du plan valide, sans regex
+  utilisateur.
+- [x] Lot 5B: configuration runtime Sauron redacted, mode `active`, compte
   `tof`, secret CalDAV dedie present sans affichage.
-- [ ] Lot 5B: preuve live lire aujourd'hui.
-- [ ] Lot 5B: preuve live lire demain.
-- [ ] Lot 5B: preuve live recherche evenement.
+- [x] Lot 5B: preuve live lire aujourd'hui.
+  Preuve livree:
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-lot5b-live-readonly-20260608T181853Z.jsonl`,
+  verdict `met`, `read_execution_status=ok`, `event_query_range`,
+  message assistant normal avec meta Agenda content-free.
+- [x] Lot 5B: preuve live lire demain.
+  Preuve livree: meme artefact, verdict `met`, CalDAV/Nextcloud read-only,
+  timestamp et final response override.
+- [x] Lot 5B: preuve live recherche evenement.
+  Preuve livree: meme artefact, verdict `met`, sequence
+  `event_query_range` puis `event_search`, sans contenu Agenda brut.
 - [ ] Lot 5B: preuve live details evenement unique si candidat unique existe.
-- [ ] Lot 5B: preuve live contexte suivant, timestamp, Delta-T et Memory
+- [x] Lot 5B: preuve live contexte suivant, timestamp, Delta-T et Memory
   eligible.
-- [ ] Lot 5B: artefact JSONL content-free date, sans contenu Agenda brut.
+- [x] Lot 5B: artefact JSONL content-free date, sans contenu Agenda brut.
+  Preuve livree: scan sans titre, lieu, description, UID, ETag, raw ICS,
+  URL/path CalDAV, Authorization, cookie, token ou app-password; verdict final
+  `lot5b_live_readonly_met`; mode final laisse `active`.
 
 ### Lot 6 - Propositions et pending store
 

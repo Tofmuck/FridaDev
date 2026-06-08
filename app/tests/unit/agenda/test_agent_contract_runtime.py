@@ -154,6 +154,52 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertEqual(user_payload['canonical_time_windows']['tomorrow']['end'], '2026-06-09T22:00:00Z')
         self.assertNotIn('RAW USER', messages[0]['content'])
 
+    def test_agent_prompt_instructs_search_events_as_range_then_search(self) -> None:
+        request = _request(
+            settings=contract.AgendaAgentSettings(
+                mode=contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+        )
+
+        system_message = agent_openrouter.build_agenda_agent_messages(request)[0]['content']
+
+        self.assertIn('event_query_range', system_message)
+        self.assertIn('event_search', system_message)
+        self.assertIn('ne mets jamais start, end ou timezone dans les params event_search', system_message)
+
+    def test_search_events_accepts_bounded_range_then_local_search(self) -> None:
+        validation = contract.validate_agent_payload(
+            _valid_payload(
+                product_method=product_methods.METHOD_SEARCH_EVENTS,
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': {
+                            'start': '2026-06-08T00:00:00Z',
+                            'end': '2026-06-09T00:00:00Z',
+                            'timezone': 'Europe/Paris',
+                        },
+                        'call_id': 'range-1',
+                    },
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_SEARCH,
+                        'method': 'GET',
+                        'params': {'query': 'docteur demain', 'limit': 5},
+                        'call_id': 'search-1',
+                    },
+                ],
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertEqual(
+            validation.tool_names,
+            (product_methods.TOOL_EVENT_QUERY_RANGE, product_methods.TOOL_EVENT_SEARCH),
+        )
+
     def test_openrouter_tool_params_schema_is_strict_provider_compatible(self) -> None:
         response_format = agent_openrouter.build_agenda_agent_response_format(max_tool_calls=4)
         params_schema = (

@@ -173,7 +173,10 @@ def build_agenda_agent_messages(request: contract.AgendaAgentRequest) -> list[di
         'le deterministe interrogera les calendriers accessibles. '
         'Pour read_today et read_tomorrow, utilise exactement les fenetres '
         'canonical_time_windows.today ou canonical_time_windows.tomorrow. '
-        'Pour search_events, utilise une fenetre bornee et event_search. '
+        'Pour search_events, fournis deux tool_calls: d abord event_query_range '
+        'avec start/end/timezone explicites pour constituer le pool borne, puis '
+        'event_search avec query, limit et eventuellement calendar_id seulement; '
+        'ne mets jamais start, end ou timezone dans les params event_search. '
         'surface_intro et surface_outro sont toujours des strings, eventuellement vides.'
     )
     return [

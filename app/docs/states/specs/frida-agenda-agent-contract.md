@@ -4,11 +4,10 @@ Statut: spec vivante
 Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
-Portee: contrat cible du futur agent Agenda Frida. Lots 1-5A livrent toggle
-no-op, configuration redacted, outils read-only, agent JSON valide et
-branchement applicatif read-only non-live. Lot 5B a une tentative live
-partielle content-free: le provider JSON et l'acces CalDAV read-only sont
-atteints, mais Nextcloud repond `caldav_unauthorized`; Lot 5B reste ouvert.
+Portee: contrat cible du futur agent Agenda Frida. Lots 1-5B livrent toggle
+no-op, configuration redacted, outils read-only, agent JSON valide,
+branchement applicatif read-only et preuve CalDAV live content-free. Les
+mutations, propositions confirmees et pending actions restent hors scope.
 
 Sources:
 
@@ -926,6 +925,41 @@ Preuve Lot 5B partielle:
 - aucun titre, lieu, description, UID, ETag, URL/path CalDAV, ICS, prompt brut,
   dialogue brut, cookie, Authorization, token ou app-password n'est stocke dans
   l'artefact.
+
+Preuve Lot 5B relance:
+
+- Sauron a cree un nouvel app-password Nextcloud dedie `frida-agenda-agent`
+  pour le compte humain `tof` et l'a depose dans `agenda_agent` en
+  `db_encrypted`, sans afficher la valeur;
+- `agenda_agent.mode` reste `off` apres depot jusqu'au smoke live;
+- un PROPFIND status-only sur CalDAV repond `207`, sans header, body, URL/path
+  CalDAV complet, token, cookie ou app-password dans la sortie;
+- les payloads Lot 5 exposent maintenant les champs content-free attendus pour
+  la preuve: `read_execution_status`, `read_execution_reason_code`,
+  `read_tool_count`, `read_tool_names`, `error_class`, `caldav_access`,
+  `nextcloud_access`, `final_response_override`, presence meta Agenda et
+  verdict `meta_content_free`;
+- `search_events` est verrouille comme lecture bornee: l'agent doit produire
+  `event_query_range` pour constituer le pool de recherche puis `event_search`
+  avec `query`, `limit` et optionnellement `calendar_id`, sans `start`, `end`
+  ni `timezone` dans les params `event_search`.
+- artefact live final:
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-lot5b-live-readonly-20260608T181853Z.jsonl`;
+- verdict final `met`: `read_today`, `read_tomorrow`, `search_events`,
+  contexte suivant / Delta-T, timestamp, message assistant normal,
+  `AssistantResponseOverride`, meta Agenda content-free et Memory eligible par
+  contrat sont prouves;
+- `read_today` et `read_tomorrow` executent `event_query_range` en CalDAV
+  read-only; `search_events` execute `event_query_range` puis `event_search`;
+- les records live portent `read_execution_status`,
+  `read_execution_reason_code`, `read_tool_count`, `read_tool_names`,
+  `error_class`, `caldav_access`, `nextcloud_access`,
+  `final_response_override`, `agenda_meta_present` et `meta_content_free`;
+- `mutation_attempted=false` partout et le mode final reste `active` car le
+  verdict global est `met`;
+- aucun titre, lieu, description, invite, UID, ETag, raw ICS, URL/path CalDAV,
+  Authorization, cookie, token, app-password, prompt brut ou dialogue brut
+  n'est stocke dans l'artefact.
 
 Preuve content-free minimale:
 
