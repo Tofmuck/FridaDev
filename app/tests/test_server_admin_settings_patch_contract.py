@@ -629,6 +629,64 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(data['payload']['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
+    def test_patch_admin_settings_agenda_agent_accepts_fake_secret_without_echoing_secret_material(self) -> None:
+        fake_secret = 'fake-agenda-secret-must-not-leak-from-patch-route'
+        fake_cipher = 'cipher-agenda-secret-must-not-leak-from-patch-route'
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'mode': {'value': 'active', 'is_secret': False, 'origin': 'admin_ui'},
+                    'caldav_account': {'value': 'tof', 'is_secret': False, 'origin': 'db_seed'},
+                    'caldav_app_password': {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/agenda-agent',
+                json={
+                    'updated_by': 'agenda-lot2-test',
+                    'payload': {
+                        'mode': {'value': 'active'},
+                        'caldav_app_password': {'replace_value': fake_secret},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'agenda_agent')
+        self.assertEqual(observed['updated_by'], 'agenda-lot2-test')
+        self.assertEqual(
+            observed['payload'],
+            {
+                'mode': {'value': 'active'},
+                'caldav_app_password': {'replace_value': fake_secret},
+            },
+        )
+        rendered = response.get_data(as_text=True)
+        self.assertNotIn(fake_secret, rendered)
+        self.assertNotIn(fake_cipher, rendered)
+        self.assertNotIn('value_encrypted', rendered)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'agenda_agent')
+        self.assertEqual(data['payload']['caldav_app_password'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
+        self.assertEqual(data['secret_sources']['caldav_app_password'], 'db_encrypted')
+        self.assertEqual(data['runtime_read_model']['mode'], 'active')
+        self.assertEqual(data['runtime_read_model']['caldav_secret']['source'], 'db_encrypted')
+
     def test_patch_admin_settings_memory_arbiter_model_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
         original_update = self.server.runtime_settings.update_runtime_section

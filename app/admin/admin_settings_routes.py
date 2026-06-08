@@ -16,6 +16,7 @@ _ADMIN_SETTINGS_ROUTE_SECTIONS = {
     'web-reformulation-model': 'web_reformulation_model',
     'stimmung-agent-model': 'stimmung_agent_model',
     'validation-agent-model': 'validation_agent_model',
+    'agenda-agent': 'agenda_agent',
     'embedding': 'embedding',
     'database': 'database',
     'services': 'services',
@@ -108,6 +109,10 @@ def api_admin_settings_validation_agent_model_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['validation-agent-model'])
 
 
+def api_admin_settings_agenda_agent_get():
+    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['agenda-agent'])
+
+
 def api_admin_settings_embedding_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['embedding'])
 
@@ -154,6 +159,10 @@ def api_admin_settings_stimmung_agent_model_patch():
 
 def api_admin_settings_validation_agent_model_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['validation-agent-model'])
+
+
+def api_admin_settings_agenda_agent_patch():
+    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['agenda-agent'])
 
 
 def api_admin_settings_arbiter_model_patch():
@@ -210,6 +219,10 @@ def api_admin_settings_stimmung_agent_model_validate():
 
 def api_admin_settings_validation_agent_model_validate():
     return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['validation-agent-model'])
+
+
+def api_admin_settings_agenda_agent_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['agenda-agent'])
 
 
 def api_admin_settings_embedding_validate():
@@ -286,6 +299,12 @@ _ADMIN_SETTINGS_ROUTE_REGISTRATIONS = (
         ('GET',),
     ),
     (
+        f'{_ADMIN_SETTINGS_PREFIX}/agenda-agent',
+        'api_admin_settings_agenda_agent_get',
+        api_admin_settings_agenda_agent_get,
+        ('GET',),
+    ),
+    (
         f'{_ADMIN_SETTINGS_PREFIX}/embedding',
         'api_admin_settings_embedding_get',
         api_admin_settings_embedding_get,
@@ -355,6 +374,12 @@ _ADMIN_SETTINGS_ROUTE_REGISTRATIONS = (
         f'{_ADMIN_SETTINGS_PREFIX}/validation-agent-model',
         'api_admin_settings_validation_agent_model_patch',
         api_admin_settings_validation_agent_model_patch,
+        ('PATCH',),
+    ),
+    (
+        f'{_ADMIN_SETTINGS_PREFIX}/agenda-agent',
+        'api_admin_settings_agenda_agent_patch',
+        api_admin_settings_agenda_agent_patch,
         ('PATCH',),
     ),
     (
@@ -439,6 +464,12 @@ _ADMIN_SETTINGS_ROUTE_REGISTRATIONS = (
         f'{_ADMIN_SETTINGS_PREFIX}/validation-agent-model/validate',
         'api_admin_settings_validation_agent_model_validate',
         api_admin_settings_validation_agent_model_validate,
+        ('POST',),
+    ),
+    (
+        f'{_ADMIN_SETTINGS_PREFIX}/agenda-agent/validate',
+        'api_admin_settings_agenda_agent_validate',
+        api_admin_settings_agenda_agent_validate,
         ('POST',),
     ),
     (

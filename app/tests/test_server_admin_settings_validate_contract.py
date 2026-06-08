@@ -88,10 +88,86 @@ class ServerAdminSettingsValidateContractTests(unittest.TestCase):
         self.assertIn('/api/admin/settings/summary-model/validate', routes)
         self.assertIn('/api/admin/settings/stimmung-agent-model/validate', routes)
         self.assertIn('/api/admin/settings/validation-agent-model/validate', routes)
+        self.assertIn('/api/admin/settings/agenda-agent/validate', routes)
         self.assertIn('/api/admin/settings/embedding/validate', routes)
         self.assertIn('/api/admin/settings/database/validate', routes)
         self.assertIn('/api/admin/settings/services/validate', routes)
         self.assertIn('/api/admin/settings/resources/validate', routes)
+
+    def test_post_admin_settings_agenda_agent_validate_accepts_off_without_secret(self) -> None:
+        response = self.client.post(
+            '/api/admin/settings/agenda-agent/validate',
+            json={'payload': {'mode': {'value': 'off'}}},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertTrue(data['valid'])
+        checks = {check['name']: check for check in data['checks']}
+        self.assertTrue(checks['mode']['ok'])
+        self.assertTrue(checks['caldav_app_password_presence']['ok'])
+        self.assertIn('required_for_mode=False', checks['caldav_app_password_presence']['detail'])
+
+    def test_post_admin_settings_agenda_agent_validate_rejects_removed_shadow_and_candidate_modes(self) -> None:
+        for mode in ('shadow', 'candidate'):
+            with self.subTest(mode=mode):
+                response = self.client.post(
+                    '/api/admin/settings/agenda-agent/validate',
+                    json={'payload': {'mode': {'value': mode}}},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                data = response.get_json()
+                self.assertTrue(data['ok'])
+                self.assertFalse(data['valid'])
+                checks = {check['name']: check for check in data['checks']}
+                self.assertFalse(checks['mode']['ok'])
+                self.assertIn('allowed=off,active', checks['mode']['detail'])
+
+    def test_post_admin_settings_agenda_agent_validate_rejects_active_without_secret(self) -> None:
+        response = self.client.post(
+            '/api/admin/settings/agenda-agent/validate',
+            json={'payload': {'mode': {'value': 'active'}}},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertFalse(data['valid'])
+        checks = {check['name']: check for check in data['checks']}
+        self.assertTrue(checks['mode']['ok'])
+        self.assertFalse(checks['caldav_app_password_presence']['ok'])
+        self.assertIn('value=redacted', checks['caldav_app_password_presence']['detail'])
+
+    def test_post_admin_settings_agenda_agent_validate_accepts_active_with_fake_secret_without_leak(self) -> None:
+        fake_secret = 'fake-agenda-secret-must-not-leak-from-validate-route'
+        fake_cipher = 'cipher-agenda-secret-must-not-leak-from-validate-route'
+        original_encrypt = self.server.runtime_settings.runtime_secrets.encrypt_runtime_secret_value
+        self.server.runtime_settings.runtime_secrets.encrypt_runtime_secret_value = lambda value: fake_cipher
+        try:
+            response = self.client.post(
+                '/api/admin/settings/agenda-agent/validate',
+                json={
+                    'payload': {
+                        'mode': {'value': 'active'},
+                        'caldav_app_password': {'replace_value': fake_secret},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.runtime_secrets.encrypt_runtime_secret_value = original_encrypt
+
+        self.assertEqual(response.status_code, 200)
+        rendered = response.get_data(as_text=True)
+        self.assertNotIn(fake_secret, rendered)
+        self.assertNotIn(fake_cipher, rendered)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertTrue(data['valid'])
+        checks = {check['name']: check for check in data['checks']}
+        self.assertTrue(checks['caldav_app_password_presence']['ok'])
+        self.assertIn('configured=True', checks['caldav_app_password_presence']['detail'])
 
     def test_post_admin_settings_validate_uses_runtime_validation_result(self) -> None:
         observed = {'section': None, 'payload': None}

@@ -5,7 +5,7 @@ from typing import Any
 
 
 AGENDA_AGENT_SECTION = 'agenda_agent'
-AGENDA_AGENT_MODES = ('off', 'shadow', 'candidate', 'active')
+AGENDA_AGENT_MODES = ('off', 'active')
 AGENDA_AGENT_DEFAULT_MODE = 'off'
 CALDAV_ACCOUNT_V1 = 'tof'
 CALDAV_APP_PASSWORD_FIELD = 'caldav_app_password'

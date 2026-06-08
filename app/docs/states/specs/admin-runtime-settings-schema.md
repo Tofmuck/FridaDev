@@ -11,10 +11,13 @@ Il complete `app/docs/states/specs/admin-implementation-spec.md` et reste aligne
 - La table primaire est `runtime_settings`.
 - La granularite retenue est `une ligne par section JSONB`.
 - Les sections V1 actuellement implementees sont: `main_model`, `arbiter_model`, `identity_extractor_model`, `identity_periodic_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `biblio_librarian_agent`, `agenda_agent`, `embedding`, `database`, `services`, `resources`, `identity_governance`.
-- Les sections exposees par `PATCH /api/admin/settings/<section>` sont: `main_model`, `arbiter_model`, `identity_extractor_model`, `identity_periodic_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`.
-- `agenda_agent` est exposee par le read-model agrege `/api/admin/settings` avec
-  secrets redacted; aucune valeur d'app-password n'est lue ni affichee par ce
-  read-model.
+- Les sections exposees par une route `PATCH /api/admin/settings/<slug>` dediee sont: `main_model`, `arbiter_model`, `identity_extractor_model`, `identity_periodic_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `agenda_agent`, `embedding`, `database`, `services`, `resources`.
+- `agenda_agent` est exposee par le read-model agrege `/api/admin/settings` et
+  par les routes dediees `GET /api/admin/settings/agenda-agent`,
+  `PATCH /api/admin/settings/agenda-agent` et
+  `POST /api/admin/settings/agenda-agent/validate`, toujours avec secrets
+  redacted; aucune valeur d'app-password n'est lue ni affichee par ces
+  read-models.
 - `identity_governance` est une section runtime mais n'est pas exposee par `/api/admin/settings/<section>`; sa surface produit reste `/api/admin/identity/governance` et `/hermeneutic-admin`.
 - `runtime_settings_history` est present des la V1.
 - Les secrets sont stockes chiffres via `pgcrypto`.
@@ -284,15 +287,17 @@ lit pas la valeur de l'app-password.
 
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
-| `mode` | `text` | non | defaut runtime `off`; modes admis `off`, `shadow`, `candidate`, `active` |
+| `mode` | `text` | non | defaut runtime `off`; modes admis `off`, `active` |
 | `caldav_account` | `text` | non | defaut runtime `tof` |
 | `caldav_app_password` | `text` | oui | source dediee `FRIDA_AGENDA_CALDAV_TOF_APP_PASSWORD`, non seedee depuis l'environnement dans Lot 2 |
 
 Contraintes:
 
 - `mode=off` est le defaut sur et n'exige aucun secret configure;
-- `shadow`, `candidate` et `active` exigent seulement une presence de secret
-  redacted pour validation admin, sans decryptage ni lecture de valeur;
+- `active` exige seulement une presence de secret redacted pour validation
+  admin, sans decryptage ni lecture de valeur;
+- `shadow` et `candidate` ne sont pas des modes Agenda V1 et doivent etre
+  rejetes;
 - `caldav_account` reste `tof` pour l'Agenda V1;
 - le read-model admin expose seulement `is_secret`, `is_set`, `origin` et
   `secret_sources.caldav_app_password`; jamais `value`, `value_encrypted` ou

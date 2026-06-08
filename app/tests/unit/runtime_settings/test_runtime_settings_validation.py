@@ -179,9 +179,23 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         self.assertFalse(result['valid'])
         checks = {check['name']: check for check in result['checks']}
         self.assertFalse(checks['mode']['ok'])
-        self.assertIn('allowed=off,shadow,candidate,active', checks['mode']['detail'])
+        self.assertIn('allowed=off,active', checks['mode']['detail'])
 
-    def test_validate_runtime_section_requires_agenda_secret_for_non_off_modes_without_resolving_it(self) -> None:
+    def test_validate_runtime_section_rejects_removed_agenda_agent_shadow_and_candidate_modes(self) -> None:
+        for mode in ('shadow', 'candidate'):
+            with self.subTest(mode=mode):
+                result = runtime_settings.validate_runtime_section(
+                    'agenda_agent',
+                    {'mode': {'value': mode}},
+                    fetcher=lambda: {},
+                )
+
+                self.assertFalse(result['valid'])
+                checks = {check['name']: check for check in result['checks']}
+                self.assertFalse(checks['mode']['ok'])
+                self.assertIn('allowed=off,active', checks['mode']['detail'])
+
+    def test_validate_runtime_section_requires_agenda_secret_for_active_without_resolving_it(self) -> None:
         original_resolve = runtime_settings._resolve_runtime_secret_from_view
         calls = []
 
@@ -193,7 +207,7 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         try:
             result = runtime_settings.validate_runtime_section(
                 'agenda_agent',
-                {'mode': {'value': 'shadow'}},
+                {'mode': {'value': 'active'}},
                 fetcher=lambda: {},
             )
         finally:
@@ -213,7 +227,7 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
             result = runtime_settings.validate_runtime_section(
                 'agenda_agent',
                 {
-                    'mode': {'value': 'shadow'},
+                    'mode': {'value': 'active'},
                     'caldav_app_password': {'replace_value': fake_secret},
                 },
                 fetcher=lambda: {},

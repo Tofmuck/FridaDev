@@ -831,7 +831,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             'agenda_agent': runtime_settings.normalize_stored_payload(
                 'agenda_agent',
                 {
-                    'mode': {'value': 'shadow', 'origin': 'db'},
+                    'mode': {'value': 'active', 'origin': 'db'},
                     'caldav_account': {'value': 'tof', 'origin': 'db'},
                     'caldav_app_password': {'value_encrypted': 'cipher-agenda', 'origin': 'db'},
                 },
@@ -874,7 +874,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
                 'db_encrypted',
             )
             agenda_read_model = aggregated_data['sections']['agenda_agent']['runtime_read_model']
-            self.assertEqual(agenda_read_model['mode'], 'shadow')
+            self.assertEqual(agenda_read_model['mode'], 'active')
             self.assertEqual(agenda_read_model['caldav_identity']['account'], 'tof')
             self.assertTrue(agenda_read_model['caldav_secret']['configured'])
             self.assertTrue(agenda_read_model['caldav_secret']['source_configured'])
@@ -887,12 +887,18 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
                 ('/api/admin/settings/embedding', 'embedding'),
                 ('/api/admin/settings/database', 'database'),
                 ('/api/admin/settings/services', 'services'),
+                ('/api/admin/settings/agenda-agent', 'agenda_agent'),
             ):
                 response = self.client.get(path)
                 self.assertEqual(response.status_code, 200, msg=path)
                 data = response.get_json()
                 self.assertTrue(data['ok'])
                 assert_secret_payload_masked(section, data['payload'])
+                if section == 'agenda_agent':
+                    self.assertEqual(data['runtime_read_model']['mode'], 'active')
+                    self.assertEqual(data['runtime_read_model']['caldav_secret']['source'], 'db_encrypted')
+                    self.assertNotIn('cipher-agenda', repr(data))
+                    self.assertNotIn('value_encrypted', repr(data))
         finally:
             self.server.runtime_settings._default_db_fetch_all_sections = original_fetcher
             self.server.runtime_settings.invalidate_runtime_settings_cache()

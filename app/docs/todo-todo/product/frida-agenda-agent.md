@@ -346,6 +346,9 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Ajouter section `agenda_agent`.
 - [x] Ajouter source secret CalDAV dediee au compte `tof`, redacted.
 - [x] Ajouter validations admin.
+- [x] Ajouter routes admin dediees `GET/PATCH/POST validate` pour
+  `agenda-agent`.
+- [x] Borner les modes Agenda V1 a `off` et `active` seulement.
 - [x] Ajouter tests anti-fuite.
 - [x] Ne pas creer d'app-password dans le code.
 
@@ -358,11 +361,12 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [ ] Implementer observations content-free.
 - [ ] Prouver aucun payload ICS dans logs.
 
-### Lot 4 - Agent JSON shadow/candidate
+### Lot 4 - Agent JSON active sous garde-fous
 
 - [ ] Definir schema `frida_agenda_agent_v1`.
 - [ ] Ajouter validation stricte.
-- [ ] Ajouter modes `off/shadow/candidate/active`.
+- [ ] Consommer les modes runtime Lot 2 `off/active` sans reintroduire
+  `shadow` ou `candidate`.
 - [ ] Ajouter fallback deterministe propre.
 - [ ] Prouver JSON absent/invalide/hors schema.
 

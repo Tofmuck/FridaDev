@@ -9,7 +9,7 @@ class AgendaRuntimeConfigTests(unittest.TestCase):
     def test_build_admin_read_model_exposes_only_content_free_redacted_secret_state(self) -> None:
         fake_secret = 'fake-agenda-secret-must-not-leak'
         payload = {
-            'mode': {'value': 'shadow', 'is_secret': False, 'origin': 'db'},
+            'mode': {'value': 'active', 'is_secret': False, 'origin': 'db'},
             'caldav_account': {'value': 'tof', 'is_secret': False, 'origin': 'db'},
             'caldav_app_password': {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'},
         }
@@ -22,7 +22,7 @@ class AgendaRuntimeConfigTests(unittest.TestCase):
         )
 
         self.assertEqual(read_model['schema_version'], 'frida_agenda_runtime_settings_v1')
-        self.assertEqual(read_model['mode'], 'shadow')
+        self.assertEqual(read_model['mode'], 'active')
         self.assertEqual(read_model['caldav_identity']['account'], 'tof')
         self.assertFalse(read_model['caldav_identity']['service_account'])
         self.assertEqual(

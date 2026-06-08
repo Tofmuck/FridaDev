@@ -214,25 +214,29 @@ Etat livre Lot 2:
 
 - `agenda_agent` existe comme section runtime settings;
 - le mode par defaut est `off`;
-- les modes admis sont `off`, `shadow`, `candidate` et `active`;
+- les modes admis sont seulement `off` et `active`;
+- `shadow` et `candidate` sont retires de l'Agenda V1 et doivent etre rejetes;
 - `caldav_account` est borne a l'identite V1 `tof`;
 - `caldav_app_password` est un champ secret dedie, associe a la source
   operateur `FRIDA_AGENDA_CALDAV_TOF_APP_PASSWORD`, non seede depuis
   l'environnement dans Lot 2;
+- les routes admin dediees `GET /api/admin/settings/agenda-agent`,
+  `PATCH /api/admin/settings/agenda-agent` et
+  `POST /api/admin/settings/agenda-agent/validate` sont exposees;
 - le read-model admin expose seulement les booleens/presence et sources
   redacted: `is_secret`, `is_set`, `origin` et `secret_sources`;
-- la validation admin des modes non `off` exige une presence de secret, mais
-  ne decrypt pas et ne lit jamais la valeur de l'app-password;
+- la validation admin de `active` exige une presence de secret, mais ne decrypt
+  pas et ne lit jamais la valeur de l'app-password;
 - aucun acces CalDAV, Nextcloud, app-password en clair, prompt agent ou outil
   Agenda n'est cree dans Lot 2.
 
 Mode runtime agent:
 
 - section cible: `agenda_agent`;
-- modes recommandes: `off`, `shadow`, `candidate`, `active`;
+- modes autorises: `off`, `active`;
 - `off`: aucun appel modele agent;
-- `shadow`: l'agent peut etre evalue sans influencer la reponse;
-- `candidate`: l'agent peut proposer un plan compare au deterministe;
+- `shadow`: mode non retenu pour l'Agenda V1, invalide;
+- `candidate`: mode non retenu pour l'Agenda V1, invalide;
 - `active`: l'agent peut piloter une methode produit autorisee, sous
   validation deterministe stricte;
 - rollback: repasser a `off` doit restaurer le chat normal sans migration,
