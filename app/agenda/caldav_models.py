@@ -31,6 +31,7 @@ class CalendarEvent:
     etag: str = ''
     caldav_path: str = ''
     all_day: bool = False
+    source_ics: str = ''
 
 
 @dataclass

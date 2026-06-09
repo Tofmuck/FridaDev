@@ -128,6 +128,7 @@ def parse_ics_events(
     timezone_name: str = 'UTC',
     default_etag: str = '',
     default_caldav_path: str = '',
+    source_ics: str = '',
     window_start_iso: str = '',
     window_end_iso: str = '',
     max_occurrences: int = MAX_RECURRENCE_OCCURRENCES,
@@ -155,6 +156,7 @@ def parse_ics_events(
         timezone_name=timezone_name,
         default_etag=default_etag,
         default_caldav_path=default_caldav_path,
+        source_ics=source_ics or str(ics_text or ''),
         window_start_iso=window_start_iso,
         window_end_iso=window_end_iso,
         max_occurrences=max_occurrences,
@@ -169,6 +171,7 @@ def _events_from_components(
     timezone_name: str,
     default_etag: str,
     default_caldav_path: str,
+    source_ics: str,
     window_start_iso: str,
     window_end_iso: str,
     max_occurrences: int,
@@ -203,6 +206,7 @@ def _events_from_components(
             timezone_name=timezone_name,
             default_etag=default_etag,
             default_caldav_path=default_caldav_path,
+            source_ics=source_ics,
         )
         if event is not None and _event_is_in_window(event, window_start=window_start, window_end=window_end):
             events.append(event)
@@ -215,6 +219,7 @@ def _events_from_components(
             timezone_name=timezone_name,
             default_etag=default_etag,
             default_caldav_path=default_caldav_path,
+            source_ics=source_ics,
             window_start=window_start,
             window_end=window_end,
             max_occurrences=max_occurrences,
@@ -232,6 +237,7 @@ def _events_from_components(
                 timezone_name=timezone_name,
                 default_etag=default_etag,
                 default_caldav_path=default_caldav_path,
+                source_ics=source_ics,
                 event_id_seed=f'recurrence:{_to_utc_iso(recurrence_id)}',
             )
             if event is not None and _event_is_in_window(event, window_start=window_start, window_end=window_end):
@@ -247,6 +253,7 @@ def _event_from_props(
     timezone_name: str,
     default_etag: str,
     default_caldav_path: str,
+    source_ics: str,
     event_id_seed: str = '',
 ) -> CalendarEvent | None:
     uid = _first(props, 'UID')
@@ -265,6 +272,7 @@ def _event_from_props(
         timezone_name=_event_timezone_name(start_prop, default_timezone_name=timezone_name),
         default_etag=default_etag,
         default_caldav_path=default_caldav_path,
+        source_ics=source_ics,
         event_id_seed=event_id_seed,
         all_day=_property_is_all_day(start_prop),
     )
@@ -280,6 +288,7 @@ def _event_from_datetimes(
     timezone_name: str,
     default_etag: str,
     default_caldav_path: str,
+    source_ics: str,
     event_id_seed: str,
     all_day: bool = False,
 ) -> CalendarEvent:
@@ -298,6 +307,7 @@ def _event_from_datetimes(
         etag=str(default_etag or ''),
         caldav_path=str(default_caldav_path or ''),
         all_day=bool(all_day),
+        source_ics=str(source_ics or ''),
     )
 
 
@@ -309,6 +319,7 @@ def _events_from_recurring_props(
     timezone_name: str,
     default_etag: str,
     default_caldav_path: str,
+    source_ics: str,
     window_start: datetime | None,
     window_end: datetime | None,
     max_occurrences: int,
@@ -352,6 +363,7 @@ def _events_from_recurring_props(
                 timezone_name=timezone_name,
                 default_etag=default_etag,
                 default_caldav_path=default_caldav_path,
+                source_ics=source_ics,
                 event_id_seed=f'recurrence:{_to_utc_iso(occurrence_start)}',
             )
             if override_event is not None and _event_is_in_window(
@@ -372,6 +384,7 @@ def _events_from_recurring_props(
             timezone_name=event_timezone_name,
             default_etag=default_etag,
             default_caldav_path=default_caldav_path,
+            source_ics=source_ics,
             event_id_seed=f'recurrence:{_to_utc_iso(occurrence_start)}',
             all_day=all_day,
         )

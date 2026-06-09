@@ -83,6 +83,11 @@ def render_proposal_answer(
             "Je ne peux pas encore modifier cet evenement sans risquer de perdre des details du calendrier. "
             "Je n'ai rien modifie dans ton agenda."
         )
+    if reason == write_execution.REASON_WRITE_ICS_SOURCE_MISSING:
+        return (
+            "Je n'ai plus la version source verifiee de cet evenement. "
+            "Je n'ai rien modifie; relis l'evenement puis refais une proposition."
+        )
     if reason == write_execution.REASON_WRITE_REINFORCED_REQUIRED:
         return "Cette suppression demande une confirmation renforcee. Je n'ai rien supprime dans ton agenda."
     if reason == write_execution.REASON_WRITE_FAMILY_REINFORCED_REQUIRED:

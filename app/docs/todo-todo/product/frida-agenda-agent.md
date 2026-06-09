@@ -4,12 +4,13 @@ Statut: TODO actif au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
-Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-7B livrent
+Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-7D livrent
 toggle no-op, configuration redacted, outils read-only, agent JSON valide sous
 garde-fous, branchement applicatif read-only et preuve CalDAV live content-free,
 propositions/pending store temporaire, confirmations fake Lot 7A et preuve live
 write synthetique bornee Lot 7B, puis verrou calendrier familial Lot 7C avant
-mutations utilisateur reelles.
+mutations utilisateur reelles, et update confirme fake/local avec preservation
+de l'ICS source Lot 7D.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -138,10 +139,14 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [ ] Utiliser CalDAV comme frontiere d'acces.
   Preuve attendue: tools bornes `calendar_list`, `event_query_range`,
   `event_get`, puis mutations confirmees.
-- [ ] Refuser toute ecriture sans confirmation humaine.
-  Preuve attendue: smoke de refus mutation sans pending action confirme.
-- [ ] Refuser toute suppression autonome.
-  Preuve attendue: suppression impossible hors confirmation renforcee.
+- [x] Refuser toute ecriture sans confirmation humaine.
+  Preuve livree: Lots 7A/7D, `confirm_*` exige pending action, draft prive,
+  confirmation coherente et client write injecte; refus sans pending action ou
+  sans draft prive avant toute requete.
+- [x] Refuser toute suppression autonome.
+  Preuve livree: Lots 7A/7B/7C, suppression impossible hors pending action
+  verifiee et confirmation renforcee; rollback live limite a l'evenement
+  synthetique cree dans le meme smoke.
 - [x] Renforcer la prudence sur le calendrier familial.
   Preuve livree: Lot 7C/7C.1, risk flag `family_calendar` ou
   `calendar_scope_unverified`, confirmation `reinforced`, detection depuis JSON
@@ -302,8 +307,10 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 - [ ] `AG-WRITE-01` creer un evenement apres confirmation.
   Preuve attendue: pending action confirme, CalDAV PUT, relecture content-free.
-- [ ] `AG-WRITE-02` modifier un evenement apres confirmation.
-  Preuve attendue: ETag ou equivalent relu, CalDAV update, conflit gere.
+- [x] `AG-WRITE-02` modifier un evenement apres confirmation.
+  Preuve livree: Lot 7D fake/local, pending draft prive confirme, ETag et ICS
+  source obligatoires, `PUT` fake, conflit gere content-free, pas de
+  reconstruction depuis le dialogue ni de live write utilisateur.
 - [ ] `AG-WRITE-03` supprimer un evenement apres confirmation renforcee.
   Preuve attendue: cible relue juste avant, confirmation renforcee, delete
   borne.
@@ -353,17 +360,18 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] `pending_action_get`.
   Preuve livree: Lots 6/7A, `confirm_*` relit une pending action precise et
   execute uniquement si le draft prive et le client write fake sont presents;
-  Lot 7A.1 bloque les updates tant que la preservation ICS source n'est pas
-  livree.
+  Lot 7D autorise les updates fake/local seulement depuis draft prive, ETag,
+  path CalDAV prive et ICS source preservee.
 - [x] `pending_action_cancel`.
   Preuve livree: Lot 6, annulation et expiration sans mutation.
 - [x] `event_create_confirmed`.
   Preuve livree: Lot 7A non-live fake; Lot 7B live synthetique `PUT 201`,
   evenement relu status-only `GET 200` avec ETag, aucune fuite content-free.
-- [ ] `event_update_confirmed`.
-  Preuve attendue: update preservant l'ICS source, ETag obligatoire et conflit
-  gere; Lot 7A.1 refuse l'update avant requete tant que cette preservation
-  n'est pas livree.
+- [x] `event_update_confirmed`.
+  Preuve livree: Lot 7D non-live fake/local, update depuis pending draft prive
+  + ETag + path CalDAV prive + ICS source, `PUT` fake avec `If-Match`,
+  preservation UID/proprietes inconnues/alarmes/participants/recurrence et
+  conflit `412` content-free; aucun live write utilisateur.
 - [x] `event_delete_confirmed`.
   Preuve livree: Lot 7A non-live, CalDAV `DELETE` fake seulement apres
   confirmation renforcee avec ETag obligatoire; Lot 7B rollback live
@@ -598,9 +606,10 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Proteger le draft Lot 7 futur.
   Preuve livree: Lots 6.1/6.2, brouillon structure prive avec operation,
   calendrier, timezone, creneau, details humains et cible verifiee si besoin;
-  JSONL/logs/meta ne contiennent pas titre, lieu, description, UID, ETag,
-  path CalDAV ou ICS; les drafts prives tronques, expires ou annules sont
-  oublies.
+  Lot 7D peut conserver l'ICS source uniquement dans le draft prive temporaire
+  pour patcher un update; JSONL/logs/meta ne contiennent pas titre, lieu,
+  description, UID, ETag, path CalDAV ou ICS; les drafts prives tronques,
+  expires ou annules sont oublies.
 - [x] Prouver aucune ecriture CalDAV dans les propositions.
   Preuve livree: tests fake sans client CalDAV/secret; les propositions ne
   mutent jamais. Les confirmations executees appartiennent au Lot 7A.
@@ -616,11 +625,11 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   `app/docs/states/baselines/agenda-smokes/frida-agenda-lot7b-live-write-20260609T114108Z.jsonl`,
   `PUT 201`, `GET 200`, ETag present, final lock assistant normal, aucun
   evenement personnel touche.
-- [ ] Lot 7A/7B: modification apres confirmation.
-  Preuve attendue: pending draft prive avec cible verifiee, ETag obligatoire,
-  preservation de l'ICS source et conflit gere. Etat Lot 7A.1: `confirm_update_event`
-  refuse avant toute requete write avec `agenda_write_update_preservation_required`
-  tant que la preservation ICS source n'est pas livree.
+- [x] Lot 7D non-live: modification apres confirmation.
+  Preuve livree: pending draft prive avec cible verifiee, ETag obligatoire,
+  path CalDAV prive, ICS source disponible, patch preservant UID/proprietes
+  inconnues/alarmes/participants/recurrence, `PUT` fake avec `If-Match`,
+  conflit `412` content-free; aucun live write utilisateur.
 - [x] Lot 7A non-live: suppression apres confirmation renforcee.
   Preuve livree: pending draft prive avec cible verifiee, `DELETE` fake
   transport, ETag obligatoire, confirmation renforcee obligatoire, aucune
@@ -637,9 +646,9 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   `PUT`/`DELETE`, et la surface visible mentionne le calendrier
   partage/familial ou non classifie sans jargon technique.
 - [x] Gestion conflit ETag ou equivalent.
-  Preuve livree: Lot 7A.1 non-live, delete fake `412` refuse proprement sans
-  executer/neutraliser la pending action; update reste bloque avant write tant
-  que la preservation ICS source n'est pas livree.
+  Preuve livree: Lots 7A.1/7D non-live, delete fake `412` et update fake `412`
+  refusent proprement sans executer/neutraliser la pending action; aucun
+  contenu ICS/source n'entre dans meta ou observabilite.
 - [x] Lot 7B live write proof avec evenement synthetique, GO humain explicite,
   rollback/suppression de test documente et artefact content-free.
   Preuve livree: create met, rollback delete met, no-update-live met,

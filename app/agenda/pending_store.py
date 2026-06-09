@@ -402,7 +402,7 @@ def _action_from_mapping(value: Any) -> AgendaPendingAction | None:
 def _safe_draft(value: Any) -> dict[str, Any]:
     data = _mapping(value)
     encoded = json.dumps(data, sort_keys=True, ensure_ascii=True, default=str)
-    if len(encoded) > 4000:
+    if len(encoded) > 100000:
         return {'schema_version': 'frida_agenda_pending_draft_v1', 'truncated': True, 'content_free': True}
     return json.loads(encoded) if encoded else {}
 

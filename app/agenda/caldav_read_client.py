@@ -100,6 +100,7 @@ class CalDavReadClient:
             timezone_name=event.timezone,
             default_etag=event.etag,
             default_caldav_path=event.caldav_path,
+            source_ics=response.text,
             window_start_iso=event.start_iso,
             window_end_iso=event.end_iso,
         )
@@ -175,6 +176,7 @@ def parse_event_report(
             text,
             calendar_id=calendar.local_id,
             timezone_name=timezone_name,
+            source_ics=text,
             window_start_iso=window_start_iso,
             window_end_iso=window_end_iso,
         )
@@ -193,6 +195,7 @@ def parse_event_report(
                 timezone_name=timezone_name,
                 default_etag=etag,
                 default_caldav_path=href,
+                source_ics=calendar_data,
                 window_start_iso=window_start_iso,
                 window_end_iso=window_end_iso,
             )

@@ -169,6 +169,7 @@ def _event_target(event: CalendarEvent) -> dict[str, Any]:
             'uid': event.uid,
             'etag': event.etag,
             'caldav_path': event.caldav_path,
+            'source_ics': event.source_ics,
         },
     }
     return target

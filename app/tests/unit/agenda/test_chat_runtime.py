@@ -835,6 +835,8 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertTrue(result.observability_payload['nextcloud_access'])
         self.assertTrue(result.observability_payload['secret_access'])
         self.assertEqual(result.observability_payload['pending_operation'], 'update')
+        private_draft = pending_store.private_draft_for_action(result.pending_state.actions[0])
+        self.assertIn('BEGIN:VCALENDAR', private_draft['target']['technical_ref']['source_ics'])
         self.assertIn('Fixture Local Time Block', result.final_response_lock.content)
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
         self.assertNotIn('fixture-secret-value', encoded_payload)
@@ -843,6 +845,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('fixture-local-time-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
         self.assertNotIn('fixture-etag-001', encoded_payload)
+        self.assertNotIn('BEGIN:VCALENDAR', encoded_payload)
 
     def test_propose_update_runtime_caldav_fake_transport_allows_search_before_target_get(self) -> None:
         event_id = _live_fixture_event_id()
@@ -1359,7 +1362,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('fixture-family-created-uid@example.invalid', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
 
-    def test_confirm_update_event_requires_source_preservation_before_write(self) -> None:
+    def test_confirm_update_event_preserves_source_ics_and_executes_fake_put(self) -> None:
         state, _action = pending_store.create_pending_action(
             pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
             operation='update',
@@ -1391,19 +1394,172 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         )
 
         self.assertTrue(result.used)
-        self.assertEqual(
-            result.proposal_execution_result.reason_code,
-            write_execution.REASON_WRITE_UPDATE_PRESERVATION_REQUIRED,
-        )
-        self.assertEqual(transport.calls, [])
-        self.assertEqual(result.pending_state.actions[0].status, pending_store.STATUS_PENDING)
-        self.assertFalse(result.observability_payload['mutation_attempted'])
-        self.assertIn('Je ne peux pas encore modifier cet evenement', result.final_response_lock.content)
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_EXECUTED)
+        self.assertEqual([call['method'] for call in transport.calls], ['PUT'])
+        self.assertEqual(transport.calls[0]['headers'].get('If-Match'), 'fixture-etag-001')
+        body = str(transport.calls[0]['body'])
+        self.assertIn('UID:fixture-event-001@example.invalid', body)
+        self.assertIn('SUMMARY:Fixture Updated Title', body)
+        self.assertIn('DTSTART:20260609T080000Z', body)
+        self.assertIn('X-FRIDA-KEEP:preserve-me', body)
+        self.assertIn('BEGIN:VALARM', body)
+        self.assertIn('ATTENDEE;CN=Fixture Attendee:mailto:fixture-attendee@example.invalid', body)
+        self.assertEqual(result.pending_state.actions[0].status, pending_store.STATUS_EXECUTED)
+        self.assertTrue(result.observability_payload['mutation_attempted'])
+        self.assertIn("J'ai modifie", result.final_response_lock.content)
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        encoded_meta = json.dumps(result.final_response_lock.to_message_meta(), sort_keys=True)
         self.assertNotIn('Fixture Updated Title', encoded_payload)
         self.assertNotIn('fixture-event-001@example.invalid', encoded_payload)
         self.assertNotIn('fixture-etag-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
+        self.assertNotIn('BEGIN:VEVENT', encoded_payload)
+        self.assertNotIn('Fixture Updated Title', encoded_meta)
+        self.assertNotIn('fixture-event-001@example.invalid', encoded_meta)
+        self.assertNotIn('fixture-etag-001', encoded_meta)
+        self.assertNotIn('/remote.php/dav', encoded_meta)
+        self.assertNotIn('BEGIN:VEVENT', encoded_meta)
+
+    def test_confirm_update_title_only_preserves_time_location_description_and_unknown_properties(self) -> None:
+        draft = _private_update_draft()
+        draft['start'] = ''
+        draft['end'] = ''
+        draft['title'] = 'Fixture Title Only'
+        draft['location'] = ''
+        draft['description'] = ''
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='update',
+            confirmation_level='simple',
+            draft=draft,
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-update-title-only',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=204)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme la modification',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_UPDATE_EVENT,
+                    operation='update',
+                    pending_action_id='agenda-pending-update-title-only',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(transport=transport),
+        )
+
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_EXECUTED)
+        body = str(transport.calls[0]['body'])
+        self.assertIn('SUMMARY:Fixture Title Only', body)
+        self.assertIn('DTSTART:20260608T070000Z', body)
+        self.assertIn('DTEND:20260608T080000Z', body)
+        self.assertIn('LOCATION:Fixture Location Alpha', body)
+        self.assertIn('DESCRIPTION:Fixture description\\, no personal data.', body)
+        self.assertIn('X-FRIDA-KEEP:preserve-me', body)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture Title Only', encoded_payload)
+        self.assertNotIn('Fixture Location Alpha', encoded_payload)
+
+    def test_confirm_update_time_only_preserves_title_location_and_description(self) -> None:
+        draft = _private_update_draft()
+        draft['start'] = '2026-06-08T09:00:00Z'
+        draft['end'] = '2026-06-08T10:00:00Z'
+        draft['title'] = ''
+        draft['location'] = ''
+        draft['description'] = ''
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='update',
+            confirmation_level='simple',
+            draft=draft,
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-update-time-only',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=204)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme la modification',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_UPDATE_EVENT,
+                    operation='update',
+                    pending_action_id='agenda-pending-update-time-only',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(transport=transport),
+        )
+
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_EXECUTED)
+        body = str(transport.calls[0]['body'])
+        self.assertIn('DTSTART:20260608T090000Z', body)
+        self.assertIn('DTEND:20260608T100000Z', body)
+        self.assertIn('SUMMARY:Fixture Focus Block', body)
+        self.assertIn('LOCATION:Fixture Location Alpha', body)
+        self.assertIn('DESCRIPTION:Fixture description\\, no personal data.', body)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture Focus Block', encoded_payload)
+        self.assertNotIn('Fixture Location Alpha', encoded_payload)
+
+    def test_confirm_update_description_preserves_alarm_description(self) -> None:
+        draft = _private_update_draft()
+        draft['start'] = ''
+        draft['end'] = ''
+        draft['title'] = ''
+        draft['location'] = ''
+        draft['description'] = 'Fixture Updated Description'
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='update',
+            confirmation_level='simple',
+            draft=draft,
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-update-description-only',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=204)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme la modification',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_UPDATE_EVENT,
+                    operation='update',
+                    pending_action_id='agenda-pending-update-description-only',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(transport=transport),
+        )
+
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_EXECUTED)
+        body = str(transport.calls[0]['body'])
+        self.assertIn('DESCRIPTION:Fixture Updated Description', body)
+        self.assertIn('BEGIN:VALARM', body)
+        self.assertIn('DESCRIPTION:Fixture alarm', body)
+        self.assertIn('RRULE:FREQ=WEEKLY;COUNT=2', body)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture Updated Description', encoded_payload)
+        self.assertNotIn('Fixture alarm', encoded_payload)
 
     def test_confirm_update_without_etag_refuses_before_put(self) -> None:
         draft = _private_update_draft()
@@ -1446,6 +1602,89 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('Fixture Updated Title', encoded_payload)
         self.assertNotIn('fixture-etag-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_confirm_update_without_source_ics_refuses_before_put(self) -> None:
+        draft = _private_update_draft()
+        draft['target']['technical_ref']['source_ics'] = ''
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='update',
+            confirmation_level='simple',
+            draft=draft,
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-update-no-source-ics',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=204)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme la modification',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_UPDATE_EVENT,
+                    operation='update',
+                    pending_action_id='agenda-pending-update-no-source-ics',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(transport=transport),
+        )
+
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_ICS_SOURCE_MISSING)
+        self.assertEqual(transport.calls, [])
+        self.assertEqual(result.pending_state.actions[0].status, pending_store.STATUS_PENDING)
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        self.assertIn('version source verifiee', result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('BEGIN:VEVENT', encoded_payload)
+        self.assertNotIn('fixture-event-001@example.invalid', encoded_payload)
+
+    def test_confirm_update_conflict_is_content_free_and_keeps_pending_action(self) -> None:
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='update',
+            confirmation_level='simple',
+            draft=_private_update_draft(),
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-update-conflict',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=412)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme la modification',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_UPDATE_EVENT,
+                    operation='update',
+                    pending_action_id='agenda-pending-update-conflict',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(transport=transport),
+        )
+
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_CONFLICT)
+        self.assertEqual([call['method'] for call in transport.calls], ['PUT'])
+        self.assertEqual(result.pending_state.actions[0].status, pending_store.STATUS_PENDING)
+        self.assertTrue(result.observability_payload['mutation_attempted'])
+        self.assertIn('calendrier a change', result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture Updated Title', encoded_payload)
+        self.assertNotIn('fixture-event-001@example.invalid', encoded_payload)
+        self.assertNotIn('fixture-etag-001', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+        self.assertNotIn('BEGIN:VEVENT', encoded_payload)
 
     def test_caldav_write_client_refuses_existing_writes_without_etag(self) -> None:
         transport = _FakeCalDavWriteTransport(status_code=204)
@@ -2254,6 +2493,30 @@ _PRIMARY_REPORT_XML = f"""<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+_SOURCE_UPDATE_ICS = """BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Fixture Agenda//EN
+BEGIN:VEVENT
+UID:fixture-event-001@example.invalid
+DTSTAMP:20260608T060000Z
+DTSTART:20260608T070000Z
+DTEND:20260608T080000Z
+SUMMARY:Fixture Focus Block
+LOCATION:Fixture Location Alpha
+DESCRIPTION:Fixture description\\, no personal data.
+RRULE:FREQ=WEEKLY;COUNT=2
+ATTENDEE;CN=Fixture Attendee:mailto:fixture-attendee@example.invalid
+X-FRIDA-KEEP:preserve-me
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Fixture alarm
+TRIGGER:-PT10M
+END:VALARM
+END:VEVENT
+END:VCALENDAR
+"""
+
+
 def _valid_payload(**overrides) -> dict:
     payload = {
         'schema_version': agent_contract.SCHEMA_VERSION,
@@ -2420,6 +2683,7 @@ def _private_target() -> dict:
             'uid': 'fixture-event-001@example.invalid',
             'etag': 'fixture-etag-001',
             'caldav_path': '/remote.php/dav/calendars/tof/fixture-primary/event-1.ics',
+            'source_ics': _SOURCE_UPDATE_ICS,
         },
     }
 

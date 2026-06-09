@@ -6,6 +6,7 @@ from typing import Any, Callable, Mapping
 
 from agenda import agent_contract
 from agenda import family_calendar_policy
+from agenda import ics_patch
 from agenda import ics_writer
 from agenda import pending_drafts
 from agenda import pending_store
@@ -27,6 +28,7 @@ REASON_WRITE_UNVERIFIED_REINFORCED_REQUIRED = family_calendar_policy.REASON_UNVE
 REASON_WRITE_TARGET_MISSING = 'agenda_write_target_missing'
 REASON_WRITE_CALENDAR_TARGET_MISSING = 'agenda_write_calendar_target_missing'
 REASON_WRITE_ETAG_MISSING = 'agenda_write_etag_missing'
+REASON_WRITE_ICS_SOURCE_MISSING = ics_patch.REASON_ICS_SOURCE_MISSING
 REASON_WRITE_UPDATE_PRESERVATION_REQUIRED = 'agenda_write_update_preservation_required'
 REASON_WRITE_CONFLICT = 'agenda_write_conflict'
 REASON_WRITE_FAILED = 'agenda_write_failed'
@@ -232,7 +234,20 @@ def _execute_write(
             raise CalDavWriteValidationError(REASON_WRITE_TARGET_MISSING)
         if not etag:
             raise CalDavWriteValidationError(REASON_WRITE_ETAG_MISSING)
-        raise CalDavWriteValidationError(REASON_WRITE_UPDATE_PRESERVATION_REQUIRED)
+        source_ics = str(technical_ref.get('source_ics') or '')
+        if not source_ics:
+            raise CalDavWriteValidationError(REASON_WRITE_ICS_SOURCE_MISSING)
+        try:
+            ics_text = ics_patch.patch_event_ics(source_ics, draft, now_iso=now_iso)
+        except ics_patch.IcsPatchError as exc:
+            raise CalDavWriteValidationError(exc.reason_code) from exc
+        return write_client.put_existing_event(
+            caldav_path=caldav_path,
+            ics_text=ics_text,
+            etag=etag,
+            calendar_id=str(target.get('calendar_id') or draft.get('calendar_id') or ''),
+            event_reference=str(target.get('event_id') or uid),
+        )
     if operation == pending_store.OPERATION_DELETE:
         if not caldav_path:
             raise CalDavWriteValidationError(REASON_WRITE_TARGET_MISSING)

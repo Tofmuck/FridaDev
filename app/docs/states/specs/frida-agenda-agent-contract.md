@@ -4,14 +4,16 @@ Statut: spec vivante
 Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
-Portee: contrat cible du futur agent Agenda Frida. Lots 1-7B livrent toggle
+Portee: contrat cible du futur agent Agenda Frida. Lots 1-7D livrent toggle
 no-op, configuration redacted, outils read-only, agent JSON valide,
 branchement applicatif read-only et preuve CalDAV live content-free. Les
 propositions Agenda creent des pending actions temporaires; Lot 7A livre les
 mutations confirmees uniquement avec fake transport; Lot 7B prouve uniquement
 une creation live synthetique et son rollback delete sur la meme cible
-synthetique avec GO humain explicite. Les updates live et mutations utilisateur
-reelles restent hors scope.
+synthetique avec GO humain explicite. Lot 7C/7C.1 verrouille les calendriers
+familiaux ou non classifies; Lot 7D livre l'update confirme fake/local avec
+preservation de l'ICS source. Les updates live et mutations utilisateur reelles
+restent hors scope.
 
 Sources:
 
@@ -638,8 +640,9 @@ Mutation:
 - creation exige confirmation simple seulement si le calendrier est explicitement
   classifie non familial; calendrier familial/partage ou classification inconnue
   exige confirmation renforcee;
-- modification reste fermee tant que la preservation ICS source n'est pas
-  livree;
+- modification est livree en fake/local seulement si le draft prive, la cible
+  verifiee, l'ETag, le path CalDAV prive et l'ICS source sont presents; le
+  patch preserve le VEVENT source et ne reconstruit pas depuis le dialogue;
 - suppression exige confirmation renforcee;
 - calendrier familial exige prudence renforcee, risk flag `family_calendar`,
   detection depuis JSON agent ou calendrier lu quand disponible, et confirmation
@@ -671,15 +674,19 @@ Modele livre Lot 6:
 - si disponible, une reference technique interne de cible peut rester dans le
   store prive temporaire, mais jamais dans `message.meta`, observabilite,
   dashboard, logs ou JSONL;
+- Lot 7D peut ajouter l'ICS source a cette reference technique interne pour
+  patcher un update confirme; cette ICS source reste strictement privee,
+  temporaire et interdite dans `message.meta`, observabilite, dashboard, logs
+  ou JSONL;
 - les details humains restent dans la reponse visible et dans le pending store
   temporaire prive, pas dans les logs/dashboard/JSONL.
 
 Lot 7A execute une confirmation uniquement depuis le pending draft prive et
 avec client CalDAV write injecte/fake. Lot 7A.1 durcit le preflight avant tout
-live write: update/delete exigent une cible technique avec ETag verifie, et
-`confirm_update_event` reste refuse tant qu'une preservation de l'ICS source
-n'est pas livree. Relire uniquement le dialogue pour
-reconstruire une mutation reste interdit.
+live write: update/delete exigent une cible technique avec ETag verifie. Lot 7D
+ouvre `confirm_update_event` en fake/local seulement quand l'ICS source est
+disponible et preservable. Relire uniquement le dialogue pour reconstruire une
+mutation reste interdit.
 
 Preuve Lot 6:
 
@@ -703,18 +710,19 @@ Preuve Lot 6:
   CalDAV ou ICS;
 - Lot 6.2: les drafts prives sortis de l'etat par tronquage `MAX_ACTIONS`,
   expiration ou annulation sont oublies.
-- Lot 7A: `confirm_create_event` et `confirm_delete_event` executent uniquement
-  en fake transport injecte, jamais en write live Nextcloud; `confirm_update_event`
-  est cadre mais bloque par Lot 7A.1 tant que la preservation ICS source n'est
-  pas livree;
+- Lot 7A/7D: `confirm_create_event`, `confirm_update_event` et
+  `confirm_delete_event` executent uniquement en fake transport injecte pour les
+  preuves locales; aucun write live utilisateur n'est autorise par Lot 7D;
 - Lot 7A: `confirm_create_event` utilise un draft prive structure, genere un
   ICS minimal, fait un `PUT` avec `If-None-Match: *`, puis neutralise la
   pending action en `executed`;
-- Lot 7A.1: `confirm_update_event` utilise la cible verifiee du draft prive
-  pour verifier les preconditions, mais refuse avant toute requete write avec
-  `agenda_write_update_preservation_required` afin de ne pas reconstruire un
-  VEVENT minimal qui ecraserait alarmes, participants, recurrence ou proprietes
-  client;
+- Lot 7D: `confirm_update_event` utilise la cible verifiee du draft prive,
+  exige ETag, path CalDAV prive et ICS source, puis applique un patch cible sur
+  le VEVENT source; UID, proprietes inconnues, alarmes, participants, recurrence
+  et metadonnees non touchees doivent etre preserves autant que possible;
+- Lot 7D: si l'ICS source manque ou ne peut pas etre preservee, l'update est
+  refuse avant `PUT` avec une raison content-free; aucun update n'est reconstruit
+  depuis le dialogue ou depuis un VEVENT minimal;
 - Lot 7A: `confirm_delete_event` exige une confirmation renforcee et fait un
   `DELETE` sur la cible technique interne avec ETag obligatoire; aucune
   suppression n'est possible sans pending action valide, draft prive et ETag
@@ -761,8 +769,10 @@ Lot 7B livre:
 - `LOT7B_ROLLBACK_SYNTHETIC_EVENT`: rollback delete renforce sur la cible issue
   du meme smoke, `DELETE 204`;
 - `LOT7B_FINAL_SYNTHETIC_STATE`: `GET 404`, evenement synthetique supprime;
-- `LOT7B_NO_UPDATE_LIVE`: `confirm_update_event` reste refuse avec
-  `agenda_write_update_preservation_required`, zero requete `PUT`;
+- `LOT7B_NO_UPDATE_LIVE`: au moment du smoke Lot 7B,
+  `confirm_update_event` restait refuse avec
+  `agenda_write_update_preservation_required`, zero requete `PUT`; Lot 7D
+  supersede ce blocage en fake/local seulement, sans preuve d'update live;
 - `LOT7B_CONTENT_FREE_SCAN`: aucun titre, lieu, description, UID, ETag, path
   CalDAV, ICS, Authorization, cookie, token ou app-password dans l'artefact;
 - aucun Lot 8 n'est ferme par Lot 7B.
@@ -1127,10 +1137,13 @@ Mutation:
 - prouver rollback quand possible, ou documenter la limite quand CalDAV ne le
   permet pas automatiquement.
 
-NO-GO mutation tant que:
+NO-GO mutations utilisateur reelles tant que:
 
-- le secret runtime dedie n'est pas configure;
-- la confirmation humaine executable Lot 7 n'est pas livree;
-- la confirmation humaine n'est pas testee;
-- les logs content-free ne sont pas prouves;
-- le calendrier familial n'est pas protege par une confirmation claire.
+- le secret runtime dedie n'est pas configure en redacted;
+- la confirmation humaine n'est pas testee sur le type de mutation utilisateur
+  reel vise;
+- les logs/content-free ne sont pas prouves pour le lot live vise;
+- le calendrier familial ou non classifie n'a pas de confirmation claire et
+  renforcee quand la politique l'exige;
+- l'update live reste non autorise tant qu'une preuve live separee ne valide pas
+  la preservation ICS source sans toucher d'evenement personnel.

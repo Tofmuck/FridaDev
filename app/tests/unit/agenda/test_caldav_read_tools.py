@@ -550,6 +550,7 @@ END:VCALENDAR
         self.assertEqual(transport.calls[-1].method, 'GET')
         self.assertEqual(refreshed.uid, event.uid)
         self.assertEqual(refreshed.summary, event.summary)
+        self.assertIn('BEGIN:VCALENDAR', refreshed.source_ics)
 
     def test_read_client_rejects_http_statuses_with_content_free_error(self) -> None:
         raw_body = 'RAW SERVER BODY BEGIN:VEVENT UID:fixture-leak SUMMARY:should-not-leak'
