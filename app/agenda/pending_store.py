@@ -18,6 +18,7 @@ MAX_ACTIONS = 12
 STATUS_PENDING = 'pending'
 STATUS_CANCELLED = 'cancelled'
 STATUS_EXPIRED = 'expired'
+STATUS_EXECUTED = 'executed'
 
 OPERATION_CREATE = 'create'
 OPERATION_UPDATE = 'update'
@@ -53,7 +54,7 @@ class AgendaPendingAction:
         return bool(expires is not None and now is not None and expires <= now)
 
     def with_status(self, status: str) -> 'AgendaPendingAction':
-        next_status = status if status in {STATUS_PENDING, STATUS_CANCELLED, STATUS_EXPIRED} else self.status
+        next_status = status if status in {STATUS_PENDING, STATUS_CANCELLED, STATUS_EXPIRED, STATUS_EXECUTED} else self.status
         return AgendaPendingAction(
             pending_action_id=self.pending_action_id,
             operation=self.operation,
@@ -284,6 +285,31 @@ def cancel_pending_action(
     )
 
 
+def mark_pending_action_executed(
+    state: AgendaPendingState,
+    pending_action_id: str,
+    *,
+    now_iso: str,
+) -> tuple[AgendaPendingState, AgendaPendingAction | None]:
+    current, action = find_pending_action(state, pending_action_id, now_iso=now_iso)
+    if action is None or action.status != STATUS_PENDING:
+        return current, action
+    updated_actions = tuple(
+        item.with_status(STATUS_EXECUTED) if item.pending_action_id == action.pending_action_id else item
+        for item in current.actions
+    )
+    executed = next(item for item in updated_actions if item.pending_action_id == action.pending_action_id)
+    _forget_private_draft(executed.pending_action_id)
+    return (
+        AgendaPendingState(
+            conversation_id=current.conversation_id,
+            actions=updated_actions,
+            updated_at=_format_iso(_parse_iso(now_iso) or datetime.now(timezone.utc)),
+        ),
+        executed,
+    )
+
+
 def expire_pending_actions(state: AgendaPendingState, *, now_iso: str) -> AgendaPendingState:
     if not now_iso or not state.actions:
         return state
@@ -358,7 +384,7 @@ def _action_from_mapping(value: Any) -> AgendaPendingAction | None:
         return None
     if confirmation_level not in {CONFIRMATION_SIMPLE, CONFIRMATION_REINFORCED}:
         return None
-    if status not in {STATUS_PENDING, STATUS_CANCELLED, STATUS_EXPIRED}:
+    if status not in {STATUS_PENDING, STATUS_CANCELLED, STATUS_EXPIRED, STATUS_EXECUTED}:
         status = STATUS_PENDING
     return AgendaPendingAction(
         pending_action_id=pending_action_id,

@@ -8,6 +8,7 @@ from agenda import pending_drafts
 from agenda import pending_store
 from agenda import product_methods
 from agenda import proposal_target_verification
+from agenda import write_execution
 from agenda.caldav_models import CalendarEvent
 
 
@@ -50,6 +51,7 @@ class AgendaProposalExecutionResult:
     verified_event: CalendarEvent | None = field(default=None, repr=False, compare=False)
     target_verification_tool_names: tuple[str, ...] = ()
     target_verification_error_class: str = ''
+    write_observation: Mapping[str, Any] = field(default_factory=dict, repr=False, compare=False)
 
     @property
     def observation(self) -> dict[str, Any]:
@@ -76,7 +78,8 @@ class AgendaProposalExecutionResult:
             'caldav_access': bool(self.caldav_access),
             'nextcloud_access': bool(self.nextcloud_access),
             'secret_access': bool(self.secret_access),
-            'mutation_attempted': False,
+            'mutation_attempted': bool(self.mutation_attempted),
+            'write_execution': dict(self.write_observation or {}),
             'content_free': True,
             'redacted': True,
         }
@@ -123,6 +126,9 @@ def execute_pending_plan(
     id_factory: Callable[[], str] | None = None,
     read_client: Any = None,
     live_caldav: bool = False,
+    write_client: Any = None,
+    live_write_caldav: bool = False,
+    uid_factory: Callable[[], str] | None = None,
 ) -> AgendaProposalExecutionResult:
     state = _state_from_input(conversation_state)
     method = product_methods.get_method(plan.product_method)
@@ -139,7 +145,15 @@ def execute_pending_plan(
             live_caldav=live_caldav,
         )
     if method.family == product_methods.FAMILY_MUTATE:
-        return _refuse_confirmation(plan, method=method, state=state, now_iso=now_iso)
+        return _execute_confirmation(
+            plan,
+            method=method,
+            state=state,
+            now_iso=now_iso,
+            write_client=write_client,
+            live_write_caldav=live_write_caldav,
+            uid_factory=uid_factory,
+        )
     if method.name == product_methods.METHOD_CANCEL_PENDING_AGENDA_ACTION:
         return _cancel_pending(plan, state=state, now_iso=now_iso)
     return _blocked(plan, state=state, reason_code=REASON_NOT_PENDING_METHOD)
@@ -226,36 +240,65 @@ def _execute_proposal(
     )
 
 
-def _refuse_confirmation(
+def _execute_confirmation(
     plan: agent_contract.AgendaAgentPlan,
     *,
     method: product_methods.AgendaProductMethod,
     state: pending_store.AgendaPendingState,
     now_iso: str,
+    write_client: Any,
+    live_write_caldav: bool,
+    uid_factory: Callable[[], str] | None,
 ) -> AgendaProposalExecutionResult:
-    pending_id = str(plan.mutation.get('pending_action_id') or '')
-    current_state, action = pending_store.find_pending_action(state, pending_id, now_iso=now_iso)
-    operation = method.mutation_kind
-    if action is None:
-        return _blocked(plan, state=current_state, reason_code=REASON_PENDING_NOT_FOUND, operation=operation)
-    if action.status == pending_store.STATUS_EXPIRED:
-        return _blocked(
-            plan,
-            state=current_state,
-            reason_code=REASON_PENDING_EXPIRED,
-            operation=operation,
-            action=action,
-            expired=True,
-        )
-    if action.status == pending_store.STATUS_CANCELLED:
-        return _blocked(plan, state=current_state, reason_code=REASON_PENDING_NOT_FOUND, operation=operation, action=action)
-    return _blocked(
+    del method
+    write_result = write_execution.execute_confirmed_plan(
         plan,
-        state=current_state,
-        reason_code=REASON_CONFIRMATION_NOT_EXECUTABLE,
-        operation=operation,
-        action=action,
-        target_clear=True,
+        conversation_state=state,
+        now_iso=now_iso,
+        write_client=write_client,
+        live_caldav=live_write_caldav,
+        uid_factory=uid_factory,
+    )
+    return _from_write_result(plan, write_result)
+
+
+def _from_write_result(
+    plan: agent_contract.AgendaAgentPlan,
+    write_result: write_execution.AgendaWriteExecutionResult,
+) -> AgendaProposalExecutionResult:
+    action = write_result.action
+    return AgendaProposalExecutionResult(
+        status=write_result.status,
+        reason_code=write_result.reason_code,
+        product_method=str(plan.product_method or ''),
+        operation=write_result.operation,
+        confirmation_level=action.confirmation_level if action is not None else '',
+        risk_flags=action.risk_flags if action is not None else (),
+        pending_action_id=write_result.pending_action_id,
+        pending_action_hash=write_result.pending_action_hash,
+        pending_expires_at=action.expires_at if action is not None else '',
+        pending_status=write_result.pending_status,
+        state=write_result.state,
+        mutation_attempted=write_result.mutation_attempted,
+        caldav_access=write_result.caldav_access,
+        nextcloud_access=write_result.nextcloud_access,
+        secret_access=write_result.secret_access,
+        target_clear=(
+            write_result.operation in {
+                pending_store.OPERATION_CREATE,
+                pending_store.OPERATION_UPDATE,
+                pending_store.OPERATION_DELETE,
+            }
+            and write_result.reason_code
+            not in {
+                write_execution.REASON_WRITE_PRIVATE_DRAFT_MISSING,
+                write_execution.REASON_WRITE_TARGET_MISSING,
+                write_execution.REASON_WRITE_CALENDAR_TARGET_MISSING,
+            }
+        ),
+        expired=write_result.reason_code == write_execution.REASON_PENDING_EXPIRED,
+        draft=write_result.draft,
+        write_observation=write_result.observation,
     )
 
 

@@ -180,9 +180,14 @@ def build_lot6_observability_payload(
     proposal = dict(proposal_observation or {})
     final_lock = dict(final_lock_observation or {})
     pending_state_payload = dict(pending_state_observation or {})
+    write = dict(proposal.get('write_execution') or {})
     payload.update(
         {
-            'schema_version': 'frida_agenda_lot6_pending_v1',
+            'schema_version': (
+                'frida_agenda_lot7a_confirmed_write_v1'
+                if write
+                else 'frida_agenda_lot6_pending_v1'
+            ),
             'used': bool(final_lock.get('content_present')),
             'pending_execution_attempted': bool(proposal),
             'pending_execution_status': str(proposal.get('status') or ''),
@@ -208,10 +213,16 @@ def build_lot6_observability_payload(
             'read_calendar_id_hashes': [],
             'read_event_id_hashes': [],
             'error_class': '',
+            'write_execution_attempted': bool(write),
+            'write_execution_status': str(write.get('status') or ''),
+            'write_execution_reason_code': str(write.get('reason_code') or ''),
+            'write_method_names': list(write.get('method_names') or []),
+            'write_http_status_codes': list(write.get('http_status_codes') or []),
+            'write_error_class': str(write.get('error_class') or ''),
             'caldav_access': bool(proposal.get('caldav_access')),
             'nextcloud_access': bool(proposal.get('nextcloud_access')),
             'secret_access': bool(proposal.get('secret_access')),
-            'mutation_attempted': False,
+            'mutation_attempted': bool(proposal.get('mutation_attempted')),
             'final_response_override': bool(final_lock.get('content_present')),
             'final_response': final_lock,
             'pending_execution': proposal,
@@ -233,8 +244,10 @@ def run_agenda_chat_turn(
     settings_override: agent_contract.AgendaAgentSettings | None = None,
     agent_model_client: Any = None,
     read_client: Any = None,
+    write_client: Any = None,
     conversation_state: Any = None,
     pending_id_factory: Any = None,
+    write_uid_factory: Any = None,
     llm_module: Any = None,
     requests_module: Any = None,
 ) -> AgendaChatResult:
@@ -301,6 +314,9 @@ def run_agenda_chat_turn(
                 id_factory=pending_id_factory,
                 read_client=proposal_client,
                 live_caldav=proposal_live_caldav,
+                write_client=write_client,
+                live_write_caldav=False,
+                uid_factory=write_uid_factory,
             )
             pending_state = proposal_result.state or pending_state
             final_lock = proposal_rendering.build_proposal_response_lock(

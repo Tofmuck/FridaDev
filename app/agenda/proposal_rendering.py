@@ -8,6 +8,7 @@ from agenda import agent_contract
 from agenda import pending_store
 from agenda import product_methods
 from agenda import proposal_execution
+from agenda import write_execution
 from agenda.response_rendering import AgendaFinalResponseLock
 
 
@@ -59,6 +60,30 @@ def render_proposal_answer(
         return "Cette proposition est expiree. Je n'ai rien modifie dans ton agenda."
     if reason == proposal_execution.REASON_PENDING_NOT_FOUND:
         return "Je ne retrouve pas cette proposition en attente. Je n'ai rien modifie dans ton agenda."
+    if reason == write_execution.REASON_WRITE_EXECUTED:
+        return _render_write_executed(proposal_result)
+    if reason == write_execution.REASON_WRITE_PRIVATE_DRAFT_MISSING:
+        return (
+            "Je n'ai plus le brouillon technique prive de cette proposition. "
+            "Je n'ai rien modifie dans ton agenda; il faut refaire une proposition."
+        )
+    if reason == write_execution.REASON_WRITE_CLIENT_UNAVAILABLE:
+        return (
+            "Je ne peux pas executer cette confirmation dans ce lot sans client CalDAV write injecte. "
+            "Je n'ai rien modifie dans ton agenda."
+        )
+    if reason == write_execution.REASON_WRITE_REINFORCED_REQUIRED:
+        return "Cette suppression demande une confirmation renforcee. Je n'ai rien supprime dans ton agenda."
+    if reason == write_execution.REASON_WRITE_CONFLICT:
+        return (
+            "Le calendrier a change depuis la proposition. "
+            "Je n'ai rien modifie; relis l'evenement puis refais une proposition."
+        )
+    if reason in {write_execution.REASON_WRITE_TARGET_MISSING, write_execution.REASON_WRITE_CALENDAR_TARGET_MISSING}:
+        return (
+            "Il manque la cible technique verifiee pour executer cette confirmation. "
+            "Je n'ai rien modifie dans ton agenda."
+        )
     if reason == proposal_execution.REASON_CONFIRMATION_NOT_EXECUTABLE:
         return (
             "Je ne peux pas encore executer cette confirmation dans ce lot. "
@@ -104,6 +129,19 @@ def _render_created(result: proposal_execution.AgendaProposalExecutionResult) ->
     if expires:
         lines.append(f"Expiration : {expires}.")
     return "\n".join(lines)
+
+
+def _render_write_executed(result: proposal_execution.AgendaProposalExecutionResult) -> str:
+    draft = dict(result.draft or {})
+    if result.operation == pending_store.OPERATION_CREATE:
+        lines = ["C'est cree dans ton agenda.", *_creation_lines(draft)]
+    elif result.operation == pending_store.OPERATION_UPDATE:
+        lines = ["J'ai modifie le rendez-vous.", *_update_lines(draft)]
+    elif result.operation == pending_store.OPERATION_DELETE:
+        lines = ["C'est supprime de ton agenda.", *_delete_lines(draft)]
+    else:
+        return "C'est fait dans ton agenda."
+    return "\n".join(line for line in lines if line)
 
 
 def _creation_lines(draft: Mapping[str, Any]) -> list[str]:
@@ -219,10 +257,10 @@ def _message_meta(
         'agenda_pending_expires_at': str(observation.get('pending_expires_at') or ''),
         'agenda_confirmation_level': str(observation.get('confirmation_level') or ''),
         'agenda_risk_flags': list(observation.get('risk_flags') or []),
-        'agenda_caldav_access': False,
-        'agenda_nextcloud_access': False,
-        'agenda_secret_access': False,
-        'agenda_mutation_attempted': False,
+        'agenda_caldav_access': bool(observation.get('caldav_access')),
+        'agenda_nextcloud_access': bool(observation.get('nextcloud_access')),
+        'agenda_secret_access': bool(observation.get('secret_access')),
+        'agenda_mutation_attempted': bool(observation.get('mutation_attempted')),
         'agenda_final_lock_authorized': True,
         'agenda_final_lock_reason_code': REASON_AGENDA_PENDING_FINAL,
         'content_free_meta': True,
@@ -238,10 +276,10 @@ def _lock_observability(meta: Mapping[str, Any]) -> dict[str, Any]:
         'agenda_pending_status': str(meta.get('agenda_pending_status') or ''),
         'agenda_confirmation_level': str(meta.get('agenda_confirmation_level') or ''),
         'agenda_risk_flags': list(meta.get('agenda_risk_flags') or []),
-        'agenda_caldav_access': False,
-        'agenda_nextcloud_access': False,
-        'agenda_secret_access': False,
-        'agenda_mutation_attempted': False,
+        'agenda_caldav_access': bool(meta.get('agenda_caldav_access')),
+        'agenda_nextcloud_access': bool(meta.get('agenda_nextcloud_access')),
+        'agenda_secret_access': bool(meta.get('agenda_secret_access')),
+        'agenda_mutation_attempted': bool(meta.get('agenda_mutation_attempted')),
         'content_free': True,
     }
 

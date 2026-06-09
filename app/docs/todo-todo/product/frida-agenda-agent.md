@@ -344,16 +344,18 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] `pending_action_create`.
   Preuve livree: Lot 6, ID local, TTL, hash court, meta content-free.
 - [x] `pending_action_get`.
-  Preuve livree: Lot 6, `confirm_*` relit une pending action precise mais
-  refuse toute execution avant Lot 7.
+  Preuve livree: Lots 6/7A, `confirm_*` relit une pending action precise et
+  execute uniquement si le draft prive et le client write fake sont presents.
 - [x] `pending_action_cancel`.
   Preuve livree: Lot 6, annulation et expiration sans mutation.
-- [ ] `event_create_confirmed`.
-  Preuve attendue: CalDAV PUT apres confirmation.
-- [ ] `event_update_confirmed`.
-  Preuve attendue: update avec protection concurrence.
-- [ ] `event_delete_confirmed`.
-  Preuve attendue: suppression seulement confirmation renforcee.
+- [x] `event_create_confirmed`.
+  Preuve livree: Lot 7A non-live, CalDAV `PUT` fake apres confirmation.
+- [x] `event_update_confirmed`.
+  Preuve livree: Lot 7A non-live, CalDAV `PUT` fake avec protection
+  concurrence `If-Match`.
+- [x] `event_delete_confirmed`.
+  Preuve livree: Lot 7A non-live, CalDAV `DELETE` fake seulement apres
+  confirmation renforcee.
 
 ## Lots runtime futurs
 
@@ -588,16 +590,27 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   path CalDAV ou ICS; les drafts prives tronques, expires ou annules sont
   oublies.
 - [x] Prouver aucune ecriture CalDAV dans les propositions.
-  Preuve livree: tests fake sans client CalDAV/secret; confirmations Lot 7
-  refusees avec `mutation_attempted=false`.
+  Preuve livree: tests fake sans client CalDAV/secret; les propositions ne
+  mutent jamais. Les confirmations executees appartiennent au Lot 7A.
 
 ### Lot 7 - Confirmations et mutations
 
-- [ ] Creation apres confirmation.
-- [ ] Modification apres confirmation.
-- [ ] Suppression apres confirmation renforcee.
+- [x] Lot 7A non-live: creation apres confirmation.
+  Preuve livree: pending draft prive, `PUT` fake transport, `If-None-Match: *`,
+  action neutralisee `executed`, observabilite/meta content-free, aucun write
+  live.
+- [x] Lot 7A non-live: modification apres confirmation.
+  Preuve livree: pending draft prive avec cible verifiee, `PUT` fake transport,
+  `If-Match` si ETag present, aucune reconstruction depuis le dialogue.
+- [x] Lot 7A non-live: suppression apres confirmation renforcee.
+  Preuve livree: pending draft prive avec cible verifiee, `DELETE` fake
+  transport, confirmation renforcee obligatoire, aucune suppression live.
 - [ ] Protection calendrier familial.
-- [ ] Gestion conflit ETag ou equivalent.
+- [x] Gestion conflit ETag ou equivalent.
+  Preuve livree: Lot 7A non-live, conflit fake `412` refuse proprement sans
+  executer/neutraliser la pending action.
+- [ ] Lot 7B live write proof avec evenement synthetique, GO humain explicite,
+  rollback/suppression de test documente et artefact content-free.
 - [ ] Rollback ou limite de rollback documentee.
 
 ### Lot 8 - Observabilite, dashboard, smokes live anonymises

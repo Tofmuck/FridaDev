@@ -4,11 +4,12 @@ Statut: spec vivante
 Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
-Portee: contrat cible du futur agent Agenda Frida. Lots 1-6 livrent toggle
+Portee: contrat cible du futur agent Agenda Frida. Lots 1-7A livrent toggle
 no-op, configuration redacted, outils read-only, agent JSON valide,
 branchement applicatif read-only et preuve CalDAV live content-free. Les
-propositions Agenda creent des pending actions temporaires; les mutations
-CalDAV confirmees restent hors scope jusqu'au Lot 7.
+propositions Agenda creent des pending actions temporaires; Lot 7A livre les
+mutations confirmees uniquement avec fake transport. Toute mutation CalDAV live
+reste hors scope jusqu'a un Lot 7B avec GO humain explicite.
 
 Sources:
 
@@ -646,7 +647,8 @@ Modele livre Lot 6:
 - contenu durable content-free: operation, hashes courts, risques, create_ts,
   expires_ts, pointeur de draft prive et hash court;
 - annulation et expiration sans mutation;
-- une confirmation Lot 6 relit la pending action mais refuse toute execution;
+- une confirmation Lot 6 relisait la pending action mais refusait toute
+  execution; Lot 7A execute maintenant seulement via fake transport injecte;
 - `message.meta` ne porte qu'un pointeur content-free:
   `pending_action_id`, operation, confirmation level, risk flags, hash court,
   expiration et booleen `draft_private`;
@@ -659,8 +661,9 @@ Modele livre Lot 6:
 - les details humains restent dans la reponse visible et dans le pending store
   temporaire prive, pas dans les logs/dashboard/JSONL.
 
-Lot 7 seulement pourra executer une confirmation. Relire uniquement le dialogue
-pour reconstruire une mutation reste trop fragile.
+Lot 7A execute une confirmation uniquement depuis le pending draft prive et
+avec client CalDAV write injecte/fake. Relire uniquement le dialogue pour
+reconstruire une mutation reste interdit.
 
 Preuve Lot 6:
 
@@ -684,11 +687,35 @@ Preuve Lot 6:
   CalDAV ou ICS;
 - Lot 6.2: les drafts prives sortis de l'etat par tronquage `MAX_ACTIONS`,
   expiration ou annulation sont oublies.
-- `confirm_*` avec pending action valide repond que l'execution est hors Lot 6;
+- Lot 7A: `confirm_create_event`, `confirm_update_event` et
+  `confirm_delete_event` executent uniquement en fake transport injecte, jamais
+  en write live Nextcloud;
+- Lot 7A: `confirm_create_event` utilise un draft prive structure, genere un
+  ICS minimal, fait un `PUT` avec `If-None-Match: *`, puis neutralise la
+  pending action en `executed`;
+- Lot 7A: `confirm_update_event` utilise la cible verifiee du draft prive,
+  fait un `PUT` sur la reference technique interne avec `If-Match` si ETag
+  present, et refuse proprement les conflits `409/412`;
+- Lot 7A: `confirm_delete_event` exige une confirmation renforcee et fait un
+  `DELETE` sur la cible technique interne; aucune suppression n'est possible
+  sans pending action valide et draft prive;
+- Lot 7A: si le draft prive a disparu, si l'action est expiree/annulee, si le
+  client write est absent ou si la cible technique est absente, la confirmation
+  est refusee avant toute requete write;
 - `cancel_pending_agenda_action` annule une pending action sans mutation;
 - expiration/cancel empechent toute execution;
 - observabilite et meta restent content-free: id, operation, expiration,
-  confirmation level, risk flags, hash court, booleens.
+  confirmation level, risk flags, hash court, method names, status codes,
+  booleens; elles ne contiennent jamais titre, lieu, description, UID, ETag,
+  path/URL CalDAV, ICS, Authorization, cookie, token ou app-password.
+
+Lot 7B attendu:
+
+- preuve live write separee, avec evenement synthetique, GO humain explicite,
+  rollback/suppression de test ou limite documentee;
+- artefact content-free sans titre, lieu, description, UID, ETag, path CalDAV,
+  ICS, Authorization, cookie, token ou app-password;
+- aucun Lot 8 n'est ferme par Lot 7A.
 
 ## 12. Restitution visible et contexte suivant
 
