@@ -207,7 +207,9 @@ def build_agenda_agent_messages(request: contract.AgendaAgentRequest) -> list[di
         'surface_intro, surface_error et surface_outro sont toujours des strings. '
         'surface_error est une phrase courte, honnete et vernaculaire pour un echec '
         'de lecture live Agenda; elle ne doit pas contenir de jargon CalDAV ni inventer '
-        'un resultat. Pour les methodes read-only, surface_error ne doit pas etre vide.'
+        'un resultat. Pour les methodes read-only, surface_error ne doit pas etre vide. '
+        'Pour les methodes read-only, garde surface_outro vide: le deterministe '
+        'n affiche pas de conclusion pre-execution apres une lecture effective.'
     )
     return [
         {'role': 'system', 'content': system},

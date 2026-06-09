@@ -18,8 +18,9 @@ Lot 8A/8B livre l'observabilite content-free; Lot 8bis ajoute la recherche
 read-only `find_next_matching_event` pour le prochain evenement futur
 correspondant a une requete textuelle. Lot 8bis.1 rend le fallback live Agenda
 agentique via `surface_error` et transmet `user_display_name=Tof` au contexte
-d'enonciation agent. Les updates live et mutations utilisateur reelles restent
-hors scope.
+d'enonciation agent. Lot 8bis.2 rend les surfaces read-only coherentes avec le
+resultat et affiche les all-day multi-jours comme des plages avec duree. Les
+updates live et mutations utilisateur reelles restent hors scope.
 
 Sources:
 
@@ -820,6 +821,13 @@ vernaculaire: pas de jargon CalDAV, pas d'invention de resultat, pas de
 mensonge du type `je ne peux pas rouvrir ton agenda` quand une tentative live a
 eu lieu.
 
+Pour les methodes read-only, `surface_outro` reste un champ contractuel mais
+n'est plus affiche apres execution. Cette surface est produite avant la lecture
+effective et ne doit donc pas servir de conclusion dependante du resultat
+(`si rien ne remonte`, relance de recreation, etc.). La restitution read-only
+utilise `surface_intro` puis le contenu reel, ou `surface_error` en cas d'echec
+live.
+
 Regles:
 
 - Frida reste la seule voix visible;
@@ -987,6 +995,25 @@ Preuve conservee:
 - `final_response_override=true`, message assistant normal timestamped,
   `mutation_attempted=false`;
 - scan content-free `met`, sans contenu Agenda brut ni secret.
+
+### 14.4 Surface read-only et all-day multi-jours Lot 8bis.2
+
+Lot 8bis.2 corrige deux invariants de restitution:
+
+- une lecture read-only executee n'affiche plus `surface_outro`, que le resultat
+  soit trouve ou vide; cela evite les conclusions contradictoires generees avant
+  la lecture effective;
+- `surface_error` reste la seule surface d'echec live agentique;
+- les evenements `VALUE=DATE` multi-jours respectent `DTEND` exclusif et sont
+  rendus comme des plages avec duree, par exemple `du 11 au 17 juillet 2026,
+  toute la journee (7 jours)` pour `DTSTART=20260711` et `DTEND=20260718`;
+- la surface visible porte assez de contexte pour qu'un tour suivant puisse
+  raisonner sur la duree du sejour depuis le dialogue normal;
+- l'observabilite reste content-free: pas de titre, lieu, description, UID,
+  ETag, path/URL CalDAV, ICS brut ou secret.
+
+Prochaine etape non executee: cartographier les questions possibles a poser a
+l'Agenda pour reperer les trous produit restants avant d'ouvrir un Lot 9.
 
 ## 15. Invariants securite
 

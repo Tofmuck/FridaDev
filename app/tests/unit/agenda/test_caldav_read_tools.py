@@ -214,6 +214,38 @@ END:VCALENDAR
         self.assertIn('Toute la journee', rendered)
         self.assertNotIn('02:00-02:00', rendered)
 
+    def test_parse_ics_events_renders_multi_day_value_date_as_range_with_duration(self) -> None:
+        ics_text = """BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:fixture-all-day-stay@example.invalid
+DTSTART;VALUE=DATE:20260711
+DTEND;VALUE=DATE:20260718
+SUMMARY:Fixture Multi Day Stay
+LOCATION:Fixture Stay Location
+DESCRIPTION:Synthetic fixture event. No personal data.
+END:VEVENT
+END:VCALENDAR
+"""
+
+        events = ics_reader.parse_ics_events(
+            ics_text,
+            calendar_id='fixture_primary',
+            timezone_name='Europe/Paris',
+        )
+        rendered = response_rendering.render_readonly_answer(
+            plan=self._read_today_plan(),
+            execution_result=_ExecutionResultFixture(events),
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertTrue(events[0].all_day)
+        self.assertEqual(events[0].start_iso, '2026-07-10T22:00:00Z')
+        self.assertEqual(events[0].end_iso, '2026-07-17T22:00:00Z')
+        self.assertIn('du 11 au 17 juillet 2026', rendered)
+        self.assertIn('toute la journee (7 jours)', rendered)
+        self.assertNotIn('02:00-02:00', rendered)
+
     def test_utc_event_still_renders_in_requested_timezone(self) -> None:
         ics_text = """BEGIN:VCALENDAR
 VERSION:2.0

@@ -112,6 +112,7 @@ def execute_readonly_plan(
     observations: list[Mapping[str, Any]] = []
     attempted_tool_names: list[str] = []
     selected_events: tuple[CalendarEvent, ...] = ()
+    selected_events_locked = False
     try:
         if plan.product_method == product_methods.METHOD_FIND_NEXT_MATCHING_EVENT:
             query = next_matching_search.query_from_tool_calls(plan.tool_calls)
@@ -147,9 +148,12 @@ def execute_readonly_plan(
             attempted_tool_names.append(str(call.tool_name or ''))
             result = _execute_tool_call(call, client=client, state=state, plan=plan)
             observations.append(dict(result.observation))
-            if result.items and isinstance(result.items[0], CalendarEvent):
+            if str(call.tool_name or '') == product_methods.TOOL_EVENT_SEARCH:
                 selected_events = tuple(item for item in result.items if isinstance(item, CalendarEvent))
-        if not selected_events:
+                selected_events_locked = True
+            elif result.items and isinstance(result.items[0], CalendarEvent):
+                selected_events = tuple(item for item in result.items if isinstance(item, CalendarEvent))
+        if not selected_events and not selected_events_locked:
             selected_events = tuple(sorted(state.events.values(), key=lambda event: (event.start_iso, event.end_iso)))
         calendars = tuple(sorted(state.calendars.values(), key=lambda calendar: calendar.local_id))
         return AgendaReadExecutionResult(

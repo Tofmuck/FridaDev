@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Mapping
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -59,7 +59,7 @@ def build_final_response_lock(
             observability = _lock_observability(meta)
             return AgendaFinalResponseLock(
                 ok=True,
-                content=_compose_surface(plan.surface_intro, content, plan.surface_outro),
+                content=_compose_surface(plan.surface_intro, content, ''),
                 reason_code=REASON_AGENDA_READONLY_ERROR_FINAL,
                 meta=meta,
                 observability=observability,
@@ -72,7 +72,7 @@ def build_final_response_lock(
     observability = _lock_observability(meta)
     return AgendaFinalResponseLock(
         ok=True,
-        content=_compose_surface(plan.surface_intro, content, plan.surface_outro),
+        content=_compose_surface(plan.surface_intro, content, ''),
         meta=meta,
         observability=observability,
     )
@@ -167,6 +167,12 @@ def _event_line(event: CalendarEvent) -> str:
 
 
 def _event_full_line(event: CalendarEvent) -> str:
+    if bool(getattr(event, 'all_day', False)):
+        label = _all_day_label(event, include_single_date=True)
+        summary = str(event.summary or '').strip() or 'Evenement sans titre'
+        location = str(event.location or '').strip()
+        suffix = f" ({location})" if location else ''
+        return f"- {label} - {summary}{suffix}" if label else _event_line(event)
     date_label = _date_label(event)
     time_label = _time_label(event)
     summary = str(event.summary or '').strip() or 'Evenement sans titre'
@@ -183,6 +189,10 @@ def _date_label(event: CalendarEvent) -> str:
     start = _parse_iso(event.start_iso, timezone_name=event.timezone)
     if start is None:
         return ''
+    return _date_label_from_date(start.date())
+
+
+def _date_label_from_date(value: date) -> str:
     month_names = (
         '',
         'janvier',
@@ -198,13 +208,25 @@ def _date_label(event: CalendarEvent) -> str:
         'novembre',
         'decembre',
     )
-    month = month_names[start.month] if 1 <= start.month < len(month_names) else f'{start.month:02d}'
-    return f"{start.day} {month} {start.year}"
+    month = month_names[value.month] if 1 <= value.month < len(month_names) else f'{value.month:02d}'
+    return f"{value.day} {month} {value.year}"
+
+
+def _date_range_label(start: date, end_inclusive: date) -> str:
+    if start == end_inclusive:
+        return _date_label_from_date(start)
+    if start.year == end_inclusive.year and start.month == end_inclusive.month:
+        month_year = _date_label_from_date(end_inclusive).split(' ', 1)[1]
+        return f"du {start.day} au {end_inclusive.day} {month_year}"
+    if start.year == end_inclusive.year:
+        start_label = _date_label_from_date(start).rsplit(' ', 1)[0]
+        return f"du {start_label} au {_date_label_from_date(end_inclusive)}"
+    return f"du {_date_label_from_date(start)} au {_date_label_from_date(end_inclusive)}"
 
 
 def _time_label(event: CalendarEvent) -> str:
     if bool(getattr(event, 'all_day', False)):
-        return 'Toute la journee'
+        return _all_day_label(event, include_single_date=False)
     start = _parse_iso(event.start_iso, timezone_name=event.timezone)
     end = _parse_iso(event.end_iso, timezone_name=event.timezone)
     if start is None:
@@ -212,6 +234,22 @@ def _time_label(event: CalendarEvent) -> str:
     if end is None:
         return start.strftime('%H:%M')
     return f"{start.strftime('%H:%M')}-{end.strftime('%H:%M')}"
+
+
+def _all_day_label(event: CalendarEvent, *, include_single_date: bool) -> str:
+    start = _parse_iso(event.start_iso, timezone_name=event.timezone)
+    end = _parse_iso(event.end_iso, timezone_name=event.timezone)
+    if start is None:
+        return 'Toute la journee'
+    start_date = start.date()
+    end_exclusive = end.date() if end is not None else start_date + timedelta(days=1)
+    days = max(1, (end_exclusive - start_date).days)
+    if days == 1:
+        if include_single_date:
+            return f"{_date_label_from_date(start_date)}, toute la journee"
+        return 'Toute la journee'
+    end_inclusive = end_exclusive - timedelta(days=1)
+    return f"{_date_range_label(start_date, end_inclusive)}, toute la journee ({days} jours)"
 
 
 def _parse_iso(value: str, *, timezone_name: str = '') -> datetime | None:

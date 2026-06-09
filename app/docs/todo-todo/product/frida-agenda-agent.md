@@ -14,7 +14,9 @@ de l'ICS source Lot 7D/7D.1 sur VEVENT simple non recurrent. Lot 8A/8B livre
 l'observabilite content-free et Lot 8bis ajoute la recherche read-only du
 prochain evenement futur correspondant a une requete textuelle. Lot 8bis.1
 rend le fallback live Agenda agentique via `surface_error` et transmet
-`user_display_name=Tof` au contexte d'enonciation agent.
+`user_display_name=Tof` au contexte d'enonciation agent. Lot 8bis.2 rend les
+surfaces read-only coherentes avec le resultat et affiche les evenements
+journee entiere multi-jours comme des plages avec duree.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -745,6 +747,23 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve livree: le payload envoye a l'agent contient `user_display_name`;
   les observations et metas ne stockent que presence/hash/chars, pas le nom en
   clair. Aucun Lot 9 n'est ouvert.
+
+### Lot 8bis.2 - Surface read-only coherente et duree multi-jours
+
+- [x] Ne plus afficher `surface_outro` apres une lecture read-only executee.
+  Preuve livree: le final lock read-only assemble `surface_intro` et le contenu
+  reel; `surface_outro`, produit avant la lecture, n'est plus affiche apres
+  succes, absence de resultat ou erreur live.
+- [x] Rendre les evenements all-day multi-jours comme des plages.
+  Preuve livree: `DTSTART;VALUE=DATE:20260711` +
+  `DTEND;VALUE=DATE:20260718` est restitue comme `du 11 au 17 juillet 2026,
+  toute la journee (7 jours)`, en respectant `DTEND` exclusif.
+- [x] Preserver le contexte conversationnel utile sans fuite observabilite.
+  Preuve livree: la reponse visible contient la plage et la duree; metas et
+  observations restent content-free.
+- [ ] Cartographier les questions possibles a poser a l'Agenda pour reperer
+  les prochains trous produit.
+  Prochaine etape non executee dans ce lot; aucun Lot 9 n'est ouvert.
 
 ## Auto-audit permanent
 
