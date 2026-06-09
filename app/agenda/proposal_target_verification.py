@@ -4,9 +4,10 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from agenda import agent_contract
+from agenda import family_calendar_policy
 from agenda import product_methods
 from agenda import read_tools
-from agenda.caldav_models import AgendaReadState, CalendarEvent, ReadToolValidationError
+from agenda.caldav_models import AgendaReadState, CalendarEvent, CalendarSummary, ReadToolValidationError
 
 
 REASON_TARGET_NOT_VERIFIED = 'agenda_pending_target_not_verified'
@@ -15,6 +16,7 @@ REASON_TARGET_NOT_VERIFIED = 'agenda_pending_target_not_verified'
 @dataclass(frozen=True)
 class ProposalTargetVerificationResult:
     event: CalendarEvent | None = None
+    calendar: CalendarSummary | None = None
     attempted_tool_names: tuple[str, ...] = ()
     error_class: str = ''
     caldav_access: bool = False
@@ -63,6 +65,7 @@ def verify_target_event(
                 event = next((item for item in result.items if isinstance(item, CalendarEvent)), None)
                 return ProposalTargetVerificationResult(
                     event=event if event is not None and event.event_id == target_event_id else None,
+                    calendar=state.calendars.get(event.calendar_id) if event is not None else None,
                     attempted_tool_names=tuple(attempted),
                     caldav_access=bool(live_caldav),
                     nextcloud_access=bool(live_caldav),
@@ -94,8 +97,14 @@ def _verify_with_local_resolver(client: Any, event_id: str) -> ProposalTargetVer
             attempted_tool_names=(product_methods.TOOL_EVENT_GET,),
             error_class=exc.__class__.__name__,
         )
+    calendar = (
+        family_calendar_policy.calendar_summary_from_client(client, event.calendar_id)
+        if isinstance(event, CalendarEvent)
+        else None
+    )
     return ProposalTargetVerificationResult(
         event=event if isinstance(event, CalendarEvent) and event.event_id == event_id else None,
+        calendar=calendar,
         attempted_tool_names=(product_methods.TOOL_EVENT_GET,),
     )
 

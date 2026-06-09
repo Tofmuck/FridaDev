@@ -486,7 +486,7 @@ def _resolve_proposal_read_client(
     if not proposal_execution.plan_can_attempt_target_verification(
         plan,
         injected_client=injected_client is not None,
-    ):
+    ) and not proposal_execution.plan_can_attempt_calendar_classification(plan):
         return None, False
     return _resolve_read_client(
         settings=settings,

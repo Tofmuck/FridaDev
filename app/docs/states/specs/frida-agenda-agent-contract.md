@@ -443,8 +443,8 @@ Regles:
 - les methodes `confirm_*` exigent `requested=true`, confirmation humaine,
   `pending_action_id` non vide et kind coherent;
 - une suppression exige `confirmation_level=reinforced`;
-- le calendrier familial exige un risk flag dedie et une confirmation claire
-  pour toute mutation;
+- le calendrier familial exige un risk flag dedie; `create` et `delete` sur
+  calendrier familial exigent `confirmation_level=reinforced`;
 - les champs de surface restent courts et ne remplacent pas le contenu
   verrouille ni les metas.
 
@@ -632,9 +632,14 @@ Mutation:
 - impossible sans confirmation humaine explicite;
 - la confirmation doit viser une proposition precise;
 - la confirmation doit etre recue dans un tour ulterieur ou dans une UI dediee;
-- creation et modification exigent confirmation simple;
+- creation exige confirmation simple, sauf calendrier familial ou partage qui
+  exige confirmation renforcee;
+- modification reste fermee tant que la preservation ICS source n'est pas
+  livree;
 - suppression exige confirmation renforcee;
-- calendrier familial exige prudence renforcee et confirmation claire.
+- calendrier familial exige prudence renforcee, risk flag `family_calendar`,
+  detection depuis JSON agent ou calendrier lu quand disponible, et confirmation
+  renforcee pour create/delete.
 
 ## 11. Etat temporaire de proposition
 
@@ -713,6 +718,15 @@ Preuve Lot 6:
   est refusee avant toute requete write;
 - Lot 7A.1: `agenda_write_etag_missing` refuse update/delete avant tout
   `PUT`/`DELETE`; `CalDavWriteClient` applique aussi cette defense en profondeur;
+- Lot 7C: create/delete sur calendrier familial ou partage exigent
+  `risk_flags=["family_calendar"]` et `confirmation_level=reinforced`; la
+  detection combine `calendar_scope.family_calendar` du JSON agent et
+  `CalendarSummary.family_calendar` quand le calendrier est connu ou la cible a
+  ete relue; toute pending action familiale avec confirmation simple est refusee
+  avant `PUT`/`DELETE`;
+- Lot 7C: la surface visible mentionne en langage naturel que le calendrier est
+  partage ou familial, sans exposer UID, ETag, path CalDAV, ICS ni jargon
+  technique;
 - `cancel_pending_agenda_action` annule une pending action sans mutation;
 - expiration/cancel empechent toute execution;
 - observabilite et meta restent content-free: id, operation, expiration,

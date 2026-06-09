@@ -5,6 +5,7 @@ from typing import Any, Mapping
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from agenda import agent_contract
+from agenda import family_calendar_policy
 from agenda import pending_store
 from agenda import product_methods
 from agenda import proposal_execution
@@ -84,6 +85,11 @@ def render_proposal_answer(
         )
     if reason == write_execution.REASON_WRITE_REINFORCED_REQUIRED:
         return "Cette suppression demande une confirmation renforcee. Je n'ai rien supprime dans ton agenda."
+    if reason == write_execution.REASON_WRITE_FAMILY_REINFORCED_REQUIRED:
+        return (
+            "Ce calendrier est partage ou familial: il faut une confirmation explicite renforcee. "
+            "Je n'ai rien modifie dans ton agenda."
+        )
     if reason == write_execution.REASON_WRITE_CONFLICT:
         return (
             "Le calendrier a change depuis la proposition. "
@@ -138,6 +144,8 @@ def _render_created(result: proposal_execution.AgendaProposalExecutionResult) ->
         lines.append(f"Reference de confirmation : {reference}.")
     if expires:
         lines.append(f"Expiration : {expires}.")
+    if family_calendar_policy.draft_marks_family(draft) or family_calendar_policy.FAMILY_RISK_FLAG in result.risk_flags:
+        lines.append("Ce calendrier est partage ou familial: je demanderai une confirmation explicite renforcee.")
     return "\n".join(lines)
 
 

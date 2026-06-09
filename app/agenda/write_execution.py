@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping
 
 from agenda import agent_contract
+from agenda import family_calendar_policy
 from agenda import ics_writer
 from agenda import pending_drafts
 from agenda import pending_store
@@ -21,6 +22,7 @@ REASON_WRITE_CLIENT_UNAVAILABLE = 'agenda_write_client_unavailable'
 REASON_WRITE_PRIVATE_DRAFT_MISSING = 'agenda_write_private_draft_missing'
 REASON_WRITE_OPERATION_MISMATCH = 'agenda_write_operation_mismatch'
 REASON_WRITE_REINFORCED_REQUIRED = 'agenda_write_reinforced_confirmation_required'
+REASON_WRITE_FAMILY_REINFORCED_REQUIRED = family_calendar_policy.REASON_FAMILY_REINFORCED_REQUIRED
 REASON_WRITE_TARGET_MISSING = 'agenda_write_target_missing'
 REASON_WRITE_CALENDAR_TARGET_MISSING = 'agenda_write_calendar_target_missing'
 REASON_WRITE_ETAG_MISSING = 'agenda_write_etag_missing'
@@ -105,10 +107,6 @@ def execute_confirmed_plan(
         return _blocked(state=current_state, reason_code=REASON_PENDING_NOT_FOUND, operation=operation, action=action)
     if action.operation != operation:
         return _blocked(state=current_state, reason_code=REASON_WRITE_OPERATION_MISMATCH, operation=operation, action=action)
-    if operation == pending_store.OPERATION_DELETE and action.confirmation_level != pending_store.CONFIRMATION_REINFORCED:
-        return _blocked(state=current_state, reason_code=REASON_WRITE_REINFORCED_REQUIRED, operation=operation, action=action)
-    if operation == pending_store.OPERATION_DELETE and str(plan.mutation.get('confirmation_level') or '') != pending_store.CONFIRMATION_REINFORCED:
-        return _blocked(state=current_state, reason_code=REASON_WRITE_REINFORCED_REQUIRED, operation=operation, action=action)
     draft = pending_store.private_draft_for_action(action)
     if not _valid_private_draft(draft, operation=operation):
         return _blocked(
@@ -117,6 +115,18 @@ def execute_confirmed_plan(
             operation=operation,
             action=action,
         )
+    if _family_reinforced_missing(plan, action=action, draft=draft, operation=operation):
+        return _blocked(
+            state=current_state,
+            reason_code=REASON_WRITE_FAMILY_REINFORCED_REQUIRED,
+            operation=operation,
+            action=action,
+            draft=draft,
+        )
+    if operation == pending_store.OPERATION_DELETE and action.confirmation_level != pending_store.CONFIRMATION_REINFORCED:
+        return _blocked(state=current_state, reason_code=REASON_WRITE_REINFORCED_REQUIRED, operation=operation, action=action, draft=draft)
+    if operation == pending_store.OPERATION_DELETE and str(plan.mutation.get('confirmation_level') or '') != pending_store.CONFIRMATION_REINFORCED:
+        return _blocked(state=current_state, reason_code=REASON_WRITE_REINFORCED_REQUIRED, operation=operation, action=action, draft=draft)
     if write_client is None:
         return _blocked(
             state=current_state,
@@ -280,6 +290,25 @@ def _valid_private_draft(draft: Mapping[str, Any], *, operation: str) -> bool:
     if not draft or draft.get('schema_version') != pending_drafts.PRIVATE_DRAFT_SCHEMA_VERSION:
         return False
     return str(draft.get('operation') or '') == operation
+
+
+def _family_reinforced_missing(
+    plan: agent_contract.AgendaAgentPlan,
+    *,
+    action: pending_store.AgendaPendingAction,
+    draft: Mapping[str, Any],
+    operation: str,
+) -> bool:
+    family_calendar = (
+        family_calendar_policy.FAMILY_RISK_FLAG in action.risk_flags
+        or family_calendar_policy.draft_marks_family(draft)
+    )
+    if not family_calendar_policy.requires_reinforced(operation, family_calendar=family_calendar):
+        return False
+    return (
+        action.confirmation_level != pending_store.CONFIRMATION_REINFORCED
+        or str(plan.mutation.get('confirmation_level') or '') != pending_store.CONFIRMATION_REINFORCED
+    )
 
 
 def _target(draft: Mapping[str, Any]) -> dict[str, Any]:

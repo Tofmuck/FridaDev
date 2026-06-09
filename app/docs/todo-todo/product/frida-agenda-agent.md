@@ -8,7 +8,8 @@ Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-7B livrent
 toggle no-op, configuration redacted, outils read-only, agent JSON valide sous
 garde-fous, branchement applicatif read-only et preuve CalDAV live content-free,
 propositions/pending store temporaire, confirmations fake Lot 7A et preuve live
-write synthetique bornee Lot 7B.
+write synthetique bornee Lot 7B, puis verrou calendrier familial Lot 7C avant
+mutations utilisateur reelles.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -141,8 +142,10 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve attendue: smoke de refus mutation sans pending action confirme.
 - [ ] Refuser toute suppression autonome.
   Preuve attendue: suppression impossible hors confirmation renforcee.
-- [ ] Renforcer la prudence sur le calendrier familial.
-  Preuve attendue: risk flag `family_calendar` et confirmation claire exigee.
+- [x] Renforcer la prudence sur le calendrier familial.
+  Preuve livree: Lot 7C, risk flag `family_calendar`, confirmation
+  `reinforced`, detection depuis JSON agent ou `CalendarSummary.family_calendar`
+  quand le calendrier est connu, refus avant write si confirmation simple.
 - [ ] Refuser toute creation d'evenement invisible ou ambigu.
   Preuve attendue: clarification si calendrier, date, fuseau ou titre cible est
   ambigu.
@@ -624,7 +627,11 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve livree: suppression live bornee a la cible creee dans le meme smoke,
   `DELETE 204`, puis `GET 404`; etat final propre, evenement synthetique
   supprime.
-- [ ] Protection calendrier familial.
+- [x] Protection calendrier familial.
+  Preuve livree: Lot 7C fake/local; create/delete sur calendrier familial
+  posent `risk_flags=["family_calendar"]`, exigent `confirmation_level=reinforced`,
+  refusent les confirmations simples avant `PUT`/`DELETE`, et la surface visible
+  mentionne le calendrier partage/familial sans jargon technique.
 - [x] Gestion conflit ETag ou equivalent.
   Preuve livree: Lot 7A.1 non-live, delete fake `412` refuse proprement sans
   executer/neutraliser la pending action; update reste bloque avant write tant

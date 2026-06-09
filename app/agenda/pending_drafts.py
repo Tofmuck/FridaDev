@@ -52,6 +52,7 @@ def content_free_draft_summary(draft: Mapping[str, Any]) -> dict[str, Any]:
         'description_present': bool(draft.get('description')),
         'change_summary_hash': agent_contract.sha256_12(draft.get('change_summary')),
         'change_summary_chars': len(str(draft.get('change_summary') or '')),
+        'family_calendar': bool(draft.get('family_calendar') or target.get('family_calendar')),
         'technical_ref_present': bool(_mapping(target.get('technical_ref'))),
         'content_free': True,
     }
@@ -75,6 +76,7 @@ def _create_draft(plan: agent_contract.AgendaAgentPlan, draft: Mapping[str, Any]
         'location': _text(draft.get('location')),
         'description': _text(draft.get('description')),
         'change_summary': '',
+        'family_calendar': bool(plan.calendar_scope.get('family_calendar')),
         'target': {},
     }
 
@@ -102,7 +104,10 @@ def _update_draft(
     }
     if not any(_text(next_values.get(key)) for key in ('start', 'end', 'title', 'location', 'description', 'change_summary')):
         return REASON_PENDING_DRAFT_INVALID
-    return _base(plan, operation='update') | next_values | {'target': target}
+    return _base(plan, operation='update') | next_values | {
+        'family_calendar': bool(plan.calendar_scope.get('family_calendar')),
+        'target': target,
+    }
 
 
 def _delete_draft(
@@ -124,6 +129,7 @@ def _delete_draft(
         'location': '',
         'description': '',
         'change_summary': _text(draft.get('change_summary')),
+        'family_calendar': bool(plan.calendar_scope.get('family_calendar')),
         'target': target,
     }
 
@@ -149,6 +155,7 @@ def _event_target(event: CalendarEvent) -> dict[str, Any]:
         'title': event.summary,
         'location': event.location,
         'description': event.description,
+        'family_calendar': False,
         'technical_ref': {
             'uid': event.uid,
             'etag': event.etag,

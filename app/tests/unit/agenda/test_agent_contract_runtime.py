@@ -526,6 +526,50 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         )
         self.assertEqual(contract.validate_agent_payload(confirmed_delete).status, contract.STATUS_VALIDATED)
 
+        family_create_simple = _valid_payload(
+            product_method=product_methods.METHOD_PROPOSE_CREATE_EVENT,
+            tool_calls=[],
+            calendar_scope={
+                'calendar_ids': ['family'],
+                'family_calendar': True,
+                'ambiguity': 'none',
+            },
+            draft={
+                'title': 'Fixture Family Create',
+                'location': '',
+                'description': '',
+                'calendar_id': 'family',
+                'start': '2026-06-09T08:00:00Z',
+                'end': '2026-06-09T09:00:00Z',
+                'timezone': 'Europe/Paris',
+                'all_day': False,
+                'target_event_id': '',
+                'change_summary': '',
+            },
+            mutation={
+                'requested': False,
+                'kind': 'create',
+                'confirmation_required': True,
+                'confirmation_level': 'simple',
+                'pending_action_id': '',
+            },
+            risk_flags=['family_calendar'],
+            answer_mode='proposal',
+        )
+        self.assertEqual(
+            contract.validate_agent_payload(family_create_simple).reason_code,
+            contract.REASON_MUTATION_REQUIRES_CONFIRMATION,
+        )
+
+        family_create_reinforced = {
+            **family_create_simple,
+            'mutation': {
+                **family_create_simple['mutation'],
+                'confirmation_level': 'reinforced',
+            },
+        }
+        self.assertEqual(contract.validate_agent_payload(family_create_reinforced).status, contract.STATUS_VALIDATED)
+
     def test_read_only_methods_reject_incoherent_mutation_kind_even_when_not_requested(self) -> None:
         incoherent = _valid_payload(
             mutation={

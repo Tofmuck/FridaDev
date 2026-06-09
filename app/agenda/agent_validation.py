@@ -375,6 +375,8 @@ def _validate_mutation(
     if bool(calendar_scope.get('family_calendar')) and kind != 'none':
         if 'family_calendar' not in risk_flags or not confirmation_required:
             return contract.REASON_MUTATION_REQUIRES_CONFIRMATION
+        if kind in {'create', 'delete'} and level != 'reinforced':
+            return contract.REASON_MUTATION_REQUIRES_CONFIRMATION
     return ''
 
 def _validate_tool_calls(
