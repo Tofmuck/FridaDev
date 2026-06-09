@@ -29,7 +29,8 @@ updates live et mutations utilisateur reelles restent hors scope. Le
 micro-correctif de cloture V1 ajoute deux garde-fous normatifs: les lectures
 calendrier explicitement scopees refusent un `calendar_id` non resolu au lieu
 d'elargir a tous les calendriers, et les fenetres `soir` sont des intervalles
-demi-ouverts 18:00 -> 00:00 locale.
+demi-ouverts 18:00 -> 00:00 locale. Le garde-fou de scope calendrier couvre
+aussi la recherche future `find_next_matching_event`.
 
 Sources:
 
@@ -979,6 +980,10 @@ Lot 8bis ajoute le cas produit read-only `find_next_matching_event`:
 - l'execution part de `now_iso`, interroge les calendriers accessibles par
   fenetres CalDAV de 31 jours maximum, applique un horizon par defaut de 365
   jours maximum et s'arrete des qu'un match futur est trouve;
+- si `calendar_scope.calendar_ids` porte une cible explicite,
+  `find_next_matching_event` exige un `calendar_id` resolu dans les calendriers
+  accessibles avant toute lecture de fenetre; sinon il refuse content-free au
+  lieu d'elargir a tous les calendriers;
 - `search_events` reste une recherche dans une fenetre deja lue; `find_next`
   est une recherche future progressive et bornee;
 - si aucun match n'est trouve dans l'horizon, Frida repond que rien n'a ete
@@ -1086,7 +1091,8 @@ Garde-fou de scope calendrier V1:
   interroger les calendriers accessibles;
 - si `calendar_scope.calendar_ids` est non vide, le plan est explicitement
   scope: un `calendar_id` absent ou non resolu doit produire un refus
-  content-free avant toute lecture elargie tous calendriers;
+  content-free avant toute lecture elargie tous calendriers, y compris pour
+  `find_next_matching_event`;
 - l'id brut non resolu ne doit pas apparaitre dans l'observabilite.
 
 Capacites volontairement laissees ouvertes apres V1: disponibilites riches,

@@ -722,6 +722,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
             _valid_payload(
                 product_method=product_methods.METHOD_FIND_NEXT_MATCHING_EVENT,
                 intent='find next matching appointment',
+                calendar_scope={'calendar_ids': [], 'family_calendar': False, 'ambiguity': 'none'},
                 time_scope={
                     'kind': 'future',
                     'start': '',
@@ -779,6 +780,115 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('fixture-next-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
 
+    def test_next_matching_event_explicit_scope_without_calendar_id_is_refused_without_widening(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                product_method=product_methods.METHOD_FIND_NEXT_MATCHING_EVENT,
+                intent='find next matching appointment',
+                calendar_scope={
+                    'calendar_ids': ['requested-calendar'],
+                    'family_calendar': False,
+                    'ambiguity': 'none',
+                },
+                time_scope={
+                    'kind': 'future',
+                    'start': '',
+                    'end': '',
+                    'timezone': 'Europe/Paris',
+                    'ambiguity': 'none',
+                },
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_SEARCH,
+                        'method': 'GET',
+                        'params': {
+                            'query': 'Florence Boitez',
+                            'limit': 3,
+                        },
+                        'call_id': 'next-1',
+                    }
+                ],
+            )
+        )
+        read_client = _NextMatchingReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertFalse(result.used)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_ERROR)
+        self.assertEqual(
+            result.read_execution_result.reason_code,
+            read_execution.REASON_CALENDAR_SCOPE_UNRESOLVED,
+        )
+        self.assertEqual(read_client.calls, ['list_calendars'])
+        self.assertEqual(read_client.query_ranges, [])
+        self.assertFalse(result.observability_payload['caldav_access'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('requested-calendar', encoded_payload)
+        self.assertNotIn('Florence Boitez', encoded_payload)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+
+    def test_next_matching_event_explicit_resolved_scope_limits_future_search_to_calendar(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                product_method=product_methods.METHOD_FIND_NEXT_MATCHING_EVENT,
+                intent='find next matching appointment',
+                calendar_scope={'calendar_ids': ['primary'], 'family_calendar': False, 'ambiguity': 'none'},
+                time_scope={
+                    'kind': 'future',
+                    'start': '',
+                    'end': '',
+                    'timezone': 'Europe/Paris',
+                    'ambiguity': 'none',
+                },
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_SEARCH,
+                        'method': 'GET',
+                        'params': {
+                            'calendar_id': 'primary',
+                            'query': 'Florence Boitez',
+                            'limit': 3,
+                        },
+                        'call_id': 'next-1',
+                    }
+                ],
+            )
+        )
+        read_client = _NextMatchingReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_OK)
+        self.assertTrue(read_client.queried_calendar_ids)
+        self.assertEqual(set(read_client.queried_calendar_ids), {'primary'})
+        self.assertIn('15 juillet 2026', result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Florence Boitez', encoded_payload)
+        self.assertNotIn('Fixture Next Match', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+
     def test_next_matching_event_renders_all_day_multi_day_range_and_duration(self) -> None:
         event = CalendarEvent(
             event_id='event-next-stay',
@@ -798,6 +908,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
             _valid_payload(
                 product_method=product_methods.METHOD_FIND_NEXT_MATCHING_EVENT,
                 intent='find next matching stay',
+                calendar_scope={'calendar_ids': [], 'family_calendar': False, 'ambiguity': 'none'},
                 time_scope={
                     'kind': 'future',
                     'start': '',
@@ -2943,6 +3054,7 @@ class _NextMatchingReadClient:
     def __init__(self, *, event: CalendarEvent | None = None) -> None:
         self.calls: list[str] = []
         self.query_ranges: list[tuple[str, str, str]] = []
+        self.queried_calendar_ids: list[str] = []
         self._calendar = CalendarSummary(
             local_id='primary',
             display_name='Fixture Primary Calendar',
@@ -2973,8 +3085,8 @@ class _NextMatchingReadClient:
         return (self._calendar,)
 
     def query_calendar_events(self, calendar, *, start_iso, end_iso, timezone_name='UTC'):
-        del calendar
         self.calls.append('query_calendar_events')
+        self.queried_calendar_ids.append(str(calendar.local_id))
         self.query_ranges.append((start_iso, end_iso, timezone_name))
         if start_iso <= self._event.start_iso < end_iso:
             return (self._event,)

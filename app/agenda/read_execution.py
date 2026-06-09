@@ -118,8 +118,16 @@ def execute_readonly_plan(
     selected_events_locked = False
     try:
         if plan.product_method == product_methods.METHOD_FIND_NEXT_MATCHING_EVENT:
+            attempted_tool_names = [
+                product_methods.TOOL_EVENT_QUERY_RANGE,
+                product_methods.TOOL_EVENT_SEARCH,
+            ]
             query = next_matching_search.query_from_tool_calls(plan.tool_calls)
             calendar_id = next_matching_search.calendar_id_from_tool_calls(plan.tool_calls)
+            if _plan_has_explicit_calendar_scope(plan):
+                _ensure_calendars(client, state)
+                if not calendar_id or calendar_id not in state.calendars:
+                    raise _read_tool_validation_error(REASON_CALENDAR_SCOPE_UNRESOLVED)
             start_iso = str(now_iso or plan.time_scope.get('start') or '')
             result = next_matching_search.find_next_matching_event(
                 client,
@@ -142,10 +150,7 @@ def execute_readonly_plan(
                 caldav_access=bool(live_caldav),
                 nextcloud_access=bool(live_caldav),
                 mutation_attempted=False,
-                attempted_tool_names=(
-                    product_methods.TOOL_EVENT_QUERY_RANGE,
-                    product_methods.TOOL_EVENT_SEARCH,
-                ),
+                attempted_tool_names=tuple(attempted_tool_names),
             )
         for call in plan.tool_calls:
             attempted_tool_names.append(str(call.tool_name or ''))

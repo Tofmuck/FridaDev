@@ -27,7 +27,8 @@ suivant verrouille les lectures calendrier explicitement scopees: un
 `calendar_id` non resolu ne peut plus elargir silencieusement la lecture a tous
 les calendriers si `calendar_scope.calendar_ids` porte une cible explicite; le
 cas general non scope peut encore ignorer un id invente par le modele. Les
-fenetres `soir` sont desormais demi-ouvertes de 18:00 a minuit local.
+fenetres `soir` sont desormais demi-ouvertes de 18:00 a minuit local. Le meme
+garde-fou de scope calendrier s'applique aussi a `find_next_matching_event`.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -836,7 +837,8 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Fermer les bords de cloture V1.
   Preuve livree: lecture calendrier explicitement scopee fail-closed si l'id
   local n'est pas resolu, lecture generale non scopee conserve son fallback
-  tous calendriers, et fenetres `soir` en intervalles demi-ouverts.
+  tous calendriers, `find_next_matching_event` respecte la meme regle, et
+  fenetres `soir` en intervalles demi-ouverts.
 - [x] Garder Lot 9 ferme.
 
 Capacites volontairement laissees ouvertes apres cloture pragmatique V1:
