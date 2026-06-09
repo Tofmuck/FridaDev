@@ -14,7 +14,10 @@ synthetique avec GO humain explicite. Lot 7C/7C.1 verrouille les calendriers
 familiaux ou non classifies; Lot 7D livre l'update confirme fake/local avec
 preservation de l'ICS source sur VEVENT simple non recurrent; Lot 7D.1 ferme
 les updates no-op et les ICS multi-VEVENT/recurrentes/overrides en fail-closed.
-Les updates live et mutations utilisateur reelles restent hors scope.
+Lot 8A/8B livre l'observabilite content-free; Lot 8bis ajoute la recherche
+read-only `find_next_matching_event` pour le prochain evenement futur
+correspondant a une requete textuelle. Les updates live et mutations utilisateur
+reelles restent hors scope.
 
 Sources:
 
@@ -557,6 +560,7 @@ Methodes produit cibles:
 | `read_explicit_date` | lecture | non | date explicite resolue ou clarification. |
 | `read_week` | lecture | non | fenetre bornee, synthese naturelle. |
 | `search_events` | lecture | non | personne, lieu, mot-cle, date ou combinaison. |
+| `find_next_matching_event` | lecture | non | prochain evenement futur correspondant a une requete textuelle. |
 | `event_details` | lecture | non | details pratiques d'un evenement unique. |
 | `summarize_day` | lecture | non | resume utile, pas dump ICS. |
 | `find_availability` | lecture | non | trous/disponibilites derives d'une fenetre bornee. |
@@ -581,6 +585,10 @@ Outils read-only:
 - `event_query_range`: requete CalDAV bornee par calendrier et fenetre temps;
 - `event_search`: recherche bornee derivee de `event_query_range`, sans scan
   global ni nouvel acces large;
+- `find_next_matching_event`: execution produit read-only qui part de `now_iso`,
+  parcourt le futur par fenetres CalDAV de 31 jours maximum, applique un
+  horizon par defaut de 365 jours maximum, s'arrete au premier match futur et
+  retourne le plus proche; ce n'est pas une regex d'intention utilisateur;
 - `event_get`: relire un evenement cible deja connu dans l'etat interne; si un
   `caldav_path` connu existe et qu'un client read-only est fourni, faire un
   `GET` borne via transport injectable; ne jamais exposer UID, ETag, URL brute
@@ -930,6 +938,38 @@ Preuve conservee:
 
 Lot 8B ferme les smokes live anonymises et le scan content-free du read-model
 Agenda. Il ne ferme pas Lot 9 et n'autorise pas de mutation utilisateur reelle.
+
+### 14.3 Recherche prochain evenement correspondant Lot 8bis
+
+Lot 8bis ajoute le cas produit read-only `find_next_matching_event`:
+
+- l'agent Agenda choisit cette methode pour les demandes du type prochain
+  rendez-vous avec une personne, un lieu ou un terme textuel;
+- le deterministe ne reconnait pas l'intention par regex utilisateur: il execute
+  seulement le plan JSON valide de l'agent;
+- l'execution part de `now_iso`, interroge les calendriers accessibles par
+  fenetres CalDAV de 31 jours maximum, applique un horizon par defaut de 365
+  jours maximum et s'arrete des qu'un match futur est trouve;
+- `search_events` reste une recherche dans une fenetre deja lue; `find_next`
+  est une recherche future progressive et bornee;
+- si aucun match n'est trouve dans l'horizon, Frida repond que rien n'a ete
+  trouve dans cet horizon, sans pretendre avoir scanne l'infini;
+- si CalDAV/Nextcloud a ete tente mais echoue, Frida produit une reponse Agenda
+  verrouillee indiquant que la lecture live a echoue; le LLM principal ne doit
+  pas inventer une explication du type `je ne peux pas rouvrir ton agenda`;
+- les logs, metas, read-models et JSONL restent content-free: pas de titre,
+  lieu, description, UID, ETag, path/URL CalDAV, ICS brut ou secret.
+
+Preuve conservee:
+
+- artefact:
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-lot8bis-next-matching-live-20260609T152733Z.jsonl`;
+- vraie conversation Frida avec toggle Agenda actif et runtime `active`;
+- methode produit validee: `find_next_matching_event`;
+- CalDAV/Nextcloud touches uniquement en read-only;
+- `final_response_override=true`, message assistant normal timestamped,
+  `mutation_attempted=false`;
+- scan content-free `met`, sans contenu Agenda brut ni secret.
 
 ## 15. Invariants securite
 

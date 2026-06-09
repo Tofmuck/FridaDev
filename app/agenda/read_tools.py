@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import unicodedata
 from datetime import datetime, timezone
 from typing import Iterable
 
@@ -121,7 +122,7 @@ def event_search(
     limit: int = 10,
     max_pool: int = MAX_SEARCH_POOL,
 ) -> ReadToolResult:
-    normalized_query = str(query or '').strip().lower()
+    normalized_query = normalize_search_query(query)
     if not normalized_query:
         raise ReadToolValidationError('event_search requires a non-empty query')
     if limit <= 0:
@@ -129,7 +130,7 @@ def event_search(
     events = _events_for_search(state, calendar_id=calendar_id)
     if len(events) > int(max_pool):
         raise ReadToolValidationError(f'event_search exceeds max_pool={int(max_pool)}')
-    matches = tuple(event for event in events if _event_matches(event, normalized_query))[: int(limit)]
+    matches = tuple(event for event in events if event_matches_query(event, normalized_query))[: int(limit)]
     calendars = _calendars_for_events(state, matches)
     return ReadToolResult(
         status='ok',
@@ -171,9 +172,15 @@ def _calendars_for_events(state: AgendaReadState, events: Iterable[CalendarEvent
     return tuple(calendars)
 
 
-def _event_matches(event: CalendarEvent, normalized_query: str) -> bool:
-    haystack = ' '.join((event.summary, event.location, event.description)).lower()
-    return normalized_query in haystack
+def normalize_search_query(value: str) -> str:
+    normalized = unicodedata.normalize('NFKD', str(value or '').strip().lower())
+    return ''.join(char for char in normalized if not unicodedata.combining(char))
+
+
+def event_matches_query(event: CalendarEvent, normalized_query: str) -> bool:
+    query = normalize_search_query(normalized_query)
+    haystack = normalize_search_query(' '.join((event.summary, event.location, event.description)))
+    return bool(query and query in haystack)
 
 
 def _event_overlaps(event: CalendarEvent, *, start_dt: datetime, end_dt: datetime) -> bool:

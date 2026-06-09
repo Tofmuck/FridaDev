@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from agenda import agent_contract
+from agenda import next_matching_search
 from agenda import product_methods
 from agenda import read_tools
 from agenda.caldav_models import (
@@ -85,6 +86,7 @@ def execute_readonly_plan(
     *,
     client: CalDavReadClient | None,
     live_caldav: bool = False,
+    now_iso: str = '',
 ) -> AgendaReadExecutionResult:
     method = product_methods.get_method(plan.product_method)
     if method is None or method.family != product_methods.FAMILY_READ:
@@ -111,6 +113,36 @@ def execute_readonly_plan(
     attempted_tool_names: list[str] = []
     selected_events: tuple[CalendarEvent, ...] = ()
     try:
+        if plan.product_method == product_methods.METHOD_FIND_NEXT_MATCHING_EVENT:
+            query = next_matching_search.query_from_tool_calls(plan.tool_calls)
+            calendar_id = next_matching_search.calendar_id_from_tool_calls(plan.tool_calls)
+            start_iso = str(now_iso or plan.time_scope.get('start') or '')
+            result = next_matching_search.find_next_matching_event(
+                client,
+                state=state,
+                query=query,
+                start_iso=start_iso,
+                timezone_name=str(plan.time_scope.get('timezone') or 'UTC'),
+                calendar_id=calendar_id,
+            )
+            observations.append(dict(result.observation))
+            selected_events = tuple(item for item in result.items if isinstance(item, CalendarEvent))
+            calendars = tuple(sorted(state.calendars.values(), key=lambda calendar: calendar.local_id))
+            return AgendaReadExecutionResult(
+                status=STATUS_OK,
+                reason_code=REASON_EXECUTED,
+                product_method=plan.product_method,
+                calendars=calendars,
+                events=selected_events,
+                tool_observations=tuple(observations),
+                caldav_access=bool(live_caldav),
+                nextcloud_access=bool(live_caldav),
+                mutation_attempted=False,
+                attempted_tool_names=(
+                    product_methods.TOOL_EVENT_QUERY_RANGE,
+                    product_methods.TOOL_EVENT_SEARCH,
+                ),
+            )
         for call in plan.tool_calls:
             attempted_tool_names.append(str(call.tool_name or ''))
             result = _execute_tool_call(call, client=client, state=state, plan=plan)

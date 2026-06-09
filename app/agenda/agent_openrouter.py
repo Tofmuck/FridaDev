@@ -196,6 +196,11 @@ def build_agenda_agent_messages(request: contract.AgendaAgentRequest) -> list[di
         'avec start/end/timezone explicites pour constituer le pool borne, puis '
         'event_search avec query, limit et eventuellement calendar_id seulement; '
         'ne mets jamais start, end ou timezone dans les params event_search. '
+        'Pour "mon prochain rendez-vous avec X", "mon prochain RDV chez X", '
+        '"quand est-ce que je vois X" ou "prochain evenement contenant X", choisis '
+        'find_next_matching_event. Fournis event_search avec query et limit; '
+        'le deterministe calculera les fenetres futures bornees, sans utiliser '
+        'une fenetre large inventee par le modele. '
         'surface_intro et surface_outro sont toujours des strings, eventuellement vides.'
     )
     return [

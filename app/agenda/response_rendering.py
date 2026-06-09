@@ -12,6 +12,7 @@ from agenda.caldav_models import CalendarEvent
 
 SOURCE_AGENDA_READONLY_RESPONSE = 'agenda_readonly_response'
 REASON_AGENDA_READONLY_FINAL = 'agenda_readonly_final_response'
+REASON_AGENDA_READONLY_ERROR_FINAL = 'agenda_readonly_error_final_response'
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,21 @@ def build_final_response_lock(
     execution_result: Any,
 ) -> AgendaFinalResponseLock | None:
     if str(getattr(execution_result, 'status', '') or '') != 'ok':
+        if bool(getattr(execution_result, 'caldav_access', False) or getattr(execution_result, 'nextcloud_access', False)):
+            content = _render_live_read_error()
+            meta = _message_meta(
+                plan=plan,
+                execution_result=execution_result,
+                final_reason_code=REASON_AGENDA_READONLY_ERROR_FINAL,
+            )
+            observability = _lock_observability(meta)
+            return AgendaFinalResponseLock(
+                ok=True,
+                content=_compose_surface(plan.surface_intro, content, plan.surface_outro),
+                reason_code=REASON_AGENDA_READONLY_ERROR_FINAL,
+                meta=meta,
+                observability=observability,
+            )
         return None
     content = render_readonly_answer(plan=plan, execution_result=execution_result)
     if not content:
@@ -69,6 +85,8 @@ def render_readonly_answer(
     method = str(plan.product_method or '')
     if method == product_methods.METHOD_EVENT_DETAILS:
         return _render_event_details(events)
+    if method == product_methods.METHOD_FIND_NEXT_MATCHING_EVENT:
+        return _render_next_matching_event(events)
     if method == product_methods.METHOD_SEARCH_EVENTS:
         return _render_search_events(events)
     if method == product_methods.METHOD_READ_TOMORROW:
@@ -109,6 +127,13 @@ def _render_search_events(events: tuple[CalendarEvent, ...]) -> str:
     return "\n".join(lines)
 
 
+def _render_next_matching_event(events: tuple[CalendarEvent, ...]) -> str:
+    if not events:
+        return "Je n'ai trouve aucun evenement correspondant dans les 12 prochains mois."
+    event = events[0]
+    return "Le prochain evenement correspondant que je trouve est :\n" + _event_full_line(event)
+
+
 def _render_event_details(events: tuple[CalendarEvent, ...]) -> str:
     if not events:
         return "Je n'ai pas retrouve cet evenement dans l'etat Agenda courant."
@@ -137,6 +162,42 @@ def _event_line(event: CalendarEvent) -> str:
     if label:
         return f"- {label} - {summary}{suffix}"
     return f"- {summary}{suffix}"
+
+
+def _event_full_line(event: CalendarEvent) -> str:
+    date_label = _date_label(event)
+    time_label = _time_label(event)
+    summary = str(event.summary or '').strip() or 'Evenement sans titre'
+    location = str(event.location or '').strip()
+    suffix = f" ({location})" if location else ''
+    if date_label and time_label:
+        return f"- {date_label}, {time_label} - {summary}{suffix}"
+    if date_label:
+        return f"- {date_label} - {summary}{suffix}"
+    return _event_line(event)
+
+
+def _date_label(event: CalendarEvent) -> str:
+    start = _parse_iso(event.start_iso, timezone_name=event.timezone)
+    if start is None:
+        return ''
+    month_names = (
+        '',
+        'janvier',
+        'fevrier',
+        'mars',
+        'avril',
+        'mai',
+        'juin',
+        'juillet',
+        'aout',
+        'septembre',
+        'octobre',
+        'novembre',
+        'decembre',
+    )
+    month = month_names[start.month] if 1 <= start.month < len(month_names) else f'{start.month:02d}'
+    return f"{start.day} {month} {start.year}"
 
 
 def _time_label(event: CalendarEvent) -> str:
@@ -179,13 +240,28 @@ def _compose_surface(intro: str, content: str, outro: str) -> str:
     )
 
 
-def _message_meta(*, plan: agent_contract.AgendaAgentPlan, execution_result: Any) -> dict[str, Any]:
+def _render_live_read_error() -> str:
+    return (
+        "J'ai tente de relire ton agenda, mais la recherche n'a pas abouti. "
+        "Je ne vais pas inventer un resultat a partir de la memoire."
+    )
+
+
+def _message_meta(
+    *,
+    plan: agent_contract.AgendaAgentPlan,
+    execution_result: Any,
+    final_reason_code: str = REASON_AGENDA_READONLY_FINAL,
+) -> dict[str, Any]:
     observation = dict(getattr(execution_result, 'observation', {}) or {})
     return {
         'source': SOURCE_AGENDA_READONLY_RESPONSE,
-        'reason_code': REASON_AGENDA_READONLY_FINAL,
+        'reason_code': final_reason_code,
         'agenda_schema_version': agent_contract.SCHEMA_VERSION,
         'agenda_product_method': str(plan.product_method or ''),
+        'agenda_read_execution_status': str(observation.get('status') or ''),
+        'agenda_read_execution_reason_code': str(observation.get('reason_code') or ''),
+        'agenda_error_class': str(observation.get('error_class') or ''),
         'agenda_tool_names': list(observation.get('tool_names') or []),
         'agenda_tool_count': int(observation.get('tool_count') or 0),
         'agenda_calendar_count': int(observation.get('calendar_count') or 0),
@@ -196,7 +272,7 @@ def _message_meta(*, plan: agent_contract.AgendaAgentPlan, execution_result: Any
         'agenda_nextcloud_access': bool(observation.get('nextcloud_access')),
         'agenda_mutation_attempted': False,
         'agenda_final_lock_authorized': True,
-        'agenda_final_lock_reason_code': REASON_AGENDA_READONLY_FINAL,
+        'agenda_final_lock_reason_code': final_reason_code,
         'content_free_meta': True,
     }
 
@@ -204,6 +280,9 @@ def _message_meta(*, plan: agent_contract.AgendaAgentPlan, execution_result: Any
 def _lock_observability(meta: Mapping[str, Any]) -> dict[str, Any]:
     return {
         'agenda_product_method': str(meta.get('agenda_product_method') or ''),
+        'agenda_read_execution_status': str(meta.get('agenda_read_execution_status') or ''),
+        'agenda_read_execution_reason_code': str(meta.get('agenda_read_execution_reason_code') or ''),
+        'agenda_error_class': str(meta.get('agenda_error_class') or ''),
         'agenda_tool_names': list(meta.get('agenda_tool_names') or []),
         'agenda_tool_count': int(meta.get('agenda_tool_count') or 0),
         'agenda_event_count': int(meta.get('agenda_event_count') or 0),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from datetime import datetime
 from types import SimpleNamespace
 
 from agenda import (
@@ -374,7 +375,10 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
             requests_module=requests_module,
         )
 
-        self.assertFalse(result.used)
+        self.assertTrue(result.used)
+        self.assertIsNotNone(result.final_response_lock)
+        self.assertIn("J'ai tente de relire ton agenda", result.final_response_lock.content)
+        self.assertNotIn('je ne peux pas rouvrir ton agenda', result.final_response_lock.content.lower())
         self.assertEqual(result.observability_payload['read_execution_status'], 'error')
         self.assertEqual(result.observability_payload['read_execution_reason_code'], 'caldav_unauthorized')
         self.assertEqual(result.observability_payload['read_tool_count'], 1)
@@ -383,7 +387,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertTrue(result.observability_payload['caldav_access'])
         self.assertTrue(result.observability_payload['nextcloud_access'])
         self.assertTrue(result.observability_payload['secret_access'])
-        self.assertFalse(result.observability_payload['final_response_override'])
+        self.assertTrue(result.observability_payload['final_response_override'])
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
         self.assertNotIn('fixture-secret-value', encoded_payload)
         self.assertNotIn('Authorization', encoded_payload)
@@ -443,6 +447,67 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
         self.assertNotIn('Focus', encoded_payload)
         self.assertNotIn('Fixture Focus Block', encoded_payload)
+
+    def test_active_runtime_executes_next_matching_event_by_future_windows(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                product_method=product_methods.METHOD_FIND_NEXT_MATCHING_EVENT,
+                intent='find next matching appointment',
+                time_scope={
+                    'kind': 'future',
+                    'start': '',
+                    'end': '',
+                    'timezone': 'Europe/Paris',
+                    'ambiguity': 'none',
+                },
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_SEARCH,
+                        'method': 'GET',
+                        'params': {
+                            'query': 'Florence Boitez',
+                            'limit': 3,
+                        },
+                        'call_id': 'next-1',
+                    }
+                ],
+            )
+        )
+        read_client = _NextMatchingReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Tu peux regarder quand est mon prochain RDV avec Florence Boitez ?',
+            now_iso='2026-06-08T10:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.observability_payload['product_method'], product_methods.METHOD_FIND_NEXT_MATCHING_EVENT)
+        self.assertEqual(result.observability_payload['read_execution_status'], 'ok')
+        self.assertEqual(
+            result.observability_payload['read_tool_names'],
+            [product_methods.TOOL_EVENT_QUERY_RANGE, product_methods.TOOL_EVENT_SEARCH],
+        )
+        self.assertEqual(result.observability_payload['read_event_count'], 1)
+        self.assertEqual(read_client.calls, ['list_calendars', 'query_calendar_events', 'query_calendar_events'])
+        self.assertIn('15 juillet 2026', result.final_response_lock.content)
+        self.assertIn('09:00-10:00', result.final_response_lock.content)
+        self.assertIn('Fixture Next Match', result.final_response_lock.content)
+        for start_iso, end_iso, _timezone_name in read_client.query_ranges:
+            start = datetime.fromisoformat(start_iso.replace('Z', '+00:00'))
+            end = datetime.fromisoformat(end_iso.replace('Z', '+00:00'))
+            self.assertLessEqual((end - start).days, 31)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Florence Boitez', encoded_payload)
+        self.assertNotIn('Fixture Next Match', encoded_payload)
+        self.assertNotIn('fixture-next-001', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
 
     def test_active_runtime_invalid_json_falls_back_cleanly(self) -> None:
         fake = _FakeTextModelClient('{not-json')
@@ -2534,6 +2599,48 @@ class _FakeReadClient:
 
     def calendar_by_local_id(self, calendar_id):
         return self._calendar if str(calendar_id or '') == self._calendar.local_id else None
+
+
+class _NextMatchingReadClient:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+        self.query_ranges: list[tuple[str, str, str]] = []
+        self._calendar = CalendarSummary(
+            local_id='primary',
+            display_name='Fixture Primary Calendar',
+            permissions=('read',),
+            color='#1166aa',
+            enabled=True,
+            readonly=True,
+            family_calendar=False,
+            family_calendar_classification='non_family',
+            caldav_path='/remote.php/dav/calendars/tof/fixture-primary/',
+        )
+        self._event = CalendarEvent(
+            event_id='event-next-1',
+            calendar_id='primary',
+            uid='fixture-next-001@example.invalid',
+            summary='Fixture Next Match Florence Boitez',
+            location='Fixture Next Room',
+            description='Synthetic fixture event. No personal data.',
+            start_iso='2026-07-15T07:00:00Z',
+            end_iso='2026-07-15T08:00:00Z',
+            timezone='Europe/Paris',
+            etag='fixture-etag-next',
+            caldav_path='/remote.php/dav/calendars/tof/fixture-primary/event-next-1.ics',
+        )
+
+    def list_calendars(self):
+        self.calls.append('list_calendars')
+        return (self._calendar,)
+
+    def query_calendar_events(self, calendar, *, start_iso, end_iso, timezone_name='UTC'):
+        del calendar
+        self.calls.append('query_calendar_events')
+        self.query_ranges.append((start_iso, end_iso, timezone_name))
+        if start_iso <= self._event.start_iso < end_iso:
+            return (self._event,)
+        return ()
 
 
 class _AllDayReadClient:

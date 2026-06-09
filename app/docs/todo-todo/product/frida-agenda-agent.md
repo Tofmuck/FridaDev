@@ -10,7 +10,9 @@ garde-fous, branchement applicatif read-only et preuve CalDAV live content-free,
 propositions/pending store temporaire, confirmations fake Lot 7A et preuve live
 write synthetique bornee Lot 7B, puis verrou calendrier familial Lot 7C avant
 mutations utilisateur reelles, et update confirme fake/local avec preservation
-de l'ICS source Lot 7D/7D.1 sur VEVENT simple non recurrent.
+de l'ICS source Lot 7D/7D.1 sur VEVENT simple non recurrent. Lot 8A/8B livre
+l'observabilite content-free et Lot 8bis ajoute la recherche read-only du
+prochain evenement futur correspondant a une requete textuelle.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -702,6 +704,29 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve livree: vraie conversation Frida Agenda avec toggle on, assistant
   sauvegarde comme message normal, timestamps presents, reprise de contexte et
   Delta-T detectes sans stocker de dialogue brut dans l'artefact.
+
+### Lot 8bis - Recherche prochain evenement correspondant
+
+- [x] Ajouter la methode produit read-only `find_next_matching_event`.
+  Preuve livree: l'agent Agenda peut choisir cette methode pour les demandes
+  du type `prochain rendez-vous avec X`, sans regex deterministe d'intention.
+- [x] Executer la recherche future par fenetres bornees.
+  Preuve livree: l'execution part de `now_iso`, applique un horizon par defaut
+  de 365 jours maximum, interroge CalDAV par fenetres de 31 jours maximum et
+  s'arrete au premier match futur.
+- [x] Distinguer `search_events` et `find_next_matching_event`.
+  Preuve livree: `search_events` cherche dans une fenetre deja lue; `find_next`
+  avance dans le futur par fenetres bornees sans aspirer tout l'agenda.
+- [x] Verrouiller la restitution apres erreur live Agenda.
+  Preuve livree: si CalDAV/Nextcloud a ete tente et echoue, Frida produit une
+  reponse Agenda honnete et verrouillee, sans laisser le LLM libre dire qu'il
+  ne peut pas rouvrir l'agenda.
+- [x] Ajouter la preuve live content-free Lot 8bis.
+  Preuve livree:
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-lot8bis-next-matching-live-20260609T152733Z.jsonl`,
+  vraie conversation Frida, methode `find_next_matching_event`,
+  CalDAV/Nextcloud read-only, final response override, message assistant normal
+  timestamped, mutation=false, scan sans contenu Agenda brut.
 
 ## Auto-audit permanent
 

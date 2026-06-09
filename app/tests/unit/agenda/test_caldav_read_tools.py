@@ -4,6 +4,7 @@ import importlib
 import os
 import sys
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
@@ -12,7 +13,15 @@ APP_DIR = Path(__file__).resolve().parents[3]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from agenda import agent_contract, caldav_read_client, ics_reader, product_methods, read_tools, response_rendering
+from agenda import (
+    agent_contract,
+    caldav_read_client,
+    ics_reader,
+    next_matching_search,
+    product_methods,
+    read_tools,
+    response_rendering,
+)
 from agenda.caldav_models import (
     AgendaReadState,
     CalDavReadError,
@@ -658,6 +667,79 @@ END:VCALENDAR
         with self.assertRaises(ReadToolValidationError):
             read_tools.event_search(state=state, query='fixture', max_pool=1)
 
+    def test_find_next_matching_event_reads_future_windows_until_first_match(self) -> None:
+        client = _NextMatchingReadClient(
+            events_by_start={
+                '2026-07-15T07:00:00Z': CalendarEvent(
+                    event_id='event-next-2',
+                    calendar_id='primary',
+                    uid='fixture-next-002@example.invalid',
+                    summary='Fixture Next Matching Event',
+                    location='Fixture Next Location',
+                    description='Synthetic fixture event. No personal data.',
+                    start_iso='2026-07-15T07:00:00Z',
+                    end_iso='2026-07-15T08:00:00Z',
+                    timezone='Europe/Paris',
+                ),
+                '2026-08-01T07:00:00Z': CalendarEvent(
+                    event_id='event-next-3',
+                    calendar_id='primary',
+                    uid='fixture-next-003@example.invalid',
+                    summary='Fixture Next Matching Event Later',
+                    location='Fixture Next Location Later',
+                    description='Synthetic fixture event. No personal data.',
+                    start_iso='2026-08-01T07:00:00Z',
+                    end_iso='2026-08-01T08:00:00Z',
+                    timezone='Europe/Paris',
+                ),
+            }
+        )
+        state = AgendaReadState()
+
+        result = next_matching_search.find_next_matching_event(
+            client,
+            state=state,
+            query='matching event',
+            start_iso='2026-06-08T10:00:00Z',
+            timezone_name='Europe/Paris',
+        )
+
+        self.assertEqual([call[0] for call in client.calls], ['list_calendars', 'query_calendar_events', 'query_calendar_events'])
+        self.assertEqual(len(result.items), 1)
+        self.assertEqual(result.items[0].event_id, 'event-next-2')
+        self.assertLess(result.items[0].start_iso, '2026-08-01T07:00:00Z')
+        self.assertEqual(result.observation['reason_code'], next_matching_search.REASON_MATCH_FOUND)
+        self.assertEqual(result.observation['windows_read'], 2)
+        for start_iso, end_iso, _timezone_name in client.query_ranges:
+            start = datetime.fromisoformat(start_iso.replace('Z', '+00:00'))
+            end = datetime.fromisoformat(end_iso.replace('Z', '+00:00'))
+            self.assertLessEqual((end - start).days, next_matching_search.MAX_WINDOW_DAYS)
+        self.assertContentFreeObservation(result.observation)
+
+    def test_find_next_matching_event_returns_no_match_with_capped_horizon(self) -> None:
+        client = _NextMatchingReadClient(events_by_start={})
+        state = AgendaReadState()
+
+        result = next_matching_search.find_next_matching_event(
+            client,
+            state=state,
+            query='missing fixture',
+            start_iso='2026-06-08T10:00:00Z',
+            timezone_name='Europe/Paris',
+            policy=next_matching_search.NextMatchingPolicy(horizon_days=999, window_days=999),
+        )
+
+        self.assertEqual(result.items, ())
+        self.assertEqual(result.observation['reason_code'], next_matching_search.REASON_NO_MATCH)
+        self.assertEqual(result.observation['horizon_days'], next_matching_search.MAX_HORIZON_DAYS)
+        self.assertEqual(result.observation['window_days'], next_matching_search.MAX_WINDOW_DAYS)
+        self.assertTrue(client.query_ranges)
+        for start_iso, end_iso, _timezone_name in client.query_ranges:
+            start = datetime.fromisoformat(start_iso.replace('Z', '+00:00'))
+            end = datetime.fromisoformat(end_iso.replace('Z', '+00:00'))
+            self.assertLessEqual((end - start).days, next_matching_search.MAX_WINDOW_DAYS)
+        self.assertContentFreeObservation(result.observation)
+
     def test_observations_never_include_raw_ics_uid_etag_url_authorization_or_app_password(self) -> None:
         client, state, _transport = self._client_and_state()
         primary_id = self._calendar_id_by_name(state, 'Fixture Primary Calendar')
@@ -804,6 +886,38 @@ class _ExecutionResultFixture:
         self.status = 'ok'
         self.events = tuple(events)
         self.observation = {'content_free': True}
+
+
+class _NextMatchingReadClient:
+    def __init__(self, *, events_by_start: dict[str, CalendarEvent]) -> None:
+        self.calls: list[tuple[str, str, str]] = []
+        self.query_ranges: list[tuple[str, str, str]] = []
+        self._events_by_start = dict(events_by_start)
+        self._calendar = CalendarSummary(
+            local_id='primary',
+            display_name='Fixture Primary Calendar',
+            permissions=('read',),
+            color='#1166aa',
+            enabled=True,
+            readonly=True,
+            family_calendar=False,
+            family_calendar_classification='non_family',
+            caldav_path='/remote.php/dav/calendars/tof/fixture-primary/',
+        )
+
+    def list_calendars(self):
+        self.calls.append(('list_calendars', '', ''))
+        return (self._calendar,)
+
+    def query_calendar_events(self, calendar, *, start_iso, end_iso, timezone_name='UTC'):
+        del calendar
+        self.calls.append(('query_calendar_events', start_iso, end_iso))
+        self.query_ranges.append((start_iso, end_iso, timezone_name))
+        return tuple(
+            event
+            for start, event in sorted(self._events_by_start.items())
+            if start_iso <= start < end_iso
+        )
 
 
 if __name__ == '__main__':

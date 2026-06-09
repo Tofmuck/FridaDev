@@ -335,6 +335,7 @@ def run_agenda_chat_turn(
                 result.validated_plan,
                 client=resolved_client,
                 live_caldav=live_caldav,
+                now_iso=str(now_iso or ''),
             )
             final_lock = response_rendering.build_final_response_lock(
                 plan=result.validated_plan,

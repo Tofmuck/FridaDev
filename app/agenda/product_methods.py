@@ -20,6 +20,7 @@ METHOD_READ_TOMORROW = 'read_tomorrow'
 METHOD_READ_EXPLICIT_DATE = 'read_explicit_date'
 METHOD_READ_WEEK = 'read_week'
 METHOD_SEARCH_EVENTS = 'search_events'
+METHOD_FIND_NEXT_MATCHING_EVENT = 'find_next_matching_event'
 METHOD_EVENT_DETAILS = 'event_details'
 METHOD_SUMMARIZE_DAY = 'summarize_day'
 METHOD_FIND_AVAILABILITY = 'find_availability'
@@ -76,6 +77,11 @@ _METHODS = {
     ),
     METHOD_SEARCH_EVENTS: AgendaProductMethod(
         METHOD_SEARCH_EVENTS,
+        FAMILY_READ,
+        allowed_tools=frozenset({TOOL_EVENT_QUERY_RANGE, TOOL_EVENT_SEARCH}),
+    ),
+    METHOD_FIND_NEXT_MATCHING_EVENT: AgendaProductMethod(
+        METHOD_FIND_NEXT_MATCHING_EVENT,
         FAMILY_READ,
         allowed_tools=frozenset({TOOL_EVENT_QUERY_RANGE, TOOL_EVENT_SEARCH}),
     ),
