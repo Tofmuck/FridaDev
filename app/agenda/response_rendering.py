@@ -48,7 +48,9 @@ def build_final_response_lock(
 ) -> AgendaFinalResponseLock | None:
     if str(getattr(execution_result, 'status', '') or '') != 'ok':
         if bool(getattr(execution_result, 'caldav_access', False) or getattr(execution_result, 'nextcloud_access', False)):
-            content = _render_live_read_error()
+            content = str(getattr(plan, 'surface_error', '') or '').strip()
+            if not content:
+                return None
             meta = _message_meta(
                 plan=plan,
                 execution_result=execution_result,
@@ -237,13 +239,6 @@ def _compose_surface(intro: str, content: str, outro: str) -> str:
         part
         for part in (str(intro or '').strip(), str(content or '').strip(), str(outro or '').strip())
         if part
-    )
-
-
-def _render_live_read_error() -> str:
-    return (
-        "J'ai tente de relire ton agenda, mais la recherche n'a pas abouti. "
-        "Je ne vais pas inventer un resultat a partir de la memoire."
     )
 
 

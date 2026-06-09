@@ -54,6 +54,7 @@ class AgendaJsonAgentResult:
     fallback_deterministic: bool = True
     validated_plan: Any = field(default=None, repr=False, compare=False)
     surface_intro: str = field(default='', repr=False, compare=False)
+    surface_error: str = field(default='', repr=False, compare=False)
     surface_outro: str = field(default='', repr=False, compare=False)
     request_observation: dict[str, Any] = field(default_factory=dict)
     validation_observation: dict[str, Any] = field(default_factory=dict)
@@ -72,6 +73,9 @@ class AgendaJsonAgentResult:
             'surface_intro_present': bool(self.surface_intro),
             'surface_intro_chars': len(self.surface_intro),
             'surface_intro_hash': contract.sha256_12(self.surface_intro),
+            'surface_error_present': bool(self.surface_error),
+            'surface_error_chars': len(self.surface_error),
+            'surface_error_hash': contract.sha256_12(self.surface_error),
             'surface_outro_present': bool(self.surface_outro),
             'surface_outro_chars': len(self.surface_outro),
             'surface_outro_hash': contract.sha256_12(self.surface_outro),
@@ -157,6 +161,7 @@ class AgendaJsonAgent:
                 mode=mode,
                 model_called=model_called,
                 surface_intro=validation.surface_intro,
+                surface_error=validation.surface_error,
                 surface_outro=validation.surface_outro,
                 request_observation=request_observation,
                 validation_observation=validation_observation,
@@ -171,6 +176,7 @@ class AgendaJsonAgent:
             fallback_deterministic=True,
             validated_plan=validation.plan,
             surface_intro=validation.surface_intro,
+            surface_error=validation.surface_error,
             surface_outro=validation.surface_outro,
             request_observation=request_observation,
             validation_observation=validation_observation,

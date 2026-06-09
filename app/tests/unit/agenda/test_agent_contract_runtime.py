@@ -11,6 +11,7 @@ from agenda import agent_runtime, product_methods
 RAW_USER = 'RAW USER AGENDA REQUEST MUST NOT LEAK'
 RAW_QUERY = 'RAW QUERY MUST NOT LEAK'
 RAW_SURFACE = 'RAW SURFACE MUST NOT LEAK'
+RAW_SURFACE_ERROR = 'Desole Tof, RAW FALLBACK MUST NOT LEAK'
 CANONICAL_WINDOWS_PARIS = {
     'today': {
         'start': '2026-06-07T22:00:00Z',
@@ -29,7 +30,7 @@ CANONICAL_WINDOWS_PARIS = {
 
 class AgendaAgentContractRuntimeTests(unittest.TestCase):
     def test_valid_read_plan_is_accepted_without_exposing_raw_content_in_observation(self) -> None:
-        payload = _valid_payload(intent=RAW_USER, surface_intro=RAW_SURFACE)
+        payload = _valid_payload(intent=RAW_USER, surface_intro=RAW_SURFACE, surface_error=RAW_SURFACE_ERROR)
         validation = contract.validate_agent_payload(payload)
 
         self.assertEqual(validation.status, contract.STATUS_VALIDATED)
@@ -40,6 +41,8 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertNotIn(RAW_USER, encoded)
         self.assertNotIn(RAW_QUERY, encoded)
         self.assertNotIn(RAW_SURFACE, encoded)
+        self.assertNotIn(RAW_SURFACE_ERROR, encoded)
+        self.assertNotIn('Tof', encoded)
 
     def test_invalid_json_absent_free_text_and_truncated_outputs_are_rejected_cleanly(self) -> None:
         cases = [
@@ -61,6 +64,8 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         cases = [
             ({**base, 'schema_version': 'other'}, contract.REASON_SCHEMA_VERSION),
             ({**base, 'surface_intro': None}, contract.REASON_SCHEMA_INVALID),
+            ({**base, 'surface_error': None}, contract.REASON_SCHEMA_INVALID),
+            ({**base, 'surface_error': ''}, contract.REASON_SCHEMA_INVALID),
             ({**base, 'surface_outro': None}, contract.REASON_SCHEMA_INVALID),
             ({**base, 'product_method': 'unknown_method'}, contract.REASON_PRODUCT_METHOD_UNKNOWN),
             (
@@ -154,6 +159,31 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertEqual(user_payload['canonical_time_windows']['tomorrow']['end'], '2026-06-09T22:00:00Z')
         self.assertNotIn('RAW USER', messages[0]['content'])
 
+    def test_agent_payload_includes_tof_display_name_without_observation_leak(self) -> None:
+        request = _request(
+            settings=contract.AgendaAgentSettings(
+                mode=contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+        )
+
+        messages = agent_openrouter.build_agenda_agent_messages(request)
+        user_payload = json.loads(messages[1]['content'])
+        observed = json.dumps(request.to_observability(), sort_keys=True)
+
+        self.assertEqual(user_payload['user_display_name'], 'Tof')
+        self.assertTrue(request.to_observability()['user_display_name_present'])
+        self.assertNotIn('Tof', observed)
+
+    def test_agent_schema_requires_agentic_error_surface(self) -> None:
+        response_format = agent_openrouter.build_agenda_agent_response_format(max_tool_calls=4)
+        schema = response_format['json_schema']['schema']
+
+        self.assertIn('surface_error', schema['required'])
+        self.assertEqual(schema['properties']['surface_error']['type'], 'string')
+        self.assertEqual(schema['properties']['surface_error']['maxLength'], 600)
+
     def test_agent_prompt_instructs_search_events_as_range_then_search(self) -> None:
         request = _request(
             settings=contract.AgendaAgentSettings(
@@ -183,6 +213,22 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertIn('calendrier familial ou partage', system_message)
         self.assertIn('risk_flags=["family_calendar"]', system_message)
         self.assertIn('ne demande jamais une confirmation simple pour create/delete', system_message)
+
+    def test_agent_prompt_instructs_agentic_error_surface_and_tof(self) -> None:
+        request = _request(
+            settings=contract.AgendaAgentSettings(
+                mode=contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+        )
+
+        system_message = agent_openrouter.build_agenda_agent_messages(request)[0]['content']
+
+        self.assertIn('surface_error', system_message)
+        self.assertIn('user_display_name', system_message)
+        self.assertIn('Tof', system_message)
+        self.assertIn('ne doit pas contenir de jargon CalDAV', system_message)
 
     def test_search_events_accepts_bounded_range_then_local_search(self) -> None:
         validation = contract.validate_agent_payload(
@@ -874,6 +920,7 @@ def _valid_payload(**overrides) -> dict:
         'risk_flags': [],
         'fallback_reason': '',
         'surface_intro': '',
+        'surface_error': 'Desole Tof, je n ai pas pu relire ton agenda correctement.',
         'surface_outro': '',
     }
     payload.update(overrides)

@@ -9,6 +9,7 @@ from agenda.observability import sha256_12
 
 
 SCHEMA_VERSION = 'frida_agenda_agent_v1'
+USER_DISPLAY_NAME_V1 = 'Tof'
 
 MODE_OFF = runtime_config.AGENDA_AGENT_DEFAULT_MODE
 MODE_ACTIVE = 'active'
@@ -88,6 +89,7 @@ class AgendaAgentSettings:
 class AgendaAgentRequest:
     user_message: str
     recent_dialogue: tuple[dict[str, Any], ...] = ()
+    user_display_name: str = USER_DISPLAY_NAME_V1
     now_iso: str = ''
     timezone: str = 'UTC'
     canonical_time_windows: Mapping[str, Any] | None = None
@@ -105,6 +107,9 @@ class AgendaAgentRequest:
             'schema_version': SCHEMA_VERSION,
             'user_message_hash': sha256_12(self.user_message),
             'user_message_chars': len(str(self.user_message or '')),
+            'user_display_name_present': bool(self.user_display_name),
+            'user_display_name_chars': len(str(self.user_display_name or '')),
+            'user_display_name_hash': sha256_12(self.user_display_name),
             'recent_turn_count': len(recent),
             'recent_turn_hashes': [sha256_12(turn.get('content')) for turn in recent],
             'now_iso_present': bool(self.now_iso),
@@ -138,6 +143,7 @@ class AgendaAgentPlan:
     risk_flags: tuple[str, ...]
     fallback_reason: str
     surface_intro: str
+    surface_error: str
     surface_outro: str
 
     def to_observability(self) -> dict[str, Any]:
@@ -176,6 +182,9 @@ class AgendaAgentPlan:
             'surface_intro_present': bool(self.surface_intro),
             'surface_intro_chars': len(self.surface_intro),
             'surface_intro_hash': sha256_12(self.surface_intro),
+            'surface_error_present': bool(self.surface_error),
+            'surface_error_chars': len(self.surface_error),
+            'surface_error_hash': sha256_12(self.surface_error),
             'surface_outro_present': bool(self.surface_outro),
             'surface_outro_chars': len(self.surface_outro),
             'surface_outro_hash': sha256_12(self.surface_outro),
@@ -189,6 +198,7 @@ class AgendaAgentValidation:
     reason_code: str
     plan: AgendaAgentPlan | None = None
     surface_intro: str = ''
+    surface_error: str = ''
     surface_outro: str = ''
     tool_names: tuple[str, ...] = ()
     json_chars: int = 0
@@ -208,6 +218,9 @@ class AgendaAgentValidation:
             'surface_intro_present': bool(self.surface_intro),
             'surface_intro_chars': len(self.surface_intro),
             'surface_intro_hash': sha256_12(self.surface_intro),
+            'surface_error_present': bool(self.surface_error),
+            'surface_error_chars': len(self.surface_error),
+            'surface_error_hash': sha256_12(self.surface_error),
             'surface_outro_present': bool(self.surface_outro),
             'surface_outro_chars': len(self.surface_outro),
             'surface_outro_hash': sha256_12(self.surface_outro),

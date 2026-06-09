@@ -26,6 +26,7 @@ _ROOT_KEYS = {
     'risk_flags',
     'fallback_reason',
     'surface_intro',
+    'surface_error',
     'surface_outro',
 }
 _CALENDAR_SCOPE_KEYS = {'calendar_ids', 'family_calendar', 'ambiguity'}
@@ -146,6 +147,7 @@ def parse_and_validate_agent_json(
         reason_code=validation.reason_code,
         plan=validation.plan,
         surface_intro=validation.surface_intro,
+        surface_error=validation.surface_error,
         surface_outro=validation.surface_outro,
         tool_names=validation.tool_names,
         json_chars=len(raw),
@@ -169,7 +171,11 @@ def validate_agent_payload(
     method = product_methods.get_method(product_method)
     if method is None:
         return _rejected(contract.REASON_PRODUCT_METHOD_UNKNOWN, '')
-    if not _valid_surface(payload.get('surface_intro')) or not _valid_surface(payload.get('surface_outro')):
+    if (
+        not _valid_surface(payload.get('surface_intro'))
+        or not _valid_surface(payload.get('surface_error'))
+        or not _valid_surface(payload.get('surface_outro'))
+    ):
         return _rejected(contract.REASON_SCHEMA_INVALID, '')
     if not _valid_text(payload.get('intent'), max_chars=_INTENT_MAX_CHARS):
         return _rejected(contract.REASON_SCHEMA_INVALID, '')
@@ -211,7 +217,10 @@ def validate_agent_payload(
     if window_reason:
         return _rejected(window_reason, '')
     surface_intro = str(payload.get('surface_intro') or '')
+    surface_error = str(payload.get('surface_error') or '')
     surface_outro = str(payload.get('surface_outro') or '')
+    if method.family == product_methods.FAMILY_READ and not surface_error.strip():
+        return _rejected(contract.REASON_SCHEMA_INVALID, '')
     plan = contract.AgendaAgentPlan(
         product_method=product_method,
         intent=str(payload.get('intent') or ''),
@@ -224,6 +233,7 @@ def validate_agent_payload(
         risk_flags=tuple(risk_flags),
         fallback_reason=fallback_reason,
         surface_intro=surface_intro,
+        surface_error=surface_error,
         surface_outro=surface_outro,
     )
     return contract.AgendaAgentValidation(
@@ -231,6 +241,7 @@ def validate_agent_payload(
         reason_code=contract.REASON_VALIDATED,
         plan=plan,
         surface_intro=surface_intro,
+        surface_error=surface_error,
         surface_outro=surface_outro,
         tool_names=tuple(call.tool_name for call in tool_calls),
     )

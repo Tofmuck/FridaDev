@@ -280,6 +280,7 @@ def run_agenda_chat_turn(
     request = agent_contract.AgendaAgentRequest(
         user_message=str(user_msg or ''),
         recent_dialogue=tuple(recent_dialogue or ()),
+        user_display_name=agent_contract.USER_DISPLAY_NAME_V1,
         now_iso=str(now_iso or ''),
         timezone=timezone,
         canonical_time_windows=canonical_time_windows,

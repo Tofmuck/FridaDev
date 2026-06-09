@@ -156,6 +156,7 @@ def build_agenda_agent_messages(request: contract.AgendaAgentRequest) -> list[di
     ]
     user_payload = {
         'user_message': request.user_message,
+        'user_display_name': request.user_display_name,
         'recent_dialogue': recent,
         'now_iso': request.now_iso,
         'timezone': request.timezone,
@@ -201,7 +202,12 @@ def build_agenda_agent_messages(request: contract.AgendaAgentRequest) -> list[di
         'find_next_matching_event. Fournis event_search avec query et limit; '
         'le deterministe calculera les fenetres futures bornees, sans utiliser '
         'une fenetre large inventee par le modele. '
-        'surface_intro et surface_outro sont toujours des strings, eventuellement vides.'
+        'Tu peux appeler l utilisateur par user_display_name, actuellement Tof, '
+        'dans les surfaces visibles quand c est naturel. '
+        'surface_intro, surface_error et surface_outro sont toujours des strings. '
+        'surface_error est une phrase courte, honnete et vernaculaire pour un echec '
+        'de lecture live Agenda; elle ne doit pas contenir de jargon CalDAV ni inventer '
+        'un resultat. Pour les methodes read-only, surface_error ne doit pas etre vide.'
     )
     return [
         {'role': 'system', 'content': system},
@@ -237,6 +243,7 @@ def _agenda_agent_json_schema(*, max_tool_calls: int) -> dict[str, Any]:
             'risk_flags',
             'fallback_reason',
             'surface_intro',
+            'surface_error',
             'surface_outro',
         ],
         'properties': {
@@ -263,6 +270,7 @@ def _agenda_agent_json_schema(*, max_tool_calls: int) -> dict[str, Any]:
             'risk_flags': {'type': 'array', 'items': {'type': 'string'}, 'maxItems': 12},
             'fallback_reason': {'type': 'string', 'maxLength': 120},
             'surface_intro': {'type': 'string', 'maxLength': 600},
+            'surface_error': {'type': 'string', 'maxLength': 600},
             'surface_outro': {'type': 'string', 'maxLength': 600},
         },
     }

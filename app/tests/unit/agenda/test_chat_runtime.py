@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import inspect
 import unittest
 from datetime import datetime
 from types import SimpleNamespace
@@ -257,6 +258,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
             risk_flags=(),
             fallback_reason='',
             surface_intro='',
+            surface_error='Desole Tof, je n ai pas pu relire ton agenda correctement.',
             surface_outro='',
         )
         read_client = _FakeReadClient()
@@ -301,6 +303,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
     def test_active_runtime_marks_secret_access_only_when_secret_is_resolved(self) -> None:
         fake_model = _FakeModelClient(
             _valid_payload(
+                surface_error="Desole Tof, je n'ai pas reussi a relire ton agenda correctement.",
                 tool_calls=[
                     {
                         'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
@@ -377,7 +380,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
 
         self.assertTrue(result.used)
         self.assertIsNotNone(result.final_response_lock)
-        self.assertIn("J'ai tente de relire ton agenda", result.final_response_lock.content)
+        self.assertIn('Desole Tof', result.final_response_lock.content)
         self.assertNotIn('je ne peux pas rouvrir ton agenda', result.final_response_lock.content.lower())
         self.assertEqual(result.observability_payload['read_execution_status'], 'error')
         self.assertEqual(result.observability_payload['read_execution_reason_code'], 'caldav_unauthorized')
@@ -390,8 +393,15 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertTrue(result.observability_payload['final_response_override'])
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
         self.assertNotIn('fixture-secret-value', encoded_payload)
+        self.assertNotIn('Desole Tof', encoded_payload)
+        self.assertNotIn('Tof', encoded_payload)
         self.assertNotIn('Authorization', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_visible_live_error_fallback_is_not_hardcoded_in_renderer(self) -> None:
+        source = inspect.getsource(response_rendering)
+
+        self.assertNotIn('_render_live_read_error', source)
 
     def test_active_runtime_executes_search_events_as_bounded_range_then_local_search(self) -> None:
         fake_model = _FakeModelClient(
@@ -499,6 +509,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertIn('15 juillet 2026', result.final_response_lock.content)
         self.assertIn('09:00-10:00', result.final_response_lock.content)
         self.assertIn('Fixture Next Match', result.final_response_lock.content)
+        self.assertNotIn('Desole Tof', result.final_response_lock.content)
         for start_iso, end_iso, _timezone_name in read_client.query_ranges:
             start = datetime.fromisoformat(start_iso.replace('Z', '+00:00'))
             end = datetime.fromisoformat(end_iso.replace('Z', '+00:00'))
@@ -2920,6 +2931,7 @@ def _valid_payload(**overrides) -> dict:
         'risk_flags': [],
         'fallback_reason': '',
         'surface_intro': '',
+        'surface_error': 'Desole Tof, je n ai pas pu relire ton agenda correctement.',
         'surface_outro': '',
     }
     payload.update(overrides)

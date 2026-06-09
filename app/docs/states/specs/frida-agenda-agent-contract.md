@@ -16,8 +16,10 @@ preservation de l'ICS source sur VEVENT simple non recurrent; Lot 7D.1 ferme
 les updates no-op et les ICS multi-VEVENT/recurrentes/overrides en fail-closed.
 Lot 8A/8B livre l'observabilite content-free; Lot 8bis ajoute la recherche
 read-only `find_next_matching_event` pour le prochain evenement futur
-correspondant a une requete textuelle. Les updates live et mutations utilisateur
-reelles restent hors scope.
+correspondant a une requete textuelle. Lot 8bis.1 rend le fallback live Agenda
+agentique via `surface_error` et transmet `user_display_name=Tof` au contexte
+d'enonciation agent. Les updates live et mutations utilisateur reelles restent
+hors scope.
 
 Sources:
 
@@ -411,6 +413,7 @@ Schema livre en Lot 4:
   "risk_flags": [],
   "fallback_reason": "",
   "surface_intro": "",
+  "surface_error": "",
   "surface_outro": ""
 }
 ```
@@ -808,6 +811,15 @@ La reponse Agenda visible suit le contrat agentic response surface:
 4. question de clarification ou demande de confirmation si necessaire;
 5. `surface_outro` si non vide.
 
+En cas d'echec apres tentative live Agenda (`caldav_access=true` ou
+`nextcloud_access=true`), la surface visible verrouillee utilise `surface_error`
+fournie par l'agent Agenda. Le deterministe peut selectionner et assembler cette
+surface, mais il ne redige pas la phrase d'echec visible. Pour les methodes
+read-only, `surface_error` est obligatoire et doit rester simple, honnete et
+vernaculaire: pas de jargon CalDAV, pas d'invention de resultat, pas de
+mensonge du type `je ne peux pas rouvrir ton agenda` quand une tentative live a
+eu lieu.
+
 Regles:
 
 - Frida reste la seule voix visible;
@@ -955,10 +967,15 @@ Lot 8bis ajoute le cas produit read-only `find_next_matching_event`:
 - si aucun match n'est trouve dans l'horizon, Frida repond que rien n'a ete
   trouve dans cet horizon, sans pretendre avoir scanne l'infini;
 - si CalDAV/Nextcloud a ete tente mais echoue, Frida produit une reponse Agenda
-  verrouillee indiquant que la lecture live a echoue; le LLM principal ne doit
+  verrouillee via `surface_error` fournie par l'agent; le LLM principal ne doit
   pas inventer une explication du type `je ne peux pas rouvrir ton agenda`;
 - les logs, metas, read-models et JSONL restent content-free: pas de titre,
   lieu, description, UID, ETag, path/URL CalDAV, ICS brut ou secret.
+
+Lot 8bis.1 ajoute aussi `user_display_name=Tof` dans le payload agent comme
+contexte d'enonciation. Ce nom n'est pas un secret et peut apparaitre dans le
+message assistant visible, mais l'observabilite, les metas et les JSONL ne
+stockent que presence/hash/chars.
 
 Preuve conservee:
 
@@ -1059,9 +1076,10 @@ Preuve Lot 4 locale:
 - `frida_agenda_agent_v1` est valide strictement: version exacte, root keys
   strictes, `product_method`, `calendar_scope`, `time_scope`, `tool_calls`,
   `mutation`, `answer_mode`, `risk_flags`, `fallback_reason`,
-  `surface_intro` et `surface_outro`;
-- `surface_intro` et `surface_outro` doivent etre des strings courts, jamais
-  `null`;
+  `surface_intro`, `surface_error` et `surface_outro`;
+- `surface_intro`, `surface_error` et `surface_outro` doivent etre des strings
+  courts, jamais `null`; `surface_error` est obligatoire pour les methodes
+  read-only;
 - les outils inconnus, hors methode produit, mutatifs ou avec params interdits
   sont refuses avant tout reseau;
 - les valeurs dangereuses dans des params autorises sont refusees: URL/path

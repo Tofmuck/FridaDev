@@ -12,7 +12,9 @@ write synthetique bornee Lot 7B, puis verrou calendrier familial Lot 7C avant
 mutations utilisateur reelles, et update confirme fake/local avec preservation
 de l'ICS source Lot 7D/7D.1 sur VEVENT simple non recurrent. Lot 8A/8B livre
 l'observabilite content-free et Lot 8bis ajoute la recherche read-only du
-prochain evenement futur correspondant a une requete textuelle.
+prochain evenement futur correspondant a une requete textuelle. Lot 8bis.1
+rend le fallback live Agenda agentique via `surface_error` et transmet
+`user_display_name=Tof` au contexte d'enonciation agent.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -245,8 +247,10 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   methode read-only rejete meme si `requested=false`.
 - [x] Definir `answer_mode`, `risk_flags`, `fallback_reason`.
   Preuve livree: champs codes stricts et observations content-free.
-- [x] Definir `surface_intro` et `surface_outro`.
-  Preuve livree: champs string, courts, jamais `null`.
+- [x] Definir `surface_intro`, `surface_error` et `surface_outro`.
+  Preuve livree: champs string, courts, jamais `null`; `surface_error` est
+  obligatoire pour les methodes read-only afin qu'une erreur live Agenda reste
+  une surface agentique, pas une phrase deterministe locale.
 - [x] Interdire le raw JSON modele en logs.
   Preuve livree: observabilite compacte avec hashes, counts et flags.
 
@@ -727,6 +731,20 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   vraie conversation Frida, methode `find_next_matching_event`,
   CalDAV/Nextcloud read-only, final response override, message assistant normal
   timestamped, mutation=false, scan sans contenu Agenda brut.
+
+### Lot 8bis.1 - Fallback live agentique et appel Tof
+
+- [x] Ajouter une surface d'echec agentique `surface_error`.
+  Preuve livree: le schema strict exige `surface_error`; les plans read-only
+  sans surface d'echec sont rejetes avant acces reseau.
+- [x] Supprimer le fallback visible redige par le deterministe.
+  Preuve livree: en cas d'erreur apres acces CalDAV/Nextcloud tente, le final
+  lock utilise la surface fournie par l'agent Agenda; `response_rendering.py`
+  ne porte plus la phrase visible locale.
+- [x] Ajouter `user_display_name=Tof` au contexte agent.
+  Preuve livree: le payload envoye a l'agent contient `user_display_name`;
+  les observations et metas ne stockent que presence/hash/chars, pas le nom en
+  clair. Aucun Lot 9 n'est ouvert.
 
 ## Auto-audit permanent
 
