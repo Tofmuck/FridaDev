@@ -35,7 +35,7 @@ CANONICAL_WINDOWS_PARIS = {
     },
     'today_evening': {
         'start': '2026-06-08T16:00:00Z',
-        'end': '2026-06-08T21:59:59Z',
+        'end': '2026-06-08T22:00:00Z',
         'timezone': 'Europe/Paris',
         'local_date': '2026-06-08',
         'label': 'evening',
@@ -48,7 +48,7 @@ CANONICAL_WINDOWS_PARIS = {
     },
     'tomorrow_evening': {
         'start': '2026-06-09T16:00:00Z',
-        'end': '2026-06-09T21:59:59Z',
+        'end': '2026-06-09T22:00:00Z',
         'timezone': 'Europe/Paris',
         'local_date': '2026-06-09',
         'label': 'evening',
@@ -171,10 +171,11 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertEqual(windows['today_morning']['start'], '2026-06-08T04:00:00Z')
         self.assertEqual(windows['today_morning']['end'], '2026-06-08T10:00:00Z')
         self.assertEqual(windows['today_afternoon']['start'], '2026-06-08T10:00:00Z')
-        self.assertEqual(windows['today_evening']['end'], '2026-06-08T21:59:59Z')
+        self.assertEqual(windows['today_evening']['end'], '2026-06-08T22:00:00Z')
         self.assertEqual(windows['tomorrow']['start'], '2026-06-08T22:00:00Z')
         self.assertEqual(windows['tomorrow']['end'], '2026-06-09T22:00:00Z')
         self.assertEqual(windows['tomorrow_evening']['start'], '2026-06-09T16:00:00Z')
+        self.assertEqual(windows['tomorrow_evening']['end'], '2026-06-09T22:00:00Z')
 
     def test_agent_payload_includes_canonical_time_windows(self) -> None:
         request = _request(

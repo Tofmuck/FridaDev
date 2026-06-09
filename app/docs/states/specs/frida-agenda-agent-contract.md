@@ -25,7 +25,11 @@ pour guider les validations futures sans ouvrir Lot 9. Le correctif cible du
 2026-06-09 ferme les quatre familles partial des smokes de cloture et declare
 une cloture pragmatique Agenda V1: utilisable au quotidien, a rouvrir seulement
 sur bug reel, besoin concret ou decision explicite de nouvelle capacite. Les
-updates live et mutations utilisateur reelles restent hors scope.
+updates live et mutations utilisateur reelles restent hors scope. Le
+micro-correctif de cloture V1 ajoute deux garde-fous normatifs: les lectures
+calendrier explicitement scopees refusent un `calendar_id` non resolu au lieu
+d'elargir a tous les calendriers, et les fenetres `soir` sont des intervalles
+demi-ouverts 18:00 -> 00:00 locale.
 
 Sources:
 
@@ -1067,10 +1071,23 @@ Resultats prouves:
 - `read_explicit_date` execute CalDAV/Nextcloud read-only et produit un final
   lock Frida normal;
 - les sous-fenetres vernaculaires simples prouvent des fenetres horaires bornees
-  de 6h pour `ce matin` et `demain soir`;
+  de 6h pour `ce matin` et `demain soir`; les fenetres `soir` finissent a
+  minuit local en borne exclusive;
 - la reprise duree/sejour est prouvee avec un evenement synthetique multi-jours
-  cree, lu, repris au tour suivant, puis supprime dans le meme run;
+  cree, lu, repris au tour suivant, puis supprime dans le meme run. Le tour de
+  reprise repond depuis le contexte visible deja rendu et ne constitue pas une
+  nouvelle lecture Agenda;
 - l'aide/perimetre operateur dispose d'une surface dediee sans jargon sensible.
+
+Garde-fou de scope calendrier V1:
+
+- si `calendar_scope.calendar_ids` est vide, un `calendar_id` invente par le
+  modele dans un outil de lecture peut etre ignore et la lecture generale peut
+  interroger les calendriers accessibles;
+- si `calendar_scope.calendar_ids` est non vide, le plan est explicitement
+  scope: un `calendar_id` absent ou non resolu doit produire un refus
+  content-free avant toute lecture elargie tous calendriers;
+- l'id brut non resolu ne doit pas apparaitre dans l'observabilite.
 
 Capacites volontairement laissees ouvertes apres V1: disponibilites riches,
 comparaison de journees/evenements, rappels, invitations, recurrences produit

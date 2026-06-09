@@ -276,6 +276,94 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('model-guessed-calendar', encoded_payload)
         self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
 
+    def test_active_runtime_refuses_unresolved_calendar_id_for_explicit_scope_without_widening(self) -> None:
+        payload = _payload_with_window(
+            product_method=product_methods.METHOD_READ_EXPLICIT_DATE,
+            start='2026-06-12T00:00:00',
+            end='2026-06-13T00:00:00',
+        )
+        payload['calendar_scope'] = {
+            'calendar_ids': ['requested-calendar'],
+            'family_calendar': False,
+            'ambiguity': 'none',
+        }
+        payload['time_scope']['kind'] = 'explicit_date'
+        payload['tool_calls'][0]['params']['calendar_id'] = 'model-guessed-calendar'
+        fake_model = _FakeModelClient(payload)
+        read_client = _EmptyReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertFalse(result.used)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_ERROR)
+        self.assertEqual(
+            result.read_execution_result.reason_code,
+            read_execution.REASON_CALENDAR_SCOPE_UNRESOLVED,
+        )
+        self.assertEqual(read_client.calls, ['list_calendars'])
+        self.assertEqual(getattr(read_client, 'query_ranges', []), [])
+        self.assertEqual(
+            result.observability_payload['read_execution_reason_code'],
+            read_execution.REASON_CALENDAR_SCOPE_UNRESOLVED,
+        )
+        self.assertFalse(result.observability_payload['caldav_access'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('model-guessed-calendar', encoded_payload)
+        self.assertNotIn('requested-calendar', encoded_payload)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+
+    def test_active_runtime_refuses_missing_calendar_id_for_explicit_scope_without_widening(self) -> None:
+        payload = _payload_with_window(
+            product_method=product_methods.METHOD_READ_EXPLICIT_DATE,
+            start='2026-06-12T00:00:00',
+            end='2026-06-13T00:00:00',
+        )
+        payload['calendar_scope'] = {
+            'calendar_ids': ['requested-calendar'],
+            'family_calendar': False,
+            'ambiguity': 'none',
+        }
+        payload['time_scope']['kind'] = 'explicit_date'
+        payload['tool_calls'][0]['params'].pop('calendar_id', None)
+        fake_model = _FakeModelClient(payload)
+        read_client = _EmptyReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertFalse(result.used)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_ERROR)
+        self.assertEqual(
+            result.read_execution_result.reason_code,
+            read_execution.REASON_CALENDAR_SCOPE_UNRESOLVED,
+        )
+        self.assertEqual(read_client.calls, ['list_calendars'])
+        self.assertEqual(getattr(read_client, 'query_ranges', []), [])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('requested-calendar', encoded_payload)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+
     def test_active_runtime_renders_dedicated_agenda_capabilities_help_without_caldav(self) -> None:
         fake_model = _FakeModelClient(
             _valid_payload(
@@ -426,6 +514,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                         'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
                         'method': 'GET',
                         'params': {
+                            'calendar_id': _live_fixture_calendar_id(),
                             'start': '2026-06-08T00:00:00Z',
                             'end': '2026-06-09T00:00:00Z',
                             'timezone': 'Europe/Paris',
@@ -470,6 +559,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                         'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
                         'method': 'GET',
                         'params': {
+                            'calendar_id': 'primary',
                             'start': '2026-06-08T00:00:00Z',
                             'end': '2026-06-09T00:00:00Z',
                             'timezone': 'Europe/Paris',
@@ -532,6 +622,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                         'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
                         'method': 'GET',
                         'params': {
+                            'calendar_id': 'primary',
                             'start': '2026-06-08T00:00:00Z',
                             'end': '2026-06-09T00:00:00Z',
                             'timezone': 'Europe/Paris',
@@ -589,6 +680,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                         'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
                         'method': 'GET',
                         'params': {
+                            'calendar_id': 'primary',
                             'start': '2026-06-08T00:00:00Z',
                             'end': '2026-06-09T00:00:00Z',
                             'timezone': 'Europe/Paris',

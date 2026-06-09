@@ -22,7 +22,12 @@ Lot 9. Les smokes cibles du 2026-06-09 produisent une preuve JSONL
 content-free. Le correctif cible du 2026-06-09 cloture les quatre familles
 partial revelees par le premier smoke et declare une cloture pragmatique Agenda
 V1: utilisable au quotidien, a rouvrir seulement sur bug reel, besoin concret
-ou decision explicite de nouvelle capacite.
+ou decision explicite de nouvelle capacite. Le micro-correctif de cloture
+suivant verrouille les lectures calendrier explicitement scopees: un
+`calendar_id` non resolu ne peut plus elargir silencieusement la lecture a tous
+les calendriers si `calendar_scope.calendar_ids` porte une cible explicite; le
+cas general non scope peut encore ignorer un id invente par le modele. Les
+fenetres `soir` sont desormais demi-ouvertes de 18:00 a minuit local.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -817,14 +822,21 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   verrouille une reponse Frida normale.
 - [x] Valider les sous-fenetres vernaculaires.
   Resultat: `met`. `ce matin` et `demain soir` utilisent des fenetres bornees
-  de 6h, pas une journee complete.
+  de 6h, pas une journee complete. Les fenetres `soir` suivent le contrat
+  demi-ouvert 18:00 -> 00:00 locale.
 - [x] Valider duree/sejour/reprise multi-tour.
   Resultat: `met`. Un evenement synthetique multi-jours est cree, lu, repris
-  au tour suivant pour la duree, puis supprime dans le meme run.
+  au tour suivant pour la duree, puis supprime dans le meme run. Le tour de
+  duree est une reprise conversationnelle depuis la plage visible deja rendue:
+  il ne doit pas etre presente comme une nouvelle lecture Agenda.
 - [x] Valider l'aide/perimetre operateur.
   Resultat: `met`. Les surfaces dediees expliquent lecture, recherche,
   propositions, confirmations, refus et capacites non livrees sans jargon
   sensible.
+- [x] Fermer les bords de cloture V1.
+  Preuve livree: lecture calendrier explicitement scopee fail-closed si l'id
+  local n'est pas resolu, lecture generale non scopee conserve son fallback
+  tous calendriers, et fenetres `soir` en intervalles demi-ouverts.
 - [x] Garder Lot 9 ferme.
 
 Capacites volontairement laissees ouvertes apres cloture pragmatique V1:

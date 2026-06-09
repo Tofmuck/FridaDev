@@ -49,6 +49,13 @@ est donc utilisable au quotidien; il ne faut pas continuer a parcourir les 25
 familles sans bug reel, besoin utilisateur concret ou decision explicite de
 nouvelle capacite.
 
+Precision de cloture V1: la preuve duree/sejour du second tour est une reprise
+conversationnelle depuis la plage visible deja rendue, pas une nouvelle lecture
+Agenda. Les lectures calendrier explicitement scopees sont fail-closed si l'id
+calendrier local n'est pas resolu; seules les lectures generales sans scope
+peuvent ignorer un `calendar_id` modele et lire les calendriers accessibles. Les
+fenetres `soir` sont bornees en intervalle demi-ouvert 18:00 -> 00:00 locale.
+
 Ce qui reste volontairement ouvert: disponibilites riches, comparaison de
 journees ou d'evenements, resume de journee riche, evenements recurrents
 complexes en usage produit, rappels/notifications, participants/invitations et
@@ -101,8 +108,8 @@ quatre familles proches de l'usage quotidien reel.
 | Famille ciblee | Verdict | Preuve | Interpretation produit |
 |---|---|---|---|
 | Date explicite | met | `read_explicit_date` execute CalDAV/Nextcloud read-only et produit un final lock normal | Capacite convaincante pour V1 |
-| Sous-fenetres vernaculaires | met | deux cas simples prouvent des fenetres horaires bornees de 6h | Matin/soir simples utilisables; autres variantes a traiter au besoin |
-| Duree/sejour/reprise multi-tour | met | evenement synthetique multi-jours cree, lu, repris au tour suivant, puis supprime | Reprise V1 convaincante sans contenu personnel |
+| Sous-fenetres vernaculaires | met | deux cas simples prouvent des fenetres horaires bornees de 6h | Matin/soir simples utilisables; soir = 18:00 -> 00:00 locale exclusive; autres variantes a traiter au besoin |
+| Duree/sejour/reprise multi-tour | met | evenement synthetique multi-jours cree, lu, puis repris au tour suivant depuis le contexte visible avant suppression | Reprise V1 convaincante sans contenu personnel; pas une seconde lecture Agenda |
 | Aide/perimetre operateur | met | surface dediee pour capacites, confirmations et refus | Aide utilisateur V1 suffisante, sans promesse excessive |
 
 ## 3. Carte des familles de questions
@@ -117,8 +124,8 @@ quatre familles proches de l'usage quotidien reel.
 | Chercher par mot, personne ou lieu dans une fenetre | `Cherche les rendez-vous avec [personne].`<br>`Tu vois quelque chose a propos de [mot-cle] ?`<br>`J'ai un rendez-vous a [lieu] cette semaine ?` | oui | partielle | `search_events` -> `event_query_range` puis `event_search` local | Depend d'une fenetre fournie par l'agent; pas une recherche future progressive | Smokes search par formulations |
 | Trouver le prochain evenement correspondant a X | `Quand est mon prochain rendez-vous avec [personne] ?`<br>`Quand est-ce que je vois [personne] ?`<br>`C'est quand mon prochain evenement contenant [mot-cle] ?` | oui | oui | `find_next_matching_event` -> fenetres futures 31 jours, horizon 365 jours, arret au premier match | Match textuel simple; horizon fixe; pas de semantique avancee | Variantes vernaculaires anonymisees |
 | Obtenir les details d'un evenement deja identifie | `Ouvre ce rendez-vous.`<br>`Tu peux me donner les details de cet evenement ?`<br>`C'est ou, ce rendez-vous ?` | partiel | partielle | `event_details` -> `event_get` sur id local deja connu | Reprise multi-tour vers la bonne cible a prouver en conversation reelle | Lot reprise details |
-| Demander la duree d'un evenement ou sejour | `Combien de temps dure ce rendez-vous ?`<br>`Combien de temps j'y reste ?`<br>`Mon sejour a [lieu], c'est du quand au quand ?` | oui | oui | Contexte visible apres rendu plage, ou relecture details | Prouve avec evenement synthetique multi-jours et reprise au tour suivant; pas de contenu personnel conserve | Rouvrir sur bug reel ou besoin de durees plus riches |
-| Demander les evenements d'un calendrier precis | `Qu'est-ce qu'il y a dans le calendrier famille ?`<br>`Lis seulement mon calendrier perso.`<br>`Montre-moi le calendrier [type].` | partiel | non | `calendar_scope.calendar_ids` + `event_query_range` | Selection vernaculaire du calendrier et classification a prouver | Smoke calendar-scope content-free |
+| Demander la duree d'un evenement ou sejour | `Combien de temps dure ce rendez-vous ?`<br>`Combien de temps j'y reste ?`<br>`Mon sejour a [lieu], c'est du quand au quand ?` | oui | oui | Contexte visible apres rendu plage, ou relecture details | Prouve avec evenement synthetique multi-jours et reprise contextuelle au tour suivant; pas de nouvelle lecture Agenda au second tour | Rouvrir sur bug reel ou besoin de durees plus riches |
+| Demander les evenements d'un calendrier precis | `Qu'est-ce qu'il y a dans le calendrier famille ?`<br>`Lis seulement mon calendrier perso.`<br>`Montre-moi le calendrier [type].` | partiel | non | `calendar_scope.calendar_ids` + `event_query_range` | Selection vernaculaire du calendrier et classification a prouver; scope explicite fail-closed si id local non resolu | Smoke calendar-scope content-free |
 | Demander les evenements du calendrier familial/partage | `Qu'est-ce qu'il y a dans le calendrier familial ?`<br>`On a quoi dans le calendrier partage ?`<br>`Regarde le calendrier de la famille.` | partiel | partielle | Read-only via calendrier cible; mutations fail-closed via policy familiale | Protection mutation prouvee; lecture ciblee famille non prouvee live | Smoke read-only calendrier familial |
 | Demander disponibilites ou creneaux libres | `J'ai un trou demain ?`<br>`Quand est-ce que je suis libre cette semaine ?`<br>`Trouve-moi un creneau d'une heure.` | partiel | non | `find_availability` declare; lecture d'evenements possible | La derivation de creneaux libres n'est pas livree comme vraie capacite riche | Lot disponibilites |
 | Resumer une journee | `Resume ma journee.`<br>`Dis-moi si ma journee est chargee.`<br>`Fais-moi le point sur demain.` | partiel | non | `summarize_day` declare; lecture de fenetre possible | Synthese qualitative non prouvee au-dela d'une liste courte | Lot resume journee |
@@ -366,13 +373,13 @@ quatre familles proches de l'usage quotidien reel.
 
 ## 6. Gaps produit
 
-- Sous-fenetres vernaculaires: matin/apres-midi/soir doivent etre validees comme
-  fenetres canoniques et non inferees au hasard.
+- Sous-fenetres vernaculaires: les variantes simples matin/soir sont validees;
+  les variantes plus fines restent a rouvrir seulement sur bug reel.
 - Dates explicites et periodes: le chemin existe, mais il faut des smokes dedies
   pour les dates relatives hors today/tomorrow et les semaines.
-- Duree/sejour: le rendu multi-jours existe, mais il faut prouver que l'agent
-  route les questions de duree vers le bon contexte ou vers une relecture
-  details.
+- Duree/sejour: la reprise V1 est prouvee comme reprise contextuelle depuis la
+  plage visible; une relecture Agenda dediee de duree/details reste a rouvrir
+  seulement si un cas concret l'exige.
 - Disponibilites: methode declaree, mais derivation produit et preuves
   insuffisantes.
 - Comparaison de journees/evenements: aucune methode dediee, vraie capacite

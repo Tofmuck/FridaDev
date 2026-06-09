@@ -31,6 +31,7 @@ REASON_NO_TOOL_CALLS = 'agenda_readonly_no_tool_calls'
 REASON_CLIENT_UNAVAILABLE = 'agenda_readonly_client_unavailable'
 REASON_TOOL_ERROR = 'agenda_readonly_tool_error'
 REASON_TOOL_UNSUPPORTED = 'agenda_readonly_tool_unsupported'
+REASON_CALENDAR_SCOPE_UNRESOLVED = 'agenda_readonly_calendar_scope_unresolved'
 
 
 def plan_needs_read_client(plan: agent_contract.AgendaAgentPlan) -> bool:
@@ -247,6 +248,8 @@ def _query_range_for_call(
             timezone_name=timezone_name,
             max_days=max_days,
         )
+    if _plan_has_explicit_calendar_scope(plan):
+        raise _read_tool_validation_error(REASON_CALENDAR_SCOPE_UNRESOLVED)
 
     observations = []
     events: list[CalendarEvent] = []
@@ -268,6 +271,10 @@ def _query_range_for_call(
         items=merged_events,
         observation=_merge_observations('event_query_range', observations),
     )
+
+
+def _plan_has_explicit_calendar_scope(plan: agent_contract.AgendaAgentPlan) -> bool:
+    return any(str(item or '').strip() for item in (plan.calendar_scope.get('calendar_ids') or ()))
 
 
 def _ensure_search_pool(
@@ -348,3 +355,9 @@ def _merge_observations(tool_name: str, observations: list[Mapping[str, Any]]) -
         'content_free': True,
         'redacted': True,
     }
+
+
+def _read_tool_validation_error(reason_code: str) -> ReadToolValidationError:
+    error = ReadToolValidationError(str(reason_code or REASON_TOOL_ERROR))
+    error.reason_code = str(reason_code or REASON_TOOL_ERROR)
+    return error
