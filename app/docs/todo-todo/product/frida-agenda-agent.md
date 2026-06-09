@@ -767,9 +767,9 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   les prochains trous produit.
   Preuve livree: Lot 8ter docs-only,
   `app/docs/states/audits/frida-agenda-question-cartography-2026-06-09.md`.
-  La cartographie classe les familles comme livrees, partielles,
-  presentes-non-prouvees, refusees par design, manquantes ou hors code. Aucun
-  Lot 9 n'est ouvert.
+  La cartographie separe `Disponible utilisateur` de `Preuve conservee` afin
+  de ne plus confondre capacite tentable et preuve formelle. Aucun Lot 9 n'est
+  ouvert.
 
 ### Lot 8ter - Cartographie des questions Agenda
 
@@ -778,11 +778,15 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   `app/docs/states/audits/frida-agenda-question-cartography-2026-06-09.md`.
 - [x] Distinguer ce qui marche, ce qui est partiel, ce qui est seulement au
   contrat, ce qui est refuse par design et ce qui manque.
-  Preuve livree: table de familles avec statut produit, preuve actuelle,
-  limites connues et prochain lot recommande.
+  Preuve livree: table de familles avec disponibilite utilisateur, preuve
+  conservee, chemin technique, limite connue et prochain test utile.
 - [x] Lister des formulations anonymisees pour les prochains smokes.
   Preuve livree: exemples par famille sans contenu personnel d'agenda, sans
   lecture CalDAV live et sans mutation.
+- [x] Ajouter les familles qui ne doivent pas etre vendues implicitement.
+  Preuve livree: sous-fenetres vernaculaires, rappels/notifications/alarmes,
+  participants/invitations, recurrences/occurrences et perimetre operateur sont
+  cartographies avec limites explicites.
 - [x] Garder Lot 9 ferme.
   Preuve livree: la cartographie propose des validations futures sans les
   lancer ni les nommer comme Lot 9 actif.

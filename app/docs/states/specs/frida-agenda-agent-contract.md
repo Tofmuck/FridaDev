@@ -19,7 +19,7 @@ read-only `find_next_matching_event` pour le prochain evenement futur
 correspondant a une requete textuelle. Lot 8bis.1 rend le fallback live Agenda
 agentique via `surface_error` et transmet `user_display_name=Tof` au contexte
 d'enonciation agent. Lot 8bis.2 rend les surfaces read-only coherentes avec le
-resultat et affiche les all-day multi-jours comme des plages avec duree. Les
+resultat et affiche les all-day multi-jours comme des plages avec duree.
 Lot 8ter ajoute une cartographie docs-only des familles de questions Agenda
 pour guider les validations futures sans ouvrir Lot 9. Les updates live et
 mutations utilisateur reelles restent hors scope.
@@ -1020,10 +1020,15 @@ Lot 8ter livre uniquement une cartographie documentaire:
 
 - audit source:
   `app/docs/states/audits/frida-agenda-question-cartography-2026-06-09.md`;
-- familles classees avec exemples vernaculaires anonymises, statut produit,
-  chemin technique, preuve actuelle, limites connues et prochain lot recommande;
-- statuts de verite: livre prouve, livre partiel, contrat present non prouve,
-  refuse par design, manquant ou administration hors code;
+- familles classees avec exemples vernaculaires anonymises, disponibilite
+  utilisateur, preuve conservee, chemin technique, limite connue et prochain
+  test utile;
+- `Disponible utilisateur` et `Preuve conservee` sont deux axes separes:
+  une question peut etre tentable par l'utilisateur sans avoir encore un smoke
+  dedie, et une absence de preuve conservee ne signifie pas absence de capacite;
+- familles explicites ajoutees pour eviter les promesses implicites:
+  sous-fenetres vernaculaires, rappels/notifications/alarmes,
+  participants/invitations, recurrences/occurrences et perimetre operateur;
 - la cartographie ne cree aucune capacite runtime, ne lance aucun smoke live, ne
   lit aucun calendrier et ne modifie pas le perimetre CalDAV;
 - Lot 9 reste ferme: les validations futures proposees sont des pistes de
