@@ -135,7 +135,8 @@ Etat issu du rapport plateforme du 2026-06-07 et du contexte produit courant:
 
 - Nextcloud est le socle prioritaire;
 - Calendar est installe et active;
-- CalDAV fonctionne cote serveur via `/remote.php/dav/`;
+- CalDAV fonctionne cote serveur via l'endpoint DAV Nextcloud, sans exposer de
+  chemin DAV brut dans les preuves;
 - le bypass DAV est borne aux routes DAV necessaires et l'interface web reste
   derriere Authelia;
 - les clients doivent utiliser des app-passwords Nextcloud nommes, dedies et
@@ -426,8 +427,8 @@ Regles:
   `DTSTAMP`, `CREATED`, `LAST-MODIFIED`, `SEQUENCE`, `STATUS`, `TRANSP`,
   `CATEGORIES`, `CLASS`, `PRIORITY`) sont interdites dans les params agent;
 - `calendar_id` et `event_id` sont des identifiants locaux courts, jamais une
-  URL complete, un chemin `/remote.php/dav/...`, un UID/e-mail brut, un ETag ou
-  une valeur contenant un secret; `event_id` refuse aussi les formes UID-like
+  URL complete, un chemin DAV brut, un UID/e-mail brut, un ETag ou une valeur
+  contenant un secret; `event_id` refuse aussi les formes UID-like
   `uid:*`, `UID:*` et `uid=*`;
 - `query`, `start`, `end` et `timezone` restent bornes par type et forme:
   aucun payload ICS, URL/path CalDAV, Authorization, cookie, token,
@@ -888,8 +889,8 @@ Lot 8A livre une premiere surface admin content-free:
 - route: `GET /api/admin/agenda/observability`;
 - source runtime: evenements `observability.chat_log_events` filtres
   `stage=agenda`, sans lecture Nextcloud ni DB Nextcloud;
-- source testable: metas conversationnelles Agenda deja persistees comme
-  messages assistant normaux;
+- source testable hors route: metas conversationnelles Agenda deja persistees
+  comme messages assistant normaux;
 - schemas projetes: read-only, propositions/pending, confirmations/write fake
   ou synthetiques, et erreurs content-free;
 - pending actions exposees seulement par id, hash, operation, statut,
@@ -901,9 +902,34 @@ Lot 8A livre une premiere surface admin content-free:
   ICS brut, Authorization, cookie, token, app-password, prompt brut ou dialogue
   brut.
 
-Lot 8A ne ferme pas les smokes live anonymises, le scan global des logs ni la
-validation conversation reelle anonymisee. Ces preuves restent a livrer dans un
-Lot 8B separe.
+La route runtime Lot 8A ne projette pas une conversation courante: elle expose
+uniquement les evenements `stage=agenda`. La projection conversationnelle reste
+un helper teste pour prouver que les metas Agenda peuvent etre reduites sans
+contenu brut, pas une vue admin conversationnelle.
+
+### 14.2 Smokes live anonymises Lot 8B
+
+Preuve conservee:
+
+- artefact:
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-lot8b-live-observability-20260609T142458Z.jsonl`;
+- smokes serveur realises via FridaDev, sans iOS/macOS:
+  `read_today`, `read_tomorrow`, `search_events`, route admin observability et
+  tour de contexte suivant;
+- runtime redacted: mode `active`, compte `tof` prouve par hash, secret
+  configure uniquement comme booleen;
+- conversation reelle anonymisee: assistant sauvegarde comme message normal,
+  timestamp present, contexte precedent repris, Delta-T detecte;
+- tentative optionnelle de proposition sans ecriture: `partial`, non utilisee
+  pour fermer le Lot 8B;
+- aucun live write, aucune mutation utilisateur, aucune DB Nextcloud;
+- artefact, sortie admin observability et logs applicatifs `stage=agenda`
+  scannes contre les familles interdites; preuves conservees sans titre, lieu,
+  description, invite, UID brut, ETag brut, path/URL CalDAV brut, ICS brut,
+  Authorization, cookie, token, app-password, prompt brut ou dialogue brut.
+
+Lot 8B ferme les smokes live anonymises et le scan content-free du read-model
+Agenda. Il ne ferme pas Lot 9 et n'autorise pas de mutation utilisateur reelle.
 
 ## 15. Invariants securite
 

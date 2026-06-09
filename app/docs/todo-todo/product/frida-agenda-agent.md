@@ -72,7 +72,8 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   `/opt/platform/_codex_reports/nextcloud-frida-agenda-mail-roadmap-20260607T103442Z.md`.
 - [x] Nextcloud est le socle prioritaire pour Agenda/Mail/Files.
 - [x] Calendar est installe et active.
-- [x] CalDAV fonctionne via `/remote.php/dav/`.
+- [x] CalDAV fonctionne via l'endpoint DAV serveur, sans exposer de chemin DAV
+  brut dans les preuves.
 - [x] Le bypass DAV est borne aux routes DAV necessaires; l'interface web reste
   derriere Authelia.
 - [x] Les clients natifs doivent utiliser des app-passwords nommes, dedies et
@@ -675,14 +676,32 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   `frida_agenda_write_execution_v1` en read-model content-free.
 - [x] Dashboard/read-model sans contenu Agenda brut.
   Preuve livree: route admin `GET /api/admin/agenda/observability`,
-  projection des evenements `stage=agenda` et des metas conversationnelles,
-  pending actions exposees uniquement par id/hash/statut/expiration/flags,
-  tests anti-fuite sur titre, lieu, description, UID, ETag, path CalDAV,
-  raw ICS, Authorization, cookie, token et app-password synthetiques.
-- [ ] JSONL content-free.
-- [ ] Smokes serveur sans iOS/macOS.
-- [ ] Scan secrets/logs.
-- [ ] Validation conversation reelle anonymisee.
+  projection runtime des evenements `stage=agenda`; la projection des metas
+  conversationnelles existe comme helper teste, non exposee par la route
+  runtime Lot 8A. Pending actions exposees uniquement par
+  id/hash/statut/expiration/flags, tests anti-fuite sur titre, lieu,
+  description, UID, ETag, path CalDAV, raw ICS, Authorization, cookie, token
+  et app-password synthetiques.
+- [x] JSONL content-free.
+  Preuve livree: artefact
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-lot8b-live-observability-20260609T142458Z.jsonl`,
+  toutes les lignes `content_free=true`, aucune reponse brute, aucun prompt
+  brut, seulement statuts, reason codes, counts, hashes et booleens.
+- [x] Smokes serveur sans iOS/macOS.
+  Preuve livree: Lot 8B lance cote serveur FridaDev via `app.test_client()`:
+  runtime redacted active, `read_today`, `read_tomorrow`, `search_events`,
+  route admin observability et tour de contexte; aucun client macOS/iOS
+  implique. La tentative optionnelle de proposition sans ecriture est
+  `partial` et n'est pas utilisee pour fermer le lot.
+- [x] Scan secrets/logs.
+  Preuve livree: scan Lot 8B de l'artefact JSONL, de la sortie admin
+  observability et des logs applicatifs `stage=agenda`; aucun contenu Agenda
+  brut, secret, token, cookie, Authorization, UID/ETag brut, path/URL CalDAV ou
+  raw ICS detecte dans les preuves conservees.
+- [x] Validation conversation reelle anonymisee.
+  Preuve livree: vraie conversation Frida Agenda avec toggle on, assistant
+  sauvegarde comme message normal, timestamps presents, reprise de contexte et
+  Delta-T detectes sans stocker de dialogue brut dans l'artefact.
 
 ## Auto-audit permanent
 
