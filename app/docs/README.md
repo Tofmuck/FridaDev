@@ -32,6 +32,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat agent Agenda Frida 2026-06-08: `states/specs/frida-agenda-agent-contract.md`
 - TODO produit agent Agenda Frida 2026-06-08: `todo-todo/product/frida-agenda-agent.md`
 - Cartographie des questions Agenda 2026-06-09: `states/audits/frida-agenda-question-cartography-2026-06-09.md`
+- Cloture pragmatique Agenda V1 2026-06-09: `states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
 - Baseline Lot 0 agent Agenda Frida 2026-06-08: `states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 - Fixtures anonymes Lot 0 agent Agenda Frida 2026-06-08: `states/baselines/agenda-fixtures/`
 - Audit Biblio / Catalogue et architecture agent bibliothecaire 2026-05-31: `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
@@ -213,6 +214,7 @@ Lire d'abord:
 - `states/specs/frida-agenda-agent-contract.md` pour le contrat cible du futur agent Agenda: toggle `agenda_enabled`, agent borne, methodes produit, outils CalDAV, confirmations humaines, pending store temporaire, observabilite content-free et invariants securite.
 - `todo-todo/product/frida-agenda-agent.md` pour la TODO produit active et cochable: familles lecture, clarification, proposition, ecriture confirmee, contexte/memoire et lots runtime futurs.
 - `states/audits/frida-agenda-question-cartography-2026-06-09.md` pour la cartographie des familles de questions: disponibilite utilisateur, preuve conservee, limites et prochains tests utiles.
+- `states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md` pour la cloture pragmatique V1: capacites prouvees, limites post-V1 et regle de reouverture par bug reel ou besoin concret.
 - `states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md` et `states/baselines/agenda-fixtures/` pour la baseline Lot 0, les fixtures CalDAV anonymes locales et la preuve content-free attendue.
 - `states/specs/agentic-response-surface-contract.md` pour conserver le principe "Frida parle, l'agent travaille, le deterministe protege" sans canal visible parallele.
 - `states/specs/frida-biblio-librarian-agent-contract.md` pour le modele voisin: toggle utilisateur separe du mode runtime agent, schema JSON, product methods, tools allowlistes et fallback deterministe.

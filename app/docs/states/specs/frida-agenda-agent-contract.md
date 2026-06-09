@@ -4,6 +4,7 @@ Statut: spec vivante
 Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
+Cloture V1: `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
 Portee: contrat cible du futur agent Agenda Frida. Lots 1-7D.1 livrent toggle
 no-op, configuration redacted, outils read-only, agent JSON valide,
 branchement applicatif read-only et preuve CalDAV live content-free. Les
@@ -32,6 +33,12 @@ d'elargir a tous les calendriers; un `calendar_id` resolu mais hors du scope
 declare est refuse aussi. Les fenetres `soir` sont des intervalles demi-ouverts
 18:00 -> 00:00 locale. Le garde-fou de scope calendrier couvre aussi la
 recherche future `find_next_matching_event`.
+
+Note normative de cloture: la note
+`app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
+declare Agenda V1 cloture pragmatiquement pour les usages prouves, garde Lot 9
+ferme et limite toute suite a un micro-lot motive par bug reel, besoin concret
+ou decision explicite.
 
 Sources:
 
@@ -1070,6 +1077,8 @@ Verdict normatif:
 - la seule mutation observee est une creation synthetique temporaire pour
   prouver duree/sejour/reprise, supprimee par rollback dans le meme run;
 - une cloture pragmatique globale Agenda V1 est declaree;
+- la note de cloture normative est conservee sous
+  `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`;
 - Lot 9 reste ferme.
 
 Resultats prouves:

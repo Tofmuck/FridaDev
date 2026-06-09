@@ -4,6 +4,7 @@ Statut: TODO actif au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
+Cloture V1: `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
 Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-7D.1 livrent
 toggle no-op, configuration redacted, outils read-only, agent JSON valide sous
 garde-fous, branchement applicatif read-only et preuve CalDAV live content-free,
@@ -30,6 +31,12 @@ les calendriers si `calendar_scope.calendar_ids` porte une cible explicite; le
 peut encore ignorer un id invente par le modele. Les fenetres `soir` sont
 desormais demi-ouvertes de 18:00 a minuit local. Le meme garde-fou de scope
 calendrier s'applique aussi a `find_next_matching_event`.
+
+Note de cloture: la source de reference de l'etat V1 est desormais
+`app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`.
+Cette cloture est documentaire: elle ne lance aucun Lot 9, ne promet pas la
+couverture exhaustive des familles Agenda et limite les suites aux bugs reels,
+besoins utilisateur concrets ou decisions explicites de nouvelle capacite.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -819,6 +826,11 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Resultat: les 4 familles ciblees sont `met`; Agenda V1 est utilisable au
   quotidien. Ne pas continuer a tester les 25 familles sans bug reel, besoin
   utilisateur concret ou decision explicite de nouvelle capacite.
+- [x] Formaliser la cloture pragmatique Agenda V1 docs-only.
+  Preuve livree:
+  `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`.
+  La note fige les capacites prouvees, les limites post-V1 et la regle de
+  reouverture par micro-lot cible. Aucun Lot 9 n'est ouvert.
 - [x] Valider la date explicite comme famille convaincante.
   Resultat: `met`. `read_explicit_date` execute CalDAV/Nextcloud read-only et
   verrouille une reponse Frida normale.

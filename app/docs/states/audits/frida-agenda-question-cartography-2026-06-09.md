@@ -7,6 +7,7 @@ Commit source lu initialement: `2d2e78c docs: map Agenda user question families`
 Smokes cibles lus: `8298f7f docs: clarify Agenda question cartography status`
 Scope initial: docs-only. Mise a jour: reference les smokes cibles
 content-free du 2026-06-09, sans mutation et sans contenu agenda personnel.
+Cloture V1: `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
 
 ## 1. Resume executif
 
@@ -48,6 +49,13 @@ simples, duree/sejour/reprise multi-tour et aide/perimetre operateur. Agenda V1
 est donc utilisable au quotidien; il ne faut pas continuer a parcourir les 25
 familles sans bug reel, besoin utilisateur concret ou decision explicite de
 nouvelle capacite.
+
+La note
+`app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
+est la source de cloture pragmatique: elle resume les capacites prouvees, les
+limites assumees et la regle de reouverture par micro-lot cible. Cette
+cartographie reste une carte des familles, pas une injonction a tester toutes
+les lignes.
 
 Precision de cloture V1: la preuve duree/sejour du second tour est une reprise
 conversationnelle depuis la plage visible deja rendue, pas une nouvelle lecture
@@ -407,7 +415,9 @@ quatre familles proches de l'usage quotidien reel.
 
 Ne pas lancer une campagne sur les 25 familles apres la cloture pragmatique V1.
 Rouvrir seulement sur bug reel, besoin utilisateur concret ou decision explicite
-de nouvelle capacite. Les lots futurs recommandes, si decides, sont:
+de nouvelle capacite. La note de cloture V1
+`app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
+fait reference pour cette regle. Les lots futurs recommandes, si decides, sont:
 
 - Lot A: disponibilites et creneaux libres, avec fenetres bornees et refus des
   demandes trop larges.
