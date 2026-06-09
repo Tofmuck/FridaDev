@@ -4,13 +4,13 @@ Statut: TODO actif au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
-Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-7D livrent
+Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-7D.1 livrent
 toggle no-op, configuration redacted, outils read-only, agent JSON valide sous
 garde-fous, branchement applicatif read-only et preuve CalDAV live content-free,
 propositions/pending store temporaire, confirmations fake Lot 7A et preuve live
 write synthetique bornee Lot 7B, puis verrou calendrier familial Lot 7C avant
 mutations utilisateur reelles, et update confirme fake/local avec preservation
-de l'ICS source Lot 7D.
+de l'ICS source Lot 7D/7D.1 sur VEVENT simple non recurrent.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -370,8 +370,10 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] `event_update_confirmed`.
   Preuve livree: Lot 7D non-live fake/local, update depuis pending draft prive
   + ETag + path CalDAV prive + ICS source, `PUT` fake avec `If-Match`,
-  preservation UID/proprietes inconnues/alarmes/participants/recurrence et
-  conflit `412` content-free; aucun live write utilisateur.
+  preservation UID/proprietes inconnues/alarmes/participants sur VEVENT simple,
+  refus fail-closed des ICS multi-VEVENT, recurrences ou overrides
+  `RECURRENCE-ID`, refus des updates no-op, conflit `412` content-free; aucun
+  live write utilisateur.
 - [x] `event_delete_confirmed`.
   Preuve livree: Lot 7A non-live, CalDAV `DELETE` fake seulement apres
   confirmation renforcee avec ETag obligatoire; Lot 7B rollback live
@@ -628,8 +630,13 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Lot 7D non-live: modification apres confirmation.
   Preuve livree: pending draft prive avec cible verifiee, ETag obligatoire,
   path CalDAV prive, ICS source disponible, patch preservant UID/proprietes
-  inconnues/alarmes/participants/recurrence, `PUT` fake avec `If-Match`,
-  conflit `412` content-free; aucun live write utilisateur.
+  inconnues/alarmes/participants sur VEVENT simple, `PUT` fake avec
+  `If-Match`, conflit `412` content-free; aucun live write utilisateur.
+- [x] Lot 7D.1 non-live: update ICS ambigu et no-op fermes.
+  Preuve livree: `change_summary` seul n'est pas un changement executable,
+  l'ICS identique est refusee avant `PUT`, et les ICS multi-VEVENT,
+  recurrentes ou avec override `RECURRENCE-ID` sont fail-closed avec raison
+  content-free tant qu'une selection fiable du composant ICS n'est pas livree.
 - [x] Lot 7A non-live: suppression apres confirmation renforcee.
   Preuve livree: pending draft prive avec cible verifiee, `DELETE` fake
   transport, ETag obligatoire, confirmation renforcee obligatoire, aucune

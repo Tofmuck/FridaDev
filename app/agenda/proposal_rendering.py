@@ -83,6 +83,16 @@ def render_proposal_answer(
             "Je ne peux pas encore modifier cet evenement sans risquer de perdre des details du calendrier. "
             "Je n'ai rien modifie dans ton agenda."
         )
+    if reason == write_execution.REASON_WRITE_ICS_COMPONENT_AMBIGUOUS:
+        return (
+            "Cet evenement contient une structure de recurrence que je ne peux pas encore modifier sans risque. "
+            "Je n'ai rien modifie dans ton agenda."
+        )
+    if reason == write_execution.REASON_WRITE_ICS_NOOP:
+        return (
+            "Cette confirmation ne contient pas de changement executable. "
+            "Je n'ai rien modifie dans ton agenda."
+        )
     if reason == write_execution.REASON_WRITE_ICS_SOURCE_MISSING:
         return (
             "Je n'ai plus la version source verifiee de cet evenement. "

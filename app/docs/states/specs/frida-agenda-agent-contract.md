@@ -4,7 +4,7 @@ Statut: spec vivante
 Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
-Portee: contrat cible du futur agent Agenda Frida. Lots 1-7D livrent toggle
+Portee: contrat cible du futur agent Agenda Frida. Lots 1-7D.1 livrent toggle
 no-op, configuration redacted, outils read-only, agent JSON valide,
 branchement applicatif read-only et preuve CalDAV live content-free. Les
 propositions Agenda creent des pending actions temporaires; Lot 7A livre les
@@ -12,8 +12,9 @@ mutations confirmees uniquement avec fake transport; Lot 7B prouve uniquement
 une creation live synthetique et son rollback delete sur la meme cible
 synthetique avec GO humain explicite. Lot 7C/7C.1 verrouille les calendriers
 familiaux ou non classifies; Lot 7D livre l'update confirme fake/local avec
-preservation de l'ICS source. Les updates live et mutations utilisateur reelles
-restent hors scope.
+preservation de l'ICS source sur VEVENT simple non recurrent; Lot 7D.1 ferme
+les updates no-op et les ICS multi-VEVENT/recurrentes/overrides en fail-closed.
+Les updates live et mutations utilisateur reelles restent hors scope.
 
 Sources:
 
@@ -642,7 +643,8 @@ Mutation:
   exige confirmation renforcee;
 - modification est livree en fake/local seulement si le draft prive, la cible
   verifiee, l'ETag, le path CalDAV prive et l'ICS source sont presents; le
-  patch preserve le VEVENT source et ne reconstruit pas depuis le dialogue;
+  patch preserve un VEVENT source simple non recurrent et ne reconstruit pas
+  depuis le dialogue;
 - suppression exige confirmation renforcee;
 - calendrier familial exige prudence renforcee, risk flag `family_calendar`,
   detection depuis JSON agent ou calendrier lu quand disponible, et confirmation
@@ -685,7 +687,11 @@ Lot 7A execute une confirmation uniquement depuis le pending draft prive et
 avec client CalDAV write injecte/fake. Lot 7A.1 durcit le preflight avant tout
 live write: update/delete exigent une cible technique avec ETag verifie. Lot 7D
 ouvre `confirm_update_event` en fake/local seulement quand l'ICS source est
-disponible et preservable. Relire uniquement le dialogue pour reconstruire une
+disponible et preservable. Lot 7D.1 precise que `change_summary` seul n'est pas
+un changement executable, qu'un patch ICS identique a la source est refuse avant
+`PUT`, et que les ICS multi-VEVENT, recurrentes ou avec override
+`RECURRENCE-ID` restent fail-closed tant qu'une selection fiable du composant
+ICS n'est pas livree. Relire uniquement le dialogue pour reconstruire une
 mutation reste interdit.
 
 Preuve Lot 6:
@@ -718,8 +724,14 @@ Preuve Lot 6:
   pending action en `executed`;
 - Lot 7D: `confirm_update_event` utilise la cible verifiee du draft prive,
   exige ETag, path CalDAV prive et ICS source, puis applique un patch cible sur
-  le VEVENT source; UID, proprietes inconnues, alarmes, participants, recurrence
-  et metadonnees non touchees doivent etre preserves autant que possible;
+  le VEVENT source simple; UID, proprietes inconnues, alarmes, participants et
+  metadonnees non touchees doivent etre preserves autant que possible;
+- Lot 7D.1: les ICS multi-VEVENT, les evenements recurrents (`RRULE`, `RDATE`,
+  `EXDATE`) et les overrides `RECURRENCE-ID` sont refuses avant `PUT` avec une
+  raison content-free; aucun patch silencieux du premier VEVENT n'est autorise;
+- Lot 7D.1: `change_summary` seul ne permet pas de creer une pending action
+  update executable; les drafts legacy sans champ patchable concret et les
+  patchs identiques a l'ICS source sont refuses avant `PUT`;
 - Lot 7D: si l'ICS source manque ou ne peut pas etre preservee, l'update est
   refuse avant `PUT` avec une raison content-free; aucun update n'est reconstruit
   depuis le dialogue ou depuis un VEVENT minimal;

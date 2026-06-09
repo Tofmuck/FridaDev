@@ -783,6 +783,48 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('fixture-event-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
 
+    def test_propose_update_with_only_change_summary_is_rejected_before_pending_action(self) -> None:
+        draft = _empty_draft()
+        draft['change_summary'] = 'Fixture summary only'
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
+                operation='update',
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': 'event-1'},
+                        'call_id': 'target-1',
+                    }
+                ],
+                draft=draft,
+            )
+        )
+        read_client = _FakeReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Modifie ce rendez-vous',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+            pending_id_factory=lambda: 'agenda-pending-update-summary-only',
+        )
+
+        self.assertEqual(result.status, agent_runtime.STATUS_FALLBACK)
+        self.assertEqual(result.reason_code, agent_contract.REASON_DRAFT_INVALID)
+        self.assertFalse(result.used)
+        self.assertEqual(read_client.calls, [])
+        self.assertEqual(result.pending_state.actions, ())
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture summary only', encoded_payload)
+
     def test_propose_update_runtime_caldav_fake_transport_verifies_target_before_pending_action(self) -> None:
         event_id = _live_fixture_event_id()
         fake_model = _FakeModelClient(
@@ -1556,7 +1598,6 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertIn('DESCRIPTION:Fixture Updated Description', body)
         self.assertIn('BEGIN:VALARM', body)
         self.assertIn('DESCRIPTION:Fixture alarm', body)
-        self.assertIn('RRULE:FREQ=WEEKLY;COUNT=2', body)
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
         self.assertNotIn('Fixture Updated Description', encoded_payload)
         self.assertNotIn('Fixture alarm', encoded_payload)
@@ -1643,6 +1684,171 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
         self.assertNotIn('BEGIN:VEVENT', encoded_payload)
         self.assertNotIn('fixture-event-001@example.invalid', encoded_payload)
+
+    def test_confirm_update_multivevent_source_refuses_before_put(self) -> None:
+        draft = _private_update_draft()
+        draft['target']['technical_ref']['source_ics'] = _MULTI_EVENT_SOURCE_UPDATE_ICS
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='update',
+            confirmation_level='simple',
+            draft=draft,
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-update-multivevent',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=204)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme la modification',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_UPDATE_EVENT,
+                    operation='update',
+                    pending_action_id='agenda-pending-update-multivevent',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(transport=transport),
+        )
+
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_ICS_COMPONENT_AMBIGUOUS)
+        self.assertEqual(transport.calls, [])
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('series@example.invalid', encoded_payload)
+        self.assertNotIn('BEGIN:VEVENT', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_confirm_update_recurring_source_refuses_before_put(self) -> None:
+        draft = _private_update_draft()
+        draft['target']['technical_ref']['source_ics'] = _RECURRING_SOURCE_UPDATE_ICS
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='update',
+            confirmation_level='simple',
+            draft=draft,
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-update-recurring',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=204)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme la modification',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_UPDATE_EVENT,
+                    operation='update',
+                    pending_action_id='agenda-pending-update-recurring',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(transport=transport),
+        )
+
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_ICS_COMPONENT_AMBIGUOUS)
+        self.assertEqual(transport.calls, [])
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        self.assertIn('recurrence', result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('RRULE', encoded_payload)
+        self.assertNotIn('fixture-event-001@example.invalid', encoded_payload)
+        self.assertNotIn('BEGIN:VEVENT', encoded_payload)
+
+    def test_confirm_update_override_source_refuses_before_put(self) -> None:
+        draft = _private_update_draft()
+        draft['target']['technical_ref']['source_ics'] = _OVERRIDE_SOURCE_UPDATE_ICS
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='update',
+            confirmation_level='simple',
+            draft=draft,
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-update-override',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=204)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme la modification',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_UPDATE_EVENT,
+                    operation='update',
+                    pending_action_id='agenda-pending-update-override',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(transport=transport),
+        )
+
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_ICS_COMPONENT_AMBIGUOUS)
+        self.assertEqual(transport.calls, [])
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('RECURRENCE-ID', encoded_payload)
+        self.assertNotIn('fixture-event-001@example.invalid', encoded_payload)
+
+    def test_confirm_update_legacy_change_summary_only_refuses_before_put(self) -> None:
+        draft = _private_update_draft()
+        draft['start'] = ''
+        draft['end'] = ''
+        draft['title'] = ''
+        draft['location'] = ''
+        draft['description'] = ''
+        draft['change_summary'] = 'Fixture change summary only'
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='update',
+            confirmation_level='simple',
+            draft=draft,
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-update-noop',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=204)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme la modification',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_UPDATE_EVENT,
+                    operation='update',
+                    pending_action_id='agenda-pending-update-noop',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(transport=transport),
+        )
+
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_ICS_NOOP)
+        self.assertEqual(transport.calls, [])
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        self.assertIn('changement executable', result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture change summary only', encoded_payload)
+        self.assertNotIn('BEGIN:VEVENT', encoded_payload)
 
     def test_confirm_update_conflict_is_content_free_and_keeps_pending_action(self) -> None:
         state, _action = pending_store.create_pending_action(
@@ -2504,7 +2710,6 @@ DTEND:20260608T080000Z
 SUMMARY:Fixture Focus Block
 LOCATION:Fixture Location Alpha
 DESCRIPTION:Fixture description\\, no personal data.
-RRULE:FREQ=WEEKLY;COUNT=2
 ATTENDEE;CN=Fixture Attendee:mailto:fixture-attendee@example.invalid
 X-FRIDA-KEEP:preserve-me
 BEGIN:VALARM
@@ -2512,6 +2717,55 @@ ACTION:DISPLAY
 DESCRIPTION:Fixture alarm
 TRIGGER:-PT10M
 END:VALARM
+END:VEVENT
+END:VCALENDAR
+"""
+
+
+_RECURRING_SOURCE_UPDATE_ICS = """BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Fixture Agenda//EN
+BEGIN:VEVENT
+UID:fixture-event-001@example.invalid
+DTSTAMP:20260608T060000Z
+DTSTART:20260608T070000Z
+DTEND:20260608T080000Z
+SUMMARY:Fixture Focus Block
+RRULE:FREQ=WEEKLY;COUNT=2
+END:VEVENT
+END:VCALENDAR
+"""
+
+
+_OVERRIDE_SOURCE_UPDATE_ICS = """BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Fixture Agenda//EN
+BEGIN:VEVENT
+UID:fixture-event-001@example.invalid
+RECURRENCE-ID:20260610T070000Z
+DTSTART:20260610T090000Z
+DTEND:20260610T100000Z
+SUMMARY:Fixture Override Block
+END:VEVENT
+END:VCALENDAR
+"""
+
+
+_MULTI_EVENT_SOURCE_UPDATE_ICS = """BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:series@example.invalid
+DTSTART:20260609T070000Z
+DTEND:20260609T080000Z
+SUMMARY:Master
+RRULE:FREQ=DAILY;COUNT=2
+END:VEVENT
+BEGIN:VEVENT
+UID:series@example.invalid
+RECURRENCE-ID:20260610T070000Z
+DTSTART:20260610T090000Z
+DTEND:20260610T100000Z
+SUMMARY:Override
 END:VEVENT
 END:VCALENDAR
 """

@@ -679,6 +679,36 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertNotIn(raw_title, observed)
         self.assertNotIn('Fixture Room', observed)
 
+    def test_proposed_update_rejects_change_summary_without_patchable_change(self) -> None:
+        summary_only = _empty_draft()
+        summary_only['change_summary'] = 'Fixture summary only'
+        validation = contract.validate_agent_payload(
+            _valid_payload(
+                product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': 'event-1'},
+                        'call_id': 'target-1',
+                    }
+                ],
+                draft=summary_only,
+                mutation={
+                    'requested': False,
+                    'kind': 'update',
+                    'confirmation_required': True,
+                    'confirmation_level': 'simple',
+                    'pending_action_id': '',
+                },
+                answer_mode='proposal',
+            )
+        )
+
+        self.assertEqual(validation.status, contract.STATUS_REJECTED)
+        self.assertEqual(validation.reason_code, contract.REASON_DRAFT_INVALID)
+        self.assertNotIn('Fixture summary only', json.dumps(validation.to_observability(), sort_keys=True))
+
     def test_cancel_pending_action_accepts_only_safe_pending_id_without_mutation(self) -> None:
         valid_cancel = _valid_payload(
             product_method=product_methods.METHOD_CANCEL_PENDING_AGENDA_ACTION,

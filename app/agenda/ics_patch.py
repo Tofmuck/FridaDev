@@ -7,6 +7,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 REASON_ICS_SOURCE_MISSING = 'agenda_write_ics_source_missing'
 REASON_ICS_PRESERVATION_REQUIRED = 'agenda_write_update_preservation_required'
+REASON_ICS_COMPONENT_AMBIGUOUS = 'agenda_write_ics_component_ambiguous'
+REASON_ICS_NOOP = 'agenda_write_ics_noop'
+
+_UNSUPPORTED_TOP_LEVEL_EVENT_PROPERTIES = {'RRULE', 'RDATE', 'EXDATE', 'RECURRENCE-ID'}
 
 
 class IcsPatchError(ValueError):
@@ -21,9 +25,12 @@ def patch_event_ics(source_ics: str, draft: Mapping[str, Any], *, now_iso: str =
     if not lines:
         raise IcsPatchError(REASON_ICS_SOURCE_MISSING)
     bounds = _event_bounds(lines)
-    if bounds is None:
+    if not bounds:
         raise IcsPatchError(REASON_ICS_PRESERVATION_REQUIRED)
-    event_start, event_end = bounds
+    if len(bounds) != 1:
+        raise IcsPatchError(REASON_ICS_COMPONENT_AMBIGUOUS)
+    event_start, event_end = bounds[0]
+    _verify_single_supported_component(lines[event_start + 1:event_end], draft)
     event_lines = list(lines[event_start + 1:event_end])
 
     time_lines = _time_lines_for_update(draft)
@@ -39,6 +46,8 @@ def patch_event_ics(source_ics: str, draft: Mapping[str, Any], *, now_iso: str =
             event_lines = _replace_property_group(event_lines, {name}, [f'{name}:{_escape_text(value)}'])
 
     patched = [*lines[:event_start + 1], *event_lines, *lines[event_end:]]
+    if patched == lines:
+        raise IcsPatchError(REASON_ICS_NOOP)
     return '\r\n'.join(patched) + '\r\n'
 
 
@@ -90,7 +99,27 @@ def _matching_top_level_indices(event_lines: list[str], names: set[str]) -> list
     return indices
 
 
-def _event_bounds(lines: list[str]) -> tuple[int, int] | None:
+def _verify_single_supported_component(event_lines: list[str], draft: Mapping[str, Any]) -> None:
+    if _matching_top_level_indices(event_lines, _UNSUPPORTED_TOP_LEVEL_EVENT_PROPERTIES):
+        raise IcsPatchError(REASON_ICS_COMPONENT_AMBIGUOUS)
+    expected_uid = _text(_mapping(_mapping(draft.get('target')).get('technical_ref')).get('uid'))
+    if not expected_uid:
+        return
+    uid_values = _top_level_values(event_lines, 'UID')
+    if len(uid_values) != 1 or uid_values[0] != expected_uid:
+        raise IcsPatchError(REASON_ICS_COMPONENT_AMBIGUOUS)
+
+
+def _top_level_values(event_lines: list[str], name: str) -> list[str]:
+    values: list[str] = []
+    for index in _matching_top_level_indices(event_lines, {name}):
+        _prop_name, value = _split_property(event_lines[index])
+        values.append(value)
+    return values
+
+
+def _event_bounds(lines: list[str]) -> list[tuple[int, int]]:
+    bounds: list[tuple[int, int]] = []
     start = -1
     for index, line in enumerate(lines):
         name, value = _split_property(line)
@@ -98,8 +127,9 @@ def _event_bounds(lines: list[str]) -> tuple[int, int] | None:
             start = index
             continue
         if start >= 0 and name == 'END' and value.upper() == 'VEVENT':
-            return start, index
-    return None
+            bounds.append((start, index))
+            start = -1
+    return bounds
 
 
 def _unfold_ics_lines(text: str) -> list[str]:

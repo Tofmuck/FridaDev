@@ -105,7 +105,7 @@ def _update_draft(
         'description': _text(draft.get('description')),
         'change_summary': change_summary,
     }
-    if not any(_text(next_values.get(key)) for key in ('start', 'end', 'title', 'location', 'description', 'change_summary')):
+    if not any(_text(next_values.get(key)) for key in ('start', 'end', 'title', 'location', 'description')):
         return REASON_PENDING_DRAFT_INVALID
     return _base(plan, operation='update') | next_values | {
         'family_calendar': bool(plan.calendar_scope.get('family_calendar')),

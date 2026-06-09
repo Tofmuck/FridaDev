@@ -119,10 +119,10 @@ def validate_product_draft(
 
 
 def _has_update_change(draft: Mapping[str, Any]) -> bool:
-    for key in ('title', 'location', 'description', 'start', 'end', 'calendar_id', 'change_summary'):
+    for key in ('title', 'location', 'description', 'start', 'end'):
         if _text(draft.get(key)):
             return True
-    return isinstance(draft.get('all_day'), bool) and bool(draft.get('all_day'))
+    return False
 
 
 def _calendar_id(draft: Mapping[str, Any], calendar_scope: Mapping[str, Any]) -> str:
