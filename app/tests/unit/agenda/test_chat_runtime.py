@@ -1004,7 +1004,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
             self.assertNotIn(forbidden, encoded_payload)
             self.assertNotIn(forbidden, encoded_meta)
 
-    def test_confirm_update_event_executes_pending_draft_with_if_match(self) -> None:
+    def test_confirm_update_event_requires_source_preservation_before_write(self) -> None:
         state, _action = pending_store.create_pending_action(
             pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
             operation='update',
@@ -1036,28 +1036,32 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         )
 
         self.assertTrue(result.used)
-        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_EXECUTED)
-        self.assertEqual([call['method'] for call in transport.calls], ['PUT'])
-        self.assertEqual(transport.calls[0]['headers'].get('If-Match'), 'fixture-etag-001')
-        self.assertIn('SUMMARY:Fixture Updated Title', transport.calls[0]['body'])
-        self.assertEqual(result.pending_state.actions[0].status, pending_store.STATUS_EXECUTED)
-        self.assertIn("J'ai modifie", result.final_response_lock.content)
+        self.assertEqual(
+            result.proposal_execution_result.reason_code,
+            write_execution.REASON_WRITE_UPDATE_PRESERVATION_REQUIRED,
+        )
+        self.assertEqual(transport.calls, [])
+        self.assertEqual(result.pending_state.actions[0].status, pending_store.STATUS_PENDING)
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        self.assertIn('Je ne peux pas encore modifier cet evenement', result.final_response_lock.content)
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
         self.assertNotIn('Fixture Updated Title', encoded_payload)
         self.assertNotIn('fixture-event-001@example.invalid', encoded_payload)
         self.assertNotIn('fixture-etag-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
 
-    def test_confirm_update_conflict_is_content_free_and_keeps_pending_action(self) -> None:
+    def test_confirm_update_without_etag_refuses_before_put(self) -> None:
+        draft = _private_update_draft()
+        draft['target']['technical_ref']['etag'] = ''
         state, _action = pending_store.create_pending_action(
             pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
             operation='update',
             confirmation_level='simple',
-            draft=_private_update_draft(),
+            draft=draft,
             now_iso='2026-06-08T12:00:00Z',
-            id_factory=lambda: 'agenda-pending-update-conflict',
+            id_factory=lambda: 'agenda-pending-update-no-etag',
         )
-        transport = _FakeCalDavWriteTransport(status_code=412)
+        transport = _FakeCalDavWriteTransport(status_code=204)
         write_client = caldav_write_client.CalDavWriteClient(transport=transport)
 
         result = chat_runtime.run_agenda_chat_turn(
@@ -1073,20 +1077,40 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                 _confirm_payload(
                     product_method=product_methods.METHOD_CONFIRM_UPDATE_EVENT,
                     operation='update',
-                    pending_action_id='agenda-pending-update-conflict',
+                    pending_action_id='agenda-pending-update-no-etag',
                 )
             ),
             write_client=write_client,
         )
 
-        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_CONFLICT)
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_ETAG_MISSING)
+        self.assertEqual(transport.calls, [])
         self.assertEqual(result.pending_state.actions[0].status, pending_store.STATUS_PENDING)
-        self.assertTrue(result.observability_payload['mutation_attempted'])
-        self.assertIn('calendrier a change', result.final_response_lock.content)
+        self.assertFalse(result.observability_payload['mutation_attempted'])
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
         self.assertNotIn('Fixture Updated Title', encoded_payload)
         self.assertNotIn('fixture-etag-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_caldav_write_client_refuses_existing_writes_without_etag(self) -> None:
+        transport = _FakeCalDavWriteTransport(status_code=204)
+        write_client = caldav_write_client.CalDavWriteClient(transport=transport)
+
+        with self.assertRaises(caldav_write_client.CalDavWriteValidationError) as update_error:
+            write_client.put_existing_event(
+                caldav_path='/remote.php/dav/calendars/tof/fixture-primary/event-1.ics',
+                ics_text='BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n',
+                etag='',
+            )
+        with self.assertRaises(caldav_write_client.CalDavWriteValidationError) as delete_error:
+            write_client.delete_event(
+                caldav_path='/remote.php/dav/calendars/tof/fixture-primary/event-1.ics',
+                etag='',
+            )
+
+        self.assertEqual(update_error.exception.reason_code, write_execution.REASON_WRITE_ETAG_MISSING)
+        self.assertEqual(delete_error.exception.reason_code, write_execution.REASON_WRITE_ETAG_MISSING)
+        self.assertEqual(transport.calls, [])
 
     def test_confirm_delete_event_requires_reinforced_pending_action_and_executes_delete(self) -> None:
         simple_state, _simple = pending_store.create_pending_action(
@@ -1161,6 +1185,89 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
         self.assertNotIn('Fixture Focus Block', encoded_payload)
         self.assertNotIn('fixture-event-001@example.invalid', encoded_payload)
+        self.assertNotIn('fixture-etag-001', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_confirm_delete_without_etag_refuses_before_delete(self) -> None:
+        draft = _private_delete_draft()
+        draft['target']['technical_ref']['etag'] = ''
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='delete',
+            confirmation_level='reinforced',
+            draft=draft,
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-delete-no-etag',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=204)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme vraiment la suppression',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_DELETE_EVENT,
+                    operation='delete',
+                    pending_action_id='agenda-pending-delete-no-etag',
+                    confirmation_level='reinforced',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(transport=transport),
+        )
+
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_ETAG_MISSING)
+        self.assertEqual(transport.calls, [])
+        self.assertEqual(result.pending_state.actions[0].status, pending_store.STATUS_PENDING)
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('fixture-etag-001', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_confirm_delete_conflict_is_content_free_and_keeps_pending_action(self) -> None:
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='delete',
+            confirmation_level='reinforced',
+            draft=_private_delete_draft(),
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-delete-conflict',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=412)
+        write_client = caldav_write_client.CalDavWriteClient(transport=transport)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme vraiment la suppression',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_DELETE_EVENT,
+                    operation='delete',
+                    pending_action_id='agenda-pending-delete-conflict',
+                    confirmation_level='reinforced',
+                )
+            ),
+            write_client=write_client,
+        )
+
+        self.assertEqual(result.proposal_execution_result.reason_code, write_execution.REASON_WRITE_CONFLICT)
+        self.assertEqual([call['method'] for call in transport.calls], ['DELETE'])
+        self.assertEqual(result.pending_state.actions[0].status, pending_store.STATUS_PENDING)
+        self.assertTrue(result.observability_payload['mutation_attempted'])
+        self.assertIn('calendrier a change', result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture Focus Block', encoded_payload)
         self.assertNotIn('fixture-etag-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
 
@@ -1267,6 +1374,9 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertEqual(no_client.proposal_execution_result.reason_code, write_execution.REASON_WRITE_CLIENT_UNAVAILABLE)
         self.assertFalse(no_client.observability_payload['mutation_attempted'])
         self.assertFalse(no_client.observability_payload['caldav_access'])
+        self.assertIn("L'ecriture dans l'agenda n'est pas encore activee ici", no_client.final_response_lock.content)
+        for technical_word in ('client', 'injecte', 'transport fake', 'CalDAV write', 'lot'):
+            self.assertNotIn(technical_word, no_client.final_response_lock.content)
 
     def test_expired_or_cancelled_pending_action_cannot_be_executed(self) -> None:
         state, _action = pending_store.create_pending_action(

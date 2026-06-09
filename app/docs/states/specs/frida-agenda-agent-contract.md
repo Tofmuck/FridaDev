@@ -662,7 +662,10 @@ Modele livre Lot 6:
   temporaire prive, pas dans les logs/dashboard/JSONL.
 
 Lot 7A execute une confirmation uniquement depuis le pending draft prive et
-avec client CalDAV write injecte/fake. Relire uniquement le dialogue pour
+avec client CalDAV write injecte/fake. Lot 7A.1 durcit le preflight avant tout
+live write: update/delete exigent une cible technique avec ETag verifie, et
+`confirm_update_event` reste refuse tant qu'une preservation de l'ICS source
+n'est pas livree. Relire uniquement le dialogue pour
 reconstruire une mutation reste interdit.
 
 Preuve Lot 6:
@@ -687,21 +690,27 @@ Preuve Lot 6:
   CalDAV ou ICS;
 - Lot 6.2: les drafts prives sortis de l'etat par tronquage `MAX_ACTIONS`,
   expiration ou annulation sont oublies.
-- Lot 7A: `confirm_create_event`, `confirm_update_event` et
-  `confirm_delete_event` executent uniquement en fake transport injecte, jamais
-  en write live Nextcloud;
+- Lot 7A: `confirm_create_event` et `confirm_delete_event` executent uniquement
+  en fake transport injecte, jamais en write live Nextcloud; `confirm_update_event`
+  est cadre mais bloque par Lot 7A.1 tant que la preservation ICS source n'est
+  pas livree;
 - Lot 7A: `confirm_create_event` utilise un draft prive structure, genere un
   ICS minimal, fait un `PUT` avec `If-None-Match: *`, puis neutralise la
   pending action en `executed`;
-- Lot 7A: `confirm_update_event` utilise la cible verifiee du draft prive,
-  fait un `PUT` sur la reference technique interne avec `If-Match` si ETag
-  present, et refuse proprement les conflits `409/412`;
+- Lot 7A.1: `confirm_update_event` utilise la cible verifiee du draft prive
+  pour verifier les preconditions, mais refuse avant toute requete write avec
+  `agenda_write_update_preservation_required` afin de ne pas reconstruire un
+  VEVENT minimal qui ecraserait alarmes, participants, recurrence ou proprietes
+  client;
 - Lot 7A: `confirm_delete_event` exige une confirmation renforcee et fait un
-  `DELETE` sur la cible technique interne; aucune suppression n'est possible
-  sans pending action valide et draft prive;
+  `DELETE` sur la cible technique interne avec ETag obligatoire; aucune
+  suppression n'est possible sans pending action valide, draft prive et ETag
+  verifie;
 - Lot 7A: si le draft prive a disparu, si l'action est expiree/annulee, si le
   client write est absent ou si la cible technique est absente, la confirmation
   est refusee avant toute requete write;
+- Lot 7A.1: `agenda_write_etag_missing` refuse update/delete avant tout
+  `PUT`/`DELETE`; `CalDavWriteClient` applique aussi cette defense en profondeur;
 - `cancel_pending_agenda_action` annule une pending action sans mutation;
 - expiration/cancel empechent toute execution;
 - observabilite et meta restent content-free: id, operation, expiration,

@@ -23,6 +23,8 @@ REASON_WRITE_OPERATION_MISMATCH = 'agenda_write_operation_mismatch'
 REASON_WRITE_REINFORCED_REQUIRED = 'agenda_write_reinforced_confirmation_required'
 REASON_WRITE_TARGET_MISSING = 'agenda_write_target_missing'
 REASON_WRITE_CALENDAR_TARGET_MISSING = 'agenda_write_calendar_target_missing'
+REASON_WRITE_ETAG_MISSING = 'agenda_write_etag_missing'
+REASON_WRITE_UPDATE_PRESERVATION_REQUIRED = 'agenda_write_update_preservation_required'
 REASON_WRITE_CONFLICT = 'agenda_write_conflict'
 REASON_WRITE_FAILED = 'agenda_write_failed'
 REASON_PENDING_NOT_FOUND = 'agenda_pending_action_not_found'
@@ -216,17 +218,14 @@ def _execute_write(
     if operation == pending_store.OPERATION_UPDATE:
         if not uid or not caldav_path:
             raise CalDavWriteValidationError(REASON_WRITE_TARGET_MISSING)
-        ics_text = ics_writer.build_event_ics(draft, uid=uid, now_iso=now_iso)
-        return write_client.put_existing_event(
-            caldav_path=caldav_path,
-            ics_text=ics_text,
-            etag=etag,
-            calendar_id=str(target.get('calendar_id') or draft.get('calendar_id') or ''),
-            event_reference=str(target.get('event_id') or uid),
-        )
+        if not etag:
+            raise CalDavWriteValidationError(REASON_WRITE_ETAG_MISSING)
+        raise CalDavWriteValidationError(REASON_WRITE_UPDATE_PRESERVATION_REQUIRED)
     if operation == pending_store.OPERATION_DELETE:
         if not caldav_path:
             raise CalDavWriteValidationError(REASON_WRITE_TARGET_MISSING)
+        if not etag:
+            raise CalDavWriteValidationError(REASON_WRITE_ETAG_MISSING)
         return write_client.delete_event(
             caldav_path=caldav_path,
             etag=etag,

@@ -69,7 +69,17 @@ def render_proposal_answer(
         )
     if reason == write_execution.REASON_WRITE_CLIENT_UNAVAILABLE:
         return (
-            "Je ne peux pas executer cette confirmation dans ce lot sans client CalDAV write injecte. "
+            "L'ecriture dans l'agenda n'est pas encore activee ici. "
+            "Je n'ai rien modifie dans ton agenda."
+        )
+    if reason == write_execution.REASON_WRITE_ETAG_MISSING:
+        return (
+            "Je n'ai pas une version verifiee assez recente de cet evenement. "
+            "Je n'ai rien modifie; relis l'evenement puis refais une proposition."
+        )
+    if reason == write_execution.REASON_WRITE_UPDATE_PRESERVATION_REQUIRED:
+        return (
+            "Je ne peux pas encore modifier cet evenement sans risquer de perdre des details du calendrier. "
             "Je n'ai rien modifie dans ton agenda."
         )
     if reason == write_execution.REASON_WRITE_REINFORCED_REQUIRED:
@@ -86,12 +96,12 @@ def render_proposal_answer(
         )
     if reason == proposal_execution.REASON_CONFIRMATION_NOT_EXECUTABLE:
         return (
-            "Je ne peux pas encore executer cette confirmation dans ce lot. "
+            "Je ne peux pas encore executer cette confirmation ici. "
             "Je n'ai rien cree, modifie ni supprime dans ton agenda."
         )
     if str(plan.product_method or '') in product_methods.CONFIRMED_MUTATION_METHODS:
         return (
-            "La confirmation est bien bornee, mais l'ecriture Agenda n'est pas active dans ce lot. "
+            "L'ecriture dans l'agenda n'est pas encore activee ici. "
             "Je n'ai rien modifie dans ton agenda."
         )
     return ''

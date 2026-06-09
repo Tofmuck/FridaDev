@@ -345,17 +345,20 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve livree: Lot 6, ID local, TTL, hash court, meta content-free.
 - [x] `pending_action_get`.
   Preuve livree: Lots 6/7A, `confirm_*` relit une pending action precise et
-  execute uniquement si le draft prive et le client write fake sont presents.
+  execute uniquement si le draft prive et le client write fake sont presents;
+  Lot 7A.1 bloque les updates tant que la preservation ICS source n'est pas
+  livree.
 - [x] `pending_action_cancel`.
   Preuve livree: Lot 6, annulation et expiration sans mutation.
 - [x] `event_create_confirmed`.
   Preuve livree: Lot 7A non-live, CalDAV `PUT` fake apres confirmation.
-- [x] `event_update_confirmed`.
-  Preuve livree: Lot 7A non-live, CalDAV `PUT` fake avec protection
-  concurrence `If-Match`.
+- [ ] `event_update_confirmed`.
+  Preuve attendue: update preservant l'ICS source, ETag obligatoire et conflit
+  gere; Lot 7A.1 refuse l'update avant requete tant que cette preservation
+  n'est pas livree.
 - [x] `event_delete_confirmed`.
   Preuve livree: Lot 7A non-live, CalDAV `DELETE` fake seulement apres
-  confirmation renforcee.
+  confirmation renforcee avec ETag obligatoire.
 
 ## Lots runtime futurs
 
@@ -599,16 +602,20 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve livree: pending draft prive, `PUT` fake transport, `If-None-Match: *`,
   action neutralisee `executed`, observabilite/meta content-free, aucun write
   live.
-- [x] Lot 7A non-live: modification apres confirmation.
-  Preuve livree: pending draft prive avec cible verifiee, `PUT` fake transport,
-  `If-Match` si ETag present, aucune reconstruction depuis le dialogue.
+- [ ] Lot 7A/7B: modification apres confirmation.
+  Preuve attendue: pending draft prive avec cible verifiee, ETag obligatoire,
+  preservation de l'ICS source et conflit gere. Etat Lot 7A.1: `confirm_update_event`
+  refuse avant toute requete write avec `agenda_write_update_preservation_required`
+  tant que la preservation ICS source n'est pas livree.
 - [x] Lot 7A non-live: suppression apres confirmation renforcee.
   Preuve livree: pending draft prive avec cible verifiee, `DELETE` fake
-  transport, confirmation renforcee obligatoire, aucune suppression live.
+  transport, ETag obligatoire, confirmation renforcee obligatoire, aucune
+  suppression live.
 - [ ] Protection calendrier familial.
 - [x] Gestion conflit ETag ou equivalent.
-  Preuve livree: Lot 7A non-live, conflit fake `412` refuse proprement sans
-  executer/neutraliser la pending action.
+  Preuve livree: Lot 7A.1 non-live, delete fake `412` refuse proprement sans
+  executer/neutraliser la pending action; update reste bloque avant write tant
+  que la preservation ICS source n'est pas livree.
 - [ ] Lot 7B live write proof avec evenement synthetique, GO humain explicite,
   rollback/suppression de test documente et artefact content-free.
 - [ ] Rollback ou limite de rollback documentee.

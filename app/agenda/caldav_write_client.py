@@ -90,7 +90,9 @@ class CalDavWriteClient:
     ) -> CalDavWriteResult:
         if not str(caldav_path or '').strip():
             raise CalDavWriteValidationError('agenda_write_target_missing')
-        headers = {'If-Match': str(etag)} if str(etag or '').strip() else {}
+        if not str(etag or '').strip():
+            raise CalDavWriteValidationError('agenda_write_etag_missing')
+        headers = {'If-Match': str(etag)}
         return self._put(
             path=caldav_path,
             ics_text=ics_text,
@@ -109,7 +111,9 @@ class CalDavWriteClient:
     ) -> CalDavWriteResult:
         if not str(caldav_path or '').strip():
             raise CalDavWriteValidationError('agenda_write_target_missing')
-        headers = {'If-Match': str(etag)} if str(etag or '').strip() else {}
+        if not str(etag or '').strip():
+            raise CalDavWriteValidationError('agenda_write_etag_missing')
+        headers = {'If-Match': str(etag)}
         response = self._send(
             CalDavRequest(
                 method='DELETE',
