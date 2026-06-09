@@ -16,7 +16,9 @@ prochain evenement futur correspondant a une requete textuelle. Lot 8bis.1
 rend le fallback live Agenda agentique via `surface_error` et transmet
 `user_display_name=Tof` au contexte d'enonciation agent. Lot 8bis.2 rend les
 surfaces read-only coherentes avec le resultat et affiche les evenements
-journee entiere multi-jours comme des plages avec duree.
+journee entiere multi-jours comme des plages avec duree. Lot 8ter cartographie
+les familles de questions Agenda pour guider les prochains lots sans ouvrir
+Lot 9.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -761,9 +763,29 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Preserver le contexte conversationnel utile sans fuite observabilite.
   Preuve livree: la reponse visible contient la plage et la duree; metas et
   observations restent content-free.
-- [ ] Cartographier les questions possibles a poser a l'Agenda pour reperer
+- [x] Cartographier les questions possibles a poser a l'Agenda pour reperer
   les prochains trous produit.
-  Prochaine etape non executee dans ce lot; aucun Lot 9 n'est ouvert.
+  Preuve livree: Lot 8ter docs-only,
+  `app/docs/states/audits/frida-agenda-question-cartography-2026-06-09.md`.
+  La cartographie classe les familles comme livrees, partielles,
+  presentes-non-prouvees, refusees par design, manquantes ou hors code. Aucun
+  Lot 9 n'est ouvert.
+
+### Lot 8ter - Cartographie des questions Agenda
+
+- [x] Produire une carte produit des questions Agenda vernaculaires.
+  Preuve livree:
+  `app/docs/states/audits/frida-agenda-question-cartography-2026-06-09.md`.
+- [x] Distinguer ce qui marche, ce qui est partiel, ce qui est seulement au
+  contrat, ce qui est refuse par design et ce qui manque.
+  Preuve livree: table de familles avec statut produit, preuve actuelle,
+  limites connues et prochain lot recommande.
+- [x] Lister des formulations anonymisees pour les prochains smokes.
+  Preuve livree: exemples par famille sans contenu personnel d'agenda, sans
+  lecture CalDAV live et sans mutation.
+- [x] Garder Lot 9 ferme.
+  Preuve livree: la cartographie propose des validations futures sans les
+  lancer ni les nommer comme Lot 9 actif.
 
 ## Auto-audit permanent
 
