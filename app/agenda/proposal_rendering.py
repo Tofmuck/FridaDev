@@ -90,6 +90,11 @@ def render_proposal_answer(
             "Ce calendrier est partage ou familial: il faut une confirmation explicite renforcee. "
             "Je n'ai rien modifie dans ton agenda."
         )
+    if reason == write_execution.REASON_WRITE_UNVERIFIED_REINFORCED_REQUIRED:
+        return (
+            "Je ne suis pas assez sure du type de ce calendrier. "
+            "Il faut une confirmation explicite renforcee; je n'ai rien modifie dans ton agenda."
+        )
     if reason == write_execution.REASON_WRITE_CONFLICT:
         return (
             "Le calendrier a change depuis la proposition. "
@@ -146,6 +151,11 @@ def _render_created(result: proposal_execution.AgendaProposalExecutionResult) ->
         lines.append(f"Expiration : {expires}.")
     if family_calendar_policy.draft_marks_family(draft) or family_calendar_policy.FAMILY_RISK_FLAG in result.risk_flags:
         lines.append("Ce calendrier est partage ou familial: je demanderai une confirmation explicite renforcee.")
+    elif family_calendar_policy.UNVERIFIED_RISK_FLAG in result.risk_flags:
+        lines.append(
+            "Je ne suis pas encore assez sure du type de ce calendrier: "
+            "je demanderai une confirmation explicite renforcee."
+        )
     return "\n".join(lines)
 
 

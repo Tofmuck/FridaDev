@@ -249,8 +249,12 @@ END:VCALENDAR
             'Fixture Primary Calendar',
             'Fixture Shared Calendar',
         })
+        primary = [calendar for calendar in result.items if calendar.display_name == 'Fixture Primary Calendar'][0]
+        self.assertFalse(primary.family_calendar)
+        self.assertEqual(primary.family_calendar_classification, 'unknown')
         shared = [calendar for calendar in result.items if calendar.display_name == 'Fixture Shared Calendar'][0]
         self.assertTrue(shared.family_calendar)
+        self.assertEqual(shared.family_calendar_classification, 'family')
         self.assertTrue(shared.readonly)
         self.assertEqual(len(state.calendars), 2)
         self.assertEqual(result.observation['calendar_count'], 2)

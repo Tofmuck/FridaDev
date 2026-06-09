@@ -143,9 +143,11 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [ ] Refuser toute suppression autonome.
   Preuve attendue: suppression impossible hors confirmation renforcee.
 - [x] Renforcer la prudence sur le calendrier familial.
-  Preuve livree: Lot 7C, risk flag `family_calendar`, confirmation
-  `reinforced`, detection depuis JSON agent ou `CalendarSummary.family_calendar`
-  quand le calendrier est connu, refus avant write si confirmation simple.
+  Preuve livree: Lot 7C/7C.1, risk flag `family_calendar` ou
+  `calendar_scope_unverified`, confirmation `reinforced`, detection depuis JSON
+  agent ou `CalendarSummary` classifie, refus avant write si confirmation
+  simple; `family_calendar=False` sans classification connue ne vaut pas preuve
+  non familiale.
 - [ ] Refuser toute creation d'evenement invisible ou ambigu.
   Preuve attendue: clarification si calendrier, date, fuseau ou titre cible est
   ambigu.
@@ -628,10 +630,12 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   `DELETE 204`, puis `GET 404`; etat final propre, evenement synthetique
   supprime.
 - [x] Protection calendrier familial.
-  Preuve livree: Lot 7C fake/local; create/delete sur calendrier familial
-  posent `risk_flags=["family_calendar"]`, exigent `confirmation_level=reinforced`,
-  refusent les confirmations simples avant `PUT`/`DELETE`, et la surface visible
-  mentionne le calendrier partage/familial sans jargon technique.
+  Preuve livree: Lot 7C/7C.1 fake/local; create/delete sur calendrier familial
+  posent `risk_flags=["family_calendar"]`, create/delete sur calendrier non
+  classifie posent `risk_flags=["calendar_scope_unverified"]`, exigent
+  `confirmation_level=reinforced`, refusent les confirmations simples avant
+  `PUT`/`DELETE`, et la surface visible mentionne le calendrier
+  partage/familial ou non classifie sans jargon technique.
 - [x] Gestion conflit ETag ou equivalent.
   Preuve livree: Lot 7A.1 non-live, delete fake `412` refuse proprement sans
   executer/neutraliser la pending action; update reste bloque avant write tant

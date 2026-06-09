@@ -53,6 +53,7 @@ def content_free_draft_summary(draft: Mapping[str, Any]) -> dict[str, Any]:
         'change_summary_hash': agent_contract.sha256_12(draft.get('change_summary')),
         'change_summary_chars': len(str(draft.get('change_summary') or '')),
         'family_calendar': bool(draft.get('family_calendar') or target.get('family_calendar')),
+        'calendar_scope_unverified': bool(draft.get('calendar_scope_unverified') or target.get('calendar_scope_unverified')),
         'technical_ref_present': bool(_mapping(target.get('technical_ref'))),
         'content_free': True,
     }
@@ -77,6 +78,8 @@ def _create_draft(plan: agent_contract.AgendaAgentPlan, draft: Mapping[str, Any]
         'description': _text(draft.get('description')),
         'change_summary': '',
         'family_calendar': bool(plan.calendar_scope.get('family_calendar')),
+        'family_calendar_classification': 'family' if bool(plan.calendar_scope.get('family_calendar')) else 'unknown',
+        'calendar_scope_unverified': not bool(plan.calendar_scope.get('family_calendar')),
         'target': {},
     }
 
@@ -106,6 +109,8 @@ def _update_draft(
         return REASON_PENDING_DRAFT_INVALID
     return _base(plan, operation='update') | next_values | {
         'family_calendar': bool(plan.calendar_scope.get('family_calendar')),
+        'family_calendar_classification': 'family' if bool(plan.calendar_scope.get('family_calendar')) else 'unknown',
+        'calendar_scope_unverified': not bool(plan.calendar_scope.get('family_calendar')),
         'target': target,
     }
 
@@ -130,6 +135,8 @@ def _delete_draft(
         'description': '',
         'change_summary': _text(draft.get('change_summary')),
         'family_calendar': bool(plan.calendar_scope.get('family_calendar')),
+        'family_calendar_classification': 'family' if bool(plan.calendar_scope.get('family_calendar')) else 'unknown',
+        'calendar_scope_unverified': not bool(plan.calendar_scope.get('family_calendar')),
         'target': target,
     }
 
@@ -156,6 +163,8 @@ def _event_target(event: CalendarEvent) -> dict[str, Any]:
         'location': event.location,
         'description': event.description,
         'family_calendar': False,
+        'family_calendar_classification': 'unknown',
+        'calendar_scope_unverified': True,
         'technical_ref': {
             'uid': event.uid,
             'etag': event.etag,

@@ -13,6 +13,7 @@ from agenda.caldav_models import (
     CalendarEvent,
     CalendarSummary,
 )
+from agenda import family_calendar_policy
 from agenda.ics_reader import parse_ics_events
 from agenda.observability import sha256_12
 
@@ -143,6 +144,7 @@ def parse_calendar_propfind(xml_text: str) -> tuple[CalendarSummary, ...]:
         risk_flag = _text_for_child(response, 'x-frida-risk-flag').lower()
         readonly = 'write' not in privileges
         local_id = f'cal_{sha256_12(href)}'
+        classification = _calendar_classification(risk_flag)
         calendars.append(
             CalendarSummary(
                 local_id=local_id,
@@ -151,7 +153,8 @@ def parse_calendar_propfind(xml_text: str) -> tuple[CalendarSummary, ...]:
                 color=color,
                 enabled=True,
                 readonly=readonly,
-                family_calendar=risk_flag == 'family_calendar',
+                family_calendar=classification == family_calendar_policy.CLASSIFICATION_FAMILY,
+                family_calendar_classification=classification,
                 caldav_path=href,
             )
         )
@@ -218,6 +221,10 @@ def _calendar_list_body() -> str:
         '<d:prop><d:displayname/><d:current-user-privilege-set/>'
         '<cs:calendar-color/><x-frida-risk-flag/></d:prop></d:propfind>'
     )
+
+
+def _calendar_classification(risk_flag: str) -> str:
+    return family_calendar_policy.normalize_classification(risk_flag)
 
 
 def _calendar_query_body(*, start_iso: str, end_iso: str) -> str:

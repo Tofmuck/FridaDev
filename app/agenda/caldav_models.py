@@ -13,6 +13,7 @@ class CalendarSummary:
     enabled: bool = True
     readonly: bool = True
     family_calendar: bool = False
+    family_calendar_classification: str = 'unknown'
     caldav_path: str = ''
 
 

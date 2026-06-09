@@ -23,6 +23,7 @@ REASON_WRITE_PRIVATE_DRAFT_MISSING = 'agenda_write_private_draft_missing'
 REASON_WRITE_OPERATION_MISMATCH = 'agenda_write_operation_mismatch'
 REASON_WRITE_REINFORCED_REQUIRED = 'agenda_write_reinforced_confirmation_required'
 REASON_WRITE_FAMILY_REINFORCED_REQUIRED = family_calendar_policy.REASON_FAMILY_REINFORCED_REQUIRED
+REASON_WRITE_UNVERIFIED_REINFORCED_REQUIRED = family_calendar_policy.REASON_UNVERIFIED_REINFORCED_REQUIRED
 REASON_WRITE_TARGET_MISSING = 'agenda_write_target_missing'
 REASON_WRITE_CALENDAR_TARGET_MISSING = 'agenda_write_calendar_target_missing'
 REASON_WRITE_ETAG_MISSING = 'agenda_write_etag_missing'
@@ -115,10 +116,11 @@ def execute_confirmed_plan(
             operation=operation,
             action=action,
         )
-    if _family_reinforced_missing(plan, action=action, draft=draft, operation=operation):
+    classification = _sensitive_calendar_classification(action=action, draft=draft)
+    if _reinforced_missing(plan, action=action, operation=operation, classification=classification):
         return _blocked(
             state=current_state,
-            reason_code=REASON_WRITE_FAMILY_REINFORCED_REQUIRED,
+            reason_code=_reinforced_reason(classification),
             operation=operation,
             action=action,
             draft=draft,
@@ -292,23 +294,37 @@ def _valid_private_draft(draft: Mapping[str, Any], *, operation: str) -> bool:
     return str(draft.get('operation') or '') == operation
 
 
-def _family_reinforced_missing(
+def _reinforced_missing(
     plan: agent_contract.AgendaAgentPlan,
     *,
     action: pending_store.AgendaPendingAction,
-    draft: Mapping[str, Any],
     operation: str,
+    classification: str,
 ) -> bool:
-    family_calendar = (
-        family_calendar_policy.FAMILY_RISK_FLAG in action.risk_flags
-        or family_calendar_policy.draft_marks_family(draft)
-    )
-    if not family_calendar_policy.requires_reinforced(operation, family_calendar=family_calendar):
+    if not family_calendar_policy.requires_reinforced(operation, classification=classification):
         return False
     return (
         action.confirmation_level != pending_store.CONFIRMATION_REINFORCED
         or str(plan.mutation.get('confirmation_level') or '') != pending_store.CONFIRMATION_REINFORCED
     )
+
+
+def _sensitive_calendar_classification(
+    *,
+    action: pending_store.AgendaPendingAction,
+    draft: Mapping[str, Any],
+) -> str:
+    if family_calendar_policy.FAMILY_RISK_FLAG in action.risk_flags:
+        return family_calendar_policy.CLASSIFICATION_FAMILY
+    if family_calendar_policy.UNVERIFIED_RISK_FLAG in action.risk_flags:
+        return family_calendar_policy.CLASSIFICATION_UNKNOWN
+    return family_calendar_policy.draft_calendar_classification(draft)
+
+
+def _reinforced_reason(classification: str) -> str:
+    if family_calendar_policy.normalize_classification(classification) == family_calendar_policy.CLASSIFICATION_UNKNOWN:
+        return REASON_WRITE_UNVERIFIED_REINFORCED_REQUIRED
+    return REASON_WRITE_FAMILY_REINFORCED_REQUIRED
 
 
 def _target(draft: Mapping[str, Any]) -> dict[str, Any]:

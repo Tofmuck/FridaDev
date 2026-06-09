@@ -445,6 +445,9 @@ Regles:
 - une suppression exige `confirmation_level=reinforced`;
 - le calendrier familial exige un risk flag dedie; `create` et `delete` sur
   calendrier familial exigent `confirmation_level=reinforced`;
+- un calendrier dont la classification familial/partage est inconnue ou absente
+  est fail-closed pour `create`/`delete`: pas de confirmation simple, risk flag
+  content-free `calendar_scope_unverified`;
 - les champs de surface restent courts et ne remplacent pas le contenu
   verrouille ni les metas.
 
@@ -632,14 +635,17 @@ Mutation:
 - impossible sans confirmation humaine explicite;
 - la confirmation doit viser une proposition precise;
 - la confirmation doit etre recue dans un tour ulterieur ou dans une UI dediee;
-- creation exige confirmation simple, sauf calendrier familial ou partage qui
+- creation exige confirmation simple seulement si le calendrier est explicitement
+  classifie non familial; calendrier familial/partage ou classification inconnue
   exige confirmation renforcee;
 - modification reste fermee tant que la preservation ICS source n'est pas
   livree;
 - suppression exige confirmation renforcee;
 - calendrier familial exige prudence renforcee, risk flag `family_calendar`,
   detection depuis JSON agent ou calendrier lu quand disponible, et confirmation
-  renforcee pour create/delete.
+  renforcee pour create/delete;
+- `family_calendar=False` seul ne prouve pas un calendrier non familial: seule
+  une classification explicite non familiale autorise une confirmation simple.
 
 ## 11. Etat temporaire de proposition
 
@@ -724,6 +730,14 @@ Preuve Lot 6:
   `CalendarSummary.family_calendar` quand le calendrier est connu ou la cible a
   ete relue; toute pending action familiale avec confirmation simple est refusee
   avant `PUT`/`DELETE`;
+- Lot 7C.1: la protection est fail-closed; un `CalendarSummary` sans
+  classification explicite reste `unknown`, `parse_calendar_propfind()` ne
+  traite plus l'absence de prop custom comme non familial prouve, et create/delete
+  sur scope inconnu portent `calendar_scope_unverified` avec confirmation
+  renforcee obligatoire;
+- Lot 7C.1: le runtime ne resout pas le secret CalDAV uniquement pour classifier
+  une creation; sans etat calendrier connu, la proposition reste possible mais
+  seulement en confirmation renforcee;
 - Lot 7C: la surface visible mentionne en langage naturel que le calendrier est
   partage ou familial, sans exposer UID, ETag, path CalDAV, ICS ni jargon
   technique;

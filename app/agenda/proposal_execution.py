@@ -216,16 +216,19 @@ def _execute_proposal(
             operation=operation,
             target_clear=target_clear,
         )
-    family_calendar = _family_calendar_for_pending_draft(
+    calendar_classification = _calendar_classification_for_pending_draft(
         plan,
         draft=draft,
         verification=verification,
         read_client=read_client,
     )
-    draft = family_calendar_policy.with_family_marker(draft, family_calendar=family_calendar)
-    risk_flags = family_calendar_policy.risk_flags_with_family(
+    draft = family_calendar_policy.with_classification_marker(
+        draft,
+        classification=calendar_classification,
+    )
+    risk_flags = family_calendar_policy.risk_flags_with_classification(
         _risk_flags(plan),
-        family_calendar=family_calendar,
+        classification=calendar_classification,
     )
     confirmation_level = _confirmation_level(plan=plan, operation=operation, risk_flags=risk_flags)
     next_state, action = pending_store.create_pending_action(
@@ -413,7 +416,11 @@ def _confirmation_level(
     operation: str,
     risk_flags: tuple[str, ...],
 ) -> str:
-    if operation == pending_store.OPERATION_DELETE or family_calendar_policy.FAMILY_RISK_FLAG in risk_flags:
+    if (
+        operation == pending_store.OPERATION_DELETE
+        or family_calendar_policy.FAMILY_RISK_FLAG in risk_flags
+        or family_calendar_policy.UNVERIFIED_RISK_FLAG in risk_flags
+    ):
         return pending_store.CONFIRMATION_REINFORCED
     level = str(plan.mutation.get('confirmation_level') or '')
     if level in {pending_store.CONFIRMATION_SIMPLE, pending_store.CONFIRMATION_REINFORCED}:
@@ -428,22 +435,23 @@ def _risk_flags(plan: agent_contract.AgendaAgentPlan) -> tuple[str, ...]:
     return tuple(str(flag or '') for flag in flags if str(flag or '').strip())[:12]
 
 
-def _family_calendar_for_pending_draft(
+def _calendar_classification_for_pending_draft(
     plan: agent_contract.AgendaAgentPlan,
     *,
     draft: Mapping[str, Any],
     verification: proposal_target_verification.ProposalTargetVerificationResult,
     read_client: Any,
-) -> bool:
+) -> str:
     if family_calendar_policy.plan_marks_family(plan.calendar_scope):
-        return True
+        return family_calendar_policy.CLASSIFICATION_FAMILY
     if verification.calendar is not None:
-        return bool(verification.calendar.family_calendar)
-    if family_calendar_policy.draft_marks_family(draft):
-        return True
+        return family_calendar_policy.classification_from_summary(verification.calendar)
+    draft_classification = family_calendar_policy.draft_calendar_classification(draft)
+    if draft_classification != family_calendar_policy.CLASSIFICATION_UNKNOWN:
+        return draft_classification
     calendar_id = _draft_calendar_id(draft)
     calendar = family_calendar_policy.calendar_summary_from_client(read_client, calendar_id)
-    return bool(calendar is not None and calendar.family_calendar)
+    return family_calendar_policy.classification_from_summary(calendar)
 
 
 def _draft_calendar_id(draft: Mapping[str, Any]) -> str:

@@ -169,6 +169,21 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertIn('event_search', system_message)
         self.assertIn('ne mets jamais start, end ou timezone dans les params event_search', system_message)
 
+    def test_agent_prompt_instructs_family_or_uncertain_calendar_reinforced_confirmation(self) -> None:
+        request = _request(
+            settings=contract.AgendaAgentSettings(
+                mode=contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+        )
+
+        system_message = agent_openrouter.build_agenda_agent_messages(request)[0]['content']
+
+        self.assertIn('calendrier familial ou partage', system_message)
+        self.assertIn('risk_flags=["family_calendar"]', system_message)
+        self.assertIn('ne demande jamais une confirmation simple pour create/delete', system_message)
+
     def test_search_events_accepts_bounded_range_then_local_search(self) -> None:
         validation = contract.validate_agent_payload(
             _valid_payload(

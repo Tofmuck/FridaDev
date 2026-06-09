@@ -614,6 +614,102 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('Fixture Agenda Proposal', encoded_payload)
         self.assertNotIn('Fixture Room', encoded_payload)
 
+    def test_propose_create_unknown_calendar_scope_without_read_client_is_fail_closed_reinforced(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_CREATE_EVENT,
+                operation='create',
+                confirmation_level='simple',
+            )
+        )
+        runtime_settings = _SecretCountingRuntimeSettings(value='fixture-secret-value')
+        requests_module = _FakeRequestsModule()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Ajoute cet evenement',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+            requests_module=requests_module,
+            pending_id_factory=lambda: 'agenda-pending-create-unknown-no-client',
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(runtime_settings.secret_reads, 0)
+        self.assertEqual(requests_module.calls, [])
+        action = result.pending_state.actions[0]
+        self.assertEqual(action.confirmation_level, pending_store.CONFIRMATION_REINFORCED)
+        self.assertIn('calendar_scope_unverified', action.risk_flags)
+        self.assertNotIn('family_calendar', action.risk_flags)
+        self.assertIn('type de ce calendrier', result.final_response_lock.content)
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+
+    def test_propose_create_unclassified_calendar_summary_is_fail_closed_reinforced(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_CREATE_EVENT,
+                operation='create',
+                confirmation_level='simple',
+            )
+        )
+        read_client = _FakeReadClient(family_calendar=False, family_calendar_classification='unknown')
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Ajoute cet evenement',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+            pending_id_factory=lambda: 'agenda-pending-create-unclassified-calendar',
+        )
+
+        self.assertTrue(result.used)
+        action = result.pending_state.actions[0]
+        self.assertEqual(action.confirmation_level, pending_store.CONFIRMATION_REINFORCED)
+        self.assertIn('calendar_scope_unverified', action.risk_flags)
+        self.assertNotIn('family_calendar', action.risk_flags)
+        self.assertFalse(result.observability_payload['caldav_access'])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture Agenda Proposal', encoded_payload)
+
+    def test_propose_create_explicit_non_family_calendar_keeps_simple_confirmation(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_CREATE_EVENT,
+                operation='create',
+                confirmation_level='simple',
+            )
+        )
+        read_client = _FakeReadClient(family_calendar=False, family_calendar_classification='non_family')
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Ajoute cet evenement',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+            pending_id_factory=lambda: 'agenda-pending-create-known-non-family',
+        )
+
+        self.assertTrue(result.used)
+        action = result.pending_state.actions[0]
+        self.assertEqual(action.confirmation_level, pending_store.CONFIRMATION_SIMPLE)
+        self.assertNotIn('calendar_scope_unverified', action.risk_flags)
+        self.assertNotIn('family_calendar', action.risk_flags)
+
     def test_propose_create_without_structured_draft_is_rejected_before_pending_action(self) -> None:
         fake_model = _FakeModelClient(
             _proposal_payload(
@@ -1168,6 +1264,56 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('Fixture Confirm Create', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
 
+    def test_confirm_create_unverified_calendar_scope_requires_reinforced_before_put(self) -> None:
+        draft = _private_create_draft()
+        draft['family_calendar'] = False
+        draft['family_calendar_classification'] = 'unknown'
+        draft['calendar_scope_unverified'] = True
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='create',
+            confirmation_level='simple',
+            risk_flags=('calendar_scope_unverified',),
+            draft=draft,
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-unverified-create-simple',
+        )
+        transport = _FakeCalDavWriteTransport()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_CREATE_EVENT,
+                    operation='create',
+                    pending_action_id='agenda-pending-unverified-create-simple',
+                    confirmation_level='reinforced',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(
+                transport=transport,
+                calendar_paths={'primary': '/remote.php/dav/calendars/tof/fixture-primary/'},
+            ),
+        )
+
+        self.assertEqual(
+            result.proposal_execution_result.reason_code,
+            write_execution.REASON_WRITE_UNVERIFIED_REINFORCED_REQUIRED,
+        )
+        self.assertEqual(transport.calls, [])
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        self.assertIn('type de ce calendrier', result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture Confirm Create', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+
     def test_confirm_create_family_calendar_reinforced_executes_fake_put(self) -> None:
         draft = _private_create_draft()
         draft['family_calendar'] = True
@@ -1439,6 +1585,57 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertEqual(transport.calls, [])
         self.assertFalse(result.observability_payload['mutation_attempted'])
         self.assertIn('calendrier est partage ou familial', result.final_response_lock.content)
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('Fixture Focus Block', encoded_payload)
+        self.assertNotIn('fixture-etag-001', encoded_payload)
+        self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_confirm_delete_unverified_calendar_scope_simple_is_refused_before_delete(self) -> None:
+        draft = _private_delete_draft()
+        draft['family_calendar'] = False
+        draft['family_calendar_classification'] = 'unknown'
+        draft['calendar_scope_unverified'] = True
+        draft['target']['family_calendar'] = False
+        draft['target']['family_calendar_classification'] = 'unknown'
+        draft['target']['calendar_scope_unverified'] = True
+        state, _action = pending_store.create_pending_action(
+            pending_store.AgendaPendingState.empty(conversation_id='conv-agenda'),
+            operation='delete',
+            confirmation_level='simple',
+            risk_flags=('calendar_scope_unverified',),
+            draft=draft,
+            now_iso='2026-06-08T12:00:00Z',
+            id_factory=lambda: 'agenda-pending-unverified-delete-simple',
+        )
+        transport = _FakeCalDavWriteTransport(status_code=204)
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Je confirme la suppression',
+            now_iso='2026-06-08T12:05:00Z',
+            conversation_state=state,
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=_FakeModelClient(
+                _confirm_payload(
+                    product_method=product_methods.METHOD_CONFIRM_DELETE_EVENT,
+                    operation='delete',
+                    pending_action_id='agenda-pending-unverified-delete-simple',
+                    confirmation_level='reinforced',
+                )
+            ),
+            write_client=caldav_write_client.CalDavWriteClient(transport=transport),
+        )
+
+        self.assertEqual(
+            result.proposal_execution_result.reason_code,
+            write_execution.REASON_WRITE_UNVERIFIED_REINFORCED_REQUIRED,
+        )
+        self.assertEqual(transport.calls, [])
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        self.assertIn('type de ce calendrier', result.final_response_lock.content)
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
         self.assertNotIn('Fixture Focus Block', encoded_payload)
         self.assertNotIn('fixture-etag-001', encoded_payload)
@@ -1842,8 +2039,11 @@ class _FakeTextModelClient:
 
 
 class _FakeReadClient:
-    def __init__(self, *, family_calendar: bool = False) -> None:
+    def __init__(self, *, family_calendar: bool = False, family_calendar_classification: str | None = None) -> None:
         self.calls: list[str] = []
+        classification = family_calendar_classification
+        if classification is None:
+            classification = 'family' if family_calendar else 'non_family'
         self._calendar = CalendarSummary(
             local_id='primary',
             display_name='Fixture Primary Calendar',
@@ -1852,6 +2052,7 @@ class _FakeReadClient:
             enabled=True,
             readonly=True,
             family_calendar=family_calendar,
+            family_calendar_classification=classification,
             caldav_path='/remote.php/dav/calendars/tof/fixture-primary/',
         )
         self._event = CalendarEvent(
@@ -2156,6 +2357,9 @@ def _private_create_draft() -> dict:
         'location': 'Fixture Confirm Room',
         'description': 'Synthetic confirmed create draft.',
         'change_summary': '',
+        'family_calendar': False,
+        'family_calendar_classification': 'non_family',
+        'calendar_scope_unverified': False,
         'target': {},
     }
 
@@ -2191,6 +2395,9 @@ def _private_delete_draft() -> dict:
         'location': '',
         'description': '',
         'change_summary': 'Fixture delete change',
+        'family_calendar': False,
+        'family_calendar_classification': 'non_family',
+        'calendar_scope_unverified': False,
         'target': _private_target(),
     }
 
@@ -2206,6 +2413,9 @@ def _private_target() -> dict:
         'title': 'Fixture Focus Block',
         'location': 'Fixture Location Alpha',
         'description': 'Fixture description, no personal data.',
+        'family_calendar': False,
+        'family_calendar_classification': 'non_family',
+        'calendar_scope_unverified': False,
         'technical_ref': {
             'uid': 'fixture-event-001@example.invalid',
             'etag': 'fixture-etag-001',
