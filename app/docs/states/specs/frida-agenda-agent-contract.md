@@ -4,12 +4,14 @@ Statut: spec vivante
 Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
-Portee: contrat cible du futur agent Agenda Frida. Lots 1-7A livrent toggle
+Portee: contrat cible du futur agent Agenda Frida. Lots 1-7B livrent toggle
 no-op, configuration redacted, outils read-only, agent JSON valide,
 branchement applicatif read-only et preuve CalDAV live content-free. Les
 propositions Agenda creent des pending actions temporaires; Lot 7A livre les
-mutations confirmees uniquement avec fake transport. Toute mutation CalDAV live
-reste hors scope jusqu'a un Lot 7B avec GO humain explicite.
+mutations confirmees uniquement avec fake transport; Lot 7B prouve uniquement
+une creation live synthetique et son rollback delete sur la meme cible
+synthetique avec GO humain explicite. Les updates live et mutations utilisateur
+reelles restent hors scope.
 
 Sources:
 
@@ -718,13 +720,24 @@ Preuve Lot 6:
   booleens; elles ne contiennent jamais titre, lieu, description, UID, ETag,
   path/URL CalDAV, ICS, Authorization, cookie, token ou app-password.
 
-Lot 7B attendu:
+Lot 7B livre:
 
 - preuve live write separee, avec evenement synthetique, GO humain explicite,
-  rollback/suppression de test ou limite documentee;
-- artefact content-free sans titre, lieu, description, UID, ETag, path CalDAV,
-  ICS, Authorization, cookie, token ou app-password;
-- aucun Lot 8 n'est ferme par Lot 7A.
+  rollback/suppression de test documente;
+- artefact content-free:
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-lot7b-live-write-20260609T114108Z.jsonl`;
+- `LOT7B_CREATE_SYNTHETIC_EVENT`: pending create confirme, `PUT 201`,
+  final lock assistant normal, ETag present, aucun evenement personnel touche;
+- `LOT7B_CREATED_EVENT_STATUS_ONLY`: relance status-only `GET 200`, ETag
+  present, sans sauvegarder ICS ni titre/lieu/description;
+- `LOT7B_ROLLBACK_SYNTHETIC_EVENT`: rollback delete renforce sur la cible issue
+  du meme smoke, `DELETE 204`;
+- `LOT7B_FINAL_SYNTHETIC_STATE`: `GET 404`, evenement synthetique supprime;
+- `LOT7B_NO_UPDATE_LIVE`: `confirm_update_event` reste refuse avec
+  `agenda_write_update_preservation_required`, zero requete `PUT`;
+- `LOT7B_CONTENT_FREE_SCAN`: aucun titre, lieu, description, UID, ETag, path
+  CalDAV, ICS, Authorization, cookie, token ou app-password dans l'artefact;
+- aucun Lot 8 n'est ferme par Lot 7B.
 
 ## 12. Restitution visible et contexte suivant
 

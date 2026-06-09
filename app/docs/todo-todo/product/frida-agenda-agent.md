@@ -4,10 +4,11 @@ Statut: TODO actif au 2026-06-08
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
-Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-6 livrent
+Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-7B livrent
 toggle no-op, configuration redacted, outils read-only, agent JSON valide sous
 garde-fous, branchement applicatif read-only et preuve CalDAV live content-free,
-ainsi que propositions/pending store temporaire sans mutation.
+propositions/pending store temporaire, confirmations fake Lot 7A et preuve live
+write synthetique bornee Lot 7B.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -28,8 +29,9 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Creation/modification seulement apres confirmation explicite.
 - [x] Suppression jamais autonome, confirmation renforcee obligatoire.
 - [x] Calendrier familial: prudence renforcee.
-- [x] Lot 5B livre l'acces CalDAV live read-only sous garde-fous; les mutations
-  restent interdites hors lots de confirmation futurs.
+- [x] Lot 5B livre l'acces CalDAV live read-only sous garde-fous.
+- [x] Lot 7B prouve une creation live synthetique et son rollback delete sur la
+  meme cible synthetique; aucune mutation utilisateur reelle n'est autorisee.
 
 ## Audit existant FridaDev
 
@@ -351,14 +353,16 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] `pending_action_cancel`.
   Preuve livree: Lot 6, annulation et expiration sans mutation.
 - [x] `event_create_confirmed`.
-  Preuve livree: Lot 7A non-live, CalDAV `PUT` fake apres confirmation.
+  Preuve livree: Lot 7A non-live fake; Lot 7B live synthetique `PUT 201`,
+  evenement relu status-only `GET 200` avec ETag, aucune fuite content-free.
 - [ ] `event_update_confirmed`.
   Preuve attendue: update preservant l'ICS source, ETag obligatoire et conflit
   gere; Lot 7A.1 refuse l'update avant requete tant que cette preservation
   n'est pas livree.
 - [x] `event_delete_confirmed`.
   Preuve livree: Lot 7A non-live, CalDAV `DELETE` fake seulement apres
-  confirmation renforcee avec ETag obligatoire.
+  confirmation renforcee avec ETag obligatoire; Lot 7B rollback live
+  synthetique `DELETE 204` uniquement sur la cible creee dans le meme smoke.
 
 ## Lots runtime futurs
 
@@ -602,6 +606,11 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve livree: pending draft prive, `PUT` fake transport, `If-None-Match: *`,
   action neutralisee `executed`, observabilite/meta content-free, aucun write
   live.
+- [x] Lot 7B live: creation synthetique apres confirmation.
+  Preuve livree: artefact
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-lot7b-live-write-20260609T114108Z.jsonl`,
+  `PUT 201`, `GET 200`, ETag present, final lock assistant normal, aucun
+  evenement personnel touche.
 - [ ] Lot 7A/7B: modification apres confirmation.
   Preuve attendue: pending draft prive avec cible verifiee, ETag obligatoire,
   preservation de l'ICS source et conflit gere. Etat Lot 7A.1: `confirm_update_event`
@@ -611,14 +620,22 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
   Preuve livree: pending draft prive avec cible verifiee, `DELETE` fake
   transport, ETag obligatoire, confirmation renforcee obligatoire, aucune
   suppression live.
+- [x] Lot 7B live: rollback/suppression de l'evenement synthetique.
+  Preuve livree: suppression live bornee a la cible creee dans le meme smoke,
+  `DELETE 204`, puis `GET 404`; etat final propre, evenement synthetique
+  supprime.
 - [ ] Protection calendrier familial.
 - [x] Gestion conflit ETag ou equivalent.
   Preuve livree: Lot 7A.1 non-live, delete fake `412` refuse proprement sans
   executer/neutraliser la pending action; update reste bloque avant write tant
   que la preservation ICS source n'est pas livree.
-- [ ] Lot 7B live write proof avec evenement synthetique, GO humain explicite,
+- [x] Lot 7B live write proof avec evenement synthetique, GO humain explicite,
   rollback/suppression de test documente et artefact content-free.
-- [ ] Rollback ou limite de rollback documentee.
+  Preuve livree: create met, rollback delete met, no-update-live met,
+  content-free scan met; aucun titre, lieu, description, UID, ETag, path/URL,
+  ICS, Authorization, cookie, token ou app-password dans l'artefact.
+- [x] Rollback ou limite de rollback documentee.
+  Preuve livree: rollback execute; aucun evenement synthetique laisse en place.
 
 ### Lot 8 - Observabilite, dashboard, smokes live anonymises
 
