@@ -21,8 +21,10 @@ agentique via `surface_error` et transmet `user_display_name=Tof` au contexte
 d'enonciation agent. Lot 8bis.2 rend les surfaces read-only coherentes avec le
 resultat et affiche les all-day multi-jours comme des plages avec duree.
 Lot 8ter ajoute une cartographie docs-only des familles de questions Agenda
-pour guider les validations futures sans ouvrir Lot 9. Les updates live et
-mutations utilisateur reelles restent hors scope.
+pour guider les validations futures sans ouvrir Lot 9. Les smokes cibles du
+2026-06-09 restent partiels et ne declarent pas de cloture pragmatique globale
+Agenda V1. Les updates live et mutations utilisateur reelles restent hors
+scope.
 
 Sources:
 
@@ -1033,6 +1035,38 @@ Lot 8ter livre uniquement une cartographie documentaire:
   lit aucun calendrier et ne modifie pas le perimetre CalDAV;
 - Lot 9 reste ferme: les validations futures proposees sont des pistes de
   decision, pas des cases cochees.
+
+### 14.6 Smokes cibles de cloture pragmatique
+
+Les smokes cibles du 2026-06-09 ne testent pas toute la cartographie. Ils
+verifient seulement quatre familles jugees proches de l'usage quotidien:
+
+- lire une date explicite;
+- lire des sous-fenetres vernaculaires matin/apres-midi/soir;
+- reprendre une duree ou un sejour en multi-tour;
+- demander l'aide ou le perimetre operateur de l'Agenda.
+
+Artefact conserve:
+
+- `app/docs/states/baselines/agenda-smokes/frida-agenda-v1-targeted-closure-smokes-20260609T171000Z.jsonl`.
+
+Verdict normatif:
+
+- l'artefact est content-free et ne montre aucune mutation;
+- les quatre familles sont `partial`;
+- aucune cloture pragmatique globale Agenda V1 n'est declaree par ces smokes;
+- Lot 9 reste ferme.
+
+Les resultats a traiter comme limites produit:
+
+- `read_explicit_date` route correctement et tente CalDAV/Nextcloud read-only,
+  mais le smoke cible finit en `agenda_readonly_tool_error` controle;
+- les sous-fenetres vernaculaires ne sont pas prouvees comme fenetres horaires
+  dediees: un cas echoue avant lecture, l'autre retombe sur une fenetre de 24h;
+- la reprise duree/sejour conserve le contexte conversationnel, mais le smoke
+  ne trouve pas de cible multi-jours permettant de prouver la duree;
+- l'aide/perimetre operateur existe en reponse conversationnelle, mais n'est pas
+  encore une surface produit dediee suffisamment prouvee.
 
 ## 15. Invariants securite
 

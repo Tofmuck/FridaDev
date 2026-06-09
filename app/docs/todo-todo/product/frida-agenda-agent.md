@@ -18,7 +18,9 @@ rend le fallback live Agenda agentique via `surface_error` et transmet
 surfaces read-only coherentes avec le resultat et affiche les evenements
 journee entiere multi-jours comme des plages avec duree. Lot 8ter cartographie
 les familles de questions Agenda pour guider les prochains lots sans ouvrir
-Lot 9.
+Lot 9. Les smokes cibles du 2026-06-09 produisent une preuve JSONL
+content-free, mais ne suffisent pas a declarer une cloture pragmatique V1:
+les quatre familles testees restent `partial`.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -790,6 +792,39 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 - [x] Garder Lot 9 ferme.
   Preuve livree: la cartographie propose des validations futures sans les
   lancer ni les nommer comme Lot 9 actif.
+
+### Smokes cibles de cloture pragmatique V1
+
+- [x] Executer les 4 familles ciblees sans tester toute la cartographie.
+  Preuve livree:
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-v1-targeted-closure-smokes-20260609T171000Z.jsonl`.
+  Les familles testees sont: date explicite, sous-fenetres vernaculaires,
+  duree/sejour/reprise multi-tour, aide/perimetre operateur.
+- [x] Produire un artefact JSONL content-free et scanner l'absence de fuite.
+  Preuve livree: `LOT8CLOSURE_CONTENT_FREE_SCAN` est `met`, mutation=false,
+  aucun contenu Agenda brut n'est stocke dans l'artefact.
+- [ ] Declarer la cloture pragmatique Agenda V1.
+  Resultat: non declaree. Les 4 familles ciblees sont `partial`, donc la V1
+  reste utilisable sur son noyau prouve, mais les trous produit identifies
+  restent ouverts.
+- [ ] Valider la date explicite comme famille convaincante.
+  Resultat: `partial`. La conversation route `read_explicit_date` et tente
+  CalDAV/Nextcloud read-only, mais la lecture se termine en
+  `agenda_readonly_tool_error` avec final lock controle.
+- [ ] Valider les sous-fenetres vernaculaires.
+  Resultat: `partial`. `ce matin` echoue avec
+  `agenda_agent_time_window_mismatch`; `demain soir` lit une fenetre complete
+  de 24h au lieu d'une sous-fenetre prouvee.
+- [ ] Valider duree/sejour/reprise multi-tour.
+  Resultat: `partial`. La reprise de conversation est presente, mais le smoke
+  ne trouve pas d'evenement multi-jours permettant de prouver une duree.
+- [ ] Valider l'aide/perimetre operateur.
+  Resultat: `partial`. Une reponse de capacites est sauvegardee, mais la
+  surface "ce qui demande confirmation" reste insuffisamment prouvee comme
+  aide produit dediee.
+- [x] Garder Lot 9 ferme.
+  Preuve livree: aucun Lot 9 general n'est coche; les suites restent des
+  corrections ciblees ou des decisions produit explicites.
 
 ## Auto-audit permanent
 
