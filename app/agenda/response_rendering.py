@@ -13,6 +13,7 @@ from agenda.caldav_models import CalendarEvent
 SOURCE_AGENDA_READONLY_RESPONSE = 'agenda_readonly_response'
 REASON_AGENDA_READONLY_FINAL = 'agenda_readonly_final_response'
 REASON_AGENDA_READONLY_ERROR_FINAL = 'agenda_readonly_error_final_response'
+REASON_AGENDA_CAPABILITIES_FINAL = 'agenda_capabilities_final_response'
 
 
 @dataclass(frozen=True)
@@ -78,6 +79,40 @@ def build_final_response_lock(
     )
 
 
+def build_context_response_lock(*, plan: agent_contract.AgendaAgentPlan) -> AgendaFinalResponseLock | None:
+    if str(plan.product_method or '') != product_methods.METHOD_DESCRIBE_AGENDA_CAPABILITIES:
+        return None
+    content = render_agenda_capabilities_answer()
+    meta = _message_meta(
+        plan=plan,
+        execution_result=None,
+        final_reason_code=REASON_AGENDA_CAPABILITIES_FINAL,
+    )
+    observability = _lock_observability(meta)
+    return AgendaFinalResponseLock(
+        ok=True,
+        content=_compose_surface(plan.surface_intro, content, ''),
+        reason_code=REASON_AGENDA_CAPABILITIES_FINAL,
+        meta=meta,
+        observability=observability,
+    )
+
+
+def render_agenda_capabilities_answer() -> str:
+    return "\n".join(
+        (
+            "Je peux t'aider avec ton agenda de maniere prudente :",
+            "- lire en lecture seule une journee, une date ou une periode courte ;",
+            "- chercher un evenement ou ton prochain rendez-vous correspondant a un terme ;",
+            "- afficher les details d'un evenement deja identifie ;",
+            "- preparer une creation, une modification ou une suppression, puis te demander confirmation avant toute action ;",
+            "- refuser ou demander une precision quand la date, le calendrier ou la cible est ambigu.",
+            "Les suppressions et les calendriers partages ou familiaux demandent une confirmation renforcee.",
+            "Je ne prends pas encore en charge les rappels, les invitations, les repetitions riches, les disponibilites avancees, et les changements reels dans ton agenda ne sont pas ouverts comme automatisme par defaut.",
+        )
+    )
+
+
 def render_readonly_answer(
     *,
     plan: agent_contract.AgendaAgentPlan,
@@ -92,9 +127,11 @@ def render_readonly_answer(
     if method == product_methods.METHOD_SEARCH_EVENTS:
         return _render_search_events(events)
     if method == product_methods.METHOD_READ_TOMORROW:
-        return _render_window_events(events, empty="Je ne vois rien dans ton agenda demain.")
+        empty = "Je ne vois rien dans cette plage de ton agenda." if _is_subday_window(plan) else "Je ne vois rien dans ton agenda demain."
+        return _render_window_events(events, empty=empty)
     if method == product_methods.METHOD_READ_TODAY:
-        return _render_window_events(events, empty="Je ne vois rien dans ton agenda aujourd'hui.")
+        empty = "Je ne vois rien dans cette plage de ton agenda." if _is_subday_window(plan) else "Je ne vois rien dans ton agenda aujourd'hui."
+        return _render_window_events(events, empty=empty)
     if method in {
         product_methods.METHOD_READ_EXPLICIT_DATE,
         product_methods.METHOD_READ_WEEK,
@@ -154,6 +191,19 @@ def _render_event_details(events: tuple[CalendarEvent, ...]) -> str:
     if description:
         lines.append(description)
     return "\n".join(lines)
+
+
+def _is_subday_window(plan: agent_contract.AgendaAgentPlan) -> bool:
+    try:
+        start = datetime.fromisoformat(str(plan.time_scope.get('start') or '').replace('Z', '+00:00'))
+        end = datetime.fromisoformat(str(plan.time_scope.get('end') or '').replace('Z', '+00:00'))
+    except (AttributeError, TypeError, ValueError):
+        return False
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    return timedelta(0) < (end.astimezone(timezone.utc) - start.astimezone(timezone.utc)) < timedelta(days=1)
 
 
 def _event_line(event: CalendarEvent) -> str:

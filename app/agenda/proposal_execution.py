@@ -93,8 +93,8 @@ def plan_needs_pending_store(plan: agent_contract.AgendaAgentPlan) -> bool:
         and method.family in {
             product_methods.FAMILY_PROPOSE,
             product_methods.FAMILY_MUTATE,
-            product_methods.FAMILY_CONTEXT,
         }
+        or (method is not None and method.name == product_methods.METHOD_CANCEL_PENDING_AGENDA_ACTION)
     )
 
 

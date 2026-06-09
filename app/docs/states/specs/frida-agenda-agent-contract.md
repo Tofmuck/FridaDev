@@ -21,10 +21,11 @@ agentique via `surface_error` et transmet `user_display_name=Tof` au contexte
 d'enonciation agent. Lot 8bis.2 rend les surfaces read-only coherentes avec le
 resultat et affiche les all-day multi-jours comme des plages avec duree.
 Lot 8ter ajoute une cartographie docs-only des familles de questions Agenda
-pour guider les validations futures sans ouvrir Lot 9. Les smokes cibles du
-2026-06-09 restent partiels et ne declarent pas de cloture pragmatique globale
-Agenda V1. Les updates live et mutations utilisateur reelles restent hors
-scope.
+pour guider les validations futures sans ouvrir Lot 9. Le correctif cible du
+2026-06-09 ferme les quatre familles partial des smokes de cloture et declare
+une cloture pragmatique Agenda V1: utilisable au quotidien, a rouvrir seulement
+sur bug reel, besoin concret ou decision explicite de nouvelle capacite. Les
+updates live et mutations utilisateur reelles restent hors scope.
 
 Sources:
 
@@ -1048,25 +1049,32 @@ verifient seulement quatre familles jugees proches de l'usage quotidien:
 
 Artefact conserve:
 
-- `app/docs/states/baselines/agenda-smokes/frida-agenda-v1-targeted-closure-smokes-20260609T171000Z.jsonl`.
+- `app/docs/states/baselines/agenda-smokes/frida-agenda-v1-targeted-closure-smokes-20260609T175408Z.jsonl`.
+- Le premier smoke partial reste conserve sous
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-v1-targeted-closure-smokes-20260609T171000Z.jsonl`.
 
 Verdict normatif:
 
-- l'artefact est content-free et ne montre aucune mutation;
-- les quatre familles sont `partial`;
-- aucune cloture pragmatique globale Agenda V1 n'est declaree par ces smokes;
+- l'artefact final est content-free;
+- les quatre familles ciblees sont `met`;
+- la seule mutation observee est une creation synthetique temporaire pour
+  prouver duree/sejour/reprise, supprimee par rollback dans le meme run;
+- une cloture pragmatique globale Agenda V1 est declaree;
 - Lot 9 reste ferme.
 
-Les resultats a traiter comme limites produit:
+Resultats prouves:
 
-- `read_explicit_date` route correctement et tente CalDAV/Nextcloud read-only,
-  mais le smoke cible finit en `agenda_readonly_tool_error` controle;
-- les sous-fenetres vernaculaires ne sont pas prouvees comme fenetres horaires
-  dediees: un cas echoue avant lecture, l'autre retombe sur une fenetre de 24h;
-- la reprise duree/sejour conserve le contexte conversationnel, mais le smoke
-  ne trouve pas de cible multi-jours permettant de prouver la duree;
-- l'aide/perimetre operateur existe en reponse conversationnelle, mais n'est pas
-  encore une surface produit dediee suffisamment prouvee.
+- `read_explicit_date` execute CalDAV/Nextcloud read-only et produit un final
+  lock Frida normal;
+- les sous-fenetres vernaculaires simples prouvent des fenetres horaires bornees
+  de 6h pour `ce matin` et `demain soir`;
+- la reprise duree/sejour est prouvee avec un evenement synthetique multi-jours
+  cree, lu, repris au tour suivant, puis supprime dans le meme run;
+- l'aide/perimetre operateur dispose d'une surface dediee sans jargon sensible.
+
+Capacites volontairement laissees ouvertes apres V1: disponibilites riches,
+comparaison de journees/evenements, rappels, invitations, recurrences produit
+riches et mutations utilisateur reelles.
 
 ## 15. Invariants securite
 

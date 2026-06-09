@@ -19,11 +19,39 @@ CANONICAL_WINDOWS_PARIS = {
         'timezone': 'Europe/Paris',
         'local_date': '2026-06-08',
     },
+    'today_morning': {
+        'start': '2026-06-08T04:00:00Z',
+        'end': '2026-06-08T10:00:00Z',
+        'timezone': 'Europe/Paris',
+        'local_date': '2026-06-08',
+        'label': 'morning',
+    },
+    'today_afternoon': {
+        'start': '2026-06-08T10:00:00Z',
+        'end': '2026-06-08T16:00:00Z',
+        'timezone': 'Europe/Paris',
+        'local_date': '2026-06-08',
+        'label': 'afternoon',
+    },
+    'today_evening': {
+        'start': '2026-06-08T16:00:00Z',
+        'end': '2026-06-08T21:59:59Z',
+        'timezone': 'Europe/Paris',
+        'local_date': '2026-06-08',
+        'label': 'evening',
+    },
     'tomorrow': {
         'start': '2026-06-08T22:00:00Z',
         'end': '2026-06-09T22:00:00Z',
         'timezone': 'Europe/Paris',
         'local_date': '2026-06-09',
+    },
+    'tomorrow_evening': {
+        'start': '2026-06-09T16:00:00Z',
+        'end': '2026-06-09T21:59:59Z',
+        'timezone': 'Europe/Paris',
+        'local_date': '2026-06-09',
+        'label': 'evening',
     },
 }
 
@@ -140,8 +168,13 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
 
         self.assertEqual(windows['today']['start'], '2026-06-07T22:00:00Z')
         self.assertEqual(windows['today']['end'], '2026-06-08T22:00:00Z')
+        self.assertEqual(windows['today_morning']['start'], '2026-06-08T04:00:00Z')
+        self.assertEqual(windows['today_morning']['end'], '2026-06-08T10:00:00Z')
+        self.assertEqual(windows['today_afternoon']['start'], '2026-06-08T10:00:00Z')
+        self.assertEqual(windows['today_evening']['end'], '2026-06-08T21:59:59Z')
         self.assertEqual(windows['tomorrow']['start'], '2026-06-08T22:00:00Z')
         self.assertEqual(windows['tomorrow']['end'], '2026-06-09T22:00:00Z')
+        self.assertEqual(windows['tomorrow_evening']['start'], '2026-06-09T16:00:00Z')
 
     def test_agent_payload_includes_canonical_time_windows(self) -> None:
         request = _request(
@@ -156,6 +189,7 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         user_payload = json.loads(messages[1]['content'])
 
         self.assertEqual(user_payload['canonical_time_windows']['today']['start'], '2026-06-07T22:00:00Z')
+        self.assertEqual(user_payload['canonical_time_windows']['today_morning']['end'], '2026-06-08T10:00:00Z')
         self.assertEqual(user_payload['canonical_time_windows']['tomorrow']['end'], '2026-06-09T22:00:00Z')
         self.assertNotIn('RAW USER', messages[0]['content'])
 
@@ -228,6 +262,22 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertIn('surface_error', system_message)
         self.assertIn('user_display_name', system_message)
         self.assertIn('Tof', system_message)
+
+    def test_agent_prompt_instructs_subday_windows_and_capabilities_help(self) -> None:
+        request = _request(
+            settings=contract.AgendaAgentSettings(
+                mode=contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+        )
+
+        system_message = agent_openrouter.build_agenda_agent_messages(request)[0]['content']
+
+        self.assertIn('today_morning', system_message)
+        self.assertIn('tomorrow_evening', system_message)
+        self.assertIn('ne transforme jamais', system_message)
+        self.assertIn(product_methods.METHOD_DESCRIBE_AGENDA_CAPABILITIES, system_message)
         self.assertIn('ne doit pas contenir de jargon CalDAV', system_message)
 
     def test_search_events_accepts_bounded_range_then_local_search(self) -> None:
@@ -365,6 +415,52 @@ class AgendaAgentContractRuntimeTests(unittest.TestCase):
         self.assertEqual(rejected.status, contract.STATUS_REJECTED)
         self.assertEqual(rejected.reason_code, contract.REASON_TIME_WINDOW_MISMATCH)
         self.assertNotIn('2026-06-09T00:00:00Z', encoded)
+
+    def test_read_today_accepts_canonical_subday_window_but_rejects_mismatched_subday(self) -> None:
+        morning_payload = _payload_with_window(
+            product_method=product_methods.METHOD_READ_TODAY,
+            start='2026-06-08T04:00:00Z',
+            end='2026-06-08T10:00:00Z',
+        )
+        mismatched_payload = _payload_with_window(
+            product_method=product_methods.METHOD_READ_TODAY,
+            start='2026-06-08T05:00:00Z',
+            end='2026-06-08T11:00:00Z',
+        )
+
+        accepted = contract.validate_agent_payload(
+            morning_payload,
+            canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+        )
+        rejected = contract.validate_agent_payload(
+            mismatched_payload,
+            canonical_time_windows=CANONICAL_WINDOWS_PARIS,
+        )
+
+        self.assertEqual(accepted.status, contract.STATUS_VALIDATED)
+        self.assertEqual(rejected.status, contract.STATUS_REJECTED)
+        self.assertEqual(rejected.reason_code, contract.REASON_TIME_WINDOW_MISMATCH)
+        self.assertNotIn('2026-06-08T05:00:00Z', json.dumps(rejected.to_observability(), sort_keys=True))
+
+    def test_capabilities_method_validates_without_tool_calls(self) -> None:
+        payload = _valid_payload(
+            product_method=product_methods.METHOD_DESCRIBE_AGENDA_CAPABILITIES,
+            time_scope={
+                'kind': 'none',
+                'start': '',
+                'end': '',
+                'timezone': 'Europe/Paris',
+                'ambiguity': 'none',
+            },
+            tool_calls=[],
+            answer_mode='agenda_summary',
+        )
+
+        validation = contract.validate_agent_payload(payload, canonical_time_windows=CANONICAL_WINDOWS_PARIS)
+
+        self.assertEqual(validation.status, contract.STATUS_VALIDATED)
+        self.assertEqual(validation.reason_code, contract.REASON_VALIDATED)
+        self.assertEqual(validation.plan.product_method, product_methods.METHOD_DESCRIBE_AGENDA_CAPABILITIES)
 
     def test_tool_param_values_reject_raw_caldav_uid_and_secret_shapes_content_free(self) -> None:
         raw_url = 'https://cloud.frida-system.fr/remote.php/dav/calendars/tof/Famille/'

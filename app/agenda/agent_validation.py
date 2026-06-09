@@ -439,17 +439,17 @@ def _validate_canonical_time_window(
     tool_calls: tuple[contract.AgendaToolCall, ...],
     canonical_time_windows: Mapping[str, Any] | None,
 ) -> str:
-    window_key = {
-        product_methods.METHOD_READ_TODAY: 'today',
-        product_methods.METHOD_READ_TOMORROW: 'tomorrow',
+    window_keys = {
+        product_methods.METHOD_READ_TODAY: ('today', 'today_morning', 'today_afternoon', 'today_evening'),
+        product_methods.METHOD_READ_TOMORROW: ('tomorrow', 'tomorrow_morning', 'tomorrow_afternoon', 'tomorrow_evening'),
     }.get(product_method)
-    if not window_key:
+    if not window_keys:
         return ''
     if not isinstance(canonical_time_windows, Mapping):
         return ''
-    expected = canonical_time_windows.get(window_key)
+    expected = _matching_canonical_window(time_scope, canonical_time_windows, window_keys)
     if not isinstance(expected, Mapping):
-        return ''
+        return contract.REASON_TIME_WINDOW_MISMATCH
     expected_start = str(expected.get('start') or '')
     expected_end = str(expected.get('end') or '')
     if not expected_start or not expected_end:
@@ -466,6 +466,24 @@ def _validate_canonical_time_window(
         if call_start != expected_start or call_end != expected_end:
             return contract.REASON_TIME_WINDOW_MISMATCH
     return ''
+
+
+def _matching_canonical_window(
+    time_scope: Mapping[str, Any],
+    canonical_time_windows: Mapping[str, Any],
+    window_keys: tuple[str, ...],
+) -> Mapping[str, Any] | None:
+    scope_start = str(time_scope.get('start') or '')
+    scope_end = str(time_scope.get('end') or '')
+    if not scope_start or not scope_end:
+        return None
+    for key in window_keys:
+        candidate = canonical_time_windows.get(key)
+        if not isinstance(candidate, Mapping):
+            continue
+        if scope_start == str(candidate.get('start') or '') and scope_end == str(candidate.get('end') or ''):
+            return candidate
+    return None
 
 
 def _validate_tool_params(tool_name: str, value: Any) -> dict[str, Any] | str:

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Mapping
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from agenda import agent_contract
 from agenda import next_matching_search
@@ -231,9 +233,11 @@ def _query_range_for_call(
     start = str(params.get('start') or plan.time_scope.get('start') or '')
     end = str(params.get('end') or plan.time_scope.get('end') or '')
     timezone_name = str(params.get('timezone') or plan.time_scope.get('timezone') or 'UTC')
+    start = _timezone_aware_iso(start, timezone_name=timezone_name)
+    end = _timezone_aware_iso(end, timezone_name=timezone_name)
     max_days = int(params.get('max_days') or read_tools.MAX_QUERY_RANGE_DAYS)
     calendar_id = str(params.get('calendar_id') or '').strip()
-    if calendar_id:
+    if calendar_id and calendar_id in state.calendars:
         return read_tools.event_query_range(
             client,
             state=state,
@@ -292,6 +296,23 @@ def _ensure_search_pool(
         },
         plan=plan,
     )
+
+
+def _timezone_aware_iso(value: str, *, timezone_name: str) -> str:
+    raw = str(value or '').strip()
+    if not raw:
+        return raw
+    try:
+        parsed = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+    except ValueError:
+        return raw
+    if parsed.tzinfo is not None:
+        return raw
+    try:
+        zone = ZoneInfo(str(timezone_name or '').strip() or 'UTC')
+    except (ZoneInfoNotFoundError, ValueError):
+        zone = timezone.utc
+    return parsed.replace(tzinfo=zone).isoformat()
 
 
 @dataclass(frozen=True)

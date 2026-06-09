@@ -206,6 +206,122 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
         self.assertNotIn('Fixture All Day Block', encoded_payload)
 
+    def test_active_runtime_accepts_canonical_subday_window_without_reading_full_day(self) -> None:
+        fake_model = _FakeModelClient(
+            _payload_with_window(
+                product_method=product_methods.METHOD_READ_TODAY,
+                start='2026-06-08T04:00:00Z',
+                end='2026-06-08T10:00:00Z',
+            )
+        )
+        read_client = _EmptyReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(
+            read_client.query_ranges,
+            [('2026-06-08T04:00:00Z', '2026-06-08T10:00:00Z', 'Europe/Paris')],
+        )
+        lock = result.final_response_lock
+        self.assertIsNotNone(lock)
+        self.assertIn('cette plage', lock.content)
+        self.assertNotIn("aujourd'hui", lock.content)
+
+    def test_active_runtime_ignores_unverified_calendar_id_for_date_read(self) -> None:
+        payload = _payload_with_window(
+            product_method=product_methods.METHOD_READ_EXPLICIT_DATE,
+            start='2026-06-12T00:00:00',
+            end='2026-06-13T00:00:00',
+        )
+        payload['calendar_scope'] = {'calendar_ids': [], 'family_calendar': False, 'ambiguity': 'none'}
+        payload['time_scope']['kind'] = 'explicit_date'
+        payload['tool_calls'][0]['params']['calendar_id'] = 'model-guessed-calendar'
+        fake_model = _FakeModelClient(payload)
+        read_client = _EmptyReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_OK)
+        self.assertEqual(read_client.calls, ['list_calendars', 'query_calendar_events'])
+        self.assertEqual(
+            read_client.query_ranges,
+            [('2026-06-11T22:00:00Z', '2026-06-12T22:00:00Z', 'Europe/Paris')],
+        )
+        self.assertEqual(result.observability_payload['read_execution_status'], 'ok')
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('model-guessed-calendar', encoded_payload)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+
+    def test_active_runtime_renders_dedicated_agenda_capabilities_help_without_caldav(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                product_method=product_methods.METHOD_DESCRIBE_AGENDA_CAPABILITIES,
+                time_scope={
+                    'kind': 'none',
+                    'start': '',
+                    'end': '',
+                    'timezone': 'Europe/Paris',
+                    'ambiguity': 'none',
+                },
+                tool_calls=[],
+                answer_mode='agenda_summary',
+            )
+        )
+        read_client = _FakeReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(read_client.calls, [])
+        self.assertIsNone(result.read_execution_result)
+        self.assertTrue(result.observability_payload['final_response_override'])
+        self.assertFalse(result.observability_payload['caldav_access'])
+        lock = result.final_response_lock
+        self.assertIsNotNone(lock)
+        self.assertIn('lecture seule', lock.content)
+        self.assertIn('confirmation', lock.content)
+        self.assertIn('rappels', lock.content)
+        self.assertNotIn('CalDAV', lock.content)
+        self.assertNotIn('Lot', lock.content)
+        self.assertNotIn('transport', lock.content)
+        encoded = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded)
+
     def test_active_runtime_rejects_read_plan_without_tools_before_empty_agenda_answer(self) -> None:
         fake_model = _FakeModelClient(_valid_payload(tool_calls=[]))
         read_client = _FakeReadClient()
@@ -2720,6 +2836,15 @@ class _FakeReadClient:
 
     def calendar_by_local_id(self, calendar_id):
         return self._calendar if str(calendar_id or '') == self._calendar.local_id else None
+
+
+class _EmptyReadClient(_FakeReadClient):
+    def query_calendar_events(self, calendar, *, start_iso, end_iso, timezone_name='UTC'):
+        del calendar
+        self.calls.append('query_calendar_events')
+        self.query_ranges = getattr(self, 'query_ranges', [])
+        self.query_ranges.append((start_iso, end_iso, timezone_name))
+        return ()
 
 
 class _NextMatchingReadClient:

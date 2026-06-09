@@ -42,30 +42,37 @@ confirme est prouve en fake/local seulement avec preservation du payload
 calendrier source sur cas simple. Le calendrier familial ou partage est
 fail-closed: statut inconnu ou familial exige prudence renforcee.
 
-Ce qui reste fragile ou insuffisamment prouve: sous-fenetres vernaculaires
-comme matin/apres-midi/soir, questions de duree routees par l'agent,
-disponibilites, comparaison de journees, resume de journee riche, reprise
-multi-tour prouvee famille par famille, evenements recurrents complexes en
-usage produit, aide conversationnelle du type "qu'est-ce que tu peux faire avec
-mon agenda ?", rappels/notifications, participants/invitations, et mutations
-utilisateur reelles au-dela du smoke synthetique borne.
+Les smokes cibles de correction du 2026-06-09 ferment les quatre familles
+partial de la premiere cloture: date explicite, sous-fenetres vernaculaires
+simples, duree/sejour/reprise multi-tour et aide/perimetre operateur. Agenda V1
+est donc utilisable au quotidien; il ne faut pas continuer a parcourir les 25
+familles sans bug reel, besoin utilisateur concret ou decision explicite de
+nouvelle capacite.
+
+Ce qui reste volontairement ouvert: disponibilites riches, comparaison de
+journees ou d'evenements, resume de journee riche, evenements recurrents
+complexes en usage produit, rappels/notifications, participants/invitations et
+mutations utilisateur reelles au-dela du smoke synthetique borne.
 
 Smokes cibles de cloture pragmatique executes le 2026-06-09:
 
 - artefact:
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-v1-targeted-closure-smokes-20260609T175408Z.jsonl`;
+- premier smoke partial conserve:
   `app/docs/states/baselines/agenda-smokes/frida-agenda-v1-targeted-closure-smokes-20260609T171000Z.jsonl`;
 - familles testees: date explicite, sous-fenetres vernaculaires,
   duree/sejour/reprise multi-tour, aide/perimetre operateur;
 - scan content-free: `met`;
-- mutation: `false`;
-- verdict global: `partial`, donc aucune cloture pragmatique Agenda V1 n'est
-  declaree par cette preuve.
+- mutation utilisateur reelle: `false`;
+- mutation synthetique temporaire: creation multi-jours puis rollback delete
+  dans le meme run, pour prouver la duree/reprise sans toucher d'evenement
+  personnel;
+- verdict global: `met`, donc cloture pragmatique Agenda V1 declaree.
 
-A tester ensuite: corriger ou revalider les familles ciblees reste plus utile
-que parcourir les 25 familles. Les chantiers prioritaires sont les dates
-explicites qui finissent en erreur d'outil, les sous-fenetres vernaculaires
-matin/apres-midi/soir, la duree/sejour avec cible multi-jours reelle, puis une
-surface d'aide/perimetre dediee.
+A tester ensuite: ne rouvrir qu'en cas de bug reel, besoin concret ou decision
+explicite de nouvelle capacite. Les chantiers non prioritaires restent
+disponibilites riches, comparaison, rappels, invitations, recurrences produit
+riches et mutations utilisateur reelles.
 
 ## 2. Mode de lecture des statuts
 
@@ -93,10 +100,10 @@ quatre familles proches de l'usage quotidien reel.
 
 | Famille ciblee | Verdict | Preuve | Interpretation produit |
 |---|---|---|---|
-| Date explicite | partial | `read_explicit_date` route et tente CalDAV/Nextcloud read-only, mais finit en `agenda_readonly_tool_error` controle | La capacite reste disponible a tenter, mais pas cloturee par preuve convaincante |
-| Sous-fenetres vernaculaires | partial | un cas `ce matin` echoue avec `agenda_agent_time_window_mismatch`; un cas `demain soir` lit une fenetre 24h | Les sous-fenetres ne doivent pas etre vendues comme prouvees |
-| Duree/sejour/reprise multi-tour | partial | contexte multi-tour present, mais aucune cible multi-jours trouvee dans le smoke | Le rendu multi-jours existe, mais la question de duree reste a prouver sur donnees adequates |
-| Aide/perimetre operateur | partial | une reponse de capacites est sauvegardee; la surface des confirmations reste insuffisamment prouvee | Besoin d'une surface d'aide produit dediee avant de dire que la famille est fermee |
+| Date explicite | met | `read_explicit_date` execute CalDAV/Nextcloud read-only et produit un final lock normal | Capacite convaincante pour V1 |
+| Sous-fenetres vernaculaires | met | deux cas simples prouvent des fenetres horaires bornees de 6h | Matin/soir simples utilisables; autres variantes a traiter au besoin |
+| Duree/sejour/reprise multi-tour | met | evenement synthetique multi-jours cree, lu, repris au tour suivant, puis supprime | Reprise V1 convaincante sans contenu personnel |
+| Aide/perimetre operateur | met | surface dediee pour capacites, confirmations et refus | Aide utilisateur V1 suffisante, sans promesse excessive |
 
 ## 3. Carte des familles de questions
 
@@ -104,13 +111,13 @@ quatre familles proches de l'usage quotidien reel.
 |---|---|---|---|---|---|---|
 | Lire aujourd'hui, fenetre complete | `Qu'est-ce que j'ai aujourd'hui ?`<br>`J'ai quoi dans mon agenda aujourd'hui ?`<br>`Montre-moi mon agenda du jour.` | oui | oui | `read_today` -> `event_query_range` avec fenetre canonique locale | La fenetre complete est prouvee; les sous-fenetres ne le sont pas implicitement | Smoke read-only journee complete |
 | Lire demain, fenetre complete | `J'ai quelque chose demain ?`<br>`Rappelle-moi mon agenda de demain.`<br>`Demain, j'ai des rendez-vous importants ?` | oui | oui | `read_tomorrow` -> `event_query_range` avec fenetre canonique locale | La fenetre complete est prouvee; les sous-fenetres ne le sont pas implicitement | Smoke read-only demain complet |
-| Sous-fenetres vernaculaires | `J'ai quoi ce matin ?`<br>`Et demain soir ?`<br>`Est-ce que je suis pris cet apres-midi ?` | partiel | partielle | Agent -> date locale + fenetre horaire a produire; execution par `event_query_range` | Smoke cible: `ce matin` echoue avant lecture; `demain soir` retombe sur 24h, donc sous-fenetre non prouvee | Lot sous-fenetres vernaculaires |
-| Lire une date explicite | `Tu peux me rappeler ce que j'ai vendredi ?`<br>`Qu'est-ce que j'ai le 18 juin ?`<br>`Regarde mon agenda pour lundi prochain.` | oui | partielle | `read_explicit_date` -> `event_query_range` | Smoke cible: methode routee et acces CalDAV tente, mais erreur d'outil controlee; pas encore convaincant | Smoke dates explicites apres correction |
+| Sous-fenetres vernaculaires | `J'ai quoi ce matin ?`<br>`Et demain soir ?`<br>`Est-ce que je suis pris cet apres-midi ?` | oui | oui | Agent -> fenetre canonique matin/apres-midi/soir; execution par `event_query_range` | Deux formulations simples prouvees; variantes plus fines a traiter sur bug reel | Rouvrir seulement si formulation concrete echoue |
+| Lire une date explicite | `Tu peux me rappeler ce que j'ai vendredi ?`<br>`Qu'est-ce que j'ai le 18 juin ?`<br>`Regarde mon agenda pour lundi prochain.` | oui | oui | `read_explicit_date` -> `event_query_range` | Les dates locales sans offset sont interpretees dans la timezone Frida avant CalDAV | Rouvrir seulement si nouvelle formulation concrete echoue |
 | Lire une semaine ou une periode | `Qu'est-ce que j'ai la semaine prochaine ?`<br>`Montre-moi mon agenda du 10 au 14.`<br>`Je suis charge cette semaine ?` | partiel | non | `read_week` ou periode explicite -> fenetres bornees | Disponible a tenter, mais synthese periode et limites de largeur restent a prouver | Lot periode/semaine |
 | Chercher par mot, personne ou lieu dans une fenetre | `Cherche les rendez-vous avec [personne].`<br>`Tu vois quelque chose a propos de [mot-cle] ?`<br>`J'ai un rendez-vous a [lieu] cette semaine ?` | oui | partielle | `search_events` -> `event_query_range` puis `event_search` local | Depend d'une fenetre fournie par l'agent; pas une recherche future progressive | Smokes search par formulations |
 | Trouver le prochain evenement correspondant a X | `Quand est mon prochain rendez-vous avec [personne] ?`<br>`Quand est-ce que je vois [personne] ?`<br>`C'est quand mon prochain evenement contenant [mot-cle] ?` | oui | oui | `find_next_matching_event` -> fenetres futures 31 jours, horizon 365 jours, arret au premier match | Match textuel simple; horizon fixe; pas de semantique avancee | Variantes vernaculaires anonymisees |
 | Obtenir les details d'un evenement deja identifie | `Ouvre ce rendez-vous.`<br>`Tu peux me donner les details de cet evenement ?`<br>`C'est ou, ce rendez-vous ?` | partiel | partielle | `event_details` -> `event_get` sur id local deja connu | Reprise multi-tour vers la bonne cible a prouver en conversation reelle | Lot reprise details |
-| Demander la duree d'un evenement ou sejour | `Combien de temps dure ce rendez-vous ?`<br>`Combien de temps j'y reste ?`<br>`Mon sejour a [lieu], c'est du quand au quand ?` | partiel | partielle | Contexte visible apres rendu plage, ou relecture details | Rendu multi-jours prouve; smoke cible avec reprise presente mais aucune cible multi-jours trouvee | Lot duree/sejour/reprise avec cible adequate |
+| Demander la duree d'un evenement ou sejour | `Combien de temps dure ce rendez-vous ?`<br>`Combien de temps j'y reste ?`<br>`Mon sejour a [lieu], c'est du quand au quand ?` | oui | oui | Contexte visible apres rendu plage, ou relecture details | Prouve avec evenement synthetique multi-jours et reprise au tour suivant; pas de contenu personnel conserve | Rouvrir sur bug reel ou besoin de durees plus riches |
 | Demander les evenements d'un calendrier precis | `Qu'est-ce qu'il y a dans le calendrier famille ?`<br>`Lis seulement mon calendrier perso.`<br>`Montre-moi le calendrier [type].` | partiel | non | `calendar_scope.calendar_ids` + `event_query_range` | Selection vernaculaire du calendrier et classification a prouver | Smoke calendar-scope content-free |
 | Demander les evenements du calendrier familial/partage | `Qu'est-ce qu'il y a dans le calendrier familial ?`<br>`On a quoi dans le calendrier partage ?`<br>`Regarde le calendrier de la famille.` | partiel | partielle | Read-only via calendrier cible; mutations fail-closed via policy familiale | Protection mutation prouvee; lecture ciblee famille non prouvee live | Smoke read-only calendrier familial |
 | Demander disponibilites ou creneaux libres | `J'ai un trou demain ?`<br>`Quand est-ce que je suis libre cette semaine ?`<br>`Trouve-moi un creneau d'une heure.` | partiel | non | `find_availability` declare; lecture d'evenements possible | La derivation de creneaux libres n'est pas livree comme vraie capacite riche | Lot disponibilites |
@@ -125,8 +132,8 @@ quatre familles proches de l'usage quotidien reel.
 | Rappels, notifications, alarmes | `Ajoute un rappel pour [activite].`<br>`Previens-moi une heure avant.`<br>`Mets une alarme sur cet evenement.` | non | non | Aucun champ reminder/alarme livre dans le draft V1 | Pas de support `VALARM`/reminder en creation, update ou rendu | Lot reminders si decide |
 | Participants et invitations | `Invite [personne] a ce rendez-vous.`<br>`Qui est invite ?`<br>`Ajoute quelqu'un a cet evenement.` | non | non | Les champs participant/organisateur ne sont pas des surfaces produit V1 | Les proprietes d'invitation sont traitees comme techniques et non exposees comme draft utilisateur | Lot invitations si decide |
 | Recurrences, repetitions et occurrence unique | `Ajoute ca tous les lundis.`<br>`Deplace seulement cette occurrence.`<br>`Supprime cette repetition.` | partiel | partielle | Lecture recurrente bornee existe; update recurrent/multi-composant fail-closed | Creation/update/suppression d'occurrence recurrente non livrees comme action utilisateur | Lot recurrence produit |
-| Demander ce que Frida peut faire avec l'agenda | `Qu'est-ce que tu peux faire avec mon agenda ?`<br>`Tu sais faire quoi avec le calendrier ?`<br>`Quelles questions je peux te poser ?` | partiel | partielle | Reponse conversationnelle generale; pas de methode aide produit dediee | Smoke cible sauvegarde une reponse, mais la surface n'est pas encore une aide productisee | Lot aide utilisateur Agenda |
-| Perimetre, capacites et calendriers accessibles | `Quels calendriers tu peux lire ?`<br>`Dans quels calendriers tu peux ecrire ?`<br>`Qu'est-ce qui demande confirmation ?` | partiel | partielle | Peut s'appuyer sur contrat/runtime redacted et calendrier lu | Smoke cible partiel sur confirmations; ne pas vendre comme ferme | Lot aide operatoire Agenda |
+| Demander ce que Frida peut faire avec l'agenda | `Qu'est-ce que tu peux faire avec mon agenda ?`<br>`Tu sais faire quoi avec le calendrier ?`<br>`Quelles questions je peux te poser ?` | oui | oui | `describe_agenda_capabilities` -> surface d'aide bornee | Surface V1 prouvee; ne promet pas rappels, invitations, repetitions riches ni disponibilites avancees | Rouvrir si l'aide promet trop ou manque un besoin concret |
+| Perimetre, capacites et calendriers accessibles | `Quels calendriers tu peux lire ?`<br>`Dans quels calendriers tu peux ecrire ?`<br>`Qu'est-ce qui demande confirmation ?` | oui | oui | `describe_agenda_capabilities`, runtime redacted et politique confirmations | Le detail exhaustif des calendriers accessibles reste content-free/admin; pas de dashboard voyeuriste | Rouvrir si besoin operateur plus precis |
 | Gerer conflit ou ambiguite | `Le rendez-vous de demain, deplace-le.`<br>`Ajoute ca au calendrier.`<br>`Supprime le mauvais doublon.` | partiel | partielle | `clarify_agenda_request`, guards cible/calendrier/date | Surfaces de clarification par famille peu prouvees | Lot clarification smokes |
 | Action impossible ou dangereuse | `Supprime tous mes rendez-vous.`<br>`Modifie le calendrier familial sans confirmer.`<br>`Fais-le sans me redemander.` | refuse | sans objet | Validation mutation, pending store, confirmation renforcee, policy familiale | Besoin de messages visibles harmonises par danger | Lot refus dangereux surfaces |
 | Frottements clients ou administration calendrier | `Pourquoi mon telephone ne voit pas l'agenda ?`<br>`[Proche] ne voit pas le calendrier.`<br>`Le Mac ne synchronise pas.` | admin | sans objet | Hors runtime Agenda; sujet client/configuration | Peut necessiter runbook operateur, pas code agent | Guide admin client si besoin |
@@ -391,18 +398,18 @@ quatre familles proches de l'usage quotidien reel.
 
 ## 7. Prochaines validations recommandees
 
-- Lot A: smokes read-only anonymises sur dates explicites, periodes, calendriers
-  cibles, calendrier familial read-only, sous-fenetres vernaculaires et recherches
-  par formulations variees.
-- Lot B: surface d'aide utilisateur "questions possibles" et perimetre operateur
-  dans la conversation, avec promesses bornees et confirmations explicites.
-- Lot C: duree/sejour/reprise multi-tour, notamment `combien de temps j'y reste ?`
-  apres une reponse Agenda.
-- Lot D: disponibilites et creneaux libres, avec fenetres bornees et refus des
+Ne pas lancer une campagne sur les 25 familles apres la cloture pragmatique V1.
+Rouvrir seulement sur bug reel, besoin utilisateur concret ou decision explicite
+de nouvelle capacite. Les lots futurs recommandes, si decides, sont:
+
+- Lot A: disponibilites et creneaux libres, avec fenetres bornees et refus des
   demandes trop larges.
-- Lot E: rappels/notifications et participants/invitations seulement si decide,
-  en gardant les proprietes techniques hors observabilite.
-- Lot F: mutations utilisateur reelles progressives si decide: creation simple,
+- Lot B: rappels/notifications et participants/invitations, en gardant les
+  proprietes techniques hors observabilite.
+- Lot C: recurrences produit riches: creation, deplacement ou suppression
+  d'occurrence unique sans patch silencieux du mauvais composant.
+- Lot D: comparaison de journees/evenements et resumes de journee riches.
+- Lot E: mutations utilisateur reelles progressives si decide: creation simple,
   puis delete ciblee, puis update live avec preservation source, chaque fois avec
   preuve synthetique et GO humain.
 

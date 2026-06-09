@@ -343,11 +343,13 @@ def run_agenda_chat_turn(
                 execution_result=execution_result,
             )
         else:
-            execution_result = read_execution.execute_readonly_plan(
-                result.validated_plan,
-                client=None,
-                live_caldav=False,
-            )
+            final_lock = response_rendering.build_context_response_lock(plan=result.validated_plan)
+            if final_lock is None:
+                execution_result = read_execution.execute_readonly_plan(
+                    result.validated_plan,
+                    client=None,
+                    live_caldav=False,
+                )
     execution_observation = (
         execution_result.observation if execution_result is not None else None
     )

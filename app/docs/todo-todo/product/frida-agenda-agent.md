@@ -19,8 +19,10 @@ surfaces read-only coherentes avec le resultat et affiche les evenements
 journee entiere multi-jours comme des plages avec duree. Lot 8ter cartographie
 les familles de questions Agenda pour guider les prochains lots sans ouvrir
 Lot 9. Les smokes cibles du 2026-06-09 produisent une preuve JSONL
-content-free, mais ne suffisent pas a declarer une cloture pragmatique V1:
-les quatre familles testees restent `partial`.
+content-free. Le correctif cible du 2026-06-09 cloture les quatre familles
+partial revelees par le premier smoke et declare une cloture pragmatique Agenda
+V1: utilisable au quotidien, a rouvrir seulement sur bug reel, besoin concret
+ou decision explicite de nouvelle capacite.
 
 Question prealable: existe-t-il un meilleur plan ?
 
@@ -797,32 +799,37 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 - [x] Executer les 4 familles ciblees sans tester toute la cartographie.
   Preuve livree:
-  `app/docs/states/baselines/agenda-smokes/frida-agenda-v1-targeted-closure-smokes-20260609T171000Z.jsonl`.
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-v1-targeted-closure-smokes-20260609T175408Z.jsonl`
+  (le premier smoke partial reste conserve sous
+  `app/docs/states/baselines/agenda-smokes/frida-agenda-v1-targeted-closure-smokes-20260609T171000Z.jsonl`).
   Les familles testees sont: date explicite, sous-fenetres vernaculaires,
   duree/sejour/reprise multi-tour, aide/perimetre operateur.
 - [x] Produire un artefact JSONL content-free et scanner l'absence de fuite.
-  Preuve livree: `LOT8CLOSURE_CONTENT_FREE_SCAN` est `met`, mutation=false,
-  aucun contenu Agenda brut n'est stocke dans l'artefact.
-- [ ] Declarer la cloture pragmatique Agenda V1.
-  Resultat: non declaree. Les 4 familles ciblees sont `partial`, donc la V1
-  reste utilisable sur son noyau prouve, mais les trous produit identifies
-  restent ouverts.
-- [ ] Valider la date explicite comme famille convaincante.
-  Resultat: `partial`. La conversation route `read_explicit_date` et tente
-  CalDAV/Nextcloud read-only, mais la lecture se termine en
-  `agenda_readonly_tool_error` avec final lock controle.
-- [ ] Valider les sous-fenetres vernaculaires.
-  Resultat: `partial`. `ce matin` echoue avec
-  `agenda_agent_time_window_mismatch`; `demain soir` lit une fenetre complete
-  de 24h au lieu d'une sous-fenetre prouvee.
-- [ ] Valider duree/sejour/reprise multi-tour.
-  Resultat: `partial`. La reprise de conversation est presente, mais le smoke
-  ne trouve pas d'evenement multi-jours permettant de prouver une duree.
-- [ ] Valider l'aide/perimetre operateur.
-  Resultat: `partial`. Une reponse de capacites est sauvegardee, mais la
-  surface "ce qui demande confirmation" reste insuffisamment prouvee comme
-  aide produit dediee.
+  Preuve livree: `LOT8CLOSURE5_CONTENT_FREE_SCAN` est `met`, aucun contenu
+  Agenda brut n'est stocke dans l'artefact; la seule mutation observee est la
+  creation synthetique temporaire de preuve duree, supprimee dans le meme run.
+- [x] Declarer la cloture pragmatique Agenda V1.
+  Resultat: les 4 familles ciblees sont `met`; Agenda V1 est utilisable au
+  quotidien. Ne pas continuer a tester les 25 familles sans bug reel, besoin
+  utilisateur concret ou decision explicite de nouvelle capacite.
+- [x] Valider la date explicite comme famille convaincante.
+  Resultat: `met`. `read_explicit_date` execute CalDAV/Nextcloud read-only et
+  verrouille une reponse Frida normale.
+- [x] Valider les sous-fenetres vernaculaires.
+  Resultat: `met`. `ce matin` et `demain soir` utilisent des fenetres bornees
+  de 6h, pas une journee complete.
+- [x] Valider duree/sejour/reprise multi-tour.
+  Resultat: `met`. Un evenement synthetique multi-jours est cree, lu, repris
+  au tour suivant pour la duree, puis supprime dans le meme run.
+- [x] Valider l'aide/perimetre operateur.
+  Resultat: `met`. Les surfaces dediees expliquent lecture, recherche,
+  propositions, confirmations, refus et capacites non livrees sans jargon
+  sensible.
 - [x] Garder Lot 9 ferme.
+
+Capacites volontairement laissees ouvertes apres cloture pragmatique V1:
+disponibilites riches, comparaison de journees/evenements, rappels,
+invitations, recurrences produit riches et mutations utilisateur reelles.
   Preuve livree: aucun Lot 9 general n'est coche; les suites restent des
   corrections ciblees ou des decisions produit explicites.
 
