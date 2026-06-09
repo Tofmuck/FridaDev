@@ -364,6 +364,88 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('requested-calendar', encoded_payload)
         self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
 
+    def test_active_runtime_refuses_known_calendar_id_outside_explicit_scope_without_widening(self) -> None:
+        payload = _payload_with_window(
+            product_method=product_methods.METHOD_READ_EXPLICIT_DATE,
+            start='2026-06-12T00:00:00',
+            end='2026-06-13T00:00:00',
+        )
+        payload['calendar_scope'] = {
+            'calendar_ids': ['requested-calendar'],
+            'family_calendar': False,
+            'ambiguity': 'none',
+        }
+        payload['time_scope']['kind'] = 'explicit_date'
+        payload['tool_calls'][0]['params']['calendar_id'] = 'primary'
+        fake_model = _FakeModelClient(payload)
+        read_client = _EmptyReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertFalse(result.used)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_ERROR)
+        self.assertEqual(
+            result.read_execution_result.reason_code,
+            read_execution.REASON_CALENDAR_SCOPE_UNRESOLVED,
+        )
+        self.assertEqual(read_client.calls, ['list_calendars'])
+        self.assertEqual(getattr(read_client, 'query_ranges', []), [])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('requested-calendar', encoded_payload)
+        self.assertNotIn('primary', encoded_payload)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+
+    def test_active_runtime_accepts_resolved_calendar_id_inside_explicit_scope(self) -> None:
+        payload = _payload_with_window(
+            product_method=product_methods.METHOD_READ_EXPLICIT_DATE,
+            start='2026-06-12T00:00:00',
+            end='2026-06-13T00:00:00',
+        )
+        payload['calendar_scope'] = {
+            'calendar_ids': ['primary'],
+            'family_calendar': False,
+            'ambiguity': 'none',
+        }
+        payload['time_scope']['kind'] = 'explicit_date'
+        payload['tool_calls'][0]['params']['calendar_id'] = 'primary'
+        fake_model = _FakeModelClient(payload)
+        read_client = _EmptyReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_OK)
+        self.assertEqual(read_client.calls, ['list_calendars', 'query_calendar_events'])
+        self.assertEqual(
+            read_client.query_ranges,
+            [('2026-06-11T22:00:00Z', '2026-06-12T22:00:00Z', 'Europe/Paris')],
+        )
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('primary', encoded_payload)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+
     def test_active_runtime_renders_dedicated_agenda_capabilities_help_without_caldav(self) -> None:
         fake_model = _FakeModelClient(
             _valid_payload(
@@ -507,6 +589,11 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
     def test_active_runtime_marks_secret_access_only_when_secret_is_resolved(self) -> None:
         fake_model = _FakeModelClient(
             _valid_payload(
+                calendar_scope={
+                    'calendar_ids': [_live_fixture_calendar_id()],
+                    'family_calendar': False,
+                    'ambiguity': 'none',
+                },
                 surface_error="Desole Tof, je n'ai pas reussi a relire ton agenda correctement.",
                 surface_outro='Si rien ne remonte, on pourra le recreer ensemble.',
                 tool_calls=[
@@ -888,6 +975,65 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('Florence Boitez', encoded_payload)
         self.assertNotIn('Fixture Next Match', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_next_matching_event_known_calendar_id_outside_explicit_scope_is_refused(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                product_method=product_methods.METHOD_FIND_NEXT_MATCHING_EVENT,
+                intent='find next matching appointment',
+                calendar_scope={
+                    'calendar_ids': ['requested-calendar'],
+                    'family_calendar': False,
+                    'ambiguity': 'none',
+                },
+                time_scope={
+                    'kind': 'future',
+                    'start': '',
+                    'end': '',
+                    'timezone': 'Europe/Paris',
+                    'ambiguity': 'none',
+                },
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_SEARCH,
+                        'method': 'GET',
+                        'params': {
+                            'calendar_id': 'primary',
+                            'query': 'Florence Boitez',
+                            'limit': 3,
+                        },
+                        'call_id': 'next-1',
+                    }
+                ],
+            )
+        )
+        read_client = _NextMatchingReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T10:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertFalse(result.used)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_ERROR)
+        self.assertEqual(
+            result.read_execution_result.reason_code,
+            read_execution.REASON_CALENDAR_SCOPE_UNRESOLVED,
+        )
+        self.assertEqual(read_client.calls, ['list_calendars'])
+        self.assertEqual(read_client.query_ranges, [])
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('requested-calendar', encoded_payload)
+        self.assertNotIn('primary', encoded_payload)
+        self.assertNotIn('Florence Boitez', encoded_payload)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
 
     def test_next_matching_event_renders_all_day_multi_day_range_and_duration(self) -> None:
         event = CalendarEvent(

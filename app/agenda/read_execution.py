@@ -126,7 +126,7 @@ def execute_readonly_plan(
             calendar_id = next_matching_search.calendar_id_from_tool_calls(plan.tool_calls)
             if _plan_has_explicit_calendar_scope(plan):
                 _ensure_calendars(client, state)
-                if not calendar_id or calendar_id not in state.calendars:
+                if not _calendar_id_allowed_by_plan_scope(plan, calendar_id=calendar_id, state=state):
                     raise _read_tool_validation_error(REASON_CALENDAR_SCOPE_UNRESOLVED)
             start_iso = str(now_iso or plan.time_scope.get('start') or '')
             result = next_matching_search.find_next_matching_event(
@@ -243,7 +243,7 @@ def _query_range_for_call(
     end = _timezone_aware_iso(end, timezone_name=timezone_name)
     max_days = int(params.get('max_days') or read_tools.MAX_QUERY_RANGE_DAYS)
     calendar_id = str(params.get('calendar_id') or '').strip()
-    if calendar_id and calendar_id in state.calendars:
+    if calendar_id and _calendar_id_allowed_by_plan_scope(plan, calendar_id=calendar_id, state=state):
         return read_tools.event_query_range(
             client,
             state=state,
@@ -280,6 +280,20 @@ def _query_range_for_call(
 
 def _plan_has_explicit_calendar_scope(plan: agent_contract.AgendaAgentPlan) -> bool:
     return any(str(item or '').strip() for item in (plan.calendar_scope.get('calendar_ids') or ()))
+
+
+def _calendar_id_allowed_by_plan_scope(
+    plan: agent_contract.AgendaAgentPlan,
+    *,
+    calendar_id: str,
+    state: AgendaReadState,
+) -> bool:
+    target = str(calendar_id or '').strip()
+    if not target or target not in state.calendars:
+        return False
+    scoped_ids = {str(item or '').strip() for item in (plan.calendar_scope.get('calendar_ids') or ())}
+    scoped_ids.discard('')
+    return not scoped_ids or target in scoped_ids
 
 
 def _ensure_search_pool(
