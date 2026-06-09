@@ -45,6 +45,7 @@ from admin import (
 )
 from admin import admin_actions
 from admin import runtime_settings
+from agenda import observability_read_model as agenda_observability_read_model
 from biblio import observability as biblio_observability
 from core import token_utils
 from identity import identity
@@ -1050,6 +1051,28 @@ def api_admin_chat_logs_metrics():
 @app.get('/api/admin/biblio/observability')
 def api_admin_biblio_observability():
     payload = biblio_observability.build_admin_observability(config_module=config)
+    return jsonify({'ok': True, **payload})
+
+
+@app.get('/api/admin/agenda/observability')
+def api_admin_agenda_observability():
+    raw_limit = request.args.get('limit', str(agenda_observability_read_model.MAX_RECENT_EVENTS))
+    try:
+        limit = max(1, min(int(raw_limit), agenda_observability_read_model.MAX_RECENT_EVENTS))
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'invalid limit parameter'}), 400
+    log_read_error = ''
+    log_events: list[dict[str, Any]] = []
+    try:
+        event_page = log_store.read_chat_log_events(limit=limit, stage='agenda')
+        raw_items = event_page.get('items') if isinstance(event_page, dict) else []
+        log_events = [item for item in raw_items if isinstance(item, dict)]
+    except Exception as exc:  # pragma: no cover - defensive admin degradation.
+        log_read_error = type(exc).__name__
+    payload = agenda_observability_read_model.build_admin_observability(
+        log_events=log_events,
+        log_read_error=log_read_error,
+    )
     return jsonify({'ok': True, **payload})
 
 

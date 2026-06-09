@@ -881,6 +881,30 @@ Champs interdits:
 - DSN;
 - token.
 
+### 14.1 Read-model admin Agenda Lot 8A
+
+Lot 8A livre une premiere surface admin content-free:
+
+- route: `GET /api/admin/agenda/observability`;
+- source runtime: evenements `observability.chat_log_events` filtres
+  `stage=agenda`, sans lecture Nextcloud ni DB Nextcloud;
+- source testable: metas conversationnelles Agenda deja persistees comme
+  messages assistant normaux;
+- schemas projetes: read-only, propositions/pending, confirmations/write fake
+  ou synthetiques, et erreurs content-free;
+- pending actions exposees seulement par id, hash, operation, statut,
+  expiration, niveau de confirmation et flags de risque;
+- drafts prives, contenu humain d'evenement, references techniques CalDAV et
+  payloads bruts restent exclus du read-model;
+- la route peut compter, hasher ou bucketiser, mais ne doit jamais recopier
+  titre, lieu, description, invite, UID brut, ETag brut, path/URL CalDAV brut,
+  ICS brut, Authorization, cookie, token, app-password, prompt brut ou dialogue
+  brut.
+
+Lot 8A ne ferme pas les smokes live anonymises, le scan global des logs ni la
+validation conversation reelle anonymisee. Ces preuves restent a livrer dans un
+Lot 8B separe.
+
 ## 15. Invariants securite
 
 Invariants durs:

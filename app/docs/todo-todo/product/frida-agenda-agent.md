@@ -666,8 +666,20 @@ une couche de regex locales au lieu d'une capacite agentique bornee.
 
 ### Lot 8 - Observabilite, dashboard, smokes live anonymises
 
+- [x] Inventaire des metas/observations Agenda existantes.
+  Preuve livree: Lot 8A cartographie et projette les schemas
+  `frida_agenda_lot5_readonly_v1`, `frida_agenda_lot6_pending_v1`,
+  `frida_agenda_lot7a_confirmed_write_v1`,
+  `frida_agenda_read_execution_v1`,
+  `frida_agenda_proposal_execution_v1` et
+  `frida_agenda_write_execution_v1` en read-model content-free.
+- [x] Dashboard/read-model sans contenu Agenda brut.
+  Preuve livree: route admin `GET /api/admin/agenda/observability`,
+  projection des evenements `stage=agenda` et des metas conversationnelles,
+  pending actions exposees uniquement par id/hash/statut/expiration/flags,
+  tests anti-fuite sur titre, lieu, description, UID, ETag, path CalDAV,
+  raw ICS, Authorization, cookie, token et app-password synthetiques.
 - [ ] JSONL content-free.
-- [ ] Dashboard/read-model sans contenu Agenda brut.
 - [ ] Smokes serveur sans iOS/macOS.
 - [ ] Scan secrets/logs.
 - [ ] Validation conversation reelle anonymisee.
