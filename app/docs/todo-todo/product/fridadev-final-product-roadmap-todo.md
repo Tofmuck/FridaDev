@@ -1,174 +1,126 @@
-# FridaDev - roadmap produit finale - TODO
+# FridaDev - Roadmap finale produit Frida 1.0
 
-Ce document fige la fin de la grande roadmap produit FridaDev.
+Statut: TODO actif
+Date: 2026-06-10
+Cible de cloture: 2026-07-02
+Branche de travail courante: `FridaAgenda`
 
-Mise a jour 2026-05-28: la duplication Amandine est annulee par decision
-produit et retiree de cette boussole active. Les paniers Adobe, installation,
-externalisation et jobs divers sont archives dans `app/docs/todo-done/product/`.
+## Intention
 
-Mise a jour 2026-05-29: Biblio native / Frida Catalogue est livre et archive.
-Il ne reste plus comme grand chantier produit potentiel que Text-to-speech, si
-la priorite est confirmee.
+Cette roadmap fixe l'ordre general de cloture Frida 1.0. Elle n'est pas une
+grande specification detaillee: chaque point renvoie vers une TODO dediee qui
+sera detaillee dans un lot separe.
 
-Mise a jour 2026-06-08: la demande explicite "Frida Agenda Agent" ouvre un
-chantier produit separe, d'abord docs-only. Ce n'est pas une reouverture par
-inertie de la boussole: le cadrage actif vit dans
-`app/docs/todo-todo/product/frida-agenda-agent.md` et son contrat source dans
-`app/docs/states/specs/frida-agenda-agent-contract.md`.
+Regle de fin de cycle:
 
-Il ne lance pas plusieurs implementations maintenant. Il sert de boussole de fin de cycle: les gros chantiers produit restants sont limites aux points ci-dessous. Il pourra encore y avoir des correctifs, des ajustements de comportement, du polish, des preuves operateur ou de petites ameliorations locales, mais aucun nouveau gros chantier produit ne doit etre ajoute par inertie avant decision explicite.
+- finir les capacites indispensables a Frida 1.0;
+- ne pas rouvrir les chantiers abstraits deja clos;
+- traiter les bonus seulement s'il reste de la marge;
+- documenter les limites et preuves sans gonfler la roadmap.
 
-## Perimetre fige
+## Obligatoire pour cloturer Frida 1.0
 
-Les chantiers produit majeurs suivis par cette boussole sont:
+### 1. Socle Nextcloud / dossiers / droits Frida
 
-1. Atelier documentaire / repertoire de travail, livre et archive.
-2. Recherche internet, livree avec archives et policy active.
-3. Biblio native / catalogue Tulu, livre et archive.
-4. Text-to-speech.
-5. Frida Agenda Agent, ouvert explicitement en cadrage docs-only.
+Un dossier frontend Frida doit correspondre a un repertoire Nextcloud: creation,
+renommage, suppression, conflits de noms, utilisateur Nextcloud propre pour
+Frida, repertoire partage avec Tof, droits, chemins, erreurs et traces
+content-free.
 
-Les vrais chantiers encore ouverts depuis cette boussole sont Text-to-speech,
-si la priorite est confirmee, et Frida Agenda Agent selon le cadrage explicite
-du 2026-06-08.
+TODO dediee:
+`app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
 
-## Ancien chantier transversal archive
+### 2. Documents sources / ingestion / lecture / PDF fallback
 
-Le panier transversal court est archive:
+Frida doit pouvoir recevoir des documents dans un dossier Nextcloud, lister ce
+qui est disponible, preparer ou faire lire un document, relier document,
+dossier, conversation et usage, et traiter les PDF sans texte comme images. Le
+fallback visuel doit etre le meme que le PDF vienne d'un dossier ou d'un ajout
+direct dans le chat: memes limites, memes messages utilisateur, memes preuves,
+aucun contenu brut dans les traces.
 
-- `app/docs/todo-done/product/job-divers-todo.md`
+TODO dediee:
+`app/docs/todo-todo/product/frida-v1-documents-ingestion-todo.md`
 
-Portee: jobs produit courts hors perimetre majeur, avec historique livre du reglage avance borne du reasoning GPT-5.1, du streaming visuel, de la dictee Whisper longue sous surveillance et des petits ajustements UI bornes.
+### 3. Notes Markdown par dossier
 
-Garde-fou conserve comme historique: un nouveau panier futur ne devra jamais rendre visible, streamer, stocker, persister, exporter ou injecter le raisonnement interne du modele (`reasoning_details` ou equivalent). Les nouveaux jobs devront rester petits, explicites et ne pas elargir la liste des gros chantiers produit.
+Frida doit pouvoir creer une note, completer une note, retrouver une note,
+lister les notes d'un dossier et stocker ces notes en Markdown dans Nextcloud.
 
-## Ordre provisoire recommande
+TODO dediee:
+`app/docs/todo-todo/product/frida-v1-folder-markdown-notes-todo.md`
 
-1. Atelier documentaire / repertoire de travail.
-2. Audit et fiabilisation de la recherche internet.
-3. Biblio native Tulu, livre et archive.
-4. Frida Agenda Agent, docs-only puis lots runtime separes si GO.
-5. Text-to-speech selon priorite explicite.
+### 4. Exports / creation documentaire
 
-## 1. Atelier documentaire / repertoire de travail
+Frida doit pouvoir produire des exports Markdown, TXT, DOCX et PDF, les ranger
+dans le bon dossier Nextcloud, puis retrouver et reutiliser un export deja
+produit.
 
-Objectif: creer un espace de travail documentaire ou l'utilisateur garde des fichiers a portee de main, puis choisit ce qui est active ou desactive dans la conversation.
+TODO dediee:
+`app/docs/todo-todo/product/frida-v1-exports-todo.md`
 
-Formule source:
+### 5. Images generees
 
-- Documents actifs = ce que Frida peut lire maintenant.
-- Atelier documentaire = ce que l'utilisateur garde a portee de main.
-- Biblio = ce qui est conserve durablement comme fonds/catalogue.
+Auditer le stockage actuel des images generees, choisir stockage serveur et/ou
+Nextcloud, rattacher chaque image a un dossier, garder des metadonnees sobres et
+eviter toute fuite de prompt brut ou contenu sensible.
 
-Distinctions obligatoires:
+TODO dediee:
+`app/docs/todo-todo/product/frida-v1-generated-images-todo.md`
 
-- ce n'est pas de la memoire;
-- ce n'est pas la Biblio;
-- ce n'est pas l'historique conversationnel;
-- ce n'est pas un RAG automatique.
+### 6. Observabilite globale / logs agentiques
 
-Le geste produit vise un repertoire de travail lisible: fichiers disponibles, selection explicite, activation/desactivation claire, et aucune contamination automatique de Memory, Identity, Summary, Biblio ou historique conversationnel.
+Auditer les traces actuelles, verifier leur degradation en mode agentique,
+harmoniser statuts, reason codes, traces d'outils, smokes et dashboard. Les
+traces doivent rester exploitables mais content-free, avec une separation nette
+entre observabilite technique, observabilite produit, preuves live et surface
+utilisateur.
 
-## 2. Recherche internet
+TODO dediee:
+`app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
 
-Objectif: auditer puis fiabiliser la recherche internet existante.
+### 7. Audit final general
 
-Le chantier doit d'abord comprendre le contrat actuel:
+Verifier securite et valeurs sensibles, runtime OVH, docs/specs/TODO, tests,
+smokes live, coherence des agents, coherence frontend/backend, surface
+utilisateur et critique produit/politique.
 
-- declenchement;
-- cout;
-- logs;
-- injection dans le tour;
-- non-contamination;
-- comportement attendu en cas d'echec ou d'incertitude.
+TODO dediee:
+`app/docs/todo-todo/product/frida-v1-final-audit-todo.md`
 
-Le but n'est pas de refondre par principe. Si l'existant est correct, le bon resultat peut etre une clarification, quelques garde-fous, de meilleures preuves et une observabilite plus lisible.
+## Bonus non bloquant
 
-Reference d'audit ouverte pour ce chantier:
+### 8. Mail V1 bonus borne
 
-- `app/docs/states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
+Bonus si marge, non bloquant pour cloturer Frida 1.0. Auditer Nextcloud Mail /
+IMAP / SMTP / API controlee, puis cadrer lecture, resume, tri/classement,
+brouillons, envoi seulement avec confirmation humaine, archivage ou rattachement
+eventuel a des dossiers Frida.
 
-Archive de renforcement local SearXNG/Crawl4AI V0, avec bras benchmark `local_profiled`:
+TODO dediee:
+`app/docs/todo-todo/product/frida-v1-mail-bonus-todo.md`
 
-- `app/docs/todo-done/product/fridadev-local-web-search-hardening-todo.md`
+## Reporte hors Frida 1.0
 
-Archive source-of-truth du chantier de reconstruction web discovery local-first + Exa de A a Z, avec OpenRouter/Exa comme provider de decouverte URL configure et sans fallback automatique:
+- SMS: reporte, pas necessaire pour la cloture Frida 1.0.
+- TTS: reporte / no-go pour l'instant; pas d'usage fort. Frida reste
+  principalement une interface de lecture et d'ecriture.
 
-- `app/docs/todo-done/product/fridadev-local-web-search-rebuild-todo.md`
-- Decision produit associee: `app/docs/states/policies/fridadev-web-search-openrouter-exa-decision-2026-05-22.md`
+## References utiles
 
-Note Adobe: le mode Photoshop / Illustrator existe et son TODO est archive dans
-`app/docs/todo-done/product/Adobe to do.md`. Il ne constitue plus une condition
-active de cette roadmap.
+- Cloture pragmatique Agenda V1:
+  `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
+- TODO Agenda V1:
+  `app/docs/todo-todo/product/frida-agenda-agent.md`
+- Hub documentation:
+  `app/docs/README.md`
 
-## 3. Biblio native / catalogue Tulu
+## Hors-scope de cette roadmap generale
 
-Objectif principal pour l'instance Tof: construire une Biblio native / catalogue Tulu comme fonds durable, classe, consultable.
-
-Ce chantier est separe de l'atelier documentaire:
-
-- l'atelier documentaire garde des pieces a portee de main pour le travail courant;
-- la Biblio conserve un fonds durable et cataloguable;
-- les documents actifs restent ce que Frida peut lire maintenant dans un tour donne.
-
-References archivees:
-
-- `app/docs/todo-done/product/frida-biblio-native-catalogue-audit-plan.md`
-- `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
-- `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
-
-## 4. Text-to-speech
-
-Objectif: chantier de confort et de presence, pas dependance critique.
-
-Sources a relire plus tard:
-
-- implementation deja faite dans Freezer D4;
-- plan Swift existant;
-- modele, chunks et strategie deja prets cote Swift.
-
-Note produit: si ce chantier est implemente, il peut rester disponible dans l'instance Tof et eventuellement devenir reutilisable ailleurs.
-
-## 5. Frida Agenda Agent
-
-Objectif: permettre a Frida de consulter et proposer autour de l'agenda
-Nextcloud/CalDAV sans devenir proprietaire cachee du calendrier familial et
-sans ecriture non confirmee.
-
-References actives:
-
-- `app/docs/states/specs/frida-agenda-agent-contract.md`
-- `app/docs/todo-todo/product/frida-agenda-agent.md`
-
-Garde-fous:
-
-- toggle Agenda obligatoire, off par defaut;
-- CalDAV comme frontiere d'acces;
-- pas de DB directe Nextcloud;
-- app-password dedie Frida, jamais expose au LLM;
-- lecture/proposition separees de l'ecriture;
-- creation/modification seulement apres confirmation explicite;
-- suppression seulement apres confirmation renforcee;
-- calendrier familial sous prudence renforcee;
-- preuves live content-free ou anonymisees.
-
-## Hors scope de ce TODO
-
-Ce TODO global ne doit pas implementer les chantiers.
-
-Il ne doit pas:
-
-- creer les TODO detailles maintenant;
-- modifier le runtime;
-- modifier la DB;
-- modifier les prompts;
-- modifier le frontend;
-- modifier Docker;
-- appeler OpenRouter;
-- changer les settings live.
-
-## Regle de fin de cycle
-
-Tout nouveau gros chantier produit propose apres ce document doit etre traite comme une decision explicite de reouverture ou d'extension de cycle.
-
-Le risque principal n'est pas de manquer une idee; c'est de laisser la roadmap regonfler par inertie. Ce fichier sert a garder le cap: finir les derniers chantiers choisis, puis stabiliser.
+- Pas de code runtime.
+- Pas de smoke live.
+- Pas d'acces Nextcloud.
+- Pas de modification Docker.
+- Pas de grand audit maintenant.
+- Pas de reouverture Agenda abstraite.
+- Pas de reouverture Biblio.

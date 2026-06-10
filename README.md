@@ -10,6 +10,7 @@ FridaDev is the application repository for Frida: a working AI dialogue runtime 
 Primary current-state references:
 
 - Documentation hub: `app/docs/README.md`
+- Frida 1.0 final product roadmap: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Current runtime pipeline: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Model call catalog and OpenRouter topology audit: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Global temporal truth audit: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
@@ -110,6 +111,7 @@ Frontend rehydration and operator observability
 ### Documentation anchors
 
 - Docs hub: `app/docs/README.md`
+- Frida 1.0 final product roadmap: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Current runtime pipeline: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Model call catalog and OpenRouter topology audit: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Global temporal truth audit: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
@@ -204,6 +206,7 @@ FridaDev est le depot applicatif de Frida: un runtime IA de dialogue avec memoir
 References principales pour l'etat courant:
 
 - Hub documentaire: `app/docs/README.md`
+- Roadmap finale produit Frida 1.0: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Catalogue des appels modeles et audit de topologie OpenRouter: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit global de verite temporelle: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
@@ -304,6 +307,7 @@ Rehydratation frontend et observabilite operateur
 ### Ancres documentaires
 
 - Hub docs: `app/docs/README.md`
+- Roadmap finale produit Frida 1.0: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Catalogue des appels modeles et audit de topologie OpenRouter: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit global de verite temporelle: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`

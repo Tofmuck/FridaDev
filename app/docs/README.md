@@ -15,6 +15,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 ### Current-state
 
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
+- Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit stack locale SearXNG/Crawl4AI vs benchmark web 2026-05-21: `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
@@ -60,7 +61,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Archive refonte des mutables identity judge-first: `todo-done/refactors/mutable-identity-judge-refactor-todo.md`
 - Contrat source-of-truth juge mutable: `states/specs/mutable-identity-judge-contract.md`
 - Validation finale refonte mutable judge-first 2026-05-25: `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`
-- Boussole produit finale nettoyee avant Biblio: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Index migration: `todo-todo/migration/README.md` (aucun chantier actif Amandine)
 - Archive annulation duplication Amandine 2026-05-28: `todo-done/migrations/amandine-duplication-annulee-2026-05-28.md`
 - Validation finale freeze sante Frida 2026-05-27: `todo-done/migrations/frida-health-freeze-before-amandine-final-validation-2026-05-27.md` (baseline Frida utile, sans duplication Amandine a executer)
