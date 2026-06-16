@@ -95,25 +95,29 @@ Spec Lot 1:
 - [x] Garder les logs, erreurs et fixtures content-free.
 - [x] Ne pas brancher de secret ni de chemin serveur reel dans ce lot.
 
-Note post-Lot 3: `app/core/workspace_folders_store.py` atteint `519` lignes
-apres l'ajout fake/local. Ne pas refactorer dans ce micro-correctif; si Lot 4 ou
-Lot 6 rallonge encore le store, extraire la projection Nextcloud fake/local dans
-un module dedie, par exemple
-`app/core/workspace_folder_nextcloud_projection.py`, sans creer de `utils.py` ni
-de `helpers.py`.
+Note post-Lot 4: la projection Nextcloud fake/local a ete extraite dans
+`app/core/workspace_folder_nextcloud_projection.py`; le store revient sous le
+seuil de 500 lignes. Ne pas creer de `utils.py` ni de `helpers.py`.
 
 ### Lot 4 - Routes/API frontend/backend pour dossiers
 
-- [ ] Ajouter les routes applicatives minimales pour lister, creer, renommer et
+- [x] Ajouter les routes applicatives minimales pour lister, creer, renommer et
   supprimer un dossier Frida via le backend fake/local.
-- [ ] Ajouter la surface frontend minimale correspondante si le backend Lot 3
+- [x] Ajouter la surface frontend minimale correspondante si le backend Lot 3
   est stable.
-- [ ] Afficher les conflits et erreurs sans fuite de chemin brut, contenu,
+- [x] Afficher les conflits et erreurs sans fuite de chemin brut, contenu,
   secret ou detail serveur sensible.
-- [ ] Exiger une confirmation humaine avant toute suppression reelle ou future
+- [x] Exiger une confirmation humaine avant toute suppression reelle ou future
   suppression live.
-- [ ] Prouver la compatibilite avec les dossiers/conversations existants sans
+- [x] Prouver la compatibilite avec les dossiers/conversations existants sans
   deplacement massif.
+
+Lot 4 livre les routes existantes `/api/workspace-folders*` sans surface
+parallele. La suppression V1 tombstone le dossier et sort les conversations du
+dossier selon le comportement existant; elle ne supprime pas les fichiers,
+documents workspace, notes, exports ou contenus. L'UI garde un statut fake/local
+discret (`Local`, `En attente Nextcloud`, `Conflit`, `Erreur`) sans chemin
+serveur, URL DAV, secret, `storage_key` ni contenu utilisateur.
 
 ### Lot 5 - Preuve live Nextcloud bornee
 
@@ -242,5 +246,6 @@ Ce point de sortie ne traite pas:
 - Suppression ou deplacement massif de contenu utilisateur.
 - TTS.
 - SMS.
-- Rebuild Docker.
+- Pas de rebuild Docker plateforme/global. Un rebuild applicatif cible
+  `fridadev` reste autorise pour un patch runtime FridaDev.
 - Modification Sauron ou plateforme.

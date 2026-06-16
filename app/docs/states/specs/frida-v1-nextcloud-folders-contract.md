@@ -1,6 +1,6 @@
 # Frida V1 - Nextcloud folders contract
 
-Statut: spec vivante Lot 1 + etat Lot 3 fake/local
+Statut: spec vivante Lot 1 + etats Lots 3 et 4 fake/local
 Date: 2026-06-16
 Classement: `app/docs/states/specs/`
 TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
@@ -18,6 +18,11 @@ Depuis le commit `017195f5`, cette meme spec documente aussi la mise en oeuvre
 runtime fake/local livree par le Lot 3. Le Lot 3 reste sans Nextcloud live, sans
 secret, sans migration DB, sans table de liaison et sans client Nextcloud
 separe: il ajoute une projection/service derive depuis `workspace_folders`.
+
+Depuis le Lot 4, les routes existantes `/api/workspace-folders*` exposent ce
+modele fake/local sans route parallele, et l'UI affiche un statut sobre. La
+suppression V1 tombstone le dossier et sort les conversations du dossier, mais
+ne supprime aucun fichier ou document workspace.
 
 Il fixe le contrat produit minimal du socle Frida 1.0:
 
@@ -214,6 +219,7 @@ Suppression:
 - la suppression locale peut tombstoner le `workspace_folder`;
 - les conversations restent conservees et sorties du dossier selon le contrat
   existant;
+- les fichiers et documents workspace restent conserves dans Lot 4;
 - aucune suppression reelle Nextcloud ne doit se produire sans lot live explicite
   et confirmation humaine;
 - pas de suppression recursive large;
@@ -291,6 +297,17 @@ Lot 3:
 - aucun secret;
 - aucun appel Nextcloud live;
 - logs et fixtures content-free.
+
+Lot 4:
+
+- routes existantes `/api/workspace-folders*` completees, sans route parallele;
+- listing, creation, renommage et suppression exposent la projection fake/local;
+- suppression V1 = tombstone dossier et conversations sorties du dossier;
+- aucun fichier ou document workspace n'est supprime par la suppression du
+  dossier;
+- UI avec confirmation humaine et statut discret: `Local`,
+  `En attente Nextcloud`, `Conflit`, `Erreur`;
+- aucun chemin serveur, URL DAV, secret, `storage_key` ou contenu utilisateur.
 
 Lot 5:
 
@@ -375,8 +392,8 @@ Restent hors-scope produit du socle Nextcloud folders a ce stade:
 - Biblio;
 - refonte Nextcloud;
 - migration massive;
-- routes/API nouvelles;
-- UI nouvelle;
+- routes paralleles ou nouvelles hors `/api/workspace-folders*`;
+- refonte UI large;
 - migration DB;
 - live Nextcloud;
 - creation de compte;
@@ -514,22 +531,71 @@ Tests Lot 3:
 - tombstone locale marquee `deleted` sans live Nextcloud;
 - normalisation frontend des champs fake/local sans fuite de champs bruts.
 
-Dette courte post-Lot 3:
+Dette courte post-Lot 3 resolue en Lot 4:
 
 - `app/core/workspace_folders_store.py` atteint `519` lignes apres la projection
   fake/local;
-- aucun refactor n'est fait dans ce micro-correctif, pour eviter un deplacement
-  de responsabilite hors-scope;
-- si le store grandit encore en Lot 4 ou Lot 6, extraire la projection et la
-  validation Nextcloud fake/local dans un module dedie, par exemple
+- le Lot 4 extrait la projection/sanitisation Nextcloud fake/local dans
   `app/core/workspace_folder_nextcloud_projection.py`;
+- `app/core/workspace_folders_store.py` repasse sous 500 lignes et conserve la
+  responsabilite persistence workspace folders;
 - ne pas creer de fichier fourre-tout `utils.py` ou `helpers.py`.
 
-## 12. Decisions techniques restantes avant Lot 4/5
+## 12. Mise en oeuvre Lot 4 API/UI fake-local
 
-- choisir la forme exacte d'exposition UI Lot 4 des nouveaux etats fake/local;
-- definir si Lot 4 doit afficher le mapping logique ou seulement un statut
-  redacted;
+Lot 4 livre le 2026-06-16 l'exposition API/UI fake-local sans Nextcloud live.
+
+Routes/API:
+
+- les routes existantes `/api/workspace-folders*` sont conservees;
+- aucune route `/api/frida-folders` ou surface parallele n'est creee;
+- `GET /api/workspace-folders` liste les dossiers actifs avec projection
+  fake/local;
+- `POST /api/workspace-folders` cree un dossier avec validation de nom,
+  conflits et projection;
+- `PATCH /api/workspace-folders/<id>` renomme avec les memes validations et met
+  a jour la projection;
+- `DELETE /api/workspace-folders/<id>` tombstone le dossier, sort les
+  conversations du dossier, preserve les fichiers/documents workspace et
+  retourne `workspace_folder_files_preserved`.
+
+UI:
+
+- le frontend conserve la sidebar existante;
+- la confirmation de suppression dit explicitement que les fichiers et documents
+  ne seront pas supprimes;
+- le statut fake/local reste discret et textuel: `Local`,
+  `En attente Nextcloud`, `Conflit`, `Erreur`;
+- l'UI n'affiche ni chemin serveur, ni URL DAV, ni `storage_key`, ni secret, ni
+  contenu utilisateur.
+
+Dette UI bornee:
+
+- `app/web/chat_workspace_folders_sidebar.js` reste au-dessus de 500 lignes
+  comme renderer historique concentre;
+- Lot 4 n'ouvre pas de refactor UI large pour eviter un deplacement hors-scope;
+- si Lot 6 ou un futur lot UI rallonge encore cette surface, extraire une
+  responsabilite dediee plutot que continuer a empiler dans le renderer.
+
+Preuves Lot 4:
+
+- tests route/API sur creation, renommage, suppression tombstone et projection;
+- tests service garantissant que le module fichiers n'est pas appele par la
+  suppression dossier;
+- tests frontend sur normalisation content-free, libelles sobres et texte de
+  confirmation;
+- tests conversations/workspace files existants conserves.
+
+Limites:
+
+- aucun Nextcloud live;
+- aucun Sauron;
+- aucun secret;
+- aucune DB Nextcloud;
+- aucun Lot 5.
+
+## 13. Decisions techniques restantes avant Lot 5/6
+
 - obtenir plus tard la decision Sauron sur compte Frida, racine, droits,
   partage et secrets runtime avant tout Lot 5;
 - definir le module d'observabilite dedie ou l'extension des conventions

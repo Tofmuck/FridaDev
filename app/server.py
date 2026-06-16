@@ -1278,7 +1278,6 @@ def api_delete_workspace_folder(folder_id: str):
     payload, status = workspace_folders_service.delete_workspace_folder(
         folder_id,
         workspace_folders_module=workspace_folders,
-        workspace_files_module=workspace_files,
     )
     return jsonify(payload), status
 

@@ -344,6 +344,17 @@ body {
   transition: opacity 120ms ease;
 }
 
+.workspace-folder-sync-state {
+  max-width: 82px;
+  overflow: hidden;
+  color: rgba(25, 23, 20, 0.38);
+  font-size: 9px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 120ms ease;
+}
+
 .workspace-folder-actions {
   position: absolute;
   right: 0;
@@ -360,8 +371,11 @@ body {
 }
 
 .workspace-folder-row:hover .workspace-folder-count,
+.workspace-folder-row:hover .workspace-folder-sync-state,
 .workspace-folder-row:focus-within .workspace-folder-count,
-.workspace-folder-drop-target .workspace-folder-count {
+.workspace-folder-row:focus-within .workspace-folder-sync-state,
+.workspace-folder-drop-target .workspace-folder-count,
+.workspace-folder-drop-target .workspace-folder-sync-state {
   opacity: 0;
 }
 

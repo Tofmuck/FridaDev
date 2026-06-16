@@ -71,6 +71,15 @@ const WORKSPACE_FILE_STATUS_LABELS = Object.freeze({
   error: 'Erreur',
 });
 
+const WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS = Object.freeze({
+  unknown: 'Local',
+  pending: 'En attente Nextcloud',
+  linked: 'Local',
+  conflict: 'Conflit',
+  error: 'Erreur',
+  deleted: 'Supprimé',
+});
+
 function normalizeWorkspaceFolderId(value) {
   const raw = String(value || '').trim();
   return raw || null;
@@ -223,6 +232,21 @@ function workspaceFileStatusLabel(item) {
   return status && status !== 'active' ? 'Etat fichier' : '';
 }
 
+function workspaceFolderNextcloudStatusLabel(item) {
+  const status = String(item?.nextcloud_sync_state || '').trim();
+  if (!status) return '';
+  if (WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS[status] !== undefined) {
+    return WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS[status];
+  }
+  return '';
+}
+
+function workspaceFolderDeleteConfirmationText(item) {
+  const displayName = String(item?.display_name || item?.name || 'ce répertoire').replace(/\s+/g, ' ').trim();
+  const label = displayName || 'ce répertoire';
+  return `Supprimer le répertoire "${label}" ? Les conversations resteront hors répertoire. Les fichiers et documents ne seront pas supprimés.`;
+}
+
 function canRunWorkspaceOcr(item) {
   const mime = String(item?.mime_type || '').split(';', 1)[0].trim().toLowerCase();
   const ext = String(item?.source_extension || '').trim().toLowerCase();
@@ -263,6 +287,7 @@ const FridaWorkspaceFolders = Object.freeze({
   WORKSPACE_FOLDER_ICON_LABELS,
   WORKSPACE_FOLDER_ICON_SVGS,
   WORKSPACE_FILE_STATUS_LABELS,
+  WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS,
   normalizeWorkspaceFolderId,
   normalizeWorkspaceIconKey,
   normalizeWorkspaceFolderItem,
@@ -274,6 +299,8 @@ const FridaWorkspaceFolders = Object.freeze({
   formatWorkspaceFileBytes,
   compactWorkspaceFileMeta,
   workspaceFileStatusLabel,
+  workspaceFolderNextcloudStatusLabel,
+  workspaceFolderDeleteConfirmationText,
   canRunWorkspaceOcr,
   canEditWorkspaceOcrMarkdown,
   groupThreadsByWorkspaceFolder,

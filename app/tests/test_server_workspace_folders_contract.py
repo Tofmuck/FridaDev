@@ -12,6 +12,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from tests.support.server_test_bootstrap import load_server_module_for_tests
+from core import workspace_folders_store
 
 
 FOLDER_ID = "11111111-2222-4333-8444-555555555555"
@@ -26,6 +27,11 @@ class _FakeWorkspaceFolders:
 
     def __init__(self):
         self.folders = {}
+
+    def _serialize(self, item):
+        if item is None:
+            return None
+        return workspace_folders_store.serialize_workspace_folder_row(item)
 
     def normalize_workspace_folder_id(self, value):
         try:
@@ -49,12 +55,23 @@ class _FakeWorkspaceFolders:
         return int(value)
 
     def list_workspace_folders(self):
-        return list(self.folders.values())
+        return [
+            self._serialize(item)
+            for item in self.folders.values()
+            if not item.get("deleted_at")
+        ]
 
     def get_workspace_folder(self, folder_id):
         normalized = self.normalize_workspace_folder_id(folder_id)
         item = self.folders.get(normalized)
-        return item if item and not item.get("deleted_at") else None
+        return self._serialize(item) if item and not item.get("deleted_at") else None
+
+    def validate_workspace_folder_display_name(self, value, *, current_folder_id=None):
+        return workspace_folders_store.validate_workspace_folder_name(
+            value,
+            existing_folders=list(self.folders.values()),
+            current_folder_id=current_folder_id,
+        )
 
     def create_workspace_folder(self, *, display_name, icon_key, description, sort_order=None):
         item = {
@@ -68,22 +85,27 @@ class _FakeWorkspaceFolders:
             "deleted_at": None,
         }
         self.folders[item["id"]] = item
-        return item
+        return self._serialize(item)
 
     def update_workspace_folder(self, folder_id, **fields):
         item = self.get_workspace_folder(folder_id)
-        if item is None:
+        normalized = self.normalize_workspace_folder_id(folder_id)
+        raw = self.folders.get(normalized)
+        if item is None or raw is None:
             return None
-        item.update({key: value for key, value in fields.items() if value is not None})
-        return item
+        raw.update({key: value for key, value in fields.items() if value is not None})
+        return self._serialize(raw)
 
     def soft_delete_workspace_folder(self, folder_id):
         item = self.get_workspace_folder(folder_id)
-        if item is None:
+        normalized = self.normalize_workspace_folder_id(folder_id)
+        raw = self.folders.get(normalized)
+        if item is None or raw is None:
             return None
-        item["deleted_at"] = "2026-05-20T00:01:00Z"
-        item["conversations_moved_out"] = 1
-        return item
+        raw["deleted_at"] = "2026-05-20T00:01:00Z"
+        folder = self._serialize(raw)
+        folder["conversations_moved_out"] = 1
+        return folder
 
 
 class _FakeWorkspaceFiles:
@@ -382,6 +404,9 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(payload["folder"]["id"], FOLDER_ID)
         self.assertEqual(payload["folder"]["display_name"], "Projet Tulu")
         self.assertEqual(payload["folder"]["description"], "UI only")
+        self.assertEqual(payload["folder"]["nextcloud_logical_path"], "/Frida/Projet-Tulu")
+        self.assertEqual(payload["folder"]["nextcloud_sync_state"], "pending")
+        self.assertFalse(payload["folder"]["nextcloud_live_checked"])
         self.assertNotIn("prompt", payload["folder"])
 
         patched = self.client.patch(
@@ -390,6 +415,7 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         )
         self.assertEqual(patched.status_code, 200)
         self.assertEqual(patched.get_json()["folder"]["display_name"], "Projet renomme")
+        self.assertEqual(patched.get_json()["folder"]["nextcloud_logical_path"], "/Frida/Projet-renomme")
 
         deleted = self.client.delete(f"/api/workspace-folders/{FOLDER_ID}")
         self.assertEqual(deleted.status_code, 200)
@@ -397,7 +423,11 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(deleted_payload["folder"]["conversations_moved_out"], 1)
         self.assertEqual(deleted_payload["folder"]["file_delete"]["requested"], 0)
         self.assertEqual(deleted_payload["folder"]["file_delete"]["failed"], 0)
-        self.assertEqual(self.fake_workspace_files.deleted_folder_ids, [FOLDER_ID])
+        self.assertEqual(deleted_payload["folder"]["file_delete"]["reason_code"], "workspace_folder_files_preserved")
+        self.assertEqual(deleted_payload["folder"]["files_deleted"], 0)
+        self.assertEqual(deleted_payload["folder"]["files_preserved"], True)
+        self.assertEqual(deleted_payload["folder"]["nextcloud_sync_state"], "deleted")
+        self.assertEqual(self.fake_workspace_files.deleted_folder_ids, [])
 
     def test_conversation_list_keeps_existing_conversations_outside_workspace_by_default(self) -> None:
         response = self.client.get("/api/conversations")
@@ -541,7 +571,7 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("text_content", self.fake_workspace_files.events[-1][1])
         self.assertNotIn("binary_content", self.fake_workspace_files.events[-1][1])
 
-    def test_workspace_folder_delete_removes_active_files_before_soft_delete(self) -> None:
+    def test_workspace_folder_delete_preserves_active_files_and_tombstones_folder(self) -> None:
         self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
         self.fake_workspace_files.files[FOLDER_ID] = [
             {"id": "11111111-1111-4111-8111-111111111111", "deleted_at": None, "status": "active"},
@@ -552,14 +582,17 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
 
         self.assertEqual(deleted.status_code, 200)
         payload = deleted.get_json()
-        self.assertEqual(payload["folder"]["file_delete"]["requested"], 2)
-        self.assertEqual(payload["folder"]["file_delete"]["deleted"], 2)
+        self.assertEqual(payload["folder"]["file_delete"]["requested"], 0)
+        self.assertEqual(payload["folder"]["file_delete"]["deleted"], 0)
         self.assertEqual(payload["folder"]["file_delete"]["failed"], 0)
-        self.assertEqual(payload["folder"]["files_deleted"], 2)
+        self.assertEqual(payload["folder"]["file_delete"]["reason_code"], "workspace_folder_files_preserved")
+        self.assertEqual(payload["folder"]["files_deleted"], 0)
+        self.assertEqual(payload["folder"]["files_preserved"], True)
         self.assertEqual(self.fake_workspace.folders[FOLDER_ID]["deleted_at"], "2026-05-20T00:01:00Z")
-        self.assertTrue(all(item["status"] == "deleted" for item in self.fake_workspace_files.files[FOLDER_ID]))
+        self.assertTrue(all(item["status"] == "active" for item in self.fake_workspace_files.files[FOLDER_ID]))
+        self.assertEqual(self.fake_workspace_files.deleted_folder_ids, [])
 
-    def test_workspace_folder_delete_does_not_mask_partial_file_failure(self) -> None:
+    def test_workspace_folder_delete_ignores_file_delete_failures_in_v1_folder_scope(self) -> None:
         self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
         self.fake_workspace_files.folder_delete_summary = {
             "requested": 2,
@@ -571,14 +604,14 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
 
         deleted = self.client.delete(f"/api/workspace-folders/{FOLDER_ID}")
 
-        self.assertEqual(deleted.status_code, 409)
+        self.assertEqual(deleted.status_code, 200)
         payload = deleted.get_json()
-        self.assertEqual(payload["reason_code"], "workspace_folder_file_delete_failed")
-        self.assertEqual(payload["file_delete"]["requested"], 2)
-        self.assertEqual(payload["file_delete"]["deleted"], 1)
-        self.assertEqual(payload["file_delete"]["failed"], 1)
-        self.assertIsNone(self.fake_workspace.folders[FOLDER_ID]["deleted_at"])
-        self.assertEqual(self.fake_workspace_files.deleted_folder_ids, [FOLDER_ID])
+        self.assertEqual(payload["folder"]["file_delete"]["requested"], 0)
+        self.assertEqual(payload["folder"]["file_delete"]["deleted"], 0)
+        self.assertEqual(payload["folder"]["file_delete"]["failed"], 0)
+        self.assertEqual(payload["folder"]["file_delete"]["reason_code"], "workspace_folder_files_preserved")
+        self.assertEqual(self.fake_workspace.folders[FOLDER_ID]["deleted_at"], "2026-05-20T00:01:00Z")
+        self.assertEqual(self.fake_workspace_files.deleted_folder_ids, [])
 
     def test_workspace_file_ocr_route_refuses_unsupported_type_without_content_leak(self) -> None:
         self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")

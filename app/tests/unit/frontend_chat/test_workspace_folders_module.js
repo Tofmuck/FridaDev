@@ -11,6 +11,8 @@ const {
   normalizeWorkspaceFilesPayload,
   normalizeWorkspaceFileSelectionsPayload,
   compactWorkspaceFileMeta,
+  workspaceFolderDeleteConfirmationText,
+  workspaceFolderNextcloudStatusLabel,
   workspaceFileStatusLabel,
   canRunWorkspaceOcr,
   canEditWorkspaceOcrMarkdown,
@@ -77,6 +79,27 @@ test("normalizeWorkspaceFolderItem preserves fake Nextcloud metadata without raw
   assert.equal(folder.storage_key, undefined);
   assert.equal(folder.dav_url, undefined);
   assert.equal(JSON.stringify(folder).includes("remote.php"), false);
+});
+
+test("workspace folder fake-local status labels stay sober and content-free", () => {
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "unknown" }), "Local");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "pending" }), "En attente Nextcloud");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "conflict" }), "Conflit");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "error" }), "Erreur");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "" }), "");
+});
+
+test("workspace folder delete confirmation preserves files and documents", () => {
+  const text = workspaceFolderDeleteConfirmationText({
+    display_name: "Projet Tulu",
+    nextcloud_logical_path: "/Frida/Projet-Tulu",
+    storage_key: "hidden/path",
+  });
+
+  assert.equal(text.includes("Les fichiers et documents ne seront pas supprimés."), true);
+  assert.equal(text.includes("les fichiers du répertoire seront supprimés"), false);
+  assert.equal(text.includes("/Frida/Projet-Tulu"), false);
+  assert.equal(text.includes("storage_key"), false);
 });
 
 test("normalizeWorkspaceFoldersPayload sorts folders by manual order", () => {

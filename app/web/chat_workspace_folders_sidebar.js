@@ -96,7 +96,10 @@ function createWorkspaceFolderSidebarRenderer({
 
   const requestDelete = async (folder) => {
     const ok = typeof window !== 'undefined'
-      ? window.confirm(`Supprimer le répertoire "${folder.display_name}" ? Les conversations resteront hors répertoire et les fichiers du répertoire seront supprimés.`)
+      ? window.confirm(
+        WorkspaceFolderUiHelpers?.workspaceFolderDeleteConfirmationText?.(folder)
+        || `Supprimer le répertoire "${folder.display_name}" ?`
+      )
       : false;
     if (!ok) return;
     try {
@@ -381,6 +384,15 @@ function createWorkspaceFolderSidebarRenderer({
     count.className = 'workspace-folder-count';
     count.textContent = String(folderThreads.length);
     main.appendChild(count);
+
+    const syncLabel = WorkspaceFolderUiHelpers?.workspaceFolderNextcloudStatusLabel?.(folder) || '';
+    if (syncLabel) {
+      const sync = document.createElement('span');
+      sync.className = 'workspace-folder-sync-state';
+      sync.textContent = syncLabel;
+      sync.title = syncLabel;
+      main.appendChild(sync);
+    }
 
     const actions = document.createElement('span');
     actions.className = 'workspace-folder-actions';

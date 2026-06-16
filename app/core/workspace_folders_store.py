@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import hashlib
-import re
-import unicodedata
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
+
+from . import workspace_folder_nextcloud_projection as nextcloud_projection
 
 try:  # pragma: no cover - local test hosts may stub psycopg.
     from psycopg.rows import dict_row
@@ -17,25 +16,25 @@ DISPLAY_NAME_MAX_CHARS = 80
 DESCRIPTION_MAX_CHARS = 240
 SORT_ORDER_STEP = 1000
 DEFAULT_ICON_KEY = "folder"
-NEXTCLOUD_LOGICAL_ROOT = "/Frida"
-NEXTCLOUD_SYNC_UNKNOWN = "unknown"
-NEXTCLOUD_SYNC_PENDING = "pending"
-NEXTCLOUD_SYNC_LINKED = "linked"
-NEXTCLOUD_SYNC_CONFLICT = "conflict"
-NEXTCLOUD_SYNC_ERROR = "error"
-NEXTCLOUD_SYNC_DELETED = "deleted"
-NEXTCLOUD_SHARE_UNKNOWN = "unknown"
-NEXTCLOUD_SHARE_EXPECTED = "expected"
-NEXTCLOUD_SHARE_CONFIRMED = "confirmed"
-NEXTCLOUD_SHARE_ERROR = "error"
+NEXTCLOUD_LOGICAL_ROOT = nextcloud_projection.NEXTCLOUD_LOGICAL_ROOT
+NEXTCLOUD_SYNC_UNKNOWN = nextcloud_projection.NEXTCLOUD_SYNC_UNKNOWN
+NEXTCLOUD_SYNC_PENDING = nextcloud_projection.NEXTCLOUD_SYNC_PENDING
+NEXTCLOUD_SYNC_LINKED = nextcloud_projection.NEXTCLOUD_SYNC_LINKED
+NEXTCLOUD_SYNC_CONFLICT = nextcloud_projection.NEXTCLOUD_SYNC_CONFLICT
+NEXTCLOUD_SYNC_ERROR = nextcloud_projection.NEXTCLOUD_SYNC_ERROR
+NEXTCLOUD_SYNC_DELETED = nextcloud_projection.NEXTCLOUD_SYNC_DELETED
+NEXTCLOUD_SHARE_UNKNOWN = nextcloud_projection.NEXTCLOUD_SHARE_UNKNOWN
+NEXTCLOUD_SHARE_EXPECTED = nextcloud_projection.NEXTCLOUD_SHARE_EXPECTED
+NEXTCLOUD_SHARE_CONFIRMED = nextcloud_projection.NEXTCLOUD_SHARE_CONFIRMED
+NEXTCLOUD_SHARE_ERROR = nextcloud_projection.NEXTCLOUD_SHARE_ERROR
 REASON_FOLDER_NAME_REQUIRED = "workspace_folder_name_required"
-REASON_FOLDER_NAME_INVALID = "workspace_folder_name_invalid"
+REASON_FOLDER_NAME_INVALID = nextcloud_projection.REASON_FOLDER_NAME_INVALID
 REASON_FOLDER_NAME_TOO_LONG = "workspace_folder_name_too_long"
 REASON_FOLDER_NAME_CONFLICT_LOCAL = "workspace_folder_name_conflict_local"
 REASON_FOLDER_NAME_CONFLICT_SANITIZED = "workspace_folder_name_conflict_sanitized"
 REASON_FOLDER_NAME_CONFLICT_CASE = "workspace_folder_name_conflict_case"
-REASON_FOLDER_SYNC_PENDING = "workspace_folder_sync_pending"
-REASON_FOLDER_DELETED = "workspace_folder_deleted"
+REASON_FOLDER_SYNC_PENDING = nextcloud_projection.REASON_FOLDER_SYNC_PENDING
+REASON_FOLDER_DELETED = nextcloud_projection.REASON_FOLDER_DELETED
 WORKSPACE_FOLDER_ICON_KEYS = (
     "book",
     "feather",
@@ -53,8 +52,6 @@ WORKSPACE_FOLDER_ICON_KEYS = (
     "dialog",
     "spark",
 )
-_TARGET_DASH_CHARS = set('/\\:*?"<>|')
-_TARGET_ALLOWED_PUNCTUATION = set("._-")
 
 
 def _cursor(conn: Any):
@@ -98,42 +95,11 @@ def sanitize_description(value: Any) -> str:
 
 
 def sanitize_nextcloud_folder_name(value: Any) -> str:
-    raw = unicodedata.normalize("NFKC", collapse_ws(value))
-    if not raw:
-        return ""
-
-    parts: list[str] = []
-    last_dash = False
-    for char in raw:
-        if char.isalnum() or char in _TARGET_ALLOWED_PUNCTUATION:
-            parts.append(char)
-            last_dash = False
-            continue
-        if char.isspace() or char in _TARGET_DASH_CHARS or unicodedata.category(char).startswith("P"):
-            if not last_dash:
-                parts.append("-")
-                last_dash = True
-            continue
-        if unicodedata.category(char).startswith("C"):
-            continue
-        if not last_dash:
-            parts.append("-")
-            last_dash = True
-
-    target = re.sub(r"-{2,}", "-", "".join(parts)).strip(" ._-")
-    if len(target) > DISPLAY_NAME_MAX_CHARS:
-        target = target[:DISPLAY_NAME_MAX_CHARS].rstrip(" ._-")
-    return target
+    return nextcloud_projection.sanitize_nextcloud_folder_name(value)
 
 
 def nextcloud_folder_name_key(value: Any) -> str:
-    return sanitize_nextcloud_folder_name(value).casefold()
-
-
-def _hash12(value: str) -> str:
-    if not value:
-        return ""
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+    return nextcloud_projection.nextcloud_folder_name_key(value)
 
 
 def build_nextcloud_folder_projection(
@@ -142,37 +108,12 @@ def build_nextcloud_folder_projection(
     display_name: Any,
     deleted_at: Any = None,
 ) -> dict[str, Any]:
-    folder_uuid = normalize_workspace_folder_id(str(folder_id or ""))
-    short_id = (folder_uuid or str(folder_id or "").strip() or "unknown")[:8]
-    target_name = sanitize_nextcloud_folder_name(display_name)
-    target_key = target_name.casefold()
-    name_hash = _hash12(target_key)
-    local_status = "deleted" if deleted_at else "active"
-    if deleted_at:
-        sync_state = NEXTCLOUD_SYNC_DELETED
-        share_state = NEXTCLOUD_SHARE_UNKNOWN
-        reason_code = REASON_FOLDER_DELETED
-    elif not target_name:
-        sync_state = NEXTCLOUD_SYNC_ERROR
-        share_state = NEXTCLOUD_SHARE_UNKNOWN
-        reason_code = REASON_FOLDER_NAME_INVALID
-    else:
-        sync_state = NEXTCLOUD_SYNC_PENDING
-        share_state = NEXTCLOUD_SHARE_EXPECTED
-        reason_code = REASON_FOLDER_SYNC_PENDING
-    directory_ref = f"workspace-folder:{short_id}:{name_hash or 'invalid'}"
-    return {
-        "local_status": local_status,
-        "nextcloud_logical_root": NEXTCLOUD_LOGICAL_ROOT,
-        "nextcloud_target_name": target_name,
-        "nextcloud_logical_path": f"{NEXTCLOUD_LOGICAL_ROOT}/{target_name}" if target_name else NEXTCLOUD_LOGICAL_ROOT,
-        "nextcloud_directory_ref": directory_ref,
-        "nextcloud_name_hash": name_hash,
-        "nextcloud_sync_state": sync_state,
-        "nextcloud_share_state": share_state,
-        "nextcloud_reason_code": reason_code,
-        "nextcloud_live_checked": False,
-    }
+    return nextcloud_projection.build_nextcloud_folder_projection(
+        folder_id=folder_id,
+        display_name=display_name,
+        deleted_at=deleted_at,
+        normalize_folder_id_func=normalize_workspace_folder_id,
+    )
 
 
 def validate_workspace_folder_name(
@@ -214,7 +155,7 @@ def validate_workspace_folder_name(
         "ok": True,
         "display_name": raw_name,
         "nextcloud_target_name": target_name,
-        "nextcloud_name_hash": _hash12(target_key),
+        "nextcloud_name_hash": nextcloud_projection.hash12(target_key),
         "reason_code": "",
     }
 
@@ -230,7 +171,7 @@ def _folder_name_validation_error(
         "ok": False,
         "display_name": display_name,
         "nextcloud_target_name": target,
-        "nextcloud_name_hash": _hash12(target.casefold()),
+        "nextcloud_name_hash": nextcloud_projection.hash12(target.casefold()),
         "nextcloud_sync_state": sync_state,
         "nextcloud_share_state": NEXTCLOUD_SHARE_EXPECTED if sync_state == NEXTCLOUD_SYNC_CONFLICT else NEXTCLOUD_SHARE_UNKNOWN,
         "nextcloud_reason_code": reason_code,
