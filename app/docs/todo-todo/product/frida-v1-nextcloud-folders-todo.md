@@ -56,6 +56,9 @@ Audit Lot 0:
 
 ### Lot 1 - Contrat produit dossier Frida
 
+- [ ] Trancher explicitement: extension de `workspace_folders` ou nouveau
+  modele `frida_folder` / dossier Nextcloud dedie, avec justification et effets
+  de bord.
 - [ ] Definir le modele produit minimal d'un dossier Frida: identifiant stable,
   nom affiche, statut, chemin logique Nextcloud, droits attendus et timestamps.
 - [ ] Definir les operations V1: creer, lister, renommer, supprimer un dossier
