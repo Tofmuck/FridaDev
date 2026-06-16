@@ -314,6 +314,12 @@ Nextcloud Lot 8B, un echec de persistance locale de cette liaison doit etre
 fail-closed: rollback si possible, sinon erreur explicite content-free; jamais
 un succes silencieux.
 
+Invariant post-correctif Lot 8A.2: une erreur redacted de persistance ne doit
+pas chainer de cause brute exploitable par traceback. Si le refetch
+post-update local ne peut pas reconstruire la projection persistante, l'update
+retourne une erreur content-free au lieu d'exposer un fallback `local_only`
+potentiellement faux.
+
 Compatibilite: le payload fake/local Lot 3 peut encore exposer des etats
 historiques comme `pending` ou `error`. Le Lot 8B devra mapper ou migrer ces
 etats vers le vocabulaire runtime cible sans casser les clients existants.

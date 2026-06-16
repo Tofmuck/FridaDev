@@ -362,11 +362,14 @@ def upsert_link(
                 )
                 row = cur.fetchone()
             conn.commit()
-        return serialize_link_row(row)
-    except Exception as exc:
+        link = serialize_link_row(row)
+        if link is None:
+            raise WorkspaceFolderNextcloudLinkPersistenceError(REASON_NEXTCLOUD_ERROR_REDACTED)
+        return link
+    except Exception:
         logger.warning(
             "workspace_folder_nextcloud_link_upsert_failed id=%s reason_code=%s",
             folder_id,
             REASON_NEXTCLOUD_ERROR_REDACTED,
         )
-        raise WorkspaceFolderNextcloudLinkPersistenceError(REASON_NEXTCLOUD_ERROR_REDACTED) from exc
+        raise WorkspaceFolderNextcloudLinkPersistenceError(REASON_NEXTCLOUD_ERROR_REDACTED) from None

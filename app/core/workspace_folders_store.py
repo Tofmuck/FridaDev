@@ -440,7 +440,14 @@ def update_workspace_folder(
         if row is None:
             return None
         refreshed = get_workspace_folder(normalized, db_conn_func=db_conn_func, logger=logger)
-        return refreshed or serialize_workspace_folder_row(row)
+        if refreshed is None:
+            logger.warning(
+                "workspace_folder_update_refetch_failed id=%s reason_code=%s",
+                normalized,
+                nextcloud_links.REASON_NEXTCLOUD_ERROR_REDACTED,
+            )
+            return None
+        return refreshed
     except Exception as exc:
         logger.warning("workspace_folder_update_failed id=%s err=%s", normalized, exc)
         return None

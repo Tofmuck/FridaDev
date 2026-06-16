@@ -476,9 +476,69 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         encoded_logs = "\n".join(logger.lines)
         self.assertEqual(str(raised.exception), "workspace_folder_nextcloud_error_redacted")
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertTrue(raised.exception.__suppress_context__)
         self.assertIn("workspace_folder_nextcloud_error_redacted", encoded_logs)
         self.assertNotIn("Projet Tulu", encoded_logs)
         self.assertNotIn("should not leak", encoded_logs)
+
+    def test_workspace_folder_update_fails_closed_when_refetch_fails(self) -> None:
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        base_row = {
+            "id": folder_id,
+            "display_name": "Projet Renomme",
+            "icon_key": "spark",
+            "description": "UI only",
+            "sort_order": 1000,
+            "created_at": "2026-06-16T00:00:00Z",
+            "updated_at": "2026-06-16T00:04:00Z",
+            "deleted_at": None,
+        }
+
+        class _UpdateCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, _sql, _params=None):
+                return None
+
+            def fetchone(self):
+                return dict(base_row)
+
+        class _UpdateConn:
+            def __init__(self):
+                self.commits = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self, *args, **kwargs):
+                return _UpdateCursor()
+
+            def commit(self):
+                self.commits += 1
+
+        logger = _CaptureLogger()
+        with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[]):
+            with mock.patch.object(workspace_folders_store, "get_workspace_folder", return_value=None):
+                result = workspace_folders_store.update_workspace_folder(
+                    folder_id,
+                    display_name="Projet Renomme",
+                    db_conn_func=lambda: _UpdateConn(),
+                    logger=logger,
+                )
+
+        self.assertIsNone(result)
+        encoded_logs = "\n".join(logger.lines)
+        self.assertIn("workspace_folder_update_refetch_failed", encoded_logs)
+        self.assertIn("workspace_folder_nextcloud_error_redacted", encoded_logs)
+        self.assertNotIn("local_only", encoded_logs)
 
     def test_folder_nextcloud_persisted_link_redacts_unknown_reason_and_raw_refs(self) -> None:
         row = workspace_folders_store.serialize_workspace_folder_row(

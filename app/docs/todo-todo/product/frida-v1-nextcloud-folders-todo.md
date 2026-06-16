@@ -243,6 +243,9 @@ Correctif Lot 8A: une reponse d'update local doit reappliquer la liaison
 persistante si elle existe; apres futur succes Nextcloud, un echec de
 persistance locale de liaison devra etre fail-closed (rollback ou erreur
 explicite), jamais interpretable comme un succes silencieux.
+Correctif Lot 8A.2: les exceptions redacted de persistance ne chainent pas de
+cause brute; si le refetch post-update echoue, l'update fail-closed au lieu de
+retomber sur une projection locale potentiellement fausse.
 
 #### Lot 8B - Runtime permanent create/rename live
 
