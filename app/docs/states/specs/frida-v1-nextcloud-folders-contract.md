@@ -1,6 +1,6 @@
 # Frida V1 - Nextcloud folders contract
 
-Statut: spec vivante Lot 1
+Statut: spec vivante Lot 1 + etat Lot 3 fake/local
 Date: 2026-06-16
 Classement: `app/docs/states/specs/`
 TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
@@ -9,9 +9,15 @@ Contrat existant relu: `app/docs/states/specs/workspace-folders-contract.md`
 
 ## 1. Perimetre
 
-Ce contrat est docs-only. Il ne modifie pas le runtime, ne cree pas de route, ne
-change pas la DB, ne contacte pas Nextcloud, ne provisionne aucun compte et ne
-modifie pas la plateforme.
+Cette spec a ete ouverte en Lot 1 comme contrat docs-only: le Lot 1 n'a pas
+modifie le runtime, n'a pas cree de route, n'a pas change la DB, n'a pas
+contacte Nextcloud, n'a provisionne aucun compte et n'a pas modifie la
+plateforme.
+
+Depuis le commit `017195f5`, cette meme spec documente aussi la mise en oeuvre
+runtime fake/local livree par le Lot 3. Le Lot 3 reste sans Nextcloud live, sans
+secret, sans migration DB, sans table de liaison et sans client Nextcloud
+separe: il ajoute une projection/service derive depuis `workspace_folders`.
 
 Il fixe le contrat produit minimal du socle Frida 1.0:
 
@@ -93,8 +99,9 @@ Regles:
   une reference courte, jamais une URL DAV ni un chemin serveur;
 - Lot 1 ne lit ni n'ecrit Nextcloud.
 
-Le nom Nextcloud cible n'est pas seulement le `display_name` brut. Les lots
-runtime devront definir une normalisation reproductible, au minimum:
+Le nom Nextcloud cible n'est pas seulement le `display_name` brut. Le Lot 3 a
+defini une normalisation fake/local reproductible, detaillee en section 11. Les
+lots live futurs devront conserver au minimum:
 
 - suppression des espaces superflus;
 - longueur bornee;
@@ -124,8 +131,9 @@ Suppression/tombstone:
 
 ## 4. Modele produit minimal
 
-Le choix exact DB/runtime viendra en Lot 3. Ce Lot 1 definit seulement les
-logiques attendues.
+Le Lot 1 definit les logiques attendues. Le choix fake/local livre en Lot 3 est
+un calcul derive depuis `workspace_folders`, sans migration DB et sans table de
+liaison. Le choix live eventuel reste reserve aux lots ulterieurs.
 
 Logiques deja portees ou candidates dans `workspace_folders`:
 
@@ -137,7 +145,8 @@ Logiques deja portees ou candidates dans `workspace_folders`:
 - timestamps locaux: `created_at`, `updated_at`, `deleted_at`;
 - statut local derive: `active`, `deleted` ou `tombstone`.
 
-Logiques Nextcloud attendues, a implementer plus tard:
+Logiques Nextcloud attendues. Le Lot 3 en expose une projection fake/local
+partielle; les preuves live restent reservees aux lots ulterieurs:
 
 - nom ou slug sanitise pour le sous-dossier cible;
 - etat de synchronisation Nextcloud:
@@ -355,7 +364,7 @@ anti-fuite avant commit.
 
 ## 9. Limites V1 et hors-scope
 
-Ce contrat ne livre pas:
+Restent hors-scope produit du socle Nextcloud folders a ce stade:
 
 - ingestion documents;
 - notes Markdown;
@@ -372,7 +381,6 @@ Ce contrat ne livre pas:
 - live Nextcloud;
 - creation de compte;
 - modification droits/partage live;
-- Docker/rebuild.
 
 Le dossier Frida V1 est une unite de travail et un mapping de rangement, pas:
 
@@ -397,8 +405,9 @@ Lot 1 est fini quand:
 - la frontiere fake/local, live et Sauron est claire;
 - les limites V1 et hors-scope sont ecrits.
 
-Etat de cette spec: ces conditions sont remplies pour ouvrir Lot 3 fake/local
-dans un prompt separe, sans ouvrir Lot 2, Lot 5 ou un patch runtime.
+Etat de la section Lot 1: ces conditions ont ete remplies avant l'ouverture du
+Lot 3 fake/local. Le Lot 3 est desormais documente ci-dessous; les Lots 2, 4, 5
+et 6 restent distincts.
 
 ## 11. Mise en oeuvre Lot 3 fake/local
 
@@ -504,6 +513,17 @@ Tests Lot 3:
 - renommage valide contre les memes regles;
 - tombstone locale marquee `deleted` sans live Nextcloud;
 - normalisation frontend des champs fake/local sans fuite de champs bruts.
+
+Dette courte post-Lot 3:
+
+- `app/core/workspace_folders_store.py` atteint `519` lignes apres la projection
+  fake/local;
+- aucun refactor n'est fait dans ce micro-correctif, pour eviter un deplacement
+  de responsabilite hors-scope;
+- si le store grandit encore en Lot 4 ou Lot 6, extraire la projection et la
+  validation Nextcloud fake/local dans un module dedie, par exemple
+  `app/core/workspace_folder_nextcloud_projection.py`;
+- ne pas creer de fichier fourre-tout `utils.py` ou `helpers.py`.
 
 ## 12. Decisions techniques restantes avant Lot 4/5
 

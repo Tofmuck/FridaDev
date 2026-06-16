@@ -87,12 +87,20 @@ Spec Lot 1:
 ### Lot 3 - Modele backend FridaDev fake/local
 
 - [x] Implementer le modele applicatif de dossiers sans appel Nextcloud live.
-- [x] Ajouter un client fake/local pour creer, lister, renommer et supprimer des
-  dossiers synthetiques.
+- [x] Ajouter une projection/service fake-local derive depuis
+  `workspace_folders` pour creer, lister, renommer et supprimer des dossiers
+  synthetiques.
 - [x] Couvrir conflits de noms, erreurs, suppression refusee et etats
   incoherents par tests automatises.
 - [x] Garder les logs, erreurs et fixtures content-free.
 - [x] Ne pas brancher de secret ni de chemin serveur reel dans ce lot.
+
+Note post-Lot 3: `app/core/workspace_folders_store.py` atteint `519` lignes
+apres l'ajout fake/local. Ne pas refactorer dans ce micro-correctif; si Lot 4 ou
+Lot 6 rallonge encore le store, extraire la projection Nextcloud fake/local dans
+un module dedie, par exemple
+`app/core/workspace_folder_nextcloud_projection.py`, sans creer de `utils.py` ni
+de `helpers.py`.
 
 ### Lot 4 - Routes/API frontend/backend pour dossiers
 
