@@ -73,6 +73,7 @@ REASON_CODE_CATALOG = frozenset(
         "workspace_folder_nextcloud_rollback_ok",
         "workspace_folder_nextcloud_rollback_failed",
         "workspace_folder_local_persistence_failed",
+        "workspace_folder_local_compensation_failed",
         "workspace_folder_icon_invalid",
         "workspace_folder_sort_order_invalid",
         "workspace_folder_create_failed",

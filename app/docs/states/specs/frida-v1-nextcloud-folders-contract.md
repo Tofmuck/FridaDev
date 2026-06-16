@@ -352,10 +352,16 @@ Decision Lot 8B:
   locale;
 - compensation creation: si la persistance locale echoue apres `MKCOL`,
   rollback `DELETE` strict de la cible creee par ce flot et tombstone local si
-  necessaire;
+  necessaire; depuis le correctif Lot 8B.1, si ce tombstone local echoue, la
+  reponse doit signaler `local_compensation_status=failed` et
+  `workspace_folder_local_compensation_failed` sans pretendre que la divergence
+  locale est resolue;
 - compensation renommage: si la persistance locale echoue apres `MOVE`,
   rollback `MOVE` strict vers l'ancien nom et restauration de la liaison si
   possible;
+- client/secret Nextcloud indisponible: retour runtime content-free
+  `workspace_folder_nextcloud_unavailable`, sans traceback utilisateur ni chemin
+  secret brut;
 - suppression UI reste hors live Nextcloud: tombstone local seulement, pas de
   suppression recursive du dossier Nextcloud reel;
 - `nextcloud_share_state` reste `expected` car le Lot 8B ne prouve pas le login
@@ -372,6 +378,7 @@ Reason codes runtime Lot 8B:
 - `workspace_folder_nextcloud_rollback_ok`;
 - `workspace_folder_nextcloud_rollback_failed`;
 - `workspace_folder_local_persistence_failed`;
+- `workspace_folder_local_compensation_failed`;
 - `workspace_folder_nextcloud_error_redacted`.
 
 ## 5. Operations V1

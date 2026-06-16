@@ -33,8 +33,8 @@ def create_workspace_folder_nextcloud_first(
         return _validation_error(validation)
 
     target_name = str(validation.get("nextcloud_target_name") or "")
-    nextcloud = _client(client)
     try:
+        nextcloud = _client(client)
         nextcloud.create_folder(target_name)
     except nextcloud_client.NextcloudFolderClientError as exc:
         return _nextcloud_error(exc, operation="create")
@@ -63,15 +63,23 @@ def create_workspace_folder_nextcloud_first(
             logger=logger,
         )
     except nextcloud_links.WorkspaceFolderNextcloudLinkPersistenceError:
-        workspace_folders_store.soft_delete_workspace_folder(normalized_id, db_conn_func=db_conn_func, logger=logger)
+        local_compensation = _tombstone_created_folder(
+            normalized_id,
+            db_conn_func=db_conn_func,
+            logger=logger,
+        )
         rollback = _rollback_created_folder(nextcloud, target_name, logger=logger)
-        return _local_persistence_error(rollback)
+        return _local_persistence_error(rollback, local_compensation_status=local_compensation)
 
     linked = workspace_folders_store.get_workspace_folder(normalized_id, db_conn_func=db_conn_func, logger=logger)
     if linked is None:
-        workspace_folders_store.soft_delete_workspace_folder(normalized_id, db_conn_func=db_conn_func, logger=logger)
+        local_compensation = _tombstone_created_folder(
+            normalized_id,
+            db_conn_func=db_conn_func,
+            logger=logger,
+        )
         rollback = _rollback_created_folder(nextcloud, target_name, logger=logger)
-        return _local_persistence_error(rollback)
+        return _local_persistence_error(rollback, local_compensation_status=local_compensation)
     return {"ok": True, "folder": linked, "reason_code": nextcloud_client.REASON_CREATE_OK}
 
 
@@ -111,10 +119,10 @@ def rename_workspace_folder_nextcloud_first(
 
     old_target_name = workspace_folders_store.sanitize_nextcloud_folder_name(existing_folder.get("display_name"))
     new_target_name = str(validation.get("nextcloud_target_name") or "")
-    nextcloud = _client(client)
     moved = old_target_name != new_target_name
 
     try:
+        nextcloud = _client(client)
         if moved:
             nextcloud.move_folder(old_target_name, new_target_name)
     except nextcloud_client.NextcloudFolderClientError as exc:
@@ -225,6 +233,27 @@ def _rollback_created_folder(nextcloud: Any, target_name: str, *, logger: Any) -
         return nextcloud_client.REASON_ROLLBACK_FAILED
 
 
+def _tombstone_created_folder(
+    folder_id: str,
+    *,
+    db_conn_func: Callable[[], Any],
+    logger: Any,
+) -> str:
+    tombstoned = workspace_folders_store.soft_delete_workspace_folder(
+        folder_id,
+        db_conn_func=db_conn_func,
+        logger=logger,
+    )
+    if tombstoned is not None:
+        return "done"
+    logger.warning(
+        "workspace_folder_local_compensation_failed id=%s reason_code=%s",
+        folder_id,
+        nextcloud_client.REASON_LOCAL_COMPENSATION_FAILED,
+    )
+    return "failed"
+
+
 def _rollback_renamed_folder(
     nextcloud: Any,
     new_target_name: str,
@@ -271,13 +300,22 @@ def _nextcloud_error(exc: nextcloud_client.NextcloudFolderClientError, *, operat
     )
 
 
-def _local_persistence_error(rollback_reason_code: str) -> dict[str, Any]:
-    return _error(
+def _local_persistence_error(
+    rollback_reason_code: str,
+    *,
+    local_compensation_status: str = "not_needed",
+) -> dict[str, Any]:
+    payload = _error(
         nextcloud_client.REASON_LOCAL_PERSISTENCE_FAILED,
         status=500,
         sync_state=nextcloud_links.NEXTCLOUD_SYNC_ERROR,
         rollback_reason_code=rollback_reason_code,
     )
+    if local_compensation_status != "not_needed":
+        payload["local_compensation_status"] = local_compensation_status
+    if local_compensation_status == "failed":
+        payload["local_compensation_reason_code"] = nextcloud_client.REASON_LOCAL_COMPENSATION_FAILED
+    return payload
 
 
 def _error(

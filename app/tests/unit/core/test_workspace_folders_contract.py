@@ -655,6 +655,103 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(fake_client.created, ["Projet-Rollback"])
         self.assertEqual(fake_client.deleted, [("Projet-Rollback", True)])
 
+    def test_nextcloud_first_create_returns_redacted_error_when_client_unavailable(self) -> None:
+        with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[]):
+            with mock.patch.object(
+                workspace_folder_nextcloud_client.NextcloudFolderClient,
+                "from_env",
+                side_effect=workspace_folder_nextcloud_client.NextcloudFolderClientError(
+                    workspace_folder_nextcloud_client.REASON_UNAVAILABLE,
+                ),
+            ):
+                result = workspace_folder_nextcloud_runtime.create_workspace_folder_nextcloud_first(
+                    display_name="Projet Secret",
+                    icon_key="folder",
+                    description="",
+                    sort_order=None,
+                    folder_id="11111111-2222-4333-8444-555555555555",
+                    db_conn_func=lambda: None,
+                    logger=_CaptureLogger(),
+                    client=None,
+                )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], 502)
+        self.assertEqual(result["reason_code"], "workspace_folder_nextcloud_unavailable")
+        self.assertEqual(result["nextcloud_reason_code"], "workspace_folder_nextcloud_unavailable")
+        encoded = str(result)
+        self.assertNotIn("/run/secrets", encoded)
+        self.assertNotIn("app_password", encoded)
+        self.assertNotIn("Authorization", encoded)
+
+    def test_nextcloud_first_create_reports_local_compensation_failure_after_link_failure(self) -> None:
+        fake_client = _FakeNextcloudFolderClient()
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        link_error = workspace_folder_nextcloud_links_store.WorkspaceFolderNextcloudLinkPersistenceError(
+            "workspace_folder_nextcloud_error_redacted"
+        )
+
+        with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[]):
+            with mock.patch.object(workspace_folders_store, "create_workspace_folder", return_value={"id": folder_id}):
+                with mock.patch.object(workspace_folder_nextcloud_links_store, "upsert_link", side_effect=link_error):
+                    with mock.patch.object(workspace_folders_store, "soft_delete_workspace_folder", return_value=None):
+                        result = workspace_folder_nextcloud_runtime.create_workspace_folder_nextcloud_first(
+                            display_name="Projet Divergent",
+                            icon_key="folder",
+                            description="",
+                            sort_order=None,
+                            folder_id=folder_id,
+                            db_conn_func=lambda: None,
+                            logger=_CaptureLogger(),
+                            client=fake_client,
+                        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "workspace_folder_local_persistence_failed")
+        self.assertEqual(result["rollback_reason_code"], "workspace_folder_nextcloud_rollback_ok")
+        self.assertEqual(result["local_compensation_status"], "failed")
+        self.assertEqual(result["local_compensation_reason_code"], "workspace_folder_local_compensation_failed")
+        self.assertEqual(fake_client.created, ["Projet-Divergent"])
+        self.assertEqual(fake_client.deleted, [("Projet-Divergent", True)])
+        encoded = str(result)
+        self.assertNotIn("Projet Divergent", encoded)
+        self.assertNotIn("/Frida", encoded)
+        self.assertNotIn("Authorization", encoded)
+
+    def test_nextcloud_first_create_reports_clean_compensation_after_link_failure(self) -> None:
+        fake_client = _FakeNextcloudFolderClient()
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        link_error = workspace_folder_nextcloud_links_store.WorkspaceFolderNextcloudLinkPersistenceError(
+            "workspace_folder_nextcloud_error_redacted"
+        )
+
+        with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[]):
+            with mock.patch.object(workspace_folders_store, "create_workspace_folder", return_value={"id": folder_id}):
+                with mock.patch.object(workspace_folder_nextcloud_links_store, "upsert_link", side_effect=link_error):
+                    with mock.patch.object(
+                        workspace_folders_store,
+                        "soft_delete_workspace_folder",
+                        return_value={"id": folder_id, "deleted_at": "2026-06-16T00:00:00Z"},
+                    ):
+                        result = workspace_folder_nextcloud_runtime.create_workspace_folder_nextcloud_first(
+                            display_name="Projet Compense",
+                            icon_key="folder",
+                            description="",
+                            sort_order=None,
+                            folder_id=folder_id,
+                            db_conn_func=lambda: None,
+                            logger=_CaptureLogger(),
+                            client=fake_client,
+                        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "workspace_folder_local_persistence_failed")
+        self.assertEqual(result["rollback_reason_code"], "workspace_folder_nextcloud_rollback_ok")
+        self.assertEqual(result["local_compensation_status"], "done")
+        self.assertNotIn("local_compensation_reason_code", result)
+        self.assertEqual(fake_client.created, ["Projet-Compense"])
+        self.assertEqual(fake_client.deleted, [("Projet-Compense", True)])
+
     def test_nextcloud_first_rename_moves_then_updates_local_linked_folder(self) -> None:
         folder_id = "11111111-2222-4333-8444-555555555555"
         existing_folder = workspace_folders_store.serialize_workspace_folder_row(
@@ -740,6 +837,54 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
             fake_client.moved,
             [("Projet-Live", "Projet-Renomme"), ("Projet-Renomme", "Projet-Live")],
         )
+
+    def test_nextcloud_first_rename_returns_redacted_error_when_client_unavailable(self) -> None:
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        existing_folder = workspace_folders_store.serialize_workspace_folder_row(
+            {
+                "id": folder_id,
+                "display_name": "Projet Live",
+                "icon_key": "folder",
+                "description": "",
+                "sort_order": 1000,
+                "created_at": "2026-06-16T00:00:00Z",
+                "updated_at": "2026-06-16T00:00:00Z",
+                "deleted_at": None,
+                "link_workspace_folder_id": folder_id,
+                "link_nextcloud_sync_state": "linked",
+                "link_nextcloud_folder_ref": "workspace-folder:11111111:abc123def456",
+                "link_nextcloud_name_hash": "abc123def456",
+                "link_last_sync_reason_code": "workspace_folder_nextcloud_create_ok",
+                "link_last_sync_operation": "create",
+                "link_nextcloud_share_state": "expected",
+            }
+        )
+
+        with mock.patch.object(workspace_folders_store, "get_workspace_folder", return_value=existing_folder):
+            with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[existing_folder]):
+                with mock.patch.object(
+                    workspace_folder_nextcloud_client.NextcloudFolderClient,
+                    "from_env",
+                    side_effect=workspace_folder_nextcloud_client.NextcloudFolderClientError(
+                        workspace_folder_nextcloud_client.REASON_UNAVAILABLE,
+                    ),
+                ):
+                    result = workspace_folder_nextcloud_runtime.rename_workspace_folder_nextcloud_first(
+                        folder_id,
+                        display_name="Projet Renomme",
+                        db_conn_func=lambda: None,
+                        logger=_CaptureLogger(),
+                        client=None,
+                    )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], 502)
+        self.assertEqual(result["reason_code"], "workspace_folder_nextcloud_unavailable")
+        self.assertEqual(result["last_sync_operation"], "rename")
+        encoded = str(result)
+        self.assertNotIn("/run/secrets", encoded)
+        self.assertNotIn("app_password", encoded)
+        self.assertNotIn("Authorization", encoded)
 
     def test_workspace_folder_service_uses_live_create_and_rename_when_available(self) -> None:
         class _LiveWorkspaceModule:

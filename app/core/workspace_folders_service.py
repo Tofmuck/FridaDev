@@ -28,6 +28,7 @@ _RUNTIME_ERROR_MESSAGES = {
     "workspace_folder_nextcloud_auth_failed": "authentification Nextcloud impossible",
     "workspace_folder_nextcloud_target_missing": "dossier Nextcloud cible introuvable",
     "workspace_folder_local_persistence_failed": "synchronisation locale incomplete",
+    "workspace_folder_local_compensation_failed": "compensation locale incomplete",
     "workspace_folder_nextcloud_error_redacted": "operation Nextcloud impossible",
 }
 
@@ -274,6 +275,12 @@ def _runtime_error_response(result: Mapping[str, Any], *, operation: str) -> Tup
     rollback_reason = str(result.get("rollback_reason_code") or "")
     if rollback_reason:
         payload["rollback_reason_code"] = rollback_reason
+    local_compensation_status = str(result.get("local_compensation_status") or "")
+    if local_compensation_status:
+        payload["local_compensation_status"] = local_compensation_status
+    local_compensation_reason = str(result.get("local_compensation_reason_code") or "")
+    if local_compensation_reason:
+        payload["local_compensation_reason_code"] = local_compensation_reason
     return _response(payload, operation=operation, status=status)
 
 

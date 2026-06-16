@@ -277,6 +277,11 @@ Preuve Lot 8B runtime permanent create/rename:
 - rollback/compensation code: rollback `DELETE` strict du dossier cree dans le
   flot si persistance locale echoue; rollback `MOVE` strict vers l'ancien nom
   si le local echoue apres renommage Nextcloud;
+- correctif Lot 8B.1: client/secret Nextcloud indisponible retourne
+  `workspace_folder_nextcloud_unavailable` sans traceback ni detail secret; si
+  le tombstone local de compensation echoue apres creation locale, la reponse
+  signale `local_compensation_status=failed` et
+  `workspace_folder_local_compensation_failed`;
 - cleanup preuve: suppression/tombstone local par route existante, puis cleanup
   WebDAV borne aux cibles synthetiques du run; absence finale prouvee
   status-only;

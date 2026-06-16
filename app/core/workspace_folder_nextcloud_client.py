@@ -24,6 +24,7 @@ REASON_TARGET_MISSING = "workspace_folder_nextcloud_target_missing"
 REASON_ROLLBACK_OK = "workspace_folder_nextcloud_rollback_ok"
 REASON_ROLLBACK_FAILED = "workspace_folder_nextcloud_rollback_failed"
 REASON_LOCAL_PERSISTENCE_FAILED = "workspace_folder_local_persistence_failed"
+REASON_LOCAL_COMPENSATION_FAILED = "workspace_folder_local_compensation_failed"
 REASON_ERROR_REDACTED = "workspace_folder_nextcloud_error_redacted"
 
 
