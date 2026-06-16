@@ -41,14 +41,17 @@ operatoire pour les prochains prompts.
 
 ### Lot 0 - Audit read-only existant Nextcloud / FridaDev
 
-- [ ] Inventorier les surfaces FridaDev deja liees aux dossiers de travail,
+Audit Lot 0:
+`app/docs/states/audits/frida-v1-nextcloud-folders-lot0-audit-2026-06-16.md`
+
+- [x] Inventorier les surfaces FridaDev deja liees aux dossiers de travail,
   fichiers persistants, documents actifs, exports et observabilite.
-- [ ] Relire les decisions Nextcloud/Agenda pertinentes sans acceder au live.
-- [ ] Confirmer les invariants: pas de DB directe Nextcloud, pas de secret en
+- [x] Relire les decisions Nextcloud/Agenda pertinentes sans acceder au live.
+- [x] Confirmer les invariants: pas de DB directe Nextcloud, pas de secret en
   docs/logs, preuves content-free.
-- [ ] Identifier les points de reutilisation possibles cote FridaDev sans
+- [x] Identifier les points de reutilisation possibles cote FridaDev sans
   rouvrir les chantiers archives.
-- [ ] Produire un constat court: reuse possible, manques, risques, no-go avant
+- [x] Produire un constat court: reuse possible, manques, risques, no-go avant
   code.
 
 ### Lot 1 - Contrat produit dossier Frida
