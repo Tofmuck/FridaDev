@@ -18,6 +18,7 @@ from core import workspace_file_selection_prompt
 from core import workspace_file_selections_store
 from core import workspace_files_store
 from core import workspace_folders_store
+from core import workspace_folders_service
 
 
 class _FakeCursor:
@@ -304,6 +305,313 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
             len(workspace_folders_store.sanitize_description("d" * 400)),
             workspace_folders_store.DESCRIPTION_MAX_CHARS,
         )
+
+    def test_folder_nextcloud_fake_mapping_is_derived_content_free(self) -> None:
+        row = workspace_folders_store.serialize_workspace_folder_row(
+            {
+                "id": "11111111-2222-4333-8444-555555555555",
+                "display_name": "  Projet   Tulu ",
+                "icon_key": "spark",
+                "description": "UI only",
+                "sort_order": 1000,
+                "created_at": "2026-06-16T00:00:00Z",
+                "updated_at": "2026-06-16T00:00:00Z",
+                "deleted_at": None,
+            }
+        )
+
+        self.assertEqual(row["display_name"], "Projet Tulu")
+        self.assertEqual(row["local_status"], "active")
+        self.assertEqual(row["nextcloud_logical_root"], "/Frida")
+        self.assertEqual(row["nextcloud_target_name"], "Projet-Tulu")
+        self.assertEqual(row["nextcloud_logical_path"], "/Frida/Projet-Tulu")
+        self.assertEqual(row["nextcloud_sync_state"], "pending")
+        self.assertEqual(row["nextcloud_share_state"], "expected")
+        self.assertEqual(row["nextcloud_reason_code"], "workspace_folder_sync_pending")
+        self.assertFalse(row["nextcloud_live_checked"])
+        encoded = str(row)
+        self.assertNotIn("http", encoded.lower())
+        self.assertNotIn("dav", encoded.lower())
+        self.assertNotIn("storage_key", encoded)
+        self.assertNotIn("Authorization", encoded)
+
+    def test_folder_nextcloud_fake_mapping_marks_tombstone_deleted_without_live(self) -> None:
+        row = workspace_folders_store.serialize_workspace_folder_row(
+            {
+                "id": "11111111-2222-4333-8444-555555555555",
+                "display_name": "Projet",
+                "icon_key": "folder",
+                "description": "",
+                "sort_order": 1000,
+                "created_at": "2026-06-16T00:00:00Z",
+                "updated_at": "2026-06-16T00:01:00Z",
+                "deleted_at": "2026-06-16T00:01:00Z",
+            }
+        )
+
+        self.assertEqual(row["local_status"], "deleted")
+        self.assertEqual(row["nextcloud_sync_state"], "deleted")
+        self.assertEqual(row["nextcloud_share_state"], "unknown")
+        self.assertEqual(row["nextcloud_reason_code"], "workspace_folder_deleted")
+        self.assertFalse(row["nextcloud_live_checked"])
+
+    def test_folder_nextcloud_name_validation_rejects_invalid_and_colliding_names(self) -> None:
+        existing = [
+            {
+                "id": "11111111-2222-4333-8444-555555555555",
+                "display_name": "Projet Tulu",
+                "deleted_at": None,
+            },
+            {
+                "id": "22222222-2222-4222-8222-222222222222",
+                "display_name": "Archive",
+                "deleted_at": "2026-06-16T00:00:00Z",
+            },
+        ]
+
+        self.assertEqual(
+            workspace_folders_store.validate_workspace_folder_name("", existing_folders=existing)["reason_code"],
+            "workspace_folder_name_required",
+        )
+        self.assertEqual(
+            workspace_folders_store.validate_workspace_folder_name("////", existing_folders=existing)["reason_code"],
+            "workspace_folder_name_invalid",
+        )
+        self.assertEqual(
+            workspace_folders_store.validate_workspace_folder_name("x" * 81, existing_folders=existing)["reason_code"],
+            "workspace_folder_name_too_long",
+        )
+        self.assertEqual(
+            workspace_folders_store.validate_workspace_folder_name(
+                "Projet Tulu",
+                existing_folders=existing,
+            )["reason_code"],
+            "workspace_folder_name_conflict_local",
+        )
+        self.assertEqual(
+            workspace_folders_store.validate_workspace_folder_name(
+                "Projet/Tulu",
+                existing_folders=existing,
+            )["reason_code"],
+            "workspace_folder_name_conflict_sanitized",
+        )
+        self.assertEqual(
+            workspace_folders_store.validate_workspace_folder_name(
+                "projet tulu",
+                existing_folders=existing,
+            )["reason_code"],
+            "workspace_folder_name_conflict_case",
+        )
+        self.assertTrue(
+            workspace_folders_store.validate_workspace_folder_name(
+                "Archive",
+                existing_folders=existing,
+            )["ok"]
+        )
+
+    def test_folder_nextcloud_name_validation_allows_renaming_current_folder_only(self) -> None:
+        existing = [
+            {
+                "id": "11111111-2222-4333-8444-555555555555",
+                "display_name": "Projet Tulu",
+                "deleted_at": None,
+            },
+            {
+                "id": "22222222-2222-4222-8222-222222222222",
+                "display_name": "Autre",
+                "deleted_at": None,
+            },
+        ]
+
+        self.assertTrue(
+            workspace_folders_store.validate_workspace_folder_name(
+                "Projet Tulu",
+                existing_folders=existing,
+                current_folder_id="11111111-2222-4333-8444-555555555555",
+            )["ok"]
+        )
+        self.assertEqual(
+            workspace_folders_store.validate_workspace_folder_name(
+                "Autre",
+                existing_folders=existing,
+                current_folder_id="11111111-2222-4333-8444-555555555555",
+            )["reason_code"],
+            "workspace_folder_name_conflict_local",
+        )
+
+    def test_workspace_folder_service_name_conflict_response_is_content_free(self) -> None:
+        class _FoldersModule:
+            WORKSPACE_FOLDER_ICON_KEYS = ("folder",)
+
+            def validate_workspace_folder_display_name(self, value, *, current_folder_id=None):
+                return workspace_folders_store.validate_workspace_folder_name(
+                    value,
+                    existing_folders=[
+                        {
+                            "id": "11111111-2222-4333-8444-555555555555",
+                            "display_name": "Projet Tulu",
+                            "deleted_at": None,
+                        }
+                    ],
+                    current_folder_id=current_folder_id,
+                )
+
+            def normalize_icon_key(self, value):
+                return "folder"
+
+            def coerce_sort_order(self, value):
+                return None
+
+            def sanitize_description(self, value):
+                return workspace_folders_store.sanitize_description(value)
+
+            def create_workspace_folder(self, **_kwargs):
+                raise AssertionError("create must not run on conflict")
+
+        payload, status = workspace_folders_service.create_workspace_folder(
+            {"display_name": "Projet/Tulu", "icon_key": "folder"},
+            workspace_folders_module=_FoldersModule(),
+        )
+
+        self.assertEqual(status, 409)
+        self.assertEqual(payload["reason_code"], "workspace_folder_name_conflict_sanitized")
+        self.assertEqual(payload["nextcloud_sync_state"], "conflict")
+        self.assertEqual(payload["nextcloud_share_state"], "expected")
+        encoded = str(payload)
+        self.assertNotIn("Projet Tulu", encoded)
+        self.assertNotIn("/Frida/Projet-Tulu", encoded)
+        self.assertNotIn("http", encoded.lower())
+        self.assertNotIn("dav", encoded.lower())
+        self.assertNotIn("storage_key", encoded)
+
+    def test_workspace_folder_service_fake_local_cycle_stays_local(self) -> None:
+        class _FoldersModule:
+            WORKSPACE_FOLDER_ICON_KEYS = ("folder", "spark")
+
+            def __init__(self):
+                self.folders = {}
+                self.remote_calls = []
+
+            def normalize_workspace_folder_id(self, value):
+                return workspace_folders_store.normalize_workspace_folder_id(value)
+
+            def normalize_icon_key(self, value):
+                return workspace_folders_store.normalize_icon_key(value)
+
+            def sanitize_display_name(self, value):
+                return workspace_folders_store.sanitize_display_name(value)
+
+            def sanitize_description(self, value):
+                return workspace_folders_store.sanitize_description(value)
+
+            def coerce_sort_order(self, value):
+                return workspace_folders_store.coerce_sort_order(value)
+
+            def validate_workspace_folder_display_name(self, value, *, current_folder_id=None):
+                return workspace_folders_store.validate_workspace_folder_name(
+                    value,
+                    existing_folders=list(self.folders.values()),
+                    current_folder_id=current_folder_id,
+                )
+
+            def list_workspace_folders(self):
+                return [
+                    workspace_folders_store.serialize_workspace_folder_row(row)
+                    for row in self.folders.values()
+                    if row.get("deleted_at") is None
+                ]
+
+            def get_workspace_folder(self, folder_id):
+                normalized = self.normalize_workspace_folder_id(folder_id)
+                row = self.folders.get(normalized)
+                if not row or row.get("deleted_at"):
+                    return None
+                return workspace_folders_store.serialize_workspace_folder_row(row)
+
+            def create_workspace_folder(self, *, display_name, icon_key, description, sort_order=None):
+                folder_id = "33333333-3333-4333-8333-333333333333"
+                row = {
+                    "id": folder_id,
+                    "display_name": display_name,
+                    "icon_key": icon_key,
+                    "description": description,
+                    "sort_order": sort_order or 1000,
+                    "created_at": "2026-06-16T00:00:00Z",
+                    "updated_at": "2026-06-16T00:00:00Z",
+                    "deleted_at": None,
+                }
+                self.folders[folder_id] = row
+                return workspace_folders_store.serialize_workspace_folder_row(row)
+
+            def update_workspace_folder(self, folder_id, **fields):
+                normalized = self.normalize_workspace_folder_id(folder_id)
+                row = self.folders.get(normalized)
+                if not row or row.get("deleted_at"):
+                    return None
+                row.update({key: value for key, value in fields.items() if value is not None})
+                row["updated_at"] = "2026-06-16T00:01:00Z"
+                return workspace_folders_store.serialize_workspace_folder_row(row)
+
+            def soft_delete_workspace_folder(self, folder_id):
+                normalized = self.normalize_workspace_folder_id(folder_id)
+                row = self.folders.get(normalized)
+                if not row or row.get("deleted_at"):
+                    return None
+                row["deleted_at"] = "2026-06-16T00:02:00Z"
+                row["updated_at"] = "2026-06-16T00:02:00Z"
+                folder = workspace_folders_store.serialize_workspace_folder_row(row)
+                folder["conversations_moved_out"] = 0
+                return folder
+
+        class _FilesModule:
+            def __init__(self):
+                self.deleted_folder_ids = []
+
+            def delete_workspace_files_for_folder(self, folder_id):
+                self.deleted_folder_ids.append(folder_id)
+                return {"requested": 0, "deleted": 0, "failed": 0, "failed_file_ids": [], "reason_code": ""}
+
+        folders_module = _FoldersModule()
+        files_module = _FilesModule()
+
+        created, create_status = workspace_folders_service.create_workspace_folder(
+            {"display_name": "Projet Tulu", "icon_key": "spark"},
+            workspace_folders_module=folders_module,
+        )
+        folder_id = created["folder"]["id"]
+        self.assertEqual(create_status, 201)
+        self.assertEqual(created["folder"]["nextcloud_logical_path"], "/Frida/Projet-Tulu")
+        self.assertEqual(created["folder"]["nextcloud_sync_state"], "pending")
+        self.assertFalse(created["folder"]["nextcloud_live_checked"])
+
+        listed = workspace_folders_service.list_workspace_folders({}, workspace_folders_module=folders_module)
+        self.assertEqual(len(listed["items"]), 1)
+        self.assertEqual(listed["items"][0]["nextcloud_share_state"], "expected")
+
+        renamed, rename_status = workspace_folders_service.patch_workspace_folder(
+            folder_id,
+            {"display_name": "Projet Renomme"},
+            workspace_folders_module=folders_module,
+        )
+        self.assertEqual(rename_status, 200)
+        self.assertEqual(renamed["folder"]["nextcloud_logical_path"], "/Frida/Projet-Renomme")
+        self.assertEqual(renamed["folder"]["nextcloud_reason_code"], "workspace_folder_sync_pending")
+
+        deleted, delete_status = workspace_folders_service.delete_workspace_folder(
+            folder_id,
+            workspace_folders_module=folders_module,
+            workspace_files_module=files_module,
+        )
+        self.assertEqual(delete_status, 200)
+        self.assertEqual(deleted["folder"]["nextcloud_sync_state"], "deleted")
+        self.assertEqual(deleted["folder"]["nextcloud_share_state"], "unknown")
+        self.assertEqual(deleted["folder"]["nextcloud_reason_code"], "workspace_folder_deleted")
+        self.assertEqual(files_module.deleted_folder_ids, [folder_id])
+        self.assertEqual(folders_module.remote_calls, [])
+        encoded = str(deleted)
+        self.assertNotIn("http", encoded.lower())
+        self.assertNotIn("dav", encoded.lower())
+        self.assertNotIn("storage_key", encoded)
 
     def test_workspace_file_storage_key_uses_stable_ids_and_serializer_hides_internal_path(self) -> None:
         folder_id = "11111111-2222-4333-8444-555555555555"

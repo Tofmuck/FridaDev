@@ -3,6 +3,19 @@ from __future__ import annotations
 from typing import Any, Mapping, Tuple
 
 REASON_FOLDER_FILE_DELETE_FAILED = "workspace_folder_file_delete_failed"
+_CONFLICT_REASONS = {
+    "workspace_folder_name_conflict_local",
+    "workspace_folder_name_conflict_sanitized",
+    "workspace_folder_name_conflict_case",
+}
+_VALIDATION_ERROR_MESSAGES = {
+    "workspace_folder_name_required": "display_name requis",
+    "workspace_folder_name_invalid": "nom de repertoire invalide",
+    "workspace_folder_name_too_long": "nom de repertoire trop long",
+    "workspace_folder_name_conflict_local": "un repertoire actif utilise deja ce nom",
+    "workspace_folder_name_conflict_sanitized": "un repertoire actif utilise deja ce nom cible",
+    "workspace_folder_name_conflict_case": "un repertoire actif utilise deja ce nom avec une casse differente",
+}
 
 
 def list_workspace_folders(
@@ -23,9 +36,13 @@ def create_workspace_folder(
     *,
     workspace_folders_module: Any,
 ) -> Tuple[dict[str, Any], int]:
-    display_name = workspace_folders_module.sanitize_display_name(data.get("display_name") or data.get("name") or "")
-    if not display_name:
-        return {"ok": False, "error": "display_name requis", "reason_code": "workspace_folder_name_required"}, 400
+    name_validation = _validate_display_name(
+        workspace_folders_module,
+        data.get("display_name") or data.get("name") or "",
+    )
+    if not name_validation.get("ok"):
+        return _folder_name_error_response(name_validation)
+    display_name = str(name_validation["display_name"])
 
     icon_key = workspace_folders_module.normalize_icon_key(data.get("icon_key"))
     if icon_key is None:
@@ -57,10 +74,14 @@ def patch_workspace_folder(
 
     fields: dict[str, Any] = {}
     if "display_name" in data or "name" in data:
-        display_name = workspace_folders_module.sanitize_display_name(data.get("display_name") or data.get("name") or "")
-        if not display_name:
-            return {"ok": False, "error": "display_name requis", "reason_code": "workspace_folder_name_required"}, 400
-        fields["display_name"] = display_name
+        name_validation = _validate_display_name(
+            workspace_folders_module,
+            data.get("display_name") or data.get("name") or "",
+            current_folder_id=normalized,
+        )
+        if not name_validation.get("ok"):
+            return _folder_name_error_response(name_validation)
+        fields["display_name"] = str(name_validation["display_name"])
     if "icon_key" in data:
         icon_key = workspace_folders_module.normalize_icon_key(data.get("icon_key"))
         if icon_key is None:
@@ -165,3 +186,36 @@ def _safe_int(value: Any) -> int:
         return max(0, int(value or 0))
     except (TypeError, ValueError):
         return 0
+
+
+def _validate_display_name(
+    workspace_folders_module: Any,
+    value: Any,
+    *,
+    current_folder_id: str | None = None,
+) -> dict[str, Any]:
+    validator = getattr(workspace_folders_module, "validate_workspace_folder_display_name", None)
+    if callable(validator):
+        return validator(value, current_folder_id=current_folder_id)
+
+    display_name = workspace_folders_module.sanitize_display_name(value)
+    if not display_name:
+        return {"ok": False, "reason_code": "workspace_folder_name_required"}
+    return {"ok": True, "display_name": display_name, "reason_code": ""}
+
+
+def _folder_name_error_response(validation: Mapping[str, Any]) -> Tuple[dict[str, Any], int]:
+    reason_code = str(validation.get("reason_code") or "workspace_folder_name_invalid")
+    status = 409 if reason_code in _CONFLICT_REASONS else 400
+    payload = {
+        "ok": False,
+        "error": _VALIDATION_ERROR_MESSAGES.get(reason_code, "nom de repertoire invalide"),
+        "reason_code": reason_code,
+        "nextcloud_sync_state": str(validation.get("nextcloud_sync_state") or "error"),
+        "nextcloud_share_state": str(validation.get("nextcloud_share_state") or "unknown"),
+        "nextcloud_reason_code": str(validation.get("nextcloud_reason_code") or reason_code),
+    }
+    name_hash = str(validation.get("nextcloud_name_hash") or "")
+    if name_hash:
+        payload["nextcloud_name_hash"] = name_hash
+    return payload, status

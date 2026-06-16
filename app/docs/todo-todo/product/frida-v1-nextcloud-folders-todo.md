@@ -86,13 +86,13 @@ Spec Lot 1:
 
 ### Lot 3 - Modele backend FridaDev fake/local
 
-- [ ] Implementer le modele applicatif de dossiers sans appel Nextcloud live.
-- [ ] Ajouter un client fake/local pour creer, lister, renommer et supprimer des
+- [x] Implementer le modele applicatif de dossiers sans appel Nextcloud live.
+- [x] Ajouter un client fake/local pour creer, lister, renommer et supprimer des
   dossiers synthetiques.
-- [ ] Couvrir conflits de noms, erreurs, suppression refusee et etats
+- [x] Couvrir conflits de noms, erreurs, suppression refusee et etats
   incoherents par tests automatises.
-- [ ] Garder les logs, erreurs et fixtures content-free.
-- [ ] Ne pas brancher de secret ni de chemin serveur reel dans ce lot.
+- [x] Garder les logs, erreurs et fixtures content-free.
+- [x] Ne pas brancher de secret ni de chemin serveur reel dans ce lot.
 
 ### Lot 4 - Routes/API frontend/backend pour dossiers
 

@@ -87,7 +87,7 @@ function normalizeWorkspaceFolderItem(item) {
   const displayName = String(item?.display_name || item?.name || '').replace(/\s+/g, ' ').trim();
   if (!displayName) return null;
   const iconKey = normalizeWorkspaceIconKey(item?.icon_key);
-  return {
+  const folder = {
     id,
     display_name: displayName,
     icon_key: iconKey,
@@ -99,6 +99,24 @@ function normalizeWorkspaceFolderItem(item) {
     updated_at: item?.updated_at || item?.created_at || null,
     deleted_at: item?.deleted_at || null,
   };
+  if (
+    item?.local_status !== undefined
+    || item?.nextcloud_sync_state !== undefined
+    || item?.nextcloud_logical_path !== undefined
+    || item?.nextcloud_directory_ref !== undefined
+  ) {
+    folder.local_status = String(item?.local_status || (folder.deleted_at ? 'deleted' : 'active')).trim();
+    folder.nextcloud_logical_root = String(item?.nextcloud_logical_root || '').trim();
+    folder.nextcloud_target_name = String(item?.nextcloud_target_name || '').replace(/\s+/g, ' ').trim();
+    folder.nextcloud_logical_path = String(item?.nextcloud_logical_path || '').replace(/\s+/g, ' ').trim();
+    folder.nextcloud_directory_ref = String(item?.nextcloud_directory_ref || '').trim();
+    folder.nextcloud_name_hash = String(item?.nextcloud_name_hash || '').trim();
+    folder.nextcloud_sync_state = String(item?.nextcloud_sync_state || 'unknown').trim();
+    folder.nextcloud_share_state = String(item?.nextcloud_share_state || 'unknown').trim();
+    folder.nextcloud_reason_code = String(item?.nextcloud_reason_code || '').trim();
+    folder.nextcloud_live_checked = Boolean(item?.nextcloud_live_checked);
+  }
+  return folder;
 }
 
 function normalizeWorkspaceFoldersPayload(payload) {

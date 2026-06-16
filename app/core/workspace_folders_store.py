@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import re
+import unicodedata
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
@@ -14,6 +17,25 @@ DISPLAY_NAME_MAX_CHARS = 80
 DESCRIPTION_MAX_CHARS = 240
 SORT_ORDER_STEP = 1000
 DEFAULT_ICON_KEY = "folder"
+NEXTCLOUD_LOGICAL_ROOT = "/Frida"
+NEXTCLOUD_SYNC_UNKNOWN = "unknown"
+NEXTCLOUD_SYNC_PENDING = "pending"
+NEXTCLOUD_SYNC_LINKED = "linked"
+NEXTCLOUD_SYNC_CONFLICT = "conflict"
+NEXTCLOUD_SYNC_ERROR = "error"
+NEXTCLOUD_SYNC_DELETED = "deleted"
+NEXTCLOUD_SHARE_UNKNOWN = "unknown"
+NEXTCLOUD_SHARE_EXPECTED = "expected"
+NEXTCLOUD_SHARE_CONFIRMED = "confirmed"
+NEXTCLOUD_SHARE_ERROR = "error"
+REASON_FOLDER_NAME_REQUIRED = "workspace_folder_name_required"
+REASON_FOLDER_NAME_INVALID = "workspace_folder_name_invalid"
+REASON_FOLDER_NAME_TOO_LONG = "workspace_folder_name_too_long"
+REASON_FOLDER_NAME_CONFLICT_LOCAL = "workspace_folder_name_conflict_local"
+REASON_FOLDER_NAME_CONFLICT_SANITIZED = "workspace_folder_name_conflict_sanitized"
+REASON_FOLDER_NAME_CONFLICT_CASE = "workspace_folder_name_conflict_case"
+REASON_FOLDER_SYNC_PENDING = "workspace_folder_sync_pending"
+REASON_FOLDER_DELETED = "workspace_folder_deleted"
 WORKSPACE_FOLDER_ICON_KEYS = (
     "book",
     "feather",
@@ -31,6 +53,8 @@ WORKSPACE_FOLDER_ICON_KEYS = (
     "dialog",
     "spark",
 )
+_TARGET_DASH_CHARS = set('/\\:*?"<>|')
+_TARGET_ALLOWED_PUNCTUATION = set("._-")
 
 
 def _cursor(conn: Any):
@@ -73,6 +97,147 @@ def sanitize_description(value: Any) -> str:
     return description
 
 
+def sanitize_nextcloud_folder_name(value: Any) -> str:
+    raw = unicodedata.normalize("NFKC", collapse_ws(value))
+    if not raw:
+        return ""
+
+    parts: list[str] = []
+    last_dash = False
+    for char in raw:
+        if char.isalnum() or char in _TARGET_ALLOWED_PUNCTUATION:
+            parts.append(char)
+            last_dash = False
+            continue
+        if char.isspace() or char in _TARGET_DASH_CHARS or unicodedata.category(char).startswith("P"):
+            if not last_dash:
+                parts.append("-")
+                last_dash = True
+            continue
+        if unicodedata.category(char).startswith("C"):
+            continue
+        if not last_dash:
+            parts.append("-")
+            last_dash = True
+
+    target = re.sub(r"-{2,}", "-", "".join(parts)).strip(" ._-")
+    if len(target) > DISPLAY_NAME_MAX_CHARS:
+        target = target[:DISPLAY_NAME_MAX_CHARS].rstrip(" ._-")
+    return target
+
+
+def nextcloud_folder_name_key(value: Any) -> str:
+    return sanitize_nextcloud_folder_name(value).casefold()
+
+
+def _hash12(value: str) -> str:
+    if not value:
+        return ""
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+
+
+def build_nextcloud_folder_projection(
+    *,
+    folder_id: Any,
+    display_name: Any,
+    deleted_at: Any = None,
+) -> dict[str, Any]:
+    folder_uuid = normalize_workspace_folder_id(str(folder_id or ""))
+    short_id = (folder_uuid or str(folder_id or "").strip() or "unknown")[:8]
+    target_name = sanitize_nextcloud_folder_name(display_name)
+    target_key = target_name.casefold()
+    name_hash = _hash12(target_key)
+    local_status = "deleted" if deleted_at else "active"
+    if deleted_at:
+        sync_state = NEXTCLOUD_SYNC_DELETED
+        share_state = NEXTCLOUD_SHARE_UNKNOWN
+        reason_code = REASON_FOLDER_DELETED
+    elif not target_name:
+        sync_state = NEXTCLOUD_SYNC_ERROR
+        share_state = NEXTCLOUD_SHARE_UNKNOWN
+        reason_code = REASON_FOLDER_NAME_INVALID
+    else:
+        sync_state = NEXTCLOUD_SYNC_PENDING
+        share_state = NEXTCLOUD_SHARE_EXPECTED
+        reason_code = REASON_FOLDER_SYNC_PENDING
+    directory_ref = f"workspace-folder:{short_id}:{name_hash or 'invalid'}"
+    return {
+        "local_status": local_status,
+        "nextcloud_logical_root": NEXTCLOUD_LOGICAL_ROOT,
+        "nextcloud_target_name": target_name,
+        "nextcloud_logical_path": f"{NEXTCLOUD_LOGICAL_ROOT}/{target_name}" if target_name else NEXTCLOUD_LOGICAL_ROOT,
+        "nextcloud_directory_ref": directory_ref,
+        "nextcloud_name_hash": name_hash,
+        "nextcloud_sync_state": sync_state,
+        "nextcloud_share_state": share_state,
+        "nextcloud_reason_code": reason_code,
+        "nextcloud_live_checked": False,
+    }
+
+
+def validate_workspace_folder_name(
+    value: Any,
+    *,
+    existing_folders: Optional[list[dict[str, Any]]] = None,
+    current_folder_id: Optional[str] = None,
+) -> dict[str, Any]:
+    raw_name = collapse_ws(value)
+    if not raw_name:
+        return _folder_name_validation_error(REASON_FOLDER_NAME_REQUIRED, raw_name)
+    if len(raw_name) > DISPLAY_NAME_MAX_CHARS:
+        return _folder_name_validation_error(REASON_FOLDER_NAME_TOO_LONG, raw_name)
+
+    target_name = sanitize_nextcloud_folder_name(raw_name)
+    if not target_name:
+        return _folder_name_validation_error(REASON_FOLDER_NAME_INVALID, raw_name)
+
+    current = normalize_workspace_folder_id(current_folder_id)
+    raw_key = raw_name.casefold()
+    target_key = target_name.casefold()
+    for folder in existing_folders or []:
+        folder_id = normalize_workspace_folder_id(str(folder.get("id") or ""))
+        if current and folder_id == current:
+            continue
+        if folder.get("deleted_at"):
+            continue
+        other_name = collapse_ws(folder.get("display_name"))
+        if not other_name:
+            continue
+        if raw_name == other_name:
+            return _folder_name_validation_error(REASON_FOLDER_NAME_CONFLICT_LOCAL, raw_name, target_name)
+        if raw_key == other_name.casefold():
+            return _folder_name_validation_error(REASON_FOLDER_NAME_CONFLICT_CASE, raw_name, target_name)
+        if target_key == nextcloud_folder_name_key(other_name):
+            return _folder_name_validation_error(REASON_FOLDER_NAME_CONFLICT_SANITIZED, raw_name, target_name)
+
+    return {
+        "ok": True,
+        "display_name": raw_name,
+        "nextcloud_target_name": target_name,
+        "nextcloud_name_hash": _hash12(target_key),
+        "reason_code": "",
+    }
+
+
+def _folder_name_validation_error(
+    reason_code: str,
+    display_name: str,
+    target_name: str = "",
+) -> dict[str, Any]:
+    target = target_name or sanitize_nextcloud_folder_name(display_name)
+    sync_state = NEXTCLOUD_SYNC_CONFLICT if "conflict" in reason_code else NEXTCLOUD_SYNC_ERROR
+    return {
+        "ok": False,
+        "display_name": display_name,
+        "nextcloud_target_name": target,
+        "nextcloud_name_hash": _hash12(target.casefold()),
+        "nextcloud_sync_state": sync_state,
+        "nextcloud_share_state": NEXTCLOUD_SHARE_EXPECTED if sync_state == NEXTCLOUD_SYNC_CONFLICT else NEXTCLOUD_SHARE_UNKNOWN,
+        "nextcloud_reason_code": reason_code,
+        "reason_code": reason_code,
+    }
+
+
 def coerce_sort_order(value: Any) -> Optional[int]:
     if value is None or value == "":
         return None
@@ -103,7 +268,8 @@ def _ts_to_iso(value: Any) -> Optional[str]:
 def serialize_workspace_folder_row(row: dict[str, Any] | None) -> Optional[dict[str, Any]]:
     if not row:
         return None
-    return {
+    deleted_at = _ts_to_iso(row.get("deleted_at"))
+    payload = {
         "id": str(row.get("id")),
         "display_name": sanitize_display_name(row.get("display_name")),
         "icon_key": normalize_icon_key(row.get("icon_key")) or DEFAULT_ICON_KEY,
@@ -111,8 +277,16 @@ def serialize_workspace_folder_row(row: dict[str, Any] | None) -> Optional[dict[
         "sort_order": int(row.get("sort_order") or 0),
         "created_at": _ts_to_iso(row.get("created_at")),
         "updated_at": _ts_to_iso(row.get("updated_at")),
-        "deleted_at": _ts_to_iso(row.get("deleted_at")),
+        "deleted_at": deleted_at,
     }
+    payload.update(
+        build_nextcloud_folder_projection(
+            folder_id=payload["id"],
+            display_name=payload["display_name"],
+            deleted_at=deleted_at,
+        )
+    )
+    return payload
 
 
 def list_workspace_folders(
@@ -197,12 +371,15 @@ def create_workspace_folder(
     logger: Any,
 ) -> Optional[dict[str, Any]]:
     normalized_id = normalize_workspace_folder_id(folder_id) or str(uuid.uuid4())
-    safe_name = sanitize_display_name(display_name)
     safe_icon = normalize_icon_key(icon_key) or DEFAULT_ICON_KEY
     safe_description = sanitize_description(description)
-    safe_sort_order = sort_order if sort_order is not None else next_sort_order(db_conn_func=db_conn_func, logger=logger)
-    if not safe_name:
+    existing_folders = list_workspace_folders(include_deleted=False, db_conn_func=db_conn_func, logger=logger)
+    name_validation = validate_workspace_folder_name(display_name, existing_folders=existing_folders)
+    if not name_validation.get("ok"):
+        logger.warning("workspace_folder_create_rejected reason_code=%s", name_validation.get("reason_code"))
         return None
+    safe_name = str(name_validation["display_name"])
+    safe_sort_order = sort_order if sort_order is not None else next_sort_order(db_conn_func=db_conn_func, logger=logger)
 
     try:
         with db_conn_func() as conn:
@@ -242,8 +419,21 @@ def update_workspace_folder(
     assignments: list[str] = []
     params: list[Any] = []
     if display_name is not None:
+        existing_folders = list_workspace_folders(include_deleted=False, db_conn_func=db_conn_func, logger=logger)
+        name_validation = validate_workspace_folder_name(
+            display_name,
+            existing_folders=existing_folders,
+            current_folder_id=normalized,
+        )
+        if not name_validation.get("ok"):
+            logger.warning(
+                "workspace_folder_update_rejected id=%s reason_code=%s",
+                normalized,
+                name_validation.get("reason_code"),
+            )
+            return None
         assignments.append("display_name = %s")
-        params.append(sanitize_display_name(display_name))
+        params.append(str(name_validation["display_name"]))
     if icon_key is not None:
         assignments.append("icon_key = %s")
         params.append(normalize_icon_key(icon_key) or DEFAULT_ICON_KEY)

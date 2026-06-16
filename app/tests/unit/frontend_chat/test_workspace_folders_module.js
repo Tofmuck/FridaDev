@@ -50,6 +50,35 @@ test("normalizeWorkspaceFolderItem keeps stable UI metadata only", () => {
   });
 });
 
+test("normalizeWorkspaceFolderItem preserves fake Nextcloud metadata without raw internals", () => {
+  const folder = normalizeWorkspaceFolderItem({
+    id: "folder-1",
+    display_name: "Projet Tulu",
+    icon_key: "folder",
+    nextcloud_logical_root: "/Frida",
+    nextcloud_target_name: "Projet-Tulu",
+    nextcloud_logical_path: "/Frida/Projet-Tulu",
+    nextcloud_directory_ref: "workspace-folder:folder-1:abc123def456",
+    nextcloud_name_hash: "abc123def456",
+    nextcloud_sync_state: "pending",
+    nextcloud_share_state: "expected",
+    nextcloud_reason_code: "workspace_folder_sync_pending",
+    nextcloud_live_checked: false,
+    storage_key: "hidden/path",
+    dav_url: "https://nextcloud.invalid/remote.php/dav/files/frida/Frida/Projet-Tulu",
+  });
+
+  assert.equal(folder.nextcloud_logical_root, "/Frida");
+  assert.equal(folder.nextcloud_target_name, "Projet-Tulu");
+  assert.equal(folder.nextcloud_logical_path, "/Frida/Projet-Tulu");
+  assert.equal(folder.nextcloud_sync_state, "pending");
+  assert.equal(folder.nextcloud_share_state, "expected");
+  assert.equal(folder.nextcloud_live_checked, false);
+  assert.equal(folder.storage_key, undefined);
+  assert.equal(folder.dav_url, undefined);
+  assert.equal(JSON.stringify(folder).includes("remote.php"), false);
+});
+
 test("normalizeWorkspaceFoldersPayload sorts folders by manual order", () => {
   const folders = normalizeWorkspaceFoldersPayload({
     items: [

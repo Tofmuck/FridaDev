@@ -400,16 +400,119 @@ Lot 1 est fini quand:
 Etat de cette spec: ces conditions sont remplies pour ouvrir Lot 3 fake/local
 dans un prompt separe, sans ouvrir Lot 2, Lot 5 ou un patch runtime.
 
-## 11. Decisions techniques restantes avant Lot 3
+## 11. Mise en oeuvre Lot 3 fake/local
 
-- choisir entre extension directe de `workspace_folders` et table de liaison
-  strictement rattachee a `workspace_folders.id`;
-- definir l'algorithme exact de sanitisation Nextcloud;
-- definir si l'unicite locale se fait sur `display_name`, nom sanitise,
-  casefolded key ou combinaison;
-- definir les transitions de sync state en fake/local;
-- definir la forme precise des payloads API sans changer le vocabulaire produit;
-- definir les tests de non-regression sur conversations, fichiers workspace et
-  suppression locale existante;
+Lot 3 livre le 2026-06-16 le modele backend fake/local sans appel Nextcloud.
+
+Decision technique:
+
+- choix retenu: calcul local derive depuis `workspace_folders`;
+- pas de migration DB;
+- pas de table de liaison;
+- pas de deuxieme notion utilisateur de dossier;
+- les champs Nextcloud fake/local sont ajoutes au payload serialise des
+  `workspace_folders`;
+- l'unique modele produit reste `workspace_folders`.
+
+Justification:
+
+- le Lot 3 ne possede aucune preuve live Nextcloud a persister;
+- le mapping logique `/Frida/<dossier>` est derivable depuis `display_name`;
+- l'etat local est derivable depuis `deleted_at`;
+- les conflits sont detectables contre les dossiers actifs existants;
+- une migration serait prematuree avant decision Sauron et avant Lot 5 live.
+
+Algorithme de sanitisation Nextcloud fake/local:
+
+1. normaliser le nom utilisateur par collapse des espaces;
+2. refuser le nom vide;
+3. refuser un nom affiche de plus de `80` caracteres au lieu de le tronquer
+   silencieusement dans les routes dossier V1;
+4. appliquer une normalisation Unicode `NFKC`;
+5. conserver les caracteres alphanumeriques et `.` / `_` / `-`;
+6. transformer espaces, separateurs de chemin et ponctuation en `-`;
+7. supprimer les caracteres de controle;
+8. compacter les tirets consecutifs;
+9. retirer les espaces, points, `_` et `-` en debut/fin de cible;
+10. refuser la cible vide apres nettoyage.
+
+Unicite locale:
+
+- les dossiers `deleted_at IS NOT NULL` ne bloquent pas la reutilisation du nom;
+- un nom affiche identique a un dossier actif donne
+  `workspace_folder_name_conflict_local`;
+- un nom affiche equivalent en `casefold()` donne
+  `workspace_folder_name_conflict_case`;
+- une cible sanitisee equivalente en `casefold()` donne
+  `workspace_folder_name_conflict_sanitized`;
+- aucun renommage silencieux n'est applique.
+
+Payload fake/local:
+
+- `local_status`: `active` ou `deleted`;
+- `nextcloud_logical_root`: `/Frida`;
+- `nextcloud_target_name`: nom cible sanitise;
+- `nextcloud_logical_path`: mapping logique `/Frida/<display_name_sanitise>`;
+- `nextcloud_directory_ref`: reference courte derivee content-free;
+- `nextcloud_name_hash`: hash court de la cle cible;
+- `nextcloud_sync_state`: `pending` pour un dossier actif valide,
+  `deleted` pour une tombstone, `error` si une ligne historique est invalide;
+- `nextcloud_share_state`: `expected` pour un dossier actif valide,
+  `unknown` pour une tombstone ou erreur;
+- `nextcloud_live_checked`: toujours `false` dans Lot 3.
+
+Etats fake/local:
+
+- `unknown`: etat reserve pour payloads futurs ou modules sans verification;
+- `pending`: etat normal d'un dossier actif local, sans preuve live;
+- `linked`: interdit comme preuve Nextcloud dans Lot 3; reservable seulement a
+  une simulation explicite future;
+- `conflict`: retourne par les validations de creation/renommage en cas de
+  collision;
+- `error`: retourne par les validations invalides ou lignes historiques
+  incoherentes;
+- `deleted`: derive de `workspace_folders.deleted_at`.
+
+Etat de partage:
+
+- `expected`: partage avec `tof` attendu par contrat, sans preuve live;
+- `unknown`: tombstone, erreur ou absence de verification;
+- `confirmed`: interdit hors preuve live/Sauron;
+- `error`: reserve aux lots futurs.
+
+Garde-fous livres:
+
+- aucun appel Nextcloud, WebDAV ou CalDAV;
+- aucun secret;
+- aucune DB directe Nextcloud;
+- aucun chemin serveur brut;
+- aucune URL DAV;
+- aucun `storage_key`;
+- aucun contenu fichier;
+- les routes existantes `/api/workspace-folders*` restent le point d'entree
+  applicatif, sans creation de route Lot 4;
+- les fichiers workspace, OCR, documents, exports, images, mail, Agenda et
+  Biblio restent hors-scope.
+
+Tests Lot 3:
+
+- validation nom vide, invalide, trop long;
+- collisions locales actives, collisions apres sanitisation et collisions
+  case-insensitive;
+- payload mapping logique `/Frida/<dossier>` sans URL DAV, chemin serveur,
+  `storage_key` ni secret;
+- renommage valide contre les memes regles;
+- tombstone locale marquee `deleted` sans live Nextcloud;
+- normalisation frontend des champs fake/local sans fuite de champs bruts.
+
+## 12. Decisions techniques restantes avant Lot 4/5
+
+- choisir la forme exacte d'exposition UI Lot 4 des nouveaux etats fake/local;
+- definir si Lot 4 doit afficher le mapping logique ou seulement un statut
+  redacted;
+- obtenir plus tard la decision Sauron sur compte Frida, racine, droits,
+  partage et secrets runtime avant tout Lot 5;
 - definir le module d'observabilite dedie ou l'extension des conventions
-  existantes.
+  existantes en Lot 6;
+- decider en Lot 5 si un etat `linked` peut devenir une preuve live, et sous
+  quelle preuve content-free.

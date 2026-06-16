@@ -15,6 +15,21 @@ logger = logging.getLogger("frida.workspace_folders")
 
 WORKSPACE_FOLDER_ICON_KEYS = workspace_folders_store.WORKSPACE_FOLDER_ICON_KEYS
 DEFAULT_ICON_KEY = workspace_folders_store.DEFAULT_ICON_KEY
+NEXTCLOUD_LOGICAL_ROOT = workspace_folders_store.NEXTCLOUD_LOGICAL_ROOT
+NEXTCLOUD_SYNC_STATES = (
+    workspace_folders_store.NEXTCLOUD_SYNC_UNKNOWN,
+    workspace_folders_store.NEXTCLOUD_SYNC_PENDING,
+    workspace_folders_store.NEXTCLOUD_SYNC_LINKED,
+    workspace_folders_store.NEXTCLOUD_SYNC_CONFLICT,
+    workspace_folders_store.NEXTCLOUD_SYNC_ERROR,
+    workspace_folders_store.NEXTCLOUD_SYNC_DELETED,
+)
+NEXTCLOUD_SHARE_STATES = (
+    workspace_folders_store.NEXTCLOUD_SHARE_UNKNOWN,
+    workspace_folders_store.NEXTCLOUD_SHARE_EXPECTED,
+    workspace_folders_store.NEXTCLOUD_SHARE_CONFIRMED,
+    workspace_folders_store.NEXTCLOUD_SHARE_ERROR,
+)
 
 
 def _db_conn():
@@ -35,6 +50,26 @@ def sanitize_display_name(value: Any) -> str:
 
 def sanitize_description(value: Any) -> str:
     return workspace_folders_store.sanitize_description(value)
+
+
+def sanitize_nextcloud_folder_name(value: Any) -> str:
+    return workspace_folders_store.sanitize_nextcloud_folder_name(value)
+
+
+def nextcloud_folder_name_key(value: Any) -> str:
+    return workspace_folders_store.nextcloud_folder_name_key(value)
+
+
+def validate_workspace_folder_display_name(
+    value: Any,
+    *,
+    current_folder_id: Optional[str] = None,
+) -> dict[str, Any]:
+    return workspace_folders_store.validate_workspace_folder_name(
+        value,
+        existing_folders=list_workspace_folders(include_deleted=False),
+        current_folder_id=current_folder_id,
+    )
 
 
 def coerce_sort_order(value: Any) -> Optional[int]:
