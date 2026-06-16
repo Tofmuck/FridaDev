@@ -408,6 +408,12 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(payload["folder"]["nextcloud_sync_state"], "pending")
         self.assertFalse(payload["folder"]["nextcloud_live_checked"])
         self.assertNotIn("prompt", payload["folder"])
+        self.assertEqual(payload["observability"]["operation"], "create")
+        self.assertEqual(payload["observability"]["reason_code"], "workspace_folder_create_ok")
+        self.assertEqual(payload["observability"]["nextcloud_sync_state"], "pending")
+        self.assertEqual(payload["observability"]["nextcloud_share_state"], "expected")
+        self.assertNotIn("Projet Tulu", str(payload["observability"]))
+        self.assertNotIn("/Frida", str(payload["observability"]))
 
         patched = self.client.patch(
             f"/api/workspace-folders/{FOLDER_ID}",
@@ -416,6 +422,8 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(patched.status_code, 200)
         self.assertEqual(patched.get_json()["folder"]["display_name"], "Projet renomme")
         self.assertEqual(patched.get_json()["folder"]["nextcloud_logical_path"], "/Frida/Projet-renomme")
+        self.assertEqual(patched.get_json()["observability"]["operation"], "rename")
+        self.assertEqual(patched.get_json()["observability"]["reason_code"], "workspace_folder_rename_ok")
 
         deleted = self.client.delete(f"/api/workspace-folders/{FOLDER_ID}")
         self.assertEqual(deleted.status_code, 200)
@@ -427,6 +435,12 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(deleted_payload["folder"]["files_deleted"], 0)
         self.assertEqual(deleted_payload["folder"]["files_preserved"], True)
         self.assertEqual(deleted_payload["folder"]["nextcloud_sync_state"], "deleted")
+        self.assertEqual(deleted_payload["observability"]["operation"], "delete")
+        self.assertEqual(deleted_payload["observability"]["reason_code"], "workspace_folder_delete_ok")
+        self.assertEqual(deleted_payload["observability"]["files_deleted"], 0)
+        self.assertEqual(deleted_payload["observability"]["files_preserved"], True)
+        self.assertNotIn("Projet renomme", str(deleted_payload["observability"]))
+        self.assertNotIn("/Frida", str(deleted_payload["observability"]))
         self.assertEqual(self.fake_workspace_files.deleted_folder_ids, [])
 
     def test_conversation_list_keeps_existing_conversations_outside_workspace_by_default(self) -> None:

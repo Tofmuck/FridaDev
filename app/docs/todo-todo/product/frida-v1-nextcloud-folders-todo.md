@@ -159,16 +159,26 @@ Preuve Lot 5 live bornee:
 
 ### Lot 6 - Observabilite content-free et erreurs
 
-- [ ] Definir les reason codes dossiers: succes, conflit de nom, droits
+- [x] Definir les reason codes dossiers: succes, conflit de nom, droits
   insuffisants, cible absente, cible deja existante, suppression refusee,
   erreur Nextcloud redacted.
-- [ ] Exposer seulement des compteurs, statuts, ids courts, hashes courts si
+- [x] Exposer seulement des compteurs, statuts, ids courts, hashes courts si
   necessaire et categories d'erreurs.
-- [ ] Interdire contenu de fichier, nom sensible, chemin brut serveur, URL DAV,
+- [x] Interdire contenu de fichier, nom sensible, chemin brut serveur, URL DAV,
   token, cookie, Authorization et app-password.
-- [ ] Ajouter un scan anti-fuite adapte aux artefacts JSONL ou rapports.
-- [ ] Relier cette observabilite au chantier global
+- [x] Ajouter un scan anti-fuite adapte aux artefacts JSONL ou rapports.
+- [x] Relier cette observabilite au chantier global
   `frida-v1-agentic-observability-todo.md` sans le rouvrir ici.
+
+Lot 6 livre une projection d'observabilite content-free pour les routes
+existantes `/api/workspace-folders*`, sans route parallele ni route admin. Le
+read-model expose operation, statut, classe HTTP, reason code, compteurs, etats
+fake/local, hash courts et compteurs de suppression; il n'expose pas de
+`display_name`, chemin serveur, URL DAV, `storage_key`, secret, contenu fichier
+ou payload Nextcloud brut. Le service journalise le meme resume content-free.
+Le frontend normalise uniquement les champs allowlistes si cette projection est
+presente. Cette brique est referencee comme preuve locale du chantier global
+`frida-v1-agentic-observability-todo.md`, sans ouvrir la refonte globale.
 
 ### Lot Z - Cloture / no-go / limites V1
 

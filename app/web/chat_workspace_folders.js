@@ -80,6 +80,39 @@ const WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS = Object.freeze({
   deleted: 'Supprimé',
 });
 
+const WORKSPACE_FOLDER_OBSERVABILITY_STRING_FIELDS = Object.freeze([
+  'kind',
+  'operation',
+  'status',
+  'status_class',
+  'reason_code',
+  'folder_ref',
+  'local_status',
+  'nextcloud_name_hash',
+  'nextcloud_sync_state',
+  'nextcloud_share_state',
+  'nextcloud_reason_code',
+  'file_reason_code',
+]);
+
+const WORKSPACE_FOLDER_OBSERVABILITY_NUMBER_FIELDS = Object.freeze([
+  'folder_count',
+  'files_deleted',
+  'file_delete_requested',
+  'file_delete_failed',
+  'conversations_moved_out',
+]);
+
+const WORKSPACE_FOLDER_OBSERVABILITY_BOOLEAN_FIELDS = Object.freeze([
+  'content_free',
+  'raw_content_included',
+  'server_path_included',
+  'remote_url_included',
+  'secret_included',
+  'nextcloud_live_checked',
+  'files_preserved',
+]);
+
 function normalizeWorkspaceFolderId(value) {
   const raw = String(value || '').trim();
   return raw || null;
@@ -88,6 +121,22 @@ function normalizeWorkspaceFolderId(value) {
 function normalizeWorkspaceIconKey(value) {
   const key = String(value || '').trim().toLowerCase();
   return WORKSPACE_FOLDER_ICON_KEYS.includes(key) ? key : 'folder';
+}
+
+function normalizeWorkspaceFolderObservability(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const observation = {};
+  for (const field of WORKSPACE_FOLDER_OBSERVABILITY_STRING_FIELDS) {
+    const raw = String(value[field] || '').replace(/\s+/g, ' ').trim();
+    if (raw) observation[field] = raw;
+  }
+  for (const field of WORKSPACE_FOLDER_OBSERVABILITY_NUMBER_FIELDS) {
+    if (value[field] !== undefined) observation[field] = Number(value[field] || 0);
+  }
+  for (const field of WORKSPACE_FOLDER_OBSERVABILITY_BOOLEAN_FIELDS) {
+    if (value[field] !== undefined) observation[field] = Boolean(value[field]);
+  }
+  return Object.keys(observation).length ? observation : null;
 }
 
 function normalizeWorkspaceFolderItem(item) {
@@ -125,6 +174,8 @@ function normalizeWorkspaceFolderItem(item) {
     folder.nextcloud_reason_code = String(item?.nextcloud_reason_code || '').trim();
     folder.nextcloud_live_checked = Boolean(item?.nextcloud_live_checked);
   }
+  const observability = normalizeWorkspaceFolderObservability(item?.observability);
+  if (observability) folder.observability = observability;
   return folder;
 }
 
@@ -290,6 +341,7 @@ const FridaWorkspaceFolders = Object.freeze({
   WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS,
   normalizeWorkspaceFolderId,
   normalizeWorkspaceIconKey,
+  normalizeWorkspaceFolderObservability,
   normalizeWorkspaceFolderItem,
   normalizeWorkspaceFoldersPayload,
   normalizeWorkspaceFileItem,

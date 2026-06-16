@@ -5,6 +5,7 @@ const {
   WORKSPACE_FOLDER_ICON_KEYS,
   WORKSPACE_FOLDER_ICON_SVGS,
   normalizeWorkspaceIconKey,
+  normalizeWorkspaceFolderObservability,
   normalizeWorkspaceFolderItem,
   normalizeWorkspaceFoldersPayload,
   normalizeWorkspaceFileItem,
@@ -67,7 +68,7 @@ test("normalizeWorkspaceFolderItem preserves fake Nextcloud metadata without raw
     nextcloud_reason_code: "workspace_folder_sync_pending",
     nextcloud_live_checked: false,
     storage_key: "hidden/path",
-    dav_url: "https://nextcloud.invalid/remote.php/dav/files/frida/Frida/Projet-Tulu",
+    dav_url: "redacted dav url",
   });
 
   assert.equal(folder.nextcloud_logical_root, "/Frida");
@@ -79,6 +80,48 @@ test("normalizeWorkspaceFolderItem preserves fake Nextcloud metadata without raw
   assert.equal(folder.storage_key, undefined);
   assert.equal(folder.dav_url, undefined);
   assert.equal(JSON.stringify(folder).includes("remote.php"), false);
+});
+
+test("workspace folder observability normalizer keeps only content-free fields", () => {
+  const observation = normalizeWorkspaceFolderObservability({
+    kind: "frida_v1_workspace_folder",
+    operation: "delete",
+    status: "ok",
+    status_class: "2xx",
+    reason_code: "workspace_folder_delete_ok",
+    folder_ref: "abc123def456",
+    nextcloud_sync_state: "deleted",
+    nextcloud_share_state: "unknown",
+    files_preserved: true,
+    files_deleted: 0,
+    file_delete_requested: 0,
+    file_delete_failed: 0,
+    content_free: true,
+    raw_content_included: false,
+    server_path_included: false,
+    remote_url_included: false,
+    secret_included: false,
+    display_name: "Projet Tulu",
+    nextcloud_logical_path: "/Frida/Projet-Tulu",
+    storage_key: "hidden/path",
+    Authorization: "redacted",
+    app_password: "hidden",
+    dav_url: "redacted dav url",
+  });
+
+  assert.equal(observation.kind, "frida_v1_workspace_folder");
+  assert.equal(observation.operation, "delete");
+  assert.equal(observation.reason_code, "workspace_folder_delete_ok");
+  assert.equal(observation.files_preserved, true);
+  assert.equal(observation.files_deleted, 0);
+  assert.equal(observation.display_name, undefined);
+  assert.equal(observation.nextcloud_logical_path, undefined);
+  assert.equal(observation.storage_key, undefined);
+  assert.equal(observation.Authorization, undefined);
+  assert.equal(observation.app_password, undefined);
+  assert.equal(observation.dav_url, undefined);
+  assert.equal(JSON.stringify(observation).includes("/Frida/Projet-Tulu"), false);
+  assert.equal(JSON.stringify(observation).includes("redacted dav url"), false);
 });
 
 test("workspace folder fake-local status labels stay sober and content-free", () => {

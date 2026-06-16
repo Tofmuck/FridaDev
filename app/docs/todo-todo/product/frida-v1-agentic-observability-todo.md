@@ -31,6 +31,13 @@ contenu brut.
 - Smokes content-free representatifs.
 - Documentation des reason codes majeurs.
 
+## References livrees
+
+- `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md` section
+  "Observabilite content-free": precedent local Lot 6 pour read-model
+  allowliste, reason codes dossiers, hash courts, compteurs et scan anti-fuite
+  sans contenu utilisateur.
+
 ## A detailler dans un lot separe
 
 Schema cible, migration douce, dashboard minimal et scan anti-fuite.

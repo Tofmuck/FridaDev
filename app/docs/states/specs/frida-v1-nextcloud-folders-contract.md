@@ -380,35 +380,76 @@ Celebrimbor:
 
 ## 8. Observabilite content-free
 
-Evenements minimaux futurs:
+Statut Lot 6: livre en fake/local applicatif.
 
-- `workspace_folder_create_requested`;
-- `workspace_folder_created`;
-- `workspace_folder_rename_requested`;
-- `workspace_folder_renamed`;
-- `workspace_folder_delete_requested`;
-- `workspace_folder_deleted`;
-- `workspace_folder_name_conflict`;
-- `workspace_folder_sync_state_changed`;
-- `workspace_folder_share_state_changed`;
-- `workspace_folder_error`.
+Le Lot 6 ajoute une projection d'observabilite content-free dediee aux dossiers
+Frida V1, branchee sur les routes existantes `/api/workspace-folders*`. Elle ne
+cree pas de route parallele, ne cree pas de route admin, ne branche pas
+Nextcloud en runtime permanent et ne modifie pas Sauron.
 
-Champs autorises:
+Module:
 
-- id applicatif court ou hash court;
-- operation;
-- statut;
-- sync state;
-- share state;
-- reason code;
-- compteur borne si necessaire;
-- latence ou duree;
-- type d'erreur redacted.
+- `app/observability/workspace_folders_observability.py`;
+- service appele depuis `app/core/workspace_folders_service.py`;
+- normalisation frontend allowlistee dans `app/web/chat_workspace_folders.js`.
 
-Champs interdits:
+Operations observees:
+
+- `list`;
+- `create`;
+- `rename`;
+- `delete`;
+- erreurs de validation ou conflit sur ces operations.
+
+Reason codes consolides:
+
+- succes:
+  - `workspace_folder_list_ok`;
+  - `workspace_folder_create_ok`;
+  - `workspace_folder_rename_ok`;
+  - `workspace_folder_delete_ok`;
+- validation/conflits:
+  - `workspace_folder_name_required`;
+  - `workspace_folder_name_invalid`;
+  - `workspace_folder_name_too_long`;
+  - `workspace_folder_name_conflict_local`;
+  - `workspace_folder_name_conflict_sanitized`;
+  - `workspace_folder_name_conflict_case`;
+- droits/cible/live futur redacted:
+  - `workspace_folder_permission_denied`;
+  - `workspace_folder_target_missing`;
+  - `workspace_folder_target_exists`;
+  - `workspace_folder_delete_refused`;
+  - `workspace_folder_nextcloud_error_redacted`;
+- etats et limites V1:
+  - `workspace_folder_sync_pending`;
+  - `workspace_folder_deleted`;
+  - `workspace_folder_files_preserved`.
+
+Champs autorises dans la projection:
+
+- `kind`;
+- `operation`;
+- `status`;
+- `status_class` pour la classe de statut de reponse;
+- `reason_code`;
+- hash court du dossier (`folder_ref`);
+- hash court du nom cible Nextcloud (`nextcloud_name_hash`);
+- `local_status`;
+- `nextcloud_sync_state`;
+- `nextcloud_share_state`;
+- `nextcloud_reason_code`;
+- compteurs de dossiers et d'etats;
+- compteurs de suppression dossier (`files_deleted`, `files_preserved`,
+  `file_delete_requested`, `file_delete_failed`, `conversations_moved_out`);
+- indicateurs booleens d'absence de contenu brut, chemin serveur, URL distante
+  et secret.
+
+Champs interdits dans la projection, les logs, les JSONL et les rapports:
 
 - contenu de fichier;
 - extrait utilisateur;
+- `display_name` ou nom sensible non necessaire;
 - chemin brut serveur;
 - URL DAV;
 - chemin disque;
@@ -418,8 +459,18 @@ Champs interdits:
 - payload brut Nextcloud;
 - detail serveur sensible.
 
-Les preuves JSONL ou rapports doivent rester content-free et passer un scan
-anti-fuite avant commit.
+Les erreurs sont exploitables par `reason_code`, classe HTTP et hash court
+d'erreur si necessaire. Le hash court est stable pour une meme valeur, mais ne
+remplace pas un journal technique brut et ne doit jamais etre accompagne du
+message original s'il contient chemin, URL, secret, nom sensible ou contenu.
+
+Lien observabilite globale:
+
+- cette brique locale est une preuve de faisabilite pour
+  `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`;
+- elle ne cloture pas la refonte globale observabilite;
+- elle fournit un precedent: reason codes catalogues, read-model allowliste,
+  tests anti-fuite et scan avant commit.
 
 ## 9. Limites V1 et hors-scope
 
@@ -637,17 +688,17 @@ Limites:
 - aucune DB Nextcloud;
 - aucun Lot 5.
 
-## 13. Decisions techniques restantes avant Lot 5/6
+## 13. Decisions techniques restantes avant Lot Z / runtime live permanent
 
 - decision Sauron obtenue en Lot 2: compte `frida`, dossier `Frida`, partage
   `tof`, permissions `15`, secrets stockes cote plateforme et rapport
   content-free;
 - Lot 5 execute cote Celebrimbor comme smoke live borne sur dossier synthetique,
   sans contenu utilisateur et sans secret dans FridaDev;
+- Lot 6 livre l'observabilite content-free locale des routes
+  `/api/workspace-folders*`, sans route admin et sans Nextcloud live permanent;
 - avant tout branchement runtime permanent, decider explicitement comment
   injecter le transport Nextcloud, ou stocker les etats live et comment
   rollbacker les operations live;
-- definir le module d'observabilite dedie ou l'extension des conventions
-  existantes en Lot 6;
 - decider apres Lot 5 si un etat `linked` peut devenir une preuve runtime, et
   sous quelle preuve content-free.
