@@ -3,7 +3,7 @@
 Statut: TODO actif
 Date: 2026-06-10
 Cible de cloture: 2026-07-02
-Branche de travail courante: `FridaAgenda`
+Branche de travail courante: `FridaV1-Nextcloud-Folders`
 
 ## Intention
 

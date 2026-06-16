@@ -220,6 +220,14 @@ n'effectue aucun acces live.
 
 ### Lot 8 - Runtime permanent creation/renommage Nextcloud
 
+- [ ] Bloquer le runtime permanent tant que la persistance d'etat
+  local/Nextcloud n'est pas tranchee.
+- [ ] Choisir explicitement ou persister `linked`, `sync_error`, `conflict`,
+  `deleted`, `nextcloud_folder_ref`, `nextcloud_name_hash`, `last_sync_at`,
+  `last_sync_reason_code` et `last_sync_operation`.
+- [ ] Decider entre extension stricte de `workspace_folders`, table de liaison
+  rattachee a `workspace_folders.id`, ou alternative documentee et justifiee
+  sans deuxieme notion utilisateur de dossier.
 - [ ] Verifier l'injection runtime sure des credentials plateforme prepares par
   Sauron, sans valeur dans FridaDev.
 - [ ] Sur creation UI, creer d'abord `/Frida/<nom_sanitise>` dans Nextcloud,
@@ -336,7 +344,12 @@ Regle de frontiere:
 - Les erreurs doivent etre content-free et actionnables par reason code.
 - Le conflit de nom doit etre traite explicitement, jamais masque par un
   renommage silencieux.
-- Toute operation live doit viser un dossier synthetique dedie au smoke.
+- Les preuves, smokes, suppressions live et operations destructives live doivent
+  viser un dossier synthetique dedie ou une cible vide prouvee, jamais un
+  dossier utilisateur reel non borne.
+- Les creations et renommages produit pourront viser de vrais dossiers Frida
+  seulement apres livraison du runtime permanent Lot 8 et de sa persistance
+  d'etat.
 - Toute modification plateforme future doit inclure rollback/documentation et
   rester dans le perimetre Sauron.
 

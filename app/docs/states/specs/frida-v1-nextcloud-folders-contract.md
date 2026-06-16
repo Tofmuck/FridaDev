@@ -96,7 +96,11 @@ Justification:
 
 Effets de bord a traiter plus tard:
 
-- le contrat de suppression actuel peut supprimer des fichiers workspace locaux;
+- risque historique corrige: l'ancien contrat de suppression dossier pouvait
+  tenter de supprimer des fichiers workspace locaux;
+- contrat courant: `DELETE /api/workspace-folders/<id>` tombstone le dossier,
+  sort les conversations du dossier, preserve les fichiers/documents workspace
+  et retourne `workspace_folder_files_preserved`;
 - le futur branchement Nextcloud ne doit pas reprendre une suppression live
   recursive sans confirmation humaine et borne synthetique;
 - les champs Nextcloud devront etre ajoutes sans exposer chemin brut, URL DAV ou
@@ -267,10 +271,23 @@ Champs techniques candidats pour le runtime permanent:
 - `nextcloud_share_state`: `unknown`, `expected`, `confirmed` ou `error`.
 
 Le Lot 7 n'impose pas de migration DB. En revanche, le runtime permanent Lot 8
-aura probablement besoin d'une persistence dediee ou d'une extension stricte de
-`workspace_folders`, car la projection derivee Lot 3 ne peut pas memoriser
-durablement une preuve `linked`, une erreur live, une reconciliation ou un
-historique de retry.
+est bloque tant que la persistance d'etat local/Nextcloud n'est pas tranchee.
+Avant tout code de creation/renommage live, il faut decider explicitement ou
+persister ou deriver:
+
+- `nextcloud_sync_state`, dont `linked`, `sync_error`, `conflict` et `deleted`;
+- `nextcloud_folder_ref`;
+- `nextcloud_name_hash`;
+- `last_sync_at`;
+- `last_sync_reason_code`;
+- `last_sync_operation`.
+
+La decision Lot 8 doit choisir entre une extension stricte de
+`workspace_folders`, une table de liaison rattachee a `workspace_folders.id`, ou
+une alternative documentee et justifiee. Elle ne doit pas creer une deuxieme
+notion utilisateur de dossier. La projection derivee Lot 3 ne suffit pas a
+memoriser durablement une preuve `linked`, une erreur live, une reconciliation
+ou un historique de retry.
 
 Compatibilite: le payload fake/local Lot 3 peut encore exposer des etats
 historiques comme `pending` ou `error`. Le Lot 8 devra mapper ou migrer ces
@@ -841,6 +858,14 @@ Etat attendu avant Lot 8:
 
 Lot 8 - Runtime permanent creation/renommage Nextcloud:
 
+- bloquer le code live tant que la persistance d'etat local/Nextcloud n'est pas
+  tranchee;
+- choisir ou persister `linked`, `sync_error`, `conflict`, `deleted`,
+  `nextcloud_folder_ref`, `nextcloud_name_hash`, `last_sync_at`,
+  `last_sync_reason_code` et `last_sync_operation`;
+- choisir extension stricte de `workspace_folders`, table de liaison rattachee
+  a `workspace_folders.id`, ou alternative documentee sans deuxieme notion
+  utilisateur;
 - injecter le transport Nextcloud avec les secrets plateforme existants, sans
   valeur dans le depot;
 - creer le dossier Nextcloud avant la ligne locale;
