@@ -1,6 +1,6 @@
 # Frida V1 - Nextcloud folders contract
 
-Statut: spec vivante Lot 1 + Lot 2 Sauron livre + etats Lots 3 et 4 fake/local
+Statut: spec vivante Lots 0 a 6 fondations livrees + Lot 7 design runtime
 Date: 2026-06-16
 Classement: `app/docs/states/specs/`
 TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
@@ -36,6 +36,21 @@ synthetique unique sous la racine `Frida`, sans lister ni toucher de contenu
 utilisateur. L'artefact JSONL content-free est
 `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot5-live-20260616T154117Z.jsonl`.
 Ce smoke ne branche pas encore le runtime FridaDev sur Nextcloud en permanence.
+
+Depuis le Lot 6, les operations fake/local exposent une observabilite
+content-free avec reason codes allowlistes, pseudo-hashs fail-closed et
+normalisation frontend defensive. Le Lot 6 ne branche pas Nextcloud en runtime
+permanent.
+
+Recalage produit post Lot 6:
+
+- les Lots 0 a 6 sont des fondations, pas la cloture produit Frida 1.0;
+- la V1 produit n'est pas livree tant que la creation UI d'un dossier Frida ne
+  cree pas reellement le sous-dossier Nextcloud `/Frida/<nom_sanitise>`;
+- la V1 doit relier les dossiers UI Frida aux dossiers Nextcloud reels;
+- les dossiers existants doivent etre reconcilies dans un lot separe;
+- les fichiers, documents, notes, exports et images devront etre compatibles
+  avec ce modele, mais restent des lots dedies.
 
 Il fixe le contrat produit minimal du socle Frida 1.0:
 
@@ -121,6 +136,23 @@ Regles:
   une reference courte, jamais une URL DAV ni un chemin serveur;
 - Lot 1 ne lit ni n'ecrit Nextcloud.
 
+Contrat runtime cible:
+
+- creation UI: FridaDev cree d'abord le sous-dossier Nextcloud
+  `/Frida/<display_name_sanitise>`, puis cree le dossier local seulement si
+  Nextcloud reussit;
+- si la creation Nextcloud echoue, FridaDev refuse la creation locale, affiche
+  une erreur simple et trace un reason code content-free;
+- renommage UI: FridaDev renomme d'abord le sous-dossier Nextcloud, puis
+  renomme le dossier local seulement si Nextcloud reussit;
+- si le renommage Nextcloud echoue, l'ancien nom local reste conserve, sans
+  divergence silencieuse local/Nextcloud;
+- suppression UI V1: FridaDev tombstone ou retire le dossier localement, sans
+  suppression recursive automatique du dossier Nextcloud reel;
+- suppression Nextcloud autorisee seulement pour un dossier synthetique, vide
+  prouve ou smoke controle, jamais pour un vrai dossier potentiellement charge
+  en fichiers utilisateur.
+
 Le nom Nextcloud cible n'est pas seulement le `display_name` brut. Le Lot 3 a
 defini une normalisation fake/local reproductible, detaillee en section 11. Les
 lots live futurs devront conserver au minimum:
@@ -134,8 +166,9 @@ lots live futurs devront conserver au minimum:
 Renommage:
 
 - renommer un `workspace_folder` renomme le dossier Frida cote produit;
-- si le dossier est deja lie a Nextcloud dans un lot futur, le renommage doit
-  prevoir le renommage du sous-dossier Nextcloud cible ou une erreur explicite;
+- en runtime permanent, le sous-dossier Nextcloud cible est renomme avant le
+  nom local Frida;
+- si Nextcloud refuse ou echoue, le nom local ne change pas;
 - aucun renommage silencieux ne doit corriger un conflit;
 - l'ancien alias logique ne doit pas rester affiche comme cible active apres un
   renommage reussi;
@@ -148,8 +181,9 @@ Suppression/tombstone:
 - les conversations ne sont pas supprimees automatiquement;
 - une reference Nextcloud future devra passer a l'etat `deleted` ou
   equivalent, sans conserver de chemin brut;
-- toute suppression reelle Nextcloud est reservee a un lot live ulterieur, avec
-  confirmation humaine et cible synthetique bornee.
+- la suppression V1 conserve le dossier Nextcloud reel;
+- toute suppression reelle Nextcloud est reservee aux smokes controles ou aux
+  dossiers synthetiques/vides prouves.
 
 ## 4. Modele produit minimal
 
@@ -167,25 +201,80 @@ Logiques deja portees ou candidates dans `workspace_folders`:
 - timestamps locaux: `created_at`, `updated_at`, `deleted_at`;
 - statut local derive: `active`, `deleted` ou `tombstone`.
 
-Logiques Nextcloud attendues. Le Lot 3 en expose une projection fake/local
-partielle; les preuves live restent reservees aux lots ulterieurs:
+Modele d'etat runtime cible Lot 7:
 
-- nom ou slug sanitise pour le sous-dossier cible;
-- etat de synchronisation Nextcloud:
-  - `unknown`: pas encore verifie ou non configure;
-  - `pending`: operation locale acceptee, lien Nextcloud pas encore confirme;
-  - `linked`: sous-dossier Nextcloud associe;
-  - `conflict`: collision ou cible ambigue;
-  - `error`: erreur redacted;
-  - `deleted`: dossier local supprime ou lien retire;
-- reference logique Nextcloud redacted, par exemple alias court ou hash court;
-- etat de partage avec `tof`:
-  - `unknown`: partage non verifie;
-  - `expected`: partage attendu par contrat;
-  - `confirmed`: partage confirme par preuve Sauron ou smoke borne futur;
-  - `error`: partage attendu mais non confirme;
-- timestamps d'observation ou de transition si necessaires;
-- reason code content-free pour toute erreur ou attente.
+- `local_only`:
+  - signification: dossier local existant sans lien Nextcloud confirme;
+  - apparition: dossiers historiques avant reconciliation, fallback de lecture
+    ou etat pre-Lot 8;
+  - UI: libelle sobre du type `Local a relier`;
+  - renommage: autorise seulement comme operation de reconciliation ou tant que
+    le runtime permanent n'est pas actif;
+  - suppression: tombstone local autorise, sans suppression Nextcloud;
+  - documents/notes/exports futurs: non autorises comme cible Nextcloud tant que
+    l'etat n'est pas `linked`.
+- `sync_pending`:
+  - signification: operation Nextcloud en cours ou reservee, resultat non
+    confirme;
+  - apparition: fenetre transactionnelle runtime ou retry controle;
+  - UI: `Synchronisation en cours`;
+  - renommage: bloque ou desactive jusqu'a resolution;
+  - suppression: a refuser ou differer sauf rollback explicite;
+  - documents/notes/exports futurs: non autorises.
+- `linked`:
+  - signification: dossier local et sous-dossier Nextcloud cible associes;
+  - apparition: creation runtime reussie, renommage reussi ou reconciliation
+    confirmee;
+  - UI: statut discret `Synchronise` ou pas de badge si l'etat normal suffit;
+  - renommage: autorise via renommage Nextcloud d'abord, puis local;
+  - suppression: tombstone local autorise, dossier Nextcloud reel conserve;
+  - documents/notes/exports futurs: autorises sous reserve des lots dedies.
+- `sync_error`:
+  - signification: derniere operation Nextcloud echouee avec erreur redacted;
+  - apparition: echec transport, droits, cible absente ou conflit live;
+  - UI: `Erreur Nextcloud` avec message simple;
+  - renommage: bloque sauf action de reparation/retry explicite;
+  - suppression: tombstone local possible si cela ne masque pas une operation
+    live partielle;
+  - documents/notes/exports futurs: non autorises tant que l'erreur n'est pas
+    resolue.
+- `conflict`:
+  - signification: conflit local, conflit Nextcloud, collision apres
+    sanitisation ou collision casefold;
+  - apparition: validation creation/renommage ou reconciliation;
+  - UI: `Conflit`, avec invitation a choisir un autre nom ou arbitrer;
+  - renommage: autorise vers un nom non conflictuel;
+  - suppression: tombstone local possible sans suppression Nextcloud;
+  - documents/notes/exports futurs: non autorises.
+- `deleted`:
+  - signification: dossier local tombstone ou retire de l'UI active;
+  - apparition: suppression UI Frida;
+  - UI: masque par defaut;
+  - renommage: interdit;
+  - suppression: aucune suppression Nextcloud automatique;
+  - documents/notes/exports futurs: interdits.
+
+Champs techniques candidats pour le runtime permanent:
+
+- `nextcloud_sync_state`: un des etats cibles ci-dessus;
+- `nextcloud_folder_ref`: reference logique redacted stable, jamais URL DAV ni
+  chemin serveur;
+- `nextcloud_name_hash`: hash court du nom cible sanitise;
+- `last_sync_at`: timestamp de derniere transition ou observation;
+- `last_sync_reason_code`: reason code content-free de la derniere transition;
+- `last_sync_operation`: operation source si necessaire (`create`, `rename`,
+  `delete`, `reconcile`);
+- `nextcloud_share_state`: `unknown`, `expected`, `confirmed` ou `error`.
+
+Le Lot 7 n'impose pas de migration DB. En revanche, le runtime permanent Lot 8
+aura probablement besoin d'une persistence dediee ou d'une extension stricte de
+`workspace_folders`, car la projection derivee Lot 3 ne peut pas memoriser
+durablement une preuve `linked`, une erreur live, une reconciliation ou un
+historique de retry.
+
+Compatibilite: le payload fake/local Lot 3 peut encore exposer des etats
+historiques comme `pending` ou `error`. Le Lot 8 devra mapper ou migrer ces
+etats vers le vocabulaire runtime cible sans casser les clients existants.
 
 Contraintes:
 
@@ -212,8 +301,14 @@ Creation:
 - l'utilisateur fournit un nom affiche;
 - FridaDev valide et normalise le nom;
 - en fake/local, le dossier peut etre cree sans Nextcloud live;
-- en live futur, la creation devra correspondre a un sous-dossier
+- en runtime permanent, FridaDev cree d'abord le sous-dossier Nextcloud
   `/Frida/<display_name_sanitise>`;
+- le dossier local `workspace_folders` est cree seulement apres succes
+  Nextcloud;
+- si Nextcloud echoue, la creation Frida est refusee et aucun dossier local en
+  erreur n'est cree silencieusement;
+- l'utilisateur voit une erreur simple et l'observabilite trace un reason code
+  content-free;
 - la reponse utilisateur ne doit pas afficher de chemin serveur.
 
 Listing:
@@ -222,14 +317,19 @@ Listing:
 - les dossiers supprimes ne sont pas listes par defaut;
 - l'etat Nextcloud peut etre affiche comme statut produit, mais sans detail
   sensible;
-- un etat `unknown` ou `pending` reste acceptable tant que la preuve live Lot 5
-  n'est pas branchee dans le runtime applicatif.
+- un etat `local_only` reste acceptable pour les dossiers historiques avant
+  reconciliation;
+- un etat `linked` ne doit etre affiche que sur preuve runtime ou
+  reconciliation content-free.
 
 Renommage:
 
 - le renommage doit repasser par la validation et detection de conflit;
-- si le dossier est lie a Nextcloud plus tard, le lien ne peut pas etre suppose
-  valide tant que le renommage cible n'est pas confirme;
+- les conflits locaux sont detectes avant d'appeler Nextcloud;
+- les conflits Nextcloud sont detectes ou traites separement;
+- en runtime permanent, FridaDev renomme d'abord le sous-dossier Nextcloud;
+- le nom local est change seulement apres succes Nextcloud;
+- si Nextcloud echoue, l'ancien nom local reste actif;
 - en cas de conflit, l'ancien nom reste actif.
 
 Suppression:
@@ -238,8 +338,10 @@ Suppression:
 - les conversations restent conservees et sorties du dossier selon le contrat
   existant;
 - les fichiers et documents workspace restent conserves dans Lot 4;
-- aucune suppression reelle Nextcloud ne doit se produire sans lot live explicite
-  et confirmation humaine;
+- la suppression V1 d'un vrai dossier conserve le dossier Nextcloud;
+- aucune suppression recursive Nextcloud automatique ne doit se produire;
+- la suppression Nextcloud reste reservee aux smokes controles ou a un dossier
+  synthetique/vide prouve;
 - pas de suppression recursive large;
 - pas de deplacement massif;
 - pas de lecture, suppression ou log de contenu fichier dans ce contrat.
@@ -359,6 +461,19 @@ Lot 5:
 - aucun secret, app-password, URL DAV complete, raw XML ou chemin disque dans
   l'artefact;
 - aucun branchement runtime permanent ni operation UI live dans ce lot.
+
+Lot 6:
+
+- observabilite content-free locale des routes `/api/workspace-folders*`;
+- reason codes allowlistes et erreurs redacted;
+- aucune route parallele, aucune route admin, aucun Nextcloud live permanent.
+
+Lot 7:
+
+- design d'etat runtime local/Nextcloud;
+- decisions produit inscrites: creation Nextcloud d'abord, renommage Nextcloud
+  d'abord, suppression locale sans suppression recursive Nextcloud reelle;
+- aucun code runtime, aucun live, aucun secret et aucune migration DB.
 
 Sauron:
 
@@ -485,9 +600,10 @@ Lien observabilite globale:
 - elle fournit un precedent: reason codes catalogues, read-model allowliste,
   tests anti-fuite et scan avant commit.
 
-## 9. Limites V1 et hors-scope
+## 9. Limites des fondations Lots 0 a 7 et hors-scope courant
 
-Restent hors-scope produit du socle Nextcloud folders a ce stade:
+Restent hors-scope des fondations livrees a ce stade, meme s'ils peuvent
+devenir necessaires avant cloture V1 reelle:
 
 - ingestion documents;
 - notes Markdown;
@@ -500,8 +616,8 @@ Restent hors-scope produit du socle Nextcloud folders a ce stade:
 - migration massive;
 - routes paralleles ou nouvelles hors `/api/workspace-folders*`;
 - refonte UI large;
-- migration DB;
-- live Nextcloud depuis FridaDev hors Lot 5 explicitement borne;
+- migration DB avant decision technique dediee;
+- runtime permanent Nextcloud depuis FridaDev avant Lot 8;
 - creation, rotation ou affichage de secrets depuis FridaDev;
 - modification compte/droits/partage live hors intervention Sauron explicite;
 
@@ -701,17 +817,69 @@ Limites:
 - aucune DB Nextcloud;
 - aucun Lot 5.
 
-## 13. Decisions techniques restantes avant Lot Z / runtime live permanent
+## 13. Lot 7 - Design d'etat runtime local/Nextcloud
 
-- decision Sauron obtenue en Lot 2: compte `frida`, dossier `Frida`, partage
-  `tof`, permissions `15`, secrets stockes cote plateforme et rapport
-  content-free;
-- Lot 5 execute cote Celebrimbor comme smoke live borne sur dossier synthetique,
-  sans contenu utilisateur et sans secret dans FridaDev;
-- Lot 6 livre l'observabilite content-free locale des routes
-  `/api/workspace-folders*`, sans route admin et sans Nextcloud live permanent;
-- avant tout branchement runtime permanent, decider explicitement comment
-  injecter le transport Nextcloud, ou stocker les etats live et comment
-  rollbacker les operations live;
-- decider apres Lot 5 si un etat `linked` peut devenir une preuve runtime, et
-  sous quelle preuve content-free.
+Lot 7 recale la spec et la TODO apres les fondations Lots 0 a 6. Il ne livre
+aucun runtime Nextcloud permanent.
+
+Decisions produit integrees:
+
+- creation: Nextcloud d'abord, local ensuite, refus complet si Nextcloud echoue;
+- renommage: Nextcloud d'abord, local ensuite, ancien nom conserve si
+  Nextcloud echoue;
+- suppression: tombstone local / retrait Frida, pas de suppression recursive
+  automatique du dossier Nextcloud reel.
+
+Etat attendu avant Lot 8:
+
+- le runtime actuel reste fake/local pour les operations utilisateur;
+- le smoke Lot 5 prouve seulement un chemin synthetique borne;
+- le prochain lot runtime doit transformer les operations create/rename en
+  operations Nextcloud-first sans creer d'etat divergent silencieux.
+
+## 14. Lots restants avant cloture V1 reelle
+
+Lot 8 - Runtime permanent creation/renommage Nextcloud:
+
+- injecter le transport Nextcloud avec les secrets plateforme existants, sans
+  valeur dans le depot;
+- creer le dossier Nextcloud avant la ligne locale;
+- renommer le dossier Nextcloud avant le nom local;
+- gerer les echecs par refus local ou conservation de l'ancien nom;
+- produire une preuve synthetique par le chemin applicatif.
+
+Lot 9 - Reconciliation des dossiers existants:
+
+- inventorier les dossiers UI Frida existants de facon content-free;
+- pour des dossiers comme `Philosophie` ou `Conflit lycee`, verifier si la
+  cible existe deja dans Nextcloud;
+- creer les cibles manquantes seulement avec un plan borne;
+- ne pas deplacer leurs fichiers et ne pas ecraser un dossier Nextcloud
+  existant.
+
+Lot 10 - Politique fichiers existants et futurs par dossier:
+
+- definir ou vivent les fichiers deja rattaches aux dossiers Frida;
+- definir ou seront ranges les futurs fichiers associes a un dossier;
+- separer cette decision de l'ingestion documentaire.
+
+Lot 11 - Sous-dossiers standards par dossier:
+
+- choisir les sous-dossiers standards, par exemple `Documents`, `Notes`,
+  `Exports` et `Images`;
+- decider s'ils sont crees a la creation du dossier ou a la premiere
+  utilisation;
+- traiter les conflits de sous-dossiers existants sans ecrasement.
+
+Lot 12 - Preparation Notes / Exports / Images:
+
+- aligner les futurs lots Notes, Exports et Images sur le dossier Nextcloud du
+  dossier Frida;
+- ne pas livrer ces chantiers dans le socle dossiers.
+
+Lot Z - Cloture V1 reelle:
+
+- cloturer seulement apres preuve que la creation UI cree le dossier Nextcloud
+  reel, que le renommage reste coherent, que les dossiers existants sont
+  reconcilies et que les politiques fichiers/sous-dossiers sont documentees;
+- ne pas confondre le smoke synthetique Lot 5 avec le runtime produit final.

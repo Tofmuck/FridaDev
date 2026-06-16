@@ -34,10 +34,24 @@ Ce socle doit ensuite permettre, dans des lots separes:
 - rattachement eventuel de mails;
 - observabilite content-free transversale.
 
+Recalage produit post Lot 6:
+
+- les Lots 0 a 6 sont des fondations: audit, contrat, compte/droits Sauron,
+  projection fake/local, API/UI fake-local, smoke live synthetique et
+  observabilite content-free;
+- ils ne cloturent pas le besoin produit Frida 1.0;
+- la V1 produit n'est pas livree tant que la creation UI d'un dossier Frida ne
+  cree pas reellement le sous-dossier Nextcloud `/Frida/<nom_sanitise>`;
+- la V1 doit relier les dossiers UI Frida existants et futurs a des dossiers
+  Nextcloud reels;
+- les dossiers existants doivent etre reconcilies dans un lot dedie, sans
+  deplacement ni suppression implicite de fichiers.
+
 ## 2. Lots proposes
 
-Ne pas cocher ces lots dans ce cycle de redaction. Ils servent de plan
-operatoire pour les prochains prompts.
+Les Lots 0 a 6 sont livres comme fondations. Les Lots 7 et suivants cadrent le
+runtime permanent et les dependances produit restantes; ne cocher que les lots
+effectivement prouves.
 
 ### Lot 0 - Audit read-only existant Nextcloud / FridaDev
 
@@ -186,14 +200,98 @@ inconnus vers `workspace_folder_nextcloud_error_redacted`, n'expose
 et le frontend parse les booleens de projection sans transformer `"false"` en
 `true`.
 
-### Lot Z - Cloture / no-go / limites V1
+### Lot 7 - Design d'etat runtime local/Nextcloud
 
-- [ ] Verifier que le point de sortie V1 est atteint ou declarer un no-go
-  explicite.
+- [x] Inscrire que Lots 0 a 6 sont des fondations et pas la fin produit V1.
+- [x] Inscrire les decisions produit runtime: creation Nextcloud d'abord,
+  renommage Nextcloud d'abord, suppression locale tombstone sans suppression
+  recursive Nextcloud reelle.
+- [x] Definir les etats cibles `local_only`, `linked`, `sync_pending`,
+  `sync_error`, `conflict` et `deleted`.
+- [x] Definir les champs candidats: `nextcloud_sync_state`,
+  `nextcloud_folder_ref`, `nextcloud_name_hash`, `last_sync_at`,
+  `last_sync_reason_code`.
+- [x] Cadrer les lots runtime restants sans migration DB ni code live dans ce
+  patch.
+
+Note Lot 7: ce lot est docs/design only. Il prepare le runtime permanent, mais
+ne branche pas encore FridaDev sur Nextcloud en continu, ne lit pas de secret et
+n'effectue aucun acces live.
+
+### Lot 8 - Runtime permanent creation/renommage Nextcloud
+
+- [ ] Verifier l'injection runtime sure des credentials plateforme prepares par
+  Sauron, sans valeur dans FridaDev.
+- [ ] Sur creation UI, creer d'abord `/Frida/<nom_sanitise>` dans Nextcloud,
+  puis creer le dossier local seulement si Nextcloud reussit.
+- [ ] Si la creation Nextcloud echoue, refuser la creation locale, afficher une
+  erreur simple et tracer un reason code content-free.
+- [ ] Sur renommage UI, renommer d'abord le dossier Nextcloud, puis renommer le
+  dossier local seulement si Nextcloud reussit.
+- [ ] Si le renommage Nextcloud echoue, conserver l'ancien nom local, afficher
+  une erreur simple et tracer un reason code content-free.
+- [ ] Separer les conflits locaux des conflits Nextcloud et ne jamais corriger
+  silencieusement un nom.
+- [ ] Prouver le chemin applicatif sur dossier synthetique uniquement, sans
+  contenu utilisateur ni secret.
+
+### Lot 9 - Reconciliation des dossiers existants
+
+- [ ] Inventorier les dossiers UI Frida existants de facon content-free.
+- [ ] Traiter explicitement les exemples attendus comme `Philosophie` et
+  `Conflit lycee` s'ils existent cote UI Frida.
+- [ ] Verifier s'ils existent deja cote Nextcloud par preuve status-only, sans
+  lister de contenu utilisateur.
+- [ ] Proposer la creation des dossiers manquants sans deplacer leurs fichiers
+  existants.
+- [ ] Ne pas ecraser un dossier Nextcloud existant et ne pas resoudre un
+  conflit sans decision humaine.
+
+### Lot 10 - Politique fichiers existants et futurs par dossier
+
+- [ ] Decider comment les fichiers deja rattaches aux dossiers Frida seront
+  representes ou migres vers Nextcloud.
+- [ ] Decider comment les futurs fichiers associes a un dossier Frida seront
+  ranges sous le dossier Nextcloud correspondant.
+- [ ] Garantir qu'aucun fichier/document workspace n'est deplace, lu ou supprime
+  sans lot dedie et preuve content-free.
+- [ ] Documenter l'interaction avec les documents actifs et uploads sans rouvrir
+  l'ingestion documentaire.
+
+### Lot 11 - Sous-dossiers standards par dossier
+
+- [ ] Definir les sous-dossiers standards cibles par dossier Frida, par exemple
+  `Documents`, `Notes`, `Exports` et `Images`.
+- [ ] Decider s'ils sont crees a la creation du dossier ou a la premiere
+  utilisation.
+- [ ] Definir les conflits et erreurs si un sous-dossier standard existe deja.
+- [ ] Ne pas creer ces sous-dossiers avant preuve et decision du lot.
+
+### Lot 12 - Preparation Notes / Exports / Images
+
+- [ ] Aligner les futurs lots Notes Markdown sur le dossier Nextcloud du dossier
+  Frida.
+- [ ] Aligner les futurs exports sur un sous-dossier dedie, par exemple
+  `/Frida/<dossier>/Exports`, ou variante documentee.
+- [ ] Aligner les images generees sur un sous-dossier dedie, sans livrer la
+  generation ni le stockage image dans ce lot.
+- [ ] Garder documents, notes, exports, images et mail comme chantiers separes.
+
+### Lot Z - Cloture V1 reelle
+
+- [ ] Verifier que la creation UI cree reellement le dossier Nextcloud avant de
+  creer le dossier local.
+- [ ] Verifier que le renommage UI renomme Nextcloud avant de renommer le local.
+- [ ] Verifier que la suppression V1 tombstone localement sans suppression
+  recursive Nextcloud reelle.
+- [ ] Verifier que les dossiers existants sont reconcilies ou declares no-go.
+- [ ] Verifier que la politique fichiers et les sous-dossiers standards sont
+  documentes.
 - [ ] Documenter les limites V1 et les operations non livrees.
 - [ ] Archiver les preuves content-free.
 - [ ] Mettre a jour la roadmap generale si le statut du lot change.
-- [ ] Ne pas basculer documents, notes, exports, images ou mail dans ce lot.
+- [ ] Ne pas cloturer documents, notes, exports, images ou mail par confusion
+  avec ce socle.
 
 ## 3. Frontieres Sauron / Celebrimbor
 
@@ -260,16 +358,25 @@ Regle de frontiere:
 
 Le lot est fermable quand FridaDev peut, dans le perimetre explicitement ouvert:
 
-- creer un dossier Frida synthetique;
+- creer un dossier Frida depuis l'UI en creant d'abord le sous-dossier
+  Nextcloud reel `/Frida/<nom_sanitise>`, puis en creant le dossier local
+  seulement si Nextcloud reussit;
 - lister les dossiers Frida;
-- renommer le dossier synthetique;
-- supprimer le dossier synthetique avec confirmation et rollback documente;
-- associer clairement un dossier frontend Frida a un repertoire Nextcloud;
+- renommer un dossier Frida en renommant d'abord le dossier Nextcloud, puis le
+  local seulement si Nextcloud reussit;
+- refuser creation ou renommage local si Nextcloud echoue, avec erreur
+  utilisateur simple et reason code content-free;
+- supprimer cote UI par tombstone local / retrait Frida sans suppression
+  recursive automatique du dossier Nextcloud reel;
+- associer clairement un dossier frontend Frida a un repertoire Nextcloud reel;
+- reconcilier les dossiers UI existants avec Nextcloud sans ecraser, lire,
+  deplacer ou supprimer de contenu utilisateur;
+- documenter la politique des fichiers existants et futurs par dossier;
 - gerer un conflit de nom sans fuite de contenu;
 - tracer les operations en content-free;
 - documenter les limites V1.
 
-Ce point de sortie ne traite pas:
+Ce point de sortie ne traite pas directement:
 
 - ingestion documentaire;
 - notes Markdown;
