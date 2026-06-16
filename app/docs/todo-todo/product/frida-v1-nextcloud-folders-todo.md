@@ -220,14 +220,28 @@ n'effectue aucun acces live.
 
 ### Lot 8 - Runtime permanent creation/renommage Nextcloud
 
-- [ ] Bloquer le runtime permanent tant que la persistance d'etat
+#### Lot 8A - Persistance d'etat local/Nextcloud
+
+- [x] Bloquer le runtime permanent tant que la persistance d'etat
   local/Nextcloud n'est pas tranchee.
-- [ ] Choisir explicitement ou persister `linked`, `sync_error`, `conflict`,
+- [x] Choisir explicitement ou persister `linked`, `sync_error`, `conflict`,
   `deleted`, `nextcloud_folder_ref`, `nextcloud_name_hash`, `last_sync_at`,
   `last_sync_reason_code` et `last_sync_operation`.
-- [ ] Decider entre extension stricte de `workspace_folders`, table de liaison
+- [x] Decider entre extension stricte de `workspace_folders`, table de liaison
   rattachee a `workspace_folders.id`, ou alternative documentee et justifiee
   sans deuxieme notion utilisateur de dossier.
+- [x] Implementer la table de liaison stricte
+  `workspace_folder_nextcloud_links`, rattachee a `workspace_folders.id`.
+- [x] Integrer l'etat persiste dans la projection existante
+  `/api/workspace-folders*`, sans route parallele ni transport Nextcloud live.
+- [x] Garder l'absence de liaison compatible avec les dossiers historiques via
+  l'etat `local_only`.
+
+Note Lot 8A: ce lot livre uniquement la persistance locale de l'etat
+Nextcloud. Il ne cree, renomme, lit ni supprime aucun dossier Nextcloud reel.
+
+#### Lot 8B - Runtime permanent create/rename live
+
 - [ ] Verifier l'injection runtime sure des credentials plateforme prepares par
   Sauron, sans valeur dans FridaDev.
 - [ ] Sur creation UI, creer d'abord `/Frida/<nom_sanitise>` dans Nextcloud,
@@ -348,7 +362,7 @@ Regle de frontiere:
   viser un dossier synthetique dedie ou une cible vide prouvee, jamais un
   dossier utilisateur reel non borne.
 - Les creations et renommages produit pourront viser de vrais dossiers Frida
-  seulement apres livraison du runtime permanent Lot 8 et de sa persistance
+  seulement apres livraison du runtime permanent Lot 8B et de sa persistance
   d'etat.
 - Toute modification plateforme future doit inclure rollback/documentation et
   rester dans le perimetre Sauron.

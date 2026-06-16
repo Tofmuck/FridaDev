@@ -18,6 +18,7 @@ from core import workspace_file_selection_prompt
 from core import workspace_file_selections_store
 from core import workspace_files_store
 from core import workspace_folders_store
+from core import workspace_folder_nextcloud_links_store
 from core import workspace_folders_service
 from observability import workspace_folders_observability
 
@@ -282,12 +283,14 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         sql = "\n".join(conn.queries).lower()
         self.assertIn("create table if not exists workspace_folders", sql)
+        self.assertIn("create table if not exists workspace_folder_nextcloud_links", sql)
         self.assertIn("create table if not exists workspace_files", sql)
         self.assertIn("create table if not exists workspace_file_selections", sql)
         self.assertIn("add column if not exists workspace_folder_id uuid", sql)
         self.assertIn("conversations_workspace_folder_id_fkey", sql)
         self.assertIn("on delete set null", sql)
         self.assertIn("workspace_folders_active_sort_idx", sql)
+        self.assertIn("workspace_folder_nextcloud_links_sync_state_idx", sql)
         self.assertIn("workspace_files_folder_active_idx", sql)
         self.assertIn("workspace_files_storage_key_idx", sql)
         self.assertIn("workspace_file_selections_conversation_active_idx", sql)
@@ -326,15 +329,102 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(row["nextcloud_logical_root"], "/Frida")
         self.assertEqual(row["nextcloud_target_name"], "Projet-Tulu")
         self.assertEqual(row["nextcloud_logical_path"], "/Frida/Projet-Tulu")
-        self.assertEqual(row["nextcloud_sync_state"], "pending")
+        self.assertEqual(row["nextcloud_sync_state"], "local_only")
         self.assertEqual(row["nextcloud_share_state"], "expected")
-        self.assertEqual(row["nextcloud_reason_code"], "workspace_folder_sync_pending")
+        self.assertEqual(row["nextcloud_reason_code"], "workspace_folder_sync_local_only")
+        self.assertEqual(row["nextcloud_folder_ref"], row["nextcloud_directory_ref"])
         self.assertFalse(row["nextcloud_live_checked"])
         encoded = str(row)
         self.assertNotIn("http", encoded.lower())
         self.assertNotIn("dav", encoded.lower())
         self.assertNotIn("storage_key", encoded)
         self.assertNotIn("Authorization", encoded)
+
+    def test_folder_nextcloud_persisted_link_overrides_fake_projection_content_free(self) -> None:
+        row = workspace_folders_store.serialize_workspace_folder_row(
+            {
+                "id": "11111111-2222-4333-8444-555555555555",
+                "display_name": "Projet Tulu",
+                "icon_key": "spark",
+                "description": "UI only",
+                "sort_order": 1000,
+                "created_at": "2026-06-16T00:00:00Z",
+                "updated_at": "2026-06-16T00:00:00Z",
+                "deleted_at": None,
+                "link_workspace_folder_id": "11111111-2222-4333-8444-555555555555",
+                "link_nextcloud_sync_state": "linked",
+                "link_nextcloud_folder_ref": "workspace-folder:11111111:abc123def456",
+                "link_nextcloud_name_hash": "abc123def456",
+                "link_last_sync_at": "2026-06-16T00:03:00Z",
+                "link_last_sync_reason_code": "workspace_folder_sync_linked",
+                "link_last_sync_operation": "observe",
+                "link_nextcloud_share_state": "confirmed",
+                "link_created_at": "2026-06-16T00:02:00Z",
+                "link_updated_at": "2026-06-16T00:03:00Z",
+            }
+        )
+
+        self.assertEqual(row["nextcloud_sync_state"], "linked")
+        self.assertEqual(row["nextcloud_share_state"], "confirmed")
+        self.assertEqual(row["nextcloud_reason_code"], "workspace_folder_sync_linked")
+        self.assertEqual(row["nextcloud_folder_ref"], "workspace-folder:11111111:abc123def456")
+        self.assertEqual(row["nextcloud_name_hash"], "abc123def456")
+        self.assertEqual(row["last_sync_at"], "2026-06-16T00:03:00Z")
+        self.assertEqual(row["last_sync_operation"], "observe")
+        self.assertTrue(row["nextcloud_live_checked"])
+        encoded = str(row)
+        self.assertNotIn("http", encoded.lower())
+        self.assertNotIn("remote.php", encoded)
+        self.assertNotIn("storage_key", encoded)
+        self.assertNotIn("Authorization", encoded)
+
+    def test_folder_nextcloud_persisted_link_redacts_unknown_reason_and_raw_refs(self) -> None:
+        row = workspace_folders_store.serialize_workspace_folder_row(
+            {
+                "id": "11111111-2222-4333-8444-555555555555",
+                "display_name": "Projet Tulu",
+                "icon_key": "folder",
+                "description": "",
+                "sort_order": 1000,
+                "created_at": "2026-06-16T00:00:00Z",
+                "updated_at": "2026-06-16T00:00:00Z",
+                "deleted_at": None,
+                "link_workspace_folder_id": "11111111-2222-4333-8444-555555555555",
+                "link_nextcloud_sync_state": "sync_error",
+                "link_nextcloud_folder_ref": "/Frida/Projet-Tulu",
+                "link_nextcloud_name_hash": "Projet Tulu",
+                "link_last_sync_reason_code": "/Frida/Projet-Tulu",
+                "link_last_sync_operation": "rename",
+                "link_nextcloud_share_state": "error",
+            }
+        )
+
+        self.assertEqual(row["nextcloud_sync_state"], "sync_error")
+        self.assertEqual(row["nextcloud_share_state"], "error")
+        self.assertEqual(row["nextcloud_reason_code"], "workspace_folder_sync_error")
+        self.assertNotEqual(row["nextcloud_folder_ref"], "/Frida/Projet-Tulu")
+        self.assertNotIn("/Frida/Projet-Tulu", row["nextcloud_folder_ref"])
+        self.assertNotIn("/Frida/Projet-Tulu", row["last_sync_reason_code"])
+        self.assertRegex(row["nextcloud_name_hash"], r"^[0-9a-f]{12}$")
+        self.assertNotIn("Projet Tulu", row["nextcloud_name_hash"])
+
+    def test_folder_nextcloud_persisted_conflict_state_is_content_free(self) -> None:
+        link = workspace_folder_nextcloud_links_store.serialize_link_row(
+            {
+                "workspace_folder_id": "11111111-2222-4333-8444-555555555555",
+                "nextcloud_sync_state": "conflict",
+                "nextcloud_folder_ref": "workspace-folder:11111111:abc123def456",
+                "nextcloud_name_hash": "abc123def456",
+                "last_sync_reason_code": "workspace_folder_name_conflict_nextcloud",
+                "last_sync_operation": "reconcile",
+                "nextcloud_share_state": "expected",
+            }
+        )
+
+        self.assertEqual(link["nextcloud_sync_state"], "conflict")
+        self.assertEqual(link["last_sync_reason_code"], "workspace_folder_name_conflict_nextcloud")
+        self.assertEqual(link["last_sync_operation"], "reconcile")
+        self.assertEqual(link["nextcloud_share_state"], "expected")
 
     def test_folder_nextcloud_fake_mapping_marks_tombstone_deleted_without_live(self) -> None:
         row = workspace_folders_store.serialize_workspace_folder_row(
@@ -458,6 +548,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
                 "workspace_folder_target_exists",
                 "workspace_folder_delete_refused",
                 "workspace_folder_nextcloud_error_redacted",
+                "workspace_folder_sync_local_only",
                 "workspace_folder_deleted",
             }.issubset(catalog)
         )
@@ -475,7 +566,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
                     "nextcloud_logical_path": "/Frida/Projet-Tulu",
                     "storage_key": "hidden/path",
                     "nextcloud_name_hash": "abc123def456",
-                    "nextcloud_sync_state": "error",
+                    "nextcloud_sync_state": "sync_error",
                     "nextcloud_share_state": "error",
                     "nextcloud_reason_code": "workspace_folder_nextcloud_error_redacted",
                 },
@@ -487,6 +578,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(observation["reason_code"], "workspace_folder_nextcloud_error_redacted")
         self.assertEqual(observation["folder_ref"], "cf4c4732fd3b")
         self.assertEqual(observation["nextcloud_name_hash"], "abc123def456")
+        self.assertEqual(observation["nextcloud_sync_state"], "sync_error")
         self.assertEqual(observation["server_path_included"], False)
         self.assertEqual(observation["remote_url_included"], False)
         self.assertEqual(observation["secret_included"], False)
@@ -505,14 +597,14 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
                 "folder": {
                     "id": "id",
                     "nextcloud_name_hash": "Projet Tulu",
-                    "nextcloud_reason_code": "workspace_folder_sync_pending",
+                    "nextcloud_reason_code": "workspace_folder_sync_local_only",
                 }
             },
             http_status=200,
         )
 
         self.assertNotIn("nextcloud_name_hash", pseudo_hash)
-        self.assertEqual(pseudo_hash["nextcloud_reason_code"], "workspace_folder_sync_pending")
+        self.assertEqual(pseudo_hash["nextcloud_reason_code"], "workspace_folder_sync_local_only")
         self.assertNotIn("Projet Tulu", str(pseudo_hash))
 
         unknown_folder_reason = workspace_folders_observability.build_workspace_folder_observation(
@@ -549,12 +641,12 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
                 "items": [
                     {
                         "nextcloud_reason_code": "/Frida/Projet-Tulu",
-                        "nextcloud_sync_state": "pending",
+                        "nextcloud_sync_state": "local_only",
                         "nextcloud_share_state": "expected",
                     },
                     {
-                        "nextcloud_reason_code": "workspace_folder_sync_pending",
-                        "nextcloud_sync_state": "pending",
+                        "nextcloud_reason_code": "workspace_folder_sync_local_only",
+                        "nextcloud_sync_state": "local_only",
                         "nextcloud_share_state": "expected",
                     },
                 ]
@@ -566,7 +658,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
             listed["reason_code_counts"],
             {
                 "workspace_folder_nextcloud_error_redacted": 1,
-                "workspace_folder_sync_pending": 1,
+                "workspace_folder_sync_local_only": 1,
             },
         )
         self.assertNotIn("/Frida/Projet-Tulu", str(listed))
@@ -731,11 +823,11 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         folder_id = created["folder"]["id"]
         self.assertEqual(create_status, 201)
         self.assertEqual(created["folder"]["nextcloud_logical_path"], "/Frida/Projet-Tulu")
-        self.assertEqual(created["folder"]["nextcloud_sync_state"], "pending")
+        self.assertEqual(created["folder"]["nextcloud_sync_state"], "local_only")
         self.assertFalse(created["folder"]["nextcloud_live_checked"])
         self.assertEqual(created["observability"]["operation"], "create")
         self.assertEqual(created["observability"]["reason_code"], "workspace_folder_create_ok")
-        self.assertEqual(created["observability"]["nextcloud_sync_state"], "pending")
+        self.assertEqual(created["observability"]["nextcloud_sync_state"], "local_only")
         self.assertEqual(created["observability"]["nextcloud_share_state"], "expected")
         self.assertNotIn("Projet Tulu", str(created["observability"]))
         self.assertNotIn("/Frida", str(created["observability"]))
@@ -745,7 +837,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(listed["items"][0]["nextcloud_share_state"], "expected")
         self.assertEqual(listed["observability"]["reason_code"], "workspace_folder_list_ok")
         self.assertEqual(listed["observability"]["folder_count"], 1)
-        self.assertEqual(listed["observability"]["sync_state_counts"], {"pending": 1})
+        self.assertEqual(listed["observability"]["sync_state_counts"], {"local_only": 1})
         self.assertEqual(listed["observability"]["share_state_counts"], {"expected": 1})
 
         renamed, rename_status = workspace_folders_service.patch_workspace_folder(
@@ -755,7 +847,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         )
         self.assertEqual(rename_status, 200)
         self.assertEqual(renamed["folder"]["nextcloud_logical_path"], "/Frida/Projet-Renomme")
-        self.assertEqual(renamed["folder"]["nextcloud_reason_code"], "workspace_folder_sync_pending")
+        self.assertEqual(renamed["folder"]["nextcloud_reason_code"], "workspace_folder_sync_local_only")
         self.assertEqual(renamed["observability"]["operation"], "rename")
         self.assertEqual(renamed["observability"]["reason_code"], "workspace_folder_rename_ok")
         self.assertNotIn("Projet Renomme", str(renamed["observability"]))

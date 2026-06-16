@@ -63,9 +63,9 @@ test("normalizeWorkspaceFolderItem preserves fake Nextcloud metadata without raw
     nextcloud_logical_path: "/Frida/Projet-Tulu",
     nextcloud_directory_ref: "workspace-folder:folder-1:abc123def456",
     nextcloud_name_hash: "abc123def456",
-    nextcloud_sync_state: "pending",
+    nextcloud_sync_state: "local_only",
     nextcloud_share_state: "expected",
-    nextcloud_reason_code: "workspace_folder_sync_pending",
+    nextcloud_reason_code: "workspace_folder_sync_local_only",
     nextcloud_live_checked: false,
     storage_key: "hidden/path",
     dav_url: "redacted dav url",
@@ -74,7 +74,7 @@ test("normalizeWorkspaceFolderItem preserves fake Nextcloud metadata without raw
   assert.equal(folder.nextcloud_logical_root, "/Frida");
   assert.equal(folder.nextcloud_target_name, "Projet-Tulu");
   assert.equal(folder.nextcloud_logical_path, "/Frida/Projet-Tulu");
-  assert.equal(folder.nextcloud_sync_state, "pending");
+  assert.equal(folder.nextcloud_sync_state, "local_only");
   assert.equal(folder.nextcloud_share_state, "expected");
   assert.equal(folder.nextcloud_live_checked, false);
   assert.equal(folder.storage_key, undefined);
@@ -154,9 +154,12 @@ test("workspace folder observability normalizer parses boolean strings strictly"
 
 test("workspace folder fake-local status labels stay sober and content-free", () => {
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "unknown" }), "Local");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "local_only" }), "Local");
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "pending" }), "En attente Nextcloud");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "sync_pending" }), "En attente Nextcloud");
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "conflict" }), "Conflit");
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "error" }), "Erreur");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "sync_error" }), "Erreur");
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "" }), "");
 });
 

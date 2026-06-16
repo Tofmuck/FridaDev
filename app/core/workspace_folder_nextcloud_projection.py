@@ -8,17 +8,18 @@ from typing import Any, Callable
 
 DISPLAY_NAME_MAX_CHARS = 80
 NEXTCLOUD_LOGICAL_ROOT = "/Frida"
-NEXTCLOUD_SYNC_UNKNOWN = "unknown"
-NEXTCLOUD_SYNC_PENDING = "pending"
+NEXTCLOUD_SYNC_LOCAL_ONLY = "local_only"
+NEXTCLOUD_SYNC_PENDING = "sync_pending"
 NEXTCLOUD_SYNC_LINKED = "linked"
 NEXTCLOUD_SYNC_CONFLICT = "conflict"
-NEXTCLOUD_SYNC_ERROR = "error"
+NEXTCLOUD_SYNC_ERROR = "sync_error"
 NEXTCLOUD_SYNC_DELETED = "deleted"
 NEXTCLOUD_SHARE_UNKNOWN = "unknown"
 NEXTCLOUD_SHARE_EXPECTED = "expected"
 NEXTCLOUD_SHARE_CONFIRMED = "confirmed"
 NEXTCLOUD_SHARE_ERROR = "error"
 REASON_FOLDER_NAME_INVALID = "workspace_folder_name_invalid"
+REASON_FOLDER_SYNC_LOCAL_ONLY = "workspace_folder_sync_local_only"
 REASON_FOLDER_SYNC_PENDING = "workspace_folder_sync_pending"
 REASON_FOLDER_DELETED = "workspace_folder_deleted"
 _TARGET_DASH_CHARS = set('/\\:*?"<>|')
@@ -91,9 +92,9 @@ def build_nextcloud_folder_projection(
         share_state = NEXTCLOUD_SHARE_UNKNOWN
         reason_code = REASON_FOLDER_NAME_INVALID
     else:
-        sync_state = NEXTCLOUD_SYNC_PENDING
+        sync_state = NEXTCLOUD_SYNC_LOCAL_ONLY
         share_state = NEXTCLOUD_SHARE_EXPECTED
-        reason_code = REASON_FOLDER_SYNC_PENDING
+        reason_code = REASON_FOLDER_SYNC_LOCAL_ONLY
     directory_ref = f"workspace-folder:{short_id}:{name_hash or 'invalid'}"
     return {
         "local_status": local_status,
@@ -101,6 +102,7 @@ def build_nextcloud_folder_projection(
         "nextcloud_target_name": target_name,
         "nextcloud_logical_path": f"{NEXTCLOUD_LOGICAL_ROOT}/{target_name}" if target_name else NEXTCLOUD_LOGICAL_ROOT,
         "nextcloud_directory_ref": directory_ref,
+        "nextcloud_folder_ref": directory_ref,
         "nextcloud_name_hash": name_hash,
         "nextcloud_sync_state": sync_state,
         "nextcloud_share_state": share_state,

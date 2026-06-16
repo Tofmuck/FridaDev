@@ -73,10 +73,13 @@ const WORKSPACE_FILE_STATUS_LABELS = Object.freeze({
 
 const WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS = Object.freeze({
   unknown: 'Local',
+  local_only: 'Local',
   pending: 'En attente Nextcloud',
+  sync_pending: 'En attente Nextcloud',
   linked: 'Local',
   conflict: 'Conflit',
   error: 'Erreur',
+  sync_error: 'Erreur',
   deleted: 'Supprimé',
 });
 

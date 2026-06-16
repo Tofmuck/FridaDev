@@ -20,7 +20,7 @@ REASON_TARGET_EXISTS = "workspace_folder_target_exists"
 REASON_DELETE_REFUSED = "workspace_folder_delete_refused"
 REASON_NEXTCLOUD_ERROR_REDACTED = "workspace_folder_nextcloud_error_redacted"
 
-SYNC_STATES = ("unknown", "pending", "linked", "conflict", "error", "deleted")
+SYNC_STATES = ("local_only", "sync_pending", "linked", "sync_error", "conflict", "deleted")
 SHARE_STATES = ("unknown", "expected", "confirmed", "error")
 LOCAL_STATUSES = ("active", "deleted")
 
@@ -49,6 +49,7 @@ REASON_CODE_CATALOG = frozenset(
         REASON_TARGET_EXISTS,
         REASON_DELETE_REFUSED,
         REASON_NEXTCLOUD_ERROR_REDACTED,
+        "workspace_folder_sync_local_only",
         "workspace_folder_sync_unknown",
         "workspace_folder_sync_pending",
         "workspace_folder_sync_linked",
@@ -225,7 +226,7 @@ def _folder_observation_fields(folder: Mapping[str, Any]) -> dict[str, Any]:
     fields = {
         "folder_ref": _hash12(folder.get("id")),
         "local_status": _safe_state(folder.get("local_status"), LOCAL_STATUSES, "active"),
-        "nextcloud_sync_state": _safe_state(folder.get("nextcloud_sync_state"), SYNC_STATES, "unknown"),
+        "nextcloud_sync_state": _safe_state(folder.get("nextcloud_sync_state"), SYNC_STATES, "local_only"),
         "nextcloud_share_state": _safe_state(folder.get("nextcloud_share_state"), SHARE_STATES, "unknown"),
         "nextcloud_reason_code": _safe_reason_code(folder.get("nextcloud_reason_code"), allow_empty=True),
         "nextcloud_live_checked": _to_bool(folder.get("nextcloud_live_checked")),

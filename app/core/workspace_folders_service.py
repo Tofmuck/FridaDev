@@ -208,7 +208,7 @@ def _folder_name_error_response(validation: Mapping[str, Any], *, operation: str
         "ok": False,
         "error": _VALIDATION_ERROR_MESSAGES.get(reason_code, "nom de repertoire invalide"),
         "reason_code": reason_code,
-        "nextcloud_sync_state": str(validation.get("nextcloud_sync_state") or "error"),
+        "nextcloud_sync_state": str(validation.get("nextcloud_sync_state") or "sync_error"),
         "nextcloud_share_state": str(validation.get("nextcloud_share_state") or "unknown"),
         "nextcloud_reason_code": str(validation.get("nextcloud_reason_code") or reason_code),
     }

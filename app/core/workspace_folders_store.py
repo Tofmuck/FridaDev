@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
+from . import workspace_folder_nextcloud_links_store as nextcloud_links
 from . import workspace_folder_nextcloud_projection as nextcloud_projection
 
 try:  # pragma: no cover - local test hosts may stub psycopg.
@@ -17,22 +18,23 @@ DESCRIPTION_MAX_CHARS = 240
 SORT_ORDER_STEP = 1000
 DEFAULT_ICON_KEY = "folder"
 NEXTCLOUD_LOGICAL_ROOT = nextcloud_projection.NEXTCLOUD_LOGICAL_ROOT
-NEXTCLOUD_SYNC_UNKNOWN = nextcloud_projection.NEXTCLOUD_SYNC_UNKNOWN
-NEXTCLOUD_SYNC_PENDING = nextcloud_projection.NEXTCLOUD_SYNC_PENDING
-NEXTCLOUD_SYNC_LINKED = nextcloud_projection.NEXTCLOUD_SYNC_LINKED
-NEXTCLOUD_SYNC_CONFLICT = nextcloud_projection.NEXTCLOUD_SYNC_CONFLICT
-NEXTCLOUD_SYNC_ERROR = nextcloud_projection.NEXTCLOUD_SYNC_ERROR
-NEXTCLOUD_SYNC_DELETED = nextcloud_projection.NEXTCLOUD_SYNC_DELETED
-NEXTCLOUD_SHARE_UNKNOWN = nextcloud_projection.NEXTCLOUD_SHARE_UNKNOWN
-NEXTCLOUD_SHARE_EXPECTED = nextcloud_projection.NEXTCLOUD_SHARE_EXPECTED
-NEXTCLOUD_SHARE_CONFIRMED = nextcloud_projection.NEXTCLOUD_SHARE_CONFIRMED
-NEXTCLOUD_SHARE_ERROR = nextcloud_projection.NEXTCLOUD_SHARE_ERROR
+NEXTCLOUD_SYNC_LOCAL_ONLY = nextcloud_links.NEXTCLOUD_SYNC_LOCAL_ONLY
+NEXTCLOUD_SYNC_PENDING = nextcloud_links.NEXTCLOUD_SYNC_PENDING
+NEXTCLOUD_SYNC_LINKED = nextcloud_links.NEXTCLOUD_SYNC_LINKED
+NEXTCLOUD_SYNC_CONFLICT = nextcloud_links.NEXTCLOUD_SYNC_CONFLICT
+NEXTCLOUD_SYNC_ERROR = nextcloud_links.NEXTCLOUD_SYNC_ERROR
+NEXTCLOUD_SYNC_DELETED = nextcloud_links.NEXTCLOUD_SYNC_DELETED
+NEXTCLOUD_SHARE_UNKNOWN = nextcloud_links.NEXTCLOUD_SHARE_UNKNOWN
+NEXTCLOUD_SHARE_EXPECTED = nextcloud_links.NEXTCLOUD_SHARE_EXPECTED
+NEXTCLOUD_SHARE_CONFIRMED = nextcloud_links.NEXTCLOUD_SHARE_CONFIRMED
+NEXTCLOUD_SHARE_ERROR = nextcloud_links.NEXTCLOUD_SHARE_ERROR
 REASON_FOLDER_NAME_REQUIRED = "workspace_folder_name_required"
 REASON_FOLDER_NAME_INVALID = nextcloud_projection.REASON_FOLDER_NAME_INVALID
 REASON_FOLDER_NAME_TOO_LONG = "workspace_folder_name_too_long"
 REASON_FOLDER_NAME_CONFLICT_LOCAL = "workspace_folder_name_conflict_local"
 REASON_FOLDER_NAME_CONFLICT_SANITIZED = "workspace_folder_name_conflict_sanitized"
 REASON_FOLDER_NAME_CONFLICT_CASE = "workspace_folder_name_conflict_case"
+REASON_FOLDER_SYNC_LOCAL_ONLY = nextcloud_links.REASON_FOLDER_SYNC_LOCAL_ONLY
 REASON_FOLDER_SYNC_PENDING = nextcloud_projection.REASON_FOLDER_SYNC_PENDING
 REASON_FOLDER_DELETED = nextcloud_projection.REASON_FOLDER_DELETED
 WORKSPACE_FOLDER_ICON_KEYS = (
@@ -227,7 +229,33 @@ def serialize_workspace_folder_row(row: dict[str, Any] | None) -> Optional[dict[
             deleted_at=deleted_at,
         )
     )
-    return payload
+    return nextcloud_links.apply_link_projection(
+        payload,
+        nextcloud_links.serialize_link_row(row),
+    )
+
+
+def _workspace_folder_select_columns() -> str:
+    return """
+        folders.id,
+        folders.display_name,
+        folders.icon_key,
+        folders.description,
+        folders.sort_order,
+        folders.created_at,
+        folders.updated_at,
+        folders.deleted_at,
+        links.workspace_folder_id AS link_workspace_folder_id,
+        links.nextcloud_sync_state AS link_nextcloud_sync_state,
+        links.nextcloud_folder_ref AS link_nextcloud_folder_ref,
+        links.nextcloud_name_hash AS link_nextcloud_name_hash,
+        links.last_sync_at AS link_last_sync_at,
+        links.last_sync_reason_code AS link_last_sync_reason_code,
+        links.last_sync_operation AS link_last_sync_operation,
+        links.nextcloud_share_state AS link_nextcloud_share_state,
+        links.created_at AS link_created_at,
+        links.updated_at AS link_updated_at
+    """
 
 
 def list_workspace_folders(
@@ -236,16 +264,18 @@ def list_workspace_folders(
     db_conn_func: Callable[[], Any],
     logger: Any,
 ) -> list[dict[str, Any]]:
-    where = "" if include_deleted else "WHERE deleted_at IS NULL"
+    where = "" if include_deleted else "WHERE folders.deleted_at IS NULL"
     try:
         with db_conn_func() as conn:
             with _cursor(conn) as cur:
                 cur.execute(
                     f"""
-                    SELECT id, display_name, icon_key, description, sort_order, created_at, updated_at, deleted_at
-                    FROM workspace_folders
+                    SELECT {_workspace_folder_select_columns()}
+                    FROM workspace_folders folders
+                    LEFT JOIN workspace_folder_nextcloud_links links
+                      ON links.workspace_folder_id = folders.id
                     {where}
-                    ORDER BY sort_order ASC, created_at ASC, display_name ASC
+                    ORDER BY folders.sort_order ASC, folders.created_at ASC, folders.display_name ASC
                     """
                 )
                 rows = cur.fetchall()
@@ -265,15 +295,17 @@ def get_workspace_folder(
     normalized = normalize_workspace_folder_id(folder_id)
     if not normalized:
         return None
-    where = "" if include_deleted else "AND deleted_at IS NULL"
+    where = "" if include_deleted else "AND folders.deleted_at IS NULL"
     try:
         with db_conn_func() as conn:
             with _cursor(conn) as cur:
                 cur.execute(
                     f"""
-                    SELECT id, display_name, icon_key, description, sort_order, created_at, updated_at, deleted_at
-                    FROM workspace_folders
-                    WHERE id = %s::uuid {where}
+                    SELECT {_workspace_folder_select_columns()}
+                    FROM workspace_folders folders
+                    LEFT JOIN workspace_folder_nextcloud_links links
+                      ON links.workspace_folder_id = folders.id
+                    WHERE folders.id = %s::uuid {where}
                     LIMIT 1
                     """,
                     (normalized,),
@@ -450,6 +482,7 @@ def soft_delete_workspace_folder(
                     (normalized,),
                 )
                 moved_count = int(getattr(cur, "rowcount", 0) or 0)
+                nextcloud_links.mark_link_deleted_in_cursor(cur, normalized)
             conn.commit()
         folder = serialize_workspace_folder_row(row)
         if folder is not None:

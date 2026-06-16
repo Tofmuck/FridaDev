@@ -1,6 +1,6 @@
 # Frida V1 - Nextcloud folders contract
 
-Statut: spec vivante Lots 0 a 6 fondations livrees + Lot 7 design runtime
+Statut: spec vivante Lots 0 a 7 + Lot 8A persistance locale livree
 Date: 2026-06-16
 Classement: `app/docs/states/specs/`
 TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
@@ -41,6 +41,12 @@ Depuis le Lot 6, les operations fake/local exposent une observabilite
 content-free avec reason codes allowlistes, pseudo-hashs fail-closed et
 normalisation frontend defensive. Le Lot 6 ne branche pas Nextcloud en runtime
 permanent.
+
+Depuis le Lot 8A, FridaDev possede une persistance locale de l'etat
+local/Nextcloud via `workspace_folder_nextcloud_links`, table de liaison stricte
+rattachee a `workspace_folders.id`. Le Lot 8A ne branche pas encore le transport
+Nextcloud live: aucune creation, lecture, renommage ni suppression Nextcloud
+reelle n'est effectuee par ce lot.
 
 Recalage produit post Lot 6:
 
@@ -210,7 +216,7 @@ Modele d'etat runtime cible Lot 7:
 - `local_only`:
   - signification: dossier local existant sans lien Nextcloud confirme;
   - apparition: dossiers historiques avant reconciliation, fallback de lecture
-    ou etat pre-Lot 8;
+    ou absence de liaison persistante;
   - UI: libelle sobre du type `Local a relier`;
   - renommage: autorise seulement comme operation de reconciliation ou tant que
     le runtime permanent n'est pas actif;
@@ -270,10 +276,9 @@ Champs techniques candidats pour le runtime permanent:
   `delete`, `reconcile`);
 - `nextcloud_share_state`: `unknown`, `expected`, `confirmed` ou `error`.
 
-Le Lot 7 n'impose pas de migration DB. En revanche, le runtime permanent Lot 8
-est bloque tant que la persistance d'etat local/Nextcloud n'est pas tranchee.
-Avant tout code de creation/renommage live, il faut decider explicitement ou
-persister ou deriver:
+Le Lot 7 n'imposait pas de migration DB. Le runtime permanent live etait bloque
+tant que la persistance d'etat local/Nextcloud n'etait pas tranchee. Le Lot 8A
+tranche explicitement ou persister ou deriver:
 
 - `nextcloud_sync_state`, dont `linked`, `sync_error`, `conflict` et `deleted`;
 - `nextcloud_folder_ref`;
@@ -282,15 +287,28 @@ persister ou deriver:
 - `last_sync_reason_code`;
 - `last_sync_operation`.
 
-La decision Lot 8 doit choisir entre une extension stricte de
-`workspace_folders`, une table de liaison rattachee a `workspace_folders.id`, ou
-une alternative documentee et justifiee. Elle ne doit pas creer une deuxieme
-notion utilisateur de dossier. La projection derivee Lot 3 ne suffit pas a
-memoriser durablement une preuve `linked`, une erreur live, une reconciliation
-ou un historique de retry.
+Decision Lot 8A:
+
+- choix retenu: table de liaison stricte
+  `workspace_folder_nextcloud_links`;
+- rattachement: `workspace_folder_id` est cle primaire et reference
+  `workspace_folders(id)` en `ON DELETE CASCADE`;
+- la table ne cree pas de deuxieme notion utilisateur de dossier;
+- elle isole les etats de transport/synchronisation sans gonfler
+  `workspace_folders`;
+- l'absence de ligne de liaison reste compatible avec les dossiers historiques:
+  la projection expose `local_only`;
+- la ligne de liaison permet de memoriser `linked`, `sync_error`, `conflict`,
+  `deleted`, `nextcloud_folder_ref`, `nextcloud_name_hash`, `last_sync_at`,
+  `last_sync_reason_code`, `last_sync_operation`, `nextcloud_share_state`,
+  `created_at` et `updated_at`.
+
+Le Lot 8A resout la decision de persistance locale, mais il ne prouve pas encore
+le transport live. Le Lot 8B devra utiliser cette persistence pour faire passer
+creation et renommage en Nextcloud-first.
 
 Compatibilite: le payload fake/local Lot 3 peut encore exposer des etats
-historiques comme `pending` ou `error`. Le Lot 8 devra mapper ou migrer ces
+historiques comme `pending` ou `error`. Le Lot 8B devra mapper ou migrer ces
 etats vers le vocabulaire runtime cible sans casser les clients existants.
 
 Contraintes:
@@ -492,6 +510,18 @@ Lot 7:
   d'abord, suppression locale sans suppression recursive Nextcloud reelle;
 - aucun code runtime, aucun live, aucun secret et aucune migration DB.
 
+Lot 8A:
+
+- table `workspace_folder_nextcloud_links` creee dans le bootstrap DB
+  applicatif;
+- projection `/api/workspace-folders*` enrichie par `LEFT JOIN` si une liaison
+  existe;
+- absence de liaison persistante -> `local_only`;
+- liaison persistante `linked`, `sync_error` ou `conflict` -> projection
+  content-free correspondante;
+- suppression dossier -> projection `deleted`, fichiers/documents preserves;
+- aucun Nextcloud live, aucun WebDAV/OCS, aucun secret.
+
 Sauron:
 
 - compte Nextcloud Frida;
@@ -634,7 +664,7 @@ devenir necessaires avant cloture V1 reelle:
 - routes paralleles ou nouvelles hors `/api/workspace-folders*`;
 - refonte UI large;
 - migration DB avant decision technique dediee;
-- runtime permanent Nextcloud depuis FridaDev avant Lot 8;
+- runtime permanent Nextcloud depuis FridaDev avant Lot 8B;
 - creation, rotation ou affichage de secrets depuis FridaDev;
 - modification compte/droits/partage live hors intervention Sauron explicite;
 
@@ -847,7 +877,7 @@ Decisions produit integrees:
 - suppression: tombstone local / retrait Frida, pas de suppression recursive
   automatique du dossier Nextcloud reel.
 
-Etat attendu avant Lot 8:
+Etat attendu avant Lot 8B:
 
 - le runtime actuel reste fake/local pour les operations utilisateur;
 - le smoke Lot 5 prouve seulement un chemin synthetique borne;
@@ -856,16 +886,16 @@ Etat attendu avant Lot 8:
 
 ## 14. Lots restants avant cloture V1 reelle
 
-Lot 8 - Runtime permanent creation/renommage Nextcloud:
+Lot 8A - Persistance locale de l'etat Nextcloud:
 
-- bloquer le code live tant que la persistance d'etat local/Nextcloud n'est pas
-  tranchee;
-- choisir ou persister `linked`, `sync_error`, `conflict`, `deleted`,
-  `nextcloud_folder_ref`, `nextcloud_name_hash`, `last_sync_at`,
-  `last_sync_reason_code` et `last_sync_operation`;
-- choisir extension stricte de `workspace_folders`, table de liaison rattachee
-  a `workspace_folders.id`, ou alternative documentee sans deuxieme notion
-  utilisateur;
+- livre: table de liaison `workspace_folder_nextcloud_links`;
+- livre: integration de cette liaison dans la projection existante des dossiers;
+- livre: aucune route parallele et aucun transport live;
+- livre: reason codes et etats content-free, avec redaction fail-closed des
+  raisons inconnues.
+
+Lot 8B - Runtime permanent creation/renommage Nextcloud:
+
 - injecter le transport Nextcloud avec les secrets plateforme existants, sans
   valeur dans le depot;
 - creer le dossier Nextcloud avant la ligne locale;
