@@ -11,6 +11,7 @@ Primary current-state references:
 
 - Documentation hub: `app/docs/README.md`
 - Frida 1.0 final product roadmap: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Frida V1 Nextcloud folders contract: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md` for `workspace_folders` as the Frida V1 folder product model, logical `/Frida/<folder>` mapping, Sauron/Celebrimbor boundary, no direct Nextcloud DB access, and content-free observability.
 - Current runtime pipeline: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Model call catalog and OpenRouter topology audit: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Global temporal truth audit: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
@@ -112,6 +113,7 @@ Frontend rehydration and operator observability
 
 - Docs hub: `app/docs/README.md`
 - Frida 1.0 final product roadmap: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Frida V1 Nextcloud folders contract: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
 - Current runtime pipeline: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Model call catalog and OpenRouter topology audit: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Global temporal truth audit: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
@@ -207,6 +209,7 @@ References principales pour l'etat courant:
 
 - Hub documentaire: `app/docs/README.md`
 - Roadmap finale produit Frida 1.0: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Contrat Frida V1 Nextcloud folders: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md` pour `workspace_folders` comme modele produit des dossiers Frida V1, mapping logique `/Frida/<dossier>`, frontiere Sauron/Celebrimbor, pas de DB directe Nextcloud et observabilite content-free.
 - Pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Catalogue des appels modeles et audit de topologie OpenRouter: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit global de verite temporelle: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
@@ -308,6 +311,7 @@ Rehydratation frontend et observabilite operateur
 
 - Hub docs: `app/docs/README.md`
 - Roadmap finale produit Frida 1.0: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Contrat Frida V1 Nextcloud folders: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
 - Pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Catalogue des appels modeles et audit de topologie OpenRouter: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit global de verite temporelle: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`

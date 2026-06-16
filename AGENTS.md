@@ -172,6 +172,7 @@ Si une modification change un comportement runtime, une attente operateur, un de
 Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 
 - `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`: roadmap finale produit Frida 1.0; source pour l'ordre general de cloture au 2026-07-02, les huit chantiers dedies, le statut bonus Mail V1 et le report SMS/TTS.
+- `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`: contrat Frida V1 Nextcloud folders; source pour `workspace_folders` comme modele produit des dossiers Frida V1, mapping logique `/Frida/<dossier>`, frontiere Sauron/Celebrimbor, pas de DB directe Nextcloud et observabilite content-free.
 - `app/docs/todo-done/migrations/fridadev-to-frida-system-migration-todo.md`: trace archivee du clonage/migration OVH, chemins runtime, backups, mode operatoire vacances et decisions admin OVH.
 - `app/docs/todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`: mini-lot admin archive sur l'affichage `mode depuis` / `observation du mode`.
 - `app/docs/todo-done/notes/hermeneutical-add-todo.md`: archive de la grande roadmap hermeneutique, utile pour relire le chantier de stabilisation deja livre.
