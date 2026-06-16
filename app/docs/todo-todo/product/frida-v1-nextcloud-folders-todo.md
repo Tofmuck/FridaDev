@@ -135,12 +135,27 @@ serveur, URL DAV, secret, `storage_key` ni contenu utilisateur.
 
 ### Lot 5 - Preuve live Nextcloud bornee
 
-- [ ] Ouvrir ce lot seulement apres validation Lots 0 a 4 et decision Sauron.
-- [ ] Verifier en read-only les droits Frida/Tof et le repertoire cible.
-- [ ] Executer un smoke live borne sur un dossier synthetique dedie.
-- [ ] Creer, renommer puis supprimer uniquement ce dossier synthetique.
-- [ ] Documenter le rollback et verifier qu'aucun contenu utilisateur n'a ete
+- [x] Ouvrir ce lot seulement apres validation Lots 0 a 4 et decision Sauron.
+- [x] Verifier en read-only les droits Frida/Tof et le repertoire cible.
+- [x] Executer un smoke live borne sur un dossier synthetique dedie.
+- [x] Creer, renommer puis supprimer uniquement ce dossier synthetique.
+- [x] Documenter le rollback et verifier qu'aucun contenu utilisateur n'a ete
   lu, deplace, supprime ou loggue.
+
+Preuve Lot 5 live bornee:
+`app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot5-live-20260616T154117Z.jsonl`
+
+- cible synthetique creee: `frida-v1-smoke-20260616T154117Z`;
+- cible synthetique renommee: `frida-v1-smoke-20260616T154117Z-renamed`;
+- operations prouvees content-free: readonly droits/racine, creation,
+  renommage, suppression, verification finale d'absence;
+- cleanup final: `done`;
+- aucun contenu utilisateur lu, liste, deplace, supprime ou loggue;
+- aucun fichier/document workspace touche;
+- aucun lien public cree;
+- aucun secret ni app-password copie dans FridaDev;
+- limite: preuve DAV/OCS interne status-only; pas de branchement runtime
+  permanent ni d'operation UI live dans ce lot.
 
 ### Lot 6 - Observabilite content-free et erreurs
 

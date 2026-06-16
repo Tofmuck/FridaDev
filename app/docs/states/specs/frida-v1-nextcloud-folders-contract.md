@@ -29,8 +29,13 @@ compte `frida`, dossier `Frida`, partage vers `tof` en permissions `15`, aucun
 lien public et secrets stockes cote plateforme sans valeur dans FridaDev. Le
 rapport source est
 `/opt/platform/_codex_reports/frida-v1-nextcloud-folders-lot2-sauron-20260616T151803Z.md`.
-Le Lot 5 peut desormais etre prepare cote Celebrimbor, mais aucun smoke live
-n'est execute par cette spec.
+
+Depuis le Lot 5 du 2026-06-16, un smoke live Nextcloud borne a prouve la
+creation, le renommage, la suppression et le cleanup final d'un dossier
+synthetique unique sous la racine `Frida`, sans lister ni toucher de contenu
+utilisateur. L'artefact JSONL content-free est
+`app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot5-live-20260616T154117Z.jsonl`.
+Ce smoke ne branche pas encore le runtime FridaDev sur Nextcloud en permanence.
 
 Il fixe le contrat produit minimal du socle Frida 1.0:
 
@@ -338,12 +343,22 @@ Lot 4:
 
 Lot 5:
 
-- ouverture live seulement apres Lots 0 a 4 et decision Sauron;
-- preuve Sauron read-only avant toute ecriture;
-- smoke live borne sur dossier synthetique;
-- creation, renommage, suppression uniquement de ce dossier synthetique;
-- rollback documente;
-- aucun contenu utilisateur lu, deplace, supprime ou loggue.
+- ouverture live effectuee seulement apres Lots 0 a 4 et decision Sauron;
+- preuve read-only droits/racine par DAV/OCS interne status-only;
+- smoke live borne sur dossier synthetique:
+  `frida-v1-smoke-20260616T154117Z`;
+- renommage synthetique:
+  `frida-v1-smoke-20260616T154117Z-renamed`;
+- suppression du dossier synthetique renomme puis verification finale d'absence;
+- cleanup final `done`;
+- artefact:
+  `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot5-live-20260616T154117Z.jsonl`;
+- aucun contenu utilisateur lu, liste, deplace, supprime ou loggue;
+- aucun fichier/document workspace touche;
+- aucun lien public cree;
+- aucun secret, app-password, URL DAV complete, raw XML ou chemin disque dans
+  l'artefact;
+- aucun branchement runtime permanent ni operation UI live dans ce lot.
 
 Sauron:
 
@@ -627,9 +642,12 @@ Limites:
 - decision Sauron obtenue en Lot 2: compte `frida`, dossier `Frida`, partage
   `tof`, permissions `15`, secrets stockes cote plateforme et rapport
   content-free;
-- preparer Lot 5 cote Celebrimbor comme smoke live borne sur dossier
-  synthetique, sans contenu utilisateur et sans secret dans FridaDev;
+- Lot 5 execute cote Celebrimbor comme smoke live borne sur dossier synthetique,
+  sans contenu utilisateur et sans secret dans FridaDev;
+- avant tout branchement runtime permanent, decider explicitement comment
+  injecter le transport Nextcloud, ou stocker les etats live et comment
+  rollbacker les operations live;
 - definir le module d'observabilite dedie ou l'extension des conventions
   existantes en Lot 6;
-- decider en Lot 5 si un etat `linked` peut devenir une preuve live, et sous
-  quelle preuve content-free.
+- decider apres Lot 5 si un etat `linked` peut devenir une preuve runtime, et
+  sous quelle preuve content-free.
