@@ -437,7 +437,10 @@ def update_workspace_folder(
                 )
                 row = cur.fetchone()
             conn.commit()
-        return serialize_workspace_folder_row(row)
+        if row is None:
+            return None
+        refreshed = get_workspace_folder(normalized, db_conn_func=db_conn_func, logger=logger)
+        return refreshed or serialize_workspace_folder_row(row)
     except Exception as exc:
         logger.warning("workspace_folder_update_failed id=%s err=%s", normalized, exc)
         return None

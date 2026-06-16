@@ -157,6 +157,7 @@ test("workspace folder fake-local status labels stay sober and content-free", ()
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "local_only" }), "Local");
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "pending" }), "En attente Nextcloud");
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "sync_pending" }), "En attente Nextcloud");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "linked" }), "Synchronisé");
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "conflict" }), "Conflit");
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "error" }), "Erreur");
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "sync_error" }), "Erreur");

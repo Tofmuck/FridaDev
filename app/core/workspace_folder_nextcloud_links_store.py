@@ -86,6 +86,10 @@ _HASH12_RE = re.compile(r"^[0-9a-f]{12}$")
 _FOLDER_REF_RE = re.compile(r"^[A-Za-z0-9:._-]{1,160}$")
 
 
+class WorkspaceFolderNextcloudLinkPersistenceError(RuntimeError):
+    """Raised when local Nextcloud link persistence fails fail-closed."""
+
+
 def _cursor(conn: Any):
     if dict_row is None:
         return conn.cursor()
@@ -312,10 +316,10 @@ def upsert_link(
     nextcloud_share_state: str = NEXTCLOUD_SHARE_UNKNOWN,
     db_conn_func: Callable[[], Any],
     logger: Any,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any]:
     folder_id = normalize_workspace_folder_id(workspace_folder_id)
     if not folder_id:
-        return None
+        raise WorkspaceFolderNextcloudLinkPersistenceError("workspace_folder_id_invalid")
     sync_state = normalize_sync_state(nextcloud_sync_state)
     share_state = normalize_share_state(nextcloud_share_state)
     operation = normalize_operation(last_sync_operation) or None
@@ -360,5 +364,9 @@ def upsert_link(
             conn.commit()
         return serialize_link_row(row)
     except Exception as exc:
-        logger.warning("workspace_folder_nextcloud_link_upsert_failed id=%s err=%s", folder_id, exc)
-        return None
+        logger.warning(
+            "workspace_folder_nextcloud_link_upsert_failed id=%s reason_code=%s",
+            folder_id,
+            REASON_NEXTCLOUD_ERROR_REDACTED,
+        )
+        raise WorkspaceFolderNextcloudLinkPersistenceError(REASON_NEXTCLOUD_ERROR_REDACTED) from exc

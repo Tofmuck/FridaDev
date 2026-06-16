@@ -239,6 +239,10 @@ n'effectue aucun acces live.
 
 Note Lot 8A: ce lot livre uniquement la persistance locale de l'etat
 Nextcloud. Il ne cree, renomme, lit ni supprime aucun dossier Nextcloud reel.
+Correctif Lot 8A: une reponse d'update local doit reappliquer la liaison
+persistante si elle existe; apres futur succes Nextcloud, un echec de
+persistance locale de liaison devra etre fail-closed (rollback ou erreur
+explicite), jamais interpretable comme un succes silencieux.
 
 #### Lot 8B - Runtime permanent create/rename live
 

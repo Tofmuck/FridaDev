@@ -307,6 +307,13 @@ Le Lot 8A resout la decision de persistance locale, mais il ne prouve pas encore
 le transport live. Le Lot 8B devra utiliser cette persistence pour faire passer
 creation et renommage en Nextcloud-first.
 
+Invariant post-correctif Lot 8A: toute reponse d'update local d'un
+`workspace_folder` doit reappliquer la projection persistante
+`workspace_folder_nextcloud_links` si elle existe. Apres un futur succes
+Nextcloud Lot 8B, un echec de persistance locale de cette liaison doit etre
+fail-closed: rollback si possible, sinon erreur explicite content-free; jamais
+un succes silencieux.
+
 Compatibilite: le payload fake/local Lot 3 peut encore exposer des etats
 historiques comme `pending` ou `error`. Le Lot 8B devra mapper ou migrer ces
 etats vers le vocabulaire runtime cible sans casser les clients existants.

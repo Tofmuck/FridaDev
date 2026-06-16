@@ -378,6 +378,108 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("storage_key", encoded)
         self.assertNotIn("Authorization", encoded)
 
+    def test_workspace_folder_update_refetches_persisted_nextcloud_link(self) -> None:
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        base_row = {
+            "id": folder_id,
+            "display_name": "Projet Renomme",
+            "icon_key": "spark",
+            "description": "UI only",
+            "sort_order": 1000,
+            "created_at": "2026-06-16T00:00:00Z",
+            "updated_at": "2026-06-16T00:04:00Z",
+            "deleted_at": None,
+        }
+        linked_payload = workspace_folders_store.serialize_workspace_folder_row(
+            {
+                **base_row,
+                "link_workspace_folder_id": folder_id,
+                "link_nextcloud_sync_state": "linked",
+                "link_nextcloud_folder_ref": "workspace-folder:11111111:abc123def456",
+                "link_nextcloud_name_hash": "abc123def456",
+                "link_last_sync_at": "2026-06-16T00:03:00Z",
+                "link_last_sync_reason_code": "workspace_folder_sync_linked",
+                "link_last_sync_operation": "observe",
+                "link_nextcloud_share_state": "confirmed",
+            }
+        )
+
+        class _UpdateCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, _sql, _params=None):
+                return None
+
+            def fetchone(self):
+                return dict(base_row)
+
+        class _UpdateConn:
+            def __init__(self):
+                self.commits = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self, *args, **kwargs):
+                return _UpdateCursor()
+
+            def commit(self):
+                self.commits += 1
+
+        conn = _UpdateConn()
+        with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[]):
+            with mock.patch.object(
+                workspace_folders_store,
+                "get_workspace_folder",
+                return_value=linked_payload,
+            ) as refetch:
+                result = workspace_folders_store.update_workspace_folder(
+                    folder_id,
+                    display_name="Projet Renomme",
+                    db_conn_func=lambda: conn,
+                    logger=_CaptureLogger(),
+                )
+
+        self.assertEqual(result["nextcloud_sync_state"], "linked")
+        self.assertEqual(result["nextcloud_share_state"], "confirmed")
+        self.assertEqual(result["nextcloud_reason_code"], "workspace_folder_sync_linked")
+        refetch.assert_called_once_with(folder_id, db_conn_func=mock.ANY, logger=mock.ANY)
+        self.assertEqual(conn.commits, 1)
+
+    def test_workspace_folder_nextcloud_link_upsert_fail_closed_on_persistence_error(self) -> None:
+        logger = _CaptureLogger()
+
+        def _failing_conn():
+            raise RuntimeError("Projet Tulu should not leak")
+
+        with self.assertRaises(
+            workspace_folder_nextcloud_links_store.WorkspaceFolderNextcloudLinkPersistenceError
+        ) as raised:
+            workspace_folder_nextcloud_links_store.upsert_link(
+                workspace_folder_id="11111111-2222-4333-8444-555555555555",
+                nextcloud_sync_state="linked",
+                nextcloud_folder_ref="workspace-folder:11111111:abc123def456",
+                nextcloud_name_hash="abc123def456",
+                last_sync_reason_code="workspace_folder_sync_linked",
+                last_sync_operation="create",
+                nextcloud_share_state="confirmed",
+                db_conn_func=_failing_conn,
+                logger=logger,
+            )
+
+        encoded_logs = "\n".join(logger.lines)
+        self.assertEqual(str(raised.exception), "workspace_folder_nextcloud_error_redacted")
+        self.assertIn("workspace_folder_nextcloud_error_redacted", encoded_logs)
+        self.assertNotIn("Projet Tulu", encoded_logs)
+        self.assertNotIn("should not leak", encoded_logs)
+
     def test_folder_nextcloud_persisted_link_redacts_unknown_reason_and_raw_refs(self) -> None:
         row = workspace_folders_store.serialize_workspace_folder_row(
             {
