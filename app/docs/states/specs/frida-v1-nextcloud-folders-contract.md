@@ -1,6 +1,6 @@
 # Frida V1 - Nextcloud folders contract
 
-Statut: spec vivante Lot 1 + etats Lots 3 et 4 fake/local
+Statut: spec vivante Lot 1 + Lot 2 Sauron livre + etats Lots 3 et 4 fake/local
 Date: 2026-06-16
 Classement: `app/docs/states/specs/`
 TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
@@ -23,6 +23,14 @@ Depuis le Lot 4, les routes existantes `/api/workspace-folders*` exposent ce
 modele fake/local sans route parallele, et l'UI affiche un statut sobre. La
 suppression V1 tombstone le dossier et sort les conversations du dossier, mais
 ne supprime aucun fichier ou document workspace.
+
+Depuis le Lot 2 Sauron du 2026-06-16, le socle plateforme Nextcloud est livre:
+compte `frida`, dossier `Frida`, partage vers `tof` en permissions `15`, aucun
+lien public et secrets stockes cote plateforme sans valeur dans FridaDev. Le
+rapport source est
+`/opt/platform/_codex_reports/frida-v1-nextcloud-folders-lot2-sauron-20260616T151803Z.md`.
+Le Lot 5 peut desormais etre prepare cote Celebrimbor, mais aucun smoke live
+n'est execute par cette spec.
 
 Il fixe le contrat produit minimal du socle Frida 1.0:
 
@@ -96,8 +104,12 @@ Regles:
   correspond, a terme, a un nouveau sous-dossier Nextcloud sous `/Frida`;
 - le dossier racine logique `/Frida` et ses sous-dossiers doivent etre partages
   avec l'utilisateur Nextcloud `tof`;
-- le provisionnement du compte Frida, de la racine, des droits et du partage
-  appartient a Sauron dans un lot ulterieur;
+- le provisionnement du compte Frida, de la racine, des droits, du partage et
+  des secrets plateforme a ete livre par Sauron en Lot 2;
+- le rapport Lot 2 confirme le partage `tof` avec permissions `15`, sans lien
+  public, et une preuve DAV status-only `207`;
+- limite Lot 2: le partage est prouve par `occ`/OCS, pas par login DAV du
+  compte `tof`;
 - FridaDev ne doit pas acceder directement a la DB Nextcloud;
 - FridaDev ne doit pas exposer de chemin brut serveur;
 - les logs, JSONL, dashboards et rapports utilisent un alias logique redacted ou
@@ -205,7 +217,8 @@ Listing:
 - les dossiers supprimes ne sont pas listes par defaut;
 - l'etat Nextcloud peut etre affiche comme statut produit, mais sans detail
   sensible;
-- un etat `unknown` est acceptable avant decision Sauron/live.
+- un etat `unknown` ou `pending` reste acceptable tant que la preuve live Lot 5
+  n'est pas branchee dans le runtime applicatif.
 
 Renommage:
 
@@ -288,6 +301,20 @@ Lot 1:
 - aucune implementation runtime;
 - aucun schema DB definitif;
 - aucun acces Nextcloud.
+
+Lot 2 Sauron:
+
+- compte Nextcloud `frida` cree pour les fichiers/dossiers Frida V1;
+- dossier `Frida` cree dans l'espace du compte `frida`;
+- partage utilisateur vers `tof` cree avec permissions `15`: lecture,
+  ecriture/update, creation, suppression, sans reshare;
+- aucun lien public;
+- secret compte et app-password dediee stockes cote plateforme, valeurs jamais
+  affichees ni copiees dans FridaDev;
+- preuve read-only content-free OK, dont DAV status-only `207`;
+- limite: partage prouve par `occ`/OCS, pas par login DAV du compte `tof`;
+- rapport:
+  `/opt/platform/_codex_reports/frida-v1-nextcloud-folders-lot2-sauron-20260616T151803Z.md`.
 
 Lot 3:
 
@@ -395,9 +422,9 @@ Restent hors-scope produit du socle Nextcloud folders a ce stade:
 - routes paralleles ou nouvelles hors `/api/workspace-folders*`;
 - refonte UI large;
 - migration DB;
-- live Nextcloud;
-- creation de compte;
-- modification droits/partage live;
+- live Nextcloud depuis FridaDev hors Lot 5 explicitement borne;
+- creation, rotation ou affichage de secrets depuis FridaDev;
+- modification compte/droits/partage live hors intervention Sauron explicite;
 
 Le dossier Frida V1 est une unite de travail et un mapping de rangement, pas:
 
@@ -446,7 +473,8 @@ Justification:
 - le mapping logique `/Frida/<dossier>` est derivable depuis `display_name`;
 - l'etat local est derivable depuis `deleted_at`;
 - les conflits sont detectables contre les dossiers actifs existants;
-- une migration serait prematuree avant decision Sauron et avant Lot 5 live.
+- une migration reste prematuree avant Lot 5 live et avant choix explicite de
+  persistence des preuves live.
 
 Algorithme de sanitisation Nextcloud fake/local:
 
@@ -596,8 +624,11 @@ Limites:
 
 ## 13. Decisions techniques restantes avant Lot 5/6
 
-- obtenir plus tard la decision Sauron sur compte Frida, racine, droits,
-  partage et secrets runtime avant tout Lot 5;
+- decision Sauron obtenue en Lot 2: compte `frida`, dossier `Frida`, partage
+  `tof`, permissions `15`, secrets stockes cote plateforme et rapport
+  content-free;
+- preparer Lot 5 cote Celebrimbor comme smoke live borne sur dossier
+  synthetique, sans contenu utilisateur et sans secret dans FridaDev;
 - definir le module d'observabilite dedie ou l'extension des conventions
   existantes en Lot 6;
 - decider en Lot 5 si un etat `linked` peut devenir une preuve live, et sous

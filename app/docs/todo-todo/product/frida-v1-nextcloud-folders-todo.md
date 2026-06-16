@@ -74,15 +74,29 @@ Spec Lot 1:
 
 ### Lot 2 - Decision Sauron compte Frida / droits / partage
 
-- [ ] Demander explicitement a Sauron de trancher/provisionner le compte
+- [x] Demander explicitement a Sauron de trancher/provisionner le compte
   Nextcloud Frida si le lot live est ouvert.
-- [ ] Demander explicitement a Sauron de definir le repertoire racine Frida, le
+- [x] Demander explicitement a Sauron de definir le repertoire racine Frida, le
   partage avec Tof et les droits exacts.
-- [ ] Demander explicitement a Sauron de gerer secrets, app-passwords, backups
+- [x] Demander explicitement a Sauron de gerer secrets, app-passwords, backups
   si necessaire et verification serveur.
-- [ ] Obtenir une preuve read-only content-free avant toute ecriture Nextcloud.
-- [ ] Ne stocker dans FridaDev que des indicateurs redacted et des chemins
+- [x] Obtenir une preuve read-only content-free avant toute ecriture Nextcloud.
+- [x] Ne stocker dans FridaDev que des indicateurs redacted et des chemins
   logiques non sensibles.
+
+Note Lot 2 Sauron livre le 2026-06-16:
+`/opt/platform/_codex_reports/frida-v1-nextcloud-folders-lot2-sauron-20260616T151803Z.md`
+
+- compte Nextcloud `frida` cree;
+- dossier `Frida` cree dans l'espace du compte `frida`;
+- partage utilisateur vers `tof` cree avec permissions `15`: lecture,
+  ecriture/update, creation, suppression, sans reshare;
+- aucun lien public;
+- secret compte et app-password dediee stockes cote plateforme, valeurs jamais
+  affichees ni copiees dans FridaDev;
+- preuve read-only content-free OK: DAV status-only `207`, aucun contenu
+  utilisateur affiche, aucun fichier utilisateur deplace ou supprime;
+- limite: partage prouve par `occ`/OCS, pas par login DAV du compte `tof`.
 
 ### Lot 3 - Modele backend FridaDev fake/local
 
