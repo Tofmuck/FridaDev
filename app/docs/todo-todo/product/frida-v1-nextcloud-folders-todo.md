@@ -249,20 +249,42 @@ retomber sur une projection locale potentiellement fausse.
 
 #### Lot 8B - Runtime permanent create/rename live
 
-- [ ] Verifier l'injection runtime sure des credentials plateforme prepares par
+- [x] Verifier l'injection runtime sure des credentials plateforme prepares par
   Sauron, sans valeur dans FridaDev.
-- [ ] Sur creation UI, creer d'abord `/Frida/<nom_sanitise>` dans Nextcloud,
+- [x] Sur creation UI, creer d'abord `/Frida/<nom_sanitise>` dans Nextcloud,
   puis creer le dossier local seulement si Nextcloud reussit.
-- [ ] Si la creation Nextcloud echoue, refuser la creation locale, afficher une
+- [x] Si la creation Nextcloud echoue, refuser la creation locale, afficher une
   erreur simple et tracer un reason code content-free.
-- [ ] Sur renommage UI, renommer d'abord le dossier Nextcloud, puis renommer le
+- [x] Sur renommage UI, renommer d'abord le dossier Nextcloud, puis renommer le
   dossier local seulement si Nextcloud reussit.
-- [ ] Si le renommage Nextcloud echoue, conserver l'ancien nom local, afficher
+- [x] Si le renommage Nextcloud echoue, conserver l'ancien nom local, afficher
   une erreur simple et tracer un reason code content-free.
-- [ ] Separer les conflits locaux des conflits Nextcloud et ne jamais corriger
+- [x] Separer les conflits locaux des conflits Nextcloud et ne jamais corriger
   silencieusement un nom.
-- [ ] Prouver le chemin applicatif sur dossier synthetique uniquement, sans
+- [x] Prouver le chemin applicatif sur dossier synthetique uniquement, sans
   contenu utilisateur ni secret.
+
+Preuve Lot 8B runtime permanent create/rename:
+`app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot8b-live-runtime-20260616T201404Z.jsonl`
+
+- phase Sauron bornee: secret app-password Frida monte en read-only dans le
+  conteneur app, valeur jamais affichee; rapport redacted:
+  `/opt/platform/_codex_reports/frida-v1-nextcloud-folders-lot8b-secret-injection-20260616T200809Z.md`;
+- creation route applicative `/api/workspace-folders`: Nextcloud d'abord,
+  local ensuite, liaison `linked`;
+- renommage route applicative `/api/workspace-folders/<id>`: Nextcloud d'abord,
+  local ensuite, liaison `linked`;
+- rollback/compensation code: rollback `DELETE` strict du dossier cree dans le
+  flot si persistance locale echoue; rollback `MOVE` strict vers l'ancien nom
+  si le local echoue apres renommage Nextcloud;
+- cleanup preuve: suppression/tombstone local par route existante, puis cleanup
+  WebDAV borne aux cibles synthetiques du run; absence finale prouvee
+  status-only;
+- aucun contenu utilisateur lu, liste, deplace ou supprime;
+- aucun secret, URL DAV brute, XML brut ni payload Nextcloud brut dans le JSONL
+  ou les logs applicatifs content-free;
+- limites: pas de reconciliation des dossiers existants, pas de sous-dossiers
+  standards, pas de migration/deplacement fichiers.
 
 ### Lot 9 - Reconciliation des dossiers existants
 

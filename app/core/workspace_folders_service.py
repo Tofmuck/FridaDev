@@ -22,6 +22,14 @@ _VALIDATION_ERROR_MESSAGES = {
     "workspace_folder_name_conflict_sanitized": "un repertoire actif utilise deja ce nom cible",
     "workspace_folder_name_conflict_case": "un repertoire actif utilise deja ce nom avec une casse differente",
 }
+_RUNTIME_ERROR_MESSAGES = {
+    "workspace_folder_nextcloud_conflict": "conflit Nextcloud sur ce nom",
+    "workspace_folder_nextcloud_unavailable": "Nextcloud indisponible",
+    "workspace_folder_nextcloud_auth_failed": "authentification Nextcloud impossible",
+    "workspace_folder_nextcloud_target_missing": "dossier Nextcloud cible introuvable",
+    "workspace_folder_local_persistence_failed": "synchronisation locale incomplete",
+    "workspace_folder_nextcloud_error_redacted": "operation Nextcloud impossible",
+}
 
 
 def list_workspace_folders(
@@ -66,19 +74,37 @@ def create_workspace_folder(
             operation="create",
             status=400,
         )
-    folder = workspace_folders_module.create_workspace_folder(
-        display_name=display_name,
-        icon_key=icon_key,
-        description=workspace_folders_module.sanitize_description(data.get("description") or ""),
-        sort_order=sort_order,
-    )
+    result = None
+    creator = getattr(workspace_folders_module, "create_workspace_folder_nextcloud_first", None)
+    if callable(creator):
+        result = creator(
+            display_name=display_name,
+            icon_key=icon_key,
+            description=workspace_folders_module.sanitize_description(data.get("description") or ""),
+            sort_order=sort_order,
+        )
+        if isinstance(result, Mapping) and result.get("ok") is False:
+            return _runtime_error_response(result, operation="create")
+        folder = result.get("folder") if isinstance(result, Mapping) else result
+    else:
+        folder = workspace_folders_module.create_workspace_folder(
+            display_name=display_name,
+            icon_key=icon_key,
+            description=workspace_folders_module.sanitize_description(data.get("description") or ""),
+            sort_order=sort_order,
+        )
     if folder is None:
         return _response(
             {"ok": False, "error": "creation repertoire impossible", "reason_code": "workspace_folder_create_failed"},
             operation="create",
             status=500,
         )
-    return _response({"ok": True, "folder": folder}, operation="create", status=201)
+    reason_code = (
+        str(result.get("reason_code") or "workspace_folder_create_ok")
+        if isinstance(result, Mapping)
+        else "workspace_folder_create_ok"
+    )
+    return _response({"ok": True, "folder": folder, "reason_code": reason_code}, operation="create", status=201)
 
 
 def patch_workspace_folder(
@@ -132,14 +158,27 @@ def patch_workspace_folder(
             status=400,
         )
 
-    folder = workspace_folders_module.update_workspace_folder(normalized, **fields)
+    renamer = getattr(workspace_folders_module, "rename_workspace_folder_nextcloud_first", None)
+    if callable(renamer) and "display_name" in fields:
+        result = renamer(normalized, **fields)
+        if isinstance(result, Mapping) and result.get("ok") is False:
+            return _runtime_error_response(result, operation="rename")
+        folder = result.get("folder") if isinstance(result, Mapping) else result
+    else:
+        result = None
+        folder = workspace_folders_module.update_workspace_folder(normalized, **fields)
     if folder is None:
         return _response(
             {"ok": False, "error": "repertoire introuvable", "reason_code": "workspace_folder_not_found"},
             operation="rename",
             status=404,
         )
-    return _response({"ok": True, "folder": folder}, operation="rename", status=200)
+    reason_code = (
+        str(result.get("reason_code") or "workspace_folder_rename_ok")
+        if isinstance(result, Mapping)
+        else "workspace_folder_rename_ok"
+    )
+    return _response({"ok": True, "folder": folder, "reason_code": reason_code}, operation="rename", status=200)
 
 
 def delete_workspace_folder(
@@ -215,6 +254,26 @@ def _folder_name_error_response(validation: Mapping[str, Any], *, operation: str
     name_hash = str(validation.get("nextcloud_name_hash") or "")
     if name_hash:
         payload["nextcloud_name_hash"] = name_hash
+    return _response(payload, operation=operation, status=status)
+
+
+def _runtime_error_response(result: Mapping[str, Any], *, operation: str) -> Tuple[dict[str, Any], int]:
+    reason_code = str(result.get("reason_code") or "workspace_folder_nextcloud_error_redacted")
+    status = int(result.get("status") or (409 if "conflict" in reason_code else 502))
+    payload = {
+        "ok": False,
+        "error": _RUNTIME_ERROR_MESSAGES.get(reason_code, "operation Nextcloud impossible"),
+        "reason_code": reason_code,
+        "nextcloud_sync_state": str(result.get("nextcloud_sync_state") or "sync_error"),
+        "nextcloud_share_state": str(result.get("nextcloud_share_state") or "error"),
+        "nextcloud_reason_code": str(result.get("nextcloud_reason_code") or reason_code),
+    }
+    name_hash = str(result.get("nextcloud_name_hash") or "")
+    if name_hash:
+        payload["nextcloud_name_hash"] = name_hash
+    rollback_reason = str(result.get("rollback_reason_code") or "")
+    if rollback_reason:
+        payload["rollback_reason_code"] = rollback_reason
     return _response(payload, operation=operation, status=status)
 
 

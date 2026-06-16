@@ -78,6 +78,15 @@ REASON_CODE_CATALOG = frozenset(
         "workspace_folder_files_preserved",
         "workspace_folder_live_unavailable",
         "workspace_folder_sauron_required",
+        "workspace_folder_nextcloud_create_ok",
+        "workspace_folder_nextcloud_rename_ok",
+        "workspace_folder_nextcloud_conflict",
+        "workspace_folder_nextcloud_unavailable",
+        "workspace_folder_nextcloud_auth_failed",
+        "workspace_folder_nextcloud_target_missing",
+        "workspace_folder_nextcloud_rollback_ok",
+        "workspace_folder_nextcloud_rollback_failed",
+        "workspace_folder_local_persistence_failed",
         REASON_NEXTCLOUD_ERROR_REDACTED,
     }
 )

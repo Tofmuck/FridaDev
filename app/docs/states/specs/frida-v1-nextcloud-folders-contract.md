@@ -1,6 +1,6 @@
 # Frida V1 - Nextcloud folders contract
 
-Statut: spec vivante Lots 0 a 7 + Lot 8A persistance locale livree
+Statut: spec vivante Lots 0 a 8B runtime create/rename livre
 Date: 2026-06-16
 Classement: `app/docs/states/specs/`
 TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
@@ -47,6 +47,15 @@ local/Nextcloud via `workspace_folder_nextcloud_links`, table de liaison stricte
 rattachee a `workspace_folders.id`. Le Lot 8A ne branche pas encore le transport
 Nextcloud live: aucune creation, lecture, renommage ni suppression Nextcloud
 reelle n'est effectuee par ce lot.
+
+Depuis le Lot 8B, les routes existantes `/api/workspace-folders*` creent et
+renomment les dossiers Nextcloud avant la mutation locale. Le transport WebDAV
+est borne aux dossiers: `MKCOL` pour creation, `MOVE` pour renommage,
+`PROPFIND` status-only et `DELETE` uniquement comme rollback/cleanup strict
+d'une cible synthetique ou creee par le flot. L'artefact live content-free est
+`app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot8b-live-runtime-20260616T201404Z.jsonl`.
+L'injection runtime du secret est documentee sans valeur dans
+`/opt/platform/_codex_reports/frida-v1-nextcloud-folders-lot8b-secret-injection-20260616T200809Z.md`.
 
 Recalage produit post Lot 6:
 
@@ -332,6 +341,39 @@ Contraintes:
   extrait utilisateur;
 - ne pas confondre etat local du dossier et etat de synchronisation Nextcloud.
 
+Decision Lot 8B:
+
+- transport dedie: `app/core/workspace_folder_nextcloud_client.py`;
+- orchestration Nextcloud-first:
+  `app/core/workspace_folder_nextcloud_runtime.py`;
+- creation: `MKCOL` Nextcloud puis creation locale puis liaison
+  `workspace_folder_nextcloud_links` en `linked`;
+- renommage: `MOVE` Nextcloud puis mise a jour de la liaison puis mutation
+  locale;
+- compensation creation: si la persistance locale echoue apres `MKCOL`,
+  rollback `DELETE` strict de la cible creee par ce flot et tombstone local si
+  necessaire;
+- compensation renommage: si la persistance locale echoue apres `MOVE`,
+  rollback `MOVE` strict vers l'ancien nom et restauration de la liaison si
+  possible;
+- suppression UI reste hors live Nextcloud: tombstone local seulement, pas de
+  suppression recursive du dossier Nextcloud reel;
+- `nextcloud_share_state` reste `expected` car le Lot 8B ne prouve pas le login
+  DAV `tof`; le partage global a ete prouve par Sauron en Lot 2.
+
+Reason codes runtime Lot 8B:
+
+- `workspace_folder_nextcloud_create_ok`;
+- `workspace_folder_nextcloud_rename_ok`;
+- `workspace_folder_nextcloud_conflict`;
+- `workspace_folder_nextcloud_unavailable`;
+- `workspace_folder_nextcloud_auth_failed`;
+- `workspace_folder_nextcloud_target_missing`;
+- `workspace_folder_nextcloud_rollback_ok`;
+- `workspace_folder_nextcloud_rollback_failed`;
+- `workspace_folder_local_persistence_failed`;
+- `workspace_folder_nextcloud_error_redacted`.
+
 ## 5. Operations V1
 
 Les operations produit V1 sont:
@@ -348,8 +390,8 @@ Creation:
 
 - l'utilisateur fournit un nom affiche;
 - FridaDev valide et normalise le nom;
-- en fake/local, le dossier peut etre cree sans Nextcloud live;
-- en runtime permanent, FridaDev cree d'abord le sous-dossier Nextcloud
+- depuis le Lot 8B runtime permanent, FridaDev cree d'abord le sous-dossier
+  Nextcloud
   `/Frida/<display_name_sanitise>`;
 - le dossier local `workspace_folders` est cree seulement apres succes
   Nextcloud;
@@ -375,7 +417,8 @@ Renommage:
 - le renommage doit repasser par la validation et detection de conflit;
 - les conflits locaux sont detectes avant d'appeler Nextcloud;
 - les conflits Nextcloud sont detectes ou traites separement;
-- en runtime permanent, FridaDev renomme d'abord le sous-dossier Nextcloud;
+- depuis le Lot 8B runtime permanent, FridaDev renomme d'abord le sous-dossier
+  Nextcloud;
 - le nom local est change seulement apres succes Nextcloud;
 - si Nextcloud echoue, l'ancien nom local reste actif;
 - en cas de conflit, l'ancien nom reste actif.
@@ -897,6 +940,14 @@ Etat attendu avant Lot 8B:
 - le prochain lot runtime doit transformer les operations create/rename en
   operations Nextcloud-first sans creer d'etat divergent silencieux.
 
+Etat depuis Lot 8B:
+
+- creation et renommage produit passent par Nextcloud-first;
+- les dossiers historiques `local_only` restent a reconcilier en Lot 9;
+- les fichiers/documents rattaches aux dossiers ne sont ni deplaces ni migres;
+- les sous-dossiers standards restent a cadrer en Lot 11;
+- la cloture V1 reste interdite avant reconciliation et politique fichiers.
+
 ## 14. Lots restants avant cloture V1 reelle
 
 Lot 8A - Persistance locale de l'etat Nextcloud:
@@ -909,12 +960,13 @@ Lot 8A - Persistance locale de l'etat Nextcloud:
 
 Lot 8B - Runtime permanent creation/renommage Nextcloud:
 
-- injecter le transport Nextcloud avec les secrets plateforme existants, sans
+- livre: injection runtime read-only du secret plateforme, sans
   valeur dans le depot;
-- creer le dossier Nextcloud avant la ligne locale;
-- renommer le dossier Nextcloud avant le nom local;
-- gerer les echecs par refus local ou conservation de l'ancien nom;
-- produire une preuve synthetique par le chemin applicatif.
+- livre: creer le dossier Nextcloud avant la ligne locale;
+- livre: renommer le dossier Nextcloud avant le nom local;
+- livre: gerer les echecs par refus local ou conservation de l'ancien nom;
+- livre: rollback/compensation borne create/rename;
+- livre: preuve synthetique par le chemin applicatif, JSONL content-free.
 
 Lot 9 - Reconciliation des dossiers existants:
 

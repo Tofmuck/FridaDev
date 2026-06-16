@@ -8,6 +8,7 @@ import psycopg
 import config
 from admin import runtime_settings
 from . import runtime_db_bootstrap
+from . import workspace_folder_nextcloud_runtime
 from . import workspace_folder_nextcloud_links_store
 from . import workspace_folders_store
 
@@ -113,6 +114,25 @@ def create_workspace_folder(
     )
 
 
+def create_workspace_folder_nextcloud_first(
+    *,
+    display_name: str,
+    icon_key: str = DEFAULT_ICON_KEY,
+    description: str = "",
+    sort_order: Optional[int] = None,
+    folder_id: Optional[str] = None,
+) -> dict[str, Any]:
+    return workspace_folder_nextcloud_runtime.create_workspace_folder_nextcloud_first(
+        display_name=display_name,
+        icon_key=icon_key,
+        description=description,
+        sort_order=sort_order,
+        folder_id=folder_id,
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
+
+
 def update_workspace_folder(
     folder_id: str,
     *,
@@ -132,12 +152,35 @@ def update_workspace_folder(
     )
 
 
+def rename_workspace_folder_nextcloud_first(
+    folder_id: str,
+    *,
+    display_name: str,
+    icon_key: Optional[str] = None,
+    description: Optional[str] = None,
+    sort_order: Optional[int] = None,
+) -> dict[str, Any]:
+    return workspace_folder_nextcloud_runtime.rename_workspace_folder_nextcloud_first(
+        folder_id,
+        display_name=display_name,
+        icon_key=icon_key,
+        description=description,
+        sort_order=sort_order,
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
+
+
 def soft_delete_workspace_folder(folder_id: str) -> Optional[dict[str, Any]]:
     return workspace_folders_store.soft_delete_workspace_folder(
         folder_id,
         db_conn_func=_db_conn,
         logger=logger,
     )
+
+
+def runtime_nextcloud_secret_status() -> dict[str, Any]:
+    return workspace_folder_nextcloud_runtime.runtime_secret_status()
 
 
 def upsert_workspace_folder_nextcloud_link(
