@@ -498,6 +498,94 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("storage_key", encoded)
         self.assertNotIn("Authorization", encoded)
 
+    def test_workspace_folder_observation_fail_closed_for_pseudo_hashes_and_reasons(self) -> None:
+        pseudo_hash = workspace_folders_observability.build_workspace_folder_observation(
+            "create",
+            {
+                "folder": {
+                    "id": "id",
+                    "nextcloud_name_hash": "Projet Tulu",
+                    "nextcloud_reason_code": "workspace_folder_sync_pending",
+                }
+            },
+            http_status=200,
+        )
+
+        self.assertNotIn("nextcloud_name_hash", pseudo_hash)
+        self.assertEqual(pseudo_hash["nextcloud_reason_code"], "workspace_folder_sync_pending")
+        self.assertNotIn("Projet Tulu", str(pseudo_hash))
+
+        unknown_folder_reason = workspace_folders_observability.build_workspace_folder_observation(
+            "create",
+            {
+                "folder": {
+                    "id": "id",
+                    "nextcloud_name_hash": "abc123def456",
+                    "nextcloud_reason_code": "/Frida/Projet-Tulu",
+                }
+            },
+            http_status=200,
+        )
+
+        self.assertEqual(
+            unknown_folder_reason["nextcloud_reason_code"],
+            "workspace_folder_nextcloud_error_redacted",
+        )
+        self.assertEqual(unknown_folder_reason["nextcloud_name_hash"], "abc123def456")
+        self.assertNotIn("/Frida/Projet-Tulu", str(unknown_folder_reason))
+
+        unknown_top_reason = workspace_folders_observability.build_workspace_folder_observation(
+            "create",
+            {"reason_code": "/Frida/Projet-Tulu"},
+            http_status=400,
+        )
+
+        self.assertEqual(unknown_top_reason["reason_code"], "workspace_folder_nextcloud_error_redacted")
+        self.assertNotIn("/Frida/Projet-Tulu", str(unknown_top_reason))
+
+        listed = workspace_folders_observability.build_workspace_folder_observation(
+            "list",
+            {
+                "items": [
+                    {
+                        "nextcloud_reason_code": "/Frida/Projet-Tulu",
+                        "nextcloud_sync_state": "pending",
+                        "nextcloud_share_state": "expected",
+                    },
+                    {
+                        "nextcloud_reason_code": "workspace_folder_sync_pending",
+                        "nextcloud_sync_state": "pending",
+                        "nextcloud_share_state": "expected",
+                    },
+                ]
+            },
+            http_status=200,
+        )
+
+        self.assertEqual(
+            listed["reason_code_counts"],
+            {
+                "workspace_folder_nextcloud_error_redacted": 1,
+                "workspace_folder_sync_pending": 1,
+            },
+        )
+        self.assertNotIn("/Frida/Projet-Tulu", str(listed))
+
+        deleted = workspace_folders_observability.build_workspace_folder_observation(
+            "delete",
+            {
+                "folder": {
+                    "id": "id",
+                    "file_delete": {"reason_code": "/Frida/Projet-Tulu"},
+                    "files_preserved": True,
+                }
+            },
+            http_status=200,
+        )
+
+        self.assertEqual(deleted["file_reason_code"], "workspace_folder_nextcloud_error_redacted")
+        self.assertNotIn("/Frida/Projet-Tulu", str(deleted))
+
     def test_workspace_folder_service_name_conflict_response_is_content_free(self) -> None:
         class _FoldersModule:
             WORKSPACE_FOLDER_ICON_KEYS = ("folder",)

@@ -180,6 +180,12 @@ Le frontend normalise uniquement les champs allowlistes si cette projection est
 presente. Cette brique est referencee comme preuve locale du chantier global
 `frida-v1-agentic-observability-todo.md`, sans ouvrir la refonte globale.
 
+Micro-correctif post Lot 6: l'observabilite fail-closed les reason codes
+inconnus vers `workspace_folder_nextcloud_error_redacted`, n'expose
+`nextcloud_name_hash` que si le format de hash court est strictement conforme,
+et le frontend parse les booleens de projection sans transformer `"false"` en
+`true`.
+
 ### Lot Z - Cloture / no-go / limites V1
 
 - [ ] Verifier que le point de sortie V1 est atteint ou declarer un no-go

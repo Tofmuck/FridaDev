@@ -123,6 +123,13 @@ function normalizeWorkspaceIconKey(value) {
   return WORKSPACE_FOLDER_ICON_KEYS.includes(key) ? key : 'folder';
 }
 
+function parseWorkspaceFolderObservabilityBool(value) {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0 || value === null || value === undefined) return false;
+  const raw = String(value).trim().toLowerCase();
+  return raw === 'true' || raw === '1' || raw === 'yes' || raw === 'on';
+}
+
 function normalizeWorkspaceFolderObservability(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const observation = {};
@@ -134,7 +141,7 @@ function normalizeWorkspaceFolderObservability(value) {
     if (value[field] !== undefined) observation[field] = Number(value[field] || 0);
   }
   for (const field of WORKSPACE_FOLDER_OBSERVABILITY_BOOLEAN_FIELDS) {
-    if (value[field] !== undefined) observation[field] = Boolean(value[field]);
+    if (value[field] !== undefined) observation[field] = parseWorkspaceFolderObservabilityBool(value[field]);
   }
   return Object.keys(observation).length ? observation : null;
 }

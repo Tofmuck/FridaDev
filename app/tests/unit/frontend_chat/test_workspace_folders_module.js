@@ -124,6 +124,34 @@ test("workspace folder observability normalizer keeps only content-free fields",
   assert.equal(JSON.stringify(observation).includes("redacted dav url"), false);
 });
 
+test("workspace folder observability normalizer parses boolean strings strictly", () => {
+  const truthy = normalizeWorkspaceFolderObservability({
+    content_free: "true",
+    files_preserved: "1",
+    nextcloud_live_checked: "yes",
+    remote_url_included: "on",
+  });
+  const falsy = normalizeWorkspaceFolderObservability({
+    raw_content_included: "false",
+    server_path_included: "0",
+    secret_included: "no",
+    remote_url_included: "off",
+    files_preserved: "",
+    nextcloud_live_checked: null,
+  });
+
+  assert.equal(truthy.content_free, true);
+  assert.equal(truthy.files_preserved, true);
+  assert.equal(truthy.nextcloud_live_checked, true);
+  assert.equal(truthy.remote_url_included, true);
+  assert.equal(falsy.raw_content_included, false);
+  assert.equal(falsy.server_path_included, false);
+  assert.equal(falsy.secret_included, false);
+  assert.equal(falsy.remote_url_included, false);
+  assert.equal(falsy.files_preserved, false);
+  assert.equal(falsy.nextcloud_live_checked, false);
+});
+
 test("workspace folder fake-local status labels stay sober and content-free", () => {
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "unknown" }), "Local");
   assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "pending" }), "En attente Nextcloud");

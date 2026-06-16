@@ -433,8 +433,9 @@ Champs autorises dans la projection:
 - `status`;
 - `status_class` pour la classe de statut de reponse;
 - `reason_code`;
-- hash court du dossier (`folder_ref`);
-- hash court du nom cible Nextcloud (`nextcloud_name_hash`);
+- hash court du dossier (`folder_ref`), calcule par le read-model;
+- hash court du nom cible Nextcloud (`nextcloud_name_hash`) seulement si la
+  valeur source ressemble strictement au hash court attendu;
 - `local_status`;
 - `nextcloud_sync_state`;
 - `nextcloud_share_state`;
@@ -463,6 +464,18 @@ Les erreurs sont exploitables par `reason_code`, classe HTTP et hash court
 d'erreur si necessaire. Le hash court est stable pour une meme valeur, mais ne
 remplace pas un journal technique brut et ne doit jamais etre accompagne du
 message original s'il contient chemin, URL, secret, nom sensible ou contenu.
+
+Regles fail-closed post Lot 6:
+
+- `reason_code`, `nextcloud_reason_code`, `file_reason_code` et les cles de
+  `reason_code_counts` sont allowlistes par le catalogue des reason codes;
+- toute raison inconnue est remplacee par
+  `workspace_folder_nextcloud_error_redacted`;
+- un pseudo-hash qui contient un nom, un chemin ou tout texte non conforme n'est
+  pas expose comme `nextcloud_name_hash`;
+- les booleens frontend de la projection sont parses strictement:
+  `"false"`, `"0"`, `"no"`, `"off"`, chaine vide, `null` et `undefined`
+  valent `false`.
 
 Lien observabilite globale:
 
