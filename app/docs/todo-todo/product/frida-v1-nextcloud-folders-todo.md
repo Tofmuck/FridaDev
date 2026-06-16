@@ -56,18 +56,21 @@ Audit Lot 0:
 
 ### Lot 1 - Contrat produit dossier Frida
 
-- [ ] Trancher explicitement: extension de `workspace_folders` ou nouveau
+Spec Lot 1:
+`app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
+
+- [x] Trancher explicitement: extension de `workspace_folders` ou nouveau
   modele `frida_folder` / dossier Nextcloud dedie, avec justification et effets
   de bord.
-- [ ] Definir le modele produit minimal d'un dossier Frida: identifiant stable,
+- [x] Definir le modele produit minimal d'un dossier Frida: identifiant stable,
   nom affiche, statut, chemin logique Nextcloud, droits attendus et timestamps.
-- [ ] Definir les operations V1: creer, lister, renommer, supprimer un dossier
+- [x] Definir les operations V1: creer, lister, renommer, supprimer un dossier
   synthetique Frida.
-- [ ] Definir le contrat de conflit de nom: detection explicite, message
+- [x] Definir le contrat de conflit de nom: detection explicite, message
   utilisateur clair, reason code content-free, aucune correction silencieuse.
-- [ ] Definir ce qui reste local/fake avant live et ce qui depend d'une
+- [x] Definir ce qui reste local/fake avant live et ce qui depend d'une
   decision Sauron.
-- [ ] Documenter les limites V1 avant toute implementation runtime.
+- [x] Documenter les limites V1 avant toute implementation runtime.
 
 ### Lot 2 - Decision Sauron compte Frida / droits / partage
 
