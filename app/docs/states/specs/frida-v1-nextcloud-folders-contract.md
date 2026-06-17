@@ -1,6 +1,6 @@
 # Frida V1 - Nextcloud folders contract
 
-Statut: spec vivante Lots 0 a 11 sous-dossiers standards livres
+Statut: spec vivante Lots 0 a 12 routage artefacts par sous-dossier livre
 Date: 2026-06-17
 Classement: `app/docs/states/specs/`
 TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
@@ -88,6 +88,13 @@ reponse XML est parse en memoire uniquement et la ressource doit porter
 Une ressource WebDAV non-collection est un conflit/incompatibilite
 content-free, sans XML brut, URL DAV, chemin technique ni payload Nextcloud
 expose.
+
+Depuis le Lot 12 du 2026-06-17, le routage cible des artefacts futurs est
+norme sans runtime supplementaire: documents sources et fichiers persistants
+dans `Documents`, notes Markdown dans `Notes`, exports Markdown/TXT/DOCX/PDF
+dans `Exports`, images generees dans `Images`. Ce lot ne migre aucun fichier
+existant, ne cree aucune note, ne produit aucun export, ne genere ni ne stocke
+aucune image, et ne contacte pas Nextcloud.
 
 Recalage produit post Lot 6:
 
@@ -1028,6 +1035,19 @@ Etat depuis Lot 11:
 - Lot 12 reste necessaire pour brancher Notes/Exports/Images runtime sur ces
   sous-dossiers.
 
+Etat depuis Lot 12:
+
+- routage documentaire cible confirme:
+  `Documents`, `Notes`, `Exports`, `Images`;
+- les futurs lots Documents / Notes / Exports / Images doivent travailler
+  seulement sur des dossiers Frida `linked`;
+- un dossier non `linked`, en `sync_pending`, `sync_error`, `conflict` ou
+  `deleted` bloque toute ecriture Nextcloud d'artefact;
+- les fichiers existants ne sont pas migres automatiquement;
+- les constantes standards peuvent apparaitre dans les docs/preuves; les noms
+  de fichiers, contenus, prompts bruts, chemins DAV, XML brut, `storage_key` et
+  secrets restent interdits.
+
 ## 14. Lots restants avant cloture V1 reelle
 
 Lot 8A - Persistance locale de l'etat Nextcloud:
@@ -1101,9 +1121,17 @@ Lot 11 - Sous-dossiers standards par dossier:
 
 Lot 12 - Preparation Notes / Exports / Images:
 
-- aligner les futurs lots Notes, Exports et Images sur le dossier Nextcloud du
-  dossier Frida;
-- ne pas livrer ces chantiers dans le socle dossiers.
+- livre: routage Documents sources et fichiers persistants vers
+  `/Frida/<dossier>/Documents`;
+- livre: routage Notes Markdown vers `/Frida/<dossier>/Notes`;
+- livre: routage Exports Markdown, TXT, DOCX et PDF vers
+  `/Frida/<dossier>/Exports`;
+- livre: routage Images generees vers `/Frida/<dossier>/Images`;
+- livre: prerequis `linked` strict avant ecriture Nextcloud d'artefact;
+- livre: blocage des etats `local_only`, `sync_pending`, `sync_error`,
+  `conflict` et `deleted`;
+- livre: alignement des TODO dediees Documents, Notes, Exports et Images;
+- ne pas livrer ces chantiers runtime dans le socle dossiers.
 
 Lot Z - Cloture V1 reelle:
 
@@ -1224,3 +1252,65 @@ Dette structurelle post-correctif Lot 11:
   rallonger la reconciliation;
 - le prochain lot qui ajoute du comportement de reconciliation doit extraire
   une responsabilite claire avant d'etendre ce fichier.
+
+## 17. Routage des artefacts depuis Lot 12
+
+Lot 12 prepare les futurs lots Documents / Notes / Exports / Images. Il ne
+livre aucun runtime fichier, aucune migration et aucun acces Nextcloud live.
+
+Mapping produit normatif:
+
+| Artefact | Sous-dossier cible |
+| --- | --- |
+| Documents sources et fichiers persistants | `/Frida/<dossier>/Documents` |
+| Notes Markdown | `/Frida/<dossier>/Notes` |
+| Exports Markdown, TXT, DOCX, PDF | `/Frida/<dossier>/Exports` |
+| Images generees | `/Frida/<dossier>/Images` |
+
+Prerequis d'ecriture:
+
+- le dossier Frida doit etre `linked`;
+- `nextcloud_folder_ref` doit referencer la cible logique redacted du dossier;
+- les sous-dossiers standards doivent etre verifies comme collections WebDAV si
+  le lot fait du live;
+- un dossier `local_only`, `sync_pending`, `sync_error`, `conflict` ou `deleted`
+  bloque toute ecriture Nextcloud d'artefact;
+- les conflits de nom ou de cible WebDAV sont traites par reason code
+  content-free, sans correction silencieuse.
+
+Fichiers existants:
+
+- aucune migration automatique n'est autorisee par Lot 12;
+- un futur lot de migration/copie devra travailler dossier par dossier,
+  produire une preuve content-free, conserver la source tant que rollback et
+  verification ne sont pas actees, et ne jamais supprimer silencieusement;
+- les fichiers workspace existants restent sous le contrat courant tant qu'un
+  lot dedie n'a pas livre leur copie/rangement Nextcloud.
+
+Contraintes content-free communes:
+
+- les constantes `Documents`, `Notes`, `Exports` et `Images` peuvent apparaitre
+  dans les docs, preuves et reason codes car elles sont des constantes produit;
+- les noms de fichiers, contenus, prompts bruts, chemins DAV, URL DAV, XML brut,
+  `storage_key`, payload Nextcloud brut, token, cookie, app-password et secret
+  restent interdits dans logs, JSONL, dashboard, erreurs et docs de preuve;
+- les preuves doivent preferer compteurs, refs redacted, hash courts et classes
+  de statut;
+- aucune operation ne doit lister le contenu Nextcloud pour prouver ce routage.
+
+Frontieres par chantier:
+
+- Documents: depot et futurs fichiers persistants dans `Documents`, avec OCR
+  PDF image a cadrer dans le lot Documents; migration existante separee;
+- Notes: creation, complement, recherche et liste Markdown dans `Notes`;
+  politique de nommage et collisions a cadrer dans le lot Notes;
+- Exports: Markdown, TXT, DOCX et PDF dans `Exports`, avec versioning/collisions
+  a cadrer dans le lot Exports;
+- Images: stockage futur des images generees dans `Images`, audit du stockage
+  actuel a faire dans le lot Images, sans prompt brut en observabilite.
+
+Dette architecture:
+
+- tout futur lot qui modifie la reconciliation doit extraire une responsabilite
+  avant d'etendre `app/core/workspace_folder_nextcloud_reconcile.py`;
+- Lot 12 ne modifie pas ce fichier et ne change pas le comportement runtime.

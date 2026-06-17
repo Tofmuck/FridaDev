@@ -385,13 +385,36 @@ Preuve Lot 11 sous-dossiers standards:
 
 ### Lot 12 - Preparation Notes / Exports / Images
 
-- [ ] Aligner les futurs lots Notes Markdown sur le dossier Nextcloud du dossier
-  Frida.
-- [ ] Aligner les futurs exports sur un sous-dossier dedie, par exemple
-  `/Frida/<dossier>/Exports`, ou variante documentee.
-- [ ] Aligner les images generees sur un sous-dossier dedie, sans livrer la
+- [x] Aligner les futurs lots Documents sources et fichiers persistants sur
+  `/Frida/<dossier>/Documents`.
+- [x] Aligner les futurs lots Notes Markdown sur
+  `/Frida/<dossier>/Notes`.
+- [x] Aligner les futurs exports Markdown, TXT, DOCX et PDF sur
+  `/Frida/<dossier>/Exports`.
+- [x] Aligner les images generees sur `/Frida/<dossier>/Images`, sans livrer la
   generation ni le stockage image dans ce lot.
-- [ ] Garder documents, notes, exports, images et mail comme chantiers separes.
+- [x] Garder documents, notes, exports, images et mail comme chantiers separes.
+- [x] Mettre a jour les TODO dediees pour cadrer sous-dossier cible, preuves,
+  conflits, limites V1 et contraintes content-free.
+
+Note Lot 12 preparation documentaire:
+
+- Lot 12 est docs-only: aucun runtime, aucun acces Nextcloud live, aucune
+  migration fichier, aucune note, aucun export et aucune image ne sont livres;
+- les futurs lots Documents / Notes / Exports / Images doivent ecrire seulement
+  dans des dossiers Frida `linked`;
+- un dossier `local_only`, `sync_pending`, `sync_error`, `conflict` ou `deleted`
+  bloque toute ecriture Nextcloud jusqu'a resolution explicite;
+- fichiers existants: pas de migration automatique; tout futur lot de
+  copie/migration devra etre borne, content-free, avec preuve et rollback;
+- constantes produit autorisees dans les docs/preuves: `Documents`, `Notes`,
+  `Exports`, `Images`;
+- interdits inchanges: noms de fichiers sensibles, contenus, prompts bruts,
+  chemins DAV/serveur, XML brut, `storage_key`, secrets, tokens, cookies,
+  `app-password`;
+- dette architecture: tout futur lot modifiant la reconciliation doit extraire
+  une responsabilite avant d'etendre
+  `app/core/workspace_folder_nextcloud_reconcile.py`.
 
 ### Lot Z - Cloture V1 reelle
 
