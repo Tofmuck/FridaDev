@@ -306,7 +306,10 @@ Projections runtime:
   ils sont vides et les refs utilisent un hash court redacted;
 - `document_v1_usage`: projection de selection conversationnelle; lien explicite
   conversation -> document de dossier -> usage, sans stockage durable
-  `active_document`, sans Biblio et sans Memory/RAG/Identity/Summary.
+  `active_document`, sans Biblio et sans Memory/RAG/Identity/Summary; depuis
+  Lot 5, cette projection peut indiquer `selected`, `readable`,
+  `pdf_visual_required`, `too_large`, `unsupported`, `unavailable` ou
+  `not_injected` selon le resultat de preparation du tour.
 
 Statuts projetes au Lot 2:
 
@@ -448,12 +451,36 @@ Surfaces:
   DAV, XML, secret, contenu et nom de fichier utilisateur restent absents des
   projections techniques, logs, JSONL et observabilite.
 
-Limites restantes avant Lot 5+:
+Limites restantes avant Lot 6+:
 
-- la preparation/lecture reste Lot 5;
 - le fallback visuel complet reste Lot 6;
 - les fichiers workspace historiques restent Lot 7;
-- aucun Notes / Exports / Images runtime n'est livre par Lot 4.
+- aucun Notes / Exports / Images runtime n'est livre par Lot 5.
+
+## 12.3 Preparation de lecture bornee livree au Lot 5
+
+Le Lot 5 livre la preparation de lecture des documents deja presents dans un
+dossier Frida sans ajouter de transport Nextcloud ni de fallback visuel complet.
+
+Regles runtime:
+
+- seule une selection explicite via les surfaces existantes
+  `workspace_file_selections` rend un document utilisable dans une conversation;
+- un document texte, Markdown/MD, DOCX, ODT ou PDF textuel reutilise
+  l'extracteur texte existant;
+- si le document est lisible et respecte le budget, il est injecte en entier
+  dans la lane documentaire du tour;
+- si le document est trop volumineux, absent, supprime, non supporte ou en
+  erreur, il est refuse proprement avec un reason code content-free;
+- aucune troncature silencieuse n'est autorisee;
+- un PDF sans texte exploitable ou une image de dossier produit
+  `folder_document_pdf_visual_required` et reste pour le Lot 6;
+- les decisions `workspace_file_selection` dans l'observabilite technique ne
+  contiennent pas de nom de fichier brut; elles utilisent refs/hashs courts,
+  statuts, media type allowliste et reason codes;
+- le contenu extrait peut etre envoye au modele seulement dans la lane de prompt
+  prevue pour le tour courant; il ne doit pas etre journalise brut et ne doit
+  pas alimenter Memory/RAG/Identity/Summary.
 
 ## 13. Reason codes Documents V1
 

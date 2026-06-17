@@ -26,6 +26,7 @@ REASON_FILE_TOO_LARGE_FOR_PROVIDER_PAYLOAD = "file_too_large_for_provider_payloa
 REASON_WORKSPACE_FILE_PDF_VISUAL_MODEL_UNSUPPORTED = "workspace_file_pdf_visual_model_unsupported"
 REASON_WORKSPACE_FILE_PDF_VISUAL_BYTES_MISSING = "workspace_file_pdf_visual_bytes_missing"
 REASON_WORKSPACE_FILE_PDF_VISUAL_TOO_LARGE = "workspace_file_pdf_visual_too_large"
+REASON_WORKSPACE_FILE_VISUAL_REQUIRED = "folder_document_pdf_visual_required"
 READ_STATUS_OK = "ok"
 READ_STATUS_EMPTY = "empty"
 READ_STATUS_ERROR = "error"
@@ -156,6 +157,15 @@ def build_active_document_prompt_lane(
                 _replace_decision(
                     decision,
                     reason_code=decision.reason_code or REASON_WORKSPACE_FILE_UNREADABLE,
+                    provider_model=model,
+                )
+            )
+            continue
+        if _is_workspace_decision(decision) and decision.media_kind in {MEDIA_KIND_IMAGE, MEDIA_KIND_FILE}:
+            not_injected.append(
+                _replace_decision(
+                    decision,
+                    reason_code=REASON_WORKSPACE_FILE_VISUAL_REQUIRED,
                     provider_model=model,
                 )
             )

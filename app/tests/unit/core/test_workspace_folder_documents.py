@@ -254,6 +254,7 @@ class DocumentsV1ReadModelTests(unittest.TestCase):
 
         self.assertEqual(projected["document_v1_usage"]["source"], "workspace_file_selection")
         self.assertEqual(projected["document_v1_usage"]["usage_status"], "selected")
+        self.assertEqual(projected["document_v1_usage"]["readiness"], "pending")
         self.assertEqual(projected["document_v1_usage"]["reason_code"], "folder_document_selected")
         encoded = str(projected)
         self.assertNotIn("active_document", encoded)
@@ -275,6 +276,59 @@ class DocumentsV1ReadModelTests(unittest.TestCase):
 
         self.assertEqual(projected["document_v1_usage"]["reason_code"], "folder_document_content_redacted")
         self.assertNotIn("/Frida", str(projected["document_v1_usage"]))
+
+    def test_usage_projection_marks_text_prepared_after_prompt_injection(self) -> None:
+        projected = workspace_folder_documents.apply_selection_document_v1_projection(
+            {
+                "conversation_id": "11111111-1111-4111-8111-111111111111",
+                "workspace_file_id": "33333333-3333-4333-8333-333333333333",
+                "workspace_folder_id": "22222222-2222-4222-8222-222222222222",
+                "selected": True,
+                "selection_status": "selected",
+                "last_injected_turn_id": "44444444-4444-4444-8444-444444444444",
+            }
+        )
+
+        usage = projected["document_v1_usage"]
+        self.assertEqual(usage["usage_status"], "readable")
+        self.assertEqual(usage["readiness"], "ready")
+        self.assertEqual(usage["reason_code"], "folder_document_text_ready")
+
+    def test_usage_projection_marks_pdf_visual_required_without_false_readable_status(self) -> None:
+        projected = workspace_folder_documents.apply_selection_document_v1_projection(
+            {
+                "conversation_id": "11111111-1111-4111-8111-111111111111",
+                "workspace_file_id": "33333333-3333-4333-8333-333333333333",
+                "workspace_folder_id": "22222222-2222-4222-8222-222222222222",
+                "selected": True,
+                "selection_status": "selected",
+                "last_excluded_turn_id": "55555555-5555-4555-8555-555555555555",
+                "last_excluded_reason_code": "folder_document_pdf_visual_required",
+            }
+        )
+
+        usage = projected["document_v1_usage"]
+        self.assertEqual(usage["usage_status"], "pdf_visual_required")
+        self.assertEqual(usage["readiness"], "visual")
+        self.assertEqual(usage["reason_code"], "folder_document_pdf_visual_required")
+
+    def test_usage_projection_marks_too_large_without_silent_truncation(self) -> None:
+        projected = workspace_folder_documents.apply_selection_document_v1_projection(
+            {
+                "conversation_id": "11111111-1111-4111-8111-111111111111",
+                "workspace_file_id": "33333333-3333-4333-8333-333333333333",
+                "workspace_folder_id": "22222222-2222-4222-8222-222222222222",
+                "selected": True,
+                "selection_status": "selected",
+                "last_excluded_turn_id": "55555555-5555-4555-8555-555555555555",
+                "last_excluded_reason_code": "workspace_file_too_large",
+            }
+        )
+
+        usage = projected["document_v1_usage"]
+        self.assertEqual(usage["usage_status"], "too_large")
+        self.assertEqual(usage["readiness"], "blocked")
+        self.assertEqual(usage["reason_code"], "workspace_file_too_large")
 
 
 if __name__ == "__main__":

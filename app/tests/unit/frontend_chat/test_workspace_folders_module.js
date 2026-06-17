@@ -12,11 +12,13 @@ const {
   normalizeWorkspaceFilesPayload,
   normalizeWorkspaceFileSelectionsPayload,
   WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS,
+  WORKSPACE_FILE_USAGE_STATUS_LABELS,
   compactWorkspaceFileMeta,
   workspaceFolderDeleteConfirmationText,
   workspaceFolderNextcloudStatusLabel,
   workspaceFileStatusLabel,
   workspaceFileNextcloudStatusLabel,
+  workspaceFileUsageStatusLabel,
   canRunWorkspaceOcr,
   canEditWorkspaceOcrMarkdown,
   groupThreadsByWorkspaceFolder,
@@ -382,6 +384,16 @@ test("workspace file selection payloads are conversation scoped and content-free
       selected: true,
       selection_status: "selected",
       reason_code: "",
+      document_v1_usage: {
+        source: "workspace_file_selection",
+        conversation_id: "conv-1",
+        workspace_file_id: "file-1",
+        workspace_folder_id: "folder-1",
+        selected: "true",
+        usage_status: "readable",
+        readiness: "ready",
+        reason_code: "folder_document_text_ready",
+      },
       file: {
         id: "file-1",
         workspace_folder_id: "folder-1",
@@ -398,6 +410,54 @@ test("workspace file selection payloads are conversation scoped and content-free
   assert.equal(selections[0].conversation_id, "conv-1");
   assert.equal(selections[0].workspace_file_id, "file-1");
   assert.equal(selections[0].selected, true);
+  assert.equal(WORKSPACE_FILE_USAGE_STATUS_LABELS.readable, "Prêt");
+  assert.equal(selections[0].usage_status, "readable");
+  assert.equal(selections[0].usage_readiness, "ready");
+  assert.equal(workspaceFileUsageStatusLabel(selections[0].document_v1_usage), "Prêt");
   assert.equal(selections[0].file.storage_key, undefined);
   assert.equal(selections[0].file.text_content, undefined);
+});
+
+test("workspace file selection usage labels distinguish non-ready document states", () => {
+  const selections = normalizeWorkspaceFileSelectionsPayload({
+    items: [{
+      conversation_id: "conv-1",
+      workspace_file_id: "file-1",
+      workspace_folder_id: "folder-1",
+      selected: "true",
+      document_v1_usage: {
+        selected: "true",
+        usage_status: "pdf_visual_required",
+        readiness: "visual",
+        reason_code: "folder_document_pdf_visual_required",
+      },
+      file: {
+        id: "file-1",
+        workspace_folder_id: "folder-1",
+        display_name: "scan.pdf",
+      },
+    }, {
+      conversation_id: "conv-1",
+      workspace_file_id: "file-2",
+      workspace_folder_id: "folder-1",
+      selected: "false",
+      document_v1_usage: {
+        selected: "false",
+        usage_status: "too_large",
+        readiness: "blocked",
+        reason_code: "workspace_file_too_large",
+      },
+      file: {
+        id: "file-2",
+        workspace_folder_id: "folder-1",
+        display_name: "long.txt",
+      },
+    }],
+  });
+
+  assert.equal(selections[0].usage_status_label, "Lecture visuelle requise");
+  assert.equal(selections[0].document_v1_usage.selected, true);
+  assert.equal(selections[1].document_v1_usage.selected, false);
+  assert.equal(selections[1].selected, false);
+  assert.equal(selections[1].usage_status_label, "Trop volumineux");
 });

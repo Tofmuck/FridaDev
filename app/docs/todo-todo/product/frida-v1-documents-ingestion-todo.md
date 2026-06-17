@@ -1,6 +1,6 @@
 # Frida V1 - Documents sources / ingestion / lecture / PDF fallback - TODO
 
-Statut: Lot 4 liste Documents utilisateur par dossier livree; prete pour Lot 5 lecture/preparation
+Statut: Lot 5 lecture/preparation bornee livree; prete pour Lot 6 PDF image / fallback visuel unifie
 Date: 2026-06-17
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -497,24 +497,42 @@ Preuve Lot 4:
 
 ### Lot 5 - Lecture / preparation de lecture
 
-- [ ] Appliquer le contrat Lot 1: selection explicite, preparation bornee,
+- [x] Appliquer le contrat Lot 1: selection explicite, preparation bornee,
   injection entiere ou refus, jamais troncature silencieuse.
-- [ ] Reutiliser l'extracteur texte existant pour TXT, Markdown / MD, DOCX, ODT
+- [x] Reutiliser l'extracteur texte existant pour TXT, Markdown / MD, DOCX, ODT
   et PDF textuel.
-- [ ] S'arreter en no-go avant patch ou ouvrir un micro-lot docs/spec si une
+- [x] S'arreter en no-go avant patch ou ouvrir un micro-lot docs/spec si une
   incompatibilite runtime reelle empeche cette reutilisation.
-- [ ] Appliquer les limites runtime du contrat: document entier ou absent,
+- [x] Appliquer les limites runtime du contrat: document entier ou absent,
   refus simple si trop lourd, preuves content-free.
-- [ ] Ne jamais tronquer silencieusement un document en pretendant l'avoir lu.
-- [ ] Appliquer la frontiere entre preparation de lecture et usage
+- [x] Ne jamais tronquer silencieusement un document en pretendant l'avoir lu.
+- [x] Appliquer la frontiere entre preparation de lecture et usage
   conversationnel.
-- [ ] Appliquer l'usage conversationnel explicite d'un document de dossier.
-- [ ] Ne pas creer d'index RAG global ni de passage Biblio.
-- [ ] Ne pas alimenter Memory, Identity ou Summary avec le contenu document.
-- [ ] Donner une reponse utilisateur honnete si le document est trop gros,
+- [x] Appliquer l'usage conversationnel explicite d'un document de dossier.
+- [x] Ne pas creer d'index RAG global ni de passage Biblio.
+- [x] Ne pas alimenter Memory, Identity ou Summary avec le contenu document.
+- [x] Donner une reponse utilisateur honnete si le document est trop gros,
   indisponible, non supporte ou en erreur.
-- [ ] Tester lecture nominale, trop gros, non supporte, parse error et
+- [x] Tester lecture nominale, trop gros, non supporte, parse error et
   non-contamination.
+
+Preuve Lot 5:
+
+- la selection explicite de fichier de dossier reste portee par les routes
+  existantes `/api/conversations/<id>/workspace-file-selections`;
+- `workspace_file_selection_prompt.py` prepare les documents texte et PDF
+  textuels via l'extracteur texte existant, avec injection complete ou refus;
+- les images et PDF sans texte issus de fichiers de dossier ne sont pas envoyes
+  en payload multimodal dans ce lot: ils produisent
+  `folder_document_pdf_visual_required` et restent pour le Lot 6;
+- `document_v1_usage` expose l'etat conversationnel `selected`, `readable`,
+  `pdf_visual_required`, `too_large` ou `unavailable` sans devenir un stockage
+  durable `active_document`;
+- l'observabilite technique des decisions `workspace_file_selection` remplace
+  le nom de fichier par une reference content-free et conserve les surfaces
+  utilisateur separees;
+- aucun OCR nouveau, aucun Nextcloud live, aucun Biblio/RAG global, aucune
+  troncature silencieuse.
 
 ### Lot 6 - PDF image / fallback visuel unifie
 
@@ -618,9 +636,10 @@ Artefacts attendus:
 - Presenter une extraction partielle comme complete.
 - Pretendre avoir lu un document trop gros, non injecte ou en erreur.
 
-## 10. Hors-scope strict des Lots 1-3 livres
+## 10. Hors-scope strict des Lots 1-5 livres
 
-- Aucun runtime de liste/preparation/lecture Documents.
+- Aucun fallback visuel complet Documents V1.
+- Aucun OCR nouveau Documents V1.
 - Aucun acces Nextcloud live hors smokes synthetiques bornes du lot concerne.
 - Aucun WebDAV live hors operations strictement bornees du lot concerne.
 - Aucun Sauron.
@@ -628,21 +647,20 @@ Artefacts attendus:
 - Aucun Docker/rebuild plateforme/global; un rebuild applicatif FridaDev cible
   reste autorise pour verifier un patch runtime Documents V1.
 - Aucune copie/rangement de fichiers historiques existants.
-- Aucune creation de document, note, export ou image.
+- Aucune creation de note, export ou image; les nouveaux documents restent
+  limites a l'upload Documents V1 livre au Lot 3.
 - Aucun lancement Biblio.
 - Aucun changement de route parallele/API/UI hors route existante workspace files.
 - Aucun `utils.py` ou `helpers.py`.
 
 ## 11. Prochain lot recommande
 
-Ouvrir `Lot 5 - Lecture / preparation de lecture`.
+Ouvrir `Lot 6 - PDF image / fallback visuel unifie`.
 
-Objectif Lot 5:
+Objectif Lot 6:
 
-- appliquer le contrat source-of-truth Documents V1;
-- preparer ou refuser explicitement l'usage conversationnel d'un document;
-- reutiliser l'extracteur texte existant pour TXT, Markdown / MD, DOCX, ODT et
-  PDF textuel;
-- ne pas creer d'index RAG global, de Biblio ou de lecture partielle presentee
-  comme complete;
+- appliquer le meme fallback visuel/PDF image aux PDF sans texte venant d'un
+  dossier Frida et aux PDF ajoutes directement dans le chat;
+- conserver la distinction OCR borne / injection visuelle ponctuelle;
+- ne jamais presenter un PDF visuel non prepare comme lu textuellement;
 - garder logs, JSONL, observabilite technique et preuves content-free.

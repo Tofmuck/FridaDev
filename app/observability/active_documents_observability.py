@@ -3,7 +3,17 @@ from __future__ import annotations
 """Content-free observability helpers for active conversation documents."""
 
 import hashlib
+import re
 from typing import Any, Mapping
+
+_SAFE_MIME_RE = re.compile(r"^[a-z0-9][a-z0-9.+-]{0,80}/[a-z0-9][a-z0-9.+-]{0,80}$")
+_SAFE_EXTENSION_RE = re.compile(r"^\.[a-z0-9][a-z0-9.+-]{0,15}$")
+_SAFE_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+_SAFE_MEDIA_KINDS = frozenset({"text", "image", "file"})
+_WORKSPACE_SOURCE = "workspace_file_selection"
 
 
 def _text(value: Any, *, max_chars: int = 500) -> str:
@@ -31,6 +41,26 @@ def _sha256_12(value: Any) -> str:
     if not text:
         return ''
     return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
+
+
+def _safe_mime_type(value: Any) -> str:
+    text = _text(value, max_chars=120).lower()
+    return text if _SAFE_MIME_RE.fullmatch(text) else 'unknown'
+
+
+def _safe_extension(value: Any) -> str:
+    text = _text(value, max_chars=40).lower()
+    return text if _SAFE_EXTENSION_RE.fullmatch(text) else ''
+
+
+def _safe_media_kind(value: Any) -> str:
+    text = _text(value, max_chars=40).lower()
+    return text if text in _SAFE_MEDIA_KINDS else 'text'
+
+
+def _safe_uuid(value: Any) -> str:
+    text = _text(value, max_chars=120)
+    return text if _SAFE_UUID_RE.fullmatch(text) else ''
 
 
 def _metadata_from_mapping(item: Mapping[str, Any]) -> dict[str, Any]:
@@ -62,23 +92,26 @@ def _metadata_from_mapping(item: Mapping[str, Any]) -> dict[str, Any]:
 def _metadata_from_decision(decision: Any) -> dict[str, Any]:
     document_id = _text(getattr(decision, 'document_id', ''), max_chars=120)
     source = _text(getattr(decision, 'source', ''), max_chars=120) or 'active_conversation_documents'
+    is_workspace = source == _WORKSPACE_SOURCE
+    filename = _text(getattr(decision, 'filename', ''), max_chars=500) or 'document'
     metadata = {
-        'document_id': document_id,
+        'document_id': _safe_uuid(document_id) if is_workspace else document_id,
         'document_ref': _sha256_12(document_id),
-        'filename': _text(getattr(decision, 'filename', ''), max_chars=500) or 'document',
-        'media_type': _text(getattr(decision, 'media_type', ''), max_chars=120),
-        'source_extension': _text(getattr(decision, 'source_extension', ''), max_chars=40),
+        'filename': 'workspace_file' if is_workspace else filename,
+        'filename_ref': _sha256_12(filename) if is_workspace else '',
+        'media_type': _safe_mime_type(getattr(decision, 'media_type', '')) if is_workspace else _text(getattr(decision, 'media_type', ''), max_chars=120),
+        'source_extension': _safe_extension(getattr(decision, 'source_extension', '')) if is_workspace else _text(getattr(decision, 'source_extension', ''), max_chars=40),
         'byte_size': _to_int(getattr(decision, 'byte_size', 0)),
         'text_chars': _to_int(getattr(decision, 'text_chars', 0)),
-        'media_kind': _text(getattr(decision, 'media_kind', ''), max_chars=40) or 'text',
+        'media_kind': _safe_media_kind(getattr(decision, 'media_kind', '')) if is_workspace else (_text(getattr(decision, 'media_kind', ''), max_chars=40) or 'text'),
         'content_sha256_12': _text(getattr(decision, 'content_sha256_12', ''), max_chars=12),
         'image_width': _to_int(getattr(decision, 'image_width', 0)),
         'image_height': _to_int(getattr(decision, 'image_height', 0)),
         'token_estimate': _to_int(getattr(decision, 'token_estimate', 0)),
         'text_sha256_12': _text(getattr(decision, 'text_sha256_12', ''), max_chars=12),
         'source': source,
-        'workspace_file_id': _text(getattr(decision, 'workspace_file_id', ''), max_chars=120),
-        'workspace_folder_id': _text(getattr(decision, 'workspace_folder_id', ''), max_chars=120),
+        'workspace_file_id': _safe_uuid(getattr(decision, 'workspace_file_id', '')) if is_workspace else _text(getattr(decision, 'workspace_file_id', ''), max_chars=120),
+        'workspace_folder_id': _safe_uuid(getattr(decision, 'workspace_folder_id', '')) if is_workspace else _text(getattr(decision, 'workspace_folder_id', ''), max_chars=120),
         'raw_content_included': False,
     }
     metadata.update(

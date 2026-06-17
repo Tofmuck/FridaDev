@@ -24,6 +24,7 @@ from core import workspace_folder_nextcloud_reconcile
 from core import workspace_folder_nextcloud_runtime
 from core import workspace_folder_standard_subfolders
 from core import workspace_folders_service
+from observability import active_documents_observability
 from observability import workspace_folders_observability
 
 
@@ -2189,7 +2190,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(lane.decisions[0].reason_code, "workspace_file_too_large")
         self.assertIn("workspace_file_too_large", joined)
 
-    def test_workspace_file_image_payload_uses_text_then_image_url(self) -> None:
+    def test_workspace_file_image_payload_is_deferred_to_visual_lot(self) -> None:
         prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
 
         lane = active_document_prompt_lane.inject_active_document_prompt_lane(
@@ -2216,12 +2217,15 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
             max_tokens=1000,
         )
 
-        content = next(message["content"] for message in prompt_messages if isinstance(message.get("content"), list))
-        self.assertEqual(lane.injected_count, 1)
-        self.assertIsInstance(content, list)
-        self.assertEqual(content[0]["type"], "text")
-        self.assertEqual(content[1]["type"], "image_url")
-        self.assertNotIn("imageUrl", content[1])
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+        self.assertEqual(lane.decisions[0].reason_code, "folder_document_pdf_visual_required")
+        self.assertFalse(any(isinstance(message.get("content"), list) for message in prompt_messages))
+        payload = active_documents_observability.build_prompt_decision_payload(lane)
+        encoded_payload = str(payload)
+        self.assertEqual(payload["documents"][0]["filename"], "workspace_file")
+        self.assertNotIn("image.png", encoded_payload)
+        self.assertNotIn("image_content", encoded_payload)
 
     def test_workspace_file_selection_prompt_reads_text_bytes_from_disk(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
@@ -2268,6 +2272,68 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn(storage_key, encoded)
         self.assertNotIn(str(root), encoded)
 
+    def test_workspace_file_selection_prompt_prepares_pdf_text_with_existing_extractor(self) -> None:
+        conversation_id = "11111111-1111-4111-8111-111111111111"
+        folder_id = "22222222-2222-4222-8222-222222222222"
+        file_id = "33333333-3333-4333-8333-333333333333"
+
+        class _PdfTextExtraction:
+            status = "complete"
+            reason_code = ""
+
+            def to_dict(self):
+                return {
+                    "text": "texte pdf lisible",
+                    "text_chars": 17,
+                    "token_estimate": 4,
+                    "text_sha256_12": "def456abc123",
+                }
+
+        class _PdfTextExtractor:
+            STATUS_COMPLETE = "complete"
+            REASON_OCR_REQUIRED = "document_ocr_required"
+            REASON_UNSUPPORTED = "document_type_unsupported"
+
+            @staticmethod
+            def extract_active_document_text(_data, *, filename, media_type):
+                self.assertEqual(filename, "texte.pdf")
+                self.assertEqual(media_type, "application/pdf")
+                return _PdfTextExtraction()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            storage_key = workspace_files_store.storage_key_for(folder_id, file_id, ".pdf")
+            workspace_files_store.write_file_bytes(root, storage_key, b"%PDF text")
+            conn = _SelectionPromptConn(
+                [
+                    _selection_prompt_row(
+                        conversation_id=conversation_id,
+                        folder_id=folder_id,
+                        file_id=file_id,
+                        storage_key=storage_key,
+                        display_name="texte.pdf",
+                        mime_type="application/pdf",
+                        source_extension=".pdf",
+                        byte_size=9,
+                    )
+                ]
+            )
+
+            documents = workspace_file_selection_prompt.list_selected_files_for_prompt(
+                conversation_id,
+                db_conn_func=lambda: conn,
+                storage_root=root,
+                logger=_CaptureLogger(),
+                extractor_module=_PdfTextExtractor,
+            )
+
+        self.assertEqual(len(documents), 1)
+        document = documents[0]
+        self.assertTrue(document["injectable"])
+        self.assertEqual(document["media_kind"], "text")
+        self.assertEqual(document["text_content"], "texte pdf lisible")
+        self.assertEqual(document["text_sha256_12"], "def456abc123")
+
     def test_workspace_file_selection_prompt_returns_empty_without_explicit_selection(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
         with tempfile.TemporaryDirectory() as tmp:
@@ -2305,7 +2371,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("file_data", str(prompt_messages))
         self.assertNotIn("data:application/pdf", str(prompt_messages))
 
-    def test_workspace_file_selection_prompt_reads_image_bytes_without_data_url(self) -> None:
+    def test_workspace_file_selection_prompt_defers_image_without_visual_payload(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
         folder_id = "22222222-2222-4222-8222-222222222222"
         file_id = "33333333-3333-4333-8333-333333333333"
@@ -2343,10 +2409,11 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         document = documents[0]
         self.assertEqual(document["source"], workspace_file_selections_store.SOURCE)
         self.assertEqual(document["media_kind"], "image")
-        self.assertTrue(document["injectable"])
-        self.assertEqual(document["image_content"], image_bytes)
-        self.assertEqual(document["image_width"], 40)
-        self.assertEqual(document["image_height"], 30)
+        self.assertFalse(document["injectable"])
+        self.assertEqual(document["reason_code"], "folder_document_pdf_visual_required")
+        self.assertNotIn("image_content", document)
+        self.assertNotIn("file_content", document)
+        self.assertNotIn("text_content", document)
         encoded = str(document)
         self.assertNotIn("storage_key", document)
         self.assertNotIn("internal_path", document)
@@ -2393,7 +2460,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn(storage_key, logged)
         self.assertNotIn(str(root), logged)
 
-    def test_workspace_file_selection_prompt_sends_ocr_required_pdf_as_visual_file(self) -> None:
+    def test_workspace_file_selection_prompt_marks_ocr_required_pdf_visual_required(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
         folder_id = "22222222-2222-4222-8222-222222222222"
         file_id = "33333333-3333-4333-8333-333333333333"
@@ -2428,24 +2495,75 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         self.assertEqual(len(documents), 1)
         document = documents[0]
-        self.assertTrue(document["injectable"])
-        self.assertEqual(document["media_kind"], "file")
+        self.assertFalse(document["injectable"])
+        self.assertEqual(document["media_kind"], "text")
         self.assertEqual(document["media_type"], "application/pdf")
-        self.assertEqual(document["file_content"], pdf_bytes)
-        self.assertEqual(document["visual_source_status"], "ocr_required")
-        self.assertEqual(document["reason_code"], "")
+        self.assertEqual(document["reason_code"], "folder_document_pdf_visual_required")
         self.assertNotIn("text_content", document)
         self.assertNotIn("image_content", document)
+        self.assertNotIn("file_content", document)
         encoded = str(document)
         self.assertNotIn("storage_key", document)
         self.assertNotIn("internal_path", document)
         self.assertNotIn(storage_key, encoded)
         self.assertNotIn(str(root), encoded)
         logged = "\n".join(logger.lines)
-        self.assertIn("workspace_files_selection_prompt_pdf_visual_candidate", logged)
-        self.assertIn("reason_code=workspace_file_ocr_required", logged)
+        self.assertIn("workspace_files_selection_prompt_excluded", logged)
+        self.assertIn("reason_code=folder_document_pdf_visual_required", logged)
         self.assertNotIn(storage_key, logged)
         self.assertNotIn(str(root), logged)
+
+    def test_workspace_file_selection_prompt_maps_pdf_extraction_ocr_required_to_visual_required(self) -> None:
+        conversation_id = "11111111-1111-4111-8111-111111111111"
+        folder_id = "22222222-2222-4222-8222-222222222222"
+        file_id = "33333333-3333-4333-8333-333333333333"
+
+        class _OcrRequiredExtraction:
+            status = "ocr_required"
+            reason_code = "document_ocr_required"
+
+        class _OcrRequiredExtractor:
+            STATUS_COMPLETE = "complete"
+            REASON_OCR_REQUIRED = "document_ocr_required"
+            REASON_UNSUPPORTED = "document_type_unsupported"
+
+            @staticmethod
+            def extract_active_document_text(_data, *, filename, media_type):
+                return _OcrRequiredExtraction()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            storage_key = workspace_files_store.storage_key_for(folder_id, file_id, ".pdf")
+            workspace_files_store.write_file_bytes(root, storage_key, b"%PDF scanned")
+            conn = _SelectionPromptConn(
+                [
+                    _selection_prompt_row(
+                        conversation_id=conversation_id,
+                        folder_id=folder_id,
+                        file_id=file_id,
+                        storage_key=storage_key,
+                        display_name="scan.pdf",
+                        mime_type="application/pdf",
+                        source_extension=".pdf",
+                        byte_size=12,
+                    )
+                ]
+            )
+            logger = _CaptureLogger()
+
+            documents = workspace_file_selection_prompt.list_selected_files_for_prompt(
+                conversation_id,
+                db_conn_func=lambda: conn,
+                storage_root=root,
+                logger=logger,
+                extractor_module=_OcrRequiredExtractor,
+            )
+
+        self.assertEqual(len(documents), 1)
+        self.assertFalse(documents[0]["injectable"])
+        self.assertEqual(documents[0]["reason_code"], "folder_document_pdf_visual_required")
+        self.assertNotIn("file_content", documents[0])
+        self.assertIn("reason_code=folder_document_pdf_visual_required", "\n".join(logger.lines))
 
     def test_workspace_file_selection_prompt_keeps_non_pdf_ocr_required_excluded(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
@@ -2488,7 +2606,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("file_content", document)
         self.assertIn("reason_code=workspace_file_ocr_required", "\n".join(logger.lines))
 
-    def test_workspace_file_ocr_required_pdf_payload_uses_text_then_file(self) -> None:
+    def test_workspace_file_ocr_required_pdf_payload_is_deferred_to_visual_lot(self) -> None:
         prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
 
         lane = active_document_prompt_lane.inject_active_document_prompt_lane(
@@ -2513,17 +2631,13 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
             max_tokens=1000,
         )
 
-        content = next(message["content"] for message in prompt_messages if isinstance(message.get("content"), list))
-        self.assertEqual(lane.injected_count, 1)
-        self.assertEqual(lane.not_injected_count, 0)
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
         self.assertEqual(lane.decisions[0].media_kind, "file")
-        self.assertEqual(lane.decisions[0].payload_order, "text_then_file")
-        self.assertIsInstance(content, list)
-        self.assertEqual(content[0]["type"], "text")
-        self.assertEqual(content[1]["type"], "file")
-        self.assertEqual(content[1]["file"]["filename"], "scan.pdf")
-        self.assertEqual(content[1]["file"]["file_data"], "data:application/pdf;base64,JVBERiBzY2FubmVk")
-        self.assertNotIn("imageUrl", str(content))
+        self.assertEqual(lane.decisions[0].reason_code, "folder_document_pdf_visual_required")
+        self.assertFalse(any(isinstance(message.get("content"), list) for message in prompt_messages))
+        self.assertNotIn("data:application/pdf", str(prompt_messages))
+        self.assertNotIn("imageUrl", str(prompt_messages))
 
     def test_workspace_file_pdf_visual_over_provider_cap_is_excluded(self) -> None:
         prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
@@ -2560,9 +2674,9 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         self.assertEqual(lane.injected_count, 0)
         self.assertEqual(lane.not_injected_count, 1)
-        self.assertEqual(lane.decisions[0].reason_code, "workspace_file_pdf_visual_too_large")
+        self.assertEqual(lane.decisions[0].reason_code, "folder_document_pdf_visual_required")
         joined = "\n".join(str(message.get("content") or "") for message in prompt_messages)
-        self.assertIn("workspace_file_pdf_visual_too_large", joined)
+        self.assertIn("folder_document_pdf_visual_required", joined)
         self.assertNotIn("file_data", joined)
         self.assertNotIn("data:application/pdf", joined)
 
