@@ -242,7 +242,9 @@ Catalogue initial a appliquer dans les lots runtime:
 - `folder_document_nextcloud_error_redacted`;
 - `folder_document_local_persistence_failed`;
 - `folder_document_link_persistence_failed`;
+- `folder_document_link_lookup_failed`;
 - `folder_document_link_missing`;
+- `folder_document_link_mark_failed`;
 - `folder_document_delete_ok`;
 - `folder_document_remote_delete_failed`;
 - `folder_document_local_delete_failed`;
@@ -411,6 +413,10 @@ Preuve Lot 2:
 - [x] Supprimer un document Documents V1 lie en remote-first sur la cible exacte,
   puis tombstone local; bloquer le tombstone local si la suppression distante
   echoue.
+- [x] Traiter une panne de lecture du lien Nextcloud comme fail-closed:
+  aucun tombstone local tant que l'etat du lien est ambigu.
+- [x] Remonter l'echec de marquage local du lien `deleted` comme etat partiel
+  content-free, sans pretendre a un cleanup parfaitement propre.
 - [x] Conserver la suppression locale existante pour les fichiers historiques ou
   local-only sans lien Nextcloud.
 - [x] Refuser comme conflit un `PUT` anti-ecrasement qui renvoie un statut
@@ -443,6 +449,9 @@ Preuve Lot 3:
 - correctif Lot 3.1: lien document Nextcloud persiste, suppression liee
   remote-first et PUT anti-ecrasement strict prouves par
   `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot3-1-link-delete-20260617T145211Z.jsonl`;
+- correctif Lot 3.2: suppression fail-closed si lookup du lien echoue et
+  signalement content-free de `link_mark_state=failed` si le marquage `deleted`
+  echoue apres suppression distante et tombstone local.
 - smoke live synthetique content-free:
   `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot3-live-ingestion-20260617T142304Z.jsonl`;
 - cleanup strict du fichier et du dossier synthetiques crees pendant le smoke;

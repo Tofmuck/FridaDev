@@ -392,9 +392,16 @@ Regles runtime:
   preexistant;
 - la suppression explicite d'un document Documents V1 lie utilise le lien
   persiste pour supprimer la cible Nextcloud exacte avant le tombstone local;
+- si la lecture du lien Nextcloud echoue ou devient ambigue, la suppression
+  fail-closed: aucune suppression distante n'est tentee et aucun tombstone local
+  n'est produit;
 - si la suppression distante echoue, le fichier local actif n'est pas tombstone;
 - un fichier historique/local-only sans lien Nextcloud conserve le comportement
   local existant;
+- si la suppression distante et le tombstone local reussissent mais que le
+  marquage local du lien `deleted` echoue, l'API remonte un etat partiel
+  content-free (`link_mark_state=failed`) au lieu de pretendre a un cleanup
+  parfaitement propre;
 - la projection utilisateur peut exposer le `display_name`;
 - le payload technique et les preuves n'exposent que hash/ref court, statuts,
   classes HTTP et reason codes; le nom distant brut reste interne a la
@@ -445,7 +452,9 @@ Catalogue initial obligatoire:
 - `folder_document_nextcloud_error_redacted`;
 - `folder_document_local_persistence_failed`;
 - `folder_document_link_persistence_failed`;
+- `folder_document_link_lookup_failed`;
 - `folder_document_link_missing`;
+- `folder_document_link_mark_failed`;
 - `folder_document_delete_ok`;
 - `folder_document_remote_delete_failed`;
 - `folder_document_local_delete_failed`;

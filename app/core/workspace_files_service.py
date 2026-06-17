@@ -255,7 +255,22 @@ def delete_workspace_file_response(
             None,
         )
         if callable(complete_delete):
-            complete_delete(file_id=file_norm, workspace_files_module=workspace_files_module)
+            completion = complete_delete(file_id=file_norm, workspace_files_module=workspace_files_module)
+            document_nextcloud = dict(delete_plan.get("document_nextcloud") or {})
+            if completion.get("ok"):
+                document_nextcloud["link_mark_state"] = "deleted"
+            else:
+                reason_code = str(completion.get("reason_code") or "folder_document_link_mark_failed")
+                document_nextcloud["link_mark_state"] = "failed"
+                document_nextcloud["link_mark_reason_code"] = reason_code
+                _log_workspace_file_event(
+                    workspace_files_module,
+                    "documents_v1_delete_link_mark_failed",
+                    folder_id=normalized,
+                    file_id=file_norm,
+                    reason_code=reason_code,
+                )
+            delete_plan["document_nextcloud"] = document_nextcloud
     return {
         "ok": True,
         "workspace_folder_id": normalized,
@@ -461,7 +476,9 @@ def _human_workspace_file_error(reason_code: str) -> str:
         workspace_document_nextcloud_client.REASON_NAME_CONFLICT: "nom de document deja utilise",
         workspace_document_nextcloud_client.REASON_LOCAL_PERSISTENCE_FAILED: "stockage local document indisponible",
         workspace_document_nextcloud_client.REASON_LINK_PERSISTENCE_FAILED: "liaison document indisponible",
+        workspace_document_nextcloud_client.REASON_LINK_LOOKUP_FAILED: "liaison document indisponible",
         workspace_document_nextcloud_client.REASON_LINK_MISSING: "liaison document introuvable",
+        workspace_document_nextcloud_client.REASON_LINK_MARK_FAILED: "etat de liaison document incomplet",
         workspace_document_nextcloud_client.REASON_REMOTE_DELETE_FAILED: "suppression Nextcloud indisponible",
         workspace_document_nextcloud_client.REASON_LOCAL_DELETE_FAILED: "suppression locale indisponible",
         workspace_document_nextcloud_client.REASON_NEXTCLOUD_ERROR_REDACTED: "erreur Nextcloud document",

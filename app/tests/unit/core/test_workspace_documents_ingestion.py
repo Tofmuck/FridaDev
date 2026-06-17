@@ -65,11 +65,15 @@ class _FakeWorkspaceFiles:
         fail_store: bool = False,
         fail_link: bool = False,
         fail_delete: bool = False,
+        fail_link_lookup: bool = False,
+        fail_mark_deleted: bool = False,
     ):
         self.existing = list(existing or [])
         self.fail_store = fail_store
         self.fail_link = fail_link
         self.fail_delete = fail_delete
+        self.fail_link_lookup = fail_link_lookup
+        self.fail_mark_deleted = fail_mark_deleted
         self.stored = []
         self.events = []
         self.links = {}
@@ -147,11 +151,15 @@ class _FakeWorkspaceFiles:
         self.links[fields["workspace_file_id"]] = link
         return dict(link)
 
-    def get_nextcloud_link(self, file_id):
+    def get_nextcloud_link(self, file_id, *, fail_closed=False):
+        if self.fail_link_lookup:
+            raise RuntimeError("redacted")
         link = self.links.get(file_id)
         return dict(link) if link else None
 
     def mark_nextcloud_link_deleted(self, file_id, *, reason_code):
+        if self.fail_mark_deleted:
+            return None
         if file_id not in self.links:
             return None
         self.links[file_id]["nextcloud_sync_state"] = "deleted"
@@ -511,6 +519,7 @@ class DocumentsV1IngestionTests(unittest.TestCase):
         self.assertTrue(delete_payload["file"]["disk_deleted"])
         self.assertEqual(nextcloud.deleted[-1], ("Projet", "note.txt", True))
         self.assertEqual(files.get_nextcloud_link(file_id)["nextcloud_sync_state"], "deleted")
+        self.assertEqual(delete_payload["document_nextcloud"]["link_mark_state"], "deleted")
 
     def test_delete_remote_failure_does_not_tombstone_local_linked_document(self) -> None:
         nextcloud = _FakeNextcloud(delete_reason=workspace_document_nextcloud_client.REASON_REMOTE_DELETE_FAILED)
@@ -534,6 +543,63 @@ class DocumentsV1IngestionTests(unittest.TestCase):
         self.assertEqual(delete_payload["reason_code"], "folder_document_remote_delete_failed")
         self.assertEqual(files.deleted, [])
         self.assertIsNone(files.stored[0].get("deleted_at"))
+
+    def test_delete_link_lookup_failure_fails_closed_without_local_tombstone(self) -> None:
+        nextcloud = _FakeNextcloud()
+        files = _FakeWorkspaceFiles()
+        payload, status = _upload_response(
+            extractor=_FakeExtractor(),
+            nextcloud=nextcloud,
+            files_store=files,
+        )
+        self.assertEqual(status, 201)
+        files.fail_link_lookup = True
+
+        delete_payload, delete_status = workspace_files_service.delete_workspace_file_response(
+            FOLDER_ID,
+            payload["file"]["id"],
+            workspace_folders_module=_FakeFolders(linked=True),
+            workspace_files_module=files,
+            documents_nextcloud_runtime_module=_RuntimeAdapter(nextcloud),
+        )
+
+        self.assertEqual(delete_status, 503)
+        self.assertEqual(delete_payload["reason_code"], "folder_document_link_lookup_failed")
+        self.assertEqual(delete_payload["document_nextcloud"]["delete_state"], "link_lookup_failed")
+        self.assertEqual(len(nextcloud.deleted), 0)
+        self.assertEqual(files.deleted, [])
+        self.assertIsNone(files.stored[0].get("deleted_at"))
+        self.assertNotIn("note.txt", str(delete_payload.get("document_nextcloud", {})))
+
+    def test_delete_link_mark_failure_is_reported_after_remote_and_local_delete(self) -> None:
+        nextcloud = _FakeNextcloud()
+        files = _FakeWorkspaceFiles(fail_mark_deleted=True)
+        payload, status = _upload_response(
+            extractor=_FakeExtractor(),
+            nextcloud=nextcloud,
+            files_store=files,
+        )
+        self.assertEqual(status, 201)
+        file_id = payload["file"]["id"]
+
+        delete_payload, delete_status = workspace_files_service.delete_workspace_file_response(
+            FOLDER_ID,
+            file_id,
+            workspace_folders_module=_FakeFolders(linked=True),
+            workspace_files_module=files,
+            documents_nextcloud_runtime_module=_RuntimeAdapter(nextcloud),
+        )
+
+        self.assertEqual(delete_status, 200)
+        self.assertTrue(delete_payload["file"]["disk_deleted"])
+        self.assertEqual(nextcloud.deleted[-1], ("Projet", "note.txt", True))
+        self.assertEqual(files.get_nextcloud_link(file_id)["nextcloud_sync_state"], "linked")
+        self.assertEqual(delete_payload["document_nextcloud"]["link_mark_state"], "failed")
+        self.assertEqual(
+            delete_payload["document_nextcloud"]["link_mark_reason_code"],
+            "folder_document_link_mark_failed",
+        )
+        self.assertNotIn("note.txt", str(delete_payload.get("document_nextcloud", {})))
 
     def test_local_only_file_without_nextcloud_link_keeps_local_delete_behavior(self) -> None:
         files = _FakeWorkspaceFiles()

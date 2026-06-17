@@ -6,6 +6,8 @@ from . import workspace_document_nextcloud_client as document_client
 from . import workspace_file_nextcloud_links_store as file_nextcloud_links
 from . import workspace_folder_nextcloud_projection as folder_projection
 
+_LINK_LOOKUP_FAILED = object()
+
 
 def prepare_workspace_document_delete_nextcloud_first(
     *,
@@ -15,6 +17,21 @@ def prepare_workspace_document_delete_nextcloud_first(
     nextcloud: Any | None = None,
 ) -> dict[str, Any]:
     link = _get_nextcloud_link(workspace_files_module, file_id)
+    if link is _LINK_LOOKUP_FAILED:
+        _log_event(
+            workspace_files_module,
+            "documents_v1_delete_link_lookup_failed",
+            level="warning",
+            folder_id=str(folder.get("id") or ""),
+            file_id=file_id,
+            reason_code=document_client.REASON_LINK_LOOKUP_FAILED,
+        )
+        return _delete_failure(
+            document_client.REASON_LINK_LOOKUP_FAILED,
+            status=503,
+            document_name_hash="",
+            delete_state="link_lookup_failed",
+        )
     if not link:
         return {
             "ok": True,
@@ -100,7 +117,7 @@ def complete_workspace_document_delete(
         "ok": bool(marked),
         "reason_code": document_client.REASON_DELETE_OK
         if marked
-        else document_client.REASON_LOCAL_DELETE_FAILED,
+        else document_client.REASON_LINK_MARK_FAILED,
     }
 
 
@@ -115,9 +132,14 @@ def _get_nextcloud_link(workspace_files_module: Any, file_id: str) -> dict[str, 
     if not callable(getter):
         return None
     try:
-        return getter(file_id)
+        return getter(file_id, fail_closed=True)
+    except TypeError:
+        try:
+            return getter(file_id)
+        except Exception:
+            return _LINK_LOOKUP_FAILED
     except Exception:
-        return None
+        return _LINK_LOOKUP_FAILED
 
 
 def _delete_failure(

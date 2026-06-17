@@ -23,7 +23,9 @@ NEXTCLOUD_FILE_SYNC_STATES = (
 NEXTCLOUD_FILE_OPERATIONS = ("upload", "delete", "reconcile", "observe")
 
 REASON_LINK_PERSISTENCE_FAILED = "folder_document_link_persistence_failed"
+REASON_LINK_LOOKUP_FAILED = "folder_document_link_lookup_failed"
 REASON_LINK_MISSING = "folder_document_link_missing"
+REASON_LINK_MARK_FAILED = "folder_document_link_mark_failed"
 REASON_DELETE_OK = "folder_document_delete_ok"
 REASON_REMOTE_DELETE_FAILED = "folder_document_remote_delete_failed"
 REASON_LOCAL_DELETE_FAILED = "folder_document_local_delete_failed"
@@ -35,6 +37,10 @@ _DOCUMENT_REF_RE = re.compile(r"^[A-Za-z0-9:._-]{1,180}$")
 
 class WorkspaceFileNextcloudLinkPersistenceError(RuntimeError):
     """Raised when local document link persistence fails fail-closed."""
+
+
+class WorkspaceFileNextcloudLinkLookupError(RuntimeError):
+    """Raised when document link lookup fails and callers must fail closed."""
 
 
 def _cursor(conn: Any):
@@ -103,6 +109,7 @@ def get_link(
     *,
     db_conn_func: Callable[[], Any],
     logger: Any,
+    fail_closed: bool = False,
 ) -> Optional[dict[str, Any]]:
     normalized = normalize_workspace_file_id(workspace_file_id)
     if not normalized:
@@ -124,6 +131,8 @@ def get_link(
                 return serialize_link_row(cur.fetchone())
     except Exception as exc:
         _log(logger, "document_link_get_failed", file_id=normalized, error_type=type(exc).__name__)
+        if fail_closed:
+            raise WorkspaceFileNextcloudLinkLookupError(REASON_LINK_LOOKUP_FAILED) from None
         return None
 
 
