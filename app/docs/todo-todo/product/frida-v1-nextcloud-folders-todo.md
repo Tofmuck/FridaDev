@@ -324,14 +324,30 @@ Preuve Lot 9 reconciliation:
 
 ### Lot 10 - Politique fichiers existants et futurs par dossier
 
-- [ ] Decider comment les fichiers deja rattaches aux dossiers Frida seront
+- [x] Decider comment les fichiers deja rattaches aux dossiers Frida seront
   representes ou migres vers Nextcloud.
-- [ ] Decider comment les futurs fichiers associes a un dossier Frida seront
+- [x] Decider comment les futurs fichiers associes a un dossier Frida seront
   ranges sous le dossier Nextcloud correspondant.
-- [ ] Garantir qu'aucun fichier/document workspace n'est deplace, lu ou supprime
+- [x] Garantir qu'aucun fichier/document workspace n'est deplace, lu ou supprime
   sans lot dedie et preuve content-free.
-- [ ] Documenter l'interaction avec les documents actifs et uploads sans rouvrir
+- [x] Documenter l'interaction avec les documents actifs et uploads sans rouvrir
   l'ingestion documentaire.
+
+Preuve Lot 10A politique fichiers:
+`app/docs/states/audits/frida-v1-nextcloud-folders-lot10-files-policy-2026-06-17.md`
+
+- inventaire applicatif read-only content-free: 2 dossiers actifs, 2 `linked`,
+  10 fichiers workspace actifs rattaches a un dossier;
+- repartition par dossier exposee uniquement via refs hashées, sans nom de
+  fichier, contenu, `storage_key`, chemin serveur ni URL DAV;
+- politique fichiers existants: aucune migration automatique dans ce lot; futur
+  lot de copie/migration borne, avec preuve content-free, sans suppression
+  source silencieuse;
+- politique futurs fichiers: les futurs uploads/documents rattaches a un
+  dossier devront etre ranges dans le dossier Nextcloud du dossier Frida, mais
+  le transport fichier Nextcloud reste un lot runtime separe;
+- documents actifs, notes Markdown, exports et images restent des chantiers
+  separes; aucun lot Notes/Exports/Images n'est livre ici.
 
 ### Lot 11 - Sous-dossiers standards par dossier
 

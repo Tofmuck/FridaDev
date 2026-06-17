@@ -1,6 +1,6 @@
 # Frida V1 - Nextcloud folders contract
 
-Statut: spec vivante Lots 0 a 9 reconciliation dossiers existants livree
+Statut: spec vivante Lots 0 a 10A politique fichiers livree
 Date: 2026-06-17
 Classement: `app/docs/states/specs/`
 TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
@@ -65,6 +65,14 @@ manquantes, puis liaison locale `workspace_folder_nextcloud_links` en
 `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot9-reconcile-20260617T074733Z.jsonl`.
 Le backup applicatif des liaisons avant ecriture est
 `/opt/platform/_codex_reports/frida-v1-nextcloud-folders-lot9-link-backup-20260617T074720Z.jsonl`.
+
+Depuis le Lot 10A du 2026-06-17, la politique fichiers par dossier est
+documentee sans runtime fichier Nextcloud: inventaire applicatif read-only
+content-free, fichiers existants conserves sans migration automatique, futurs
+fichiers a ranger plus tard dans le dossier Nextcloud du dossier Frida, et
+separation explicite entre fichiers workspace, documents actifs, notes, exports
+et images. L'audit source est
+`app/docs/states/audits/frida-v1-nextcloud-folders-lot10-files-policy-2026-06-17.md`.
 
 Recalage produit post Lot 6:
 
@@ -973,8 +981,22 @@ Etat depuis Lot 9:
 - les cibles Nextcloud manquantes ont ete creees par `MKCOL` borne, sans
   listing de contenu utilisateur;
 - aucun fichier/document workspace n'a ete lu, deplace, supprime ou migre;
-- Lot 10 reste necessaire pour definir la politique des fichiers existants et
-  futurs par dossier.
+- Lot 10A a ensuite defini la politique des fichiers existants et futurs par
+  dossier sans migration ni transport fichier Nextcloud.
+
+Etat depuis Lot 10A:
+
+- inventaire read-only content-free: 2 dossiers actifs, 2 `linked`,
+  10 fichiers workspace actifs rattaches a un dossier;
+- fichiers existants: pas de migration automatique, pas de copie silencieuse,
+  pas de suppression source silencieuse;
+- futurs fichiers rattaches a un dossier Frida: cible produit = dossier
+  Nextcloud du dossier Frida, mais transport fichier et migration restent des
+  lots runtime separes;
+- documents actifs, notes Markdown, exports et images restent des surfaces
+  distinctes et ne sont pas livrees par le Lot 10A;
+- Lot 11 reste necessaire pour definir les sous-dossiers standards avant de
+  livrer Notes/Exports/Images.
 
 ## 14. Lots restants avant cloture V1 reelle
 
@@ -1014,9 +1036,19 @@ Lot 9 - Reconciliation des dossiers existants:
 
 Lot 10 - Politique fichiers existants et futurs par dossier:
 
-- definir ou vivent les fichiers deja rattaches aux dossiers Frida;
-- definir ou seront ranges les futurs fichiers associes a un dossier;
-- separer cette decision de l'ingestion documentaire.
+- livre Lot 10A: audit read-only content-free des fichiers rattaches aux
+  dossiers Frida;
+- livre Lot 10A: les fichiers existants restent dans `workspace_files` et leur
+  stockage applicatif courant jusqu'a un futur lot de migration/copie dedie;
+- livre Lot 10A: aucune migration automatique, copie silencieuse, lecture de
+  contenu, deplacement ou suppression source;
+- livre Lot 10A: les futurs fichiers associes a un dossier Frida devront etre
+  ranges dans le dossier Nextcloud correspondant, mais le transport fichier
+  Nextcloud reste hors de ce lot;
+- livre Lot 10A: documents actifs, uploads/fichiers workspace, notes, exports et
+  images sont separes;
+- artefact:
+  `app/docs/states/audits/frida-v1-nextcloud-folders-lot10-files-policy-2026-06-17.md`.
 
 Lot 11 - Sous-dossiers standards par dossier:
 
@@ -1038,3 +1070,53 @@ Lot Z - Cloture V1 reelle:
   reel, que le renommage reste coherent, que les dossiers existants sont
   reconcilies et que les politiques fichiers/sous-dossiers sont documentees;
 - ne pas confondre le smoke synthetique Lot 5 avec le runtime produit final.
+
+## 15. Politique fichiers par dossier depuis Lot 10A
+
+### 15.1 Fichiers existants
+
+Les fichiers workspace deja rattaches a un dossier Frida restent dans
+`workspace_files` et dans le stockage applicatif courant. Le Lot 10A interdit de
+les migrer automatiquement vers Nextcloud.
+
+Un futur lot de migration/copie devra:
+
+- travailler dossier par dossier, uniquement si le dossier Frida est `linked`;
+- produire une preuve content-free avant et apres;
+- ne jamais lister ni afficher de contenu utilisateur;
+- ne jamais ecraser une cible Nextcloud existante sans decision humaine;
+- conserver la source tant que la preuve et le rollback ne sont pas actees;
+- ne supprimer la source qu'apres decision explicite si une suppression devient
+  necessaire.
+
+### 15.2 Futurs fichiers rattaches a un dossier
+
+La cible produit des futurs fichiers associes a un dossier Frida est le dossier
+Nextcloud reel du dossier Frida. Le comportement runtime fichier reste a livrer:
+pas de `PUT`, `GET`, `MOVE`, `DELETE` ou listing fichier Nextcloud dans Lot 10A.
+
+Tant que ce runtime n'est pas livre, les routes fichiers existantes restent le
+comportement applicatif courant et ne constituent pas une preuve que les fichiers
+sont ranges dans Nextcloud.
+
+### 15.3 Documents actifs, notes, exports et images
+
+- Les documents actifs de conversation restent scopes par conversation et ne
+  deviennent pas automatiquement des fichiers de dossier Frida.
+- Les fichiers workspace persistants sont la surface qui devra etre alignee plus
+  tard avec le dossier Nextcloud du dossier Frida.
+- Les notes Markdown restent un futur lot dedie.
+- Les exports restent un futur lot dedie, probablement sous un sous-dossier
+  standard `Exports` a confirmer en Lot 11/12.
+- Les images generees restent un futur lot dedie.
+
+### 15.4 Observabilite et preuves
+
+Les futurs lots fichiers doivent rester content-free:
+
+- aucun contenu fichier;
+- aucun nom de fichier sensible dans les preuves si une reference hashée suffit;
+- aucun `storage_key`, chemin disque, URL DAV, XML, token, cookie,
+  `app-password` ou secret;
+- aucun listing de contenu Nextcloud;
+- reason codes stables et redaction fail-closed des erreurs transport.
