@@ -241,27 +241,35 @@ Ne cocher que les lots reellement livres et prouves.
 
 ### Lot 0 - Audit existant
 
-- [ ] Relire les surfaces runtime des documents actifs de conversation.
-- [ ] Relire l'upload direct dans le chat et les routes existantes
+- [x] Relire les surfaces runtime des documents actifs de conversation.
+- [x] Relire l'upload direct dans le chat et les routes existantes
   `active_document`.
-- [ ] Relire l'extraction texte existante: PDF textuel, DOCX, ODT, MD, TXT.
-- [ ] Relire l'OCR / PDF image existant et ses limites V1.
-- [ ] Relire le fallback visuel/image existant pour les documents actifs.
-- [ ] Relire les surfaces `workspace_files`, selections et fichiers rattaches a
+- [x] Relire l'extraction texte existante: PDF textuel, DOCX, ODT, MD, TXT.
+- [x] Relire l'OCR / PDF image existant et ses limites V1.
+- [x] Relire le fallback visuel/image existant pour les documents actifs.
+- [x] Relire les surfaces `workspace_files`, selections et fichiers rattaches a
   un dossier.
-- [ ] Relire les surfaces UI liees aux fichiers/documents dans un dossier.
-- [ ] Relire les read-models et logs existants lies aux documents.
-- [ ] Identifier les briques reutilisables telles quelles.
-- [ ] Identifier les briques reutilisables partiellement.
-- [ ] Identifier les surfaces a eviter ou hors-scope.
-- [ ] Identifier les risques de melange avec Biblio, Notes, Exports et Images.
-- [ ] Produire un audit content-free date sous `app/docs/states/audits/`.
+- [x] Relire les surfaces UI liees aux fichiers/documents dans un dossier.
+- [x] Relire les read-models et logs existants lies aux documents.
+- [x] Identifier les briques reutilisables telles quelles.
+- [x] Identifier les briques reutilisables partiellement.
+- [x] Identifier les surfaces a eviter ou hors-scope.
+- [x] Identifier les risques de melange avec Biblio, Notes, Exports et Images.
+- [x] Produire un audit content-free date sous `app/docs/states/audits/`.
 
 Sortie attendue:
 
 - cartographie des fichiers/modules existants;
 - classification "reutiliser / adapter / eviter / auditer plus tard";
 - aucun patch runtime.
+
+Preuve Lot 0:
+
+- audit content-free:
+  `app/docs/states/audits/frida-v1-documents-ingestion-lot0-audit-2026-06-17.md`;
+- aucune implementation runtime;
+- aucun acces Nextcloud/WebDAV/Sauron;
+- aucun fichier utilisateur lu, copie, range, migre ou supprime.
 
 ### Lot 1 - Contrat produit Documents V1
 
