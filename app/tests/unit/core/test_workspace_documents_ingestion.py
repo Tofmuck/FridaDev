@@ -4,6 +4,7 @@ import unittest
 from types import SimpleNamespace
 
 from core import workspace_document_nextcloud_client
+from core import workspace_document_existing_files
 from core import workspace_document_nextcloud_runtime
 from core import workspace_files_service
 
@@ -48,6 +49,9 @@ class _FakeFolders:
     def get_workspace_folder(self, folder_id):
         return dict(self.folder) if folder_id == FOLDER_ID else None
 
+    def list_workspace_folders(self):
+        return [dict(self.folder)]
+
 
 class _FakeWorkspaceFiles:
     STATUS_ACTIVE = "active"
@@ -78,6 +82,7 @@ class _FakeWorkspaceFiles:
         self.events = []
         self.links = {}
         self.deleted = []
+        self.reads = []
 
     def sanitize_display_name(self, value):
         return " ".join(str(value or "").strip().split())[:180].rstrip() or "fichier"
@@ -87,6 +92,17 @@ class _FakeWorkspaceFiles:
 
     def list_workspace_files(self, folder_id):
         return list(self.existing + self.stored)
+
+    def get_workspace_file_storage_row(self, folder_id, file_id):
+        for item in self.existing + self.stored:
+            if item.get("workspace_folder_id", FOLDER_ID) == folder_id and item.get("id") == file_id:
+                storage_key = item.get("storage_key") or f"{folder_id}/{file_id}.bin"
+                return {**item, "storage_key": storage_key}
+        return None
+
+    def read_file_bytes(self, storage_key):
+        self.reads.append(storage_key)
+        return b"existing-bytes"
 
     def store_uploaded_file(self, folder_id, *, original_filename, content, metadata, file_id=FILE_ID):
         if self.fail_store:
@@ -215,12 +231,22 @@ class _FakeExtractor:
 
 
 class _FakeNextcloud:
-    def __init__(self, *, status_reason="", put_reason="", put_status=201, delete_reason=""):
+    def __init__(
+        self,
+        *,
+        status_reason="",
+        put_reason="",
+        put_status=201,
+        delete_reason="",
+        existing_targets=None,
+    ):
         self.status_reason = status_reason
         self.put_reason = put_reason
         self.put_status = put_status
         self.delete_reason = delete_reason
+        self.existing_targets = set(existing_targets or set())
         self.status_calls = []
+        self.document_status_calls = []
         self.put_calls = []
         self.deleted = []
 
@@ -237,6 +263,19 @@ class _FakeNextcloud:
             True,
             workspace_document_nextcloud_client.REASON_UPLOAD_OK,
             207,
+        )
+
+    def document_status(self, folder_name, document_name):
+        self.document_status_calls.append((folder_name, document_name))
+        if (folder_name, document_name) in self.existing_targets:
+            return workspace_document_nextcloud_client.NextcloudDocumentResponse(
+                True,
+                workspace_document_nextcloud_client.REASON_UPLOAD_OK,
+                207,
+            )
+        raise workspace_document_nextcloud_client.NextcloudDocumentClientError(
+            workspace_document_nextcloud_client.REASON_DOCUMENTS_TARGET_MISSING,
+            http_status=404,
         )
 
     def put_document(self, folder_name, document_name, content, *, media_type=""):
@@ -717,6 +756,146 @@ class DocumentsV1IngestionTests(unittest.TestCase):
             with self.assertRaises(workspace_document_nextcloud_client.NextcloudDocumentClientError) as ctx:
                 _Client(status).put_document("Projet", "note.txt", b"x", media_type="text/plain")
             self.assertEqual(ctx.exception.reason_code, "folder_document_name_conflict")
+
+    def test_existing_local_only_file_is_copied_and_linked_without_source_delete(self) -> None:
+        files = _FakeWorkspaceFiles(
+            existing=[
+                {
+                    "id": FILE_ID,
+                    "workspace_folder_id": FOLDER_ID,
+                    "display_name": "legacy.txt",
+                    "original_filename": "legacy.txt",
+                    "source_extension": ".txt",
+                    "mime_type": "text/plain",
+                    "status": "active",
+                    "deleted_at": None,
+                }
+            ]
+        )
+        nextcloud = _FakeNextcloud()
+
+        result = workspace_document_existing_files.reconcile_existing_workspace_documents(
+            workspace_folders_module=_FakeFolders(linked=True),
+            workspace_files_module=files,
+            nextcloud=nextcloud,
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["verdict"], "met")
+        self.assertEqual(result["summary"]["copied_files"], 1)
+        self.assertEqual(result["summary"]["source_preserved_files"], 1)
+        self.assertEqual(files.deleted, [])
+        self.assertEqual(nextcloud.put_calls[0], ("Projet", "legacy.txt", len(b"existing-bytes"), "text/plain"))
+        link = files.get_nextcloud_link(FILE_ID)
+        self.assertEqual(link["nextcloud_sync_state"], "linked")
+        self.assertEqual(link["last_sync_operation"], "reconcile")
+        self.assertEqual(link["last_sync_reason_code"], "folder_document_existing_copy_ok")
+        encoded = str(result)
+        self.assertNotIn("legacy.txt", encoded)
+        self.assertNotIn("existing-bytes", encoded)
+        self.assertNotIn("storage_key", encoded)
+        self.assertNotIn("remote.php", encoded)
+
+    def test_existing_file_conflict_does_not_overwrite_or_link(self) -> None:
+        files = _FakeWorkspaceFiles(
+            existing=[
+                {
+                    "id": FILE_ID,
+                    "workspace_folder_id": FOLDER_ID,
+                    "display_name": "legacy.txt",
+                    "source_extension": ".txt",
+                    "mime_type": "text/plain",
+                    "status": "active",
+                    "deleted_at": None,
+                }
+            ]
+        )
+        nextcloud = _FakeNextcloud(existing_targets={("Projet", "legacy.txt")})
+
+        result = workspace_document_existing_files.reconcile_existing_workspace_documents(
+            workspace_folders_module=_FakeFolders(linked=True),
+            workspace_files_module=files,
+            nextcloud=nextcloud,
+        )
+
+        self.assertEqual(result["verdict"], "partial")
+        self.assertEqual(result["summary"]["conflict_files"], 1)
+        self.assertEqual(result["summary"]["copied_files"], 0)
+        self.assertEqual(nextcloud.put_calls, [])
+        self.assertIsNone(files.get_nextcloud_link(FILE_ID))
+        self.assertEqual(result["events"][0]["reason_code"], "folder_document_existing_copy_conflict")
+
+    def test_existing_file_link_failure_rolls_back_remote_only(self) -> None:
+        files = _FakeWorkspaceFiles(
+            existing=[
+                {
+                    "id": FILE_ID,
+                    "workspace_folder_id": FOLDER_ID,
+                    "display_name": "legacy.txt",
+                    "source_extension": ".txt",
+                    "mime_type": "text/plain",
+                    "status": "active",
+                    "deleted_at": None,
+                }
+            ],
+            fail_link=True,
+        )
+        nextcloud = _FakeNextcloud()
+
+        result = workspace_document_existing_files.reconcile_existing_workspace_documents(
+            workspace_folders_module=_FakeFolders(linked=True),
+            workspace_files_module=files,
+            nextcloud=nextcloud,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["verdict"], "failed")
+        self.assertEqual(result["summary"]["error_files"], 1)
+        self.assertEqual(result["summary"]["rollback_ok"], 1)
+        self.assertEqual(nextcloud.deleted, [("Projet", "legacy.txt", True)])
+        self.assertEqual(files.deleted, [])
+        self.assertEqual(result["events"][0]["reason_code"], "folder_document_link_persistence_failed")
+        self.assertTrue(result["events"][0]["rollback"]["ok"])
+        self.assertNotIn("legacy.txt", str(result["events"][0]))
+
+    def test_existing_already_linked_file_is_inventory_only(self) -> None:
+        files = _FakeWorkspaceFiles(
+            existing=[
+                {
+                    "id": FILE_ID,
+                    "workspace_folder_id": FOLDER_ID,
+                    "display_name": "legacy.txt",
+                    "source_extension": ".txt",
+                    "mime_type": "text/plain",
+                    "status": "active",
+                    "deleted_at": None,
+                }
+            ]
+        )
+        files.upsert_nextcloud_link(
+            workspace_file_id=FILE_ID,
+            workspace_folder_id=FOLDER_ID,
+            nextcloud_sync_state="linked",
+            nextcloud_document_ref="workspace-file:aaaaaaaa:abc123def456",
+            nextcloud_name_hash="abc123def456",
+            nextcloud_target_name="legacy.txt",
+            last_sync_reason_code="folder_document_upload_ok",
+            last_sync_operation="upload",
+        )
+        nextcloud = _FakeNextcloud()
+
+        result = workspace_document_existing_files.reconcile_existing_workspace_documents(
+            workspace_folders_module=_FakeFolders(linked=True),
+            workspace_files_module=files,
+            nextcloud=nextcloud,
+        )
+
+        self.assertEqual(result["verdict"], "met")
+        self.assertEqual(result["summary"]["linked_files"], 1)
+        self.assertEqual(result["summary"]["copied_files"], 0)
+        self.assertEqual(nextcloud.status_calls, [])
+        self.assertEqual(nextcloud.put_calls, [])
+        self.assertEqual(result["events"][0]["operation"], "already_linked")
 
 
 if __name__ == "__main__":

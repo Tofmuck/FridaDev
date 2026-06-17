@@ -33,6 +33,11 @@ REASON_REMOTE_DELETE_FAILED = "folder_document_remote_delete_failed"
 REASON_LOCAL_DELETE_FAILED = "folder_document_local_delete_failed"
 REASON_REMOTE_COMPENSATION_OK = "folder_document_remote_compensation_ok"
 REASON_REMOTE_COMPENSATION_FAILED = "folder_document_remote_compensation_failed"
+REASON_EXISTING_COPY_REQUIRED = "folder_document_existing_copy_required"
+REASON_EXISTING_COPY_OK = "folder_document_existing_copy_ok"
+REASON_EXISTING_COPY_CONFLICT = "folder_document_existing_copy_conflict"
+REASON_EXISTING_SOURCE_PRESERVED = "folder_document_existing_source_preserved"
+REASON_EXISTING_SOURCE_MISSING = "folder_document_existing_source_missing"
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,6 @@
 # Frida V1 - Documents sources / ingestion / lecture / PDF fallback - TODO
 
-Statut: Lot 6 PDF image / fallback visuel unifie livre; prete pour Lot 7 fichiers existants
+Statut: Lot 7 fichiers workspace existants livre; prete pour Lot 8 observabilite / smokes live
 Date: 2026-06-17
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -263,6 +263,7 @@ Catalogue initial a appliquer dans les lots runtime:
 - `folder_document_existing_copy_ok`;
 - `folder_document_existing_copy_conflict`;
 - `folder_document_existing_source_preserved`;
+- `folder_document_existing_source_missing`;
 - `folder_document_observation_redacted`.
 
 ## 7. Nature des lots
@@ -588,21 +589,41 @@ Preuve Lot 6:
 
 ### Lot 7 - Fichiers existants
 
-- [ ] Inventorier content-free les fichiers workspace existants rattaches a un
+- [x] Inventorier content-free les fichiers workspace existants rattaches a un
   dossier.
-- [ ] Si l'inventaire trouve au moins un fichier actif rattache a un dossier
+- [x] Si l'inventaire trouve au moins un fichier actif rattache a un dossier
   Frida, livrer un rangement/copie controle vers
   `/Frida/<dossier>/Documents`.
-- [ ] Si l'inventaire trouve `0` fichier actif a traiter, fermer le lot par
+- [x] Si l'inventaire trouve `0` fichier actif a traiter, fermer le lot par
   preuve content-free `0 a traiter`.
-- [ ] Interdire toute copie/rangement automatique.
-- [ ] Travailler dossier par dossier.
-- [ ] Conserver la source tant que preuve, verification et rollback ne sont pas
+- [x] Interdire toute copie/rangement automatique.
+- [x] Travailler dossier par dossier.
+- [x] Conserver la source tant que preuve, verification et rollback ne sont pas
   actees.
-- [ ] Ne jamais supprimer silencieusement la source.
-- [ ] Ne jamais ecraser une cible Nextcloud existante sans decision humaine.
-- [ ] Produire preuve content-free avant/apres.
-- [ ] Documenter rollback et no-go.
+- [x] Ne jamais supprimer silencieusement la source.
+- [x] Ne jamais ecraser une cible Nextcloud existante sans decision humaine.
+- [x] Produire preuve content-free avant/apres.
+- [x] Documenter rollback et no-go.
+
+Preuve Lot 7:
+
+- inventaire preflight content-free: `10` fichiers actifs rattaches a `2`
+  dossiers Frida `linked`, `10` fichiers `local_only`, `0` conflit, `0` erreur;
+- copie/rangement controle: `10` fichiers copies sous le sous-dossier standard
+  `Documents`, `10` liens `workspace_file_nextcloud_links` persistants en
+  operation `reconcile`;
+- inventaire final content-free: `10` fichiers actifs, `10` fichiers `linked`,
+  `0` fichier `local_only`;
+- verification distante finale status-only: `10` liens verifies, `10` reponses
+  `2xx`, `0` erreur;
+- source locale preservee, `0` suppression source, `0` rollback distant, `0`
+  conflit cible;
+- preuve JSONL:
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot7-existing-files-20260617T203920Z.jsonl`;
+- le JSONL ne contient aucun nom de fichier brut, contenu, chemin disque, URL
+  DAV, XML, `storage_key`, token, cookie, `app-password` ou secret;
+- aucune route parallele, aucun Biblio/Notes/Exports/Images, aucun
+  Memory/RAG/Identity/Summary.
 
 ### Lot 8 - Observabilite / smokes live
 
@@ -667,7 +688,7 @@ Artefacts attendus:
 - Presenter une extraction partielle comme complete.
 - Pretendre avoir lu un document trop gros, non injecte ou en erreur.
 
-## 10. Hors-scope strict des Lots 1-6 livres
+## 10. Hors-scope strict des Lots 1-7 livres
 
 - Aucun OCR nouveau Documents V1.
 - Aucun acces Nextcloud live hors smokes synthetiques bornes du lot concerne.
@@ -676,7 +697,8 @@ Artefacts attendus:
 - Aucun secret.
 - Aucun Docker/rebuild plateforme/global; un rebuild applicatif FridaDev cible
   reste autorise pour verifier un patch runtime Documents V1.
-- Aucune copie/rangement de fichiers historiques existants.
+- Aucune copie/rangement de fichiers historiques existants hors Lot 7 borne,
+  prouve et non destructif.
 - Aucune creation de note, export ou image; les nouveaux documents restent
   limites a l'upload Documents V1 livre au Lot 3.
 - Aucun lancement Biblio.
@@ -685,14 +707,13 @@ Artefacts attendus:
 
 ## 11. Prochain lot recommande
 
-Ouvrir `Lot 7 - Fichiers existants`.
+Ouvrir `Lot 8 - Observabilite / smokes live`.
 
-Objectif Lot 7:
+Objectif Lot 8:
 
-- inventorier content-free les fichiers workspace historiques rattaches a des
-  dossiers Frida;
-- si des fichiers actifs existent, livrer une copie/rangement controlee et non
-  destructive vers `/Frida/<dossier>/Documents`;
-- si aucun fichier actif n'existe, fermer par preuve content-free `0 a traiter`;
-- conserver la source tant que preuve, verification et rollback ne sont pas
-  actees.
+- consolider les events et compteurs content-free de depot, liste, preparation,
+  lecture, PDF image detecte, fallback, conflit et erreur;
+- produire les smokes live Documents V1 transverses avec document synthetique;
+- scanner les preuves contre contenu, nom sensible, chemin DAV, URL DAV, XML,
+  `storage_key`, token, cookie, `app-password` et secret;
+- verifier que les preuves Lot 3 a Lot 7 restent coherentes avant Lot Z.

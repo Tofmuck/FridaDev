@@ -461,7 +461,7 @@ Surfaces:
   DAV, XML, secret, contenu et nom de fichier utilisateur restent absents des
   projections techniques, logs, JSONL et observabilite.
 
-Limites restantes apres Lot 6:
+Limites restantes apres Lot 6, avant Lot 7:
 
 - les fichiers workspace historiques restent Lot 7;
 - aucun Notes / Exports / Images runtime n'est livre par Lot 6.
@@ -547,6 +547,52 @@ Limites restantes apres Lot 6:
 - aucun contenu visuel ou PDF brut n'est persiste dans une surface technique;
 - Lot 7 reste necessaire pour traiter les fichiers workspace existants.
 
+## 12.5 Fichiers workspace existants livres au Lot 7
+
+Le Lot 7 traite les fichiers workspace actifs deja rattaches aux dossiers Frida
+sans supprimer leur source locale.
+
+Regles runtime:
+
+- l'orchestrateur `workspace_document_existing_files.py` reste un runner borne
+  operateur, pas une route utilisateur parallele;
+- l'inventaire lit le registre applicatif `workspace_files` et les liens locaux
+  `workspace_file_nextcloud_links`, sans acces DB Nextcloud direct;
+- seuls les fichiers actifs local-only de dossiers Frida `linked` sont
+  eligibles;
+- le sous-dossier standard `Documents` est verifie comme collection WebDAV par
+  status-only avant copie;
+- la cible fichier exacte est verifiee par status-only avant PUT, sans
+  PROPFIND Depth:1 ni listing de contenu;
+- la copie utilise le PUT anti-ecrasement deja livre au Lot 3 et n'accepte
+  qu'une creation sure;
+- si la cible existe deja, le fichier reste no-go/conflit avec
+  `folder_document_existing_copy_conflict`; Frida ne renomme pas
+  automatiquement et n'ecrase jamais;
+- apres creation distante, le lien technique `workspace_file_nextcloud_links`
+  est persiste en `linked`, operation `reconcile`, reason code
+  `folder_document_existing_copy_ok`;
+- si la persistance du lien echoue apres creation distante, Frida tente un
+  rollback DELETE strict sur la cible creee par ce flux uniquement;
+- la source locale n'est jamais supprimee par Lot 7;
+- les preuves Lot 7 restent content-free: compteurs, refs/hashs courts, status
+  classes, reason codes et flags seulement.
+
+Preuve runtime Lot 7:
+
+- artefact:
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot7-existing-files-20260617T203920Z.jsonl`;
+- inventaire preflight: `10` fichiers actifs, `10` local-only, `0` conflit,
+  `0` erreur;
+- execution: `10` copies creees, `10` liens persistants, `10` sources
+  preservees, `0` rollback, `0` conflit;
+- inventaire final: `10` fichiers actifs `linked`, `0` local-only;
+- verification distante finale status-only: `10` liens verifies, `10` reponses
+  `2xx`, `0` erreur;
+- aucun nom de fichier brut, contenu, chemin disque, URL DAV, XML,
+  `storage_key`, secret, token, cookie ou payload WebDAV brut n'est present
+  dans l'artefact.
+
 ## 13. Reason codes Documents V1
 
 Catalogue initial obligatoire:
@@ -588,6 +634,7 @@ Catalogue initial obligatoire:
 - `folder_document_existing_copy_ok`;
 - `folder_document_existing_copy_conflict`;
 - `folder_document_existing_source_preserved`;
+- `folder_document_existing_source_missing`;
 - `folder_document_observation_redacted`.
 
 Un reason code inconnu doit etre redacted avant exposition technique.
