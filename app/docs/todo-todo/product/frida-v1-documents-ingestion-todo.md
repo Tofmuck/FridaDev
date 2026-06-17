@@ -355,6 +355,12 @@ Point de vigilance:
 - le document persistant peut etre visible dans une UI produit; les logs et
   preuves ne doivent pas pour autant reprendre son nom brut si ce n'est pas
   indispensable.
+- la projection technique doit allowlister les valeurs elles-memes, pas
+  seulement filtrer les noms de cles; tout `mime_type`, `content_kind`,
+  `media_kind`, `source_extension`, statut, readiness ou reason code suspect
+  doit devenir `unknown`, vide ou redacted selon le champ.
+- `parse_error` est un etat `error` avec reason code
+  `folder_document_parse_error`, distinct de `unsupported`.
 
 Preuve Lot 2:
 
@@ -367,6 +373,9 @@ Preuve Lot 2:
 - tests unitaires et serveur couvrant projection utilisateur, projection
   technique redacted, dossier non `linked`, usage conversationnel et absence de
   confusion `active_document` / Biblio.
+- correctif Lot 2.1: tests unitaires dedies sous
+  `app/tests/unit/core/test_workspace_folder_documents.py`, projection technique
+  allowlistee par valeurs et `parse_error` classe en `error`.
 
 ### Lot 3 - Ingestion / rangement nouveaux documents
 

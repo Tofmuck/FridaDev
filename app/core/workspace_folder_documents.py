@@ -39,11 +39,13 @@ REASON_PDF_VISUAL_REQUIRED = "folder_document_pdf_visual_required"
 REASON_PDF_VISUAL_READY = "folder_document_pdf_visual_ready"
 REASON_TOO_LARGE = "folder_document_too_large"
 REASON_TYPE_UNSUPPORTED = "folder_document_type_unsupported"
+REASON_PARSE_ERROR = "folder_document_parse_error"
 REASON_RUNTIME_UNAVAILABLE = "folder_document_runtime_unavailable"
 REASON_CONTENT_REDACTED = "folder_document_content_redacted"
 REASON_SELECTED = "folder_document_selected"
 
 FOLDER_SYNC_LINKED = "linked"
+UNKNOWN = "unknown"
 
 _SAFE_REASON_RE = re.compile(r"^[a-z0-9_]{3,120}$")
 _SAFE_REASON_PREFIXES = (
@@ -77,6 +79,54 @@ _TECHNICAL_FORBIDDEN_KEYS = {
     "authorization",
     "app_password",
     "app-password",
+}
+_SAFE_IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,160}$")
+_ALLOWED_CONTENT_KINDS = {"document", "image"}
+_ALLOWED_MEDIA_KINDS = {"text", "image"}
+_ALLOWED_MIME_TYPES = {
+    "application/pdf",
+    "application/vnd.oasis.opendocument.text",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "text/markdown",
+    "text/plain",
+}
+_ALLOWED_SOURCE_EXTENSIONS = {
+    ".docx",
+    ".gif",
+    ".jpeg",
+    ".jpg",
+    ".markdown",
+    ".md",
+    ".odt",
+    ".pdf",
+    ".png",
+    ".txt",
+    ".webp",
+}
+_ALLOWED_DOCUMENT_STATUSES = {
+    DOCUMENT_STATUS_AVAILABLE,
+    DOCUMENT_STATUS_PREPARING,
+    DOCUMENT_STATUS_READABLE,
+    DOCUMENT_STATUS_NOT_INJECTED,
+    DOCUMENT_STATUS_PDF_TEXT,
+    DOCUMENT_STATUS_PDF_VISUAL_REQUIRED,
+    DOCUMENT_STATUS_VISUAL_READY,
+    DOCUMENT_STATUS_TOO_LARGE,
+    DOCUMENT_STATUS_UNSUPPORTED,
+    DOCUMENT_STATUS_ERROR,
+    DOCUMENT_STATUS_DELETED,
+    DOCUMENT_STATUS_UNAVAILABLE,
+}
+_ALLOWED_READINESS = {
+    READINESS_READY,
+    READINESS_PENDING,
+    READINESS_BLOCKED,
+    READINESS_VISUAL,
+    READINESS_UNAVAILABLE,
 }
 
 
@@ -148,21 +198,21 @@ def build_technical_projection(
     state = document_state(file_item, folder=folder)
     payload = {
         "document_ref": _document_ref(file_item),
-        "workspace_file_id": _text(file_item.get("id"), 120),
-        "workspace_folder_id": _text(file_item.get("workspace_folder_id"), 120),
+        "workspace_file_id": _safe_identifier(file_item.get("id")),
+        "workspace_folder_id": _safe_identifier(file_item.get("workspace_folder_id")),
         "name_hash": _hash12(_display_name(file_item).casefold()),
-        "content_kind": _text(file_item.get("content_kind"), 40) or "document",
-        "media_kind": _text(file_item.get("media_kind"), 40) or "text",
-        "mime_type": _text(file_item.get("mime_type"), 120),
-        "source_extension": _text(file_item.get("source_extension"), 24),
+        "content_kind": _normalized_content_kind(file_item.get("content_kind")),
+        "media_kind": _normalized_media_kind(file_item.get("media_kind")),
+        "mime_type": _normalized_mime_type(file_item.get("mime_type")),
+        "source_extension": _normalized_source_extension(file_item.get("source_extension")),
         "byte_size": _safe_int(file_item.get("byte_size")),
         "sha256_12": _short_hash(file_item.get("sha256_12")),
         "text_sha256_12": _short_hash(file_item.get("text_sha256_12")),
         "image_width": _safe_int(file_item.get("image_width")),
         "image_height": _safe_int(file_item.get("image_height")),
-        "document_status": state["document_status"],
-        "readiness": state["readiness"],
-        "reason_code": state["reason_code"],
+        "document_status": _normalized_document_status(state["document_status"]),
+        "readiness": _normalized_readiness(state["readiness"]),
+        "reason_code": _safe_reason_code(state["reason_code"]),
     }
     return _content_free_projection(payload)
 
@@ -206,14 +256,16 @@ def document_state(
         return _state(DOCUMENT_STATUS_UNAVAILABLE, READINESS_UNAVAILABLE, REASON_RUNTIME_UNAVAILABLE)
     if status in {"too_large", "workspace_file_too_large"} or reason == "workspace_file_too_large":
         return _state(DOCUMENT_STATUS_TOO_LARGE, READINESS_BLOCKED, REASON_TOO_LARGE)
-    if status in {"unsupported", "parse_error"} or reason == "workspace_file_type_unsupported":
+    if status == "parse_error" or reason == "workspace_file_unreadable":
+        return _state(DOCUMENT_STATUS_ERROR, READINESS_BLOCKED, REASON_PARSE_ERROR)
+    if status == "unsupported" or reason == "workspace_file_type_unsupported":
         return _state(DOCUMENT_STATUS_UNSUPPORTED, READINESS_BLOCKED, REASON_TYPE_UNSUPPORTED)
     if status == "ocr_required":
         if _is_pdf(file_item):
             return _state(DOCUMENT_STATUS_PDF_VISUAL_REQUIRED, READINESS_VISUAL, REASON_PDF_VISUAL_REQUIRED)
         return _state(DOCUMENT_STATUS_UNAVAILABLE, READINESS_BLOCKED, REASON_RUNTIME_UNAVAILABLE)
 
-    if _text(file_item.get("media_kind"), 40) == "image":
+    if _normalized_media_kind(file_item.get("media_kind")) == "image":
         return _state(DOCUMENT_STATUS_VISUAL_READY, READINESS_VISUAL, REASON_PDF_VISUAL_READY)
     if _is_pdf(file_item) and _safe_int(file_item.get("text_chars")) > 0:
         return _state(DOCUMENT_STATUS_PDF_TEXT, READINESS_READY, REASON_PDF_TEXT_READY)
@@ -231,13 +283,13 @@ def _state(document_status: str, readiness: str, reason_code: str) -> dict[str, 
 
 
 def _is_pdf(file_item: Mapping[str, Any]) -> bool:
-    mime_type = _text(file_item.get("mime_type"), 120).lower()
-    extension = _text(file_item.get("source_extension"), 24).lower()
+    mime_type = _normalized_mime_type(file_item.get("mime_type"))
+    extension = _normalized_source_extension(file_item.get("source_extension"))
     return mime_type == "application/pdf" or extension == ".pdf"
 
 
 def _document_ref(file_item: Mapping[str, Any]) -> str:
-    file_id = _text(file_item.get("id"), 120)
+    file_id = _safe_identifier(file_item.get("id")) or _hash12(file_item.get("id"))
     digest = _short_hash(file_item.get("sha256_12")) or _hash12(file_id)
     return f"workspace-file:{file_id[:8]}:{digest}"
 
@@ -259,6 +311,45 @@ def _safe_reason_code(value: Any, *, fallback: str = REASON_CONTENT_REDACTED) ->
     if _SAFE_REASON_RE.fullmatch(reason) and reason.startswith(_SAFE_REASON_PREFIXES):
         return reason
     return fallback
+
+
+def _safe_identifier(value: Any) -> str:
+    text = _text(value, 160)
+    if _SAFE_IDENTIFIER_RE.fullmatch(text):
+        return text
+    return ""
+
+
+def _normalized_content_kind(value: Any) -> str:
+    text = _text(value, 40).casefold()
+    return text if text in _ALLOWED_CONTENT_KINDS else UNKNOWN
+
+
+def _normalized_media_kind(value: Any) -> str:
+    text = _text(value, 40).casefold()
+    return text if text in _ALLOWED_MEDIA_KINDS else UNKNOWN
+
+
+def _normalized_mime_type(value: Any) -> str:
+    text = _text(value, 120).casefold()
+    return text if text in _ALLOWED_MIME_TYPES else UNKNOWN
+
+
+def _normalized_source_extension(value: Any) -> str:
+    text = _text(value, 24).casefold()
+    if text and not text.startswith("."):
+        text = f".{text}"
+    return text if text in _ALLOWED_SOURCE_EXTENSIONS else ""
+
+
+def _normalized_document_status(value: Any) -> str:
+    text = _text(value, 80)
+    return text if text in _ALLOWED_DOCUMENT_STATUSES else DOCUMENT_STATUS_ERROR
+
+
+def _normalized_readiness(value: Any) -> str:
+    text = _text(value, 80)
+    return text if text in _ALLOWED_READINESS else READINESS_BLOCKED
 
 
 def _display_name(file_item: Mapping[str, Any]) -> str:

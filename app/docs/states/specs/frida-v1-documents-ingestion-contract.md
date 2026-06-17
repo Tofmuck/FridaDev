@@ -294,6 +294,11 @@ Projections runtime:
 - `document_v1_technical`: projection content-free; refs redacted, hash court du
   nom, ids applicatifs, media type, taille, statuts et reason codes, sans nom de
   fichier brut, `storage_key`, chemin disque, URL DAV, XML, secret ni contenu;
+  cette projection est allowlistee par valeurs, pas seulement par noms de cles:
+  `content_kind`, `media_kind`, `mime_type`, `source_extension`,
+  `document_status`, `readiness` et `reason_code` doivent etre normalises
+  strictement, et toute valeur inconnue ou suspecte devient `unknown`, vide ou
+  redacted selon le champ;
 - `document_v1_usage`: projection de selection conversationnelle; lien explicite
   conversation -> document de dossier -> usage, sans stockage durable
   `active_document`, sans Biblio et sans Memory/RAG/Identity/Summary.
@@ -322,6 +327,9 @@ Regles de projection:
   `pdf_visual_required`;
 - une image devient `visual_ready`;
 - un document texte prepare devient `readable`;
+- un fichier en `parse_error` devient `error` avec
+  `folder_document_parse_error`, pour ne pas confondre fichier illisible ou
+  corrompu avec type non supporte;
 - un reason code mal forme ou inconnu sur une projection technique/usage est
   redacted.
 
