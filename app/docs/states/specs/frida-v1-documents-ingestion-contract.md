@@ -355,6 +355,10 @@ Decision technique Lot 3:
 
 - aucun modele produit parallele n'est cree;
 - `workspace_files` reste le registre local du document persistant;
+- `workspace_file_nextcloud_links` persiste uniquement le lien technique interne
+  `workspace_file` -> cible Nextcloud pour retrouver la cible distante exacte
+  sans re-sanitisation; cette table ne cree pas une deuxieme notion produit de
+  document;
 - le transport WebDAV fichier est isole dans
   `app/core/workspace_document_nextcloud_client.py`;
 - l'orchestration validation -> Nextcloud -> persistence locale ->
@@ -373,23 +377,37 @@ Regles runtime:
 - le nom cible du document est sanitise localement et limite avant ecriture;
 - extension absente, nom vide ou nom invalide refusent le depot;
 - conflit local de nom sanitise refuse le depot avant tout appel Nextcloud;
-- l'ecriture Nextcloud utilise `PUT` avec anti-ecrasement;
+- l'ecriture Nextcloud utilise `PUT` avec anti-ecrasement; seul un statut de
+  creation sure est accepte, et tout statut update-like est traite comme conflit
+  ou erreur redacted content-free;
 - conflit Nextcloud ou tentative d'overwrite refuse le depot;
 - la persistence locale `workspace_files` n'a lieu qu'apres succes Nextcloud;
-- si l'ecriture Nextcloud reussit mais que la persistence locale echoue, le
-  runtime tente une compensation `DELETE` strictement bornee au fichier cree
-  dans ce flux;
+- la persistence du lien Nextcloud a lieu juste apres la persistence locale du
+  `workspace_file`;
+- si l'ecriture Nextcloud reussit mais que la persistence locale ou la
+  persistence du lien echoue, le runtime tente une compensation `DELETE`
+  strictement bornee au fichier cree dans ce flux et nettoie l'artefact local
+  cree dans le meme flux si necessaire;
 - la compensation ne touche jamais un fichier historique ou utilisateur
   preexistant;
+- la suppression explicite d'un document Documents V1 lie utilise le lien
+  persiste pour supprimer la cible Nextcloud exacte avant le tombstone local;
+- si la suppression distante echoue, le fichier local actif n'est pas tombstone;
+- un fichier historique/local-only sans lien Nextcloud conserve le comportement
+  local existant;
 - la projection utilisateur peut exposer le `display_name`;
 - le payload technique et les preuves n'exposent que hash/ref court, statuts,
-  classes HTTP et reason codes.
+  classes HTTP et reason codes; le nom distant brut reste interne a la
+  persistance applicative et n'est jamais expose dans les logs, JSONL,
+  observabilite technique ou payloads techniques.
 
 Preuve Lot 3:
 
 - tests unitaires: `app/tests/unit/core/test_workspace_documents_ingestion.py`;
 - smoke live synthetique content-free:
   `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot3-live-ingestion-20260617T142304Z.jsonl`;
+- smoke correctif Lot 3.1 content-free:
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot3-1-link-delete-20260617T145211Z.jsonl`;
 - cleanup strict du fichier et du dossier synthetiques crees pendant le smoke.
 
 Limites restantes avant Lot 4+:
@@ -426,6 +444,11 @@ Catalogue initial obligatoire:
 - `folder_document_runtime_unavailable`;
 - `folder_document_nextcloud_error_redacted`;
 - `folder_document_local_persistence_failed`;
+- `folder_document_link_persistence_failed`;
+- `folder_document_link_missing`;
+- `folder_document_delete_ok`;
+- `folder_document_remote_delete_failed`;
+- `folder_document_local_delete_failed`;
 - `folder_document_remote_compensation_ok`;
 - `folder_document_remote_compensation_failed`;
 - `folder_document_content_redacted`;

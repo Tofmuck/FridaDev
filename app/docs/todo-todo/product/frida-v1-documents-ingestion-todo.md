@@ -241,6 +241,11 @@ Catalogue initial a appliquer dans les lots runtime:
 - `folder_document_runtime_unavailable`;
 - `folder_document_nextcloud_error_redacted`;
 - `folder_document_local_persistence_failed`;
+- `folder_document_link_persistence_failed`;
+- `folder_document_link_missing`;
+- `folder_document_delete_ok`;
+- `folder_document_remote_delete_failed`;
+- `folder_document_local_delete_failed`;
 - `folder_document_remote_compensation_ok`;
 - `folder_document_remote_compensation_failed`;
 - `folder_document_content_redacted`;
@@ -397,10 +402,19 @@ Preuve Lot 2:
 - [x] Gerer conflit de nom local et conflit Nextcloud sans overwrite.
 - [x] Deposer le nouveau document dans `/Frida/<dossier>/Documents` seulement
   apres validations locales et Nextcloud.
+- [x] Persister un lien technique strict `workspace_file` -> cible Nextcloud
+  interne pour retrouver la cible distante exacte sans re-sanitisation.
 - [x] Ne pas deplacer silencieusement de fichier existant.
 - [x] Ne pas supprimer la source locale sans decision explicite et preuve.
 - [x] Appliquer rollback/compensation si depot Nextcloud reussit puis persistence
-  locale echoue.
+  locale ou persistence du lien echoue.
+- [x] Supprimer un document Documents V1 lie en remote-first sur la cible exacte,
+  puis tombstone local; bloquer le tombstone local si la suppression distante
+  echoue.
+- [x] Conserver la suppression locale existante pour les fichiers historiques ou
+  local-only sans lien Nextcloud.
+- [x] Refuser comme conflit un `PUT` anti-ecrasement qui renvoie un statut
+  update-like au lieu d'une creation sure.
 - [x] Tester documents texte, PDF texte, PDF image, type refuse, conflit de nom
   et dossier non `linked`.
 - [x] Produire une preuve live synthetique content-free avec PUT dans
@@ -420,10 +434,15 @@ Preuve Lot 3:
 - runtime documents dedie:
   `app/core/workspace_document_nextcloud_client.py` et
   `app/core/workspace_document_nextcloud_runtime.py`;
+- persistence technique interne:
+  `app/core/workspace_file_nextcloud_links_store.py`;
 - branchement de la route existante `/api/workspace-folders/<id>/files`, sans
   route parallele Documents V1;
 - tests unitaires dedies:
   `app/tests/unit/core/test_workspace_documents_ingestion.py`;
+- correctif Lot 3.1: lien document Nextcloud persiste, suppression liee
+  remote-first et PUT anti-ecrasement strict prouves par
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot3-1-link-delete-20260617T145211Z.jsonl`;
 - smoke live synthetique content-free:
   `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot3-live-ingestion-20260617T142304Z.jsonl`;
 - cleanup strict du fichier et du dossier synthetiques crees pendant le smoke;

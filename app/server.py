@@ -1319,6 +1319,7 @@ def api_delete_workspace_folder_file(folder_id: str, file_id: str):
         file_id,
         workspace_folders_module=workspace_folders,
         workspace_files_module=workspace_files,
+        documents_nextcloud_runtime_module=workspace_document_nextcloud_runtime,
     )
     return jsonify(payload), status
 

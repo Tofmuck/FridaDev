@@ -207,6 +207,7 @@ def delete_workspace_file_response(
     *,
     workspace_folders_module: Any,
     workspace_files_module: Any,
+    documents_nextcloud_runtime_module: Any | None = None,
 ) -> Tuple[dict[str, Any], int]:
     normalized, folder, error = _resolve_existing_folder(folder_id, workspace_folders_module=workspace_folders_module)
     if error:
@@ -214,13 +215,52 @@ def delete_workspace_file_response(
     file_norm = workspace_files_module.normalize_workspace_file_id(file_id)
     if not file_norm:
         return {"ok": False, "error": "file_id invalide", "reason_code": REASON_FILE_MISSING}, 400
+    active_items = workspace_files_module.list_workspace_files(normalized)
+    if not any(str(item.get("id") or "") == file_norm for item in active_items or []):
+        return {"ok": False, "error": "fichier introuvable", "reason_code": REASON_FILE_MISSING}, 404
+    delete_plan = {"ok": True, "document_nextcloud": {}}
+    if documents_nextcloud_runtime_module is not None:
+        prepare_delete = getattr(
+            documents_nextcloud_runtime_module,
+            "prepare_workspace_document_delete_nextcloud_first",
+            None,
+        )
+        if callable(prepare_delete):
+            delete_plan = prepare_delete(
+                folder=folder,
+                file_id=file_norm,
+                workspace_files_module=workspace_files_module,
+            )
+            if not delete_plan.get("ok"):
+                reason_code = str(delete_plan.get("reason_code") or "folder_document_remote_delete_failed")
+                return {
+                    "ok": False,
+                    "error": _human_workspace_file_error(reason_code),
+                    "reason_code": reason_code,
+                    "document_nextcloud": delete_plan.get("document_nextcloud", {}),
+                }, int(delete_plan.get("status") or 502)
     deleted = workspace_files_module.delete_workspace_file(normalized, file_norm)
     if deleted is None:
-        return {"ok": False, "error": "fichier introuvable", "reason_code": REASON_FILE_MISSING}, 404
+        reason_code = "folder_document_local_delete_failed" if delete_plan.get("remote_delete_required") else REASON_FILE_MISSING
+        return {
+            "ok": False,
+            "error": _human_workspace_file_error(reason_code),
+            "reason_code": reason_code,
+            "document_nextcloud": delete_plan.get("document_nextcloud", {}),
+        }, 503 if delete_plan.get("remote_delete_required") else 404
+    if documents_nextcloud_runtime_module is not None and delete_plan.get("remote_delete_required"):
+        complete_delete = getattr(
+            documents_nextcloud_runtime_module,
+            "complete_workspace_document_delete",
+            None,
+        )
+        if callable(complete_delete):
+            complete_delete(file_id=file_norm, workspace_files_module=workspace_files_module)
     return {
         "ok": True,
         "workspace_folder_id": normalized,
         "file": workspace_folder_documents.apply_document_v1_projection(deleted, folder=folder),
+        "document_nextcloud": delete_plan.get("document_nextcloud", {}),
     }, 200
 
 
@@ -420,6 +460,10 @@ def _human_workspace_file_error(reason_code: str) -> str:
         workspace_document_nextcloud_client.REASON_NAME_INVALID: "nom de document invalide",
         workspace_document_nextcloud_client.REASON_NAME_CONFLICT: "nom de document deja utilise",
         workspace_document_nextcloud_client.REASON_LOCAL_PERSISTENCE_FAILED: "stockage local document indisponible",
+        workspace_document_nextcloud_client.REASON_LINK_PERSISTENCE_FAILED: "liaison document indisponible",
+        workspace_document_nextcloud_client.REASON_LINK_MISSING: "liaison document introuvable",
+        workspace_document_nextcloud_client.REASON_REMOTE_DELETE_FAILED: "suppression Nextcloud indisponible",
+        workspace_document_nextcloud_client.REASON_LOCAL_DELETE_FAILED: "suppression locale indisponible",
         workspace_document_nextcloud_client.REASON_NEXTCLOUD_ERROR_REDACTED: "erreur Nextcloud document",
     }
     return labels.get(str(reason_code or ""), "fichier non stockable")

@@ -121,6 +121,7 @@ class _FakeWorkspaceFiles:
     def __init__(self):
         self.files = {}
         self.file_bytes = {}
+        self.links = {}
         self.deleted_folder_ids = []
         self.folder_delete_summary = None
         self.events = []
@@ -137,9 +138,10 @@ class _FakeWorkspaceFiles:
     def list_workspace_files(self, folder_id):
         return [item for item in self.files.get(folder_id, []) if not item.get("deleted_at")]
 
-    def store_uploaded_file(self, folder_id, *, original_filename, content, metadata):
+    def store_uploaded_file(self, folder_id, *, original_filename, content, metadata, file_id=None):
+        normalized_file_id = file_id or "99999999-9999-4999-8999-999999999999"
         item = {
-            "id": "99999999-9999-4999-8999-999999999999",
+            "id": normalized_file_id,
             "workspace_folder_id": folder_id,
             "display_name": metadata.get("display_name") or original_filename,
             "original_filename": original_filename,
@@ -163,6 +165,32 @@ class _FakeWorkspaceFiles:
         self.files.setdefault(folder_id, []).append(item)
         self.file_bytes[item["id"]] = bytes(content)
         return item
+
+    def get_nextcloud_link(self, file_id):
+        link = self.links.get(file_id)
+        return dict(link) if link else None
+
+    def upsert_nextcloud_link(self, **fields):
+        link = {
+            "workspace_file_id": fields["workspace_file_id"],
+            "workspace_folder_id": fields["workspace_folder_id"],
+            "nextcloud_sync_state": fields["nextcloud_sync_state"],
+            "nextcloud_document_ref": fields["nextcloud_document_ref"],
+            "nextcloud_name_hash": fields["nextcloud_name_hash"],
+            "nextcloud_target_name": fields["nextcloud_target_name"],
+            "last_sync_reason_code": fields["last_sync_reason_code"],
+            "last_sync_operation": fields["last_sync_operation"],
+        }
+        self.links[fields["workspace_file_id"]] = link
+        return dict(link)
+
+    def mark_nextcloud_link_deleted(self, file_id, *, reason_code):
+        if file_id not in self.links:
+            return None
+        self.links[file_id]["nextcloud_sync_state"] = "deleted"
+        self.links[file_id]["last_sync_reason_code"] = reason_code
+        self.links[file_id]["last_sync_operation"] = "delete"
+        return dict(self.links[file_id])
 
     def delete_workspace_file(self, folder_id, file_id):
         for item in self.files.get(folder_id, []):
@@ -364,6 +392,7 @@ class _FakeWorkspaceFileSelections:
 class _FakeWorkspaceDocumentNextcloudRuntime:
     def __init__(self):
         self.calls = []
+        self.delete_calls = []
 
     def store_workspace_document_nextcloud_first(
         self,
@@ -388,6 +417,16 @@ class _FakeWorkspaceDocumentNextcloudRuntime:
             content=content,
             metadata=metadata,
         )
+        workspace_files_module.upsert_nextcloud_link(
+            workspace_file_id=stored["id"],
+            workspace_folder_id=folder.get("id"),
+            nextcloud_sync_state="linked",
+            nextcloud_document_ref="workspace-file:99999999:abc123def456",
+            nextcloud_name_hash="abc123def456",
+            nextcloud_target_name="note.txt",
+            last_sync_reason_code="folder_document_upload_ok",
+            last_sync_operation="upload",
+        )
         return {
             "ok": True,
             "file": stored,
@@ -399,6 +438,53 @@ class _FakeWorkspaceDocumentNextcloudRuntime:
                 "document_name_hash": "abc123def456",
                 "http_status_class": "2xx",
             },
+        }
+
+    def prepare_workspace_document_delete_nextcloud_first(
+        self,
+        *,
+        folder,
+        file_id,
+        workspace_files_module,
+    ):
+        link = workspace_files_module.get_nextcloud_link(file_id)
+        if not link:
+            return {
+                "ok": True,
+                "remote_delete_required": False,
+                "reason_code": "folder_document_delete_ok",
+                "status": 200,
+                "document_nextcloud": {"delete_state": "local_only", "reason_code": "folder_document_delete_ok"},
+            }
+        self.delete_calls.append(
+            {
+                "folder_id": folder.get("id"),
+                "file_id": file_id,
+                "document_name_hash": link.get("nextcloud_name_hash"),
+            }
+        )
+        return {
+            "ok": True,
+            "remote_delete_required": True,
+            "reason_code": "folder_document_delete_ok",
+            "status": 200,
+            "document_nextcloud": {
+                "delete_state": "remote_deleted",
+                "reason_code": "folder_document_delete_ok",
+                "document_name_hash": link.get("nextcloud_name_hash"),
+                "http_status_class": "2xx",
+            },
+        }
+
+    def complete_workspace_document_delete(self, *, file_id, workspace_files_module):
+        return {
+            "ok": bool(
+                workspace_files_module.mark_nextcloud_link_deleted(
+                    file_id,
+                    reason_code="folder_document_delete_ok",
+                )
+            ),
+            "reason_code": "folder_document_delete_ok",
         }
 
 
@@ -621,6 +707,10 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("storage_key", encoded_technical)
         self.assertEqual(payload["document_nextcloud"]["reason_code"], "folder_document_upload_ok")
         self.assertEqual(self.fake_workspace_document_nextcloud_runtime.calls[0]["folder_id"], FOLDER_ID)
+        self.assertEqual(
+            self.fake_workspace_files.get_nextcloud_link(payload["file"]["id"])["nextcloud_sync_state"],
+            "linked",
+        )
 
         listed = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/files")
         self.assertEqual(listed.status_code, 200)
@@ -632,6 +722,12 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         deleted = self.client.delete(f"/api/workspace-folders/{FOLDER_ID}/files/{payload['file']['id']}")
         self.assertEqual(deleted.status_code, 200)
         self.assertEqual(deleted.get_json()["file"]["disk_deleted"], True)
+        self.assertEqual(len(self.fake_workspace_document_nextcloud_runtime.delete_calls), 1)
+        self.assertEqual(
+            self.fake_workspace_files.get_nextcloud_link(payload["file"]["id"])["nextcloud_sync_state"],
+            "deleted",
+        )
+        self.assertNotIn("note.txt", str(deleted.get_json().get("document_nextcloud", {})))
 
         listed_after = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/files")
         self.assertEqual(listed_after.status_code, 200)

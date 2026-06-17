@@ -24,6 +24,11 @@ REASON_UPLOAD_OK = "folder_document_upload_ok"
 REASON_RUNTIME_UNAVAILABLE = "folder_document_runtime_unavailable"
 REASON_NEXTCLOUD_ERROR_REDACTED = "folder_document_nextcloud_error_redacted"
 REASON_LOCAL_PERSISTENCE_FAILED = "folder_document_local_persistence_failed"
+REASON_LINK_PERSISTENCE_FAILED = "folder_document_link_persistence_failed"
+REASON_LINK_MISSING = "folder_document_link_missing"
+REASON_DELETE_OK = "folder_document_delete_ok"
+REASON_REMOTE_DELETE_FAILED = "folder_document_remote_delete_failed"
+REASON_LOCAL_DELETE_FAILED = "folder_document_local_delete_failed"
 REASON_REMOTE_COMPENSATION_OK = "folder_document_remote_compensation_ok"
 REASON_REMOTE_COMPENSATION_FAILED = "folder_document_remote_compensation_failed"
 
@@ -101,7 +106,19 @@ class NextcloudDocumentClient:
                 "Content-Type": _safe_media_type(media_type),
             },
         )
-        if status in {200, 201, 204}:
+        if status == 201:
+            return NextcloudDocumentResponse(True, REASON_UPLOAD_OK, status)
+        if status in {200, 204}:
+            raise NextcloudDocumentClientError(REASON_NAME_CONFLICT, http_status=status)
+        raise NextcloudDocumentClientError(_document_write_reason(status), http_status=status)
+
+    def document_status(self, folder_name: str, document_name: str) -> NextcloudDocumentResponse:
+        status = self._request_status(
+            "PROPFIND",
+            self._url(folder_name, DOCUMENTS_SUBFOLDER, document_name),
+            headers={"Depth": "0"},
+        )
+        if status == 207:
             return NextcloudDocumentResponse(True, REASON_UPLOAD_OK, status)
         raise NextcloudDocumentClientError(_document_write_reason(status), http_status=status)
 
@@ -117,9 +134,9 @@ class NextcloudDocumentClient:
             self._url(folder_name, DOCUMENTS_SUBFOLDER, document_name),
         )
         if status in {200, 202, 204} or (missing_ok and status == 404):
-            return NextcloudDocumentResponse(True, REASON_REMOTE_COMPENSATION_OK, status)
+            return NextcloudDocumentResponse(True, REASON_DELETE_OK, status)
         raise NextcloudDocumentClientError(
-            REASON_REMOTE_COMPENSATION_FAILED,
+            REASON_REMOTE_DELETE_FAILED,
             http_status=status,
         )
 
