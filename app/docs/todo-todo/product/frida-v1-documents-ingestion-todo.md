@@ -47,7 +47,7 @@ Regles obligatoires:
   WebDAV valide avant depot/rangement;
 - une cible `Documents` absente, non-collection, inaccessible ou ambigue doit
   produire une erreur content-free;
-- les fichiers workspace existants ne sont pas migres automatiquement;
+- les fichiers workspace existants ne sont pas copies/ranges automatiquement;
 - aucun chemin DAV brut, URL DAV, XML brut, `storage_key`, payload Nextcloud,
   secret, token, cookie, `app-password`, nom sensible ou contenu fichier ne doit
   apparaitre dans les logs, JSONL, dashboard ou preuves.
@@ -125,7 +125,7 @@ Il doit seulement rester compatible avec ces futurs lots.
 - Pas de secret dans le repo, les docs, logs, JSONL, dashboard ou reponses.
 - Pas de lecture de contenu utilisateur pour une preuve d'infrastructure.
 - Pas de listing Nextcloud de contenu comme preuve generale.
-- Pas de migration silencieuse des fichiers existants.
+- Pas de copie/rangement silencieux des fichiers existants.
 - Pas de suppression source silencieuse apres copie.
 - Pas de route ou modele parallele qui contourne `workspace_folders`.
 - Pas de confusion entre document persistant de dossier et document actif de
@@ -152,7 +152,7 @@ Il doit seulement rester compatible avec ces futurs lots.
   `catalogue_document` ou `passage documentaire`.
 - Les fichiers workspace actifs deja rattaches aux dossiers Frida existants
   doivent etre traites dans Documents V1.
-- Pas de migration silencieuse des fichiers existants.
+- Pas de copie/rangement silencieux des fichiers existants.
 - Pas de suppression source silencieuse.
 - Pas d'ecrasement d'une cible Nextcloud existante.
 - Si l'inventaire confirme des fichiers workspace actifs rattaches a un dossier
@@ -160,7 +160,10 @@ Il doit seulement rester compatible avec ces futurs lots.
   `/Frida/<dossier>/Documents` doit etre livre.
 - Si l'inventaire prouve `0` fichier actif a traiter, le lot fichiers existants
   peut se fermer par preuve content-free `0 a traiter`; il ne peut pas se fermer
-  par choix abstrait de non-migration.
+  par choix abstrait de non-traitement.
+- Dans cette TODO, le mot migration est refuse comme raccourci ambigu: s'il
+  apparait, il signifie uniquement copie/rangement controle non destructif,
+  jamais migration automatique, silencieuse ou destructrice.
 - Le contrat `active_document` existant distingue deja deux chemins pour les PDF
   sans texte:
   - OCR borne via Stirling, qui peut produire un texte exploitable;
@@ -183,10 +186,19 @@ un micro-lot docs/spec explicite avant tout patch runtime concerne.
   - options a trancher: depot depuis UI dossier, depuis chat avec dossier
     courant, ou autre surface existante documentee;
   - bloque: Lot 3.
+- Surface utilisateur de liste:
+  - options a trancher: panneau dossier, liste dans chat avec dossier courant,
+    surface fichiers existante, ou autre surface documentee;
+  - bloque: Lot 4.
 - Visibilite des noms de fichiers:
   - options a trancher: noms visibles en UI produit, refs redacted en preuves,
     ou regle hybride stricte;
   - bloque: Lots 4, 8 et tout dashboard/read-model utilisateur.
+- Lecture et usage conversationnel:
+  - options a trancher: limites taille/pages/tokens, preparation de lecture vs
+    injection conversationnelle, et maniere dont une conversation utilise un
+    document de dossier;
+  - bloque: Lot 5 et toute preuve Lot Z portant sur lecture/preparation.
 - Strategie PDF image Documents V1:
   - options a trancher: OCR seulement, visuel seulement, OCR puis visuel en
     fallback, ou strategie differente clairement documentee;
@@ -197,6 +209,11 @@ un micro-lot docs/spec explicite avant tout patch runtime concerne.
   - restent a trancher avant runtime: copie seule, copie puis verification,
     conservation de source, rollback exact, gestion de collision;
   - bloque: Lot 7 runtime de copie/rangement.
+- Catalogue reason codes Documents V1:
+  - options a trancher: catalogue final minimal, noms des codes, codes
+    partages avec `active_document`, codes specifiques Nextcloud et codes de
+    redaction;
+  - bloque: Lot 8 et Lot Z.
 - Conditions exactes de cloture Documents V1:
   - doivent etre gravees avant Lot Z: smokes minimum, formats minimum,
     criteres PDF image, preuves anti-fuite et limites assumables;
@@ -248,23 +265,23 @@ Sortie attendue:
 
 ### Lot 1 - Contrat produit Documents V1
 
-- [ ] Definir le document source rattache a un `workspace_folder`.
-- [ ] Definir le prerequis strict: dossier Frida `linked`.
-- [ ] Definir la cible normative `/Frida/<dossier>/Documents`.
-- [ ] Definir la relation document -> dossier -> conversation -> usage.
-- [ ] Definir ce qu'un document de dossier peut devenir dans une conversation
+- [ ] Graver le document source rattache a un `workspace_folder`.
+- [ ] Graver le prerequis strict: dossier Frida `linked`.
+- [ ] Graver la cible normative `/Frida/<dossier>/Documents`.
+- [ ] Graver la relation document -> dossier -> conversation -> usage.
+- [ ] Graver ce qu'un document de dossier peut devenir dans une conversation
   sans devenir automatiquement `active_document`.
-- [ ] Definir les etats produit minimaux: disponible, en preparation, lisible,
+- [ ] Graver les etats produit minimaux: disponible, en preparation, lisible,
   non injecte, PDF sans texte, image/fallback requis, erreur, supprime ou
   indisponible.
-- [ ] Definir les reason codes content-free initiaux.
-- [ ] Definir les messages utilisateur sobres: document disponible, preparation
+- [ ] Graver les reason codes content-free initiaux.
+- [ ] Graver les messages utilisateur sobres: document disponible, preparation
   en cours, document trop lourd, PDF sans texte, fallback image/OCR impossible,
   dossier non synchronise, cible Documents indisponible.
-- [ ] Definir la frontiere stricte avec `active_document`.
-- [ ] Definir la frontiere stricte avec Biblio / Catalogue.
-- [ ] Definir la frontiere stricte avec Notes, Exports et Images.
-- [ ] Definir les preuves attendues pour fermer le contrat.
+- [ ] Graver la frontiere stricte avec `active_document`.
+- [ ] Graver la frontiere stricte avec Biblio / Catalogue.
+- [ ] Graver la frontiere stricte avec Notes, Exports et Images.
+- [ ] Graver les preuves attendues pour fermer le contrat.
 - [ ] Trancher ou bloquer explicitement chaque decision de la section
   "Decisions ouvertes avant runtime".
 
@@ -295,13 +312,13 @@ Reason codes candidats a stabiliser:
 - [ ] Relier document, dossier, conversation et usage sans creer de Biblio.
 - [ ] Relier un usage conversationnel a un document de dossier sans polluer
   Memory/RAG/Identity/Summary.
-- [ ] Definir les champs content-free minimaux: id applicatif, folder id,
+- [ ] Appliquer les champs content-free minimaux: id applicatif, folder id,
   ref redacted, hash court du nom si utile, media type, taille, statut,
   timestamps, reason code.
-- [ ] Definir les statuts: disponible, en preparation, lisible, non lisible,
+- [ ] Appliquer les statuts: disponible, en preparation, lisible, non lisible,
   PDF texte, PDF image/fallback, erreur, absent, deleted.
-- [ ] Definir les projections API/UI sans nom sensible si une ref courte suffit.
-- [ ] Definir l'observabilite content-free du read-model.
+- [ ] Appliquer les projections API/UI sans nom sensible si une ref courte suffit.
+- [ ] Appliquer l'observabilite content-free du read-model.
 - [ ] Tester qu'aucun `storage_key`, chemin disque, URL DAV, XML, secret ou
   contenu brut ne sort dans le payload.
 
@@ -328,14 +345,14 @@ Point de vigilance:
   apres validations locales et Nextcloud.
 - [ ] Ne pas deplacer silencieusement de fichier existant.
 - [ ] Ne pas supprimer la source locale sans decision explicite et preuve.
-- [ ] Definir rollback/compensation si depot Nextcloud reussit puis persistence
+- [ ] Appliquer rollback/compensation si depot Nextcloud reussit puis persistence
   locale echoue.
 - [ ] Tester documents texte, PDF texte, PDF image, type refuse, conflit de nom
   et dossier non `linked`.
 
 Interdits Lot 3:
 
-- migration de fichiers historiques;
+- copie/rangement de fichiers historiques hors Lot 7;
 - Biblio;
 - Notes;
 - Exports;
@@ -344,7 +361,9 @@ Interdits Lot 3:
 
 ### Lot 4 - Liste des documents d'un dossier
 
-- [ ] Definir la surface utilisateur de liste des documents d'un dossier.
+- [ ] Appliquer la decision amont sur la surface utilisateur de liste.
+- [ ] Refuser le lot si la decision "Surface utilisateur de liste" n'est pas
+  tranchee.
 - [ ] Lister les documents disponibles sans fuite de contenu.
 - [ ] Ne pas faire de listing Nextcloud non borne comme preuve operateur.
 - [ ] Appliquer la decision amont sur la visibilite des noms de fichiers.
@@ -359,15 +378,19 @@ Interdits Lot 3:
 
 ### Lot 5 - Lecture / preparation de lecture
 
+- [ ] Refuser le lot si la decision "Lecture et usage conversationnel" n'est
+  pas tranchee.
 - [ ] Reutiliser l'extracteur texte existant quand c'est compatible.
 - [ ] Supporter document texte simple.
 - [ ] Supporter PDF textuel.
 - [ ] Supporter DOCX, ODT, Markdown et TXT si deja supportes par les briques
   existantes ou documenter les manques.
-- [ ] Definir limites taille/pages/tokens avant lecture.
+- [ ] Appliquer les limites taille/pages/tokens tranchees avant lecture.
 - [ ] Ne jamais tronquer silencieusement un document en pretendant l'avoir lu.
-- [ ] Definir preparation de lecture distincte de l'injection conversationnelle.
-- [ ] Definir comment une conversation utilise un document de dossier.
+- [ ] Appliquer la frontiere tranchee entre preparation de lecture et injection
+  conversationnelle.
+- [ ] Appliquer le mode d'usage conversationnel tranche pour un document de
+  dossier.
 - [ ] Ne pas creer d'index RAG global ni de passage Biblio.
 - [ ] Ne pas alimenter Memory, Identity ou Summary avec le contenu document.
 - [ ] Donner une reponse utilisateur honnete si le document est trop gros,
@@ -407,7 +430,7 @@ Interdits Lot 3:
   preuve content-free `0 a traiter`.
 - [ ] Refuser le runtime de copie si la decision "Politique operationnelle des
   fichiers existants" n'est pas tranchee.
-- [ ] Interdire toute migration automatique.
+- [ ] Interdire toute copie/rangement automatique.
 - [ ] Travailler dossier par dossier.
 - [ ] Conserver la source tant que preuve, verification et rollback ne sont pas
   actees.
@@ -418,7 +441,9 @@ Interdits Lot 3:
 
 ### Lot 8 - Observabilite / smokes live
 
-- [ ] Definir le catalogue final des reason codes Documents V1.
+- [ ] Refuser le lot si la decision "Catalogue reason codes Documents V1" n'est
+  pas tranchee.
+- [ ] Appliquer le catalogue final des reason codes Documents V1.
 - [ ] Ajouter ou consolider les events content-free: depot, liste, preparation,
   lecture, PDF image detecte, fallback, conflit, erreur.
 - [ ] Exposer compteurs et statuts, pas contenu.
@@ -457,7 +482,7 @@ Artefacts attendus:
   deux chemins PDF.
 - [ ] Prouver qu'un dossier non `linked` bloque les ecritures.
 - [ ] Prouver absence de confusion avec Biblio, Notes, Exports et Images.
-- [ ] Prouver absence de migration silencieuse des fichiers existants.
+- [ ] Prouver absence de copie/rangement silencieux des fichiers existants.
 - [ ] Prouver absence de fuite de contenu, nom sensible, chemin DAV, URL DAV,
   XML brut, `storage_key`, token, cookie, `app-password` et secret.
 - [ ] Documenter limites V1 et lots suivants.
@@ -468,7 +493,7 @@ Artefacts attendus:
 - Confondre documents actifs de conversation et documents persistants de
   dossier.
 - Confondre Documents et Biblio / Catalogue.
-- Migrer silencieusement les fichiers existants.
+- Copier/ranger silencieusement les fichiers existants.
 - Faire fuiter noms de fichiers ou contenu dans logs/preuves.
 - Avoir deux comportements differents entre PDF upload direct et PDF depuis
   Nextcloud.
@@ -487,7 +512,7 @@ Artefacts attendus:
 - Aucun Sauron.
 - Aucun secret.
 - Aucun Docker/rebuild.
-- Aucune migration fichier.
+- Aucune copie/rangement fichier.
 - Aucune creation de document, note, export ou image.
 - Aucun lancement Biblio.
 - Aucun changement de route/API/UI.
