@@ -278,7 +278,10 @@ Interdits partout hors surface utilisateur explicite:
 ## 12. Read-model local livre au Lot 2
 
 Le read-model local Documents V1 est livre par
-`app/core/workspace_folder_documents.py`.
+`app/core/workspace_folder_documents.py`. La projection d'usage conversationnel
+`document_v1_usage` est isolee dans
+`app/core/workspace_folder_document_usage.py` depuis le micro-correctif
+d'hygiene post-Lot 5.
 
 Decision technique Lot 2:
 

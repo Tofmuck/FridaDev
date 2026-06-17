@@ -12,6 +12,8 @@ import re
 import uuid
 from typing import Any, Mapping
 
+from .workspace_folder_document_usage import build_usage_projection
+
 
 DOCUMENT_STATUS_AVAILABLE = "available"
 DOCUMENT_STATUS_PREPARING = "preparing"
@@ -252,55 +254,6 @@ def build_technical_projection(
         "nextcloud_operation": _normalized_link_operation(link_state["last_sync_operation"]),
     }
     return _content_free_projection(payload)
-
-
-def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
-    selected = bool(selection.get("selected"))
-    selection_status = _text(selection.get("selection_status"), 80) or "unknown"
-    reason = _safe_reason_code(selection.get("reason_code"), fallback="")
-    last_excluded_reason = _safe_reason_code(selection.get("last_excluded_reason_code"), fallback="")
-    usage_status = DOCUMENT_STATUS_NOT_INJECTED
-    readiness = READINESS_BLOCKED
-    usage_reason = reason or REASON_CONTENT_REDACTED
-    if selected and selection_status == "selected":
-        usage_status = "selected"
-        readiness = READINESS_PENDING
-        usage_reason = REASON_SELECTED
-    if selected and _text(selection.get("last_injected_turn_id"), 160):
-        usage_status = DOCUMENT_STATUS_READABLE
-        readiness = READINESS_READY
-        usage_reason = REASON_TEXT_READY
-    elif last_excluded_reason:
-        usage_reason = last_excluded_reason
-        readiness = READINESS_BLOCKED
-        if last_excluded_reason == REASON_PDF_VISUAL_REQUIRED:
-            usage_status = DOCUMENT_STATUS_PDF_VISUAL_REQUIRED
-            readiness = READINESS_VISUAL
-        elif last_excluded_reason in {"workspace_file_too_large", REASON_TOO_LARGE}:
-            usage_status = DOCUMENT_STATUS_TOO_LARGE
-        elif last_excluded_reason in {
-            "workspace_file_missing",
-            "workspace_file_deleted",
-            "workspace_file_disk_missing",
-            REASON_RUNTIME_UNAVAILABLE,
-        }:
-            usage_status = DOCUMENT_STATUS_UNAVAILABLE
-        elif last_excluded_reason in {"workspace_file_type_unsupported", REASON_TYPE_UNSUPPORTED}:
-            usage_status = DOCUMENT_STATUS_UNSUPPORTED
-    return {
-        "source": "workspace_file_selection",
-        "conversation_id": _text(selection.get("conversation_id"), 120),
-        "workspace_file_id": _text(selection.get("workspace_file_id"), 120),
-        "workspace_folder_id": _text(selection.get("workspace_folder_id"), 120),
-        "selected": selected,
-        "usage_status": usage_status,
-        "readiness": readiness,
-        "selection_status": selection_status,
-        "reason_code": usage_reason,
-        "last_injected_turn_id": _text(selection.get("last_injected_turn_id"), 160),
-        "last_excluded_turn_id": _text(selection.get("last_excluded_turn_id"), 160),
-        "last_excluded_reason_code": last_excluded_reason,
-    }
 
 
 def document_state(
