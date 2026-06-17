@@ -17,6 +17,7 @@ from core import chat_service
 from core import workspace_file_selection_prompt
 from core import workspace_file_selections_store
 from core import workspace_files_store
+from core import workspace_folder_documents
 from core import workspace_folders_store
 from core import workspace_folder_nextcloud_client
 from core import workspace_folder_nextcloud_links_store
@@ -2011,6 +2012,125 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("storage_key", serialized)
         self.assertNotIn("internal_path", serialized)
         self.assertNotIn("sha256", serialized)
+
+    def test_documents_v1_user_projection_exposes_display_name_but_technical_projection_redacts_it(self) -> None:
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        file_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+        item = workspace_files_store.serialize_workspace_file_row(
+            {
+                "id": file_id,
+                "workspace_folder_id": folder_id,
+                "display_name": "  Projet Tulu document.txt ",
+                "original_filename": "../Projet Tulu document.txt",
+                "storage_key": f"{folder_id}/{file_id}.txt",
+                "content_kind": "document",
+                "media_kind": "text",
+                "mime_type": "text/plain",
+                "source_extension": ".txt",
+                "byte_size": 12,
+                "sha256_12": "abc123def456",
+                "text_chars": 12,
+                "text_sha256_12": "def456abc123",
+                "status": "active",
+                "reason_code": "",
+            }
+        )
+        projected = workspace_folder_documents.apply_document_v1_projection(
+            item,
+            folder={"id": folder_id, "nextcloud_sync_state": "linked"},
+        )
+
+        user = projected["document_v1_user"]
+        technical = projected["document_v1_technical"]
+        self.assertEqual(user["display_name"], "Projet Tulu document.txt")
+        self.assertEqual(user["document_status"], "readable")
+        self.assertEqual(user["reason_code"], "folder_document_text_ready")
+        self.assertEqual(technical["document_status"], "readable")
+        self.assertEqual(technical["reason_code"], "folder_document_text_ready")
+        self.assertIn("name_hash", technical)
+        encoded_technical = str(technical)
+        self.assertNotIn("Projet Tulu", encoded_technical)
+        self.assertNotIn("display_name", encoded_technical)
+        self.assertNotIn("original_filename", encoded_technical)
+        self.assertNotIn("storage_key", encoded_technical)
+        self.assertNotIn("remote.php", encoded_technical)
+        self.assertNotIn("Authorization", encoded_technical)
+        self.assertNotIn("Cookie", encoded_technical)
+        self.assertNotIn("document.txt", encoded_technical)
+
+    def test_documents_v1_projection_marks_non_linked_folder_unavailable_content_free(self) -> None:
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        item = workspace_files_store.serialize_workspace_file_row(
+            {
+                "id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                "workspace_folder_id": folder_id,
+                "display_name": "note.txt",
+                "content_kind": "document",
+                "media_kind": "text",
+                "mime_type": "text/plain",
+                "source_extension": ".txt",
+                "byte_size": 12,
+                "text_chars": 12,
+                "status": "active",
+            }
+        )
+
+        projected = workspace_folder_documents.apply_document_v1_projection(
+            item,
+            folder={"id": folder_id, "nextcloud_sync_state": "sync_error"},
+        )
+
+        self.assertEqual(projected["document_v1_status"], "unavailable")
+        self.assertEqual(projected["document_v1_readiness"], "blocked")
+        self.assertEqual(projected["document_v1_reason_code"], "folder_document_folder_not_linked")
+        self.assertEqual(projected["document_v1_technical"]["reason_code"], "folder_document_folder_not_linked")
+
+    def test_documents_v1_usage_projection_links_conversation_without_active_document_or_biblio(self) -> None:
+        selection = {
+            "conversation_id": "11111111-1111-4111-8111-111111111111",
+            "workspace_file_id": "33333333-3333-4333-8333-333333333333",
+            "workspace_folder_id": "22222222-2222-4222-8222-222222222222",
+            "selected": True,
+            "selection_status": "selected",
+            "file": {
+                "id": "33333333-3333-4333-8333-333333333333",
+                "workspace_folder_id": "22222222-2222-4222-8222-222222222222",
+                "display_name": "note.txt",
+                "content_kind": "document",
+                "media_kind": "text",
+                "mime_type": "text/plain",
+                "source_extension": ".txt",
+                "byte_size": 7,
+                "text_chars": 7,
+                "status": "active",
+            },
+        }
+
+        projected = workspace_folder_documents.apply_selection_document_v1_projection(selection)
+
+        self.assertEqual(projected["document_v1_usage"]["source"], "workspace_file_selection")
+        self.assertEqual(projected["document_v1_usage"]["usage_status"], "selected")
+        self.assertEqual(projected["document_v1_usage"]["reason_code"], "folder_document_selected")
+        encoded = str(projected)
+        self.assertNotIn("active_document", encoded)
+        self.assertNotIn("library_document", encoded)
+        self.assertNotIn("catalogue_document", encoded)
+        self.assertNotIn("passage documentaire", encoded)
+
+    def test_documents_v1_usage_projection_redacts_unknown_reason_code(self) -> None:
+        projected = workspace_folder_documents.apply_selection_document_v1_projection(
+            {
+                "conversation_id": "11111111-1111-4111-8111-111111111111",
+                "workspace_file_id": "33333333-3333-4333-8333-333333333333",
+                "workspace_folder_id": "22222222-2222-4222-8222-222222222222",
+                "selected": False,
+                "selection_status": "stale",
+                "reason_code": "/Frida/Projet-Tulu/document.txt",
+            }
+        )
+
+        self.assertEqual(projected["document_v1_usage"]["reason_code"], "folder_document_content_redacted")
+        self.assertNotIn("/Frida", str(projected["document_v1_usage"]))
 
     def test_workspace_file_bytes_are_written_under_folder_prefix_and_removed_physically(self) -> None:
         folder_id = "11111111-2222-4333-8444-555555555555"

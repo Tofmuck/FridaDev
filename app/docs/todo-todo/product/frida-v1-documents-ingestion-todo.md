@@ -1,6 +1,6 @@
 # Frida V1 - Documents sources / ingestion / lecture / PDF fallback - TODO
 
-Statut: Lot 1 contrat produit livre; prete pour Lot 2 modele local/read-model
+Statut: Lot 2 modele local/read-model livre; prete pour Lot 3 ingestion/rangement
 Date: 2026-06-17
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -330,24 +330,24 @@ Preuve Lot 0:
 
 ### Lot 2 - Modele local / read-model
 
-- [ ] Appliquer le contrat Lot 1: `workspace_files` devient le registre /
+- [x] Appliquer le contrat Lot 1: `workspace_files` devient le registre /
   read-model applicatif des documents persistants de dossier.
-- [ ] Relier document, dossier, conversation et usage sans creer de Biblio.
-- [ ] Relier un usage conversationnel a un document de dossier sans polluer
+- [x] Relier document, dossier, conversation et usage sans creer de Biblio.
+- [x] Relier un usage conversationnel a un document de dossier sans polluer
   Memory/RAG/Identity/Summary.
-- [ ] Appliquer les champs content-free minimaux: id applicatif, folder id,
+- [x] Appliquer les champs content-free minimaux: id applicatif, folder id,
   ref redacted, hash court du nom si utile, media type, taille, statut,
   timestamps, reason code.
-- [ ] Appliquer les statuts: disponible, en preparation, lisible, non lisible,
+- [x] Appliquer les statuts: disponible, en preparation, lisible, non lisible,
   PDF texte, PDF image/fallback, erreur, absent, deleted.
-- [ ] Separer explicitement projection utilisateur et projection technique.
-- [ ] Projection utilisateur: exposer le `display_name` / nom de fichier, type,
+- [x] Separer explicitement projection utilisateur et projection technique.
+- [x] Projection utilisateur: exposer le `display_name` / nom de fichier, type,
   taille, date, statut et readiness quand c'est utile a la liste documentaire.
-- [ ] Projection technique, logs, JSONL et observabilite: exposer seulement refs
+- [x] Projection technique, logs, JSONL et observabilite: exposer seulement refs
   redacted, hashes courts, compteurs, statuts et reason codes, jamais le nom de
   fichier brut.
-- [ ] Appliquer l'observabilite content-free du read-model.
-- [ ] Tester qu'aucun `storage_key`, chemin disque, URL DAV, XML, secret ou
+- [x] Appliquer l'observabilite content-free du read-model.
+- [x] Tester qu'aucun `storage_key`, chemin disque, URL DAV, XML, secret ou
   contenu brut ne sort dans le payload.
 
 Point de vigilance:
@@ -355,6 +355,18 @@ Point de vigilance:
 - le document persistant peut etre visible dans une UI produit; les logs et
   preuves ne doivent pas pour autant reprendre son nom brut si ce n'est pas
   indispensable.
+
+Preuve Lot 2:
+
+- module local derive `app/core/workspace_folder_documents.py`;
+- projections `document_v1_user`, `document_v1_technical` et
+  `document_v1_usage`;
+- aucune migration DB;
+- aucun Nextcloud/WebDAV live;
+- aucune copie/rangement/suppression de fichier utilisateur;
+- tests unitaires et serveur couvrant projection utilisateur, projection
+  technique redacted, dossier non `linked`, usage conversationnel et absence de
+  confusion `active_document` / Biblio.
 
 ### Lot 3 - Ingestion / rangement nouveaux documents
 
@@ -523,14 +535,15 @@ Artefacts attendus:
 - Presenter une extraction partielle comme complete.
 - Pretendre avoir lu un document trop gros, non injecte ou en erreur.
 
-## 10. Hors-scope strict du Lot 1 livre
+## 10. Hors-scope strict des Lots 1-2 livres
 
-- Aucun code runtime.
+- Aucun runtime Nextcloud.
 - Aucun acces Nextcloud live.
 - Aucun WebDAV live.
 - Aucun Sauron.
 - Aucun secret.
-- Aucun Docker/rebuild.
+- Aucun Docker/rebuild plateforme/global; un rebuild applicatif FridaDev cible
+  reste autorise pour verifier un patch runtime Documents V1.
 - Aucune copie/rangement fichier.
 - Aucune creation de document, note, export ou image.
 - Aucun lancement Biblio.
@@ -539,12 +552,13 @@ Artefacts attendus:
 
 ## 11. Prochain lot recommande
 
-Ouvrir `Lot 2 - Modele local / read-model`.
+Ouvrir `Lot 3 - Ingestion / rangement nouveaux documents`.
 
-Objectif Lot 2:
+Objectif Lot 3:
 
 - appliquer le contrat source-of-truth Documents V1;
-- adapter `workspace_files` comme registre/read-model Documents V1;
-- relier document, dossier, conversation et usage sans Biblio;
-- garder les payloads, logs et preuves content-free;
-- ne pas acceder a Nextcloud live.
+- deposer/ranger de nouveaux documents dans `/Frida/<dossier>/Documents`
+  seulement pour un dossier Frida `linked`;
+- refuser proprement les dossiers non `linked`, cibles `Documents` invalides,
+  types interdits et conflits de nom;
+- garder les payloads, logs et preuves content-free.

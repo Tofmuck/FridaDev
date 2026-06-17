@@ -5,6 +5,7 @@ from typing import Any, Mapping, Tuple
 from . import active_document_image_validation
 from . import active_document_text_extraction
 from . import active_document_upload_service
+from . import workspace_folder_documents
 
 
 UPLOAD_FIELD = active_document_upload_service.UPLOAD_FIELD
@@ -46,13 +47,17 @@ def list_workspace_files_response(
     workspace_folders_module: Any,
     workspace_files_module: Any,
 ) -> Tuple[dict[str, Any], int]:
-    normalized, error = _resolve_existing_folder(folder_id, workspace_folders_module=workspace_folders_module)
+    normalized, folder, error = _resolve_existing_folder(folder_id, workspace_folders_module=workspace_folders_module)
     if error:
         return error
+    items = workspace_folder_documents.apply_document_v1_list(
+        workspace_files_module.list_workspace_files(normalized),
+        folder=folder,
+    )
     return {
         "ok": True,
         "workspace_folder_id": normalized,
-        "items": workspace_files_module.list_workspace_files(normalized),
+        "items": items,
     }, 200
 
 
@@ -65,7 +70,7 @@ def upload_workspace_file_response(
     extractor_module: Any = active_document_text_extraction,
     image_validator_module: Any = active_document_image_validation,
 ) -> Tuple[dict[str, Any], int]:
-    normalized, error = _resolve_existing_folder(folder_id, workspace_folders_module=workspace_folders_module)
+    normalized, folder, error = _resolve_existing_folder(folder_id, workspace_folders_module=workspace_folders_module)
     if error:
         return error
 
@@ -158,7 +163,11 @@ def upload_workspace_file_response(
             "error": _human_workspace_file_error(REASON_RUNTIME_UNAVAILABLE),
             "reason_code": REASON_RUNTIME_UNAVAILABLE,
         }, 503
-    return {"ok": True, "workspace_folder_id": normalized, "file": stored}, 201
+    return {
+        "ok": True,
+        "workspace_folder_id": normalized,
+        "file": workspace_folder_documents.apply_document_v1_projection(stored, folder=folder),
+    }, 201
 
 
 def delete_workspace_file_response(
@@ -168,7 +177,7 @@ def delete_workspace_file_response(
     workspace_folders_module: Any,
     workspace_files_module: Any,
 ) -> Tuple[dict[str, Any], int]:
-    normalized, error = _resolve_existing_folder(folder_id, workspace_folders_module=workspace_folders_module)
+    normalized, folder, error = _resolve_existing_folder(folder_id, workspace_folders_module=workspace_folders_module)
     if error:
         return error
     file_norm = workspace_files_module.normalize_workspace_file_id(file_id)
@@ -177,7 +186,11 @@ def delete_workspace_file_response(
     deleted = workspace_files_module.delete_workspace_file(normalized, file_norm)
     if deleted is None:
         return {"ok": False, "error": "fichier introuvable", "reason_code": REASON_FILE_MISSING}, 404
-    return {"ok": True, "workspace_folder_id": normalized, "file": deleted}, 200
+    return {
+        "ok": True,
+        "workspace_folder_id": normalized,
+        "file": workspace_folder_documents.apply_document_v1_projection(deleted, folder=folder),
+    }, 200
 
 
 def _log_workspace_file_event(workspace_files_module: Any, event: str, **fields: Any) -> None:
@@ -190,16 +203,16 @@ def _resolve_existing_folder(
     folder_id: str,
     *,
     workspace_folders_module: Any,
-) -> tuple[str, Tuple[dict[str, Any], int] | None]:
+) -> tuple[str, dict[str, Any], Tuple[dict[str, Any], int] | None]:
     normalized = workspace_folders_module.normalize_workspace_folder_id(folder_id)
     if not normalized:
-        return "", ({"ok": False, "error": "folder_id invalide", "reason_code": "workspace_folder_id_invalid"}, 400)
+        return "", {}, ({"ok": False, "error": "folder_id invalide", "reason_code": "workspace_folder_id_invalid"}, 400)
     folder = workspace_folders_module.get_workspace_folder(normalized)
     if not folder:
-        return "", ({"ok": False, "error": "repertoire introuvable", "reason_code": REASON_FOLDER_NOT_FOUND}, 404)
+        return "", {}, ({"ok": False, "error": "repertoire introuvable", "reason_code": REASON_FOLDER_NOT_FOUND}, 404)
     if folder.get("deleted_at"):
-        return "", ({"ok": False, "error": "repertoire supprime", "reason_code": REASON_FOLDER_DELETED}, 410)
-    return normalized, None
+        return "", {}, ({"ok": False, "error": "repertoire supprime", "reason_code": REASON_FOLDER_DELETED}, 410)
+    return normalized, dict(folder), None
 
 
 def _first_upload_file(files: Mapping[str, Any]) -> Any | None:

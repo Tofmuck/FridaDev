@@ -537,6 +537,17 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
 
     def test_workspace_file_routes_are_content_free_and_separate_from_active_documents(self) -> None:
         self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
+        self.fake_workspace.folders[FOLDER_ID].update(
+            {
+                "link_workspace_folder_id": FOLDER_ID,
+                "link_nextcloud_sync_state": "linked",
+                "link_nextcloud_folder_ref": "workspace-folder:11111111:abcdef123456",
+                "link_nextcloud_name_hash": "abcdef123456",
+                "link_last_sync_reason_code": "workspace_folder_nextcloud_create_ok",
+                "link_last_sync_operation": "create",
+                "link_nextcloud_share_state": "confirmed",
+            }
+        )
 
         listed_empty = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/files")
         self.assertEqual(listed_empty.status_code, 200)
@@ -552,13 +563,24 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(payload["file"]["workspace_folder_id"], FOLDER_ID)
         self.assertEqual(payload["file"]["display_name"], "note.txt")
         self.assertEqual(payload["file"]["byte_size"], 7)
+        self.assertEqual(payload["file"]["document_v1_user"]["display_name"], "note.txt")
+        self.assertEqual(payload["file"]["document_v1_user"]["document_status"], "readable")
+        self.assertEqual(payload["file"]["document_v1_technical"]["document_status"], "readable")
+        self.assertIn("name_hash", payload["file"]["document_v1_technical"])
         self.assertNotIn("storage_key", payload["file"])
         self.assertNotIn("internal_path", payload["file"])
         self.assertNotIn("text", payload["file"])
+        encoded_technical = str(payload["file"]["document_v1_technical"])
+        self.assertNotIn("note.txt", encoded_technical)
+        self.assertNotIn("display_name", encoded_technical)
+        self.assertNotIn("storage_key", encoded_technical)
 
         listed = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/files")
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(len(listed.get_json()["items"]), 1)
+        listed_item = listed.get_json()["items"][0]
+        self.assertEqual(listed_item["document_v1_user"]["display_name"], "note.txt")
+        self.assertNotIn("note.txt", str(listed_item["document_v1_technical"]))
 
         deleted = self.client.delete(f"/api/workspace-folders/{FOLDER_ID}/files/{payload['file']['id']}")
         self.assertEqual(deleted.status_code, 200)

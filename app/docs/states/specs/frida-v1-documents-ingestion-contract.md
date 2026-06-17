@@ -1,6 +1,6 @@
 # Frida V1 - Documents ingestion contract
 
-Statut: spec vivante Lot 1
+Statut: spec vivante Lot 2
 Date: 2026-06-17
 Roadmap active: `app/docs/todo-todo/product/frida-v1-documents-ingestion-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-documents-ingestion-lot0-audit-2026-06-17.md`
@@ -16,8 +16,9 @@ Documents V1. Les prochains lots doivent appliquer ce contrat. Si un lot futur
 rencontre une contradiction produit, il doit s'arreter avant patch et ouvrir un
 micro-lot de recalage documentaire.
 
-Ce contrat ne livre aucun runtime, aucune migration DB, aucun acces Nextcloud
-live, aucun OCR reel et aucun rangement de fichier.
+Le Lot 1 a livre ce contrat en docs-only. Le Lot 2 livre maintenant un
+read-model local derive autour de `workspace_files`, sans migration DB, sans
+acces Nextcloud live, sans OCR reel et sans rangement de fichier.
 
 ## 2. Modele produit Documents V1
 
@@ -271,7 +272,70 @@ Interdits partout hors surface utilisateur explicite:
 - secret, token, cookie, `app-password`, `Authorization`;
 - payload provider brut.
 
-## 12. Reason codes Documents V1
+## 12. Read-model local livre au Lot 2
+
+Le read-model local Documents V1 est livre par
+`app/core/workspace_folder_documents.py`.
+
+Decision technique Lot 2:
+
+- `workspace_files` reste le registre/read-model local des documents
+  persistants de dossier;
+- aucune table Documents V1 separee n'est creee dans ce lot;
+- aucune migration DB n'est appliquee;
+- aucune operation Nextcloud/WebDAV n'est appelee;
+- les routes workspace files et selections existantes sont enrichies, sans
+  route parallele Documents V1.
+
+Projections runtime:
+
+- `document_v1_user`: projection utilisateur; `display_name` autorise avec type,
+  taille, dates, statut, readiness et reason code;
+- `document_v1_technical`: projection content-free; refs redacted, hash court du
+  nom, ids applicatifs, media type, taille, statuts et reason codes, sans nom de
+  fichier brut, `storage_key`, chemin disque, URL DAV, XML, secret ni contenu;
+- `document_v1_usage`: projection de selection conversationnelle; lien explicite
+  conversation -> document de dossier -> usage, sans stockage durable
+  `active_document`, sans Biblio et sans Memory/RAG/Identity/Summary.
+
+Statuts projetes au Lot 2:
+
+- `available`;
+- `preparing`;
+- `readable`;
+- `not_injected`;
+- `pdf_text`;
+- `pdf_visual_required`;
+- `visual_ready`;
+- `too_large`;
+- `unsupported`;
+- `error`;
+- `deleted`;
+- `unavailable`.
+
+Regles de projection:
+
+- un dossier non `linked` rend le document `unavailable` avec
+  `folder_document_folder_not_linked`;
+- un PDF avec texte extrait devient `pdf_text`;
+- un PDF sans texte exploitable marque `ocr_required` devient
+  `pdf_visual_required`;
+- une image devient `visual_ready`;
+- un document texte prepare devient `readable`;
+- un reason code mal forme ou inconnu sur une projection technique/usage est
+  redacted.
+
+Limites restantes avant Lot 3:
+
+- les nouveaux documents ne sont pas encore ranges dans Nextcloud;
+- les fichiers workspace existants ne sont pas encore copies/ranges sous
+  `Documents`;
+- aucune verification live du sous-dossier `Documents` n'est faite par ce
+  read-model;
+- la preparation de lecture et le fallback visuel complet restent des lots
+  separes.
+
+## 13. Reason codes Documents V1
 
 Catalogue initial obligatoire:
 
@@ -305,7 +369,7 @@ Catalogue initial obligatoire:
 
 Un reason code inconnu doit etre redacted avant exposition technique.
 
-## 13. Messages utilisateur
+## 14. Messages utilisateur
 
 Les messages utilisateur doivent etre simples et honnetes:
 
@@ -323,7 +387,7 @@ Les messages utilisateur doivent etre simples et honnetes:
 Frida ne doit jamais pretendre avoir lu integralement un document non prepare,
 trop gros, partiel, visuel sans lecture textuelle, indisponible ou en erreur.
 
-## 14. Preuves et observabilite
+## 15. Preuves et observabilite
 
 Les preuves Documents V1 doivent rester content-free:
 
@@ -338,7 +402,7 @@ Les preuves Documents V1 doivent rester content-free:
 Les smokes live utilisent des documents synthetiques. Les preuves
 d'infrastructure ne lisent pas et ne listent pas de contenu utilisateur.
 
-## 15. Criteres de cloture Lot Z
+## 16. Criteres de cloture Lot Z
 
 Documents V1 est clos seulement si toutes les preuves suivantes sont livrees:
 
@@ -358,17 +422,20 @@ Documents V1 est clos seulement si toutes les preuves suivantes sont livrees:
 - aucun contenu, nom de fichier en preuve technique, chemin DAV, URL DAV, XML
   brut, `storage_key`, secret ou payload brut ne fuit.
 
-## 16. Hors-scope strict
+## 17. Hors-scope strict
 
-- Pas de runtime dans le Lot 1.
-- Pas de migration DB dans le Lot 1.
-- Pas d'acces Nextcloud live dans le Lot 1.
-- Pas de WebDAV live dans le Lot 1.
-- Pas de Sauron dans le Lot 1.
+- Pas de runtime Nextcloud dans les Lots 1-2.
+- Pas de migration DB dans les Lots 1-2.
+- Pas d'acces Nextcloud live dans les Lots 1-2.
+- Pas de WebDAV live dans les Lots 1-2.
+- Pas de Sauron dans les Lots 1-2.
 - Pas de secret.
-- Pas de fichier utilisateur lu, copie, deplace, range ou supprime dans le Lot 1.
-- Pas d'OCR reel dans le Lot 1.
-- Pas de test multimodal live dans le Lot 1.
-- Pas de Docker/rebuild dans le Lot 1.
+- Pas de fichier utilisateur lu, copie, deplace, range ou supprime dans les
+  Lots 1-2.
+- Pas d'OCR reel dans les Lots 1-2.
+- Pas de test multimodal live dans les Lots 1-2.
+- Pas de Docker/rebuild plateforme/global dans les Lots 1-2; le Lot 2 peut
+  necessiter un rebuild applicatif FridaDev cible parce qu'il livre du runtime
+  local.
 - Pas de Biblio, Notes, Exports, Images, Agenda, Mail, Memory/RAG global ou
   TTS/SMS.
