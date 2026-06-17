@@ -1175,8 +1175,8 @@ sont ranges dans Nextcloud.
 - Les fichiers workspace persistants sont la surface qui devra etre alignee plus
   tard avec le dossier Nextcloud du dossier Frida.
 - Les notes Markdown restent un futur lot dedie.
-- Les exports restent un futur lot dedie, probablement sous un sous-dossier
-  standard `Exports` a confirmer en Lot 11/12.
+- Les exports restent un futur lot runtime dedie, avec cible deja confirmee
+  depuis Lot 12: `/Frida/<dossier>/Exports`.
 - Les images generees restent un futur lot dedie.
 
 ### 15.4 Observabilite et preuves
