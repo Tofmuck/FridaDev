@@ -1,6 +1,6 @@
 # Frida V1 - Documents ingestion contract
 
-Statut: spec vivante Lot 2
+Statut: spec vivante Lot 3
 Date: 2026-06-17
 Roadmap active: `app/docs/todo-todo/product/frida-v1-documents-ingestion-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-documents-ingestion-lot0-audit-2026-06-17.md`
@@ -16,9 +16,12 @@ Documents V1. Les prochains lots doivent appliquer ce contrat. Si un lot futur
 rencontre une contradiction produit, il doit s'arreter avant patch et ouvrir un
 micro-lot de recalage documentaire.
 
-Le Lot 1 a livre ce contrat en docs-only. Le Lot 2 livre maintenant un
-read-model local derive autour de `workspace_files`, sans migration DB, sans
-acces Nextcloud live, sans OCR reel et sans rangement de fichier.
+Le Lot 1 a livre ce contrat en docs-only. Le Lot 2 a livre le read-model local
+derive autour de `workspace_files`, sans migration DB. Le Lot 3 livre
+l'ingestion/rangement Nextcloud-first des nouveaux documents via la route
+workspace files existante, avec transport WebDAV borne, preuve synthetique et
+compensation stricte. Les lots suivants gardent lecture, fallback visuel complet
+et fichiers historiques hors scope.
 
 ## 2. Modele produit Documents V1
 
@@ -337,13 +340,65 @@ Regles de projection:
 
 Limites restantes avant Lot 3:
 
-- les nouveaux documents ne sont pas encore ranges dans Nextcloud;
 - les fichiers workspace existants ne sont pas encore copies/ranges sous
   `Documents`;
-- aucune verification live du sous-dossier `Documents` n'est faite par ce
-  read-model;
 - la preparation de lecture et le fallback visuel complet restent des lots
   separes.
+
+## 12.1 Ingestion/rangement des nouveaux documents livre au Lot 3
+
+Le runtime Lot 3 branche la route existante
+`/api/workspace-folders/<id>/files` sur une orchestration Documents V1
+Nextcloud-first.
+
+Decision technique Lot 3:
+
+- aucun modele produit parallele n'est cree;
+- `workspace_files` reste le registre local du document persistant;
+- le transport WebDAV fichier est isole dans
+  `app/core/workspace_document_nextcloud_client.py`;
+- l'orchestration validation -> Nextcloud -> persistence locale ->
+  compensation est isolee dans
+  `app/core/workspace_document_nextcloud_runtime.py`;
+- `app/server.py` ne porte aucune logique Nextcloud, seulement le wiring du
+  module runtime.
+
+Regles runtime:
+
+- un dossier non `linked` bloque le depot avant lecture du contenu;
+- le sous-dossier standard `Documents` est verifie en `PROPFIND` Depth 0 et doit
+  etre une collection WebDAV;
+- une cible `Documents` absente, non-collection, conflictuelle ou indisponible
+  refuse le depot avec reason code content-free;
+- le nom cible du document est sanitise localement et limite avant ecriture;
+- extension absente, nom vide ou nom invalide refusent le depot;
+- conflit local de nom sanitise refuse le depot avant tout appel Nextcloud;
+- l'ecriture Nextcloud utilise `PUT` avec anti-ecrasement;
+- conflit Nextcloud ou tentative d'overwrite refuse le depot;
+- la persistence locale `workspace_files` n'a lieu qu'apres succes Nextcloud;
+- si l'ecriture Nextcloud reussit mais que la persistence locale echoue, le
+  runtime tente une compensation `DELETE` strictement bornee au fichier cree
+  dans ce flux;
+- la compensation ne touche jamais un fichier historique ou utilisateur
+  preexistant;
+- la projection utilisateur peut exposer le `display_name`;
+- le payload technique et les preuves n'exposent que hash/ref court, statuts,
+  classes HTTP et reason codes.
+
+Preuve Lot 3:
+
+- tests unitaires: `app/tests/unit/core/test_workspace_documents_ingestion.py`;
+- smoke live synthetique content-free:
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot3-live-ingestion-20260617T142304Z.jsonl`;
+- cleanup strict du fichier et du dossier synthetiques crees pendant le smoke.
+
+Limites restantes avant Lot 4+:
+
+- la liste Documents utilisateur reste a consolider au Lot 4;
+- la preparation/lecture reste Lot 5;
+- le fallback visuel complet reste Lot 6;
+- les fichiers workspace historiques restent Lot 7;
+- aucun Notes / Exports / Images runtime n'est livre par Lot 3.
 
 ## 13. Reason codes Documents V1
 
@@ -370,6 +425,9 @@ Catalogue initial obligatoire:
 - `folder_document_parse_error`;
 - `folder_document_runtime_unavailable`;
 - `folder_document_nextcloud_error_redacted`;
+- `folder_document_local_persistence_failed`;
+- `folder_document_remote_compensation_ok`;
+- `folder_document_remote_compensation_failed`;
 - `folder_document_content_redacted`;
 - `folder_document_existing_copy_required`;
 - `folder_document_existing_copy_ok`;

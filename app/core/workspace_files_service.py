@@ -6,6 +6,8 @@ from . import active_document_image_validation
 from . import active_document_text_extraction
 from . import active_document_upload_service
 from . import workspace_folder_documents
+from . import workspace_document_nextcloud_client
+from . import workspace_document_nextcloud_runtime
 
 
 UPLOAD_FIELD = active_document_upload_service.UPLOAD_FIELD
@@ -20,6 +22,13 @@ REASON_UNREADABLE = "workspace_file_unreadable"
 REASON_OCR_REQUIRED = "workspace_file_ocr_required"
 REASON_RUNTIME_UNAVAILABLE = "workspace_file_runtime_unavailable"
 
+REASON_DOCUMENT_TOO_LARGE = "folder_document_too_large"
+REASON_DOCUMENT_TYPE_UNSUPPORTED = "folder_document_type_unsupported"
+REASON_DOCUMENT_PARSE_ERROR = "folder_document_parse_error"
+REASON_DOCUMENT_RUNTIME_UNAVAILABLE = "folder_document_runtime_unavailable"
+REASON_DOCUMENT_FOLDER_NOT_LINKED = workspace_document_nextcloud_client.REASON_FOLDER_NOT_LINKED
+REASON_DOCUMENT_NAME_INVALID = workspace_document_nextcloud_client.REASON_NAME_INVALID
+
 
 def upload_body_size_guard_response(content_length: Any) -> Tuple[dict[str, Any], int] | None:
     try:
@@ -30,11 +39,11 @@ def upload_body_size_guard_response(content_length: Any) -> Tuple[dict[str, Any]
         return None
     return {
         "ok": False,
-        "error": _human_workspace_file_error(REASON_TOO_LARGE),
-        "reason_code": REASON_TOO_LARGE,
+        "error": _human_workspace_file_error(REASON_DOCUMENT_TOO_LARGE),
+        "reason_code": REASON_DOCUMENT_TOO_LARGE,
         "file": {
             "status": "too_large",
-            "reason_code": REASON_TOO_LARGE,
+            "reason_code": REASON_DOCUMENT_TOO_LARGE,
             "byte_size": body_size,
             "max_body_bytes": WORKSPACE_FILE_UPLOAD_MAX_CONTENT_LENGTH,
         },
@@ -69,6 +78,7 @@ def upload_workspace_file_response(
     workspace_files_module: Any,
     extractor_module: Any = active_document_text_extraction,
     image_validator_module: Any = active_document_image_validation,
+    documents_nextcloud_runtime_module: Any = workspace_document_nextcloud_runtime,
 ) -> Tuple[dict[str, Any], int]:
     normalized, folder, error = _resolve_existing_folder(folder_id, workspace_folders_module=workspace_folders_module)
     if error:
@@ -77,6 +87,17 @@ def upload_workspace_file_response(
     file_obj = _first_upload_file(files)
     if file_obj is None:
         return {"ok": False, "error": "fichier requis", "reason_code": REASON_FILE_MISSING}, 400
+
+    if not _folder_is_linked(folder):
+        return {
+            "ok": False,
+            "error": _human_workspace_file_error(REASON_DOCUMENT_FOLDER_NOT_LINKED),
+            "reason_code": REASON_DOCUMENT_FOLDER_NOT_LINKED,
+            "file": {
+                "status": "unavailable",
+                "reason_code": REASON_DOCUMENT_FOLDER_NOT_LINKED,
+            },
+        }, 409
 
     filename = str(getattr(file_obj, "filename", "") or "fichier").strip() or "fichier"
     media_type = str(getattr(file_obj, "mimetype", "") or "").strip()
@@ -88,11 +109,11 @@ def upload_workspace_file_response(
             "upload_failed",
             folder_id=normalized,
             mime_type=media_type,
-            reason_code=REASON_UNREADABLE,
+            reason_code=REASON_DOCUMENT_PARSE_ERROR,
             status="parse_error",
         )
         return _workspace_file_failure(
-            REASON_UNREADABLE,
+            REASON_DOCUMENT_PARSE_ERROR,
             filename=filename,
             media_type=media_type,
             status="parse_error",
@@ -106,11 +127,11 @@ def upload_workspace_file_response(
             folder_id=normalized,
             mime_type=media_type,
             byte_size=len(content),
-            reason_code=REASON_TOO_LARGE,
+            reason_code=REASON_DOCUMENT_TOO_LARGE,
             status="too_large",
         )
         return _workspace_file_failure(
-            REASON_TOO_LARGE,
+            REASON_DOCUMENT_TOO_LARGE,
             filename=filename,
             media_type=media_type,
             status="too_large",
@@ -140,13 +161,15 @@ def upload_workspace_file_response(
         )
         return validation_error
 
-    stored = workspace_files_module.store_uploaded_file(
-        normalized,
-        original_filename=filename,
+    runtime_result = documents_nextcloud_runtime_module.store_workspace_document_nextcloud_first(
+        folder=folder,
         content=content,
+        original_filename=filename,
         metadata=metadata,
+        workspace_files_module=workspace_files_module,
     )
-    if not stored:
+    if not runtime_result.get("ok"):
+        reason_code = str(runtime_result.get("reason_code") or REASON_DOCUMENT_RUNTIME_UNAVAILABLE)
         _log_workspace_file_event(
             workspace_files_module,
             "upload_failed",
@@ -155,18 +178,26 @@ def upload_workspace_file_response(
             media_kind=metadata.get("media_kind"),
             content_kind=metadata.get("content_kind"),
             byte_size=len(content),
-            reason_code=REASON_RUNTIME_UNAVAILABLE,
+            reason_code=reason_code,
             status=metadata.get("status"),
+            document_nextcloud=runtime_result.get("document_nextcloud"),
         )
         return {
             "ok": False,
-            "error": _human_workspace_file_error(REASON_RUNTIME_UNAVAILABLE),
-            "reason_code": REASON_RUNTIME_UNAVAILABLE,
-        }, 503
+            "error": _human_workspace_file_error(reason_code),
+            "reason_code": reason_code,
+            "file": {
+                "status": _document_status_for_failure(reason_code),
+                "reason_code": reason_code,
+            },
+            "document_nextcloud": runtime_result.get("document_nextcloud", {}),
+        }, int(runtime_result.get("status") or 503)
+    stored = runtime_result.get("file")
     return {
         "ok": True,
         "workspace_folder_id": normalized,
         "file": workspace_folder_documents.apply_document_v1_projection(stored, folder=folder),
+        "document_nextcloud": runtime_result.get("document_nextcloud", {}),
     }, 201
 
 
@@ -197,6 +228,10 @@ def _log_workspace_file_event(workspace_files_module: Any, event: str, **fields:
     log_func = getattr(workspace_files_module, "log_content_free_event", None)
     if callable(log_func):
         log_func(event, **fields)
+
+
+def _folder_is_linked(folder: Mapping[str, Any]) -> bool:
+    return str(folder.get("nextcloud_sync_state") or "") == "linked"
 
 
 def _resolve_existing_folder(
@@ -349,18 +384,18 @@ def _workspace_file_failure(
 
 def _map_image_reason(reason_code: str) -> str:
     if reason_code == "image_too_large":
-        return REASON_TOO_LARGE
+        return REASON_DOCUMENT_TOO_LARGE
     if reason_code in {"image_parse_error", "image_empty_file", "image_dimensions_unsupported", "image_too_small_for_provider"}:
-        return REASON_UNREADABLE
-    return REASON_TYPE_UNSUPPORTED
+        return REASON_DOCUMENT_PARSE_ERROR
+    return REASON_DOCUMENT_TYPE_UNSUPPORTED
 
 
 def _map_text_reason(reason_code: str) -> str:
     if reason_code == "document_type_unsupported":
-        return REASON_TYPE_UNSUPPORTED
+        return REASON_DOCUMENT_TYPE_UNSUPPORTED
     if reason_code == "document_ocr_required":
         return REASON_OCR_REQUIRED
-    return REASON_UNREADABLE
+    return REASON_DOCUMENT_PARSE_ERROR
 
 
 def _human_workspace_file_error(reason_code: str) -> str:
@@ -373,5 +408,34 @@ def _human_workspace_file_error(reason_code: str) -> str:
         REASON_UNREADABLE: "lecture du fichier impossible",
         REASON_OCR_REQUIRED: "OCR requis pour ce fichier",
         REASON_RUNTIME_UNAVAILABLE: "stockage fichier indisponible",
+        REASON_DOCUMENT_TOO_LARGE: "document trop volumineux",
+        REASON_DOCUMENT_TYPE_UNSUPPORTED: "format non pris en charge",
+        REASON_DOCUMENT_PARSE_ERROR: "lecture du document impossible",
+        REASON_DOCUMENT_RUNTIME_UNAVAILABLE: "stockage document indisponible",
+        REASON_DOCUMENT_FOLDER_NOT_LINKED: "dossier non synchronise",
+        workspace_document_nextcloud_client.REASON_DOCUMENTS_TARGET_MISSING: "cible Documents introuvable",
+        workspace_document_nextcloud_client.REASON_DOCUMENTS_TARGET_CONFLICT: "cible Documents incompatible",
+        workspace_document_nextcloud_client.REASON_DOCUMENTS_TARGET_UNAVAILABLE: "cible Documents indisponible",
+        workspace_document_nextcloud_client.REASON_DOCUMENTS_TARGET_NOT_COLLECTION: "cible Documents incompatible",
+        workspace_document_nextcloud_client.REASON_NAME_INVALID: "nom de document invalide",
+        workspace_document_nextcloud_client.REASON_NAME_CONFLICT: "nom de document deja utilise",
+        workspace_document_nextcloud_client.REASON_LOCAL_PERSISTENCE_FAILED: "stockage local document indisponible",
+        workspace_document_nextcloud_client.REASON_NEXTCLOUD_ERROR_REDACTED: "erreur Nextcloud document",
     }
     return labels.get(str(reason_code or ""), "fichier non stockable")
+
+
+def _document_status_for_failure(reason_code: str) -> str:
+    if reason_code == REASON_DOCUMENT_TOO_LARGE:
+        return "too_large"
+    if reason_code == REASON_DOCUMENT_TYPE_UNSUPPORTED:
+        return "unsupported"
+    if reason_code in {REASON_DOCUMENT_FOLDER_NOT_LINKED, workspace_document_nextcloud_client.REASON_DOCUMENTS_TARGET_MISSING}:
+        return "unavailable"
+    if reason_code in {
+        workspace_document_nextcloud_client.REASON_DOCUMENTS_TARGET_CONFLICT,
+        workspace_document_nextcloud_client.REASON_DOCUMENTS_TARGET_NOT_COLLECTION,
+        workspace_document_nextcloud_client.REASON_NAME_CONFLICT,
+    }:
+        return "conflict"
+    return "error"

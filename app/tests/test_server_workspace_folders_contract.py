@@ -361,6 +361,47 @@ class _FakeWorkspaceFileSelections:
         return True
 
 
+class _FakeWorkspaceDocumentNextcloudRuntime:
+    def __init__(self):
+        self.calls = []
+
+    def store_workspace_document_nextcloud_first(
+        self,
+        *,
+        folder,
+        content,
+        original_filename,
+        metadata,
+        workspace_files_module,
+    ):
+        self.calls.append(
+            {
+                "folder_id": folder.get("id"),
+                "byte_size": len(content or b""),
+                "mime_type": metadata.get("mime_type"),
+                "source_extension": metadata.get("source_extension"),
+            }
+        )
+        stored = workspace_files_module.store_uploaded_file(
+            folder.get("id"),
+            original_filename=original_filename,
+            content=content,
+            metadata=metadata,
+        )
+        return {
+            "ok": True,
+            "file": stored,
+            "reason_code": "folder_document_upload_ok",
+            "status": 201,
+            "document_nextcloud": {
+                "upload_state": "stored",
+                "reason_code": "folder_document_upload_ok",
+                "document_name_hash": "abc123def456",
+                "http_status_class": "2xx",
+            },
+        }
+
+
 class ServerWorkspaceFoldersContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -370,6 +411,7 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.client = self.server.app.test_client()
         self.original_workspace_folders = self.server.workspace_folders
         self.original_workspace_files = self.server.workspace_files
+        self.original_workspace_document_nextcloud_runtime = self.server.workspace_document_nextcloud_runtime
         self.original_workspace_file_selections = self.server.workspace_file_selections
         self.original_conv_store = self.server.conv_store
         self.fake_workspace = _FakeWorkspaceFolders()
@@ -379,14 +421,17 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
             self.fake_conv_store,
             self.fake_workspace_files,
         )
+        self.fake_workspace_document_nextcloud_runtime = _FakeWorkspaceDocumentNextcloudRuntime()
         self.server.workspace_folders = self.fake_workspace
         self.server.workspace_files = self.fake_workspace_files
+        self.server.workspace_document_nextcloud_runtime = self.fake_workspace_document_nextcloud_runtime
         self.server.workspace_file_selections = self.fake_workspace_file_selections
         self.server.conv_store = self.fake_conv_store
 
     def tearDown(self) -> None:
         self.server.workspace_folders = self.original_workspace_folders
         self.server.workspace_files = self.original_workspace_files
+        self.server.workspace_document_nextcloud_runtime = self.original_workspace_document_nextcloud_runtime
         self.server.workspace_file_selections = self.original_workspace_file_selections
         self.server.conv_store = self.original_conv_store
 
@@ -574,6 +619,8 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("note.txt", encoded_technical)
         self.assertNotIn("display_name", encoded_technical)
         self.assertNotIn("storage_key", encoded_technical)
+        self.assertEqual(payload["document_nextcloud"]["reason_code"], "folder_document_upload_ok")
+        self.assertEqual(self.fake_workspace_document_nextcloud_runtime.calls[0]["folder_id"], FOLDER_ID)
 
         listed = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/files")
         self.assertEqual(listed.status_code, 200)
@@ -592,6 +639,17 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
 
     def test_workspace_file_upload_rejects_unsupported_types(self) -> None:
         self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
+        self.fake_workspace.folders[FOLDER_ID].update(
+            {
+                "link_workspace_folder_id": FOLDER_ID,
+                "link_nextcloud_sync_state": "linked",
+                "link_nextcloud_folder_ref": "workspace-folder:11111111:abcdef123456",
+                "link_nextcloud_name_hash": "abcdef123456",
+                "link_last_sync_reason_code": "workspace_folder_nextcloud_create_ok",
+                "link_last_sync_operation": "create",
+                "link_nextcloud_share_state": "confirmed",
+            }
+        )
 
         uploaded = self.client.post(
             f"/api/workspace-folders/{FOLDER_ID}/files",
@@ -601,7 +659,7 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
 
         self.assertEqual(uploaded.status_code, 422)
         payload = uploaded.get_json()
-        self.assertEqual(payload["reason_code"], "workspace_file_type_unsupported")
+        self.assertEqual(payload["reason_code"], "folder_document_type_unsupported")
         self.assertEqual(self.fake_workspace_files.files, {})
         self.assertEqual(self.fake_workspace_files.events[-1][0], "upload_failed")
         self.assertNotIn("text_content", self.fake_workspace_files.events[-1][1])

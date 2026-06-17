@@ -31,6 +31,7 @@ from core import conversations_service
 from core import workspace_files
 from core import workspace_file_ocr_service
 from core import workspace_files_service
+from core import workspace_document_nextcloud_runtime
 from core import workspace_file_selections
 from core import workspace_file_selections_service
 from core import workspace_folders
@@ -1306,6 +1307,7 @@ def api_upload_workspace_folder_file(folder_id: str):
         request.files,
         workspace_folders_module=workspace_folders,
         workspace_files_module=workspace_files,
+        documents_nextcloud_runtime_module=workspace_document_nextcloud_runtime,
     )
     return jsonify(payload), status
 

@@ -1,6 +1,6 @@
 # Frida V1 - Documents sources / ingestion / lecture / PDF fallback - TODO
 
-Statut: Lot 2 modele local/read-model livre; prete pour Lot 3 ingestion/rangement
+Statut: Lot 3 ingestion/rangement des nouveaux documents livre; prete pour Lot 4 liste documents
 Date: 2026-06-17
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -240,6 +240,9 @@ Catalogue initial a appliquer dans les lots runtime:
 - `folder_document_parse_error`;
 - `folder_document_runtime_unavailable`;
 - `folder_document_nextcloud_error_redacted`;
+- `folder_document_local_persistence_failed`;
+- `folder_document_remote_compensation_ok`;
+- `folder_document_remote_compensation_failed`;
 - `folder_document_content_redacted`;
 - `folder_document_existing_copy_required`;
 - `folder_document_existing_copy_ok`;
@@ -382,24 +385,26 @@ Preuve Lot 2:
 
 ### Lot 3 - Ingestion / rangement nouveaux documents
 
-- [ ] Appliquer le contrat Lot 1: depot par surface fichier/document du dossier
+- [x] Appliquer le contrat Lot 1: depot par surface fichier/document du dossier
   Frida `linked`, ou action explicite de rangement depuis le chat courant.
-- [ ] Bloquer tout depot si le dossier Frida n'est pas `linked`.
-- [ ] Verifier `Documents` en `PROPFIND` Depth 0 seulement si live.
-- [ ] Refuser une cible `Documents` absente, non-collection ou inaccessible avec
+- [x] Bloquer tout depot si le dossier Frida n'est pas `linked`.
+- [x] Verifier `Documents` en `PROPFIND` Depth 0 seulement si live.
+- [x] Refuser une cible `Documents` absente, non-collection ou inaccessible avec
   reason code content-free.
-- [ ] Sanitiser le nom cible sans exposer le nom brut dans les preuves.
-- [ ] Gerer nom vide, extension absente, type interdit, nom trop long et
+- [x] Sanitiser le nom cible sans exposer le nom brut dans les preuves.
+- [x] Gerer nom vide, extension absente, type interdit, nom trop long et
   collision apres sanitisation.
-- [ ] Gerer conflit de nom local et conflit Nextcloud sans overwrite.
-- [ ] Deposer le nouveau document dans `/Frida/<dossier>/Documents` seulement
+- [x] Gerer conflit de nom local et conflit Nextcloud sans overwrite.
+- [x] Deposer le nouveau document dans `/Frida/<dossier>/Documents` seulement
   apres validations locales et Nextcloud.
-- [ ] Ne pas deplacer silencieusement de fichier existant.
-- [ ] Ne pas supprimer la source locale sans decision explicite et preuve.
-- [ ] Appliquer rollback/compensation si depot Nextcloud reussit puis persistence
+- [x] Ne pas deplacer silencieusement de fichier existant.
+- [x] Ne pas supprimer la source locale sans decision explicite et preuve.
+- [x] Appliquer rollback/compensation si depot Nextcloud reussit puis persistence
   locale echoue.
-- [ ] Tester documents texte, PDF texte, PDF image, type refuse, conflit de nom
+- [x] Tester documents texte, PDF texte, PDF image, type refuse, conflit de nom
   et dossier non `linked`.
+- [x] Produire une preuve live synthetique content-free avec PUT dans
+  `Documents` et cleanup strict de la cible synthetique.
 
 Interdits Lot 3:
 
@@ -409,6 +414,23 @@ Interdits Lot 3:
 - Exports;
 - Images;
 - listing de contenu Nextcloud comme preuve large.
+
+Preuve Lot 3:
+
+- runtime documents dedie:
+  `app/core/workspace_document_nextcloud_client.py` et
+  `app/core/workspace_document_nextcloud_runtime.py`;
+- branchement de la route existante `/api/workspace-folders/<id>/files`, sans
+  route parallele Documents V1;
+- tests unitaires dedies:
+  `app/tests/unit/core/test_workspace_documents_ingestion.py`;
+- smoke live synthetique content-free:
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot3-live-ingestion-20260617T142304Z.jsonl`;
+- cleanup strict du fichier et du dossier synthetiques crees pendant le smoke;
+- aucun fichier historique copie/range/migre/supprime;
+- aucun listing de contenu utilisateur;
+- aucune fuite de contenu, nom de fichier brut dans preuve, URL DAV, XML,
+  `storage_key` ou secret.
 
 ### Lot 4 - Liste des documents d'un dossier
 
@@ -547,30 +569,29 @@ Artefacts attendus:
 - Presenter une extraction partielle comme complete.
 - Pretendre avoir lu un document trop gros, non injecte ou en erreur.
 
-## 10. Hors-scope strict des Lots 1-2 livres
+## 10. Hors-scope strict des Lots 1-3 livres
 
-- Aucun runtime Nextcloud.
-- Aucun acces Nextcloud live.
-- Aucun WebDAV live.
+- Aucun runtime de liste/preparation/lecture Documents.
+- Aucun acces Nextcloud live hors smokes synthetiques bornes du lot concerne.
+- Aucun WebDAV live hors operations strictement bornees du lot concerne.
 - Aucun Sauron.
 - Aucun secret.
 - Aucun Docker/rebuild plateforme/global; un rebuild applicatif FridaDev cible
   reste autorise pour verifier un patch runtime Documents V1.
-- Aucune copie/rangement fichier.
+- Aucune copie/rangement de fichiers historiques existants.
 - Aucune creation de document, note, export ou image.
 - Aucun lancement Biblio.
-- Aucun changement de route/API/UI.
+- Aucun changement de route parallele/API/UI hors route existante workspace files.
 - Aucun `utils.py` ou `helpers.py`.
 
 ## 11. Prochain lot recommande
 
-Ouvrir `Lot 3 - Ingestion / rangement nouveaux documents`.
+Ouvrir `Lot 4 - Liste des documents d'un dossier`.
 
-Objectif Lot 3:
+Objectif Lot 4:
 
 - appliquer le contrat source-of-truth Documents V1;
-- deposer/ranger de nouveaux documents dans `/Frida/<dossier>/Documents`
-  seulement pour un dossier Frida `linked`;
-- refuser proprement les dossiers non `linked`, cibles `Documents` invalides,
-  types interdits et conflits de nom;
-- garder les payloads, logs et preuves content-free.
+- lister les documents disponibles d'un dossier Frida courant;
+- garder les noms visibles dans la projection utilisateur utile;
+- garder logs, JSONL, observabilite technique et preuves content-free;
+- ne pas introduire de listing Nextcloud large ni de route parallele.
