@@ -3,7 +3,7 @@
 Statut: spec vivante Lot Z valide; socle dossiers Frida V1 / Nextcloud cloture
 Date: 2026-06-17
 Classement: `app/docs/states/specs/`
-TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
+TODO archivee: `app/docs/todo-done/product/frida-v1-nextcloud-folders-todo.md`
 Audit source: `app/docs/states/audits/frida-v1-nextcloud-folders-lot0-audit-2026-06-16.md`
 Contrat existant relu: `app/docs/states/specs/workspace-folders-contract.md`
 
