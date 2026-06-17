@@ -1,7 +1,7 @@
 # Frida V1 - Nextcloud folders contract
 
-Statut: spec vivante Lots 0 a 8B runtime create/rename livre
-Date: 2026-06-16
+Statut: spec vivante Lots 0 a 9 reconciliation dossiers existants livree
+Date: 2026-06-17
 Classement: `app/docs/states/specs/`
 TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
 Audit source: `app/docs/states/audits/frida-v1-nextcloud-folders-lot0-audit-2026-06-16.md`
@@ -56,6 +56,15 @@ d'une cible synthetique ou creee par le flot. L'artefact live content-free est
 `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot8b-live-runtime-20260616T201404Z.jsonl`.
 L'injection runtime du secret est documentee sans valeur dans
 `/opt/platform/_codex_reports/frida-v1-nextcloud-folders-lot8b-secret-injection-20260616T200809Z.md`.
+
+Depuis le Lot 9 du 2026-06-17, les dossiers UI actifs existants ont ete
+reconcilies avec Nextcloud sans lister de contenu: inventaire content-free,
+`PROPFIND` Depth 0 par cible, creation par `MKCOL` uniquement pour les cibles
+manquantes, puis liaison locale `workspace_folder_nextcloud_links` en
+`linked`. L'artefact live content-free est
+`app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot9-reconcile-20260617T074733Z.jsonl`.
+Le backup applicatif des liaisons avant ecriture est
+`/opt/platform/_codex_reports/frida-v1-nextcloud-folders-lot9-link-backup-20260617T074720Z.jsonl`.
 
 Recalage produit post Lot 6:
 
@@ -950,10 +959,22 @@ Etat attendu avant Lot 8B:
 Etat depuis Lot 8B:
 
 - creation et renommage produit passent par Nextcloud-first;
-- les dossiers historiques `local_only` restent a reconcilier en Lot 9;
+- les dossiers historiques `local_only` etaient a reconcilier en Lot 9;
 - les fichiers/documents rattaches aux dossiers ne sont ni deplaces ni migres;
 - les sous-dossiers standards restent a cadrer en Lot 11;
-- la cloture V1 reste interdite avant reconciliation et politique fichiers.
+- la cloture V1 reste interdite avant politique fichiers et sous-dossiers
+  standards.
+
+Etat depuis Lot 9:
+
+- les 2 dossiers UI actifs existants inventories le 2026-06-17 sont `linked`;
+- les exemples attendus `Philosophie` et `Conflit lycee` / `Conflit lycée`
+  etaient presents cote UI et ont ete reconcilies;
+- les cibles Nextcloud manquantes ont ete creees par `MKCOL` borne, sans
+  listing de contenu utilisateur;
+- aucun fichier/document workspace n'a ete lu, deplace, supprime ou migre;
+- Lot 10 reste necessaire pour definir la politique des fichiers existants et
+  futurs par dossier.
 
 ## 14. Lots restants avant cloture V1 reelle
 
@@ -977,12 +998,19 @@ Lot 8B - Runtime permanent creation/renommage Nextcloud:
 
 Lot 9 - Reconciliation des dossiers existants:
 
-- inventorier les dossiers UI Frida existants de facon content-free;
-- pour des dossiers comme `Philosophie` ou `Conflit lycee`, verifier si la
-  cible existe deja dans Nextcloud;
-- creer les cibles manquantes seulement avec un plan borne;
-- ne pas deplacer leurs fichiers et ne pas ecraser un dossier Nextcloud
-  existant.
+- livre: inventaire content-free des dossiers UI actifs;
+- livre: traitement explicite des exemples `Philosophie` et `Conflit lycee` /
+  `Conflit lycée`;
+- livre: verification Nextcloud par `PROPFIND` Depth 0 seulement, sans listing
+  de contenu;
+- livre: creation par `MKCOL` des cibles manquantes uniquement pour dossiers UI
+  actifs existants;
+- livre: liaison locale `workspace_folder_nextcloud_links` en `linked`;
+- livre: aucune suppression Nextcloud reelle hors rollback strict, aucun
+  rollback necessaire;
+- livre: aucun fichier/document workspace lu, deplace, supprime ou migre;
+- artefact:
+  `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot9-reconcile-20260617T074733Z.jsonl`.
 
 Lot 10 - Politique fichiers existants et futurs par dossier:
 

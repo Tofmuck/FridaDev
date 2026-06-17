@@ -8,6 +8,7 @@ import psycopg
 import config
 from admin import runtime_settings
 from . import runtime_db_bootstrap
+from . import workspace_folder_nextcloud_reconcile
 from . import workspace_folder_nextcloud_runtime
 from . import workspace_folder_nextcloud_links_store
 from . import workspace_folders_store
@@ -181,6 +182,13 @@ def soft_delete_workspace_folder(folder_id: str) -> Optional[dict[str, Any]]:
 
 def runtime_nextcloud_secret_status() -> dict[str, Any]:
     return workspace_folder_nextcloud_runtime.runtime_secret_status()
+
+
+def reconcile_existing_workspace_folders_with_nextcloud() -> dict[str, Any]:
+    return workspace_folder_nextcloud_reconcile.reconcile_existing_workspace_folders(
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
 
 
 def upsert_workspace_folder_nextcloud_link(

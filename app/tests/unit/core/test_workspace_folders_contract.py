@@ -20,6 +20,7 @@ from core import workspace_files_store
 from core import workspace_folders_store
 from core import workspace_folder_nextcloud_client
 from core import workspace_folder_nextcloud_links_store
+from core import workspace_folder_nextcloud_reconcile
 from core import workspace_folder_nextcloud_runtime
 from core import workspace_folders_service
 from observability import workspace_folders_observability
@@ -76,9 +77,32 @@ class _FakeNextcloudFolderClient:
         self.created = []
         self.moved = []
         self.deleted = []
+        self.statuses = {}
+        self.status_checked = []
+        self.fail_status = None
         self.fail_create = None
         self.fail_move = None
         self.fail_delete = None
+
+    def folder_status(self, name):
+        self.status_checked.append(name)
+        if self.fail_status:
+            raise self.fail_status
+        status = int(self.statuses.get(name, 404))
+        if status == 207:
+            return workspace_folder_nextcloud_client.NextcloudFolderResponse(
+                True,
+                workspace_folder_nextcloud_reconcile.REASON_RECONCILE_EXISTING_OK,
+                status,
+            )
+        reason = (
+            workspace_folder_nextcloud_client.REASON_TARGET_MISSING
+            if status == 404
+            else workspace_folder_nextcloud_client.REASON_CONFLICT
+            if status in {405, 409, 412, 423}
+            else workspace_folder_nextcloud_client.REASON_UNAVAILABLE
+        )
+        raise workspace_folder_nextcloud_client.NextcloudFolderClientError(reason, http_status=status)
 
     def create_folder(self, name):
         self.created.append(name)
@@ -955,6 +979,190 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(rename_status, 200)
         self.assertEqual(renamed["reason_code"], "workspace_folder_nextcloud_rename_ok")
         self.assertEqual(renamed["folder"]["display_name"], "Projet Renomme")
+
+    def test_nextcloud_reconcile_links_existing_target_content_free(self) -> None:
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        folder = workspace_folders_store.serialize_workspace_folder_row(
+            {
+                "id": folder_id,
+                "display_name": "Projet Live",
+                "icon_key": "folder",
+                "description": "",
+                "sort_order": 1000,
+                "created_at": "2026-06-16T00:00:00Z",
+                "updated_at": "2026-06-16T00:00:00Z",
+                "deleted_at": None,
+            }
+        )
+        linked = dict(folder)
+        linked["nextcloud_sync_state"] = "linked"
+        fake_client = _FakeNextcloudFolderClient()
+        fake_client.statuses["Projet-Live"] = 207
+
+        with mock.patch.object(
+            workspace_folders_store,
+            "list_workspace_folders",
+            side_effect=[[folder], [linked]],
+        ):
+            with mock.patch.object(workspace_folder_nextcloud_links_store, "upsert_link") as upsert:
+                result = workspace_folder_nextcloud_reconcile.reconcile_existing_workspace_folders(
+                    db_conn_func=lambda: None,
+                    logger=_CaptureLogger(),
+                    client=fake_client,
+                )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(fake_client.status_checked, ["Projet-Live"])
+        self.assertEqual(fake_client.created, [])
+        self.assertEqual(fake_client.deleted, [])
+        upsert.assert_called_once()
+        self.assertEqual(upsert.call_args.kwargs["nextcloud_sync_state"], "linked")
+        self.assertEqual(upsert.call_args.kwargs["last_sync_operation"], "reconcile")
+        self.assertEqual(
+            upsert.call_args.kwargs["last_sync_reason_code"],
+            "workspace_folder_nextcloud_reconcile_existing_ok",
+        )
+        encoded = str(result)
+        self.assertIn("LOT9_LINK_EXISTING_TARGET", encoded)
+        self.assertNotIn("Projet Live", encoded)
+        self.assertNotIn("/Frida", encoded)
+        self.assertNotIn("Authorization", encoded)
+
+    def test_nextcloud_reconcile_creates_missing_target_and_links(self) -> None:
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        folder = workspace_folders_store.serialize_workspace_folder_row(
+            {
+                "id": folder_id,
+                "display_name": "Projet Missing",
+                "icon_key": "folder",
+                "description": "",
+                "sort_order": 1000,
+                "created_at": "2026-06-16T00:00:00Z",
+                "updated_at": "2026-06-16T00:00:00Z",
+                "deleted_at": None,
+            }
+        )
+        linked = dict(folder)
+        linked["nextcloud_sync_state"] = "linked"
+        fake_client = _FakeNextcloudFolderClient()
+
+        with mock.patch.object(
+            workspace_folders_store,
+            "list_workspace_folders",
+            side_effect=[[folder], [linked]],
+        ):
+            with mock.patch.object(workspace_folder_nextcloud_links_store, "upsert_link") as upsert:
+                result = workspace_folder_nextcloud_reconcile.reconcile_existing_workspace_folders(
+                    db_conn_func=lambda: None,
+                    logger=_CaptureLogger(),
+                    client=fake_client,
+                )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(fake_client.status_checked, ["Projet-Missing"])
+        self.assertEqual(fake_client.created, ["Projet-Missing"])
+        self.assertEqual(fake_client.deleted, [])
+        upsert.assert_called_once()
+        self.assertEqual(
+            upsert.call_args.kwargs["last_sync_reason_code"],
+            "workspace_folder_nextcloud_reconcile_created_ok",
+        )
+        self.assertIn("LOT9_CREATE_MISSING_TARGET", str(result))
+
+    def test_nextcloud_reconcile_rolls_back_created_target_when_link_fails(self) -> None:
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        folder = workspace_folders_store.serialize_workspace_folder_row(
+            {
+                "id": folder_id,
+                "display_name": "Projet Rollback",
+                "icon_key": "folder",
+                "description": "",
+                "sort_order": 1000,
+                "created_at": "2026-06-16T00:00:00Z",
+                "updated_at": "2026-06-16T00:00:00Z",
+                "deleted_at": None,
+            }
+        )
+        fake_client = _FakeNextcloudFolderClient()
+        link_error = workspace_folder_nextcloud_links_store.WorkspaceFolderNextcloudLinkPersistenceError(
+            "workspace_folder_nextcloud_error_redacted"
+        )
+
+        with mock.patch.object(workspace_folders_store, "list_workspace_folders", side_effect=[[folder], [folder]]):
+            with mock.patch.object(workspace_folder_nextcloud_links_store, "upsert_link", side_effect=link_error):
+                result = workspace_folder_nextcloud_reconcile.reconcile_existing_workspace_folders(
+                    db_conn_func=lambda: None,
+                    logger=_CaptureLogger(),
+                    client=fake_client,
+                )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(fake_client.created, ["Projet-Rollback"])
+        self.assertEqual(fake_client.deleted, [("Projet-Rollback", True)])
+        encoded = str(result)
+        self.assertIn("LOT9_CREATE_LINK_FAILED_ROLLBACK", encoded)
+        self.assertIn("workspace_folder_nextcloud_rollback_ok", encoded)
+        self.assertNotIn("Projet Rollback", encoded)
+
+    def test_nextcloud_reconcile_linked_missing_target_is_no_go_without_create(self) -> None:
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        folder = workspace_folders_store.serialize_workspace_folder_row(
+            {
+                "id": folder_id,
+                "display_name": "Projet Linked",
+                "icon_key": "folder",
+                "description": "",
+                "sort_order": 1000,
+                "created_at": "2026-06-16T00:00:00Z",
+                "updated_at": "2026-06-16T00:00:00Z",
+                "deleted_at": None,
+                "link_workspace_folder_id": folder_id,
+                "link_nextcloud_sync_state": "linked",
+                "link_nextcloud_folder_ref": "workspace-folder:11111111:abc123def456",
+                "link_nextcloud_name_hash": "abc123def456",
+                "link_last_sync_reason_code": "workspace_folder_nextcloud_create_ok",
+                "link_last_sync_operation": "create",
+                "link_nextcloud_share_state": "expected",
+            }
+        )
+        errored = dict(folder)
+        errored["nextcloud_sync_state"] = "sync_error"
+        fake_client = _FakeNextcloudFolderClient()
+
+        with mock.patch.object(workspace_folders_store, "list_workspace_folders", side_effect=[[folder], [errored]]):
+            with mock.patch.object(workspace_folder_nextcloud_links_store, "upsert_link") as upsert:
+                result = workspace_folder_nextcloud_reconcile.reconcile_existing_workspace_folders(
+                    db_conn_func=lambda: None,
+                    logger=_CaptureLogger(),
+                    client=fake_client,
+                )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(fake_client.created, [])
+        self.assertEqual(fake_client.deleted, [])
+        upsert.assert_called_once()
+        self.assertEqual(upsert.call_args.kwargs["nextcloud_sync_state"], "sync_error")
+        self.assertEqual(upsert.call_args.kwargs["last_sync_reason_code"], "workspace_folder_nextcloud_target_missing")
+        self.assertIn("LOT9_LINKED_TARGET_MISSING", str(result))
+
+    def test_nextcloud_reconcile_inventory_marks_expected_examples_absent(self) -> None:
+        with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[]):
+            result = workspace_folder_nextcloud_reconcile.reconcile_existing_workspace_folders(
+                db_conn_func=lambda: None,
+                logger=_CaptureLogger(),
+                client=_FakeNextcloudFolderClient(),
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["counts_before"]["active"], 0)
+        self.assertEqual(
+            result["examples"],
+            {
+                "philosophie": "expected_example_absent",
+                "conflit_lycee": "expected_example_absent",
+            },
+        )
+        self.assertIn("LOT9_INVENTORY_ACTIVE_FOLDERS", str(result))
 
     def test_folder_nextcloud_persisted_link_redacts_unknown_reason_and_raw_refs(self) -> None:
         row = workspace_folders_store.serialize_workspace_folder_row(

@@ -293,15 +293,34 @@ Preuve Lot 8B runtime permanent create/rename:
 
 ### Lot 9 - Reconciliation des dossiers existants
 
-- [ ] Inventorier les dossiers UI Frida existants de facon content-free.
-- [ ] Traiter explicitement les exemples attendus comme `Philosophie` et
+- [x] Inventorier les dossiers UI Frida existants de facon content-free.
+- [x] Traiter explicitement les exemples attendus comme `Philosophie` et
   `Conflit lycee` s'ils existent cote UI Frida.
-- [ ] Verifier s'ils existent deja cote Nextcloud par preuve status-only, sans
+- [x] Verifier s'ils existent deja cote Nextcloud par preuve status-only, sans
   lister de contenu utilisateur.
-- [ ] Proposer la creation des dossiers manquants sans deplacer leurs fichiers
+- [x] Proposer la creation des dossiers manquants sans deplacer leurs fichiers
   existants.
-- [ ] Ne pas ecraser un dossier Nextcloud existant et ne pas resoudre un
+- [x] Ne pas ecraser un dossier Nextcloud existant et ne pas resoudre un
   conflit sans decision humaine.
+
+Preuve Lot 9 reconciliation:
+`app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot9-reconcile-20260617T074733Z.jsonl`
+
+- backup applicatif des liaisons avant ecriture:
+  `/opt/platform/_codex_reports/frida-v1-nextcloud-folders-lot9-link-backup-20260617T074720Z.jsonl`;
+- inventaire content-free: 2 dossiers UI actifs, 2 `local_only`, 0 `linked`
+  avant reconciliation;
+- exemples attendus presents cote UI: `Philosophie` et `Conflit lycee` /
+  `Conflit lycée`;
+- verification Nextcloud status-only par cible, sans listing de contenu;
+- les 2 cibles manquantes ont ete creees par `MKCOL`, puis liees en `linked`
+  dans `workspace_folder_nextcloud_links`;
+- etat final content-free: 2 dossiers actifs, 2 `linked`, 0 conflit, 0 erreur,
+  0 `local_only`;
+- aucun contenu utilisateur lu, liste, deplace ou supprime;
+- aucun fichier/document workspace touche;
+- aucune suppression Nextcloud reelle hors rollback strict; aucun rollback n'a
+  ete necessaire.
 
 ### Lot 10 - Politique fichiers existants et futurs par dossier
 

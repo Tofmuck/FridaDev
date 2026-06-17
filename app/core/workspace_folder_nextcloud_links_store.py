@@ -88,6 +88,11 @@ REASON_CODE_CATALOG = frozenset(
         "workspace_folder_nextcloud_rollback_failed",
         "workspace_folder_local_persistence_failed",
         "workspace_folder_local_compensation_failed",
+        "workspace_folder_nextcloud_reconcile_existing_ok",
+        "workspace_folder_nextcloud_reconcile_created_ok",
+        "workspace_folder_nextcloud_reconcile_already_linked_ok",
+        "workspace_folder_nextcloud_reconcile_no_active_folders",
+        "workspace_folder_nextcloud_reconcile_example_absent",
         REASON_NEXTCLOUD_ERROR_REDACTED,
     }
 )
