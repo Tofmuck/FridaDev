@@ -49,6 +49,9 @@ aucun contenu brut dans les traces.
 TODO dediee:
 `app/docs/todo-todo/product/frida-v1-documents-ingestion-todo.md`
 
+Contrat source:
+`app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
+
 ### 3. Notes Markdown par dossier
 
 Frida doit pouvoir creer une note, completer une note, retrouver une note,

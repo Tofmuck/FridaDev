@@ -1,9 +1,10 @@
 # Frida V1 - Documents sources / ingestion / lecture / PDF fallback - TODO
 
-Statut: TODO detaillee, prete pour Lot 0 audit
+Statut: Lot 1 contrat produit livre; prete pour Lot 2 modele local/read-model
 Date: 2026-06-17
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
+Contrat Documents V1 source: `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
 Contrat documents actifs source: `app/docs/states/specs/active-conversation-documents-contract.md`
 
 ## 1. Intention produit
@@ -133,11 +134,13 @@ Il doit seulement rester compatible avec ces futurs lots.
 - Pas de confusion entre Documents et Biblio.
 - Pas de lancement anticipe Notes, Exports ou Images.
 
-## 5. Decisions produit deja prises
+## 5. Decisions produit gravees au Lot 1
 
 - Le chantier Documents V1 vient apres la cloture du socle dossiers Frida V1 /
   Nextcloud.
 - Le dossier Frida visible dans l'UI reste le `workspace_folder`.
+- Le dossier Frida frontend actif est la racine produit du rangement
+  documentaire.
 - La cible produit des documents sources et fichiers persistants est
   `/Frida/<dossier>/Documents`.
 - Les ecritures Documents sont autorisees seulement pour un dossier Frida
@@ -150,6 +153,35 @@ Il doit seulement rester compatible avec ces futurs lots.
   entiers ou exclus entiers, hors Memory/RAG/Identity/Summary et hors Biblio.
 - Les documents persistants de dossier ne sont pas des `library_document`,
   `catalogue_document` ou `passage documentaire`.
+- Le modele local Documents V1 s'appuie sur `workspace_files` comme registre /
+  read-model applicatif des documents persistants de dossier. Les lots runtime
+  peuvent ajouter une liaison technique stricte a `workspace_files` et
+  `workspace_folders`, sans creer une deuxieme notion produit de document.
+- La surface primaire de depot Documents V1 est la surface fichier/document d'un
+  dossier Frida `linked`.
+- Un depot depuis le chat vers Documents V1 est autorise seulement comme action
+  explicite de rangement dans le dossier Frida courant `linked`.
+- Un upload direct dans le chat sans action de rangement explicite reste un
+  `active_document` temporaire.
+- La liste utilisateur des documents appartient au dossier Frida courant.
+- Les noms de fichiers peuvent etre visibles dans l'interface utilisateur et
+  dans les reponses utilisateur quand c'est utile au travail documentaire.
+- Les noms de fichiers ne doivent pas fuiter dans les logs, JSONL,
+  observabilite technique, reason codes ou preuves content-free.
+- Un document de dossier est utilise dans une conversation seulement apres une
+  selection ou une demande explicite de l'utilisateur.
+- Frida ne doit pas injecter automatiquement tous les documents d'un dossier.
+- Frida ne doit jamais presenter une extraction partielle, tronquee ou visuelle
+  comme une lecture textuelle complete.
+- Un PDF avec texte exploitable suit la voie extraction texte bornee.
+- Un PDF sans texte exploitable suit le fallback visuel/PDF image.
+- Le fallback visuel PDF/image est unifie pour un PDF ajoute directement dans le
+  chat et pour un PDF present dans un dossier Nextcloud: memes limites, memes
+  messages utilisateur, memes reason codes et memes preuves content-free.
+- Les limites V1 du fallback visuel sont `25 pages`, `25 Mo` et `180` secondes
+  pour toute preparation externe bornee si elle est utilisee.
+- Le contenu des documents, le texte OCR, les images, PDF/base64 et payloads
+  provider ne doivent jamais etre logges bruts.
 - Les fichiers workspace actifs deja rattaches aux dossiers Frida existants
   doivent etre traites dans Documents V1.
 - Pas de copie/rangement silencieux des fichiers existants.
@@ -171,65 +203,54 @@ Il doit seulement rester compatible avec ces futurs lots.
     textuelle complete.
 - Documents V1 ne doit pas brouiller ces deux statuts.
 
-## 6. Decisions ouvertes avant runtime
+Contrat source-of-truth Lot 1:
+`app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
 
-Aucun lot runtime Documents V1 ne doit commencer si une decision ouverte de
-cette section le bloque. Les decisions doivent etre tranchees dans Lot 1 ou dans
-un micro-lot docs/spec explicite avant tout patch runtime concerne.
+Tout lot runtime Documents V1 doit appliquer ce contrat. Si une contradiction
+produit apparait, le lot doit s'arreter avant patch et ouvrir un micro-lot
+docs/spec explicite.
 
-- Modele local Documents:
-  - options a trancher: table applicative dediee, extension stricte d'une table
-    existante, ou read-model derive;
-  - bloque: Lot 2 et tous les lots runtime qui persistent ou projettent des
-    documents de dossier.
-- Surface utilisateur de depot:
-  - options a trancher: depot depuis UI dossier, depuis chat avec dossier
-    courant, ou autre surface existante documentee;
-  - bloque: Lot 3.
-- Surface utilisateur de liste:
-  - options a trancher: panneau dossier, liste dans chat avec dossier courant,
-    surface fichiers existante, ou autre surface documentee;
-  - bloque: Lot 4.
-- Visibilite des noms de fichiers:
-  - options a trancher: noms visibles en UI produit, refs redacted en preuves,
-    ou regle hybride stricte;
-  - bloque: Lots 4, 8 et tout dashboard/read-model utilisateur.
-- Lecture et usage conversationnel:
-  - options a trancher: limites taille/pages/tokens, preparation de lecture vs
-    injection conversationnelle, et maniere dont une conversation utilise un
-    document de dossier;
-  - bloque: Lot 5 et toute preuve Lot Z portant sur lecture/preparation.
-- Strategie PDF image Documents V1:
-  - options a trancher: OCR seulement, visuel seulement, OCR puis visuel en
-    fallback, ou strategie differente clairement documentee;
-  - bloque: Lot 6 et toute preuve Lot Z portant sur PDF image.
-- Politique operationnelle des fichiers existants:
-  - decision produit deja prise: traitement obligatoire si fichiers actifs
-    confirmes;
-  - restent a trancher avant runtime: copie seule, copie puis verification,
-    conservation de source, rollback exact, gestion de collision;
-  - bloque: Lot 7 runtime de copie/rangement.
-- Catalogue reason codes Documents V1:
-  - options a trancher: catalogue final minimal, noms des codes, codes
-    partages avec `active_document`, codes specifiques Nextcloud et codes de
-    redaction;
-  - bloque: Lot 8 et Lot Z.
-- Conditions exactes de cloture Documents V1:
-  - doivent etre gravees avant Lot Z: smokes minimum, formats minimum,
-    criteres PDF image, preuves anti-fuite et limites assumables;
-  - bloque: Lot Z.
+## 6. Reason codes Documents V1 initiaux
+
+Catalogue initial a appliquer dans les lots runtime:
+
+- `folder_document_folder_not_linked`;
+- `folder_document_documents_target_missing`;
+- `folder_document_documents_target_conflict`;
+- `folder_document_documents_target_unavailable`;
+- `folder_document_documents_target_not_collection`;
+- `folder_document_name_invalid`;
+- `folder_document_name_conflict`;
+- `folder_document_type_unsupported`;
+- `folder_document_upload_ok`;
+- `folder_document_list_ok`;
+- `folder_document_selected`;
+- `folder_document_prepare_ok`;
+- `folder_document_text_ready`;
+- `folder_document_pdf_text_ready`;
+- `folder_document_pdf_visual_required`;
+- `folder_document_pdf_visual_ready`;
+- `folder_document_too_large`;
+- `folder_document_too_many_pages`;
+- `folder_document_parse_error`;
+- `folder_document_runtime_unavailable`;
+- `folder_document_nextcloud_error_redacted`;
+- `folder_document_content_redacted`;
+- `folder_document_existing_copy_required`;
+- `folder_document_existing_copy_ok`;
+- `folder_document_existing_copy_conflict`;
+- `folder_document_existing_source_preserved`;
+- `folder_document_observation_redacted`.
 
 ## 7. Nature des lots
 
 - Lot 0: audit read-only/docs-only.
-- Lot 1: contrat produit docs-only; il doit trancher ou bloquer explicitement
-  les decisions ouvertes avant runtime.
+- Lot 1: contrat produit docs-only; livre la spec source-of-truth.
 - Lot 2: modele local / read-model; runtime local possible, sans Nextcloud live.
 - Lot 3: ingestion/rangement; runtime applicatif avec ecriture Nextcloud.
 - Lot 4: liste documents; runtime applicatif et read-model.
 - Lot 5: lecture/preparation; runtime applicatif sans Biblio/RAG global.
-- Lot 6: PDF image / OCR / fallback; runtime bloque tant que la strategie PDF
-  image n'est pas tranchee.
+- Lot 6: PDF image / fallback visuel unifie.
 - Lot 7: fichiers existants; obligatoire si l'audit trouve des fichiers actifs,
   fermable par preuve `0 a traiter` sinon.
 - Lot 8: observabilite / smokes live; preuves JSONL content-free.
@@ -273,50 +294,39 @@ Preuve Lot 0:
 
 ### Lot 1 - Contrat produit Documents V1
 
-- [ ] Graver le document source rattache a un `workspace_folder`.
-- [ ] Graver le prerequis strict: dossier Frida `linked`.
-- [ ] Graver la cible normative `/Frida/<dossier>/Documents`.
-- [ ] Graver la relation document -> dossier -> conversation -> usage.
-- [ ] Graver ce qu'un document de dossier peut devenir dans une conversation
+- [x] Creer la spec source-of-truth:
+  `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`.
+- [x] Graver le document source rattache a un `workspace_folder`.
+- [x] Graver le prerequis strict: dossier Frida `linked`.
+- [x] Graver la cible normative `/Frida/<dossier>/Documents`.
+- [x] Graver la relation document -> dossier -> conversation -> usage.
+- [x] Graver ce qu'un document de dossier peut devenir dans une conversation
   sans devenir automatiquement `active_document`.
-- [ ] Graver les etats produit minimaux: disponible, en preparation, lisible,
+- [x] Graver les surfaces utilisateur: depot par dossier `linked`, liste par
+  dossier, selection explicite, usage conversationnel borne.
+- [x] Graver les regles de noms visibles utilisateur vs preuves content-free.
+- [x] Graver la strategie PDF texte: extraction texte bornee.
+- [x] Graver la strategie PDF image: fallback visuel unifie, sans fausse
+  promesse de lecture textuelle.
+- [x] Graver la politique fichiers existants: copie/rangement controle
+  obligatoire si fichiers actifs, jamais silencieux ni destructif.
+- [x] Graver les etats produit minimaux: disponible, en preparation, lisible,
   non injecte, PDF sans texte, image/fallback requis, erreur, supprime ou
   indisponible.
-- [ ] Graver les reason codes content-free initiaux.
-- [ ] Graver les messages utilisateur sobres: document disponible, preparation
-  en cours, document trop lourd, PDF sans texte, fallback image/OCR impossible,
+- [x] Graver les reason codes content-free initiaux.
+- [x] Graver les messages utilisateur sobres: document disponible, preparation
+  en cours, document trop lourd, PDF sans texte, fallback visuel impossible,
   dossier non synchronise, cible Documents indisponible.
-- [ ] Graver la frontiere stricte avec `active_document`.
-- [ ] Graver la frontiere stricte avec Biblio / Catalogue.
-- [ ] Graver la frontiere stricte avec Notes, Exports et Images.
-- [ ] Graver les preuves attendues pour fermer le contrat.
-- [ ] Trancher ou bloquer explicitement chaque decision de la section
-  "Decisions ouvertes avant runtime".
-
-Reason codes candidats a stabiliser:
-
-- `folder_document_folder_not_linked`;
-- `folder_document_documents_target_missing`;
-- `folder_document_documents_target_conflict`;
-- `folder_document_name_invalid`;
-- `folder_document_name_conflict`;
-- `folder_document_upload_ok`;
-- `folder_document_list_ok`;
-- `folder_document_prepare_ok`;
-- `folder_document_text_ready`;
-- `folder_document_pdf_text_ready`;
-- `folder_document_pdf_image_fallback_required`;
-- `folder_document_ocr_too_large`;
-- `folder_document_ocr_too_many_pages`;
-- `folder_document_runtime_unavailable`;
-- `folder_document_nextcloud_error_redacted`;
-- `folder_document_content_redacted`.
+- [x] Graver la frontiere stricte avec `active_document`.
+- [x] Graver la frontiere stricte avec Biblio / Catalogue.
+- [x] Graver la frontiere stricte avec Notes, Exports et Images.
+- [x] Graver les preuves attendues pour fermer le contrat.
+- [x] Mettre a jour les index documentaires avec la nouvelle spec.
 
 ### Lot 2 - Modele local / read-model
 
-- [ ] Appliquer la decision amont sur la representation locale des documents
-  persistants d'un dossier Frida.
-- [ ] Refuser le lot si la decision "Modele local Documents" n'est pas tranchee.
+- [ ] Appliquer le contrat Lot 1: `workspace_files` devient le registre /
+  read-model applicatif des documents persistants de dossier.
 - [ ] Relier document, dossier, conversation et usage sans creer de Biblio.
 - [ ] Relier un usage conversationnel a un document de dossier sans polluer
   Memory/RAG/Identity/Summary.
@@ -338,9 +348,8 @@ Point de vigilance:
 
 ### Lot 3 - Ingestion / rangement nouveaux documents
 
-- [ ] Appliquer la decision amont sur la surface utilisateur de depot.
-- [ ] Refuser le lot si la decision "Surface utilisateur de depot" n'est pas
-  tranchee.
+- [ ] Appliquer le contrat Lot 1: depot par surface fichier/document du dossier
+  Frida `linked`, ou action explicite de rangement depuis le chat courant.
 - [ ] Bloquer tout depot si le dossier Frida n'est pas `linked`.
 - [ ] Verifier `Documents` en `PROPFIND` Depth 0 seulement si live.
 - [ ] Refuser une cible `Documents` absente, non-collection ou inaccessible avec
@@ -369,14 +378,11 @@ Interdits Lot 3:
 
 ### Lot 4 - Liste des documents d'un dossier
 
-- [ ] Appliquer la decision amont sur la surface utilisateur de liste.
-- [ ] Refuser le lot si la decision "Surface utilisateur de liste" n'est pas
-  tranchee.
+- [ ] Appliquer le contrat Lot 1: liste utilisateur par dossier Frida courant.
 - [ ] Lister les documents disponibles sans fuite de contenu.
 - [ ] Ne pas faire de listing Nextcloud non borne comme preuve operateur.
-- [ ] Appliquer la decision amont sur la visibilite des noms de fichiers.
-- [ ] Refuser le lot si la decision "Visibilite des noms de fichiers" n'est pas
-  tranchee.
+- [ ] Appliquer le contrat Lot 1: noms de fichiers visibles en UI/reponse
+  utilisateur utile, redacted en logs/preuves/observabilite technique.
 - [ ] Exposer media type, taille, statut, date et readiness sans contenu.
 - [ ] Gerer dossier non `linked`, `Documents` absent, `Documents` non-collection
   et erreur transport.
@@ -386,19 +392,19 @@ Interdits Lot 3:
 
 ### Lot 5 - Lecture / preparation de lecture
 
-- [ ] Refuser le lot si la decision "Lecture et usage conversationnel" n'est
-  pas tranchee.
+- [ ] Appliquer le contrat Lot 1: selection explicite, preparation bornee,
+  injection entiere ou refus, jamais troncature silencieuse.
 - [ ] Reutiliser l'extracteur texte existant quand c'est compatible.
 - [ ] Supporter document texte simple.
 - [ ] Supporter PDF textuel.
 - [ ] Supporter DOCX, ODT, Markdown et TXT si deja supportes par les briques
   existantes ou documenter les manques.
-- [ ] Appliquer les limites taille/pages/tokens tranchees avant lecture.
+- [ ] Appliquer les limites runtime du contrat: document entier ou absent,
+  refus simple si trop lourd, preuves content-free.
 - [ ] Ne jamais tronquer silencieusement un document en pretendant l'avoir lu.
-- [ ] Appliquer la frontiere tranchee entre preparation de lecture et injection
-  conversationnelle.
-- [ ] Appliquer le mode d'usage conversationnel tranche pour un document de
-  dossier.
+- [ ] Appliquer la frontiere entre preparation de lecture et usage
+  conversationnel.
+- [ ] Appliquer l'usage conversationnel explicite d'un document de dossier.
 - [ ] Ne pas creer d'index RAG global ni de passage Biblio.
 - [ ] Ne pas alimenter Memory, Identity ou Summary avec le contenu document.
 - [ ] Donner une reponse utilisateur honnete si le document est trop gros,
@@ -406,15 +412,15 @@ Interdits Lot 3:
 - [ ] Tester lecture nominale, trop gros, non supporte, parse error et
   non-contamination.
 
-### Lot 6 - PDF image / OCR / fallback visuel unifie
+### Lot 6 - PDF image / fallback visuel unifie
 
-- [ ] Refuser le lot si la decision "Strategie PDF image Documents V1" n'est
-  pas tranchee.
+- [ ] Appliquer le contrat Lot 1: PDF textuel par extraction texte bornee, PDF
+  sans texte par fallback visuel/PDF image.
 - [ ] Detecter PDF sans texte depuis un document de dossier.
 - [ ] Detecter PDF sans texte depuis un upload direct dans le chat.
-- [ ] Appliquer la strategie PDF image tranchee aux deux chemins.
-- [ ] Reutiliser les limites active documents si elles restent valides:
-  `25 pages`, `25 Mo`, `180` secondes, `fra+eng+deu`.
+- [ ] Appliquer le meme fallback visuel aux deux chemins.
+- [ ] Appliquer les limites V1 du fallback visuel: `25 pages`, `25 Mo`,
+  `180` secondes pour toute preparation externe bornee si elle est utilisee.
 - [ ] Ne pas melanger OCR borne et injection visuelle/PDF ponctuelle dans un
   statut ambigu.
 - [ ] Garantir qu'un PDF deja textuel n'est pas OCRise.
@@ -436,8 +442,6 @@ Interdits Lot 3:
   `/Frida/<dossier>/Documents`.
 - [ ] Si l'inventaire trouve `0` fichier actif a traiter, fermer le lot par
   preuve content-free `0 a traiter`.
-- [ ] Refuser le runtime de copie si la decision "Politique operationnelle des
-  fichiers existants" n'est pas tranchee.
 - [ ] Interdire toute copie/rangement automatique.
 - [ ] Travailler dossier par dossier.
 - [ ] Conserver la source tant que preuve, verification et rollback ne sont pas
@@ -449,9 +453,8 @@ Interdits Lot 3:
 
 ### Lot 8 - Observabilite / smokes live
 
-- [ ] Refuser le lot si la decision "Catalogue reason codes Documents V1" n'est
-  pas tranchee.
-- [ ] Appliquer le catalogue final des reason codes Documents V1.
+- [ ] Appliquer le catalogue initial des reason codes Documents V1 grave au
+  Lot 1.
 - [ ] Ajouter ou consolider les events content-free: depot, liste, preparation,
   lecture, PDF image detecte, fallback, conflit, erreur.
 - [ ] Exposer compteurs et statuts, pas contenu.
@@ -462,8 +465,7 @@ Interdits Lot 3:
 - [ ] Prouver un depot/liste/preparation avec document synthetique.
 - [ ] Prouver le refus dossier non `linked`.
 - [ ] Prouver le conflit de nom.
-- [ ] Prouver PDF texte et PDF image/fallback sur les deux chemins si le
-  fallback est livre.
+- [ ] Prouver PDF texte et PDF image/fallback sur les deux chemins.
 - [ ] Scanner les artefacts contre contenu, nom sensible, chemin DAV, URL DAV,
   XML brut, `storage_key`, token, cookie, `app-password`, secret.
 
@@ -476,8 +478,8 @@ Artefacts attendus:
 
 ### Lot Z - Cloture Documents V1
 
-- [ ] Refuser Lot Z si les conditions exactes de cloture Documents V1 ne sont
-  pas gravees avant validation.
+- [ ] Appliquer les criteres de cloture Lot Z graves dans
+  `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`.
 - [ ] Prouver qu'un dossier Frida `linked` peut recevoir un document sous
   `Documents`.
 - [ ] Prouver que la liste utilisateur montre les documents disponibles sans
@@ -512,7 +514,7 @@ Artefacts attendus:
 - Presenter une extraction partielle comme complete.
 - Pretendre avoir lu un document trop gros, non injecte ou en erreur.
 
-## 10. Hors-scope strict de cette TODO de cadrage
+## 10. Hors-scope strict du Lot 1 livre
 
 - Aucun code runtime.
 - Aucun acces Nextcloud live.
@@ -528,11 +530,12 @@ Artefacts attendus:
 
 ## 11. Prochain lot recommande
 
-Ouvrir `Lot 0 - Audit existant`.
+Ouvrir `Lot 2 - Modele local / read-model`.
 
-Objectif Lot 0:
+Objectif Lot 2:
 
-- lire le code et les tests documents actifs / OCR / workspace files;
-- produire un audit content-free date;
-- valider les surfaces reutilisables;
-- lister les no-go avant tout runtime Documents V1.
+- appliquer le contrat source-of-truth Documents V1;
+- adapter `workspace_files` comme registre/read-model Documents V1;
+- relier document, dossier, conversation et usage sans Biblio;
+- garder les payloads, logs et preuves content-free;
+- ne pas acceder a Nextcloud live.
