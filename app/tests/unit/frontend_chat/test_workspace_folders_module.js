@@ -427,9 +427,9 @@ test("workspace file selection usage labels distinguish non-ready document state
       selected: "true",
       document_v1_usage: {
         selected: "true",
-        usage_status: "pdf_visual_required",
+        usage_status: "visual_ready",
         readiness: "visual",
-        reason_code: "folder_document_pdf_visual_required",
+        reason_code: "folder_document_pdf_visual_ready",
       },
       file: {
         id: "file-1",
@@ -455,7 +455,7 @@ test("workspace file selection usage labels distinguish non-ready document state
     }],
   });
 
-  assert.equal(selections[0].usage_status_label, "Lecture visuelle requise");
+  assert.equal(selections[0].usage_status_label, "Lecture visuelle prête");
   assert.equal(selections[0].document_v1_usage.selected, true);
   assert.equal(selections[1].document_v1_usage.selected, false);
   assert.equal(selections[1].selected, false);

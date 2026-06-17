@@ -2089,7 +2089,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(lane.decisions[0].reason_code, "workspace_file_too_large")
         self.assertIn("workspace_file_too_large", joined)
 
-    def test_workspace_file_image_payload_is_deferred_to_visual_lot(self) -> None:
+    def test_workspace_file_image_payload_uses_visual_fallback(self) -> None:
         prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
 
         lane = active_document_prompt_lane.inject_active_document_prompt_lane(
@@ -2116,17 +2116,21 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
             max_tokens=1000,
         )
 
-        self.assertEqual(lane.injected_count, 0)
-        self.assertEqual(lane.not_injected_count, 1)
-        self.assertEqual(lane.decisions[0].reason_code, "folder_document_pdf_visual_required")
-        self.assertFalse(any(isinstance(message.get("content"), list) for message in prompt_messages))
+        self.assertEqual(lane.injected_count, 1)
+        self.assertEqual(lane.not_injected_count, 0)
+        self.assertEqual(lane.decisions[0].reason_code, "")
+        self.assertEqual(lane.decisions[0].payload_order, "text_then_image_url")
+        self.assertTrue(any(isinstance(message.get("content"), list) for message in prompt_messages))
         payload = active_documents_observability.build_prompt_decision_payload(lane)
         encoded_payload = str(payload)
         self.assertEqual(payload["documents"][0]["filename"], "workspace_file")
+        self.assertEqual(payload["documents"][0]["decision"], "injected")
+        self.assertEqual(payload["documents"][0]["payload_order"], "text_then_image_url")
         self.assertNotIn("image.png", encoded_payload)
         self.assertNotIn("image_content", encoded_payload)
+        self.assertNotIn("data:image", encoded_payload)
 
-    def test_workspace_file_ocr_required_pdf_payload_is_deferred_to_visual_lot(self) -> None:
+    def test_workspace_file_ocr_required_pdf_payload_uses_visual_fallback(self) -> None:
         prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
 
         lane = active_document_prompt_lane.inject_active_document_prompt_lane(
@@ -2151,12 +2155,21 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
             max_tokens=1000,
         )
 
-        self.assertEqual(lane.injected_count, 0)
-        self.assertEqual(lane.not_injected_count, 1)
+        self.assertEqual(lane.injected_count, 1)
+        self.assertEqual(lane.not_injected_count, 0)
         self.assertEqual(lane.decisions[0].media_kind, "file")
-        self.assertEqual(lane.decisions[0].reason_code, "folder_document_pdf_visual_required")
-        self.assertFalse(any(isinstance(message.get("content"), list) for message in prompt_messages))
-        self.assertNotIn("data:application/pdf", str(prompt_messages))
+        self.assertEqual(lane.decisions[0].reason_code, "")
+        self.assertEqual(lane.decisions[0].payload_order, "text_then_file")
+        self.assertTrue(any(isinstance(message.get("content"), list) for message in prompt_messages))
+        text_parts = [
+            part.get("text", "")
+            for message in prompt_messages
+            if isinstance(message.get("content"), list)
+            for part in message["content"]
+            if part.get("type") == "text"
+        ]
+        self.assertNotIn("data:application/pdf", "\n".join(text_parts))
+        self.assertIn("ne constituent pas un texte OCRise garanti", "\n".join(text_parts))
         self.assertNotIn("imageUrl", str(prompt_messages))
 
     def test_workspace_file_pdf_visual_over_provider_cap_is_excluded(self) -> None:
@@ -2194,9 +2207,9 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         self.assertEqual(lane.injected_count, 0)
         self.assertEqual(lane.not_injected_count, 1)
-        self.assertEqual(lane.decisions[0].reason_code, "folder_document_pdf_visual_required")
+        self.assertEqual(lane.decisions[0].reason_code, "workspace_file_pdf_visual_too_large")
         joined = "\n".join(str(message.get("content") or "") for message in prompt_messages)
-        self.assertIn("folder_document_pdf_visual_required", joined)
+        self.assertIn("workspace_file_pdf_visual_too_large", joined)
         self.assertNotIn("file_data", joined)
         self.assertNotIn("data:application/pdf", joined)
 

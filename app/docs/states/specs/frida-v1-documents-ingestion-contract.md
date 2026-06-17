@@ -1,6 +1,6 @@
 # Frida V1 - Documents ingestion contract
 
-Statut: spec vivante Lot 3
+Statut: spec vivante Lot 6
 Date: 2026-06-17
 Roadmap active: `app/docs/todo-todo/product/frida-v1-documents-ingestion-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-documents-ingestion-lot0-audit-2026-06-17.md`
@@ -20,8 +20,10 @@ Le Lot 1 a livre ce contrat en docs-only. Le Lot 2 a livre le read-model local
 derive autour de `workspace_files`, sans migration DB. Le Lot 3 livre
 l'ingestion/rangement Nextcloud-first des nouveaux documents via la route
 workspace files existante, avec transport WebDAV borne, preuve synthetique et
-compensation stricte. Les lots suivants gardent lecture, fallback visuel complet
-et fichiers historiques hors scope.
+compensation stricte. Le Lot 4 livre la liste utilisateur. Le Lot 5 livre la
+preparation texte/PDF textuel bornee. Le Lot 6 livre le fallback visuel unifie
+pour images et PDF sans texte. Les lots suivants gardent fichiers historiques
+et cloture empirique hors scope.
 
 ## 2. Modele produit Documents V1
 
@@ -454,11 +456,10 @@ Surfaces:
   DAV, XML, secret, contenu et nom de fichier utilisateur restent absents des
   projections techniques, logs, JSONL et observabilite.
 
-Limites restantes avant Lot 6+:
+Limites restantes apres Lot 6:
 
-- le fallback visuel complet reste Lot 6;
 - les fichiers workspace historiques restent Lot 7;
-- aucun Notes / Exports / Images runtime n'est livre par Lot 5.
+- aucun Notes / Exports / Images runtime n'est livre par Lot 6.
 
 ## 12.3 Preparation de lecture bornee livree au Lot 5
 
@@ -476,14 +477,61 @@ Regles runtime:
 - si le document est trop volumineux, absent, supprime, non supporte ou en
   erreur, il est refuse proprement avec un reason code content-free;
 - aucune troncature silencieuse n'est autorisee;
-- un PDF sans texte exploitable ou une image de dossier produit
-  `folder_document_pdf_visual_required` et reste pour le Lot 6;
+- au Lot 5, un PDF sans texte exploitable ou une image de dossier restait hors
+  payload multimodal; le Lot 6 active le fallback visuel unifie;
 - les decisions `workspace_file_selection` dans l'observabilite technique ne
   contiennent pas de nom de fichier brut; elles utilisent refs/hashs courts,
   statuts, media type allowliste et reason codes;
 - le contenu extrait peut etre envoye au modele seulement dans la lane de prompt
   prevue pour le tour courant; il ne doit pas etre journalise brut et ne doit
   pas alimenter Memory/RAG/Identity/Summary.
+
+## 12.4 Fallback visuel unifie livre au Lot 6
+
+Le Lot 6 aligne les fichiers de dossier selectionnes avec la lane multimodale
+`active_document` existante sans ajouter d'OCR durable, de WebDAV live ni de
+route parallele.
+
+Regles runtime:
+
+- un PDF textuel de dossier continue a utiliser l'extracteur texte borne; il ne
+  passe pas par le fallback visuel et n'est pas OCRise par ce lot;
+- un PDF de dossier en statut `ocr_required`, ou un PDF dont l'extraction texte
+  retourne `document_ocr_required`, devient un document prompt `media_kind=file`
+  injectable uniquement pour le tour courant;
+- une image de dossier devient un document prompt `media_kind=image` injectable
+  uniquement pour le tour courant;
+- les bytes image/PDF peuvent etre charges en memoire dans l'objet prompt et
+  transformes en `data:image` ou `data:application/pdf` seulement dans le
+  message provider;
+- les logs, projections techniques, observabilite, JSONL et docs de preuve ne
+  contiennent jamais image brute, PDF brut, base64, data URL, texte OCR, contenu
+  extrait, `storage_key`, chemin disque, URL DAV, XML ou secret;
+- le plafond provider commun est `25 MiB` avant encodage base64; les tests
+  prouvent que le refus taille trop grande intervient avant construction de la
+  data URL;
+- si le modele principal ne supporte pas image/fichier multimodal, si les bytes
+  manquent ou si la taille est trop grande, la decision est exclue avec reason
+  code content-free et Frida ne pretend pas avoir lu le document;
+- le message systeme indique explicitement qu'un PDF visuel injecte est un
+  fichier multimodal, pas un texte OCR garanti;
+- `document_v1_usage` expose `visual_ready` apres injection visuelle reussie,
+  conserve `pdf_visual_required` quand le modele ne peut pas l'utiliser, et
+  garde `too_large` / `unavailable` pour les refus correspondants;
+- `folder_document_pdf_visual_ready` signale la preparation visuelle reussie;
+  les reason codes workspace existants signalent les refus techniques:
+  `workspace_file_model_unsupported`,
+  `workspace_file_pdf_visual_model_unsupported`,
+  `workspace_file_pdf_visual_bytes_missing`,
+  `workspace_file_pdf_visual_too_large`, `workspace_file_too_large` ou
+  `workspace_file_unreadable`.
+
+Limites restantes apres Lot 6:
+
+- aucun OCR durable nouveau n'est livre;
+- aucun fichier historique n'est copie/range sous `Documents`;
+- aucun contenu visuel ou PDF brut n'est persiste dans une surface technique;
+- Lot 7 reste necessaire pour traiter les fichiers workspace existants.
 
 ## 13. Reason codes Documents V1
 

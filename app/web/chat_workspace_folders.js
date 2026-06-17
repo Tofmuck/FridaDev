@@ -85,6 +85,7 @@ const WORKSPACE_FILE_USAGE_STATUS_LABELS = Object.freeze({
   not_injected: 'Non injecté',
   pdf_text: 'PDF texte',
   pdf_visual_required: 'Lecture visuelle requise',
+  visual_ready: 'Lecture visuelle prête',
   too_large: 'Trop volumineux',
   unsupported: 'Non supporté',
   unavailable: 'Indisponible',

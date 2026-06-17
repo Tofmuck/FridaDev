@@ -1,6 +1,6 @@
 # Frida V1 - Documents sources / ingestion / lecture / PDF fallback - TODO
 
-Statut: Lot 5 lecture/preparation bornee livree; prete pour Lot 6 PDF image / fallback visuel unifie
+Statut: Lot 6 PDF image / fallback visuel unifie livre; prete pour Lot 7 fichiers existants
 Date: 2026-06-17
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -522,9 +522,9 @@ Preuve Lot 5:
   existantes `/api/conversations/<id>/workspace-file-selections`;
 - `workspace_file_selection_prompt.py` prepare les documents texte et PDF
   textuels via l'extracteur texte existant, avec injection complete ou refus;
-- les images et PDF sans texte issus de fichiers de dossier ne sont pas envoyes
-  en payload multimodal dans ce lot: ils produisent
-  `folder_document_pdf_visual_required` et restent pour le Lot 6;
+- les images et PDF sans texte issus de fichiers de dossier restent hors
+  payload multimodal au Lot 5; le Lot 6 les unifie avec la voie visuelle
+  active-document existante;
 - `document_v1_usage` expose l'etat conversationnel `selected`, `readable`,
   `pdf_visual_required`, `too_large` ou `unavailable` sans devenir un stockage
   durable `active_document`;
@@ -536,24 +536,41 @@ Preuve Lot 5:
 
 ### Lot 6 - PDF image / fallback visuel unifie
 
-- [ ] Appliquer le contrat Lot 1: PDF textuel par extraction texte bornee, PDF
+- [x] Appliquer le contrat Lot 1: PDF textuel par extraction texte bornee, PDF
   sans texte par fallback visuel/PDF image.
-- [ ] Detecter PDF sans texte depuis un document de dossier.
-- [ ] Detecter PDF sans texte depuis un upload direct dans le chat.
-- [ ] Appliquer le meme fallback visuel aux deux chemins.
-- [ ] Appliquer les limites V1 du fallback visuel: `25 pages`, `25 Mo`,
+- [x] Detecter PDF sans texte depuis un document de dossier.
+- [x] Detecter PDF sans texte depuis un upload direct dans le chat.
+- [x] Appliquer le meme fallback visuel aux deux chemins.
+- [x] Appliquer les limites V1 du fallback visuel: `25 pages`, `25 Mo`,
   `180` secondes pour toute preparation externe bornee si elle est utilisee.
-- [ ] Ne pas melanger OCR borne et injection visuelle/PDF ponctuelle dans un
+- [x] Ne pas melanger OCR borne et injection visuelle/PDF ponctuelle dans un
   statut ambigu.
-- [ ] Garantir qu'un PDF deja textuel n'est pas OCRise.
-- [ ] Garantir que Frida ne pretend pas avoir lu un PDF non injecte, non OCRise
+- [x] Garantir qu'un PDF deja textuel n'est pas OCRise.
+- [x] Garantir que Frida ne pretend pas avoir lu un PDF non injecte, non OCRise
   ou non preparable.
-- [ ] Aligner les messages utilisateur pour PDF upload direct et PDF depuis
+- [x] Aligner les messages utilisateur pour PDF upload direct et PDF depuis
   Nextcloud.
-- [ ] Aligner les reason codes et preuves pour les deux chemins.
-- [ ] Ne pas exposer images, PDF, base64, texte OCR, contenu brut ou payload
+- [x] Aligner les reason codes et preuves pour les deux chemins.
+- [x] Ne pas exposer images, PDF, base64, texte OCR, contenu brut ou payload
   provider dans logs, dashboard, JSONL ou docs de preuve.
-- [ ] Tester les deux chemins avec un PDF texte et un PDF image.
+- [x] Tester les deux chemins avec un PDF texte et un PDF image.
+
+Preuve Lot 6:
+
+- les fichiers de dossier selectionnes explicitement rejoignent la lane
+  multimodale existante quand ils sont `image` ou PDF sans texte
+  (`ocr_required`);
+- les PDF textuels de dossier continuent a utiliser l'extracteur texte existant
+  et ne passent pas par le fallback visuel;
+- les payloads `data:image` / `data:application/pdf` / base64 sont construits
+  uniquement dans le message provider du tour courant, jamais dans les logs,
+  projections techniques, observabilite ou docs de preuve;
+- les refus modele incompatible, bytes absents et taille trop grande arrivent
+  avant construction du payload provider et restent content-free;
+- `document_v1_usage` distingue `visual_ready`, `pdf_visual_required`,
+  `too_large` et `unavailable`;
+- aucun OCR durable nouveau, aucun Nextcloud live, aucun Biblio/RAG global,
+  aucune troncature silencieuse.
 
 ### Lot 7 - Fichiers existants
 
@@ -636,9 +653,8 @@ Artefacts attendus:
 - Presenter une extraction partielle comme complete.
 - Pretendre avoir lu un document trop gros, non injecte ou en erreur.
 
-## 10. Hors-scope strict des Lots 1-5 livres
+## 10. Hors-scope strict des Lots 1-6 livres
 
-- Aucun fallback visuel complet Documents V1.
 - Aucun OCR nouveau Documents V1.
 - Aucun acces Nextcloud live hors smokes synthetiques bornes du lot concerne.
 - Aucun WebDAV live hors operations strictement bornees du lot concerne.
@@ -655,12 +671,14 @@ Artefacts attendus:
 
 ## 11. Prochain lot recommande
 
-Ouvrir `Lot 6 - PDF image / fallback visuel unifie`.
+Ouvrir `Lot 7 - Fichiers existants`.
 
-Objectif Lot 6:
+Objectif Lot 7:
 
-- appliquer le meme fallback visuel/PDF image aux PDF sans texte venant d'un
-  dossier Frida et aux PDF ajoutes directement dans le chat;
-- conserver la distinction OCR borne / injection visuelle ponctuelle;
-- ne jamais presenter un PDF visuel non prepare comme lu textuellement;
-- garder logs, JSONL, observabilite technique et preuves content-free.
+- inventorier content-free les fichiers workspace historiques rattaches a des
+  dossiers Frida;
+- si des fichiers actifs existent, livrer une copie/rangement controlee et non
+  destructive vers `/Frida/<dossier>/Documents`;
+- si aucun fichier actif n'existe, fermer par preuve content-free `0 a traiter`;
+- conserver la source tant que preuve, verification et rollback ne sont pas
+  actees.

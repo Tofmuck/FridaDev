@@ -268,7 +268,7 @@ class WorkspaceFileSelectionPromptTests(unittest.TestCase):
         self.assertNotIn("file_data", str(prompt_messages))
         self.assertNotIn("data:application/pdf", str(prompt_messages))
 
-    def test_defers_image_without_visual_payload(self) -> None:
+    def test_prepares_image_visual_payload_in_memory(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
         folder_id = "22222222-2222-4222-8222-222222222222"
         file_id = "33333333-3333-4333-8333-333333333333"
@@ -295,29 +295,33 @@ class WorkspaceFileSelectionPromptTests(unittest.TestCase):
                 ]
             )
 
+            logger = _CaptureLogger()
+
             documents = workspace_file_selection_prompt.list_selected_files_for_prompt(
                 conversation_id,
                 db_conn_func=lambda: conn,
                 storage_root=root,
-                logger=_CaptureLogger(),
+                logger=logger,
             )
 
         self.assertEqual(len(documents), 1)
         document = documents[0]
         self.assertEqual(document["source"], workspace_file_selections_store.SOURCE)
         self.assertEqual(document["media_kind"], "image")
-        self.assertFalse(document["injectable"])
-        self.assertEqual(document["reason_code"], "folder_document_pdf_visual_required")
-        self.assertNotIn("image_content", document)
+        self.assertTrue(document["injectable"])
+        self.assertEqual(document["image_content"], image_bytes)
+        self.assertEqual(document["visual_reason_code"], "folder_document_pdf_visual_ready")
         self.assertNotIn("file_content", document)
         self.assertNotIn("text_content", document)
-        encoded = str(document)
         self.assertNotIn("storage_key", document)
         self.assertNotIn("internal_path", document)
-        self.assertNotIn(storage_key, encoded)
-        self.assertNotIn(str(root), encoded)
-        self.assertNotIn("data:image", encoded)
-        self.assertNotIn("base64", encoded)
+        logged = "\n".join(logger.lines)
+        self.assertIn("workspace_files_selection_prompt_visual_ready", logged)
+        self.assertIn("reason_code=folder_document_pdf_visual_ready", logged)
+        self.assertNotIn(storage_key, logged)
+        self.assertNotIn(str(root), logged)
+        self.assertNotIn("data:image", logged)
+        self.assertNotIn("base64", logged)
 
     def test_excludes_disk_missing_content_free(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
@@ -357,7 +361,7 @@ class WorkspaceFileSelectionPromptTests(unittest.TestCase):
         self.assertNotIn(storage_key, logged)
         self.assertNotIn(str(root), logged)
 
-    def test_marks_ocr_required_pdf_visual_required(self) -> None:
+    def test_marks_ocr_required_pdf_visual_ready(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
         folder_id = "22222222-2222-4222-8222-222222222222"
         file_id = "33333333-3333-4333-8333-333333333333"
@@ -392,25 +396,24 @@ class WorkspaceFileSelectionPromptTests(unittest.TestCase):
 
         self.assertEqual(len(documents), 1)
         document = documents[0]
-        self.assertFalse(document["injectable"])
-        self.assertEqual(document["media_kind"], "text")
+        self.assertTrue(document["injectable"])
+        self.assertEqual(document["media_kind"], "file")
         self.assertEqual(document["media_type"], "application/pdf")
-        self.assertEqual(document["reason_code"], "folder_document_pdf_visual_required")
+        self.assertEqual(document["file_content"], pdf_bytes)
+        self.assertEqual(document["visual_reason_code"], "folder_document_pdf_visual_ready")
         self.assertNotIn("text_content", document)
         self.assertNotIn("image_content", document)
-        self.assertNotIn("file_content", document)
-        encoded = str(document)
         self.assertNotIn("storage_key", document)
         self.assertNotIn("internal_path", document)
-        self.assertNotIn(storage_key, encoded)
-        self.assertNotIn(str(root), encoded)
         logged = "\n".join(logger.lines)
-        self.assertIn("workspace_files_selection_prompt_excluded", logged)
-        self.assertIn("reason_code=folder_document_pdf_visual_required", logged)
+        self.assertIn("workspace_files_selection_prompt_visual_ready", logged)
+        self.assertIn("reason_code=folder_document_pdf_visual_ready", logged)
         self.assertNotIn(storage_key, logged)
         self.assertNotIn(str(root), logged)
+        self.assertNotIn("data:application/pdf", logged)
+        self.assertNotIn("base64", logged)
 
-    def test_maps_pdf_extraction_ocr_required_to_visual_required(self) -> None:
+    def test_maps_pdf_extraction_ocr_required_to_visual_ready(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
         folder_id = "22222222-2222-4222-8222-222222222222"
         file_id = "33333333-3333-4333-8333-333333333333"
@@ -457,10 +460,14 @@ class WorkspaceFileSelectionPromptTests(unittest.TestCase):
             )
 
         self.assertEqual(len(documents), 1)
-        self.assertFalse(documents[0]["injectable"])
-        self.assertEqual(documents[0]["reason_code"], "folder_document_pdf_visual_required")
-        self.assertNotIn("file_content", documents[0])
-        self.assertIn("reason_code=folder_document_pdf_visual_required", "\n".join(logger.lines))
+        self.assertTrue(documents[0]["injectable"])
+        self.assertEqual(documents[0]["media_kind"], "file")
+        self.assertEqual(documents[0]["file_content"], b"%PDF scanned")
+        self.assertEqual(documents[0]["visual_reason_code"], "folder_document_pdf_visual_ready")
+        logged = "\n".join(logger.lines)
+        self.assertIn("reason_code=folder_document_pdf_visual_ready", logged)
+        self.assertNotIn("data:application/pdf", logged)
+        self.assertNotIn("base64", logged)
 
     def test_keeps_non_pdf_ocr_required_excluded(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"

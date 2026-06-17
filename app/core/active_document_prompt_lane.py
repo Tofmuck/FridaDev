@@ -26,7 +26,6 @@ REASON_FILE_TOO_LARGE_FOR_PROVIDER_PAYLOAD = "file_too_large_for_provider_payloa
 REASON_WORKSPACE_FILE_PDF_VISUAL_MODEL_UNSUPPORTED = "workspace_file_pdf_visual_model_unsupported"
 REASON_WORKSPACE_FILE_PDF_VISUAL_BYTES_MISSING = "workspace_file_pdf_visual_bytes_missing"
 REASON_WORKSPACE_FILE_PDF_VISUAL_TOO_LARGE = "workspace_file_pdf_visual_too_large"
-REASON_WORKSPACE_FILE_VISUAL_REQUIRED = "folder_document_pdf_visual_required"
 READ_STATUS_OK = "ok"
 READ_STATUS_EMPTY = "empty"
 READ_STATUS_ERROR = "error"
@@ -42,7 +41,7 @@ IMAGE_CAPABLE_MAIN_MODELS = frozenset(
     }
 )
 FILE_CAPABLE_MAIN_MODELS = IMAGE_CAPABLE_MAIN_MODELS
-ACTIVE_IMAGE_PROVIDER_MAX_BYTES = 8 * 1024 * 1024
+ACTIVE_IMAGE_PROVIDER_MAX_BYTES = 25 * 1024 * 1024
 ACTIVE_FILE_PROVIDER_MAX_BYTES = ACTIVE_IMAGE_PROVIDER_MAX_BYTES
 
 LANE_HEADER = "[DOCUMENTS ACTIFS DE CONVERSATION]"
@@ -161,15 +160,6 @@ def build_active_document_prompt_lane(
                 )
             )
             continue
-        if _is_workspace_decision(decision) and decision.media_kind in {MEDIA_KIND_IMAGE, MEDIA_KIND_FILE}:
-            not_injected.append(
-                _replace_decision(
-                    decision,
-                    reason_code=REASON_WORKSPACE_FILE_VISUAL_REQUIRED,
-                    provider_model=model,
-                )
-            )
-            continue
         if decision.media_kind == MEDIA_KIND_IMAGE:
             if not _model_supports_active_images(model):
                 not_injected.append(
@@ -185,7 +175,17 @@ def build_active_document_prompt_lane(
                 )
                 continue
             if not decision.image_content:
-                not_injected.append(_replace_decision(decision, reason_code=REASON_IMAGE_BYTES_MISSING))
+                not_injected.append(
+                    _replace_decision(
+                        decision,
+                        reason_code=_source_reason(
+                            decision,
+                            active_reason=REASON_IMAGE_BYTES_MISSING,
+                            workspace_reason=REASON_WORKSPACE_FILE_UNREADABLE,
+                        ),
+                        provider_model=model,
+                    )
+                )
                 continue
             if _provider_payload_byte_size(decision) > ACTIVE_IMAGE_PROVIDER_MAX_BYTES:
                 not_injected.append(

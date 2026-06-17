@@ -90,6 +90,32 @@ def _pdf_file_doc(
     }
 
 
+def _workspace_image_doc(**overrides) -> dict[str, object]:
+    payload = _image_doc(document_id="aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee")
+    payload.update(
+        {
+            "source": "workspace_file_selection",
+            "workspace_file_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+            "workspace_folder_id": "11111111-2222-4333-8444-555555555555",
+        }
+    )
+    payload.update(overrides)
+    return payload
+
+
+def _workspace_pdf_file_doc(**overrides) -> dict[str, object]:
+    payload = _pdf_file_doc(document_id="aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee")
+    payload.update(
+        {
+            "source": "workspace_file_selection",
+            "workspace_file_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+            "workspace_folder_id": "11111111-2222-4333-8444-555555555555",
+        }
+    )
+    payload.update(overrides)
+    return payload
+
+
 class ActiveDocumentPromptLaneTest(unittest.TestCase):
     def test_document_that_fits_is_injected_in_full_with_interpretation_contract(self):
         full_text = "Texte complet du document actif.\nDeuxieme ligne intacte."
@@ -603,6 +629,127 @@ class ActiveDocumentPromptLaneTest(unittest.TestCase):
         self.assertTrue(seen_contents)
         self.assertNotIn("data:application/pdf", seen_contents[-1])
         self.assertIn("[fichier PDF multimodal]", seen_contents[-1])
+
+    def test_workspace_image_is_excluded_when_model_is_not_multimodal(self):
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "Peux-tu lire l'image du dossier ?"},
+        ]
+
+        lane = prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [_workspace_image_doc(image_content=b"image-bytes")],
+            model="openai/text-only-model",
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+        )
+
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+        self.assertEqual(lane.decisions[0].reason_code, "workspace_file_model_unsupported")
+        serialized = str(prompt_messages)
+        self.assertIn("reason_code=workspace_file_model_unsupported", serialized)
+        self.assertNotIn("data:image", serialized)
+        self.assertNotIn("base64", serialized)
+
+    def test_workspace_image_missing_bytes_is_content_free(self):
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "Peux-tu lire l'image du dossier ?"},
+        ]
+
+        lane = prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [_workspace_image_doc(image_content=b"")],
+            model="openai/gpt-5.1",
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+        )
+
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+        self.assertEqual(lane.decisions[0].reason_code, "workspace_file_unreadable")
+        serialized = str(prompt_messages)
+        self.assertIn("reason_code=workspace_file_unreadable", serialized)
+        self.assertNotIn("data:image", serialized)
+        self.assertNotIn("base64", serialized)
+
+    def test_workspace_image_over_provider_cap_is_excluded_before_data_url(self):
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "Peux-tu lire l'image du dossier ?"},
+        ]
+
+        with (
+            mock.patch.object(prompt_lane, "ACTIVE_IMAGE_PROVIDER_MAX_BYTES", 4),
+            mock.patch.object(prompt_lane, "_data_url", side_effect=AssertionError("_data_url must not run")),
+        ):
+            lane = prompt_lane.inject_active_document_prompt_lane(
+                prompt_messages,
+                [_workspace_image_doc(image_content=b"image-bytes")],
+                model="openai/gpt-5.1",
+                count_tokens_func=lambda _messages, _model: 1,
+                max_tokens=5000,
+            )
+
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+        self.assertEqual(lane.decisions[0].reason_code, "workspace_file_too_large")
+        serialized = str(prompt_messages)
+        self.assertIn("reason_code=workspace_file_too_large", serialized)
+        self.assertNotIn("data:image", serialized)
+        self.assertNotIn("base64", serialized)
+
+    def test_workspace_pdf_visual_reuses_active_pdf_vocab_for_success(self):
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "Peux-tu lire le PDF du dossier ?"},
+        ]
+
+        lane = prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [_workspace_pdf_file_doc(file_content=b"%PDF scanned")],
+            model="openai/gpt-5.1",
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+        )
+
+        self.assertEqual(lane.injected_count, 1)
+        self.assertEqual(lane.not_injected_count, 0)
+        self.assertEqual(lane.decisions[0].payload_order, "text_then_file")
+        content = lane.content_message["content"]
+        self.assertIsInstance(content, list)
+        self.assertEqual(content[1]["type"], "file")
+        self.assertIn("data:application/pdf;base64,", content[1]["file"]["file_data"])
+        self.assertNotIn("data:application/pdf", content[0]["text"])
+        self.assertIn("ne constituent pas un texte OCRise garanti", content[0]["text"])
+
+    def test_workspace_pdf_visual_model_or_bytes_fail_without_payload(self):
+        for document, model, reason_code in (
+            (_workspace_pdf_file_doc(file_content=b"%PDF scanned"), "openai/text-only-model", "workspace_file_pdf_visual_model_unsupported"),
+            (_workspace_pdf_file_doc(file_content=b""), "openai/gpt-5.1", "workspace_file_pdf_visual_bytes_missing"),
+        ):
+            with self.subTest(reason_code=reason_code):
+                prompt_messages = [
+                    {"role": "system", "content": "SYSTEM"},
+                    {"role": "user", "content": "Peux-tu lire le PDF du dossier ?"},
+                ]
+
+                lane = prompt_lane.inject_active_document_prompt_lane(
+                    prompt_messages,
+                    [document],
+                    model=model,
+                    count_tokens_func=lambda _messages, _model: 1,
+                    max_tokens=5000,
+                )
+
+                self.assertEqual(lane.injected_count, 0)
+                self.assertEqual(lane.not_injected_count, 1)
+                self.assertEqual(lane.decisions[0].reason_code, reason_code)
+                serialized = str(prompt_messages)
+                self.assertIn(f"reason_code={reason_code}", serialized)
+                self.assertNotIn("file_data", serialized)
+                self.assertNotIn("data:application/pdf", serialized)
 
 
 if __name__ == "__main__":

@@ -256,7 +256,7 @@ Extension PDF visuel workspace:
 - s'il est selectionne, la lane peut tenter une injection multimodale fichier PDF au moment provider, sans OCR automatique et sans creer de `.ocr.md`;
 - l'ordre obligatoire est `text` puis `file`;
 - le content part PDF utilise `type=file` et un champ `file.file_data` au format data URL PDF uniquement dans le payload provider;
-- le meme plafond V0 `8 MiB` s'applique avant encodage; au-dela, exclusion entiere avec reason code compact;
+- le meme plafond V0 `25 MiB` s'applique avant encodage; au-dela, exclusion entiere avec reason code compact;
 - si le modele/provider ne peut pas traiter le fichier PDF, exclusion entiere; Frida ne doit jamais pretendre avoir lu un PDF non injecte;
 - ce chemin ne promet pas une extraction textuelle complete: il donne au modele un support visuel/documentaire, distinct du chemin OCR durable.
 
@@ -358,8 +358,8 @@ Limites source upload V0:
 
 Limite d'injection provider V0:
 
-- taille maximale envoyee dans `image_url.url`: `8 MiB` (`8388608` bytes) avant encodage base64;
-- une image source acceptee entre `8 MiB` et `32 MiB` reste document actif mais est exclue du payload OpenRouter principal avec `reason_code=image_too_large_for_provider_payload`;
+- taille maximale envoyee dans `image_url.url`: `25 MiB` (`26214400` bytes) avant encodage base64;
+- une image source acceptee entre `25 MiB` et `32 MiB` reste document actif mais est exclue du payload OpenRouter principal avec `reason_code=image_too_large_for_provider_payload`;
 - le chat continue sans l'image et avec un signal compact d'exclusion;
 - aucun downscale, compression, conversion ou URL temporaire n'est produit silencieusement en V0.
 

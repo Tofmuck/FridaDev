@@ -9,6 +9,7 @@ from typing import Any, Mapping
 DOCUMENT_STATUS_NOT_INJECTED = "not_injected"
 DOCUMENT_STATUS_READABLE = "readable"
 DOCUMENT_STATUS_PDF_VISUAL_REQUIRED = "pdf_visual_required"
+DOCUMENT_STATUS_VISUAL_READY = "visual_ready"
 DOCUMENT_STATUS_TOO_LARGE = "too_large"
 DOCUMENT_STATUS_UNSUPPORTED = "unsupported"
 DOCUMENT_STATUS_UNAVAILABLE = "unavailable"
@@ -20,6 +21,7 @@ READINESS_VISUAL = "visual"
 
 REASON_TEXT_READY = "folder_document_text_ready"
 REASON_PDF_VISUAL_REQUIRED = "folder_document_pdf_visual_required"
+REASON_PDF_VISUAL_READY = "folder_document_pdf_visual_ready"
 REASON_TOO_LARGE = "folder_document_too_large"
 REASON_TYPE_UNSUPPORTED = "folder_document_type_unsupported"
 REASON_RUNTIME_UNAVAILABLE = "folder_document_runtime_unavailable"
@@ -47,21 +49,36 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
         readiness = READINESS_PENDING
         usage_reason = REASON_SELECTED
     if selected and _text(selection.get("last_injected_turn_id"), 160):
-        usage_status = DOCUMENT_STATUS_READABLE
-        readiness = READINESS_READY
-        usage_reason = REASON_TEXT_READY
+        if _is_visual_selection(selection):
+            usage_status = DOCUMENT_STATUS_VISUAL_READY
+            readiness = READINESS_VISUAL
+            usage_reason = REASON_PDF_VISUAL_READY
+        else:
+            usage_status = DOCUMENT_STATUS_READABLE
+            readiness = READINESS_READY
+            usage_reason = REASON_TEXT_READY
     elif last_excluded_reason:
         usage_reason = last_excluded_reason
         readiness = READINESS_BLOCKED
-        if last_excluded_reason == REASON_PDF_VISUAL_REQUIRED:
+        if last_excluded_reason in {
+            REASON_PDF_VISUAL_REQUIRED,
+            "workspace_file_model_unsupported",
+            "workspace_file_pdf_visual_model_unsupported",
+        }:
             usage_status = DOCUMENT_STATUS_PDF_VISUAL_REQUIRED
             readiness = READINESS_VISUAL
-        elif last_excluded_reason in {"workspace_file_too_large", REASON_TOO_LARGE}:
+        elif last_excluded_reason in {
+            "workspace_file_too_large",
+            "workspace_file_pdf_visual_too_large",
+            REASON_TOO_LARGE,
+        }:
             usage_status = DOCUMENT_STATUS_TOO_LARGE
         elif last_excluded_reason in {
             "workspace_file_missing",
             "workspace_file_deleted",
             "workspace_file_disk_missing",
+            "workspace_file_unreadable",
+            "workspace_file_pdf_visual_bytes_missing",
             REASON_RUNTIME_UNAVAILABLE,
         }:
             usage_status = DOCUMENT_STATUS_UNAVAILABLE
@@ -81,6 +98,21 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
         "last_excluded_turn_id": _text(selection.get("last_excluded_turn_id"), 160),
         "last_excluded_reason_code": last_excluded_reason,
     }
+
+
+def _is_visual_selection(selection: Mapping[str, Any]) -> bool:
+    file_item = selection.get("file")
+    if not isinstance(file_item, Mapping):
+        return False
+    media_kind = _text(file_item.get("media_kind"), 40)
+    if media_kind == "image":
+        return True
+    mime_type = _text(file_item.get("mime_type"), 120).casefold()
+    extension = _text(file_item.get("source_extension"), 40).casefold()
+    status = _text(file_item.get("status"), 80)
+    if (mime_type == "application/pdf" or extension == ".pdf") and status == "ocr_required":
+        return True
+    return False
 
 
 def _safe_reason_code(value: Any, *, fallback: str = REASON_CONTENT_REDACTED) -> str:
