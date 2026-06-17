@@ -11,6 +11,7 @@ from . import runtime_db_bootstrap
 from . import workspace_folder_nextcloud_reconcile
 from . import workspace_folder_nextcloud_runtime
 from . import workspace_folder_nextcloud_links_store
+from . import workspace_folder_standard_subfolders
 from . import workspace_folders_store
 
 
@@ -186,6 +187,13 @@ def runtime_nextcloud_secret_status() -> dict[str, Any]:
 
 def reconcile_existing_workspace_folders_with_nextcloud() -> dict[str, Any]:
     return workspace_folder_nextcloud_reconcile.reconcile_existing_workspace_folders(
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
+
+
+def ensure_standard_subfolders_for_linked_folders() -> dict[str, Any]:
+    return workspace_folder_standard_subfolders.ensure_standard_subfolders_for_linked_folders(
         db_conn_func=_db_conn,
         logger=logger,
     )

@@ -351,12 +351,28 @@ Preuve Lot 10A politique fichiers:
 
 ### Lot 11 - Sous-dossiers standards par dossier
 
-- [ ] Definir les sous-dossiers standards cibles par dossier Frida, par exemple
+- [x] Definir les sous-dossiers standards cibles par dossier Frida, par exemple
   `Documents`, `Notes`, `Exports` et `Images`.
-- [ ] Decider s'ils sont crees a la creation du dossier ou a la premiere
+- [x] Decider s'ils sont crees a la creation du dossier ou a la premiere
   utilisation.
-- [ ] Definir les conflits et erreurs si un sous-dossier standard existe deja.
-- [ ] Ne pas creer ces sous-dossiers avant preuve et decision du lot.
+- [x] Definir les conflits et erreurs si un sous-dossier standard existe deja.
+- [x] Ne pas creer ces sous-dossiers avant preuve et decision du lot.
+
+Preuve Lot 11 sous-dossiers standards:
+`app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot11-standard-subfolders-20260617T091722Z.jsonl`
+
+- sous-dossiers standards confirmes: `Documents`, `Notes`, `Exports`,
+  `Images`;
+- politique runtime: creation automatique pour chaque nouveau dossier Frida
+  Nextcloud-first, apres creation du dossier parent et avant creation locale;
+- politique dossiers existants: verification/creation bornee des sous-dossiers
+  pour les dossiers Frida `linked`;
+- preuve live content-free: 2 dossiers `linked` inspectes, 8 sous-dossiers
+  standards crees, 0 erreur, 0 conflit;
+- transport utilise: `PROPFIND` Depth 0 et `MKCOL` seulement, sans `GET`, sans
+  `PUT`, sans `MOVE`, sans `DELETE`, sans listing de contenu;
+- aucun fichier/document workspace lu, deplace, copie ou supprime;
+- aucun Lot 12 Notes/Exports/Images runtime livre ici.
 
 ### Lot 12 - Preparation Notes / Exports / Images
 

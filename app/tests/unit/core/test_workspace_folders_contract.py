@@ -22,6 +22,7 @@ from core import workspace_folder_nextcloud_client
 from core import workspace_folder_nextcloud_links_store
 from core import workspace_folder_nextcloud_reconcile
 from core import workspace_folder_nextcloud_runtime
+from core import workspace_folder_standard_subfolders
 from core import workspace_folders_service
 from observability import workspace_folders_observability
 
@@ -75,12 +76,17 @@ class _CaptureLogger:
 class _FakeNextcloudFolderClient:
     def __init__(self):
         self.created = []
+        self.created_paths = []
         self.moved = []
         self.deleted = []
         self.statuses = {}
+        self.path_statuses = {}
         self.status_checked = []
+        self.path_status_checked = []
         self.fail_status = None
+        self.fail_path_status = None
         self.fail_create = None
+        self.fail_create_path = None
         self.fail_move = None
         self.fail_delete = None
 
@@ -111,6 +117,36 @@ class _FakeNextcloudFolderClient:
         return workspace_folder_nextcloud_client.NextcloudFolderResponse(
             True,
             workspace_folder_nextcloud_client.REASON_CREATE_OK,
+            201,
+        )
+
+    def folder_status_path(self, *segments):
+        self.path_status_checked.append(tuple(segments))
+        if self.fail_path_status:
+            raise self.fail_path_status
+        status = int(self.path_statuses.get(tuple(segments), 404))
+        if status == 207:
+            return workspace_folder_nextcloud_client.NextcloudFolderResponse(
+                True,
+                workspace_folder_nextcloud_client.REASON_STANDARD_SUBFOLDER_EXISTING_OK,
+                status,
+            )
+        reason = (
+            workspace_folder_nextcloud_client.REASON_TARGET_MISSING
+            if status == 404
+            else workspace_folder_nextcloud_client.REASON_CONFLICT
+            if status in {405, 409, 412, 423}
+            else workspace_folder_nextcloud_client.REASON_UNAVAILABLE
+        )
+        raise workspace_folder_nextcloud_client.NextcloudFolderClientError(reason, http_status=status)
+
+    def create_folder_path(self, *segments):
+        self.created_paths.append(tuple(segments))
+        if self.fail_create_path:
+            raise self.fail_create_path
+        return workspace_folder_nextcloud_client.NextcloudFolderResponse(
+            True,
+            workspace_folder_nextcloud_client.REASON_STANDARD_SUBFOLDER_CREATED_OK,
             201,
         )
 
@@ -653,9 +689,64 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(result["folder"]["nextcloud_sync_state"], "linked")
         self.assertEqual(result["folder"]["nextcloud_reason_code"], "workspace_folder_nextcloud_create_ok")
         self.assertEqual(fake_client.created, ["Projet-Live"])
+        self.assertEqual(
+            fake_client.created_paths,
+            [
+                ("Projet-Live", "Documents"),
+                ("Projet-Live", "Notes"),
+                ("Projet-Live", "Exports"),
+                ("Projet-Live", "Images"),
+            ],
+        )
         self.assertEqual(fake_client.deleted, [])
         local_create.assert_called_once()
         upsert.assert_called_once()
+
+    def test_standard_subfolders_accept_existing_and_create_missing_content_free(self) -> None:
+        fake_client = _FakeNextcloudFolderClient()
+        fake_client.path_statuses[("Projet-Live", "Documents")] = 207
+        result = workspace_folder_standard_subfolders.ensure_standard_subfolders(
+            nextcloud=fake_client,
+            parent_name="Projet-Live",
+            folder_ref="workspace-folder:11111111:abc123def456",
+            nextcloud_name_hash="abc123def456",
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["counts"]["inspected"], 4)
+        self.assertEqual(result["counts"]["existing"], 1)
+        self.assertEqual(result["counts"]["created"], 3)
+        self.assertEqual(
+            fake_client.created_paths,
+            [
+                ("Projet-Live", "Notes"),
+                ("Projet-Live", "Exports"),
+                ("Projet-Live", "Images"),
+            ],
+        )
+        encoded = str(result)
+        self.assertNotIn("Projet Live", encoded)
+        self.assertNotIn("/Frida", encoded)
+        self.assertNotIn("Authorization", encoded)
+        self.assertIn("Documents", encoded)
+
+    def test_standard_subfolders_conflict_is_content_free_failure(self) -> None:
+        fake_client = _FakeNextcloudFolderClient()
+        fake_client.path_statuses[("Projet-Live", "Documents")] = 409
+        result = workspace_folder_standard_subfolders.ensure_standard_subfolders(
+            nextcloud=fake_client,
+            parent_name="Projet-Live",
+            folder_ref="workspace-folder:11111111:abc123def456",
+            nextcloud_name_hash="abc123def456",
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "workspace_folder_standard_subfolder_conflict")
+        self.assertEqual(result["counts"]["failed"], 1)
+        encoded = str(result)
+        self.assertNotIn("Projet Live", encoded)
+        self.assertNotIn("/Frida", encoded)
+        self.assertNotIn("Authorization", encoded)
 
     def test_nextcloud_first_create_rolls_back_mkcol_when_local_persistence_fails(self) -> None:
         fake_client = _FakeNextcloudFolderClient()
@@ -677,7 +768,32 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(result["reason_code"], "workspace_folder_local_persistence_failed")
         self.assertEqual(result["rollback_reason_code"], "workspace_folder_nextcloud_rollback_ok")
         self.assertEqual(fake_client.created, ["Projet-Rollback"])
+        self.assertEqual(len(fake_client.created_paths), 4)
         self.assertEqual(fake_client.deleted, [("Projet-Rollback", True)])
+
+    def test_nextcloud_first_create_rolls_back_parent_when_standard_subfolder_fails(self) -> None:
+        fake_client = _FakeNextcloudFolderClient()
+        fake_client.path_statuses[("Projet-Standards", "Documents")] = 409
+
+        with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[]):
+            with mock.patch.object(workspace_folders_store, "create_workspace_folder") as local_create:
+                result = workspace_folder_nextcloud_runtime.create_workspace_folder_nextcloud_first(
+                    display_name="Projet Standards",
+                    icon_key="folder",
+                    description="",
+                    sort_order=None,
+                    folder_id="11111111-2222-4333-8444-555555555555",
+                    db_conn_func=lambda: None,
+                    logger=_CaptureLogger(),
+                    client=fake_client,
+                )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "workspace_folder_standard_subfolder_conflict")
+        self.assertEqual(result["rollback_reason_code"], "workspace_folder_nextcloud_rollback_ok")
+        self.assertEqual(fake_client.created, ["Projet-Standards"])
+        self.assertEqual(fake_client.deleted, [("Projet-Standards", True)])
+        local_create.assert_not_called()
 
     def test_nextcloud_first_create_returns_redacted_error_when_client_unavailable(self) -> None:
         with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[]):
@@ -1024,6 +1140,55 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         )
         encoded = str(result)
         self.assertIn("LOT9_LINK_EXISTING_TARGET", encoded)
+        self.assertNotIn("Projet Live", encoded)
+        self.assertNotIn("/Frida", encoded)
+        self.assertNotIn("Authorization", encoded)
+
+    def test_nextcloud_reconcile_linked_folder_creates_standard_subfolders(self) -> None:
+        folder_id = "11111111-2222-4333-8444-555555555555"
+        folder = workspace_folders_store.serialize_workspace_folder_row(
+            {
+                "id": folder_id,
+                "display_name": "Projet Live",
+                "icon_key": "folder",
+                "description": "",
+                "sort_order": 1000,
+                "created_at": "2026-06-16T00:00:00Z",
+                "updated_at": "2026-06-16T00:00:00Z",
+                "deleted_at": None,
+                "link_workspace_folder_id": folder_id,
+                "link_nextcloud_sync_state": "linked",
+                "link_nextcloud_folder_ref": "workspace-folder:11111111:abc123def456",
+                "link_nextcloud_name_hash": "abc123def456",
+                "link_last_sync_reason_code": "workspace_folder_nextcloud_create_ok",
+                "link_last_sync_operation": "create",
+                "link_nextcloud_share_state": "expected",
+            }
+        )
+        fake_client = _FakeNextcloudFolderClient()
+        fake_client.statuses["Projet-Live"] = 207
+
+        with mock.patch.object(workspace_folders_store, "list_workspace_folders", side_effect=[[folder], [folder]]):
+            result = workspace_folder_nextcloud_reconcile.reconcile_existing_workspace_folders(
+                db_conn_func=lambda: None,
+                logger=_CaptureLogger(),
+                client=fake_client,
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(fake_client.status_checked, ["Projet-Live"])
+        self.assertEqual(
+            fake_client.path_status_checked,
+            [
+                ("Projet-Live", "Documents"),
+                ("Projet-Live", "Notes"),
+                ("Projet-Live", "Exports"),
+                ("Projet-Live", "Images"),
+            ],
+        )
+        self.assertEqual(len(fake_client.created_paths), 4)
+        encoded = str(result)
+        self.assertIn("LOT11_STANDARD_SUBFOLDER_CREATED", encoded)
         self.assertNotIn("Projet Live", encoded)
         self.assertNotIn("/Frida", encoded)
         self.assertNotIn("Authorization", encoded)

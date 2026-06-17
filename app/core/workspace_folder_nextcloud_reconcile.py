@@ -7,6 +7,7 @@ from typing import Any, Callable, Mapping
 from . import workspace_folder_nextcloud_client as nextcloud_client
 from . import workspace_folder_nextcloud_links_store as nextcloud_links
 from . import workspace_folder_nextcloud_projection as nextcloud_projection
+from . import workspace_folder_standard_subfolders
 from . import workspace_folders_store
 
 
@@ -158,8 +159,36 @@ def _reconcile_one(
 
     try:
         status = nextcloud.folder_status(target_name)
+        standards = workspace_folder_standard_subfolders.ensure_standard_subfolders(
+            nextcloud=nextcloud,
+            parent_name=target_name,
+            folder_ref=folder_ref,
+            nextcloud_name_hash=str(folder.get("nextcloud_name_hash") or ""),
+        )
+        if not standards["ok"]:
+            state_persisted = _safe_upsert_state(
+                folder,
+                _state_for_standard_reason(str(standards.get("reason_code") or "")),
+                str(standards.get("reason_code") or nextcloud_client.REASON_ERROR_REDACTED),
+                db_conn_func=db_conn_func,
+                logger=logger,
+            )
+            records = list(standards["records"])
+            records.append(
+                _record(
+                    "LOT11_STANDARD_SUBFOLDERS_FAILED",
+                    verdict="failed",
+                    operation="conflict" if "conflict" in str(standards.get("reason_code") or "") else "status_existing",
+                    reason_code=str(standards.get("reason_code") or nextcloud_client.REASON_ERROR_REDACTED),
+                    folder_ref=folder_ref,
+                    nextcloud_name_hash=str(folder.get("nextcloud_name_hash") or ""),
+                    http_status_class="none",
+                    local_persistence_failed=not state_persisted,
+                )
+            )
+            return records
         if sync_state == nextcloud_links.NEXTCLOUD_SYNC_LINKED:
-            return [
+            return list(standards["records"]) + [
                 _record(
                     "LOT9_STATUS_LINKED_FOLDER",
                     verdict="met",
@@ -178,7 +207,7 @@ def _reconcile_one(
             logger=logger,
         )
         if not state_persisted:
-            return [
+            return list(standards["records"]) + [
                 _record(
                     "LOT9_LINK_EXISTING_TARGET_FAILED",
                     verdict="failed",
@@ -190,7 +219,7 @@ def _reconcile_one(
                     local_persistence_failed=True,
                 )
             ]
-        return [
+        return list(standards["records"]) + [
             _record(
                 "LOT9_LINK_EXISTING_TARGET",
                 verdict="met",
@@ -231,6 +260,27 @@ def _reconcile_one(
     except nextcloud_client.NextcloudFolderClientError as exc:
         return [_handle_status_error(folder, exc, logger=logger, db_conn_func=db_conn_func, operation="create_missing")]
 
+    standards = workspace_folder_standard_subfolders.ensure_standard_subfolders(
+        nextcloud=nextcloud,
+        parent_name=target_name,
+        folder_ref=folder_ref,
+        nextcloud_name_hash=str(folder.get("nextcloud_name_hash") or ""),
+    )
+    if not standards["ok"]:
+        rollback = _rollback_created_target(nextcloud, target_name, logger=logger)
+        return list(standards["records"]) + [
+            _record(
+                "LOT11_STANDARD_SUBFOLDERS_CREATE_FAILED_ROLLBACK",
+                verdict="failed" if rollback != nextcloud_client.REASON_ROLLBACK_OK else "partial",
+                operation="create_missing",
+                reason_code=str(standards.get("reason_code") or nextcloud_client.REASON_ERROR_REDACTED),
+                folder_ref=folder_ref,
+                nextcloud_name_hash=str(folder.get("nextcloud_name_hash") or ""),
+                http_status_class=created.status_class,
+                rollback_reason_code=rollback,
+            )
+        ]
+
     try:
         _upsert_state(
             folder,
@@ -241,7 +291,7 @@ def _reconcile_one(
         )
     except nextcloud_links.WorkspaceFolderNextcloudLinkPersistenceError:
         rollback = _rollback_created_target(nextcloud, target_name, logger=logger)
-        return [
+        return list(standards["records"]) + [
             _record(
                 "LOT9_CREATE_LINK_FAILED_ROLLBACK",
                 verdict="failed" if rollback != nextcloud_client.REASON_ROLLBACK_OK else "partial",
@@ -254,7 +304,7 @@ def _reconcile_one(
             )
         ]
 
-    return [
+    return list(standards["records"]) + [
         _record(
             "LOT9_CREATE_MISSING_TARGET",
             verdict="met",
@@ -366,6 +416,12 @@ def _rollback_created_target(nextcloud: Any, target_name: str, *, logger: Any) -
 
 def _client(client: Any | None) -> Any:
     return client if client is not None else nextcloud_client.NextcloudFolderClient.from_env()
+
+
+def _state_for_standard_reason(reason_code: str) -> str:
+    if "conflict" in reason_code:
+        return nextcloud_links.NEXTCLOUD_SYNC_CONFLICT
+    return nextcloud_links.NEXTCLOUD_SYNC_ERROR
 
 
 def _inventory_record(folders: list[Mapping[str, Any]]) -> dict[str, Any]:

@@ -1,6 +1,6 @@
 # Frida V1 - Nextcloud folders contract
 
-Statut: spec vivante Lots 0 a 10A politique fichiers livree
+Statut: spec vivante Lots 0 a 11 sous-dossiers standards livres
 Date: 2026-06-17
 Classement: `app/docs/states/specs/`
 TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
@@ -73,6 +73,15 @@ fichiers a ranger plus tard dans le dossier Nextcloud du dossier Frida, et
 separation explicite entre fichiers workspace, documents actifs, notes, exports
 et images. L'audit source est
 `app/docs/states/audits/frida-v1-nextcloud-folders-lot10-files-policy-2026-06-17.md`.
+
+Depuis le Lot 11 du 2026-06-17, les sous-dossiers standards par dossier Frida
+sont definis et crees/verifies de maniere bornee: `Documents`, `Notes`,
+`Exports` et `Images`. La creation Nextcloud-first d'un nouveau dossier cree le
+dossier parent puis ces sous-dossiers avant la creation locale. Les dossiers
+Frida existants `linked` peuvent etre verifies/completees par le helper dedie,
+avec `PROPFIND` Depth 0 et `MKCOL` seulement, sans listing de contenu ni
+operation fichier. L'artefact live content-free est
+`app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot11-standard-subfolders-20260617T091722Z.jsonl`.
 
 Recalage produit post Lot 6:
 
@@ -995,8 +1004,23 @@ Etat depuis Lot 10A:
   lots runtime separes;
 - documents actifs, notes Markdown, exports et images restent des surfaces
   distinctes et ne sont pas livrees par le Lot 10A;
-- Lot 11 reste necessaire pour definir les sous-dossiers standards avant de
-  livrer Notes/Exports/Images.
+- Lot 11 a ensuite defini les sous-dossiers standards avant de livrer
+  Notes/Exports/Images.
+
+Etat depuis Lot 11:
+
+- sous-dossiers standards par dossier Frida: `Documents`, `Notes`, `Exports`,
+  `Images`;
+- creation d'un nouveau dossier Frida: dossier Nextcloud parent cree d'abord,
+  puis sous-dossiers standards, puis creation locale si tout reussit;
+- si un sous-dossier standard existe deja, l'etat est OK;
+- si une cible standard est absente, `MKCOL` la cree;
+- si une cible standard est incompatible ou bloquee, l'operation passe en
+  `conflict` ou `sync_error` content-free, sans overwrite;
+- preuve live: 2 dossiers `linked` inspectes et 8 sous-dossiers crees, sans
+  listing de contenu ni action fichier;
+- Lot 12 reste necessaire pour brancher Notes/Exports/Images runtime sur ces
+  sous-dossiers.
 
 ## 14. Lots restants avant cloture V1 reelle
 
@@ -1052,11 +1076,19 @@ Lot 10 - Politique fichiers existants et futurs par dossier:
 
 Lot 11 - Sous-dossiers standards par dossier:
 
-- choisir les sous-dossiers standards, par exemple `Documents`, `Notes`,
-  `Exports` et `Images`;
-- decider s'ils sont crees a la creation du dossier ou a la premiere
-  utilisation;
-- traiter les conflits de sous-dossiers existants sans ecrasement.
+- livre: sous-dossiers standards `Documents`, `Notes`, `Exports`, `Images`;
+- livre: creation automatique lors de la creation Nextcloud-first d'un nouveau
+  dossier Frida;
+- livre: helper de verification/creation bornee pour dossiers Frida existants
+  `linked`;
+- livre: sous-dossier deja existant = OK;
+- livre: cible absente = `MKCOL`;
+- livre: conflit/incompatibilite = `conflict` ou `sync_error` content-free, sans
+  overwrite;
+- livre: preuve live content-free, 2 dossiers `linked`, 8 sous-dossiers crees,
+  aucun fichier touche;
+- artefact:
+  `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot11-standard-subfolders-20260617T091722Z.jsonl`.
 
 Lot 12 - Preparation Notes / Exports / Images:
 
@@ -1120,3 +1152,51 @@ Les futurs lots fichiers doivent rester content-free:
   `app-password` ou secret;
 - aucun listing de contenu Nextcloud;
 - reason codes stables et redaction fail-closed des erreurs transport.
+
+## 16. Sous-dossiers standards depuis Lot 11
+
+Pour chaque dossier Frida `linked`, les cibles standards sont:
+
+- `Documents`;
+- `Notes`;
+- `Exports`;
+- `Images`.
+
+Ces noms sont les seuls noms humains autorises dans les preuves Lot 11, car ils
+sont des constantes produit et non du contenu utilisateur.
+
+Creation d'un nouveau dossier Frida:
+
+- creer le dossier Nextcloud parent;
+- verifier/creer les quatre sous-dossiers standards;
+- creer le dossier local seulement si le parent et les sous-dossiers standards
+  reussissent;
+- si un sous-dossier standard echoue, rollback strict du dossier parent cree par
+  ce flux, sans toucher a un dossier preexistant.
+
+Dossiers existants:
+
+- verifier seulement les dossiers Frida `linked`;
+- faire `PROPFIND` Depth 0 sur chaque sous-dossier standard;
+- accepter `207` comme deja present;
+- faire `MKCOL` si absent;
+- ne jamais faire `PROPFIND` Depth 1, `GET`, `PUT`, `MOVE`, `DELETE` ou listing
+  de contenu dans ce lot;
+- ne jamais ecraser une cible existante.
+
+Reason codes standards:
+
+- `workspace_folder_standard_subfolders_ok`;
+- `workspace_folder_standard_subfolder_existing_ok`;
+- `workspace_folder_standard_subfolder_created_ok`;
+- `workspace_folder_standard_subfolder_conflict`;
+- `workspace_folder_standard_subfolders_unavailable`;
+- `workspace_folder_standard_subfolders_auth_failed`.
+
+Limite:
+
+- Lot 11 cree seulement les conteneurs standards;
+- il ne range aucun fichier dans `Documents`;
+- il ne cree aucune note Markdown dans `Notes`;
+- il ne genere aucun export dans `Exports`;
+- il ne stocke aucune image generee dans `Images`.

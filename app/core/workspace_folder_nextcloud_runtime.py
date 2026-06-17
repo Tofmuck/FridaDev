@@ -6,6 +6,7 @@ from typing import Any, Callable
 from . import workspace_folder_nextcloud_client as nextcloud_client
 from . import workspace_folder_nextcloud_links_store as nextcloud_links
 from . import workspace_folder_nextcloud_projection as nextcloud_projection
+from . import workspace_folder_standard_subfolders
 from . import workspace_folders_store
 
 
@@ -38,6 +39,18 @@ def create_workspace_folder_nextcloud_first(
         nextcloud.create_folder(target_name)
     except nextcloud_client.NextcloudFolderClientError as exc:
         return _nextcloud_error(exc, operation="create")
+
+    standards = workspace_folder_standard_subfolders.ensure_standard_subfolders(
+        nextcloud=nextcloud,
+        parent_name=target_name,
+        nextcloud_name_hash=str(validation.get("nextcloud_name_hash") or ""),
+    )
+    if not standards["ok"]:
+        rollback = _rollback_created_folder(nextcloud, target_name, logger=logger)
+        payload = workspace_folder_standard_subfolders.standard_failure_payload(standards)
+        payload["rollback_reason_code"] = rollback
+        payload["last_sync_operation"] = "create"
+        return payload
 
     normalized_id = workspace_folders_store.normalize_workspace_folder_id(folder_id) or str(uuid.uuid4())
     folder = workspace_folders_store.create_workspace_folder(

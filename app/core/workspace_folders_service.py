@@ -29,6 +29,9 @@ _RUNTIME_ERROR_MESSAGES = {
     "workspace_folder_nextcloud_target_missing": "dossier Nextcloud cible introuvable",
     "workspace_folder_local_persistence_failed": "synchronisation locale incomplete",
     "workspace_folder_local_compensation_failed": "compensation locale incomplete",
+    "workspace_folder_standard_subfolder_conflict": "conflit sur un sous-dossier standard",
+    "workspace_folder_standard_subfolders_unavailable": "sous-dossiers standards indisponibles",
+    "workspace_folder_standard_subfolders_auth_failed": "authentification Nextcloud impossible",
     "workspace_folder_nextcloud_error_redacted": "operation Nextcloud impossible",
 }
 

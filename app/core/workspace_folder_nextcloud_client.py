@@ -26,6 +26,12 @@ REASON_ROLLBACK_FAILED = "workspace_folder_nextcloud_rollback_failed"
 REASON_LOCAL_PERSISTENCE_FAILED = "workspace_folder_local_persistence_failed"
 REASON_LOCAL_COMPENSATION_FAILED = "workspace_folder_local_compensation_failed"
 REASON_ERROR_REDACTED = "workspace_folder_nextcloud_error_redacted"
+REASON_STANDARD_SUBFOLDERS_OK = "workspace_folder_standard_subfolders_ok"
+REASON_STANDARD_SUBFOLDER_EXISTING_OK = "workspace_folder_standard_subfolder_existing_ok"
+REASON_STANDARD_SUBFOLDER_CREATED_OK = "workspace_folder_standard_subfolder_created_ok"
+REASON_STANDARD_SUBFOLDER_CONFLICT = "workspace_folder_standard_subfolder_conflict"
+REASON_STANDARD_SUBFOLDERS_UNAVAILABLE = "workspace_folder_standard_subfolders_unavailable"
+REASON_STANDARD_SUBFOLDERS_AUTH_FAILED = "workspace_folder_standard_subfolders_auth_failed"
 
 
 @dataclass(frozen=True)
@@ -105,13 +111,19 @@ class NextcloudFolderClient:
         raise NextcloudFolderClientError(_reason_for_status(status), http_status=status)
 
     def folder_status(self, folder_name: str) -> NextcloudFolderResponse:
-        status = self._request_status("PROPFIND", self._folder_url(folder_name), headers={"Depth": "0"})
+        return self.folder_status_path(folder_name)
+
+    def folder_status_path(self, *segments: str) -> NextcloudFolderResponse:
+        status = self._request_status("PROPFIND", self._folder_url(*segments), headers={"Depth": "0"})
         if status == 207:
             return NextcloudFolderResponse(True, REASON_CREATE_OK, status)
         raise NextcloudFolderClientError(_reason_for_status(status), http_status=status)
 
     def create_folder(self, folder_name: str) -> NextcloudFolderResponse:
-        status = self._request_status("MKCOL", self._folder_url(folder_name))
+        return self.create_folder_path(folder_name)
+
+    def create_folder_path(self, *segments: str) -> NextcloudFolderResponse:
+        status = self._request_status("MKCOL", self._folder_url(*segments))
         if status in {200, 201, 204}:
             return NextcloudFolderResponse(True, REASON_CREATE_OK, status)
         raise NextcloudFolderClientError(_reason_for_status(status), http_status=status)
