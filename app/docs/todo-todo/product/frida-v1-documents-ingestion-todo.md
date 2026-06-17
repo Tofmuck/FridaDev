@@ -182,6 +182,11 @@ Il doit seulement rester compatible avec ces futurs lots.
   pour toute preparation externe bornee si elle est utilisee.
 - Le contenu des documents, le texte OCR, les images, PDF/base64 et payloads
   provider ne doivent jamais etre logges bruts.
+- Documents V1 doit reutiliser l'extracteur texte existant pour TXT, Markdown /
+  MD, DOCX, ODT et PDF textuel.
+- Si une incompatibilite runtime reelle apparait entre cet extracteur et le
+  read-model Documents V1, le lot concerne doit s'arreter en no-go avant patch
+  ou ouvrir un micro-lot de recalage docs/spec.
 - Les fichiers workspace actifs deja rattaches aux dossiers Frida existants
   doivent etre traites dans Documents V1.
 - Pas de copie/rangement silencieux des fichiers existants.
@@ -335,7 +340,12 @@ Preuve Lot 0:
   timestamps, reason code.
 - [ ] Appliquer les statuts: disponible, en preparation, lisible, non lisible,
   PDF texte, PDF image/fallback, erreur, absent, deleted.
-- [ ] Appliquer les projections API/UI sans nom sensible si une ref courte suffit.
+- [ ] Separer explicitement projection utilisateur et projection technique.
+- [ ] Projection utilisateur: exposer le `display_name` / nom de fichier, type,
+  taille, date, statut et readiness quand c'est utile a la liste documentaire.
+- [ ] Projection technique, logs, JSONL et observabilite: exposer seulement refs
+  redacted, hashes courts, compteurs, statuts et reason codes, jamais le nom de
+  fichier brut.
 - [ ] Appliquer l'observabilite content-free du read-model.
 - [ ] Tester qu'aucun `storage_key`, chemin disque, URL DAV, XML, secret ou
   contenu brut ne sort dans le payload.
@@ -394,11 +404,10 @@ Interdits Lot 3:
 
 - [ ] Appliquer le contrat Lot 1: selection explicite, preparation bornee,
   injection entiere ou refus, jamais troncature silencieuse.
-- [ ] Reutiliser l'extracteur texte existant quand c'est compatible.
-- [ ] Supporter document texte simple.
-- [ ] Supporter PDF textuel.
-- [ ] Supporter DOCX, ODT, Markdown et TXT si deja supportes par les briques
-  existantes ou documenter les manques.
+- [ ] Reutiliser l'extracteur texte existant pour TXT, Markdown / MD, DOCX, ODT
+  et PDF textuel.
+- [ ] S'arreter en no-go avant patch ou ouvrir un micro-lot docs/spec si une
+  incompatibilite runtime reelle empeche cette reutilisation.
 - [ ] Appliquer les limites runtime du contrat: document entier ou absent,
   refus simple si trop lourd, preuves content-free.
 - [ ] Ne jamais tronquer silencieusement un document en pretendant l'avoir lu.

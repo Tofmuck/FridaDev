@@ -181,6 +181,19 @@ Etats minimaux Documents V1:
 
 ## 9. Strategie PDF texte
 
+Formats textuels Documents V1 a reutiliser depuis l'extracteur existant:
+
+- TXT;
+- Markdown / MD;
+- DOCX;
+- ODT;
+- PDF textuel.
+
+Si un lot runtime constate une incompatibilite reelle entre cet extracteur et le
+read-model Documents V1, il doit s'arreter en no-go avant patch ou ouvrir un
+micro-lot de recalage docs/spec. Il ne doit pas se clore par une simple note de
+manque.
+
 Un PDF avec texte exploitable suit la voie extraction texte bornee.
 
 Regles:
@@ -221,6 +234,18 @@ Les noms de fichiers peuvent etre visibles:
 
 - dans l'interface utilisateur;
 - dans les reponses utilisateur quand c'est utile au travail documentaire.
+
+Projection utilisateur:
+
+- `display_name` / nom de fichier lisible autorise;
+- type, taille, date, statut et readiness autorises;
+- objectif: rendre la liste documentaire utilisable par l'utilisateur.
+
+Projection technique, logs, JSONL et observabilite:
+
+- nom de fichier brut interdit;
+- refs redacted, hashes courts, compteurs et statuts seulement;
+- aucun reason code ne contient de nom de fichier.
 
 Les noms de fichiers ne doivent pas apparaitre:
 
