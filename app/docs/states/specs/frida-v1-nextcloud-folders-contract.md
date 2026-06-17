@@ -82,6 +82,12 @@ Frida existants `linked` peuvent etre verifies/completees par le helper dedie,
 avec `PROPFIND` Depth 0 et `MKCOL` seulement, sans listing de contenu ni
 operation fichier. L'artefact live content-free est
 `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot11-standard-subfolders-20260617T091722Z.jsonl`.
+Correctif Lot 11: un `PROPFIND` `207` ne suffit pas a prouver un dossier; la
+reponse XML est parse en memoire uniquement et la ressource doit porter
+`collection` pour etre acceptee comme dossier parent ou sous-dossier standard.
+Une ressource WebDAV non-collection est un conflit/incompatibilite
+content-free, sans XML brut, URL DAV, chemin technique ni payload Nextcloud
+expose.
 
 Recalage produit post Lot 6:
 
@@ -1083,6 +1089,9 @@ Lot 11 - Sous-dossiers standards par dossier:
   `linked`;
 - livre: sous-dossier deja existant = OK;
 - livre: cible absente = `MKCOL`;
+- livre: `PROPFIND` `207` accepte seulement si la ressource WebDAV est une
+  collection; le XML est parse en memoire et jamais expose;
+- livre: ressource non-collection = conflit/incompatibilite content-free;
 - livre: conflit/incompatibilite = `conflict` ou `sync_error` content-free, sans
   overwrite;
 - livre: preuve live content-free, 2 dossiers `linked`, 8 sous-dossiers crees,
@@ -1178,7 +1187,13 @@ Dossiers existants:
 
 - verifier seulement les dossiers Frida `linked`;
 - faire `PROPFIND` Depth 0 sur chaque sous-dossier standard;
-- accepter `207` comme deja present;
+- accepter `207` comme deja present seulement si la ressource WebDAV est une
+  collection;
+- parser le XML `PROPFIND` en memoire uniquement, sans jamais le logger, le
+  stocker, le retourner dans une reponse API, l'inclure dans une preuve JSONL ou
+  le documenter comme payload brut;
+- traiter une cible `207` non-collection comme conflit/incompatibilite
+  content-free;
 - faire `MKCOL` si absent;
 - ne jamais faire `PROPFIND` Depth 1, `GET`, `PUT`, `MOVE`, `DELETE` ou listing
   de contenu dans ce lot;
@@ -1200,3 +1215,12 @@ Limite:
 - il ne cree aucune note Markdown dans `Notes`;
 - il ne genere aucun export dans `Exports`;
 - il ne stocke aucune image generee dans `Images`.
+
+Dette structurelle post-correctif Lot 11:
+
+- `app/core/workspace_folder_nextcloud_reconcile.py` est deja au-dessus du seuil
+  de 500 lignes;
+- le correctif collection reste dans le client WebDAV et les tests, sans
+  rallonger la reconciliation;
+- le prochain lot qui ajoute du comportement de reconciliation doit extraire
+  une responsabilite claire avant d'etendre ce fichier.

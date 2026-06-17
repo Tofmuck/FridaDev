@@ -5,6 +5,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -105,7 +106,7 @@ class NextcloudFolderClient:
         return cls(config_from_env(environ))
 
     def root_status(self) -> NextcloudFolderResponse:
-        status = self._request_status("PROPFIND", self._folder_url(), headers={"Depth": "0"})
+        status = self._request_collection_status(self._folder_url())
         if status == 207:
             return NextcloudFolderResponse(True, REASON_CREATE_OK, status)
         raise NextcloudFolderClientError(_reason_for_status(status), http_status=status)
@@ -114,7 +115,7 @@ class NextcloudFolderClient:
         return self.folder_status_path(folder_name)
 
     def folder_status_path(self, *segments: str) -> NextcloudFolderResponse:
-        status = self._request_status("PROPFIND", self._folder_url(*segments), headers={"Depth": "0"})
+        status = self._request_collection_status(self._folder_url(*segments))
         if status == 207:
             return NextcloudFolderResponse(True, REASON_CREATE_OK, status)
         raise NextcloudFolderClientError(_reason_for_status(status), http_status=status)
@@ -172,9 +173,43 @@ class NextcloudFolderClient:
         except (OSError, URLError):
             raise NextcloudFolderClientError(REASON_UNAVAILABLE) from None
 
+    def _request_collection_status(self, url: str) -> int:
+        request = Request(url, method="PROPFIND")
+        request.add_header("Authorization", self._authorization_header())
+        request.add_header("Depth", "0")
+        try:
+            with urlopen(request, timeout=12) as response:
+                status = int(response.status)
+                if status != 207:
+                    return status
+                body = response.read()
+        except HTTPError as exc:
+            return int(exc.code or 0)
+        except (OSError, URLError):
+            raise NextcloudFolderClientError(REASON_UNAVAILABLE) from None
+        return 207 if _propfind_body_is_collection(body) else 409
+
     def _authorization_header(self) -> str:
         raw = f"{self.config.username}:{self.config.app_password}".encode("utf-8")
         return "Basic " + base64.b64encode(raw).decode("ascii")
+
+
+def _propfind_body_is_collection(body: bytes) -> bool:
+    try:
+        root = ElementTree.fromstring(body)
+    except ElementTree.ParseError:
+        return False
+    for element in root.iter():
+        if _local_xml_name(element.tag) != "resourcetype":
+            continue
+        return any(_local_xml_name(child.tag) == "collection" for child in list(element))
+    return False
+
+
+def _local_xml_name(tag: str) -> str:
+    if "}" in tag:
+        return tag.rsplit("}", 1)[-1]
+    return tag
 
 
 def _reason_for_status(status: int) -> str:

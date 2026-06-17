@@ -81,6 +81,8 @@ class _FakeNextcloudFolderClient:
         self.deleted = []
         self.statuses = {}
         self.path_statuses = {}
+        self.collections = {}
+        self.path_collections = {}
         self.status_checked = []
         self.path_status_checked = []
         self.fail_status = None
@@ -96,6 +98,11 @@ class _FakeNextcloudFolderClient:
             raise self.fail_status
         status = int(self.statuses.get(name, 404))
         if status == 207:
+            if self.collections.get(name, True) is not True:
+                raise workspace_folder_nextcloud_client.NextcloudFolderClientError(
+                    workspace_folder_nextcloud_client.REASON_CONFLICT,
+                    http_status=status,
+                )
             return workspace_folder_nextcloud_client.NextcloudFolderResponse(
                 True,
                 workspace_folder_nextcloud_reconcile.REASON_RECONCILE_EXISTING_OK,
@@ -126,6 +133,11 @@ class _FakeNextcloudFolderClient:
             raise self.fail_path_status
         status = int(self.path_statuses.get(tuple(segments), 404))
         if status == 207:
+            if self.path_collections.get(tuple(segments), True) is not True:
+                raise workspace_folder_nextcloud_client.NextcloudFolderClientError(
+                    workspace_folder_nextcloud_client.REASON_CONFLICT,
+                    http_status=status,
+                )
             return workspace_folder_nextcloud_client.NextcloudFolderResponse(
                 True,
                 workspace_folder_nextcloud_client.REASON_STANDARD_SUBFOLDER_EXISTING_OK,
@@ -169,6 +181,21 @@ class _FakeNextcloudFolderClient:
             workspace_folder_nextcloud_client.REASON_ROLLBACK_OK,
             204,
         )
+
+
+class _FakeHTTPResponse:
+    def __init__(self, status, body=b""):
+        self.status = status
+        self.body = body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def read(self, *_args):
+        return self.body
 
 
 class _WorkspaceFilesCursor:
@@ -374,6 +401,18 @@ def _selection_prompt_row(
         "file_updated_at": "2026-05-20T00:00:00Z",
         "file_deleted_at": None,
     }
+
+
+PROPFIND_COLLECTION_XML = (
+    b'<multistatus xmlns="DAV:"><response><propstat><prop>'
+    b"<resourcetype><collection /></resourcetype>"
+    b"</prop></propstat></response></multistatus>"
+)
+PROPFIND_FILE_XML = (
+    b'<multistatus xmlns="DAV:"><response><propstat><prop>'
+    b"<resourcetype />"
+    b"</prop></propstat></response></multistatus>"
+)
 
 
 class WorkspaceFoldersContractTests(unittest.TestCase):
@@ -702,6 +741,93 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         local_create.assert_called_once()
         upsert.assert_called_once()
 
+    def test_nextcloud_folder_status_accepts_propfind_collection(self) -> None:
+        client = workspace_folder_nextcloud_client.NextcloudFolderClient(
+            workspace_folder_nextcloud_client.NextcloudFolderClientConfig(
+                base_url="http://nextcloud.invalid",
+                username="frida",
+                app_password="redacted",
+            )
+        )
+
+        with mock.patch.object(
+            workspace_folder_nextcloud_client,
+            "urlopen",
+            return_value=_FakeHTTPResponse(207, PROPFIND_COLLECTION_XML),
+        ):
+            response = client.folder_status("Projet-Live")
+
+        self.assertTrue(response.ok)
+        self.assertEqual(response.http_status, 207)
+
+    def test_nextcloud_folder_status_rejects_propfind_non_collection(self) -> None:
+        client = workspace_folder_nextcloud_client.NextcloudFolderClient(
+            workspace_folder_nextcloud_client.NextcloudFolderClientConfig(
+                base_url="http://nextcloud.invalid",
+                username="frida",
+                app_password="redacted",
+            )
+        )
+
+        with mock.patch.object(
+            workspace_folder_nextcloud_client,
+            "urlopen",
+            return_value=_FakeHTTPResponse(207, PROPFIND_FILE_XML),
+        ):
+            with self.assertRaises(workspace_folder_nextcloud_client.NextcloudFolderClientError) as caught:
+                client.folder_status("Projet-Live")
+
+        self.assertEqual(caught.exception.reason_code, workspace_folder_nextcloud_client.REASON_CONFLICT)
+        encoded = str(caught.exception)
+        self.assertNotIn("Projet-Live", encoded)
+        self.assertNotIn("remote.php", encoded)
+        self.assertNotIn("DAV:", encoded)
+        self.assertNotIn("Authorization", encoded)
+
+    def test_nextcloud_folder_status_path_accepts_propfind_collection(self) -> None:
+        client = workspace_folder_nextcloud_client.NextcloudFolderClient(
+            workspace_folder_nextcloud_client.NextcloudFolderClientConfig(
+                base_url="http://nextcloud.invalid",
+                username="frida",
+                app_password="redacted",
+            )
+        )
+
+        with mock.patch.object(
+            workspace_folder_nextcloud_client,
+            "urlopen",
+            return_value=_FakeHTTPResponse(207, PROPFIND_COLLECTION_XML),
+        ):
+            response = client.folder_status_path("Projet-Live", "Documents")
+
+        self.assertTrue(response.ok)
+        self.assertEqual(response.http_status, 207)
+
+    def test_nextcloud_folder_status_path_rejects_propfind_non_collection(self) -> None:
+        client = workspace_folder_nextcloud_client.NextcloudFolderClient(
+            workspace_folder_nextcloud_client.NextcloudFolderClientConfig(
+                base_url="http://nextcloud.invalid",
+                username="frida",
+                app_password="redacted",
+            )
+        )
+
+        with mock.patch.object(
+            workspace_folder_nextcloud_client,
+            "urlopen",
+            return_value=_FakeHTTPResponse(207, PROPFIND_FILE_XML),
+        ):
+            with self.assertRaises(workspace_folder_nextcloud_client.NextcloudFolderClientError) as caught:
+                client.folder_status_path("Projet-Live", "Documents")
+
+        self.assertEqual(caught.exception.reason_code, workspace_folder_nextcloud_client.REASON_CONFLICT)
+        encoded = str(caught.exception)
+        self.assertNotIn("Projet-Live", encoded)
+        self.assertNotIn("Documents/", encoded)
+        self.assertNotIn("remote.php", encoded)
+        self.assertNotIn("DAV:", encoded)
+        self.assertNotIn("Authorization", encoded)
+
     def test_standard_subfolders_accept_existing_and_create_missing_content_free(self) -> None:
         fake_client = _FakeNextcloudFolderClient()
         fake_client.path_statuses[("Projet-Live", "Documents")] = 207
@@ -729,6 +855,33 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("/Frida", encoded)
         self.assertNotIn("Authorization", encoded)
         self.assertIn("Documents", encoded)
+
+    def test_standard_subfolders_reject_non_collection_existing_target(self) -> None:
+        fake_client = _FakeNextcloudFolderClient()
+        fake_client.path_statuses[("Projet-Live", "Documents")] = 207
+        fake_client.path_collections[("Projet-Live", "Documents")] = False
+        result = workspace_folder_standard_subfolders.ensure_standard_subfolders(
+            nextcloud=fake_client,
+            parent_name="Projet-Live",
+            folder_ref="workspace-folder:11111111:abc123def456",
+            nextcloud_name_hash="abc123def456",
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "workspace_folder_standard_subfolder_conflict")
+        self.assertEqual(result["counts"]["existing"], 0)
+        self.assertEqual(result["counts"]["failed"], 1)
+        self.assertNotIn(
+            "LOT11_STANDARD_SUBFOLDER_EXISTING",
+            [record["case_id"] for record in result["records"] if record.get("standard_subfolder") == "Documents"],
+        )
+        encoded = str(result)
+        self.assertNotIn("Projet-Live", encoded)
+        self.assertNotIn("/Frida", encoded)
+        self.assertNotIn("remote.php", encoded)
+        self.assertNotIn("DAV:", encoded)
+        self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("Basic", encoded)
 
     def test_standard_subfolders_conflict_is_content_free_failure(self) -> None:
         fake_client = _FakeNextcloudFolderClient()

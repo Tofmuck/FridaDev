@@ -371,6 +371,15 @@ Preuve Lot 11 sous-dossiers standards:
   standards crees, 0 erreur, 0 conflit;
 - transport utilise: `PROPFIND` Depth 0 et `MKCOL` seulement, sans `GET`, sans
   `PUT`, sans `MOVE`, sans `DELETE`, sans listing de contenu;
+- correctif Lot 11: un `PROPFIND` `207` seul ne suffit pas; la reponse est
+  parse en memoire et la ressource doit etre une collection WebDAV pour etre
+  acceptee comme dossier parent ou sous-dossier standard;
+- une cible WebDAV non-collection est traitee comme conflit/incompatibilite
+  content-free, sans XML brut, URL DAV, chemin technique ni payload Nextcloud
+  expose;
+- dette bornee: `app/core/workspace_folder_nextcloud_reconcile.py` depasse
+  deja le seuil de 500 lignes; le prochain lot qui ajoute du comportement a la
+  reconciliation devra extraire une responsabilite avant de l'etendre;
 - aucun fichier/document workspace lu, deplace, copie ou supprime;
 - aucun Lot 12 Notes/Exports/Images runtime livre ici.
 
