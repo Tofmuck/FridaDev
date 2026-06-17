@@ -17,6 +17,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Contrat Frida V1 Nextcloud folders 2026-06-16: `states/specs/frida-v1-nextcloud-folders-contract.md` pour `workspace_folders` comme modele produit des dossiers Frida V1, mapping logique `/Frida/<dossier>`, routage `Documents` / `Notes` / `Exports` / `Images`, frontiere Sauron/Celebrimbor, pas de DB directe Nextcloud et content-free. TODO de livraison archivee: `todo-done/product/frida-v1-nextcloud-folders-todo.md`.
+- TODO active Documents ingestion Frida V1: `todo-todo/product/frida-v1-documents-ingestion-todo.md` pour documents persistants sous `/Frida/<dossier>/Documents`, prerequis `linked`, frontieres active_document/Biblio, decisions PDF fallback et preuves content-free.
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit stack locale SearXNG/Crawl4AI vs benchmark web 2026-05-21: `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
@@ -90,6 +91,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat de surface agentique: `states/specs/agentic-response-surface-contract.md`
 - Contrat source-of-truth du futur agent Agenda: `states/specs/frida-agenda-agent-contract.md`
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
+- TODO active Documents ingestion Frida V1: `todo-todo/product/frida-v1-documents-ingestion-todo.md`
 - Contrat atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
 - Contrat Frida V1 Nextcloud folders: `states/specs/frida-v1-nextcloud-folders-contract.md`
 - Roadmap archivee Frida V1 Nextcloud folders: `todo-done/product/frida-v1-nextcloud-folders-todo.md`
