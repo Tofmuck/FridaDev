@@ -38,6 +38,7 @@ class ActiveDocumentOcrOperatorProofsLot6Test(unittest.TestCase):
             extractor_module=extractor,
             ocr_module=ocr,
             admin_logs_module=_FakeAdminLogs(),
+            pdf_visual_fallback_enabled=False,
         )
 
         self.assertEqual(status, 201)
@@ -181,6 +182,7 @@ def _run_ocr_refusal(reason_code: str) -> tuple[dict[str, object], int, "_Statef
         active_documents_module=active_docs,
         extractor_module=_FakeExtractor([_extraction(status="ocr_required", reason_code="document_ocr_required", text="")]),
         ocr_module=_FakeOcr(_ocr_result(status="error", reason_code=reason_code)),
+        pdf_visual_fallback_enabled=False,
     )
     return payload, status, active_docs
 
@@ -199,6 +201,7 @@ def _run_final_empty_after_ocr() -> tuple[dict[str, object], int, "_StatefulActi
             ]
         ),
         ocr_module=_FakeOcr(_ocr_result(status="complete", reason_code="", ocr_pdf=b"%PDF OCRISE")),
+        pdf_visual_fallback_enabled=False,
     )
     return payload, status, active_docs
 

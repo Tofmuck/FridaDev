@@ -13,12 +13,15 @@ from . import active_conversation_documents
 from . import active_document_image_validation
 from . import active_document_ocr_client
 from . import active_document_text_extraction
+from . import active_document_visual_limits
 from observability import active_documents_observability
 
 
 UPLOAD_FIELD = "file"
 ACTIVE_DOCUMENT_UPLOAD_MAX_CONTENT_LENGTH = 40 * 1024 * 1024
 REASON_UPLOAD_BODY_TOO_LARGE = "active_document_upload_too_large"
+REASON_FILE_TOO_MANY_PAGES_FOR_PROVIDER_PAYLOAD = "file_too_many_pages_for_provider_payload"
+REASON_FILE_PAGE_COUNT_FAILED = "file_page_count_failed"
 
 
 def upload_body_size_guard_response(content_length: Any) -> Tuple[dict[str, Any], int] | None:
@@ -65,7 +68,9 @@ def upload_active_document_response(
     active_documents_module: Any = active_conversation_documents,
     extractor_module: Any = active_document_text_extraction,
     ocr_module: Any = active_document_ocr_client,
+    visual_limits_module: Any = active_document_visual_limits,
     admin_logs_module: Any = None,
+    pdf_visual_fallback_enabled: bool = True,
 ) -> Tuple[dict[str, Any], int]:
     conv_id, error = _resolve_existing_conversation(conversation_id, conv_store_module=conv_store_module)
     if error:
@@ -127,6 +132,15 @@ def upload_active_document_response(
         media_type=media_type,
     )
     if _should_attempt_ocr(extraction, extractor_module):
+        if pdf_visual_fallback_enabled and _is_pdf_visual_candidate(extraction, filename=filename, media_type=media_type):
+            return _upload_pdf_visual_response(
+                conv_id,
+                content,
+                extraction=extraction,
+                active_documents_module=active_documents_module,
+                visual_limits_module=visual_limits_module,
+                admin_logs_module=admin_logs_module,
+            )
         extraction, ocr_failure_meta, ocr_success_meta = _extract_after_ocr(
             content,
             filename=filename,
@@ -235,6 +249,65 @@ def _upload_image_response(
     return {"ok": True, "conversation_id": conversation_id, "document": document}, 201
 
 
+def _upload_pdf_visual_response(
+    conversation_id: str,
+    content: bytes,
+    *,
+    extraction: Any,
+    active_documents_module: Any,
+    visual_limits_module: Any,
+    admin_logs_module: Any = None,
+) -> Tuple[dict[str, Any], int]:
+    visual_page_check = visual_limits_module.check_pdf_visual_pages(content)
+    if not getattr(visual_page_check, "ok", False):
+        reason_code = _upload_visual_page_reason(getattr(visual_page_check, "reason_code", ""))
+        failure = _content_free_extraction(extraction)
+        failure.update(
+            {
+                "status": "too_large" if reason_code == REASON_FILE_TOO_MANY_PAGES_FOR_PROVIDER_PAYLOAD else "parse_error",
+                "reason_code": reason_code,
+                "byte_size": len(content),
+                "page_count": _safe_int(getattr(visual_page_check, "page_count", 0)),
+                "max_pages": _safe_int(getattr(visual_page_check, "max_pages", 0)),
+                "media_kind": "file",
+                "visual_fallback": True,
+            }
+        )
+        active_documents_observability.log_activation_failure(
+            admin_logs_module,
+            conversation_id=conversation_id,
+            extraction=failure,
+        )
+        return {
+            "ok": False,
+            "error": _human_upload_error(reason_code),
+            "reason_code": reason_code,
+            "document": failure,
+        }, 422
+
+    document = active_documents_module.activate_file_document(
+        conversation_id,
+        filename=str(getattr(extraction, "filename", "") or "document.pdf"),
+        file_content=content,
+        media_type=str(getattr(extraction, "media_type", "") or "application/pdf"),
+        source_extension=str(getattr(extraction, "source_extension", "") or ".pdf"),
+        byte_size=len(content),
+    )
+    if not document:
+        return {
+            "ok": False,
+            "error": "activation du PDF visuel impossible",
+            "reason_code": "file_runtime_unavailable",
+        }, 503
+
+    active_documents_observability.log_activation_success(
+        admin_logs_module,
+        conversation_id=conversation_id,
+        document=document,
+    )
+    return {"ok": True, "conversation_id": conversation_id, "document": document}, 201
+
+
 def remove_active_document_response(
     conversation_id: str,
     document_id: str,
@@ -309,6 +382,21 @@ def _should_attempt_ocr(extraction: Any, extractor_module: Any) -> bool:
     return (
         str(getattr(extraction, "status", "") or "") == str(getattr(extractor_module, "STATUS_OCR_REQUIRED", ""))
         and str(getattr(extraction, "reason_code", "") or "") == str(getattr(extractor_module, "REASON_OCR_REQUIRED", ""))
+    )
+
+
+def _is_pdf_visual_candidate(extraction: Any, *, filename: str, media_type: str) -> bool:
+    source_extension = str(getattr(extraction, "source_extension", "") or "").strip().lower()
+    extracted_media_type = str(getattr(extraction, "media_type", "") or "").strip().lower()
+    parser = str(getattr(extraction, "parser", "") or "").strip().lower()
+    name = str(getattr(extraction, "filename", "") or filename or "").strip().lower()
+    declared_media_type = str(media_type or "").strip().lower()
+    return (
+        source_extension == ".pdf"
+        or extracted_media_type == "application/pdf"
+        or declared_media_type == "application/pdf"
+        or parser == "pdf"
+        or name.endswith(".pdf")
     )
 
 
@@ -395,6 +483,12 @@ def _activation_ocr_kwargs(ocr_meta: Mapping[str, Any] | None) -> dict[str, Any]
     }
 
 
+def _upload_visual_page_reason(reason_code: str) -> str:
+    if str(reason_code or "") == active_document_visual_limits.REASON_VISUAL_PDF_TOO_MANY_PAGES:
+        return REASON_FILE_TOO_MANY_PAGES_FOR_PROVIDER_PAYLOAD
+    return REASON_FILE_PAGE_COUNT_FAILED
+
+
 def _safe_int(value: Any) -> int:
     try:
         return max(0, int(value or 0))
@@ -415,6 +509,9 @@ def _human_upload_error(reason_code: str) -> str:
         "document_ocr_too_many_pages": "PDF trop long pour l'OCR de conversation",
         "document_runtime_unavailable": "lecteur de fichier indisponible",
         "active_document_upload_too_large": "upload trop volumineux",
+        "file_too_many_pages_for_provider_payload": "PDF trop long pour la lecture visuelle de conversation",
+        "file_page_count_failed": "nombre de pages PDF non verifiable",
+        "file_runtime_unavailable": "lecteur PDF visuel indisponible",
         "image_empty_file": "image vide",
         "image_type_unsupported": "format image non pris en charge",
         "image_gif_unsupported_v0": "GIF hors V0 pour les images actives",

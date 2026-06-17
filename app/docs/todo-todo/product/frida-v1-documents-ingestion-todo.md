@@ -207,6 +207,10 @@ Il doit seulement rester compatible avec ces futurs lots.
   - injection visuelle/PDF multimodale ponctuelle, qui ne promet pas une lecture
     textuelle complete.
 - Documents V1 ne doit pas brouiller ces deux statuts.
+- Depuis le correctif Lot 6, un PDF sans texte ajoute directement dans le chat
+  suit par defaut l'injection visuelle/PDF multimodale ponctuelle; le chemin OCR
+  durable reste une capacite explicite distincte et ne doit pas etre presente
+  comme le meme statut.
 
 Contrat source-of-truth Lot 1:
 `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
@@ -253,6 +257,9 @@ Catalogue initial a appliquer dans les lots runtime:
 - `folder_document_remote_compensation_failed`;
 - `folder_document_content_redacted`;
 - `folder_document_existing_copy_required`;
+- `file_too_many_pages_for_provider_payload`;
+- `file_page_count_failed`;
+- `workspace_file_pdf_visual_page_count_failed`;
 - `folder_document_existing_copy_ok`;
 - `folder_document_existing_copy_conflict`;
 - `folder_document_existing_source_preserved`;
@@ -539,10 +546,12 @@ Preuve Lot 5:
 - [x] Appliquer le contrat Lot 1: PDF textuel par extraction texte bornee, PDF
   sans texte par fallback visuel/PDF image.
 - [x] Detecter PDF sans texte depuis un document de dossier.
-- [x] Detecter PDF sans texte depuis un upload direct dans le chat.
+- [x] Detecter PDF sans texte depuis un upload direct dans le chat et l'activer
+  comme PDF visuel multimodal ponctuel, pas comme texte OCRise.
 - [x] Appliquer le meme fallback visuel aux deux chemins.
 - [x] Appliquer les limites V1 du fallback visuel: `25 pages`, `25 Mo`,
-  `180` secondes pour toute preparation externe bornee si elle est utilisee.
+  `180` secondes pour toute preparation externe bornee si elle est utilisee; le
+  refus `25 pages` arrive avant construction `file_data` / data URL.
 - [x] Ne pas melanger OCR borne et injection visuelle/PDF ponctuelle dans un
   statut ambigu.
 - [x] Garantir qu'un PDF deja textuel n'est pas OCRise.
@@ -560,8 +569,13 @@ Preuve Lot 6:
 - les fichiers de dossier selectionnes explicitement rejoignent la lane
   multimodale existante quand ils sont `image` ou PDF sans texte
   (`ocr_required`);
+- un PDF sans texte ajoute directement dans le chat devient un
+  `active_document` `media_kind=file` injectable comme fichier PDF visuel dans
+  le tour courant; il n'est jamais presente comme texte OCRise;
 - les PDF textuels de dossier continuent a utiliser l'extracteur texte existant
   et ne passent pas par le fallback visuel;
+- les PDF visuels directs et de dossier refusent au-dela de `25 pages` avant
+  construction `file_data` / data URL, avec reason code content-free;
 - les payloads `data:image` / `data:application/pdf` / base64 sont construits
   uniquement dans le message provider du tour courant, jamais dans les logs,
   projections techniques, observabilite ou docs de preuve;

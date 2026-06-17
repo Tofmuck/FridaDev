@@ -104,8 +104,12 @@ OCR:
 
 - l'extraction initiale sans OCR peut retourner `ocr_required`;
 - aucun PDF scanne ne doit etre presente comme document textuel lu avant OCR explicite;
-- aucune extraction OCR implicite ne doit etre ajoutee;
-- l'OCR V1 est seulement le chemin explicite decrit en 4.1, apres `document_ocr_required`;
+- depuis Documents V1 Lot 6, le chemin utilisateur par defaut d'un PDF direct
+  sans texte est l'injection visuelle/PDF multimodale ponctuelle, distincte de
+  l'OCR durable;
+- aucune extraction OCR implicite ne doit etre ajoutee par ce fallback visuel;
+- l'OCR V1 durable reste le chemin explicite decrit en 4.1, apres
+  `document_ocr_required`, pour les callers qui l'activent explicitement;
 - un PDF deja textuel ne doit jamais etre OCRise.
 
 Extraction:
@@ -250,13 +254,21 @@ Contrat OpenRouter:
 - si le modele/provider ne peut pas traiter l'image, le tour recoit un signal compact d'exclusion;
 - Frida ne doit jamais pretendre avoir vu une image qui n'a pas ete injectee.
 
-Extension PDF visuel workspace:
+Extension PDF visuel active/workspace:
 
-- un PDF de repertoire en statut `ocr_required` reste non visible tant qu'il n'est pas explicitement selectionne dans la conversation;
-- s'il est selectionne, la lane peut tenter une injection multimodale fichier PDF au moment provider, sans OCR automatique et sans creer de `.ocr.md`;
+- un PDF de repertoire en statut `ocr_required` reste non visible tant qu'il
+  n'est pas explicitement selectionne dans la conversation;
+- un PDF direct upload sans texte devient par defaut un document actif
+  `media_kind=file`, injection visuelle ponctuelle uniquement, sans pretendre a
+  une lecture OCRisee;
+- s'il est selectionne ou actif, la lane peut tenter une injection multimodale
+  fichier PDF au moment provider, sans OCR automatique et sans creer de
+  `.ocr.md`;
 - l'ordre obligatoire est `text` puis `file`;
 - le content part PDF utilise `type=file` et un champ `file.file_data` au format data URL PDF uniquement dans le payload provider;
-- le meme plafond V0 `25 MiB` s'applique avant encodage; au-dela, exclusion entiere avec reason code compact;
+- le meme plafond V0 `25 MiB` s'applique avant encodage;
+- le plafond `25 pages` s'applique avant construction `file_data` / data URL;
+- au-dela des limites, exclusion entiere avec reason code compact;
 - si le modele/provider ne peut pas traiter le fichier PDF, exclusion entiere; Frida ne doit jamais pretendre avoir lu un PDF non injecte;
 - ce chemin ne promet pas une extraction textuelle complete: il donne au modele un support visuel/documentaire, distinct du chemin OCR durable.
 
@@ -288,7 +300,9 @@ Reason codes Lot 2:
 - `file_model_unsupported` si le modele principal courant n'est pas compatible fichier multimodal;
 - `file_bytes_missing` si l'etat fichier visuel existe mais que les bytes ne sont plus disponibles;
 - `file_too_large_for_provider_payload` si le fichier visuel depasse le plafond d'injection provider V0;
-- `workspace_file_pdf_visual_model_unsupported`, `workspace_file_pdf_visual_bytes_missing`, `workspace_file_pdf_visual_too_large` pour les variantes workspace selectionnees;
+- `file_too_many_pages_for_provider_payload` si un PDF visuel actif depasse `25 pages`;
+- `file_page_count_failed` si le nombre de pages d'un PDF visuel actif ne peut pas etre verifie;
+- `workspace_file_pdf_visual_model_unsupported`, `workspace_file_pdf_visual_bytes_missing`, `workspace_file_pdf_visual_too_large`, `workspace_file_pdf_visual_page_count_failed`, `folder_document_too_many_pages` pour les variantes workspace selectionnees;
 - `document_too_large_for_turn` reste reserve aux documents texte exclus par budget prompt.
 
 Observabilite Lot 2:

@@ -70,6 +70,7 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
         elif last_excluded_reason in {
             "workspace_file_too_large",
             "workspace_file_pdf_visual_too_large",
+            "folder_document_too_many_pages",
             REASON_TOO_LARGE,
         }:
             usage_status = DOCUMENT_STATUS_TOO_LARGE
@@ -79,6 +80,7 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
             "workspace_file_disk_missing",
             "workspace_file_unreadable",
             "workspace_file_pdf_visual_bytes_missing",
+            "workspace_file_pdf_visual_page_count_failed",
             REASON_RUNTIME_UNAVAILABLE,
         }:
             usage_status = DOCUMENT_STATUS_UNAVAILABLE

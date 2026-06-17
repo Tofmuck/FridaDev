@@ -2133,27 +2133,32 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
     def test_workspace_file_ocr_required_pdf_payload_uses_visual_fallback(self) -> None:
         prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
 
-        lane = active_document_prompt_lane.inject_active_document_prompt_lane(
-            prompt_messages,
-            [
-                {
-                    "source": "workspace_file_selection",
-                    "document_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
-                    "workspace_file_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
-                    "filename": "scan.pdf",
-                    "media_type": "application/pdf",
-                    "source_extension": ".pdf",
-                    "byte_size": 12,
-                    "media_kind": "file",
-                    "content_sha256_12": "abc123def456",
-                    "file_content": b"%PDF scanned",
-                    "injectable": True,
-                }
-            ],
-            model="openai/gpt-5.1",
-            count_tokens_func=lambda _messages, _model: 10,
-            max_tokens=1000,
-        )
+        with mock.patch.object(
+            active_document_prompt_lane.active_document_visual_limits,
+            "check_pdf_visual_pages",
+            return_value=type("PageCheck", (), {"ok": True})(),
+        ):
+            lane = active_document_prompt_lane.inject_active_document_prompt_lane(
+                prompt_messages,
+                [
+                    {
+                        "source": "workspace_file_selection",
+                        "document_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                        "workspace_file_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                        "filename": "scan.pdf",
+                        "media_type": "application/pdf",
+                        "source_extension": ".pdf",
+                        "byte_size": 12,
+                        "media_kind": "file",
+                        "content_sha256_12": "abc123def456",
+                        "file_content": b"%PDF scanned",
+                        "injectable": True,
+                    }
+                ],
+                model="openai/gpt-5.1",
+                count_tokens_func=lambda _messages, _model: 10,
+                max_tokens=1000,
+            )
 
         self.assertEqual(lane.injected_count, 1)
         self.assertEqual(lane.not_injected_count, 0)

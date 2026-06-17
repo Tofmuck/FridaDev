@@ -30,6 +30,7 @@ INACTIVE_STATUS = "inactive"
 DEFAULT_REMOVE_REASON = "manual_remove"
 MEDIA_KIND_TEXT = "text"
 MEDIA_KIND_IMAGE = "image"
+MEDIA_KIND_FILE = "file"
 
 
 @dataclass(frozen=True)
@@ -95,11 +96,14 @@ class ActiveDocumentPromptPayload:
     metadata: ActiveDocumentMetadata
     text_content: str
     image_content: bytes = b""
+    file_content: bytes = b""
 
     def to_dict(self) -> dict[str, Any]:
         payload = self.metadata.to_dict()
         if self.metadata.media_kind == MEDIA_KIND_IMAGE:
             payload["image_content"] = bytes(self.image_content or b"")
+        elif self.metadata.media_kind == MEDIA_KIND_FILE:
+            payload["file_content"] = bytes(self.file_content or b"")
         else:
             payload["text_content"] = self.text_content
         return payload
@@ -206,17 +210,19 @@ def _metadata_from_row(row: dict[str, Any]) -> ActiveDocumentMetadata:
 
 
 def _prompt_payload_from_row(row: dict[str, Any]) -> ActiveDocumentPromptPayload:
-    raw_image = row.get("binary_content")
-    if isinstance(raw_image, memoryview):
-        image_content = raw_image.tobytes()
-    elif isinstance(raw_image, (bytes, bytearray)):
-        image_content = bytes(raw_image)
+    raw_binary = row.get("binary_content")
+    if isinstance(raw_binary, memoryview):
+        binary_content = raw_binary.tobytes()
+    elif isinstance(raw_binary, (bytes, bytearray)):
+        binary_content = bytes(raw_binary)
     else:
-        image_content = b""
+        binary_content = b""
+    metadata = _metadata_from_row(row)
     return ActiveDocumentPromptPayload(
-        metadata=_metadata_from_row(row),
+        metadata=metadata,
         text_content=str(row.get("text_content") or ""),
-        image_content=image_content,
+        image_content=binary_content if metadata.media_kind == MEDIA_KIND_IMAGE else b"",
+        file_content=binary_content if metadata.media_kind == MEDIA_KIND_FILE else b"",
     )
 
 
@@ -526,6 +532,106 @@ def activate_image_document(
     return _metadata_from_row(dict(row)).to_dict()
 
 
+def activate_file_document(
+    conversation_id: str,
+    *,
+    filename: str,
+    file_content: bytes,
+    media_type: str,
+    source_extension: str,
+    byte_size: int,
+    content_sha256_12: str = "",
+    document_id: Optional[str] = None,
+    conn_factory: Optional[Callable[[], Any]] = None,
+    now_func: Callable[[], datetime] = _now_utc,
+) -> Optional[dict[str, Any]]:
+    conv_id = _normalize_uuid(conversation_id)
+    if not conv_id:
+        return None
+    doc_id = _normalize_uuid(document_id) if document_id else str(uuid.uuid4())
+    if not doc_id:
+        return None
+
+    file_bytes = bytes(file_content or b"")
+    created_at = now_func()
+    row_values = (
+        doc_id,
+        conv_id,
+        _safe_text(filename, 500),
+        _safe_text(media_type, 120),
+        _safe_text(source_extension, 40).lower(),
+        _safe_int(byte_size),
+        0,
+        "",
+        MEDIA_KIND_FILE,
+        _safe_text(content_sha256_12, 12) or _bytes_sha256_12(file_bytes),
+        0,
+        0,
+        0,
+        ACTIVE_STATUS,
+        "",
+        file_bytes,
+        created_at,
+    )
+    get_conn = conn_factory or _db_conn
+    with get_conn() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                INSERT INTO active_conversation_documents (
+                    document_id,
+                    conversation_id,
+                    filename,
+                    media_type,
+                    source_extension,
+                    byte_size,
+                    text_chars,
+                    text_sha256_12,
+                    media_kind,
+                    content_sha256_12,
+                    image_width,
+                    image_height,
+                    token_estimate,
+                    status,
+                    text_content,
+                    binary_content,
+                    created_at
+                )
+                VALUES (%s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING
+                    document_id::text AS document_id,
+                    conversation_id::text AS conversation_id,
+                    filename,
+                    media_type,
+                    source_extension,
+                    byte_size,
+                    text_chars,
+                    text_sha256_12,
+                    media_kind,
+                    content_sha256_12,
+                    image_width,
+                    image_height,
+                    token_estimate,
+                    status,
+                    created_at,
+                    deactivated_at,
+                    last_injected_turn_id,
+                    last_excluded_turn_id,
+                    last_excluded_reason_code,
+                    ocr_applied,
+                    ocr_engine,
+                    ocr_languages,
+                    ocr_duration_ms;
+                """,
+                row_values,
+            )
+            row = cur.fetchone()
+        conn.commit()
+    if not row:
+        return None
+    return _metadata_from_row(dict(row)).to_dict()
+
+
 def list_active_documents(
     conversation_id: str,
     *,
@@ -711,7 +817,7 @@ def deactivate_document(
                     deactivated_at = %s,
                     last_excluded_reason_code = %s,
                     binary_content = CASE
-                        WHEN media_kind = 'image' THEN NULL
+                        WHEN media_kind IN ('image', 'file') THEN NULL
                         ELSE binary_content
                     END
                 WHERE conversation_id = %s::uuid

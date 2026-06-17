@@ -223,6 +223,9 @@ Decision Documents V1:
   PDF present dans `/Frida/<dossier>/Documents`;
 - memes limites, memes messages utilisateur, memes reason codes et memes preuves
   content-free sur les deux chemins;
+- depuis le correctif Lot 6, le chemin par defaut d'un PDF direct sans texte est
+  un `active_document` `media_kind=file` injectable comme PDF visuel multimodal
+  ponctuel; le chemin OCR durable reste une capacite explicite distincte;
 - l'OCR borne existant des `active_document` reste une capacite archivee du
   chantier documents actifs, mais Documents V1 ne doit pas presenter un PDF
   image comme lu textuellement sans preuve explicite de texte exploitable.
@@ -232,7 +235,9 @@ Limites V1 du fallback visuel:
 - `25 pages`;
 - `25 Mo`;
 - `180` secondes pour toute preparation externe bornee si elle est utilisee;
-- refus simple au-dela des limites.
+- refus simple au-dela des limites;
+- la limite `25 pages` est verifiee avant construction de `file_data`, data URL
+  ou base64 provider.
 
 ## 11. Noms visibles et content-free
 
@@ -488,9 +493,9 @@ Regles runtime:
 
 ## 12.4 Fallback visuel unifie livre au Lot 6
 
-Le Lot 6 aligne les fichiers de dossier selectionnes avec la lane multimodale
-`active_document` existante sans ajouter d'OCR durable, de WebDAV live ni de
-route parallele.
+Le Lot 6 aligne les fichiers de dossier selectionnes et les PDF directs sans
+texte avec la lane multimodale `active_document` existante sans ajouter d'OCR
+durable, de WebDAV live ni de route parallele.
 
 Regles runtime:
 
@@ -499,6 +504,10 @@ Regles runtime:
 - un PDF de dossier en statut `ocr_required`, ou un PDF dont l'extraction texte
   retourne `document_ocr_required`, devient un document prompt `media_kind=file`
   injectable uniquement pour le tour courant;
+- un PDF direct upload dont l'extraction texte retourne `document_ocr_required`
+  devient par defaut un `active_document` `media_kind=file`; il peut etre injecte
+  comme PDF visuel uniquement au tour courant et n'est jamais presente comme
+  texte OCRise;
 - une image de dossier devient un document prompt `media_kind=image` injectable
   uniquement pour le tour courant;
 - les bytes image/PDF peuvent etre charges en memoire dans l'objet prompt et
@@ -507,9 +516,9 @@ Regles runtime:
 - les logs, projections techniques, observabilite, JSONL et docs de preuve ne
   contiennent jamais image brute, PDF brut, base64, data URL, texte OCR, contenu
   extrait, `storage_key`, chemin disque, URL DAV, XML ou secret;
-- le plafond provider commun est `25 MiB` avant encodage base64; les tests
-  prouvent que le refus taille trop grande intervient avant construction de la
-  data URL;
+- le plafond provider commun est `25 MiB` avant encodage base64 et `25 pages`
+  pour les PDF visuels; les tests prouvent que les refus taille/pages
+  interviennent avant construction de la data URL;
 - si le modele principal ne supporte pas image/fichier multimodal, si les bytes
   manquent ou si la taille est trop grande, la decision est exclue avec reason
   code content-free et Frida ne pretend pas avoir lu le document;
@@ -523,8 +532,13 @@ Regles runtime:
   `workspace_file_model_unsupported`,
   `workspace_file_pdf_visual_model_unsupported`,
   `workspace_file_pdf_visual_bytes_missing`,
-  `workspace_file_pdf_visual_too_large`, `workspace_file_too_large` ou
-  `workspace_file_unreadable`.
+  `workspace_file_pdf_visual_too_large`,
+  `workspace_file_pdf_visual_page_count_failed`,
+  `workspace_file_too_large`, `folder_document_too_many_pages` ou
+  `workspace_file_unreadable`;
+- les reason codes directs `file_too_many_pages_for_provider_payload` et
+  `file_page_count_failed` signalent les refus PDF visuels actifs sans exposer
+  PDF brut, base64 ou payload provider.
 
 Limites restantes apres Lot 6:
 
