@@ -376,6 +376,9 @@ Preuve Lot 2:
 - correctif Lot 2.1: tests unitaires dedies sous
   `app/tests/unit/core/test_workspace_folder_documents.py`, projection technique
   allowlistee par valeurs et `parse_error` classe en `error`.
+- correctif Lot 2.2: `workspace_file_id` et `workspace_folder_id` exposes dans
+  `document_v1_technical` seulement s'ils sont des UUID valides; sinon ref
+  redacted/hash court, jamais identifiant brut non-UUID.
 
 ### Lot 3 - Ingestion / rangement nouveaux documents
 

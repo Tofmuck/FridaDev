@@ -102,6 +102,29 @@ class DocumentsV1ReadModelTests(unittest.TestCase):
         encoded = str(technical)
         self.assertNotIn("/Frida", encoded)
 
+    def test_technical_projection_redacts_non_uuid_identifiers(self) -> None:
+        projected = workspace_folder_documents.apply_document_v1_projection(
+            _file_item(id="SecretDocumentName", workspace_folder_id="ProjetTulu"),
+            folder=LINKED_FOLDER,
+        )
+
+        technical = projected["document_v1_technical"]
+        self.assertEqual(technical["workspace_file_id"], "")
+        self.assertEqual(technical["workspace_folder_id"], "")
+        self.assertTrue(technical["document_ref"].startswith("workspace-file:redacted:"))
+        self.assertFalse(technical["document_ref"].startswith("workspace-file:SecretDo"))
+        encoded = str(technical)
+        self.assertNotIn("SecretDocumentName", encoded)
+        self.assertNotIn("ProjetTulu", encoded)
+
+        valid = workspace_folder_documents.apply_document_v1_projection(
+            _file_item(id=FILE_ID, workspace_folder_id=FOLDER_ID),
+            folder=LINKED_FOLDER,
+        )["document_v1_technical"]
+        self.assertEqual(valid["workspace_file_id"], FILE_ID)
+        self.assertEqual(valid["workspace_folder_id"], FOLDER_ID)
+        self.assertTrue(valid["document_ref"].startswith("workspace-file:aaaaaaaa:"))
+
     def test_parse_error_maps_to_error_status_and_parse_reason(self) -> None:
         projected = workspace_folder_documents.apply_document_v1_projection(
             _file_item(status="parse_error", reason_code="workspace_file_unreadable", text_chars=0),

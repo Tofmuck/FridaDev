@@ -9,6 +9,7 @@ content-free projections used by logs, JSONL and observability.
 
 import hashlib
 import re
+import uuid
 from typing import Any, Mapping
 
 
@@ -80,7 +81,6 @@ _TECHNICAL_FORBIDDEN_KEYS = {
     "app_password",
     "app-password",
 }
-_SAFE_IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,160}$")
 _ALLOWED_CONTENT_KINDS = {"document", "image"}
 _ALLOWED_MEDIA_KINDS = {"text", "image"}
 _ALLOWED_MIME_TYPES = {
@@ -289,7 +289,9 @@ def _is_pdf(file_item: Mapping[str, Any]) -> bool:
 
 
 def _document_ref(file_item: Mapping[str, Any]) -> str:
-    file_id = _safe_identifier(file_item.get("id")) or _hash12(file_item.get("id"))
+    file_id = _safe_identifier(file_item.get("id"))
+    if not file_id:
+        return f"workspace-file:redacted:{_hash12(file_item.get('id'))}"
     digest = _short_hash(file_item.get("sha256_12")) or _hash12(file_id)
     return f"workspace-file:{file_id[:8]}:{digest}"
 
@@ -314,10 +316,10 @@ def _safe_reason_code(value: Any, *, fallback: str = REASON_CONTENT_REDACTED) ->
 
 
 def _safe_identifier(value: Any) -> str:
-    text = _text(value, 160)
-    if _SAFE_IDENTIFIER_RE.fullmatch(text):
-        return text
-    return ""
+    try:
+        return str(uuid.UUID(str(value or "").strip()))
+    except (TypeError, ValueError):
+        return ""
 
 
 def _normalized_content_kind(value: Any) -> str:

@@ -298,7 +298,9 @@ Projections runtime:
   `content_kind`, `media_kind`, `mime_type`, `source_extension`,
   `document_status`, `readiness` et `reason_code` doivent etre normalises
   strictement, et toute valeur inconnue ou suspecte devient `unknown`, vide ou
-  redacted selon le champ;
+  redacted selon le champ; les ids techniques `workspace_file_id` et
+  `workspace_folder_id` ne sont exposes que s'ils sont des UUID valides, sinon
+  ils sont vides et les refs utilisent un hash court redacted;
 - `document_v1_usage`: projection de selection conversationnelle; lien explicite
   conversation -> document de dossier -> usage, sans stockage durable
   `active_document`, sans Biblio et sans Memory/RAG/Identity/Summary.
