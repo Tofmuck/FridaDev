@@ -1,6 +1,6 @@
 # Frida V1 - Documents sources / ingestion / lecture / PDF fallback - TODO
 
-Statut: Lot 3 ingestion/rangement des nouveaux documents livre; prete pour Lot 4 liste documents
+Statut: Lot 4 liste Documents utilisateur par dossier livree; prete pour Lot 5 lecture/preparation
 Date: 2026-06-17
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -240,6 +240,7 @@ Catalogue initial a appliquer dans les lots runtime:
 - `folder_document_parse_error`;
 - `folder_document_runtime_unavailable`;
 - `folder_document_nextcloud_error_redacted`;
+- `folder_document_local_only`;
 - `folder_document_local_persistence_failed`;
 - `folder_document_link_persistence_failed`;
 - `folder_document_link_lookup_failed`;
@@ -462,17 +463,37 @@ Preuve Lot 3:
 
 ### Lot 4 - Liste des documents d'un dossier
 
-- [ ] Appliquer le contrat Lot 1: liste utilisateur par dossier Frida courant.
-- [ ] Lister les documents disponibles sans fuite de contenu.
-- [ ] Ne pas faire de listing Nextcloud non borne comme preuve operateur.
-- [ ] Appliquer le contrat Lot 1: noms de fichiers visibles en UI/reponse
+- [x] Appliquer le contrat Lot 1: liste utilisateur par dossier Frida courant.
+- [x] Lister les documents disponibles sans fuite de contenu.
+- [x] Ne pas faire de listing Nextcloud non borne comme preuve operateur.
+- [x] Appliquer le contrat Lot 1: noms de fichiers visibles en UI/reponse
   utilisateur utile, redacted en logs/preuves/observabilite technique.
-- [ ] Exposer media type, taille, statut, date et readiness sans contenu.
-- [ ] Gerer dossier non `linked`, `Documents` absent, `Documents` non-collection
+- [x] Exposer media type, taille, statut, date et readiness sans contenu.
+- [x] Gerer dossier non `linked`, `Documents` absent, `Documents` non-collection
   et erreur transport.
-- [ ] Distinguer liste utilisateur et preuve JSONL content-free.
-- [ ] Tester anti-fuite: pas de contenu, XML brut, URL DAV, chemin serveur,
+- [x] Distinguer liste utilisateur et preuve JSONL content-free.
+- [x] Tester anti-fuite: pas de contenu, XML brut, URL DAV, chemin serveur,
   `storage_key`, secret, token, cookie ou `app-password`.
+
+Preuve Lot 4:
+
+- la route existante `/api/workspace-folders/<id>/files` reste la surface de
+  liste; aucune route Documents parallele n'est ajoutee;
+- la liste s'appuie sur le registre local `workspace_files` et enrichit chaque
+  item par l'etat local `workspace_file_nextcloud_links` quand il existe;
+- `document_v1_user` expose `display_name`, type, taille, dates, statut,
+  readiness et etat utilisateur `linked` / `local_only` / `sync_error`;
+- `document_v1_technical` expose seulement refs/hashs courts, statuts et reason
+  codes content-free; aucun `display_name`, nom distant brut, `storage_key`,
+  chemin, URL DAV, XML, secret ou contenu;
+- les fichiers tombstones/deleted sont exclus de la liste par le store existant;
+- les fichiers historiques/local-only restent visibles comme `local_only`, sans
+  pretendre qu'ils sont ranges dans Nextcloud;
+- un echec de lecture du lien Nextcloud local apparait comme `sync_error` avec
+  `folder_document_link_lookup_failed`, sans masquer l'ambiguite;
+- le Lot 4 ne fait aucun WebDAV live: les cas `Documents` absent,
+  non-collection ou transport sont representes via les etats locaux deja
+  persistants, pas par un nouveau probe Nextcloud.
 
 ### Lot 5 - Lecture / preparation de lecture
 
@@ -614,12 +635,14 @@ Artefacts attendus:
 
 ## 11. Prochain lot recommande
 
-Ouvrir `Lot 4 - Liste des documents d'un dossier`.
+Ouvrir `Lot 5 - Lecture / preparation de lecture`.
 
-Objectif Lot 4:
+Objectif Lot 5:
 
 - appliquer le contrat source-of-truth Documents V1;
-- lister les documents disponibles d'un dossier Frida courant;
-- garder les noms visibles dans la projection utilisateur utile;
-- garder logs, JSONL, observabilite technique et preuves content-free;
-- ne pas introduire de listing Nextcloud large ni de route parallele.
+- preparer ou refuser explicitement l'usage conversationnel d'un document;
+- reutiliser l'extracteur texte existant pour TXT, Markdown / MD, DOCX, ODT et
+  PDF textuel;
+- ne pas creer d'index RAG global, de Biblio ou de lecture partielle presentee
+  comme complete;
+- garder logs, JSONL, observabilite technique et preuves content-free.

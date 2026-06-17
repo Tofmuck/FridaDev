@@ -417,13 +417,43 @@ Preuve Lot 3:
   `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot3-1-link-delete-20260617T145211Z.jsonl`;
 - cleanup strict du fichier et du dossier synthetiques crees pendant le smoke.
 
-Limites restantes avant Lot 4+:
+## 12.2 Liste utilisateur des documents livree au Lot 4
 
-- la liste Documents utilisateur reste a consolider au Lot 4;
+Le Lot 4 livre la liste Documents utilisateur par dossier via la route existante
+`/api/workspace-folders/<id>/files`.
+
+Regles runtime:
+
+- aucune route Documents parallele n'est creee;
+- la liste est derivee du registre local `workspace_files`;
+- les fichiers `deleted` / tombstones sont exclus par le store existant;
+- chaque item actif est enrichi par l'etat local `workspace_file_nextcloud_links`
+  si un lien existe;
+- un document avec lien `linked` est expose comme range Nextcloud dans
+  `document_v1_user`;
+- un document sans lien est expose honnetement comme `local_only`;
+- un echec de lecture du lien local est expose comme `sync_error` avec
+  `folder_document_link_lookup_failed`;
+- aucun appel WebDAV/Nextcloud live n'est effectue pour lister;
+- les cas cible `Documents` absente, non-collection ou transport sont representes
+  par les etats locaux persistants disponibles, pas par un nouveau probe live.
+
+Surfaces:
+
+- `document_v1_user` peut exposer `display_name`, type, taille, dates, statut,
+  readiness et label utilisateur d'etat Nextcloud;
+- `document_v1_technical` n'expose que refs/hashs courts, statuts et reason
+  codes content-free;
+- `nextcloud_target_name`, nom distant brut, `storage_key`, chemin disque, URL
+  DAV, XML, secret, contenu et nom de fichier utilisateur restent absents des
+  projections techniques, logs, JSONL et observabilite.
+
+Limites restantes avant Lot 5+:
+
 - la preparation/lecture reste Lot 5;
 - le fallback visuel complet reste Lot 6;
 - les fichiers workspace historiques restent Lot 7;
-- aucun Notes / Exports / Images runtime n'est livre par Lot 3.
+- aucun Notes / Exports / Images runtime n'est livre par Lot 4.
 
 ## 13. Reason codes Documents V1
 
@@ -450,6 +480,7 @@ Catalogue initial obligatoire:
 - `folder_document_parse_error`;
 - `folder_document_runtime_unavailable`;
 - `folder_document_nextcloud_error_redacted`;
+- `folder_document_local_only`;
 - `folder_document_local_persistence_failed`;
 - `folder_document_link_persistence_failed`;
 - `folder_document_link_lookup_failed`;

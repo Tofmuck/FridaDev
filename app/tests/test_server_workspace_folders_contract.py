@@ -723,6 +723,8 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(len(listed.get_json()["items"]), 1)
         listed_item = listed.get_json()["items"][0]
         self.assertEqual(listed_item["document_v1_user"]["display_name"], "note.txt")
+        self.assertEqual(listed_item["document_v1_user"]["nextcloud_sync_state"], "linked")
+        self.assertEqual(listed_item["document_v1_technical"]["nextcloud_sync_state"], "linked")
         self.assertNotIn("note.txt", str(listed_item["document_v1_technical"]))
 
         deleted = self.client.delete(f"/api/workspace-folders/{FOLDER_ID}/files/{payload['file']['id']}")
@@ -739,6 +741,55 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         listed_after = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/files")
         self.assertEqual(listed_after.status_code, 200)
         self.assertEqual(listed_after.get_json()["items"], [])
+
+    def test_workspace_file_list_shows_local_only_honestly_and_excludes_deleted(self) -> None:
+        self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
+        self.fake_workspace.folders[FOLDER_ID].update(
+            {
+                "link_workspace_folder_id": FOLDER_ID,
+                "link_nextcloud_sync_state": "linked",
+                "link_nextcloud_folder_ref": "workspace-folder:11111111:abcdef123456",
+                "link_nextcloud_name_hash": "abcdef123456",
+                "link_last_sync_reason_code": "workspace_folder_nextcloud_create_ok",
+                "link_last_sync_operation": "create",
+                "link_nextcloud_share_state": "confirmed",
+            }
+        )
+        self.fake_workspace_files.files[FOLDER_ID] = [
+            {
+                "id": FILE_ID,
+                "workspace_folder_id": FOLDER_ID,
+                "display_name": "legacy.pdf",
+                "source_extension": ".pdf",
+                "mime_type": "application/pdf",
+                "byte_size": 12,
+                "status": "active",
+                "deleted_at": None,
+                "storage_key": "hidden/path/legacy.pdf",
+            },
+            {
+                "id": "88888888-8888-4888-8888-888888888888",
+                "workspace_folder_id": FOLDER_ID,
+                "display_name": "old.txt",
+                "source_extension": ".txt",
+                "status": "deleted",
+                "deleted_at": "2026-06-17T00:00:00Z",
+            },
+        ]
+
+        listed = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/files")
+
+        self.assertEqual(listed.status_code, 200)
+        payload = listed.get_json()
+        self.assertEqual(len(payload["items"]), 1)
+        item = payload["items"][0]
+        self.assertEqual(item["document_v1_user"]["display_name"], "legacy.pdf")
+        self.assertEqual(item["document_v1_user"]["nextcloud_sync_state"], "local_only")
+        self.assertEqual(item["document_v1_technical"]["nextcloud_sync_state"], "local_only")
+        self.assertNotIn("storage_key", str(payload))
+        self.assertNotIn("hidden/path", str(payload))
+        self.assertNotIn("old.txt", str(payload))
+        self.assertNotIn("legacy.pdf", str(item["document_v1_technical"]))
 
     def test_workspace_file_delete_reports_link_mark_failure_content_free(self) -> None:
         self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")

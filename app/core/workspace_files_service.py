@@ -6,6 +6,7 @@ from . import active_document_image_validation
 from . import active_document_text_extraction
 from . import active_document_upload_service
 from . import workspace_folder_documents
+from . import workspace_folder_document_list
 from . import workspace_document_nextcloud_client
 from . import workspace_document_nextcloud_runtime
 
@@ -59,9 +60,9 @@ def list_workspace_files_response(
     normalized, folder, error = _resolve_existing_folder(folder_id, workspace_folders_module=workspace_folders_module)
     if error:
         return error
-    items = workspace_folder_documents.apply_document_v1_list(
-        workspace_files_module.list_workspace_files(normalized),
-        folder=folder,
+    items = workspace_folder_document_list.list_workspace_folder_documents(
+        folder,
+        workspace_files_module=workspace_files_module,
     )
     return {
         "ok": True,

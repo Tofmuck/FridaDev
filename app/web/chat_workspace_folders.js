@@ -71,6 +71,14 @@ const WORKSPACE_FILE_STATUS_LABELS = Object.freeze({
   error: 'Erreur',
 });
 
+const WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS = Object.freeze({
+  unknown: '',
+  local_only: 'Local seulement',
+  linked: 'Rangé Nextcloud',
+  sync_error: 'Erreur sync',
+  deleted: 'Supprimé',
+});
+
 const WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS = Object.freeze({
   unknown: 'Local',
   local_only: 'Local',
@@ -204,7 +212,11 @@ function normalizeWorkspaceFileItem(item) {
   const displayName = String(item?.display_name || item?.original_filename || 'fichier')
     .replace(/\s+/g, ' ')
     .trim() || 'fichier';
-  return {
+  const userProjection = normalizeWorkspaceDocumentUserProjection(item?.document_v1_user);
+  const nextcloudSyncState = normalizeWorkspaceFileNextcloudState(
+    userProjection?.nextcloud_sync_state || item?.document_nextcloud_sync_state,
+  );
+  const file = {
     id,
     workspace_folder_id: folderId,
     display_name: displayName,
@@ -224,7 +236,14 @@ function normalizeWorkspaceFileItem(item) {
     created_at: item?.created_at || null,
     updated_at: item?.updated_at || item?.created_at || null,
     deleted_at: item?.deleted_at || null,
+    document_v1_status: String(item?.document_v1_status || userProjection?.document_status || '').trim(),
+    document_v1_readiness: String(item?.document_v1_readiness || userProjection?.readiness || '').trim(),
+    document_v1_reason_code: String(item?.document_v1_reason_code || userProjection?.reason_code || '').trim(),
+    document_nextcloud_sync_state: nextcloudSyncState,
+    document_nextcloud_status_label: workspaceFileNextcloudStatusLabel({ document_nextcloud_sync_state: nextcloudSyncState }),
   };
+  if (userProjection) file.document_v1_user = userProjection;
+  return file;
 }
 
 function normalizeWorkspaceFilesPayload(payload) {
@@ -293,6 +312,16 @@ function workspaceFileStatusLabel(item) {
   return status && status !== 'active' ? 'Etat fichier' : '';
 }
 
+function workspaceFileNextcloudStatusLabel(item) {
+  const status = normalizeWorkspaceFileNextcloudState(
+    item?.document_nextcloud_sync_state || item?.document_v1_user?.nextcloud_sync_state,
+  );
+  if (WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS[status] !== undefined) {
+    return WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS[status];
+  }
+  return '';
+}
+
 function workspaceFolderNextcloudStatusLabel(item) {
   const status = String(item?.nextcloud_sync_state || '').trim();
   if (!status) return '';
@@ -325,6 +354,27 @@ function canEditWorkspaceOcrMarkdown(item) {
     && String(item?.status || 'active') === 'active';
 }
 
+function normalizeWorkspaceDocumentUserProjection(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const nextcloudSyncState = normalizeWorkspaceFileNextcloudState(value.nextcloud_sync_state);
+  return {
+    display_name: String(value.display_name || '').replace(/\s+/g, ' ').trim(),
+    document_status: String(value.document_status || '').trim(),
+    readiness: String(value.readiness || '').trim(),
+    reason_code: String(value.reason_code || '').trim(),
+    nextcloud_sync_state: nextcloudSyncState,
+    nextcloud_status_label: String(
+      value.nextcloud_status_label || workspaceFileNextcloudStatusLabel({ document_nextcloud_sync_state: nextcloudSyncState }),
+    ).replace(/\s+/g, ' ').trim(),
+    nextcloud_reason_code: String(value.nextcloud_reason_code || '').trim(),
+  };
+}
+
+function normalizeWorkspaceFileNextcloudState(value) {
+  const state = String(value || '').trim();
+  return WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS[state] !== undefined ? state : 'unknown';
+}
+
 function groupThreadsByWorkspaceFolder(threads, folders) {
   const folderIds = new Set((folders || []).map((folder) => folder.id));
   const byFolder = new Map();
@@ -348,6 +398,7 @@ const FridaWorkspaceFolders = Object.freeze({
   WORKSPACE_FOLDER_ICON_LABELS,
   WORKSPACE_FOLDER_ICON_SVGS,
   WORKSPACE_FILE_STATUS_LABELS,
+  WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS,
   WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS,
   normalizeWorkspaceFolderId,
   normalizeWorkspaceIconKey,
@@ -361,6 +412,7 @@ const FridaWorkspaceFolders = Object.freeze({
   formatWorkspaceFileBytes,
   compactWorkspaceFileMeta,
   workspaceFileStatusLabel,
+  workspaceFileNextcloudStatusLabel,
   workspaceFolderNextcloudStatusLabel,
   workspaceFolderDeleteConfirmationText,
   canRunWorkspaceOcr,

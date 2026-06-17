@@ -624,6 +624,84 @@ class DocumentsV1IngestionTests(unittest.TestCase):
         self.assertTrue(payload["file"]["disk_deleted"])
         self.assertEqual(nextcloud.deleted, [])
 
+    def test_list_documents_shows_linked_and_local_only_states_content_free(self) -> None:
+        files = _FakeWorkspaceFiles()
+        linked = files.store_uploaded_file(
+            FOLDER_ID,
+            original_filename="note.txt",
+            content=b"bonjour",
+            metadata={"display_name": "note.txt", "source_extension": ".txt", "text_chars": 7},
+            file_id=FILE_ID,
+        )
+        local = files.store_uploaded_file(
+            FOLDER_ID,
+            original_filename="legacy.pdf",
+            content=b"legacy",
+            metadata={
+                "display_name": "legacy.pdf",
+                "source_extension": ".pdf",
+                "mime_type": "application/pdf",
+            },
+            file_id="bbbbbbbb-bbbb-4ccc-8ddd-bbbbbbbbbbbb",
+        )
+        files.upsert_nextcloud_link(
+            workspace_file_id=linked["id"],
+            workspace_folder_id=FOLDER_ID,
+            nextcloud_sync_state="linked",
+            nextcloud_document_ref="workspace-file:aaaaaaaa:abc123def456",
+            nextcloud_name_hash="abc123def456",
+            nextcloud_target_name="Projet secret.txt",
+            last_sync_reason_code="folder_document_upload_ok",
+            last_sync_operation="upload",
+        )
+
+        payload, status = workspace_files_service.list_workspace_files_response(
+            FOLDER_ID,
+            workspace_folders_module=_FakeFolders(linked=True),
+            workspace_files_module=files,
+        )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(len(payload["items"]), 2)
+        linked_item = payload["items"][0]
+        local_item = payload["items"][1]
+        self.assertEqual(linked_item["document_v1_user"]["display_name"], "note.txt")
+        self.assertEqual(linked_item["document_v1_user"]["nextcloud_sync_state"], "linked")
+        self.assertEqual(linked_item["document_v1_technical"]["nextcloud_sync_state"], "linked")
+        self.assertEqual(local_item["document_v1_user"]["display_name"], "legacy.pdf")
+        self.assertEqual(local_item["document_v1_user"]["nextcloud_sync_state"], "local_only")
+        self.assertEqual(local_item["document_v1_technical"]["nextcloud_sync_state"], "local_only")
+        encoded_technical = str([item["document_v1_technical"] for item in payload["items"]])
+        self.assertNotIn("note.txt", encoded_technical)
+        self.assertNotIn("legacy.pdf", encoded_technical)
+        self.assertNotIn("Projet secret", encoded_technical)
+        self.assertNotIn("nextcloud_target_name", encoded_technical)
+
+    def test_list_documents_link_lookup_failure_is_visible_and_redacted(self) -> None:
+        files = _FakeWorkspaceFiles(fail_link_lookup=True)
+        files.store_uploaded_file(
+            FOLDER_ID,
+            original_filename="note.txt",
+            content=b"bonjour",
+            metadata={"display_name": "note.txt", "source_extension": ".txt", "text_chars": 7},
+            file_id=FILE_ID,
+        )
+
+        payload, status = workspace_files_service.list_workspace_files_response(
+            FOLDER_ID,
+            workspace_folders_module=_FakeFolders(linked=True),
+            workspace_files_module=files,
+        )
+
+        self.assertEqual(status, 200)
+        item = payload["items"][0]
+        self.assertEqual(item["document_v1_user"]["nextcloud_sync_state"], "sync_error")
+        self.assertEqual(item["document_v1_user"]["nextcloud_reason_code"], "folder_document_link_lookup_failed")
+        self.assertEqual(item["document_v1_technical"]["nextcloud_sync_state"], "sync_error")
+        self.assertEqual(item["document_v1_technical"]["nextcloud_reason_code"], "folder_document_link_lookup_failed")
+        self.assertEqual(files.events[-1][0], "documents_v1_list_link_lookup_failed")
+        self.assertNotIn("note.txt", str(files.events[-1][1]))
+
     def test_document_client_rejects_update_like_put_statuses(self) -> None:
         class _Client(workspace_document_nextcloud_client.NextcloudDocumentClient):
             def __init__(self, status):

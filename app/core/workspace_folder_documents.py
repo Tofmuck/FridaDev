@@ -44,8 +44,16 @@ REASON_PARSE_ERROR = "folder_document_parse_error"
 REASON_RUNTIME_UNAVAILABLE = "folder_document_runtime_unavailable"
 REASON_CONTENT_REDACTED = "folder_document_content_redacted"
 REASON_SELECTED = "folder_document_selected"
+REASON_LOCAL_ONLY = "folder_document_local_only"
+REASON_LINK_LOOKUP_FAILED = "folder_document_link_lookup_failed"
+REASON_NEXTCLOUD_ERROR_REDACTED = "folder_document_nextcloud_error_redacted"
+REASON_DELETE_OK = "folder_document_delete_ok"
 
 FOLDER_SYNC_LINKED = "linked"
+DOCUMENT_LINK_LOCAL_ONLY = "local_only"
+DOCUMENT_LINK_LINKED = "linked"
+DOCUMENT_LINK_SYNC_ERROR = "sync_error"
+DOCUMENT_LINK_DELETED = "deleted"
 UNKNOWN = "unknown"
 
 _SAFE_REASON_RE = re.compile(r"^[a-z0-9_]{3,120}$")
@@ -80,6 +88,15 @@ _TECHNICAL_FORBIDDEN_KEYS = {
     "authorization",
     "app_password",
     "app-password",
+}
+_USER_PAYLOAD_FORBIDDEN_KEYS = {
+    key for key in _TECHNICAL_FORBIDDEN_KEYS if key not in {"display_name", "original_filename"}
+} | {
+    "document_nextcloud_link",
+    "nextcloud_target_name",
+    "nextcloud_target_path",
+    "nextcloud_url",
+    "nextcloud_dav_url",
 }
 _ALLOWED_CONTENT_KINDS = {"document", "image"}
 _ALLOWED_MEDIA_KINDS = {"text", "image"}
@@ -128,6 +145,15 @@ _ALLOWED_READINESS = {
     READINESS_VISUAL,
     READINESS_UNAVAILABLE,
 }
+_ALLOWED_DOCUMENT_LINK_STATES = {
+    DOCUMENT_LINK_LOCAL_ONLY,
+    DOCUMENT_LINK_LINKED,
+    DOCUMENT_LINK_SYNC_ERROR,
+    DOCUMENT_LINK_DELETED,
+    UNKNOWN,
+}
+_ALLOWED_LINK_OPERATIONS = {"upload", "delete", "reconcile", "observe", ""}
+_DOCUMENT_LINK_REF_RE = re.compile(r"^workspace-file:(?:[0-9a-f]{8}|redacted):[0-9a-f]{12}$")
 
 
 def apply_document_v1_projection(
@@ -140,6 +166,7 @@ def apply_document_v1_projection(
         return item
     user_projection = build_user_projection(item, folder=folder)
     technical_projection = build_technical_projection(item, folder=folder)
+    item = _strip_user_payload_forbidden(item)
     item["document_v1_user"] = user_projection
     item["document_v1_technical"] = technical_projection
     item["document_v1_status"] = user_projection["document_status"]
@@ -171,6 +198,7 @@ def build_user_projection(
     folder: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     state = document_state(file_item, folder=folder)
+    link_state = document_nextcloud_state(file_item)
     return {
         "document_id": _text(file_item.get("id"), 120),
         "workspace_file_id": _text(file_item.get("id"), 120),
@@ -184,6 +212,9 @@ def build_user_projection(
         "document_status": state["document_status"],
         "readiness": state["readiness"],
         "reason_code": state["reason_code"],
+        "nextcloud_sync_state": link_state["nextcloud_sync_state"],
+        "nextcloud_status_label": link_state["status_label"],
+        "nextcloud_reason_code": link_state["reason_code"],
         "created_at": _text(file_item.get("created_at"), 80),
         "updated_at": _text(file_item.get("updated_at"), 80),
         "deleted_at": _text(file_item.get("deleted_at"), 80),
@@ -196,6 +227,7 @@ def build_technical_projection(
     folder: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     state = document_state(file_item, folder=folder)
+    link_state = document_nextcloud_state(file_item)
     payload = {
         "document_ref": _document_ref(file_item),
         "workspace_file_id": _safe_identifier(file_item.get("id")),
@@ -213,6 +245,11 @@ def build_technical_projection(
         "document_status": _normalized_document_status(state["document_status"]),
         "readiness": _normalized_readiness(state["readiness"]),
         "reason_code": _safe_reason_code(state["reason_code"]),
+        "nextcloud_sync_state": _normalized_document_link_state(link_state["nextcloud_sync_state"]),
+        "nextcloud_document_ref": _safe_document_link_ref(link_state["nextcloud_document_ref"]),
+        "nextcloud_name_hash": _short_hash(link_state["nextcloud_name_hash"]),
+        "nextcloud_reason_code": _safe_reason_code(link_state["reason_code"]),
+        "nextcloud_operation": _normalized_link_operation(link_state["last_sync_operation"]),
     }
     return _content_free_projection(payload)
 
@@ -274,11 +311,73 @@ def document_state(
     return _state(DOCUMENT_STATUS_AVAILABLE, READINESS_PENDING, REASON_LIST_OK)
 
 
+def document_nextcloud_state(file_item: Mapping[str, Any]) -> dict[str, str]:
+    link = file_item.get("document_nextcloud_link")
+    if not isinstance(link, Mapping):
+        return _link_state(DOCUMENT_LINK_LOCAL_ONLY, "Local seulement", REASON_LOCAL_ONLY)
+    if _text(link.get("lookup_state"), 40) == "failed":
+        return _link_state(
+            DOCUMENT_LINK_SYNC_ERROR,
+            "Erreur sync",
+            REASON_LINK_LOOKUP_FAILED,
+            operation=link.get("last_sync_operation"),
+        )
+
+    sync_state = _normalized_document_link_state(link.get("nextcloud_sync_state"))
+    if sync_state == DOCUMENT_LINK_LINKED:
+        return _link_state(
+            DOCUMENT_LINK_LINKED,
+            "Range Nextcloud",
+            _safe_reason_code(link.get("last_sync_reason_code"), fallback=REASON_LIST_OK),
+            document_ref=link.get("nextcloud_document_ref"),
+            name_hash=link.get("nextcloud_name_hash"),
+            operation=link.get("last_sync_operation"),
+        )
+    if sync_state == DOCUMENT_LINK_DELETED:
+        return _link_state(
+            DOCUMENT_LINK_DELETED,
+            "Supprime",
+            _safe_reason_code(link.get("last_sync_reason_code"), fallback=REASON_DELETE_OK),
+            document_ref=link.get("nextcloud_document_ref"),
+            name_hash=link.get("nextcloud_name_hash"),
+            operation=link.get("last_sync_operation"),
+        )
+    if sync_state == DOCUMENT_LINK_SYNC_ERROR:
+        return _link_state(
+            DOCUMENT_LINK_SYNC_ERROR,
+            "Erreur sync",
+            _safe_reason_code(link.get("last_sync_reason_code"), fallback=REASON_NEXTCLOUD_ERROR_REDACTED),
+            document_ref=link.get("nextcloud_document_ref"),
+            name_hash=link.get("nextcloud_name_hash"),
+            operation=link.get("last_sync_operation"),
+        )
+    return _link_state(UNKNOWN, "", REASON_CONTENT_REDACTED)
+
+
 def _state(document_status: str, readiness: str, reason_code: str) -> dict[str, str]:
     return {
         "document_status": document_status,
         "readiness": readiness,
         "reason_code": reason_code,
+    }
+
+
+def _link_state(
+    sync_state: Any,
+    label: str,
+    reason_code: Any,
+    *,
+    document_ref: Any = "",
+    name_hash: Any = "",
+    operation: Any = "",
+) -> dict[str, str]:
+    return {
+        "nextcloud_sync_state": _normalized_document_link_state(sync_state),
+        "status_label": _text(label, 80),
+        "reason_code": _safe_reason_code(reason_code),
+        "nextcloud_document_ref": _safe_document_link_ref(document_ref),
+        "nextcloud_name_hash": _short_hash(name_hash),
+        "last_sync_operation": _normalized_link_operation(operation),
     }
 
 
@@ -304,6 +403,13 @@ def _content_free_projection(payload: Mapping[str, Any]) -> dict[str, Any]:
             continue
         safe[normalized] = value
     return safe
+
+
+def _strip_user_payload_forbidden(payload: dict[str, Any]) -> dict[str, Any]:
+    for key in list(payload.keys()):
+        if str(key or "").strip().lower() in _USER_PAYLOAD_FORBIDDEN_KEYS:
+            payload.pop(key, None)
+    return payload
 
 
 def _safe_reason_code(value: Any, *, fallback: str = REASON_CONTENT_REDACTED) -> str:
@@ -352,6 +458,21 @@ def _normalized_document_status(value: Any) -> str:
 def _normalized_readiness(value: Any) -> str:
     text = _text(value, 80)
     return text if text in _ALLOWED_READINESS else READINESS_BLOCKED
+
+
+def _normalized_document_link_state(value: Any) -> str:
+    text = _text(value, 80)
+    return text if text in _ALLOWED_DOCUMENT_LINK_STATES else UNKNOWN
+
+
+def _normalized_link_operation(value: Any) -> str:
+    text = _text(value, 80)
+    return text if text in _ALLOWED_LINK_OPERATIONS else ""
+
+
+def _safe_document_link_ref(value: Any) -> str:
+    text = _text(value, 180)
+    return text if _DOCUMENT_LINK_REF_RE.fullmatch(text) else ""
 
 
 def _display_name(file_item: Mapping[str, Any]) -> str:

@@ -11,10 +11,12 @@ const {
   normalizeWorkspaceFileItem,
   normalizeWorkspaceFilesPayload,
   normalizeWorkspaceFileSelectionsPayload,
+  WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS,
   compactWorkspaceFileMeta,
   workspaceFolderDeleteConfirmationText,
   workspaceFolderNextcloudStatusLabel,
   workspaceFileStatusLabel,
+  workspaceFileNextcloudStatusLabel,
   canRunWorkspaceOcr,
   canEditWorkspaceOcrMarkdown,
   groupThreadsByWorkspaceFolder,
@@ -257,6 +259,58 @@ test("workspace file status labels stay human and content-free", () => {
 
   assert.equal(workspaceFileStatusLabel(missing), "Fichier absent");
   assert.equal(JSON.stringify(missing).includes("_workspace_files"), false);
+});
+
+test("workspace file Nextcloud status labels distinguish linked from local-only", () => {
+  const files = normalizeWorkspaceFilesPayload({
+    items: [{
+      id: "linked",
+      workspace_folder_id: "folder-1",
+      display_name: "note.txt",
+      document_v1_user: {
+        display_name: "note.txt",
+        document_status: "readable",
+        readiness: "ready",
+        reason_code: "folder_document_text_ready",
+        nextcloud_sync_state: "linked",
+        nextcloud_status_label: "Rangé Nextcloud",
+        nextcloud_reason_code: "folder_document_upload_ok",
+      },
+      document_v1_technical: {
+        nextcloud_target_name: "SHOULD NOT SURVIVE",
+        display_name: "SHOULD NOT SURVIVE",
+      },
+      storage_key: "hidden/path",
+    }, {
+      id: "local",
+      workspace_folder_id: "folder-1",
+      display_name: "legacy.pdf",
+      document_v1_user: {
+        display_name: "legacy.pdf",
+        nextcloud_sync_state: "local_only",
+        nextcloud_reason_code: "folder_document_local_only",
+      },
+    }, {
+      id: "error",
+      workspace_folder_id: "folder-1",
+      display_name: "sync.pdf",
+      document_v1_user: {
+        display_name: "sync.pdf",
+        nextcloud_sync_state: "sync_error",
+        nextcloud_reason_code: "folder_document_link_lookup_failed",
+      },
+    }],
+  });
+
+  assert.equal(WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS.linked, "Rangé Nextcloud");
+  assert.equal(files[0].document_nextcloud_sync_state, "linked");
+  assert.equal(workspaceFileNextcloudStatusLabel(files[0]), "Rangé Nextcloud");
+  assert.equal(files[1].document_nextcloud_sync_state, "local_only");
+  assert.equal(workspaceFileNextcloudStatusLabel(files[1]), "Local seulement");
+  assert.equal(files[2].document_nextcloud_sync_state, "sync_error");
+  assert.equal(workspaceFileNextcloudStatusLabel(files[2]), "Erreur sync");
+  assert.equal(JSON.stringify(files).includes("hidden/path"), false);
+  assert.equal(JSON.stringify(files).includes("SHOULD NOT SURVIVE"), false);
 });
 
 test("workspace OCR markdown derivatives are editable metadata-only files", () => {

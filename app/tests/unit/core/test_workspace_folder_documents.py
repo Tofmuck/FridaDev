@@ -172,6 +172,71 @@ class DocumentsV1ReadModelTests(unittest.TestCase):
         self.assertEqual(projected["document_v1_reason_code"], "folder_document_folder_not_linked")
         self.assertEqual(projected["document_v1_technical"]["reason_code"], "folder_document_folder_not_linked")
 
+    def test_projection_marks_linked_document_nextcloud_state_without_raw_target_name(self) -> None:
+        projected = workspace_folder_documents.apply_document_v1_projection(
+            _file_item(
+                storage_key="hidden/path/note.txt",
+                document_nextcloud_link={
+                    "lookup_state": "ok",
+                    "nextcloud_sync_state": "linked",
+                    "nextcloud_document_ref": "workspace-file:aaaaaaaa:abc123def456",
+                    "nextcloud_name_hash": "abc123def456",
+                    "nextcloud_target_name": "Projet secret.txt",
+                    "last_sync_reason_code": "folder_document_upload_ok",
+                    "last_sync_operation": "upload",
+                }
+            ),
+            folder=LINKED_FOLDER,
+        )
+
+        user = projected["document_v1_user"]
+        technical = projected["document_v1_technical"]
+        self.assertEqual(user["nextcloud_sync_state"], "linked")
+        self.assertEqual(user["nextcloud_status_label"], "Range Nextcloud")
+        self.assertEqual(technical["nextcloud_sync_state"], "linked")
+        self.assertEqual(technical["nextcloud_document_ref"], "workspace-file:aaaaaaaa:abc123def456")
+        self.assertEqual(technical["nextcloud_name_hash"], "abc123def456")
+        self.assertEqual(technical["nextcloud_reason_code"], "folder_document_upload_ok")
+        self.assertEqual(projected["display_name"], "note.txt")
+        self.assertNotIn("storage_key", projected)
+        self.assertNotIn("document_nextcloud_link", projected)
+        encoded_technical = str(technical)
+        self.assertNotIn("Projet secret.txt", encoded_technical)
+        self.assertNotIn("nextcloud_target_name", encoded_technical)
+        self.assertNotIn("note.txt", encoded_technical)
+
+    def test_projection_marks_local_only_documents_honestly(self) -> None:
+        projected = workspace_folder_documents.apply_document_v1_projection(_file_item(), folder=LINKED_FOLDER)
+
+        self.assertEqual(projected["document_v1_user"]["nextcloud_sync_state"], "local_only")
+        self.assertEqual(projected["document_v1_user"]["nextcloud_status_label"], "Local seulement")
+        self.assertEqual(projected["document_v1_technical"]["nextcloud_sync_state"], "local_only")
+        self.assertEqual(
+            projected["document_v1_technical"]["nextcloud_reason_code"],
+            "folder_document_local_only",
+        )
+
+    def test_projection_marks_link_lookup_failure_content_free(self) -> None:
+        projected = workspace_folder_documents.apply_document_v1_projection(
+            _file_item(
+                document_nextcloud_link={
+                    "lookup_state": "failed",
+                    "reason_code": "folder_document_link_lookup_failed",
+                    "nextcloud_target_name": "Projet secret.txt",
+                }
+            ),
+            folder=LINKED_FOLDER,
+        )
+
+        self.assertEqual(projected["document_v1_user"]["nextcloud_sync_state"], "sync_error")
+        self.assertEqual(projected["document_v1_user"]["nextcloud_reason_code"], "folder_document_link_lookup_failed")
+        self.assertEqual(projected["document_v1_technical"]["nextcloud_sync_state"], "sync_error")
+        self.assertEqual(
+            projected["document_v1_technical"]["nextcloud_reason_code"],
+            "folder_document_link_lookup_failed",
+        )
+        self.assertNotIn("Projet secret.txt", str(projected["document_v1_technical"]))
+
     def test_usage_projection_links_conversation_without_active_document_or_biblio(self) -> None:
         selection = {
             "conversation_id": "11111111-1111-4111-8111-111111111111",
