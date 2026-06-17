@@ -1,6 +1,6 @@
 # Frida V1 - Socle Nextcloud / dossiers / droits - TODO
 
-Statut: TODO actif
+Statut: Lot Z valide; socle dossiers Frida V1 / Nextcloud cloture
 Date: 2026-06-16
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
@@ -418,19 +418,44 @@ Note Lot 12 preparation documentaire:
 
 ### Lot Z - Cloture V1 reelle
 
-- [ ] Verifier que la creation UI cree reellement le dossier Nextcloud avant de
+- [x] Verifier que la creation UI cree reellement le dossier Nextcloud avant de
   creer le dossier local.
-- [ ] Verifier que le renommage UI renomme Nextcloud avant de renommer le local.
-- [ ] Verifier que la suppression V1 tombstone localement sans suppression
+- [x] Verifier que le renommage UI renomme Nextcloud avant de renommer le local.
+- [x] Verifier que la suppression V1 tombstone localement sans suppression
   recursive Nextcloud reelle.
-- [ ] Verifier que les dossiers existants sont reconcilies ou declares no-go.
-- [ ] Verifier que la politique fichiers et les sous-dossiers standards sont
+- [x] Verifier que les dossiers existants sont reconcilies ou declares no-go.
+- [x] Verifier que la politique fichiers et les sous-dossiers standards sont
   documentes.
-- [ ] Documenter les limites V1 et les operations non livrees.
-- [ ] Archiver les preuves content-free.
-- [ ] Mettre a jour la roadmap generale si le statut du lot change.
-- [ ] Ne pas cloturer documents, notes, exports, images ou mail par confusion
+- [x] Documenter les limites V1 et les operations non livrees.
+- [x] Archiver les preuves content-free.
+- [x] Mettre a jour la roadmap generale si le statut du lot change.
+- [x] Ne pas cloturer documents, notes, exports, images ou mail par confusion
   avec ce socle.
+
+Preuve Lot Z validation empirique reelle:
+`app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lotz-live-closure-20260617T104258Z.jsonl`
+
+- verdict final: `met`;
+- Z-0 a Z-8: `met`;
+- create/rename/delete produits testes via les routes applicatives existantes
+  `/api/workspace-folders*` sur un dossier synthetique;
+- les dossiers UI actifs existants restent `linked`, avec verification
+  status-only des collections Nextcloud et sous-dossiers standards;
+- suppression produit: tombstone local, fichiers/documents preserves,
+  dossier Nextcloud conserve jusqu'au cleanup test-only;
+- cleanup test-only: suppression strictement bornee au dossier synthetique cree
+  par ce run, absence finale prouvee status-only;
+- aucune lecture, liste, migration, copie ou suppression de fichier utilisateur;
+- aucune URL DAV brute, chemin serveur, XML brut, `storage_key`, secret,
+  token, cookie, `app-password` ou contenu utilisateur dans l'artefact.
+
+Artefact annexe conserve:
+`app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lotz-live-closure-20260617T104124Z.jsonl`
+
+- tentative de harness invalidee par une requete applicative avec
+  `sort_order: null`;
+- non utilisee pour la cloture Lot Z;
+- conservee comme trace de validation partielle sans secret ni contenu.
 
 ## 3. Frontieres Sauron / Celebrimbor
 

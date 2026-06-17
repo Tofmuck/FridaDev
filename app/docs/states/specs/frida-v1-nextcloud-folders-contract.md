@@ -1,6 +1,6 @@
 # Frida V1 - Nextcloud folders contract
 
-Statut: spec vivante Lots 0 a 12 routage artefacts par sous-dossier livre
+Statut: spec vivante Lot Z valide; socle dossiers Frida V1 / Nextcloud cloture
 Date: 2026-06-17
 Classement: `app/docs/states/specs/`
 TODO source: `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
@@ -95,6 +95,15 @@ dans `Documents`, notes Markdown dans `Notes`, exports Markdown/TXT/DOCX/PDF
 dans `Exports`, images generees dans `Images`. Ce lot ne migre aucun fichier
 existant, ne cree aucune note, ne produit aucun export, ne genere ni ne stocke
 aucune image, et ne contacte pas Nextcloud.
+
+Depuis le Lot Z du 2026-06-17, le socle dossiers Frida V1 / Nextcloud est
+valide empiriquement par le runtime reel: creation applicative Nextcloud-first,
+renommage applicatif Nextcloud-first, suppression produit en tombstone local
+sans suppression recursive Nextcloud, reconciliation des dossiers existants,
+sous-dossiers standards et observabilite content-free. L'artefact source est
+`app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lotz-live-closure-20260617T104258Z.jsonl`.
+Cette validation ne livre toujours pas les runtimes Documents, Notes, Exports,
+Images ou mail.
 
 Recalage produit post Lot 6:
 
@@ -1135,10 +1144,27 @@ Lot 12 - Preparation Notes / Exports / Images:
 
 Lot Z - Cloture V1 reelle:
 
-- cloturer seulement apres preuve que la creation UI cree le dossier Nextcloud
-  reel, que le renommage reste coherent, que les dossiers existants sont
-  reconcilies et que les politiques fichiers/sous-dossiers sont documentees;
-- ne pas confondre le smoke synthetique Lot 5 avec le runtime produit final.
+- livre: validation empirique par le runtime reel et les routes existantes
+  `/api/workspace-folders*`;
+- livre: creation UI d'un dossier synthetique -> creation Nextcloud reelle,
+  sous-dossiers standards, puis dossier local `linked`;
+- livre: conflit de creation refuse avec reason code content-free, sans second
+  dossier Nextcloud;
+- livre: renommage UI d'un dossier synthetique -> `MOVE` Nextcloud effectif,
+  ancien target absent status-only, nouveau target `linked`;
+- livre: suppression produit -> tombstone local, fichiers/documents preserves,
+  aucune suppression recursive Nextcloud;
+- livre: cleanup test-only strictement borne au dossier synthetique cree par le
+  run de validation, avec absence finale status-only;
+- livre: dossiers UI actifs existants `linked` verifies status-only, sans
+  listing de contenu;
+- livre: observabilite et payloads content-free, sans URL DAV brute, chemin
+  serveur, XML brut, `storage_key`, secret, token, cookie, app-password, nom de
+  fichier ou contenu utilisateur;
+- artefact:
+  `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lotz-live-closure-20260617T104258Z.jsonl`;
+- trace annexe non cloturante conservee:
+  `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lotz-live-closure-20260617T104124Z.jsonl`.
 
 ## 15. Politique fichiers par dossier depuis Lot 10A
 

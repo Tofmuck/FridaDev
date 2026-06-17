@@ -30,6 +30,10 @@ content-free.
 TODO dediee:
 `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
 
+Statut 2026-06-17: socle dossiers Frida V1 / Nextcloud valide en Lot Z par
+preuve empirique runtime content-free. Les chantiers Documents, Notes, Exports
+et Images restent des points obligatoires separes.
+
 ### 2. Documents sources / ingestion / lecture / PDF fallback
 
 Frida doit pouvoir recevoir des documents dans un dossier Nextcloud, lister ce
