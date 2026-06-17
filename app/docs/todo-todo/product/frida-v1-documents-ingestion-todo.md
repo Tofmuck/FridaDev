@@ -264,6 +264,7 @@ Catalogue initial a appliquer dans les lots runtime:
 - `folder_document_existing_copy_conflict`;
 - `folder_document_existing_source_preserved`;
 - `folder_document_existing_source_missing`;
+- `folder_document_existing_inventory_failed`;
 - `folder_document_observation_redacted`.
 
 ## 7. Nature des lots
@@ -616,6 +617,9 @@ Preuve Lot 7:
   `0` fichier `local_only`;
 - verification distante finale status-only: `10` liens verifies, `10` reponses
   `2xx`, `0` erreur;
+- correctif avant pause: une panne d'inventaire dossiers/fichiers produit
+  `folder_document_existing_inventory_failed`, `ok=false`, `verdict=failed`;
+  elle ne peut plus etre interpretee comme `0 a traiter`;
 - source locale preservee, `0` suppression source, `0` rollback distant, `0`
   conflit cible;
 - preuve JSONL:
@@ -624,6 +628,10 @@ Preuve Lot 7:
   DAV, XML, `storage_key`, token, cookie, `app-password` ou secret;
 - aucune route parallele, aucun Biblio/Notes/Exports/Images, aucun
   Memory/RAG/Identity/Summary.
+- dette hygiene: le runner Lot 7 reste proche de la limite haute; l'acces
+  inventaire fail-closed a ete extrait dans
+  `app/core/workspace_document_existing_inventory.py` et tout futur ajout
+  comportemental devra extraire une responsabilite avant extension.
 
 ### Lot 8 - Observabilite / smokes live
 

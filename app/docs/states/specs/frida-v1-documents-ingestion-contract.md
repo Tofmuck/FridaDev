@@ -558,6 +558,9 @@ Regles runtime:
   operateur, pas une route utilisateur parallele;
 - l'inventaire lit le registre applicatif `workspace_files` et les liens locaux
   `workspace_file_nextcloud_links`, sans acces DB Nextcloud direct;
+- une panne d'inventaire dossiers ou fichiers est fail-closed:
+  `folder_document_existing_inventory_failed`, `ok=false`, `verdict=failed`;
+  elle ne doit jamais etre exposee comme inventaire vide ou `0 a traiter`;
 - seuls les fichiers actifs local-only de dossiers Frida `linked` sont
   eligibles;
 - le sous-dossier standard `Documents` est verifie comme collection WebDAV par
@@ -592,6 +595,9 @@ Preuve runtime Lot 7:
 - aucun nom de fichier brut, contenu, chemin disque, URL DAV, XML,
   `storage_key`, secret, token, cookie ou payload WebDAV brut n'est present
   dans l'artefact.
+- correctif avant pause: l'acces inventaire fail-closed est isole dans
+  `workspace_document_existing_inventory.py` pour eviter d'etendre le runner
+  Lot 7 deja proche de la limite haute.
 
 ## 13. Reason codes Documents V1
 
@@ -635,6 +641,7 @@ Catalogue initial obligatoire:
 - `folder_document_existing_copy_conflict`;
 - `folder_document_existing_source_preserved`;
 - `folder_document_existing_source_missing`;
+- `folder_document_existing_inventory_failed`;
 - `folder_document_observation_redacted`.
 
 Un reason code inconnu doit etre redacted avant exposition technique.

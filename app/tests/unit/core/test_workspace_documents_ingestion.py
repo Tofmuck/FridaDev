@@ -34,7 +34,8 @@ class _Files:
 
 
 class _FakeFolders:
-    def __init__(self, *, linked: bool = True):
+    def __init__(self, *, linked: bool = True, fail_list: bool = False):
+        self.fail_list = fail_list
         self.folder = {
             "id": FOLDER_ID,
             "display_name": "Projet",
@@ -50,6 +51,8 @@ class _FakeFolders:
         return dict(self.folder) if folder_id == FOLDER_ID else None
 
     def list_workspace_folders(self):
+        if self.fail_list:
+            raise RuntimeError("redacted")
         return [dict(self.folder)]
 
 
@@ -71,6 +74,7 @@ class _FakeWorkspaceFiles:
         fail_delete: bool = False,
         fail_link_lookup: bool = False,
         fail_mark_deleted: bool = False,
+        fail_list: bool = False,
     ):
         self.existing = list(existing or [])
         self.fail_store = fail_store
@@ -78,6 +82,7 @@ class _FakeWorkspaceFiles:
         self.fail_delete = fail_delete
         self.fail_link_lookup = fail_link_lookup
         self.fail_mark_deleted = fail_mark_deleted
+        self.fail_list = fail_list
         self.stored = []
         self.events = []
         self.links = {}
@@ -91,6 +96,8 @@ class _FakeWorkspaceFiles:
         return str(value or "") if str(value or "") else None
 
     def list_workspace_files(self, folder_id):
+        if self.fail_list:
+            raise RuntimeError("redacted")
         return list(self.existing + self.stored)
 
     def get_workspace_file_storage_row(self, folder_id, file_id):
@@ -795,6 +802,47 @@ class DocumentsV1IngestionTests(unittest.TestCase):
         self.assertNotIn("existing-bytes", encoded)
         self.assertNotIn("storage_key", encoded)
         self.assertNotIn("remote.php", encoded)
+
+    def test_existing_file_inventory_folder_failure_fails_closed(self) -> None:
+        files = _FakeWorkspaceFiles()
+        nextcloud = _FakeNextcloud()
+
+        result = workspace_document_existing_files.reconcile_existing_workspace_documents(
+            workspace_folders_module=_FakeFolders(linked=True, fail_list=True),
+            workspace_files_module=files,
+            nextcloud=nextcloud,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["verdict"], "failed")
+        self.assertEqual(result["summary"]["error_files"], 1)
+        self.assertEqual(result["summary"]["active_files"], 0)
+        self.assertEqual(result["events"][0]["operation"], "inventory_folders")
+        self.assertEqual(result["events"][0]["reason_code"], "folder_document_existing_inventory_failed")
+        self.assertEqual(nextcloud.put_calls, [])
+        self.assertEqual(nextcloud.deleted, [])
+        self.assertNotIn("redacted", str(result))
+
+    def test_existing_file_inventory_file_failure_fails_closed(self) -> None:
+        files = _FakeWorkspaceFiles(fail_list=True)
+        nextcloud = _FakeNextcloud()
+
+        result = workspace_document_existing_files.reconcile_existing_workspace_documents(
+            workspace_folders_module=_FakeFolders(linked=True),
+            workspace_files_module=files,
+            nextcloud=nextcloud,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["verdict"], "failed")
+        self.assertEqual(result["summary"]["active_folders"], 1)
+        self.assertEqual(result["summary"]["error_files"], 1)
+        self.assertEqual(result["folders"][0]["error_files"], 1)
+        self.assertEqual(result["events"][0]["operation"], "inventory_files")
+        self.assertEqual(result["events"][0]["reason_code"], "folder_document_existing_inventory_failed")
+        self.assertEqual(nextcloud.put_calls, [])
+        self.assertEqual(nextcloud.deleted, [])
+        self.assertNotIn("redacted", str(result))
 
     def test_existing_file_conflict_does_not_overwrite_or_link(self) -> None:
         files = _FakeWorkspaceFiles(

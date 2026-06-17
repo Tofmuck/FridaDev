@@ -10,6 +10,7 @@ target, persists the local link, and preserves the local source.
 from typing import Any, Mapping
 
 from . import workspace_document_nextcloud_client as document_client
+from . import workspace_document_existing_inventory as inventory
 from . import workspace_document_nextcloud_runtime as document_runtime
 from . import workspace_file_nextcloud_links_store as file_nextcloud_links
 from . import workspace_folder_nextcloud_links_store as folder_nextcloud_links
@@ -26,7 +27,12 @@ def reconcile_existing_workspace_documents(
     """Copy active local-only workspace files into Documents when eligible."""
 
     result = _empty_result(execute=execute)
-    folders = _list_workspace_folders(workspace_folders_module)
+    try:
+        folders = inventory.list_active_folders(workspace_folders_module)
+    except inventory.WorkspaceDocumentExistingInventoryError as exc:
+        inventory.record_inventory_failure(result, scope=exc.scope)
+        _finalize_result(result)
+        return result
     result["summary"]["active_folders"] = len(folders)
 
     client: Any | None = None
@@ -38,9 +44,18 @@ def reconcile_existing_workspace_documents(
             == folder_nextcloud_links.NEXTCLOUD_SYNC_LINKED
         )
         target_folder_name = _target_folder_name(folder)
-        files = _list_workspace_files(workspace_files_module, folder_id)
         folder_summary = _folder_summary(folder_ref=folder_ref, linked=folder_linked)
         result["folders"].append(folder_summary)
+        try:
+            files = inventory.list_folder_files(workspace_files_module, folder_id)
+        except inventory.WorkspaceDocumentExistingInventoryError as exc:
+            inventory.record_inventory_failure(
+                result,
+                scope=exc.scope,
+                folder_summary=folder_summary,
+                folder_ref=folder_ref,
+            )
+            continue
 
         seen_targets: set[str] = set()
         for item in files:
@@ -370,26 +385,6 @@ def _get_link(workspace_files_module: Any, file_id: str) -> dict[str, Any]:
             return {"failed": True, "link": None}
     except Exception:
         return {"failed": True, "link": None}
-
-
-def _list_workspace_folders(workspace_folders_module: Any) -> list[dict[str, Any]]:
-    list_func = getattr(workspace_folders_module, "list_workspace_folders", None)
-    if not callable(list_func):
-        return []
-    try:
-        return [dict(item or {}) for item in list_func() or [] if not item.get("deleted_at")]
-    except Exception:
-        return []
-
-
-def _list_workspace_files(workspace_files_module: Any, folder_id: str) -> list[dict[str, Any]]:
-    list_func = getattr(workspace_files_module, "list_workspace_files", None)
-    if not callable(list_func):
-        return []
-    try:
-        return [dict(item or {}) for item in list_func(folder_id) or []]
-    except Exception:
-        return []
 
 
 def _target_folder_name(folder: Mapping[str, Any]) -> str:

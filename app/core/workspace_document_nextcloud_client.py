@@ -38,6 +38,7 @@ REASON_EXISTING_COPY_OK = "folder_document_existing_copy_ok"
 REASON_EXISTING_COPY_CONFLICT = "folder_document_existing_copy_conflict"
 REASON_EXISTING_SOURCE_PRESERVED = "folder_document_existing_source_preserved"
 REASON_EXISTING_SOURCE_MISSING = "folder_document_existing_source_missing"
+REASON_EXISTING_INVENTORY_FAILED = "folder_document_existing_inventory_failed"
 
 
 @dataclass(frozen=True)
