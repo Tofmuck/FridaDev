@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any, Callable, Mapping, Optional
 
+from . import workspace_folder_export_refs
 from . import workspace_folder_exports
 
 try:  # pragma: no cover - local test hosts may stub psycopg.
@@ -56,7 +57,7 @@ def ensure_schema(cur: Any) -> None:
             source_hash              TEXT        NOT NULL DEFAULT '',
             content_hash             TEXT        NOT NULL DEFAULT '',
             local_state              TEXT        NOT NULL DEFAULT 'available',
-            nextcloud_sync_state     TEXT        NOT NULL DEFAULT 'linked',
+            nextcloud_sync_state     TEXT        NOT NULL DEFAULT 'sync_error',
             remote_export_ref        TEXT        NOT NULL DEFAULT '',
             etag_value               TEXT        NOT NULL DEFAULT '',
             etag_hash                TEXT        NOT NULL DEFAULT '',
@@ -88,7 +89,7 @@ def ensure_schema(cur: Any) -> None:
         "ALTER TABLE workspace_folder_exports ADD COLUMN IF NOT EXISTS source_hash TEXT NOT NULL DEFAULT '';",
         "ALTER TABLE workspace_folder_exports ADD COLUMN IF NOT EXISTS content_hash TEXT NOT NULL DEFAULT '';",
         "ALTER TABLE workspace_folder_exports ADD COLUMN IF NOT EXISTS local_state TEXT NOT NULL DEFAULT 'available';",
-        "ALTER TABLE workspace_folder_exports ADD COLUMN IF NOT EXISTS nextcloud_sync_state TEXT NOT NULL DEFAULT 'linked';",
+        "ALTER TABLE workspace_folder_exports ADD COLUMN IF NOT EXISTS nextcloud_sync_state TEXT NOT NULL DEFAULT 'sync_error';",
         "ALTER TABLE workspace_folder_exports ADD COLUMN IF NOT EXISTS remote_export_ref TEXT NOT NULL DEFAULT '';",
         "ALTER TABLE workspace_folder_exports ADD COLUMN IF NOT EXISTS etag_value TEXT NOT NULL DEFAULT '';",
         "ALTER TABLE workspace_folder_exports ADD COLUMN IF NOT EXISTS etag_hash TEXT NOT NULL DEFAULT '';",
@@ -100,6 +101,12 @@ def ensure_schema(cur: Any) -> None:
         "ALTER TABLE workspace_folder_exports ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;",
     ):
         cur.execute(column_sql)
+    cur.execute(
+        """
+        ALTER TABLE workspace_folder_exports
+        ALTER COLUMN nextcloud_sync_state SET DEFAULT 'sync_error';
+        """
+    )
     cur.execute(
         """
         CREATE INDEX IF NOT EXISTS workspace_folder_exports_folder_active_idx
@@ -147,7 +154,7 @@ def serialize_export_row(row: Mapping[str, Any] | None) -> Optional[dict[str, An
         "target_name": _target_name(row.get("target_name"), export_format=export_format),
         "export_format": export_format,
         "source_kind": workspace_folder_exports.normalize_source_kind(row.get("source_kind")),
-        "source_ref": _safe_ref(row.get("source_ref")),
+        "source_ref": workspace_folder_export_refs.safe_source_ref(row.get("source_ref")),
         "source_hash": _hash12(row.get("source_hash")),
         "content_hash": _hash12(row.get("content_hash")),
         "local_state": _local_state(row.get("local_state")),
@@ -258,13 +265,13 @@ def upsert_export(
     source_hash: str = "",
     content_hash: str = "",
     local_state: str = workspace_folder_exports.EXPORT_LOCAL_AVAILABLE,
-    nextcloud_sync_state: str = workspace_folder_exports.EXPORT_NEXTCLOUD_LINKED,
+    nextcloud_sync_state: str = workspace_folder_exports.EXPORT_NEXTCLOUD_SYNC_ERROR,
     remote_export_ref: str = "",
     etag_value: str = "",
     etag_hash: str = "",
     byte_size: int = 0,
     char_count: int = 0,
-    reason_code: str = workspace_folder_exports.REASON_CREATE_OK,
+    reason_code: str = workspace_folder_exports.REASON_NEXTCLOUD_ERROR_REDACTED,
     db_conn_func: Callable[[], Any],
     logger: Any,
 ) -> dict[str, Any]:
@@ -340,7 +347,7 @@ def upsert_export(
                         target,
                         fmt,
                         source,
-                        _safe_ref(source_ref),
+                        workspace_folder_export_refs.safe_source_ref(source_ref),
                         _hash12(source_hash),
                         _hash12(content_hash),
                         _local_state(local_state),

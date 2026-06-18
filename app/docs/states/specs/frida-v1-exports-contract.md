@@ -232,6 +232,23 @@ Lot 2 livre:
 - tests unitaires dedies
   `app/tests/unit/core/test_workspace_folder_exports.py`.
 
+Correctif Lot 2.1:
+
+- `export_v1_technical.source_ref` accepte uniquement les refs content-free
+  structurees:
+  `workspace-note:<8hex|redacted>:<12hex>`,
+  `workspace-file:<8hex|redacted>:<12hex>`,
+  `workspace-export:<8hex|redacted>:<12hex>`,
+  `conversation:<8hex|redacted>:<12hex>`,
+  `message-selection:<8hex|redacted>:<12hex>` ou
+  `frida-response:<8hex|redacted>:<12hex>`;
+- toute autre valeur de `source_ref`, meme alphanumerique et syntaxiquement
+  propre, est videe plutot que recopiee brute en projection technique;
+- `nextcloud_sync_state` par defaut est `sync_error` tant qu'aucune creation
+  distante n'a prouve le rangement Nextcloud;
+- la colonne applicative `workspace_folder_exports.nextcloud_sync_state` porte
+  aussi ce default fail-closed pour les nouvelles lignes.
+
 Le modele local stocke uniquement des metadonnees et refs necessaires:
 
 - id export applicatif;
@@ -264,6 +281,11 @@ Les lectures du store Exports V1 fail-closed par defaut. Une panne DB/store ne
 doit jamais etre transformee en liste vide ou en export absent. Les erreurs
 applicatives exposees restent content-free et utilisent
 `folder_export_lookup_failed`; les causes brutes sont masquees.
+
+Dette hygiene connue apres Lot 2.1: `workspace_folder_exports.py` et
+`workspace_folder_exports_store.py` restent proches de 500 lignes. Lot 3 doit
+creer des modules dedies pour generation/acquisition au lieu d'empiler dans ces
+modules de read-model.
 
 ## 7. Cible Nextcloud et stockage
 
@@ -385,7 +407,8 @@ Projection technique autorisee:
 - `title_hash`;
 - `format`;
 - `source_kind`;
-- `source_ref`;
+- `source_ref` uniquement si la ref est structuree content-free selon la
+  allowlist Lot 2.1;
 - `source_hash`;
 - `content_hash`;
 - `etag_present` ou `etag_hash`;

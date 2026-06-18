@@ -338,6 +338,20 @@ le lot execute et prouve. Chaque lot doit rester borne, testable et reversible.
 - [x] Tester conflits locaux, statuts, tombstone si applicable et anti-fuite.
 - [x] Ne pas contacter Nextcloud/WebDAV live.
 
+Correctif Lot 2.1 livre:
+
+- `export_v1_technical.source_ref` ne recopie plus de valeur brute arbitraire:
+  seules les refs content-free structurees de la spec sont autorisees.
+- Un export local cree sans preuve distante nait en
+  `nextcloud_sync_state=sync_error`, jamais `linked`.
+- Le default DB applicatif `workspace_folder_exports.nextcloud_sync_state` est
+  `sync_error` pour les nouvelles lignes.
+
+Dette hygiene: `workspace_folder_exports.py` et
+`workspace_folder_exports_store.py` restent proches de 500 lignes. Lot 3 doit
+creer des modules dedies pour generation/acquisition Markdown/TXT et ne pas
+empiler cette logique dans les modules de read-model.
+
 ### Lot 3 - Generation Markdown/TXT bornee fake/local
 
 - [ ] Generer Markdown depuis les sources definies par la spec Lot 1.

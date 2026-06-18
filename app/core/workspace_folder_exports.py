@@ -13,6 +13,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Mapping, Optional
 
+from . import workspace_folder_export_refs
 from . import workspace_folder_export_reason_codes
 from . import workspace_folder_nextcloud_projection
 
@@ -87,7 +88,6 @@ EXPORT_STATUS_LABELS = {
 logger = logging.getLogger("frida.workspace_folder_exports")
 
 _HASH12_RE = re.compile(r"^[0-9a-f]{12}$")
-_SAFE_REF_RE = re.compile(r"^[A-Za-z0-9:._-]{1,180}$")
 _SAFE_REASON_RE = re.compile(r"^[a-z0-9_]{3,120}$")
 _FORBIDDEN_PAYLOAD_KEYS = {
     "body",
@@ -292,7 +292,7 @@ def build_technical_projection(
         or title_hash_for_target(export.get("target_name") or export.get("title")),
         "format": normalize_export_format(export.get("export_format") or export.get("format")),
         "source_kind": normalize_source_kind(export.get("source_kind")) or "unknown",
-        "source_ref": _safe_ref(export.get("source_ref")),
+        "source_ref": workspace_folder_export_refs.safe_source_ref(export.get("source_ref")),
         "source_hash": _hash12(export.get("source_hash")),
         "content_hash": _hash12(export.get("content_hash")),
         "etag_hash": etag_hash,
@@ -451,11 +451,6 @@ def _target_name(value: Any, *, fmt: str = EXPORT_FORMAT_MARKDOWN) -> str:
         return target
     text = str(value or "").replace("\\", "/").split("/")[-1].strip()
     return _collapse_ws(text)[:EXPORT_TARGET_MAX_CHARS]
-
-
-def _safe_ref(value: Any) -> str:
-    text = _text(value, 180)
-    return text if _SAFE_REF_RE.fullmatch(text or "") else ""
 
 
 def _uuid_text(value: Any) -> str:

@@ -37,6 +37,60 @@ class _FakeLogger:
         self.records.append((message, args, kwargs))
 
 
+class _UpsertCursor:
+    def __init__(self):
+        self.params = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def execute(self, sql, params=None):
+        self.params = params
+
+    def fetchone(self):
+        params = self.params
+        return {
+            "id": params[0],
+            "workspace_folder_id": params[1],
+            "title": params[2],
+            "title_hash": params[3],
+            "target_name": params[4],
+            "export_format": params[5],
+            "source_kind": params[6],
+            "source_ref": params[7],
+            "source_hash": params[8],
+            "content_hash": params[9],
+            "local_state": params[10],
+            "nextcloud_sync_state": params[11],
+            "remote_export_ref": params[12],
+            "etag_value": params[13],
+            "etag_hash": params[14],
+            "byte_size": params[15],
+            "char_count": params[16],
+            "reason_code": params[17],
+            "created_at": "2026-06-18T10:00:00Z",
+            "updated_at": "2026-06-18T10:00:00Z",
+            "deleted_at": None,
+        }
+
+
+class _UpsertConnection:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def cursor(self, *args, **kwargs):
+        return _UpsertCursor()
+
+    def commit(self):
+        return None
+
+
 def _export(**overrides):
     payload = {
         "id": EXPORT_ID,
@@ -89,6 +143,8 @@ class WorkspaceFolderExportsTests(unittest.TestCase):
         self.assertIn("export_format", sql)
         self.assertIn("source_kind", sql)
         self.assertIn("etag_value", sql)
+        self.assertIn("nextcloud_sync_state text not null default 'sync_error'", sql)
+        self.assertIn("alter column nextcloud_sync_state set default 'sync_error'", sql)
         self.assertNotIn("export_content", sql)
         self.assertNotIn("body text", sql)
         self.assertNotIn("references workspace_files", sql)
@@ -129,6 +185,31 @@ class WorkspaceFolderExportsTests(unittest.TestCase):
         self.assertNotIn("url", item)
         self.assertNotIn("xml", item)
         self.assertNotIn("authorization", item)
+
+    def test_technical_projection_rejects_private_alnum_source_ref(self) -> None:
+        technical = workspace_folder_exports.build_technical_projection(
+            _export(source_ref="FlorenceBoitezPrivateNote")
+        )
+
+        self.assertEqual(technical["source_ref"], "")
+        self.assertNotIn("FlorenceBoitezPrivateNote", str(technical))
+
+    def test_technical_projection_allows_only_structured_content_free_source_ref(self) -> None:
+        valid_refs = [
+            "workspace-note:11111111:abc123def456",
+            "workspace-file:redacted:abc123def456",
+            "workspace-export:11111111:abc123def456",
+            "conversation:redacted:abc123def456",
+            "message-selection:11111111:abc123def456",
+            "frida-response:redacted:abc123def456",
+        ]
+
+        for ref in valid_refs:
+            with self.subTest(ref=ref):
+                technical = workspace_folder_exports.build_technical_projection(
+                    _export(source_ref=ref)
+                )
+                self.assertEqual(technical["source_ref"], ref)
 
     def test_invalid_ids_are_redacted_in_technical_refs(self) -> None:
         technical = workspace_folder_exports.build_technical_projection(
@@ -228,6 +309,28 @@ class WorkspaceFolderExportsTests(unittest.TestCase):
         self.assertNotIn("raw-etag-secret", text)
         self.assertNotIn("target_name", text)
         self.assertNotIn("remote_export_ref", text)
+
+    def test_upsert_without_nextcloud_proof_defaults_to_sync_error(self) -> None:
+        row = workspace_folder_exports_store.upsert_export(
+            export_id=EXPORT_ID,
+            workspace_folder_id=FOLDER_ID,
+            title="Synthese locale",
+            target_name="Synthese-locale.md",
+            export_format="md",
+            source_kind="conversation",
+            source_ref="conversation:11111111:abc123def456",
+            db_conn_func=lambda: _UpsertConnection(),
+            logger=_FakeLogger(),
+        )
+
+        self.assertEqual(row["nextcloud_sync_state"], "sync_error")
+        self.assertEqual(row["reason_code"], "folder_export_nextcloud_error_redacted")
+        user = workspace_folder_exports.build_user_projection(row)
+        technical = workspace_folder_exports.build_technical_projection(row)
+        self.assertEqual(user["nextcloud_sync_state"], "sync_error")
+        self.assertEqual(user["sync_label"], "synchronisation incomplete")
+        self.assertEqual(technical["nextcloud_sync_state"], "sync_error")
+        self.assertNotEqual(technical["nextcloud_sync_state"], "linked")
 
     def test_list_exports_fail_closed_on_db_failure_without_raw_cause(self) -> None:
         logger = _FakeLogger()
