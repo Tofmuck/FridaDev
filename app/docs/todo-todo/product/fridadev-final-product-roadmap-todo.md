@@ -34,8 +34,8 @@ Statut 2026-06-17: socle dossiers Frida V1 / Nextcloud valide en Lot Z par
 preuve empirique runtime content-free. Les chantiers Documents, Notes, Exports
 et Images restent des points obligatoires separes.
 
-Prochain chantier actif:
-`app/docs/todo-todo/product/frida-v1-documents-ingestion-todo.md`
+Chantier Documents actif apres ce socle, maintenant cloture:
+`app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`
 
 ### 2. Documents sources / ingestion / lecture / PDF fallback
 
@@ -46,11 +46,19 @@ fallback visuel doit etre le meme que le PDF vienne d'un dossier ou d'un ajout
 direct dans le chat: memes limites, memes messages utilisateur, memes preuves,
 aucun contenu brut dans les traces.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-documents-ingestion-todo.md`
+TODO archivee:
+`app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`
 
 Contrat source:
 `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
+
+Statut 2026-06-18: Documents V1 valide en Lot Z avec verdict
+`met_with_documented_limit`. La seule limite de cloture est le cas live non
+`linked`, non applicable faute de dossier actif non `linked` naturel et couvert
+par tests unitaires/serveur sans mutation DB artificielle.
+
+Prochain chantier actif:
+`app/docs/todo-todo/product/frida-v1-folder-markdown-notes-todo.md`
 
 ### 3. Notes Markdown par dossier
 

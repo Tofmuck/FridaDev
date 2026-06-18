@@ -1,8 +1,9 @@
 # Frida V1 - Documents sources / ingestion / lecture / PDF fallback - TODO
 
-Statut: Lot 8 observabilite / smokes live livre et corrige; PDF sans texte
-prouve sur les deux chemins, refus non `linked` live volontairement partial
-faute de dossier actif non `linked` naturel; pret pour Lot Z sans ouvrir Lot Z.
+Statut: cloture et archivee par Lot Z le 2026-06-18; verdict
+`met_with_documented_limit`. La limite documentee est le refus live non
+`linked`, non applicable faute de dossier actif non `linked` naturel et couvert
+par tests unitaires/serveur sans mutation DB artificielle.
 Date: 2026-06-17
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -693,25 +694,44 @@ Artefacts attendus:
 
 ### Lot Z - Cloture Documents V1
 
-- [ ] Appliquer les criteres de cloture Lot Z graves dans
+- [x] Appliquer les criteres de cloture Lot Z graves dans
   `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`.
-- [ ] Prouver qu'un dossier Frida `linked` peut recevoir un document sous
+- [x] Prouver qu'un dossier Frida `linked` peut recevoir un document sous
   `Documents`.
-- [ ] Prouver que la liste utilisateur montre les documents disponibles sans
+- [x] Prouver que la liste utilisateur montre les documents disponibles sans
   fuite.
-- [ ] Prouver qu'un document texte ou PDF texte peut etre prepare/lu selon le
+- [x] Prouver qu'un document texte ou PDF texte peut etre prepare/lu selon le
   contrat.
-- [ ] Prouver qu'un PDF image suit le meme fallback depuis upload direct et
+- [x] Prouver qu'un PDF image suit le meme fallback depuis upload direct et
   depuis dossier Nextcloud.
-- [ ] Prouver que les limites, messages et reason codes sont coherents sur les
+- [x] Prouver que les limites, messages et reason codes sont coherents sur les
   deux chemins PDF.
-- [ ] Prouver qu'un dossier non `linked` bloque les ecritures.
-- [ ] Prouver absence de confusion avec Biblio, Notes, Exports et Images.
-- [ ] Prouver absence de copie/rangement silencieux des fichiers existants.
-- [ ] Prouver absence de fuite de contenu, nom sensible, chemin DAV, URL DAV,
+- [x] Documenter le refus dossier non `linked`: invariant couvert par tests
+  unitaires/serveur, preuve live non applicable faute de dossier actif non
+  `linked` naturel, sans mutation DB artificielle.
+- [x] Prouver absence de confusion avec Biblio, Notes, Exports et Images.
+- [x] Prouver absence de copie/rangement silencieux des fichiers existants.
+- [x] Prouver absence de fuite de contenu, nom sensible, chemin DAV, URL DAV,
   XML brut, `storage_key`, token, cookie, `app-password` et secret.
-- [ ] Documenter limites V1 et lots suivants.
-- [ ] Archiver les preuves content-free.
+- [x] Documenter limites V1 et lots suivants.
+- [x] Archiver les preuves content-free.
+
+Preuve Lot Z:
+
+- artefact de cloture:
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lotz-closure-20260618T073325Z.jsonl`;
+- verdict final: `met_with_documented_limit`;
+- cas `met`: preflight, upload texte, liste utilisateur, selection /
+  preparation texte, PDF texte, PDF visuel depuis dossier, PDF visuel upload
+  direct, conflit de nom, statut fichiers existants, scan observabilite, scan
+  artefact et cleanup synthetique;
+- cas `LOTZ_NON_LINKED_REFUSAL`: `not_applicable`, car aucun dossier actif non
+  `linked` naturel n'existait; aucune mutation DB artificielle n'a ete faite;
+- cleanup: `6` operations synthetiques, `0` echec, aucune suppression
+  utilisateur reelle;
+- aucune fuite de contenu, PDF brut, base64, data URL, `file_data`,
+  `storage_key`, chemin disque, URL DAV, XML, secret, token, cookie ou
+  `app-password` dans l'artefact.
 
 ## 9. Points faibles a surveiller
 
@@ -746,13 +766,19 @@ Artefacts attendus:
 - Aucun changement de route parallele/API/UI hors route existante workspace files.
 - Aucun `utils.py` ou `helpers.py`.
 
-## 11. Prochain lot recommande
+## 11. Suite apres cloture
 
-Ouvrir `Lot Z - Cloture Documents V1`.
+Documents V1 est archive. Le prochain chantier obligatoire selon la roadmap
+generale est:
 
-Objectif Lot Z:
+`app/docs/todo-todo/product/frida-v1-folder-markdown-notes-todo.md`
 
-- rejouer la validation de cloture sur les surfaces Documents V1 livrees;
-- verifier que les preuves Lot 3 a Lot 8 restent coherentes;
-- documenter les limites V1 restantes sans ouvrir Notes, Exports, Images,
-  Biblio, Memory/RAG/Identity/Summary ou un nouveau runtime par confusion.
+Limites V1 conservees apres cloture:
+
+- la preuve live non `linked` reste non applicable tant qu'aucun dossier actif
+  non `linked` naturel n'existe; l'invariant reste couvert par tests
+  unitaires/serveur;
+- aucun Notes, Exports, Images, Biblio, Memory/RAG/Identity/Summary n'est livre
+  par Documents V1;
+- les prochains chantiers doivent reutiliser le contrat de routage
+  `/Frida/<dossier>/Documents` sans rouvrir le socle Documents.

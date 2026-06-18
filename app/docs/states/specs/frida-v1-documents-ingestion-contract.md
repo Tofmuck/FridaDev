@@ -1,8 +1,8 @@
 # Frida V1 - Documents ingestion contract
 
-Statut: spec vivante Lot 6
+Statut: spec vivante Documents V1 cloture par Lot Z
 Date: 2026-06-17
-Roadmap active: `app/docs/todo-todo/product/frida-v1-documents-ingestion-todo.md`
+Roadmap archivee: `app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-documents-ingestion-lot0-audit-2026-06-17.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
 Contrat documents actifs source: `app/docs/states/specs/active-conversation-documents-contract.md`
@@ -17,13 +17,15 @@ rencontre une contradiction produit, il doit s'arreter avant patch et ouvrir un
 micro-lot de recalage documentaire.
 
 Le Lot 1 a livre ce contrat en docs-only. Le Lot 2 a livre le read-model local
-derive autour de `workspace_files`, sans migration DB. Le Lot 3 livre
+derive autour de `workspace_files`, sans migration DB. Le Lot 3 a livre
 l'ingestion/rangement Nextcloud-first des nouveaux documents via la route
 workspace files existante, avec transport WebDAV borne, preuve synthetique et
-compensation stricte. Le Lot 4 livre la liste utilisateur. Le Lot 5 livre la
-preparation texte/PDF textuel bornee. Le Lot 6 livre le fallback visuel unifie
-pour images et PDF sans texte. Les lots suivants gardent fichiers historiques
-et cloture empirique hors scope.
+compensation stricte. Le Lot 4 a livre la liste utilisateur. Le Lot 5 a livre la
+preparation texte/PDF textuel bornee. Le Lot 6 a livre le fallback visuel unifie
+pour images et PDF sans texte. Le Lot 7 a traite les fichiers workspace
+existants par copie/rangement controle non destructif. Le Lot 8 a consolide
+l'observabilite et les smokes. Le Lot Z cloture Documents V1 avec verdict
+`met_with_documented_limit`.
 
 ## 2. Modele produit Documents V1
 
@@ -709,12 +711,37 @@ Lot 8 observabilite / smokes live livre le
   brut, chemin disque, URL DAV, XML, `storage_key`, secret, token, cookie,
   app-password ou payload WebDAV brut.
 
+Lot Z cloture Documents V1 le `2026-06-18`:
+
+- artefact:
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lotz-closure-20260618T073325Z.jsonl`;
+- verdict final: `met_with_documented_limit`;
+- cas `met`: preflight, upload texte, liste utilisateur, selection /
+  preparation texte, PDF texte, PDF sans texte de dossier injecte comme
+  `media_kind=file` / `payload_order=text_then_file`, PDF sans texte upload
+  direct injecte comme `media_kind=file` / `payload_order=text_then_file`,
+  conflit de nom, statut fichiers existants, scan observabilite, scan artefact
+  et cleanup synthetique;
+- cas `LOTZ_NON_LINKED_REFUSAL`: `not_applicable`, car aucun dossier actif non
+  `linked` naturel n'existait; le refus reste couvert par tests
+  unitaires/serveur et aucune mutation DB artificielle n'a ete faite;
+- cleanup: `6` operations synthetiques, `0` echec, aucune suppression
+  utilisateur reelle;
+- aucune fuite de contenu, PDF brut, base64, data URL, `file_data`,
+  `storage_key`, chemin disque, URL DAV, XML, secret, token, cookie,
+  `app-password` ou payload WebDAV brut dans l'artefact.
+
 ## 16. Criteres de cloture Lot Z
 
-Documents V1 est clos seulement si toutes les preuves suivantes sont livrees:
+Documents V1 est clos par Lot Z avec verdict `met_with_documented_limit`.
+
+Preuves livrees:
 
 - un dossier Frida `linked` recoit un document synthetique sous `Documents`;
-- un dossier non `linked` bloque proprement toute ecriture Documents;
+- le refus d'un dossier non `linked` reste un invariant fail-closed couvert par
+  tests unitaires/serveur; la preuve live est `not_applicable` tant qu'aucun
+  dossier actif non `linked` naturel n'existe et ne doit pas etre fabrique par
+  mutation DB artificielle;
 - la liste utilisateur affiche les documents disponibles selon le contrat;
 - les preuves techniques restent redacted et content-free;
 - un document texte peut etre prepare et utilise dans une conversation;
