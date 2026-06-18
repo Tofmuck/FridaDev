@@ -271,10 +271,11 @@ l'inverse, une route globale `/api/notes*` serait a justifier fortement.
 - Ajouter du comportement a `workspace_folder_nextcloud_reconcile.py`.
 - Faire une migration DB ou une route runtime dans Lot 0.
 
-## Recommandation pour le modele local Notes futur
+## Modele local Notes futur
 
-Lot 0 recommande de creer un modele local dedie Notes, porte par des modules
-cibles:
+Le contrat Lot 1 a rendu obligatoire le modele local Notes dedie et la table
+applicative `workspace_folder_notes`. Les modules cibles restent des
+responsabilites applicatives separees:
 
 - `app/core/workspace_folder_notes.py` pour projections et statuts;
 - `app/core/workspace_folder_notes_store.py` pour persistance;
@@ -283,15 +284,15 @@ cibles:
 - `app/core/workspace_folder_note_nextcloud_runtime.py` pour orchestration
   create/append/read/delete test-only si necessaire.
 
-Le nom exact des modules sera fixe dans la spec Lot 1, mais la responsabilite
-doit rester separee de Documents.
+Le store/module Python Notes sera l'acces applicatif a la table obligatoire,
+pas une alternative a la persistance locale.
 
-### Table locale recommandee
+### Table locale obligatoire
 
-Un schema dedie type `workspace_folder_notes` est recommande, avec FK stricte
-vers `workspace_folders.id`.
+La table applicative `workspace_folder_notes` est obligatoire, avec FK stricte
+vers `workspace_folders.id`, et distincte de `workspace_files`.
 
-Champs a cadrer en Lot 1:
+Champs graves par le contrat Lot 1:
 
 - id note applicatif;
 - `workspace_folder_id`;
@@ -358,7 +359,7 @@ Projection technique:
 - jamais ETag brut;
 - jamais cible distante brute.
 
-## Surface API/UI recommandee
+## Surface API/UI cible
 
 API:
 

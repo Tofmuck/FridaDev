@@ -59,11 +59,13 @@ export, ni une image, ni une entree Biblio.
 - Notes V1 n'est pas un editeur Markdown complet.
 - Notes V1 a un modele local dedie Notes, strictement rattache a
   `workspace_folders.id`.
+- La table applicative `workspace_folder_notes` est obligatoire pour Notes V1.
 - Le modele local Notes n'est pas `workspace_files`; `workspace_files` reste le
   registre/read-model Documents V1.
 - Le modele local Notes sert au read-model utilisateur, aux refs content-free,
   aux statuts, aux liens Nextcloud et a la resolution par titre/liste.
 - Absence de modele local Notes dedie = no-go pour les lots runtime.
+- Absence de table `workspace_folder_notes` = no-go Lot 2 et no-go runtime.
 - Notes V1 ne stocke pas le corps Markdown en local.
 - Le modele local Notes stocke uniquement metadonnees, statuts, refs
   content-free, titre utilisateur lorsque utile a l'UI, cible interne, ETag
@@ -262,6 +264,8 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 - [ ] Livrer le modele local dedie Notes, obligatoire avant tout runtime create,
   list, lookup, append ou read.
+- [ ] Creer la table applicative obligatoire `workspace_folder_notes`; le store
+  Python Notes n'est que l'acces applicatif a cette table.
 - [ ] Le rattacher strictement a `workspace_folders.id`.
 - [ ] Garder `workspace_files` reserve a Documents V1; ne pas l'utiliser comme
   modele produit Notes.
@@ -397,7 +401,7 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 - Scans anti-fuite: aucun corps Markdown brut, nom sensible, chemin DAV, URL
   DAV, XML, payload WebDAV, secret, token, cookie ou app-password.
 
-## Prochain pas recommande
+## Prochain pas
 
 Ouvrir Lot 2 - Modele local / read-model Notes. Ce lot devra appliquer le
 contrat source-of-truth, livrer le modele local dedie Notes, ne pas stocker le

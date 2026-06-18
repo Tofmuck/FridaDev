@@ -104,15 +104,20 @@ Identity ou Summary par confusion.
 
 Notes V1 exige un modele local dedie Notes, distinct de `workspace_files`.
 
-Cible recommandee:
+Table applicative obligatoire:
 
 ```text
 workspace_folder_notes
 ```
 
-Cette table ou ce store est strictement rattache a `workspace_folders.id`. Son
-absence est un no-go pour les lots runtime de creation, liste, lookup, append ou
-lecture.
+Cette table est strictement rattachee a `workspace_folders.id`, distincte de
+`workspace_files` et obligatoire pour Notes V1.
+
+Absence de la table `workspace_folder_notes` = no-go Lot 2 et no-go runtime de
+creation, liste, lookup, append ou lecture.
+
+Le store/module Python Notes est seulement l'acces applicatif a cette table. Il
+ne remplace pas la persistance locale obligatoire.
 
 Le modele local stocke uniquement:
 
