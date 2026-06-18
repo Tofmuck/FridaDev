@@ -61,7 +61,7 @@ export, ni une image, ni une entree Biblio.
 - Absence de modele local Notes dedie = no-go pour les lots runtime.
 - La recherche plein texte riche dans le corps Markdown n'est pas livree en V1.
   V1 couvre le titre connu, la liste du dossier et une resolution par
-  metadonnees/read-model local si elle existe.
+  metadonnees via le read-model local Notes dedie.
 - Completer une note signifie append uniquement a la fin de la note existante.
   V1 ne fait ni insertion au milieu, ni reecriture globale, ni remplacement
   complet, ni append sans cible claire.
@@ -265,7 +265,7 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 - [ ] Utiliser une creation anti-ecrasement.
 - [ ] Refuser titre absent, invalide, ambigu ou collision de sanitisation.
 - [ ] Verifier `Notes` par status-only / collection valide avant creation.
-- [ ] Persister le read-model Notes si livre.
+- [ ] Persister le modele local Notes dedie.
 - [ ] Rollback strict de la note creee si la persistance locale echoue apres
   succes Nextcloud.
 - [ ] Tester success, conflit, dossier non `linked`, cible `Notes` absente ou
@@ -283,7 +283,7 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 ### Lot 5 - Retrouver une note
 
 - [ ] Retrouver par titre exact/sanitise ou selection explicite dans la liste.
-- [ ] Utiliser le read-model Notes si present.
+- [ ] Utiliser le read-model local Notes dedie.
 - [ ] Refuser cible absente ou ambigue.
 - [ ] Ne pas promettre de recherche plein texte riche.
 - [ ] Tester resolution, ambiguite, absence, dossier invalide et anti-fuite.
