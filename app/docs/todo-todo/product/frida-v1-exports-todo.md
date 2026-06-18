@@ -354,14 +354,23 @@ empiler cette logique dans les modules de read-model.
 
 ### Lot 3 - Generation Markdown/TXT bornee fake/local
 
-- [ ] Generer Markdown depuis les sources definies par la spec Lot 1.
-- [ ] Generer TXT depuis les sources definies par la spec Lot 1.
-- [ ] Acquerir chaque source par le chemin explicite defini dans la spec Lot 1.
-- [ ] Appliquer les limites de taille V1.
-- [ ] Refuser proprement au-dela des limites.
-- [ ] Ne pas tronquer silencieusement.
-- [ ] Ne pas ranger encore dans Nextcloud.
-- [ ] Tester conversion, refus taille, noms, reason codes et anti-fuite.
+- [x] Generer Markdown depuis les sources definies par la spec Lot 1.
+- [x] Generer TXT depuis les sources definies par la spec Lot 1.
+- [x] Acquerir chaque source par le chemin explicite defini dans la spec Lot 1.
+- [x] Appliquer les limites de taille V1.
+- [x] Refuser proprement au-dela des limites.
+- [x] Ne pas tronquer silencieusement.
+- [x] Ne pas ranger encore dans Nextcloud.
+- [x] Tester conversion, refus taille, noms, reason codes et anti-fuite.
+
+Lot 3 livre `workspace_folder_export_sources.py`,
+`workspace_folder_export_markdown_text.py` et
+`workspace_folder_export_generation.py`. Les sources Notes/Documents passent
+uniquement par des capacites explicites injectees; aucun lecteur parallele et
+aucun WebDAV/Nextcloud live n'est appele par defaut. Un export existant comme
+source est refuse proprement sans reader fake/local explicite. Les projections
+restent metadata-only et `nextcloud_sync_state=sync_error` tant que Lot 5 n'a
+pas prouve le rangement distant.
 
 ### Lot 4 - Generation DOCX/PDF bornee fake/local
 
@@ -512,9 +521,8 @@ Interdits dans preuves techniques:
 - Migration ou import d'exports historiques sans lot dedie.
 - Listing large de contenu Nextcloud comme preuve.
 
-## Hors-scope courant apres Lot 2
+## Hors-scope courant apres Lot 3
 
-- Pas de generation documentaire.
 - Pas de route serveur.
 - Pas de UI.
 - Pas de Nextcloud live.
@@ -527,7 +535,6 @@ Interdits dans preuves techniques:
 
 ## Prochain pas
 
-Ouvrir Lot 3 - Generation Markdown/TXT bornee fake/local. Ce lot devra utiliser
-le read-model `workspace_folder_exports` livre au Lot 2, acquerir les sources
-uniquement par les chemins explicites de la spec Lot 1, et ne pas encore ranger
-dans Nextcloud.
+Ouvrir Lot 4 - Generation DOCX/PDF bornee fake/local. Ce lot devra verifier les
+dependances disponibles, refuser clairement si elles manquent, ne pas vendre une
+conversion partielle comme complete et ne pas encore ranger dans Nextcloud.

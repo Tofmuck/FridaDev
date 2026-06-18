@@ -287,6 +287,31 @@ Dette hygiene connue apres Lot 2.1: `workspace_folder_exports.py` et
 creer des modules dedies pour generation/acquisition au lieu d'empiler dans ces
 modules de read-model.
 
+Lot 3 livre la generation fake/local Markdown/TXT sans stockage Nextcloud:
+
+- acquisition explicite et bornee dans
+  `app/core/workspace_folder_export_sources.py`;
+- rendu Markdown/TXT dans
+  `app/core/workspace_folder_export_markdown_text.py`;
+- orchestration metadata-only dans
+  `app/core/workspace_folder_export_generation.py`;
+- conversation complete, selection de messages et reponse Frida acquises depuis
+  les messages fournis explicitement par l'appelant, en excluant les messages
+  systeme/outils/techniques;
+- note Markdown et document uniquement via capacites explicites injectees par
+  l'appelant, sans lane parallele Notes/Documents et sans lecture live par
+  defaut;
+- export existant comme source seulement via reader explicite fake/local; sans
+  reader disponible, Lot 3 refuse avec reason code content-free;
+- contenu source limite a `120_000` caracteres avant generation;
+- aucune troncature silencieuse;
+- resultats `.md` et `.txt` produits en memoire pour le retour immediat;
+- read-model/projections utilises uniquement en metadata: aucun contenu exporte
+  brut n'est stocke ni expose en projection technique;
+- `nextcloud_sync_state=sync_error` tant qu'aucun stockage Nextcloud n'a prouve
+  le rangement distant;
+- DOCX/PDF, routes publiques et rangement sous `/Exports` restent hors Lot 3.
+
 ## 7. Cible Nextcloud et stockage
 
 La cible normative est:
