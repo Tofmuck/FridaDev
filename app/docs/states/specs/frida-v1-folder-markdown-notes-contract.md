@@ -131,6 +131,8 @@ Memory/RAG/Identity/Summary.
 Depuis le Lot 8, l'observabilite et les smokes transverses Notes V1 sont
 valides par artefact content-free:
 `app/docs/states/baselines/notes-smokes/frida-v1-notes-lot8-observability-smokes-20260618T125408Z.jsonl`.
+La portee de cette preuve est clarifiee par:
+`app/docs/states/baselines/notes-smokes/frida-v1-notes-lot8-1-proof-scope-20260618T131304Z.jsonl`.
 
 Cette preuve couvre create, collision de nom, list, lookup, append,
 read/prepare, injection de la lane Notes utilisee par `/api/chat`, cleanup
@@ -138,6 +140,16 @@ synthetique, scan d'observabilite et scan d'artefact. Le cas conflit
 ETag/version live est volontairement `not_applicable` / `covered_by_unit_tests`
 en Lot 8; il ne doit pas etre presente comme `met` sans preuve live propre sur
 une cible synthetique.
+
+Interpretation normative Lot 8.1:
+
+- `LOT8_RUNTIME_REDACTED.secret_available=false` dans l'artefact historique ne
+  prouve pas une absence de secret runtime. Lot Z doit utiliser une formulation
+  non ambigue: `secret_configured_status=redacted` et
+  `secret_value_displayed=false`.
+- `LOT8_SYNTHETIC_CHAT_INJECTION.provider_live=false` signifie que Lot 8 prouve
+  la lane applicative `/api/chat` avec provider fake et surfaces content-free.
+  Lot 8 ne prouve pas une generation modele/provider live.
 
 ## 2. Modele produit Notes V1
 

@@ -20,6 +20,8 @@ Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-tod
   `app/docs/states/baselines/notes-smokes/frida-v1-notes-lot3-create-live-20260618T095734Z.jsonl`
 - Preuve live Lot 8:
   `app/docs/states/baselines/notes-smokes/frida-v1-notes-lot8-observability-smokes-20260618T125408Z.jsonl`
+- Clarification de portee preuve Lot 8.1:
+  `app/docs/states/baselines/notes-smokes/frida-v1-notes-lot8-1-proof-scope-20260618T131304Z.jsonl`
 
 ## Objectif produit
 
@@ -388,6 +390,11 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
   synthetiques.
 - [x] Prouver l'injection `/api/chat` via `workspace_note_id` dans la meme lane
   applicative que la route, avec provider fake et observabilite content-free.
+- [x] Clarifier que la preuve runtime Lot 8 exprime un statut secret redacted et
+  aucune valeur affichee; le champ historique `secret_available=false` ne doit
+  pas etre lu comme preuve d'absence du secret runtime.
+- [x] Clarifier que la preuve d'injection chat Lot 8 prouve la lane applicative
+  `/api/chat` avec provider fake, pas une generation modele/provider live.
 - [x] Tenter un smoke synthetique de conflit ETag/version si possible sans
   toucher de contenu utilisateur; sinon marquer le cas `not_applicable` /
   `covered_by_unit_tests`, jamais `met`. Lot 8 marque ce cas
@@ -399,6 +406,12 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 ### Lot Z - Cloture Notes V1
 
 - [ ] Rejouer les smokes transverses Notes V1.
+- [ ] Utiliser des champs non ambigus pour la preuve runtime, par exemple
+  `secret_configured_status=redacted` et `secret_value_displayed=false`, jamais
+  `secret_available=false`.
+- [ ] Distinguer preuve de lane applicative `/api/chat` et preuve de generation
+  modele live; ne presenter une generation provider live comme prouvee que si
+  Lot Z l'execute explicitement.
 - [ ] Inclure le conflit ETag/version dans Lot Z; si le live n'est pas possible
   proprement, documenter `not_applicable` / `covered_by_unit_tests` sans le
   vendre comme preuve live complete.
