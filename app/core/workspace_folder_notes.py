@@ -47,6 +47,7 @@ REASON_APPEND_OK = "folder_note_append_ok"
 REASON_LIST_OK = "folder_note_list_ok"
 REASON_LOOKUP_OK = "folder_note_lookup_ok"
 REASON_LOOKUP_AMBIGUOUS = "folder_note_lookup_ambiguous"
+REASON_LOOKUP_FAILED = "folder_note_lookup_failed"
 REASON_NOT_FOUND = "folder_note_not_found"
 REASON_TOO_LARGE = "folder_note_too_large"
 REASON_APPEND_TOO_LARGE = "folder_note_append_too_large"
@@ -69,6 +70,7 @@ REASON_CODE_CATALOG = frozenset(
         REASON_LIST_OK,
         REASON_LOOKUP_OK,
         REASON_LOOKUP_AMBIGUOUS,
+        REASON_LOOKUP_FAILED,
         REASON_NOT_FOUND,
         REASON_TOO_LARGE,
         REASON_APPEND_TOO_LARGE,

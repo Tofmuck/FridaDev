@@ -30,7 +30,15 @@ Depuis le Lot 2, le read-model local Notes est livre par:
 
 Le Lot 2 ne cree, lit, modifie ni supprime aucune note Nextcloud. Il ne livre
 pas de route serveur Notes, pas de frontend Notes et pas de transport WebDAV
-Notes.
+Notes. Ses statuts locaux preparent les garde-fous de creation, mais ne
+constituent pas une preuve que le sous-dossier `Notes` existe ou est une
+collection WebDAV valide; cette verification reelle commence au Lot 3.
+
+Depuis le micro-correctif Lot 2.1, les lectures du read-model local Notes
+peuvent fail-closed via `WorkspaceFolderNoteLookupError` avec le reason code
+content-free `folder_note_lookup_failed`. Une panne DB/store ne doit pas etre
+confondue avec une liste vide ou une note absente dans les futurs chemins
+runtime Notes.
 
 ## 2. Modele produit Notes V1
 
@@ -419,6 +427,7 @@ Catalogue initial:
 - `folder_note_list_ok`;
 - `folder_note_lookup_ok`;
 - `folder_note_lookup_ambiguous`;
+- `folder_note_lookup_failed`;
 - `folder_note_not_found`;
 - `folder_note_too_large`;
 - `folder_note_append_too_large`;

@@ -18,6 +18,25 @@ class _FakeCursor:
         self.queries.append(" ".join(str(sql).split()))
 
 
+class _FailingConnection:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def cursor(self, *args, **kwargs):
+        raise RuntimeError("raw db failure with Carnet sensible and raw-etag-secret")
+
+
+class _FakeLogger:
+    def __init__(self):
+        self.records = []
+
+    def warning(self, message, *args, **kwargs):
+        self.records.append((message, args, kwargs))
+
+
 def _note(**overrides):
     payload = {
         "id": NOTE_ID,
@@ -151,6 +170,68 @@ class WorkspaceFolderNotesTests(unittest.TestCase):
         projected = workspace_folder_notes.apply_note_projection(row)
         self.assertNotIn("etag_value", projected)
         self.assertNotIn("raw-etag-secret", str(projected["note_v1_technical"]))
+
+    def test_list_notes_fail_closed_raises_content_free_lookup_error(self) -> None:
+        logger = _FakeLogger()
+
+        with self.assertRaises(workspace_folder_notes_store.WorkspaceFolderNoteLookupError) as ctx:
+            workspace_folder_notes_store.list_notes(
+                FOLDER_ID,
+                db_conn_func=lambda: _FailingConnection(),
+                logger=logger,
+                fail_closed=True,
+            )
+
+        self.assertIsNone(ctx.exception.__cause__)
+        self.assertEqual(ctx.exception.reason_code, "folder_note_lookup_failed")
+        self.assertEqual(ctx.exception.workspace_folder_id, FOLDER_ID)
+        self.assertEqual(ctx.exception.note_id, "")
+        self.assertNotIn("Carnet sensible", str(ctx.exception))
+        self.assertNotIn("raw-etag-secret", str(ctx.exception))
+        logged = str(logger.records)
+        self.assertIn("folder_note_lookup_failed", logged)
+        self.assertNotIn("Carnet sensible", logged)
+        self.assertNotIn("raw-etag-secret", logged)
+
+    def test_get_note_fail_closed_raises_content_free_lookup_error(self) -> None:
+        logger = _FakeLogger()
+
+        with self.assertRaises(workspace_folder_notes_store.WorkspaceFolderNoteLookupError) as ctx:
+            workspace_folder_notes_store.get_note(
+                NOTE_ID,
+                db_conn_func=lambda: _FailingConnection(),
+                logger=logger,
+                fail_closed=True,
+            )
+
+        self.assertIsNone(ctx.exception.__cause__)
+        self.assertEqual(ctx.exception.reason_code, "folder_note_lookup_failed")
+        self.assertEqual(ctx.exception.note_id, NOTE_ID)
+        self.assertEqual(ctx.exception.workspace_folder_id, "")
+        self.assertIn("folder_note_lookup_failed", workspace_folder_notes.REASON_CODE_CATALOG)
+        logged = str(logger.records)
+        self.assertIn("folder_note_lookup_failed", logged)
+        self.assertNotIn("Carnet sensible", logged)
+        self.assertNotIn("raw-etag-secret", logged)
+
+    def test_lookup_soft_compatibility_is_explicit(self) -> None:
+        self.assertEqual(
+            workspace_folder_notes_store.list_notes(
+                FOLDER_ID,
+                db_conn_func=lambda: _FailingConnection(),
+                logger=None,
+                fail_closed=False,
+            ),
+            [],
+        )
+        self.assertIsNone(
+            workspace_folder_notes_store.get_note(
+                NOTE_ID,
+                db_conn_func=lambda: _FailingConnection(),
+                logger=None,
+                fail_closed=False,
+            )
+        )
 
 
 if __name__ == "__main__":

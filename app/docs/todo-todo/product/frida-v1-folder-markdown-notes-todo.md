@@ -216,6 +216,7 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 - `folder_note_list_ok`
 - `folder_note_lookup_ok`
 - `folder_note_lookup_ambiguous`
+- `folder_note_lookup_failed`
 - `folder_note_not_found`
 - `folder_note_too_large`
 - `folder_note_version_conflict`
@@ -273,8 +274,8 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
   version distante sans exposer titre sensible dans les surfaces techniques.
 - [x] Porter le read-model utilisateur, les refs content-free, les statuts, les
   liens Nextcloud et la resolution par titre/liste.
-- [x] Bloquer toute ecriture si le dossier n'est pas `linked` ou si `Notes`
-  n'est pas une collection valide.
+- [x] Preparer les statuts et reason codes locaux qui bloquent les futures
+  ecritures si le dossier n'est pas `linked` ou si la cible `Notes` est invalide.
 - [x] Ajouter tests anti-fuite et tests de statuts.
 - [x] Utiliser le pattern applicatif existant `ensure_schema(cur)` et produire
   un backup DB applicative avant application live de la migration.
@@ -286,7 +287,8 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 - [ ] Creer une note `.md` sous `/Frida/<dossier>/Notes/<titre_sanitise>.md`.
 - [ ] Utiliser une creation anti-ecrasement.
 - [ ] Refuser titre absent, invalide, ambigu ou collision de sanitisation.
-- [ ] Verifier `Notes` par status-only / collection valide avant creation.
+- [ ] Verifier reellement en WebDAV que `Notes` existe et est une collection
+  valide par status-only avant creation.
 - [ ] Persister le modele local Notes dedie.
 - [ ] Rollback strict de la note creee si la persistance locale echoue apres
   succes Nextcloud.

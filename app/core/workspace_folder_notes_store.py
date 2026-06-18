@@ -15,6 +15,26 @@ class WorkspaceFolderNotePersistenceError(RuntimeError):
     """Raised when Notes V1 local read-model persistence fails."""
 
 
+class WorkspaceFolderNoteLookupError(RuntimeError):
+    """Raised when Notes V1 local read-model lookup cannot be trusted."""
+
+    reason_code = workspace_folder_notes.REASON_LOOKUP_FAILED
+
+    def __init__(
+        self,
+        operation: str,
+        *,
+        note_id: str = "",
+        workspace_folder_id: str = "",
+    ) -> None:
+        super().__init__(self.reason_code)
+        self.operation = _safe_lookup_operation(operation)
+        self.note_id = workspace_folder_notes.normalize_note_id(note_id)
+        self.workspace_folder_id = workspace_folder_notes.normalize_workspace_folder_id(
+            workspace_folder_id
+        )
+
+
 def _cursor(conn: Any):
     if dict_row is None:
         return conn.cursor()
@@ -117,6 +137,7 @@ def list_notes(
     include_deleted: bool = False,
     db_conn_func: Callable[[], Any],
     logger: Any,
+    fail_closed: bool = True,
 ) -> list[dict[str, Any]]:
     folder_id = workspace_folder_notes.normalize_workspace_folder_id(workspace_folder_id)
     if not folder_id:
@@ -140,7 +161,16 @@ def list_notes(
                 rows = cur.fetchall()
         return [note for note in (serialize_note_row(row) for row in rows) if note]
     except Exception as exc:
-        _log(logger, "list_failed", folder_id=folder_id, error_type=type(exc).__name__)
+        _log_lookup_failure(
+            logger,
+            "list_failed",
+            workspace_folder_id=folder_id,
+            error_type=type(exc).__name__,
+        )
+        if fail_closed:
+            raise WorkspaceFolderNoteLookupError(
+                "list", workspace_folder_id=folder_id
+            ) from None
         return []
 
 
@@ -149,6 +179,7 @@ def get_note(
     *,
     db_conn_func: Callable[[], Any],
     logger: Any,
+    fail_closed: bool = True,
 ) -> Optional[dict[str, Any]]:
     normalized = workspace_folder_notes.normalize_note_id(note_id)
     if not normalized:
@@ -169,7 +200,14 @@ def get_note(
                 )
                 return serialize_note_row(cur.fetchone())
     except Exception as exc:
-        _log(logger, "get_failed", note_id=normalized, error_type=type(exc).__name__)
+        _log_lookup_failure(
+            logger,
+            "get_failed",
+            note_id=normalized,
+            error_type=type(exc).__name__,
+        )
+        if fail_closed:
+            raise WorkspaceFolderNoteLookupError("get", note_id=normalized) from None
         return None
 
 
@@ -343,6 +381,31 @@ def _text(value: Any, max_chars: int = 160) -> str:
     if max_chars > 0 and len(text) > max_chars:
         return text[:max_chars].rstrip()
     return text
+
+
+def _safe_lookup_operation(value: Any) -> str:
+    text = _text(value, 24)
+    return text if text in {"list", "get"} else "lookup"
+
+
+def _log_lookup_failure(
+    logger: Any,
+    event: str,
+    *,
+    workspace_folder_id: str = "",
+    note_id: str = "",
+    error_type: str = "",
+) -> None:
+    _log(
+        logger,
+        event,
+        reason_code=workspace_folder_notes.REASON_LOOKUP_FAILED,
+        workspace_folder_id=workspace_folder_notes.normalize_workspace_folder_id(
+            workspace_folder_id
+        ),
+        note_id=workspace_folder_notes.normalize_note_id(note_id),
+        error_type=_text(error_type, 80),
+    )
 
 
 def _log(logger: Any, event: str, **fields: Any) -> None:
