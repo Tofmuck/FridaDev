@@ -11,6 +11,8 @@ Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-tod
   `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
 - Archive Documents V1:
   `app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`
+- Audit Lot 0 Notes V1:
+  `app/docs/states/audits/frida-v1-folder-markdown-notes-lot0-audit-2026-06-18.md`
 
 ## Objectif produit
 
@@ -212,16 +214,16 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 
 ### Lot 0 - Audit existant
 
-- [ ] Relire les surfaces `workspace_folders`, Nextcloud folders, sous-dossiers
+- [x] Relire les surfaces `workspace_folders`, Nextcloud folders, sous-dossiers
   standards, Documents V1, UI dossier et tests existants.
-- [ ] Identifier les briques reutilisables telles quelles: sanitisation,
+- [x] Identifier les briques reutilisables telles quelles: sanitisation,
   WebDAV borne, verification collection, rollback, observabilite content-free.
-- [ ] Identifier les briques a eviter pour Notes: `workspace_files` comme modele
+- [x] Identifier les briques a eviter pour Notes: `workspace_files` comme modele
   produit, OCR Documents, Biblio, Exports, Images.
-- [ ] Cartographier les routes existantes pouvant porter Notes sans route
+- [x] Cartographier les routes existantes pouvant porter Notes sans route
   parallele inutile.
-- [ ] Produire un audit content-free sous `app/docs/states/audits/`.
-- [ ] Ne livrer aucun runtime.
+- [x] Produire un audit content-free sous `app/docs/states/audits/`.
+- [x] Ne livrer aucun runtime.
 
 ### Lot 1 - Contrat produit Notes V1
 
