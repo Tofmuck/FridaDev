@@ -92,7 +92,9 @@ export, ni une image, ni une entree Biblio.
   `If-Match` ou mecanisme equivalent avant ecriture; un conflit de version est
   un refus content-free.
 - La lecture conversationnelle d'une note est explicite: une note lue ou
-  completee ne part pas en Memory/RAG/Identity/Summary par confusion.
+  completee ne part pas en Memory/RAG/Identity/Summary par confusion. Depuis
+  Lot 7, `/api/chat` injecte une note dans le prompt du tour courant seulement
+  si la requete porte explicitement `workspace_note_id` ou `workspace_note_ids`.
 - La lecture est entiere ou refusee proprement; pas de troncature silencieuse
   vendue comme lecture complete.
 - Limite V1 initiale pour lecture/preparation conversationnelle: 120_000
@@ -359,9 +361,12 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 - [x] Servir la preparation par route namespaced
   `POST /api/workspace-folders/<folder_id>/notes/<note_id>/prepare`, sans route
   globale `/api/notes*`.
+- [x] Brancher la preparation conversationnelle reelle dans `/api/chat` via
+  `workspace_note_id` / `workspace_note_ids`, sans selection durable ni route
+  globale.
 - [x] Garder le corps Markdown uniquement dans `note_conversation` pour le tour
-  courant; projections techniques, logs et `note_nextcloud` restent
-  content-free.
+  courant ou dans la lane Notes du prompt du tour; projections techniques, logs
+  et `note_nextcloud` restent content-free.
 
 ### Lot 8 - Observabilite / smokes live
 

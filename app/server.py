@@ -752,6 +752,9 @@ def api_chat():
             config_module=config,
             logger=logger,
             workspace_file_selections_module=workspace_file_selections,
+            workspace_folders_module=workspace_folders,
+            workspace_folder_notes_module=workspace_folder_notes,
+            workspace_folder_notes_read_module=workspace_folder_notes_read,
         )
     except Exception as exc:
         chat_turn_logger.emit_error(

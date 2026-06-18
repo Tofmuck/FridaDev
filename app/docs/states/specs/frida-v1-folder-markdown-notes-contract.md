@@ -112,13 +112,18 @@ est livree par:
 
 - `app/core/workspace_folder_notes_read.py` pour l'orchestration `GET` borne et
   la construction du payload conversationnel;
+- `app/core/workspace_folder_notes_prompt_lane.py` pour l'injection current-turn
+  dans le prompt chat depuis une selection explicite;
 - `POST /api/workspace-folders/<folder_id>/notes/<note_id>/prepare` pour la
-  surface HTTP namespaced.
+  surface HTTP namespaced de lecture/preparation API;
+- `/api/chat` avec `workspace_note_id` ou `workspace_note_ids` pour l'injection
+  conversationnelle reelle du tour courant.
 
 Le Lot 7 lit le corps Markdown distant uniquement apres action explicite, garde
-le corps seulement en memoire et le retourne uniquement dans
-`note_conversation.markdown_content` pour le tour courant. Les projections
-techniques, logs, JSONL, observabilite et `note_nextcloud` restent content-free.
+le corps seulement en memoire, le retourne dans `note_conversation` pour la
+surface API et l'injecte dans une lane Notes dediee seulement quand le tour chat
+porte explicitement la note demandee. Les projections techniques, logs, JSONL,
+observabilite et `note_nextcloud` restent content-free.
 La lecture applique la limite V1 de 120_000 caracteres Markdown et refuse une
 note trop grande sans troncature silencieuse. Elle ne nourrit jamais
 Memory/RAG/Identity/Summary.
@@ -513,12 +518,14 @@ Surface livree Lot 7:
 
 ```text
 POST /api/workspace-folders/<folder_id>/notes/<note_id>/prepare
+POST /api/chat avec workspace_note_id ou workspace_note_ids
 ```
 
 Regles:
 
 - `GET` borne depuis Nextcloud;
-- injection du corps Markdown seulement dans le tour utile;
+- injection du corps Markdown seulement dans le tour utile si `/api/chat` porte
+  explicitement `workspace_note_id` ou `workspace_note_ids`;
 - aucun stockage local du corps;
 - aucune alimentation Memory/RAG/Identity/Summary;
 - note entiere ou refus propre;
@@ -527,6 +534,8 @@ Regles:
 Invariants Lot 7:
 
 - resolution par `note_id` uniquement; un titre doit passer par le lookup Lot 5;
+- la route `/prepare` expose le payload de preparation API; l'injection reelle
+  au modele passe par la lane Notes de `/api/chat`;
 - dossier `linked` obligatoire;
 - note active, disponible et `linked` obligatoire;
 - corps Markdown lu depuis Nextcloud par GET borne uniquement en memoire;
