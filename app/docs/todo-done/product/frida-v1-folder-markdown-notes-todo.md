@@ -1,7 +1,7 @@
 # Frida V1 - Notes Markdown par dossier - TODO
 
-Statut: TODO detaillee, Lot 8 observabilite / smokes live Notes livre, Lot Z
-non ouvert.
+Statut: archivee, Notes Markdown V1 cloture en Lot Z avec verdict
+`met_with_documented_limit`.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -22,6 +22,8 @@ Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-tod
   `app/docs/states/baselines/notes-smokes/frida-v1-notes-lot8-observability-smokes-20260618T125408Z.jsonl`
 - Clarification de portee preuve Lot 8.1:
   `app/docs/states/baselines/notes-smokes/frida-v1-notes-lot8-1-proof-scope-20260618T131304Z.jsonl`
+- Preuve de cloture Lot Z:
+  `app/docs/states/baselines/notes-smokes/frida-v1-notes-lotz-closure-20260618T134905Z.jsonl`
 
 ## Objectif produit
 
@@ -405,20 +407,30 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ### Lot Z - Cloture Notes V1
 
-- [ ] Rejouer les smokes transverses Notes V1.
-- [ ] Utiliser des champs non ambigus pour la preuve runtime, par exemple
+- [x] Rejouer ou relire les smokes transverses Notes V1.
+- [x] Utiliser des champs non ambigus pour la preuve runtime, par exemple
   `secret_configured_status=redacted` et `secret_value_displayed=false`, jamais
   `secret_available=false`.
-- [ ] Distinguer preuve de lane applicative `/api/chat` et preuve de generation
+- [x] Distinguer preuve de lane applicative `/api/chat` et preuve de generation
   modele live; ne presenter une generation provider live comme prouvee que si
   Lot Z l'execute explicitement.
-- [ ] Inclure le conflit ETag/version dans Lot Z; si le live n'est pas possible
+- [x] Inclure le conflit ETag/version dans Lot Z; si le live n'est pas possible
   proprement, documenter `not_applicable` / `covered_by_unit_tests` sans le
   vendre comme preuve live complete.
-- [ ] Verifier que Notes ne livre pas Exports, Images, Documents, Biblio,
+- [x] Verifier que Notes ne livre pas Exports, Images, Documents, Biblio,
   Agenda, Mail ou Memory/RAG.
-- [ ] Documenter les limites V1 restantes.
-- [ ] Archiver cette TODO seulement si les criteres V1 sont prouves.
+- [x] Documenter les limites V1 restantes.
+- [x] Archiver cette TODO seulement si les criteres V1 sont prouves.
+
+Verdict Lot Z 2026-06-18: `met_with_documented_limit`.
+
+Limite documentee: le conflit ETag/version est prouve par tests fake/unit et
+par contrat serveur; le smoke live ETag reste `not_applicable` /
+`covered_by_unit_tests` car le fabriquer proprement demanderait une mutation
+concurrente synthetique specifique. Cette limite ne bloque pas Notes V1:
+create, collision, list, lookup, append, read/prepare, injection de lane
+`/api/chat`, cleanup distant/local et scans anti-fuite sont couverts par les
+preuves synthetiques Lot 8 et par l'artefact Lot Z.
 
 ## Points faibles a surveiller
 
@@ -463,7 +475,6 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ## Prochain pas
 
-Ouvrir Lot Z - Cloture Notes V1. Ce lot devra rejouer/relire les preuves
-transverses, documenter la limite ETag live `not_applicable` /
-`covered_by_unit_tests`, verifier l'absence de fuite et ne pas rouvrir les
-chantiers Documents, Exports, Images, Biblio, Agenda, Mail ou Memory/RAG.
+Notes Markdown V1 est cloture. Le prochain chantier actif de la roadmap Frida
+1.0 est Exports / creation documentaire:
+`app/docs/todo-todo/product/frida-v1-exports-todo.md`.

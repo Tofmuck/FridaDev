@@ -1,8 +1,8 @@
 # Frida V1 - Folder Markdown notes contract
 
-Statut: spec source-of-truth Notes V1 ouverte par Lot 1 docs-only
+Statut: spec source-of-truth Notes V1 cloturee en Lot Z
 Date: 2026-06-18
-Roadmap active: `app/docs/todo-todo/product/frida-v1-folder-markdown-notes-todo.md`
+Roadmap archivee: `app/docs/todo-done/product/frida-v1-folder-markdown-notes-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-folder-markdown-notes-lot0-audit-2026-06-18.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
 Contrat Documents source: `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
@@ -150,6 +150,18 @@ Interpretation normative Lot 8.1:
 - `LOT8_SYNTHETIC_CHAT_INJECTION.provider_live=false` signifie que Lot 8 prouve
   la lane applicative `/api/chat` avec provider fake et surfaces content-free.
   Lot 8 ne prouve pas une generation modele/provider live.
+
+Depuis le Lot Z, Notes Markdown V1 est cloture avec verdict
+`met_with_documented_limit` par artefact content-free:
+`app/docs/states/baselines/notes-smokes/frida-v1-notes-lotz-closure-20260618T134905Z.jsonl`.
+
+Le verdict Lot Z confirme create, collision sans overwrite, list, lookup,
+append, read/prepare, injection de la lane applicative `/api/chat`, cleanup
+distant/local et scans anti-fuite sur notes synthetiques uniquement. Le conflit
+ETag/version live reste `not_applicable` / `covered_by_unit_tests`: il est
+couvert par tests fake/unit et contrat serveur, sans etre vendu comme smoke
+live `met`. Aucune generation provider live n'est prouvee par Lot Z; la preuve
+chat reste une preuve de lane applicative avec provider fake.
 
 ## 2. Modele produit Notes V1
 
@@ -755,8 +767,8 @@ Pour cloturer Notes V1, Lot Z doit prouver avec artefacts content-free:
 - scan anti-fuite logs/JSONL/docs.
 
 Lot Z ne doit pas vendre `met` pour un conflit ETag live non prouve. Le verdict
-`met_with_documented_limit` est acceptable quand le cas ETag live est couvert
-par tests unitaires et documente comme non applicable live.
+`met_with_documented_limit` est accepte pour Notes V1: le cas ETag live est
+couvert par tests unitaires/serveur et documente comme non applicable live.
 
 ## 14. Points faibles a surveiller
 

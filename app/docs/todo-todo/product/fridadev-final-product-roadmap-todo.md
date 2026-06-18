@@ -57,23 +57,26 @@ Statut 2026-06-18: Documents V1 valide en Lot Z avec verdict
 `linked`, non applicable faute de dossier actif non `linked` naturel et couvert
 par tests unitaires/serveur sans mutation DB artificielle.
 
-Prochain chantier actif:
-`app/docs/todo-todo/product/frida-v1-folder-markdown-notes-todo.md`
-
 ### 3. Notes Markdown par dossier
 
 Frida doit pouvoir creer une note, completer une note, retrouver une note,
 lister les notes d'un dossier et stocker ces notes en Markdown dans Nextcloud.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-folder-markdown-notes-todo.md`
+TODO archivee:
+`app/docs/todo-done/product/frida-v1-folder-markdown-notes-todo.md`
 
 Contrat source:
 `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
 
-Statut 2026-06-18: Lot 1 docs-only livre; le prochain lot Notes actif est le
-modele local / read-model dedie, sans runtime Nextcloud avant livraison du
-modele local.
+Statut 2026-06-18: Notes Markdown V1 valide en Lot Z avec verdict
+`met_with_documented_limit`. La limite documentee est le conflit ETag/version
+live, non applicable sans mutation concurrente synthetique propre et couvert
+par tests fake/unit et contrat serveur. Aucun contenu utilisateur, secret,
+corps Markdown brut, ETag brut, DAV/XML ou payload WebDAV brut n'est conserve
+dans les preuves.
+
+Prochain chantier actif:
+`app/docs/todo-todo/product/frida-v1-exports-todo.md`
 
 ### 4. Exports / creation documentaire
 
