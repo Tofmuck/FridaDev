@@ -1,6 +1,7 @@
 # Frida V1 - Notes Markdown par dossier - TODO
 
-Statut: TODO detaillee, runtime non commence.
+Statut: TODO detaillee, Lot 1 contrat source-of-truth livre, runtime non
+commence.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -13,6 +14,8 @@ Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-tod
   `app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`
 - Audit Lot 0 Notes V1:
   `app/docs/states/audits/frida-v1-folder-markdown-notes-lot0-audit-2026-06-18.md`
+- Contrat Notes V1:
+  `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
 
 ## Objectif produit
 
@@ -43,8 +46,8 @@ export, ni une image, ni une entree Biblio.
   valide; un `PROPFIND 207` seul ne suffit pas.
 - Les titres ou noms de notes peuvent etre visibles dans l'interface utilisateur
   et dans les reponses utilisateur quand cela aide le travail.
-- Le corps Markdown peut etre visible dans la reponse utilisateur quand
-  l'utilisateur demande explicitement de lire ou completer une note.
+- Le corps Markdown est autorise dans la reponse utilisateur quand l'utilisateur
+  demande explicitement de lire ou completer une note.
 - Le corps Markdown, les noms sensibles, chemins DAV, URL DAV, XML, payload
   WebDAV, secrets, tokens, cookies et app-password sont interdits dans les logs,
   JSONL, dashboard, observabilite technique et preuves.
@@ -63,8 +66,8 @@ export, ni une image, ni une entree Biblio.
 - Absence de modele local Notes dedie = no-go pour les lots runtime.
 - Notes V1 ne stocke pas le corps Markdown en local.
 - Le modele local Notes stocke uniquement metadonnees, statuts, refs
-  content-free, titre utilisateur si necessaire, cible interne, ETag exact
-  interne, hash/ref technique, timestamps et reason codes.
+  content-free, titre utilisateur lorsque utile a l'UI, cible interne, ETag
+  exact interne, hash/ref technique, timestamps et reason codes.
 - Le corps Markdown est lu depuis Nextcloud a la demande, garde seulement en
   memoire pour le tour utile ou pour construire un append, puis non persiste
   localement.
@@ -92,16 +95,15 @@ export, ni une image, ni une entree Biblio.
   caracteres Markdown maximum par note; au-dela, refus propre.
 - Limite V1 initiale pour append entrant: 20_000 caracteres Markdown maximum;
   au-dela, refus propre.
-- Ces limites peuvent etre revalidees en Lot 1 comme constantes de contrat, mais
-  elles ne sont pas une decision runtime cachee.
+- Ces limites sont gravees dans le contrat Lot 1 comme constantes V1.
 
-## Decisions ouvertes avant runtime
+## Questions produit ouvertes avant lots applicatifs
 
 Aucune decision produit bloquante connue a ce stade.
 
-Aucun lot runtime Notes V1 ne doit demarrer si une nouvelle decision produit
+Aucun lot applicatif Notes V1 ne doit demarrer si une nouvelle question produit
 apparait. Dans ce cas, le lot s'arrete avant patch et ajoute explicitement la
-decision a cette section ou a une spec Notes V1 dediee.
+reponse a cette section ou a la spec Notes V1.
 
 Blocage technique attendu, non produit: si un lot runtime exige une migration DB
 applicative, il doit s'arreter avant application et proposer un micro-lot avec
@@ -199,7 +201,7 @@ backup, rollback, tests et preuve content-free.
 
 ## Reason codes attendus
 
-Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
+Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 - `folder_note_folder_not_linked`
 - `folder_note_notes_target_missing`
@@ -208,7 +210,7 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 - `folder_note_name_invalid`
 - `folder_note_name_conflict`
 - `folder_note_create_ok`
-- `folder_note_update_ok`
+- `folder_note_append_ok`
 - `folder_note_list_ok`
 - `folder_note_lookup_ok`
 - `folder_note_lookup_ambiguous`
@@ -237,24 +239,24 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 
 ### Lot 1 - Contrat produit Notes V1
 
-- [ ] Creer `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
+- [x] Creer `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
   comme source-of-truth Notes V1 avant tout runtime.
-- [ ] Reporter dans la spec le modele produit Note, les surfaces utilisateur, les
+- [x] Reporter dans la spec le modele produit Note, les surfaces utilisateur, les
   limites deja decidees, les reason codes, les invariants de securite et les
   criteres Lot Z.
-- [ ] Acter le modele local dedie Notes comme precondition runtime obligatoire,
+- [x] Acter le modele local dedie Notes comme precondition runtime obligatoire,
   rattache a `workspace_folders.id` et distinct de `workspace_files`.
-- [ ] Acter que Notes V1 ne stocke pas le corps Markdown localement et que tout
+- [x] Acter que Notes V1 ne stocke pas le corps Markdown localement et que tout
   cache local de corps est post-V1.
-- [ ] Acter les limites initiales: 120_000 caracteres Markdown pour
+- [x] Acter les limites initiales: 120_000 caracteres Markdown pour
   lecture/preparation, 20_000 caracteres Markdown pour append entrant.
-- [ ] Acter que la recherche plein texte riche est hors V1.
-- [ ] Acter que les titres peuvent etre user-facing mais redacted/hashes dans
+- [x] Acter que la recherche plein texte riche est hors V1.
+- [x] Acter que les titres peuvent etre user-facing mais redacted/hashes dans
   les preuves techniques.
-- [ ] Acter que completer une note = append fin uniquement avec separateur
+- [x] Acter que completer une note = append fin uniquement avec separateur
   Markdown `\n\n---\n\n`, sans insertion ni reecriture globale.
-- [ ] Acter la garde ETag / `If-Match` pour toute modification.
-- [ ] Ne cocher aucun lot runtime.
+- [x] Acter la garde ETag / `If-Match` pour toute modification.
+- [x] Ne cocher aucun lot runtime.
 
 ### Lot 2 - Modele local / read-model Notes
 
@@ -369,7 +371,7 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 - Suppression implicite ou rangement silencieux de notes historiques.
 - Promesse de recherche plein texte non livree.
 - Mutation Nextcloud sans rollback/compensation.
-- Decision produit cachee dans un lot runtime.
+- Choix produit cache dans un lot applicatif.
 
 ## Hors-scope V1
 
@@ -397,7 +399,6 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 
 ## Prochain pas recommande
 
-Ouvrir Lot 1 - Contrat produit Notes V1. Ce lot doit creer la spec
-source-of-truth `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`,
-rester docs-only, ne livrer aucun runtime et ne laisser aucune decision produit
-cachee avant les lots runtime.
+Ouvrir Lot 2 - Modele local / read-model Notes. Ce lot devra appliquer le
+contrat source-of-truth, livrer le modele local dedie Notes, ne pas stocker le
+corps Markdown localement et ne cocher aucun Lot 3+.

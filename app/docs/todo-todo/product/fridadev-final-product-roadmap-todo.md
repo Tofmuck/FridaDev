@@ -68,6 +68,13 @@ lister les notes d'un dossier et stocker ces notes en Markdown dans Nextcloud.
 TODO dediee:
 `app/docs/todo-todo/product/frida-v1-folder-markdown-notes-todo.md`
 
+Contrat source:
+`app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
+
+Statut 2026-06-18: Lot 1 docs-only livre; le prochain lot Notes actif est le
+modele local / read-model dedie, sans runtime Nextcloud avant livraison du
+modele local.
+
 ### 4. Exports / creation documentaire
 
 Frida doit pouvoir produire des exports Markdown, TXT, DOCX et PDF, les ranger
