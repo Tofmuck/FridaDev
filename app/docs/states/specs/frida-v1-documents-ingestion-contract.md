@@ -679,6 +679,26 @@ Les preuves Documents V1 doivent rester content-free:
 Les smokes live utilisent des documents synthetiques. Les preuves
 d'infrastructure ne lisent pas et ne listent pas de contenu utilisateur.
 
+Lot 8 observabilite / smokes live livre le
+`2026-06-18`:
+
+- artefact:
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot8-observability-smokes-20260618T063834Z.jsonl`;
+- cas `met`: runtime redacted, upload texte, liste utilisateur, preparation
+  texte, PDF texte, fallback visuel via image synthetique de dossier, conflit
+  de nom, inventaire fichiers existants Lot 7, read-model observabilite, scan
+  logs, scan artefact et cleanup distant strict;
+- cas `LOT8_NON_LINKED_REFUSAL`: `partial` documente sans mutation DB forcee,
+  car aucun dossier actif non `linked` n'etait disponible; le refus reste un
+  invariant runtime/teste via `folder_document_folder_not_linked`;
+- invariant observe et consolide: apres upload Documents V1 reussi, la reponse
+  immediate doit exposer `nextcloud_sync_state=linked` dans les projections
+  utilisateur et technique si la liaison `workspace_file_nextcloud_links` a ete
+  persistee; elle ne doit jamais afficher `local_only` par fallback mensonger;
+- les lignes JSONL Lot 8 restent content-free: aucun contenu, nom de fichier
+  brut, chemin disque, URL DAV, XML, `storage_key`, secret, token, cookie,
+  app-password ou payload WebDAV brut.
+
 ## 16. Criteres de cloture Lot Z
 
 Documents V1 est clos seulement si toutes les preuves suivantes sont livrees:

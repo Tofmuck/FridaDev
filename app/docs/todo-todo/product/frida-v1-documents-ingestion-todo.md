@@ -1,6 +1,6 @@
 # Frida V1 - Documents sources / ingestion / lecture / PDF fallback - TODO
 
-Statut: Lot 7 fichiers workspace existants livre; prete pour Lot 8 observabilite / smokes live
+Statut: Lot 8 observabilite / smokes live livre; prete pour Lot Z cloture Documents V1
 Date: 2026-06-17
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -635,21 +635,40 @@ Preuve Lot 7:
 
 ### Lot 8 - Observabilite / smokes live
 
-- [ ] Appliquer le catalogue initial des reason codes Documents V1 grave au
+- [x] Appliquer le catalogue initial des reason codes Documents V1 grave au
   Lot 1.
-- [ ] Ajouter ou consolider les events content-free: depot, liste, preparation,
+- [x] Ajouter ou consolider les events content-free: depot, liste, preparation,
   lecture, PDF image detecte, fallback, conflit, erreur.
-- [ ] Exposer compteurs et statuts, pas contenu.
-- [ ] Exposer ids applicatifs, refs redacted ou hash courts, pas chemins.
-- [ ] Verifier que dashboard/read-model ne fuit ni contenu ni nom sensible non
+- [x] Exposer compteurs et statuts, pas contenu.
+- [x] Exposer ids applicatifs, refs redacted ou hash courts, pas chemins.
+- [x] Verifier que dashboard/read-model ne fuit ni contenu ni nom sensible non
   necessaire.
-- [ ] Produire JSONL content-free pour les smokes.
-- [ ] Prouver un depot/liste/preparation avec document synthetique.
-- [ ] Prouver le refus dossier non `linked`.
-- [ ] Prouver le conflit de nom.
-- [ ] Prouver PDF texte et PDF image/fallback sur les deux chemins.
-- [ ] Scanner les artefacts contre contenu, nom sensible, chemin DAV, URL DAV,
+- [x] Produire JSONL content-free pour les smokes.
+- [x] Prouver un depot/liste/preparation avec document synthetique.
+- [x] Prouver le refus dossier non `linked`.
+- [x] Prouver le conflit de nom.
+- [x] Prouver PDF texte et PDF image/fallback sur les deux chemins.
+- [x] Scanner les artefacts contre contenu, nom sensible, chemin DAV, URL DAV,
   XML brut, `storage_key`, token, cookie, `app-password`, secret.
+
+Lot 8 livre:
+
+- consolidation du read-model immediat d'upload: la reponse utilisateur et la
+  projection technique d'un upload Documents V1 expose maintenant l'etat
+  `linked` des que la liaison locale est persistee, sans nom cible brut;
+- smoke live synthetique content-free:
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot8-observability-smokes-20260618T063834Z.jsonl`;
+- cas `met`: runtime/secret redacted, upload texte, liste utilisateur,
+  preparation texte, PDF texte, fallback visuel via image de dossier, conflit
+  de nom, inventaire fichiers existants Lot 7, read-model observabilite,
+  scan logs, scan artefact, cleanup distant strict;
+- cas `LOT8_NON_LINKED_REFUSAL`: `partial` volontaire, car aucun dossier actif
+  non `linked` n'existait et le lot interdit de forcer l'etat DB pour fabriquer
+  une preuve live; le refus reste couvert par les tests unitaires/serveur
+  existants avec `folder_document_folder_not_linked`;
+- cleanup: `3` documents synthetiques supprimes via la route produit, cibles
+  Nextcloud synthetiques absentes en status-only, aucune source utilisateur
+  touchee.
 
 Artefacts attendus:
 
@@ -696,7 +715,7 @@ Artefacts attendus:
 - Presenter une extraction partielle comme complete.
 - Pretendre avoir lu un document trop gros, non injecte ou en erreur.
 
-## 10. Hors-scope strict des Lots 1-7 livres
+## 10. Hors-scope strict des Lots 1-8 livres
 
 - Aucun OCR nouveau Documents V1.
 - Aucun acces Nextcloud live hors smokes synthetiques bornes du lot concerne.
@@ -715,13 +734,11 @@ Artefacts attendus:
 
 ## 11. Prochain lot recommande
 
-Ouvrir `Lot 8 - Observabilite / smokes live`.
+Ouvrir `Lot Z - Cloture Documents V1`.
 
-Objectif Lot 8:
+Objectif Lot Z:
 
-- consolider les events et compteurs content-free de depot, liste, preparation,
-  lecture, PDF image detecte, fallback, conflit et erreur;
-- produire les smokes live Documents V1 transverses avec document synthetique;
-- scanner les preuves contre contenu, nom sensible, chemin DAV, URL DAV, XML,
-  `storage_key`, token, cookie, `app-password` et secret;
-- verifier que les preuves Lot 3 a Lot 7 restent coherentes avant Lot Z.
+- rejouer la validation de cloture sur les surfaces Documents V1 livrees;
+- verifier que les preuves Lot 3 a Lot 8 restent coherentes;
+- documenter les limites V1 restantes sans ouvrir Notes, Exports, Images,
+  Biblio, Memory/RAG/Identity/Summary ou un nouveau runtime par confusion.

@@ -129,6 +129,8 @@ def store_workspace_document_nextcloud_first(
                     "local": local_rollback,
                 },
             )
+        stored_with_link = dict(stored)
+        stored_with_link["document_nextcloud_link"] = _content_free_document_link(link)
         _log_event(
             workspace_files_module,
             "documents_v1_upload_ok",
@@ -140,7 +142,7 @@ def store_workspace_document_nextcloud_first(
         )
         return {
             "ok": True,
-            "file": stored,
+            "file": stored_with_link,
             "reason_code": document_client.REASON_UPLOAD_OK,
             "status": 201,
             "document_nextcloud": _technical_nextcloud_payload(
@@ -283,6 +285,18 @@ def _persist_nextcloud_link(
         )
     except Exception:
         return None
+
+
+def _content_free_document_link(link: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "lookup_state": "ok",
+        "nextcloud_sync_state": link.get("nextcloud_sync_state"),
+        "nextcloud_document_ref": link.get("nextcloud_document_ref"),
+        "nextcloud_name_hash": link.get("nextcloud_name_hash"),
+        "last_sync_reason_code": link.get("last_sync_reason_code"),
+        "last_sync_operation": link.get("last_sync_operation"),
+        "last_sync_at": link.get("last_sync_at"),
+    }
 
 
 def _delete_local_created_file(
