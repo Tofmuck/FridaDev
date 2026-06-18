@@ -529,8 +529,8 @@ Regles:
 - budget prompt Notes V1: une seule note injectee par tour et 120_000
   caracteres Markdown maximum au total;
 - toute note valide demandee au-dela de la limite est signalee comme non
-  injectee avec `folder_note_turn_limit_exceeded`, sans lecture silencieuse ni
-  troncature;
+  injectee avec `folder_note_turn_limit_exceeded` avant lecture distante, sans
+  recuperation Markdown silencieuse ni troncature;
 - aucun stockage local du corps;
 - aucune alimentation Memory/RAG/Identity/Summary;
 - note entiere ou refus propre;

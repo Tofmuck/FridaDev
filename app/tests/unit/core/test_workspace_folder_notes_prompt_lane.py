@@ -196,12 +196,16 @@ class WorkspaceFolderNotesPromptLaneTests(unittest.TestCase):
             over_limit_count=result.over_limit_count,
         )
 
-        self.assertEqual(len(reader.calls), workspace_folder_notes_prompt_lane.MAX_NOTES_PER_TURN)
+        self.assertEqual(
+            len(reader.calls),
+            workspace_folder_notes_prompt_lane.MAX_NOTES_INJECTED_PER_TURN,
+        )
+        self.assertEqual(reader.calls, [note_ids[0]])
         self.assertEqual(result.requested_count, 6)
-        self.assertEqual(result.over_limit_count, 1)
+        self.assertEqual(result.over_limit_count, 5)
         self.assertEqual(lane.not_injected_count, 5)
         self.assertIn(workspace_folder_notes.REASON_TURN_LIMIT_EXCEEDED, str(messages))
-        self.assertEqual(lane.as_content_free_dict()["over_limit_count"], 1)
+        self.assertEqual(lane.as_content_free_dict()["over_limit_count"], 5)
 
 
 if __name__ == "__main__":

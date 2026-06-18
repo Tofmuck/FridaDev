@@ -355,7 +355,8 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 - [x] Appliquer la limite initiale de 120_000 caracteres Markdown maximum.
 - [x] Appliquer le budget prompt Notes V1: une seule note injectee par tour,
   120_000 caracteres Markdown maximum au total, refus content-free
-  `folder_note_turn_limit_exceeded` pour les notes demandees hors limite.
+  `folder_note_turn_limit_exceeded` avant lecture distante pour les notes
+  demandees hors limite.
 - [x] Refuser proprement une note trop grande.
 - [x] Ne pas alimenter Memory/RAG/Identity/Summary.
 - [x] Ne pas logguer le corps Markdown brut.
@@ -372,6 +373,9 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
   et `note_nextcloud` restent content-free.
 - [x] Signaler explicitement les notes demandees mais non injectees, sans
   troncature silencieuse ni coupure invisible au-dela de la limite.
+- [ ] Dette hygiene: `workspace_folder_notes_prompt_lane.py` reste au-dessus de
+  500 lignes apres ce micro-correctif; extraire une responsabilite claire avant
+  tout elargissement de la lane Notes.
 
 ### Lot 8 - Observabilite / smokes live
 

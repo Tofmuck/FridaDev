@@ -119,7 +119,9 @@ def read_workspace_folder_notes_for_prompt(
         data,
         notes_module=workspace_folder_notes_module,
     )
-    valid_requested_count = len(note_ids) + len(over_limit_note_ids)
+    readable_note_ids = note_ids[:MAX_NOTES_INJECTED_PER_TURN]
+    turn_limit_note_ids = (*note_ids[MAX_NOTES_INJECTED_PER_TURN:], *over_limit_note_ids)
+    valid_requested_count = len(readable_note_ids) + len(turn_limit_note_ids)
     if not note_ids and not over_limit_note_ids and not invalid_count:
         return WorkspaceFolderNotesPromptRead(status=READ_STATUS_EMPTY)
 
@@ -129,8 +131,8 @@ def read_workspace_folder_notes_for_prompt(
     if not folder_id:
         return _blocked_prompt_read(
             workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
-            note_ids=note_ids,
-            over_limit_note_ids=over_limit_note_ids,
+            note_ids=readable_note_ids,
+            over_limit_note_ids=turn_limit_note_ids,
             invalid_count=invalid_count,
         )
 
@@ -142,15 +144,15 @@ def read_workspace_folder_notes_for_prompt(
     if not folder:
         return _blocked_prompt_read(
             workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
-            note_ids=note_ids,
-            over_limit_note_ids=over_limit_note_ids,
+            note_ids=readable_note_ids,
+            over_limit_note_ids=turn_limit_note_ids,
             invalid_count=invalid_count,
         )
     if folder.get("deleted_at"):
         return _blocked_prompt_read(
             "workspace_folder_deleted",
-            note_ids=note_ids,
-            over_limit_note_ids=over_limit_note_ids,
+            note_ids=readable_note_ids,
+            over_limit_note_ids=turn_limit_note_ids,
             invalid_count=invalid_count,
         )
 
@@ -160,7 +162,7 @@ def read_workspace_folder_notes_for_prompt(
             _invalid_read_result(workspace_folder_notes.REASON_NOT_FOUND)
             for _index in range(invalid_count)
         )
-    for note_id in note_ids:
+    for note_id in readable_note_ids:
         try:
             result = workspace_folder_notes_read_module.prepare_workspace_folder_note_for_conversation(
                 folder,
@@ -183,7 +185,7 @@ def read_workspace_folder_notes_for_prompt(
             note_id=note_id,
             folder_id=folder_id,
         )
-        for note_id in over_limit_note_ids
+        for note_id in turn_limit_note_ids
     )
 
     if not reads:
@@ -192,14 +194,14 @@ def read_workspace_folder_notes_for_prompt(
             reason_code=workspace_folder_notes.REASON_NOT_FOUND,
             requested_count=valid_requested_count,
             invalid_requested_count=invalid_count,
-            over_limit_count=len(over_limit_note_ids),
+            over_limit_count=len(turn_limit_note_ids),
         )
     return WorkspaceFolderNotesPromptRead(
         status=READ_STATUS_OK,
         note_reads=tuple(reads),
         requested_count=valid_requested_count,
         invalid_requested_count=invalid_count,
-        over_limit_count=len(over_limit_note_ids),
+        over_limit_count=len(turn_limit_note_ids),
     )
 
 
