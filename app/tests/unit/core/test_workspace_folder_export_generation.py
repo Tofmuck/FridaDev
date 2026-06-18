@@ -60,6 +60,30 @@ class WorkspaceFolderExportGenerationTests(unittest.TestCase):
         self.assertNotIn("# Synthese", result["export_content"])
         self.assertIn("Question utile", result["export_content"])
 
+    def test_generation_requires_valid_workspace_folder_id_before_source_read(self) -> None:
+        calls = []
+        missing = workspace_folder_export_generation.generate_workspace_folder_export(
+            _conversation_request(workspace_folder_id="")
+        )
+        invalid = workspace_folder_export_generation.generate_workspace_folder_export(
+            _conversation_request(workspace_folder_id="ProjetSecret")
+        )
+        note_missing_folder = workspace_folder_export_generation.generate_workspace_folder_export(
+            _conversation_request(source_kind="note", note_id="note-1", workspace_folder_id=""),
+            note_reader=lambda payload: calls.append(payload) or {
+                "ok": True,
+                "note_conversation": {"markdown_content": "Ne doit pas etre lu"},
+            },
+        )
+
+        self.assertFalse(missing["ok"])
+        self.assertEqual(missing["reason_code"], "folder_export_folder_invalid")
+        self.assertFalse(invalid["ok"])
+        self.assertEqual(invalid["reason_code"], "folder_export_folder_invalid")
+        self.assertFalse(note_missing_folder["ok"])
+        self.assertEqual(note_missing_folder["reason_code"], "folder_export_folder_invalid")
+        self.assertEqual(calls, [])
+
     def test_message_selection_and_frida_response_sources_are_explicit(self) -> None:
         selection = workspace_folder_export_generation.generate_workspace_folder_export(
             _conversation_request(

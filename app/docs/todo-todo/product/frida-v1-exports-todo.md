@@ -1,7 +1,7 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 2 livre, read-model local exports ouvert pour les lots
-runtime suivants.
+Statut: TODO Lot 3 livre, generation Markdown/TXT fake-local ouverte pour les
+lots runtime suivants.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -356,7 +356,8 @@ empiler cette logique dans les modules de read-model.
 
 - [x] Generer Markdown depuis les sources definies par la spec Lot 1.
 - [x] Generer TXT depuis les sources definies par la spec Lot 1.
-- [x] Acquerir chaque source par le chemin explicite defini dans la spec Lot 1.
+- [x] Acquerir les sources fake/local par payload explicite ou capacite injectee,
+  sans store conversationnel reel.
 - [x] Appliquer les limites de taille V1.
 - [x] Refuser proprement au-dela des limites.
 - [x] Ne pas tronquer silencieusement.
@@ -371,6 +372,27 @@ aucun WebDAV/Nextcloud live n'est appele par defaut. Un export existant comme
 source est refuse proprement sans reader fake/local explicite. Les projections
 restent metadata-only et `nextcloud_sync_state=sync_error` tant que Lot 5 n'a
 pas prouve le rangement distant.
+
+Correctif Lot 3.1 livre:
+
+- le flag source explicite accepte seulement le booleen strict `true`;
+  les chaines `"false"`, `"0"` ou arbitraires sont refusees;
+- la generation fake/local exige un `workspace_folder_id` UUID valide avant de
+  lire une source;
+- l'acquisition conversationnelle Lot 3 est requalifiee honnetement: elle lit
+  uniquement les messages fournis explicitement par l'appelant; elle ne prouve
+  pas encore la relecture depuis le store conversationnel reel.
+
+### Lot 3.2 - Acquisition conversationnelle store avant route/API
+
+- [ ] Brancher une acquisition conversationnelle reelle depuis le store
+  conversationnel existant.
+- [ ] Exclure les messages systeme/outils/techniques comme le contrat
+  `chat-copy-export-contract.md`.
+- [ ] Refuser content-free si la conversation ne peut pas etre relue
+  completement.
+- [ ] Prouver la lecture store par tests sans route publique nouvelle.
+- [ ] Ne pas ouvrir DOCX/PDF, Nextcloud/WebDAV ou UI.
 
 ### Lot 4 - Generation DOCX/PDF bornee fake/local
 
@@ -448,6 +470,7 @@ pas prouve le rangement distant.
 Catalogue initial content-free:
 
 - `folder_export_folder_not_linked`;
+- `folder_export_folder_invalid`;
 - `folder_export_exports_target_missing`;
 - `folder_export_exports_target_not_collection`;
 - `folder_export_exports_target_unavailable`;
@@ -535,6 +558,6 @@ Interdits dans preuves techniques:
 
 ## Prochain pas
 
-Ouvrir Lot 4 - Generation DOCX/PDF bornee fake/local. Ce lot devra verifier les
-dependances disponibles, refuser clairement si elles manquent, ne pas vendre une
-conversion partielle comme complete et ne pas encore ranger dans Nextcloud.
+Ouvrir Lot 3.2 - Acquisition conversationnelle store avant route/API. Ce lot
+devra prouver la relecture conversationnelle reelle depuis le store existant,
+sans route publique, sans Nextcloud/WebDAV et sans DOCX/PDF.

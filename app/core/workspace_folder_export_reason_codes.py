@@ -4,6 +4,7 @@ from __future__ import annotations
 
 
 REASON_FOLDER_NOT_LINKED = "folder_export_folder_not_linked"
+REASON_FOLDER_INVALID = "folder_export_folder_invalid"
 REASON_FOLDER_DELETED = "folder_export_folder_deleted"
 REASON_EXPORTS_TARGET_MISSING = "folder_export_exports_target_missing"
 REASON_EXPORTS_TARGET_NOT_COLLECTION = "folder_export_exports_target_not_collection"
@@ -36,6 +37,7 @@ REASON_NEXTCLOUD_ERROR_REDACTED = "folder_export_nextcloud_error_redacted"
 REASON_CODE_CATALOG = frozenset(
     {
         REASON_FOLDER_NOT_LINKED,
+        REASON_FOLDER_INVALID,
         REASON_FOLDER_DELETED,
         REASON_EXPORTS_TARGET_MISSING,
         REASON_EXPORTS_TARGET_NOT_COLLECTION,

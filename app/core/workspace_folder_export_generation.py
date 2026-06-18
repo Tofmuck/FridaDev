@@ -37,6 +37,12 @@ def generate_workspace_folder_export(
     if export_format not in SUPPORTED_FAKE_LOCAL_FORMATS:
         return _failure(workspace_folder_exports.REASON_FORMAT_UNSUPPORTED, export_format=export_format)
 
+    workspace_folder_id = workspace_folder_exports.normalize_workspace_folder_id(
+        payload.get("workspace_folder_id")
+    )
+    if not workspace_folder_id:
+        return _failure(workspace_folder_exports.REASON_FOLDER_INVALID, export_format=export_format)
+
     source = acquire_export_source(
         payload,
         note_reader=note_reader,

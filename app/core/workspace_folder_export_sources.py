@@ -306,7 +306,7 @@ def _source_ref(source_kind: str, source_seed: Any) -> str:
 
 def _is_explicit(payload: Mapping[str, Any]) -> bool:
     return any(
-        bool(payload.get(key))
+        payload.get(key) is True
         for key in ("explicit", "explicit_source", "user_explicit", "user_action_confirmed")
     )
 

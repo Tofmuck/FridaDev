@@ -312,6 +312,20 @@ Lot 3 livre la generation fake/local Markdown/TXT sans stockage Nextcloud:
   le rangement distant;
 - DOCX/PDF, routes publiques et rangement sous `/Exports` restent hors Lot 3.
 
+Correctif Lot 3.1:
+
+- le moteur fake/local exige un `workspace_folder_id` UUID valide avant toute
+  acquisition de source;
+- l'indicateur de source explicite est le booleen strict `true`; les chaines ou
+  valeurs truthy ne suffisent pas;
+- l'acquisition conversationnelle Lot 3 est limitee aux messages fournis
+  explicitement par l'appelant. Elle ne prouve pas encore la relecture depuis le
+  store conversationnel reel de la section 4.1;
+- avant toute route/API Exports qui exporte une conversation complete, un
+  micro-lot doit brancher et tester la lecture du store conversationnel
+  existant, ou refuser l'export content-free si cette lecture complete n'est
+  pas disponible.
+
 ## 7. Cible Nextcloud et stockage
 
 La cible normative est:
@@ -459,6 +473,7 @@ Interdits en projection technique, logs, JSONL, observabilite et preuves:
 Catalogue initial content-free:
 
 - `folder_export_folder_not_linked`;
+- `folder_export_folder_invalid`;
 - `folder_export_folder_deleted`;
 - `folder_export_exports_target_missing`;
 - `folder_export_exports_target_not_collection`;

@@ -29,6 +29,32 @@ class WorkspaceFolderExportSourcesTests(unittest.TestCase):
         self.assertEqual(source.counters["message_count"], 2)
         self.assertTrue(source.source_ref.startswith("conversation:11111111:"))
 
+    def test_explicit_flag_must_be_strict_boolean_true(self) -> None:
+        for value in ("false", "0", "no", "yes", "arbitrary", ["true"], {"ok": True}, 1):
+            with self.subTest(value=value):
+                source = workspace_folder_export_sources.acquire_export_source(
+                    {
+                        "source_kind": "conversation",
+                        "explicit_source": value,
+                        "messages": [{"id": "u1", "role": "user", "content": "Bonjour"}],
+                    }
+                )
+
+                self.assertFalse(source.ok)
+                self.assertEqual(source.reason_code, "folder_export_source_ambiguous")
+
+    def test_explicit_boolean_true_is_accepted(self) -> None:
+        source = workspace_folder_export_sources.acquire_export_source(
+            {
+                "source_kind": "conversation",
+                "explicit_source": True,
+                "messages": [{"id": "u1", "role": "user", "content": "Bonjour"}],
+            }
+        )
+
+        self.assertTrue(source.ok)
+        self.assertIn("Bonjour", source.content)
+
     def test_message_selection_requires_explicit_ids_and_preserves_conversation_order(self) -> None:
         source = workspace_folder_export_sources.acquire_export_source(
             {
