@@ -128,6 +128,17 @@ La lecture applique la limite V1 de 120_000 caracteres Markdown et refuse une
 note trop grande sans troncature silencieuse. Elle ne nourrit jamais
 Memory/RAG/Identity/Summary.
 
+Depuis le Lot 8, l'observabilite et les smokes transverses Notes V1 sont
+valides par artefact content-free:
+`app/docs/states/baselines/notes-smokes/frida-v1-notes-lot8-observability-smokes-20260618T125408Z.jsonl`.
+
+Cette preuve couvre create, collision de nom, list, lookup, append,
+read/prepare, injection de la lane Notes utilisee par `/api/chat`, cleanup
+synthetique, scan d'observabilite et scan d'artefact. Le cas conflit
+ETag/version live est volontairement `not_applicable` / `covered_by_unit_tests`
+en Lot 8; il ne doit pas etre presente comme `met` sans preuve live propre sur
+une cible synthetique.
+
 ## 2. Modele produit Notes V1
 
 Une note Notes V1 est un fichier Markdown rattache a un dossier Frida produit.

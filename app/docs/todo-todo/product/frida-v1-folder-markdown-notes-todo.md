@@ -1,7 +1,7 @@
 # Frida V1 - Notes Markdown par dossier - TODO
 
-Statut: TODO detaillee, Lot 7 lecture conversationnelle Notes livre, smokes
-transverses non commences.
+Statut: TODO detaillee, Lot 8 observabilite / smokes live Notes livre, Lot Z
+non ouvert.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -18,6 +18,8 @@ Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-tod
   `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
 - Preuve live Lot 3:
   `app/docs/states/baselines/notes-smokes/frida-v1-notes-lot3-create-live-20260618T095734Z.jsonl`
+- Preuve live Lot 8:
+  `app/docs/states/baselines/notes-smokes/frida-v1-notes-lot8-observability-smokes-20260618T125408Z.jsonl`
 
 ## Objectif produit
 
@@ -379,17 +381,20 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ### Lot 8 - Observabilite / smokes live
 
-- [ ] Produire des events/read-model techniques content-free pour create, list,
+- [x] Produire des events/read-model techniques content-free pour create, list,
   lookup, append, read et conflicts.
-- [ ] Produire un JSONL live content-free avec notes synthetiques uniquement.
-- [ ] Prouver creation, collision, list, lookup, append, read et cleanup
+- [x] Produire un JSONL live content-free avec notes synthetiques uniquement.
+- [x] Prouver creation, collision, list, lookup, append, read et cleanup
   synthetiques.
-- [ ] Tenter un smoke synthetique de conflit ETag/version si possible sans
+- [x] Prouver l'injection `/api/chat` via `workspace_note_id` dans la meme lane
+  applicative que la route, avec provider fake et observabilite content-free.
+- [x] Tenter un smoke synthetique de conflit ETag/version si possible sans
   toucher de contenu utilisateur; sinon marquer le cas `not_applicable` /
-  `covered_by_unit_tests`, jamais `met`.
-- [ ] Scanner logs/preuves contre corps Markdown, noms sensibles, DAV/XML,
+  `covered_by_unit_tests`, jamais `met`. Lot 8 marque ce cas
+  `not_applicable` / `covered_by_unit_tests`.
+- [x] Scanner logs/preuves contre corps Markdown, noms sensibles, DAV/XML,
   payload WebDAV et secrets.
-- [ ] Ne toucher aucun contenu utilisateur reel.
+- [x] Ne toucher aucun contenu utilisateur reel.
 
 ### Lot Z - Cloture Notes V1
 
@@ -445,6 +450,7 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ## Prochain pas
 
-Ouvrir Lot 8 - Observabilite / smokes live. Ce lot devra produire des preuves
-content-free create/list/lookup/append/read sur notes synthetiques, scanner les
-fuites et ne cocher aucun Lot Z.
+Ouvrir Lot Z - Cloture Notes V1. Ce lot devra rejouer/relire les preuves
+transverses, documenter la limite ETag live `not_applicable` /
+`covered_by_unit_tests`, verifier l'absence de fuite et ne pas rouvrir les
+chantiers Documents, Exports, Images, Biblio, Agenda, Mail ou Memory/RAG.
