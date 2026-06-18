@@ -2,12 +2,37 @@ from __future__ import annotations
 
 import unittest
 
+from core import workspace_folder_export_conversation_store
 from core import workspace_folder_export_generation
 from core import workspace_folder_exports
 
 
 FOLDER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
 EXPORT_ID = "11111111-2222-4333-8444-555555555555"
+CONVERSATION_ID = "22222222-3333-4444-8555-666666666666"
+
+
+class _FakeConversationStore:
+    def normalize_conversation_id(self, value):
+        return CONVERSATION_ID if value == CONVERSATION_ID else None
+
+    def get_conversation_summary(self, conversation_id, *, include_deleted=False):
+        return {
+            "id": conversation_id,
+            "title": "Conversation store",
+            "message_count": 2,
+            "deleted_at": None,
+        }
+
+    def read_conversation(self, conversation_id, system_prompt):
+        return {
+            "id": conversation_id,
+            "messages": [
+                {"role": "system", "content": "system prompt interdit"},
+                {"role": "user", "content": "Question depuis store"},
+                {"role": "assistant", "content": "Reponse depuis store"},
+            ],
+        }
 
 
 def _conversation_request(**overrides):
@@ -59,6 +84,22 @@ class WorkspaceFolderExportGenerationTests(unittest.TestCase):
         self.assertIn("Synthese", result["export_content"])
         self.assertNotIn("# Synthese", result["export_content"])
         self.assertIn("Question utile", result["export_content"])
+
+    def test_generates_markdown_from_conversation_store_without_payload_messages(self) -> None:
+        result = workspace_folder_export_generation.generate_workspace_folder_export(
+            _conversation_request(messages=[]),
+            conversation_reader=lambda payload: workspace_folder_export_conversation_store.read_conversation_source(
+                payload,
+                conv_store_module=_FakeConversationStore(),
+            ),
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertIn("Question depuis store", result["export_content"])
+        self.assertIn("Reponse depuis store", result["export_content"])
+        self.assertNotIn("system prompt interdit", result["export_content"])
+        self.assertNotIn("Question depuis store", str(result["export_v1_technical"]))
+        self.assertTrue(result["export_v1_technical"]["source_ref"].startswith("conversation:22222222:"))
 
     def test_generation_requires_valid_workspace_folder_id_before_source_read(self) -> None:
         calls = []

@@ -2,7 +2,35 @@ from __future__ import annotations
 
 import unittest
 
+from core import workspace_folder_export_conversation_store
 from core import workspace_folder_export_sources
+
+
+CONVERSATION_ID = "22222222-3333-4444-8555-666666666666"
+
+
+class _FakeConversationStore:
+    def __init__(self, *, summary=None, conversation=None, normalized=CONVERSATION_ID):
+        self.summary = summary
+        self.conversation = conversation
+        self.normalized = normalized
+        self.calls = []
+
+    def normalize_conversation_id(self, value):
+        self.calls.append(("normalize", value))
+        return self.normalized
+
+    def get_conversation_summary(self, conversation_id, *, include_deleted=False):
+        self.calls.append(("summary", conversation_id, include_deleted))
+        if self.summary == "raise":
+            raise RuntimeError("raw store failure")
+        return self.summary
+
+    def read_conversation(self, conversation_id, system_prompt):
+        self.calls.append(("read", conversation_id, system_prompt))
+        if self.conversation == "raise":
+            raise RuntimeError("raw read failure")
+        return self.conversation
 
 
 class WorkspaceFolderExportSourcesTests(unittest.TestCase):
@@ -28,6 +56,78 @@ class WorkspaceFolderExportSourcesTests(unittest.TestCase):
         self.assertNotIn("payload technique", source.content)
         self.assertEqual(source.counters["message_count"], 2)
         self.assertTrue(source.source_ref.startswith("conversation:11111111:"))
+
+    def test_conversation_source_reads_store_when_messages_are_absent(self) -> None:
+        fake_store = _FakeConversationStore(
+            summary={
+                "id": CONVERSATION_ID,
+                "title": "Conversation source",
+                "message_count": 2,
+                "deleted_at": None,
+            },
+            conversation={
+                "id": CONVERSATION_ID,
+                "messages": [
+                    {"role": "system", "content": "system prompt interdit"},
+                    {"role": "user", "content": "Question relue"},
+                    {"role": "tool", "content": "payload outil interdit"},
+                    {"role": "assistant", "content": "Reponse relue", "meta": {"private_meta": "non"}},
+                ],
+            },
+        )
+
+        source = workspace_folder_export_sources.acquire_export_source(
+            {
+                "source_kind": "conversation",
+                "explicit_source": True,
+                "conversation_id": CONVERSATION_ID,
+            },
+            conversation_reader=lambda payload: workspace_folder_export_conversation_store.read_conversation_source(
+                payload,
+                conv_store_module=fake_store,
+            ),
+        )
+
+        self.assertTrue(source.ok)
+        self.assertIn(("summary", CONVERSATION_ID, True), fake_store.calls)
+        self.assertIn(("read", CONVERSATION_ID, ""), fake_store.calls)
+        self.assertIn("Question relue", source.content)
+        self.assertIn("Reponse relue", source.content)
+        self.assertNotIn("system prompt interdit", source.content)
+        self.assertNotIn("payload outil interdit", source.content)
+        self.assertNotIn("private_meta", source.content)
+        self.assertTrue(source.source_ref.startswith("conversation:22222222:"))
+
+    def test_conversation_store_reader_refuses_deleted_incomplete_or_failed_reads(self) -> None:
+        deleted = workspace_folder_export_conversation_store.read_conversation_source(
+            {"conversation_id": CONVERSATION_ID},
+            conv_store_module=_FakeConversationStore(
+                summary={"id": CONVERSATION_ID, "message_count": 1, "deleted_at": "2026-06-18T10:00:00Z"},
+                conversation={"messages": [{"role": "user", "content": "ignore"}]},
+            ),
+        )
+        incomplete = workspace_folder_export_conversation_store.read_conversation_source(
+            {"conversation_id": CONVERSATION_ID},
+            conv_store_module=_FakeConversationStore(
+                summary={"id": CONVERSATION_ID, "message_count": 2, "deleted_at": None},
+                conversation={"messages": [{"role": "user", "content": "only one"}]},
+            ),
+        )
+        failed = workspace_folder_export_conversation_store.read_conversation_source(
+            {"conversation_id": CONVERSATION_ID},
+            conv_store_module=_FakeConversationStore(summary="raise"),
+        )
+        invalid = workspace_folder_export_conversation_store.read_conversation_source(
+            {"conversation_id": "not-a-uuid"},
+            conv_store_module=_FakeConversationStore(normalized=None),
+        )
+
+        self.assertEqual(deleted["reason_code"], "folder_export_source_unavailable")
+        self.assertEqual(incomplete["reason_code"], "folder_export_source_read_unavailable")
+        self.assertEqual(failed["reason_code"], "folder_export_source_read_unavailable")
+        self.assertEqual(invalid["reason_code"], "folder_export_source_unavailable")
+        self.assertNotIn("ignore", str(deleted))
+        self.assertNotIn("only one", str(incomplete))
 
     def test_explicit_flag_must_be_strict_boolean_true(self) -> None:
         for value in ("false", "0", "no", "yes", "arbitrary", ["true"], {"ok": True}, 1):

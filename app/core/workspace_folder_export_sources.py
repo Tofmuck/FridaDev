@@ -62,6 +62,7 @@ class ExportSource:
 def acquire_export_source(
     request: Mapping[str, Any] | None,
     *,
+    conversation_reader: Reader | None = None,
     note_reader: Reader | None = None,
     document_reader: Reader | None = None,
     export_reader: Reader | None = None,
@@ -78,7 +79,7 @@ def acquire_export_source(
         )
 
     if source_kind == workspace_folder_exports.SOURCE_CONVERSATION:
-        return _conversation_source(payload)
+        return _conversation_source(payload, conversation_reader=conversation_reader)
     if source_kind == workspace_folder_exports.SOURCE_MESSAGE_SELECTION:
         return _message_selection_source(payload)
     if source_kind == workspace_folder_exports.SOURCE_FRIDA_RESPONSE:
@@ -119,8 +120,14 @@ def acquire_export_source(
     return _reject(workspace_folder_exports.REASON_SOURCE_UNSUPPORTED, source_kind=source_kind)
 
 
-def _conversation_source(payload: Mapping[str, Any]) -> ExportSource:
+def _conversation_source(
+    payload: Mapping[str, Any],
+    *,
+    conversation_reader: Reader | None = None,
+) -> ExportSource:
     messages = _messages(payload)
+    if not messages:
+        return _conversation_store_source(payload, conversation_reader=conversation_reader)
     exportable = _exportable_messages(messages)
     if not exportable:
         return _reject(workspace_folder_exports.REASON_SOURCE_UNAVAILABLE, source_kind=workspace_folder_exports.SOURCE_CONVERSATION)
@@ -129,6 +136,35 @@ def _conversation_source(payload: Mapping[str, Any]) -> ExportSource:
         workspace_folder_exports.SOURCE_CONVERSATION,
         payload.get("conversation_id") or payload.get("source_id") or "conversation",
         payload.get("title") or "Conversation",
+        content,
+        counters={"message_count": len(exportable)},
+    )
+
+
+def _conversation_store_source(
+    payload: Mapping[str, Any],
+    *,
+    conversation_reader: Reader | None = None,
+) -> ExportSource:
+    source_id = _clean_text(payload.get("conversation_id") or payload.get("source_id"))
+    if not source_id:
+        return _reject(workspace_folder_exports.REASON_SOURCE_MISSING, source_kind=workspace_folder_exports.SOURCE_CONVERSATION)
+    reader = conversation_reader or _default_conversation_reader
+    try:
+        result = dict(reader(payload) or {})
+    except Exception:
+        return _reject(workspace_folder_exports.REASON_SOURCE_READ_UNAVAILABLE, source_kind=workspace_folder_exports.SOURCE_CONVERSATION, source_seed=source_id)
+    if result.get("ok") is False:
+        return _reject(_safe_reason(result.get("reason_code")), source_kind=workspace_folder_exports.SOURCE_CONVERSATION, source_seed=source_id)
+    messages = _messages(result)
+    exportable = _exportable_messages(messages)
+    if not exportable:
+        return _reject(workspace_folder_exports.REASON_SOURCE_UNAVAILABLE, source_kind=workspace_folder_exports.SOURCE_CONVERSATION, source_seed=source_id)
+    content = _render_messages(exportable)
+    return _bounded_source(
+        workspace_folder_exports.SOURCE_CONVERSATION,
+        result.get("conversation_id") or source_id,
+        result.get("title") or payload.get("title") or "Conversation",
         content,
         counters={"message_count": len(exportable)},
     )
@@ -302,6 +338,12 @@ def _source_kind(value: Any) -> str:
 def _source_ref(source_kind: str, source_seed: Any) -> str:
     prefix = _SOURCE_REF_PREFIX.get(source_kind, "")
     return workspace_folder_export_refs.build_source_ref(prefix, source_seed)
+
+
+def _default_conversation_reader(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    from . import workspace_folder_export_conversation_store
+
+    return workspace_folder_export_conversation_store.read_conversation_source(payload)
 
 
 def _is_explicit(payload: Mapping[str, Any]) -> bool:

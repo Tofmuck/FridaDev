@@ -26,6 +26,7 @@ SUPPORTED_FAKE_LOCAL_FORMATS = frozenset(
 def generate_workspace_folder_export(
     request: Mapping[str, Any] | None,
     *,
+    conversation_reader: Reader | None = None,
     note_reader: Reader | None = None,
     document_reader: Reader | None = None,
     export_reader: Reader | None = None,
@@ -45,6 +46,7 @@ def generate_workspace_folder_export(
 
     source = acquire_export_source(
         payload,
+        conversation_reader=conversation_reader,
         note_reader=note_reader,
         document_reader=document_reader,
         export_reader=export_reader,

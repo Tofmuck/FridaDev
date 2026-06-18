@@ -326,6 +326,22 @@ Correctif Lot 3.1:
   existant, ou refuser l'export content-free si cette lecture complete n'est
   pas disponible.
 
+Lot 3.2 livre l'acquisition conversationnelle depuis le store applicatif:
+
+- `app/core/workspace_folder_export_conversation_store.py` lit `conv_store`
+  depuis le core, sans Flask, sans route publique et sans UI;
+- la lecture exige un `conversation_id` valide et une demande explicite deja
+  verifiee par le moteur d'acquisition;
+- les conversations absentes, supprimees, illisibles, incompletes ou en panne
+  store sont refusees avec reason code content-free;
+- seuls les messages `user` et `assistant` sont transmis au rendu
+  Markdown/TXT, dans l'ordre conversationnel;
+- les messages systeme, outils, meta et surfaces techniques restent exclus;
+- le contenu conversationnel brut n'apparait que dans `export_content` retourne
+  au caller utile, jamais en projection technique, logs, JSONL ou read-model;
+- DOCX/PDF, routes publiques, Nextcloud/WebDAV et stockage sous `/Exports`
+  restent hors Lot 3.2.
+
 ## 7. Cible Nextcloud et stockage
 
 La cible normative est:

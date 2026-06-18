@@ -1,7 +1,7 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 3 livre, generation Markdown/TXT fake-local ouverte pour les
-lots runtime suivants.
+Statut: TODO Lot 3.2 livre, acquisition conversationnelle store fermee avant
+les lots runtime suivants.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -385,14 +385,20 @@ Correctif Lot 3.1 livre:
 
 ### Lot 3.2 - Acquisition conversationnelle store avant route/API
 
-- [ ] Brancher une acquisition conversationnelle reelle depuis le store
+- [x] Brancher une acquisition conversationnelle reelle depuis le store
   conversationnel existant.
-- [ ] Exclure les messages systeme/outils/techniques comme le contrat
+- [x] Exclure les messages systeme/outils/techniques comme le contrat
   `chat-copy-export-contract.md`.
-- [ ] Refuser content-free si la conversation ne peut pas etre relue
+- [x] Refuser content-free si la conversation ne peut pas etre relue
   completement.
-- [ ] Prouver la lecture store par tests sans route publique nouvelle.
-- [ ] Ne pas ouvrir DOCX/PDF, Nextcloud/WebDAV ou UI.
+- [x] Prouver la lecture store par tests sans route publique nouvelle.
+- [x] Ne pas ouvrir DOCX/PDF, Nextcloud/WebDAV ou UI.
+
+Lot 3.2 livre `workspace_folder_export_conversation_store.py`, une facade core
+qui lit `conv_store` sans passer par Flask ni par une route publique. La lecture
+exige un `conversation_id` valide, refuse les conversations supprimees ou
+incompletes, conserve uniquement les messages `user`/`assistant` dans l'ordre et
+reste content-free hors `export_content`.
 
 ### Lot 4 - Generation DOCX/PDF bornee fake/local
 
@@ -544,7 +550,7 @@ Interdits dans preuves techniques:
 - Migration ou import d'exports historiques sans lot dedie.
 - Listing large de contenu Nextcloud comme preuve.
 
-## Hors-scope courant apres Lot 3
+## Hors-scope courant apres Lot 3.2
 
 - Pas de route serveur.
 - Pas de UI.
@@ -558,6 +564,6 @@ Interdits dans preuves techniques:
 
 ## Prochain pas
 
-Ouvrir Lot 3.2 - Acquisition conversationnelle store avant route/API. Ce lot
-devra prouver la relecture conversationnelle reelle depuis le store existant,
-sans route publique, sans Nextcloud/WebDAV et sans DOCX/PDF.
+Ouvrir Lot 4 - Generation DOCX/PDF bornee fake/local. Ce lot devra verifier les
+dependances disponibles, refuser clairement si elles manquent, ne pas vendre une
+conversion partielle comme complete et ne pas encore ranger dans Nextcloud.
