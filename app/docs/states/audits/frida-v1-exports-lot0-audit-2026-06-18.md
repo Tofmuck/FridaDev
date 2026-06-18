@@ -32,7 +32,12 @@ modele produit sans decisions Lot 1.
 - `app/tests/integration/frontend_admin/test_frontend_logs_phase5.py`
 - `app/core/workspace_folder_standard_subfolders.py`
 - `app/core/workspace_document_nextcloud_client.py`
+- `app/core/workspace_document_nextcloud_runtime.py`
+- `app/core/workspace_document_existing_files.py`
 - `app/core/workspace_folder_note_nextcloud_client.py`
+- `app/core/workspace_folder_note_nextcloud_runtime.py`
+- `app/core/workspace_folder_notes_append.py`
+- `app/core/workspace_folder_nextcloud_runtime.py`
 - `app/requirements.txt`
 - `package.json`
 
@@ -332,16 +337,17 @@ et une action utilisateur explicite.
 
 ## Briques disponibles
 
-### Reutilisables telles quelles
+### Patterns reutilisables
 
 - constantes de sous-dossiers standards, dont `Exports`;
 - patterns de tests anti-metadonnees de `chat_copy_export`;
 - patterns frontend de bouton explicite si Lot 1 garde une surface chat;
 - pattern de reponse HTTP Markdown et attachement, sans contenu admin;
-- `PROPFIND Depth: 0` + verification collection, a reprendre via client dedie;
-- `PUT` anti-ecrasement et compensation stricte, a adapter depuis Documents et
-  Notes;
 - projections user/tech content-free deja pratiquees dans Documents/Notes.
+
+Ces elements sont des patterns de conception, pas des blocs a copier. Tout
+runtime Nextcloud Exports devra passer par un client Exports dedie, des reason
+codes Exports et des tests Exports.
 
 ### A adapter
 
@@ -349,7 +355,19 @@ et une action utilisateur explicite.
   source decidee, limites, read-model et stockage;
 - export admin HTTP: uniquement pour mechanics de reponse, jamais pour contenu;
 - clients WebDAV Documents/Notes: structure utile, mais un client Exports dedie
-  est preferable;
+  est obligatoire;
+- `PROPFIND Depth: 0` + verification collection: pattern a reprendre avec la
+  cible `Exports`, pas code a copier tel quel;
+- `PUT` anti-ecrasement et creation sure: pattern a adapter depuis Documents et
+  Notes, avec reason codes Exports;
+- rollback/compensation Nextcloud-first: patterns a auditer dans
+  `app/core/workspace_folder_nextcloud_runtime.py`,
+  `app/core/workspace_document_nextcloud_runtime.py`,
+  `app/core/workspace_document_existing_files.py`,
+  `app/core/workspace_folder_note_nextcloud_runtime.py` et
+  `app/core/workspace_folder_notes_append.py`;
+- chaque pattern de compensation doit etre revalide pour Exports: cible exacte,
+  source preservee, absence d'overwrite, rollback strict et statut content-free;
 - tests serveur Notes/Documents: utiles comme forme, pas comme modele produit.
 
 ### A eviter
@@ -403,5 +421,6 @@ Lot 1 doit etre docs-only et creer la spec source-of-truth Exports V1. Il doit:
   explicitement tout changement;
 - confirmer que l'export admin logs reste strictement admin.
 
-Si une decision humaine manque, Lot 1 doit s'arreter avant patch runtime et
-demander explicitement. Il ne doit pas choisir en avancant.
+Si une decision humaine manque, Lot 1 doit s'arreter avant d'ecrire ou committer
+la spec, avant de cocher Lot 1, et demander explicitement. Il ne doit pas
+"fermer" une decision en l'inventant.

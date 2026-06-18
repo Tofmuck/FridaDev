@@ -280,7 +280,7 @@ testable et reversible.
 - [x] Auditer l'export Markdown technique des logs admin.
 - [x] Auditer les routes, helpers, tests frontend/backend et dependances
   disponibles autour de Markdown, TXT, DOCX et PDF.
-- [x] Identifier les briques reutilisables telles quelles.
+- [x] Identifier les patterns reutilisables et leurs limites.
 - [x] Identifier les briques a adapter.
 - [x] Identifier les briques a eviter pour ne pas confondre Exports V1 avec
   logs admin, Documents, Notes ou simple telechargement navigateur.
@@ -293,9 +293,10 @@ testable et reversible.
 
 - [ ] Creer `app/docs/states/specs/frida-v1-exports-contract.md`.
 - [ ] Fermer toutes les decisions ouvertes avant runtime.
-- [ ] Si une decision produit humaine manque, s'arreter avant tout patch
-  runtime et demander explicitement; Lot 1 documente les choix deja tranches,
-  mais ne choisit pas en avancant.
+- [ ] Si une decision produit humaine manque, s'arreter avant d'ecrire ou
+  committer la spec, avant de cocher Lot 1, et demander explicitement; Lot 1
+  documente les choix deja tranches, mais ne ferme jamais une decision en
+  l'inventant.
 - [ ] Definir le modele produit Export V1.
 - [ ] Definir les sources exportables V1.
 - [ ] Definir les formats, limites, messages utilisateur et reason codes.
