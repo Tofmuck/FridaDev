@@ -86,6 +86,22 @@ ambiguite avec `folder_note_lookup_ambiguous`, distingue une note absente
 la projection technique sans titre brut, corps Markdown, ETag brut, cible
 distante brute, chemin/URL DAV, XML ou secret.
 
+Depuis le Lot 6, l'append final d'une note existante est livre par:
+
+- `app/core/workspace_folder_notes_append.py` pour l'orchestration `GET` borne,
+  ETag, append en memoire et `PUT If-Match`;
+- `POST /api/workspace-folders/<folder_id>/notes/<note_id>/append` pour la
+  surface HTTP namespaced.
+
+Le Lot 6 lit le corps Markdown distant uniquement en memoire pendant
+l'operation, refuse append vide, append trop long, note totale trop longue,
+ETag absent, conflit `If-Match`, note non eligible et panne locale/distante. Il
+ne persiste jamais le corps Markdown localement. Si le PUT distant reussit puis
+la persistance locale echoue, une compensation distante stricte tente de
+restaurer le contenu precedent avec l'ETag post-append; si elle echoue ou est
+impossible, l'API retourne un etat content-free d'echec partiel et jamais un
+succes silencieux.
+
 ## 2. Modele produit Notes V1
 
 Une note Notes V1 est un fichier Markdown rattache a un dossier Frida produit.
@@ -401,6 +417,41 @@ Notes V1 ne livre pas de recherche plein texte riche dans le corps Markdown.
 ### 6.4 Completer une note
 
 Completer signifie append uniquement a la fin de la note existante.
+
+Surface livree Lot 6:
+
+```text
+POST /api/workspace-folders/<folder_id>/notes/<note_id>/append
+```
+
+Payload utilisateur:
+
+```json
+{"markdown": "bloc Markdown a ajouter"}
+```
+
+Invariants Lot 6:
+
+- resolution par `note_id` uniquement; un titre doit passer par le lookup Lot 5;
+- dossier `linked` obligatoire;
+- note active, disponible et `linked` obligatoire;
+- corps Markdown lu depuis Nextcloud par GET borne uniquement en memoire;
+- ETag distant obligatoire;
+- append final uniquement, avec separateur `\n\n---\n\n` si la note existante
+  n'est pas vide;
+- ecriture par PUT avec `If-Match`;
+- conflit ETag/version: `folder_note_version_conflict`;
+- append vide: `folder_note_append_empty`;
+- append entrant au-dessus de 20_000 caracteres: `folder_note_append_too_large`;
+- note totale au-dessus de 120_000 caracteres apres append:
+  `folder_note_too_large`;
+- GET distant impossible: `folder_note_remote_read_failed`;
+- PUT distant impossible: `folder_note_remote_write_failed`;
+- ETag absent: `folder_note_etag_missing`;
+- panne de persistence locale apres PUT: `folder_note_local_persistence_failed`
+  avec compensation distante tentee et resultat content-free;
+- aucun corps Markdown, ETag brut, target name, chemin/URL DAV, XML, payload
+  WebDAV ou secret dans logs, JSONL, observabilite ou projection technique.
 
 Interdits:
 

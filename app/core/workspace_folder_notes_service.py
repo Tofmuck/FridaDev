@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Tuple
 
 from . import workspace_folder_note_nextcloud_runtime
+from . import workspace_folder_notes_append
 from . import workspace_folder_notes_lookup
 from . import workspace_folder_notes_list
 from . import workspace_folder_notes
@@ -155,6 +156,53 @@ def lookup_workspace_folder_note_response(
     }, 200
 
 
+def append_workspace_folder_note_response(
+    folder_id: str,
+    note_id: str,
+    data: Mapping[str, Any],
+    *,
+    workspace_folders_module: Any,
+    workspace_folder_notes_module: Any = workspace_folder_notes,
+    notes_append_module: Any = workspace_folder_notes_append,
+) -> Tuple[dict[str, Any], int]:
+    normalized, folder, error = _resolve_existing_folder(
+        folder_id,
+        workspace_folders_module=workspace_folders_module,
+    )
+    if error:
+        return error
+
+    markdown = (data or {}).get("markdown")
+    result = notes_append_module.append_workspace_folder_note(
+        folder,
+        note_id=note_id,
+        markdown=markdown,
+        notes_module=workspace_folder_notes_module,
+    )
+    if not result.get("ok"):
+        reason_code = str(result.get("reason_code") or REASON_RUNTIME_UNAVAILABLE)
+        return {
+            "ok": False,
+            "error": _human_note_error(reason_code),
+            "reason_code": reason_code,
+            "workspace_folder_id": normalized,
+            "note": {
+                "status": _note_status_for_failure(reason_code),
+                "reason_code": reason_code,
+            },
+            "note_nextcloud": result.get("note_nextcloud", {}),
+        }, int(result.get("status") or _http_status_for_reason(reason_code))
+
+    note = result.get("note") or {}
+    return {
+        "ok": True,
+        "workspace_folder_id": normalized,
+        "note": workspace_folder_notes.apply_note_projection(note, folder=folder),
+        "note_nextcloud": result.get("note_nextcloud", {}),
+        "reason_code": workspace_folder_notes.REASON_APPEND_OK,
+    }, 200
+
+
 def _resolve_existing_folder(
     folder_id: str,
     *,
@@ -212,6 +260,8 @@ def _note_status_for_failure(reason_code: str) -> str:
         return workspace_folder_notes.NOTE_LOCAL_CONFLICT
     if reason_code == workspace_folder_notes.REASON_LOOKUP_AMBIGUOUS:
         return workspace_folder_notes.NOTE_LOCAL_CONFLICT
+    if reason_code == workspace_folder_notes.REASON_VERSION_CONFLICT:
+        return workspace_folder_notes.NOTE_LOCAL_CONFLICT
     if reason_code in {
         workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
         workspace_folder_notes.REASON_NOTES_TARGET_MISSING,
@@ -230,6 +280,8 @@ def _http_status_for_reason(reason_code: str) -> int:
         workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
         workspace_folder_notes.REASON_NAME_CONFLICT,
         workspace_folder_notes.REASON_LOOKUP_AMBIGUOUS,
+        workspace_folder_notes.REASON_VERSION_CONFLICT,
+        workspace_folder_notes.REASON_NEXTCLOUD_ERROR_REDACTED,
         workspace_folder_notes.REASON_NOTES_TARGET_NOT_COLLECTION,
     }:
         return 409
@@ -239,10 +291,18 @@ def _http_status_for_reason(reason_code: str) -> int:
         return 404
     if reason_code == workspace_folder_notes.REASON_NAME_INVALID:
         return 400
-    if reason_code == workspace_folder_notes.REASON_TOO_LARGE:
+    if reason_code in {
+        workspace_folder_notes.REASON_TOO_LARGE,
+        workspace_folder_notes.REASON_APPEND_TOO_LARGE,
+    }:
         return 413
-    if reason_code == workspace_folder_notes.REASON_LOOKUP_FAILED:
+    if reason_code in {
+        workspace_folder_notes.REASON_LOOKUP_FAILED,
+        workspace_folder_notes.REASON_LOCAL_PERSISTENCE_FAILED,
+    }:
         return 503
+    if reason_code == workspace_folder_notes_append.REASON_APPEND_EMPTY:
+        return 400
     return 502
 
 
@@ -257,6 +317,12 @@ def _human_note_error(reason_code: str) -> str:
         workspace_folder_notes.REASON_LOOKUP_AMBIGUOUS: "plusieurs notes correspondent",
         workspace_folder_notes.REASON_NOT_FOUND: "note introuvable",
         workspace_folder_notes.REASON_TOO_LARGE: "note trop volumineuse",
+        workspace_folder_notes.REASON_APPEND_TOO_LARGE: "ajout trop volumineux",
+        workspace_folder_notes.REASON_VERSION_CONFLICT: "version de note modifiee entre temps",
+        workspace_folder_notes_append.REASON_APPEND_EMPTY: "ajout de note vide",
+        workspace_folder_notes_append.REASON_ETAG_MISSING: "version distante indisponible",
+        workspace_folder_notes_append.REASON_REMOTE_READ_FAILED: "lecture distante de note impossible",
+        workspace_folder_notes_append.REASON_REMOTE_WRITE_FAILED: "ecriture distante de note impossible",
         workspace_folder_notes.REASON_LOOKUP_FAILED: "lecture locale des notes indisponible",
         workspace_folder_notes.REASON_LOCAL_PERSISTENCE_FAILED: "persistance locale de la note impossible",
-    }.get(reason_code, "creation de note impossible")
+    }.get(reason_code, "operation de note impossible")

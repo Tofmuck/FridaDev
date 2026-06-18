@@ -45,6 +45,7 @@ REASON_NAME_INVALID = "folder_note_name_invalid"
 REASON_NAME_CONFLICT = "folder_note_name_conflict"
 REASON_CREATE_OK = "folder_note_create_ok"
 REASON_APPEND_OK = "folder_note_append_ok"
+REASON_APPEND_EMPTY = "folder_note_append_empty"
 REASON_LIST_OK = "folder_note_list_ok"
 REASON_LOOKUP_OK = "folder_note_lookup_ok"
 REASON_LOOKUP_AMBIGUOUS = "folder_note_lookup_ambiguous"
@@ -53,6 +54,9 @@ REASON_NOT_FOUND = "folder_note_not_found"
 REASON_TOO_LARGE = "folder_note_too_large"
 REASON_APPEND_TOO_LARGE = "folder_note_append_too_large"
 REASON_VERSION_CONFLICT = "folder_note_version_conflict"
+REASON_ETAG_MISSING = "folder_note_etag_missing"
+REASON_REMOTE_READ_FAILED = "folder_note_remote_read_failed"
+REASON_REMOTE_WRITE_FAILED = "folder_note_remote_write_failed"
 REASON_LOCAL_PERSISTENCE_FAILED = "folder_note_local_persistence_failed"
 REASON_REMOTE_COMPENSATION_OK = "folder_note_remote_compensation_ok"
 REASON_REMOTE_COMPENSATION_FAILED = "folder_note_remote_compensation_failed"
@@ -70,6 +74,7 @@ REASON_CODE_CATALOG = frozenset(
         REASON_NAME_CONFLICT,
         REASON_CREATE_OK,
         REASON_APPEND_OK,
+        REASON_APPEND_EMPTY,
         REASON_LIST_OK,
         REASON_LOOKUP_OK,
         REASON_LOOKUP_AMBIGUOUS,
@@ -78,6 +83,9 @@ REASON_CODE_CATALOG = frozenset(
         REASON_TOO_LARGE,
         REASON_APPEND_TOO_LARGE,
         REASON_VERSION_CONFLICT,
+        REASON_ETAG_MISSING,
+        REASON_REMOTE_READ_FAILED,
+        REASON_REMOTE_WRITE_FAILED,
         REASON_LOCAL_PERSISTENCE_FAILED,
         REASON_REMOTE_COMPENSATION_OK,
         REASON_REMOTE_COMPENSATION_FAILED,

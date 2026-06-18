@@ -36,6 +36,7 @@ from core import workspace_file_selections
 from core import workspace_file_selections_service
 from core import workspace_folder_note_nextcloud_runtime
 from core import workspace_folder_notes
+from core import workspace_folder_notes_append
 from core import workspace_folder_notes_service
 from core import workspace_folders
 from core import workspace_folders_service
@@ -1358,6 +1359,20 @@ def api_get_workspace_folder_note(folder_id: str, note_id: str):
         workspace_folders_module=workspace_folders,
         workspace_folder_notes_module=workspace_folder_notes,
         note_id=note_id,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/workspace-folders/<folder_id>/notes/<note_id>/append')
+def api_append_workspace_folder_note(folder_id: str, note_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_folder_notes_service.append_workspace_folder_note_response(
+        folder_id,
+        note_id,
+        data,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_notes_module=workspace_folder_notes,
+        notes_append_module=workspace_folder_notes_append,
     )
     return jsonify(payload), status
 

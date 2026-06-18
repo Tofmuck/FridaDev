@@ -1,7 +1,7 @@
 # Frida V1 - Notes Markdown par dossier - TODO
 
-Statut: TODO detaillee, Lot 5 lookup Notes livre depuis le read-model local,
-append non commence.
+Statut: TODO detaillee, Lot 6 append Notes livre, lecture conversationnelle non
+commencee.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -324,18 +324,21 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ### Lot 6 - Completer une note existante
 
-- [ ] Ajouter du Markdown uniquement a la fin d'une note existante.
-- [ ] Utiliser le separateur Markdown V1 `\n\n---\n\n` avant le bloc ajoute.
-- [ ] Refuser l'insertion au milieu, la reecriture globale et le remplacement
+- [x] Ajouter du Markdown uniquement a la fin d'une note existante.
+- [x] Utiliser le separateur Markdown V1 `\n\n---\n\n` avant le bloc ajoute.
+- [x] Refuser l'insertion au milieu, la reecriture globale et le remplacement
   complet.
-- [ ] Exiger cible claire.
-- [ ] Utiliser ETag / `If-Match` ou garde equivalente.
-- [ ] Refuser conflit de version, cible disparue, cible non resolue ou cible non
+- [x] Exiger cible claire.
+- [x] Utiliser ETag / `If-Match` ou garde equivalente.
+- [x] Refuser conflit de version, cible disparue, cible non resolue ou cible non
   eligible.
-- [ ] Ne pas ecraser, ne pas renommer automatiquement, ne pas supprimer.
-- [ ] Tester append nominal, conflit de version, ambiguity, rollback/etat partiel
+- [x] Ne pas ecraser, ne pas renommer automatiquement, ne pas supprimer.
+- [x] Tester append nominal, conflit de version, ambiguity, rollback/etat partiel
   si applicable et anti-fuite.
-- [ ] Tester explicitement le conflit ETag/version en fake/unit.
+- [x] Tester explicitement le conflit ETag/version en fake/unit.
+- [x] Ne pas persister le corps Markdown localement.
+- [x] Tenter une compensation distante stricte si la persistance locale echoue
+  apres PUT; sinon remonter un etat content-free, jamais un succes silencieux.
 
 ### Lot 7 - Lecture / preparation conversationnelle de note
 
@@ -417,6 +420,6 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ## Prochain pas
 
-Ouvrir Lot 6 - Completer une note existante. Ce lot devra faire un append final
-borne via GET + ETag + PUT If-Match, sans reecriture globale, sans insertion au
-milieu et sans cocher aucun Lot 7+.
+Ouvrir Lot 7 - Lecture / preparation conversationnelle de note. Ce lot devra
+lire une note explicitement demandee, l'injecter uniquement dans le tour utile
+si la limite de taille est respectee et ne cocher aucun Lot 8+.
