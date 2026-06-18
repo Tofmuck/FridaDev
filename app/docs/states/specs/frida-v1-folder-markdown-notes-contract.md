@@ -526,6 +526,11 @@ Regles:
 - `GET` borne depuis Nextcloud;
 - injection du corps Markdown seulement dans le tour utile si `/api/chat` porte
   explicitement `workspace_note_id` ou `workspace_note_ids`;
+- budget prompt Notes V1: une seule note injectee par tour et 120_000
+  caracteres Markdown maximum au total;
+- toute note valide demandee au-dela de la limite est signalee comme non
+  injectee avec `folder_note_turn_limit_exceeded`, sans lecture silencieuse ni
+  troncature;
 - aucun stockage local du corps;
 - aucune alimentation Memory/RAG/Identity/Summary;
 - note entiere ou refus propre;
@@ -541,9 +546,12 @@ Invariants Lot 7:
 - corps Markdown lu depuis Nextcloud par GET borne uniquement en memoire;
 - taille maximale: 120_000 caracteres Markdown;
 - note trop grande: `folder_note_too_large`;
+- limite de tour depassee: `folder_note_turn_limit_exceeded`;
 - GET distant impossible: `folder_note_remote_read_failed`;
 - succes: `folder_note_read_ok`;
-- le corps Markdown n'apparait que dans `note_conversation.markdown_content`;
+- `note_conversation.markdown_content` est la surface API de preparation;
+- la lane Notes de `/api/chat` peut contenir le Markdown uniquement dans le
+  prompt du tour courant;
 - `note_nextcloud`, projections techniques et events restent content-free;
 - `note_conversation.memory_rag_identity_summary=not_used` rappelle la frontiere
   avec Memory/RAG/Identity/Summary.
@@ -596,6 +604,13 @@ Lecture/preparation conversationnelle:
 
 ```text
 120_000 caracteres Markdown maximum
+```
+
+Injection prompt Notes par tour:
+
+```text
+1 note injectee maximum
+120_000 caracteres Markdown maximum au total
 ```
 
 Append entrant:
@@ -669,7 +684,8 @@ Catalogue initial:
 - `folder_note_local_persistence_failed`;
 - `folder_note_remote_compensation_ok`;
 - `folder_note_remote_compensation_failed`;
-- `folder_note_nextcloud_error_redacted`.
+- `folder_note_nextcloud_error_redacted`;
+- `folder_note_turn_limit_exceeded`.
 
 Reason codes interdits:
 

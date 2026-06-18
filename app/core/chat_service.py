@@ -1071,6 +1071,7 @@ def chat_response(
         read_reason_code=workspace_notes_read.reason_code,
         requested_count=workspace_notes_read.requested_count,
         invalid_requested_count=workspace_notes_read.invalid_requested_count,
+        over_limit_count=workspace_notes_read.over_limit_count,
     )
     _emit_workspace_folder_notes_prompt_observability(workspace_notes_lane)
     active_document_lane = active_document_prompt_lane.inject_active_document_prompt_lane(

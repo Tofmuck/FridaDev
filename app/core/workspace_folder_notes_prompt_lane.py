@@ -18,6 +18,8 @@ READ_STATUS_OK = "ok"
 READ_STATUS_EMPTY = "empty"
 READ_STATUS_ERROR = "error"
 MAX_NOTES_PER_TURN = 5
+MAX_NOTES_INJECTED_PER_TURN = 1
+MAX_NOTES_TOTAL_CHARS_PER_TURN = workspace_folder_notes_read.NOTE_READ_MAX_CHARS
 
 LANE_HEADER = "[NOTES DE DOSSIER PREPAREES]"
 LANE_FOOTER = "[/NOTES DE DOSSIER PREPAREES]"
@@ -34,7 +36,7 @@ class WorkspaceFolderNotesPromptRead:
     reason_code: str = ""
     requested_count: int = 0
     invalid_requested_count: int = 0
-    error_class: str = ""
+    over_limit_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,7 @@ class WorkspaceFolderNotesPromptLane:
     read_reason_code: str = ""
     requested_count: int = 0
     invalid_requested_count: int = 0
+    over_limit_count: int = 0
 
     @property
     def messages(self) -> tuple[dict[str, Any], ...]:
@@ -81,6 +84,9 @@ class WorkspaceFolderNotesPromptLane:
             "reason_code": self.read_reason_code,
             "requested_count": self.requested_count,
             "invalid_requested_count": self.invalid_requested_count,
+            "over_limit_count": self.over_limit_count,
+            "max_notes_injected_per_turn": MAX_NOTES_INJECTED_PER_TURN,
+            "max_notes_total_chars_per_turn": MAX_NOTES_TOTAL_CHARS_PER_TURN,
             "injected_count": self.injected_count,
             "not_injected_count": self.not_injected_count,
             "decisions": [
@@ -109,26 +115,23 @@ def read_workspace_folder_notes_for_prompt(
     if workspace_folders_module is None:
         from . import workspace_folders as workspace_folders_module
 
-    note_ids, invalid_count = _requested_note_ids(
+    note_ids, over_limit_note_ids, invalid_count = _requested_note_ids(
         data,
         notes_module=workspace_folder_notes_module,
     )
-    if not note_ids and not invalid_count:
+    valid_requested_count = len(note_ids) + len(over_limit_note_ids)
+    if not note_ids and not over_limit_note_ids and not invalid_count:
         return WorkspaceFolderNotesPromptRead(status=READ_STATUS_EMPTY)
 
     folder_id = workspace_folder_notes.normalize_workspace_folder_id(
         conversation.get("workspace_folder_id")
     )
     if not folder_id:
-        return WorkspaceFolderNotesPromptRead(
-            status=READ_STATUS_ERROR,
-            reason_code=workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
-            note_reads=tuple(
-                _invalid_read_result(workspace_folder_notes.REASON_FOLDER_NOT_LINKED)
-                for _note_id in note_ids
-            ),
-            requested_count=len(note_ids),
-            invalid_requested_count=invalid_count,
+        return _blocked_prompt_read(
+            workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
+            note_ids=note_ids,
+            over_limit_note_ids=over_limit_note_ids,
+            invalid_count=invalid_count,
         )
 
     folder = _get_folder(
@@ -137,26 +140,18 @@ def read_workspace_folder_notes_for_prompt(
         logger=logger,
     )
     if not folder:
-        return WorkspaceFolderNotesPromptRead(
-            status=READ_STATUS_ERROR,
-            reason_code=workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
-            note_reads=tuple(
-                _invalid_read_result(workspace_folder_notes.REASON_FOLDER_NOT_LINKED)
-                for _note_id in note_ids
-            ),
-            requested_count=len(note_ids),
-            invalid_requested_count=invalid_count,
+        return _blocked_prompt_read(
+            workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
+            note_ids=note_ids,
+            over_limit_note_ids=over_limit_note_ids,
+            invalid_count=invalid_count,
         )
     if folder.get("deleted_at"):
-        return WorkspaceFolderNotesPromptRead(
-            status=READ_STATUS_ERROR,
-            reason_code="workspace_folder_deleted",
-            note_reads=tuple(
-                _invalid_read_result("workspace_folder_deleted")
-                for _note_id in note_ids
-            ),
-            requested_count=len(note_ids),
-            invalid_requested_count=invalid_count,
+        return _blocked_prompt_read(
+            "workspace_folder_deleted",
+            note_ids=note_ids,
+            over_limit_note_ids=over_limit_note_ids,
+            invalid_count=invalid_count,
         )
 
     reads: list[dict[str, Any]] = []
@@ -182,19 +177,29 @@ def read_workspace_folder_notes_for_prompt(
             result = _invalid_read_result(workspace_folder_notes.REASON_LOOKUP_FAILED)
         if isinstance(result, Mapping):
             reads.append(dict(result))
+    reads.extend(
+        _invalid_read_result(
+            workspace_folder_notes.REASON_TURN_LIMIT_EXCEEDED,
+            note_id=note_id,
+            folder_id=folder_id,
+        )
+        for note_id in over_limit_note_ids
+    )
 
     if not reads:
         return WorkspaceFolderNotesPromptRead(
             status=READ_STATUS_ERROR,
             reason_code=workspace_folder_notes.REASON_NOT_FOUND,
-            requested_count=len(note_ids),
+            requested_count=valid_requested_count,
             invalid_requested_count=invalid_count,
+            over_limit_count=len(over_limit_note_ids),
         )
     return WorkspaceFolderNotesPromptRead(
         status=READ_STATUS_OK,
         note_reads=tuple(reads),
-        requested_count=len(note_ids),
+        requested_count=valid_requested_count,
         invalid_requested_count=invalid_count,
+        over_limit_count=len(over_limit_note_ids),
     )
 
 
@@ -205,8 +210,9 @@ def build_workspace_folder_notes_prompt_lane(
     read_reason_code: str = "",
     requested_count: int = 0,
     invalid_requested_count: int = 0,
+    over_limit_count: int = 0,
 ) -> WorkspaceFolderNotesPromptLane:
-    decisions = tuple(_decision_from_read(read) for read in (note_reads or ()))
+    decisions = _apply_injection_budget(tuple(_decision_from_read(read) for read in (note_reads or ())))
     normalized_status = _read_status(read_status, decisions)
     if not decisions and normalized_status != READ_STATUS_ERROR:
         return WorkspaceFolderNotesPromptLane(
@@ -217,6 +223,7 @@ def build_workspace_folder_notes_prompt_lane(
             read_reason_code="",
             requested_count=requested_count,
             invalid_requested_count=invalid_requested_count,
+            over_limit_count=over_limit_count,
         )
 
     injected = tuple(decision for decision in decisions if decision.injected)
@@ -235,6 +242,7 @@ def build_workspace_folder_notes_prompt_lane(
         read_reason_code=read_reason_code,
         requested_count=requested_count,
         invalid_requested_count=invalid_requested_count,
+        over_limit_count=over_limit_count,
     )
 
 
@@ -246,6 +254,7 @@ def inject_workspace_folder_notes_prompt_lane(
     read_reason_code: str = "",
     requested_count: int = 0,
     invalid_requested_count: int = 0,
+    over_limit_count: int = 0,
 ) -> WorkspaceFolderNotesPromptLane:
     lane = build_workspace_folder_notes_prompt_lane(
         note_reads,
@@ -253,6 +262,7 @@ def inject_workspace_folder_notes_prompt_lane(
         read_reason_code=read_reason_code,
         requested_count=requested_count,
         invalid_requested_count=invalid_requested_count,
+        over_limit_count=over_limit_count,
     )
     if not lane.messages:
         return lane
@@ -265,7 +275,7 @@ def _requested_note_ids(
     data: Mapping[str, Any],
     *,
     notes_module: Any,
-) -> tuple[tuple[str, ...], int]:
+) -> tuple[tuple[str, ...], tuple[str, ...], int]:
     raw_values: list[Any] = []
     if "workspace_note_id" in data:
         raw_values.append(data.get("workspace_note_id"))
@@ -285,7 +295,32 @@ def _requested_note_ids(
             continue
         if note_id not in normalized:
             normalized.append(note_id)
-    return tuple(normalized[:MAX_NOTES_PER_TURN]), invalid_count
+    return (
+        tuple(normalized[:MAX_NOTES_PER_TURN]),
+        tuple(normalized[MAX_NOTES_PER_TURN:]),
+        invalid_count,
+    )
+
+
+def _blocked_prompt_read(
+    reason_code: str,
+    *,
+    note_ids: Sequence[str],
+    over_limit_note_ids: Sequence[str],
+    invalid_count: int,
+) -> WorkspaceFolderNotesPromptRead:
+    valid_requested_count = len(note_ids) + len(over_limit_note_ids)
+    return WorkspaceFolderNotesPromptRead(
+        status=READ_STATUS_ERROR,
+        reason_code=reason_code,
+        note_reads=tuple(
+            _invalid_read_result(reason_code)
+            for _note_id in (*note_ids, *over_limit_note_ids)
+        ),
+        requested_count=valid_requested_count,
+        invalid_requested_count=invalid_count,
+        over_limit_count=len(over_limit_note_ids),
+    )
 
 
 def _get_folder(workspace_folders_module: Any, folder_id: str, *, logger: Any = None) -> Mapping[str, Any] | None:
@@ -307,7 +342,7 @@ def _get_folder(workspace_folders_module: Any, folder_id: str, *, logger: Any = 
         return None
 
 
-def _invalid_read_result(reason_code: str) -> dict[str, Any]:
+def _invalid_read_result(reason_code: str, *, note_id: str = "", folder_id: str = "") -> dict[str, Any]:
     return {
         "ok": False,
         "reason_code": reason_code,
@@ -316,6 +351,8 @@ def _invalid_read_result(reason_code: str) -> dict[str, Any]:
         "note_conversation": {
             "read_state": "blocked",
             "reason_code": reason_code,
+            "note_ref": workspace_folder_notes.note_ref(note_id) if note_id else "",
+            "folder_ref": workspace_folder_notes.folder_ref(folder_id) if folder_id else "",
             "markdown_char_count": 0,
             "injection_scope": "none",
             "memory_rag_identity_summary": "not_used",
@@ -347,6 +384,61 @@ def _decision_from_read(read: Mapping[str, Any]) -> WorkspaceFolderNotePromptDec
         markdown_content=markdown,
         injected=ok,
         reason_code="" if ok else _text(read.get("reason_code")) or _text(conversation.get("reason_code")),
+    )
+
+
+def _apply_injection_budget(
+    decisions: Sequence[WorkspaceFolderNotePromptDecision],
+) -> tuple[WorkspaceFolderNotePromptDecision, ...]:
+    budgeted: list[WorkspaceFolderNotePromptDecision] = []
+    injected_count = 0
+    injected_chars = 0
+    for decision in decisions:
+        if not decision.injected:
+            budgeted.append(decision)
+            continue
+        if injected_count >= MAX_NOTES_INJECTED_PER_TURN:
+            budgeted.append(
+                _replace_decision(
+                    decision,
+                    injected=False,
+                    reason_code=workspace_folder_notes.REASON_TURN_LIMIT_EXCEEDED,
+                    markdown_content="",
+                )
+            )
+            continue
+        if injected_chars + decision.markdown_char_count > MAX_NOTES_TOTAL_CHARS_PER_TURN:
+            budgeted.append(
+                _replace_decision(
+                    decision,
+                    injected=False,
+                    reason_code=workspace_folder_notes.REASON_TURN_LIMIT_EXCEEDED,
+                    markdown_content="",
+                )
+            )
+            continue
+        injected_count += 1
+        injected_chars += decision.markdown_char_count
+        budgeted.append(decision)
+    return tuple(budgeted)
+
+
+def _replace_decision(
+    decision: WorkspaceFolderNotePromptDecision,
+    *,
+    injected: bool | None = None,
+    reason_code: str | None = None,
+    markdown_content: str | None = None,
+) -> WorkspaceFolderNotePromptDecision:
+    return WorkspaceFolderNotePromptDecision(
+        note_ref=decision.note_ref,
+        folder_ref=decision.folder_ref,
+        title_hash=decision.title_hash,
+        markdown_char_count=decision.markdown_char_count,
+        injected=decision.injected if injected is None else bool(injected),
+        reason_code=decision.reason_code if reason_code is None else reason_code,
+        title=decision.title,
+        markdown_content=decision.markdown_content if markdown_content is None else markdown_content,
     )
 
 
