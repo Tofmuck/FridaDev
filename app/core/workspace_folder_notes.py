@@ -8,8 +8,9 @@ are allowed in user-facing projections; technical projections stay content-free.
 
 import re
 import uuid
+import logging
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 
 from . import workspace_folder_nextcloud_projection
 
@@ -57,6 +58,8 @@ REASON_REMOTE_COMPENSATION_OK = "folder_note_remote_compensation_ok"
 REASON_REMOTE_COMPENSATION_FAILED = "folder_note_remote_compensation_failed"
 REASON_NEXTCLOUD_ERROR_REDACTED = "folder_note_nextcloud_error_redacted"
 
+NOTE_CREATE_MARKDOWN_MAX_CHARS = 20_000
+
 REASON_CODE_CATALOG = frozenset(
     {
         REASON_FOLDER_NOT_LINKED,
@@ -92,6 +95,8 @@ NOTE_STATUS_LABELS = {
     NOTE_LOCAL_DELETED: "supprimee",
     NOTE_LOCAL_UNAVAILABLE: "indisponible",
 }
+
+logger = logging.getLogger("frida.workspace_folder_notes")
 
 _HASH12_RE = re.compile(r"^[0-9a-f]{12}$")
 _SAFE_REASON_RE = re.compile(r"^[a-z0-9_]{3,120}$")
@@ -309,12 +314,98 @@ def folder_ref(value: Any) -> str:
     return _entity_ref("workspace-folder", value)
 
 
+def list_notes(
+    workspace_folder_id: str,
+    *,
+    include_deleted: bool = False,
+    fail_closed: bool = True,
+) -> list[dict[str, Any]]:
+    from . import workspace_folder_notes_store
+
+    return workspace_folder_notes_store.list_notes(
+        workspace_folder_id,
+        include_deleted=include_deleted,
+        db_conn_func=_db_conn,
+        logger=logger,
+        fail_closed=fail_closed,
+    )
+
+
+def get_note(note_id: str, *, fail_closed: bool = True) -> Optional[dict[str, Any]]:
+    from . import workspace_folder_notes_store
+
+    return workspace_folder_notes_store.get_note(
+        note_id,
+        db_conn_func=_db_conn,
+        logger=logger,
+        fail_closed=fail_closed,
+    )
+
+
+def upsert_note(
+    *,
+    note_id: str,
+    workspace_folder_id: str,
+    title: str,
+    target_name: str,
+    local_state: str = NOTE_LOCAL_AVAILABLE,
+    nextcloud_sync_state: str = NOTE_NEXTCLOUD_LINKED,
+    remote_note_ref: str = "",
+    etag_value: str = "",
+    etag_hash: str = "",
+    markdown_char_count: int = 0,
+    reason_code: str = REASON_CREATE_OK,
+) -> dict[str, Any]:
+    from . import workspace_folder_notes_store
+
+    return workspace_folder_notes_store.upsert_note(
+        note_id=note_id,
+        workspace_folder_id=workspace_folder_id,
+        title=title,
+        target_name=target_name,
+        local_state=local_state,
+        nextcloud_sync_state=nextcloud_sync_state,
+        remote_note_ref=remote_note_ref,
+        etag_value=etag_value,
+        etag_hash=etag_hash,
+        markdown_char_count=markdown_char_count,
+        reason_code=reason_code,
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
+
+
+def tombstone_note(note_id: str, *, reason_code: str = REASON_NOT_FOUND) -> Optional[dict[str, Any]]:
+    from . import workspace_folder_notes_store
+
+    return workspace_folder_notes_store.tombstone_note(
+        note_id,
+        reason_code=reason_code,
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
+
+
+def log_content_free_event(event: str, level: str = "info", **fields: Any) -> None:
+    log_method = getattr(logger, level, logger.info)
+    log_method("workspace_folder_note_%s", event, extra={"frida": fields})
+
+
 def _entity_ref(prefix: str, value: Any) -> str:
     raw = _text(value, 160)
     normalized = _uuid_text(raw)
     short = normalized[:8] if normalized else "redacted"
     digest = workspace_folder_nextcloud_projection.hash12(raw or "unknown")
     return f"{prefix}:{short}:{digest}"
+
+
+def _db_conn():
+    import psycopg
+    import config
+    from admin import runtime_settings
+    from . import runtime_db_bootstrap
+
+    return runtime_db_bootstrap.connect_runtime_database(psycopg, config, runtime_settings)
 
 
 def _strip_forbidden(note: Mapping[str, Any]) -> dict[str, Any]:

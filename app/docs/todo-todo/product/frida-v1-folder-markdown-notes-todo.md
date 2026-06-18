@@ -1,7 +1,7 @@
 # Frida V1 - Notes Markdown par dossier - TODO
 
-Statut: TODO detaillee, Lot 2 modele local/read-model livre, runtime Nextcloud
-Notes non commence.
+Statut: TODO detaillee, Lot 3 creation Notes Nextcloud-first livree, liste
+utilisateur Notes non commencee.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -16,6 +16,8 @@ Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-tod
   `app/docs/states/audits/frida-v1-folder-markdown-notes-lot0-audit-2026-06-18.md`
 - Contrat Notes V1:
   `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
+- Preuve live Lot 3:
+  `app/docs/states/baselines/notes-smokes/frida-v1-notes-lot3-create-live-20260618T095734Z.jsonl`
 
 ## Objectif produit
 
@@ -284,16 +286,18 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ### Lot 3 - Creation de note Markdown
 
-- [ ] Creer une note `.md` sous `/Frida/<dossier>/Notes/<titre_sanitise>.md`.
-- [ ] Utiliser une creation anti-ecrasement.
-- [ ] Refuser titre absent, invalide, ambigu ou collision de sanitisation.
-- [ ] Verifier reellement en WebDAV que `Notes` existe et est une collection
+- [x] Creer une note `.md` sous `/Frida/<dossier>/Notes/<titre_sanitise>.md`.
+- [x] Utiliser une creation anti-ecrasement.
+- [x] Refuser titre absent, invalide, ambigu ou collision de sanitisation.
+- [x] Verifier reellement en WebDAV que `Notes` existe et est une collection
   valide par status-only avant creation.
-- [ ] Persister le modele local Notes dedie.
-- [ ] Rollback strict de la note creee si la persistance locale echoue apres
+- [x] Persister le modele local Notes dedie.
+- [x] Rollback strict de la note creee si la persistance locale echoue apres
   succes Nextcloud.
-- [ ] Tester success, conflit, dossier non `linked`, cible `Notes` absente ou
+- [x] Tester success, conflit, dossier non `linked`, cible `Notes` absente ou
   non-collection, rollback et absence de fuite.
+- [x] Produire une preuve live synthetique content-free avec cleanup remote et
+  cleanup local du read-model synthetique.
 
 ### Lot 4 - Liste des notes d'un dossier
 
@@ -407,6 +411,6 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ## Prochain pas
 
-Ouvrir Lot 3 - Creation de note Markdown. Ce lot devra appliquer le modele local
-Notes livre au Lot 2, ecrire dans Nextcloud sous `/Frida/<dossier>/Notes`, ne
-pas stocker le corps Markdown localement et ne cocher aucun Lot 4+.
+Ouvrir Lot 4 - Liste des notes d'un dossier. Ce lot devra exposer une liste
+utilisateur utile depuis le read-model local Notes, garder les titres visibles
+cote utilisateur uniquement et ne cocher aucun Lot 5+.

@@ -3,6 +3,9 @@ from __future__ import annotations
 import unittest
 
 from core import workspace_folder_notes
+from core import workspace_folder_note_nextcloud_client
+from core import workspace_folder_note_nextcloud_runtime
+from core import workspace_folder_nextcloud_client
 from core import workspace_folder_notes_store
 
 
@@ -37,6 +40,115 @@ class _FakeLogger:
         self.records.append((message, args, kwargs))
 
 
+class _FakeNotesModule:
+    def __init__(self, *, existing=None, fail_list=False, fail_upsert=False):
+        self.existing = list(existing or [])
+        self.fail_list = fail_list
+        self.fail_upsert = fail_upsert
+        self.stored = []
+        self.events = []
+
+    def list_notes(self, workspace_folder_id, *, include_deleted=False, fail_closed=True):
+        if self.fail_list:
+            raise workspace_folder_notes_store.WorkspaceFolderNoteLookupError(
+                "list",
+                workspace_folder_id=workspace_folder_id,
+            )
+        if include_deleted:
+            return list(self.existing)
+        return [item for item in self.existing if not item.get("deleted_at")]
+
+    def upsert_note(self, **fields):
+        if self.fail_upsert:
+            raise workspace_folder_notes_store.WorkspaceFolderNotePersistenceError(
+                "folder_note_local_persistence_failed"
+            )
+        self.stored.append(dict(fields))
+        return _note(
+            id=fields["note_id"],
+            workspace_folder_id=fields["workspace_folder_id"],
+            title=fields["title"],
+            title_hash=workspace_folder_notes.title_hash_for_target(fields["target_name"]),
+            target_name=fields["target_name"],
+            local_state=fields["local_state"],
+            nextcloud_sync_state=fields["nextcloud_sync_state"],
+            remote_note_ref=fields["remote_note_ref"],
+            etag_value=fields["etag_value"],
+            etag_hash=fields["etag_hash"],
+            markdown_char_count=fields["markdown_char_count"],
+            reason_code=fields["reason_code"],
+        )
+
+    def log_content_free_event(self, event, **fields):
+        self.events.append((event, fields))
+
+
+class _FakeNextcloudNotes:
+    def __init__(self, *, status_reason="", put_reason="", delete_reason="", etag='"etag-secret"'):
+        self.status_reason = status_reason
+        self.put_reason = put_reason
+        self.delete_reason = delete_reason
+        self.etag = etag
+        self.status_calls = []
+        self.put_calls = []
+        self.deleted = []
+
+    def notes_status(self, folder_name):
+        self.status_calls.append(folder_name)
+        if self.status_reason:
+            raise workspace_folder_note_nextcloud_client.NextcloudNoteClientError(
+                self.status_reason,
+                http_status=404 if self.status_reason.endswith("_missing") else 207,
+            )
+        return workspace_folder_note_nextcloud_client.NextcloudNoteResponse(
+            True,
+            workspace_folder_notes.REASON_CREATE_OK,
+            207,
+        )
+
+    def put_note(self, folder_name, note_name, markdown):
+        self.put_calls.append((folder_name, note_name, bytes(markdown or b"")))
+        if self.put_reason:
+            raise workspace_folder_note_nextcloud_client.NextcloudNoteClientError(
+                self.put_reason,
+                http_status=409 if "conflict" in self.put_reason else 503,
+            )
+        return workspace_folder_note_nextcloud_client.NextcloudNoteResponse(
+            True,
+            workspace_folder_notes.REASON_CREATE_OK,
+            201,
+            etag_value=self.etag,
+        )
+
+    def delete_note(self, folder_name, note_name, *, missing_ok=True):
+        self.deleted.append((folder_name, note_name, missing_ok))
+        if self.delete_reason:
+            raise workspace_folder_note_nextcloud_client.NextcloudNoteClientError(
+                self.delete_reason,
+                http_status=503,
+            )
+        return workspace_folder_note_nextcloud_client.NextcloudNoteResponse(
+            True,
+            workspace_folder_notes.REASON_REMOTE_COMPENSATION_OK,
+            204,
+        )
+
+
+class _StatusOnlyNoteClient(workspace_folder_note_nextcloud_client.NextcloudNoteClient):
+    def __init__(self, status):
+        super().__init__(
+            workspace_folder_nextcloud_client.NextcloudFolderClientConfig(
+                base_url="http://nextcloud.invalid",
+                username="frida",
+                app_password="redacted",
+            )
+        )
+        self.status = status
+
+    def _request_status(self, method, url, *, data=None, headers=None):
+        return self.status, '"etag-secret"'
+
+
 def _note(**overrides):
     payload = {
         "id": NOTE_ID,
@@ -57,6 +169,16 @@ def _note(**overrides):
     }
     payload.update(overrides)
     return payload
+
+
+def _folder(*, linked=True):
+    return {
+        "id": FOLDER_ID,
+        "display_name": "Projet Tulu",
+        "nextcloud_target_name": "Projet-Tulu",
+        "nextcloud_sync_state": "linked" if linked else "local_only",
+        "deleted_at": None,
+    }
 
 
 class WorkspaceFolderNotesTests(unittest.TestCase):
@@ -232,6 +354,146 @@ class WorkspaceFolderNotesTests(unittest.TestCase):
                 fail_closed=False,
             )
         )
+
+    def test_create_note_nextcloud_first_stores_local_read_model_content_free(self) -> None:
+        notes = _FakeNotesModule()
+        nextcloud = _FakeNextcloudNotes()
+
+        result = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
+            folder=_folder(linked=True),
+            title="Carnet sensible",
+            markdown="# contenu initial",
+            notes_module=notes,
+            nextcloud=nextcloud,
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["reason_code"], "folder_note_create_ok")
+        self.assertEqual(nextcloud.status_calls, ["Projet-Tulu"])
+        self.assertEqual(nextcloud.put_calls[0][1], "Carnet-sensible.md")
+        self.assertEqual(nextcloud.put_calls[0][2], b"# contenu initial")
+        self.assertEqual(notes.stored[0]["target_name"], "Carnet-sensible.md")
+        self.assertEqual(notes.stored[0]["etag_value"], '"etag-secret"')
+        self.assertNotIn("markdown", notes.stored[0])
+        projected = workspace_folder_notes.apply_note_projection(result["note"], folder=_folder(linked=True))
+        self.assertEqual(projected["note_v1_user"]["title"], "Carnet sensible")
+        technical_text = str(projected["note_v1_technical"])
+        self.assertNotIn("Carnet sensible", technical_text)
+        self.assertNotIn("contenu initial", str(result["note_nextcloud"]))
+        self.assertNotIn("etag-secret", str(result["note_nextcloud"]))
+        self.assertNotIn("Carnet-sensible.md", str(result["note_nextcloud"]))
+
+    def test_create_note_refuses_non_linked_folder_before_nextcloud(self) -> None:
+        nextcloud = _FakeNextcloudNotes()
+        result = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
+            folder=_folder(linked=False),
+            title="Carnet",
+            markdown="",
+            notes_module=_FakeNotesModule(),
+            nextcloud=nextcloud,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "folder_note_folder_not_linked")
+        self.assertEqual(nextcloud.status_calls, [])
+
+    def test_create_note_refuses_missing_or_non_collection_notes_target(self) -> None:
+        for reason in (
+            workspace_folder_notes.REASON_NOTES_TARGET_MISSING,
+            workspace_folder_notes.REASON_NOTES_TARGET_NOT_COLLECTION,
+        ):
+            result = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
+                folder=_folder(linked=True),
+                title="Carnet",
+                markdown="",
+                notes_module=_FakeNotesModule(),
+                nextcloud=_FakeNextcloudNotes(status_reason=reason),
+            )
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["reason_code"], reason)
+
+    def test_create_note_refuses_invalid_title_and_local_sanitized_conflict(self) -> None:
+        invalid = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
+            folder=_folder(linked=True),
+            title="///",
+            markdown="",
+            notes_module=_FakeNotesModule(),
+            nextcloud=_FakeNextcloudNotes(),
+        )
+        self.assertFalse(invalid["ok"])
+        self.assertEqual(invalid["reason_code"], "folder_note_name_invalid")
+
+        existing = _note(target_name="Plan.md", title_hash=workspace_folder_notes.title_hash_for_target("Plan.md"))
+        conflict = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
+            folder=_folder(linked=True),
+            title="Plan",
+            markdown="",
+            notes_module=_FakeNotesModule(existing=[existing]),
+            nextcloud=_FakeNextcloudNotes(),
+        )
+        self.assertFalse(conflict["ok"])
+        self.assertEqual(conflict["reason_code"], "folder_note_name_conflict")
+
+    def test_create_note_refuses_remote_overwrite_like_conflict(self) -> None:
+        notes = _FakeNotesModule()
+        result = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
+            folder=_folder(linked=True),
+            title="Carnet",
+            markdown="",
+            notes_module=notes,
+            nextcloud=_FakeNextcloudNotes(put_reason=workspace_folder_notes.REASON_NAME_CONFLICT),
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "folder_note_name_conflict")
+        self.assertEqual(notes.stored, [])
+
+    def test_note_client_accepts_only_creation_status_for_put(self) -> None:
+        ok = _StatusOnlyNoteClient(201).put_note("Projet", "Carnet.md", b"")
+        self.assertTrue(ok.ok)
+        self.assertEqual(ok.status_class, "2xx")
+
+        for status in (200, 204):
+            with self.assertRaises(workspace_folder_note_nextcloud_client.NextcloudNoteClientError) as ctx:
+                _StatusOnlyNoteClient(status).put_note("Projet", "Carnet.md", b"")
+            self.assertEqual(ctx.exception.reason_code, "folder_note_name_conflict")
+
+    def test_create_note_rolls_back_remote_if_local_persistence_fails(self) -> None:
+        nextcloud = _FakeNextcloudNotes()
+        result = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
+            folder=_folder(linked=True),
+            title="Carnet sensible",
+            markdown="secret local only",
+            notes_module=_FakeNotesModule(fail_upsert=True),
+            nextcloud=nextcloud,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "folder_note_local_persistence_failed")
+        self.assertTrue(result["note_nextcloud"]["rollback"]["ok"])
+        self.assertEqual(nextcloud.deleted[0], ("Projet-Tulu", "Carnet-sensible.md", True))
+        self.assertNotIn("Carnet sensible", str(result["note_nextcloud"]))
+        self.assertNotIn("secret local only", str(result["note_nextcloud"]))
+
+    def test_create_note_reports_content_free_when_remote_rollback_fails(self) -> None:
+        result = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
+            folder=_folder(linked=True),
+            title="Carnet sensible",
+            markdown="secret local only",
+            notes_module=_FakeNotesModule(fail_upsert=True),
+            nextcloud=_FakeNextcloudNotes(
+                delete_reason=workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED
+            ),
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["note_nextcloud"]["rollback"]["ok"])
+        self.assertEqual(
+            result["note_nextcloud"]["rollback"]["reason_code"],
+            "folder_note_remote_compensation_failed",
+        )
+        self.assertNotIn("Carnet sensible", str(result["note_nextcloud"]))
+        self.assertNotIn("secret local only", str(result["note_nextcloud"]))
 
 
 if __name__ == "__main__":

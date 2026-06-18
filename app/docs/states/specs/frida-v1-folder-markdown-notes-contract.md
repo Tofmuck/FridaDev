@@ -40,6 +40,24 @@ content-free `folder_note_lookup_failed`. Une panne DB/store ne doit pas etre
 confondue avec une liste vide ou une note absente dans les futurs chemins
 runtime Notes.
 
+Depuis le Lot 3, la creation de note Markdown est livree par:
+
+- `app/core/workspace_folder_note_nextcloud_client.py` pour le transport WebDAV
+  Notes borne;
+- `app/core/workspace_folder_note_nextcloud_runtime.py` pour l'orchestration
+  creation Nextcloud-first puis persistance locale;
+- `app/core/workspace_folder_notes_service.py` pour la surface HTTP
+  namespaced;
+- `POST /api/workspace-folders/<folder_id>/notes` pour creer une note dans le
+  dossier Frida cible.
+
+Le Lot 3 verifie reellement `Notes` par `PROPFIND Depth: 0` et confirmation
+`collection`, ecrit avec `PUT + If-None-Match: *`, n'accepte que `201` comme
+creation sure, persiste ensuite dans `workspace_folder_notes`, et compense par
+DELETE distant exact si la persistance locale echoue. La preuve live synthetique
+content-free est:
+`app/docs/states/baselines/notes-smokes/frida-v1-notes-lot3-create-live-20260618T095734Z.jsonl`.
+
 ## 2. Modele produit Notes V1
 
 Une note Notes V1 est un fichier Markdown rattache a un dossier Frida produit.
@@ -206,6 +224,22 @@ Les surfaces HTTP futures separent:
   ETag brut, cible distante brute, URL DAV, chemin DAV, XML, payload WebDAV ou
   secret.
 
+Depuis le Lot 3, la premiere surface HTTP Notes livree est:
+
+```text
+POST /api/workspace-folders/<folder_id>/notes
+```
+
+Payload utilisateur minimal:
+
+```json
+{"title": "Titre utilisateur", "markdown": "# contenu initial optionnel"}
+```
+
+Cette route ne stocke pas le corps Markdown localement. Le titre est visible
+cote utilisateur; la projection technique et `note_nextcloud` restent
+content-free.
+
 ## 6. Operations V1
 
 ### 6.1 Creer une note
@@ -225,6 +259,19 @@ Flux attendu:
 - persister le modele local Notes;
 - compenser strictement la cible creee par ce flux si la persistance locale
   echoue.
+
+Etat Lot 3 livre:
+
+- dossier non `linked`: refus avant WebDAV;
+- titre absent/invalide ou collision locale de sanitisation: refus avant WebDAV;
+- `Notes` absent, non-collection ou inaccessible: refus content-free;
+- `PUT` anti-ecrasement: seul `201` est accepte comme creation sure;
+- `200` / `204` / statut overwrite-like: conflit content-free;
+- succes distant puis persistance locale echouee: rollback distant exact;
+- rollback distant echoue: etat content-free explicite;
+- corps Markdown jamais persiste localement;
+- titre brut, corps Markdown, ETag brut, cible distante brute, URL DAV, chemin
+  DAV, XML, payload WebDAV et secret interdits dans les surfaces techniques.
 
 Creation anti-ecrasement:
 

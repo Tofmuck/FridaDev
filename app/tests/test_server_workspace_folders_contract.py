@@ -12,6 +12,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from tests.support.server_test_bootstrap import load_server_module_for_tests
+from core import workspace_folder_notes
 from core import workspace_folders_store
 
 
@@ -494,6 +495,89 @@ class _FakeWorkspaceDocumentNextcloudRuntime:
         }
 
 
+class _FakeWorkspaceFolderNotes:
+    def __init__(self):
+        self.notes = []
+        self.events = []
+
+    def list_notes(self, workspace_folder_id, *, include_deleted=False, fail_closed=True):
+        if include_deleted:
+            return list(self.notes)
+        return [item for item in self.notes if not item.get("deleted_at")]
+
+    def upsert_note(self, **fields):
+        item = {
+            "id": fields["note_id"],
+            "workspace_folder_id": fields["workspace_folder_id"],
+            "title": fields["title"],
+            "title_hash": workspace_folder_notes.title_hash_for_target(fields["target_name"]),
+            "target_name": fields["target_name"],
+            "local_state": fields["local_state"],
+            "nextcloud_sync_state": fields["nextcloud_sync_state"],
+            "remote_note_ref": fields["remote_note_ref"],
+            "etag_value": fields["etag_value"],
+            "etag_hash": fields["etag_hash"],
+            "markdown_char_count": fields["markdown_char_count"],
+            "reason_code": fields["reason_code"],
+            "created_at": "2026-06-18T11:00:00Z",
+            "updated_at": "2026-06-18T11:00:00Z",
+            "deleted_at": None,
+        }
+        self.notes.append(item)
+        return dict(item)
+
+    def log_content_free_event(self, event, **fields):
+        self.events.append((event, fields))
+
+
+class _FakeWorkspaceFolderNoteNextcloudRuntime:
+    def __init__(self):
+        self.calls = []
+
+    def create_workspace_note_nextcloud_first(
+        self,
+        *,
+        folder,
+        title,
+        markdown,
+        notes_module,
+    ):
+        self.calls.append(
+            {
+                "folder_id": folder.get("id"),
+                "title": title,
+                "markdown_size": len(markdown or ""),
+            }
+        )
+        stored = notes_module.upsert_note(
+            note_id="33333333-3333-4333-8333-333333333333",
+            workspace_folder_id=folder.get("id"),
+            title=title,
+            target_name=workspace_folder_notes.sanitize_note_target_name(title),
+            local_state="available",
+            nextcloud_sync_state="linked",
+            remote_note_ref="workspace-note:33333333:abc123def456",
+            etag_value='"raw-etag-hidden"',
+            etag_hash="123456abcdef",
+            markdown_char_count=len(markdown or ""),
+            reason_code="folder_note_create_ok",
+        )
+        return {
+            "ok": True,
+            "note": stored,
+            "reason_code": "folder_note_create_ok",
+            "status": 201,
+            "note_nextcloud": {
+                "create_state": "stored",
+                "reason_code": "folder_note_create_ok",
+                "note_name_hash": "abc123def456",
+                "http_status_class": "2xx",
+                "etag_hash": "123456abcdef",
+                "etag_present": True,
+            },
+        }
+
+
 class ServerWorkspaceFoldersContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -504,6 +588,10 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.original_workspace_folders = self.server.workspace_folders
         self.original_workspace_files = self.server.workspace_files
         self.original_workspace_document_nextcloud_runtime = self.server.workspace_document_nextcloud_runtime
+        self.original_workspace_folder_notes = self.server.workspace_folder_notes
+        self.original_workspace_folder_note_nextcloud_runtime = (
+            self.server.workspace_folder_note_nextcloud_runtime
+        )
         self.original_workspace_file_selections = self.server.workspace_file_selections
         self.original_conv_store = self.server.conv_store
         self.fake_workspace = _FakeWorkspaceFolders()
@@ -514,9 +602,15 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
             self.fake_workspace_files,
         )
         self.fake_workspace_document_nextcloud_runtime = _FakeWorkspaceDocumentNextcloudRuntime()
+        self.fake_workspace_folder_notes = _FakeWorkspaceFolderNotes()
+        self.fake_workspace_folder_note_nextcloud_runtime = _FakeWorkspaceFolderNoteNextcloudRuntime()
         self.server.workspace_folders = self.fake_workspace
         self.server.workspace_files = self.fake_workspace_files
         self.server.workspace_document_nextcloud_runtime = self.fake_workspace_document_nextcloud_runtime
+        self.server.workspace_folder_notes = self.fake_workspace_folder_notes
+        self.server.workspace_folder_note_nextcloud_runtime = (
+            self.fake_workspace_folder_note_nextcloud_runtime
+        )
         self.server.workspace_file_selections = self.fake_workspace_file_selections
         self.server.conv_store = self.fake_conv_store
 
@@ -524,6 +618,10 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.server.workspace_folders = self.original_workspace_folders
         self.server.workspace_files = self.original_workspace_files
         self.server.workspace_document_nextcloud_runtime = self.original_workspace_document_nextcloud_runtime
+        self.server.workspace_folder_notes = self.original_workspace_folder_notes
+        self.server.workspace_folder_note_nextcloud_runtime = (
+            self.original_workspace_folder_note_nextcloud_runtime
+        )
         self.server.workspace_file_selections = self.original_workspace_file_selections
         self.server.conv_store = self.original_conv_store
 
@@ -744,6 +842,52 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         listed_after = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/files")
         self.assertEqual(listed_after.status_code, 200)
         self.assertEqual(listed_after.get_json()["items"], [])
+
+    def test_workspace_folder_note_create_route_is_namespaced_and_content_free(self) -> None:
+        self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
+        self.fake_workspace.folders[FOLDER_ID].update(
+            {
+                "link_workspace_folder_id": FOLDER_ID,
+                "link_nextcloud_sync_state": "linked",
+                "link_nextcloud_folder_ref": "workspace-folder:11111111:abcdef123456",
+                "link_nextcloud_name_hash": "abcdef123456",
+                "link_last_sync_reason_code": "workspace_folder_nextcloud_create_ok",
+                "link_last_sync_operation": "create",
+                "link_nextcloud_share_state": "confirmed",
+            }
+        )
+
+        global_route = self.client.post("/api/notes", json={"title": "Carnet"})
+        self.assertIn(global_route.status_code, {404, 405})
+
+        created = self.client.post(
+            f"/api/workspace-folders/{FOLDER_ID}/notes",
+            json={"title": "Carnet sensible", "markdown": "# contenu initial"},
+        )
+
+        self.assertEqual(created.status_code, 201)
+        payload = created.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["workspace_folder_id"], FOLDER_ID)
+        self.assertEqual(payload["note"]["note_v1_user"]["title"], "Carnet sensible")
+        self.assertEqual(payload["note"]["note_v1_user"]["status"], "available")
+        self.assertEqual(payload["note_nextcloud"]["reason_code"], "folder_note_create_ok")
+        self.assertEqual(
+            self.fake_workspace_folder_note_nextcloud_runtime.calls[0]["folder_id"],
+            FOLDER_ID,
+        )
+        self.assertEqual(
+            self.fake_workspace_folder_note_nextcloud_runtime.calls[0]["markdown_size"],
+            len("# contenu initial"),
+        )
+        self.assertNotIn("markdown", payload["note"])
+        self.assertNotIn("etag_value", payload["note"])
+        self.assertNotIn("target_name", payload["note"])
+        self.assertNotIn("remote_note_ref", payload["note"])
+        self.assertNotIn("Carnet sensible", str(payload["note"]["note_v1_technical"]))
+        self.assertNotIn("contenu initial", str(payload))
+        self.assertNotIn("raw-etag-hidden", str(payload))
+        self.assertNotIn("Carnet-sensible.md", str(payload["note_nextcloud"]))
 
     def test_workspace_file_list_shows_local_only_honestly_and_excludes_deleted(self) -> None:
         self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")

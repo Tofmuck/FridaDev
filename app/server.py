@@ -34,6 +34,9 @@ from core import workspace_files_service
 from core import workspace_document_nextcloud_runtime
 from core import workspace_file_selections
 from core import workspace_file_selections_service
+from core import workspace_folder_note_nextcloud_runtime
+from core import workspace_folder_notes
+from core import workspace_folder_notes_service
 from core import workspace_folders
 from core import workspace_folders_service
 from core import whisper_transcription_service
@@ -1320,6 +1323,21 @@ def api_delete_workspace_folder_file(folder_id: str, file_id: str):
         workspace_folders_module=workspace_folders,
         workspace_files_module=workspace_files,
         documents_nextcloud_runtime_module=workspace_document_nextcloud_runtime,
+    )
+    return jsonify(payload), status
+
+
+# ── /api/workspace-folders/<id>/notes* ───────────────────────────────────────
+
+@app.post('/api/workspace-folders/<folder_id>/notes')
+def api_create_workspace_folder_note(folder_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_folder_notes_service.create_workspace_folder_note_response(
+        folder_id,
+        data,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_notes_module=workspace_folder_notes,
+        notes_nextcloud_runtime_module=workspace_folder_note_nextcloud_runtime,
     )
     return jsonify(payload), status
 
