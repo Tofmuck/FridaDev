@@ -275,19 +275,19 @@ testable et reversible.
 
 ### Lot 0 - Audit existant exports
 
-- [ ] Auditer `app/docs/states/specs/chat-copy-export-contract.md`.
-- [ ] Auditer les exports conversationnels Markdown existants cote navigateur.
-- [ ] Auditer l'export Markdown technique des logs admin.
-- [ ] Auditer les routes, helpers, tests frontend/backend et dependances
+- [x] Auditer `app/docs/states/specs/chat-copy-export-contract.md`.
+- [x] Auditer les exports conversationnels Markdown existants cote navigateur.
+- [x] Auditer l'export Markdown technique des logs admin.
+- [x] Auditer les routes, helpers, tests frontend/backend et dependances
   disponibles autour de Markdown, TXT, DOCX et PDF.
-- [ ] Identifier les briques reutilisables telles quelles.
-- [ ] Identifier les briques a adapter.
-- [ ] Identifier les briques a eviter pour ne pas confondre Exports V1 avec
+- [x] Identifier les briques reutilisables telles quelles.
+- [x] Identifier les briques a adapter.
+- [x] Identifier les briques a eviter pour ne pas confondre Exports V1 avec
   logs admin, Documents, Notes ou simple telechargement navigateur.
-- [ ] Verifier explicitement que l'export admin logs ne sert pas de modele
+- [x] Verifier explicitement que l'export admin logs ne sert pas de modele
   produit, hors patterns limites de reponse HTTP, attachement Markdown ou tests.
-- [ ] Produire un audit content-free sous `app/docs/states/audits/`.
-- [ ] Ne livrer aucun runtime.
+- [x] Produire un audit content-free sous `app/docs/states/audits/`.
+- [x] Ne livrer aucun runtime.
 
 ### Lot 1 - Contrat source-of-truth Exports V1
 
