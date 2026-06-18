@@ -52,16 +52,23 @@ export, ni une image, ni une entree Biblio.
 - Notes ne produit pas d'export Markdown/TXT/DOCX/PDF; les exports appartiennent
   au chantier Exports.
 - Notes V1 n'est pas un editeur Markdown complet.
-- `workspace_files` reste le registre/read-model Documents V1; Notes ne doit pas
-  le reutiliser comme modele produit si cela brouille Documents et Notes.
-- Si Notes V1 a besoin d'un etat local durable, il doit passer par une
-  responsabilite dediee Notes, bornee et testee.
+- Notes V1 a un modele local dedie Notes, strictement rattache a
+  `workspace_folders.id`.
+- Le modele local Notes n'est pas `workspace_files`; `workspace_files` reste le
+  registre/read-model Documents V1.
+- Le modele local Notes sert au read-model utilisateur, aux refs content-free,
+  aux statuts, aux liens Nextcloud et a la resolution par titre/liste.
+- Absence de modele local Notes dedie = no-go pour les lots runtime.
 - La recherche plein texte riche dans le corps Markdown n'est pas livree en V1.
   V1 couvre le titre connu, la liste du dossier et une resolution par
   metadonnees/read-model local si elle existe.
-- Completer une note signifie ajouter du Markdown a une note existante; il n'y a
-  pas de reecriture globale silencieuse, pas d'ecrasement complet et pas
-  d'append sans cible claire.
+- Completer une note signifie append uniquement a la fin de la note existante.
+  V1 ne fait ni insertion au milieu, ni reecriture globale, ni remplacement
+  complet, ni append sans cible claire.
+- Le format d'append V1 est un bloc Markdown ajoute apres un separateur
+  `\n\n---\n\n`; il n'y a pas d'horodatage automatique.
+- Si l'utilisateur demande une edition fine au milieu du texte, V1 refuse
+  proprement ou propose de creer un nouvel ajout a la fin.
 - Les modifications de note utilisent une garde de concurrence de type ETag /
   `If-Match` ou mecanisme equivalent avant ecriture; un conflit de version est
   un refus content-free.
@@ -69,6 +76,12 @@ export, ni une image, ni une entree Biblio.
   completee ne part pas en Memory/RAG/Identity/Summary par confusion.
 - La lecture est entiere ou refusee proprement; pas de troncature silencieuse
   vendue comme lecture complete.
+- Limite V1 initiale pour lecture/preparation conversationnelle: 120_000
+  caracteres Markdown maximum par note; au-dela, refus propre.
+- Limite V1 initiale pour append entrant: 20_000 caracteres Markdown maximum;
+  au-dela, refus propre.
+- Ces limites peuvent etre revalidees en Lot 1 comme constantes de contrat, mais
+  elles ne sont pas une decision runtime cachee.
 
 ## Decisions ouvertes avant runtime
 
@@ -127,8 +140,7 @@ backup, rollback, tests et preuve content-free.
 - Collision locale ou Nextcloud: conflit explicite, pas d'ecrasement, pas de
   renommage automatique.
 - Creation Nextcloud-first.
-- Si un read-model local Notes existe, persistance locale apres succes
-  Nextcloud.
+- Persistance du modele local Notes apres succes Nextcloud.
 - Si Nextcloud reussit puis la persistance locale echoue, rollback strict de la
   note creee par ce flux uniquement; si rollback echoue, etat content-free
   explicite.
@@ -145,27 +157,30 @@ backup, rollback, tests et preuve content-free.
 ### Retrouver une note
 
 - Resolution V1 par titre connu, par selection dans la liste du dossier ou par
-  metadonnees/read-model local si livre.
+  metadonnees/read-model local Notes.
 - Pas de promesse de recherche plein texte riche dans le corps Markdown.
 - Cible ambigue: refus propre ou demande de clarification, pas de choix
   automatique.
 
 ### Completer une note
 
-- Completer signifie ajouter un bloc Markdown a la fin ou a un emplacement
-  explicitement cadre par le contrat du lot.
+- Completer signifie ajouter un bloc Markdown a la fin de la note.
+- Le bloc append est ajoute apres le separateur Markdown `\n\n---\n\n`.
+- Il n'y a pas d'insertion au milieu, pas de reecriture globale et pas de
+  remplacement complet en V1.
 - La note cible doit etre resolue clairement.
 - La version distante doit etre verifiee avant ecriture avec ETag / `If-Match`
   ou mecanisme equivalent.
 - Version obsolete, cible disparue ou cible non-collection: refus content-free.
-- Pas de reecriture globale silencieuse.
-- Pas d'ecrasement complet.
+- Edition fine au milieu du texte demandee par l'utilisateur: refus propre ou
+  proposition d'un nouvel ajout a la fin.
 
 ### Lire / preparer une note pour conversation
 
 - Lecture seulement sur demande explicite utilisateur.
 - Contenu injectable au modele dans le tour utile si la taille est dans les
   limites V1.
+- Limite initiale: 120_000 caracteres Markdown maximum par note lue/preparee.
 - Trop volumineux: refus propre, pas de troncature silencieuse.
 - Aucun contenu Markdown brut dans observabilite technique, JSONL, logs ou meta
   technique.
@@ -212,20 +227,32 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 
 - [ ] Creer `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
   comme source-of-truth Notes V1 avant tout runtime.
-- [ ] Formaliser le modele produit Note, les surfaces utilisateur, les limites
-  de taille, les reason codes, les invariants de securite et les criteres Lot Z.
+- [ ] Reporter dans la spec le modele produit Note, les surfaces utilisateur, les
+  limites deja decidees, les reason codes, les invariants de securite et les
+  criteres Lot Z.
+- [ ] Acter le modele local dedie Notes comme precondition runtime obligatoire,
+  rattache a `workspace_folders.id` et distinct de `workspace_files`.
+- [ ] Acter les limites initiales: 120_000 caracteres Markdown pour
+  lecture/preparation, 20_000 caracteres Markdown pour append entrant.
 - [ ] Acter que la recherche plein texte riche est hors V1.
 - [ ] Acter que les titres peuvent etre user-facing mais redacted/hashes dans
   les preuves techniques.
+- [ ] Acter que completer une note = append fin uniquement avec separateur
+  Markdown `\n\n---\n\n`, sans insertion ni reecriture globale.
 - [ ] Acter la garde ETag / `If-Match` pour toute modification.
 - [ ] Ne cocher aucun lot runtime.
 
 ### Lot 2 - Modele local / read-model Notes
 
-- [ ] Livrer uniquement le modele local minimal si le runtime Notes en a besoin.
-- [ ] Garder `workspace_files` reserve a Documents V1.
+- [ ] Livrer le modele local dedie Notes, obligatoire avant tout runtime create,
+  list, lookup, append ou read.
+- [ ] Le rattacher strictement a `workspace_folders.id`.
+- [ ] Garder `workspace_files` reserve a Documents V1; ne pas l'utiliser comme
+  modele produit Notes.
 - [ ] Representer note, dossier, etat de synchronisation, ref content-free et
   version distante sans exposer titre sensible dans les surfaces techniques.
+- [ ] Porter le read-model utilisateur, les refs content-free, les statuts, les
+  liens Nextcloud et la resolution par titre/liste.
 - [ ] Bloquer toute ecriture si le dossier n'est pas `linked` ou si `Notes`
   n'est pas une collection valide.
 - [ ] Ajouter tests anti-fuite et tests de statuts.
@@ -263,8 +290,10 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 
 ### Lot 6 - Completer une note existante
 
-- [ ] Ajouter du Markdown a une note existante sans reecriture globale
-  silencieuse.
+- [ ] Ajouter du Markdown uniquement a la fin d'une note existante.
+- [ ] Utiliser le separateur Markdown V1 `\n\n---\n\n` avant le bloc ajoute.
+- [ ] Refuser l'insertion au milieu, la reecriture globale et le remplacement
+  complet.
 - [ ] Exiger cible claire.
 - [ ] Utiliser ETag / `If-Match` ou garde equivalente.
 - [ ] Refuser conflit de version, cible disparue, cible non resolue ou cible non
@@ -272,12 +301,14 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 - [ ] Ne pas ecraser, ne pas renommer automatiquement, ne pas supprimer.
 - [ ] Tester append nominal, conflit de version, ambiguity, rollback/etat partiel
   si applicable et anti-fuite.
+- [ ] Tester explicitement le conflit ETag/version en fake/unit.
 
 ### Lot 7 - Lecture / preparation conversationnelle de note
 
 - [ ] Lire une note seulement apres demande explicite utilisateur.
 - [ ] Injecter le corps Markdown uniquement dans le tour utile et seulement si la
   taille respecte les limites V1.
+- [ ] Appliquer la limite initiale de 120_000 caracteres Markdown maximum.
 - [ ] Refuser proprement une note trop grande.
 - [ ] Ne pas alimenter Memory/RAG/Identity/Summary.
 - [ ] Ne pas logguer le corps Markdown brut.
@@ -291,6 +322,9 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 - [ ] Produire un JSONL live content-free avec notes synthetiques uniquement.
 - [ ] Prouver creation, collision, list, lookup, append, read et cleanup
   synthetiques.
+- [ ] Tenter un smoke synthetique de conflit ETag/version si possible sans
+  toucher de contenu utilisateur; sinon marquer le cas `not_applicable` /
+  `covered_by_unit_tests`, jamais `met`.
 - [ ] Scanner logs/preuves contre corps Markdown, noms sensibles, DAV/XML,
   payload WebDAV et secrets.
 - [ ] Ne toucher aucun contenu utilisateur reel.
@@ -298,6 +332,9 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 ### Lot Z - Cloture Notes V1
 
 - [ ] Rejouer les smokes transverses Notes V1.
+- [ ] Inclure le conflit ETag/version dans Lot Z; si le live n'est pas possible
+  proprement, documenter `not_applicable` / `covered_by_unit_tests` sans le
+  vendre comme preuve live complete.
 - [ ] Verifier que Notes ne livre pas Exports, Images, Documents, Biblio,
   Agenda, Mail ou Memory/RAG.
 - [ ] Documenter les limites V1 restantes.
