@@ -1339,6 +1339,29 @@ def api_list_workspace_folder_notes(folder_id: str):
     return jsonify(payload), status
 
 
+@app.get('/api/workspace-folders/<folder_id>/notes/lookup')
+def api_lookup_workspace_folder_note(folder_id: str):
+    payload, status = workspace_folder_notes_service.lookup_workspace_folder_note_response(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_notes_module=workspace_folder_notes,
+        title=request.args.get("title", ""),
+        note_id=request.args.get("note_id", ""),
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/notes/<note_id>')
+def api_get_workspace_folder_note(folder_id: str, note_id: str):
+    payload, status = workspace_folder_notes_service.lookup_workspace_folder_note_response(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_notes_module=workspace_folder_notes,
+        note_id=note_id,
+    )
+    return jsonify(payload), status
+
+
 @app.post('/api/workspace-folders/<folder_id>/notes')
 def api_create_workspace_folder_note(folder_id: str):
     data = request.get_json(silent=True) or {}

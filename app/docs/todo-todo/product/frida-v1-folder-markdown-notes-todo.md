@@ -1,7 +1,7 @@
 # Frida V1 - Notes Markdown par dossier - TODO
 
-Statut: TODO detaillee, Lot 4 liste utilisateur Notes livree depuis le
-read-model local, lookup conversationnel non commence.
+Statut: TODO detaillee, Lot 5 lookup Notes livre depuis le read-model local,
+append non commence.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -314,11 +314,13 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ### Lot 5 - Retrouver une note
 
-- [ ] Retrouver par titre exact/sanitise ou selection explicite dans la liste.
-- [ ] Utiliser le read-model local Notes dedie.
-- [ ] Refuser cible absente ou ambigue.
-- [ ] Ne pas promettre de recherche plein texte riche.
-- [ ] Tester resolution, ambiguite, absence, dossier invalide et anti-fuite.
+- [x] Retrouver par titre exact/sanitise ou selection explicite dans la liste.
+- [x] Utiliser le read-model local Notes dedie.
+- [x] Refuser cible absente ou ambigue.
+- [x] Ne pas promettre de recherche plein texte riche.
+- [x] Tester resolution, ambiguite, absence, dossier invalide et anti-fuite.
+- [x] Ne pas lire le corps Markdown et ne pas contacter WebDAV/Nextcloud.
+- [x] Distinguer note absente, cible ambigue et panne store fail-closed.
 
 ### Lot 6 - Completer une note existante
 
@@ -415,6 +417,6 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ## Prochain pas
 
-Ouvrir Lot 5 - Retrouver une note. Ce lot devra resoudre une note par titre
-exact/sanitise ou selection explicite dans la liste, sans recherche plein texte
-riche et sans cocher aucun Lot 6+.
+Ouvrir Lot 6 - Completer une note existante. Ce lot devra faire un append final
+borne via GET + ETag + PUT If-Match, sans reecriture globale, sans insertion au
+milieu et sans cocher aucun Lot 7+.

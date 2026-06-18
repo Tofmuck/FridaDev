@@ -75,6 +75,15 @@ class _FakeWorkspaceFolderNotes:
             and item.get("local_state") != workspace_folder_notes.NOTE_LOCAL_DELETED
         ]
 
+    def get_note(self, note_id, *, fail_closed=True):
+        if self.fail_list:
+            raise RuntimeError("raw lookup failure")
+        normalized = workspace_folder_notes.normalize_note_id(note_id)
+        for item in self.notes:
+            if workspace_folder_notes.normalize_note_id(item.get("id")) == normalized:
+                return dict(item)
+        return None
+
     def upsert_note(self, **fields):
         item = {
             "id": fields["note_id"],
@@ -195,6 +204,36 @@ class ServerWorkspaceFolderNotesContractTests(unittest.TestCase):
                 "link_nextcloud_share_state": "confirmed",
             }
         )
+
+    def _seed_note(
+        self,
+        note_id="33333333-3333-4333-8333-333333333333",
+        *,
+        title="Carnet sensible",
+        state="available",
+        deleted_at=None,
+    ):
+        target_name = workspace_folder_notes.sanitize_note_target_name(title)
+        item = {
+            "id": note_id,
+            "workspace_folder_id": FOLDER_ID,
+            "title": title,
+            "title_hash": workspace_folder_notes.title_hash_for_target(target_name),
+            "target_name": target_name,
+            "local_state": state,
+            "nextcloud_sync_state": "linked" if state != "deleted" else "deleted",
+            "remote_note_ref": f"workspace-note:{note_id[:8]}:abcdef123456",
+            "etag_value": '"raw-etag-hidden"',
+            "etag_hash": "123456abcdef",
+            "markdown_char_count": 12,
+            "reason_code": "folder_note_lookup_ok",
+            "created_at": "2026-06-18T11:00:00Z",
+            "updated_at": "2026-06-18T11:00:00Z",
+            "deleted_at": deleted_at,
+            "markdown_body": "corps markdown interdit",
+        }
+        self.fake_workspace_folder_notes.notes.append(item)
+        return item
 
     def test_workspace_folder_note_create_route_is_namespaced_and_content_free(self) -> None:
         self._create_linked_folder()
@@ -331,6 +370,96 @@ class ServerWorkspaceFolderNotesContractTests(unittest.TestCase):
         self.assertEqual(payload["reason_code"], "workspace_folder_deleted")
         self.assertNotIn("Projet", str(payload))
         self.assertEqual(self.fake_workspace_folder_notes.notes, [])
+
+    def test_workspace_folder_note_get_route_resolves_explicit_note_id_content_free(self) -> None:
+        self._create_linked_folder()
+        note = self._seed_note()
+
+        response = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/notes/{note['id']}")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["reason_code"], "folder_note_lookup_ok")
+        self.assertEqual(payload["lookup"]["mode"], "note_id")
+        self.assertEqual(payload["note"]["note_v1_user"]["title"], "Carnet sensible")
+        self.assertNotIn("Carnet sensible", str(payload["note"]["note_v1_technical"]))
+        self.assertNotIn("raw-etag-hidden", str(payload))
+        self.assertNotIn("Carnet-sensible.md", str(payload))
+        self.assertNotIn("corps markdown interdit", str(payload))
+        self.assertNotIn("target_name", payload["note"])
+        self.assertNotIn("remote_note_ref", payload["note"])
+
+    def test_workspace_folder_note_lookup_route_resolves_exact_or_sanitized_title(self) -> None:
+        self._create_linked_folder()
+        self._seed_note(title="Carnet sensible")
+
+        exact = self.client.get(
+            f"/api/workspace-folders/{FOLDER_ID}/notes/lookup",
+            query_string={"title": "Carnet sensible"},
+        )
+        sanitized = self.client.get(
+            f"/api/workspace-folders/{FOLDER_ID}/notes/lookup",
+            query_string={"title": "Carnet-sensible.md"},
+        )
+
+        self.assertEqual(exact.status_code, 200)
+        self.assertEqual(sanitized.status_code, 200)
+        self.assertEqual(exact.get_json()["lookup"]["mode"], "title")
+        self.assertEqual(sanitized.get_json()["note"]["note_v1_user"]["title"], "Carnet sensible")
+
+    def test_workspace_folder_note_lookup_route_refuses_ambiguous_title(self) -> None:
+        self._create_linked_folder()
+        self._seed_note(title="Carnet sensible")
+        self._seed_note(
+            note_id="44444444-4444-4444-8444-444444444444",
+            title="Carnet sensible",
+        )
+
+        response = self.client.get(
+            f"/api/workspace-folders/{FOLDER_ID}/notes/lookup",
+            query_string={"title": "Carnet sensible"},
+        )
+
+        self.assertEqual(response.status_code, 409)
+        payload = response.get_json()
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["reason_code"], "folder_note_lookup_ambiguous")
+        self.assertEqual(payload["lookup"]["matched_count"], 2)
+        self.assertEqual(payload["note"]["status"], "conflict")
+        self.assertNotIn("Carnet sensible", str(payload["lookup"]))
+
+    def test_workspace_folder_note_lookup_route_distinguishes_missing_from_store_failure(self) -> None:
+        self._create_linked_folder()
+
+        missing = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/notes/33333333-3333-4333-8333-333333333333")
+        self.fake_workspace_folder_notes.fail_list = True
+        failed = self.client.get(
+            f"/api/workspace-folders/{FOLDER_ID}/notes/lookup",
+            query_string={"title": "Carnet sensible"},
+        )
+
+        self.assertEqual(missing.status_code, 404)
+        self.assertEqual(missing.get_json()["reason_code"], "folder_note_not_found")
+        self.assertEqual(failed.status_code, 503)
+        self.assertEqual(failed.get_json()["reason_code"], "folder_note_lookup_failed")
+        self.assertNotIn("raw lookup failure", str(failed.get_json()))
+
+    def test_workspace_folder_note_lookup_route_refuses_non_linked_and_deleted_folder(self) -> None:
+        self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
+
+        non_linked = self.client.get(
+            f"/api/workspace-folders/{FOLDER_ID}/notes/lookup",
+            query_string={"title": "Carnet sensible"},
+        )
+        self.fake_workspace.folders[FOLDER_ID]["deleted_at"] = "2026-06-18T12:00:00Z"
+        deleted = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/notes/33333333-3333-4333-8333-333333333333")
+
+        self.assertEqual(non_linked.status_code, 409)
+        self.assertEqual(non_linked.get_json()["reason_code"], "folder_note_folder_not_linked")
+        self.assertEqual(deleted.status_code, 410)
+        self.assertEqual(deleted.get_json()["reason_code"], "workspace_folder_deleted")
+        self.assertEqual(self.fake_workspace_folder_note_nextcloud_runtime.calls, [])
 
 
 if __name__ == "__main__":

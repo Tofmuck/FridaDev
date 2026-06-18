@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Tuple
 
 from . import workspace_folder_note_nextcloud_runtime
+from . import workspace_folder_notes_lookup
 from . import workspace_folder_notes_list
 from . import workspace_folder_notes
 
@@ -110,6 +111,50 @@ def list_workspace_folder_notes_response(
     }, 200
 
 
+def lookup_workspace_folder_note_response(
+    folder_id: str,
+    *,
+    workspace_folders_module: Any,
+    workspace_folder_notes_module: Any = workspace_folder_notes,
+    note_id: Any = "",
+    title: Any = "",
+) -> Tuple[dict[str, Any], int]:
+    normalized, folder, error = _resolve_existing_folder(
+        folder_id,
+        workspace_folders_module=workspace_folders_module,
+    )
+    if error:
+        return error
+
+    result = workspace_folder_notes_lookup.lookup_workspace_folder_note(
+        folder,
+        notes_module=workspace_folder_notes_module,
+        note_id=note_id,
+        title=title,
+    )
+    if not result.get("ok"):
+        reason_code = str(result.get("reason_code") or REASON_RUNTIME_UNAVAILABLE)
+        return {
+            "ok": False,
+            "error": _human_note_error(reason_code),
+            "reason_code": reason_code,
+            "workspace_folder_id": normalized,
+            "note": {
+                "status": _note_status_for_failure(reason_code),
+                "reason_code": reason_code,
+            },
+            "lookup": result.get("lookup", {}),
+        }, int(result.get("status") or _http_status_for_reason(reason_code))
+
+    return {
+        "ok": True,
+        "workspace_folder_id": normalized,
+        "note": result.get("note", {}),
+        "lookup": result.get("lookup", {}),
+        "reason_code": workspace_folder_notes.REASON_LOOKUP_OK,
+    }, 200
+
+
 def _resolve_existing_folder(
     folder_id: str,
     *,
@@ -165,6 +210,8 @@ def _note_failure(reason_code: str, *, status: int) -> Tuple[dict[str, Any], int
 def _note_status_for_failure(reason_code: str) -> str:
     if reason_code == workspace_folder_notes.REASON_NAME_CONFLICT:
         return workspace_folder_notes.NOTE_LOCAL_CONFLICT
+    if reason_code == workspace_folder_notes.REASON_LOOKUP_AMBIGUOUS:
+        return workspace_folder_notes.NOTE_LOCAL_CONFLICT
     if reason_code in {
         workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
         workspace_folder_notes.REASON_NOTES_TARGET_MISSING,
@@ -182,10 +229,13 @@ def _http_status_for_reason(reason_code: str) -> int:
     if reason_code in {
         workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
         workspace_folder_notes.REASON_NAME_CONFLICT,
+        workspace_folder_notes.REASON_LOOKUP_AMBIGUOUS,
         workspace_folder_notes.REASON_NOTES_TARGET_NOT_COLLECTION,
     }:
         return 409
     if reason_code == workspace_folder_notes.REASON_NOTES_TARGET_MISSING:
+        return 404
+    if reason_code == workspace_folder_notes.REASON_NOT_FOUND:
         return 404
     if reason_code == workspace_folder_notes.REASON_NAME_INVALID:
         return 400
@@ -204,6 +254,8 @@ def _human_note_error(reason_code: str) -> str:
         workspace_folder_notes.REASON_NOTES_TARGET_UNAVAILABLE: "cible Notes indisponible",
         workspace_folder_notes.REASON_NAME_INVALID: "titre de note invalide",
         workspace_folder_notes.REASON_NAME_CONFLICT: "une note existe deja avec ce titre",
+        workspace_folder_notes.REASON_LOOKUP_AMBIGUOUS: "plusieurs notes correspondent",
+        workspace_folder_notes.REASON_NOT_FOUND: "note introuvable",
         workspace_folder_notes.REASON_TOO_LARGE: "note trop volumineuse",
         workspace_folder_notes.REASON_LOOKUP_FAILED: "lecture locale des notes indisponible",
         workspace_folder_notes.REASON_LOCAL_PERSISTENCE_FAILED: "persistance locale de la note impossible",

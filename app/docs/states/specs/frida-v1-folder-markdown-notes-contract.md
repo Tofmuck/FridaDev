@@ -70,6 +70,22 @@ exclut les notes `deleted` par defaut et fail-closed avec
 `folder_note_lookup_failed` si le store Notes est indisponible. Les titres sont
 visibles dans `note_v1_user`; `note_v1_technical` reste content-free.
 
+Depuis le Lot 5, la resolution d'une note dans un dossier est livree par:
+
+- `app/core/workspace_folder_notes_lookup.py` pour le lookup local
+  content-free;
+- `GET /api/workspace-folders/<folder_id>/notes/<note_id>` pour la selection
+  explicite par id de note;
+- `GET /api/workspace-folders/<folder_id>/notes/lookup?title=...` pour le titre
+  exact, le titre sanitise ou la cible `.md`.
+
+Le lookup Lot 5 ne contacte pas Nextcloud/WebDAV, ne lit pas le corps Markdown,
+ne fait aucune recherche plein texte, exclut les notes `deleted`, refuse une
+ambiguite avec `folder_note_lookup_ambiguous`, distingue une note absente
+`folder_note_not_found` d'une panne store `folder_note_lookup_failed`, et garde
+la projection technique sans titre brut, corps Markdown, ETag brut, cible
+distante brute, chemin/URL DAV, XML ou secret.
+
 ## 2. Modele produit Notes V1
 
 Une note Notes V1 est un fichier Markdown rattache a un dossier Frida produit.
@@ -346,9 +362,33 @@ Interdits dans la projection technique et les logs/events de liste:
 
 Resolution V1 autorisee:
 
+- id note UUID explicite issu de la liste utilisateur;
 - titre exact ou titre sanitise;
 - selection explicite dans la liste;
 - metadonnees du read-model local Notes.
+
+Surfaces livrees Lot 5:
+
+```text
+GET /api/workspace-folders/<folder_id>/notes/<note_id>
+GET /api/workspace-folders/<folder_id>/notes/lookup?title=...
+```
+
+Invariants Lot 5:
+
+- read-model local Notes uniquement;
+- aucun appel WebDAV/Nextcloud live;
+- aucun corps Markdown lu;
+- aucune recherche plein texte;
+- dossier absent, supprime ou non `linked`: refus content-free;
+- note `deleted`: non retournee;
+- titre absent/invalide: refus content-free;
+- cible absente: `folder_note_not_found`;
+- cible ambigue: `folder_note_lookup_ambiguous`, sans choix arbitraire;
+- panne store: `folder_note_lookup_failed`, jamais une fausse absence;
+- projection utilisateur: titre visible;
+- projection technique/logs/events: refs, hashes, statuts, reason codes et
+  compteurs seulement.
 
 Cible absente ou ambigue:
 
