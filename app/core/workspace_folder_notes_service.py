@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Tuple
 
 from . import workspace_folder_note_nextcloud_runtime
+from . import workspace_folder_notes_list
 from . import workspace_folder_notes
 
 
@@ -72,6 +73,43 @@ def create_workspace_folder_note_response(
     }, 201
 
 
+def list_workspace_folder_notes_response(
+    folder_id: str,
+    *,
+    workspace_folders_module: Any,
+    workspace_folder_notes_module: Any = workspace_folder_notes,
+) -> Tuple[dict[str, Any], int]:
+    normalized, folder, error = _resolve_existing_folder(
+        folder_id,
+        workspace_folders_module=workspace_folders_module,
+    )
+    if error:
+        return error
+
+    result = workspace_folder_notes_list.list_workspace_folder_notes(
+        folder,
+        notes_module=workspace_folder_notes_module,
+    )
+    if not result.get("ok"):
+        reason_code = str(result.get("reason_code") or REASON_RUNTIME_UNAVAILABLE)
+        return {
+            "ok": False,
+            "error": _human_note_error(reason_code),
+            "reason_code": reason_code,
+            "workspace_folder_id": normalized,
+            "items": [],
+            "count": 0,
+        }, int(result.get("status") or _http_status_for_reason(reason_code))
+
+    return {
+        "ok": True,
+        "workspace_folder_id": normalized,
+        "items": list(result.get("items") or []),
+        "count": int(result.get("count") or 0),
+        "reason_code": workspace_folder_notes.REASON_LIST_OK,
+    }, 200
+
+
 def _resolve_existing_folder(
     folder_id: str,
     *,
@@ -87,7 +125,10 @@ def _resolve_existing_folder(
             },
             400,
         )
-    folder = workspace_folders_module.get_workspace_folder(normalized)
+    try:
+        folder = workspace_folders_module.get_workspace_folder(normalized, include_deleted=True)
+    except TypeError:
+        folder = workspace_folders_module.get_workspace_folder(normalized)
     if not folder:
         return "", {}, (
             {

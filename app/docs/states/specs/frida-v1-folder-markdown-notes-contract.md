@@ -58,6 +58,18 @@ DELETE distant exact si la persistance locale echoue. La preuve live synthetique
 content-free est:
 `app/docs/states/baselines/notes-smokes/frida-v1-notes-lot3-create-live-20260618T095734Z.jsonl`.
 
+Depuis le Lot 4, la liste utilisateur des notes d'un dossier est livree par:
+
+- `app/core/workspace_folder_notes_list.py` pour l'orchestration de liste depuis
+  le read-model local Notes;
+- `GET /api/workspace-folders/<folder_id>/notes` pour la surface HTTP
+  namespaced.
+
+La liste Lot 4 ne contacte pas Nextcloud/WebDAV, ne lit pas le corps Markdown,
+exclut les notes `deleted` par defaut et fail-closed avec
+`folder_note_lookup_failed` si le store Notes est indisponible. Les titres sont
+visibles dans `note_v1_user`; `note_v1_technical` reste content-free.
+
 ## 2. Modele produit Notes V1
 
 Une note Notes V1 est un fichier Markdown rattache a un dossier Frida produit.
@@ -285,6 +297,25 @@ ou mecanisme equivalent qui prouve une creation sans overwrite.
 
 La liste appartient au dossier Frida courant.
 
+Surface livree Lot 4:
+
+```text
+GET /api/workspace-folders/<folder_id>/notes
+```
+
+Invariants Lot 4:
+
+- la liste est servie depuis `workspace_folder_notes` uniquement;
+- aucun appel WebDAV/Nextcloud live n'est fait pour lister;
+- aucun corps Markdown n'est lu ou persiste;
+- dossier inexistant ou supprime: refus HTTP content-free;
+- dossier non `linked`: refus content-free avec `folder_note_folder_not_linked`;
+- panne du store Notes: refus fail-closed avec `folder_note_lookup_failed`, pas
+  de fausse liste vide;
+- liste vide reelle: `ok=true`, `items=[]`, `count=0`;
+- notes `sync_error` et `conflict` restent visibles avec un statut honnete;
+- notes `deleted` exclues de la liste active.
+
 Projection utilisateur:
 
 - titre visible;
@@ -300,7 +331,16 @@ Projection technique:
 - statuts;
 - reason codes.
 
-Les notes `deleted` sont exclues de la liste utilisateur active.
+Interdits dans la projection technique et les logs/events de liste:
+
+- titre brut;
+- corps Markdown;
+- ETag brut;
+- `target_name`;
+- `remote_note_ref`;
+- chemin ou URL DAV;
+- XML ou payload WebDAV;
+- secret, token, cookie ou app-password.
 
 ### 6.3 Retrouver une note
 

@@ -1,7 +1,7 @@
 # Frida V1 - Notes Markdown par dossier - TODO
 
-Statut: TODO detaillee, Lot 3 creation Notes Nextcloud-first livree, liste
-utilisateur Notes non commencee.
+Statut: TODO detaillee, Lot 4 liste utilisateur Notes livree depuis le
+read-model local, lookup conversationnel non commence.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -301,12 +301,16 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ### Lot 4 - Liste des notes d'un dossier
 
-- [ ] Exposer une liste utilisateur utile pour le dossier Frida selectionne.
-- [ ] Afficher les titres/noms cote utilisateur.
-- [ ] Exclure les notes supprimees ou incoherentes.
-- [ ] Ne pas lister le contenu Markdown comme preuve technique.
-- [ ] Garder logs/JSONL/observabilite content-free.
-- [ ] Tester liste vide, notes liees, conflit/sync_error et anti-fuite.
+- [x] Exposer une liste utilisateur utile pour le dossier Frida selectionne.
+- [x] Afficher les titres/noms cote utilisateur.
+- [x] Exclure les notes supprimees ou incoherentes.
+- [x] Ne pas lister le contenu Markdown comme preuve technique.
+- [x] Garder logs/JSONL/observabilite content-free.
+- [x] Tester liste vide, notes liees, conflit/sync_error et anti-fuite.
+- [x] Servir la liste depuis le read-model local Notes uniquement, sans WebDAV
+  live et sans lecture du corps Markdown.
+- [x] Fail-closed si la lecture du store Notes echoue: `folder_note_lookup_failed`
+  et pas de fausse liste vide.
 
 ### Lot 5 - Retrouver une note
 
@@ -411,6 +415,6 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ## Prochain pas
 
-Ouvrir Lot 4 - Liste des notes d'un dossier. Ce lot devra exposer une liste
-utilisateur utile depuis le read-model local Notes, garder les titres visibles
-cote utilisateur uniquement et ne cocher aucun Lot 5+.
+Ouvrir Lot 5 - Retrouver une note. Ce lot devra resoudre une note par titre
+exact/sanitise ou selection explicite dans la liste, sans recherche plein texte
+riche et sans cocher aucun Lot 6+.
