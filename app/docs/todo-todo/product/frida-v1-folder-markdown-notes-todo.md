@@ -1,7 +1,7 @@
 # Frida V1 - Notes Markdown par dossier - TODO
 
-Statut: TODO detaillee, Lot 1 contrat source-of-truth livre, runtime non
-commence.
+Statut: TODO detaillee, Lot 2 modele local/read-model livre, runtime Nextcloud
+Notes non commence.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -262,22 +262,24 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ### Lot 2 - Modele local / read-model Notes
 
-- [ ] Livrer le modele local dedie Notes, obligatoire avant tout runtime create,
+- [x] Livrer le modele local dedie Notes, obligatoire avant tout runtime create,
   list, lookup, append ou read.
-- [ ] Creer la table applicative obligatoire `workspace_folder_notes`; le store
+- [x] Creer la table applicative obligatoire `workspace_folder_notes`; le store
   Python Notes n'est que l'acces applicatif a cette table.
-- [ ] Le rattacher strictement a `workspace_folders.id`.
-- [ ] Garder `workspace_files` reserve a Documents V1; ne pas l'utiliser comme
+- [x] Le rattacher strictement a `workspace_folders.id`.
+- [x] Garder `workspace_files` reserve a Documents V1; ne pas l'utiliser comme
   modele produit Notes.
-- [ ] Representer note, dossier, etat de synchronisation, ref content-free et
+- [x] Representer note, dossier, etat de synchronisation, ref content-free et
   version distante sans exposer titre sensible dans les surfaces techniques.
-- [ ] Porter le read-model utilisateur, les refs content-free, les statuts, les
+- [x] Porter le read-model utilisateur, les refs content-free, les statuts, les
   liens Nextcloud et la resolution par titre/liste.
-- [ ] Bloquer toute ecriture si le dossier n'est pas `linked` ou si `Notes`
+- [x] Bloquer toute ecriture si le dossier n'est pas `linked` ou si `Notes`
   n'est pas une collection valide.
-- [ ] Ajouter tests anti-fuite et tests de statuts.
-- [ ] S'arreter avant patch si une migration DB non triviale est necessaire et
-  ouvrir un micro-lot dedie.
+- [x] Ajouter tests anti-fuite et tests de statuts.
+- [x] Utiliser le pattern applicatif existant `ensure_schema(cur)` et produire
+  un backup DB applicative avant application live de la migration.
+  Backup OVH Lot 2:
+  `/opt/platform/_codex_reports/frida-v1-notes-lot2-db-backup-20260618T093415Z.dump`.
 
 ### Lot 3 - Creation de note Markdown
 
@@ -403,6 +405,6 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ## Prochain pas
 
-Ouvrir Lot 2 - Modele local / read-model Notes. Ce lot devra appliquer le
-contrat source-of-truth, livrer le modele local dedie Notes, ne pas stocker le
-corps Markdown localement et ne cocher aucun Lot 3+.
+Ouvrir Lot 3 - Creation de note Markdown. Ce lot devra appliquer le modele local
+Notes livre au Lot 2, ecrire dans Nextcloud sous `/Frida/<dossier>/Notes`, ne
+pas stocker le corps Markdown localement et ne cocher aucun Lot 4+.

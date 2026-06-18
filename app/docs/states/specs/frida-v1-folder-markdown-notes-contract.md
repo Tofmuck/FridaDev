@@ -19,6 +19,19 @@ Tout lot futur Notes V1 doit appliquer ce contrat. Si un lot rencontre une
 contradiction produit, il s'arrete avant patch et ouvre un micro-lot de recalage
 documentaire.
 
+Depuis le Lot 2, le read-model local Notes est livre par:
+
+- `app/core/workspace_folder_notes.py` pour statuts, sanitisation et projections
+  user-facing / techniques content-free;
+- `app/core/workspace_folder_notes_store.py` pour la table applicative
+  obligatoire `workspace_folder_notes`;
+- `app/core/conversations_maintenance.py` pour la creation idempotente de table
+  via le pattern applicatif existant `ensure_schema(cur)`.
+
+Le Lot 2 ne cree, lit, modifie ni supprime aucune note Nextcloud. Il ne livre
+pas de route serveur Notes, pas de frontend Notes et pas de transport WebDAV
+Notes.
+
 ## 2. Modele produit Notes V1
 
 Une note Notes V1 est un fichier Markdown rattache a un dossier Frida produit.
@@ -118,6 +131,14 @@ creation, liste, lookup, append ou lecture.
 
 Le store/module Python Notes est seulement l'acces applicatif a cette table. Il
 ne remplace pas la persistance locale obligatoire.
+
+La migration applicative Lot 2 est idempotente: `CREATE TABLE IF NOT EXISTS`,
+`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, index `IF NOT EXISTS`. Toute
+application sur la DB OVH active doit etre precedee d'un backup applicatif
+FridaDev date et d'une strategie rollback documentee.
+
+Backup OVH Lot 2 avant application live de la migration:
+`/opt/platform/_codex_reports/frida-v1-notes-lot2-db-backup-20260618T093415Z.dump`.
 
 Le modele local stocke uniquement:
 
