@@ -19,6 +19,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat Frida V1 Nextcloud folders 2026-06-16: `states/specs/frida-v1-nextcloud-folders-contract.md` pour `workspace_folders` comme modele produit des dossiers Frida V1, mapping logique `/Frida/<dossier>`, routage `Documents` / `Notes` / `Exports` / `Images`, frontiere Sauron/Celebrimbor, pas de DB directe Nextcloud et content-free. TODO de livraison archivee: `todo-done/product/frida-v1-nextcloud-folders-todo.md`.
 - Contrat Documents ingestion Frida V1 2026-06-17: `states/specs/frida-v1-documents-ingestion-contract.md` pour `workspace_files` comme registre/read-model local, documents persistants sous `/Frida/<dossier>/Documents`, noms visibles utilisateur vs preuves content-free, PDF texte, fallback visuel PDF image unifie, fichiers existants et frontieres active_document/Biblio. TODO de livraison archivee: `todo-done/product/frida-v1-documents-ingestion-todo.md`.
 - Contrat Notes Markdown Frida V1 2026-06-18: `states/specs/frida-v1-folder-markdown-notes-contract.md` pour notes rattachees a `workspace_folders`, cible `/Frida/<dossier>/Notes/<titre_sanitise>.md`, modele local Notes dedie, absence de corps Markdown local, append ETag/If-Match et observabilite content-free. TODO de livraison archivee: `todo-done/product/frida-v1-folder-markdown-notes-todo.md`.
+- Contrat Exports Frida V1 2026-06-18: `states/specs/frida-v1-exports-contract.md` pour exports rattaches a `workspace_folders`, cible `/Frida/<dossier>/Exports`, sources explicites, formats Markdown/TXT/DOCX/PDF, read-model `workspace_folder_exports`, no overwrite, reutilisation bornee et observabilite content-free. TODO active: `todo-todo/product/frida-v1-exports-todo.md`.
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit stack locale SearXNG/Crawl4AI vs benchmark web 2026-05-21: `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
@@ -94,6 +95,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
 - Contrat Documents ingestion Frida V1: `states/specs/frida-v1-documents-ingestion-contract.md`
 - Contrat Notes Markdown Frida V1: `states/specs/frida-v1-folder-markdown-notes-contract.md`
+- Contrat Exports Frida V1: `states/specs/frida-v1-exports-contract.md`
 - Roadmap archivee Documents ingestion Frida V1: `todo-done/product/frida-v1-documents-ingestion-todo.md`
 - Roadmap archivee Notes Markdown par dossier Frida V1: `todo-done/product/frida-v1-folder-markdown-notes-todo.md`
 - TODO active Exports Frida V1: `todo-todo/product/frida-v1-exports-todo.md`

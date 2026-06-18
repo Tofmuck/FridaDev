@@ -1,12 +1,14 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO detaillee, aucun lot runtime ouvert.
+Statut: TODO Lot 1 livre, aucun lot runtime ouvert.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
 
 - Roadmap finale Frida 1.0:
   `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Contrat source-of-truth Exports V1:
+  `app/docs/states/specs/frida-v1-exports-contract.md`
 - Socle dossiers Nextcloud V1 clos:
   `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
 - Archive socle dossiers Nextcloud V1:
@@ -47,7 +49,7 @@ Le bouton navigateur actuel reste une capacite locale et humaine: il relit la
 conversation, produit un Markdown lisible, exclut les metadonnees techniques et
 declenche un telechargement navigateur. Il ne cree ni export durable, ni lien
 Nextcloud, ni observabilite produit. Exports V1 ne doit pas le remplacer ou le
-detourner sans decision explicite Lot 1.
+detourner sans decision explicite ulterieure.
 
 L'export Markdown admin des logs est une surface technique d'operateur. Il peut
 inspirer uniquement des patterns tres limites, par exemple reponse HTTP,
@@ -82,8 +84,9 @@ Capacites V1 visees:
 - ranger automatiquement l'export cree sous le sous-dossier standard `Exports`;
 - lier l'export au `workspace_folder` source;
 - lister/retrouver un export deja produit;
-- reutiliser un export existant dans une conversation ou dans une action
-  utilisateur explicite, sans le confondre avec Documents ou Notes.
+- reutiliser un export existant par action utilisateur explicite:
+  retrouver/lister, telecharger/ouvrir, ou utiliser comme source d'un nouvel
+  export, sans le confondre avec Documents ou Notes.
 
 ## Frontieres produit
 
@@ -165,85 +168,81 @@ stockage Nextcloud ne suffit pas a livrer Exports V1.
 - Le chantier Exports ne rouvre pas Documents, Notes, Images, Biblio, Agenda,
   Mail ou Memory/RAG/Identity/Summary.
 
-## Decisions ouvertes avant runtime
+## Decisions produit fermees par Lot 1
 
-Aucun lot runtime Exports V1 ne doit demarrer tant que ces decisions ne sont pas
-gravees dans une spec source-of-truth Exports V1.
+Les decisions produit bloquantes sont gravees dans
+`app/docs/states/specs/frida-v1-exports-contract.md`.
 
-Decisions produit bloquantes:
+Decisions fermees:
 
-- Source exacte exportable en V1:
-  - conversation complete;
-  - selection de messages;
-  - reponse courante;
-  - note;
-  - document;
-  - brouillon genere par Frida;
-  - combinaison explicite de plusieurs sources.
-- Surface utilisateur primaire:
-  - bouton dans le chat;
-  - action dans un dossier;
-  - action sur une note;
-  - action sur un document;
-  - API d'abord.
-- Niveau de selection utilisateur:
-  - export direct du dossier courant;
-  - export d'une conversation liee au dossier;
-  - export d'un sous-ensemble explicitement selectionne.
-- Politique de nommage et versioning:
-  - nom fourni par l'utilisateur;
-  - nom derive du titre/source/date;
-  - suffixe versionne;
-  - refus de collision sans renommage automatique.
-- Read-model local exports:
-  - table dediee obligatoire ou derive strictement d'une table existante;
-  - relation a `workspace_folders.id`;
-  - relation optionnelle a conversation, note, document ou source d'origine;
-  - stockage ou non d'un hash de contenu.
-- Degre de fidelite DOCX/PDF attendu:
-  - texte simple;
-  - structure Markdown conservee;
-  - titres/listes/tableaux;
-  - images et pieces jointes hors V1 ou incluses.
-- Moteur de generation DOCX/PDF:
-  - dependances disponibles;
-  - installation/runtime;
-  - fallback si dependance absente.
-- Limites de taille V1:
-  - caracteres source maximum;
-  - taille fichier exporte maximum;
-  - duree maximum de generation;
-  - nombre de pages PDF maximum si applicable.
-- Reutilisation d'un export existant:
-  - sens exact du verbe "reutiliser":
-    - telecharger / ouvrir;
-    - joindre a une conversation;
-    - lire/injecter le contenu dans le tour courant;
-    - convertir vers un autre format;
-    - dupliquer / repartir d'un export comme source;
-    - autre comportement explicitement decide;
-  - critere de resolution:
-    - par titre;
-    - par format;
-    - par dossier;
-    - par hash/ref de contenu;
-    - par dernier export;
-    - par selection explicite dans une liste.
-  - Aucune lecture du contenu exporte, injection conversationnelle, conversion
-    ou duplication ne doit etre deduite du simple mot "reutiliser".
-- Visibilite utilisateur des noms d'exports:
-  - titres/noms visibles en UI;
-  - affichage dans les reponses conversationnelles;
-  - redaction stricte dans les surfaces techniques.
-- Politique de contenu exporte:
-  - contenu complet ou refus;
-  - pas de troncature silencieuse;
-  - message utilisateur en cas de limite.
+- Sources exportables V1:
+  - conversation complete explicitement demandee;
+  - selection explicite de messages;
+  - reponse de Frida explicitement choisie;
+  - note Markdown existante Notes V1;
+  - document prepare ou lu par Documents V1, seulement si la lecture Documents
+    V1 est deja disponible proprement.
+- Sources refusees V1:
+  - Biblio/Catalogue;
+  - Agenda;
+  - Mail;
+  - images generees comme objet produit;
+  - Memory/RAG/Identity/Summary;
+  - source ambigue ou implicite;
+  - export admin logs.
+- Formats V1:
+  - Markdown `.md`;
+  - texte brut `.txt`;
+  - DOCX `.docx`;
+  - PDF `.pdf`.
+- Fidelite V1:
+  - structure simple et honnete;
+  - titres, paragraphes et listes basiques si disponibles;
+  - pas de mise en page avancee vendue comme livree;
+  - refus clair si DOCX/PDF ne peut pas etre genere proprement.
+- Limites V1 initiales:
+  - contenu source normalise: `120_000` caracteres maximum;
+  - artefact genere: `25 MiB` maximum;
+  - generation: `180` secondes maximum;
+  - PDF genere: `100` pages maximum si le moteur expose un comptage fiable;
+  - si une limite ne peut pas etre verifiee proprement, refus;
+  - contenu complet ou refus, sans troncature silencieuse.
+- Read-model local:
+  - table applicative dediee obligatoire `workspace_folder_exports`;
+  - rattachement strict a `workspace_folders.id`;
+  - distinct de `workspace_files` et `workspace_folder_notes`;
+  - metadonnees, refs, hashes, statuts, ETag interne et reason codes;
+  - pas de contenu exporte brut stocke localement en V1.
+- Surfaces:
+  - routes futures sous `/api/workspace-folders/<folder_id>/exports*`;
+  - pas de route globale `/api/exports*`;
+  - UI minimale sous contexte chat/dossier, sans remplacer le bouton navigateur
+    Markdown actuel.
+- Nommage:
+  - titre utilisateur explicite autorise;
+  - sinon nom derive du type source et d'un timestamp UTC;
+  - sanitisation obligatoire;
+  - extension determinee par le format.
+- Collision/versioning:
+  - no overwrite;
+  - pas de renommage automatique silencieux;
+  - collision = refus content-free;
+  - versioning automatique hors V1.
+- Reutiliser un export existant:
+  - retrouver/lister;
+  - telecharger/ouvrir;
+  - utiliser explicitement comme source d'un nouvel export.
+- Reutiliser ne signifie pas:
+  - injection automatique dans le chat;
+  - lecture implicite;
+  - alimentation Memory/RAG/Identity/Summary;
+  - conversion implicite;
+  - duplication sans action utilisateur explicite.
 
 Si une decision nouvelle apparait pendant un lot runtime, le lot s'arrete avant
 patch et ouvre un micro-lot docs/spec. Il ne choisit pas en avancant.
 
-## Garde-fous runtime a graver dans la spec Lot 1
+## Garde-fous runtime graves par la spec Lot 1
 
 - Dossier non `linked` = refus content-free.
 - Dossier `deleted` = refus content-free.
@@ -259,14 +258,14 @@ patch et ouvre un micro-lot docs/spec. Il ne choisit pas en avancant.
 - Pas de secret, token, cookie ou app-password.
 - Pas de DB Nextcloud directe.
 - Pas de listing Nextcloud large comme preuve.
-- Pas de route globale qui contourne `workspace_folders` sans decision explicite
-  Lot 1.
+- Pas de route globale qui contourne `workspace_folders`.
 - Pas de reutilisation de `workspace_files` ou `workspace_folder_notes` si cela
   brouille Documents ou Notes.
 - Pas de promotion automatique en Memory/RAG/Identity/Summary.
 - Pas de reouverture Documents/Notes/Images par confusion.
 - Pas de lecture, injection, conversion ou duplication d'un export existant
-  sans decision Lot 1 et action utilisateur explicite.
+  sans action utilisateur explicite et sans le sens de reutilisation defini par
+  la spec Exports V1.
 
 ## Lots proposes
 
@@ -291,38 +290,38 @@ testable et reversible.
 
 ### Lot 1 - Contrat source-of-truth Exports V1
 
-- [ ] Creer `app/docs/states/specs/frida-v1-exports-contract.md`.
-- [ ] Fermer toutes les decisions ouvertes avant runtime.
-- [ ] Si une decision produit humaine manque, s'arreter avant d'ecrire ou
+- [x] Creer `app/docs/states/specs/frida-v1-exports-contract.md`.
+- [x] Fermer toutes les decisions ouvertes avant runtime.
+- [x] Si une decision produit humaine manque, s'arreter avant d'ecrire ou
   committer la spec, avant de cocher Lot 1, et demander explicitement; Lot 1
   documente les choix deja tranches, mais ne ferme jamais une decision en
   l'inventant.
-- [ ] Definir le modele produit Export V1.
-- [ ] Definir les sources exportables V1.
-- [ ] Definir les formats, limites, messages utilisateur et reason codes.
-- [ ] Definir le modele local/read-model attendu.
-- [ ] Definir les routes/API et surfaces UI autorisees.
-- [ ] Definir la politique de nommage, collision et versioning.
-- [ ] Definir la politique de generation DOCX/PDF et les dependances.
-- [ ] Definir les criteres Lot Z.
-- [ ] Ne livrer aucun runtime.
+- [x] Definir le modele produit Export V1.
+- [x] Definir les sources exportables V1.
+- [x] Definir les formats, limites, messages utilisateur et reason codes.
+- [x] Definir le modele local/read-model attendu.
+- [x] Definir les routes/API et surfaces UI autorisees.
+- [x] Definir la politique de nommage, collision et versioning.
+- [x] Definir la politique de generation DOCX/PDF et les dependances.
+- [x] Definir les criteres Lot Z.
+- [x] Ne livrer aucun runtime.
 
 ### Lot 2 - Modele local / read-model exports
 
-- [ ] Livrer le modele local exports decide par la spec Lot 1.
+- [ ] Livrer le modele local exports decide par la spec Lot 1:
+  `workspace_folder_exports`.
 - [ ] Rattacher strictement l'export a `workspace_folders.id`.
 - [ ] Representer le format, la source, le statut local, le statut Nextcloud,
   refs content-free, hashes, timestamps et reason codes.
-- [ ] Ne pas stocker de contenu exporte localement sauf decision explicite Lot 1
-  avec limites et tests anti-fuite.
+- [ ] Ne pas stocker de contenu exporte brut localement en V1.
 - [ ] Produire projections utilisateur et technique content-free.
 - [ ] Tester conflits locaux, statuts, tombstone si applicable et anti-fuite.
 - [ ] Ne pas contacter Nextcloud/WebDAV live.
 
 ### Lot 3 - Generation Markdown/TXT bornee fake/local
 
-- [ ] Generer Markdown depuis les sources decidees Lot 1.
-- [ ] Generer TXT depuis les sources decidees Lot 1.
+- [ ] Generer Markdown depuis les sources definies par la spec Lot 1.
+- [ ] Generer TXT depuis les sources definies par la spec Lot 1.
 - [ ] Appliquer les limites de taille V1.
 - [ ] Refuser proprement au-dela des limites.
 - [ ] Ne pas tronquer silencieusement.
@@ -332,8 +331,8 @@ testable et reversible.
 ### Lot 4 - Generation DOCX/PDF bornee fake/local
 
 - [ ] Verifier les dependances runtime necessaires a DOCX/PDF.
-- [ ] Generer DOCX selon le degre de fidelite decide Lot 1.
-- [ ] Generer PDF selon le degre de fidelite decide Lot 1.
+- [ ] Generer DOCX selon le degre de fidelite defini par la spec Lot 1.
+- [ ] Generer PDF selon le degre de fidelite defini par la spec Lot 1.
 - [ ] Refuser proprement si une dependance manque ou si la taille depasse les
   limites.
 - [ ] Ne pas vendre une conversion partielle comme complete.
@@ -356,23 +355,24 @@ testable et reversible.
 ### Lot 6 - Liste / retrouver / reutiliser un export existant
 
 - [ ] Lister les exports d'un dossier depuis le read-model local.
-- [ ] Retrouver un export selon les criteres decidees Lot 1.
-- [ ] Implementer uniquement le sens de "reutiliser" decide par Lot 1.
-- [ ] Refuser toute lecture, injection, conversion ou duplication non decidee
-  par Lot 1.
-- [ ] Ne pas lire le contenu exporte sans action explicite et decision Lot 1.
+- [ ] Retrouver un export selon les criteres definis par la spec Lot 1.
+- [ ] Implementer uniquement le sens de "reutiliser" defini par la spec Lot 1.
+- [ ] Refuser toute lecture, injection, conversion ou duplication non definie
+  par la spec Lot 1.
+- [ ] Ne pas lire le contenu exporte sans action explicite et sans le sens de
+  reutilisation defini par la spec Lot 1.
 - [ ] Distinguer absence, ambiguite, conflit et panne store.
 - [ ] Tester liste vide, liste avec formats multiples, lookup, ambiguite,
   refus et anti-fuite.
 
 ### Lot 7 - Integration UI ou conversationnelle minimale
 
-- [ ] Ajouter la surface utilisateur decidee Lot 1.
+- [ ] Ajouter la surface utilisateur autorisee par la spec Lot 1.
 - [ ] Ne pas remplacer le bouton export Markdown navigateur existant sans
   decision explicite.
-- [ ] Si Lot 1 decide une reutilisation conversationnelle, prouver que la
-  lecture/injection est explicite, bornee, content-free en observabilite et
-  separee de Memory/RAG/Identity/Summary.
+- [ ] Si un lot futur ajoute une reutilisation conversationnelle au-dela du
+  contrat V1, ouvrir d'abord un micro-contrat; V1 ne livre pas d'injection chat
+  automatique d'exports existants.
 - [ ] Afficher statuts, conflits et limites sans fuite technique.
 - [ ] Tester frontend si UI modifiee.
 - [ ] Ne pas ouvrir Documents, Notes ou Images.
@@ -399,9 +399,9 @@ testable et reversible.
 - [ ] Mettre a jour roadmap generale et index.
 - [ ] Archiver cette TODO seulement si les criteres V1 sont prouves.
 
-## Reason codes initiaux a stabiliser en Lot 1
+## Reason codes initiaux stabilises par Lot 1
 
-Catalogue indicatif, non definitif avant Lot 1:
+Catalogue initial content-free:
 
 - `folder_export_folder_not_linked`;
 - `folder_export_exports_target_missing`;
@@ -412,13 +412,16 @@ Catalogue indicatif, non definitif avant Lot 1:
 - `folder_export_source_missing`;
 - `folder_export_source_ambiguous`;
 - `folder_export_source_unsupported`;
+- `folder_export_source_unavailable`;
 - `folder_export_format_unsupported`;
+- `folder_export_dependency_unavailable`;
 - `folder_export_too_large`;
 - `folder_export_generation_failed_redacted`;
 - `folder_export_create_ok`;
 - `folder_export_store_ok`;
 - `folder_export_list_ok`;
 - `folder_export_lookup_ok`;
+- `folder_export_download_ok`;
 - `folder_export_reuse_ok`;
 - `folder_export_local_persistence_failed`;
 - `folder_export_remote_compensation_ok`;
@@ -470,7 +473,7 @@ Interdits dans preuves techniques:
 - Migration ou import d'exports historiques sans lot dedie.
 - Listing large de contenu Nextcloud comme preuve.
 
-## Hors-scope de cette reecriture
+## Hors-scope courant
 
 - Pas de runtime.
 - Pas de route serveur.
@@ -486,7 +489,7 @@ Interdits dans preuves techniques:
 
 ## Prochain pas
 
-Ouvrir Lot 0 - Audit existant Exports V1. Ce lot devra rester read-only /
-docs-only, auditer les exports conversationnels/admin existants, inventorier les
-dependances de generation documentaire, et produire un audit content-free avant
-toute spec Exports V1 ou runtime.
+Ouvrir Lot 2 - Modele local / read-model exports. Ce lot devra creer le modele
+local `workspace_folder_exports` decide par la spec Lot 1, sans generation
+documentaire, sans Nextcloud/WebDAV live et sans stockage local de contenu
+exporte brut.
