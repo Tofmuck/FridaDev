@@ -1,6 +1,7 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 1 livre, aucun lot runtime ouvert.
+Statut: TODO Lot 2 livre, read-model local exports ouvert pour les lots
+runtime suivants.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -327,15 +328,15 @@ le lot execute et prouve. Chaque lot doit rester borne, testable et reversible.
 
 ### Lot 2 - Modele local / read-model exports
 
-- [ ] Livrer le modele local exports decide par la spec Lot 1:
+- [x] Livrer le modele local exports decide par la spec Lot 1:
   `workspace_folder_exports`.
-- [ ] Rattacher strictement l'export a `workspace_folders.id`.
-- [ ] Representer le format, la source, le statut local, le statut Nextcloud,
+- [x] Rattacher strictement l'export a `workspace_folders.id`.
+- [x] Representer le format, la source, le statut local, le statut Nextcloud,
   refs content-free, hashes, timestamps et reason codes.
-- [ ] Ne pas stocker de contenu exporte brut localement en V1.
-- [ ] Produire projections utilisateur et technique content-free.
-- [ ] Tester conflits locaux, statuts, tombstone si applicable et anti-fuite.
-- [ ] Ne pas contacter Nextcloud/WebDAV live.
+- [x] Ne pas stocker de contenu exporte brut localement en V1.
+- [x] Produire projections utilisateur et technique content-free.
+- [x] Tester conflits locaux, statuts, tombstone si applicable et anti-fuite.
+- [x] Ne pas contacter Nextcloud/WebDAV live.
 
 ### Lot 3 - Generation Markdown/TXT bornee fake/local
 
@@ -444,6 +445,7 @@ Catalogue initial content-free:
 - `folder_export_store_ok`;
 - `folder_export_list_ok`;
 - `folder_export_lookup_ok`;
+- `folder_export_lookup_failed`;
 - `folder_export_download_ok`;
 - `folder_export_reuse_ok`;
 - `folder_export_local_persistence_failed`;
@@ -496,23 +498,22 @@ Interdits dans preuves techniques:
 - Migration ou import d'exports historiques sans lot dedie.
 - Listing large de contenu Nextcloud comme preuve.
 
-## Hors-scope courant
+## Hors-scope courant apres Lot 2
 
-- Pas de runtime.
+- Pas de generation documentaire.
 - Pas de route serveur.
 - Pas de UI.
 - Pas de Nextcloud live.
-- Pas de migration DB.
+- Pas de nouvelle migration DB hors lot explicitement dedie.
 - Pas de generation DOCX/PDF reelle.
 - Pas de smoke live.
-- Pas de rebuild.
 - Pas d'archivage.
 - Pas de Lot Z.
 - Pas de modification des chantiers Documents, Notes ou Images.
 
 ## Prochain pas
 
-Ouvrir Lot 2 - Modele local / read-model exports. Ce lot devra creer le modele
-local `workspace_folder_exports` decide par la spec Lot 1, sans generation
-documentaire, sans Nextcloud/WebDAV live et sans stockage local de contenu
-exporte brut.
+Ouvrir Lot 3 - Generation Markdown/TXT bornee fake/local. Ce lot devra utiliser
+le read-model `workspace_folder_exports` livre au Lot 2, acquerir les sources
+uniquement par les chemins explicites de la spec Lot 1, et ne pas encore ranger
+dans Nextcloud.

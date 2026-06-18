@@ -1,6 +1,6 @@
 # Frida V1 - Exports contract
 
-Statut: spec source-of-truth Exports V1 ouverte en Lot 1
+Statut: spec source-of-truth Exports V1 ouverte, Lot 2 read-model livre
 Date: 2026-06-18
 Roadmap active: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-exports-lot0-audit-2026-06-18.md`
@@ -222,6 +222,16 @@ une deuxieme notion utilisateur de dossier.
 
 Absence de cette table ou de son store applicatif = no-go Lot 2/runtime.
 
+Lot 2 livre:
+
+- table applicative `workspace_folder_exports` creee via le pattern applicatif
+  `ensure_schema(cur)`;
+- module de projection `app/core/workspace_folder_exports.py`;
+- store dedie `app/core/workspace_folder_exports_store.py`;
+- raccordement au schema applicatif par `app/core/conversations_maintenance.py`;
+- tests unitaires dedies
+  `app/tests/unit/core/test_workspace_folder_exports.py`.
+
 Le modele local stocke uniquement des metadonnees et refs necessaires:
 
 - id export applicatif;
@@ -249,6 +259,11 @@ persistes en DB applicative.
 
 Un cache local de contenu exporte est hors V1 et doit faire l'objet d'un contrat
 post-V1 separe.
+
+Les lectures du store Exports V1 fail-closed par defaut. Une panne DB/store ne
+doit jamais etre transformee en liste vide ou en export absent. Les erreurs
+applicatives exposees restent content-free et utilisent
+`folder_export_lookup_failed`; les causes brutes sont masquees.
 
 ## 7. Cible Nextcloud et stockage
 
@@ -371,6 +386,8 @@ Projection technique autorisee:
 - `format`;
 - `source_kind`;
 - `source_ref`;
+- `source_hash`;
+- `content_hash`;
 - `etag_present` ou `etag_hash`;
 - status;
 - reason code;
@@ -415,6 +432,7 @@ Catalogue initial content-free:
 - `folder_export_store_ok`;
 - `folder_export_list_ok`;
 - `folder_export_lookup_ok`;
+- `folder_export_lookup_failed`;
 - `folder_export_download_ok`;
 - `folder_export_reuse_ok`;
 - `folder_export_local_persistence_failed`;

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from . import workspace_file_nextcloud_links_store
+from . import workspace_folder_exports_store
 from . import workspace_folder_notes_store
 from . import workspace_folder_nextcloud_links_store
 
@@ -99,6 +100,7 @@ def init_catalog_db(
                 workspace_folder_nextcloud_links_store.ensure_schema(cur)
                 workspace_file_nextcloud_links_store.ensure_schema(cur)
                 workspace_folder_notes_store.ensure_schema(cur)
+                workspace_folder_exports_store.ensure_schema(cur)
                 cur.execute(
                     """
                     ALTER TABLE conversations
