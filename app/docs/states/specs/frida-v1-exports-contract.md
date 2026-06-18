@@ -20,8 +20,9 @@ live, sans smoke et sans rebuild.
 
 Tout lot futur Exports V1 doit appliquer ce contrat. Si un lot rencontre une
 decision produit manquante ou une contradiction reelle, il doit s'arreter avant
-patch runtime et ouvrir un micro-lot documentaire. Il ne doit pas choisir en
-avancant.
+tout patch qui figerait ou inventerait cette decision, y compris docs/spec,
+avant commit et avant de cocher un lot. Il doit demander explicitement et ne
+doit pas choisir en avancant.
 
 ## 2. Portee produit Exports V1
 
@@ -43,7 +44,7 @@ Exports V1 doit livrer une capacite utile mais bornee:
 
 - produire Markdown, TXT, DOCX et PDF;
 - ranger automatiquement l'export cree sous `/Frida/<dossier>/Exports`;
-- retrouver et reutiliser un export existant selon le sens defini en section 9;
+- retrouver et reutiliser un export existant selon le sens defini en section 10;
 - rester content-free dans les surfaces techniques;
 - refuser proprement ce qui depasse les limites V1.
 
@@ -80,7 +81,90 @@ Sources refusees en V1:
 - export admin logs;
 - source implicite deduite du contexte sans action utilisateur explicite.
 
-## 4. Formats V1 et fidelite attendue
+## 4. Acquisition des sources
+
+Exports V1 ne lit jamais une source seulement parce qu'elle est listee,
+retrouvee ou presente dans le dossier. Toute acquisition de contenu exige une
+action utilisateur explicite et une capacite source deja livree proprement.
+
+### 4.1 Conversation complete
+
+La conversation complete est acquise depuis le store conversationnel deja utilise
+par le chat et par l'export Markdown navigateur.
+
+Regles:
+
+- action utilisateur explicite obligatoire;
+- messages systeme, outils et techniques exclus selon
+  `chat-copy-export-contract.md`, sauf decision future explicite;
+- conversation lue dans un ordre stable;
+- si la conversation ne peut pas etre relue completement, export refuse avec un
+  reason code content-free.
+
+### 4.2 Selection explicite de messages
+
+Une selection de messages contient uniquement les messages explicitement
+selectionnes par l'utilisateur ou par une API qui les designe sans ambiguite.
+
+Regles:
+
+- aucun message ajoute par contexte implicite;
+- ordre stable;
+- messages introuvables, ambigus ou techniques refuses;
+- selection complete ou refus.
+
+### 4.3 Reponse de Frida choisie
+
+Une reponse de Frida comme source doit etre explicitement designee.
+
+Regles:
+
+- pas de "derniere reponse" implicite;
+- une action UI/API peut designer la derniere reponse seulement si cette action
+  la nomme explicitement comme source;
+- reponse absente, partielle ou ambigue = refus content-free.
+
+### 4.4 Note Markdown existante
+
+Une note Markdown existante est acquise via les capacites Notes V1 explicites.
+
+Regles:
+
+- lecture Notes V1 entiere ou refus;
+- pas de reutilisation du read-model Notes comme read-model Exports;
+- pas de stockage local durable du corps Markdown par Exports;
+- pas d'append, modification ou suppression de note;
+- pas de lecture implicite d'une note parce qu'elle est listee ou retrouvee.
+
+### 4.5 Document prepare ou lu
+
+Un document est exportable seulement si Documents V1 peut fournir une
+lecture/preparation complete selon son contrat.
+
+Regles:
+
+- lecture complete ou refus;
+- pas de relance ingestion par Exports;
+- pas de relance OCR par Exports;
+- pas de relance fallback visuel par Exports;
+- pas de lecture implicite d'un document parce qu'il existe dans le dossier;
+- si Documents V1 ne peut pas fournir une source proprement preparee, export
+  refuse avec reason code content-free.
+
+### 4.6 Export existant comme source d'un nouvel export
+
+Un export existant peut devenir source d'un nouvel export uniquement par action
+utilisateur explicite.
+
+Regles:
+
+- lecture bornee;
+- contenu complet ou refus;
+- pas d'injection chat automatique;
+- pas de conversion implicite;
+- pas de lecture parce qu'un export est liste ou retrouve.
+
+## 5. Formats V1 et fidelite attendue
 
 Formats livres par Exports V1:
 
@@ -121,7 +205,7 @@ Limites V1 initiales:
 - si une limite ne peut pas etre verifiee proprement, l'export est refuse;
 - pas de troncature silencieuse: contenu complet ou refus.
 
-## 5. Modele local / read-model Exports
+## 6. Modele local / read-model Exports
 
 Exports V1 exige un modele local dedie, distinct de `workspace_files` et de
 `workspace_folder_notes`.
@@ -166,7 +250,7 @@ persistes en DB applicative.
 Un cache local de contenu exporte est hors V1 et doit faire l'objet d'un contrat
 post-V1 separe.
 
-## 6. Cible Nextcloud et stockage
+## 7. Cible Nextcloud et stockage
 
 La cible normative est:
 
@@ -198,7 +282,7 @@ Ecriture V1:
 - si la compensation est impossible ou echoue, etat content-free explicite, pas
   de succes silencieux.
 
-## 7. API et surfaces UI autorisees
+## 8. API et surfaces UI autorisees
 
 Les surfaces HTTP Exports V1 restent sous le namespace dossier:
 
@@ -227,7 +311,7 @@ Le bouton navigateur actuel d'export Markdown conversationnel reste une capacite
 locale et humaine. Exports V1 ne le remplace pas, ne le detourne pas et ne le
 change pas sans decision explicite ulterieure.
 
-## 8. Nommage, collision et versioning
+## 9. Nommage, collision et versioning
 
 Nom cible:
 
@@ -249,7 +333,7 @@ Collision:
 Les noms/titres peuvent etre visibles dans l'UI utilisateur. Les surfaces
 techniques utilisent refs/hashes et jamais un nom sensible brut.
 
-## 9. Sens exact de "reutiliser un export"
+## 10. Sens exact de "reutiliser un export"
 
 En V1, reutiliser un export signifie uniquement:
 
@@ -268,7 +352,7 @@ Reutiliser ne signifie pas:
 Toute reutilisation qui lit le contenu exporte doit etre une action utilisateur
 explicite, bornee, complete ou refusee, et content-free en observabilite.
 
-## 10. Garde-fous content-free
+## 11. Garde-fous content-free
 
 Projection utilisateur autorisee:
 
@@ -305,7 +389,7 @@ Interdits en projection technique, logs, JSONL, observabilite et preuves:
 - secret, token, cookie, app-password, Authorization;
 - base64 ou data URL de document genere.
 
-## 11. Reason codes initiaux
+## 12. Reason codes initiaux
 
 Catalogue initial content-free:
 
@@ -320,6 +404,9 @@ Catalogue initial content-free:
 - `folder_export_source_ambiguous`;
 - `folder_export_source_unsupported`;
 - `folder_export_source_unavailable`;
+- `folder_export_source_not_prepared`;
+- `folder_export_source_read_unavailable`;
+- `folder_export_source_read_too_large`;
 - `folder_export_format_unsupported`;
 - `folder_export_dependency_unavailable`;
 - `folder_export_too_large`;
@@ -342,47 +429,49 @@ Reason codes interdits:
 - reason code contenant une URL, un chemin, un ETag brut, du XML, un secret ou
   du contenu exporte.
 
-## 12. Frontieres avec les chantiers voisins
+## 13. Frontieres avec les chantiers voisins
 
-### 12.1 Nextcloud folders
+### 13.1 Nextcloud folders
 
 Exports V1 reutilise le socle `workspace_folder linked` et le sous-dossier
 standard `Exports`. Il ne rouvre pas creation, renommage, suppression ou
 reconciliation des dossiers.
 
-### 12.2 Documents
+### 13.2 Documents
 
 Documents V1 reste la source des documents persistants sous `Documents`.
 Exports V1 peut exporter un document seulement si Documents V1 l'a deja prepare
 ou lu proprement et si l'utilisateur le choisit explicitement comme source.
 Exports V1 ne relance pas ingestion, fallback PDF, OCR ou rangement Documents.
+Exports V1 ne doit pas inventer une lane de lecture parallele a Documents.
 
-### 12.3 Notes
+### 13.3 Notes
 
 Notes V1 reste la source des notes Markdown vivantes sous `Notes`. Exports V1
 peut exporter une note existante explicitement choisie, mais ne modifie pas la
 note et ne reutilise pas le read-model Notes comme read-model exports.
+Exports V1 ne doit pas inventer une lane de lecture parallele a Notes.
 
-### 12.4 Export navigateur
+### 13.4 Export navigateur
 
 Le bouton actuel d'export Markdown navigateur reste local, humain et sans
 metadonnees techniques. Il ne prouve pas Exports V1 et ne doit pas etre remplace
 sans decision explicite ulterieure.
 
-### 12.5 Export admin logs
+### 13.5 Export admin logs
 
 L'export admin logs reste une surface operateur. Exports V1 ne reutilise pas son
 contenu, son read-model, ses IDs, ses payloads compactes ou son format
 technique. Seuls des patterns mecaniques limites peuvent etre repris: reponse
 HTTP, attachement Markdown ou forme de tests.
 
-### 12.6 Images, Biblio, Agenda, Mail, Memory
+### 13.6 Images, Biblio, Agenda, Mail, Memory
 
 Exports V1 ne livre pas Images, Biblio/Catalogue, Agenda, Mail,
 Memory/RAG/Identity/Summary. Un export ne doit jamais nourrir ces surfaces par
 confusion.
 
-## 13. Criteres Lot Z
+## 14. Criteres Lot Z
 
 Lot Z Exports V1 ne peut etre coche que si des preuves content-free demontrent:
 
@@ -402,7 +491,7 @@ Lot Z Exports V1 ne peut etre coche que si des preuves content-free demontrent:
 Les preuves Lot Z doivent rester synthetiques et content-free. Aucun contenu
 utilisateur reel ne doit etre lu, exporte, liste ou supprime pour cloturer V1.
 
-## 14. No-go pour Lot 2+
+## 15. No-go pour Lot 2+
 
 Les lots runtime Exports V1 ne doivent jamais inventer en avancant:
 
@@ -412,6 +501,9 @@ Les lots runtime Exports V1 ne doivent jamais inventer en avancant:
 - stockage local de contenu exporte;
 - injection chat implicite;
 - conversion implicite;
+- lecture d'une source parce qu'elle est seulement listee ou retrouvee;
+- lane de lecture parallele pour Notes ou Documents;
+- relance ingestion, OCR ou fallback visuel Documents;
 - versioning automatique;
 - dependance DOCX/PDF non documentee;
 - reuse de `workspace_files` ou `workspace_folder_notes` comme read-model
@@ -420,5 +512,7 @@ Les lots runtime Exports V1 ne doivent jamais inventer en avancant:
 - preuve technique contenant contenu exporte, nom sensible, ETag brut, DAV/XML,
   payload brut ou secret.
 
-Si un besoin reel depasse ce contrat, le lot s'arrete et ouvre un micro-lot de
-recalage spec avant tout runtime.
+Si l'acquisition complete d'une source n'est pas disponible proprement, l'export
+est refuse avec reason code content-free. Si un besoin reel depasse ce contrat,
+le lot s'arrete avant tout patch qui figerait ou inventerait une decision, y
+compris docs/spec, avant commit et avant de cocher un lot.

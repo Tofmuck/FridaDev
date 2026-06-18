@@ -182,6 +182,19 @@ Decisions fermees:
   - note Markdown existante Notes V1;
   - document prepare ou lu par Documents V1, seulement si la lecture Documents
     V1 est deja disponible proprement.
+- Acquisition des sources:
+  - conversation complete depuis le store conversationnel deja utilise par le
+    chat/export navigateur, sur action explicite, sans messages
+    systeme/outils/techniques;
+  - selection de messages limitee aux messages explicitement selectionnes, en
+    ordre stable;
+  - reponse Frida uniquement si elle est explicitement designee;
+  - note Markdown via les capacites Notes V1 explicites, entiere ou refus, sans
+    stockage local durable du corps par Exports et sans append/modification;
+  - document uniquement si Documents V1 fournit une lecture/preparation
+    complete, sans relance ingestion, OCR ou fallback visuel par Exports;
+  - export existant comme source seulement par action explicite, lecture bornee
+    complete ou refus, sans injection chat automatique.
 - Sources refusees V1:
   - Biblio/Catalogue;
   - Agenda;
@@ -239,8 +252,10 @@ Decisions fermees:
   - conversion implicite;
   - duplication sans action utilisateur explicite.
 
-Si une decision nouvelle apparait pendant un lot runtime, le lot s'arrete avant
-patch et ouvre un micro-lot docs/spec. Il ne choisit pas en avancant.
+Si une decision nouvelle apparait pendant un lot, le lot s'arrete avant tout
+patch qui figerait ou inventerait cette decision, y compris docs/spec, avant
+commit et avant de cocher un lot. Il demande explicitement et ne choisit pas en
+avancant.
 
 ## Garde-fous runtime graves par la spec Lot 1
 
@@ -266,11 +281,15 @@ patch et ouvre un micro-lot docs/spec. Il ne choisit pas en avancant.
 - Pas de lecture, injection, conversion ou duplication d'un export existant
   sans action utilisateur explicite et sans le sens de reutilisation defini par
   la spec Exports V1.
+- Pas d'invention d'une lane de lecture parallele pour Notes ou Documents.
+- Pas de lecture de contenu simplement parce qu'un objet est liste ou retrouve.
+- Si l'acquisition complete de la source n'est pas disponible proprement,
+  l'export est refuse avec reason code content-free.
 
 ## Lots proposes
 
-Ne cocher aucun lot dans cette reecriture. Chaque lot doit rester borne,
-testable et reversible.
+Les lots coches refletent l'etat livre. Pour les prochains lots, ne cocher que
+le lot execute et prouve. Chaque lot doit rester borne, testable et reversible.
 
 ### Lot 0 - Audit existant exports
 
@@ -322,6 +341,7 @@ testable et reversible.
 
 - [ ] Generer Markdown depuis les sources definies par la spec Lot 1.
 - [ ] Generer TXT depuis les sources definies par la spec Lot 1.
+- [ ] Acquerir chaque source par le chemin explicite defini dans la spec Lot 1.
 - [ ] Appliquer les limites de taille V1.
 - [ ] Refuser proprement au-dela des limites.
 - [ ] Ne pas tronquer silencieusement.
@@ -413,6 +433,9 @@ Catalogue initial content-free:
 - `folder_export_source_ambiguous`;
 - `folder_export_source_unsupported`;
 - `folder_export_source_unavailable`;
+- `folder_export_source_not_prepared`;
+- `folder_export_source_read_unavailable`;
+- `folder_export_source_read_too_large`;
 - `folder_export_format_unsupported`;
 - `folder_export_dependency_unavailable`;
 - `folder_export_too_large`;
