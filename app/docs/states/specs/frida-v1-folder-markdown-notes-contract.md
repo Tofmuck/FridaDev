@@ -99,11 +99,13 @@ ETag absent, conflit `If-Match`, note non eligible et panne locale/distante. Il
 ne persiste jamais le corps Markdown localement. Si le PUT distant reussit sans
 retourner d'ETag, l'operation reste un echec: le runtime tente une relecture
 bornee pour recuperer un ETag courant et restaurer le contenu precedent avec
-`If-Match`; si cette compensation n'est pas prouvable, le read-model local est
-marque `sync_error` content-free. Si le PUT distant reussit puis la persistance
-locale echoue, une compensation distante stricte tente de restaurer le contenu
-precedent avec l'ETag post-append; si elle echoue ou est impossible, l'API
-retourne un etat content-free d'echec partiel et jamais un succes silencieux.
+`If-Match` uniquement si le Markdown relu correspond exactement au Markdown
+appendu attendu par Frida; si cette compensation n'est pas prouvable, le
+read-model local est marque `sync_error` content-free. Si le PUT distant reussit
+puis la persistance locale echoue, une compensation distante stricte tente de
+restaurer le contenu precedent avec l'ETag post-append; si elle echoue ou est
+impossible, l'API retourne un etat content-free d'echec partiel et jamais un
+succes silencieux.
 
 ## 2. Modele produit Notes V1
 
@@ -452,7 +454,8 @@ Invariants Lot 6:
 - PUT distant impossible: `folder_note_remote_write_failed`;
 - ETag absent: `folder_note_etag_missing`;
 - ETag post-ecriture absent: echec obligatoire, relecture bornee pour tenter de
-  recuperer un ETag courant, restauration du contenu precedent si possible,
+  recuperer un ETag courant, restauration du contenu precedent seulement si le
+  Markdown relu correspond exactement au Markdown appendu attendu par Frida,
   sinon note locale marquee `sync_error` content-free;
 - panne de persistence locale apres PUT: `folder_note_local_persistence_failed`
   avec compensation distante tentee et resultat content-free;

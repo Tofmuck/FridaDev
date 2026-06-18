@@ -320,7 +320,7 @@ class WorkspaceFolderNotesAppendTests(unittest.TestCase):
         client = _FakeClient(
             current_markdown="Avant",
             put_etag="",
-            recovery_markdown="Avant---Ajout",
+            recovery_markdown=f"Avant{workspace_folder_notes_append.APPEND_SEPARATOR}Ajout",
             recovery_etag='"etag-recovered"',
         )
         notes = _FakeNotesModule()
@@ -349,7 +349,7 @@ class WorkspaceFolderNotesAppendTests(unittest.TestCase):
         client = _FakeClient(
             current_markdown="Avant",
             put_etag="",
-            recovery_markdown="Avant---Ajout",
+            recovery_markdown=f"Avant{workspace_folder_notes_append.APPEND_SEPARATOR}Ajout",
             recovery_etag="",
         )
         notes = _FakeNotesModule()
@@ -375,6 +375,37 @@ class WorkspaceFolderNotesAppendTests(unittest.TestCase):
         self.assertNotIn("Avant", str(result) + str(projected))
         self.assertNotIn("Ajout", str(result) + str(projected))
         self.assertNotIn("etag-before", str(result) + str(projected))
+
+    def test_missing_post_write_etag_refuses_rollback_when_recovered_body_differs(self):
+        client = _FakeClient(
+            current_markdown="Avant",
+            put_etag="",
+            recovery_markdown="Modification concurrente",
+            recovery_etag='"etag-concurrent"',
+        )
+        notes = _FakeNotesModule()
+
+        result = workspace_folder_notes_append.append_workspace_folder_note(
+            _folder(),
+            note_id=NOTE_ID,
+            markdown="Ajout",
+            notes_module=notes,
+            nextcloud=client,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], workspace_folder_notes.REASON_ETAG_MISSING)
+        self.assertEqual(result["note_nextcloud"]["rollback"]["reason_code"], workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED)
+        self.assertFalse(result["note_nextcloud"]["rollback"]["recovered_matches_expected"])
+        self.assertEqual(len(client.get_calls), 2)
+        self.assertEqual(len(client.put_calls), 1)
+        self.assertEqual(result["note_nextcloud"]["local_mark_state"], "sync_error")
+        self.assertEqual(notes.upserts[0]["local_state"], workspace_folder_notes.NOTE_LOCAL_SYNC_ERROR)
+        projected = workspace_folder_notes.apply_note_projection(notes.note, folder=_folder())
+        self.assertEqual(projected["note_v1_technical"]["status"], workspace_folder_notes.NOTE_LOCAL_SYNC_ERROR)
+        self.assertNotIn("Modification concurrente", str(result) + str(projected))
+        self.assertNotIn("Ajout", str(result) + str(projected))
+        self.assertNotIn("etag-concurrent", str(result) + str(projected))
 
     def test_local_persistence_failure_reports_compensation_failure(self):
         client = _FakeClient(

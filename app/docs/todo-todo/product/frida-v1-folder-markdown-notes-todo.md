@@ -341,7 +341,8 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
   apres PUT; sinon remonter un etat content-free, jamais un succes silencieux.
 - [x] En cas de PUT reussi sans ETag post-ecriture, ne jamais retourner de
   succes, tenter une compensation prouvable par relecture bornee + `If-Match`,
-  et marquer le read-model local `sync_error` si la compensation est impossible.
+  uniquement si le Markdown relu correspond au Markdown appendu attendu, et
+  marquer le read-model local `sync_error` si la compensation est impossible.
 
 ### Lot 7 - Lecture / preparation conversationnelle de note
 

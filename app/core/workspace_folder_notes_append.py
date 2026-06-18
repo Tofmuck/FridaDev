@@ -145,6 +145,7 @@ def append_workspace_folder_note(
             target_folder_name=target_folder_name,
             target_name=target_name,
             previous_markdown=current.markdown,
+            expected_markdown=appended_markdown,
             notes_module=notes_module,
             folder_id=folder_id,
         )
@@ -294,6 +295,7 @@ def _recover_and_restore_after_missing_write_etag(
     target_folder_name: str,
     target_name: str,
     previous_markdown: str,
+    expected_markdown: str,
     notes_module: Any,
     folder_id: str,
 ) -> dict[str, Any]:
@@ -311,12 +313,22 @@ def _recover_and_restore_after_missing_write_etag(
             "etag_present": False,
         }
     else:
+        recovered_matches_expected = recovered.markdown == expected_markdown
         if not recovered.etag_value:
             rollback = {
                 "ok": False,
                 "reason_code": workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED,
                 "http_status_class": recovered.status_class,
                 "etag_present": False,
+                "recovered_matches_expected": recovered_matches_expected,
+            }
+        elif not recovered_matches_expected:
+            rollback = {
+                "ok": False,
+                "reason_code": workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED,
+                "http_status_class": recovered.status_class,
+                "etag_present": True,
+                "recovered_matches_expected": False,
             }
         else:
             rollback = _restore_previous_remote_content(
@@ -329,6 +341,7 @@ def _recover_and_restore_after_missing_write_etag(
                 folder_id=folder_id,
             )
             rollback["recovered_etag_present"] = True
+            rollback["recovered_matches_expected"] = True
     _log_event(
         notes_module,
         "notes_v1_append_missing_post_write_etag",
