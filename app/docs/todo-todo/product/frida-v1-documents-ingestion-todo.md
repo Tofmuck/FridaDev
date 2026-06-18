@@ -1,6 +1,8 @@
 # Frida V1 - Documents sources / ingestion / lecture / PDF fallback - TODO
 
-Statut: Lot 8 observabilite / smokes live livre; prete pour Lot Z cloture Documents V1
+Statut: Lot 8 observabilite / smokes live livre et corrige; PDF sans texte
+prouve sur les deux chemins, refus non `linked` live volontairement partial
+faute de dossier actif non `linked` naturel; pret pour Lot Z sans ouvrir Lot Z.
 Date: 2026-06-17
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -645,9 +647,10 @@ Preuve Lot 7:
   necessaire.
 - [x] Produire JSONL content-free pour les smokes.
 - [x] Prouver un depot/liste/preparation avec document synthetique.
-- [x] Prouver le refus dossier non `linked`.
+- [ ] Prouver live le refus dossier non `linked` sans mutation DB forcee.
 - [x] Prouver le conflit de nom.
-- [x] Prouver PDF texte et PDF image/fallback sur les deux chemins.
+- [x] Prouver PDF texte, image/fallback et PDF sans texte/fallback PDF visuel
+  sur les deux chemins.
 - [x] Scanner les artefacts contre contenu, nom sensible, chemin DAV, URL DAV,
   XML brut, `storage_key`, token, cookie, `app-password`, secret.
 
@@ -658,17 +661,28 @@ Lot 8 livre:
   `linked` des que la liaison locale est persistee, sans nom cible brut;
 - smoke live synthetique content-free:
   `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot8-observability-smokes-20260618T063834Z.jsonl`;
+- correctif Lot 8 avant Lot Z:
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot8-1-pdf-visual-proof-20260618T071616Z.jsonl`;
 - cas `met`: runtime/secret redacted, upload texte, liste utilisateur,
-  preparation texte, PDF texte, fallback visuel via image de dossier, conflit
-  de nom, inventaire fichiers existants Lot 7, read-model observabilite,
-  scan logs, scan artefact, cleanup distant strict;
+  preparation texte, PDF texte, fallback visuel via image de dossier, PDF sans
+  texte de dossier comme `media_kind=file` / `payload_order=text_then_file`,
+  PDF sans texte upload direct comme `active_document` `media_kind=file` /
+  `payload_order=text_then_file`, conflit de nom, inventaire fichiers existants
+  Lot 7, read-model observabilite, scan logs, scan artefact, cleanup distant
+  strict;
 - cas `LOT8_NON_LINKED_REFUSAL`: `partial` volontaire, car aucun dossier actif
   non `linked` n'existait et le lot interdit de forcer l'etat DB pour fabriquer
   une preuve live; le refus reste couvert par les tests unitaires/serveur
   existants avec `folder_document_folder_not_linked`;
+- la ligne live non `linked` reste non cochee comme preuve live complete; elle
+  devra etre revalidee au Lot Z seulement si une preuve propre existe, sans
+  mutation DB artificielle;
 - cleanup: `3` documents synthetiques supprimes via la route produit, cibles
   Nextcloud synthetiques absentes en status-only, aucune source utilisateur
   touchee.
+- cleanup correctif PDF visuel: fichier PDF de dossier synthetique supprime via
+  la route produit avec cible distante absente en status-only, active document
+  direct retire, conversations synthetiques tombstone.
 
 Artefacts attendus:
 

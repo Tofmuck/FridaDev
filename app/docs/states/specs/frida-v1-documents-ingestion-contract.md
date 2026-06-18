@@ -684,13 +684,23 @@ Lot 8 observabilite / smokes live livre le
 
 - artefact:
   `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot8-observability-smokes-20260618T063834Z.jsonl`;
+- artefact correctif Lot 8 avant Lot Z:
+  `app/docs/states/baselines/documents-smokes/frida-v1-documents-lot8-1-pdf-visual-proof-20260618T071616Z.jsonl`;
 - cas `met`: runtime redacted, upload texte, liste utilisateur, preparation
-  texte, PDF texte, fallback visuel via image synthetique de dossier, conflit
-  de nom, inventaire fichiers existants Lot 7, read-model observabilite, scan
-  logs, scan artefact et cleanup distant strict;
+  texte, PDF texte, fallback visuel via image synthetique de dossier, PDF sans
+  texte de dossier injecte comme `media_kind=file` /
+  `payload_order=text_then_file`, PDF sans texte upload direct active-document
+  injecte comme `media_kind=file` / `payload_order=text_then_file`, conflit de
+  nom, inventaire fichiers existants Lot 7, read-model observabilite, scan logs,
+  scan artefact et cleanup distant strict;
 - cas `LOT8_NON_LINKED_REFUSAL`: `partial` documente sans mutation DB forcee,
   car aucun dossier actif non `linked` n'etait disponible; le refus reste un
-  invariant runtime/teste via `folder_document_folder_not_linked`;
+  invariant runtime/teste via `folder_document_folder_not_linked`; la preuve live
+  complete non `linked` n'est pas vendue comme fermee et ne doit etre rejouee au
+  Lot Z que si une preuve propre existe sans manipulation DB artificielle;
+- cleanup correctif: fichier PDF de dossier synthetique supprime via la route
+  produit avec cible distante absente en status-only, active document direct
+  retire, conversations synthetiques tombstone;
 - invariant observe et consolide: apres upload Documents V1 reussi, la reponse
   immediate doit exposer `nextcloud_sync_state=linked` dans les projections
   utilisateur et technique si la liaison `workspace_file_nextcloud_links` a ete
