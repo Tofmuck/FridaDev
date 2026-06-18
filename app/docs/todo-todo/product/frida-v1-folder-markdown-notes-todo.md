@@ -1,7 +1,7 @@
 # Frida V1 - Notes Markdown par dossier - TODO
 
-Statut: TODO detaillee, Lot 6 append Notes livre, lecture conversationnelle non
-commencee.
+Statut: TODO detaillee, Lot 7 lecture conversationnelle Notes livre, smokes
+transverses non commences.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -215,6 +215,7 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 - `folder_note_name_conflict`
 - `folder_note_create_ok`
 - `folder_note_append_ok`
+- `folder_note_read_ok`
 - `folder_note_list_ok`
 - `folder_note_lookup_ok`
 - `folder_note_lookup_ambiguous`
@@ -346,15 +347,21 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ### Lot 7 - Lecture / preparation conversationnelle de note
 
-- [ ] Lire une note seulement apres demande explicite utilisateur.
-- [ ] Injecter le corps Markdown uniquement dans le tour utile et seulement si la
+- [x] Lire une note seulement apres demande explicite utilisateur.
+- [x] Injecter le corps Markdown uniquement dans le tour utile et seulement si la
   taille respecte les limites V1.
-- [ ] Appliquer la limite initiale de 120_000 caracteres Markdown maximum.
-- [ ] Refuser proprement une note trop grande.
-- [ ] Ne pas alimenter Memory/RAG/Identity/Summary.
-- [ ] Ne pas logguer le corps Markdown brut.
-- [ ] Tester lecture entiere, refus taille, note absente, note conflictuelle et
+- [x] Appliquer la limite initiale de 120_000 caracteres Markdown maximum.
+- [x] Refuser proprement une note trop grande.
+- [x] Ne pas alimenter Memory/RAG/Identity/Summary.
+- [x] Ne pas logguer le corps Markdown brut.
+- [x] Tester lecture entiere, refus taille, note absente, note conflictuelle et
   absence de fuite.
+- [x] Servir la preparation par route namespaced
+  `POST /api/workspace-folders/<folder_id>/notes/<note_id>/prepare`, sans route
+  globale `/api/notes*`.
+- [x] Garder le corps Markdown uniquement dans `note_conversation` pour le tour
+  courant; projections techniques, logs et `note_nextcloud` restent
+  content-free.
 
 ### Lot 8 - Observabilite / smokes live
 
@@ -424,6 +431,6 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 
 ## Prochain pas
 
-Ouvrir Lot 7 - Lecture / preparation conversationnelle de note. Ce lot devra
-lire une note explicitement demandee, l'injecter uniquement dans le tour utile
-si la limite de taille est respectee et ne cocher aucun Lot 8+.
+Ouvrir Lot 8 - Observabilite / smokes live. Ce lot devra produire des preuves
+content-free create/list/lookup/append/read sur notes synthetiques, scanner les
+fuites et ne cocher aucun Lot Z.

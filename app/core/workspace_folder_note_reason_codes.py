@@ -12,6 +12,7 @@ REASON_NAME_CONFLICT = "folder_note_name_conflict"
 REASON_CREATE_OK = "folder_note_create_ok"
 REASON_APPEND_OK = "folder_note_append_ok"
 REASON_APPEND_EMPTY = "folder_note_append_empty"
+REASON_READ_OK = "folder_note_read_ok"
 REASON_LIST_OK = "folder_note_list_ok"
 REASON_LOOKUP_OK = "folder_note_lookup_ok"
 REASON_LOOKUP_AMBIGUOUS = "folder_note_lookup_ambiguous"
@@ -39,6 +40,7 @@ REASON_CODE_CATALOG = frozenset(
         REASON_CREATE_OK,
         REASON_APPEND_OK,
         REASON_APPEND_EMPTY,
+        REASON_READ_OK,
         REASON_LIST_OK,
         REASON_LOOKUP_OK,
         REASON_LOOKUP_AMBIGUOUS,

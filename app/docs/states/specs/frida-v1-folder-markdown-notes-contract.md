@@ -107,6 +107,22 @@ restaurer le contenu precedent avec l'ETag post-append; si elle echoue ou est
 impossible, l'API retourne un etat content-free d'echec partiel et jamais un
 succes silencieux.
 
+Depuis le Lot 7, la lecture / preparation conversationnelle d'une note existante
+est livree par:
+
+- `app/core/workspace_folder_notes_read.py` pour l'orchestration `GET` borne et
+  la construction du payload conversationnel;
+- `POST /api/workspace-folders/<folder_id>/notes/<note_id>/prepare` pour la
+  surface HTTP namespaced.
+
+Le Lot 7 lit le corps Markdown distant uniquement apres action explicite, garde
+le corps seulement en memoire et le retourne uniquement dans
+`note_conversation.markdown_content` pour le tour courant. Les projections
+techniques, logs, JSONL, observabilite et `note_nextcloud` restent content-free.
+La lecture applique la limite V1 de 120_000 caracteres Markdown et refuse une
+note trop grande sans troncature silencieuse. Elle ne nourrit jamais
+Memory/RAG/Identity/Summary.
+
 ## 2. Modele produit Notes V1
 
 Une note Notes V1 est un fichier Markdown rattache a un dossier Frida produit.
@@ -493,6 +509,12 @@ Flux attendu:
 
 La lecture est autorisee uniquement apres demande explicite de l'utilisateur.
 
+Surface livree Lot 7:
+
+```text
+POST /api/workspace-folders/<folder_id>/notes/<note_id>/prepare
+```
+
 Regles:
 
 - `GET` borne depuis Nextcloud;
@@ -501,6 +523,21 @@ Regles:
 - aucune alimentation Memory/RAG/Identity/Summary;
 - note entiere ou refus propre;
 - pas de troncature silencieuse presentee comme lecture complete.
+
+Invariants Lot 7:
+
+- resolution par `note_id` uniquement; un titre doit passer par le lookup Lot 5;
+- dossier `linked` obligatoire;
+- note active, disponible et `linked` obligatoire;
+- corps Markdown lu depuis Nextcloud par GET borne uniquement en memoire;
+- taille maximale: 120_000 caracteres Markdown;
+- note trop grande: `folder_note_too_large`;
+- GET distant impossible: `folder_note_remote_read_failed`;
+- succes: `folder_note_read_ok`;
+- le corps Markdown n'apparait que dans `note_conversation.markdown_content`;
+- `note_nextcloud`, projections techniques et events restent content-free;
+- `note_conversation.memory_rag_identity_summary=not_used` rappelle la frontiere
+  avec Memory/RAG/Identity/Summary.
 
 ## 7. Operations hors V1
 
@@ -611,6 +648,7 @@ Catalogue initial:
 - `folder_note_name_conflict`;
 - `folder_note_create_ok`;
 - `folder_note_append_ok`;
+- `folder_note_read_ok`;
 - `folder_note_list_ok`;
 - `folder_note_lookup_ok`;
 - `folder_note_lookup_ambiguous`;

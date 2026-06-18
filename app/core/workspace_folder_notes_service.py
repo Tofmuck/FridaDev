@@ -6,6 +6,7 @@ from . import workspace_folder_note_nextcloud_runtime
 from . import workspace_folder_notes_append
 from . import workspace_folder_notes_lookup
 from . import workspace_folder_notes_list
+from . import workspace_folder_notes_read
 from . import workspace_folder_notes
 
 
@@ -203,6 +204,51 @@ def append_workspace_folder_note_response(
     }, 200
 
 
+def prepare_workspace_folder_note_response(
+    folder_id: str,
+    note_id: str,
+    *,
+    workspace_folders_module: Any,
+    workspace_folder_notes_module: Any = workspace_folder_notes,
+    notes_read_module: Any = workspace_folder_notes_read,
+) -> Tuple[dict[str, Any], int]:
+    normalized, folder, error = _resolve_existing_folder(
+        folder_id,
+        workspace_folders_module=workspace_folders_module,
+    )
+    if error:
+        return error
+
+    result = notes_read_module.prepare_workspace_folder_note_for_conversation(
+        folder,
+        note_id=note_id,
+        notes_module=workspace_folder_notes_module,
+    )
+    if not result.get("ok"):
+        reason_code = str(result.get("reason_code") or REASON_RUNTIME_UNAVAILABLE)
+        return {
+            "ok": False,
+            "error": _human_note_error(reason_code),
+            "reason_code": reason_code,
+            "workspace_folder_id": normalized,
+            "note": {
+                "status": _note_status_for_failure(reason_code),
+                "reason_code": reason_code,
+            },
+            "note_conversation": result.get("note_conversation", {}),
+            "note_nextcloud": result.get("note_nextcloud", {}),
+        }, int(result.get("status") or _http_status_for_reason(reason_code))
+
+    return {
+        "ok": True,
+        "workspace_folder_id": normalized,
+        "note": result.get("note", {}),
+        "note_conversation": result.get("note_conversation", {}),
+        "note_nextcloud": result.get("note_nextcloud", {}),
+        "reason_code": workspace_folder_notes.REASON_READ_OK,
+    }, 200
+
+
 def _resolve_existing_folder(
     folder_id: str,
     *,
@@ -318,6 +364,7 @@ def _human_note_error(reason_code: str) -> str:
         workspace_folder_notes.REASON_NOT_FOUND: "note introuvable",
         workspace_folder_notes.REASON_TOO_LARGE: "note trop volumineuse",
         workspace_folder_notes.REASON_APPEND_TOO_LARGE: "ajout trop volumineux",
+        workspace_folder_notes.REASON_READ_OK: "note prete pour la conversation",
         workspace_folder_notes.REASON_VERSION_CONFLICT: "version de note modifiee entre temps",
         workspace_folder_notes_append.REASON_APPEND_EMPTY: "ajout de note vide",
         workspace_folder_notes_append.REASON_ETAG_MISSING: "version distante indisponible",
