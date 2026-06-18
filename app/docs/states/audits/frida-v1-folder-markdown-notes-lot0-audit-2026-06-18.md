@@ -308,20 +308,33 @@ Champs a cadrer en Lot 1:
 
 ### Corps Markdown local
 
-Recommandation Lot 0: ne pas stocker le corps Markdown en local pour V1, sauf
-decision explicite contraire en Lot 1.
+Decision Lot 0: Notes V1 ne stocke pas le corps Markdown en local.
+
+Le modele local Notes stocke uniquement:
+
+- metadonnees;
+- statut local et statut Nextcloud;
+- refs content-free;
+- titre utilisateur si necessaire;
+- cible interne;
+- ETag exact interne pour `If-Match`;
+- hash/ref technique;
+- timestamps;
+- reason codes.
 
 Raison:
 
 - Nextcloud est la source de verite du fichier Markdown;
 - le stockage local du corps augmente le risque de fuite;
-- l'append V1 peut faire `GET` borne, verifier ETag, construire le nouveau corps
+- l'append V1 fait `GET` borne, verifie ETag, construit le nouveau corps
   en memoire, puis `PUT If-Match`;
-- la lecture conversationnelle peut faire `GET` borne a la demande utilisateur.
+- la lecture conversationnelle fait `GET` borne a la demande utilisateur;
+- le corps Markdown reste seulement en memoire pour le tour utile ou la
+  construction d'append, puis n'est pas persiste localement.
 
-Si Lot 1 decide de stocker un cache de corps local, ce sera une decision
-produit/architecture bloquante avant runtime, avec politique de redaction,
-retention, rollback et tests anti-fuite.
+Un cache local du corps Markdown est hors V1. S'il devient voulu plus tard, il
+devra etre un chantier post-V1 separe avec politique de redaction, retention,
+rollback et tests anti-fuite.
 
 ### Projections
 
@@ -389,7 +402,7 @@ UI:
 - Faire une migration DB sans micro-lot avec backup/test/rollback.
 - Lire ou lister Nextcloud live pour prouver Lot 0.
 - Ajouter une route globale Notes hors namespace dossier.
-- Stocker localement le corps Markdown sans decision explicite de Lot 1.
+- Stocker localement le corps Markdown dans Notes V1.
 - Livrer append sans ETag / `If-Match`.
 - Presenter un smoke ETag comme `met` si seul le test unitaire existe.
 
@@ -398,8 +411,8 @@ UI:
 Lot 1 doit produire une spec Notes V1 qui grave:
 
 - modele local Notes dedie et schema cible;
-- choix explicite sur stockage local du corps: non par defaut, ou decision
-  contraire documentee;
+- interdiction V1 de stocker le corps Markdown localement; cache local eventuel
+  = post-V1 separe;
 - API sous `/api/workspace-folders/<folder_id>/notes*`;
 - transport WebDAV Notes: status collection, create, bounded GET, If-Match PUT,
   delete rollback strict si necessaire;

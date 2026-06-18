@@ -61,6 +61,16 @@ export, ni une image, ni une entree Biblio.
 - Le modele local Notes sert au read-model utilisateur, aux refs content-free,
   aux statuts, aux liens Nextcloud et a la resolution par titre/liste.
 - Absence de modele local Notes dedie = no-go pour les lots runtime.
+- Notes V1 ne stocke pas le corps Markdown en local.
+- Le modele local Notes stocke uniquement metadonnees, statuts, refs
+  content-free, titre utilisateur si necessaire, cible interne, ETag exact
+  interne, hash/ref technique, timestamps et reason codes.
+- Le corps Markdown est lu depuis Nextcloud a la demande, garde seulement en
+  memoire pour le tour utile ou pour construire un append, puis non persiste
+  localement.
+- L'append V1 fait `GET` borne + ETag + construction en memoire + `PUT
+  If-Match`.
+- Un cache local du corps Markdown releve d'un chantier post-V1 separe.
 - La recherche plein texte riche dans le corps Markdown n'est pas livree en V1.
   V1 couvre le titre connu, la liste du dossier et une resolution par
   metadonnees via le read-model local Notes dedie.
@@ -234,6 +244,8 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
   criteres Lot Z.
 - [ ] Acter le modele local dedie Notes comme precondition runtime obligatoire,
   rattache a `workspace_folders.id` et distinct de `workspace_files`.
+- [ ] Acter que Notes V1 ne stocke pas le corps Markdown localement et que tout
+  cache local de corps est post-V1.
 - [ ] Acter les limites initiales: 120_000 caracteres Markdown pour
   lecture/preparation, 20_000 caracteres Markdown pour append entrant.
 - [ ] Acter que la recherche plein texte riche est hors V1.
@@ -385,5 +397,7 @@ Catalogue initial a stabiliser en Lot 1, sans contenu utilisateur:
 
 ## Prochain pas recommande
 
-Ouvrir Lot 0 - Audit existant, docs/read-only, avant toute spec runtime ou patch
-applicatif.
+Ouvrir Lot 1 - Contrat produit Notes V1. Ce lot doit creer la spec
+source-of-truth `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`,
+rester docs-only, ne livrer aucun runtime et ne laisser aucune decision produit
+cachee avant les lots runtime.
