@@ -339,6 +339,9 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
 - [x] Ne pas persister le corps Markdown localement.
 - [x] Tenter une compensation distante stricte si la persistance locale echoue
   apres PUT; sinon remonter un etat content-free, jamais un succes silencieux.
+- [x] En cas de PUT reussi sans ETag post-ecriture, ne jamais retourner de
+  succes, tenter une compensation prouvable par relecture bornee + `If-Match`,
+  et marquer le read-model local `sync_error` si la compensation est impossible.
 
 ### Lot 7 - Lecture / preparation conversationnelle de note
 

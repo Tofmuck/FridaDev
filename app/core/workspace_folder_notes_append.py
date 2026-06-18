@@ -140,17 +140,32 @@ def append_workspace_folder_note(
             note_name_hash=workspace_folder_notes.title_hash_for_target(target_name),
         )
     if not put_result.etag_value:
+        rollback = _recover_and_restore_after_missing_write_etag(
+            client,
+            target_folder_name=target_folder_name,
+            target_name=target_name,
+            previous_markdown=current.markdown,
+            notes_module=notes_module,
+            folder_id=folder_id,
+        )
+        local_mark = {}
+        if not rollback.get("ok"):
+            local_mark = _mark_note_sync_error_after_uncertain_remote_write(
+                notes_module,
+                note=note,
+                folder_id=folder_id,
+                target_name=target_name,
+                markdown_char_count=len(appended_markdown),
+                reason_code=REASON_ETAG_MISSING,
+            )
         return _failure(
             REASON_ETAG_MISSING,
             status=502,
             append_state="remote_write_etag_missing",
             http_status_class=put_result.status_class,
             note_name_hash=workspace_folder_notes.title_hash_for_target(target_name),
-            rollback={
-                "ok": False,
-                "reason_code": workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED,
-                "http_status_class": "none",
-            },
+            rollback=rollback,
+            local_mark=local_mark,
         )
 
     try:
@@ -248,10 +263,12 @@ def _restore_previous_remote_content(
         )
         reason_code = workspace_folder_notes.REASON_REMOTE_COMPENSATION_OK
         http_status_class = result.status_class
+        etag_hash = hash12(getattr(result, "etag_value", ""))
         ok = True
     except note_client.NextcloudNoteClientError as exc:
         reason_code = workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED
         http_status_class = exc.status_class
+        etag_hash = ""
         ok = False
     _log_event(
         notes_module,
@@ -266,6 +283,105 @@ def _restore_previous_remote_content(
         "ok": ok,
         "reason_code": reason_code,
         "http_status_class": http_status_class,
+        "etag_present": bool(etag_hash),
+        "etag_hash": etag_hash,
+    }
+
+
+def _recover_and_restore_after_missing_write_etag(
+    client: Any,
+    *,
+    target_folder_name: str,
+    target_name: str,
+    previous_markdown: str,
+    notes_module: Any,
+    folder_id: str,
+) -> dict[str, Any]:
+    try:
+        recovered = client.get_note_content(
+            target_folder_name,
+            target_name,
+            max_bytes=REMOTE_READ_MAX_BYTES,
+        )
+    except note_client.NextcloudNoteClientError as exc:
+        rollback = {
+            "ok": False,
+            "reason_code": workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED,
+            "http_status_class": exc.status_class,
+            "etag_present": False,
+        }
+    else:
+        if not recovered.etag_value:
+            rollback = {
+                "ok": False,
+                "reason_code": workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED,
+                "http_status_class": recovered.status_class,
+                "etag_present": False,
+            }
+        else:
+            rollback = _restore_previous_remote_content(
+                client,
+                target_folder_name=target_folder_name,
+                target_name=target_name,
+                previous_markdown=previous_markdown,
+                etag_value=recovered.etag_value,
+                notes_module=notes_module,
+                folder_id=folder_id,
+            )
+            rollback["recovered_etag_present"] = True
+    _log_event(
+        notes_module,
+        "notes_v1_append_missing_post_write_etag",
+        level="warning",
+        folder_ref=workspace_folder_notes.folder_ref(folder_id),
+        reason_code=rollback["reason_code"],
+        note_name_hash=workspace_folder_notes.title_hash_for_target(target_name),
+        http_status_class=rollback.get("http_status_class", "none"),
+        rollback_ok=bool(rollback.get("ok")),
+    )
+    return rollback
+
+
+def _mark_note_sync_error_after_uncertain_remote_write(
+    notes_module: Any,
+    *,
+    note: Mapping[str, Any],
+    folder_id: str,
+    target_name: str,
+    markdown_char_count: int,
+    reason_code: str,
+) -> dict[str, Any]:
+    note_id = workspace_folder_notes.normalize_note_id(note.get("id"))
+    try:
+        notes_module.upsert_note(
+            note_id=note_id,
+            workspace_folder_id=folder_id,
+            title=str(note.get("title") or ""),
+            target_name=target_name,
+            local_state=workspace_folder_notes.NOTE_LOCAL_SYNC_ERROR,
+            nextcloud_sync_state=workspace_folder_notes.NOTE_NEXTCLOUD_SYNC_ERROR,
+            remote_note_ref=str(note.get("remote_note_ref") or ""),
+            etag_value="",
+            etag_hash="",
+            markdown_char_count=markdown_char_count,
+            reason_code=reason_code,
+        )
+        mark_state = "sync_error"
+    except Exception:
+        mark_state = "failed"
+    _log_event(
+        notes_module,
+        "notes_v1_append_local_sync_error_mark",
+        level="warning",
+        folder_ref=workspace_folder_notes.folder_ref(folder_id),
+        note_ref=workspace_folder_notes.note_ref(note_id),
+        reason_code=reason_code,
+        note_name_hash=workspace_folder_notes.title_hash_for_target(target_name),
+        local_mark_state=mark_state,
+    )
+    return {
+        "state": mark_state,
+        "reason_code": reason_code,
     }
 
 
@@ -293,18 +409,23 @@ def _failure(
     http_status_class: str = "none",
     note_name_hash: str = "",
     rollback: Mapping[str, Any] | None = None,
+    local_mark: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    note_nextcloud = {
+        "append_state": append_state,
+        "reason_code": reason_code,
+        "note_name_hash": note_name_hash,
+        "http_status_class": http_status_class,
+        "rollback": dict(rollback or {}),
+    }
+    if local_mark:
+        note_nextcloud["local_mark_state"] = str(local_mark.get("state") or "")
+        note_nextcloud["local_mark_reason_code"] = str(local_mark.get("reason_code") or "")
     return {
         "ok": False,
         "reason_code": reason_code,
         "status": int(status or 500),
-        "note_nextcloud": {
-            "append_state": append_state,
-            "reason_code": reason_code,
-            "note_name_hash": note_name_hash,
-            "http_status_class": http_status_class,
-            "rollback": dict(rollback or {}),
-        },
+        "note_nextcloud": note_nextcloud,
     }
 
 

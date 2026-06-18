@@ -45,6 +45,8 @@ class _FakeClient:
         current_markdown: str = "Ancien contenu",
         current_etag: str = '"etag-before"',
         put_etag: str = '"etag-after"',
+        recovery_markdown: str | None = None,
+        recovery_etag: str | None = None,
         fail_get: str = "",
         fail_put: str = "",
         fail_restore: str = "",
@@ -52,6 +54,8 @@ class _FakeClient:
         self.current_markdown = current_markdown
         self.current_etag = current_etag
         self.put_etag = put_etag
+        self.recovery_markdown = recovery_markdown
+        self.recovery_etag = recovery_etag
         self.fail_get = fail_get
         self.fail_put = fail_put
         self.fail_restore = fail_restore
@@ -64,6 +68,11 @@ class _FakeClient:
         )
         if self.fail_get:
             raise note_client.NextcloudNoteClientError(self.fail_get, http_status=503)
+        if len(self.get_calls) > 1:
+            return _ContentResponse(
+                self.recovery_markdown if self.recovery_markdown is not None else self.current_markdown,
+                self.recovery_etag if self.recovery_etag is not None else self.current_etag,
+            )
         return _ContentResponse(self.current_markdown, self.current_etag)
 
     def put_note_if_match(self, folder_name, note_name, markdown, *, etag_value):
@@ -306,6 +315,66 @@ class WorkspaceFolderNotesAppendTests(unittest.TestCase):
         self.assertEqual(client.put_calls[1]["etag_value"], '"etag-after"')
         self.assertNotIn("Avant", str(result))
         self.assertNotIn("Ajout", str(result))
+
+    def test_missing_post_write_etag_recovers_etag_and_rolls_back_remote(self):
+        client = _FakeClient(
+            current_markdown="Avant",
+            put_etag="",
+            recovery_markdown="Avant---Ajout",
+            recovery_etag='"etag-recovered"',
+        )
+        notes = _FakeNotesModule()
+
+        result = workspace_folder_notes_append.append_workspace_folder_note(
+            _folder(),
+            note_id=NOTE_ID,
+            markdown="Ajout",
+            notes_module=notes,
+            nextcloud=client,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], workspace_folder_notes.REASON_ETAG_MISSING)
+        self.assertEqual(result["note_nextcloud"]["rollback"]["reason_code"], workspace_folder_notes.REASON_REMOTE_COMPENSATION_OK)
+        self.assertEqual(len(client.get_calls), 2)
+        self.assertEqual(len(client.put_calls), 2)
+        self.assertEqual(client.put_calls[1]["markdown"], "Avant")
+        self.assertEqual(client.put_calls[1]["etag_value"], '"etag-recovered"')
+        self.assertEqual(notes.upserts, [])
+        self.assertNotIn("Avant", str(result))
+        self.assertNotIn("Ajout", str(result))
+        self.assertNotIn("etag-recovered", str(result))
+
+    def test_missing_post_write_etag_marks_local_sync_error_when_rollback_is_impossible(self):
+        client = _FakeClient(
+            current_markdown="Avant",
+            put_etag="",
+            recovery_markdown="Avant---Ajout",
+            recovery_etag="",
+        )
+        notes = _FakeNotesModule()
+
+        result = workspace_folder_notes_append.append_workspace_folder_note(
+            _folder(),
+            note_id=NOTE_ID,
+            markdown="Ajout",
+            notes_module=notes,
+            nextcloud=client,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], workspace_folder_notes.REASON_ETAG_MISSING)
+        self.assertEqual(result["note_nextcloud"]["rollback"]["reason_code"], workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED)
+        self.assertEqual(result["note_nextcloud"]["local_mark_state"], "sync_error")
+        self.assertEqual(notes.upserts[0]["local_state"], workspace_folder_notes.NOTE_LOCAL_SYNC_ERROR)
+        self.assertEqual(notes.upserts[0]["nextcloud_sync_state"], workspace_folder_notes.NOTE_NEXTCLOUD_SYNC_ERROR)
+        self.assertEqual(notes.upserts[0]["reason_code"], workspace_folder_notes.REASON_ETAG_MISSING)
+        self.assertEqual(notes.upserts[0]["etag_value"], "")
+        projected = workspace_folder_notes.apply_note_projection(notes.note, folder=_folder())
+        self.assertEqual(projected["note_v1_user"]["status"], workspace_folder_notes.NOTE_LOCAL_SYNC_ERROR)
+        self.assertNotIn("Avant", str(result) + str(projected))
+        self.assertNotIn("Ajout", str(result) + str(projected))
+        self.assertNotIn("etag-before", str(result) + str(projected))
 
     def test_local_persistence_failure_reports_compensation_failure(self):
         client = _FakeClient(
