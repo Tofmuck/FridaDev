@@ -379,9 +379,11 @@ Catalogue initial stabilise par le contrat Lot 1, sans contenu utilisateur:
   et `note_nextcloud` restent content-free.
 - [x] Signaler explicitement les notes demandees mais non injectees, sans
   troncature silencieuse ni coupure invisible au-dela de la limite.
-- [ ] Dette hygiene: `workspace_folder_notes_prompt_lane.py` reste au-dessus de
-  500 lignes apres ce micro-correctif; extraire une responsabilite claire avant
-  tout elargissement de la lane Notes.
+
+Dette post-V1 non bloquante: `workspace_folder_notes_prompt_lane.py` reste
+au-dessus de 500 lignes apres la cloture Notes V1. Ne pas elargir cette lane
+avant une extraction par responsabilite claire dans un futur chantier de
+maintenance/refactor.
 
 ### Lot 8 - Observabilite / smokes live
 
