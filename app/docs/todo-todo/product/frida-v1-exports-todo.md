@@ -19,10 +19,13 @@ Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-tod
   `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
 - Archive Notes Markdown V1:
   `app/docs/todo-done/product/frida-v1-folder-markdown-notes-todo.md`
+- Spec du bouton actuel de copie/export Markdown navigateur:
+  `app/docs/states/specs/chat-copy-export-contract.md`
 
 ## Surfaces existantes a auditer sans les confondre avec Exports V1
 
 - Export Markdown conversationnel navigateur:
+  - spec `app/docs/states/specs/chat-copy-export-contract.md`;
   - `app/web/chat_copy_export.js`;
   - `app/web/app.js`, bouton `btnExportConversation`;
   - tests `app/tests/unit/frontend_chat/test_chat_copy_export_module.js` et
@@ -39,6 +42,18 @@ format Markdown ou de telechargement. Elles ne livrent pas Exports V1: elles ne
 rattachent pas un export a un `workspace_folder`, ne stockent pas sous
 `/Frida/<dossier>/Exports`, ne persistent pas un read-model export et ne
 produisent pas DOCX/PDF.
+
+Le bouton navigateur actuel reste une capacite locale et humaine: il relit la
+conversation, produit un Markdown lisible, exclut les metadonnees techniques et
+declenche un telechargement navigateur. Il ne cree ni export durable, ni lien
+Nextcloud, ni observabilite produit. Exports V1 ne doit pas le remplacer ou le
+detourner sans decision explicite Lot 1.
+
+L'export Markdown admin des logs est une surface technique d'operateur. Il peut
+inspirer uniquement des patterns tres limites, par exemple reponse HTTP,
+attachement Markdown ou structure de test. Exports V1 utilisateur ne doit pas
+reutiliser son contenu, son read-model, ses IDs, ses payloads compactes, son
+scope conversation/turn technique ou son format de logs comme base produit.
 
 ## Objectif produit Exports V1
 
@@ -200,12 +215,22 @@ Decisions produit bloquantes:
   - duree maximum de generation;
   - nombre de pages PDF maximum si applicable.
 - Reutilisation d'un export existant:
-  - par titre;
-  - par format;
-  - par dossier;
-  - par hash/ref de contenu;
-  - par dernier export;
-  - par selection explicite dans une liste.
+  - sens exact du verbe "reutiliser":
+    - telecharger / ouvrir;
+    - joindre a une conversation;
+    - lire/injecter le contenu dans le tour courant;
+    - convertir vers un autre format;
+    - dupliquer / repartir d'un export comme source;
+    - autre comportement explicitement decide;
+  - critere de resolution:
+    - par titre;
+    - par format;
+    - par dossier;
+    - par hash/ref de contenu;
+    - par dernier export;
+    - par selection explicite dans une liste.
+  - Aucune lecture du contenu exporte, injection conversationnelle, conversion
+    ou duplication ne doit etre deduite du simple mot "reutiliser".
 - Visibilite utilisateur des noms d'exports:
   - titres/noms visibles en UI;
   - affichage dans les reponses conversationnelles;
@@ -240,6 +265,8 @@ patch et ouvre un micro-lot docs/spec. Il ne choisit pas en avancant.
   brouille Documents ou Notes.
 - Pas de promotion automatique en Memory/RAG/Identity/Summary.
 - Pas de reouverture Documents/Notes/Images par confusion.
+- Pas de lecture, injection, conversion ou duplication d'un export existant
+  sans decision Lot 1 et action utilisateur explicite.
 
 ## Lots proposes
 
@@ -248,6 +275,7 @@ testable et reversible.
 
 ### Lot 0 - Audit existant exports
 
+- [ ] Auditer `app/docs/states/specs/chat-copy-export-contract.md`.
 - [ ] Auditer les exports conversationnels Markdown existants cote navigateur.
 - [ ] Auditer l'export Markdown technique des logs admin.
 - [ ] Auditer les routes, helpers, tests frontend/backend et dependances
@@ -256,6 +284,8 @@ testable et reversible.
 - [ ] Identifier les briques a adapter.
 - [ ] Identifier les briques a eviter pour ne pas confondre Exports V1 avec
   logs admin, Documents, Notes ou simple telechargement navigateur.
+- [ ] Verifier explicitement que l'export admin logs ne sert pas de modele
+  produit, hors patterns limites de reponse HTTP, attachement Markdown ou tests.
 - [ ] Produire un audit content-free sous `app/docs/states/audits/`.
 - [ ] Ne livrer aucun runtime.
 
@@ -263,6 +293,9 @@ testable et reversible.
 
 - [ ] Creer `app/docs/states/specs/frida-v1-exports-contract.md`.
 - [ ] Fermer toutes les decisions ouvertes avant runtime.
+- [ ] Si une decision produit humaine manque, s'arreter avant tout patch
+  runtime et demander explicitement; Lot 1 documente les choix deja tranches,
+  mais ne choisit pas en avancant.
 - [ ] Definir le modele produit Export V1.
 - [ ] Definir les sources exportables V1.
 - [ ] Definir les formats, limites, messages utilisateur et reason codes.
@@ -323,8 +356,10 @@ testable et reversible.
 
 - [ ] Lister les exports d'un dossier depuis le read-model local.
 - [ ] Retrouver un export selon les criteres decidees Lot 1.
-- [ ] Reutiliser un export existant sur action explicite.
-- [ ] Ne pas lire le contenu exporte sans action explicite.
+- [ ] Implementer uniquement le sens de "reutiliser" decide par Lot 1.
+- [ ] Refuser toute lecture, injection, conversion ou duplication non decidee
+  par Lot 1.
+- [ ] Ne pas lire le contenu exporte sans action explicite et decision Lot 1.
 - [ ] Distinguer absence, ambiguite, conflit et panne store.
 - [ ] Tester liste vide, liste avec formats multiples, lookup, ambiguite,
   refus et anti-fuite.
@@ -334,6 +369,9 @@ testable et reversible.
 - [ ] Ajouter la surface utilisateur decidee Lot 1.
 - [ ] Ne pas remplacer le bouton export Markdown navigateur existant sans
   decision explicite.
+- [ ] Si Lot 1 decide une reutilisation conversationnelle, prouver que la
+  lecture/injection est explicite, bornee, content-free en observabilite et
+  separee de Memory/RAG/Identity/Summary.
 - [ ] Afficher statuts, conflits et limites sans fuite technique.
 - [ ] Tester frontend si UI modifiee.
 - [ ] Ne pas ouvrir Documents, Notes ou Images.
