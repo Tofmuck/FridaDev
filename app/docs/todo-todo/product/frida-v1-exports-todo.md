@@ -1,7 +1,7 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 4 livre, generation DOCX/PDF fake-local bornee fermee avant
-le stockage Nextcloud-first.
+Statut: TODO Lot 5 livre, stockage Nextcloud-first sous `Exports` ferme avant
+liste / retrouver / reutiliser.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -349,8 +349,9 @@ Correctif Lot 2.1 livre:
 
 Dette hygiene fermee apres Lot 4: les projections Exports V1 vivent dans
 `workspace_folder_export_projection.py` et le schema SQL dans
-`workspace_folder_exports_schema.py`. Lot 5 ne doit pas re-gonfler
-`workspace_folder_exports.py` ou `workspace_folder_exports_store.py`.
+`workspace_folder_exports_schema.py`. Lot 5 n'a pas re-gonfle
+`workspace_folder_exports.py` ou `workspace_folder_exports_store.py`; les lots
+suivants doivent garder cette separation.
 
 ### Lot 3 - Generation Markdown/TXT bornee fake/local
 
@@ -370,8 +371,9 @@ Lot 3 livre `workspace_folder_export_sources.py`,
 uniquement par des capacites explicites injectees; aucun lecteur parallele et
 aucun WebDAV/Nextcloud live n'est appele par defaut. Un export existant comme
 source est refuse proprement sans reader fake/local explicite. Les projections
-restent metadata-only et `nextcloud_sync_state=sync_error` tant que Lot 5 n'a
-pas prouve le rangement distant.
+restent metadata-only; depuis Lot 5, seul le flux de stockage Nextcloud-first
+peut passer un export cree en `nextcloud_sync_state=linked` apres preuve
+distante.
 
 Correctif Lot 3.1 livre:
 
@@ -422,16 +424,42 @@ complete ou refus content-free, sans troncature silencieuse.
 
 ### Lot 5 - Stockage Nextcloud-first sous Exports
 
-- [ ] Verifier que le dossier Frida est `linked`.
-- [ ] Verifier `Exports` par `PROPFIND Depth: 0` et confirmation collection.
-- [ ] Ecrire l'export par strategie anti-ecrasement.
-- [ ] Accepter uniquement une creation sure.
-- [ ] Persister le lien/read-model local apres succes distant.
-- [ ] Si ecriture distante reussit puis persistance locale echoue, rollback
+- [x] Verifier que le dossier Frida est `linked`.
+- [x] Verifier `Exports` par `PROPFIND Depth: 0` et confirmation collection.
+- [x] Ecrire l'export par strategie anti-ecrasement.
+- [x] Accepter uniquement une creation sure.
+- [x] Persister le lien/read-model local apres succes distant.
+- [x] Si ecriture distante reussit puis persistance locale echoue, rollback
   strict de la cible creee par ce flux.
-- [ ] Refuser conflit distant sans overwrite ni renommage automatique non
+- [x] Refuser conflit distant sans overwrite ni renommage automatique non
   decide.
-- [ ] Produire preuve live synthetique content-free avec cleanup.
+- [x] Produire preuve live synthetique content-free avec cleanup.
+
+Lot 5 livre le stockage Nextcloud-first sous `Exports`:
+
+- client WebDAV dedie:
+  `app/core/workspace_folder_export_nextcloud_client.py`;
+- orchestration Nextcloud-first puis read-model:
+  `app/core/workspace_folder_export_nextcloud_runtime.py`;
+- service HTTP namespaced:
+  `app/core/workspace_folder_exports_service.py`;
+- route unique de creation:
+  `POST /api/workspace-folders/<folder_id>/exports`;
+- tests fake transport/service:
+  `app/tests/unit/core/test_workspace_folder_export_nextcloud.py`;
+- preuve live synthetique content-free:
+  `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot5-nextcloud-first-20260619T080221Z.jsonl`.
+
+Le runtime Lot 5 utilise le moteur Exports V1 existant pour Markdown, TXT, DOCX
+et PDF, garde l'artefact en memoire, verifie le dossier Frida `linked` et le
+sous-dossier standard `Exports` comme collection WebDAV, ecrit avec
+anti-ecrasement, refuse les statuts update-like, puis persiste
+`workspace_folder_exports` en `linked` seulement apres creation distante sure.
+Si la persistance locale echoue apres creation distante, la compensation DELETE
+est strictement bornee a la cible creee par ce flux et tout echec reste expose
+en reason code content-free. Les projections techniques et la preuve live ne
+contiennent ni contenu exporte, nom brut, cible DAV, URL DAV, XML, ETag brut,
+payload, bytes, base64, token, cookie, app-password ou secret.
 
 ### Lot 6 - Liste / retrouver / reutiliser un export existant
 
@@ -559,21 +587,20 @@ Interdits dans preuves techniques:
 - Migration ou import d'exports historiques sans lot dedie.
 - Listing large de contenu Nextcloud comme preuve.
 
-## Hors-scope courant apres Lot 4
+## Hors-scope courant apres Lot 5
 
-- Pas de route serveur.
 - Pas de UI.
-- Pas de Nextcloud live.
 - Pas de nouvelle migration DB hors lot explicitement dedie.
-- Pas de stockage Nextcloud-first.
-- Pas de smoke live.
 - Pas d'archivage.
 - Pas de Lot Z.
+- Pas de liste / retrouver / reutiliser.
+- Pas de lecture, telechargement ou ouverture d'un export existant.
+- Pas de reutilisation d'un export existant comme source.
 - Pas de modification des chantiers Documents, Notes ou Images.
 
 ## Prochain pas
 
-Ouvrir Lot 5 - Stockage Nextcloud-first sous Exports. Ce lot devra verifier le
-dossier Frida linked et `/Frida/<dossier>/Exports` collection, ecrire sans
-overwrite, persister le lien local et rollback strictement une cible creee par
-le flux si la persistance locale echoue.
+Ouvrir Lot 6 - Liste / retrouver / reutiliser un export existant. Ce lot devra
+servir les exports depuis le read-model local, sans listing large Nextcloud,
+sans lecture implicite du contenu et sans ouvrir UI, telechargement ou
+reutilisation hors contrat.

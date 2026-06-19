@@ -1,7 +1,7 @@
 # Frida V1 - Exports contract
 
-Statut: spec source-of-truth Exports V1 ouverte, Lot 2 read-model livre
-Date: 2026-06-18
+Statut: spec source-of-truth Exports V1 ouverte, Lot 5 stockage Nextcloud-first livre
+Date: 2026-06-19
 Roadmap active: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-exports-lot0-audit-2026-06-18.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -213,6 +213,24 @@ Lot 4 livre la generation DOCX/PDF fake-local:
 - routes publiques, UI, telechargement navigateur, Nextcloud/WebDAV et stockage
   sous `/Exports` restent hors Lot 4.
 
+Lot 5 livre le stockage Nextcloud-first sous `/Exports`:
+
+- `app/core/workspace_folder_export_nextcloud_client.py` porte le transport
+  WebDAV Exports dedie;
+- `app/core/workspace_folder_export_nextcloud_runtime.py` orchestre generation
+  en memoire, verification `Exports`, ecriture distante anti-ecrasement,
+  persistance locale et compensation stricte;
+- `app/core/workspace_folder_exports_service.py` expose le service HTTP
+  namespaced;
+- `POST /api/workspace-folders/<folder_id>/exports` cree un export dans le
+  dossier Frida cible;
+- le read-model `workspace_folder_exports` passe en
+  `nextcloud_sync_state=linked` seulement apres creation distante sure;
+- l'artefact live content-free est
+  `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot5-nextcloud-first-20260619T080221Z.jsonl`;
+- liste, lookup, telechargement, ouverture, reutilisation, UI et Lot Z restent
+  hors Lot 5.
+
 Limites V1 initiales:
 
 - contenu source normalise: `120_000` caracteres maximum par export;
@@ -304,7 +322,8 @@ Dette hygiene fermee apres Lot 4: les projections Exports V1 sont extraites
 dans `workspace_folder_export_projection.py` et le schema SQL applicatif dans
 `workspace_folder_exports_schema.py`. Les lots suivants doivent garder
 `workspace_folder_exports.py` et `workspace_folder_exports_store.py` sous le
-seuil de vigilance avant d'ajouter le stockage Nextcloud-first.
+seuil de vigilance avant d'ajouter liste, lookup, telechargement ou
+reutilisation.
 
 Lot 3 livre la generation fake/local Markdown/TXT sans stockage Nextcloud:
 
@@ -393,6 +412,30 @@ Ecriture V1:
 - si la compensation est impossible ou echoue, etat content-free explicite, pas
   de succes silencieux.
 
+Mise en oeuvre Lot 5:
+
+- le runtime refuse avant WebDAV un dossier absent, supprime ou non `linked`;
+- les etats `local_only`, `sync_pending`, `sync_error`, `conflict` et `deleted`
+  ne peuvent pas recevoir d'export;
+- la route de creation force le `workspace_folder_id` issu du chemin HTTP et ne
+  permet pas d'elargir vers un autre dossier par le payload;
+- `Exports` est verifie par `PROPFIND Depth: 0`; un `207` est accepte seulement
+  si le XML parse en memoire confirme `collection`;
+- le PUT utilise `If-None-Match: *`;
+- seul `201` est accepte comme creation sure;
+- `200`, `204`, `412`, conflits WebDAV et statuts update-like sont des refus
+  content-free, jamais un succes;
+- aucune cible n'est renommee automatiquement;
+- `export_content` et `export_bytes` restent en memoire et ne sont jamais
+  persistes dans `workspace_folder_exports`;
+- les champs locaux persistants sont des metadonnees, refs content-free,
+  tailles, hash/ref, ETag interne optionnel et reason codes;
+- si la persistance locale echoue apres creation distante, le runtime tente un
+  DELETE strictement borne a la cible creee par ce flux, puis remonte soit
+  `folder_export_remote_compensation_ok`, soit
+  `folder_export_remote_compensation_failed`;
+- aucune divergence local/distant n'est masquee comme succes.
+
 ## 8. API et surfaces UI autorisees
 
 Les surfaces HTTP Exports V1 restent sous le namespace dossier:
@@ -400,6 +443,16 @@ Les surfaces HTTP Exports V1 restent sous le namespace dossier:
 ```text
 /api/workspace-folders/<folder_id>/exports*
 ```
+
+Depuis Lot 5, la surface de creation livree est:
+
+```text
+POST /api/workspace-folders/<folder_id>/exports
+```
+
+Cette route genere et stocke un nouvel export sous `/Exports`, puis retourne les
+projections utilisateur et technique metadata-only. Elle ne liste, ne lit, ne
+telecharge, n'ouvre et ne reutilise aucun export existant.
 
 Interdits V1:
 
@@ -411,7 +464,7 @@ Interdits V1:
 
 Surfaces autorisees par la spec:
 
-- API dossier pour creer/generer un export;
+- API dossier pour creer/generer un export (livree Lot 5);
 - API dossier pour lister/retrouver un export;
 - API dossier pour telecharger/ouvrir un export existant;
 - API dossier pour utiliser explicitement un export existant comme source d'un

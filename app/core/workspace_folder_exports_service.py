@@ -1,0 +1,199 @@
+from __future__ import annotations
+
+from typing import Any, Mapping, Tuple
+
+from . import workspace_folder_export_conversation_store
+from . import workspace_folder_export_nextcloud_runtime
+from . import workspace_folder_export_generation
+from . import workspace_folder_exports
+
+
+REASON_FOLDER_NOT_FOUND = "workspace_folder_not_found"
+REASON_FOLDER_DELETED = "workspace_folder_deleted"
+REASON_FOLDER_ID_INVALID = "workspace_folder_id_invalid"
+REASON_RUNTIME_UNAVAILABLE = "folder_export_runtime_unavailable"
+
+
+def create_workspace_folder_export_response(
+    folder_id: str,
+    data: Mapping[str, Any],
+    *,
+    workspace_folders_module: Any,
+    workspace_folder_exports_module: Any = workspace_folder_exports,
+    exports_nextcloud_runtime_module: Any = workspace_folder_export_nextcloud_runtime,
+    export_generation_module: Any = workspace_folder_export_generation,
+    conversation_store_module: Any | None = None,
+    note_reader: Any | None = None,
+    document_reader: Any | None = None,
+    export_reader: Any | None = None,
+) -> Tuple[dict[str, Any], int]:
+    normalized, folder, error = _resolve_existing_folder(
+        folder_id,
+        workspace_folders_module=workspace_folders_module,
+    )
+    if error:
+        return error
+
+    payload = dict(data or {})
+    payload["workspace_folder_id"] = normalized
+    runtime_result = exports_nextcloud_runtime_module.store_workspace_folder_export_nextcloud_first(
+        folder=folder,
+        request=payload,
+        exports_module=workspace_folder_exports_module,
+        export_generation_module=export_generation_module,
+        conversation_reader=_conversation_reader(conversation_store_module),
+        note_reader=note_reader,
+        document_reader=document_reader,
+        export_reader=export_reader,
+    )
+    if not runtime_result.get("ok"):
+        reason_code = str(runtime_result.get("reason_code") or REASON_RUNTIME_UNAVAILABLE)
+        return {
+            "ok": False,
+            "error": _human_export_error(reason_code),
+            "reason_code": reason_code,
+            "workspace_folder_id": normalized,
+            "export": {
+                "status": _export_status_for_failure(reason_code),
+                "reason_code": reason_code,
+            },
+            "export_v1_technical": runtime_result.get("export_v1_technical", {}),
+            "export_nextcloud": runtime_result.get("export_nextcloud", {}),
+        }, int(runtime_result.get("status") or _http_status_for_reason(reason_code))
+
+    export = runtime_result.get("export") or {}
+    return {
+        "ok": True,
+        "workspace_folder_id": normalized,
+        "export": workspace_folder_exports.apply_export_projection(export, folder=folder),
+        "export_nextcloud": runtime_result.get("export_nextcloud", {}),
+        "reason_code": workspace_folder_exports.REASON_STORE_OK,
+    }, 201
+
+
+def _resolve_existing_folder(
+    folder_id: str,
+    *,
+    workspace_folders_module: Any,
+) -> tuple[str, dict[str, Any], Tuple[dict[str, Any], int] | None]:
+    normalized = workspace_folders_module.normalize_workspace_folder_id(folder_id)
+    if not normalized:
+        return "", {}, (
+            {
+                "ok": False,
+                "error": "folder_id invalide",
+                "reason_code": REASON_FOLDER_ID_INVALID,
+            },
+            400,
+        )
+    try:
+        folder = workspace_folders_module.get_workspace_folder(normalized, include_deleted=True)
+    except TypeError:
+        folder = workspace_folders_module.get_workspace_folder(normalized)
+    if not folder:
+        return "", {}, (
+            {
+                "ok": False,
+                "error": "repertoire introuvable",
+                "reason_code": REASON_FOLDER_NOT_FOUND,
+            },
+            404,
+        )
+    if folder.get("deleted_at"):
+        return "", {}, (
+            {
+                "ok": False,
+                "error": "repertoire supprime",
+                "reason_code": REASON_FOLDER_DELETED,
+            },
+            410,
+        )
+    return normalized, dict(folder), None
+
+
+def _conversation_reader(conversation_store_module: Any | None):
+    if conversation_store_module is None:
+        return None
+
+    def reader(payload: Mapping[str, Any]) -> dict[str, Any]:
+        return workspace_folder_export_conversation_store.read_conversation_source(
+            payload,
+            conv_store_module=conversation_store_module,
+        )
+
+    return reader
+
+
+def _export_status_for_failure(reason_code: str) -> str:
+    if reason_code == workspace_folder_exports.REASON_NAME_CONFLICT:
+        return workspace_folder_exports.EXPORT_LOCAL_CONFLICT
+    if reason_code in {
+        workspace_folder_exports.REASON_FOLDER_NOT_LINKED,
+        workspace_folder_exports.REASON_FOLDER_INVALID,
+        workspace_folder_exports.REASON_FOLDER_DELETED,
+        workspace_folder_exports.REASON_EXPORTS_TARGET_MISSING,
+        workspace_folder_exports.REASON_EXPORTS_TARGET_NOT_COLLECTION,
+        workspace_folder_exports.REASON_EXPORTS_TARGET_UNAVAILABLE,
+        workspace_folder_exports.REASON_LOOKUP_FAILED,
+    }:
+        return workspace_folder_exports.EXPORT_LOCAL_UNAVAILABLE
+    if reason_code == workspace_folder_exports.REASON_LOCAL_PERSISTENCE_FAILED:
+        return workspace_folder_exports.EXPORT_LOCAL_SYNC_ERROR
+    return workspace_folder_exports.EXPORT_LOCAL_UNAVAILABLE
+
+
+def _http_status_for_reason(reason_code: str) -> int:
+    if reason_code in {
+        workspace_folder_exports.REASON_FOLDER_NOT_LINKED,
+        workspace_folder_exports.REASON_FOLDER_DELETED,
+        workspace_folder_exports.REASON_EXPORTS_TARGET_NOT_COLLECTION,
+        workspace_folder_exports.REASON_NAME_CONFLICT,
+        workspace_folder_exports.REASON_NEXTCLOUD_ERROR_REDACTED,
+    }:
+        return 409
+    if reason_code == workspace_folder_exports.REASON_EXPORTS_TARGET_MISSING:
+        return 404
+    if reason_code in {
+        workspace_folder_exports.REASON_FOLDER_INVALID,
+        workspace_folder_exports.REASON_NAME_INVALID,
+        workspace_folder_exports.REASON_SOURCE_MISSING,
+        workspace_folder_exports.REASON_SOURCE_AMBIGUOUS,
+        workspace_folder_exports.REASON_SOURCE_UNSUPPORTED,
+        workspace_folder_exports.REASON_FORMAT_UNSUPPORTED,
+    }:
+        return 400
+    if reason_code in {
+        workspace_folder_exports.REASON_SOURCE_READ_TOO_LARGE,
+        workspace_folder_exports.REASON_TOO_LARGE,
+    }:
+        return 413
+    if reason_code in {
+        workspace_folder_exports.REASON_LOOKUP_FAILED,
+        workspace_folder_exports.REASON_LOCAL_PERSISTENCE_FAILED,
+    }:
+        return 503
+    return 502
+
+
+def _human_export_error(reason_code: str) -> str:
+    return {
+        workspace_folder_exports.REASON_FOLDER_NOT_LINKED: "dossier Frida non lie a Nextcloud",
+        workspace_folder_exports.REASON_FOLDER_INVALID: "dossier Frida invalide",
+        workspace_folder_exports.REASON_FOLDER_DELETED: "dossier Frida supprime",
+        workspace_folder_exports.REASON_EXPORTS_TARGET_MISSING: "sous-dossier Exports introuvable",
+        workspace_folder_exports.REASON_EXPORTS_TARGET_NOT_COLLECTION: "cible Exports incompatible",
+        workspace_folder_exports.REASON_EXPORTS_TARGET_UNAVAILABLE: "cible Exports indisponible",
+        workspace_folder_exports.REASON_NAME_INVALID: "nom d'export invalide",
+        workspace_folder_exports.REASON_NAME_CONFLICT: "un export existe deja avec ce nom",
+        workspace_folder_exports.REASON_SOURCE_MISSING: "source d'export manquante",
+        workspace_folder_exports.REASON_SOURCE_AMBIGUOUS: "source d'export ambigue",
+        workspace_folder_exports.REASON_SOURCE_UNSUPPORTED: "source d'export non supportee",
+        workspace_folder_exports.REASON_SOURCE_UNAVAILABLE: "source d'export indisponible",
+        workspace_folder_exports.REASON_SOURCE_NOT_PREPARED: "source d'export non preparee",
+        workspace_folder_exports.REASON_SOURCE_READ_UNAVAILABLE: "lecture de source impossible",
+        workspace_folder_exports.REASON_SOURCE_READ_TOO_LARGE: "source d'export trop volumineuse",
+        workspace_folder_exports.REASON_FORMAT_UNSUPPORTED: "format d'export non supporte",
+        workspace_folder_exports.REASON_DEPENDENCY_UNAVAILABLE: "moteur d'export indisponible",
+        workspace_folder_exports.REASON_TOO_LARGE: "export trop volumineux",
+        workspace_folder_exports.REASON_LOCAL_PERSISTENCE_FAILED: "persistance locale de l'export impossible",
+    }.get(reason_code, "creation d'export impossible")
