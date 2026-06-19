@@ -116,6 +116,22 @@ Champs attendus, sans figer la migration exacte:
 rollback et compensation. Cette cible exacte ne doit jamais etre reconstruite
 depuis `display_name`, prompt, hash, `target_ref` ou projection technique.
 
+Implementation Lot 2:
+
+- le schema applicatif est porte par
+  `app/core/workspace_folder_generated_images_schema.py`;
+- le store local est porte par
+  `app/core/workspace_folder_generated_images_store.py`;
+- le read-model est cree par `conversations_maintenance.init_catalog_db()` via
+  `ensure_schema(cur)`;
+- `nextcloud_sync_state` reste `sync_error` par defaut et le store ne conserve
+  `linked` que si l'appelant fournit explicitement une preuve distante
+  (`remote_proof=true`);
+- les projections techniques sont portees par
+  `app/core/workspace_folder_generated_image_projection.py` et ne contiennent
+  pas `display_name`, cible distante brute, ETag brut, prompt, bytes, base64,
+  data URL, payload, DAV/XML/path/URL ou secret.
+
 Interdits dans ce read-model:
 
 - prompt brut;

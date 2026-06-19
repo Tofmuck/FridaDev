@@ -468,31 +468,45 @@ restent ouverts et doivent appliquer
 
 ### Lot 2 - Modele local / read-model images
 
-- [ ] Livrer le read-model Images V1 dedie obligatoire decide par la spec Lot
+- [x] Livrer le read-model Images V1 dedie obligatoire decide par la spec Lot
   1.
-- [ ] Garder ce read-model distinct de `workspace_files`,
+- [x] Garder ce read-model distinct de `workspace_files`,
   `workspace_folder_exports`, Notes, Documents et Exports.
-- [ ] Rattacher strictement chaque image a `workspace_folders.id`.
-- [ ] Representer statut local, statut Nextcloud, format, MIME, dimensions,
+- [x] Rattacher strictement chaque image a `workspace_folders.id`.
+- [x] Representer statut local, statut Nextcloud, format, MIME, dimensions,
   tailles, generateur, provider model, refs/hashs et reason codes.
-- [ ] Definir `target_name_internal` comme cible distante exacte, interne,
+- [x] Definir `target_name_internal` comme cible distante exacte, interne,
   serveur-owned et obligatoire.
-- [ ] Definir `target_ref` comme ref/hash content-free separee pour projections
+- [x] Definir `target_ref` comme ref/hash content-free separee pour projections
   techniques.
-- [ ] Interdire toute reconstruction de cible distante depuis display name,
+- [x] Interdire toute reconstruction de cible distante depuis display name,
   prompt, hash ou projection technique.
-- [ ] Declarer `nextcloud_sync_state DEFAULT 'sync_error'` ou un equivalent
+- [x] Declarer `nextcloud_sync_state DEFAULT 'sync_error'` ou un equivalent
   fail-closed explicitement teste.
-- [ ] Ne passer `nextcloud_sync_state` a `linked` qu'apres preuve distante
+- [x] Ne passer `nextcloud_sync_state` a `linked` qu'apres preuve distante
   exacte et persistance locale reussie.
-- [ ] Appliquer la politique prompt decidee par Lot 1, sans prompt brut par
+- [x] Appliquer la politique prompt decidee par Lot 1, sans prompt brut par
   defaut.
-- [ ] Ne pas stocker les bytes image en DB applicative.
-- [ ] Ne pas stocker de data URL/base64.
-- [ ] Produire projections utilisateur et technique content-free.
-- [ ] Fail-closed si le store images est indisponible.
-- [ ] Tester statut, projections, anti-fuite, prompt policy et deleted.
-- [ ] Ne pas contacter Nextcloud/WebDAV live.
+- [x] Ne pas stocker les bytes image en DB applicative.
+- [x] Ne pas stocker de data URL/base64.
+- [x] Produire projections utilisateur et technique content-free.
+- [x] Fail-closed si le store images est indisponible.
+- [x] Tester statut, projections, anti-fuite, prompt policy et deleted.
+- [x] Ne pas contacter Nextcloud/WebDAV live.
+
+Preuve Lot 2:
+
+- modules livres: `app/core/workspace_folder_generated_images.py`,
+  `app/core/workspace_folder_generated_images_store.py`,
+  `app/core/workspace_folder_generated_images_schema.py`,
+  `app/core/workspace_folder_generated_image_projection.py` et
+  `app/core/workspace_folder_generated_image_reason_codes.py`;
+- suite dediee:
+  `app/tests/unit/core/test_workspace_folder_generated_images.py`;
+- backup DB applicative avant migration:
+  `/opt/platform/_codex_reports/frida-v1-generated-images-lot2-db-backup-20260619T202702Z.dump`;
+- Lot 2 ne livre aucune route, aucune UI, aucune generation provider et aucun
+  acces Nextcloud/WebDAV live.
 
 ### Lot 3 - Stockage Nextcloud-first sous Images
 
