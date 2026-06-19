@@ -289,6 +289,13 @@ Lot 6B.1 livre download/open explicites:
 - l'artefact live content-free est
   `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot6b-content-access-20260619T092607Z.jsonl`.
 
+Correctif Lot 6B.1:
+
+- une panne du store dossier pendant download/open est fail-closed avec
+  `folder_export_lookup_failed`, sans GET Nextcloud et sans cause brute;
+- les reponses OK download/open ajoutent `X-Content-Type-Options: nosniff` et
+  `Cache-Control: private, no-store`.
+
 Limites V1 initiales:
 
 - contenu source normalise: `120_000` caracteres maximum par export;
@@ -545,7 +552,9 @@ GET /api/workspace-folders/<folder_id>/exports/<export_id>/open
 Elles lisent uniquement la cible distante exacte persistee dans le read-model,
 sans listing Nextcloud, et refusent dossier/export non eligible, export absent,
 deleted, cross-folder, non linked, panne store, panne distante ou taille au-dela
-de `25 MiB`.
+de `25 MiB`. Les pannes du store dossier ou export restent fail-closed et
+content-free. Les reponses OK ajoutent `X-Content-Type-Options: nosniff` et
+`Cache-Control: private, no-store`.
 
 Interdits V1:
 

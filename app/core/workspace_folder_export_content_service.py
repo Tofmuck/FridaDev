@@ -115,6 +115,8 @@ def download_workspace_folder_export_response(
                 export_format=export_format,
                 disposition=disposition,
             ),
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
             "X-Frida-Reason-Code": workspace_folder_exports.REASON_DOWNLOAD_OK,
         },
     )
@@ -125,13 +127,26 @@ def _resolve_existing_folder(
     *,
     workspace_folders_module: Any,
 ) -> tuple[str, dict[str, Any], ExportContentResponse | None]:
-    normalized = workspace_folders_module.normalize_workspace_folder_id(folder_id)
+    try:
+        normalized = workspace_folders_module.normalize_workspace_folder_id(folder_id)
+    except Exception:
+        return "", {}, _error(
+            workspace_folder_exports.REASON_LOOKUP_FAILED,
+            status=503,
+        )
     if not normalized:
         return "", {}, _error("workspace_folder_id_invalid", status=400)
     try:
-        folder = workspace_folders_module.get_workspace_folder(normalized, include_deleted=True)
-    except TypeError:
-        folder = workspace_folders_module.get_workspace_folder(normalized)
+        try:
+            folder = workspace_folders_module.get_workspace_folder(normalized, include_deleted=True)
+        except TypeError:
+            folder = workspace_folders_module.get_workspace_folder(normalized)
+    except Exception:
+        return "", {}, _error(
+            workspace_folder_exports.REASON_LOOKUP_FAILED,
+            status=503,
+            folder_id=normalized,
+        )
     if not folder:
         return "", {}, _error("workspace_folder_not_found", status=404)
     if folder.get("deleted_at"):

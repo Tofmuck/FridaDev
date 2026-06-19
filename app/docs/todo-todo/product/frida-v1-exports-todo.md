@@ -513,6 +513,10 @@ Correctif Lot 5.2 livre:
   techniques content-free.
 - [x] Lot 6B.1: produire une preuve live synthetique content-free:
   `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot6b-content-access-20260619T092607Z.jsonl`.
+- [x] Correctif Lot 6B.1: panne store dossier download/open fail-closed avec
+  `folder_export_lookup_failed`, sans GET Nextcloud ni cause brute.
+- [x] Correctif Lot 6B.1: headers OK download/open durcis avec
+  `X-Content-Type-Options: nosniff` et `Cache-Control: private, no-store`.
 - [ ] Lot 6B: utiliser explicitement un export existant comme source d'un nouvel
   export, lecture bornee complete ou refus, sans injection chat automatique.
 - [ ] Lot 6B: lookup par titre/critere si necessaire, avec ambiguite explicite;

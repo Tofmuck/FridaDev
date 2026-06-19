@@ -22,10 +22,18 @@ EXPORT_ID = "11111111-2222-4333-8444-555555555555"
 
 
 class _FakeWorkspaceFolders:
-    def __init__(self, *, linked=True, deleted=False, target_name="Projet-serveur"):
+    def __init__(
+        self,
+        *,
+        linked=True,
+        deleted=False,
+        target_name="Projet-serveur",
+        fail_get=False,
+    ):
         self.linked = linked
         self.deleted = deleted
         self.target_name = target_name
+        self.fail_get = fail_get
 
     def normalize_workspace_folder_id(self, value):
         try:
@@ -34,6 +42,8 @@ class _FakeWorkspaceFolders:
             return None
 
     def get_workspace_folder(self, folder_id, include_deleted=False):
+        if self.fail_get:
+            raise RuntimeError("raw folder db failure sensitive")
         if self.normalize_workspace_folder_id(folder_id) != FOLDER_ID:
             return None
         return {
@@ -157,6 +167,8 @@ class ServerWorkspaceFolderExportContentContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, b"contenu export")
         self.assertEqual(response.headers["X-Frida-Reason-Code"], "folder_export_download_ok")
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["Cache-Control"], "private, no-store")
         self.assertIn("attachment", response.headers["Content-Disposition"])
         self.assertIn("Export-serveur.txt", response.headers["Content-Disposition"])
         self.assertEqual(
@@ -178,7 +190,26 @@ class ServerWorkspaceFolderExportContentContractTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, b"contenu export")
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["Cache-Control"], "private, no-store")
         self.assertIn("inline", response.headers["Content-Disposition"])
+
+    def test_download_and_open_fail_closed_when_folder_store_fails_before_nextcloud(self) -> None:
+        self.server.workspace_folders = _FakeWorkspaceFolders(fail_get=True)
+
+        for suffix in ("download", "open"):
+            with self.subTest(suffix=suffix):
+                response = self.client.get(
+                    f"/api/workspace-folders/{FOLDER_ID}/exports/{EXPORT_ID}/{suffix}"
+                )
+
+                self.assertEqual(response.status_code, 503)
+                payload = response.get_json()
+                self.assertEqual(payload["reason_code"], "folder_export_lookup_failed")
+                self.assertNotIn("raw folder db failure sensitive", str(payload))
+                self.assertNotIn("Export-serveur.txt", str(payload))
+                self.assertEqual(self.fake_exports.get_calls, [])
+                self.assertEqual(self.fake_nextcloud.read_calls, [])
 
     def test_download_refuses_non_linked_folder_before_store_or_nextcloud(self) -> None:
         self.server.workspace_folders = _FakeWorkspaceFolders(linked=False)
