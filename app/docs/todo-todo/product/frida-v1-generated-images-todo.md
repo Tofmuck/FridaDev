@@ -1,8 +1,10 @@
 # Frida V1 - Images generees - TODO
 
-Statut: TODO actif detaille; Lot 0 audit existant coche, aucun runtime Images
+Statut: TODO actif detaille; Lots 0 et 1 docs-only coches, aucun runtime Images
 V1 livre.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+Spec source-of-truth Lot 1:
+`app/docs/states/specs/frida-v1-generated-images-contract.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-generated-images-lot0-audit-2026-06-19.md`
 
@@ -42,6 +44,8 @@ route, aucune migration, aucune generation d'image et aucun acces Nextcloud.
   `app/docs/states/specs/frida-v1-exports-contract.md`
 - Archive Exports V1:
   `app/docs/todo-done/product/frida-v1-exports-todo.md`
+- Spec Images generees V1:
+  `app/docs/states/specs/frida-v1-generated-images-contract.md`
 - Archive generation d'images OpenRouter V0:
   `app/docs/todo-done/product/fridadev-image-generation-openrouter-todo.md`
 - Archive lecture d'images comme documents actifs:
@@ -276,148 +280,111 @@ stocker ou non en DB applicative est ouverte et bloquante avant runtime.
 - L'outil V0 actuel peut rester lateral/local/non persistant tant qu'il ne
   pretend pas livrer Images V1.
 
-## Decisions ouvertes avant runtime
+## Decisions produit fermees par la spec Lot 1
 
-Aucun lot applicatif Images V1 ne doit demarrer tant que ces decisions ne sont
-pas fermees dans la spec Lot 1. Si une decision nouvelle apparait pendant un lot
-runtime, le lot s'arrete avant patch, avant spec additionnelle opportuniste,
-avant commit et avant de cocher le lot.
+La spec source-of-truth Images V1 ferme les decisions ci-dessous. Aucun lot
+applicatif Images V1 ne doit les reouvrir silencieusement. Si une contradiction
+reelle apparait pendant un lot runtime, le lot s'arrete avant patch, commit et
+coche de lot, puis ouvre un micro-lot documentaire.
 
 ### Prompt de generation
 
-Decision manquante:
+Decision Lot 1:
 
-- stocker le prompt brut en DB applicative;
-- stocker un resume utilisateur;
-- stocker seulement un hash/ref;
-- ne rien stocker;
-- stocker une version redigee/redacted sous controle explicite.
-
-Contraintes deja fermees:
-
-- prompt brut interdit dans logs, JSONL, observabilite technique et preuves;
-- prompt brut interdit dans reason codes;
-- prompt brut interdit dans refs techniques;
-- si le prompt est visible cote utilisateur, la surface doit etre explicitement
-  decidee et testee.
-
-No-go: aucun read-model Images ne doit etre livre tant que la politique prompt
-n'est pas tranchee.
+- le prompt brut peut exister en memoire UI et serveur pendant l'appel provider;
+- aucun prompt brut, resume de prompt ou hash reversible/deductible du prompt
+  n'est persiste comme metadata durable Images V1;
+- les seuls signaux durables autorises sont `prompt_present`, bucket de longueur
+  bornee, generateur, format et reason codes content-free;
+- prompt brut interdit dans logs, JSONL, observabilite technique, proofs,
+  reason codes, target name et projection technique.
 
 ### Formats image V1
 
-Decision manquante:
+Decision Lot 1:
 
-- formats persistables V1: PNG, JPEG, WebP, SVG, GIF, autre;
-- faut-il conserver le format fournisseur ou normaliser;
-- faut-il refuser SVG pour eviter scripts/actifs ou l'autoriser comme fichier;
-- faut-il refuser GIF anime.
-
-Constats actuels:
-
-- l'outil image V0 accepte toute data URL `image/*` valide cote backend;
-- les images actives Documents utilisent surtout PNG/JPEG/WebP et refusent GIF
-  en V0;
-- les smokes historiques de generation ont observe PNG, WEBP et SVG selon les
-  tests/mocks.
-
-No-go: pas de stockage durable tant que l'allowlist format V1 n'est pas fermee.
+- PNG, JPEG et WebP sont les seuls formats durables Images V1;
+- SVG, GIF et tout format inconnu sont refuses en V1 durable;
+- pas de transcodage automatique V1;
+- le format provider est conserve seulement s'il appartient a l'allowlist V1.
 
 ### Miniature
 
-Decision manquante:
+Decision Lot 1:
 
-- pas de miniature V1;
-- miniature generee cote backend;
-- miniature fournie par Nextcloud;
-- miniature seulement dans un lot UI post-V1.
-
-No-go: ne pas ajouter de pipeline thumbnail, cache ou transformation sans
-decision produit et tests anti-fuite.
+- pas de miniature persistante en V1;
+- pas de cache thumbnail;
+- pas de transformation image dediee a une miniature;
+- l'UI peut s'appuyer sur open/download explicites ou route image bornee.
 
 ### Limites taille/dimensions
 
-Decision manquante:
+Decision Lot 1:
 
-- taille maximale de l'image generee stockee;
-- taille maximale de la data URL fournisseur avant decodage;
-- dimensions maximales;
-- politique si dimensions inconnues;
-- limite de duree generation + stockage.
-
-Points de comparaison:
-
-- generation V0: prompt `2000` caracteres, timeout `180` secondes,
-  data URL max `6_000_000` caracteres;
-- Documents visuels et Exports utilisent des limites `25 MiB` sur certains flux;
-- images actives source acceptent des limites differentes qui ne doivent pas
-  etre reprises sans decision.
-
-No-go: pas de creation runtime Images sans limites completes ou refus fail-closed.
+- prompt `2000` caracteres maximum;
+- timeout provider `180` secondes;
+- data URL provider transitoire `22_000_000` caracteres maximum;
+- image stockee `15 MiB` maximum;
+- dimensions minimales `32 x 32`;
+- cote maximal `16000`;
+- surface maximale `100_000_000` pixels;
+- complet ou refus, aucune troncature silencieuse.
 
 ### Nommage et titre utilisateur
 
-Decision manquante:
+Decision Lot 1:
 
-- titre utilisateur obligatoire ou optionnel;
-- nom derive du prompt, du generateur ou d'un timestamp;
-- visibilite utilisateur du titre;
-- presence ou absence d'un nom provider;
-- politique de collision et versioning.
-
-Contraintes:
-
-- le nom cible sanitise interne ne doit pas apparaitre en observabilite
-  technique;
-- collision = refus content-free, sauf decision future de versioning explicite.
+- nom cible serveur-owned et neutre: `generated-image-<image_id>.<format>`;
+- `image_id` serveur-owned, jamais impose par le client;
+- display name utilisateur facultatif, fourni explicitement ou genere de facon
+  neutre;
+- nom cible brut interdit en observabilite technique;
+- collision = refus content-free, pas d'overwrite, pas de renommage silencieux.
 
 ### Reutilisation comme source
 
-Decision manquante:
+Decision Lot 1:
 
-- Images V1 permet-elle de reutiliser une image generee comme source d'une
-  nouvelle generation;
-- permet-elle de l'envoyer comme image active;
-- permet-elle de l'utiliser dans un export;
-- ou bien toute reutilisation est-elle post-V1.
-
-Position prudente recommandee: V1 liste, lookup, open/download et UI de dossier;
-la reutilisation comme source reste post-V1 sauf decision produit explicite en
-Lot 1.
+- reuse-as-source hors V1;
+- une image generee ne devient pas source d'une nouvelle generation en V1;
+- une image generee ne devient pas image active de conversation en V1;
+- pas d'injection chat automatique.
 
 ### Suppression et retention
 
-Decision manquante:
+Decision Lot 1:
 
-- suppression distante Nextcloud reelle avant tombstone local;
-- tombstone local seulement, en conservant l'image distante;
-- suppression utilisateur interdite en V1;
-- cleanup strict seulement pour smokes synthetiques.
-
-No-go: ne pas supprimer d'image utilisateur distante sans decision produit et
-contrat de compensation.
+- suppression utilisateur V1 autorisee seulement par action explicite sous
+  route namespaced;
+- suppression distante exacte d'abord;
+- tombstone local seulement apres succes distant;
+- fail-closed si la suppression distante echoue;
+- cleanup synthetique autorise sur cible exacte pour smokes.
 
 ### Observabilite technique autorisee
 
-Decision a stabiliser:
+Decision Lot 1:
 
-- refs autorisees: `image_ref`, `folder_ref`, `prompt_hash` si applicable,
-  `content_hash`, `mime_type`, `byte_size`, `width`, `height`, `generator_key`,
-  `provider_model`, `aspect_ratio`, `image_size`, statuts et reason codes;
+- refs autorisees: `image_ref`, `folder_ref`, hash court de contenu,
+  `mime_type`, `byte_size`, `width`, `height`, `generator_key`,
+  `provider_model`, `aspect_ratio`, `image_size`, bucket de longueur prompt,
+  `prompt_present`, statuts et reason codes;
 - interdits: prompt brut, image brute, base64, data URL, target brut, ETag brut,
   URL DAV, chemin DAV, XML, payload provider, payload WebDAV, secret.
 
-Lot 1 doit transformer cette liste en projection technique allowlistee.
-
 ### Lot Z
 
-Decision a fermer:
+Decision Lot 1:
 
-- faut-il prouver live une generation provider reelle ou seulement un fake
-  provider plus stockage Nextcloud;
-- quels formats exacts doivent etre prouves live;
-- faut-il scanner les logs applicatifs comme Exports Lot Z;
-- quels cas non applicables peuvent etre couverts par tests sans mutation DB.
+- Lot Z doit inclure au moins un smoke provider live synthetique avec prompt non
+  sensible et cout borne quand le secret/runtime est disponible;
+- si le provider live est indisponible, la cloture ne revendique pas de preuve
+  provider live;
+- PNG/JPEG/WebP doivent etre prouves par combinaison de live synthetique et
+  tests fake deterministes quand le provider ne force pas chaque format;
+- scan logs applicatifs borne reel attendu, ou limite documentee explicitement
+  comme non bloquante dans le verdict;
+- cleanup distant/local exact des images synthetiques obligatoire.
 
 ## Garde-fous runtime graves a graver en Lot 1
 
@@ -446,8 +413,9 @@ Decision a fermer:
 
 ## Lots proposes
 
-Lot 0 est coche par audit read-only/docs-only. Les Lots 1+ restent ouverts et ne
-doivent pas demarrer avant fermeture des decisions produit dans la spec Lot 1.
+Lots 0 et 1 sont coches par audit puis spec read-only/docs-only. Les Lots 2+
+restent ouverts et doivent appliquer
+`app/docs/states/specs/frida-v1-generated-images-contract.md`.
 
 ### Lot 0 - Audit existant read-only/docs-only
 
@@ -470,24 +438,23 @@ doivent pas demarrer avant fermeture des decisions produit dans la spec Lot 1.
 
 ### Lot 1 - Spec source-of-truth Images V1
 
-- [ ] Creer `app/docs/states/specs/frida-v1-generated-images-contract.md`.
-- [ ] Fermer toutes les decisions ouvertes ci-dessus avant runtime.
-- [ ] Definir le modele produit Image generee V1.
-- [ ] Graver le rattachement obligatoire de toute image persistante a
+- [x] Creer `app/docs/states/specs/frida-v1-generated-images-contract.md`.
+- [x] Fermer toutes les decisions produit ci-dessus avant runtime.
+- [x] Definir le modele produit Image generee V1.
+- [x] Graver le rattachement obligatoire de toute image persistante a
   `workspace_folders.id`.
-- [ ] Definir la cible normative `/Frida/<dossier>/Images`.
-- [ ] Definir la politique de prompt: brut, resume, hash ou non-stockage.
-- [ ] Definir les formats V1 autorises.
-- [ ] Definir les limites de prompt, data URL, bytes, dimensions et timeout.
-- [ ] Fixer le nom du modele local/read-model Images V1 dedie obligatoire.
-- [ ] Definir les routes/API autorisees sous namespace dossier.
-- [ ] Definir la politique de nommage, collision, versioning et suppression.
-- [ ] Definir les projections utilisateur et technique content-free.
-- [ ] Definir le catalogue initial de reason codes.
-- [ ] Definir les criteres Lot Z.
-- [ ] Si une decision produit manque, s'arreter avant de committer la spec et
-  demander explicitement.
-- [ ] Ne livrer aucun runtime.
+- [x] Definir la cible normative `/Frida/<dossier>/Images`.
+- [x] Definir la politique de prompt: non-stockage durable du prompt brut, du
+  resume et des hash deductibles.
+- [x] Definir les formats V1 autorises.
+- [x] Definir les limites de prompt, data URL, bytes, dimensions et timeout.
+- [x] Fixer le nom du modele local/read-model Images V1 dedie obligatoire.
+- [x] Definir les routes/API autorisees sous namespace dossier.
+- [x] Definir la politique de nommage, collision, versioning et suppression.
+- [x] Definir les projections utilisateur et technique content-free.
+- [x] Definir le catalogue initial de reason codes.
+- [x] Definir les criteres Lot Z.
+- [x] Ne livrer aucun runtime.
 
 ### Lot 2 - Modele local / read-model images
 
@@ -550,7 +517,7 @@ doivent pas demarrer avant fermeture des decisions produit dans la spec Lot 1.
 - [ ] Tester liste vide, liste multi-formats, deleted exclu, lookup OK, absent,
   cross-folder, panne store et anti-fuite.
 
-### Lot 5 - Open/download image
+### Lot 5 - Open/download/delete image
 
 - [ ] Ajouter une action explicite de telechargement sous namespace dossier.
 - [ ] Ajouter une action explicite d'ouverture inline seulement si la spec Lot 1
@@ -565,8 +532,12 @@ doivent pas demarrer avant fermeture des decisions produit dans la spec Lot 1.
 - [ ] Ajouter headers sobres: `X-Content-Type-Options: nosniff` et
   `Cache-Control: private, no-store`.
 - [ ] Ne jamais exposer prompt brut ou chemin distant dans les headers.
+- [ ] Ajouter suppression utilisateur explicite sous namespace dossier.
+- [ ] Supprimer distant exact avant tombstone local.
+- [ ] Fail-closed si suppression distante echoue.
+- [ ] Ne jamais supprimer large ou recursive.
 - [ ] Tester absent, deleted, cross-folder, non linked, taille trop grande,
-  panne store, panne Nextcloud, headers et anti-fuite.
+  panne store, panne Nextcloud, headers, suppression et anti-fuite.
 
 ### Lot 6 - UI dossier Images
 
@@ -588,7 +559,8 @@ doivent pas demarrer avant fermeture des decisions produit dans la spec Lot 1.
 
 ### Lot 7 - Observabilite / smokes content-free
 
-- [ ] Consolider les projections/events techniques content-free si necessaire.
+- [ ] Consolider les projections/events techniques content-free quand le lot
+  livre une surface qui les consomme.
 - [ ] Produire un JSONL live synthetique sous
   `app/docs/states/baselines/generated-images-smokes/`.
 - [ ] Prouver create/store Nextcloud-first pour les formats V1 livres.
@@ -615,51 +587,56 @@ doivent pas demarrer avant fermeture des decisions produit dans la spec Lot 1.
 - [ ] Verifier cleanup distant/local des images synthetiques.
 - [ ] Verifier absence de confusion Documents / Notes / Exports / Images.
 - [ ] Executer les scans anti-fuite exiges par la spec Lot 1.
-- [ ] Archiver cette TODO seulement si le verdict final est suffisant.
+- [ ] Archiver cette TODO seulement si le verdict final est conforme au contrat
+  Lot 1.
 - [ ] Ne pas vendre une preuve plus large que ce qui est reellement execute.
 
 ## Reason codes initiaux a stabiliser
 
-Catalogue candidat, a fermer en spec Lot 1:
+Catalogue stabilise par la spec Lot 1:
 
-- `folder_image_folder_invalid`;
-- `folder_image_folder_deleted`;
-- `folder_image_folder_not_linked`;
-- `folder_image_images_target_missing`;
-- `folder_image_images_target_not_collection`;
-- `folder_image_images_target_unavailable`;
-- `folder_image_prompt_policy_unresolved`;
-- `folder_image_prompt_missing`;
-- `folder_image_prompt_too_large`;
-- `folder_image_generator_unsupported`;
-- `folder_image_aspect_ratio_unsupported`;
-- `folder_image_size_unsupported`;
-- `folder_image_format_unsupported`;
-- `folder_image_mime_invalid`;
-- `folder_image_data_url_invalid`;
-- `folder_image_too_large`;
-- `folder_image_dimensions_invalid`;
-- `folder_image_name_invalid`;
-- `folder_image_name_conflict`;
-- `folder_image_not_found`;
-- `folder_image_deleted`;
-- `folder_image_not_linked`;
-- `folder_image_lookup_failed`;
-- `folder_image_access_not_prepared`;
-- `folder_image_generation_failed_redacted`;
-- `folder_image_provider_timeout`;
-- `folder_image_provider_error_redacted`;
-- `folder_image_create_ok`;
-- `folder_image_store_ok`;
-- `folder_image_store_failed_redacted`;
-- `folder_image_list_ok`;
-- `folder_image_lookup_ok`;
-- `folder_image_download_ok`;
-- `folder_image_open_ok`;
-- `folder_image_local_persistence_failed`;
-- `folder_image_remote_compensation_ok`;
-- `folder_image_remote_compensation_failed`;
-- `folder_image_nextcloud_error_redacted`.
+- `folder_generated_image_folder_invalid`;
+- `folder_generated_image_folder_deleted`;
+- `folder_generated_image_folder_not_linked`;
+- `folder_generated_image_folder_not_eligible`;
+- `folder_generated_image_images_target_missing`;
+- `folder_generated_image_images_target_not_collection`;
+- `folder_generated_image_images_target_unavailable`;
+- `folder_generated_image_prompt_missing`;
+- `folder_generated_image_prompt_too_large`;
+- `folder_generated_image_generator_unsupported`;
+- `folder_generated_image_aspect_ratio_unsupported`;
+- `folder_generated_image_size_unsupported`;
+- `folder_generated_image_provider_timeout`;
+- `folder_generated_image_provider_error_redacted`;
+- `folder_generated_image_provider_no_image`;
+- `folder_generated_image_provider_payload_invalid`;
+- `folder_generated_image_data_url_invalid`;
+- `folder_generated_image_data_url_too_large`;
+- `folder_generated_image_format_unsupported`;
+- `folder_generated_image_mime_invalid`;
+- `folder_generated_image_too_large`;
+- `folder_generated_image_dimensions_invalid`;
+- `folder_generated_image_name_invalid`;
+- `folder_generated_image_name_conflict`;
+- `folder_generated_image_create_ok`;
+- `folder_generated_image_store_ok`;
+- `folder_generated_image_store_failed_redacted`;
+- `folder_generated_image_local_persistence_failed`;
+- `folder_generated_image_remote_compensation_ok`;
+- `folder_generated_image_remote_compensation_failed`;
+- `folder_generated_image_list_ok`;
+- `folder_generated_image_lookup_ok`;
+- `folder_generated_image_lookup_failed`;
+- `folder_generated_image_not_found`;
+- `folder_generated_image_deleted`;
+- `folder_generated_image_not_linked`;
+- `folder_generated_image_access_not_prepared`;
+- `folder_generated_image_download_ok`;
+- `folder_generated_image_open_ok`;
+- `folder_generated_image_delete_ok`;
+- `folder_generated_image_delete_failed_redacted`;
+- `folder_generated_image_nextcloud_error_redacted`.
 
 Interdits:
 
@@ -671,7 +648,8 @@ Interdits:
 ## Preuves attendues
 
 - Audit Lot 0 content-free sous `app/docs/states/audits/`.
-- Spec Lot 1 source-of-truth avant runtime.
+- Spec Lot 1 source-of-truth:
+  `app/docs/states/specs/frida-v1-generated-images-contract.md`.
 - Tests unitaires pour validation prompt policy, format, MIME, dimensions,
   taille, noms, projections et reason codes.
 - Tests fake provider pour generation sans OpenRouter live.
@@ -719,7 +697,7 @@ Interdits:
 - OCR automatique des images generees.
 - Description automatique persistante.
 - Injection chat automatique.
-- Reutilisation comme source sans contrat Lot 1 explicite.
+- Reutilisation comme source.
 - Documents ingestion.
 - Notes Markdown.
 - Exports.
@@ -749,7 +727,7 @@ Interdits:
 
 ## Prochain pas
 
-Executer Lot 1 Images V1: creer la spec source-of-truth
-`app/docs/states/specs/frida-v1-generated-images-contract.md`, fermer les
-decisions produit encore ouvertes avant runtime, et ne livrer aucun runtime dans
-ce lot spec.
+Executer Lot 2 Images V1: livrer le read-model local dedie
+`workspace_folder_generated_images` selon
+`app/docs/states/specs/frida-v1-generated-images-contract.md`, sans contacter
+Nextcloud/WebDAV live.

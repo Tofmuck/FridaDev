@@ -102,6 +102,15 @@ eviter toute fuite de prompt brut ou contenu sensible.
 TODO dediee:
 `app/docs/todo-todo/product/frida-v1-generated-images-todo.md`
 
+Contrat source:
+`app/docs/states/specs/frida-v1-generated-images-contract.md`
+
+Statut 2026-06-19: Lot 0 audit existant et Lot 1 spec source-of-truth livres
+en docs-only. Aucun runtime Images V1 n'est encore livre; les prochains lots
+doivent appliquer le read-model dedie `workspace_folder_generated_images`, la
+cible `/Frida/<dossier>/Images`, les formats PNG/JPEG/WebP et la prompt policy
+sans stockage durable du prompt brut.
+
 ### 6. Observabilite globale / logs agentiques
 
 Auditer les traces actuelles, verifier leur degradation en mode agentique,
