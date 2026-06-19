@@ -1,7 +1,8 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 5 livre, correctifs Lot 5.1 et Lot 5.2 de durcissement route
-creation livres avant liste / retrouver / reutiliser.
+Statut: TODO Lot 6A livre: liste et lookup metadata-only depuis le read-model
+local. Correctifs Lot 5.1 et Lot 5.2 livres. Reuse de contenu, ouverture et
+telechargement restent a livrer dans un sous-lot separe.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -488,16 +489,25 @@ Correctif Lot 5.2 livre:
 
 ### Lot 6 - Liste / retrouver / reutiliser un export existant
 
-- [ ] Lister les exports d'un dossier depuis le read-model local.
-- [ ] Retrouver un export selon les criteres definis par la spec Lot 1.
-- [ ] Implementer uniquement le sens de "reutiliser" defini par la spec Lot 1.
-- [ ] Refuser toute lecture, injection, conversion ou duplication non definie
+- [x] Lister les exports d'un dossier depuis le read-model local.
+- [x] Retrouver un export par UUID exact dans le dossier du path.
+- [x] Exposer les actions utilisateur disponibles/non disponibles
+  metadata-only: `can_download`, `can_open`, `can_reuse_as_source`.
+- [x] Refuser toute lecture, injection, conversion ou duplication non definie
   par la spec Lot 1.
-- [ ] Ne pas lire le contenu exporte sans action explicite et sans le sens de
+- [x] Ne pas lire le contenu exporte sans action explicite et sans le sens de
   reutilisation defini par la spec Lot 1.
-- [ ] Distinguer absence, ambiguite, conflit et panne store.
-- [ ] Tester liste vide, liste avec formats multiples, lookup, ambiguite,
-  refus et anti-fuite.
+- [x] Distinguer absence, export deleted, dossier non eligible et panne store
+  pour le lookup UUID/liste.
+- [x] Tester liste vide, liste avec formats multiples, deleted exclu, lookup
+  UUID, cross-folder refuse, panne store, route globale absente, refus reuse
+  non livre, absence d'appel WebDAV et anti-fuite technique.
+- [ ] Lot 6B: telecharger ou ouvrir explicitement un export existant, avec
+  transport/reader borne et preuves content-free.
+- [ ] Lot 6B: utiliser explicitement un export existant comme source d'un nouvel
+  export, lecture bornee complete ou refus, sans injection chat automatique.
+- [ ] Lot 6B: lookup par titre/critere si necessaire, avec ambiguite explicite;
+  Lot 6A livre uniquement l'UUID exact.
 
 ### Lot 7 - Integration UI ou conversationnelle minimale
 
@@ -545,6 +555,9 @@ Catalogue initial content-free:
 - `folder_export_name_invalid`;
 - `folder_export_name_conflict`;
 - `folder_export_client_export_id_forbidden`;
+- `folder_export_not_found`;
+- `folder_export_deleted`;
+- `folder_export_access_not_prepared`;
 - `folder_export_source_missing`;
 - `folder_export_source_ambiguous`;
 - `folder_export_source_unsupported`;
@@ -613,20 +626,21 @@ Interdits dans preuves techniques:
 - Migration ou import d'exports historiques sans lot dedie.
 - Listing large de contenu Nextcloud comme preuve.
 
-## Hors-scope courant apres Lot 5
+## Hors-scope courant apres Lot 6A
 
 - Pas de UI.
 - Pas de nouvelle migration DB hors lot explicitement dedie.
 - Pas d'archivage.
 - Pas de Lot Z.
-- Pas de liste / retrouver / reutiliser.
 - Pas de lecture, telechargement ou ouverture d'un export existant.
 - Pas de reutilisation d'un export existant comme source.
+- Pas de lookup par titre/critere ni gestion d'ambiguite titre.
 - Pas de modification des chantiers Documents, Notes ou Images.
 
 ## Prochain pas
 
-Ouvrir Lot 6 - Liste / retrouver / reutiliser un export existant. Ce lot devra
-servir les exports depuis le read-model local, sans listing large Nextcloud,
-sans lecture implicite du contenu et sans ouvrir UI, telechargement ou
-reutilisation hors contrat.
+Ouvrir un sous-lot Lot 6B si le produit veut telecharger/ouvrir un export ou
+utiliser explicitement un export existant comme source d'un nouvel export. Ce
+sous-lot devra livrer un reader/transport borne, content-free en observabilite,
+sans listing large Nextcloud, sans lecture implicite du contenu et sans
+injection chat automatique.

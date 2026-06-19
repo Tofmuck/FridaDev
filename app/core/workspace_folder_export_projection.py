@@ -72,6 +72,7 @@ def build_user_projection(
     folder: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     state = export_state(export, folder=folder)
+    actions = build_user_actions(export, folder=folder)
     return {
         "export_id": workspace_folder_exports.normalize_export_id(export.get("id")),
         "export_ref": export_ref(export.get("id")),
@@ -98,6 +99,10 @@ def build_user_projection(
         "created_at": workspace_folder_exports._ts_to_iso(export.get("created_at")),
         "updated_at": workspace_folder_exports._ts_to_iso(export.get("updated_at")),
         "deleted_at": workspace_folder_exports._ts_to_iso(export.get("deleted_at")),
+        "can_download": actions["can_download"],
+        "can_open": actions["can_open"],
+        "can_reuse_as_source": actions["can_reuse_as_source"],
+        "actions": actions,
     }
 
 
@@ -132,6 +137,31 @@ def build_technical_projection(
             "byte_size": workspace_folder_exports._safe_int(export.get("byte_size")),
             "char_count": workspace_folder_exports._safe_int(export.get("char_count")),
         },
+    }
+
+
+def build_user_actions(
+    export: Mapping[str, Any],
+    *,
+    folder: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    reason_code = workspace_folder_exports.REASON_CONTENT_ACCESS_NOT_PREPARED
+    if is_deleted(export):
+        reason_code = workspace_folder_exports.REASON_EXPORT_DELETED
+    elif folder is not None and folder.get("deleted_at"):
+        reason_code = workspace_folder_exports.REASON_FOLDER_DELETED
+    elif (
+        folder is not None
+        and workspace_folder_exports._text(folder.get("nextcloud_sync_state")) != "linked"
+    ):
+        reason_code = workspace_folder_exports.REASON_FOLDER_NOT_LINKED
+    return {
+        "can_download": False,
+        "can_open": False,
+        "can_reuse_as_source": False,
+        "download_reason_code": reason_code,
+        "open_reason_code": reason_code,
+        "reuse_as_source_reason_code": reason_code,
     }
 
 

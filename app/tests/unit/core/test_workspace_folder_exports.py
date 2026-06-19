@@ -186,6 +186,30 @@ class WorkspaceFolderExportsTests(unittest.TestCase):
         self.assertNotIn("xml", item)
         self.assertNotIn("authorization", item)
 
+    def test_user_projection_exposes_metadata_only_actions_for_future_reuse(self) -> None:
+        item = workspace_folder_exports.apply_export_projection(_export())
+
+        user = item["export_v1_user"]
+        technical = item["export_v1_technical"]
+        self.assertFalse(user["can_download"])
+        self.assertFalse(user["can_open"])
+        self.assertFalse(user["can_reuse_as_source"])
+        self.assertEqual(
+            user["actions"]["download_reason_code"],
+            "folder_export_access_not_prepared",
+        )
+        self.assertEqual(
+            user["actions"]["open_reason_code"],
+            "folder_export_access_not_prepared",
+        )
+        self.assertEqual(
+            user["actions"]["reuse_as_source_reason_code"],
+            "folder_export_access_not_prepared",
+        )
+        self.assertNotIn("actions", technical)
+        self.assertNotIn("raw-etag-secret", str(user["actions"]))
+        self.assertNotIn("Synthese-sensible.pdf", str(user["actions"]))
+
     def test_technical_projection_rejects_private_alnum_source_ref(self) -> None:
         technical = workspace_folder_exports.build_technical_projection(
             _export(source_ref="FlorenceBoitezPrivateNote")

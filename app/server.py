@@ -1411,6 +1411,27 @@ def api_create_workspace_folder_note(folder_id: str):
 
 # ── /api/workspace-folders/<id>/exports* ─────────────────────────────────────
 
+@app.get('/api/workspace-folders/<folder_id>/exports')
+def api_list_workspace_folder_exports(folder_id: str):
+    payload, status = workspace_folder_exports_service.list_workspace_folder_exports_response(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_exports_module=workspace_folder_exports,
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/exports/<export_id>')
+def api_get_workspace_folder_export(folder_id: str, export_id: str):
+    payload, status = workspace_folder_exports_service.get_workspace_folder_export_response(
+        folder_id,
+        export_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_exports_module=workspace_folder_exports,
+    )
+    return jsonify(payload), status
+
+
 @app.post('/api/workspace-folders/<folder_id>/exports')
 def api_create_workspace_folder_export(folder_id: str):
     data = request.get_json(silent=True) or {}

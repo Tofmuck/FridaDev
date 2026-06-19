@@ -125,6 +125,84 @@ def create_workspace_folder_export_response(
     }, 201
 
 
+def list_workspace_folder_exports_response(
+    folder_id: str,
+    *,
+    workspace_folders_module: Any,
+    workspace_folder_exports_module: Any = workspace_folder_exports,
+) -> Tuple[dict[str, Any], int]:
+    normalized, folder, error = _resolve_existing_folder(
+        folder_id,
+        workspace_folders_module=workspace_folders_module,
+    )
+    if error:
+        return error
+    linked_error = _linked_folder_error(normalized, folder, list_response=True)
+    if linked_error:
+        return linked_error
+    try:
+        exports = workspace_folder_exports_module.list_exports(
+            normalized,
+            include_deleted=False,
+            fail_closed=True,
+        )
+    except Exception:
+        return _lookup_failure_response(normalized)
+
+    projected = workspace_folder_exports.apply_export_list(exports, folder=folder)
+    return {
+        "ok": True,
+        "workspace_folder_id": normalized,
+        "exports": projected,
+        "count": len(projected),
+        "reason_code": workspace_folder_exports.REASON_LIST_OK,
+    }, 200
+
+
+def get_workspace_folder_export_response(
+    folder_id: str,
+    export_id: str,
+    *,
+    workspace_folders_module: Any,
+    workspace_folder_exports_module: Any = workspace_folder_exports,
+) -> Tuple[dict[str, Any], int]:
+    normalized, folder, error = _resolve_existing_folder(
+        folder_id,
+        workspace_folders_module=workspace_folders_module,
+    )
+    if error:
+        return error
+    linked_error = _linked_folder_error(normalized, folder, list_response=False)
+    if linked_error:
+        return linked_error
+    normalized_export_id = workspace_folder_exports.normalize_export_id(export_id)
+    if not normalized_export_id:
+        return _export_not_found_response(normalized)
+    try:
+        export = workspace_folder_exports_module.get_export(
+            normalized_export_id,
+            fail_closed=True,
+        )
+    except Exception:
+        return _lookup_failure_response(normalized, export_id=normalized_export_id)
+    if not export:
+        return _export_not_found_response(normalized)
+    export_folder_id = workspace_folder_exports.normalize_workspace_folder_id(
+        export.get("workspace_folder_id")
+    )
+    if export_folder_id != normalized:
+        return _export_not_found_response(normalized)
+    if workspace_folder_exports.is_deleted(export):
+        return _export_deleted_response(normalized, export)
+
+    return {
+        "ok": True,
+        "workspace_folder_id": normalized,
+        "export": workspace_folder_exports.apply_export_projection(export, folder=folder),
+        "reason_code": workspace_folder_exports.REASON_LOOKUP_OK,
+    }, 200
+
+
 def _resolve_existing_folder(
     folder_id: str,
     *,
@@ -163,6 +241,83 @@ def _resolve_existing_folder(
             410,
         )
     return normalized, dict(folder), None
+
+
+def _linked_folder_error(
+    folder_id: str,
+    folder: Mapping[str, Any],
+    *,
+    list_response: bool,
+) -> Tuple[dict[str, Any], int] | None:
+    if str(folder.get("nextcloud_sync_state") or "") == "linked":
+        return None
+    payload = {
+        "ok": False,
+        "error": _human_export_error(workspace_folder_exports.REASON_FOLDER_NOT_LINKED),
+        "reason_code": workspace_folder_exports.REASON_FOLDER_NOT_LINKED,
+        "workspace_folder_id": folder_id,
+        "export": {
+            "status": _export_status_for_failure(workspace_folder_exports.REASON_FOLDER_NOT_LINKED),
+            "reason_code": workspace_folder_exports.REASON_FOLDER_NOT_LINKED,
+        },
+    }
+    if list_response:
+        payload["exports"] = []
+        payload["count"] = 0
+    return payload, 409
+
+
+def _lookup_failure_response(
+    folder_id: str,
+    *,
+    export_id: str = "",
+) -> Tuple[dict[str, Any], int]:
+    payload = {
+        "ok": False,
+        "error": _human_export_error(workspace_folder_exports.REASON_LOOKUP_FAILED),
+        "reason_code": workspace_folder_exports.REASON_LOOKUP_FAILED,
+        "workspace_folder_id": folder_id,
+        "export": {
+            "status": _export_status_for_failure(workspace_folder_exports.REASON_LOOKUP_FAILED),
+            "reason_code": workspace_folder_exports.REASON_LOOKUP_FAILED,
+        },
+    }
+    if export_id:
+        payload["export_ref"] = workspace_folder_exports.export_ref(export_id)
+    else:
+        payload["exports"] = []
+        payload["count"] = 0
+    return payload, 503
+
+
+def _export_not_found_response(folder_id: str) -> Tuple[dict[str, Any], int]:
+    return {
+        "ok": False,
+        "error": _human_export_error(workspace_folder_exports.REASON_EXPORT_NOT_FOUND),
+        "reason_code": workspace_folder_exports.REASON_EXPORT_NOT_FOUND,
+        "workspace_folder_id": folder_id,
+        "export": {
+            "status": workspace_folder_exports.EXPORT_LOCAL_UNAVAILABLE,
+            "reason_code": workspace_folder_exports.REASON_EXPORT_NOT_FOUND,
+        },
+    }, 404
+
+
+def _export_deleted_response(
+    folder_id: str,
+    export: Mapping[str, Any],
+) -> Tuple[dict[str, Any], int]:
+    return {
+        "ok": False,
+        "error": _human_export_error(workspace_folder_exports.REASON_EXPORT_DELETED),
+        "reason_code": workspace_folder_exports.REASON_EXPORT_DELETED,
+        "workspace_folder_id": folder_id,
+        "export": {
+            "status": workspace_folder_exports.EXPORT_LOCAL_DELETED,
+            "reason_code": workspace_folder_exports.REASON_EXPORT_DELETED,
+            "export_ref": workspace_folder_exports.export_ref(export.get("id")),
+        },
+    }, 410
 
 
 def _conversation_reader(conversation_store_module: Any | None):
@@ -212,6 +367,10 @@ def _http_status_for_reason(reason_code: str) -> int:
         return 409
     if reason_code == workspace_folder_exports.REASON_EXPORTS_TARGET_MISSING:
         return 404
+    if reason_code == workspace_folder_exports.REASON_EXPORT_NOT_FOUND:
+        return 404
+    if reason_code == workspace_folder_exports.REASON_EXPORT_DELETED:
+        return 410
     if reason_code in {
         workspace_folder_exports.REASON_FOLDER_INVALID,
         workspace_folder_exports.REASON_NAME_INVALID,
@@ -257,4 +416,7 @@ def _human_export_error(reason_code: str) -> str:
         workspace_folder_exports.REASON_DEPENDENCY_UNAVAILABLE: "moteur d'export indisponible",
         workspace_folder_exports.REASON_TOO_LARGE: "export trop volumineux",
         workspace_folder_exports.REASON_LOCAL_PERSISTENCE_FAILED: "persistance locale de l'export impossible",
+        workspace_folder_exports.REASON_EXPORT_NOT_FOUND: "export introuvable",
+        workspace_folder_exports.REASON_EXPORT_DELETED: "export supprime",
+        workspace_folder_exports.REASON_CONTENT_ACCESS_NOT_PREPARED: "lecture de contenu export non preparee",
     }.get(reason_code, "creation d'export impossible")

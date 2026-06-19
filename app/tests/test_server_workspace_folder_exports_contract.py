@@ -23,6 +23,10 @@ EXPORT_ID = "11111111-2222-4333-8444-555555555555"
 
 
 class _FakeWorkspaceFolders:
+    def __init__(self, *, linked=True, deleted=False):
+        self.linked = linked
+        self.deleted = deleted
+
     def normalize_workspace_folder_id(self, value):
         try:
             return str(uuid.UUID(str(value)))
@@ -37,18 +41,54 @@ class _FakeWorkspaceFolders:
             "id": FOLDER_ID,
             "display_name": "Projet serveur",
             "nextcloud_target_name": "Projet-serveur",
-            "nextcloud_sync_state": "linked",
-            "deleted_at": None,
+            "nextcloud_sync_state": "linked" if self.linked else "local_only",
+            "deleted_at": "2026-06-19T11:00:00Z" if self.deleted else None,
         }
 
 
 class _FakeExportsModule:
-    def __init__(self):
+    def __init__(self, exports=None, *, fail_list=False, fail_get=False):
+        self.exports = list(exports or [])
+        self.fail_list = fail_list
+        self.fail_get = fail_get
+        self.list_calls = []
+        self.get_calls = []
         self.stored = []
         self.events = []
 
     def list_exports(self, workspace_folder_id, *, include_deleted=False, fail_closed=True):
-        return []
+        self.list_calls.append(
+            {
+                "workspace_folder_id": workspace_folder_id,
+                "include_deleted": include_deleted,
+                "fail_closed": fail_closed,
+            }
+        )
+        if self.fail_list:
+            raise RuntimeError("raw list failure with Export serveur and raw-etag-secret")
+        rows = [
+            item
+            for item in self.exports
+            if (
+                workspace_folder_exports.normalize_workspace_folder_id(
+                    item.get("workspace_folder_id")
+                )
+                == workspace_folder_id
+            )
+        ]
+        if not include_deleted:
+            rows = [item for item in rows if not workspace_folder_exports.is_deleted(item)]
+        return list(rows)
+
+    def get_export(self, export_id, *, fail_closed=True):
+        self.get_calls.append({"export_id": export_id, "fail_closed": fail_closed})
+        if self.fail_get:
+            raise RuntimeError("raw get failure with Export serveur and raw-etag-secret")
+        normalized = workspace_folder_exports.normalize_export_id(export_id)
+        for item in self.exports:
+            if workspace_folder_exports.normalize_export_id(item.get("id")) == normalized:
+                return item
+        return None
 
     def upsert_export(self, **fields):
         self.stored.append(dict(fields))
@@ -196,6 +236,34 @@ def _request(**overrides):
     return payload
 
 
+def _export(**overrides):
+    payload = {
+        "id": EXPORT_ID,
+        "workspace_folder_id": FOLDER_ID,
+        "title": "Export serveur",
+        "title_hash": "abc123def456",
+        "target_name": "Export-serveur.txt",
+        "export_format": "txt",
+        "source_kind": "conversation",
+        "source_ref": "conversation:22222222:abc123def456",
+        "source_hash": "456defabc123",
+        "content_hash": "789abc123def",
+        "local_state": "available",
+        "nextcloud_sync_state": "linked",
+        "remote_export_ref": "export:789abc123def",
+        "etag_value": '"raw-etag-secret"',
+        "etag_hash": "123456abcdef",
+        "byte_size": 42,
+        "char_count": 12,
+        "reason_code": "folder_export_store_ok",
+        "created_at": "2026-06-19T10:00:00Z",
+        "updated_at": "2026-06-19T10:00:00Z",
+        "deleted_at": None,
+    }
+    payload.update(overrides)
+    return payload
+
+
 class ServerWorkspaceFolderExportsContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -232,13 +300,180 @@ class ServerWorkspaceFolderExportsContractTests(unittest.TestCase):
         )
         global_response = self.client.post("/api/exports", json=_request())
         global_nested_response = self.client.post("/api/exports/anything", json=_request())
+        global_list_response = self.client.get("/api/exports")
+        global_lookup_response = self.client.get(f"/api/exports/{EXPORT_ID}")
 
         self.assertEqual(response.status_code, 201)
         self.assertIn(global_response.status_code, {404, 405})
         self.assertIn(global_nested_response.status_code, {404, 405})
+        self.assertIn(global_list_response.status_code, {404, 405})
+        self.assertIn(global_lookup_response.status_code, {404, 405})
         routes = {rule.rule for rule in self.server.app.url_map.iter_rules()}
         self.assertIn("/api/workspace-folders/<folder_id>/exports", routes)
+        self.assertIn("/api/workspace-folders/<folder_id>/exports/<export_id>", routes)
         self.assertFalse(any(rule == "/api/exports" or rule.startswith("/api/exports/") for rule in routes))
+
+    def test_workspace_folder_export_list_empty_from_local_read_model_only(self) -> None:
+        response = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/exports")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["exports"], [])
+        self.assertEqual(payload["count"], 0)
+        self.assertEqual(payload["reason_code"], "folder_export_list_ok")
+        self.assertEqual(len(self.fake_exports.list_calls), 1)
+        self.assertEqual(self.fake_nextcloud.status_calls, [])
+        self.assertEqual(self.fake_nextcloud.put_calls, [])
+
+    def test_workspace_folder_export_list_projects_actions_and_excludes_deleted(self) -> None:
+        deleted_id = "22222222-3333-4444-8555-666666666666"
+        self.fake_exports.exports = [
+            _export(export_format="txt", target_name="Export-serveur.txt", title="Export serveur"),
+            _export(
+                id="33333333-4444-4555-8666-777777777777",
+                export_format="pdf",
+                target_name="Rapport-serveur.pdf",
+                title="Rapport serveur",
+            ),
+            _export(
+                id=deleted_id,
+                export_format="md",
+                target_name="Supprime.md",
+                title="Supprime",
+                local_state="deleted",
+                deleted_at="2026-06-19T11:00:00Z",
+            ),
+        ]
+
+        response = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/exports")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["count"], 2)
+        formats = {item["export_v1_user"]["format"] for item in payload["exports"]}
+        self.assertEqual(formats, {"txt", "pdf"})
+        for item in payload["exports"]:
+            user = item["export_v1_user"]
+            technical = item["export_v1_technical"]
+            self.assertFalse(user["can_download"])
+            self.assertFalse(user["can_open"])
+            self.assertFalse(user["can_reuse_as_source"])
+            self.assertEqual(
+                user["actions"]["reuse_as_source_reason_code"],
+                "folder_export_access_not_prepared",
+            )
+            technical_text = str(technical)
+            self.assertNotIn("Export serveur", technical_text)
+            self.assertNotIn("Rapport serveur", technical_text)
+            self.assertNotIn("raw-etag-secret", technical_text)
+            self.assertNotIn("target_name", technical_text)
+            self.assertNotIn("Export-serveur.txt", technical_text)
+        self.assertNotIn(deleted_id, str(payload))
+        self.assertEqual(self.fake_nextcloud.status_calls, [])
+        self.assertEqual(self.fake_nextcloud.put_calls, [])
+
+    def test_workspace_folder_export_lookup_by_uuid_ok_from_local_read_model_only(self) -> None:
+        self.fake_exports.exports = [_export()]
+
+        response = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/exports/{EXPORT_ID}")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["reason_code"], "folder_export_lookup_ok")
+        user = payload["export"]["export_v1_user"]
+        self.assertEqual(user["title"], "Export serveur")
+        self.assertFalse(user["can_download"])
+        self.assertFalse(user["can_open"])
+        self.assertFalse(user["can_reuse_as_source"])
+        self.assertEqual(len(self.fake_exports.get_calls), 1)
+        self.assertEqual(self.fake_nextcloud.status_calls, [])
+        self.assertEqual(self.fake_nextcloud.put_calls, [])
+
+    def test_workspace_folder_export_lookup_absent_or_cross_folder_is_not_exposed(self) -> None:
+        absent = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/exports/{EXPORT_ID}")
+        self.fake_exports.exports = [_export(workspace_folder_id=OTHER_FOLDER_ID)]
+        other_folder = self.client.get(
+            f"/api/workspace-folders/{FOLDER_ID}/exports/{EXPORT_ID}"
+        )
+
+        self.assertEqual(absent.status_code, 404)
+        self.assertEqual(absent.get_json()["reason_code"], "folder_export_not_found")
+        self.assertEqual(other_folder.status_code, 404)
+        self.assertEqual(other_folder.get_json()["reason_code"], "folder_export_not_found")
+        self.assertEqual(self.fake_nextcloud.status_calls, [])
+        self.assertEqual(self.fake_nextcloud.put_calls, [])
+
+    def test_workspace_folder_export_lookup_deleted_is_refused(self) -> None:
+        self.fake_exports.exports = [
+            _export(local_state="deleted", deleted_at="2026-06-19T11:00:00Z")
+        ]
+
+        response = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/exports/{EXPORT_ID}")
+
+        self.assertEqual(response.status_code, 410)
+        payload = response.get_json()
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["reason_code"], "folder_export_deleted")
+        self.assertNotIn("raw-etag-secret", str(payload))
+        self.assertEqual(self.fake_nextcloud.status_calls, [])
+        self.assertEqual(self.fake_nextcloud.put_calls, [])
+
+    def test_workspace_folder_export_list_store_failure_is_fail_closed(self) -> None:
+        self.server.workspace_folder_exports = _FakeExportsModule(fail_list=True)
+
+        response = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/exports")
+
+        self.assertEqual(response.status_code, 503)
+        payload = response.get_json()
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["reason_code"], "folder_export_lookup_failed")
+        self.assertEqual(payload["exports"], [])
+        self.assertEqual(payload["count"], 0)
+        self.assertNotIn("Export serveur", str(payload))
+        self.assertNotIn("raw-etag-secret", str(payload))
+        self.assertEqual(self.fake_nextcloud.status_calls, [])
+        self.assertEqual(self.fake_nextcloud.put_calls, [])
+
+    def test_workspace_folder_export_list_refuses_non_linked_folder_before_store(self) -> None:
+        self.server.workspace_folders = _FakeWorkspaceFolders(linked=False)
+
+        response = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/exports")
+
+        self.assertEqual(response.status_code, 409)
+        payload = response.get_json()
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["reason_code"], "folder_export_folder_not_linked")
+        self.assertEqual(payload["exports"], [])
+        self.assertEqual(payload["count"], 0)
+        self.assertEqual(self.fake_exports.list_calls, [])
+        self.assertEqual(self.fake_nextcloud.status_calls, [])
+        self.assertEqual(self.fake_nextcloud.put_calls, [])
+
+    def test_workspace_folder_export_list_refuses_deleted_folder_before_store(self) -> None:
+        self.server.workspace_folders = _FakeWorkspaceFolders(deleted=True)
+
+        response = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/exports")
+
+        self.assertEqual(response.status_code, 410)
+        payload = response.get_json()
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["reason_code"], "workspace_folder_deleted")
+        self.assertEqual(self.fake_exports.list_calls, [])
+        self.assertEqual(self.fake_nextcloud.status_calls, [])
+        self.assertEqual(self.fake_nextcloud.put_calls, [])
+
+    def test_workspace_folder_export_reuse_route_is_not_delivered(self) -> None:
+        response = self.client.post(
+            f"/api/workspace-folders/{FOLDER_ID}/exports/{EXPORT_ID}/reuse",
+            json={"mode": "as_source"},
+        )
+
+        self.assertIn(response.status_code, {404, 405})
+        self.assertEqual(self.fake_exports.get_calls, [])
+        self.assertEqual(self.fake_nextcloud.status_calls, [])
+        self.assertEqual(self.fake_nextcloud.put_calls, [])
 
     def test_workspace_folder_export_route_uses_path_folder_id_over_payload(self) -> None:
         response = self.client.post(
