@@ -85,6 +85,65 @@ class WorkspaceFolderExportGenerationTests(unittest.TestCase):
         self.assertNotIn("# Synthese", result["export_content"])
         self.assertIn("Question utile", result["export_content"])
 
+    def test_generates_docx_and_pdf_as_binary_metadata_only(self) -> None:
+        docx = workspace_folder_export_generation.generate_workspace_folder_export(
+            _conversation_request(export_format="docx")
+        )
+        pdf = workspace_folder_export_generation.generate_workspace_folder_export(
+            _conversation_request(export_format="pdf")
+        )
+
+        for result, export_format in ((docx, "docx"), (pdf, "pdf")):
+            with self.subTest(export_format=export_format):
+                self.assertTrue(result["ok"])
+                self.assertEqual(result["export_format"], export_format)
+                self.assertEqual(result["export_content"], "")
+                self.assertIsInstance(result["export_bytes"], bytes)
+                self.assertGreater(len(result["export_bytes"]), 0)
+                technical_text = str(result["export_v1_technical"])
+                metadata_text = str(result["export_v1_metadata"])
+                self.assertNotIn("Question utile", technical_text)
+                self.assertNotIn("Reponse utile", technical_text)
+                self.assertNotIn("export_bytes", metadata_text)
+                self.assertEqual(
+                    result["export_v1_technical"]["nextcloud_sync_state"],
+                    workspace_folder_exports.EXPORT_NEXTCLOUD_SYNC_ERROR,
+                )
+
+        self.assertTrue(docx["export_bytes"].startswith(b"PK"))
+        self.assertTrue(pdf["export_bytes"].startswith(b"%PDF-1.4"))
+
+    def test_docx_pdf_dependency_absence_is_refused_without_binary(self) -> None:
+        result = workspace_folder_export_generation.generate_workspace_folder_export(
+            _conversation_request(export_format="pdf"),
+            binary_dependency_checker=lambda fmt: False,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "folder_export_dependency_unavailable")
+        self.assertEqual(result["export_content"], "")
+        self.assertEqual(result["export_bytes"], b"")
+        self.assertNotIn("Question utile", str(result["export_v1_technical"]))
+
+    def test_pdf_too_many_pages_is_refused_without_silent_partial(self) -> None:
+        result = workspace_folder_export_generation.generate_workspace_folder_export(
+            _conversation_request(
+                export_format="pdf",
+                messages=[
+                    {
+                        "id": "u1",
+                        "role": "user",
+                        "content": "\n".join(f"Ligne {index}" for index in range(5000)),
+                    }
+                ],
+            )
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "folder_export_too_large")
+        self.assertEqual(result["export_content"], "")
+        self.assertEqual(result["export_bytes"], b"")
+
     def test_generates_markdown_from_conversation_store_without_payload_messages(self) -> None:
         result = workspace_folder_export_generation.generate_workspace_folder_export(
             _conversation_request(messages=[]),
@@ -213,7 +272,7 @@ class WorkspaceFolderExportGenerationTests(unittest.TestCase):
             )
         )
         unsupported = workspace_folder_export_generation.generate_workspace_folder_export(
-            _conversation_request(export_format="pdf")
+            _conversation_request(export_format="html")
         )
 
         self.assertFalse(too_large["ok"])

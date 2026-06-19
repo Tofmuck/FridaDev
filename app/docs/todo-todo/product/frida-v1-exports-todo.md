@@ -1,7 +1,7 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 3.2 livre, acquisition conversationnelle store fermee avant
-les lots runtime suivants.
+Statut: TODO Lot 4 livre, generation DOCX/PDF fake-local bornee fermee avant
+le stockage Nextcloud-first.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -402,14 +402,23 @@ reste content-free hors `export_content`.
 
 ### Lot 4 - Generation DOCX/PDF bornee fake/local
 
-- [ ] Verifier les dependances runtime necessaires a DOCX/PDF.
-- [ ] Generer DOCX selon le degre de fidelite defini par la spec Lot 1.
-- [ ] Generer PDF selon le degre de fidelite defini par la spec Lot 1.
-- [ ] Refuser proprement si une dependance manque ou si la taille depasse les
+- [x] Verifier les dependances runtime necessaires a DOCX/PDF.
+- [x] Generer DOCX selon le degre de fidelite defini par la spec Lot 1.
+- [x] Generer PDF selon le degre de fidelite defini par la spec Lot 1.
+- [x] Refuser proprement si une dependance manque ou si la taille depasse les
   limites.
-- [ ] Ne pas vendre une conversion partielle comme complete.
-- [ ] Ne pas ranger encore dans Nextcloud.
-- [ ] Tester generation, absence de dependance, refus taille et anti-fuite.
+- [x] Ne pas vendre une conversion partielle comme complete.
+- [x] Ne pas ranger encore dans Nextcloud.
+- [x] Tester generation, absence de dependance, refus taille et anti-fuite.
+
+Lot 4 livre `workspace_folder_export_docx_pdf.py`, un moteur fake-local en
+memoire sans dependance externe nouvelle: DOCX minimal OOXML via standard
+library, PDF texte simple via moteur standard-library borne. Les formats
+binaires retournent `export_bytes` au caller utile; `export_content` reste vide
+pour DOCX/PDF et les projections techniques/read-model restent metadata-only.
+Le PDF V1 est lisible et honnete, sans promesse de typographie avancee,
+pagination fine, images, tableaux riches ou styles complexes. Generation
+complete ou refus content-free, sans troncature silencieuse.
 
 ### Lot 5 - Stockage Nextcloud-first sous Exports
 
@@ -550,13 +559,13 @@ Interdits dans preuves techniques:
 - Migration ou import d'exports historiques sans lot dedie.
 - Listing large de contenu Nextcloud comme preuve.
 
-## Hors-scope courant apres Lot 3.2
+## Hors-scope courant apres Lot 4
 
 - Pas de route serveur.
 - Pas de UI.
 - Pas de Nextcloud live.
 - Pas de nouvelle migration DB hors lot explicitement dedie.
-- Pas de generation DOCX/PDF reelle.
+- Pas de stockage Nextcloud-first.
 - Pas de smoke live.
 - Pas d'archivage.
 - Pas de Lot Z.
@@ -564,6 +573,7 @@ Interdits dans preuves techniques:
 
 ## Prochain pas
 
-Ouvrir Lot 4 - Generation DOCX/PDF bornee fake/local. Ce lot devra verifier les
-dependances disponibles, refuser clairement si elles manquent, ne pas vendre une
-conversion partielle comme complete et ne pas encore ranger dans Nextcloud.
+Ouvrir Lot 5 - Stockage Nextcloud-first sous Exports. Ce lot devra verifier le
+dossier Frida linked et `/Frida/<dossier>/Exports` collection, ecrire sans
+overwrite, persister le lien local et rollback strictement une cible creee par
+le flux si la persistance locale echoue.

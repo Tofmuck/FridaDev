@@ -195,6 +195,24 @@ Politique par format:
   valide en Lot 4 avant tout runtime PDF. Si le moteur est absent ou
   incompatible, reason code de dependance indisponible et refus utilisateur.
 
+Lot 4 livre la generation DOCX/PDF fake-local:
+
+- `app/core/workspace_folder_export_docx_pdf.py` porte le rendu binaire dedie;
+- DOCX est produit en memoire comme OOXML minimal via standard library
+  (`zipfile`), sans dependance externe nouvelle;
+- PDF est produit en memoire par un moteur texte simple standard-library,
+  borne et teste; il vise un document lisible, pas une fidelite typographique
+  avancee;
+- les formats binaires retournent `export_bytes` au caller utile et gardent
+  `export_content` vide;
+- `export_bytes` ne doit jamais entrer dans le read-model, les projections
+  techniques, logs, JSONL, docs de preuve ou observabilite;
+- absence de dependance runtime, rendu impossible, trop grand ou PDF depassant
+  la limite de pages = refus content-free;
+- pas de troncature silencieuse ni de document partiel vendu comme complet;
+- routes publiques, UI, telechargement navigateur, Nextcloud/WebDAV et stockage
+  sous `/Exports` restent hors Lot 4.
+
 Limites V1 initiales:
 
 - contenu source normalise: `120_000` caracteres maximum par export;
