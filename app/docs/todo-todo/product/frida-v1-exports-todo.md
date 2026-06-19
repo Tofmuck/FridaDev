@@ -571,8 +571,12 @@ Correctif Lot 5.2 livre:
   live artificielle.
 - [x] Prouver cleanup distant exact et tombstone local des exports
   synthetiques.
-- [x] Scanner logs/preuves/docs contre contenu exporte, noms sensibles,
-  DAV/XML/payload brut et secrets.
+- [x] Scanner l'artefact Lot 8, les preuves/smokes, les docs modifiees et le
+  diff staged contre contenu exporte, noms sensibles, DAV/XML/payload brut et
+  secrets.
+- [x] Clarification Lot 8.1: aucun scan borne des logs applicatifs n'a ete
+  revendique par Lot 8; des logs ne comptent comme scannes que si un scan
+  explicite, borne, content-free et documente est execute.
 - [x] Ne toucher aucun contenu utilisateur reel.
 - [x] Artefact Lot 8:
   `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot8-observability-smokes-20260619T140557Z.jsonl`.
@@ -637,7 +641,9 @@ Par famille:
 - smokes live uniquement sur exports synthetiques;
 - JSONL content-free sous `app/docs/states/baselines/exports-smokes/`;
 - cleanup distant/local des exports synthetiques crees pendant les smokes;
-- scans anti-fuite sur diff, JSONL, logs et docs.
+- scans anti-fuite sur diff, JSONL, preuves/smokes et docs;
+- scans de logs applicatifs seulement si un scan borne explicite est execute
+  et documente, sans recopier de contenu brut ni secret.
 
 Interdits dans preuves techniques:
 
@@ -686,4 +692,5 @@ Interdits dans preuves techniques:
 Ouvrir Lot Z pour la cloture Exports V1 si les preuves transverses doivent etre
 rejouees et archivees. Un lot separe reste requis pour lookup titre/critere ou
 pour rendre `.docx` / `.pdf` reutilisables comme source texte via readers
-stricts dedies.
+stricts dedies. Pour Lot Z, conserver la portee de scan honnete de Lot 8 ou
+ajouter explicitement un scan logs applicatifs borne, content-free et documente.

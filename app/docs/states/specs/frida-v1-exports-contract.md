@@ -372,8 +372,13 @@ Lot 8 livre l'observabilite et les smokes content-free transverses:
   cleanup distant exact et tombstone local;
 - le refus dossier non `linked` est couvert par contrats serveur sans mutation
   artificielle de la DB live;
-- les scans de preuve gardent `forbidden_match_count=0` pour contenu exporte,
-  bytes/base64, cible brute, DAV/XML, ETag brut, payload et secret;
+- les scans Lot 8 couvrent l'artefact JSONL, les preuves/smokes, les docs
+  modifiees et le diff staged; ils gardent `forbidden_match_count=0` pour
+  contenu exporte, bytes/base64, cible brute, DAV/XML, ETag brut, payload et
+  secret;
+- clarification Lot 8.1: Lot 8 ne revendique pas de scan borne des logs
+  applicatifs; des logs ne sont consideres scannes que si un scan explicite,
+  borne, content-free et documente est execute;
 - Lot 8 ne coche pas Lot Z et ne change pas le runtime.
 
 Limites V1 initiales:
@@ -860,7 +865,9 @@ Lot Z Exports V1 ne peut etre coche que si des preuves content-free demontrent:
 - refus source ambigue;
 - refus taille sans troncature silencieuse;
 - cleanup distant/local des exports synthetiques de smoke;
-- scans anti-fuite sur JSONL, logs, docs et diff.
+- scans anti-fuite sur JSONL, docs et diff;
+- si Lot Z revendique les logs applicatifs, scan logs borne, content-free et
+  documente, sans recopier de contenu brut ni secret.
 
 Les preuves Lot Z doivent rester synthetiques et content-free. Aucun contenu
 utilisateur reel ne doit etre lu, exporte, liste ou supprime pour cloturer V1.
