@@ -2,7 +2,7 @@
 
 Date: 2026-06-18
 Statut: audit read-only / docs-only
-TODO source: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
+TODO source archivee: `app/docs/todo-done/product/frida-v1-exports-todo.md`
 Roadmap source: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Verdict de plan
@@ -16,7 +16,7 @@ modele produit sans decisions Lot 1.
 
 ## Sources relues
 
-- `app/docs/todo-todo/product/frida-v1-exports-todo.md`
+- `app/docs/todo-done/product/frida-v1-exports-todo.md`
 - `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - `app/docs/states/specs/chat-copy-export-contract.md`
 - `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`

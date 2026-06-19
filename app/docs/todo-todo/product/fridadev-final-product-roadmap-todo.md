@@ -75,8 +75,8 @@ par tests fake/unit et contrat serveur. Aucun contenu utilisateur, secret,
 corps Markdown brut, ETag brut, DAV/XML ou payload WebDAV brut n'est conserve
 dans les preuves.
 
-Prochain chantier actif:
-`app/docs/todo-todo/product/frida-v1-exports-todo.md`
+Chantier Exports cloture:
+`app/docs/todo-done/product/frida-v1-exports-todo.md`
 
 ### 4. Exports / creation documentaire
 
@@ -84,8 +84,14 @@ Frida doit pouvoir produire des exports Markdown, TXT, DOCX et PDF, les ranger
 dans le bon dossier Nextcloud, puis retrouver et reutiliser un export deja
 produit.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-exports-todo.md`
+TODO archivee:
+`app/docs/todo-done/product/frida-v1-exports-todo.md`
+
+Statut 2026-06-19: Exports V1 valide en Lot Z avec verdict `met`. La preuve
+live synthetique couvre creation Nextcloud-first, Markdown/TXT/DOCX/PDF,
+liste/lookup, download/open, reuse-as-source `.md` / `.txt`, no-overwrite,
+refus publics, UI, cleanup distant/local, scan artefacts/docs/diff et scan logs
+applicatifs borne reel.
 
 ### 5. Images generees
 

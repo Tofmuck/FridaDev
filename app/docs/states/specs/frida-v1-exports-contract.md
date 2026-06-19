@@ -1,10 +1,9 @@
 # Frida V1 - Exports contract
 
-Statut: spec source-of-truth Exports V1 ouverte, Lot 8 observabilite/smokes
-content-free livre, Lot 7 UI actions et correctif Lot 7.1 livres, Lot Z non
-ouvert
+Statut: spec source-of-truth Exports V1 cloturee pour Frida 1.0; Lot Z livre
+avec verdict `met` le 2026-06-19.
 Date: 2026-06-19
-Roadmap active: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
+Roadmap archivee: `app/docs/todo-done/product/frida-v1-exports-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-exports-lot0-audit-2026-06-18.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
 Contrat Documents source: `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
@@ -380,6 +379,23 @@ Lot 8 livre l'observabilite et les smokes content-free transverses:
   applicatifs; des logs ne sont consideres scannes que si un scan explicite,
   borne, content-free et documente est execute;
 - Lot 8 ne coche pas Lot Z et ne change pas le runtime.
+
+Lot Z cloture Exports V1 pour Frida 1.0:
+
+- l'artefact live synthetique content-free est
+  `app/docs/states/baselines/exports-smokes/frida-v1-exports-lotz-closure-20260619T150617Z.jsonl`;
+- le smoke HTTP local prouve create/generate/store Nextcloud-first,
+  Markdown/TXT/DOCX/PDF, liste, lookup UUID, download, open, reuse-as-source
+  `.md` vers `.txt`, conflit no-overwrite, refus publics
+  `message_selection` / `frida_response`, refus `export_id` client,
+  conversation store-first et cleanup distant/local;
+- le scan logs applicatifs borne reel utilise
+  `docker logs --since 2026-06-19T15:06:17Z --tail 5000 platform-fridadev`;
+  aucun log brut n'est conserve, affiche dans les docs, ni commite;
+  l'artefact garde seulement `scanned_line_count=0`, `scanned_byte_count=0` et
+  `forbidden_match_count=0`;
+- les scans artefact/docs/diff restent content-free et Lot Z archive la TODO
+  Exports V1 sans ouvrir Lot Images.
 
 Limites V1 initiales:
 
@@ -852,7 +868,8 @@ confusion.
 
 ## 14. Criteres Lot Z
 
-Lot Z Exports V1 ne peut etre coche que si des preuves content-free demontrent:
+Lot Z Exports V1 a ete coche le 2026-06-19 parce que les preuves content-free
+demontrent:
 
 - generation Markdown, TXT, DOCX et PDF selon les limites V1;
 - refus clair si DOCX/PDF est indisponible ou hors limite;
@@ -866,8 +883,8 @@ Lot Z Exports V1 ne peut etre coche que si des preuves content-free demontrent:
 - refus taille sans troncature silencieuse;
 - cleanup distant/local des exports synthetiques de smoke;
 - scans anti-fuite sur JSONL, docs et diff;
-- si Lot Z revendique les logs applicatifs, scan logs borne, content-free et
-  documente, sans recopier de contenu brut ni secret.
+- scan logs applicatifs borne reel, content-free et documente, sans recopier de
+  contenu brut ni secret.
 
 Les preuves Lot Z doivent rester synthetiques et content-free. Aucun contenu
 utilisateur reel ne doit etre lu, exporte, liste ou supprime pour cloturer V1.

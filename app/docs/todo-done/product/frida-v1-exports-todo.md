@@ -1,8 +1,8 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 8 livre: observabilite et smoke live synthetique
-content-free transverses; Lot 7 UI et correctif Lot 7.1 livres; Lot Z reste
-ouvert.
+Statut: archivee. Exports V1 cloture en Lot Z le 2026-06-19 avec verdict
+`met`; smoke live synthetique, cleanup distant/local, scan artefacts/docs/diff
+et scan logs applicatifs borne reel livres.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -583,12 +583,18 @@ Correctif Lot 5.2 livre:
 
 ### Lot Z - Cloture Exports V1
 
-- [ ] Rejouer ou relire les smokes transverses Exports V1.
-- [ ] Verifier create/generate/store/list/lookup/reuse pour chaque format livre.
-- [ ] Verifier cleanup distant/local des artefacts synthetiques.
-- [ ] Documenter les limites V1 restantes.
-- [ ] Mettre a jour roadmap generale et index.
-- [ ] Archiver cette TODO seulement si les criteres V1 sont prouves.
+- [x] Rejouer ou relire les smokes transverses Exports V1.
+- [x] Verifier create/generate/store/list/lookup/reuse pour chaque format livre.
+- [x] Verifier cleanup distant/local des artefacts synthetiques.
+- [x] Executer un scan logs applicatifs borne reel depuis
+  `2026-06-19T15:06:17Z`, `tail_limit=5000`, sans recopier ni conserver les
+  logs bruts; verdict `met`, `scanned_line_count=0`,
+  `forbidden_match_count=0`.
+- [x] Documenter les limites V1 restantes.
+- [x] Mettre a jour roadmap generale et index.
+- [x] Archiver cette TODO seulement si les criteres V1 sont prouves.
+- [x] Artefact Lot Z:
+  `app/docs/states/baselines/exports-smokes/frida-v1-exports-lotz-closure-20260619T150617Z.jsonl`.
 
 ## Reason codes initiaux stabilises par Lot 1
 
@@ -677,11 +683,9 @@ Interdits dans preuves techniques:
 - Migration ou import d'exports historiques sans lot dedie.
 - Listing large de contenu Nextcloud comme preuve.
 
-## Hors-scope courant apres Lot 8
+## Hors-scope post-cloture Exports V1
 
 - Pas de nouvelle migration DB hors lot explicitement dedie.
-- Pas d'archivage.
-- Pas de Lot Z.
 - Pas de reutilisation d'un export `.docx` ou `.pdf` comme source texte.
 - Pas de lookup par titre/critere ni gestion d'ambiguite titre.
 - Pas d'injection chat automatique depuis un export existant.
@@ -689,8 +693,9 @@ Interdits dans preuves techniques:
 
 ## Prochain pas
 
-Ouvrir Lot Z pour la cloture Exports V1 si les preuves transverses doivent etre
-rejouees et archivees. Un lot separe reste requis pour lookup titre/critere ou
-pour rendre `.docx` / `.pdf` reutilisables comme source texte via readers
-stricts dedies. Pour Lot Z, conserver la portee de scan honnete de Lot 8 ou
-ajouter explicitement un scan logs applicatifs borne, content-free et documente.
+Exports V1 est clos pour Frida 1.0. Le prochain chantier produit actif dans la
+roadmap finale est Images generees V1:
+`app/docs/todo-todo/product/frida-v1-generated-images-todo.md`.
+
+Des lots futurs separes restent requis pour lookup titre/critere ou pour rendre
+`.docx` / `.pdf` reutilisables comme source texte via readers stricts dedies.

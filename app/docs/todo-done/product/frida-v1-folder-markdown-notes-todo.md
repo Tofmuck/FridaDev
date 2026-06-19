@@ -477,6 +477,6 @@ preuves synthetiques Lot 8 et par l'artefact Lot Z.
 
 ## Prochain pas
 
-Notes Markdown V1 est cloture. Le prochain chantier actif de la roadmap Frida
-1.0 est Exports / creation documentaire:
-`app/docs/todo-todo/product/frida-v1-exports-todo.md`.
+Notes Markdown V1 est cloture. Le chantier Exports / creation documentaire est
+desormais archive:
+`app/docs/todo-done/product/frida-v1-exports-todo.md`.

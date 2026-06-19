@@ -30,7 +30,7 @@ Docs produit et contrats:
 - `app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
 - `app/docs/todo-todo/product/frida-v1-documents-ingestion-todo.md`
 - `app/docs/todo-todo/product/frida-v1-folder-markdown-notes-todo.md`
-- `app/docs/todo-todo/product/frida-v1-exports-todo.md`
+- `app/docs/todo-done/product/frida-v1-exports-todo.md`
 - `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
 - `app/docs/todo-todo/product/frida-v1-generated-images-todo.md`
 - `app/docs/states/specs/workspace-folders-contract.md`
@@ -263,7 +263,7 @@ Constat:
 Decision Lot 0:
 
 - hors-scope Lot 1;
-- a auditer plus tard dans `frida-v1-exports-todo.md`;
+- a auditer plus tard dans l'archive `frida-v1-exports-todo.md`;
 - ne pas reutiliser l'export logs admin pour le stockage produit utilisateur.
 
 ### 3.7 Images generees
