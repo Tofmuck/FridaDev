@@ -98,6 +98,35 @@ class WorkspaceFolderExportSourcesTests(unittest.TestCase):
         self.assertNotIn("private_meta", source.content)
         self.assertTrue(source.source_ref.startswith("conversation:22222222:"))
 
+    def test_conversation_source_with_reader_ignores_payload_messages(self) -> None:
+        def reader(payload):
+            return {
+                "ok": True,
+                "conversation_id": payload["conversation_id"],
+                "title": "Conversation relue",
+                "messages": [
+                    {"id": "u-store", "role": "user", "content": "Question store"},
+                    {"id": "a-store", "role": "assistant", "content": "Reponse store"},
+                ],
+            }
+
+        source = workspace_folder_export_sources.acquire_export_source(
+            {
+                "source_kind": "conversation",
+                "explicit_source": True,
+                "conversation_id": CONVERSATION_ID,
+                "messages": [
+                    {"id": "u-injected", "role": "user", "content": "Message payload"},
+                ],
+            },
+            conversation_reader=reader,
+        )
+
+        self.assertTrue(source.ok)
+        self.assertIn("Question store", source.content)
+        self.assertIn("Reponse store", source.content)
+        self.assertNotIn("Message payload", source.content)
+
     def test_conversation_store_reader_refuses_deleted_incomplete_or_failed_reads(self) -> None:
         deleted = workspace_folder_export_conversation_store.read_conversation_source(
             {"conversation_id": CONVERSATION_ID},

@@ -125,6 +125,8 @@ def _conversation_source(
     *,
     conversation_reader: Reader | None = None,
 ) -> ExportSource:
+    if conversation_reader is not None:
+        return _conversation_store_source(payload, conversation_reader=conversation_reader)
     messages = _messages(payload)
     if not messages:
         return _conversation_store_source(payload, conversation_reader=conversation_reader)

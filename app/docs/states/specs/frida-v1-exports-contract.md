@@ -1,6 +1,6 @@
 # Frida V1 - Exports contract
 
-Statut: spec source-of-truth Exports V1 ouverte, Lot 5 stockage Nextcloud-first livre
+Statut: spec source-of-truth Exports V1 ouverte, Lot 5 stockage Nextcloud-first livre, correctif Lot 5.1 livre
 Date: 2026-06-19
 Roadmap active: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-exports-lot0-audit-2026-06-18.md`
@@ -98,6 +98,11 @@ Regles:
 - messages systeme, outils et techniques exclus selon
   `chat-copy-export-contract.md`, sauf decision future explicite;
 - conversation lue dans un ordre stable;
+- sur toute route/API publique disposant d'un `conversation_reader`, les
+  `messages` / `conversation_messages` fournis par le client sont ignores pour
+  une source `conversation`; le reader store est prioritaire strict;
+- `conversation_id` / `source_id` est obligatoire pour relire une conversation
+  complete depuis le store;
 - si la conversation ne peut pas etre relue completement, export refuse avec un
   reason code content-free.
 
@@ -228,6 +233,10 @@ Lot 5 livre le stockage Nextcloud-first sous `/Exports`:
   `nextcloud_sync_state=linked` seulement apres creation distante sure;
 - l'artefact live content-free est
   `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot5-nextcloud-first-20260619T080221Z.jsonl`;
+- depuis le correctif Lot 5.1, la creation publique refuse tout `export_id`
+  client et garde l'identifiant d'export serveur-owned;
+- depuis le correctif Lot 5.1, une source `conversation` publique relit le store
+  via `conversation_reader` et ne peut pas etre simulee par `messages` payload;
 - liste, lookup, telechargement, ouverture, reutilisation, UI et Lot Z restent
   hors Lot 5.
 
@@ -419,6 +428,9 @@ Mise en oeuvre Lot 5:
   ne peuvent pas recevoir d'export;
 - la route de creation force le `workspace_folder_id` issu du chemin HTTP et ne
   permet pas d'elargir vers un autre dossier par le payload;
+- la route de creation refuse un `export_id` client avec
+  `folder_export_client_export_id_forbidden`, avant generation, WebDAV ou
+  upsert local;
 - `Exports` est verifie par `PROPFIND Depth: 0`; un `207` est accepte seulement
   si le XML parse en memoire confirme `collection`;
 - le PUT utilise `If-None-Match: *`;
@@ -451,8 +463,11 @@ POST /api/workspace-folders/<folder_id>/exports
 ```
 
 Cette route genere et stocke un nouvel export sous `/Exports`, puis retourne les
-projections utilisateur et technique metadata-only. Elle ne liste, ne lit, ne
-telecharge, n'ouvre et ne reutilise aucun export existant.
+projections utilisateur et technique metadata-only. Elle refuse tout
+`export_id` client: l'identifiant est genere cote serveur. Pour
+`source_kind=conversation`, les messages bruts fournis dans le payload ne
+peuvent pas contourner la relecture du store conversationnel. Elle ne liste, ne
+lit, ne telecharge, n'ouvre et ne reutilise aucun export existant.
 
 Interdits V1:
 
@@ -568,6 +583,7 @@ Catalogue initial content-free:
 - `folder_export_exports_target_unavailable`;
 - `folder_export_name_invalid`;
 - `folder_export_name_conflict`;
+- `folder_export_client_export_id_forbidden`;
 - `folder_export_source_missing`;
 - `folder_export_source_ambiguous`;
 - `folder_export_source_unsupported`;

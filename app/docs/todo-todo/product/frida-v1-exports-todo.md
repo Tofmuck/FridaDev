@@ -1,7 +1,7 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 5 livre, stockage Nextcloud-first sous `Exports` ferme avant
-liste / retrouver / reutiliser.
+Statut: TODO Lot 5 livre, correctif Lot 5.1 de durcissement route creation
+livre avant liste / retrouver / reutiliser.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -461,6 +461,19 @@ en reason code content-free. Les projections techniques et la preuve live ne
 contiennent ni contenu exporte, nom brut, cible DAV, URL DAV, XML, ETag brut,
 payload, bytes, base64, token, cookie, app-password ou secret.
 
+Correctif Lot 5.1 livre:
+
+- la route publique refuse explicitement tout `export_id` client avec le reason
+  code content-free `folder_export_client_export_id_forbidden`, avant
+  generation, WebDAV ou upsert local;
+- le runtime Nextcloud-first applique le meme refus en defense de profondeur;
+- quand une source `conversation` dispose d'un `conversation_reader`, les
+  `messages` / `conversation_messages` du payload ne peuvent plus contourner le
+  store conversationnel; `conversation_id` / `source_id` reste obligatoire;
+- un contrat serveur dedie couvre la route namespaced, l'absence de route
+  globale `/api/exports*`, la priorite du `folder_id` de chemin, le refus
+  `export_id`, le reader conversationnel public et les erreurs content-free.
+
 ### Lot 6 - Liste / retrouver / reutiliser un export existant
 
 - [ ] Lister les exports d'un dossier depuis le read-model local.
@@ -519,6 +532,7 @@ Catalogue initial content-free:
 - `folder_export_exports_target_unavailable`;
 - `folder_export_name_invalid`;
 - `folder_export_name_conflict`;
+- `folder_export_client_export_id_forbidden`;
 - `folder_export_source_missing`;
 - `folder_export_source_ambiguous`;
 - `folder_export_source_unsupported`;

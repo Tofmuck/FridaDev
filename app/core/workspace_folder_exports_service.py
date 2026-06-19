@@ -35,6 +35,27 @@ def create_workspace_folder_export_response(
         return error
 
     payload = dict(data or {})
+    if "export_id" in payload:
+        return {
+            "ok": False,
+            "error": _human_export_error(workspace_folder_exports.REASON_CLIENT_EXPORT_ID_FORBIDDEN),
+            "reason_code": workspace_folder_exports.REASON_CLIENT_EXPORT_ID_FORBIDDEN,
+            "workspace_folder_id": normalized,
+            "export": {
+                "status": _export_status_for_failure(
+                    workspace_folder_exports.REASON_CLIENT_EXPORT_ID_FORBIDDEN
+                ),
+                "reason_code": workspace_folder_exports.REASON_CLIENT_EXPORT_ID_FORBIDDEN,
+            },
+            "export_v1_technical": {},
+            "export_nextcloud": {
+                "store_state": "blocked",
+                "reason_code": workspace_folder_exports.REASON_CLIENT_EXPORT_ID_FORBIDDEN,
+                "export_name_hash": "",
+                "http_status_class": "none",
+                "rollback": {},
+            },
+        }, 400
     payload["workspace_folder_id"] = normalized
     runtime_result = exports_nextcloud_runtime_module.store_workspace_folder_export_nextcloud_first(
         folder=folder,
@@ -156,6 +177,7 @@ def _http_status_for_reason(reason_code: str) -> int:
     if reason_code in {
         workspace_folder_exports.REASON_FOLDER_INVALID,
         workspace_folder_exports.REASON_NAME_INVALID,
+        workspace_folder_exports.REASON_CLIENT_EXPORT_ID_FORBIDDEN,
         workspace_folder_exports.REASON_SOURCE_MISSING,
         workspace_folder_exports.REASON_SOURCE_AMBIGUOUS,
         workspace_folder_exports.REASON_SOURCE_UNSUPPORTED,
@@ -185,6 +207,7 @@ def _human_export_error(reason_code: str) -> str:
         workspace_folder_exports.REASON_EXPORTS_TARGET_UNAVAILABLE: "cible Exports indisponible",
         workspace_folder_exports.REASON_NAME_INVALID: "nom d'export invalide",
         workspace_folder_exports.REASON_NAME_CONFLICT: "un export existe deja avec ce nom",
+        workspace_folder_exports.REASON_CLIENT_EXPORT_ID_FORBIDDEN: "identifiant d'export reserve au serveur",
         workspace_folder_exports.REASON_SOURCE_MISSING: "source d'export manquante",
         workspace_folder_exports.REASON_SOURCE_AMBIGUOUS: "source d'export ambigue",
         workspace_folder_exports.REASON_SOURCE_UNSUPPORTED: "source d'export non supportee",

@@ -11,6 +11,7 @@ REASON_EXPORTS_TARGET_NOT_COLLECTION = "folder_export_exports_target_not_collect
 REASON_EXPORTS_TARGET_UNAVAILABLE = "folder_export_exports_target_unavailable"
 REASON_NAME_INVALID = "folder_export_name_invalid"
 REASON_NAME_CONFLICT = "folder_export_name_conflict"
+REASON_CLIENT_EXPORT_ID_FORBIDDEN = "folder_export_client_export_id_forbidden"
 REASON_SOURCE_MISSING = "folder_export_source_missing"
 REASON_SOURCE_AMBIGUOUS = "folder_export_source_ambiguous"
 REASON_SOURCE_UNSUPPORTED = "folder_export_source_unsupported"
@@ -44,6 +45,7 @@ REASON_CODE_CATALOG = frozenset(
         REASON_EXPORTS_TARGET_UNAVAILABLE,
         REASON_NAME_INVALID,
         REASON_NAME_CONFLICT,
+        REASON_CLIENT_EXPORT_ID_FORBIDDEN,
         REASON_SOURCE_MISSING,
         REASON_SOURCE_AMBIGUOUS,
         REASON_SOURCE_UNSUPPORTED,

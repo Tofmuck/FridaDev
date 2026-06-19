@@ -191,7 +191,6 @@ def _export(**overrides):
 
 def _request(**overrides):
     payload = {
-        "export_id": EXPORT_ID,
         "export_format": "txt",
         "title": "Synthese sensible",
         "source_kind": "conversation",
@@ -223,6 +222,7 @@ class WorkspaceFolderExportNextcloudTests(unittest.TestCase):
         self.assertEqual(nextcloud.status_calls, ["Projet-Tulu"])
         self.assertEqual(nextcloud.put_calls[0]["export_name"], "Synthese-sensible.txt")
         self.assertIn(b"Contenu synthetique source", nextcloud.put_calls[0]["content"])
+        self.assertNotEqual(exports.stored[0]["export_id"], EXPORT_ID)
         self.assertEqual(exports.stored[0]["target_name"], "Synthese-sensible.txt")
         self.assertEqual(exports.stored[0]["nextcloud_sync_state"], "linked")
         self.assertEqual(exports.stored[0]["etag_value"], '"etag-secret"')
@@ -235,6 +235,75 @@ class WorkspaceFolderExportNextcloudTests(unittest.TestCase):
         self.assertNotIn("Contenu synthetique source", technical_text)
         self.assertNotIn("etag-secret", str(result["export_nextcloud"]))
         self.assertNotIn("Synthese-sensible.txt", str(result["export_nextcloud"]))
+
+    def test_store_export_conversation_uses_reader_before_payload_messages(self) -> None:
+        exports = _FakeExportsModule()
+        nextcloud = _FakeNextcloudExports()
+
+        def conversation_reader(payload):
+            return {
+                "ok": True,
+                "conversation_id": payload["conversation_id"],
+                "title": "Conversation relue",
+                "messages": [
+                    {"id": "u-store", "role": "user", "content": "Contenu relu depuis store"},
+                    {"id": "a-store", "role": "assistant", "content": "Reponse relue depuis store"},
+                ],
+            }
+
+        result = workspace_folder_export_nextcloud_runtime.store_workspace_folder_export_nextcloud_first(
+            folder=_folder(linked=True),
+            request=_request(
+                title="Conversation relue",
+                messages=[
+                    {"id": "u-injected", "role": "user", "content": "Message client injecte"},
+                ],
+            ),
+            exports_module=exports,
+            nextcloud=nextcloud,
+            conversation_reader=conversation_reader,
+        )
+
+        self.assertTrue(result["ok"])
+        stored_content = nextcloud.put_calls[0]["content"]
+        self.assertIn(b"Contenu relu depuis store", stored_content)
+        self.assertIn(b"Reponse relue depuis store", stored_content)
+        self.assertNotIn(b"Message client injecte", stored_content)
+
+    def test_store_export_refuses_client_export_id_before_webdav_or_upsert(self) -> None:
+        exports = _FakeExportsModule()
+        nextcloud = _FakeNextcloudExports()
+
+        result = workspace_folder_export_nextcloud_runtime.store_workspace_folder_export_nextcloud_first(
+            folder=_folder(linked=True),
+            request=_request(export_id=EXPORT_ID),
+            exports_module=exports,
+            nextcloud=nextcloud,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "folder_export_client_export_id_forbidden")
+        self.assertEqual(result["status"], 400)
+        self.assertEqual(nextcloud.status_calls, [])
+        self.assertEqual(nextcloud.put_calls, [])
+        self.assertEqual(exports.stored, [])
+
+    def test_store_export_refuses_existing_client_export_id_conflict_before_remote_creation(self) -> None:
+        exports = _FakeExportsModule(existing=[_export(id=EXPORT_ID)])
+        nextcloud = _FakeNextcloudExports()
+
+        result = workspace_folder_export_nextcloud_runtime.store_workspace_folder_export_nextcloud_first(
+            folder=_folder(linked=True),
+            request=_request(export_id=EXPORT_ID, title="Autre titre"),
+            exports_module=exports,
+            nextcloud=nextcloud,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "folder_export_client_export_id_forbidden")
+        self.assertEqual(nextcloud.status_calls, [])
+        self.assertEqual(nextcloud.put_calls, [])
+        self.assertEqual(exports.stored, [])
 
     def test_store_export_refuses_non_linked_folder_before_generation_or_webdav(self) -> None:
         nextcloud = _FakeNextcloudExports()
@@ -364,6 +433,23 @@ class WorkspaceFolderExportNextcloudTests(unittest.TestCase):
         self.assertNotIn("etag_value", payload["export"])
         self.assertNotIn("Synthese-sensible.txt", str(payload["export"]["export_v1_technical"]))
         self.assertNotIn("etag-secret", str(payload))
+
+    def test_service_refuses_client_export_id_before_runtime_call(self) -> None:
+        runtime = _FakeRuntime({"ok": True})
+
+        payload, status = workspace_folder_exports_service.create_workspace_folder_export_response(
+            FOLDER_ID,
+            _request(export_id=EXPORT_ID),
+            workspace_folders_module=_FakeFolders(linked=True),
+            workspace_folder_exports_module=_FakeExportsModule(),
+            exports_nextcloud_runtime_module=runtime,
+        )
+
+        self.assertEqual(status, 400)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["reason_code"], "folder_export_client_export_id_forbidden")
+        self.assertEqual(payload["export_nextcloud"]["store_state"], "blocked")
+        self.assertEqual(runtime.calls, [])
 
 
 if __name__ == "__main__":

@@ -40,6 +40,12 @@ def store_workspace_folder_export_nextcloud_first(
         )
 
     payload = dict(request or {})
+    if "export_id" in payload:
+        return _failure(
+            workspace_folder_exports.REASON_CLIENT_EXPORT_ID_FORBIDDEN,
+            status=400,
+            store_state="blocked",
+        )
     payload["workspace_folder_id"] = folder_id
     generated = export_generation_module.generate_workspace_folder_export(
         payload,
@@ -351,6 +357,7 @@ def _http_status_for_reason(reason_code: str) -> int:
     if reason_code in {
         workspace_folder_exports.REASON_FOLDER_INVALID,
         workspace_folder_exports.REASON_NAME_INVALID,
+        workspace_folder_exports.REASON_CLIENT_EXPORT_ID_FORBIDDEN,
         workspace_folder_exports.REASON_SOURCE_MISSING,
         workspace_folder_exports.REASON_SOURCE_AMBIGUOUS,
         workspace_folder_exports.REASON_SOURCE_UNSUPPORTED,
