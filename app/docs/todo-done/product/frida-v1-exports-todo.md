@@ -535,8 +535,9 @@ Correctif Lot 5.2 livre:
 - [x] Correctif Lot 6B.2.1: panne store dossier create/list/lookup
   fail-closed avec `folder_export_lookup_failed`, sans runtime, WebDAV, PUT,
   upsert local ni cause brute exposee.
-- [ ] Lot 6B: lookup par titre/critere si necessaire, avec ambiguite explicite;
-  Lot 6A livre uniquement l'UUID exact.
+Dette post-V1 non bloquante: le lookup par titre/critere et la gestion
+d'ambiguite restent hors V1; Lot 6A livre uniquement le lookup UUID exact. Un
+lot separe sera requis si ce besoin devient prioritaire.
 
 ### Lot 7 - Integration UI ou conversationnelle minimale
 
