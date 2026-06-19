@@ -1,6 +1,6 @@
 # Frida V1 - Exports contract
 
-Statut: spec source-of-truth Exports V1 ouverte, Lot 6B.2 reuse-as-source `.md` / `.txt` livre, correctifs Lot 5.1 et Lot 5.2 livres
+Statut: spec source-of-truth Exports V1 ouverte, Lot 6B.2 reuse-as-source `.md` / `.txt` livre, correctifs Lot 5.1, Lot 5.2 et Lot 6B.2.1 livres
 Date: 2026-06-19
 Roadmap active: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-exports-lot0-audit-2026-06-18.md`
@@ -308,6 +308,14 @@ Lot 6B.2 livre reuse-as-source borne:
   non deleted, `linked`, et formats `.md` / `.txt`.
 - l'artefact live content-free est
   `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot6b2-reuse-source-20260619T100347Z.jsonl`.
+
+Correctif Lot 6B.2.1:
+
+- une panne de normalisation ou de lookup du store dossier pendant create/list
+  ou lookup export est fail-closed avec `folder_export_lookup_failed`;
+- aucune cause brute n'est exposee;
+- aucun runtime de creation, WebDAV, PUT distant, GET distant, upsert local ou
+  lecture de source export n'est appele si le dossier ne peut pas etre resolu.
 
 Correctif Lot 6B.1:
 

@@ -2,7 +2,7 @@
 
 Statut: TODO Lot 6B.2 livre: liste, lookup, download/open explicites et
 reuse-as-source borne `.md` / `.txt` depuis le read-model local puis GET WebDAV
-exact. Correctifs Lot 5.1 et Lot 5.2 livres.
+exact. Correctifs Lot 5.1, Lot 5.2 et Lot 6B.2.1 livres.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -532,6 +532,9 @@ Correctif Lot 5.2 livre:
   actifs, non deleted, `linked`, et formats `.md` / `.txt`.
 - [x] Lot 6B.2: produire une preuve live synthetique content-free:
   `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot6b2-reuse-source-20260619T100347Z.jsonl`.
+- [x] Correctif Lot 6B.2.1: panne store dossier create/list/lookup
+  fail-closed avec `folder_export_lookup_failed`, sans runtime, WebDAV, PUT,
+  upsert local ni cause brute exposee.
 - [ ] Lot 6B: lookup par titre/critere si necessaire, avec ambiguite explicite;
   Lot 6A livre uniquement l'UUID exact.
 

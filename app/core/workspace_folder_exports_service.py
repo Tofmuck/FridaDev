@@ -202,7 +202,10 @@ def _resolve_existing_folder(
     *,
     workspace_folders_module: Any,
 ) -> tuple[str, dict[str, Any], Tuple[dict[str, Any], int] | None]:
-    normalized = workspace_folders_module.normalize_workspace_folder_id(folder_id)
+    try:
+        normalized = workspace_folders_module.normalize_workspace_folder_id(folder_id)
+    except Exception:
+        return "", {}, _lookup_failure_response("")
     if not normalized:
         return "", {}, (
             {
@@ -213,9 +216,12 @@ def _resolve_existing_folder(
             400,
         )
     try:
-        folder = workspace_folders_module.get_workspace_folder(normalized, include_deleted=True)
-    except TypeError:
-        folder = workspace_folders_module.get_workspace_folder(normalized)
+        try:
+            folder = workspace_folders_module.get_workspace_folder(normalized, include_deleted=True)
+        except TypeError:
+            folder = workspace_folders_module.get_workspace_folder(normalized)
+    except Exception:
+        return "", {}, _lookup_failure_response(normalized)
     if not folder:
         return "", {}, (
             {
