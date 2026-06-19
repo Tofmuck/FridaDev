@@ -10,6 +10,11 @@ const WorkspaceFoldersSidebar = (
     ? window.FridaWorkspaceFoldersSidebar
     : (typeof require !== "undefined" ? require("./chat_workspace_folders_sidebar.js") : null)
 );
+const WorkspaceFolderExports = (
+  typeof window !== "undefined" && window.FridaWorkspaceFolderExports
+    ? window.FridaWorkspaceFolderExports
+    : (typeof require !== "undefined" ? require("./chat_workspace_folder_exports.js") : null)
+);
 const WORKSPACE_CONVERSATION_DRAG_MIME = "application/x-fridadev-conversation-id";
 
 function clampThreadTitle(value, fallback = "Nouvelle conversation") {
@@ -51,6 +56,7 @@ function createChatThreadsSidebar({
   let threadsState = [];
   let foldersState = [];
   let workspaceFilesState = new Map();
+  let workspaceExportsState = new Map();
   let workspaceFileSelectionsState = new Map();
   let currentThreadId = null;
   const messageCache = new Map();
@@ -93,10 +99,14 @@ function createChatThreadsSidebar({
     foldersState = Array.isArray(arr) ? arr : [];
   };
   const getWorkspaceFiles = (folderId) => workspaceFilesState.get(String(folderId || "")) || [];
+  const getWorkspaceExports = (folderId) => workspaceExportsState.get(String(folderId || "")) || [];
   const getWorkspaceFileSelections = (conversationId) =>
     workspaceFileSelectionsState.get(String(conversationId || "")) || [];
   const saveWorkspaceFilesEntries = (entries) => {
     workspaceFilesState = new Map(Array.isArray(entries) ? entries : []);
+  };
+  const saveWorkspaceExportsEntries = (entries) => {
+    workspaceExportsState = new Map(Array.isArray(entries) ? entries : []);
   };
   const getCurrentId = () => currentThreadId;
   const setCurrentId = (id) => {
@@ -135,10 +145,15 @@ function createChatThreadsSidebar({
     }
     if (!res.ok) {
       const msg = data?.error || `HTTP ${res.status}`;
-      throw new Error(msg);
+      const err = new Error(msg);
+      err.payload = data;
+      err.status = res.status;
+      throw err;
     }
     if (!data || data.ok === false) {
-      throw new Error(data?.error || "Réponse serveur invalide");
+      const err = new Error(data?.error || "Réponse serveur invalide");
+      err.payload = data;
+      throw err;
     }
     return data;
   }
@@ -159,6 +174,12 @@ function createChatThreadsSidebar({
     const res = await httpFetch(`/api/workspace-folders/${encodeURIComponent(folderId)}/files`);
     const data = await parseServerResponse(res);
     return WorkspaceFolders?.normalizeWorkspaceFilesPayload(data) || [];
+  }
+
+  async function listWorkspaceExportsFromServer(folderId) {
+    const res = await httpFetch(WorkspaceFolderExports.buildWorkspaceExportsListPath(folderId));
+    const data = await parseServerResponse(res);
+    return WorkspaceFolderExports?.normalizeWorkspaceExportsPayload(data) || [];
   }
 
   async function listWorkspaceFileSelectionsFromServer(conversationId) {
@@ -275,6 +296,41 @@ function createChatThreadsSidebar({
     return data.file || null;
   }
 
+  async function createWorkspaceExportOnServer(folderId, payload) {
+    const res = await httpFetch(WorkspaceFolderExports.buildWorkspaceExportsListPath(folderId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+    });
+    const data = await parseServerResponse(res);
+    return data.export || null;
+  }
+
+  function openWorkspaceExport(folderId, exportId) {
+    const href = WorkspaceFolderExports.buildWorkspaceExportContentPath(folderId, exportId, "open");
+    if (typeof window !== "undefined" && typeof window.open === "function") {
+      window.open(href, "_blank", "noopener");
+    }
+    return href;
+  }
+
+  function downloadWorkspaceExport(folderId, exportId) {
+    const href = WorkspaceFolderExports.buildWorkspaceExportContentPath(folderId, exportId, "download");
+    if (typeof document !== "undefined") {
+      const link = document.createElement("a");
+      link.href = href;
+      link.rel = "noopener";
+      link.download = "";
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } else if (typeof window !== "undefined" && window.location) {
+      window.location.href = href;
+    }
+    return href;
+  }
+
   async function selectWorkspaceFileOnServer(conversationId, fileId) {
     const res = await httpFetch(`/api/conversations/${encodeURIComponent(conversationId)}/workspace-file-selections`, {
       method: "POST",
@@ -354,6 +410,18 @@ function createChatThreadsSidebar({
         }
       }));
       saveWorkspaceFilesEntries(fileEntries);
+      const exportEntries = await Promise.all(folders.map(async (folder) => {
+        if (!WorkspaceFolderExports?.canLoadWorkspaceExports?.(folder)) {
+          return [folder.id, []];
+        }
+        try {
+          return [folder.id, await listWorkspaceExportsFromServer(folder.id)];
+        } catch (err) {
+          logger.warn("Impossible de charger les exports du répertoire", err);
+          return [folder.id, []];
+        }
+      }));
+      saveWorkspaceExportsEntries(exportEntries);
       if (previousCurrent && mapped.some((x) => x.id === previousCurrent)) {
         setCurrentId(previousCurrent);
       } else {
@@ -442,6 +510,19 @@ function createChatThreadsSidebar({
     return files;
   };
 
+  const refreshWorkspaceExports = async (folderId) => {
+    const normalized = WorkspaceFolders?.normalizeWorkspaceFolderId(folderId);
+    if (!normalized) return [];
+    const folder = getWorkspaceFolders().find((item) => item.id === normalized);
+    if (!WorkspaceFolderExports?.canLoadWorkspaceExports?.(folder)) {
+      workspaceExportsState.set(normalized, []);
+      return [];
+    }
+    const exportsList = await listWorkspaceExportsFromServer(normalized);
+    workspaceExportsState.set(normalized, exportsList);
+    return exportsList;
+  };
+
   const refreshWorkspaceFileSelections = async (conversationId) => {
     const normalized = String(conversationId || "").trim();
     if (!normalized) return [];
@@ -460,8 +541,10 @@ function createChatThreadsSidebar({
     threadsUl,
     getWorkspaceFolders,
     getWorkspaceFiles,
+    getWorkspaceExports,
     refreshThreadsFromServer,
     refreshWorkspaceFiles,
+    refreshWorkspaceExports,
     renderThreads: () => renderThreads(),
     setThreadStatus,
     createWorkspaceFolderOnServer,
@@ -472,6 +555,9 @@ function createChatThreadsSidebar({
     ocrWorkspaceFileOnServer,
     readWorkspaceOcrMarkdownOnServer,
     saveWorkspaceOcrMarkdownOnServer,
+    createWorkspaceExportOnServer,
+    openWorkspaceExport,
+    downloadWorkspaceExport,
     getCurrentThread: () => getThreadById(getCurrentId()),
     getWorkspaceFileSelections,
     selectWorkspaceFileOnServer,
@@ -831,6 +917,7 @@ function createChatThreadsSidebar({
     getWorkspaceFolders,
     saveWorkspaceFolders,
     getWorkspaceFiles,
+    getWorkspaceExports,
     getWorkspaceFileSelections,
     getCurrentId,
     setCurrentId,
@@ -845,11 +932,15 @@ function createChatThreadsSidebar({
     updateWorkspaceFolderOnServer,
     deleteWorkspaceFolderOnServer,
     listWorkspaceFilesFromServer,
+    listWorkspaceExportsFromServer,
     uploadWorkspaceFileOnServer,
     deleteWorkspaceFileOnServer,
     ocrWorkspaceFileOnServer,
     readWorkspaceOcrMarkdownOnServer,
     saveWorkspaceOcrMarkdownOnServer,
+    createWorkspaceExportOnServer,
+    openWorkspaceExport,
+    downloadWorkspaceExport,
     selectWorkspaceFileOnServer,
     deselectWorkspaceFileOnServer,
     renameConversationOnServer,
@@ -858,6 +949,7 @@ function createChatThreadsSidebar({
     fetchConversationMessagesFromServer,
     syncThreadFromServer,
     refreshThreadsFromServer,
+    refreshWorkspaceExports,
     refreshWorkspaceFileSelections,
     renderThreads,
     startInlineRename,

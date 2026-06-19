@@ -5,6 +5,11 @@ const WorkspaceFolderUiHelpers = (
     ? window.FridaWorkspaceFolders
     : (typeof require !== 'undefined' ? require('./chat_workspace_folders.js') : null)
 );
+const WorkspaceFolderExportsPanel = (
+  typeof window !== 'undefined' && window.FridaWorkspaceFolderExportsPanel
+    ? window.FridaWorkspaceFolderExportsPanel
+    : (typeof require !== 'undefined' ? require('./chat_workspace_folder_exports_panel.js') : null)
+);
 
 function createWorkspaceFolderSidebarRenderer({
   threadsUl,
@@ -22,6 +27,11 @@ function createWorkspaceFolderSidebarRenderer({
   ocrWorkspaceFileOnServer,
   readWorkspaceOcrMarkdownOnServer,
   saveWorkspaceOcrMarkdownOnServer,
+  getWorkspaceExports,
+  refreshWorkspaceExports,
+  createWorkspaceExportOnServer,
+  openWorkspaceExport,
+  downloadWorkspaceExport,
   getCurrentThread,
   getWorkspaceFileSelections,
   selectWorkspaceFileOnServer,
@@ -34,6 +44,18 @@ function createWorkspaceFolderSidebarRenderer({
   const iconKeys = WorkspaceFolderUiHelpers?.WORKSPACE_FOLDER_ICON_KEYS || ['folder'];
   const normalizeIconKey = WorkspaceFolderUiHelpers?.normalizeWorkspaceIconKey || ((value) => String(value || 'folder').trim() || 'folder');
   const expandedFolderIds = new Set();
+  const exportsPanel = WorkspaceFolderExportsPanel?.createWorkspaceFolderExportsPanelRenderer?.({
+    threadsUl,
+    getWorkspaceExports,
+    refreshWorkspaceExports,
+    createWorkspaceExportOnServer,
+    openWorkspaceExport,
+    downloadWorkspaceExport,
+    getCurrentThread,
+    renderThreads,
+    setThreadStatus,
+    consoleObj: logger,
+  });
 
   const isFolderCollapsed = (folderId) => {
     const normalized = String(folderId || '');
@@ -429,6 +451,7 @@ function createWorkspaceFolderSidebarRenderer({
     if (collapsed) return;
 
     appendFileRows(folder);
+    exportsPanel?.appendExportRows(folder);
 
     if (!folderThreads.length) {
       const empty = document.createElement('li');

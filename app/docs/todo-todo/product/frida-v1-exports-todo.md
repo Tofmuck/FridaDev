@@ -1,8 +1,8 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 6B.2 livre: liste, lookup, download/open explicites et
-reuse-as-source borne `.md` / `.txt` depuis le read-model local puis GET WebDAV
-exact. Correctifs Lot 5.1, Lot 5.2 et Lot 6B.2.1 livres.
+Statut: TODO Lot 7 livre: UI dossier Exports V1 branchee sur liste, creation,
+download/open et reuse-as-source borne, apres Lot 6B.2 et correctifs Lot 5.1,
+Lot 5.2 et Lot 6B.2.1.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -540,15 +540,15 @@ Correctif Lot 5.2 livre:
 
 ### Lot 7 - Integration UI ou conversationnelle minimale
 
-- [ ] Ajouter la surface utilisateur autorisee par la spec Lot 1.
-- [ ] Ne pas remplacer le bouton export Markdown navigateur existant sans
+- [x] Ajouter la surface utilisateur autorisee par la spec Lot 1.
+- [x] Ne pas remplacer le bouton export Markdown navigateur existant sans
   decision explicite.
-- [ ] Si un lot futur ajoute une reutilisation conversationnelle au-dela du
+- [x] Si un lot futur ajoute une reutilisation conversationnelle au-dela du
   contrat V1, ouvrir d'abord un micro-contrat; V1 ne livre pas d'injection chat
   automatique d'exports existants.
-- [ ] Afficher statuts, conflits et limites sans fuite technique.
-- [ ] Tester frontend si UI modifiee.
-- [ ] Ne pas ouvrir Documents, Notes ou Images.
+- [x] Afficher statuts, conflits et limites sans fuite technique.
+- [x] Tester frontend si UI modifiee.
+- [x] Ne pas ouvrir Documents, Notes ou Images.
 
 ### Lot 8 - Observabilite / smokes content-free
 

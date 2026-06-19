@@ -1,6 +1,8 @@
 # Frida V1 - Exports contract
 
-Statut: spec source-of-truth Exports V1 ouverte, Lot 6B.2 reuse-as-source `.md` / `.txt` livre, correctifs Lot 5.1, Lot 5.2 et Lot 6B.2.1 livres
+Statut: spec source-of-truth Exports V1 ouverte, Lot 7 UI actions livre,
+Lot 6B.2 reuse-as-source `.md` / `.txt` livre, correctifs Lot 5.1, Lot 5.2
+et Lot 6B.2.1 livres
 Date: 2026-06-19
 Roadmap active: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-exports-lot0-audit-2026-06-18.md`
@@ -323,6 +325,27 @@ Correctif Lot 6B.1:
   `folder_export_lookup_failed`, sans GET Nextcloud et sans cause brute;
 - les reponses OK download/open ajoutent `X-Content-Type-Options: nosniff` et
   `Cache-Control: private, no-store`.
+
+Lot 7 livre les actions UI Exports dans le contexte du dossier Frida:
+
+- le frontend liste les exports par `GET /api/workspace-folders/<folder_id>/exports`
+  pour les dossiers `linked`, depuis le read-model local expose par le serveur;
+- la creation UI couvre seulement la conversation complete courante via
+  `conversation_id` et `explicit_source=true`, ou un export existant comme
+  source via `source_export_id` et `explicit_source=true`;
+- le frontend n'envoie jamais `export_id`, `messages`,
+  `conversation_messages` ou contenu exporte brut dans le payload create;
+- open/download utilisent uniquement les routes namespaced
+  `/api/workspace-folders/<folder_id>/exports/<export_id>/open` et
+  `/api/workspace-folders/<folder_id>/exports/<export_id>/download`;
+- reuse-as-source est affiche seulement quand `can_reuse_as_source=true` dans
+  la projection utilisateur, donc uniquement pour les exports `.md` / `.txt`
+  actifs et `linked`;
+- les sources `message_selection`, `frida_response`, Notes, Documents, Images,
+  Biblio, Agenda, Mail, Memory/RAG/Identity/Summary ne sont pas ouvertes par
+  cette UI;
+- le bouton navigateur historique d'export Markdown conversationnel reste
+  separe et n'est pas remplace.
 
 Limites V1 initiales:
 
