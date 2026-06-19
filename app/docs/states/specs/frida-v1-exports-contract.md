@@ -1,8 +1,8 @@
 # Frida V1 - Exports contract
 
-Statut: spec source-of-truth Exports V1 ouverte, Lot 7 UI actions livre,
-correctif Lot 7.1 UI/tests livre, Lot 6B.2 reuse-as-source `.md` / `.txt`
-livre, correctifs Lot 5.1, Lot 5.2 et Lot 6B.2.1 livres
+Statut: spec source-of-truth Exports V1 ouverte, Lot 8 observabilite/smokes
+content-free livre, Lot 7 UI actions et correctif Lot 7.1 livres, Lot Z non
+ouvert
 Date: 2026-06-19
 Roadmap active: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-exports-lot0-audit-2026-06-18.md`
@@ -359,6 +359,22 @@ Correctif Lot 7.1:
   reuse;
 - les tests frontend ne s'importent pas entre eux afin d'eviter les rejouages
   doubles dans une execution globale.
+
+Lot 8 livre l'observabilite et les smokes content-free transverses:
+
+- les projections techniques, reason codes et events existants ont ete audites
+  comme suffisants; aucun runtime d'observabilite nouveau n'a ete ajoute;
+- l'artefact live synthetique content-free est
+  `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot8-observability-smokes-20260619T140557Z.jsonl`;
+- le smoke prouve preflight, secret redacted, dossier `linked`, collection
+  `Exports`, creation Markdown/TXT/DOCX/PDF, liste read-model, lookup UUID,
+  download/open, reuse-as-source `.md` vers `.txt`, conflit sans overwrite,
+  cleanup distant exact et tombstone local;
+- le refus dossier non `linked` est couvert par contrats serveur sans mutation
+  artificielle de la DB live;
+- les scans de preuve gardent `forbidden_match_count=0` pour contenu exporte,
+  bytes/base64, cible brute, DAV/XML, ETag brut, payload et secret;
+- Lot 8 ne coche pas Lot Z et ne change pas le runtime.
 
 Limites V1 initiales:
 

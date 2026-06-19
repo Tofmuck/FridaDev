@@ -1,9 +1,8 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 7 livre: UI dossier Exports V1 branchee sur liste, creation,
-download/open et reuse-as-source borne; correctif Lot 7.1 livre sur les tests
-directs du panneau et la non-duplication frontend, apres Lot 6B.2 et correctifs
-Lot 5.1, Lot 5.2 et Lot 6B.2.1.
+Statut: TODO Lot 8 livre: observabilite et smoke live synthetique
+content-free transverses; Lot 7 UI et correctif Lot 7.1 livres; Lot Z reste
+ouvert.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -559,16 +558,24 @@ Correctif Lot 5.2 livre:
 
 ### Lot 8 - Observabilite / smokes content-free
 
-- [ ] Consolider events/read-model techniques content-free pour generation,
-  stockage, liste, lookup, reutilisation, conflits et cleanup.
-- [ ] Produire un JSONL live synthetique sous
+- [x] Consolider par audit les projections/events techniques content-free pour
+  generation, stockage, liste, lookup, reutilisation, conflits et cleanup; aucun
+  runtime nouveau n'a ete necessaire.
+- [x] Produire un JSONL live synthetique sous
   `app/docs/states/baselines/exports-smokes/`.
-- [ ] Prouver Markdown, TXT, DOCX et PDF selon les formats livres.
-- [ ] Prouver conflit nom/version sans overwrite.
-- [ ] Prouver refus dossier non `linked` par tests ou live propre si naturel.
-- [ ] Scanner logs/preuves/docs contre contenu exporte, noms sensibles,
+- [x] Prouver Markdown, TXT, DOCX et PDF selon les formats livres.
+- [x] Prouver liste, lookup UUID, download/open et reuse-as-source borne
+  `.md` / `.txt`.
+- [x] Prouver conflit nom/version sans overwrite.
+- [x] Prouver refus dossier non `linked` par contrats serveur, sans mutation DB
+  live artificielle.
+- [x] Prouver cleanup distant exact et tombstone local des exports
+  synthetiques.
+- [x] Scanner logs/preuves/docs contre contenu exporte, noms sensibles,
   DAV/XML/payload brut et secrets.
-- [ ] Ne toucher aucun contenu utilisateur reel.
+- [x] Ne toucher aucun contenu utilisateur reel.
+- [x] Artefact Lot 8:
+  `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot8-observability-smokes-20260619T140557Z.jsonl`.
 
 ### Lot Z - Cloture Exports V1
 
@@ -664,9 +671,8 @@ Interdits dans preuves techniques:
 - Migration ou import d'exports historiques sans lot dedie.
 - Listing large de contenu Nextcloud comme preuve.
 
-## Hors-scope courant apres Lot 6B.2
+## Hors-scope courant apres Lot 8
 
-- Pas de UI.
 - Pas de nouvelle migration DB hors lot explicitement dedie.
 - Pas d'archivage.
 - Pas de Lot Z.
@@ -677,7 +683,7 @@ Interdits dans preuves techniques:
 
 ## Prochain pas
 
-Ouvrir Lot 7 pour l'integration UI ou conversationnelle minimale si le produit
-veut exposer ces actions dans l'interface. Un lot separe reste requis pour
-lookup titre/critere ou pour rendre `.docx` / `.pdf` reutilisables comme source
-texte via readers stricts dedies.
+Ouvrir Lot Z pour la cloture Exports V1 si les preuves transverses doivent etre
+rejouees et archivees. Un lot separe reste requis pour lookup titre/critere ou
+pour rendre `.docx` / `.pdf` reutilisables comme source texte via readers
+stricts dedies.
