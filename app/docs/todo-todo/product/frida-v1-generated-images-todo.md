@@ -296,6 +296,9 @@ Decision Lot 1:
   n'est persiste comme metadata durable Images V1;
 - les seuls signaux durables autorises sont `prompt_present`, bucket de longueur
   bornee, generateur, format et reason codes content-free;
+- les buckets de longueur sont les enums non ambigus `chars_001_to_250`,
+  `chars_251_to_500`, `chars_501_to_1000`, `chars_1001_to_1500` et
+  `chars_1501_to_2000`;
 - prompt brut interdit dans logs, JSONL, observabilite technique, proofs,
   reason codes, target name et projection technique.
 
@@ -406,6 +409,13 @@ Decision Lot 1:
   pas un succes Images V1.
 - Aucun read-model `linked` ne doit etre persiste si l'ecriture Nextcloud ou la
   persistance locale echoue.
+- `nextcloud_sync_state` doit etre fail-closed par defaut:
+  `DEFAULT 'sync_error'`.
+- `linked` ne peut etre ecrit qu'apres preuve distante exacte puis persistance
+  locale reussie.
+- La cible distante exacte `target_name_internal` est obligatoire et ne doit
+  jamais etre reconstruite depuis display name, prompt, hash ou projection
+  technique.
 - Aucun fallback navigateur durable ne doit etre vendu comme succes V1.
 - Pas de mutation Documents, Notes ou Exports par opportunisme.
 - Pas d'injection chat automatique.
@@ -465,6 +475,16 @@ restent ouverts et doivent appliquer
 - [ ] Rattacher strictement chaque image a `workspace_folders.id`.
 - [ ] Representer statut local, statut Nextcloud, format, MIME, dimensions,
   tailles, generateur, provider model, refs/hashs et reason codes.
+- [ ] Definir `target_name_internal` comme cible distante exacte, interne,
+  serveur-owned et obligatoire.
+- [ ] Definir `target_ref` comme ref/hash content-free separee pour projections
+  techniques.
+- [ ] Interdire toute reconstruction de cible distante depuis display name,
+  prompt, hash ou projection technique.
+- [ ] Declarer `nextcloud_sync_state DEFAULT 'sync_error'` ou un equivalent
+  fail-closed explicitement teste.
+- [ ] Ne passer `nextcloud_sync_state` a `linked` qu'apres preuve distante
+  exacte et persistance locale reussie.
 - [ ] Appliquer la politique prompt decidee par Lot 1, sans prompt brut par
   defaut.
 - [ ] Ne pas stocker les bytes image en DB applicative.

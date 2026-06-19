@@ -93,8 +93,8 @@ Champs attendus, sans figer la migration exacte:
 - `workspace_folder_id`;
 - `display_name` user-facing facultatif ou neutre;
 - refs/hashes courts du display name pour projections techniques;
-- `target_name_internal` et/ou reference distante interne non exposee;
-- `remote_ref` content-free;
+- `target_name_internal` obligatoire, exact, serveur-owned et interne;
+- `target_ref` content-free obligatoire pour projections techniques;
 - `mime_type`;
 - format canonique `png`, `jpeg` ou `webp`;
 - `byte_size`;
@@ -105,11 +105,16 @@ Champs attendus, sans figer la migration exacte:
 - `aspect_ratio`, `image_size`;
 - signaux prompt content-free definis en section 8;
 - `local_state`;
-- `nextcloud_sync_state`;
+- `nextcloud_sync_state` avec default schema fail-closed
+  `DEFAULT 'sync_error'`;
 - `deleted_at`;
 - `created_at`, `updated_at`;
 - `last_reason_code`;
 - ETag interne uniquement si utile au transport, avec ref technique separee.
+
+`target_name_internal` est la seule cible distante utilisable pour GET, DELETE,
+rollback et compensation. Cette cible exacte ne doit jamais etre reconstruite
+depuis `display_name`, prompt, hash, `target_ref` ou projection technique.
 
 Interdits dans ce read-model:
 
@@ -142,6 +147,16 @@ Etats Nextcloud initiaux:
 - `conflict`;
 - `deleted`;
 - `unavailable`.
+
+Default obligatoire du schema Lot 2:
+
+```sql
+nextcloud_sync_state TEXT NOT NULL DEFAULT 'sync_error'
+```
+
+`linked` ne peut etre ecrit qu'apres preuve distante exacte, creation ou
+verification Nextcloud reussie selon le flux concerne, puis persistance locale
+reussie. Aucune ligne creee sans preuve distante ne doit sortir comme `linked`.
 
 ## 5. Frontiere Nextcloud
 
@@ -219,8 +234,8 @@ deductible ou exploitable du prompt.
 Signaux techniques autorises:
 
 - `prompt_present=true`;
-- bucket de longueur: `1_250`, `251_500`, `501_1000`, `1001_1500`,
-  `1501_2000`;
+- bucket de longueur: `chars_001_to_250`, `chars_251_to_500`,
+  `chars_501_to_1000`, `chars_1001_to_1500`, `chars_1501_to_2000`;
 - refus `folder_generated_image_prompt_missing`;
 - refus `folder_generated_image_prompt_too_large`.
 
@@ -357,7 +372,7 @@ sous route namespaced.
 Ordre obligatoire:
 
 1. verifier dossier, image, appartenance, etat actif et `linked`;
-2. DELETE distant exact de la cible persistee;
+2. DELETE distant exact de `target_name_internal`;
 3. tombstone local seulement apres succes distant.
 
 Regles:
@@ -408,6 +423,7 @@ Projection technique autorisee:
 
 - `image_ref`;
 - `folder_ref`;
+- `target_ref`;
 - format;
 - MIME;
 - taille;
