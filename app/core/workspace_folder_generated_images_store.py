@@ -38,6 +38,18 @@ class WorkspaceFolderGeneratedImageLookupError(RuntimeError):
         )
 
 
+class WorkspaceFolderGeneratedImageTombstoneError(RuntimeError):
+    """Raised when Generated Images V1 tombstone persistence fails."""
+
+    reason_code = workspace_folder_generated_images.REASON_LOCAL_PERSISTENCE_FAILED
+
+    def __init__(self, generated_image_id: str = "") -> None:
+        super().__init__(self.reason_code)
+        self.generated_image_id = workspace_folder_generated_images.normalize_generated_image_id(
+            generated_image_id
+        )
+
+
 def _cursor(conn: Any):
     if dict_row is None:
         return conn.cursor()
@@ -63,7 +75,7 @@ def serialize_generated_image_row(row: Mapping[str, Any] | None) -> Optional[dic
     target_name = workspace_folder_generated_images.safe_target_name(
         row.get("target_name_internal")
     )
-    target_ref = workspace_folder_generated_images.safe_ref(row.get("target_ref"))
+    target_ref = workspace_folder_generated_images.safe_target_ref(row.get("target_ref"))
     if target_name and not target_ref:
         target_ref = workspace_folder_generated_images.target_ref_for_target(target_name)
     content_hash = workspace_folder_generated_images.hash64(row.get("content_hash"))
@@ -463,7 +475,7 @@ def tombstone_generated_image(
             generated_image_id=normalized,
             error_type=type(exc).__name__,
         )
-        return None
+        raise WorkspaceFolderGeneratedImageTombstoneError(normalized) from None
 
 
 def _nextcloud_state_for_persistence(value: Any, *, remote_proof: bool) -> str:

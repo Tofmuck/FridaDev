@@ -139,10 +139,15 @@ def build_technical_projection(
     state = generated_image_state(image, folder=folder)
     etag_hash = workspace_folder_generated_images.hash12(image.get("etag_hash"))
     etag_present = bool(workspace_folder_generated_images.text(image.get("etag_value")) or etag_hash)
+    target_ref = workspace_folder_generated_images.safe_target_ref(image.get("target_ref"))
+    if not target_ref:
+        target_ref = workspace_folder_generated_images.target_ref_for_target(
+            image.get("target_name_internal")
+        )
     return {
         "image_ref": image_ref(image.get("id")),
         "folder_ref": folder_ref(image.get("workspace_folder_id")),
-        "target_ref": workspace_folder_generated_images.safe_ref(image.get("target_ref")),
+        "target_ref": target_ref,
         "display_name_hash": workspace_folder_generated_images.hash12(
             image.get("display_name_hash")
         ),

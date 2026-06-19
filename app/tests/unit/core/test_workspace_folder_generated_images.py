@@ -151,6 +151,10 @@ class WorkspaceFolderGeneratedImagesTests(unittest.TestCase):
         self.assertIn("target_ref", sql)
         self.assertIn("nextcloud_sync_state text not null default 'sync_error'", sql)
         self.assertIn("alter column nextcloud_sync_state set default 'sync_error'", sql)
+        self.assertIn("workspace_folder_generated_images_target_name_chk", sql)
+        self.assertIn("workspace_folder_generated_images_target_ref_chk", sql)
+        self.assertIn("generated-image-[0-9a-f]{8}-[0-9a-f]{4}", sql)
+        self.assertIn("generated-image-target:[0-9a-f]{12}", sql)
         self.assertIn("workspace_folder_generated_images_folder_target_active_idx", sql)
         self.assertNotIn("prompt text", sql)
         self.assertNotIn("prompt_hash", sql)
@@ -342,6 +346,38 @@ class WorkspaceFolderGeneratedImagesTests(unittest.TestCase):
         self.assertNotIn("etag_value", technical_text)
         self.assertNotIn("target_name_internal", technical_text)
 
+    def test_raw_alnum_target_ref_is_not_exposed_and_is_recomputed_from_target(self) -> None:
+        row = workspace_folder_generated_images_store.serialize_generated_image_row(
+            _image(target_ref="ClientSecretImageName")
+        )
+
+        self.assertIsNotNone(row)
+        self.assertNotEqual(row["target_ref"], "ClientSecretImageName")
+        self.assertEqual(
+            row["target_ref"],
+            workspace_folder_generated_images.target_ref_for_target(TARGET_NAME),
+        )
+        technical = workspace_folder_generated_images.build_technical_projection(row)
+        self.assertEqual(technical["target_ref"], row["target_ref"])
+        self.assertNotIn("ClientSecretImageName", str(technical))
+
+    def test_target_ref_is_empty_when_stored_ref_and_internal_target_are_invalid(self) -> None:
+        technical = workspace_folder_generated_images.build_technical_projection(
+            _image(target_ref="ClientSecretImageName", target_name_internal="ClientSecretTarget")
+        )
+
+        self.assertEqual(technical["target_ref"], "")
+        self.assertNotIn("ClientSecretImageName", str(technical))
+        self.assertNotIn("ClientSecretTarget", str(technical))
+
+    def test_safe_target_ref_accepts_only_structured_generated_image_target_refs(self) -> None:
+        self.assertEqual(
+            workspace_folder_generated_images.safe_target_ref("generated-image-target:456defabc123"),
+            "generated-image-target:456defabc123",
+        )
+        self.assertEqual(workspace_folder_generated_images.safe_target_ref("ClientSecretImageName"), "")
+        self.assertEqual(workspace_folder_generated_images.safe_target_ref("generated-image-target:nothex"), "")
+
     def test_list_generated_images_fail_closed_without_raw_cause(self) -> None:
         logger = _FakeLogger()
 
@@ -399,6 +435,27 @@ class WorkspaceFolderGeneratedImagesTests(unittest.TestCase):
                 fail_closed=False,
             )
         )
+
+    def test_tombstone_generated_image_db_failure_is_not_silent(self) -> None:
+        logger = _FakeLogger()
+
+        with self.assertRaises(
+            workspace_folder_generated_images_store.WorkspaceFolderGeneratedImageTombstoneError
+        ) as ctx:
+            workspace_folder_generated_images_store.tombstone_generated_image(
+                IMAGE_ID,
+                db_conn_func=lambda: _FailingConnection(),
+                logger=logger,
+            )
+
+        self.assertEqual(str(ctx.exception), "folder_generated_image_local_persistence_failed")
+        self.assertEqual(ctx.exception.generated_image_id, IMAGE_ID)
+        self.assertIsNone(ctx.exception.__cause__)
+        self.assertNotIn("raw image db failure", str(ctx.exception))
+        log_text = str(logger.records)
+        self.assertIn("tombstone_failed", log_text)
+        self.assertNotIn("SecretPrompt", log_text)
+        self.assertNotIn("remote.php", log_text)
 
 
 if __name__ == "__main__":  # pragma: no cover

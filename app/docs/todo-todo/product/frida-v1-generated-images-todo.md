@@ -1,7 +1,7 @@
 # Frida V1 - Images generees - TODO
 
-Statut: TODO actif detaille; Lots 0 et 1 docs-only coches, aucun runtime Images
-V1 livre.
+Statut: TODO actif detaille; Lots 0, 1 et 2 coches; read-model local Images
+V1 livre; Lot 3+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Spec source-of-truth Lot 1:
 `app/docs/states/specs/frida-v1-generated-images-contract.md`
@@ -508,6 +508,21 @@ Preuve Lot 2:
 - Lot 2 ne livre aucune route, aucune UI, aucune generation provider et aucun
   acces Nextcloud/WebDAV live.
 
+Correctif Lot 2.1:
+
+- `target_ref` technique est strictement limite a
+  `generated-image-target:<hash12>`;
+- si un `target_ref` stocke est invalide, il est recompute depuis
+  `target_name_internal` seulement si cette cible interne est valide;
+- une cible interne et une ref invalides ne peuvent jamais ressortir brutes en
+  projection technique;
+- `tombstone_generated_image()` leve une erreur content-free dediee en cas de
+  panne DB au lieu de retourner `None` silencieusement;
+- le schema impose le format serveur-owned de `target_name_internal` et la forme
+  structuree de `target_ref`;
+- Lot 2.1 ne livre aucune route, aucune UI, aucune generation provider et aucun
+  acces Nextcloud/WebDAV live.
+
 ### Lot 3 - Stockage Nextcloud-first sous Images
 
 - [ ] Adapter le moteur de generation existant ou extraire une capacite provider
@@ -761,7 +776,6 @@ Interdits:
 
 ## Prochain pas
 
-Executer Lot 2 Images V1: livrer le read-model local dedie
-`workspace_folder_generated_images` selon
-`app/docs/states/specs/frida-v1-generated-images-contract.md`, sans contacter
-Nextcloud/WebDAV live.
+Executer Lot 3 Images V1: stockage Nextcloud-first sous `/Images`, en partant
+du read-model local dedie `workspace_folder_generated_images` et du contrat
+`app/docs/states/specs/frida-v1-generated-images-contract.md`.

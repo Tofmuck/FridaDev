@@ -132,6 +132,20 @@ Implementation Lot 2:
   pas `display_name`, cible distante brute, ETag brut, prompt, bytes, base64,
   data URL, payload, DAV/XML/path/URL ou secret.
 
+Durcissement Lot 2.1:
+
+- `target_ref` technique accepte uniquement la forme structuree
+  `generated-image-target:<hash12>`;
+- une `target_ref` stockee invalide est recomputee depuis
+  `target_name_internal` seulement si cette cible interne est valide;
+- si la cible interne et la ref stockee sont invalides, la projection technique
+  expose une ref vide/redacted et jamais la valeur brute;
+- `tombstone_generated_image()` ne masque pas les pannes DB: il leve une erreur
+  content-free dediee, sans cause brute chainee;
+- le schema applicatif impose le format serveur-owned
+  `generated-image-<uuid>.(png|jpg|webp)` pour `target_name_internal` et la
+  forme `generated-image-target:<hash12>` pour `target_ref`.
+
 Interdits dans ce read-model:
 
 - prompt brut;

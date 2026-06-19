@@ -44,6 +44,10 @@ def ensure_schema(cur: Any) -> None:
                 CHECK (image_format IN ('png', 'jpeg', 'webp')),
             CONSTRAINT workspace_folder_generated_images_prompt_bucket_chk
                 CHECK (prompt_length_bucket IN ('', 'chars_001_to_250', 'chars_251_to_500', 'chars_501_to_1000', 'chars_1001_to_1500', 'chars_1501_to_2000')),
+            CONSTRAINT workspace_folder_generated_images_target_name_chk
+                CHECK (target_name_internal ~ '^generated-image-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(png|jpg|webp)$'),
+            CONSTRAINT workspace_folder_generated_images_target_ref_chk
+                CHECK (target_ref ~ '^generated-image-target:[0-9a-f]{12}$'),
             CONSTRAINT workspace_folder_generated_images_size_chk
                 CHECK (byte_size >= 0 AND width >= 0 AND height >= 0)
         );
@@ -82,6 +86,40 @@ def ensure_schema(cur: Any) -> None:
         """
         ALTER TABLE workspace_folder_generated_images
         ALTER COLUMN nextcloud_sync_state SET DEFAULT 'sync_error';
+        """
+    )
+    cur.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'workspace_folder_generated_images_target_name_chk'
+            ) THEN
+                ALTER TABLE workspace_folder_generated_images
+                ADD CONSTRAINT workspace_folder_generated_images_target_name_chk
+                CHECK (target_name_internal ~ '^generated-image-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(png|jpg|webp)$');
+            END IF;
+        END
+        $$;
+        """
+    )
+    cur.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'workspace_folder_generated_images_target_ref_chk'
+            ) THEN
+                ALTER TABLE workspace_folder_generated_images
+                ADD CONSTRAINT workspace_folder_generated_images_target_ref_chk
+                CHECK (target_ref ~ '^generated-image-target:[0-9a-f]{12}$');
+            END IF;
+        END
+        $$;
         """
     )
     cur.execute(

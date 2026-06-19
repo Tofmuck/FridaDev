@@ -90,7 +90,11 @@ _HASH64_RE = re.compile(r"^[0-9a-f]{64}$")
 _SAFE_REASON_RE = re.compile(r"^[a-z0-9_]{3,120}$")
 _SAFE_REF_RE = re.compile(r"^[A-Za-z0-9:._-]{1,180}$")
 _SAFE_TOKEN_RE = re.compile(r"^[A-Za-z0-9:._/+ -]{0,160}$")
-_SAFE_TARGET_RE = re.compile(r"^generated-image-[0-9a-f-]{36}\.(png|jpg|webp)$")
+_SAFE_TARGET_RE = re.compile(
+    r"^generated-image-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-"
+    r"[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|webp)$"
+)
+_SAFE_TARGET_REF_RE = re.compile(r"^generated-image-target:[0-9a-f]{12}$")
 
 
 def normalize_generated_image_id(value: Any) -> str:
@@ -144,6 +148,11 @@ def target_ref_for_target(value: Any) -> str:
     if not target:
         return ""
     return f"generated-image-target:{workspace_folder_nextcloud_projection.hash12(target)}"
+
+
+def safe_target_ref(value: Any) -> str:
+    ref = text(value, 180)
+    return ref if _SAFE_TARGET_REF_RE.fullmatch(ref) else ""
 
 
 def display_name_hash_for_value(value: Any) -> str:
