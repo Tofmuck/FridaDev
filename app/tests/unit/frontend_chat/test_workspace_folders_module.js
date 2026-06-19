@@ -1,6 +1,5 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-require("./test_workspace_folder_exports_module.js");
 
 const {
   WORKSPACE_FOLDER_ICON_KEYS,

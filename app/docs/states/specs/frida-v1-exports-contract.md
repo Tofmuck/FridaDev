@@ -1,8 +1,8 @@
 # Frida V1 - Exports contract
 
 Statut: spec source-of-truth Exports V1 ouverte, Lot 7 UI actions livre,
-Lot 6B.2 reuse-as-source `.md` / `.txt` livre, correctifs Lot 5.1, Lot 5.2
-et Lot 6B.2.1 livres
+correctif Lot 7.1 UI/tests livre, Lot 6B.2 reuse-as-source `.md` / `.txt`
+livre, correctifs Lot 5.1, Lot 5.2 et Lot 6B.2.1 livres
 Date: 2026-06-19
 Roadmap active: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-exports-lot0-audit-2026-06-18.md`
@@ -346,6 +346,19 @@ Lot 7 livre les actions UI Exports dans le contexte du dossier Frida:
   cette UI;
 - le bouton navigateur historique d'export Markdown conversationnel reste
   separe et n'est pas remplace.
+
+Correctif Lot 7.1:
+
+- le panneau DOM Exports est teste directement pour les actions creer, ouvrir,
+  telecharger et reutiliser;
+- les tests prouvent que les payloads UI n'envoient pas `messages`,
+  `conversation_messages`, `export_id`, `workspace_folder_id` ni contenu brut;
+- les boutons open/download/reuse dependent des flags serveur `can_open`,
+  `can_download` et `can_reuse_as_source`;
+- les exports `.docx` / `.pdf` ne sont pas proposes comme source texte de
+  reuse;
+- les tests frontend ne s'importent pas entre eux afin d'eviter les rejouages
+  doubles dans une execution globale.
 
 Limites V1 initiales:
 

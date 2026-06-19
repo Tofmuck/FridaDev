@@ -1,8 +1,9 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
 Statut: TODO Lot 7 livre: UI dossier Exports V1 branchee sur liste, creation,
-download/open et reuse-as-source borne, apres Lot 6B.2 et correctifs Lot 5.1,
-Lot 5.2 et Lot 6B.2.1.
+download/open et reuse-as-source borne; correctif Lot 7.1 livre sur les tests
+directs du panneau et la non-duplication frontend, apres Lot 6B.2 et correctifs
+Lot 5.1, Lot 5.2 et Lot 6B.2.1.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -548,6 +549,12 @@ Correctif Lot 5.2 livre:
   automatique d'exports existants.
 - [x] Afficher statuts, conflits et limites sans fuite technique.
 - [x] Tester frontend si UI modifiee.
+- [x] Correctif Lot 7.1: tester directement le panneau Exports DOM pour
+  creation conversation, open/download, reuse-as-source, actions desactivees et
+  garde-fous content-free.
+- [x] Correctif Lot 7.1: supprimer l'import croise de tests frontend afin que
+  l'execution globale `node --test app/tests/unit/frontend_chat/*.js` ne rejoue
+  pas volontairement la suite Exports.
 - [x] Ne pas ouvrir Documents, Notes ou Images.
 
 ### Lot 8 - Observabilite / smokes content-free
