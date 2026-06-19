@@ -187,7 +187,7 @@ class WorkspaceFolderExportsTests(unittest.TestCase):
         self.assertNotIn("xml", item)
         self.assertNotIn("authorization", item)
 
-    def test_user_projection_exposes_download_open_actions_without_reuse_source(self) -> None:
+    def test_user_projection_exposes_download_open_and_refuses_pdf_reuse_source(self) -> None:
         item = workspace_folder_exports.apply_export_projection(_export())
 
         user = item["export_v1_user"]
@@ -205,11 +205,30 @@ class WorkspaceFolderExportsTests(unittest.TestCase):
         )
         self.assertEqual(
             user["actions"]["reuse_as_source_reason_code"],
-            "folder_export_access_not_prepared",
+            "folder_export_source_format_unsupported",
         )
         self.assertNotIn("actions", technical)
         self.assertNotIn("raw-etag-secret", str(user["actions"]))
         self.assertNotIn("Synthese-sensible.pdf", str(user["actions"]))
+
+    def test_user_projection_allows_markdown_and_text_reuse_source(self) -> None:
+        cases = (
+            ("md", "Synthese-sensible.md"),
+            ("txt", "Synthese-sensible.txt"),
+        )
+        for export_format, target_name in cases:
+            with self.subTest(export_format=export_format):
+                user = workspace_folder_exports.build_user_projection(
+                    _export(export_format=export_format, target_name=target_name)
+                )
+
+                self.assertTrue(user["can_download"])
+                self.assertTrue(user["can_open"])
+                self.assertTrue(user["can_reuse_as_source"])
+                self.assertEqual(
+                    user["actions"]["reuse_as_source_reason_code"],
+                    "folder_export_reuse_ok",
+                )
 
     def test_user_projection_refuses_actions_when_export_is_not_linked(self) -> None:
         user = workspace_folder_exports.build_user_projection(

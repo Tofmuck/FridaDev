@@ -348,12 +348,16 @@ def _http_status_for_reason(reason_code: str) -> int:
         workspace_folder_exports.REASON_EXPORTS_TARGET_NOT_COLLECTION,
         workspace_folder_exports.REASON_NAME_CONFLICT,
         workspace_folder_exports.REASON_NEXTCLOUD_ERROR_REDACTED,
+        workspace_folder_exports.REASON_EXPORT_NOT_LINKED,
     }:
         return 409
     if reason_code in {
         workspace_folder_exports.REASON_EXPORTS_TARGET_MISSING,
+        workspace_folder_exports.REASON_EXPORT_NOT_FOUND,
     }:
         return 404
+    if reason_code == workspace_folder_exports.REASON_EXPORT_DELETED:
+        return 410
     if reason_code in {
         workspace_folder_exports.REASON_FOLDER_INVALID,
         workspace_folder_exports.REASON_NAME_INVALID,
@@ -361,6 +365,8 @@ def _http_status_for_reason(reason_code: str) -> int:
         workspace_folder_exports.REASON_SOURCE_MISSING,
         workspace_folder_exports.REASON_SOURCE_AMBIGUOUS,
         workspace_folder_exports.REASON_SOURCE_UNSUPPORTED,
+        workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
+        workspace_folder_exports.REASON_SOURCE_FORMAT_UNSUPPORTED,
         workspace_folder_exports.REASON_FORMAT_UNSUPPORTED,
     }:
         return 400

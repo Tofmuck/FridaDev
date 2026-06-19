@@ -267,6 +267,30 @@ class WorkspaceFolderExportSourcesTests(unittest.TestCase):
         self.assertFalse(source.ok)
         self.assertEqual(source.reason_code, "folder_export_source_read_unavailable")
 
+    def test_existing_export_source_uses_distinct_source_export_id_with_reader(self) -> None:
+        calls = []
+
+        def reader(payload):
+            calls.append(payload["source_export_id"])
+            return {
+                "ok": True,
+                "export_content": "Contenu export relu",
+            }
+
+        source = workspace_folder_export_sources.acquire_export_source(
+            {
+                "source_kind": "export",
+                "explicit": True,
+                "source_export_id": "11111111-2222-4333-8444-555555555555",
+            },
+            export_reader=reader,
+        )
+
+        self.assertTrue(source.ok)
+        self.assertEqual(calls, ["11111111-2222-4333-8444-555555555555"])
+        self.assertEqual(source.content, "Contenu export relu")
+        self.assertTrue(source.source_ref.startswith("workspace-export:11111111:"))
+
     def test_source_too_large_is_refused_without_truncation(self) -> None:
         source = workspace_folder_export_sources.acquire_export_source(
             {

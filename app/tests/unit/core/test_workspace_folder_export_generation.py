@@ -259,6 +259,24 @@ class WorkspaceFolderExportGenerationTests(unittest.TestCase):
         self.assertFalse(export_result["ok"])
         self.assertEqual(export_result["reason_code"], "folder_export_source_read_unavailable")
 
+    def test_export_source_uses_injected_reader_with_distinct_source_export_id(self) -> None:
+        result = workspace_folder_export_generation.generate_workspace_folder_export(
+            _conversation_request(
+                source_kind="export",
+                source_export_id="11111111-2222-4333-8444-555555555555",
+                title="Nouvel export depuis source",
+            ),
+            export_reader=lambda payload: {
+                "ok": True,
+                "export_content": "Texte export relu",
+            },
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertIn("Texte export relu", result["export_content"])
+        self.assertEqual(result["export_v1_user"]["source_kind"], "export")
+        self.assertNotIn("11111111-2222-4333-8444-555555555555", str(result["export_v1_technical"]))
+
     def test_too_large_source_and_unsupported_format_are_refused_without_content(self) -> None:
         too_large = workspace_folder_export_generation.generate_workspace_folder_export(
             _conversation_request(

@@ -5,6 +5,7 @@ from typing import Any, Mapping, Tuple
 from . import workspace_folder_export_conversation_store
 from . import workspace_folder_export_nextcloud_runtime
 from . import workspace_folder_export_generation
+from . import workspace_folder_export_reader
 from . import workspace_folder_exports
 
 
@@ -12,6 +13,7 @@ REASON_FOLDER_NOT_FOUND = "workspace_folder_not_found"
 REASON_FOLDER_DELETED = "workspace_folder_deleted"
 REASON_FOLDER_ID_INVALID = "workspace_folder_id_invalid"
 REASON_RUNTIME_UNAVAILABLE = "folder_export_runtime_unavailable"
+_PUBLIC_EXPORT_MESSAGE_KEYS = ("messages", "conversation_messages")
 PUBLIC_CREATE_UNPREPARED_SOURCE_KINDS = frozenset(
     {
         workspace_folder_exports.SOURCE_MESSAGE_SELECTION,
@@ -64,31 +66,23 @@ def create_workspace_folder_export_response(
         }, 400
     public_source_kind = _public_source_kind(payload)
     if public_source_kind in PUBLIC_CREATE_UNPREPARED_SOURCE_KINDS:
-        return {
-            "ok": False,
-            "error": _human_export_error(workspace_folder_exports.REASON_SOURCE_NOT_PREPARED),
-            "reason_code": workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
-            "workspace_folder_id": normalized,
-            "export": {
-                "status": _export_status_for_failure(workspace_folder_exports.REASON_SOURCE_NOT_PREPARED),
-                "reason_code": workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
-            },
-            "export_v1_technical": {
-                "reason_code": workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
-                "source": {
-                    "ok": False,
-                    "reason_code": workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
-                    "source_kind": public_source_kind,
-                },
-            },
-            "export_nextcloud": {
-                "store_state": "blocked",
-                "reason_code": workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
-                "export_name_hash": "",
-                "http_status_class": "none",
-                "rollback": {},
-            },
-        }, 400
+        return _blocked_create_response(
+            normalized,
+            workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
+            source_kind=public_source_kind,
+        )
+    if public_source_kind == workspace_folder_exports.SOURCE_EXPORT:
+        if any(key in payload for key in _PUBLIC_EXPORT_MESSAGE_KEYS):
+            return _blocked_create_response(
+                normalized,
+                workspace_folder_exports.REASON_SOURCE_AMBIGUOUS,
+                source_kind=public_source_kind,
+            )
+        if export_reader is None:
+            export_reader = workspace_folder_export_reader.build_export_source_reader(
+                folder=folder,
+                workspace_folder_exports_module=workspace_folder_exports_module,
+            )
     payload["workspace_folder_id"] = normalized
     runtime_result = exports_nextcloud_runtime_module.store_workspace_folder_export_nextcloud_first(
         folder=folder,
@@ -267,6 +261,39 @@ def _linked_folder_error(
     return payload, 409
 
 
+def _blocked_create_response(
+    folder_id: str,
+    reason_code: str,
+    *,
+    source_kind: str = "",
+) -> Tuple[dict[str, Any], int]:
+    return {
+        "ok": False,
+        "error": _human_export_error(reason_code),
+        "reason_code": reason_code,
+        "workspace_folder_id": folder_id,
+        "export": {
+            "status": _export_status_for_failure(reason_code),
+            "reason_code": reason_code,
+        },
+        "export_v1_technical": {
+            "reason_code": reason_code,
+            "source": {
+                "ok": False,
+                "reason_code": reason_code,
+                "source_kind": source_kind,
+            },
+        },
+        "export_nextcloud": {
+            "store_state": "blocked",
+            "reason_code": reason_code,
+            "export_name_hash": "",
+            "http_status_class": "none",
+            "rollback": {},
+        },
+    }, _http_status_for_reason(reason_code)
+
+
 def _lookup_failure_response(
     folder_id: str,
     *,
@@ -380,6 +407,8 @@ def _http_status_for_reason(reason_code: str) -> int:
         workspace_folder_exports.REASON_SOURCE_MISSING,
         workspace_folder_exports.REASON_SOURCE_AMBIGUOUS,
         workspace_folder_exports.REASON_SOURCE_UNSUPPORTED,
+        workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
+        workspace_folder_exports.REASON_SOURCE_FORMAT_UNSUPPORTED,
         workspace_folder_exports.REASON_FORMAT_UNSUPPORTED,
     }:
         return 400
@@ -412,6 +441,7 @@ def _human_export_error(reason_code: str) -> str:
         workspace_folder_exports.REASON_SOURCE_UNSUPPORTED: "source d'export non supportee",
         workspace_folder_exports.REASON_SOURCE_UNAVAILABLE: "source d'export indisponible",
         workspace_folder_exports.REASON_SOURCE_NOT_PREPARED: "source d'export non preparee",
+        workspace_folder_exports.REASON_SOURCE_FORMAT_UNSUPPORTED: "format de source d'export non supporte",
         workspace_folder_exports.REASON_SOURCE_READ_UNAVAILABLE: "lecture de source impossible",
         workspace_folder_exports.REASON_SOURCE_READ_TOO_LARGE: "source d'export trop volumineuse",
         workspace_folder_exports.REASON_FORMAT_UNSUPPORTED: "format d'export non supporte",

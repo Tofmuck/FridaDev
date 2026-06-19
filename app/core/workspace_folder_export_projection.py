@@ -180,21 +180,27 @@ def build_user_actions(
     ) != target_name:
         reason_code = workspace_folder_exports.REASON_NAME_INVALID
     can_access = not reason_code
+    can_reuse_as_source = can_access and export_format in {
+        workspace_folder_exports.EXPORT_FORMAT_MARKDOWN,
+        workspace_folder_exports.EXPORT_FORMAT_TEXT,
+    }
+    if can_reuse_as_source:
+        reuse_reason_code = workspace_folder_exports.REASON_REUSE_OK
+    elif can_access:
+        reuse_reason_code = workspace_folder_exports.REASON_SOURCE_FORMAT_UNSUPPORTED
+    else:
+        reuse_reason_code = reason_code
     return {
         "can_download": can_access,
         "can_open": can_access,
-        "can_reuse_as_source": False,
+        "can_reuse_as_source": can_reuse_as_source,
         "download_reason_code": (
             workspace_folder_exports.REASON_DOWNLOAD_OK if can_access else reason_code
         ),
         "open_reason_code": (
             workspace_folder_exports.REASON_DOWNLOAD_OK if can_access else reason_code
         ),
-        "reuse_as_source_reason_code": (
-            workspace_folder_exports.REASON_CONTENT_ACCESS_NOT_PREPARED
-            if can_access
-            else reason_code
-        ),
+        "reuse_as_source_reason_code": reuse_reason_code,
     }
 
 

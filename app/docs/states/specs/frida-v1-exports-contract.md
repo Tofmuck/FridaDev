@@ -1,6 +1,6 @@
 # Frida V1 - Exports contract
 
-Statut: spec source-of-truth Exports V1 ouverte, Lot 6B.1 download/open explicite livre, correctifs Lot 5.1 et Lot 5.2 livres
+Statut: spec source-of-truth Exports V1 ouverte, Lot 6B.2 reuse-as-source `.md` / `.txt` livre, correctifs Lot 5.1 et Lot 5.2 livres
 Date: 2026-06-19
 Roadmap active: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-exports-lot0-audit-2026-06-18.md`
@@ -261,8 +261,8 @@ Lot 6A livre liste et lookup metadata-only:
   effectues par ces routes;
 - la projection utilisateur expose les actions declaratives
   `can_download=false`, `can_open=false`, `can_reuse_as_source=false` avec
-  `folder_export_access_not_prepared` tant qu'un lot separe n'a pas
-  livre un reader/transport de contenu borne;
+  `folder_export_access_not_prepared` tant qu'un lot separe n'a pas livre un
+  reader/transport de contenu borne;
 - lookup par titre/critere, telechargement/ouverture et export existant comme
   source restent hors Lot 6A.
 
@@ -283,11 +283,31 @@ Lot 6B.1 livre download/open explicites:
   disposition et reason code content-free;
 - la projection utilisateur peut exposer `can_download=true` et `can_open=true`
   seulement quand ces actions sont honnetement disponibles;
-- `can_reuse_as_source` reste `false` avec
-  `folder_export_access_not_prepared` tant qu'un Lot 6B.2 n'a pas branche un
-  `export_reader` public borne.
 - l'artefact live content-free est
   `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot6b-content-access-20260619T092607Z.jsonl`.
+
+Lot 6B.2 livre reuse-as-source borne:
+
+- la creation publique accepte `source_kind=export` seulement avec
+  `source_export_id` distinct et `explicit_source=true`;
+- le champ client `export_id` reste interdit et ne sert jamais de source;
+- l'export source doit appartenir strictement au meme dossier, etre actif,
+  non deleted, `local_state=available` et `nextcloud_sync_state=linked`;
+- la source est relue par GET WebDAV exact depuis la cible persistee du
+  read-model, sans listing Nextcloud large;
+- seuls `.md` et `.txt` sont acceptes comme source texte en UTF-8 strict;
+  `.docx`, `.pdf` et formats inconnus sont refuses avec
+  `folder_export_source_format_unsupported`;
+- les limites de lecture source sont `25 MiB` distant et `120_000` caracteres
+  texte, complet ou refus, sans troncature silencieuse;
+- aucune lecture implicite, injection chat, stockage local du contenu source ou
+  reutilisation de `messages` payload n'est autorisee;
+- si l'acquisition source echoue, aucun PUT distant et aucun upsert local du
+  nouvel export ne sont effectues;
+- `can_reuse_as_source=true` est expose uniquement pour les exports actifs,
+  non deleted, `linked`, et formats `.md` / `.txt`.
+- l'artefact live content-free est
+  `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot6b2-reuse-source-20260619T100347Z.jsonl`.
 
 Correctif Lot 6B.1:
 
@@ -527,8 +547,10 @@ projections utilisateur et technique metadata-only. Elle refuse tout
 `source_kind=conversation`, les messages bruts fournis dans le payload ne
 peuvent pas contourner la relecture du store conversationnel. Elle refuse
 `message_selection` et `frida_response` tant qu'aucun reader store dedie ne les
-relit proprement; le payload client `messages` ne suffit pas. Elle ne liste, ne
-lit, ne telecharge, n'ouvre et ne reutilise aucun export existant.
+relit proprement; le payload client `messages` ne suffit pas. Depuis Lot 6B.2,
+elle accepte aussi `source_kind=export` avec `source_export_id` et
+`explicit_source=true`, via un reader strict d'export existant. Elle ne liste,
+ne telecharge et n'ouvre aucun export existant.
 
 Depuis Lot 6A, les surfaces de liste et lookup livrees sont:
 
@@ -623,10 +645,12 @@ Lot 6A couvre seulement le premier sens: retrouver/lister. Les actions
 indisponibles dans la projection utilisateur, avec reason code content-free,
 jusqu'a livraison d'un Lot 6B dedie.
 
-Lot 6B.1 couvre aussi `telecharger` et `ouvrir` par GET explicite. Il ne couvre
-pas encore `utiliser comme source`; cette action reste refusee en projection et
-dans la creation publique tant qu'un `export_reader` public borne n'est pas
-livre.
+Lot 6B.1 couvre aussi `telecharger` et `ouvrir` par GET explicite.
+
+Lot 6B.2 couvre aussi `utiliser comme source` uniquement pour les sources
+`.md` / `.txt` relues explicitement par `source_export_id`. `.docx`, `.pdf` et
+formats inconnus restent refuses comme source texte tant qu'un reader strict
+dedie n'est pas livre.
 
 ## 11. Garde-fous content-free
 
@@ -693,6 +717,7 @@ Catalogue initial content-free:
 - `folder_export_source_unsupported`;
 - `folder_export_source_unavailable`;
 - `folder_export_source_not_prepared`;
+- `folder_export_source_format_unsupported`;
 - `folder_export_source_read_unavailable`;
 - `folder_export_source_read_too_large`;
 - `folder_export_format_unsupported`;

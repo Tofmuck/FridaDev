@@ -1,8 +1,8 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 6B.1 livre: liste, lookup, download/open explicites depuis le
-read-model local puis GET WebDAV exact. Correctifs Lot 5.1 et Lot 5.2 livres.
-Reuse-as-source reste a livrer dans un sous-lot separe.
+Statut: TODO Lot 6B.2 livre: liste, lookup, download/open explicites et
+reuse-as-source borne `.md` / `.txt` depuis le read-model local puis GET WebDAV
+exact. Correctifs Lot 5.1 et Lot 5.2 livres.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -517,8 +517,21 @@ Correctif Lot 5.2 livre:
   `folder_export_lookup_failed`, sans GET Nextcloud ni cause brute.
 - [x] Correctif Lot 6B.1: headers OK download/open durcis avec
   `X-Content-Type-Options: nosniff` et `Cache-Control: private, no-store`.
-- [ ] Lot 6B: utiliser explicitement un export existant comme source d'un nouvel
-  export, lecture bornee complete ou refus, sans injection chat automatique.
+- [x] Lot 6B.2: utiliser explicitement un export existant comme source d'un
+  nouvel export via `source_kind=export`, `source_export_id` et
+  `explicit_source=true`.
+- [x] Lot 6B.2: relire la source distante par GET WebDAV exact, sans listing
+  Nextcloud large, avec limites `25 MiB` et `120_000` caracteres, complet ou
+  refus.
+- [x] Lot 6B.2: autoriser uniquement les sources `.md` / `.txt` en UTF-8 strict;
+  refuser `.docx`, `.pdf` et formats inconnus avec
+  `folder_export_source_format_unsupported`.
+- [x] Lot 6B.2: garantir qu'aucun PUT distant ni upsert local du nouvel export
+  n'a lieu si l'acquisition source echoue.
+- [x] Lot 6B.2: exposer `can_reuse_as_source=true` uniquement pour les exports
+  actifs, non deleted, `linked`, et formats `.md` / `.txt`.
+- [x] Lot 6B.2: produire une preuve live synthetique content-free:
+  `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot6b2-reuse-source-20260619T100347Z.jsonl`.
 - [ ] Lot 6B: lookup par titre/critere si necessaire, avec ambiguite explicite;
   Lot 6A livre uniquement l'UUID exact.
 
@@ -577,6 +590,7 @@ Catalogue initial content-free:
 - `folder_export_source_unsupported`;
 - `folder_export_source_unavailable`;
 - `folder_export_source_not_prepared`;
+- `folder_export_source_format_unsupported`;
 - `folder_export_source_read_unavailable`;
 - `folder_export_source_read_too_large`;
 - `folder_export_format_unsupported`;
@@ -640,20 +654,20 @@ Interdits dans preuves techniques:
 - Migration ou import d'exports historiques sans lot dedie.
 - Listing large de contenu Nextcloud comme preuve.
 
-## Hors-scope courant apres Lot 6B.1
+## Hors-scope courant apres Lot 6B.2
 
 - Pas de UI.
 - Pas de nouvelle migration DB hors lot explicitement dedie.
 - Pas d'archivage.
 - Pas de Lot Z.
-- Pas de reutilisation d'un export existant comme source.
+- Pas de reutilisation d'un export `.docx` ou `.pdf` comme source texte.
 - Pas de lookup par titre/critere ni gestion d'ambiguite titre.
+- Pas d'injection chat automatique depuis un export existant.
 - Pas de modification des chantiers Documents, Notes ou Images.
 
 ## Prochain pas
 
-Ouvrir un sous-lot Lot 6B.2 si le produit veut utiliser explicitement un export
-existant comme source d'un nouvel export. Ce sous-lot devra brancher un
-`export_reader` public borne, refuser `.docx` / `.pdf` sauf reader strict
-dedie, rester content-free en observabilite, sans listing large Nextcloud, sans
-lecture implicite du contenu et sans injection chat automatique.
+Ouvrir Lot 7 pour l'integration UI ou conversationnelle minimale si le produit
+veut exposer ces actions dans l'interface. Un lot separe reste requis pour
+lookup titre/critere ou pour rendre `.docx` / `.pdf` reutilisables comme source
+texte via readers stricts dedies.

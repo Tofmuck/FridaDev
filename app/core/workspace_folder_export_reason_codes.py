@@ -21,6 +21,7 @@ REASON_SOURCE_AMBIGUOUS = "folder_export_source_ambiguous"
 REASON_SOURCE_UNSUPPORTED = "folder_export_source_unsupported"
 REASON_SOURCE_UNAVAILABLE = "folder_export_source_unavailable"
 REASON_SOURCE_NOT_PREPARED = "folder_export_source_not_prepared"
+REASON_SOURCE_FORMAT_UNSUPPORTED = "folder_export_source_format_unsupported"
 REASON_SOURCE_READ_UNAVAILABLE = "folder_export_source_read_unavailable"
 REASON_SOURCE_READ_TOO_LARGE = "folder_export_source_read_too_large"
 REASON_FORMAT_UNSUPPORTED = "folder_export_format_unsupported"
@@ -59,6 +60,7 @@ REASON_CODE_CATALOG = frozenset(
         REASON_SOURCE_UNSUPPORTED,
         REASON_SOURCE_UNAVAILABLE,
         REASON_SOURCE_NOT_PREPARED,
+        REASON_SOURCE_FORMAT_UNSUPPORTED,
         REASON_SOURCE_READ_UNAVAILABLE,
         REASON_SOURCE_READ_TOO_LARGE,
         REASON_FORMAT_UNSUPPORTED,

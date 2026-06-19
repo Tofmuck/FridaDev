@@ -358,13 +358,20 @@ class ServerWorkspaceFolderExportsContractTests(unittest.TestCase):
             technical = item["export_v1_technical"]
             self.assertTrue(user["can_download"])
             self.assertTrue(user["can_open"])
-            self.assertFalse(user["can_reuse_as_source"])
             self.assertEqual(user["actions"]["download_reason_code"], "folder_export_download_ok")
             self.assertEqual(user["actions"]["open_reason_code"], "folder_export_download_ok")
-            self.assertEqual(
-                user["actions"]["reuse_as_source_reason_code"],
-                "folder_export_access_not_prepared",
-            )
+            if user["format"] == "txt":
+                self.assertTrue(user["can_reuse_as_source"])
+                self.assertEqual(
+                    user["actions"]["reuse_as_source_reason_code"],
+                    "folder_export_reuse_ok",
+                )
+            else:
+                self.assertFalse(user["can_reuse_as_source"])
+                self.assertEqual(
+                    user["actions"]["reuse_as_source_reason_code"],
+                    "folder_export_source_format_unsupported",
+                )
             technical_text = str(technical)
             self.assertNotIn("Export serveur", technical_text)
             self.assertNotIn("Rapport serveur", technical_text)
@@ -388,7 +395,8 @@ class ServerWorkspaceFolderExportsContractTests(unittest.TestCase):
         self.assertEqual(user["title"], "Export serveur")
         self.assertTrue(user["can_download"])
         self.assertTrue(user["can_open"])
-        self.assertFalse(user["can_reuse_as_source"])
+        self.assertTrue(user["can_reuse_as_source"])
+        self.assertEqual(user["actions"]["reuse_as_source_reason_code"], "folder_export_reuse_ok")
         self.assertEqual(len(self.fake_exports.get_calls), 1)
         self.assertEqual(self.fake_nextcloud.status_calls, [])
         self.assertEqual(self.fake_nextcloud.put_calls, [])

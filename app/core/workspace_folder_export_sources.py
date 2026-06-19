@@ -114,7 +114,7 @@ def acquire_export_source(
             payload,
             source_kind=source_kind,
             reader=export_reader,
-            id_keys=("export_id", "workspace_export_id", "source_id"),
+            id_keys=("source_export_id", "workspace_export_id", "source_id", "export_id"),
             content_paths=(("export_content",), ("content",)),
         )
     return _reject(workspace_folder_exports.REASON_SOURCE_UNSUPPORTED, source_kind=source_kind)
