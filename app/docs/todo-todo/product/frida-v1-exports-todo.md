@@ -347,10 +347,10 @@ Correctif Lot 2.1 livre:
 - Le default DB applicatif `workspace_folder_exports.nextcloud_sync_state` est
   `sync_error` pour les nouvelles lignes.
 
-Dette hygiene: `workspace_folder_exports.py` et
-`workspace_folder_exports_store.py` restent proches de 500 lignes. Lot 3 doit
-creer des modules dedies pour generation/acquisition Markdown/TXT et ne pas
-empiler cette logique dans les modules de read-model.
+Dette hygiene fermee apres Lot 4: les projections Exports V1 vivent dans
+`workspace_folder_export_projection.py` et le schema SQL dans
+`workspace_folder_exports_schema.py`. Lot 5 ne doit pas re-gonfler
+`workspace_folder_exports.py` ou `workspace_folder_exports_store.py`.
 
 ### Lot 3 - Generation Markdown/TXT bornee fake/local
 

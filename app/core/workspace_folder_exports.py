@@ -13,7 +13,6 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Mapping, Optional
 
-from . import workspace_folder_export_refs
 from . import workspace_folder_export_reason_codes
 from . import workspace_folder_nextcloud_projection
 
@@ -89,36 +88,6 @@ logger = logging.getLogger("frida.workspace_folder_exports")
 
 _HASH12_RE = re.compile(r"^[0-9a-f]{12}$")
 _SAFE_REASON_RE = re.compile(r"^[a-z0-9_]{3,120}$")
-_FORBIDDEN_PAYLOAD_KEYS = {
-    "body",
-    "content",
-    "export_content",
-    "file_content",
-    "markdown_content",
-    "text_content",
-    "raw",
-    "payload",
-    "payload_body",
-    "etag",
-    "etag_value",
-    "target_name",
-    "remote_export_ref",
-    "dav_path",
-    "dav_url",
-    "path",
-    "url",
-    "href",
-    "xml",
-    "secret",
-    "token",
-    "cookie",
-    "authorization",
-    "app_password",
-    "app-password",
-    "storage_key",
-}
-
-
 def normalize_export_id(value: Any) -> str:
     return _uuid_text(value)
 
@@ -229,12 +198,9 @@ def apply_export_projection(
     *,
     folder: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    if not export:
-        return {}
-    payload = _strip_forbidden(export)
-    payload["export_v1_user"] = build_user_projection(export, folder=folder)
-    payload["export_v1_technical"] = build_technical_projection(export, folder=folder)
-    return payload
+    from . import workspace_folder_export_projection
+
+    return workspace_folder_export_projection.apply_export_projection(export, folder=folder)
 
 
 def apply_export_list(
@@ -243,12 +209,13 @@ def apply_export_list(
     folder: Mapping[str, Any] | None = None,
     include_deleted: bool = False,
 ) -> list[dict[str, Any]]:
-    items = []
-    for export in exports:
-        if not include_deleted and is_deleted(export):
-            continue
-        items.append(apply_export_projection(export, folder=folder))
-    return items
+    from . import workspace_folder_export_projection
+
+    return workspace_folder_export_projection.apply_export_list(
+        exports,
+        folder=folder,
+        include_deleted=include_deleted,
+    )
 
 
 def build_user_projection(
@@ -256,25 +223,9 @@ def build_user_projection(
     *,
     folder: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    state = export_state(export, folder=folder)
-    return {
-        "export_id": normalize_export_id(export.get("id")),
-        "export_ref": export_ref(export.get("id")),
-        "workspace_folder_id": normalize_workspace_folder_id(export.get("workspace_folder_id")),
-        "title": sanitize_export_title(export.get("title")),
-        "format": normalize_export_format(export.get("export_format") or export.get("format")),
-        "source_kind": normalize_source_kind(export.get("source_kind")),
-        "status": state["status"],
-        "status_label": EXPORT_STATUS_LABELS.get(state["status"], "indisponible"),
-        "nextcloud_sync_state": _nextcloud_state(export.get("nextcloud_sync_state")),
-        "sync_label": _sync_label(export.get("nextcloud_sync_state")),
-        "byte_size": _safe_int(export.get("byte_size")),
-        "char_count": _safe_int(export.get("char_count")),
-        "reason_code": state["reason_code"],
-        "created_at": _ts_to_iso(export.get("created_at")),
-        "updated_at": _ts_to_iso(export.get("updated_at")),
-        "deleted_at": _ts_to_iso(export.get("deleted_at")),
-    }
+    from . import workspace_folder_export_projection
+
+    return workspace_folder_export_projection.build_user_projection(export, folder=folder)
 
 
 def build_technical_projection(
@@ -282,29 +233,9 @@ def build_technical_projection(
     *,
     folder: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    state = export_state(export, folder=folder)
-    etag_hash = _hash12(export.get("etag_hash"))
-    etag_present = bool(_text(export.get("etag_value")) or etag_hash)
-    return {
-        "export_ref": export_ref(export.get("id")),
-        "folder_ref": folder_ref(export.get("workspace_folder_id")),
-        "title_hash": _hash12(export.get("title_hash"))
-        or title_hash_for_target(export.get("target_name") or export.get("title")),
-        "format": normalize_export_format(export.get("export_format") or export.get("format")),
-        "source_kind": normalize_source_kind(export.get("source_kind")) or "unknown",
-        "source_ref": workspace_folder_export_refs.safe_source_ref(export.get("source_ref")),
-        "source_hash": _hash12(export.get("source_hash")),
-        "content_hash": _hash12(export.get("content_hash")),
-        "etag_hash": etag_hash,
-        "etag_present": etag_present,
-        "status": state["status"],
-        "nextcloud_sync_state": _nextcloud_state(export.get("nextcloud_sync_state")),
-        "reason_code": state["reason_code"],
-        "counters": {
-            "byte_size": _safe_int(export.get("byte_size")),
-            "char_count": _safe_int(export.get("char_count")),
-        },
-    }
+    from . import workspace_folder_export_projection
+
+    return workspace_folder_export_projection.build_technical_projection(export, folder=folder)
 
 
 def export_state(
@@ -312,38 +243,27 @@ def export_state(
     *,
     folder: Mapping[str, Any] | None = None,
 ) -> dict[str, str]:
-    if folder is not None:
-        folder_state = _text(folder.get("nextcloud_sync_state"))
-        if folder.get("deleted_at"):
-            return {"status": EXPORT_LOCAL_UNAVAILABLE, "reason_code": REASON_FOLDER_DELETED}
-        if folder_state != "linked":
-            return {"status": EXPORT_LOCAL_UNAVAILABLE, "reason_code": REASON_FOLDER_NOT_LINKED}
-    if is_deleted(export):
-        return {
-            "status": EXPORT_LOCAL_DELETED,
-            "reason_code": _reason(export.get("reason_code"), REASON_SOURCE_UNAVAILABLE),
-        }
-    state = _local_state(export.get("local_state"))
-    reason = _reason(export.get("reason_code"), "")
-    if state == EXPORT_LOCAL_AVAILABLE:
-        return {"status": state, "reason_code": reason or REASON_LIST_OK}
-    if state == EXPORT_LOCAL_CONFLICT:
-        return {"status": state, "reason_code": reason or REASON_NAME_CONFLICT}
-    if state == EXPORT_LOCAL_SYNC_ERROR:
-        return {"status": state, "reason_code": reason or REASON_NEXTCLOUD_ERROR_REDACTED}
-    return {"status": state, "reason_code": reason or REASON_SOURCE_UNAVAILABLE}
+    from . import workspace_folder_export_projection
+
+    return workspace_folder_export_projection.export_state(export, folder=folder)
 
 
 def is_deleted(export: Mapping[str, Any]) -> bool:
-    return bool(export.get("deleted_at")) or _local_state(export.get("local_state")) == EXPORT_LOCAL_DELETED
+    from . import workspace_folder_export_projection
+
+    return workspace_folder_export_projection.is_deleted(export)
 
 
 def export_ref(value: Any) -> str:
-    return _entity_ref("workspace-export", value)
+    from . import workspace_folder_export_projection
+
+    return workspace_folder_export_projection.export_ref(value)
 
 
 def folder_ref(value: Any) -> str:
-    return _entity_ref("workspace-folder", value)
+    from . import workspace_folder_export_projection
+
+    return workspace_folder_export_projection.folder_ref(value)
 
 
 def list_exports(
@@ -400,14 +320,6 @@ def log_content_free_event(event: str, level: str = "info", **fields: Any) -> No
     log_method("workspace_folder_export_%s", event, extra={"frida": fields})
 
 
-def _entity_ref(prefix: str, value: Any) -> str:
-    raw = _text(value, 160)
-    normalized = _uuid_text(raw)
-    short = normalized[:8] if normalized else "redacted"
-    digest = workspace_folder_nextcloud_projection.hash12(raw or "unknown")
-    return f"{prefix}:{short}:{digest}"
-
-
 def _db_conn():
     import config
     import psycopg
@@ -415,15 +327,6 @@ def _db_conn():
     from . import runtime_db_bootstrap
 
     return runtime_db_bootstrap.connect_runtime_database(psycopg, config, runtime_settings)
-
-
-def _strip_forbidden(export: Mapping[str, Any]) -> dict[str, Any]:
-    payload: dict[str, Any] = {}
-    for key, value in dict(export).items():
-        if str(key).lower() in _FORBIDDEN_PAYLOAD_KEYS:
-            continue
-        payload[str(key)] = value
-    return payload
 
 
 def _local_state(value: Any) -> str:

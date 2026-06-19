@@ -300,10 +300,11 @@ doit jamais etre transformee en liste vide ou en export absent. Les erreurs
 applicatives exposees restent content-free et utilisent
 `folder_export_lookup_failed`; les causes brutes sont masquees.
 
-Dette hygiene connue apres Lot 2.1: `workspace_folder_exports.py` et
-`workspace_folder_exports_store.py` restent proches de 500 lignes. Lot 3 doit
-creer des modules dedies pour generation/acquisition au lieu d'empiler dans ces
-modules de read-model.
+Dette hygiene fermee apres Lot 4: les projections Exports V1 sont extraites
+dans `workspace_folder_export_projection.py` et le schema SQL applicatif dans
+`workspace_folder_exports_schema.py`. Les lots suivants doivent garder
+`workspace_folder_exports.py` et `workspace_folder_exports_store.py` sous le
+seuil de vigilance avant d'ajouter le stockage Nextcloud-first.
 
 Lot 3 livre la generation fake/local Markdown/TXT sans stockage Nextcloud:
 
