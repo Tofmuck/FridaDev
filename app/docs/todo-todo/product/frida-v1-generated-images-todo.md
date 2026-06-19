@@ -10,7 +10,7 @@ dossier Frida, sans confondre cette capacite avec les documents utilisateur, les
 images actives de conversation, les exports, les notes, la Biblio ou le prompt
 brut.
 
-Regle cible, a confirmer en spec Lot 1 avant runtime:
+Regle cible pour toute image persistante Images V1:
 
 ```text
 workspace_folder linked -> image generee -> /Frida/<dossier>/Images
@@ -165,6 +165,21 @@ Capacites V1 visees, sous reserve de decisions Lot 1:
 Images V1 ne doit pas pretendre livrer edition d'image, galerie avancee,
 Memory/RAG, Biblio, Documents, Notes ou Exports.
 
+Un succes produit Images V1 exige toute la chaine:
+
+- generation provider OK;
+- validation image OK;
+- ecriture Nextcloud-first OK sous `/Frida/<dossier>/Images`;
+- persistance du read-model Images OK.
+
+Si le provider retourne une image mais que le stockage durable echoue, timeout,
+rencontre un conflit, une cible `Images` indisponible ou une persistance locale
+impossible, le verdict produit reste un echec/refus content-free. FridaDev ne
+doit alors creer aucun read-model `linked`, ne doit persister aucune data URL et
+ne doit pas vendre un fallback navigateur non durable comme succes Images V1. Un
+eventuel choix produit "afficher quand meme l'image non durable" serait un lot
+separe hors V1, a ne pas inventer pendant le runtime.
+
 ## Frontieres produit
 
 ### Images generees vs Documents
@@ -235,6 +250,8 @@ stocker ou non en DB applicative est ouverte et bloquante avant runtime.
 - La cible logique attendue est `/Frida/<dossier>/Images`.
 - Les constantes produit `Images`, `Documents`, `Notes` et `Exports` peuvent
   apparaitre dans les docs, reason codes et preuves.
+- Toute image persistante Images V1 est obligatoirement rattachee a un
+  `workspace_folder`.
 - Seuls les dossiers Frida `linked` peuvent recevoir une ecriture Nextcloud
   d'artefact.
 - Les etats `local_only`, `sync_pending`, `sync_error`, `conflict` et `deleted`
@@ -244,6 +261,8 @@ stocker ou non en DB applicative est ouverte et bloquante avant runtime.
 - Pas de listing large Nextcloud.
 - Pas d'overwrite silencieux.
 - Pas de renommage automatique silencieux.
+- Un modele local/read-model Images V1 dedie est obligatoire, distinct de
+  `workspace_files`, `workspace_folder_exports`, Notes, Documents et Exports.
 - Les preuves techniques doivent rester content-free: compteurs, statuts,
   refs/hashs courts, tailles, dimensions, formats, reason codes.
 - Les bytes image, base64, data URL, chemins DAV, URL DAV, XML brut, payload
@@ -251,6 +270,8 @@ stocker ou non en DB applicative est ouverte et bloquante avant runtime.
   les preuves et l'observabilite technique.
 - Le chantier Images ne rouvre pas Documents, Notes, Exports, Biblio, Agenda,
   Mail, Memory/RAG, Identity ou Summary.
+- L'outil V0 actuel peut rester lateral/local/non persistant tant qu'il ne
+  pretend pas livrer Images V1.
 
 ## Decisions ouvertes avant runtime
 
@@ -279,17 +300,6 @@ Contraintes deja fermees:
 
 No-go: aucun read-model Images ne doit etre livre tant que la politique prompt
 n'est pas tranchee.
-
-### Rattachement dossier
-
-Decision a confirmer:
-
-- toute image persistante Images V1 est-elle obligatoirement rattachee a un
-  `workspace_folder`?
-
-Position recommandee par la roadmap: oui pour toute image durable V1. L'outil
-V0 peut rester lateral/local sans persistence. Le Lot 1 doit graver cette
-frontiere.
 
 ### Formats image V1
 
@@ -422,6 +432,11 @@ Decision a fermer:
 - Pas de stockage local de bytes image dans une projection technique.
 - Pas de prompt brut dans les surfaces techniques.
 - Pas de data URL/base64 dans logs, JSONL, docs de preuve ou dashboard.
+- Provider OK sans stockage durable complet reste un echec/refus content-free,
+  pas un succes Images V1.
+- Aucun read-model `linked` ne doit etre persiste si l'ecriture Nextcloud ou la
+  persistance locale echoue.
+- Aucun fallback navigateur durable ne doit etre vendu comme succes V1.
 - Pas de mutation Documents, Notes ou Exports par opportunisme.
 - Pas d'injection chat automatique.
 - Pas de Memory/RAG/Identity/Summary.
@@ -454,13 +469,13 @@ lot Images V1.
 - [ ] Creer `app/docs/states/specs/frida-v1-generated-images-contract.md`.
 - [ ] Fermer toutes les decisions ouvertes ci-dessus avant runtime.
 - [ ] Definir le modele produit Image generee V1.
-- [ ] Definir le rattachement strict au `workspace_folder`.
+- [ ] Graver le rattachement obligatoire de toute image persistante a
+  `workspace_folders.id`.
 - [ ] Definir la cible normative `/Frida/<dossier>/Images`.
 - [ ] Definir la politique de prompt: brut, resume, hash ou non-stockage.
 - [ ] Definir les formats V1 autorises.
 - [ ] Definir les limites de prompt, data URL, bytes, dimensions et timeout.
-- [ ] Definir le modele local/read-model attendu, y compris nom de table si
-  table dediee.
+- [ ] Fixer le nom du modele local/read-model Images V1 dedie obligatoire.
 - [ ] Definir les routes/API autorisees sous namespace dossier.
 - [ ] Definir la politique de nommage, collision, versioning et suppression.
 - [ ] Definir les projections utilisateur et technique content-free.
@@ -472,8 +487,10 @@ lot Images V1.
 
 ### Lot 2 - Modele local / read-model images
 
-- [ ] Livrer le read-model decide par la spec Lot 1, probablement dedie aux
-  images generees et distinct de `workspace_files`.
+- [ ] Livrer le read-model Images V1 dedie obligatoire decide par la spec Lot
+  1.
+- [ ] Garder ce read-model distinct de `workspace_files`,
+  `workspace_folder_exports`, Notes, Documents et Exports.
 - [ ] Rattacher strictement chaque image a `workspace_folders.id`.
 - [ ] Representer statut local, statut Nextcloud, format, MIME, dimensions,
   tailles, generateur, provider model, refs/hashs et reason codes.
@@ -500,6 +517,11 @@ lot Images V1.
 - [ ] Accepter uniquement une creation sure.
 - [ ] Traiter les statuts update-like comme conflit/refus, jamais comme succes.
 - [ ] Persister le read-model local seulement apres succes distant.
+- [ ] Considerer le succes produit seulement si generation provider, validation
+  image, ecriture Nextcloud-first et persistance read-model reussissent toutes.
+- [ ] Si le provider reussit mais que le stockage durable echoue, refuser
+  content-free: aucun read-model `linked`, aucun fallback navigateur durable
+  vendu comme succes V1, aucune data URL persistee.
 - [ ] Si ecriture distante reussit puis persistance locale echoue, tenter une
   compensation distante strictement bornee a la cible creee.
 - [ ] Ne jamais exposer prompt brut, bytes, data URL, base64, cible DAV, URL DAV,
@@ -625,6 +647,7 @@ Catalogue candidat, a fermer en spec Lot 1:
 - `folder_image_provider_error_redacted`;
 - `folder_image_create_ok`;
 - `folder_image_store_ok`;
+- `folder_image_store_failed_redacted`;
 - `folder_image_list_ok`;
 - `folder_image_lookup_ok`;
 - `folder_image_download_ok`;
@@ -707,6 +730,8 @@ Interdits:
 ## Points faibles a surveiller
 
 - Faire passer une data URL navigateur pour un stockage durable.
+- Vendre une image provider OK mais non stockee durablement comme succes Images
+  V1.
 - Stocker le prompt brut par commodite.
 - Reutiliser `workspace_files` et brouiller Documents/Images.
 - Ouvrir une route globale `/api/images*` ou reutiliser `/api/tools` comme route
