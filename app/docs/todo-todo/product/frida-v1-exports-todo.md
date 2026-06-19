@@ -1,8 +1,8 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 6A livre: liste et lookup metadata-only depuis le read-model
-local. Correctifs Lot 5.1 et Lot 5.2 livres. Reuse de contenu, ouverture et
-telechargement restent a livrer dans un sous-lot separe.
+Statut: TODO Lot 6B.1 livre: liste, lookup, download/open explicites depuis le
+read-model local puis GET WebDAV exact. Correctifs Lot 5.1 et Lot 5.2 livres.
+Reuse-as-source reste a livrer dans un sous-lot separe.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -502,8 +502,17 @@ Correctif Lot 5.2 livre:
 - [x] Tester liste vide, liste avec formats multiples, deleted exclu, lookup
   UUID, cross-folder refuse, panne store, route globale absente, refus reuse
   non livre, absence d'appel WebDAV et anti-fuite technique.
-- [ ] Lot 6B: telecharger ou ouvrir explicitement un export existant, avec
+- [x] Lot 6B.1: telecharger ou ouvrir explicitement un export existant, avec
   transport/reader borne et preuves content-free.
+- [x] Lot 6B.1: lire uniquement la cible distante exacte persistee dans le
+  read-model, sans listing Nextcloud large.
+- [x] Lot 6B.1: appliquer la limite `25 MiB`, complet ou refus, sans troncature
+  silencieuse.
+- [x] Lot 6B.1: exposer `can_download=true` et `can_open=true` uniquement pour
+  les exports actifs, non deleted et `linked`; garder les projections
+  techniques content-free.
+- [x] Lot 6B.1: produire une preuve live synthetique content-free:
+  `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot6b-content-access-20260619T092607Z.jsonl`.
 - [ ] Lot 6B: utiliser explicitement un export existant comme source d'un nouvel
   export, lecture bornee complete ou refus, sans injection chat automatique.
 - [ ] Lot 6B: lookup par titre/critere si necessaire, avec ambiguite explicite;
@@ -557,6 +566,7 @@ Catalogue initial content-free:
 - `folder_export_client_export_id_forbidden`;
 - `folder_export_not_found`;
 - `folder_export_deleted`;
+- `folder_export_not_linked`;
 - `folder_export_access_not_prepared`;
 - `folder_export_source_missing`;
 - `folder_export_source_ambiguous`;
@@ -626,21 +636,20 @@ Interdits dans preuves techniques:
 - Migration ou import d'exports historiques sans lot dedie.
 - Listing large de contenu Nextcloud comme preuve.
 
-## Hors-scope courant apres Lot 6A
+## Hors-scope courant apres Lot 6B.1
 
 - Pas de UI.
 - Pas de nouvelle migration DB hors lot explicitement dedie.
 - Pas d'archivage.
 - Pas de Lot Z.
-- Pas de lecture, telechargement ou ouverture d'un export existant.
 - Pas de reutilisation d'un export existant comme source.
 - Pas de lookup par titre/critere ni gestion d'ambiguite titre.
 - Pas de modification des chantiers Documents, Notes ou Images.
 
 ## Prochain pas
 
-Ouvrir un sous-lot Lot 6B si le produit veut telecharger/ouvrir un export ou
-utiliser explicitement un export existant comme source d'un nouvel export. Ce
-sous-lot devra livrer un reader/transport borne, content-free en observabilite,
-sans listing large Nextcloud, sans lecture implicite du contenu et sans
-injection chat automatique.
+Ouvrir un sous-lot Lot 6B.2 si le produit veut utiliser explicitement un export
+existant comme source d'un nouvel export. Ce sous-lot devra brancher un
+`export_reader` public borne, refuser `.docx` / `.pdf` sauf reader strict
+dedie, rester content-free en observabilite, sans listing large Nextcloud, sans
+lecture implicite du contenu et sans injection chat automatique.

@@ -36,6 +36,7 @@ from core import workspace_file_selections
 from core import workspace_file_selections_service
 from core import workspace_folder_note_nextcloud_runtime
 from core import workspace_folder_export_nextcloud_runtime
+from core import workspace_folder_export_content_service
 from core import workspace_folder_exports
 from core import workspace_folder_exports_service
 from core import workspace_folder_notes
@@ -1430,6 +1431,34 @@ def api_get_workspace_folder_export(folder_id: str, export_id: str):
         workspace_folder_exports_module=workspace_folder_exports,
     )
     return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/exports/<export_id>/download')
+def api_download_workspace_folder_export(folder_id: str, export_id: str):
+    result = workspace_folder_export_content_service.download_workspace_folder_export_response(
+        folder_id,
+        export_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_exports_module=workspace_folder_exports,
+        disposition="attachment",
+    )
+    if result.ok:
+        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
+    return jsonify(dict(result.payload or {})), result.status
+
+
+@app.get('/api/workspace-folders/<folder_id>/exports/<export_id>/open')
+def api_open_workspace_folder_export(folder_id: str, export_id: str):
+    result = workspace_folder_export_content_service.download_workspace_folder_export_response(
+        folder_id,
+        export_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_exports_module=workspace_folder_exports,
+        disposition="inline",
+    )
+    if result.ok:
+        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
+    return jsonify(dict(result.payload or {})), result.status
 
 
 @app.post('/api/workspace-folders/<folder_id>/exports')

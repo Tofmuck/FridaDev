@@ -14,6 +14,7 @@ REASON_NAME_CONFLICT = "folder_export_name_conflict"
 REASON_CLIENT_EXPORT_ID_FORBIDDEN = "folder_export_client_export_id_forbidden"
 REASON_EXPORT_NOT_FOUND = "folder_export_not_found"
 REASON_EXPORT_DELETED = "folder_export_deleted"
+REASON_EXPORT_NOT_LINKED = "folder_export_not_linked"
 REASON_CONTENT_ACCESS_NOT_PREPARED = "folder_export_access_not_prepared"
 REASON_SOURCE_MISSING = "folder_export_source_missing"
 REASON_SOURCE_AMBIGUOUS = "folder_export_source_ambiguous"
@@ -51,6 +52,7 @@ REASON_CODE_CATALOG = frozenset(
         REASON_CLIENT_EXPORT_ID_FORBIDDEN,
         REASON_EXPORT_NOT_FOUND,
         REASON_EXPORT_DELETED,
+        REASON_EXPORT_NOT_LINKED,
         REASON_CONTENT_ACCESS_NOT_PREPARED,
         REASON_SOURCE_MISSING,
         REASON_SOURCE_AMBIGUOUS,

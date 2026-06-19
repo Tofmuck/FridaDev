@@ -130,6 +130,29 @@ class _StatusOnlyExportClient(workspace_folder_export_nextcloud_client.Nextcloud
         return self.status, '"etag-secret"'
 
 
+class _ContentOnlyExportClient(workspace_folder_export_nextcloud_client.NextcloudExportClient):
+    def __init__(self, status, content=b"export"):
+        super().__init__(
+            workspace_folder_nextcloud_client.NextcloudFolderClientConfig(
+                base_url="http://nextcloud.invalid",
+                username="frida",
+                app_password="redacted",
+            )
+        )
+        self.status = status
+        self.content = bytes(content)
+        self.calls = []
+
+    def _request_content(self, method, url, *, max_bytes):
+        self.calls.append((method, url, max_bytes))
+        if self.status == 200 and len(self.content) > max_bytes:
+            raise workspace_folder_export_nextcloud_client.NextcloudExportClientError(
+                workspace_folder_exports.REASON_TOO_LARGE,
+                http_status=200,
+            )
+        return self.status, self.content if self.status == 200 else b""
+
+
 class _FakeFolders:
     def __init__(self, *, linked=True, deleted=False):
         self.folder = _folder(linked=linked, deleted=deleted)
@@ -360,6 +383,37 @@ class WorkspaceFolderExportNextcloudTests(unittest.TestCase):
             with self.assertRaises(workspace_folder_export_nextcloud_client.NextcloudExportClientError) as ctx:
                 _StatusOnlyExportClient(status).put_export("Projet", "Export.txt", b"")
             self.assertEqual(ctx.exception.reason_code, "folder_export_name_conflict")
+
+    def test_export_client_reads_exact_target_without_listing(self) -> None:
+        client = _ContentOnlyExportClient(200, b"contenu export")
+
+        result = client.read_export("Projet", "Export.txt", max_bytes=25 * 1024 * 1024)
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.reason_code, "folder_export_download_ok")
+        self.assertEqual(result.content, b"contenu export")
+        self.assertEqual(result.status_class, "2xx")
+        method, url, max_bytes = client.calls[0]
+        self.assertEqual(method, "GET")
+        self.assertIn("/Exports/Export.txt", url)
+        self.assertEqual(max_bytes, 25 * 1024 * 1024)
+
+    def test_export_client_refuses_missing_or_oversized_download(self) -> None:
+        with self.assertRaises(workspace_folder_export_nextcloud_client.NextcloudExportClientError) as missing:
+            _ContentOnlyExportClient(404).read_export(
+                "Projet",
+                "Export.txt",
+                max_bytes=25 * 1024 * 1024,
+            )
+        self.assertEqual(missing.exception.reason_code, "folder_export_not_found")
+
+        with self.assertRaises(workspace_folder_export_nextcloud_client.NextcloudExportClientError) as too_large:
+            _ContentOnlyExportClient(200, b"x" * 11).read_export(
+                "Projet",
+                "Export.txt",
+                max_bytes=10,
+            )
+        self.assertEqual(too_large.exception.reason_code, "folder_export_too_large")
 
     def test_store_export_rolls_back_remote_if_local_persistence_fails(self) -> None:
         nextcloud = _FakeNextcloudExports()

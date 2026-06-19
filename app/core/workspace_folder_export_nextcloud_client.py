@@ -28,6 +28,20 @@ class NextcloudExportResponse:
         return f"{self.http_status // 100}xx"
 
 
+@dataclass(frozen=True)
+class NextcloudExportReadResponse:
+    ok: bool
+    reason_code: str
+    http_status: int = 0
+    content: bytes = b""
+
+    @property
+    def status_class(self) -> str:
+        if self.http_status <= 0:
+            return "none"
+        return f"{self.http_status // 100}xx"
+
+
 class NextcloudExportClientError(RuntimeError):
     def __init__(self, reason_code: str, *, http_status: int = 0):
         super().__init__(reason_code)
@@ -112,6 +126,27 @@ class NextcloudExportClient:
             return NextcloudExportResponse(True, workspace_folder_exports.REASON_STORE_OK, status)
         raise NextcloudExportClientError(_export_write_reason(status), http_status=status)
 
+    def read_export(
+        self,
+        folder_name: str,
+        export_name: str,
+        *,
+        max_bytes: int,
+    ) -> NextcloudExportReadResponse:
+        status, content = self._request_content(
+            "GET",
+            self._url(folder_name, EXPORTS_SUBFOLDER, export_name),
+            max_bytes=max_bytes,
+        )
+        if status == 200:
+            return NextcloudExportReadResponse(
+                True,
+                workspace_folder_exports.REASON_DOWNLOAD_OK,
+                status,
+                content=content,
+            )
+        raise NextcloudExportClientError(_export_read_reason(status), http_status=status)
+
     def delete_export(
         self,
         folder_name: str,
@@ -180,6 +215,54 @@ class NextcloudExportClient:
                 workspace_folder_exports.REASON_EXPORTS_TARGET_UNAVAILABLE
             ) from None
 
+    def _request_content(
+        self,
+        method: str,
+        url: str,
+        *,
+        max_bytes: int,
+    ) -> tuple[int, bytes]:
+        request = Request(url, method=method)
+        request.add_header("Authorization", self._authorization_header())
+        limit = max(0, int(max_bytes or 0))
+        try:
+            with urlopen(request, timeout=12) as response:
+                status = int(response.status)
+                if status != 200:
+                    return status, b""
+                content_length = str(response.headers.get("Content-Length") or "").strip()
+                if content_length:
+                    try:
+                        if int(content_length) > limit:
+                            raise NextcloudExportClientError(
+                                workspace_folder_exports.REASON_TOO_LARGE,
+                                http_status=status,
+                            )
+                    except ValueError:
+                        pass
+                chunks: list[bytes] = []
+                total = 0
+                while True:
+                    chunk = response.read(min(64 * 1024, max(1, limit + 1 - total)))
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    total += len(chunk)
+                    if total > limit:
+                        raise NextcloudExportClientError(
+                            workspace_folder_exports.REASON_TOO_LARGE,
+                            http_status=status,
+                        )
+                return status, b"".join(chunks)
+        except HTTPError as exc:
+            return int(exc.code or 0), b""
+        except NextcloudExportClientError:
+            raise
+        except (OSError, URLError):
+            raise NextcloudExportClientError(
+                workspace_folder_exports.REASON_EXPORTS_TARGET_UNAVAILABLE
+            ) from None
+
     def _authorization_header(self) -> str:
         raw = f"{self.config.username}:{self.config.app_password}".encode("utf-8")
         return "Basic " + base64.b64encode(raw).decode("ascii")
@@ -216,6 +299,16 @@ def _export_write_reason(status: int) -> str:
         return workspace_folder_exports.REASON_EXPORTS_TARGET_UNAVAILABLE
     if status in {405, 409, 412, 423}:
         return workspace_folder_exports.REASON_NAME_CONFLICT
+    return workspace_folder_exports.REASON_NEXTCLOUD_ERROR_REDACTED
+
+
+def _export_read_reason(status: int) -> str:
+    if status == 404:
+        return workspace_folder_exports.REASON_EXPORT_NOT_FOUND
+    if status in {401, 403} or status <= 0 or status >= 500:
+        return workspace_folder_exports.REASON_EXPORTS_TARGET_UNAVAILABLE
+    if status in {405, 409, 412, 423}:
+        return workspace_folder_exports.REASON_EXPORTS_TARGET_UNAVAILABLE
     return workspace_folder_exports.REASON_NEXTCLOUD_ERROR_REDACTED
 
 

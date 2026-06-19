@@ -1,6 +1,6 @@
 # Frida V1 - Exports contract
 
-Statut: spec source-of-truth Exports V1 ouverte, Lot 6A liste/lookup metadata-only livre, correctifs Lot 5.1 et Lot 5.2 livres
+Statut: spec source-of-truth Exports V1 ouverte, Lot 6B.1 download/open explicite livre, correctifs Lot 5.1 et Lot 5.2 livres
 Date: 2026-06-19
 Roadmap active: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-exports-lot0-audit-2026-06-18.md`
@@ -266,6 +266,29 @@ Lot 6A livre liste et lookup metadata-only:
 - lookup par titre/critere, telechargement/ouverture et export existant comme
   source restent hors Lot 6A.
 
+Lot 6B.1 livre download/open explicites:
+
+- `GET /api/workspace-folders/<folder_id>/exports/<export_id>/download`
+  telecharge un export existant par action explicite;
+- `GET /api/workspace-folders/<folder_id>/exports/<export_id>/open` expose la
+  meme lecture en disposition HTTP `inline`;
+- ces routes exigent un dossier existant et `linked`, un export actif,
+  non-deleted, rattache strictement au dossier du path et
+  `nextcloud_sync_state=linked`;
+- la cible distante est lue depuis le read-model interne et appelee par GET
+  WebDAV exact sous `Exports`; aucun listing Nextcloud large n'est effectue;
+- la limite `25 MiB` s'applique au contenu distant lu; depassement = refus,
+  sans troncature silencieuse;
+- les headers HTTP restent sobres: type MIME derive du format, longueur,
+  disposition et reason code content-free;
+- la projection utilisateur peut exposer `can_download=true` et `can_open=true`
+  seulement quand ces actions sont honnetement disponibles;
+- `can_reuse_as_source` reste `false` avec
+  `folder_export_access_not_prepared` tant qu'un Lot 6B.2 n'a pas branche un
+  `export_reader` public borne.
+- l'artefact live content-free est
+  `app/docs/states/baselines/exports-smokes/frida-v1-exports-lot6b-content-access-20260619T092607Z.jsonl`.
+
 Limites V1 initiales:
 
 - contenu source normalise: `120_000` caracteres maximum par export;
@@ -512,6 +535,18 @@ et `linked`, refusent les exports absents/deleted/cross-folder, et n'appellent
 pas WebDAV/Nextcloud. Elles ne lisent pas le contenu exporte et ne livrent pas
 encore telechargement, ouverture ou reuse-as-source.
 
+Depuis Lot 6B.1, les surfaces de contenu explicite livrees sont:
+
+```text
+GET /api/workspace-folders/<folder_id>/exports/<export_id>/download
+GET /api/workspace-folders/<folder_id>/exports/<export_id>/open
+```
+
+Elles lisent uniquement la cible distante exacte persistee dans le read-model,
+sans listing Nextcloud, et refusent dossier/export non eligible, export absent,
+deleted, cross-folder, non linked, panne store, panne distante ou taille au-dela
+de `25 MiB`.
+
 Interdits V1:
 
 - route globale `/api/exports*`;
@@ -579,6 +614,11 @@ Lot 6A couvre seulement le premier sens: retrouver/lister. Les actions
 indisponibles dans la projection utilisateur, avec reason code content-free,
 jusqu'a livraison d'un Lot 6B dedie.
 
+Lot 6B.1 couvre aussi `telecharger` et `ouvrir` par GET explicite. Il ne couvre
+pas encore `utiliser comme source`; cette action reste refusee en projection et
+dans la creation publique tant qu'un `export_reader` public borne n'est pas
+livre.
+
 ## 11. Garde-fous content-free
 
 Projection utilisateur autorisee:
@@ -637,6 +677,7 @@ Catalogue initial content-free:
 - `folder_export_client_export_id_forbidden`;
 - `folder_export_not_found`;
 - `folder_export_deleted`;
+- `folder_export_not_linked`;
 - `folder_export_access_not_prepared`;
 - `folder_export_source_missing`;
 - `folder_export_source_ambiguous`;

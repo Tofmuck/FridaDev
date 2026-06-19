@@ -123,6 +123,7 @@ def _folder(*, linked=True, deleted=False):
     return {
         "id": FOLDER_ID,
         "display_name": "Projet Tulu",
+        "nextcloud_target_name": "Projet-Tulu",
         "nextcloud_sync_state": "linked" if linked else "local_only",
         "deleted_at": "2026-06-18T10:00:00Z" if deleted else None,
     }
@@ -186,21 +187,21 @@ class WorkspaceFolderExportsTests(unittest.TestCase):
         self.assertNotIn("xml", item)
         self.assertNotIn("authorization", item)
 
-    def test_user_projection_exposes_metadata_only_actions_for_future_reuse(self) -> None:
+    def test_user_projection_exposes_download_open_actions_without_reuse_source(self) -> None:
         item = workspace_folder_exports.apply_export_projection(_export())
 
         user = item["export_v1_user"]
         technical = item["export_v1_technical"]
-        self.assertFalse(user["can_download"])
-        self.assertFalse(user["can_open"])
+        self.assertTrue(user["can_download"])
+        self.assertTrue(user["can_open"])
         self.assertFalse(user["can_reuse_as_source"])
         self.assertEqual(
             user["actions"]["download_reason_code"],
-            "folder_export_access_not_prepared",
+            "folder_export_download_ok",
         )
         self.assertEqual(
             user["actions"]["open_reason_code"],
-            "folder_export_access_not_prepared",
+            "folder_export_download_ok",
         )
         self.assertEqual(
             user["actions"]["reuse_as_source_reason_code"],
@@ -209,6 +210,33 @@ class WorkspaceFolderExportsTests(unittest.TestCase):
         self.assertNotIn("actions", technical)
         self.assertNotIn("raw-etag-secret", str(user["actions"]))
         self.assertNotIn("Synthese-sensible.pdf", str(user["actions"]))
+
+    def test_user_projection_refuses_actions_when_export_is_not_linked(self) -> None:
+        user = workspace_folder_exports.build_user_projection(
+            _export(nextcloud_sync_state="sync_error")
+        )
+
+        self.assertFalse(user["can_download"])
+        self.assertFalse(user["can_open"])
+        self.assertFalse(user["can_reuse_as_source"])
+        self.assertEqual(user["actions"]["download_reason_code"], "folder_export_not_linked")
+        self.assertEqual(user["actions"]["open_reason_code"], "folder_export_not_linked")
+        self.assertEqual(
+            user["actions"]["reuse_as_source_reason_code"],
+            "folder_export_not_linked",
+        )
+
+    def test_user_projection_refuses_actions_without_persisted_folder_target(self) -> None:
+        user = workspace_folder_exports.build_user_projection(
+            _export(),
+            folder={**_folder(), "nextcloud_target_name": ""},
+        )
+
+        self.assertFalse(user["can_download"])
+        self.assertFalse(user["can_open"])
+        self.assertFalse(user["can_reuse_as_source"])
+        self.assertEqual(user["actions"]["download_reason_code"], "folder_export_name_invalid")
+        self.assertEqual(user["actions"]["open_reason_code"], "folder_export_name_invalid")
 
     def test_technical_projection_rejects_private_alnum_source_ref(self) -> None:
         technical = workspace_folder_exports.build_technical_projection(

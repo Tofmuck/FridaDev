@@ -356,9 +356,11 @@ class ServerWorkspaceFolderExportsContractTests(unittest.TestCase):
         for item in payload["exports"]:
             user = item["export_v1_user"]
             technical = item["export_v1_technical"]
-            self.assertFalse(user["can_download"])
-            self.assertFalse(user["can_open"])
+            self.assertTrue(user["can_download"])
+            self.assertTrue(user["can_open"])
             self.assertFalse(user["can_reuse_as_source"])
+            self.assertEqual(user["actions"]["download_reason_code"], "folder_export_download_ok")
+            self.assertEqual(user["actions"]["open_reason_code"], "folder_export_download_ok")
             self.assertEqual(
                 user["actions"]["reuse_as_source_reason_code"],
                 "folder_export_access_not_prepared",
@@ -384,8 +386,8 @@ class ServerWorkspaceFolderExportsContractTests(unittest.TestCase):
         self.assertEqual(payload["reason_code"], "folder_export_lookup_ok")
         user = payload["export"]["export_v1_user"]
         self.assertEqual(user["title"], "Export serveur")
-        self.assertFalse(user["can_download"])
-        self.assertFalse(user["can_open"])
+        self.assertTrue(user["can_download"])
+        self.assertTrue(user["can_open"])
         self.assertFalse(user["can_reuse_as_source"])
         self.assertEqual(len(self.fake_exports.get_calls), 1)
         self.assertEqual(self.fake_nextcloud.status_calls, [])

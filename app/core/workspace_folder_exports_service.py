@@ -349,6 +349,7 @@ def _export_status_for_failure(reason_code: str) -> str:
         workspace_folder_exports.REASON_EXPORTS_TARGET_NOT_COLLECTION,
         workspace_folder_exports.REASON_EXPORTS_TARGET_UNAVAILABLE,
         workspace_folder_exports.REASON_LOOKUP_FAILED,
+        workspace_folder_exports.REASON_EXPORT_NOT_LINKED,
     }:
         return workspace_folder_exports.EXPORT_LOCAL_UNAVAILABLE
     if reason_code == workspace_folder_exports.REASON_LOCAL_PERSISTENCE_FAILED:
@@ -363,6 +364,7 @@ def _http_status_for_reason(reason_code: str) -> int:
         workspace_folder_exports.REASON_EXPORTS_TARGET_NOT_COLLECTION,
         workspace_folder_exports.REASON_NAME_CONFLICT,
         workspace_folder_exports.REASON_NEXTCLOUD_ERROR_REDACTED,
+        workspace_folder_exports.REASON_EXPORT_NOT_LINKED,
     }:
         return 409
     if reason_code == workspace_folder_exports.REASON_EXPORTS_TARGET_MISSING:
@@ -418,5 +420,6 @@ def _human_export_error(reason_code: str) -> str:
         workspace_folder_exports.REASON_LOCAL_PERSISTENCE_FAILED: "persistance locale de l'export impossible",
         workspace_folder_exports.REASON_EXPORT_NOT_FOUND: "export introuvable",
         workspace_folder_exports.REASON_EXPORT_DELETED: "export supprime",
+        workspace_folder_exports.REASON_EXPORT_NOT_LINKED: "export non lie a Nextcloud",
         workspace_folder_exports.REASON_CONTENT_ACCESS_NOT_PREPARED: "lecture de contenu export non preparee",
     }.get(reason_code, "creation d'export impossible")

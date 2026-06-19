@@ -145,7 +145,11 @@ def build_user_actions(
     *,
     folder: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    reason_code = workspace_folder_exports.REASON_CONTENT_ACCESS_NOT_PREPARED
+    reason_code = ""
+    export_format = workspace_folder_exports.normalize_export_format(
+        export.get("export_format") or export.get("format")
+    )
+    target_name = workspace_folder_exports._text(export.get("target_name"), 220)
     if is_deleted(export):
         reason_code = workspace_folder_exports.REASON_EXPORT_DELETED
     elif folder is not None and folder.get("deleted_at"):
@@ -155,13 +159,42 @@ def build_user_actions(
         and workspace_folder_exports._text(folder.get("nextcloud_sync_state")) != "linked"
     ):
         reason_code = workspace_folder_exports.REASON_FOLDER_NOT_LINKED
+    elif folder is not None and not workspace_folder_exports._text(
+        folder.get("nextcloud_target_name"),
+        180,
+    ):
+        reason_code = workspace_folder_exports.REASON_NAME_INVALID
+    elif workspace_folder_exports._local_state(export.get("local_state")) != (
+        workspace_folder_exports.EXPORT_LOCAL_AVAILABLE
+    ):
+        reason_code = workspace_folder_exports.REASON_EXPORT_NOT_LINKED
+    elif workspace_folder_exports._nextcloud_state(export.get("nextcloud_sync_state")) != (
+        workspace_folder_exports.EXPORT_NEXTCLOUD_LINKED
+    ):
+        reason_code = workspace_folder_exports.REASON_EXPORT_NOT_LINKED
+    elif not export_format:
+        reason_code = workspace_folder_exports.REASON_FORMAT_UNSUPPORTED
+    elif not target_name or workspace_folder_exports.sanitize_export_target_name(
+        target_name,
+        export_format,
+    ) != target_name:
+        reason_code = workspace_folder_exports.REASON_NAME_INVALID
+    can_access = not reason_code
     return {
-        "can_download": False,
-        "can_open": False,
+        "can_download": can_access,
+        "can_open": can_access,
         "can_reuse_as_source": False,
-        "download_reason_code": reason_code,
-        "open_reason_code": reason_code,
-        "reuse_as_source_reason_code": reason_code,
+        "download_reason_code": (
+            workspace_folder_exports.REASON_DOWNLOAD_OK if can_access else reason_code
+        ),
+        "open_reason_code": (
+            workspace_folder_exports.REASON_DOWNLOAD_OK if can_access else reason_code
+        ),
+        "reuse_as_source_reason_code": (
+            workspace_folder_exports.REASON_CONTENT_ACCESS_NOT_PREPARED
+            if can_access
+            else reason_code
+        ),
     }
 
 
