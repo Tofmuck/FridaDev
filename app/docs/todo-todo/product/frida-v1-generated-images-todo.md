@@ -1,7 +1,10 @@
 # Frida V1 - Images generees - TODO
 
-Statut: TODO actif detaille; aucun lot Images V1 n'est encore coche.
+Statut: TODO actif detaille; Lot 0 audit existant coche, aucun runtime Images
+V1 livre.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+Audit Lot 0:
+`app/docs/states/audits/frida-v1-generated-images-lot0-audit-2026-06-19.md`
 
 ## Intention
 
@@ -443,25 +446,26 @@ Decision a fermer:
 
 ## Lots proposes
 
-Les lots ci-dessous sont tous ouverts. Cette re-ecriture de TODO ne coche aucun
-lot Images V1.
+Lot 0 est coche par audit read-only/docs-only. Les Lots 1+ restent ouverts et ne
+doivent pas demarrer avant fermeture des decisions produit dans la spec Lot 1.
 
 ### Lot 0 - Audit existant read-only/docs-only
 
-- [ ] Relire `app/tools/image_generation.py`.
-- [ ] Relire `POST /api/tools/image-generation` dans `app/server.py`.
-- [ ] Relire `app/web/chat_image_generation.js`, `app/web/index.html` et les
+- [x] Relire `app/tools/image_generation.py`.
+- [x] Relire `POST /api/tools/image-generation` dans `app/server.py`.
+- [x] Relire `app/web/chat_image_generation.js`, `app/web/index.html` et les
   styles `image-generation-*`.
-- [ ] Relire les tests image generation backend, serveur, frontend et browser.
-- [ ] Relire les surfaces images actives / Documents visuels sans les confondre
+- [x] Relire les tests image generation backend, serveur, frontend et browser.
+- [x] Relire les surfaces images actives / Documents visuels sans les confondre
   avec Images generees.
-- [ ] Identifier les patterns reutilisables: validation, generateurs, logs,
+- [x] Identifier les patterns reutilisables: validation, generateurs, logs,
   extraction data URL, download navigateur, tests.
-- [ ] Identifier les patterns a eviter: route outil globale, data URL comme
+- [x] Identifier les patterns a eviter: route outil globale, data URL comme
   stockage, absence de dossier, absence de read-model, prompt brut.
-- [ ] Inventorier les champs actuellement exposes au frontend et aux logs.
-- [ ] Produire un audit content-free sous `app/docs/states/audits/`.
-- [ ] Ne livrer aucun runtime, aucune migration, aucun acces Nextcloud, aucune
+- [x] Inventorier les champs actuellement exposes au frontend et aux logs.
+- [x] Produire un audit content-free sous `app/docs/states/audits/`:
+  `app/docs/states/audits/frida-v1-generated-images-lot0-audit-2026-06-19.md`.
+- [x] Ne livrer aucun runtime, aucune migration, aucun acces Nextcloud, aucune
   generation live.
 
 ### Lot 1 - Spec source-of-truth Images V1
@@ -745,7 +749,7 @@ Interdits:
 
 ## Prochain pas
 
-Executer Lot 0 Images V1: audit read-only/docs-only des surfaces de generation
-d'images, images actives, Documents visuels, UI et tests existants. Lot 0 doit
-produire un audit content-free sous `app/docs/states/audits/` et ne doit livrer
-aucun runtime.
+Executer Lot 1 Images V1: creer la spec source-of-truth
+`app/docs/states/specs/frida-v1-generated-images-contract.md`, fermer les
+decisions produit encore ouvertes avant runtime, et ne livrer aucun runtime dans
+ce lot spec.
