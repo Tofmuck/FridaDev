@@ -1,7 +1,7 @@
 # Frida V1 - Exports / creation documentaire - TODO
 
-Statut: TODO Lot 5 livre, correctif Lot 5.1 de durcissement route creation
-livre avant liste / retrouver / reutiliser.
+Statut: TODO Lot 5 livre, correctifs Lot 5.1 et Lot 5.2 de durcissement route
+creation livres avant liste / retrouver / reutiliser.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 
 ## Sources de verite
@@ -473,6 +473,18 @@ Correctif Lot 5.1 livre:
 - un contrat serveur dedie couvre la route namespaced, l'absence de route
   globale `/api/exports*`, la priorite du `folder_id` de chemin, le refus
   `export_id`, le reader conversationnel public et les erreurs content-free.
+
+Correctif Lot 5.2 livre:
+
+- la route publique de creation accepte `conversation` seulement via relecture
+  du store conversationnel;
+- la route publique refuse provisoirement `message_selection` et
+  `frida_response` avec `folder_export_source_not_prepared`, avant generation,
+  WebDAV ou upsert local;
+- le moteur fake/local Lot 3 conserve ces sources pour les tests bas niveau,
+  mais elles ne sont plus exposees comme sources production payload-only;
+- aucun reader store de selection ou reponse Frida n'est invente dans ce
+  correctif.
 
 ### Lot 6 - Liste / retrouver / reutiliser un export existant
 

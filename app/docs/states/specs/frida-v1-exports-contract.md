@@ -1,6 +1,6 @@
 # Frida V1 - Exports contract
 
-Statut: spec source-of-truth Exports V1 ouverte, Lot 5 stockage Nextcloud-first livre, correctif Lot 5.1 livre
+Statut: spec source-of-truth Exports V1 ouverte, Lot 5 stockage Nextcloud-first livre, correctifs Lot 5.1 et Lot 5.2 livres
 Date: 2026-06-19
 Roadmap active: `app/docs/todo-todo/product/frida-v1-exports-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-exports-lot0-audit-2026-06-18.md`
@@ -116,6 +116,8 @@ Regles:
 - aucun message ajoute par contexte implicite;
 - ordre stable;
 - messages introuvables, ambigus ou techniques refuses;
+- la route publique Lot 5 refuse `message_selection` tant qu'aucun reader store
+  dedie ne relit strictement la selection reelle;
 - selection complete ou refus.
 
 ### 4.3 Reponse de Frida choisie
@@ -127,6 +129,8 @@ Regles:
 - pas de "derniere reponse" implicite;
 - une action UI/API peut designer la derniere reponse seulement si cette action
   la nomme explicitement comme source;
+- la route publique Lot 5 refuse `frida_response` tant qu'aucun reader store
+  dedie ne relit strictement la reponse designee;
 - reponse absente, partielle ou ambigue = refus content-free.
 
 ### 4.4 Note Markdown existante
@@ -237,6 +241,9 @@ Lot 5 livre le stockage Nextcloud-first sous `/Exports`:
   client et garde l'identifiant d'export serveur-owned;
 - depuis le correctif Lot 5.1, une source `conversation` publique relit le store
   via `conversation_reader` et ne peut pas etre simulee par `messages` payload;
+- depuis le correctif Lot 5.2, les sources publiques `message_selection` et
+  `frida_response` sont refusees avec `folder_export_source_not_prepared`
+  jusqu'a livraison d'un reader store dedie;
 - liste, lookup, telechargement, ouverture, reutilisation, UI et Lot Z restent
   hors Lot 5.
 
@@ -431,6 +438,9 @@ Mise en oeuvre Lot 5:
 - la route de creation refuse un `export_id` client avec
   `folder_export_client_export_id_forbidden`, avant generation, WebDAV ou
   upsert local;
+- la route de creation refuse `message_selection` et `frida_response` avec
+  `folder_export_source_not_prepared`, avant generation, WebDAV ou upsert
+  local, car ces sources ne disposent pas encore d'un reader store public;
 - `Exports` est verifie par `PROPFIND Depth: 0`; un `207` est accepte seulement
   si le XML parse en memoire confirme `collection`;
 - le PUT utilise `If-None-Match: *`;
@@ -466,7 +476,9 @@ Cette route genere et stocke un nouvel export sous `/Exports`, puis retourne les
 projections utilisateur et technique metadata-only. Elle refuse tout
 `export_id` client: l'identifiant est genere cote serveur. Pour
 `source_kind=conversation`, les messages bruts fournis dans le payload ne
-peuvent pas contourner la relecture du store conversationnel. Elle ne liste, ne
+peuvent pas contourner la relecture du store conversationnel. Elle refuse
+`message_selection` et `frida_response` tant qu'aucun reader store dedie ne les
+relit proprement; le payload client `messages` ne suffit pas. Elle ne liste, ne
 lit, ne telecharge, n'ouvre et ne reutilise aucun export existant.
 
 Interdits V1:

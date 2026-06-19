@@ -451,6 +451,46 @@ class WorkspaceFolderExportNextcloudTests(unittest.TestCase):
         self.assertEqual(payload["export_nextcloud"]["store_state"], "blocked")
         self.assertEqual(runtime.calls, [])
 
+    def test_service_refuses_unprepared_public_payload_message_sources_before_runtime(self) -> None:
+        for source_kind, extra in (
+            (
+                "message_selection",
+                {"selected_message_ids": ["a1"]},
+            ),
+            (
+                "frida_response",
+                {"response_message_id": "a1"},
+            ),
+        ):
+            with self.subTest(source_kind=source_kind):
+                runtime = _FakeRuntime({"ok": True})
+
+                payload, status = workspace_folder_exports_service.create_workspace_folder_export_response(
+                    FOLDER_ID,
+                    _request(
+                        source_kind=source_kind,
+                        messages=[
+                            {
+                                "id": "a1",
+                                "role": "assistant",
+                                "content": "Message public injecte",
+                            }
+                        ],
+                        **extra,
+                    ),
+                    workspace_folders_module=_FakeFolders(linked=True),
+                    workspace_folder_exports_module=_FakeExportsModule(),
+                    exports_nextcloud_runtime_module=runtime,
+                )
+
+                self.assertEqual(status, 400)
+                self.assertFalse(payload["ok"])
+                self.assertEqual(payload["reason_code"], "folder_export_source_not_prepared")
+                self.assertEqual(payload["export_v1_technical"]["source"]["source_kind"], source_kind)
+                self.assertEqual(payload["export_nextcloud"]["store_state"], "blocked")
+                self.assertNotIn("Message public injecte", str(payload))
+                self.assertEqual(runtime.calls, [])
+
 
 if __name__ == "__main__":
     unittest.main()

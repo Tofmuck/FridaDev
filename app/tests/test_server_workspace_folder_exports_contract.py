@@ -264,6 +264,46 @@ class ServerWorkspaceFolderExportsContractTests(unittest.TestCase):
         self.assertEqual(self.fake_nextcloud.put_calls, [])
         self.assertEqual(self.fake_exports.stored, [])
 
+    def test_workspace_folder_export_route_refuses_payload_only_selection_and_response_sources(self) -> None:
+        cases = (
+            (
+                "message_selection",
+                {
+                    "selected_message_ids": ["a1"],
+                    "messages": [
+                        {"id": "a1", "role": "assistant", "content": "Selection publique injectee"},
+                    ],
+                },
+            ),
+            (
+                "frida-response",
+                {
+                    "response_message_id": "a1",
+                    "messages": [
+                        {"id": "a1", "role": "assistant", "content": "Reponse publique injectee"},
+                    ],
+                },
+            ),
+        )
+        for source_kind, extra in cases:
+            with self.subTest(source_kind=source_kind):
+                response = self.client.post(
+                    f"/api/workspace-folders/{FOLDER_ID}/exports",
+                    json=_request(source_kind=source_kind, **extra),
+                )
+
+                self.assertEqual(response.status_code, 400)
+                payload = response.get_json()
+                self.assertFalse(payload["ok"])
+                self.assertEqual(payload["reason_code"], "folder_export_source_not_prepared")
+                self.assertNotIn("Selection publique injectee", str(payload))
+                self.assertNotIn("Reponse publique injectee", str(payload))
+
+        self.assertEqual(self.fake_runtime.calls, [])
+        self.assertEqual(self.fake_nextcloud.status_calls, [])
+        self.assertEqual(self.fake_nextcloud.put_calls, [])
+        self.assertEqual(self.fake_exports.stored, [])
+
     def test_workspace_folder_export_route_conversation_uses_store_not_payload_messages(self) -> None:
         response = self.client.post(
             f"/api/workspace-folders/{FOLDER_ID}/exports",

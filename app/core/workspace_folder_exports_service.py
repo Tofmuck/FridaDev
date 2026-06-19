@@ -12,6 +12,12 @@ REASON_FOLDER_NOT_FOUND = "workspace_folder_not_found"
 REASON_FOLDER_DELETED = "workspace_folder_deleted"
 REASON_FOLDER_ID_INVALID = "workspace_folder_id_invalid"
 REASON_RUNTIME_UNAVAILABLE = "folder_export_runtime_unavailable"
+PUBLIC_CREATE_UNPREPARED_SOURCE_KINDS = frozenset(
+    {
+        workspace_folder_exports.SOURCE_MESSAGE_SELECTION,
+        workspace_folder_exports.SOURCE_FRIDA_RESPONSE,
+    }
+)
 
 
 def create_workspace_folder_export_response(
@@ -51,6 +57,33 @@ def create_workspace_folder_export_response(
             "export_nextcloud": {
                 "store_state": "blocked",
                 "reason_code": workspace_folder_exports.REASON_CLIENT_EXPORT_ID_FORBIDDEN,
+                "export_name_hash": "",
+                "http_status_class": "none",
+                "rollback": {},
+            },
+        }, 400
+    public_source_kind = _public_source_kind(payload)
+    if public_source_kind in PUBLIC_CREATE_UNPREPARED_SOURCE_KINDS:
+        return {
+            "ok": False,
+            "error": _human_export_error(workspace_folder_exports.REASON_SOURCE_NOT_PREPARED),
+            "reason_code": workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
+            "workspace_folder_id": normalized,
+            "export": {
+                "status": _export_status_for_failure(workspace_folder_exports.REASON_SOURCE_NOT_PREPARED),
+                "reason_code": workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
+            },
+            "export_v1_technical": {
+                "reason_code": workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
+                "source": {
+                    "ok": False,
+                    "reason_code": workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
+                    "source_kind": public_source_kind,
+                },
+            },
+            "export_nextcloud": {
+                "store_state": "blocked",
+                "reason_code": workspace_folder_exports.REASON_SOURCE_NOT_PREPARED,
                 "export_name_hash": "",
                 "http_status_class": "none",
                 "rollback": {},
@@ -143,6 +176,11 @@ def _conversation_reader(conversation_store_module: Any | None):
         )
 
     return reader
+
+
+def _public_source_kind(payload: Mapping[str, Any]) -> str:
+    text = " ".join(str(payload.get("source_kind") or payload.get("source") or "").strip().split())
+    return workspace_folder_exports.normalize_source_kind(text.lower().replace("-", "_"))
 
 
 def _export_status_for_failure(reason_code: str) -> str:
