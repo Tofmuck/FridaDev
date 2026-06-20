@@ -172,6 +172,67 @@ class ServerChatAgendaContractTests(unittest.TestCase):
         self.assertNotIn('Fixture Focus Block', repr(events))
         self.assertNotIn('Est-ce que tu peux lire mon agenda demain ?', repr(agenda_payload))
 
+    def test_agenda_active_missing_secret_fallback_is_not_observed_as_ok(self) -> None:
+        conversation = {
+            'id': 'conv-agenda-secret-missing',
+            'created_at': '2026-06-08T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+        _observed_state, restore = self._patch_chat_pipeline(conversation=conversation)
+        original_settings = self.server.runtime_settings.get_agenda_agent_settings
+        original_insert = self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event
+        events = []
+
+        def active_missing_secret_settings(*_args, **_kwargs):
+            return self.server.runtime_settings.RuntimeSectionView(
+                section='agenda_agent',
+                payload={
+                    'mode': {'value': 'active', 'origin': 'test'},
+                    'caldav_account': {'value': 'tof', 'origin': 'test'},
+                    'caldav_app_password': {
+                        'is_secret': True,
+                        'is_set': False,
+                        'origin': 'missing',
+                    },
+                },
+                source='db',
+                source_reason='test_active_missing_secret',
+            )
+
+        def fake_insert(event: dict, **_kwargs) -> bool:
+            events.append(dict(event))
+            return True
+
+        self.server.runtime_settings.get_agenda_agent_settings = active_missing_secret_settings
+        self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={
+                    'message': 'RAW AGENDA SECRET TEST MESSAGE MUST NOT LEAK',
+                    'agenda_enabled': True,
+                    'web_search': False,
+                },
+            )
+        finally:
+            self.server.runtime_settings.get_agenda_agent_settings = original_settings
+            self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        agenda_events = [event for event in events if event.get('stage') == 'agenda']
+        self.assertEqual(len(agenda_events), 1)
+        agenda_event = agenda_events[0]
+        agenda_payload = agenda_event['payload_json']
+        self.assertEqual(agenda_event['status'], 'not_configured')
+        self.assertEqual(agenda_payload['reason_code'], 'agenda_agent_secret_not_configured')
+        self.assertEqual(agenda_payload['status'], 'fallback')
+        self.assertEqual(agenda_payload['status_schema_version'], 'agentic_v1')
+        self.assertFalse(agenda_payload['caldav_access'])
+        self.assertFalse(agenda_payload['secret_access'])
+        self.assertFalse(agenda_payload['mutation_attempted'])
+        self.assertNotIn('RAW AGENDA SECRET TEST MESSAGE', json.dumps(events, sort_keys=True))
+
     def test_agenda_runtime_failure_remains_error_observability(self) -> None:
         conversation = {
             'id': 'conv-agenda-failure',

@@ -2,7 +2,8 @@
 
 Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2 runtime
 borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3 Agenda/Biblio
-no-op observability livre; Lot 4+ ouverts.
+no-op observability livre avec correctif Lot 3.1 Agenda fallback; Lot 4+
+ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -171,6 +172,10 @@ Notes Lot 3:
   emet `status=not_selected`, sans appel Catalogue.
 - Les pannes Agenda/Biblio fake/local restent `error` ou `failed` et ne sont
   pas degradees en no-op.
+- Correctif Lot 3.1: les resultats Agenda `status=fallback` ne sont plus
+  projetes en `ok`: secret/modele/provider absent deviennent
+  `not_configured`, mode unsupported devient `not_applicable`, erreur provider
+  devient `error`, et les rejets validation/plan deviennent `failed`.
 
 ### Lot 4 - Durcissement logs runtime content-free
 

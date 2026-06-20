@@ -3,7 +3,8 @@
 Statut: spec source-of-truth livree par Lot 1 docs-only; Lot 2 runtime
 `chat_turn_logger` / `log_store` / checklist / read-model livre; correctif
 Lot 2.1 writer V1 livre; correctif Lot 2.2 redaction invalid status livre;
-Lot 3 Agenda/Biblio no-op observability livre.
+Lot 3 Agenda/Biblio no-op observability livre; correctif Lot 3.1 Agenda
+fallback status livre.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -456,6 +457,18 @@ Lot 3:
   Catalogue;
 - les pannes Agenda/Biblio fake/local restent `error` ou `failed`;
 - la checklist/read-model conservent ces no-op comme non-erreurs content-free.
+
+Correctif Lot 3.1:
+
+- Agenda `status=fallback` n'est jamais projete `ok`;
+- `agenda_agent_secret_not_configured`, `agenda_agent_model_not_configured` et
+  `agenda_agent_provider_not_configured` se projettent `not_configured`;
+- `agenda_agent_mode_unsupported` se projette `not_applicable`;
+- `agenda_agent_provider_error` se projette `error`;
+- les autres fallback de validation JSON, time window, draft ou plan invalide
+  se projettent `failed`;
+- cette classification reste content-free et ne lit ni secret, ni CalDAV, ni
+  OpenRouter en plus des branches deja executees par le runtime.
 
 Lot 4:
 

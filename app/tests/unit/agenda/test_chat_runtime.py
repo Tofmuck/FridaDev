@@ -1111,6 +1111,70 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertEqual(result.reason_code, agent_contract.REASON_JSON_INVALID)
         self.assertFalse(result.used)
         self.assertFalse(result.observability_payload['agent_json_validated'])
+        self.assertEqual(
+            chat_runtime.observability_status_for_payload(result.observability_payload),
+            'failed',
+        )
+
+    def test_active_runtime_missing_secret_fallback_is_not_observed_as_ok(self) -> None:
+        fake = _FakeExplodingModelClient()
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=False,
+            ),
+            agent_model_client=fake,
+        )
+
+        self.assertEqual(result.status, agent_runtime.STATUS_FALLBACK)
+        self.assertEqual(result.reason_code, agent_runtime.REASON_SECRET_NOT_CONFIGURED)
+        self.assertEqual(fake.calls, 0)
+        self.assertFalse(result.observability_payload['caldav_access'])
+        self.assertFalse(result.observability_payload['secret_access'])
+        self.assertEqual(
+            chat_runtime.observability_status_for_payload(result.observability_payload),
+            'not_configured',
+        )
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', json.dumps(result.observability_payload, sort_keys=True))
+
+    def test_active_runtime_model_not_configured_fallback_is_not_observed_as_ok(self) -> None:
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Lis mon agenda',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+        )
+
+        self.assertEqual(result.status, agent_runtime.STATUS_FALLBACK)
+        self.assertEqual(result.reason_code, agent_runtime.REASON_MODEL_NOT_CONFIGURED)
+        self.assertEqual(
+            chat_runtime.observability_status_for_payload(result.observability_payload),
+            'not_configured',
+        )
+
+    def test_active_runtime_provider_error_fallback_is_observed_as_error(self) -> None:
+        fake = _FakeErrorModelClient('agenda_agent_provider_error')
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Lis mon agenda',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake,
+        )
+
+        self.assertEqual(result.status, agent_runtime.STATUS_FALLBACK)
+        self.assertEqual(result.reason_code, 'agenda_agent_provider_error')
+        self.assertEqual(fake.calls, 1)
+        self.assertEqual(
+            chat_runtime.observability_status_for_payload(result.observability_payload),
+            'error',
+        )
 
     def test_removed_shadow_and_candidate_modes_are_not_reintroduced(self) -> None:
         for mode in ('shadow', 'candidate'):
@@ -1128,6 +1192,10 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
                 self.assertEqual(result.status, agent_runtime.STATUS_FALLBACK)
                 self.assertEqual(result.reason_code, agent_runtime.REASON_MODE_UNSUPPORTED)
                 self.assertEqual(fake.calls, 0)
+                self.assertEqual(
+                    chat_runtime.observability_status_for_payload(result.observability_payload),
+                    'not_applicable',
+                )
 
     def test_propose_create_creates_pending_action_without_caldav_or_secret_access(self) -> None:
         raw_intent = 'RAW EVENT DETAILS MUST NOT LEAK'
@@ -3132,6 +3200,32 @@ class _FakeTextModelClient:
             content=self.content,
             attempt_count=1,
         )
+
+
+class _FakeErrorModelClient:
+    def __init__(self, reason_code: str) -> None:
+        self.reason_code = reason_code
+        self.calls = 0
+
+    def complete(self, request, *, settings):
+        del request, settings
+        self.calls += 1
+        return agent_runtime.AgendaAgentModelResponse(
+            status='error',
+            reason_code=self.reason_code,
+            content='',
+            attempt_count=1,
+        )
+
+
+class _FakeExplodingModelClient:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def complete(self, request, *, settings):
+        del request, settings
+        self.calls += 1
+        raise AssertionError('agenda model must not be called')
 
 
 class _FakeReadClient:

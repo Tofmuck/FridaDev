@@ -29,7 +29,6 @@ from agenda import chat_runtime as agenda_chat_runtime
 from biblio import chat_runtime as biblio_chat_runtime
 from biblio import observability as biblio_observability
 from observability import active_documents_observability
-from observability import agentic_status
 from observability import chat_turn_logger
 from observability import hermeneutic_node_logger
 from tools import adobe_docs_pipeline
@@ -464,25 +463,10 @@ def _emit_agenda_observability(result: Any) -> None:
     chat_turn_logger.set_state('agenda', clean_payload)
     chat_turn_logger.emit(
         'agenda',
-        status=_agenda_observability_status(clean_payload),
+        status=agenda_chat_runtime.observability_status_for_payload(clean_payload),
         reason_code=str(clean_payload.get('reason_code') or '') or None,
         payload=clean_payload,
     )
-
-
-def _agenda_observability_status(payload: Mapping[str, Any]) -> str:
-    payload_status = _text(payload.get('status')).lower()
-    if agentic_status.is_valid_status(payload_status):
-        return payload_status
-    if not bool(payload.get('enabled', True)):
-        return agentic_status.STATUS_DISABLED
-    for key in ('read_execution_status', 'write_execution_status', 'pending_execution_status'):
-        child_status = _text(payload.get(key)).lower()
-        if child_status == agentic_status.STATUS_ERROR:
-            return agentic_status.STATUS_ERROR
-        if child_status == agentic_status.STATUS_FAILED:
-            return agentic_status.STATUS_FAILED
-    return agentic_status.STATUS_OK
 
 
 def _emit_workspace_folder_notes_prompt_observability(lane: Any) -> None:
