@@ -133,7 +133,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
             case,
             {
                 "query_kind": "no_signal",
-                "status": "not_used",
+                "status": "not_selected",
                 "endpoint_count": 0,
                 "dialogue_tool_call_count": 1,
                 "agent_mode": "off",
@@ -149,7 +149,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
             case,
             {
                 "query_kind": "no_signal",
-                "status": "not_used",
+                "status": "not_selected",
                 "endpoint_count": 0,
                 "agent_mode": "active",
                 "agent_present": True,
@@ -277,7 +277,7 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
             case,
             {
                 "query_kind": "no_signal",
-                "status": "not_used",
+                "status": "not_selected",
                 "endpoint_count": 0,
                 "lane_injected": False,
                 "dialogue_tool_call_count": 1,

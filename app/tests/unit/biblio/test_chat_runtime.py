@@ -59,7 +59,7 @@ class BiblioChatRuntimeTests(unittest.TestCase):
         self.assertIsNone(result.prompt_message)
         self.assertEqual(result.observability_payload["enabled"], False)
         self.assertEqual(result.observability_payload["used"], False)
-        self.assertEqual(result.observability_payload["status"], "not_applicable")
+        self.assertEqual(result.observability_payload["status"], "disabled")
         self.assertIn(chat_runtime.REASON_TOGGLE_DISABLED, result.observability_payload["reason_code_counts"])
 
     def test_toggle_off_with_existing_state_does_not_reattach_current_user_message(self) -> None:
@@ -116,7 +116,7 @@ class BiblioChatRuntimeTests(unittest.TestCase):
                 self.assertTrue(result.enabled)
                 self.assertFalse(result.used)
                 self.assertIsNone(result.prompt_message)
-                self.assertEqual(result.observability_payload["status"], "not_used")
+                self.assertEqual(result.observability_payload["status"], "not_selected")
                 self.assertEqual(result.observability_payload["client"]["event_count"], 0)
 
     def test_agent_mode_off_does_not_call_model(self) -> None:

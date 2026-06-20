@@ -2,7 +2,8 @@
 
 Statut: spec source-of-truth livree par Lot 1 docs-only; Lot 2 runtime
 `chat_turn_logger` / `log_store` / checklist / read-model livre; correctif
-Lot 2.1 writer V1 livre; correctif Lot 2.2 redaction invalid status livre.
+Lot 2.1 writer V1 livre; correctif Lot 2.2 redaction invalid status livre;
+Lot 3 Agenda/Biblio no-op observability livre.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -446,10 +447,15 @@ Lot 2:
 
 Lot 3:
 
-- aligner Agenda et Biblio sur les no-op agentiques;
-- emettre Agenda disabled content-free;
-- prouver que CalDAV/Catalogue non appeles volontairement ne sont pas des
-  erreurs.
+- Agenda absent/off emet `status=disabled`,
+  `reason_code=agenda_toggle_off`, `status_schema_version=agentic_v1`, sans
+  executer le runtime Agenda produit, sans CalDAV, secret, LLM Agenda ou
+  mutation;
+- Biblio off emet `status=disabled`; Biblio on sans signal bibliographique
+  emet `status=not_selected`, avec `client.event_count=0` et sans appel
+  Catalogue;
+- les pannes Agenda/Biblio fake/local restent `error` ou `failed`;
+- la checklist/read-model conservent ces no-op comme non-erreurs content-free.
 
 Lot 4:
 

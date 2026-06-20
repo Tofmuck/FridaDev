@@ -14,6 +14,7 @@ from urllib.parse import urlparse, urlunparse
 from . import catalogue_client
 from .passage_extractor import BiblioPassageResult, STATUS_EXTRACTED
 from .prompt_lane import BiblioPromptLane
+from observability import agentic_status
 
 
 SCHEMA_VERSION = "1"
@@ -612,16 +613,19 @@ def _event_status(
     if used:
         return "skipped"
     if enabled:
-        return "not_used"
-    return "not_applicable"
+        return "not_selected"
+    return "disabled"
 
 
 def _event_log_status(status: str) -> str:
-    if status in {"error", "catalogue_unavailable"}:
-        return "error"
-    if status in {"not_applicable", "not_used", "skipped"}:
-        return "skipped"
-    return "ok"
+    normalized = _safe_token(status)
+    if normalized in agentic_status.STATUS_V1_ALLOWED_SET:
+        return normalized
+    if normalized in {"error", "catalogue_unavailable"}:
+        return agentic_status.STATUS_ERROR
+    if normalized == "not_used":
+        return agentic_status.STATUS_NOT_SELECTED
+    return agentic_status.STATUS_OK
 
 
 def _sanitize_mapping(value: Mapping[str, Any]) -> dict[str, Any]:

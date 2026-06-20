@@ -113,6 +113,22 @@ def build_lot4_observability_payload(
     }
 
 
+def build_disabled_observability_result() -> AgendaChatResult:
+    payload = build_lot4_observability_payload(
+        enabled=False,
+        status='disabled',
+        reason_code=REASON_TOGGLE_OFF,
+        mode=agent_contract.MODE_OFF,
+    )
+    return AgendaChatResult(
+        enabled=False,
+        used=False,
+        status='disabled',
+        reason_code=REASON_TOGGLE_OFF,
+        observability_payload=payload,
+    )
+
+
 def build_lot5_observability_payload(
     *,
     enabled: bool,

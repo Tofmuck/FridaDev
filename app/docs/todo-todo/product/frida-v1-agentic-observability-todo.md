@@ -1,7 +1,8 @@
 # Frida V1 - Observabilite globale / logs agentiques - TODO
 
 Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2 runtime
-borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3+ ouverts.
+borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3 Agenda/Biblio
+no-op observability livre; Lot 4+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -153,13 +154,23 @@ Severite attendue:
 
 ### Lot 3 - Agentic Agenda / Biblio observability
 
-- [ ] Aligner Agenda et Biblio sur une grammaire commune.
-- [ ] Appliquer l'observation explicite Agenda off prevue par le contrat.
-- [ ] Distinguer outil non selectionne, agent non configure, mode off, secret
+- [x] Aligner Agenda et Biblio sur une grammaire commune.
+- [x] Appliquer l'observation explicite Agenda off prevue par le contrat.
+- [x] Distinguer outil non selectionne, agent non configure, mode off, secret
   absent et echec reel.
-- [ ] Tester que CalDAV/Catalogue non appeles volontairement ne sont pas des
+- [x] Tester que CalDAV/Catalogue non appeles volontairement ne sont pas des
   erreurs.
-- [ ] Ne pas rouvrir Agenda runtime hors observabilite.
+- [x] Ne pas rouvrir Agenda runtime hors observabilite.
+
+Notes Lot 3:
+
+- Agenda absent/off emet un evenement `agenda` `status=disabled`,
+  `reason_code=agenda_toggle_off`, `status_schema_version=agentic_v1`, sans
+  appel Agenda runtime, CalDAV, secret, LLM Agenda ou mutation.
+- Biblio off emet `status=disabled`; Biblio on sans signal bibliographique
+  emet `status=not_selected`, sans appel Catalogue.
+- Les pannes Agenda/Biblio fake/local restent `error` ou `failed` et ne sont
+  pas degradees en no-op.
 
 ### Lot 4 - Durcissement logs runtime content-free
 

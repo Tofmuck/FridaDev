@@ -123,7 +123,7 @@ class BiblioObservabilityTests(unittest.TestCase):
             used=False,
             query_kind="no_signal",
             librarian_agent=_FakeLibrarianAgentObservation(),
-            status="not_used",
+            status="not_selected",
             reason_code="biblio_no_bibliographic_signal",
         )
         agent = payload["librarian_agent"]
@@ -221,6 +221,42 @@ class BiblioObservabilityTests(unittest.TestCase):
         self.assertEqual(fake_logger.events[0]["stage"], "biblio")
         self.assertEqual(fake_logger.events[0]["status"], "ok")
         self.assertNotIn(RAW_SECRET, _json(fake_logger.events[0]))
+
+    def test_emit_biblio_event_preserves_agentic_noop_and_failure_statuses(self) -> None:
+        fake_logger = _FakeTurnLogger()
+        disabled = observability.build_biblio_event_payload(
+            enabled=False,
+            used=False,
+            query_kind="not_requested",
+            status="disabled",
+            reason_code="biblio_toggle_disabled",
+        )
+        no_signal = observability.build_biblio_event_payload(
+            enabled=True,
+            used=False,
+            query_kind="no_signal",
+            status="not_selected",
+            reason_code="biblio_no_bibliographic_signal",
+        )
+        failure = observability.build_biblio_event_payload(
+            enabled=True,
+            used=True,
+            query_kind="search_catalog",
+            client_error={"status": "error", "reason_code": "biblio_runtime_error"},
+            status="error",
+            reason_code="biblio_runtime_error",
+        )
+
+        self.assertTrue(observability.emit_biblio_event(disabled, chat_turn_logger_module=fake_logger))
+        self.assertTrue(observability.emit_biblio_event(no_signal, chat_turn_logger_module=fake_logger))
+        self.assertTrue(observability.emit_biblio_event(failure, chat_turn_logger_module=fake_logger))
+
+        self.assertEqual(
+            [event["status"] for event in fake_logger.events],
+            ["disabled", "not_selected", "error"],
+        )
+        encoded = _json(fake_logger.events)
+        self.assertNotIn(RAW_SECRET, encoded)
 
 
 class _FakeConfig:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -140,6 +141,14 @@ class ServerChatBiblioContractTests(unittest.TestCase):
             "messages": [{"role": "system", "content": "BACKEND SYSTEM PROMPT"}],
         }
         observed_state, restore = self._patch_chat_pipeline(conversation=conversation)
+        original_insert = self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event
+        events = []
+
+        def fake_insert(event: dict, **_kwargs) -> bool:
+            events.append(dict(event))
+            return True
+
+        self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
         try:
             response = self.client.post(
                 "/api/chat",
@@ -149,12 +158,27 @@ class ServerChatBiblioContractTests(unittest.TestCase):
                 },
             )
         finally:
+            self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event = original_insert
             restore()
 
         self.assertEqual(response.status_code, 200)
         prompt_text = "\n".join(message["content"] for message in observed_state["payload_messages"])
         self.assertNotIn(prompt_lane.LANE_HEADER, prompt_text)
         self.assertNotIn(BIBLIO_SECRET_PASSAGE, prompt_text)
+        biblio_events = [event for event in events if event.get("stage") == "biblio"]
+        self.assertEqual(len(biblio_events), 1)
+        biblio_event = biblio_events[0]
+        biblio_payload = biblio_event["payload_json"]
+        self.assertEqual(biblio_event["status"], "disabled")
+        self.assertEqual(biblio_payload["status_schema_version"], "agentic_v1")
+        self.assertEqual(biblio_payload["status"], "disabled")
+        self.assertEqual(biblio_payload["reason_code"], chat_runtime.REASON_TOGGLE_DISABLED)
+        self.assertFalse(biblio_payload["enabled"])
+        self.assertFalse(biblio_payload["used"])
+        self.assertEqual(biblio_payload["client"]["event_count"], 0)
+        event_dump = json.dumps(events, sort_keys=True)
+        self.assertNotIn("Cherche le passage 126b", event_dump)
+        self.assertNotIn(BIBLIO_SECRET_PASSAGE, event_dump)
 
     def test_biblio_final_response_lock_controls_assistant_message(self) -> None:
         observed = {"events": []}

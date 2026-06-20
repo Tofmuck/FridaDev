@@ -29,6 +29,7 @@ from agenda import chat_runtime as agenda_chat_runtime
 from biblio import chat_runtime as biblio_chat_runtime
 from biblio import observability as biblio_observability
 from observability import active_documents_observability
+from observability import agentic_status
 from observability import chat_turn_logger
 from observability import hermeneutic_node_logger
 from tools import adobe_docs_pipeline
@@ -463,10 +464,25 @@ def _emit_agenda_observability(result: Any) -> None:
     chat_turn_logger.set_state('agenda', clean_payload)
     chat_turn_logger.emit(
         'agenda',
-        status='ok',
+        status=_agenda_observability_status(clean_payload),
         reason_code=str(clean_payload.get('reason_code') or '') or None,
         payload=clean_payload,
     )
+
+
+def _agenda_observability_status(payload: Mapping[str, Any]) -> str:
+    payload_status = _text(payload.get('status')).lower()
+    if agentic_status.is_valid_status(payload_status):
+        return payload_status
+    if not bool(payload.get('enabled', True)):
+        return agentic_status.STATUS_DISABLED
+    for key in ('read_execution_status', 'write_execution_status', 'pending_execution_status'):
+        child_status = _text(payload.get(key)).lower()
+        if child_status == agentic_status.STATUS_ERROR:
+            return agentic_status.STATUS_ERROR
+        if child_status == agentic_status.STATUS_FAILED:
+            return agentic_status.STATUS_FAILED
+    return agentic_status.STATUS_OK
 
 
 def _emit_workspace_folder_notes_prompt_observability(lane: Any) -> None:
@@ -929,7 +945,8 @@ def chat_response(
     _emit_biblio_observability(biblio_result)
 
     agenda_result = None
-    if agenda_chat_runtime.normalize_agenda_enabled(data.get('agenda_enabled')):
+    agenda_enabled = agenda_chat_runtime.normalize_agenda_enabled(data.get('agenda_enabled'))
+    if agenda_enabled:
         agenda_state = agenda_chat_runtime.read_agenda_conversation_state(conversation)
         agenda_result = agenda_chat_runtime.run_agenda_chat_turn(
             data,
@@ -945,6 +962,11 @@ def chat_response(
         )
         agenda_chat_runtime.attach_agenda_conversation_state(conversation, agenda_result)
         _emit_agenda_observability(agenda_result)
+    else:
+        disabled_result_builder = getattr(agenda_chat_runtime, 'build_disabled_observability_result', None)
+        if callable(disabled_result_builder):
+            agenda_result = disabled_result_builder()
+            _emit_agenda_observability(agenda_result)
 
     hermeneutic_node_runtime = _run_hermeneutic_node_insertion_point(
         conversation=conversation,

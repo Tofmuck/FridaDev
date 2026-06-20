@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import types
 import unittest
@@ -73,16 +74,20 @@ class ServerChatAgendaContractTests(unittest.TestCase):
                 }
                 observed_state, restore = self._patch_chat_pipeline(conversation=conversation)
                 original_agenda_turn = self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn
-                original_emit = self.server.chat_service.chat_turn_logger.emit
+                original_insert = (
+                    self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event
+                )
                 events = []
 
                 def fail_agenda_turn(*_args, **_kwargs):
                     raise AssertionError('agenda runtime must not run when agenda_enabled is absent or false')
 
+                def fake_insert(event: dict, **_kwargs) -> bool:
+                    events.append(dict(event))
+                    return True
+
                 self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn = fail_agenda_turn
-                self.server.chat_service.chat_turn_logger.emit = (
-                    lambda event, **kwargs: events.append((event, kwargs))
-                )
+                self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
                 try:
                     response = self.client.post(
                         '/api/chat',
@@ -94,7 +99,7 @@ class ServerChatAgendaContractTests(unittest.TestCase):
                     )
                 finally:
                     self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn = original_agenda_turn
-                    self.server.chat_service.chat_turn_logger.emit = original_emit
+                    self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event = original_insert
                     restore()
 
                 self.assertEqual(response.status_code, 200)
@@ -102,7 +107,21 @@ class ServerChatAgendaContractTests(unittest.TestCase):
                 prompt_text = '\n'.join(message['content'] for message in observed_state['payload_messages'])
                 self.assertNotIn('AGENDA', prompt_text.upper())
                 self.assertNotIn('BEGIN:VEVENT', prompt_text)
-                self.assertFalse([event for event in events if event[0] == 'agenda'])
+                agenda_events = [event for event in events if event.get('stage') == 'agenda']
+                self.assertEqual(len(agenda_events), 1)
+                agenda_event = agenda_events[0]
+                agenda_payload = agenda_event['payload_json']
+                self.assertEqual(agenda_event['status'], 'disabled')
+                self.assertEqual(agenda_payload['status_schema_version'], 'agentic_v1')
+                self.assertEqual(agenda_payload['status'], 'disabled')
+                self.assertEqual(agenda_payload['reason_code'], 'agenda_toggle_off')
+                self.assertFalse(agenda_payload['enabled'])
+                self.assertFalse(agenda_payload['caldav_access'])
+                self.assertFalse(agenda_payload['secret_access'])
+                self.assertFalse(agenda_payload['mutation_attempted'])
+                event_dump = json.dumps(events, sort_keys=True)
+                self.assertNotIn('Bonjour', event_dump)
+                self.assertNotIn('BEGIN:VEVENT', event_dump)
 
     def test_agenda_true_with_runtime_off_is_observed_as_content_free_noop_without_prompt_lane(self) -> None:
         conversation = {
@@ -152,6 +171,67 @@ class ServerChatAgendaContractTests(unittest.TestCase):
         self.assertNotIn('BEGIN:VEVENT', prompt_text)
         self.assertNotIn('Fixture Focus Block', repr(events))
         self.assertNotIn('Est-ce que tu peux lire mon agenda demain ?', repr(agenda_payload))
+
+    def test_agenda_runtime_failure_remains_error_observability(self) -> None:
+        conversation = {
+            'id': 'conv-agenda-failure',
+            'created_at': '2026-06-08T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+        _observed_state, restore = self._patch_chat_pipeline(conversation=conversation)
+        original_agenda_turn = self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn
+        original_insert = self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event
+        events = []
+
+        def fake_agenda_turn(*_args, **_kwargs):
+            return SimpleNamespace(
+                enabled=True,
+                used=False,
+                status='error',
+                reason_code='agenda_runtime_error',
+                observability_payload={
+                    'schema_version': 'frida_agenda_lot5_readonly_v1',
+                    'enabled': True,
+                    'used': False,
+                    'status': 'error',
+                    'reason_code': 'agenda_runtime_error',
+                    'mode': 'active',
+                    'caldav_access': False,
+                    'secret_access': False,
+                    'mutation_attempted': False,
+                    'content_free': True,
+                },
+            )
+
+        def fake_insert(event: dict, **_kwargs) -> bool:
+            events.append(dict(event))
+            return True
+
+        self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn = fake_agenda_turn
+        self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={
+                    'message': 'Lis mon agenda aujourd hui',
+                    'agenda_enabled': True,
+                    'web_search': False,
+                },
+            )
+        finally:
+            self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn = original_agenda_turn
+            self.server.chat_service.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        agenda_events = [event for event in events if event.get('stage') == 'agenda']
+        self.assertEqual(len(agenda_events), 1)
+        self.assertEqual(agenda_events[0]['status'], 'error')
+        self.assertEqual(
+            agenda_events[0]['payload_json'].get('status_schema_version'),
+            'agentic_v1',
+        )
+        self.assertNotIn('Lis mon agenda aujourd hui', json.dumps(events, sort_keys=True))
 
     def test_agenda_final_response_override_persists_as_normal_assistant_message(self) -> None:
         conversation = {
