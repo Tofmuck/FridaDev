@@ -116,7 +116,11 @@ Severite attendue:
 - [ ] Definir la politique historique vs fenetre recente.
 - [ ] Definir les interdits content-free transversaux.
 - [ ] Definir les tests anti-fuite minimaux.
-- [ ] Definir la correction documentaire Agenda hors runtime si necessaire.
+- [ ] Trancher explicitement la correction documentaire Agenda hors runtime:
+  soit appliquer un micro-reclassement/archive docs-only Agenda avec mise a
+  jour des index, soit documenter pourquoi `frida-agenda-agent.md` reste dans
+  `todo-todo` avec statut post-V1 dormant, sans le vendre comme chantier
+  runtime actif.
 - [ ] Ne modifier aucun runtime dans ce lot si la spec suffit.
 
 ### Lot 2 - Harmonisation `chat_turn_logger` / checklist / read-model
