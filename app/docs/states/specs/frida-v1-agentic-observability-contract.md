@@ -2,7 +2,7 @@
 
 Statut: spec source-of-truth livree par Lot 1 docs-only; Lot 2 runtime
 `chat_turn_logger` / `log_store` / checklist / read-model livre; correctif
-Lot 2.1 writer V1 livre.
+Lot 2.1 writer V1 livre; correctif Lot 2.2 redaction invalid status livre.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -128,6 +128,10 @@ Regle writer Lot 2.1:
   transforme en `ok`;
 - le writer emet `status=error` avec reason/error code
   `agentic_status_invalid` et marqueur content-free `invalid_status_redacted`;
+- dans cette branche invalide, aucun `reason_code`, `error_code`, `model`,
+  `prompt_kind` ou payload fourni par l'appelant ne peut remplacer ou enrichir
+  le payload minimal redacted;
+- un vrai `status=error` valide conserve son `error_code` stable normal;
 - la valeur brute du statut invalide ne doit pas etre loggee, stockee dans le
   payload ou exposee dans les projections;
 - cette regle ne backfille pas l'historique et ne modifie pas la projection

@@ -89,11 +89,10 @@ def _emit_now(
         logger.warning('chat_turn_log_invalid_status stage=%s', stage)
     else:
         payload_json['status_schema_version'] = agentic_status.STATUS_SCHEMA_VERSION
-
-    if model:
-        payload_json['model'] = str(model)
-    if prompt_kind:
-        payload_json['prompt_kind'] = str(prompt_kind)
+        if model:
+            payload_json['model'] = str(model)
+        if prompt_kind:
+            payload_json['prompt_kind'] = str(prompt_kind)
 
     if status_norm in {
         agentic_status.STATUS_SKIPPED,
@@ -106,7 +105,7 @@ def _emit_now(
     }:
         reason = str(reason_code or payload_json.get('reason_code') or '').strip() or 'not_applicable'
         payload_json['reason_code'] = reason
-    if status_norm == 'error' and error_code:
+    if not invalid_status and status_norm == 'error' and error_code:
         payload_json['error_code'] = str(error_code)
 
     ctx.seq += 1

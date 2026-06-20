@@ -1,7 +1,7 @@
 # Frida V1 - Observabilite globale / logs agentiques - TODO
 
 Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2 runtime
-borne livre avec correctif Lot 2.1 writer; Lot 3+ ouverts.
+borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -148,6 +148,8 @@ Severite attendue:
 - [x] Correctif Lot 2.1: empecher un statut writer invalide de devenir `ok`;
   l'evenement devient `error` content-free avec reason
   `agentic_status_invalid`.
+- [x] Correctif Lot 2.2: empecher tout `error_code` ou payload caller
+  d'ecraser le payload minimal redacted de la branche writer invalid status.
 
 ### Lot 3 - Agentic Agenda / Biblio observability
 

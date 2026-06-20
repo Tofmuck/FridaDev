@@ -320,6 +320,9 @@ class AgenticObservabilityStatusTests(unittest.TestCase):
             chat_turn_logger.emit(
                 'audit_invalid_status',
                 status='totally_invalid_status',
+                error_code='raw_invalid_error_code_sentinel',
+                model='raw_invalid_model_sentinel',
+                prompt_kind='raw_invalid_prompt_kind_sentinel',
                 payload={'reason_code': 'synthetic_writer_bug'},
             )
             chat_turn_logger.end_turn(token, final_status='ok')
@@ -344,9 +347,50 @@ class AgenticObservabilityStatusTests(unittest.TestCase):
         )
         self.assertTrue(invalid_event['payload_json'].get('invalid_status_redacted'))
         serialized = json.dumps(observed, sort_keys=True)
+        self.assertNotIn('raw_invalid_error_code_sentinel', serialized)
+        self.assertNotIn('raw_invalid_model_sentinel', serialized)
+        self.assertNotIn('raw_invalid_prompt_kind_sentinel', serialized)
         self.assertNotIn('totally_invalid_status', serialized)
         self.assertNotIn('invalid status raw message sentinel', serialized)
         self.assertNotIn("'ok', 'synthetic'", serialized)
+
+    def test_chat_turn_logger_valid_error_keeps_error_code(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-valid-error',
+            user_msg='valid error raw message sentinel',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit(
+                'upstream_error_stage',
+                status='error',
+                error_code='upstream_error',
+                payload={'error_class': 'TimeoutError'},
+            )
+            chat_turn_logger.end_turn(token, final_status='error')
+        finally:
+            chat_turn_logger.log_store.insert_chat_log_event = original_insert
+
+        error_event = next(
+            event for event in observed if event['stage'] == 'upstream_error_stage'
+        )
+        self.assertEqual(error_event['status'], 'error')
+        self.assertEqual(
+            error_event['payload_json'].get('status_schema_version'),
+            agentic_status.STATUS_SCHEMA_VERSION,
+        )
+        self.assertEqual(error_event['payload_json'].get('error_code'), 'upstream_error')
+        self.assertNotIn('invalid_status_redacted', error_event['payload_json'])
+        serialized = json.dumps(observed, sort_keys=True)
+        self.assertNotIn('valid error raw message sentinel', serialized)
 
     def test_chat_turn_logger_emits_refusal_without_error_status(self) -> None:
         observed: list[dict[str, Any]] = []
