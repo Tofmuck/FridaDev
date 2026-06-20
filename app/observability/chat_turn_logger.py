@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
+from observability import agentic_status
 from observability import log_store
 
 logger = logging.getLogger('frida.chat_turn_logger')
@@ -77,14 +78,22 @@ def _emit_now(
     error_code: str | None,
 ) -> bool:
     payload_json = _sanitize_payload(dict(payload or {}))
-    status_norm = str(status or 'ok').strip().lower()
+    status_norm = agentic_status.normalize_status(status)
 
     if model:
         payload_json['model'] = str(model)
     if prompt_kind:
         payload_json['prompt_kind'] = str(prompt_kind)
 
-    if status_norm == 'skipped':
+    if status_norm in {
+        agentic_status.STATUS_SKIPPED,
+        agentic_status.STATUS_DISABLED,
+        agentic_status.STATUS_NOT_SELECTED,
+        agentic_status.STATUS_NOT_CONFIGURED,
+        agentic_status.STATUS_NOT_APPLICABLE,
+        agentic_status.STATUS_REFUSED,
+        agentic_status.STATUS_FAILED,
+    }:
         reason = str(reason_code or payload_json.get('reason_code') or '').strip() or 'not_applicable'
         payload_json['reason_code'] = reason
     if status_norm == 'error' and error_code:
@@ -275,6 +284,21 @@ def emit_error(*, error_code: str, error_class: str, message_short: str) -> bool
     )
 
 
+def emit_refusal(*, reason_code: str, reason_short: str, status: str = 'refused') -> bool:
+    status_norm = agentic_status.normalize_status(status, default=agentic_status.STATUS_REFUSED)
+    if status_norm == agentic_status.STATUS_ERROR:
+        status_norm = agentic_status.STATUS_REFUSED
+    return emit(
+        'chat_response',
+        status=status_norm,
+        reason_code=reason_code,
+        payload={
+            'reason_code': reason_code,
+            'reason_short': _normalize_text(reason_short, max_chars=160),
+        },
+    )
+
+
 def emit_branch_skipped(*, reason_code: str, reason_short: str) -> bool:
     return emit(
         'branch_skipped',
@@ -296,8 +320,8 @@ def finish_turn(*, final_status: str) -> bool:
         ctx.conversation_id = f'orphan:{ctx.turn_id}'
         _flush_pending_events(ctx)
 
-    final_status_norm = str(final_status or 'ok').strip().lower()
-    turn_end_status = 'error' if final_status_norm == 'error' else 'ok'
+    final_status_norm = agentic_status.normalize_status(final_status)
+    turn_end_status = final_status_norm
     total_ms = max(0.0, (time.perf_counter() - ctx.started_at) * 1000.0)
     return emit(
         'turn_end',

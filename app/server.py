@@ -106,6 +106,22 @@ def _finish_chat_turn_and_refresh_dashboard(turn_token: Any, *, final_status: st
     )
 
 
+def _classify_chat_response_status(status_code: int, payload: Any) -> tuple[str, str]:
+    if status_code < 400:
+        return 'ok', ''
+    if status_code >= 500:
+        return 'error', 'upstream_error'
+    payload_obj = payload if isinstance(payload, dict) else {}
+    reason_code = str(
+        payload_obj.get('reason_code')
+        or payload_obj.get('error_code')
+        or ''
+    ).strip().lower()
+    if reason_code == 'not_applicable':
+        return 'not_applicable', 'not_applicable'
+    return 'refused', reason_code or 'chat_product_refused'
+
+
 def _ensure_dashboard_recent_for_admin_read(reason: str) -> datetime | None:
     freshness = dashboard_materialization_runtime.ensure_recent_dashboard_analytics_fresh(
         conn_factory=log_store._conn,
@@ -904,13 +920,19 @@ def api_chat():
         return response
 
     status_code = int(result['status'])
-    final_status = 'ok' if status_code < 400 else 'error'
+    result_payload = result['payload'] if isinstance(result.get('payload'), dict) else {}
+    final_status, final_reason_code = _classify_chat_response_status(status_code, result_payload)
     if final_status == 'error':
-        error_payload = result['payload'] if isinstance(result.get('payload'), dict) else {}
         chat_turn_logger.emit_error(
-            error_code='upstream_error' if status_code >= 500 else 'not_applicable',
+            error_code=final_reason_code or 'upstream_error',
             error_class='chat_response_error',
-            message_short=str(error_payload.get('error') or f'chat status {status_code}'),
+            message_short=f'chat status {status_code}',
+        )
+    elif final_status != 'ok':
+        chat_turn_logger.emit_refusal(
+            reason_code=final_reason_code or final_status,
+            reason_short=f'chat status {status_code}',
+            status=final_status,
         )
 
     response = jsonify(result['payload'])

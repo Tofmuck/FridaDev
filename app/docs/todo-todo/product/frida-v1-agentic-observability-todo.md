@@ -1,6 +1,7 @@
 # Frida V1 - Observabilite globale / logs agentiques - TODO
 
-Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2+ ouverts.
+Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2 runtime
+borne livre; Lot 3+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -131,16 +132,16 @@ Severite attendue:
 
 ### Lot 2 - Harmonisation `chat_turn_logger` / checklist / read-model
 
-- [ ] Corriger les faux `error` pour refus produit attendus.
-- [ ] Distinguer `not_applicable`, `disabled`, `not_selected`,
+- [x] Corriger les faux `error` pour refus produit attendus.
+- [x] Distinguer `not_applicable`, `disabled`, `not_selected`,
   `not_configured`, `refused`, `failed` et `error`.
-- [ ] Garder les vraies pannes en `ERROR` ou `status=error`.
-- [ ] Etendre/projeter `chat_log_events.status` vers la taxonomie V1 sans
+- [x] Garder les vraies pannes en `ERROR` ou `status=error`.
+- [x] Etendre/projeter `chat_log_events.status` vers la taxonomie V1 sans
   backfill implicite.
-- [ ] Adapter `turn_observability_checklist` pour ne pas degrader les skips
+- [x] Adapter `turn_observability_checklist` pour ne pas degrader les skips
   normaux.
-- [ ] Ajouter tests de classification sur tours chat.
-- [ ] Ne pas backfiller l'historique; tout backfill reste interdit hors lot
+- [x] Ajouter tests de classification sur tours chat.
+- [x] Ne pas backfiller l'historique; tout backfill reste interdit hors lot
   destructif explicite.
 
 ### Lot 3 - Agentic Agenda / Biblio observability

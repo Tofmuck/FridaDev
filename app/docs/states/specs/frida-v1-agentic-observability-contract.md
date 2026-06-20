@@ -1,6 +1,7 @@
 # Frida V1 - Agentic Observability Contract
 
-Statut: spec source-of-truth livree par Lot 1 docs-only.
+Statut: spec source-of-truth livree par Lot 1 docs-only; Lot 2 runtime
+`chat_turn_logger` / `log_store` / checklist / read-model livre.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -24,9 +25,11 @@ Lot 1 est docs-only:
 - aucune modification Docker, Caddy, Authelia ou secret;
 - aucune reouverture runtime Agenda.
 
-Le runtime courant peut encore porter des contraintes historiques, notamment
-`observability.chat_log_events.status IN ('ok', 'error', 'skipped')`. Les lots
-runtime suivants doivent migrer vers cette spec sans masquer de vraie panne.
+Le runtime Lot 2 accepte la taxonomie V1 dans
+`observability.chat_log_events.status`. L'historique ancien n'est ni backfille,
+ni purgé, ni requalifie destructivement; les read-models exposent une projection
+content-free permettant de distinguer evenements `agentic_v1` et evenements
+legacy.
 
 ## 2. Sources
 
@@ -105,11 +108,15 @@ Regles:
 
 Compatibilite runtime:
 
-- Lot 2 doit etendre ou projeter `chat_log_events.status` pour accepter cette
-  taxonomie sans perdre l'historique;
-- tant que la table historique ne sait porter que `ok/error/skipped`, les
-  projections doivent exposer `status_v1` ou equivalent content-free, sans
-  vendre `skipped` comme unique verite produit.
+- Lot 2 etend `chat_log_events.status` via une contrainte SQL V1 acceptant les
+  neuf statuts cibles;
+- les lectures exposent `status_v1`, `status_schema_version` et
+  `legacy_status` sans backfill historique;
+- les statuts non-legacy (`disabled`, `not_selected`, `not_configured`,
+  `not_applicable`, `refused`, `failed`) sont projetes `agentic_v1`; les
+  anciens `ok/error/skipped` sans marqueur explicite restent projetes legacy;
+- les evenements historiques `ok/error/skipped` restent lisibles comme legacy,
+  sans etre vendus comme requalifies.
 
 ## 5. Reason codes et familles
 
@@ -407,10 +414,16 @@ Validation finale attendue:
 
 Lot 2:
 
-- etendre/projeter `chat_turn_logger`, `log_store` et checklist vers la
-  taxonomie V1;
-- corriger les faux `error` pour refus produit;
-- distinguer recent/historique dans les read-models.
+- `chat_turn_logger` normalise les statuts V1 et sait emettre un refus produit
+  sans `emit_error`;
+- `log_store` accepte les neuf statuts V1 en DB applicative et projette
+  `status_v1` / `status_schema_version` / `legacy_status`;
+- la route chat non-stream classe les 4xx produit en `refused` ou
+  `not_applicable`, tandis que 5xx et exceptions restent `error`;
+- la checklist ne degrade plus les statuts non-problemes
+  `disabled/not_selected/not_configured/not_applicable/refused`;
+- les read-models compacts distinguent recent V1, historique legacy et
+  statuts non-erreur, sans backfill.
 
 Lot 3:
 

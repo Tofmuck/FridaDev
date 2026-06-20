@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Mapping, Sequence
 
+from observability import agentic_status
 from observability.biblio_librarian_agent_read_model import build_biblio_librarian_agent_summary
 from observability.turn_observability_checklist import build_turn_observability_checklist
 
@@ -78,7 +79,7 @@ def _stage(event: Mapping[str, Any]) -> str:
 
 
 def _status(event: Mapping[str, Any]) -> str:
-    return str(event.get('status') or '').strip().lower()
+    return agentic_status.normalize_status(event.get('status_v1') or event.get('status'))
 
 
 def _event_ts(event: Mapping[str, Any]) -> str | None:
@@ -87,6 +88,40 @@ def _event_ts(event: Mapping[str, Any]) -> str | None:
 
 def _event_sort_key(event: Mapping[str, Any]) -> tuple[str, str]:
     return str(event.get('ts') or ''), str(event.get('event_id') or '')
+
+
+def _status_schema_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    schema_counts: dict[str, int] = {}
+    legacy_count = 0
+    v1_count = 0
+    for event in events:
+        payload = _payload(event)
+        schema = str(event.get('status_schema_version') or '').strip()
+        if not schema:
+            schema = agentic_status.projected_schema_version(
+                payload=dict(payload),
+                status=event.get('status_v1') or event.get('status'),
+            )
+        schema_counts[schema] = schema_counts.get(schema, 0) + 1
+        if schema == agentic_status.STATUS_SCHEMA_VERSION:
+            v1_count += 1
+        else:
+            legacy_count += 1
+    if v1_count and legacy_count:
+        source_kind = 'mixed_v1_and_legacy'
+    elif v1_count:
+        source_kind = 'agentic_v1'
+    elif legacy_count:
+        source_kind = 'legacy'
+    else:
+        source_kind = 'empty'
+    return {
+        'source_kind': source_kind,
+        'schema_counts': dict(sorted(schema_counts.items())),
+        'v1_event_count': v1_count,
+        'legacy_event_count': legacy_count,
+        'historical_events_reclassified': False,
+    }
 
 
 def _safe_events(events: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
@@ -1155,13 +1190,15 @@ def _latencies_summary(events: Sequence[Mapping[str, Any]], providers: Mapping[s
 def _errors_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     by_stage_status: dict[tuple[str, str, str], int] = {}
     reason_code_counts: dict[str, int] = {}
+    status_counts: dict[str, int] = {}
     fallback_count = 0
     for event in events:
         status = _status(event)
         payload = _payload(event)
         stage = _stage(event) or 'unknown'
         reason = _reason_code(payload) or 'unknown'
-        if status in {'error', 'skipped'}:
+        status_counts[status] = status_counts.get(status, 0) + 1
+        if status != agentic_status.STATUS_OK:
             key = (stage, status, reason)
             by_stage_status[key] = by_stage_status.get(key, 0) + 1
             reason_code_counts[reason] = reason_code_counts.get(reason, 0) + 1
@@ -1179,8 +1216,15 @@ def _errors_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     ]
     return {
         'error_count': sum(1 for event in events if _status(event) == 'error'),
+        'failed_count': sum(1 for event in events if _status(event) == 'failed'),
+        'refused_count': sum(1 for event in events if _status(event) == 'refused'),
+        'not_applicable_count': sum(1 for event in events if _status(event) == 'not_applicable'),
+        'not_selected_count': sum(1 for event in events if _status(event) == 'not_selected'),
+        'not_configured_count': sum(1 for event in events if _status(event) == 'not_configured'),
+        'disabled_count': sum(1 for event in events if _status(event) == 'disabled'),
         'skipped_count': sum(1 for event in events if _status(event) == 'skipped'),
         'fallback_count': fallback_count,
+        'status_counts': dict(sorted(status_counts.items())),
         'reason_code_counts': dict(sorted(reason_code_counts.items())),
         'stages': stages[:16],
     }
@@ -1236,6 +1280,7 @@ def build_turn_pipeline_item(
         'biblio': _biblio_summary(safe_events),
         'latencies': _latencies_summary(safe_events, providers),
         'errors': _errors_summary(safe_events),
+        'status_schema': _status_schema_summary(safe_events),
         'stage_counts': _stage_counts(safe_events),
         'flags': {
             'events_truncated': bool(events_truncated),
