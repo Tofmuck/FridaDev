@@ -40,6 +40,7 @@ REASON_REMOTE_COMPENSATION_FAILED = "folder_generated_image_remote_compensation_
 REASON_LIST_OK = "folder_generated_image_list_ok"
 REASON_LOOKUP_OK = "folder_generated_image_lookup_ok"
 REASON_LOOKUP_FAILED = "folder_generated_image_lookup_failed"
+REASON_IMAGE_ID_INVALID = "folder_generated_image_id_invalid"
 REASON_NOT_FOUND = "folder_generated_image_not_found"
 REASON_DELETED = "folder_generated_image_deleted"
 REASON_NOT_LINKED = "folder_generated_image_not_linked"
@@ -87,6 +88,7 @@ REASON_CODE_CATALOG = frozenset(
         REASON_LIST_OK,
         REASON_LOOKUP_OK,
         REASON_LOOKUP_FAILED,
+        REASON_IMAGE_ID_INVALID,
         REASON_NOT_FOUND,
         REASON_DELETED,
         REASON_NOT_LINKED,

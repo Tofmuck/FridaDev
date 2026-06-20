@@ -1,7 +1,7 @@
 # Frida V1 - Images generees - TODO
 
-Statut: TODO actif detaille; Lots 0, 1, 2 et 3 coches; read-model local
-Images V1 et creation Nextcloud-first livres; Lot 4+ ouverts.
+Statut: TODO actif detaille; Lots 0, 1, 2, 3 et 4 coches; read-model local,
+creation Nextcloud-first et liste/lookup metadata-only livres; Lot 5+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Spec source-of-truth Lot 1:
 `app/docs/states/specs/frida-v1-generated-images-contract.md`
@@ -572,21 +572,35 @@ Correctif Lot 3.1:
 
 ### Lot 4 - Liste / lookup / projection utilisateur
 
-- [ ] Ajouter la liste des images generees d'un dossier depuis le read-model
+- [x] Ajouter la liste des images generees d'un dossier depuis le read-model
   local uniquement.
-- [ ] Ajouter lookup par UUID exact.
-- [ ] Exiger dossier valide et `linked`.
-- [ ] Refuser dossier supprime, non eligible ou panne store.
-- [ ] Exclure les images `deleted` par defaut.
-- [ ] Verifier que l'image appartient strictement au dossier du path.
-- [ ] Ne pas appeler WebDAV/Nextcloud.
-- [ ] Ne pas lire de bytes image.
-- [ ] Exposer cote utilisateur titre/nom si autorise, format, taille,
+- [x] Ajouter lookup par UUID exact.
+- [x] Exiger dossier valide et `linked`.
+- [x] Refuser dossier supprime, non eligible ou panne store.
+- [x] Exclure les images `deleted` par defaut.
+- [x] Verifier que l'image appartient strictement au dossier du path.
+- [x] Ne pas appeler WebDAV/Nextcloud.
+- [x] Ne pas lire de bytes image.
+- [x] Exposer cote utilisateur titre/nom si autorise, format, taille,
   dimensions, dates, statut et actions disponibles.
-- [ ] Garder la projection technique sans prompt brut, target brut, ETag brut,
+- [x] Garder la projection technique sans prompt brut, target brut, ETag brut,
   URL DAV, chemin DAV, XML, bytes, base64 ou data URL.
-- [ ] Tester liste vide, liste multi-formats, deleted exclu, lookup OK, absent,
+- [x] Tester liste vide, liste multi-formats, deleted exclu, lookup OK, absent,
   cross-folder, panne store et anti-fuite.
+
+Livraison Lot 4:
+
+- routes namespaced livrees:
+  `GET /api/workspace-folders/<folder_id>/generated-images` et
+  `GET /api/workspace-folders/<folder_id>/generated-images/<image_id>`;
+- liste et lookup lisent uniquement le read-model local
+  `workspace_folder_generated_images`;
+- aucune lecture provider, Nextcloud, WebDAV, bytes, base64 ou data URL;
+- lookup UUID exact uniquement; invalid UUID, absent, cross-folder et deleted
+  sont refuses content-free;
+- pannes folder store et image store fail-closed, sans fausse liste vide;
+- les actions `can_open`, `can_download` et `can_delete` restent `false` avec
+  `folder_generated_image_access_not_prepared` tant que Lot 5 n'est pas livre.
 
 ### Lot 5 - Open/download/delete image
 

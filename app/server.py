@@ -1480,6 +1480,27 @@ def api_create_workspace_folder_export(folder_id: str):
 
 # ── /api/workspace-folders/<id>/generated-images* ────────────────────────────
 
+@app.get('/api/workspace-folders/<folder_id>/generated-images')
+def api_list_workspace_folder_generated_images(folder_id: str):
+    payload, status = workspace_folder_generated_images_service.list_workspace_folder_generated_images_response(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/generated-images/<image_id>')
+def api_get_workspace_folder_generated_image(folder_id: str, image_id: str):
+    payload, status = workspace_folder_generated_images_service.get_workspace_folder_generated_image_response(
+        folder_id,
+        image_id,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+    )
+    return jsonify(payload), status
+
+
 @app.post('/api/workspace-folders/<folder_id>/generated-images')
 def api_create_workspace_folder_generated_image(folder_id: str):
     data = request.get_json(silent=True) or {}

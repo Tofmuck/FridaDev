@@ -7,8 +7,8 @@ from . import workspace_folder_generated_images
 
 
 REASON_FOLDER_NOT_FOUND = "workspace_folder_not_found"
-REASON_FOLDER_DELETED = "workspace_folder_deleted"
-REASON_FOLDER_ID_INVALID = "workspace_folder_id_invalid"
+REASON_FOLDER_DELETED = workspace_folder_generated_images.REASON_FOLDER_DELETED
+REASON_FOLDER_ID_INVALID = workspace_folder_generated_images.REASON_FOLDER_INVALID
 REASON_RUNTIME_UNAVAILABLE = "folder_generated_image_runtime_unavailable"
 _CLIENT_IMAGE_ID_KEYS = frozenset({"image_id", "generated_image_id"})
 
@@ -84,6 +84,91 @@ def create_workspace_folder_generated_image_response(
     }, 201
 
 
+def list_workspace_folder_generated_images_response(
+    folder_id: str,
+    *,
+    workspace_folders_module: Any,
+    generated_images_module: Any = workspace_folder_generated_images,
+) -> Tuple[dict[str, Any], int]:
+    normalized, folder, error = _resolve_existing_folder(
+        folder_id,
+        workspace_folders_module=workspace_folders_module,
+    )
+    if error:
+        return error
+    linked_error = _linked_folder_error(normalized, folder, list_response=True)
+    if linked_error:
+        return linked_error
+    try:
+        images = generated_images_module.list_generated_images(
+            normalized,
+            include_deleted=False,
+            fail_closed=True,
+        )
+    except Exception:
+        return _lookup_failure_response(normalized, list_response=True)
+
+    projected = generated_images_module.apply_generated_image_list(
+        images,
+        folder=folder,
+    )
+    return {
+        "ok": True,
+        "workspace_folder_id": normalized,
+        "generated_images": projected,
+        "count": len(projected),
+        "reason_code": workspace_folder_generated_images.REASON_LIST_OK,
+    }, 200
+
+
+def get_workspace_folder_generated_image_response(
+    folder_id: str,
+    image_id: str,
+    *,
+    workspace_folders_module: Any,
+    generated_images_module: Any = workspace_folder_generated_images,
+) -> Tuple[dict[str, Any], int]:
+    normalized, folder, error = _resolve_existing_folder(
+        folder_id,
+        workspace_folders_module=workspace_folders_module,
+    )
+    if error:
+        return error
+    linked_error = _linked_folder_error(normalized, folder, list_response=False)
+    if linked_error:
+        return linked_error
+
+    normalized_image_id = workspace_folder_generated_images.normalize_generated_image_id(image_id)
+    if not normalized_image_id:
+        return _image_id_invalid_response(normalized)
+    try:
+        image = generated_images_module.get_generated_image(
+            normalized_image_id,
+            fail_closed=True,
+        )
+    except Exception:
+        return _lookup_failure_response(normalized, image_id=normalized_image_id)
+    if not image:
+        return _image_not_found_response(normalized)
+    image_folder_id = workspace_folder_generated_images.normalize_workspace_folder_id(
+        image.get("workspace_folder_id")
+    )
+    if image_folder_id != normalized:
+        return _image_not_found_response(normalized)
+    if _is_deleted_image(image):
+        return _image_deleted_response(normalized, image)
+
+    return {
+        "ok": True,
+        "workspace_folder_id": normalized,
+        "generated_image": generated_images_module.apply_generated_image_projection(
+            image,
+            folder=folder,
+        ),
+        "reason_code": workspace_folder_generated_images.REASON_LOOKUP_OK,
+    }, 200
+
+
 def _resolve_existing_folder(
     folder_id: str,
     *,
@@ -132,6 +217,32 @@ def _resolve_existing_folder(
     return normalized, dict(folder), None
 
 
+def _linked_folder_error(
+    folder_id: str,
+    folder: Mapping[str, Any],
+    *,
+    list_response: bool,
+) -> Tuple[dict[str, Any], int] | None:
+    if str(folder.get("nextcloud_sync_state") or "") == "linked":
+        return None
+    payload = {
+        "ok": False,
+        "error": _human_image_error(workspace_folder_generated_images.REASON_FOLDER_NOT_LINKED),
+        "reason_code": workspace_folder_generated_images.REASON_FOLDER_NOT_LINKED,
+        "workspace_folder_id": folder_id,
+        "generated_image": {
+            "status": _image_status_for_failure(
+                workspace_folder_generated_images.REASON_FOLDER_NOT_LINKED
+            ),
+            "reason_code": workspace_folder_generated_images.REASON_FOLDER_NOT_LINKED,
+        },
+    }
+    if list_response:
+        payload["generated_images"] = []
+        payload["count"] = 0
+    return payload, 409
+
+
 def _blocked_create_response(folder_id: str, reason_code: str) -> Tuple[dict[str, Any], int]:
     return {
         "ok": False,
@@ -153,9 +264,14 @@ def _blocked_create_response(folder_id: str, reason_code: str) -> Tuple[dict[str
     }, _http_status_for_reason(reason_code)
 
 
-def _lookup_failure_response(folder_id: str) -> Tuple[dict[str, Any], int]:
+def _lookup_failure_response(
+    folder_id: str,
+    *,
+    image_id: str = "",
+    list_response: bool = False,
+) -> Tuple[dict[str, Any], int]:
     reason_code = workspace_folder_generated_images.REASON_LOOKUP_FAILED
-    return {
+    payload = {
         "ok": False,
         "error": _human_image_error(reason_code),
         "reason_code": reason_code,
@@ -164,7 +280,69 @@ def _lookup_failure_response(folder_id: str) -> Tuple[dict[str, Any], int]:
             "status": _image_status_for_failure(reason_code),
             "reason_code": reason_code,
         },
-    }, 503
+    }
+    if image_id:
+        payload["generated_image_ref"] = workspace_folder_generated_images.build_technical_projection(
+            {"id": image_id}
+        ).get("image_ref", "")
+    if list_response:
+        payload["generated_images"] = []
+        payload["count"] = 0
+    return payload, 503
+
+
+def _image_id_invalid_response(folder_id: str) -> Tuple[dict[str, Any], int]:
+    reason_code = workspace_folder_generated_images.REASON_IMAGE_ID_INVALID
+    return {
+        "ok": False,
+        "error": _human_image_error(reason_code),
+        "reason_code": reason_code,
+        "workspace_folder_id": folder_id,
+        "generated_image": {
+            "status": workspace_folder_generated_images.GENERATED_IMAGE_LOCAL_UNAVAILABLE,
+            "reason_code": reason_code,
+        },
+    }, 400
+
+
+def _image_not_found_response(folder_id: str) -> Tuple[dict[str, Any], int]:
+    reason_code = workspace_folder_generated_images.REASON_NOT_FOUND
+    return {
+        "ok": False,
+        "error": _human_image_error(reason_code),
+        "reason_code": reason_code,
+        "workspace_folder_id": folder_id,
+        "generated_image": {
+            "status": workspace_folder_generated_images.GENERATED_IMAGE_LOCAL_UNAVAILABLE,
+            "reason_code": reason_code,
+        },
+    }, 404
+
+
+def _image_deleted_response(
+    folder_id: str,
+    image: Mapping[str, Any],
+) -> Tuple[dict[str, Any], int]:
+    reason_code = workspace_folder_generated_images.REASON_DELETED
+    return {
+        "ok": False,
+        "error": _human_image_error(reason_code),
+        "reason_code": reason_code,
+        "workspace_folder_id": folder_id,
+        "generated_image": {
+            "status": workspace_folder_generated_images.GENERATED_IMAGE_LOCAL_DELETED,
+            "reason_code": reason_code,
+            "image_ref": workspace_folder_generated_images.build_technical_projection(
+                image
+            ).get("image_ref", ""),
+        },
+    }, 410
+
+
+def _is_deleted_image(image: Mapping[str, Any]) -> bool:
+    return bool(image.get("deleted_at")) or workspace_folder_generated_images.local_state(
+        image.get("local_state")
+    ) == workspace_folder_generated_images.GENERATED_IMAGE_LOCAL_DELETED
 
 
 def _image_status_for_failure(reason_code: str) -> str:
@@ -190,6 +368,7 @@ def _http_status_for_reason(reason_code: str) -> int:
         return 410
     if reason_code in {
         workspace_folder_generated_images.REASON_FOLDER_INVALID,
+        workspace_folder_generated_images.REASON_IMAGE_ID_INVALID,
         workspace_folder_generated_images.REASON_CLIENT_IMAGE_ID_FORBIDDEN,
         workspace_folder_generated_images.REASON_CLIENT_WORKSPACE_FOLDER_ID_FORBIDDEN,
         workspace_folder_generated_images.REASON_PROMPT_MISSING,
@@ -247,4 +426,8 @@ def _human_image_error(reason_code: str) -> str:
         workspace_folder_generated_images.REASON_NAME_CONFLICT: "image deja presente avec cette cible",
         workspace_folder_generated_images.REASON_LOCAL_PERSISTENCE_FAILED: "persistance locale de l'image impossible",
         workspace_folder_generated_images.REASON_LOOKUP_FAILED: "read-model images indisponible",
+        workspace_folder_generated_images.REASON_IMAGE_ID_INVALID: "identifiant d'image invalide",
+        workspace_folder_generated_images.REASON_NOT_FOUND: "image generee introuvable",
+        workspace_folder_generated_images.REASON_DELETED: "image generee supprimee",
+        workspace_folder_generated_images.REASON_ACCESS_NOT_PREPARED: "acces image non prepare",
     }.get(reason_code, "creation d'image impossible")

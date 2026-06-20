@@ -246,6 +246,21 @@ class WorkspaceFolderGeneratedImagesTests(unittest.TestCase):
         technical = item["generated_image_v1_technical"]
         self.assertEqual(user["display_name"], "Image sensible")
         self.assertEqual(user["format"], "png")
+        self.assertFalse(user["can_download"])
+        self.assertFalse(user["can_open"])
+        self.assertFalse(user["can_delete"])
+        self.assertEqual(
+            user["actions"]["download_reason_code"],
+            "folder_generated_image_access_not_prepared",
+        )
+        self.assertEqual(
+            user["actions"]["open_reason_code"],
+            "folder_generated_image_access_not_prepared",
+        )
+        self.assertEqual(
+            user["actions"]["delete_reason_code"],
+            "folder_generated_image_access_not_prepared",
+        )
         self.assertEqual(technical["display_name_hash"], "abc123def456")
         self.assertEqual(technical["target_ref"], "generated-image-target:456defabc123")
         self.assertEqual(technical["content_hash_short"], "789abc123def")

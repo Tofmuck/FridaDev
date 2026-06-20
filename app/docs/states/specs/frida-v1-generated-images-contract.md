@@ -1,7 +1,8 @@
 # Frida V1 - Generated Images contract
 
 Statut: spec source-of-truth Images generees V1 ouverte; Lots 0/1 docs-only,
-Lot 2 read-model et Lot 3 creation Nextcloud-first livres.
+Lot 2 read-model, Lot 3 creation Nextcloud-first et Lot 4 liste/lookup
+metadata-only livres.
 Date: 2026-06-20
 Roadmap active: `app/docs/todo-todo/product/frida-v1-generated-images-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-generated-images-lot0-audit-2026-06-19.md`
@@ -227,8 +228,9 @@ DELETE /api/workspace-folders/<folder_id>/generated-images/<image_id>
 Etat de livraison:
 
 - Lot 3 livre uniquement `POST /api/workspace-folders/<folder_id>/generated-images`;
-- les routes liste, lookup, open/download et delete restent reservees aux lots
-  suivants.
+- Lot 4 livre `GET /api/workspace-folders/<folder_id>/generated-images` et
+  `GET /api/workspace-folders/<folder_id>/generated-images/<image_id>`;
+- les routes open/download et delete restent reservees aux lots suivants.
 
 Regles communes:
 
@@ -386,6 +388,7 @@ Liste:
 - images `deleted` exclues par defaut;
 - aucun appel Nextcloud/WebDAV;
 - aucun byte image lu.
+- panne store = fail-closed, pas liste vide mensongere.
 
 Lookup:
 
@@ -395,6 +398,22 @@ Lookup:
 - panne store = fail-closed, pas liste vide.
 
 Lookup par titre/critere reste hors V1.
+
+Implementation Lot 4:
+
+- liste et lookup metadata-only sont livres via les routes namespaced dossier;
+- invalid UUID est refuse avec `folder_generated_image_id_invalid`;
+- absence, cross-folder et deleted sont distingues sans exposer d'entrailles
+  techniques;
+- les projections utilisateur exposent nom, format, taille, dimensions, dates,
+  statuts et actions;
+- les projections techniques restent sans prompt brut, target brut, ETag brut,
+  URL DAV, chemin DAV, XML, bytes, base64, data URL, `content_hash` complet ou
+  secret;
+- tant que Lot 5 n'est pas livre, `can_open`, `can_download` et `can_delete`
+  restent `false` avec reason code
+  `folder_generated_image_access_not_prepared`;
+- aucun provider, Nextcloud ou WebDAV n'est appele par liste/lookup.
 
 ## 13. Open/download
 
