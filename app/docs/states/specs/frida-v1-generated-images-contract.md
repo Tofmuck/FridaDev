@@ -2,7 +2,8 @@
 
 Statut: spec source-of-truth Images generees V1 ouverte; Lots 0/1 docs-only,
 Lot 2 read-model, Lot 3 creation Nextcloud-first, Lot 4 liste/lookup
-metadata-only, Lot 5 open/download/delete et Lot 6 UI dossier livres.
+metadata-only, Lot 5 open/download/delete, Lot 6 UI dossier et Lot 7
+observabilite/smokes content-free livres.
 Date: 2026-06-20
 Roadmap active: `app/docs/todo-todo/product/frida-v1-generated-images-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-generated-images-lot0-audit-2026-06-19.md`
