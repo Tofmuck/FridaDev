@@ -1,7 +1,8 @@
 # Frida V1 - Generated Images contract
 
-Statut: spec source-of-truth Images generees V1 ouverte en Lot 1 docs-only.
-Date: 2026-06-19
+Statut: spec source-of-truth Images generees V1 ouverte; Lots 0/1 docs-only,
+Lot 2 read-model et Lot 3 creation Nextcloud-first livres.
+Date: 2026-06-20
 Roadmap active: `app/docs/todo-todo/product/frida-v1-generated-images-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-generated-images-lot0-audit-2026-06-19.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -223,6 +224,12 @@ GET    /api/workspace-folders/<folder_id>/generated-images/<image_id>/open
 DELETE /api/workspace-folders/<folder_id>/generated-images/<image_id>
 ```
 
+Etat de livraison:
+
+- Lot 3 livre uniquement `POST /api/workspace-folders/<folder_id>/generated-images`;
+- les routes liste, lookup, open/download et delete restent reservees aux lots
+  suivants.
+
 Regles communes:
 
 - `folder_id` du path est l'autorite;
@@ -349,6 +356,16 @@ Si l'ecriture distante reussit puis la persistance locale echoue:
 - si compensation distante reussit, retourner un echec content-free explicite;
 - si compensation distante echoue, retourner un echec partiel content-free;
 - ne jamais masquer une divergence local/distant.
+
+Implementation Lot 3:
+
+- modules dedies: provider V1, validation V1, client WebDAV Images, runtime
+  Nextcloud-first et service HTTP;
+- preuve live:
+  `app/docs/states/baselines/generated-images-smokes/frida-v1-generated-images-lot3-nextcloud-first-20260620T083741Z.jsonl`;
+- cas update-like, provider OK mais stockage KO et rollback distant couverts par
+  tests unitaires fake;
+- aucune route globale `/api/images*` ou `/api/generated-images*` livree.
 
 ## 12. Liste et lookup
 
@@ -496,6 +513,8 @@ Catalogue V1:
 - `folder_generated_image_images_target_missing`;
 - `folder_generated_image_images_target_not_collection`;
 - `folder_generated_image_images_target_unavailable`;
+- `folder_generated_image_client_image_id_forbidden`;
+- `folder_generated_image_client_workspace_folder_id_forbidden`;
 - `folder_generated_image_prompt_missing`;
 - `folder_generated_image_prompt_too_large`;
 - `folder_generated_image_generator_unsupported`;

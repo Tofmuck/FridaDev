@@ -39,6 +39,9 @@ from core import workspace_folder_export_nextcloud_runtime
 from core import workspace_folder_export_content_service
 from core import workspace_folder_exports
 from core import workspace_folder_exports_service
+from core import workspace_folder_generated_image_nextcloud_runtime
+from core import workspace_folder_generated_images
+from core import workspace_folder_generated_images_service
 from core import workspace_folder_notes
 from core import workspace_folder_notes_append
 from core import workspace_folder_notes_read
@@ -1471,6 +1474,21 @@ def api_create_workspace_folder_export(folder_id: str):
         workspace_folder_exports_module=workspace_folder_exports,
         exports_nextcloud_runtime_module=workspace_folder_export_nextcloud_runtime,
         conversation_store_module=conv_store,
+    )
+    return jsonify(payload), status
+
+
+# ── /api/workspace-folders/<id>/generated-images* ────────────────────────────
+
+@app.post('/api/workspace-folders/<folder_id>/generated-images')
+def api_create_workspace_folder_generated_image(folder_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_folder_generated_images_service.create_workspace_folder_generated_image_response(
+        folder_id,
+        data,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+        generated_images_runtime_module=workspace_folder_generated_image_nextcloud_runtime,
     )
     return jsonify(payload), status
 

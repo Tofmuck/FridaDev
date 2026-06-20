@@ -1,7 +1,7 @@
 # Frida V1 - Images generees - TODO
 
-Statut: TODO actif detaille; Lots 0, 1 et 2 coches; read-model local Images
-V1 livre; Lot 3+ ouverts.
+Statut: TODO actif detaille; Lots 0, 1, 2 et 3 coches; read-model local
+Images V1 et creation Nextcloud-first livres; Lot 4+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Spec source-of-truth Lot 1:
 `app/docs/states/specs/frida-v1-generated-images-contract.md`
@@ -525,28 +525,40 @@ Correctif Lot 2.1:
 
 ### Lot 3 - Stockage Nextcloud-first sous Images
 
-- [ ] Adapter le moteur de generation existant ou extraire une capacite provider
+- [x] Adapter le moteur de generation existant ou extraire une capacite provider
   reusable sans passer par un contrat `image_data_url` navigateur comme stockage.
-- [ ] Exiger `workspace_folder` existant et `linked`.
-- [ ] Refuser `local_only`, `sync_pending`, `sync_error`, `conflict` ou
+- [x] Exiger `workspace_folder` existant et `linked`.
+- [x] Refuser `local_only`, `sync_pending`, `sync_error`, `conflict` ou
   `deleted`.
-- [ ] Verifier `Images` par `PROPFIND Depth: 0` et confirmation collection.
-- [ ] Generer ou recevoir l'image selon la spec Lot 1.
-- [ ] Decoder/valider l'image selon les formats et limites V1 avant ecriture.
-- [ ] Ecrire dans Nextcloud avec strategie anti-ecrasement.
-- [ ] Accepter uniquement une creation sure.
-- [ ] Traiter les statuts update-like comme conflit/refus, jamais comme succes.
-- [ ] Persister le read-model local seulement apres succes distant.
-- [ ] Considerer le succes produit seulement si generation provider, validation
+- [x] Verifier `Images` par `PROPFIND Depth: 0` et confirmation collection.
+- [x] Generer ou recevoir l'image selon la spec Lot 1.
+- [x] Decoder/valider l'image selon les formats et limites V1 avant ecriture.
+- [x] Ecrire dans Nextcloud avec strategie anti-ecrasement.
+- [x] Accepter uniquement une creation sure.
+- [x] Traiter les statuts update-like comme conflit/refus, jamais comme succes.
+- [x] Persister le read-model local seulement apres succes distant.
+- [x] Considerer le succes produit seulement si generation provider, validation
   image, ecriture Nextcloud-first et persistance read-model reussissent toutes.
-- [ ] Si le provider reussit mais que le stockage durable echoue, refuser
+- [x] Si le provider reussit mais que le stockage durable echoue, refuser
   content-free: aucun read-model `linked`, aucun fallback navigateur durable
   vendu comme succes V1, aucune data URL persistee.
-- [ ] Si ecriture distante reussit puis persistance locale echoue, tenter une
+- [x] Si ecriture distante reussit puis persistance locale echoue, tenter une
   compensation distante strictement bornee a la cible creee.
-- [ ] Ne jamais exposer prompt brut, bytes, data URL, base64, cible DAV, URL DAV,
+- [x] Ne jamais exposer prompt brut, bytes, data URL, base64, cible DAV, URL DAV,
   XML, ETag brut ou payload provider/WebDAV dans logs/projections/preuves.
-- [ ] Produire une preuve live synthetique content-free avec cleanup exact.
+- [x] Produire une preuve live synthetique content-free avec cleanup exact:
+  `app/docs/states/baselines/generated-images-smokes/frida-v1-generated-images-lot3-nextcloud-first-20260620T083741Z.jsonl`.
+
+Livraison Lot 3:
+
+- route namespaced livree: `POST /api/workspace-folders/<folder_id>/generated-images`;
+- modules dedies livres pour provider V1, validation V1, client WebDAV Images,
+  runtime Nextcloud-first et service HTTP;
+- provider live synthetique prouve, sans prompt brut ni data URL dans
+  l'artefact;
+- cleanup distant exact + tombstone local prouves;
+- cas update-like, stockage KO apres provider OK et rollback distant couverts
+  par tests unitaires fake.
 
 ### Lot 4 - Liste / lookup / projection utilisateur
 
@@ -651,6 +663,8 @@ Catalogue stabilise par la spec Lot 1:
 - `folder_generated_image_images_target_missing`;
 - `folder_generated_image_images_target_not_collection`;
 - `folder_generated_image_images_target_unavailable`;
+- `folder_generated_image_client_image_id_forbidden`;
+- `folder_generated_image_client_workspace_folder_id_forbidden`;
 - `folder_generated_image_prompt_missing`;
 - `folder_generated_image_prompt_too_large`;
 - `folder_generated_image_generator_unsupported`;
@@ -776,6 +790,5 @@ Interdits:
 
 ## Prochain pas
 
-Executer Lot 3 Images V1: stockage Nextcloud-first sous `/Images`, en partant
-du read-model local dedie `workspace_folder_generated_images` et du contrat
-`app/docs/states/specs/frida-v1-generated-images-contract.md`.
+Executer Lot 4 Images V1: liste / lookup / projection utilisateur depuis le
+read-model local, sans lecture Nextcloud/WebDAV et sans bytes image.

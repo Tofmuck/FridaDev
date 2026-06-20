@@ -10,6 +10,10 @@ REASON_FOLDER_NOT_ELIGIBLE = "folder_generated_image_folder_not_eligible"
 REASON_IMAGES_TARGET_MISSING = "folder_generated_image_images_target_missing"
 REASON_IMAGES_TARGET_NOT_COLLECTION = "folder_generated_image_images_target_not_collection"
 REASON_IMAGES_TARGET_UNAVAILABLE = "folder_generated_image_images_target_unavailable"
+REASON_CLIENT_IMAGE_ID_FORBIDDEN = "folder_generated_image_client_image_id_forbidden"
+REASON_CLIENT_WORKSPACE_FOLDER_ID_FORBIDDEN = (
+    "folder_generated_image_client_workspace_folder_id_forbidden"
+)
 REASON_PROMPT_MISSING = "folder_generated_image_prompt_missing"
 REASON_PROMPT_TOO_LARGE = "folder_generated_image_prompt_too_large"
 REASON_GENERATOR_UNSUPPORTED = "folder_generated_image_generator_unsupported"
@@ -55,6 +59,8 @@ REASON_CODE_CATALOG = frozenset(
         REASON_IMAGES_TARGET_MISSING,
         REASON_IMAGES_TARGET_NOT_COLLECTION,
         REASON_IMAGES_TARGET_UNAVAILABLE,
+        REASON_CLIENT_IMAGE_ID_FORBIDDEN,
+        REASON_CLIENT_WORKSPACE_FOLDER_ID_FORBIDDEN,
         REASON_PROMPT_MISSING,
         REASON_PROMPT_TOO_LARGE,
         REASON_GENERATOR_UNSUPPORTED,
