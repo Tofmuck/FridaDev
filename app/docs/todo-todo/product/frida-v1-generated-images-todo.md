@@ -673,6 +673,10 @@ Livraison Lot 6:
 - open/download/delete utilisent uniquement les routes namespaced Lot 5 et
   respectent les flags serveur `can_open`, `can_download` et `can_delete`;
 - suppression UI avec confirmation humaine et refresh apres succes serveur;
+- correctif Lot 6.1: `chat_image_generation.js` est charge avant
+  `chat_workspace_folder_generated_images_panel.js` dans `index.html`, afin que
+  le panneau navigateur reel dispose du normaliseur `generator_key`,
+  `aspect_ratio` et `image_size`;
 - tests frontend directs:
   `app/tests/unit/frontend_chat/test_workspace_folder_generated_images_module.js`
   et

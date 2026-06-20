@@ -1,5 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const GeneratedImages = require("../../../web/chat_workspace_folder_generated_images.js");
 const {
@@ -210,6 +212,28 @@ function assertCreatePayloadIsClean(payload) {
   }
 }
 
+function scriptIndex(indexHtml, scriptName) {
+  const needle = `<script src="${scriptName}"></script>`;
+  const idx = indexHtml.indexOf(needle);
+  assert.notEqual(idx, -1, `${scriptName} must be loaded by index.html`);
+  assert.equal(indexHtml.indexOf(needle, idx + needle.length), -1, `${scriptName} must be loaded once`);
+  return idx;
+}
+
+test("index loads generated images UI dependencies in browser order", () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, "../../../web/index.html"), "utf8");
+  const generatedImages = scriptIndex(indexHtml, "chat_workspace_folder_generated_images.js");
+  const imageGeneration = scriptIndex(indexHtml, "chat_image_generation.js");
+  const generatedImagesPanel = scriptIndex(indexHtml, "chat_workspace_folder_generated_images_panel.js");
+  const foldersSidebar = scriptIndex(indexHtml, "chat_workspace_folders_sidebar.js");
+  const threadsSidebar = scriptIndex(indexHtml, "chat_threads_sidebar.js");
+
+  assert.ok(generatedImages < generatedImagesPanel);
+  assert.ok(imageGeneration < generatedImagesPanel);
+  assert.ok(generatedImagesPanel < foldersSidebar);
+  assert.ok(generatedImagesPanel < threadsSidebar);
+});
+
 test("generated images panel creates durable image only for linked folders", async () => {
   const rendered = buildPanel({
     prompts: [
@@ -239,6 +263,31 @@ test("generated images panel creates durable image only for linked folders", asy
   assertCreatePayloadIsClean(rendered.createCalls[0].payload);
   assert.equal(visibleText(rendered.threadsUl).includes("Prompt transient sentinel"), false);
   assert.equal(rendered.refreshCount(), 1);
+});
+
+test("generated images panel normalizes generator options through image generation module", async () => {
+  const rendered = buildPanel({
+    prompts: [
+      "Prompt transient sentinel",
+      "Image user name",
+      "image_generator_recraft",
+      "21:9",
+      "4K",
+    ],
+  });
+
+  firstByClass(rendered.threadsUl, "workspace-folder-generated-image-create").click();
+  await flushAsync();
+
+  assert.equal(rendered.createCalls.length, 1);
+  assert.deepEqual(rendered.createCalls[0].payload, {
+    prompt: "Prompt transient sentinel",
+    generator_key: "image_generator_recraft",
+    aspect_ratio: "1:1",
+    image_size: "1K",
+    display_name: "Image user name",
+  });
+  assertCreatePayloadIsClean(rendered.createCalls[0].payload);
 });
 
 test("generated images panel disables creation for non linked folders", async () => {

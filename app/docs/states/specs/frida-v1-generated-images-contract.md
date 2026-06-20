@@ -505,6 +505,9 @@ UI dossier Lot 6:
 - le payload UI de creation contient le prompt courant et options autorisees,
   mais jamais `workspace_folder_id`, `image_id`, bytes, base64, data URL, cible
   distante ou payload technique;
+- le module V0 `chat_image_generation.js` doit etre charge avant le panneau
+  Images V1 afin que la normalisation `generator_key`, `aspect_ratio` et
+  `image_size` soit disponible dans le navigateur reel;
 - open/download/delete utilisent les routes namespaced Lot 5 et les flags
   serveur `can_open`, `can_download` et `can_delete`;
 - delete exige une confirmation humaine et ne fait pas de suppression optimiste;
