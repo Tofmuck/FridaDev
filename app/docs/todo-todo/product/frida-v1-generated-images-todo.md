@@ -1,8 +1,9 @@
 # Frida V1 - Images generees - TODO
 
-Statut: TODO actif detaille; Lots 0, 1, 2, 3, 4, 5 et 6 coches; read-model
+Statut: TODO actif detaille; Lots 0, 1, 2, 3, 4, 5, 6 et 7 coches; read-model
 local, creation Nextcloud-first, liste/lookup metadata-only,
-open/download/delete explicites et UI dossier livres; Lot 7+ ouverts.
+open/download/delete explicites, UI dossier et smokes/observabilite livres;
+Lot Z ouvert.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Spec source-of-truth Lot 1:
 `app/docs/states/specs/frida-v1-generated-images-contract.md`
@@ -684,20 +685,35 @@ Livraison Lot 6:
 
 ### Lot 7 - Observabilite / smokes content-free
 
-- [ ] Consolider les projections/events techniques content-free quand le lot
+- [x] Consolider les projections/events techniques content-free quand le lot
   livre une surface qui les consomme.
-- [ ] Produire un JSONL live synthetique sous
+- [x] Produire un JSONL live synthetique sous
   `app/docs/states/baselines/generated-images-smokes/`.
-- [ ] Prouver create/store Nextcloud-first pour les formats V1 livres.
-- [ ] Prouver liste, lookup, open/download si livres.
-- [ ] Prouver conflit sans overwrite.
-- [ ] Prouver refus dossier non `linked` par live propre ou tests si aucun
+- [x] Prouver create/store Nextcloud-first pour les formats V1 livres.
+- [x] Prouver liste, lookup, open/download si livres.
+- [x] Prouver conflit sans overwrite.
+- [x] Prouver refus dossier non `linked` par live propre ou tests si aucun
   dossier non `linked` naturel n'existe.
-- [ ] Prouver cleanup distant exact et tombstone local des images synthetiques.
-- [ ] Scanner artefact, docs, diff staged et, si decide, logs applicatifs bornes.
-- [ ] Ne toucher aucun contenu utilisateur reel.
-- [ ] Ne conserver aucun prompt brut, bytes image, data URL, base64, chemin DAV,
+- [x] Prouver cleanup distant exact et tombstone local des images synthetiques.
+- [x] Scanner artefact, docs, diff staged et, si decide, logs applicatifs bornes.
+- [x] Ne toucher aucun contenu utilisateur reel.
+- [x] Ne conserver aucun prompt brut, bytes image, data URL, base64, chemin DAV,
   URL DAV, XML, ETag brut, payload ou secret.
+
+Livraison Lot 7:
+
+- artefact live synthetique content-free:
+  `app/docs/states/baselines/generated-images-smokes/frida-v1-generated-images-lot7-observability-smokes-20260620T123855Z.jsonl`;
+- provider live prouve avec sortie PNG reelle, validation image,
+  Nextcloud-first, read-model linked, liste, lookup UUID, open, download,
+  delete remote-first, tombstone local et absence distante status-only;
+- JPEG/WebP restent prouves par tests unitaires/fake du Lot 3.1, car le
+  provider live ne force pas proprement chaque format;
+- conflit/no-overwrite et refus dossier non `linked` sont couverts par tests:
+  la route publique genere une cible serveur-owned UUID et aucun dossier non
+  `linked` naturel n'etait disponible pendant le smoke;
+- scan artefact, docs, diff staged et logs applicatifs bornes execute sans
+  conserver ni recopier de logs bruts.
 
 ### Lot Z - Cloture Images V1
 
@@ -854,5 +870,6 @@ Interdits:
 
 ## Prochain pas
 
-Executer Lot 4 Images V1: liste / lookup / projection utilisateur depuis le
-read-model local, sans lecture Nextcloud/WebDAV et sans bytes image.
+Executer Lot Z Images V1: cloture transversale, relecture des preuves Lot 3,
+Lot 5, Lot 7, verification des tests backend/frontend et scan logs borne reel
+si le verdict de cloture le revendique.

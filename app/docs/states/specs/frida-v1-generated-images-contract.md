@@ -645,6 +645,20 @@ Les events Images V1 doivent etre utiles sans fuite:
 Les logs applicatifs doivent refuser ou redacter toute cause brute provider ou
 transport qui contient contenu, prompt, cible distante, payload ou secret.
 
+Implementation Lot 7:
+
+- preuve live synthetique:
+  `app/docs/states/baselines/generated-images-smokes/frida-v1-generated-images-lot7-observability-smokes-20260620T123855Z.jsonl`;
+- le smoke prouve provider live, validation PNG reelle, stockage
+  Nextcloud-first, read-model linked, liste, lookup UUID, open, download,
+  delete remote-first, tombstone local et absence distante status-only;
+- JPEG/WebP sont prouves par tests unitaires/fake du Lot 3.1, car le provider
+  live ne force pas proprement chaque format;
+- conflit/no-overwrite et refus dossier non `linked` sont prouves par tests
+  lorsque le live ne peut pas les reproduire sans mutation artificielle;
+- scans anti-fuite Lot 7 executes sur artefact, docs, diff staged et logs
+  applicatifs bornes, sans recopier ni conserver de logs bruts.
+
 ## 19. Lot Z
 
 Lot Z peut clore Images V1 seulement si la preuve couvre:
