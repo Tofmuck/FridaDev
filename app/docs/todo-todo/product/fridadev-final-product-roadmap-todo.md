@@ -124,8 +124,14 @@ utilisateur.
 TODO dediee:
 `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
 
-Statut 2026-06-20: prochain chantier produit actif apres la cloture Images
-generees V1.
+Contrat source:
+`app/docs/states/specs/frida-v1-agentic-observability-contract.md`
+
+Statut 2026-06-20: Lots 0 et 1 docs-only livres. Le contrat source ferme la
+taxonomie status/reason/severity, les no-op agentiques, l'historique vs
+recent, la politique JSONL content-free, le statut Agenda post-V1 dormant et
+le reset observabilite post-cloture a executer seulement apres validation
+finale explicite.
 
 ### 7. Audit final general
 
@@ -158,7 +164,7 @@ TODO dediee:
 
 - Cloture pragmatique Agenda V1:
   `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
-- TODO Agenda V1:
+- TODO Agenda V1 post-V1 dormant:
   `app/docs/todo-todo/product/frida-agenda-agent.md`
 - Hub documentation:
   `app/docs/README.md`

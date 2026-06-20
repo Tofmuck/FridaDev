@@ -16,6 +16,7 @@ Primary current-state references:
 - Frida V1 folder Markdown notes contract: `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md` for notes attached to `workspace_folders`, `/Frida/<folder>/Notes/<sanitized_title>.md`, the dedicated local notes model, no local Markdown body persistence, ETag/If-Match append, and content-free observability. Delivery TODO archived at `app/docs/todo-done/product/frida-v1-folder-markdown-notes-todo.md`.
 - Frida V1 exports contract: `app/docs/states/specs/frida-v1-exports-contract.md` for folder exports under `/Frida/<folder>/Exports`, explicit export sources, Markdown/TXT/DOCX/PDF formats, the dedicated `workspace_folder_exports` read-model, no overwrite, bounded reuse, and content-free observability. Delivery TODO archived at `app/docs/todo-done/product/frida-v1-exports-todo.md`.
 - Frida V1 generated images contract: `app/docs/states/specs/frida-v1-generated-images-contract.md` for generated images attached to `workspace_folders`, durable storage under `/Frida/<folder>/Images`, the dedicated `workspace_folder_generated_images` read-model, PNG/JPEG/WebP only, no durable raw prompt storage, and content-free observability. Delivery TODO archived at `app/docs/todo-done/product/frida-v1-generated-images-todo.md`.
+- Frida V1 agentic observability contract: `app/docs/states/specs/frida-v1-agentic-observability-contract.md` for status/reason/severity taxonomy, agentic no-op semantics, recent-vs-historical observability, content-free JSONL policy, Agenda post-V1 dormant wording, and the post-closure observability reset guardrails.
 - Current runtime pipeline: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Model call catalog and OpenRouter topology audit: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Global temporal truth audit: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
@@ -24,7 +25,7 @@ Primary current-state references:
 - Archived active conversation documents OCR roadmap: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Biblio librarian agent contract: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Agenda agent contract: `app/docs/states/specs/frida-agenda-agent-contract.md`
-- Agenda agent active TODO: `app/docs/todo-todo/product/frida-agenda-agent.md`
+- Agenda agent post-V1 dormant TODO: `app/docs/todo-todo/product/frida-agenda-agent.md`
 - Agenda question cartography: `app/docs/states/audits/frida-agenda-question-cartography-2026-06-09.md`
 - Agenda V1 pragmatic closure: `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
 - Agenda agent Lot 0 baseline and anonymous fixtures: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`, `app/docs/states/baselines/agenda-fixtures/`
@@ -122,6 +123,7 @@ Frontend rehydration and operator observability
 - Frida V1 folder Markdown notes contract: `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
 - Frida V1 exports contract: `app/docs/states/specs/frida-v1-exports-contract.md`
 - Frida V1 generated images contract: `app/docs/states/specs/frida-v1-generated-images-contract.md`
+- Frida V1 agentic observability contract: `app/docs/states/specs/frida-v1-agentic-observability-contract.md`
 - Archived Frida V1 documents ingestion roadmap: `app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`
 - Archived Frida V1 folder Markdown notes roadmap: `app/docs/todo-done/product/frida-v1-folder-markdown-notes-todo.md`
 - Archived Frida V1 exports roadmap: `app/docs/todo-done/product/frida-v1-exports-todo.md`
@@ -138,7 +140,7 @@ Frontend rehydration and operator observability
 - Native Biblio / Frida Catalogue contract: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - Biblio librarian-agent contract: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Agenda agent contract: `app/docs/states/specs/frida-agenda-agent-contract.md`
-- Agenda agent active TODO: `app/docs/todo-todo/product/frida-agenda-agent.md`
+- Agenda agent post-V1 dormant TODO: `app/docs/todo-todo/product/frida-agenda-agent.md`
 - Agenda question cartography: `app/docs/states/audits/frida-agenda-question-cartography-2026-06-09.md`
 - Agenda V1 pragmatic closure: `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
 - Agenda agent Lot 0 baseline and anonymous fixtures: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`, `app/docs/states/baselines/agenda-fixtures/`
@@ -226,6 +228,7 @@ References principales pour l'etat courant:
 - Contrat Notes Markdown Frida V1: `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md` pour les notes rattachees a `workspace_folders`, la cible `/Frida/<dossier>/Notes/<titre_sanitise>.md`, le modele local Notes dedie, l'absence de corps Markdown local, l'append ETag/If-Match et l'observabilite content-free. TODO de livraison archivee: `app/docs/todo-done/product/frida-v1-folder-markdown-notes-todo.md`.
 - Contrat Exports Frida V1: `app/docs/states/specs/frida-v1-exports-contract.md` pour les exports rattaches a `workspace_folders`, la cible `/Frida/<dossier>/Exports`, les sources explicites, les formats Markdown/TXT/DOCX/PDF, le read-model `workspace_folder_exports`, le no overwrite, la reutilisation bornee et l'observabilite content-free. TODO de livraison archivee: `app/docs/todo-done/product/frida-v1-exports-todo.md`.
 - Contrat Images generees Frida V1: `app/docs/states/specs/frida-v1-generated-images-contract.md` pour les images generees rattachees a `workspace_folders`, la cible `/Frida/<dossier>/Images`, le read-model dedie `workspace_folder_generated_images`, les formats PNG/JPEG/WebP, l'absence de stockage durable du prompt brut et l'observabilite content-free. TODO de livraison archivee: `app/docs/todo-done/product/frida-v1-generated-images-todo.md`.
+- Contrat Observabilite agentique Frida V1: `app/docs/states/specs/frida-v1-agentic-observability-contract.md` pour la taxonomie status/reason/severity, les no-op agentiques, la separation historique/recent, la politique JSONL content-free, le statut Agenda post-V1 dormant et les garde-fous du reset observabilite post-cloture.
 - Pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Catalogue des appels modeles et audit de topologie OpenRouter: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit global de verite temporelle: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
@@ -234,7 +237,7 @@ References principales pour l'etat courant:
 - Roadmap archivee OCR des documents actifs: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Contrat agent bibliothecaire Biblio: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Contrat agent Agenda: `app/docs/states/specs/frida-agenda-agent-contract.md`
-- TODO actif agent Agenda: `app/docs/todo-todo/product/frida-agenda-agent.md`
+- TODO post-V1 dormant agent Agenda: `app/docs/todo-todo/product/frida-agenda-agent.md`
 - Cartographie des questions Agenda: `app/docs/states/audits/frida-agenda-question-cartography-2026-06-09.md`
 - Cloture pragmatique Agenda V1: `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
 - Baseline Lot 0 agent Agenda et fixtures anonymes: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`, `app/docs/states/baselines/agenda-fixtures/`
@@ -348,7 +351,7 @@ Rehydratation frontend et observabilite operateur
 - Contrat Biblio native / Frida Catalogue: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 - Contrat agent bibliothecaire Biblio: `app/docs/states/specs/frida-biblio-librarian-agent-contract.md`
 - Contrat agent Agenda: `app/docs/states/specs/frida-agenda-agent-contract.md`
-- TODO actif agent Agenda: `app/docs/todo-todo/product/frida-agenda-agent.md`
+- TODO post-V1 dormant agent Agenda: `app/docs/todo-todo/product/frida-agenda-agent.md`
 - Cartographie des questions Agenda: `app/docs/states/audits/frida-agenda-question-cartography-2026-06-09.md`
 - Cloture pragmatique Agenda V1: `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
 - Audit architecture agent bibliothecaire Biblio: `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`
