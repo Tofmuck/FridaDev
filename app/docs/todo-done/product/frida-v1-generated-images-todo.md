@@ -1,9 +1,9 @@
 # Frida V1 - Images generees - TODO
 
-Statut: TODO actif detaille; Lots 0, 1, 2, 3, 4, 5, 6 et 7 coches; read-model
-local, creation Nextcloud-first, liste/lookup metadata-only,
-open/download/delete explicites, UI dossier et smokes/observabilite livres;
-Lot Z ouvert.
+Statut: TODO archivee; Images generees V1 cloturees en Lot Z. Lots 0, 1, 2,
+3, 4, 5, 6, 7 et Z coches; read-model local, creation Nextcloud-first,
+liste/lookup metadata-only, open/download/delete explicites, UI dossier,
+smokes/observabilite et cloture content-free livres.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Spec source-of-truth Lot 1:
 `app/docs/states/specs/frida-v1-generated-images-contract.md`
@@ -717,20 +717,38 @@ Livraison Lot 7:
 
 ### Lot Z - Cloture Images V1
 
-- [ ] Rejouer ou relire les smokes transverses Images V1.
-- [ ] Verifier create/generate/store Nextcloud-first.
-- [ ] Verifier formats V1 reellement livres.
-- [ ] Verifier no-overwrite / conflit nom.
-- [ ] Verifier list / lookup UUID.
-- [ ] Verifier open/download si livres.
-- [ ] Verifier UI dossier Images si livree.
-- [ ] Verifier refus prompt/source/format/taille selon spec Lot 1.
-- [ ] Verifier cleanup distant/local des images synthetiques.
-- [ ] Verifier absence de confusion Documents / Notes / Exports / Images.
-- [ ] Executer les scans anti-fuite exiges par la spec Lot 1.
-- [ ] Archiver cette TODO seulement si le verdict final est conforme au contrat
+- [x] Rejouer ou relire les smokes transverses Images V1.
+- [x] Verifier create/generate/store Nextcloud-first.
+- [x] Verifier formats V1 reellement livres.
+- [x] Verifier no-overwrite / conflit nom.
+- [x] Verifier list / lookup UUID.
+- [x] Verifier open/download si livres.
+- [x] Verifier UI dossier Images si livree.
+- [x] Verifier refus prompt/source/format/taille selon spec Lot 1.
+- [x] Verifier cleanup distant/local des images synthetiques.
+- [x] Verifier absence de confusion Documents / Notes / Exports / Images.
+- [x] Executer les scans anti-fuite exiges par la spec Lot 1.
+- [x] Archiver cette TODO seulement si le verdict final est conforme au contrat
   Lot 1.
-- [ ] Ne pas vendre une preuve plus large que ce qui est reellement execute.
+- [x] Ne pas vendre une preuve plus large que ce qui est reellement execute.
+
+Livraison Lot Z:
+
+- artefact de cloture content-free:
+  `app/docs/states/baselines/generated-images-smokes/frida-v1-generated-images-lotz-closure-20260620T130636Z.jsonl`;
+- verdict final `met`;
+- provider live synthetique prouve avec format observe PNG, validation image,
+  stockage Nextcloud-first, read-model linked, liste, lookup UUID, open,
+  download, suppression remote-first, tombstone local et cleanup exact;
+- JPEG/WebP restent couverts par tests/fakes Lot 3.1: le provider live ne
+  permet pas de forcer proprement chaque format;
+- no-overwrite/conflit et refus dossier non `linked` sont couverts par tests:
+  la route produit utilise une cible serveur-owned UUID et aucun dossier non
+  `linked` naturel n'etait disponible sans mutation DB artificielle;
+- UI dossier Images couverte par tests frontend, incluant l'ordre de chargement
+  navigateur du Lot 6.1;
+- scan artefact/docs/diff et scan logs applicatifs borne reel executes sans
+  recopier ni conserver de logs bruts.
 
 ## Reason codes initiaux a stabiliser
 
@@ -870,6 +888,6 @@ Interdits:
 
 ## Prochain pas
 
-Executer Lot Z Images V1: cloture transversale, relecture des preuves Lot 3,
-Lot 5, Lot 7, verification des tests backend/frontend et scan logs borne reel
-si le verdict de cloture le revendique.
+Images generees V1 est clos. Le prochain chantier produit actif de la roadmap
+generale est l'observabilite globale / logs agentiques:
+`app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`.

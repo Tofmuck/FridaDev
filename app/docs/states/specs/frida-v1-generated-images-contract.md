@@ -1,11 +1,11 @@
 # Frida V1 - Generated Images contract
 
-Statut: spec source-of-truth Images generees V1 ouverte; Lots 0/1 docs-only,
-Lot 2 read-model, Lot 3 creation Nextcloud-first, Lot 4 liste/lookup
-metadata-only, Lot 5 open/download/delete, Lot 6 UI dossier et Lot 7
-observabilite/smokes content-free livres.
+Statut: spec source-of-truth Images generees V1 cloturee pour Frida 1.0; Lots
+0/1 docs-only, Lot 2 read-model, Lot 3 creation Nextcloud-first, Lot 4
+liste/lookup metadata-only, Lot 5 open/download/delete, Lot 6 UI dossier, Lot
+7 observabilite/smokes content-free et Lot Z cloture livres.
 Date: 2026-06-20
-Roadmap active: `app/docs/todo-todo/product/frida-v1-generated-images-todo.md`
+Archive livraison: `app/docs/todo-done/product/frida-v1-generated-images-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-generated-images-lot0-audit-2026-06-19.md`
 Socle dossiers source: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
 Contrat Documents source: `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
@@ -662,7 +662,29 @@ Implementation Lot 7:
 
 ## 19. Lot Z
 
-Lot Z peut clore Images V1 seulement si la preuve couvre:
+Lot Z cloture Images V1 avec l'artefact content-free:
+
+```text
+app/docs/states/baselines/generated-images-smokes/frida-v1-generated-images-lotz-closure-20260620T130636Z.jsonl
+```
+
+Verdict final: `met`.
+
+Portee de preuve:
+
+- provider live synthetique prouve avec format observe PNG;
+- JPEG/WebP couverts par tests/fakes Lot 3.1, sans les presenter comme formats
+  live forces;
+- create provider -> validation -> Nextcloud-first -> read-model linked;
+- liste, lookup UUID, open, download, suppression remote-first, tombstone local
+  et cleanup exact;
+- no-overwrite/conflit et refus dossier non `linked` couverts par tests sans
+  mutation DB artificielle;
+- UI dossier Images couverte par tests frontend directs;
+- scan artefact/docs/diff et scan logs applicatifs borne reel, sans raw logs
+  recopies, commites ou conserves.
+
+Les criteres de cloture appliques etaient:
 
 - create provider -> validation -> Nextcloud-first -> read-model;
 - au moins un smoke provider live synthetique avec prompt non sensible et cout

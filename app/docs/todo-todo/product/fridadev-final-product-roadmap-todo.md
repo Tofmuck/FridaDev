@@ -99,17 +99,19 @@ Auditer le stockage actuel des images generees, choisir stockage serveur et/ou
 Nextcloud, rattacher chaque image a un dossier, garder des metadonnees sobres et
 eviter toute fuite de prompt brut ou contenu sensible.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-generated-images-todo.md`
+TODO archivee:
+`app/docs/todo-done/product/frida-v1-generated-images-todo.md`
 
 Contrat source:
 `app/docs/states/specs/frida-v1-generated-images-contract.md`
 
-Statut 2026-06-19: Lot 0 audit existant et Lot 1 spec source-of-truth livres
-en docs-only. Aucun runtime Images V1 n'est encore livre; les prochains lots
-doivent appliquer le read-model dedie `workspace_folder_generated_images`, la
-cible `/Frida/<dossier>/Images`, les formats PNG/JPEG/WebP et la prompt policy
-sans stockage durable du prompt brut.
+Statut 2026-06-20: Images generees V1 valide en Lot Z avec verdict `met`.
+La preuve live synthetique couvre provider -> validation -> stockage
+Nextcloud-first -> read-model linked, liste/lookup UUID, open/download,
+suppression remote-first, cleanup exact, UI dossier, scan artefact/docs/diff et
+scan logs applicatifs borne reel. Le format live observe est PNG; JPEG/WebP
+sont couverts par tests/fakes Lot 3.1. No-overwrite/conflit et refus dossier
+non `linked` sont couverts par tests, sans mutation DB artificielle.
 
 ### 6. Observabilite globale / logs agentiques
 
@@ -121,6 +123,9 @@ utilisateur.
 
 TODO dediee:
 `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
+
+Statut 2026-06-20: prochain chantier produit actif apres la cloture Images
+generees V1.
 
 ### 7. Audit final general
 
