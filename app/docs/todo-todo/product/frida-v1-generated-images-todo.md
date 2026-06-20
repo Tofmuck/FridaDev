@@ -560,6 +560,16 @@ Livraison Lot 3:
 - cas update-like, stockage KO apres provider OK et rollback distant couverts
   par tests unitaires fake.
 
+Correctif Lot 3.1:
+
+- les projections/API ne sortent plus le `content_hash` complet interne;
+- seul `content_hash_short` reste exposable dans les projections content-free
+  prevues;
+- l'acceptation JPEG/WebP est prouvee par tests de validation et runtime fake:
+  JPEG produit `image_format=jpeg` et cible `.jpg`, WebP produit
+  `image_format=webp` et cible `.webp`;
+- aucun nouveau smoke live provider ou Nextcloud n'est ajoute.
+
 ### Lot 4 - Liste / lookup / projection utilisateur
 
 - [ ] Ajouter la liste des images generees d'un dossier depuis le read-model

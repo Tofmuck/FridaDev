@@ -367,6 +367,16 @@ Implementation Lot 3:
   tests unitaires fake;
 - aucune route globale `/api/images*` ou `/api/generated-images*` livree.
 
+Correctif Lot 3.1:
+
+- `content_hash` complet reste un champ interne read-model uniquement et ne doit
+  jamais sortir dans les projections/API;
+- `content_hash_short` est la seule reference de contenu exposable lorsque la
+  projection content-free en a besoin;
+- l'acceptation PNG/JPEG/WebP est prouvee par tests de validation V1; le runtime
+  fake prouve aussi que JPEG produit une cible `.jpg` et WebP une cible `.webp`;
+- cette preuve ne remplace pas un smoke live provider supplementaire.
+
 ## 12. Liste et lookup
 
 Liste:

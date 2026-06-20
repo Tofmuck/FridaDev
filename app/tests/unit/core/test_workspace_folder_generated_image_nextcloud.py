@@ -42,6 +42,23 @@ def _png_bytes(width: int = 32, height: int = 32) -> bytes:
     )
 
 
+def _jpeg_bytes(width: int = 48, height: int = 40) -> bytes:
+    return (
+        b"\xff\xd8\xff\xc0\x00\x11\x08"
+        + int(height).to_bytes(2, "big")
+        + int(width).to_bytes(2, "big")
+        + b"\x03\x01\x11\x00\x02\x11\x00\x03\x11\x00"
+    )
+
+
+def _webp_bytes(width: int = 56, height: int = 48) -> bytes:
+    def u24(value: int) -> bytes:
+        return bytes((value & 0xFF, (value >> 8) & 0xFF, (value >> 16) & 0xFF))
+
+    payload = b"\x00\x00\x00\x00" + u24(int(width) - 1) + u24(int(height) - 1)
+    return b"RIFF" + (18).to_bytes(4, "little") + b"WEBPVP8X" + (10).to_bytes(4, "little") + payload
+
+
 def _gif_bytes(width: int = 32, height: int = 32) -> bytes:
     return b"GIF89a" + int(width).to_bytes(2, "little") + int(height).to_bytes(2, "little")
 
@@ -197,6 +214,24 @@ class WorkspaceFolderGeneratedImageValidationAndRuntimeTests(unittest.TestCase):
         self.assertEqual(ok.mime_type, "image/png")
         self.assertEqual(ok.image_format, "png")
 
+        jpeg = workspace_folder_generated_image_validation.validate_generated_image_data_url(
+            _data_url(_jpeg_bytes(width=48, height=40), mime_type="image/jpeg")
+        )
+        self.assertTrue(jpeg.ok)
+        self.assertEqual(jpeg.mime_type, "image/jpeg")
+        self.assertEqual(jpeg.image_format, "jpeg")
+        self.assertEqual(jpeg.width, 48)
+        self.assertEqual(jpeg.height, 40)
+
+        webp = workspace_folder_generated_image_validation.validate_generated_image_data_url(
+            _data_url(_webp_bytes(width=56, height=48), mime_type="image/webp")
+        )
+        self.assertTrue(webp.ok)
+        self.assertEqual(webp.mime_type, "image/webp")
+        self.assertEqual(webp.image_format, "webp")
+        self.assertEqual(webp.width, 56)
+        self.assertEqual(webp.height, 48)
+
         gif = workspace_folder_generated_image_validation.validate_generated_image_data_url(
             _data_url(_gif_bytes(), mime_type="image/gif")
         )
@@ -298,6 +333,45 @@ class WorkspaceFolderGeneratedImageValidationAndRuntimeTests(unittest.TestCase):
         self.assertNotIn("prompt", stored)
         self.assertNotIn("image_bytes", stored)
         self.assertNotIn("data_url", stored)
+
+    def test_jpeg_and_webp_runtime_use_canonical_formats_and_extensions(self) -> None:
+        cases = (
+            ("image/jpeg", _jpeg_bytes(), "jpeg", ".jpg"),
+            ("image/webp", _webp_bytes(), "webp", ".webp"),
+        )
+        for mime_type, content, image_format, extension in cases:
+            with self.subTest(mime_type=mime_type):
+                provider = _FakeProvider(
+                    workspace_folder_generated_image_provider.GeneratedImageProviderResult(
+                        True,
+                        workspace_folder_generated_images.REASON_CREATE_OK,
+                        status=200,
+                        data_url=_data_url(content, mime_type=mime_type),
+                        generator_key="image_generator_nano_banana",
+                        provider_model="google/gemini-2.5-flash-image",
+                        aspect_ratio="1:1",
+                        image_size="1K",
+                        prompt_length=64,
+                        data_url_chars=128,
+                    )
+                )
+                images = _FakeImagesModule()
+                nextcloud = _FakeNextcloud()
+
+                result = workspace_folder_generated_image_nextcloud_runtime.store_workspace_folder_generated_image_nextcloud_first(
+                    folder=_folder(),
+                    request={"prompt": "x"},
+                    provider_module=provider,
+                    images_module=images,
+                    nextcloud=nextcloud,
+                )
+
+                self.assertTrue(result["ok"])
+                self.assertEqual(nextcloud.put_calls[0]["media_type"], mime_type)
+                self.assertTrue(nextcloud.put_calls[0]["image_name"].endswith(extension))
+                self.assertEqual(images.stored[0]["mime_type"], mime_type)
+                self.assertEqual(images.stored[0]["image_format"], image_format)
+                self.assertTrue(images.stored[0]["target_name_internal"].endswith(extension))
 
     def test_put_update_like_is_conflict_without_local_upsert(self) -> None:
         images = _FakeImagesModule()

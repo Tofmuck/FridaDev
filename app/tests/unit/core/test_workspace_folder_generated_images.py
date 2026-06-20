@@ -250,6 +250,8 @@ class WorkspaceFolderGeneratedImagesTests(unittest.TestCase):
         self.assertEqual(technical["target_ref"], "generated-image-target:456defabc123")
         self.assertEqual(technical["content_hash_short"], "789abc123def")
         self.assertTrue(technical["etag_present"])
+        self.assertNotIn("content_hash", item)
+        self.assertNotIn(_image()["content_hash"], str(item))
         technical_text = str(technical)
         self.assertNotIn("Image sensible", technical_text)
         self.assertNotIn(TARGET_NAME, technical_text)
@@ -270,6 +272,7 @@ class WorkspaceFolderGeneratedImagesTests(unittest.TestCase):
             "dav_url",
             "xml",
             "authorization",
+            "content_hash",
             "target_name_internal",
             "etag_value",
         ):

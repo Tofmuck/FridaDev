@@ -21,6 +21,7 @@ _FORBIDDEN_PAYLOAD_KEYS = {
     "payload",
     "provider_payload",
     "webdav_payload",
+    "content_hash",
     "etag",
     "etag_value",
     "target_name_internal",

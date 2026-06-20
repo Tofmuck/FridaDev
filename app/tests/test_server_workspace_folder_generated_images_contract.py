@@ -159,7 +159,13 @@ class ServerWorkspaceFolderGeneratedImagesContractTests(unittest.TestCase):
         self.assertEqual(runtime.calls[0]["request"]["prompt"], "synthetic prompt not returned")
         projected = body["generated_image"]
         self.assertEqual(projected["generated_image_v1_user"]["display_name"], "Image serveur")
+        self.assertNotIn("content_hash", projected)
+        self.assertEqual(
+            projected["generated_image_v1_technical"]["content_hash_short"],
+            "a" * 12,
+        )
         body_text = str(body)
+        self.assertNotIn("a" * 64, body_text)
         self.assertNotIn(TARGET_NAME, body_text)
         self.assertNotIn("raw-etag-secret", body_text)
         self.assertNotIn("data:image", body_text)
