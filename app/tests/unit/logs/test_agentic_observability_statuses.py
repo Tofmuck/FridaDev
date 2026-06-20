@@ -233,6 +233,121 @@ class AgenticObservabilityStatusTests(unittest.TestCase):
         self.assertEqual(result['items'][1]['status_schema_version'], 'legacy')
         self.assertTrue(result['items'][1]['legacy_status'])
 
+    def test_legacy_ok_skipped_error_without_marker_stay_legacy(self) -> None:
+        for status in (
+            agentic_status.STATUS_OK,
+            agentic_status.STATUS_SKIPPED,
+            agentic_status.STATUS_ERROR,
+        ):
+            with self.subTest(status=status):
+                self.assertEqual(
+                    agentic_status.projected_schema_version(payload={}, status=status),
+                    'legacy',
+                )
+
+    def test_chat_turn_logger_marks_fresh_ok_turn_as_agentic_v1(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-fresh-v1',
+            user_msg='fresh status marker sentinel',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit(
+                'prompt_prepared',
+                payload={
+                    'identity_prompt_injection': {
+                        'injected': True,
+                        'identity_block_present': True,
+                    },
+                    'memory_prompt_injection': {
+                        'trace_memory_injected': True,
+                        'trace_memory_injected_count': 1,
+                    },
+                },
+            )
+            chat_turn_logger.emit(
+                'llm_call',
+                payload={'provider_caller': 'llm', 'response_chars': 16},
+            )
+            chat_turn_logger.emit(
+                'persist_response',
+                payload={'persist_phase': 'assistant_final', 'conversation_saved': True},
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            chat_turn_logger.log_store.insert_chat_log_event = original_insert
+
+        self.assertEqual(
+            [event['stage'] for event in observed],
+            ['turn_start', 'prompt_prepared', 'llm_call', 'persist_response', 'turn_end'],
+        )
+        self.assertEqual({event['status'] for event in observed}, {'ok'})
+        for event in observed:
+            self.assertEqual(
+                event['payload_json'].get('status_schema_version'),
+                agentic_status.STATUS_SCHEMA_VERSION,
+            )
+
+        item = build_turn_pipeline_item(observed)
+        self.assertEqual(item['status_schema']['source_kind'], 'agentic_v1')
+        self.assertEqual(item['status_schema']['v1_event_count'], len(observed))
+        self.assertEqual(item['status_schema']['legacy_event_count'], 0)
+        self.assertFalse(item['status_schema']['historical_events_reclassified'])
+
+    def test_chat_turn_logger_invalid_writer_status_never_becomes_ok(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-invalid-status',
+            user_msg='invalid status raw message sentinel',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit(
+                'audit_invalid_status',
+                status='totally_invalid_status',
+                payload={'reason_code': 'synthetic_writer_bug'},
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            chat_turn_logger.log_store.insert_chat_log_event = original_insert
+
+        invalid_event = next(
+            event for event in observed if event['stage'] == 'audit_invalid_status'
+        )
+        self.assertEqual(invalid_event['status'], 'error')
+        self.assertEqual(
+            invalid_event['payload_json'].get('status_schema_version'),
+            agentic_status.STATUS_SCHEMA_VERSION,
+        )
+        self.assertEqual(
+            invalid_event['payload_json'].get('reason_code'),
+            'agentic_status_invalid',
+        )
+        self.assertEqual(
+            invalid_event['payload_json'].get('error_code'),
+            'agentic_status_invalid',
+        )
+        self.assertTrue(invalid_event['payload_json'].get('invalid_status_redacted'))
+        serialized = json.dumps(observed, sort_keys=True)
+        self.assertNotIn('totally_invalid_status', serialized)
+        self.assertNotIn('invalid status raw message sentinel', serialized)
+        self.assertNotIn("'ok', 'synthetic'", serialized)
+
     def test_chat_turn_logger_emits_refusal_without_error_status(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = chat_turn_logger.log_store.insert_chat_log_event

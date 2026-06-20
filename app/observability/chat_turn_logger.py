@@ -78,7 +78,17 @@ def _emit_now(
     error_code: str | None,
 ) -> bool:
     payload_json = _sanitize_payload(dict(payload or {}))
-    status_norm = agentic_status.normalize_status(status)
+    status_norm, invalid_status = agentic_status.normalize_writer_status(status)
+    if invalid_status:
+        payload_json = {
+            'status_schema_version': agentic_status.STATUS_SCHEMA_VERSION,
+            'reason_code': 'agentic_status_invalid',
+            'error_code': 'agentic_status_invalid',
+            'invalid_status_redacted': True,
+        }
+        logger.warning('chat_turn_log_invalid_status stage=%s', stage)
+    else:
+        payload_json['status_schema_version'] = agentic_status.STATUS_SCHEMA_VERSION
 
     if model:
         payload_json['model'] = str(model)
@@ -320,13 +330,16 @@ def finish_turn(*, final_status: str) -> bool:
         ctx.conversation_id = f'orphan:{ctx.turn_id}'
         _flush_pending_events(ctx)
 
-    final_status_norm = agentic_status.normalize_status(final_status)
+    final_status_norm, invalid_final_status = agentic_status.normalize_writer_status(final_status)
     turn_end_status = final_status_norm
     total_ms = max(0.0, (time.perf_counter() - ctx.started_at) * 1000.0)
+    reason_code = 'agentic_status_invalid' if invalid_final_status else None
     return emit(
         'turn_end',
         status=turn_end_status,
         duration_ms=total_ms,
+        reason_code=reason_code,
+        error_code=reason_code,
         payload={
             'total_duration_ms': int(round(total_ms)),
             'final_status': final_status_norm,

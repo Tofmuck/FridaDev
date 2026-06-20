@@ -1,7 +1,7 @@
 # Frida V1 - Observabilite globale / logs agentiques - TODO
 
 Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2 runtime
-borne livre; Lot 3+ ouverts.
+borne livre avec correctif Lot 2.1 writer; Lot 3+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -143,6 +143,11 @@ Severite attendue:
 - [x] Ajouter tests de classification sur tours chat.
 - [x] Ne pas backfiller l'historique; tout backfill reste interdit hors lot
   destructif explicite.
+- [x] Correctif Lot 2.1: marquer les nouveaux evenements
+  `chat_turn_logger` en `agentic_v1`, y compris `ok/skipped/error`.
+- [x] Correctif Lot 2.1: empecher un statut writer invalide de devenir `ok`;
+  l'evenement devient `error` content-free avec reason
+  `agentic_status_invalid`.
 
 ### Lot 3 - Agentic Agenda / Biblio observability
 

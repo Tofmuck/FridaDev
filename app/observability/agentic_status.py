@@ -58,6 +58,15 @@ def normalize_status(value: Any, *, default: str = STATUS_OK) -> str:
     return STATUS_OK
 
 
+def normalize_writer_status(value: Any, *, default: str = STATUS_OK) -> tuple[str, bool]:
+    status = str(value or '').strip().lower()
+    if not status:
+        return normalize_status(default), False
+    if status in STATUS_V1_ALLOWED_SET:
+        return status, False
+    return STATUS_ERROR, True
+
+
 def is_valid_status(value: Any) -> bool:
     return str(value or '').strip().lower() in STATUS_V1_ALLOWED_SET
 

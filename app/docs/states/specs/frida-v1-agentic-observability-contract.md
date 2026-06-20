@@ -1,7 +1,8 @@
 # Frida V1 - Agentic Observability Contract
 
 Statut: spec source-of-truth livree par Lot 1 docs-only; Lot 2 runtime
-`chat_turn_logger` / `log_store` / checklist / read-model livre.
+`chat_turn_logger` / `log_store` / checklist / read-model livre; correctif
+Lot 2.1 writer V1 livre.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -112,11 +113,25 @@ Compatibilite runtime:
   neuf statuts cibles;
 - les lectures exposent `status_v1`, `status_schema_version` et
   `legacy_status` sans backfill historique;
+- les nouveaux evenements emis par `chat_turn_logger` portent explicitement
+  `status_schema_version=agentic_v1`, y compris quand leur statut stocke reste
+  `ok`, `skipped` ou `error`;
 - les statuts non-legacy (`disabled`, `not_selected`, `not_configured`,
   `not_applicable`, `refused`, `failed`) sont projetes `agentic_v1`; les
   anciens `ok/error/skipped` sans marqueur explicite restent projetes legacy;
 - les evenements historiques `ok/error/skipped` restent lisibles comme legacy,
   sans etre vendus comme requalifies.
+
+Regle writer Lot 2.1:
+
+- un statut invalide fourni au writer d'observabilite ne doit jamais etre
+  transforme en `ok`;
+- le writer emet `status=error` avec reason/error code
+  `agentic_status_invalid` et marqueur content-free `invalid_status_redacted`;
+- la valeur brute du statut invalide ne doit pas etre loggee, stockee dans le
+  payload ou exposee dans les projections;
+- cette regle ne backfille pas l'historique et ne modifie pas la projection
+  legacy des anciens evenements non marques.
 
 ## 5. Reason codes et familles
 
