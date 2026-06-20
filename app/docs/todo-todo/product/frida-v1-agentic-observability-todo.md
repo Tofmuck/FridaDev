@@ -190,8 +190,9 @@ Severite attendue:
   n'est conserve.
 - [ ] Verifier que les vraies pannes restent visibles.
 - [ ] Executer le reset observabilite post-cloture seulement avec backup,
-  inventaire, exclusions produit, preuves content-free et rollback, ou ouvrir
-  un lot reset dedie explicite si la cloture reste proof-only.
+  inventaire, exclusions produit, preuves content-free, rollback et GO operateur
+  humain explicite/date, separe du GO general Lot Z; afficher le scope exact
+  avant demande de GO, sinon ne pas executer le reset.
 - [ ] Archiver cette TODO seulement si le verdict final est conforme.
 
 ## Statut Agenda issu du Lot 0

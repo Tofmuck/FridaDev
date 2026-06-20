@@ -324,6 +324,11 @@ dedie explicite.
 
 Lot 1 specifie le reset, mais ne l'execute pas.
 
+La validation de cette spec, le GO general d'un Lot Z ou la cloture du chantier
+Observabilite ne valent jamais GO implicite pour le reset destructif. Le reset
+exige un GO operateur humain explicite, date, donne juste avant execution et
+separe de tout autre GO.
+
 Preconditions obligatoires:
 
 - audit final conforme;
@@ -332,7 +337,19 @@ Preconditions obligatoires:
 - inventaire exact des tables, read-models, snapshots et fichiers applicatifs
   concernes;
 - plan de rollback documente par restauration du backup applicatif;
-- approbation de scope Celebrimbor uniquement: aucun reset plateforme.
+- affichage prealable du scope exact avant demande de GO operateur:
+  - tables applicatives concernees;
+  - fichiers applicatifs concernes;
+  - comptes avant reset;
+  - exclusions produit;
+  - chemin du backup;
+  - rollback prevu;
+  - `cutover_utc` prevu ou calcule;
+- GO operateur humain explicite et date, separe du GO general du Lot Z;
+- interdiction d'executer le reset si ce GO operateur explicite est absent;
+- Celebrimbor peut proposer et executer seulement le scope applicatif valide
+  par l'operateur humain;
+- aucun reset plateforme n'est autorise.
 
 Donnees produit strictement exclues:
 
