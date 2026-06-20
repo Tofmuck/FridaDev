@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 from agenda import (
     agent_contract,
+    agent_openrouter,
     agent_runtime,
     caldav_write_client,
     chat_runtime,
@@ -1175,6 +1176,31 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
             chat_runtime.observability_status_for_payload(result.observability_payload),
             'error',
         )
+
+    def test_active_runtime_provider_not_configured_fallback_is_not_observed_as_ok(self) -> None:
+        fake = _FakeErrorModelClient(agent_openrouter.REASON_PROVIDER_NOT_CONFIGURED)
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW PROVIDER CONFIG TEST MESSAGE MUST NOT LEAK',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake,
+        )
+
+        self.assertEqual(result.status, agent_runtime.STATUS_FALLBACK)
+        self.assertEqual(result.reason_code, agent_openrouter.REASON_PROVIDER_NOT_CONFIGURED)
+        self.assertEqual(fake.calls, 1)
+        self.assertFalse(result.observability_payload['caldav_access'])
+        self.assertFalse(result.observability_payload['secret_access'])
+        self.assertFalse(result.observability_payload['mutation_attempted'])
+        self.assertEqual(
+            chat_runtime.observability_status_for_payload(result.observability_payload),
+            'not_configured',
+        )
+        encoded_payload = json.dumps(result.observability_payload, sort_keys=True)
+        self.assertNotIn('RAW PROVIDER CONFIG TEST MESSAGE', encoded_payload)
 
     def test_removed_shadow_and_candidate_modes_are_not_reintroduced(self) -> None:
         for mode in ('shadow', 'candidate'):
