@@ -16,6 +16,7 @@ from core import workspace_folder_generated_image_nextcloud_runtime
 from core import workspace_folder_generated_image_provider
 from core import workspace_folder_generated_image_validation
 from core import workspace_folder_generated_images
+from core import workspace_folder_nextcloud_client
 
 
 FOLDER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
@@ -158,6 +159,24 @@ class _FakeNextcloud:
         )
 
 
+class _ChunkedReadResponse:
+    def __init__(self, chunks: list[bytes], *, content_length: str = "") -> None:
+        self.status = 200
+        self.headers = {"Content-Length": content_length, "Content-Type": "image/png"}
+        self._chunks = list(chunks)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def read(self, _size: int = -1) -> bytes:
+        if not self._chunks:
+            return b""
+        return self._chunks.pop(0)
+
+
 class _FakeImagesModule:
     def __init__(self, *, fail_upsert: bool = False) -> None:
         self.fail_upsert = fail_upsert
@@ -206,6 +225,29 @@ class _FakeImagesModule:
 
 
 class WorkspaceFolderGeneratedImageValidationAndRuntimeTests(unittest.TestCase):
+    def test_nextcloud_read_refuses_oversized_content_without_truncation(self) -> None:
+        client = workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClient(
+            workspace_folder_nextcloud_client.NextcloudFolderClientConfig(
+                base_url="https://nextcloud.example",
+                username="user",
+                app_password="secret",
+            )
+        )
+        original_urlopen = workspace_folder_generated_image_nextcloud_client.urlopen
+        workspace_folder_generated_image_nextcloud_client.urlopen = lambda _request, timeout=12: (
+            _ChunkedReadResponse([b"1234", b"5678", b"9"])
+        )
+        try:
+            with self.assertRaises(
+                workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClientError
+            ) as ctx:
+                client.read_image("Dossier-Images", "generated-image-x.png", max_bytes=8)
+        finally:
+            workspace_folder_generated_image_nextcloud_client.urlopen = original_urlopen
+
+        self.assertEqual(ctx.exception.reason_code, "folder_generated_image_too_large")
+        self.assertEqual(ctx.exception.http_status, 200)
+
     def test_validation_accepts_png_and_rejects_gif_svg_invalid_dimensions_and_large_payloads(self) -> None:
         ok = workspace_folder_generated_image_validation.validate_generated_image_data_url(
             _data_url(_png_bytes())

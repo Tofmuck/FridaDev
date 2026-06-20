@@ -1,0 +1,10 @@
+{"case_id":"LOT5_RUNTIME_SECRET_REDACTED","secret_available":true,"source_ref":"file:/run/secrets/[redacted]","source_type":"file","ts_utc":"2026-06-20T11:46:47Z","value_displayed":false,"verdict":"met"}
+{"case_id":"LOT5_FOLDER_LINKED_ELIGIBLE","folder_ref":"workspace-folder:6d7051a8:da45c156e61f","linked_folder_count":2,"ts_utc":"2026-06-20T11:46:47Z","verdict":"met"}
+{"byte_size":29,"case_id":"LOT5_CREATE_SYNTHETIC_IMAGE","format":"png","image_ref":"workspace-generated-image:f87e153a:3674f71fa793","reason_code":"folder_generated_image_store_ok","target_ref":"generated-image-target:f189e2650147","ts_utc":"2026-06-20T11:46:47Z","verdict":"met"}
+{"byte_size":29,"case_id":"LOT5_OPEN_INLINE","content_hash_short":"f75fda035f78","headers_hardened":true,"media_type":"image/png","reason_code":"folder_generated_image_open_ok","status":200,"ts_utc":"2026-06-20T11:46:47Z","verdict":"met"}
+{"byte_size":29,"case_id":"LOT5_DOWNLOAD_ATTACHMENT","content_hash_short":"f75fda035f78","headers_hardened":true,"media_type":"image/png","reason_code":"folder_generated_image_download_ok","status":200,"ts_utc":"2026-06-20T11:46:48Z","verdict":"met"}
+{"case_id":"LOT5_DELETE_REMOTE_FIRST","delete_state":"deleted","reason_code":"folder_generated_image_delete_ok","status":200,"target_ref":"generated-image-target:f189e2650147","ts_utc":"2026-06-20T11:46:48Z","verdict":"met"}
+{"case_id":"LOT5_LOCAL_TOMBSTONE","image_ref":"workspace-generated-image:f87e153a:3674f71fa793","local_state":"deleted","nextcloud_sync_state":"deleted","ts_utc":"2026-06-20T11:46:48Z","verdict":"met"}
+{"case_id":"LOT5_REMOTE_ABSENCE_STATUS_ONLY","reason_code":"folder_generated_image_not_found","remote_status_class":"4xx","target_ref":"generated-image-target:f189e2650147","ts_utc":"2026-06-20T11:46:48Z","verdict":"met"}
+{"case_id":"LOT5_FINAL_VERDICT","reason_code":"folder_generated_image_delete_ok","ts_utc":"2026-06-20T11:46:48Z","verdict":"met"}
+{"case_id":"LOT5_ARTIFACT_SCAN","forbidden_categories":[],"forbidden_match_count":0,"raw_content_in_artifact":false,"redacted_secret_metadata_allowed":true,"verdict":"met"}

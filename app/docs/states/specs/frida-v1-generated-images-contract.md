@@ -1,8 +1,8 @@
 # Frida V1 - Generated Images contract
 
 Statut: spec source-of-truth Images generees V1 ouverte; Lots 0/1 docs-only,
-Lot 2 read-model, Lot 3 creation Nextcloud-first et Lot 4 liste/lookup
-metadata-only livres.
+Lot 2 read-model, Lot 3 creation Nextcloud-first, Lot 4 liste/lookup
+metadata-only et Lot 5 open/download/delete livres.
 Date: 2026-06-20
 Roadmap active: `app/docs/todo-todo/product/frida-v1-generated-images-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-generated-images-lot0-audit-2026-06-19.md`
@@ -230,7 +230,8 @@ Etat de livraison:
 - Lot 3 livre uniquement `POST /api/workspace-folders/<folder_id>/generated-images`;
 - Lot 4 livre `GET /api/workspace-folders/<folder_id>/generated-images` et
   `GET /api/workspace-folders/<folder_id>/generated-images/<image_id>`;
-- les routes open/download et delete restent reservees aux lots suivants.
+- Lot 5 livre `GET .../<image_id>/download`, `GET .../<image_id>/open` et
+  `DELETE .../<image_id>`.
 
 Regles communes:
 
@@ -410,9 +411,11 @@ Implementation Lot 4:
 - les projections techniques restent sans prompt brut, target brut, ETag brut,
   URL DAV, chemin DAV, XML, bytes, base64, data URL, `content_hash` complet ou
   secret;
-- tant que Lot 5 n'est pas livre, `can_open`, `can_download` et `can_delete`
-  restent `false` avec reason code
-  `folder_generated_image_access_not_prepared`;
+- `can_open`, `can_download` et `can_delete` valent `true` uniquement pour une
+  image active, non deleted, `nextcloud_sync_state=linked`, rattachee au dossier
+  du path, avec cible interne exacte et format V1 valide;
+- les images non linked, deleted, cible invalide ou dossier non linked gardent
+  les actions `false` avec reason code content-free;
 - aucun provider, Nextcloud ou WebDAV n'est appele par liste/lookup.
 
 ## 13. Open/download
@@ -427,7 +430,9 @@ Download et open exigent:
 - GET WebDAV exact;
 - aucun listing Nextcloud;
 - limite `15 MiB`, complet ou refus;
-- pas de troncature silencieuse.
+- pas de troncature silencieuse;
+- revalidation des bytes distants comme PNG/JPEG/WebP avant service;
+- refus si le MIME/format distant ne correspond pas au read-model local.
 
 Headers HTTP:
 
@@ -439,6 +444,12 @@ Headers HTTP:
 Le nom utilisateur peut etre utilise dans `Content-Disposition` si la surface
 utilisateur l'autorise. Les headers ne contiennent jamais prompt brut, cible
 distante brute, URL DAV, ETag brut ou secret.
+
+Lot 5 livre `Content-Disposition: inline` pour open et
+`Content-Disposition: attachment` pour download, avec nom de fichier
+user-facing safe et sans reconstruire ni exposer `target_name_internal`.
+Preuve live Lot 5:
+`app/docs/states/baselines/generated-images-smokes/frida-v1-generated-images-lot5-content-access-20260620T114646Z.jsonl`.
 
 ## 14. Suppression V1
 
@@ -460,6 +471,11 @@ Regles:
 - succes distant puis echec tombstone local = divergence explicite
   content-free;
 - cleanup synthetique de smokes autorise avec cible exacte.
+
+Lot 5 livre la suppression remote-first sous
+`DELETE /api/workspace-folders/<folder_id>/generated-images/<image_id>`:
+aucun prefix delete, aucun listing Nextcloud et aucune suppression hors cible
+exacte persistée.
 
 ## 15. Reuse, chat et thumbnail
 

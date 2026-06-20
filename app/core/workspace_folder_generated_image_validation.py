@@ -72,16 +72,36 @@ def validate_generated_image_data_url(data_url: Any) -> GeneratedImageValidation
 
     if not image_bytes:
         return _failure(workspace_folder_generated_images.REASON_DATA_URL_INVALID)
-    if len(image_bytes) > V1_IMAGE_MAX_BYTES:
-        return _failure(workspace_folder_generated_images.REASON_TOO_LARGE)
-
     sniff = active_document_image_validation.sniff_image(image_bytes)
     if sniff is None:
         return _failure(workspace_folder_generated_images.REASON_MIME_INVALID)
-    if sniff.media_type not in _FORMAT_BY_MIME:
-        return _failure(workspace_folder_generated_images.REASON_FORMAT_UNSUPPORTED)
     if sniff.media_type != normalized_mime:
         return _failure(workspace_folder_generated_images.REASON_MIME_INVALID)
+    return _validate_image_bytes(image_bytes, sniff=sniff)
+
+
+def validate_generated_image_bytes(
+    image_bytes: bytes,
+    *,
+    expected_mime_type: Any = "",
+) -> GeneratedImageValidationResult:
+    content = bytes(image_bytes or b"")
+    sniff = active_document_image_validation.sniff_image(content)
+    if sniff is None:
+        return _failure(workspace_folder_generated_images.REASON_MIME_INVALID)
+    expected = workspace_folder_generated_images.normalize_mime_type(expected_mime_type)
+    if expected and sniff.media_type != expected:
+        return _failure(workspace_folder_generated_images.REASON_MIME_INVALID)
+    return _validate_image_bytes(content, sniff=sniff)
+
+
+def _validate_image_bytes(image_bytes: bytes, *, sniff: Any) -> GeneratedImageValidationResult:
+    if not image_bytes:
+        return _failure(workspace_folder_generated_images.REASON_DATA_URL_INVALID)
+    if len(image_bytes) > V1_IMAGE_MAX_BYTES:
+        return _failure(workspace_folder_generated_images.REASON_TOO_LARGE)
+    if sniff.media_type not in _FORMAT_BY_MIME:
+        return _failure(workspace_folder_generated_images.REASON_FORMAT_UNSUPPORTED)
     if (
         sniff.width < V1_IMAGE_MIN_WIDTH
         or sniff.height < V1_IMAGE_MIN_HEIGHT

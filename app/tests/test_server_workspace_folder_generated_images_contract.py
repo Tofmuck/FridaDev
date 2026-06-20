@@ -441,12 +441,12 @@ class ServerWorkspaceFolderGeneratedImagesContractTests(unittest.TestCase):
         self.assertEqual(first_user["width"], 64)
         self.assertEqual(first_user["height"], 64)
         self.assertEqual(first_user["status"], "available")
-        self.assertFalse(first_user["can_download"])
-        self.assertFalse(first_user["can_open"])
-        self.assertFalse(first_user["can_delete"])
+        self.assertTrue(first_user["can_download"])
+        self.assertTrue(first_user["can_open"])
+        self.assertTrue(first_user["can_delete"])
         self.assertEqual(
             first_user["actions"]["download_reason_code"],
-            "folder_generated_image_access_not_prepared",
+            "folder_generated_image_download_ok",
         )
         body_text = str(body)
         self.assertNotIn("Supprimee", body_text)
@@ -478,7 +478,7 @@ class ServerWorkspaceFolderGeneratedImagesContractTests(unittest.TestCase):
             IMAGE_ID,
         )
         self.assertEqual(images.get_calls, [{"image_id": IMAGE_ID, "fail_closed": True}])
-        self.assertFalse(body["generated_image"]["generated_image_v1_user"]["can_open"])
+        self.assertTrue(body["generated_image"]["generated_image_v1_user"]["can_open"])
         self.assertFalse(runtime.calls)
         self.assertNotIn(TARGET_NAME, str(body))
         self.assertNotIn("a" * 64, str(body))

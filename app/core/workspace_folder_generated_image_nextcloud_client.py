@@ -28,6 +28,21 @@ class NextcloudGeneratedImageResponse:
         return f"{self.http_status // 100}xx"
 
 
+@dataclass(frozen=True)
+class NextcloudGeneratedImageReadResponse:
+    ok: bool
+    reason_code: str
+    http_status: int = 0
+    content: bytes = b""
+    media_type: str = ""
+
+    @property
+    def status_class(self) -> str:
+        if self.http_status <= 0:
+            return "none"
+        return f"{self.http_status // 100}xx"
+
+
 class NextcloudGeneratedImageClientError(RuntimeError):
     def __init__(self, reason_code: str, *, http_status: int = 0):
         super().__init__(reason_code)
@@ -128,6 +143,28 @@ class NextcloudGeneratedImageClient:
             http_status=status,
         )
 
+    def read_image(
+        self,
+        folder_name: str,
+        image_name: str,
+        *,
+        max_bytes: int,
+    ) -> NextcloudGeneratedImageReadResponse:
+        status, content, media_type = self._request_content(
+            "GET",
+            self._url(folder_name, IMAGES_SUBFOLDER, image_name),
+            max_bytes=int(max_bytes or 0),
+        )
+        if status == 200:
+            return NextcloudGeneratedImageReadResponse(
+                True,
+                workspace_folder_generated_images.REASON_DOWNLOAD_OK,
+                status,
+                content=content,
+                media_type=_safe_media_type(media_type),
+            )
+        raise NextcloudGeneratedImageClientError(_image_read_reason(status), http_status=status)
+
     def _url(self, *segments: str) -> str:
         parts = [self.config.root_name, *[segment for segment in segments if segment]]
         encoded = "/".join(quote(part.strip("/"), safe="") for part in parts)
@@ -174,6 +211,52 @@ class NextcloudGeneratedImageClient:
                 workspace_folder_generated_images.REASON_IMAGES_TARGET_UNAVAILABLE
             ) from None
 
+    def _request_content(
+        self,
+        method: str,
+        url: str,
+        *,
+        max_bytes: int,
+    ) -> tuple[int, bytes, str]:
+        request = Request(url, method=method)
+        request.add_header("Authorization", self._authorization_header())
+        try:
+            with urlopen(request, timeout=12) as response:
+                status = int(response.status)
+                content_length = response.headers.get("Content-Length")
+                if content_length:
+                    try:
+                        if int(content_length) > max_bytes:
+                            raise NextcloudGeneratedImageClientError(
+                                workspace_folder_generated_images.REASON_TOO_LARGE,
+                                http_status=status,
+                            )
+                    except ValueError:
+                        pass
+                chunks: list[bytes] = []
+                total = 0
+                while True:
+                    chunk = response.read(64 * 1024)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > max_bytes:
+                        raise NextcloudGeneratedImageClientError(
+                            workspace_folder_generated_images.REASON_TOO_LARGE,
+                            http_status=status,
+                        )
+                    chunks.append(chunk)
+                media_type = str(response.headers.get("Content-Type") or "")
+                return status, b"".join(chunks), media_type
+        except HTTPError as exc:
+            return int(exc.code or 0), b"", ""
+        except NextcloudGeneratedImageClientError:
+            raise
+        except (OSError, URLError):
+            raise NextcloudGeneratedImageClientError(
+                workspace_folder_generated_images.REASON_IMAGES_TARGET_UNAVAILABLE
+            ) from None
+
     def _authorization_header(self) -> str:
         raw = f"{self.config.username}:{self.config.app_password}".encode("utf-8")
         return "Basic " + base64.b64encode(raw).decode("ascii")
@@ -210,6 +293,16 @@ def _image_write_reason(status: int) -> str:
         return workspace_folder_generated_images.REASON_IMAGES_TARGET_UNAVAILABLE
     if status in {405, 409, 412, 423}:
         return workspace_folder_generated_images.REASON_NAME_CONFLICT
+    return workspace_folder_generated_images.REASON_NEXTCLOUD_ERROR_REDACTED
+
+
+def _image_read_reason(status: int) -> str:
+    if status == 404:
+        return workspace_folder_generated_images.REASON_NOT_FOUND
+    if status in {401, 403} or status <= 0 or status >= 500:
+        return workspace_folder_generated_images.REASON_IMAGES_TARGET_UNAVAILABLE
+    if status in {405, 409, 412, 423}:
+        return workspace_folder_generated_images.REASON_IMAGES_TARGET_UNAVAILABLE
     return workspace_folder_generated_images.REASON_NEXTCLOUD_ERROR_REDACTED
 
 

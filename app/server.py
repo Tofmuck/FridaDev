@@ -39,6 +39,7 @@ from core import workspace_folder_export_nextcloud_runtime
 from core import workspace_folder_export_content_service
 from core import workspace_folder_exports
 from core import workspace_folder_exports_service
+from core import workspace_folder_generated_image_content_service
 from core import workspace_folder_generated_image_nextcloud_runtime
 from core import workspace_folder_generated_images
 from core import workspace_folder_generated_images_service
@@ -1493,6 +1494,45 @@ def api_list_workspace_folder_generated_images(folder_id: str):
 @app.get('/api/workspace-folders/<folder_id>/generated-images/<image_id>')
 def api_get_workspace_folder_generated_image(folder_id: str, image_id: str):
     payload, status = workspace_folder_generated_images_service.get_workspace_folder_generated_image_response(
+        folder_id,
+        image_id,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/generated-images/<image_id>/download')
+def api_download_workspace_folder_generated_image(folder_id: str, image_id: str):
+    result = workspace_folder_generated_image_content_service.download_workspace_folder_generated_image_response(
+        folder_id,
+        image_id,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+        disposition="attachment",
+    )
+    if result.ok:
+        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
+    return jsonify(dict(result.payload or {})), result.status
+
+
+@app.get('/api/workspace-folders/<folder_id>/generated-images/<image_id>/open')
+def api_open_workspace_folder_generated_image(folder_id: str, image_id: str):
+    result = workspace_folder_generated_image_content_service.download_workspace_folder_generated_image_response(
+        folder_id,
+        image_id,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+        disposition="inline",
+    )
+    if result.ok:
+        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
+    return jsonify(dict(result.payload or {})), result.status
+
+
+@app.delete('/api/workspace-folders/<folder_id>/generated-images/<image_id>')
+def api_delete_workspace_folder_generated_image(folder_id: str, image_id: str):
+    payload, status = workspace_folder_generated_image_content_service.delete_workspace_folder_generated_image_response(
         folder_id,
         image_id,
         workspace_folders_module=workspace_folders,

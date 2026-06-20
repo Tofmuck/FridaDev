@@ -246,20 +246,20 @@ class WorkspaceFolderGeneratedImagesTests(unittest.TestCase):
         technical = item["generated_image_v1_technical"]
         self.assertEqual(user["display_name"], "Image sensible")
         self.assertEqual(user["format"], "png")
-        self.assertFalse(user["can_download"])
-        self.assertFalse(user["can_open"])
-        self.assertFalse(user["can_delete"])
+        self.assertTrue(user["can_download"])
+        self.assertTrue(user["can_open"])
+        self.assertTrue(user["can_delete"])
         self.assertEqual(
             user["actions"]["download_reason_code"],
-            "folder_generated_image_access_not_prepared",
+            "folder_generated_image_download_ok",
         )
         self.assertEqual(
             user["actions"]["open_reason_code"],
-            "folder_generated_image_access_not_prepared",
+            "folder_generated_image_open_ok",
         )
         self.assertEqual(
             user["actions"]["delete_reason_code"],
-            "folder_generated_image_access_not_prepared",
+            "folder_generated_image_delete_ok",
         )
         self.assertEqual(technical["display_name_hash"], "abc123def456")
         self.assertEqual(technical["target_ref"], "generated-image-target:456defabc123")
@@ -292,6 +292,25 @@ class WorkspaceFolderGeneratedImagesTests(unittest.TestCase):
             "etag_value",
         ):
             self.assertNotIn(forbidden, item)
+
+    def test_user_actions_stay_disabled_when_image_is_not_linked_or_target_invalid(self) -> None:
+        cases = (
+            _image(nextcloud_sync_state="sync_error"),
+            _image(local_state="sync_error"),
+            _image(target_name_internal="ClientSecretTarget.png"),
+            _image(image_format="gif"),
+        )
+
+        for image in cases:
+            with self.subTest(image=image):
+                user = workspace_folder_generated_images.build_user_projection(image)
+                self.assertFalse(user["can_download"])
+                self.assertFalse(user["can_open"])
+                self.assertFalse(user["can_delete"])
+                self.assertNotEqual(
+                    user["actions"]["download_reason_code"],
+                    "folder_generated_image_download_ok",
+                )
 
     def test_formats_are_limited_to_png_jpeg_and_webp(self) -> None:
         self.assertEqual(workspace_folder_generated_images.normalize_image_format("png"), "png")

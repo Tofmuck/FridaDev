@@ -222,7 +222,16 @@ def build_user_actions(
         reason_code = workspace_folder_generated_images.REASON_NAME_INVALID
     elif not workspace_folder_generated_images.normalize_image_format(image.get("image_format")):
         reason_code = workspace_folder_generated_images.REASON_FORMAT_UNSUPPORTED
-    action_reason_code = reason_code or workspace_folder_generated_images.REASON_ACCESS_NOT_PREPARED
+    if not reason_code:
+        return {
+            "can_download": True,
+            "can_open": True,
+            "can_delete": True,
+            "download_reason_code": workspace_folder_generated_images.REASON_DOWNLOAD_OK,
+            "open_reason_code": workspace_folder_generated_images.REASON_OPEN_OK,
+            "delete_reason_code": workspace_folder_generated_images.REASON_DELETE_OK,
+        }
+    action_reason_code = reason_code
     return {
         "can_download": False,
         "can_open": False,

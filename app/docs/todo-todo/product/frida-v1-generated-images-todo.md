@@ -1,7 +1,8 @@
 # Frida V1 - Images generees - TODO
 
-Statut: TODO actif detaille; Lots 0, 1, 2, 3 et 4 coches; read-model local,
-creation Nextcloud-first et liste/lookup metadata-only livres; Lot 5+ ouverts.
+Statut: TODO actif detaille; Lots 0, 1, 2, 3, 4 et 5 coches; read-model local,
+creation Nextcloud-first, liste/lookup metadata-only et open/download/delete
+explicites livres; Lot 6+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Spec source-of-truth Lot 1:
 `app/docs/states/specs/frida-v1-generated-images-contract.md`
@@ -599,30 +600,49 @@ Livraison Lot 4:
 - lookup UUID exact uniquement; invalid UUID, absent, cross-folder et deleted
   sont refuses content-free;
 - pannes folder store et image store fail-closed, sans fausse liste vide;
-- les actions `can_open`, `can_download` et `can_delete` restent `false` avec
-  `folder_generated_image_access_not_prepared` tant que Lot 5 n'est pas livre.
+- les actions `can_open`, `can_download` et `can_delete` restent `false` pour
+  les images non actives, non linked, cible invalide ou dossier non linked; Lot
+  5 les rend `true` seulement pour les images actives et linked.
 
 ### Lot 5 - Open/download/delete image
 
-- [ ] Ajouter une action explicite de telechargement sous namespace dossier.
-- [ ] Ajouter une action explicite d'ouverture inline seulement si la spec Lot 1
+- [x] Ajouter une action explicite de telechargement sous namespace dossier.
+- [x] Ajouter une action explicite d'ouverture inline seulement si la spec Lot 1
   l'autorise.
-- [ ] Exiger dossier `linked`.
-- [ ] Exiger image active, non deleted, rattachee au dossier du path et
+- [x] Exiger dossier `linked`.
+- [x] Exiger image active, non deleted, rattachee au dossier du path et
   `nextcloud_sync_state=linked`.
-- [ ] Lire uniquement la cible distante exacte persistee dans le read-model.
-- [ ] Ne faire aucun listing Nextcloud.
-- [ ] Appliquer la limite de taille decidee par Lot 1, complet ou refus.
-- [ ] Ne pas tronquer silencieusement.
-- [ ] Ajouter headers sobres: `X-Content-Type-Options: nosniff` et
+- [x] Lire uniquement la cible distante exacte persistee dans le read-model.
+- [x] Ne faire aucun listing Nextcloud.
+- [x] Appliquer la limite de taille decidee par Lot 1, complet ou refus.
+- [x] Ne pas tronquer silencieusement.
+- [x] Revalider les bytes distants comme PNG/JPEG/WebP avant de servir.
+- [x] Ajouter headers sobres: `X-Content-Type-Options: nosniff` et
   `Cache-Control: private, no-store`.
-- [ ] Ne jamais exposer prompt brut ou chemin distant dans les headers.
-- [ ] Ajouter suppression utilisateur explicite sous namespace dossier.
-- [ ] Supprimer distant exact avant tombstone local.
-- [ ] Fail-closed si suppression distante echoue.
-- [ ] Ne jamais supprimer large ou recursive.
-- [ ] Tester absent, deleted, cross-folder, non linked, taille trop grande,
+- [x] Ne jamais exposer prompt brut ou chemin distant dans les headers.
+- [x] Ajouter suppression utilisateur explicite sous namespace dossier.
+- [x] Supprimer distant exact avant tombstone local.
+- [x] Fail-closed si suppression distante echoue.
+- [x] Remonter explicitement l'etat partiel si tombstone local echoue apres
+  suppression distante.
+- [x] Ne jamais supprimer large ou recursive.
+- [x] Tester absent, deleted, cross-folder, non linked, taille trop grande,
   panne store, panne Nextcloud, headers, suppression et anti-fuite.
+
+Livraison Lot 5:
+
+- routes namespaced livrees:
+  `GET /api/workspace-folders/<folder_id>/generated-images/<image_id>/open`,
+  `GET /api/workspace-folders/<folder_id>/generated-images/<image_id>/download`
+  et `DELETE /api/workspace-folders/<folder_id>/generated-images/<image_id>`;
+- open/download font un GET WebDAV exact de `target_name_internal`, limite
+  `15 MiB`, revalidation image en memoire et refus complet si mismatch;
+- delete fait un DELETE WebDAV exact avant tombstone local; echec distant =
+  aucun tombstone, echec tombstone apres distant = divergence content-free;
+- liste/lookup exposent `can_open`, `can_download` et `can_delete` uniquement
+  pour les images actives, linked, avec cible et format valides.
+- preuve live synthetique content-free:
+  `app/docs/states/baselines/generated-images-smokes/frida-v1-generated-images-lot5-content-access-20260620T114646Z.jsonl`.
 
 ### Lot 6 - UI dossier Images
 
