@@ -1,8 +1,8 @@
 # Frida V1 - Images generees - TODO
 
-Statut: TODO actif detaille; Lots 0, 1, 2, 3, 4 et 5 coches; read-model local,
-creation Nextcloud-first, liste/lookup metadata-only et open/download/delete
-explicites livres; Lot 6+ ouverts.
+Statut: TODO actif detaille; Lots 0, 1, 2, 3, 4, 5 et 6 coches; read-model
+local, creation Nextcloud-first, liste/lookup metadata-only,
+open/download/delete explicites et UI dossier livres; Lot 7+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Spec source-of-truth Lot 1:
 `app/docs/states/specs/frida-v1-generated-images-contract.md`
@@ -646,21 +646,37 @@ Livraison Lot 5:
 
 ### Lot 6 - UI dossier Images
 
-- [ ] Ajouter une surface Images dans le contexte du dossier Frida courant.
-- [ ] Charger la liste seulement pour un dossier `linked`.
-- [ ] Afficher les images generees sans prompt brut si la politique Lot 1 ne
+- [x] Ajouter une surface Images dans le contexte du dossier Frida courant.
+- [x] Charger la liste seulement pour un dossier `linked`.
+- [x] Afficher les images generees sans prompt brut si la politique Lot 1 ne
   l'autorise pas.
-- [ ] Permettre la creation seulement par action explicite et payload conforme a
+- [x] Permettre la creation seulement par action explicite et payload conforme a
   la spec Lot 1.
-- [ ] Ne jamais envoyer `messages`, contenu image brut existant, data URL ou
+- [x] Ne jamais envoyer `messages`, contenu image brut existant, data URL ou
   bytes depuis l'UI comme preuve de source non decidee.
-- [ ] Ne jamais envoyer un ID serveur client-owned pour contourner le create.
-- [ ] Ouvrir/telecharger uniquement quand les flags serveur l'autorisent.
-- [ ] Ne pas exposer Documents, Notes, Exports, Biblio, Agenda, Mail,
+- [x] Ne jamais envoyer un ID serveur client-owned pour contourner le create.
+- [x] Ouvrir/telecharger uniquement quand les flags serveur l'autorisent.
+- [x] Ne pas exposer Documents, Notes, Exports, Biblio, Agenda, Mail,
   Memory/RAG/Identity/Summary comme sources.
-- [ ] Afficher les erreurs utilisateur sobrement.
-- [ ] Tester payloads, routes namespaced, actions disabled/enabled, absence de
+- [x] Afficher les erreurs utilisateur sobrement.
+- [x] Tester payloads, routes namespaced, actions disabled/enabled, absence de
   route globale, absence de prompt brut dans surfaces techniques et responsive.
+
+Livraison Lot 6:
+
+- UI dossier livree par `app/web/chat_workspace_folder_generated_images.js` et
+  `app/web/chat_workspace_folder_generated_images_panel.js`, branchee dans le
+  panneau dossier existant;
+- creation persistante via `POST
+  /api/workspace-folders/<folder_id>/generated-images`, sans
+  `workspace_folder_id`, `image_id`, bytes, base64 ou data URL dans le payload;
+- open/download/delete utilisent uniquement les routes namespaced Lot 5 et
+  respectent les flags serveur `can_open`, `can_download` et `can_delete`;
+- suppression UI avec confirmation humaine et refresh apres succes serveur;
+- tests frontend directs:
+  `app/tests/unit/frontend_chat/test_workspace_folder_generated_images_module.js`
+  et
+  `app/tests/unit/frontend_chat/test_workspace_folder_generated_images_panel_module.js`.
 
 ### Lot 7 - Observabilite / smokes content-free
 

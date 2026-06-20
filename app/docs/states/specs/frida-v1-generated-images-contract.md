@@ -2,7 +2,7 @@
 
 Statut: spec source-of-truth Images generees V1 ouverte; Lots 0/1 docs-only,
 Lot 2 read-model, Lot 3 creation Nextcloud-first, Lot 4 liste/lookup
-metadata-only et Lot 5 open/download/delete livres.
+metadata-only, Lot 5 open/download/delete et Lot 6 UI dossier livres.
 Date: 2026-06-20
 Roadmap active: `app/docs/todo-todo/product/frida-v1-generated-images-todo.md`
 Audit Lot 0: `app/docs/states/audits/frida-v1-generated-images-lot0-audit-2026-06-19.md`
@@ -232,6 +232,8 @@ Etat de livraison:
   `GET /api/workspace-folders/<folder_id>/generated-images/<image_id>`;
 - Lot 5 livre `GET .../<image_id>/download`, `GET .../<image_id>/open` et
   `DELETE .../<image_id>`.
+- Lot 6 livre une UI dossier qui consomme uniquement ces routes namespaced, sans
+  nouvelle route serveur ni reutilisation durable de l'outil V0.
 
 Regles communes:
 
@@ -494,6 +496,23 @@ Reuse-as-source:
 - aucune injection chat automatique.
 
 Open/download restent les seuls acces contenu Images V1.
+
+UI dossier Lot 6:
+
+- la section Images generees V1 est visible dans le contexte d'un
+  `workspace_folder`;
+- creation active uniquement pour un dossier `linked`;
+- le payload UI de creation contient le prompt courant et options autorisees,
+  mais jamais `workspace_folder_id`, `image_id`, bytes, base64, data URL, cible
+  distante ou payload technique;
+- open/download/delete utilisent les routes namespaced Lot 5 et les flags
+  serveur `can_open`, `can_download` et `can_delete`;
+- delete exige une confirmation humaine et ne fait pas de suppression optimiste;
+- l'UI n'affiche pas prompt brut apres creation, bytes, base64, data URL, cible
+  interne, `target_ref`, DAV/path/URL, ETag, `content_hash` complet ou payload
+  provider;
+- l'outil lateral V0 `/api/tools/image-generation` reste separe et ne devient
+  pas surface durable Images V1.
 
 ## 16. Projections
 

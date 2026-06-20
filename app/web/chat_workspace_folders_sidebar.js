@@ -10,6 +10,11 @@ const WorkspaceFolderExportsPanel = (
     ? window.FridaWorkspaceFolderExportsPanel
     : (typeof require !== 'undefined' ? require('./chat_workspace_folder_exports_panel.js') : null)
 );
+const WorkspaceFolderGeneratedImagesPanel = (
+  typeof window !== 'undefined' && window.FridaWorkspaceFolderGeneratedImagesPanel
+    ? window.FridaWorkspaceFolderGeneratedImagesPanel
+    : (typeof require !== 'undefined' ? require('./chat_workspace_folder_generated_images_panel.js') : null)
+);
 
 function createWorkspaceFolderSidebarRenderer({
   threadsUl,
@@ -32,6 +37,12 @@ function createWorkspaceFolderSidebarRenderer({
   createWorkspaceExportOnServer,
   openWorkspaceExport,
   downloadWorkspaceExport,
+  getWorkspaceGeneratedImages,
+  refreshWorkspaceGeneratedImages,
+  createWorkspaceGeneratedImageOnServer,
+  openWorkspaceGeneratedImage,
+  downloadWorkspaceGeneratedImage,
+  deleteWorkspaceGeneratedImageOnServer,
   getCurrentThread,
   getWorkspaceFileSelections,
   selectWorkspaceFileOnServer,
@@ -52,6 +63,18 @@ function createWorkspaceFolderSidebarRenderer({
     openWorkspaceExport,
     downloadWorkspaceExport,
     getCurrentThread,
+    renderThreads,
+    setThreadStatus,
+    consoleObj: logger,
+  });
+  const generatedImagesPanel = WorkspaceFolderGeneratedImagesPanel?.createWorkspaceFolderGeneratedImagesPanelRenderer?.({
+    threadsUl,
+    getWorkspaceGeneratedImages,
+    refreshWorkspaceGeneratedImages,
+    createWorkspaceGeneratedImageOnServer,
+    openWorkspaceGeneratedImage,
+    downloadWorkspaceGeneratedImage,
+    deleteWorkspaceGeneratedImageOnServer,
     renderThreads,
     setThreadStatus,
     consoleObj: logger,
@@ -452,6 +475,7 @@ function createWorkspaceFolderSidebarRenderer({
 
     appendFileRows(folder);
     exportsPanel?.appendExportRows(folder);
+    generatedImagesPanel?.appendGeneratedImageRows(folder);
 
     if (!folderThreads.length) {
       const empty = document.createElement('li');
