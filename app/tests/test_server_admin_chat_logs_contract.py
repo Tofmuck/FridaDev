@@ -104,6 +104,10 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
             'RAW EXCEPTION SENTINEL 5A',
             'RAW FIELD SENTINEL 5A',
             'BEGIN:VEVENT RAW DAV XML SENTINEL 5A',
+            'https://logs.example.internal/path',
+            'https://provider.example/call',
+            'bearer-token-like',
+            '/private/admin/logs/source',
         )
 
         def fake_read_chat_log_events(**kwargs):
@@ -151,9 +155,30 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
                         'duration_ms': None,
                         'payload': {'reason_code': 'legacy_skip', 'message': dangerous_values[0]},
                     },
+                    {
+                        'event_id': 'evt-allowlist-admin',
+                        'conversation_id': 'conv-raw-admin',
+                        'turn_id': 'turn-allowlist-admin',
+                        'ts': '2026-06-21T11:58:00+00:00',
+                        'stage': 'llm_call',
+                        'status': 'error',
+                        'status_v1': 'error',
+                        'status_schema_version': 'agentic_v1',
+                        'legacy_status': False,
+                        'duration_ms': 43,
+                        'payload': {
+                            'status_schema_version': 'agentic_v1',
+                            'reason_code': dangerous_values[7],
+                            'provider_caller': dangerous_values[8],
+                            'error_code': dangerous_values[9],
+                            'runtime_source': dangerous_values[10],
+                            'model': 'openai/gpt-5.4-mini',
+                            'prompt_kind': 'chat_system_augmented',
+                        },
+                    },
                 ],
-                'count': 2,
-                'total': 2,
+                'count': 3,
+                'total': 3,
                 'limit': kwargs.get('limit', 100),
                 'offset': kwargs.get('offset', 0),
                 'next_offset': None,
@@ -196,6 +221,12 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.assertFalse(data['items'][0]['legacy_status'])
         self.assertEqual(data['items'][1]['status_schema_version'], 'legacy')
         self.assertTrue(data['items'][1]['legacy_status'])
+        self.assertEqual(data['items'][2]['payload']['reason_code'], '[redacted]')
+        self.assertEqual(data['items'][2]['payload']['provider_caller'], '[redacted]')
+        self.assertEqual(data['items'][2]['payload']['error_code'], '[redacted]')
+        self.assertEqual(data['items'][2]['payload']['runtime_source'], '[redacted]')
+        self.assertEqual(data['items'][2]['payload']['model'], 'openai/gpt-5.4-mini')
+        self.assertEqual(data['items'][2]['payload']['prompt_kind'], 'chat_system_augmented')
 
     def test_admin_chat_logs_metadata_route_returns_selector_payload(self) -> None:
         observed = {'kwargs': None}

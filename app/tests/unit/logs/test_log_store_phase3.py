@@ -19,7 +19,7 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from observability import log_store
+from observability import admin_log_projection, log_store
 
 
 class _NoopLogger:
@@ -133,6 +133,47 @@ class LogStorePhase3Tests(unittest.TestCase):
                 keys.update(self._collect_keys(child))
             return keys
         return set()
+
+    def test_admin_log_projection_redacts_dangerous_values_under_allowlisted_keys(self) -> None:
+        dangerous_values = (
+            'https://logs.example.internal/path',
+            'https://provider.example/call',
+            'bearer-token-like',
+            '/private/admin/logs/source',
+            'operator@example.internal',
+            'BEGIN:VEVENT RAW DAV XML SENTINEL 5A1',
+        )
+        projected, redaction = admin_log_projection.project_payload(
+            {
+                'reason_code': dangerous_values[0],
+                'provider_caller': dangerous_values[1],
+                'error_code': dangerous_values[2],
+                'runtime_source': dangerous_values[3],
+                'decision_source': dangerous_values[4],
+                'event_family': dangerous_values[5],
+                'reason_codes': ['provider_timeout', dangerous_values[0]],
+                'apply_reason_code': 'provider_timeout',
+                'prompt_kind': 'chat_system_augmented',
+                'status_schema_version': 'agentic_v1',
+                'model': 'openai/gpt-5.4-mini',
+            }
+        )
+
+        encoded = json.dumps(projected, ensure_ascii=False, sort_keys=True)
+        for marker in dangerous_values:
+            self.assertNotIn(marker, encoded)
+        self.assertEqual(projected['reason_code'], '[redacted]')
+        self.assertEqual(projected['provider_caller'], '[redacted]')
+        self.assertEqual(projected['error_code'], '[redacted]')
+        self.assertEqual(projected['runtime_source'], '[redacted]')
+        self.assertEqual(projected['decision_source'], '[redacted]')
+        self.assertEqual(projected['event_family'], '[redacted]')
+        self.assertEqual(projected['reason_codes']['preview'], ['provider_timeout', '[redacted]'])
+        self.assertEqual(projected['apply_reason_code'], 'provider_timeout')
+        self.assertEqual(projected['prompt_kind'], 'chat_system_augmented')
+        self.assertEqual(projected['status_schema_version'], 'agentic_v1')
+        self.assertEqual(projected['model'], 'openai/gpt-5.4-mini')
+        self.assertGreaterEqual(redaction['redacted_payload_values_count'], 7)
 
     def test_build_llm_call_provider_metrics_segments_main_secondary_and_unknown(self) -> None:
         metrics = log_store.build_llm_call_provider_metrics(
@@ -1099,6 +1140,10 @@ class LogStorePhase3Tests(unittest.TestCase):
             'Authorization: Bearer RAW_TOKEN_SENTINEL_LOG_STORE_5A',
             'RAW EXCEPTION SENTINEL LOG STORE 5A',
             'RAW FIELD SENTINEL LOG STORE 5A',
+            'https://logs.example.internal/path',
+            'https://provider.example/call',
+            'bearer-token-like',
+            '/private/admin/logs/source',
         )
 
         class FakeCursor:
@@ -1115,7 +1160,7 @@ class LogStorePhase3Tests(unittest.TestCase):
                 self._step += 1
 
             def fetchone(self) -> tuple[int]:
-                return (1,)
+                return (2,)
 
             def fetchall(self) -> list[tuple[Any, ...]]:
                 return [
@@ -1143,6 +1188,24 @@ class LogStorePhase3Tests(unittest.TestCase):
                             'raw_content_included': True,
                         },
                     ),
+                    (
+                        'evt-admin-allowlist-danger',
+                        'conv-admin-projection',
+                        'turn-admin-projection',
+                        datetime(2026, 6, 21, 12, 1, tzinfo=timezone.utc),
+                        'llm_call',
+                        'error',
+                        34,
+                        {
+                            'status_schema_version': 'agentic_v1',
+                            'reason_code': dangerous_values[6],
+                            'provider_caller': dangerous_values[7],
+                            'error_code': dangerous_values[8],
+                            'runtime_source': dangerous_values[9],
+                            'model': 'openai/gpt-5.4-mini',
+                            'prompt_kind': 'chat_system_augmented',
+                        },
+                    ),
                 ]
 
         class FakeConn:
@@ -1161,7 +1224,7 @@ class LogStorePhase3Tests(unittest.TestCase):
             logger_instance=_NoopLogger(),
         )
 
-        self.assertEqual(result['count'], 1)
+        self.assertEqual(result['count'], 2)
         encoded = json.dumps(result, ensure_ascii=False, sort_keys=True)
         for marker in dangerous_values:
             self.assertNotIn(marker, encoded)
@@ -1180,6 +1243,13 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertEqual(item['payload']['response_chars'], 17)
         self.assertFalse(item['payload']['raw_content_included'])
         self.assertNotIn('raw', item['payload'])
+        dangerous_item = result['items'][1]
+        self.assertEqual(dangerous_item['payload']['reason_code'], '[redacted]')
+        self.assertEqual(dangerous_item['payload']['provider_caller'], '[redacted]')
+        self.assertEqual(dangerous_item['payload']['error_code'], '[redacted]')
+        self.assertEqual(dangerous_item['payload']['runtime_source'], '[redacted]')
+        self.assertEqual(dangerous_item['payload']['model'], 'openai/gpt-5.4-mini')
+        self.assertEqual(dangerous_item['payload']['prompt_kind'], 'chat_system_augmented')
 
     def test_read_chat_log_events_rejects_unknown_payload_projection(self) -> None:
         with self.assertRaisesRegex(ValueError, 'invalid chat log payload projection'):

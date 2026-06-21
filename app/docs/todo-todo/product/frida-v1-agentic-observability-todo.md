@@ -4,7 +4,8 @@ Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2 runtime
 borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3 Agenda/Biblio
 no-op observability livre avec correctif Lot 3.1 Agenda fallback; Lot 4 logs
 runtime content-free livre; Lot 5 decoupe; Lot 5A admin logs/export Markdown
-content-free livre; Lot 5B/5C et Lot 6+ ouverts.
+content-free livre avec correctif Lot 5A.1 value redaction; Lot 5B/5C et
+Lot 6+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -266,6 +267,10 @@ Notes Lot 5A:
 
 - La projection dediee `observability.admin_log_projection` expose une surface
   admin V1 content-free en gardant `payload` comme compat UI projetee.
+- Correctif Lot 5A.1: les valeurs sous cles allowlistees sont redacted si
+  elles ressemblent a une URL, un path/target, un token/Bearer, un header, un
+  credential, un payload DAV/XML ou un email; `model` conserve seulement le
+  format content-free explicitement valide, par exemple `openai/gpt-5.4-mini`.
 - `/api/admin/logs/chat` force `payload_projection=admin` et reprojette
   defensivement la reponse avant JSON.
 - `log_markdown_export` utilise la meme projection et declare dans l'export

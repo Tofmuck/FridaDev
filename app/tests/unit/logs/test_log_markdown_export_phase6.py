@@ -160,6 +160,10 @@ class LogMarkdownExportPhase6Tests(unittest.TestCase):
             'RAW EXCEPTION SENTINEL MARKDOWN 5A',
             'RAW FIELD SENTINEL MARKDOWN 5A',
             'BEGIN:VEVENT RAW DAV XML SENTINEL MARKDOWN 5A',
+            'https://logs.example.internal/path',
+            'https://provider.example/call',
+            'bearer-token-like',
+            '/private/admin/logs/source',
         )
 
         class FakeCursor:
@@ -197,6 +201,24 @@ class LogMarkdownExportPhase6Tests(unittest.TestCase):
                             'raw': dangerous_values[5],
                             'raw_content_included': True,
                             'caldav_xml': dangerous_values[6],
+                        },
+                    ),
+                    (
+                        'evt-markdown-allowlist-danger',
+                        'conv-markdown-redaction',
+                        'turn-markdown-redaction',
+                        datetime(2026, 6, 21, 12, 1, tzinfo=timezone.utc),
+                        'llm_call',
+                        'error',
+                        48,
+                        {
+                            'status_schema_version': 'agentic_v1',
+                            'reason_code': dangerous_values[7],
+                            'provider_caller': dangerous_values[8],
+                            'error_code': dangerous_values[9],
+                            'runtime_source': dangerous_values[10],
+                            'model': 'openai/gpt-5.4-mini',
+                            'prompt_kind': 'chat_system_augmented',
                         },
                     ),
                 ]

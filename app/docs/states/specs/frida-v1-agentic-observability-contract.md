@@ -6,7 +6,7 @@ Lot 2.1 writer V1 livre; correctif Lot 2.2 redaction invalid status livre;
 Lot 3 Agenda/Biblio no-op observability livre; correctif Lot 3.1 Agenda
 fallback status livre; Lot 4 logs runtime content-free livre; Lot 5 decoupe
 en 5A/5B/5C avant runtime; Lot 5A admin logs/export Markdown content-free
-livre.
+livre avec correctif Lot 5A.1 value redaction.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -545,6 +545,11 @@ Decision livree Lot 5A:
 - le champ historique `payload` reste present pour compat UI, mais il ne
   contient plus le payload DB brut sur la route admin: seules les valeurs
   allowlistees et redacted sont exposees;
+- correctif Lot 5A.1: l'allowlist admin valide aussi les valeurs; une valeur
+  URL-like, path/target-like, token/Bearer-like, header-like, credential-like,
+  DAV/XML-like ou email-like est redacted meme sous une cle allowlistee; le
+  champ `model` garde une validation dediee pour les identifiants
+  content-free de type `provider/model`;
 - les items et listings portent des indicateurs explicites:
   `raw_event_payloads_included=false`, `raw_content_included=false`,
   `raw_prompt_included=false`, `raw_provider_payload_included=false`,

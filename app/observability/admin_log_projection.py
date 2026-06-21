@@ -12,7 +12,8 @@ _MAX_LIST_ITEMS = 8
 _MAX_DEPTH = 4
 _REDACTED = '[redacted]'
 
-_SAFE_TOKEN_RE = re.compile(r'^[a-z0-9][a-z0-9_.:/@+-]{0,159}$')
+_SAFE_CODE_RE = re.compile(r'^[a-z0-9][a-z0-9_.-]{0,159}$')
+_SAFE_MODEL_RE = re.compile(r'^[a-z0-9][a-z0-9_.-]{0,79}/[a-z0-9][a-z0-9_.-]{0,119}$')
 
 _QUALIFIED_RAW_FLAGS = {
     'raw_event_payloads_included',
@@ -157,6 +158,21 @@ _BLOCKED_KEY_PARTS = (
     'webdav',
 )
 
+_DANGEROUS_VALUE_PARTS = (
+    'api-key',
+    'api_key',
+    'authorization',
+    'bearer',
+    'caldav',
+    'cookie',
+    'credential',
+    'etag',
+    'password',
+    'secret',
+    'token',
+    'webdav',
+)
+
 
 def _base_redaction() -> dict[str, Any]:
     return {
@@ -208,13 +224,42 @@ def _is_safe_text_key(key: str) -> bool:
     return lower.endswith(_SAFE_TEXT_SUFFIXES)
 
 
-def _is_safe_text_value(value: Any) -> bool:
+def _looks_dangerous_text(value: str, *, allow_model_path: bool = False) -> bool:
+    lower = value.lower()
+    if '://' in lower:
+        return True
+    if lower.startswith(('http:', 'https:', 'www.')):
+        return True
+    if any(part in lower for part in _DANGEROUS_VALUE_PARTS):
+        return True
+    if lower.startswith(('begin:', '<?xml')) or '</' in lower:
+        return True
+    if lower.startswith(('dav:', 'xml:')):
+        return True
+    if any(char in value for char in ('@', '\\', '?', '#', '&', '=', '<', '>', '\r', '\n', ':')):
+        return True
+    if '/' in value and not allow_model_path:
+        return True
+    return False
+
+
+def _is_safe_model_value(value: str) -> bool:
+    if _looks_dangerous_text(value, allow_model_path=True):
+        return False
+    return bool(_SAFE_CODE_RE.fullmatch(value) or _SAFE_MODEL_RE.fullmatch(value))
+
+
+def _is_safe_text_value(key: str, value: Any) -> bool:
     text = str(value or '').strip()
-    return bool(_SAFE_TOKEN_RE.fullmatch(text))
+    if str(key or '').strip().lower() == 'model':
+        return _is_safe_model_value(text)
+    if _looks_dangerous_text(text):
+        return False
+    return bool(_SAFE_CODE_RE.fullmatch(text))
 
 
 def _project_string(key: str, value: Any, stats: dict[str, int]) -> str:
-    if _is_safe_text_key(key) and _is_safe_text_value(value):
+    if _is_safe_text_key(key) and _is_safe_text_value(key, value):
         return str(value).strip()
     stats['redacted_values'] += 1
     return _REDACTED
@@ -233,7 +278,7 @@ def _project_list(key: str, values: list[Any], stats: dict[str, int], depth: int
     for value in values[:_MAX_LIST_ITEMS]:
         before = stats['redacted_values']
         if isinstance(value, str) and key in _SAFE_TEXT_LIST_KEYS:
-            if _is_safe_text_value(value):
+            if _is_safe_text_value(key, value):
                 projected.append(value.strip())
             else:
                 stats['redacted_values'] += 1
