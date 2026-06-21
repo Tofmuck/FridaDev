@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Mapping
 
 
@@ -14,6 +15,13 @@ def _normalize_input_mode(raw_input_mode: Any) -> str | None:
     if normalized in _VALID_INPUT_MODES:
         return normalized
     return None
+
+
+def _sha256_12(value: Any) -> str:
+    text = str(value or '')
+    if not text:
+        return ''
+    return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
 
 
 def resolve_chat_session(
@@ -42,7 +50,13 @@ def resolve_chat_session(
             return None, ({'ok': False, 'error': 'conversation introuvable'}, 404)
     else:
         if conversation_id_raw:
-            logger.info('conv_id_invalid raw=%s', conversation_id_raw)
+            raw_text = str(conversation_id_raw or '')
+            logger.info(
+                'conv_id_invalid reason=invalid_conversation_id raw_present=%s raw_chars=%s raw_sha256_12=%s',
+                True,
+                len(raw_text),
+                _sha256_12(raw_text),
+            )
         conversation = conv_store_module.new_conversation(system_prompt)
         conv_store_module.save_conversation(conversation)
         logger.info(

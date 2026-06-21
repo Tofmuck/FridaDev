@@ -313,7 +313,11 @@ def insert_chat_log_event(
                 rowcount = int(cur.rowcount or 0)
             conn.commit()
     except Exception as exc:
-        logger_instance.error('chat_log_event_insert_failed event_id=%s err=%s', event.get('event_id'), exc)
+        logger_instance.error(
+            'chat_log_event_insert_failed event_id=%s reason=chat_log_event_insert_failed err_class=%s',
+            event.get('event_id'),
+            exc.__class__.__name__,
+        )
         return False
 
     if rowcount == 0:

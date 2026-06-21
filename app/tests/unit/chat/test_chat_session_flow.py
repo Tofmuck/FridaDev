@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import sys
 import unittest
 from pathlib import Path
@@ -133,7 +134,15 @@ class ChatSessionFlowTests(unittest.TestCase):
         self.assertFalse(session['web_search_on'])
         self.assertTrue(observed['saved'])
         self.assertTrue(observed['decay_called'])
-        self.assertTrue(any('conv_id_invalid raw=@@bad@@' in message for message in observed['log_messages']))
+        self.assertFalse(any('@@bad@@' in message for message in observed['log_messages']))
+        invalid_log = next(message for message in observed['log_messages'] if message.startswith('conv_id_invalid '))
+        self.assertIn('reason=invalid_conversation_id', invalid_log)
+        self.assertIn('raw_present=True', invalid_log)
+        self.assertIn('raw_chars=7', invalid_log)
+        self.assertIn(
+            f"raw_sha256_12={hashlib.sha256(b'@@bad@@').hexdigest()[:12]}",
+            invalid_log,
+        )
         self.assertTrue(any('conv_created id=conv-new-session' in message for message in observed['log_messages']))
 
     def test_resolve_chat_session_defaults_input_mode_to_keyboard_when_absent(self) -> None:

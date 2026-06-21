@@ -4,7 +4,7 @@ Statut: spec source-of-truth livree par Lot 1 docs-only; Lot 2 runtime
 `chat_turn_logger` / `log_store` / checklist / read-model livre; correctif
 Lot 2.1 writer V1 livre; correctif Lot 2.2 redaction invalid status livre;
 Lot 3 Agenda/Biblio no-op observability livre; correctif Lot 3.1 Agenda
-fallback status livre.
+fallback status livre; Lot 4 logs runtime content-free livre.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -472,8 +472,28 @@ Correctif Lot 3.1:
 
 Lot 4:
 
-- durcir les logs a risque (`err=%s`, URL brute, id client brut);
-- garder les vraies pannes actionnables.
+- familles durcies:
+  - `tools.web_search` `crawl_error`: plus d'URL brute ni `str(exc)`;
+    conserver `reason=crawl_exception`, filtre, scheme, hash court host,
+    presence query/fragment, longueur et `err_class`;
+  - `tools.web_search` `reformulate_error`: plus de `str(exc)`, conserver
+    `reason=web_reformulation_exception` et `err_class`;
+  - `core.chat_session_flow` `conv_id_invalid`: plus de
+    `conversation_id` client brut invalide, conserver presence, longueur et
+    hash court;
+  - `observability.chat_turn_logger` `chat_turn_log_emit_failed`: plus de
+    `str(exc)`, conserver `reason=chat_log_event_insert_exception` et
+    `err_class`;
+  - `observability.log_store` `chat_log_event_insert_failed`: plus de
+    `str(exc)`, conserver `reason=chat_log_event_insert_failed` et
+    `err_class`;
+- ces logs gardent leur niveau `WARNING` ou `ERROR`: une vraie panne reste
+  visible et actionnable;
+- les autres `err=%s` des stores DB, dashboard/read-models ou surfaces
+  d'export restent hors Lot 4 si leur correction demande une projection plus
+  large; Lot 5/6 devront les traiter sans survendre la portee Lot 4;
+- aucun reset, purge, backfill, migration ni suppression de logs n'est execute
+  en Lot 4.
 
 Lot 5:
 

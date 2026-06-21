@@ -123,7 +123,11 @@ def _emit_now(
     try:
         return bool(log_store.insert_chat_log_event(event))
     except Exception as exc:
-        logger.warning('chat_turn_log_emit_failed stage=%s err=%s', stage, exc)
+        logger.warning(
+            'chat_turn_log_emit_failed stage=%s reason=chat_log_event_insert_exception err_class=%s',
+            stage,
+            exc.__class__.__name__,
+        )
         return False
 
 

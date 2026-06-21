@@ -2,8 +2,8 @@
 
 Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2 runtime
 borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3 Agenda/Biblio
-no-op observability livre avec correctif Lot 3.1 Agenda fallback; Lot 4+
-ouverts.
+no-op observability livre avec correctif Lot 3.1 Agenda fallback; Lot 4 logs
+runtime content-free livre; Lot 5+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -179,12 +179,28 @@ Notes Lot 3:
 
 ### Lot 4 - Durcissement logs runtime content-free
 
-- [ ] Remplacer les logs `err=%s` a risque par `err_class` + reason code quand
-  l'information brute peut contenir contenu ou secret.
-- [ ] Ne plus logger `conversation_id` client brut invalide.
-- [ ] Ne plus logger URL externe brute dans web crawl errors.
-- [ ] Conserver les pannes actionnables.
-- [ ] Ajouter tests anti-fuite ou probes unitaires ciblés.
+- [x] Inventorier les logs runtime a risque avant patch.
+- [x] Remplacer les logs `err=%s` Lot 4 confirmes par `err_class` + reason code:
+  `crawl_error`, `reformulate_error`, `chat_turn_log_emit_failed`,
+  `chat_log_event_insert_failed`.
+- [x] Ne plus logger `conversation_id` client brut invalide; exposer seulement
+  presence, longueur et hash court.
+- [x] Ne plus logger URL externe brute dans web crawl errors; exposer seulement
+  scheme, hash court host, presence query/fragment et longueur.
+- [x] Conserver les pannes actionnables aux niveaux `WARNING` / `ERROR`.
+- [x] Ajouter tests anti-fuite ou probes unitaires ciblés.
+
+Notes Lot 4:
+
+- Les vraies pannes restent visibles: `crawl_error` et
+  `chat_turn_log_emit_failed` restent `WARNING`, `chat_log_event_insert_failed`
+  reste `ERROR`.
+- Les autres `err=%s` releves dans les stores DB, dashboard, exports markdown
+  ou flux larges restent hors Lot 4 quand leur correction demanderait une
+  refonte/projection plus large; ils sont a traiter par Lot 5/6 ou par lots
+  dedies sans masquer de panne reelle.
+- Aucun reset, purge, backfill, migration ou scan logs live n'a ete execute
+  dans ce lot.
 
 ### Lot 5 - JSONL admin / dashboard / projections
 

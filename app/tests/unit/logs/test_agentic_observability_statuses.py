@@ -392,6 +392,72 @@ class AgenticObservabilityStatusTests(unittest.TestCase):
         serialized = json.dumps(observed, sort_keys=True)
         self.assertNotIn('valid error raw message sentinel', serialized)
 
+    def test_chat_turn_logger_emit_failure_log_uses_reason_and_err_class(self) -> None:
+        original_insert = chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_insert(_event: dict[str, Any], **_kwargs: Any) -> bool:
+            raise RuntimeError('RAW CHAT TURN INSERT EXCEPTION SENTINEL')
+
+        chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        ctx = chat_turn_logger.TurnContext(
+            turn_id='turn-log-redaction',
+            conversation_id='conv-log-redaction',
+            started_at=0.0,
+        )
+        try:
+            with self.assertLogs('frida.chat_turn_logger', level='WARNING') as captured:
+                inserted = chat_turn_logger._emit_now(
+                    ctx,
+                    stage='synthetic_log_failure',
+                    status='ok',
+                    payload={'safe': True},
+                    duration_ms=None,
+                    model=None,
+                    prompt_kind=None,
+                    reason_code=None,
+                    error_code=None,
+                )
+        finally:
+            chat_turn_logger.log_store.insert_chat_log_event = original_insert
+
+        self.assertFalse(inserted)
+        logs = '\n'.join(captured.output)
+        self.assertIn('chat_turn_log_emit_failed', logs)
+        self.assertIn('reason=chat_log_event_insert_exception', logs)
+        self.assertIn('err_class=RuntimeError', logs)
+        self.assertNotIn('RAW CHAT TURN INSERT EXCEPTION SENTINEL', logs)
+
+    def test_log_store_insert_failure_log_uses_reason_and_err_class(self) -> None:
+        class FailingConn:
+            def __enter__(self):
+                raise RuntimeError('RAW LOG STORE EXCEPTION SENTINEL')
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+        event = {
+            'event_id': 'evt-log-store-redaction',
+            'conversation_id': 'conv-log-store-redaction',
+            'turn_id': 'turn-log-store-redaction',
+            'ts': '2026-06-21T10:00:00Z',
+            'stage': 'log_store_insert',
+            'status': 'error',
+            'payload_json': {'status_schema_version': agentic_status.STATUS_SCHEMA_VERSION},
+        }
+
+        with self.assertLogs('frida.log_store', level='ERROR') as captured:
+            inserted = log_store.insert_chat_log_event(
+                event,
+                conn_factory=lambda: FailingConn(),
+            )
+
+        self.assertFalse(inserted)
+        logs = '\n'.join(captured.output)
+        self.assertIn('chat_log_event_insert_failed', logs)
+        self.assertIn('reason=chat_log_event_insert_failed', logs)
+        self.assertIn('err_class=RuntimeError', logs)
+        self.assertNotIn('RAW LOG STORE EXCEPTION SENTINEL', logs)
+
     def test_chat_turn_logger_emits_refusal_without_error_status(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = chat_turn_logger.log_store.insert_chat_log_event
