@@ -8,7 +8,8 @@ fallback status livre; Lot 4 logs runtime content-free livre; Lot 5 decoupe
 en 5A/5B/5C avant runtime; Lot 5A admin logs/export Markdown content-free
 livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard statuses
 livre avec correctif Lot 5B.1 providers secondaires; Lot 5C reliquats/scans
-residuels livre; Lot 6 smokes transverses content-free livre.
+residuels livre; Lot 6 smokes transverses content-free livre; correctif Lot
+6.1 hygiene test dashboard livre.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -707,6 +708,17 @@ Decision livree Lot 6:
   par action volontaire;
 - aucun reset, purge, backfill, migration, scan live DB, modification
   plateforme, Lot Z ou reset post-cloture n'est inclus dans cette decision.
+
+Correctif Lot 6.1:
+
+- le test `test_dashboard_static_page_route_returns_skeleton` ferme
+  explicitement la reponse Flask `/dashboard` apres lecture du squelette, afin
+  d'eviter un `ResourceWarning` sur `dashboard.html` lors des suites avec
+  warnings renforces;
+- ce correctif est strictement test-only: il ne modifie ni la route produit
+  `/dashboard`, ni les projections dashboard, ni les API admin;
+- aucun reset, purge, backfill, migration, Lot Z, plateforme ou scan live logs
+  large n'est inclus dans cette decision.
 
 Lot Z:
 

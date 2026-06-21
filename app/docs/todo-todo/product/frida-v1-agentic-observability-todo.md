@@ -7,7 +7,7 @@ runtime content-free livre; Lot 5 decoupe; Lot 5A admin logs/export Markdown
 content-free livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard
 statuses livre avec correctif Lot 5B.1 providers secondaires; Lot 5C
 reliquats/scans residuels livre; Lot 6 smokes transverses content-free livre;
-Lot Z ouvert/non execute.
+correctif Lot 6.1 hygiene test dashboard livre; Lot Z ouvert/non execute.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -434,6 +434,16 @@ Notes Lot 6:
 - Aucun reset, purge, backfill, migration, scan live DB, plateforme, Caddy,
   Authelia, secret, Agenda runtime produit, Biblio runtime produit, Lot Z ou
   reset post-cloture n'a ete execute.
+
+Notes Lot 6.1:
+
+- Hygiene test-only: `test_dashboard_static_page_route_returns_skeleton` ferme
+  explicitement la reponse Flask `/dashboard` apres lecture du squelette.
+- Preuve ciblee:
+  `PYTHONWARNINGS=error::ResourceWarning ... test_dashboard_static_page_route_returns_skeleton`
+  ne laisse plus remonter de `ResourceWarning` sur `dashboard.html`.
+- Aucun comportement produit `/dashboard`, observabilite runtime, reset, purge,
+  backfill, migration, Lot Z ou plateforme n'est modifie.
 
 ### Lot Z - Cloture Observabilite agentique V1
 
