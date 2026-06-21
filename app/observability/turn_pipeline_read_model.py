@@ -1189,22 +1189,62 @@ def _latencies_summary(events: Sequence[Mapping[str, Any]], providers: Mapping[s
 
 def _errors_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     by_stage_status: dict[tuple[str, str, str], int] = {}
+    problem_by_stage_status: dict[tuple[str, str, str], int] = {}
+    non_problem_by_stage_status: dict[tuple[str, str, str], int] = {}
     reason_code_counts: dict[str, int] = {}
+    problem_reason_code_counts: dict[str, int] = {}
+    non_problem_reason_code_counts: dict[str, int] = {}
     status_counts: dict[str, int] = {}
     fallback_count = 0
+    error_count = 0
+    failed_count = 0
+    refused_count = 0
+    not_applicable_count = 0
+    not_selected_count = 0
+    not_configured_count = 0
+    disabled_count = 0
+    skipped_count = 0
     for event in events:
         status = _status(event)
         payload = _payload(event)
         stage = _stage(event) or 'unknown'
         reason = _reason_code(payload) or 'unknown'
         status_counts[status] = status_counts.get(status, 0) + 1
-        if status != agentic_status.STATUS_OK:
+        if status == agentic_status.STATUS_ERROR:
+            error_count += 1
+        elif status == agentic_status.STATUS_FAILED:
+            failed_count += 1
+        elif status == agentic_status.STATUS_REFUSED:
+            refused_count += 1
+        elif status == agentic_status.STATUS_NOT_APPLICABLE:
+            not_applicable_count += 1
+        elif status == agentic_status.STATUS_NOT_SELECTED:
+            not_selected_count += 1
+        elif status == agentic_status.STATUS_NOT_CONFIGURED:
+            not_configured_count += 1
+        elif status == agentic_status.STATUS_DISABLED:
+            disabled_count += 1
+        elif status == agentic_status.STATUS_SKIPPED:
+            skipped_count += 1
+
+        if status in agentic_status.ATTEMPT_FAILURE_STATUSES:
             key = (stage, status, reason)
             by_stage_status[key] = by_stage_status.get(key, 0) + 1
+            problem_by_stage_status[key] = problem_by_stage_status.get(key, 0) + 1
             reason_code_counts[reason] = reason_code_counts.get(reason, 0) + 1
+            problem_reason_code_counts[reason] = problem_reason_code_counts.get(reason, 0) + 1
+        elif status != agentic_status.STATUS_OK:
+            key = (stage, status, reason)
+            by_stage_status[key] = by_stage_status.get(key, 0) + 1
+            non_problem_by_stage_status[key] = non_problem_by_stage_status.get(key, 0) + 1
+            reason_code_counts[reason] = reason_code_counts.get(reason, 0) + 1
+            non_problem_reason_code_counts[reason] = non_problem_reason_code_counts.get(reason, 0) + 1
         if bool(payload.get('fail_open')) or bool(payload.get('fallback_used')):
             fallback_count += 1
             reason_code_counts[reason] = reason_code_counts.get(reason, 0) + 1
+            problem_reason_code_counts[reason] = problem_reason_code_counts.get(reason, 0) + 1
+            key = (stage, 'fallback', reason)
+            problem_by_stage_status[key] = problem_by_stage_status.get(key, 0) + 1
     stages = [
         {
             'stage': stage,
@@ -1214,19 +1254,53 @@ def _errors_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         }
         for (stage, status, reason), count in sorted(by_stage_status.items())
     ]
+    problem_stages = [
+        {
+            'stage': stage,
+            'status': status,
+            'reason_code': reason,
+            'count': count,
+        }
+        for (stage, status, reason), count in sorted(problem_by_stage_status.items())
+    ]
+    non_problem_stages = [
+        {
+            'stage': stage,
+            'status': status,
+            'reason_code': reason,
+            'count': count,
+        }
+        for (stage, status, reason), count in sorted(non_problem_by_stage_status.items())
+    ]
+    attempt_failure_count = error_count + failed_count
+    non_problem_status_count = (
+        refused_count
+        + not_applicable_count
+        + not_selected_count
+        + not_configured_count
+        + disabled_count
+        + skipped_count
+    )
     return {
-        'error_count': sum(1 for event in events if _status(event) == 'error'),
-        'failed_count': sum(1 for event in events if _status(event) == 'failed'),
-        'refused_count': sum(1 for event in events if _status(event) == 'refused'),
-        'not_applicable_count': sum(1 for event in events if _status(event) == 'not_applicable'),
-        'not_selected_count': sum(1 for event in events if _status(event) == 'not_selected'),
-        'not_configured_count': sum(1 for event in events if _status(event) == 'not_configured'),
-        'disabled_count': sum(1 for event in events if _status(event) == 'disabled'),
-        'skipped_count': sum(1 for event in events if _status(event) == 'skipped'),
+        'error_count': error_count,
+        'failed_count': failed_count,
+        'attempt_failure_count': attempt_failure_count,
+        'problem_count': attempt_failure_count + fallback_count,
+        'refused_count': refused_count,
+        'not_applicable_count': not_applicable_count,
+        'not_selected_count': not_selected_count,
+        'not_configured_count': not_configured_count,
+        'disabled_count': disabled_count,
+        'skipped_count': skipped_count,
+        'non_problem_status_count': non_problem_status_count,
         'fallback_count': fallback_count,
         'status_counts': dict(sorted(status_counts.items())),
         'reason_code_counts': dict(sorted(reason_code_counts.items())),
+        'problem_reason_code_counts': dict(sorted(problem_reason_code_counts.items())),
+        'non_problem_reason_code_counts': dict(sorted(non_problem_reason_code_counts.items())),
         'stages': stages[:16],
+        'problem_stages': problem_stages[:16],
+        'non_problem_stages': non_problem_stages[:16],
     }
 
 

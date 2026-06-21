@@ -6,7 +6,8 @@ Lot 2.1 writer V1 livre; correctif Lot 2.2 redaction invalid status livre;
 Lot 3 Agenda/Biblio no-op observability livre; correctif Lot 3.1 Agenda
 fallback status livre; Lot 4 logs runtime content-free livre; Lot 5 decoupe
 en 5A/5B/5C avant runtime; Lot 5A admin logs/export Markdown content-free
-livre avec correctif Lot 5A.1 value redaction.
+livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard statuses
+livre.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -593,6 +594,31 @@ Lot 5B - Dashboard historique/recent et statuts agentiques:
 - tests/preuves attendus: dashboard avec evenements legacy + `agentic_v1`,
   no-op/refus non-erreur, vraie panne fake/local visible, projections
   content-free hors content gate explicite.
+
+Decision livree Lot 5B:
+
+- les faits dashboard conservent la distinction legacy vs `agentic_v1` dans
+  des compteurs `status_schema` content-free portes par les JSON existants,
+  sans migration DB, backfill, purge, reset ni scan logs live;
+- les agregats `errors` distinguent les vraies pannes
+  `error_count`/`failed_count` via `attempt_failure_count` et `problem_count`,
+  tout en exposant les no-op/refus normaux via `non_problem_status_count` et
+  les compteurs par statut;
+- `disabled`, `not_selected`, `not_configured`, `not_applicable`, `refused`
+  et `skipped` restent visibles dans les compteurs dashboard, mais ne
+  fournissent pas la raison de degradation du module `errors`;
+- `failed` et `error` restent visibles dans les facts, buckets, overview,
+  conversations et inspection traduite, avec reason codes compacts separes
+  dans `problem_reason_code_counts`;
+- Agenda off et Biblio non selectionnee restent des no-op non-erreur dans les
+  vues dashboard; une panne fake/local `failed` ou `error` reste actionnable;
+- le content gate reste une exception explicite et bornee:
+  `/api/admin/dashboard/turns/<turn_id>/content` peut charger du contenu apres
+  action volontaire et audit, tandis que les projections ordinaires restent
+  `raw_content_included=false`;
+- aucun frontend dashboard large, Lot 5C, Lot 6, Lot Z, reset, purge,
+  backfill, migration, scan live, Agenda runtime ou Biblio runtime n'est inclus
+  dans cette decision.
 
 Lot 5C - Reliquats logs runtime/store/dashboard et scans schemas:
 

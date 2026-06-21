@@ -103,6 +103,13 @@ def _inc(mapping: dict[str, int], key: Any, amount: int = 1) -> None:
     mapping[normalized] = int(mapping.get(normalized, 0)) + int(amount)
 
 
+def _status_schema_summary_from_fact(fact: Mapping[str, Any]) -> Mapping[str, Any]:
+    status_schema = _mapping(fact.get('status_schema'))
+    if status_schema:
+        return status_schema
+    return _mapping(_mapping(fact.get('flags')).get('status_schema'))
+
+
 def _latest_ts(fact: Mapping[str, Any]) -> datetime | None:
     return _parse_ts(fact.get('latest_ts'))
 
@@ -166,6 +173,10 @@ def build_dashboard_turn_fact(events: Sequence[Mapping[str, Any]]) -> dict[str, 
     latest = safe_events[-1]
     hermeneutic = dict(_mapping(item.get('hermeneutic')))
     node_state = dict(_mapping(hermeneutic.get('node_state')))
+    status_schema = dict(_mapping(item.get('status_schema')))
+    flags = dict(_mapping(item.get('flags')))
+    if status_schema:
+        flags['status_schema'] = status_schema
     content_availability = {
         'content_comprehension_status': 'compact_only',
         'prompt_manifest_available': False,
@@ -198,8 +209,9 @@ def build_dashboard_turn_fact(events: Sequence[Mapping[str, Any]]) -> dict[str, 
         'node_state': node_state,
         'latencies': dict(_mapping(item.get('latencies'))),
         'errors': dict(_mapping(item.get('errors'))),
+        'status_schema': status_schema,
         'stage_counts': dict(_mapping(item.get('stage_counts'))),
-        'flags': dict(_mapping(item.get('flags'))),
+        'flags': flags,
         'content_availability': content_availability,
         'redaction': {
             'raw_event_payloads_included': False,
@@ -237,6 +249,7 @@ def build_dashboard_conversation_summaries(
         persistence_counts: dict[str, int] = {}
         modules_involved: dict[str, int] = {}
         error_count = 0
+        failed_count = 0
         fallback_count = 0
         memory_used_turns = 0
         web_requested_turns = 0
@@ -248,6 +261,10 @@ def build_dashboard_conversation_summaries(
         biblio_used_turns = 0
         biblio_passages_total = 0
         last_problem_reason_code: str | None = None
+        status_schema_counts: dict[str, int] = {}
+        status_schema_source_counts: dict[str, int] = {}
+        v1_event_count = 0
+        legacy_event_count = 0
 
         for fact in ordered:
             _inc(classification_counts, fact.get('classification'))
@@ -258,6 +275,7 @@ def build_dashboard_conversation_summaries(
             documents = _mapping(fact.get('documents'))
             biblio = _mapping(fact.get('biblio'))
             errors = _mapping(fact.get('errors'))
+            status_schema = _status_schema_summary_from_fact(fact)
 
             if _to_int(rag.get('injected')) > 0 or _to_int(rag.get('retrieved')) > 0:
                 memory_used_turns += 1
@@ -280,13 +298,21 @@ def build_dashboard_conversation_summaries(
                 biblio_used_turns += 1
                 _inc(modules_involved, 'biblio')
             biblio_passages_total += _to_int(biblio.get('passage_count'))
+            source_kind = _text(status_schema.get('source_kind')) or 'unknown'
+            _inc(status_schema_source_counts, source_kind)
+            for schema, count in _mapping(status_schema.get('schema_counts')).items():
+                _inc(status_schema_counts, schema, _to_int(count))
+            v1_event_count += _to_int(status_schema.get('v1_event_count'))
+            legacy_event_count += _to_int(status_schema.get('legacy_event_count'))
 
             current_errors = _to_int(errors.get('error_count'))
+            current_failed = _to_int(errors.get('failed_count'))
             current_fallbacks = _to_int(errors.get('fallback_count'))
             error_count += current_errors
+            failed_count += current_failed
             fallback_count += current_fallbacks
-            if current_errors or current_fallbacks:
-                stages = _sequence(errors.get('stages'))
+            if current_errors or current_failed or current_fallbacks:
+                stages = _sequence(errors.get('problem_stages')) or _sequence(errors.get('stages'))
                 if stages:
                     latest_stage = _mapping(stages[-1])
                     last_problem_reason_code = _text(latest_stage.get('reason_code')) or last_problem_reason_code
@@ -320,11 +346,35 @@ def build_dashboard_conversation_summaries(
                 'biblio_used_turns': biblio_used_turns,
                 'biblio_passages_total': biblio_passages_total,
                 'error_count': error_count,
+                'failed_count': failed_count,
+                'attempt_failure_count': error_count + failed_count,
                 'fallback_count': fallback_count,
+                'problem_count': error_count + failed_count + fallback_count,
                 'last_problem_reason_code': last_problem_reason_code,
+                'status_schema': {
+                    'source_kind_counts': dict(sorted(status_schema_source_counts.items())),
+                    'schema_counts': dict(sorted(status_schema_counts.items())),
+                    'v1_event_count': v1_event_count,
+                    'legacy_event_count': legacy_event_count,
+                    'historical_events_reclassified': False,
+                },
                 'source': {
                     'source_kind': 'dashboard_turn_facts',
                     'turns_count': len(ordered),
+                    'problem_counters': {
+                        'error_count': error_count,
+                        'failed_count': failed_count,
+                        'attempt_failure_count': error_count + failed_count,
+                        'fallback_count': fallback_count,
+                        'problem_count': error_count + failed_count + fallback_count,
+                    },
+                    'status_schema': {
+                        'source_kind_counts': dict(sorted(status_schema_source_counts.items())),
+                        'schema_counts': dict(sorted(status_schema_counts.items())),
+                        'v1_event_count': v1_event_count,
+                        'legacy_event_count': legacy_event_count,
+                        'historical_events_reclassified': False,
+                    },
                 },
                 'redaction': {
                     'raw_content_stored': False,

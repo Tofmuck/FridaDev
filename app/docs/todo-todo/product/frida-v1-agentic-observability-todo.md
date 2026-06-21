@@ -4,8 +4,8 @@ Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2 runtime
 borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3 Agenda/Biblio
 no-op observability livre avec correctif Lot 3.1 Agenda fallback; Lot 4 logs
 runtime content-free livre; Lot 5 decoupe; Lot 5A admin logs/export Markdown
-content-free livre avec correctif Lot 5A.1 value redaction; Lot 5B/5C et
-Lot 6+ ouverts.
+content-free livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard
+statuses livre; Lot 5C et Lot 6+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -213,7 +213,7 @@ Markdown, dashboard, schemas JSONL et logs store/dashboard.
 Ordre cible:
 
 - [x] Lot 5A avant 5B/5C, sauf meilleur plan explicitement justifie avant patch.
-- [ ] Lot 5B apres 5A, sauf finding bloquant propre au dashboard.
+- [x] Lot 5B apres 5A, sauf finding bloquant propre au dashboard.
 - [ ] Lot 5C apres 5A/5B, sauf micro-correctif content-free strictement borne.
 
 #### Lot 5A - Admin logs et export Markdown content-free
@@ -285,46 +285,62 @@ Notes Lot 5A:
 
 Objectif:
 
-- [ ] Harmoniser les surfaces dashboard avec la taxonomie V1 sans masquer les
+- [x] Harmoniser les surfaces dashboard avec la taxonomie V1 sans masquer les
   vraies pannes et sans compter les no-op/refus normaux comme erreurs.
 
 Surfaces visees:
 
-- [ ] `/api/admin/dashboard/*`.
-- [ ] `observability.dashboard_read_model`.
-- [ ] `observability.dashboard_analytics_projection`.
-- [ ] `observability.dashboard_materialization_runtime`.
-- [ ] `observability.dashboard_content_gate` uniquement comme exception
+- [x] `/api/admin/dashboard/*`.
+- [x] `observability.dashboard_read_model`.
+- [x] `observability.dashboard_analytics_projection`.
+- [x] `observability.dashboard_materialization_runtime`.
+- [x] `observability.dashboard_content_gate` uniquement comme exception
   explicite, bornee, auditee et documentee.
 
 Critere de fin:
 
-- [ ] Les evenements legacy et `agentic_v1` sont distinguables dans les vues
+- [x] Les evenements legacy et `agentic_v1` sont distinguables dans les vues
   recentes/historiques.
-- [ ] `disabled`, `not_selected`, `not_configured`, `not_applicable` et
+- [x] `disabled`, `not_selected`, `not_configured`, `not_applicable` et
   `refused` ne sont pas comptes comme vraies pannes.
-- [ ] `failed` et `error` restent visibles, actionnables et non noyes dans
+- [x] `failed` et `error` restent visibles, actionnables et non noyes dans
   `ok`.
-- [ ] Le dashboard recent est coherent avec la taxonomie Lots 2/3 et ne
+- [x] Le dashboard recent est coherent avec la taxonomie Lots 2/3 et ne
   deforme pas les no-op agentiques.
-- [ ] Le content gate reste l'exception explicite d'acces contenu, separee des
+- [x] Le content gate reste l'exception explicite d'acces contenu, separee des
   projections content-free ordinaires.
 
 Hors scope:
 
-- [ ] Ne pas refondre tout le dashboard.
-- [ ] Ne pas elargir `dashboard_read_model` sans separation claire de
+- [x] Ne pas refondre tout le dashboard.
+- [x] Ne pas elargir `dashboard_read_model` sans separation claire de
   responsabilite si le patch devient trop large.
-- [ ] Ne pas lire ni scanner les logs live.
-- [ ] Ne pas reset, purger, backfiller ou migrer.
+- [x] Ne pas lire ni scanner les logs live.
+- [x] Ne pas reset, purger, backfiller ou migrer.
 
 Tests/proofs attendus:
 
-- [ ] Tests dashboard avec melange d'evenements legacy et `agentic_v1`.
-- [ ] Tests prouvant que les no-op/refus normaux ne deviennent pas erreurs.
-- [ ] Tests prouvant qu'une vraie panne fake/local reste visible.
-- [ ] Tests content-free sur les projections dashboard hors content gate
+- [x] Tests dashboard avec melange d'evenements legacy et `agentic_v1`.
+- [x] Tests prouvant que les no-op/refus normaux ne deviennent pas erreurs.
+- [x] Tests prouvant qu'une vraie panne fake/local reste visible.
+- [x] Tests content-free sur les projections dashboard hors content gate
   explicite.
+
+Notes Lot 5B:
+
+- Les faits dashboard portent des compteurs `status_schema` content-free via
+  les JSON existants, sans migration DB, purge, reset, backfill ni scan live.
+- Les agregats `errors` distinguent `error_count`, `failed_count`,
+  `attempt_failure_count`, `problem_count` et
+  `non_problem_status_count`; les no-op/refus restent visibles mais ne
+  fournissent plus la raison de degradation du module `errors`.
+- Les vues overview, conversations, turns et inspection exposent la
+  distinction legacy vs `agentic_v1` quand les faits materialises la portent.
+- Le content gate reste separe: `/api/admin/dashboard/turns/<turn_id>/content`
+  charge eventuellement du contenu seulement apres action explicite et audit;
+  les projections dashboard ordinaires gardent `raw_content_included=false`.
+- Aucun dashboard large, frontend, Agenda runtime, Biblio runtime, Lot 5C,
+  Lot 6 ou Lot Z n'a ete modifie.
 
 #### Lot 5C - Reliquats logs runtime/store/dashboard et scans schemas
 

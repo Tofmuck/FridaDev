@@ -407,6 +407,185 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         for forbidden_key in ('payload', 'payload_json', 'prompt', 'messages', 'content', 'query', 'context_block'):
             self.assertNotIn(forbidden_key, self._collect_keys(first))
 
+    def test_dashboard_status_taxonomy_distinguishes_legacy_noops_and_true_failures(self) -> None:
+        now = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
+
+        def v1(reason_code: str) -> dict[str, Any]:
+            return {
+                'status_schema_version': 'agentic_v1',
+                'reason_code': reason_code,
+                'message': 'RAW DASHBOARD STATUS MESSAGE MUST NOT LEAK',
+                'prompt': 'RAW DASHBOARD STATUS PROMPT MUST NOT LEAK',
+                'provider_payload': {'body': 'RAW DASHBOARD PROVIDER PAYLOAD MUST NOT LEAK'},
+            }
+
+        events = [
+            self._event(
+                'turn_start',
+                conversation_id='conv-taxonomy',
+                turn_id='turn-legacy',
+                ts='2026-06-21T10:00:00+00:00',
+                payload={'reason_code': 'legacy_started'},
+                event_id='turn-legacy:0001',
+            ),
+            self._event(
+                'legacy_branch',
+                conversation_id='conv-taxonomy',
+                turn_id='turn-legacy',
+                ts='2026-06-21T10:01:00+00:00',
+                status='skipped',
+                payload={'reason_code': 'legacy_skip'},
+                event_id='turn-legacy:0002',
+            ),
+            self._event(
+                'turn_start',
+                conversation_id='conv-taxonomy',
+                turn_id='turn-v1',
+                ts='2026-06-21T11:00:00+00:00',
+                payload=v1('turn_started'),
+                event_id='turn-v1:0001',
+            ),
+            self._event(
+                'agenda',
+                conversation_id='conv-taxonomy',
+                turn_id='turn-v1',
+                ts='2026-06-21T11:01:00+00:00',
+                status='disabled',
+                payload=v1('agenda_toggle_off'),
+                event_id='turn-v1:0002',
+            ),
+            self._event(
+                'biblio',
+                conversation_id='conv-taxonomy',
+                turn_id='turn-v1',
+                ts='2026-06-21T11:02:00+00:00',
+                status='not_selected',
+                payload=v1('biblio_no_bibliographic_signal'),
+                event_id='turn-v1:0003',
+            ),
+            self._event(
+                'web_search',
+                conversation_id='conv-taxonomy',
+                turn_id='turn-v1',
+                ts='2026-06-21T11:03:00+00:00',
+                status='not_applicable',
+                payload=v1('web_search_not_requested'),
+                event_id='turn-v1:0004',
+            ),
+            self._event(
+                'secondary_provider',
+                conversation_id='conv-taxonomy',
+                turn_id='turn-v1',
+                ts='2026-06-21T11:04:00+00:00',
+                status='not_configured',
+                payload=v1('provider_not_configured'),
+                event_id='turn-v1:0005',
+            ),
+            self._event(
+                'chat_response',
+                conversation_id='conv-taxonomy',
+                turn_id='turn-v1',
+                ts='2026-06-21T11:05:00+00:00',
+                status='refused',
+                payload=v1('payload_refused'),
+                event_id='turn-v1:0006',
+            ),
+            self._event(
+                'biblio_runtime',
+                conversation_id='conv-taxonomy',
+                turn_id='turn-v1',
+                ts='2026-06-21T11:06:00+00:00',
+                status='failed',
+                payload=v1('fake_recoverable_failure'),
+                event_id='turn-v1:0007',
+            ),
+            self._event(
+                'llm_call',
+                conversation_id='conv-taxonomy',
+                turn_id='turn-v1',
+                ts='2026-06-21T11:07:00+00:00',
+                status='error',
+                payload=v1('fake_runtime_error'),
+                event_id='turn-v1:0008',
+            ),
+            self._event(
+                'turn_end',
+                conversation_id='conv-taxonomy',
+                turn_id='turn-v1',
+                ts='2026-06-21T11:08:00+00:00',
+                payload=v1('turn_finished'),
+                event_id='turn-v1:0009',
+            ),
+        ]
+
+        analytics = dashboard_analytics.build_dashboard_analytics(events, now=now)
+        facts = {fact['turn_id']: fact for fact in analytics['turn_facts']}
+        legacy_fact = facts['turn-legacy']
+        v1_fact = facts['turn-v1']
+
+        self.assertEqual(legacy_fact['status_schema']['source_kind'], 'legacy')
+        self.assertEqual(legacy_fact['status_schema']['legacy_event_count'], 2)
+        self.assertEqual(v1_fact['status_schema']['source_kind'], 'agentic_v1')
+        self.assertEqual(v1_fact['status_schema']['v1_event_count'], 9)
+
+        v1_errors = v1_fact['errors']
+        self.assertEqual(v1_errors['error_count'], 1)
+        self.assertEqual(v1_errors['failed_count'], 1)
+        self.assertEqual(v1_errors['attempt_failure_count'], 2)
+        self.assertEqual(v1_errors['problem_count'], 2)
+        self.assertEqual(v1_errors['disabled_count'], 1)
+        self.assertEqual(v1_errors['not_selected_count'], 1)
+        self.assertEqual(v1_errors['not_configured_count'], 1)
+        self.assertEqual(v1_errors['not_applicable_count'], 1)
+        self.assertEqual(v1_errors['refused_count'], 1)
+        self.assertEqual(v1_errors['non_problem_status_count'], 5)
+        self.assertEqual(
+            v1_errors['problem_reason_code_counts'],
+            {'fake_recoverable_failure': 1, 'fake_runtime_error': 1},
+        )
+        self.assertEqual(
+            v1_errors['non_problem_reason_code_counts'],
+            {
+                'agenda_toggle_off': 1,
+                'biblio_no_bibliographic_signal': 1,
+                'payload_refused': 1,
+                'provider_not_configured': 1,
+                'web_search_not_requested': 1,
+            },
+        )
+        self.assertIsNone(dashboard_analytics.resolve_module_turn_degradation_reason('errors', legacy_fact))
+        self.assertEqual(
+            dashboard_analytics.resolve_module_turn_degradation_reason('errors', v1_fact),
+            'fake_recoverable_failure',
+        )
+
+        summary = analytics['conversation_summaries'][0]
+        self.assertEqual(summary['status_schema']['schema_counts'], {'agentic_v1': 9, 'legacy': 2})
+        self.assertEqual(summary['error_count'], 1)
+        self.assertEqual(summary['failed_count'], 1)
+        self.assertEqual(summary['attempt_failure_count'], 2)
+        self.assertEqual(summary['problem_count'], 2)
+        self.assertEqual(summary['last_problem_reason_code'], 'fake_runtime_error')
+
+        error_bucket = next(
+            bucket for bucket in analytics['metric_buckets']
+            if bucket['module_key'] == 'errors' and bucket['granularity'] == 'day'
+        )
+        metrics = error_bucket['metrics']
+        self.assertEqual(metrics['error_count'], 1)
+        self.assertEqual(metrics['failed_count'], 1)
+        self.assertEqual(metrics['attempt_failure_count'], 2)
+        self.assertEqual(metrics['problem_count'], 2)
+        self.assertEqual(metrics['non_problem_status_count'], 6)
+        self.assertEqual(metrics['status_schema_counts'], {'agentic_v1': 9, 'legacy': 2})
+        self.assertEqual(metrics['v1_event_count'], 9)
+        self.assertEqual(metrics['legacy_event_count'], 2)
+
+        serialized = json.dumps(analytics, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn('RAW DASHBOARD STATUS MESSAGE MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW DASHBOARD STATUS PROMPT MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW DASHBOARD PROVIDER PAYLOAD MUST NOT LEAK', serialized)
+
     def test_turn_fact_materializes_embedding_counts_content_free(self) -> None:
         events = [
             *self._complete_turn(),
