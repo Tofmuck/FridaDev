@@ -21,6 +21,93 @@ from tools import web_search
 
 
 class WebSearchLogRedactionTests(unittest.TestCase):
+    def test_reformulate_error_log_redacts_user_exception_and_provider_payload(self) -> None:
+        user_msg = (
+            'RAW_USER_MESSAGE_REFORMULATE_SENTINEL '
+            'https://user.example/private?token=RAW_USER_TOKEN_SENTINEL'
+        )
+        provider_url = 'https://provider.example/chat/completions?token=RAW_PROVIDER_URL_TOKEN'
+        header_token = 'RAW_HEADER_TOKEN_SENTINEL'
+        provider_payload = 'RAW_PROVIDER_PAYLOAD_SENTINEL'
+        exception_text = 'RAW_REFORMULATE_EXCEPTION_SENTINEL'
+        system_prompt = 'RAW_SYSTEM_PROMPT_SENTINEL {today}'
+        original_prompt_getter = web_search.prompt_loader.get_web_reformulation_prompt
+        original_settings_getter = web_search.web_reformulation_settings.get_runtime_settings
+
+        class FakeSettings:
+            model = 'openai/gpt-5.4-mini'
+            max_tokens = 40
+            temperature = 0.2
+            timeout_s = 10
+
+        class FakeLlmModule:
+            @staticmethod
+            def or_chat_completions_url() -> str:
+                return provider_url
+
+            @staticmethod
+            def or_headers(*, caller: str = 'llm') -> dict[str, str]:
+                return {
+                    'Authorization': f'Bearer {header_token}',
+                    'X-Frida-Caller': caller,
+                }
+
+            @staticmethod
+            def with_provider_attribution(payload: dict[str, Any], *, caller: str) -> dict[str, Any]:
+                enriched = dict(payload)
+                enriched['raw_provider_payload_sentinel'] = provider_payload
+                enriched['provider_caller'] = caller
+                return enriched
+
+            @staticmethod
+            def resolve_provider_title(_caller: str) -> str:
+                return 'FridaDev/WebReformulation'
+
+            @staticmethod
+            def read_openrouter_response_payload(_response: Any) -> dict[str, Any]:
+                return {}
+
+            @staticmethod
+            def extract_openrouter_text(_payload: dict[str, Any]) -> str:
+                return ''
+
+        class FakeRequestsModule:
+            @staticmethod
+            def post(url: str, json: dict[str, Any], headers: dict[str, str], timeout: int) -> Any:
+                raise RuntimeError(
+                    f'{exception_text} url={url} headers={headers} payload={json} timeout={timeout}'
+                )
+
+        web_search.prompt_loader.get_web_reformulation_prompt = lambda: system_prompt
+        web_search.web_reformulation_settings.get_runtime_settings = lambda: FakeSettings()
+        try:
+            with self.assertLogs('frida.web_search', level='WARNING') as captured:
+                result = web_search.reformulate(
+                    user_msg,
+                    requests_module=FakeRequestsModule(),
+                    llm_module=FakeLlmModule(),
+                    now_iso='2026-06-21T00:00:00Z',
+                )
+        finally:
+            web_search.prompt_loader.get_web_reformulation_prompt = original_prompt_getter
+            web_search.web_reformulation_settings.get_runtime_settings = original_settings_getter
+
+        self.assertEqual(result, user_msg)
+        logs = '\n'.join(captured.output)
+        self.assertIn('reformulate_error reason=web_reformulation_exception', logs)
+        self.assertIn('err_class=RuntimeError', logs)
+        self.assertNotIn('RAW_USER_MESSAGE_REFORMULATE_SENTINEL', logs)
+        self.assertNotIn('RAW_USER_TOKEN_SENTINEL', logs)
+        self.assertNotIn('user.example', logs)
+        self.assertNotIn(exception_text, logs)
+        self.assertNotIn(provider_url, logs)
+        self.assertNotIn('provider.example', logs)
+        self.assertNotIn('RAW_PROVIDER_URL_TOKEN', logs)
+        self.assertNotIn(header_token, logs)
+        self.assertNotIn(provider_payload, logs)
+        self.assertNotIn(system_prompt, logs)
+        self.assertNotIn('RAW_SYSTEM_PROMPT_SENTINEL', logs)
+
     def test_crawl_error_log_redacts_url_and_exception_text(self) -> None:
         sentinel_url = 'https://sensitive.example/private/path?token=raw-token#frag'
         original_post = web_search.requests.post
