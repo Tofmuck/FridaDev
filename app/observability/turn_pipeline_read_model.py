@@ -16,6 +16,17 @@ _SECONDARY_PROVIDER_CALLERS = (
     ('web_reformulation', 'web_reformulation', 'web_reformulation_prompt_prepared', 'web_reformulation'),
     ('web_discovery', 'web_discovery', 'web_discovery_prompt_prepared', 'web_discovery'),
 )
+_SECONDARY_PROVIDER_STATUS_PRECEDENCE = (
+    agentic_status.STATUS_ERROR,
+    agentic_status.STATUS_FAILED,
+    agentic_status.STATUS_REFUSED,
+    agentic_status.STATUS_NOT_CONFIGURED,
+    agentic_status.STATUS_DISABLED,
+    agentic_status.STATUS_NOT_SELECTED,
+    agentic_status.STATUS_NOT_APPLICABLE,
+    agentic_status.STATUS_SKIPPED,
+    agentic_status.STATUS_OK,
+)
 _KNOWN_PROVIDER_CALLERS = {
     _MAIN_PROVIDER_CALLER,
     'stimmung_agent',
@@ -275,6 +286,20 @@ def _llm_call_summary(event: Mapping[str, Any] | None, *, provider_caller: str) 
     }
 
 
+def _secondary_provider_status(status_values: set[str], *, event_present: bool) -> str:
+    if not event_present:
+        return agentic_status.STATUS_NOT_APPLICABLE
+    normalized = {
+        agentic_status.normalize_status(status)
+        for status in status_values
+        if str(status or '').strip()
+    }
+    for status in _SECONDARY_PROVIDER_STATUS_PRECEDENCE:
+        if status in normalized:
+            return status
+    return agentic_status.STATUS_OK
+
+
 def _providers_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     llm_events = _events_for_stage(events, 'llm_call')
     main_events = [
@@ -303,12 +328,8 @@ def _providers_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             else (result_events[-1] if result_events else (prepared_events[-1] if prepared_events else None))
         )
         status_values = {_status(event) for event in [*prepared_events, *result_events, *caller_events] if _status(event)}
-        if 'error' in status_values:
-            status = 'error'
-        elif prepared_events or result_events or caller_events:
-            status = 'ok'
-        else:
-            status = 'not_applicable'
+        event_present = bool(prepared_events or result_events or caller_events)
+        status = _secondary_provider_status(status_values, event_present=event_present)
         summary = _llm_call_summary(caller_events[-1] if caller_events else None, provider_caller=provider_caller)
         summary.update(
             {

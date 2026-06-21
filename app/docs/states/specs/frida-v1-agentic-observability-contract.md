@@ -7,7 +7,7 @@ Lot 3 Agenda/Biblio no-op observability livre; correctif Lot 3.1 Agenda
 fallback status livre; Lot 4 logs runtime content-free livre; Lot 5 decoupe
 en 5A/5B/5C avant runtime; Lot 5A admin logs/export Markdown content-free
 livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard statuses
-livre.
+livre avec correctif Lot 5B.1 providers secondaires.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -612,6 +612,14 @@ Decision livree Lot 5B:
   dans `problem_reason_code_counts`;
 - Agenda off et Biblio non selectionnee restent des no-op non-erreur dans les
   vues dashboard; une panne fake/local `failed` ou `error` reste actionnable;
+- correctif Lot 5B.1: les projections `providers.secondary.<key>.status`
+  conservent la taxonomie V1 observee au lieu de reduire tout non-`error` a
+  `ok`; la precedence exposee est `error`, `failed`, `refused`,
+  `not_configured`, `disabled`, `not_selected`, `not_applicable`, `skipped`,
+  `ok`, puis `not_applicable` quand aucun evenement secondaire n'existe;
+- `secondary_status_counts` agrege ces statuts reels pour que les no-op/refus
+  secondaires restent visibles sans devenir des pannes, et que `failed` ne
+  soit pas noye dans `ok`;
 - le content gate reste une exception explicite et bornee:
   `/api/admin/dashboard/turns/<turn_id>/content` peut charger du contenu apres
   action volontaire et audit, tandis que les projections ordinaires restent

@@ -586,6 +586,95 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertNotIn('RAW DASHBOARD STATUS PROMPT MUST NOT LEAK', serialized)
         self.assertNotIn('RAW DASHBOARD PROVIDER PAYLOAD MUST NOT LEAK', serialized)
 
+    def test_secondary_provider_statuses_keep_agentic_taxonomy(self) -> None:
+        now = datetime(2026, 6, 21, 13, 0, tzinfo=timezone.utc)
+        statuses = (
+            'error',
+            'failed',
+            'refused',
+            'not_configured',
+            'disabled',
+            'not_selected',
+            'not_applicable',
+            'skipped',
+            'ok',
+        )
+        events = [
+            self._event(
+                'stimmung_agent',
+                conversation_id='conv-secondary-providers',
+                turn_id=f'turn-secondary-{status}',
+                ts=f'2026-06-21T12:{index:02d}:00+00:00',
+                status=status,
+                payload={
+                    'status_schema_version': 'agentic_v1',
+                    'reason_code': f'stimmung_{status}',
+                    'message': 'RAW SECONDARY PROVIDER MESSAGE MUST NOT LEAK',
+                    'prompt': 'RAW SECONDARY PROVIDER PROMPT MUST NOT LEAK',
+                    'provider_payload': {'body': 'RAW SECONDARY PROVIDER PAYLOAD MUST NOT LEAK'},
+                    'url': 'https://provider.example/internal-path-must-not-leak',
+                    'authorization': 'Bearer secondary-provider-token-must-not-leak',
+                },
+                event_id=f'turn-secondary-{status}:0001',
+            )
+            for index, status in enumerate(statuses)
+        ]
+
+        analytics = dashboard_analytics.build_dashboard_analytics(events, now=now)
+        facts = {fact['turn_id']: fact for fact in analytics['turn_facts']}
+        for status in statuses:
+            fact = facts[f'turn-secondary-{status}']
+            self.assertEqual(fact['providers']['secondary']['stimmung']['status'], status)
+            self.assertEqual(fact['providers']['secondary']['validation']['status'], 'not_applicable')
+
+        failed_errors = facts['turn-secondary-failed']['errors']
+        self.assertEqual(failed_errors['failed_count'], 1)
+        self.assertEqual(failed_errors['problem_count'], 1)
+        refused_errors = facts['turn-secondary-refused']['errors']
+        self.assertEqual(refused_errors['refused_count'], 1)
+        self.assertEqual(refused_errors['non_problem_status_count'], 1)
+        self.assertEqual(refused_errors['problem_count'], 0)
+        not_configured_errors = facts['turn-secondary-not_configured']['errors']
+        self.assertEqual(not_configured_errors['not_configured_count'], 1)
+        self.assertEqual(not_configured_errors['problem_count'], 0)
+
+        provider_bucket = next(
+            bucket for bucket in analytics['metric_buckets']
+            if bucket['module_key'] == 'providers' and bucket['granularity'] == 'day'
+        )
+        secondary_counts = provider_bucket['metrics']['secondary_status_counts']
+        self.assertEqual(secondary_counts['error'], 1)
+        self.assertEqual(secondary_counts['failed'], 1)
+        self.assertEqual(secondary_counts['refused'], 1)
+        self.assertEqual(secondary_counts['not_configured'], 1)
+        self.assertEqual(secondary_counts['disabled'], 1)
+        self.assertEqual(secondary_counts['not_selected'], 1)
+        self.assertEqual(secondary_counts['skipped'], 1)
+        self.assertEqual(secondary_counts['ok'], 1)
+        self.assertEqual(secondary_counts['not_applicable'], 28)
+
+        error_bucket = next(
+            bucket for bucket in analytics['metric_buckets']
+            if bucket['module_key'] == 'errors' and bucket['granularity'] == 'day'
+        )
+        error_metrics = error_bucket['metrics']
+        self.assertEqual(error_metrics['error_count'], 1)
+        self.assertEqual(error_metrics['failed_count'], 1)
+        self.assertEqual(error_metrics['attempt_failure_count'], 2)
+        self.assertEqual(error_metrics['problem_count'], 2)
+        self.assertEqual(error_metrics['refused_count'], 1)
+        self.assertEqual(error_metrics['not_configured_count'], 1)
+        self.assertEqual(error_metrics['not_selected_count'], 1)
+        self.assertEqual(error_metrics['not_applicable_count'], 1)
+        self.assertEqual(error_metrics['skipped_count'], 1)
+
+        serialized = json.dumps(analytics, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn('RAW SECONDARY PROVIDER MESSAGE MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW SECONDARY PROVIDER PROMPT MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW SECONDARY PROVIDER PAYLOAD MUST NOT LEAK', serialized)
+        self.assertNotIn('provider.example', serialized)
+        self.assertNotIn('secondary-provider-token-must-not-leak', serialized)
+
     def test_turn_fact_materializes_embedding_counts_content_free(self) -> None:
         events = [
             *self._complete_turn(),

@@ -5,7 +5,8 @@ borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3 Agenda/Biblio
 no-op observability livre avec correctif Lot 3.1 Agenda fallback; Lot 4 logs
 runtime content-free livre; Lot 5 decoupe; Lot 5A admin logs/export Markdown
 content-free livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard
-statuses livre; Lot 5C et Lot 6+ ouverts.
+statuses livre avec correctif Lot 5B.1 providers secondaires; Lot 5C et
+Lot 6+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -336,6 +337,11 @@ Notes Lot 5B:
   fournissent plus la raison de degradation du module `errors`.
 - Les vues overview, conversations, turns et inspection exposent la
   distinction legacy vs `agentic_v1` quand les faits materialises la portent.
+- Correctif Lot 5B.1: `providers.secondary.<key>.status` conserve maintenant
+  la taxonomie V1 observee avec precedence `error`, `failed`, `refused`,
+  `not_configured`, `disabled`, `not_selected`, `not_applicable`, `skipped`,
+  `ok`; les providers secondaires absents restent `not_applicable` et
+  `secondary_status_counts` reflete les statuts reels.
 - Le content gate reste separe: `/api/admin/dashboard/turns/<turn_id>/content`
   charge eventuellement du contenu seulement apres action explicite et audit;
   les projections dashboard ordinaires gardent `raw_content_included=false`.

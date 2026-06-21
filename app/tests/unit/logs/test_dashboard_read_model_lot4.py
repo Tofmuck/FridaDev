@@ -356,6 +356,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
                     'main_duration_ms_count': 1,
                     'main_duration_ms_p50': 100,
                     'main_duration_ms_p95': 100,
+                    'secondary_status_counts': {'failed': 1, 'not_configured': 1},
                 },
                 'dashboard_analytics_v1',
                 datetime(2026, 5, 15, 11, 0, tzinfo=timezone.utc),
@@ -372,6 +373,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
                     'main_duration_ms_count': 1,
                     'main_duration_ms_p50': 300,
                     'main_duration_ms_p95': 300,
+                    'secondary_status_counts': {'ok': 1, 'refused': 1, 'skipped': 1},
                 },
                 'dashboard_analytics_v1',
                 datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
@@ -420,6 +422,10 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         provider_metrics = payload['module_totals']['providers']['metrics']
         self.assertEqual(provider_metrics['main_duration_ms_total'], 400)
         self.assertEqual(provider_metrics['main_duration_ms_count'], 2)
+        self.assertEqual(
+            provider_metrics['secondary_status_counts'],
+            {'failed': 1, 'not_configured': 1, 'ok': 1, 'refused': 1, 'skipped': 1},
+        )
         self.assertNotIn('main_duration_ms_p50', provider_metrics)
         self.assertNotIn('main_duration_ms_p95', provider_metrics)
         latency = payload['latency']
