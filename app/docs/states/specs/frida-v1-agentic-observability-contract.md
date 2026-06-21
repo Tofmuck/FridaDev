@@ -8,7 +8,7 @@ fallback status livre; Lot 4 logs runtime content-free livre; Lot 5 decoupe
 en 5A/5B/5C avant runtime; Lot 5A admin logs/export Markdown content-free
 livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard statuses
 livre avec correctif Lot 5B.1 providers secondaires; Lot 5C reliquats/scans
-residuels livre.
+residuels livre; Lot 6 smokes transverses content-free livre.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -684,6 +684,29 @@ Lot 6:
 - preuve refus produit sans faux `ERROR`;
 - preuve vraie panne fake/local visible;
 - scan artefact/docs/diff/logs bornes.
+
+Decision livree Lot 6:
+
+- l'artefact JSONL content-free
+  `app/docs/states/baselines/agentic-observability-smokes/frida-v1-agentic-observability-lot6-transverse-smokes-20260621T201840Z.jsonl`
+  conserve les cas `LOT6_PREFLIGHT`, `LOT6_NORMAL_TURN_NO_FALSE_ERROR`,
+  `LOT6_EXPECTED_REFUSAL_NOT_ERROR`, `LOT6_TRUE_FAILURE_VISIBLE`,
+  `LOT6_AGENDA_DISABLED_OR_NOT_CONFIGURED`,
+  `LOT6_BIBLIO_DISABLED_OR_NOT_SELECTED`,
+  `LOT6_ADMIN_LOGS_PROJECTION_SCAN`, `LOT6_DASHBOARD_PROJECTION_SCAN`,
+  `LOT6_ARTIFACT_SCAN`, `LOT6_DOCS_DIFF_SCAN`, `LOT6_LOG_SCAN_BOUNDED` et
+  `LOT6_FINAL_VERDICT`;
+- les cas comportementaux sont marques `covered_by_tests` quand une preuve live
+  impliquerait une mutation artificielle, une panne provoquee ou une
+  dependance externe non necessaire;
+- les preuves live du Lot 6 sont limitees a la sante app, au scan Docker logs
+  borne depuis `2026-06-21T20:18:40Z` et aux scans artefact/docs/diff; aucun
+  dump brut n'est affiche, conserve ou committe;
+- les projections admin logs/export Markdown et dashboard ordinaires restent
+  content-free; le content gate reste l'exception explicite, chargee seulement
+  par action volontaire;
+- aucun reset, purge, backfill, migration, scan live DB, modification
+  plateforme, Lot Z ou reset post-cloture n'est inclus dans cette decision.
 
 Lot Z:
 

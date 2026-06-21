@@ -6,7 +6,8 @@ no-op observability livre avec correctif Lot 3.1 Agenda fallback; Lot 4 logs
 runtime content-free livre; Lot 5 decoupe; Lot 5A admin logs/export Markdown
 content-free livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard
 statuses livre avec correctif Lot 5B.1 providers secondaires; Lot 5C
-reliquats/scans residuels livre; Lot 6+ ouverts.
+reliquats/scans residuels livre; Lot 6 smokes transverses content-free livre;
+Lot Z ouvert/non execute.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -409,12 +410,30 @@ Notes Lot 5C:
 
 ### Lot 6 - Smokes transverses observabilite
 
-- [ ] Produire un artefact JSONL content-free.
-- [ ] Prouver un tour normal sans faux `ERROR`.
-- [ ] Prouver un refus produit attendu sans faux `ERROR`.
-- [ ] Prouver une vraie panne fake/local visible et actionnable.
-- [ ] Prouver Agenda/Biblio disabled/not selected/not configured.
-- [ ] Scanner artefact, docs, diff staged et logs bornes.
+- [x] Produire un artefact JSONL content-free.
+- [x] Prouver un tour normal sans faux `ERROR`.
+- [x] Prouver un refus produit attendu sans faux `ERROR`.
+- [x] Prouver une vraie panne fake/local visible et actionnable.
+- [x] Prouver Agenda/Biblio disabled/not selected/not configured.
+- [x] Scanner artefact, docs, diff staged et logs bornes.
+
+Notes Lot 6:
+
+- Artefact de preuve:
+  `app/docs/states/baselines/agentic-observability-smokes/frida-v1-agentic-observability-lot6-transverse-smokes-20260621T201840Z.jsonl`.
+- Les cas live restent bornes a la sante app, au scan Docker logs depuis
+  `2026-06-21T20:18:40Z` et aux scans d'artefact/docs/diff. Aucun log brut
+  n'est affiche, conserve ou committe.
+- Les cas comportementaux sont honnetement marques `covered_by_tests` quand
+  une observation live exigerait une mutation artificielle ou une panne
+  provoquee: tour normal, refus/no-op attendus, vraie panne fake/local,
+  Agenda disabled/not_configured et Biblio disabled/not_selected.
+- Les suites conteneur rejouent les preuves Lot 5A/5B/5C: projections admin
+  logs/export Markdown, dashboard ordinaire, content gate comme exception
+  explicite et redaction residuelle `err_class`.
+- Aucun reset, purge, backfill, migration, scan live DB, plateforme, Caddy,
+  Authelia, secret, Agenda runtime produit, Biblio runtime produit, Lot Z ou
+  reset post-cloture n'a ete execute.
 
 ### Lot Z - Cloture Observabilite agentique V1
 
