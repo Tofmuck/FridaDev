@@ -3,7 +3,8 @@
 Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2 runtime
 borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3 Agenda/Biblio
 no-op observability livre avec correctif Lot 3.1 Agenda fallback; Lot 4 logs
-runtime content-free livre; Lot 5+ ouverts.
+runtime content-free livre; Lot 5 decoupe en 5A/5B/5C non coches; Lot 6+
+ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -204,13 +205,145 @@ Notes Lot 4:
 
 ### Lot 5 - JSONL admin / dashboard / projections
 
-- [ ] Interdire les nouveaux champs `raw` non qualifies.
-- [ ] Projeter ou renommer les compatibilites historiques `raw` exposees aux
-  surfaces V1.
-- [ ] Stabiliser les schemas JSONL admin content-free.
-- [ ] Harmoniser dashboard: historique vs recent, erreurs vraies vs refus.
-- [ ] Verifier les exports Markdown/logs admin sans contenu brut.
-- [ ] Ajouter scans anti-fuite automatises.
+Le Lot 5 complet n'est pas ouvert en bloc. Il est decoupe en sous-lots
+deterministes pour eviter un patch transversal melant admin logs, export
+Markdown, dashboard, schemas JSONL et logs store/dashboard.
+
+Ordre cible:
+
+- [ ] Lot 5A avant 5B/5C, sauf meilleur plan explicitement justifie avant patch.
+- [ ] Lot 5B apres 5A, sauf finding bloquant propre au dashboard.
+- [ ] Lot 5C apres 5A/5B, sauf micro-correctif content-free strictement borne.
+
+#### Lot 5A - Admin logs et export Markdown content-free
+
+Objectif:
+
+- [ ] Rendre les surfaces admin logs et export Markdown conformes V1
+  content-free sans casser inutilement la compat UI existante.
+
+Surfaces visees:
+
+- [ ] `/api/admin/logs/chat`.
+- [ ] `/api/admin/logs/chat/metadata`.
+- [ ] `/api/admin/logs/chat/turns`.
+- [ ] `/api/admin/logs/chat/metrics` si des payloads historiques y sont
+  exposes.
+- [ ] `/api/admin/logs/chat/export.md`.
+- [ ] `observability.log_store.read_chat_log_events`.
+- [ ] `observability.log_markdown_export`.
+
+Critere de fin:
+
+- [ ] Les payloads historiques exposes par les surfaces admin sont projetes ou
+  allowlistes.
+- [ ] Aucun prompt, message utilisateur, payload provider, DAV/XML, ETag brut,
+  secret, token, cookie, header sensible ou contenu brut n'est expose.
+- [ ] Aucun champ `raw` non qualifie n'est introduit.
+- [ ] Toute compat UI conservee est documentee avec indicateurs explicites,
+  par exemple `raw_event_payloads_included=false`,
+  `raw_content_included=false`, `raw_prompt_included=false`,
+  `raw_provider_payload_included=false` et
+  `raw_webdav_payload_included=false`.
+- [ ] L'export Markdown indique qu'il est resume/content-free et ne reproduit
+  aucun payload brut.
+
+Hors scope:
+
+- [ ] Ne pas modifier la logique dashboard hors dependance stricte de
+  projection admin logs.
+- [ ] Ne pas modifier Agenda, Biblio, Documents, Notes, Exports ou Images.
+- [ ] Ne pas reset, purger, backfiller ou migrer.
+
+Tests/proofs attendus:
+
+- [ ] Tests sentinelles anti-fuite sur `/api/admin/logs/chat`.
+- [ ] Tests sentinelles anti-fuite sur `/api/admin/logs/chat/export.md`.
+- [ ] Test de compat UI si le champ `payload` reste present mais projete.
+- [ ] Scan de diff prouvant l'absence de nouveau champ `raw` non qualifie.
+
+#### Lot 5B - Dashboard historique/recent et statuts agentiques
+
+Objectif:
+
+- [ ] Harmoniser les surfaces dashboard avec la taxonomie V1 sans masquer les
+  vraies pannes et sans compter les no-op/refus normaux comme erreurs.
+
+Surfaces visees:
+
+- [ ] `/api/admin/dashboard/*`.
+- [ ] `observability.dashboard_read_model`.
+- [ ] `observability.dashboard_analytics_projection`.
+- [ ] `observability.dashboard_materialization_runtime`.
+- [ ] `observability.dashboard_content_gate` uniquement comme exception
+  explicite, bornee, auditee et documentee.
+
+Critere de fin:
+
+- [ ] Les evenements legacy et `agentic_v1` sont distinguables dans les vues
+  recentes/historiques.
+- [ ] `disabled`, `not_selected`, `not_configured`, `not_applicable` et
+  `refused` ne sont pas comptes comme vraies pannes.
+- [ ] `failed` et `error` restent visibles, actionnables et non noyes dans
+  `ok`.
+- [ ] Le dashboard recent est coherent avec la taxonomie Lots 2/3 et ne
+  deforme pas les no-op agentiques.
+- [ ] Le content gate reste l'exception explicite d'acces contenu, separee des
+  projections content-free ordinaires.
+
+Hors scope:
+
+- [ ] Ne pas refondre tout le dashboard.
+- [ ] Ne pas elargir `dashboard_read_model` sans separation claire de
+  responsabilite si le patch devient trop large.
+- [ ] Ne pas lire ni scanner les logs live.
+- [ ] Ne pas reset, purger, backfiller ou migrer.
+
+Tests/proofs attendus:
+
+- [ ] Tests dashboard avec melange d'evenements legacy et `agentic_v1`.
+- [ ] Tests prouvant que les no-op/refus normaux ne deviennent pas erreurs.
+- [ ] Tests prouvant qu'une vraie panne fake/local reste visible.
+- [ ] Tests content-free sur les projections dashboard hors content gate
+  explicite.
+
+#### Lot 5C - Reliquats logs runtime/store/dashboard et scans schemas
+
+Objectif:
+
+- [ ] Traiter les reliquats transverses non couverts par 5A/5B sans
+  remplacement mecanique aveugle et sans masquer de panne reelle.
+
+Surfaces visees:
+
+- [ ] `err=%s` restants dans stores, dashboard et read-models.
+- [ ] Logs DB/store/dashboard qui peuvent etre convertis surement vers
+  `reason` + `err_class`.
+- [ ] Schemas de sortie JSONL/admin/dashboard content-free transverses.
+- [ ] Scans anti-fuite automatises reutilisables pour Lot 6/Z.
+
+Critere de fin:
+
+- [ ] Chaque correction de log garde le niveau adapte: les vraies pannes
+  restent `WARNING` ou `ERROR`.
+- [ ] Les chemins corriges n'exposent pas `str(exc)`, cause brute, prompt,
+  contenu, payload provider, DAV/XML, ETag, token ou secret.
+- [ ] Les scans echouent sur champ `raw` non qualifie ou payload brut dans une
+  projection V1.
+- [ ] Les schemas/projections content-free sont coherents avec 5A/5B.
+
+Hors scope:
+
+- [ ] Pas de remplacement global automatique de `err=%s`.
+- [ ] Pas de reset, purge, backfill ou migration destructive.
+- [ ] Pas de changement plateforme, Caddy, Authelia, secrets ou DB Nextcloud.
+
+Tests/proofs attendus:
+
+- [ ] Tests unitaires ou scans cibles pour chaque famille corrigee.
+- [ ] Scans schemas/projections sans raw non qualifie.
+- [ ] Preuve que les vraies pannes fake/local restent visibles.
+- [ ] Preuve que les artefacts produits restent reutilisables pour Lot 6/Z.
 
 ### Lot 6 - Smokes transverses observabilite
 
