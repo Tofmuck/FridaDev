@@ -561,7 +561,10 @@ def init_dashboard_analytics_storage(
             conn.commit()
         logger_instance.info('dashboard_analytics_storage_init ok')
     except Exception as exc:
-        logger_instance.error('dashboard_analytics_storage_init_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_analytics_storage_init_failed reason=dashboard_analytics_storage_init_exception err_class=%s',
+            exc.__class__.__name__,
+        )
 
 
 def persist_dashboard_analytics(
@@ -781,7 +784,10 @@ def persist_dashboard_analytics(
                 )
             conn.commit()
     except Exception as exc:
-        logger_instance.error('dashboard_analytics_persist_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_analytics_persist_failed reason=dashboard_analytics_persist_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         raise
 
     return {
@@ -906,7 +912,11 @@ def materialize_dashboard_analytics_window(
             )
         except Exception:
             pass
-        logger_instance.error('dashboard_analytics_materialize_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_analytics_materialize_read_failed '
+            'reason=dashboard_analytics_materialize_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return analytics
 
     analytics = build_dashboard_analytics(

@@ -231,7 +231,10 @@ def init_log_storage(
             conn.commit()
         logger_instance.info('log_storage_init ok')
     except Exception as exc:
-        logger_instance.error('log_storage_init_failed err=%s', exc)
+        logger_instance.error(
+            'log_storage_init_failed reason=log_storage_init_exception err_class=%s',
+            exc.__class__.__name__,
+        )
 
 
 def insert_chat_log_event(
@@ -444,7 +447,10 @@ def read_chat_log_events(
             }
             items.append(item)
     except Exception as exc:
-        logger_instance.error('chat_log_events_read_failed err=%s', exc)
+        logger_instance.error(
+            'chat_log_events_read_failed reason=chat_log_events_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         failed_result = {
             'items': [],
             'count': 0,
@@ -547,7 +553,10 @@ def read_llm_call_provider_metrics(
                 )
                 rows = cur.fetchall()
     except Exception as exc:
-        logger_instance.error('llm_call_provider_metrics_read_failed err=%s', exc)
+        logger_instance.error(
+            'llm_call_provider_metrics_read_failed reason=llm_call_provider_metrics_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         result = build_llm_call_provider_metrics([])
         result['filters'] = {
             'ts_from': ts_from_s,
@@ -588,10 +597,11 @@ def read_turn_observability_checklist(
         )
     except Exception as exc:
         logger_instance.error(
-            'turn_observability_checklist_read_failed conversation_id=%s turn_id=%s err=%s',
+            'turn_observability_checklist_read_failed conversation_id=%s turn_id=%s '
+            'reason=turn_observability_checklist_read_exception err_class=%s',
             conversation_id_s,
             turn_id_s,
-            exc,
+            exc.__class__.__name__,
         )
         raise
 
@@ -691,7 +701,10 @@ def read_chat_turn_pipeline(
                         }
                     )
     except Exception as exc:
-        logger_instance.error('chat_turn_pipeline_read_failed err=%s', exc)
+        logger_instance.error(
+            'chat_turn_pipeline_read_failed reason=chat_turn_pipeline_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'chat_turn_pipeline_read_model',
             'schema_version': '1',
@@ -827,7 +840,10 @@ def read_full_turn_metrics_snapshot(
                 )
                 rows = cur.fetchall()
     except Exception as exc:
-        logger_instance.error('full_turn_metrics_snapshot_read_failed err=%s', exc)
+        logger_instance.error(
+            'full_turn_metrics_snapshot_read_failed reason=full_turn_metrics_snapshot_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         snapshot = build_full_turn_metrics_snapshot(
             [],
             llm_call_provider_metrics=build_llm_call_provider_metrics([]),
@@ -977,9 +993,9 @@ def read_chat_log_metadata(
                         )
     except Exception as exc:
         logger_instance.error(
-            'chat_log_metadata_read_failed conversation_id=%s err=%s',
+            'chat_log_metadata_read_failed conversation_id=%s reason=chat_log_metadata_read_exception err_class=%s',
             conversation_id_s,
-            exc,
+            exc.__class__.__name__,
         )
         raise RuntimeError('chat log metadata read failed') from exc
 
@@ -1029,11 +1045,12 @@ def delete_chat_log_events(
             conn.commit()
     except Exception as exc:
         logger_instance.error(
-            'chat_log_events_delete_failed scope=%s conversation_id=%s turn_id=%s err=%s',
+            'chat_log_events_delete_failed scope=%s conversation_id=%s turn_id=%s '
+            'reason=chat_log_events_delete_exception err_class=%s',
             scope,
             conversation_id_s,
             turn_id_s,
-            exc,
+            exc.__class__.__name__,
         )
         raise RuntimeError('chat log deletion failed') from exc
 

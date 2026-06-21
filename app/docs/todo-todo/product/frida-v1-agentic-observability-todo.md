@@ -5,8 +5,8 @@ borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3 Agenda/Biblio
 no-op observability livre avec correctif Lot 3.1 Agenda fallback; Lot 4 logs
 runtime content-free livre; Lot 5 decoupe; Lot 5A admin logs/export Markdown
 content-free livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard
-statuses livre avec correctif Lot 5B.1 providers secondaires; Lot 5C et
-Lot 6+ ouverts.
+statuses livre avec correctif Lot 5B.1 providers secondaires; Lot 5C
+reliquats/scans residuels livre; Lot 6+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -215,7 +215,7 @@ Ordre cible:
 
 - [x] Lot 5A avant 5B/5C, sauf meilleur plan explicitement justifie avant patch.
 - [x] Lot 5B apres 5A, sauf finding bloquant propre au dashboard.
-- [ ] Lot 5C apres 5A/5B, sauf micro-correctif content-free strictement borne.
+- [x] Lot 5C apres 5A/5B, sauf micro-correctif content-free strictement borne.
 
 #### Lot 5A - Admin logs et export Markdown content-free
 
@@ -352,39 +352,60 @@ Notes Lot 5B:
 
 Objectif:
 
-- [ ] Traiter les reliquats transverses non couverts par 5A/5B sans
+- [x] Traiter les reliquats transverses non couverts par 5A/5B sans
   remplacement mecanique aveugle et sans masquer de panne reelle.
 
 Surfaces visees:
 
-- [ ] `err=%s` restants dans stores, dashboard et read-models.
-- [ ] Logs DB/store/dashboard qui peuvent etre convertis surement vers
+- [x] `err=%s` restants dans stores, dashboard et read-models.
+- [x] Logs DB/store/dashboard qui peuvent etre convertis surement vers
   `reason` + `err_class`.
-- [ ] Schemas de sortie JSONL/admin/dashboard content-free transverses.
-- [ ] Scans anti-fuite automatises reutilisables pour Lot 6/Z.
+- [x] Schemas de sortie JSONL/admin/dashboard content-free transverses.
+- [x] Scans anti-fuite automatises reutilisables pour Lot 6/Z.
 
 Critere de fin:
 
-- [ ] Chaque correction de log garde le niveau adapte: les vraies pannes
+- [x] Chaque correction de log garde le niveau adapte: les vraies pannes
   restent `WARNING` ou `ERROR`.
-- [ ] Les chemins corriges n'exposent pas `str(exc)`, cause brute, prompt,
+- [x] Les chemins corriges n'exposent pas `str(exc)`, cause brute, prompt,
   contenu, payload provider, DAV/XML, ETag, token ou secret.
-- [ ] Les scans echouent sur champ `raw` non qualifie ou payload brut dans une
+- [x] Les scans echouent sur champ `raw` non qualifie ou payload brut dans une
   projection V1.
-- [ ] Les schemas/projections content-free sont coherents avec 5A/5B.
+- [x] Les schemas/projections content-free sont coherents avec 5A/5B.
 
 Hors scope:
 
-- [ ] Pas de remplacement global automatique de `err=%s`.
-- [ ] Pas de reset, purge, backfill ou migration destructive.
-- [ ] Pas de changement plateforme, Caddy, Authelia, secrets ou DB Nextcloud.
+- [x] Pas de remplacement global automatique de `err=%s`.
+- [x] Pas de reset, purge, backfill ou migration destructive.
+- [x] Pas de changement plateforme, Caddy, Authelia, secrets ou DB Nextcloud.
 
 Tests/proofs attendus:
 
-- [ ] Tests unitaires ou scans cibles pour chaque famille corrigee.
-- [ ] Scans schemas/projections sans raw non qualifie.
-- [ ] Preuve que les vraies pannes fake/local restent visibles.
-- [ ] Preuve que les artefacts produits restent reutilisables pour Lot 6/Z.
+- [x] Tests unitaires ou scans cibles pour chaque famille corrigee.
+- [x] Scans schemas/projections sans raw non qualifie.
+- [x] Preuve que les vraies pannes fake/local restent visibles.
+- [x] Preuve que les artefacts produits restent reutilisables pour Lot 6/Z.
+
+Notes Lot 5C:
+
+- Les reliquats `err=%s` corriges sont bornes a `app/observability`:
+  `log_store`, `dashboard_read_model`, `dashboard_analytics_storage` et
+  `dashboard_materialization_runtime` loggent maintenant `reason=...` +
+  `err_class=...` sans `str(exc)`.
+- Les niveaux `ERROR` et `WARNING` sont conserves: une vraie panne store,
+  read-model ou materialization reste actionnable.
+- Le scan unitaire
+  `app.tests.unit.logs.test_observability_residual_redaction_lot5c` verifie
+  l'absence de `err=%s`, `str(exc)` et `exc_info` dans `app/observability`,
+  ainsi que la redaction des sentinelles payload/prompt/message/provider/URL/
+  token dans les projections admin et dashboard ordinaires.
+- Les occurrences `err=%s`/`str(exc)` encore presentes dans `app/server.py`,
+  `app/admin` ou `app/core` ne sont pas remplacees mecaniquement par ce lot:
+  elles relevent de surfaces produit/admin plus larges ou de traitements
+  applicatifs hors projections observabilite V1 et devront etre rouvertes par
+  finding borne si necessaire.
+- Aucun content gate, reset, purge, backfill, migration, scan logs live,
+  plateforme, Agenda runtime, Biblio runtime, Lot 6 ou Lot Z n'a ete modifie.
 
 ### Lot 6 - Smokes transverses observabilite
 

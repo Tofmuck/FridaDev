@@ -7,7 +7,8 @@ Lot 3 Agenda/Biblio no-op observability livre; correctif Lot 3.1 Agenda
 fallback status livre; Lot 4 logs runtime content-free livre; Lot 5 decoupe
 en 5A/5B/5C avant runtime; Lot 5A admin logs/export Markdown content-free
 livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard statuses
-livre avec correctif Lot 5B.1 providers secondaires.
+livre avec correctif Lot 5B.1 providers secondaires; Lot 5C reliquats/scans
+residuels livre.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -650,6 +651,32 @@ Lot 5C - Reliquats logs runtime/store/dashboard et scans schemas:
 - tests/preuves attendus: tests ou scans cibles par famille corrigee, scans
   schemas/projections, preuve vraie panne fake/local visible, artefacts
   reutilisables pour Lot 6/Z.
+
+Decision livree Lot 5C:
+
+- les reliquats `err=%s` corriges sont limites aux familles observabilite V1
+  documentees: `observability.log_store`,
+  `observability.dashboard_read_model`,
+  `observability.dashboard_analytics_storage` et
+  `observability.dashboard_materialization_runtime`;
+- ces familles journalisent maintenant des pannes actionnables avec
+  `reason=...` et `err_class=...`, sans `str(exc)` ni cause brute;
+- les niveaux restent inchanges: les pannes store, read-model et storage
+  restent `ERROR`, les echecs de materialization/freshness restent `WARNING`;
+- le scan `test_observability_residual_redaction_lot5c` verifie l'absence de
+  `err=%s`, `str(exc)` et `exc_info` dans `app/observability`, et rejoue des
+  sentinelles prompt/message/payload provider/URL/token contre les projections
+  admin logs et dashboard ordinaires;
+- les projections 5A/5B restent content-free, les flags `raw_*` restent
+  qualifies et aucun champ `raw` nu n'est ajoute;
+- le content gate conserve son statut d'exception explicite et bornee; il n'est
+  pas traite comme une projection ordinaire;
+- les occurrences residuelles dans `app/server.py`, `app/admin` et `app/core`
+  ne sont pas remplacees mecaniquement par ce lot, car elles couvrent des
+  routes ou flux produit/admin plus larges que les projections observabilite V1;
+- aucun Lot 6, Lot Z, reset, purge, backfill, migration, scan logs live,
+  plateforme, Agenda runtime ou Biblio runtime n'est inclus dans cette
+  decision.
 
 Lot 6:
 

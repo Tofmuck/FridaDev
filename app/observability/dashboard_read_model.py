@@ -601,7 +601,10 @@ def read_dashboard_overview(
                 buckets = _read_metric_buckets(cur, window)
                 summary_health = _read_summary_health(cur)
     except Exception as exc:
-        logger_instance.error('dashboard_overview_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_overview_read_failed reason=dashboard_overview_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'dashboard_overview',
             'window': window,
@@ -772,7 +775,10 @@ def read_dashboard_conversations(
                 )
                 rows = cur.fetchall()
     except Exception as exc:
-        logger_instance.error('dashboard_conversations_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_conversations_read_failed reason=dashboard_conversations_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'dashboard_conversations',
             'window': window,
@@ -920,7 +926,10 @@ def read_dashboard_conversation_turns(
                 )
                 rows = cur.fetchall()
     except Exception as exc:
-        logger_instance.error('dashboard_conversation_turns_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_conversation_turns_read_failed reason=dashboard_conversation_turns_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'dashboard_conversation_turns',
             'conversation_id': conversation_id_s,
@@ -1060,7 +1069,10 @@ def _audit_content_gate_open(
     try:
         stored = bool(audit_fn(event))
     except Exception as exc:
-        logger_instance.error('dashboard_content_gate_audit_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_content_gate_audit_failed reason=dashboard_content_gate_audit_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         stored = False
     return {
         'attempted': True,
@@ -1553,7 +1565,10 @@ def read_dashboard_turn_inspection(
                 )
                 rows = cur.fetchall()
     except Exception as exc:
-        logger_instance.error('dashboard_turn_inspection_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_turn_inspection_read_failed reason=dashboard_turn_inspection_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'dashboard_turn_inspection',
             'turn_id': turn_id_s,
@@ -1632,7 +1647,10 @@ def read_dashboard_turn_content(
     except ValueError:
         raise
     except Exception as exc:
-        logger_instance.error('dashboard_turn_content_gate_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_turn_content_gate_read_failed reason=dashboard_turn_content_gate_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'dashboard_turn_content_gate',
             'turn_id': turn_id_s,
