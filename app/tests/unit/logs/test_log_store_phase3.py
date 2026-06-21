@@ -1091,6 +1091,104 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertIn('ts >= %s::timestamptz', joined_queries)
         self.assertIn('ts <= %s::timestamptz', joined_queries)
 
+    def test_read_chat_log_events_admin_projection_redacts_payload_sentinels(self) -> None:
+        dangerous_values = (
+            'RAW USER MESSAGE SENTINEL LOG STORE 5A',
+            'RAW PROMPT SENTINEL LOG STORE 5A',
+            'RAW PROVIDER SENTINEL LOG STORE 5A',
+            'Authorization: Bearer RAW_TOKEN_SENTINEL_LOG_STORE_5A',
+            'RAW EXCEPTION SENTINEL LOG STORE 5A',
+            'RAW FIELD SENTINEL LOG STORE 5A',
+        )
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self._step = 0
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, _query: str, _params: tuple[Any, ...]) -> None:
+                self._step += 1
+
+            def fetchone(self) -> tuple[int]:
+                return (1,)
+
+            def fetchall(self) -> list[tuple[Any, ...]]:
+                return [
+                    (
+                        'evt-admin-projection',
+                        'conv-admin-projection',
+                        'turn-admin-projection',
+                        datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc),
+                        'llm_call',
+                        'error',
+                        33,
+                        {
+                            'status_schema_version': 'agentic_v1',
+                            'reason_code': 'provider_timeout',
+                            'error_code': 'upstream_error',
+                            'model': 'openai/gpt-5.4-mini',
+                            'prompt_kind': 'chat_system_augmented',
+                            'response_chars': 17,
+                            'message': dangerous_values[0],
+                            'prompt': dangerous_values[1],
+                            'provider_payload': {'body': dangerous_values[2]},
+                            'authorization': dangerous_values[3],
+                            'error': dangerous_values[4],
+                            'raw': dangerous_values[5],
+                            'raw_content_included': True,
+                        },
+                    ),
+                ]
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        result = log_store.read_chat_log_events(
+            payload_projection='admin',
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertEqual(result['count'], 1)
+        encoded = json.dumps(result, ensure_ascii=False, sort_keys=True)
+        for marker in dangerous_values:
+            self.assertNotIn(marker, encoded)
+        self.assertFalse(result['redaction']['raw_event_payloads_included'])
+        self.assertFalse(result['redaction']['raw_content_included'])
+        self.assertFalse(result['redaction']['raw_prompt_included'])
+        self.assertFalse(result['redaction']['raw_provider_payload_included'])
+        self.assertFalse(result['redaction']['raw_webdav_payload_included'])
+        self.assertFalse(result['redaction']['raw_error_message_included'])
+        item = result['items'][0]
+        self.assertEqual(item['payload_projection']['schema_version'], 'admin_log_event_projection_v1')
+        self.assertEqual(item['payload']['reason_code'], 'provider_timeout')
+        self.assertEqual(item['payload']['error_code'], 'upstream_error')
+        self.assertEqual(item['payload']['model'], 'openai/gpt-5.4-mini')
+        self.assertEqual(item['payload']['prompt_kind'], 'chat_system_augmented')
+        self.assertEqual(item['payload']['response_chars'], 17)
+        self.assertFalse(item['payload']['raw_content_included'])
+        self.assertNotIn('raw', item['payload'])
+
+    def test_read_chat_log_events_rejects_unknown_payload_projection(self) -> None:
+        with self.assertRaisesRegex(ValueError, 'invalid chat log payload projection'):
+            log_store.read_chat_log_events(
+                payload_projection='raw_but_public',
+                conn_factory=lambda: None,
+                logger_instance=_NoopLogger(),
+            )
+
     def test_read_chat_log_events_rejects_invalid_status_filter(self) -> None:
         with self.assertRaisesRegex(ValueError, 'invalid chat log status filter'):
             log_store.read_chat_log_events(

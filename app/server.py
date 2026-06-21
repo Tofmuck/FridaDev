@@ -68,6 +68,7 @@ from memory import summarizer
 from memory import memory_store
 from memory import arbiter
 from observability import chat_turn_logger
+from observability import admin_log_projection
 from observability import hermeneutic_node_logger
 from observability import identity_observability
 from observability import log_store
@@ -998,9 +999,11 @@ def api_admin_chat_logs():
             status=request.args.get('status'),
             ts_from=request.args.get('ts_from'),
             ts_to=request.args.get('ts_to'),
+            payload_projection='admin',
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
+    listing = admin_log_projection.project_event_listing(listing)
 
     return jsonify(
         {
@@ -1012,6 +1015,7 @@ def api_admin_chat_logs():
             'offset': listing['offset'],
             'next_offset': listing['next_offset'],
             'filters': listing['filters'],
+            'redaction': listing['redaction'],
         }
     )
 

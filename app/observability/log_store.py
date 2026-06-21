@@ -10,6 +10,7 @@ import psycopg
 import config
 from admin import runtime_settings
 from core import runtime_db_bootstrap
+from observability import admin_log_projection
 from observability import agentic_status
 from observability import dashboard_analytics
 from observability.full_turn_metrics_snapshot import build_full_turn_metrics_snapshot
@@ -336,10 +337,15 @@ def read_chat_log_events(
     status: str | None = None,
     ts_from: str | None = None,
     ts_to: str | None = None,
+    payload_projection: str = 'raw',
     conn_factory: Callable[[], Any] = _conn,
     logger_instance: Any = logger,
 ) -> dict[str, Any]:
     """Read chat log events with simple offset pagination and optional filters."""
+    payload_projection_s = str(payload_projection or 'raw').strip().lower()
+    if payload_projection_s not in {'raw', 'admin'}:
+        raise ValueError(f'invalid chat log payload projection: {payload_projection_s}')
+
     limit_i = max(1, min(int(limit), 500))
     offset_i = max(0, int(offset))
 
@@ -423,24 +429,23 @@ def read_chat_log_events(
                 payload=payload_json,
                 status=status_value,
             )
-            items.append(
-                {
-                    'event_id': str(row[0] or ''),
-                    'conversation_id': str(row[1] or ''),
-                    'turn_id': str(row[2] or ''),
-                    'ts': row[3].astimezone(timezone.utc).isoformat() if isinstance(row[3], datetime) else str(row[3]),
-                    'stage': str(row[4] or ''),
-                    'status': status_value,
-                    'status_v1': agentic_status.normalize_status(status_value),
-                    'status_schema_version': status_schema_version,
-                    'legacy_status': status_schema_version != agentic_status.STATUS_SCHEMA_VERSION,
-                    'duration_ms': int(row[6]) if row[6] is not None else None,
-                    'payload': payload_json,
-                }
-            )
+            item = {
+                'event_id': str(row[0] or ''),
+                'conversation_id': str(row[1] or ''),
+                'turn_id': str(row[2] or ''),
+                'ts': row[3].astimezone(timezone.utc).isoformat() if isinstance(row[3], datetime) else str(row[3]),
+                'stage': str(row[4] or ''),
+                'status': status_value,
+                'status_v1': agentic_status.normalize_status(status_value),
+                'status_schema_version': status_schema_version,
+                'legacy_status': status_schema_version != agentic_status.STATUS_SCHEMA_VERSION,
+                'duration_ms': int(row[6]) if row[6] is not None else None,
+                'payload': payload_json,
+            }
+            items.append(item)
     except Exception as exc:
         logger_instance.error('chat_log_events_read_failed err=%s', exc)
-        return {
+        failed_result = {
             'items': [],
             'count': 0,
             'total': 0,
@@ -456,12 +461,15 @@ def read_chat_log_events(
                 'ts_to': ts_to_s,
             },
         }
+        if payload_projection_s == 'admin':
+            failed_result = admin_log_projection.project_event_listing(failed_result)
+        return failed_result
 
     next_offset = offset_i + len(items)
     if next_offset >= total:
         next_offset = None
 
-    return {
+    result = {
         'items': items,
         'count': len(items),
         'total': total,
@@ -477,6 +485,9 @@ def read_chat_log_events(
             'ts_to': ts_to_s,
         },
     }
+    if payload_projection_s == 'admin':
+        result = admin_log_projection.project_event_listing(result)
+    return result
 
 
 def read_llm_call_provider_metrics(

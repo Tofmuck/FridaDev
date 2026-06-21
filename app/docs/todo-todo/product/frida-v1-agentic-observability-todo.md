@@ -3,8 +3,8 @@
 Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2 runtime
 borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3 Agenda/Biblio
 no-op observability livre avec correctif Lot 3.1 Agenda fallback; Lot 4 logs
-runtime content-free livre; Lot 5 decoupe en 5A/5B/5C non coches; Lot 6+
-ouverts.
+runtime content-free livre; Lot 5 decoupe; Lot 5A admin logs/export Markdown
+content-free livre; Lot 5B/5C et Lot 6+ ouverts.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -211,7 +211,7 @@ Markdown, dashboard, schemas JSONL et logs store/dashboard.
 
 Ordre cible:
 
-- [ ] Lot 5A avant 5B/5C, sauf meilleur plan explicitement justifie avant patch.
+- [x] Lot 5A avant 5B/5C, sauf meilleur plan explicitement justifie avant patch.
 - [ ] Lot 5B apres 5A, sauf finding bloquant propre au dashboard.
 - [ ] Lot 5C apres 5A/5B, sauf micro-correctif content-free strictement borne.
 
@@ -219,48 +219,62 @@ Ordre cible:
 
 Objectif:
 
-- [ ] Rendre les surfaces admin logs et export Markdown conformes V1
+- [x] Rendre les surfaces admin logs et export Markdown conformes V1
   content-free sans casser inutilement la compat UI existante.
 
 Surfaces visees:
 
-- [ ] `/api/admin/logs/chat`.
-- [ ] `/api/admin/logs/chat/metadata`.
-- [ ] `/api/admin/logs/chat/turns`.
-- [ ] `/api/admin/logs/chat/metrics` si des payloads historiques y sont
+- [x] `/api/admin/logs/chat`.
+- [x] `/api/admin/logs/chat/metadata`.
+- [x] `/api/admin/logs/chat/turns`.
+- [x] `/api/admin/logs/chat/metrics` si des payloads historiques y sont
   exposes.
-- [ ] `/api/admin/logs/chat/export.md`.
-- [ ] `observability.log_store.read_chat_log_events`.
-- [ ] `observability.log_markdown_export`.
+- [x] `/api/admin/logs/chat/export.md`.
+- [x] `observability.log_store.read_chat_log_events`.
+- [x] `observability.log_markdown_export`.
 
 Critere de fin:
 
-- [ ] Les payloads historiques exposes par les surfaces admin sont projetes ou
+- [x] Les payloads historiques exposes par les surfaces admin sont projetes ou
   allowlistes.
-- [ ] Aucun prompt, message utilisateur, payload provider, DAV/XML, ETag brut,
+- [x] Aucun prompt, message utilisateur, payload provider, DAV/XML, ETag brut,
   secret, token, cookie, header sensible ou contenu brut n'est expose.
-- [ ] Aucun champ `raw` non qualifie n'est introduit.
-- [ ] Toute compat UI conservee est documentee avec indicateurs explicites,
+- [x] Aucun champ `raw` non qualifie n'est introduit.
+- [x] Toute compat UI conservee est documentee avec indicateurs explicites,
   par exemple `raw_event_payloads_included=false`,
   `raw_content_included=false`, `raw_prompt_included=false`,
   `raw_provider_payload_included=false` et
   `raw_webdav_payload_included=false`.
-- [ ] L'export Markdown indique qu'il est resume/content-free et ne reproduit
+- [x] L'export Markdown indique qu'il est resume/content-free et ne reproduit
   aucun payload brut.
 
 Hors scope:
 
-- [ ] Ne pas modifier la logique dashboard hors dependance stricte de
+- [x] Ne pas modifier la logique dashboard hors dependance stricte de
   projection admin logs.
-- [ ] Ne pas modifier Agenda, Biblio, Documents, Notes, Exports ou Images.
-- [ ] Ne pas reset, purger, backfiller ou migrer.
+- [x] Ne pas modifier Agenda, Biblio, Documents, Notes, Exports ou Images.
+- [x] Ne pas reset, purger, backfiller ou migrer.
 
 Tests/proofs attendus:
 
-- [ ] Tests sentinelles anti-fuite sur `/api/admin/logs/chat`.
-- [ ] Tests sentinelles anti-fuite sur `/api/admin/logs/chat/export.md`.
-- [ ] Test de compat UI si le champ `payload` reste present mais projete.
-- [ ] Scan de diff prouvant l'absence de nouveau champ `raw` non qualifie.
+- [x] Tests sentinelles anti-fuite sur `/api/admin/logs/chat`.
+- [x] Tests sentinelles anti-fuite sur `/api/admin/logs/chat/export.md`.
+- [x] Test de compat UI si le champ `payload` reste present mais projete.
+- [x] Scan de diff prouvant l'absence de nouveau champ `raw` non qualifie.
+
+Notes Lot 5A:
+
+- La projection dediee `observability.admin_log_projection` expose une surface
+  admin V1 content-free en gardant `payload` comme compat UI projetee.
+- `/api/admin/logs/chat` force `payload_projection=admin` et reprojette
+  defensivement la reponse avant JSON.
+- `log_markdown_export` utilise la meme projection et declare dans l'export
+  Markdown `content_free=true` et les flags raw qualifies a `false`.
+- Les read-models `/api/admin/logs/chat/turns` et
+  `/api/admin/logs/chat/metrics` restent compacts/content-free; les calculs
+  internes peuvent lire le payload DB mais ne l'exposent pas.
+- Aucun dashboard `/api/admin/dashboard/*`, reset, purge, backfill, migration,
+  Agenda, Biblio, Documents, Notes, Exports ou Images n'a ete modifie.
 
 #### Lot 5B - Dashboard historique/recent et statuts agentiques
 

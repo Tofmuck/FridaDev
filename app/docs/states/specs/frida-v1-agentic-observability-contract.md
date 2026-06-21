@@ -5,7 +5,8 @@ Statut: spec source-of-truth livree par Lot 1 docs-only; Lot 2 runtime
 Lot 2.1 writer V1 livre; correctif Lot 2.2 redaction invalid status livre;
 Lot 3 Agenda/Biblio no-op observability livre; correctif Lot 3.1 Agenda
 fallback status livre; Lot 4 logs runtime content-free livre; Lot 5 decoupe
-en 5A/5B/5C avant runtime.
+en 5A/5B/5C avant runtime; Lot 5A admin logs/export Markdown content-free
+livre.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
@@ -533,6 +534,36 @@ Lot 5A - Admin logs et export Markdown content-free:
   Images, reset, purge, backfill et migration;
 - tests/preuves attendus: sentinelles anti-fuite sur admin logs et export
   Markdown, compat UI si conservee, scan de diff contre `raw` non qualifie.
+
+Decision livree Lot 5A:
+
+- la projection admin logs V1 est portee par
+  `observability.admin_log_projection`, module dedie de projection content-free;
+- `/api/admin/logs/chat` demande `payload_projection=admin` a
+  `observability.log_store.read_chat_log_events` et applique une projection
+  defensive avant JSON;
+- le champ historique `payload` reste present pour compat UI, mais il ne
+  contient plus le payload DB brut sur la route admin: seules les valeurs
+  allowlistees et redacted sont exposees;
+- les items et listings portent des indicateurs explicites:
+  `raw_event_payloads_included=false`, `raw_content_included=false`,
+  `raw_prompt_included=false`, `raw_provider_payload_included=false`,
+  `raw_webdav_payload_included=false` et
+  `raw_error_message_included=false`;
+- `log_markdown_export` utilise la meme projection et ajoute des metadonnees
+  Markdown `content_free=true`, `payload_projection_schema` et flags raw
+  qualifies a `false`;
+- `/api/admin/logs/chat/metadata`, `/api/admin/logs/chat/turns` et
+  `/api/admin/logs/chat/metrics` restent content-free par construction:
+  metadonnees, pipeline compact et snapshot agrege; les lectures internes qui
+  calculent ces read-models ne valent pas exposition admin de payload brut;
+- aucune requalification, purge, migration, suppression ou backfill historique
+  n'est effectue: les evenements legacy restent legacy et les evenements
+  `agentic_v1` restent lisibles;
+- les tests sentinelles Lot 5A prouvent l'absence de prompt, message,
+  contenu, payload provider, Authorization/Bearer/token, DAV/XML/ETag,
+  exception brute et champ `raw` non qualifie dans les surfaces livrees;
+- le dashboard reste hors scope Lot 5A et doit etre traite par Lot 5B.
 
 Lot 5B - Dashboard historique/recent et statuts agentiques:
 

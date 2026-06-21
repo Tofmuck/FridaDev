@@ -1,0 +1,379 @@
+from __future__ import annotations
+
+import re
+from typing import Any, Mapping
+
+
+SCHEMA_VERSION = 'admin_log_event_projection_v1'
+PROJECTION_MODE = 'content_free'
+
+_MAX_MAPPING_KEYS = 32
+_MAX_LIST_ITEMS = 8
+_MAX_DEPTH = 4
+_REDACTED = '[redacted]'
+
+_SAFE_TOKEN_RE = re.compile(r'^[a-z0-9][a-z0-9_.:/@+-]{0,159}$')
+
+_QUALIFIED_RAW_FLAGS = {
+    'raw_event_payloads_included',
+    'raw_log_included',
+    'raw_content_included',
+    'raw_prompt_included',
+    'raw_provider_payload_included',
+    'raw_webdav_payload_included',
+    'raw_error_message_included',
+    'raw_error_message_stored',
+    'raw_content_stored',
+}
+
+_SAFE_TEXT_KEYS = {
+    'activity_runtime_authority',
+    'admin_route',
+    'apply_reason_code',
+    'apply_status',
+    'classification',
+    'continuity_kind',
+    'decision_source',
+    'error_class',
+    'error_code',
+    'event_family',
+    'final_output_regime',
+    'final_status',
+    'final_judgment_posture',
+    'identity_schema_version',
+    'injection_class',
+    'judge_reason_code',
+    'judge_status',
+    'model',
+    'mode',
+    'operation_kind',
+    'persist_phase',
+    'product_method',
+    'projected_judgment_posture',
+    'prompt_kind',
+    'provider_caller',
+    'reason_code',
+    'runtime_pipeline',
+    'schema_version',
+    'source_kind',
+    'status',
+    'status_schema_version',
+    'validation_decision',
+    'verdict',
+    'write_mode',
+}
+
+_SAFE_TEXT_SUFFIXES = (
+    '_class',
+    '_code',
+    '_kind',
+    '_mode',
+    '_phase',
+    '_schema_version',
+    '_source',
+    '_status',
+    '_type',
+    '_version',
+)
+
+_SAFE_TEXT_LIST_KEYS = {
+    'active_signal_families',
+    'advisory_recommendations_followed',
+    'advisory_recommendations_overridden',
+    'applied_hard_guards',
+    'degraded_fields',
+    'pipeline_directives_final',
+    'read_tool_names',
+    'reason_codes',
+}
+
+_SAFE_CONTAINER_KEYS = {
+    'fallback_fail_open',
+    'identity_prompt_injection',
+    'llm_call_provider_metrics',
+    'memory_prompt_injection',
+    'node_state',
+    'node_state_read',
+    'node_state_write',
+    'providers',
+    'rag',
+    'redaction',
+    'source',
+    'status_schema',
+    'web',
+}
+
+_BLOCKED_EXACT_KEYS = {
+    'authorization',
+    'bearer',
+    'body',
+    'caldav_path',
+    'canonical_inputs',
+    'content',
+    'context',
+    'context_block',
+    'cookie',
+    'dav_path',
+    'description',
+    'etag',
+    'exception',
+    'headers',
+    'href',
+    'ics',
+    'location',
+    'message',
+    'message_short',
+    'messages',
+    'password',
+    'payload',
+    'payload_json',
+    'prompt',
+    'provider_payload',
+    'query',
+    'raw',
+    'raw_ics',
+    'request_payload',
+    'response_payload',
+    'secret',
+    'text',
+    'title',
+    'token',
+    'uid',
+    'uri',
+    'url',
+    'xml',
+}
+
+_BLOCKED_KEY_PARTS = (
+    'authorization',
+    'bearer',
+    'cookie',
+    'dav',
+    'etag',
+    'header',
+    'password',
+    'secret',
+    'token',
+    'webdav',
+)
+
+
+def _base_redaction() -> dict[str, Any]:
+    return {
+        'schema_version': SCHEMA_VERSION,
+        'projection_mode': PROJECTION_MODE,
+        'raw_event_payloads_included': False,
+        'raw_content_included': False,
+        'raw_prompt_included': False,
+        'raw_provider_payload_included': False,
+        'raw_webdav_payload_included': False,
+        'raw_error_message_included': False,
+        'source_payload_keys_count': 0,
+        'projected_payload_keys_count': 0,
+        'redacted_payload_keys_count': 0,
+        'redacted_payload_values_count': 0,
+    }
+
+
+def _safe_key(key: Any) -> str:
+    return str(key or '').strip()
+
+
+def _is_qualified_raw_flag(key: str) -> bool:
+    return key in _QUALIFIED_RAW_FLAGS
+
+
+def _is_blocked_key(key: str) -> bool:
+    lower = key.lower()
+    if _is_qualified_raw_flag(lower):
+        return False
+    if lower in _BLOCKED_EXACT_KEYS:
+        return True
+    if lower.startswith('raw_'):
+        return True
+    if lower.endswith('_text'):
+        return True
+    for part in _BLOCKED_KEY_PARTS:
+        if part in lower:
+            return True
+    if 'payload' in lower and lower not in {'payload_chars', 'payload_bytes'}:
+        return True
+    return False
+
+
+def _is_safe_text_key(key: str) -> bool:
+    lower = key.lower()
+    if lower in _SAFE_TEXT_KEYS:
+        return True
+    return lower.endswith(_SAFE_TEXT_SUFFIXES)
+
+
+def _is_safe_text_value(value: Any) -> bool:
+    text = str(value or '').strip()
+    return bool(_SAFE_TOKEN_RE.fullmatch(text))
+
+
+def _project_string(key: str, value: Any, stats: dict[str, int]) -> str:
+    if _is_safe_text_key(key) and _is_safe_text_value(value):
+        return str(value).strip()
+    stats['redacted_values'] += 1
+    return _REDACTED
+
+
+def _project_list(key: str, values: list[Any], stats: dict[str, int], depth: int) -> Any:
+    if depth >= _MAX_DEPTH:
+        stats['redacted_values'] += len(values)
+        return {
+            'items_count': len(values),
+            'redacted_items_count': len(values),
+        }
+
+    projected: list[Any] = []
+    redacted_items = 0
+    for value in values[:_MAX_LIST_ITEMS]:
+        before = stats['redacted_values']
+        if isinstance(value, str) and key in _SAFE_TEXT_LIST_KEYS:
+            if _is_safe_text_value(value):
+                projected.append(value.strip())
+            else:
+                stats['redacted_values'] += 1
+                projected.append(_REDACTED)
+        elif isinstance(value, str):
+            projected.append(_project_string(key, value, stats))
+        else:
+            projected.append(_project_value(key, value, stats, depth + 1))
+        if stats['redacted_values'] > before:
+            redacted_items += 1
+
+    truncated_items = max(0, len(values) - _MAX_LIST_ITEMS)
+    if truncated_items:
+        stats['redacted_values'] += truncated_items
+    if redacted_items or truncated_items:
+        return {
+            'items_count': len(values),
+            'preview': projected,
+            'redacted_items_count': redacted_items + truncated_items,
+        }
+    return projected
+
+
+def _project_mapping(payload: Mapping[str, Any], stats: dict[str, int], depth: int) -> dict[str, Any]:
+    if depth >= _MAX_DEPTH:
+        redacted = len(payload)
+        stats['redacted_keys'] += redacted
+        return {
+            'keys_count': redacted,
+            'redacted_keys_count': redacted,
+        }
+
+    projected: dict[str, Any] = {}
+    keys = sorted(_safe_key(key) for key in payload.keys())
+    for key in keys[:_MAX_MAPPING_KEYS]:
+        if not key:
+            stats['redacted_keys'] += 1
+            continue
+        lower = key.lower()
+        if _is_qualified_raw_flag(lower):
+            projected[lower] = False
+            continue
+        if _is_blocked_key(key):
+            stats['redacted_keys'] += 1
+            continue
+        value = payload.get(key)
+        if (
+            isinstance(value, Mapping)
+            and lower not in _SAFE_CONTAINER_KEYS
+            and not lower.endswith(('_counts', '_by_stage', '_metrics'))
+        ):
+            projected[key] = {
+                'keys_count': len(value),
+                'content_minimized': True,
+            }
+            continue
+        projected[key] = _project_value(key, value, stats, depth + 1)
+
+    remaining = max(0, len(keys) - _MAX_MAPPING_KEYS)
+    if remaining:
+        stats['redacted_keys'] += remaining
+        projected['truncated_keys_count'] = remaining
+    return projected
+
+
+def _project_value(key: str, value: Any, stats: dict[str, int], depth: int) -> Any:
+    if value is None or isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return value
+    if isinstance(value, str):
+        return _project_string(key, value, stats)
+    if isinstance(value, list):
+        return _project_list(key, value, stats, depth)
+    if isinstance(value, Mapping):
+        return _project_mapping(value, stats, depth)
+    stats['redacted_values'] += 1
+    return _REDACTED
+
+
+def project_payload(payload: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+    source = payload if isinstance(payload, Mapping) else {}
+    stats = {'redacted_keys': 0, 'redacted_values': 0}
+    projected = _project_mapping(source, stats, 0)
+    redaction = _base_redaction()
+    redaction.update(
+        {
+            'source_payload_keys_count': len(source),
+            'projected_payload_keys_count': len(projected),
+            'redacted_payload_keys_count': stats['redacted_keys'],
+            'redacted_payload_values_count': stats['redacted_values'],
+        }
+    )
+    return projected, redaction
+
+
+def project_event_item(item: Mapping[str, Any]) -> dict[str, Any]:
+    existing_projection = item.get('payload_projection')
+    if isinstance(existing_projection, Mapping) and existing_projection.get('schema_version') == SCHEMA_VERSION:
+        return dict(item)
+
+    projected = dict(item)
+    payload, redaction = project_payload(item.get('payload'))
+    projected['payload'] = payload
+    existing_redaction = item.get('redaction') if isinstance(item.get('redaction'), Mapping) else {}
+    projected['redaction'] = {
+        **dict(existing_redaction),
+        **redaction,
+    }
+    projected['payload_projection'] = {
+        'schema_version': SCHEMA_VERSION,
+        'mode': PROJECTION_MODE,
+        'content_free': True,
+    }
+    return projected
+
+
+def project_event_items(items: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    source_items = items if isinstance(items, list) else []
+    projected_items: list[dict[str, Any]] = []
+    aggregate = _base_redaction()
+    for item in source_items:
+        if not isinstance(item, Mapping):
+            continue
+        projected = project_event_item(item)
+        projected_items.append(projected)
+        redaction = projected.get('redaction') if isinstance(projected.get('redaction'), Mapping) else {}
+        aggregate['source_payload_keys_count'] += int(redaction.get('source_payload_keys_count') or 0)
+        aggregate['projected_payload_keys_count'] += int(redaction.get('projected_payload_keys_count') or 0)
+        aggregate['redacted_payload_keys_count'] += int(redaction.get('redacted_payload_keys_count') or 0)
+        aggregate['redacted_payload_values_count'] += int(redaction.get('redacted_payload_values_count') or 0)
+    aggregate['items_count'] = len(projected_items)
+    return projected_items, aggregate
+
+
+def project_event_listing(listing: Mapping[str, Any]) -> dict[str, Any]:
+    projected = dict(listing)
+    items, redaction = project_event_items(projected.get('items'))
+    projected['items'] = items
+    projected['redaction'] = redaction
+    return projected

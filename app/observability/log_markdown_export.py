@@ -9,6 +9,7 @@ import psycopg
 import config
 from admin import runtime_settings
 from core import runtime_db_bootstrap
+from observability import admin_log_projection
 
 logger = logging.getLogger('frida.log_markdown_export')
 
@@ -121,10 +122,10 @@ def _read_scope_events(
                 rows = cur.fetchall()
     except Exception as exc:
         logger.error(
-            'chat_log_markdown_export_read_failed conversation_id=%s turn_id=%s err=%s',
+            'chat_log_markdown_export_read_failed conversation_id=%s turn_id=%s reason=chat_log_markdown_export_read_failed err_class=%s',
             conversation_id,
             turn_id,
-            exc,
+            exc.__class__.__name__,
         )
         raise RuntimeError('chat log markdown export read failed') from exc
 
@@ -133,16 +134,18 @@ def _read_scope_events(
         ts = row[3]
         payload_json = row[7] if isinstance(row[7], dict) else {}
         items.append(
-            {
-                'event_id': str(row[0] or ''),
-                'conversation_id': str(row[1] or ''),
-                'turn_id': str(row[2] or ''),
-                'ts': ts.astimezone(timezone.utc).isoformat() if isinstance(ts, datetime) else str(ts or ''),
-                'stage': str(row[4] or ''),
-                'status': str(row[5] or ''),
-                'duration_ms': int(row[6]) if row[6] is not None else None,
-                'payload': payload_json,
-            }
+            admin_log_projection.project_event_item(
+                {
+                    'event_id': str(row[0] or ''),
+                    'conversation_id': str(row[1] or ''),
+                    'turn_id': str(row[2] or ''),
+                    'ts': ts.astimezone(timezone.utc).isoformat() if isinstance(ts, datetime) else str(ts or ''),
+                    'stage': str(row[4] or ''),
+                    'status': str(row[5] or ''),
+                    'duration_ms': int(row[6]) if row[6] is not None else None,
+                    'payload': payload_json,
+                }
+            )
         )
     return items
 
@@ -168,6 +171,14 @@ def _build_markdown(
         [
             f'- generated_at: `{generated_iso}`',
             f'- events_count: `{len(items)}`',
+            f'- payload_projection_schema: `{admin_log_projection.SCHEMA_VERSION}`',
+            '- content_free: `true`',
+            '- raw_event_payloads_included: `false`',
+            '- raw_content_included: `false`',
+            '- raw_prompt_included: `false`',
+            '- raw_provider_payload_included: `false`',
+            '- raw_webdav_payload_included: `false`',
+            '- raw_error_message_included: `false`',
             '',
             '## Events',
         ]
