@@ -92,6 +92,79 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertFalse(decision.accepted)
         self.assertIn("url_value", decision.payload["issue_classes"])
 
+    def test_context_build_content_free_payload_passes(self) -> None:
+        payload = {
+            "estimated_context_tokens": 42,
+            "prompt_soft_token_limit": 4000,
+            "prompt_soft_limit_exceeded": False,
+            "dialogue_messages_truncated": False,
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.payload["estimated_context_tokens"], 42)
+
+    def test_web_search_skipped_empty_query_preview_passes(self) -> None:
+        payload = {
+            "enabled": False,
+            "query_preview": "",
+            "results_count": 0,
+            "context_injected": False,
+            "truncated": False,
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.payload["query_preview"], "")
+
+    def test_web_search_non_empty_query_preview_is_rejected(self) -> None:
+        sentinel = "user query text sentinel should not pass"
+        payload = {
+            "enabled": True,
+            "query_preview": sentinel,
+            "results_count": 0,
+            "context_injected": False,
+            "truncated": False,
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("unsafe_string_value", decision.payload["issue_classes"])
+        self.assertNotIn(sentinel, encoded)
+
+    def test_error_code_and_class_pass_without_message_short(self) -> None:
+        payload = {
+            "error_code": "upstream_error",
+            "error_class": "RuntimeError",
+            "message_short_chars": 4,
+            "message_short_included": False,
+            "raw_error_message_included": False,
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.payload["error_class"], "RuntimeError")
+
+    def test_direct_message_short_is_still_rejected(self) -> None:
+        sentinel = "raw error detail should not pass"
+        payload = {
+            "error_code": "upstream_error",
+            "error_class": "RuntimeError",
+            "message_short": sentinel,
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("unknown_string_key", decision.payload["issue_classes"])
+        self.assertNotIn(sentinel, encoded)
+
     def test_general_payload_rejects_neutral_free_text_key(self) -> None:
         sentinel = "neutral free text sentinel should not pass"
         payload = {

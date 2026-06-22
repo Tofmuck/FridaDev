@@ -65,7 +65,7 @@ content-free relue, testee ou explicitement reportee post-V1.
 | - [x] | P2-LANE-PROVENANCE-01 | Lot 2 puis Lot 2.1 | Role provider et role logique distingues par provenance structuree, sans classification souveraine par contenu textuel. |
 | - [ ] | P2-FINAL-LOCK-POLICY-01 | Lot 5 | Politique de priorite Agenda/Biblio final-lock documentee et testee. |
 | - [ ] | P2-NOTES-UI-01 | Lot 5 | Statut Notes UI tranche: hors chemin chat courant documente, ou branchement explicite teste. |
-| - [x] | P2-OBS-WRITER-01 | Lot 3 puis Lot 3.1 | Guard writer-side schema-first/default-deny livre contre cles/payloads dangereux et texte libre sous cles neutres, avec sentinelles anti-fuite. |
+| - [x] | P2-OBS-WRITER-01 | Lot 3 puis Lots 3.1/3.2 | Guard writer-side schema-first/default-deny livre contre cles/payloads dangereux et texte libre sous cles neutres, avec schemas content-free existants preserves et sentinelles anti-fuite. |
 | - [ ] | P3-SOFT-LIMIT-01 | Lot 4 | Soft limit explique ou durci: depassement visible et politique de troncation/exclusion testee ou reportee. |
 | - [ ] | P3-NOOP-LANES-01 | Lot 5 | Non-selection Documents/Notes observable ou absence justifiee sans confusion avec lane non instrumentee. |
 | - [ ] | P3-DOC-01 | Lot 1 puis Lot Z | Docs historiques requalifiees ou indexees avec statuts actifs/archive/stale. |
@@ -199,12 +199,26 @@ Correctif Lot 3.1 livre le 2026-06-22:
 - [x] Prouver qu'un `status=ok` avec payload refuse devient `refused` avant
   stockage.
 
+Correctif Lot 3.2 livre le 2026-06-22:
+
+- [x] Preserver les payloads content-free existants `context_build`.
+- [x] Preserver `web_search` skipped avec `query_preview=""` sans autoriser de
+  preview non vide.
+- [x] Preserver les erreurs avec `error_code` et `error_class` content-free,
+  sans stocker `message_short` brut.
+- [x] Convertir les anciens champs Web sensibles ou correlables en compteurs et
+  flags: pas d'URL brute, pas de hash stable de requete/prompt/message dans
+  l'evenement writer-side.
+- [x] Prouver que les rejets de garde ne deviennent pas du bruit sur les
+  evenements normaux.
+
 Tests de reference Lot 3:
 
 - `app/tests/unit/logs/test_observability_payload_guard.py`
 - `app/tests/unit/logs/test_chat_turn_logger_core_contract.py`
+- `app/tests/unit/logs/test_chat_turn_logger_web_search.py`
 
-Finding clos par ce lot apres Lot 3.1: `P2-OBS-WRITER-01`.
+Finding clos par ce lot apres Lot 3.2: `P2-OBS-WRITER-01`.
 
 ### Lot 4 - Fenetres, summary, memory, staging
 

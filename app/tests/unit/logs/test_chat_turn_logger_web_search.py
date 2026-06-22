@@ -115,7 +115,8 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
             self.assertEqual(payload.get('query_preview'), '')
             self.assertIn('query_present', payload)
             self.assertIn('query_chars', payload)
-            self.assertIn('query_sha256_12', payload)
+            self.assertFalse(payload.get('query_hash_included'))
+            self.assertNotIn('query_sha256_12', payload)
             self.assertIn('results_count', payload)
             self.assertIn('context_injected', payload)
             self.assertIn('truncated', payload)
@@ -236,7 +237,13 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         self.assertTrue(payload['system_prompt_present'])
         self.assertTrue(payload['current_user_present'])
         self.assertEqual(payload['current_user_chars'], len('message original secret'))
-        self.assertRegex(payload['current_user_sha256_12'], r'^[0-9a-f]{12}$')
+        self.assertFalse(payload['current_user_hash_included'])
+        self.assertFalse(payload['system_prompt_hash_included'])
+        self.assertNotIn('current_user_sha256_12', payload)
+        self.assertNotIn('system_prompt_sha256_12', payload)
+        self.assertTrue(payload['provider_title_present'])
+        self.assertEqual(payload['provider_title_chars'], len('FridaDev/WebReformulation'))
+        self.assertFalse(payload['provider_title_included'])
         self.assertEqual(payload['sampling']['timeout_s'], 10)
         for forbidden_key in ('original', 'query', 'prompt', 'messages', 'content', 'user_message'):
             self.assertNotIn(forbidden_key, payload)
@@ -326,7 +333,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         self.assertEqual(web_event['payload_json']['results_count'], 2)
         self.assertTrue(web_event['payload_json']['truncated'])
         self.assertFalse(web_event['payload_json']['explicit_url_detected'])
-        self.assertIsNone(web_event['payload_json']['read_state'])
+        self.assertEqual(web_event['payload_json']['read_state'], '')
         self.assertEqual(web_event['payload_json']['primary_read_status'], 'not_attempted')
         self.assertFalse(web_event['payload_json']['fallback_used'])
         self.assertEqual(web_event['payload_json']['collection_path'], 'search_only')
@@ -335,7 +342,16 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         self.assertEqual(web_event['payload_json']['context_chars'], len(payload['context_block']))
         self.assertEqual(
             web_event['payload_json']['source_material_summary'],
-            payload['source_material_summary'],
+            [
+                {
+                    **{key: value for key, value in item.items() if key != 'url'},
+                    'source_domain': web_search._source_domain(item['url']),
+                    'url_present': True,
+                    'url_chars': len(item['url']),
+                    'url_included': False,
+                }
+                for item in payload['source_material_summary']
+            ],
         )
         self.assertEqual(web_event['payload_json']['web_confidence_level'], payload['web_confidence_level'])
         self.assertFalse(web_event['payload_json']['openrouter_fallback_used'])
@@ -405,7 +421,9 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         self.assertEqual(web_event['status'], 'ok')
         self.assertEqual(web_event['payload_json']['prompt_kind'], 'chat_web_explicit_url')
         self.assertTrue(web_event['payload_json']['explicit_url_detected'])
-        self.assertEqual(web_event['payload_json']['explicit_url'], explicit_url)
+        self.assertEqual(web_event['payload_json']['explicit_url_chars'], len(explicit_url))
+        self.assertFalse(web_event['payload_json']['explicit_url_included'])
+        self.assertNotIn('explicit_url', web_event['payload_json'])
         self.assertEqual(web_event['payload_json']['read_state'], 'page_read')
         self.assertEqual(web_event['payload_json']['primary_source_kind'], 'explicit_url')
         self.assertTrue(web_event['payload_json']['primary_read_attempted'])
@@ -419,7 +437,16 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         self.assertEqual(web_event['payload_json']['context_chars'], len(payload['context_block']))
         self.assertEqual(
             web_event['payload_json']['source_material_summary'],
-            payload['source_material_summary'],
+            [
+                {
+                    **{key: value for key, value in item.items() if key != 'url'},
+                    'source_domain': web_search._source_domain(item['url']),
+                    'url_present': True,
+                    'url_chars': len(item['url']),
+                    'url_included': False,
+                }
+                for item in payload['source_material_summary']
+            ],
         )
         self.assertEqual(web_event['payload_json']['web_confidence_level'], 'high')
         self.assertEqual(web_event['payload_json']['openrouter_fallback_state'], 'future_only')
@@ -499,7 +526,7 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
             [
                 {
                     'rank': 1,
-                    'url': explicit_url,
+                    'source_domain': 'example.com',
                     'source_origin': 'explicit_url',
                     'is_primary_source': True,
                     'used_in_prompt': False,
@@ -507,10 +534,13 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
                     'crawl_status': 'empty',
                     'content_chars': 0,
                     'truncated': False,
+                    'url_present': True,
+                    'url_chars': len(explicit_url),
+                    'url_included': False,
                 },
                 {
                     'rank': 2,
-                    'url': 'https://fallback.example/article',
+                    'source_domain': 'fallback.example',
                     'source_origin': 'search_result',
                     'is_primary_source': False,
                     'used_in_prompt': True,
@@ -518,6 +548,9 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
                     'crawl_status': 'not_attempted',
                     'content_chars': len(payload['sources'][1]['content_used']),
                     'truncated': False,
+                    'url_present': True,
+                    'url_chars': len('https://fallback.example/article'),
+                    'url_included': False,
                 },
             ],
         )
@@ -565,7 +598,8 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         self.assertIn('error_class', payload)
         self.assertEqual(payload.get('query_preview'), '')
         self.assertEqual(payload.get('query_chars'), len('message source'))
-        self.assertRegex(payload.get('query_sha256_12'), r'^[0-9a-f]{12}$')
+        self.assertFalse(payload.get('query_hash_included'))
+        self.assertNotIn('query_sha256_12', payload)
         self.assertEqual(payload.get('web_confidence_level'), 'low')
         self.assertEqual(payload.get('web_evidence_status'), 'insufficient')
         self.assertIn('web_status_error', payload.get('web_evidence_reason_codes'))
@@ -574,7 +608,11 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         self.assertNotIn('context', payload)
         self.assertNotIn('results', payload)
         logger_error_event = next(event for event in observed if event['stage'] == 'error' and event['status'] == 'error')
-        self.assertEqual(logger_error_event['payload_json']['message_short'], 'reformulation boom')
+        error_payload = logger_error_event['payload_json']
+        self.assertEqual(error_payload.get('message_short_chars'), len('reformulation boom'))
+        self.assertFalse(error_payload.get('message_short_included'))
+        self.assertFalse(error_payload.get('raw_error_message_included'))
+        self.assertNotIn('message_short', error_payload)
 
 
 if __name__ == '__main__':

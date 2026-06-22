@@ -118,6 +118,12 @@ def _inspect_manifest_dynamic_int_map(payload: Mapping[str, Any], issues: dict[s
             _add_issue(issues, "manifest_unexpected_value")
 
 
+def _inspect_general_dynamic_int_map(payload: Mapping[str, Any], issues: dict[str, int]) -> None:
+    for raw_key, value in payload.items():
+        if not _safe_dynamic_name(raw_key) or not isinstance(value, int):
+            _add_issue(issues, "unknown_mapping_value")
+
+
 def _inspect_manifest_mapping(payload: Mapping[str, Any], issues: dict[str, int], depth: int, context: str) -> None:
     if depth > _MAX_DEPTH:
         _add_issue(issues, "max_depth_exceeded")
@@ -231,6 +237,9 @@ def _inspect_general(value: Any, issues: dict[str, int], *, key: str = "", depth
                 _add_issue(issues, key_issue)
                 continue
             if isinstance(child, Mapping):
+                if lower.endswith(("_counts", "_modes")):
+                    _inspect_general_dynamic_int_map(child, issues)
+                    continue
                 if not _is_safe_general_container_key(lower):
                     _add_issue(issues, "unknown_mapping_key")
                 _inspect_general(child, issues, key=child_key, depth=depth + 1)

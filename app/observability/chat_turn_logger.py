@@ -301,6 +301,7 @@ def emit(
 
 
 def emit_error(*, error_code: str, error_class: str, message_short: str) -> bool:
+    message_chars = len(_normalize_text(message_short, max_chars=160))
     return emit(
         'error',
         status='error',
@@ -308,7 +309,9 @@ def emit_error(*, error_code: str, error_class: str, message_short: str) -> bool
         payload={
             'error_code': error_code,
             'error_class': _normalize_text(error_class, max_chars=80),
-            'message_short': _normalize_text(message_short, max_chars=160),
+            'message_short_chars': message_chars,
+            'message_short_included': False,
+            'raw_error_message_included': False,
         },
     )
 

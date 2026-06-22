@@ -650,6 +650,21 @@ une string libre est refusee. Un manifeste forge avec une string libre dans
 manifeste reel produit par `build_main_payload_manifest()` reste accepte s'il
 respecte le schema content-free.
 
+Correctif Lot 3.2 au 2026-06-22: la politique default-deny reste en vigueur,
+mais les schemas content-free existants doivent rester observables sans bruit de
+rejet. `context_build` peut exposer ses compteurs et booleens de soft limit.
+`web_search` peut conserver `query_preview=""` comme compatibilite vide, mais
+toute valeur non vide de preview doit etre refusee ou remplacee par des
+compteurs tels que `query_present` et `query_chars`. Les erreurs doivent
+conserver `error_code` et `error_class` content-free; le detail textuel court
+`message_short` ne doit pas etre stocke brut et doit etre remplace par longueur
+et flags, par exemple `message_short_chars`,
+`message_short_included=false` et `raw_error_message_included=false`.
+Les anciens champs d'observabilite Web fondes sur URL brute ou hash stable de
+requete/prompt/message ne doivent pas etre reenregistres dans l'evenement
+writer-side: utiliser domaines, compteurs, `*_hash_included=false`,
+`*_url_included=false`, `*_chars` et `*_present`.
+
 ## No-go avant runtime capsule
 
 Une Continuity Capsule runtime est interdite tant que toutes les conditions

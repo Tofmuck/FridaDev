@@ -691,6 +691,42 @@ def _build_web_pdf_read_summary(sources: list[dict[str, Any]] | None) -> list[di
     return summary
 
 
+def _redact_observability_url(item: dict[str, Any]) -> dict[str, Any]:
+    result = dict(item)
+    source_url = str(result.pop('url', '') or '')
+    result['source_domain'] = str(result.get('source_domain') or _source_domain(source_url) or '')
+    result['url_present'] = bool(source_url)
+    result['url_chars'] = len(source_url)
+    result['url_included'] = False
+    return result
+
+
+def _event_source_material_summary(summary: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    return [_redact_observability_url(dict(item)) for item in summary or []]
+
+
+def _event_crawl4ai_extraction_summary(summary: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    redacted: list[dict[str, Any]] = []
+    for item in summary or []:
+        event_item = _redact_observability_url(dict(item))
+        crawl_query_hash_present = bool(str(event_item.pop('crawl_query_sha256_12', '') or '').strip())
+        event_item['crawl_query_hash_present'] = crawl_query_hash_present
+        event_item['crawl_query_hash_included'] = False
+        redacted.append(event_item)
+    return redacted
+
+
+def _event_web_pdf_read_summary(summary: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    redacted: list[dict[str, Any]] = []
+    for item in summary or []:
+        event_item = dict(item)
+        url_fingerprint_present = bool(str(event_item.pop('url_sha256_12', '') or '').strip())
+        event_item['url_fingerprint_present'] = url_fingerprint_present
+        event_item['url_fingerprint_included'] = False
+        redacted.append(event_item)
+    return redacted
+
+
 def _count_web_pdf_statuses(web_pdf_summary: list[dict[str, Any]] | None) -> dict[str, int]:
     counts: dict[str, int] = {}
     for item in web_pdf_summary or []:
@@ -1488,7 +1524,9 @@ def _emit_web_reformulation_prompt_prepared(
         'schema_version': 'v1',
         'payload_kind': 'secondary_web_reformulation_provider',
         'provider_caller': 'web_reformulation',
-        'provider_title': provider_title,
+        'provider_title_present': bool(provider_title),
+        'provider_title_chars': _safe_len(provider_title),
+        'provider_title_included': False,
         'secondary_provider_payload': True,
         'main_llm_payload': False,
         'system_prompt_present': bool(system_prompt),
@@ -1501,8 +1539,8 @@ def _emit_web_reformulation_prompt_prepared(
         'system_prompt_chars': _safe_len(system_prompt),
         'current_user_chars': _safe_len(user_msg),
         'input_chars_total': _safe_len(system_prompt) + _safe_len(user_msg),
-        'system_prompt_sha256_12': _sha256_12(system_prompt),
-        'current_user_sha256_12': _sha256_12(user_msg),
+        'system_prompt_hash_included': False,
+        'current_user_hash_included': False,
         'sampling': {
             'temperature': float(temperature),
             'max_tokens': int(max_tokens),
@@ -1775,6 +1813,9 @@ def _emit_web_search_runtime_event(
         injected_chars = _derive_injected_chars(source_material_summary)
     if context_chars is None:
         context_chars = len(str(context_block or ''))
+    event_source_material_summary = _event_source_material_summary(source_material_summary)
+    event_crawl4ai_extraction_summary = _event_crawl4ai_extraction_summary(crawl4ai_extraction_summary)
+    event_web_pdf_read_summary = _event_web_pdf_read_summary(web_pdf_read_summary)
     payload = {
         'enabled': bool(enabled),
         'status': str(status or ''),
@@ -1782,13 +1823,14 @@ def _emit_web_search_runtime_event(
         'query_preview': '',
         'query_present': bool(query_text.strip()),
         'query_chars': len(query_text),
-        'query_sha256_12': _sha256_12(query_text),
+        'query_hash_included': False,
         'results_count': int(results_count),
         'context_injected': bool(context_block),
         'truncated': bool(truncated),
         'explicit_url_detected': bool(explicit_url_detected),
-        'explicit_url': str(explicit_url or ''),
-        'read_state': read_state,
+        'explicit_url_chars': len(str(explicit_url or '')),
+        'explicit_url_included': False,
+        'read_state': str(read_state or ''),
         'primary_source_kind': str(primary_source_kind or 'search'),
         'primary_read_attempted': bool(primary_read_attempted),
         'primary_read_status': str(primary_read_status or ''),
@@ -1799,9 +1841,10 @@ def _emit_web_search_runtime_event(
         'search_profile': str(search_profile or ''),
         'query_plan_kind': str(query_plan_kind or 'none'),
         'query_count': int(query_count or 0),
-        'primary_query_sha256_12': str(primary_query_sha256_12 or ''),
+        'primary_query_hash_included': False,
         'secondary_query_count': int(secondary_query_count or 0),
-        'secondary_query_sha256_12': list(secondary_query_sha256_12 or []),
+        'secondary_query_hash_count': len(list(secondary_query_sha256_12 or [])),
+        'secondary_query_hashes_included': False,
         'raw_result_count': int(raw_result_count or 0),
         'deduped_result_count': int(deduped_result_count or 0),
         'source_first_policy_kind': str(source_first_policy_kind or 'none'),
@@ -1841,9 +1884,9 @@ def _emit_web_search_runtime_event(
         'used_content_kinds': list(used_content_kinds or []),
         'injected_chars': int(injected_chars or 0),
         'context_chars': int(context_chars or 0),
-        'source_material_summary': list(source_material_summary or []),
-        'crawl4ai_extraction_summary': list(crawl4ai_extraction_summary or []),
-        'web_pdf_read_summary': list(web_pdf_read_summary or []),
+        'source_material_summary': event_source_material_summary,
+        'crawl4ai_extraction_summary': event_crawl4ai_extraction_summary,
+        'web_pdf_read_summary': event_web_pdf_read_summary,
         'web_pdf_read_attempted_count': int(web_pdf_read_attempted_count or 0),
         'web_pdf_read_status_counts': dict(web_pdf_read_status_counts or {}),
         'web_pdf_read_reason_codes': list(web_pdf_read_reason_codes or []),
@@ -1851,7 +1894,8 @@ def _emit_web_search_runtime_event(
         'crawl4ai_filter_counts': dict(crawl4ai_filter_counts or {}),
         'crawl4ai_cache_modes': dict(crawl4ai_cache_modes or {}),
         'crawl4ai_fallback_used_count': int(crawl4ai_fallback_used_count or 0),
-        'crawl4ai_query_sha256_12': list(crawl4ai_query_sha256_12 or []),
+        'crawl4ai_query_hash_count': len(list(crawl4ai_query_sha256_12 or [])),
+        'crawl4ai_query_hashes_included': False,
     }
     if web_confidence_policy_kind is None:
         payload.update(web_search_confidence.evaluate_web_confidence(payload))

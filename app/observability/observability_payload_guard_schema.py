@@ -5,6 +5,7 @@ from typing import Any, Mapping
 
 
 _SAFE_CODE_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,159}$")
+_SAFE_CLASS_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,159}$")
 _SAFE_MODEL_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,79}/[a-z0-9][a-z0-9_.-]{0,119}$")
 _BASE64_RE = re.compile(r"^[A-Za-z0-9+/]{96,}={0,2}$")
 _SAFE_LANE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_]{0,79}$")
@@ -121,10 +122,17 @@ _MANIFEST_DYNAMIC_INT_MAP_KEYS = {"budget", "media_kind_counts"}
 
 _GENERAL_TEXT_KEYS = set(
     """
-    activation_mode error_class error_code final_status guarded_original_status mode model origin origin_stage
-    policy priority_policy prompt_kind provider provider_caller provider_role query_kind reason_code reason_short
-    retrieval_error_class retrieval_error_code retrieval_status schema_version scope source source_kind status
-    status_schema_version write_effect write_mode
+    activation_mode collection_path crawl_cache_mode crawl_fallback_reason crawl_filter
+    crawl_filter_requested error_class error_code final_status guarded_original_status mode model
+    openrouter_fallback_state origin origin_stage policy primary_read_filter prompt_kind provider
+    provider_caller provider_role query_kind query_preview read_state reason_code reason_short
+    retrieval_error_class retrieval_error_code retrieval_status rerank_profile rerank_policy
+    schema_version scope search_profile searxng_language searxng_safesearch searxng_time_range
+    searxng_soft_signal_policy source source_domain source_first_authority source_first_product
+    source_kind source_origin status status_schema_version used_content_kind web_confidence_level
+    web_discovery_external_error_kind web_discovery_external_provider web_discovery_provider
+    web_discovery_provider_effective web_discovery_provider_requested web_evidence_status
+    web_evidence_url_request_policy write_effect write_mode
     """.split()
 )
 _GENERAL_TEXT_SUFFIXES = (
@@ -136,6 +144,7 @@ _GENERAL_TEXT_SUFFIXES = (
     "_phase",
     "_policy",
     "_reason",
+    "_requested",
     "_schema_version",
     "_source",
     "_status",
@@ -144,23 +153,72 @@ _GENERAL_TEXT_SUFFIXES = (
 )
 _GENERAL_SCALAR_KEYS = set(
     """
-    adobe_mode_active context_injected enabled final_response_lock_present has_in_progress_turn main_model_called
-    model_called ok rejected_payload selected stream_requested truncated web_search_enabled web_search_requested
+    adobe_mode_active chars context_injected crawl_fallback_used crawl4ai_query_hash_count
+    crawl4ai_query_hashes_included current_user_hash_included current_user_present enabled
+    explicit_url_chars explicit_url_detected explicit_url_included fallback_used final_response_lock_present
+    has_in_progress_turn is_primary_source main_llm_payload main_model_called model_called ok
+    openrouter_fallback_used primary_query_hash_included primary_read_attempted
+    primary_read_raw_fallback_used provider_title_chars provider_title_included provider_title_present
+    profile_insufficient_evidence query_hash_included rank reason_code_present rejected_payload
+    rerank_applied secondary_provider_payload secondary_query_hash_count secondary_query_hashes_included
+    selected source_first_active
+    stream_requested system_prompt_hash_included system_prompt_present timeout_s truncated used_in_prompt
+    web_discovery_external_used
+    web_confidence_score web_evidence_can_answer web_evidence_can_suggest_reformulation
+    web_evidence_external_fallback_used web_evidence_requires_caveat web_search_enabled
+    web_search_requested
     """.split()
 )
 _GENERAL_CONTAINER_KEYS = {
     "actions_count",
     "by_provider_caller",
     "counts",
+    "crawl4ai_cache_modes",
+    "crawl4ai_extraction_summary",
+    "crawl4ai_filter_counts",
     "duration_ms",
     "issue_classes",
+    "message_role_counts",
     "nested_counts",
     "providers",
+    "profile_source_domain_counts",
     "raw_flags",
     "redaction",
+    "rerank_reason_counts",
+    "sampling",
+    "source_material_summary",
     "status_schema",
+    "web_confidence_inputs_summary",
+    "web_evidence_inputs_summary",
+    "web_pdf_read_status_counts",
+    "web_pdf_read_summary",
 }
-_GENERAL_SAFE_TEXT_LIST_KEYS = {"issue_classes", "reason_codes"}
+_GENERAL_SAFE_TEXT_LIST_KEYS = {
+    "crawl4ai_policy_kinds",
+    "issue_classes",
+    "openrouter_fallback_reason_codes",
+    "profile_downrank_domains",
+    "profile_expected_domains",
+    "profile_insufficient_evidence_reason_codes",
+    "profile_policy_reason_codes",
+    "profile_secondary_domains",
+    "profile_situated_secondary_domains",
+    "reason_codes",
+    "rerank_top_domains_after",
+    "rerank_top_domains_before",
+    "searxng_categories",
+    "searxng_engines",
+    "searxng_hard_parameters",
+    "searxng_params_reason_codes",
+    "source_first_probable_domains",
+    "source_first_reason_codes",
+    "used_content_kinds",
+    "web_confidence_reason_codes",
+    "web_discovery_reason_codes",
+    "web_evidence_guidance_codes",
+    "web_evidence_reason_codes",
+    "web_pdf_read_reason_codes",
+}
 
 
 def _is_main_payload_manifest(payload: Mapping[str, Any]) -> bool:
@@ -174,7 +232,9 @@ def _is_metric_like_key(key: str) -> bool:
     return lower.endswith(
         (
             "_bytes",
+            "_budget",
             "_chars",
+            "_chars_total",
             "_count",
             "_counts",
             "_duration_ms",
@@ -189,8 +249,13 @@ def _is_metric_like_key(key: str) -> bool:
             "_present",
             "_ref",
             "_refs",
+            "_seen",
             "_sha256_12",
+            "_target_s",
+            "_truncated",
+            "_exceeded",
             "_tokens",
+            "_used",
         )
     )
 
@@ -203,7 +268,9 @@ def _dangerous_key_class(key: str) -> str:
         return f"{lower}_key"
     if lower in _DANGEROUS_PAYLOAD_KEYS:
         return "payload_key"
-    if lower.startswith("raw_"):
+    if lower == "collection_path":
+        return ""
+    if lower.startswith("raw_") and not _is_metric_like_key(lower):
         return "raw_key"
     if "api_key" in lower or "api-key" in lower:
         return "credential_key"
@@ -211,7 +278,11 @@ def _dangerous_key_class(key: str) -> str:
         return "credential_key"
     if lower.endswith("_token") and not lower.endswith("_tokens"):
         return "credential_key"
-    if "payload" in lower and not _is_metric_like_key(lower) and lower not in {"payload_kind"}:
+    if (
+        "payload" in lower
+        and not _is_metric_like_key(lower)
+        and lower not in {"main_llm_payload", "payload_kind", "rejected_payload", "secondary_provider_payload"}
+    ):
         return "payload_key"
     if "dav" in lower and not _is_metric_like_key(lower):
         return "dav_key"
@@ -273,7 +344,15 @@ def _is_safe_general_text_key(key: str) -> bool:
 
 
 def _is_safe_general_text_value(key: str, value: Any) -> bool:
-    return _is_safe_code_text(value, allow_empty=True, allow_model=key.lower() == "model")
+    lower = key.lower()
+    text = str(value or "").strip()
+    if lower.endswith("_preview"):
+        return text == ""
+    if not text:
+        return True
+    if lower.endswith("_class") or lower.endswith("_language"):
+        return bool(_SAFE_CLASS_RE.fullmatch(text))
+    return _is_safe_code_text(value, allow_empty=True, allow_model=lower == "model")
 
 
 def _is_safe_general_scalar_key(key: str) -> bool:

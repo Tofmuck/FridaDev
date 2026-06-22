@@ -110,6 +110,9 @@ class ChatTurnLoggerCoreContractTests(unittest.TestCase):
 
         self.assertEqual(observed[0]['stage'], 'turn_start')
         self.assertEqual(observed[1]['stage'], 'web_search')
+        self.assertEqual(observed[1]['status'], 'skipped')
+        self.assertEqual(observed[1]['payload_json']['query_preview'], '')
+        self.assertNotEqual(observed[1]['payload_json'].get('reason_code'), observability_payload_guard.REASON_CODE)
         self.assertTrue(all(event['conversation_id'] == 'conv-real' for event in observed))
         self.assertNotIn('__pending__', {event['conversation_id'] for event in observed})
 
@@ -213,6 +216,19 @@ class ChatTurnLoggerCoreContractTests(unittest.TestCase):
             statuses.add(str(event['status']))
 
         self.assertTrue({'ok', 'error', 'skipped'}.issubset(statuses))
+        context_event = next(event for event in observed if event['stage'] == 'context_build')
+        self.assertEqual(context_event['status'], 'ok')
+        self.assertEqual(context_event['payload_json']['estimated_context_tokens'], 42)
+        self.assertNotEqual(context_event['payload_json'].get('reason_code'), observability_payload_guard.REASON_CODE)
+
+        error_event = next(event for event in observed if event['stage'] == 'error')
+        self.assertEqual(error_event['status'], 'error')
+        self.assertEqual(error_event['payload_json']['error_code'], 'upstream_error')
+        self.assertEqual(error_event['payload_json']['error_class'], 'RuntimeError')
+        self.assertNotIn('message_short', error_event['payload_json'])
+        self.assertEqual(error_event['payload_json']['message_short_chars'], 4)
+        self.assertFalse(error_event['payload_json']['message_short_included'])
+        self.assertFalse(error_event['payload_json']['raw_error_message_included'])
 
     def test_writer_guard_rejects_raw_payload_without_false_ok(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -341,6 +357,105 @@ class ChatTurnLoggerCoreContractTests(unittest.TestCase):
         encoded = json.dumps({'event': rejected, 'projection': projected, 'markdown': markdown}, ensure_ascii=False)
         self.assertNotIn(sentinel, encoded)
         self.assertNotIn('private_sentence', encoded)
+
+    def test_writer_guard_rejects_non_empty_query_preview(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        sentinel = 'user query preview sentinel should not pass'
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-query-preview-guard',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit(
+                'web_search',
+                status='ok',
+                payload={
+                    'enabled': True,
+                    'query_preview': sentinel,
+                    'results_count': 1,
+                    'context_injected': False,
+                    'truncated': False,
+                },
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        rejected = next(event for event in observed if event['stage'] == 'web_search')
+        payload = rejected['payload_json']
+        self.assertEqual(rejected['status'], 'refused')
+        self.assertEqual(payload['schema_version'], observability_payload_guard.SCHEMA_VERSION)
+        self.assertEqual(payload['reason_code'], observability_payload_guard.REASON_CODE)
+        encoded = json.dumps({'event': rejected}, ensure_ascii=False)
+        self.assertNotIn(sentinel, encoded)
+
+    def test_emit_error_preserves_error_family_without_message_short(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        sentinel = 'raw upstream error detail should not pass'
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-error-guard',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit_error(
+                error_code='upstream_error',
+                error_class='RuntimeError',
+                message_short=sentinel,
+            )
+            chat_turn_logger.end_turn(token, final_status='error')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        error_event = next(event for event in observed if event['stage'] == 'error')
+        payload = error_event['payload_json']
+        self.assertEqual(error_event['status'], 'error')
+        self.assertEqual(payload['error_code'], 'upstream_error')
+        self.assertEqual(payload['error_class'], 'RuntimeError')
+        self.assertNotIn('message_short', payload)
+        self.assertEqual(payload['message_short_chars'], len(sentinel))
+        self.assertFalse(payload['message_short_included'])
+        self.assertFalse(payload['raw_error_message_included'])
+
+        projected = admin_log_projection.project_event_item(
+            {
+                'event_id': error_event['event_id'],
+                'conversation_id': error_event['conversation_id'],
+                'turn_id': error_event['turn_id'],
+                'ts': error_event['ts'],
+                'stage': error_event['stage'],
+                'status': error_event['status'],
+                'duration_ms': error_event['duration_ms'],
+                'payload': error_event['payload_json'],
+            }
+        )
+        markdown = log_markdown_export._build_markdown(
+            scope='turn',
+            conversation_id='conv-error-guard',
+            turn_id=error_event['turn_id'],
+            items=[projected],
+            generated_at=datetime(2026, 6, 22, tzinfo=timezone.utc),
+        )
+        encoded = json.dumps({'event': error_event, 'projection': projected, 'markdown': markdown}, ensure_ascii=False)
+        self.assertNotIn(sentinel, encoded)
+        self.assertNotIn('observability_payload_rejected', encoded)
 
     def test_writer_guard_allows_valid_main_payload_manifest(self) -> None:
         observed: list[dict[str, Any]] = []
