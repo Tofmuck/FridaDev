@@ -16,6 +16,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- TODO active Continuity Payload Frida V1: `todo-todo/product/frida-v1-continuity-payload-todo.md` pour piloter les lots issus des audits continuite/payload, avec `main_payload_manifest_v1` comme gate avant toute capsule runtime.
 - Contrat Frida V1 Nextcloud folders 2026-06-16: `states/specs/frida-v1-nextcloud-folders-contract.md` pour `workspace_folders` comme modele produit des dossiers Frida V1, mapping logique `/Frida/<dossier>`, routage `Documents` / `Notes` / `Exports` / `Images`, frontiere Sauron/Celebrimbor, pas de DB directe Nextcloud et content-free. TODO de livraison archivee: `todo-done/product/frida-v1-nextcloud-folders-todo.md`.
 - Contrat Documents ingestion Frida V1 2026-06-17: `states/specs/frida-v1-documents-ingestion-contract.md` pour `workspace_files` comme registre/read-model local, documents persistants sous `/Frida/<dossier>/Documents`, noms visibles utilisateur vs preuves content-free, PDF texte, fallback visuel PDF image unifie, fichiers existants et frontieres active_document/Biblio. TODO de livraison archivee: `todo-done/product/frida-v1-documents-ingestion-todo.md`.
 - Contrat Notes Markdown Frida V1 2026-06-18: `states/specs/frida-v1-folder-markdown-notes-contract.md` pour notes rattachees a `workspace_folders`, cible `/Frida/<dossier>/Notes/<titre_sanitise>.md`, modele local Notes dedie, absence de corps Markdown local, append ETag/If-Match et observabilite content-free. TODO de livraison archivee: `todo-done/product/frida-v1-folder-markdown-notes-todo.md`.
@@ -143,6 +144,7 @@ But: relire le cleanup priorise livre et les decisions de sortie sans reouvrir u
 ### Runtime courant / chat
 
 Lire d'abord:
+- `todo-todo/product/frida-v1-continuity-payload-todo.md` pour le chantier actif Continuity Payload: manifeste final content-free, future capsule de continuite, gates runtime et suivi des findings P1/P2/P3.
 - `todo-done/product/job-divers-todo.md` pour l'archive des jobs produit courts livres: reasoning GPT-5.1, interdiction stricte d'afficher/persister `reasoning_details`, streaming visuel, dictee Whisper longue sous surveillance et petits ajustements UI bornes.
 - `states/specs/fridadev-main-llm-reasoning-contract.md` pour le comportement livre du reglage global `main_model.reasoning_effort`, le payload OpenRouter `reasoning.exclude=true`, l'observabilite content-free et l'interdiction d'exposer le raisonnement interne.
 - `todo-done/refactors/fridadev-main-model-gpt51-switch-todo.md` pour l'archive de bascule runtime vers `openai/gpt-5.1`.

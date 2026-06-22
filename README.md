@@ -11,6 +11,7 @@ Primary current-state references:
 
 - Documentation hub: `app/docs/README.md`
 - Frida 1.0 final product roadmap: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Frida V1 Continuity Payload active TODO: `app/docs/todo-todo/product/frida-v1-continuity-payload-todo.md` for the product workstream turning the continuity/payload audits into lots, with `main_payload_manifest_v1` as a gate before any runtime continuity capsule.
 - Frida V1 Nextcloud folders contract: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md` for `workspace_folders` as the Frida V1 folder product model, logical `/Frida/<folder>` mapping, standard `Documents` / `Notes` / `Exports` / `Images` artifact routing, Sauron/Celebrimbor boundary, no direct Nextcloud DB access, and content-free observability. Delivery TODO archived at `app/docs/todo-done/product/frida-v1-nextcloud-folders-todo.md`.
 - Frida V1 documents ingestion contract: `app/docs/states/specs/frida-v1-documents-ingestion-contract.md` for `workspace_files` as the local document registry/read-model, persistent folder documents under `/Frida/<folder>/Documents`, user-visible filenames vs content-free proofs, PDF text extraction, unified PDF image/visual fallback, existing-file controlled copy policy, and active-document/Biblio boundaries. Delivery TODO archived at `app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`.
 - Frida V1 folder Markdown notes contract: `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md` for notes attached to `workspace_folders`, `/Frida/<folder>/Notes/<sanitized_title>.md`, the dedicated local notes model, no local Markdown body persistence, ETag/If-Match append, and content-free observability. Delivery TODO archived at `app/docs/todo-done/product/frida-v1-folder-markdown-notes-todo.md`.
@@ -118,6 +119,7 @@ Frontend rehydration and operator observability
 
 - Docs hub: `app/docs/README.md`
 - Frida 1.0 final product roadmap: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Frida V1 Continuity Payload active TODO: `app/docs/todo-todo/product/frida-v1-continuity-payload-todo.md`
 - Frida V1 Nextcloud folders contract: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
 - Frida V1 documents ingestion contract: `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
 - Frida V1 folder Markdown notes contract: `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
@@ -224,6 +226,7 @@ References principales pour l'etat courant:
 
 - Hub documentaire: `app/docs/README.md`
 - Roadmap finale produit Frida 1.0: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- TODO active Continuity Payload Frida V1: `app/docs/todo-todo/product/frida-v1-continuity-payload-todo.md` pour transformer les audits continuite/payload en lots pilotables, avec `main_payload_manifest_v1` comme gate avant toute capsule runtime.
 - Contrat Frida V1 Nextcloud folders: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md` pour `workspace_folders` comme modele produit des dossiers Frida V1, mapping logique `/Frida/<dossier>`, routage d'artefacts standard `Documents` / `Notes` / `Exports` / `Images`, frontiere Sauron/Celebrimbor, pas de DB directe Nextcloud et observabilite content-free. TODO de livraison archivee: `app/docs/todo-done/product/frida-v1-nextcloud-folders-todo.md`.
 - Contrat Documents ingestion Frida V1: `app/docs/states/specs/frida-v1-documents-ingestion-contract.md` pour `workspace_files` comme registre/read-model local, les documents persistants sous `/Frida/<dossier>/Documents`, les noms visibles utilisateur vs preuves content-free, l'extraction PDF texte, le fallback visuel PDF image unifie, la copie controlee des fichiers existants et les frontieres active_document/Biblio. TODO de livraison archivee: `app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`.
 - Contrat Notes Markdown Frida V1: `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md` pour les notes rattachees a `workspace_folders`, la cible `/Frida/<dossier>/Notes/<titre_sanitise>.md`, le modele local Notes dedie, l'absence de corps Markdown local, l'append ETag/If-Match et l'observabilite content-free. TODO de livraison archivee: `app/docs/todo-done/product/frida-v1-folder-markdown-notes-todo.md`.
@@ -331,6 +334,7 @@ Rehydratation frontend et observabilite operateur
 
 - Hub docs: `app/docs/README.md`
 - Roadmap finale produit Frida 1.0: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- TODO active Continuity Payload Frida V1: `app/docs/todo-todo/product/frida-v1-continuity-payload-todo.md`
 - Contrat Frida V1 Nextcloud folders: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
 - Contrat Documents ingestion Frida V1: `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
 - Contrat Notes Markdown Frida V1: `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`

@@ -135,7 +135,25 @@ visibles. Le reset observabilite destructif n'a pas ete execute: il reste une
 operation post-cloture separee, bloquee par GO operateur humain explicite,
 date et separe avec scope exact, backup et rollback.
 
-### 7. Audit final general
+### 7. Continuity Payload / continuité conversationnelle
+
+Transformer l'audit continuite/payload en chantier pilotable pour rendre la
+continuite de ton, methode, relation et presence entre conversations
+specifiable, prouvable et eventuellement injectable. Le manifeste
+`main_payload_manifest_v1` est un gate avant toute capsule runtime.
+
+TODO dediee:
+`app/docs/todo-todo/product/frida-v1-continuity-payload-todo.md`
+
+Sources d'audit:
+`app/docs/todo-todo/audits/frida-v1-continuity-payload-audit-2026-06-22.md`
+et
+`app/docs/todo-todo/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
+
+Statut 2026-06-22: TODO active creee en Lot 0. Aucun runtime capsule ne doit
+partir avant livraison et test du manifeste payload content-free.
+
+### 8. Audit final general
 
 Verifier securite et valeurs sensibles, runtime OVH, docs/specs/TODO, tests,
 smokes live, coherence des agents, coherence frontend/backend, surface
@@ -146,7 +164,7 @@ TODO dediee:
 
 ## Bonus non bloquant
 
-### 8. Mail V1 bonus borne
+### 9. Mail V1 bonus borne
 
 Bonus si marge, non bloquant pour cloturer Frida 1.0. Auditer Nextcloud Mail /
 IMAP / SMTP / API controlee, puis cadrer lecture, resume, tri/classement,
