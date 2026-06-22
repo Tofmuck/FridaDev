@@ -65,7 +65,7 @@ content-free relue, testee ou explicitement reportee post-V1.
 | - [x] | P2-LANE-PROVENANCE-01 | Lot 2 puis Lot 2.1 | Role provider et role logique distingues par provenance structuree, sans classification souveraine par contenu textuel. |
 | - [ ] | P2-FINAL-LOCK-POLICY-01 | Lot 5 | Politique de priorite Agenda/Biblio final-lock documentee et testee. |
 | - [ ] | P2-NOTES-UI-01 | Lot 5 | Statut Notes UI tranche: hors chemin chat courant documente, ou branchement explicite teste. |
-| - [x] | P2-OBS-WRITER-01 | Lot 3 puis Lots 3.1/3.2 | Guard writer-side schema-first/default-deny livre contre cles/payloads dangereux et texte libre sous cles neutres, avec schemas content-free existants preserves et sentinelles anti-fuite. |
+| - [x] | P2-OBS-WRITER-01 | Lot 3 puis Lots 3.1/3.2/3.3 | Guard writer-side schema-first/default-deny strict livre contre cles/payloads dangereux, texte libre sous cles neutres et suffixes textuels inconnus, avec schemas content-free existants preserves et sentinelles anti-fuite. |
 | - [ ] | P3-SOFT-LIMIT-01 | Lot 4 | Soft limit explique ou durci: depassement visible et politique de troncation/exclusion testee ou reportee. |
 | - [ ] | P3-NOOP-LANES-01 | Lot 5 | Non-selection Documents/Notes observable ou absence justifiee sans confusion avec lane non instrumentee. |
 | - [ ] | P3-DOC-01 | Lot 1 puis Lot Z | Docs historiques requalifiees ou indexees avec statuts actifs/archive/stale. |
@@ -212,13 +212,23 @@ Correctif Lot 3.2 livre le 2026-06-22:
 - [x] Prouver que les rejets de garde ne deviennent pas du bruit sur les
   evenements normaux.
 
+Correctif Lot 3.3 livre le 2026-06-22:
+
+- [x] Supprimer l'acceptation par suffixe textuel generique pour les cles
+  inconnues.
+- [x] Refuser les probes `private_requested`, `private_code`,
+  `private_reason`, `private_status`, `private_mode` et toute cle inconnue de
+  string safe-code.
+- [x] Conserver les payloads legitimes Lot 3.2: `context_build`,
+  `web_search`, `emit_error` et `main_payload_manifest_v1`.
+
 Tests de reference Lot 3:
 
 - `app/tests/unit/logs/test_observability_payload_guard.py`
 - `app/tests/unit/logs/test_chat_turn_logger_core_contract.py`
 - `app/tests/unit/logs/test_chat_turn_logger_web_search.py`
 
-Finding clos par ce lot apres Lot 3.2: `P2-OBS-WRITER-01`.
+Finding clos par ce lot apres Lot 3.3: `P2-OBS-WRITER-01`.
 
 ### Lot 4 - Fenetres, summary, memory, staging
 

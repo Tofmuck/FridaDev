@@ -180,6 +180,24 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertNotIn(sentinel, encoded)
         self.assertNotIn("private_sentence", encoded)
 
+    def test_general_payload_rejects_unknown_safe_code_suffix_text_keys(self) -> None:
+        for key in (
+            "private_requested",
+            "private_code",
+            "private_reason",
+            "private_status",
+            "private_mode",
+            "private_unknown",
+        ):
+            with self.subTest(key=key):
+                decision = observability_payload_guard.guard_payload({key: "secret_codename"})
+                encoded = _encoded(decision.payload)
+
+                self.assertFalse(decision.accepted)
+                self.assertIn("unknown_string_key", decision.payload["issue_classes"])
+                self.assertNotIn("secret_codename", encoded)
+                self.assertNotIn(key, encoded)
+
     def test_general_payload_rejects_unknown_mapping_and_list_keys(self) -> None:
         payload = {
             "status_schema_version": "agentic_v1",

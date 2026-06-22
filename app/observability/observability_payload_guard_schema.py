@@ -123,33 +123,23 @@ _MANIFEST_DYNAMIC_INT_MAP_KEYS = {"budget", "media_kind_counts"}
 _GENERAL_TEXT_KEYS = set(
     """
     activation_mode collection_path crawl_cache_mode crawl_fallback_reason crawl_filter
-    crawl_filter_requested error_class error_code final_status guarded_original_status mode model
-    openrouter_fallback_state origin origin_stage policy primary_read_filter prompt_kind provider
-    provider_caller provider_role query_kind query_preview read_state reason_code reason_short
+    crawl_filter_requested crawl_fallback_status crawl_policy_kind crawl_policy_reason
+    crawl_primary_status crawl_status error_class error_code final_status guarded_original_status
+    mode model openrouter_fallback_state origin origin_stage payload_kind policy
+    primary_read_filter primary_read_status primary_source_kind profile_policy_kind
+    profile_policy_mode profile_source_evidence_policy_kind prompt_kind provider provider_caller
+    provider_role query_kind query_plan_kind query_preview read_state reason_code reason_short
     retrieval_error_class retrieval_error_code retrieval_status rerank_profile rerank_policy
-    schema_version scope search_profile searxng_language searxng_safesearch searxng_time_range
-    searxng_soft_signal_policy source source_domain source_first_authority source_first_product
-    source_kind source_origin status status_schema_version used_content_kind web_confidence_level
-    web_discovery_external_error_kind web_discovery_external_provider web_discovery_provider
-    web_discovery_provider_effective web_discovery_provider_requested web_evidence_status
-    web_evidence_url_request_policy write_effect write_mode
+    schema_version scope search_profile searxng_language searxng_profile_params_kind
+    searxng_profile_params_policy searxng_safesearch searxng_time_range
+    searxng_soft_signal_policy source source_domain source_first_authority source_first_policy_kind
+    source_first_product source_kind source_origin status status_schema_version used_content_kind
+    web_confidence_level web_confidence_policy_kind web_discovery_external_error_kind
+    web_discovery_external_provider web_discovery_provider web_discovery_provider_effective
+    web_discovery_provider_requested web_evidence_policy_kind web_evidence_status
+    web_evidence_url_request_policy web_pdf_read_reason_code web_pdf_read_status
+    write_effect write_mode
     """.split()
-)
-_GENERAL_TEXT_SUFFIXES = (
-    "_class",
-    "_code",
-    "_effect",
-    "_kind",
-    "_mode",
-    "_phase",
-    "_policy",
-    "_reason",
-    "_requested",
-    "_schema_version",
-    "_source",
-    "_status",
-    "_type",
-    "_version",
 )
 _GENERAL_SCALAR_KEYS = set(
     """
@@ -340,7 +330,7 @@ def _is_safe_code_text(value: Any, *, allow_empty: bool = True, allow_model: boo
 
 def _is_safe_general_text_key(key: str) -> bool:
     lower = key.lower()
-    return lower in _GENERAL_TEXT_KEYS or lower.endswith(_GENERAL_TEXT_SUFFIXES)
+    return lower in _GENERAL_TEXT_KEYS
 
 
 def _is_safe_general_text_value(key: str, value: Any) -> bool:

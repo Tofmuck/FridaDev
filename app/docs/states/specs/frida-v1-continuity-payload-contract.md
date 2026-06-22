@@ -4,8 +4,8 @@ Date: 2026-06-22
 
 Statut: contrat source-of-truth Continuity Payload. Lot 1 a defini le contrat;
 Lot 2 a livre le manifeste runtime content-free sans capsule. Lot 3 a livre la
-garde writer-side d'observabilite, durcie en Lot 3.1 en politique
-schema-first/default-deny.
+garde writer-side d'observabilite, durcie en Lots 3.1, 3.2 et 3.3 en politique
+schema-first/default-deny stricte.
 
 Ce contrat definit deux objets cibles:
 
@@ -664,6 +664,12 @@ Les anciens champs d'observabilite Web fondes sur URL brute ou hash stable de
 requete/prompt/message ne doivent pas etre reenregistres dans l'evenement
 writer-side: utiliser domaines, compteurs, `*_hash_included=false`,
 `*_url_included=false`, `*_chars` et `*_present`.
+
+Correctif Lot 3.3 au 2026-06-22: les cles textuelles du writer guard doivent
+etre explicitement allowlistees. Une cle inconnue ne doit pas etre acceptee
+simplement parce qu'elle se termine par un suffixe safe-code tel que `_code`,
+`_reason`, `_status`, `_mode` ou `_requested`. Les familles legitimes doivent
+etre ajoutees comme cles explicites ou schemas bornes.
 
 ## No-go avant runtime capsule
 
