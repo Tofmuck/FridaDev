@@ -121,7 +121,9 @@ Objectif: implementer et tester `main_payload_manifest_v1`, sans contenu brut.
   summary, document, note, biblio, agenda, web, adobe ou autre origine
   allowlistee.
 - [ ] Exposer final locks et assistant override sans recopier la reponse.
-- [ ] Exposer budgets, exclusions, tailles, compteurs et hashes courts.
+- [ ] Exposer budgets, exclusions, tailles, compteurs et empreintes seulement
+  selon la politique de hachage du contrat: pas de hash stable naif sur contenu
+  textuel sensible.
 - [ ] Poser des flags explicites: `raw_prompt_included=false`,
   `raw_message_included=false`, `raw_lane_content_included=false`,
   `raw_provider_payload_included=false`.

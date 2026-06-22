@@ -87,11 +87,11 @@ Un manifeste valide doit contenir au minimum:
 | `schema_version` | Valeur exacte `main_payload_manifest_v1`. |
 | `scope` | Valeur `main_chat`. |
 | `turn_id_present` | Booleen. Pas d'identifiant brut obligatoire. |
-| `conversation_id_present` | Booleen. Si un hash est ajoute, il doit etre court et non reversible. |
+| `conversation_id_present` | Booleen. Si une empreinte est ajoutee, elle doit respecter la politique de hachage ci-dessous. |
 | `conversation_state` | Nouvelle conversation, conversation existante, message count avant tour, message count apres ajout utilisateur. |
 | `main_model_called` | Booleen. Faux si final response lock remplace l'appel principal. |
 | `provider` | Nom de provider ou famille non secrete, sans cle ni URL sensible. |
-| `runtime_settings` | Reglages utiles content-free: modele ou hash court, temperature, top_p, max_tokens, stream, reasoning envoye ou non, stop_count. |
+| `runtime_settings` | Reglages utiles content-free: modele exact non sensible ou empreinte approuvee, temperature, top_p, max_tokens, stream, reasoning envoye ou non, stop_count. |
 | `assistant_output_policy` | Presence, kind, reason codes, flags de garde. Pas de texte de politique brute si elle contient des instructions completes. |
 | `final_response_lock` | Presence, source, reason_code, priorite effective, main model bypassed. Pas de contenu de reponse. |
 | `messages` | Tableau ordonne des entrees content-free du payload final. |
@@ -115,10 +115,60 @@ Chaque entree de `messages[]` doit decrire un bloc final sans contenu brut:
 | `content_present` | Booleen. |
 | `content_chars` | Nombre de caracteres du bloc, pas le contenu. |
 | `estimated_tokens` | Estimation si disponible; sinon `null`. |
-| `hash_12` | Optionnel, seulement pour comparer deux runs. Hash court, non reversible et jamais utilise pour reconstituer du contenu. |
+| `hash_12` | Optionnel et interdit par defaut sur contenu textuel sensible. Voir la politique de hachage ci-dessous. |
 | `excluded` | Booleen si le bloc candidat a ete exclu. |
 | `exclusion_reason_code` | Raison allowlistee si exclu. |
 | `raw_content_included` | Toujours `false`. |
+
+### Politique de hachage et empreintes
+
+Le finding P2 Lot 1.1 est valide: un hash court stable comme `sha256[:12]`
+calcule sur un texte sensible court n'est pas content-free par defaut. Il peut
+etre retrouve par dictionnaire, par comparaison d'hypotheses ou par correlation
+inter-runs.
+
+`hash_12` ne doit donc pas etre presente comme non reversible par defaut. Une
+empreinte courte est une aide de comparaison, pas une garantie de confidentialite.
+
+Aucun hash stable non sale, non secret ou non HMAC-like ne doit etre calcule sur:
+
+- prompt brut;
+- message utilisateur;
+- reponse assistant;
+- contenu de lane;
+- texte de policy;
+- contenu de Continuity Capsule;
+- contenu documentaire;
+- passage Biblio;
+- contenu Web;
+- contenu Adobe;
+- contenu de note;
+- contenu de document actif;
+- contenu d'export;
+- contenu ou metadonnees sensibles d'image.
+
+Pour les contenus textuels sensibles, le manifeste doit preferer:
+
+- compteurs;
+- longueurs;
+- presence ou absence;
+- reason codes;
+- IDs opaques techniques deja non sensibles;
+- index local du bloc;
+- fingerprints ephemeres non correlables si une comparaison locale est
+  absolument necessaire.
+
+Si une comparaison entre runs est necessaire, elle doit etre explicitement
+bornee par l'une de ces conditions:
+
+- comparaison sur donnees synthetiques non sensibles;
+- methode approuvee dans la spec ou le patch Lot 2;
+- HMAC ou hash sale avec secret non expose, rotation documentee et absence
+  d'affichage de la valeur si le risque de correlation reste trop fort.
+
+Meme dans ces cas, le manifeste doit rester content-free face aux textes courts.
+Une implementation qui ajoute une empreinte stable sur du contenu textuel
+sensible doit etre refusee.
 
 ### Roles logiques minimaux
 
@@ -221,7 +271,8 @@ Le manifeste peut exposer les reglages utiles au diagnostic:
 
 - slot appelant: `main_chat`;
 - provider family;
-- modele exact si non secret, ou hash court si la politique operateur le decide;
+- modele exact si non sensible, ou empreinte conforme a la politique de hachage
+  si la politique operateur le decide;
 - temperature;
 - top_p;
 - max_tokens;
@@ -387,7 +438,8 @@ Une future injection Lot 7 devra au minimum:
 - etre rollbackable sans migration destructive;
 - apparaitre dans `main_payload_manifest_v1`;
 - exposer `continuity_capsule_present`, `continuity_capsule_version`,
-  `continuity_capsule_chars`, `continuity_capsule_hash_12` si necessaire;
+  `continuity_capsule_chars` et, si necessaire, une empreinte conforme a la
+  politique de hachage;
 - garder `raw_lane_content_included=false`;
 - ne jamais ecrire dans identity mutable sans decision doctrinale separee.
 
@@ -448,6 +500,7 @@ Le Lot 2 ne sera recevable que si une preuve content-free montre:
 - modele principal appele ou bypass explicite;
 - assistant output policy presente ou absente;
 - raw flags obligatoires tous faux;
+- absence de hash stable naif sur contenu textuel sensible;
 - tests/fakes sans provider live;
 - aucun contenu brut dans logs, fixtures, commits ou exports.
 
