@@ -14,6 +14,8 @@ Lot 4.2 supprime le hash stable court du bloc de prompt hermeneutique et refuse
 toute valeur renseignee sous cle generique `sha256_12` cote writer-side.
 Lot 5 clarifie les conflits de lanes, final locks Agenda/Biblio et no-op
 Documents/Notes/Exports/Images dans le manifeste, sans capsule runtime.
+Lot 5.1 classe `final_lock_priority_unexpected` en `failed` quand un conflit
+Agenda/Biblio selectionne une source non-Agenda malgre la politique courante.
 
 Ce contrat definit deux objets cibles:
 
@@ -449,6 +451,12 @@ deux un final lock valide, Agenda est la source selectionnee et Biblio reste
 visible comme candidat supprime par priorite. Cette regle est une observation du
 runtime courant, pas une doctrine de voix: Lot 6 reste responsable des tests
 qualitatifs de presence.
+
+Si Agenda et Biblio produisent tous deux un final lock mais que la source
+selectionnee n'est pas Agenda, `lane_conflicts.status` doit etre `failed`,
+`reason_code=final_lock_priority_unexpected`, `selected_source` doit rester
+content-free, et la source attendue ou supprimee doit etre visible sans contenu
+de reponse. Cette branche defensive ne doit jamais etre classee `ok`.
 
 ### Assistant output policy
 

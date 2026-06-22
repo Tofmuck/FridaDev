@@ -346,6 +346,10 @@ Statut 2026-06-22: Lot 5 livre par enrichissement de
   final lock est present, selectionne ou supprime par priorite.
 - Tests fakes couvrent Agenda lock seul, Biblio lock seul et conflit
   Agenda+Biblio avec Agenda prioritaire.
+- Correctif Lot 5.1: la branche defensive Agenda+Biblio avec source
+  selectionnee non-Agenda est maintenant `status=failed` avec
+  `reason_code=final_lock_priority_unexpected`; elle ne peut plus etre lue
+  comme un conflit nominal `ok`.
 - Documents/Notes/Exports/Images restent visibles comme no-op
   `not_selected` ou `not_applicable` quand aucune selection n'existe.
 - Notes UI est tranche content-free: le backend chat supporte

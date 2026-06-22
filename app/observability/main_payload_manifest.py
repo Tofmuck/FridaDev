@@ -7,6 +7,7 @@ from observability.main_payload_manifest_common import (
     RAW_FLAGS,
     SCHEMA_VERSION,
     SCOPE,
+    STATUS_FAILED,
     STATUS_NOT_SELECTED,
     STATUS_OK,
     mapping,
@@ -174,8 +175,11 @@ def _lane_conflicts_payload(
     selected_family = _lock_family(selected_source)
     conflict_present = bool(agenda_lock_present and biblio_lock_present)
     suppressed_source = ""
-    if conflict_present and selected_family == "agenda":
-        suppressed_source = _result_lock_source(biblio_result, "biblio_final_response_lock")
+    if conflict_present:
+        if selected_family == "agenda":
+            suppressed_source = _result_lock_source(biblio_result, "biblio_final_response_lock")
+        elif selected_family:
+            suppressed_source = _result_lock_source(agenda_result, "agenda_final_response_lock")
 
     if conflict_present:
         reason_code = "agenda_over_biblio_applied" if selected_family == "agenda" else "final_lock_priority_unexpected"
@@ -189,8 +193,14 @@ def _lane_conflicts_payload(
         reason_code = "no_final_response_lock"
 
     mismatch_count = _message_lane_status_mismatch_count(messages_manifest, lane_statuses)
+    priority_unexpected = bool(conflict_present and selected_family != "agenda")
+    status = STATUS_NOT_SELECTED
+    if priority_unexpected:
+        status = STATUS_FAILED
+    elif candidate_sources:
+        status = STATUS_OK
     return {
-        "status": STATUS_OK if candidate_sources else STATUS_NOT_SELECTED,
+        "status": status,
         "reason_code": reason_code,
         "priority_policy": "agenda_over_biblio",
         "candidate_count": len(candidate_sources),
