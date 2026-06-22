@@ -234,6 +234,19 @@ class ChatWorkspaceFolderNotesPromptTests(unittest.TestCase):
         self.assertNotIn(markdown, str(observed["events"]))
         self.assertNotIn("Carnet sensible", str(observed["states"]))
         self.assertNotIn("abcdef123456", str(observed["events"]))
+        manifest_events = [
+            payload["payload"]
+            for name, payload in observed["events"]
+            if name == "main_payload_manifest"
+        ]
+        self.assertEqual(len(manifest_events), 1)
+        manifest = manifest_events[0]
+        self.assertEqual(manifest["schema_version"], "main_payload_manifest_v1")
+        self.assertTrue(manifest["main_model_called"])
+        self.assertEqual(manifest["lane_statuses"]["note_lane"]["status"], "ok")
+        self.assertEqual(manifest["lane_statuses"]["note_lane"]["injected_count"], 1)
+        self.assertFalse(manifest["lane_statuses"]["note_lane"]["raw_lane_content_included"])
+        self.assertNotIn(markdown, str(manifest))
         self.assertEqual(conversation["messages"][0]["content"], "Lis cette note")
         self.assertNotIn(markdown, str(conversation["messages"]))
 

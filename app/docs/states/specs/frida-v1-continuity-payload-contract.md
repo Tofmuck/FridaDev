@@ -2,7 +2,8 @@
 
 Date: 2026-06-22
 
-Statut: contrat source-of-truth docs-only du Lot 1 Continuity Payload.
+Statut: contrat source-of-truth Continuity Payload. Lot 1 a defini le contrat;
+Lot 2 a livre le manifeste runtime content-free sans capsule.
 
 Ce contrat definit deux objets cibles:
 
@@ -88,7 +89,7 @@ Un manifeste valide doit contenir au minimum:
 | `scope` | Valeur `main_chat`. |
 | `turn_id_present` | Booleen. Pas d'identifiant brut obligatoire. |
 | `conversation_id_present` | Booleen. Si une empreinte est ajoutee, elle doit respecter la politique de hachage ci-dessous. |
-| `conversation_state` | Nouvelle conversation, conversation existante, message count avant tour, message count apres ajout utilisateur. |
+| `conversation_state` | Presence d'id conversation, presence d'id de tour, etat `conversation_state_kind`, message count conversationnel et rattachement dossier content-free. |
 | `main_model_called` | Booleen. Faux si final response lock remplace l'appel principal. |
 | `provider` | Nom de provider ou famille non secrete, sans cle ni URL sensible. |
 | `runtime_settings` | Reglages utiles content-free: modele exact non sensible ou empreinte approuvee, temperature, top_p, max_tokens, stream, reasoning envoye ou non, stop_count. |
@@ -115,10 +116,12 @@ Chaque entree de `messages[]` doit decrire un bloc final sans contenu brut:
 | `content_present` | Booleen. |
 | `content_chars` | Nombre de caracteres du bloc, pas le contenu. |
 | `estimated_tokens` | Estimation si disponible; sinon `null`. |
-| `hash_12` | Optionnel et interdit par defaut sur contenu textuel sensible. Voir la politique de hachage ci-dessous. |
 | `excluded` | Booleen si le bloc candidat a ete exclu. |
 | `exclusion_reason_code` | Raison allowlistee si exclu. |
 | `raw_content_included` | Toujours `false`. |
+
+La version livree en Lot 2 ne contient pas de champ `hash_12` dans
+`messages[]`. Elle expose seulement des compteurs, roles, origines et flags.
 
 ### Politique de hachage et empreintes
 
@@ -129,6 +132,9 @@ inter-runs.
 
 `hash_12` ne doit donc pas etre presente comme non reversible par defaut. Une
 empreinte courte est une aide de comparaison, pas une garantie de confidentialite.
+La version Lot 2 evite ce champ dans le manifeste runtime et expose seulement
+`stable_text_hashes_included=false`,
+`short_stable_text_hashes_included=false` et `fingerprints_included=false`.
 
 Aucun hash stable non sale, non secret ou non HMAC-like ne doit etre calcule sur:
 
@@ -322,6 +328,7 @@ La politique de sortie assistant doit etre visible sans recopier le prompt brut:
 
 - `raw_prompt_included=false`
 - `raw_message_included=false`
+- `raw_content_included=false`
 - `raw_lane_content_included=false`
 - `raw_provider_payload_included=false`
 - `raw_secret_included=false`
@@ -503,6 +510,22 @@ Le Lot 2 ne sera recevable que si une preuve content-free montre:
 - absence de hash stable naif sur contenu textuel sensible;
 - tests/fakes sans provider live;
 - aucun contenu brut dans logs, fixtures, commits ou exports.
+
+Statut Lot 2 au 2026-06-22: livre par
+`app/observability/main_payload_manifest.py`, emis au stage
+`main_payload_manifest` via `chat_turn_logger` depuis `app/core/chat_service.py`
+juste avant `run_llm_exchange`, et projete en admin par allowlist de schema
+`main_payload_manifest_v1`. Le manifeste couvre aussi le contournement du modele
+principal par final response lock avec `main_model_called=false`.
+
+Tests de reference Lot 2:
+
+- `app/tests/unit/logs/test_main_payload_manifest.py`
+- `app/tests/unit/chat/test_chat_workspace_folder_notes_prompt.py`
+
+Limite volontaire: `app/scripts/export_main_prompt_payload.py` reste un outil
+offline historique trop riche pour servir de preuve content-free de continuite;
+le manifeste runtime le remplace pour ce chantier sans supprimer le script.
 
 ## No-go avant runtime capsule
 

@@ -56,13 +56,13 @@ content-free relue, testee ou explicitement reportee post-V1.
 | Statut | Finding | Lot cible | Critere de cloture court |
 | --- | --- | --- | --- |
 | - [ ] | P1-CONT-01 | Lot 6 puis Lot 7 | Capsule distincte d'identity/memory/summary specifiee, tests artificiels passes, injection runtime seulement apres lots 1-6. |
-| - [ ] | P1-PAYLOAD-01 | Lot 1 puis Lot 2 | `main_payload_manifest_v1` livre et teste sur le payload final apres injections tardives, sans contenu brut. |
+| - [x] | P1-PAYLOAD-01 | Lot 1 puis Lot 2 | `main_payload_manifest_v1` livre et teste sur le payload final apres injections tardives, sans contenu brut. |
 | - [ ] | P2-SUMMARY-01 | Lot 4 | Resume qualifie: ce qu'il garde/perd pour la voix, avec test ou preuve content-free de non-aplatissement minimal. |
 | - [ ] | P2-LANES-01 | Lot 5 | Biblio/Agenda/renderers couverts par la doctrine de voix ou explicitement bornes. |
 | - [ ] | P2-MEMORY-01 | Lot 4 | Difference arbiter observe vs memoire reellement injectee prouvee dans le manifeste ou les traces. |
 | - [ ] | P2-WINDOWS-01 | Lot 4 | Fenetres memory, hermeneutic node, Biblio, Agenda et prompt final cartographiees par tailles/empreintes. |
 | - [ ] | P2-IDENTITY-STAGING-01 | Lot 4 | Staging mutable conversation-scoped documente comme non disponible en nouvelle conversation avant canonisation. |
-| - [ ] | P2-LANE-PROVENANCE-01 | Lot 2 | Role provider et role logique distingues pour chaque bloc/lane dans le manifeste. |
+| - [x] | P2-LANE-PROVENANCE-01 | Lot 2 | Role provider et role logique distingues pour chaque bloc/lane dans le manifeste. |
 | - [ ] | P2-FINAL-LOCK-POLICY-01 | Lot 5 | Politique de priorite Agenda/Biblio final-lock documentee et testee. |
 | - [ ] | P2-NOTES-UI-01 | Lot 5 | Statut Notes UI tranche: hors chemin chat courant documente, ou branchement explicite teste. |
 | - [ ] | P2-OBS-WRITER-01 | Lot 3 | Guard writer-side livre contre cles/payloads dangereux, avec sentinelles anti-fuite. |
@@ -115,25 +115,42 @@ n'est clos par ce lot docs-only; Lot 2+ et Lot Z restent non coches.
 
 Objectif: implementer et tester `main_payload_manifest_v1`, sans contenu brut.
 
-- [ ] Prouver l'ordre final du payload apres toutes les injections tardives.
-- [ ] Exposer la sequence des roles provider et des roles logiques.
-- [ ] Exposer l'origine des lanes: human user, system context, memory,
+- [x] Prouver l'ordre final du payload apres toutes les injections tardives.
+- [x] Exposer la sequence des roles provider et des roles logiques.
+- [x] Exposer l'origine des lanes: human user, system context, memory,
   summary, document, note, biblio, agenda, web, adobe ou autre origine
   allowlistee.
-- [ ] Exposer final locks et assistant override sans recopier la reponse.
-- [ ] Exposer budgets, exclusions, tailles, compteurs et empreintes seulement
+- [x] Exposer final locks et assistant override sans recopier la reponse.
+- [x] Exposer budgets, exclusions, tailles, compteurs et empreintes seulement
   selon la politique de hachage du contrat: pas de hash stable naif sur contenu
   textuel sensible.
-- [ ] Poser des flags explicites: `raw_prompt_included=false`,
+- [x] Poser des flags explicites: `raw_prompt_included=false`,
   `raw_message_included=false`, `raw_lane_content_included=false`,
-  `raw_provider_payload_included=false`.
-- [ ] Verifier `app/scripts/export_main_prompt_payload.py`: reutilisable,
-  borne comme outil offline, ou remplace par un chemin plus fiable.
-- [ ] Couvrir au minimum nouvelle conversation, conversation longue, resume,
+  `raw_provider_payload_included=false`, `raw_content_included=false`,
+  `raw_secret_included=false`.
+- [x] Verifier `app/scripts/export_main_prompt_payload.py`: lu en Lot 2,
+  non retenu comme preuve content-free car il exporte encore un prompt redacted
+  riche; remplace pour ce chantier par `main_payload_manifest_v1`.
+- [x] Couvrir au minimum nouvelle conversation, conversation longue, resume,
   lanes activees/desactivees et final response lock.
 
 Findings principalement traites: `P1-PAYLOAD-01`,
 `P2-LANE-PROVENANCE-01`, `P3-OFFLINE-PAYLOAD-EXPORT-01`.
+
+Statut 2026-06-22: Lot 2 livre par
+`app/observability/main_payload_manifest.py`, branche au dernier point de
+`app/core/chat_service.py` avant `run_llm_exchange`, projection admin
+content-free dans `app/observability/admin_log_projection.py`, et tests
+`app/tests/unit/logs/test_main_payload_manifest.py` plus preuve d'integration
+dans `app/tests/unit/chat/test_chat_workspace_folder_notes_prompt.py`.
+
+Findings clos par ce lot: `P1-PAYLOAD-01`, `P2-LANE-PROVENANCE-01`.
+
+Finding laisse ouvert: `P3-OFFLINE-PAYLOAD-EXPORT-01`. Le script offline
+historique est non-runtime et n'a pas ete appele, mais il reste trop riche pour
+servir de preuve content-free de continuite. Le manifeste runtime le remplace
+pour ce chantier; un lot de nettoyage/documentation pourra le deprecier ou le
+mettre en conformite plus tard.
 
 ### Lot 3 - Garde writer-side observability
 

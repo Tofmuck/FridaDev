@@ -6,6 +6,7 @@ from typing import Any, Mapping
 
 SCHEMA_VERSION = 'admin_log_event_projection_v1'
 PROJECTION_MODE = 'content_free'
+MAIN_PAYLOAD_MANIFEST_SCHEMA_VERSION = 'main_payload_manifest_v1'
 
 _MAX_MAPPING_KEYS = 32
 _MAX_LIST_ITEMS = 8
@@ -21,6 +22,10 @@ _QUALIFIED_RAW_FLAGS = {
     'raw_content_included',
     'raw_prompt_included',
     'raw_provider_payload_included',
+    'raw_message_included',
+    'raw_lane_content_included',
+    'raw_policy_text_included',
+    'raw_secret_included',
     'raw_webdav_payload_included',
     'raw_error_message_included',
     'raw_error_message_stored',
@@ -48,15 +53,23 @@ _SAFE_TEXT_KEYS = {
     'model',
     'mode',
     'operation_kind',
+    'origin',
+    'origin_stage',
     'persist_phase',
+    'policy',
     'product_method',
     'projected_judgment_posture',
     'prompt_kind',
+    'provider',
     'provider_caller',
+    'provider_role',
+    'priority_policy',
     'reason_code',
     'runtime_pipeline',
     'schema_version',
     'source_kind',
+    'scope',
+    'source',
     'status',
     'status_schema_version',
     'validation_decision',
@@ -84,6 +97,8 @@ _SAFE_TEXT_LIST_KEYS = {
     'applied_hard_guards',
     'degraded_fields',
     'pipeline_directives_final',
+    'logical_roles',
+    'provider_role_sequence',
     'read_tool_names',
     'reason_codes',
 }
@@ -143,6 +158,73 @@ _BLOCKED_EXACT_KEYS = {
     'uri',
     'url',
     'xml',
+}
+
+_MANIFEST_TOP_LEVEL_KEYS = {
+    'assistant_output_policy',
+    'budgets',
+    'conversation_id_present',
+    'conversation_state',
+    'final_response_lock',
+    'hash_policy',
+    'lane_statuses',
+    'main_model_called',
+    'messages',
+    'provider',
+    'raw_flags',
+    'runtime_settings',
+    'schema_version',
+    'scope',
+    'turn_id_present',
+    'windows',
+}
+
+_MANIFEST_MESSAGE_KEYS = {
+    'content_chars',
+    'content_kind',
+    'content_parts_count',
+    'content_present',
+    'estimated_tokens',
+    'excluded',
+    'exclusion_reason_code',
+    'file_part_count',
+    'image_part_count',
+    'index',
+    'logical_roles',
+    'origin',
+    'origin_stage',
+    'provider_role',
+    'raw_content_included',
+    'text_part_count',
+}
+
+_MANIFEST_LANE_STATUS_KEYS = {
+    'activation_mode',
+    'budget',
+    'content_chars',
+    'context_hint_count',
+    'context_injected',
+    'enabled',
+    'estimated_tokens',
+    'excluded_count',
+    'exclusion_reason_codes',
+    'final_response_lock_present',
+    'injected_count',
+    'input_count',
+    'invalid_requested_count',
+    'media_kind_counts',
+    'mode',
+    'model_called',
+    'origin',
+    'over_limit_count',
+    'passage_count',
+    'query_kind',
+    'raw_lane_content_included',
+    'reason_code',
+    'reason_codes',
+    'selected',
+    'source_count',
+    'status',
 }
 
 _BLOCKED_KEY_PARTS = (
@@ -258,6 +340,121 @@ def _is_safe_text_value(key: str, value: Any) -> bool:
     return bool(_SAFE_CODE_RE.fullmatch(text))
 
 
+def _is_main_payload_manifest(payload: Mapping[str, Any]) -> bool:
+    return str(payload.get('schema_version') or '').strip() == MAIN_PAYLOAD_MANIFEST_SCHEMA_VERSION
+
+
+def _project_manifest_safe_mapping(
+    payload: Mapping[str, Any],
+    *,
+    allowed_keys: set[str],
+    stats: dict[str, int],
+    depth: int,
+) -> dict[str, Any]:
+    projected: dict[str, Any] = {}
+    keys = sorted(_safe_key(key) for key in payload.keys())
+    for key in keys[:_MAX_MAPPING_KEYS]:
+        if not key:
+            stats['redacted_keys'] += 1
+            continue
+        lower = key.lower()
+        if lower not in allowed_keys:
+            stats['redacted_keys'] += 1
+            continue
+        projected[key] = _project_value(key, payload.get(key), stats, depth + 1)
+    remaining = max(0, len(keys) - _MAX_MAPPING_KEYS)
+    if remaining:
+        stats['redacted_keys'] += remaining
+        projected['truncated_keys_count'] = remaining
+    return projected
+
+
+def _project_manifest_messages(values: Any, stats: dict[str, int], depth: int) -> Any:
+    if not isinstance(values, list):
+        stats['redacted_values'] += 1
+        return {'items_count': 0, 'redacted_items_count': 1}
+    projected: list[Any] = []
+    redacted_items = 0
+    for value in values[:_MAX_LIST_ITEMS]:
+        if isinstance(value, Mapping):
+            projected.append(
+                _project_manifest_safe_mapping(
+                    value,
+                    allowed_keys=_MANIFEST_MESSAGE_KEYS,
+                    stats=stats,
+                    depth=depth + 1,
+                )
+            )
+        else:
+            stats['redacted_values'] += 1
+            redacted_items += 1
+            projected.append(_REDACTED)
+    truncated_items = max(0, len(values) - _MAX_LIST_ITEMS)
+    if truncated_items:
+        stats['redacted_values'] += truncated_items
+    if redacted_items or truncated_items:
+        return {
+            'items_count': len(values),
+            'preview': projected,
+            'redacted_items_count': redacted_items + truncated_items,
+        }
+    return projected
+
+
+def _project_manifest_lane_statuses(values: Any, stats: dict[str, int], depth: int) -> Any:
+    if not isinstance(values, Mapping):
+        stats['redacted_values'] += 1
+        return {'keys_count': 0, 'redacted_keys_count': 1}
+    projected: dict[str, Any] = {}
+    keys = sorted(_safe_key(key) for key in values.keys())
+    for key in keys[:_MAX_MAPPING_KEYS]:
+        if not key or _looks_dangerous_text(key):
+            stats['redacted_keys'] += 1
+            continue
+        value = values.get(key)
+        if isinstance(value, Mapping):
+            projected[key] = _project_manifest_safe_mapping(
+                value,
+                allowed_keys=_MANIFEST_LANE_STATUS_KEYS,
+                stats=stats,
+                depth=depth + 1,
+            )
+        else:
+            stats['redacted_values'] += 1
+            projected[key] = _REDACTED
+    remaining = max(0, len(keys) - _MAX_MAPPING_KEYS)
+    if remaining:
+        stats['redacted_keys'] += remaining
+        projected['truncated_keys_count'] = remaining
+    return projected
+
+
+def _project_main_payload_manifest(payload: Mapping[str, Any], stats: dict[str, int]) -> dict[str, Any]:
+    projected: dict[str, Any] = {}
+    keys = sorted(_safe_key(key) for key in payload.keys())
+    for key in keys[:_MAX_MAPPING_KEYS]:
+        if not key:
+            stats['redacted_keys'] += 1
+            continue
+        lower = key.lower()
+        if lower not in _MANIFEST_TOP_LEVEL_KEYS:
+            stats['redacted_keys'] += 1
+            continue
+        value = payload.get(key)
+        if lower == 'messages':
+            projected[key] = _project_manifest_messages(value, stats, 1)
+            continue
+        if lower == 'lane_statuses':
+            projected[key] = _project_manifest_lane_statuses(value, stats, 1)
+            continue
+        projected[key] = _project_value(key, value, stats, 1)
+    remaining = max(0, len(keys) - _MAX_MAPPING_KEYS)
+    if remaining:
+        stats['redacted_keys'] += remaining
+        projected['truncated_keys_count'] = remaining
+    return projected
+
+
 def _project_string(key: str, value: Any, stats: dict[str, int]) -> str:
     if _is_safe_text_key(key) and _is_safe_text_value(key, value):
         return str(value).strip()
@@ -364,7 +561,10 @@ def _project_value(key: str, value: Any, stats: dict[str, int], depth: int) -> A
 def project_payload(payload: Any) -> tuple[dict[str, Any], dict[str, Any]]:
     source = payload if isinstance(payload, Mapping) else {}
     stats = {'redacted_keys': 0, 'redacted_values': 0}
-    projected = _project_mapping(source, stats, 0)
+    if _is_main_payload_manifest(source):
+        projected = _project_main_payload_manifest(source, stats)
+    else:
+        projected = _project_mapping(source, stats, 0)
     redaction = _base_redaction()
     redaction.update(
         {

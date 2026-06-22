@@ -31,6 +31,7 @@ from biblio import observability as biblio_observability
 from observability import active_documents_observability
 from observability import chat_turn_logger
 from observability import hermeneutic_node_logger
+from observability import main_payload_manifest
 from tools import adobe_docs_pipeline
 
 
@@ -916,12 +917,13 @@ def chat_response(
         )
 
     biblio_state = biblio_chat_runtime.read_biblio_conversation_state(conversation)
+    biblio_recent_dialogue = _biblio_recent_dialogue(conversation, user_msg)
     biblio_result = biblio_chat_runtime.run_biblio_chat_turn(
         data,
         user_msg=user_msg,
         conversation_id=conversation.get('id'),
         conversation_state=biblio_state,
-        recent_dialogue=_biblio_recent_dialogue(conversation, user_msg),
+        recent_dialogue=biblio_recent_dialogue,
         now_iso=now_iso_value,
         config_module=config_module,
     )
@@ -930,14 +932,16 @@ def chat_response(
 
     agenda_result = None
     agenda_enabled = agenda_chat_runtime.normalize_agenda_enabled(data.get('agenda_enabled'))
+    agenda_recent_dialogue = ()
     if agenda_enabled:
         agenda_state = agenda_chat_runtime.read_agenda_conversation_state(conversation)
+        agenda_recent_dialogue = _agenda_recent_dialogue(conversation, user_msg)
         agenda_result = agenda_chat_runtime.run_agenda_chat_turn(
             data,
             user_msg=user_msg,
             conversation_id=conversation.get('id'),
             conversation_state=agenda_state,
-            recent_dialogue=_agenda_recent_dialogue(conversation, user_msg),
+            recent_dialogue=agenda_recent_dialogue,
             now_iso=now_iso_value,
             config_module=config_module,
             runtime_settings_module=runtime_settings_module,
@@ -1114,6 +1118,40 @@ def chat_response(
     )
     if adobe_request.active:
         _emit_adobe_prompt_lane_observability(adobe_lane)
+    assistant_response_override = agenda_final_response_override or biblio_final_response_override
+    payload_manifest = main_payload_manifest.build_main_payload_manifest(
+        conversation=conversation,
+        prompt_messages=prompt_messages,
+        runtime_main_model=runtime_main_model,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        stream_req=stream_req,
+        assistant_output_policy=assistant_output_policy,
+        assistant_response_override=assistant_response_override,
+        turn_id=chat_turn_logger.current_turn_id(),
+        summary_payload=summary_payload,
+        identity_payload=identity_payload,
+        recent_context_payload=recent_context_payload,
+        recent_window_payload=recent_window_payload,
+        memory_traces=memory_traces,
+        context_hints=context_hints,
+        web_runtime_payload=web_runtime_payload,
+        workspace_notes_lane=workspace_notes_lane,
+        active_document_lane=active_document_lane,
+        biblio_result=biblio_result,
+        agenda_result=agenda_result,
+        adobe_context=adobe_context,
+        adobe_lane=adobe_lane,
+        hermeneutic_judgment_block=hermeneutic_judgment_block,
+        biblio_recent_dialogue=biblio_recent_dialogue,
+        agenda_recent_dialogue=agenda_recent_dialogue,
+        count_tokens_func=_prompt_token_counter(token_utils_module),
+    )
+    main_payload_manifest.emit_main_payload_manifest(
+        payload_manifest,
+        chat_turn_logger_module=chat_turn_logger,
+    )
     return chat_llm_flow.run_llm_exchange(
         conversation=conversation,
         prompt_messages=prompt_messages,
@@ -1141,7 +1179,7 @@ def chat_response(
         mode_enforces_identity=chat_memory_flow.mode_enforces_identity,
         conversation_headers_func=chat_session_flow.conversation_headers,
         conversation_stream_headers_func=chat_session_flow.conversation_stream_headers,
-        assistant_response_override=agenda_final_response_override or biblio_final_response_override,
+        assistant_response_override=assistant_response_override,
         assistant_response_meta=biblio_assistant_response_meta,
         assistant_response_intro=biblio_assistant_response_envelope.get('surface_intro', ''),
         assistant_response_outro=biblio_assistant_response_envelope.get('surface_outro', ''),
