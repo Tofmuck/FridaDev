@@ -52,6 +52,7 @@ Documents principaux:
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - `app/docs/todo-done/audits/model-prompt-payload-interpretation-audit-2026-05-16.md`
 - `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
+- `app/docs/todo-todo/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
 - `app/docs/states/specs/mutable-identity-judge-contract.md`
 - `app/docs/states/policies/identity-new-contract-plan.md`
 - `app/docs/todo-done/refactors/identity-new-contract-todo.md`
@@ -80,6 +81,9 @@ Code relu:
 - `app/core/active_document_prompt_lane.py`
 - `app/core/workspace_folder_notes_prompt_lane.py`
 - `app/core/adobe_docs_prompt_lane.py`
+- `app/observability/chat_turn_logger.py`
+- `app/observability/active_documents_observability.py`
+- `app/web/app.js`
 - `app/memory/summarizer.py`
 - `app/memory/arbiter.py`
 - `app/memory/memory_identity_periodic_agent.py`
@@ -461,21 +465,23 @@ Limites:
 - Pas de test produit "nouvelle conversation garde la posture Frida".
 - Pas de snapshot content-free du payload final ordonne.
 
-## Findings
+## Findings - Registre consolidé des findings vivants
+
+Ce registre consolide l'audit principal et le contre-audit `frida-v1-continuity-payload-counter-audit-2026-06-22.md`. Il remplace la liste courte initiale: un finding non mentionne ici ne doit pas etre considere comme vivant pour le prochain lot, sauf nouvelle preuve.
 
 ### P1
 
-P1-CONT-01 - Pas de Continuity Capsule ni surface equivalente injectee en nouvelle conversation.
+P1-CONT-01 - Absence de surface durable dediee a la continuite de ton, methode, relation et presence entre conversations.
 
 Le code injecte identite statique/mutable, memoire semantique, context hints et prompt systeme, mais aucune surface dediee ne conserve les preferences de ton, methode, relation, presence, seuil de proactivite, humour/sobriete ou maniere de cadrer les refus entre conversations. La continuite inter-conversations est donc emergente, dependante du retrieval et de l'identite, et non garantie.
 
-Aucun autre P1 identifie dans le perimetre read-only.
+P1-PAYLOAD-01 - Absence de manifeste/snapshot content-free du payload final ordonne apres toutes les injections tardives.
+
+L'ordre peut etre reconstruit par lecture du code, mais l'audit ne peut pas prouver le payload final exact sans instrumentation fake/snapshot. Le point est classe P1 comme gate operatoire, distinct du P1 produit `P1-CONT-01`: aucune injection runtime de capsule de continuite ne doit partir tant qu'un `main_payload_manifest_v1` content-free, ordonne, teste et couvrant les injections tardives n'existe pas. Inventer ce payload serait contraire a la consigne.
+
+Aucun autre P1 vivant identifie dans le perimetre read-only.
 
 ### P2
-
-P2-PAYLOAD-01 - Pas de preuve snapshot content-free du payload final ordonne.
-
-L'ordre peut etre reconstruit par code, mais l'audit ne peut pas prouver un payload final exact sans instrumentation fake/snapshot. Inventer ce payload serait contraire a la consigne.
 
 P2-SUMMARY-01 - Le resume intra-conversation peut ecraser la nuance de continuite.
 
@@ -489,13 +495,45 @@ P2-MEMORY-01 - En mode `shadow`, l'arbiter memoire ne controle pas la memoire in
 
 Le prompt peut recevoir le pre-arbiter basket alors que les decisions arbitrees restent observees. Cela fragilise l'explication "ce qui influence la reponse" si les audits lisent seulement les decisions arbiter.
 
-Aucun autre P2 identifie dans le perimetre read-only.
+P2-WINDOWS-01 - Les sous-systemes ne partagent pas une fenetre de continuite unique.
+
+La memoire, le noeud hermeneutique, Biblio, Agenda et le prompt final reconstruisent des fenetres recentes ou des contextes differents. Cette pluralite est explicable techniquement, mais elle fragilise une continuite globale de posture: deux sous-systemes peuvent juger le meme tour depuis des recences, budgets et pretraitements distincts.
+
+P2-IDENTITY-STAGING-01 - La mutable identity staging est conversation-scoped avant canonisation.
+
+Les signaux recents d'une longue conversation peuvent alimenter le staging et le juge mutable, mais ils ne deviennent disponibles pour une nouvelle conversation qu'apres canonisation effective dans `identity_mutables`. Une nouvelle conversation peut donc perdre des inflexions recentes de relation, methode ou presence encore non stabilisees.
+
+P2-LANE-PROVENANCE-01 - Certaines lanes injectent du contexte sous forme de messages `user`.
+
+Documents, Notes et autres lanes peuvent ajouter du contexte outille avec un role provider `user`, meme quand ce contenu n'est pas une parole humaine nouvelle. C'est un pattern courant pour les providers, mais il brouille la provenance logique entre message utilisateur, document, note et contexte outille; un manifeste payload devra distinguer role provider et role logique.
+
+P2-FINAL-LOCK-POLICY-01 - La priorite Agenda sur Biblio est implicite dans le final response lock.
+
+Le chemin principal choisit l'override final par priorite `Agenda` puis `Biblio` quand les deux existent. Ce comportement est lisible dans le code, mais il n'est pas encore exprime comme decision produit de continuite de voix: une reponse visible peut donc etre verrouillee par une lane sans que la politique de priorite soit documentee au meme niveau que la capsule future.
+
+P2-NOTES-UI-01 - Notes V1 est branche cote backend, mais le frontend chat courant ne semble pas envoyer `workspace_note_id` ou `workspace_note_ids`.
+
+La lane Notes lit ces champs cote backend. La surface `app/web/app.js` relue pour l'appel chat envoie le message, la conversation, les options web/input et les payloads Biblio/Agenda/Adobe, sans champ Notes equivalent observe. Il y a donc risque de surestimer la contribution Notes a la continuite dans le chat courant.
+
+P2-OBS-WRITER-01 - `chat_turn_logger` reste permissif cote writer.
+
+Les projections admin sont durcies et content-free, mais le writer accepte encore des payloads applicatifs avec des cles non prevues: un futur developpement pourrait y introduire `messages`, `prompt`, `content`, `payload` ou equivalent sans garde de schema stricte a l'ecriture. Le risque est prospectif mais vivant pour toute instrumentation de payload.
+
+Aucun autre P2 vivant identifie dans le perimetre read-only.
 
 ### P3
 
+P3-SOFT-LIMIT-01 - Le soft token limit du prompt est observe mais pas impose.
+
+`build_prompt_messages` calcule `prompt_soft_limit_exceeded`, mais conserve la selection de dialogue courante et expose `dialogue_messages_truncated=false`. Le signal est utile pour l'observabilite, mais il ne prouve pas qu'un payload long sera borne avant l'appel modele.
+
+P3-NOOP-LANES-01 - Certains no-op Documents/Notes ne sont pas observes quand rien n'est selectionne.
+
+Les decisions d'exclusion sont observables quand une lane est activee ou lit des pieces, mais l'absence totale de selection peut ne produire aucun evenement dedie. Il devient difficile de distinguer "non selectionne", "non applicable" et "lane non instrumentee" dans un audit content-free.
+
 P3-DOC-01 - Certaines cartes historiques sont partiellement stale.
 
-Le catalogue d'appels modele du 2026-05-17 et certains commentaires de module restent utiles, mais ne decrivent plus completement Biblio agent-first, les lanes V1 Documents/Notes/Images/Exports et les final response locks.
+Le catalogue d'appels modele du 2026-05-17 et certains commentaires de module restent utiles, mais ne decrivent plus completement Biblio agent-first, les lanes V1 Documents/Notes/Images/Exports et les final response locks. Les docs Identity doivent aussi rester lues avec leur statut distinct: spec active `mutable-identity-judge-contract.md`, plan doctrinal historique `identity-new-contract-plan.md`, archive operatoire `identity-new-contract-todo.md`.
 
 P3-TEST-01 - Les tests prouvent les contrats structurels, pas la continuite qualitative.
 
@@ -505,7 +543,15 @@ P3-OBS-01 - L'observabilite content-free ne suffit pas a juger la presence.
 
 Les hashes/chars/counts sont necessaires pour la securite, mais ne permettent pas de mesurer la continuite de ton. Il faudra une instrumentation content-free specialisee ou des fixtures artificielles.
 
-Aucun autre P3 identifie dans le perimetre read-only.
+P3-OFFLINE-PAYLOAD-EXPORT-01 - L'export local de payload existe, mais ne remplace pas un manifeste final runtime content-free.
+
+`app/scripts/export_main_prompt_payload.py` et `app/docs/states/operations/main-prompt-payload-audit.md` fournissent un outil d'audit local utile, sans appel au modele principal. Il reste toutefois une reconstruction/offline export: le mode reel est best-effort, peut dependre de l'etat courant, ne rejoue pas tous les providers secondaires, et ne couvre pas explicitement toutes les lanes tardives Notes/Biblio/Agenda/final locks comme manifeste final. Ce finding n'est donc pas stale; il doit etre traite comme verification de couverture et de garde anti-fuite avant de s'appuyer sur l'outil pour `main_payload_manifest_v1`.
+
+Aucun autre P3 vivant identifie dans le perimetre read-only.
+
+### Findings invalides ou stale
+
+Aucun finding du contre-audit n'a ete invalide comme faux ou stale apres relecture du code courant. Les points plus faibles ou operatoires ont ete conserves en P3 plutot que supprimes.
 
 ## Proposition de modèle cible
 
@@ -531,19 +577,22 @@ Elle devrait etre injectee en nouvelle conversation et en conversation existante
 
 ## Lots recommandés
 
-Lot 1 docs-only - Spec "Continuity Capsule" ou equivalent.
+Lot 1 docs-only - Spec double et ordonnee: `main_payload_manifest_v1` puis "Continuity Capsule" ou equivalent.
 
-- definir l'objet, son emplacement, ses non-objectifs;
+- definir d'abord le manifeste content-free du payload final: ordre, roles provider, roles logiques, lanes tardives, final locks, budgets, exclusions, hashes/counts autorises et champs interdits;
+- definir ensuite l'objet capsule, son emplacement, ses non-objectifs;
 - clarifier difference avec identite/memoire/resume;
 - definir observabilite content-free;
 - definir injection en nouvelle conversation et conversation longue;
 - definir interaction avec Biblio/Agenda locks.
+- poser explicitement la regle no-go: la capsule peut etre specifiee en docs-only, mais aucune injection runtime de capsule ne peut etre livree avant implementation et test du manifeste content-free final.
 
-Lot 2 instrumentation/fake payload snapshot content-free.
+Lot 2 instrumentation/fake payload snapshot content-free - Livraison `main_payload_manifest_v1`.
 
 - ajouter un snapshot de structure ordonnee sans contenu brut;
 - prouver presence/ordre/roles/budgets/hashes seulement;
 - inclure cas nouvelle conversation, longue conversation, resume, lanes activees/desactivees, override.
+- verifier la couverture de l'export local existant et decider s'il est remplace, borne ou reutilise comme outil non-runtime.
 
 Lot 3 runtime injection eventuelle.
 
@@ -568,9 +617,10 @@ Lot Z validation.
 ## No-go avant runtime
 
 - Ne pas injecter une capsule sans spec separee.
+- Ne pas injecter une capsule avant `main_payload_manifest_v1` implemente, teste et relu sur les injections tardives.
 - Ne pas utiliser les logs existants pour reconstruire du contenu brut.
 - Ne pas melanger continuity capsule avec identity mutable sans decision doctrinale.
-- Ne pas supposer que le prompt final exact est prouve sans snapshot fake.
+- Ne pas supposer que le prompt final exact est prouve sans snapshot fake/content-free du payload final ordonne.
 - Ne pas activer de provider live pour "voir" le payload.
 - Ne pas corriger Biblio/Agenda/Web dans ce lot.
 - Ne pas toucher DB, reset, purge, backfill ou Docker.
