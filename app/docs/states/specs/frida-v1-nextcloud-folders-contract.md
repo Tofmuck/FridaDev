@@ -753,7 +753,7 @@ Regles fail-closed post Lot 6:
 Lien observabilite globale:
 
 - cette brique locale est une preuve de faisabilite pour
-  `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`;
+  `app/docs/todo-done/product/frida-v1-agentic-observability-todo.md`;
 - elle ne cloture pas la refonte globale observabilite;
 - elle fournit un precedent: reason codes catalogues, read-model allowliste,
   tests anti-fuite et scan avant commit.
