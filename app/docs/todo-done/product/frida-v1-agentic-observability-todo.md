@@ -1,13 +1,16 @@
-# Frida V1 - Observabilite globale / logs agentiques - TODO
+# Frida V1 - Observabilite globale / logs agentiques - TODO archivee
 
-Statut: TODO actif detaille; Lots 0 et 1 docs-only coches; Lot 2 runtime
-borne livre avec correctifs Lot 2.1 / 2.2 writer; Lot 3 Agenda/Biblio
-no-op observability livre avec correctif Lot 3.1 Agenda fallback; Lot 4 logs
-runtime content-free livre; Lot 5 decoupe; Lot 5A admin logs/export Markdown
-content-free livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard
-statuses livre avec correctif Lot 5B.1 providers secondaires; Lot 5C
-reliquats/scans residuels livre; Lot 6 smokes transverses content-free livre;
-correctif Lot 6.1 hygiene test dashboard livre; Lot Z ouvert/non execute.
+Statut: chantier Frida V1 cloture et archive en Lot Z le 2026-06-22.
+Lots 0 et 1 docs-only livres; Lot 2 runtime borne livre avec correctifs
+Lot 2.1 / 2.2 writer; Lot 3 Agenda/Biblio no-op observability livre avec
+correctifs Lot 3.1 / 3.2; Lot 4 logs runtime content-free livre avec correctif
+Lot 4.1; Lot 5A admin logs/export Markdown content-free livre avec correctif
+Lot 5A.1 value redaction; Lot 5B dashboard statuses livre avec correctif
+Lot 5B.1 providers secondaires; Lot 5C reliquats/scans residuels livre; Lot 6
+smokes transverses content-free livre; correctif Lot 6.1 hygiene test
+dashboard livre; Lot Z preuve/cloture livre. Reset observabilite destructif
+non execute: il reste une operation post-cloture separee, bloquee par
+`operator_go_required`.
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit Lot 0:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
@@ -447,17 +450,33 @@ Notes Lot 6.1:
 
 ### Lot Z - Cloture Observabilite agentique V1
 
-- [ ] Relire le contrat Lot 1 et les preuves Lots 2-6.
-- [ ] Rejouer ou relire les smokes transverses.
-- [ ] Executer un scan logs applicatifs borne reel.
-- [ ] Verifier qu'aucun log brut, contenu, prompt, payload, token ou secret
-  n'est conserve.
-- [ ] Verifier que les vraies pannes restent visibles.
-- [ ] Executer le reset observabilite post-cloture seulement avec backup,
-  inventaire, exclusions produit, preuves content-free, rollback et GO operateur
-  humain explicite/date, separe du GO general Lot Z; afficher le scope exact
-  avant demande de GO, sinon ne pas executer le reset.
-- [ ] Archiver cette TODO seulement si le verdict final est conforme.
+- [x] Relire le contrat Lot 1 et les preuves Lots 2-6.
+- [x] Rejouer ou relire les smokes transverses.
+- [x] Executer un scan logs applicatifs borne reel.
+- [x] Verifier qu'aucun log brut, contenu, prompt, payload, token ou secret
+  n'est conserve dans les preuves Lot Z.
+- [x] Verifier que les vraies pannes restent visibles.
+- [x] Evaluer le gate reset: GO operateur humain explicite/date absent, donc
+  reset non execute et bloque par `operator_go_required`.
+- [x] Archiver cette TODO avec verdict final conforme.
+
+Notes Lot Z:
+
+- Artefact de cloture:
+  `app/docs/states/baselines/agentic-observability-smokes/frida-v1-agentic-observability-lotz-closure-20260622T081658Z.jsonl`.
+- Les preuves Lot Z rejouent la suite conteneur ciblee, 267 tests OK, couvrant
+  taxonomie V1, logs admin, export Markdown, dashboard, Agenda/Biblio no-op,
+  refus produit et vraie panne fake/local.
+- Scan Docker logs borne depuis `2026-06-22T08:16:10Z`, tail 5000:
+  1 ligne, 74 octets, `forbidden_match_count=0`.
+- Scan applicatif JSONL borne dans le conteneur depuis `2026-06-22T08:16:10Z`:
+  15 fichiers candidats, 9084 lignes, 2941465 octets,
+  `forbidden_match_count=0`.
+- Aucun log brut n'a ete affiche, committe ou conserve dans le depot. Le dump
+  temporaire Docker sous `/tmp` a ete supprime avant livraison.
+- Le reset observabilite destructif n'a pas ete execute. Il exige un futur GO
+  operateur humain explicite, date et separe, avec scope exact, backup et
+  rollback affiches juste avant execution.
 
 ## Statut Agenda issu du Lot 0
 

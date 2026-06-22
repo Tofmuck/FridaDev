@@ -9,10 +9,12 @@ en 5A/5B/5C avant runtime; Lot 5A admin logs/export Markdown content-free
 livre avec correctif Lot 5A.1 value redaction; Lot 5B dashboard statuses
 livre avec correctif Lot 5B.1 providers secondaires; Lot 5C reliquats/scans
 residuels livre; Lot 6 smokes transverses content-free livre; correctif Lot
-6.1 hygiene test dashboard livre.
+6.1 hygiene test dashboard livre; Lot Z preuve/cloture livre sans reset
+destructif.
 Date: 2026-06-20
 Classement: `app/docs/states/specs/`
-TODO produit: `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
+TODO produit archivee:
+`app/docs/todo-done/product/frida-v1-agentic-observability-todo.md`
 Audit source:
 `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`
 
@@ -42,7 +44,7 @@ legacy.
 ## 2. Sources
 
 - `AGENTS.md`;
-- `app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`;
+- `app/docs/todo-done/product/frida-v1-agentic-observability-todo.md`;
 - `app/docs/states/audits/frida-v1-agentic-observability-lot0-audit-2026-06-20.md`;
 - `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`;
 - `app/docs/states/specs/agentic-response-surface-contract.md`;
@@ -357,6 +359,11 @@ operation destructive controlee. Il est interdit avant validation Lot Z ou lot
 dedie explicite.
 
 Lot 1 specifie le reset, mais ne l'execute pas.
+
+Lot Z cloture le chantier Observabilite agentique V1 sans executer ce reset:
+le GO operateur humain explicite, date et separe etait absent. Le reset reste
+donc bloque par `operator_go_required` et doit etre traite comme operation
+post-cloture dediee si l'operateur le demande plus tard.
 
 La validation de cette spec, le GO general d'un Lot Z ou la cloture du chantier
 Observabilite ne valent jamais GO implicite pour le reset destructif. Le reset
@@ -725,8 +732,34 @@ Lot Z:
 - relire contrat et preuves;
 - executer scan logs borne reel;
 - cloturer ou documenter les limites;
-- executer le reset seulement dans le cadre valide par cette spec, ou ouvrir un
-  lot reset dedie explicite si Lot Z reste proof-only.
+- evaluer le reset gate sans executer le reset si le GO operateur humain
+  explicite/date/separe est absent.
+
+Decision livree Lot Z:
+
+- l'artefact JSONL content-free
+  `app/docs/states/baselines/agentic-observability-smokes/frida-v1-agentic-observability-lotz-closure-20260622T081658Z.jsonl`
+  conserve les cas `LOTZ_PREFLIGHT`, `LOTZ_REPLAY_PROOFS_LOTS_2_6`,
+  `LOTZ_STATUS_TAXONOMY`, `LOTZ_AGENTIC_NOOP_AGENDA_BIBLIO`,
+  `LOTZ_ADMIN_LOGS_CONTENT_FREE`, `LOTZ_DASHBOARD_CONTENT_FREE`,
+  `LOTZ_TRUE_FAILURE_VISIBLE`, `LOTZ_REFUSAL_NOT_ERROR`,
+  `LOTZ_BOUNDED_APP_LOG_SCAN`, `LOTZ_BOUNDED_DOCKER_LOG_SCAN`,
+  `LOTZ_ARTIFACT_SCAN`, `LOTZ_DOCS_DIFF_SCAN`, `LOTZ_RESET_GATE` et
+  `LOTZ_FINAL_VERDICT`;
+- la suite conteneur ciblee rejoue 267 tests et couvre les preuves Lots 2-6:
+  taxonomie, logs admin, export Markdown, dashboard, Agenda/Biblio no-op,
+  refus produit et vraie panne fake/local;
+- le scan Docker logs borne depuis `2026-06-22T08:16:10Z`, tail 5000, couvre
+  1 ligne et 74 octets avec `forbidden_match_count=0`;
+- le scan applicatif JSONL borne dans le conteneur depuis
+  `2026-06-22T08:16:10Z` couvre 15 fichiers candidats, 9084 lignes et
+  2941465 octets avec `forbidden_match_count=0`;
+- aucun log brut n'est affiche, conserve ou committe; aucun reset, purge,
+  backfill, migration, modification plateforme ou modification runtime n'est
+  inclus dans Lot Z;
+- le reset destructif post-cloture n'est pas execute. Il reste bloque par
+  `operator_go_required` jusqu'a un futur GO operateur humain explicite, date,
+  separe, avec scope exact, backup et rollback affiches juste avant execution.
 
 ## 15. Tests et preuves attendus
 
@@ -748,9 +781,10 @@ Preuves Lot Z:
 
 - artefact JSONL content-free;
 - scan logs applicatifs borne reel;
-- compte recent vs historique;
+- distinction recent vs historique par tests/read-models;
 - absence de log brut conserve;
-- cutover/reset selon section 13 quand execute.
+- gate reset documente; reset non execute tant que le GO operateur requis est
+  absent.
 
 ## 16. Interdits permanents
 

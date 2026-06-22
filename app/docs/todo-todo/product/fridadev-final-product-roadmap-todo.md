@@ -121,17 +121,19 @@ traces doivent rester exploitables mais content-free, avec une separation nette
 entre observabilite technique, observabilite produit, preuves live et surface
 utilisateur.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
+TODO archivee:
+`app/docs/todo-done/product/frida-v1-agentic-observability-todo.md`
 
 Contrat source:
 `app/docs/states/specs/frida-v1-agentic-observability-contract.md`
 
-Statut 2026-06-20: Lots 0 et 1 docs-only livres. Le contrat source ferme la
-taxonomie status/reason/severity, les no-op agentiques, l'historique vs
-recent, la politique JSONL content-free, le statut Agenda post-V1 dormant et
-le reset observabilite post-cloture a executer seulement apres validation
-finale explicite.
+Statut 2026-06-22: Observabilite agentique V1 cloturee en Lot Z avec verdict
+`met`. Les Lots 0-6 et correctifs 2.1/2.2, 3.1/3.2, 4.1, 5A.1, 5B.1 et 6.1
+sont livres; l'artefact Lot Z prouve scans logs bornes, projections admin et
+dashboard content-free, no-op/refus hors vraies pannes et vraies pannes encore
+visibles. Le reset observabilite destructif n'a pas ete execute: il reste une
+operation post-cloture separee, bloquee par GO operateur humain explicite,
+date et separe avec scope exact, backup et rollback.
 
 ### 7. Audit final general
 
