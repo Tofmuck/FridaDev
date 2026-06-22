@@ -1064,6 +1064,7 @@ def chat_response(
         memory_traces=memory_traces or None,
         context_hints=context_hints or None,
     )
+    payload_message_sources: dict[int, dict[str, Any]] = {}
 
     if str(web_runtime_payload.get('activation_mode') or '') in {'manual', 'auto'}:
         chat_prompt_context.inject_web_context(
@@ -1074,6 +1075,7 @@ def chat_response(
             admin_logs_module=admin_logs_module,
             web_context_payload=web_runtime_payload,
         )
+    notes_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
     workspace_notes_lane = workspace_folder_notes_prompt_lane.inject_workspace_folder_notes_prompt_lane(
         prompt_messages,
         workspace_notes_read.note_reads,
@@ -1083,7 +1085,18 @@ def chat_response(
         invalid_requested_count=workspace_notes_read.invalid_requested_count,
         over_limit_count=workspace_notes_read.over_limit_count,
     )
+    payload_message_sources.update(
+        main_payload_manifest.message_sources_for_new_messages(
+            prompt_messages,
+            notes_before_refs,
+            logical_roles=('note_lane',),
+            origin='core.workspace_folder_notes_prompt_lane',
+            origin_stage='late_note_lane',
+            content_kind='tool_lane_context',
+        )
+    )
     _emit_workspace_folder_notes_prompt_observability(workspace_notes_lane)
+    documents_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
     active_document_lane = active_document_prompt_lane.inject_active_document_prompt_lane(
         prompt_messages,
         document_prompt_read.documents,
@@ -1092,6 +1105,16 @@ def chat_response(
         max_tokens=_active_document_prompt_max_tokens(config_module),
         read_status=document_prompt_read.status,
         read_reason_code=document_prompt_read.reason_code,
+    )
+    payload_message_sources.update(
+        main_payload_manifest.message_sources_for_new_messages(
+            prompt_messages,
+            documents_before_refs,
+            logical_roles=('document_lane',),
+            origin='core.active_document_prompt_lane',
+            origin_stage='late_document_lane',
+            content_kind='tool_lane_context',
+        )
     )
     _record_active_document_prompt_decisions(
         conversation=conversation,
@@ -1104,17 +1127,39 @@ def chat_response(
         active_document_lane,
         chat_turn_logger_module=chat_turn_logger,
     )
+    biblio_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
     biblio_chat_runtime.inject_biblio_prompt_lane(
         prompt_messages,
         biblio_result,
+    )
+    payload_message_sources.update(
+        main_payload_manifest.message_sources_for_new_messages(
+            prompt_messages,
+            biblio_before_refs,
+            logical_roles=('biblio_lane',),
+            origin='biblio.chat_runtime',
+            origin_stage='late_biblio_lane',
+            content_kind='tool_lane_context',
+        )
     )
     biblio_final_response_override = _biblio_assistant_response_override(biblio_result)
     agenda_final_response_override = _agenda_assistant_response_override(agenda_result)
     biblio_assistant_response_meta = _biblio_assistant_response_meta(biblio_result)
     biblio_assistant_response_envelope = _biblio_assistant_response_envelope(biblio_result)
+    adobe_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
     adobe_lane = adobe_docs_prompt_lane.inject_adobe_prompt_lane(
         prompt_messages,
         adobe_context,
+    )
+    payload_message_sources.update(
+        main_payload_manifest.message_sources_for_new_messages(
+            prompt_messages,
+            adobe_before_refs,
+            logical_roles=('adobe_lane',),
+            origin='core.adobe_docs_prompt_lane',
+            origin_stage='late_adobe_lane',
+            content_kind='tool_lane_context',
+        )
     )
     if adobe_request.active:
         _emit_adobe_prompt_lane_observability(adobe_lane)
@@ -1146,6 +1191,7 @@ def chat_response(
         hermeneutic_judgment_block=hermeneutic_judgment_block,
         biblio_recent_dialogue=biblio_recent_dialogue,
         agenda_recent_dialogue=agenda_recent_dialogue,
+        message_sources=payload_message_sources,
         count_tokens_func=_prompt_token_counter(token_utils_module),
     )
     main_payload_manifest.emit_main_payload_manifest(

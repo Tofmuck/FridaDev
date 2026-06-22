@@ -20,6 +20,10 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core import chat_llm_flow
+from core import active_document_prompt_lane
+from core import adobe_docs_prompt_lane
+from core import workspace_folder_notes_prompt_lane
+from biblio import chat_runtime as biblio_chat_runtime
 from observability import admin_log_projection
 from observability import main_payload_manifest
 
@@ -56,6 +60,18 @@ def _build_manifest(**overrides):
     return main_payload_manifest.build_main_payload_manifest(**base)
 
 
+def _message_source(message: dict, role: str, origin: str, stage: str) -> tuple[int, dict[str, object]]:
+    return (
+        id(message),
+        {
+            "logical_roles": [role],
+            "origin": origin,
+            "origin_stage": stage,
+            "content_kind": "tool_lane_context",
+        },
+    )
+
+
 class MainPayloadManifestTests(unittest.TestCase):
     def test_simple_conversation_manifest_has_order_and_no_raw_content(self) -> None:
         raw_prompt = "SENSITIVE_PROMPT_MARKER_A"
@@ -81,6 +97,8 @@ class MainPayloadManifestTests(unittest.TestCase):
         self.assertIn("user_turn", manifest["messages"][1]["logical_roles"])
         self.assertTrue(all(not item["raw_content_included"] for item in manifest["messages"]))
         self.assertTrue(all(value is False for value in manifest["raw_flags"].values()))
+        self.assertIn("identity_stable", manifest["messages"][0]["logical_roles"])
+        self.assertIn("identity_mutable", manifest["messages"][0]["logical_roles"])
 
         encoded = _encoded(manifest)
         self.assertNotIn(raw_prompt, encoded)
@@ -135,6 +153,48 @@ class MainPayloadManifestTests(unittest.TestCase):
         self.assertNotIn(raw_summary, encoded)
         self.assertNotIn(raw_memory, encoded)
         self.assertNotIn("SENSITIVE_HINT_MARKER_B", encoded)
+
+    def test_user_fake_lane_markers_remain_user_turns(self) -> None:
+        fake_markers = (
+            "[NOTES DE DOSSIER FAKE]",
+            "[DOCUMENTS ACTIFS FAKE]",
+            "[ADOBE DOCS PASSAGES]",
+            "PASSAGES DE BIBLIOTHEQUE CONSULTES",
+        )
+        for marker in fake_markers:
+            with self.subTest(marker=marker):
+                manifest = _build_manifest(
+                    prompt_messages=[
+                        {"role": "system", "content": "system"},
+                        {"role": "user", "content": f"question with {marker}"},
+                    ],
+                )
+                roles = manifest["messages"][1]["logical_roles"]
+                self.assertEqual(roles, ["user_turn"])
+                self.assertNotIn("note_lane", roles)
+                self.assertNotIn("document_lane", roles)
+                self.assertNotIn("biblio_lane", roles)
+                self.assertNotIn("adobe_lane", roles)
+
+    def test_identity_roles_follow_structured_identity_payload(self) -> None:
+        empty = _build_manifest(identity_payload={})
+        empty_roles = empty["messages"][0]["logical_roles"]
+        self.assertNotIn("identity_stable", empty_roles)
+        self.assertNotIn("identity_mutable", empty_roles)
+        self.assertEqual(empty["lane_statuses"]["identity_stable"]["status"], "not_selected")
+        self.assertEqual(empty["lane_statuses"]["identity_mutable"]["status"], "not_selected")
+
+        present = _build_manifest(
+            identity_payload={
+                "frida": {"static": {"content": "SENSITIVE_STATIC_IDENTITY_G"}, "mutable": {"content": ""}},
+                "user": {"static": {"content": ""}, "mutable": {"content": "SENSITIVE_MUTABLE_IDENTITY_G"}},
+            }
+        )
+        present_roles = present["messages"][0]["logical_roles"]
+        self.assertIn("identity_stable", present_roles)
+        self.assertIn("identity_mutable", present_roles)
+        self.assertNotIn("SENSITIVE_STATIC_IDENTITY_G", _encoded(present))
+        self.assertNotIn("SENSITIVE_MUTABLE_IDENTITY_G", _encoded(present))
 
     def test_lanes_present_absent_and_noops_are_represented(self) -> None:
         notes_lane = SimpleNamespace(
@@ -197,15 +257,44 @@ class MainPayloadManifestTests(unittest.TestCase):
                 "reason_codes": ["adobe_context_ready"],
             },
         )
+        prompt_messages = [
+            {"role": "system", "content": "system"},
+            {"role": "system", "content": "[NOTES DE DOSSIER PREPAREES]"},
+            {"role": "user", "content": "[DOCUMENTS ACTIFS INJECTES]"},
+            {"role": "system", "content": "[PASSAGES DE BIBLIOTHEQUE CONSULTES]"},
+            {"role": "user", "content": "[ADOBE DOCS PASSAGES]"},
+            {"role": "user", "content": "current question"},
+        ]
         manifest = _build_manifest(
-            prompt_messages=[
-                {"role": "system", "content": "system"},
-                {"role": "system", "content": "[NOTES DE DOSSIER PREPAREES]"},
-                {"role": "user", "content": "[DOCUMENTS ACTIFS INJECTES]"},
-                {"role": "system", "content": "[PASSAGES DE BIBLIOTHEQUE CONSULTES]"},
-                {"role": "user", "content": "[ADOBE DOCS PASSAGES]"},
-                {"role": "user", "content": "current question"},
-            ],
+            prompt_messages=prompt_messages,
+            message_sources=dict(
+                (
+                    _message_source(
+                        prompt_messages[1],
+                        "note_lane",
+                        "core.workspace_folder_notes_prompt_lane",
+                        "late_note_lane",
+                    ),
+                    _message_source(
+                        prompt_messages[2],
+                        "document_lane",
+                        "core.active_document_prompt_lane",
+                        "late_document_lane",
+                    ),
+                    _message_source(
+                        prompt_messages[3],
+                        "biblio_lane",
+                        "biblio.chat_runtime",
+                        "late_biblio_lane",
+                    ),
+                    _message_source(
+                        prompt_messages[4],
+                        "adobe_lane",
+                        "core.adobe_docs_prompt_lane",
+                        "late_adobe_lane",
+                    ),
+                )
+            ),
             web_runtime_payload={
                 "enabled": True,
                 "activation_mode": "manual",
@@ -244,6 +333,154 @@ class MainPayloadManifestTests(unittest.TestCase):
         self.assertEqual(lanes["adobe_lane"]["passage_count"], 3)
         self.assertEqual(lanes["export_lane"]["status"], "not_applicable")
         self.assertEqual(lanes["image_lane"]["status"], "not_applicable")
+        self.assertEqual(manifest["messages"][1]["logical_roles"], ["note_lane"])
+        self.assertEqual(manifest["messages"][2]["logical_roles"], ["document_lane"])
+        self.assertEqual(manifest["messages"][3]["logical_roles"], ["biblio_lane"])
+        self.assertEqual(manifest["messages"][4]["logical_roles"], ["adobe_lane"])
+        self.assertIn("web_lane", manifest["messages"][-1]["logical_roles"])
+
+    def test_real_lane_injections_are_classified_from_structured_sources(self) -> None:
+        prompt_messages = [
+            {"role": "system", "content": "system"},
+            {"role": "user", "content": "current question"},
+        ]
+        message_sources: dict[int, dict[str, object]] = {}
+
+        note_read = {
+            "ok": True,
+            "note": {
+                "note_v1_user": {"note_ref": "note_ref_test", "title": "Synthetic note"},
+                "note_v1_technical": {"folder_ref": "folder_ref_test", "title_hash": "titlehash123"},
+            },
+            "note_conversation": {
+                "note_ref": "note_ref_test",
+                "folder_ref": "folder_ref_test",
+                "markdown_char_count": 24,
+                "markdown_content": "synthetic note body only",
+            },
+        }
+        before = main_payload_manifest.capture_message_refs(prompt_messages)
+        notes_lane = workspace_folder_notes_prompt_lane.inject_workspace_folder_notes_prompt_lane(
+            prompt_messages,
+            [note_read],
+            requested_count=1,
+        )
+        message_sources.update(
+            main_payload_manifest.message_sources_for_new_messages(
+                prompt_messages,
+                before,
+                logical_roles=("note_lane",),
+                origin="core.workspace_folder_notes_prompt_lane",
+                origin_stage="late_note_lane",
+                content_kind="tool_lane_context",
+            )
+        )
+
+        before = main_payload_manifest.capture_message_refs(prompt_messages)
+        document_lane = active_document_prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [
+                {
+                    "document_id": "doc-test",
+                    "filename": "synthetic.txt",
+                    "media_kind": "text",
+                    "text_chars": 28,
+                    "text_content": "synthetic document body only",
+                    "injectable": True,
+                }
+            ],
+            model="openai/gpt-5.1",
+            count_tokens_func=lambda _messages, _model: 20,
+            max_tokens=8000,
+        )
+        message_sources.update(
+            main_payload_manifest.message_sources_for_new_messages(
+                prompt_messages,
+                before,
+                logical_roles=("document_lane",),
+                origin="core.active_document_prompt_lane",
+                origin_stage="late_document_lane",
+                content_kind="tool_lane_context",
+            )
+        )
+
+        prompt_lane = SimpleNamespace(decisions=(object(),), passage_count=1, chars=32, max_passages=3, max_total_chars=8000)
+        biblio_result = SimpleNamespace(
+            enabled=True,
+            used=True,
+            reason_code="",
+            query_kind="read_passages",
+            observability_payload={"status": "ok", "enabled": True, "used": True},
+            prompt_lane=prompt_lane,
+            prompt_message={"role": "system", "content": "PASSAGES DE BIBLIOTHEQUE SYNTHETIQUES"},
+            final_response_lock=None,
+        )
+        before = main_payload_manifest.capture_message_refs(prompt_messages)
+        biblio_chat_runtime.inject_biblio_prompt_lane(prompt_messages, biblio_result)
+        message_sources.update(
+            main_payload_manifest.message_sources_for_new_messages(
+                prompt_messages,
+                before,
+                logical_roles=("biblio_lane",),
+                origin="biblio.chat_runtime",
+                origin_stage="late_biblio_lane",
+                content_kind="tool_lane_context",
+            )
+        )
+
+        adobe_context = SimpleNamespace(
+            active=True,
+            product="photoshop",
+            status="ok",
+            evidence="synthetic",
+            sources=(),
+            passages=(
+                SimpleNamespace(
+                    source_type="helpx",
+                    canonical_url="",
+                    heading="Crop",
+                    section_path=("Crop",),
+                    text="synthetic adobe body only",
+                ),
+            ),
+            injected_chars=25,
+            reason_codes=("adobe_context_ready",),
+        )
+        before = main_payload_manifest.capture_message_refs(prompt_messages)
+        adobe_lane = adobe_docs_prompt_lane.inject_adobe_prompt_lane(prompt_messages, adobe_context)
+        message_sources.update(
+            main_payload_manifest.message_sources_for_new_messages(
+                prompt_messages,
+                before,
+                logical_roles=("adobe_lane",),
+                origin="core.adobe_docs_prompt_lane",
+                origin_stage="late_adobe_lane",
+                content_kind="tool_lane_context",
+            )
+        )
+
+        manifest = _build_manifest(
+            prompt_messages=prompt_messages,
+            message_sources=message_sources,
+            workspace_notes_lane=notes_lane,
+            active_document_lane=document_lane,
+            biblio_result=biblio_result,
+            adobe_context=adobe_context,
+            adobe_lane=adobe_lane,
+        )
+
+        roles_by_stage: dict[str, set[str]] = {}
+        for message in manifest["messages"]:
+            roles_by_stage.setdefault(message["origin_stage"], set()).update(message["logical_roles"])
+
+        self.assertIn("note_lane", roles_by_stage["late_note_lane"])
+        self.assertIn("document_lane", roles_by_stage["late_document_lane"])
+        self.assertIn("biblio_lane", roles_by_stage["late_biblio_lane"])
+        self.assertIn("adobe_lane", roles_by_stage["late_adobe_lane"])
+        encoded = _encoded(manifest)
+        self.assertNotIn("synthetic note body only", encoded)
+        self.assertNotIn("synthetic document body only", encoded)
+        self.assertNotIn("synthetic adobe body only", encoded)
 
     def test_new_conversation_without_memory_keeps_noop_surfaces_visible(self) -> None:
         manifest = _build_manifest(

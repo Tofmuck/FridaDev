@@ -246,6 +246,16 @@ class ChatWorkspaceFolderNotesPromptTests(unittest.TestCase):
         self.assertEqual(manifest["lane_statuses"]["note_lane"]["status"], "ok")
         self.assertEqual(manifest["lane_statuses"]["note_lane"]["injected_count"], 1)
         self.assertFalse(manifest["lane_statuses"]["note_lane"]["raw_lane_content_included"])
+        note_messages = [
+            message
+            for message in manifest["messages"]
+            if "note_lane" in message["logical_roles"]
+        ]
+        self.assertGreaterEqual(len(note_messages), 1)
+        self.assertTrue(
+            all(message["origin"] == "core.workspace_folder_notes_prompt_lane" for message in note_messages)
+        )
+        self.assertTrue(all(message["origin_stage"] == "late_note_lane" for message in note_messages))
         self.assertNotIn(markdown, str(manifest))
         self.assertEqual(conversation["messages"][0]["content"], "Lis cette note")
         self.assertNotIn(markdown, str(conversation["messages"]))

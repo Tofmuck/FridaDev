@@ -62,7 +62,7 @@ content-free relue, testee ou explicitement reportee post-V1.
 | - [ ] | P2-MEMORY-01 | Lot 4 | Difference arbiter observe vs memoire reellement injectee prouvee dans le manifeste ou les traces. |
 | - [ ] | P2-WINDOWS-01 | Lot 4 | Fenetres memory, hermeneutic node, Biblio, Agenda et prompt final cartographiees par tailles/empreintes. |
 | - [ ] | P2-IDENTITY-STAGING-01 | Lot 4 | Staging mutable conversation-scoped documente comme non disponible en nouvelle conversation avant canonisation. |
-| - [x] | P2-LANE-PROVENANCE-01 | Lot 2 | Role provider et role logique distingues pour chaque bloc/lane dans le manifeste. |
+| - [x] | P2-LANE-PROVENANCE-01 | Lot 2 puis Lot 2.1 | Role provider et role logique distingues par provenance structuree, sans classification souveraine par contenu textuel. |
 | - [ ] | P2-FINAL-LOCK-POLICY-01 | Lot 5 | Politique de priorite Agenda/Biblio final-lock documentee et testee. |
 | - [ ] | P2-NOTES-UI-01 | Lot 5 | Statut Notes UI tranche: hors chemin chat courant documente, ou branchement explicite teste. |
 | - [ ] | P2-OBS-WRITER-01 | Lot 3 | Guard writer-side livre contre cles/payloads dangereux, avec sentinelles anti-fuite. |
@@ -145,6 +145,17 @@ content-free dans `app/observability/admin_log_projection.py`, et tests
 dans `app/tests/unit/chat/test_chat_workspace_folder_notes_prompt.py`.
 
 Findings clos par ce lot: `P1-PAYLOAD-01`, `P2-LANE-PROVENANCE-01`.
+
+Correctif Lot 2.1 livre le 2026-06-22:
+
+- [x] Remplacer la provenance de lanes Notes, Documents, Biblio et Adobe par
+  des sources structurees capturees autour des injections reelles.
+- [x] Prouver que de fausses balises dans un message utilisateur restent
+  `user_turn`.
+- [x] Aligner les roles `identity_stable` et `identity_mutable` du premier
+  message systeme sur les statuts identity reellement selectionnes.
+- [x] Extraire le manifeste et la projection admin en modules de responsabilite
+  claire, sans `utils.py` ni `helpers.py`.
 
 Finding laisse ouvert: `P3-OFFLINE-PAYLOAD-EXPORT-01`. Le script offline
 historique est non-runtime et n'a pas ete appele, mais il reste trop riche pour

@@ -109,7 +109,7 @@ Chaque entree de `messages[]` doit decrire un bloc final sans contenu brut:
 | --- | --- |
 | `index` | Position finale zero-based apres injections tardives. |
 | `provider_role` | Role provider effectif: `system`, `user`, `assistant`, `tool` ou autre role supporte si ajoute plus tard. |
-| `logical_roles` | Liste des roles logiques internes. Exemples: `system_prompt`, `developer_prompt`, `time_reference`, `identity_stable`, `identity_mutable`, `summary`, `memory`, `context_hints`, `dialogue_user`, `dialogue_assistant`, `web_lane`, `note_lane`, `document_lane`, `biblio_lane`, `agenda_lane`, `adobe_lane`, `assistant_output_policy`. |
+| `logical_roles` | Liste des roles logiques internes. Exemples: `system_prompt`, `developer_prompt`, `time_reference`, `identity_stable`, `identity_mutable`, `summary`, `memory`, `context_hints`, `user_turn`, `assistant_turn`, `web_lane`, `note_lane`, `document_lane`, `biblio_lane`, `agenda_lane`, `adobe_lane`, `assistant_output_policy`. |
 | `origin` | Module, sous-systeme ou lane source, sous forme allowlistee. |
 | `origin_stage` | Etape d'injection: base prompt, web late injection, note lane, active document lane, biblio lane, agenda lane, adobe lane, output guard, final lock. |
 | `content_kind` | Type abstrait: instruction, resume, trace memoire, dialogue, lane contract, lane content, guard, tool evidence, override metadata. |
@@ -210,6 +210,31 @@ le manifeste doit conserver deux plans distincts:
 
 Cette distinction est obligatoire pour resoudre le risque de provenance entre
 parole humaine et contexte outille.
+
+### Provenance structuree obligatoire
+
+Le manifeste ne doit jamais attribuer `note_lane`, `document_lane`,
+`biblio_lane` ou `adobe_lane` par simple inspection du texte final du message.
+Les libelles visibles tels que `[NOTES DE DOSSIER ...]`,
+`[DOCUMENTS ACTIFS ...]`, `[ADOBE DOCS ...]` ou
+`PASSAGES DE BIBLIOTHEQUE ...` sont des details de rendu prompt, pas une preuve
+de provenance.
+
+La provenance souveraine pour ces lanes doit etre capturee autour de
+l'injection reelle sous forme content-free: index ou reference locale du bloc,
+role logique attendu, origine allowlistee, etape d'injection et type abstrait de
+contenu. Un message utilisateur contenant une fausse balise de lane doit rester
+`logical_roles=["user_turn"]` si aucune injection structuree ne l'a produit.
+
+`web_lane` est le cas separe: la lane peut etre portee par le dernier message
+provider `user` seulement si le contexte Web a reellement ete injecte par le
+runtime Web, selon un payload structure indiquant une activation `manual` ou
+`auto` et une injection effective.
+
+Les roles `identity_stable` et `identity_mutable` ne doivent etre portes par le
+message systeme que si les lanes d'identite correspondantes sont selectionnees
+dans les donnees structurees du tour. Le manifeste ne doit pas dire a la fois
+qu'un message contient une identite et que la lane identity est `not_selected`.
 
 ### Lanes et statuts requis
 
@@ -518,6 +543,12 @@ juste avant `run_llm_exchange`, et projete en admin par allowlist de schema
 `main_payload_manifest_v1`. Le manifeste couvre aussi le contournement du modele
 principal par final response lock avec `main_model_called=false`.
 
+Correctif Lot 2.1 au 2026-06-22: la provenance des lanes Notes, Documents,
+Biblio et Adobe est fondee sur des sources structurees capturees autour des
+injections reelles, et non sur des marqueurs textuels spoofables. Les roles
+`identity_stable` et `identity_mutable` du premier message systeme suivent les
+statuts structuraux d'identite.
+
 Tests de reference Lot 2:
 
 - `app/tests/unit/logs/test_main_payload_manifest.py`
@@ -544,7 +575,8 @@ suivantes ne sont pas remplies:
 
 ## Limites assumees
 
-Ce contrat est normatif pour les lots suivants, mais ne prouve pas encore le
-payload runtime courant. Tant que le Lot 2 n'existe pas, l'ordre final precise
-reste une cartographie d'audit et non une preuve instrumentee. Cette limite est
-volontaire: le Lot 1 grave les mots et les verrous avant de toucher au runtime.
+Ce contrat est normatif pour les lots suivants. Depuis le Lot 2, le payload
+runtime courant est prouve par un manifeste content-free borne; les limites
+restantes portent sur les lots non livres: garde writer-side, fenetres
+specialisees, final locks produit, tests qualitatifs artificiels et capsule
+runtime eventuelle.
