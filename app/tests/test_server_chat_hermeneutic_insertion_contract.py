@@ -192,7 +192,9 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                     'upstream_output_regime_proposed',
                 ],
                 'applied_hard_guards': [],
-                'arbiter_reason': 'lecture locale suffisante malgre la recommandation amont',
+                'arbiter_reason_present': True,
+                'arbiter_reason_chars': len('lecture locale suffisante malgre la recommandation amont'),
+                'arbiter_reason_included': False,
             },
         )
         prompt_prepared = next(event for event in observed_events if event.get('stage') == 'prompt_prepared')
@@ -811,10 +813,13 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                     'upstream_output_regime_proposed',
                 ],
                 'applied_hard_guards': [],
-                'arbiter_reason': 'lecture locale suffisante malgre la recommandation amont',
+                'arbiter_reason_present': True,
+                'arbiter_reason_chars': len('lecture locale suffisante malgre la recommandation amont'),
+                'arbiter_reason_included': False,
                 'projected_judgment_posture': 'answer',
                 'pipeline_directives_final': ['posture_answer', 'regime_simple'],
                 'decision_source': 'primary',
+                'status_schema_version': 'agentic_v1',
                 'model': 'openai/gpt-5.4-mini',
             },
         )

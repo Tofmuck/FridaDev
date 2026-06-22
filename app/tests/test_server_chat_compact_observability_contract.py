@@ -330,7 +330,9 @@ class ServerChatCompactObservabilityContractTests(unittest.TestCase):
         self.assertEqual(web_payload['reason_code'], '')
         self.assertEqual(web_payload['results_count'], 2)
         self.assertTrue(web_payload['explicit_url_detected'])
-        self.assertEqual(web_payload['explicit_url'], 'https://example.com/article')
+        self.assertEqual(web_payload['explicit_url_chars'], len('https://example.com/article'))
+        self.assertFalse(web_payload['explicit_url_included'])
+        self.assertNotIn('explicit_url', web_payload)
         self.assertEqual(web_payload['read_state'], 'page_not_read_snippet_fallback')
         self.assertEqual(web_payload['primary_read_status'], 'empty')
         self.assertEqual(web_payload['primary_read_filter'], 'raw')
@@ -345,7 +347,7 @@ class ServerChatCompactObservabilityContractTests(unittest.TestCase):
             [
                 {
                     'rank': 1,
-                    'url': 'https://example.com/article',
+                    'source_domain': 'example.com',
                     'source_origin': 'explicit_url',
                     'is_primary_source': True,
                     'used_in_prompt': False,
@@ -353,10 +355,13 @@ class ServerChatCompactObservabilityContractTests(unittest.TestCase):
                     'crawl_status': 'empty',
                     'content_chars': 0,
                     'truncated': False,
+                    'url_present': True,
+                    'url_chars': len('https://example.com/article'),
+                    'url_included': False,
                 },
                 {
                     'rank': 2,
-                    'url': 'https://fallback.example/article',
+                    'source_domain': 'fallback.example',
                     'source_origin': 'search_result',
                     'is_primary_source': False,
                     'used_in_prompt': True,
@@ -364,9 +369,14 @@ class ServerChatCompactObservabilityContractTests(unittest.TestCase):
                     'crawl_status': 'not_attempted',
                     'content_chars': len('Snippet fallback'),
                     'truncated': False,
+                    'url_present': True,
+                    'url_chars': len('https://fallback.example/article'),
+                    'url_included': False,
                 },
             ],
         )
+        self.assertNotIn('https://example.com/article', str(web_payload))
+        self.assertNotIn('https://fallback.example/article', str(web_payload))
         self.assertNotIn('context_block', web_payload)
         self.assertNotIn('sources', web_payload)
         self.assertNotIn('Snippet fallback', str(web_payload))

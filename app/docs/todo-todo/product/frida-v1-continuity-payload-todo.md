@@ -65,7 +65,7 @@ content-free relue, testee ou explicitement reportee post-V1.
 | - [x] | P2-LANE-PROVENANCE-01 | Lot 2 puis Lot 2.1 | Role provider et role logique distingues par provenance structuree, sans classification souveraine par contenu textuel. |
 | - [ ] | P2-FINAL-LOCK-POLICY-01 | Lot 5 | Politique de priorite Agenda/Biblio final-lock documentee et testee. |
 | - [ ] | P2-NOTES-UI-01 | Lot 5 | Statut Notes UI tranche: hors chemin chat courant documente, ou branchement explicite teste. |
-| - [x] | P2-OBS-WRITER-01 | Lot 3 puis Lots 3.1/3.2/3.3 | Guard writer-side schema-first/default-deny strict livre contre cles/payloads dangereux, texte libre sous cles neutres et suffixes textuels inconnus, avec schemas content-free existants preserves et sentinelles anti-fuite. |
+| - [x] | P2-OBS-WRITER-01 | Lot 3 puis Lots 3.1/3.2/3.3/4.1 | Guard writer-side schema-first/default-deny strict livre contre cles/payloads dangereux, texte libre sous cles neutres et suffixes textuels inconnus, avec schemas content-free existants preserves et sentinelles anti-fuite. |
 | - [x] | P3-SOFT-LIMIT-01 | Lot 4 | Soft limit explique: depassement visible, politique de non-troncation observee, compteurs d'exclusion/troncation a zero. |
 | - [ ] | P3-NOOP-LANES-01 | Lot 5 | Non-selection Documents/Notes observable ou absence justifiee sans confusion avec lane non instrumentee. |
 | - [ ] | P3-DOC-01 | Lot 1 puis Lot Z | Docs historiques requalifiees ou indexees avec statuts actifs/archive/stale. |
@@ -280,6 +280,27 @@ Finding laisse ouvert volontairement: `P2-SUMMARY-01`. Lot 4 prouve que le
 resume est visible et que la nuance de voix n'est pas mesuree; il ne prouve pas
 encore une continuite qualitative de presence. Cloture attendue en Lot 6 avec
 fixtures artificielles nouvelle conversation vs conversation longue.
+
+Correctif Lot 4.1 livre le 2026-06-22:
+
+- [x] Preserver les payloads content-free legitimes introduits ou exposes par
+  Lot 4: `prompt_prepared`, `hermeneutic_node_insertion`,
+  `validation_agent`, `stimmung_agent`, Biblio, Agenda, summaries et `llm_call`
+  ne doivent plus devenir des `observability_payload_rejected` quand leur
+  schema est borne.
+- [x] Garder la garde writer-side schema-first/default-deny: aucune cle
+  inconnue, string libre, URL brute, cause brute, prompt/message/content ou
+  payload provider brut n'est autorise.
+- [x] Remplacer dans les payloads compacts Web et validation les champs bruts
+  restants par presence, longueur, domaine, compteurs et flags
+  `*_included=false`.
+- [x] Reduire l'estimation tokens du manifeste a une estimation globale du
+  prompt final, reutilisee par `messages`, `windows.prompt_final` et
+  `budgets.prompt`, au lieu de multiplier les appels au compteur.
+
+Findings Lot 4.1: le finding P2 de bruit writer-side sur payloads legitimes est
+traite par schemas explicites; le finding P3 de multiplication du compteur de
+tokens est traite par estimation prompt-level unique. Aucun Lot 5+ n'est ouvert.
 
 ### Lot 5 - Lanes et conflits
 

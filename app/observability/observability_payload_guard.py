@@ -176,7 +176,7 @@ def _inspect_general_scalar(key: str, value: Any, issues: dict[str, int]) -> Non
         _add_issue(issues, issue)
         return
     if value is None:
-        if not _is_safe_general_scalar_key(key):
+        if not (_is_safe_general_scalar_key(key) or _is_safe_general_text_key(key)):
             _add_issue(issues, "unknown_scalar_key")
         return
     if isinstance(value, bool):

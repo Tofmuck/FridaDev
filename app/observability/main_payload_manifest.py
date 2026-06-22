@@ -115,6 +115,20 @@ def _conversation_state(conversation: Mapping[str, Any] | None, turn_id: str | N
     }
 
 
+def _estimate_prompt_tokens_once(
+    *,
+    messages: Sequence[Mapping[str, Any]],
+    runtime_main_model: str,
+    count_tokens_func: Callable[[list[dict[str, Any]], str], int] | None,
+) -> int | None:
+    if not callable(count_tokens_func):
+        return None
+    try:
+        return max(0, int(count_tokens_func([dict(message) for message in messages], runtime_main_model) or 0))
+    except Exception:
+        return None
+
+
 def build_main_payload_manifest(
     *,
     conversation: Mapping[str, Any] | None,
@@ -154,6 +168,11 @@ def build_main_payload_manifest(
     messages = [message for message in prompt_messages if isinstance(message, Mapping)]
     final_response_lock = _final_response_lock_payload(assistant_response_override)
     conversation_state = _conversation_state(conversation, turn_id)
+    prompt_estimated_tokens = _estimate_prompt_tokens_once(
+        messages=messages,
+        runtime_main_model=runtime_main_model,
+        count_tokens_func=count_tokens_func,
+    )
     lane_statuses = build_lane_statuses(
         summary_payload=summary_payload,
         identity_payload=identity_payload,
@@ -193,7 +212,7 @@ def build_main_payload_manifest(
             identity_roles_present=identity_roles_present(lane_statuses),
             message_sources=message_sources,
             model=runtime_main_model,
-            count_tokens_func=count_tokens_func,
+            count_tokens_func=None,
         ),
         "lane_statuses": lane_statuses,
         "windows": build_context_windows(
@@ -215,12 +234,14 @@ def build_main_payload_manifest(
             agenda_recent_dialogue=agenda_recent_dialogue,
             runtime_main_model=runtime_main_model,
             count_tokens_func=count_tokens_func,
+            prompt_estimated_tokens=prompt_estimated_tokens,
         ),
         "budgets": {
             "prompt": build_prompt_budget(
                 prompt_messages=messages,
                 runtime_main_model=runtime_main_model,
-                count_tokens_func=count_tokens_func,
+                estimated_prompt_tokens=prompt_estimated_tokens,
+                count_tokens_func=None,
                 max_tokens=safe_int(max_tokens),
                 prompt_soft_token_limit=prompt_soft_token_limit,
             ),

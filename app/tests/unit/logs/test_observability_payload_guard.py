@@ -211,6 +211,211 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertIn("unknown_mapping_key", decision.payload["issue_classes"])
         self.assertIn("unknown_list_key", decision.payload["issue_classes"])
 
+    def test_prompt_prepared_content_free_payload_passes(self) -> None:
+        payload = {
+            "messages_count": 2,
+            "estimated_prompt_tokens": 64,
+            "memory_items_used": 0,
+            "memory_prompt_injection": {
+                "injected": False,
+                "injection_class": "none",
+                "injection_lanes": [],
+                "injection_lane_count": 0,
+                "prompt_block_count": 0,
+                "trace_memory_injected": False,
+                "trace_memory_injected_count": 0,
+                "summary_context_injected": False,
+                "summary_context_injected_count": 0,
+                "memory_traces_injected": False,
+                "memory_traces_injected_count": 0,
+                "injected_candidate_ids": [],
+                "memory_context_injected": False,
+                "memory_context_summary_count": 0,
+                "injected_traces_with_summary_id_count": 0,
+                "injected_traces_with_parent_summary_count": 0,
+                "parent_summaries_resolved_count": 0,
+                "parent_summaries_injected_count": 0,
+                "parent_summaries_injected": [],
+                "context_hints_injected": False,
+                "context_hints_injected_count": 0,
+            },
+            "identity_prompt_injection": {
+                "injected": False,
+                "identity_block_present": False,
+                "identity_block_chars": 0,
+                "identity_block_sha256_12": None,
+                "used_identity_ids_count": 0,
+                "staging_included": False,
+                "subjects": {"llm": {"selected_count": 0}, "user": {"selected_count": 0}},
+            },
+            "hermeneutic_prompt_injection": {
+                "present": True,
+                "chars": 42,
+                "sha256_12": "abc123def456",
+                "final_judgment_posture": "answer",
+                "final_output_regime": "simple",
+                "epistemic_regime": "incertain",
+                "directives_count": 2,
+                "source": "primary",
+                "fallback": False,
+                "reason_code": "",
+            },
+            "memory_retrieval": {
+                "status": "ok",
+                "reason_code": "no_data",
+                "top_k_requested": 5,
+                "top_k_returned": 0,
+            },
+            "prompt_kind": "chat_system_augmented",
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+
+    def test_hermeneutic_node_insertion_content_free_payload_passes(self) -> None:
+        payload = {
+            "insertion_point_reached": True,
+            "mode": "shadow",
+            "inputs": {
+                "time": {"present": True, "timezone": "Europe/Paris", "day_part_class": "morning"},
+                "memory_retrieved": {"present": True, "status": "ok", "reason_code": "", "retrieved_count": 0},
+                "memory_arbitration": {
+                    "present": True,
+                    "status": "skipped",
+                    "reason_code": "no_data",
+                    "decisions_count": 0,
+                    "kept_count": 0,
+                    "rejected_count": 0,
+                },
+                "summary": {"present": False, "status": "missing"},
+                "identity": {
+                    "present": True,
+                    "frida": {"static_present": True, "mutable_present": False, "mutable_len": 0},
+                    "user": {"static_present": False, "mutable_present": False, "mutable_len": 0},
+                },
+                "recent_context": {"present": True, "messages_count": 1},
+                "recent_window": {"present": True, "turn_count": 1, "has_in_progress_turn": True},
+                "user_turn": {
+                    "present": True,
+                    "geste_dialogique_dominant": "adresse_relationnelle",
+                    "regime_probatoire": {
+                        "principe": "maximal_possible",
+                        "types_de_preuve_attendus": [],
+                        "provenances": [],
+                        "regime_de_vigilance": "standard",
+                    },
+                    "qualification_temporelle": {
+                        "portee_temporelle": "atemporale",
+                        "ancrage_temporel": "non_ancre",
+                    },
+                },
+                "user_turn_signals": {"present": True, "active_signal_families": [], "active_signal_families_count": 0},
+                "stimmung": {
+                    "present": True,
+                    "dominant_tone": "neutralite",
+                    "active_tones": [{"tone": "neutralite", "strength": 3}],
+                    "stability": "emerging",
+                    "shift_state": "steady",
+                    "turns_considered": 1,
+                },
+                "web": {
+                    "present": True,
+                    "enabled": True,
+                    "status": "ok",
+                    "activation_mode": "manual",
+                    "results_count": 1,
+                    "explicit_url_detected": True,
+                    "explicit_url_chars": 28,
+                    "explicit_url_included": False,
+                    "source_material_summary": [
+                        {
+                            "rank": 1,
+                            "source_domain": "example.com",
+                            "source_origin": "explicit_url",
+                            "is_primary_source": True,
+                            "used_in_prompt": False,
+                            "used_content_kind": "none",
+                            "crawl_status": "empty",
+                            "url_present": True,
+                            "url_chars": 28,
+                            "url_included": False,
+                        }
+                    ],
+                },
+            },
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+
+    def test_hermeneutic_node_insertion_raw_url_is_rejected(self) -> None:
+        payload = {
+            "insertion_point_reached": True,
+            "mode": "shadow",
+            "inputs": {"web": {"explicit_url": "https://example.invalid/private"}},
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("url_key", decision.payload["issue_classes"])
+
+    def test_validation_and_stimmung_content_free_payloads_pass(self) -> None:
+        validation_payload = {
+            "dialogue_messages_count": 1,
+            "dialogue_truncated": False,
+            "current_user_retained": True,
+            "last_assistant_retained": False,
+            "upstream_recommendation_posture": "clarify",
+            "upstream_output_regime_proposed": "meta",
+            "upstream_active_signal_families": ["referent"],
+            "upstream_constraint_present": False,
+            "validation_decision": "challenge",
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_followed_upstream": False,
+            "advisory_recommendations_followed": [],
+            "advisory_recommendations_overridden": ["upstream_recommendation_posture"],
+            "applied_hard_guards": [],
+            "arbiter_reason_present": True,
+            "arbiter_reason_chars": 12,
+            "arbiter_reason_included": False,
+            "projected_judgment_posture": "answer",
+            "pipeline_directives_final": ["posture_answer"],
+            "decision_source": "primary",
+            "model": "openai/gpt-5.4-mini",
+            "status_schema_version": "agentic_v1",
+        }
+        stimmung_payload = {
+            "present": True,
+            "dominant_tone": "neutralite",
+            "tones_count": 1,
+            "tones": [{"tone": "neutralite", "strength": 3}],
+            "confidence": 0.5,
+            "decision_source": "fallback",
+            "model": "openai/gpt-5.4-mini",
+            "status_schema_version": "agentic_v1",
+        }
+
+        self.assertTrue(observability_payload_guard.guard_payload(validation_payload).accepted)
+        self.assertTrue(observability_payload_guard.guard_payload(stimmung_payload).accepted)
+
+    def test_raw_arbiter_reason_is_rejected(self) -> None:
+        payload = {
+            "arbiter_reason": "lecture libre a ne jamais stocker",
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("unknown_string_key", decision.payload["issue_classes"])
+
     def test_valid_main_payload_manifest_passes_writer_guard(self) -> None:
         manifest = main_payload_manifest.build_main_payload_manifest(
             conversation={"id": "conv-guard", "messages": []},

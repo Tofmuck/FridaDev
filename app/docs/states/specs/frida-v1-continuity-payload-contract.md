@@ -7,7 +7,9 @@ Lot 2 a livre le manifeste runtime content-free sans capsule. Lot 3 a livre la
 garde writer-side d'observabilite, durcie en Lots 3.1, 3.2 et 3.3 en politique
 schema-first/default-deny stricte. Lot 4 a etendu le manifeste aux fenetres de
 continuite content-free: summary, memory observee vs injectee, hermeneutic node,
-Biblio, Agenda, identity staging et soft-limit final.
+Biblio, Agenda, identity staging et soft-limit final. Lot 4.1 preserve les
+payloads d'observabilite content-free legitimes sous cette garde stricte et
+reduit l'estimation de tokens du manifeste a un calcul prompt-level unique.
 
 Ce contrat definit deux objets cibles:
 
@@ -377,6 +379,13 @@ continuite trans-conversation disponible.
 La politique actuelle est `observability_only_no_prompt_exclusion`: un
 depassement du soft limit est observable, mais ne prouve pas une exclusion ou
 troncation effective.
+
+L'estimation de tokens du manifeste doit rester content-free et sobre. Quand un
+compteur est disponible, Lot 4.1 impose une estimation globale du prompt final,
+calculee une seule fois au point du manifeste et reutilisee dans
+`messages[]`, `windows.prompt_final` et `budgets.prompt`. Le manifeste ne doit
+pas multiplier les appels au compteur par message si une estimation prompt-level
+suffit a prouver les budgets et la fenetre finale.
 
 ### Runtime settings content-free
 
@@ -750,6 +759,17 @@ etre explicitement allowlistees. Une cle inconnue ne doit pas etre acceptee
 simplement parce qu'elle se termine par un suffixe safe-code tel que `_code`,
 `_reason`, `_status`, `_mode` ou `_requested`. Les familles legitimes doivent
 etre ajoutees comme cles explicites ou schemas bornes.
+
+Correctif Lot 4.1 au 2026-06-22: la garde reste schema-first/default-deny, mais
+les schemas content-free existants exposes par Lot 4 doivent etre acceptes sans
+bruit de rejet: `prompt_prepared`, `hermeneutic_node_insertion`,
+`validation_agent`, `stimmung_agent`, Biblio, Agenda, summaries et `llm_call`.
+Les champs bruts residuels de ces payloads doivent etre remplaces par presence,
+longueur, domaine, compteurs, reason codes et flags `*_included=false`.
+Exemples interdits: `arbiter_reason` brut, URL explicite brute, prompt/message
+ou provider payload. Exemples autorises: `arbiter_reason_present`,
+`arbiter_reason_chars`, `arbiter_reason_included=false`, `source_domain`,
+`url_present`, `url_chars`, `url_included=false`.
 
 ## No-go avant runtime capsule
 

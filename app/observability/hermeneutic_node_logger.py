@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from typing import Any, Mapping, Sequence
+from urllib.parse import urlparse
 
 from observability import chat_turn_logger
 
@@ -26,6 +27,27 @@ def _sha256_12(value: str) -> str:
     if not value:
         return ""
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+
+
+def _source_domain(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = urlparse(text if "://" in text else f"//{text}")
+    except Exception:
+        return ""
+    return str(parsed.netloc or "").split("@")[-1].split(":")[0].lower()[:160]
+
+
+def _redact_url_fields(payload: Mapping[str, Any]) -> dict[str, Any]:
+    source = dict(payload)
+    url = str(source.pop("url", "") or "")
+    source["source_domain"] = str(source.get("source_domain") or _source_domain(url) or "")
+    source["url_present"] = bool(url)
+    source["url_chars"] = len(url)
+    source["url_included"] = False
+    return source
 
 
 def _bool_str(value: Any) -> bool:
@@ -178,45 +200,51 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     for item in _sequence(data.get('source_material_summary')):
         source = _mapping(item)
         source_material_summary.append(
-            {
-                'rank': int(source.get('rank') or 0),
-                'url': str(source.get('url') or ''),
-                'source_origin': str(source.get('source_origin') or 'search_result'),
-                'is_primary_source': bool(source.get('is_primary_source', False)),
-                'used_in_prompt': bool(source.get('used_in_prompt', False)),
-                'used_content_kind': str(source.get('used_content_kind') or 'none'),
-                'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
-                'content_chars': int(source.get('content_chars') or 0),
-                'truncated': bool(source.get('truncated', False)),
-            }
+            _redact_url_fields(
+                {
+                    'rank': int(source.get('rank') or 0),
+                    'url': str(source.get('url') or ''),
+                    'source_origin': str(source.get('source_origin') or 'search_result'),
+                    'is_primary_source': bool(source.get('is_primary_source', False)),
+                    'used_in_prompt': bool(source.get('used_in_prompt', False)),
+                    'used_content_kind': str(source.get('used_content_kind') or 'none'),
+                    'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
+                    'content_chars': int(source.get('content_chars') or 0),
+                    'truncated': bool(source.get('truncated', False)),
+                }
+            )
         )
     crawl4ai_extraction_summary = []
     for item in _sequence(data.get('crawl4ai_extraction_summary')):
         source = _mapping(item)
+        crawl_query_hash_present = bool(str(source.get('crawl_query_sha256_12') or '').strip())
         crawl4ai_extraction_summary.append(
-            {
-                'rank': int(source.get('rank') or 0),
-                'url': str(source.get('url') or ''),
-                'source_origin': str(source.get('source_origin') or 'search_result'),
-                'is_primary_source': bool(source.get('is_primary_source', False)),
-                'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
-                'crawl_filter': str(source.get('crawl_filter') or ''),
-                'crawl_filter_requested': str(source.get('crawl_filter_requested') or ''),
-                'crawl_policy_kind': str(source.get('crawl_policy_kind') or ''),
-                'crawl_policy_reason': str(source.get('crawl_policy_reason') or ''),
-                'crawl_cache_mode': str(source.get('crawl_cache_mode') or ''),
-                'crawl_query_sha256_12': str(source.get('crawl_query_sha256_12') or ''),
-                'crawl_query_chars': int(source.get('crawl_query_chars') or 0),
-                'crawl_fallback_used': bool(source.get('crawl_fallback_used', False)),
-                'crawl_fallback_reason': str(source.get('crawl_fallback_reason') or ''),
-                'crawl_primary_status': str(source.get('crawl_primary_status') or ''),
-                'crawl_fallback_status': str(source.get('crawl_fallback_status') or ''),
-                'crawl_markdown_chars': int(source.get('crawl_markdown_chars') or 0),
-                'crawl_max_chars': int(source.get('crawl_max_chars') or 0),
-                'used_content_kind': str(source.get('used_content_kind') or 'none'),
-                'content_chars': int(source.get('content_chars') or 0),
-                'truncated': bool(source.get('truncated', False)),
-            }
+            _redact_url_fields(
+                {
+                    'rank': int(source.get('rank') or 0),
+                    'url': str(source.get('url') or ''),
+                    'source_origin': str(source.get('source_origin') or 'search_result'),
+                    'is_primary_source': bool(source.get('is_primary_source', False)),
+                    'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
+                    'crawl_filter': str(source.get('crawl_filter') or ''),
+                    'crawl_filter_requested': str(source.get('crawl_filter_requested') or ''),
+                    'crawl_policy_kind': str(source.get('crawl_policy_kind') or ''),
+                    'crawl_policy_reason': str(source.get('crawl_policy_reason') or ''),
+                    'crawl_cache_mode': str(source.get('crawl_cache_mode') or ''),
+                    'crawl_query_hash_present': crawl_query_hash_present,
+                    'crawl_query_hash_included': False,
+                    'crawl_query_chars': int(source.get('crawl_query_chars') or 0),
+                    'crawl_fallback_used': bool(source.get('crawl_fallback_used', False)),
+                    'crawl_fallback_reason': str(source.get('crawl_fallback_reason') or ''),
+                    'crawl_primary_status': str(source.get('crawl_primary_status') or ''),
+                    'crawl_fallback_status': str(source.get('crawl_fallback_status') or ''),
+                    'crawl_markdown_chars': int(source.get('crawl_markdown_chars') or 0),
+                    'crawl_max_chars': int(source.get('crawl_max_chars') or 0),
+                    'used_content_kind': str(source.get('used_content_kind') or 'none'),
+                    'content_chars': int(source.get('content_chars') or 0),
+                    'truncated': bool(source.get('truncated', False)),
+                }
+            )
         )
     return {
         'present': bool(data),
@@ -467,7 +495,8 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         ),
         'results_count': int(data.get('results_count') or 0),
         'explicit_url_detected': bool(data.get('explicit_url_detected', False)),
-        'explicit_url': str(data.get('explicit_url') or ''),
+        'explicit_url_chars': len(str(data.get('explicit_url') or '')),
+        'explicit_url_included': False,
         'read_state': str(data.get('read_state') or ''),
         'primary_source_kind': str(data.get('primary_source_kind') or ''),
         'primary_read_attempted': bool(data.get('primary_read_attempted', False)),
@@ -485,7 +514,10 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         'crawl4ai_filter_counts': dict(_mapping(data.get('crawl4ai_filter_counts'))),
         'crawl4ai_cache_modes': dict(_mapping(data.get('crawl4ai_cache_modes'))),
         'crawl4ai_fallback_used_count': int(data.get('crawl4ai_fallback_used_count') or 0),
-        'crawl4ai_query_sha256_12': [str(value) for value in _sequence(data.get('crawl4ai_query_sha256_12')) if str(value)],
+        'crawl4ai_query_hash_count': len(
+            [str(value) for value in _sequence(data.get('crawl4ai_query_sha256_12')) if str(value)]
+        ),
+        'crawl4ai_query_hashes_included': False,
         'web_confidence_policy_kind': str(
             data.get('web_confidence_policy_kind')
             or web_confidence.get('web_confidence_policy_kind')
@@ -753,7 +785,9 @@ def build_validation_agent_payload(
         "advisory_recommendations_followed": followed,
         "advisory_recommendations_overridden": overridden,
         "applied_hard_guards": applied_hard_guards,
-        "arbiter_reason": _text(validated_output.get("arbiter_reason")),
+        "arbiter_reason_present": bool(_text(validated_output.get("arbiter_reason"))),
+        "arbiter_reason_chars": len(_text(validated_output.get("arbiter_reason"))),
+        "arbiter_reason_included": False,
         "projected_judgment_posture": _text(validated_output.get("final_judgment_posture")),
         "pipeline_directives_final": directives,
         "decision_source": _text(getattr(validated_result, "decision_source", "")),

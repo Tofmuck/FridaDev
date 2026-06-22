@@ -228,19 +228,9 @@ def _identity_staging_window() -> dict[str, Any]:
 def _prompt_final_window(
     *,
     messages: Sequence[Mapping[str, Any]],
-    runtime_main_model: str,
-    count_tokens_func: Callable[[list[dict[str, Any]], str], int] | None,
+    estimated_tokens: int | None,
 ) -> dict[str, Any]:
     manifest_messages = [message for message in messages if isinstance(message, Mapping)]
-    estimated_tokens = None
-    if callable(count_tokens_func):
-        try:
-            estimated_tokens = max(
-                0,
-                int(count_tokens_func([dict(message) for message in manifest_messages], runtime_main_model) or 0),
-            )
-        except Exception:
-            estimated_tokens = None
     out = _selected_window(
         count=len(manifest_messages),
         source="core.chat_service",
@@ -278,6 +268,7 @@ def build_context_windows(
     agenda_recent_dialogue: Sequence[Any] | None,
     runtime_main_model: str,
     count_tokens_func: Callable[[list[dict[str, Any]], str], int] | None,
+    prompt_estimated_tokens: int | None = None,
 ) -> dict[str, Any]:
     manifest_messages = [message for message in messages if isinstance(message, Mapping)]
     conversation_messages = _messages(mapping(conversation).get("messages"))
@@ -373,8 +364,7 @@ def build_context_windows(
     return {
         "prompt_final": _prompt_final_window(
             messages=manifest_messages,
-            runtime_main_model=runtime_main_model,
-            count_tokens_func=count_tokens_func,
+            estimated_tokens=prompt_estimated_tokens,
         ),
         "conversation": conversation_window,
         "recent_context": recent_context_window,

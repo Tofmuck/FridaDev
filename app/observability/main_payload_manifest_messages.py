@@ -309,14 +309,15 @@ def build_prompt_budget(
     *,
     prompt_messages: Sequence[Mapping[str, Any]],
     runtime_main_model: str,
-    count_tokens_func: Callable[[list[dict[str, Any]], str], int] | None,
+    estimated_prompt_tokens: int | None = None,
+    count_tokens_func: Callable[[list[dict[str, Any]], str], int] | None = None,
     max_tokens: int,
     prompt_soft_token_limit: int | None = None,
 ) -> dict[str, Any]:
     messages = [dict(message) for message in prompt_messages if isinstance(message, Mapping)]
     total_chars = sum(safe_int(content_shape(message.get("content")).get("content_chars")) for message in messages)
-    estimated_tokens = None
-    if callable(count_tokens_func):
+    estimated_tokens = estimated_prompt_tokens
+    if estimated_tokens is None and callable(count_tokens_func):
         try:
             estimated_tokens = max(0, int(count_tokens_func(messages, runtime_main_model) or 0))
         except Exception:
@@ -330,6 +331,8 @@ def build_prompt_budget(
     )
     if not soft_limit_configured:
         soft_limit_reason_code = "not_configured"
+    elif estimated_tokens is None:
+        soft_limit_reason_code = "estimate_not_available"
     elif soft_limit_exceeded:
         soft_limit_reason_code = "over_soft_limit_no_truncation"
     else:

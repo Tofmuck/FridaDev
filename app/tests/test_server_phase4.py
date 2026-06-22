@@ -250,7 +250,10 @@ class ServerPhase4BehaviorTests(unittest.TestCase):
 
         self.assertEqual(result['kind'], 'json')
         self.assertEqual(result['status'], 200)
-        self.assertEqual(observed['estimate_models'], ['openrouter/runtime-main-model'])
+        self.assertEqual(
+            observed['estimate_models'],
+            ['openrouter/runtime-main-model', 'openrouter/runtime-main-model'],
+        )
         self.assertEqual(observed['summary_models'], ['openrouter/runtime-main-model'])
         self.assertEqual(observed['llm_runtime_model'], 'openrouter/runtime-main-model')
 
