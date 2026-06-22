@@ -5,13 +5,20 @@ const {
   WORKSPACE_FOLDER_ICON_KEYS,
   WORKSPACE_FOLDER_ICON_SVGS,
   normalizeWorkspaceIconKey,
+  normalizeWorkspaceFolderObservability,
   normalizeWorkspaceFolderItem,
   normalizeWorkspaceFoldersPayload,
   normalizeWorkspaceFileItem,
   normalizeWorkspaceFilesPayload,
   normalizeWorkspaceFileSelectionsPayload,
+  WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS,
+  WORKSPACE_FILE_USAGE_STATUS_LABELS,
   compactWorkspaceFileMeta,
+  workspaceFolderDeleteConfirmationText,
+  workspaceFolderNextcloudStatusLabel,
   workspaceFileStatusLabel,
+  workspaceFileNextcloudStatusLabel,
+  workspaceFileUsageStatusLabel,
   canRunWorkspaceOcr,
   canEditWorkspaceOcrMarkdown,
   groupThreadsByWorkspaceFolder,
@@ -48,6 +55,130 @@ test("normalizeWorkspaceFolderItem keeps stable UI metadata only", () => {
     updated_at: null,
     deleted_at: null,
   });
+});
+
+test("normalizeWorkspaceFolderItem preserves fake Nextcloud metadata without raw internals", () => {
+  const folder = normalizeWorkspaceFolderItem({
+    id: "folder-1",
+    display_name: "Projet Tulu",
+    icon_key: "folder",
+    nextcloud_logical_root: "/Frida",
+    nextcloud_target_name: "Projet-Tulu",
+    nextcloud_logical_path: "/Frida/Projet-Tulu",
+    nextcloud_directory_ref: "workspace-folder:folder-1:abc123def456",
+    nextcloud_name_hash: "abc123def456",
+    nextcloud_sync_state: "local_only",
+    nextcloud_share_state: "expected",
+    nextcloud_reason_code: "workspace_folder_sync_local_only",
+    nextcloud_live_checked: false,
+    storage_key: "hidden/path",
+    dav_url: "redacted dav url",
+  });
+
+  assert.equal(folder.nextcloud_logical_root, "/Frida");
+  assert.equal(folder.nextcloud_target_name, "Projet-Tulu");
+  assert.equal(folder.nextcloud_logical_path, "/Frida/Projet-Tulu");
+  assert.equal(folder.nextcloud_sync_state, "local_only");
+  assert.equal(folder.nextcloud_share_state, "expected");
+  assert.equal(folder.nextcloud_live_checked, false);
+  assert.equal(folder.storage_key, undefined);
+  assert.equal(folder.dav_url, undefined);
+  assert.equal(JSON.stringify(folder).includes("remote.php"), false);
+});
+
+test("workspace folder observability normalizer keeps only content-free fields", () => {
+  const observation = normalizeWorkspaceFolderObservability({
+    kind: "frida_v1_workspace_folder",
+    operation: "delete",
+    status: "ok",
+    status_class: "2xx",
+    reason_code: "workspace_folder_delete_ok",
+    folder_ref: "abc123def456",
+    nextcloud_sync_state: "deleted",
+    nextcloud_share_state: "unknown",
+    files_preserved: true,
+    files_deleted: 0,
+    file_delete_requested: 0,
+    file_delete_failed: 0,
+    content_free: true,
+    raw_content_included: false,
+    server_path_included: false,
+    remote_url_included: false,
+    secret_included: false,
+    display_name: "Projet Tulu",
+    nextcloud_logical_path: "/Frida/Projet-Tulu",
+    storage_key: "hidden/path",
+    Authorization: "redacted",
+    app_password: "hidden",
+    dav_url: "redacted dav url",
+  });
+
+  assert.equal(observation.kind, "frida_v1_workspace_folder");
+  assert.equal(observation.operation, "delete");
+  assert.equal(observation.reason_code, "workspace_folder_delete_ok");
+  assert.equal(observation.files_preserved, true);
+  assert.equal(observation.files_deleted, 0);
+  assert.equal(observation.display_name, undefined);
+  assert.equal(observation.nextcloud_logical_path, undefined);
+  assert.equal(observation.storage_key, undefined);
+  assert.equal(observation.Authorization, undefined);
+  assert.equal(observation.app_password, undefined);
+  assert.equal(observation.dav_url, undefined);
+  assert.equal(JSON.stringify(observation).includes("/Frida/Projet-Tulu"), false);
+  assert.equal(JSON.stringify(observation).includes("redacted dav url"), false);
+});
+
+test("workspace folder observability normalizer parses boolean strings strictly", () => {
+  const truthy = normalizeWorkspaceFolderObservability({
+    content_free: "true",
+    files_preserved: "1",
+    nextcloud_live_checked: "yes",
+    remote_url_included: "on",
+  });
+  const falsy = normalizeWorkspaceFolderObservability({
+    raw_content_included: "false",
+    server_path_included: "0",
+    secret_included: "no",
+    remote_url_included: "off",
+    files_preserved: "",
+    nextcloud_live_checked: null,
+  });
+
+  assert.equal(truthy.content_free, true);
+  assert.equal(truthy.files_preserved, true);
+  assert.equal(truthy.nextcloud_live_checked, true);
+  assert.equal(truthy.remote_url_included, true);
+  assert.equal(falsy.raw_content_included, false);
+  assert.equal(falsy.server_path_included, false);
+  assert.equal(falsy.secret_included, false);
+  assert.equal(falsy.remote_url_included, false);
+  assert.equal(falsy.files_preserved, false);
+  assert.equal(falsy.nextcloud_live_checked, false);
+});
+
+test("workspace folder fake-local status labels stay sober and content-free", () => {
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "unknown" }), "Local");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "local_only" }), "Local");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "pending" }), "En attente Nextcloud");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "sync_pending" }), "En attente Nextcloud");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "linked" }), "Synchronisé");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "conflict" }), "Conflit");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "error" }), "Erreur");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "sync_error" }), "Erreur");
+  assert.equal(workspaceFolderNextcloudStatusLabel({ nextcloud_sync_state: "" }), "");
+});
+
+test("workspace folder delete confirmation preserves files and documents", () => {
+  const text = workspaceFolderDeleteConfirmationText({
+    display_name: "Projet Tulu",
+    nextcloud_logical_path: "/Frida/Projet-Tulu",
+    storage_key: "hidden/path",
+  });
+
+  assert.equal(text.includes("Les fichiers et documents ne seront pas supprimés."), true);
+  assert.equal(text.includes("les fichiers du répertoire seront supprimés"), false);
+  assert.equal(text.includes("/Frida/Projet-Tulu"), false);
+  assert.equal(text.includes("storage_key"), false);
 });
 
 test("normalizeWorkspaceFoldersPayload sorts folders by manual order", () => {
@@ -132,6 +263,58 @@ test("workspace file status labels stay human and content-free", () => {
   assert.equal(JSON.stringify(missing).includes("_workspace_files"), false);
 });
 
+test("workspace file Nextcloud status labels distinguish linked from local-only", () => {
+  const files = normalizeWorkspaceFilesPayload({
+    items: [{
+      id: "linked",
+      workspace_folder_id: "folder-1",
+      display_name: "note.txt",
+      document_v1_user: {
+        display_name: "note.txt",
+        document_status: "readable",
+        readiness: "ready",
+        reason_code: "folder_document_text_ready",
+        nextcloud_sync_state: "linked",
+        nextcloud_status_label: "Rangé Nextcloud",
+        nextcloud_reason_code: "folder_document_upload_ok",
+      },
+      document_v1_technical: {
+        nextcloud_target_name: "SHOULD NOT SURVIVE",
+        display_name: "SHOULD NOT SURVIVE",
+      },
+      storage_key: "hidden/path",
+    }, {
+      id: "local",
+      workspace_folder_id: "folder-1",
+      display_name: "legacy.pdf",
+      document_v1_user: {
+        display_name: "legacy.pdf",
+        nextcloud_sync_state: "local_only",
+        nextcloud_reason_code: "folder_document_local_only",
+      },
+    }, {
+      id: "error",
+      workspace_folder_id: "folder-1",
+      display_name: "sync.pdf",
+      document_v1_user: {
+        display_name: "sync.pdf",
+        nextcloud_sync_state: "sync_error",
+        nextcloud_reason_code: "folder_document_link_lookup_failed",
+      },
+    }],
+  });
+
+  assert.equal(WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS.linked, "Rangé Nextcloud");
+  assert.equal(files[0].document_nextcloud_sync_state, "linked");
+  assert.equal(workspaceFileNextcloudStatusLabel(files[0]), "Rangé Nextcloud");
+  assert.equal(files[1].document_nextcloud_sync_state, "local_only");
+  assert.equal(workspaceFileNextcloudStatusLabel(files[1]), "Local seulement");
+  assert.equal(files[2].document_nextcloud_sync_state, "sync_error");
+  assert.equal(workspaceFileNextcloudStatusLabel(files[2]), "Erreur sync");
+  assert.equal(JSON.stringify(files).includes("hidden/path"), false);
+  assert.equal(JSON.stringify(files).includes("SHOULD NOT SURVIVE"), false);
+});
+
 test("workspace OCR markdown derivatives are editable metadata-only files", () => {
   const files = normalizeWorkspaceFilesPayload({
     items: [{
@@ -201,6 +384,16 @@ test("workspace file selection payloads are conversation scoped and content-free
       selected: true,
       selection_status: "selected",
       reason_code: "",
+      document_v1_usage: {
+        source: "workspace_file_selection",
+        conversation_id: "conv-1",
+        workspace_file_id: "file-1",
+        workspace_folder_id: "folder-1",
+        selected: "true",
+        usage_status: "readable",
+        readiness: "ready",
+        reason_code: "folder_document_text_ready",
+      },
       file: {
         id: "file-1",
         workspace_folder_id: "folder-1",
@@ -217,6 +410,54 @@ test("workspace file selection payloads are conversation scoped and content-free
   assert.equal(selections[0].conversation_id, "conv-1");
   assert.equal(selections[0].workspace_file_id, "file-1");
   assert.equal(selections[0].selected, true);
+  assert.equal(WORKSPACE_FILE_USAGE_STATUS_LABELS.readable, "Prêt");
+  assert.equal(selections[0].usage_status, "readable");
+  assert.equal(selections[0].usage_readiness, "ready");
+  assert.equal(workspaceFileUsageStatusLabel(selections[0].document_v1_usage), "Prêt");
   assert.equal(selections[0].file.storage_key, undefined);
   assert.equal(selections[0].file.text_content, undefined);
+});
+
+test("workspace file selection usage labels distinguish non-ready document states", () => {
+  const selections = normalizeWorkspaceFileSelectionsPayload({
+    items: [{
+      conversation_id: "conv-1",
+      workspace_file_id: "file-1",
+      workspace_folder_id: "folder-1",
+      selected: "true",
+      document_v1_usage: {
+        selected: "true",
+        usage_status: "visual_ready",
+        readiness: "visual",
+        reason_code: "folder_document_pdf_visual_ready",
+      },
+      file: {
+        id: "file-1",
+        workspace_folder_id: "folder-1",
+        display_name: "scan.pdf",
+      },
+    }, {
+      conversation_id: "conv-1",
+      workspace_file_id: "file-2",
+      workspace_folder_id: "folder-1",
+      selected: "false",
+      document_v1_usage: {
+        selected: "false",
+        usage_status: "too_large",
+        readiness: "blocked",
+        reason_code: "workspace_file_too_large",
+      },
+      file: {
+        id: "file-2",
+        workspace_folder_id: "folder-1",
+        display_name: "long.txt",
+      },
+    }],
+  });
+
+  assert.equal(selections[0].usage_status_label, "Lecture visuelle prête");
+  assert.equal(selections[0].document_v1_usage.selected, true);
+  assert.equal(selections[1].document_v1_usage.selected, false);
+  assert.equal(selections[1].selected, false);
+  assert.equal(selections[1].usage_status_label, "Trop volumineux");
 });

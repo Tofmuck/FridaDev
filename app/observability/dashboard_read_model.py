@@ -173,6 +173,19 @@ def _json_mapping(value: Any) -> dict[str, Any]:
     return {}
 
 
+def _status_schema_from_flags(flags: Mapping[str, Any]) -> dict[str, Any]:
+    status_schema = _mapping(flags.get('status_schema'))
+    if not status_schema:
+        return {}
+    return {
+        'source_kind': status_schema.get('source_kind') or 'unknown',
+        'schema_counts': _json_mapping(status_schema.get('schema_counts')),
+        'v1_event_count': _to_int(status_schema.get('v1_event_count')),
+        'legacy_event_count': _to_int(status_schema.get('legacy_event_count')),
+        'historical_events_reclassified': bool(status_schema.get('historical_events_reclassified', False)),
+    }
+
+
 def _window_coverage(
     window: Mapping[str, Any],
     materialization: Mapping[str, Any],
@@ -535,6 +548,22 @@ def _pulse_from_modules(modules: Mapping[str, Mapping[str, Any]]) -> dict[str, A
     web = _mapping(_mapping(modules.get('web')).get('metrics'))
     errors = _mapping(_mapping(modules.get('errors')).get('metrics'))
     persistence = _mapping(_mapping(modules.get('persistence')).get('metrics'))
+    error_count = _to_int(errors.get('error_count'))
+    failed_count = _to_int(errors.get('failed_count'))
+    fallback_count = _to_int(errors.get('fallback_count'))
+    attempt_failure_count = _to_int(errors.get('attempt_failure_count')) or error_count + failed_count
+    problem_count = _to_int(errors.get('problem_count')) or attempt_failure_count + fallback_count
+    non_problem_status_count = _to_int(errors.get('non_problem_status_count')) or sum(
+        _to_int(errors.get(key))
+        for key in (
+            'skipped_count',
+            'disabled_count',
+            'not_selected_count',
+            'not_configured_count',
+            'not_applicable_count',
+            'refused_count',
+        )
+    )
     return {
         'label_fr': 'Pouls global',
         'turns_observed': _to_int(_mapping(modules.get('pipeline')).get('turn_count')),
@@ -543,7 +572,16 @@ def _pulse_from_modules(modules: Mapping[str, Mapping[str, Any]]) -> dict[str, A
         'memory_injected_total': _to_int(memory.get('injected_total')),
         'web_requested_turns': _to_int(web.get('requested_turns')),
         'web_injected_turns': _to_int(web.get('injected_turns')),
-        'problems_count': _to_int(errors.get('error_count')) + _to_int(errors.get('fallback_count')),
+        'problems_count': problem_count,
+        'attempt_failures_count': attempt_failure_count,
+        'error_count': error_count,
+        'failed_count': failed_count,
+        'fallback_count': fallback_count,
+        'non_problem_status_count': non_problem_status_count,
+        'status_counts': _json_mapping(errors.get('status_counts')),
+        'status_schema_counts': _json_mapping(errors.get('status_schema_counts')),
+        'v1_event_count': _to_int(errors.get('v1_event_count')),
+        'legacy_event_count': _to_int(errors.get('legacy_event_count')),
     }
 
 
@@ -563,7 +601,10 @@ def read_dashboard_overview(
                 buckets = _read_metric_buckets(cur, window)
                 summary_health = _read_summary_health(cur)
     except Exception as exc:
-        logger_instance.error('dashboard_overview_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_overview_read_failed reason=dashboard_overview_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'dashboard_overview',
             'window': window,
@@ -620,8 +661,13 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
     biblio_used_turns = 0
     biblio_passages_total = 0
     error_count = 0
+    failed_count = 0
     fallback_count = 0
     last_turn_id = None
+    status_schema_counts: dict[str, int] = {}
+    status_schema_source_counts: dict[str, int] = {}
+    v1_event_count = 0
+    legacy_event_count = 0
     for row in sorted(rows, key=lambda item: str(_iso(item[4]) or '')):
         classification = str(row[6] or 'legacy_incomplete')
         classification_counts[classification] = classification_counts.get(classification, 0) + 1
@@ -631,6 +677,8 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
         documents = _mapping(row[9])
         biblio = _mapping(row[10])
         errors = _mapping(row[11])
+        flags = _mapping(row[12]) if len(row) > 12 else {}
+        status_schema = _status_schema_from_flags(flags)
         if _to_int(rag.get('injected')) > 0 or _to_int(rag.get('retrieved')) > 0:
             memory_used_turns += 1
         if bool(web.get('requested')):
@@ -645,7 +693,15 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
             biblio_used_turns += 1
         biblio_passages_total += _to_int(biblio.get('passage_count'))
         error_count += _to_int(errors.get('error_count'))
+        failed_count += _to_int(errors.get('failed_count'))
         fallback_count += _to_int(errors.get('fallback_count'))
+        source_kind = str(status_schema.get('source_kind') or '').strip() or 'unknown'
+        status_schema_source_counts[source_kind] = status_schema_source_counts.get(source_kind, 0) + 1
+        for schema, count in _mapping(status_schema.get('schema_counts')).items():
+            schema_key = str(schema or 'unknown').strip() or 'unknown'
+            status_schema_counts[schema_key] = status_schema_counts.get(schema_key, 0) + _to_int(count)
+        v1_event_count += _to_int(status_schema.get('v1_event_count'))
+        legacy_event_count += _to_int(status_schema.get('legacy_event_count'))
     return {
         'conversation_id': conversation_id,
         'display_label': display_label,
@@ -664,7 +720,17 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
         'biblio_used_turns': biblio_used_turns,
         'biblio_passages_total': biblio_passages_total,
         'error_count': error_count,
+        'failed_count': failed_count,
+        'attempt_failure_count': error_count + failed_count,
         'fallback_count': fallback_count,
+        'problem_count': error_count + failed_count + fallback_count,
+        'status_schema': {
+            'source_kind_counts': dict(sorted(status_schema_source_counts.items())),
+            'schema_counts': dict(sorted(status_schema_counts.items())),
+            'v1_event_count': v1_event_count,
+            'legacy_event_count': legacy_event_count,
+            'historical_events_reclassified': False,
+        },
         'redaction': {'raw_content_included': False},
     }
 
@@ -696,7 +762,8 @@ def read_dashboard_conversations(
                         f.web_json,
                         f.documents_json,
                         f.biblio_json,
-                        f.errors_json
+                        f.errors_json,
+                        f.flags_json
                     FROM observability.dashboard_turn_facts AS f
                     LEFT JOIN observability.dashboard_conversation_summaries AS s
                       ON s.conversation_id = f.conversation_id
@@ -708,7 +775,10 @@ def read_dashboard_conversations(
                 )
                 rows = cur.fetchall()
     except Exception as exc:
-        logger_instance.error('dashboard_conversations_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_conversations_read_failed reason=dashboard_conversations_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'dashboard_conversations',
             'window': window,
@@ -751,6 +821,7 @@ def read_dashboard_conversations(
 def _turn_fact_row(row: Sequence[Any]) -> dict[str, Any]:
     if len(row) == 24:
         row = (*row[:16], {}, *row[16:])
+    flags = _json_mapping(row[21])
     return {
         'conversation_id': str(row[0] or ''),
         'turn_id': str(row[1] or ''),
@@ -772,8 +843,9 @@ def _turn_fact_row(row: Sequence[Any]) -> dict[str, Any]:
         'node_state': _json_mapping(row[17]),
         'latencies': _json_mapping(row[18]),
         'errors': _json_mapping(row[19]),
+        'status_schema': _status_schema_from_flags(flags),
         'stage_counts': _json_mapping(row[20]),
-        'flags': _json_mapping(row[21]),
+        'flags': flags,
         'content_availability': _json_mapping(row[22]),
         'calculation_version': str(row[23] or ''),
         'materialized_ts': _iso(row[24]),
@@ -854,7 +926,10 @@ def read_dashboard_conversation_turns(
                 )
                 rows = cur.fetchall()
     except Exception as exc:
-        logger_instance.error('dashboard_conversation_turns_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_conversation_turns_read_failed reason=dashboard_conversation_turns_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'dashboard_conversation_turns',
             'conversation_id': conversation_id_s,
@@ -994,7 +1069,10 @@ def _audit_content_gate_open(
     try:
         stored = bool(audit_fn(event))
     except Exception as exc:
-        logger_instance.error('dashboard_content_gate_audit_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_content_gate_audit_failed reason=dashboard_content_gate_audit_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         stored = False
     return {
         'attempted': True,
@@ -1220,6 +1298,25 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
     content_availability = _mapping(fact.get('content_availability'))
     classification = str(fact.get('classification') or 'legacy_incomplete')
     source_event_count = _to_int(fact.get('source_event_count'))
+    error_count = _to_int(errors.get('error_count'))
+    failed_count = _to_int(errors.get('failed_count'))
+    fallback_count = _to_int(errors.get('fallback_count'))
+    attempt_failure_count = _to_int(errors.get('attempt_failure_count')) or error_count + failed_count
+    problem_count = _to_int(errors.get('problem_count')) or attempt_failure_count + fallback_count
+    non_problem_status_count = _to_int(errors.get('non_problem_status_count')) or sum(
+        _to_int(errors.get(key))
+        for key in (
+            'skipped_count',
+            'disabled_count',
+            'not_selected_count',
+            'not_configured_count',
+            'not_applicable_count',
+            'refused_count',
+        )
+    )
+    problem_reason_errors = dict(errors)
+    if errors.get('problem_reason_code_counts'):
+        problem_reason_errors['reason_code_counts'] = errors.get('problem_reason_code_counts')
 
     context_parts: list[str] = []
     if identity.get('block_present'):
@@ -1393,10 +1490,14 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
             'key': 'problems',
             'label_fr': 'Problemes et degradations',
             'items': [
-                f"Erreurs compactes: {_to_int(errors.get('error_count'))}.",
+                f"Erreurs compactes: {error_count}.",
+                f"Echecs bornes compacts: {failed_count}.",
+                f"Vraies pannes compactes: {attempt_failure_count}.",
                 f"Skips compacts: {_to_int(errors.get('skipped_count'))}.",
-                f"Fallbacks compacts: {_to_int(errors.get('fallback_count'))}.",
-                f"Causes compactes: {_reason_codes_fr(errors)}.",
+                f"No-op/refus compacts non pannes: {non_problem_status_count}.",
+                f"Fallbacks compacts: {fallback_count}.",
+                f"Problemes compacts actionnables: {problem_count}.",
+                f"Causes compactes: {_reason_codes_fr(problem_reason_errors)}.",
             ],
         },
         {
@@ -1417,8 +1518,8 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
         'kind': 'dashboard_turn_story',
         'title_fr': 'Inspection traduite du tour',
         'summary_fr': (
-            f"Tour {_classification_fr(classification)} avec {_to_int(errors.get('error_count'))} erreur(s) "
-            f"et {_to_int(errors.get('fallback_count'))} fallback(s) compacts."
+            f"Tour {_classification_fr(classification)} avec {attempt_failure_count} vraie(s) panne(s) "
+            f"et {fallback_count} fallback(s) compacts."
         ),
         'sections': sections,
         'debug_links': _debug_links(fact),
@@ -1464,7 +1565,10 @@ def read_dashboard_turn_inspection(
                 )
                 rows = cur.fetchall()
     except Exception as exc:
-        logger_instance.error('dashboard_turn_inspection_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_turn_inspection_read_failed reason=dashboard_turn_inspection_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'dashboard_turn_inspection',
             'turn_id': turn_id_s,
@@ -1543,7 +1647,10 @@ def read_dashboard_turn_content(
     except ValueError:
         raise
     except Exception as exc:
-        logger_instance.error('dashboard_turn_content_gate_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_turn_content_gate_read_failed reason=dashboard_turn_content_gate_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'dashboard_turn_content_gate',
             'turn_id': turn_id_s,

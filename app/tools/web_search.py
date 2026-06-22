@@ -59,6 +59,19 @@ def _safe_len(value: Any) -> int:
     return len(str(value or ''))
 
 
+def _url_log_fields(value: Any) -> dict[str, Any]:
+    text = str(value or '')
+    parsed = urlparse(text)
+    host = str(parsed.netloc or '').strip().lower()
+    return {
+        'url_scheme': str(parsed.scheme or ''),
+        'url_host_sha256_12': _sha256_12(host),
+        'url_chars': len(text),
+        'url_query_present': bool(parsed.query),
+        'url_fragment_present': bool(parsed.fragment),
+    }
+
+
 def _runtime_services_view() -> runtime_settings.RuntimeSectionView:
     return runtime_settings.get_services_settings()
 
@@ -258,7 +271,21 @@ def _crawl_markdown_with_status(
             'query_chars': _safe_len(normalized_query),
         }
     except Exception as e:
-        logger.warning("crawl_error url=%s filter=%s err=%s", url, normalized_filter, e)
+        url_fields = _url_log_fields(url)
+        logger.warning(
+            (
+                "crawl_error reason=crawl_exception filter=%s url_scheme=%s "
+                "url_host_sha256_12=%s url_chars=%s url_query_present=%s "
+                "url_fragment_present=%s err_class=%s"
+            ),
+            normalized_filter,
+            url_fields['url_scheme'],
+            url_fields['url_host_sha256_12'],
+            url_fields['url_chars'],
+            url_fields['url_query_present'],
+            url_fields['url_fragment_present'],
+            e.__class__.__name__,
+        )
         return {
             'status': 'error',
             'markdown': '',
@@ -1553,7 +1580,10 @@ def reformulate(
         )
         return query or user_msg
     except Exception as e:
-        logger.warning("reformulate_error err=%s", e)
+        logger.warning(
+            "reformulate_error reason=web_reformulation_exception err_class=%s",
+            e.__class__.__name__,
+        )
         return user_msg
 
 

@@ -9,6 +9,7 @@ import psycopg
 import config
 from admin import runtime_settings
 from . import runtime_db_bootstrap
+from . import workspace_file_nextcloud_links_store
 from . import workspace_file_ocr_store
 from . import workspace_files_store
 
@@ -83,6 +84,7 @@ def store_uploaded_file(
     original_filename: str,
     content: bytes,
     metadata: Mapping[str, Any],
+    file_id: Optional[str] = None,
 ) -> Optional[dict[str, Any]]:
     return workspace_files_store.store_uploaded_file(
         folder_id,
@@ -92,6 +94,7 @@ def store_uploaded_file(
         db_conn_func=_db_conn,
         storage_root=_storage_root(),
         logger=logger,
+        file_id=file_id,
     )
 
 
@@ -128,5 +131,48 @@ def delete_workspace_files_for_folder(folder_id: str) -> dict[str, Any]:
         folder_id,
         db_conn_func=_db_conn,
         storage_root=_storage_root(),
+        logger=logger,
+    )
+
+
+def get_nextcloud_link(file_id: str, *, fail_closed: bool = False) -> Optional[dict[str, Any]]:
+    return workspace_file_nextcloud_links_store.get_link(
+        file_id,
+        db_conn_func=_db_conn,
+        logger=logger,
+        fail_closed=fail_closed,
+    )
+
+
+def upsert_nextcloud_link(
+    *,
+    workspace_file_id: str,
+    workspace_folder_id: str,
+    nextcloud_sync_state: str,
+    nextcloud_document_ref: str,
+    nextcloud_name_hash: str,
+    nextcloud_target_name: str,
+    last_sync_reason_code: str,
+    last_sync_operation: str,
+) -> dict[str, Any]:
+    return workspace_file_nextcloud_links_store.upsert_link(
+        workspace_file_id=workspace_file_id,
+        workspace_folder_id=workspace_folder_id,
+        nextcloud_sync_state=nextcloud_sync_state,
+        nextcloud_document_ref=nextcloud_document_ref,
+        nextcloud_name_hash=nextcloud_name_hash,
+        nextcloud_target_name=nextcloud_target_name,
+        last_sync_reason_code=last_sync_reason_code,
+        last_sync_operation=last_sync_operation,
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
+
+
+def mark_nextcloud_link_deleted(file_id: str, *, reason_code: str) -> Optional[dict[str, Any]]:
+    return workspace_file_nextcloud_links_store.mark_deleted(
+        file_id,
+        reason_code=reason_code,
+        db_conn_func=_db_conn,
         logger=logger,
     )

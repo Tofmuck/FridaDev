@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Mapping, Sequence
 
+from observability import agentic_status
 from observability.biblio_librarian_agent_read_model import build_biblio_librarian_agent_summary
 from observability.turn_observability_checklist import build_turn_observability_checklist
 
@@ -14,6 +15,17 @@ _SECONDARY_PROVIDER_CALLERS = (
     ('validation', 'validation_agent', 'validation_prompt_prepared', 'validation_agent'),
     ('web_reformulation', 'web_reformulation', 'web_reformulation_prompt_prepared', 'web_reformulation'),
     ('web_discovery', 'web_discovery', 'web_discovery_prompt_prepared', 'web_discovery'),
+)
+_SECONDARY_PROVIDER_STATUS_PRECEDENCE = (
+    agentic_status.STATUS_ERROR,
+    agentic_status.STATUS_FAILED,
+    agentic_status.STATUS_REFUSED,
+    agentic_status.STATUS_NOT_CONFIGURED,
+    agentic_status.STATUS_DISABLED,
+    agentic_status.STATUS_NOT_SELECTED,
+    agentic_status.STATUS_NOT_APPLICABLE,
+    agentic_status.STATUS_SKIPPED,
+    agentic_status.STATUS_OK,
 )
 _KNOWN_PROVIDER_CALLERS = {
     _MAIN_PROVIDER_CALLER,
@@ -78,7 +90,7 @@ def _stage(event: Mapping[str, Any]) -> str:
 
 
 def _status(event: Mapping[str, Any]) -> str:
-    return str(event.get('status') or '').strip().lower()
+    return agentic_status.normalize_status(event.get('status_v1') or event.get('status'))
 
 
 def _event_ts(event: Mapping[str, Any]) -> str | None:
@@ -87,6 +99,40 @@ def _event_ts(event: Mapping[str, Any]) -> str | None:
 
 def _event_sort_key(event: Mapping[str, Any]) -> tuple[str, str]:
     return str(event.get('ts') or ''), str(event.get('event_id') or '')
+
+
+def _status_schema_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    schema_counts: dict[str, int] = {}
+    legacy_count = 0
+    v1_count = 0
+    for event in events:
+        payload = _payload(event)
+        schema = str(event.get('status_schema_version') or '').strip()
+        if not schema:
+            schema = agentic_status.projected_schema_version(
+                payload=dict(payload),
+                status=event.get('status_v1') or event.get('status'),
+            )
+        schema_counts[schema] = schema_counts.get(schema, 0) + 1
+        if schema == agentic_status.STATUS_SCHEMA_VERSION:
+            v1_count += 1
+        else:
+            legacy_count += 1
+    if v1_count and legacy_count:
+        source_kind = 'mixed_v1_and_legacy'
+    elif v1_count:
+        source_kind = 'agentic_v1'
+    elif legacy_count:
+        source_kind = 'legacy'
+    else:
+        source_kind = 'empty'
+    return {
+        'source_kind': source_kind,
+        'schema_counts': dict(sorted(schema_counts.items())),
+        'v1_event_count': v1_count,
+        'legacy_event_count': legacy_count,
+        'historical_events_reclassified': False,
+    }
 
 
 def _safe_events(events: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
@@ -240,6 +286,20 @@ def _llm_call_summary(event: Mapping[str, Any] | None, *, provider_caller: str) 
     }
 
 
+def _secondary_provider_status(status_values: set[str], *, event_present: bool) -> str:
+    if not event_present:
+        return agentic_status.STATUS_NOT_APPLICABLE
+    normalized = {
+        agentic_status.normalize_status(status)
+        for status in status_values
+        if str(status or '').strip()
+    }
+    for status in _SECONDARY_PROVIDER_STATUS_PRECEDENCE:
+        if status in normalized:
+            return status
+    return agentic_status.STATUS_OK
+
+
 def _providers_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     llm_events = _events_for_stage(events, 'llm_call')
     main_events = [
@@ -268,12 +328,8 @@ def _providers_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             else (result_events[-1] if result_events else (prepared_events[-1] if prepared_events else None))
         )
         status_values = {_status(event) for event in [*prepared_events, *result_events, *caller_events] if _status(event)}
-        if 'error' in status_values:
-            status = 'error'
-        elif prepared_events or result_events or caller_events:
-            status = 'ok'
-        else:
-            status = 'not_applicable'
+        event_present = bool(prepared_events or result_events or caller_events)
+        status = _secondary_provider_status(status_values, event_present=event_present)
         summary = _llm_call_summary(caller_events[-1] if caller_events else None, provider_caller=provider_caller)
         summary.update(
             {
@@ -1154,20 +1210,62 @@ def _latencies_summary(events: Sequence[Mapping[str, Any]], providers: Mapping[s
 
 def _errors_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     by_stage_status: dict[tuple[str, str, str], int] = {}
+    problem_by_stage_status: dict[tuple[str, str, str], int] = {}
+    non_problem_by_stage_status: dict[tuple[str, str, str], int] = {}
     reason_code_counts: dict[str, int] = {}
+    problem_reason_code_counts: dict[str, int] = {}
+    non_problem_reason_code_counts: dict[str, int] = {}
+    status_counts: dict[str, int] = {}
     fallback_count = 0
+    error_count = 0
+    failed_count = 0
+    refused_count = 0
+    not_applicable_count = 0
+    not_selected_count = 0
+    not_configured_count = 0
+    disabled_count = 0
+    skipped_count = 0
     for event in events:
         status = _status(event)
         payload = _payload(event)
         stage = _stage(event) or 'unknown'
         reason = _reason_code(payload) or 'unknown'
-        if status in {'error', 'skipped'}:
+        status_counts[status] = status_counts.get(status, 0) + 1
+        if status == agentic_status.STATUS_ERROR:
+            error_count += 1
+        elif status == agentic_status.STATUS_FAILED:
+            failed_count += 1
+        elif status == agentic_status.STATUS_REFUSED:
+            refused_count += 1
+        elif status == agentic_status.STATUS_NOT_APPLICABLE:
+            not_applicable_count += 1
+        elif status == agentic_status.STATUS_NOT_SELECTED:
+            not_selected_count += 1
+        elif status == agentic_status.STATUS_NOT_CONFIGURED:
+            not_configured_count += 1
+        elif status == agentic_status.STATUS_DISABLED:
+            disabled_count += 1
+        elif status == agentic_status.STATUS_SKIPPED:
+            skipped_count += 1
+
+        if status in agentic_status.ATTEMPT_FAILURE_STATUSES:
             key = (stage, status, reason)
             by_stage_status[key] = by_stage_status.get(key, 0) + 1
+            problem_by_stage_status[key] = problem_by_stage_status.get(key, 0) + 1
             reason_code_counts[reason] = reason_code_counts.get(reason, 0) + 1
+            problem_reason_code_counts[reason] = problem_reason_code_counts.get(reason, 0) + 1
+        elif status != agentic_status.STATUS_OK:
+            key = (stage, status, reason)
+            by_stage_status[key] = by_stage_status.get(key, 0) + 1
+            non_problem_by_stage_status[key] = non_problem_by_stage_status.get(key, 0) + 1
+            reason_code_counts[reason] = reason_code_counts.get(reason, 0) + 1
+            non_problem_reason_code_counts[reason] = non_problem_reason_code_counts.get(reason, 0) + 1
         if bool(payload.get('fail_open')) or bool(payload.get('fallback_used')):
             fallback_count += 1
             reason_code_counts[reason] = reason_code_counts.get(reason, 0) + 1
+            problem_reason_code_counts[reason] = problem_reason_code_counts.get(reason, 0) + 1
+            key = (stage, 'fallback', reason)
+            problem_by_stage_status[key] = problem_by_stage_status.get(key, 0) + 1
     stages = [
         {
             'stage': stage,
@@ -1177,12 +1275,53 @@ def _errors_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         }
         for (stage, status, reason), count in sorted(by_stage_status.items())
     ]
+    problem_stages = [
+        {
+            'stage': stage,
+            'status': status,
+            'reason_code': reason,
+            'count': count,
+        }
+        for (stage, status, reason), count in sorted(problem_by_stage_status.items())
+    ]
+    non_problem_stages = [
+        {
+            'stage': stage,
+            'status': status,
+            'reason_code': reason,
+            'count': count,
+        }
+        for (stage, status, reason), count in sorted(non_problem_by_stage_status.items())
+    ]
+    attempt_failure_count = error_count + failed_count
+    non_problem_status_count = (
+        refused_count
+        + not_applicable_count
+        + not_selected_count
+        + not_configured_count
+        + disabled_count
+        + skipped_count
+    )
     return {
-        'error_count': sum(1 for event in events if _status(event) == 'error'),
-        'skipped_count': sum(1 for event in events if _status(event) == 'skipped'),
+        'error_count': error_count,
+        'failed_count': failed_count,
+        'attempt_failure_count': attempt_failure_count,
+        'problem_count': attempt_failure_count + fallback_count,
+        'refused_count': refused_count,
+        'not_applicable_count': not_applicable_count,
+        'not_selected_count': not_selected_count,
+        'not_configured_count': not_configured_count,
+        'disabled_count': disabled_count,
+        'skipped_count': skipped_count,
+        'non_problem_status_count': non_problem_status_count,
         'fallback_count': fallback_count,
+        'status_counts': dict(sorted(status_counts.items())),
         'reason_code_counts': dict(sorted(reason_code_counts.items())),
+        'problem_reason_code_counts': dict(sorted(problem_reason_code_counts.items())),
+        'non_problem_reason_code_counts': dict(sorted(non_problem_reason_code_counts.items())),
         'stages': stages[:16],
+        'problem_stages': problem_stages[:16],
+        'non_problem_stages': non_problem_stages[:16],
     }
 
 
@@ -1236,6 +1375,7 @@ def build_turn_pipeline_item(
         'biblio': _biblio_summary(safe_events),
         'latencies': _latencies_summary(safe_events, providers),
         'errors': _errors_summary(safe_events),
+        'status_schema': _status_schema_summary(safe_events),
         'stage_counts': _stage_counts(safe_events),
         'flags': {
             'events_truncated': bool(events_truncated),

@@ -53,6 +53,8 @@ def _json_sequence(value: Any) -> list[Any]:
 
 
 def _fact_from_persisted_row(row: Sequence[Any]) -> dict[str, Any]:
+    flags = _json_mapping(row[22])
+    status_schema = _json_mapping(flags.get('status_schema'))
     return {
         'kind': 'dashboard_turn_fact',
         'schema_version': SCHEMA_VERSION,
@@ -78,8 +80,9 @@ def _fact_from_persisted_row(row: Sequence[Any]) -> dict[str, Any]:
         'node_state': _json_mapping(row[18]),
         'latencies': _json_mapping(row[19]),
         'errors': _json_mapping(row[20]),
+        'status_schema': status_schema,
         'stage_counts': _json_mapping(row[21]),
-        'flags': _json_mapping(row[22]),
+        'flags': flags,
         'content_availability': _json_mapping(row[23]),
         'redaction': {
             'raw_content_stored': False,
@@ -558,7 +561,10 @@ def init_dashboard_analytics_storage(
             conn.commit()
         logger_instance.info('dashboard_analytics_storage_init ok')
     except Exception as exc:
-        logger_instance.error('dashboard_analytics_storage_init_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_analytics_storage_init_failed reason=dashboard_analytics_storage_init_exception err_class=%s',
+            exc.__class__.__name__,
+        )
 
 
 def persist_dashboard_analytics(
@@ -778,7 +784,10 @@ def persist_dashboard_analytics(
                 )
             conn.commit()
     except Exception as exc:
-        logger_instance.error('dashboard_analytics_persist_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_analytics_persist_failed reason=dashboard_analytics_persist_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         raise
 
     return {
@@ -903,7 +912,11 @@ def materialize_dashboard_analytics_window(
             )
         except Exception:
             pass
-        logger_instance.error('dashboard_analytics_materialize_read_failed err=%s', exc)
+        logger_instance.error(
+            'dashboard_analytics_materialize_read_failed '
+            'reason=dashboard_analytics_materialize_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return analytics
 
     analytics = build_dashboard_analytics(

@@ -71,6 +71,72 @@ const WORKSPACE_FILE_STATUS_LABELS = Object.freeze({
   error: 'Erreur',
 });
 
+const WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS = Object.freeze({
+  unknown: '',
+  local_only: 'Local seulement',
+  linked: 'Rangé Nextcloud',
+  sync_error: 'Erreur sync',
+  deleted: 'Supprimé',
+});
+
+const WORKSPACE_FILE_USAGE_STATUS_LABELS = Object.freeze({
+  selected: 'Sélectionné',
+  readable: 'Prêt',
+  not_injected: 'Non injecté',
+  pdf_text: 'PDF texte',
+  pdf_visual_required: 'Lecture visuelle requise',
+  visual_ready: 'Lecture visuelle prête',
+  too_large: 'Trop volumineux',
+  unsupported: 'Non supporté',
+  unavailable: 'Indisponible',
+  error: 'Erreur',
+});
+
+const WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS = Object.freeze({
+  unknown: 'Local',
+  local_only: 'Local',
+  pending: 'En attente Nextcloud',
+  sync_pending: 'En attente Nextcloud',
+  linked: 'Synchronisé',
+  conflict: 'Conflit',
+  error: 'Erreur',
+  sync_error: 'Erreur',
+  deleted: 'Supprimé',
+});
+
+const WORKSPACE_FOLDER_OBSERVABILITY_STRING_FIELDS = Object.freeze([
+  'kind',
+  'operation',
+  'status',
+  'status_class',
+  'reason_code',
+  'folder_ref',
+  'local_status',
+  'nextcloud_name_hash',
+  'nextcloud_sync_state',
+  'nextcloud_share_state',
+  'nextcloud_reason_code',
+  'file_reason_code',
+]);
+
+const WORKSPACE_FOLDER_OBSERVABILITY_NUMBER_FIELDS = Object.freeze([
+  'folder_count',
+  'files_deleted',
+  'file_delete_requested',
+  'file_delete_failed',
+  'conversations_moved_out',
+]);
+
+const WORKSPACE_FOLDER_OBSERVABILITY_BOOLEAN_FIELDS = Object.freeze([
+  'content_free',
+  'raw_content_included',
+  'server_path_included',
+  'remote_url_included',
+  'secret_included',
+  'nextcloud_live_checked',
+  'files_preserved',
+]);
+
 function normalizeWorkspaceFolderId(value) {
   const raw = String(value || '').trim();
   return raw || null;
@@ -81,13 +147,36 @@ function normalizeWorkspaceIconKey(value) {
   return WORKSPACE_FOLDER_ICON_KEYS.includes(key) ? key : 'folder';
 }
 
+function parseWorkspaceFolderObservabilityBool(value) {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0 || value === null || value === undefined) return false;
+  const raw = String(value).trim().toLowerCase();
+  return raw === 'true' || raw === '1' || raw === 'yes' || raw === 'on';
+}
+
+function normalizeWorkspaceFolderObservability(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const observation = {};
+  for (const field of WORKSPACE_FOLDER_OBSERVABILITY_STRING_FIELDS) {
+    const raw = String(value[field] || '').replace(/\s+/g, ' ').trim();
+    if (raw) observation[field] = raw;
+  }
+  for (const field of WORKSPACE_FOLDER_OBSERVABILITY_NUMBER_FIELDS) {
+    if (value[field] !== undefined) observation[field] = Number(value[field] || 0);
+  }
+  for (const field of WORKSPACE_FOLDER_OBSERVABILITY_BOOLEAN_FIELDS) {
+    if (value[field] !== undefined) observation[field] = parseWorkspaceFolderObservabilityBool(value[field]);
+  }
+  return Object.keys(observation).length ? observation : null;
+}
+
 function normalizeWorkspaceFolderItem(item) {
   const id = normalizeWorkspaceFolderId(item?.id || item?.folder_id);
   if (!id) return null;
   const displayName = String(item?.display_name || item?.name || '').replace(/\s+/g, ' ').trim();
   if (!displayName) return null;
   const iconKey = normalizeWorkspaceIconKey(item?.icon_key);
-  return {
+  const folder = {
     id,
     display_name: displayName,
     icon_key: iconKey,
@@ -99,6 +188,26 @@ function normalizeWorkspaceFolderItem(item) {
     updated_at: item?.updated_at || item?.created_at || null,
     deleted_at: item?.deleted_at || null,
   };
+  if (
+    item?.local_status !== undefined
+    || item?.nextcloud_sync_state !== undefined
+    || item?.nextcloud_logical_path !== undefined
+    || item?.nextcloud_directory_ref !== undefined
+  ) {
+    folder.local_status = String(item?.local_status || (folder.deleted_at ? 'deleted' : 'active')).trim();
+    folder.nextcloud_logical_root = String(item?.nextcloud_logical_root || '').trim();
+    folder.nextcloud_target_name = String(item?.nextcloud_target_name || '').replace(/\s+/g, ' ').trim();
+    folder.nextcloud_logical_path = String(item?.nextcloud_logical_path || '').replace(/\s+/g, ' ').trim();
+    folder.nextcloud_directory_ref = String(item?.nextcloud_directory_ref || '').trim();
+    folder.nextcloud_name_hash = String(item?.nextcloud_name_hash || '').trim();
+    folder.nextcloud_sync_state = String(item?.nextcloud_sync_state || 'unknown').trim();
+    folder.nextcloud_share_state = String(item?.nextcloud_share_state || 'unknown').trim();
+    folder.nextcloud_reason_code = String(item?.nextcloud_reason_code || '').trim();
+    folder.nextcloud_live_checked = Boolean(item?.nextcloud_live_checked);
+  }
+  const observability = normalizeWorkspaceFolderObservability(item?.observability);
+  if (observability) folder.observability = observability;
+  return folder;
 }
 
 function normalizeWorkspaceFoldersPayload(payload) {
@@ -116,7 +225,11 @@ function normalizeWorkspaceFileItem(item) {
   const displayName = String(item?.display_name || item?.original_filename || 'fichier')
     .replace(/\s+/g, ' ')
     .trim() || 'fichier';
-  return {
+  const userProjection = normalizeWorkspaceDocumentUserProjection(item?.document_v1_user);
+  const nextcloudSyncState = normalizeWorkspaceFileNextcloudState(
+    userProjection?.nextcloud_sync_state || item?.document_nextcloud_sync_state,
+  );
+  const file = {
     id,
     workspace_folder_id: folderId,
     display_name: displayName,
@@ -136,7 +249,14 @@ function normalizeWorkspaceFileItem(item) {
     created_at: item?.created_at || null,
     updated_at: item?.updated_at || item?.created_at || null,
     deleted_at: item?.deleted_at || null,
+    document_v1_status: String(item?.document_v1_status || userProjection?.document_status || '').trim(),
+    document_v1_readiness: String(item?.document_v1_readiness || userProjection?.readiness || '').trim(),
+    document_v1_reason_code: String(item?.document_v1_reason_code || userProjection?.reason_code || '').trim(),
+    document_nextcloud_sync_state: nextcloudSyncState,
+    document_nextcloud_status_label: workspaceFileNextcloudStatusLabel({ document_nextcloud_sync_state: nextcloudSyncState }),
   };
+  if (userProjection) file.document_v1_user = userProjection;
+  return file;
 }
 
 function normalizeWorkspaceFilesPayload(payload) {
@@ -148,16 +268,23 @@ function normalizeWorkspaceFileSelectionItem(item) {
   const file = normalizeWorkspaceFileItem(item?.file || item);
   const fileId = String(item?.workspace_file_id || file?.id || item?.file_id || '').trim();
   const conversationId = String(item?.conversation_id || '').trim();
+  const usage = normalizeWorkspaceFileUsage(item?.document_v1_usage);
+  const selected = item?.selected === undefined ? true : parseWorkspaceFolderObservabilityBool(item.selected);
   if (!fileId) return null;
   return {
     conversation_id: conversationId || null,
     workspace_file_id: fileId,
     workspace_folder_id: normalizeWorkspaceFolderId(item?.workspace_folder_id || file?.workspace_folder_id),
-    selected: Boolean(item?.selected !== false),
+    selected,
     selection_status: String(item?.selection_status || 'selected').trim(),
     reason_code: String(item?.reason_code || '').trim(),
     selected_at: item?.selected_at || null,
     updated_at: item?.updated_at || item?.selected_at || null,
+    document_v1_usage: usage,
+    usage_status: usage?.usage_status || '',
+    usage_readiness: usage?.readiness || '',
+    usage_reason_code: usage?.reason_code || '',
+    usage_status_label: workspaceFileUsageStatusLabel(usage),
     file,
   };
 }
@@ -205,6 +332,57 @@ function workspaceFileStatusLabel(item) {
   return status && status !== 'active' ? 'Etat fichier' : '';
 }
 
+function workspaceFileNextcloudStatusLabel(item) {
+  const status = normalizeWorkspaceFileNextcloudState(
+    item?.document_nextcloud_sync_state || item?.document_v1_user?.nextcloud_sync_state,
+  );
+  if (WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS[status] !== undefined) {
+    return WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS[status];
+  }
+  return '';
+}
+
+function workspaceFileUsageStatusLabel(item) {
+  const status = String(item?.usage_status || '').trim();
+  if (WORKSPACE_FILE_USAGE_STATUS_LABELS[status] !== undefined) {
+    return WORKSPACE_FILE_USAGE_STATUS_LABELS[status];
+  }
+  return status ? 'Etat lecture' : '';
+}
+
+function normalizeWorkspaceFileUsage(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return {
+    source: String(value.source || '').trim(),
+    conversation_id: String(value.conversation_id || '').trim() || null,
+    workspace_file_id: String(value.workspace_file_id || '').trim(),
+    workspace_folder_id: normalizeWorkspaceFolderId(value.workspace_folder_id),
+    selected: parseWorkspaceFolderObservabilityBool(value.selected),
+    usage_status: String(value.usage_status || '').trim(),
+    readiness: String(value.readiness || '').trim(),
+    selection_status: String(value.selection_status || '').trim(),
+    reason_code: String(value.reason_code || '').trim(),
+    last_injected_turn_id: String(value.last_injected_turn_id || '').trim(),
+    last_excluded_turn_id: String(value.last_excluded_turn_id || '').trim(),
+    last_excluded_reason_code: String(value.last_excluded_reason_code || '').trim(),
+  };
+}
+
+function workspaceFolderNextcloudStatusLabel(item) {
+  const status = String(item?.nextcloud_sync_state || '').trim();
+  if (!status) return '';
+  if (WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS[status] !== undefined) {
+    return WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS[status];
+  }
+  return '';
+}
+
+function workspaceFolderDeleteConfirmationText(item) {
+  const displayName = String(item?.display_name || item?.name || 'ce répertoire').replace(/\s+/g, ' ').trim();
+  const label = displayName || 'ce répertoire';
+  return `Supprimer le répertoire "${label}" ? Les conversations resteront hors répertoire. Les fichiers et documents ne seront pas supprimés.`;
+}
+
 function canRunWorkspaceOcr(item) {
   const mime = String(item?.mime_type || '').split(';', 1)[0].trim().toLowerCase();
   const ext = String(item?.source_extension || '').trim().toLowerCase();
@@ -220,6 +398,27 @@ function canEditWorkspaceOcrMarkdown(item) {
   return String(item?.source_kind || '') === 'ocr_derived'
     && String(item?.source_extension || '').trim().toLowerCase() === '.md'
     && String(item?.status || 'active') === 'active';
+}
+
+function normalizeWorkspaceDocumentUserProjection(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const nextcloudSyncState = normalizeWorkspaceFileNextcloudState(value.nextcloud_sync_state);
+  return {
+    display_name: String(value.display_name || '').replace(/\s+/g, ' ').trim(),
+    document_status: String(value.document_status || '').trim(),
+    readiness: String(value.readiness || '').trim(),
+    reason_code: String(value.reason_code || '').trim(),
+    nextcloud_sync_state: nextcloudSyncState,
+    nextcloud_status_label: String(
+      value.nextcloud_status_label || workspaceFileNextcloudStatusLabel({ document_nextcloud_sync_state: nextcloudSyncState }),
+    ).replace(/\s+/g, ' ').trim(),
+    nextcloud_reason_code: String(value.nextcloud_reason_code || '').trim(),
+  };
+}
+
+function normalizeWorkspaceFileNextcloudState(value) {
+  const state = String(value || '').trim();
+  return WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS[state] !== undefined ? state : 'unknown';
 }
 
 function groupThreadsByWorkspaceFolder(threads, folders) {
@@ -245,8 +444,12 @@ const FridaWorkspaceFolders = Object.freeze({
   WORKSPACE_FOLDER_ICON_LABELS,
   WORKSPACE_FOLDER_ICON_SVGS,
   WORKSPACE_FILE_STATUS_LABELS,
+  WORKSPACE_FILE_NEXTCLOUD_STATUS_LABELS,
+  WORKSPACE_FILE_USAGE_STATUS_LABELS,
+  WORKSPACE_FOLDER_NEXTCLOUD_STATUS_LABELS,
   normalizeWorkspaceFolderId,
   normalizeWorkspaceIconKey,
+  normalizeWorkspaceFolderObservability,
   normalizeWorkspaceFolderItem,
   normalizeWorkspaceFoldersPayload,
   normalizeWorkspaceFileItem,
@@ -256,6 +459,10 @@ const FridaWorkspaceFolders = Object.freeze({
   formatWorkspaceFileBytes,
   compactWorkspaceFileMeta,
   workspaceFileStatusLabel,
+  workspaceFileNextcloudStatusLabel,
+  workspaceFileUsageStatusLabel,
+  workspaceFolderNextcloudStatusLabel,
+  workspaceFolderDeleteConfirmationText,
   canRunWorkspaceOcr,
   canEditWorkspaceOcrMarkdown,
   groupThreadsByWorkspaceFolder,

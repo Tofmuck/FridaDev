@@ -3,7 +3,7 @@
 Statut: TODO actif
 Date: 2026-06-10
 Cible de cloture: 2026-07-02
-Branche de travail courante: `FridaAgenda`
+Branche de travail courante: `FridaV1-Nextcloud-Folders`
 
 ## Intention
 
@@ -27,8 +27,15 @@ renommage, suppression, conflits de noms, utilisateur Nextcloud propre pour
 Frida, repertoire partage avec Tof, droits, chemins, erreurs et traces
 content-free.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-nextcloud-folders-todo.md`
+TODO archivee:
+`app/docs/todo-done/product/frida-v1-nextcloud-folders-todo.md`
+
+Statut 2026-06-17: socle dossiers Frida V1 / Nextcloud valide en Lot Z par
+preuve empirique runtime content-free. Les chantiers Documents, Notes, Exports
+et Images restent des points obligatoires separes.
+
+Chantier Documents actif apres ce socle, maintenant cloture:
+`app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`
 
 ### 2. Documents sources / ingestion / lecture / PDF fallback
 
@@ -39,16 +46,37 @@ fallback visuel doit etre le meme que le PDF vienne d'un dossier ou d'un ajout
 direct dans le chat: memes limites, memes messages utilisateur, memes preuves,
 aucun contenu brut dans les traces.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-documents-ingestion-todo.md`
+TODO archivee:
+`app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`
+
+Contrat source:
+`app/docs/states/specs/frida-v1-documents-ingestion-contract.md`
+
+Statut 2026-06-18: Documents V1 valide en Lot Z avec verdict
+`met_with_documented_limit`. La seule limite de cloture est le cas live non
+`linked`, non applicable faute de dossier actif non `linked` naturel et couvert
+par tests unitaires/serveur sans mutation DB artificielle.
 
 ### 3. Notes Markdown par dossier
 
 Frida doit pouvoir creer une note, completer une note, retrouver une note,
 lister les notes d'un dossier et stocker ces notes en Markdown dans Nextcloud.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-folder-markdown-notes-todo.md`
+TODO archivee:
+`app/docs/todo-done/product/frida-v1-folder-markdown-notes-todo.md`
+
+Contrat source:
+`app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`
+
+Statut 2026-06-18: Notes Markdown V1 valide en Lot Z avec verdict
+`met_with_documented_limit`. La limite documentee est le conflit ETag/version
+live, non applicable sans mutation concurrente synthetique propre et couvert
+par tests fake/unit et contrat serveur. Aucun contenu utilisateur, secret,
+corps Markdown brut, ETag brut, DAV/XML ou payload WebDAV brut n'est conserve
+dans les preuves.
+
+Chantier Exports cloture:
+`app/docs/todo-done/product/frida-v1-exports-todo.md`
 
 ### 4. Exports / creation documentaire
 
@@ -56,8 +84,14 @@ Frida doit pouvoir produire des exports Markdown, TXT, DOCX et PDF, les ranger
 dans le bon dossier Nextcloud, puis retrouver et reutiliser un export deja
 produit.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-exports-todo.md`
+TODO archivee:
+`app/docs/todo-done/product/frida-v1-exports-todo.md`
+
+Statut 2026-06-19: Exports V1 valide en Lot Z avec verdict `met`. La preuve
+live synthetique couvre creation Nextcloud-first, Markdown/TXT/DOCX/PDF,
+liste/lookup, download/open, reuse-as-source `.md` / `.txt`, no-overwrite,
+refus publics, UI, cleanup distant/local, scan artefacts/docs/diff et scan logs
+applicatifs borne reel.
 
 ### 5. Images generees
 
@@ -65,8 +99,19 @@ Auditer le stockage actuel des images generees, choisir stockage serveur et/ou
 Nextcloud, rattacher chaque image a un dossier, garder des metadonnees sobres et
 eviter toute fuite de prompt brut ou contenu sensible.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-generated-images-todo.md`
+TODO archivee:
+`app/docs/todo-done/product/frida-v1-generated-images-todo.md`
+
+Contrat source:
+`app/docs/states/specs/frida-v1-generated-images-contract.md`
+
+Statut 2026-06-20: Images generees V1 valide en Lot Z avec verdict `met`.
+La preuve live synthetique couvre provider -> validation -> stockage
+Nextcloud-first -> read-model linked, liste/lookup UUID, open/download,
+suppression remote-first, cleanup exact, UI dossier, scan artefact/docs/diff et
+scan logs applicatifs borne reel. Le format live observe est PNG; JPEG/WebP
+sont couverts par tests/fakes Lot 3.1. No-overwrite/conflit et refus dossier
+non `linked` sont couverts par tests, sans mutation DB artificielle.
 
 ### 6. Observabilite globale / logs agentiques
 
@@ -76,8 +121,19 @@ traces doivent rester exploitables mais content-free, avec une separation nette
 entre observabilite technique, observabilite produit, preuves live et surface
 utilisateur.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-agentic-observability-todo.md`
+TODO archivee:
+`app/docs/todo-done/product/frida-v1-agentic-observability-todo.md`
+
+Contrat source:
+`app/docs/states/specs/frida-v1-agentic-observability-contract.md`
+
+Statut 2026-06-22: Observabilite agentique V1 cloturee en Lot Z avec verdict
+`met`. Les Lots 0-6 et correctifs 2.1/2.2, 3.1/3.2, 4.1, 5A.1, 5B.1 et 6.1
+sont livres; l'artefact Lot Z prouve scans logs bornes, projections admin et
+dashboard content-free, no-op/refus hors vraies pannes et vraies pannes encore
+visibles. Le reset observabilite destructif n'a pas ete execute: il reste une
+operation post-cloture separee, bloquee par GO operateur humain explicite,
+date et separe avec scope exact, backup et rollback.
 
 ### 7. Audit final general
 
@@ -110,7 +166,7 @@ TODO dediee:
 
 - Cloture pragmatique Agenda V1:
   `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
-- TODO Agenda V1:
+- TODO Agenda V1 post-V1 dormant:
   `app/docs/todo-todo/product/frida-agenda-agent.md`
 - Hub documentation:
   `app/docs/README.md`

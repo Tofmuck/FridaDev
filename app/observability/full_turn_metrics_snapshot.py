@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
+from observability import agentic_status
 from observability.turn_observability_checklist import build_turn_observability_checklist
 
 
@@ -31,7 +32,7 @@ def _stage(event: Mapping[str, Any]) -> str:
 
 
 def _status(event: Mapping[str, Any]) -> str:
-    return str(event.get('status') or '').strip().lower()
+    return agentic_status.normalize_status(event.get('status_v1') or event.get('status'))
 
 
 def _turn_key(event: Mapping[str, Any]) -> tuple[str, str]:

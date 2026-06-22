@@ -31,8 +31,22 @@ from core import conversations_service
 from core import workspace_files
 from core import workspace_file_ocr_service
 from core import workspace_files_service
+from core import workspace_document_nextcloud_runtime
 from core import workspace_file_selections
 from core import workspace_file_selections_service
+from core import workspace_folder_note_nextcloud_runtime
+from core import workspace_folder_export_nextcloud_runtime
+from core import workspace_folder_export_content_service
+from core import workspace_folder_exports
+from core import workspace_folder_exports_service
+from core import workspace_folder_generated_image_content_service
+from core import workspace_folder_generated_image_nextcloud_runtime
+from core import workspace_folder_generated_images
+from core import workspace_folder_generated_images_service
+from core import workspace_folder_notes
+from core import workspace_folder_notes_append
+from core import workspace_folder_notes_read
+from core import workspace_folder_notes_service
 from core import workspace_folders
 from core import workspace_folders_service
 from core import whisper_transcription_service
@@ -54,6 +68,7 @@ from memory import summarizer
 from memory import memory_store
 from memory import arbiter
 from observability import chat_turn_logger
+from observability import admin_log_projection
 from observability import hermeneutic_node_logger
 from observability import identity_observability
 from observability import log_store
@@ -90,6 +105,22 @@ def _finish_chat_turn_and_refresh_dashboard(turn_token: Any, *, final_status: st
         logger_instance=log_store.logger,
         reason='chat_turn_end',
     )
+
+
+def _classify_chat_response_status(status_code: int, payload: Any) -> tuple[str, str]:
+    if status_code < 400:
+        return 'ok', ''
+    if status_code >= 500:
+        return 'error', 'upstream_error'
+    payload_obj = payload if isinstance(payload, dict) else {}
+    reason_code = str(
+        payload_obj.get('reason_code')
+        or payload_obj.get('error_code')
+        or ''
+    ).strip().lower()
+    if reason_code == 'not_applicable':
+        return 'not_applicable', 'not_applicable'
+    return 'refused', reason_code or 'chat_product_refused'
 
 
 def _ensure_dashboard_recent_for_admin_read(reason: str) -> datetime | None:
@@ -746,6 +777,9 @@ def api_chat():
             config_module=config,
             logger=logger,
             workspace_file_selections_module=workspace_file_selections,
+            workspace_folders_module=workspace_folders,
+            workspace_folder_notes_module=workspace_folder_notes,
+            workspace_folder_notes_read_module=workspace_folder_notes_read,
         )
     except Exception as exc:
         chat_turn_logger.emit_error(
@@ -887,13 +921,19 @@ def api_chat():
         return response
 
     status_code = int(result['status'])
-    final_status = 'ok' if status_code < 400 else 'error'
+    result_payload = result['payload'] if isinstance(result.get('payload'), dict) else {}
+    final_status, final_reason_code = _classify_chat_response_status(status_code, result_payload)
     if final_status == 'error':
-        error_payload = result['payload'] if isinstance(result.get('payload'), dict) else {}
         chat_turn_logger.emit_error(
-            error_code='upstream_error' if status_code >= 500 else 'not_applicable',
+            error_code=final_reason_code or 'upstream_error',
             error_class='chat_response_error',
-            message_short=str(error_payload.get('error') or f'chat status {status_code}'),
+            message_short=f'chat status {status_code}',
+        )
+    elif final_status != 'ok':
+        chat_turn_logger.emit_refusal(
+            reason_code=final_reason_code or final_status,
+            reason_short=f'chat status {status_code}',
+            status=final_status,
         )
 
     response = jsonify(result['payload'])
@@ -959,9 +999,11 @@ def api_admin_chat_logs():
             status=request.args.get('status'),
             ts_from=request.args.get('ts_from'),
             ts_to=request.args.get('ts_to'),
+            payload_projection='admin',
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
+    listing = admin_log_projection.project_event_listing(listing)
 
     return jsonify(
         {
@@ -973,6 +1015,7 @@ def api_admin_chat_logs():
             'offset': listing['offset'],
             'next_offset': listing['next_offset'],
             'filters': listing['filters'],
+            'redaction': listing['redaction'],
         }
     )
 
@@ -1278,7 +1321,6 @@ def api_delete_workspace_folder(folder_id: str):
     payload, status = workspace_folders_service.delete_workspace_folder(
         folder_id,
         workspace_folders_module=workspace_folders,
-        workspace_files_module=workspace_files,
     )
     return jsonify(payload), status
 
@@ -1307,6 +1349,7 @@ def api_upload_workspace_folder_file(folder_id: str):
         request.files,
         workspace_folders_module=workspace_folders,
         workspace_files_module=workspace_files,
+        documents_nextcloud_runtime_module=workspace_document_nextcloud_runtime,
     )
     return jsonify(payload), status
 
@@ -1318,6 +1361,221 @@ def api_delete_workspace_folder_file(folder_id: str, file_id: str):
         file_id,
         workspace_folders_module=workspace_folders,
         workspace_files_module=workspace_files,
+        documents_nextcloud_runtime_module=workspace_document_nextcloud_runtime,
+    )
+    return jsonify(payload), status
+
+
+# ── /api/workspace-folders/<id>/notes* ───────────────────────────────────────
+
+@app.get('/api/workspace-folders/<folder_id>/notes')
+def api_list_workspace_folder_notes(folder_id: str):
+    payload, status = workspace_folder_notes_service.list_workspace_folder_notes_response(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_notes_module=workspace_folder_notes,
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/notes/lookup')
+def api_lookup_workspace_folder_note(folder_id: str):
+    payload, status = workspace_folder_notes_service.lookup_workspace_folder_note_response(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_notes_module=workspace_folder_notes,
+        title=request.args.get("title", ""),
+        note_id=request.args.get("note_id", ""),
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/notes/<note_id>')
+def api_get_workspace_folder_note(folder_id: str, note_id: str):
+    payload, status = workspace_folder_notes_service.lookup_workspace_folder_note_response(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_notes_module=workspace_folder_notes,
+        note_id=note_id,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/workspace-folders/<folder_id>/notes/<note_id>/append')
+def api_append_workspace_folder_note(folder_id: str, note_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_folder_notes_service.append_workspace_folder_note_response(
+        folder_id,
+        note_id,
+        data,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_notes_module=workspace_folder_notes,
+        notes_append_module=workspace_folder_notes_append,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/workspace-folders/<folder_id>/notes/<note_id>/prepare')
+def api_prepare_workspace_folder_note(folder_id: str, note_id: str):
+    payload, status = workspace_folder_notes_service.prepare_workspace_folder_note_response(
+        folder_id,
+        note_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_notes_module=workspace_folder_notes,
+        notes_read_module=workspace_folder_notes_read,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/workspace-folders/<folder_id>/notes')
+def api_create_workspace_folder_note(folder_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_folder_notes_service.create_workspace_folder_note_response(
+        folder_id,
+        data,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_notes_module=workspace_folder_notes,
+        notes_nextcloud_runtime_module=workspace_folder_note_nextcloud_runtime,
+    )
+    return jsonify(payload), status
+
+
+# ── /api/workspace-folders/<id>/exports* ─────────────────────────────────────
+
+@app.get('/api/workspace-folders/<folder_id>/exports')
+def api_list_workspace_folder_exports(folder_id: str):
+    payload, status = workspace_folder_exports_service.list_workspace_folder_exports_response(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_exports_module=workspace_folder_exports,
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/exports/<export_id>')
+def api_get_workspace_folder_export(folder_id: str, export_id: str):
+    payload, status = workspace_folder_exports_service.get_workspace_folder_export_response(
+        folder_id,
+        export_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_exports_module=workspace_folder_exports,
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/exports/<export_id>/download')
+def api_download_workspace_folder_export(folder_id: str, export_id: str):
+    result = workspace_folder_export_content_service.download_workspace_folder_export_response(
+        folder_id,
+        export_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_exports_module=workspace_folder_exports,
+        disposition="attachment",
+    )
+    if result.ok:
+        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
+    return jsonify(dict(result.payload or {})), result.status
+
+
+@app.get('/api/workspace-folders/<folder_id>/exports/<export_id>/open')
+def api_open_workspace_folder_export(folder_id: str, export_id: str):
+    result = workspace_folder_export_content_service.download_workspace_folder_export_response(
+        folder_id,
+        export_id,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_exports_module=workspace_folder_exports,
+        disposition="inline",
+    )
+    if result.ok:
+        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
+    return jsonify(dict(result.payload or {})), result.status
+
+
+@app.post('/api/workspace-folders/<folder_id>/exports')
+def api_create_workspace_folder_export(folder_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_folder_exports_service.create_workspace_folder_export_response(
+        folder_id,
+        data,
+        workspace_folders_module=workspace_folders,
+        workspace_folder_exports_module=workspace_folder_exports,
+        exports_nextcloud_runtime_module=workspace_folder_export_nextcloud_runtime,
+        conversation_store_module=conv_store,
+    )
+    return jsonify(payload), status
+
+
+# ── /api/workspace-folders/<id>/generated-images* ────────────────────────────
+
+@app.get('/api/workspace-folders/<folder_id>/generated-images')
+def api_list_workspace_folder_generated_images(folder_id: str):
+    payload, status = workspace_folder_generated_images_service.list_workspace_folder_generated_images_response(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/generated-images/<image_id>')
+def api_get_workspace_folder_generated_image(folder_id: str, image_id: str):
+    payload, status = workspace_folder_generated_images_service.get_workspace_folder_generated_image_response(
+        folder_id,
+        image_id,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/generated-images/<image_id>/download')
+def api_download_workspace_folder_generated_image(folder_id: str, image_id: str):
+    result = workspace_folder_generated_image_content_service.download_workspace_folder_generated_image_response(
+        folder_id,
+        image_id,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+        disposition="attachment",
+    )
+    if result.ok:
+        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
+    return jsonify(dict(result.payload or {})), result.status
+
+
+@app.get('/api/workspace-folders/<folder_id>/generated-images/<image_id>/open')
+def api_open_workspace_folder_generated_image(folder_id: str, image_id: str):
+    result = workspace_folder_generated_image_content_service.download_workspace_folder_generated_image_response(
+        folder_id,
+        image_id,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+        disposition="inline",
+    )
+    if result.ok:
+        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
+    return jsonify(dict(result.payload or {})), result.status
+
+
+@app.delete('/api/workspace-folders/<folder_id>/generated-images/<image_id>')
+def api_delete_workspace_folder_generated_image(folder_id: str, image_id: str):
+    payload, status = workspace_folder_generated_image_content_service.delete_workspace_folder_generated_image_response(
+        folder_id,
+        image_id,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/workspace-folders/<folder_id>/generated-images')
+def api_create_workspace_folder_generated_image(folder_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_folder_generated_images_service.create_workspace_folder_generated_image_response(
+        folder_id,
+        data,
+        workspace_folders_module=workspace_folders,
+        generated_images_module=workspace_folder_generated_images,
+        generated_images_runtime_module=workspace_folder_generated_image_nextcloud_runtime,
     )
     return jsonify(payload), status
 

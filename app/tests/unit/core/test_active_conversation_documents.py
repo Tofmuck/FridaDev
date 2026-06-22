@@ -104,7 +104,7 @@ class FakeCursor:
                 row["status"] = status
                 row["deactivated_at"] = deactivated_at
                 row["last_excluded_reason_code"] = reason_code
-                if row.get("media_kind") == active_docs.MEDIA_KIND_IMAGE:
+                if row.get("media_kind") in {active_docs.MEDIA_KIND_IMAGE, active_docs.MEDIA_KIND_FILE}:
                     row["binary_content"] = None
                 self.rowcount = 1
             return
@@ -441,6 +441,68 @@ class ActiveConversationDocumentsTest(unittest.TestCase):
         self.assertEqual(row["image_width"], 80)
         self.assertEqual(row["image_height"], 64)
         self.assertEqual(active_docs.list_active_documents(CONV_A, conn_factory=self.conn_factory), [])
+
+    def test_active_file_metadata_is_content_free_and_available_only_to_prompt_lane(self):
+        raw_pdf = b"%PDF private visual bytes"
+        metadata = active_docs.activate_file_document(
+            CONV_A,
+            document_id=DOC_A,
+            filename="scan.pdf",
+            file_content=raw_pdf,
+            media_type="application/pdf",
+            source_extension=".pdf",
+            byte_size=len(raw_pdf),
+            content_sha256_12="pdf123abcdef",
+            conn_factory=self.conn_factory,
+            now_func=lambda: NOW,
+        )
+
+        self.assertIsNotNone(metadata)
+        self.assertEqual(metadata["media_kind"], active_docs.MEDIA_KIND_FILE)
+        self.assertEqual(metadata["text_chars"], 0)
+        self.assertEqual(metadata["content_sha256_12"], "pdf123abcdef")
+        self.assertNotIn("file_content", metadata)
+        self.assertNotIn("binary_content", metadata)
+
+        visible_metadata = active_docs.list_active_documents(CONV_A, conn_factory=self.conn_factory)
+        self.assertEqual(visible_metadata[0]["media_kind"], active_docs.MEDIA_KIND_FILE)
+        self.assertNotIn("binary_content", visible_metadata[0])
+
+        prompt_docs = active_docs.list_active_documents_for_prompt(CONV_A, conn_factory=self.conn_factory)
+        self.assertEqual(prompt_docs[0]["media_kind"], active_docs.MEDIA_KIND_FILE)
+        self.assertEqual(prompt_docs[0]["file_content"], raw_pdf)
+        self.assertNotIn("binary_content", prompt_docs[0])
+
+    def test_manual_remove_of_active_file_clears_bytes_but_keeps_metadata(self):
+        raw_pdf = b"%PDF private visual bytes"
+        active_docs.activate_file_document(
+            CONV_A,
+            document_id=DOC_A,
+            filename="scan.pdf",
+            file_content=raw_pdf,
+            media_type="application/pdf",
+            source_extension=".pdf",
+            byte_size=len(raw_pdf),
+            content_sha256_12="pdf123abcdef",
+            conn_factory=self.conn_factory,
+            now_func=lambda: NOW,
+        )
+
+        self.assertEqual(self.conn.rows[DOC_A]["binary_content"], raw_pdf)
+        removed = active_docs.deactivate_document(
+            CONV_A,
+            DOC_A,
+            reason_code="manual_remove",
+            conn_factory=self.conn_factory,
+            now_func=lambda: LATER,
+        )
+
+        self.assertTrue(removed)
+        row = self.conn.rows[DOC_A]
+        self.assertEqual(row["status"], "inactive")
+        self.assertIsNone(row["binary_content"])
+        self.assertEqual(row["media_kind"], active_docs.MEDIA_KIND_FILE)
+        self.assertEqual(row["content_sha256_12"], "pdf123abcdef")
 
     def test_conversation_scope_prevents_cross_conversation_reuse(self):
         self.activate(conversation_id=CONV_A, document_id=DOC_A, text="document A")

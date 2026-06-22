@@ -325,11 +325,37 @@ def _reduce_node_state_metrics(metrics: dict[str, Any], fact: Mapping[str, Any])
 def _reduce_error_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
     errors = _mapping(fact.get('errors'))
     _add_metric_count(metrics, 'error_count', _to_int(errors.get('error_count')))
+    _add_metric_count(metrics, 'failed_count', _to_int(errors.get('failed_count')))
+    _add_metric_count(metrics, 'attempt_failure_count', _to_int(errors.get('attempt_failure_count')))
+    _add_metric_count(metrics, 'problem_count', _to_int(errors.get('problem_count')))
     _add_metric_count(metrics, 'skipped_count', _to_int(errors.get('skipped_count')))
+    _add_metric_count(metrics, 'disabled_count', _to_int(errors.get('disabled_count')))
+    _add_metric_count(metrics, 'not_selected_count', _to_int(errors.get('not_selected_count')))
+    _add_metric_count(metrics, 'not_configured_count', _to_int(errors.get('not_configured_count')))
+    _add_metric_count(metrics, 'not_applicable_count', _to_int(errors.get('not_applicable_count')))
+    _add_metric_count(metrics, 'refused_count', _to_int(errors.get('refused_count')))
+    _add_metric_count(metrics, 'non_problem_status_count', _to_int(errors.get('non_problem_status_count')))
     _add_metric_count(metrics, 'fallback_count', _to_int(errors.get('fallback_count')))
+    status_counts = _mapping(errors.get('status_counts'))
+    for status, count in status_counts.items():
+        _add_metric_label(metrics, 'status_counts', status, _to_int(count))
     reason_counts = _mapping(errors.get('reason_code_counts'))
     for reason, count in reason_counts.items():
         _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
+    problem_reason_counts = _mapping(errors.get('problem_reason_code_counts'))
+    for reason, count in problem_reason_counts.items():
+        _add_metric_label(metrics, 'problem_reason_code_counts', reason, _to_int(count))
+    non_problem_reason_counts = _mapping(errors.get('non_problem_reason_code_counts'))
+    for reason, count in non_problem_reason_counts.items():
+        _add_metric_label(metrics, 'non_problem_reason_code_counts', reason, _to_int(count))
+    status_schema = _mapping(fact.get('status_schema')) or _mapping(_mapping(fact.get('flags')).get('status_schema'))
+    _add_metric_count(metrics, 'v1_event_count', _to_int(status_schema.get('v1_event_count')))
+    _add_metric_count(metrics, 'legacy_event_count', _to_int(status_schema.get('legacy_event_count')))
+    for schema, count in _mapping(status_schema.get('schema_counts')).items():
+        _add_metric_label(metrics, 'status_schema_counts', schema, _to_int(count))
+    source_kind = str(status_schema.get('source_kind') or '').strip()
+    if source_kind:
+        _add_metric_label(metrics, 'status_schema_source_kind_counts', source_kind, 1)
 
 
 def _summarize_pipeline_turn(fact: Mapping[str, Any]) -> str:
@@ -473,14 +499,24 @@ def _summarize_node_state_turn(fact: Mapping[str, Any]) -> str:
 
 def _summarize_errors_turn(fact: Mapping[str, Any]) -> str:
     errors = _mapping(fact.get('errors'))
-    problems = _to_int(errors.get('error_count')) + _to_int(errors.get('fallback_count'))
+    problems = (
+        _to_int(errors.get('problem_count'))
+        or _to_int(errors.get('error_count')) + _to_int(errors.get('failed_count')) + _to_int(errors.get('fallback_count'))
+    )
     if problems:
         return f"{problems} probleme(s) compact(s) sont visibles sur ce tour."
     return 'Aucun probleme compact n est visible sur ce tour.'
 
 
 def _resolve_errors_reason(fact: Mapping[str, Any]) -> str | None:
-    reason_counts = _mapping(_mapping(fact.get('errors')).get('reason_code_counts'))
+    errors = _mapping(fact.get('errors'))
+    reason_counts = _mapping(errors.get('problem_reason_code_counts'))
+    if not reason_counts and (
+        _to_int(errors.get('error_count'))
+        or _to_int(errors.get('failed_count'))
+        or _to_int(errors.get('fallback_count'))
+    ):
+        reason_counts = _mapping(errors.get('reason_code_counts'))
     return next(iter(reason_counts.keys()), None)
 
 
@@ -988,18 +1024,35 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         description_fr='Regroupe erreurs, skips et fallbacks visibles.',
         global_metrics=_fields(
             ('error_count', 'Erreurs'),
+            ('failed_count', 'Echecs bornes'),
+            ('attempt_failure_count', 'Vraies pannes'),
             ('skipped_count', 'Etapes ignorees'),
+            ('disabled_count', 'Modules desactives'),
+            ('not_selected_count', 'Modules non selectionnes'),
+            ('not_configured_count', 'Prerequis absents'),
+            ('not_applicable_count', 'Modules non concernes'),
+            ('refused_count', 'Refus produit'),
+            ('non_problem_status_count', 'No-op/refus non pannes'),
             ('fallback_count', 'Fallbacks'),
+            ('status_counts', 'Statuts V1'),
+            ('status_schema_counts', 'Schemas de statut'),
             ('reason_code_counts', 'Causes compactes'),
+            ('problem_reason_code_counts', 'Causes des vraies pannes'),
+            ('non_problem_reason_code_counts', 'Causes no-op/refus'),
         ),
         conversation_summary=_fields(
             ('error_count', 'Erreurs conversation'),
+            ('failed_count', 'Echecs bornes conversation'),
+            ('problem_count', 'Problemes conversation'),
             ('fallback_count', 'Fallbacks conversation'),
             ('last_problem_reason_code', 'Dernier probleme compact'),
         ),
         turn_summary=_fields(
             ('error_count', 'Erreurs du tour'),
+            ('failed_count', 'Echecs bornes du tour'),
+            ('attempt_failure_count', 'Vraies pannes du tour'),
             ('skipped_count', 'Etapes ignorees'),
+            ('non_problem_status_count', 'No-op/refus non pannes'),
             ('fallback_count', 'Fallbacks du tour'),
         ),
         human_detail=_fields(

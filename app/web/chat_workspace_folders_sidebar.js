@@ -5,6 +5,16 @@ const WorkspaceFolderUiHelpers = (
     ? window.FridaWorkspaceFolders
     : (typeof require !== 'undefined' ? require('./chat_workspace_folders.js') : null)
 );
+const WorkspaceFolderExportsPanel = (
+  typeof window !== 'undefined' && window.FridaWorkspaceFolderExportsPanel
+    ? window.FridaWorkspaceFolderExportsPanel
+    : (typeof require !== 'undefined' ? require('./chat_workspace_folder_exports_panel.js') : null)
+);
+const WorkspaceFolderGeneratedImagesPanel = (
+  typeof window !== 'undefined' && window.FridaWorkspaceFolderGeneratedImagesPanel
+    ? window.FridaWorkspaceFolderGeneratedImagesPanel
+    : (typeof require !== 'undefined' ? require('./chat_workspace_folder_generated_images_panel.js') : null)
+);
 
 function createWorkspaceFolderSidebarRenderer({
   threadsUl,
@@ -22,6 +32,17 @@ function createWorkspaceFolderSidebarRenderer({
   ocrWorkspaceFileOnServer,
   readWorkspaceOcrMarkdownOnServer,
   saveWorkspaceOcrMarkdownOnServer,
+  getWorkspaceExports,
+  refreshWorkspaceExports,
+  createWorkspaceExportOnServer,
+  openWorkspaceExport,
+  downloadWorkspaceExport,
+  getWorkspaceGeneratedImages,
+  refreshWorkspaceGeneratedImages,
+  createWorkspaceGeneratedImageOnServer,
+  openWorkspaceGeneratedImage,
+  downloadWorkspaceGeneratedImage,
+  deleteWorkspaceGeneratedImageOnServer,
   getCurrentThread,
   getWorkspaceFileSelections,
   selectWorkspaceFileOnServer,
@@ -34,6 +55,30 @@ function createWorkspaceFolderSidebarRenderer({
   const iconKeys = WorkspaceFolderUiHelpers?.WORKSPACE_FOLDER_ICON_KEYS || ['folder'];
   const normalizeIconKey = WorkspaceFolderUiHelpers?.normalizeWorkspaceIconKey || ((value) => String(value || 'folder').trim() || 'folder');
   const expandedFolderIds = new Set();
+  const exportsPanel = WorkspaceFolderExportsPanel?.createWorkspaceFolderExportsPanelRenderer?.({
+    threadsUl,
+    getWorkspaceExports,
+    refreshWorkspaceExports,
+    createWorkspaceExportOnServer,
+    openWorkspaceExport,
+    downloadWorkspaceExport,
+    getCurrentThread,
+    renderThreads,
+    setThreadStatus,
+    consoleObj: logger,
+  });
+  const generatedImagesPanel = WorkspaceFolderGeneratedImagesPanel?.createWorkspaceFolderGeneratedImagesPanelRenderer?.({
+    threadsUl,
+    getWorkspaceGeneratedImages,
+    refreshWorkspaceGeneratedImages,
+    createWorkspaceGeneratedImageOnServer,
+    openWorkspaceGeneratedImage,
+    downloadWorkspaceGeneratedImage,
+    deleteWorkspaceGeneratedImageOnServer,
+    renderThreads,
+    setThreadStatus,
+    consoleObj: logger,
+  });
 
   const isFolderCollapsed = (folderId) => {
     const normalized = String(folderId || '');
@@ -96,7 +141,10 @@ function createWorkspaceFolderSidebarRenderer({
 
   const requestDelete = async (folder) => {
     const ok = typeof window !== 'undefined'
-      ? window.confirm(`Supprimer le répertoire "${folder.display_name}" ? Les conversations resteront hors répertoire et les fichiers du répertoire seront supprimés.`)
+      ? window.confirm(
+        WorkspaceFolderUiHelpers?.workspaceFolderDeleteConfirmationText?.(folder)
+        || `Supprimer le répertoire "${folder.display_name}" ?`
+      )
       : false;
     if (!ok) return;
     try {
@@ -382,6 +430,15 @@ function createWorkspaceFolderSidebarRenderer({
     count.textContent = String(folderThreads.length);
     main.appendChild(count);
 
+    const syncLabel = WorkspaceFolderUiHelpers?.workspaceFolderNextcloudStatusLabel?.(folder) || '';
+    if (syncLabel) {
+      const sync = document.createElement('span');
+      sync.className = 'workspace-folder-sync-state';
+      sync.textContent = syncLabel;
+      sync.title = syncLabel;
+      main.appendChild(sync);
+    }
+
     const actions = document.createElement('span');
     actions.className = 'workspace-folder-actions';
     [
@@ -417,6 +474,8 @@ function createWorkspaceFolderSidebarRenderer({
     if (collapsed) return;
 
     appendFileRows(folder);
+    exportsPanel?.appendExportRows(folder);
+    generatedImagesPanel?.appendGeneratedImageRows(folder);
 
     if (!folderThreads.length) {
       const empty = document.createElement('li');

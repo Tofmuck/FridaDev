@@ -137,9 +137,9 @@ def _run_refresh(
         )
     except Exception as exc:
         logger_instance.warning(
-            'dashboard_recent_materialization_failed reason=%s err=%s',
+            'dashboard_recent_materialization_failed reason=%s err_class=%s',
             reason,
-            exc,
+            exc.__class__.__name__,
         )
         return {
             'ok': False,
@@ -215,9 +215,9 @@ def schedule_recent_dashboard_analytics_materialization(
         with _REFRESH_LOCK:
             _REFRESH_RUNNING = False
         logger_instance.warning(
-            'dashboard_recent_materialization_thread_start_failed reason=%s err=%s',
+            'dashboard_recent_materialization_thread_start_failed reason=%s err_class=%s',
             reason,
-            exc,
+            exc.__class__.__name__,
         )
         return {
             'scheduled': False,
@@ -244,7 +244,11 @@ def ensure_recent_dashboard_analytics_fresh(
     try:
         freshness = _read_freshness(conn_factory=conn_factory)
     except Exception as exc:
-        logger_instance.warning('dashboard_freshness_probe_failed reason=%s err=%s', reason, exc)
+        logger_instance.warning(
+            'dashboard_freshness_probe_failed reason=%s err_class=%s',
+            reason,
+            exc.__class__.__name__,
+        )
         return {
             'ok': False,
             'refreshed': False,

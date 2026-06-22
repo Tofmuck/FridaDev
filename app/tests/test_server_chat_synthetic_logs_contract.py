@@ -195,6 +195,7 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
                 'projected_judgment_posture': 'clarify',
                 'pipeline_directives_final': ['posture_clarify', 'regime_meta'],
                 'decision_source': 'primary',
+                'status_schema_version': 'agentic_v1',
                 'model': 'openai/gpt-5.4-mini',
             },
         )
@@ -294,6 +295,7 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
                 'message_count': 3,
                 'messages_written': 0,
                 'reason': 'messages_write_failed',
+                'status_schema_version': 'agentic_v1',
             },
         )
         self.assertEqual(len(observed_state['save_new_traces_calls']), 0)
@@ -458,6 +460,7 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
                 'projected_judgment_posture': 'clarify',
                 'pipeline_directives_final': ['posture_clarify', 'regime_simple'],
                 'decision_source': 'primary',
+                'status_schema_version': 'agentic_v1',
                 'model': 'openai/gpt-5.4-mini',
             },
         )
@@ -579,6 +582,7 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
                 'pipeline_directives_final': ['posture_suspend', 'regime_simple', 'fallback_validation'],
                 'decision_source': 'fail_open',
                 'reason_code': 'timeout',
+                'status_schema_version': 'agentic_v1',
                 'model': 'openai/gpt-5.4-nano',
             },
         )

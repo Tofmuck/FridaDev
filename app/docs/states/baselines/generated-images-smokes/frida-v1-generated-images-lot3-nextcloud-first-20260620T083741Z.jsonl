@@ -1,0 +1,15 @@
+{"case_id": "LOT3_RUNTIME_SECRET_REDACTED", "nextcloud_secret_available": true, "provider_secret_available": true, "ts_utc": "2026-06-20T08:37:41Z", "value_displayed": false, "verdict": "met"}
+{"case_id": "LOT3_FOLDER_LINKED_ELIGIBLE", "linked_count": 2, "ts_utc": "2026-06-20T08:37:41Z", "verdict": "met"}
+{"case_id": "LOT3_IMAGES_COLLECTION", "folder_ref": "workspace-folder:6d7051a8:124a66b955cc", "http_status_class": "2xx", "name_hash": "124a66b955cc", "reason_code": "folder_generated_image_store_ok", "ts_utc": "2026-06-20T08:37:41Z", "verdict": "met"}
+{"case_id": "LOT3_PROVIDER_GENERATION", "http_status": 201, "reason_code": "folder_generated_image_store_ok", "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met"}
+{"byte_size": 729515, "case_id": "LOT3_IMAGE_VALIDATION", "content_hash_short": "b49b9ff50359", "format": "png", "height": 1024, "mime_type": "image/png", "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met", "width": 1024}
+{"case_id": "LOT3_REMOTE_PUT_CREATED", "etag_present": true, "http_status_class": "2xx", "reason_code": "folder_generated_image_store_ok", "target_ref": "generated-image-target:7a9cb45dc29e", "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met"}
+{"case_id": "LOT3_LOCAL_READ_MODEL_LINKED", "image_ref": "workspace-generated-image:bc0e6868:7a9cb45dc29e", "local_state": "available", "nextcloud_sync_state": "linked", "prompt_length_bucket": "chars_001_to_250", "prompt_present": true, "target_ref": "generated-image-target:7a9cb45dc29e", "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met"}
+{"case_id": "LOT3_UPDATE_LIKE_REFUSED", "proof_kind": "unit", "test": "test_put_update_like_is_conflict_without_local_upsert", "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met"}
+{"case_id": "LOT3_PROVIDER_OK_STORAGE_KO_REFUSED", "proof_kind": "unit", "test": "test_provider_ok_but_storage_unavailable_is_failure_without_linked_row", "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met"}
+{"case_id": "LOT3_REMOTE_ROLLBACK_ON_LOCAL_FAILURE", "proof_kind": "unit", "test": "test_remote_created_then_local_persistence_failure_rolls_back_exact_target", "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met"}
+{"case_id": "LOT3_CLEANUP_REMOTE_EXACT", "http_status_class": "2xx", "reason_code": "folder_generated_image_remote_compensation_ok", "target_ref": "generated-image-target:7a9cb45dc29e", "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met"}
+{"case_id": "LOT3_CLEANUP_LOCAL_TOMBSTONE", "local_state": "deleted", "nextcloud_sync_state": "deleted", "target_ref": "generated-image-target:7a9cb45dc29e", "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met"}
+{"case_id": "LOT3_CLEANUP_REMOTE_ABSENCE_STATUS_ONLY", "http_status_class": "4xx", "raw_target_displayed": false, "reason_code": "folder_generated_image_remote_compensation_ok", "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met"}
+{"case_id": "LOT3_ARTIFACT_SCAN", "forbidden_categories": [], "forbidden_match_count": 0, "scanned_byte_count": 2808, "scanned_line_count": 13, "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met"}
+{"case_id": "LOT3_FINAL_VERDICT", "cleanup_local": true, "cleanup_remote": true, "provider_live": true, "ts_utc": "2026-06-20T08:37:47Z", "verdict": "met"}

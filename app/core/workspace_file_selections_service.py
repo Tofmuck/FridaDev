@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple
 
+from . import workspace_folder_documents
+
 
 REASON_FILE_MISSING = "workspace_file_missing"
 REASON_SELECTION_STALE = "workspace_selection_stale"
@@ -20,7 +22,10 @@ def list_workspace_file_selections_response(
     return {
         "ok": True,
         "conversation_id": conv_id,
-        "items": workspace_file_selections_module.list_workspace_file_selections(conv_id),
+        "items": [
+            workspace_folder_documents.apply_selection_document_v1_projection(item)
+            for item in workspace_file_selections_module.list_workspace_file_selections(conv_id)
+        ],
     }, 200
 
 
@@ -42,7 +47,11 @@ def select_workspace_file_response(
         reason_code = str(result.get("reason_code") or REASON_SELECTION_STALE)
         status = 404 if reason_code == REASON_FILE_MISSING else 409
         return {"ok": False, "error": _human_error(reason_code), "reason_code": reason_code}, status
-    return {"ok": True, "conversation_id": conv_id, "selection": result.get("selection")}, 201
+    return {
+        "ok": True,
+        "conversation_id": conv_id,
+        "selection": workspace_folder_documents.apply_selection_document_v1_projection(result.get("selection")),
+    }, 201
 
 
 def deselect_workspace_file_response(

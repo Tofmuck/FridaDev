@@ -42,6 +42,7 @@ class ActiveDocumentUploadOcrTest(unittest.TestCase):
             extractor_module=extractor,
             ocr_module=ocr,
             admin_logs_module=_FakeAdminLogs(),
+            pdf_visual_fallback_enabled=False,
         )
 
         self.assertEqual(status, 201)
@@ -60,6 +61,91 @@ class ActiveDocumentUploadOcrTest(unittest.TestCase):
         self.assertNotIn(OCR_TEXT, json.dumps(payload, ensure_ascii=False))
         self.assertNotIn("ocr_pdf", json.dumps(payload, ensure_ascii=False))
 
+    def test_direct_upload_pdf_without_text_becomes_visual_file_by_default(self):
+        active_docs = _FakeActiveDocuments()
+        extractor = _FakeExtractor(
+            [_extraction(status="ocr_required", reason_code="document_ocr_required", text="", byte_size=14)]
+        )
+        ocr = _FakeOcr(_ocr_result(status="complete", reason_code="", ocr_pdf=b"%PDF OCR"))
+
+        payload, status = upload_service.upload_active_document_response(
+            CONV_ID,
+            _files(b"%PDF scanned"),
+            conv_store_module=_FakeConvStore(),
+            active_documents_module=active_docs,
+            extractor_module=extractor,
+            ocr_module=ocr,
+            visual_limits_module=_FakeVisualLimits(),
+            admin_logs_module=_FakeAdminLogs(),
+        )
+
+        self.assertEqual(status, 201)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(ocr.calls, [])
+        self.assertEqual(len(extractor.calls), 1)
+        self.assertEqual(active_docs.activated_texts, [])
+        self.assertEqual(active_docs.activated_files, [b"%PDF scanned"])
+        self.assertEqual(payload["document"]["media_kind"], "file")
+        self.assertEqual(payload["document"]["media_type"], "application/pdf")
+        self.assertIs(payload["document"]["ocr_applied"], False)
+        serialized = json.dumps(payload, ensure_ascii=False)
+        self.assertNotIn("file_content", serialized)
+        self.assertNotIn("data:application/pdf", serialized)
+        self.assertNotIn("ocr_pdf", serialized)
+
+    def test_direct_upload_pdf_visual_too_many_pages_refuses_before_activation(self):
+        active_docs = _FakeActiveDocuments()
+        extractor = _FakeExtractor(
+            [_extraction(status="ocr_required", reason_code="document_ocr_required", text="", byte_size=14)]
+        )
+        ocr = _FakeOcr(_ocr_result(status="complete", reason_code="", ocr_pdf=b"%PDF OCR"))
+
+        payload, status = upload_service.upload_active_document_response(
+            CONV_ID,
+            _files(b"%PDF scanned"),
+            conv_store_module=_FakeConvStore(),
+            active_documents_module=active_docs,
+            extractor_module=extractor,
+            ocr_module=ocr,
+            visual_limits_module=_FakeVisualLimits(ok=False, reason_code="pdf_visual_too_many_pages", page_count=26),
+            admin_logs_module=_FakeAdminLogs(),
+        )
+
+        self.assertEqual(status, 422)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["reason_code"], "file_too_many_pages_for_provider_payload")
+        self.assertEqual(payload["document"]["status"], "too_large")
+        self.assertEqual(payload["document"]["page_count"], 26)
+        self.assertEqual(ocr.calls, [])
+        self.assertEqual(active_docs.activated_texts, [])
+        self.assertEqual(active_docs.activated_files, [])
+        serialized = json.dumps(payload, ensure_ascii=False)
+        self.assertNotIn("file_content", serialized)
+        self.assertNotIn("data:application/pdf", serialized)
+        self.assertNotIn("ocr_pdf", serialized)
+
+    def test_direct_upload_pdf_visual_page_count_error_is_fail_closed(self):
+        active_docs = _FakeActiveDocuments()
+        extractor = _FakeExtractor(
+            [_extraction(status="ocr_required", reason_code="document_ocr_required", text="", byte_size=14)]
+        )
+
+        payload, status = upload_service.upload_active_document_response(
+            CONV_ID,
+            _files(b"%PDF scanned"),
+            conv_store_module=_FakeConvStore(),
+            active_documents_module=active_docs,
+            extractor_module=extractor,
+            ocr_module=_ExplodingOcr(),
+            visual_limits_module=_FakeVisualLimits(ok=False, reason_code="pdf_visual_page_count_failed"),
+            admin_logs_module=_FakeAdminLogs(),
+        )
+
+        self.assertEqual(status, 422)
+        self.assertEqual(payload["reason_code"], "file_page_count_failed")
+        self.assertEqual(active_docs.activated_texts, [])
+        self.assertEqual(active_docs.activated_files, [])
+
     def test_textual_pdf_does_not_call_ocr(self):
         active_docs = _FakeActiveDocuments()
         extractor = _FakeExtractor([_extraction(status="complete", reason_code="", text="texte PDF")])
@@ -72,6 +158,7 @@ class ActiveDocumentUploadOcrTest(unittest.TestCase):
             active_documents_module=active_docs,
             extractor_module=extractor,
             ocr_module=ocr,
+            pdf_visual_fallback_enabled=False,
         )
 
         self.assertEqual(status, 201)
@@ -106,6 +193,7 @@ class ActiveDocumentUploadOcrTest(unittest.TestCase):
             active_documents_module=active_docs,
             extractor_module=extractor,
             ocr_module=ocr,
+            pdf_visual_fallback_enabled=False,
         )
 
         self.assertEqual(status, 422)
@@ -150,6 +238,7 @@ class ActiveDocumentUploadOcrTest(unittest.TestCase):
             active_documents_module=active_docs,
             extractor_module=extractor,
             ocr_module=ocr,
+            pdf_visual_fallback_enabled=False,
         )
 
         self.assertEqual(status, 422)
@@ -174,6 +263,7 @@ class ActiveDocumentUploadOcrTest(unittest.TestCase):
             active_documents_module=active_docs,
             extractor_module=extractor,
             ocr_module=ocr,
+            pdf_visual_fallback_enabled=False,
         )
 
         self.assertEqual(status, 422)
@@ -192,6 +282,7 @@ def _run_ocr_failure(reason_code: str):
         active_documents_module=active_docs,
         extractor_module=extractor,
         ocr_module=ocr,
+        pdf_visual_fallback_enabled=False,
     )
     return payload, status, active_docs, ocr
 
@@ -222,6 +313,8 @@ class _FakeActiveDocuments:
     def __init__(self):
         self.activated_texts = []
         self.activated_kwargs = []
+        self.activated_files = []
+        self.activated_file_kwargs = []
 
     def activate_document(self, conversation_id, **kwargs):
         self.activated_kwargs.append(dict(kwargs))
@@ -242,6 +335,30 @@ class _FakeActiveDocuments:
             "ocr_engine": kwargs.get("ocr_engine", ""),
             "ocr_languages": kwargs.get("ocr_languages", ""),
             "ocr_duration_ms": kwargs.get("ocr_duration_ms", 0),
+            "source": "active_conversation_documents",
+        }
+
+    def activate_file_document(self, conversation_id, **kwargs):
+        self.activated_file_kwargs.append(dict(kwargs))
+        self.activated_files.append(bytes(kwargs.get("file_content") or b""))
+        return {
+            "document_id": "doc-file-1",
+            "conversation_id": conversation_id,
+            "filename": kwargs.get("filename", ""),
+            "media_type": kwargs.get("media_type", ""),
+            "source_extension": kwargs.get("source_extension", ""),
+            "byte_size": kwargs.get("byte_size", 0),
+            "text_chars": 0,
+            "text_sha256_12": "",
+            "media_kind": "file",
+            "content_sha256_12": "file123abc456",
+            "token_estimate": 0,
+            "status": "active",
+            "active": True,
+            "ocr_applied": False,
+            "ocr_engine": "",
+            "ocr_languages": "",
+            "ocr_duration_ms": 0,
             "source": "active_conversation_documents",
         }
 
@@ -284,6 +401,24 @@ class _ExplodingOcr:
 
     def ocr_pdf_with_stirling(self, _content, *, filename):
         raise RuntimeError(f"boom {filename}")
+
+
+class _FakeVisualLimits:
+    def __init__(self, *, ok=True, reason_code="", page_count=1, max_pages=25):
+        self.ok = ok
+        self.reason_code = reason_code
+        self.page_count = page_count
+        self.max_pages = max_pages
+        self.calls = []
+
+    def check_pdf_visual_pages(self, content):
+        self.calls.append(bytes(content))
+        return SimpleNamespace(
+            ok=self.ok,
+            reason_code=self.reason_code,
+            page_count=self.page_count,
+            max_pages=self.max_pages,
+        )
 
 
 @dataclass(frozen=True)

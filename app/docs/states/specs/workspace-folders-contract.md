@@ -307,16 +307,28 @@ Test attendu plus tard:
 suppression fichier -> non liste, non selectionnable, non injectable, bytes absents
 ```
 
-Suppression d'un repertoire:
+Suppression d'un repertoire (contrat courant depuis Lot 4 Frida V1 Nextcloud
+folders):
 
-- confirmation forte si le repertoire contient fichiers ou conversations;
-- fichiers actifs supprimes physiquement apres confirmation, avant de presenter le repertoire comme supprime;
-- si la suppression de fichiers echoue partiellement ou totalement, l'operation doit retourner une erreur ou un statut partiel clair avec compteurs `requested`, `deleted`, `failed`;
-- un echec de suppression fichier ne doit pas etre masque par une suppression UI reussie du repertoire;
+- confirmation UI explicite pour la suppression du dossier;
+- soft delete/tombstone du `workspace_folder`;
 - conversations non supprimees automatiquement;
 - conversations replacees hors repertoire;
-- selections liees aux fichiers du repertoire supprimees ou invalidees;
+- fichiers et documents workspace preserves: aucun byte fichier n'est supprime
+  par `DELETE /api/workspace-folders/<id>`;
+- suppression physique d'un fichier uniquement par action fichier explicite,
+  via `DELETE /api/workspace-folders/<folder_id>/files/<file_id>`;
+- l'ancien comportement "suppression dossier supprime d'abord les fichiers
+  actifs" est historique et supersede, pas le contrat runtime courant;
+- `workspace_folder_file_delete_failed` reste un reason code historique ou
+  fichier/batch, mais n'est pas le resultat attendu de
+  `DELETE /api/workspace-folders/<id>` dans le contrat courant;
+- selections liees aux fichiers: aucune suppression de bytes par effet de bord;
+  toute invalidation future doit rester explicite, content-free et documentee;
 - logs content-free.
+
+Transition V1: voir aussi
+`app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`.
 
 ## 11. Reason codes
 
@@ -338,7 +350,9 @@ Premiere liste stable pour les futurs lots:
 - `workspace_file_not_selected`;
 - `workspace_folder_not_found`;
 - `workspace_folder_deleted`;
-- `workspace_folder_file_delete_failed`;
+- `workspace_folder_files_preserved`;
+- `workspace_folder_file_delete_failed` (historique Lot 2 ou action fichier/batch,
+  non attendu pour `DELETE /api/workspace-folders/<id>` depuis Lot 4);
 - `workspace_selection_stale`;
 - `workspace_file_tombstone`;
 - `workspace_file_source_missing`.
@@ -403,7 +417,10 @@ Futurs lots fichiers:
 - listing par DB;
 - chemin interne absent des payloads UI;
 - suppression fichier -> non liste, non selectionnable, non injectable, bytes absents;
-- suppression repertoire avec fichiers -> fichiers actifs supprimes physiquement puis tombstone DB, ou echec explicite si suppression partielle;
+- suppression repertoire avec fichiers -> tombstone du repertoire, conversations
+  replacees hors repertoire, fichiers/documents workspace preserves et reason
+  code content-free `workspace_folder_files_preserved`;
+- suppression physique de fichier -> action fichier explicite separee;
 - incoherence DB presente/disque absent;
 - incoherence disque present/DB absente;
 - tombstone content-free.
@@ -491,9 +508,11 @@ Lot 2 livre le 2026-05-20:
 - listing par repertoire sans contenu brut, sans chemin physique, sans `storage_key`;
 - suppression utilisateur d'un fichier avec suppression physique des bytes puis tombstone DB content-free;
 - detection de l'incoherence DB presente / disque absent via statut de listing `disk_missing` et reason code `workspace_file_disk_missing`;
-- suppression d'un repertoire tente d'abord de supprimer tous les fichiers actifs du repertoire;
-- si tous les fichiers actifs sont supprimes, le repertoire est supprime et les conversations restent conservees / replacees hors repertoire;
-- si un fichier actif echoue, l'API retourne `workspace_folder_file_delete_failed` avec compteurs `requested`, `deleted`, `failed` et le repertoire n'est pas presente comme pleinement supprime;
+- historique Lot 2 supersede: la suppression d'un repertoire tentait d'abord de supprimer tous les fichiers actifs du repertoire;
+- historique Lot 2 supersede: si tous les fichiers actifs etaient supprimes, le repertoire etait supprime et les conversations restaient conservees / replacees hors repertoire;
+- historique Lot 2 supersede: si un fichier actif echouait, l'API retournait `workspace_folder_file_delete_failed` avec compteurs `requested`, `deleted`, `failed` et le repertoire n'etait pas presente comme pleinement supprime;
+- contrat runtime courant depuis Lot 4 Frida V1 Nextcloud folders: `DELETE /api/workspace-folders/<id>` tombstone le repertoire, replace les conversations hors repertoire, preserve les fichiers/documents workspace et retourne `workspace_folder_files_preserved`;
+- la suppression physique d'un fichier reste une action explicite via `DELETE /api/workspace-folders/<folder_id>/files/<file_id>`;
 - observabilite content-free pour upload succes/echec, delete succes/echec, listing `disk_missing` et resume de suppression de repertoire;
 - UI minimale dans la sidebar: liste compacte des fichiers du repertoire, ajout explicite, suppression explicite.
 

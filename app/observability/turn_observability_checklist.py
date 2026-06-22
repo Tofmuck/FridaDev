@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
+from observability import agentic_status
+
 
 _LLM_CALL_MAIN_PROVIDER_CALLER = 'llm'
 _LLM_CALL_SECONDARY_PROVIDER_CALLERS = (
@@ -19,11 +21,24 @@ _ITEM_STATUSES = (
     'degraded',
     'missing',
     'not_applicable',
+    'disabled',
+    'not_selected',
+    'not_configured',
+    'refused',
+    'failed',
 )
 _SCORE_WEIGHTS = {
     'ok': 1.0,
     'degraded': 0.5,
+    'failed': 0.5,
     'missing': 0.0,
+}
+_SCORE_EXCLUDED_ITEM_STATUSES = {
+    'not_applicable',
+    'disabled',
+    'not_selected',
+    'not_configured',
+    'refused',
 }
 _LEGACY_CRITICAL_ITEMS = {
     'turn_start',
@@ -60,7 +75,7 @@ def _event_stage(event: Mapping[str, Any]) -> str:
 
 
 def _event_status(event: Mapping[str, Any]) -> str:
-    return str(event.get('status') or '').strip().lower()
+    return agentic_status.normalize_status(event.get('status_v1') or event.get('status'))
 
 
 def _payload_text(payload: Mapping[str, Any], key: str) -> str | None:
@@ -75,6 +90,21 @@ def _compact_reason_from_event(event: Mapping[str, Any]) -> str | None:
         if text:
             return text
     return None
+
+
+def _event_item_status(event: Mapping[str, Any]) -> str:
+    status = _event_status(event)
+    if status == agentic_status.STATUS_ERROR:
+        return 'degraded'
+    if status == agentic_status.STATUS_FAILED:
+        return 'failed'
+    if status in _ITEM_STATUSES:
+        return status
+    return 'degraded'
+
+
+def _all_events_non_problem(events: Sequence[Mapping[str, Any]]) -> bool:
+    return all(agentic_status.is_non_problem_status(_event_status(event)) for event in events)
 
 
 def _checklist_item(
@@ -151,6 +181,18 @@ def _stage_presence_item(
             'observed',
             stage=stage,
             evidence={'stage_count': len(events)},
+        )
+    if _all_events_non_problem(events):
+        latest = events[-1]
+        item_status = _event_item_status(latest)
+        reason = _compact_reason_from_event(latest) or f'{stage}_{item_status}'
+        return _checklist_item(
+            key,
+            group,
+            item_status,
+            reason,
+            stage=stage,
+            evidence={'stage_count': len(events), 'stage_statuses': sorted(statuses)},
         )
     reason = _compact_reason_from_event(events[-1]) or 'stage_not_ok'
     return _checklist_item(
@@ -277,6 +319,16 @@ def _llm_call_main_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) -> d
             stage='llm_call',
             evidence={'main_llm_call_count': len(main_events)},
         )
+    if _all_events_non_problem(main_events):
+        latest = main_events[-1]
+        return _checklist_item(
+            'llm_call_main',
+            'funnel',
+            _event_item_status(latest),
+            _compact_reason_from_event(latest) or 'main_llm_call_not_selected',
+            stage='llm_call',
+            evidence={'main_llm_call_count': len(main_events), 'stage_statuses': sorted(statuses)},
+        )
     return _checklist_item(
         'llm_call_main',
         'funnel',
@@ -306,6 +358,16 @@ def _persist_assistant_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
                 'funnel',
                 'ok',
                 'assistant_final_saved',
+                stage='persist_response',
+                evidence={'assistant_final_count': len(assistant_final)},
+            )
+        if _all_events_non_problem(assistant_final):
+            latest = assistant_final[-1]
+            return _checklist_item(
+                'persist_response_assistant_final',
+                'funnel',
+                _event_item_status(latest),
+                _compact_reason_from_event(latest) or 'assistant_final_not_applicable',
                 stage='persist_response',
                 evidence={'assistant_final_count': len(assistant_final)},
             )
@@ -539,6 +601,15 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
         return _checklist_item('web_search', 'web', 'ok', 'observed', stage='web_search', evidence=evidence)
     if status == 'skipped' and _payload_text(payload, 'reason_code'):
         return _checklist_item('web_search', 'web', 'ok', 'observed_skipped', stage='web_search', evidence=evidence)
+    if agentic_status.is_non_problem_status(status):
+        return _checklist_item(
+            'web_search',
+            'web',
+            _event_item_status(latest),
+            _compact_reason_from_event(latest) or 'web_search_not_selected',
+            stage='web_search',
+            evidence=evidence,
+        )
     return _checklist_item(
         'web_search',
         'web',
@@ -590,12 +661,26 @@ def _secondary_provider_item(
         )
     events = prepared_events + result_events + caller_events
     statuses = {_event_status(event) for event in events}
-    if 'error' in statuses:
+    if any(status in {agentic_status.STATUS_ERROR, agentic_status.STATUS_FAILED} for status in statuses):
         return _checklist_item(
             key,
             'secondary_providers',
             'degraded',
             _compact_reason_from_event(events[-1]) or 'secondary_provider_error',
+            evidence={
+                'prepared_count': len(prepared_events),
+                'result_count': len(result_events),
+                'llm_call_count': len(caller_events),
+                'stage_statuses': sorted(statuses),
+            },
+        )
+    if _all_events_non_problem(events) and 'ok' not in statuses:
+        latest = events[-1]
+        return _checklist_item(
+            key,
+            'secondary_providers',
+            _event_item_status(latest),
+            _compact_reason_from_event(latest) or 'secondary_provider_not_selected',
             evidence={
                 'prepared_count': len(prepared_events),
                 'result_count': len(result_events),
@@ -698,7 +783,9 @@ def _stage_health_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) -> di
         for event in events:
             status = _event_status(event)
             payload = _event_payload(event)
-            if status == 'error':
+            if status == agentic_status.STATUS_ERROR:
+                error_stages.append(stage)
+            if status == agentic_status.STATUS_FAILED:
                 error_stages.append(stage)
             if status == 'skipped' and not _payload_text(payload, 'reason_code'):
                 skipped_without_reason.append(stage)
@@ -834,7 +921,7 @@ def build_turn_observability_checklist(events: Sequence[Mapping[str, Any]]) -> d
     }
     applicable_items = [
         item for item in items
-        if item.get('status') != 'not_applicable'
+        if item.get('status') not in _SCORE_EXCLUDED_ITEM_STATUSES
     ]
     if not safe_events:
         score = 0
@@ -852,7 +939,7 @@ def build_turn_observability_checklist(events: Sequence[Mapping[str, Any]]) -> d
         for item in items
         if item.get('status') == 'missing'
     }
-    degraded_count = int(status_counts.get('degraded') or 0)
+    degraded_count = int(status_counts.get('degraded') or 0) + int(status_counts.get('failed') or 0)
     if not safe_events or missing_keys.intersection(_LEGACY_CRITICAL_ITEMS):
         classification = 'legacy_incomplete'
     elif missing_keys:

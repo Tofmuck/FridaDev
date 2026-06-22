@@ -11,6 +11,8 @@ import base64
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping, Sequence
 
+from . import active_document_visual_limits
+
 REASON_TOO_LARGE = "document_too_large_for_turn"
 REASON_EMPTY = "document_empty_text"
 REASON_READ_ERROR = "active_documents_read_error"
@@ -23,9 +25,13 @@ REASON_WORKSPACE_FILE_MODEL_UNSUPPORTED = "workspace_file_model_unsupported"
 REASON_FILE_MODEL_UNSUPPORTED = "file_model_unsupported"
 REASON_FILE_BYTES_MISSING = "file_bytes_missing"
 REASON_FILE_TOO_LARGE_FOR_PROVIDER_PAYLOAD = "file_too_large_for_provider_payload"
+REASON_FILE_TOO_MANY_PAGES_FOR_PROVIDER_PAYLOAD = "file_too_many_pages_for_provider_payload"
+REASON_FILE_PAGE_COUNT_FAILED = "file_page_count_failed"
 REASON_WORKSPACE_FILE_PDF_VISUAL_MODEL_UNSUPPORTED = "workspace_file_pdf_visual_model_unsupported"
 REASON_WORKSPACE_FILE_PDF_VISUAL_BYTES_MISSING = "workspace_file_pdf_visual_bytes_missing"
 REASON_WORKSPACE_FILE_PDF_VISUAL_TOO_LARGE = "workspace_file_pdf_visual_too_large"
+REASON_WORKSPACE_FILE_PDF_VISUAL_PAGE_COUNT_FAILED = "workspace_file_pdf_visual_page_count_failed"
+REASON_FOLDER_DOCUMENT_TOO_MANY_PAGES = "folder_document_too_many_pages"
 READ_STATUS_OK = "ok"
 READ_STATUS_EMPTY = "empty"
 READ_STATUS_ERROR = "error"
@@ -41,8 +47,9 @@ IMAGE_CAPABLE_MAIN_MODELS = frozenset(
     }
 )
 FILE_CAPABLE_MAIN_MODELS = IMAGE_CAPABLE_MAIN_MODELS
-ACTIVE_IMAGE_PROVIDER_MAX_BYTES = 8 * 1024 * 1024
+ACTIVE_IMAGE_PROVIDER_MAX_BYTES = 25 * 1024 * 1024
 ACTIVE_FILE_PROVIDER_MAX_BYTES = ACTIVE_IMAGE_PROVIDER_MAX_BYTES
+ACTIVE_FILE_PROVIDER_MAX_PDF_PAGES = active_document_visual_limits.DEFAULT_MAX_PDF_VISUAL_PAGES
 
 LANE_HEADER = "[DOCUMENTS ACTIFS DE CONVERSATION]"
 LANE_FOOTER = "[/DOCUMENTS ACTIFS DE CONVERSATION]"
@@ -175,7 +182,17 @@ def build_active_document_prompt_lane(
                 )
                 continue
             if not decision.image_content:
-                not_injected.append(_replace_decision(decision, reason_code=REASON_IMAGE_BYTES_MISSING))
+                not_injected.append(
+                    _replace_decision(
+                        decision,
+                        reason_code=_source_reason(
+                            decision,
+                            active_reason=REASON_IMAGE_BYTES_MISSING,
+                            workspace_reason=REASON_WORKSPACE_FILE_UNREADABLE,
+                        ),
+                        provider_model=model,
+                    )
+                )
                 continue
             if _provider_payload_byte_size(decision) > ACTIVE_IMAGE_PROVIDER_MAX_BYTES:
                 not_injected.append(
@@ -237,6 +254,16 @@ def build_active_document_prompt_lane(
                             active_reason=REASON_FILE_TOO_LARGE_FOR_PROVIDER_PAYLOAD,
                             workspace_reason=REASON_WORKSPACE_FILE_PDF_VISUAL_TOO_LARGE,
                         ),
+                        provider_model=model,
+                    )
+                )
+                continue
+            page_reason = _visual_pdf_page_reason(decision)
+            if page_reason:
+                not_injected.append(
+                    _replace_decision(
+                        decision,
+                        reason_code=page_reason,
                         provider_model=model,
                     )
                 )
@@ -667,6 +694,26 @@ def _source_reason(
     workspace_reason: str,
 ) -> str:
     return workspace_reason if _is_workspace_decision(decision) else active_reason
+
+
+def _visual_pdf_page_reason(decision: ActiveDocumentPromptDecision) -> str:
+    result = active_document_visual_limits.check_pdf_visual_pages(
+        decision.file_content,
+        max_pages=ACTIVE_FILE_PROVIDER_MAX_PDF_PAGES,
+    )
+    if getattr(result, "ok", False):
+        return ""
+    if str(getattr(result, "reason_code", "") or "") == active_document_visual_limits.REASON_VISUAL_PDF_TOO_MANY_PAGES:
+        return _source_reason(
+            decision,
+            active_reason=REASON_FILE_TOO_MANY_PAGES_FOR_PROVIDER_PAYLOAD,
+            workspace_reason=REASON_FOLDER_DOCUMENT_TOO_MANY_PAGES,
+        )
+    return _source_reason(
+        decision,
+        active_reason=REASON_FILE_PAGE_COUNT_FAILED,
+        workspace_reason=REASON_WORKSPACE_FILE_PDF_VISUAL_PAGE_COUNT_FAILED,
+    )
 
 
 def _provider_payload_byte_size(decision: ActiveDocumentPromptDecision) -> int:

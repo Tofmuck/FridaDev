@@ -1,8 +1,39 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Mapping, Tuple
 
-REASON_FOLDER_FILE_DELETE_FAILED = "workspace_folder_file_delete_failed"
+from observability import workspace_folders_observability
+
+
+logger = logging.getLogger("frida.workspace_folders")
+
+REASON_FOLDER_FILES_PRESERVED = "workspace_folder_files_preserved"
+_CONFLICT_REASONS = {
+    "workspace_folder_name_conflict_local",
+    "workspace_folder_name_conflict_sanitized",
+    "workspace_folder_name_conflict_case",
+}
+_VALIDATION_ERROR_MESSAGES = {
+    "workspace_folder_name_required": "display_name requis",
+    "workspace_folder_name_invalid": "nom de repertoire invalide",
+    "workspace_folder_name_too_long": "nom de repertoire trop long",
+    "workspace_folder_name_conflict_local": "un repertoire actif utilise deja ce nom",
+    "workspace_folder_name_conflict_sanitized": "un repertoire actif utilise deja ce nom cible",
+    "workspace_folder_name_conflict_case": "un repertoire actif utilise deja ce nom avec une casse differente",
+}
+_RUNTIME_ERROR_MESSAGES = {
+    "workspace_folder_nextcloud_conflict": "conflit Nextcloud sur ce nom",
+    "workspace_folder_nextcloud_unavailable": "Nextcloud indisponible",
+    "workspace_folder_nextcloud_auth_failed": "authentification Nextcloud impossible",
+    "workspace_folder_nextcloud_target_missing": "dossier Nextcloud cible introuvable",
+    "workspace_folder_local_persistence_failed": "synchronisation locale incomplete",
+    "workspace_folder_local_compensation_failed": "compensation locale incomplete",
+    "workspace_folder_standard_subfolder_conflict": "conflit sur un sous-dossier standard",
+    "workspace_folder_standard_subfolders_unavailable": "sous-dossiers standards indisponibles",
+    "workspace_folder_standard_subfolders_auth_failed": "authentification Nextcloud impossible",
+    "workspace_folder_nextcloud_error_redacted": "operation Nextcloud impossible",
+}
 
 
 def list_workspace_folders(
@@ -11,11 +42,12 @@ def list_workspace_folders(
     workspace_folders_module: Any,
 ) -> dict[str, Any]:
     items = workspace_folders_module.list_workspace_folders()
-    return {
+    payload = {
         "ok": True,
         "items": items,
         "icon_keys": list(workspace_folders_module.WORKSPACE_FOLDER_ICON_KEYS),
     }
+    return _with_observability(payload, operation="list", status=200)
 
 
 def create_workspace_folder(
@@ -23,26 +55,60 @@ def create_workspace_folder(
     *,
     workspace_folders_module: Any,
 ) -> Tuple[dict[str, Any], int]:
-    display_name = workspace_folders_module.sanitize_display_name(data.get("display_name") or data.get("name") or "")
-    if not display_name:
-        return {"ok": False, "error": "display_name requis", "reason_code": "workspace_folder_name_required"}, 400
+    name_validation = _validate_display_name(
+        workspace_folders_module,
+        data.get("display_name") or data.get("name") or "",
+    )
+    if not name_validation.get("ok"):
+        return _folder_name_error_response(name_validation, operation="create")
+    display_name = str(name_validation["display_name"])
 
     icon_key = workspace_folders_module.normalize_icon_key(data.get("icon_key"))
     if icon_key is None:
-        return {"ok": False, "error": "icon_key invalide", "reason_code": "workspace_folder_icon_invalid"}, 400
+        return _response(
+            {"ok": False, "error": "icon_key invalide", "reason_code": "workspace_folder_icon_invalid"},
+            operation="create",
+            status=400,
+        )
 
     sort_order = workspace_folders_module.coerce_sort_order(data.get("sort_order"))
     if "sort_order" in data and sort_order is None:
-        return {"ok": False, "error": "sort_order invalide", "reason_code": "workspace_folder_sort_order_invalid"}, 400
-    folder = workspace_folders_module.create_workspace_folder(
-        display_name=display_name,
-        icon_key=icon_key,
-        description=workspace_folders_module.sanitize_description(data.get("description") or ""),
-        sort_order=sort_order,
-    )
+        return _response(
+            {"ok": False, "error": "sort_order invalide", "reason_code": "workspace_folder_sort_order_invalid"},
+            operation="create",
+            status=400,
+        )
+    result = None
+    creator = getattr(workspace_folders_module, "create_workspace_folder_nextcloud_first", None)
+    if callable(creator):
+        result = creator(
+            display_name=display_name,
+            icon_key=icon_key,
+            description=workspace_folders_module.sanitize_description(data.get("description") or ""),
+            sort_order=sort_order,
+        )
+        if isinstance(result, Mapping) and result.get("ok") is False:
+            return _runtime_error_response(result, operation="create")
+        folder = result.get("folder") if isinstance(result, Mapping) else result
+    else:
+        folder = workspace_folders_module.create_workspace_folder(
+            display_name=display_name,
+            icon_key=icon_key,
+            description=workspace_folders_module.sanitize_description(data.get("description") or ""),
+            sort_order=sort_order,
+        )
     if folder is None:
-        return {"ok": False, "error": "creation repertoire impossible", "reason_code": "workspace_folder_create_failed"}, 500
-    return {"ok": True, "folder": folder}, 201
+        return _response(
+            {"ok": False, "error": "creation repertoire impossible", "reason_code": "workspace_folder_create_failed"},
+            operation="create",
+            status=500,
+        )
+    reason_code = (
+        str(result.get("reason_code") or "workspace_folder_create_ok")
+        if isinstance(result, Mapping)
+        else "workspace_folder_create_ok"
+    )
+    return _response({"ok": True, "folder": folder, "reason_code": reason_code}, operation="create", status=201)
 
 
 def patch_workspace_folder(
@@ -53,33 +119,70 @@ def patch_workspace_folder(
 ) -> Tuple[dict[str, Any], int]:
     normalized = workspace_folders_module.normalize_workspace_folder_id(folder_id)
     if not normalized:
-        return {"ok": False, "error": "folder_id invalide", "reason_code": "workspace_folder_id_invalid"}, 400
+        return _response(
+            {"ok": False, "error": "folder_id invalide", "reason_code": "workspace_folder_id_invalid"},
+            operation="rename",
+            status=400,
+        )
 
     fields: dict[str, Any] = {}
     if "display_name" in data or "name" in data:
-        display_name = workspace_folders_module.sanitize_display_name(data.get("display_name") or data.get("name") or "")
-        if not display_name:
-            return {"ok": False, "error": "display_name requis", "reason_code": "workspace_folder_name_required"}, 400
-        fields["display_name"] = display_name
+        name_validation = _validate_display_name(
+            workspace_folders_module,
+            data.get("display_name") or data.get("name") or "",
+            current_folder_id=normalized,
+        )
+        if not name_validation.get("ok"):
+            return _folder_name_error_response(name_validation, operation="rename")
+        fields["display_name"] = str(name_validation["display_name"])
     if "icon_key" in data:
         icon_key = workspace_folders_module.normalize_icon_key(data.get("icon_key"))
         if icon_key is None:
-            return {"ok": False, "error": "icon_key invalide", "reason_code": "workspace_folder_icon_invalid"}, 400
+            return _response(
+                {"ok": False, "error": "icon_key invalide", "reason_code": "workspace_folder_icon_invalid"},
+                operation="rename",
+                status=400,
+            )
         fields["icon_key"] = icon_key
     if "description" in data:
         fields["description"] = workspace_folders_module.sanitize_description(data.get("description") or "")
     if "sort_order" in data:
         sort_order = workspace_folders_module.coerce_sort_order(data.get("sort_order"))
         if sort_order is None:
-            return {"ok": False, "error": "sort_order invalide", "reason_code": "workspace_folder_sort_order_invalid"}, 400
+            return _response(
+                {"ok": False, "error": "sort_order invalide", "reason_code": "workspace_folder_sort_order_invalid"},
+                operation="rename",
+                status=400,
+            )
         fields["sort_order"] = sort_order
     if not fields:
-        return {"ok": False, "error": "aucun champ modifiable", "reason_code": "workspace_folder_patch_empty"}, 400
+        return _response(
+            {"ok": False, "error": "aucun champ modifiable", "reason_code": "workspace_folder_patch_empty"},
+            operation="rename",
+            status=400,
+        )
 
-    folder = workspace_folders_module.update_workspace_folder(normalized, **fields)
+    renamer = getattr(workspace_folders_module, "rename_workspace_folder_nextcloud_first", None)
+    if callable(renamer) and "display_name" in fields:
+        result = renamer(normalized, **fields)
+        if isinstance(result, Mapping) and result.get("ok") is False:
+            return _runtime_error_response(result, operation="rename")
+        folder = result.get("folder") if isinstance(result, Mapping) else result
+    else:
+        result = None
+        folder = workspace_folders_module.update_workspace_folder(normalized, **fields)
     if folder is None:
-        return {"ok": False, "error": "repertoire introuvable", "reason_code": "workspace_folder_not_found"}, 404
-    return {"ok": True, "folder": folder}, 200
+        return _response(
+            {"ok": False, "error": "repertoire introuvable", "reason_code": "workspace_folder_not_found"},
+            operation="rename",
+            status=404,
+        )
+    reason_code = (
+        str(result.get("reason_code") or "workspace_folder_rename_ok")
+        if isinstance(result, Mapping)
+        else "workspace_folder_rename_ok"
+    )
+    return _response({"ok": True, "folder": folder, "reason_code": reason_code}, operation="rename", status=200)
 
 
 def delete_workspace_folder(
@@ -90,78 +193,111 @@ def delete_workspace_folder(
 ) -> Tuple[dict[str, Any], int]:
     normalized = workspace_folders_module.normalize_workspace_folder_id(folder_id)
     if not normalized:
-        return {"ok": False, "error": "folder_id invalide", "reason_code": "workspace_folder_id_invalid"}, 400
+        return _response(
+            {"ok": False, "error": "folder_id invalide", "reason_code": "workspace_folder_id_invalid"},
+            operation="delete",
+            status=400,
+        )
 
     existing = workspace_folders_module.get_workspace_folder(normalized)
     if existing is None:
-        return {"ok": False, "error": "repertoire introuvable", "reason_code": "workspace_folder_not_found"}, 404
-
-    file_delete = {"requested": 0, "deleted": 0, "failed": 0, "failed_file_ids": [], "reason_code": ""}
-    if workspace_files_module is not None:
-        try:
-            file_delete = _normalize_file_delete_summary(
-                workspace_files_module.delete_workspace_files_for_folder(normalized)
-            )
-        except Exception as exc:
-            file_delete = {
-                "requested": 0,
-                "deleted": 0,
-                "failed": 1,
-                "failed_file_ids": [],
-                "reason_code": REASON_FOLDER_FILE_DELETE_FAILED,
-            }
-            log_func = getattr(workspace_files_module, "log_content_free_event", None)
-            if callable(log_func):
-                log_func(
-                    "folder_delete_summary",
-                    level="warning",
-                    folder_id=normalized,
-                    requested=0,
-                    deleted=0,
-                    failed=1,
-                    reason_code=REASON_FOLDER_FILE_DELETE_FAILED,
-                    error_type=type(exc).__name__,
-                )
-        if int(file_delete.get("failed") or 0) > 0:
-            return {
-                "ok": False,
-                "error": "suppression des fichiers du repertoire incomplete",
-                "reason_code": REASON_FOLDER_FILE_DELETE_FAILED,
-                "workspace_folder_id": normalized,
-                "file_delete": file_delete,
-            }, 409
+        return _response(
+            {"ok": False, "error": "repertoire introuvable", "reason_code": "workspace_folder_not_found"},
+            operation="delete",
+            status=404,
+        )
 
     folder = workspace_folders_module.soft_delete_workspace_folder(normalized)
     if folder is None:
-        return {"ok": False, "error": "repertoire introuvable", "reason_code": "workspace_folder_not_found"}, 404
+        return _response(
+            {"ok": False, "error": "repertoire introuvable", "reason_code": "workspace_folder_not_found"},
+            operation="delete",
+            status=404,
+        )
+    file_delete = {
+        "requested": 0,
+        "deleted": 0,
+        "failed": 0,
+        "failed_file_ids": [],
+        "reason_code": REASON_FOLDER_FILES_PRESERVED,
+        "skipped": True,
+    }
     folder["file_delete"] = file_delete
-    folder["files_deleted"] = int(file_delete.get("deleted") or 0)
-    return {"ok": True, "folder": folder}, 200
+    folder["files_deleted"] = 0
+    folder["files_preserved"] = True
+    return _response({"ok": True, "folder": folder}, operation="delete", status=200)
 
 
-def _normalize_file_delete_summary(value: Any) -> dict[str, Any]:
-    if isinstance(value, Mapping):
-        requested = _safe_int(value.get("requested"))
-        deleted = _safe_int(value.get("deleted"))
-        failed = _safe_int(value.get("failed"))
-        failed_file_ids = [
-            str(item)
-            for item in value.get("failed_file_ids", [])
-            if str(item or "").strip()
-        ][:20]
-        return {
-            "requested": requested,
-            "deleted": deleted,
-            "failed": failed,
-            "failed_file_ids": failed_file_ids,
-            "reason_code": str(value.get("reason_code") or ""),
-        }
-    deleted = _safe_int(value)
-    return {"requested": deleted, "deleted": deleted, "failed": 0, "failed_file_ids": [], "reason_code": ""}
+def _validate_display_name(
+    workspace_folders_module: Any,
+    value: Any,
+    *,
+    current_folder_id: str | None = None,
+) -> dict[str, Any]:
+    validator = getattr(workspace_folders_module, "validate_workspace_folder_display_name", None)
+    if callable(validator):
+        return validator(value, current_folder_id=current_folder_id)
+
+    display_name = workspace_folders_module.sanitize_display_name(value)
+    if not display_name:
+        return {"ok": False, "reason_code": "workspace_folder_name_required"}
+    return {"ok": True, "display_name": display_name, "reason_code": ""}
 
 
-def _safe_int(value: Any) -> int:
-    try:
-        return max(0, int(value or 0))
-    except (TypeError, ValueError):
-        return 0
+def _folder_name_error_response(validation: Mapping[str, Any], *, operation: str) -> Tuple[dict[str, Any], int]:
+    reason_code = str(validation.get("reason_code") or "workspace_folder_name_invalid")
+    status = 409 if reason_code in _CONFLICT_REASONS else 400
+    payload = {
+        "ok": False,
+        "error": _VALIDATION_ERROR_MESSAGES.get(reason_code, "nom de repertoire invalide"),
+        "reason_code": reason_code,
+        "nextcloud_sync_state": str(validation.get("nextcloud_sync_state") or "sync_error"),
+        "nextcloud_share_state": str(validation.get("nextcloud_share_state") or "unknown"),
+        "nextcloud_reason_code": str(validation.get("nextcloud_reason_code") or reason_code),
+    }
+    name_hash = str(validation.get("nextcloud_name_hash") or "")
+    if name_hash:
+        payload["nextcloud_name_hash"] = name_hash
+    return _response(payload, operation=operation, status=status)
+
+
+def _runtime_error_response(result: Mapping[str, Any], *, operation: str) -> Tuple[dict[str, Any], int]:
+    reason_code = str(result.get("reason_code") or "workspace_folder_nextcloud_error_redacted")
+    status = int(result.get("status") or (409 if "conflict" in reason_code else 502))
+    payload = {
+        "ok": False,
+        "error": _RUNTIME_ERROR_MESSAGES.get(reason_code, "operation Nextcloud impossible"),
+        "reason_code": reason_code,
+        "nextcloud_sync_state": str(result.get("nextcloud_sync_state") or "sync_error"),
+        "nextcloud_share_state": str(result.get("nextcloud_share_state") or "error"),
+        "nextcloud_reason_code": str(result.get("nextcloud_reason_code") or reason_code),
+    }
+    name_hash = str(result.get("nextcloud_name_hash") or "")
+    if name_hash:
+        payload["nextcloud_name_hash"] = name_hash
+    rollback_reason = str(result.get("rollback_reason_code") or "")
+    if rollback_reason:
+        payload["rollback_reason_code"] = rollback_reason
+    local_compensation_status = str(result.get("local_compensation_status") or "")
+    if local_compensation_status:
+        payload["local_compensation_status"] = local_compensation_status
+    local_compensation_reason = str(result.get("local_compensation_reason_code") or "")
+    if local_compensation_reason:
+        payload["local_compensation_reason_code"] = local_compensation_reason
+    return _response(payload, operation=operation, status=status)
+
+
+def _response(payload: Mapping[str, Any], *, operation: str, status: int) -> Tuple[dict[str, Any], int]:
+    return _with_observability(payload, operation=operation, status=status), status
+
+
+def _with_observability(payload: Mapping[str, Any], *, operation: str, status: int) -> dict[str, Any]:
+    response = dict(payload)
+    observation = workspace_folders_observability.build_workspace_folder_observation(
+        operation,
+        response,
+        http_status=status,
+    )
+    response["observability"] = observation
+    workspace_folders_observability.log_workspace_folder_observation(logger, observation)
+    return response

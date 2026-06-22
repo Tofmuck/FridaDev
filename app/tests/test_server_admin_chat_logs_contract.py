@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -88,6 +89,144 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.assertEqual(observed['kwargs']['status'], 'ok')
         self.assertEqual(observed['kwargs']['ts_from'], '2026-03-27T11:00:00Z')
         self.assertEqual(observed['kwargs']['ts_to'], '2026-03-27T13:00:00Z')
+        self.assertEqual(observed['kwargs']['payload_projection'], 'admin')
+        self.assertFalse(data['redaction']['raw_event_payloads_included'])
+        self.assertFalse(data['items'][0]['redaction']['raw_event_payloads_included'])
+        self.assertEqual(data['items'][0]['payload']['web_search_enabled'], False)
+
+    def test_admin_chat_logs_route_projects_payload_content_free(self) -> None:
+        original_read = self.server.log_store.read_chat_log_events
+        dangerous_values = (
+            'RAW USER MESSAGE SENTINEL 5A',
+            'RAW PROMPT SENTINEL 5A',
+            'RAW PROVIDER PAYLOAD SENTINEL 5A',
+            'Authorization: Bearer RAW_TOKEN_SENTINEL_5A',
+            'RAW EXCEPTION SENTINEL 5A',
+            'RAW FIELD SENTINEL 5A',
+            'BEGIN:VEVENT RAW DAV XML SENTINEL 5A',
+            'https://logs.example.internal/path',
+            'https://provider.example/call',
+            'bearer-token-like',
+            '/private/admin/logs/source',
+        )
+
+        def fake_read_chat_log_events(**kwargs):
+            self.assertEqual(kwargs.get('payload_projection'), 'admin')
+            return {
+                'items': [
+                    {
+                        'event_id': 'evt-raw-admin',
+                        'conversation_id': 'conv-raw-admin',
+                        'turn_id': 'turn-raw-admin',
+                        'ts': '2026-06-21T12:00:00+00:00',
+                        'stage': 'llm_call',
+                        'status': 'error',
+                        'status_v1': 'error',
+                        'status_schema_version': 'agentic_v1',
+                        'legacy_status': False,
+                        'duration_ms': 42,
+                        'payload': {
+                            'status_schema_version': 'agentic_v1',
+                            'reason_code': 'provider_timeout',
+                            'error_code': 'upstream_error',
+                            'model': 'openai/gpt-5.4-mini',
+                            'prompt_kind': 'chat_system_augmented',
+                            'response_chars': 16,
+                            'message': dangerous_values[0],
+                            'prompt': dangerous_values[1],
+                            'provider_payload': {'body': dangerous_values[2]},
+                            'authorization': dangerous_values[3],
+                            'error': dangerous_values[4],
+                            'raw': dangerous_values[5],
+                            'raw_content_included': True,
+                            'caldav_xml': dangerous_values[6],
+                        },
+                    },
+                    {
+                        'event_id': 'evt-legacy-admin',
+                        'conversation_id': 'conv-raw-admin',
+                        'turn_id': 'turn-legacy-admin',
+                        'ts': '2026-06-21T11:59:00+00:00',
+                        'stage': 'branch_skipped',
+                        'status': 'skipped',
+                        'status_v1': 'skipped',
+                        'status_schema_version': 'legacy',
+                        'legacy_status': True,
+                        'duration_ms': None,
+                        'payload': {'reason_code': 'legacy_skip', 'message': dangerous_values[0]},
+                    },
+                    {
+                        'event_id': 'evt-allowlist-admin',
+                        'conversation_id': 'conv-raw-admin',
+                        'turn_id': 'turn-allowlist-admin',
+                        'ts': '2026-06-21T11:58:00+00:00',
+                        'stage': 'llm_call',
+                        'status': 'error',
+                        'status_v1': 'error',
+                        'status_schema_version': 'agentic_v1',
+                        'legacy_status': False,
+                        'duration_ms': 43,
+                        'payload': {
+                            'status_schema_version': 'agentic_v1',
+                            'reason_code': dangerous_values[7],
+                            'provider_caller': dangerous_values[8],
+                            'error_code': dangerous_values[9],
+                            'runtime_source': dangerous_values[10],
+                            'model': 'openai/gpt-5.4-mini',
+                            'prompt_kind': 'chat_system_augmented',
+                        },
+                    },
+                ],
+                'count': 3,
+                'total': 3,
+                'limit': kwargs.get('limit', 100),
+                'offset': kwargs.get('offset', 0),
+                'next_offset': None,
+                'filters': {
+                    'conversation_id': kwargs.get('conversation_id'),
+                    'turn_id': kwargs.get('turn_id'),
+                    'stage': kwargs.get('stage'),
+                    'status': kwargs.get('status'),
+                    'ts_from': kwargs.get('ts_from'),
+                    'ts_to': kwargs.get('ts_to'),
+                },
+            }
+
+        self.server.log_store.read_chat_log_events = fake_read_chat_log_events
+        try:
+            response = self.client.get('/api/admin/logs/chat?conversation_id=conv-raw-admin')
+        finally:
+            self.server.log_store.read_chat_log_events = original_read
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        encoded = json.dumps(data, ensure_ascii=False, sort_keys=True)
+        self.assertTrue(data['ok'])
+        for marker in dangerous_values:
+            self.assertNotIn(marker, encoded)
+        self.assertFalse(data['redaction']['raw_event_payloads_included'])
+        self.assertFalse(data['redaction']['raw_content_included'])
+        self.assertFalse(data['redaction']['raw_prompt_included'])
+        self.assertFalse(data['redaction']['raw_provider_payload_included'])
+        self.assertFalse(data['redaction']['raw_webdav_payload_included'])
+        self.assertFalse(data['redaction']['raw_error_message_included'])
+        self.assertEqual(data['items'][0]['payload']['reason_code'], 'provider_timeout')
+        self.assertEqual(data['items'][0]['payload']['error_code'], 'upstream_error')
+        self.assertEqual(data['items'][0]['payload']['model'], 'openai/gpt-5.4-mini')
+        self.assertEqual(data['items'][0]['payload']['prompt_kind'], 'chat_system_augmented')
+        self.assertEqual(data['items'][0]['payload']['response_chars'], 16)
+        self.assertFalse(data['items'][0]['payload']['raw_content_included'])
+        self.assertNotIn('raw', data['items'][0]['payload'])
+        self.assertEqual(data['items'][0]['status_schema_version'], 'agentic_v1')
+        self.assertFalse(data['items'][0]['legacy_status'])
+        self.assertEqual(data['items'][1]['status_schema_version'], 'legacy')
+        self.assertTrue(data['items'][1]['legacy_status'])
+        self.assertEqual(data['items'][2]['payload']['reason_code'], '[redacted]')
+        self.assertEqual(data['items'][2]['payload']['provider_caller'], '[redacted]')
+        self.assertEqual(data['items'][2]['payload']['error_code'], '[redacted]')
+        self.assertEqual(data['items'][2]['payload']['runtime_source'], '[redacted]')
+        self.assertEqual(data['items'][2]['payload']['model'], 'openai/gpt-5.4-mini')
+        self.assertEqual(data['items'][2]['payload']['prompt_kind'], 'chat_system_augmented')
 
     def test_admin_chat_logs_metadata_route_returns_selector_payload(self) -> None:
         observed = {'kwargs': None}

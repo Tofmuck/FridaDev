@@ -337,6 +337,14 @@ def _count_pdf_pages(
     return len(list(getattr(reader, "pages", []) or []))
 
 
+def count_pdf_pages(
+    data: bytes,
+    *,
+    pdf_reader_factory: Optional[Callable[[io.BytesIO], Any]] = None,
+) -> int:
+    return _count_pdf_pages(data, pdf_reader_factory=pdf_reader_factory)
+
+
 def _failure(
     *,
     reason_code: str,

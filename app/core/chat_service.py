@@ -8,6 +8,10 @@ from core import assistant_output_contract
 from core import adobe_docs_prompt_lane
 from core import active_conversation_documents
 from core import active_document_prompt_lane
+from core import workspace_folder_notes
+from core import workspace_folder_notes_prompt_lane
+from core import workspace_folder_notes_read
+from core import workspace_folders
 from core import workspace_file_selections
 from core import chat_llm_flow
 from core import chat_memory_flow
@@ -459,7 +463,25 @@ def _emit_agenda_observability(result: Any) -> None:
     chat_turn_logger.set_state('agenda', clean_payload)
     chat_turn_logger.emit(
         'agenda',
-        status='ok',
+        status=agenda_chat_runtime.observability_status_for_payload(clean_payload),
+        reason_code=str(clean_payload.get('reason_code') or '') or None,
+        payload=clean_payload,
+    )
+
+
+def _emit_workspace_folder_notes_prompt_observability(lane: Any) -> None:
+    payload_builder = getattr(lane, 'as_content_free_dict', None)
+    payload = payload_builder() if callable(payload_builder) else {}
+    if not isinstance(payload, Mapping):
+        payload = {}
+    if not payload.get('requested_count') and not payload.get('invalid_requested_count'):
+        return
+    clean_payload = dict(payload)
+    status = str(clean_payload.get('status') or 'empty')
+    chat_turn_logger.set_state('workspace_folder_notes_prompt_lane', clean_payload)
+    chat_turn_logger.emit(
+        'workspace_folder_notes_prompt_lane',
+        status='error' if status == 'error' else 'ok',
         reason_code=str(clean_payload.get('reason_code') or '') or None,
         payload=clean_payload,
     )
@@ -740,6 +762,9 @@ def chat_response(
     config_module: Any,
     logger: Any,
     workspace_file_selections_module: Any = workspace_file_selections,
+    workspace_folders_module: Any = workspace_folders,
+    workspace_folder_notes_module: Any = workspace_folder_notes,
+    workspace_folder_notes_read_module: Any = workspace_folder_notes_read,
 ) -> dict[str, Any]:
     adobe_request = adobe_docs_pipeline.resolve_adobe_request(data)
     if adobe_request.error_code:
@@ -904,7 +929,8 @@ def chat_response(
     _emit_biblio_observability(biblio_result)
 
     agenda_result = None
-    if agenda_chat_runtime.normalize_agenda_enabled(data.get('agenda_enabled')):
+    agenda_enabled = agenda_chat_runtime.normalize_agenda_enabled(data.get('agenda_enabled'))
+    if agenda_enabled:
         agenda_state = agenda_chat_runtime.read_agenda_conversation_state(conversation)
         agenda_result = agenda_chat_runtime.run_agenda_chat_turn(
             data,
@@ -920,6 +946,11 @@ def chat_response(
         )
         agenda_chat_runtime.attach_agenda_conversation_state(conversation, agenda_result)
         _emit_agenda_observability(agenda_result)
+    else:
+        disabled_result_builder = getattr(agenda_chat_runtime, 'build_disabled_observability_result', None)
+        if callable(disabled_result_builder):
+            agenda_result = disabled_result_builder()
+            _emit_agenda_observability(agenda_result)
 
     hermeneutic_node_runtime = _run_hermeneutic_node_insertion_point(
         conversation=conversation,
@@ -1014,6 +1045,14 @@ def chat_response(
         active_documents_read,
         workspace_files_read,
     )
+    workspace_notes_read = workspace_folder_notes_prompt_lane.read_workspace_folder_notes_for_prompt(
+        data=data,
+        conversation=conversation,
+        workspace_folders_module=workspace_folders_module,
+        workspace_folder_notes_module=workspace_folder_notes_module,
+        workspace_folder_notes_read_module=workspace_folder_notes_read_module,
+        logger=logger,
+    )
     prompt_messages = conv_store_module.build_prompt_messages(
         conversation,
         runtime_main_model,
@@ -1031,6 +1070,16 @@ def chat_response(
             admin_logs_module=admin_logs_module,
             web_context_payload=web_runtime_payload,
         )
+    workspace_notes_lane = workspace_folder_notes_prompt_lane.inject_workspace_folder_notes_prompt_lane(
+        prompt_messages,
+        workspace_notes_read.note_reads,
+        read_status=workspace_notes_read.status,
+        read_reason_code=workspace_notes_read.reason_code,
+        requested_count=workspace_notes_read.requested_count,
+        invalid_requested_count=workspace_notes_read.invalid_requested_count,
+        over_limit_count=workspace_notes_read.over_limit_count,
+    )
+    _emit_workspace_folder_notes_prompt_observability(workspace_notes_lane)
     active_document_lane = active_document_prompt_lane.inject_active_document_prompt_lane(
         prompt_messages,
         document_prompt_read.documents,

@@ -17,6 +17,7 @@ from agenda import (
     runtime_config,
     time_windows,
 )
+from observability import agentic_status
 
 
 AGENDA_PAYLOAD_KEY = 'agenda_enabled'
@@ -111,6 +112,54 @@ def build_lot4_observability_payload(
         'content_free': True,
         'agent': observation,
     }
+
+
+def build_disabled_observability_result() -> AgendaChatResult:
+    payload = build_lot4_observability_payload(
+        enabled=False,
+        status='disabled',
+        reason_code=REASON_TOGGLE_OFF,
+        mode=agent_contract.MODE_OFF,
+    )
+    return AgendaChatResult(
+        enabled=False,
+        used=False,
+        status='disabled',
+        reason_code=REASON_TOGGLE_OFF,
+        observability_payload=payload,
+    )
+
+
+def observability_status_for_payload(payload: Mapping[str, Any]) -> str:
+    payload_status = str(payload.get('status') or '').strip().lower()
+    reason_code = str(payload.get('reason_code') or '').strip().lower()
+    if payload_status == agent_runtime.STATUS_FALLBACK:
+        return _fallback_observability_status(reason_code)
+    if agentic_status.is_valid_status(payload_status):
+        return payload_status
+    if not bool(payload.get('enabled', True)):
+        return agentic_status.STATUS_DISABLED
+    for key in ('read_execution_status', 'write_execution_status', 'pending_execution_status'):
+        child_status = str(payload.get(key) or '').strip().lower()
+        if child_status == agentic_status.STATUS_ERROR:
+            return agentic_status.STATUS_ERROR
+        if child_status == agentic_status.STATUS_FAILED:
+            return agentic_status.STATUS_FAILED
+    return agentic_status.STATUS_OK
+
+
+def _fallback_observability_status(reason_code: str) -> str:
+    if reason_code in {
+        agent_runtime.REASON_SECRET_NOT_CONFIGURED,
+        agent_runtime.REASON_MODEL_NOT_CONFIGURED,
+        agent_openrouter.REASON_PROVIDER_NOT_CONFIGURED,
+    }:
+        return agentic_status.STATUS_NOT_CONFIGURED
+    if reason_code == agent_runtime.REASON_MODE_UNSUPPORTED:
+        return agentic_status.STATUS_NOT_APPLICABLE
+    if reason_code == agent_openrouter.REASON_PROVIDER_ERROR:
+        return agentic_status.STATUS_ERROR
+    return agentic_status.STATUS_FAILED
 
 
 def build_lot5_observability_payload(

@@ -227,7 +227,7 @@ def run_biblio_chat_turn(
     decision = resolve_biblio_chat_decision(data, user_msg)
     librarian_agent_result = None
     if decision.enabled:
-        preliminary_status = "deterministic_candidate" if decision.should_attempt else "not_used"
+        preliminary_status = "deterministic_candidate" if decision.should_attempt else "not_selected"
         librarian_agent_result = librarian_agent_bridge.run_librarian_agent_comparison_safely(
             runner=librarian_agent_runner,
             factory=librarian_agent_factory,
@@ -424,7 +424,7 @@ def run_biblio_chat_turn(
                 observability_payload=payload,
             )
 
-        status = "not_applicable" if not decision.enabled else "not_used"
+        status = "disabled" if not decision.enabled else "not_selected"
         payload = observability_builder(
             enabled=decision.enabled,
             used=False,

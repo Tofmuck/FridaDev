@@ -3,6 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from . import workspace_file_nextcloud_links_store
+from . import workspace_folder_exports_store
+from . import workspace_folder_generated_images_store
+from . import workspace_folder_notes_store
+from . import workspace_folder_nextcloud_links_store
+
 
 def ensure_conv_dir(*, conv_dir: Path) -> None:
     conv_dir.mkdir(parents=True, exist_ok=True)
@@ -92,6 +98,11 @@ def init_catalog_db(
                     );
                     """
                 )
+                workspace_folder_nextcloud_links_store.ensure_schema(cur)
+                workspace_file_nextcloud_links_store.ensure_schema(cur)
+                workspace_folder_notes_store.ensure_schema(cur)
+                workspace_folder_exports_store.ensure_schema(cur)
+                workspace_folder_generated_images_store.ensure_schema(cur)
                 cur.execute(
                     """
                     ALTER TABLE conversations

@@ -10,6 +10,8 @@ import psycopg
 import config
 from admin import runtime_settings
 from core import runtime_db_bootstrap
+from observability import admin_log_projection
+from observability import agentic_status
 from observability import dashboard_analytics
 from observability.full_turn_metrics_snapshot import build_full_turn_metrics_snapshot
 from observability.turn_pipeline_read_model import build_turn_pipeline_item
@@ -17,7 +19,8 @@ from observability.turn_observability_checklist import build_turn_observability_
 
 logger = logging.getLogger('frida.log_store')
 
-_STATUS_ALLOWED = {'ok', 'error', 'skipped'}
+_STATUS_ALLOWED = set(agentic_status.STATUS_V1_ALLOWED)
+_STATUS_SQL_VALUES = ', '.join(f"'{status}'" for status in agentic_status.STATUS_V1_ALLOWED)
 _REQUIRED_FIELDS = {'event_id', 'conversation_id', 'turn_id', 'ts', 'stage', 'status'}
 _LLM_CALL_MAIN_PROVIDER_CALLER = 'llm'
 _LLM_CALL_SECONDARY_PROVIDER_CALLERS = (
@@ -78,12 +81,9 @@ def normalize_llm_call_provider_caller(value: Any) -> str:
 
 
 def _empty_llm_call_provider_bucket(provider_caller: str) -> dict[str, Any]:
-    return {
+    bucket = {
         'provider_caller': provider_caller,
         'total_count': 0,
-        'ok_count': 0,
-        'error_count': 0,
-        'skipped_count': 0,
         'unknown_status_count': 0,
         'duration_ms_total': 0,
         'duration_ms_count': 0,
@@ -91,6 +91,9 @@ def _empty_llm_call_provider_bucket(provider_caller: str) -> dict[str, Any]:
         'response_chars_total': 0,
         'latest_ts': None,
     }
+    for status in agentic_status.STATUS_V1_ALLOWED:
+        bucket[f'{status}_count'] = 0
+    return bucket
 
 
 def _llm_call_metric_row_value(row: Mapping[str, Any] | Sequence[Any], key: str, index: int) -> Any:
@@ -176,7 +179,7 @@ def init_log_storage(
             with conn.cursor() as cur:
                 cur.execute('CREATE SCHEMA IF NOT EXISTS observability;')
                 cur.execute(
-                    '''
+                    f'''
                     CREATE TABLE IF NOT EXISTS observability.chat_log_events (
                         event_id        TEXT PRIMARY KEY,
                         conversation_id TEXT        NOT NULL,
@@ -185,11 +188,20 @@ def init_log_storage(
                         stage           TEXT        NOT NULL,
                         status          TEXT        NOT NULL,
                         duration_ms     INTEGER,
-                        payload_json    JSONB       NOT NULL DEFAULT '{}'::jsonb,
+                        payload_json    JSONB       NOT NULL DEFAULT '{{}}'::jsonb,
                         created_ts      TIMESTAMPTZ NOT NULL DEFAULT now(),
-                        CHECK (status IN ('ok', 'error', 'skipped'))
+                        CONSTRAINT chat_log_events_status_check CHECK (status IN ({_STATUS_SQL_VALUES}))
                     );
                     '''
+                )
+                cur.execute(
+                    'ALTER TABLE observability.chat_log_events '
+                    'DROP CONSTRAINT IF EXISTS chat_log_events_status_check;'
+                )
+                cur.execute(
+                    'ALTER TABLE observability.chat_log_events '
+                    'ADD CONSTRAINT chat_log_events_status_check '
+                    f'CHECK (status IN ({_STATUS_SQL_VALUES}));'
                 )
                 cur.execute(
                     '''
@@ -219,7 +231,10 @@ def init_log_storage(
             conn.commit()
         logger_instance.info('log_storage_init ok')
     except Exception as exc:
-        logger_instance.error('log_storage_init_failed err=%s', exc)
+        logger_instance.error(
+            'log_storage_init_failed reason=log_storage_init_exception err_class=%s',
+            exc.__class__.__name__,
+        )
 
 
 def insert_chat_log_event(
@@ -302,7 +317,11 @@ def insert_chat_log_event(
                 rowcount = int(cur.rowcount or 0)
             conn.commit()
     except Exception as exc:
-        logger_instance.error('chat_log_event_insert_failed event_id=%s err=%s', event.get('event_id'), exc)
+        logger_instance.error(
+            'chat_log_event_insert_failed event_id=%s reason=chat_log_event_insert_failed err_class=%s',
+            event.get('event_id'),
+            exc.__class__.__name__,
+        )
         return False
 
     if rowcount == 0:
@@ -321,10 +340,15 @@ def read_chat_log_events(
     status: str | None = None,
     ts_from: str | None = None,
     ts_to: str | None = None,
+    payload_projection: str = 'raw',
     conn_factory: Callable[[], Any] = _conn,
     logger_instance: Any = logger,
 ) -> dict[str, Any]:
     """Read chat log events with simple offset pagination and optional filters."""
+    payload_projection_s = str(payload_projection or 'raw').strip().lower()
+    if payload_projection_s not in {'raw', 'admin'}:
+        raise ValueError(f'invalid chat log payload projection: {payload_projection_s}')
+
     limit_i = max(1, min(int(limit), 500))
     offset_i = max(0, int(offset))
 
@@ -403,21 +427,31 @@ def read_chat_log_events(
             payload_json = row[7]
             if not isinstance(payload_json, dict):
                 payload_json = {}
-            items.append(
-                {
-                    'event_id': str(row[0] or ''),
-                    'conversation_id': str(row[1] or ''),
-                    'turn_id': str(row[2] or ''),
-                    'ts': row[3].astimezone(timezone.utc).isoformat() if isinstance(row[3], datetime) else str(row[3]),
-                    'stage': str(row[4] or ''),
-                    'status': str(row[5] or ''),
-                    'duration_ms': int(row[6]) if row[6] is not None else None,
-                    'payload': payload_json,
-                }
+            status_value = str(row[5] or '')
+            status_schema_version = agentic_status.projected_schema_version(
+                payload=payload_json,
+                status=status_value,
             )
+            item = {
+                'event_id': str(row[0] or ''),
+                'conversation_id': str(row[1] or ''),
+                'turn_id': str(row[2] or ''),
+                'ts': row[3].astimezone(timezone.utc).isoformat() if isinstance(row[3], datetime) else str(row[3]),
+                'stage': str(row[4] or ''),
+                'status': status_value,
+                'status_v1': agentic_status.normalize_status(status_value),
+                'status_schema_version': status_schema_version,
+                'legacy_status': status_schema_version != agentic_status.STATUS_SCHEMA_VERSION,
+                'duration_ms': int(row[6]) if row[6] is not None else None,
+                'payload': payload_json,
+            }
+            items.append(item)
     except Exception as exc:
-        logger_instance.error('chat_log_events_read_failed err=%s', exc)
-        return {
+        logger_instance.error(
+            'chat_log_events_read_failed reason=chat_log_events_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
+        failed_result = {
             'items': [],
             'count': 0,
             'total': 0,
@@ -433,12 +467,15 @@ def read_chat_log_events(
                 'ts_to': ts_to_s,
             },
         }
+        if payload_projection_s == 'admin':
+            failed_result = admin_log_projection.project_event_listing(failed_result)
+        return failed_result
 
     next_offset = offset_i + len(items)
     if next_offset >= total:
         next_offset = None
 
-    return {
+    result = {
         'items': items,
         'count': len(items),
         'total': total,
@@ -454,6 +491,9 @@ def read_chat_log_events(
             'ts_to': ts_to_s,
         },
     }
+    if payload_projection_s == 'admin':
+        result = admin_log_projection.project_event_listing(result)
+    return result
 
 
 def read_llm_call_provider_metrics(
@@ -513,7 +553,10 @@ def read_llm_call_provider_metrics(
                 )
                 rows = cur.fetchall()
     except Exception as exc:
-        logger_instance.error('llm_call_provider_metrics_read_failed err=%s', exc)
+        logger_instance.error(
+            'llm_call_provider_metrics_read_failed reason=llm_call_provider_metrics_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         result = build_llm_call_provider_metrics([])
         result['filters'] = {
             'ts_from': ts_from_s,
@@ -554,10 +597,11 @@ def read_turn_observability_checklist(
         )
     except Exception as exc:
         logger_instance.error(
-            'turn_observability_checklist_read_failed conversation_id=%s turn_id=%s err=%s',
+            'turn_observability_checklist_read_failed conversation_id=%s turn_id=%s '
+            'reason=turn_observability_checklist_read_exception err_class=%s',
             conversation_id_s,
             turn_id_s,
-            exc,
+            exc.__class__.__name__,
         )
         raise
 
@@ -657,7 +701,10 @@ def read_chat_turn_pipeline(
                         }
                     )
     except Exception as exc:
-        logger_instance.error('chat_turn_pipeline_read_failed err=%s', exc)
+        logger_instance.error(
+            'chat_turn_pipeline_read_failed reason=chat_turn_pipeline_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         return {
             'kind': 'chat_turn_pipeline_read_model',
             'schema_version': '1',
@@ -793,7 +840,10 @@ def read_full_turn_metrics_snapshot(
                 )
                 rows = cur.fetchall()
     except Exception as exc:
-        logger_instance.error('full_turn_metrics_snapshot_read_failed err=%s', exc)
+        logger_instance.error(
+            'full_turn_metrics_snapshot_read_failed reason=full_turn_metrics_snapshot_read_exception err_class=%s',
+            exc.__class__.__name__,
+        )
         snapshot = build_full_turn_metrics_snapshot(
             [],
             llm_call_provider_metrics=build_llm_call_provider_metrics([]),
@@ -815,6 +865,11 @@ def read_full_turn_metrics_snapshot(
         payload_json = row[7]
         if not isinstance(payload_json, dict):
             payload_json = {}
+        status_value = str(row[5] or '')
+        status_schema_version = agentic_status.projected_schema_version(
+            payload=payload_json,
+            status=status_value,
+        )
         events.append(
             {
                 'event_id': str(row[0] or ''),
@@ -822,7 +877,10 @@ def read_full_turn_metrics_snapshot(
                 'turn_id': str(row[2] or ''),
                 'ts': row[3].astimezone(timezone.utc).isoformat() if isinstance(row[3], datetime) else str(row[3]),
                 'stage': str(row[4] or ''),
-                'status': str(row[5] or ''),
+                'status': status_value,
+                'status_v1': agentic_status.normalize_status(status_value),
+                'status_schema_version': status_schema_version,
+                'legacy_status': status_schema_version != agentic_status.STATUS_SCHEMA_VERSION,
                 'duration_ms': int(row[6]) if row[6] is not None else None,
                 'payload': payload_json,
             }
@@ -935,9 +993,9 @@ def read_chat_log_metadata(
                         )
     except Exception as exc:
         logger_instance.error(
-            'chat_log_metadata_read_failed conversation_id=%s err=%s',
+            'chat_log_metadata_read_failed conversation_id=%s reason=chat_log_metadata_read_exception err_class=%s',
             conversation_id_s,
-            exc,
+            exc.__class__.__name__,
         )
         raise RuntimeError('chat log metadata read failed') from exc
 
@@ -987,11 +1045,12 @@ def delete_chat_log_events(
             conn.commit()
     except Exception as exc:
         logger_instance.error(
-            'chat_log_events_delete_failed scope=%s conversation_id=%s turn_id=%s err=%s',
+            'chat_log_events_delete_failed scope=%s conversation_id=%s turn_id=%s '
+            'reason=chat_log_events_delete_exception err_class=%s',
             scope,
             conversation_id_s,
             turn_id_s,
-            exc,
+            exc.__class__.__name__,
         )
         raise RuntimeError('chat log deletion failed') from exc
 

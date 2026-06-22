@@ -9,6 +9,9 @@ from . import active_document_text_extraction
 from . import workspace_file_selections_store as selections_store
 from . import workspace_files_store
 
+REASON_PDF_VISUAL_REQUIRED = "folder_document_pdf_visual_required"
+REASON_PDF_VISUAL_READY = "folder_document_pdf_visual_ready"
+
 
 def list_selected_files_for_prompt(
     conversation_id: str,
@@ -59,46 +62,6 @@ def list_selected_files_for_prompt(
     return documents
 
 
-def _pdf_visual_prompt_document(
-    row: Mapping[str, Any],
-    *,
-    selection: Mapping[str, Any],
-    storage_root: Path,
-    logger: Any,
-) -> dict[str, Any]:
-    file_item = dict(selection.get("file") or {})
-    storage_key = selections_store._text(row.get("storage_key"), 500)
-    try:
-        data = workspace_files_store.workspace_file_path(storage_root, storage_key).read_bytes()
-    except Exception:
-        _log_prompt_exclusion(logger, selection, reason_code=selections_store.REASON_DISK_MISSING)
-        return _non_injectable_prompt_document(selection, reason_code=selections_store.REASON_DISK_MISSING)
-
-    workspace_files_store.log_content_free_event(
-        logger,
-        "selection_prompt_pdf_visual_candidate",
-        conversation_id=selection.get("conversation_id"),
-        folder_id=selection.get("workspace_folder_id"),
-        file_id=selection.get("workspace_file_id"),
-        media_kind="file",
-        content_kind=file_item.get("content_kind"),
-        mime_type=file_item.get("mime_type"),
-        byte_size=file_item.get("byte_size"),
-        sha256_12=file_item.get("sha256_12"),
-        selection_status=selection.get("selection_status"),
-        reason_code=selections_store.REASON_OCR_REQUIRED,
-    )
-    return {
-        **_base_prompt_document(selection),
-        "media_kind": "file",
-        "content_sha256_12": selections_store._text(file_item.get("sha256_12"), 12),
-        "file_content": data,
-        "injectable": True,
-        "reason_code": "",
-        "visual_source_status": workspace_files_store.STATUS_OCR_REQUIRED,
-    }
-
-
 def _injectable_prompt_document(
     row: Mapping[str, Any],
     *,
@@ -116,15 +79,7 @@ def _injectable_prompt_document(
         return _non_injectable_prompt_document(selection, reason_code=selections_store.REASON_DISK_MISSING)
 
     if selections_store._text(file_item.get("media_kind"), 40) == workspace_files_store.MEDIA_KIND_IMAGE:
-        return {
-            **_base_prompt_document(selection),
-            "media_kind": workspace_files_store.MEDIA_KIND_IMAGE,
-            "content_sha256_12": selections_store._text(file_item.get("sha256_12"), 12),
-            "image_width": selections_store._safe_int(file_item.get("image_width")),
-            "image_height": selections_store._safe_int(file_item.get("image_height")),
-            "image_content": data,
-            "injectable": True,
-        }
+        return _image_visual_prompt_document(selection, data=data, logger=logger)
 
     extraction = extractor_module.extract_active_document_text(
         data,
@@ -133,6 +88,8 @@ def _injectable_prompt_document(
     )
     if extraction.status != extractor_module.STATUS_COMPLETE:
         reason = _map_extraction_reason(extraction.reason_code, extractor_module=extractor_module)
+        if reason == selections_store.REASON_OCR_REQUIRED and _is_pdf_visual_candidate(selection):
+            return _pdf_visual_prompt_document_from_bytes(selection, data=data, logger=logger)
         _log_prompt_exclusion(logger, selection, reason_code=reason)
         return _non_injectable_prompt_document(selection, reason_code=reason)
 
@@ -162,6 +119,54 @@ def _is_pdf_visual_candidate(selection: Mapping[str, Any]) -> bool:
     mime_type = selections_store._text(file_item.get("mime_type"), 120).lower()
     extension = selections_store._text(file_item.get("source_extension"), 40).lower()
     return mime_type == "application/pdf" or extension == ".pdf"
+
+
+def _pdf_visual_prompt_document(
+    row: Mapping[str, Any],
+    *,
+    selection: Mapping[str, Any],
+    storage_root: Path,
+    logger: Any,
+) -> dict[str, Any]:
+    storage_key = selections_store._text(row.get("storage_key"), 500)
+    try:
+        data = workspace_files_store.workspace_file_path(storage_root, storage_key).read_bytes()
+    except Exception:
+        _log_prompt_exclusion(logger, selection, reason_code=selections_store.REASON_DISK_MISSING)
+        return _non_injectable_prompt_document(selection, reason_code=selections_store.REASON_DISK_MISSING)
+    return _pdf_visual_prompt_document_from_bytes(selection, data=data, logger=logger)
+
+
+def _pdf_visual_prompt_document_from_bytes(
+    selection: Mapping[str, Any],
+    *,
+    data: bytes,
+    logger: Any,
+) -> dict[str, Any]:
+    _log_prompt_visual_ready(logger, selection)
+    return {
+        **_base_prompt_document(selection),
+        "media_kind": "file",
+        "file_content": data,
+        "injectable": True,
+        "visual_reason_code": REASON_PDF_VISUAL_READY,
+    }
+
+
+def _image_visual_prompt_document(
+    selection: Mapping[str, Any],
+    *,
+    data: bytes,
+    logger: Any,
+) -> dict[str, Any]:
+    _log_prompt_visual_ready(logger, selection)
+    return {
+        **_base_prompt_document(selection),
+        "media_kind": workspace_files_store.MEDIA_KIND_IMAGE,
+        "image_content": data,
+        "injectable": True,
+        "visual_reason_code": REASON_PDF_VISUAL_READY,
+    }
 
 
 def _base_prompt_document(selection: Mapping[str, Any]) -> dict[str, Any]:
@@ -214,4 +219,24 @@ def _log_prompt_exclusion(logger: Any, selection: Mapping[str, Any], *, reason_c
         sha256_12=file_item.get("sha256_12"),
         selection_status=selection.get("selection_status"),
         reason_code=reason_code,
+    )
+
+
+def _log_prompt_visual_ready(logger: Any, selection: Mapping[str, Any]) -> None:
+    file_item = dict(selection.get("file") or {})
+    workspace_files_store.log_content_free_event(
+        logger,
+        "selection_prompt_visual_ready",
+        conversation_id=selection.get("conversation_id"),
+        folder_id=selection.get("workspace_folder_id"),
+        file_id=selection.get("workspace_file_id"),
+        media_kind=file_item.get("media_kind"),
+        content_kind=file_item.get("content_kind"),
+        mime_type=file_item.get("mime_type"),
+        byte_size=file_item.get("byte_size"),
+        image_width=file_item.get("image_width"),
+        image_height=file_item.get("image_height"),
+        sha256_12=file_item.get("sha256_12"),
+        selection_status=selection.get("selection_status"),
+        reason_code=REASON_PDF_VISUAL_READY,
     )

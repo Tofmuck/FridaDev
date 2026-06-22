@@ -356,6 +356,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
                     'main_duration_ms_count': 1,
                     'main_duration_ms_p50': 100,
                     'main_duration_ms_p95': 100,
+                    'secondary_status_counts': {'failed': 1, 'not_configured': 1},
                 },
                 'dashboard_analytics_v1',
                 datetime(2026, 5, 15, 11, 0, tzinfo=timezone.utc),
@@ -372,6 +373,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
                     'main_duration_ms_count': 1,
                     'main_duration_ms_p50': 300,
                     'main_duration_ms_p95': 300,
+                    'secondary_status_counts': {'ok': 1, 'refused': 1, 'skipped': 1},
                 },
                 'dashboard_analytics_v1',
                 datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
@@ -420,6 +422,10 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         provider_metrics = payload['module_totals']['providers']['metrics']
         self.assertEqual(provider_metrics['main_duration_ms_total'], 400)
         self.assertEqual(provider_metrics['main_duration_ms_count'], 2)
+        self.assertEqual(
+            provider_metrics['secondary_status_counts'],
+            {'failed': 1, 'not_configured': 1, 'ok': 1, 'refused': 1, 'skipped': 1},
+        )
         self.assertNotIn('main_duration_ms_p50', provider_metrics)
         self.assertNotIn('main_duration_ms_p95', provider_metrics)
         latency = payload['latency']
@@ -429,6 +435,295 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertEqual(latency['bucket_p95_ms_max'], 300)
         self.assertEqual(latency['latest_bucket_avg_ms'], 300)
         self.assertIn('total/count', latency['semantics_fr'])
+        self._assert_content_free(payload)
+
+    def test_overview_pulse_separates_noops_from_true_failures(self) -> None:
+        now = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
+        status_row = (
+            'dashboard_long_term_observability',
+            'dashboard_analytics_v1',
+            'ok',
+            datetime(2026, 6, 21, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc),
+            90,
+            30,
+            'day',
+            11,
+            False,
+            False,
+            'evt-latest',
+            datetime(2026, 6, 21, 11, 59, tzinfo=timezone.utc),
+            1,
+            2,
+            1,
+            1,
+            0,
+            None,
+            0,
+            None,
+            'custom_window_materialized',
+            datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc),
+        )
+        bucket_rows = [
+            (
+                'hour',
+                datetime(2026, 6, 21, 11, 0, tzinfo=timezone.utc),
+                datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc),
+                'pipeline',
+                2,
+                11,
+                {'classification_counts': {'complete': 1, 'degraded': 1}},
+                'dashboard_analytics_v1',
+                datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc),
+            ),
+            (
+                'hour',
+                datetime(2026, 6, 21, 11, 0, tzinfo=timezone.utc),
+                datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc),
+                'errors',
+                2,
+                11,
+                {
+                    'error_count': 1,
+                    'failed_count': 1,
+                    'attempt_failure_count': 2,
+                    'problem_count': 2,
+                    'fallback_count': 0,
+                    'disabled_count': 1,
+                    'not_selected_count': 1,
+                    'not_configured_count': 1,
+                    'not_applicable_count': 1,
+                    'refused_count': 1,
+                    'skipped_count': 1,
+                    'non_problem_status_count': 6,
+                    'status_counts': {
+                        'disabled': 1,
+                        'error': 1,
+                        'failed': 1,
+                        'not_applicable': 1,
+                        'not_configured': 1,
+                        'not_selected': 1,
+                        'refused': 1,
+                        'skipped': 1,
+                    },
+                    'status_schema_counts': {'agentic_v1': 9, 'legacy': 2},
+                    'v1_event_count': 9,
+                    'legacy_event_count': 2,
+                    'reason_code_counts': {'fake_runtime_error': 1},
+                },
+                'dashboard_analytics_v1',
+                datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc),
+            ),
+        ]
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self.rows: list[tuple[Any, ...]] = []
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, _params: tuple[Any, ...] | None = None) -> None:
+                if 'dashboard_materialization_status' in query:
+                    self.rows = [status_row]
+                else:
+                    self.rows = bucket_rows
+
+            def fetchone(self):
+                return self.rows[0] if self.rows else None
+
+            def fetchall(self):
+                return self.rows
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        payload = dashboard_read_model.read_dashboard_overview(
+            {'window': '24h'},
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+            now=now,
+        )
+
+        pulse = payload['pulse']
+        self.assertEqual(pulse['problems_count'], 2)
+        self.assertEqual(pulse['attempt_failures_count'], 2)
+        self.assertEqual(pulse['error_count'], 1)
+        self.assertEqual(pulse['failed_count'], 1)
+        self.assertEqual(pulse['fallback_count'], 0)
+        self.assertEqual(pulse['non_problem_status_count'], 6)
+        self.assertEqual(pulse['status_schema_counts'], {'agentic_v1': 9, 'legacy': 2})
+        self.assertEqual(pulse['v1_event_count'], 9)
+        self.assertEqual(pulse['legacy_event_count'], 2)
+        self.assertEqual(payload['module_totals']['errors']['metrics']['refused_count'], 1)
+        self._assert_content_free(payload)
+
+    def test_conversations_expose_legacy_v1_and_true_failure_counts(self) -> None:
+        now = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
+        status_row = (
+            'dashboard_long_term_observability',
+            'dashboard_analytics_v1',
+            'ok',
+            datetime(2026, 6, 21, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc),
+            90,
+            30,
+            'day',
+            11,
+            False,
+            False,
+            'evt-latest',
+            datetime(2026, 6, 21, 11, 59, tzinfo=timezone.utc),
+            1,
+            2,
+            1,
+            1,
+            0,
+            None,
+            0,
+            None,
+            'custom_window_materialized',
+            datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc),
+        )
+        fact_rows = [
+            (
+                'conv-taxonomy',
+                'Conversation du 2026-06-21 11:00 UTC',
+                'fallback_datetime',
+                datetime(2026, 6, 21, 10, 0, tzinfo=timezone.utc),
+                datetime(2026, 6, 21, 10, 1, tzinfo=timezone.utc),
+                'turn-legacy',
+                'legacy_incomplete',
+                {},
+                {'requested': False},
+                {},
+                {'used': False},
+                {
+                    'error_count': 0,
+                    'failed_count': 0,
+                    'skipped_count': 1,
+                    'non_problem_status_count': 1,
+                    'reason_code_counts': {'legacy_skip': 1},
+                },
+                {
+                    'status_schema': {
+                        'source_kind': 'legacy',
+                        'schema_counts': {'legacy': 2},
+                        'v1_event_count': 0,
+                        'legacy_event_count': 2,
+                        'historical_events_reclassified': False,
+                    },
+                    'raw_event_payloads_included': False,
+                },
+            ),
+            (
+                'conv-taxonomy',
+                'Conversation du 2026-06-21 11:00 UTC',
+                'fallback_datetime',
+                datetime(2026, 6, 21, 11, 0, tzinfo=timezone.utc),
+                datetime(2026, 6, 21, 11, 8, tzinfo=timezone.utc),
+                'turn-v1',
+                'degraded',
+                {},
+                {'requested': False},
+                {},
+                {'used': False, 'status': 'not_selected'},
+                {
+                    'error_count': 1,
+                    'failed_count': 1,
+                    'attempt_failure_count': 2,
+                    'problem_count': 2,
+                    'fallback_count': 0,
+                    'disabled_count': 1,
+                    'not_selected_count': 1,
+                    'not_configured_count': 1,
+                    'not_applicable_count': 1,
+                    'refused_count': 1,
+                    'non_problem_status_count': 5,
+                    'problem_reason_code_counts': {
+                        'fake_recoverable_failure': 1,
+                        'fake_runtime_error': 1,
+                    },
+                    'non_problem_reason_code_counts': {
+                        'agenda_toggle_off': 1,
+                        'biblio_no_bibliographic_signal': 1,
+                        'payload_refused': 1,
+                        'provider_not_configured': 1,
+                        'web_search_not_requested': 1,
+                    },
+                },
+                {
+                    'status_schema': {
+                        'source_kind': 'agentic_v1',
+                        'schema_counts': {'agentic_v1': 9},
+                        'v1_event_count': 9,
+                        'legacy_event_count': 0,
+                        'historical_events_reclassified': False,
+                    },
+                    'raw_event_payloads_included': False,
+                },
+            ),
+        ]
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self.rows: list[tuple[Any, ...]] = []
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, _params: tuple[Any, ...] | None = None) -> None:
+                if 'dashboard_materialization_status' in query:
+                    self.rows = [status_row]
+                else:
+                    self.rows = fact_rows
+
+            def fetchone(self):
+                return self.rows[0] if self.rows else None
+
+            def fetchall(self):
+                return self.rows
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        payload = dashboard_read_model.read_dashboard_conversations(
+            {'window': '24h', 'limit': '10', 'offset': '0'},
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+            now=now,
+        )
+
+        self.assertEqual(payload['count'], 1)
+        item = payload['items'][0]
+        self.assertEqual(item['status_schema']['schema_counts'], {'agentic_v1': 9, 'legacy': 2})
+        self.assertEqual(item['status_schema']['source_kind_counts'], {'agentic_v1': 1, 'legacy': 1})
+        self.assertEqual(item['error_count'], 1)
+        self.assertEqual(item['failed_count'], 1)
+        self.assertEqual(item['attempt_failure_count'], 2)
+        self.assertEqual(item['fallback_count'], 0)
+        self.assertEqual(item['problem_count'], 2)
+        self.assertFalse(item['redaction']['raw_content_included'])
         self._assert_content_free(payload)
 
     def test_turn_inspection_is_translated_and_content_free(self) -> None:
