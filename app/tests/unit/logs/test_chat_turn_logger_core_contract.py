@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +20,10 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from observability import chat_turn_logger
+from observability import admin_log_projection
+from observability import log_markdown_export
 from observability import log_store
+from observability import observability_payload_guard
 
 
 class ChatTurnLoggerCoreContractTests(unittest.TestCase):
@@ -207,6 +212,151 @@ class ChatTurnLoggerCoreContractTests(unittest.TestCase):
             statuses.add(str(event['status']))
 
         self.assertTrue({'ok', 'error', 'skipped'}.issubset(statuses))
+
+    def test_writer_guard_rejects_raw_payload_without_false_ok(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        raw_message = 'SENSITIVE_WRITER_MESSAGE_C'
+        raw_url = 'https://provider.example.invalid/raw?token=secret'
+        raw_data_url = 'data:image/png;base64,AAAA'
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-writer-guard',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit(
+                'writer_guard_probe',
+                status='ok',
+                payload={
+                    'messages': [{'role': 'user', 'content': raw_message}],
+                    'nested': {
+                        'provider_payload': {'content': raw_message},
+                        'reason_code': raw_url,
+                        'image_data_url': raw_data_url,
+                    },
+                },
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        rejected = next(event for event in observed if event['stage'] == 'writer_guard_probe')
+        payload = rejected['payload_json']
+        self.assertEqual(rejected['status'], 'refused')
+        self.assertEqual(payload['schema_version'], observability_payload_guard.SCHEMA_VERSION)
+        self.assertEqual(payload['reason_code'], observability_payload_guard.REASON_CODE)
+        self.assertEqual(payload['guarded_original_status'], 'ok')
+        self.assertFalse(payload['raw_event_payloads_included'])
+        self.assertFalse(payload['raw_message_included'])
+        self.assertFalse(payload['raw_provider_payload_included'])
+
+        projected = admin_log_projection.project_event_item(
+            {
+                'event_id': rejected['event_id'],
+                'conversation_id': rejected['conversation_id'],
+                'turn_id': rejected['turn_id'],
+                'ts': rejected['ts'],
+                'stage': rejected['stage'],
+                'status': rejected['status'],
+                'duration_ms': rejected['duration_ms'],
+                'payload': rejected['payload_json'],
+            }
+        )
+        markdown = log_markdown_export._build_markdown(
+            scope='turn',
+            conversation_id='conv-writer-guard',
+            turn_id=rejected['turn_id'],
+            items=[projected],
+            generated_at=datetime(2026, 6, 22, tzinfo=timezone.utc),
+        )
+        encoded = json.dumps({'event': rejected, 'projection': projected, 'markdown': markdown}, ensure_ascii=False)
+        for marker in (raw_message, raw_url, raw_data_url, 'provider.example.invalid', 'base64'):
+            self.assertNotIn(marker, encoded)
+
+    def test_writer_guard_allows_valid_main_payload_manifest(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        manifest = {
+            'schema_version': 'main_payload_manifest_v1',
+            'scope': 'main_chat',
+            'main_model_called': True,
+            'messages': [
+                {
+                    'index': 0,
+                    'provider_role': 'system',
+                    'logical_roles': ['system_prompt'],
+                    'origin': 'core.chat_prompt_context',
+                    'origin_stage': 'base_prompt_with_guards',
+                    'content_kind': 'system_instruction',
+                    'content_present': True,
+                    'content_chars': 42,
+                    'estimated_tokens': 8,
+                    'excluded': False,
+                    'exclusion_reason_code': '',
+                    'content_parts_count': 1,
+                    'text_part_count': 1,
+                    'image_part_count': 0,
+                    'file_part_count': 0,
+                    'raw_content_included': False,
+                }
+            ],
+            'lane_statuses': {
+                'system_prompt': {
+                    'status': 'ok',
+                    'reason_code': '',
+                    'selected': True,
+                    'enabled': True,
+                    'input_count': 1,
+                    'injected_count': 1,
+                    'excluded_count': 0,
+                    'content_chars': 42,
+                    'estimated_tokens': None,
+                    'origin': 'core.chat_prompt_context',
+                    'raw_lane_content_included': False,
+                }
+            },
+            'raw_flags': {
+                'raw_prompt_included': False,
+                'raw_message_included': False,
+                'raw_content_included': False,
+                'raw_lane_content_included': False,
+                'raw_provider_payload_included': False,
+                'raw_secret_included': False,
+            },
+        }
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-valid-manifest',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit('main_payload_manifest', status='ok', payload=manifest)
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        manifest_event = next(event for event in observed if event['stage'] == 'main_payload_manifest')
+        self.assertEqual(manifest_event['status'], 'ok')
+        self.assertEqual(manifest_event['payload_json']['schema_version'], 'main_payload_manifest_v1')
+        self.assertNotEqual(
+            manifest_event['payload_json'].get('reason_code'),
+            observability_payload_guard.REASON_CODE,
+        )
 
 
 if __name__ == '__main__':

@@ -65,7 +65,7 @@ content-free relue, testee ou explicitement reportee post-V1.
 | - [x] | P2-LANE-PROVENANCE-01 | Lot 2 puis Lot 2.1 | Role provider et role logique distingues par provenance structuree, sans classification souveraine par contenu textuel. |
 | - [ ] | P2-FINAL-LOCK-POLICY-01 | Lot 5 | Politique de priorite Agenda/Biblio final-lock documentee et testee. |
 | - [ ] | P2-NOTES-UI-01 | Lot 5 | Statut Notes UI tranche: hors chemin chat courant documente, ou branchement explicite teste. |
-| - [ ] | P2-OBS-WRITER-01 | Lot 3 | Guard writer-side livre contre cles/payloads dangereux, avec sentinelles anti-fuite. |
+| - [x] | P2-OBS-WRITER-01 | Lot 3 | Guard writer-side livre contre cles/payloads dangereux, avec sentinelles anti-fuite. |
 | - [ ] | P3-SOFT-LIMIT-01 | Lot 4 | Soft limit explique ou durci: depassement visible et politique de troncation/exclusion testee ou reportee. |
 | - [ ] | P3-NOOP-LANES-01 | Lot 5 | Non-selection Documents/Notes observable ou absence justifiee sans confusion avec lane non instrumentee. |
 | - [ ] | P3-DOC-01 | Lot 1 puis Lot Z | Docs historiques requalifiees ou indexees avec statuts actifs/archive/stale. |
@@ -168,16 +168,32 @@ mettre en conformite plus tard.
 Objectif: eviter qu'une future instrumentation payload introduise du contenu
 brut dans l'observabilite.
 
-- [ ] Durcir `chat_turn_logger` ou l'equivalent writer-side par schema,
+- [x] Durcir `chat_turn_logger` ou l'equivalent writer-side par schema,
   allowlist ou rejet explicite des cles dangereuses.
-- [ ] Couvrir les cles de risque: messages, prompt, content, payload,
+- [x] Couvrir les cles de risque: messages, prompt, content, payload,
   provider payload, raw, base64/data URL et secrets.
-- [ ] Ajouter des sentinelles anti-fuite sur les chemins writer et projections
+- [x] Ajouter des sentinelles anti-fuite sur les chemins writer et projections
   admin pertinentes.
-- [ ] Preserver les vraies pannes visibles: un rejet de payload dangereux ne
+- [x] Preserver les vraies pannes visibles: un rejet de payload dangereux ne
   doit pas devenir un faux succes.
 
 Finding traite: `P2-OBS-WRITER-01`.
+
+Statut 2026-06-22: Lot 3 livre par
+`app/observability/observability_payload_guard.py`, branche dans
+`app/observability/chat_turn_logger.py` avant l'ecriture via `log_store`.
+Comportement retenu: un payload dangereux est remplace avant stockage par un
+evenement de garde content-free avec `reason_code=observability_payload_rejected`;
+un statut demande `ok` devient `refused`, et un statut deja non-OK reste visible.
+Le manifeste `main_payload_manifest_v1` reste accepte seulement s'il respecte
+son contrat content-free.
+
+Tests de reference Lot 3:
+
+- `app/tests/unit/logs/test_observability_payload_guard.py`
+- `app/tests/unit/logs/test_chat_turn_logger_core_contract.py`
+
+Finding clos par ce lot: `P2-OBS-WRITER-01`.
 
 ### Lot 4 - Fenetres, summary, memory, staging
 

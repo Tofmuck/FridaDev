@@ -3,7 +3,8 @@
 Date: 2026-06-22
 
 Statut: contrat source-of-truth Continuity Payload. Lot 1 a defini le contrat;
-Lot 2 a livre le manifeste runtime content-free sans capsule.
+Lot 2 a livre le manifeste runtime content-free sans capsule. Lot 3 a livre la
+garde writer-side d'observabilite.
 
 Ce contrat definit deux objets cibles:
 
@@ -380,6 +381,48 @@ Le manifeste, ses logs, ses tests et ses fixtures ne doivent jamais contenir:
 - valeur secrete;
 - URL sensible, DAV brute, chemin distant sensible ou en-tete sensible.
 
+## Garde writer-side d'observabilite
+
+Depuis le Lot 3, `chat_turn_logger` doit appliquer une garde avant toute
+ecriture d'evenement dans `log_store`. Cette garde est distincte de la projection
+admin: elle empeche l'entree du contenu dangereux dans le stockage, au lieu de
+compter seulement sur une redaction de lecture.
+
+La garde doit refuser ou remplacer avant stockage tout payload contenant:
+
+- cles brutes exactes ou equivalents non qualifies: `messages`, `message`,
+  `prompt`, `content`, `text`, `payload`, `provider_payload`, `raw`,
+  `raw_payload`, `base64`, `data_url`, `image_data_url`, `secret`, `token`,
+  `password`, `cookie`, `authorization`, `header`, `url`, `path`, `dav`, `xml`,
+  `etag`;
+- variantes raw/request/response payload non qualifiees;
+- URL, DAV/XML, ETag brut, header, bearer/token-like, cookie, credential,
+  path sensible, base64 ou data URL, meme sous une cle apparemment safe;
+- payloads imbriques dangereux.
+
+Restent autorises quand ils sont content-free:
+
+- compteurs, longueurs, boolens, statuts, reason codes, stages et index locaux;
+- IDs opaques techniques non sensibles;
+- flags qualifies explicitement faux, par exemple
+  `raw_prompt_included=false`, `raw_message_included=false`,
+  `raw_content_included=false`, `raw_provider_payload_included=false`,
+  `raw_lane_content_included=false`, `raw_secret_included=false`;
+- `main_payload_manifest_v1`, seulement s'il respecte son schema content-free et
+  ne contient ni champ brut inattendu ni raw flag vrai.
+
+Comportement requis en cas de rejet:
+
+- l'evenement original dangereux n'est pas stocke;
+- l'evenement stocke porte un payload de garde content-free avec
+  `reason_code=observability_payload_rejected`;
+- un evenement demande en `status=ok` ne doit pas rester un succes normal: il
+  devient `status=refused`;
+- un evenement deja non-OK peut garder son statut pour preserver la visibilite
+  de la panne, mais son payload reste remplace par la garde;
+- la garde ne doit pas exposer la valeur interdite ni la cle brute sensible:
+  elle expose seulement compteurs et classes de rejet.
+
 ## Continuity Capsule
 
 ### Objet
@@ -481,8 +524,8 @@ Une future injection Lot 7 devra au minimum:
    Capsule. C'est le role du present contrat.
 2. Lot 2 doit livrer et tester `main_payload_manifest_v1` sur le payload final,
    apres toutes les injections tardives.
-3. Lot 3 doit ajouter ou confirmer une garde writer-side pour empecher les
-   payloads dangereux dans l'observabilite.
+3. Lot 3 livre la garde writer-side qui empeche les payloads dangereux dans
+   l'observabilite.
 4. Lots 4 et 5 doivent clarifier les fenetres, summary, memory, staging et
    conflits de lanes.
 5. Lot 6 doit prouver la continuite qualitative avec fixtures artificielles,
@@ -509,7 +552,7 @@ lots 1 a 6 ne soient relus et acceptes.
 | P2-LANE-PROVENANCE-01 | Oblige la separation `provider_role` / `logical_roles` pour les lanes injectees comme `user`. | Prepare, non clos. |
 | P2-FINAL-LOCK-POLICY-01 | Oblige un champ de priorite effective des final locks. | Prepare, non clos. |
 | P2-NOTES-UI-01 | Exige un statut Notes meme quand la lane est non selectionnee ou non envoyee par le frontend. | Prepare, non clos. |
-| P2-OBS-WRITER-01 | Definit les flags et interdictions que la garde writer-side devra proteger. | Prepare, non clos. |
+| P2-OBS-WRITER-01 | Definit les flags et interdictions que la garde writer-side devra proteger. | Clos par Lot 3. |
 | P3-SOFT-LIMIT-01 | Rend visible la difference soft-limit observee et truncation effective. | Prepare, non clos. |
 | P3-NOOP-LANES-01 | Exige des no-op observables pour chaque lane connue. | Prepare, non clos. |
 | P3-DOC-01 | Requalifie la source-of-truth active sans rouvrir les archives identity. | Prepare, non clos. |
@@ -558,13 +601,33 @@ Limite volontaire: `app/scripts/export_main_prompt_payload.py` reste un outil
 offline historique trop riche pour servir de preuve content-free de continuite;
 le manifeste runtime le remplace pour ce chantier sans supprimer le script.
 
+## Criteres d'acceptation du Lot 3
+
+Le Lot 3 est recevable seulement si:
+
+- un payload avec `messages`, `prompt`, `content`, `payload`,
+  `provider_payload`, `raw`, base64/data URL ou secret est remplace avant
+  stockage;
+- une valeur URL/token/DAV/XML/ETag/path sensible sous cle allowlistee ne passe
+  pas;
+- un `status=ok` dangereux ne reste pas un succes normal;
+- un `main_payload_manifest_v1` valide passe;
+- la projection admin et l'export Markdown ne reexposent aucune sentinelle de
+  test.
+
+Statut Lot 3 au 2026-06-22: livre par
+`app/observability/observability_payload_guard.py`, branche dans
+`app/observability/chat_turn_logger.py` avant l'appel a `log_store`, et teste par
+`app/tests/unit/logs/test_observability_payload_guard.py` et
+`app/tests/unit/logs/test_chat_turn_logger_core_contract.py`.
+
 ## No-go avant runtime capsule
 
 Une Continuity Capsule runtime est interdite tant que toutes les conditions
 suivantes ne sont pas remplies:
 
 - `main_payload_manifest_v1` livre et teste;
-- garde writer-side anti-fuite livree ou explicitement jugee suffisante;
+- garde writer-side anti-fuite livree;
 - fenetres memory/summary/hermeneutic/lane documentees par preuve content-free;
 - politique de final locks clarifiee;
 - Notes, Documents, Biblio, Agenda, Web et Adobe representes dans le manifeste;
@@ -575,8 +638,8 @@ suivantes ne sont pas remplies:
 
 ## Limites assumees
 
-Ce contrat est normatif pour les lots suivants. Depuis le Lot 2, le payload
-runtime courant est prouve par un manifeste content-free borne; les limites
-restantes portent sur les lots non livres: garde writer-side, fenetres
-specialisees, final locks produit, tests qualitatifs artificiels et capsule
-runtime eventuelle.
+Ce contrat est normatif pour les lots suivants. Depuis les Lots 2 et 3, le
+payload runtime courant est prouve par un manifeste content-free borne et protege
+par une garde writer-side. Les limites restantes portent sur les lots non
+livres: fenetres specialisees, final locks produit, tests qualitatifs
+artificiels et capsule runtime eventuelle.

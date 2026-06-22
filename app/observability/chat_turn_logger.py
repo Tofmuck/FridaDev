@@ -10,6 +10,7 @@ from typing import Any
 
 from observability import agentic_status
 from observability import log_store
+from observability import observability_payload_guard
 
 logger = logging.getLogger('frida.chat_turn_logger')
 
@@ -107,6 +108,21 @@ def _emit_now(
         payload_json['reason_code'] = reason
     if not invalid_status and status_norm == 'error' and error_code:
         payload_json['error_code'] = str(error_code)
+
+    guarded_original_status = status_norm
+    guard_decision = observability_payload_guard.guard_payload(payload_json)
+    if not guard_decision.accepted:
+        payload_json = guard_decision.payload
+        payload_json['status_schema_version'] = agentic_status.STATUS_SCHEMA_VERSION
+        if status_norm == agentic_status.STATUS_OK:
+            status_norm = agentic_status.STATUS_REFUSED
+        payload_json['guarded_original_status'] = guarded_original_status
+        payload_json['reason_code'] = observability_payload_guard.REASON_CODE
+        logger.warning(
+            'chat_turn_log_payload_rejected stage=%s reason=%s',
+            stage,
+            observability_payload_guard.REASON_CODE,
+        )
 
     ctx.seq += 1
     event = {
