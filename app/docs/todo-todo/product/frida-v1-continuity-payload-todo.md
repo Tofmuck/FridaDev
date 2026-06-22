@@ -33,6 +33,8 @@ livraison et test de `main_payload_manifest_v1`.
   `app/docs/todo-todo/audits/frida-v1-continuity-payload-audit-2026-06-22.md`
 - Contre-audit:
   `app/docs/todo-todo/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
+- Contrat source-of-truth Continuity Payload:
+  `app/docs/states/specs/frida-v1-continuity-payload-contract.md`
 - Doctrine voix, identite et reprise apres ecart:
   `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - Contrat source-of-truth mutable judge:
@@ -90,20 +92,24 @@ Criteres de cloture Lot 0:
 
 Docs-only.
 
-- [ ] Specifier `main_payload_manifest_v1`: structure, champs autorises,
+- [x] Specifier `main_payload_manifest_v1`: structure, champs autorises,
   champs interdits, roles provider, roles logiques, origine des lanes,
   injections tardives, final locks, budgets, exclusions, hashes courts et
   compteurs.
-- [ ] Specifier la Continuity Capsule ou nom equivalent: objet, taille,
+- [x] Specifier la Continuity Capsule ou nom equivalent: objet, taille,
   version, non-souverainete, contestabilite, rollback et non-objectifs.
-- [ ] Distinguer strictement capsule, identity stable, identity mutable,
+- [x] Distinguer strictement capsule, identity stable, identity mutable,
   memoire, resume, observabilite et lanes documentaires.
-- [ ] Reprendre la doctrine de non-souverainete: la capsule guide la presence,
+- [x] Reprendre la doctrine de non-souverainete: la capsule guide la presence,
   elle ne remplace ni le tour courant ni les preuves visibles.
-- [ ] Graver le no-go runtime: la capsule peut etre specifiee, mais pas
+- [x] Graver le no-go runtime: la capsule peut etre specifiee, mais pas
   injectee tant que `main_payload_manifest_v1` n'est pas livre et teste.
-- [ ] Requalifier les docs historiques utiles sans rouvrir les archives
+- [x] Requalifier les docs historiques utiles sans rouvrir les archives
   identitaires ou observabilite.
+
+Statut 2026-06-22: Lot 1 livre par
+`app/docs/states/specs/frida-v1-continuity-payload-contract.md`. Aucun finding
+n'est clos par ce lot docs-only; Lot 2+ et Lot Z restent non coches.
 
 ### Lot 2 - Manifest payload content-free runtime/fake
 
@@ -269,3 +275,12 @@ Patch Lot 0 attendu:
 
 Apres ce patch, les lots suivants doivent repartir de cette TODO et ne pas
 rouvrir directement les audits comme checklist de travail.
+
+Patch Lot 1 livre:
+
+- contrat source-of-truth cree dans
+  `app/docs/states/specs/frida-v1-continuity-payload-contract.md`;
+- `main_payload_manifest_v1` defini avant Continuity Capsule;
+- no-go runtime capsule avant manifeste livre et teste grave;
+- aucun finding marque clos;
+- aucune modification runtime.

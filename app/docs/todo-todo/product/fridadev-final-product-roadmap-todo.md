@@ -145,13 +145,17 @@ specifiable, prouvable et eventuellement injectable. Le manifeste
 TODO dediee:
 `app/docs/todo-todo/product/frida-v1-continuity-payload-todo.md`
 
+Contrat source:
+`app/docs/states/specs/frida-v1-continuity-payload-contract.md`
+
 Sources d'audit:
 `app/docs/todo-todo/audits/frida-v1-continuity-payload-audit-2026-06-22.md`
 et
 `app/docs/todo-todo/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
 
-Statut 2026-06-22: TODO active creee en Lot 0. Aucun runtime capsule ne doit
-partir avant livraison et test du manifeste payload content-free.
+Statut 2026-06-22: TODO active creee en Lot 0 et contrat source-of-truth livre
+en Lot 1. Aucun runtime capsule ne doit partir avant livraison, test et
+relecture du manifeste payload content-free.
 
 ### 8. Audit final general
 
