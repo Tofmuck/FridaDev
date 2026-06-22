@@ -171,6 +171,8 @@ def _inspect_manifest_mapping(payload: Mapping[str, Any], issues: dict[str, int]
 
 
 def _inspect_general_scalar(key: str, value: Any, issues: dict[str, int]) -> None:
+    if key == "sha256_12" and value is None:
+        return
     issue = _dangerous_value_class(key, value)
     if issue:
         _add_issue(issues, issue)

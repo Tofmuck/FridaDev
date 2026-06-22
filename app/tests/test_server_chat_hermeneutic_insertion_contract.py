@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import sys
 import tempfile
 import unittest
@@ -202,10 +201,11 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
         self.assertIsInstance(hermeneutic_injection, dict)
         self.assertTrue(hermeneutic_injection.get('present'))
         self.assertEqual(hermeneutic_injection.get('chars'), len(expected_block))
-        self.assertEqual(
-            hermeneutic_injection.get('sha256_12'),
-            hashlib.sha256(expected_block.encode('utf-8')).hexdigest()[:12],
-        )
+        self.assertNotIn('sha256_12', hermeneutic_injection)
+        self.assertFalse(hermeneutic_injection.get('fingerprint_present'))
+        self.assertFalse(hermeneutic_injection.get('fingerprint_included'))
+        self.assertFalse(hermeneutic_injection.get('prompt_block_hash_included'))
+        self.assertFalse(hermeneutic_injection.get('raw_content_included'))
         self.assertEqual(hermeneutic_injection.get('final_judgment_posture'), 'answer')
         self.assertEqual(hermeneutic_injection.get('final_output_regime'), 'simple')
         self.assertEqual(hermeneutic_injection.get('epistemic_regime'), 'incertain')

@@ -251,7 +251,10 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
             "hermeneutic_prompt_injection": {
                 "present": True,
                 "chars": 42,
-                "sha256_12": "abc123def456",
+                "fingerprint_present": False,
+                "fingerprint_included": False,
+                "prompt_block_hash_included": False,
+                "raw_content_included": False,
                 "final_judgment_posture": "answer",
                 "final_output_regime": "simple",
                 "epistemic_regime": "incertain",
@@ -408,6 +411,17 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
     def test_raw_arbiter_reason_is_rejected(self) -> None:
         payload = {
             "arbiter_reason": "lecture libre a ne jamais stocker",
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("unknown_string_key", decision.payload["issue_classes"])
+
+    def test_generic_sha256_12_is_rejected(self) -> None:
+        payload = {
+            "sha256_12": "0123456789ab",
             "status_schema_version": "agentic_v1",
         }
 

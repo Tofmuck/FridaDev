@@ -10,6 +10,8 @@ continuite content-free: summary, memory observee vs injectee, hermeneutic node,
 Biblio, Agenda, identity staging et soft-limit final. Lot 4.1 preserve les
 payloads d'observabilite content-free legitimes sous cette garde stricte et
 reduit l'estimation de tokens du manifeste a un calcul prompt-level unique.
+Lot 4.2 supprime le hash stable court du bloc de prompt hermeneutique et refuse
+toute valeur renseignee sous cle generique `sha256_12` cote writer-side.
 
 Ce contrat definit deux objets cibles:
 
@@ -770,6 +772,17 @@ Exemples interdits: `arbiter_reason` brut, URL explicite brute, prompt/message
 ou provider payload. Exemples autorises: `arbiter_reason_present`,
 `arbiter_reason_chars`, `arbiter_reason_included=false`, `source_domain`,
 `url_present`, `url_chars`, `url_included=false`.
+
+Correctif Lot 4.2 au 2026-06-22: `hermeneutic_prompt_injection` ne doit pas
+contenir de `sha256_12` calcule sur le bloc hermeneutique injecte dans le
+prompt. Le payload doit conserver les compteurs utiles (`present`, `chars`,
+posture, regime, source, reason codes) et declarer l'absence d'empreinte par
+des flags tels que `fingerprint_present=false`, `fingerprint_included=false`,
+`prompt_block_hash_included=false` et `raw_content_included=false`. La garde
+writer-side doit refuser une valeur renseignee sous cle generique `sha256_12`;
+seules des cles qualifiees, explicitement justifiees et non contradictoires avec
+cette politique peuvent rester hors scope de ce correctif. Les placeholders
+vides historiques ne doivent pas creer de bruit de rejet.
 
 ## No-go avant runtime capsule
 

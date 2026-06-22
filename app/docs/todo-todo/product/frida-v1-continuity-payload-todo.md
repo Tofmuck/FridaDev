@@ -302,6 +302,23 @@ Findings Lot 4.1: le finding P2 de bruit writer-side sur payloads legitimes est
 traite par schemas explicites; le finding P3 de multiplication du compteur de
 tokens est traite par estimation prompt-level unique. Aucun Lot 5+ n'est ouvert.
 
+Correctif Lot 4.2 livre le 2026-06-22:
+
+- [x] Supprimer `sha256_12` de `hermeneutic_prompt_injection`: le bloc
+  hermeneutique est un texte injecte dans le prompt et ne doit pas recevoir de
+  hash stable court.
+- [x] Remplacer cette empreinte par des flags content-free:
+  `fingerprint_present=false`, `fingerprint_included=false`,
+  `prompt_block_hash_included=false`, `raw_content_included=false`.
+- [x] Durcir la garde writer-side pour refuser une valeur renseignee sous la
+  cle generique `sha256_12`, tout en conservant hors scope les placeholders
+  vides et les cles qualifiees existantes deja justifiees par d'autres
+  observabilites.
+- [x] Prouver que le bloc brut et son hash ne sont pas exposes.
+
+Finding Lot 4.2: le P2 residuel de hash stable sur bloc de prompt
+hermeneutique est traite. Aucun Lot 5+ n'est ouvert.
+
 ### Lot 5 - Lanes et conflits
 
 Objectif: rendre les lanes compatibles avec la continuite de voix.

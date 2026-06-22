@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlparse
 
@@ -21,12 +20,6 @@ def _sequence(value: Any) -> Sequence[Any]:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
-
-
-def _sha256_12(value: str) -> str:
-    if not value:
-        return ""
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
 
 
 def _source_domain(value: Any) -> str:
@@ -826,7 +819,10 @@ def empty_hermeneutic_prompt_injection_payload() -> dict[str, Any]:
     return {
         "present": False,
         "chars": 0,
-        "sha256_12": "",
+        "fingerprint_present": False,
+        "fingerprint_included": False,
+        "prompt_block_hash_included": False,
+        "raw_content_included": False,
         "final_judgment_posture": "",
         "final_output_regime": "",
         "epistemic_regime": "",
@@ -861,7 +857,10 @@ def build_hermeneutic_prompt_injection_payload(
         {
             "present": bool(block.strip()),
             "chars": len(block),
-            "sha256_12": _sha256_12(block),
+            "fingerprint_present": False,
+            "fingerprint_included": False,
+            "prompt_block_hash_included": False,
+            "raw_content_included": False,
             "final_judgment_posture": _text(validated_output.get("final_judgment_posture")),
             "final_output_regime": _text(validated_output.get("final_output_regime")),
             "epistemic_regime": _text(primary_verdict.get("epistemic_regime")),
