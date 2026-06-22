@@ -12,6 +12,8 @@ STATUS_DISABLED = "disabled"
 STATUS_NOT_SELECTED = "not_selected"
 STATUS_NOT_CONFIGURED = "not_configured"
 STATUS_NOT_APPLICABLE = "not_applicable"
+STATUS_NOT_AVAILABLE = "not_available"
+STATUS_NOT_INSTRUMENTED = "not_instrumented"
 STATUS_FAILED = "failed"
 STATUS_ERROR = "error"
 
@@ -51,6 +53,8 @@ def safe_status(value: Any, *, fallback: str = STATUS_NOT_APPLICABLE) -> str:
         STATUS_NOT_SELECTED,
         STATUS_NOT_CONFIGURED,
         STATUS_NOT_APPLICABLE,
+        STATUS_NOT_AVAILABLE,
+        STATUS_NOT_INSTRUMENTED,
         "refused",
         STATUS_FAILED,
         STATUS_ERROR,

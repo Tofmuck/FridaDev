@@ -79,22 +79,100 @@ _CONVERSATION_STATE_KEYS = {
 }
 _HASH_POLICY_KEYS = {"fingerprints_included", "policy", "short_stable_text_hashes_included", "stable_text_hashes_included"}
 _BUDGETS_KEYS = {"prompt"}
-_PROMPT_BUDGET_KEYS = {"content_chars_total", "estimated_prompt_tokens", "max_completion_tokens", "message_count"}
+_PROMPT_BUDGET_KEYS = {
+    "content_chars_total",
+    "dialogue_messages_truncated",
+    "estimated_prompt_tokens",
+    "excluded_count",
+    "max_completion_tokens",
+    "message_count",
+    "prompt_soft_limit_exceeded",
+    "prompt_soft_token_limit",
+    "soft_limit_configured",
+    "soft_limit_policy",
+    "soft_limit_reason_code",
+    "soft_limit_stage",
+    "truncated_count",
+}
 _WINDOWS_KEYS = {
     "agenda_recent_dialogue",
     "biblio_recent_dialogue",
     "conversation",
+    "hermeneutic_node",
+    "identity_staging",
+    "memory",
     "prompt_final",
     "recent_context",
     "recent_window",
+    "summary",
+}
+_WINDOW_COMMON_KEYS = {
+    "enabled",
+    "origin_stage",
+    "raw_content_included",
+    "reason_code",
+    "selected",
+    "source",
+    "status",
 }
 _WINDOW_KEYS_BY_CONTEXT = {
-    "agenda_recent_dialogue": {"message_count"},
-    "biblio_recent_dialogue": {"message_count"},
-    "conversation": {"assistant_message_count", "message_count", "user_message_count"},
-    "prompt_final": {"message_count", "provider_role_sequence"},
-    "recent_context": {"message_count"},
-    "recent_window": {"has_in_progress_turn", "max_recent_turns", "turn_count"},
+    "agenda_recent_dialogue": _WINDOW_COMMON_KEYS
+    | {"content_chars", "final_response_lock_present", "max_messages", "message_count", "model_called"},
+    "biblio_recent_dialogue": _WINDOW_COMMON_KEYS
+    | {"content_chars", "final_response_lock_present", "max_messages", "message_count"},
+    "conversation": _WINDOW_COMMON_KEYS
+    | {"assistant_message_count", "content_chars", "message_count", "user_message_count"},
+    "hermeneutic_node": _WINDOW_COMMON_KEYS
+    | {
+        "judgment_block_chars",
+        "judgment_block_present",
+        "primary_payload_present",
+        "validated_result_present",
+    },
+    "identity_staging": _WINDOW_COMMON_KEYS
+    | {"canonization_stage", "canonized_into_prompt", "staging_scope"},
+    "memory": _WINDOW_COMMON_KEYS
+    | {
+        "arbiter_controls_injection",
+        "arbiter_decisions_count",
+        "arbiter_kept_count",
+        "arbiter_observed_count",
+        "arbiter_rejected_count",
+        "basket_candidates_count",
+        "content_chars",
+        "context_hint_count",
+        "current_mode",
+        "injection_source",
+        "prompt_injected_count",
+        "retrieval_reason_code",
+        "retrieval_status",
+        "retrieved_count",
+        "top_k_requested",
+    },
+    "prompt_final": _WINDOW_COMMON_KEYS
+    | {"content_chars", "estimated_tokens", "message_count", "provider_role_sequence"},
+    "recent_context": _WINDOW_COMMON_KEYS
+    | {"assistant_message_count", "content_chars", "message_count", "user_message_count"},
+    "recent_window": _WINDOW_COMMON_KEYS
+    | {
+        "assistant_only_turn_count",
+        "complete_turn_count",
+        "content_chars",
+        "has_in_progress_turn",
+        "in_progress_turn_count",
+        "max_recent_turns",
+        "message_count",
+        "turn_count",
+    },
+    "summary": _WINDOW_COMMON_KEYS
+    | {
+        "content_chars",
+        "period_end_present",
+        "period_start_present",
+        "summary_present",
+        "voice_continuity_reason_code",
+        "voice_continuity_status",
+    },
 }
 _MANIFEST_CONTEXT_KEYS = {
     "top": _MANIFEST_TOP_LEVEL_KEYS,
@@ -112,9 +190,11 @@ _MANIFEST_CONTEXT_KEYS = {
 }
 _MANIFEST_SAFE_TEXT_KEYS = set(
     """
-    activation_mode content_kind conversation_state_kind exclusion_reason_code mode model origin origin_stage
-    policy priority_policy provider provider_family provider_role query_kind reason_code schema_version
-    scope source status status_schema_version
+    activation_mode canonization_stage content_kind conversation_state_kind current_mode
+    exclusion_reason_code injection_source mode model origin origin_stage policy priority_policy
+    provider provider_family provider_role query_kind reason_code retrieval_reason_code retrieval_status
+    schema_version scope soft_limit_policy soft_limit_reason_code soft_limit_stage source staging_scope
+    status status_schema_version voice_continuity_reason_code voice_continuity_status
     """.split()
 )
 _MANIFEST_TEXT_LIST_KEYS = {"exclusion_reason_codes", "logical_roles", "provider_role_sequence", "reason_codes"}
@@ -369,26 +449,37 @@ def _is_manifest_bool_key(key: str) -> bool:
         "allow_structure",
         "content_present",
         "context_injected",
+        "arbiter_controls_injection",
+        "canonized_into_prompt",
         "conversation_id_present",
+        "dialogue_messages_truncated",
         "enabled",
         "excluded",
         "final_response_lock_present",
         "fingerprints_included",
         "has_in_progress_turn",
+        "judgment_block_present",
         "main_model_bypassed",
         "main_model_called",
         "model_called",
+        "period_end_present",
+        "period_start_present",
         "present",
+        "primary_payload_present",
         "raw_content_included",
         "raw_lane_content_included",
         "raw_policy_text_included",
         "selected",
         "short_stable_text_hashes_included",
+        "soft_limit_configured",
         "stable_text_hashes_included",
         "stream_requested",
+        "summary_present",
         "temperature_present",
         "top_p_present",
         "turn_id_present",
+        "prompt_soft_limit_exceeded",
+        "validated_result_present",
         "workspace_folder_present",
     }
 
@@ -400,9 +491,11 @@ def _is_manifest_number_key(key: str) -> bool:
         "estimated_prompt_tokens",
         "index",
         "max_completion_tokens",
+        "max_messages",
         "max_recent_turns",
         "max_tokens",
         "message_count",
+        "top_k_requested",
         "turn_count",
         "user_message_count",
     } or _is_metric_like_key(key)

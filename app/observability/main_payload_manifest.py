@@ -15,11 +15,11 @@ from observability.main_payload_manifest_common import (
 from observability.main_payload_manifest_lanes import build_lane_statuses, identity_roles_present
 from observability.main_payload_manifest_messages import (
     build_messages_manifest,
-    build_messages_windows,
     build_prompt_budget,
     capture_message_refs,
     message_sources_for_new_messages,
 )
+from observability.main_payload_manifest_windows import build_context_windows
 
 
 def _runtime_settings_payload(
@@ -131,6 +131,9 @@ def build_main_payload_manifest(
     identity_payload: Mapping[str, Any] | None = None,
     recent_context_payload: Mapping[str, Any] | None = None,
     recent_window_payload: Mapping[str, Any] | None = None,
+    current_mode: str | None = None,
+    memory_retrieved: Mapping[str, Any] | None = None,
+    memory_arbitration: Mapping[str, Any] | None = None,
     memory_traces: Sequence[Any] | None = None,
     context_hints: Sequence[Any] | None = None,
     web_runtime_payload: Mapping[str, Any] | None = None,
@@ -140,11 +143,13 @@ def build_main_payload_manifest(
     agenda_result: Any = None,
     adobe_context: Any = None,
     adobe_lane: Any = None,
+    hermeneutic_node_runtime: Mapping[str, Any] | None = None,
     hermeneutic_judgment_block: str | None = None,
     biblio_recent_dialogue: Sequence[Any] | None = None,
     agenda_recent_dialogue: Sequence[Any] | None = None,
     message_sources: Mapping[Any, Any] | None = None,
     count_tokens_func: Callable[[list[dict[str, Any]], str], int] | None = None,
+    prompt_soft_token_limit: int | None = None,
 ) -> dict[str, Any]:
     messages = [message for message in prompt_messages if isinstance(message, Mapping)]
     final_response_lock = _final_response_lock_payload(assistant_response_override)
@@ -191,13 +196,25 @@ def build_main_payload_manifest(
             count_tokens_func=count_tokens_func,
         ),
         "lane_statuses": lane_statuses,
-        "windows": build_messages_windows(
+        "windows": build_context_windows(
             messages=messages,
             conversation=conversation,
             recent_context_payload=recent_context_payload,
             recent_window_payload=recent_window_payload,
+            summary_payload=summary_payload,
+            current_mode=current_mode,
+            memory_retrieved=memory_retrieved,
+            memory_arbitration=memory_arbitration,
+            memory_traces=memory_traces,
+            context_hints=context_hints,
+            hermeneutic_node_runtime=hermeneutic_node_runtime,
+            hermeneutic_judgment_block=hermeneutic_judgment_block,
+            biblio_result=biblio_result,
+            agenda_result=agenda_result,
             biblio_recent_dialogue=biblio_recent_dialogue,
             agenda_recent_dialogue=agenda_recent_dialogue,
+            runtime_main_model=runtime_main_model,
+            count_tokens_func=count_tokens_func,
         ),
         "budgets": {
             "prompt": build_prompt_budget(
@@ -205,6 +222,7 @@ def build_main_payload_manifest(
                 runtime_main_model=runtime_main_model,
                 count_tokens_func=count_tokens_func,
                 max_tokens=safe_int(max_tokens),
+                prompt_soft_token_limit=prompt_soft_token_limit,
             ),
         },
         "conversation_state": conversation_state,

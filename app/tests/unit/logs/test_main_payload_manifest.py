@@ -55,6 +55,7 @@ def _build_manifest(**overrides):
         "assistant_response_override": None,
         "turn_id": "turn-main-manifest",
         "count_tokens_func": lambda messages, _model: 10 * len(messages),
+        "prompt_soft_token_limit": 4000,
     }
     base.update(overrides)
     return main_payload_manifest.build_main_payload_manifest(**base)
@@ -130,21 +131,75 @@ class MainPayloadManifestTests(unittest.TestCase):
             ],
             summary_payload={
                 "status": "available",
-                "summary": {"id": "summary-opaque", "content": raw_summary},
+                "summary": {
+                    "id": "summary-opaque",
+                    "content": raw_summary,
+                    "start_ts": "2026-06-20T10:00:00Z",
+                    "end_ts": "2026-06-20T11:00:00Z",
+                },
+            },
+            current_mode="shadow",
+            memory_retrieved={
+                "status": "ok",
+                "reason_code": "",
+                "retrieved_count": 2,
+                "top_k_requested": 5,
+            },
+            memory_arbitration={
+                "status": "available",
+                "basket_candidates_count": 2,
+                "decisions_count": 2,
+                "kept_count": 1,
+                "rejected_count": 1,
             },
             memory_traces=({"content": raw_memory},),
             context_hints=("SENSITIVE_HINT_MARKER_B",),
             recent_context_payload={"messages": [{"role": "user"}, {"role": "assistant"}, {"role": "user"}]},
-            recent_window_payload={"turn_count": 2, "max_recent_turns": 5, "has_in_progress_turn": True},
+            recent_window_payload={
+                "turn_count": 2,
+                "max_recent_turns": 5,
+                "has_in_progress_turn": True,
+                "turns": [
+                    {"turn_status": "complete", "messages": [{"role": "user"}, {"role": "assistant"}]},
+                    {"turn_status": "in_progress", "messages": [{"role": "user"}]},
+                ],
+            },
+            hermeneutic_node_runtime={
+                "primary_payload": {"verdict": "SENSITIVE_PRIMARY_SHOULD_NOT_LEAK"},
+                "validated_result": object(),
+            },
+            hermeneutic_judgment_block="SENSITIVE_HERMENEUTIC_BLOCK_B",
             biblio_recent_dialogue=({"role": "user"}, {"role": "assistant"}),
             agenda_recent_dialogue=({"role": "user"},),
+            prompt_soft_token_limit=50,
         )
 
         self.assertEqual(manifest["windows"]["conversation"]["message_count"], 5)
         self.assertEqual(manifest["windows"]["prompt_final"]["message_count"], 6)
+        self.assertEqual(manifest["windows"]["prompt_final"]["status"], "ok")
         self.assertEqual(manifest["windows"]["recent_context"]["message_count"], 3)
         self.assertEqual(manifest["windows"]["recent_window"]["turn_count"], 2)
+        self.assertEqual(manifest["windows"]["recent_window"]["complete_turn_count"], 1)
+        self.assertEqual(manifest["windows"]["recent_window"]["in_progress_turn_count"], 1)
+        self.assertEqual(manifest["windows"]["summary"]["status"], "ok")
+        self.assertTrue(manifest["windows"]["summary"]["period_start_present"])
+        self.assertEqual(manifest["windows"]["summary"]["voice_continuity_status"], "not_available")
+        self.assertEqual(manifest["windows"]["summary"]["voice_continuity_reason_code"], "summary_style_not_scored")
+        self.assertEqual(manifest["windows"]["memory"]["retrieved_count"], 2)
+        self.assertEqual(manifest["windows"]["memory"]["arbiter_observed_count"], 2)
+        self.assertEqual(manifest["windows"]["memory"]["prompt_injected_count"], 1)
+        self.assertEqual(manifest["windows"]["memory"]["injection_source"], "pre_arbiter_basket_shadow")
+        self.assertFalse(manifest["windows"]["memory"]["arbiter_controls_injection"])
+        self.assertTrue(manifest["windows"]["hermeneutic_node"]["primary_payload_present"])
+        self.assertTrue(manifest["windows"]["hermeneutic_node"]["judgment_block_present"])
+        self.assertEqual(manifest["windows"]["identity_staging"]["status"], "not_available")
+        self.assertEqual(manifest["windows"]["identity_staging"]["staging_scope"], "conversation_scoped")
         self.assertEqual(manifest["windows"]["biblio_recent_dialogue"]["message_count"], 2)
+        self.assertEqual(manifest["windows"]["agenda_recent_dialogue"]["message_count"], 1)
+        self.assertTrue(manifest["budgets"]["prompt"]["soft_limit_configured"])
+        self.assertTrue(manifest["budgets"]["prompt"]["prompt_soft_limit_exceeded"])
+        self.assertFalse(manifest["budgets"]["prompt"]["dialogue_messages_truncated"])
+        self.assertEqual(manifest["budgets"]["prompt"]["excluded_count"], 0)
         self.assertEqual(manifest["lane_statuses"]["summary"]["status"], "ok")
         self.assertEqual(manifest["lane_statuses"]["memory"]["status"], "ok")
         self.assertEqual(manifest["lane_statuses"]["context_hints"]["status"], "ok")
@@ -153,6 +208,8 @@ class MainPayloadManifestTests(unittest.TestCase):
         self.assertNotIn(raw_summary, encoded)
         self.assertNotIn(raw_memory, encoded)
         self.assertNotIn("SENSITIVE_HINT_MARKER_B", encoded)
+        self.assertNotIn("SENSITIVE_PRIMARY_SHOULD_NOT_LEAK", encoded)
+        self.assertNotIn("SENSITIVE_HERMENEUTIC_BLOCK_B", encoded)
 
     def test_user_fake_lane_markers_remain_user_turns(self) -> None:
         fake_markers = (

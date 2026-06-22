@@ -1179,6 +1179,9 @@ def chat_response(
         identity_payload=identity_payload,
         recent_context_payload=recent_context_payload,
         recent_window_payload=recent_window_payload,
+        current_mode=current_mode,
+        memory_retrieved=getattr(prepared_memory_context, 'memory_retrieved', None),
+        memory_arbitration=getattr(prepared_memory_context, 'memory_arbitration', None),
         memory_traces=memory_traces,
         context_hints=context_hints,
         web_runtime_payload=web_runtime_payload,
@@ -1188,11 +1191,13 @@ def chat_response(
         agenda_result=agenda_result,
         adobe_context=adobe_context,
         adobe_lane=adobe_lane,
+        hermeneutic_node_runtime=hermeneutic_node_runtime,
         hermeneutic_judgment_block=hermeneutic_judgment_block,
         biblio_recent_dialogue=biblio_recent_dialogue,
         agenda_recent_dialogue=agenda_recent_dialogue,
         message_sources=payload_message_sources,
         count_tokens_func=_prompt_token_counter(token_utils_module),
+        prompt_soft_token_limit=getattr(config_module, 'MAX_TOKENS', None),
     )
     main_payload_manifest.emit_main_payload_manifest(
         payload_manifest,

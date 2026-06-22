@@ -16,10 +16,13 @@ _SAFE_MODEL_RE = re.compile(r'^[a-z0-9][a-z0-9_.-]{0,79}/[a-z0-9][a-z0-9_.-]{0,1
 
 _SAFE_TEXT_KEYS = {
     'activation_mode',
+    'canonization_stage',
     'content_kind',
     'conversation_state_kind',
+    'current_mode',
     'exclusion_reason_code',
     'hash_policy',
+    'injection_source',
     'mode',
     'model',
     'origin',
@@ -31,10 +34,18 @@ _SAFE_TEXT_KEYS = {
     'provider_role',
     'query_kind',
     'reason_code',
+    'retrieval_reason_code',
+    'retrieval_status',
     'schema_version',
     'scope',
+    'soft_limit_policy',
+    'soft_limit_reason_code',
+    'soft_limit_stage',
     'source',
+    'staging_scope',
     'status',
+    'voice_continuity_reason_code',
+    'voice_continuity_status',
 }
 
 _SAFE_TEXT_LIST_KEYS = {

@@ -57,16 +57,16 @@ content-free relue, testee ou explicitement reportee post-V1.
 | --- | --- | --- | --- |
 | - [ ] | P1-CONT-01 | Lot 6 puis Lot 7 | Capsule distincte d'identity/memory/summary specifiee, tests artificiels passes, injection runtime seulement apres lots 1-6. |
 | - [x] | P1-PAYLOAD-01 | Lot 1 puis Lot 2 | `main_payload_manifest_v1` livre et teste sur le payload final apres injections tardives, sans contenu brut. |
-| - [ ] | P2-SUMMARY-01 | Lot 4 | Resume qualifie: ce qu'il garde/perd pour la voix, avec test ou preuve content-free de non-aplatissement minimal. |
+| - [ ] | P2-SUMMARY-01 | Lot 4 puis Lot 6 | Lot 4 expose le summary comme fenetre content-free et qualifie la nuance de voix comme non mesuree; cloture seulement avec tests qualitatifs artificiels de non-aplatissement minimal. |
 | - [ ] | P2-LANES-01 | Lot 5 | Biblio/Agenda/renderers couverts par la doctrine de voix ou explicitement bornes. |
-| - [ ] | P2-MEMORY-01 | Lot 4 | Difference arbiter observe vs memoire reellement injectee prouvee dans le manifeste ou les traces. |
-| - [ ] | P2-WINDOWS-01 | Lot 4 | Fenetres memory, hermeneutic node, Biblio, Agenda et prompt final cartographiees par tailles/empreintes. |
-| - [ ] | P2-IDENTITY-STAGING-01 | Lot 4 | Staging mutable conversation-scoped documente comme non disponible en nouvelle conversation avant canonisation. |
+| - [x] | P2-MEMORY-01 | Lot 4 | Difference arbiter observe vs memoire reellement injectee prouvee dans le manifeste ou les traces. |
+| - [x] | P2-WINDOWS-01 | Lot 4 | Fenetres memory, hermeneutic node, Biblio, Agenda et prompt final cartographiees par tailles/compteurs content-free. |
+| - [x] | P2-IDENTITY-STAGING-01 | Lot 4 | Staging mutable conversation-scoped documente comme non disponible en nouvelle conversation avant canonisation. |
 | - [x] | P2-LANE-PROVENANCE-01 | Lot 2 puis Lot 2.1 | Role provider et role logique distingues par provenance structuree, sans classification souveraine par contenu textuel. |
 | - [ ] | P2-FINAL-LOCK-POLICY-01 | Lot 5 | Politique de priorite Agenda/Biblio final-lock documentee et testee. |
 | - [ ] | P2-NOTES-UI-01 | Lot 5 | Statut Notes UI tranche: hors chemin chat courant documente, ou branchement explicite teste. |
 | - [x] | P2-OBS-WRITER-01 | Lot 3 puis Lots 3.1/3.2/3.3 | Guard writer-side schema-first/default-deny strict livre contre cles/payloads dangereux, texte libre sous cles neutres et suffixes textuels inconnus, avec schemas content-free existants preserves et sentinelles anti-fuite. |
-| - [ ] | P3-SOFT-LIMIT-01 | Lot 4 | Soft limit explique ou durci: depassement visible et politique de troncation/exclusion testee ou reportee. |
+| - [x] | P3-SOFT-LIMIT-01 | Lot 4 | Soft limit explique: depassement visible, politique de non-troncation observee, compteurs d'exclusion/troncation a zero. |
 | - [ ] | P3-NOOP-LANES-01 | Lot 5 | Non-selection Documents/Notes observable ou absence justifiee sans confusion avec lane non instrumentee. |
 | - [ ] | P3-DOC-01 | Lot 1 puis Lot Z | Docs historiques requalifiees ou indexees avec statuts actifs/archive/stale. |
 | - [ ] | P3-TEST-01 | Lot 6 | Tests nouvelle conversation vs longue conversation sur fixtures artificielles, sans contenu utilisateur reel. |
@@ -234,21 +234,52 @@ Finding clos par ce lot apres Lot 3.3: `P2-OBS-WRITER-01`.
 
 Objectif: cadrer et prouver ce que chaque sous-systeme voit.
 
-- [ ] Cartographier les fenetres recent dialogue du prompt principal, memory,
+- [x] Cartographier les fenetres recent dialogue du prompt principal, memory,
   hermeneutic node, Biblio et Agenda.
-- [ ] Prouver dans le manifeste ou l'observabilite les tailles, periodes,
-  roles et empreintes content-free de ces fenetres.
-- [ ] Documenter le mode memory `shadow`: decisions arbiter observees vs
+- [x] Prouver dans le manifeste ou l'observabilite les tailles, periodes,
+  roles et compteurs content-free de ces fenetres, sans empreinte stable de
+  contenu sensible.
+- [x] Documenter le mode memory `shadow`: decisions arbiter observees vs
   contenu effectivement injecte.
-- [ ] Qualifier l'effet du summary sur la continuite de voix et les rituels
-  de travail.
-- [ ] Documenter la mutable identity staging comme conversation-scoped avant
+- [x] Qualifier l'effet du summary sur la continuite de voix et les rituels
+  de travail: le manifeste expose le summary et declare la nuance de voix
+  `not_available` / `summary_style_not_scored`.
+- [x] Documenter la mutable identity staging comme conversation-scoped avant
   canonisation.
-- [ ] Traiter le soft token limit: politique assumee, preuve de signal, ou
+- [x] Traiter le soft token limit: politique assumee, preuve de signal, ou
   durcissement borne.
 
 Findings traites: `P2-SUMMARY-01`, `P2-MEMORY-01`, `P2-WINDOWS-01`,
 `P2-IDENTITY-STAGING-01`, `P3-SOFT-LIMIT-01`.
+
+Statut 2026-06-22: Lot 4 livre par enrichissement de
+`main_payload_manifest_v1` dans `app/observability/main_payload_manifest.py`
+et `app/observability/main_payload_manifest_windows.py`, avec schema writer
+guard et projection admin alignes. Les fenetres `prompt_final`, `conversation`,
+`recent_context`, `recent_window`, `summary`, `memory`, `hermeneutic_node`,
+`identity_staging`, `biblio_recent_dialogue` et `agenda_recent_dialogue`
+exposent statuts, origines, compteurs, selection, flags raw a false et reason
+codes content-free.
+
+Preuves principales:
+
+- `memory` distingue `retrieved_count`, `arbiter_observed_count`,
+  `prompt_injected_count`, `injection_source` et `arbiter_controls_injection`;
+- `identity_staging` est declare `not_available` avant reponse, avec
+  `staging_scope=conversation_scoped` et `canonization_stage=post_response`;
+- `summary` expose presence, periode et taille, mais garde
+  `voice_continuity_status=not_available`;
+- `budgets.prompt` expose `prompt_soft_token_limit`,
+  `prompt_soft_limit_exceeded`, `dialogue_messages_truncated=false`,
+  `excluded_count=0` et `soft_limit_policy=observability_only_no_prompt_exclusion`.
+
+Findings clos par ce lot: `P2-MEMORY-01`, `P2-WINDOWS-01`,
+`P2-IDENTITY-STAGING-01`, `P3-SOFT-LIMIT-01`.
+
+Finding laisse ouvert volontairement: `P2-SUMMARY-01`. Lot 4 prouve que le
+resume est visible et que la nuance de voix n'est pas mesuree; il ne prouve pas
+encore une continuite qualitative de presence. Cloture attendue en Lot 6 avec
+fixtures artificielles nouvelle conversation vs conversation longue.
 
 ### Lot 5 - Lanes et conflits
 

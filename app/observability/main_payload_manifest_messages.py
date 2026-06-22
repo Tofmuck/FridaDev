@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping, Sequence
 
-from observability.main_payload_manifest_common import count_from_sequence, dedupe, mapping, safe_int, safe_str
+from observability.main_payload_manifest_common import dedupe, mapping, safe_int, safe_str
 
 
 _SAFE_PROVIDER_ROLES = {"system", "developer", "user", "assistant", "tool"}
@@ -305,48 +305,13 @@ def build_messages_manifest(
     ]
 
 
-def build_messages_windows(
-    *,
-    messages: Sequence[Mapping[str, Any]],
-    conversation: Mapping[str, Any] | None,
-    recent_context_payload: Mapping[str, Any] | None,
-    recent_window_payload: Mapping[str, Any] | None,
-    biblio_recent_dialogue: Sequence[Any] | None,
-    agenda_recent_dialogue: Sequence[Any] | None,
-) -> dict[str, Any]:
-    manifest_messages = [message for message in messages if isinstance(message, Mapping)]
-    conversation_messages = tuple(mapping(conversation).get("messages") or ())
-    recent_context = mapping(recent_context_payload)
-    recent_window = mapping(recent_window_payload)
-    return {
-        "prompt_final": {
-            "message_count": len(manifest_messages),
-            "provider_role_sequence": [safe_role(message.get("role")) for message in manifest_messages],
-        },
-        "conversation": {
-            "message_count": len(conversation_messages),
-            "user_message_count": sum(1 for message in conversation_messages if mapping(message).get("role") == "user"),
-            "assistant_message_count": sum(
-                1 for message in conversation_messages if mapping(message).get("role") == "assistant"
-            ),
-        },
-        "recent_context": {"message_count": count_from_sequence(recent_context.get("messages"))},
-        "recent_window": {
-            "turn_count": safe_int(recent_window.get("turn_count")),
-            "max_recent_turns": safe_int(recent_window.get("max_recent_turns")),
-            "has_in_progress_turn": bool(recent_window.get("has_in_progress_turn")),
-        },
-        "biblio_recent_dialogue": {"message_count": count_from_sequence(biblio_recent_dialogue)},
-        "agenda_recent_dialogue": {"message_count": count_from_sequence(agenda_recent_dialogue)},
-    }
-
-
 def build_prompt_budget(
     *,
     prompt_messages: Sequence[Mapping[str, Any]],
     runtime_main_model: str,
     count_tokens_func: Callable[[list[dict[str, Any]], str], int] | None,
     max_tokens: int,
+    prompt_soft_token_limit: int | None = None,
 ) -> dict[str, Any]:
     messages = [dict(message) for message in prompt_messages if isinstance(message, Mapping)]
     total_chars = sum(safe_int(content_shape(message.get("content")).get("content_chars")) for message in messages)
@@ -356,9 +321,31 @@ def build_prompt_budget(
             estimated_tokens = max(0, int(count_tokens_func(messages, runtime_main_model) or 0))
         except Exception:
             estimated_tokens = None
+    soft_limit = safe_int(prompt_soft_token_limit)
+    soft_limit_configured = soft_limit > 0
+    soft_limit_exceeded = bool(
+        soft_limit_configured
+        and estimated_tokens is not None
+        and safe_int(estimated_tokens) > soft_limit
+    )
+    if not soft_limit_configured:
+        soft_limit_reason_code = "not_configured"
+    elif soft_limit_exceeded:
+        soft_limit_reason_code = "over_soft_limit_no_truncation"
+    else:
+        soft_limit_reason_code = "within_soft_limit"
     return {
         "message_count": len(messages),
         "content_chars_total": total_chars,
         "estimated_prompt_tokens": estimated_tokens,
         "max_completion_tokens": safe_int(max_tokens),
+        "soft_limit_configured": soft_limit_configured,
+        "prompt_soft_token_limit": soft_limit,
+        "prompt_soft_limit_exceeded": soft_limit_exceeded,
+        "dialogue_messages_truncated": False,
+        "excluded_count": 0,
+        "truncated_count": 0,
+        "soft_limit_stage": "prompt_final_manifest",
+        "soft_limit_policy": "observability_only_no_prompt_exclusion",
+        "soft_limit_reason_code": soft_limit_reason_code,
     }

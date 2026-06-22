@@ -5,7 +5,9 @@ Date: 2026-06-22
 Statut: contrat source-of-truth Continuity Payload. Lot 1 a defini le contrat;
 Lot 2 a livre le manifeste runtime content-free sans capsule. Lot 3 a livre la
 garde writer-side d'observabilite, durcie en Lots 3.1, 3.2 et 3.3 en politique
-schema-first/default-deny stricte.
+schema-first/default-deny stricte. Lot 4 a etendu le manifeste aux fenetres de
+continuite content-free: summary, memory observee vs injectee, hermeneutic node,
+Biblio, Agenda, identity staging et soft-limit final.
 
 Ce contrat definit deux objets cibles:
 
@@ -298,6 +300,84 @@ Le manifeste doit prouver sans contenu:
 Un soft limit observe mais non impose doit etre visible comme tel. Il ne peut pas
 etre presente comme une preuve de truncation effective.
 
+### Fenetres de continuite Lot 4
+
+`windows` est une carte content-free des sous-fenetres qui peuvent porter ou
+casser la continuite de ton, methode, relation et presence. Chaque entree de
+fenetre doit exposer au minimum:
+
+- `status`;
+- `reason_code`;
+- `source`;
+- `origin_stage`;
+- `selected`;
+- `raw_content_included=false`;
+- compteurs ou flags propres a la fenetre.
+
+Les statuts de fenetre peuvent utiliser `not_available` quand un signal n'est
+pas disponible au point final du manifeste. Ce statut ne doit pas etre confondu
+avec les statuts d'evenement agentique; il documente une absence de preuve au
+moment du payload final.
+
+Fenetres requises en Lot 4:
+
+- `prompt_final`: ordre final, roles provider, nombre de messages, caracteres
+  et estimation de tokens apres injections tardives;
+- `conversation`: compteurs d'historique persistant, par role;
+- `recent_context`: messages recents visibles au noeud hermeneutique;
+- `recent_window`: tours retenus, tours complets, in-progress et assistant-only;
+- `summary`: presence, periode, taille et statut explicite de nuance de voix;
+- `memory`: retrieval, arbitration observee, injection effective et source
+  d'injection;
+- `hermeneutic_node`: presence du payload primaire, validation et bloc injecte;
+- `identity_staging`: statut conversation-scoped avant canonisation;
+- `biblio_recent_dialogue`: fenetre recente envoyee a Biblio, sans contenu;
+- `agenda_recent_dialogue`: fenetre recente envoyee a Agenda, sans contenu.
+
+La fenetre `memory` doit distinguer:
+
+- `retrieved_count`;
+- `basket_candidates_count`;
+- `arbiter_decisions_count`;
+- `arbiter_observed_count`;
+- `prompt_injected_count`;
+- `context_hint_count`;
+- `injection_source`;
+- `arbiter_controls_injection`.
+
+En mode `shadow`, `arbiter_controls_injection=false` et
+`injection_source=pre_arbiter_basket_shadow`: le juge observe mais ne controle
+pas forcement la memoire injectee. En mode `enforced_all`,
+`arbiter_controls_injection=true`.
+
+La fenetre `summary` doit rester honnete: elle peut prouver presence, taille et
+periode, mais elle ne prouve pas a elle seule que les nuances de voix, humour,
+hesitations, rituels d'audit ou methode relationnelle sont preserves. Tant qu'un
+test qualitatif artificiel n'existe pas, le manifeste doit exposer
+`voice_continuity_status=not_available` et
+`voice_continuity_reason_code=summary_style_not_scored`.
+
+La fenetre `identity_staging` doit rappeler que la mutable identity staging est
+conversation-scoped et post-reponse avant canonisation. Au point du payload
+principal, elle ne doit pas etre vendue comme identite canonisee ni comme
+continuite trans-conversation disponible.
+
+`budgets.prompt` doit exposer pour le prompt final:
+
+- `soft_limit_configured`;
+- `prompt_soft_token_limit`;
+- `prompt_soft_limit_exceeded`;
+- `dialogue_messages_truncated`;
+- `excluded_count`;
+- `truncated_count`;
+- `soft_limit_stage`;
+- `soft_limit_policy`;
+- `soft_limit_reason_code`.
+
+La politique actuelle est `observability_only_no_prompt_exclusion`: un
+depassement du soft limit est observable, mais ne prouve pas une exclusion ou
+troncation effective.
+
 ### Runtime settings content-free
 
 Le manifeste peut exposer les reglages utiles au diagnostic:
@@ -566,16 +646,16 @@ lots 1 a 6 ne soient relus et acceptes.
 | --- | --- | --- |
 | P1-CONT-01 | Definit la Continuity Capsule comme surface cible distincte, courte, non souveraine et future. | Prepare, non clos. |
 | P1-PAYLOAD-01 | Definit `main_payload_manifest_v1` et en fait le gate avant capsule runtime. | Prepare, non clos. |
-| P2-SUMMARY-01 | Separe summary et capsule, et exige que les tests futurs detectent l'aplatissement de voix. | Prepare, non clos. |
+| P2-SUMMARY-01 | Separe summary et capsule, expose summary comme fenetre Lot 4, et exige que les tests futurs detectent l'aplatissement de voix. | Partiel: fenetre livree, continuite qualitative non close avant Lot 6. |
 | P2-LANES-01 | Etend la continuite aux final response locks et renderers de lanes. | Prepare, non clos. |
-| P2-MEMORY-01 | Distingue decision arbiter, memory injectee et contenu reellement vu par le modele. | Prepare, non clos. |
-| P2-WINDOWS-01 | Exige des compteurs separes pour prompt final, memory, hermeneutic node, Biblio et Agenda. | Prepare, non clos. |
-| P2-IDENTITY-STAGING-01 | Interdit de confondre staging mutable conversation-scoped et capsule trans-conversation. | Prepare, non clos. |
+| P2-MEMORY-01 | Distingue decision arbiter, memory injectee et contenu reellement vu par le modele. | Clos Lot 4 par fenetre `memory`. |
+| P2-WINDOWS-01 | Exige des compteurs separes pour prompt final, memory, hermeneutic node, Biblio et Agenda. | Clos Lot 4 par `windows`. |
+| P2-IDENTITY-STAGING-01 | Interdit de confondre staging mutable conversation-scoped et capsule trans-conversation. | Clos Lot 4 par fenetre `identity_staging`. |
 | P2-LANE-PROVENANCE-01 | Oblige la separation `provider_role` / `logical_roles` pour les lanes injectees comme `user`. | Prepare, non clos. |
 | P2-FINAL-LOCK-POLICY-01 | Oblige un champ de priorite effective des final locks. | Prepare, non clos. |
 | P2-NOTES-UI-01 | Exige un statut Notes meme quand la lane est non selectionnee ou non envoyee par le frontend. | Prepare, non clos. |
 | P2-OBS-WRITER-01 | Definit les flags et interdictions que la garde writer-side devra proteger. | Clos par Lot 3. |
-| P3-SOFT-LIMIT-01 | Rend visible la difference soft-limit observee et truncation effective. | Prepare, non clos. |
+| P3-SOFT-LIMIT-01 | Rend visible la difference soft-limit observee et truncation effective. | Clos Lot 4 par `budgets.prompt`. |
 | P3-NOOP-LANES-01 | Exige des no-op observables pour chaque lane connue. | Prepare, non clos. |
 | P3-DOC-01 | Requalifie la source-of-truth active sans rouvrir les archives identity. | Prepare, non clos. |
 | P3-TEST-01 | Pose les criteres des tests qualitatifs artificiels Lot 6. | Prepare, non clos. |
