@@ -7,6 +7,7 @@ from observability.main_payload_manifest_common import (
     RAW_FLAGS,
     SCHEMA_VERSION,
     SCOPE,
+    STATUS_NOT_SELECTED,
     STATUS_OK,
     mapping,
     safe_int,
@@ -88,6 +89,125 @@ def _final_response_lock_payload(assistant_response_override: Any) -> dict[str, 
         "priority_policy": "agenda_over_biblio",
         "content_present": bool(observation.get("content_present", True)),
         "content_chars": safe_int(observation.get("content_chars")) or _final_lock_content_chars(assistant_response_override),
+        "raw_content_included": False,
+    }
+
+
+def _result_lock_source(result: Any, fallback: str) -> str:
+    lock = getattr(result, "final_response_lock", None)
+    return safe_str(getattr(lock, "source", "")) or fallback
+
+
+def _lock_family(source: str) -> str:
+    normalized = safe_str(source).lower()
+    if normalized.startswith("agenda_") or normalized.startswith("agenda-"):
+        return "agenda"
+    if normalized.startswith("biblio_") or normalized.startswith("biblio-"):
+        return "biblio"
+    return "unknown" if normalized else ""
+
+
+def _message_lane_block_count(messages_manifest: Sequence[Mapping[str, Any]]) -> int:
+    lane_roles = {"web_lane", "note_lane", "document_lane", "biblio_lane", "agenda_lane", "adobe_lane"}
+    count = 0
+    for message in messages_manifest:
+        roles = message.get("logical_roles")
+        if isinstance(roles, Sequence) and not isinstance(roles, (str, bytes)):
+            if any(safe_str(role) in lane_roles for role in roles):
+                count += 1
+    return count
+
+
+def _message_lane_status_mismatch_count(
+    messages_manifest: Sequence[Mapping[str, Any]],
+    lane_statuses: Mapping[str, Any],
+) -> int:
+    prompt_lane_roles = {"web_lane", "note_lane", "document_lane", "biblio_lane", "adobe_lane"}
+    mismatches = 0
+    for message in messages_manifest:
+        roles = message.get("logical_roles")
+        if not isinstance(roles, Sequence) or isinstance(roles, (str, bytes)):
+            continue
+        for role in roles:
+            lane_name = safe_str(role)
+            if lane_name not in prompt_lane_roles:
+                continue
+            lane = mapping(lane_statuses.get(lane_name))
+            if not bool(lane.get("selected")) and not safe_int(lane.get("injected_count")):
+                mismatches += 1
+    return mismatches
+
+
+def _selected_lane_count(lane_statuses: Mapping[str, Any]) -> int:
+    lane_names = (
+        "web_lane",
+        "note_lane",
+        "document_lane",
+        "biblio_lane",
+        "agenda_lane",
+        "adobe_lane",
+        "export_lane",
+        "image_lane",
+    )
+    return sum(1 for name in lane_names if bool(mapping(lane_statuses.get(name)).get("selected")))
+
+
+def _lane_conflicts_payload(
+    *,
+    final_response_lock: Mapping[str, Any],
+    lane_statuses: Mapping[str, Any],
+    messages_manifest: Sequence[Mapping[str, Any]],
+    biblio_result: Any,
+    agenda_result: Any,
+) -> dict[str, Any]:
+    agenda_lock_present = bool(getattr(agenda_result, "final_response_lock", None))
+    biblio_lock_present = bool(getattr(biblio_result, "final_response_lock", None))
+    candidate_sources: list[str] = []
+    if agenda_lock_present:
+        candidate_sources.append(_result_lock_source(agenda_result, "agenda_final_response_lock"))
+    if biblio_lock_present:
+        candidate_sources.append(_result_lock_source(biblio_result, "biblio_final_response_lock"))
+
+    selected_source = safe_str(final_response_lock.get("source"))
+    if selected_source and selected_source not in candidate_sources:
+        candidate_sources.append(selected_source)
+    selected_family = _lock_family(selected_source)
+    conflict_present = bool(agenda_lock_present and biblio_lock_present)
+    suppressed_source = ""
+    if conflict_present and selected_family == "agenda":
+        suppressed_source = _result_lock_source(biblio_result, "biblio_final_response_lock")
+
+    if conflict_present:
+        reason_code = "agenda_over_biblio_applied" if selected_family == "agenda" else "final_lock_priority_unexpected"
+    elif agenda_lock_present:
+        reason_code = "single_agenda_lock"
+    elif biblio_lock_present:
+        reason_code = "single_biblio_lock"
+    elif selected_source:
+        reason_code = "single_final_lock_source_unattributed"
+    else:
+        reason_code = "no_final_response_lock"
+
+    mismatch_count = _message_lane_status_mismatch_count(messages_manifest, lane_statuses)
+    return {
+        "status": STATUS_OK if candidate_sources else STATUS_NOT_SELECTED,
+        "reason_code": reason_code,
+        "priority_policy": "agenda_over_biblio",
+        "candidate_count": len(candidate_sources),
+        "candidate_sources": candidate_sources,
+        "conflict_present": conflict_present,
+        "agenda_lock_present": agenda_lock_present,
+        "biblio_lock_present": biblio_lock_present,
+        "agenda_selected": bool(selected_family == "agenda" and agenda_lock_present),
+        "biblio_selected": bool(selected_family == "biblio" and biblio_lock_present),
+        "selected_source": selected_source,
+        "suppressed_source": suppressed_source,
+        "suppressed_count": 1 if suppressed_source else 0,
+        "selected_lane_count": _selected_lane_count(lane_statuses),
+        "message_lane_block_count": _message_lane_block_count(messages_manifest),
+        "message_lane_status_mismatch_count": mismatch_count,
+        "implicit_injection_detected": bool(mismatch_count),
+        "main_model_bypassed": bool(final_response_lock.get("main_model_bypassed")),
         "raw_content_included": False,
     }
 
@@ -189,6 +309,22 @@ def build_main_payload_manifest(
         assistant_output_policy=assistant_output_policy,
         assistant_response_override=assistant_response_override,
     )
+    messages_manifest = build_messages_manifest(
+        messages,
+        web_runtime_payload=web_runtime_payload,
+        assistant_output_policy=assistant_output_policy,
+        identity_roles_present=identity_roles_present(lane_statuses),
+        message_sources=message_sources,
+        model=runtime_main_model,
+        count_tokens_func=None,
+    )
+    lane_conflicts = _lane_conflicts_payload(
+        final_response_lock=final_response_lock,
+        lane_statuses=lane_statuses,
+        messages_manifest=messages_manifest,
+        biblio_result=biblio_result,
+        agenda_result=agenda_result,
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "scope": SCOPE,
@@ -205,16 +341,9 @@ def build_main_payload_manifest(
         ),
         "assistant_output_policy": _assistant_output_policy_payload(assistant_output_policy),
         "final_response_lock": final_response_lock,
-        "messages": build_messages_manifest(
-            messages,
-            web_runtime_payload=web_runtime_payload,
-            assistant_output_policy=assistant_output_policy,
-            identity_roles_present=identity_roles_present(lane_statuses),
-            message_sources=message_sources,
-            model=runtime_main_model,
-            count_tokens_func=None,
-        ),
+        "messages": messages_manifest,
         "lane_statuses": lane_statuses,
+        "lane_conflicts": lane_conflicts,
         "windows": build_context_windows(
             messages=messages,
             conversation=conversation,

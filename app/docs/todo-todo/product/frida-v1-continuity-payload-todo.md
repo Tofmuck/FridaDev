@@ -58,16 +58,16 @@ content-free relue, testee ou explicitement reportee post-V1.
 | - [ ] | P1-CONT-01 | Lot 6 puis Lot 7 | Capsule distincte d'identity/memory/summary specifiee, tests artificiels passes, injection runtime seulement apres lots 1-6. |
 | - [x] | P1-PAYLOAD-01 | Lot 1 puis Lot 2 | `main_payload_manifest_v1` livre et teste sur le payload final apres injections tardives, sans contenu brut. |
 | - [ ] | P2-SUMMARY-01 | Lot 4 puis Lot 6 | Lot 4 expose le summary comme fenetre content-free et qualifie la nuance de voix comme non mesuree; cloture seulement avec tests qualitatifs artificiels de non-aplatissement minimal. |
-| - [ ] | P2-LANES-01 | Lot 5 | Biblio/Agenda/renderers couverts par la doctrine de voix ou explicitement bornes. |
+| - [x] | P2-LANES-01 | Lot 5 | Biblio/Agenda/renderers couverts par la doctrine de voix ou explicitement bornes. |
 | - [x] | P2-MEMORY-01 | Lot 4 | Difference arbiter observe vs memoire reellement injectee prouvee dans le manifeste ou les traces. |
 | - [x] | P2-WINDOWS-01 | Lot 4 | Fenetres memory, hermeneutic node, Biblio, Agenda et prompt final cartographiees par tailles/compteurs content-free. |
 | - [x] | P2-IDENTITY-STAGING-01 | Lot 4 | Staging mutable conversation-scoped documente comme non disponible en nouvelle conversation avant canonisation. |
 | - [x] | P2-LANE-PROVENANCE-01 | Lot 2 puis Lot 2.1 | Role provider et role logique distingues par provenance structuree, sans classification souveraine par contenu textuel. |
-| - [ ] | P2-FINAL-LOCK-POLICY-01 | Lot 5 | Politique de priorite Agenda/Biblio final-lock documentee et testee. |
-| - [ ] | P2-NOTES-UI-01 | Lot 5 | Statut Notes UI tranche: hors chemin chat courant documente, ou branchement explicite teste. |
+| - [x] | P2-FINAL-LOCK-POLICY-01 | Lot 5 | Politique de priorite Agenda/Biblio final-lock documentee et testee. |
+| - [x] | P2-NOTES-UI-01 | Lot 5 | Statut Notes UI tranche: hors chemin chat courant documente, ou branchement explicite teste. |
 | - [x] | P2-OBS-WRITER-01 | Lot 3 puis Lots 3.1/3.2/3.3/4.1 | Guard writer-side schema-first/default-deny strict livre contre cles/payloads dangereux, texte libre sous cles neutres et suffixes textuels inconnus, avec schemas content-free existants preserves et sentinelles anti-fuite. |
 | - [x] | P3-SOFT-LIMIT-01 | Lot 4 | Soft limit explique: depassement visible, politique de non-troncation observee, compteurs d'exclusion/troncation a zero. |
-| - [ ] | P3-NOOP-LANES-01 | Lot 5 | Non-selection Documents/Notes observable ou absence justifiee sans confusion avec lane non instrumentee. |
+| - [x] | P3-NOOP-LANES-01 | Lot 5 | Non-selection Documents/Notes observable ou absence justifiee sans confusion avec lane non instrumentee. |
 | - [ ] | P3-DOC-01 | Lot 1 puis Lot Z | Docs historiques requalifiees ou indexees avec statuts actifs/archive/stale. |
 | - [ ] | P3-TEST-01 | Lot 6 | Tests nouvelle conversation vs longue conversation sur fixtures artificielles, sans contenu utilisateur reel. |
 | - [ ] | P3-OBS-01 | Lot 6 | Preuve qualitative content-free definie: presence jugee par fixtures artificielles et signaux bornes. |
@@ -323,17 +323,36 @@ hermeneutique est traite. Aucun Lot 5+ n'est ouvert.
 
 Objectif: rendre les lanes compatibles avec la continuite de voix.
 
-- [ ] Declarer la politique de conflit Agenda/Biblio final-lock.
-- [ ] Tester la priorite ou l'arbitrage final-lock retenu.
-- [ ] Couvrir les renderers/agents de lane dans la doctrine de voix visible.
-- [ ] Trancher le statut Notes UI: non branche chat courant documente ou
+- [x] Declarer la politique de conflit Agenda/Biblio final-lock.
+- [x] Tester la priorite ou l'arbitrage final-lock retenu.
+- [x] Couvrir les renderers/agents de lane par bornage content-free; doctrine
+  qualitative de voix renvoyee Lot 6.
+- [x] Trancher le statut Notes UI: non branche chat courant documente ou
   branchement explicite.
-- [ ] Ajouter ou justifier les no-op Documents/Notes quand rien n'est
+- [x] Ajouter ou justifier les no-op Documents/Notes quand rien n'est
   selectionne.
-- [ ] Verifier que les lanes ne masquent pas l'origine logique du contexte.
+- [x] Verifier que les lanes ne masquent pas l'origine logique du contexte.
 
 Findings traites: `P2-LANES-01`, `P2-FINAL-LOCK-POLICY-01`,
 `P2-NOTES-UI-01`, `P3-NOOP-LANES-01`.
+
+Statut 2026-06-22: Lot 5 livre par enrichissement de
+`main_payload_manifest_v1`:
+
+- `lane_conflicts` expose `priority_policy=agenda_over_biblio`, candidats
+  Agenda/Biblio, source selectionnee, source supprimee par priorite,
+  `message_lane_status_mismatch_count` et `implicit_injection_detected=false`.
+- `lane_statuses.agenda_lane` et `lane_statuses.biblio_lane` indiquent si un
+  final lock est present, selectionne ou supprime par priorite.
+- Tests fakes couvrent Agenda lock seul, Biblio lock seul et conflit
+  Agenda+Biblio avec Agenda prioritaire.
+- Documents/Notes/Exports/Images restent visibles comme no-op
+  `not_selected` ou `not_applicable` quand aucune selection n'existe.
+- Notes UI est tranche content-free: le backend chat supporte
+  `workspace_note_id(s)`, mais le frontend courant `app/web/app.js` ne les
+  envoie pas; aucune injection Notes implicite n'est donc vendue.
+- La continuite qualitative de voix des renderers reste hors Lot 5 et sera
+  prouvee en Lot 6 sur fixtures artificielles.
 
 ### Lot 6 - Spec/tests de Continuity Capsule
 

@@ -241,7 +241,16 @@ def _document_lane(lane: Any) -> dict[str, Any]:
     )
 
 
-def _biblio_lane(result: Any) -> dict[str, Any]:
+def _lock_source(value: Any) -> str:
+    lock = getattr(value, "final_response_lock", None)
+    return safe_str(getattr(lock, "source", ""))
+
+
+def _selected_lock_source(assistant_response_override: Any) -> str:
+    return safe_str(getattr(assistant_response_override, "source", ""))
+
+
+def _biblio_lane(result: Any, assistant_response_override: Any = None) -> dict[str, Any]:
     payload = mapping(getattr(result, "observability_payload", {}))
     enabled = bool(getattr(result, "enabled", payload.get("enabled", False)))
     used = bool(getattr(result, "used", payload.get("used", False)))
@@ -251,6 +260,11 @@ def _biblio_lane(result: Any) -> dict[str, Any]:
     decisions = tuple(getattr(prompt_lane, "decisions", ()) or ())
     passage_count = safe_int(getattr(prompt_lane, "passage_count", 0))
     selected = bool(enabled and (used or query_kind and query_kind != "not_requested" or prompt_message is not None))
+    lock_present = bool(getattr(result, "final_response_lock", None))
+    lock_source = _lock_source(result)
+    selected_source = _selected_lock_source(assistant_response_override)
+    lock_selected = bool(lock_present and selected_source and selected_source == lock_source)
+    lock_suppressed = bool(lock_present and selected_source and selected_source != lock_source)
     return base_lane(
         status=safe_status(payload.get("status") or ("ok" if selected else "disabled" if not enabled else "not_selected")),
         reason_code=safe_str(getattr(result, "reason_code", payload.get("reason_code"))),
@@ -265,15 +279,26 @@ def _biblio_lane(result: Any) -> dict[str, Any]:
             "max_passages": safe_int(getattr(prompt_lane, "max_passages", 0)),
             "max_total_chars": safe_int(getattr(prompt_lane, "max_total_chars", 0)),
         },
-        extra={"query_kind": query_kind or "not_requested", "final_response_lock_present": bool(getattr(result, "final_response_lock", None))},
+        extra={
+            "query_kind": query_kind or "not_requested",
+            "final_response_lock_present": lock_present,
+            "final_response_lock_selected": lock_selected,
+            "final_response_lock_suppressed": lock_suppressed,
+            "priority_policy": "agenda_over_biblio",
+        },
     )
 
 
-def _agenda_lane(result: Any) -> dict[str, Any]:
+def _agenda_lane(result: Any, assistant_response_override: Any = None) -> dict[str, Any]:
     payload = mapping(getattr(result, "observability_payload", {}))
     enabled = bool(getattr(result, "enabled", payload.get("enabled", False)))
     used = bool(getattr(result, "used", payload.get("used", False)))
     selected = bool(enabled and (used or safe_str(payload.get("mode")) not in {"", "off"}))
+    lock_present = bool(getattr(result, "final_response_lock", None))
+    lock_source = _lock_source(result)
+    selected_source = _selected_lock_source(assistant_response_override)
+    lock_selected = bool(lock_present and selected_source and selected_source == lock_source)
+    lock_suppressed = bool(lock_present and selected_source and selected_source != lock_source)
     return base_lane(
         status=safe_status(getattr(result, "status", payload.get("status")) or ("disabled" if not enabled else "not_selected")),
         reason_code=safe_str(getattr(result, "reason_code", payload.get("reason_code"))),
@@ -286,7 +311,10 @@ def _agenda_lane(result: Any) -> dict[str, Any]:
         extra={
             "mode": safe_str(payload.get("mode")) or "off",
             "model_called": bool(payload.get("model_called")),
-            "final_response_lock_present": bool(getattr(result, "final_response_lock", None)),
+            "final_response_lock_present": lock_present,
+            "final_response_lock_selected": lock_selected,
+            "final_response_lock_suppressed": lock_suppressed,
+            "priority_policy": "agenda_over_biblio",
         },
     )
 
@@ -369,8 +397,8 @@ def build_lane_statuses(
         "web_lane": _web_lane(web_runtime_payload),
         "note_lane": _notes_lane(workspace_notes_lane),
         "document_lane": _document_lane(active_document_lane),
-        "biblio_lane": _biblio_lane(biblio_result),
-        "agenda_lane": _agenda_lane(agenda_result),
+        "biblio_lane": _biblio_lane(biblio_result, assistant_response_override),
+        "agenda_lane": _agenda_lane(agenda_result, assistant_response_override),
         "adobe_lane": _adobe_lane(adobe_lane, adobe_context),
         "export_lane": base_lane(
             status=STATUS_NOT_APPLICABLE,

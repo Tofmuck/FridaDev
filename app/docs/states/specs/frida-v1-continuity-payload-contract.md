@@ -12,6 +12,8 @@ payloads d'observabilite content-free legitimes sous cette garde stricte et
 reduit l'estimation de tokens du manifeste a un calcul prompt-level unique.
 Lot 4.2 supprime le hash stable court du bloc de prompt hermeneutique et refuse
 toute valeur renseignee sous cle generique `sha256_12` cote writer-side.
+Lot 5 clarifie les conflits de lanes, final locks Agenda/Biblio et no-op
+Documents/Notes/Exports/Images dans le manifeste, sans capsule runtime.
 
 Ce contrat definit deux objets cibles:
 
@@ -103,6 +105,7 @@ Un manifeste valide doit contenir au minimum:
 | `runtime_settings` | Reglages utiles content-free: modele exact non sensible ou empreinte approuvee, temperature, top_p, max_tokens, stream, reasoning envoye ou non, stop_count. |
 | `assistant_output_policy` | Presence, kind, reason codes, flags de garde. Pas de texte de politique brute si elle contient des instructions completes. |
 | `final_response_lock` | Presence, source, reason_code, priorite effective, main model bypassed. Pas de contenu de reponse. |
+| `lane_conflicts` | Synthese content-free des conflits de lanes et final locks: candidats, priorite effective, source selectionnee, source supprimee, mismatch d'injection implicite. |
 | `messages` | Tableau ordonne des entrees content-free du payload final. |
 | `lane_statuses` | Presence/absence/no-op de chaque lane attendue. |
 | `windows` | Compteurs des fenetres reconstruites par prompt final, memory, hermeneutic node, Biblio, Agenda et autres sous-systemes. |
@@ -429,6 +432,24 @@ Champs requis:
 La priorite actuelle Agenda puis Biblio doit etre documentee par le manifeste.
 Si la priorite change, le champ `priority_policy` doit changer explicitement.
 
+Depuis Lot 5, le manifeste doit aussi exposer `lane_conflicts`:
+
+- `priority_policy=agenda_over_biblio`;
+- presence de lock Agenda et Biblio;
+- `candidate_count` et `candidate_sources` sans contenu de reponse;
+- `selected_source` et, en cas de conflit, `suppressed_source`;
+- `agenda_selected` / `biblio_selected`;
+- `conflict_present`;
+- `message_lane_status_mismatch_count`;
+- `implicit_injection_detected`;
+- `raw_content_included=false`.
+
+Le cas de conflit courant est borne ainsi: si Agenda et Biblio produisent tous
+deux un final lock valide, Agenda est la source selectionnee et Biblio reste
+visible comme candidat supprime par priorite. Cette regle est une observation du
+runtime courant, pas une doctrine de voix: Lot 6 reste responsable des tests
+qualitatifs de presence.
+
 ### Assistant output policy
 
 La politique de sortie assistant doit etre visible sans recopier le prompt brut:
@@ -658,16 +679,16 @@ lots 1 a 6 ne soient relus et acceptes.
 | P1-CONT-01 | Definit la Continuity Capsule comme surface cible distincte, courte, non souveraine et future. | Prepare, non clos. |
 | P1-PAYLOAD-01 | Definit `main_payload_manifest_v1` et en fait le gate avant capsule runtime. | Prepare, non clos. |
 | P2-SUMMARY-01 | Separe summary et capsule, expose summary comme fenetre Lot 4, et exige que les tests futurs detectent l'aplatissement de voix. | Partiel: fenetre livree, continuite qualitative non close avant Lot 6. |
-| P2-LANES-01 | Etend la continuite aux final response locks et renderers de lanes. | Prepare, non clos. |
+| P2-LANES-01 | Etend la continuite aux final response locks et renderers de lanes. | Clos Lot 5 pour le bornage content-free des locks; continuite qualitative de voix reste Lot 6. |
 | P2-MEMORY-01 | Distingue decision arbiter, memory injectee et contenu reellement vu par le modele. | Clos Lot 4 par fenetre `memory`. |
 | P2-WINDOWS-01 | Exige des compteurs separes pour prompt final, memory, hermeneutic node, Biblio et Agenda. | Clos Lot 4 par `windows`. |
 | P2-IDENTITY-STAGING-01 | Interdit de confondre staging mutable conversation-scoped et capsule trans-conversation. | Clos Lot 4 par fenetre `identity_staging`. |
 | P2-LANE-PROVENANCE-01 | Oblige la separation `provider_role` / `logical_roles` pour les lanes injectees comme `user`. | Prepare, non clos. |
-| P2-FINAL-LOCK-POLICY-01 | Oblige un champ de priorite effective des final locks. | Prepare, non clos. |
-| P2-NOTES-UI-01 | Exige un statut Notes meme quand la lane est non selectionnee ou non envoyee par le frontend. | Prepare, non clos. |
+| P2-FINAL-LOCK-POLICY-01 | Oblige un champ de priorite effective des final locks. | Clos Lot 5 par `lane_conflicts` et tests Agenda/Biblio/conflit. |
+| P2-NOTES-UI-01 | Exige un statut Notes meme quand la lane est non selectionnee ou non envoyee par le frontend. | Clos Lot 5: backend Notes selection-only visible; frontend courant non branche documente. |
 | P2-OBS-WRITER-01 | Definit les flags et interdictions que la garde writer-side devra proteger. | Clos par Lot 3. |
 | P3-SOFT-LIMIT-01 | Rend visible la difference soft-limit observee et truncation effective. | Clos Lot 4 par `budgets.prompt`. |
-| P3-NOOP-LANES-01 | Exige des no-op observables pour chaque lane connue. | Prepare, non clos. |
+| P3-NOOP-LANES-01 | Exige des no-op observables pour chaque lane connue. | Clos Lot 5 pour Documents/Notes/Exports/Images. |
 | P3-DOC-01 | Requalifie la source-of-truth active sans rouvrir les archives identity. | Prepare, non clos. |
 | P3-TEST-01 | Pose les criteres des tests qualitatifs artificiels Lot 6. | Prepare, non clos. |
 | P3-OBS-01 | Dit que le manifeste est necessaire mais pas suffisant pour juger la presence. | Prepare, non clos. |

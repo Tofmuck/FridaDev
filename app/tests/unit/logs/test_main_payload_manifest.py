@@ -561,6 +561,11 @@ class MainPayloadManifestTests(unittest.TestCase):
         self.assertEqual(manifest["lane_statuses"]["web_lane"]["status"], "disabled")
         self.assertEqual(manifest["lane_statuses"]["note_lane"]["status"], "not_selected")
         self.assertEqual(manifest["lane_statuses"]["document_lane"]["status"], "not_selected")
+        self.assertEqual(manifest["lane_statuses"]["export_lane"]["status"], "not_applicable")
+        self.assertEqual(manifest["lane_statuses"]["image_lane"]["status"], "not_applicable")
+        self.assertEqual(manifest["lane_conflicts"]["status"], "not_selected")
+        self.assertEqual(manifest["lane_conflicts"]["reason_code"], "no_final_response_lock")
+        self.assertFalse(manifest["lane_conflicts"]["implicit_injection_detected"])
 
     def test_final_response_lock_bypasses_main_model_without_content(self) -> None:
         raw_final = "SENSITIVE_FINAL_LOCK_MARKER_D"
@@ -586,6 +591,191 @@ class MainPayloadManifestTests(unittest.TestCase):
         self.assertFalse(manifest["final_response_lock"]["raw_content_included"])
         self.assertNotIn(raw_final, _encoded(manifest))
         self.assertNotIn("abcdef123456", _encoded(manifest))
+
+    def test_agenda_final_lock_is_selected_content_free(self) -> None:
+        raw_final = "SENSITIVE_AGENDA_FINAL_LOCK"
+        lock = SimpleNamespace(source="agenda_readonly_response")
+        agenda_result = SimpleNamespace(
+            enabled=True,
+            used=True,
+            status="ok",
+            reason_code="agenda_readonly_final_response",
+            observability_payload={
+                "enabled": True,
+                "status": "ok",
+                "reason_code": "agenda_readonly_final_response",
+                "mode": "readonly",
+                "tool_count": 1,
+                "model_called": False,
+            },
+            final_response_lock=lock,
+        )
+        override = chat_llm_flow.AssistantResponseOverride(
+            content=raw_final,
+            source="agenda_readonly_response",
+            reason_code="agenda_readonly_final_response",
+            observability={
+                "content_present": True,
+                "content_chars": len(raw_final),
+                "content_hash": "agenda_hash_must_not_leak",
+            },
+        )
+
+        manifest = _build_manifest(
+            assistant_response_override=override,
+            agenda_result=agenda_result,
+        )
+
+        self.assertFalse(manifest["main_model_called"])
+        self.assertEqual(manifest["final_response_lock"]["source"], "agenda_readonly_response")
+        self.assertTrue(manifest["lane_statuses"]["agenda_lane"]["final_response_lock_present"])
+        self.assertTrue(manifest["lane_statuses"]["agenda_lane"]["final_response_lock_selected"])
+        self.assertFalse(manifest["lane_statuses"]["agenda_lane"]["final_response_lock_suppressed"])
+        self.assertEqual(manifest["lane_conflicts"]["candidate_count"], 1)
+        self.assertEqual(manifest["lane_conflicts"]["candidate_sources"], ["agenda_readonly_response"])
+        self.assertTrue(manifest["lane_conflicts"]["agenda_selected"])
+        self.assertFalse(manifest["lane_conflicts"]["biblio_selected"])
+        self.assertFalse(manifest["lane_conflicts"]["conflict_present"])
+        self.assertTrue(manifest["windows"]["agenda_recent_dialogue"]["final_response_lock_present"])
+        encoded = _encoded(manifest)
+        self.assertNotIn(raw_final, encoded)
+        self.assertNotIn("agenda_hash_must_not_leak", encoded)
+
+    def test_biblio_final_lock_is_selected_content_free(self) -> None:
+        raw_final = "SENSITIVE_BIBLIO_FINAL_LOCK"
+        lock = SimpleNamespace(source="biblio_rendered_answer")
+        biblio_result = SimpleNamespace(
+            enabled=True,
+            used=True,
+            reason_code="biblio_final_response_authorized",
+            query_kind="read_passages",
+            observability_payload={"status": "ok", "enabled": True, "used": True},
+            prompt_lane=SimpleNamespace(decisions=(), passage_count=0, chars=0, max_passages=3, max_total_chars=8000),
+            prompt_message=None,
+            final_response_lock=lock,
+        )
+        override = chat_llm_flow.AssistantResponseOverride(
+            content=raw_final,
+            source="biblio_rendered_answer",
+            reason_code="biblio_final_response_authorized",
+            observability={
+                "content_present": True,
+                "content_chars": len(raw_final),
+                "content_sha256_12": "biblio_hash_must_not_leak",
+            },
+        )
+
+        manifest = _build_manifest(
+            assistant_response_override=override,
+            biblio_result=biblio_result,
+        )
+
+        self.assertFalse(manifest["main_model_called"])
+        self.assertEqual(manifest["final_response_lock"]["source"], "biblio_rendered_answer")
+        self.assertTrue(manifest["lane_statuses"]["biblio_lane"]["final_response_lock_present"])
+        self.assertTrue(manifest["lane_statuses"]["biblio_lane"]["final_response_lock_selected"])
+        self.assertFalse(manifest["lane_statuses"]["biblio_lane"]["final_response_lock_suppressed"])
+        self.assertEqual(manifest["lane_conflicts"]["candidate_count"], 1)
+        self.assertEqual(manifest["lane_conflicts"]["candidate_sources"], ["biblio_rendered_answer"])
+        self.assertFalse(manifest["lane_conflicts"]["agenda_selected"])
+        self.assertTrue(manifest["lane_conflicts"]["biblio_selected"])
+        self.assertFalse(manifest["lane_conflicts"]["conflict_present"])
+        self.assertTrue(manifest["windows"]["biblio_recent_dialogue"]["final_response_lock_present"])
+        encoded = _encoded(manifest)
+        self.assertNotIn(raw_final, encoded)
+        self.assertNotIn("biblio_hash_must_not_leak", encoded)
+
+    def test_agenda_biblio_lock_conflict_records_agenda_priority(self) -> None:
+        raw_agenda = "SENSITIVE_AGENDA_CONFLICT_LOCK"
+        raw_biblio = "SENSITIVE_BIBLIO_CONFLICT_LOCK"
+        prompt_messages = [
+            {"role": "system", "content": "system"},
+            {"role": "system", "content": "synthetic biblio lane block"},
+            {"role": "user", "content": "question"},
+        ]
+        biblio_lock = SimpleNamespace(source="biblio_rendered_answer", content=raw_biblio)
+        biblio_result = SimpleNamespace(
+            enabled=True,
+            used=True,
+            reason_code="biblio_final_response_authorized",
+            query_kind="read_passages",
+            observability_payload={"status": "ok", "enabled": True, "used": True},
+            prompt_lane=SimpleNamespace(decisions=(object(),), passage_count=1, chars=42, max_passages=3, max_total_chars=8000),
+            prompt_message=prompt_messages[1],
+            final_response_lock=biblio_lock,
+        )
+        agenda_lock = SimpleNamespace(source="agenda_readonly_response", content=raw_agenda)
+        agenda_result = SimpleNamespace(
+            enabled=True,
+            used=True,
+            status="ok",
+            reason_code="agenda_readonly_final_response",
+            observability_payload={
+                "enabled": True,
+                "status": "ok",
+                "reason_code": "agenda_readonly_final_response",
+                "mode": "readonly",
+                "tool_count": 1,
+                "model_called": False,
+            },
+            final_response_lock=agenda_lock,
+        )
+        override = chat_llm_flow.AssistantResponseOverride(
+            content=raw_agenda,
+            source="agenda_readonly_response",
+            reason_code="agenda_readonly_final_response",
+            observability={
+                "content_present": True,
+                "content_chars": len(raw_agenda),
+            },
+        )
+
+        manifest = _build_manifest(
+            prompt_messages=prompt_messages,
+            message_sources=dict(
+                (
+                    _message_source(
+                        prompt_messages[1],
+                        "biblio_lane",
+                        "biblio.chat_runtime",
+                        "late_biblio_lane",
+                    ),
+                )
+            ),
+            assistant_response_override=override,
+            biblio_result=biblio_result,
+            agenda_result=agenda_result,
+            biblio_recent_dialogue=({"role": "user"},),
+            agenda_recent_dialogue=({"role": "user"},),
+        )
+
+        self.assertFalse(manifest["main_model_called"])
+        self.assertEqual(manifest["final_response_lock"]["source"], "agenda_readonly_response")
+        self.assertTrue(manifest["lane_conflicts"]["conflict_present"])
+        self.assertEqual(manifest["lane_conflicts"]["priority_policy"], "agenda_over_biblio")
+        self.assertEqual(manifest["lane_conflicts"]["reason_code"], "agenda_over_biblio_applied")
+        self.assertEqual(manifest["lane_conflicts"]["candidate_count"], 2)
+        self.assertEqual(
+            manifest["lane_conflicts"]["candidate_sources"],
+            ["agenda_readonly_response", "biblio_rendered_answer"],
+        )
+        self.assertTrue(manifest["lane_conflicts"]["agenda_selected"])
+        self.assertFalse(manifest["lane_conflicts"]["biblio_selected"])
+        self.assertEqual(manifest["lane_conflicts"]["suppressed_source"], "biblio_rendered_answer")
+        self.assertEqual(manifest["lane_conflicts"]["suppressed_count"], 1)
+        self.assertEqual(manifest["lane_conflicts"]["message_lane_block_count"], 1)
+        self.assertEqual(manifest["lane_conflicts"]["message_lane_status_mismatch_count"], 0)
+        self.assertFalse(manifest["lane_conflicts"]["implicit_injection_detected"])
+        self.assertTrue(manifest["lane_statuses"]["agenda_lane"]["final_response_lock_selected"])
+        self.assertFalse(manifest["lane_statuses"]["agenda_lane"]["final_response_lock_suppressed"])
+        self.assertFalse(manifest["lane_statuses"]["biblio_lane"]["final_response_lock_selected"])
+        self.assertTrue(manifest["lane_statuses"]["biblio_lane"]["final_response_lock_suppressed"])
+        self.assertEqual(manifest["messages"][1]["logical_roles"], ["biblio_lane"])
+        self.assertTrue(manifest["windows"]["agenda_recent_dialogue"]["final_response_lock_present"])
+        self.assertTrue(manifest["windows"]["biblio_recent_dialogue"]["final_response_lock_present"])
+        encoded = _encoded(manifest)
+        self.assertNotIn(raw_agenda, encoded)
+        self.assertNotIn(raw_biblio, encoded)
 
     def test_hash_policy_rejects_stable_short_hash_leakage(self) -> None:
         sensitive_text = "short sensitive text for dictionary attack"

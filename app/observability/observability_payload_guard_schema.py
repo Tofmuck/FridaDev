@@ -42,7 +42,7 @@ _DANGEROUS_PAYLOAD_KEYS = {"provider_payload", "raw_payload", "request_payload",
 _MANIFEST_TOP_LEVEL_KEYS = set(
     """
     assistant_output_policy budgets conversation_id_present conversation_state final_response_lock hash_policy
-    lane_statuses main_model_called messages provider raw_flags runtime_settings schema_version scope
+    lane_conflicts lane_statuses main_model_called messages provider raw_flags runtime_settings schema_version scope
     status_schema_version turn_id_present windows
     """.split()
 )
@@ -58,7 +58,8 @@ _MANIFEST_LANE_STATUS_KEYS = set(
     activation_mode budget content_chars context_hint_count context_injected enabled estimated_tokens
     excluded_count exclusion_reason_codes final_response_lock_present injected_count input_count
     invalid_requested_count media_kind_counts mode model_called origin over_limit_count passage_count
-    query_kind raw_lane_content_included reason_code reason_codes selected source_count status
+    priority_policy query_kind raw_lane_content_included reason_code reason_codes selected source_count status
+    final_response_lock_selected final_response_lock_suppressed
     """.split()
 )
 _RUNTIME_SETTINGS_KEYS = {"max_tokens", "model", "provider_family", "stream_requested", "temperature_present", "top_p_present"}
@@ -72,6 +73,27 @@ _FINAL_RESPONSE_LOCK_KEYS = {
     "raw_content_included",
     "reason_code",
     "source",
+}
+_LANE_CONFLICT_KEYS = {
+    "agenda_lock_present",
+    "agenda_selected",
+    "biblio_lock_present",
+    "biblio_selected",
+    "candidate_count",
+    "candidate_sources",
+    "conflict_present",
+    "implicit_injection_detected",
+    "main_model_bypassed",
+    "message_lane_block_count",
+    "message_lane_status_mismatch_count",
+    "priority_policy",
+    "raw_content_included",
+    "reason_code",
+    "selected_lane_count",
+    "selected_source",
+    "status",
+    "suppressed_count",
+    "suppressed_source",
 }
 _CONVERSATION_STATE_KEYS = {
     "conversation_id_present",
@@ -185,6 +207,7 @@ _MANIFEST_CONTEXT_KEYS = {
     "runtime_settings": _RUNTIME_SETTINGS_KEYS,
     "assistant_output_policy": _ASSISTANT_OUTPUT_POLICY_KEYS,
     "final_response_lock": _FINAL_RESPONSE_LOCK_KEYS,
+    "lane_conflicts": _LANE_CONFLICT_KEYS,
     "conversation_state": _CONVERSATION_STATE_KEYS,
     "hash_policy": _HASH_POLICY_KEYS,
     "budgets": _BUDGETS_KEYS,
@@ -196,11 +219,17 @@ _MANIFEST_SAFE_TEXT_KEYS = set(
     activation_mode canonization_stage content_kind conversation_state_kind current_mode
     exclusion_reason_code injection_source mode model origin origin_stage policy priority_policy
     provider provider_family provider_role query_kind reason_code retrieval_reason_code retrieval_status
-    schema_version scope soft_limit_policy soft_limit_reason_code soft_limit_stage source staging_scope
+    schema_version scope selected_source soft_limit_policy soft_limit_reason_code soft_limit_stage source staging_scope suppressed_source
     status status_schema_version voice_continuity_reason_code voice_continuity_status
     """.split()
 )
-_MANIFEST_TEXT_LIST_KEYS = {"exclusion_reason_codes", "logical_roles", "provider_role_sequence", "reason_codes"}
+_MANIFEST_TEXT_LIST_KEYS = {
+    "candidate_sources",
+    "exclusion_reason_codes",
+    "logical_roles",
+    "provider_role_sequence",
+    "reason_codes",
+}
 _MANIFEST_DYNAMIC_INT_MAP_KEYS = {"budget", "media_kind_counts"}
 
 _GENERAL_TEXT_KEYS = set(
@@ -564,14 +593,22 @@ def _is_manifest_bool_key(key: str) -> bool:
         "content_present",
         "context_injected",
         "arbiter_controls_injection",
+        "agenda_lock_present",
+        "agenda_selected",
+        "biblio_lock_present",
+        "biblio_selected",
         "canonized_into_prompt",
         "conversation_id_present",
         "dialogue_messages_truncated",
         "enabled",
         "excluded",
+        "conflict_present",
         "final_response_lock_present",
+        "final_response_lock_selected",
+        "final_response_lock_suppressed",
         "fingerprints_included",
         "has_in_progress_turn",
+        "implicit_injection_detected",
         "judgment_block_present",
         "main_model_bypassed",
         "main_model_called",
@@ -628,6 +665,7 @@ def _manifest_child_context(context: str, key: str) -> str:
         "conversation_state",
         "final_response_lock",
         "hash_policy",
+        "lane_conflicts",
         "raw_flags",
         "runtime_settings",
         "windows",
