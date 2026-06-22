@@ -27,6 +27,17 @@ def _encoded(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
+def _raw_flags() -> dict[str, bool]:
+    return {
+        "raw_prompt_included": False,
+        "raw_message_included": False,
+        "raw_content_included": False,
+        "raw_lane_content_included": False,
+        "raw_provider_payload_included": False,
+        "raw_secret_included": False,
+    }
+
+
 class ObservabilityPayloadGuardTests(unittest.TestCase):
     def test_content_free_payload_passes(self) -> None:
         payload = {
@@ -81,6 +92,34 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertFalse(decision.accepted)
         self.assertIn("url_value", decision.payload["issue_classes"])
 
+    def test_general_payload_rejects_neutral_free_text_key(self) -> None:
+        sentinel = "neutral free text sentinel should not pass"
+        payload = {
+            "private_sentence": sentinel,
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("unknown_string_key", decision.payload["issue_classes"])
+        self.assertNotIn(sentinel, encoded)
+        self.assertNotIn("private_sentence", encoded)
+
+    def test_general_payload_rejects_unknown_mapping_and_list_keys(self) -> None:
+        payload = {
+            "status_schema_version": "agentic_v1",
+            "innocent_box": {"ok_count": 1},
+            "innocent_list": ["safe_code"],
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("unknown_mapping_key", decision.payload["issue_classes"])
+        self.assertIn("unknown_list_key", decision.payload["issue_classes"])
+
     def test_valid_main_payload_manifest_passes_writer_guard(self) -> None:
         manifest = main_payload_manifest.build_main_payload_manifest(
             conversation={"id": "conv-guard", "messages": []},
@@ -132,6 +171,75 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertIn("manifest_unexpected_key", decision.payload["issue_classes"])
         self.assertIn("raw_flag_true", decision.payload["issue_classes"])
         self.assertNotIn("SENSITIVE_RAW_CONTENT_B", encoded)
+
+    def test_manifest_rejects_neutral_text_under_prompt_budget(self) -> None:
+        sentinel = "neutral budget text sentinel should not pass"
+        manifest = {
+            "schema_version": "main_payload_manifest_v1",
+            "scope": "main_chat",
+            "budgets": {
+                "prompt": {
+                    "message_count": 1,
+                    "content_chars_total": 42,
+                    "estimated_prompt_tokens": 8,
+                    "max_completion_tokens": 512,
+                    "private_sentence": sentinel,
+                }
+            },
+            "raw_flags": _raw_flags(),
+        }
+
+        decision = observability_payload_guard.guard_payload(manifest)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("manifest_unexpected_key", decision.payload["issue_classes"])
+        self.assertNotIn(sentinel, encoded)
+
+    def test_manifest_rejects_neutral_text_under_windows(self) -> None:
+        sentinel = "neutral window text sentinel should not pass"
+        manifest = {
+            "schema_version": "main_payload_manifest_v1",
+            "scope": "main_chat",
+            "windows": {
+                "recent_context": {
+                    "message_count": 2,
+                    "private_sentence": sentinel,
+                }
+            },
+            "raw_flags": _raw_flags(),
+        }
+
+        decision = observability_payload_guard.guard_payload(manifest)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("manifest_unexpected_key", decision.payload["issue_classes"])
+        self.assertNotIn(sentinel, encoded)
+
+    def test_manifest_rejects_neutral_text_under_runtime_settings(self) -> None:
+        sentinel = "neutral runtime text sentinel should not pass"
+        manifest = {
+            "schema_version": "main_payload_manifest_v1",
+            "scope": "main_chat",
+            "runtime_settings": {
+                "provider_family": "openrouter",
+                "model": "openai/gpt-5.1",
+                "temperature_present": True,
+                "top_p_present": True,
+                "max_tokens": 512,
+                "stream_requested": False,
+                "private_sentence": sentinel,
+            },
+            "raw_flags": _raw_flags(),
+        }
+
+        decision = observability_payload_guard.guard_payload(manifest)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("manifest_unexpected_key", decision.payload["issue_classes"])
+        self.assertNotIn(sentinel, encoded)
 
 
 if __name__ == "__main__":

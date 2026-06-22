@@ -65,7 +65,7 @@ content-free relue, testee ou explicitement reportee post-V1.
 | - [x] | P2-LANE-PROVENANCE-01 | Lot 2 puis Lot 2.1 | Role provider et role logique distingues par provenance structuree, sans classification souveraine par contenu textuel. |
 | - [ ] | P2-FINAL-LOCK-POLICY-01 | Lot 5 | Politique de priorite Agenda/Biblio final-lock documentee et testee. |
 | - [ ] | P2-NOTES-UI-01 | Lot 5 | Statut Notes UI tranche: hors chemin chat courant documente, ou branchement explicite teste. |
-| - [x] | P2-OBS-WRITER-01 | Lot 3 | Guard writer-side livre contre cles/payloads dangereux, avec sentinelles anti-fuite. |
+| - [x] | P2-OBS-WRITER-01 | Lot 3 puis Lot 3.1 | Guard writer-side schema-first/default-deny livre contre cles/payloads dangereux et texte libre sous cles neutres, avec sentinelles anti-fuite. |
 | - [ ] | P3-SOFT-LIMIT-01 | Lot 4 | Soft limit explique ou durci: depassement visible et politique de troncation/exclusion testee ou reportee. |
 | - [ ] | P3-NOOP-LANES-01 | Lot 5 | Non-selection Documents/Notes observable ou absence justifiee sans confusion avec lane non instrumentee. |
 | - [ ] | P3-DOC-01 | Lot 1 puis Lot Z | Docs historiques requalifiees ou indexees avec statuts actifs/archive/stale. |
@@ -188,12 +188,23 @@ un statut demande `ok` devient `refused`, et un statut deja non-OK reste visible
 Le manifeste `main_payload_manifest_v1` reste accepte seulement s'il respecte
 son contrat content-free.
 
+Correctif Lot 3.1 livre le 2026-06-22:
+
+- [x] Passer la garde writer-side en politique schema-first/default-deny.
+- [x] Refuser une chaine libre sous cle neutre ou inconnue.
+- [x] Refuser les sous-mappings manifestes inattendus dans `budgets`,
+  `windows` et `runtime_settings`.
+- [x] Garder le manifeste reel produit par `build_main_payload_manifest()`
+  accepte quand il respecte le schema content-free.
+- [x] Prouver qu'un `status=ok` avec payload refuse devient `refused` avant
+  stockage.
+
 Tests de reference Lot 3:
 
 - `app/tests/unit/logs/test_observability_payload_guard.py`
 - `app/tests/unit/logs/test_chat_turn_logger_core_contract.py`
 
-Finding clos par ce lot: `P2-OBS-WRITER-01`.
+Finding clos par ce lot apres Lot 3.1: `P2-OBS-WRITER-01`.
 
 ### Lot 4 - Fenetres, summary, memory, staging
 

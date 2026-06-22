@@ -4,7 +4,8 @@ Date: 2026-06-22
 
 Statut: contrat source-of-truth Continuity Payload. Lot 1 a defini le contrat;
 Lot 2 a livre le manifeste runtime content-free sans capsule. Lot 3 a livre la
-garde writer-side d'observabilite.
+garde writer-side d'observabilite, durcie en Lot 3.1 en politique
+schema-first/default-deny.
 
 Ce contrat definit deux objets cibles:
 
@@ -411,6 +412,27 @@ Restent autorises quand ils sont content-free:
 - `main_payload_manifest_v1`, seulement s'il respecte son schema content-free et
   ne contient ni champ brut inattendu ni raw flag vrai.
 
+Depuis le Lot 3.1, cette garde est default-deny. Elle ne doit pas accepter une
+chaine libre parce que sa cle n'est pas connue comme dangereuse. Pour les
+payloads generaux:
+
+- une cle inconnue avec valeur string doit etre refusee;
+- une cle inconnue avec mapping ou liste doit etre refusee, meme si ses valeurs
+  paraissent content-free;
+- les strings ne sont admises que sous cles textuelles explicites et sous forme
+  de code safe, statut, reason code, modele non secret ou equivalent borne;
+- les valeurs numeriques, booleennes et nulles ne sont admises que sous cles
+  metriques ou scalaires content-free explicitement reconnues;
+- les flags `raw_*_included` qualifies ne sont admis que s'ils valent `false`.
+
+Pour `main_payload_manifest_v1`, chaque mapping connu doit etre schema-first:
+`runtime_settings`, `assistant_output_policy`, `final_response_lock`,
+`conversation_state`, `hash_policy`, `raw_flags`, `budgets.prompt`,
+`windows.*`, `messages[]` et `lane_statuses.*` ont des cles attendues. Les noms
+dynamiques de lanes restent possibles dans `lane_statuses`, mais leur valeur
+doit respecter le schema de statut de lane. Aucun sous-mapping du manifeste ne
+doit retomber sur une logique "si ce n'est pas dangereux connu, on accepte".
+
 Comportement requis en cas de rejet:
 
 - l'evenement original dangereux n'est pas stocke;
@@ -620,6 +642,13 @@ Statut Lot 3 au 2026-06-22: livre par
 `app/observability/chat_turn_logger.py` avant l'appel a `log_store`, et teste par
 `app/tests/unit/logs/test_observability_payload_guard.py` et
 `app/tests/unit/logs/test_chat_turn_logger_core_contract.py`.
+
+Correctif Lot 3.1 au 2026-06-22: la garde est schema-first/default-deny pour les
+payloads generaux et pour `main_payload_manifest_v1`. Une cle neutre contenant
+une string libre est refusee. Un manifeste forge avec une string libre dans
+`budgets.prompt`, `windows.recent_context` ou `runtime_settings` est refuse. Le
+manifeste reel produit par `build_main_payload_manifest()` reste accepte s'il
+respecte le schema content-free.
 
 ## No-go avant runtime capsule
 

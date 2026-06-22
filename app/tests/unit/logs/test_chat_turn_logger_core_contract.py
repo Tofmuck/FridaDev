@@ -161,11 +161,12 @@ class ChatTurnLoggerCoreContractTests(unittest.TestCase):
 
         preview_event = next(event for event in observed if event['stage'] == 'preview_stage')
         payload = preview_event['payload_json']
-        self.assertEqual(len(payload['preview']), 3)
-        self.assertEqual(len(payload['keys']), 3)
-        self.assertTrue(payload['truncated'])
-        self.assertTrue(all(len(item) <= 120 for item in payload['preview']))
-        self.assertTrue(all(len(item) <= 64 for item in payload['keys']))
+        self.assertEqual(preview_event['status'], 'refused')
+        self.assertEqual(payload['schema_version'], observability_payload_guard.SCHEMA_VERSION)
+        self.assertEqual(payload['reason_code'], observability_payload_guard.REASON_CODE)
+        encoded = json.dumps({'event': preview_event}, ensure_ascii=False)
+        for marker in ('x' * 80, 'y' * 80, 'z' * 80, 'w' * 80):
+            self.assertNotIn(marker, encoded)
 
     def test_event_contract_required_fields_and_status_taxonomy(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -280,6 +281,66 @@ class ChatTurnLoggerCoreContractTests(unittest.TestCase):
         encoded = json.dumps({'event': rejected, 'projection': projected, 'markdown': markdown}, ensure_ascii=False)
         for marker in (raw_message, raw_url, raw_data_url, 'provider.example.invalid', 'base64'):
             self.assertNotIn(marker, encoded)
+
+    def test_writer_guard_rejects_neutral_free_text_without_false_ok(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        sentinel = 'neutral writer text sentinel should not pass'
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-writer-neutral-guard',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit(
+                'writer_guard_neutral_probe',
+                status='ok',
+                payload={
+                    'private_sentence': sentinel,
+                    'safe_count': 1,
+                    'status_schema_version': 'agentic_v1',
+                },
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        rejected = next(event for event in observed if event['stage'] == 'writer_guard_neutral_probe')
+        payload = rejected['payload_json']
+        self.assertEqual(rejected['status'], 'refused')
+        self.assertEqual(payload['schema_version'], observability_payload_guard.SCHEMA_VERSION)
+        self.assertEqual(payload['reason_code'], observability_payload_guard.REASON_CODE)
+        self.assertIn('unknown_string_key', payload['issue_classes'])
+
+        projected = admin_log_projection.project_event_item(
+            {
+                'event_id': rejected['event_id'],
+                'conversation_id': rejected['conversation_id'],
+                'turn_id': rejected['turn_id'],
+                'ts': rejected['ts'],
+                'stage': rejected['stage'],
+                'status': rejected['status'],
+                'duration_ms': rejected['duration_ms'],
+                'payload': rejected['payload_json'],
+            }
+        )
+        markdown = log_markdown_export._build_markdown(
+            scope='turn',
+            conversation_id='conv-writer-neutral-guard',
+            turn_id=rejected['turn_id'],
+            items=[projected],
+            generated_at=datetime(2026, 6, 22, tzinfo=timezone.utc),
+        )
+        encoded = json.dumps({'event': rejected, 'projection': projected, 'markdown': markdown}, ensure_ascii=False)
+        self.assertNotIn(sentinel, encoded)
+        self.assertNotIn('private_sentence', encoded)
 
     def test_writer_guard_allows_valid_main_payload_manifest(self) -> None:
         observed: list[dict[str, Any]] = []
