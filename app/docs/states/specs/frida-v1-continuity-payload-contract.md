@@ -16,6 +16,9 @@ Lot 5 clarifie les conflits de lanes, final locks Agenda/Biblio et no-op
 Documents/Notes/Exports/Images dans le manifeste, sans capsule runtime.
 Lot 5.1 classe `final_lock_priority_unexpected` en `failed` quand un conflit
 Agenda/Biblio selectionne une source non-Agenda malgre la politique courante.
+Lot 6 ajoute des fixtures qualitatives artificielles, content-free et sans
+provider live, pour prouver ce qu'une future capsule devra preserver avant tout
+runtime.
 
 Ce contrat definit deux objets cibles:
 
@@ -641,6 +644,47 @@ Non souveraine signifie:
 - Pas de promotion automatique vers identity mutable.
 - Pas de doctrine cachee dans une surface runtime.
 
+### Preuve qualitative Lot 6
+
+Le Lot 6 ne cree pas de Continuity Capsule runtime. Il cree une preuve
+deterministe test-only, sur fixtures artificielles, que la continuite de
+presence peut etre jugee sans provider live et sans contenu utilisateur reel.
+
+Les fixtures doivent rester content-free:
+
+- traits qualitatifs sous forme de codes, par exemple methode, presence
+  relationnelle, reprise apres ecart, proactivite bornee, cadrage de refus et
+  sobriete/humour;
+- compteurs, statuts, booleens et reason codes;
+- aucun prompt, dialogue, summary, memory, document, note, passage, export,
+  image, URL, payload provider, secret ou hash stable de texte sensible.
+
+La preuve Lot 6 distingue quatre carriers:
+
+- `identity`: noyau ou faits identitaires, pas surface de methode
+  conversationnelle;
+- `memory`: faits ou decisions recuperables, pas posture qualitative complete;
+- `summary`: condensation d'une conversation donnee, susceptible d'aplatir la
+  nuance de voix;
+- `continuity_capsule_candidate`: objet test-only non injecte, distinct,
+  qualitatif, court et non souverain.
+
+Scenarios minimaux prouves par Lot 6:
+
+- conversation longue: le dialogue recent peut porter les traits qualitatifs
+  sans capsule candidate;
+- nouvelle conversation sans memoire: identity seule ne suffit pas a porter la
+  presence qualitative complete;
+- lanes non selectionnees: les no-op n'apportent pas de continuite implicite;
+- apres resume: summary seul peut conserver le fond tout en aplatissant les
+  traits relationnels et methodologiques;
+- capsule candidate: restaure les traits minimaux dans la fixture sans devenir
+  identity, memory ou summary, et sans etre injectee dans le prompt.
+
+Cette preuve ferme les findings de test et d'observabilite qualitative
+pre-runtime. Elle ne ferme pas a elle seule l'absence de surface durable runtime:
+`P1-CONT-01` reste conditionne a Lot 7 ou a un report post-V1 explicite.
+
 ### Injection future
 
 Le present contrat ne choisit pas encore la position exacte de la capsule dans le
@@ -684,9 +728,9 @@ lots 1 a 6 ne soient relus et acceptes.
 
 | Finding | Apport du present contrat | Statut apres Lot 1 |
 | --- | --- | --- |
-| P1-CONT-01 | Definit la Continuity Capsule comme surface cible distincte, courte, non souveraine et future. | Prepare, non clos. |
+| P1-CONT-01 | Definit la Continuity Capsule comme surface cible distincte, courte, non souveraine et future; Lot 6 prouve une candidate test-only sans runtime. | Partiel: non clos avant Lot 7 ou report post-V1. |
 | P1-PAYLOAD-01 | Definit `main_payload_manifest_v1` et en fait le gate avant capsule runtime. | Prepare, non clos. |
-| P2-SUMMARY-01 | Separe summary et capsule, expose summary comme fenetre Lot 4, et exige que les tests futurs detectent l'aplatissement de voix. | Partiel: fenetre livree, continuite qualitative non close avant Lot 6. |
+| P2-SUMMARY-01 | Separe summary et capsule, expose summary comme fenetre Lot 4, et exige que les tests detectent l'aplatissement de voix. | Clos Lot 6 par fixture post-resume summary seul vs capsule candidate. |
 | P2-LANES-01 | Etend la continuite aux final response locks et renderers de lanes. | Clos Lot 5 pour le bornage content-free des locks; continuite qualitative de voix reste Lot 6. |
 | P2-MEMORY-01 | Distingue decision arbiter, memory injectee et contenu reellement vu par le modele. | Clos Lot 4 par fenetre `memory`. |
 | P2-WINDOWS-01 | Exige des compteurs separes pour prompt final, memory, hermeneutic node, Biblio et Agenda. | Clos Lot 4 par `windows`. |
@@ -698,8 +742,8 @@ lots 1 a 6 ne soient relus et acceptes.
 | P3-SOFT-LIMIT-01 | Rend visible la difference soft-limit observee et truncation effective. | Clos Lot 4 par `budgets.prompt`. |
 | P3-NOOP-LANES-01 | Exige des no-op observables pour chaque lane connue. | Clos Lot 5 pour Documents/Notes/Exports/Images. |
 | P3-DOC-01 | Requalifie la source-of-truth active sans rouvrir les archives identity. | Prepare, non clos. |
-| P3-TEST-01 | Pose les criteres des tests qualitatifs artificiels Lot 6. | Prepare, non clos. |
-| P3-OBS-01 | Dit que le manifeste est necessaire mais pas suffisant pour juger la presence. | Prepare, non clos. |
+| P3-TEST-01 | Pose les criteres des tests qualitatifs artificiels Lot 6. | Clos Lot 6 par fixtures nouvelle conversation, longue conversation, post-resume, sans memoire et lanes non selectionnees. |
+| P3-OBS-01 | Dit que le manifeste est necessaire mais pas suffisant pour juger la presence. | Clos Lot 6 par observation qualitative content-free acceptee par la garde writer-side. |
 | P3-OFFLINE-PAYLOAD-EXPORT-01 | Encadre les exports/audits locaux: non-runtime, non-bruts, content-free, non committes si artefacts. | Prepare, non clos. |
 
 ## Criteres d'acceptation du Lot 2

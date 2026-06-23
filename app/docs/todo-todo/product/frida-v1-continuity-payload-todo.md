@@ -55,9 +55,9 @@ content-free relue, testee ou explicitement reportee post-V1.
 
 | Statut | Finding | Lot cible | Critere de cloture court |
 | --- | --- | --- | --- |
-| - [ ] | P1-CONT-01 | Lot 6 puis Lot 7 | Capsule distincte d'identity/memory/summary specifiee, tests artificiels passes, injection runtime seulement apres lots 1-6. |
+| - [ ] | P1-CONT-01 | Lot 6 puis Lot 7 | Capsule distincte d'identity/memory/summary specifiee, tests artificiels passes; finding clos seulement apres surface runtime bornee Lot 7 ou report post-V1 explicite. |
 | - [x] | P1-PAYLOAD-01 | Lot 1 puis Lot 2 | `main_payload_manifest_v1` livre et teste sur le payload final apres injections tardives, sans contenu brut. |
-| - [ ] | P2-SUMMARY-01 | Lot 4 puis Lot 6 | Lot 4 expose le summary comme fenetre content-free et qualifie la nuance de voix comme non mesuree; cloture seulement avec tests qualitatifs artificiels de non-aplatissement minimal. |
+| - [x] | P2-SUMMARY-01 | Lot 4 puis Lot 6 | Lot 4 expose le summary comme fenetre content-free; Lot 6 prouve par fixture artificielle que summary seul peut aplatir la nuance et qu'une capsule candidate distincte peut restaurer les traits minimaux sans runtime. |
 | - [x] | P2-LANES-01 | Lot 5 | Biblio/Agenda/renderers couverts par la doctrine de voix ou explicitement bornes. |
 | - [x] | P2-MEMORY-01 | Lot 4 | Difference arbiter observe vs memoire reellement injectee prouvee dans le manifeste ou les traces. |
 | - [x] | P2-WINDOWS-01 | Lot 4 | Fenetres memory, hermeneutic node, Biblio, Agenda et prompt final cartographiees par tailles/compteurs content-free. |
@@ -69,8 +69,8 @@ content-free relue, testee ou explicitement reportee post-V1.
 | - [x] | P3-SOFT-LIMIT-01 | Lot 4 | Soft limit explique: depassement visible, politique de non-troncation observee, compteurs d'exclusion/troncation a zero. |
 | - [x] | P3-NOOP-LANES-01 | Lot 5 | Non-selection Documents/Notes observable ou absence justifiee sans confusion avec lane non instrumentee. |
 | - [ ] | P3-DOC-01 | Lot 1 puis Lot Z | Docs historiques requalifiees ou indexees avec statuts actifs/archive/stale. |
-| - [ ] | P3-TEST-01 | Lot 6 | Tests nouvelle conversation vs longue conversation sur fixtures artificielles, sans contenu utilisateur reel. |
-| - [ ] | P3-OBS-01 | Lot 6 | Preuve qualitative content-free definie: presence jugee par fixtures artificielles et signaux bornes. |
+| - [x] | P3-TEST-01 | Lot 6 | Tests nouvelle conversation vs longue conversation sur fixtures artificielles, sans contenu utilisateur reel. |
+| - [x] | P3-OBS-01 | Lot 6 | Preuve qualitative content-free definie: presence jugee par fixtures artificielles et signaux bornes. |
 | - [ ] | P3-OFFLINE-PAYLOAD-EXPORT-01 | Lot 2 | Export local existant verifie comme borne/non-runtime, ou remplace par manifeste final content-free. |
 
 ## Lots
@@ -362,16 +362,42 @@ Statut 2026-06-22: Lot 5 livre par enrichissement de
 
 Avant runtime reel, prouver la continuite sur donnees artificielles.
 
-- [ ] Ecrire des fixtures sans contenu utilisateur reel.
-- [ ] Tester nouvelle conversation vs conversation longue.
-- [ ] Tester une conversation apres resume.
-- [ ] Tester une conversation sans memoire ou avec lanes non selectionnees.
-- [ ] Prouver que la capsule reste distincte d'identity, memory et summary.
-- [ ] Prouver que la presence qualitative peut etre jugee sans provider live
+- [x] Ecrire des fixtures sans contenu utilisateur reel.
+- [x] Tester nouvelle conversation vs conversation longue.
+- [x] Tester une conversation apres resume.
+- [x] Tester une conversation sans memoire ou avec lanes non selectionnees.
+- [x] Prouver que la capsule reste distincte d'identity, memory et summary.
+- [x] Prouver que la presence qualitative peut etre jugee sans provider live
   obligatoire.
-- [ ] Prouver que les logs et artefacts restent content-free.
+- [x] Prouver que les logs et artefacts restent content-free.
 
 Findings traites: `P1-CONT-01`, `P3-TEST-01`, `P3-OBS-01`.
+
+Statut 2026-06-23: Lot 6 livre par fixtures unitaires artificielles dans
+`app/tests/unit/continuity/test_continuity_payload_fixtures.py`.
+
+Preuves:
+
+- conversation longue: les traits qualitatifs peuvent etre portes par le
+  dialogue recent sans capsule candidate;
+- nouvelle conversation sans memoire et lanes non selectionnees: identity seule
+  ne suffit pas a recuperer presence, methode, proactivite bornee et cadrage
+  relationnel;
+- conversation apres resume: le summary conserve un trait de methode et un fait
+  de tache, mais aplatit relation, refus, humour/sobriete et reprise; le test
+  detecte cet aplatissement;
+- capsule candidate: objet test-only distinct de identity, memory et summary,
+  porteur de traits qualitatifs seulement, sans fait identitaire, fait memoire
+  ou contenu de summary;
+- observation qualitative: payload content-free accepte par la garde
+  writer-side, avec `model_called=false`, `capsule_runtime_injected=false` et
+  flags raw a false.
+
+Findings clos par ce lot: `P2-SUMMARY-01`, `P3-TEST-01`, `P3-OBS-01`.
+
+Finding laisse ouvert volontairement: `P1-CONT-01`. Lot 6 prouve la forme et la
+testabilite d'une capsule candidate, mais ne cree pas encore de surface runtime
+durable. Cloture attendue en Lot 7 ou report post-V1 explicite.
 
 ### Lot 7 - Runtime capsule borne
 
