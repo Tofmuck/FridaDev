@@ -1,6 +1,8 @@
 # Frida Agenda Agent - TODO produit
 
-Statut: TODO actif au 2026-06-08
+Statut: V1 pragmatiquement clos; TODO maintenue en `todo-todo` comme post-V1
+dormante.
+Clarification Lot 2B: 2026-06-23
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
@@ -37,6 +39,21 @@ Note de cloture: la source de reference de l'etat V1 est desormais
 Cette cloture est documentaire: elle ne lance aucun Lot 9, ne promet pas la
 couverture exhaustive des familles Agenda et limite les suites aux bugs reels,
 besoins utilisateur concrets ou decisions explicites de nouvelle capacite.
+
+Clarification de statut pour la cloture Frida 1.0:
+
+- Agenda V1 est considere utile et pragmatiquement clos dans le perimetre prouve
+  par la note de cloture du 2026-06-09.
+- Cette TODO reste dans `todo-todo` seulement comme support post-V1 dormant,
+  afin de conserver les familles, limites et reprises possibles sans les vendre
+  comme no-go Frida 1.0.
+- Les cases ouvertes, l'auto-audit permanent, Lot 9, les disponibilites riches,
+  invitations, rappels, recurrences riches et mutations utilisateur reelles sont
+  hors cloture Frida 1.0.
+- Toute reprise doit etre explicite: bug reel, besoin utilisateur concret ou GO
+  operateur / decision produit dediee.
+- Le present statut n'ouvre aucun runtime Agenda, aucun acces CalDAV, aucun
+  smoke live, aucune mutation et aucun pending store.
 
 Question prealable: existe-t-il un meilleur plan ?
 

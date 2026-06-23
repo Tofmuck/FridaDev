@@ -51,8 +51,8 @@ par lui-meme.
 
 ### Bloquants avant cloture propre
 
-- Alignement docs/source-of-truth pour Nextcloud folders, Agenda, Continuity
-  audits et pointeurs actifs/archives.
+- Alignement docs/source-of-truth restant pour Continuity audits et pointeurs
+  actifs/archives.
 - Matrice finale de cloture et decision branche/main.
 - Micro-preuve ou report explicite de la Continuity Capsule.
 - Decision Mail: audit/spec-only borne ou report post-V1.
@@ -161,7 +161,7 @@ par lui-meme.
 
 ### P2-AGENDA-DORMANT-STATUS-01
 
-- Statut initial: open.
+- Statut initial: accepted; clos par Lot 2B le 2026-06-23.
 - Severite: P2.
 - Fichiers suspects: `app/docs/todo-todo/product/frida-agenda-agent.md`,
   `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`.
@@ -492,10 +492,24 @@ Artefact JSONL: non.
 
 Type: docs-only.
 
-- [ ] Trancher le statut de `frida-agenda-agent.md`: post-V1 dormant ou archive.
-- [ ] Indiquer que les cases ouvertes sont des reprises post-V1, pas des no-go.
-- [ ] Conserver la cloture pragmatique comme source V1.
-- [ ] Ne pas lire CalDAV, ne pas relancer de smoke live.
+- [x] Trancher le statut de `frida-agenda-agent.md`: post-V1 dormant ou archive.
+- [x] Indiquer que les cases ouvertes sont des reprises post-V1, pas des no-go.
+- [x] Conserver la cloture pragmatique comme source V1.
+- [x] Ne pas lire CalDAV, ne pas relancer de smoke live.
+
+Resultat Lot 2B:
+
+- `frida-agenda-agent.md` declare Agenda V1 pragmatiquement clos et maintient la
+  TODO en `todo-todo` comme post-V1 dormant.
+- Les lots ouverts Agenda, Lot 9, disponibilites riches, invitations, rappels,
+  recurrences riches et mutations utilisateur reelles sont hors cloture Frida
+  1.0.
+- La reouverture exige bug reel, besoin utilisateur concret ou GO operateur /
+  decision produit dediee.
+- Les pointeurs actifs `AGENTS.md`, `README.md`, `app/docs/README.md` et roadmap
+  finale etaient deja coherents avec ce statut; aucune modification requise.
+- Aucun runtime Agenda, CalDAV, smoke live, secret ou pending store n'a ete
+  touche.
 
 Commandes/preuves minimales:
 
