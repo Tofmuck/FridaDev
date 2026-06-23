@@ -483,6 +483,19 @@ Correctif Lot 7.1:
   `logical_roles=["continuity_capsule"]` et ne devient jamais
   `identity_stable`, `identity_mutable`, `memory` ou `summary`.
 
+Correctif Lot 7.2:
+
+- [x] Refuser les variantes credential-like avec separateur `:` ou `=`,
+  notamment `token:`, `secret:`, `password:`, `api_key:`, `api-key:`,
+  `x-api-key:`, `authorization:`, `cookie:` et `set-cookie:`.
+- [x] Refuser les URL-like `www.` meme au milieu d'une phrase.
+- [x] Refuser les chemins prives/absolus evidents meme au milieu d'une phrase,
+  notamment `/Users/...`, `/home/...`, `/root/...`, `/opt/...`, `/var/...`,
+  `/etc/...`, `/tmp/...`, `~/...` et chemins Windows absolus.
+- [x] Prouver que la capsule normale courte reste acceptee, que le final lock
+  bypass reste inchange et que le texte refuse ne sort pas dans
+  `as_content_free_dict()`, manifeste, projection admin ou garde writer-side.
+
 ### Lot Z - Cloture
 
 - [ ] Relire audits, spec, TODO, code et tests.

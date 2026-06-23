@@ -23,7 +23,9 @@ defaut/configurable sans DB, injectee seulement quand le modele principal est
 appele, et observee content-free par `main_payload_manifest_v1`. Lot 7.1 durcit
 l'entree de capsule contre les marqueurs de contenu unsafe et clarifie que la
 non-souverainete du message `system` est une contrainte produit explicite, pas
-une garantie mecanique du provider.
+une garantie mecanique du provider. Lot 7.2 etend ce durcissement aux variantes
+credential-like avec `:` ou `=`, aux URL-like `www.` en milieu de phrase et aux
+chemins prives/absolus evidents en milieu de phrase.
 
 Ce contrat definit deux objets cibles:
 
@@ -731,12 +733,19 @@ Les statuts runtime attendus sont:
 - `not_selected` / `continuity_capsule_final_lock_bypass`: final lock
   Agenda/Biblio, modele principal bypass, aucune injection.
 
-Validation safety Lot 7.1:
+Validation safety Lots 7.1 et 7.2:
 
 - le texte de capsule est refuse avant injection s'il contient URL ou `://`,
   `Bearer`, `Authorization`, `Cookie`, `Set-Cookie`, `token=`, `api_key=`,
   `password=`, `secret=`, data URL/base64 evident, XML/DAV/CALDAV/WebDAV,
   chemin absolu/prive evident ou bloc de cle privee;
+- les variantes credential-like avec separateur `:` ou `=` sont refusees:
+  `token:`, `secret:`, `password:`, `api_key:`, `api-key:`, `x-api-key:`,
+  `authorization:`, `cookie:` et `set-cookie:`;
+- `www.` est refuse meme au milieu d'une phrase;
+- les chemins prives/absolus evidents sont refuses meme au milieu d'une phrase,
+  notamment `/Users/...`, `/home/...`, `/root/...`, `/opt/...`, `/var/...`,
+  `/etc/...`, `/tmp/...`, `~/...` et chemins Windows absolus;
 - le refus expose seulement `status=refused`,
   `reason_code=continuity_capsule_unsafe_content`, compteurs et flags raw a
   false;

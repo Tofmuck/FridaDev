@@ -35,7 +35,16 @@ CONTENT_KIND = "continuity_capsule"
 _MAX_NONEMPTY_LINES = 8
 _LONG_BASE64_RE = re.compile(r"^[A-Za-z0-9+/]{96,}={0,2}$")
 _WINDOWS_ABSOLUTE_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
-_PRIVATE_PATH_RE = re.compile(r"(^|\s)(/(?:home|root|opt|var|etc|srv|tmp|mnt)/|~[\\/]|\\\\)")
+_WINDOWS_ABSOLUTE_PATH_ANYWHERE_RE = re.compile(r"(^|\s)[A-Za-z]:[\\/]")
+_PRIVATE_PATH_RE = re.compile(
+    r"(^|\s)(/(?:users|home|root|opt|var|etc|srv|tmp|mnt)/|~[\\/]|\\\\)",
+    re.IGNORECASE,
+)
+_CREDENTIAL_SEPARATOR_RE = re.compile(
+    r"\b(?:token|secret|password|api[_-]?key|x-api-key|authorization|cookie|set-cookie)\s*[:=]",
+    re.IGNORECASE,
+)
+_WWW_RE = re.compile(r"\bwww\.", re.IGNORECASE)
 _UNSAFE_MARKERS = (
     "://",
     "authorization",
@@ -101,6 +110,10 @@ def _unsafe_content_reason(value: str) -> str:
         return ""
     if lower.startswith(("http:", "https:", "www.", "data:")):
         return "unsafe_marker"
+    if _WWW_RE.search(stripped):
+        return "unsafe_marker"
+    if _CREDENTIAL_SEPARATOR_RE.search(stripped):
+        return "unsafe_marker"
     if any(marker in lower for marker in _UNSAFE_MARKERS):
         return "unsafe_marker"
     if "</" in lower or "xml:" in lower:
@@ -114,6 +127,8 @@ def _unsafe_content_reason(value: str) -> str:
     if _LONG_BASE64_RE.fullmatch(compact):
         return "encoded_payload"
     if _PRIVATE_PATH_RE.search(stripped):
+        return "private_path"
+    if _WINDOWS_ABSOLUTE_PATH_ANYWHERE_RE.search(stripped):
         return "private_path"
     for line in nonempty_lines or [stripped]:
         line_text = line.strip()

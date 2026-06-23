@@ -923,7 +923,7 @@ class MainPayloadManifestTests(unittest.TestCase):
         self.assertNotIn("sha256", encoded.lower())
 
     def test_unsafe_continuity_capsule_is_refused_content_free(self) -> None:
-        capsule_text = "Bearer ARTIFICIAL_RUNTIME_CAPSULE_TOKEN"
+        capsule_text = "presence sobre voir www.example.invalid si besoin"
         result = continuity_capsule.resolve_continuity_capsule(
             enabled=True,
             content=capsule_text,
@@ -942,7 +942,7 @@ class MainPayloadManifestTests(unittest.TestCase):
         self.assertEqual(manifest["lane_statuses"]["continuity_capsule"]["status"], "refused")
         self.assertFalse(any("continuity_capsule" in message["logical_roles"] for message in manifest["messages"]))
         self.assertNotIn(capsule_text, encoded)
-        self.assertNotIn("Bearer", encoded)
+        self.assertNotIn("example.invalid", encoded)
 
     def test_final_lock_keeps_continuity_capsule_out_of_prompt(self) -> None:
         capsule_text = "ARTIFICIAL_RUNTIME_CAPSULE_LOCK_SENTINEL"
