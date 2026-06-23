@@ -1,9 +1,11 @@
 # FridaDev - Roadmap finale produit Frida 1.0
 
 Statut: TODO actif
-Date: 2026-06-10
+Date d'ouverture: 2026-06-10
+Dernier recalage docs: 2026-06-23
 Cible de cloture: 2026-07-02
-Branche de travail courante: `FridaV1-Nextcloud-Folders`
+Branche de cloture courante: voir la TODO finale active et l'etat Git courant;
+la strategie `main` reste a decider dans le Lot 4 de cloture finale.
 
 ## Intention
 

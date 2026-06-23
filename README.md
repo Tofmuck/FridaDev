@@ -1,7 +1,7 @@
 # Frida
 
-Current repository state as of Friday, May 29, 2026.
-Etat courant du depot au vendredi 29 mai 2026.
+Current repository state as of Tuesday, June 23, 2026.
+Etat courant du depot au mardi 23 juin 2026.
 
 ## English
 
@@ -11,6 +11,7 @@ Primary current-state references:
 
 - Documentation hub: `app/docs/README.md`
 - Frida 1.0 final product roadmap: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Frida V1 final closure TODO: `app/docs/todo-todo/product/frida-v1-final-audit-todo.md` for the active final audit driver, P2/P3 register, remaining lots, branch/main gate, Capsule proof gate, and Mail scope decision.
 - Frida V1 Continuity Payload delivery archive: `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md` for the closed product workstream, Lot Z proof, `main_payload_manifest_v1`, and the bounded runtime Continuity Capsule.
 - Frida V1 Continuity Payload contract: `app/docs/states/specs/frida-v1-continuity-payload-contract.md` for `main_payload_manifest_v1`, the Continuity Capsule, content-free observability, writer-side guardrails, and post-V1 limits.
 - Frida V1 Nextcloud folders contract: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md` for `workspace_folders` as the Frida V1 folder product model, logical `/Frida/<folder>` mapping, standard `Documents` / `Notes` / `Exports` / `Images` artifact routing, Sauron/Celebrimbor boundary, no direct Nextcloud DB access, and content-free observability. Delivery TODO archived at `app/docs/todo-done/product/frida-v1-nextcloud-folders-todo.md`.
@@ -120,6 +121,7 @@ Frontend rehydration and operator observability
 
 - Docs hub: `app/docs/README.md`
 - Frida 1.0 final product roadmap: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Frida V1 final closure TODO: `app/docs/todo-todo/product/frida-v1-final-audit-todo.md`
 - Frida V1 Continuity Payload delivery archive: `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md`
 - Frida V1 Continuity Payload contract: `app/docs/states/specs/frida-v1-continuity-payload-contract.md`
 - Frida V1 Nextcloud folders contract: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`
@@ -228,6 +230,7 @@ References principales pour l'etat courant:
 
 - Hub documentaire: `app/docs/README.md`
 - Roadmap finale produit Frida 1.0: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- TODO finale de cloture Frida V1: `app/docs/todo-todo/product/frida-v1-final-audit-todo.md` pour le pilote actif d'audit final, le registre P2/P3, les lots restants, le gate branche/main, la preuve Capsule et la decision Mail.
 - Archive de livraison Continuity Payload Frida V1: `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md` pour le chantier cloture en Lot Z, les preuves, `main_payload_manifest_v1` et la Continuity Capsule runtime bornee.
 - Contrat Continuity Payload Frida V1: `app/docs/states/specs/frida-v1-continuity-payload-contract.md` pour `main_payload_manifest_v1`, la Continuity Capsule, l'observabilite content-free, la garde writer-side et les limites post-V1.
 - Contrat Frida V1 Nextcloud folders: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md` pour `workspace_folders` comme modele produit des dossiers Frida V1, mapping logique `/Frida/<dossier>`, routage d'artefacts standard `Documents` / `Notes` / `Exports` / `Images`, frontiere Sauron/Celebrimbor, pas de DB directe Nextcloud et observabilite content-free. TODO de livraison archivee: `app/docs/todo-done/product/frida-v1-nextcloud-folders-todo.md`.
@@ -337,6 +340,7 @@ Rehydratation frontend et observabilite operateur
 
 - Hub docs: `app/docs/README.md`
 - Roadmap finale produit Frida 1.0: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- TODO finale de cloture Frida V1: `app/docs/todo-todo/product/frida-v1-final-audit-todo.md`
 - Archive de livraison Continuity Payload Frida V1: `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md`
 - Contrat Continuity Payload Frida V1: `app/docs/states/specs/frida-v1-continuity-payload-contract.md`
 - Contrat Frida V1 Nextcloud folders: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`

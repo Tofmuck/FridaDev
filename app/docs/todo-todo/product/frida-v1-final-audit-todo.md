@@ -52,7 +52,6 @@ par lui-meme.
 
 ### Bloquants avant cloture propre
 
-- Alignement docs/source-of-truth restant pour pointeurs actifs/archives.
 - Matrice finale de cloture et decision branche/main.
 - Micro-preuve ou report explicite de la Continuity Capsule.
 - Decision Mail: audit/spec-only borne ou report post-V1.
@@ -135,7 +134,7 @@ par lui-meme.
 
 ### P2-DOCS-SOURCE-OF-TRUTH-01
 
-- Statut initial: open.
+- Statut initial: accepted; clos par Lots 2A, 2B, 2C et 2D le 2026-06-23.
 - Severite: P2.
 - Fichiers suspects: README, `app/docs/README.md`, roadmap finale, specs V1,
   TODO actives et archives citees par les deux audits.
@@ -231,18 +230,19 @@ par lui-meme.
 
 ### P3-ROADMAP-BRANCH-STALE-01
 
-- Statut initial: open, confirme par audits.
+- Statut initial: accepted; clos par Lot 2D le 2026-06-23.
 - Severite: P3.
 - Fichiers suspects: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`.
 - Lot cible: Lot 2D.
-- Critere de cloture: la branche historique affichee est corrigee ou remplacee
+- Critere de cloture: la branche historique affichee a ete remplacee
   par une formulation non volatile.
-- Preuve minimale: grep `Branche de travail courante`.
+- Preuve minimale: grep `Branche de cloture courante` et absence de l'ancienne
+  branche Nextcloud/Folders dans les surfaces actives.
 - Hors-scope: decision merge/main.
 
 ### P3-README-DATE-STALE-01
 
-- Statut initial: open, confirme par audits.
+- Statut initial: accepted; clos par Lot 2D le 2026-06-23.
 - Severite: P3.
 - Fichiers suspects: `README.md`.
 - Lot cible: Lot 2D.
@@ -250,6 +250,19 @@ par lui-meme.
   documentees jusqu'au 2026-06-23.
 - Preuve minimale: grep date README, diff docs-only.
 - Hors-scope: reecrire toute la presentation runtime.
+
+### P3-FINAL-AUDIT-POINTERS-01
+
+- Statut initial: accepted; clos par Lot 2D le 2026-06-23.
+- Severite: P3.
+- Fichiers suspects: `README.md`, `app/docs/README.md`, `AGENTS.md`.
+- Lot cible: Lot 2D.
+- Critere de cloture: les surfaces actives utiles pointent vers
+  `app/docs/todo-todo/product/frida-v1-final-audit-todo.md` comme pilote actif
+  de cloture finale, sans doublonner l'historique.
+- Preuve minimale: grep `frida-v1-final-audit-todo.md` dans README, hub docs,
+  roadmap et AGENTS.
+- Hors-scope: transformer les index en journal de bord ou clore la matrice.
 
 ### P3-ARCHIVE-CHECKBOXES-01
 
@@ -555,10 +568,25 @@ Artefact JSONL: non.
 
 Type: docs-only.
 
-- [ ] Corriger ou neutraliser la branche historique dans la roadmap finale.
-- [ ] Corriger la date stale README si elle reste contradictoire.
-- [ ] Ajouter le pointeur vers cette TODO finale si un index actif en manque.
-- [ ] Nettoyer uniquement les references stale qui troublent la cloture finale.
+- [x] Corriger ou neutraliser la branche historique dans la roadmap finale.
+- [x] Corriger la date stale README si elle reste contradictoire.
+- [x] Ajouter le pointeur vers cette TODO finale si un index actif en manque.
+- [x] Nettoyer uniquement les references stale qui troublent la cloture finale.
+
+Resultat Lot 2D:
+
+- La roadmap finale ne porte plus la branche historique Nextcloud/Folders; elle
+  renvoie a la TODO finale active et a l'etat Git courant, sans trancher le gate
+  `main`.
+- Le README racine annonce maintenant l'etat courant au 2026-06-23; les dates
+  historiques legitimes restent intactes.
+- `README.md`, `app/docs/README.md` et `AGENTS.md` pointent vers
+  `app/docs/todo-todo/product/frida-v1-final-audit-todo.md` comme pilote actif
+  de cloture finale.
+- `P2-BRANCH-INTEGRATION-01` reste ouvert pour le Lot 4; aucun merge, changement
+  de branche ou push vers `main` n'a ete effectue.
+- Aucun runtime, DB, reset, provider, Docker ou artefact historique n'a ete
+  modifie.
 
 Commandes/preuves minimales:
 
