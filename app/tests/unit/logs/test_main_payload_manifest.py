@@ -909,12 +909,40 @@ class MainPayloadManifestTests(unittest.TestCase):
         self.assertEqual(manifest["lane_statuses"]["continuity_capsule"]["status"], "ok")
         self.assertEqual(manifest["lane_statuses"]["continuity_capsule"]["injected_count"], 1)
         self.assertEqual(len(capsule_messages), 1)
+        self.assertEqual(capsule_messages[0]["provider_role"], "system")
+        self.assertEqual(capsule_messages[0]["logical_roles"], ["continuity_capsule"])
         self.assertEqual(capsule_messages[0]["origin"], "core.continuity_capsule")
         self.assertEqual(capsule_messages[0]["origin_stage"], "late_continuity_capsule")
         self.assertEqual(capsule_messages[0]["content_kind"], "continuity_capsule")
+        self.assertNotIn("identity_stable", capsule_messages[0]["logical_roles"])
+        self.assertNotIn("identity_mutable", capsule_messages[0]["logical_roles"])
+        self.assertNotIn("memory", capsule_messages[0]["logical_roles"])
+        self.assertNotIn("summary", capsule_messages[0]["logical_roles"])
         self.assertFalse(manifest["raw_flags"]["raw_capsule_content_included"])
         self.assertNotIn(capsule_text, encoded)
         self.assertNotIn("sha256", encoded.lower())
+
+    def test_unsafe_continuity_capsule_is_refused_content_free(self) -> None:
+        capsule_text = "Bearer ARTIFICIAL_RUNTIME_CAPSULE_TOKEN"
+        result = continuity_capsule.resolve_continuity_capsule(
+            enabled=True,
+            content=capsule_text,
+            version="continuity_capsule_v1",
+            max_chars=120,
+        )
+        manifest = _build_manifest(continuity_capsule_result=result)
+        projected, _redaction = admin_log_projection.project_payload(manifest)
+        decision = observability_payload_guard.guard_payload(manifest)
+        encoded = _encoded({"manifest": manifest, "projected": projected, "guarded": decision.payload})
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(manifest["continuity_capsule"]["status"], "refused")
+        self.assertEqual(manifest["continuity_capsule"]["reason_code"], "continuity_capsule_unsafe_content")
+        self.assertEqual(manifest["continuity_capsule"]["injected_count"], 0)
+        self.assertEqual(manifest["lane_statuses"]["continuity_capsule"]["status"], "refused")
+        self.assertFalse(any("continuity_capsule" in message["logical_roles"] for message in manifest["messages"]))
+        self.assertNotIn(capsule_text, encoded)
+        self.assertNotIn("Bearer", encoded)
 
     def test_final_lock_keeps_continuity_capsule_out_of_prompt(self) -> None:
         capsule_text = "ARTIFICIAL_RUNTIME_CAPSULE_LOCK_SENTINEL"

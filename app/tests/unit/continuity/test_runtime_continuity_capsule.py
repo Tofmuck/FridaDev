@@ -64,7 +64,46 @@ class RuntimeContinuityCapsuleTests(unittest.TestCase):
         self.assertEqual(prompt_messages[0]["role"], "system")
         self.assertIn(capsule_text, str(prompt_messages[0]["content"]))
         self.assertIn("non souveraine", str(prompt_messages[0]["content"]))
+        self.assertIn("Priorite: le tour courant", str(prompt_messages[0]["content"]))
         self.assertNotIn(capsule_text, _encoded(result.as_content_free_dict()))
+
+    def test_unsafe_capsule_text_is_refused_before_prompt_injection(self) -> None:
+        samples = [
+            "https://example.invalid/private",
+            "Bearer ARTIFICIAL_TOKEN",
+            "Authorization: Bearer ARTIFICIAL_TOKEN",
+            "Cookie: session=ARTIFICIAL",
+            "Set-Cookie: session=ARTIFICIAL",
+            "token=ARTIFICIAL",
+            "api_key=ARTIFICIAL",
+            "password=ARTIFICIAL",
+            "secret=ARTIFICIAL",
+            "data:image/png;base64,AAAA",
+            "A" * 100,
+            "<?xml version='1.0'?><x/>",
+            "webdav collection",
+            "/home/example/private-file",
+            "-----BEGIN PRIVATE KEY-----",
+        ]
+
+        for sample in samples:
+            with self.subTest(sample=sample[:24]):
+                result = continuity_capsule.resolve_continuity_capsule(
+                    enabled=True,
+                    content=sample,
+                    max_chars=300,
+                )
+                prompt_messages: list[dict[str, object]] = []
+
+                injected = continuity_capsule.inject_continuity_capsule(prompt_messages, result)
+
+                self.assertFalse(injected)
+                self.assertEqual(prompt_messages, [])
+                self.assertEqual(result.status, "refused")
+                self.assertEqual(result.reason_code, "continuity_capsule_unsafe_content")
+                self.assertEqual(result.injected_count, 0)
+                encoded = _encoded(result.as_content_free_dict())
+                self.assertNotIn(sample, encoded)
 
     def test_missing_too_large_and_final_lock_do_not_inject(self) -> None:
         missing = continuity_capsule.resolve_continuity_capsule(enabled=True, content="")

@@ -431,6 +431,10 @@ Regle runtime:
   stage `late_continuity_capsule`;
 - texte absent: `not_configured`, aucune injection;
 - texte trop long: `refused`, aucune troncation silencieuse;
+- texte contenant URL, credentials/token-like, data URL/base64 evident,
+  XML/DAV/WebDAV/CALDAV, chemin absolu/prive ou bloc de cle privee:
+  `refused`, `reason_code=continuity_capsule_unsafe_content`, aucune
+  injection provider;
 - final response lock Agenda/Biblio: `not_selected` avec
   `reason_code=continuity_capsule_final_lock_bypass`, aucune injection et
   `main_model_called=false` coherent.
@@ -459,6 +463,25 @@ Preuves principales:
   wiring `chat_service` avec capsule activee sans fuite dans states/events.
 
 Finding clos par ce lot: `P1-CONT-01`.
+
+Correctif Lot 7.1:
+
+- [x] Refuser avant provider les textes de capsule contenant des marqueurs
+  dangereux evidents: URL, `Bearer`/`Authorization`/cookie, `token=`/
+  `api_key=`/`password=`/`secret=`, data URL/base64, XML/DAV/WebDAV/CALDAV,
+  chemin absolu/prive ou bloc de cle privee.
+- [x] Exposer seulement un statut content-free
+  `reason_code=continuity_capsule_unsafe_content`, sans texte refuse dans
+  manifeste, projection, garde writer-side ou tests.
+- [x] Clarifier la non-souverainete du role provider `system`: le role est
+  conserve car il suit le modele courant des lanes de contexte, mais la
+  non-souverainete reste une contrainte produit portee par le texte de priorite,
+  le defaut disabled, le bypass sous final lock, la taille bornee, l'absence
+  d'ecriture identity/memory/summary, la projection content-free et les tests de
+  rollback.
+- [x] Figer par tests que la capsule reste
+  `logical_roles=["continuity_capsule"]` et ne devient jamais
+  `identity_stable`, `identity_mutable`, `memory` ou `summary`.
 
 ### Lot Z - Cloture
 

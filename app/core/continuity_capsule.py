@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import os
+import re
 from typing import Any
 
 
@@ -24,11 +25,38 @@ REASON_DISABLED = "continuity_capsule_disabled"
 REASON_MISSING = "continuity_capsule_missing"
 REASON_TOO_LARGE = "continuity_capsule_too_large"
 REASON_FINAL_LOCK_BYPASS = "continuity_capsule_final_lock_bypass"
+REASON_UNSAFE_CONTENT = "continuity_capsule_unsafe_content"
 
 LOGICAL_ROLE = "continuity_capsule"
 ORIGIN = "core.continuity_capsule"
 ORIGIN_STAGE = "late_continuity_capsule"
 CONTENT_KIND = "continuity_capsule"
+
+_MAX_NONEMPTY_LINES = 8
+_LONG_BASE64_RE = re.compile(r"^[A-Za-z0-9+/]{96,}={0,2}$")
+_WINDOWS_ABSOLUTE_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
+_PRIVATE_PATH_RE = re.compile(r"(^|\s)(/(?:home|root|opt|var|etc|srv|tmp|mnt)/|~[\\/]|\\\\)")
+_UNSAFE_MARKERS = (
+    "://",
+    "authorization",
+    "bearer",
+    "cookie",
+    "set-cookie",
+    "token=",
+    "api_key=",
+    "api-key=",
+    "x-api-key",
+    "password=",
+    "secret=",
+    "base64,",
+    "<?xml",
+    "dav:",
+    "caldav",
+    "webdav",
+    "begin private key",
+    "begin openssh private key",
+    "begin rsa private key",
+)
 
 
 def _text(value: Any) -> str:
@@ -63,6 +91,42 @@ def _safe_version(value: Any) -> str:
     if len(version) > 80 or not all(char in allowed for char in version):
         return DEFAULT_VERSION
     return version
+
+
+def _unsafe_content_reason(value: str) -> str:
+    text = str(value or "")
+    stripped = text.strip()
+    lower = stripped.lower()
+    if not stripped:
+        return ""
+    if lower.startswith(("http:", "https:", "www.", "data:")):
+        return "unsafe_marker"
+    if any(marker in lower for marker in _UNSAFE_MARKERS):
+        return "unsafe_marker"
+    if "</" in lower or "xml:" in lower:
+        return "unsafe_marker"
+    if "\x00" in text or "\r" in text:
+        return "structured_payload"
+    nonempty_lines = [line for line in text.splitlines() if line.strip()]
+    if len(nonempty_lines) > _MAX_NONEMPTY_LINES:
+        return "structured_payload"
+    compact = "".join(line.strip() for line in nonempty_lines)
+    if _LONG_BASE64_RE.fullmatch(compact):
+        return "encoded_payload"
+    if _PRIVATE_PATH_RE.search(stripped):
+        return "private_path"
+    for line in nonempty_lines or [stripped]:
+        line_text = line.strip()
+        if (
+            line_text.startswith(("/", "~", "\\\\"))
+            or _WINDOWS_ABSOLUTE_PATH_RE.match(line_text)
+        ):
+            return "private_path"
+    return ""
+
+
+def is_unsafe_capsule_content(value: str) -> bool:
+    return bool(_unsafe_content_reason(value))
 
 
 @dataclass(frozen=True, repr=False)
@@ -162,6 +226,16 @@ def resolve_continuity_capsule(
             enabled=True,
             status=STATUS_NOT_SELECTED,
             reason_code=REASON_FINAL_LOCK_BYPASS,
+            version=resolved_version,
+            present=True,
+            content_chars=content_chars,
+            max_chars=resolved_max_chars,
+        )
+    if _unsafe_content_reason(resolved_content):
+        return ContinuityCapsuleResult(
+            enabled=True,
+            status=STATUS_REFUSED,
+            reason_code=REASON_UNSAFE_CONTENT,
             version=resolved_version,
             present=True,
             content_chars=content_chars,

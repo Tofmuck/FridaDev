@@ -20,7 +20,10 @@ Lot 6 ajoute des fixtures qualitatives artificielles, content-free et sans
 provider live, pour prouver ce qu'une future capsule devra preserver avant tout
 runtime. Lot 7 livre une Continuity Capsule runtime bornee, desactivee par
 defaut/configurable sans DB, injectee seulement quand le modele principal est
-appele, et observee content-free par `main_payload_manifest_v1`.
+appele, et observee content-free par `main_payload_manifest_v1`. Lot 7.1 durcit
+l'entree de capsule contre les marqueurs de contenu unsafe et clarifie que la
+non-souverainete du message `system` est une contrainte produit explicite, pas
+une garantie mecanique du provider.
 
 Ce contrat definit deux objets cibles:
 
@@ -723,8 +726,36 @@ Les statuts runtime attendus sont:
   aucune injection;
 - `refused` / `continuity_capsule_too_large`: texte trop long, aucune
   troncation silencieuse;
+- `refused` / `continuity_capsule_unsafe_content`: texte contenant un marqueur
+  unsafe evident, aucune injection provider;
 - `not_selected` / `continuity_capsule_final_lock_bypass`: final lock
   Agenda/Biblio, modele principal bypass, aucune injection.
+
+Validation safety Lot 7.1:
+
+- le texte de capsule est refuse avant injection s'il contient URL ou `://`,
+  `Bearer`, `Authorization`, `Cookie`, `Set-Cookie`, `token=`, `api_key=`,
+  `password=`, `secret=`, data URL/base64 evident, XML/DAV/CALDAV/WebDAV,
+  chemin absolu/prive evident ou bloc de cle privee;
+- le refus expose seulement `status=refused`,
+  `reason_code=continuity_capsule_unsafe_content`, compteurs et flags raw a
+  false;
+- le texte refuse ne doit jamais apparaitre dans manifest, projection admin,
+  garde writer-side, logs, tests ou artefacts;
+- aucun hash stable court n'est calcule sur la capsule.
+
+Provider role et non-souverainete:
+
+- Lot 7.1 conserve `provider_role=system` parce que ce flux utilise deja des
+  messages systeme pour plusieurs lanes de contexte tardives;
+- la non-souverainete n'est donc pas presentee comme une garantie mecanique du
+  provider, mais comme une contrainte produit: capsule desactivee par defaut,
+  texte court, clause interne de priorite, bypass sous final lock, aucune
+  ecriture identity/memory/summary, projection content-free, rollback simple et
+  tests dedies;
+- le manifeste doit classer ce message avec
+  `logical_roles=["continuity_capsule"]` seulement, jamais avec
+  `identity_stable`, `identity_mutable`, `memory` ou `summary`.
 
 ## Ordre obligatoire des lots
 
@@ -901,6 +932,8 @@ Gardes Lot 7 actives:
 - capsule desactivee par defaut;
 - activation par config/env sans DB, migration, purge ou backfill;
 - refus propre si texte absent ou trop long;
+- refus propre si le texte contient URL, credentials/token-like, data
+  URL/base64, XML/DAV/CALDAV/WebDAV, chemin prive/absolu ou bloc de cle privee;
 - aucune injection sous final response lock;
 - aucune ecriture identity mutable ou memory;
 - aucune projection du contenu de capsule dans manifest, admin logs ou tests;
