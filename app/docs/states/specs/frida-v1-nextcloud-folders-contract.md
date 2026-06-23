@@ -6,6 +6,11 @@ Classement: `app/docs/states/specs/`
 TODO archivee: `app/docs/todo-done/product/frida-v1-nextcloud-folders-todo.md`
 Audit source: `app/docs/states/audits/frida-v1-nextcloud-folders-lot0-audit-2026-06-16.md`
 Contrat existant relu: `app/docs/states/specs/workspace-folders-contract.md`
+Contrats dedies clotures:
+`app/docs/states/specs/frida-v1-documents-ingestion-contract.md`,
+`app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`,
+`app/docs/states/specs/frida-v1-exports-contract.md`,
+`app/docs/states/specs/frida-v1-generated-images-contract.md`
 
 ## 1. Perimetre
 
@@ -68,10 +73,10 @@ Le backup applicatif des liaisons avant ecriture est
 
 Depuis le Lot 10A du 2026-06-17, la politique fichiers par dossier est
 documentee sans runtime fichier Nextcloud: inventaire applicatif read-only
-content-free, fichiers existants conserves sans migration automatique, futurs
-fichiers a ranger plus tard dans le dossier Nextcloud du dossier Frida, et
-separation explicite entre fichiers workspace, documents actifs, notes, exports
-et images. L'audit source est
+content-free, fichiers existants conserves sans migration automatique, fichiers
+de dossier alors non livres a ranger plus tard dans le dossier Nextcloud du
+dossier Frida, et separation explicite entre fichiers workspace, documents
+actifs, notes, exports et images. L'audit source est
 `app/docs/states/audits/frida-v1-nextcloud-folders-lot10-files-policy-2026-06-17.md`.
 
 Depuis le Lot 11 du 2026-06-17, les sous-dossiers standards par dossier Frida
@@ -89,12 +94,12 @@ Une ressource WebDAV non-collection est un conflit/incompatibilite
 content-free, sans XML brut, URL DAV, chemin technique ni payload Nextcloud
 expose.
 
-Depuis le Lot 12 du 2026-06-17, le routage cible des artefacts futurs est
+Depuis le Lot 12 du 2026-06-17, le routage cible des artefacts de dossier est
 norme sans runtime supplementaire: documents sources et fichiers persistants
 dans `Documents`, notes Markdown dans `Notes`, exports Markdown/TXT/DOCX/PDF
-dans `Exports`, images generees dans `Images`. Ce lot ne migre aucun fichier
-existant, ne cree aucune note, ne produit aucun export, ne genere ni ne stocke
-aucune image, et ne contacte pas Nextcloud.
+dans `Exports`, images generees dans `Images`. Ce lot ne migrait aucun fichier
+existant, ne creait aucune note, ne produisait aucun export, ne generait ni ne
+stockait aucune image, et ne contactait pas Nextcloud.
 
 Depuis le Lot Z du 2026-06-17, le socle dossiers Frida V1 / Nextcloud est
 valide empiriquement par le runtime reel: creation applicative Nextcloud-first,
@@ -102,8 +107,10 @@ renommage applicatif Nextcloud-first, suppression produit en tombstone local
 sans suppression recursive Nextcloud, reconciliation des dossiers existants,
 sous-dossiers standards et observabilite content-free. L'artefact source est
 `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lotz-live-closure-20260617T104258Z.jsonl`.
-Cette validation ne livre toujours pas les runtimes Documents, Notes, Exports,
-Images ou mail.
+Cette validation ne livrait pas, a la date du Lot Z Folders, les runtimes
+Documents, Notes, Exports, Images ou mail. Depuis, Documents, Notes, Exports et
+Images sont clotures par leurs contrats dedies cites en en-tete; mail reste un
+chantier separe.
 
 Recalage produit post Lot 6:
 
@@ -112,8 +119,9 @@ Recalage produit post Lot 6:
   cree pas reellement le sous-dossier Nextcloud `/Frida/<nom_sanitise>`;
 - la V1 doit relier les dossiers UI Frida aux dossiers Nextcloud reels;
 - les dossiers existants doivent etre reconcilies dans un lot separe;
-- les fichiers, documents, notes, exports et images devront etre compatibles
-  avec ce modele, mais restent des lots dedies.
+- les fichiers, documents, notes, exports et images doivent rester compatibles
+  avec ce modele; Documents, Notes, Exports et Images sont maintenant portes par
+  des contrats dedies clotures.
 
 Il fixe le contrat produit minimal du socle Frida 1.0:
 
@@ -121,8 +129,20 @@ Il fixe le contrat produit minimal du socle Frida 1.0:
 un dossier frontend Frida = un sous-dossier Nextcloud sous la racine logique Frida
 ```
 
-Les lots documents, notes Markdown, exports, images generees, mail, Agenda et
-Biblio restent separes.
+Le socle Folders reste source-of-truth pour `workspace_folders`, le mapping
+logique `/Frida/<dossier>`, les sous-dossiers standards et les gardes
+Nextcloud-first. Les runtimes Documents, Notes Markdown, Exports et Images
+generees sont sources-of-truth dans leurs contrats dedies clotures. Mail,
+Agenda et Biblio restent separes.
+
+Clarification Lot 2A du 2026-06-23:
+
+- les formulations historiques du type "futur", "a livrer" ou "reste a livrer"
+  dans les sections de lots Folders decrivent l'etat du socle au 2026-06-17;
+- elles ne rouvrent pas Documents, Notes, Exports ou Images pour la cloture
+  Frida V1;
+- le statut courant de ces quatre chantiers est donne par les contrats dedies
+  cites en en-tete et par leurs TODO archivees.
 
 ## 2. Decision modele
 
@@ -278,8 +298,8 @@ Modele d'etat runtime cible Lot 7:
   - renommage: autorise seulement comme operation de reconciliation ou tant que
     le runtime permanent n'est pas actif;
   - suppression: tombstone local autorise, sans suppression Nextcloud;
-  - documents/notes/exports futurs: non autorises comme cible Nextcloud tant que
-    l'etat n'est pas `linked`.
+  - artefacts Documents/Notes/Exports/Images: non autorises comme cible
+    Nextcloud tant que l'etat n'est pas `linked`.
 - `sync_pending`:
   - signification: operation Nextcloud en cours ou reservee, resultat non
     confirme;
@@ -287,7 +307,7 @@ Modele d'etat runtime cible Lot 7:
   - UI: `Synchronisation en cours`;
   - renommage: bloque ou desactive jusqu'a resolution;
   - suppression: a refuser ou differer sauf rollback explicite;
-  - documents/notes/exports futurs: non autorises.
+  - artefacts Documents/Notes/Exports/Images: non autorises.
 - `linked`:
   - signification: dossier local et sous-dossier Nextcloud cible associes;
   - apparition: creation runtime reussie, renommage reussi ou reconciliation
@@ -295,7 +315,8 @@ Modele d'etat runtime cible Lot 7:
   - UI: statut discret `Synchronise` ou pas de badge si l'etat normal suffit;
   - renommage: autorise via renommage Nextcloud d'abord, puis local;
   - suppression: tombstone local autorise, dossier Nextcloud reel conserve;
-  - documents/notes/exports futurs: autorises sous reserve des lots dedies.
+  - artefacts Documents/Notes/Exports/Images: autorises sous reserve des
+    contrats dedies.
 - `sync_error`:
   - signification: derniere operation Nextcloud echouee avec erreur redacted;
   - apparition: echec transport, droits, cible absente ou conflit live;
@@ -303,7 +324,7 @@ Modele d'etat runtime cible Lot 7:
   - renommage: bloque sauf action de reparation/retry explicite;
   - suppression: tombstone local possible si cela ne masque pas une operation
     live partielle;
-  - documents/notes/exports futurs: non autorises tant que l'erreur n'est pas
+  - artefacts Documents/Notes/Exports/Images: non autorises tant que l'erreur n'est pas
     resolue.
 - `conflict`:
   - signification: conflit local, conflit Nextcloud, collision apres
@@ -312,14 +333,14 @@ Modele d'etat runtime cible Lot 7:
   - UI: `Conflit`, avec invitation a choisir un autre nom ou arbitrer;
   - renommage: autorise vers un nom non conflictuel;
   - suppression: tombstone local possible sans suppression Nextcloud;
-  - documents/notes/exports futurs: non autorises.
+  - artefacts Documents/Notes/Exports/Images: non autorises.
 - `deleted`:
   - signification: dossier local tombstone ou retire de l'UI active;
   - apparition: suppression UI Frida;
   - UI: masque par defaut;
   - renommage: interdit;
   - suppression: aucune suppression Nextcloud automatique;
-  - documents/notes/exports futurs: interdits.
+  - artefacts Documents/Notes/Exports/Images: interdits.
 
 Champs techniques candidats pour le runtime permanent:
 
@@ -1012,8 +1033,8 @@ Etat depuis Lot 9:
 - les cibles Nextcloud manquantes ont ete creees par `MKCOL` borne, sans
   listing de contenu utilisateur;
 - aucun fichier/document workspace n'a ete lu, deplace, supprime ou migre;
-- Lot 10A a ensuite defini la politique des fichiers existants et futurs par
-  dossier sans migration ni transport fichier Nextcloud.
+- Lot 10A a ensuite defini la politique des fichiers existants et des fichiers
+  rattaches a un dossier sans migration ni transport fichier Nextcloud.
 
 Etat depuis Lot 10A:
 
@@ -1021,13 +1042,13 @@ Etat depuis Lot 10A:
   10 fichiers workspace actifs rattaches a un dossier;
 - fichiers existants: pas de migration automatique, pas de copie silencieuse,
   pas de suppression source silencieuse;
-- futurs fichiers rattaches a un dossier Frida: cible produit = dossier
+- nouveaux fichiers rattaches a un dossier Frida: cible produit = dossier
   Nextcloud du dossier Frida, mais transport fichier et migration restent des
   lots runtime separes;
 - documents actifs, notes Markdown, exports et images restent des surfaces
   distinctes et ne sont pas livrees par le Lot 10A;
-- Lot 11 a ensuite defini les sous-dossiers standards avant de livrer
-  Notes/Exports/Images.
+- Lot 11 a ensuite defini les sous-dossiers standards avant les contrats dedies
+  Documents/Notes/Exports/Images.
 
 Etat depuis Lot 11:
 
@@ -1041,14 +1062,14 @@ Etat depuis Lot 11:
   `conflict` ou `sync_error` content-free, sans overwrite;
 - preuve live: 2 dossiers `linked` inspectes et 8 sous-dossiers crees, sans
   listing de contenu ni action fichier;
-- Lot 12 reste necessaire pour brancher Notes/Exports/Images runtime sur ces
-  sous-dossiers.
+- Lot 12 a ensuite confirme le routage des artefacts de dossier vers ces
+  sous-dossiers, sans livrer les runtimes dedies.
 
 Etat depuis Lot 12:
 
 - routage documentaire cible confirme:
   `Documents`, `Notes`, `Exports`, `Images`;
-- les futurs lots Documents / Notes / Exports / Images doivent travailler
+- les contrats dedies Documents / Notes / Exports / Images travaillent
   seulement sur des dossiers Frida `linked`;
 - un dossier non `linked`, en `sync_pending`, `sync_error`, `conflict` ou
   `deleted` bloque toute ecriture Nextcloud d'artefact;
@@ -1057,7 +1078,7 @@ Etat depuis Lot 12:
   de fichiers, contenus, prompts bruts, chemins DAV, XML brut, `storage_key` et
   secrets restent interdits.
 
-## 14. Lots restants avant cloture V1 reelle
+## 14. Lots du socle Folders avant cloture V1 reelle
 
 Lot 8A - Persistance locale de l'etat Nextcloud:
 
@@ -1093,15 +1114,15 @@ Lot 9 - Reconciliation des dossiers existants:
 - artefact:
   `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot9-reconcile-20260617T074733Z.jsonl`.
 
-Lot 10 - Politique fichiers existants et futurs par dossier:
+Lot 10 - Politique fichiers existants et fichiers rattaches par dossier:
 
 - livre Lot 10A: audit read-only content-free des fichiers rattaches aux
   dossiers Frida;
 - livre Lot 10A: les fichiers existants restent dans `workspace_files` et leur
-  stockage applicatif courant jusqu'a un futur lot de migration/copie dedie;
+  stockage applicatif courant jusqu'a un lot de copie/rangement dedie;
 - livre Lot 10A: aucune migration automatique, copie silencieuse, lecture de
   contenu, deplacement ou suppression source;
-- livre Lot 10A: les futurs fichiers associes a un dossier Frida devront etre
+- livre Lot 10A: les nouveaux fichiers associes a un dossier Frida devront etre
   ranges dans le dossier Nextcloud correspondant, mais le transport fichier
   Nextcloud reste hors de ce lot;
 - livre Lot 10A: documents actifs, uploads/fichiers workspace, notes, exports et
@@ -1174,7 +1195,7 @@ Les fichiers workspace deja rattaches a un dossier Frida restent dans
 `workspace_files` et dans le stockage applicatif courant. Le Lot 10A interdit de
 les migrer automatiquement vers Nextcloud.
 
-Un futur lot de migration/copie devra:
+Un lot de migration/copie, seulement si decide explicitement, devra:
 
 - travailler dossier par dossier, uniquement si le dossier Frida est `linked`;
 - produire une preuve content-free avant et apres;
@@ -1184,30 +1205,35 @@ Un futur lot de migration/copie devra:
 - ne supprimer la source qu'apres decision explicite si une suppression devient
   necessaire.
 
-### 15.2 Futurs fichiers rattaches a un dossier
+### 15.2 Nouveaux fichiers rattaches a un dossier
 
-La cible produit des futurs fichiers associes a un dossier Frida est le dossier
-Nextcloud reel du dossier Frida. Le comportement runtime fichier reste a livrer:
-pas de `PUT`, `GET`, `MOVE`, `DELETE` ou listing fichier Nextcloud dans Lot 10A.
+La cible produit des nouveaux fichiers associes a un dossier Frida est le
+dossier Nextcloud reel du dossier Frida. Le comportement runtime fichier n'etait
+pas livre par Lot 10A: pas de `PUT`, `GET`, `MOVE`, `DELETE` ou listing fichier
+Nextcloud dans ce lot.
 
-Tant que ce runtime n'est pas livre, les routes fichiers existantes restent le
-comportement applicatif courant et ne constituent pas une preuve que les fichiers
-sont ranges dans Nextcloud.
+Les capacites Documents, Notes, Exports et Images ont ensuite ete livrees par
+leurs contrats dedies lorsqu'elles rangent un artefact sous un sous-dossier
+standard. La copie/rangement des fichiers workspace existants reste separee et
+ne peut pas etre deduite du seul socle Folders.
 
-### 15.3 Documents actifs, notes, exports et images
+### 15.3 Documents, notes, exports et images
 
 - Les documents actifs de conversation restent scopes par conversation et ne
   deviennent pas automatiquement des fichiers de dossier Frida.
-- Les fichiers workspace persistants sont la surface qui devra etre alignee plus
-  tard avec le dossier Nextcloud du dossier Frida.
-- Les notes Markdown restent un futur lot dedie.
-- Les exports restent un futur lot runtime dedie, avec cible deja confirmee
-  depuis Lot 12: `/Frida/<dossier>/Exports`.
-- Les images generees restent un futur lot dedie.
+- Les fichiers workspace persistants sont traites par le contrat Documents V1
+  quand ils deviennent documents persistants de dossier.
+- Les notes Markdown sont portees par
+  `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`.
+- Les exports sont portes par
+  `app/docs/states/specs/frida-v1-exports-contract.md`, avec cible
+  `/Frida/<dossier>/Exports`.
+- Les images generees sont portees par
+  `app/docs/states/specs/frida-v1-generated-images-contract.md`.
 
 ### 15.4 Observabilite et preuves
 
-Les futurs lots fichiers doivent rester content-free:
+Les lots de fichiers ou artefacts rattaches doivent rester content-free:
 
 - aucun contenu fichier;
 - aucun nom de fichier sensible dans les preuves si une reference hashée suffit;
@@ -1281,8 +1307,8 @@ Dette structurelle post-correctif Lot 11:
 
 ## 17. Routage des artefacts depuis Lot 12
 
-Lot 12 prepare les futurs lots Documents / Notes / Exports / Images. Il ne
-livre aucun runtime fichier, aucune migration et aucun acces Nextcloud live.
+Lot 12 a prepare les contrats dedies Documents / Notes / Exports / Images. Il
+ne livrait aucun runtime fichier, aucune migration et aucun acces Nextcloud live.
 
 Mapping produit normatif:
 
@@ -1307,7 +1333,8 @@ Prerequis d'ecriture:
 Fichiers existants:
 
 - aucune migration automatique n'est autorisee par Lot 12;
-- un futur lot de migration/copie devra travailler dossier par dossier,
+- un lot de migration/copie, seulement si decide explicitement, devra travailler
+  dossier par dossier,
   produire une preuve content-free, conserver la source tant que rollback et
   verification ne sont pas actees, et ne jamais supprimer silencieusement;
 - les fichiers workspace existants restent sous le contrat courant tant qu'un
@@ -1326,14 +1353,17 @@ Contraintes content-free communes:
 
 Frontieres par chantier:
 
-- Documents: depot et futurs fichiers persistants dans `Documents`, avec OCR
-  PDF image a cadrer dans le lot Documents; migration existante separee;
-- Notes: creation, complement, recherche et liste Markdown dans `Notes`;
-  politique de nommage et collisions a cadrer dans le lot Notes;
-- Exports: Markdown, TXT, DOCX et PDF dans `Exports`, avec versioning/collisions
-  a cadrer dans le lot Exports;
-- Images: stockage futur des images generees dans `Images`, audit du stockage
-  actuel a faire dans le lot Images, sans prompt brut en observabilite.
+- Documents: depot, lecture/preparation, fallback visuel et fichiers
+  persistants sous `Documents` sont portes par
+  `app/docs/states/specs/frida-v1-documents-ingestion-contract.md`;
+- Notes: creation, liste, lookup, append et lecture Markdown sous `Notes` sont
+  portes par
+  `app/docs/states/specs/frida-v1-folder-markdown-notes-contract.md`;
+- Exports: Markdown, TXT, DOCX et PDF sous `Exports` sont portes par
+  `app/docs/states/specs/frida-v1-exports-contract.md`;
+- Images: stockage, liste, lookup, open/download/delete et UI dossier des images
+  generees sous `Images` sont portes par
+  `app/docs/states/specs/frida-v1-generated-images-contract.md`.
 
 Dette architecture:
 

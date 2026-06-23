@@ -148,15 +148,15 @@ par lui-meme.
 
 ### P2-NEXTCLOUD-SPEC-STALE-01
 
-- Statut initial: open.
+- Statut initial: accepted; clos par Lot 2A le 2026-06-23.
 - Severite: P2.
 - Fichiers suspects: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md`.
 - Lot cible: Lot 2A.
-- Critere de cloture: les passages qui disent Documents/Notes/Exports/Images
-  futurs sont requalifies comme historiques ou alignes sur les specs dediees
+- Critere de cloture: les passages qui disaient Documents/Notes/Exports/Images
+  futurs ont ete requalifies comme historiques ou alignes sur les specs dediees
   cloturees.
 - Preuve minimale: grep `Documents|Notes|Exports|Images|futur|a livrer`, diff
-  docs-only, verification des liens vers specs dediees.
+  docs-only, verification des liens vers specs dediees dans la spec Folders.
 - Hors-scope: modifier le contrat runtime de ces chantiers dedies.
 
 ### P2-AGENDA-DORMANT-STATUS-01
@@ -463,10 +463,21 @@ Artefact JSONL: non par defaut.
 
 Type: docs-only sauf decouverte contraire.
 
-- [ ] Requalifier les formulations stale sur Documents/Notes/Exports/Images.
-- [ ] Distinguer socle folders historique des lots dedies clos.
-- [ ] Pointer vers les specs dediees cloturees.
-- [ ] Ne pas modifier les preuves historiques.
+- [x] Requalifier les formulations stale sur Documents/Notes/Exports/Images.
+- [x] Distinguer socle folders historique des lots dedies clos.
+- [x] Pointer vers les specs dediees cloturees.
+- [x] Ne pas modifier les preuves historiques.
+
+Resultat Lot 2A:
+
+- `frida-v1-nextcloud-folders-contract.md` reste source-of-truth du socle
+  `workspace_folders`, du mapping `/Frida/<dossier>` et des sous-dossiers
+  standards.
+- Documents, Notes, Exports et Images sont renvoyes vers leurs contrats dedies
+  clotures.
+- Les formulations "futur" restantes dans la spec Folders sont historiques,
+  generiques ou post-V1 bornees; elles ne rouvrent pas ces chantiers V1.
+- Aucune archive historique, preuve JSONL ou surface runtime n'a ete modifiee.
 
 Commandes/preuves minimales:
 
