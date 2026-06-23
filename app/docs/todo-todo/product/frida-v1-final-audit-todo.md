@@ -123,9 +123,14 @@ par lui-meme.
 - Critere de cloture: les routes admin `/api/admin/logs` et
   `/api/admin/logs/chat` optent pour `fail_closed=True`; une panne de lecture
   devient `ok=false`, HTTP 500 et reason code content-free au lieu d'un succes
-  vide.
-- Preuve minimale: tests fake de panne lecture legacy/chat, test bas niveau
-  `read_chat_log_events(fail_closed=True)`, absence de cause brute exposee.
+  vide. Correctif Lot 1B.1: les read-models derives `turns` et `metrics`
+  optent aussi pour un fail-closed reel cote helper quand la route admin le
+  demande.
+- Preuve minimale: tests fake de panne lecture legacy/chat, tests bas niveau
+  `read_chat_log_events(fail_closed=True)`,
+  `read_chat_turn_pipeline(fail_closed=True)` et
+  `read_full_turn_metrics_snapshot(fail_closed=True)`, preuve route avec
+  `conn_factory` cassee, absence de cause brute exposee.
 - Hors-scope: exposer traceback, chemin, contenu ou exception brute.
 
 ### P2-DOCS-SOURCE-OF-TRUTH-01
@@ -433,6 +438,13 @@ Resultat Lot 1B:
 - `log_store.read_chat_log_events(..., fail_closed=True)` remonte
   `RuntimeError('chat_log_events_read_failed')` apres log technique `err_class`
   content-free.
+- Correctif Lot 1B.1: `log_store.read_chat_turn_pipeline(...,
+  fail_closed=True)` et `log_store.read_full_turn_metrics_snapshot(...,
+  fail_closed=True)` remontent respectivement
+  `RuntimeError('chat_log_turns_read_failed')` et
+  `RuntimeError('chat_log_metrics_read_failed')`; sans `fail_closed=True`, le
+  mode degrade historique `source.read_error=true` reste explicite pour les
+  callers non-admin.
 - Les routes admin logs de lecture principale, metadata, turns, metrics, delete
   scope et export Markdown traduisent les erreurs runtime en HTTP 500
   `ok=false` avec reason code stable, sans traceback ni message d'exception

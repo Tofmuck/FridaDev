@@ -629,6 +629,7 @@ def read_chat_turn_pipeline(
     offset: int = 0,
     ts_from: str | None = None,
     ts_to: str | None = None,
+    fail_closed: bool = False,
     conn_factory: Callable[[], Any] = _conn,
     logger_instance: Any = logger,
 ) -> dict[str, Any]:
@@ -708,6 +709,8 @@ def read_chat_turn_pipeline(
             'chat_turn_pipeline_read_failed reason=chat_turn_pipeline_read_exception err_class=%s',
             exc.__class__.__name__,
         )
+        if fail_closed:
+            raise RuntimeError('chat_log_turns_read_failed') from exc
         return {
             'kind': 'chat_turn_pipeline_read_model',
             'schema_version': '1',
@@ -741,6 +744,7 @@ def read_chat_turn_pipeline(
             turn_id=group['turn_id'],
             ts_from=ts_from_s,
             ts_to=ts_to_s,
+            fail_closed=fail_closed,
             conn_factory=conn_factory,
             logger_instance=logger_instance,
         )
@@ -790,6 +794,7 @@ def read_full_turn_metrics_snapshot(
     ts_from: str | None = None,
     ts_to: str | None = None,
     event_limit: int = 2000,
+    fail_closed: bool = False,
     conn_factory: Callable[[], Any] = _conn,
     logger_instance: Any = logger,
 ) -> dict[str, Any]:
@@ -847,6 +852,8 @@ def read_full_turn_metrics_snapshot(
             'full_turn_metrics_snapshot_read_failed reason=full_turn_metrics_snapshot_read_exception err_class=%s',
             exc.__class__.__name__,
         )
+        if fail_closed:
+            raise RuntimeError('chat_log_metrics_read_failed') from exc
         snapshot = build_full_turn_metrics_snapshot(
             [],
             llm_call_provider_metrics=build_llm_call_provider_metrics([]),

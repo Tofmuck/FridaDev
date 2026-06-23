@@ -391,6 +391,37 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
                 self.assertEqual(data['reason_code'], reason_code)
                 self.assertNotIn('RAW AUXILIARY LOG READ SENTINEL', encoded)
 
+    def test_admin_chat_log_turns_and_metrics_fail_closed_on_real_read_error(self) -> None:
+        original_conn = self.server.log_store._conn
+
+        class Boom:
+            def __enter__(self) -> 'Boom':
+                raise RuntimeError('RAW ROUTE DB BOOM SENTINEL')
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+        def bad_conn() -> Boom:
+            return Boom()
+
+        self.server.log_store._conn = bad_conn
+        try:
+            cases = (
+                ('/api/admin/logs/chat/turns', 'chat_log_turns_read_failed'),
+                ('/api/admin/logs/chat/metrics', 'chat_log_metrics_read_failed'),
+            )
+            for route, reason_code in cases:
+                with self.subTest(route=route):
+                    response = self.client.get(route)
+                    self.assertEqual(response.status_code, 500)
+                    data = response.get_json()
+                    encoded = json.dumps(data, ensure_ascii=False, sort_keys=True)
+                    self.assertFalse(data['ok'])
+                    self.assertEqual(data['reason_code'], reason_code)
+                    self.assertNotIn('RAW ROUTE DB BOOM SENTINEL', encoded)
+        finally:
+            self.server.log_store._conn = original_conn
+
     def test_admin_chat_logs_metadata_route_returns_selector_payload(self) -> None:
         observed = {'kwargs': None}
         original_read_metadata = self.server.log_store.read_chat_log_metadata
@@ -519,6 +550,8 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.assertIsNone(observed['kwargs']['turn_id'])
         self.assertEqual(observed['kwargs']['ts_from'], '2026-05-14T00:00:00Z')
         self.assertEqual(observed['kwargs']['ts_to'], '2026-05-15T00:00:00Z')
+        self.assertTrue(observed['kwargs']['fail_closed'])
+        self.assertIs(observed['kwargs']['conn_factory'], self.server.log_store._conn)
 
     def test_admin_chat_log_turns_route_rejects_invalid_pagination(self) -> None:
         response = self.client.get('/api/admin/logs/chat/turns?limit=bad&offset=0')
@@ -570,6 +603,8 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.assertEqual(observed['kwargs']['ts_from'], '2026-05-14T00:00:00Z')
         self.assertEqual(observed['kwargs']['ts_to'], '2026-05-15T00:00:00Z')
         self.assertEqual(observed['kwargs']['event_limit'], 50)
+        self.assertTrue(observed['kwargs']['fail_closed'])
+        self.assertIs(observed['kwargs']['conn_factory'], self.server.log_store._conn)
 
     def test_admin_biblio_observability_route_is_content_free_and_read_only(self) -> None:
         original_base_url = getattr(self.server.config, 'BIBLIO_CATALOGUE_BASE_URL', None)

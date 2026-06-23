@@ -1087,6 +1087,8 @@ def api_admin_chat_log_turns():
             turn_id=request.args.get('turn_id'),
             ts_from=request.args.get('ts_from'),
             ts_to=request.args.get('ts_to'),
+            fail_closed=True,
+            conn_factory=log_store._conn,
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
@@ -1120,6 +1122,8 @@ def api_admin_chat_logs_metrics():
             ts_from=request.args.get('ts_from'),
             ts_to=request.args.get('ts_to'),
             event_limit=event_limit,
+            fail_closed=True,
+            conn_factory=log_store._conn,
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400

@@ -569,6 +569,14 @@ Decision livree Lot 5A:
   - `observability.log_store.read_chat_log_events(..., fail_closed=True)`
     remonte `RuntimeError('chat_log_events_read_failed')` sur panne de lecture
     apres log technique `err_class` content-free;
+  - correctif Lot 1B.1: `observability.log_store.read_chat_turn_pipeline(...,
+    fail_closed=True)` et
+    `observability.log_store.read_full_turn_metrics_snapshot(...,
+    fail_closed=True)` remontent respectivement
+    `RuntimeError('chat_log_turns_read_failed')` et
+    `RuntimeError('chat_log_metrics_read_failed')`; sans `fail_closed=True`, le
+    mode degrade historique `source.read_error=true` reste explicite pour les
+    callers non-admin;
   - les routes admin logs de lecture principale, metadata, turns, metrics,
     delete scope et export Markdown traduisent les erreurs runtime en HTTP 500
     `ok=false` avec reason code stable, sans `str(exc)`, traceback, chemin,

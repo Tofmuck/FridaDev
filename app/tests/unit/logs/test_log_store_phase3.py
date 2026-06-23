@@ -635,6 +635,35 @@ class LogStorePhase3Tests(unittest.TestCase):
             ('2026-05-14T00:00:00Z', '2026-05-15T00:00:00Z', 2),
         )
 
+    def test_read_full_turn_metrics_snapshot_read_failure_can_fail_closed(self) -> None:
+        class Boom:
+            def __enter__(self) -> 'Boom':
+                raise RuntimeError('RAW DB METRICS SENTINEL')
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+        def bad_conn() -> Boom:
+            return Boom()
+
+        degraded = log_store.read_full_turn_metrics_snapshot(
+            conn_factory=bad_conn,
+            logger_instance=_NoopLogger(),
+        )
+        self.assertEqual(degraded['kind'], 'full_turn_metrics_snapshot')
+        self.assertTrue(degraded['source']['read_error'])
+        self.assertFalse(degraded['source']['events_truncated'])
+
+        with self.assertRaises(RuntimeError) as raised:
+            log_store.read_full_turn_metrics_snapshot(
+                fail_closed=True,
+                conn_factory=bad_conn,
+                logger_instance=_NoopLogger(),
+            )
+
+        self.assertEqual(str(raised.exception), 'chat_log_metrics_read_failed')
+        self.assertNotIn('RAW DB METRICS SENTINEL', str(raised.exception))
+
     def test_read_chat_turn_pipeline_groups_turns_and_projects_compact_rows(self) -> None:
         observed: dict[str, Any] = {'queries': [], 'event_reads': []}
 
@@ -718,6 +747,7 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertEqual(observed['event_reads'][0]['turn_id'], 'turn-1')
         self.assertEqual(observed['event_reads'][0]['ts_from'], '2026-05-14T00:00:00Z')
         self.assertEqual(observed['event_reads'][0]['ts_to'], '2026-05-15T00:00:00Z')
+        self.assertFalse(observed['event_reads'][0]['fail_closed'])
 
         joined_queries = '\n'.join(str(query) for query, _params in observed['queries'])
         self.assertIn('GROUP BY conversation_id, turn_id', joined_queries)
@@ -731,6 +761,35 @@ class LogStorePhase3Tests(unittest.TestCase):
             observed['queries'][1][1],
             ('conv-pipeline', '2026-05-14T00:00:00Z', '2026-05-15T00:00:00Z', 1, 0),
         )
+
+    def test_read_chat_turn_pipeline_read_failure_can_fail_closed(self) -> None:
+        class Boom:
+            def __enter__(self) -> 'Boom':
+                raise RuntimeError('RAW DB TURN PIPELINE SENTINEL')
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+        def bad_conn() -> Boom:
+            return Boom()
+
+        degraded = log_store.read_chat_turn_pipeline(
+            conn_factory=bad_conn,
+            logger_instance=_NoopLogger(),
+        )
+        self.assertEqual(degraded['kind'], 'chat_turn_pipeline_read_model')
+        self.assertTrue(degraded['source']['read_error'])
+        self.assertFalse(degraded['redaction']['raw_event_payloads_included'])
+
+        with self.assertRaises(RuntimeError) as raised:
+            log_store.read_chat_turn_pipeline(
+                fail_closed=True,
+                conn_factory=bad_conn,
+                logger_instance=_NoopLogger(),
+            )
+
+        self.assertEqual(str(raised.exception), 'chat_log_turns_read_failed')
+        self.assertNotIn('RAW DB TURN PIPELINE SENTINEL', str(raised.exception))
 
     def test_build_turn_observability_checklist_complete_turn_without_web(self) -> None:
         checklist = log_store.build_turn_observability_checklist(
