@@ -22,6 +22,7 @@ RAW_FLAGS = {
     "raw_message_included": False,
     "raw_content_included": False,
     "raw_lane_content_included": False,
+    "raw_capsule_content_included": False,
     "raw_provider_payload_included": False,
     "raw_secret_included": False,
 }

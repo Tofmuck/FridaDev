@@ -551,6 +551,36 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertIn("manifest_unexpected_key", decision.payload["issue_classes"])
         self.assertNotIn(sentinel, encoded)
 
+    def test_manifest_rejects_raw_continuity_capsule_content(self) -> None:
+        sentinel = "raw continuity capsule sentinel should not pass"
+        manifest = {
+            "schema_version": "main_payload_manifest_v1",
+            "scope": "main_chat",
+            "continuity_capsule": {
+                "present": True,
+                "enabled": True,
+                "version": "continuity_capsule_v1",
+                "status": "ok",
+                "reason_code": "continuity_capsule_ready",
+                "content_chars": len(sentinel),
+                "max_chars": 900,
+                "injected_count": 1,
+                "content": sentinel,
+                "raw_capsule_content_included": False,
+                "raw_content_included": False,
+                "raw_prompt_included": False,
+                "fingerprint_included": False,
+            },
+            "raw_flags": _raw_flags(),
+        }
+
+        decision = observability_payload_guard.guard_payload(manifest)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("manifest_unexpected_key", decision.payload["issue_classes"])
+        self.assertNotIn(sentinel, encoded)
+
 
 if __name__ == "__main__":
     unittest.main()

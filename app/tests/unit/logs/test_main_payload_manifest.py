@@ -22,10 +22,12 @@ if str(APP_DIR) not in sys.path:
 from core import chat_llm_flow
 from core import active_document_prompt_lane
 from core import adobe_docs_prompt_lane
+from core import continuity_capsule
 from core import workspace_folder_notes_prompt_lane
 from biblio import chat_runtime as biblio_chat_runtime
 from observability import admin_log_projection
 from observability import main_payload_manifest
+from observability import observability_payload_guard
 
 
 def _encoded(value: object) -> str:
@@ -859,6 +861,89 @@ class MainPayloadManifestTests(unittest.TestCase):
         self.assertNotIn("hash_12", encoded)
         self.assertNotIn(naive_hash_12, encoded)
         self.assertNotIn(sensitive_text, encoded)
+
+    def test_continuity_capsule_injection_is_structured_and_content_free(self) -> None:
+        capsule_text = "ARTIFICIAL_RUNTIME_CAPSULE_SENTINEL"
+        result = continuity_capsule.resolve_continuity_capsule(
+            enabled=True,
+            content=capsule_text,
+            version="continuity_capsule_v1",
+            max_chars=120,
+        )
+        prompt_messages = [
+            {"role": "system", "content": "system"},
+            {"role": "user", "content": "current question"},
+        ]
+        before = main_payload_manifest.capture_message_refs(prompt_messages)
+        self.assertTrue(continuity_capsule.inject_continuity_capsule(prompt_messages, result))
+        message_sources = main_payload_manifest.message_sources_for_new_messages(
+            prompt_messages,
+            before,
+            logical_roles=(continuity_capsule.LOGICAL_ROLE,),
+            origin=continuity_capsule.ORIGIN,
+            origin_stage=continuity_capsule.ORIGIN_STAGE,
+            content_kind=continuity_capsule.CONTENT_KIND,
+        )
+
+        manifest = _build_manifest(
+            prompt_messages=prompt_messages,
+            message_sources=message_sources,
+            continuity_capsule_result=result,
+        )
+        projected, _redaction = admin_log_projection.project_payload(manifest)
+        decision = observability_payload_guard.guard_payload(manifest)
+        encoded = _encoded({"manifest": manifest, "projected": projected, "guarded": decision.payload})
+        capsule_messages = [
+            message for message in manifest["messages"] if "continuity_capsule" in message["logical_roles"]
+        ]
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(manifest["continuity_capsule"]["status"], "ok")
+        self.assertTrue(manifest["continuity_capsule"]["enabled"])
+        self.assertTrue(manifest["continuity_capsule"]["present"])
+        self.assertEqual(manifest["continuity_capsule"]["version"], "continuity_capsule_v1")
+        self.assertEqual(manifest["continuity_capsule"]["content_chars"], len(capsule_text))
+        self.assertEqual(manifest["continuity_capsule"]["injected_count"], 1)
+        self.assertFalse(manifest["continuity_capsule"]["raw_capsule_content_included"])
+        self.assertFalse(manifest["continuity_capsule"]["fingerprint_included"])
+        self.assertEqual(manifest["lane_statuses"]["continuity_capsule"]["status"], "ok")
+        self.assertEqual(manifest["lane_statuses"]["continuity_capsule"]["injected_count"], 1)
+        self.assertEqual(len(capsule_messages), 1)
+        self.assertEqual(capsule_messages[0]["origin"], "core.continuity_capsule")
+        self.assertEqual(capsule_messages[0]["origin_stage"], "late_continuity_capsule")
+        self.assertEqual(capsule_messages[0]["content_kind"], "continuity_capsule")
+        self.assertFalse(manifest["raw_flags"]["raw_capsule_content_included"])
+        self.assertNotIn(capsule_text, encoded)
+        self.assertNotIn("sha256", encoded.lower())
+
+    def test_final_lock_keeps_continuity_capsule_out_of_prompt(self) -> None:
+        capsule_text = "ARTIFICIAL_RUNTIME_CAPSULE_LOCK_SENTINEL"
+        result = continuity_capsule.resolve_continuity_capsule(
+            enabled=True,
+            content=capsule_text,
+            final_response_lock_present=True,
+        )
+        raw_final = "SENSITIVE_FINAL_LOCK_WITH_CAPSULE"
+        override = chat_llm_flow.AssistantResponseOverride(
+            content=raw_final,
+            source="agenda_final_response_lock",
+            reason_code="agenda_final_response_authorized",
+            observability={"content_present": True, "content_chars": len(raw_final)},
+        )
+        manifest = _build_manifest(
+            assistant_response_override=override,
+            continuity_capsule_result=result,
+        )
+
+        self.assertFalse(manifest["main_model_called"])
+        self.assertEqual(manifest["continuity_capsule"]["status"], "not_selected")
+        self.assertEqual(manifest["continuity_capsule"]["reason_code"], "continuity_capsule_final_lock_bypass")
+        self.assertEqual(manifest["continuity_capsule"]["injected_count"], 0)
+        self.assertEqual(manifest["lane_statuses"]["continuity_capsule"]["injected_count"], 0)
+        self.assertFalse(any("continuity_capsule" in message["logical_roles"] for message in manifest["messages"]))
+        encoded = _encoded(manifest)
+        self.assertNotIn(capsule_text, encoded)
+        self.assertNotIn(raw_final, encoded)
 
     def test_admin_projection_preserves_manifest_shape_content_free(self) -> None:
         raw_prompt = "SENSITIVE_PROMPT_MARKER_F"

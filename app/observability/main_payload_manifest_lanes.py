@@ -355,6 +355,31 @@ def _presence_lane(*, present: bool, origin: str, reason_absent: str, content_ch
     )
 
 
+def _continuity_capsule_lane(result: Any) -> dict[str, Any]:
+    builder = getattr(result, "as_content_free_dict", None)
+    payload = builder() if callable(builder) else {}
+    status = safe_status(payload.get("status"), fallback=STATUS_DISABLED)
+    injected_count = safe_int(payload.get("injected_count"))
+    present = bool(payload.get("present"))
+    return base_lane(
+        status=status,
+        reason_code=safe_str(payload.get("reason_code")) or "continuity_capsule_disabled",
+        selected=bool(injected_count),
+        enabled=bool(payload.get("enabled")),
+        input_count=1 if present else 0,
+        injected_count=injected_count,
+        excluded_count=0 if injected_count else (1 if present and status in {"not_selected", "refused"} else 0),
+        content_chars=safe_int(payload.get("content_chars")),
+        origin="core.continuity_capsule",
+        budget={"max_chars": safe_int(payload.get("max_chars"))},
+        extra={
+            "version": safe_str(payload.get("version")) or "continuity_capsule_v1",
+            "raw_capsule_content_included": False,
+            "fingerprint_included": False,
+        },
+    )
+
+
 def build_lane_statuses(
     *,
     summary_payload: Mapping[str, Any] | None,
@@ -371,6 +396,7 @@ def build_lane_statuses(
     hermeneutic_judgment_block: str | None,
     assistant_output_policy: Any,
     assistant_response_override: Any,
+    continuity_capsule_result: Any = None,
 ) -> dict[str, Any]:
     identity_stable, identity_mutable = _identity_lanes(identity_payload)
     return {
@@ -400,6 +426,7 @@ def build_lane_statuses(
         "biblio_lane": _biblio_lane(biblio_result, assistant_response_override),
         "agenda_lane": _agenda_lane(agenda_result, assistant_response_override),
         "adobe_lane": _adobe_lane(adobe_lane, adobe_context),
+        "continuity_capsule": _continuity_capsule_lane(continuity_capsule_result),
         "export_lane": base_lane(
             status=STATUS_NOT_APPLICABLE,
             reason_code="exports_are_reuse_sources_not_prompt_lane_v1",

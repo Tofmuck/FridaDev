@@ -18,7 +18,7 @@ _QUALIFIED_RAW_FLAGS = set(
     raw_event_payloads_included raw_lane_content_included raw_log_included raw_message_included
     raw_passage_included raw_policy_text_included raw_prompt_included
     raw_provider_payload_included raw_query_included raw_catalogue_payload_included
-    raw_locator_included raw_secret_included raw_webdav_payload_included
+    raw_locator_included raw_secret_included raw_webdav_payload_included raw_capsule_content_included
     """.split()
 )
 
@@ -27,6 +27,7 @@ _MANIFEST_RAW_FLAGS = {
     "raw_message_included",
     "raw_content_included",
     "raw_lane_content_included",
+    "raw_capsule_content_included",
     "raw_provider_payload_included",
     "raw_secret_included",
 }
@@ -43,7 +44,7 @@ _MANIFEST_TOP_LEVEL_KEYS = set(
     """
     assistant_output_policy budgets conversation_id_present conversation_state final_response_lock hash_policy
     lane_conflicts lane_statuses main_model_called messages provider raw_flags runtime_settings schema_version scope
-    status_schema_version turn_id_present windows
+    status_schema_version turn_id_present windows continuity_capsule
     """.split()
 )
 _MANIFEST_MESSAGE_KEYS = set(
@@ -59,7 +60,7 @@ _MANIFEST_LANE_STATUS_KEYS = set(
     excluded_count exclusion_reason_codes final_response_lock_present injected_count input_count
     invalid_requested_count media_kind_counts mode model_called origin over_limit_count passage_count
     priority_policy query_kind raw_lane_content_included reason_code reason_codes selected source_count status
-    final_response_lock_selected final_response_lock_suppressed
+    final_response_lock_selected final_response_lock_suppressed version raw_capsule_content_included fingerprint_included
     """.split()
 )
 _RUNTIME_SETTINGS_KEYS = {"max_tokens", "model", "provider_family", "stream_requested", "temperature_present", "top_p_present"}
@@ -103,6 +104,20 @@ _CONVERSATION_STATE_KEYS = {
     "workspace_folder_present",
 }
 _HASH_POLICY_KEYS = {"fingerprints_included", "policy", "short_stable_text_hashes_included", "stable_text_hashes_included"}
+_CONTINUITY_CAPSULE_KEYS = {
+    "content_chars",
+    "enabled",
+    "fingerprint_included",
+    "injected_count",
+    "max_chars",
+    "present",
+    "raw_capsule_content_included",
+    "raw_content_included",
+    "raw_prompt_included",
+    "reason_code",
+    "status",
+    "version",
+}
 _BUDGETS_KEYS = {"prompt"}
 _PROMPT_BUDGET_KEYS = {
     "content_chars_total",
@@ -210,6 +225,7 @@ _MANIFEST_CONTEXT_KEYS = {
     "lane_conflicts": _LANE_CONFLICT_KEYS,
     "conversation_state": _CONVERSATION_STATE_KEYS,
     "hash_policy": _HASH_POLICY_KEYS,
+    "continuity_capsule": _CONTINUITY_CAPSULE_KEYS,
     "budgets": _BUDGETS_KEYS,
     "budget_prompt": _PROMPT_BUDGET_KEYS,
     "windows": _WINDOWS_KEYS,
@@ -220,7 +236,7 @@ _MANIFEST_SAFE_TEXT_KEYS = set(
     exclusion_reason_code injection_source mode model origin origin_stage policy priority_policy
     provider provider_family provider_role query_kind reason_code retrieval_reason_code retrieval_status
     schema_version scope selected_source soft_limit_policy soft_limit_reason_code soft_limit_stage source staging_scope suppressed_source
-    status status_schema_version voice_continuity_reason_code voice_continuity_status
+    status status_schema_version voice_continuity_reason_code voice_continuity_status version
     """.split()
 )
 _MANIFEST_TEXT_LIST_KEYS = {
@@ -606,6 +622,7 @@ def _is_manifest_bool_key(key: str) -> bool:
         "final_response_lock_present",
         "final_response_lock_selected",
         "final_response_lock_suppressed",
+        "fingerprint_included",
         "fingerprints_included",
         "has_in_progress_turn",
         "implicit_injection_detected",
@@ -618,6 +635,7 @@ def _is_manifest_bool_key(key: str) -> bool:
         "present",
         "primary_payload_present",
         "raw_content_included",
+        "raw_capsule_content_included",
         "raw_lane_content_included",
         "raw_policy_text_included",
         "selected",
@@ -663,6 +681,7 @@ def _manifest_child_context(context: str, key: str) -> str:
         "assistant_output_policy",
         "budgets",
         "conversation_state",
+        "continuity_capsule",
         "final_response_lock",
         "hash_policy",
         "lane_conflicts",

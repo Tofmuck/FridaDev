@@ -18,6 +18,7 @@ from core import chat_memory_flow
 from core import chat_prompt_context
 from core import chat_session_flow
 from core import chat_turn_runtime_inputs
+from core import continuity_capsule
 from core import conversations_prompt_window
 from core import stimmung_agent
 from core.hermeneutic_node.runtime import node_state as runtime_node_state
@@ -1164,6 +1165,22 @@ def chat_response(
     if adobe_request.active:
         _emit_adobe_prompt_lane_observability(adobe_lane)
     assistant_response_override = agenda_final_response_override or biblio_final_response_override
+    continuity_capsule_result = continuity_capsule.resolve_continuity_capsule(
+        config_module=config_module,
+        final_response_lock_present=assistant_response_override is not None,
+    )
+    continuity_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
+    continuity_capsule.inject_continuity_capsule(prompt_messages, continuity_capsule_result)
+    payload_message_sources.update(
+        main_payload_manifest.message_sources_for_new_messages(
+            prompt_messages,
+            continuity_before_refs,
+            logical_roles=(continuity_capsule.LOGICAL_ROLE,),
+            origin=continuity_capsule.ORIGIN,
+            origin_stage=continuity_capsule.ORIGIN_STAGE,
+            content_kind=continuity_capsule.CONTENT_KIND,
+        )
+    )
     payload_manifest = main_payload_manifest.build_main_payload_manifest(
         conversation=conversation,
         prompt_messages=prompt_messages,
@@ -1198,6 +1215,7 @@ def chat_response(
         message_sources=payload_message_sources,
         count_tokens_func=_prompt_token_counter(token_utils_module),
         prompt_soft_token_limit=getattr(config_module, 'MAX_TOKENS', None),
+        continuity_capsule_result=continuity_capsule_result,
     )
     main_payload_manifest.emit_main_payload_manifest(
         payload_manifest,

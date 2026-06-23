@@ -7,6 +7,7 @@ from observability.main_payload_manifest_common import (
     RAW_FLAGS,
     SCHEMA_VERSION,
     SCOPE,
+    STATUS_DISABLED,
     STATUS_FAILED,
     STATUS_NOT_SELECTED,
     STATUS_OK,
@@ -109,7 +110,15 @@ def _lock_family(source: str) -> str:
 
 
 def _message_lane_block_count(messages_manifest: Sequence[Mapping[str, Any]]) -> int:
-    lane_roles = {"web_lane", "note_lane", "document_lane", "biblio_lane", "agenda_lane", "adobe_lane"}
+    lane_roles = {
+        "web_lane",
+        "note_lane",
+        "document_lane",
+        "biblio_lane",
+        "agenda_lane",
+        "adobe_lane",
+        "continuity_capsule",
+    }
     count = 0
     for message in messages_manifest:
         roles = message.get("logical_roles")
@@ -123,7 +132,7 @@ def _message_lane_status_mismatch_count(
     messages_manifest: Sequence[Mapping[str, Any]],
     lane_statuses: Mapping[str, Any],
 ) -> int:
-    prompt_lane_roles = {"web_lane", "note_lane", "document_lane", "biblio_lane", "adobe_lane"}
+    prompt_lane_roles = {"web_lane", "note_lane", "document_lane", "biblio_lane", "adobe_lane", "continuity_capsule"}
     mismatches = 0
     for message in messages_manifest:
         roles = message.get("logical_roles")
@@ -147,6 +156,7 @@ def _selected_lane_count(lane_statuses: Mapping[str, Any]) -> int:
         "biblio_lane",
         "agenda_lane",
         "adobe_lane",
+        "continuity_capsule",
         "export_lane",
         "image_lane",
     )
@@ -231,6 +241,48 @@ def _hash_policy_payload() -> dict[str, Any]:
     }
 
 
+def _continuity_capsule_payload(result: Any) -> dict[str, Any]:
+    builder = getattr(result, "as_content_free_dict", None)
+    if callable(builder):
+        try:
+            payload = builder()
+        except Exception:
+            payload = {}
+    else:
+        payload = {}
+    if not isinstance(payload, Mapping):
+        payload = {}
+    if not payload:
+        payload = {
+            "present": False,
+            "enabled": False,
+            "version": "continuity_capsule_v1",
+            "status": STATUS_DISABLED,
+            "reason_code": "continuity_capsule_disabled",
+            "content_chars": 0,
+            "max_chars": 0,
+            "injected_count": 0,
+            "raw_content_included": False,
+            "raw_prompt_included": False,
+            "raw_capsule_content_included": False,
+            "fingerprint_included": False,
+        }
+    return {
+        "present": bool(payload.get("present")),
+        "enabled": bool(payload.get("enabled")),
+        "version": safe_str(payload.get("version")) or "continuity_capsule_v1",
+        "status": safe_str(payload.get("status")) or STATUS_DISABLED,
+        "reason_code": safe_str(payload.get("reason_code")) or "continuity_capsule_disabled",
+        "content_chars": safe_int(payload.get("content_chars")),
+        "max_chars": safe_int(payload.get("max_chars")),
+        "injected_count": safe_int(payload.get("injected_count")),
+        "raw_content_included": False,
+        "raw_prompt_included": False,
+        "raw_capsule_content_included": False,
+        "fingerprint_included": False,
+    }
+
+
 def _conversation_state(conversation: Mapping[str, Any] | None, turn_id: str | None) -> dict[str, Any]:
     payload = mapping(conversation)
     messages = payload.get("messages")
@@ -294,6 +346,7 @@ def build_main_payload_manifest(
     message_sources: Mapping[Any, Any] | None = None,
     count_tokens_func: Callable[[list[dict[str, Any]], str], int] | None = None,
     prompt_soft_token_limit: int | None = None,
+    continuity_capsule_result: Any = None,
 ) -> dict[str, Any]:
     messages = [message for message in prompt_messages if isinstance(message, Mapping)]
     final_response_lock = _final_response_lock_payload(assistant_response_override)
@@ -318,6 +371,7 @@ def build_main_payload_manifest(
         hermeneutic_judgment_block=hermeneutic_judgment_block,
         assistant_output_policy=assistant_output_policy,
         assistant_response_override=assistant_response_override,
+        continuity_capsule_result=continuity_capsule_result,
     )
     messages_manifest = build_messages_manifest(
         messages,
@@ -354,6 +408,7 @@ def build_main_payload_manifest(
         "messages": messages_manifest,
         "lane_statuses": lane_statuses,
         "lane_conflicts": lane_conflicts,
+        "continuity_capsule": _continuity_capsule_payload(continuity_capsule_result),
         "windows": build_context_windows(
             messages=messages,
             conversation=conversation,

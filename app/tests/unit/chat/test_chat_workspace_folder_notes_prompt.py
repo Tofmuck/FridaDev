@@ -89,8 +89,9 @@ class _FakeNotesRead:
 
 
 class ChatWorkspaceFolderNotesPromptTests(unittest.TestCase):
-    def test_chat_response_injects_explicit_note_only_in_prompt_turn(self) -> None:
+    def test_chat_response_injects_explicit_note_and_continuity_capsule_in_prompt_turn(self) -> None:
         markdown = "# Note sensible\n\nContenu conversationnel utile"
+        capsule_text = "ARTIFICIAL_CHAT_SERVICE_CAPSULE_SENTINEL"
         observed: dict[str, object] = {
             "prompt_messages": [],
             "states": [],
@@ -218,7 +219,13 @@ class ChatWorkspaceFolderNotesPromptTests(unittest.TestCase):
                 token_utils_module=SimpleNamespace(estimate_tokens=lambda *_args, **_kwargs: 1),
                 arbiter_module=SimpleNamespace(),
                 web_search_module=SimpleNamespace(),
-                config_module=SimpleNamespace(FRIDA_TIMEZONE="UTC"),
+                config_module=SimpleNamespace(
+                    FRIDA_TIMEZONE="UTC",
+                    CONTINUITY_CAPSULE_ENABLED=True,
+                    CONTINUITY_CAPSULE_TEXT=capsule_text,
+                    CONTINUITY_CAPSULE_VERSION="continuity_capsule_v1",
+                    CONTINUITY_CAPSULE_MAX_CHARS=200,
+                ),
                 logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, warning=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None),
                 workspace_folders_module=_FakeWorkspaceFolders(),
                 workspace_folder_notes_module=workspace_folder_notes,
@@ -229,9 +236,12 @@ class ChatWorkspaceFolderNotesPromptTests(unittest.TestCase):
         self.assertEqual(result["status"], 200)
         prompt_text = "\n".join(message["content"] for message in observed["prompt_messages"])
         self.assertIn(markdown, prompt_text)
+        self.assertIn(capsule_text, prompt_text)
         self.assertEqual(fake_notes_read.calls, [{"folder_id": FOLDER_ID, "note_id": NOTE_ID}])
         self.assertNotIn(markdown, str(observed["states"]))
         self.assertNotIn(markdown, str(observed["events"]))
+        self.assertNotIn(capsule_text, str(observed["states"]))
+        self.assertNotIn(capsule_text, str(observed["events"]))
         self.assertNotIn("Carnet sensible", str(observed["states"]))
         self.assertNotIn("abcdef123456", str(observed["events"]))
         manifest_events = [
@@ -246,6 +256,17 @@ class ChatWorkspaceFolderNotesPromptTests(unittest.TestCase):
         self.assertEqual(manifest["lane_statuses"]["note_lane"]["status"], "ok")
         self.assertEqual(manifest["lane_statuses"]["note_lane"]["injected_count"], 1)
         self.assertFalse(manifest["lane_statuses"]["note_lane"]["raw_lane_content_included"])
+        self.assertEqual(manifest["continuity_capsule"]["status"], "ok")
+        self.assertEqual(manifest["continuity_capsule"]["injected_count"], 1)
+        self.assertFalse(manifest["continuity_capsule"]["raw_capsule_content_included"])
+        capsule_messages = [
+            message
+            for message in manifest["messages"]
+            if "continuity_capsule" in message["logical_roles"]
+        ]
+        self.assertEqual(len(capsule_messages), 1)
+        self.assertEqual(capsule_messages[0]["origin"], "core.continuity_capsule")
+        self.assertEqual(capsule_messages[0]["origin_stage"], "late_continuity_capsule")
         note_messages = [
             message
             for message in manifest["messages"]
@@ -257,8 +278,10 @@ class ChatWorkspaceFolderNotesPromptTests(unittest.TestCase):
         )
         self.assertTrue(all(message["origin_stage"] == "late_note_lane" for message in note_messages))
         self.assertNotIn(markdown, str(manifest))
+        self.assertNotIn(capsule_text, str(manifest))
         self.assertEqual(conversation["messages"][0]["content"], "Lis cette note")
         self.assertNotIn(markdown, str(conversation["messages"]))
+        self.assertNotIn(capsule_text, str(conversation["messages"]))
 
 
 if __name__ == "__main__":

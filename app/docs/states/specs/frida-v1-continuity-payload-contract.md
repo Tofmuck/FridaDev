@@ -18,13 +18,15 @@ Lot 5.1 classe `final_lock_priority_unexpected` en `failed` quand un conflit
 Agenda/Biblio selectionne une source non-Agenda malgre la politique courante.
 Lot 6 ajoute des fixtures qualitatives artificielles, content-free et sans
 provider live, pour prouver ce qu'une future capsule devra preserver avant tout
-runtime.
+runtime. Lot 7 livre une Continuity Capsule runtime bornee, desactivee par
+defaut/configurable sans DB, injectee seulement quand le modele principal est
+appele, et observee content-free par `main_payload_manifest_v1`.
 
 Ce contrat definit deux objets cibles:
 
 - `main_payload_manifest_v1`, le manifeste content-free du payload logique final
   envoye au modele principal Frida.
-- `Continuity Capsule`, la future surface courte de continuite de ton,
+- `Continuity Capsule`, la surface courte de continuite de ton,
   methode, relation et presence entre conversations.
 
 Decision dure: le manifeste precede la capsule. Aucune injection runtime de
@@ -111,6 +113,7 @@ Un manifeste valide doit contenir au minimum:
 | `assistant_output_policy` | Presence, kind, reason codes, flags de garde. Pas de texte de politique brute si elle contient des instructions completes. |
 | `final_response_lock` | Presence, source, reason_code, priorite effective, main model bypassed. Pas de contenu de reponse. |
 | `lane_conflicts` | Synthese content-free des conflits de lanes et final locks: candidats, priorite effective, source selectionnee, source supprimee, mismatch d'injection implicite. |
+| `continuity_capsule` | Statut runtime content-free de la capsule: presence, enabled, version, reason_code, taille, injection count, flags raw/fingerprint a false. Pas de contenu de capsule. |
 | `messages` | Tableau ordonne des entrees content-free du payload final. |
 | `lane_statuses` | Presence/absence/no-op de chaque lane attendue. |
 | `windows` | Compteurs des fenetres reconstruites par prompt final, memory, hermeneutic node, Biblio, Agenda et autres sous-systemes. |
@@ -125,7 +128,7 @@ Chaque entree de `messages[]` doit decrire un bloc final sans contenu brut:
 | --- | --- |
 | `index` | Position finale zero-based apres injections tardives. |
 | `provider_role` | Role provider effectif: `system`, `user`, `assistant`, `tool` ou autre role supporte si ajoute plus tard. |
-| `logical_roles` | Liste des roles logiques internes. Exemples: `system_prompt`, `developer_prompt`, `time_reference`, `identity_stable`, `identity_mutable`, `summary`, `memory`, `context_hints`, `user_turn`, `assistant_turn`, `web_lane`, `note_lane`, `document_lane`, `biblio_lane`, `agenda_lane`, `adobe_lane`, `assistant_output_policy`. |
+| `logical_roles` | Liste des roles logiques internes. Exemples: `system_prompt`, `developer_prompt`, `time_reference`, `identity_stable`, `identity_mutable`, `summary`, `memory`, `context_hints`, `user_turn`, `assistant_turn`, `web_lane`, `note_lane`, `document_lane`, `biblio_lane`, `agenda_lane`, `adobe_lane`, `continuity_capsule`, `assistant_output_policy`. |
 | `origin` | Module, sous-systeme ou lane source, sous forme allowlistee. |
 | `origin_stage` | Etape d'injection: base prompt, web late injection, note lane, active document lane, biblio lane, agenda lane, adobe lane, output guard, final lock. |
 | `content_kind` | Type abstrait: instruction, resume, trace memoire, dialogue, lane contract, lane content, guard, tool evidence, override metadata. |
@@ -215,6 +218,7 @@ La premiere version doit reconnaitre au moins:
 - `biblio_lane`
 - `agenda_lane`
 - `adobe_lane`
+- `continuity_capsule`
 - `assistant_output_policy`
 - `final_response_lock`
 
@@ -572,14 +576,14 @@ Comportement requis en cas de rejet:
 
 ### Objet
 
-La Continuity Capsule est une future surface courte, versionnee et contestable
+La Continuity Capsule est une surface courte, versionnee et contestable
 destinee a porter ce que ni identity, ni memory, ni summary ne portent proprement
 aujourd'hui: une continuite de ton, methode, relation et presence entre
 conversations.
 
-Elle ne doit pas etre implementee par ce Lot 1. Elle ne peut devenir runtime
-qu'en Lot 7, et seulement si les lots precedents prouvent le payload final et les
-tests qualitatifs sans contenu utilisateur reel.
+Elle n'a pas ete implementee par le Lot 1. Elle devient runtime en Lot 7, apres
+preuve du payload final, de la garde writer-side, des fenetres, des locks/lanes
+et des tests qualitatifs sans contenu utilisateur reel.
 
 ### Ce que la capsule peut decrire
 
@@ -682,27 +686,45 @@ Scenarios minimaux prouves par Lot 6:
   identity, memory ou summary, et sans etre injectee dans le prompt.
 
 Cette preuve ferme les findings de test et d'observabilite qualitative
-pre-runtime. Elle ne ferme pas a elle seule l'absence de surface durable runtime:
-`P1-CONT-01` reste conditionne a Lot 7 ou a un report post-V1 explicite.
+pre-runtime. A l'issue du Lot 6, elle ne fermait pas a elle seule l'absence de
+surface durable runtime: `P1-CONT-01` restait conditionne a Lot 7 ou a un report
+post-V1 explicite. Le Lot 7 ferme ensuite ce point par une surface runtime
+bornee.
 
-### Injection future
+### Injection runtime Lot 7
 
-Le present contrat ne choisit pas encore la position exacte de la capsule dans le
-prompt final. Cette position devra etre decidee apres `main_payload_manifest_v1`,
-car le manifeste doit d'abord montrer l'ordre reel des messages et des lanes.
+La position retenue en Lot 7 est tardive et bornee: apres les lanes Web, Notes,
+Documents, Biblio, Agenda, Adobe et apres le choix effectif du final response
+lock Agenda/Biblio, juste avant `main_payload_manifest_v1` et
+`run_llm_exchange`.
 
-Une future injection Lot 7 devra au minimum:
+La capsule runtime Lot 7 doit:
 
 - etre bornee en taille;
 - etre versionnee;
-- etre desactivable par feature flag;
+- etre desactivee par defaut et activable par config/env sans DB;
 - etre rollbackable sans migration destructive;
 - apparaitre dans `main_payload_manifest_v1`;
-- exposer `continuity_capsule_present`, `continuity_capsule_version`,
-  `continuity_capsule_chars` et, si necessaire, une empreinte conforme a la
-  politique de hachage;
-- garder `raw_lane_content_included=false`;
+- exposer presence, enabled, version, `content_chars`, `max_chars`,
+  `injected_count`, `status` et `reason_code`;
+- garder `raw_content_included=false`, `raw_prompt_included=false`,
+  `raw_capsule_content_included=false` et `fingerprint_included=false`;
+- ne pas utiliser de hash stable naif sur capsule, prompt, message ou lane;
+- ne pas etre injectee si `final_response_lock.present=true`;
 - ne jamais ecrire dans identity mutable sans decision doctrinale separee.
+
+Les statuts runtime attendus sont:
+
+- `disabled` / `continuity_capsule_disabled`: defaut, rollback simple, aucune
+  injection;
+- `ok` / `continuity_capsule_ready`: capsule valide, message systeme tardif
+  injecte avec `logical_roles=["continuity_capsule"]`;
+- `not_configured` / `continuity_capsule_missing`: flag actif sans texte,
+  aucune injection;
+- `refused` / `continuity_capsule_too_large`: texte trop long, aucune
+  troncation silencieuse;
+- `not_selected` / `continuity_capsule_final_lock_bypass`: final lock
+  Agenda/Biblio, modele principal bypass, aucune injection.
 
 ## Ordre obligatoire des lots
 
@@ -716,7 +738,8 @@ Une future injection Lot 7 devra au minimum:
    conflits de lanes.
 5. Lot 6 doit prouver la continuite qualitative avec fixtures artificielles,
    sans contenu utilisateur reel.
-6. Lot 7 seulement peut envisager une Continuity Capsule runtime bornee.
+6. Lot 7 livre une Continuity Capsule runtime bornee si les conditions
+   precedentes sont satisfaites.
 7. Lot Z ne peut cloturer que si les preuves content-free, tests et docs sont
    coherents, et si chaque finding est clos ou reporte explicitement.
 
@@ -728,7 +751,7 @@ lots 1 a 6 ne soient relus et acceptes.
 
 | Finding | Apport du present contrat | Statut courant apres lots livres |
 | --- | --- | --- |
-| P1-CONT-01 | Definit la Continuity Capsule comme surface cible distincte, courte, non souveraine et future; Lot 6 prouve une candidate test-only sans runtime. | Partiel: non clos avant Lot 7 ou report post-V1. |
+| P1-CONT-01 | Definit la Continuity Capsule comme surface distincte, courte, non souveraine; Lot 6 prouve une candidate test-only et Lot 7 livre la surface runtime bornee. | Clos Lot 7 par capsule runtime desactivee par defaut/configurable, observable content-free, non souveraine et testee. |
 | P1-PAYLOAD-01 | Definit `main_payload_manifest_v1` et en fait le gate avant capsule runtime. | Clos Lot 2 par manifeste runtime content-free du payload final apres injections tardives. |
 | P2-SUMMARY-01 | Separe summary et capsule, expose summary comme fenetre Lot 4, et exige que les tests detectent l'aplatissement de voix. | Clos Lot 6 par fixture post-resume summary seul vs capsule candidate. |
 | P2-LANES-01 | Etend la continuite aux final response locks et renderers de lanes. | Clos Lot 5 pour le bornage content-free des locks; preuve qualitative pre-runtime couverte par Lot 6. |
@@ -857,10 +880,11 @@ seules des cles qualifiees, explicitement justifiees et non contradictoires avec
 cette politique peuvent rester hors scope de ce correctif. Les placeholders
 vides historiques ne doivent pas creer de bruit de rejet.
 
-## No-go avant runtime capsule
+## No-go et gardes runtime capsule
 
-Une Continuity Capsule runtime est interdite tant que toutes les conditions
-suivantes ne sont pas remplies:
+Une Continuity Capsule runtime etait interdite tant que toutes les conditions
+suivantes n'etaient pas remplies; Lot 7 ne peut rester valide que si ces gardes
+continuent a etre respectees:
 
 - `main_payload_manifest_v1` livre et teste;
 - garde writer-side anti-fuite livree;
@@ -872,10 +896,21 @@ suivantes ne sont pas remplies:
 - rollback et feature flag definis;
 - aucun contenu utilisateur reel utilise pour imiter le ton.
 
+Gardes Lot 7 actives:
+
+- capsule desactivee par defaut;
+- activation par config/env sans DB, migration, purge ou backfill;
+- refus propre si texte absent ou trop long;
+- aucune injection sous final response lock;
+- aucune ecriture identity mutable ou memory;
+- aucune projection du contenu de capsule dans manifest, admin logs ou tests;
+- aucun hash stable court de capsule.
+
 ## Limites assumees
 
-Ce contrat est normatif pour les lots suivants. Depuis les Lots 2 et 3, le
-payload runtime courant est prouve par un manifeste content-free borne et protege
-par une garde writer-side. Les limites restantes portent sur les lots non
-livres: fenetres specialisees, final locks produit, tests qualitatifs
-artificiels et capsule runtime eventuelle.
+Ce contrat reste normatif jusqu'a Lot Z. Depuis les Lots 2 a 7, le payload
+runtime courant est prouve par un manifeste content-free borne, protege par une
+garde writer-side, enrichi par les fenetres/locks/lanes, et dispose d'une
+Continuity Capsule runtime bornee. Les limites restantes portent sur la
+validation Lot Z, la relecture globale des docs/tests et les findings
+explicitement encore ouverts ou reportables post-V1.

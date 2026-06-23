@@ -48,6 +48,7 @@ _SAFE_TEXT_KEYS = {
     'suppressed_source',
     'voice_continuity_reason_code',
     'voice_continuity_status',
+    'version',
 }
 
 _SAFE_TEXT_LIST_KEYS = {
@@ -65,6 +66,7 @@ _TOP_LEVEL_KEYS = {
     'conversation_state',
     'final_response_lock',
     'hash_policy',
+    'continuity_capsule',
     'lane_conflicts',
     'lane_statuses',
     'main_model_called',
@@ -121,12 +123,15 @@ _LANE_STATUS_KEYS = {
     'passage_count',
     'priority_policy',
     'query_kind',
+    'raw_capsule_content_included',
     'raw_lane_content_included',
     'reason_code',
     'reason_codes',
     'selected',
     'source_count',
     'status',
+    'fingerprint_included',
+    'version',
 }
 
 _DANGEROUS_VALUE_PARTS = (

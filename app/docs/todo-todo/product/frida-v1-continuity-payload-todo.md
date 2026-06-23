@@ -55,7 +55,7 @@ content-free relue, testee ou explicitement reportee post-V1.
 
 | Statut | Finding | Lot cible | Critere de cloture court |
 | --- | --- | --- | --- |
-| - [ ] | P1-CONT-01 | Lot 6 puis Lot 7 | Capsule distincte d'identity/memory/summary specifiee, tests artificiels passes; finding clos seulement apres surface runtime bornee Lot 7 ou report post-V1 explicite. |
+| - [x] | P1-CONT-01 | Lot 6 puis Lot 7 | Capsule distincte d'identity/memory/summary specifiee, tests artificiels passes; surface runtime bornee, desactivable, rollbackable et observable content-free livree en Lot 7. |
 | - [x] | P1-PAYLOAD-01 | Lot 1 puis Lot 2 | `main_payload_manifest_v1` livre et teste sur le payload final apres injections tardives, sans contenu brut. |
 | - [x] | P2-SUMMARY-01 | Lot 4 puis Lot 6 | Lot 4 expose le summary comme fenetre content-free; Lot 6 prouve par fixture artificielle que summary seul peut aplatir la nuance et qu'une capsule candidate distincte peut restaurer les traits minimaux sans runtime. |
 | - [x] | P2-LANES-01 | Lot 5 | Biblio/Agenda/renderers couverts par la doctrine de voix ou explicitement bornes. |
@@ -395,24 +395,70 @@ Preuves:
 
 Findings clos par ce lot: `P2-SUMMARY-01`, `P3-TEST-01`, `P3-OBS-01`.
 
-Finding laisse ouvert volontairement: `P1-CONT-01`. Lot 6 prouve la forme et la
-testabilite d'une capsule candidate, mais ne cree pas encore de surface runtime
-durable. Cloture attendue en Lot 7 ou report post-V1 explicite.
+Etat apres Lot 6: `P1-CONT-01` restait volontairement ouvert. Lot 6 prouvait la
+forme et la testabilite d'une capsule candidate, mais ne creait pas encore de
+surface runtime durable. La cloture intervient ensuite en Lot 7.
 
 ### Lot 7 - Runtime capsule borne
 
 Seulement si Lots 1-6 OK.
 
-- [ ] Injecter eventuellement une capsule courte, versionnee et bornee.
-- [ ] Rendre l'injection desactivable par flag ou settings clairement
+- [x] Injecter eventuellement une capsule courte, versionnee et bornee.
+- [x] Rendre l'injection desactivable par flag ou settings clairement
   rollbackables.
-- [ ] Observer la capsule content-free: version, presence, longueur, hash
-  court, provenance, raw flags a false.
-- [ ] Garder la capsule non souveraine: le tour courant, les preuves injectees
+- [x] Observer la capsule content-free: version, presence, longueur,
+  `fingerprint_included=false`, provenance structuree, raw flags a false.
+- [x] Garder la capsule non souveraine: le tour courant, les preuves injectees
   et les guards produit priment.
-- [ ] Ne jamais melanger capsule et identity mutable sans decision doctrinale
+- [x] Ne jamais melanger capsule et identity mutable sans decision doctrinale
   explicite.
-- [ ] Tester rollback simple et absence de fuite.
+- [x] Tester rollback simple et absence de fuite.
+
+Statut 2026-06-23: Lot 7 livre par `app/core/continuity_capsule.py`, branche
+dans `app/core/chat_service.py` apres les lanes tardives et apres le choix
+Agenda/Biblio du final lock, juste avant `main_payload_manifest_v1` et
+`run_llm_exchange`.
+
+Regle runtime:
+
+- config rollbackable sans DB ni migration: `CONTINUITY_CAPSULE_ENABLED`,
+  `CONTINUITY_CAPSULE_TEXT`, `CONTINUITY_CAPSULE_VERSION`,
+  `CONTINUITY_CAPSULE_MAX_CHARS`, avec fallback env
+  `FRIDA_CONTINUITY_CAPSULE_*`;
+- defaut: disabled, aucune injection;
+- enabled + texte valide et borne: injection d'un message systeme tardif
+  `logical_roles=["continuity_capsule"]`, provenance `core.continuity_capsule`,
+  stage `late_continuity_capsule`;
+- texte absent: `not_configured`, aucune injection;
+- texte trop long: `refused`, aucune troncation silencieuse;
+- final response lock Agenda/Biblio: `not_selected` avec
+  `reason_code=continuity_capsule_final_lock_bypass`, aucune injection et
+  `main_model_called=false` coherent.
+
+Observabilite:
+
+- `main_payload_manifest_v1.continuity_capsule` expose presence, enabled,
+  version, status, reason_code, `content_chars`, `max_chars`,
+  `injected_count`, `raw_capsule_content_included=false`,
+  `raw_prompt_included=false`, `raw_content_included=false` et
+  `fingerprint_included=false`;
+- `lane_statuses.continuity_capsule` expose le meme statut sous forme de lane
+  de suivi, sans assimiler la capsule a identity, memory ou summary;
+- la projection admin et la garde writer-side acceptent seulement le schema
+  content-free; un faux champ `content` sous `continuity_capsule` est refuse.
+
+Preuves principales:
+
+- `app/tests/unit/continuity/test_runtime_continuity_capsule.py` couvre
+  disabled, valide, absent, trop long, final-lock bypass et config sans DB;
+- `app/tests/unit/logs/test_main_payload_manifest.py` couvre message injecte,
+  provenance structuree, final-lock sans injection, projection admin et garde;
+- `app/tests/unit/logs/test_observability_payload_guard.py` couvre le rejet
+  d'une capsule brute forgee;
+- `app/tests/unit/chat/test_chat_workspace_folder_notes_prompt.py` prouve le
+  wiring `chat_service` avec capsule activee sans fuite dans states/events.
+
+Finding clos par ce lot: `P1-CONT-01`.
 
 ### Lot Z - Cloture
 
