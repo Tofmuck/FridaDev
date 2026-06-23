@@ -30,8 +30,9 @@ par lui-meme.
   explicitement comme risques residuels.
 - Continuity Capsule: livree, bornee, desactivee par defaut; activation
   uniquement apres micro-preuve et GO operateur dedie.
-- Agenda: utile et cloture pragmatiquement pour V1, mais statut documentaire
-  encore ambigu dans sa TODO active.
+- Agenda: utile et pragmatiquement clos pour V1; TODO maintenue en statut
+  post-V1 dormant, non bloquante pour Frida 1.0 sauf bug reel, besoin concret
+  ou decision explicite.
 - Mail: bonus non bloquant; audit/spec-only possible, runtime a reporter sauf
   GO operateur separe.
 
