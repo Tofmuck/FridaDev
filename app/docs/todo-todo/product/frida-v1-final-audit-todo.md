@@ -82,20 +82,115 @@ par lui-meme.
 5. Mail:
    audit/spec-only avant V1 ou report post-V1 explicite, pas runtime par defaut.
 
+## Matrice finale Lot 3 - GO / PARTIAL / NO-GO
+
+### Legende
+
+- `GO`: clos/prove dans son perimetre V1; ne bloque pas la cloture.
+- `PARTIAL`: livrable avec limite documentee; ne bloque pas si la limite reste
+  acceptee explicitement.
+- `NO-GO`: bloque la declaration finale tant que le lot/decision n'est pas
+  traite.
+- `POST-V1`: hors cloture Frida 1.0.
+- `GATED`: possible seulement apres lot dedie ou GO operateur explicite.
+
+### Matrice des chantiers et gates
+
+| Domaine | Statut | Preuve source | Limite acceptee | Decision restante | Lot |
+| --- | --- | --- | --- | --- | --- |
+| Nextcloud folders | GO | `todo-done/product/frida-v1-nextcloud-folders-todo.md`, JSONL `nextcloud-folder-smokes/` Lot Z | Socle dossiers seulement; frontiere Sauron/Nextcloud conservee | Aucune pour V1 | Clos |
+| Documents ingestion | PARTIAL | `todo-done/product/frida-v1-documents-ingestion-todo.md`, JSONL `documents-smokes/` Lot Z | Refus live dossier non `linked` non applicable, couvert par tests unitaires/serveur | Aucune si limite acceptee | Clos |
+| Notes Markdown | PARTIAL | `todo-done/product/frida-v1-folder-markdown-notes-todo.md`, JSONL `notes-smokes/` Lot Z | Conflit ETag/version live `not_applicable` / `covered_by_unit_tests` | Aucune si limite acceptee | Clos |
+| Exports | GO | `todo-done/product/frida-v1-exports-todo.md`, JSONL `exports-smokes/` Lot Z | Reuse `.docx`/`.pdf` comme source texte reste post-V1 | Aucune pour V1 | Clos |
+| Generated Images | PARTIAL | `todo-done/product/frida-v1-generated-images-todo.md`, JSONL `generated-images-smokes/` Lot Z | Live provider observe PNG; JPEG/WebP couverts par tests/fakes | Aucune si limite acceptee | Clos |
+| Agentic Observability | GO | `todo-done/product/frida-v1-agentic-observability-todo.md`, JSONL `agentic-observability-smokes/` Lot Z | Reset destructif non execute; operation separee sous GO operateur | Reset reste `GATED` post-cloture | Clos / GATED reset |
+| Continuity Payload | GO | `todo-done/product/frida-v1-continuity-payload-todo.md`, JSONL `continuity-payload-smokes/` Lot Z | Capsule runtime livree disabled; activation texte non prouvee | Activation ou report par Lot 5 | Clos / GATED capsule |
+| Biblio | GO | `todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`, JSONL `biblio-smokes/` BIB-01 -> BIB-33 | Agent/refactors/ergonomie avancee restent post-V1 | Aucune pour V1 | Clos |
+| Agenda pragmatique | PARTIAL | `states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`, JSONL `agenda-smokes/` | Agenda utile mais non exhaustif; Lot 9 et capacites riches post-V1 | Aucune sauf bug reel/besoin concret | Clos pragmatique |
+| Admin logs Lot 1A/1B/1B.1 | GO | Tests admin/logs et TODO finale Lots 1A/1B | Pas de refonte dashboard large | Aucune pour V1 | Clos |
+| Branche/main | NO-GO | Etat Git a verifier en Lot 4 | La branche courante n'est pas declaree close sur `main` | Decision integration/non-integration | Lot 4 |
+| Continuity Capsule activation | GATED | Contrat/archives Continuity et tests existants | Substitut borne ne prouve que la mecanique runtime | Micro-preuve texte operateur ou report | Lot 5 |
+| Mail bonus | GATED | Roadmap finale et TODO Mail bonus | Runtime Mail exclu de V1 par defaut | Audit/spec-only ou report explicite | Lot 6 |
+| Final closure smoke | NO-GO | Cette matrice et inventaire JSONL Lot 3 | Pas de smoke live non necessaire en Lot 3 | Scans/tests bornes choisis | Lot 7 |
+| Archive finale | NO-GO | TODO finale active | Tous P2/P3 doivent etre fermes, acceptes ou reportes | Archivage apres decisions | Lot Z |
+| SMS | POST-V1 | Roadmap finale | Hors cloture Frida 1.0 | Aucune | Post-V1 |
+| TTS | POST-V1 | Roadmap finale | Hors cloture Frida 1.0 | Aucune | Post-V1 |
+| Mail runtime | POST-V1 | Roadmap finale et finding `P2-MAIL-RUNTIME-SCOPE-01` | Aucun IMAP/SMTP/Nextcloud Mail live sans GO separe | Report ou chantier futur | Post-V1 |
+| Reset observabilite destructif | GATED | Contrat Observabilite agentique | Backup/rollback/GO operateur requis | Lot separe si demande | Post-cloture |
+| Gros refactors runtime | POST-V1 | `wc -l` Lot 3 sur fichiers cibles | Vigilance seulement; pas de refactor opportuniste | Aucun avant finding cible | Post-V1 |
+
+### Preuves et smokes apres Lot 3
+
+- JSONL inventories par chemins: 118 fichiers candidats sous
+  `app/docs/states/baselines`, 671 enregistrements parses, 0 erreur JSON.
+- Les preuves live conservees restent suffisantes pour les chantiers `GO` et
+  `PARTIAL`; les limites `covered_by_tests`, `covered_by_unit_tests` ou
+  `not_applicable` sont visibles et non converties en faux `GO`.
+- Aucun provider live, Nextcloud live, CalDAV live, Mail runtime, reset, purge,
+  backfill ou migration n'est requis par Lot 3.
+- Lot 7 devra rejouer seulement les scans bornes choisis par cette matrice:
+  `git status`, `git diff --check`, inventaire JSONL, scan anti-fuite docs/proofs,
+  absence pycache/temp, absence `utils.py` / `helpers.py`, et tests cibles
+  uniquement si un lot runtime precedent le justifie.
+- Smokes live interdits ou inutiles avant decision dediee: Capsule activee,
+  Mail runtime, reset observabilite, Agenda/CalDAV, provider images, ecriture
+  Nextcloud.
+
+### Classification P3 Lot 3
+
+- `P3-ARCHIVE-CHECKBOXES-01`: accepte comme historique/post-V1, avec une seule
+  case ouverte V1 directe dans Documents (`non linked`) deja couverte par le
+  verdict `met_with_documented_limit`; les autres cases relevent d'archives
+  non V1 finales ou de roadmaps Biblio/Web/Adobe obsoletes.
+- `P3-ARCHIVE-REFERENCES-STALE-01`: accepte comme historique; les anciens
+  pointeurs trouves dans archives Documents/Exports/Images sont des chaines de
+  handoff entre lots archives, pas des pointeurs actifs.
+- `P3-CAPSULE-FINAL-LOCK-OBSERVABILITY-01`: classe `GATED` Lot 5; le statut
+  actuel est non-injection sure sous final lock, mais l'ordre unsafe/final-lock
+  reste a clarifier si l'objectif devient activation reelle.
+- `P3-SCOPED-LOG-DELETE-GATE-01`: suppression scopee classee action admin
+  bornee (`conversation_id` requis, `turn_id` optionnel), distincte du reset
+  destructif global; tout reset large reste `GATED`.
+- `P3-STATUS-FLATTENING-01`: classe P3 de vigilance; non bloquant pour V1 tant
+  qu'aucune preuve ne montre un `failed/refused/not_configured/skipped` masque;
+  Lot 7 peut ouvrir un micro-audit cible si la cloture zero-erreur l'exige.
+- `P3-BIBLIO-AUDIT-CURRENT-STALE-01`: accepte comme historique/source
+  d'architecture; l'archive Last Chance BIB-01 -> BIB-33 reste la preuve de
+  cloture V1.
+- `P3-PROOF-LIVE-COVERAGE-01`: ferme par cette matrice; les preuves live,
+  fake/unit, `covered_by_tests`, `covered_by_unit_tests` et `not_applicable`
+  sont distinguees explicitement.
+- `P3-LARGE-FILES-01`: confirme post-V1; les gros fichiers mesures au Lot 3
+  restent sous vigilance sans refactor opportuniste.
+
+## Decisions de cloture restantes apres Lot 3
+
+- Lot 4: decider branche/main; `P2-BRANCH-INTEGRATION-01` reste ouvert.
+- Lot 5: micro-preuve Capsule avec texte operateur approuve ou report post-V1;
+  `P2-CAPSULE-ACTIVATION-PROOF-01` reste ouvert.
+- Lot 6: Mail audit/spec-only ou report post-V1; `P2-MAIL-RUNTIME-SCOPE-01`
+  reste ouvert tant que la decision n'est pas documentee.
+- Lot 7: smoke final borne selon cette matrice, sans nouveaux smokes live
+  inutiles.
+- Lot Z: archivage final seulement apres P2 fermes/acceptes et P3
+  corriges/acceptes/reportes.
+
 ## 3. Registre des findings
 
 ### P2-FINAL-AUDIT-MATRIX-01
 
 - Statut initial: accepted; support de pilotage clos par Lot 0, matrice finale
-  encore ouverte jusqu'au Lot 3.
+  livree par Lot 3 le 2026-06-23.
 - Severite: P2.
 - Fichiers suspects: `app/docs/todo-todo/product/frida-v1-final-audit-todo.md`.
 - Lot cible: Lot 0 pour fermer la dette "TODO squelettique", puis Lot 3 pour
   livrer la matrice finale executable.
-- Critere de cloture: le support de pilotage est present depuis Lot 0. La
-  composante "matrice finale GO / PARTIAL / NO-GO executable" reste ouverte et
-  ne sera close que par le Lot 3.
-- Preuve minimale: diff docs-only, `git diff --check`, grep du fichier canonique.
+- Critere de cloture: le support de pilotage est present depuis Lot 0; la
+  composante "matrice finale GO / PARTIAL / NO-GO executable" couvre desormais
+  les chantiers V1 clos, les limites `PARTIAL`, les gates `NO-GO/GATED`, les
+  decisions `POST-V1` et les lots restants.
+- Preuve minimale: matrice Lot 3, inventaire JSONL content-free, `git diff
+  --check`, grep `GO|PARTIAL|NO-GO|POST-V1|GATED`.
 - Hors-scope: corriger les autres P2 dans le meme patch.
 
 ### P2-ADMIN-LOGS-LEGACY-01
@@ -266,18 +361,21 @@ par lui-meme.
 
 ### P3-ARCHIVE-CHECKBOXES-01
 
-- Statut initial: open.
+- Statut initial: accepted; caracterise par Lot 3 le 2026-06-23.
 - Severite: P3.
 - Fichiers suspects: `app/docs/todo-done/product/*`.
-- Lot cible: Lot 3 ou Lot 2D selon portee.
-- Critere de cloture: les checkboxes ouvertes historiques ne sont plus prises
-  pour des TODO actives, par annotation ou matrice finale.
-- Preuve minimale: `grep -RIn "\\[ \\]" app/docs/todo-done/product`.
+- Lot cible: Lot 3.
+- Critere de cloture: les checkboxes ouvertes historiques sont classees comme
+  archives/post-V1/non pertinentes pour V1, sauf preuve contraire; la seule
+  case ouverte V1 directe Documents `non linked` reste couverte par
+  `met_with_documented_limit`.
+- Preuve minimale: `grep -RIn "\\[ \\]" app/docs/todo-done/product`, comptage
+  par fichier et matrice Lot 3.
 - Hors-scope: cocher artificiellement des limites volontairement documentees.
 
 ### P3-CAPSULE-FINAL-LOCK-OBSERVABILITY-01
 
-- Statut initial: open.
+- Statut initial: accepted; classe GATED Lot 5 par Lot 3 le 2026-06-23.
 - Severite: P3.
 - Fichiers suspects: `app/core/continuity_capsule.py`,
   `app/docs/states/specs/frida-v1-continuity-payload-contract.md`.
@@ -290,7 +388,8 @@ par lui-meme.
 
 ### P3-LARGE-FILES-01
 
-- Statut initial: post-V1 sauf si un lot cible touche le fichier.
+- Statut initial: post-V1 confirme par Lot 3 le 2026-06-23 sauf si un lot cible
+  touche le fichier.
 - Severite: P3.
 - Fichiers suspects: `app/server.py`, `app/core/chat_service.py`,
   `app/observability/dashboard_read_model.py`, `app/biblio/librarian_tools.py`.
@@ -305,38 +404,38 @@ par lui-meme.
 
 #### P3-ARCHIVE-REFERENCES-STALE-01
 
-- Statut initial: open.
+- Statut initial: accepted; classe historique par Lot 3 le 2026-06-23.
 - Severite: P3.
 - Fichiers suspects:
   `app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`,
   `app/docs/todo-done/product/frida-v1-exports-todo.md`,
   `app/docs/todo-done/product/frida-v1-generated-images-todo.md`.
-- Lot cible: Lot 2D si ces references troublent les pointeurs actifs, sinon
-  Lot 3 comme risque documentaire accepte.
-- Critere de cloture: les references vers anciens chemins actifs sont
-  requalifiees comme historiques ou declarees non bloquantes dans la matrice.
+- Lot cible: Lot 3.
+- Critere de cloture: les references vers anciens chemins actifs sont declarees
+  non bloquantes dans la matrice car elles apparaissent dans des archives comme
+  handoffs historiques, pas dans des pointeurs actifs de pilotage.
 - Preuve minimale: grep des anciens chemins `todo-todo` dans les archives V1 et
-  diff docs-only si correction retenue.
+  matrice Lot 3.
 - Hors-scope: reecrire les preuves historiques ou deplacer des archives sans
   convention explicite.
 
 #### P3-SCOPED-LOG-DELETE-GATE-01
 
-- Statut initial: open.
+- Statut initial: accepted; cadre par Lot 3 le 2026-06-23.
 - Severite: P3.
 - Fichiers suspects: `app/server.py`, `app/observability/log_store.py`,
   `app/docs/states/specs/frida-v1-agentic-observability-contract.md`.
-- Lot cible: Lot 3 pour decision de cadrage; lot runtime separe uniquement si la
-  decision conclut a un gate manquant.
-- Critere de cloture: la suppression logs scopee est classee soit comme action
-  admin courante acceptable, soit comme reset partiel exigeant un gate dedie.
+- Lot cible: Lot 3 pour decision de cadrage.
+- Critere de cloture: la suppression logs scopee est classee action admin
+  bornee distincte du reset global, car elle refuse la suppression tous logs et
+  exige `conversation_id`; tout reset large reste `GATED`.
 - Preuve minimale: lecture des routes/scope delete, grep `reset` / `delete` /
   `operator_go`, decision inscrite dans la matrice finale.
 - Hors-scope: executer reset, purge, backfill, suppression logs ou migration.
 
 #### P3-STATUS-FLATTENING-01
 
-- Statut initial: open.
+- Statut initial: post-V1 / vigilance; classe par Lot 3 le 2026-06-23.
 - Severite: P3.
 - Fichiers suspects: `app/core/chat_service.py`.
 - Lot cible: Lot 7 ou micro-audit cible si la cloture zero-erreur l'exige.
@@ -350,22 +449,22 @@ par lui-meme.
 
 #### P3-BIBLIO-AUDIT-CURRENT-STALE-01
 
-- Statut initial: open.
+- Statut initial: accepted; classe historique par Lot 3 le 2026-06-23.
 - Severite: P3.
 - Fichiers suspects:
   `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`,
   archives Biblio Lot 33/33 sous `app/docs/todo-done/product/`.
-- Lot cible: Lot 2D si les index finaux relisent cet audit comme courant; sinon
-  Lot 3 comme risque documentaire accepte.
-- Critere de cloture: l'audit Biblio ancien ne peut plus etre confondu avec un
-  chantier V1 bloquant ou des findings vivants.
+- Lot cible: Lot 3.
+- Critere de cloture: l'audit Biblio ancien est classe comme source
+  d'architecture/historique non bloquante; l'archive Last Chance BIB-01 ->
+  BIB-33 reste la preuve de cloture V1.
 - Preuve minimale: grep des pointeurs Biblio dans README/app docs/roadmap et
   verification du lien vers l'archive de cloture Biblio.
 - Hors-scope: rouvrir Biblio runtime ou reecrire l'audit historique.
 
 #### P3-PROOF-LIVE-COVERAGE-01
 
-- Statut initial: open.
+- Statut initial: accepted; clos par matrice Lot 3 le 2026-06-23.
 - Severite: P3.
 - Fichiers suspects: artefacts sous `app/docs/states/baselines/`, archives V1
   Documents/Notes/Images/Observabilite, audits final et contre-audit.
@@ -601,15 +700,32 @@ Artefact JSONL: non.
 
 Type: docs-only / preuve-only.
 
-- [ ] Construire une matrice GO / PARTIAL / NO-GO.
-- [ ] Lister tous les lots V1 clos et leurs preuves JSONL.
-- [ ] Lister les tests minimaux a rejouer et ceux a ne pas rejouer.
-- [ ] Distinguer smokes live requis, optionnels, inutiles ou interdits.
-- [ ] Marquer reset observabilite: non execute sauf GO operateur separe.
-- [ ] Marquer capsule: activee avec preuve ou reportee.
-- [ ] Marquer Mail: spec-only ou reporte.
-- [ ] Marquer branche/main: decidee.
-- [ ] Classer P3: corriges, acceptes ou post-V1.
+- [x] Construire une matrice GO / PARTIAL / NO-GO.
+- [x] Lister tous les lots V1 clos et leurs preuves JSONL.
+- [x] Lister les tests minimaux a rejouer et ceux a ne pas rejouer.
+- [x] Distinguer smokes live requis, optionnels, inutiles ou interdits.
+- [x] Marquer reset observabilite: non execute sauf GO operateur separe.
+- [x] Marquer capsule: gate Lot 5 activation/report, non activee par Lot 3.
+- [x] Marquer Mail: gate Lot 6 audit/spec-only ou report, runtime post-V1.
+- [x] Marquer branche/main: gate Lot 4, non decide par Lot 3.
+- [x] Classer P3: corriges, acceptes ou post-V1.
+
+Resultat Lot 3:
+
+- Matrice GO / PARTIAL / NO-GO / POST-V1 / GATED ajoutee dans cette TODO.
+- Les chantiers V1 clos sont classes sans faux GO: Documents, Notes, Generated
+  Images et Agenda pragmatique restent visibles comme `PARTIAL` a limite
+  acceptee; Observabilite et Continuity ont leurs gates reset/capsule separes.
+- Les gates branche/main, Capsule, Mail, smoke final et archive finale restent
+  `NO-GO` ou `GATED` pour la declaration finale tant que les Lots 4/5/6/7/Z ne
+  sont pas traites.
+- Les preuves JSONL ont ete inventoriees et parsees content-free: 118 fichiers,
+  671 enregistrements, 0 erreur.
+- Les checkboxes ouvertes historiques ont ete caracterisees sans correction
+  artificielle: 7 fichiers `todo-done/product`, 149 cases ouvertes, dont une
+  seule V1 finale directe deja couverte par `met_with_documented_limit`.
+- Aucun runtime, provider, DB, reset, purge, migration, Docker, Mail runtime,
+  activation Capsule, CalDAV ou ecriture Nextcloud n'a ete touche.
 
 Commandes/preuves minimales:
 
