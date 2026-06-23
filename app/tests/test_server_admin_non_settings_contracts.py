@@ -40,11 +40,12 @@ class ServerAdminNonSettingsContractsTests(unittest.TestCase):
 
     def test_admin_logs_route_keeps_legacy_contract(self) -> None:
         original_read_logs = self.server.admin_logs.read_logs
-        observed = {'limit': None}
+        observed = {'limit': None, 'fail_closed': None}
 
-        def fake_read_logs(limit=200):
+        def fake_read_logs(limit=200, *, fail_closed=False):
             observed['limit'] = limit
-            return [{'event': 'legacy-log', 'level': 'INFO'}]
+            observed['fail_closed'] = fail_closed
+            return [{'event': 'legacy-log', 'level': 'INFO', 'reason_code': 'admin_check'}]
 
         self.server.admin_logs.read_logs = fake_read_logs
         try:
@@ -54,14 +55,15 @@ class ServerAdminNonSettingsContractsTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(observed['limit'], 5)
+        self.assertTrue(observed['fail_closed'])
         data = response.get_json()
-        self.assertEqual(
-            data,
-            {
-                'ok': True,
-                'logs': [{'event': 'legacy-log', 'level': 'INFO'}],
-            },
-        )
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(len(data['logs']), 1)
+        self.assertEqual(data['logs'][0]['event'], 'legacy-log')
+        self.assertEqual(data['logs'][0]['level'], 'INFO')
+        self.assertEqual(data['logs'][0]['payload']['reason_code'], 'admin_check')
+        self.assertFalse(data['redaction']['raw_event_payloads_included'])
 
     def test_admin_restart_route_keeps_legacy_contract(self) -> None:
         original_restart = self.server.admin_actions.restart_runtime_async

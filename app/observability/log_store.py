@@ -341,6 +341,7 @@ def read_chat_log_events(
     ts_from: str | None = None,
     ts_to: str | None = None,
     payload_projection: str = 'raw',
+    fail_closed: bool = False,
     conn_factory: Callable[[], Any] = _conn,
     logger_instance: Any = logger,
 ) -> dict[str, Any]:
@@ -451,6 +452,8 @@ def read_chat_log_events(
             'chat_log_events_read_failed reason=chat_log_events_read_exception err_class=%s',
             exc.__class__.__name__,
         )
+        if fail_closed:
+            raise RuntimeError('chat_log_events_read_failed') from exc
         failed_result = {
             'items': [],
             'count': 0,

@@ -90,6 +90,7 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.assertEqual(observed['kwargs']['ts_from'], '2026-03-27T11:00:00Z')
         self.assertEqual(observed['kwargs']['ts_to'], '2026-03-27T13:00:00Z')
         self.assertEqual(observed['kwargs']['payload_projection'], 'admin')
+        self.assertTrue(observed['kwargs']['fail_closed'])
         self.assertFalse(data['redaction']['raw_event_payloads_included'])
         self.assertFalse(data['items'][0]['redaction']['raw_event_payloads_included'])
         self.assertEqual(data['items'][0]['payload']['web_search_enabled'], False)
@@ -112,6 +113,7 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
 
         def fake_read_chat_log_events(**kwargs):
             self.assertEqual(kwargs.get('payload_projection'), 'admin')
+            self.assertTrue(kwargs.get('fail_closed'))
             return {
                 'items': [
                     {
@@ -227,6 +229,167 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.assertEqual(data['items'][2]['payload']['runtime_source'], '[redacted]')
         self.assertEqual(data['items'][2]['payload']['model'], 'openai/gpt-5.4-mini')
         self.assertEqual(data['items'][2]['payload']['prompt_kind'], 'chat_system_augmented')
+
+    def test_legacy_admin_logs_route_projects_payload_content_free(self) -> None:
+        original_read = self.server.admin_logs.read_logs
+        observed = {'limit': None, 'fail_closed': None}
+        dangerous_values = (
+            'RAW USER MESSAGE SENTINEL LEGACY',
+            'RAW PROMPT SENTINEL LEGACY',
+            'RAW PROVIDER PAYLOAD SENTINEL LEGACY',
+            'Authorization: Bearer RAW_TOKEN_SENTINEL_LEGACY',
+            'RAW EXCEPTION SENTINEL LEGACY',
+            'RAW FIELD SENTINEL LEGACY',
+            'BEGIN:VEVENT RAW DAV XML SENTINEL LEGACY',
+            'https://logs.example.internal/path',
+            'https://provider.example/call',
+            'bearer-token-like',
+            '/private/admin/logs/source',
+        )
+
+        def fake_read_logs(limit=200, *, fail_closed=False):
+            observed['limit'] = limit
+            observed['fail_closed'] = fail_closed
+            return [
+                {
+                    'timestamp': '2026-06-21T12:00:00+00:00',
+                    'event': 'llm_call',
+                    'level': 'ERROR',
+                    'status_schema_version': 'agentic_v1',
+                    'reason_code': 'provider_timeout',
+                    'error_code': 'upstream_error',
+                    'model': 'openai/gpt-5.4-mini',
+                    'prompt_kind': 'chat_system_augmented',
+                    'message': dangerous_values[0],
+                    'prompt': dangerous_values[1],
+                    'provider_payload': {'body': dangerous_values[2]},
+                    'authorization': dangerous_values[3],
+                    'error': dangerous_values[4],
+                    'raw': dangerous_values[5],
+                    'raw_content_included': True,
+                    'caldav_xml': dangerous_values[6],
+                    'source': dangerous_values[7],
+                    'provider_caller': dangerous_values[8],
+                    'write_mode': dangerous_values[9],
+                    'runtime_source': dangerous_values[10],
+                }
+            ]
+
+        self.server.admin_logs.read_logs = fake_read_logs
+        try:
+            response = self.client.get('/api/admin/logs?limit=1')
+        finally:
+            self.server.admin_logs.read_logs = original_read
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        encoded = json.dumps(data, ensure_ascii=False, sort_keys=True)
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(observed['limit'], 1)
+        self.assertTrue(observed['fail_closed'])
+        for marker in dangerous_values:
+            self.assertNotIn(marker, encoded)
+        self.assertEqual(data['payload_projection_schema'], 'admin_log_event_projection_v1')
+        self.assertFalse(data['redaction']['raw_event_payloads_included'])
+        self.assertFalse(data['redaction']['raw_content_included'])
+        self.assertFalse(data['redaction']['raw_prompt_included'])
+        self.assertFalse(data['redaction']['raw_provider_payload_included'])
+        self.assertFalse(data['redaction']['raw_webdav_payload_included'])
+        self.assertFalse(data['redaction']['raw_error_message_included'])
+        item = data['logs'][0]
+        self.assertTrue(item['legacy_admin_log'])
+        self.assertEqual(item['event'], 'llm_call')
+        self.assertEqual(item['level'], 'ERROR')
+        self.assertEqual(item['payload']['reason_code'], 'provider_timeout')
+        self.assertEqual(item['payload']['error_code'], 'upstream_error')
+        self.assertEqual(item['payload']['model'], 'openai/gpt-5.4-mini')
+        self.assertEqual(item['payload']['prompt_kind'], 'chat_system_augmented')
+        self.assertEqual(item['payload']['source'], '[redacted]')
+        self.assertEqual(item['payload']['provider_caller'], '[redacted]')
+        self.assertEqual(item['payload']['write_mode'], '[redacted]')
+        self.assertEqual(item['payload']['runtime_source'], '[redacted]')
+        self.assertFalse(item['payload']['raw_content_included'])
+        self.assertNotIn('raw', item['payload'])
+        self.assertNotIn('message', item)
+        self.assertNotIn('error', item)
+
+    def test_legacy_admin_logs_route_fail_closed_without_raw_exception(self) -> None:
+        original_read = self.server.admin_logs.read_logs
+
+        def fake_read_logs(**_kwargs):
+            raise RuntimeError('RAW LEGACY LOG READ SENTINEL')
+
+        self.server.admin_logs.read_logs = fake_read_logs
+        try:
+            response = self.client.get('/api/admin/logs?limit=1')
+        finally:
+            self.server.admin_logs.read_logs = original_read
+
+        self.assertEqual(response.status_code, 500)
+        data = response.get_json()
+        encoded = json.dumps(data, ensure_ascii=False, sort_keys=True)
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['reason_code'], 'admin_logs_read_failed')
+        self.assertNotIn('RAW LEGACY LOG READ SENTINEL', encoded)
+
+    def test_admin_chat_logs_route_fail_closed_without_raw_exception(self) -> None:
+        original_read = self.server.log_store.read_chat_log_events
+
+        def fake_read_chat_log_events(**kwargs):
+            self.assertTrue(kwargs.get('fail_closed'))
+            raise RuntimeError('RAW CHAT LOG READ SENTINEL')
+
+        self.server.log_store.read_chat_log_events = fake_read_chat_log_events
+        try:
+            response = self.client.get('/api/admin/logs/chat?limit=1')
+        finally:
+            self.server.log_store.read_chat_log_events = original_read
+
+        self.assertEqual(response.status_code, 500)
+        data = response.get_json()
+        encoded = json.dumps(data, ensure_ascii=False, sort_keys=True)
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['reason_code'], 'chat_log_events_read_failed')
+        self.assertNotIn('RAW CHAT LOG READ SENTINEL', encoded)
+
+    def test_admin_chat_log_auxiliary_reads_fail_closed_without_raw_exception(self) -> None:
+        cases = (
+            (
+                'read_chat_log_metadata',
+                '/api/admin/logs/chat/metadata',
+                'chat_log_metadata_read_failed',
+            ),
+            (
+                'read_chat_turn_pipeline',
+                '/api/admin/logs/chat/turns',
+                'chat_log_turns_read_failed',
+            ),
+            (
+                'read_full_turn_metrics_snapshot',
+                '/api/admin/logs/chat/metrics',
+                'chat_log_metrics_read_failed',
+            ),
+        )
+        for attr_name, route, reason_code in cases:
+            with self.subTest(route=route):
+                original = getattr(self.server.log_store, attr_name)
+
+                def fake_read(**_kwargs):
+                    raise RuntimeError(f'RAW AUXILIARY LOG READ SENTINEL {reason_code}')
+
+                setattr(self.server.log_store, attr_name, fake_read)
+                try:
+                    response = self.client.get(route)
+                finally:
+                    setattr(self.server.log_store, attr_name, original)
+
+                self.assertEqual(response.status_code, 500)
+                data = response.get_json()
+                encoded = json.dumps(data, ensure_ascii=False, sort_keys=True)
+                self.assertFalse(data['ok'])
+                self.assertEqual(data['reason_code'], reason_code)
+                self.assertNotIn('RAW AUXILIARY LOG READ SENTINEL', encoded)
 
     def test_admin_chat_logs_metadata_route_returns_selector_payload(self) -> None:
         observed = {'kwargs': None}

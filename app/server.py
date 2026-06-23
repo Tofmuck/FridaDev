@@ -973,7 +973,20 @@ def api_admin_logs():
         limit = max(1, min(int(raw_limit), 1000))
     except ValueError:
         limit = 200
-    return jsonify({"ok": True, "logs": admin_logs.read_logs(limit=limit)})
+    try:
+        raw_logs = admin_logs.read_logs(limit=limit, fail_closed=True)
+    except RuntimeError:
+        return jsonify({'ok': False, 'error': 'admin_logs_read_failed', 'reason_code': 'admin_logs_read_failed'}), 500
+    logs, redaction = admin_log_projection.project_legacy_admin_log_entries(raw_logs)
+    return jsonify(
+        {
+            "ok": True,
+            "logs": logs,
+            "count": len(logs),
+            "redaction": redaction,
+            "payload_projection_schema": admin_log_projection.SCHEMA_VERSION,
+        }
+    )
 
 
 @app.get('/api/admin/logs/chat')
@@ -1000,9 +1013,12 @@ def api_admin_chat_logs():
             ts_from=request.args.get('ts_from'),
             ts_to=request.args.get('ts_to'),
             payload_projection='admin',
+            fail_closed=True,
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
+    except RuntimeError:
+        return jsonify({'ok': False, 'error': 'chat_log_events_read_failed', 'reason_code': 'chat_log_events_read_failed'}), 500
     listing = admin_log_projection.project_event_listing(listing)
 
     return jsonify(
@@ -1028,8 +1044,17 @@ def api_admin_chat_logs_metadata():
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
-    except RuntimeError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 500
+    except RuntimeError:
+        return (
+            jsonify(
+                {
+                    'ok': False,
+                    'error': 'chat_log_metadata_read_failed',
+                    'reason_code': 'chat_log_metadata_read_failed',
+                }
+            ),
+            500,
+        )
 
     return jsonify(
         {
@@ -1065,6 +1090,17 @@ def api_admin_chat_log_turns():
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
+    except RuntimeError:
+        return (
+            jsonify(
+                {
+                    'ok': False,
+                    'error': 'chat_log_turns_read_failed',
+                    'reason_code': 'chat_log_turns_read_failed',
+                }
+            ),
+            500,
+        )
 
     return jsonify({'ok': True, **turns})
 
@@ -1087,6 +1123,17 @@ def api_admin_chat_logs_metrics():
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
+    except RuntimeError:
+        return (
+            jsonify(
+                {
+                    'ok': False,
+                    'error': 'chat_log_metrics_read_failed',
+                    'reason_code': 'chat_log_metrics_read_failed',
+                }
+            ),
+            500,
+        )
 
     return jsonify({'ok': True, **metrics})
 
@@ -1222,8 +1269,8 @@ def api_admin_chat_logs_delete():
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
-    except RuntimeError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 500
+    except RuntimeError:
+        return jsonify({'ok': False, 'error': 'chat_log_delete_failed', 'reason_code': 'chat_log_delete_failed'}), 500
 
     return jsonify(
         {
@@ -1255,8 +1302,8 @@ def api_admin_chat_logs_export_markdown():
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
-    except RuntimeError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 500
+    except RuntimeError:
+        return jsonify({'ok': False, 'error': 'chat_log_export_failed', 'reason_code': 'chat_log_export_failed'}), 500
 
     conversation_slug = _safe_export_filename_token(exported['conversation_id'], 'conversation')
     if exported['scope'] == 'turn':

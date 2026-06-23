@@ -288,6 +288,7 @@ _GENERAL_SCALAR_KEYS = set(
     current_user_retained enabled explicit_url_chars explicit_url_detected explicit_url_included
     fail_open fallback_deterministic fallback_used final_response_lock final_response_lock_present
     has_in_progress_turn injected insertion_point_reached is_primary_source last_assistant_retained
+    invalid_status_redacted
     main_llm_payload main_model_called model_called mutation_attempted mutation_requested ok
     present primary_read_attempted primary_read_raw_fallback_used prompt_lane_injected
     openrouter_fallback_used primary_query_hash_included primary_read_attempted

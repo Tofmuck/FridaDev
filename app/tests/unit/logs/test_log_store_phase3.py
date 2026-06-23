@@ -1132,6 +1132,22 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertIn('ts >= %s::timestamptz', joined_queries)
         self.assertIn('ts <= %s::timestamptz', joined_queries)
 
+    def test_read_chat_log_events_fail_closed_raises_content_free_error(self) -> None:
+        def failing_conn_factory():
+            raise OSError('RAW CHAT LOG STORE FAILURE SENTINEL')
+
+        with self.assertRaises(RuntimeError) as raised:
+            log_store.read_chat_log_events(
+                limit=1,
+                payload_projection='admin',
+                fail_closed=True,
+                conn_factory=failing_conn_factory,
+                logger_instance=_NoopLogger(),
+            )
+
+        self.assertEqual(str(raised.exception), 'chat_log_events_read_failed')
+        self.assertNotIn('RAW CHAT LOG STORE FAILURE SENTINEL', str(raised.exception))
+
     def test_read_chat_log_events_admin_projection_redacts_payload_sentinels(self) -> None:
         dangerous_values = (
             'RAW USER MESSAGE SENTINEL LOG STORE 5A',

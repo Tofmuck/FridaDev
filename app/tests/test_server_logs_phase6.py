@@ -115,6 +115,22 @@ class ServerLogsPhase6Tests(unittest.TestCase):
         self.assertEqual(response_ok.status_code, 200)
         self.assertIn('text/markdown', response_ok.content_type)
 
+    def test_admin_chat_logs_export_markdown_fail_closed_without_raw_exception(self) -> None:
+        original_export = self.server.log_markdown_export.export_chat_logs_markdown
+        self.server.log_markdown_export.export_chat_logs_markdown = (
+            lambda **_kwargs: (_ for _ in ()).throw(RuntimeError('RAW EXPORT LOG SENTINEL'))
+        )
+        try:
+            response = self.client.get('/api/admin/logs/chat/export.md?conversation_id=conv-1')
+        finally:
+            self.server.log_markdown_export.export_chat_logs_markdown = original_export
+
+        self.assertEqual(response.status_code, 500)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['reason_code'], 'chat_log_export_failed')
+        self.assertNotIn('RAW EXPORT LOG SENTINEL', str(data))
+
 
 if __name__ == '__main__':
     unittest.main()

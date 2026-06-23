@@ -85,10 +85,13 @@ def log_event(event: str, level: str = 'INFO', **fields: Any) -> None:
         with LOG_PATH.open('a', encoding='utf-8') as handle:
             handle.write(json.dumps(payload, ensure_ascii=False) + '\n')
     except Exception as exc:
-        logger.error('admin_log_write_error err=%s', exc)
+        logger.error(
+            'admin_log_write_error reason=admin_log_write_failed err_class=%s',
+            exc.__class__.__name__,
+        )
 
 
-def read_logs(limit: int = 200) -> list[dict[str, Any]]:
+def read_logs(limit: int = 200, *, fail_closed: bool = False) -> list[dict[str, Any]]:
     _bootstrap_legacy_logs_if_needed()
     if limit < 1:
         return []
@@ -102,7 +105,12 @@ def read_logs(limit: int = 200) -> list[dict[str, Any]]:
                 if line:
                     lines.append(line)
     except Exception as exc:
-        logger.error('admin_log_read_error err=%s', exc)
+        logger.error(
+            'admin_log_read_error reason=admin_logs_read_failed err_class=%s',
+            exc.__class__.__name__,
+        )
+        if fail_closed:
+            raise RuntimeError('admin_logs_read_failed') from exc
         return []
     entries: list[dict[str, Any]] = []
     for line in reversed(lines):
@@ -153,7 +161,10 @@ def summarize_hermeneutic_mode_observation(
         try:
             lines = path.read_text(encoding='utf-8').splitlines()
         except OSError as exc:
-            logger.error('admin_log_mode_summary_read_error file=%s err=%s', path, exc)
+            logger.error(
+                'admin_log_mode_summary_read_error reason=admin_log_mode_summary_read_failed err_class=%s',
+                exc.__class__.__name__,
+            )
             continue
 
         for line in lines:
@@ -237,9 +248,12 @@ def _bootstrap_legacy_logs_if_needed() -> None:
             LEGACY_LOG_PATH.parent.rmdir()
         except OSError:
             pass
-        logger.info('admin_log_legacy_migrated from=%s to=%s', LEGACY_LOG_PATH, LOG_PATH)
+        logger.info('admin_log_legacy_migrated reason=legacy_admin_log_bootstrap')
     except Exception as exc:
-        logger.error('admin_log_migration_error err=%s', exc)
+        logger.error(
+            'admin_log_migration_error reason=admin_log_migration_failed err_class=%s',
+            exc.__class__.__name__,
+        )
 
 
 def _rotate_if_needed() -> None:
@@ -267,7 +281,10 @@ def _rotate_if_needed() -> None:
     try:
         LOG_PATH.replace(rotated)
     except OSError as exc:
-        logger.error('admin_log_rotate_error err=%s', exc)
+        logger.error(
+            'admin_log_rotate_error reason=admin_log_rotate_failed err_class=%s',
+            exc.__class__.__name__,
+        )
         return
 
     _prune_rotated_files()
@@ -286,7 +303,10 @@ def _prune_rotated_files() -> None:
         try:
             stale.unlink(missing_ok=True)
         except OSError as exc:
-            logger.error('admin_log_prune_error file=%s err=%s', stale, exc)
+            logger.error(
+                'admin_log_prune_error reason=admin_log_prune_failed err_class=%s',
+                exc.__class__.__name__,
+            )
 
 
 def _sanitize(value: Any) -> Any:

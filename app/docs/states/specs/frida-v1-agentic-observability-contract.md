@@ -552,6 +552,27 @@ Decision livree Lot 5A:
 - `/api/admin/logs/chat` demande `payload_projection=admin` a
   `observability.log_store.read_chat_log_events` et applique une projection
   defensive avant JSON;
+- durcissement final Lot 1A/1B du 2026-06-23:
+  - `/api/admin/logs` legacy reste disponible pour compatibilite mais ne
+    retourne plus les lignes admin brutes; la route lit avec
+    `fail_closed=True`, projette via
+    `observability.admin_log_projection.project_legacy_admin_log_entries`, et
+    expose `logs`, `count`, `redaction` et `payload_projection_schema`;
+  - `observability.admin_log_projection` normalise les champs legacy
+    `timestamp` / `event` / `level` et replie les autres champs dans un payload
+    projete content-free; les cles dangereuses (`message`, `error`, `raw`,
+    `payload`, secrets, headers, URL/path, DAV/XML/ETag) sont retirees ou
+    redacted;
+  - `admin.admin_logs.read_logs(..., fail_closed=True)` remonte
+    `RuntimeError('admin_logs_read_failed')` sur panne de lecture apres log
+    technique `err_class` content-free;
+  - `observability.log_store.read_chat_log_events(..., fail_closed=True)`
+    remonte `RuntimeError('chat_log_events_read_failed')` sur panne de lecture
+    apres log technique `err_class` content-free;
+  - les routes admin logs de lecture principale, metadata, turns, metrics,
+    delete scope et export Markdown traduisent les erreurs runtime en HTTP 500
+    `ok=false` avec reason code stable, sans `str(exc)`, traceback, chemin,
+    payload ou cause brute exposes;
 - le champ historique `payload` reste present pour compat UI, mais il ne
   contient plus le payload DB brut sur la route admin: seules les valeurs
   allowlistees et redacted sont exposees;

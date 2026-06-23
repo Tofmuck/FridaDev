@@ -44,13 +44,13 @@ par lui-meme.
 - Images generees V1: archive Lot Z `met`.
 - Observabilite agentique V1: archive Lot Z `met`, reset destructif non execute.
 - Continuity Payload V1: archive Lot Z `met`, capsule runtime livree disabled.
+- Admin logs Lot 1A/1B: `/api/admin/logs` legacy projete content-free et
+  lectures admin logs fail-closed, sans cause brute exposee.
 - Biblio: chantiers produits V1 clos par archives et artefacts.
 - Agenda: cloture pragmatique V1, a traiter comme dormant post-V1 sauf bug reel.
 
 ### Bloquants avant cloture propre
 
-- Durcissement ou decision explicite sur `/api/admin/logs` legacy.
-- Fail-closed des lectures logs admin si panne de lecture.
 - Alignement docs/source-of-truth pour Nextcloud folders, Agenda, Continuity
   audits et pointeurs actifs/archives.
 - Matrice finale de cloture et decision branche/main.
@@ -101,29 +101,31 @@ par lui-meme.
 
 ### P2-ADMIN-LOGS-LEGACY-01
 
-- Statut initial: open.
+- Statut initial: accepted; clos par Lot 1A le 2026-06-23.
 - Severite: P2.
 - Fichiers suspects: `app/server.py`, `app/admin/admin_logs.py`,
-  `app/core/chat_llm_flow.py`.
+  `app/observability/admin_log_projection.py`.
 - Lot cible: Lot 1A.
-- Critere de cloture: `/api/admin/logs` legacy est soit depreciee clairement,
-  soit projetee/redactee au niveau content-free attendu de
-  `/api/admin/logs/chat`.
-- Preuve minimale: tests route admin, sentinelles anti-fuite, scan `str(exc)` /
-  `error=str(exc)` sur le scope touche.
+- Critere de cloture: `/api/admin/logs` legacy reste disponible mais retourne
+  les entrees sous projection content-free, avec `payload_projection_schema`,
+  `redaction` agregee et champs dangereux retires/redacted.
+- Preuve minimale: tests route admin avec sentinelles anti-fuite, compat `logs`,
+  et projection `observability.admin_log_projection`.
 - Hors-scope: refonte dashboard large, suppression non demandee de l'historique.
 
 ### P2-LOG-READ-FAIL-CLOSED-01
 
-- Statut initial: open.
+- Statut initial: accepted; clos par Lot 1B le 2026-06-23.
 - Severite: P2.
 - Fichiers suspects: `app/observability/log_store.py`, `app/server.py`,
   `app/admin/admin_logs.py`.
 - Lot cible: Lot 1B.
-- Critere de cloture: une panne de lecture logs ne repond plus `ok: true` avec
-  liste vide; elle devient `ok=false` ou statut 5xx avec reason code content-free.
-- Preuve minimale: test fake de panne lecture, reponse API fail-closed sans cause
-  brute, log technique redige.
+- Critere de cloture: les routes admin `/api/admin/logs` et
+  `/api/admin/logs/chat` optent pour `fail_closed=True`; une panne de lecture
+  devient `ok=false`, HTTP 500 et reason code content-free au lieu d'un succes
+  vide.
+- Preuve minimale: tests fake de panne lecture legacy/chat, test bas niveau
+  `read_chat_log_events(fail_closed=True)`, absence de cause brute exposee.
 - Hors-scope: exposer traceback, chemin, contenu ou exception brute.
 
 ### P2-DOCS-SOURCE-OF-TRUTH-01
@@ -387,12 +389,23 @@ Artefact JSONL: non.
 
 Type: runtime cible.
 
-- [ ] Relire `/api/admin/logs`, `/api/admin/logs/chat` et projections associees.
-- [ ] Decider: deprecation explicite de legacy ou projection/redaction stricte.
-- [ ] Remplacer les sorties `error=str(exc)` du scope touche par reason code /
+- [x] Relire `/api/admin/logs`, `/api/admin/logs/chat` et projections associees.
+- [x] Decider: deprecation explicite de legacy ou projection/redaction stricte.
+- [x] Remplacer les sorties `error=str(exc)` du scope touche par reason code /
   `error_class` content-free.
-- [ ] Preserver compat UI uniquement si elle reste explicite et testee.
-- [ ] Ne pas toucher au dashboard large.
+- [x] Preserver compat UI uniquement si elle reste explicite et testee.
+- [x] Ne pas toucher au dashboard large.
+
+Resultat Lot 1A:
+
+- `/api/admin/logs` conserve la cle `logs`, mais les items legacy passent par
+  `observability.admin_log_projection.project_legacy_admin_log_entries`.
+- Les champs historiques dangereux (`message`, `error`, `raw`, `payload`,
+  provider/DAV/token/path-like) sont retires ou redacted; seuls des codes et
+  compteurs content-free peuvent rester.
+- La route retourne `count`, `redaction` et `payload_projection_schema` pour
+  rendre la projection observable.
+- Le dashboard large n'a pas ete modifie.
 
 Commandes/preuves minimales:
 
@@ -407,10 +420,23 @@ Artefact JSONL: seulement si le lot produit une preuve content-free utile.
 
 Type: runtime cible.
 
-- [ ] Construire un test fake de panne lecture logs chat.
-- [ ] Construire un test fake de panne lecture logs legacy si legacy conservee.
-- [ ] Faire retourner `ok=false` ou 5xx avec reason code content-free.
-- [ ] Verifier que la cause brute n'est jamais exposee.
+- [x] Construire un test fake de panne lecture logs chat.
+- [x] Construire un test fake de panne lecture logs legacy si legacy conservee.
+- [x] Faire retourner `ok=false` ou 5xx avec reason code content-free.
+- [x] Verifier que la cause brute n'est jamais exposee.
+
+Resultat Lot 1B:
+
+- `admin_logs.read_logs(..., fail_closed=True)` remonte
+  `RuntimeError('admin_logs_read_failed')` apres log technique `err_class`
+  content-free.
+- `log_store.read_chat_log_events(..., fail_closed=True)` remonte
+  `RuntimeError('chat_log_events_read_failed')` apres log technique `err_class`
+  content-free.
+- Les routes admin logs de lecture principale, metadata, turns, metrics, delete
+  scope et export Markdown traduisent les erreurs runtime en HTTP 500
+  `ok=false` avec reason code stable, sans traceback ni message d'exception
+  brut.
 
 Commandes/preuves minimales:
 

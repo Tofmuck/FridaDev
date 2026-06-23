@@ -16,6 +16,10 @@ _REDACTED = '[redacted]'
 
 _SAFE_CODE_RE = re.compile(r'^[a-z0-9][a-z0-9_.-]{0,159}$')
 _SAFE_MODEL_RE = re.compile(r'^[a-z0-9][a-z0-9_.-]{0,79}/[a-z0-9][a-z0-9_.-]{0,119}$')
+_LEGACY_ADMIN_CORE_KEYS = {'timestamp', 'event', 'level'}
+_LEGACY_ADMIN_SAFE_EVENT_RE = re.compile(r'^[A-Za-z0-9_.-]{1,160}$')
+_LEGACY_ADMIN_SAFE_TIMESTAMP_RE = re.compile(r'^[0-9TZ:+.\-]{1,64}$')
+_LEGACY_ADMIN_SAFE_LEVELS = {'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'}
 
 _QUALIFIED_RAW_FLAGS = {
     'raw_event_payloads_included',
@@ -433,6 +437,48 @@ def project_event_items(items: Any) -> tuple[list[dict[str, Any]], dict[str, Any
         aggregate['redacted_payload_values_count'] += int(redaction.get('redacted_payload_values_count') or 0)
     aggregate['items_count'] = len(projected_items)
     return projected_items, aggregate
+
+
+def _content_free_legacy_admin_event(value: Any) -> str:
+    text = str(value or '').strip()
+    if _LEGACY_ADMIN_SAFE_EVENT_RE.fullmatch(text):
+        return text
+    return 'redacted_event'
+
+
+def _content_free_legacy_admin_level(value: Any) -> str:
+    text = str(value or '').strip().upper()
+    if text == 'WARN':
+        return 'WARNING'
+    if text in _LEGACY_ADMIN_SAFE_LEVELS:
+        return text
+    return 'INFO'
+
+
+def _content_free_legacy_admin_timestamp(value: Any) -> str:
+    text = str(value or '').strip()
+    if _LEGACY_ADMIN_SAFE_TIMESTAMP_RE.fullmatch(text):
+        return text
+    return ''
+
+
+def project_legacy_admin_log_entries(entries: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    source_entries = entries if isinstance(entries, list) else []
+    for entry in source_entries:
+        if not isinstance(entry, Mapping):
+            continue
+        payload = {key: value for key, value in entry.items() if str(key) not in _LEGACY_ADMIN_CORE_KEYS}
+        normalized.append(
+            {
+                'timestamp': _content_free_legacy_admin_timestamp(entry.get('timestamp')),
+                'event': _content_free_legacy_admin_event(entry.get('event')),
+                'level': _content_free_legacy_admin_level(entry.get('level')),
+                'payload': payload,
+                'legacy_admin_log': True,
+            }
+        )
+    return project_event_items(normalized)
 
 
 def project_event_listing(listing: Mapping[str, Any]) -> dict[str, Any]:

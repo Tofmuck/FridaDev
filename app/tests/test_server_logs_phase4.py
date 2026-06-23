@@ -126,6 +126,22 @@ class ServerLogsPhase4Tests(unittest.TestCase):
         self.assertEqual(response_ok.status_code, 200)
         self.assertTrue(response_ok.get_json()['ok'])
 
+    def test_admin_chat_logs_delete_route_fail_closed_without_raw_exception(self) -> None:
+        original_delete = self.server.log_store.delete_chat_log_events
+        self.server.log_store.delete_chat_log_events = (
+            lambda **_kwargs: (_ for _ in ()).throw(RuntimeError('RAW DELETE LOG SENTINEL'))
+        )
+        try:
+            response = self.client.delete('/api/admin/logs/chat?conversation_id=conv-1')
+        finally:
+            self.server.log_store.delete_chat_log_events = original_delete
+
+        self.assertEqual(response.status_code, 500)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['reason_code'], 'chat_log_delete_failed')
+        self.assertNotIn('RAW DELETE LOG SENTINEL', str(data))
+
     def test_admin_chat_logs_non_reconstruction_after_delete_until_new_event(self) -> None:
         state = {
             'items': [
