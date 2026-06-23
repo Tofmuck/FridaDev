@@ -39,8 +39,9 @@ par lui-meme.
 - Cloture V1 possible: conditionnelle.
 - Risque global: moyen tant que les P2 ne sont ni fermes, ni acceptes
   explicitement comme risques residuels.
-- Continuity Capsule: livree, bornee, desactivee par defaut; activation
-  uniquement apres micro-preuve et GO operateur dedie.
+- Continuity Capsule: livree, bornee, desactivee par defaut; micro-preuve
+  Lot 5 realisee avec rollback disabled. Activation durable uniquement apres
+  GO operateur dedie separe.
 - Agenda: utile et pragmatiquement clos pour V1; TODO maintenue en statut
   post-V1 dormant, non bloquante pour Frida 1.0 sauf bug reel, besoin concret
   ou decision explicite.
@@ -63,7 +64,6 @@ par lui-meme.
 
 ### Bloquants avant cloture propre
 
-- Micro-preuve ou report explicite de la Continuity Capsule.
 - Decision Mail: audit/spec-only borne ou report post-V1.
 - Smoke final Lot 7 selon matrice Lot 3.
 - Archive finale Lot Z.
@@ -116,12 +116,12 @@ par lui-meme.
 | Exports | GO | `todo-done/product/frida-v1-exports-todo.md`, JSONL `exports-smokes/` Lot Z | Reuse `.docx`/`.pdf` comme source texte reste post-V1 | Aucune pour V1 | Clos |
 | Generated Images | PARTIAL | `todo-done/product/frida-v1-generated-images-todo.md`, JSONL `generated-images-smokes/` Lot Z | Live provider observe PNG; JPEG/WebP couverts par tests/fakes | Aucune si limite acceptee | Clos |
 | Agentic Observability | GO | `todo-done/product/frida-v1-agentic-observability-todo.md`, JSONL `agentic-observability-smokes/` Lot Z | Reset destructif non execute; operation separee sous GO operateur | Reset reste `GATED` post-cloture | Clos / GATED reset |
-| Continuity Payload | GO | `todo-done/product/frida-v1-continuity-payload-todo.md`, JSONL `continuity-payload-smokes/` Lot Z | Capsule runtime livree disabled; activation texte non prouvee | Activation ou report par Lot 5 | Clos / GATED capsule |
+| Continuity Payload | GO | `todo-done/product/frida-v1-continuity-payload-todo.md`, JSONL `continuity-payload-smokes/` Lot Z | Capsule runtime livree disabled; micro-preuve Lot 5 rollbackee | Activation durable hors V1 sans GO operateur separe | Clos / GATED durable |
 | Biblio | GO | `todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`, JSONL `biblio-smokes/` BIB-01 -> BIB-33 | Agent/refactors/ergonomie avancee restent post-V1 | Aucune pour V1 | Clos |
 | Agenda pragmatique | PARTIAL | `states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`, JSONL `agenda-smokes/` | Agenda utile mais non exhaustif; Lot 9 et capacites riches post-V1 | Aucune sauf bug reel/besoin concret | Clos pragmatique |
 | Admin logs Lot 1A/1B/1B.1 | GO | Tests admin/logs et TODO finale Lots 1A/1B | Pas de refonte dashboard large | Aucune pour V1 | Clos |
 | Branche/main | GATED | Etat Git Lot 4: `origin_main_ancestor_of_HEAD=0`, `HEAD_ancestor_of_origin_main=1` | `HEAD` n'est pas contenu dans `origin/main`; Frida V1 n'est pas declaree close sur `main` | Non-integration temporaire; merge/PR/main seulement sur GO separe | Lot 4 clos / main gate |
-| Continuity Capsule activation | GATED | Contrat/archives Continuity et tests existants | Substitut borne ne prouve que la mecanique runtime | Micro-preuve texte operateur ou report | Lot 5 |
+| Continuity Capsule activation | PARTIAL | Contrat/archives Continuity, tests existants, artefact Lot 5 `continuity-payload-smokes/frida-v1-continuity-capsule-lot5-micro-proof-20260623T171933Z.jsonl` | Micro-preuve reussie puis rollback disabled; activation durable non executee | Aucune pour V1; activation durable exige GO separe | Lot 5 clos |
 | Mail bonus | GATED | Roadmap finale et TODO Mail bonus | Runtime Mail exclu de V1 par defaut | Audit/spec-only ou report explicite | Lot 6 |
 | Final closure smoke | NO-GO | Cette matrice et inventaire JSONL Lot 3 | Pas de smoke live non necessaire en Lot 3 | Scans/tests bornes choisis | Lot 7 |
 | Archive finale | NO-GO | TODO finale active | Tous P2/P3 doivent etre fermes, acceptes ou reportes | Archivage apres decisions | Lot Z |
@@ -157,9 +157,9 @@ par lui-meme.
 - `P3-ARCHIVE-REFERENCES-STALE-01`: accepte comme historique; les anciens
   pointeurs trouves dans archives Documents/Exports/Images sont des chaines de
   handoff entre lots archives, pas des pointeurs actifs.
-- `P3-CAPSULE-FINAL-LOCK-OBSERVABILITY-01`: classe `GATED` Lot 5; le statut
-  actuel est non-injection sure sous final lock, mais l'ordre unsafe/final-lock
-  reste a clarifier si l'objectif devient activation reelle.
+- `P3-CAPSULE-FINAL-LOCK-OBSERVABILITY-01`: clos par Lot 5; unsafe refused et
+  final-lock bypass sont prouves comme non-injection sure avant toute activation
+  durable.
 - `P3-SCOPED-LOG-DELETE-GATE-01`: suppression scopee classee action admin
   bornee (`conversation_id` requis, `turn_id` optionnel), distincte du reset
   destructif global; tout reset large reste `GATED`.
@@ -175,12 +175,13 @@ par lui-meme.
 - `P3-LARGE-FILES-01`: confirme post-V1; les gros fichiers mesures au Lot 3
   restent sous vigilance sans refactor opportuniste.
 
-## Decisions de cloture restantes apres Lot 4
+## Decisions de cloture restantes apres Lot 5
 
 - Lot 4: decision branche/main prise; `P2-BRANCH-INTEGRATION-01` est clos par
   non-integration temporaire, sans merge ni push vers `main`.
-- Lot 5: micro-preuve Capsule avec texte operateur approuve ou report post-V1;
-  `P2-CAPSULE-ACTIVATION-PROOF-01` reste ouvert.
+- Lot 5: micro-preuve Capsule realisee avec texte operateur minimal redacted,
+  unsafe refused, final-lock bypass, rollback disabled; `P2-CAPSULE-ACTIVATION-PROOF-01`
+  est clos par decision `ROLLBACK_DISABLED_EFFECTUE`.
 - Lot 6: Mail audit/spec-only ou report post-V1; `P2-MAIL-RUNTIME-SCOPE-01`
   reste ouvert tant que la decision n'est pas documentee.
 - Lot 7: smoke final borne selon cette matrice, sans nouveaux smokes live
@@ -324,18 +325,23 @@ par lui-meme.
 
 ### P2-CAPSULE-ACTIVATION-PROOF-01
 
-- Statut initial: open.
+- Statut initial: accepted; clos par Lot 5 le 2026-06-23.
 - Severite: P2.
 - Fichiers suspects: `app/core/continuity_capsule.py`,
   `app/core/chat_service.py`, contrat et archive Continuity Payload.
 - Lot cible: Lot 5.
-- Critere de cloture: soit micro-preuve complete avec texte operateur approuve,
-  soit report explicite de l'activation post-V1.
-- Preuve minimale: disabled -> enabled normal avec texte operateur approuve si
-  l'objectif est l'activation reelle -> unsafe refused -> final-lock bypass ->
-  rollback disabled, sans contenu de capsule brut dans logs/proofs. Un substitut
-  strictement borne peut prouver la mecanique runtime, mais ne ferme pas ce P2
-  comme preuve d'activation reelle.
+- Critere de cloture: rempli par micro-preuve complete avec texte operateur
+  minimal approuve et redacted, puis rollback disabled. L'activation durable
+  reste hors V1 sans GO operateur dedie separe.
+- Preuve minimale: disabled -> enabled normal avec texte operateur approuve ->
+  unsafe refused -> final-lock bypass -> rollback disabled, sans contenu de
+  capsule brut dans logs/proofs.
+- Preuve Lot 5: artefact JSONL content-free
+  `app/docs/states/baselines/continuity-payload-smokes/frida-v1-continuity-capsule-lot5-micro-proof-20260623T171933Z.jsonl`,
+  5 scenarios passes: disabled baseline, enabled normal, unsafe refused,
+  final-lock bypass, rollback disabled. `capsule_text_redacted` seulement;
+  `raw_capsule_content_included=false`; aucun role identity/memory/summary.
+- Decision Lot 5: `ROLLBACK_DISABLED_EFFECTUE`.
 - Hors-scope: activation durable sans GO operateur dedie.
 
 ### P2-MAIL-RUNTIME-SCOPE-01
@@ -402,15 +408,16 @@ par lui-meme.
 
 ### P3-CAPSULE-FINAL-LOCK-OBSERVABILITY-01
 
-- Statut initial: accepted; classe GATED Lot 5 par Lot 3 le 2026-06-23.
+- Statut initial: accepted; clos par Lot 5 le 2026-06-23.
 - Severite: P3.
 - Fichiers suspects: `app/core/continuity_capsule.py`,
   `app/docs/states/specs/frida-v1-continuity-payload-contract.md`.
 - Lot cible: Lot 5.
-- Critere de cloture: ordre unsafe vs final-lock clarifie; soit statut actuel
-  accepte comme non-injection sure, soit refus unsafe rendu observable avant
-  bypass si cela ne casse pas le contrat.
-- Preuve minimale: test final-lock + unsafe, manifeste content-free.
+- Critere de cloture: statut actuel accepte comme non-injection sure pour V1:
+  unsafe est refuse avant provider quand il n'y a pas final-lock, et final-lock
+  bypass garde la capsule hors prompt quand le modele principal est bypass.
+- Preuve minimale: tests final-lock + unsafe, manifeste content-free et artefact
+  Lot 5.
 - Hors-scope: activer la capsule durablement.
 
 ### P3-LARGE-FILES-01
@@ -811,23 +818,49 @@ Artefact JSONL: non.
 
 Type: runtime/preuve ciblee.
 
-- [ ] Obtenir un GO operateur dedie avant toute activation reelle.
-- [ ] Resumer le texte operateur exact de facon content-free; ne jamais le
+- [x] Obtenir un GO operateur dedie avant toute micro-preuve d'activation
+  controlee. Le GO durable reste separe et non donne par ce lot.
+- [x] Resumer le texte operateur exact de facon content-free; ne jamais le
   logger ou committer brut.
-- [ ] Sauvegarder la config precedente si un fichier runtime est touche.
-- [ ] Prouver l'etat disabled.
-- [ ] Prouver enabled normal sur texte operateur approuve si l'objectif est une
+- [x] Sauvegarder la config precedente si un fichier runtime est touche:
+  non applicable, aucun fichier runtime/config n'a ete touche.
+- [x] Prouver l'etat disabled.
+- [x] Prouver enabled normal sur texte operateur approuve si l'objectif est une
   activation reelle.
-- [ ] Si un substitut strictement borne est utilise, le classer seulement comme
+- [x] Si un substitut strictement borne est utilise, le classer seulement comme
   preuve de mecanique runtime; il ne ferme pas
-  `P2-CAPSULE-ACTIVATION-PROOF-01` comme preuve d'activation reelle.
-- [ ] Fermer `P2-CAPSULE-ACTIVATION-PROOF-01` uniquement par vraie micro-preuve
+  `P2-CAPSULE-ACTIVATION-PROOF-01` comme preuve d'activation reelle. Lot 5 a
+  utilise un texte operateur minimal approuve/redacted, pas un substitut.
+- [x] Fermer `P2-CAPSULE-ACTIVATION-PROOF-01` uniquement par vraie micro-preuve
   avec texte operateur approuve, ou par report post-V1 explicite.
-- [ ] Prouver unsafe refused.
-- [ ] Prouver final-lock bypass.
-- [ ] Prouver rollback disabled.
-- [ ] Verifier `main_payload_manifest_v1` sans prompt/capsule brut.
-- [ ] Decider activation durable ou report post-V1.
+- [x] Prouver unsafe refused.
+- [x] Prouver final-lock bypass.
+- [x] Prouver rollback disabled.
+- [x] Verifier `main_payload_manifest_v1` sans prompt/capsule brut.
+- [x] Decider activation durable ou report post-V1: `ROLLBACK_DISABLED_EFFECTUE`.
+
+Resultat Lot 5:
+
+- Artefact JSONL content-free:
+  `app/docs/states/baselines/continuity-payload-smokes/frida-v1-continuity-capsule-lot5-micro-proof-20260623T171933Z.jsonl`.
+- Scenarios prouves: disabled baseline, enabled normal, unsafe refused,
+  final-lock bypass, rollback disabled.
+- Enabled normal: capsule injectee uniquement dans le prompt provider en memoire
+  quand `main_model_called=true`, avec `logical_roles=["continuity_capsule"]`
+  et `provider_role=system`.
+- Separation: aucun role `identity_stable`, `identity_mutable`, `memory` ou
+  `summary` sur le message capsule.
+- Observabilite: manifeste/projection/garde content-free; `capsule_text_redacted`
+  seulement; `raw_capsule_content_included=false`, `raw_prompt_included=false`,
+  `raw_content_included=false`, `fingerprint_included=false`.
+- Unsafe: `reason_code=continuity_capsule_unsafe_content`, aucune injection
+  provider.
+- Final-lock: `reason_code=continuity_capsule_final_lock_bypass`,
+  `main_model_called=false`, aucune injection provider.
+- Rollback: capsule disabled apres preuve; aucune activation persistante laissee.
+- Decision Lot 5: `ROLLBACK_DISABLED_EFFECTUE`. V1 peut cloturer avec capsule
+  livree mais non activee durablement; activation durable future seulement sur
+  GO operateur dedie.
 
 Commandes/preuves minimales:
 
@@ -964,7 +997,7 @@ Pour un lot runtime, ajouter:
 - Agenda simultanement actif et dormant dans les sources actives.
 - Spec Nextcloud folders contredisant les lots dedies clos.
 - Audits Continuity actifs lisibles comme findings vivants.
-- Continuity Capsule activee sans micro-preuve et GO operateur dedie.
+- Continuity Capsule activee durablement sans GO operateur dedie separe.
 - Mail runtime lance comme chantier bloquant V1.
 - Reset observabilite execute sans GO operateur humain explicite, date et
   separe, avec backup/rollback.
@@ -979,14 +1012,15 @@ Pour un lot runtime, ajouter:
 - Les findings supplementaires du contre-audit sont documentes au format
   registre.
 - Seuls les lots effectivement livres sont coches: Lot 0, Lot 1A, Lot 1B,
-  Lot 2A, Lot 2B, Lot 2C, Lot 2D, Lot 3 et Lot 4.
-- Les lots 5, 6, 7 et Z restent non coches tant que leurs gates ne sont pas
+  Lot 2A, Lot 2B, Lot 2C, Lot 2D, Lot 3, Lot 4 et Lot 5.
+- Les lots 6, 7 et Z restent non coches tant que leurs gates ne sont pas
   traites.
 - Aucun lot futur ou gate final n'est coche prematurement.
 - Les correctifs runtime deja livres en Lots 1A/1B ne sont pas nies par cette
   section; aucun nouveau runtime n'est implique par l'auto-audit.
 - Aucun reset/purge/backfill/migration n'est demande implicitement.
-- L'activation capsule exige un GO operateur dedie.
+- L'activation durable de la capsule exige un GO operateur dedie separe; Lot 5
+  a effectue un rollback disabled.
 - Mail runtime est exclu sauf GO ulterieur separe.
 - Les docs/index/roadmap ne doivent pas pointer vers un mauvais fichier actif.
 - Le contenu reste content-free.
