@@ -52,9 +52,11 @@ par lui-meme.
 
 ### Bloquants avant cloture propre
 
-- Matrice finale de cloture et decision branche/main.
+- Decision branche/main.
 - Micro-preuve ou report explicite de la Continuity Capsule.
 - Decision Mail: audit/spec-only borne ou report post-V1.
+- Smoke final Lot 7 selon matrice Lot 3.
+- Archive finale Lot Z.
 
 ### Reportes post-V1 ou non bloquants
 
@@ -928,8 +930,13 @@ Pour un lot runtime, ajouter:
 - Les findings P2/P3 minimum demandes sont presents.
 - Les findings supplementaires du contre-audit sont documentes au format
   registre.
-- Aucun lot runtime n'est coche.
-- Lot 0 seul est coche par le patch de creation/reprise.
+- Seuls les lots effectivement livres sont coches: Lot 0, Lot 1A, Lot 1B,
+  Lot 2A, Lot 2B, Lot 2C, Lot 2D et Lot 3.
+- Les lots 4, 5, 6, 7 et Z restent non coches tant que leurs gates ne sont pas
+  traites.
+- Aucun lot futur ou gate final n'est coche prematurement.
+- Les correctifs runtime deja livres en Lots 1A/1B ne sont pas nies par cette
+  section; aucun nouveau runtime n'est implique par l'auto-audit.
 - Aucun reset/purge/backfill/migration n'est demande implicitement.
 - L'activation capsule exige un GO operateur dedie.
 - Mail runtime est exclu sauf GO ulterieur separe.
