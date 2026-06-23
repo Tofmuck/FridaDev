@@ -19,8 +19,16 @@ par lui-meme.
 - Branche active lue pendant le cadrage: `FridaV1-Continuity-Payload-Audit`.
 - Relation observee avec `origin/main`: `origin/main` est ancetre de la branche
   courante, mais `HEAD` n'est pas encore contenu dans `origin/main`.
-- Consequence: Frida V1 ne doit pas etre declaree close sur `main` tant que la
-  strategie d'integration n'est pas explicite et verifiee.
+- Etat Lot 4 apres `git fetch origin main` le 2026-06-23:
+  `HEAD=f7beb6df35b406ec8c1ce6ca706bd497fd27208a`,
+  `origin/main=966adabea40da0513d789383c75531dac3a0b45f`,
+  `origin_main_ancestor_of_HEAD=0`, `HEAD_ancestor_of_origin_main=1`.
+- Aucun commit local non pousse n'est observe entre `HEAD` et
+  `origin/FridaV1-Continuity-Payload-Audit`.
+- Decision Lot 4: non-integration temporaire. La cloture finale continue sur
+  `FridaV1-Continuity-Payload-Audit` jusqu'a la fin des gates 5/6/7/Z; merge,
+  PR, push vers `main` ou declaration close sur `main` exigent un GO operateur
+  separe.
 - Aucun merge vers `main` n'est autorise par cette TODO sans demande ulterieure.
 
 ### Statut V1
@@ -52,7 +60,6 @@ par lui-meme.
 
 ### Bloquants avant cloture propre
 
-- Decision branche/main.
 - Micro-preuve ou report explicite de la Continuity Capsule.
 - Decision Mail: audit/spec-only borne ou report post-V1.
 - Smoke final Lot 7 selon matrice Lot 3.
@@ -110,7 +117,7 @@ par lui-meme.
 | Biblio | GO | `todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`, JSONL `biblio-smokes/` BIB-01 -> BIB-33 | Agent/refactors/ergonomie avancee restent post-V1 | Aucune pour V1 | Clos |
 | Agenda pragmatique | PARTIAL | `states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`, JSONL `agenda-smokes/` | Agenda utile mais non exhaustif; Lot 9 et capacites riches post-V1 | Aucune sauf bug reel/besoin concret | Clos pragmatique |
 | Admin logs Lot 1A/1B/1B.1 | GO | Tests admin/logs et TODO finale Lots 1A/1B | Pas de refonte dashboard large | Aucune pour V1 | Clos |
-| Branche/main | NO-GO | Etat Git a verifier en Lot 4 | La branche courante n'est pas declaree close sur `main` | Decision integration/non-integration | Lot 4 |
+| Branche/main | GATED | Etat Git Lot 4: `origin_main_ancestor_of_HEAD=0`, `HEAD_ancestor_of_origin_main=1` | `HEAD` n'est pas contenu dans `origin/main`; Frida V1 n'est pas declaree close sur `main` | Non-integration temporaire; merge/PR/main seulement sur GO separe | Lot 4 clos / main gate |
 | Continuity Capsule activation | GATED | Contrat/archives Continuity et tests existants | Substitut borne ne prouve que la mecanique runtime | Micro-preuve texte operateur ou report | Lot 5 |
 | Mail bonus | GATED | Roadmap finale et TODO Mail bonus | Runtime Mail exclu de V1 par defaut | Audit/spec-only ou report explicite | Lot 6 |
 | Final closure smoke | NO-GO | Cette matrice et inventaire JSONL Lot 3 | Pas de smoke live non necessaire en Lot 3 | Scans/tests bornes choisis | Lot 7 |
@@ -165,9 +172,10 @@ par lui-meme.
 - `P3-LARGE-FILES-01`: confirme post-V1; les gros fichiers mesures au Lot 3
   restent sous vigilance sans refactor opportuniste.
 
-## Decisions de cloture restantes apres Lot 3
+## Decisions de cloture restantes apres Lot 4
 
-- Lot 4: decider branche/main; `P2-BRANCH-INTEGRATION-01` reste ouvert.
+- Lot 4: decision branche/main prise; `P2-BRANCH-INTEGRATION-01` est clos par
+  non-integration temporaire, sans merge ni push vers `main`.
 - Lot 5: micro-preuve Capsule avec texte operateur approuve ou report post-V1;
   `P2-CAPSULE-ACTIVATION-PROOF-01` reste ouvert.
 - Lot 6: Mail audit/spec-only ou report post-V1; `P2-MAIL-RUNTIME-SCOPE-01`
@@ -286,15 +294,28 @@ par lui-meme.
 
 ### P2-BRANCH-INTEGRATION-01
 
-- Statut initial: open.
+- Statut initial: accepted; clos par decision Lot 4 le 2026-06-23.
 - Severite: P2.
 - Fichiers suspects: etat Git, roadmap finale, rapport Lot Z final.
 - Lot cible: Lot 4.
 - Critere de cloture: decision explicite sur integration vers `main` ou
-  non-integration temporaire; etat propre, commits pousses, verification apres
-  merge si merge demande.
-- Preuve minimale: `git status --short --branch`, `git log --oneline`, relation
-  avec `origin/main`, hash de decision.
+  non-integration temporaire; etat propre, commits pousses sur la branche de
+  travail, relation avec `origin/main` documentee.
+- Decision Lot 4: non-integration temporaire. Poursuite sur
+  `FridaV1-Continuity-Payload-Audit` jusqu'a la fin des gates 5/6/7/Z; merge,
+  PR, push vers `main` ou declaration close sur `main` reportes a un GO
+  operateur separe.
+- Etat Git Lot 4: branche courante `FridaV1-Continuity-Payload-Audit`;
+  `HEAD=f7beb6df35b406ec8c1ce6ca706bd497fd27208a`;
+  `origin/main=966adabea40da0513d789383c75531dac3a0b45f`;
+  `origin_main_ancestor_of_HEAD=0`; `HEAD_ancestor_of_origin_main=1`;
+  `origin/FridaV1-Continuity-Payload-Audit..HEAD` vide;
+  `HEAD..origin/FridaV1-Continuity-Payload-Audit` vide.
+- Preuve minimale: `git status --short --branch`, `git fetch origin main`,
+  `git log --oneline -12`, `git log --oneline --branches --not origin/main`,
+  `git merge-base --is-ancestor origin/main HEAD`, `git merge-base
+  --is-ancestor HEAD origin/main`, `git branch --show-current`,
+  `git rev-parse HEAD`, `git rev-parse origin/main`.
 - Hors-scope: effectuer le merge dans cette TODO.
 
 ### P2-CAPSULE-ACTIVATION-PROOF-01
@@ -684,8 +705,9 @@ Resultat Lot 2D:
 - `README.md`, `app/docs/README.md` et `AGENTS.md` pointent vers
   `app/docs/todo-todo/product/frida-v1-final-audit-todo.md` comme pilote actif
   de cloture finale.
-- `P2-BRANCH-INTEGRATION-01` reste ouvert pour le Lot 4; aucun merge, changement
-  de branche ou push vers `main` n'a ete effectue.
+- `P2-BRANCH-INTEGRATION-01` etait laisse au Lot 4; il est maintenant clos par
+  decision de non-integration temporaire. Aucun merge, changement de branche ou
+  push vers `main` n'a ete effectue.
 - Aucun runtime, DB, reset, provider, Docker ou artefact historique n'a ete
   modifie.
 
@@ -709,7 +731,7 @@ Type: docs-only / preuve-only.
 - [x] Marquer reset observabilite: non execute sauf GO operateur separe.
 - [x] Marquer capsule: gate Lot 5 activation/report, non activee par Lot 3.
 - [x] Marquer Mail: gate Lot 6 audit/spec-only ou report, runtime post-V1.
-- [x] Marquer branche/main: gate Lot 4, non decide par Lot 3.
+- [x] Marquer branche/main: gate Lot 4, decision prise ensuite par Lot 4.
 - [x] Classer P3: corriges, acceptes ou post-V1.
 
 Resultat Lot 3:
@@ -718,9 +740,10 @@ Resultat Lot 3:
 - Les chantiers V1 clos sont classes sans faux GO: Documents, Notes, Generated
   Images et Agenda pragmatique restent visibles comme `PARTIAL` a limite
   acceptee; Observabilite et Continuity ont leurs gates reset/capsule separes.
-- Les gates branche/main, Capsule, Mail, smoke final et archive finale restent
-  `NO-GO` ou `GATED` pour la declaration finale tant que les Lots 4/5/6/7/Z ne
-  sont pas traites.
+- Au Lot 3, les gates branche/main, Capsule, Mail, smoke final et archive
+  finale restaient `NO-GO` ou `GATED`; depuis Lot 4, branche/main est decidee
+  en non-integration temporaire, et les gates Capsule, Mail, smoke final et
+  archive finale restent ouverts tant que les Lots 5/6/7/Z ne sont pas traites.
 - Les preuves JSONL ont ete inventoriees et parsees content-free: 118 fichiers,
   671 enregistrements, 0 erreur.
 - Les checkboxes ouvertes historiques ont ete caracterisees sans correction
@@ -744,11 +767,25 @@ Artefact JSONL: optionnel, seulement si demande dans le lot.
 
 Type: Git/process.
 
-- [ ] Verifier branche courante propre.
-- [ ] Verifier absence de commits locaux non pousses.
-- [ ] Verifier relation avec `origin/main`.
-- [ ] Decider: merge vers `main`, PR, ou non-integration temporaire documentee.
-- [ ] Si merge demande ulterieurement: verifier apres merge et apres push.
+- [x] Verifier branche courante propre.
+- [x] Verifier absence de commits locaux non pousses.
+- [x] Verifier relation avec `origin/main`.
+- [x] Decider: merge vers `main`, PR, ou non-integration temporaire documentee.
+- [x] Constater qu'aucun merge n'est demande dans ce lot; verification apres
+  merge/push reportee a un GO operateur separe si merge futur.
+
+Resultat Lot 4:
+
+- Branche courante: `FridaV1-Continuity-Payload-Audit`.
+- `HEAD=f7beb6df35b406ec8c1ce6ca706bd497fd27208a`.
+- `origin/main=966adabea40da0513d789383c75531dac3a0b45f`.
+- `origin/main` est ancetre de `HEAD`: code `0`.
+- `HEAD` est ancetre de `origin/main`: code `1`.
+- Aucun commit local non pousse n'est observe face a
+  `origin/FridaV1-Continuity-Payload-Audit`.
+- Decision: non-integration temporaire; continuer sur la branche courante
+  jusqu'a la fin des gates 5/6/7/Z. Aucun merge, PR, rebase, push vers `main`
+  ou tag release n'a ete effectue.
 
 Commandes/preuves minimales:
 
@@ -910,7 +947,9 @@ Pour un lot runtime, ajouter:
 
 - TODO finale ou matrice finale absente.
 - P2 ouvert sans decision explicite.
-- Branche/main non decide.
+- Declaration de Frida V1 close sur `main` alors que `HEAD` n'est pas contenu
+  dans `origin/main`, sauf GO operateur separe de merge/PR/main et verification
+  post-integration.
 - `/api/admin/logs` legacy non durcie ou non depreciee.
 - Lecture logs pouvant masquer une panne en `ok: true`.
 - Agenda simultanement actif et dormant dans les sources actives.
@@ -931,8 +970,8 @@ Pour un lot runtime, ajouter:
 - Les findings supplementaires du contre-audit sont documentes au format
   registre.
 - Seuls les lots effectivement livres sont coches: Lot 0, Lot 1A, Lot 1B,
-  Lot 2A, Lot 2B, Lot 2C, Lot 2D et Lot 3.
-- Les lots 4, 5, 6, 7 et Z restent non coches tant que leurs gates ne sont pas
+  Lot 2A, Lot 2B, Lot 2C, Lot 2D, Lot 3 et Lot 4.
+- Les lots 5, 6, 7 et Z restent non coches tant que leurs gates ne sont pas
   traites.
 - Aucun lot futur ou gate final n'est coche prematurement.
 - Les correctifs runtime deja livres en Lots 1A/1B ne sont pas nies par cette
