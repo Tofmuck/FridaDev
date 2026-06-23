@@ -87,12 +87,15 @@ par lui-meme.
 
 ### P2-FINAL-AUDIT-MATRIX-01
 
-- Statut initial: accepted, traite par Lot 0 dans ce fichier.
+- Statut initial: accepted; support de pilotage clos par Lot 0, matrice finale
+  encore ouverte jusqu'au Lot 3.
 - Severite: P2.
 - Fichiers suspects: `app/docs/todo-todo/product/frida-v1-final-audit-todo.md`.
-- Lot cible: Lot 0 puis Lot 3.
-- Critere de cloture: TODO finale granulaire presente, puis matrice finale GO /
-  PARTIAL / NO-GO executable en Lot 3.
+- Lot cible: Lot 0 pour fermer la dette "TODO squelettique", puis Lot 3 pour
+  livrer la matrice finale executable.
+- Critere de cloture: le support de pilotage est present depuis Lot 0. La
+  composante "matrice finale GO / PARTIAL / NO-GO executable" reste ouverte et
+  ne sera close que par le Lot 3.
 - Preuve minimale: diff docs-only, `git diff --check`, grep du fichier canonique.
 - Hors-scope: corriger les autres P2 dans le meme patch.
 
@@ -200,8 +203,11 @@ par lui-meme.
 - Lot cible: Lot 5.
 - Critere de cloture: soit micro-preuve complete avec texte operateur approuve,
   soit report explicite de l'activation post-V1.
-- Preuve minimale: disabled -> enabled normal -> unsafe refused -> final-lock
-  bypass -> rollback disabled, sans contenu de capsule brut dans logs/proofs.
+- Preuve minimale: disabled -> enabled normal avec texte operateur approuve si
+  l'objectif est l'activation reelle -> unsafe refused -> final-lock bypass ->
+  rollback disabled, sans contenu de capsule brut dans logs/proofs. Un substitut
+  strictement borne peut prouver la mecanique runtime, mais ne ferme pas ce P2
+  comme preuve d'activation reelle.
 - Hors-scope: activation durable sans GO operateur dedie.
 
 ### P2-MAIL-RUNTIME-SCOPE-01
@@ -275,18 +281,82 @@ par lui-meme.
 - Preuve minimale: `wc -l` cible avant gros patch.
 - Hors-scope: refactor structurel opportuniste avant cloture V1.
 
-### Findings supplementaires a garder visibles
+### Findings supplementaires du contre-audit
 
-- `P3-ARCHIVE-REFERENCES-STALE-01`: references historiques vers anciens chemins
-  actifs; Lot 2D si elles troublent la matrice finale.
-- `P3-SCOPED-LOG-DELETE-GATE-01`: suppression logs scopee a cadrer comme admin
-  courante ou reset partiel; Lot 3 decision, pas reset.
-- `P3-STATUS-FLATTENING-01`: certains emitters peuvent aplatir des statuts non
-  `error` en `ok`; Lot 7 ou micro-audit cible seulement si zero-erreur exige.
-- `P3-BIBLIO-AUDIT-CURRENT-STALE-01`: audit Biblio ancien presente comme courant;
-  Lot 2D si la cloture finale parcourt toutes les sources.
-- `P3-PROOF-LIVE-COVERAGE-01`: preuves fake/unit ou `covered_by_tests`
-  documentees; Lot 3 matrice, sans reexecution live inutile.
+#### P3-ARCHIVE-REFERENCES-STALE-01
+
+- Statut initial: open.
+- Severite: P3.
+- Fichiers suspects:
+  `app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`,
+  `app/docs/todo-done/product/frida-v1-exports-todo.md`,
+  `app/docs/todo-done/product/frida-v1-generated-images-todo.md`.
+- Lot cible: Lot 2D si ces references troublent les pointeurs actifs, sinon
+  Lot 3 comme risque documentaire accepte.
+- Critere de cloture: les references vers anciens chemins actifs sont
+  requalifiees comme historiques ou declarees non bloquantes dans la matrice.
+- Preuve minimale: grep des anciens chemins `todo-todo` dans les archives V1 et
+  diff docs-only si correction retenue.
+- Hors-scope: reecrire les preuves historiques ou deplacer des archives sans
+  convention explicite.
+
+#### P3-SCOPED-LOG-DELETE-GATE-01
+
+- Statut initial: open.
+- Severite: P3.
+- Fichiers suspects: `app/server.py`, `app/observability/log_store.py`,
+  `app/docs/states/specs/frida-v1-agentic-observability-contract.md`.
+- Lot cible: Lot 3 pour decision de cadrage; lot runtime separe uniquement si la
+  decision conclut a un gate manquant.
+- Critere de cloture: la suppression logs scopee est classee soit comme action
+  admin courante acceptable, soit comme reset partiel exigeant un gate dedie.
+- Preuve minimale: lecture des routes/scope delete, grep `reset` / `delete` /
+  `operator_go`, decision inscrite dans la matrice finale.
+- Hors-scope: executer reset, purge, backfill, suppression logs ou migration.
+
+#### P3-STATUS-FLATTENING-01
+
+- Statut initial: open.
+- Severite: P3.
+- Fichiers suspects: `app/core/chat_service.py`.
+- Lot cible: Lot 7 ou micro-audit cible si la cloture zero-erreur l'exige.
+- Critere de cloture: les emitters concernes sont confirmes comme ne masquant
+  pas `failed`, `refused`, `not_configured` ou `skipped`, ou un finding runtime
+  borne est ouvert.
+- Preuve minimale: grep des emitters Adobe/Notes, tests ou lecture ciblee des
+  payloads possibles, sans provider live inutile.
+- Hors-scope: refactor global de `chat_service.py` ou remplacement mecanique de
+  tous les statuts.
+
+#### P3-BIBLIO-AUDIT-CURRENT-STALE-01
+
+- Statut initial: open.
+- Severite: P3.
+- Fichiers suspects:
+  `app/docs/states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md`,
+  archives Biblio Lot 33/33 sous `app/docs/todo-done/product/`.
+- Lot cible: Lot 2D si les index finaux relisent cet audit comme courant; sinon
+  Lot 3 comme risque documentaire accepte.
+- Critere de cloture: l'audit Biblio ancien ne peut plus etre confondu avec un
+  chantier V1 bloquant ou des findings vivants.
+- Preuve minimale: grep des pointeurs Biblio dans README/app docs/roadmap et
+  verification du lien vers l'archive de cloture Biblio.
+- Hors-scope: rouvrir Biblio runtime ou reecrire l'audit historique.
+
+#### P3-PROOF-LIVE-COVERAGE-01
+
+- Statut initial: open.
+- Severite: P3.
+- Fichiers suspects: artefacts sous `app/docs/states/baselines/`, archives V1
+  Documents/Notes/Images/Observabilite, audits final et contre-audit.
+- Lot cible: Lot 3.
+- Critere de cloture: la matrice finale distingue preuves live, fakes/unitaires,
+  `covered_by_tests`, `not_applicable` et reports volontaires sans demander de
+  reexecution live inutile.
+- Preuve minimale: inventaire JSONL content-free, lecture des statuts de preuve
+  et annotation dans la matrice GO / PARTIAL / NO-GO.
+- Hors-scope: forcer des smokes live non necessaires, provider live, ecriture
+  Nextcloud ou mutation DB pour combler une limite deja documentee.
 
 ## 4. Lots proposes
 
@@ -478,7 +548,13 @@ Type: runtime/preuve ciblee.
   logger ou committer brut.
 - [ ] Sauvegarder la config precedente si un fichier runtime est touche.
 - [ ] Prouver l'etat disabled.
-- [ ] Prouver enabled normal sur texte approuve ou substitut strictement borne.
+- [ ] Prouver enabled normal sur texte operateur approuve si l'objectif est une
+  activation reelle.
+- [ ] Si un substitut strictement borne est utilise, le classer seulement comme
+  preuve de mecanique runtime; il ne ferme pas
+  `P2-CAPSULE-ACTIVATION-PROOF-01` comme preuve d'activation reelle.
+- [ ] Fermer `P2-CAPSULE-ACTIVATION-PROOF-01` uniquement par vraie micro-preuve
+  avec texte operateur approuve, ou par report post-V1 explicite.
 - [ ] Prouver unsafe refused.
 - [ ] Prouver final-lock bypass.
 - [ ] Prouver rollback disabled.
@@ -630,7 +706,8 @@ Pour un lot runtime, ajouter:
 - Un seul fichier TODO actif pilote la cloture finale: ce fichier.
 - Les cinq axes audit/contre-audit sont presents.
 - Les findings P2/P3 minimum demandes sont presents.
-- Les findings supplementaires du contre-audit restent visibles.
+- Les findings supplementaires du contre-audit sont documentes au format
+  registre.
 - Aucun lot runtime n'est coche.
 - Lot 0 seul est coche par le patch de creation/reprise.
 - Aucun reset/purge/backfill/migration n'est demande implicitement.
