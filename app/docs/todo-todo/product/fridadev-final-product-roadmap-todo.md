@@ -142,8 +142,8 @@ continuite de ton, methode, relation et presence entre conversations
 specifiable, prouvable et eventuellement injectable. Le manifeste
 `main_payload_manifest_v1` est un gate avant toute capsule runtime.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-continuity-payload-todo.md`
+Archive de livraison:
+`app/docs/todo-done/product/frida-v1-continuity-payload-todo.md`
 
 Contrat source:
 `app/docs/states/specs/frida-v1-continuity-payload-contract.md`
@@ -153,9 +153,11 @@ Sources d'audit:
 et
 `app/docs/todo-todo/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
 
-Statut 2026-06-22: TODO active creee en Lot 0 et contrat source-of-truth livre
-en Lot 1. Aucun runtime capsule ne doit partir avant livraison, test et
-relecture du manifeste payload content-free.
+Statut 2026-06-23: chantier cloture en Lot Z avec verdict `met`.
+`main_payload_manifest_v1` est livre et teste, la garde writer-side est
+schema-first/default-deny, les fenetres/lanes/final locks sont observables
+content-free, et la Continuity Capsule runtime est bornee, desactivee par
+defaut, rollbackable, non souveraine et observable sans contenu brut.
 
 ### 8. Audit final general
 

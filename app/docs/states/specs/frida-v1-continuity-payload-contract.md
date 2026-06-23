@@ -26,6 +26,9 @@ non-souverainete du message `system` est une contrainte produit explicite, pas
 une garantie mecanique du provider. Lot 7.2 etend ce durcissement aux variantes
 credential-like avec `:` ou `=`, aux URL-like `www.` en milieu de phrase et aux
 chemins prives/absolus evidents en milieu de phrase.
+Lot Z cloture le chantier avec verdict `met`: la TODO est archivee, les
+findings sont clos ou traites pour ce chantier, et l'artefact content-free de
+cloture est conserve dans `states/baselines/continuity-payload-smokes/`.
 
 Ce contrat definit deux objets cibles:
 
@@ -41,7 +44,7 @@ tardives.
 
 ## Sources normatives
 
-- TODO active: `app/docs/todo-todo/product/frida-v1-continuity-payload-todo.md`
+- TODO archivee: `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md`
 - Audit principal:
   `app/docs/todo-todo/audits/frida-v1-continuity-payload-audit-2026-06-22.md`
 - Contre-audit:
@@ -804,10 +807,10 @@ lots 1 a 6 ne soient relus et acceptes.
 | P2-OBS-WRITER-01 | Definit les flags et interdictions que la garde writer-side devra proteger. | Clos par Lot 3. |
 | P3-SOFT-LIMIT-01 | Rend visible la difference soft-limit observee et truncation effective. | Clos Lot 4 par `budgets.prompt`. |
 | P3-NOOP-LANES-01 | Exige des no-op observables pour chaque lane connue. | Clos Lot 5 pour Documents/Notes/Exports/Images. |
-| P3-DOC-01 | Requalifie la source-of-truth active sans rouvrir les archives identity. | Prepare, non clos. |
+| P3-DOC-01 | Requalifie la source-of-truth active sans rouvrir les archives identity. | Clos Lot Z par mise a jour AGENTS/README/app docs/roadmap et archivage de la TODO. |
 | P3-TEST-01 | Pose les criteres des tests qualitatifs artificiels Lot 6. | Clos Lot 6 par fixtures nouvelle conversation, longue conversation, post-resume, sans memoire et lanes non selectionnees. |
 | P3-OBS-01 | Dit que le manifeste est necessaire mais pas suffisant pour juger la presence. | Clos Lot 6 par observation qualitative content-free acceptee par la garde writer-side. |
-| P3-OFFLINE-PAYLOAD-EXPORT-01 | Encadre les exports/audits locaux: non-runtime, non-bruts, content-free, non committes si artefacts. | Prepare, non clos. |
+| P3-OFFLINE-PAYLOAD-EXPORT-01 | Encadre les exports/audits locaux: non-runtime, non-bruts, content-free, non committes si artefacts. | Clos Lot Z pour ce chantier: l'export offline historique n'est pas source de cloture et est remplace par `main_payload_manifest_v1` plus artefact Lot Z content-free. |
 
 ## Criteres d'acceptation du Lot 2
 
@@ -950,9 +953,19 @@ Gardes Lot 7 actives:
 
 ## Limites assumees
 
-Ce contrat reste normatif jusqu'a Lot Z. Depuis les Lots 2 a 7, le payload
-runtime courant est prouve par un manifeste content-free borne, protege par une
-garde writer-side, enrichi par les fenetres/locks/lanes, et dispose d'une
-Continuity Capsule runtime bornee. Les limites restantes portent sur la
-validation Lot Z, la relecture globale des docs/tests et les findings
-explicitement encore ouverts ou reportables post-V1.
+Ce contrat reste la source normative post-cloture. Depuis les Lots 2 a 7.2, le
+payload runtime courant est prouve par un manifeste content-free borne, protege
+par une garde writer-side, enrichi par les fenetres/locks/lanes, et dispose
+d'une Continuity Capsule runtime bornee. Lot Z ferme le chantier avec verdict
+`met`.
+
+Limites post-V1 assumees:
+
+- `app/scripts/export_main_prompt_payload.py` reste un outil offline historique
+  trop riche pour servir de preuve content-free de continuite; il ne remplace
+  pas `main_payload_manifest_v1`;
+- le role provider `system` de la capsule reste une decision de compatibilite
+  avec les lanes de contexte; la non-souverainete est une contrainte produit
+  testee et documentee, pas une garantie mecanique du provider;
+- la formulation produit de la capsule et ses marqueurs unsafe peuvent etre
+  affines dans un futur lot sans rouvrir la cartographie payload.

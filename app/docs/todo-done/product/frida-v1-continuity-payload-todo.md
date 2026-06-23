@@ -1,8 +1,9 @@
 # Frida V1 - Continuity Payload TODO
 
-Statut: TODO actif
+Statut: archive de chantier cloture
 Date: 2026-06-22
-Classement: `app/docs/todo-todo/product/`
+Cloture Lot Z: 2026-06-23
+Classement final: `app/docs/todo-done/product/`
 Branche de travail initiale: `FridaV1-Continuity-Payload-Audit`
 
 ## Objet du chantier
@@ -68,10 +69,10 @@ content-free relue, testee ou explicitement reportee post-V1.
 | - [x] | P2-OBS-WRITER-01 | Lot 3 puis Lots 3.1/3.2/3.3/4.1 | Guard writer-side schema-first/default-deny strict livre contre cles/payloads dangereux, texte libre sous cles neutres et suffixes textuels inconnus, avec schemas content-free existants preserves et sentinelles anti-fuite. |
 | - [x] | P3-SOFT-LIMIT-01 | Lot 4 | Soft limit explique: depassement visible, politique de non-troncation observee, compteurs d'exclusion/troncation a zero. |
 | - [x] | P3-NOOP-LANES-01 | Lot 5 | Non-selection Documents/Notes observable ou absence justifiee sans confusion avec lane non instrumentee. |
-| - [ ] | P3-DOC-01 | Lot 1 puis Lot Z | Docs historiques requalifiees ou indexees avec statuts actifs/archive/stale. |
+| - [x] | P3-DOC-01 | Lot 1 puis Lot Z | Docs historiques requalifiees ou indexees avec statuts actifs/archive/stale; index actifs pointent vers le contrat et cette archive. |
 | - [x] | P3-TEST-01 | Lot 6 | Tests nouvelle conversation vs longue conversation sur fixtures artificielles, sans contenu utilisateur reel. |
 | - [x] | P3-OBS-01 | Lot 6 | Preuve qualitative content-free definie: presence jugee par fixtures artificielles et signaux bornes. |
-| - [ ] | P3-OFFLINE-PAYLOAD-EXPORT-01 | Lot 2 | Export local existant verifie comme borne/non-runtime, ou remplace par manifeste final content-free. |
+| - [x] | P3-OFFLINE-PAYLOAD-EXPORT-01 | Lot 2 puis Lot Z | Export local historique non retenu comme preuve de cloture; remplace pour ce chantier par `main_payload_manifest_v1` et artefact Lot Z content-free. |
 
 ## Lots
 
@@ -157,11 +158,12 @@ Correctif Lot 2.1 livre le 2026-06-22:
 - [x] Extraire le manifeste et la projection admin en modules de responsabilite
   claire, sans `utils.py` ni `helpers.py`.
 
-Finding laisse ouvert: `P3-OFFLINE-PAYLOAD-EXPORT-01`. Le script offline
-historique est non-runtime et n'a pas ete appele, mais il reste trop riche pour
-servir de preuve content-free de continuite. Le manifeste runtime le remplace
-pour ce chantier; un lot de nettoyage/documentation pourra le deprecier ou le
-mettre en conformite plus tard.
+Decision Lot Z sur `P3-OFFLINE-PAYLOAD-EXPORT-01`: le script offline historique
+est non-runtime et n'a pas ete appele pour la cloture. Il reste trop riche pour
+servir de preuve content-free de continuite; le manifeste runtime
+`main_payload_manifest_v1` et l'artefact Lot Z le remplacent pour ce chantier.
+Un nettoyage post-V1 pourra le deprecier ou le rendre conforme, sans bloquer la
+cloture Continuity Payload.
 
 ### Lot 3 - Garde writer-side observability
 
@@ -498,16 +500,46 @@ Correctif Lot 7.2:
 
 ### Lot Z - Cloture
 
-- [ ] Relire audits, spec, TODO, code et tests.
-- [ ] Verifier que tous les findings sont clos ou explicitement reportes
+- [x] Relire audits, spec, TODO, code et tests.
+- [x] Verifier que tous les findings sont clos ou explicitement reportes
   post-V1 avec raison.
-- [ ] Verifier qu'aucune case ouverte ne reste dans l'archive finale.
-- [ ] Rejouer scans anti-fuite sur docs, artefacts, diff et logs bornes.
-- [ ] Verifier que les preuves content-free existent et sont retrouvables.
-- [ ] Verifier que les tests structuraux et qualitatifs artificiels passent.
-- [ ] Mettre a jour docs/spec/index avant archivage.
-- [ ] Archiver cette TODO seulement quand tout est clos ou reporte
+- [x] Verifier qu'aucune case ouverte ne reste dans l'archive finale.
+- [x] Rejouer scans anti-fuite sur docs, artefacts, diff et logs bornes.
+- [x] Verifier que les preuves content-free existent et sont retrouvables.
+- [x] Verifier que les tests structuraux et qualitatifs artificiels passent.
+- [x] Mettre a jour docs/spec/index avant archivage.
+- [x] Archiver cette TODO seulement quand tout est clos ou reporte
   explicitement.
+
+Statut Lot Z 2026-06-23: cloture `met`.
+
+Artefact de cloture:
+`app/docs/states/baselines/continuity-payload-smokes/frida-v1-continuity-payload-lotz-closure-20260623T100649Z.jsonl`
+
+Preuves de cloture:
+
+- probe capsule Lot Z conforme: disabled sans injection, normale `ok` avec
+  role `system`, final lock `not_selected` sans injection, variantes unsafe
+  `refused`;
+- tests hote: fixtures qualitatives, capsule runtime, manifeste, garde
+  writer-side et `chat_llm_flow` passent;
+- tests conteneur: fixtures qualitatives, capsule runtime, manifeste, garde
+  writer-side, `chat_llm_flow` et wiring Notes/Capsule passent;
+- scans anti-fuite du diff et de l'artefact: pas de prompt brut, dialogue brut,
+  capsule brute, payload provider, secret, bytes, base64 ou data URL;
+- aucune modification DB, migration, reset, purge, backfill, provider live ou
+  plateforme.
+
+Limites post-V1 assumees:
+
+- `app/scripts/export_main_prompt_payload.py` reste un outil offline
+  historique trop riche pour servir de preuve content-free; ne pas l'utiliser
+  comme substitut a `main_payload_manifest_v1` sans lot separe;
+- le role provider `system` de la capsule reste une decision de compatibilite
+  avec les lanes de contexte; la non-souverainete est une contrainte produit
+  testee et documentee, pas une garantie mecanique du provider;
+- une relecture produit post-V1 pourra affiner le texte de capsule et ses
+  marqueurs unsafe, sans rouvrir ce chantier de payload.
 
 ## No-go globaux
 
