@@ -371,7 +371,8 @@ Avant runtime reel, prouver la continuite sur donnees artificielles.
   obligatoire.
 - [x] Prouver que les logs et artefacts restent content-free.
 
-Findings traites: `P1-CONT-01`, `P3-TEST-01`, `P3-OBS-01`.
+Findings traites par Lot 6: `P1-CONT-01` partiel, `P2-SUMMARY-01`,
+`P3-TEST-01`, `P3-OBS-01`.
 
 Statut 2026-06-23: Lot 6 livre par fixtures unitaires artificielles dans
 `app/tests/unit/continuity/test_continuity_payload_fixtures.py`.

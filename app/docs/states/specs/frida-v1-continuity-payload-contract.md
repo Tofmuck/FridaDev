@@ -726,16 +726,16 @@ lots 1 a 6 ne soient relus et acceptes.
 
 ## Rattachement des findings vivants
 
-| Finding | Apport du present contrat | Statut apres Lot 1 |
+| Finding | Apport du present contrat | Statut courant apres lots livres |
 | --- | --- | --- |
 | P1-CONT-01 | Definit la Continuity Capsule comme surface cible distincte, courte, non souveraine et future; Lot 6 prouve une candidate test-only sans runtime. | Partiel: non clos avant Lot 7 ou report post-V1. |
-| P1-PAYLOAD-01 | Definit `main_payload_manifest_v1` et en fait le gate avant capsule runtime. | Prepare, non clos. |
+| P1-PAYLOAD-01 | Definit `main_payload_manifest_v1` et en fait le gate avant capsule runtime. | Clos Lot 2 par manifeste runtime content-free du payload final apres injections tardives. |
 | P2-SUMMARY-01 | Separe summary et capsule, expose summary comme fenetre Lot 4, et exige que les tests detectent l'aplatissement de voix. | Clos Lot 6 par fixture post-resume summary seul vs capsule candidate. |
-| P2-LANES-01 | Etend la continuite aux final response locks et renderers de lanes. | Clos Lot 5 pour le bornage content-free des locks; continuite qualitative de voix reste Lot 6. |
+| P2-LANES-01 | Etend la continuite aux final response locks et renderers de lanes. | Clos Lot 5 pour le bornage content-free des locks; preuve qualitative pre-runtime couverte par Lot 6. |
 | P2-MEMORY-01 | Distingue decision arbiter, memory injectee et contenu reellement vu par le modele. | Clos Lot 4 par fenetre `memory`. |
 | P2-WINDOWS-01 | Exige des compteurs separes pour prompt final, memory, hermeneutic node, Biblio et Agenda. | Clos Lot 4 par `windows`. |
 | P2-IDENTITY-STAGING-01 | Interdit de confondre staging mutable conversation-scoped et capsule trans-conversation. | Clos Lot 4 par fenetre `identity_staging`. |
-| P2-LANE-PROVENANCE-01 | Oblige la separation `provider_role` / `logical_roles` pour les lanes injectees comme `user`. | Prepare, non clos. |
+| P2-LANE-PROVENANCE-01 | Oblige la separation `provider_role` / `logical_roles` pour les lanes injectees comme `user`. | Clos Lot 2.1 par provenance structuree capturee autour des injections reelles. |
 | P2-FINAL-LOCK-POLICY-01 | Oblige un champ de priorite effective des final locks. | Clos Lot 5 par `lane_conflicts` et tests Agenda/Biblio/conflit. |
 | P2-NOTES-UI-01 | Exige un statut Notes meme quand la lane est non selectionnee ou non envoyee par le frontend. | Clos Lot 5: backend Notes selection-only visible; frontend courant non branche documente. |
 | P2-OBS-WRITER-01 | Definit les flags et interdictions que la garde writer-side devra proteger. | Clos par Lot 3. |
