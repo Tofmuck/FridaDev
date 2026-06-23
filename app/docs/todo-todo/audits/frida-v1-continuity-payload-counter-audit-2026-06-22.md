@@ -2,6 +2,23 @@
 
 ## Statut
 
+Statut: contre-audit historique superseded par la cloture Lot Z Continuity
+Payload.
+
+Source de cloture courante:
+`app/docs/todo-done/product/frida-v1-continuity-payload-todo.md`
+
+Artefact Lot Z:
+`app/docs/states/baselines/continuity-payload-smokes/frida-v1-continuity-payload-lotz-closure-20260623T100649Z.jsonl`
+
+Contrat courant:
+`app/docs/states/specs/frida-v1-continuity-payload-contract.md`
+
+Les findings P1/P2/P3 ci-dessous sont conserves comme constats historiques
+produits avant Lot Z. Ils ne constituent plus un registre actif apres la
+cloture Continuity Payload, sauf si une TODO active les rouvre explicitement.
+Ne pas lire ce fichier comme une demande de correction produit courante.
+
 Contre-audit read-only produit depuis la session lead, en parallele de l'audit principal demande a Celebrimbor.
 
 Ce document ne modifie pas le runtime. Il synthetise quatre axes de relecture independants du payload modele et de la continuite conversationnelle:

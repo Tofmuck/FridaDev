@@ -1,5 +1,23 @@
 # Frida V1 - Audit continuité conversationnelle et payload modèle - 2026-06-22
 
+## Statut Lot 2C - 2026-06-23
+
+Statut: audit historique superseded par la cloture Lot Z Continuity Payload.
+
+Source de cloture courante:
+`app/docs/todo-done/product/frida-v1-continuity-payload-todo.md`
+
+Artefact Lot Z:
+`app/docs/states/baselines/continuity-payload-smokes/frida-v1-continuity-payload-lotz-closure-20260623T100649Z.jsonl`
+
+Contrat courant:
+`app/docs/states/specs/frida-v1-continuity-payload-contract.md`
+
+Les findings P1/P2/P3 ci-dessous sont conserves comme constats historiques
+produits avant Lot Z. Ils ne constituent plus un registre actif apres la
+cloture Continuity Payload, sauf si une TODO active les rouvre explicitement.
+Ne pas lire ce fichier comme une demande de correction produit courante.
+
 ## Verdict court
 
 Frida V1 dispose deja d'une charpente forte pour produire une reponse coherente dans une conversation longue: prompt systeme augmente, identite statique et mutable, memoire semantique, resumes, fenetre recente, garde hermeneutique, lanes Documents/Notes/Biblio/Agenda/Web et observabilite content-free.

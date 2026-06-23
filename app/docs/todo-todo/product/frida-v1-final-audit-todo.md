@@ -52,8 +52,7 @@ par lui-meme.
 
 ### Bloquants avant cloture propre
 
-- Alignement docs/source-of-truth restant pour Continuity audits et pointeurs
-  actifs/archives.
+- Alignement docs/source-of-truth restant pour pointeurs actifs/archives.
 - Matrice finale de cloture et decision branche/main.
 - Micro-preuve ou report explicite de la Continuity Capsule.
 - Decision Mail: audit/spec-only borne ou report post-V1.
@@ -75,7 +74,7 @@ par lui-meme.
 1. Durcissement P2 des logs/admin:
    `/api/admin/logs` legacy et lectures logs fail-closed.
 2. Correction P2 docs/source-of-truth:
-   Nextcloud folders, Agenda dormant, audits Continuity actifs, pointeurs
+   Nextcloud folders, Agenda dormant, audits Continuity historiques, pointeurs
    archives et index.
 3. Final audit TODO/matrice + strategie branche/main:
    ce fichier, Lot 3 et Lot 4.
@@ -176,7 +175,7 @@ par lui-meme.
 
 ### P2-CONTINUITY-AUDITS-ACTIVE-01
 
-- Statut initial: open.
+- Statut initial: accepted; clos par Lot 2C le 2026-06-23.
 - Severite: P2.
 - Fichiers suspects:
   `app/docs/todo-todo/audits/frida-v1-continuity-payload-audit-2026-06-22.md`,
@@ -525,10 +524,23 @@ Artefact JSONL: non.
 
 Type: docs-only.
 
-- [ ] Requalifier les deux audits Continuity en sources historiques supersedees
+- [x] Requalifier les deux audits Continuity en sources historiques supersedees
   par l'archive Lot Z, ou les deplacer si la convention repo le permet.
-- [ ] Garder les findings historiques intacts.
-- [ ] Eviter toute confusion avec des findings Continuity vivants.
+- [x] Garder les findings historiques intacts.
+- [x] Eviter toute confusion avec des findings Continuity vivants.
+
+Resultat Lot 2C:
+
+- Les deux audits Continuity gardent leur emplacement historique dans
+  `todo-todo/audits`, mais leur en-tete indique qu'ils sont superseded par la
+  cloture Lot Z Continuity Payload.
+- Les en-tetes pointent vers l'archive
+  `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md`, l'artefact
+  Lot Z et le contrat courant.
+- Les findings P1/P2/P3 historiques n'ont pas ete reecrits ou supprimes.
+- Ces audits ne constituent plus un registre actif sauf reouverture explicite
+  par une TODO active.
+- Aucun runtime, provider, DB, reset, purge ou backfill n'a ete touche.
 
 Commandes/preuves minimales:
 
