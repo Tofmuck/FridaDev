@@ -20,9 +20,12 @@ par lui-meme.
 - Relation observee avec `origin/main`: `origin/main` est ancetre de la branche
   courante, mais `HEAD` n'est pas encore contenu dans `origin/main`.
 - Etat Lot 4 apres `git fetch origin main` le 2026-06-23:
-  `HEAD=f7beb6df35b406ec8c1ce6ca706bd497fd27208a`,
+  `HEAD verifie avant patch Lot 4=f7beb6df35b406ec8c1ce6ca706bd497fd27208a`,
+  `HEAD final apres commit docs Lot 4=481eb0adebefca247a55945efbaa135ce5dc121c`,
   `origin/main=966adabea40da0513d789383c75531dac3a0b45f`,
   `origin_main_ancestor_of_HEAD=0`, `HEAD_ancestor_of_origin_main=1`.
+  Meme interpretation pour le HEAD final docs Lot 4: `origin/main` reste
+  ancetre de la branche et la branche reste absente de `origin/main`.
 - Aucun commit local non pousse n'est observe entre `HEAD` et
   `origin/FridaV1-Continuity-Payload-Audit`.
 - Decision Lot 4: non-integration temporaire. La cloture finale continue sur
@@ -306,7 +309,8 @@ par lui-meme.
   PR, push vers `main` ou declaration close sur `main` reportes a un GO
   operateur separe.
 - Etat Git Lot 4: branche courante `FridaV1-Continuity-Payload-Audit`;
-  `HEAD=f7beb6df35b406ec8c1ce6ca706bd497fd27208a`;
+  `HEAD verifie avant patch Lot 4=f7beb6df35b406ec8c1ce6ca706bd497fd27208a`;
+  `HEAD final apres commit docs Lot 4=481eb0adebefca247a55945efbaa135ce5dc121c`;
   `origin/main=966adabea40da0513d789383c75531dac3a0b45f`;
   `origin_main_ancestor_of_HEAD=0`; `HEAD_ancestor_of_origin_main=1`;
   `origin/FridaV1-Continuity-Payload-Audit..HEAD` vide;
@@ -777,10 +781,15 @@ Type: Git/process.
 Resultat Lot 4:
 
 - Branche courante: `FridaV1-Continuity-Payload-Audit`.
-- `HEAD=f7beb6df35b406ec8c1ce6ca706bd497fd27208a`.
+- HEAD verifie avant patch Lot 4:
+  `f7beb6df35b406ec8c1ce6ca706bd497fd27208a`.
+- HEAD final apres commit docs Lot 4:
+  `481eb0adebefca247a55945efbaa135ce5dc121c`.
 - `origin/main=966adabea40da0513d789383c75531dac3a0b45f`.
-- `origin/main` est ancetre de `HEAD`: code `0`.
-- `HEAD` est ancetre de `origin/main`: code `1`.
+- `origin/main` est ancetre du HEAD verifie et du HEAD final docs Lot 4:
+  oui, code `0`.
+- Le HEAD verifie/final docs Lot 4 n'est pas contenu dans `origin/main`:
+  oui, code `1`.
 - Aucun commit local non pousse n'est observe face a
   `origin/FridaV1-Continuity-Payload-Audit`.
 - Decision: non-integration temporaire; continuer sur la branche courante
