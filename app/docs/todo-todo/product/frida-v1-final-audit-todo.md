@@ -919,7 +919,9 @@ Type: docs/preuve.
 - [ ] Tous les P2 sont fermes ou acceptes explicitement avec risque residuel.
 - [ ] Tous les P3 sont corriges, acceptes ou reportes post-V1.
 - [ ] Branche/main est decide.
-- [ ] Capsule est activee avec preuve ou reportee.
+- [ ] Capsule Lot 5 relue: micro-preuve content-free OK,
+  `ROLLBACK_DISABLED_EFFECTUE` conserve, activation durable non executee sauf
+  GO operateur dedie separe.
 - [ ] Mail est spec-only ou reporte.
 - [ ] Reset observabilite non execute sauf GO operateur separe.
 - [ ] Matrice finale GO / PARTIAL / NO-GO produite.
