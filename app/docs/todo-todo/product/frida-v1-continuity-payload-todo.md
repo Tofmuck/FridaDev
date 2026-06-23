@@ -276,10 +276,9 @@ Preuves principales:
 Findings clos par ce lot: `P2-MEMORY-01`, `P2-WINDOWS-01`,
 `P2-IDENTITY-STAGING-01`, `P3-SOFT-LIMIT-01`.
 
-Finding laisse ouvert volontairement: `P2-SUMMARY-01`. Lot 4 prouve que le
-resume est visible et que la nuance de voix n'est pas mesuree; il ne prouve pas
-encore une continuite qualitative de presence. Cloture attendue en Lot 6 avec
-fixtures artificielles nouvelle conversation vs conversation longue.
+Etat apres Lot 4: `P2-SUMMARY-01` restait volontairement ouvert. Lot 4 prouvait
+que le resume etait visible et que la nuance de voix n'etait pas mesuree; la
+cloture a ensuite ete faite en Lot 6 par fixtures artificielles post-resume.
 
 Correctif Lot 4.1 livre le 2026-06-22:
 
