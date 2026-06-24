@@ -5,6 +5,11 @@
 Contre-audit read-only produit depuis la session lead, en parallele de l'audit
 principal demande a Celebrimbor.
 
+Statut courant Lot Z: contre-audit source historique, superseded par l'archive
+finale `app/docs/todo-done/product/frida-v1-final-audit-todo.md`. Les findings
+ci-dessous documentent l'etat observe avant les Lots 0-Z et ne constituent plus
+un registre actif sauf reouverture explicite.
+
 Ce document ne corrige rien. Il consolide une relecture SSH-based sur OVH et
 cinq sous-audits independants:
 
@@ -39,7 +44,8 @@ Aucun P1 confirme dans ce contre-audit.
 
 #### P2-FINAL-AUDIT-01 - La TODO d'audit final reste trop squelettique
 
-- Fichier: `app/docs/todo-todo/product/frida-v1-final-audit-todo.md`
+- Fichier source historique, archive finale:
+  `app/docs/todo-done/product/frida-v1-final-audit-todo.md`
 - Lignes observees: `1-36`
 
 La roadmap finale fait de l'audit final general un point obligatoire avant

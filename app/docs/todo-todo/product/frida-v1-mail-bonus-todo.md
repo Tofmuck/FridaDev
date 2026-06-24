@@ -18,7 +18,8 @@ reel post-V1.
 - `mail_scope_for_frida_1_0`: `spec_only`.
 - `send_allowed`: `false`.
 - `human_confirmation_required`: `true` pour tout futur runtime.
-- Prochain lot de cloture: Lot 7 final closure smoke.
+- Cloture Frida 1.0: audit final archive en Lot Z; Mail runtime reste post-V1
+  sauf GO operateur separe.
 
 ## Inventaire Lot 6
 

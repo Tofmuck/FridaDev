@@ -16,7 +16,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
-- TODO finale de cloture Frida V1: `todo-todo/product/frida-v1-final-audit-todo.md` pour le pilote actif d'audit final, le registre P2/P3, les lots restants, le gate branche/main, la preuve Capsule et la decision Mail.
+- Archive de cloture finale Frida V1: `todo-done/product/frida-v1-final-audit-todo.md` pour l'audit final clos, le registre P2/P3, la preuve Lot Z, la decision branche/main sans integration implicite, la preuve Capsule durable et la decision Mail spec-only.
 - Archive de livraison Continuity Payload Frida V1: `todo-done/product/frida-v1-continuity-payload-todo.md` pour le chantier cloture en Lot Z, les preuves content-free, `main_payload_manifest_v1` et la Continuity Capsule runtime bornee.
 - Contrat Continuity Payload Frida V1: `states/specs/frida-v1-continuity-payload-contract.md` pour `main_payload_manifest_v1`, la Continuity Capsule, l'observabilite content-free, la garde writer-side et les limites post-V1.
 - Contrat Frida V1 Nextcloud folders 2026-06-16: `states/specs/frida-v1-nextcloud-folders-contract.md` pour `workspace_folders` comme modele produit des dossiers Frida V1, mapping logique `/Frida/<dossier>`, routage `Documents` / `Notes` / `Exports` / `Images`, frontiere Sauron/Celebrimbor, pas de DB directe Nextcloud et content-free. TODO de livraison archivee: `todo-done/product/frida-v1-nextcloud-folders-todo.md`.

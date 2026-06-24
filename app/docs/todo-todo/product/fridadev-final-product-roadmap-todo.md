@@ -4,8 +4,9 @@ Statut: TODO actif
 Date d'ouverture: 2026-06-10
 Dernier recalage docs: 2026-06-24
 Cible de cloture: 2026-07-02
-Branche de cloture courante: voir la TODO finale active et l'etat Git courant;
-la strategie `main` reste a decider dans le Lot 4 de cloture finale.
+Branche de cloture finale audit: `FridaV1-Continuity-Payload-Audit`;
+l'audit final V1 est archive sur cette branche. L'integration `main` reste sous
+GO operateur separe.
 
 ## Intention
 
@@ -169,8 +170,13 @@ Verifier securite et valeurs sensibles, runtime OVH, docs/specs/TODO, tests,
 smokes live, coherence des agents, coherence frontend/backend, surface
 utilisateur et critique produit/politique.
 
-TODO dediee:
-`app/docs/todo-todo/product/frida-v1-final-audit-todo.md`
+Archive de cloture:
+`app/docs/todo-done/product/frida-v1-final-audit-todo.md`
+
+Statut 2026-06-24: audit final Frida V1 cloture en Lot Z avec verdict `met`
+sur la branche `FridaV1-Continuity-Payload-Audit`. Aucun merge `main`, reset
+observabilite, runtime Mail, changement Capsule ou geste plateforme n'a ete
+execute par Lot Z.
 
 ## Bonus non bloquant
 

@@ -1,16 +1,17 @@
 # Frida V1 - Final closure TODO
 
-Statut: TODO actif - pilote canonique de cloture finale Frida V1
+Statut: archive - cloture finale Frida V1 livree en Lot Z
 Date: 2026-06-23
 Branche courante: `FridaV1-Continuity-Payload-Audit`
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Audit principal: `app/docs/todo-todo/audits/frida-v1-final-global-audit-2026-06-23.md`
 Contre-audit: `app/docs/todo-todo/audits/frida-v1-final-global-counter-audit-2026-06-23.md`
+Archive Lot Z: `app/docs/states/baselines/final-audit-smokes/frida-v1-final-audit-lotz-archive-20260624T124646Z.jsonl`
 
-Ce fichier est le seul point de pilotage actif pour la cloture finale Frida V1.
-Il remplace la TODO squelettique precedente et transforme la comparaison audit /
-contre-audit en lots executables. Il ne corrige aucun finding runtime ou produit
-par lui-meme.
+Ce fichier archive le point de pilotage final de la cloture Frida V1. Il a
+remplace la TODO squelettique precedente, transforme la comparaison audit /
+contre-audit en lots executables, puis ete archive en Lot Z. Il ne declare pas
+Frida V1 close sur `main`: l'integration `main` reste sous GO operateur separe.
 
 ## 1. Etat global
 
@@ -36,9 +37,11 @@ par lui-meme.
 
 ### Statut V1
 
-- Cloture V1 possible: conditionnelle a l'archive finale Lot Z.
-- Risque global: faible a moyen; plus de P2 actif connu apres Lot 7, mais
-  l'archive finale Lot Z reste a executer.
+- Audit final Frida V1: clos et archive par Lot Z sur
+  `FridaV1-Continuity-Payload-Audit`.
+- Risque global: faible a moyen; plus de P2 actif connu dans le perimetre de
+  l'audit final, avec `main` / reset observabilite / Mail runtime conserves
+  comme gates separes ou post-V1.
 - Continuity Capsule: livree, bornee, micro-preuve Lot 5 realisee avec rollback
   disabled, activation durable effective par GO operateur Lot 5B du
   2026-06-24, puis correction Lot 5B.1 du texte runtime pour correspondre
@@ -69,7 +72,8 @@ par lui-meme.
 
 ### Bloquants avant cloture propre
 
-- Archive finale Lot Z.
+- Aucun bloquant restant dans le perimetre de l'audit final archive.
+- Integration vers `main`: hors Lot Z, sous GO operateur separe.
 
 ### Reportes post-V1 ou non bloquants
 
@@ -127,7 +131,7 @@ par lui-meme.
 | Continuity Capsule activation | GO | Contrat/archives Continuity, artefact Lot 5, artefact Lot 5B, artefact correctif Lot 5B.1 `continuity-payload-smokes/frida-v1-continuity-capsule-lot5b1-exact-text-20260624T073000Z.jsonl` | Texte brut uniquement en config applicative; observabilite content-free; `exact_operator_text=true` dans preuve corrective | Rollback operateur env si besoin | Lot 5B.1 clos |
 | Mail bonus | GO | Roadmap finale et TODO Mail bonus | Runtime Mail exclu de V1; spec-only gravee par Lot 6 | Aucune pour V1 | Lot 6 clos |
 | Final closure smoke | GO | Artefact JSONL `final-audit-smokes/frida-v1-final-audit-lot7-closure-smoke-20260624T115830Z.jsonl` | Preuve bornee sans nouveaux smokes live; logs scannes sans lignes brutes | Aucune avant Lot Z | Lot 7 clos |
-| Archive finale | NO-GO | TODO finale active | Tous P2/P3 doivent etre fermes, acceptes ou reportes | Archivage apres decisions | Lot Z |
+| Archive finale | GO | Artefact JSONL `final-audit-smokes/frida-v1-final-audit-lotz-archive-20260624T124646Z.jsonl` | Archive faite sur branche, sans merge `main` implicite | Integration `main` sous GO separe | Lot Z clos |
 | SMS | POST-V1 | Roadmap finale | Hors cloture Frida 1.0 | Aucune | Post-V1 |
 | TTS | POST-V1 | Roadmap finale | Hors cloture Frida 1.0 | Aucune | Post-V1 |
 | Mail runtime | POST-V1 | Roadmap finale et finding `P2-MAIL-RUNTIME-SCOPE-01` | Aucun IMAP/SMTP/Nextcloud Mail live sans GO separe | Report ou chantier futur | Post-V1 |
@@ -179,7 +183,7 @@ par lui-meme.
 - `P3-LARGE-FILES-01`: confirme post-V1; les gros fichiers mesures au Lot 3
   restent sous vigilance sans refactor opportuniste.
 
-## Decisions de cloture restantes apres Lot 7
+## Etat final apres Lot Z
 
 - Lot 4: decision branche/main prise; `P2-BRANCH-INTEGRATION-01` est clos par
   non-integration temporaire, sans merge ni push vers `main`.
@@ -196,8 +200,10 @@ par lui-meme.
   est ferme par report runtime post-V1 explicite.
 - Lot 7: smoke final borne execute; artefact content-free conserve et verdict
   `met`.
-- Lot Z: dernier gate restant; archivage final seulement apres relecture des
-  P2 fermes/acceptes et P3 corriges/acceptes/reportes.
+- Lot Z: archive finale executee; cette TODO est deplacee dans
+  `app/docs/todo-done/product/frida-v1-final-audit-todo.md`, avec artefact
+  Lot Z content-free.
+- Integration `main`: non executee par Lot Z; reste sous GO operateur separe.
 
 ## 3. Registre des findings
 
@@ -206,7 +212,8 @@ par lui-meme.
 - Statut initial: accepted; support de pilotage clos par Lot 0, matrice finale
   livree par Lot 3 le 2026-06-23.
 - Severite: P2.
-- Fichiers suspects: `app/docs/todo-todo/product/frida-v1-final-audit-todo.md`.
+- Fichiers suspects: TODO finale, archivee en Lot Z dans
+  `app/docs/todo-done/product/frida-v1-final-audit-todo.md`.
 - Lot cible: Lot 0 pour fermer la dette "TODO squelettique", puis Lot 3 pour
   livrer la matrice finale executable.
 - Critere de cloture: le support de pilotage est present depuis Lot 0; la
@@ -396,9 +403,9 @@ par lui-meme.
 - Severite: P3.
 - Fichiers suspects: `README.md`, `app/docs/README.md`, `AGENTS.md`.
 - Lot cible: Lot 2D.
-- Critere de cloture: les surfaces actives utiles pointent vers
-  `app/docs/todo-todo/product/frida-v1-final-audit-todo.md` comme pilote actif
-  de cloture finale, sans doublonner l'historique.
+- Critere de cloture: les surfaces actives utiles pointaient vers la TODO
+  finale pendant son execution; Lot Z les fait pointer vers l'archive de
+  cloture finale, sans doublonner l'historique.
 - Preuve minimale: grep `frida-v1-final-audit-todo.md` dans README, hub docs,
   roadmap et AGENTS.
 - Hors-scope: transformer les index en journal de bord ou clore la matrice.
@@ -721,13 +728,12 @@ Type: docs-only.
 Resultat Lot 2D:
 
 - La roadmap finale ne porte plus la branche historique Nextcloud/Folders; elle
-  renvoie a la TODO finale active et a l'etat Git courant, sans trancher le gate
-  `main`.
+  renvoyait pendant l'execution a la TODO finale et a l'etat Git courant, sans
+  trancher le gate `main`.
 - Le README racine annonce maintenant l'etat courant au 2026-06-23; les dates
   historiques legitimes restent intactes.
-- `README.md`, `app/docs/README.md` et `AGENTS.md` pointent vers
-  `app/docs/todo-todo/product/frida-v1-final-audit-todo.md` comme pilote actif
-  de cloture finale.
+- `README.md`, `app/docs/README.md` et `AGENTS.md` pointaient alors vers le
+  pilote actif de cloture finale; Lot Z les fait pointer vers l'archive.
 - `P2-BRANCH-INTEGRATION-01` etait laisse au Lot 4; il est maintenant clos par
   decision de non-integration temporaire. Aucun merge, changement de branche ou
   push vers `main` n'a ete effectue.
@@ -1037,15 +1043,36 @@ Artefact JSONL: oui si Lot 7 est le lot de preuve finale.
 
 Type: docs/preuve.
 
-- [ ] Tous les P2 sont fermes ou acceptes explicitement avec risque residuel.
-- [ ] Tous les P3 sont corriges, acceptes ou reportes post-V1.
-- [ ] Branche/main est decide.
-- [ ] Capsule Lot 5/5B relue: micro-preuve content-free OK, activation durable
+- [x] Tous les P2 sont fermes ou acceptes explicitement avec risque residuel.
+- [x] Tous les P3 sont corriges, acceptes ou reportes post-V1.
+- [x] Branche/main est decide.
+- [x] Capsule Lot 5/5B relue: micro-preuve content-free OK, activation durable
   Lot 5B effective, rollback operateur documente.
-- [ ] Mail est spec-only ou reporte.
-- [ ] Reset observabilite non execute sauf GO operateur separe.
-- [ ] Matrice finale GO / PARTIAL / NO-GO produite.
-- [ ] Cette TODO est archivee seulement apres decision finale.
+- [x] Mail est spec-only ou reporte.
+- [x] Reset observabilite non execute sauf GO operateur separe.
+- [x] Matrice finale GO / PARTIAL / NO-GO produite.
+- [x] Cette TODO est archivee seulement apres decision finale.
+
+Resultat Lot Z:
+
+- Archive finale: ce fichier a ete deplace vers
+  `app/docs/todo-done/product/frida-v1-final-audit-todo.md`.
+- Artefact JSONL content-free:
+  `app/docs/states/baselines/final-audit-smokes/frida-v1-final-audit-lotz-archive-20260624T124646Z.jsonl`.
+- Verdict: `met`; l'audit final Frida V1 est clos sur la branche
+  `FridaV1-Continuity-Payload-Audit`.
+- `main`: aucun merge, PR, push vers `main` ou tag release n'a ete effectue;
+  l'integration `main` reste sous GO operateur separe.
+- Capsule: active durablement apres GO operateur Lot 5B, texte exact corrige en
+  Lot 5B.1, rollback operateur documente, aucune fuite de texte brut dans les
+  artefacts Lot 7 / Lot Z.
+- Mail: Frida 1.0 reste `spec_only`, runtime post-V1, `send_allowed=false`,
+  confirmation humaine obligatoire pour tout futur runtime.
+- Reset observabilite: non execute, toujours `GATED` post-cloture avec GO
+  operateur explicite, backup et rollback.
+- Aucun runtime, rebuild, migration, purge, backfill, reset, Mail runtime,
+  changement capsule, provider live, Nextcloud live, Caddy, Authelia, DB ou
+  plateforme n'a ete modifie par Lot Z.
 
 Commandes/preuves minimales:
 
@@ -1126,17 +1153,17 @@ Pour un lot runtime, ajouter:
 - Secret, log brut, prompt brut, payload provider ou contenu utilisateur brut
   ajoute dans docs, artefacts ou reponses.
 
-## 8. Auto-audit permanent de cette TODO
+## 8. Auto-audit permanent de cette archive
 
-- Un seul fichier TODO actif pilote la cloture finale: ce fichier.
+- Le pilote final est archive dans ce fichier; il n'existe plus de TODO finale
+  active dans `todo-todo/product`.
 - Les cinq axes audit/contre-audit sont presents.
 - Les findings P2/P3 minimum demandes sont presents.
 - Les findings supplementaires du contre-audit sont documentes au format
   registre.
 - Seuls les lots effectivement livres sont coches: Lot 0, Lot 1A, Lot 1B,
   Lot 2A, Lot 2B, Lot 2C, Lot 2D, Lot 3, Lot 4, Lot 5, Lot 5B, Lot 5B.1 et
-  Lot 6 et Lot 7.
-- Le Lot Z reste non coche tant que son gate d'archive finale n'est pas traite.
+  Lot 6, Lot 7 et Lot Z.
 - Aucun lot futur ou gate final n'est coche prematurement.
 - Les correctifs runtime deja livres en Lots 1A/1B ne sont pas nies par cette
   section; aucun nouveau runtime n'est implique par l'auto-audit.

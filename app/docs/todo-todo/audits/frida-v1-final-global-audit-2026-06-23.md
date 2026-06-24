@@ -1,5 +1,10 @@
 # Frida V1 - Audit final global - 2026-06-23
 
+Statut: audit source historique. Superseded par l'archive finale Lot Z:
+`app/docs/todo-done/product/frida-v1-final-audit-todo.md`. Les findings
+ci-dessous documentent l'etat observe avant les Lots 0-Z et ne constituent plus
+un registre actif sauf reouverture explicite.
+
 ## Verdict court
 
 - Cloture V1 possible : conditionnelle.
@@ -33,7 +38,7 @@ ou corriges, et que la cible Git de cloture a ete clarifiee.
 | Agenda | TODO active/dormante `todo-todo/product/frida-agenda-agent.md` | `states/specs/frida-agenda-agent-contract.md` | cloture pragmatique V1, 2026-06-09 | audit cloture pragmatique et smokes cibles | P3: statut documentaire ambigu; TODO reste en `todo-todo` pour dettes post-V1 |
 | Biblio | archives BIB et agent bibliothecaire | `states/specs/frida-biblio-native-catalogue-contract.md`, `states/specs/frida-biblio-librarian-agent-contract.md` | BIB-01 a BIB-33 fermes live; agent-first borne documente | artefacts Biblio JSONL et archive Last Chance | P3: modules gros, dependance OpenRouter/JSON, navigation canonique post-V1 |
 | Mail bonus | TODO active bonus `todo-todo/product/frida-v1-mail-bonus-todo.md` | aucune spec dediee encore | bonus non bloquant | TODO courte Mail | P2 si runtime pris maintenant; spec/audit seulement raisonnable |
-| Audit final general | TODO active `todo-todo/product/frida-v1-final-audit-todo.md` | le present audit a comparer au contre-audit | ouvert | ce fichier | P1 process: comparaison/decision finale non encore faite |
+| Audit final general | archive `todo-done/product/frida-v1-final-audit-todo.md` | le present audit, superseded par Lot Z | clos Lot Z | artefact final audit Lot Z | integration `main` reste hors archive, sous GO separe |
 
 Chantiers post-V1 ou bonus: Mail runtime, SMS, TTS, reset observabilite,
 disponibilites Agenda riches, mutations Agenda utilisateur reelles, lookup
@@ -451,7 +456,7 @@ vise le 2026-07-03. Garder le 2026-07-03 comme buffer humain/contre-audit.
 - `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
 - `app/docs/states/audits/frida-agenda-question-cartography-2026-06-09.md`
 - `app/docs/todo-todo/product/frida-v1-mail-bonus-todo.md`
-- `app/docs/todo-todo/product/frida-v1-final-audit-todo.md`
+- `app/docs/todo-done/product/frida-v1-final-audit-todo.md`
 - docs Biblio natives, agent, archives Last Chance et audit architecture.
 - code: `app/core/continuity_capsule.py`, `app/core/chat_service.py`,
   `app/observability/main_payload_manifest.py`,
