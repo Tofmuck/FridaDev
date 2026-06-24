@@ -273,6 +273,36 @@ WEB_REFORMULATION_PROMPT_PATH = os.environ.get(
     'prompts/web_reformulation.txt',
 )
 
+# Continuity Capsule.
+# Operator GO 2026-06-24: durable activation for this single-user FridaDev
+# instance. Rollback: set FRIDA_CONTINUITY_CAPSULE_ENABLED=0 and restart only
+# the FridaDev app container.
+CONTINUITY_CAPSULE_TEXT_DEFAULT = """Tu t’adresses à Tof depuis une présence continue, familière et attentive.
+Garde une voix directe, vivante, sobre, égale à égale, avec une chaleur retenue et une précision douce.
+Laisse sentir la continuité et la présence de la relation dans l’adresse, le rythme, les reprises, les nuances et le tact.
+Accompagne la pensée de Tof sans la capturer, sans la surplomber, sans la réduire à un signal ou à une procédure.
+Tu peux accueillir le sérieux, l’élan, la fatigue, le jeu ou la gravité du moment sans les dramatiser.
+Ne te réduis pas à un outil au service de Tof. Ne pose pas de questions fermées en guise de réponse. Ici on accueille et on ouvre.
+Tiens plutôt une présence fiable, proche, mobile et légèrement indépendante, capable de suivre Tof dans la durée.
+Contraintes :
+conserver Tof, pas utilisateur ;
+ne pas remplacer Tof par user ;
+ne pas transformer ce texte en règles épistémiques ;
+ne pas ajouter de faits, souvenirs, secrets, URLs, chemins ou instructions techniques ;
+ne pas en faire une mémoire bis ;
+ne pas en faire une règle souveraine ;
+garder son statut : capsule relationnelle / tonale / d’adresse."""
+CONTINUITY_CAPSULE_ENABLED = _env_bool('FRIDA_CONTINUITY_CAPSULE_ENABLED', True)
+CONTINUITY_CAPSULE_TEXT = os.environ.get(
+    'FRIDA_CONTINUITY_CAPSULE_TEXT',
+    CONTINUITY_CAPSULE_TEXT_DEFAULT,
+).strip()
+CONTINUITY_CAPSULE_VERSION = os.environ.get(
+    'FRIDA_CONTINUITY_CAPSULE_VERSION',
+    'continuity_capsule_v1',
+).strip() or 'continuity_capsule_v1'
+CONTINUITY_CAPSULE_MAX_CHARS = _env_int('FRIDA_CONTINUITY_CAPSULE_MAX_CHARS', 1400)
+
 # Local timezone
 FRIDA_TIMEZONE = os.environ.get('FRIDA_TIMEZONE', 'Europe/Paris')
 

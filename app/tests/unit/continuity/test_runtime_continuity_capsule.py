@@ -19,6 +19,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core import continuity_capsule
+import config
 
 
 def _encoded(value: object) -> str:
@@ -158,6 +159,29 @@ class RuntimeContinuityCapsuleTests(unittest.TestCase):
         self.assertEqual(result.content_chars, len("ARTIFICIAL_CAPSULE_CONFIG_SENTINEL"))
         self.assertFalse(result.as_content_free_dict()["fingerprint_included"])
         self.assertNotIn("ARTIFICIAL_CAPSULE_CONFIG_SENTINEL", _encoded(result.as_content_free_dict()))
+
+    def test_default_config_activates_validated_capsule_content_free(self) -> None:
+        result = continuity_capsule.resolve_continuity_capsule(config_module=config)
+        prompt_messages: list[dict[str, object]] = []
+
+        injected = continuity_capsule.inject_continuity_capsule(prompt_messages, result)
+
+        self.assertTrue(config.CONTINUITY_CAPSULE_ENABLED)
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.reason_code, "continuity_capsule_ready")
+        self.assertEqual(result.content_chars, len(config.CONTINUITY_CAPSULE_TEXT))
+        self.assertGreater(result.content_chars, continuity_capsule.DEFAULT_MAX_CHARS)
+        self.assertLessEqual(result.content_chars, config.CONTINUITY_CAPSULE_MAX_CHARS)
+        self.assertEqual(len([line for line in config.CONTINUITY_CAPSULE_TEXT.splitlines() if line.strip()]), 15)
+        self.assertTrue(injected)
+        self.assertEqual(prompt_messages[0]["role"], "system")
+        self.assertIn(config.CONTINUITY_CAPSULE_TEXT, str(prompt_messages[0]["content"]))
+        encoded = _encoded(result.as_content_free_dict())
+        self.assertNotIn(config.CONTINUITY_CAPSULE_TEXT, encoded)
+        self.assertFalse(result.as_content_free_dict()["raw_capsule_content_included"])
+        rollback = continuity_capsule.resolve_continuity_capsule(config_module=config, enabled=False)
+        self.assertEqual(rollback.status, "disabled")
+        self.assertEqual(rollback.reason_code, "continuity_capsule_disabled")
 
 
 if __name__ == "__main__":

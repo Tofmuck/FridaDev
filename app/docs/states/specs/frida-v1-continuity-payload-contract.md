@@ -710,7 +710,9 @@ La capsule runtime Lot 7 doit:
 
 - etre bornee en taille;
 - etre versionnee;
-- etre desactivee par defaut et activable par config/env sans DB;
+- etre activable/desactivable par config/env sans DB; Lot 7 l'a livree
+  desactivee par defaut, puis Lot 5B final audit l'active durablement pour
+  l'instance courante apres GO operateur explicite du 2026-06-24;
 - etre rollbackable sans migration destructive;
 - apparaitre dans `main_payload_manifest_v1`;
 - exposer presence, enabled, version, `content_chars`, `max_chars`,
@@ -723,7 +725,7 @@ La capsule runtime Lot 7 doit:
 
 Les statuts runtime attendus sont:
 
-- `disabled` / `continuity_capsule_disabled`: defaut, rollback simple, aucune
+- `disabled` / `continuity_capsule_disabled`: etat de rollback simple, aucune
   injection;
 - `ok` / `continuity_capsule_ready`: capsule valide, message systeme tardif
   injecte avec `logical_roles=["continuity_capsule"]`;
@@ -761,7 +763,7 @@ Provider role et non-souverainete:
 - Lot 7.1 conserve `provider_role=system` parce que ce flux utilise deja des
   messages systeme pour plusieurs lanes de contexte tardives;
 - la non-souverainete n'est donc pas presentee comme une garantie mecanique du
-  provider, mais comme une contrainte produit: capsule desactivee par defaut,
+  provider, mais comme une contrainte produit: activation operateur explicite,
   texte court, clause interne de priorite, bypass sous final lock, aucune
   ecriture identity/memory/summary, projection content-free, rollback simple et
   tests dedies;
@@ -939,10 +941,14 @@ continuent a etre respectees:
 - rollback et feature flag definis;
 - aucun contenu utilisateur reel utilise pour imiter le ton.
 
-Gardes Lot 7 actives:
+Gardes Lot 7 / Lot 5B actives:
 
-- capsule desactivee par defaut;
+- Lot 7 a livre la capsule desactivee par defaut; Lot 5B final audit active la
+  capsule durablement dans `app/config.py` apres GO operateur explicite du
+  2026-06-24;
 - activation par config/env sans DB, migration, purge ou backfill;
+- rollback operateur: poser `FRIDA_CONTINUITY_CAPSULE_ENABLED=0` puis
+  redemarrer seulement l'app FridaDev;
 - refus propre si texte absent ou trop long;
 - refus propre si le texte contient URL, credentials/token-like, data
   URL/base64, XML/DAV/CALDAV/WebDAV, chemin prive/absolu ou bloc de cle privee;
@@ -956,8 +962,10 @@ Gardes Lot 7 actives:
 Ce contrat reste la source normative post-cloture. Depuis les Lots 2 a 7.2, le
 payload runtime courant est prouve par un manifeste content-free borne, protege
 par une garde writer-side, enrichi par les fenetres/locks/lanes, et dispose
-d'une Continuity Capsule runtime bornee. Lot Z ferme le chantier avec verdict
-`met`.
+d'une Continuity Capsule runtime bornee. Le Lot 5B du final audit Frida V1
+active ensuite durablement cette capsule pour l'instance courante avec preuve
+content-free, final-lock bypass conserve, unsafe refused conserve et rollback
+operateur documente. Lot Z ferme le chantier avec verdict `met`.
 
 Limites post-V1 assumees:
 
