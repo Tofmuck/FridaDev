@@ -355,6 +355,43 @@ est l'absence de scripts humains externes, d'historique shell ou de runbooks
 hors scan. Consequence operateur: ne corriger que les candidats host-only apres
 GO explicite; ne pas toucher aux racines actives ou inconnues.
 
+## Lot 1E - Decision operateur backups/dumps/reports sensibles
+
+Statut: decision Sauron docs-only documentee le 2026-06-24.
+Finding cible: `P1-SAU-SENSITIVE-BACKUPS-PERMS-01`.
+Decision operateur: `NO-GO` correction permissions pour l'instant.
+Correction appliquee: non.
+P1 ferme comme corrige: non.
+Statut retenu: `risk_accepted_temporarily`.
+
+- [x] Documenter que Lot 1C/1D ont etabli les preuves statiques et metadata.
+- [x] Documenter que les familles host-only ne sont pas montees par Docker
+  courant et n'ont pas de consommateur statique confirme dans le scope scanne.
+- [x] Documenter que l'absence absolue de consommateur hors repo/hors scan ne
+  peut pas etre garantie.
+- [x] Interdire chmod/chown/setfacl/purge/deplacement sans nouveau GO
+  operateur explicite.
+- [x] Garder `P1-SAU-SENSITIVE-BACKUPS-PERMS-01` visible et non ferme comme
+  corrige.
+
+### Decision Lot 1E
+
+- Lots 1C/1D etablissent que `_codex_reports`, `_codex_backups` et
+  `/opt/platform/backups` ne sont pas montes par Docker courant.
+- Aucun consommateur statique n'a ete confirme dans Compose, scripts, cron,
+  systemd, docs et runbooks scannes.
+- L'absence absolue d'un consommateur hors repo, hors scan, usage humain non
+  versionne ou historique shell ne peut pas etre garantie.
+- Decision operateur: ne pas appliquer de `chmod`, `chown`, `setfacl`,
+  purge ou deplacement pour l'instant.
+- Ne pas lancer de correction host-only tant qu'il n'y a pas soit un
+  consommateur confirme a 100%, soit un GO operateur explicite acceptant le
+  risque de casser un usage externe non versionne.
+- `P1-SAU-SENSITIVE-BACKUPS-PERMS-01` reste visible en
+  `risk_accepted_temporarily`: risque reconnu, non corrige, non actionne.
+- Prochain comportement: passer au finding suivant; ne pas relancer Lot 2A
+  correctif sans nouvelle decision operateur explicite.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
@@ -380,8 +417,9 @@ GO explicite; ne pas toucher aux racines actives ou inconnues.
 ### P1-SAU-SENSITIVE-BACKUPS-PERMS-01
 
 - Statut initial: open.
-- Statut courant: open; investigation Lot 1C completee, correction non
-  appliquee.
+- Statut courant: `risk_accepted_temporarily` par decision operateur Lot 1E;
+  risque reconnu, correction permissions `NO-GO` pour l'instant, P1 non ferme
+  comme corrige.
 - Severite: P1.
 - Fichiers/zones suspects: `/opt/platform/backups`,
   `/opt/platform/_codex_backups`, `/opt/platform/_codex_reports`,
@@ -394,6 +432,10 @@ GO explicite; ne pas toucher aux racines actives ou inconnues.
   `_codex_reports`, `_codex_backups` et `/opt/platform/backups` n'ont pas de
   consommateur Docker/cron/systemd/script confirme et deviennent candidates a
   durcissement apres GO; les racines montees restent `do_not_touch_active_service`.
+- Decision Lot 1E: `NO-GO` correction permissions pour l'instant car
+  l'absence absolue d'un consommateur hors repo/hors scan ne peut pas etre
+  garantie. Ne pas relancer de correction host-only sans nouveau GO operateur
+  explicite.
 - Classification Lot 1C: `closed_by_lot_1b_already`,
   `active_sensitive_backup`, `restorable_db_dump`,
   `codex_report_sensitive_metadata`, `historical_archive_sensitive`,
@@ -776,9 +818,9 @@ GO explicite; ne pas toucher aux racines actives ou inconnues.
 
 ### Lot 2 - Secrets/env/logs/permissions
 
-- [ ] Lot 2A: corriger les artefacts host-only `_codex_reports`,
-  `_codex_backups` et `/opt/platform/backups` valides par Lot 1C, sans lire
-  leur contenu.
+- [ ] Lot 2A: bloque par decision Lot 1E `NO-GO`; ne pas corriger les
+  artefacts host-only `_codex_reports`, `_codex_backups` et
+  `/opt/platform/backups` sans nouveau GO operateur explicite.
 - [ ] Lot 2B: corriger ou documenter les fichiers actifs/service-owned sous
   `/opt/platform/data/*` apres validation par service.
 - [ ] Traiter backups/dumps/keys world-readable.
