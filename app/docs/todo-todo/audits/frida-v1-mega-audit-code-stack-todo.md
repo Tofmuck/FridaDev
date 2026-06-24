@@ -275,6 +275,86 @@ P1 ferme: non.
   `/opt/platform/data/*`, avec validation par service avant tout chmod.
   `P1-SAU-SENSITIVE-BACKUPS-PERMS-01` reste ouvert jusqu'aux corrections.
 
+## Lot 1D - Investigation consommateurs backups/dumps/reports sensibles
+
+Statut: investigation Sauron metadata/config-only executee le 2026-06-24.
+Finding cible: `P1-SAU-SENSITIVE-BACKUPS-PERMS-01`.
+Correction appliquee: non.
+P1 ferme: non.
+
+- [x] Cartographier les consommateurs Docker/Compose des familles sensibles.
+- [x] Chercher les references statiques dans scripts, docs, runbooks et
+  configs non sensibles, sans grepper les backups/dumps eux-memes.
+- [x] Verifier crons/systemd par noms/compteurs, sans recopier de commande
+  sensible.
+- [x] Distinguer `confirmed_no_static_consumer`, `probable_operator_only`,
+  `unknown_consumer`, `active_service_owned_do_not_touch` et
+  `closed_by_lot_1b`.
+- [x] Produire une table de decision sans appliquer de correction.
+
+### Resultat Lot 1D
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le plan le plus sur
+est une cartographie metadata/config-only des consommateurs connus/probables,
+avant tout chmod sur des artefacts dont le consommateur n'est pas certain.
+
+- Docker mounts inspectes: aucune racine `_codex_reports`, `_codex_backups` ou
+  `/opt/platform/backups` n'apparait comme mount actif des conteneurs courants.
+- Racines actives montees confirmees: `/opt/platform/data/n8n`,
+  `/opt/platform/data/stirling/configs`, `/opt/platform/data/nextcloud`,
+  `/opt/platform/data/nextcloud-db`, `/opt/platform/doc-pipeline/data`,
+  `/opt/platform/fridadev-db/imports`.
+- References statiques: 300 fichiers non sensibles scannes; 45 contiennent des
+  references de famille backup/restore/dump/archive. Les references sont
+  principalement docs, runbooks, specs et TODO; aucun script de consommation
+  automatique host-only n'a ete confirme pour `_codex_reports`,
+  `_codex_backups` ou `/opt/platform/backups`.
+- Cron/systemd: aucun cron ou timer applicatif custom consommateur de ces
+  artefacts n'a ete confirme; seul un timer systeme `dpkg-db-backup` est
+  observe et hors scope Frida/plateforme applicative.
+- Crontab utilisateur: commande `crontab` absente dans l'environnement; root
+  crontab via `sudo -n` n'a pas revele de consommateur backup applicatif dans
+  les compteurs content-free.
+- Historique shell: non utilise, risque de secret.
+
+### Table decisionnelle Lot 1D
+
+| path_or_family | classification | current_permissions_summary | docker_mount_consumer | compose_consumer | script_consumer | cron_systemd_consumer | docs_runbook_consumer | operator_only_likely | confidence | touch_decision | reason |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `/opt/platform/.env` et `.env.bak-*` | `closed_by_lot_1b` | `0640 root:tof`, world off | non | oui, deja traite | smoke M4 deja traite | non | oui | oui | `100_static_config` | `closed_by_lot_1b` | Finding `.env` clos; ne pas retraiter ici. |
+| `/opt/platform/_codex_reports` | `confirmed_no_static_consumer` + `probable_operator_only` | 7 fichiers, environ 95 MB, 6 world-readable | non | non | non confirme | non confirme | oui, preuves/docs V1 | oui | high | `candidate_0640_root_tof_after_go` | Host-only; correction possible apres GO et scan avant/apres. |
+| `/opt/platform/_codex_backups` | `probable_operator_only` | 11 fichiers sensibles matches, environ 915 MB, 10 world-readable | non | non | non confirme | non confirme | oui, runbooks/docs migration | oui | high | `candidate_0640_root_tof_after_go` | Backups/restauration host-only; conserver retention avant chmod. |
+| `/opt/platform/backups` | `probable_operator_only` | 5 fichiers matches, environ 129 MB, 4 world-readable | non | non | non confirme | non confirme | oui, docs migration/archives | oui | high | `candidate_0640_root_tof_after_go` | Pas de consommateur runtime confirme; durcir apres GO. |
+| `/opt/platform/fridadev-db/imports` | `active_service_owned_do_not_touch` | 2 dumps, deja `0600 tof:tof` | `platform-fridadev-postgres` -> `/imports` ro | oui, sous-stack DB | non | non | oui, migration | non | `100_static_config` | `do_not_touch_active_service` | Racine montee par Postgres; deja stricte. |
+| `/opt/platform/fridadev-db/backups` | `confirmed_no_static_consumer` | 2 fichiers observes, deja `0600 tof:tof` | non | non | non confirme | non confirme | oui, migration | oui | medium | `candidate_0600_root_root_after_go` | Host-only et deja non world-readable; ownership a trancher separement. |
+| `/opt/platform/fridadev-app/state-backup-*` | `confirmed_no_static_consumer` | archive observee `0600 tof:tof` | non | non | non confirme | non confirme | oui, migration | oui | medium | `candidate_0600_root_root_after_go` | Host-only; pas prioritaire car deja stricte. |
+| `/opt/platform/data/n8n` | `active_service_owned_do_not_touch` | 8 fichiers sensibles matches, 3 world-readable | `platform-n8n` -> `/home/node/.n8n` rw | oui | non confirme | non confirme | historique/audit | non | `100_static_config` | `do_not_touch_active_service` | Donnees actives n8n; correction seulement avec validation service. |
+| `/opt/platform/data/stirling/configs` | `active_service_owned_do_not_touch` | 8 fichiers matches, 8 world-readable | `platform-stirling-pdf` -> `/configs` rw | oui | non confirme | non confirme | non central | non | `100_static_config` | `do_not_touch_active_service` | Config active Stirling; cle JWT backup a valider dans lot dedie. |
+| `/opt/platform/data/nextcloud*` | `active_service_owned_do_not_touch` | nombreux matches par noms/source, majoritairement service-owned | Nextcloud/DB/Cron mounts rw | oui | non confirme | non confirme | runbooks upgrade | non | `100_static_config` | `do_not_touch_active_service` | Donnees/source service actifs; ne pas corriger via P1 host-only. |
+| `/opt/platform/doc-pipeline/data` | `active_service_owned_do_not_touch` | contenu partiellement non lisible, service DB monte | `platform-doc-pipeline-db` -> postgres data rw | oui | non confirme | non confirme | docs pipeline | non | high | `do_not_touch_active_service` | Racine service active; permission denied confirme prudence. |
+| `/opt/platform/doc-library/index.html.backup` | `confirmed_no_static_consumer` | fichier HTML backup `0644 root:root` | `platform-doc-library` monte le dossier parent ro | compose parent oui | non | non | non confirme | uncertain | medium | `needs_targeted_validation` | Backup probablement non sensible mais dans dossier servi en lecture; ne pas classer P1 sans validation. |
+| `/opt/platform/fridadev/app/admin/sql/runtime_settings_v1.sql` | `probably_safe_metadata_only` | fichier SQL repo, `0664 tof:tof` | non | non | non | non | source repo | non | high | `needs_targeted_validation` | Fichier source applicatif, pas dump runtime; hors correction Sauron immediate. |
+
+### Synthese decisionnelle Lot 1D
+
+- Nombre de lignes table: 13.
+- `candidate_0640_root_tof_after_go`: 3 familles host-only prioritaires.
+- `candidate_0600_root_root_after_go`: 2 familles host-only deja strictes
+  mais ownership a trancher.
+- `do_not_touch_unknown_consumer`: 0 famille majeure; les inconnues sont
+  classees `needs_targeted_validation`.
+- `do_not_touch_active_service`: 5 familles/racines montees.
+- `needs_targeted_validation`: 2 lignes explicites.
+- `closed_by_lot_1b`: 1 ligne.
+
+Conclusion Lot 1D: ce qui est connu a 100% est la non-consommation Docker des
+racines host-only `_codex_reports`, `_codex_backups` et `/opt/platform/backups`
+dans les mounts courants, et la consommation active des racines sous
+`/opt/platform/data/*`/`fridadev-db/imports`. Ce qui ne peut pas etre garanti
+est l'absence de scripts humains externes, d'historique shell ou de runbooks
+hors scan. Consequence operateur: ne corriger que les candidats host-only apres
+GO explicite; ne pas toucher aux racines actives ou inconnues.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
@@ -310,6 +390,10 @@ P1 ferme: non.
 - Investigation Lot 1C: valide. Le risque est confirme sur des dumps DB,
   archives historiques, rapports Codex et quelques fichiers actifs ou
   service-owned; les familles `.env` racine sont exclues car closes par Lot 1B.
+- Investigation Lot 1D: consommateurs cartographies. Les familles host-only
+  `_codex_reports`, `_codex_backups` et `/opt/platform/backups` n'ont pas de
+  consommateur Docker/cron/systemd/script confirme et deviennent candidates a
+  durcissement apres GO; les racines montees restent `do_not_touch_active_service`.
 - Classification Lot 1C: `closed_by_lot_1b_already`,
   `active_sensitive_backup`, `restorable_db_dump`,
   `codex_report_sensitive_metadata`, `historical_archive_sensitive`,
