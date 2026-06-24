@@ -15,7 +15,8 @@ Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-c
 - Plateforme modifiee par Lot 0: non.
 - Secrets/logs bruts affiches par Lot 0: non.
 - P0 connu: aucun.
-- P1 connus: permissions secrets/backups plateforme.
+- P1 ouvert restant: backups/dumps/artefacts sensibles plateforme hors
+  `.env.bak-*`.
 - Lot 0.1: consolidation contre-audit executee; audit principal reconnu
   partiellement trop Sauron-heavy, findings Celebrimbor concrets integres.
 
@@ -161,11 +162,46 @@ FridaDev/Caddy, puis planifier C/D si l'objectif devient suppression de toute
 lecture racine par `tof`. Ne pas appliquer Option A sans adapter le smoke ou
 fournir explicitement `FRIDA_M4_API_TOKEN`.
 
+## Lot 1B - Correctif permissions `.env` root
+
+Statut: execute le 2026-06-24.
+Decision operateur: GO `0640 root:tof`.
+Finding cible: `P1-SAU-ENV-PERMISSIONS-01`.
+Runtime redemarre: non.
+Plateforme modifiee: oui, permissions/ownership uniquement sur
+`/opt/platform/.env` et `/opt/platform/.env.bak-*`.
+Artefact metadata: `/opt/platform/_codex_reports/frida-v1-mega-audit-lot1b-env-permissions-metadata-20260624T161205Z.txt`.
+
+- [x] Capturer les metadonnees avant correction sans lire de valeurs.
+- [x] Creer l'artefact metadata content-free, sans hash de contenu.
+- [x] Appliquer `root:tof` et `0640` a `/opt/platform/.env`.
+- [x] Appliquer `root:tof` et `0640` aux backups `/opt/platform/.env.bak-*`.
+- [x] Prouver que `tof` lit encore et que `nobody` ne lit plus.
+- [x] Valider Compose global/doc-pipeline via sudo, M4 avec et sans sudo,
+  FridaDev app/db sans sudo.
+- [x] Valider smoke Frida V4/M4 sans fuite de token.
+- [x] Valider sante FridaDev/Caddy sans rebuild/restart.
+
+### Resultat Lot 1B
+
+- Avant: actif et 3 backups `.env.bak-*` en `0644 root:root`.
+- Apres: actif et 3 backups `.env.bak-*` en `0640 root:tof`.
+- Lecture attendue: `tof` lit encore; `nobody` ne lit plus.
+- Compose: global sudo OK, doc-pipeline sudo OK, M4 utilisateur OK, M4 sudo
+  OK, FridaDev app OK, FridaDev DB OK.
+- Smoke M4: OK; 9 lignes, 337 octets, aucun marqueur token/secret/cookie dans
+  la sortie capturee.
+- Sante FridaDev/Caddy: conteneurs FridaDev healthy; `/admin` repond `302`
+  vers Authelia via Caddy.
+- Secrets/logs bruts affiches: non.
+- `P1-SAU-ENV-PERMISSIONS-01`: clos par Lot 1B.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
 
 - Statut initial: open.
+- Statut courant: closed by Lot 1B.
 - Severite: P1.
 - Fichiers/zones suspects: `/opt/platform/.env`.
 - Lot cible: Lot 1.
@@ -174,6 +210,8 @@ fournir explicitement `FRIDA_M4_API_TOKEN`.
 - Investigation Lot 1A.1: Frida V4/M4 depend partiellement du `.env` racine
   pour host/token public et smoke operateur; Compose M4 depend surtout du
   `.env` local; correction non appliquee.
+- Correction Lot 1B: actif et backups `.env.bak-*` passes de `0644 root:root`
+  a `0640 root:tof`; `nobody` refuse; Compose/smoke/health OK.
 - Critere de cloture: permissions resserrees ou exception documentee,
   verification Compose/health sans secret affiche.
 - Preuve minimale: `stat` content-free avant/apres, `docker compose config
@@ -556,10 +594,10 @@ fournir explicitement `FRIDA_M4_API_TOKEN`.
 
 ### Lot 1 - Securite plateforme P1 immediate
 
-- [ ] Traiter `P1-SAU-ENV-PERMISSIONS-01`.
-- [ ] Verifier ownership/mode `.env` et compat Compose.
-- [ ] Ne pas lire ni afficher les valeurs.
-- [ ] Produire preuve health apres correction si correction autorisee.
+- [x] Traiter `P1-SAU-ENV-PERMISSIONS-01`.
+- [x] Verifier ownership/mode `.env` et compat Compose.
+- [x] Ne pas lire ni afficher les valeurs.
+- [x] Produire preuve health apres correction si correction autorisee.
 
 ### Lot 2 - Secrets/env/logs/permissions
 
