@@ -40,9 +40,10 @@ par lui-meme.
 - Risque global: moyen tant que les P2 ne sont ni fermes, ni acceptes
   explicitement comme risques residuels.
 - Continuity Capsule: livree, bornee, micro-preuve Lot 5 realisee avec rollback
-  disabled, puis activation durable effective par GO operateur Lot 5B du
-  2026-06-24. Rollback rapide: `FRIDA_CONTINUITY_CAPSULE_ENABLED=0` puis
-  restart app.
+  disabled, activation durable effective par GO operateur Lot 5B du
+  2026-06-24, puis correction Lot 5B.1 du texte runtime pour correspondre
+  exactement aux 7 lignes operateur validees. Rollback rapide:
+  `FRIDA_CONTINUITY_CAPSULE_ENABLED=0` puis restart app.
 - Agenda: utile et pragmatiquement clos pour V1; TODO maintenue en statut
   post-V1 dormant, non bloquante pour Frida 1.0 sauf bug reel, besoin concret
   ou decision explicite.
@@ -58,7 +59,7 @@ par lui-meme.
 - Images generees V1: archive Lot Z `met`.
 - Observabilite agentique V1: archive Lot Z `met`, reset destructif non execute.
 - Continuity Payload V1: archive Lot Z `met`; capsule runtime livree, prouvee,
-  puis activee durablement par Lot 5B.
+  activee durablement par Lot 5B puis corrigee en Lot 5B.1 sur le texte exact.
 - Admin logs Lot 1A/1B: `/api/admin/logs` legacy projete content-free et
   lectures admin logs fail-closed, sans cause brute exposee.
 - Biblio: chantiers produits V1 clos par archives et artefacts.
@@ -118,12 +119,12 @@ par lui-meme.
 | Exports | GO | `todo-done/product/frida-v1-exports-todo.md`, JSONL `exports-smokes/` Lot Z | Reuse `.docx`/`.pdf` comme source texte reste post-V1 | Aucune pour V1 | Clos |
 | Generated Images | PARTIAL | `todo-done/product/frida-v1-generated-images-todo.md`, JSONL `generated-images-smokes/` Lot Z | Live provider observe PNG; JPEG/WebP couverts par tests/fakes | Aucune si limite acceptee | Clos |
 | Agentic Observability | GO | `todo-done/product/frida-v1-agentic-observability-todo.md`, JSONL `agentic-observability-smokes/` Lot Z | Reset destructif non execute; operation separee sous GO operateur | Reset reste `GATED` post-cloture | Clos / GATED reset |
-| Continuity Payload | GO | `todo-done/product/frida-v1-continuity-payload-todo.md`, JSONL `continuity-payload-smokes/` Lot Z | Capsule runtime livree disabled historiquement, micro-preuve Lot 5 rollbackee, activation durable Lot 5B | Rollback operateur env si besoin | Clos / active durable |
+| Continuity Payload | GO | `todo-done/product/frida-v1-continuity-payload-todo.md`, JSONL `continuity-payload-smokes/` Lot Z | Capsule runtime livree disabled historiquement, micro-preuve Lot 5 rollbackee, activation durable Lot 5B, texte exact corrige Lot 5B.1 | Rollback operateur env si besoin | Clos / active durable |
 | Biblio | GO | `todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md`, JSONL `biblio-smokes/` BIB-01 -> BIB-33 | Agent/refactors/ergonomie avancee restent post-V1 | Aucune pour V1 | Clos |
 | Agenda pragmatique | PARTIAL | `states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`, JSONL `agenda-smokes/` | Agenda utile mais non exhaustif; Lot 9 et capacites riches post-V1 | Aucune sauf bug reel/besoin concret | Clos pragmatique |
 | Admin logs Lot 1A/1B/1B.1 | GO | Tests admin/logs et TODO finale Lots 1A/1B | Pas de refonte dashboard large | Aucune pour V1 | Clos |
 | Branche/main | GATED | Etat Git Lot 4: `origin_main_ancestor_of_HEAD=0`, `HEAD_ancestor_of_origin_main=1` | `HEAD` n'est pas contenu dans `origin/main`; Frida V1 n'est pas declaree close sur `main` | Non-integration temporaire; merge/PR/main seulement sur GO separe | Lot 4 clos / main gate |
-| Continuity Capsule activation | GO | Contrat/archives Continuity, artefact Lot 5, artefact Lot 5B `continuity-payload-smokes/frida-v1-continuity-capsule-lot5b-activation-20260624T070243Z.jsonl` | Texte brut uniquement en config applicative; observabilite content-free | Rollback operateur env si besoin | Lot 5B clos |
+| Continuity Capsule activation | GO | Contrat/archives Continuity, artefact Lot 5, artefact Lot 5B, artefact correctif Lot 5B.1 `continuity-payload-smokes/frida-v1-continuity-capsule-lot5b1-exact-text-20260624T073000Z.jsonl` | Texte brut uniquement en config applicative; observabilite content-free; `exact_operator_text=true` dans preuve corrective | Rollback operateur env si besoin | Lot 5B.1 clos |
 | Mail bonus | GATED | Roadmap finale et TODO Mail bonus | Runtime Mail exclu de V1 par defaut | Audit/spec-only ou report explicite | Lot 6 |
 | Final closure smoke | NO-GO | Cette matrice et inventaire JSONL Lot 3 | Pas de smoke live non necessaire en Lot 3 | Scans/tests bornes choisis | Lot 7 |
 | Archive finale | NO-GO | TODO finale active | Tous P2/P3 doivent etre fermes, acceptes ou reportes | Archivage apres decisions | Lot Z |
@@ -177,7 +178,7 @@ par lui-meme.
 - `P3-LARGE-FILES-01`: confirme post-V1; les gros fichiers mesures au Lot 3
   restent sous vigilance sans refactor opportuniste.
 
-## Decisions de cloture restantes apres Lot 5B
+## Decisions de cloture restantes apres Lot 5B.1
 
 - Lot 4: decision branche/main prise; `P2-BRANCH-INTEGRATION-01` est clos par
   non-integration temporaire, sans merge ni push vers `main`.
@@ -186,6 +187,10 @@ par lui-meme.
   est clos par decision `ROLLBACK_DISABLED_EFFECTUE`.
 - Lot 5B: GO operateur 2026-06-24 applique; capsule hermeneutique activee
   durablement dans `app/config.py`, observee content-free, rollback documente.
+- Lot 5B.1: correctif d'exactitude applique; texte runtime strictement reduit
+  aux 7 lignes operateur validees, `exact_operator_text=true`,
+  `content_chars=762`, `nonempty_line_count=7`,
+  `has_constraints_block=false`.
 - Lot 6: Mail audit/spec-only ou report post-V1; `P2-MAIL-RUNTIME-SCOPE-01`
   reste ouvert tant que la decision n'est pas documentee.
 - Lot 7: smoke final borne selon cette matrice, sans nouveaux smokes live
@@ -881,8 +886,8 @@ Artefact JSONL: oui si micro-preuve realisee, content-free uniquement.
 Type: runtime/config applicative + preuve ciblee.
 
 - [x] Recevoir le GO operateur explicite du 2026-06-24 pour activation durable.
-- [x] Integrer le texte exact valide dans `app/config.py`, sans le dupliquer
-  dans artefact content-free.
+- [x] Integrer le texte de capsule valide dans `app/config.py`, sans le
+  dupliquer dans artefact content-free; exactitude stricte corrigee en Lot 5B.1.
 - [x] Activer durablement `CONTINUITY_CAPSULE_ENABLED=True` par defaut
   applicatif.
 - [x] Ajuster la policy multi-ligne de facon bornee pour accepter le texte
@@ -912,6 +917,35 @@ Resultat Lot 5B:
   `app/docs/states/baselines/continuity-payload-smokes/frida-v1-continuity-capsule-lot5b-activation-20260624T070243Z.jsonl`.
 - Decision: activation durable effectuee. La capsule reste non souveraine,
   distincte de identity/memory/summary, et bypassed sous final-lock.
+- Correctif Lot 5B.1 requis: l'artefact Lot 5B prouve l'activation durable,
+  mais pas l'exactitude stricte du texte operateur; la preuve corrective Lot
+  5B.1 devient source active pour `exact_operator_text`.
+
+### Lot 5B.1 - Correctif capsule exacte
+
+Type: runtime/config applicative + preuve ciblee.
+
+- [x] Valider le finding P2: le texte runtime Lot 5B contenait 15 lignes et un
+  bloc additionnel non valide par l'operateur.
+- [x] Remplacer `CONTINUITY_CAPSULE_TEXT_DEFAULT` par les 7 lignes operateur
+  strictes, sans bloc additionnel.
+- [x] Conserver `CONTINUITY_CAPSULE_ENABLED=True`.
+- [x] Revenir a une limite de lignes stricte suffisante pour le texte valide,
+  sans relacher les refus URL/token/path/XML/DAV/base64/secret.
+- [x] Mettre a jour le test capsule pour verifier `exact_operator_text=true`,
+  `content_chars=762`, `nonempty_line_count=7`,
+  `has_constraints_block=false`.
+- [x] Produire un artefact JSONL content-free correctif.
+- [x] Rebuild/restart app FridaDev et verifier le runtime conteneur.
+
+Resultat Lot 5B.1:
+
+- Artefact JSONL content-free:
+  `app/docs/states/baselines/continuity-payload-smokes/frida-v1-continuity-capsule-lot5b1-exact-text-20260624T073000Z.jsonl`.
+- Preuve attendue: `exact_operator_text=true`, `content_chars=762`,
+  `nonempty_line_count=7`, `has_constraints_block=false`.
+- Decision: activation durable conservee, texte runtime corrige, rollback
+  operateur inchange.
 
 Commandes/preuves minimales:
 
@@ -1064,15 +1098,16 @@ Pour un lot runtime, ajouter:
 - Les findings supplementaires du contre-audit sont documentes au format
   registre.
 - Seuls les lots effectivement livres sont coches: Lot 0, Lot 1A, Lot 1B,
-  Lot 2A, Lot 2B, Lot 2C, Lot 2D, Lot 3, Lot 4, Lot 5 et Lot 5B.
+  Lot 2A, Lot 2B, Lot 2C, Lot 2D, Lot 3, Lot 4, Lot 5, Lot 5B et Lot 5B.1.
 - Les lots 6, 7 et Z restent non coches tant que leurs gates ne sont pas
   traites.
 - Aucun lot futur ou gate final n'est coche prematurement.
 - Les correctifs runtime deja livres en Lots 1A/1B ne sont pas nies par cette
   section; aucun nouveau runtime n'est implique par l'auto-audit.
 - Aucun reset/purge/backfill/migration n'est demande implicitement.
-- L'activation durable de la capsule a ete executee par GO operateur Lot 5B;
-  tout rollback ou changement futur reste un geste operateur separe.
+- L'activation durable de la capsule a ete executee par GO operateur Lot 5B,
+  puis le texte exact a ete corrige en Lot 5B.1; tout rollback ou changement
+  futur reste un geste operateur separe.
 - Mail runtime est exclu sauf GO ulterieur separe.
 - Les docs/index/roadmap ne doivent pas pointer vers un mauvais fichier actif.
 - Le contenu reste content-free.

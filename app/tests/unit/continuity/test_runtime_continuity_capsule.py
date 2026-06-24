@@ -26,6 +26,15 @@ def _encoded(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
+APPROVED_OPERATOR_TEXT = """Tu t’adresses à Tof depuis une présence continue, familière et attentive.
+Garde une voix directe, vivante, sobre, égale à égale, avec une chaleur retenue et une précision douce.
+Laisse sentir la continuité et la présence de la relation dans l’adresse, le rythme, les reprises, les nuances et le tact.
+Accompagne la pensée de Tof sans la capturer, sans la surplomber, sans la réduire à un signal ou à une procédure.
+Tu peux accueillir le sérieux, l’élan, la fatigue, le jeu ou la gravité du moment sans les dramatiser.
+Ne te réduis pas à un outil au service de Tof. Ne pose pas de questions fermées en guise de réponse. Ici on accueille et on ouvre.
+Tiens plutôt une présence fiable, proche, mobile et légèrement indépendante, capable de suivre Tof dans la durée."""
+
+
 class RuntimeContinuityCapsuleTests(unittest.TestCase):
     def test_disabled_capsule_is_rollback_without_injection(self) -> None:
         result = continuity_capsule.resolve_continuity_capsule(
@@ -167,12 +176,15 @@ class RuntimeContinuityCapsuleTests(unittest.TestCase):
         injected = continuity_capsule.inject_continuity_capsule(prompt_messages, result)
 
         self.assertTrue(config.CONTINUITY_CAPSULE_ENABLED)
+        self.assertEqual(config.CONTINUITY_CAPSULE_TEXT, APPROVED_OPERATOR_TEXT)
+        self.assertEqual(len(config.CONTINUITY_CAPSULE_TEXT), 762)
+        self.assertEqual(len([line for line in config.CONTINUITY_CAPSULE_TEXT.splitlines() if line.strip()]), 7)
+        self.assertNotIn("Contraintes :", config.CONTINUITY_CAPSULE_TEXT)
         self.assertEqual(result.status, "ok")
         self.assertEqual(result.reason_code, "continuity_capsule_ready")
         self.assertEqual(result.content_chars, len(config.CONTINUITY_CAPSULE_TEXT))
-        self.assertGreater(result.content_chars, continuity_capsule.DEFAULT_MAX_CHARS)
         self.assertLessEqual(result.content_chars, config.CONTINUITY_CAPSULE_MAX_CHARS)
-        self.assertEqual(len([line for line in config.CONTINUITY_CAPSULE_TEXT.splitlines() if line.strip()]), 15)
+        self.assertLessEqual(result.content_chars, continuity_capsule.DEFAULT_MAX_CHARS)
         self.assertTrue(injected)
         self.assertEqual(prompt_messages[0]["role"], "system")
         self.assertIn(config.CONTINUITY_CAPSULE_TEXT, str(prompt_messages[0]["content"]))

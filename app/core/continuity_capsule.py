@@ -32,7 +32,7 @@ ORIGIN = "core.continuity_capsule"
 ORIGIN_STAGE = "late_continuity_capsule"
 CONTENT_KIND = "continuity_capsule"
 
-_MAX_NONEMPTY_LINES = 16
+_MAX_NONEMPTY_LINES = 8
 _LONG_BASE64_RE = re.compile(r"^[A-Za-z0-9+/]{96,}={0,2}$")
 _WINDOWS_ABSOLUTE_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
 _WINDOWS_ABSOLUTE_PATH_ANYWHERE_RE = re.compile(r"(^|\s)[A-Za-z]:[\\/]")

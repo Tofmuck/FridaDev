@@ -2,7 +2,7 @@
 
 Statut: TODO actif
 Date d'ouverture: 2026-06-10
-Dernier recalage docs: 2026-06-23
+Dernier recalage docs: 2026-06-24
 Cible de cloture: 2026-07-02
 Branche de cloture courante: voir la TODO finale active et l'etat Git courant;
 la strategie `main` reste a decider dans le Lot 4 de cloture finale.
@@ -158,8 +158,10 @@ et
 Statut 2026-06-23: chantier cloture en Lot Z avec verdict `met`.
 `main_payload_manifest_v1` est livre et teste, la garde writer-side est
 schema-first/default-deny, les fenetres/lanes/final locks sont observables
-content-free, et la Continuity Capsule runtime est bornee, desactivee par
-defaut, rollbackable, non souveraine et observable sans contenu brut.
+content-free. La Continuity Capsule runtime a ete livree historiquement en
+mode rollback disabled, puis activee durablement par GO operateur Lot 5B et
+corrigee en Lot 5B.1 pour porter exactement le texte operateur valide; elle
+reste rollbackable, non souveraine et observable sans contenu brut.
 
 ### 8. Audit final general
 

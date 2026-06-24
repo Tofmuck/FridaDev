@@ -18,14 +18,17 @@ Lot 5.1 classe `final_lock_priority_unexpected` en `failed` quand un conflit
 Agenda/Biblio selectionne une source non-Agenda malgre la politique courante.
 Lot 6 ajoute des fixtures qualitatives artificielles, content-free et sans
 provider live, pour prouver ce qu'une future capsule devra preserver avant tout
-runtime. Lot 7 livre une Continuity Capsule runtime bornee, desactivee par
-defaut/configurable sans DB, injectee seulement quand le modele principal est
-appele, et observee content-free par `main_payload_manifest_v1`. Lot 7.1 durcit
-l'entree de capsule contre les marqueurs de contenu unsafe et clarifie que la
-non-souverainete du message `system` est une contrainte produit explicite, pas
-une garantie mecanique du provider. Lot 7.2 etend ce durcissement aux variantes
-credential-like avec `:` ou `=`, aux URL-like `www.` en milieu de phrase et aux
-chemins prives/absolus evidents en milieu de phrase.
+runtime. Lot 7 livre une Continuity Capsule runtime bornee, historiquement en
+mode rollback disabled/configurable sans DB, injectee seulement quand le modele
+principal est appele, et observee content-free par `main_payload_manifest_v1`.
+Lot 7.1 durcit l'entree de capsule contre les marqueurs de contenu unsafe et
+clarifie que la non-souverainete du message `system` est une contrainte produit
+explicite, pas une garantie mecanique du provider. Lot 7.2 etend ce
+durcissement aux variantes credential-like avec `:` ou `=`, aux URL-like
+`www.` en milieu de phrase et aux chemins prives/absolus evidents en milieu de
+phrase. Lot 5B active durablement la capsule apres GO operateur, puis Lot 5B.1
+corrige le texte runtime pour qu'il corresponde exactement aux 7 lignes
+operateur validees, sans bloc de contraintes ajoute.
 Lot Z cloture le chantier avec verdict `met`: la TODO est archivee, les
 findings sont clos ou traites pour ce chantier, et l'artefact content-free de
 cloture est conserve dans `states/baselines/continuity-payload-smokes/`.
@@ -710,8 +713,8 @@ La capsule runtime Lot 7 doit:
 
 - etre bornee en taille;
 - etre versionnee;
-- etre activable/desactivable par config/env sans DB; Lot 7 l'a livree
-  desactivee par defaut, puis Lot 5B final audit l'active durablement pour
+- etre activable/desactivable par config/env sans DB; Lot 7 l'a livree en mode
+  rollback disabled initial, puis Lot 5B final audit l'active durablement pour
   l'instance courante apres GO operateur explicite du 2026-06-24;
 - etre rollbackable sans migration destructive;
 - apparaitre dans `main_payload_manifest_v1`;
@@ -796,7 +799,7 @@ lots 1 a 6 ne soient relus et acceptes.
 
 | Finding | Apport du present contrat | Statut courant apres lots livres |
 | --- | --- | --- |
-| P1-CONT-01 | Definit la Continuity Capsule comme surface distincte, courte, non souveraine; Lot 6 prouve une candidate test-only et Lot 7 livre la surface runtime bornee. | Clos Lot 7 par capsule runtime desactivee par defaut/configurable, observable content-free, non souveraine et testee. |
+| P1-CONT-01 | Definit la Continuity Capsule comme surface distincte, courte, non souveraine; Lot 6 prouve une candidate test-only et Lot 7 livre la surface runtime bornee. | Clos Lot 7 par capsule runtime configurable, observable content-free, non souveraine et testee; etat courant Lot 5B/5B.1: activee durablement avec texte operateur exact, rollbackable par config/env. |
 | P1-PAYLOAD-01 | Definit `main_payload_manifest_v1` et en fait le gate avant capsule runtime. | Clos Lot 2 par manifeste runtime content-free du payload final apres injections tardives. |
 | P2-SUMMARY-01 | Separe summary et capsule, expose summary comme fenetre Lot 4, et exige que les tests detectent l'aplatissement de voix. | Clos Lot 6 par fixture post-resume summary seul vs capsule candidate. |
 | P2-LANES-01 | Etend la continuite aux final response locks et renderers de lanes. | Clos Lot 5 pour le bornage content-free des locks; preuve qualitative pre-runtime couverte par Lot 6. |
@@ -943,9 +946,10 @@ continuent a etre respectees:
 
 Gardes Lot 7 / Lot 5B actives:
 
-- Lot 7 a livre la capsule desactivee par defaut; Lot 5B final audit active la
-  capsule durablement dans `app/config.py` apres GO operateur explicite du
-  2026-06-24;
+- Lot 7 a livre la capsule en mode rollback disabled initial; Lot 5B final
+  audit active la capsule durablement dans `app/config.py` apres GO operateur
+  explicite du 2026-06-24; Lot 5B.1 corrige le texte runtime pour qu'il
+  corresponde exactement aux 7 lignes operateur validees;
 - activation par config/env sans DB, migration, purge ou backfill;
 - rollback operateur: poser `FRIDA_CONTINUITY_CAPSULE_ENABLED=0` puis
   redemarrer seulement l'app FridaDev;
@@ -963,9 +967,10 @@ Ce contrat reste la source normative post-cloture. Depuis les Lots 2 a 7.2, le
 payload runtime courant est prouve par un manifeste content-free borne, protege
 par une garde writer-side, enrichi par les fenetres/locks/lanes, et dispose
 d'une Continuity Capsule runtime bornee. Le Lot 5B du final audit Frida V1
-active ensuite durablement cette capsule pour l'instance courante avec preuve
-content-free, final-lock bypass conserve, unsafe refused conserve et rollback
-operateur documente. Lot Z ferme le chantier avec verdict `met`.
+active ensuite durablement cette capsule pour l'instance courante; le Lot 5B.1
+corrige l'exactitude du texte operateur et conserve la preuve content-free,
+final-lock bypass, unsafe refused et rollback operateur. Lot Z ferme le
+chantier avec verdict `met`.
 
 Limites post-V1 assumees:
 
