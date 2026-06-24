@@ -392,6 +392,73 @@ Statut retenu: `risk_accepted_temporarily`.
 - Prochain comportement: passer au finding suivant; ne pas relancer Lot 2A
   correctif sans nouvelle decision operateur explicite.
 
+## Lot 2C - Investigation logs Authelia/Caddy secret-like
+
+Statut: investigation Sauron count-only executee le 2026-06-24.
+Finding cible: `P2-SAU-LOG-SECRETLIKE-01`.
+Correction appliquee: non.
+P2 ferme: non.
+
+- [x] Detecter les conteneurs Caddy/Authelia.
+- [x] Scanner `docker logs --since 24h --tail 5000` sans afficher de ligne
+  brute.
+- [x] Compter les familles `Authorization`, `Bearer`, `Basic`, cookies,
+  token, secret, OAuth, JWT-like, DSN et URL avec query longue.
+- [x] Inspecter les logs persistants par metadonnees seulement.
+- [x] Inspecter les configs Caddy/Authelia par compteurs de mots-cles
+  seulement, sans afficher de secret.
+- [x] Documenter la classification sans corriger log-level/config.
+
+### Resultat Lot 2C
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le plan le plus sur
+est le scan borne count-only des logs Docker et de la configuration de logging,
+sans afficher de lignes ni modifier la plateforme.
+
+- Conteneurs scannes: `platform-authelia`, `platform-caddy`.
+- Fenetre: `since=24h`, `tail=5000`.
+- Log drivers Docker: `json-file`, `max-size=10m`, `max-file=3` pour les deux
+  conteneurs.
+- Fichiers logs persistants detectes par metadonnees: pas de fichier log Caddy
+  dedie sous `/opt/platform/caddy`; `/opt/platform/authelia/notification.txt`
+  existe mais est vide; plusieurs logs d'autres services sont detectes sous des
+  chemins `logs`, non scannes en contenu dans ce lot.
+- Configs relues count-only: `/opt/platform/caddy/Caddyfile`,
+  `/opt/platform/authelia/configuration.yml` via `sudo -n` et
+  `/opt/platform/docker-compose.yml`; aucune ligne brute ni valeur affichee.
+
+### Comptes Lot 2C
+
+| surface | lines | bytes | confirmed_secret_value | credential_header_name_only | cookie_header_name_only | oauth_flow_metadata | false_positive_word_secret | needs_targeted_validation | conclusion |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| `platform-caddy` | 287 | 88428 | 0 | 3 | 0 | 0 | 0 | 0 | Faux positif probable: noms de header `Authorization` sans valeur detectee. |
+| `platform-authelia` | 2108 | 781859 | 6 JWT-like matches sur 3 lignes, plus URLs completes avec query | 0 | 0 | 4 | 2 | 1 | Partiel/confirme: pas de cookie/token/header classique, mais valeurs JWT-like et URLs avec query complete detectees. |
+
+Details Authelia count-only:
+
+- `url_query_match_count=2124`, `url_query_line_count=2091`.
+- Principaux noms de query observes, sans valeurs: `rd`, `rm`, `p`, `v`,
+  `rsd`, `rest_route`, `panel`.
+- `sensitive_query_value_line_count=0` pour les familles `code`, `state`,
+  `access_token`, `refresh_token`, `id_token`, `client_secret`, `token`.
+- `jwt_like_match_count=6`, `jwt_like_line_count=3`; format de log Authelia
+  non JSON dans cette fenetre, donc champ source non resolu sans extrait
+  redige.
+- `secret_word_count=2`, `secret_param_value_count=0`: classifie
+  `false_positive_word_secret` dans ce lot.
+
+Conclusion Lot 2C:
+
+- `platform-caddy`: finding invalide pour cette fenetre; seulement des noms de
+  header, aucune valeur credential detectee.
+- `platform-authelia`: finding partiellement confirme. Les logs semblent
+  contenir des URLs completes avec query `rd/rm` et quelques valeurs
+  JWT-like; aucun cookie, `Authorization`, `Bearer`, `Basic`, DSN ou token
+  parametre classique n'est detecte.
+- Decision: ne pas fermer `P2-SAU-LOG-SECRETLIKE-01`; ouvrir un prochain lot
+  de validation/correction Authelia pour comprendre la source des JWT-like et
+  decider d'une redaction/log-level sans purger les logs.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
@@ -451,9 +518,19 @@ Statut retenu: `risk_accepted_temporarily`.
 ### P2-SAU-LOG-SECRETLIKE-01
 
 - Statut initial: open.
+- Statut courant: partially_confirmed_by Lot 2C; Caddy faux positif probable,
+  Authelia confirme/needs targeted validation sur valeurs JWT-like et URLs
+  completes avec query.
 - Severite: P2.
 - Zones suspectes: logs recents Authelia/Caddy.
 - Lot cible: Lot 2.
+- Investigation Lot 2C: `platform-caddy` ne montre que 3 noms de header
+  `Authorization` sans valeur sur 24h/287 lignes; `platform-authelia` montre
+  2108 lignes / 781859 bytes, 2124 URLs avec query, 6 matches JWT-like sur 3
+  lignes, 0 cookie/token/header credential classique.
+- Prochain lot: validation/correction Authelia bornee, sans lignes brutes:
+  identifier le type d'evenement qui logge les JWT-like/URLs, puis reduire ou
+  redacter si confirme.
 - Critere de cloture: faux positif documente ou redaction/log-level corrige.
 - Preuve minimale: scan borne sans lignes brutes, counts avant/apres.
 - Hors-scope: purge logs globale.
@@ -823,6 +900,10 @@ Statut retenu: `risk_accepted_temporarily`.
   `/opt/platform/backups` sans nouveau GO operateur explicite.
 - [ ] Lot 2B: corriger ou documenter les fichiers actifs/service-owned sous
   `/opt/platform/data/*` apres validation par service.
+- [x] Lot 2C: investiguer logs Authelia/Caddy secret-like sans afficher de
+  lignes brutes.
+- [ ] Lot 2D: valider/corriger Authelia log redaction/log-level si GO
+  operateur confirme le besoin.
 - [ ] Traiter backups/dumps/keys world-readable.
 - [ ] Qualifier logs Authelia/Caddy secret-like.
 - [ ] Traiter compose group-writable si confirme.
