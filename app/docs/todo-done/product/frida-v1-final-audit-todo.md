@@ -10,8 +10,14 @@ Archive Lot Z: `app/docs/states/baselines/final-audit-smokes/frida-v1-final-audi
 
 Ce fichier archive le point de pilotage final de la cloture Frida V1. Il a
 remplace la TODO squelettique precedente, transforme la comparaison audit /
-contre-audit en lots executables, puis ete archive en Lot Z. Il ne declare pas
-Frida V1 close sur `main`: l'integration `main` reste sous GO operateur separe.
+contre-audit en lots executables, puis ete archive en Lot Z. Au moment du Lot Z,
+il ne declarait pas Frida V1 close sur `main`: l'integration `main` restait sous
+GO operateur separe.
+
+Note post-merge 2026-06-24: apres GO operateur separe, cette archive a ete
+integree a `main` par fast-forward only depuis
+`FridaV1-Continuity-Payload-Audit`. Les mentions historiques ci-dessous de
+non-integration `main` documentent l'etat Lot 4/Lot Z avant ce merge.
 
 ## 1. Etat global
 

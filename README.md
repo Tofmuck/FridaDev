@@ -1,7 +1,7 @@
 # Frida
 
-Current repository state as of Tuesday, June 23, 2026.
-Etat courant du depot au mardi 23 juin 2026.
+Current repository state as of Wednesday, June 24, 2026.
+Etat courant du depot au mercredi 24 juin 2026.
 
 ## English
 
@@ -11,7 +11,7 @@ Primary current-state references:
 
 - Documentation hub: `app/docs/README.md`
 - Frida 1.0 final product roadmap: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
-- Frida V1 final audit archive: `app/docs/todo-done/product/frida-v1-final-audit-todo.md` for the closed final audit, P2/P3 register, Lot Z proof, branch/main non-integration decision, durable Capsule activation proof, and Mail spec-only decision.
+- Frida V1 final audit archive: `app/docs/todo-done/product/frida-v1-final-audit-todo.md` for the closed final audit, P2/P3 register, Lot Z proof, branch/main history, fast-forward integration to `main` on 2026-06-24, durable Capsule activation proof, and Mail spec-only decision.
 - Frida V1 Continuity Payload delivery archive: `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md` for the closed product workstream, Lot Z proof, `main_payload_manifest_v1`, and the bounded runtime Continuity Capsule.
 - Frida V1 Continuity Payload contract: `app/docs/states/specs/frida-v1-continuity-payload-contract.md` for `main_payload_manifest_v1`, the Continuity Capsule, content-free observability, writer-side guardrails, and post-V1 limits.
 - Frida V1 Nextcloud folders contract: `app/docs/states/specs/frida-v1-nextcloud-folders-contract.md` for `workspace_folders` as the Frida V1 folder product model, logical `/Frida/<folder>` mapping, standard `Documents` / `Notes` / `Exports` / `Images` artifact routing, Sauron/Celebrimbor boundary, no direct Nextcloud DB access, and content-free observability. Delivery TODO archived at `app/docs/todo-done/product/frida-v1-nextcloud-folders-todo.md`.

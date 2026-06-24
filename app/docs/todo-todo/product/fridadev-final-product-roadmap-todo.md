@@ -4,9 +4,10 @@ Statut: TODO actif
 Date d'ouverture: 2026-06-10
 Dernier recalage docs: 2026-06-24
 Cible de cloture: 2026-07-02
-Branche de cloture finale audit: `FridaV1-Continuity-Payload-Audit`;
-l'audit final V1 est archive sur cette branche. L'integration `main` reste sous
-GO operateur separe.
+Branche de cloture finale audit: `FridaV1-Continuity-Payload-Audit`.
+Etat post-merge 2026-06-24: l'audit final V1 archive a ete integre a `main`
+par fast-forward only, sans merge commit, rebuild, runtime Mail, reset
+observabilite, changement Capsule ou geste plateforme.
 
 ## Intention
 
@@ -174,9 +175,9 @@ Archive de cloture:
 `app/docs/todo-done/product/frida-v1-final-audit-todo.md`
 
 Statut 2026-06-24: audit final Frida V1 cloture en Lot Z avec verdict `met`
-sur la branche `FridaV1-Continuity-Payload-Audit`. Aucun merge `main`, reset
-observabilite, runtime Mail, changement Capsule ou geste plateforme n'a ete
-execute par Lot Z.
+sur la branche `FridaV1-Continuity-Payload-Audit`, puis integre a `main` par
+fast-forward only. Le Lot Z lui-meme n'a execute aucun merge `main`, reset
+observabilite, runtime Mail, changement Capsule ou geste plateforme.
 
 ## Bonus non bloquant
 
