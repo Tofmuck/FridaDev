@@ -252,6 +252,9 @@ P1 ferme: non.
   sous `/opt/platform/backups`, `_codex_backups`, `_codex_reports`, Stirling,
   doc-pipeline et FridaDev state. Les droits des repertoires pilotent la
   decouvrabilite et doivent etre traites avec les fichiers, pas separement.
+- `needs_operator_decision`: retention, purge/deplacement eventuel, mode cible
+  `0600 root:root` vs `0640 root:tof` pour artefacts host-only, exceptions
+  cles publiques et fenetre de validation service pour donnees actives.
 - Consommateurs probables: les fichiers sous `/opt/platform/data/*` peuvent
   etre actifs via mounts conteneurs; les familles `_codex_reports`,
   `_codex_backups` et `/opt/platform/backups` sont majoritairement host-only et
@@ -311,7 +314,7 @@ P1 ferme: non.
   `active_sensitive_backup`, `restorable_db_dump`,
   `codex_report_sensitive_metadata`, `historical_archive_sensitive`,
   `secret_key_material`, `probably_safe_metadata_only`,
-  `needs_targeted_validation`.
+  `needs_targeted_validation`, `needs_operator_decision`.
 - Plan propose: Lot 2A host-only backups/reports/dumps; Lot 2B donnees actives
   montees et fichiers service-owned; aucune purge sans decision retention.
 - Critere de cloture: matrice retention/permissions et absence de secret/dump
