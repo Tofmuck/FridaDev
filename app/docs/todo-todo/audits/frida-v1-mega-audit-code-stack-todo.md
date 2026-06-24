@@ -41,6 +41,66 @@ Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-c
   ports publics hors Caddy, JSONL invalides, secrets repo committes non
   confirmes. Agenda dormant wording reste P3 faible / `needs_targeted_validation`.
 
+## Lot 1A - Investigation permissions `.env`
+
+Statut: investigation Sauron docs-only executee le 2026-06-24.
+Finding cible: `P1-SAU-ENV-PERMISSIONS-01`.
+Correction appliquee: non.
+P1 ferme: non.
+
+- [x] Inventorier les metadonnees `.env` et backups sans lire les valeurs.
+- [x] Identifier les consommateurs reels de `/opt/platform/.env`.
+- [x] Tester `docker compose config --quiet` avec et sans sudo, sans afficher
+  de valeurs.
+- [x] Classer les variables par noms seulement.
+- [x] Valider/invalider les hypotheses H1-H5.
+- [x] Comparer les options de correction A-E sans les appliquer.
+
+### Resultat Lot 1A
+
+- Permissions observees: `/opt/platform/.env` et les backups `.env.bak-*`
+  sont en `0644 root:root`; `/opt` et `/opt/platform` sont traversables en
+  `0755`; `/opt/platform/secrets` est en `0700 root:root`.
+- Consommateurs confirmes: Docker Compose global par auto-chargement du
+  `.env` projet et interpolation de variables, `doc-pipeline` via `../.env`,
+  et `/opt/platform/frida-m4-rag/smoke.sh` via reference directe.
+- Consommateurs non confirmes: `/opt/platform/scripts/*` ne contient pas de
+  reference directe a `/opt/platform/.env` dans ce lot.
+- Compat sans sudo: `docker compose config --quiet` echoue deja pour la stack
+  globale sur un autre fichier env root-only, et pour `doc-pipeline` sur un
+  fichier sous `secrets`; le `0644` du `.env` racine n'est donc pas suffisant
+  pour operer ces grandes stacks sans sudo.
+- Compat probablement impactee par `0600 root:root`: le smoke `frida-m4-rag`
+  lance comme `tof` perdrait sa lecture directe du `.env` racine; les Compose
+  globaux/doc-pipeline sans sudo echoueraient aussi plus tot, mais ils ne sont
+  deja pas operationnels sans sudo.
+- Variables par noms seulement: 41 noms observes; 5 classifies
+  probablement secrets; 36 classifies config/hostname/tuning; 0 incertain.
+- Hypotheses: H1 validee probable; H2 invalidee pour les grandes stacks mais
+  partiellement vraie pour `frida-m4-rag/smoke.sh`; H3 validee; H4 validee; H5
+  validee.
+
+### Options Lot 1A
+
+- Option A: `0600 root:root` pour actif et backups; meilleure securite locale,
+  compat operateur via sudo, effet de bord probable sur `frida-m4-rag/smoke.sh`
+  sans sudo; rollback `0644` borne si necessaire.
+- Option B: `0640 root:tof` ou ACL dediee `tof`; compromis operateur, expose
+  encore au compte `tof`, moins large que world-readable; test avec Compose et
+  smoke; rollback par retrait ACL/groupe.
+- Option C: split config non sensible + secrets verrouilles; meilleur modele a
+  terme, plus de migration et risque de drift; tests Compose exhaustifs.
+- Option D: sortir les variables M4/doc-pipeline vers secrets/env dedies;
+  reduit pression sur `.env` racine, mais demande migration par stack.
+- Option E: garder `0644` comme exception documentee; non recommande sauf
+  preuve forte qu'un consommateur non-root legitime ne peut pas etre adapte.
+
+Recommandation Lot 1A: appliquer ensuite un Lot 1B correctif borne, avec
+backup metadata prealable, cible initiale Option B pour preserver le smoke
+operateur `tof`, puis durcissement progressif vers Option C/D si la separation
+des variables est validee. Ne pas fermer `P1-SAU-ENV-PERMISSIONS-01` avant la
+preuve apres correction.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
@@ -49,6 +109,8 @@ Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-c
 - Severite: P1.
 - Fichiers/zones suspects: `/opt/platform/.env`.
 - Lot cible: Lot 1.
+- Investigation Lot 1A: valide; cause probable umask/copie `022`, besoins
+  non-root limites surtout a `frida-m4-rag/smoke.sh`; correction non appliquee.
 - Critere de cloture: permissions resserrees ou exception documentee,
   verification Compose/health sans secret affiche.
 - Preuve minimale: `stat` content-free avant/apres, `docker compose config
