@@ -36,9 +36,9 @@ par lui-meme.
 
 ### Statut V1
 
-- Cloture V1 possible: conditionnelle.
-- Risque global: moyen tant que les P2 ne sont ni fermes, ni acceptes
-  explicitement comme risques residuels.
+- Cloture V1 possible: conditionnelle a l'archive finale Lot Z.
+- Risque global: faible a moyen; plus de P2 actif connu apres Lot 7, mais
+  l'archive finale Lot Z reste a executer.
 - Continuity Capsule: livree, bornee, micro-preuve Lot 5 realisee avec rollback
   disabled, activation durable effective par GO operateur Lot 5B du
   2026-06-24, puis correction Lot 5B.1 du texte runtime pour correspondre
@@ -64,10 +64,11 @@ par lui-meme.
   lectures admin logs fail-closed, sans cause brute exposee.
 - Biblio: chantiers produits V1 clos par archives et artefacts.
 - Agenda: cloture pragmatique V1, a traiter comme dormant post-V1 sauf bug reel.
+- Final closure smoke Lot 7: preuve bornee content-free `met`, artefact JSONL
+  conserve sous `states/baselines/final-audit-smokes/`.
 
 ### Bloquants avant cloture propre
 
-- Smoke final Lot 7 selon matrice Lot 3.
 - Archive finale Lot Z.
 
 ### Reportes post-V1 ou non bloquants
@@ -125,7 +126,7 @@ par lui-meme.
 | Branche/main | GATED | Etat Git Lot 4: `origin_main_ancestor_of_HEAD=0`, `HEAD_ancestor_of_origin_main=1` | `HEAD` n'est pas contenu dans `origin/main`; Frida V1 n'est pas declaree close sur `main` | Non-integration temporaire; merge/PR/main seulement sur GO separe | Lot 4 clos / main gate |
 | Continuity Capsule activation | GO | Contrat/archives Continuity, artefact Lot 5, artefact Lot 5B, artefact correctif Lot 5B.1 `continuity-payload-smokes/frida-v1-continuity-capsule-lot5b1-exact-text-20260624T073000Z.jsonl` | Texte brut uniquement en config applicative; observabilite content-free; `exact_operator_text=true` dans preuve corrective | Rollback operateur env si besoin | Lot 5B.1 clos |
 | Mail bonus | GO | Roadmap finale et TODO Mail bonus | Runtime Mail exclu de V1; spec-only gravee par Lot 6 | Aucune pour V1 | Lot 6 clos |
-| Final closure smoke | NO-GO | Cette matrice et inventaire JSONL Lot 3 | Pas de smoke live non necessaire en Lot 3 | Scans/tests bornes choisis | Lot 7 |
+| Final closure smoke | GO | Artefact JSONL `final-audit-smokes/frida-v1-final-audit-lot7-closure-smoke-20260624T115830Z.jsonl` | Preuve bornee sans nouveaux smokes live; logs scannes sans lignes brutes | Aucune avant Lot Z | Lot 7 clos |
 | Archive finale | NO-GO | TODO finale active | Tous P2/P3 doivent etre fermes, acceptes ou reportes | Archivage apres decisions | Lot Z |
 | SMS | POST-V1 | Roadmap finale | Hors cloture Frida 1.0 | Aucune | Post-V1 |
 | TTS | POST-V1 | Roadmap finale | Hors cloture Frida 1.0 | Aucune | Post-V1 |
@@ -142,10 +143,10 @@ par lui-meme.
   `not_applicable` sont visibles et non converties en faux `GO`.
 - Aucun provider live, Nextcloud live, CalDAV live, Mail runtime, reset, purge,
   backfill ou migration n'est requis par Lot 3.
-- Lot 7 devra rejouer seulement les scans bornes choisis par cette matrice:
-  `git status`, `git diff --check`, inventaire JSONL, scan anti-fuite docs/proofs,
-  absence pycache/temp, absence `utils.py` / `helpers.py`, et tests cibles
-  uniquement si un lot runtime precedent le justifie.
+- Lot 7 a rejoue les scans bornes choisis par cette matrice:
+  `git status`, `git diff --check`, inventaire JSONL, scan anti-fuite
+  docs/proofs/logs, absence pycache/temp, absence `utils.py` / `helpers.py`, et
+  tests conteneur cibles justifies par les lots runtime precedents.
 - Smokes live interdits ou inutiles avant decision dediee: Capsule activee,
   Mail runtime, reset observabilite, Agenda/CalDAV, provider images, ecriture
   Nextcloud.
@@ -165,9 +166,10 @@ par lui-meme.
 - `P3-SCOPED-LOG-DELETE-GATE-01`: suppression scopee classee action admin
   bornee (`conversation_id` requis, `turn_id` optionnel), distincte du reset
   destructif global; tout reset large reste `GATED`.
-- `P3-STATUS-FLATTENING-01`: classe P3 de vigilance; non bloquant pour V1 tant
-  qu'aucune preuve ne montre un `failed/refused/not_configured/skipped` masque;
-  Lot 7 peut ouvrir un micro-audit cible si la cloture zero-erreur l'exige.
+- `P3-STATUS-FLATTENING-01`: classe P3 de vigilance post-V1; non bloquant pour
+  V1 tant qu'aucune preuve ne montre un
+  `failed/refused/not_configured/skipped` masque. Lot 7 n'a pas ouvert de
+  finding borne sur ce point.
 - `P3-BIBLIO-AUDIT-CURRENT-STALE-01`: accepte comme historique/source
   d'architecture; l'archive Last Chance BIB-01 -> BIB-33 reste la preuve de
   cloture V1.
@@ -177,7 +179,7 @@ par lui-meme.
 - `P3-LARGE-FILES-01`: confirme post-V1; les gros fichiers mesures au Lot 3
   restent sous vigilance sans refactor opportuniste.
 
-## Decisions de cloture restantes apres Lot 5B.1
+## Decisions de cloture restantes apres Lot 7
 
 - Lot 4: decision branche/main prise; `P2-BRANCH-INTEGRATION-01` est clos par
   non-integration temporaire, sans merge ni push vers `main`.
@@ -192,10 +194,10 @@ par lui-meme.
   `has_constraints_block=false`.
 - Lot 6: Mail clos spec-only pour Frida 1.0; `P2-MAIL-RUNTIME-SCOPE-01`
   est ferme par report runtime post-V1 explicite.
-- Lot 7: smoke final borne selon cette matrice, sans nouveaux smokes live
-  inutiles.
-- Lot Z: archivage final seulement apres P2 fermes/acceptes et P3
-  corriges/acceptes/reportes.
+- Lot 7: smoke final borne execute; artefact content-free conserve et verdict
+  `met`.
+- Lot Z: dernier gate restant; archivage final seulement apres relecture des
+  P2 fermes/acceptes et P3 corriges/acceptes/reportes.
 
 ## 3. Registre des findings
 
@@ -481,7 +483,8 @@ par lui-meme.
 - Statut initial: post-V1 / vigilance; classe par Lot 3 le 2026-06-23.
 - Severite: P3.
 - Fichiers suspects: `app/core/chat_service.py`.
-- Lot cible: Lot 7 ou micro-audit cible si la cloture zero-erreur l'exige.
+- Lot cible: post-V1 / micro-audit cible futur si la cloture zero-erreur
+  l'exige de nouveau. Lot 7 n'a pas ouvert de finding borne sur ce point.
 - Critere de cloture: les emitters concernes sont confirmes comme ne masquant
   pas `failed`, `refused`, `not_configured` ou `skipped`, ou un finding runtime
   borne est ouvert.
@@ -978,7 +981,8 @@ Resultat Lot 6:
   relevent d'Agenda; les occurrences `mailto:` sont des fixtures Agenda, pas un
   client Mail.
 - TODO Mail mise a jour avec invariants no-live/no-send/no-secret/no-raw-mail.
-- Runtime Mail reporte post-V1; prochain lot: Lot 7 final closure smoke.
+- Runtime Mail reporte post-V1; Lot 7 final closure smoke execute; prochain
+  lot: Lot Z archive finale.
 
 Commandes/preuves minimales:
 
@@ -993,12 +997,31 @@ Artefact JSONL: non.
 
 Type: preuve-only.
 
-- [ ] Relire les preuves finales V1.
-- [ ] Executer seulement les tests/scans bornes choisis par la matrice Lot 3.
-- [ ] Produire un artefact JSONL final si demande.
-- [ ] Verifier aucune fuite: secret, log brut, prompt brut, payload provider,
+- [x] Relire les preuves finales V1.
+- [x] Executer seulement les tests/scans bornes choisis par la matrice Lot 3.
+- [x] Produire un artefact JSONL final si demande.
+- [x] Verifier aucune fuite: secret, log brut, prompt brut, payload provider,
   contenu utilisateur brut.
-- [ ] Verifier absence pycache/temp et absence `utils.py` / `helpers.py`.
+- [x] Verifier absence pycache/temp et absence `utils.py` / `helpers.py`.
+
+Resultat Lot 7:
+
+- Artefact JSONL content-free:
+  `app/docs/states/baselines/final-audit-smokes/frida-v1-final-audit-lot7-closure-smoke-20260624T115830Z.jsonl`.
+- Verdict: `met`; Frida V1 est prete pour le Lot Z, sans declaration close sur
+  `main`.
+- Tests conteneur bornes: 89 tests passes sur capsule, manifeste, garde
+  observabilite, admin logs/dashboard et chat flow.
+- Validation JSONL docs: 121 fichiers, 686 enregistrements parses, 0 erreur.
+- Scan docs actifs cible: 5 fichiers, 0 match interdit apres scan fuite
+  resserre.
+- Scan logs borne: Docker stdout `since_45m_tail_400` vide; logs applicatifs
+  JSONL in-container 5 fichiers / 452 lignes / 151998 octets, 0 match interdit,
+  aucune ligne brute conservee.
+- Hygiene: aucun pycache/pyc, aucun fichier `utils.py` ou `helpers.py`.
+- Aucun runtime, rebuild, merge, reset, purge, backfill, migration, Mail
+  runtime, provider live, CalDAV, Nextcloud live ou ecriture plateforme n'a ete
+  effectue.
 
 Commandes/preuves minimales:
 
@@ -1112,8 +1135,8 @@ Pour un lot runtime, ajouter:
   registre.
 - Seuls les lots effectivement livres sont coches: Lot 0, Lot 1A, Lot 1B,
   Lot 2A, Lot 2B, Lot 2C, Lot 2D, Lot 3, Lot 4, Lot 5, Lot 5B, Lot 5B.1 et
-  Lot 6.
-- Les lots 7 et Z restent non coches tant que leurs gates ne sont pas traites.
+  Lot 6 et Lot 7.
+- Le Lot Z reste non coche tant que son gate d'archive finale n'est pas traite.
 - Aucun lot futur ou gate final n'est coche prematurement.
 - Les correctifs runtime deja livres en Lots 1A/1B ne sont pas nies par cette
   section; aucun nouveau runtime n'est implique par l'auto-audit.
