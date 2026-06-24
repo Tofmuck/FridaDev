@@ -196,6 +196,82 @@ Artefact metadata: `/opt/platform/_codex_reports/frida-v1-mega-audit-lot1b-env-p
 - Secrets/logs bruts affiches: non.
 - `P1-SAU-ENV-PERMISSIONS-01`: clos par Lot 1B.
 
+## Lot 1C - Investigation backups/dumps/reports sensibles
+
+Statut: investigation Sauron metadata-only executee le 2026-06-24.
+Finding cible: `P1-SAU-SENSITIVE-BACKUPS-PERMS-01`.
+Correction appliquee: non.
+P1 ferme: non.
+
+- [x] Inventorier par metadonnees les backups, dumps, archives, rapports,
+  copies `.env`, cles et bases locales sous `/opt/platform`.
+- [x] Ne lire aucun contenu de secret, dump, backup, log, base ou archive.
+- [x] Ne calculer aucun hash de contenu sensible.
+- [x] Tester la lisibilite `tof` / `nobody` par `test -r`, sans afficher de
+  contenu.
+- [x] Reperer les consommateurs probables uniquement via scripts/configs non
+  sensibles et metadonnees Docker.
+- [x] Classer les familles selon le risque et proposer un lot correctif sans
+  l'appliquer.
+
+### Resultat Lot 1C
+
+- Methodologie: `find -xdev` metadata-only, `stat`, tests `test -r` sous
+  `tof` et `nobody`, inventaire Docker des mounts et grep borne sur scripts,
+  configs et docs versionnes; aucun contenu backup/dump/log/secret lu.
+- Deja traite par Lot 1B: `/opt/platform/.env` et les 3 backups
+  `/opt/platform/.env.bak-*` sont en `0640 root:tof`, lisibles par `tof`, non
+  lisibles par `nobody`.
+- `active_sensitive_backup`: 25 fichiers, environ 551 MB; 5 world-readable,
+  6 group-readable, 14 dans des racines montees par conteneur. Exemples a
+  traiter avec prudence: backups SQLite historiques sous
+  `/opt/platform/data/n8n`, base active legacy sous
+  `/opt/platform/data/n8n/.n8n`, base locale Stirling sous
+  `/opt/platform/data/stirling/configs`.
+- `restorable_db_dump`: 22 fichiers, environ 314 MB; 16 world-readable, 16
+  group-readable, 9 dans des racines montees. Familles a risque: dumps
+  doc-pipeline, Nextcloud, n8n, crawl4ai, imports FridaDev DB et backups SQL
+  Stirling. Les imports FridaDev DB observes sont deja stricts mais restent
+  montes dans la sous-stack DB.
+- `codex_report_sensitive_metadata`: 7 fichiers, environ 95 MB; 6
+  world-readable. Les dumps DB de lots Frida V1 dans
+  `/opt/platform/_codex_reports` sont host-only et doivent etre durcis ou
+  reclasses; le dump Notes deja en `0600` est conforme.
+- `historical_archive_sensitive`: 10 fichiers, environ 737 MB; 8
+  world-readable. Familles observees: archives Nextcloud upgrade, Authelia,
+  crawl4ai, Homepage et autres bundles de sauvegarde sous `_codex_backups` ou
+  `/opt/platform/backups`.
+- `secret_key_material`: 5 fichiers; 3 world-readable. Les cles privees
+  observees sont strictes; les cles publiques peuvent etre acceptables mais
+  doivent etre documentees; une cle JWT Stirling sous backup/config est un
+  candidat de correction ciblee.
+- `probably_safe_metadata_only`: 43 entrees, majoritairement sources ou assets
+  Nextcloud matches par nom/extension; aucun correctif a lancer depuis ce
+  finding sans validation plus fine.
+- `needs_targeted_validation`: 16 entrees, incluant des repertoires `0755`
+  sous `/opt/platform/backups`, `_codex_backups`, `_codex_reports`, Stirling,
+  doc-pipeline et FridaDev state. Les droits des repertoires pilotent la
+  decouvrabilite et doivent etre traites avec les fichiers, pas separement.
+- Consommateurs probables: les fichiers sous `/opt/platform/data/*` peuvent
+  etre actifs via mounts conteneurs; les familles `_codex_reports`,
+  `_codex_backups` et `/opt/platform/backups` sont majoritairement host-only et
+  liees a des preuves, migrations ou sauvegardes operateur.
+- Impact `0600 root:root`: adapte aux artefacts host-only sans consommateur
+  non-root, mais risque de casser des fichiers actifs service-owned sous
+  `/opt/platform/data/*` si applique en masse.
+- Impact `0640 root:tof`: bon compromis pour artefacts host-only que
+  l'operateur doit inspecter/restaurer, mais insuffisant pour fichiers de
+  service qui doivent rester lisibles par leur UID conteneur.
+- Impact ACL: utile pour garder owner/service et donner lecture operateur
+  ciblee, mais ajoute une dependance a documenter et rollbacker.
+- Purge/deplacement: a reserver a une decision de retention; ne pas faire
+  pendant un lot permission-only.
+- Recommendation Lot 1C: scinder le correctif. Lot 2A pour host-only
+  `_codex_reports`, `_codex_backups` et `/opt/platform/backups` avec modes
+  stricts et preuve sans contenu. Lot 2B pour donnees actives montees sous
+  `/opt/platform/data/*`, avec validation par service avant tout chmod.
+  `P1-SAU-SENSITIVE-BACKUPS-PERMS-01` reste ouvert jusqu'aux corrections.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
@@ -221,11 +297,23 @@ Artefact metadata: `/opt/platform/_codex_reports/frida-v1-mega-audit-lot1b-env-p
 ### P1-SAU-SENSITIVE-BACKUPS-PERMS-01
 
 - Statut initial: open.
+- Statut courant: open; investigation Lot 1C completee, correction non
+  appliquee.
 - Severite: P1.
 - Fichiers/zones suspects: `/opt/platform/backups`,
   `/opt/platform/_codex_backups`, `/opt/platform/_codex_reports`,
   `/opt/platform/data/*`, dumps DB, archives, keys.
 - Lot cible: Lot 2.
+- Investigation Lot 1C: valide. Le risque est confirme sur des dumps DB,
+  archives historiques, rapports Codex et quelques fichiers actifs ou
+  service-owned; les familles `.env` racine sont exclues car closes par Lot 1B.
+- Classification Lot 1C: `closed_by_lot_1b_already`,
+  `active_sensitive_backup`, `restorable_db_dump`,
+  `codex_report_sensitive_metadata`, `historical_archive_sensitive`,
+  `secret_key_material`, `probably_safe_metadata_only`,
+  `needs_targeted_validation`.
+- Plan propose: Lot 2A host-only backups/reports/dumps; Lot 2B donnees actives
+  montees et fichiers service-owned; aucune purge sans decision retention.
 - Critere de cloture: matrice retention/permissions et absence de secret/dump
   world-readable non justifie.
 - Preuve minimale: inventaire metadata content-free, pas de contenu ouvert.
@@ -601,6 +689,11 @@ Artefact metadata: `/opt/platform/_codex_reports/frida-v1-mega-audit-lot1b-env-p
 
 ### Lot 2 - Secrets/env/logs/permissions
 
+- [ ] Lot 2A: corriger les artefacts host-only `_codex_reports`,
+  `_codex_backups` et `/opt/platform/backups` valides par Lot 1C, sans lire
+  leur contenu.
+- [ ] Lot 2B: corriger ou documenter les fichiers actifs/service-owned sous
+  `/opt/platform/data/*` apres validation par service.
 - [ ] Traiter backups/dumps/keys world-readable.
 - [ ] Qualifier logs Authelia/Caddy secret-like.
 - [ ] Traiter compose group-writable si confirme.
