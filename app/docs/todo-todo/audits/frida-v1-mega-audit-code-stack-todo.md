@@ -101,6 +101,66 @@ operateur `tof`, puis durcissement progressif vers Option C/D si la separation
 des variables est validee. Ne pas fermer `P1-SAU-ENV-PERMISSIONS-01` avant la
 preuve apres correction.
 
+## Lot 1A.1 - Investigation impact Frida V4/M4
+
+Statut: investigation Sauron docs-only executee le 2026-06-24.
+Finding cible: `P1-SAU-ENV-PERMISSIONS-01`.
+Correction appliquee: non.
+P1 ferme: non.
+
+- [x] Relire compose et smoke Frida V4/M4.
+- [x] Lister les variables `FRIDA_M4_*` par noms seulement, token redacted.
+- [x] Tester `docker compose config --quiet` M4 avec et sans sudo.
+- [x] Verifier health/smoke M4 sans afficher de token.
+- [x] Comparer les options A/B/B2/C/D pour l'impact Frida V4.
+
+### Resultat Lot 1A.1
+
+- Dependence a `/opt/platform/.env`: partielle, mais reelle.
+- `.env` racine: porte `FRIDA_M4_CADDY_HOSTS` et
+  `FRIDA_M4_API_TOKEN` redacted; il ne porte pas les model IDs M4 dans l'etat
+  observe.
+- `/opt/platform/frida-m4-rag/.env`: porte `FRIDA_M4_STACK_NAME`,
+  `FRIDA_M4_DEVICE`, `FRIDA_M4_EMBEDDING_MODEL_ID=BAAI/bge-m3` et
+  `FRIDA_M4_RERANK_MODEL_ID=BAAI/bge-reranker-v2-m3`.
+- Compose M4: `docker compose config --quiet` reussit avec et sans sudo depuis
+  `/opt/platform/frida-m4-rag`; il s'appuie sur le `.env` local et/ou les
+  defaults du compose pour les model IDs, pas sur le `.env` racine.
+- Caddy/global: `/opt/platform/docker-compose.yml` et `Caddyfile` utilisent le
+  host public et le token M4 depuis le `.env` racine pour la surface publique.
+- Smoke M4: `smoke.sh` lit explicitement `/opt/platform/.env` si
+  `FRIDA_M4_API_TOKEN` n'est pas deja fourni dans l'environnement. Avec le mode
+  courant, le smoke operateur `tof` passe: embedding health, embedding request,
+  rerank health et rerank request OK, sortie courte sans token.
+- Health local: pas de port host `127.0.0.1:18100` disponible; les healthchecks
+  intra-conteneur sont healthy avec `BAAI/bge-m3`, dimension 1024,
+  `BAAI/bge-reranker-v2-m3`, max length 512.
+
+### Effets de bord Frida V4
+
+- Option A `0600 root:root`: ne casse probablement pas les conteneurs M4 deja
+  lances ni `docker compose config` M4 sous `tof`, mais casse le smoke M4 lance
+  par `tof` si le token n'est pas fourni autrement; la surface Caddy globale
+  reste operable via sudo.
+- Option B `0640 root:tof`: preserve le smoke M4 et retire la lecture par tout
+  autre utilisateur local; compat operateur la plus simple pour le prochain
+  correctif borne.
+- Option B2 ACL `u:tof:r`: meme preservation que B sans changer le groupe,
+  mais ajoute une dependance ACL a documenter et rollbacker.
+- Option C dupliquer/sortir les variables M4 necessaires dans
+  `/opt/platform/frida-m4-rag/.env`: permet ensuite `0600 root:root` sur le
+  `.env` racine sans casser le smoke, mais duplique un token si fait sans
+  design de secrets dedie.
+- Option D adapter `smoke.sh` pour exiger token/env explicite ou sudo: modele
+  le plus strict, mais moins ergonomique et necessite un runbook operateur.
+
+Recommandation Lot 1A.1: pour Lot 1B, preferer Option B immediate
+`0640 root:tof` sur `/opt/platform/.env` et ses backups, avec backup metadata,
+`docker compose config --quiet` global/doc-pipeline/M4, smoke M4, health
+FridaDev/Caddy, puis planifier C/D si l'objectif devient suppression de toute
+lecture racine par `tof`. Ne pas appliquer Option A sans adapter le smoke ou
+fournir explicitement `FRIDA_M4_API_TOKEN`.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
@@ -111,6 +171,9 @@ preuve apres correction.
 - Lot cible: Lot 1.
 - Investigation Lot 1A: valide; cause probable umask/copie `022`, besoins
   non-root limites surtout a `frida-m4-rag/smoke.sh`; correction non appliquee.
+- Investigation Lot 1A.1: Frida V4/M4 depend partiellement du `.env` racine
+  pour host/token public et smoke operateur; Compose M4 depend surtout du
+  `.env` local; correction non appliquee.
 - Critere de cloture: permissions resserrees ou exception documentee,
   verification Compose/health sans secret affiche.
 - Preuve minimale: `stat` content-free avant/apres, `docker compose config
