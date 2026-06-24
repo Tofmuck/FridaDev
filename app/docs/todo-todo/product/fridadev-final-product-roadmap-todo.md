@@ -176,10 +176,11 @@ TODO dediee:
 
 ### 9. Mail V1 bonus borne
 
-Bonus si marge, non bloquant pour cloturer Frida 1.0. Auditer Nextcloud Mail /
-IMAP / SMTP / API controlee, puis cadrer lecture, resume, tri/classement,
-brouillons, envoi seulement avec confirmation humaine, archivage ou rattachement
-eventuel a des dossiers Frida.
+Bonus non bloquant pour cloturer Frida 1.0. Lot 6 du final audit a tranche le
+scope Frida 1.0 en `spec_only`: aucun runtime Mail n'est livre, aucun
+IMAP/SMTP/Nextcloud Mail live n'est appele, aucun envoi n'est autorise, et tout
+runtime futur exigera un GO operateur separe avec confirmation humaine avant
+envoi.
 
 TODO dediee:
 `app/docs/todo-todo/product/frida-v1-mail-bonus-todo.md`

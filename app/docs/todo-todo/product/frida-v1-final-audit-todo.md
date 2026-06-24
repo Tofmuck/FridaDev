@@ -47,8 +47,8 @@ par lui-meme.
 - Agenda: utile et pragmatiquement clos pour V1; TODO maintenue en statut
   post-V1 dormant, non bloquante pour Frida 1.0 sauf bug reel, besoin concret
   ou decision explicite.
-- Mail: bonus non bloquant; audit/spec-only possible, runtime a reporter sauf
-  GO operateur separe.
+- Mail: bonus non bloquant; Lot 6 clos en spec-only pour Frida 1.0,
+  runtime reporte post-V1 sauf GO operateur separe.
 
 ### Deja clos pour Frida V1
 
@@ -67,7 +67,6 @@ par lui-meme.
 
 ### Bloquants avant cloture propre
 
-- Decision Mail: audit/spec-only borne ou report post-V1.
 - Smoke final Lot 7 selon matrice Lot 3.
 - Archive finale Lot Z.
 
@@ -125,7 +124,7 @@ par lui-meme.
 | Admin logs Lot 1A/1B/1B.1 | GO | Tests admin/logs et TODO finale Lots 1A/1B | Pas de refonte dashboard large | Aucune pour V1 | Clos |
 | Branche/main | GATED | Etat Git Lot 4: `origin_main_ancestor_of_HEAD=0`, `HEAD_ancestor_of_origin_main=1` | `HEAD` n'est pas contenu dans `origin/main`; Frida V1 n'est pas declaree close sur `main` | Non-integration temporaire; merge/PR/main seulement sur GO separe | Lot 4 clos / main gate |
 | Continuity Capsule activation | GO | Contrat/archives Continuity, artefact Lot 5, artefact Lot 5B, artefact correctif Lot 5B.1 `continuity-payload-smokes/frida-v1-continuity-capsule-lot5b1-exact-text-20260624T073000Z.jsonl` | Texte brut uniquement en config applicative; observabilite content-free; `exact_operator_text=true` dans preuve corrective | Rollback operateur env si besoin | Lot 5B.1 clos |
-| Mail bonus | GATED | Roadmap finale et TODO Mail bonus | Runtime Mail exclu de V1 par defaut | Audit/spec-only ou report explicite | Lot 6 |
+| Mail bonus | GO | Roadmap finale et TODO Mail bonus | Runtime Mail exclu de V1; spec-only gravee par Lot 6 | Aucune pour V1 | Lot 6 clos |
 | Final closure smoke | NO-GO | Cette matrice et inventaire JSONL Lot 3 | Pas de smoke live non necessaire en Lot 3 | Scans/tests bornes choisis | Lot 7 |
 | Archive finale | NO-GO | TODO finale active | Tous P2/P3 doivent etre fermes, acceptes ou reportes | Archivage apres decisions | Lot Z |
 | SMS | POST-V1 | Roadmap finale | Hors cloture Frida 1.0 | Aucune | Post-V1 |
@@ -191,8 +190,8 @@ par lui-meme.
   aux 7 lignes operateur validees, `exact_operator_text=true`,
   `content_chars=762`, `nonempty_line_count=7`,
   `has_constraints_block=false`.
-- Lot 6: Mail audit/spec-only ou report post-V1; `P2-MAIL-RUNTIME-SCOPE-01`
-  reste ouvert tant que la decision n'est pas documentee.
+- Lot 6: Mail clos spec-only pour Frida 1.0; `P2-MAIL-RUNTIME-SCOPE-01`
+  est ferme par report runtime post-V1 explicite.
 - Lot 7: smoke final borne selon cette matrice, sans nouveaux smokes live
   inutiles.
 - Lot Z: archivage final seulement apres P2 fermes/acceptes et P3
@@ -355,14 +354,15 @@ par lui-meme.
 
 ### P2-MAIL-RUNTIME-SCOPE-01
 
-- Statut initial: open.
+- Statut initial: accepted; clos par Lot 6 le 2026-06-24.
 - Severite: P2 si runtime pris avant cloture; bonus sinon.
 - Fichiers suspects: `app/docs/todo-todo/product/frida-v1-mail-bonus-todo.md`.
 - Lot cible: Lot 6.
 - Critere de cloture: decision explicite audit/spec-only ou report post-V1;
   aucun Mail runtime ne bloque Frida 1.0.
-- Preuve minimale: TODO/spec Mail mise a jour, invariants no-send/no-secret
-  explicites, aucun code runtime modifie.
+- Preuve minimale: inventaire repo sans runtime Mail dedie, TODO Mail mise a
+  jour, invariants no-send/no-secret/no-live explicites, aucun code runtime
+  modifie.
 - Hors-scope: IMAP/SMTP/Nextcloud Mail live, envoi, brouillon runtime, secret.
 
 ### P3-ROADMAP-BRANCH-STALE-01
@@ -961,11 +961,24 @@ Artefact JSONL: oui, content-free uniquement.
 
 Type: docs-only par defaut.
 
-- [ ] Relire `frida-v1-mail-bonus-todo.md`.
-- [ ] Decider: audit/spec-only avant V1 ou report post-V1 explicite.
-- [ ] Si spec-only: definir lecture no-op, brouillons, confirmations humaines,
+- [x] Relire `frida-v1-mail-bonus-todo.md`.
+- [x] Decider: audit/spec-only avant V1 ou report post-V1 explicite.
+- [x] Si spec-only: definir lecture no-op, brouillons, confirmations humaines,
   secrets redacted, no-send, preuves fakes.
-- [ ] Interdire Mail runtime sauf GO operateur separe.
+- [x] Interdire Mail runtime sauf GO operateur separe.
+
+Resultat Lot 6:
+
+- Decision: `mail_runtime_v1=not_delivered`;
+  `mail_scope_for_frida_1_0=spec_only`; `send_allowed=false`;
+  `human_confirmation_required=true` pour tout futur runtime.
+- Inventaire: aucun fichier runtime Mail dedie sous `app/`; le seul fichier
+  `*mail*` trouve est `app/docs/todo-todo/product/frida-v1-mail-bonus-todo.md`.
+- Les occurrences repo hors docs qui ressemblent a `draft`/confirmation
+  relevent d'Agenda; les occurrences `mailto:` sont des fixtures Agenda, pas un
+  client Mail.
+- TODO Mail mise a jour avec invariants no-live/no-send/no-secret/no-raw-mail.
+- Runtime Mail reporte post-V1; prochain lot: Lot 7 final closure smoke.
 
 Commandes/preuves minimales:
 
@@ -1098,9 +1111,9 @@ Pour un lot runtime, ajouter:
 - Les findings supplementaires du contre-audit sont documentes au format
   registre.
 - Seuls les lots effectivement livres sont coches: Lot 0, Lot 1A, Lot 1B,
-  Lot 2A, Lot 2B, Lot 2C, Lot 2D, Lot 3, Lot 4, Lot 5, Lot 5B et Lot 5B.1.
-- Les lots 6, 7 et Z restent non coches tant que leurs gates ne sont pas
-  traites.
+  Lot 2A, Lot 2B, Lot 2C, Lot 2D, Lot 3, Lot 4, Lot 5, Lot 5B, Lot 5B.1 et
+  Lot 6.
+- Les lots 7 et Z restent non coches tant que leurs gates ne sont pas traites.
 - Aucun lot futur ou gate final n'est coche prematurement.
 - Les correctifs runtime deja livres en Lots 1A/1B ne sont pas nies par cette
   section; aucun nouveau runtime n'est implique par l'auto-audit.
@@ -1108,6 +1121,7 @@ Pour un lot runtime, ajouter:
 - L'activation durable de la capsule a ete executee par GO operateur Lot 5B,
   puis le texte exact a ete corrige en Lot 5B.1; tout rollback ou changement
   futur reste un geste operateur separe.
-- Mail runtime est exclu sauf GO ulterieur separe.
+- Mail runtime est exclu de Frida 1.0; tout runtime Mail futur exige un GO
+  ulterieur separe et une confirmation humaine avant envoi.
 - Les docs/index/roadmap ne doivent pas pointer vers un mauvais fichier actif.
 - Le contenu reste content-free.
