@@ -4,6 +4,7 @@ Statut: TODO actif.
 Date d'ouverture: 2026-06-24.
 Branche de travail: `FridaV1-Mega-Audit-Code-Stack`.
 Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-24.md`.
+Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-counter-audit-2026-06-24.md`.
 
 ## Etat global
 
@@ -15,6 +16,30 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 - Secrets/logs bruts affiches par Lot 0: non.
 - P0 connu: aucun.
 - P1 connus: permissions secrets/backups plateforme.
+- Lot 0.1: consolidation contre-audit executee; audit principal reconnu
+  partiellement trop Sauron-heavy, findings Celebrimbor concrets integres.
+
+## Lot 0.1 - Consolidation contre-audit Sauron/Celebrimbor
+
+- [x] Comparer audit principal et contre-audit.
+- [x] Declarer l'audit principal partiellement trop Sauron-heavy.
+- [x] Valider/invalider/dedupliquer/requalifier chaque finding du contre-audit.
+- [x] Integrer les findings Celebrimbor manquants dans le registre canonique.
+- [x] Ne cocher aucun lot de correction runtime ou plateforme.
+
+### Resolution Lot 0.1
+
+- Validés: Adminer lateral, Cockpit reachability a revalider, healthchecks,
+  hardening conteneur FridaDev, mounts Nextcloud RW, gouvernance permissions,
+  AGENTS admin token stale, prompts admin DOM, erreurs LLM/admin 400,
+  dashboard legacy raw, identity hash policy, Notes UI gap, frontend empty on
+  error, chat orchestration gravity, final-lock conflict test, Biblio comments,
+  log frontend denylist, filenames doctrine.
+- Doublons/fusionnes: docker socket surface; server boundary gravity;
+  large-files amplified.
+- Invalides/stale: bypass public Authelia, bypass lateral `/api/admin/*`,
+  ports publics hors Caddy, JSONL invalides, secrets repo committes non
+  confirmes. Agenda dormant wording reste P3 faible / `needs_targeted_validation`.
 
 ## Registre findings
 
@@ -58,12 +83,75 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 - Statut initial: open.
 - Severite: P2.
 - Zones suspectes: `platform-docker-socket-proxy`, `platform_proxy_net`,
-  compose global.
+  compose global, service status avec socket direct selon contre-audit.
+- Alias/fusion: confirme et amplifie par `P2-SAU-DOCKER-SOCKET-SURFACE-01`
+  contre-audit.
 - Lot cible: Lot 3.
 - Critere de cloture: matrice consumers/endpoints/reseaux.
 - Preuve minimale: `docker inspect` content-free, compose metadata,
   eventuellement test consumer.
 - Hors-scope: couper socket proxy sans connaitre dependances.
+
+### P2-SAU-ADMINER-LATERAL-01
+
+- Statut initial: open.
+- Severite: P2.
+- Zones suspectes: `platform-frida-adminer`, `platform_platform_net`,
+  `fridadev-db.frida-system.fr`.
+- Lot cible: Lot 3.
+- Critere de cloture: Adminer non joignable lateralement depuis le grand reseau
+  Docker, ou exception documentee avec justification.
+- Preuve minimale: test lateral content-free depuis un conteneur pair, headers
+  publics Authelia sans cookie, `docker inspect` reseaux.
+- Hors-scope: suppression Adminer ou changement DB sans GO operateur.
+
+### P2-SAU-COCKPIT-DOCKER-REACHABILITY-01
+
+- Statut initial: needs_targeted_validation.
+- Severite: P2.
+- Zones suspectes: Cockpit host port, UFW, ranges Docker.
+- Lot cible: Lot 3.
+- Critere de cloture: confirmer ou invalider la reachability Cockpit depuis
+  conteneurs; restreindre ou documenter si confirme.
+- Preuve minimale: test reseau borne sans credentials, inventaire UFW
+  content-free, aucune auth Cockpit tentee.
+- Hors-scope: modification firewall sans plan Sauron.
+
+### P2-SAU-HEALTHCHECKS-ABSENT-01
+
+- Statut initial: open.
+- Severite: P2.
+- Zones suspectes: Caddy, Nextcloud, Nextcloud DB/Redis/Cron, n8n, SearxNG,
+  Adminer, doc-pipeline, socket proxy.
+- Lot cible: Lot 3.
+- Critere de cloture: healthcheck ajoute ou absence justifiee service par
+  service.
+- Preuve minimale: `docker inspect` health status, compose metadata, tests
+  service bornes.
+- Hors-scope: restart large ou healthcheck qui mute les donnees.
+
+### P2-SAU-FRIDADEV-CONTAINER-HARDENING-01
+
+- Statut initial: open.
+- Severite: P2.
+- Zones suspectes: `platform-fridadev`.
+- Lot cible: Lot 3.
+- Critere de cloture: decision explicite sur user non-root,
+  `no-new-privileges`, rootfs read-only et mounts RW necessaires.
+- Preuve minimale: `docker inspect` content-free, rebuild app seulement dans
+  un lot runtime autorise, tests admin/chat cibles.
+- Hors-scope: changement conteneur sans rollback et health checks.
+
+### P2-SAU-NEXTCLOUD-DATA-RW-MOUNTS-01
+
+- Statut initial: open.
+- Severite: P2.
+- Zones suspectes: `doc-pipeline`, `doc-pipeline-api`, mounts data Nextcloud.
+- Lot cible: Lot 3.
+- Critere de cloture: montages RW confirmes necessaires ou reduits/RO.
+- Preuve minimale: `docker inspect` mounts content-free, test fonctionnel
+  doc-pipeline si modification autorisee.
+- Hors-scope: lecture contenu Nextcloud ou modification fichiers utilisateur.
 
 ### P2-SAU-COMPOSE-PERMISSIONS-01
 
@@ -74,6 +162,30 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 - Critere de cloture: modes/ownership explicites et verifies.
 - Preuve minimale: `stat`, `docker compose config --quiet`.
 - Hors-scope: changement runtime.
+
+### P2-SAU-PERMISSIONS-GOVERNANCE-01
+
+- Statut initial: open.
+- Severite: P2.
+- Zones suspectes: `/opt/platform/backups`, `_codex_backups`,
+  `_codex_reports`, logs et dumps runtime.
+- Lot cible: Lot 2.
+- Critere de cloture: politique de retention, modes cibles et exceptions
+  documentees; P1 backups traite sans purge opportuniste.
+- Preuve minimale: inventaire metadata content-free, aucune valeur lue.
+- Hors-scope: suppression/chmod recursive non bornee.
+
+### P2-SAU-AGENTS-ADMIN-TOKEN-STALE-01
+
+- Statut initial: open.
+- Severite: P2.
+- Zones suspectes: `/opt/platform/AGENTS.md` vs
+  `/opt/platform/fridadev/AGENTS.md`.
+- Lot cible: Lot 8.
+- Critere de cloture: instructions Sauron alignees avec contrat OVH courant:
+  Authelia + proxy `Remote-User`/loopback, pas de token humain.
+- Preuve minimale: diff docs-only, grep `FRIDA_ADMIN_TOKEN` contextualise.
+- Hors-scope: changer runtime ou `.env`.
 
 ### P2-CEL-ADMIN-COMPAT-KNOBS-01
 
@@ -87,6 +199,79 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 - Preuve minimale: tests admin conteneur, refus lateral direct.
 - Hors-scope: reintroduire token humain.
 
+### P2-CEL-ADMIN-PROMPTS-DOM-01
+
+- Statut initial: open.
+- Severite: P2.
+- Fichiers suspects: `app/admin/runtime_settings_api_view.py`,
+  `app/web/admin_section_main_model.js`, `app/web/admin_ui_common.js`,
+  `app/web/admin.html`, tests admin.
+- Lot cible: Lot 5 ou 6.
+- Critere de cloture: decision explicite: exception operateur assumee avec
+  content gate, ou remplacement par metadonnees/statuts sans prompt brut DOM.
+- Preuve minimale: test admin DOM/JSON avec sentinelle prompt brut; scan
+  content-free.
+- Hors-scope: modifier prompts.
+
+### P2-CEL-LLM-ERROR-RAW-01
+
+- Statut initial: open.
+- Severite: P2.
+- Fichiers suspects: `app/core/chat_llm_flow.py`, `app/admin/admin_logs.py`.
+- Lot cible: Lot 6.
+- Critere de cloture: erreurs LLM exposees via `error_code`/`error_class` et
+  message utilisateur stable, sans `str(exc)` brut.
+- Preuve minimale: tests sentinelles URL/token/path/provider error, logs
+  content-free.
+- Hors-scope: changer provider/model.
+
+### P2-CEL-DASHBOARD-WEB-LEGACY-RAW-01
+
+- Statut initial: open.
+- Severite: P2.
+- Fichiers suspects: `app/observability/turn_pipeline_read_model.py`,
+  dashboard read-model.
+- Lot cible: Lot 6.
+- Critere de cloture: legacy web facts projetes sans URL brute ni hash stable
+  sensible non justifie.
+- Preuve minimale: event historique sentinelle, dashboard JSON content-free.
+- Hors-scope: purge historique.
+
+### P2-CEL-IDENTITY-HASH-POLICY-01
+
+- Statut initial: open.
+- Severite: P2.
+- Fichiers suspects: `app/observability/identity_observability.py`,
+  projection pipeline identity.
+- Lot cible: Lot 6 ou 8.
+- Critere de cloture: doctrine explicite sur hashes courts identity:
+  suppression, HMAC/salt, ou exception justifiee.
+- Preuve minimale: spec/docs + tests projection.
+- Hors-scope: modifier contenu identity.
+
+### P2-CEL-NOTES-UI-GAP-01
+
+- Statut initial: open.
+- Severite: P2.
+- Fichiers suspects: routes Notes folder-scoped, panels frontend workspace.
+- Lot cible: Lot 5.
+- Critere de cloture: decision produit UI Notes minimale ou statut
+  API-only/post-V1 explicite.
+- Preuve minimale: audit frontend/route, test UI si implementation future.
+- Hors-scope: rouvrir backend Notes sans besoin.
+
+### P2-CEL-FRONTEND-EMPTY-ON-ERROR-01
+
+- Statut initial: open.
+- Severite: P2.
+- Fichiers suspects: `app/web/chat_threads_sidebar.js`, panels
+  Documents/Exports/Images.
+- Lot cible: Lot 5 ou 7.
+- Critere de cloture: erreurs API panels visibles comme erreur, pas comme
+  liste vide.
+- Preuve minimale: tests 500/payload invalide par panel.
+- Hors-scope: redesign UI large.
+
 ### P2-CEL-EXCEPTION-RAW-SURFACE-01
 
 - Statut initial: open.
@@ -97,6 +282,17 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 - Critere de cloture: surfaces qualifiees; corrections bornees uniquement.
 - Preuve minimale: tests content-free/fail-closed par surface.
 - Hors-scope: remplacement massif aveugle de `str(exc)`.
+
+### P2-CEL-ADMIN-400-RAW-01
+
+- Statut initial: open.
+- Severite: P2.
+- Fichiers suspects: `app/server.py` routes admin logs/dashboard/export.
+- Lot cible: Lot 6.
+- Critere de cloture: `ValueError`/400 admin renvoie reason code stable sans
+  echo de valeur invalide.
+- Preuve minimale: tests sentinelles URL/token/path dans query params.
+- Hors-scope: refactor routes admin.
 
 ### P2-CEL-DOCS-ACTIVE-AUDITS-01
 
@@ -113,10 +309,22 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 - Statut initial: open.
 - Severite: P2.
 - Fichier suspect: `app/server.py`.
+- Alias/fusion: `P2-CEL-SERVER-BOUNDARY-GRAVITY-01`.
 - Lot cible: Lot 9.
 - Critere de cloture: plan de split par responsabilite et golden tests routes.
 - Preuve minimale: snapshot routes, tests routes/admin/workspace/chat.
 - Hors-scope: refactor sans tests.
+
+### P2-CEL-CHAT-ORCHESTRATION-GRAVITY-01
+
+- Statut initial: open.
+- Severite: P2.
+- Fichier suspect: `app/core/chat_service.py`.
+- Lot cible: Lot 9.
+- Critere de cloture: golden tests d'ordre lanes/final-lock/capsule avant
+  extraction de l'orchestration.
+- Preuve minimale: tests fake couvrant conflits lanes et bypass final-lock.
+- Hors-scope: refactor chat sans preuve d'ordre comportemental.
 
 ### P2-CEL-REQUESTS-TIMEOUT-01
 
@@ -132,6 +340,7 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 
 - Statut initial: open.
 - Severite: P3.
+- Alias/fusion: `P3-CEL-LARGE-FILES-AMPLIFIED-01`.
 - Lot cible: Lot 9.
 - Critere de cloture: lots de refactor cibles, pas cosmetiques.
 - Preuve minimale: lignes avant/apres, tests inchanges.
@@ -161,6 +370,56 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 - Critere de cloture: conventions archives vs actifs clarifiees.
 - Preuve minimale: scan checkboxes et index docs.
 
+### P3-CEL-FINAL-LOCK-CONFLICT-TEST-01
+
+- Statut initial: open.
+- Severite: P3.
+- Fichiers suspects: `app/core/chat_service.py`.
+- Lot cible: Lot 7.
+- Critere de cloture: test integration fake si Agenda et Biblio final locks
+  apparaissent simultanement.
+- Preuve minimale: test ordre de priorite ou decision explicite impossible.
+
+### P3-CEL-BIBLIO-COMMENTS-STALE-01
+
+- Statut initial: open.
+- Severite: P3.
+- Fichiers suspects: `app/config.py`, `app/biblio/librarian_agent_runtime.py`.
+- Lot cible: Lot 8.
+- Critere de cloture: commentaires/config alignes sur agent-first sans
+  requalifier Biblio V1.
+- Preuve minimale: diff docs/commentaires, tests non requis si commentaires.
+
+### P3-CEL-AGENDA-DORMANT-WORDING-01
+
+- Statut initial: needs_targeted_validation.
+- Severite: P3.
+- Fichier suspect: `app/docs/todo-todo/product/frida-agenda-agent.md`.
+- Lot cible: Lot 8.
+- Critere de cloture: confirmer qu'aucune phrase ne rouvre Agenda runtime, ou
+  micro-correction docs-only.
+- Preuve minimale: grep statut dormant/post-V1.
+
+### P3-CEL-LOG-FRONTEND-DENYLIST-01
+
+- Statut initial: open.
+- Severite: P3.
+- Fichier suspect: `app/web/log/log.js`.
+- Lot cible: Lot 5 ou 7.
+- Critere de cloture: UI `/log` utilise allowlist explicite ou test sentinelle
+  champ inconnu.
+- Preuve minimale: test frontend/log render.
+
+### P3-CEL-FILENAMES-CONTENT-FREE-DECISION-01
+
+- Statut initial: open.
+- Severite: P3.
+- Zones suspectes: dashboard/read-model documents.
+- Lot cible: Lot 8.
+- Critere de cloture: doctrine explicite sur filenames comme metadonnees
+  produit visibles ou content-free limitees.
+- Preuve minimale: spec/docs et test projection si changement runtime.
+
 ## Lots proposes
 
 ### Lot 0 - Baseline audit et registre
@@ -182,11 +441,17 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 - [ ] Traiter backups/dumps/keys world-readable.
 - [ ] Qualifier logs Authelia/Caddy secret-like.
 - [ ] Traiter compose group-writable si confirme.
+- [ ] Traiter la gouvernance permissions/retention au-dela des deux P1.
 - [ ] Definir retention et mode cible.
 
 ### Lot 3 - Docker/Caddy/Authelia/reseaux
 
 - [ ] Auditer socket proxy et consumers.
+- [ ] Auditer Adminer lateral sur le grand reseau Docker.
+- [ ] Valider/invalider Cockpit joignable depuis les ranges Docker.
+- [ ] Qualifier healthchecks absents sur services critiques.
+- [ ] Qualifier hardening conteneur `platform-fridadev`.
+- [ ] Qualifier mounts RW Nextcloud du doc-pipeline.
 - [ ] Auditer reseaux et frontieres public/interne.
 - [ ] Verifier hostnames Caddy/Authelia sans exposer secrets.
 - [ ] Valider pas de service public hors Caddy.
@@ -194,6 +459,7 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 ### Lot 4 - Code runtime P1/P2
 
 - [ ] Qualifier appels HTTP et timeouts.
+- [ ] Qualifier `requests.*` par client: timeout, fallback, retry.
 - [ ] Chercher vrais dead paths ou NotImplemented runtime.
 - [ ] Ne corriger que findings valides et bornes.
 
@@ -202,17 +468,28 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 - [ ] Aligner tests admin sur contrat proxy/loopback.
 - [ ] Verifier routes admin registerees par modules.
 - [ ] Verifier admin HTML/public host vs API guard.
+- [ ] Decider prompts complets dans DOM admin: exception operateur ou content gate.
+- [ ] Traiter Notes UI gap: UI minimale ou API-only/post-V1 explicite.
+- [ ] Traiter panels frontend qui rendent les erreurs comme listes vides.
+- [ ] Traiter `/log` UI denylist si Lot 7 confirme le besoin.
 - [ ] Garder Authelia comme frontiere publique.
 
 ### Lot 6 - Observabilite/logs applicatifs
 
 - [ ] Qualifier `str(exc)`, raw, payload, traceback, print.
+- [ ] Traiter erreurs LLM brutes.
+- [ ] Traiter erreurs 400 admin brutes.
+- [ ] Traiter dashboard web legacy URL/hash raw.
+- [ ] Trancher doctrine hashes courts identity.
 - [ ] Corriger seulement surfaces qui exposent ou masquent une panne.
 - [ ] Conserver diagnostics content-free.
 
 ### Lot 7 - Tests/smokes/artefacts
 
 - [ ] Construire matrice live/fake/mock/covered_by_tests.
+- [ ] Ajouter test conflit final-lock Agenda/Biblio si confirme necessaire.
+- [ ] Ajouter tests panels frontend erreur vs vide.
+- [ ] Ajouter test `/log` champ inconnu si denylist conservee.
 - [ ] Verifier JSONL et anti-fuite.
 - [ ] Gerer fixtures secret-like par allowlist ou sentinelles.
 
@@ -220,11 +497,16 @@ Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-
 
 - [ ] Reclasser audits superseded encore en `todo-todo/audits`.
 - [ ] Clarifier checkboxes historiques.
+- [ ] Corriger `/opt/platform/AGENTS.md` admin token stale, sans runtime.
+- [ ] Clarifier wording Agenda dormant si encore ambigu.
+- [ ] Clarifier commentaires Biblio stale.
+- [ ] Trancher doctrine filenames content-free/metadonnees produit.
 - [ ] Mettre a jour index si chemins bougent.
 
 ### Lot 9 - Refactors cibles
 
 - [ ] Prioriser `server.py` et gros modules.
+- [ ] Prioriser `chat_service.py` orchestration seulement apres golden tests.
 - [ ] Ecrire golden tests avant extraction.
 - [ ] Refuser refactor cosmetique sans reduction de risque.
 

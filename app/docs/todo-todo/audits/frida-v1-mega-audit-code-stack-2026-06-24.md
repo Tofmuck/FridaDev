@@ -4,6 +4,7 @@ Statut: audit baseline Lot 0, read-only/docs-only.
 Branche: `FridaV1-Mega-Audit-Code-Stack`.
 Base: `main` a `bc8aee23499cd58fcd29abfb7314a9a2a688e3d6`.
 Roles: Sauron pour `/opt/platform`, Celebrimbor pour `/opt/platform/fridadev`.
+Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-counter-audit-2026-06-24.md`.
 
 ## Verdict court
 
@@ -43,6 +44,56 @@ Roles: Sauron pour `/opt/platform`, Celebrimbor pour `/opt/platform/fridadev`.
 - Pas de scan exhaustif de contenu utilisateur, documents Nextcloud ou DB.
 - Pas de tests runtime complets, provider live, Nextcloud live ou Mail live.
 - Pas de correction code, plateforme, config, Caddy, Authelia, DB ou Docker.
+
+## Lot 0.1 - Consolidation contre-audit Sauron/Celebrimbor
+
+Le contre-audit confirme que le Lot 0 principal etait partiellement trop
+Sauron-heavy: il a bien ouvert les risques plateforme, mais il a trop agrege
+les risques Celebrimbor sous des familles larges comme exception/raw,
+`server.py` et gros fichiers. Le registre canonique doit donc conserver les
+findings applicatifs concrets suivants sans les masquer.
+
+### Resolution finding par finding
+
+| ID contre-audit | Decision Lot 0.1 | Integration canonique |
+| --- | --- | --- |
+| `P1-SAU-ENV-PERMISSIONS-01` | Valide deja couvert | Conserve tel quel Lot 1 |
+| `P1-SAU-SENSITIVE-BACKUPS-PERMS-01` | Valide deja couvert | Conserve tel quel Lot 2 |
+| `P2-SAU-ADMINER-LATERAL-01` | Valide | Ajoute Lot 3 |
+| `P2-SAU-COCKPIT-DOCKER-REACHABILITY-01` | Valide, `needs_targeted_validation` pour la regle UFW exacte | Ajoute Lot 3 |
+| `P2-SAU-DOCKER-SOCKET-SURFACE-01` | Valide deja couvert, amplifie par socket direct status | Fusion/alias dans Lot 3 |
+| `P2-SAU-HEALTHCHECKS-ABSENT-01` | Valide | Ajoute Lot 3 |
+| `P2-SAU-FRIDADEV-CONTAINER-HARDENING-01` | Valide | Ajoute Lot 3 |
+| `P2-SAU-NEXTCLOUD-DATA-RW-MOUNTS-01` | Valide | Ajoute Lot 3 |
+| `P2-SAU-PERMISSIONS-GOVERNANCE-01` | Valide comme gouvernance large, distinct du P1 backup | Ajoute Lot 2 |
+| `P2-SAU-AGENTS-ADMIN-TOKEN-STALE-01` | Valide | Ajoute Lot 8 docs |
+| `P2-CEL-ADMIN-PROMPTS-DOM-01` | Valide | Ajoute Lot 5/6 decision content gate |
+| `P2-CEL-LLM-ERROR-RAW-01` | Valide | Ajoute Lot 6 |
+| `P2-CEL-DASHBOARD-WEB-LEGACY-RAW-01` | Valide | Ajoute Lot 6 |
+| `P2-CEL-IDENTITY-HASH-POLICY-01` | Valide comme decision P2 | Ajoute Lot 6/8 |
+| `P2-CEL-NOTES-UI-GAP-01` | Valide produit/UX, non runtime bug | Ajoute Lot 5 |
+| `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01` | Valide | Ajoute Lot 5/7 |
+| `P2-CEL-CHAT-ORCHESTRATION-GRAVITY-01` | Valide | Ajoute Lot 9 avec golden tests |
+| `P2-CEL-SERVER-BOUNDARY-GRAVITY-01` | Doublon precis de `P2-CEL-SERVER-ROUTE-GRAVITY-01` | Fusionne comme alias Lot 9 |
+| `P2-CEL-ADMIN-400-RAW-01` | Valide | Ajoute Lot 6 |
+| `P3-CEL-FINAL-LOCK-CONFLICT-TEST-01` | Valide P3 | Ajoute Lot 7 |
+| `P3-CEL-BIBLIO-COMMENTS-STALE-01` | Valide P3 | Ajoute Lot 8 |
+| `P3-CEL-AGENDA-DORMANT-WORDING-01` | Requalifie P3 faible / stale partiel | Ajoute `needs_targeted_validation` Lot 8 |
+| `P3-CEL-LOG-FRONTEND-DENYLIST-01` | Valide P3 | Ajoute Lot 5/7 |
+| `P3-CEL-FILENAMES-CONTENT-FREE-DECISION-01` | Valide decision P3 | Ajoute Lot 8 |
+| `P3-CEL-LARGE-FILES-AMPLIFIED-01` | Doublon amplifie de `P3-CEL-LARGE-FILES-01` | Fusionne comme alias Lot 9 |
+
+### Synthese Lot 0.1
+
+- Validés et ajoutes: Sauron lateralite/Adminer/Cockpit/healthchecks/hardening/mounts,
+  Celebrimbor prompts DOM, erreurs LLM/admin 400, dashboard legacy raw, hashes
+  identity, Notes UI, erreurs frontend vides, orchestration chat, final-lock
+  conflict, Biblio comments, frontend denylist et filenames.
+- Fusionnes: Docker socket avec surface socket existante; server boundary avec
+  server route gravity; large files amplified avec large files.
+- Requalifies: Agenda dormant wording en P3 faible/stale partiel.
+- Invalides deja conserves: pas de bypass public Authelia, pas de bypass
+  lateral `/api/admin/*`, ports publics hors Caddy non confirmes.
 
 ## Findings
 
@@ -232,6 +283,43 @@ Aucun P0 prouve.
 - Risque d'effet de bord: timeouts trop courts peuvent degrader UX.
 - Preuve de fermeture attendue: tests timeout/fallback par client.
 
+#### P2 supplementaires valides par Lot 0.1
+
+- `P2-SAU-ADMINER-LATERAL-01`: Adminer protege publiquement par Authelia mais
+  a isoler/revalider en lateralite Docker.
+- `P2-SAU-COCKPIT-DOCKER-REACHABILITY-01`: reachability Cockpit depuis ranges
+  Docker a valider en lot Sauron cible.
+- `P2-SAU-HEALTHCHECKS-ABSENT-01`: healthchecks absents sur plusieurs services
+  critiques, a traiter service par service.
+- `P2-SAU-FRIDADEV-CONTAINER-HARDENING-01`: conteneur app a durcir
+  progressivement, sans rebuild implicite.
+- `P2-SAU-NEXTCLOUD-DATA-RW-MOUNTS-01`: mounts Nextcloud RW du doc-pipeline a
+  justifier ou reduire.
+- `P2-SAU-PERMISSIONS-GOVERNANCE-01`: gouvernance permissions/retention plus
+  large que les deux P1.
+- `P2-SAU-AGENTS-ADMIN-TOKEN-STALE-01`: `/opt/platform/AGENTS.md` doit etre
+  aligne avec le contrat admin OVH courant.
+- `P2-CEL-ADMIN-PROMPTS-DOM-01`: prompts complets dans DOM admin a assumer
+  comme exception operateur ou a remplacer par metadonnees/content gate.
+- `P2-CEL-LLM-ERROR-RAW-01`: erreurs LLM brutes a remplacer par codes stables.
+- `P2-CEL-DASHBOARD-WEB-LEGACY-RAW-01`: URL/hash web legacy a projeter
+  content-free.
+- `P2-CEL-IDENTITY-HASH-POLICY-01`: doctrine hashes courts identity a trancher.
+- `P2-CEL-NOTES-UI-GAP-01`: Notes V1 a clarifier UI minimale ou API-only.
+- `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01`: panels frontend ne doivent pas rendre
+  une panne comme liste vide.
+- `P2-CEL-CHAT-ORCHESTRATION-GRAVITY-01`: orchestration chat a couvrir par
+  golden tests avant extraction.
+- `P2-CEL-ADMIN-400-RAW-01`: erreurs admin 400 ne doivent pas echo de valeurs
+  invalides.
+
+#### Doublons P2 fusionnes par Lot 0.1
+
+- `P2-SAU-DOCKER-SOCKET-SURFACE-01`: confirme/amplifie, conserve sous l'ID
+  existant avec mention socket direct.
+- `P2-CEL-SERVER-BOUNDARY-GRAVITY-01`: fusionne dans
+  `P2-CEL-SERVER-ROUTE-GRAVITY-01`.
+
 ### P3
 
 #### P3-CEL-LARGE-FILES-01 - beaucoup de gros modules et tests
@@ -291,6 +379,19 @@ Aucun P0 prouve.
 - Lot propose: Lot 8.
 - Preuve de fermeture attendue: index docs distinguant ouvert actif vs archive
   historique.
+
+#### P3 supplementaires valides ou requalifies par Lot 0.1
+
+- `P3-CEL-FINAL-LOCK-CONFLICT-TEST-01`: test fake a ajouter si Agenda/Biblio
+  final locks peuvent coexister.
+- `P3-CEL-BIBLIO-COMMENTS-STALE-01`: commentaires Biblio a aligner avec
+  agent-first.
+- `P3-CEL-AGENDA-DORMANT-WORDING-01`: requalifie P3 faible/stale partiel,
+  `needs_targeted_validation`.
+- `P3-CEL-LOG-FRONTEND-DENYLIST-01`: `/log` UI a passer en allowlist ou test
+  sentinelle champ inconnu.
+- `P3-CEL-FILENAMES-CONTENT-FREE-DECISION-01`: doctrine filenames a trancher.
+- `P3-CEL-LARGE-FILES-AMPLIFIED-01`: fusionne dans `P3-CEL-LARGE-FILES-01`.
 
 ### POST-V1
 
