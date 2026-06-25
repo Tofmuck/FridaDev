@@ -1293,24 +1293,44 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-EXCEPTION-RAW-SURFACE-01
 
-- Statut courant: closed_by_lot_6I.
+- Statut courant: partially_closed_by_lot_6I_needs_log_surface_requalification.
 - Severite: P2.
 - Fichiers suspects: `app/server.py`, `app/tools/web_search.py`,
   `app/core/*`, `app/memory/*`, `app/observability/*`, `app/biblio/*`.
-- Lot cible: Lots 6B/6C/6D/6E puis Lot 6I pour les surfaces restantes.
+- Lot cible: Lots 6B/6C/6D/6E, Lot 6I pour les surfaces exposees
+  confirmees, puis Lot 6J pour les logs runtime `err=%s` restants.
 - Preuve Lot 6A: le scan `str(exc)` / `repr(exc)` / `exc_info` / `traceback` /
   `print(` trouve plusieurs familles independantes; elles ne doivent pas etre
   remplacees globalement sans validation surface par surface.
 - Preuve Lot 6I: les surfaces restantes confirmees ont ete corrigees sans
   remplacement global: `/api/chat` catch-all, Web Search `message_short`,
   reponses settings/admin validation, `read_errors` Memory Admin, logs admin
-  conversations/restart et reponses governance identity. Les autres hits du
-  scan sont requalifies comme propagation interne sanitisee en aval, compat
-  test-double, exceptions internes a reason codes bornes, ou warnings internes
-  stables.
+  conversations/restart et reponses governance identity.
+- Limite Lot 6I.1: la cloture globale etait trop large. Les logs runtime
+  `logger.*("... err=%s", exc)` restent a qualifier par famille avant cloture
+  complete, notamment `app/server.py`, `app/memory/memory_traces_summaries.py`,
+  `app/core/conversations_store.py`, `app/memory/arbiter.py` et autres familles
+  runtime detectees par scan.
 - Critere de cloture: surfaces qualifiees; corrections bornees uniquement.
 - Preuve minimale: tests content-free/fail-closed par surface.
 - Hors-scope: remplacement massif aveugle de `str(exc)`.
+
+### P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01
+
+- Statut courant: needs_targeted_validation.
+- Severite: P2.
+- Classe: `P2_observability_guard_rejection`.
+- Surfaces suspectes: suites stream LLM, `chat_turn_log_payload_rejected`,
+  writer-side observability guard et projection finale de stream.
+- Lot cible: Lot 6J si le rejet writer-side est confirme et corrigeable avant
+  smokes; Lot 7 si le sujet releve de matrice/smoke/projection finale.
+- Preuve Lot 6I.1: les warnings `chat_turn_log_payload_rejected` vus dans les
+  suites stream LLM ne doivent plus rester une note volante ni etre caches par
+  la cloture partielle de `P2-CEL-EXCEPTION-RAW-SURFACE-01`.
+- Critere de cloture: reproduire le payload stream exact sans contenu brut,
+  classer `test_stale` / `projection_drift` / `guard_rejection`, puis corriger
+  uniquement la surface confirmee.
+- Hors-scope Lot 6I.1: aucun patch runtime.
 
 ### P2-CEL-ADMIN-400-RAW-01
 
@@ -2319,8 +2339,13 @@ Decision:
 - [x] Lot 6G: traiter `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
 - [x] Lot 6H: requalifier `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01`
   comme test stale et aligner le contrat compact.
-- [x] Lot 6I: requalifier/corriger les surfaces restantes
-  `P2-CEL-EXCEPTION-RAW-SURFACE-01`.
+- [x] Lot 6I: requalifier/corriger les surfaces exposees confirmees restantes
+  de `P2-CEL-EXCEPTION-RAW-SURFACE-01`.
+- [ ] Lot 6J: requalifier les logs runtime `err=%s` par famille avant cloture
+  complete de `P2-CEL-EXCEPTION-RAW-SURFACE-01`.
+- [ ] Lot 6J/Lot 7: valider
+  `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01`
+  (`chat_turn_log_payload_rejected` stream LLM).
 
 #### Lot 6A - Audit/triage observabilite/logs applicatifs
 
@@ -2762,17 +2787,42 @@ Resultat Lot 6I:
 | `app/admin/admin_memory_service.py` | Corrige: `read_errors` garde section, codes et classe, sans message brut. |
 | `app/core/conversations_store.py` / `app/core/conversations_maintenance.py` / `app/admin/admin_actions.py` | Corrige: logs admin et logs applicatifs remplacent l'erreur brute par codes + classe. |
 | `app/admin/admin_identity_governance_service.py` | Corrige: reponses governance identity stables sans exception brute. |
-| Hits internes restants | Invalides pour Lot 6I: propagation interne, compat, ou reason codes/warnings bornes sans surface brute confirmee. |
+| Hits internes restants hors logs runtime `err=%s` | Invalides pour Lot 6I: propagation interne, compat, ou reason codes/warnings bornes sans surface brute confirmee. |
+| Logs runtime `err=%s` restants | Non clos par Lot 6I: a qualifier par famille en Lot 6J avant cloture complete du P2 large. |
 
 Decision:
 
-- `P2-CEL-EXCEPTION-RAW-SURFACE-01` est clos apres Lot 6I.
+- `P2-CEL-EXCEPTION-RAW-SURFACE-01` est partiellement clos apres Lot 6I:
+  `partially_closed_by_lot_6I_needs_log_surface_requalification`.
 - Lot 6B a traite LLM; Lot 6C admin 400/404; Lot 6D dashboard Web; Lot 6E
   hashes identity; Lot 6F/6F.1/6G/6H observabilite compacte/garde. Lot 6I
-  ferme le reliquat `str(exc)` / `message_short` sans absorber Lot 7 ni Lot 9.
-- Des warnings observabilite preexistants `chat_turn_log_payload_rejected`
-  vus dans les suites stream LLM restent hors scope Lot 6I sauf reouverture
-  explicite; ils ne correspondent pas aux surfaces `str(exc)` corrigees ici.
+  ferme le reliquat expose `str(exc)` / `message_short` sans absorber Lot 7 ni
+  Lot 9.
+- Restent ouverts pour Lot 6J: logs runtime `logger.*("... err=%s", exc)` par
+  famille (`app/server.py`, `app/memory/memory_traces_summaries.py`,
+  `app/core/conversations_store.py`, `app/memory/arbiter.py`, autres hits de
+  scan) afin de distinguer logs internes acceptables et surfaces durables a
+  durcir.
+- Les warnings observabilite `chat_turn_log_payload_rejected` vus dans les
+  suites stream LLM deviennent le finding dedie
+  `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01`: Lot 6J si rejet
+  writer-side confirme, Lot 7 si matrice/smoke/projection finale.
+
+#### Lot 6J - Requalification logs runtime err=%s et rejets stream
+
+Statut: ouvert.
+Runtime modifie: non.
+Plateforme modifiee: non.
+
+- [ ] Requalifier par famille les logs runtime `logger.*("... err=%s", exc)`
+  encore presents apres Lot 6I.
+- [ ] Distinguer logs internes defensifs acceptables, logs durables lisibles,
+  projections admin/dashboard et reponses HTTP.
+- [ ] Corriger uniquement les familles confirmees comme surface brute durable ou
+  visible; conserver `error_class`, `reason_code` et diagnostics content-free.
+- [ ] Valider `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01` ou le deleguer
+  explicitement au Lot 7 si la preuve depend d'une matrice/smoke finale.
+- [ ] Ne pas traiter Lot 7 `/log` denylist ni Lot 9 refactors dans ce lot.
 
 ### Lot 7 - Tests/smokes/artefacts
 
