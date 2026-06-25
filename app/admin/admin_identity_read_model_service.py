@@ -559,7 +559,7 @@ def _build_collection_layer(*, storage_kind: str, snapshot: Mapping[str, Any]) -
         'storage_kind': storage_kind,
         'classification': LEGACY_IDENTITY_PIPELINE_STATUS,
         'runtime_authority': 'historical_only',
-        'projection_version': 'identity_legacy_content_minimized_v1',
+        'projection_version': 'identity_legacy_content_minimized_v2',
         'content_minimized': True,
         'stored': total_count > 0,
         'loaded_for_runtime': False,

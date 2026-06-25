@@ -138,7 +138,7 @@ def identity_candidates_response(
         'ok': True,
         'items': compact_entries,
         'count': len(compact_entries),
-        'projection_version': 'identity_candidates_content_minimized_v1',
+        'projection_version': 'identity_candidates_content_minimized_v2',
         'content_minimized': True,
         'legacy_only': True,
         'evidence_only': True,

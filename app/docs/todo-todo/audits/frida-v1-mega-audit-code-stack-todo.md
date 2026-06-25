@@ -2270,6 +2270,8 @@ Decision:
 - [x] Lot 6E: trancher doctrine hashes courts identity.
 - [x] Lot 6E.1: corriger hashes identity restants dans `identity-candidates`,
   libelle runtime et specs actives.
+- [x] Lot 6E.2: aligner versions de projection identity apres retrait des
+  hashes courts.
 - [ ] Corriger seulement surfaces qui exposent ou masquent une panne.
 - [ ] Conserver diagnostics content-free.
 - [ ] Lot 6F: traiter `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01`
@@ -2509,6 +2511,33 @@ Resultat Lot 6E.1:
 - Les specs vivantes disent desormais que les surfaces identity diagnostiques
   gardent presence, longueurs, compteurs, statuts, reason codes, IDs opaques et
   timestamps, sans hash court stable sur texte identity/reason libre.
+
+#### Lot 6E.2 - Versions de projection identity
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne aux constantes `projection_version` identity.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le fond Lot 6E/6E.1
+etait correct, mais les noms de projection `v1` restaient stale apres retrait
+des champs `*_sha256_12`.
+
+- [x] Valider `P3-IDENTITY-CANDIDATES-PROJECTION-VERSION-STALE`.
+- [x] Bumper la projection candidates vers
+  `identity_candidates_content_minimized_v2`.
+- [x] Valider `P3-IDENTITY-LEGACY-PROJECTION-VERSION-STALE`.
+- [x] Bumper la projection legacy vers
+  `identity_legacy_content_minimized_v2`.
+- [x] Adapter les tests de contrat route/read-model.
+- [x] Ne pas reintroduire de hash, ne pas modifier les contenus identity, ne pas
+  traiter Lot 6F/6G/6H, Lot 7 ni Lot 9.
+
+Resultat Lot 6E.2:
+
+- Les versions de projection correspondent maintenant au schema sans hash court
+  stable sur texte identity/reason.
+- Les specs actives ne mentionnaient pas ces identifiants de version; aucune
+  modification supplementaire de spec n'etait necessaire.
 
 ### Lot 7 - Tests/smokes/artefacts
 

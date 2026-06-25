@@ -429,12 +429,24 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['subjects']['llm']['legacy_fragments']['storage_kind'], 'identities')
         self.assertEqual(data['subjects']['llm']['legacy_fragments']['classification'], 'legacy_diagnostic_only')
         self.assertEqual(data['subjects']['llm']['legacy_fragments']['runtime_authority'], 'historical_only')
+        self.assertEqual(
+            data['subjects']['llm']['legacy_fragments']['projection_version'],
+            'identity_legacy_content_minimized_v2',
+        )
         self.assertEqual(data['subjects']['llm']['evidence']['storage_kind'], 'identity_evidence')
         self.assertEqual(data['subjects']['llm']['evidence']['classification'], 'legacy_diagnostic_only')
         self.assertEqual(data['subjects']['llm']['evidence']['runtime_authority'], 'historical_only')
+        self.assertEqual(
+            data['subjects']['llm']['evidence']['projection_version'],
+            'identity_legacy_content_minimized_v2',
+        )
         self.assertEqual(data['subjects']['llm']['conflicts']['storage_kind'], 'identity_conflicts')
         self.assertEqual(data['subjects']['llm']['conflicts']['classification'], 'legacy_diagnostic_only')
         self.assertEqual(data['subjects']['llm']['conflicts']['runtime_authority'], 'historical_only')
+        self.assertEqual(
+            data['subjects']['llm']['conflicts']['projection_version'],
+            'identity_legacy_content_minimized_v2',
+        )
         forbidden_legacy_keys = {
             'content',
             'content_norm',

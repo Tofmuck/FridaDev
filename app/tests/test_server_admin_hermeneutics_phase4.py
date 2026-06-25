@@ -120,7 +120,7 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
             ['u-high', 'l-mid', 'u-low', 'l-zero'],
         )
         self.assertEqual(data['count'], 4)
-        self.assertEqual(data['projection_version'], 'identity_candidates_content_minimized_v1')
+        self.assertEqual(data['projection_version'], 'identity_candidates_content_minimized_v2')
         self.assertTrue(data['content_minimized'])
         self.assertTrue(data['legacy_only'])
         self.assertTrue(data['evidence_only'])
