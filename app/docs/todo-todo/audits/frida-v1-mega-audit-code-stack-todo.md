@@ -15,10 +15,32 @@ Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-c
 - Plateforme modifiee par Lot 0: non.
 - Secrets/logs bruts affiches par Lot 0: non.
 - P0 connu: aucun.
-- P1 ouvert restant: backups/dumps/artefacts sensibles plateforme hors
-  `.env.bak-*`.
+- P1 plateforme local restant: backups/dumps/artefacts sensibles hors
+  `.env.bak-*`, statut `risk_accepted_temporarily` par decision operateur.
 - Lot 0.1: consolidation contre-audit executee; audit principal reconnu
   partiellement trop Sauron-heavy, findings Celebrimbor concrets integres.
+- Doctrine Sauron courante: serveur solo derriere Caddy/Authelia; chercher
+  d'abord les gros rouge public et les risques realistes, ne pas transformer le
+  mega-audit en micro-hardening local infini a rendement decroissant.
+
+## Doctrine securite plateforme avant audit code
+
+Decision operateur du 2026-06-25: pour ce serveur solo, la cible realiste
+principale est le bot opportuniste ou la faille publique d'un service expose.
+La priorite Sauron avant de passer au code est donc:
+
+1. absence de gros rouge public;
+2. absence de service critique expose sans garde;
+3. absence de bypass evident Authelia/Caddy/admin/DB/socket Docker;
+4. etat des mises a jour serveur, services et images;
+5. seulement ensuite, audit code applicatif, dette, structure et tests.
+
+Consequence: les micro-durcissements locaux deja investigues restent visibles
+dans le registre, mais ils ne bloquent pas le passage a Celebrimbor s'ils sont
+`risk_accepted_temporarily`, `hygiene_deferred` ou optionnels et qu'aucun P0/P1
+public ou update securite critique n'est detecte par les checkpoints Lot 3/3B.
+Toute correction plateforme reelle reste un lot separe avec GO operateur,
+backup/rollback et health checks.
 
 ## Lot 0.1 - Consolidation contre-audit Sauron/Celebrimbor
 
@@ -596,6 +618,41 @@ puis une mise a jour docs-only sans chmod ni correction plateforme.
   risque principal est le durcissement d'hygiene et la reduction du drift, pas
   une exposition world-write immediate.
 
+## Lot 2G - Recadrage securite plateforme realiste avant audit code
+
+Statut: recadrage Sauron docs-only execute le 2026-06-25.
+Decision operateur: ne pas poursuivre les micro-durcissements locaux a
+rendement decroissant avant d'avoir verifie les gros rouge publics et les
+mises a jour critiques.
+Correction appliquee: non.
+Plateforme modifiee: non.
+
+- [x] Inscrire la doctrine serveur solo derriere Caddy/Authelia.
+- [x] Reclasser les micro-hardening locaux Lot 2 comme acceptes
+  temporairement, differes ou optionnels.
+- [x] Redefinir Lot 3 comme checkpoint securite plateforme realiste avant audit
+  code.
+- [x] Ajouter Lot 3B inventaire mises a jour serveur/services/images.
+- [x] Ne fermer aucun finding comme corrige par ce recadrage.
+
+### Decision Lot 2G
+
+- `P1-SAU-SENSITIVE-BACKUPS-PERMS-01`: conserver
+  `risk_accepted_temporarily`; ne pas relancer de correctif permissions sans
+  nouveau GO operateur explicite.
+- `P2-SAU-LOG-SECRETLIKE-01`: Caddy reste faux positif probable; Authelia est
+  requalifie `partially_confirmed_non_sensitive`; Lot 2E policy URLs de
+  redirection reste optionnel et non bloquant.
+- `P2-SAU-COMPOSE-PERMISSIONS-01`: reclasser en `hygiene_deferred`; correction
+  possible apres GO, mais non bloquante pour un serveur solo sauf nouveau gros
+  rouge public.
+- Lot 2 devient un gel/registre des micro-hardening locaux: garder les risques
+  visibles, mais ne pas les traiter comme no-go avant l'audit code si Lot 3 et
+  Lot 3B ne trouvent pas de P0/P1 public ou update critique.
+- Transition: si Lot 3/3B ne remonte pas de gros rouge public, de bypass
+  evident ou d'update securite critique urgente, la partie securite plateforme
+  est suffisante pour serveur solo et le mega-audit passe au code applicatif.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
@@ -640,6 +697,9 @@ puis une mise a jour docs-only sans chmod ni correction plateforme.
   l'absence absolue d'un consommateur hors repo/hors scan ne peut pas etre
   garantie. Ne pas relancer de correction host-only sans nouveau GO operateur
   explicite.
+- Recadrage Lot 2G: risque local reconnu mais accepte temporairement pour un
+  serveur solo; ne bloque pas le passage a l'audit code sauf nouveau signal de
+  fuite publique, backup expose, ou GO operateur de correction.
 - Classification Lot 1C: `closed_by_lot_1b_already`,
   `active_sensitive_backup`, `restorable_db_dump`,
   `codex_report_sensitive_metadata`, `historical_archive_sensitive`,
@@ -673,6 +733,9 @@ puis une mise a jour docs-only sans chmod ni correction plateforme.
   des URLs de redirection completes.
 - Prochain lot: uniquement sur GO operateur si la politique decide de masquer
   les URLs de redirection completes; pas de purge/reload/correction implicite.
+- Recadrage Lot 2G: Lot 2E reste optionnel; ce finding ne bloque pas le
+  passage a l'audit code tant qu'aucune valeur exploitable ou fuite publique
+  n'est confirmee.
 - Critere de cloture: faux positif documente ou redaction/log-level corrige.
 - Preuve minimale: scan borne sans lignes brutes, counts avant/apres.
 - Hors-scope: purge logs globale.
@@ -756,7 +819,7 @@ puis une mise a jour docs-only sans chmod ni correction plateforme.
 
 - Statut initial: open.
 - Statut courant: partially_confirmed_by Lot 2F; correction candidate
-  documentee mais non appliquee.
+  documentee mais non appliquee; `hygiene_deferred` par recadrage Lot 2G.
 - Severite: P2.
 - Zones suspectes: Compose FridaDev group-writable.
 - Lot cible: Lot 2 ou 3.
@@ -771,6 +834,9 @@ puis une mise a jour docs-only sans chmod ni correction plateforme.
 - Correction proposee: `candidate_0644_after_go` pour les fichiers
   group-writable confirmes, avec validation compose ciblee; ne pas appliquer
   sans GO operateur.
+- Recadrage Lot 2G: hygiene locale differable pour serveur solo; ne pas
+  corriger maintenant sauf si Lot 3 montre un gros rouge public ou si
+  l'operateur donne un GO dedie.
 - Critere de cloture: modes/ownership explicites et verifies.
 - Preuve minimale: `stat`, `docker compose config --quiet`.
 - Hors-scope: changement runtime.
@@ -1048,13 +1114,20 @@ puis une mise a jour docs-only sans chmod ni correction plateforme.
 - [x] Ne pas lire ni afficher les valeurs.
 - [x] Produire preuve health apres correction si correction autorisee.
 
-### Lot 2 - Secrets/env/logs/permissions
+### Lot 2 - Gel micro-hardening local secrets/env/logs/permissions
 
-- [ ] Lot 2A: bloque par decision Lot 1E `NO-GO`; ne pas corriger les
+Intention: cloturer la phase de micro-investigation locale sans masquer les
+findings. Pour un serveur solo derriere Caddy/Authelia, ces points ne bloquent
+plus le passage a l'audit code tant qu'ils restent locaux, acceptes/differes ou
+optionnels, et qu'aucun gros rouge public n'apparait en Lot 3/3B.
+
+- [ ] Lot 2A: bloque par decision Lot 1E `NO-GO`; statut
+  `risk_accepted_temporarily`; ne pas corriger les
   artefacts host-only `_codex_reports`, `_codex_backups` et
   `/opt/platform/backups` sans nouveau GO operateur explicite.
 - [ ] Lot 2B: corriger ou documenter les fichiers actifs/service-owned sous
-  `/opt/platform/data/*` apres validation par service.
+  `/opt/platform/data/*` seulement si un service ou un gros rouge public le
+  justifie.
 - [x] Lot 2C: investiguer logs Authelia/Caddy secret-like sans afficher de
   lignes brutes.
 - [x] Lot 2D: valider Authelia secret-like en count-only/redacted-only; aucune
@@ -1063,23 +1136,55 @@ puis une mise a jour docs-only sans chmod ni correction plateforme.
   redirection completes Authelia si l'operateur le demande.
 - [x] Lot 2F: investiguer permissions Compose/YAML group-writable sans
   correction plateforme.
-- [ ] Traiter backups/dumps/keys world-readable.
-- [ ] Qualifier logs Authelia/Caddy secret-like.
-- [ ] Traiter compose/YAML group-writable apres GO operateur si confirme.
-- [ ] Traiter la gouvernance permissions/retention au-dela des deux P1.
-- [ ] Definir retention et mode cible.
+- [x] Lot 2G: recadrer la securite plateforme realiste avant audit code.
+- [ ] Postposer backups/dumps/keys host-only: aucune correction sans nouveau
+  GO operateur explicite.
+- [ ] Postposer Compose/YAML group-writable: `hygiene_deferred`, correction
+  seulement sur GO dedie.
+- [ ] Garder la gouvernance permissions/retention visible mais non bloquante
+  avant Lot 3/3B.
 
-### Lot 3 - Docker/Caddy/Authelia/reseaux
+### Lot 3 - Checkpoint securite plateforme realiste avant audit code
 
-- [ ] Auditer socket proxy et consumers.
-- [ ] Auditer Adminer lateral sur le grand reseau Docker.
-- [ ] Valider/invalider Cockpit joignable depuis les ranges Docker.
-- [ ] Qualifier healthchecks absents sur services critiques.
-- [ ] Qualifier hardening conteneur `platform-fridadev`.
-- [ ] Qualifier mounts RW Nextcloud du doc-pipeline.
-- [ ] Auditer reseaux et frontieres public/interne.
-- [ ] Verifier hostnames Caddy/Authelia sans exposer secrets.
-- [ ] Valider pas de service public hors Caddy.
+- [ ] Inventorier ports publics et services exposes sans afficher secrets.
+- [ ] Verifier Caddy/Authelia comme frontiere publique des services sensibles.
+- [ ] Verifier absence de service critique expose sans garde.
+- [ ] Verifier absence de bypass evident Authelia/Caddy/admin/DB depuis
+  Internet.
+- [ ] Verifier admin Frida, Adminer et DB: pas d'exposition publique directe
+  hors garde attendue.
+- [ ] Verifier Docker socket/proxy a haut niveau: pas d'exposition publique ni
+  consommateur evident hors besoin documente.
+- [ ] Verifier Cockpit a haut niveau: pas de surface publique inattendue.
+- [ ] Verifier frontieres Docker raisonnables a haut niveau; ne pas lancer de
+  micro-hardening reseau si aucun gros rouge public.
+- [ ] Verifier health generale des services critiques sans restart/rebuild.
+- [ ] Si aucun P0/P1 public n'apparait, considerer la securite plateforme
+  suffisante pour serveur solo et passer a l'audit code.
+
+### Lot 3B - Inventaire mises a jour serveur/services/images
+
+Alias lisible: inventaire des mises à jour serveur, services et images.
+
+Statut cible: audit/inventaire only, aucune update dans ce lot.
+
+- [ ] Inventorier OS / paquets systeme sans appliquer de mise a jour.
+- [ ] Inventorier Docker / Docker Compose.
+- [ ] Inventorier images Docker des services, sans `pull`.
+- [ ] Inventorier Caddy.
+- [ ] Inventorier Authelia.
+- [ ] Inventorier Nextcloud.
+- [ ] Inventorier Postgres/Redis.
+- [ ] Inventorier n8n.
+- [ ] Inventorier SearxNG.
+- [ ] Inventorier Adminer.
+- [ ] Inventorier FridaDev app/db.
+- [ ] Inventorier autres services exposes ou critiques.
+- [ ] Classer chaque element: `update_critique_securite`,
+  `update_recommandee`, `update_postposable`, `no_action`,
+  `needs_operator_decision`.
+- [ ] Si update critique securite urgente: ouvrir un lot separe avec
+  backup/rollback/health; sinon passer a l'audit code.
 
 ### Lot 4 - Code runtime P1/P2
 
