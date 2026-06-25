@@ -430,7 +430,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'utilisateur 5', 'assistant 5'])
 
     def test_periodic_agent_event_neutralizes_valid_legacy_write_contract(self) -> None:
-        proposition = 'Tof maintient une attention durable aux details stables.'
+        proposition = 'Tof tient une attention durable aux details stables.'
         arbiter_module = SimpleNamespace(
             run_mutable_identity_judge=lambda _payload: _judge_ok(_contract(_persist_add('user', proposition)))
         )
@@ -534,7 +534,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
     def test_calls_agent_at_exact_threshold_and_clears_buffer_after_valid_transitional_run(self) -> None:
         store = _InMemoryIdentityStore()
         observed_payloads: list[dict[str, Any]] = []
-        proposition = 'Tof maintient une attention durable aux details stables.'
+        proposition = 'Tof tient une attention durable aux details stables.'
 
         def fake_run_mutable_identity_judge(payload: dict[str, Any]) -> dict[str, Any]:
             observed_payloads.append(copy.deepcopy(payload))
@@ -661,7 +661,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
     def test_shadow_mode_runs_judge_without_canonical_write(self) -> None:
         store = _InMemoryIdentityStore()
         observed_payloads: list[dict[str, Any]] = []
-        proposition = 'Tof maintient une preference durable pour les preuves compactes.'
+        proposition = 'Tof tient une preference durable pour les preuves compactes.'
 
         def fake_run_mutable_identity_judge(payload: dict[str, Any]) -> dict[str, Any]:
             observed_payloads.append(copy.deepcopy(payload))
@@ -706,8 +706,8 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             'updated_by': 'identity_periodic_agent',
             'update_reason': 'periodic_agent',
         }
-        llm_proposition = 'Frida garde un axe de synthese stable.'
-        user_proposition = 'Tof maintient un fil identitaire stable.'
+        llm_proposition = 'Frida tient un axe de synthese stable.'
+        user_proposition = 'Tof tient un fil identitaire stable.'
 
         def fake_run_mutable_identity_judge(_payload: dict[str, Any]) -> dict[str, Any]:
             return _judge_ok(_contract(_persist_add('llm', llm_proposition), _persist_add('user', user_proposition)))
@@ -926,7 +926,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
     def test_retry_reuses_exact_same_five_pair_window_after_failed_attempt(self) -> None:
         store = _InMemoryIdentityStore()
         observed_payloads: list[dict[str, Any]] = []
-        proposition = 'Tof maintient une attention stable.'
+        proposition = 'Tof tient une attention stable.'
         responses = [
             {
                 'status': 'skipped',
@@ -983,7 +983,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
     def test_new_runtime_does_not_call_legacy_scoring_or_static_writer(self) -> None:
         store = _InMemoryIdentityStore()
-        proposition = 'Tof maintient une limite durable sur les promesses intenables.'
+        proposition = 'Tof tient une limite durable sur les promesses intenables.'
         original_write_static = static_identity_content.write_static_identity_content
         calls = {'static': 0}
 
@@ -1021,7 +1021,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
     def test_judge_first_contract_does_not_enter_double_saturation_static_promotion(self) -> None:
         store = _InMemoryIdentityStore()
-        proposition = 'Tof maintient une orientation stable et ritualisee.'
+        proposition = 'Tof tient une orientation stable et ritualisee.'
         filler = _build_large_identity_block('Tof', min_length=2980)
         store.mutable['user'] = {
             'subject': 'user',

@@ -257,13 +257,13 @@ _GENERAL_TEXT_KEYS = set(
     crawl_filter_requested crawl_fallback_status crawl_policy_kind crawl_policy_reason
     crawl_primary_status crawl_status day_part_class decision_source dedup_reason_code
     calendar_ambiguity content_hash draft_title_hash
-    dominant_tone error_class error_code epistemic_regime execution_status fallback_source
+    apply_reason_code apply_status dominant_tone error_class error_code epistemic_regime execution_status fallback_source
     final_judgment_posture final_output_regime final_status guarded_original_status
     geste_dialogique_dominant hard_guard_effect injection_class
     fallback_reason finish_reason
     main_llm_reasoning_effort_effective main_llm_reasoning_effort_requested
     intent_hash json_hash kind main_llm_reasoning_policy_kind main_llm_reasoning_reason_code
-    method_family
+    judge_reason_code judge_status last_agent_status legacy_writer_disabled_reason method_family
     mode model module_key mutation_kind node_stage node_state_read_reason_code node_state_schema_version
     node_state_write_reason_code node_state_sha256_12 openrouter_fallback_state origin origin_stage payload_kind policy
     operation pending_action_hash pending_action_id pending_confirmation_level pending_execution_reason_code pending_execution_status
@@ -274,20 +274,20 @@ _GENERAL_TEXT_KEYS = set(
     ancrage_temporel portee_temporelle provider_generation_id provider_model provider_role provider_title product_case_id product_method
     product_truth projected_judgment_posture
     proof_regime principe query_kind query_plan_kind query_preview read_state reason_code reason_short
-    read_execution_reason_code read_execution_status regime_de_vigilance
+    read_execution_reason_code read_execution_status regime_de_vigilance runtime_pipeline
     reason_sha256_12 retrieval_error_class retrieval_error_code retrieval_status rerank_profile rerank_policy
     schema_version scope search_profile searxng_language searxng_profile_params_kind
     searxng_profile_params_policy searxng_safesearch searxng_time_range
     searxng_soft_signal_policy source source_domain source_first_authority source_first_policy_kind
     shift_state source_first_product source_kind source_origin stability status status_schema_version summary_id_sha256_12 summary_usage used_content_kind
     surface_error_hash surface_intro_hash surface_outro_hash
-    target_side target_verification_error_class time_ambiguity time_kind timezone
+    subject target_side target_verification_error_class time_ambiguity time_kind timezone
     timezone tone upstream_output_regime_proposed upstream_recommendation_posture
     updated_by updated_ts user_display_name_hash user_message_hash validation_decision validation_status web_confidence_level web_confidence_policy_kind web_discovery_external_error_kind
     web_discovery_external_provider web_discovery_provider web_discovery_provider_effective
     web_discovery_provider_requested web_evidence_policy_kind web_evidence_status
     web_evidence_url_request_policy web_pdf_read_reason_code web_pdf_read_status
-    window_end window_start write_effect write_error_class write_execution_reason_code write_execution_status write_mode
+    continuity_kind verdict window_end window_start write_effect write_error_class write_execution_reason_code write_execution_status write_mode
     """.split()
 )
 _GENERAL_SCALAR_KEYS = set(
@@ -295,7 +295,7 @@ _GENERAL_SCALAR_KEYS = set(
     adobe_mode_active chars context_injected crawl_fallback_used crawl4ai_query_hash_count
     crawl4ai_query_hashes_included current_user_hash_included current_user_present
     current_user_retained enabled explicit_url_chars explicit_url_detected explicit_url_included
-    fail_open fallback_deterministic fallback_used final_response_lock final_response_lock_present
+    auto_canonization_suspended buffer_cleared buffer_frozen fail_open fallback_deterministic fallback_used final_response_lock final_response_lock_present
     has_in_progress_turn injected insertion_point_reached is_primary_source last_assistant_retained
     invalid_status_redacted
     main_llm_payload main_model_called model_called mutation_attempted mutation_requested ok
@@ -304,16 +304,16 @@ _GENERAL_SCALAR_KEYS = set(
     primary_read_raw_fallback_used provider_title_chars provider_title_included provider_title_present
     profile_insufficient_evidence query_hash_included rank reason_code_present rejected_payload
     rerank_applied secondary_provider_payload secondary_query_hash_count secondary_query_hashes_included
-    selected source_first_active
+    score_first_writer_enabled selected shadow_mode source_first_active
     stream_requested system_prompt_hash_included system_prompt_present timeout_s top_k_requested top_k_returned truncated turns_considered used
     used_for_response used_in_prompt validated validated_plan_present
     web_discovery_external_used
     web_confidence_score web_evidence_can_answer web_evidence_can_suggest_reformulation
     web_evidence_external_fallback_used web_evidence_requires_caveat web_search_enabled
     web_search_requested
-    agent_json_validated ambiguous arbiter_followed_upstream available caldav_access catalog_saved confirmation_required
+    agent_json_validated ambiguous arbiter_followed_upstream available buffer_target_pairs caldav_access catalog_saved confirmation_required
     confidence content_free conversation_saved draft_description_present draft_present draft_private fallback family_calendar
-    has_in_progress_turn messages_saved mutable_len nextcloud_access now_iso_present
+    has_in_progress_turn legacy_writer_disabled messages_saved mutable_len nextcloud_access now_iso_present
     node_state_read_present node_state_read_valid node_state_write_attempted node_state_write_changed
     node_state_sha256_12 node_state_write_succeeded main_llm_reasoning_hidden max_recent_turns messages_written
     raw_candidates ranking_available response_chars runtime_available secret_access state_used strength
@@ -321,7 +321,7 @@ _GENERAL_SCALAR_KEYS = set(
     in_prompt kept_candidates raw_catalogue_payload_included raw_locator_included raw_passage_included raw_query_included
     candidate_top_score cancelled expired pending_action_present pending_cancelled pending_expired pending_execution_attempted pending_target_clear
     read_execution_attempted redacted secret_included score_gap status_code summary summary_generation_observed target_clear top_score
-    user_display_name_present web workspace write_execution_attempted
+    user_display_name_present web workspace write_execution_attempted writes_applied
     """.split()
 )
 _GENERAL_CONTAINER_KEYS = {
@@ -367,9 +367,11 @@ _GENERAL_CONTAINER_KEYS = {
     "nested_counts",
     "passage_search",
     "parent_summaries_injected",
+    "outcomes",
     "pending_execution",
     "pending_state",
     "plan",
+    "promotions",
     "primary_node",
     "provider_messages",
     "providers",
@@ -381,6 +383,7 @@ _GENERAL_CONTAINER_KEYS = {
     "profile_source_domain_counts",
     "raw_flags",
     "reason_code_counts",
+    "rejection_reasons",
     "redaction",
     "regime_probatoire",
     "resolver",
@@ -445,6 +448,7 @@ _GENERAL_SAFE_TEXT_LIST_KEYS = {
     "profile_situated_secondary_domains",
     "reason_codes",
     "calendar_id_hashes",
+    "continuity_kinds",
     "event_id_hashes",
     "pending_action_hashes",
     "read_calendar_id_hashes",
@@ -459,6 +463,8 @@ _GENERAL_SAFE_TEXT_LIST_KEYS = {
     "selection_reason_codes",
     "source_first_probable_domains",
     "source_first_reason_codes",
+    "subjects_seen",
+    "subjects_touched",
     "source_candidate_id_sha256_12",
     "pending_risk_flags",
     "recent_turn_hashes",

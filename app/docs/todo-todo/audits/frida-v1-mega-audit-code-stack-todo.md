@@ -1547,26 +1547,24 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01
 
-- Statut courant: validated_by_lot_6A_needs_surface_split.
+- Statut courant: closed_by_lot_6F.
 - Severite: P2.
 - Classe: `P2_test_contract_or_runtime_validation`.
 - Suite concernee: `tests.unit.memory.test_identity_periodic_agent_phase1`.
 - Constat observe apres Lot 4D.2: des cas mutable identity staging attendus
   `ok` sortent `skipped` ou `refused`; `invalid_verdict` peut etre remplace
   par `observability_payload_rejected`, et un cas laisse un buffer non nettoye.
-- Preuve Lot 6A: la suite cible relancee en conteneur sur le code courant
-  reproduit encore ces ecarts; la cause doit etre isolee entre garde
-  observabilite, contrat de test stale et bug runtime identity/memory.
-- Impact possible: soit le runtime identity/memory refuse correctement un
-  verdict invalide mais le contrat de test est stale, soit la garde
-  observabilite masque le reason code utile, soit le cleanup de buffer a une
-  regression bornee.
-- Lot cible: Lot 6F si la cause est la garde observabilite / schema payload;
-  sous-lot identity/memory dedie si la validation runtime ou le cleanup de
-  buffer est en cause.
-- Critere de cloture: isoler un fake minimal content-free distinguant contrat
-  de test stale, rejet garde observabilite et bug runtime; corriger seulement
-  la surface confirmee.
+- Preuve Lot 6A: la suite cible relancee en conteneur reproduisait encore ces
+  ecarts.
+- Preuve Lot 6F: les ecarts ont ete classes. Cause confirmee: garde
+  observabilite trop stricte sur payload compact legitime, plus fixtures de
+  succes stale vis-a-vis du contrat ontologique v2. `buffer_cleanup_bug` et
+  `runtime_identity_bug` sont invalides pour ce lot.
+- Lot cible: Lot 6F.
+- Critere de cloture: suite cible verte; reason codes utiles conserves;
+  `observability_payload_rejected` ne masque plus le cas mutable identity
+  legitime; cleanup buffer conforme sur retry reussi; aucun contenu identity
+  brut ajoute.
 - Hors-scope Lot 4D.2: ne pas requalifier le correctif memory input cible.
 
 ### P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01
@@ -2274,7 +2272,7 @@ Decision:
   hashes courts.
 - [ ] Corriger seulement surfaces qui exposent ou masquent une panne.
 - [ ] Conserver diagnostics content-free.
-- [ ] Lot 6F: traiter `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01`
+- [x] Lot 6F: traiter `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01`
   apres separation garde observabilite / contrat stale / runtime identity.
 - [ ] Lot 6G: traiter `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
 
@@ -2538,6 +2536,48 @@ Resultat Lot 6E.2:
   stable sur texte identity/reason.
 - Les specs actives ne mentionnaient pas ces identifiants de version; aucune
   modification supplementaire de spec n'etait necessaire.
+
+#### Lot 6F - Mutable identity staging failures
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne a la garde observabilite writer-side mutable
+identity. Tests fixtures alignes, sans changement de contenu identity canonique.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le bon plan etait de
+reproduire la suite cible, classifier chaque ecart, puis corriger uniquement la
+garde content-free confirmee et les fixtures stale.
+
+- [x] Reproduire `tests.unit.memory.test_identity_periodic_agent_phase1` en
+  conteneur avant patch: 8 echecs confirmes.
+- [x] Classer `guard_rejection`: payloads `mutable_identity_judge`
+  content-free legitimes refuses par la garde, avec
+  `observability_payload_rejected`.
+- [x] Classer `test_contract_stale`: plusieurs fixtures de succes utilisaient
+  encore des propositions non conformes au contrat ontologique v2.
+- [x] Invalider `buffer_cleanup_bug`: le buffer retry restait plein parce que
+  la seconde tentative utilisait une fixture stale devenue
+  `non_ontological_proposition`; le cleanup runtime est conforme avec une
+  proposition v2 valide.
+- [x] Invalider `runtime_identity_bug` pour ce lot: le runtime conserve les
+  reason codes utiles (`invalid_verdict`, `non_ontological_proposition`) et
+  preserve le buffer sur invalidation reelle.
+- [x] Autoriser dans la garde seulement les champs compacts deja attendus pour
+  `mutable_identity_judge`: pipeline, statuts/reason codes, flags buffer/write,
+  compteurs, listes de codes/sujets et outcomes reduits aux metadonnees.
+- [x] Ne pas accepter contenu identity brut, proposition, prompt, payload
+  provider, token/cookie/DSN/secret.
+- [x] Ne pas traiter Lot 6G/6H, Lot 7 ni Lot 9.
+
+Resultat Lot 6F:
+
+- `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01` est clos.
+- La garde writer-side ne remplace plus un event mutable identity legitime par
+  `observability_payload_rejected`; le reason code utile reste visible.
+- Les tests stale sont alignes sur le contrat v2 sans relacher la validation
+  ontologique runtime.
+- Les buffers restent preserves sur erreur reelle et sont bien nettoyes apres
+  retry reussi.
 
 ### Lot 7 - Tests/smokes/artefacts
 
