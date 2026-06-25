@@ -736,6 +736,110 @@ mise a jour docs-only avant Lot 3B.
 - Prochain lot recommande: Lot 3B updates inventory, audit-only, aucune update
   sans lot dedie backup/rollback/health.
 
+## Lot 3B - Inventaire mises a jour serveur/services/images
+
+Statut: audit Sauron inventory-only execute le 2026-06-25.
+Updates appliquees: non.
+Pulls Docker effectues: non.
+Plateforme modifiee: non.
+Runtime modifie: non.
+Classification globale: aucune update securite critique urgente confirmee;
+passage a l'audit code autorise.
+
+- [x] Inventorier OS / paquets systeme sans appliquer de mise a jour.
+- [x] Inventorier Docker / Docker Compose.
+- [x] Inventorier images Docker des services, sans `pull`.
+- [x] Inventorier Caddy.
+- [x] Inventorier Authelia.
+- [x] Inventorier Nextcloud.
+- [x] Inventorier Postgres/Redis.
+- [x] Inventorier n8n.
+- [x] Inventorier SearxNG.
+- [x] Inventorier Adminer.
+- [x] Inventorier FridaDev app/db.
+- [x] Inventorier autres services exposes ou critiques.
+- [x] Classer chaque element: `update_critique_securite`,
+  `update_recommandee`, `update_postposable`, `no_action`,
+  `needs_operator_decision`, `needs_targeted_validation`,
+  `unknown_no_network_check`.
+- [x] Si update critique securite urgente: ouvrir un lot separe avec
+  backup/rollback/health; sinon passer a l'audit code.
+
+### Resultat Lot 3B
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le plan le plus sur
+est un inventaire read-only sans `apt update`, sans pull registry et sans
+restart, puis une decision documentaire sur le blocage ou non de l'audit code.
+
+- OS/host: Debian GNU/Linux 13 `trixie`; kernel courant
+  `6.12.90+deb13.1-amd64`.
+- Updates systeme: `apt list --upgradable` ne remonte aucun paquet dans le
+  cache courant. `apt-check` update-notifier absent sur cet hote Debian.
+- Reboot: `/var/run/reboot-required` present; paquet indique:
+  `linux-image-6.12.94+deb13-amd64`. Un reboot planifie est recommande pour
+  activer le kernel installe plus recent, mais ce n'est pas une update a
+  appliquer dans Lot 3B.
+- Docker: Docker `26.1.5+dfsg1`; Docker Compose `2.26.1-4`; daemon sur Debian
+  13 avec kernel courant `6.12.90+deb13.1-amd64`.
+- Conteneurs/images: 30 conteneurs actifs, 27 images actives uniques,
+  860 lignes d'images locales dont 820 dangling rows. Les dangling images sont
+  un sujet hygiene/retention postposable; aucune purge dans ce lot.
+- Caddy: image `caddy:2.11.3`, binaire `2.11.3`, no action immediate observee.
+- Authelia: image `authelia/authelia:4.39.19`, binaire `4.39.19`, conteneur
+  healthy, no action immediate observee.
+- Nextcloud: image `nextcloud:33-apache`; `occ status` read-only:
+  `version=33.0.5`, maintenance off, `needsDbUpgrade=false`, no action
+  immediate observee.
+- FridaDev: image locale `platform-fridadev-app:local`, creee le 2026-06-24;
+  conteneur healthy; Python runtime `3.11.15`; HEAD repo
+  `f53bae668fbbad146c2a07ecf2cd072ac9696bdb`.
+- FridaDev DB: `pgvector/pgvector:pg17`, PostgreSQL `17.9`, healthy.
+- Doc-pipeline DB: `postgres:16-alpine`, PostgreSQL `16.12`, healthy.
+- Nextcloud DB: `mariadb:11`, MariaDB `11.8.6`.
+- Redis/Valkey: `redis:7-alpine` -> Redis `7.4.7`; `valkey:8-alpine` ->
+  Valkey `8.1.6`.
+- n8n: image `n8nio/n8n`, runtime version `2.9.4`; floating image tag, donc
+  freshness registry non prouvee sans pull.
+- SearxNG: image `ghcr.io/searxng/searxng:2026.3.3-b5c1c2804`; version runtime
+  non recuperee par commande simple dans ce lot, mais tag date explicite.
+- Adminer: image `adminer:latest`, PHP runtime `8.4.19`; version applicative
+  precise non prouvee sans inspection plus ciblee/pull.
+- Autres services critiques/exposes: `homepage:v1.13.1`, `crawl4ai:0.8.5`,
+  `text-embeddings-inference:cpu-latest`, `stirling-pdf`, `trilium:latest`,
+  `docker-socket-proxy`, images locales M4/doc-pipeline/whisper. Pas de signal
+  local d'urgence securite; freshness registry non prouvee pour les tags
+  flottants ou images locales.
+
+### Classification Lot 3B
+
+- `update_critique_securite`: aucun element confirme.
+- `update_recommandee`: reboot planifie pour activer le kernel installe
+  `6.12.94+deb13-amd64`; a faire dans un lot operateur separe avec fenetre,
+  health pre/post et rollback operatoire si necessaire.
+- `update_postposable`: hygiene des images Docker dangling; revue des tags
+  flottants `latest`/sans tag; eventuel refresh images apres backup/rollback.
+- `no_action`: Caddy, Authelia, Nextcloud status, FridaDev app/db,
+  Postgres/Redis/MariaDB/Valkey selon les signaux locaux disponibles.
+- `needs_operator_decision`: calendrier reboot kernel; politique de tags
+  flottants vs pinning; eventuel nettoyage images dangling.
+- `needs_targeted_validation`: version applicative Adminer precise; version
+  runtime SearxNG; services `trilium`, `stirling-pdf`, `anythingllm`,
+  `text-embeddings-inference` et images locales sans registry freshness.
+- `unknown_no_network_check`: toutes les images avec tag flottant ou sans pull
+  registry (`adminer:latest`, `n8nio/n8n`, `tecnativa/docker-socket-proxy`,
+  `stirlingtools/stirling-pdf`, `zadam/trilium:latest`,
+  `ghcr.io/huggingface/text-embeddings-inference:cpu-latest`, images locales
+  FridaDev/M4/doc-pipeline/whisper, `nginx` sans tag explicite).
+
+### Decision Lot 3B
+
+- Update critique securite urgente: non confirmee.
+- Blocage avant audit code: non.
+- Prochain lot recommande: passer a l'audit code Celebrimbor. Programmer plus
+  tard un lot Sauron separe pour reboot kernel et, si l'operateur le souhaite,
+  un inventaire/pinning des images flottantes avec registry check, pull controle,
+  backup/rollback et health.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
@@ -1270,22 +1374,23 @@ Alias lisible: inventaire des mises à jour serveur, services et images.
 
 Statut cible: audit/inventaire only, aucune update dans ce lot.
 
-- [ ] Inventorier OS / paquets systeme sans appliquer de mise a jour.
-- [ ] Inventorier Docker / Docker Compose.
-- [ ] Inventorier images Docker des services, sans `pull`.
-- [ ] Inventorier Caddy.
-- [ ] Inventorier Authelia.
-- [ ] Inventorier Nextcloud.
-- [ ] Inventorier Postgres/Redis.
-- [ ] Inventorier n8n.
-- [ ] Inventorier SearxNG.
-- [ ] Inventorier Adminer.
-- [ ] Inventorier FridaDev app/db.
-- [ ] Inventorier autres services exposes ou critiques.
-- [ ] Classer chaque element: `update_critique_securite`,
+- [x] Inventorier OS / paquets systeme sans appliquer de mise a jour.
+- [x] Inventorier Docker / Docker Compose.
+- [x] Inventorier images Docker des services, sans `pull`.
+- [x] Inventorier Caddy.
+- [x] Inventorier Authelia.
+- [x] Inventorier Nextcloud.
+- [x] Inventorier Postgres/Redis.
+- [x] Inventorier n8n.
+- [x] Inventorier SearxNG.
+- [x] Inventorier Adminer.
+- [x] Inventorier FridaDev app/db.
+- [x] Inventorier autres services exposes ou critiques.
+- [x] Classer chaque element: `update_critique_securite`,
   `update_recommandee`, `update_postposable`, `no_action`,
-  `needs_operator_decision`.
-- [ ] Si update critique securite urgente: ouvrir un lot separe avec
+  `needs_operator_decision`, `needs_targeted_validation`,
+  `unknown_no_network_check`.
+- [x] Si update critique securite urgente: ouvrir un lot separe avec
   backup/rollback/health; sinon passer a l'audit code.
 
 ### Lot 4 - Code runtime P1/P2
