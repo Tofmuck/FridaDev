@@ -27,6 +27,26 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.server.config.FRIDA_ADMIN_TOKEN = self._original_admin_token
         self.server.config.FRIDA_ADMIN_LAN_ONLY = self._original_admin_lan_only
 
+    def _assert_admin_error_content_free(
+        self,
+        response,
+        *,
+        status_code: int,
+        error: str,
+        error_code: str,
+        reason_code: str,
+        forbidden: tuple[str, ...] = (),
+    ) -> None:
+        self.assertEqual(response.status_code, status_code)
+        data = response.get_json()
+        encoded = json.dumps(data, ensure_ascii=False, sort_keys=True)
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['error'], error)
+        self.assertEqual(data['error_code'], error_code)
+        self.assertEqual(data['reason_code'], reason_code)
+        for marker in forbidden:
+            self.assertNotIn(marker, encoded)
+
     def test_admin_chat_logs_route_returns_paginated_payload(self) -> None:
         observed = {'kwargs': None}
         original_read = self.server.log_store.read_chat_log_events
@@ -655,26 +675,154 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
 
     def test_admin_chat_logs_route_rejects_invalid_status_filter(self) -> None:
         original_read = self.server.log_store.read_chat_log_events
+        forbidden = (
+            'ARTIFICIAL_ADMIN_STATUS_SECRET',
+            'https://example.invalid/private',
+            '/private/admin/status',
+            'provider payload raw',
+        )
         self.server.log_store.read_chat_log_events = (
-            lambda **_kwargs: (_ for _ in ()).throw(ValueError('invalid chat log status filter: broken'))
+            lambda **_kwargs: (_ for _ in ()).throw(
+                ValueError(
+                    'invalid chat log status filter: '
+                    'https://example.invalid/private?to'
+                    'ken=ARTIFICIAL_ADMIN_STATUS_SECRET '
+                    '/private/admin/status provider payload raw'
+                )
+            )
         )
         try:
             response = self.client.get('/api/admin/logs/chat?status=broken')
         finally:
             self.server.log_store.read_chat_log_events = original_read
 
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json(), {'ok': False, 'error': 'invalid chat log status filter: broken'})
+        self._assert_admin_error_content_free(
+            response,
+            status_code=400,
+            error='requete admin invalide',
+            error_code='admin_bad_request',
+            reason_code='admin_chat_logs_bad_request',
+            forbidden=forbidden,
+        )
 
     def test_admin_chat_logs_route_rejects_invalid_ts_from(self) -> None:
         response = self.client.get('/api/admin/logs/chat?ts_from=not-a-date')
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json(), {'ok': False, 'error': 'invalid ts_from timestamp: not-a-date'})
+        self._assert_admin_error_content_free(
+            response,
+            status_code=400,
+            error='requete admin invalide',
+            error_code='admin_bad_request',
+            reason_code='admin_chat_logs_bad_request',
+            forbidden=('not-a-date',),
+        )
 
     def test_admin_chat_logs_route_rejects_invalid_ts_to(self) -> None:
         response = self.client.get('/api/admin/logs/chat?ts_to=not-a-date')
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json(), {'ok': False, 'error': 'invalid ts_to timestamp: not-a-date'})
+        self._assert_admin_error_content_free(
+            response,
+            status_code=400,
+            error='requete admin invalide',
+            error_code='admin_bad_request',
+            reason_code='admin_chat_logs_bad_request',
+            forbidden=('not-a-date',),
+        )
+
+    def test_admin_chat_log_auxiliary_value_errors_are_content_free(self) -> None:
+        forbidden = (
+            'ARTIFICIAL_ADMIN_AUX_SECRET',
+            'https://example.invalid/private',
+            '/private/admin/aux',
+        )
+        cases = (
+            (
+                'read_chat_log_metadata',
+                '/api/admin/logs/chat/metadata',
+                'admin_chat_logs_metadata_bad_request',
+            ),
+            (
+                'read_chat_turn_pipeline',
+                '/api/admin/logs/chat/turns',
+                'admin_chat_log_turns_bad_request',
+            ),
+            (
+                'read_full_turn_metrics_snapshot',
+                '/api/admin/logs/chat/metrics',
+                'admin_chat_log_metrics_bad_request',
+            ),
+        )
+        for attr_name, route, reason_code in cases:
+            with self.subTest(route=route):
+                original = getattr(self.server.log_store, attr_name)
+
+                def fake_read(**_kwargs):
+                    raise ValueError(
+                        'invalid admin auxiliary value: '
+                        'https://example.invalid/private?to'
+                        'ken=ARTIFICIAL_ADMIN_AUX_SECRET /private/admin/aux'
+                    )
+
+                setattr(self.server.log_store, attr_name, fake_read)
+                try:
+                    response = self.client.get(route)
+                finally:
+                    setattr(self.server.log_store, attr_name, original)
+
+                self._assert_admin_error_content_free(
+                    response,
+                    status_code=400,
+                    error='requete admin invalide',
+                    error_code='admin_bad_request',
+                    reason_code=reason_code,
+                    forbidden=forbidden,
+                )
+
+    def test_admin_chat_log_delete_and_export_value_errors_are_content_free(self) -> None:
+        forbidden = (
+            'ARTIFICIAL_ADMIN_EXPORT_SECRET',
+            'https://example.invalid/private',
+            '/private/admin/export',
+        )
+        cases = (
+            (
+                self.server.log_store,
+                'delete_chat_log_events',
+                'delete',
+                '/api/admin/logs/chat?conversation_id=conv-1',
+                'admin_chat_logs_delete_bad_request',
+            ),
+            (
+                self.server.log_markdown_export,
+                'export_chat_logs_markdown',
+                'get',
+                '/api/admin/logs/chat/export.md?conversation_id=conv-1',
+                'admin_chat_logs_export_bad_request',
+            ),
+        )
+        for target, attr_name, method, route, reason_code in cases:
+            with self.subTest(route=route):
+                original = getattr(target, attr_name)
+
+                def fake_call(**_kwargs):
+                    raise ValueError(
+                        'invalid admin export value: '
+                        'https://example.invalid/private?to'
+                        'ken=ARTIFICIAL_ADMIN_EXPORT_SECRET /private/admin/export'
+                    )
+
+                setattr(target, attr_name, fake_call)
+                try:
+                    response = getattr(self.client, method)(route)
+                finally:
+                    setattr(target, attr_name, original)
+
+                self._assert_admin_error_content_free(
+                    response,
+                    status_code=400,
+                    error='requete admin invalide',
+                    error_code='admin_bad_request',
+                    reason_code=reason_code,
+                    forbidden=forbidden,
+                )
 
     def test_admin_chat_logs_route_is_available_without_admin_token(self) -> None:
         original_read = self.server.log_store.read_chat_log_events

@@ -133,6 +133,39 @@ def _ensure_dashboard_recent_for_admin_read(reason: str) -> datetime | None:
     return read_now if isinstance(read_now, datetime) else None
 
 
+def _admin_error_response(
+    *,
+    status_code: int,
+    error: str,
+    error_code: str,
+    reason_code: str,
+) -> tuple[Response, int]:
+    return jsonify({
+        'ok': False,
+        'error': error,
+        'error_code': error_code,
+        'reason_code': reason_code,
+    }), status_code
+
+
+def _admin_bad_request_response(reason_code: str) -> tuple[Response, int]:
+    return _admin_error_response(
+        status_code=400,
+        error='requete admin invalide',
+        error_code='admin_bad_request',
+        reason_code=reason_code,
+    )
+
+
+def _admin_not_found_response(reason_code: str) -> tuple[Response, int]:
+    return _admin_error_response(
+        status_code=404,
+        error='ressource admin introuvable',
+        error_code='admin_not_found',
+        reason_code=reason_code,
+    )
+
+
 app = Flask(__name__, static_folder="web", static_url_path="")
 logging.basicConfig(level="INFO")
 logger = logging.getLogger("frida.server")
@@ -1017,8 +1050,8 @@ def api_admin_chat_logs():
             payload_projection='admin',
             fail_closed=True,
         )
-    except ValueError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except ValueError:
+        return _admin_bad_request_response('admin_chat_logs_bad_request')
     except RuntimeError:
         return jsonify({'ok': False, 'error': 'chat_log_events_read_failed', 'reason_code': 'chat_log_events_read_failed'}), 500
     listing = admin_log_projection.project_event_listing(listing)
@@ -1044,8 +1077,8 @@ def api_admin_chat_logs_metadata():
         metadata = log_store.read_chat_log_metadata(
             conversation_id=request.args.get('conversation_id'),
         )
-    except ValueError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except ValueError:
+        return _admin_bad_request_response('admin_chat_logs_metadata_bad_request')
     except RuntimeError:
         return (
             jsonify(
@@ -1092,8 +1125,8 @@ def api_admin_chat_log_turns():
             fail_closed=True,
             conn_factory=log_store._conn,
         )
-    except ValueError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except ValueError:
+        return _admin_bad_request_response('admin_chat_log_turns_bad_request')
     except RuntimeError:
         return (
             jsonify(
@@ -1127,8 +1160,8 @@ def api_admin_chat_logs_metrics():
             fail_closed=True,
             conn_factory=log_store._conn,
         )
-    except ValueError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except ValueError:
+        return _admin_bad_request_response('admin_chat_log_metrics_bad_request')
     except RuntimeError:
         return (
             jsonify(
@@ -1182,8 +1215,8 @@ def api_admin_dashboard_overview():
             logger_instance=log_store.logger,
             now=dashboard_now,
         )
-    except ValueError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except ValueError:
+        return _admin_bad_request_response('admin_dashboard_overview_bad_request')
     return jsonify({'ok': True, **payload})
 
 
@@ -1197,8 +1230,8 @@ def api_admin_dashboard_conversations():
             logger_instance=log_store.logger,
             now=dashboard_now,
         )
-    except ValueError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except ValueError:
+        return _admin_bad_request_response('admin_dashboard_conversations_bad_request')
     return jsonify({'ok': True, **payload})
 
 
@@ -1213,8 +1246,8 @@ def api_admin_dashboard_conversation_turns(conversation_id: str):
             logger_instance=log_store.logger,
             now=dashboard_now,
         )
-    except ValueError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except ValueError:
+        return _admin_bad_request_response('admin_dashboard_conversation_turns_bad_request')
     return jsonify({'ok': True, **payload})
 
 
@@ -1229,10 +1262,10 @@ def api_admin_dashboard_turn_inspection(turn_id: str):
             logger_instance=log_store.logger,
             now=dashboard_now,
         )
-    except ValueError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
-    except LookupError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 404
+    except ValueError:
+        return _admin_bad_request_response('admin_dashboard_turn_inspection_bad_request')
+    except LookupError:
+        return _admin_not_found_response('admin_dashboard_turn_inspection_not_found')
     return jsonify({'ok': True, **payload})
 
 
@@ -1259,10 +1292,10 @@ def api_admin_dashboard_turn_content(turn_id: str):
             audit_fn=_audit_dashboard_content_gate,
             now=dashboard_now,
         )
-    except ValueError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
-    except LookupError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 404
+    except ValueError:
+        return _admin_bad_request_response('admin_dashboard_turn_content_bad_request')
+    except LookupError:
+        return _admin_not_found_response('admin_dashboard_turn_content_not_found')
     return jsonify({'ok': True, **payload})
 
 
@@ -1273,8 +1306,8 @@ def api_admin_chat_logs_delete():
             conversation_id=request.args.get('conversation_id'),
             turn_id=request.args.get('turn_id'),
         )
-    except ValueError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except ValueError:
+        return _admin_bad_request_response('admin_chat_logs_delete_bad_request')
     except RuntimeError:
         return jsonify({'ok': False, 'error': 'chat_log_delete_failed', 'reason_code': 'chat_log_delete_failed'}), 500
 
@@ -1306,8 +1339,8 @@ def api_admin_chat_logs_export_markdown():
             conversation_id=conversation_id,
             turn_id=turn_id,
         )
-    except ValueError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except ValueError:
+        return _admin_bad_request_response('admin_chat_logs_export_bad_request')
     except RuntimeError:
         return jsonify({'ok': False, 'error': 'chat_log_export_failed', 'reason_code': 'chat_log_export_failed'}), 500
 

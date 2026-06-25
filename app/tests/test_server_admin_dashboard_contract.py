@@ -46,6 +46,26 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
         for needle in forbidden:
             self.assertNotIn(needle, encoded)
 
+    def _assert_admin_error_content_free(
+        self,
+        response,
+        *,
+        status_code: int,
+        error: str,
+        error_code: str,
+        reason_code: str,
+        forbidden: tuple[str, ...],
+    ) -> None:
+        self.assertEqual(response.status_code, status_code)
+        data = response.get_json()
+        encoded = json.dumps(data, ensure_ascii=False, sort_keys=True)
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['error'], error)
+        self.assertEqual(data['error_code'], error_code)
+        self.assertEqual(data['reason_code'], reason_code)
+        for marker in forbidden:
+            self.assertNotIn(marker, encoded)
+
     def test_dashboard_overview_route_returns_windowed_payload(self) -> None:
         observed = {'args': None, 'refresh_reason': None}
         original = self.server.dashboard_read_model.read_dashboard_overview
@@ -261,44 +281,123 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
         self.assertIsNotNone(observed['audit_fn'])
         self._assert_content_free(data)
 
-    def test_dashboard_routes_map_read_model_errors(self) -> None:
-        original = self.server.dashboard_read_model.read_dashboard_overview
-        self.server.dashboard_read_model.read_dashboard_overview = (
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError('invalid dashboard window: broken'))
+    def test_dashboard_routes_map_read_model_errors_content_free(self) -> None:
+        forbidden = (
+            'ARTIFICIAL_ADMIN_DASHBOARD_SECRET',
+            'https://example.invalid/private',
+            '/private/admin/dashboard',
         )
-        try:
-            response = self.client.get('/api/admin/dashboard/overview?window=broken')
-        finally:
-            self.server.dashboard_read_model.read_dashboard_overview = original
+        cases = (
+            (
+                'read_dashboard_overview',
+                '/api/admin/dashboard/overview?window=broken',
+                'admin_dashboard_overview_bad_request',
+            ),
+            (
+                'read_dashboard_conversations',
+                '/api/admin/dashboard/conversations?window=broken',
+                'admin_dashboard_conversations_bad_request',
+            ),
+            (
+                'read_dashboard_conversation_turns',
+                '/api/admin/dashboard/conversations/conv-1/turns?window=broken',
+                'admin_dashboard_conversation_turns_bad_request',
+            ),
+            (
+                'read_dashboard_turn_inspection',
+                '/api/admin/dashboard/turns/turn-1/inspection?conversation_id=conv-1&window=broken',
+                'admin_dashboard_turn_inspection_bad_request',
+            ),
+            (
+                'read_dashboard_turn_content',
+                '/api/admin/dashboard/turns/turn-1/content?conversation_id=conv-1&window=broken',
+                'admin_dashboard_turn_content_bad_request',
+            ),
+        )
+        for attr_name, route, reason_code in cases:
+            with self.subTest(route=route):
+                original = getattr(self.server.dashboard_read_model, attr_name)
+                setattr(
+                    self.server.dashboard_read_model,
+                    attr_name,
+                    lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                        ValueError(
+                            'invalid dashboard value: '
+                            'https://example.invalid/private?to'
+                            'ken=ARTIFICIAL_ADMIN_DASHBOARD_SECRET '
+                            '/private/admin/dashboard'
+                        )
+                    ),
+                )
+                try:
+                    response = self.client.get(route)
+                finally:
+                    setattr(self.server.dashboard_read_model, attr_name, original)
 
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json(), {'ok': False, 'error': 'invalid dashboard window: broken'})
+                self._assert_admin_error_content_free(
+                    response,
+                    status_code=400,
+                    error='requete admin invalide',
+                    error_code='admin_bad_request',
+                    reason_code=reason_code,
+                    forbidden=forbidden,
+                )
 
     def test_dashboard_turn_inspection_route_maps_not_found(self) -> None:
         original = self.server.dashboard_read_model.read_dashboard_turn_inspection
         self.server.dashboard_read_model.read_dashboard_turn_inspection = (
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(LookupError('dashboard turn not found'))
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                LookupError(
+                    'dashboard turn not found: https://example.invalid/private?to'
+                    'ken=ARTIFICIAL_ADMIN_NOT_FOUND_SECRET /private/admin/dashboard'
+                )
+            )
         )
         try:
             response = self.client.get('/api/admin/dashboard/turns/missing/inspection?conversation_id=conv-1')
         finally:
             self.server.dashboard_read_model.read_dashboard_turn_inspection = original
 
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.get_json(), {'ok': False, 'error': 'dashboard turn not found'})
+        self._assert_admin_error_content_free(
+            response,
+            status_code=404,
+            error='ressource admin introuvable',
+            error_code='admin_not_found',
+            reason_code='admin_dashboard_turn_inspection_not_found',
+            forbidden=(
+                'ARTIFICIAL_ADMIN_NOT_FOUND_SECRET',
+                'https://example.invalid/private',
+                '/private/admin/dashboard',
+            ),
+        )
 
     def test_dashboard_turn_content_route_maps_not_found(self) -> None:
         original = self.server.dashboard_read_model.read_dashboard_turn_content
         self.server.dashboard_read_model.read_dashboard_turn_content = (
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(LookupError('dashboard turn not found'))
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                LookupError(
+                    'dashboard turn not found: https://example.invalid/private?to'
+                    'ken=ARTIFICIAL_ADMIN_CONTENT_SECRET /private/admin/dashboard'
+                )
+            )
         )
         try:
             response = self.client.get('/api/admin/dashboard/turns/missing/content?conversation_id=conv-1')
         finally:
             self.server.dashboard_read_model.read_dashboard_turn_content = original
 
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.get_json(), {'ok': False, 'error': 'dashboard turn not found'})
+        self._assert_admin_error_content_free(
+            response,
+            status_code=404,
+            error='ressource admin introuvable',
+            error_code='admin_not_found',
+            reason_code='admin_dashboard_turn_content_not_found',
+            forbidden=(
+                'ARTIFICIAL_ADMIN_CONTENT_SECRET',
+                'https://example.invalid/private',
+                '/private/admin/dashboard',
+            ),
+        )
 
     def test_dashboard_route_available_without_admin_token_in_loopback_tests(self) -> None:
         original = self.server.dashboard_read_model.read_dashboard_overview

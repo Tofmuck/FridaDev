@@ -1278,13 +1278,17 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-ADMIN-400-RAW-01
 
-- Statut courant: validated_by_lot_6A.
+- Statut courant: closed_by_lot_6C.
 - Severite: P2.
 - Fichiers suspects: `app/server.py` routes admin logs/dashboard/export.
 - Lot cible: Lot 6C.
 - Preuve Lot 6A: les routes admin 400/404 exposent encore des erreurs issues de
   `ValueError` / `LookupError` sous forme textuelle; le correctif doit rester
   borne aux reason codes stables et aux tests sentinelles.
+- Preuve Lot 6C: `app/server.py` ne renvoie plus `str(exc)` sur les 400/404
+  admin logs/dashboard/export/content; les tests sentinelles conteneur valident
+  l'absence d'URL/query, path prive synthetique, token-like synthetique et
+  payload raw synthetique dans les reponses.
 - Critere de cloture: `ValueError`/400 admin renvoie reason code stable sans
   echo de valeur invalide.
 - Preuve minimale: tests sentinelles URL/token/path dans query params.
@@ -2232,7 +2236,7 @@ Decision:
 - [x] Lot 6A: audit/triage observabilite/logs applicatifs, docs-only.
 - [ ] Qualifier `str(exc)`, raw, payload, traceback, print.
 - [x] Lot 6B: traiter erreurs LLM brutes.
-- [ ] Traiter erreurs 400 admin brutes.
+- [x] Lot 6C: traiter erreurs 400/404 admin brutes sur logs/dashboard/export.
 - [ ] Traiter dashboard web legacy URL/hash raw.
 - [ ] Trancher doctrine hashes courts identity.
 - [ ] Corriger seulement surfaces qui exposent ou masquent une panne.
@@ -2332,6 +2336,37 @@ Resultat Lot 6B:
 - Les `str(exc)` restants dans `server.py` correspondent aux surfaces hors
   scope deja deleguees, notamment Lot 6C admin 400/404 et Lot 6 global par
   sous-surface.
+
+#### Lot 6C - Admin 400/404 raw
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne aux reponses admin logs/dashboard/export.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le finding etait
+borne aux routes admin `server.py` qui transformaient `ValueError` /
+`LookupError` en `error: str(exc)` sur 400/404.
+
+- [x] Valider `P2-CEL-ADMIN-400-RAW-01`.
+- [x] Remplacer les 400 admin brutes des surfaces chat logs metadata/turns/
+  metrics/delete/export par `admin_bad_request` + reason code stable.
+- [x] Remplacer les 400/404 dashboard brutes par `admin_bad_request` /
+  `admin_not_found` + reason code stable.
+- [x] Ajouter tests sentinelles avec URL/query, path prive synthetique,
+  token-like synthetique et payload raw synthetique.
+- [x] Conserver les statuts HTTP existants 400/404.
+- [x] Ne pas traiter Lot 6D/6E/6F/6G/6H, Lot 7 ni Lot 9.
+
+Resultat Lot 6C:
+
+- `P2-CEL-ADMIN-400-RAW-01` est clos pour les routes admin logs/dashboard/
+  export/content de `server.py`.
+- Les reponses admin 400/404 restent diagnostiquables via `error_code` et
+  `reason_code`, sans echo de valeur invalide ni exception brute.
+- Les `str(exc)` restants dans `app/admin/*` ne sont pas corriges par ce lot:
+  ils relevent des contrats settings/services ou du finding large
+  `P2-CEL-EXCEPTION-RAW-SURFACE-01`, a traiter seulement par sous-surface
+  dediee.
 
 ### Lot 7 - Tests/smokes/artefacts
 
