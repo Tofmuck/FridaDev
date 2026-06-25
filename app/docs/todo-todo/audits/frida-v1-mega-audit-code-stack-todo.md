@@ -1088,7 +1088,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-CEL-ADMIN-COMPAT-KNOBS-01
 
 - Statut initial: open.
-- Statut courant: triaged_by_lot_5A_needs_targeted_validation.
+- Statut courant: closed_by_lot_5D_admin_guard_contract.
 - Severite: P2.
 - Fichiers suspects: tests admin mentionnant `FRIDA_ADMIN_TOKEN` /
   `FRIDA_ADMIN_LAN_ONLY`, `app/server.py`.
@@ -1103,6 +1103,13 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 - Reste ouvert: quelques suites de tests/config mentionnent encore les knobs
   obsoletes comme fixtures/compat; besoin d'un sous-lot de nettoyage tests/docs
   pour eviter toute ambiguite future, sans reintroduire de token humain.
+- Correctif Lot 5D: `.env.example` ne presente plus `FRIDA_ADMIN_TOKEN`,
+  `FRIDA_ADMIN_LAN_ONLY` ni `FRIDA_ADMIN_ALLOWED_CIDRS` comme variables
+  configurables. `config.py` conserve seulement les constantes legacy
+  non env-backed pour compat tests/imports. Les tests prouvent le contrat OVH:
+  loopback accepte, proxy de confiance + `Remote-User` accepte, appel direct
+  non-proxy refuse, appel lateral avec `Remote-User` forge refuse, et
+  `X-Admin-Token`/`FRIDA_ADMIN_TOKEN` seul ne donne aucun acces humain.
 - Critere de cloture: tests admin alignes sur loopback/proxy `Remote-User`,
   knobs obsoletes marques compat si conserves.
 - Preuve minimale: tests admin conteneur, refus lateral direct.
@@ -1906,7 +1913,7 @@ Decisions Lot 4E:
 - [x] Lot 5B.2.1: mode Notes consomme cote backend sans note selectionnee.
 - [x] Lot 5B.2.2: mode Notes sans dossier courant bloque sans lane mensongere.
 - [x] Lot 5B.2.3: mode Notes valide le dossier reel avant lane sans selection.
-- [ ] Aligner tests admin sur contrat proxy/loopback.
+- [x] Lot 5D: aligner compat knobs/tests admin sur contrat proxy/loopback.
 - [ ] Verifier routes admin registerees par modules.
 - [ ] Verifier admin HTML/public host vs API guard.
 - [x] Decider prompts complets dans DOM admin: content gate explicite livre.
@@ -2052,7 +2059,8 @@ Limites conservees:
 - `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01` est clos par Lot 5C + Lot 5C.1:
   Exports/Images corriges en Lot 5C, Documents/Fichiers corriges en Lot 5C.1,
   Notes couvert par Lot 5B.
-- `P2-CEL-ADMIN-COMPAT-KNOBS-01` reste ouvert pour Lot 5D.
+- `P2-CEL-ADMIN-COMPAT-KNOBS-01` est clos par Lot 5D: compat legacy bornee,
+  exemple env nettoye, preuve guard admin ajoutee.
 - `P3-CEL-LOG-FRONTEND-DENYLIST-01` reste cible Lot 7.
 - Lot 6/7/9 restent non coches.
 
@@ -2121,6 +2129,45 @@ Resultat Lot 5C.1:
 - Les tests Node prouvent: HTTP 500/`ok=false`, payload inattendu, vide normal,
   rendu erreur visible, actions fichier visibles en cas liste OK, et
   non-regression Exports/Images/Notes.
+
+#### Lot 5D - Admin compat knobs et preuve guard admin OVH
+
+Statut: execute le 2026-06-25.
+Runtime modifie: non.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le guard runtime etait
+deja aligne; le meilleur plan etait de renforcer la preuve comportementale,
+nettoyer l'exemple d'environnement qui presentait encore les anciens knobs comme
+configurables, et documenter le statut compat legacy.
+
+- [x] Valider `P2-CEL-ADMIN-COMPAT-KNOBS-01`.
+- [x] Confirmer que `server.py` ne rebranche pas `FRIDA_ADMIN_TOKEN`,
+  `FRIDA_ADMIN_LAN_ONLY`, `FRIDA_ADMIN_ALLOWED_CIDRS` ni `X-Admin-Token` dans
+  le guard `/api/admin/*`.
+- [x] Confirmer que `config.py` conserve seulement des constantes compat
+  obsoletes non env-backed.
+- [x] Nettoyer `.env.example`: ne plus presenter les anciens knobs comme des
+  variables operateur actives.
+- [x] Ajouter une preuve test: loopback local accepte.
+- [x] Ajouter une preuve test: proxy de confiance + `Remote-User` accepte.
+- [x] Ajouter une preuve test: acces direct non-proxy refuse.
+- [x] Ajouter une preuve test: lateral direct avec `Remote-User` forge refuse.
+- [x] Ajouter une preuve test: `X-Admin-Token`/`FRIDA_ADMIN_TOKEN` seul ne
+  suffit pas.
+- [x] Ne pas absorber Lot 6/7/9.
+
+Resultat Lot 5D:
+
+- Contrat OVH maintenu: `/api/admin/*` accepte seulement loopback conteneur ou
+  proxy Caddy/Authelia de confiance avec identite `Remote-User`.
+- Les appels directs depuis une adresse non-loopback/non-proxy restent refuses,
+  meme si un header `Remote-User` est forge.
+- Le token admin legacy n'est pas un garde humain: meme si la constante compat
+  est modifiee dans un test, `X-Admin-Token` seul ne donne pas acces.
+- Les anciens noms restent visibles uniquement comme compat obsoletes dans
+  `config.py` et dans quelques tests historiques qui snapshotent ces constantes;
+  ils ne sont pas env-backed et ne sont plus proposes dans `.env.example`.
 
 ### Lot 6 - Observabilite/logs applicatifs
 

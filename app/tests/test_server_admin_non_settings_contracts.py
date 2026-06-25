@@ -90,6 +90,79 @@ class ServerAdminNonSettingsContractsTests(unittest.TestCase):
             },
         )
 
+    def test_admin_guard_allows_loopback_proof_calls(self) -> None:
+        response = self.client.get(
+            '/api/admin/logs?limit=1',
+            environ_overrides={'REMOTE_ADDR': '127.0.0.1'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+
+    def test_admin_guard_allows_trusted_proxy_remote_user(self) -> None:
+        original_trusted_proxy_ips = self.server._trusted_admin_proxy_ips
+        self.server._trusted_admin_proxy_ips = lambda: {'172.18.0.2'}
+        try:
+            response = self.client.get(
+                '/api/admin/logs?limit=1',
+                headers={'Remote-User': 'operator'},
+                environ_overrides={'REMOTE_ADDR': '172.18.0.2'},
+            )
+        finally:
+            self.server._trusted_admin_proxy_ips = original_trusted_proxy_ips
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+
+    def test_admin_guard_rejects_direct_non_proxy_calls(self) -> None:
+        original_trusted_proxy_ips = self.server._trusted_admin_proxy_ips
+        self.server._trusted_admin_proxy_ips = lambda: {'172.18.0.2'}
+        try:
+            response = self.client.get(
+                '/api/admin/logs?limit=1',
+                environ_overrides={'REMOTE_ADDR': '172.18.0.44'},
+            )
+        finally:
+            self.server._trusted_admin_proxy_ips = original_trusted_proxy_ips
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'admin access denied'})
+
+    def test_admin_guard_rejects_lateral_forged_remote_user(self) -> None:
+        original_trusted_proxy_ips = self.server._trusted_admin_proxy_ips
+        self.server._trusted_admin_proxy_ips = lambda: {'172.18.0.2'}
+        try:
+            response = self.client.get(
+                '/api/admin/logs?limit=1',
+                headers={'Remote-User': 'operator'},
+                environ_overrides={'REMOTE_ADDR': '172.18.0.44'},
+            )
+        finally:
+            self.server._trusted_admin_proxy_ips = original_trusted_proxy_ips
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'admin access denied'})
+
+    def test_admin_guard_rejects_token_without_trusted_proxy(self) -> None:
+        original_trusted_proxy_ips = self.server._trusted_admin_proxy_ips
+        original_admin_token = self.server.config.FRIDA_ADMIN_TOKEN
+        self.server._trusted_admin_proxy_ips = lambda: {'172.18.0.2'}
+        self.server.config.FRIDA_ADMIN_TOKEN = 'legacy-test-marker'
+        try:
+            response = self.client.get(
+                '/api/admin/logs?limit=1',
+                headers={'X-Admin-Token': 'legacy-test-marker'},
+                environ_overrides={'REMOTE_ADDR': '172.18.0.44'},
+            )
+        finally:
+            self.server.config.FRIDA_ADMIN_TOKEN = original_admin_token
+            self.server._trusted_admin_proxy_ips = original_trusted_proxy_ips
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'admin access denied'})
+
     def test_hermeneutics_and_settings_routes_stay_separated(self) -> None:
         routes = {rule.rule for rule in self.server.app.url_map.iter_rules()}
 
@@ -162,6 +235,21 @@ class ServerAdminNonSettingsContractsTests(unittest.TestCase):
         self.assertIn('if _is_loopback_ip(client_ip):', guard_source)
         self.assertIn('trusted_proxy_ips = _trusted_admin_proxy_ips()', guard_source)
         self.assertIn("'missing_proxy_identity'", guard_source)
+
+    def test_env_examples_do_not_advertise_legacy_admin_knobs(self) -> None:
+        env_example = (APP_DIR / '.env.example').read_text(encoding='utf-8')
+        config_example = (APP_DIR / 'config.example.py').read_text(encoding='utf-8')
+
+        for marker in (
+            'FRIDA_ADMIN_TOKEN=',
+            'FRIDA_ADMIN_LAN_ONLY=',
+            'FRIDA_ADMIN_ALLOWED_CIDRS=',
+        ):
+            self.assertNotIn(marker, env_example)
+            self.assertNotIn(marker, config_example)
+
+        self.assertIn('No application-level human admin token', config_example)
+        self.assertIn('Remote-User', config_example)
 
 if __name__ == '__main__':
     unittest.main()
