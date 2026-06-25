@@ -7,7 +7,7 @@ Lot ferme: `Lot 5`
 Transition refonte mutable 2026-05-26:
 - le read-model expose maintenant le regime actif `mutable_identity_judge_v2_add_only`;
 - le contrat source-of-truth du writer mutable reste `mutable-identity-judge-contract.md`;
-- les champs de fenetre, statut, reason code, longueurs et hash courts racontent `5 paires completes -> juge LLM mutable_judge_v2 -> add/no_change -> identity_mutables`;
+- les champs de fenetre, statut, reason code, presence, longueurs, compteurs, IDs opaques et timestamps racontent `5 paires completes -> juge LLM mutable_judge_v2 -> add/no_change -> identity_mutables`;
 - le scoring local et la promotion mutable -> static restent visibles seulement comme legacy pre-refonte inactive.
 
 ## But
@@ -145,11 +145,11 @@ Semantique:
 - `buffer_target_pairs` designe toujours la cible runtime active de la fenetre judge-first; une ancienne valeur stockee en DB peut rester visible seulement via `stored_buffer_target_pairs` / `legacy_stored_buffer_target_pairs`, non autoritatifs;
 - il separe explicitement l'etat du buffer courant (`current_buffer`) du dernier run agent termine (`last_completed_agent`) sans dump du buffer brut;
 - quand un nouveau buffer est en cours, `last_agent_reason` ne doit pas porter une ancienne raison terminale comme `completed_no_change`; cette raison reste lisible via `last_completed_agent.reason_code` quand disponible;
-- `latest_agent_activity` resume compactement le dernier verdict utile, les compteurs, statuts, reason codes, longueurs, hash courts, tailles de fenetre et eventuels evenements legacy compactes pour cette conversation;
+- `latest_agent_activity` resume compactement le dernier verdict utile, les compteurs, statuts, reason codes, longueurs, tailles de fenetre et eventuels evenements legacy compactes pour cette conversation, sans hash court stable derive de texte identity, proposition ou reason libre;
 - `latest_agent_activity.reason_code` lit le `reason_code` compact de l'event actif `mutable_identity_judge`, avec fallback historique vers `identity_periodic_agent`;
 - `raise_tension` ne fait plus partie du contrat actif `mutable_judge_v2`; les champs `open_tension_*` peuvent rester vides par compatibilite read-model, ou compacter uniquement d'anciens events pre-Lot-B;
 - ces anciennes tensions compactes ne requalifient pas `identity_conflicts` en source active et ne rejoignent pas le canon injecte.
-- `latest_agent_activity.outcome_summaries` peut exposer seulement des summaries content-free: sujet, verdict, statut, reason code, continuity kind, compteurs, longueurs et hash courts; il ne contient jamais proposition brute, fenetre brute, prompt ou contenu mutable.
+- `latest_agent_activity.outcome_summaries` peut exposer seulement des summaries content-free: sujet, verdict, statut, reason code, continuity kind, compteurs et longueurs; il ne contient jamais proposition brute, fenetre brute, prompt, contenu mutable ni hash court stable derive de ces textes.
 
 ## Couches par sujet
 
@@ -203,7 +203,8 @@ Semantique:
 - source physique: table `identity_mutables`;
 - cette couche reste une couche identitaire mouvante et non un sous-prompt operatoire;
 - `actively_injected` signifie seulement qu'elle participe a la forme compilee active;
-- `last_mutation_audit` resume la derniere mutation connue issue de `identity_mutable_audit` avec `present`, `storage_kind`, `actively_injected=false`, `subject`, `mutation_kind`, `actor`, `reason_code`, `old_chars`, `new_chars`, `old_sha256_12`, `new_sha256_12`, `source_trace_id` et `created_ts`;
+- `last_mutation_audit` resume la derniere mutation connue issue de `identity_mutable_audit` avec `present`, `storage_kind`, `actively_injected=false`, `subject`, `mutation_kind`, `actor`, `reason_code`, `old_chars`, `new_chars`, `source_trace_id` et `created_ts`;
+- les colonnes SQL historiques `old_sha256_12` / `new_sha256_12` peuvent rester en base pour compatibilite schema, mais depuis Lot 6E les nouveaux audits ecrivent `NULL` dans ces colonnes et les read-models identity ne les projettent plus;
 - `last_mutation_audit.reason_code` est un code compact et stable (`set_applied`, `clear_applied`, `mutable_judge_add`, `mutable_judge_tighten`, `mutable_judge_merge`, `mutable_judge_clear_obsolete`, ou codes legacy historiques), pas la raison humaine libre d'une edition admin;
 - `last_mutation_audit` ne contient jamais le contenu mutable brut et ne devient jamais une source d'injection;
 - si la mutable courante est absente, `last_mutation_audit.present=true` permet de distinguer une absence apres `clear`; `present=false` signifie seulement qu'aucun historique durable connu n'existe;

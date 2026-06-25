@@ -333,7 +333,7 @@ def build_identity_runtime_regime() -> dict[str, Any]:
         'staging_not_injected': True,
         'active_log_stages': ['mutable_identity_judge', 'mutable_identity_judge_apply'],
         'legacy_log_stages': ['identity_periodic_agent', 'identity_periodic_agent_apply'],
-        'observability_contract': 'content_free_counts_status_reasons_lengths_hashes_timestamps',
+        'observability_contract': 'content_free_counts_status_reasons_lengths_timestamps',
         'mutable_budget': {
             'target_chars': int(config.IDENTITY_MUTABLE_TARGET_CHARS),
             'max_chars': int(config.IDENTITY_MUTABLE_MAX_CHARS),

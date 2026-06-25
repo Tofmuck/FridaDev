@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib
 import sys
 import unittest
@@ -137,16 +138,20 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertEqual(first_item['created_ts'], '2026-05-14T09:00:00Z')
         self.assertEqual(first_item['last_seen_ts'], '2026-05-14T09:30:00Z')
         self.assertEqual(first_item['source_trace_id'], 'trace-1')
+        self.assertTrue(first_item['content_present'])
         self.assertEqual(first_item['content_chars'], len(raw_content))
-        self.assertEqual(len(first_item['content_sha256_12']), 12)
+        self.assertNotIn('content_sha256_12', first_item)
+        self.assertTrue(first_item['content_norm_present'])
         self.assertEqual(first_item['content_norm_chars'], len(raw_content_norm))
-        self.assertEqual(len(first_item['content_norm_sha256_12']), 12)
+        self.assertNotIn('content_norm_sha256_12', first_item)
         self.assertEqual(first_item['reason_code'], 'text_reason_present')
+        self.assertTrue(first_item['reason_present'])
         self.assertEqual(first_item['reason_chars'], len(raw_last_reason))
-        self.assertEqual(len(first_item['reason_sha256_12']), 12)
+        self.assertNotIn('reason_sha256_12', first_item)
         self.assertEqual(first_item['override_note_code'], 'override_note_present')
+        self.assertTrue(first_item['override_note_present'])
         self.assertEqual(first_item['override_note_chars'], len(raw_override_reason))
-        self.assertEqual(len(first_item['override_note_sha256_12']), 12)
+        self.assertNotIn('override_note_sha256_12', first_item)
         self.assertTrue(first_item['legacy_only'])
         self.assertTrue(first_item['evidence_only'])
         self.assertFalse(first_item['drives_active_injection'])
@@ -158,6 +163,8 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertNotIn(raw_content_norm, serialized)
         self.assertNotIn(raw_last_reason, serialized)
         self.assertNotIn(raw_override_reason, serialized)
+        for raw_value in (raw_content, raw_content_norm, raw_last_reason, raw_override_reason):
+            self.assertNotIn(hashlib.sha256(raw_value.encode('utf-8')).hexdigest()[:12], serialized)
 
     def test_identity_candidates_preserves_explicit_stable_reason_code(self) -> None:
         original_get_identities = self.server.memory_store.get_identities
@@ -186,8 +193,9 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertEqual(data['count'], 1)
         item = data['items'][0]
         self.assertEqual(item['reason_code'], 'legacy_identity_extractor')
+        self.assertTrue(item['reason_present'])
         self.assertEqual(item['reason_chars'], len('operator note should stay compact'))
-        self.assertEqual(len(item['reason_sha256_12']), 12)
+        self.assertNotIn('reason_sha256_12', item)
         self.assertNotIn('operator note should stay compact', str(data))
 
     def test_identity_candidates_rejects_invalid_subject(self) -> None:

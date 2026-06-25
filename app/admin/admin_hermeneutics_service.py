@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Tuple
 
@@ -42,13 +41,6 @@ def _text(value: Any) -> str:
     return str(value or '').strip()
 
 
-def _sha256_12(value: Any) -> str:
-    text = _text(value)
-    if not text:
-        return ''
-    return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
-
-
 def _compact_explicit_reason_code(value: Any) -> str:
     text = _text(value).lower().replace('-', '_')
     if not text:
@@ -88,20 +80,20 @@ def compact_identity_candidate_item(item: Any) -> Dict[str, Any]:
         'recurrence': payload.get('recurrence'),
         'scope': payload.get('scope'),
         'evidence_kind': payload.get('evidence_kind'),
+        'content_present': bool(content),
         'content_chars': len(content),
-        'content_sha256_12': _sha256_12(content),
+        'content_norm_present': bool(content_norm),
         'content_norm_chars': len(content_norm),
-        'content_norm_sha256_12': _sha256_12(content_norm),
         'reason_code': _compact_explicit_reason_code(payload.get('reason_code'))
         or _free_text_reason_marker(reason, marker='text_reason_present'),
+        'reason_present': bool(reason),
         'reason_chars': len(reason),
-        'reason_sha256_12': _sha256_12(reason),
         'override_state': payload.get('override_state'),
         'override_actor': payload.get('override_actor'),
         'override_ts': payload.get('override_ts'),
         'override_note_code': _free_text_reason_marker(override_note, marker='override_note_present'),
+        'override_note_present': bool(override_note),
         'override_note_chars': len(override_note),
-        'override_note_sha256_12': _sha256_12(override_note),
         'legacy_only': True,
         'evidence_only': True,
         'drives_active_injection': False,

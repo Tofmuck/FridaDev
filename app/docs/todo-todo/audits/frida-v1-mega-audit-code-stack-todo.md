@@ -1186,7 +1186,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-IDENTITY-HASH-POLICY-01
 
-- Statut courant: closed_by_lot_6E.
+- Statut courant: closed_by_lot_6E_1.
 - Severite: P2.
 - Fichiers suspects: `app/observability/identity_observability.py`,
   projection pipeline identity.
@@ -1206,13 +1206,20 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   `old_sha256_12` / `new_sha256_12` restent conservees pour compatibilite,
   mais les nouveaux audits ecrivent `NULL` et les read-models ne les exposent
   plus.
+- Correctif Lot 6E.1: cloture prematuree corrigee. La route active
+  `/api/admin/hermeneutics/identity-candidates` ne projette plus
+  `content_sha256_12`, `content_norm_sha256_12`, `reason_sha256_12` ni
+  `override_note_sha256_12`; le libelle `observability_contract` identity ne
+  promet plus de hashes; les specs actives identity/dashboard/read-model sont
+  alignees sur presence, longueurs, compteurs, statuts, reason codes, IDs
+  opaques et timestamps.
 - Critere de cloture: doctrine explicite sur hashes courts identity:
   suppression, HMAC/salt, ou exception justifiee.
 - Preuve minimale: spec/docs + tests projection.
-- Preuve Lot 6E: tests sentinelles guard/dashboard/admin/read-model prouvent que
+- Preuve Lot 6E/6E.1: tests sentinelles guard/dashboard/admin/read-model prouvent que
   les anciens champs `identity_block_sha256_12`, `update_reason_sha256_12`,
   `old_sha256_12`, `new_sha256_12`, `proposition_sha256_12` et les hashes de
-  contenu legacy identity ne ressortent plus dans les surfaces traitees.
+  contenu/reason legacy identity ne ressortent plus dans les surfaces traitees.
 - Hors-scope: modifier contenu identity.
 
 ### P2-CEL-NOTES-UI-GAP-01
@@ -2261,6 +2268,8 @@ Decision:
 - [x] Lot 6C: traiter erreurs 400/404 admin brutes sur logs/dashboard/export.
 - [x] Lot 6D: traiter dashboard web legacy URL/hash raw.
 - [x] Lot 6E: trancher doctrine hashes courts identity.
+- [x] Lot 6E.1: corriger hashes identity restants dans `identity-candidates`,
+  libelle runtime et specs actives.
 - [ ] Corriger seulement surfaces qui exposent ou masquent une panne.
 - [ ] Conserver diagnostics content-free.
 - [ ] Lot 6F: traiter `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01`
@@ -2452,8 +2461,9 @@ conserver les diagnostics par presence/longueurs/compteurs/statuts.
 
 Resultat Lot 6E:
 
-- `P2-CEL-IDENTITY-HASH-POLICY-01` est clos pour les surfaces identity
-  traitees.
+- `P2-CEL-IDENTITY-HASH-POLICY-01` etait clos trop tot: un contre-audit a
+  confirme des restes dans `identity-candidates`, un libelle runtime et trois
+  specs actives. Ces restes sont traites en Lot 6E.1 ci-dessous.
 - La garde observabilite refuse explicitement les anciens champs
   `identity_block_sha256_12` et `update_reason_sha256_12`.
 - Les tests cibles prouvent que les payloads identity reels restent acceptes
@@ -2461,6 +2471,44 @@ Resultat Lot 6E:
   ressortent pas dans les projections admin/dashboard concernees.
 - Les surfaces de hash hors identity, par exemple documents actifs,
   hermeneutique ou memoire durable, restent hors scope de ce lot.
+
+#### Lot 6E.1 - Correctif hashes identity restants
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne a `/api/admin/hermeneutics/identity-candidates`
+et au libelle du read-model identity.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Les trois findings
+etaient confirmes dans l'etat courant et relevaient du meme correctif de
+cloture Lot 6E sans migration ni refactor.
+
+- [x] Valider et corriger la route active
+  `/api/admin/hermeneutics/identity-candidates`: retrait de
+  `content_sha256_12`, `content_norm_sha256_12`, `reason_sha256_12` et
+  `override_note_sha256_12`.
+- [x] Conserver les diagnostics content-free sur cette route:
+  `content_present`, `content_chars`, `content_norm_present`,
+  `content_norm_chars`, `reason_code`, `reason_present`, `reason_chars`,
+  `override_note_code`, `override_note_present`, `override_note_chars`,
+  statuts, subject, IDs opaques, timestamps et metadonnees.
+- [x] Aligner le libelle runtime `observability_contract` sur
+  `content_free_counts_status_reasons_lengths_timestamps`.
+- [x] Aligner les specs actives `identity-surface-contract.md`,
+  `dashboard-long-term-observability-contract.md` et
+  `identity-read-model-contract.md`.
+- [x] Ne pas purger ni migrer l'historique; ne pas modifier le contrat
+  d'edition canonique static/mutable.
+- [x] Ne pas traiter Lot 6F/6G/6H, Lot 7 ni Lot 9.
+
+Resultat Lot 6E.1:
+
+- `P2-CEL-IDENTITY-HASH-POLICY-01` est clos apres correction des restes.
+- Les tests sentinelles calculent les anciens hashes courts synthetiques et
+  verifient qu'ils ne ressortent pas dans la reponse `identity-candidates`.
+- Les specs vivantes disent desormais que les surfaces identity diagnostiques
+  gardent presence, longueurs, compteurs, statuts, reason codes, IDs opaques et
+  timestamps, sans hash court stable sur texte identity/reason libre.
 
 ### Lot 7 - Tests/smokes/artefacts
 
