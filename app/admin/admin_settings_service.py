@@ -43,6 +43,39 @@ def settings_status_response(*, runtime_settings_module: Any) -> Dict[str, Any]:
     return {'ok': True, **status}
 
 
+def readonly_info_content_response(
+    section: str,
+    key: str,
+    data: Any,
+    *,
+    runtime_settings_module: Any,
+) -> Tuple[Dict[str, Any], int]:
+    if data is None:
+        data = {}
+    if not isinstance(data, Mapping):
+        return {'ok': False, 'error': 'content gate request must be a mapping'}, 400
+    acknowledged = bool(data.get('content_gate_acknowledged') or data.get('acknowledged'))
+    if not acknowledged:
+        return {
+            'ok': False,
+            'error': 'content gate acknowledgement required',
+            'section': section,
+            'key': key,
+            'reason_code': 'admin_prompt_content_gate_ack_required',
+        }, 403
+    try:
+        payload = runtime_settings_module.get_section_readonly_info_content(section, key)
+    except KeyError:
+        return {
+            'ok': False,
+            'error': 'readonly content is not available',
+            'section': section,
+            'key': key,
+            'reason_code': 'admin_readonly_content_not_available',
+        }, 404
+    return {'ok': True, **payload}, 200
+
+
 def _validation_failure_response(section: str, validation: Mapping[str, Any]) -> Dict[str, Any]:
     failed_checks = [
         check

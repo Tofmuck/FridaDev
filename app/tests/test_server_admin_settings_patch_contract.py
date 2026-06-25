@@ -103,6 +103,18 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertIn('runtime settings validation failed', data['error'])
         return data
 
+    def assertPromptMetadata(self, item: dict) -> None:
+        self.assertTrue(item['content_gate']['required'])
+        self.assertFalse(item['content_gate']['raw_content_included'])
+        value = item['value']
+        self.assertEqual(value['status'], 'content_gate_required')
+        self.assertTrue(value['present'])
+        self.assertGreater(value['char_count'], 0)
+        self.assertGreater(value['line_count'], 0)
+        self.assertEqual(value['reason_code'], 'admin_prompt_content_gate_required')
+        self.assertFalse(value['raw_content_included'])
+        self.assertIn('/readonly-info/', value['content_endpoint'])
+
     def test_patch_admin_settings_main_model_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
         original_update = self.server.runtime_settings.update_runtime_section
@@ -152,9 +164,9 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(data['payload']['model']['value'], 'openrouter/patched-main-model')
         self.assertEqual(data['payload']['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
         self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
-        self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
+        self.assertPromptMetadata(data['readonly_info']['system_prompt'])
         self.assertEqual(data['readonly_info']['system_prompt_loader']['value'], 'core.prompt_loader.get_main_system_prompt()')
-        self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
+        self.assertPromptMetadata(data['readonly_info']['hermeneutical_prompt'])
         self.assertEqual(
             data['readonly_info']['hermeneutical_prompt_loader']['value'],
             'core.prompt_loader.get_main_hermeneutical_prompt()',
@@ -486,8 +498,8 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(data['payload']['response_max_tokens']['value'], 8192)
         self.assertEqual(data['payload']['response_max_tokens']['origin'], 'admin_ui')
         self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
-        self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
-        self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
+        self.assertPromptMetadata(data['readonly_info']['system_prompt'])
+        self.assertPromptMetadata(data['readonly_info']['hermeneutical_prompt'])
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
     def test_patch_admin_settings_main_model_updates_reasoning_effort(self) -> None:
@@ -586,7 +598,7 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(data['section'], 'web_reformulation_model')
         self.assertEqual(data['payload']['model']['value'], 'openai/gpt-5.4-mini')
         self.assertEqual(data['payload']['max_tokens']['value'], 40)
-        self.assertIn('Nous sommes le {today}.', data['readonly_info']['system_prompt']['value'])
+        self.assertPromptMetadata(data['readonly_info']['system_prompt'])
 
     def test_patch_admin_settings_main_model_accepts_secret_replace_value(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}

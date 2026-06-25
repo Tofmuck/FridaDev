@@ -461,6 +461,10 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
     return runtime_settings_api_view.get_section_readonly_info(section)
 
 
+def get_section_readonly_info_content(section: str, key: str) -> dict[str, Any]:
+    return runtime_settings_api_view.get_section_readonly_info_content(section, key)
+
+
 def get_main_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('main_model', fetcher=fetcher)
 

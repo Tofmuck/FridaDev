@@ -20,6 +20,16 @@ const WorkspaceFolderGeneratedImages = (
     ? window.FridaWorkspaceFolderGeneratedImages
     : (typeof require !== "undefined" ? require("./chat_workspace_folder_generated_images.js") : null)
 );
+const WorkspaceFolderNotes = (
+  typeof window !== "undefined" && window.FridaNotesMode
+    ? window.FridaNotesMode
+    : (typeof require !== "undefined" ? require("./chat_notes_mode.js") : null)
+);
+const WorkspaceFolderNotesPanel = (
+  typeof window !== "undefined" && window.FridaWorkspaceFolderNotesPanel
+    ? window.FridaWorkspaceFolderNotesPanel
+    : (typeof require !== "undefined" ? require("./chat_workspace_folder_notes_panel.js") : null)
+);
 const WORKSPACE_CONVERSATION_DRAG_MIME = "application/x-fridadev-conversation-id";
 
 function clampThreadTitle(value, fallback = "Nouvelle conversation") {
@@ -53,6 +63,7 @@ function createChatThreadsSidebar({
   closeSidebar,
   renderConversationMessage,
   scrollToBottom,
+  notesModeController,
   consoleObj,
 } = {}) {
   const httpFetch = fetchFn || (typeof fetch !== "undefined" ? fetch : null);
@@ -63,6 +74,8 @@ function createChatThreadsSidebar({
   let workspaceFilesState = new Map();
   let workspaceExportsState = new Map();
   let workspaceGeneratedImagesState = new Map();
+  let workspaceNotesState = new Map();
+  let workspaceNotesStatusState = new Map();
   let workspaceFileSelectionsState = new Map();
   let currentThreadId = null;
   const messageCache = new Map();
@@ -108,6 +121,9 @@ function createChatThreadsSidebar({
   const getWorkspaceExports = (folderId) => workspaceExportsState.get(String(folderId || "")) || [];
   const getWorkspaceGeneratedImages = (folderId) =>
     workspaceGeneratedImagesState.get(String(folderId || "")) || [];
+  const getWorkspaceNotes = (folderId) => workspaceNotesState.get(String(folderId || "")) || [];
+  const getWorkspaceNotesStatus = (folderId) =>
+    workspaceNotesStatusState.get(String(folderId || "")) || { status: "unknown", reason_code: "workspace_notes_not_loaded" };
   const getWorkspaceFileSelections = (conversationId) =>
     workspaceFileSelectionsState.get(String(conversationId || "")) || [];
   const saveWorkspaceFilesEntries = (entries) => {
@@ -118,6 +134,12 @@ function createChatThreadsSidebar({
   };
   const saveWorkspaceGeneratedImagesEntries = (entries) => {
     workspaceGeneratedImagesState = new Map(Array.isArray(entries) ? entries : []);
+  };
+  const saveWorkspaceNotesEntries = (entries) => {
+    workspaceNotesState = new Map(Array.isArray(entries) ? entries : []);
+  };
+  const saveWorkspaceNotesStatusEntries = (entries) => {
+    workspaceNotesStatusState = new Map(Array.isArray(entries) ? entries : []);
   };
   const getCurrentId = () => currentThreadId;
   const setCurrentId = (id) => {
@@ -199,6 +221,12 @@ function createChatThreadsSidebar({
     );
     const data = await parseServerResponse(res);
     return WorkspaceFolderGeneratedImages?.normalizeWorkspaceGeneratedImagesPayload(data) || [];
+  }
+
+  async function listWorkspaceNotesFromServer(folderId) {
+    const res = await httpFetch(WorkspaceFolderNotes.buildWorkspaceNotesListPath(folderId));
+    const data = await parseServerResponse(res);
+    return WorkspaceFolderNotes?.normalizeWorkspaceNotesPayload(data) || [];
   }
 
   async function listWorkspaceFileSelectionsFromServer(conversationId) {
@@ -336,6 +364,25 @@ function createChatThreadsSidebar({
     );
     const data = await parseServerResponse(res);
     return data.generated_image || null;
+  }
+
+  async function createWorkspaceNoteOnServer(folderId, payload) {
+    const res = await httpFetch(WorkspaceFolderNotes.buildWorkspaceNotesListPath(folderId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+    });
+    const data = await parseServerResponse(res);
+    return data.note || null;
+  }
+
+  async function prepareWorkspaceNoteOnServer(folderId, noteId) {
+    const res = await httpFetch(WorkspaceFolderNotes.buildWorkspaceNotePreparePath(folderId, noteId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    return parseServerResponse(res);
   }
 
   function openWorkspaceExport(folderId, exportId) {
@@ -508,6 +555,35 @@ function createChatThreadsSidebar({
         }
       }));
       saveWorkspaceGeneratedImagesEntries(generatedImageEntries);
+      const noteEntries = [];
+      const noteStatusEntries = [];
+      for (const folder of folders) {
+        if (!WorkspaceFolderNotes?.canLoadWorkspaceNotes?.(folder)) {
+          noteEntries.push([folder.id, []]);
+          noteStatusEntries.push([folder.id, {
+            status: "not_applicable",
+            reason_code: "workspace_notes_folder_not_linked",
+          }]);
+          continue;
+        }
+        try {
+          noteEntries.push([folder.id, await listWorkspaceNotesFromServer(folder.id)]);
+          noteStatusEntries.push([folder.id, {
+            status: "ok",
+            reason_code: "workspace_notes_list_ok",
+          }]);
+        } catch (err) {
+          const reason = err?.payload?.reason_code || err?.status || "workspace_notes_list_error";
+          logger.warn("Impossible de charger les notes du répertoire", { reason_code: String(reason) });
+          noteEntries.push([folder.id, []]);
+          noteStatusEntries.push([folder.id, {
+            status: "error",
+            reason_code: String(reason),
+          }]);
+        }
+      }
+      saveWorkspaceNotesEntries(noteEntries);
+      saveWorkspaceNotesStatusEntries(noteStatusEntries);
       if (previousCurrent && mapped.some((x) => x.id === previousCurrent)) {
         setCurrentId(previousCurrent);
       } else {
@@ -622,6 +698,37 @@ function createChatThreadsSidebar({
     return images;
   };
 
+  const refreshWorkspaceNotes = async (folderId) => {
+    const normalized = WorkspaceFolders?.normalizeWorkspaceFolderId(folderId);
+    if (!normalized) return [];
+    const folder = getWorkspaceFolders().find((item) => item.id === normalized);
+    if (!WorkspaceFolderNotes?.canLoadWorkspaceNotes?.(folder)) {
+      workspaceNotesState.set(normalized, []);
+      workspaceNotesStatusState.set(normalized, {
+        status: "not_applicable",
+        reason_code: "workspace_notes_folder_not_linked",
+      });
+      return [];
+    }
+    try {
+      const notes = await listWorkspaceNotesFromServer(normalized);
+      workspaceNotesState.set(normalized, notes);
+      workspaceNotesStatusState.set(normalized, {
+        status: "ok",
+        reason_code: "workspace_notes_list_ok",
+      });
+      return notes;
+    } catch (err) {
+      const reason = err?.payload?.reason_code || err?.status || "workspace_notes_list_error";
+      workspaceNotesState.set(normalized, []);
+      workspaceNotesStatusState.set(normalized, {
+        status: "error",
+        reason_code: String(reason),
+      });
+      throw err;
+    }
+  };
+
   const refreshWorkspaceFileSelections = async (conversationId) => {
     const normalized = String(conversationId || "").trim();
     if (!normalized) return [];
@@ -642,10 +749,13 @@ function createChatThreadsSidebar({
     getWorkspaceFiles,
     getWorkspaceExports,
     getWorkspaceGeneratedImages,
+    getWorkspaceNotes,
+    getWorkspaceNotesStatus,
     refreshThreadsFromServer,
     refreshWorkspaceFiles,
     refreshWorkspaceExports,
     refreshWorkspaceGeneratedImages,
+    refreshWorkspaceNotes,
     renderThreads: () => renderThreads(),
     setThreadStatus,
     createWorkspaceFolderOnServer,
@@ -660,6 +770,8 @@ function createChatThreadsSidebar({
     openWorkspaceExport,
     downloadWorkspaceExport,
     createWorkspaceGeneratedImageOnServer,
+    createWorkspaceNoteOnServer,
+    prepareWorkspaceNoteOnServer,
     openWorkspaceGeneratedImage,
     downloadWorkspaceGeneratedImage,
     deleteWorkspaceGeneratedImageOnServer,
@@ -668,6 +780,7 @@ function createChatThreadsSidebar({
     selectWorkspaceFileOnServer,
     deselectWorkspaceFileOnServer,
     refreshWorkspaceFileSelections,
+    notesModeController,
     bindConversationDropTarget,
     consoleObj: logger,
   });
@@ -1024,6 +1137,8 @@ function createChatThreadsSidebar({
     getWorkspaceFiles,
     getWorkspaceExports,
     getWorkspaceFileSelections,
+    getWorkspaceNotes,
+    getWorkspaceNotesStatus,
     getCurrentId,
     setCurrentId,
     getThreadById,
@@ -1038,12 +1153,15 @@ function createChatThreadsSidebar({
     deleteWorkspaceFolderOnServer,
     listWorkspaceFilesFromServer,
     listWorkspaceExportsFromServer,
+    listWorkspaceNotesFromServer,
     uploadWorkspaceFileOnServer,
     deleteWorkspaceFileOnServer,
     ocrWorkspaceFileOnServer,
     readWorkspaceOcrMarkdownOnServer,
     saveWorkspaceOcrMarkdownOnServer,
     createWorkspaceExportOnServer,
+    createWorkspaceNoteOnServer,
+    prepareWorkspaceNoteOnServer,
     openWorkspaceExport,
     downloadWorkspaceExport,
     getWorkspaceGeneratedImages,
@@ -1062,6 +1180,7 @@ function createChatThreadsSidebar({
     refreshThreadsFromServer,
     refreshWorkspaceExports,
     refreshWorkspaceGeneratedImages,
+    refreshWorkspaceNotes,
     refreshWorkspaceFileSelections,
     renderThreads,
     startInlineRename,

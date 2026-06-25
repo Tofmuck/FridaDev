@@ -15,6 +15,11 @@ const WorkspaceFolderGeneratedImagesPanel = (
     ? window.FridaWorkspaceFolderGeneratedImagesPanel
     : (typeof require !== 'undefined' ? require('./chat_workspace_folder_generated_images_panel.js') : null)
 );
+const WorkspaceFolderNotesPanel = (
+  typeof window !== 'undefined' && window.FridaWorkspaceFolderNotesPanel
+    ? window.FridaWorkspaceFolderNotesPanel
+    : (typeof require !== 'undefined' ? require('./chat_workspace_folder_notes_panel.js') : null)
+);
 
 function createWorkspaceFolderSidebarRenderer({
   threadsUl,
@@ -43,7 +48,13 @@ function createWorkspaceFolderSidebarRenderer({
   openWorkspaceGeneratedImage,
   downloadWorkspaceGeneratedImage,
   deleteWorkspaceGeneratedImageOnServer,
+  getWorkspaceNotes,
+  getWorkspaceNotesStatus,
+  refreshWorkspaceNotes,
+  createWorkspaceNoteOnServer,
+  prepareWorkspaceNoteOnServer,
   getCurrentThread,
+  notesModeController,
   getWorkspaceFileSelections,
   selectWorkspaceFileOnServer,
   deselectWorkspaceFileOnServer,
@@ -75,6 +86,19 @@ function createWorkspaceFolderSidebarRenderer({
     openWorkspaceGeneratedImage,
     downloadWorkspaceGeneratedImage,
     deleteWorkspaceGeneratedImageOnServer,
+    renderThreads,
+    setThreadStatus,
+    consoleObj: logger,
+  });
+  const notesPanel = WorkspaceFolderNotesPanel?.createWorkspaceFolderNotesPanelRenderer?.({
+    threadsUl,
+    getWorkspaceNotes,
+    getWorkspaceNotesStatus,
+    refreshWorkspaceNotes,
+    createWorkspaceNoteOnServer,
+    prepareWorkspaceNoteOnServer,
+    getCurrentThread,
+    notesModeController,
     renderThreads,
     setThreadStatus,
     consoleObj: logger,
@@ -441,13 +465,17 @@ function createWorkspaceFolderSidebarRenderer({
 
     const actions = document.createElement('span');
     actions.className = 'workspace-folder-actions';
-    [
+    const actionSpecs = [
       ['↑', 'Monter', index === 0, () => reorder(folder.id, -1)],
       ['↓', 'Descendre', index >= folders.length - 1, () => reorder(folder.id, 1)],
       ['+F', 'Ajouter un fichier au répertoire', false, () => requestUploadFile(folder)],
       ['··', 'Renommer', false, () => requestRename(folder)],
       ['×', 'Supprimer', false, () => requestDelete(folder)],
-    ].forEach(([text, title, disabled, handler]) => {
+    ];
+    if (notesPanel?.requestCreateNote) {
+      actionSpecs.splice(3, 0, ['+N', 'Créer une note dans le répertoire', false, () => notesPanel.requestCreateNote(folder)]);
+    }
+    actionSpecs.forEach(([text, title, disabled, handler]) => {
       const btn = document.createElement('button');
       btn.className = 'workspace-folder-action';
       btn.title = title;
@@ -474,6 +502,7 @@ function createWorkspaceFolderSidebarRenderer({
     if (collapsed) return;
 
     appendFileRows(folder);
+    notesPanel?.appendNoteRows(folder);
     exportsPanel?.appendExportRows(folder);
     generatedImagesPanel?.appendGeneratedImageRows(folder);
 

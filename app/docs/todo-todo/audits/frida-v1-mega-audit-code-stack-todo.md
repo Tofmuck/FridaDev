@@ -1111,7 +1111,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-CEL-ADMIN-PROMPTS-DOM-01
 
 - Statut initial: open.
-- Statut courant: validated_by_lot_5A_needs_operator_decision.
+- Statut courant: closed_by_lot_5B_1_content_gate.
 - Severite: P2.
 - Fichiers suspects: `app/admin/runtime_settings_api_view.py`,
   `app/web/admin_section_main_model.js`, `app/web/admin_ui_common.js`,
@@ -1121,13 +1121,15 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   complets dans `readonly_info.*.system_prompt.value` et champs equivalents;
   `admin_section_main_model.js` et `admin_ui_common.js` les rendent dans des
   blocs readonly/textarea cote admin.
-- Decision ouverte: serveur solo derriere Authelia peut accepter une exception
-  operateur explicite, mais la TODO doit trancher entre exception documentee +
-  content gate admin, ou remplacement par metadonnees/statuts sans prompt brut
-  DOM/JSON.
-- Critere de cloture: decision explicite: exception operateur assumee avec
-  content gate, ou remplacement par metadonnees/statuts sans prompt brut DOM.
-- Preuve minimale: test admin DOM/JSON avec sentinelle prompt brut; scan
+- Decision Lot 5B.1: option content gate. Le JSON/DOM admin initial expose
+  seulement des metadonnees content-free (`present`, `char_count`,
+  `line_count`, `path`, `loader`, `reason_code`, endpoint gate) et ne contient
+  plus les prompts complets.
+- Critere de cloture: endpoint de lecture brute separe en `POST` avec
+  acquittement explicite `content_gate_acknowledged`; sans acquittement, refus
+  `admin_prompt_content_gate_ack_required`; aucune republication brute dans
+  `readonly_info` standard.
+- Preuve minimale: tests admin DOM/JSON, content gate explicite, scan
   content-free.
 - Hors-scope: modifier prompts.
 
@@ -1170,7 +1172,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-CEL-NOTES-UI-GAP-01
 
 - Statut initial: open.
-- Statut courant: validated_by_lot_5A_needs_product_decision.
+- Statut courant: closed_by_lot_5B_2_minimal_notes_mode.
 - Severite: P2.
 - Fichiers suspects: routes Notes folder-scoped, panels frontend workspace.
 - Lot cible: Lot 5.
@@ -1178,11 +1180,15 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   (`/api/workspace-folders/<folder_id>/notes`, lookup, get, append, prepare,
   create) et le prompt/context Notes est cable cote runtime, mais aucune UI
   Notes dediee n'a ete trouvee dans `app/web`.
-- Decision ouverte: soit declarer Notes API-only acceptable pour ce cycle, soit
-  creer une UI minimale, soit reporter explicitement la surface UI post-audit.
-- Critere de cloture: decision produit UI Notes minimale ou statut
-  API-only/post-V1 explicite.
-- Preuve minimale: audit frontend/route, test UI si implementation future.
+- Decision Lot 5B.2: Notes n'est plus API-only. Un mode Notes minimal est
+  visible dans le composer, au meme rang conceptuel que les modes Biblio/Agenda,
+  avec panneau de notes par repertoire courant.
+- Critere de cloture: UI minimale livree sur routes Notes existantes: liste des
+  notes du repertoire, creation d'une note vide titree, preparation/selection
+  d'une note comme contexte `workspace_note_id`, et erreur de liste rendue comme
+  erreur visible au lieu d'une liste vide.
+- Preuve minimale: tests module frontend Notes, tests panneau Notes,
+  contrats backend Notes existants.
 - Hors-scope: rouvrir backend Notes sans besoin.
 
 ### P2-CEL-FRONTEND-EMPTY-ON-ERROR-01
@@ -1868,11 +1874,13 @@ Decisions Lot 4E:
 ### Lot 5 - Admin/security/app routes
 
 - [x] Lot 5A: audit/triage admin/security/app routes docs-only.
+- [x] Lot 5B.1: prompts admin complets proteges par content gate explicite.
+- [x] Lot 5B.2: mode Notes minimal livre dans l'UI chat.
 - [ ] Aligner tests admin sur contrat proxy/loopback.
 - [ ] Verifier routes admin registerees par modules.
 - [ ] Verifier admin HTML/public host vs API guard.
-- [ ] Decider prompts complets dans DOM admin: exception operateur ou content gate.
-- [ ] Traiter Notes UI gap: UI minimale ou API-only/post-V1 explicite.
+- [x] Decider prompts complets dans DOM admin: content gate explicite livre.
+- [x] Traiter Notes UI gap: UI minimale livree, plus API-only.
 - [ ] Traiter panels frontend qui rendent les erreurs comme listes vides.
 - [ ] Traiter `/log` UI denylist si Lot 7 confirme le besoin.
 - [ ] Garder Authelia comme frontiere publique.
@@ -1940,6 +1948,58 @@ Decoupage apres Lot 5A:
   smoke si les panels ne sont pas corriges en Lot 5C.
 - Lot 6: surfaces raw/`str(exc)`, 400 admin, logs/payloads et prompt/raw
   observability; non absorbe par Lot 5A.
+
+#### Lot 5B - Admin prompts content gate et mode Notes minimal
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne a l'API admin settings et a l'UI chat Notes.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le plan le plus sur
+etait de traiter les deux decisions operateur comme deux micro-surfaces bornees:
+content gate explicite pour les prompts admin, puis mode Notes minimal branche
+sur les routes Notes existantes, sans absorber les panels erreur-vs-vide ni les
+lots logs/tests/refactor.
+
+- [x] Valider `P2-CEL-ADMIN-PROMPTS-DOM-01`.
+- [x] Lot 5B.1: retirer les prompts complets du JSON/DOM admin initial.
+- [x] Lot 5B.1: exposer seulement les metadonnees content-free des prompts.
+- [x] Lot 5B.1: ajouter une lecture brute separee par `POST` avec
+  acquittement explicite `content_gate_acknowledged`.
+- [x] Valider `P2-CEL-NOTES-UI-GAP-01`.
+- [x] Lot 5B.2: ajouter un mode Notes visible dans le composer chat.
+- [x] Lot 5B.2: afficher les notes du repertoire courant via les routes
+  folder-scoped existantes.
+- [x] Lot 5B.2: permettre creation minimale, preparation et selection de note
+  comme contexte `workspace_note_id`.
+- [x] Lot 5B.2: rendre une erreur de liste Notes comme erreur visible, pas
+  comme liste vide.
+- [x] Ne pas traiter `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01` hors surface Notes.
+- [x] Ne pas traiter `P2-CEL-ADMIN-COMPAT-KNOBS-01`.
+- [x] Ne pas traiter `P3-CEL-LOG-FRONTEND-DENYLIST-01`.
+
+Resultat Lot 5B:
+
+- Admin prompts: `readonly_info` standard ne contient plus les prompts bruts;
+  il expose `present`, `char_count`, `line_count`, `path`, `loader`,
+  `reason_code`, `raw_content_included=false` et l'endpoint de content gate.
+  La lecture brute reste possible uniquement par action admin explicite separee
+  avec acquittement; sans acquittement, l'API retourne
+  `admin_prompt_content_gate_ack_required`.
+- Notes UI: un bouton/mode Notes est disponible dans le composer; le panneau du
+  repertoire courant liste les notes, permet une creation titree minimale, une
+  preparation et une selection contextuelle. Le payload chat ne transporte que
+  le mode et l'identifiant de note selectionne, sans contenu Markdown brut.
+- Frontend Notes: l'erreur API de liste Notes est projetee comme erreur visible
+  avec `reason_code` content-free; elle n'est pas convertie en "Aucune note".
+
+Limites conservees:
+
+- `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01` reste ouvert pour Lot 5C sur les autres
+  panels.
+- `P2-CEL-ADMIN-COMPAT-KNOBS-01` reste ouvert pour Lot 5D.
+- `P3-CEL-LOG-FRONTEND-DENYLIST-01` reste cible Lot 7.
+- Lot 6/7/9 restent non coches.
 
 ### Lot 6 - Observabilite/logs applicatifs
 

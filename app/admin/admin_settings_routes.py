@@ -61,6 +61,17 @@ def _admin_settings_section_validate_response(section: str):
     return jsonify(payload), status
 
 
+def _admin_settings_section_readonly_content_response(section: str, key: str):
+    data = request.get_json(force=True, silent=True)
+    payload, status = admin_settings_service.readonly_info_content_response(
+        section,
+        key,
+        data,
+        runtime_settings_module=runtime_settings,
+    )
+    return jsonify(payload), status
+
+
 def api_admin_settings():
     return jsonify(
         admin_settings_service.aggregated_settings_response(
@@ -239,6 +250,17 @@ def api_admin_settings_services_validate():
 
 def api_admin_settings_resources_validate():
     return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['resources'])
+
+
+def api_admin_settings_readonly_content(section_route: str, key: str):
+    section = _ADMIN_SETTINGS_ROUTE_SECTIONS.get(section_route)
+    if not section:
+        return jsonify({
+            'ok': False,
+            'error': 'unknown runtime settings section',
+            'section_route': section_route,
+        }), 404
+    return _admin_settings_section_readonly_content_response(section, key)
 
 
 _ADMIN_SETTINGS_ROUTE_REGISTRATIONS = (
@@ -494,6 +516,12 @@ _ADMIN_SETTINGS_ROUTE_REGISTRATIONS = (
         f'{_ADMIN_SETTINGS_PREFIX}/resources/validate',
         'api_admin_settings_resources_validate',
         api_admin_settings_resources_validate,
+        ('POST',),
+    ),
+    (
+        f'{_ADMIN_SETTINGS_PREFIX}/<section_route>/readonly-info/<key>/content',
+        'api_admin_settings_readonly_content',
+        api_admin_settings_readonly_content,
         ('POST',),
     ),
 )

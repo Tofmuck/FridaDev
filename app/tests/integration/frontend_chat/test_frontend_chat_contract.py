@@ -219,6 +219,32 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn("adobe_product: normalized", adobe_source)
         self.assertNotIn("'auto'", adobe_source)
 
+    def test_chat_surface_exposes_notes_mode_with_existing_notes_routes(self) -> None:
+        index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        threads_source = (APP_DIR / "web" / "chat_threads_sidebar.js").read_text(encoding="utf-8")
+        panel_source = (APP_DIR / "web" / "chat_workspace_folder_notes_panel.js").read_text(encoding="utf-8")
+
+        self.assertIn('<script src="chat_notes_mode.js"></script>', index_source)
+        self.assertIn('<script src="chat_workspace_folder_notes_panel.js"></script>', index_source)
+        self.assertLess(
+            index_source.index('<script src="chat_notes_mode.js"></script>'),
+            index_source.index('<script src="chat_threads_sidebar.js"></script>'),
+        )
+        self.assertIn('id="btnNotesMode"', index_source)
+        self.assertIn('class="btn-notes-mode"', index_source)
+        self.assertIn('const notesMode = window.FridaNotesMode;', app_source)
+        self.assertIn('let notesModeController = null;', app_source)
+        self.assertIn('notesModeController = notesMode.createNotesModeController({', app_source)
+        self.assertIn('const notesPayload = notesModeController', app_source)
+        self.assertIn('...notesPayload,', app_source)
+        self.assertIn('async function listWorkspaceNotesFromServer', threads_source)
+        self.assertIn('async function createWorkspaceNoteOnServer', threads_source)
+        self.assertIn('async function prepareWorkspaceNoteOnServer', threads_source)
+        self.assertIn('getWorkspaceNotesStatus', threads_source)
+        self.assertIn("noteStatus?.status === 'error'", panel_source)
+        self.assertIn("workspace-folder-note-error", panel_source)
+
     def test_admin_ui_keeps_max_tokens_and_system_prompt_out_of_v1(self) -> None:
         source = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
 

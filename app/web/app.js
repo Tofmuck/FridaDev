@@ -36,6 +36,10 @@
   if (!agendaMode) {
     throw new Error("FridaAgendaMode module missing");
   }
+  const notesMode = window.FridaNotesMode;
+  if (!notesMode) {
+    throw new Error("FridaNotesMode module missing");
+  }
   const {
     STREAMING_UI_STATE_INTERRUPTED,
     STREAMING_UI_EVENT_REQUEST_STARTED,
@@ -67,6 +71,7 @@
   const btnAdobeMode = $("#btnAdobeMode");
   const btnBiblioMode = $("#btnBiblioMode");
   const btnAgendaMode = $("#btnAgendaMode");
+  const btnNotesMode = $("#btnNotesMode");
   const adobeProductChoices = $("#adobeProductChoices");
   const btnExportConversation = $("#btnExportConversation");
   const activeDocumentFileInput = $("#activeDocumentFileInput");
@@ -108,6 +113,7 @@
   let adobeModeController = null;
   let biblioModeController = null;
   let agendaModeController = null;
+  let notesModeController = null;
   const isAdobeModeActive = () => Boolean(adobeModeController && adobeModeController.isActive());
   const updateWebSearchBtn = () => {
     if (!btnWebSearch) return;
@@ -299,6 +305,10 @@
     currentDraftInputMode = nextMode === "voice" ? "voice" : "keyboard";
   };
 
+  notesModeController = notesMode.createNotesModeController({
+    buttonEl: btnNotesMode,
+  });
+
   const threadsLifecycle = chatThreadsSidebar.createChatThreadsSidebar({
     threadsUl,
     logEl: log,
@@ -307,6 +317,7 @@
     closeSidebar,
     renderConversationMessage,
     scrollToBottom,
+    notesModeController,
     consoleObj: console,
   });
   const {
@@ -594,6 +605,9 @@
     const adobePayload = adobeModeController ? adobeModeController.getPayload() : {};
     const biblioPayload = biblioModeController ? biblioModeController.getPayload() : { biblio_enabled: false };
     const agendaPayload = agendaModeController ? agendaModeController.getPayload() : { agenda_enabled: false };
+    const notesPayload = notesModeController
+      ? notesModeController.getPayload({ workspaceFolderId: thread ? thread.workspace_folder_id : "" })
+      : { workspace_notes_mode: false };
     const adobeActive = Boolean(adobePayload.specialization_profile);
     const emitStreamEvent = (event) => {
       if (typeof options?.onStreamEvent === "function") {
@@ -611,6 +625,7 @@
         input_mode: inputMode === "voice" ? "voice" : "keyboard",
         ...biblioPayload,
         ...agendaPayload,
+        ...notesPayload,
         ...adobePayload,
       })
     });

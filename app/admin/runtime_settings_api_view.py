@@ -13,6 +13,19 @@ from memory import mutable_identity_judge_common, mutable_identity_judge_v2
 
 NormalizeStoredPayload = Callable[[str, Mapping[str, Any]], dict[str, dict[str, Any]]]
 
+PROMPT_CONTENT_GATE_REASON_CODE = 'admin_prompt_content_gate_required'
+
+_SECTION_ROUTES = {
+    'main_model': 'main-model',
+    'memory_arbiter_model': 'memory-arbiter-model',
+    'identity_extractor_model': 'identity-extractor-model',
+    'identity_periodic_model': 'identity-periodic-model',
+    'summary_model': 'summary-model',
+    'web_reformulation_model': 'web-reformulation-model',
+    'stimmung_agent_model': 'stimmung-agent-model',
+    'validation_agent_model': 'validation-agent-model',
+}
+
 
 def redact_payload_for_api(
     section: str,
@@ -98,16 +111,175 @@ def _shared_openrouter_transport_text(title_field: str, referer_field: str) -> s
     )
 
 
+def _line_count(text: str) -> int:
+    if not text:
+        return 0
+    return len(text.splitlines()) or 1
+
+
+def _prompt_content_endpoint(section: str, key: str) -> str:
+    section_route = _SECTION_ROUTES.get(section, section.replace('_', '-'))
+    return f'/api/admin/settings/{section_route}/readonly-info/{key}/content'
+
+
+def _prompt_metadata_entry(
+    section: str,
+    key: str,
+    *,
+    label: str,
+    text: str,
+    source: str,
+    path: str,
+    loader: str,
+) -> dict[str, Any]:
+    metadata = {
+        'status': 'content_gate_required',
+        'present': bool(text),
+        'char_count': len(text),
+        'line_count': _line_count(text),
+        'source': source,
+        'path': path,
+        'loader': loader,
+        'reason_code': PROMPT_CONTENT_GATE_REASON_CODE,
+        'raw_content_included': False,
+        'content_endpoint': _prompt_content_endpoint(section, key),
+    }
+    return {
+        'label': label,
+        'value': metadata,
+        'is_editable': False,
+        'source': source,
+        'content_gate': {
+            'required': True,
+            'reason_code': PROMPT_CONTENT_GATE_REASON_CODE,
+            'method': 'POST',
+            'endpoint': metadata['content_endpoint'],
+            'raw_content_included': False,
+        },
+    }
+
+
+def _prompt_content_specs() -> dict[tuple[str, str], dict[str, Any]]:
+    return {
+        ('main_model', 'system_prompt'): {
+            'label': 'SYSTEM_PROMPT',
+            'source': 'prompt_file',
+            'path': str(config.MAIN_SYSTEM_PROMPT_PATH),
+            'loader': 'core.prompt_loader.get_main_system_prompt()',
+            'load': prompt_loader.get_main_system_prompt,
+        },
+        ('main_model', 'hermeneutical_prompt'): {
+            'label': 'HERMENEUTICAL_PROMPT',
+            'source': 'prompt_file',
+            'path': str(config.MAIN_HERMENEUTICAL_PROMPT_PATH),
+            'loader': 'core.prompt_loader.get_main_hermeneutical_prompt()',
+            'load': prompt_loader.get_main_hermeneutical_prompt,
+        },
+        ('memory_arbiter_model', 'system_prompt'): {
+            'label': 'arbiter_prompt',
+            'source': 'app_prompt_file',
+            'path': str(config.ARBITER_PROMPT_PATH),
+            'loader': 'memory.arbiter._load_prompt(config.ARBITER_PROMPT_PATH, "arbiter")',
+            'load': lambda: prompt_loader.read_prompt_text(str(config.ARBITER_PROMPT_PATH)),
+        },
+        ('identity_extractor_model', 'system_prompt'): {
+            'label': 'identity_extractor_prompt',
+            'source': 'app_prompt_file',
+            'path': str(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
+            'loader': 'memory.arbiter._load_prompt(config.IDENTITY_EXTRACTOR_PROMPT_PATH, "identity_extractor")',
+            'load': lambda: prompt_loader.read_prompt_text(str(config.IDENTITY_EXTRACTOR_PROMPT_PATH)),
+        },
+        ('identity_periodic_model', 'system_prompt'): {
+            'label': 'identity_mutable_judge_prompt',
+            'source': 'app_prompt_file',
+            'path': str(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH),
+            'loader': 'memory.mutable_identity_judge_v2.load_prompt_v2(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)',
+            'load': lambda: prompt_loader.read_prompt_text(str(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)),
+        },
+        ('summary_model', 'system_prompt'): {
+            'label': 'summary_system_prompt',
+            'source': 'prompt_file',
+            'path': str(config.SUMMARY_SYSTEM_PROMPT_PATH),
+            'loader': 'core.prompt_loader.get_summary_system_prompt()',
+            'load': prompt_loader.get_summary_system_prompt,
+        },
+        ('web_reformulation_model', 'system_prompt'): {
+            'label': 'web_reformulation_system_prompt',
+            'source': 'prompt_file',
+            'path': str(config.WEB_REFORMULATION_PROMPT_PATH),
+            'loader': 'core.prompt_loader.get_web_reformulation_prompt()',
+            'load': prompt_loader.get_web_reformulation_prompt,
+        },
+        ('stimmung_agent_model', 'prompt_text'): {
+            'label': 'stimmung_agent_prompt',
+            'source': 'prompt_file',
+            'path': 'prompts/stimmung_agent.txt',
+            'loader': 'core.stimmung_agent._load_system_prompt()',
+            'load': lambda: prompt_loader.read_prompt_text('prompts/stimmung_agent.txt'),
+        },
+        ('validation_agent_model', 'prompt_text'): {
+            'label': 'validation_agent_prompt',
+            'source': 'prompt_file',
+            'path': 'prompts/validation_agent.txt',
+            'loader': 'core.hermeneutic_node.validation.validation_agent._load_system_prompt()',
+            'load': lambda: prompt_loader.read_prompt_text('prompts/validation_agent.txt'),
+        },
+    }
+
+
+def _prompt_content_spec(section: str, key: str) -> dict[str, Any]:
+    specs = _prompt_content_specs()
+    try:
+        return specs[(section, key)]
+    except KeyError as exc:
+        raise KeyError(f'unknown readonly content gate: {section}.{key}') from exc
+
+
+def _prompt_readonly_entry(section: str, key: str) -> dict[str, Any]:
+    spec = _prompt_content_spec(section, key)
+    text = str(spec['load']() or '')
+    return _prompt_metadata_entry(
+        section,
+        key,
+        label=str(spec['label']),
+        text=text,
+        source=str(spec['source']),
+        path=str(spec['path']),
+        loader=str(spec['loader']),
+    )
+
+
+def get_section_readonly_info_content(section: str, key: str) -> dict[str, Any]:
+    get_section_spec(section)
+    spec = _prompt_content_spec(section, key)
+    text = str(spec['load']() or '')
+    metadata = _prompt_metadata_entry(
+        section,
+        key,
+        label=str(spec['label']),
+        text=text,
+        source=str(spec['source']),
+        path=str(spec['path']),
+        loader=str(spec['loader']),
+    )['value']
+    return {
+        'section': section,
+        'key': key,
+        'content': text,
+        'metadata': metadata,
+        'content_gate': {
+            'acknowledged': True,
+            'reason_code': PROMPT_CONTENT_GATE_REASON_CODE,
+            'raw_content_included': True,
+        },
+    }
+
+
 def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
     get_section_spec(section)
     if section == 'main_model':
         return {
-            'system_prompt': {
-                'label': 'SYSTEM_PROMPT',
-                'value': prompt_loader.get_main_system_prompt(),
-                'is_editable': False,
-                'source': 'prompt_file',
-            },
+            'system_prompt': _prompt_readonly_entry('main_model', 'system_prompt'),
             'system_prompt_path': {
                 'label': 'MAIN_SYSTEM_PROMPT_PATH',
                 'value': str(config.MAIN_SYSTEM_PROMPT_PATH),
@@ -120,12 +292,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'is_editable': False,
                 'source': 'backend_loader',
             },
-            'hermeneutical_prompt': {
-                'label': 'HERMENEUTICAL_PROMPT',
-                'value': prompt_loader.get_main_hermeneutical_prompt(),
-                'is_editable': False,
-                'source': 'prompt_file',
-            },
+            'hermeneutical_prompt': _prompt_readonly_entry('main_model', 'hermeneutical_prompt'),
             'hermeneutical_prompt_path': {
                 'label': 'MAIN_HERMENEUTICAL_PROMPT_PATH',
                 'value': str(config.MAIN_HERMENEUTICAL_PROMPT_PATH),
@@ -165,12 +332,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'is_editable': False,
                 'source': 'backend_loader',
             },
-            'system_prompt': {
-                'label': 'arbiter_prompt',
-                'value': prompt_loader.read_prompt_text(str(config.ARBITER_PROMPT_PATH)),
-                'is_editable': False,
-                'source': 'app_prompt_file',
-            },
+            'system_prompt': _prompt_readonly_entry('memory_arbiter_model', 'system_prompt'),
             'shared_transport': {
                 'label': 'OPENROUTER_SHARED_TRANSPORT',
                 'value': _shared_openrouter_transport_text('main_model.title_arbiter', 'main_model.referer_arbiter'),
@@ -198,12 +360,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'is_editable': False,
                 'source': 'backend_loader',
             },
-            'system_prompt': {
-                'label': 'identity_extractor_prompt',
-                'value': prompt_loader.read_prompt_text(str(config.IDENTITY_EXTRACTOR_PROMPT_PATH)),
-                'is_editable': False,
-                'source': 'app_prompt_file',
-            },
+            'system_prompt': _prompt_readonly_entry('identity_extractor_model', 'system_prompt'),
             'shared_transport': {
                 'label': 'OPENROUTER_SHARED_TRANSPORT',
                 'value': _shared_openrouter_transport_text(
@@ -292,12 +449,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'is_editable': False,
                 'source': 'backend_loader',
             },
-            'system_prompt': {
-                'label': 'identity_mutable_judge_prompt',
-                'value': prompt_loader.read_prompt_text(str(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)),
-                'is_editable': False,
-                'source': 'app_prompt_file',
-            },
+            'system_prompt': _prompt_readonly_entry('identity_periodic_model', 'system_prompt'),
             'legacy_prompt_path': {
                 'label': 'IDENTITY_PERIODIC_AGENT_PROMPT_PATH_LEGACY',
                 'value': str(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
@@ -381,12 +533,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'is_editable': False,
                 'source': 'config_py',
             },
-            'system_prompt': {
-                'label': 'summary_system_prompt',
-                'value': prompt_loader.get_summary_system_prompt(),
-                'is_editable': False,
-                'source': 'prompt_file',
-            },
+            'system_prompt': _prompt_readonly_entry('summary_model', 'system_prompt'),
             'shared_transport': {
                 'label': 'OPENROUTER_SHARED_TRANSPORT',
                 'value': _shared_openrouter_transport_text('main_model.title_resumer', 'main_model.referer_resumer'),
@@ -414,12 +561,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'is_editable': False,
                 'source': 'backend_loader',
             },
-            'system_prompt': {
-                'label': 'web_reformulation_system_prompt',
-                'value': prompt_loader.get_web_reformulation_prompt(),
-                'is_editable': False,
-                'source': 'prompt_file',
-            },
+            'system_prompt': _prompt_readonly_entry('web_reformulation_model', 'system_prompt'),
             'shared_transport': {
                 'label': 'SHARED_OPENROUTER_TRANSPORT',
                 'value': _shared_openrouter_transport_text(
@@ -444,12 +586,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'is_editable': False,
                 'source': 'backend_loader',
             },
-            'prompt_text': {
-                'label': 'stimmung_agent_prompt',
-                'value': prompt_loader.read_prompt_text('prompts/stimmung_agent.txt'),
-                'is_editable': False,
-                'source': 'prompt_file',
-            },
+            'prompt_text': _prompt_readonly_entry('stimmung_agent_model', 'prompt_text'),
             'shared_transport': {
                 'label': 'SHARED_OPENROUTER_TRANSPORT',
                 'value': _shared_openrouter_transport_text(
@@ -492,12 +629,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'is_editable': False,
                 'source': 'backend_loader',
             },
-            'prompt_text': {
-                'label': 'validation_agent_prompt',
-                'value': prompt_loader.read_prompt_text('prompts/validation_agent.txt'),
-                'is_editable': False,
-                'source': 'prompt_file',
-            },
+            'prompt_text': _prompt_readonly_entry('validation_agent_model', 'prompt_text'),
             'shared_transport': {
                 'label': 'SHARED_OPENROUTER_TRANSPORT',
                 'value': _shared_openrouter_transport_text(

@@ -62,6 +62,20 @@
       card.appendChild(textarea);
       return card;
     }
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const list = document.createElement("dl");
+      list.className = "admin-readonly-metadata";
+      Object.entries(value).forEach(([metaKey, metaValue]) => {
+        const term = document.createElement("dt");
+        term.textContent = metaKey;
+        const detail = document.createElement("dd");
+        detail.textContent = metaValue === undefined || metaValue === null ? "" : String(metaValue);
+        list.appendChild(term);
+        list.appendChild(detail);
+      });
+      card.appendChild(list);
+      return card;
+    }
 
     const body = document.createElement("div");
     body.className = "admin-readonly-value";

@@ -11,6 +11,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from admin import admin_logs, runtime_settings
+from core import prompt_loader
 from tests.support.server_test_bootstrap import load_server_module_for_tests
 
 
@@ -37,6 +38,18 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.server.admin_logs.LOG_PATH = self._original_log_path
         self.server.admin_logs._BOOTSTRAP_DONE = self._original_bootstrap_done
         self._tmpdir.cleanup()
+
+    def assertPromptMetadata(self, item: dict) -> None:
+        self.assertTrue(item['content_gate']['required'])
+        self.assertFalse(item['content_gate']['raw_content_included'])
+        value = item['value']
+        self.assertEqual(value['status'], 'content_gate_required')
+        self.assertTrue(value['present'])
+        self.assertGreater(value['char_count'], 0)
+        self.assertGreater(value['line_count'], 0)
+        self.assertEqual(value['reason_code'], 'admin_prompt_content_gate_required')
+        self.assertFalse(value['raw_content_included'])
+        self.assertIn('/readonly-info/', value['content_endpoint'])
 
     def test_get_admin_settings_returns_aggregated_sections_with_redacted_secrets(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
@@ -87,10 +100,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             data['sections']['main_model']['readonly_info']['context_max_tokens']['label'],
             'FRIDA_MAX_TOKENS',
         )
-        self.assertIn(
-            'Cadre de réponse',
-            data['sections']['main_model']['readonly_info']['system_prompt']['value'],
-        )
+        self.assertPromptMetadata(data['sections']['main_model']['readonly_info']['system_prompt'])
         self.assertEqual(
             data['sections']['main_model']['readonly_info']['system_prompt_path']['value'],
             runtime_settings.config.MAIN_SYSTEM_PROMPT_PATH,
@@ -99,10 +109,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             data['sections']['main_model']['readonly_info']['system_prompt_loader']['value'],
             'core.prompt_loader.get_main_system_prompt()',
         )
-        self.assertIn(
-            "Contrat d'interpretation du prompt augmente",
-            data['sections']['main_model']['readonly_info']['hermeneutical_prompt']['value'],
-        )
+        self.assertPromptMetadata(data['sections']['main_model']['readonly_info']['hermeneutical_prompt'])
         self.assertEqual(
             data['sections']['main_model']['readonly_info']['hermeneutical_prompt_path']['value'],
             runtime_settings.config.MAIN_HERMENEUTICAL_PROMPT_PATH,
@@ -147,27 +154,24 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             data['sections']['identity_governance']['readonly_info']['update_route']['value'],
             '/api/admin/identity/governance',
         )
-        self.assertIn(
-            'You are a conversational memory arbiter.',
-            data['sections']['memory_arbiter_model']['readonly_info']['system_prompt']['value'],
-        )
+        self.assertPromptMetadata(data['sections']['memory_arbiter_model']['readonly_info']['system_prompt'])
         self.assertNotIn('summary_target_tokens', data['sections']['summary_model']['readonly_info'])
         self.assertEqual(
             data['sections']['summary_model']['readonly_info']['benchmark_decision']['value'],
             'benchmark/results/summary/2026-05-18-summary-human-final.md',
         )
-        self.assertIn(
-            'Tu es un assistant de synthèse.',
-            data['sections']['summary_model']['readonly_info']['system_prompt']['value'],
-        )
+        self.assertPromptMetadata(data['sections']['summary_model']['readonly_info']['system_prompt'])
         self.assertEqual(
             data['sections']['web_reformulation_model']['readonly_info']['prompt_path']['value'],
             runtime_settings.config.WEB_REFORMULATION_PROMPT_PATH,
         )
-        self.assertIn(
-            'Nous sommes le {today}.',
-            data['sections']['web_reformulation_model']['readonly_info']['system_prompt']['value'],
+        self.assertPromptMetadata(data['sections']['web_reformulation_model']['readonly_info']['system_prompt'])
+        self.assertNotIn(prompt_loader.get_main_system_prompt()[:80], repr(data))
+        self.assertNotIn(
+            prompt_loader.read_prompt_text(str(runtime_settings.config.ARBITER_PROMPT_PATH))[:80],
+            repr(data),
         )
+        self.assertNotIn(prompt_loader.get_web_reformulation_prompt()[:80], repr(data))
         self.assertEqual(data['sections']['main_model']['secret_sources']['api_key'], 'db_encrypted')
 
     def test_get_admin_settings_status_returns_bootstrap_and_section_sources(self) -> None:
@@ -238,7 +242,10 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             readonly_info = data['sections'][section]['readonly_info']
             self.assertTrue(readonly_info, section)
             for item in readonly_info.values():
-                self.assertEqual(set(item.keys()), {'label', 'value', 'is_editable', 'source'})
+                self.assertTrue(
+                    set(item.keys()).issuperset({'label', 'value', 'is_editable', 'source'}),
+                    item,
+                )
                 self.assertFalse(item['is_editable'])
 
         for section in ('embedding', 'database', 'services', 'resources'):
@@ -284,15 +291,45 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             {'is_secret': True, 'is_set': True, 'origin': 'db'},
         )
         self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
-        self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
+        self.assertPromptMetadata(data['readonly_info']['system_prompt'])
         self.assertEqual(data['readonly_info']['system_prompt_path']['value'], runtime_settings.config.MAIN_SYSTEM_PROMPT_PATH)
-        self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
+        self.assertPromptMetadata(data['readonly_info']['hermeneutical_prompt'])
         self.assertEqual(
             data['readonly_info']['hermeneutical_prompt_path']['value'],
             runtime_settings.config.MAIN_HERMENEUTICAL_PROMPT_PATH,
         )
         self.assertIn('[Indices contextuels recents]', data['readonly_info']['hermeneutical_runtime_bricks']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
+
+    def test_admin_settings_prompt_content_gate_requires_explicit_acknowledgement(self) -> None:
+        main_system_prompt = prompt_loader.get_main_system_prompt()
+        standard = self.client.get('/api/admin/settings/main-model')
+        self.assertEqual(standard.status_code, 200)
+        standard_data = standard.get_json()
+        self.assertNotIn(main_system_prompt[:80], repr(standard_data['readonly_info']['system_prompt']))
+
+        denied = self.client.post(
+            '/api/admin/settings/main-model/readonly-info/system_prompt/content',
+            json={},
+        )
+        self.assertEqual(denied.status_code, 403)
+        denied_data = denied.get_json()
+        self.assertFalse(denied_data['ok'])
+        self.assertEqual(denied_data['reason_code'], 'admin_prompt_content_gate_ack_required')
+        self.assertNotIn(main_system_prompt[:80], repr(denied_data))
+
+        allowed = self.client.post(
+            '/api/admin/settings/main-model/readonly-info/system_prompt/content',
+            json={'content_gate_acknowledged': True},
+        )
+        self.assertEqual(allowed.status_code, 200)
+        data = allowed.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'main_model')
+        self.assertEqual(data['key'], 'system_prompt')
+        self.assertEqual(data['content'], main_system_prompt)
+        self.assertEqual(data['metadata']['char_count'], len(data['content']))
+        self.assertTrue(data['content_gate']['acknowledged'])
 
     def test_get_admin_settings_memory_arbiter_model_returns_single_section(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
@@ -325,7 +362,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['payload']['model']['value'], 'mistralai/mistral-small-2603')
         self.assertEqual(data['payload']['max_tokens']['value'], 600)
         self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/arbiter.txt')
-        self.assertIn('You are a conversational memory arbiter.', data['readonly_info']['system_prompt']['value'])
+        self.assertPromptMetadata(data['readonly_info']['system_prompt'])
         self.assertIn('main_model.title_arbiter', data['readonly_info']['shared_transport']['value'])
         self.assertEqual(
             data['readonly_info']['benchmark_decision']['value'],
@@ -363,7 +400,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['payload']['model']['value'], 'openai/gpt-5.4-mini')
         self.assertEqual(data['payload']['max_tokens']['value'], 700)
         self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/identity_extractor.txt')
-        self.assertIn('You are an identity evidence extractor.', data['readonly_info']['system_prompt']['value'])
+        self.assertPromptMetadata(data['readonly_info']['system_prompt'])
         self.assertIn('main_model.title_identity_extractor', data['readonly_info']['shared_transport']['value'])
         self.assertIn(
             'identity_extractor_model',
@@ -417,7 +454,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             data['readonly_info']['legacy_prompt_path']['value'],
             'prompts/identity_periodic_agent.txt',
         )
-        self.assertIn('mutable identity judge', data['readonly_info']['system_prompt']['value'])
+        self.assertPromptMetadata(data['readonly_info']['system_prompt'])
         self.assertEqual(
             data['readonly_info']['prompt_loader']['value'],
             'memory.mutable_identity_judge_v2.load_prompt_v2(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)',
@@ -515,10 +552,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             data['readonly_info']['summary_keep_turns']['value'],
             runtime_settings.config.SUMMARY_KEEP_TURNS,
         )
-        self.assertIn(
-            'Tu es un assistant de synthèse.',
-            data['readonly_info']['system_prompt']['value'],
-        )
+        self.assertPromptMetadata(data['readonly_info']['system_prompt'])
         self.assertIn('main_model.title_resumer', data['readonly_info']['shared_transport']['value'])
         self.assertEqual(
             data['readonly_info']['benchmark_decision']['value'],
@@ -554,7 +588,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['section'], 'web_reformulation_model')
         self.assertEqual(data['payload']['model']['value'], 'openai/gpt-5.4-mini')
         self.assertEqual(data['payload']['max_tokens']['value'], 40)
-        self.assertIn('Nous sommes le {today}.', data['readonly_info']['system_prompt']['value'])
+        self.assertPromptMetadata(data['readonly_info']['system_prompt'])
         self.assertIn('main_model.title_web_reformulation', data['readonly_info']['shared_transport']['value'])
         self.assertIn('main_model.referer_web_reformulation', data['readonly_info']['shared_transport']['value'])
 

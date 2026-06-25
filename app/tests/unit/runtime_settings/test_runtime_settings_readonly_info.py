@@ -25,21 +25,34 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
     def setUp(self) -> None:
         runtime_settings.invalidate_runtime_settings_cache()
 
+    def assertPromptContentGate(self, item, *, expected_text: str, expected_path: str = '') -> None:
+        self.assertFalse(item['is_editable'])
+        self.assertIn(item['source'], {'prompt_file', 'app_prompt_file'})
+        self.assertTrue(item['content_gate']['required'])
+        self.assertFalse(item['content_gate']['raw_content_included'])
+        self.assertEqual(item['content_gate']['reason_code'], 'admin_prompt_content_gate_required')
+        value = item['value']
+        self.assertEqual(value['status'], 'content_gate_required')
+        self.assertTrue(value['present'])
+        self.assertEqual(value['char_count'], len(expected_text))
+        self.assertEqual(value['line_count'], len(expected_text.splitlines()))
+        self.assertEqual(value['reason_code'], 'admin_prompt_content_gate_required')
+        self.assertFalse(value['raw_content_included'])
+        self.assertIn('/readonly-info/', value['content_endpoint'])
+        if expected_path:
+            self.assertEqual(value['path'], expected_path)
+        self.assertNotIn(expected_text[:80], repr(item))
+
     def test_get_section_readonly_info_main_model_exposes_context_budget_prompts_and_runtime_bricks(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('main_model')
+        main_system_prompt = prompt_loader.get_main_system_prompt()
+        main_hermeneutical_prompt = prompt_loader.get_main_hermeneutical_prompt()
 
         self.assertEqual(readonly_info['system_prompt']['label'], 'SYSTEM_PROMPT')
-        self.assertFalse(readonly_info['system_prompt']['is_editable'])
-        self.assertEqual(readonly_info['system_prompt']['source'], 'prompt_file')
-        self.assertEqual(readonly_info['system_prompt']['value'], prompt_loader.get_main_system_prompt())
-        self.assertIn('Cadre de réponse', readonly_info['system_prompt']['value'])
-        self.assertIn(
-            'Tu aides à analyser, structurer, reformuler, documenter et faire avancer un travail intellectuel ou technique.',
-            readonly_info['system_prompt']['value'],
-        )
-        self.assertNotIn(
-            'Tu adoptes un ton clair, calme, adulte et professionnel.',
-            readonly_info['system_prompt']['value'],
+        self.assertPromptContentGate(
+            readonly_info['system_prompt'],
+            expected_text=main_system_prompt,
+            expected_path=config.MAIN_SYSTEM_PROMPT_PATH,
         )
         self.assertEqual(readonly_info['system_prompt_path']['label'], 'MAIN_SYSTEM_PROMPT_PATH')
         self.assertEqual(readonly_info['system_prompt_path']['value'], config.MAIN_SYSTEM_PROMPT_PATH)
@@ -54,15 +67,10 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         )
         self.assertEqual(readonly_info['system_prompt_loader']['source'], 'backend_loader')
         self.assertEqual(readonly_info['hermeneutical_prompt']['label'], 'HERMENEUTICAL_PROMPT')
-        self.assertFalse(readonly_info['hermeneutical_prompt']['is_editable'])
-        self.assertEqual(readonly_info['hermeneutical_prompt']['source'], 'prompt_file')
-        self.assertEqual(
-            readonly_info['hermeneutical_prompt']['value'],
-            prompt_loader.get_main_hermeneutical_prompt(),
-        )
-        self.assertIn(
-            "Contrat d'interpretation du prompt augmente",
-            readonly_info['hermeneutical_prompt']['value'],
+        self.assertPromptContentGate(
+            readonly_info['hermeneutical_prompt'],
+            expected_text=main_hermeneutical_prompt,
+            expected_path=config.MAIN_HERMENEUTICAL_PROMPT_PATH,
         )
         self.assertEqual(
             readonly_info['hermeneutical_prompt_path']['label'],
@@ -85,7 +93,10 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             readonly_info['hermeneutical_prompt_loader']['source'],
             'backend_loader',
         )
-        self.assertNotEqual(readonly_info['system_prompt']['value'], readonly_info['hermeneutical_prompt']['value'])
+        self.assertNotEqual(
+            readonly_info['system_prompt']['value']['char_count'],
+            readonly_info['hermeneutical_prompt']['value']['char_count'],
+        )
         self.assertEqual(
             readonly_info['hermeneutical_runtime_bricks']['label'],
             'HERMENEUTICAL_RUNTIME_BRICKS',
@@ -105,13 +116,30 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
 
         self.assertEqual(readonly_info['prompt_path']['label'], 'ARBITER_PROMPT_PATH')
         self.assertEqual(readonly_info['prompt_path']['value'], config.ARBITER_PROMPT_PATH)
-        self.assertIn('You are a conversational memory arbiter.', readonly_info['system_prompt']['value'])
+        self.assertPromptContentGate(
+            readonly_info['system_prompt'],
+            expected_text=prompt_loader.read_prompt_text(str(config.ARBITER_PROMPT_PATH)),
+            expected_path=config.ARBITER_PROMPT_PATH,
+        )
         self.assertIn('main_model.title_arbiter', readonly_info['shared_transport']['value'])
         self.assertIn('main_model.referer_arbiter', readonly_info['shared_transport']['value'])
         self.assertEqual(
             readonly_info['benchmark_decision']['value'],
             'benchmark/results/arbiter/2026-05-18-arbiter-final-tournament-summary.md',
         )
+
+    def test_get_section_readonly_info_content_is_separate_from_metadata_gate(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('main_model')
+        main_system_prompt = prompt_loader.get_main_system_prompt()
+        self.assertNotIn(main_system_prompt[:80], repr(readonly_info['system_prompt']))
+
+        content = runtime_settings.get_section_readonly_info_content('main_model', 'system_prompt')
+
+        self.assertEqual(content['section'], 'main_model')
+        self.assertEqual(content['key'], 'system_prompt')
+        self.assertEqual(content['content'], main_system_prompt)
+        self.assertEqual(content['metadata']['char_count'], len(content['content']))
+        self.assertTrue(content['content_gate']['acknowledged'])
 
     def test_get_section_readonly_info_arbiter_model_documents_identity_legacy_scope(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('arbiter_model')
@@ -131,7 +159,11 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             'IDENTITY_EXTRACTOR_PROMPT_PATH',
         )
         self.assertEqual(readonly_info['prompt_path']['value'], config.IDENTITY_EXTRACTOR_PROMPT_PATH)
-        self.assertIn('You are an identity evidence extractor.', readonly_info['system_prompt']['value'])
+        self.assertPromptContentGate(
+            readonly_info['system_prompt'],
+            expected_text=prompt_loader.read_prompt_text(str(config.IDENTITY_EXTRACTOR_PROMPT_PATH)),
+            expected_path=config.IDENTITY_EXTRACTOR_PROMPT_PATH,
+        )
         self.assertIn('main_model.title_identity_extractor', readonly_info['shared_transport']['value'])
         self.assertIn('main_model.referer_identity_extractor', readonly_info['shared_transport']['value'])
         self.assertEqual(
@@ -165,7 +197,11 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             readonly_info['legacy_prompt_path']['value'],
             config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH,
         )
-        self.assertIn('mutable identity judge', readonly_info['system_prompt']['value'])
+        self.assertPromptContentGate(
+            readonly_info['system_prompt'],
+            expected_text=prompt_loader.read_prompt_text(str(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)),
+            expected_path=config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH,
+        )
         self.assertIn('main_model.title_identity_periodic', readonly_info['shared_transport']['value'])
         self.assertIn('main_model.referer_identity_periodic', readonly_info['shared_transport']['value'])
         self.assertEqual(
@@ -202,8 +238,11 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         self.assertFalse(readonly_info['summary_keep_turns']['is_editable'])
         self.assertEqual(readonly_info['system_prompt']['label'], 'summary_system_prompt')
         self.assertEqual(readonly_info['system_prompt']['source'], 'prompt_file')
-        self.assertIn('Tu es un assistant de synthèse.', readonly_info['system_prompt']['value'])
-        self.assertIn('Écris en français.', readonly_info['system_prompt']['value'])
+        self.assertPromptContentGate(
+            readonly_info['system_prompt'],
+            expected_text=prompt_loader.get_summary_system_prompt(),
+            expected_path=config.SUMMARY_SYSTEM_PROMPT_PATH,
+        )
         self.assertIn('main_model.title_resumer', readonly_info['shared_transport']['value'])
         self.assertIn('main_model.referer_resumer', readonly_info['shared_transport']['value'])
         self.assertEqual(
@@ -220,7 +259,11 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             readonly_info['prompt_loader']['value'],
             'core.stimmung_agent._load_system_prompt()',
         )
-        self.assertIn('Tu es un classificateur affectif minimal', readonly_info['prompt_text']['value'])
+        self.assertPromptContentGate(
+            readonly_info['prompt_text'],
+            expected_text=prompt_loader.read_prompt_text('prompts/stimmung_agent.txt'),
+            expected_path='prompts/stimmung_agent.txt',
+        )
         self.assertIn('main_model.title_stimmung_agent', readonly_info['shared_transport']['value'])
         self.assertIn('main_model.referer_stimmung_agent', readonly_info['shared_transport']['value'])
         self.assertEqual(
@@ -239,7 +282,11 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             readonly_info['prompt_loader']['value'],
             'core.hermeneutic_node.validation.validation_agent._load_system_prompt()',
         )
-        self.assertIn('validation_dialogue_context', readonly_info['prompt_text']['value'])
+        self.assertPromptContentGate(
+            readonly_info['prompt_text'],
+            expected_text=prompt_loader.read_prompt_text('prompts/validation_agent.txt'),
+            expected_path='prompts/validation_agent.txt',
+        )
         self.assertIn('main_model.title_validation_agent', readonly_info['shared_transport']['value'])
         self.assertIn('main_model.referer_validation_agent', readonly_info['shared_transport']['value'])
         self.assertEqual(
@@ -253,22 +300,22 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
 
     def test_get_section_readonly_info_web_reformulation_model_exposes_prompt_and_transport(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('web_reformulation_model')
+        reformulation_prompt = prompt_loader.get_web_reformulation_prompt()
 
         self.assertEqual(readonly_info['prompt_path']['value'], runtime_settings.config.WEB_REFORMULATION_PROMPT_PATH)
         self.assertIn('main_model', readonly_info['shared_transport']['value'])
         self.assertIn('main_model.title_web_reformulation', readonly_info['shared_transport']['value'])
         self.assertIn('main_model.referer_web_reformulation', readonly_info['shared_transport']['value'])
+        self.assertPromptContentGate(
+            readonly_info['system_prompt'],
+            expected_text=reformulation_prompt,
+            expected_path=runtime_settings.config.WEB_REFORMULATION_PROMPT_PATH,
+        )
         self.assertEqual(
             readonly_info['system_prompt']['label'],
             'web_reformulation_system_prompt',
         )
         self.assertEqual(readonly_info['system_prompt']['source'], 'prompt_file')
-        self.assertIn('Nous sommes le {today}.', readonly_info['system_prompt']['value'])
-        self.assertIn(
-            'Tu es un assistant qui transforme un message en requête de recherche web courte et efficace.',
-            readonly_info['system_prompt']['value'],
-        )
-        self.assertIn('Maximum 8 mots.', readonly_info['system_prompt']['value'])
 
     def test_get_section_readonly_info_identity_governance_points_to_hermeneutic_admin_surface(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('identity_governance')
@@ -306,7 +353,10 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             readonly_info = runtime_settings.get_section_readonly_info(section)
             self.assertTrue(readonly_info, section)
             for item in readonly_info.values():
-                self.assertEqual(set(item.keys()), {'label', 'value', 'is_editable', 'source'})
+                self.assertTrue(
+                    set(item.keys()).issuperset({'label', 'value', 'is_editable', 'source'}),
+                    item,
+                )
                 self.assertFalse(item['is_editable'])
 
         for section in expected_empty:

@@ -182,6 +182,7 @@ body {
 .workspace-folder-separator,
 .workspace-folder-empty,
 .workspace-folder-files,
+.workspace-folder-notes,
 .workspace-folder-exports,
 .workspace-folder-generated-images {
   background: transparent;
@@ -497,6 +498,7 @@ body {
   color: #9a6a1f;
 }
 
+.workspace-folder-notes,
 .workspace-folder-exports {
   padding: 2px 8px 7px 43px;
   color: var(--fg-muted);
@@ -507,6 +509,7 @@ body {
   color: var(--fg-muted);
 }
 
+.workspace-folder-note-header,
 .workspace-folder-export-header,
 .workspace-folder-generated-image-header {
   display: flex;
@@ -520,6 +523,8 @@ body {
   text-transform: uppercase;
 }
 
+.workspace-folder-note-create,
+.workspace-folder-note-action,
 .workspace-folder-export-create,
 .workspace-folder-export-action,
 .workspace-folder-generated-image-create,
@@ -538,6 +543,8 @@ body {
   font-size: 10px;
 }
 
+.workspace-folder-note-create:hover,
+.workspace-folder-note-action:hover,
 .workspace-folder-export-create:hover,
 .workspace-folder-export-action:hover,
 .workspace-folder-generated-image-create:hover,
@@ -546,6 +553,8 @@ body {
   color: var(--fg);
 }
 
+.workspace-folder-note-create:disabled,
+.workspace-folder-note-action:disabled,
 .workspace-folder-export-create:disabled,
 .workspace-folder-export-action:disabled,
 .workspace-folder-generated-image-create:disabled,
@@ -554,6 +563,8 @@ body {
   cursor: default;
 }
 
+.workspace-folder-note-empty,
+.workspace-folder-note-error,
 .workspace-folder-export-empty,
 .workspace-folder-generated-image-empty {
   padding: 3px 0 7px;
@@ -562,6 +573,7 @@ body {
   font-style: italic;
 }
 
+.workspace-folder-note,
 .workspace-folder-export,
 .workspace-folder-generated-image {
   display: grid;
@@ -571,6 +583,7 @@ body {
   padding: 3px 0;
 }
 
+.workspace-folder-note-name,
 .workspace-folder-export-name,
 .workspace-folder-generated-image-name {
   grid-column: 1;
@@ -582,6 +595,7 @@ body {
   white-space: nowrap;
 }
 
+.workspace-folder-note-meta,
 .workspace-folder-export-meta,
 .workspace-folder-generated-image-meta {
   grid-column: 1;
@@ -627,6 +641,28 @@ body {
 
 .workspace-folder-generated-image-action-delete {
   grid-column: 5;
+}
+
+.workspace-folder-note.selected .workspace-folder-note-name {
+  font-weight: 650;
+}
+
+.workspace-folder-note-error {
+  color: #b85050;
+  font-style: normal;
+}
+
+.workspace-folder-note-action {
+  grid-row: 1 / span 2;
+  padding: 0 5px;
+}
+
+.workspace-folder-note-action-select {
+  grid-column: 3;
+}
+
+.workspace-folder-note-action-prepare {
+  grid-column: 4 / span 2;
 }
 
 .threads li.dragging {
@@ -1415,7 +1451,7 @@ body {
 
 .composer-actions {
   display: grid;
-  grid-template-columns: repeat(4, 38px);
+  grid-template-columns: repeat(5, 38px);
   grid-auto-rows: 38px;
   align-content: center;
   justify-content: end;
@@ -1429,6 +1465,7 @@ body {
 .btn-image-generation,
 .btn-adobe-mode,
 .btn-biblio-mode,
+.btn-notes-mode,
 .btn-agenda-mode,
 .btn-web-search {
   display: flex;
@@ -1450,6 +1487,7 @@ body {
 .btn-image-generation:hover,
 .btn-adobe-mode:hover,
 .btn-biblio-mode:hover,
+.btn-notes-mode:hover,
 .btn-agenda-mode:hover,
 .btn-web-search:hover {
   color: var(--fg-muted);
@@ -1496,8 +1534,13 @@ body {
   grid-row: 2;
 }
 
+.btn-notes-mode {
+  grid-column: 5;
+  grid-row: 2;
+}
+
 .btn-agenda-mode {
-  grid-column: 4;
+  grid-column: 5;
   grid-row: 1;
 }
 
@@ -1525,6 +1568,7 @@ body {
 .btn-image-generation:disabled,
 .btn-adobe-mode:disabled,
 .btn-biblio-mode:disabled,
+.btn-notes-mode:disabled,
 .btn-agenda-mode:disabled,
 .btn-web-search:disabled {
   cursor: not-allowed;
@@ -1553,6 +1597,13 @@ body {
 }
 
 .btn-biblio-mode.active {
+  color: var(--fg);
+  border-color: var(--border-strong);
+  background: var(--surface-active);
+  box-shadow: inset 0 0 0 1px rgba(25, 23, 20, 0.035);
+}
+
+.btn-notes-mode.active {
   color: var(--fg);
   border-color: var(--border-strong);
   background: var(--surface-active);
@@ -1926,6 +1977,7 @@ body {
   .btn-image-generation,
   .btn-adobe-mode,
   .btn-biblio-mode,
+  .btn-notes-mode,
   .btn-agenda-mode,
   .btn-web-search {
     width: 36px;
@@ -1938,7 +1990,7 @@ body {
   }
 
   .composer-actions {
-    grid-template-columns: repeat(4, 36px);
+    grid-template-columns: repeat(5, 36px);
     grid-auto-rows: 36px;
     gap: 6px;
   }
