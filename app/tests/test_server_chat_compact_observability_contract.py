@@ -158,7 +158,9 @@ class ServerChatCompactObservabilityContractTests(unittest.TestCase):
         prompt_event = next(item for item in observed_events if item['stage'] == 'prompt_prepared')
         payload = prompt_event['payload_json']
         self.assertEqual(payload['prompt_kind'], 'chat_system_augmented')
-        self.assertEqual(payload['messages_count'], 1)
+        self.assertEqual(payload['messages_count'], len(observed_state['payload_messages']))
+        self.assertEqual(payload['messages_count'], 2)
+        self.assertEqual([message.get('role') for message in observed_state['payload_messages']], ['user', 'system'])
         self.assertEqual(payload['memory_items_used'], 0)
         self.assertEqual(
             payload['memory_prompt_injection'],

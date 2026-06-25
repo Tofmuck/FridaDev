@@ -1592,7 +1592,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01
 
-- Statut courant: validated_by_lot_6A_needs_contract_decision.
+- Statut courant: closed_by_lot_6H_test_stale.
 - Severite: P2.
 - Classe: `P2_observability_contract_drift`.
 - Suite concernee: `tests.test_server_chat_compact_observability_contract`.
@@ -1601,8 +1601,13 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 - Preuve Lot 6A: la suite cible relancee en conteneur reproduit encore
   l'ecart; le meme run observe aussi un statut summary attendu `missing` devenu
   `error`, probablement lie aux corrections fail-open memoire recentes.
-- Impact possible: drift de contrat de test, changement legitime du payload
-  compact, ou comptage observe trop sensible a une lane/prompt supplementaire.
+- Preuve Lot 6H: la suite cible ne reproduit plus le drift summary; le statut
+  `summary.status=missing` reste attendu pour l'absence normale de summary.
+  Le seul echec restant etait `prompt_prepared.messages_count`: le probe
+  content-free montre que `messages_count=2` correspond exactement aux deux
+  messages transmis au payload LLM par `_LLMChatLogProxy.build_payload()`.
+- Decision Lot 6H: test stale uniquement; `messages_count=2` est l'etat produit
+  attendu pour ce scenario, pas un bug runtime ni une fuite de contenu.
 - Lot cible: Lot 6H si la correction concerne le schema/projection
   observabilite compacte; Lot 7 si la revalidation conclut a un drift de
   matrice/smoke plutot qu'a un bug runtime.
@@ -2305,6 +2310,8 @@ Decision:
 - [x] Lot 6F.1: traiter le rejet de garde du payload arbiter compact
   content-free.
 - [x] Lot 6G: traiter `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
+- [x] Lot 6H: requalifier `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01`
+  comme test stale et aligner le contrat compact.
 
 #### Lot 6A - Audit/triage observabilite/logs applicatifs
 
@@ -2672,6 +2679,37 @@ Resultat Lot 6G:
 - Les payloads dangereux restent refuses et redacted.
 - `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01` est clos.
 
+#### Lot 6H - Compact observability drift messages_count / summary status
+
+Statut: execute le 2026-06-25.
+Runtime modifie: non.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le bon plan etait de
+reproduire la suite cible, isoler l'event compact, puis corriger seulement le
+contrat de test si le runtime etait coherent.
+
+- [x] Reproduire `tests.test_server_chat_compact_observability_contract` en
+  conteneur: un seul echec restant sur `prompt_prepared.messages_count`.
+- [x] Requalifier le volet summary: `summary.status=missing` passe deja dans
+  la suite cible et reste le contrat attendu pour absence normale de summary.
+- [x] Isoler `prompt_prepared.messages_count`: le payload compact expose
+  `len(messages)` recu par `_LLMChatLogProxy.build_payload()`.
+- [x] Prouver content-free que le payload LLM du scenario contient deux
+  messages (`user`, `system`) et que `messages_count=2` est donc l'etat produit
+  attendu.
+- [x] Aligner le test sur le contrat reel sans modifier le runtime.
+- [x] Ne pas traiter Lot 7 ni Lot 9.
+
+Resultat Lot 6H:
+
+- `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01` est clos comme
+  `test_stale`.
+- `messages_count` reste le nombre de messages remis au provider LLM, pas le
+  nombre initial de messages retourne par la fixture `build_prompt_messages`.
+- `summary.status=missing` est confirme comme comportement attendu en absence
+  normale de summary.
+
 ### Lot 7 - Tests/smokes/artefacts
 
 - [ ] Construire matrice live/fake/mock/covered_by_tests.
@@ -2680,8 +2718,10 @@ Resultat Lot 6G:
 - [ ] Ajouter test `/log` champ inconnu si denylist conservee.
 - [ ] Verifier JSONL et anti-fuite.
 - [ ] Gerer fixtures secret-like par allowlist ou sentinelles.
-- [ ] Revalider `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01` si la cause
-  est drift de contrat de test/smoke.
+
+Note Lot 6H: `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01` est revalide
+et clos en Lot 6H; il n'est plus une tache Lot 7 et ne requiert pas de
+smoke/matrice globale.
 
 ### Lot 8 - Docs/source-of-truth
 
