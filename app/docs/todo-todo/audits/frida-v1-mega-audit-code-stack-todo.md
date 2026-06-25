@@ -1921,7 +1921,8 @@ Decisions Lot 4E:
 - [x] Lot 5C: traiter panels frontend qui rendaient les erreurs comme listes
   vides.
 - [x] Lot 5C.1: traiter Documents/Fichiers erreur API visible.
-- [ ] Lot 7: traiter `/log` UI denylist si le smoke/matrice confirme le besoin.
+- [x] Deleguer `/log` UI denylist au Lot 7: vrai test/smoke conserve ouvert
+  en Lot 7.
 - [x] Garder Authelia comme frontiere publique: invariant verifie par Lot 3/5A/5D.
 
 #### Lot 5A - Audit/triage admin/security/app routes
