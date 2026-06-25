@@ -31,6 +31,8 @@ Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-c
   discovery web OpenRouter, autres candidats classes sans refactor large.
 - Lot 4D.2: memory/identity/summary input fail-open valide puis corrige;
   les pannes de lecture atteignent les inputs primaires comme `error`.
+- Post Lot 4D.2: les echecs larges observes hors correction ciblee sont
+  traces comme findings ouverts, sans correction runtime ni reouverture 4D.2.
 
 ## Doctrine securite plateforme avant audit code
 
@@ -1349,6 +1351,59 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   valider seulement avant reouverture Agenda.
 - Lot cible: post-V1 ou Lot 8 docs si formulation necessaire.
 
+### P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01
+
+- Statut courant: needs_targeted_validation.
+- Severite: P2.
+- Classe: `P2_test_contract_or_runtime_validation`.
+- Suite concernee: `tests.unit.memory.test_identity_periodic_agent_phase1`.
+- Constat observe apres Lot 4D.2: des cas mutable identity staging attendus
+  `ok` sortent `skipped` ou `refused`; `invalid_verdict` peut etre remplace
+  par `observability_payload_rejected`, et un cas laisse un buffer non nettoye.
+- Impact possible: soit le runtime identity/memory refuse correctement un
+  verdict invalide mais le contrat de test est stale, soit la garde
+  observabilite masque le reason code utile, soit le cleanup de buffer a une
+  regression bornee.
+- Lot cible: Lot 6 si la cause est la garde observabilite / schema payload;
+  sous-lot identity/memory dedie si la validation runtime ou le cleanup de
+  buffer est en cause.
+- Critere de cloture: isoler un fake minimal content-free distinguant contrat
+  de test stale, rejet garde observabilite et bug runtime; corriger seulement
+  la surface confirmee.
+- Hors-scope Lot 4D.2: ne pas requalifier le correctif memory input cible.
+
+### P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01
+
+- Statut courant: needs_targeted_validation.
+- Severite: P2.
+- Classe: `P2_observability_contract_drift`.
+- Suite concernee: `tests.test_server_chat_compact_observability_contract`.
+- Constat observe apres Lot 4D.2: `messages_count` attendu `1`, obtenu `2`
+  dans le contrat compact observability.
+- Impact possible: drift de contrat de test, changement legitime du payload
+  compact, ou comptage observe trop sensible a une lane/prompt supplementaire.
+- Lot cible: Lot 7 si la revalidation doit passer par matrice tests/smokes;
+  Lot 6 si la correction concerne le schema/projection observabilite compacte.
+- Critere de cloture: prouver si `2` est l'etat produit attendu ou une
+  regression; ajuster le test ou le payload sans exposer message/prompt brut.
+- Hors-scope Lot 4D.2: ne touche pas au statut summary/identity corrige.
+
+### P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01
+
+- Statut courant: needs_targeted_validation.
+- Severite: P2.
+- Classe: `P2_observability_guard_rejection`.
+- Suite concernee: `tests.unit.logs.test_chat_turn_logger_hermeneutic_observability`.
+- Constat observe apres Lot 4D.2: l'event `stimmung_prompt_prepared` attendu
+  `ok` sort `refused` avec `observability_payload_rejected`.
+- Impact possible: la garde observabilite refuse un payload qui devrait etre
+  autorise en forme content-free, ou le test attend encore un ancien contrat
+  trop permissif.
+- Lot cible: Lot 6, garde observabilite / schema payload.
+- Critere de cloture: reproduire en fake local, identifier la cle ou classe de
+  payload rejetee sans prompt brut, puis corriger schema ou test selon contrat.
+- Hors-scope Lot 4D.2: pas de correction logs/raw ni de changement Stimmung.
+
 ### P3-CEL-LARGE-FILES-01
 
 - Statut initial: open.
@@ -1613,6 +1668,10 @@ Resultat Lot 4D.2:
 - Deja correct: retrieval memoire dense/arbitration -> `retrieve_error` sur
   panne amont.
 - Non absorbe: doctrine primary node, refactor memory/identity, Lot 6 logs raw.
+- Echecs larges observes hors scope et traces separement:
+  `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01`,
+  `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01`,
+  `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
 
 #### Lot 4E - Decision gros fichiers/orchestration sans refactor massif
 
@@ -1639,6 +1698,9 @@ Resultat Lot 4D.2:
 - [ ] Trancher doctrine hashes courts identity.
 - [ ] Corriger seulement surfaces qui exposent ou masquent une panne.
 - [ ] Conserver diagnostics content-free.
+- [ ] Valider `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01` si la cause
+  est `observability_payload_rejected` ou schema payload.
+- [ ] Valider `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
 
 ### Lot 7 - Tests/smokes/artefacts
 
@@ -1648,6 +1710,8 @@ Resultat Lot 4D.2:
 - [ ] Ajouter test `/log` champ inconnu si denylist conservee.
 - [ ] Verifier JSONL et anti-fuite.
 - [ ] Gerer fixtures secret-like par allowlist ou sentinelles.
+- [ ] Revalider `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01` si la cause
+  est drift de contrat de test/smoke.
 
 ### Lot 8 - Docs/source-of-truth
 
