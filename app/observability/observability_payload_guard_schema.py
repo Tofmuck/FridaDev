@@ -279,7 +279,7 @@ _GENERAL_TEXT_KEYS = set(
     schema_version scope search_profile searxng_language searxng_profile_params_kind
     searxng_profile_params_policy searxng_safesearch searxng_time_range
     searxng_soft_signal_policy source source_domain source_first_authority source_first_policy_kind
-    shift_state source_first_product source_kind source_origin stability status status_schema_version summary_id_sha256_12 summary_usage used_content_kind
+    shift_state source_first_product source_kind source_origin stability status status_schema_version stimmung_status summary_id_sha256_12 summary_usage used_content_kind
     surface_error_hash surface_intro_hash surface_outro_hash
     subject target_side target_verification_error_class time_ambiguity time_kind timezone
     timezone tone upstream_output_regime_proposed upstream_recommendation_posture
@@ -320,7 +320,7 @@ _GENERAL_SCALAR_KEYS = set(
     active_document anythingllm final_response_override hermeneutic identity memory_rag ocr_active_documents
     in_prompt kept_candidates raw_catalogue_payload_included raw_locator_included raw_passage_included raw_query_included
     candidate_top_score cancelled expired pending_action_present pending_cancelled pending_expired pending_execution_attempted pending_target_clear
-    read_execution_attempted redacted secret_included score_gap status_code summary summary_generation_observed target_clear top_score fallback_decisions
+    read_execution_attempted recent_has_in_progress_turn recent_max_turns redacted secret_included score_gap status_code summary summary_generation_observed target_clear top_score fallback_decisions
     user_display_name_present web workspace write_execution_attempted writes_applied
     """.split()
 )

@@ -19,6 +19,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from observability import admin_log_projection
+from observability import hermeneutic_node_logger
 from observability import main_payload_manifest
 from observability import observability_payload_guard
 
@@ -451,6 +452,84 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
 
         self.assertTrue(observability_payload_guard.guard_payload(validation_payload).accepted)
         self.assertTrue(observability_payload_guard.guard_payload(stimmung_payload).accepted)
+
+    def test_stimmung_prompt_prepared_generated_payload_passes(self) -> None:
+        payload = hermeneutic_node_logger.build_stimmung_prompt_prepared_payload(
+            decision_source="primary",
+            messages=[
+                {"role": "system", "content": "STIMMUNG_SYSTEM_PROMPT_SENTINEL"},
+                {"role": "user", "content": "STIMMUNG_USER_MESSAGE_SENTINEL"},
+            ],
+            recent_window_input_payload={
+                "schema_version": "v1",
+                "turn_count": 2,
+                "max_recent_turns": 5,
+                "has_in_progress_turn": True,
+                "turns": [
+                    {"messages": [{"role": "user", "content": "STIMMUNG_HISTORY_SENTINEL"}]},
+                    {"messages": [{"role": "assistant", "content": "STIMMUNG_REPLY_SENTINEL"}]},
+                ],
+            },
+            temperature=0.1,
+            top_p=1.0,
+            max_tokens=220,
+            timeout_s=10,
+            context_window_turns=5,
+        )
+
+        decision = observability_payload_guard.guard_payload(payload)
+        encoded = _encoded(decision.payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.payload["stimmung_status"], "prepared")
+        self.assertEqual(decision.payload["messages_count"], 2)
+        self.assertEqual(decision.payload["message_role_counts"], {"system": 1, "user": 1})
+        self.assertEqual(decision.payload["recent_turn_count"], 2)
+        self.assertEqual(decision.payload["recent_turns_with_messages_count"], 2)
+        self.assertTrue(decision.payload["recent_has_in_progress_turn"])
+        self.assertEqual(decision.payload["recent_max_turns"], 5)
+        self.assertEqual(decision.payload["sampling"]["timeout_s"], 10)
+        self.assertNotIn("STIMMUNG_SYSTEM_PROMPT_SENTINEL", encoded)
+        self.assertNotIn("STIMMUNG_USER_MESSAGE_SENTINEL", encoded)
+        self.assertNotIn("STIMMUNG_HISTORY_SENTINEL", encoded)
+        self.assertNotIn("STIMMUNG_REPLY_SENTINEL", encoded)
+
+    def test_stimmung_prompt_prepared_rejects_raw_prompt_messages_provider_payload_and_url(self) -> None:
+        payload = hermeneutic_node_logger.build_stimmung_prompt_prepared_payload(
+            decision_source="primary",
+            messages=[
+                {"role": "system", "content": "STIMMUNG_SYSTEM_PROMPT_SENTINEL"},
+                {"role": "user", "content": "STIMMUNG_USER_MESSAGE_SENTINEL"},
+            ],
+            recent_window_input_payload=None,
+            temperature=0.1,
+            top_p=1.0,
+            max_tokens=220,
+            timeout_s=10,
+            context_window_turns=5,
+        )
+        payload.update(
+            {
+                "prompt": "STIMMUNG_RAW_PROMPT_SENTINEL",
+                "messages": [{"role": "user", "content": "STIMMUNG_RAW_MESSAGE_SENTINEL"}],
+                "provider_payload": {"input": "STIMMUNG_PROVIDER_PAYLOAD_SENTINEL"},
+                "source_url": "https://example.invalid/private?probe=STIMMUNG_URL_SENTINEL",
+            }
+        )
+
+        decision = observability_payload_guard.guard_payload(payload)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("prompt_key", decision.payload["issue_classes"])
+        self.assertIn("messages_key", decision.payload["issue_classes"])
+        self.assertIn("provider_payload_key", decision.payload["issue_classes"])
+        self.assertIn("url_key", decision.payload["issue_classes"])
+        self.assertNotIn("STIMMUNG_RAW_PROMPT_SENTINEL", encoded)
+        self.assertNotIn("STIMMUNG_RAW_MESSAGE_SENTINEL", encoded)
+        self.assertNotIn("STIMMUNG_PROVIDER_PAYLOAD_SENTINEL", encoded)
+        self.assertNotIn("STIMMUNG_URL_SENTINEL", encoded)
+        self.assertNotIn("example.invalid", encoded)
 
     def test_raw_arbiter_reason_is_rejected(self) -> None:
         payload = {

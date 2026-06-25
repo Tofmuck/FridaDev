@@ -1612,7 +1612,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01
 
-- Statut courant: validated_by_lot_6A.
+- Statut courant: closed_by_lot_6G.
 - Severite: P2.
 - Classe: `P2_observability_guard_rejection`.
 - Suite concernee: `tests.unit.logs.test_chat_turn_logger_hermeneutic_observability`.
@@ -1620,9 +1620,14 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   `ok` sort `refused` avec `observability_payload_rejected`.
 - Preuve Lot 6A: la suite cible relancee en conteneur reproduit encore le rejet
   de garde sur le code courant.
-- Impact possible: la garde observabilite refuse un payload qui devrait etre
-  autorise en forme content-free, ou le test attend encore un ancien contrat
-  trop permissif.
+- Preuve Lot 6G: la reproduction cible relancee en conteneur sortait
+  `refused/observability_payload_rejected`; le probe sur le payload genere par
+  `build_stimmung_prompt_prepared_payload()` isolait `stimmung_status`,
+  `recent_has_in_progress_turn` et `recent_max_turns` comme cles compactes
+  content-free non allowlistees.
+- Correction Lot 6G: autoriser uniquement ces trois cles dans le schema
+  writer-side et ajouter des sentinelles prouvant que prompt brut, message
+  brut, payload provider brut et URL brute restent refuses.
 - Lot cible: Lot 6G, garde observabilite / schema payload.
 - Critere de cloture: reproduire en fake local, identifier la cle ou classe de
   payload rejetee sans prompt brut, puis corriger schema ou test selon contrat.
@@ -2299,7 +2304,7 @@ Decision:
   apres separation garde observabilite / contrat stale / runtime identity.
 - [x] Lot 6F.1: traiter le rejet de garde du payload arbiter compact
   content-free.
-- [ ] Lot 6G: traiter `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
+- [x] Lot 6G: traiter `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
 
 #### Lot 6A - Audit/triage observabilite/logs applicatifs
 
@@ -2633,6 +2638,39 @@ Resultat Lot 6F.1:
 - Les compteurs et reason codes arbiter utiles restent disponibles.
 - Les payloads dangereux restent refuses et redacted.
 - `P2-CEL-ARBITER-PAYLOAD-GUARD-REJECTION-01` est clos.
+
+#### Lot 6G - Correction du rejet de garde stimmung_prompt_prepared
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne au schema writer-side observabilite.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le rejet etait
+reproduit et le probe de garde sur le payload genere isolait trois cles
+content-free manquantes; un patch schema/tests cible etait plus sur qu'un
+relachement global de la garde.
+
+- [x] Reproduire
+  `test_stimmung_prompt_prepared_emits_provider_secondary_fingerprint_without_raw_payload`
+  en conteneur: event `stimmung_prompt_prepared` en `refused` avec
+  `observability_payload_rejected`.
+- [x] Valider `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
+- [x] Autoriser uniquement `stimmung_status`,
+  `recent_has_in_progress_turn` et `recent_max_turns`.
+- [x] Conserver les diagnostics content-free: compteurs messages/roles,
+  presence et tailles prompt/user, stats recent window, sampling.
+- [x] Ajouter sentinelles refusant prompt brut, message brut, payload provider
+  brut et URL brute.
+- [x] Ne pas traiter Lot 6H, Lot 7 ni Lot 9.
+
+Resultat Lot 6G:
+
+- Le payload compact `stage=stimmung_prompt_prepared` est accepte par la garde
+  writer-side.
+- Les diagnostics provider secondary restent disponibles sans prompt/message
+  brut.
+- Les payloads dangereux restent refuses et redacted.
+- `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01` est clos.
 
 ### Lot 7 - Tests/smokes/artefacts
 
