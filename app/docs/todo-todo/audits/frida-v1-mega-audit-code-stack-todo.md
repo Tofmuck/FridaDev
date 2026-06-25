@@ -531,6 +531,71 @@ Conclusion Lot 2D:
   lot policy/redaction seulement si l'operateur decide que toute URL de
   redirection complete doit etre masquee.
 
+## Lot 2F - Investigation permissions Compose/YAML
+
+Statut: investigation Sauron metadata-only executee le 2026-06-25.
+Finding cible: `P2-SAU-COMPOSE-PERMISSIONS-01`.
+Correction appliquee: non.
+Plateforme modifiee: non.
+P2 ferme: non.
+Classification: `partially_confirmed`.
+
+- [x] Inventorier les fichiers Compose/YAML par metadonnees uniquement.
+- [x] Classer les fichiers Compose actifs, historiques/quasi-actifs et YAML
+  non Compose.
+- [x] Valider `docker compose config --quiet` sur les stacks prioritaires sans
+  afficher de configuration.
+- [x] Chercher les scripts/docs qui referencent ou modifient les Compose sans
+  afficher de secret.
+- [x] Produire une decision avant tout chmod/chown.
+
+### Resultat Lot 2F
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le plan le plus sur
+est une investigation metadata-only des Compose/YAML, en reservant Lot 2E pour
+l'option Authelia deja ouverte et en utilisant Lot 2F pour eviter l'ambiguite,
+puis une mise a jour docs-only sans chmod ni correction plateforme.
+
+- Inventaire YAML/Compose borne hors `data`, `backups`, `_codex_backups`,
+  `secrets`, `node_modules` et `models`: `19` fichiers.
+- Fichiers world-writable detectes: `0`.
+- Fichiers group-writable detectes: `3`.
+- Compose actifs prioritaires valides par `docker compose config --quiet`:
+  global, FridaDev app, FridaDev DB, Frida M4/RAG et doc-pipeline: OK.
+- Repos Git detectes: seul `/opt/platform/fridadev` est un repo Git dans la
+  profondeur scannee; les sous-stacks `/opt/platform/fridadev-app`,
+  `/opt/platform/fridadev-db`, `/opt/platform/frida-m4-rag` et
+  `/opt/platform/doc-pipeline` sont des stacks runtime host-side hors Git.
+- Groupes concernes: `tof` et `debian`; aucun membre additionnel liste par
+  `getent group`, mais les comptes `tof` et `debian` ont aussi acces Docker.
+
+### Table decisionnelle Lot 2F
+
+| Path/famille | Classification | Permissions | Validation | Decision |
+| --- | --- | --- | --- | --- |
+| `/opt/platform/fridadev-app/docker-compose.yml` | `confirmed_group_writable_runtime_compose` | `0664 tof:tof` | Compose app OK | `candidate_0644_after_go` |
+| `/opt/platform/fridadev/docker-compose.yml` | `historical_or_quasi_active_compose` | `0664 tof:tof` | Compose repo KO: env local absent; `stack.sh` le reference | `candidate_0644_after_go` |
+| `/opt/platform/homepage/kubernetes.yaml` | `yaml_not_runtime_compose` | `0664 debian:debian` | Non teste comme Compose | `candidate_0644_after_go` |
+| Compose global/doc-pipeline/FridaDev DB/M4 | `confirmed_safe_readonly_compose` | `0644` ou `0640`, non group-writable | Compose OK | `no_change_needed` |
+| Authelia/SearxNG YAML sensibles | `confirmed_safe_readonly_compose` / config sensible | `0600` ou `0640 root:root` | Metadata seulement | `no_change_needed` |
+| Homepage YAML non group-writable | `yaml_not_runtime_compose` | `0644`, non group-writable | Metadata seulement | `no_change_needed` |
+
+### Decision Lot 2F
+
+- Finding confirme partiellement: le risque initial existe bien pour un Compose
+  runtime actif (`fridadev-app`) et pour un Compose repo/quasi-actif
+  (`fridadev`), mais pas pour les autres Compose prioritaires.
+- Aucun fichier Compose/YAML scanne n'est world-writable.
+- Aucun script modificateur `chmod/chown compose` n'a ete detecte dans les
+  chemins scannes; `stack.sh` reference seulement le Compose repo local.
+- Correction recommandee, sans application dans ce lot: passer les fichiers
+  group-writable candidats en `0644` apres GO operateur, avec `stat` avant/apres
+  et `docker compose config --quiet` pour `fridadev-app`; ne pas corriger
+  `fridadev` sans decider s'il reste un compose local supporte ou historique.
+- Correction non urgente: le groupe `tof` semble mono-utilisateur, donc le
+  risque principal est le durcissement d'hygiene et la reduction du drift, pas
+  une exposition world-write immediate.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
@@ -690,9 +755,22 @@ Conclusion Lot 2D:
 ### P2-SAU-COMPOSE-PERMISSIONS-01
 
 - Statut initial: open.
+- Statut courant: partially_confirmed_by Lot 2F; correction candidate
+  documentee mais non appliquee.
 - Severite: P2.
-- Zones suspectes: compose FridaDev group-writable.
+- Zones suspectes: Compose FridaDev group-writable.
 - Lot cible: Lot 2 ou 3.
+- Investigation Lot 2F: `19` YAML/Compose inventories hors zones exclues,
+  `0` world-writable, `3` group-writable. Compose runtime actif confirme:
+  `/opt/platform/fridadev-app/docker-compose.yml` en `0664 tof:tof`, compose
+  config OK. Compose repo/quasi-actif:
+  `/opt/platform/fridadev/docker-compose.yml` en `0664 tof:tof`, reference par
+  `stack.sh`, mais `docker compose config --quiet` echoue dans l'etat observe
+  sur env local absent. YAML non Compose group-writable:
+  `/opt/platform/homepage/kubernetes.yaml` en `0664 debian:debian`.
+- Correction proposee: `candidate_0644_after_go` pour les fichiers
+  group-writable confirmes, avec validation compose ciblee; ne pas appliquer
+  sans GO operateur.
 - Critere de cloture: modes/ownership explicites et verifies.
 - Preuve minimale: `stat`, `docker compose config --quiet`.
 - Hors-scope: changement runtime.
@@ -983,9 +1061,11 @@ Conclusion Lot 2D:
   correction immediate sans GO operateur.
 - [ ] Lot 2E: optionnel, definir une politique de masquage des URLs de
   redirection completes Authelia si l'operateur le demande.
+- [x] Lot 2F: investiguer permissions Compose/YAML group-writable sans
+  correction plateforme.
 - [ ] Traiter backups/dumps/keys world-readable.
 - [ ] Qualifier logs Authelia/Caddy secret-like.
-- [ ] Traiter compose group-writable si confirme.
+- [ ] Traiter compose/YAML group-writable apres GO operateur si confirme.
 - [ ] Traiter la gouvernance permissions/retention au-dela des deux P1.
 - [ ] Definir retention et mode cible.
 
