@@ -19,6 +19,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from admin import runtime_settings
+from core.hermeneutic_node.inputs import web_input
 from tools import web_search
 import config
 
@@ -996,6 +997,95 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
                 }
             ],
         )
+
+    def test_build_context_payload_distinguishes_searxng_error_from_no_results(self) -> None:
+        original_runtime_services_value = web_search._runtime_services_value
+        original_reformulate = web_search.reformulate
+        original_get = web_search.requests.get
+        original_emit = web_search._emit_web_search_runtime_event
+
+        observed_events: list[dict[str, object]] = []
+        observed_timeouts: list[object] = []
+
+        def fake_runtime_services_value(field: str):
+            values = {
+                'searxng_url': 'https://searxng.invalid',
+                'searxng_results': 5,
+                'crawl4ai_top_n': 0,
+                'crawl4ai_max_chars': 80,
+            }
+            if field in values:
+                return values[field]
+            return original_runtime_services_value(field)
+
+        class EmptySearchResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict[str, object]:
+                return {'results': []}
+
+        def failing_get(*_args, **kwargs):
+            observed_timeouts.append(kwargs.get('timeout'))
+            raise RuntimeError('SYNTHETIC_SEARXNG_BOOM')
+
+        def empty_get(*_args, **kwargs):
+            observed_timeouts.append(kwargs.get('timeout'))
+            return EmptySearchResponse()
+
+        web_search._runtime_services_value = fake_runtime_services_value
+        web_search.reformulate = lambda _msg, **_kwargs: 'synthetic upstream query'
+        web_search._emit_web_search_runtime_event = lambda **kwargs: observed_events.append(kwargs)
+        try:
+            web_search.requests.get = failing_get
+            error_payload = web_search.build_context_payload(
+                'synthetic user question',
+                discovery_provider='local',
+                enable_specialized_queries=False,
+                enable_reranking=False,
+            )
+            error_event = dict(observed_events[-1])
+
+            observed_events.clear()
+            web_search.requests.get = empty_get
+            empty_payload = web_search.build_context_payload(
+                'synthetic user question',
+                discovery_provider='local',
+                enable_specialized_queries=False,
+                enable_reranking=False,
+            )
+            empty_event = dict(observed_events[-1])
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search.reformulate = original_reformulate
+            web_search.requests.get = original_get
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(error_payload['status'], 'error')
+        self.assertEqual(error_payload['reason_code'], web_search.WEB_SEARCH_UPSTREAM_ERROR_REASON)
+        self.assertEqual(error_payload['error_class'], 'RuntimeError')
+        self.assertEqual(error_payload['results_count'], 0)
+        self.assertEqual(error_event['status'], 'error')
+        self.assertEqual(error_event['reason_code'], web_search.WEB_SEARCH_UPSTREAM_ERROR_REASON)
+        self.assertEqual(error_event['error_class'], 'RuntimeError')
+        self.assertEqual(error_event['message_short'], web_search.WEB_SEARCH_UPSTREAM_ERROR_REASON)
+        self.assertIn(web_search.SEARXNG_REQUEST_FAILED_REASON, error_payload['web_discovery_reason_codes'])
+        self.assertIn(web_search.WEB_SEARCH_UPSTREAM_ERROR_REASON, error_payload['web_discovery_reason_codes'])
+
+        web_runtime_input = web_input.build_web_input_from_runtime_payload(error_payload)
+        self.assertEqual(web_runtime_input['status'], 'error')
+        self.assertEqual(web_runtime_input['reason_code'], web_search.WEB_SEARCH_UPSTREAM_ERROR_REASON)
+        self.assertIn(
+            'web_status_error',
+            web_runtime_input['web_evidence']['web_evidence_reason_codes'],
+        )
+
+        self.assertEqual(empty_payload['status'], 'skipped')
+        self.assertEqual(empty_payload['reason_code'], 'no_data')
+        self.assertEqual(empty_payload['results_count'], 0)
+        self.assertEqual(empty_event['status'], 'skipped')
+        self.assertEqual(empty_event['reason_code'], 'no_data')
+        self.assertEqual(observed_timeouts, [10, 10])
 
     def test_build_context_payload_marks_explicit_url_as_not_read_error_when_crawl_errors_and_fallback_is_empty(self) -> None:
         url = 'https://example.com/article'

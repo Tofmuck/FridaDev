@@ -38,6 +38,8 @@ from tools import (
 
 logger = logging.getLogger("frida.web_search")
 _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
+WEB_SEARCH_UPSTREAM_ERROR_REASON = 'web_search_upstream_error'
+SEARXNG_REQUEST_FAILED_REASON = 'searxng_request_failed'
 _URL_TRAILING_PUNCTUATION = '.,;:!?)]}\'"'
 CRAWL4AI_FILTER_FIT = 'fit'
 CRAWL4AI_FILTER_RAW = 'raw'
@@ -1072,12 +1074,45 @@ def _query_plan_event_kwargs(query_plan: dict[str, Any] | None) -> tuple[dict[st
     return event_kwargs, fields
 
 
+def _query_plan_has_local_upstream_error(query_plan: dict[str, Any] | None) -> bool:
+    plan = dict(query_plan or {})
+    return int(plan.get('local_search_error_count') or 0) > 0
+
+
+def _query_plan_error_class(query_plan: dict[str, Any] | None) -> str:
+    plan = dict(query_plan or {})
+    return str(plan.get('local_search_error_class') or '')
+
+
+def _web_search_payload_status(
+    *,
+    has_results: bool,
+    query_plan: dict[str, Any] | None,
+) -> tuple[str, str | None, str]:
+    if has_results:
+        return 'ok', None, ''
+    if _query_plan_has_local_upstream_error(query_plan):
+        return 'error', WEB_SEARCH_UPSTREAM_ERROR_REASON, _query_plan_error_class(query_plan)
+    return 'skipped', 'no_data', ''
+
+
 def _with_query_source(result: dict[str, Any], query_entry: dict[str, Any]) -> dict[str, Any]:
     enriched = dict(result or {})
     enriched['query_source_kind'] = str(query_entry.get('query_source_kind') or 'primary')
     enriched['query_source_index'] = int(query_entry.get('query_source_index') or 0)
     enriched['query_source_sha256_12'] = str(query_entry.get('query_source_sha256_12') or '')
     return enriched
+
+
+def _normalize_local_discovery_result(result: dict[str, Any]) -> dict[str, str]:
+    url = str(result.get('url') or '').strip()
+    return {
+        'title': str(result.get('title') or '').strip(),
+        'url': url,
+        'content': str(result.get('content') or '').strip(),
+        'discovery_source_kind': 'searxng_result',
+        'discovery_domain': str(urlparse(url).netloc or '').lower(),
+    }
 
 
 def _interleave_and_dedupe_query_results(
@@ -1147,6 +1182,38 @@ def _call_discovery_with_profile_params(
     )
 
 
+def _local_search_discovery_response(
+    query: str,
+    *,
+    searxng_params: dict[str, str] | None,
+    max_results: int,
+    discovery_provider: str | None,
+) -> tuple[web_search_discovery.DiscoveryResponse, str]:
+    search_response = _call_search_response_with_profile_params(query, searxng_params)
+    status = str(search_response.get('status') or 'ok')
+    reason_codes = ['local_searxng_discovery_used']
+    error_class = ''
+    if status == 'error':
+        reason_codes.extend([SEARXNG_REQUEST_FAILED_REASON, WEB_SEARCH_UPSTREAM_ERROR_REASON])
+        error_class = str(search_response.get('error_class') or '')
+    result_limit = max_results if max_results > 0 else 5
+    results = [
+        _normalize_local_discovery_result(item)
+        for item in list(search_response.get('results') or [])[:result_limit]
+    ]
+    return (
+        web_search_discovery.DiscoveryResponse(
+            results=results,
+            observability=web_search_discovery.empty_observability_fields(
+                requested_provider=discovery_provider,
+                effective_provider_value=web_search_discovery.PROVIDER_LOCAL,
+                reason_codes=reason_codes,
+            ),
+        ),
+        error_class,
+    )
+
+
 def _run_search_query_plan(
     query_plan: dict[str, Any],
     *,
@@ -1176,17 +1243,32 @@ def _run_search_query_plan(
     searxng_params = dict(query_plan.get('searxng_request_params') or {})
     query_result_groups: list[tuple[dict[str, Any], list[dict[str, str]]]] = []
     discovery_observability: list[dict[str, Any]] = []
+    local_search_error_classes: list[str] = []
     for query_entry in queries:
         query = str(query_entry.get('query') or '')
-        discovery_response = _call_discovery_with_profile_params(
-            query,
+        effective_provider = web_search_discovery.effective_provider(
+            requested_provider=discovery_provider,
             search_profile=search_profile,
-            searxng_params=searxng_params,
-            max_results=max_results,
-            discovery_provider=discovery_provider,
-            requests_module=requests_module,
-            llm_module=llm_module,
         )
+        if effective_provider == web_search_discovery.PROVIDER_LOCAL:
+            discovery_response, error_class = _local_search_discovery_response(
+                query,
+                searxng_params=searxng_params,
+                max_results=max_results,
+                discovery_provider=discovery_provider,
+            )
+            if error_class:
+                local_search_error_classes.append(error_class)
+        else:
+            discovery_response = _call_discovery_with_profile_params(
+                query,
+                search_profile=search_profile,
+                searxng_params=searxng_params,
+                max_results=max_results,
+                discovery_provider=discovery_provider,
+                requests_module=requests_module,
+                llm_module=llm_module,
+            )
         discovery_observability.append(discovery_response.observability)
         query_result_groups.append((query_entry, discovery_response.results))
 
@@ -1197,6 +1279,8 @@ def _run_search_query_plan(
     plan = dict(query_plan)
     plan['raw_result_count'] = raw_result_count
     plan['deduped_result_count'] = len(merged_results)
+    plan['local_search_error_count'] = len(local_search_error_classes)
+    plan['local_search_error_class'] = local_search_error_classes[0] if local_search_error_classes else ''
     plan.update(web_search_discovery.merge_observability_fields(discovery_observability))
     reranked_results, rerank_observability = web_search_rerank.rerank_results(
         merged_results,
@@ -1632,6 +1716,16 @@ def search(
     searxng_params: dict[str, str] | None = None,
 ) -> list[dict[str, str]]:
     """Interroge SearXNG et retourne les résultats."""
+    return list(search_with_status(query, max_results=max_results, searxng_params=searxng_params).get('results') or [])
+
+
+def search_with_status(
+    query: str,
+    max_results: int | None = None,
+    *,
+    searxng_params: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Interroge SearXNG avec un statut explicite content-free."""
     if max_results is None:
         max_results = int(_runtime_services_value('searxng_results'))
     try:
@@ -1641,8 +1735,15 @@ def search(
         resp = requests.get(f"{searxng_url}/search", params=params, timeout=10)
         resp.raise_for_status()
         results = resp.json().get("results", [])[:max_results]
-        return [{"title": r.get("title", ""), "url": r.get("url", ""), "content": r.get("content", "")}
-                for r in results]
+        return {
+            'status': 'ok',
+            'reason_code': None,
+            'error_class': '',
+            'results': [
+                {"title": r.get("title", ""), "url": r.get("url", ""), "content": r.get("content", "")}
+                for r in results
+            ],
+        }
     except Exception as e:
         logger.warning(
             "search_error query_chars=%s query_sha256_12=%s error_class=%s reason_code=searxng_request_failed",
@@ -1650,7 +1751,29 @@ def search(
             _sha256_12(query),
             type(e).__name__,
         )
-        return []
+        return {
+            'status': 'error',
+            'reason_code': WEB_SEARCH_UPSTREAM_ERROR_REASON,
+            'error_class': type(e).__name__,
+            'results': [],
+        }
+
+
+_DEFAULT_SEARCH_FUNCTION = search
+
+
+def _call_search_response_with_profile_params(
+    query: str,
+    searxng_params: dict[str, str] | None,
+) -> dict[str, Any]:
+    if search is _DEFAULT_SEARCH_FUNCTION:
+        return search_with_status(query, searxng_params=searxng_params)
+    return {
+        'status': 'ok',
+        'reason_code': None,
+        'error_class': '',
+        'results': _call_search_with_profile_params(query, searxng_params),
+    }
 
 
 def crawl_with_status(url: str) -> dict[str, Any]:
@@ -1929,6 +2052,8 @@ def _emit_web_search_runtime_event(
                 'web_evidence_external_fallback_used': bool(web_evidence_external_fallback_used),
             }
         )
+    if reason_code:
+        payload['reason_code'] = str(reason_code)
     if error_class:
         payload['error_class'] = error_class
     chat_turn_logger.emit(
@@ -2055,6 +2180,10 @@ def _build_payload_from_collection(
             enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
         )
         has_results = int(material['results_count']) > 0
+        payload_status, payload_reason_code, payload_error_class = _web_search_payload_status(
+            has_results=has_results,
+            query_plan=query_plan,
+        )
         read_state = _derive_read_state(
             explicit_url=explicit_url,
             primary_read_status=primary_read_status,
@@ -2062,8 +2191,9 @@ def _build_payload_from_collection(
         )
         return {
             'enabled': True,
-            'status': 'ok' if has_results else 'skipped',
-            'reason_code': None if has_results else 'no_data',
+            'status': payload_status,
+            'reason_code': payload_reason_code,
+            'error_class': payload_error_class,
             'original_user_message': str(user_msg or ''),
             'search_profile': str(search_profile or ''),
             **_query_plan_observability_fields(query_plan),
@@ -2117,10 +2247,15 @@ def _build_payload_from_collection(
         enable_profiled_crawl4ai_policy=enable_profiled_crawl4ai_policy,
     )
     has_results = int(material['results_count']) > 0
+    payload_status, payload_reason_code, payload_error_class = _web_search_payload_status(
+        has_results=has_results,
+        query_plan=query_plan,
+    )
     return {
         'enabled': True,
-        'status': 'ok' if has_results else 'skipped',
-        'reason_code': None if has_results else 'no_data',
+        'status': payload_status,
+        'reason_code': payload_reason_code,
+        'error_class': payload_error_class,
         'original_user_message': str(user_msg or ''),
         'search_profile': str(search_profile or ''),
         **_query_plan_observability_fields(query_plan),
@@ -2182,6 +2317,12 @@ def build_context_payload(
             results_count=payload['results_count'],
             context_block=payload['context_block'],
             sources=payload['sources'],
+            error_class=str(payload.get('error_class') or '') or None,
+            message_short=(
+                str(payload.get('reason_code') or '')
+                if str(payload.get('status') or '') == 'error'
+                else None
+            ),
             prompt_kind=str(payload['prompt_kind']),
             explicit_url_detected=bool(payload['explicit_url_detected']),
             explicit_url=str(payload['explicit_url'] or ''),
@@ -2435,15 +2576,21 @@ def build_context(
                 ctx_parts.append(_format_context(query, results))
         ctx = "\n\n".join(ctx_parts)
         has_results = len(results) > 0
+        payload_status, payload_reason_code, payload_error_class = _web_search_payload_status(
+            has_results=has_results,
+            query_plan=query_plan,
+        )
         query_plan_event_kwargs, query_plan_fields = _query_plan_event_kwargs(query_plan)
         _emit_web_search_runtime_event(
             enabled=True,
-            status='ok' if has_results else 'skipped',
-            reason_code=None if has_results else 'no_data',
+            status=payload_status,
+            reason_code=payload_reason_code,
             query_preview=str(query),
             results_count=len(results),
             context_block=ctx,
             sources=[],
+            error_class=payload_error_class or None,
+            message_short=payload_reason_code if payload_status == 'error' else None,
             truncated='[...contenu tronqué]' in ctx,
             prompt_kind='chat_web_reformulation',
             explicit_url_detected=False,

@@ -25,6 +25,8 @@ Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-c
 - Lot 4A: audit/triage runtime P1/P2 execute; granularite Lot 4 jugee
   insuffisante pour patch runtime direct, mais suffisante pour isoler des lots
   corrigibles.
+- Lot 4B: web/search fail-open cible corrige; panne SearXNG distinguee de
+  `no_data` dans le payload/runtime event content-free.
 
 ## Doctrine securite plateforme avant audit code
 
@@ -1232,7 +1234,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-WEB-SEARCH-FAIL-OPEN-01
 
-- Statut initial: open.
+- Statut courant: closed_by_lot_4B.
 - Severite: P2.
 - Classe: `P2_error_handling`.
 - Fichiers suspects: `app/tools/web_search.py`,
@@ -1246,13 +1248,23 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   `[]` sur exception; les tests couvrent le no-data manuel et l'event error
   general, pas encore une panne SearXNG reelle propagee comme `status=error`
   jusqu'au payload runtime.
+- Resultat Lot 4B: finding valide puis corrige. Le contrat legacy `search()`
+  conserve une liste pour compatibilite, mais le chemin runtime utilise un
+  outcome interne content-free; une panne locale SearXNG sans resultat devient
+  `status=error`, `reason_code=web_search_upstream_error`, `error_class`
+  qualifie, tandis qu'un vrai zero resultat reste `status=skipped`,
+  `reason_code=no_data`.
+- Preuve Lot 4B: tests fake `requests.get` pour exception SearXNG et reponse
+  vide; verification du payload consomme par le chat, de l'event
+  `web_search`, du logger `error`, du timeout `10`, et de l'absence de query /
+  URL / exception brute dans les projections content-free.
 - Impact: confiance produit excessive dans une reponse sans contexte web alors
   que la recherche a pu echouer.
 - Lot cible: Lot 4B.
 - Critere de cloture: distinguer panne SearXNG amont et absence reelle de
   resultats via status/reason code stable content-free, sans requete brute ni
   URL brute.
-- Preuve minimale: test fake `requests.get` qui leve, verification
+- Preuve minimale: couvert par test fake `requests.get` qui leve, verification
   `status=error` ou `partial` stable dans `build_context_payload`/chat web, et
   absence de query brute dans logs/projections.
 - Hors-scope: provider live, refonte web_search globale, correction logs
@@ -1456,7 +1468,8 @@ Resultat Lot 4A:
   fail-open documente.
 - Dead paths: scan `NotImplemented|NotImplementedError|TODO|FIXME` sans hit
   runtime dans le perimetre prioritaire.
-- P2 runtime retenu: `P2-CEL-WEB-SEARCH-FAIL-OPEN-01`, a traiter en Lot 4B.
+- P2 runtime retenu par Lot 4A: `P2-CEL-WEB-SEARCH-FAIL-OPEN-01`,
+  corrige ensuite par Lot 4B.
 - P2/P3 hors Lot 4: erreurs LLM/admin raw, dashboard/log raw, admin DOM,
   panels frontend vides et routes admin restent Lots 5/6/7.
 - Gros fichiers/orchestration: risques confirmes mais non patchables en Lot 4;
@@ -1464,11 +1477,24 @@ Resultat Lot 4A:
 
 #### Lot 4B - HTTP clients/timeouts/fail-open cibles
 
-- [ ] Traiter `P2-CEL-WEB-SEARCH-FAIL-OPEN-01`.
-- [ ] Ajouter test panne SearXNG reelle simulee jusqu'au payload chat web.
-- [ ] Garder content-free: pas de query brute, URL brute, prompt brut ou
+- [x] Traiter `P2-CEL-WEB-SEARCH-FAIL-OPEN-01`.
+- [x] Ajouter test panne SearXNG reelle simulee jusqu'au payload chat web.
+- [x] Garder content-free: pas de query brute, URL brute, prompt brut ou
   payload provider.
-- [ ] Revalider que les autres clients HTTP restent timeout-explicites.
+- [x] Revalider que les autres clients HTTP restent timeout-explicites.
+
+Resultat Lot 4B:
+
+- `app/tools/web_search.py` conserve `timeout=10` sur SearXNG.
+- Panne SearXNG simulee: `status=error`,
+  `reason_code=web_search_upstream_error`, `error_class` qualifie,
+  `web_status_error` cote evidence.
+- Vrai zero resultat simule: `status=skipped`, `reason_code=no_data`.
+- Tests conteneur passes:
+  `tests.unit.web_search.test_web_search_phase4`,
+  `tests.unit.logs.test_chat_turn_logger_web_search`,
+  `tests.unit.chat.test_chat_llm_flow`.
+- Runtime/UI/server large non modifies.
 
 #### Lot 4C - Dead paths / NotImplemented runtime confirmes
 

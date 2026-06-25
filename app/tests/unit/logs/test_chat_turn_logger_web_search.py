@@ -614,6 +614,81 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         self.assertFalse(error_payload.get('raw_error_message_included'))
         self.assertNotIn('message_short', error_payload)
 
+    def test_web_search_payload_upstream_error_logs_content_free(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+        original_runtime_services_value = web_search._runtime_services_value
+        original_reformulate = web_search.reformulate
+        original_get = web_search.requests.get
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        def fake_runtime_services_value(field: str):
+            values = {
+                'searxng_url': 'https://searxng.invalid',
+                'searxng_results': 5,
+                'crawl4ai_top_n': 0,
+                'crawl4ai_max_chars': 80,
+            }
+            if field in values:
+                return values[field]
+            return original_runtime_services_value(field)
+
+        def failing_get(*_args, **_kwargs):
+            raise RuntimeError('RAW_SYNTHETIC_SEARXNG_BOOM')
+
+        raw_question = 'synthetic private search question'
+        synthetic_query = 'synthetic local search query'
+        log_store.insert_chat_log_event = fake_insert
+        web_search._runtime_services_value = fake_runtime_services_value
+        web_search.reformulate = lambda _msg, **_kwargs: synthetic_query
+        web_search.requests.get = failing_get
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-web-upstream-error',
+            user_msg=raw_question,
+            web_search_enabled=True,
+        )
+        try:
+            payload = web_search.build_context_payload(
+                raw_question,
+                discovery_provider='local',
+                enable_specialized_queries=False,
+                enable_reranking=False,
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            web_search.requests.get = original_get
+            web_search.reformulate = original_reformulate
+            web_search._runtime_services_value = original_runtime_services_value
+            log_store.insert_chat_log_event = original_insert
+
+        self.assertEqual(payload['status'], 'error')
+        self.assertEqual(payload['reason_code'], web_search.WEB_SEARCH_UPSTREAM_ERROR_REASON)
+        web_event = next(event for event in observed if event['stage'] == 'web_search' and event['status'] == 'error')
+        web_payload = web_event['payload_json']
+        self.assertEqual(web_payload.get('reason_code'), web_search.WEB_SEARCH_UPSTREAM_ERROR_REASON)
+        self.assertEqual(web_payload.get('query_preview'), '')
+        self.assertEqual(web_payload.get('query_chars'), len(synthetic_query))
+        self.assertEqual(web_payload.get('error_class'), 'RuntimeError')
+        self.assertFalse(web_payload.get('query_hash_included'))
+        self.assertFalse(web_payload.get('raw_content_included', False))
+        self.assertNotIn(raw_question, str(web_payload))
+        self.assertNotIn(synthetic_query, str(web_payload))
+        self.assertNotIn('RAW_SYNTHETIC_SEARXNG_BOOM', str(web_payload))
+        self.assertIn(web_search.WEB_SEARCH_UPSTREAM_ERROR_REASON, web_payload.get('web_discovery_reason_codes'))
+        self.assertIn('web_status_error', web_payload.get('web_evidence_reason_codes'))
+
+        logger_error_event = next(event for event in observed if event['stage'] == 'error' and event['status'] == 'error')
+        error_payload = logger_error_event['payload_json']
+        self.assertEqual(error_payload.get('message_short_chars'), len(web_search.WEB_SEARCH_UPSTREAM_ERROR_REASON))
+        self.assertFalse(error_payload.get('message_short_included'))
+        self.assertFalse(error_payload.get('raw_error_message_included'))
+        self.assertNotIn(raw_question, str(error_payload))
+        self.assertNotIn(synthetic_query, str(error_payload))
+        self.assertNotIn('RAW_SYNTHETIC_SEARXNG_BOOM', str(error_payload))
+
 
 if __name__ == '__main__':
     unittest.main()
