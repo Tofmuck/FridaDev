@@ -1172,11 +1172,14 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-IDENTITY-HASH-POLICY-01
 
-- Statut initial: open.
+- Statut courant: validated_policy_gap_by_lot_6A.
 - Severite: P2.
 - Fichiers suspects: `app/observability/identity_observability.py`,
   projection pipeline identity.
-- Lot cible: Lot 6 ou 8.
+- Lot cible: Lot 6E.
+- Preuve Lot 6A: policy gap confirme sur les hashes courts identity; aucun
+  patch runtime avant doctrine explicite sur suppression, HMAC/salt ou
+  exception justifiee.
 - Critere de cloture: doctrine explicite sur hashes courts identity:
   suppression, HMAC/salt, ou exception justifiee.
 - Preuve minimale: spec/docs + tests projection.
@@ -2226,9 +2229,9 @@ Decision:
 - [ ] Trancher doctrine hashes courts identity.
 - [ ] Corriger seulement surfaces qui exposent ou masquent une panne.
 - [ ] Conserver diagnostics content-free.
-- [ ] Valider `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01` si la cause
-  est `observability_payload_rejected` ou schema payload.
-- [ ] Valider `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
+- [ ] Lot 6F: traiter `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01`
+  apres separation garde observabilite / contrat stale / runtime identity.
+- [ ] Lot 6G: traiter `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
 
 #### Lot 6A - Audit/triage observabilite/logs applicatifs
 
