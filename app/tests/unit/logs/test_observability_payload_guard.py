@@ -463,6 +463,86 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertFalse(decision.accepted)
         self.assertIn("unknown_string_key", decision.payload["issue_classes"])
 
+    def test_compact_arbiter_payload_with_reason_counts_passes(self) -> None:
+        payload = {
+            "raw_candidates": 4,
+            "kept_candidates": 2,
+            "rejected_candidates": 2,
+            "mode": "arbiter",
+            "model": "openrouter/test-model",
+            "decision_source": "fallback",
+            "fallback_used": True,
+            "fallback_decisions": 1,
+            "rejection_reason_code_counts": {"invalid_verdict": 2},
+            "error_class": "RuntimeError",
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.payload["raw_candidates"], 4)
+        self.assertEqual(decision.payload["rejected_candidates"], 2)
+        self.assertEqual(decision.payload["fallback_decisions"], 1)
+        self.assertEqual(decision.payload["rejection_reason_code_counts"], {"invalid_verdict": 2})
+
+    def test_arbiter_rejects_raw_candidates_as_content_container(self) -> None:
+        sentinel = "RAW_ARBITER_CANDIDATE_SENTINEL"
+        for raw_candidates in (sentinel, [sentinel]):
+            with self.subTest(raw_candidates=type(raw_candidates).__name__):
+                payload = {
+                    "raw_candidates": raw_candidates,
+                    "kept_candidates": 0,
+                    "rejected_candidates": 1,
+                    "status_schema_version": "agentic_v1",
+                }
+
+                decision = observability_payload_guard.guard_payload(payload)
+                encoded = _encoded(decision.payload)
+
+                self.assertFalse(decision.accepted)
+                self.assertNotIn(sentinel, encoded)
+
+    def test_arbiter_rejects_candidate_content_and_raw_payloads(self) -> None:
+        sentinel = "RAW_ARBITER_CONTENT_SENTINEL"
+        payload = {
+            "raw_candidates": 1,
+            "kept_candidates": 0,
+            "rejected_candidates": 1,
+            "candidate_content": sentinel,
+            "candidates": [{"content": sentinel}],
+            "provider_payload": {"text": sentinel},
+            "prompt": sentinel,
+            "source_url": "https://example.invalid/private?probe=RAW_ARBITER_CONTENT_SENTINEL",
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("provider_payload_key", decision.payload["issue_classes"])
+        self.assertIn("prompt_key", decision.payload["issue_classes"])
+        self.assertIn("url_key", decision.payload["issue_classes"])
+        self.assertNotIn(sentinel, encoded)
+        self.assertNotIn("example.invalid", encoded)
+
+    def test_arbiter_rejects_non_counter_reason_code_counts(self) -> None:
+        payload = {
+            "raw_candidates": 1,
+            "kept_candidates": 0,
+            "rejected_candidates": 1,
+            "rejection_reason_code_counts": {"invalid_verdict": "RAW_REASON_COUNT_SENTINEL"},
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("unknown_mapping_value", decision.payload["issue_classes"])
+        self.assertNotIn("RAW_REASON_COUNT_SENTINEL", encoded)
+
     def test_generic_sha256_12_is_rejected(self) -> None:
         payload = {
             "sha256_12": "0123456789ab",

@@ -1567,6 +1567,29 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   brut ajoute.
 - Hors-scope Lot 4D.2: ne pas requalifier le correctif memory input cible.
 
+### P2-CEL-ARBITER-PAYLOAD-GUARD-REJECTION-01
+
+- Statut courant: closed_by_lot_6F_1.
+- Severite: P2.
+- Classe: `P2_observability_guard_rejection`.
+- Suite concernee: `tests.unit.logs.test_chat_turn_logger_phase2`.
+- Constat observe apres Lot 6F: les events `stage=arbiter` etaient remplaces
+  par `observability_payload_rejected`; les tests perdaient le payload compact
+  et echouaient sur `raw_candidates`.
+- Preuve Lot 6F.1: la reproduction conteneur confirmait deux erreurs avec
+  `chat_turn_log_payload_rejected stage=arbiter`; le probe de garde isolait
+  uniquement `rejected_candidates` et `fallback_decisions` comme compteurs
+  non allowlistes.
+- Correction Lot 6F.1: ajouter ces deux compteurs au schema writer-side et
+  verrouiller par tests que `raw_candidates` reste un entier, que
+  `rejection_reason_code_counts` reste une map de compteurs et que contenu
+  candidat, prompt, URL et payload provider bruts restent refuses.
+- Lot cible: Lot 6F.1.
+- Critere de cloture: suite arbiter verte; payload arbiter compact legitime
+  accepte; payload dangereux refuse; mutable identity Lot 6F non regresse.
+- Hors-scope: ne traite pas `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`,
+  `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01`, Lot 7 ni Lot 9.
+
 ### P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01
 
 - Statut courant: validated_by_lot_6A_needs_contract_decision.
@@ -2274,6 +2297,8 @@ Decision:
 - [ ] Conserver diagnostics content-free.
 - [x] Lot 6F: traiter `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01`
   apres separation garde observabilite / contrat stale / runtime identity.
+- [x] Lot 6F.1: traiter le rejet de garde du payload arbiter compact
+  content-free.
 - [ ] Lot 6G: traiter `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
 
 #### Lot 6A - Audit/triage observabilite/logs applicatifs
@@ -2578,6 +2603,36 @@ Resultat Lot 6F:
   ontologique runtime.
 - Les buffers restent preserves sur erreur reelle et sont bien nettoyes apres
   retry reussi.
+
+#### Lot 6F.1 - Correction ciblee du rejet de garde arbiter
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne au schema writer-side observabilite.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le rejet etait
+reproduit et le probe de garde isolait deux compteurs manquants; un patch
+schema/tests cible etait plus sur qu'un relachement global de la garde.
+
+- [x] Reproduire `tests.unit.logs.test_chat_turn_logger_phase2` en conteneur:
+  deux erreurs avec `chat_turn_log_payload_rejected stage=arbiter`.
+- [x] Valider `P2-CEL-ARBITER-PAYLOAD-GUARD-REJECTION-01`.
+- [x] Autoriser uniquement les compteurs arbiter compacts manquants:
+  `rejected_candidates` et `fallback_decisions`.
+- [x] Conserver `raw_candidates` comme compteur entier, sans permettre liste
+  ou string de contenu candidat.
+- [x] Conserver `rejection_reason_code_counts` comme map de compteurs
+  content-free.
+- [x] Ajouter sentinelles refusant `candidate_content`, `candidates`,
+  `prompt`, URL brute et payload provider brut.
+- [x] Ne pas traiter Lot 6G/6H, Lot 7 ni Lot 9.
+
+Resultat Lot 6F.1:
+
+- Le payload compact `stage=arbiter` est accepte par la garde writer-side.
+- Les compteurs et reason codes arbiter utiles restent disponibles.
+- Les payloads dangereux restent refuses et redacted.
+- `P2-CEL-ARBITER-PAYLOAD-GUARD-REJECTION-01` est clos.
 
 ### Lot 7 - Tests/smokes/artefacts
 
