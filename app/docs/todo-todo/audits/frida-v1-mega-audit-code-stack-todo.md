@@ -653,6 +653,89 @@ Plateforme modifiee: non.
   evident ou d'update securite critique urgente, la partie securite plateforme
   est suffisante pour serveur solo et le mega-audit passe au code applicatif.
 
+## Lot 3 - Checkpoint securite plateforme realiste avant audit code
+
+Statut: audit Sauron metadata/headers-only execute le 2026-06-25.
+Correction appliquee: non.
+Plateforme modifiee: non.
+Runtime modifie: non.
+Classification globale: aucun P0/P1 public confirme; securite plateforme
+suffisante pour serveur solo sous reserve du Lot 3B updates.
+
+- [x] Inventorier ports publics et services exposes sans afficher secrets.
+- [x] Verifier Caddy/Authelia comme frontiere publique des services sensibles.
+- [x] Verifier absence de service critique expose sans garde.
+- [x] Verifier absence de bypass evident Authelia/Caddy/admin/DB depuis
+  Internet.
+- [x] Verifier admin Frida, Adminer et DB: pas d'exposition publique directe
+  hors garde attendue.
+- [x] Verifier Docker socket/proxy a haut niveau: pas d'exposition publique ni
+  consommateur evident hors besoin documente.
+- [x] Verifier Cockpit a haut niveau: pas de surface publique directe
+  inattendue; route Caddy a valider separement si besoin.
+- [x] Verifier frontieres Docker raisonnables a haut niveau; ne pas lancer de
+  micro-hardening reseau si aucun gros rouge public.
+- [x] Verifier health generale des services critiques sans restart/rebuild.
+- [x] Si aucun P0/P1 public n'apparait, considerer la securite plateforme
+  suffisante pour serveur solo et passer au Lot 3B updates.
+
+### Resultat Lot 3
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le plan le plus sur
+est le checkpoint read-only des surfaces publiques et des gros rouges, puis une
+mise a jour docs-only avant Lot 3B.
+
+- Ports host: UFW actif, default deny incoming. Regles publiques attendues:
+  `80/tcp`, `443/tcp` et `22/tcp`. `9090/tcp` est autorise seulement depuis
+  des plages Docker/Caddy documentees; pas d'ouverture Internet directe
+  observee. `5355/tcp+udp` ecoute via `systemd-resolve`, mais aucune regle UFW
+  publique explicite n'a ete observee.
+- Ports Docker publies: seul `platform-caddy` publie `80/tcp` et `443/tcp`
+  vers le host. Aucun port Docker public pour FridaDev, Adminer, Postgres,
+  Authelia ou docker-socket-proxy.
+- Hostnames testes par HEAD public, cookies redacted: `fridadev.frida-system.fr`
+  `/admin` -> redirect protege; `fridadev-db.frida-system.fr` -> redirect
+  protege; `home.frida-system.fr`, `cloud.frida-system.fr` et
+  `cloud.137-74-204-229.sslip.io` -> redirect protege; racines
+  `frida-system.fr` et `www.frida-system.fr` -> redirect simple attendu.
+- Caddy/Authelia: Caddy reste la frontiere publique principale. Les surfaces
+  sensibles testees repondent par redirection/challenge attendu, sans 200
+  public direct observe dans ce lot.
+- Admin Frida: pas de port Docker publie; surface publique `/admin` redirige
+  vers la garde Caddy/Authelia.
+- Adminer: pas de port Docker publie; hostname DB public redirige vers la
+  garde Caddy/Authelia. Le risque lateral Docker reste un P2 interne separe.
+- DB FridaDev: Postgres expose seulement un port conteneur interne sur le
+  reseau DB; aucun port host publie observe.
+- Docker socket/proxy: `platform-docker-socket-proxy` n'a aucun port publie et
+  reste sur `platform_proxy_net` dans l'etat inspecte; pas d'exposition
+  publique observee.
+- Cockpit: service host actif sur `*:9090`, UFW limite l'ingress a des plages
+  Docker/Caddy. Caddy contient une route `{$COCKPIT_HOST}` vers
+  `https://172.20.0.1:9090`. Aucun bypass public direct n'est confirme, mais
+  le couple hostname Caddy/Cockpit reste `needs_targeted_validation` si
+  l'operateur veut prouver la garde de cette surface.
+- Docker/reseaux: Caddy est sur les reseaux platform/crawl/M4; Authelia sur
+  auth/platform; Adminer sur platform + db; Postgres FridaDev sur db; socket
+  proxy sur proxy. Aucun maillage public critique inattendu n'a ete confirme.
+- Health: aucun conteneur `unhealthy`, `restarting` ou `exited` observe via
+  `docker ps -a`. Plusieurs services restent `Up` sans healthcheck explicite;
+  `P2-SAU-HEALTHCHECKS-ABSENT-01` reste donc visible comme hygiene/service
+  observability, pas comme rouge public.
+
+### Decision Lot 3
+
+- P0 public: aucun confirme.
+- P1 public: aucun confirme.
+- P2 internes/hygiene maintenus: Cockpit/Caddy `needs_targeted_validation`,
+  Adminer lateral, docker socket proxy governance, healthchecks absents,
+  Compose/YAML hygiene, backups sensibles `risk_accepted_temporarily`,
+  `5355` host listener derriere UFW default deny.
+- Lot 3 suffisant pour serveur solo: oui, sous reserve du Lot 3B inventaire
+  mises a jour serveur/services/images.
+- Prochain lot recommande: Lot 3B updates inventory, audit-only, aucune update
+  sans lot dedie backup/rollback/health.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
@@ -743,12 +826,16 @@ Plateforme modifiee: non.
 ### P2-SAU-DOCKER-SOCKET-SURFACE-01
 
 - Statut initial: open.
+- Statut courant: no public exposure confirmed by Lot 3; governance/consumer
+  matrix still open as P2.
 - Severite: P2.
 - Zones suspectes: `platform-docker-socket-proxy`, `platform_proxy_net`,
   compose global, service status avec socket direct selon contre-audit.
 - Alias/fusion: confirme et amplifie par `P2-SAU-DOCKER-SOCKET-SURFACE-01`
   contre-audit.
 - Lot cible: Lot 3.
+- Checkpoint Lot 3: aucun port publie; conteneur observe sur
+  `platform_proxy_net`; pas de surface publique directe observee.
 - Critere de cloture: matrice consumers/endpoints/reseaux.
 - Preuve minimale: `docker inspect` content-free, compose metadata,
   eventuellement test consumer.
@@ -757,10 +844,14 @@ Plateforme modifiee: non.
 ### P2-SAU-ADMINER-LATERAL-01
 
 - Statut initial: open.
+- Statut courant: no public exposure confirmed by Lot 3; lateral Docker risk
+  remains open as P2.
 - Severite: P2.
 - Zones suspectes: `platform-frida-adminer`, `platform_platform_net`,
   `fridadev-db.frida-system.fr`.
 - Lot cible: Lot 3.
+- Checkpoint Lot 3: aucun port host/Docker publie pour Adminer; hostname public
+  DB redirige vers la garde Caddy/Authelia; risque lateral interne non ferme.
 - Critere de cloture: Adminer non joignable lateralement depuis le grand reseau
   Docker, ou exception documentee avec justification.
 - Preuve minimale: test lateral content-free depuis un conteneur pair, headers
@@ -770,9 +861,15 @@ Plateforme modifiee: non.
 ### P2-SAU-COCKPIT-DOCKER-REACHABILITY-01
 
 - Statut initial: needs_targeted_validation.
+- Statut courant: needs_targeted_validation after Lot 3; no direct Internet
+  exposure confirmed, Caddy/Cockpit route still worth targeted validation.
 - Severite: P2.
 - Zones suspectes: Cockpit host port, UFW, ranges Docker.
 - Lot cible: Lot 3.
+- Checkpoint Lot 3: Cockpit actif sur `*:9090`; UFW autorise `9090/tcp`
+  seulement depuis des plages Docker/Caddy; Caddy contient
+  `{$COCKPIT_HOST}` -> `https://172.20.0.1:9090`; aucun login ni contenu
+  Cockpit teste.
 - Critere de cloture: confirmer ou invalider la reachability Cockpit depuis
   conteneurs; restreindre ou documenter si confirme.
 - Preuve minimale: test reseau borne sans credentials, inventaire UFW
@@ -782,10 +879,14 @@ Plateforme modifiee: non.
 ### P2-SAU-HEALTHCHECKS-ABSENT-01
 
 - Statut initial: open.
+- Statut courant: hygiene/service observability remains open; no unhealthy or
+  restarting container observed by Lot 3.
 - Severite: P2.
 - Zones suspectes: Caddy, Nextcloud, Nextcloud DB/Redis/Cron, n8n, SearxNG,
   Adminer, doc-pipeline, socket proxy.
 - Lot cible: Lot 3.
+- Checkpoint Lot 3: aucun conteneur `unhealthy`, `restarting` ou `exited`;
+  plusieurs services critiques restent sans healthcheck explicite.
 - Critere de cloture: healthcheck ajoute ou absence justifiee service par
   service.
 - Preuve minimale: `docker inspect` health status, compose metadata, tests
@@ -1146,20 +1247,21 @@ optionnels, et qu'aucun gros rouge public n'apparait en Lot 3/3B.
 
 ### Lot 3 - Checkpoint securite plateforme realiste avant audit code
 
-- [ ] Inventorier ports publics et services exposes sans afficher secrets.
-- [ ] Verifier Caddy/Authelia comme frontiere publique des services sensibles.
-- [ ] Verifier absence de service critique expose sans garde.
-- [ ] Verifier absence de bypass evident Authelia/Caddy/admin/DB depuis
+- [x] Inventorier ports publics et services exposes sans afficher secrets.
+- [x] Verifier Caddy/Authelia comme frontiere publique des services sensibles.
+- [x] Verifier absence de service critique expose sans garde.
+- [x] Verifier absence de bypass evident Authelia/Caddy/admin/DB depuis
   Internet.
-- [ ] Verifier admin Frida, Adminer et DB: pas d'exposition publique directe
+- [x] Verifier admin Frida, Adminer et DB: pas d'exposition publique directe
   hors garde attendue.
-- [ ] Verifier Docker socket/proxy a haut niveau: pas d'exposition publique ni
+- [x] Verifier Docker socket/proxy a haut niveau: pas d'exposition publique ni
   consommateur evident hors besoin documente.
-- [ ] Verifier Cockpit a haut niveau: pas de surface publique inattendue.
-- [ ] Verifier frontieres Docker raisonnables a haut niveau; ne pas lancer de
+- [x] Verifier Cockpit a haut niveau: pas de surface publique directe
+  inattendue; route Caddy/Cockpit reste a validation ciblee si souhaite.
+- [x] Verifier frontieres Docker raisonnables a haut niveau; ne pas lancer de
   micro-hardening reseau si aucun gros rouge public.
-- [ ] Verifier health generale des services critiques sans restart/rebuild.
-- [ ] Si aucun P0/P1 public n'apparait, considerer la securite plateforme
+- [x] Verifier health generale des services critiques sans restart/rebuild.
+- [x] Si aucun P0/P1 public n'apparait, considerer la securite plateforme
   suffisante pour serveur solo et passer a l'audit code.
 
 ### Lot 3B - Inventaire mises a jour serveur/services/images
