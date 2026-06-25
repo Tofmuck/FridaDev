@@ -459,6 +459,78 @@ Conclusion Lot 2C:
   de validation/correction Authelia pour comprendre la source des JWT-like et
   decider d'une redaction/log-level sans purger les logs.
 
+## Lot 2D - Validation Authelia log secret-like
+
+Statut: validation Sauron count-only/redacted-only executee le 2026-06-25.
+Finding cible: `P2-SAU-LOG-SECRETLIKE-01`.
+Correction appliquee: non.
+Plateforme modifiee: non.
+P2 ferme: non.
+Classification: `partially_confirmed_non_sensitive`.
+
+- [x] Identifier le format log Authelia sans afficher de ligne brute.
+- [x] Requalifier les URLs avec query par noms de cles et dimensions, sans
+  valeur.
+- [x] Requalifier les matches JWT-like par dimensions et structure, sans
+  afficher les chaines.
+- [x] Lire la config logging Authelia/Compose sans afficher de secret.
+- [x] Produire une decision avant toute correction.
+
+### Resultat Lot 2D
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le plan le plus sur
+est une validation Authelia count-only/redacted-only, puis une decision
+documentaire avant toute correction de configuration.
+
+- Fenetre: `docker logs --since 24h --tail 5000 platform-authelia`.
+- Format logs Authelia: texte/logfmt, non JSON dans la fenetre scannee.
+- Champs logfmt detectes par nom seulement: `time`, `level`, `msg`, `method`,
+  `path`, `remote_ip`, `rd`, `rm`, puis quelques cles fonctionnelles.
+- Niveaux observes: majoritairement `info`, quelques `error`, un `warning`.
+- Config logging Authelia: bloc `log` present, `level=info`, pas de format
+  explicite detecte; Docker log driver `json-file` avec rotation `10m/3`.
+- Source probable: flux access/redirect Authelia, avec champs fonctionnels
+  `rd` et `rm`; marqueurs authentication/notification/session minoritaires.
+
+### Validation URLs Lot 2D
+
+- URLs avec query detectees: `2015` matches sur `1977` lignes.
+- Cles de query top-level, sans valeurs: `rd`, `rm`, `p`, `v`, `rsd`,
+  `rest_route`, `panel`, `t`.
+- `rd`: `1977` valeurs URL-like; longueur min/max `28/140`; `38` valeurs
+  contiennent une query imbriquee.
+- Cles imbriquees dans `rd`, sans valeurs: `p`, `v`, `rsd`, `rest_route`,
+  `panel`, `t`.
+- Cles sensibles absentes dans top-level et imbrique: `code`, `state`,
+  `access_token`, `refresh_token`, `id_token`, `client_secret`, `token`.
+- Classification URLs: query fonctionnelle/potentiellement privacy-sensitive,
+  mais aucune valeur credential/OAuth exploitable observee dans la fenetre.
+
+### Validation JWT-like Lot 2D
+
+- Matches JWT-like: `6` matches sur `3` lignes.
+- Dimensions: longueur totale `33`, segments `(10, 10, 11)` pour les 6
+  matches.
+- Premier segment: base64url-decodable pour les 6, mais `0` objet JSON de
+  header JWT; aucune cle de header JWT detectee.
+- Contexte count-only: les 3 lignes contiennent aussi URL/query `rd`/`rm`.
+- Classification JWT-like: faux positif structurel probable dans valeurs
+  URL/redirect; pas un JWT valide selon la structure minimale observee.
+
+Conclusion Lot 2D:
+
+- Authelia ne montre pas de cookie, header credential, DSN, token classique,
+  code/state OAuth ou JWT valide dans la fenetre scannee.
+- Le signal secret-like Lot 2C est requalifie: JWT-like faux positif probable;
+  URLs de redirection completes journalisees comme metadonnees fonctionnelles.
+- Correction immediate non necessaire pour fuite de secret exploitable.
+- Risque residuel: si une URL future contient une query sensible dans la cible
+  `rd`, Authelia pourrait la journaliser. Cela releve d'une decision de
+  politique logging/privacy, pas d'un secret confirme dans ce lot.
+- Prochain comportement: ne pas modifier Authelia sans GO operateur; ouvrir un
+  lot policy/redaction seulement si l'operateur decide que toute URL de
+  redirection complete doit etre masquee.
+
 ## Registre findings
 
 ### P1-SAU-ENV-PERMISSIONS-01
@@ -518,9 +590,10 @@ Conclusion Lot 2C:
 ### P2-SAU-LOG-SECRETLIKE-01
 
 - Statut initial: open.
-- Statut courant: partially_confirmed_by Lot 2C; Caddy faux positif probable,
-  Authelia confirme/needs targeted validation sur valeurs JWT-like et URLs
-  completes avec query.
+- Statut courant: requalified_by Lot 2D;
+  `partially_confirmed_non_sensitive`. Caddy faux positif probable; Authelia ne
+  montre pas de secret exploitable dans la fenetre scannee, mais logge des URLs
+  de redirection completes.
 - Severite: P2.
 - Zones suspectes: logs recents Authelia/Caddy.
 - Lot cible: Lot 2.
@@ -528,9 +601,13 @@ Conclusion Lot 2C:
   `Authorization` sans valeur sur 24h/287 lignes; `platform-authelia` montre
   2108 lignes / 781859 bytes, 2124 URLs avec query, 6 matches JWT-like sur 3
   lignes, 0 cookie/token/header credential classique.
-- Prochain lot: validation/correction Authelia bornee, sans lignes brutes:
-  identifier le type d'evenement qui logge les JWT-like/URLs, puis reduire ou
-  redacter si confirme.
+- Validation Lot 2D: format texte/logfmt, `level=info`, flux access/redirect.
+  Les JWT-like sont de longueur 33 avec segments `(10,10,11)` et `0` header
+  JWT JSON; requalifies faux positifs probables. Les URLs `rd/rm` ne contiennent
+  pas de cles sensibles observees (`code/state/token/...` absents), mais sont
+  des URLs de redirection completes.
+- Prochain lot: uniquement sur GO operateur si la politique decide de masquer
+  les URLs de redirection completes; pas de purge/reload/correction implicite.
 - Critere de cloture: faux positif documente ou redaction/log-level corrige.
 - Preuve minimale: scan borne sans lignes brutes, counts avant/apres.
 - Hors-scope: purge logs globale.
@@ -902,8 +979,10 @@ Conclusion Lot 2C:
   `/opt/platform/data/*` apres validation par service.
 - [x] Lot 2C: investiguer logs Authelia/Caddy secret-like sans afficher de
   lignes brutes.
-- [ ] Lot 2D: valider/corriger Authelia log redaction/log-level si GO
-  operateur confirme le besoin.
+- [x] Lot 2D: valider Authelia secret-like en count-only/redacted-only; aucune
+  correction immediate sans GO operateur.
+- [ ] Lot 2E: optionnel, definir une politique de masquage des URLs de
+  redirection completes Authelia si l'operateur le demande.
 - [ ] Traiter backups/dumps/keys world-readable.
 - [ ] Qualifier logs Authelia/Caddy secret-like.
 - [ ] Traiter compose group-writable si confirme.
