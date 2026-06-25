@@ -1142,13 +1142,21 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-LLM-ERROR-RAW-01
 
-- Statut courant: validated_by_lot_6A.
+- Statut courant: closed_by_lot_6B.
 - Severite: P2.
 - Fichiers suspects: `app/core/chat_llm_flow.py`, `app/admin/admin_logs.py`.
 - Lot cible: Lot 6B.
 - Preuve Lot 6A: le scan cible confirme encore des surfaces LLM avec
   `str(exc)` ou equivalent dans les reponses/logs applicatifs, notamment autour
   du flow LLM et du proxy LLM serveur.
+- Correction Lot 6B: `chat_llm_flow.py` et les relais LLM de `server.py`
+  exposent des erreurs LLM via `error_code`, `reason_code`, `error_class` et
+  messages visibles stables; les exceptions provider/secret/finalize ne sont
+  plus recopiees en clair dans la reponse, les events `llm_*` ni le
+  `message_short` du turn logger.
+- Preuve Lot 6B: tests sentinelles avec URL/query, header auth synthetique,
+  path synthetique et payload provider sentinelle; la sentinelle ne sort
+  ni dans la reponse ni dans les events cibles.
 - Critere de cloture: erreurs LLM exposees via `error_code`/`error_class` et
   message utilisateur stable, sans `str(exc)` brut.
 - Preuve minimale: tests sentinelles URL/token/path/provider error, logs
@@ -2223,7 +2231,7 @@ Decision:
 
 - [x] Lot 6A: audit/triage observabilite/logs applicatifs, docs-only.
 - [ ] Qualifier `str(exc)`, raw, payload, traceback, print.
-- [ ] Traiter erreurs LLM brutes.
+- [x] Lot 6B: traiter erreurs LLM brutes.
 - [ ] Traiter erreurs 400 admin brutes.
 - [ ] Traiter dashboard web legacy URL/hash raw.
 - [ ] Trancher doctrine hashes courts identity.
@@ -2293,6 +2301,37 @@ Decision:
 - Lot 6 parent reste ouvert: seul le triage Lot 6A est clos.
 - Aucun runtime n'est corrige dans Lot 6A.
 - Lot 7 `/log` denylist et Lot 9 refactors restent hors scope.
+
+#### Lot 6B - Erreurs LLM content-free
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne aux erreurs LLM.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le finding etait
+borne a la frontiere LLM: reponses visibles `/api/chat`, events `llm_*` et
+`message_short` turn logger.
+
+- [x] Valider `P2-CEL-LLM-ERROR-RAW-01`.
+- [x] Remplacer les reponses visibles `Connexion au LLM: <exception>` /
+  `Erreur: <exception>` / erreur secret brute par des messages stables.
+- [x] Conserver diagnostics content-free: `error_code`, `reason_code`,
+  `error_class`.
+- [x] Supprimer l'exception brute des events `llm_error`, `llm_stream_error`,
+  `llm_stream_finalize_error` et du `message_short` turn logger LLM.
+- [x] Ajouter tests sentinelles URL/query, header auth synthetique, path synthetique
+  et payload provider sentinelle.
+- [x] Ne pas traiter Lot 6C/6D/6E/6F/6G/6H, Lot 7 ni Lot 9.
+
+Resultat Lot 6B:
+
+- `P2-CEL-LLM-ERROR-RAW-01` est clos.
+- Les erreurs provider/LLM restent diagnostiquables sans contenu brut:
+  `llm_upstream_error`, `llm_secret_resolution_error`,
+  `llm_internal_error`, `llm_stream_finalize_error`.
+- Les `str(exc)` restants dans `server.py` correspondent aux surfaces hors
+  scope deja deleguees, notamment Lot 6C admin 400/404 et Lot 6 global par
+  sous-surface.
 
 ### Lot 7 - Tests/smokes/artefacts
 

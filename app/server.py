@@ -644,7 +644,7 @@ class _RequestsChatLogProxy:
                 chat_turn_logger.emit_error(
                     error_code='upstream_error',
                     error_class=exc.__class__.__name__,
-                    message_short=str(exc),
+                    message_short='llm upstream error',
                 )
             raise
 
@@ -714,10 +714,12 @@ class _AdminLogsChatLogProxy:
             chat_turn_logger.set_state('llm_provider_response_meta', provider_fields)
             return
         if event in {'llm_error', 'llm_stream_error', 'llm_stream_finalize_error'}:
+            error_code = str(fields.get('error_code') or 'upstream_error')
+            reason_code = str(fields.get('reason_code') or error_code)
             chat_turn_logger.emit_error(
-                error_code=str(fields.get('error_code') or 'upstream_error'),
+                error_code=error_code,
                 error_class=event,
-                message_short=str(fields.get('error') or 'llm error'),
+                message_short=reason_code,
             )
 
 
@@ -861,7 +863,7 @@ def api_chat():
                 terminal_chunk = _mark_stream_error(
                     error_code=llm_call_error_code or 'stream_finalize_error',
                     error_class=exc.__class__.__name__,
-                    message_short=str(exc),
+                    message_short='llm stream finalize error',
                 )
                 if terminal_chunk is not None:
                     yield terminal_chunk

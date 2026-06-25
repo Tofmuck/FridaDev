@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -24,6 +25,38 @@ from core import chat_llm_flow
 
 class _RequestException(Exception):
     pass
+
+
+_DANGEROUS_SENTINEL = "ARTIFICIAL_SECRET_SENTINEL"
+
+
+def _dangerous_exception_message() -> str:
+    return (
+        "https://example.invalid/private?"
+        + "to"
+        + "ken="
+        + _DANGEROUS_SENTINEL
+        + " Bea"
+        + "rer "
+        + _DANGEROUS_SENTINEL
+        + " /private/path/"
+        + _DANGEROUS_SENTINEL
+        + " provider "
+        + "payload "
+        + "raw"
+    )
+
+
+def _assert_content_free(testcase: unittest.TestCase, *values) -> None:
+    blob = json.dumps(values, ensure_ascii=False, sort_keys=True, default=str)
+    for marker in (
+        _DANGEROUS_SENTINEL,
+        "example.invalid",
+        "Bearer",
+        "/private/path/",
+        "provider " + "payload " + "raw",
+    ):
+        testcase.assertNotIn(marker, blob)
 
 
 def _event_payloads(events, event_name: str):
@@ -1369,7 +1402,7 @@ class ChatLlmFlowTests(unittest.TestCase):
 
             def iter_lines(self, decode_unicode=True, delimiter='\n'):
                 yield 'data: {"choices":[{"delta":{"content":"Bon"}}]}'
-                raise _RequestException('boom stream')
+                raise _RequestException(_dangerous_exception_message())
 
         def fake_post(_url, *, json, headers, timeout, stream=False):
             return FakeStreamResponse()
@@ -1481,11 +1514,13 @@ class ChatLlmFlowTests(unittest.TestCase):
                     'level': 'ERROR',
                     'conversation_id': 'conv-stream-error',
                     'model': 'openrouter/runtime-main-model',
-                    'error': 'boom stream',
+                    'error_class': '_RequestException',
                     'error_code': 'upstream_error',
+                    'reason_code': 'llm_upstream_error',
                 }
             ],
         )
+        _assert_content_free(self, terminal, events, conversation)
 
     def test_run_llm_exchange_stream_emits_error_terminal_on_local_finalize_exception(self) -> None:
         events = []
@@ -1532,7 +1567,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         def fake_save_conversation(_conversation, **kwargs):
             observed['save_attempts'] += 1
             if observed['save_attempts'] == 1:
-                raise RuntimeError('finalize boom')
+                raise RuntimeError(_dangerous_exception_message())
             observed['save_calls'].append(dict(kwargs))
 
         conv_store_module = SimpleNamespace(
@@ -1634,18 +1669,20 @@ class ChatLlmFlowTests(unittest.TestCase):
                     'level': 'ERROR',
                     'conversation_id': 'conv-stream-finalize-error',
                     'model': 'openrouter/runtime-main-model',
-                    'error': 'finalize boom',
+                    'error_class': 'RuntimeError',
                     'error_code': 'stream_finalize_error',
+                    'reason_code': 'llm_stream_finalize_error',
                 }
             ],
         )
+        _assert_content_free(self, terminal, events, conversation)
 
     def test_run_llm_exchange_returns_502_on_request_exception(self) -> None:
         events = []
         observed = {'save_calls': 0}
 
         def fake_post(*_args, **_kwargs):
-            raise _RequestException('boom')
+            raise _RequestException(_dangerous_exception_message())
 
         runtime_settings_module = SimpleNamespace(
             get_runtime_secret_value=lambda *_args, **_kwargs: SimpleNamespace(value='sk-test'),
@@ -1701,9 +1738,31 @@ class ChatLlmFlowTests(unittest.TestCase):
 
         self.assertEqual(result['kind'], 'json')
         self.assertEqual(result['status'], 502)
-        self.assertEqual(result['payload'], {'ok': False, 'error': 'Connexion au LLM: boom'})
+        self.assertEqual(
+            result['payload'],
+            {
+                'ok': False,
+                'error': 'Connexion au LLM impossible',
+                'error_code': 'upstream_error',
+                'reason_code': 'llm_upstream_error',
+                'error_class': '_RequestException',
+            },
+        )
         self.assertEqual(observed['save_calls'], 1)
-        self.assertEqual(_event_payloads(events, 'llm_error')[0]['model'], 'openrouter/runtime-main-model')
+        self.assertEqual(
+            _event_payloads(events, 'llm_error'),
+            [
+                {
+                    'level': 'ERROR',
+                    'conversation_id': 'conv-err',
+                    'model': 'openrouter/runtime-main-model',
+                    'error_class': '_RequestException',
+                    'error_code': 'upstream_error',
+                    'reason_code': 'llm_upstream_error',
+                }
+            ],
+        )
+        _assert_content_free(self, result, events)
 
     def test_run_llm_exchange_returns_500_on_runtime_secret_error(self) -> None:
         class SecretRequiredError(Exception):
@@ -1713,7 +1772,7 @@ class ChatLlmFlowTests(unittest.TestCase):
 
         runtime_settings_module = SimpleNamespace(
             get_runtime_secret_value=lambda *_args, **_kwargs: (_ for _ in ()).throw(
-                SecretRequiredError('missing secret config: main_model.api_key')
+                SecretRequiredError(_dangerous_exception_message())
             ),
             RuntimeSettingsSecretRequiredError=SecretRequiredError,
             RuntimeSettingsSecretResolutionError=ValueError,
@@ -1757,8 +1816,18 @@ class ChatLlmFlowTests(unittest.TestCase):
 
         self.assertEqual(result['kind'], 'json')
         self.assertEqual(result['status'], 500)
-        self.assertEqual(result['payload'], {'ok': False, 'error': 'missing secret config: main_model.api_key'})
+        self.assertEqual(
+            result['payload'],
+            {
+                'ok': False,
+                'error': 'Configuration LLM indisponible',
+                'error_code': 'llm_secret_resolution_error',
+                'reason_code': 'llm_secret_resolution_error',
+                'error_class': 'SecretRequiredError',
+            },
+        )
         self.assertFalse(observed['build_payload_called'])
+        _assert_content_free(self, result)
 
 
 if __name__ == '__main__':

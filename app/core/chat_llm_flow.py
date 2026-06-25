@@ -39,6 +39,35 @@ def _build_stream_headers(
 
 
 CONVERSATION_PERSIST_ERROR_CODE = chat_stream_control.STREAM_ERROR_CONVERSATION_PERSIST_FAILED
+LLM_UPSTREAM_ERROR_CODE = "upstream_error"
+LLM_UPSTREAM_REASON_CODE = "llm_upstream_error"
+LLM_INTERNAL_ERROR_CODE = "llm_internal_error"
+LLM_STREAM_FINALIZE_ERROR_CODE = "stream_finalize_error"
+LLM_RUNTIME_SECRET_ERROR_CODE = "llm_secret_resolution_error"
+LLM_UPSTREAM_USER_MESSAGE = "Connexion au LLM impossible"
+LLM_INTERNAL_USER_MESSAGE = "Erreur LLM interne"
+LLM_CONFIG_USER_MESSAGE = "Configuration LLM indisponible"
+
+
+def _exception_class(exc: BaseException) -> str:
+    name = str(exc.__class__.__name__ or "").strip()
+    return name if name.replace("_", "").isalnum() else "Exception"
+
+
+def _llm_error_payload(
+    *,
+    message: str,
+    error_code: str,
+    reason_code: str,
+    error_class: str,
+) -> dict[str, Any]:
+    return {
+        "ok": False,
+        "error": message,
+        "error_code": error_code,
+        "reason_code": reason_code,
+        "error_class": error_class,
+    }
 
 
 @dataclass(frozen=True, repr=False)
@@ -293,7 +322,15 @@ def run_llm_exchange(
         runtime_settings_module.RuntimeSettingsSecretRequiredError,
         runtime_settings_module.RuntimeSettingsSecretResolutionError,
     ) as exc:
-        return _json_result({'ok': False, 'error': str(exc)}, 500)
+        return _json_result(
+            _llm_error_payload(
+                message=LLM_CONFIG_USER_MESSAGE,
+                error_code=LLM_RUNTIME_SECRET_ERROR_CODE,
+                reason_code=LLM_RUNTIME_SECRET_ERROR_CODE,
+                error_class=_exception_class(exc),
+            ),
+            500,
+        )
 
     headers = llm_module.or_headers(caller='llm')
     payload = llm_module.build_payload(prompt_messages, temperature, top_p, max_tokens, stream=stream_req)
@@ -500,7 +537,11 @@ def run_llm_exchange(
                 try:
                     memory_store_module.save_new_traces(conversation)
                 except Exception as exc:
-                    logger.error('llm_stream_trace_persist_error id=%s err=%s', conversation['id'], exc)
+                    logger.error(
+                        'llm_stream_trace_persist_error id=%s error_class=%s',
+                        conversation['id'],
+                        _exception_class(exc),
+                    )
 
             def _record_identity_entries_safely() -> None:
                 try:
@@ -515,13 +556,17 @@ def run_llm_exchange(
                         admin_logs_module=admin_logs_module,
                     )
                 except Exception as exc:
-                    logger.error('llm_stream_identity_persist_error id=%s err=%s', conversation['id'], exc)
+                    logger.error(
+                        'llm_stream_identity_persist_error id=%s error_class=%s',
+                        conversation['id'],
+                        _exception_class(exc),
+                    )
                     admin_logs_module.log_event(
                         'llm_stream_identity_persist_error',
                         level='ERROR',
                         conversation_id=conversation['id'],
                         model=call_model,
-                        error_class=exc.__class__.__name__,
+                        error_class=_exception_class(exc),
                     )
 
             def _reactivate_identities_safely() -> None:
@@ -530,13 +575,17 @@ def run_llm_exchange(
                 try:
                     memory_store_module.reactivate_identities(identity_ids)
                 except Exception as exc:
-                    logger.error('llm_stream_identity_reactivate_error id=%s err=%s', conversation['id'], exc)
+                    logger.error(
+                        'llm_stream_identity_reactivate_error id=%s error_class=%s',
+                        conversation['id'],
+                        _exception_class(exc),
+                    )
                     admin_logs_module.log_event(
                         'llm_stream_identity_reactivate_error',
                         level='ERROR',
                         conversation_id=conversation['id'],
                         model=call_model,
-                        error_class=exc.__class__.__name__,
+                        error_class=_exception_class(exc),
                     )
 
             try:
@@ -582,15 +631,21 @@ def run_llm_exchange(
                                     yield draft_delta
             except requests_module.exceptions.RequestException as exc:
                 terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
-                terminal_error_code = 'upstream_error'
-                logger.error('llm_stream_error id=%s err=%s', conversation['id'], exc)
+                terminal_error_code = LLM_UPSTREAM_ERROR_CODE
+                error_class = _exception_class(exc)
+                logger.error(
+                    'llm_stream_error id=%s error_class=%s',
+                    conversation['id'],
+                    error_class,
+                )
                 admin_logs_module.log_event(
                     'llm_stream_error',
                     level='ERROR',
                     conversation_id=conversation['id'],
                     model=call_model,
-                    error=str(exc),
+                    error_class=error_class,
                     error_code=terminal_error_code,
+                    reason_code=LLM_UPSTREAM_REASON_CODE,
                 )
             assistant_text = llm_module.sanitize_provider_text(''.join(assistant_chunks)).strip()
             final_updated_at: str | None = None
@@ -669,17 +724,23 @@ def run_llm_exchange(
             except Exception as exc:
                 _rollback_appended_assistant()
                 terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
-                terminal_error_code = terminal_error_code or 'stream_finalize_error'
+                terminal_error_code = terminal_error_code or LLM_STREAM_FINALIZE_ERROR_CODE
                 persistence_ok = False
                 persisted_updated_at = None
-                logger.error('llm_stream_finalize_error id=%s err=%s', conversation['id'], exc)
+                error_class = _exception_class(exc)
+                logger.error(
+                    'llm_stream_finalize_error id=%s error_class=%s',
+                    conversation['id'],
+                    error_class,
+                )
                 admin_logs_module.log_event(
                     'llm_stream_finalize_error',
                     level='ERROR',
                     conversation_id=conversation['id'],
                     model=call_model,
-                    error=str(exc),
+                    error_class=error_class,
                     error_code=terminal_error_code,
+                    reason_code='llm_stream_finalize_error',
                 )
                 if final_updated_at is None:
                     try:
@@ -723,14 +784,20 @@ def run_llm_exchange(
                     _rollback_appended_assistant()
                     terminal_error_code = CONVERSATION_PERSIST_ERROR_CODE
                     final_updated_at = None
-                    logger.error('llm_stream_finalize_persist_error id=%s err=%s', conversation['id'], persist_exc)
+                    persist_error_class = _exception_class(persist_exc)
+                    logger.error(
+                        'llm_stream_finalize_persist_error id=%s error_class=%s',
+                        conversation['id'],
+                        persist_error_class,
+                    )
                     admin_logs_module.log_event(
                         'llm_stream_finalize_persist_error',
                         level='ERROR',
                         conversation_id=conversation['id'],
                         model=call_model,
-                        error=str(persist_exc),
+                        error_class=persist_error_class,
                         error_code=terminal_error_code,
+                        reason_code=CONVERSATION_PERSIST_ERROR_CODE,
                     )
             if persistence_ok and terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
                 if assistant_appended and assistant_text:
@@ -773,22 +840,44 @@ def run_llm_exchange(
     except requests_module.exceptions.RequestException as exc:
         _mark_next_persist_phase(conv_store_module, 'user_turn')
         conv_store_module.save_conversation(conversation)
+        error_class = _exception_class(exc)
         admin_logs_module.log_event(
             'llm_error',
             level='ERROR',
             conversation_id=conversation['id'],
             model=call_model,
-            error=str(exc),
+            error_class=error_class,
+            error_code=LLM_UPSTREAM_ERROR_CODE,
+            reason_code=LLM_UPSTREAM_REASON_CODE,
         )
-        return _json_result({'ok': False, 'error': f'Connexion au LLM: {exc}'}, 502)
+        return _json_result(
+            _llm_error_payload(
+                message=LLM_UPSTREAM_USER_MESSAGE,
+                error_code=LLM_UPSTREAM_ERROR_CODE,
+                reason_code=LLM_UPSTREAM_REASON_CODE,
+                error_class=error_class,
+            ),
+            502,
+        )
     except Exception as exc:
         _mark_next_persist_phase(conv_store_module, 'user_turn')
         conv_store_module.save_conversation(conversation)
+        error_class = _exception_class(exc)
         admin_logs_module.log_event(
             'llm_error',
             level='ERROR',
             conversation_id=conversation['id'],
             model=call_model,
-            error=str(exc),
+            error_class=error_class,
+            error_code=LLM_INTERNAL_ERROR_CODE,
+            reason_code=LLM_INTERNAL_ERROR_CODE,
         )
-        return _json_result({'ok': False, 'error': f'Erreur: {exc}'}, 500)
+        return _json_result(
+            _llm_error_payload(
+                message=LLM_INTERNAL_USER_MESSAGE,
+                error_code=LLM_INTERNAL_ERROR_CODE,
+                reason_code=LLM_INTERNAL_ERROR_CODE,
+                error_class=error_class,
+            ),
+            500,
+        )

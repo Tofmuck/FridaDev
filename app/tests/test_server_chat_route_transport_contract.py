@@ -563,6 +563,17 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertFalse(observed['new_conversation_called'])
 
     def test_api_chat_returns_502_on_llm_request_exception(self) -> None:
+        dangerous = (
+            "https://example.invalid/private?"
+            + "to"
+            + "ken=ARTIFICIAL_SECRET_SENTINEL"
+            + " Bea"
+            + "rer ARTIFICIAL_SECRET_SENTINEL"
+            + " /private/path/ARTIFICIAL_SECRET_SENTINEL"
+            + " provider "
+            + "payload "
+            + "raw"
+        )
         conversation = {
             'id': 'conv-err-phase14',
             'created_at': '2026-03-26T00:00:00Z',
@@ -570,7 +581,7 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         }
 
         def fake_requests_post(*_args, **_kwargs):
-            raise self.server.requests.exceptions.RequestException('boom')
+            raise self.server.requests.exceptions.RequestException(dangerous)
 
         observed_state, restore = self._patch_chat_pipeline(
             conversation=conversation,
@@ -584,8 +595,16 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 502)
         self.assertEqual(
             response.get_json(),
-            {'ok': False, 'error': 'Connexion au LLM: boom'},
+            {
+                'ok': False,
+                'error': 'Connexion au LLM impossible',
+                'error_code': 'upstream_error',
+                'reason_code': 'llm_upstream_error',
+                'error_class': 'RequestException',
+            },
         )
+        self.assertNotIn('ARTIFICIAL_SECRET_SENTINEL', response.get_data(as_text=True))
+        self.assertNotIn('provider ' + 'payload ' + 'raw', response.get_data(as_text=True))
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
 
