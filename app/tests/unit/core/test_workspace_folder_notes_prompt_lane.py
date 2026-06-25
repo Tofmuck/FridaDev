@@ -108,6 +108,37 @@ class WorkspaceFolderNotesPromptLaneTests(unittest.TestCase):
         self.assertEqual(messages[0]["role"], "system")
         self.assertIn("note_mode_active", messages[0]["content"])
         self.assertIn("Aucune note existante", messages[0]["content"])
+        self.assertNotIn("selectionnees explicitement", messages[0]["content"])
+        self.assertNotIn("[MARKDOWN]", str(messages))
+        self.assertNotIn("markdown_content", str(lane.as_content_free_dict()))
+
+    def test_notes_mode_without_current_folder_reports_error_without_current_folder_claim(self) -> None:
+        reader = _FakeNotesRead()
+        result = workspace_folder_notes_prompt_lane.read_workspace_folder_notes_for_prompt(
+            data={"workspace_notes_mode": True},
+            conversation={},
+            workspace_folders_module=_FakeWorkspaceFolders(),
+            workspace_folder_notes_module=workspace_folder_notes,
+            workspace_folder_notes_read_module=reader,
+        )
+        messages = [{"role": "user", "content": "Préparons une note"}]
+        lane = workspace_folder_notes_prompt_lane.inject_workspace_folder_notes_prompt_lane(
+            messages,
+            result.note_reads,
+            read_status=result.status,
+            read_reason_code=result.reason_code,
+            requested_count=result.requested_count,
+        )
+
+        self.assertEqual(reader.calls, [])
+        self.assertEqual(result.status, workspace_folder_notes_prompt_lane.READ_STATUS_ERROR)
+        self.assertEqual(result.reason_code, workspace_folder_notes.REASON_FOLDER_NOT_LINKED)
+        self.assertEqual(lane.read_status, workspace_folder_notes_prompt_lane.READ_STATUS_ERROR)
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(messages[0]["role"], "system")
+        self.assertIn(workspace_folder_notes.REASON_FOLDER_NOT_LINKED, messages[0]["content"])
+        self.assertNotIn("dossier courant", messages[0]["content"])
+        self.assertNotIn("selectionnees explicitement", messages[0]["content"])
         self.assertNotIn("[MARKDOWN]", str(messages))
         self.assertNotIn("markdown_content", str(lane.as_content_free_dict()))
 
