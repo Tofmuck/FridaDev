@@ -9,6 +9,7 @@ const notesMode = require('../../../web/chat_notes_mode.js');
 
 test('notes mode sends a bounded workspace note payload only for the selected folder', () => {
   assert.deepEqual(notesMode.buildNotesChatPayload({ active: false }), { workspace_notes_mode: false });
+  assert.deepEqual(notesMode.buildNotesChatPayload({ active: true }), { workspace_notes_mode: true });
   assert.deepEqual(
     notesMode.buildNotesChatPayload({
       active: true,

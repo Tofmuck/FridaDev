@@ -1172,7 +1172,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-CEL-NOTES-UI-GAP-01
 
 - Statut initial: open.
-- Statut courant: closed_by_lot_5B_2_minimal_notes_mode.
+- Statut courant: closed_by_lot_5B_2_1_backend_consumed_notes_mode.
 - Severite: P2.
 - Fichiers suspects: routes Notes folder-scoped, panels frontend workspace.
 - Lot cible: Lot 5.
@@ -1183,12 +1183,17 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 - Decision Lot 5B.2: Notes n'est plus API-only. Un mode Notes minimal est
   visible dans le composer, au meme rang conceptuel que les modes Biblio/Agenda,
   avec panneau de notes par repertoire courant.
+- Correctif Lot 5B.2.1: valide et corrige un effet de bord P2: le frontend
+  envoyait `workspace_notes_mode=true`, mais le backend ne consommait que
+  `workspace_note_id` / `workspace_note_ids`. Le bouton Notes seul pouvait donc
+  etre un no-op backend sans note selectionnee.
 - Critere de cloture: UI minimale livree sur routes Notes existantes: liste des
   notes du repertoire, creation d'une note vide titree, preparation/selection
-  d'une note comme contexte `workspace_note_id`, et erreur de liste rendue comme
-  erreur visible au lieu d'une liste vide.
+  d'une note comme contexte `workspace_note_id`, erreur de liste rendue comme
+  erreur visible au lieu d'une liste vide, et consommation backend reelle de
+  `workspace_notes_mode=true` meme sans note selectionnee.
 - Preuve minimale: tests module frontend Notes, tests panneau Notes,
-  contrats backend Notes existants.
+  lane backend Notes, contrats backend Notes existants.
 - Hors-scope: rouvrir backend Notes sans besoin.
 
 ### P2-CEL-FRONTEND-EMPTY-ON-ERROR-01
@@ -1876,6 +1881,7 @@ Decisions Lot 4E:
 - [x] Lot 5A: audit/triage admin/security/app routes docs-only.
 - [x] Lot 5B.1: prompts admin complets proteges par content gate explicite.
 - [x] Lot 5B.2: mode Notes minimal livre dans l'UI chat.
+- [x] Lot 5B.2.1: mode Notes consomme cote backend sans note selectionnee.
 - [ ] Aligner tests admin sur contrat proxy/loopback.
 - [ ] Verifier routes admin registerees par modules.
 - [ ] Verifier admin HTML/public host vs API guard.
@@ -1974,6 +1980,8 @@ lots logs/tests/refactor.
   comme contexte `workspace_note_id`.
 - [x] Lot 5B.2: rendre une erreur de liste Notes comme erreur visible, pas
   comme liste vide.
+- [x] Lot 5B.2.1: corriger `workspace_notes_mode=true` ignore cote backend
+  quand aucune note n'est selectionnee.
 - [x] Ne pas traiter `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01` hors surface Notes.
 - [x] Ne pas traiter `P2-CEL-ADMIN-COMPAT-KNOBS-01`.
 - [x] Ne pas traiter `P3-CEL-LOG-FRONTEND-DENYLIST-01`.
@@ -1990,6 +1998,11 @@ Resultat Lot 5B:
   repertoire courant liste les notes, permet une creation titree minimale, une
   preparation et une selection contextuelle. Le payload chat ne transporte que
   le mode et l'identifiant de note selectionne, sans contenu Markdown brut.
+- Notes backend: `workspace_notes_mode=true` sans `workspace_note_id` injecte
+  maintenant un contrat Notes minimal content-free dans le prompt/runtime:
+  mode Notes actif, aucune note existante lue/injectee, accompagnement possible
+  de creation/preparation/selection/reprise/structuration de note. Aucun corps
+  Markdown n'est lu automatiquement.
 - Frontend Notes: l'erreur API de liste Notes est projetee comme erreur visible
   avec `reason_code` content-free; elle n'est pas convertie en "Aucune note".
 

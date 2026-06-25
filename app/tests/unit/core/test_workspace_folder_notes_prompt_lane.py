@@ -78,6 +78,60 @@ class _FakeNotesRead:
 
 
 class WorkspaceFolderNotesPromptLaneTests(unittest.TestCase):
+    def test_notes_mode_without_selected_note_injects_bounded_contract_only(self) -> None:
+        reader = _FakeNotesRead()
+        result = workspace_folder_notes_prompt_lane.read_workspace_folder_notes_for_prompt(
+            data={"workspace_notes_mode": True},
+            conversation={"workspace_folder_id": FOLDER_ID},
+            workspace_folders_module=_FakeWorkspaceFolders(),
+            workspace_folder_notes_module=workspace_folder_notes,
+            workspace_folder_notes_read_module=reader,
+        )
+        messages = [{"role": "user", "content": "Préparons une note"}]
+        lane = workspace_folder_notes_prompt_lane.inject_workspace_folder_notes_prompt_lane(
+            messages,
+            result.note_reads,
+            read_status=result.status,
+            read_reason_code=result.reason_code,
+            requested_count=result.requested_count,
+        )
+
+        self.assertEqual(reader.calls, [])
+        self.assertEqual(result.status, workspace_folder_notes_prompt_lane.READ_STATUS_OK)
+        self.assertEqual(
+            result.reason_code,
+            workspace_folder_notes_prompt_lane.REASON_MODE_ACTIVE_WITHOUT_SELECTION,
+        )
+        self.assertEqual(lane.read_status, workspace_folder_notes_prompt_lane.READ_STATUS_OK)
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.requested_count, 1)
+        self.assertEqual(messages[0]["role"], "system")
+        self.assertIn("note_mode_active", messages[0]["content"])
+        self.assertIn("Aucune note existante", messages[0]["content"])
+        self.assertNotIn("[MARKDOWN]", str(messages))
+        self.assertNotIn("markdown_content", str(lane.as_content_free_dict()))
+
+    def test_notes_mode_false_without_selected_note_stays_empty(self) -> None:
+        result = workspace_folder_notes_prompt_lane.read_workspace_folder_notes_for_prompt(
+            data={"workspace_notes_mode": False},
+            conversation={"workspace_folder_id": FOLDER_ID},
+            workspace_folders_module=_FakeWorkspaceFolders(),
+            workspace_folder_notes_module=workspace_folder_notes,
+            workspace_folder_notes_read_module=_FakeNotesRead(),
+        )
+        messages = [{"role": "user", "content": "Tour ordinaire"}]
+        lane = workspace_folder_notes_prompt_lane.inject_workspace_folder_notes_prompt_lane(
+            messages,
+            result.note_reads,
+            read_status=result.status,
+            read_reason_code=result.reason_code,
+            requested_count=result.requested_count,
+        )
+
+        self.assertEqual(result.status, workspace_folder_notes_prompt_lane.READ_STATUS_EMPTY)
+        self.assertEqual(lane.messages, ())
+        self.assertEqual(messages, [{"role": "user", "content": "Tour ordinaire"}])
+
     def test_prompt_lane_injects_markdown_only_in_content_message(self) -> None:
         markdown = "# Note\n\nContenu utile"
         messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "Lis la note"}]

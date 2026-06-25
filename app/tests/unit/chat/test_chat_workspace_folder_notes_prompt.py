@@ -21,6 +21,7 @@ if str(APP_DIR) not in sys.path:
 
 from core import chat_service
 from core import workspace_folder_notes
+from core import workspace_folder_notes_prompt_lane
 
 
 FOLDER_ID = "11111111-2222-4333-8444-555555555555"
@@ -89,6 +90,39 @@ class _FakeNotesRead:
 
 
 class ChatWorkspaceFolderNotesPromptTests(unittest.TestCase):
+    def test_workspace_notes_mode_without_selected_note_is_visible_to_backend_prompt(self) -> None:
+        reader = _FakeNotesRead("unused markdown should not be read")
+        result = workspace_folder_notes_prompt_lane.read_workspace_folder_notes_for_prompt(
+            data={"workspace_notes_mode": True},
+            conversation={"workspace_folder_id": FOLDER_ID},
+            workspace_folders_module=_FakeWorkspaceFolders(),
+            workspace_folder_notes_module=workspace_folder_notes,
+            workspace_folder_notes_read_module=reader,
+        )
+        prompt_messages = [{"role": "user", "content": "Préparons une note"}]
+
+        lane = workspace_folder_notes_prompt_lane.inject_workspace_folder_notes_prompt_lane(
+            prompt_messages,
+            result.note_reads,
+            read_status=result.status,
+            read_reason_code=result.reason_code,
+            requested_count=result.requested_count,
+        )
+
+        self.assertEqual(reader.calls, [])
+        self.assertEqual(result.status, workspace_folder_notes_prompt_lane.READ_STATUS_OK)
+        self.assertEqual(
+            result.reason_code,
+            workspace_folder_notes_prompt_lane.REASON_MODE_ACTIVE_WITHOUT_SELECTION,
+        )
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.requested_count, 1)
+        self.assertEqual(prompt_messages[0]["role"], "system")
+        self.assertIn("note_mode_active", prompt_messages[0]["content"])
+        self.assertNotIn("[MARKDOWN]", str(prompt_messages))
+        self.assertNotIn("unused markdown", str(prompt_messages))
+        self.assertNotIn("markdown_content", str(lane.as_content_free_dict()))
+
     def test_chat_response_injects_explicit_note_and_continuity_capsule_in_prompt_turn(self) -> None:
         markdown = "# Note sensible\n\nContenu conversationnel utile"
         capsule_text = "ARTIFICIAL_CHAT_SERVICE_CAPSULE_SENTINEL"

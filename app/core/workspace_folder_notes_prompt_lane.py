@@ -17,6 +17,7 @@ from . import workspace_folder_notes_read
 READ_STATUS_OK = "ok"
 READ_STATUS_EMPTY = "empty"
 READ_STATUS_ERROR = "error"
+REASON_MODE_ACTIVE_WITHOUT_SELECTION = "workspace_notes_mode_active_without_selection"
 MAX_NOTES_PER_TURN = 5
 MAX_NOTES_INJECTED_PER_TURN = 1
 MAX_NOTES_TOTAL_CHARS_PER_TURN = workspace_folder_notes_read.NOTE_READ_MAX_CHARS
@@ -119,10 +120,17 @@ def read_workspace_folder_notes_for_prompt(
         data,
         notes_module=workspace_folder_notes_module,
     )
+    notes_mode_active = _notes_mode_enabled(data.get("workspace_notes_mode"))
     readable_note_ids = note_ids[:MAX_NOTES_INJECTED_PER_TURN]
     turn_limit_note_ids = (*note_ids[MAX_NOTES_INJECTED_PER_TURN:], *over_limit_note_ids)
     valid_requested_count = len(readable_note_ids) + len(turn_limit_note_ids)
     if not note_ids and not over_limit_note_ids and not invalid_count:
+        if notes_mode_active:
+            return WorkspaceFolderNotesPromptRead(
+                status=READ_STATUS_OK,
+                reason_code=REASON_MODE_ACTIVE_WITHOUT_SELECTION,
+                requested_count=1,
+            )
         return WorkspaceFolderNotesPromptRead(status=READ_STATUS_EMPTY)
 
     folder_id = workspace_folder_notes.normalize_workspace_folder_id(
@@ -216,7 +224,8 @@ def build_workspace_folder_notes_prompt_lane(
 ) -> WorkspaceFolderNotesPromptLane:
     decisions = _apply_injection_budget(tuple(_decision_from_read(read) for read in (note_reads or ())))
     normalized_status = _read_status(read_status, decisions)
-    if not decisions and normalized_status != READ_STATUS_ERROR:
+    mode_active_without_selection = read_reason_code == REASON_MODE_ACTIVE_WITHOUT_SELECTION
+    if not decisions and normalized_status != READ_STATUS_ERROR and not mode_active_without_selection:
         return WorkspaceFolderNotesPromptLane(
             contract_message=None,
             content_message=None,
@@ -302,6 +311,15 @@ def _requested_note_ids(
         tuple(normalized[MAX_NOTES_PER_TURN:]),
         invalid_count,
     )
+
+
+def _notes_mode_enabled(value: Any) -> bool:
+    if value is True:
+        return True
+    if value is False or value is None:
+        return False
+    normalized = str(value or "").strip().lower()
+    return normalized in {"1", "true", "yes", "on", "enabled", "active"}
 
 
 def _blocked_prompt_read(
@@ -459,6 +477,15 @@ def _contract_message(
         "- Cette lane ne nourrit pas Memory, RAG, Identity, Summary, Biblio, Documents, Exports ou Images.",
         "- Si une note est non injectee, son contenu n'a pas ete envoye dans ce tour; ne pretends pas l'avoir lue.",
     ]
+    if read_reason_code == REASON_MODE_ACTIVE_WITHOUT_SELECTION:
+        lines.extend(
+            [
+                "- note_mode_active: le tour courant est explicitement en mode Notes.",
+                "- Aucune note existante n'a ete selectionnee ou injectee dans ce tour.",
+                "- Tu peux accompagner la creation, la preparation, la selection, la reprise ou la structuration d'une note du dossier courant.",
+                "- N'invente pas de contenu de note existante et ne pretends pas avoir lu une note non selectionnee.",
+            ]
+        )
     if injected:
         lines.append(f"- Notes injectees dans un message utilisateur separe: {len(injected)}.")
     if read_status == READ_STATUS_ERROR:
@@ -513,6 +540,8 @@ def _read_status(read_status: str, decisions: Sequence[WorkspaceFolderNotePrompt
     status = _text(read_status)
     if status == READ_STATUS_ERROR:
         return READ_STATUS_ERROR
+    if status == READ_STATUS_OK:
+        return READ_STATUS_OK
     if decisions:
         return READ_STATUS_OK
     return READ_STATUS_EMPTY
