@@ -1142,10 +1142,13 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-LLM-ERROR-RAW-01
 
-- Statut initial: open.
+- Statut courant: validated_by_lot_6A.
 - Severite: P2.
 - Fichiers suspects: `app/core/chat_llm_flow.py`, `app/admin/admin_logs.py`.
-- Lot cible: Lot 6.
+- Lot cible: Lot 6B.
+- Preuve Lot 6A: le scan cible confirme encore des surfaces LLM avec
+  `str(exc)` ou equivalent dans les reponses/logs applicatifs, notamment autour
+  du flow LLM et du proxy LLM serveur.
 - Critere de cloture: erreurs LLM exposees via `error_code`/`error_class` et
   message utilisateur stable, sans `str(exc)` brut.
 - Preuve minimale: tests sentinelles URL/token/path/provider error, logs
@@ -1154,11 +1157,14 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-DASHBOARD-WEB-LEGACY-RAW-01
 
-- Statut initial: open.
+- Statut courant: needs_targeted_validation_by_lot_6A.
 - Severite: P2.
 - Fichiers suspects: `app/observability/turn_pipeline_read_model.py`,
   dashboard read-model.
-- Lot cible: Lot 6.
+- Lot cible: Lot 6D.
+- Preuve Lot 6A: les motifs `raw`, `url`, `hash` restent melanges entre champs
+  defensifs, schema guard et projections dashboard; aucune correction mecanique
+  n'est sure sans fixture historique sentinelle.
 - Critere de cloture: legacy web facts projetes sans URL brute ni hash stable
   sensible non justifie.
 - Preuve minimale: event historique sentinelle, dashboard JSON content-free.
@@ -1247,21 +1253,27 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-EXCEPTION-RAW-SURFACE-01
 
-- Statut initial: open.
+- Statut courant: validated_broad_by_lot_6A.
 - Severite: P2.
 - Fichiers suspects: `app/server.py`, `app/tools/web_search.py`,
   `app/core/*`, `app/memory/*`, `app/observability/*`, `app/biblio/*`.
-- Lot cible: Lot 6.
+- Lot cible: Lots 6B/6C/6D/6E et sous-lots dedies par surface.
+- Preuve Lot 6A: le scan `str(exc)` / `repr(exc)` / `exc_info` / `traceback` /
+  `print(` trouve plusieurs familles independantes; elles ne doivent pas etre
+  remplacees globalement sans validation surface par surface.
 - Critere de cloture: surfaces qualifiees; corrections bornees uniquement.
 - Preuve minimale: tests content-free/fail-closed par surface.
 - Hors-scope: remplacement massif aveugle de `str(exc)`.
 
 ### P2-CEL-ADMIN-400-RAW-01
 
-- Statut initial: open.
+- Statut courant: validated_by_lot_6A.
 - Severite: P2.
 - Fichiers suspects: `app/server.py` routes admin logs/dashboard/export.
-- Lot cible: Lot 6.
+- Lot cible: Lot 6C.
+- Preuve Lot 6A: les routes admin 400/404 exposent encore des erreurs issues de
+  `ValueError` / `LookupError` sous forme textuelle; le correctif doit rester
+  borne aux reason codes stables et aux tests sentinelles.
 - Critere de cloture: `ValueError`/400 admin renvoie reason code stable sans
   echo de valeur invalide.
 - Preuve minimale: tests sentinelles URL/token/path dans query params.
@@ -1491,18 +1503,21 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01
 
-- Statut courant: needs_targeted_validation.
+- Statut courant: validated_by_lot_6A_needs_surface_split.
 - Severite: P2.
 - Classe: `P2_test_contract_or_runtime_validation`.
 - Suite concernee: `tests.unit.memory.test_identity_periodic_agent_phase1`.
 - Constat observe apres Lot 4D.2: des cas mutable identity staging attendus
   `ok` sortent `skipped` ou `refused`; `invalid_verdict` peut etre remplace
   par `observability_payload_rejected`, et un cas laisse un buffer non nettoye.
+- Preuve Lot 6A: la suite cible relancee en conteneur sur le code courant
+  reproduit encore ces ecarts; la cause doit etre isolee entre garde
+  observabilite, contrat de test stale et bug runtime identity/memory.
 - Impact possible: soit le runtime identity/memory refuse correctement un
   verdict invalide mais le contrat de test est stale, soit la garde
   observabilite masque le reason code utile, soit le cleanup de buffer a une
   regression bornee.
-- Lot cible: Lot 6 si la cause est la garde observabilite / schema payload;
+- Lot cible: Lot 6F si la cause est la garde observabilite / schema payload;
   sous-lot identity/memory dedie si la validation runtime ou le cleanup de
   buffer est en cause.
 - Critere de cloture: isoler un fake minimal content-free distinguant contrat
@@ -1512,32 +1527,38 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01
 
-- Statut courant: needs_targeted_validation.
+- Statut courant: validated_by_lot_6A_needs_contract_decision.
 - Severite: P2.
 - Classe: `P2_observability_contract_drift`.
 - Suite concernee: `tests.test_server_chat_compact_observability_contract`.
 - Constat observe apres Lot 4D.2: `messages_count` attendu `1`, obtenu `2`
   dans le contrat compact observability.
+- Preuve Lot 6A: la suite cible relancee en conteneur reproduit encore
+  l'ecart; le meme run observe aussi un statut summary attendu `missing` devenu
+  `error`, probablement lie aux corrections fail-open memoire recentes.
 - Impact possible: drift de contrat de test, changement legitime du payload
   compact, ou comptage observe trop sensible a une lane/prompt supplementaire.
-- Lot cible: Lot 7 si la revalidation doit passer par matrice tests/smokes;
-  Lot 6 si la correction concerne le schema/projection observabilite compacte.
+- Lot cible: Lot 6H si la correction concerne le schema/projection
+  observabilite compacte; Lot 7 si la revalidation conclut a un drift de
+  matrice/smoke plutot qu'a un bug runtime.
 - Critere de cloture: prouver si `2` est l'etat produit attendu ou une
   regression; ajuster le test ou le payload sans exposer message/prompt brut.
 - Hors-scope Lot 4D.2: ne touche pas au statut summary/identity corrige.
 
 ### P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01
 
-- Statut courant: needs_targeted_validation.
+- Statut courant: validated_by_lot_6A.
 - Severite: P2.
 - Classe: `P2_observability_guard_rejection`.
 - Suite concernee: `tests.unit.logs.test_chat_turn_logger_hermeneutic_observability`.
 - Constat observe apres Lot 4D.2: l'event `stimmung_prompt_prepared` attendu
   `ok` sort `refused` avec `observability_payload_rejected`.
+- Preuve Lot 6A: la suite cible relancee en conteneur reproduit encore le rejet
+  de garde sur le code courant.
 - Impact possible: la garde observabilite refuse un payload qui devrait etre
   autorise en forme content-free, ou le test attend encore un ancien contrat
   trop permissif.
-- Lot cible: Lot 6, garde observabilite / schema payload.
+- Lot cible: Lot 6G, garde observabilite / schema payload.
 - Critere de cloture: reproduire en fake local, identifier la cle ou classe de
   payload rejetee sans prompt brut, puis corriger schema ou test selon contrat.
 - Hors-scope Lot 4D.2: pas de correction logs/raw ni de changement Stimmung.
@@ -2197,6 +2218,7 @@ Decision:
 
 ### Lot 6 - Observabilite/logs applicatifs
 
+- [x] Lot 6A: audit/triage observabilite/logs applicatifs, docs-only.
 - [ ] Qualifier `str(exc)`, raw, payload, traceback, print.
 - [ ] Traiter erreurs LLM brutes.
 - [ ] Traiter erreurs 400 admin brutes.
@@ -2207,6 +2229,67 @@ Decision:
 - [ ] Valider `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01` si la cause
   est `observability_payload_rejected` ou schema payload.
 - [ ] Valider `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
+
+#### Lot 6A - Audit/triage observabilite/logs applicatifs
+
+Statut: execute le 2026-06-25.
+Runtime modifie: non.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non pour un correctif
+runtime immediat: Lot 6 est trop large et contient plusieurs P2 independants.
+Le meilleur plan sur est un triage docs-only, puis des sous-lots bornes.
+
+Inventaire Lot 6A:
+
+- Scan cible `str(exc)` / `repr(exc)` / `exc_info` / `traceback` / `print(`:
+  plusieurs familles independantes existent encore dans `server.py`,
+  `chat_llm_flow.py`, services admin, outils web, memoire et tests. Le scan
+  invalide un remplacement global aveugle.
+- Scan cible `raw` / `payload` / `url` / `hash` / `prompt`: beaucoup de
+  mentions sont des champs de schema, flags defensifs ou tests. Les surfaces
+  dashboard legacy et hashes identity restent a valider par fixture dediee.
+- Tests cibles relances en conteneur:
+  `tests.unit.memory.test_identity_periodic_agent_phase1`,
+  `tests.test_server_chat_compact_observability_contract`,
+  `tests.unit.logs.test_chat_turn_logger_hermeneutic_observability`.
+  Resultat: echec reproduit, sans patch runtime dans ce lot.
+
+Table de decision Lot 6A:
+
+| Finding | Statut Lot 6A | Decision |
+|---|---|---|
+| `P2-CEL-LLM-ERROR-RAW-01` | `validated` | Lot 6B: remplacer les surfaces LLM brutes par `error_class` / `error_code` / message stable content-free. |
+| `P2-CEL-EXCEPTION-RAW-SURFACE-01` | `validated_broad` | Ne pas corriger globalement; traiter par sous-surface seulement. |
+| `P2-CEL-ADMIN-400-RAW-01` | `validated` | Lot 6C: admin 400/404 reason codes stables, tests sentinelles. |
+| `P2-CEL-DASHBOARD-WEB-LEGACY-RAW-01` | `needs_targeted_validation` | Lot 6D: fixture historique dashboard, URL/hash content-free. |
+| `P2-CEL-IDENTITY-HASH-POLICY-01` | `validated_policy_gap` | Lot 6E: doctrine et tests sur hashes courts identity avant patch runtime. |
+| `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01` | `validated_needs_surface_split` | Lot 6F: isoler garde observabilite vs contrat stale vs bug identity/memory. |
+| `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01` | `validated` | Lot 6G: reproduire payload local, corriger schema/test sans prompt brut. |
+| `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01` | `validated_needs_contract_decision` | Lot 6H ou Lot 7 selon cause: projection/schema compacte ou drift de matrice. |
+
+Decoupage recommande:
+
+- Lot 6B - LLM errors content-free: `chat_llm_flow.py` et proxy LLM serveur,
+  tests provider-error sentinelles, aucun payload provider brut.
+- Lot 6C - Admin 400/404 raw: routes admin logs/dashboard/export/content,
+  reason codes stables, pas d'echo de valeur invalide.
+- Lot 6D - Dashboard web legacy raw URL/hash: fixture historique sentinelle,
+  projection dashboard content-free.
+- Lot 6E - Doctrine hashes identity: trancher `sha256_12` sur contenu
+  identity/update_reason, puis patcher seulement si la doctrine l'exige.
+- Lot 6F - Mutable identity staging failures: fake minimal pour separer rejet
+  guard, contrat stale et bug cleanup buffer.
+- Lot 6G - Stimmung prompt guard rejection: garde/schema payload pour
+  `stimmung_prompt_prepared`, sans prompt brut.
+- Lot 6H - Compact observability drift: `messages_count` et statut summary;
+  deleguer au Lot 7 si c'est une rebaseline smoke/matrice, pas un bug schema.
+
+Decision:
+
+- Lot 6 parent reste ouvert: seul le triage Lot 6A est clos.
+- Aucun runtime n'est corrige dans Lot 6A.
+- Lot 7 `/log` denylist et Lot 9 refactors restent hors scope.
 
 ### Lot 7 - Tests/smokes/artefacts
 
