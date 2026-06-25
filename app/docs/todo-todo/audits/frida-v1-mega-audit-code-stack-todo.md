@@ -1165,7 +1165,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-DASHBOARD-WEB-LEGACY-RAW-01
 
-- Statut courant: needs_targeted_validation_by_lot_6A.
+- Statut courant: closed_by_lot_6D.
 - Severite: P2.
 - Fichiers suspects: `app/observability/turn_pipeline_read_model.py`,
   dashboard read-model.
@@ -1173,6 +1173,12 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 - Preuve Lot 6A: les motifs `raw`, `url`, `hash` restent melanges entre champs
   defensifs, schema guard et projections dashboard; aucune correction mecanique
   n'est sure sans fixture historique sentinelle.
+- Preuve Lot 6D: `_web_summary()` projetait encore `url`,
+  `query_sha256_12`, `crawl4ai_query_sha256_12` et
+  `crawl_query_sha256_12` dans le fact dashboard Web. Le correctif garde
+  uniquement presence, longueurs, compteurs et statuts content-free; le test
+  sentinelle dashboard prouve qu'une URL/query/hash synthetiques sensibles ne
+  ressortent pas dans le fact.
 - Critere de cloture: legacy web facts projetes sans URL brute ni hash stable
   sensible non justifie.
 - Preuve minimale: event historique sentinelle, dashboard JSON content-free.
@@ -2237,7 +2243,7 @@ Decision:
 - [ ] Qualifier `str(exc)`, raw, payload, traceback, print.
 - [x] Lot 6B: traiter erreurs LLM brutes.
 - [x] Lot 6C: traiter erreurs 400/404 admin brutes sur logs/dashboard/export.
-- [ ] Traiter dashboard web legacy URL/hash raw.
+- [x] Lot 6D: traiter dashboard web legacy URL/hash raw.
 - [ ] Trancher doctrine hashes courts identity.
 - [ ] Corriger seulement surfaces qui exposent ou masquent une panne.
 - [ ] Conserver diagnostics content-free.
@@ -2367,6 +2373,37 @@ Resultat Lot 6C:
   ils relevent des contrats settings/services ou du finding large
   `P2-CEL-EXCEPTION-RAW-SURFACE-01`, a traiter seulement par sous-surface
   dediee.
+
+#### Lot 6D - Dashboard web legacy raw URL/hash
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne a la projection dashboard Web.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le finding etait
+assez borne apres Lot 6A: il fallait valider les projections dashboard Web
+plutot que remplacer globalement les champs `url`, `hash`, `raw` ou `payload`.
+
+- [x] Valider `P2-CEL-DASHBOARD-WEB-LEGACY-RAW-01`.
+- [x] Supprimer du fact dashboard Web les URL brutes et hashes courts
+  historiques de requete/crawl.
+- [x] Conserver des diagnostics content-free: presence URL, longueurs,
+  compteurs, statuts crawl/cache/policy.
+- [x] Ajouter une fixture sentinelle dashboard avec URL/query/hash
+  synthetiques dangereux.
+- [x] Ne pas traiter Lot 6E/6F/6G/6H, Lot 7 ni Lot 9.
+
+Resultat Lot 6D:
+
+- `app/observability/turn_pipeline_read_model.py::_web_summary()` ne projette
+  plus `url`, `query_sha256_12`, `crawl4ai_query_sha256_12` ni
+  `crawl_query_sha256_12` dans le fact dashboard Web.
+- Les diagnostics utiles restent disponibles via `url_present`, `url_chars`,
+  `query_present`, `query_chars`, `crawl_query_chars` et
+  `crawl4ai_query_count`.
+- Le test `test_dashboard_web_projection_drops_legacy_url_query_and_hash_values`
+  couvre le cas historique avec sentinelles synthetiques et verifie l'absence
+  de fuite dans le JSON dashboard projete.
 
 ### Lot 7 - Tests/smokes/artefacts
 

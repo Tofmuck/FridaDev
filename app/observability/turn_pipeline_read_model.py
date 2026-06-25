@@ -833,15 +833,16 @@ def _web_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         'crawl4ai_filter_counts': dict(_mapping(payload.get('crawl4ai_filter_counts'))),
         'crawl4ai_cache_modes': dict(_mapping(payload.get('crawl4ai_cache_modes'))),
         'crawl4ai_fallback_used_count': _to_int(payload.get('crawl4ai_fallback_used_count')),
-        'crawl4ai_query_sha256_12': [
-            _text(value)
+        'crawl4ai_query_count': len([
+            value
             for value in payload.get('crawl4ai_query_sha256_12') or []
             if _text(value)
-        ],
+        ]),
         'crawl4ai_extraction_summary': [
             {
                 'rank': _to_int(source.get('rank')),
-                'url': str(source.get('url') or ''),
+                'url_present': bool(str(source.get('url') or '').strip()),
+                'url_chars': len(str(source.get('url') or '').strip()),
                 'source_origin': str(source.get('source_origin') or 'search_result'),
                 'is_primary_source': bool(source.get('is_primary_source', False)),
                 'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
@@ -849,7 +850,6 @@ def _web_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
                 'crawl_policy_kind': str(source.get('crawl_policy_kind') or ''),
                 'crawl_policy_reason': str(source.get('crawl_policy_reason') or ''),
                 'crawl_cache_mode': str(source.get('crawl_cache_mode') or ''),
-                'crawl_query_sha256_12': str(source.get('crawl_query_sha256_12') or ''),
                 'crawl_query_chars': _to_int(source.get('crawl_query_chars')),
                 'crawl_fallback_used': bool(source.get('crawl_fallback_used', False)),
                 'crawl_fallback_reason': str(source.get('crawl_fallback_reason') or ''),
@@ -904,7 +904,6 @@ def _web_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         'injected_chars': injected_chars,
         'query_present': bool(payload.get('query_present')) or bool(legacy_query),
         'query_chars': query_chars,
-        'query_sha256_12': _sha256_12_from_payload(payload, 'query_sha256_12') or _sha256_12_text(legacy_query),
         'read_state': _text(payload.get('read_state')),
         'truncated': bool(payload.get('truncated')),
         'latest_ts': _event_ts(latest or {}),

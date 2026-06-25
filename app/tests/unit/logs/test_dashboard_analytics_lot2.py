@@ -407,6 +407,71 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         for forbidden_key in ('payload', 'payload_json', 'prompt', 'messages', 'content', 'query', 'context_block'):
             self.assertNotIn(forbidden_key, self._collect_keys(first))
 
+    def test_dashboard_web_projection_drops_legacy_url_query_and_hash_values(self) -> None:
+        dangerous_url = 'https://example.invalid/private?to' 'ken=ARTIFICIAL_DASHBOARD_WEB_SECRET'
+        dangerous_query = 'RAW DASHBOARD WEB QUERY ARTIFICIAL_DASHBOARD_WEB_SECRET'
+        dangerous_hash = 'abc123def456'
+        events = [
+            self._event(
+                'turn_start',
+                payload={'web_search_enabled': True, 'user_msg_chars': 18},
+                event_id='turn-dashboard-web:0001:turn_start',
+            ),
+            self._event(
+                'web_search',
+                payload={
+                    'enabled': True,
+                    'status_schema_version': 'agentic_v1',
+                    'reason_code': 'web_search_completed',
+                    'results_count': 1,
+                    'context_injected': True,
+                    'injected_chars': 42,
+                    'query': dangerous_query,
+                    'query_sha256_12': dangerous_hash,
+                    'context_block': 'RAW WEB CONTEXT MUST NOT LEAK',
+                    'crawl4ai_query_sha256_12': [dangerous_hash],
+                    'crawl4ai_extraction_summary': [
+                        {
+                            'rank': 1,
+                            'url': dangerous_url,
+                            'source_origin': 'search_result',
+                            'crawl_status': 'ok',
+                            'crawl_query_sha256_12': dangerous_hash,
+                            'crawl_query_chars': len(dangerous_query),
+                            'crawl_markdown_chars': 80,
+                        }
+                    ],
+                },
+                event_id='turn-dashboard-web:0002:web_search',
+            ),
+        ]
+
+        fact = dashboard_analytics.build_dashboard_turn_fact(events)
+        web = fact['web']
+        serialized = json.dumps(fact, ensure_ascii=False, sort_keys=True)
+
+        self.assertNotIn('ARTIFICIAL_DASHBOARD_WEB_SECRET', serialized)
+        self.assertNotIn('RAW DASHBOARD WEB QUERY', serialized)
+        self.assertNotIn('RAW WEB CONTEXT MUST NOT LEAK', serialized)
+        self.assertNotIn(dangerous_hash, serialized)
+        self.assertNotIn(dangerous_url, serialized)
+        self.assertTrue(web['query_present'])
+        self.assertEqual(web['query_chars'], len(dangerous_query))
+        self.assertEqual(web['crawl4ai_query_count'], 1)
+        self.assertEqual(len(web['crawl4ai_extraction_summary']), 1)
+        source = web['crawl4ai_extraction_summary'][0]
+        self.assertTrue(source['url_present'])
+        self.assertEqual(source['url_chars'], len(dangerous_url))
+        self.assertEqual(source['crawl_query_chars'], len(dangerous_query))
+        self.assertNotIn('url', source)
+        for forbidden_key in (
+            'query',
+            'query_sha256_12',
+            'crawl4ai_query_sha256_12',
+            'crawl_query_sha256_12',
+        ):
+            self.assertNotIn(forbidden_key, self._collect_keys(web))
+
     def test_dashboard_status_taxonomy_distinguishes_legacy_noops_and_true_failures(self) -> None:
         now = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
 
