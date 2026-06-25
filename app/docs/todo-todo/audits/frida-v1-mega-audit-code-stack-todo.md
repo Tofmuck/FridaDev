@@ -22,6 +22,9 @@ Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-c
 - Doctrine Sauron courante: serveur solo derriere Caddy/Authelia; chercher
   d'abord les gros rouge public et les risques realistes, ne pas transformer le
   mega-audit en micro-hardening local infini a rendement decroissant.
+- Lot 4A: audit/triage runtime P1/P2 execute; granularite Lot 4 jugee
+  insuffisante pour patch runtime direct, mais suffisante pour isoler des lots
+  corrigibles.
 
 ## Doctrine securite plateforme avant audit code
 
@@ -1211,13 +1214,49 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-REQUESTS-TIMEOUT-01
 
-- Statut initial: open.
+- Statut courant: triaged_by_lot_4A; finding global de depart eclate en lots
+  ciblables.
 - Severite: P2.
 - Fichiers suspects: clients HTTP detectes par scan heuristique.
-- Lot cible: Lot 4.
-- Critere de cloture: timeouts/fallbacks verifies ou ajoutes.
-- Preuve minimale: tests timeout/fallback.
+- Lot cible: Lot 4A/4B.
+- Resultat Lot 4A: aucun appel HTTP externe evident sans timeout dans le
+  perimetre scanne; les timeouts sont explicites sur OpenRouter principal,
+  agents secondaires, SearXNG, Crawl4AI, OCR/Stirling, image generation,
+  Catalogue/Biblio, CalDAV et clients Nextcloud/WebDAV.
+- Reste ouvert: verifier les fallbacks qui transforment une panne amont en
+  resultat vide, en particulier web/search.
+- Critere de cloture: timeouts/fallbacks verifies par client, avec decision
+  explicite pour les fail-open intentionnels.
+- Preuve minimale: tests timeout/fallback par client corrige ou accepte.
 - Hors-scope: provider live non demande.
+
+### P2-CEL-WEB-SEARCH-FAIL-OPEN-01
+
+- Statut initial: open.
+- Severite: P2.
+- Classe: `P2_error_handling`.
+- Fichiers suspects: `app/tools/web_search.py`,
+  `app/tests/unit/web_search/test_web_search_phase4.py`,
+  `app/tests/unit/logs/test_chat_turn_logger_web_search.py`,
+  `app/tests/test_server_chat_web_runtime_contract.py`.
+- Constat: `search()` intercepte une panne SearXNG et retourne `[]` avec un
+  warning content-free; en aval, `build_context()` / payloads peuvent donc
+  ressembler a un vrai `no_data` au lieu d'une panne de lecture recherche.
+- Preuve Lot 4A: `app/tools/web_search.py` utilise `timeout=10` mais retourne
+  `[]` sur exception; les tests couvrent le no-data manuel et l'event error
+  general, pas encore une panne SearXNG reelle propagee comme `status=error`
+  jusqu'au payload runtime.
+- Impact: confiance produit excessive dans une reponse sans contexte web alors
+  que la recherche a pu echouer.
+- Lot cible: Lot 4B.
+- Critere de cloture: distinguer panne SearXNG amont et absence reelle de
+  resultats via status/reason code stable content-free, sans requete brute ni
+  URL brute.
+- Preuve minimale: test fake `requests.get` qui leve, verification
+  `status=error` ou `partial` stable dans `build_context_payload`/chat web, et
+  absence de query brute dans logs/projections.
+- Hors-scope: provider live, refonte web_search globale, correction logs
+  content-free hors Lot 6.
 
 ### P3-CEL-LARGE-FILES-01
 
@@ -1395,10 +1434,57 @@ Statut cible: audit/inventaire only, aucune update dans ce lot.
 
 ### Lot 4 - Code runtime P1/P2
 
-- [ ] Qualifier appels HTTP et timeouts.
-- [ ] Qualifier `requests.*` par client: timeout, fallback, retry.
-- [ ] Chercher vrais dead paths ou NotImplemented runtime.
-- [ ] Ne corriger que findings valides et bornes.
+Granularite decision Lot 4A: le lot parent est trop large pour patch runtime
+direct. Il sert de cadre; les corrections doivent passer par sous-lots bornes.
+
+#### Lot 4A - Audit/triage runtime P1/P2
+
+- [x] Qualifier appels HTTP et timeouts sans provider live.
+- [x] Qualifier `requests.*` / `urlopen` par client: timeout, fallback, retry.
+- [x] Chercher vrais dead paths ou NotImplemented runtime.
+- [x] Separer runtime code, admin/security routes et observabilite/logs.
+- [x] Proposer sous-lots corrigibles sans modifier Python/JS.
+
+Resultat Lot 4A:
+
+- P1 runtime: aucun confirme.
+- Timeouts: presents sur les clients externes scannes; `rg` sur
+  `requests.*`, `urlopen`, `timeout=` et settings runtime n'a pas trouve de
+  client evident sans timeout dans le perimetre prioritaire.
+- Retries: rares ou absents; a ne pas corriger globalement sans besoin produit.
+  Les agents secondaires utilisent plutot fallback primaire/fallback_model ou
+  fail-open documente.
+- Dead paths: scan `NotImplemented|NotImplementedError|TODO|FIXME` sans hit
+  runtime dans le perimetre prioritaire.
+- P2 runtime retenu: `P2-CEL-WEB-SEARCH-FAIL-OPEN-01`, a traiter en Lot 4B.
+- P2/P3 hors Lot 4: erreurs LLM/admin raw, dashboard/log raw, admin DOM,
+  panels frontend vides et routes admin restent Lots 5/6/7.
+- Gros fichiers/orchestration: risques confirmes mais non patchables en Lot 4;
+  conserver Lot 9 avec golden tests avant extraction.
+
+#### Lot 4B - HTTP clients/timeouts/fail-open cibles
+
+- [ ] Traiter `P2-CEL-WEB-SEARCH-FAIL-OPEN-01`.
+- [ ] Ajouter test panne SearXNG reelle simulee jusqu'au payload chat web.
+- [ ] Garder content-free: pas de query brute, URL brute, prompt brut ou
+  payload provider.
+- [ ] Revalider que les autres clients HTTP restent timeout-explicites.
+
+#### Lot 4C - Dead paths / NotImplemented runtime confirmes
+
+- [ ] Garder dormant tant qu'aucun hit runtime n'est confirme.
+- [ ] N'ouvrir que sur preuve `NotImplemented`/path mort produit reel.
+
+#### Lot 4D - Error handling runtime qui masque une panne
+
+- [ ] Auditer uniquement les fallbacks qui changent le sens produit d'une panne
+  en succes vide.
+- [ ] Ne pas absorber les sujets Lot 6 `str(exc)` / raw logs.
+
+#### Lot 4E - Decision gros fichiers/orchestration sans refactor massif
+
+- [ ] Revalider que `server.py`, `chat_service.py`, `web_search.py` et les gros
+  modules Biblio/observabilite restent Lot 9, sauf P1/P2 comportemental borne.
 
 ### Lot 5 - Admin/security/app routes
 
