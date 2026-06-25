@@ -1201,21 +1201,27 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-SERVER-ROUTE-GRAVITY-01
 
-- Statut initial: open.
+- Statut courant: triaged_by_lot_4E_report_lot_9.
 - Severite: P2.
 - Fichier suspect: `app/server.py`.
 - Alias/fusion: `P2-CEL-SERVER-BOUNDARY-GRAVITY-01`.
 - Lot cible: Lot 9.
+- Decision Lot 4E: aucun P1/P2 comportemental immediat confirme par la seule
+  taille du fichier; la gravite reste structurelle et doit passer par golden
+  tests routes/admin/workspace/chat avant extraction.
 - Critere de cloture: plan de split par responsabilite et golden tests routes.
 - Preuve minimale: snapshot routes, tests routes/admin/workspace/chat.
 - Hors-scope: refactor sans tests.
 
 ### P2-CEL-CHAT-ORCHESTRATION-GRAVITY-01
 
-- Statut initial: open.
+- Statut courant: triaged_by_lot_4E_report_lot_9.
 - Severite: P2.
 - Fichier suspect: `app/core/chat_service.py`.
 - Lot cible: Lot 9.
+- Decision Lot 4E: aucun P1/P2 comportemental immediat confirme apres Lots
+  4B/4D/4D.2/4D.3/4D.3.1; l'orchestration reste lourde et fragile, mais ne
+  doit pas etre extraite sans golden tests d'ordre des lanes/final-lock/capsule.
 - Critere de cloture: golden tests d'ordre lanes/final-lock/capsule avant
   extraction de l'orchestration.
 - Preuve minimale: tests fake couvrant conflits lanes et bypass final-lock.
@@ -1460,10 +1466,12 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P3-CEL-LARGE-FILES-01
 
-- Statut initial: open.
+- Statut courant: confirmed_by_lot_4E_report_lot_9.
 - Severite: P3.
 - Alias/fusion: `P3-CEL-LARGE-FILES-AMPLIFIED-01`.
 - Lot cible: Lot 9.
+- Decision Lot 4E: dette structurelle confirmee; pas de correction runtime
+  immediate, pas de split cosmetique, golden tests requis avant extraction.
 - Critere de cloture: lots de refactor cibles, pas cosmetiques.
 - Preuve minimale: lignes avant/apres, tests inchanges.
 
@@ -1773,8 +1781,46 @@ Resultat Lot 4D.3.1:
 
 #### Lot 4E - Decision gros fichiers/orchestration sans refactor massif
 
-- [ ] Revalider que `server.py`, `chat_service.py`, `web_search.py` et les gros
+- [x] Revalider que `server.py`, `chat_service.py`, `web_search.py` et les gros
   modules Biblio/observabilite restent Lot 9, sauf P1/P2 comportemental borne.
+
+Resultat Lot 4E:
+
+- Statut: `completed_docs_only_no_immediate_runtime_p1_p2`.
+- Decision: pas de P1/P2 comportemental nouveau confirme par l'audit des gros
+  fichiers/orchestrations; aucun refactor opportuniste. Les dettes
+  structurelles restent visibles et partent en Lot 9 sous golden tests.
+- Fichiers a ne pas toucher avant tests d'or: `app/server.py`,
+  `app/core/chat_service.py`, `app/tools/web_search.py`,
+  `app/observability/observability_payload_guard_schema.py`,
+  `app/observability/turn_pipeline_read_model.py`, les runtimes Agenda/Biblio
+  et les projections observabilite larges.
+
+| Surface | Taille approx. | Responsabilite principale | Risque comportemental immediat | Dette structurelle | Decision |
+| --- | ---: | --- | --- | --- | --- |
+| `app/server.py` | 1849 lignes | Routes HTTP, bootstrap runtime, garde admin, endpoints admin/workspace/chat | Aucun P1/P2 immediat confirme par Lot 4E; sujets raw/admin restent Lots 5/6 | Oui, route gravity | Reporter Lot 9 avec golden tests routes/admin/workspace/chat |
+| `app/core/chat_service.py` | 1255 lignes | Orchestration tour chat, lanes, final locks, capsule, primary node | P2 cibles deja traites par Lots 4D.2/4D.3; aucun nouveau patch borne | Oui, orchestration gravity | Reporter Lot 9 avec golden tests ordre lanes/final-lock/capsule |
+| `app/tools/web_search.py` | 2655 lignes | Recherche web, SearXNG, Crawl4AI, discovery, evidence, projections web | P2 fail-open SearXNG/discovery traites par Lots 4B/4D; legacy `build_context()` garde contrat tuple mais emet `status=error` | Oui, module multi-responsabilite | Reporter Lot 9 seulement apres tests SearXNG error/no_data, explicit URL, discovery et content-free logs |
+| `app/observability/observability_payload_guard_schema.py` | 740 lignes | Schema central default-deny des payloads observabilite | Pas de P1/P2 immediat; bugs de schema precis restent Lot 6 | Oui, schema central en croissance | Garder central maintenant; split eventuel Lot 9 apres tests garde dangereux/accepte |
+| `app/observability/turn_pipeline_read_model.py` | 1393 lignes | Projection cockpit content-free des turns | Pas de P1/P2 immediat par taille; drifts `messages_count`/Stimmung restent Lot 6/7 | Oui, read-model dense | Reporter extraction apres golden tests projections compactes |
+| Runtimes Agenda/Biblio | 500-1200+ lignes par module cle | Agents bornes, final locks, outils GET/CalDAV, projections | Agenda fail-open/observabilite traite en 4D.3/4D.3.1; Biblio pas de nouveau P2 Lot 4E | Oui, domaines riches | Pas de refactor avant tests d'or par domaine |
+
+Decisions Lot 4E:
+
+- Valides/reportes: `P2-CEL-SERVER-ROUTE-GRAVITY-01`,
+  `P2-CEL-CHAT-ORCHESTRATION-GRAVITY-01` et
+  `P3-CEL-LARGE-FILES-01` restent actifs mais cibles Lot 9.
+- Invalides comme P1/P2 immediat: la taille seule de `server.py`,
+  `chat_service.py`, `web_search.py` ou du schema observabilite ne justifie pas
+  de patch runtime sans bug borne.
+- Lot 5 reste dedie admin/security/app routes.
+- Lot 6 reste dedie observabilite/logs applicatifs, dont les findings
+  `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01`,
+  `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01` et les surfaces raw/400.
+- Lot 7 reste dedie tests/smokes/artefacts et matrice proof mapping.
+- Lot 9 doit commencer par une matrice de golden tests avant tout split:
+  routes HTTP, chat flow lanes, web/search error-vs-no-data, Agenda/Biblio
+  final locks, guard schema accept/refuse et read-model projections.
 
 ### Lot 5 - Admin/security/app routes
 
