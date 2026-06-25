@@ -203,6 +203,55 @@ class AgendaObservabilityReadModelTests(unittest.TestCase):
         self.assertEqual(projected['pending_action_id'], '')
         self.assert_content_free(projected)
 
+    def test_projection_prefers_read_child_error_over_agent_active_ready(self) -> None:
+        projected = observability_read_model.project_observability_payload(
+            {
+                'schema_version': 'frida_agenda_lot5_readonly_v1',
+                'status': 'active_ready',
+                'reason_code': 'agenda_agent_active_validated',
+                'read_execution_status': 'error',
+                'read_execution_reason_code': 'agenda_readonly_client_resolution_error',
+                'read_execution': {
+                    'status': 'error',
+                    'reason_code': 'agenda_readonly_client_resolution_error',
+                    'calendar_id_hashes': [],
+                    'event_id_hashes': [],
+                    'redacted': True,
+                    'content_free': True,
+                },
+                'content_free': True,
+            }
+        )
+
+        self.assertEqual(projected['status'], 'error')
+        self.assertEqual(projected['reason_code'], 'agenda_readonly_client_resolution_error')
+        self.assert_content_free(projected)
+
+    def test_projection_prefers_pending_child_error_over_agent_active_ready(self) -> None:
+        projected = observability_read_model.project_observability_payload(
+            {
+                'schema_version': 'frida_agenda_lot6_pending_v1',
+                'status': 'active_ready',
+                'reason_code': 'agenda_agent_active_validated',
+                'pending_execution_status': 'error',
+                'pending_execution_reason_code': 'agenda_pending_read_client_resolution_error',
+                'pending_execution': {
+                    'status': 'error',
+                    'reason_code': 'agenda_pending_read_client_resolution_error',
+                    'target_verification_tool_names': ['event_query_range'],
+                    'target_verification_error_class': 'RuntimeError',
+                    'write_execution': {},
+                    'redacted': True,
+                    'content_free': True,
+                },
+                'content_free': True,
+            }
+        )
+
+        self.assertEqual(projected['status'], 'error')
+        self.assertEqual(projected['reason_code'], 'agenda_pending_read_client_resolution_error')
+        self.assert_content_free(projected)
+
 
 if __name__ == '__main__':
     unittest.main()

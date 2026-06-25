@@ -9,6 +9,7 @@ _SAFE_CLASS_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,159}$")
 _SAFE_MODEL_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,79}/[a-z0-9][a-z0-9_.-]{0,119}$")
 _SAFE_TITLE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ./_-]{0,159}$")
 _SAFE_TIMEZONE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_./+-]{0,79}$")
+_SAFE_TIMESTAMP_CHARS = set("0123456789T:+-.Z")
 _BASE64_RE = re.compile(r"^[A-Za-z0-9+/]{96,}={0,2}$")
 _SAFE_LANE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_]{0,79}$")
 
@@ -255,7 +256,7 @@ _GENERAL_TEXT_KEYS = set(
     basket_candidate_id_sha256_12 basket_status candidate_id_sha256_12 canonization_stage collection_path confirmation_level crawl_cache_mode crawl_fallback_reason crawl_filter
     crawl_filter_requested crawl_fallback_status crawl_policy_kind crawl_policy_reason
     crawl_primary_status crawl_status day_part_class decision_source dedup_reason_code
-    draft_title_hash
+    calendar_ambiguity content_hash draft_title_hash
     dominant_tone error_class error_code epistemic_regime execution_status fallback_source
     final_judgment_posture final_output_regime final_status guarded_original_status
     geste_dialogique_dominant hard_guard_effect injection_class
@@ -265,8 +266,8 @@ _GENERAL_TEXT_KEYS = set(
     method_family
     mode model module_key mutation_kind node_stage node_state_read_reason_code node_state_schema_version
     node_state_write_reason_code node_state_sha256_12 openrouter_fallback_state origin origin_stage payload_kind policy
-    pending_action_hash pending_action_id pending_confirmation_level pending_execution_reason_code pending_execution_status
-    pending_expires_at pending_operation pending_status
+    operation pending_action_hash pending_action_id pending_confirmation_level pending_execution_reason_code pending_execution_status
+    pending_expires_at pending_operation pending_status persistence_mode
     persist_phase
     primary_read_filter primary_read_status primary_source_kind profile_policy_kind
     profile_policy_mode profile_source_evidence_policy_kind prompt_kind provider provider_caller
@@ -318,8 +319,8 @@ _GENERAL_SCALAR_KEYS = set(
     raw_candidates ranking_available response_chars runtime_available secret_access state_used strength
     active_document anythingllm final_response_override hermeneutic identity memory_rag ocr_active_documents
     in_prompt kept_candidates raw_catalogue_payload_included raw_locator_included raw_passage_included raw_query_included
-    candidate_top_score pending_action_present pending_cancelled pending_expired pending_execution_attempted pending_target_clear
-    read_execution_attempted secret_included score_gap summary summary_generation_observed target_clear top_score
+    candidate_top_score cancelled expired pending_action_present pending_cancelled pending_expired pending_execution_attempted pending_target_clear
+    read_execution_attempted redacted secret_included score_gap status_code summary summary_generation_observed target_clear top_score
     user_display_name_present web workspace write_execution_attempted
     """.split()
 )
@@ -368,6 +369,7 @@ _GENERAL_CONTAINER_KEYS = {
     "parent_summaries_injected",
     "pending_execution",
     "pending_state",
+    "plan",
     "primary_node",
     "provider_messages",
     "providers",
@@ -375,6 +377,7 @@ _GENERAL_CONTAINER_KEYS = {
     "recent_context",
     "recent_window",
     "read_execution",
+    "write_execution",
     "profile_source_domain_counts",
     "raw_flags",
     "reason_code_counts",
@@ -441,6 +444,9 @@ _GENERAL_SAFE_TEXT_LIST_KEYS = {
     "profile_secondary_domains",
     "profile_situated_secondary_domains",
     "reason_codes",
+    "calendar_id_hashes",
+    "event_id_hashes",
+    "pending_action_hashes",
     "read_calendar_id_hashes",
     "read_event_id_hashes",
     "read_tool_names",
@@ -610,6 +616,8 @@ def _is_safe_general_text_value(key: str, value: Any) -> bool:
         return bool(_SAFE_TITLE_RE.fullmatch(text))
     if lower == "timezone":
         return bool(_SAFE_TIMEZONE_RE.fullmatch(text))
+    if lower in {"window_start", "window_end", "pending_expires_at", "updated_ts"}:
+        return all(char in _SAFE_TIMESTAMP_CHARS for char in text)
     if lower.endswith("_class") or lower.endswith("_language"):
         return bool(_SAFE_CLASS_RE.fullmatch(text))
     return _is_safe_code_text(value, allow_empty=True, allow_model=lower in {"model", "provider_model"})

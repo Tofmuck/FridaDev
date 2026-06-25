@@ -92,6 +92,51 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertFalse(decision.accepted)
         self.assertIn("url_value", decision.payload["issue_classes"])
 
+    def test_agenda_allowlisted_fields_still_reject_sensitive_values(self) -> None:
+        payload = {
+            "schema_version": "frida_agenda_lot6_pending_v1",
+            "status": "active_ready",
+            "reason_code": "agenda_agent_active_validated",
+            "agent": {
+                "validation": {
+                    "plan": {
+                        "window_start": "https://calendar.example.invalid/private?token=abc",
+                        "calendar_id_hashes": ["safehash12"],
+                        "tool_names": ["event_query_range"],
+                        "content_free": True,
+                    }
+                },
+                "model": {
+                    "content_hash": "BEGIN:VCALENDAR\nBEGIN:VEVENT",
+                    "status_code": 200,
+                },
+            },
+            "read_execution": {
+                "calendar_id_hashes": ["/remote.php/dav/calendars/tof/private/"],
+                "event_id_hashes": ["safeevent12"],
+                "redacted": True,
+                "content_free": True,
+            },
+            "pending_execution": {
+                "target_verification_tool_names": ["event_query_range"],
+                "target_verification_error_class": "RuntimeError",
+                "write_execution": {},
+                "redacted": True,
+                "content_free": True,
+            },
+            "content_free": True,
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("url_value", decision.payload["issue_classes"])
+        self.assertIn("raw_text_value", decision.payload["issue_classes"])
+        self.assertNotIn("calendar.example.invalid", encoded)
+        self.assertNotIn("BEGIN:VCALENDAR", encoded)
+        self.assertNotIn("/remote.php/dav", encoded)
+
     def test_context_build_content_free_payload_passes(self) -> None:
         payload = {
             "estimated_context_tokens": 42,

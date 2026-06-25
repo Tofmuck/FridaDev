@@ -20,6 +20,7 @@ from agenda import (
     write_execution,
 )
 from agenda.caldav_models import CalendarEvent, CalendarSummary
+from observability.observability_payload_guard import guard_payload
 
 
 class AgendaChatRuntimeLot1Tests(unittest.TestCase):
@@ -676,6 +677,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertFalse(payload['caldav_access'])
         self.assertFalse(payload['nextcloud_access'])
         self.assertFalse(payload['secret_access'])
+        self.assertTrue(guard_payload(payload).accepted)
         encoded_payload = json.dumps(payload, sort_keys=True)
         self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
         self.assertNotIn('RAW_CALDAV_SECRET_BOOM', encoded_payload)
@@ -1767,6 +1769,7 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertFalse(payload['caldav_access'])
         self.assertFalse(payload['nextcloud_access'])
         self.assertFalse(payload['secret_access'])
+        self.assertTrue(guard_payload(payload).accepted)
         encoded_payload = json.dumps(payload, sort_keys=True)
         self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
         self.assertNotIn('RAW_CALDAV_SECRET_BOOM', encoded_payload)

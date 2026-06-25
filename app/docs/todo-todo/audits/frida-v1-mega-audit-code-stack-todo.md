@@ -1367,6 +1367,44 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 - Hors-scope: pas de CalDAV live, pas de provider live, pas de nouvelles
   capacites Agenda, pas de modification DB.
 
+### P2-CEL-AGENDA-PAYLOAD-GUARD-REJECTS-REAL-ERROR-01
+
+- Statut courant: closed_by_lot_4D_3_1.
+- Severite finale: P2.
+- Classe: `P2_observability_guard_rejection`.
+- Fichiers touches: `app/observability/observability_payload_guard_schema.py`,
+  `app/tests/unit/agenda/test_chat_runtime.py`,
+  `app/tests/unit/logs/test_observability_payload_guard.py`.
+- Constat valide Lot 4D.3.1: les payloads reels produits par
+  `run_agenda_chat_turn()` apres Lot 4D.3 portaient bien
+  `read_execution_status=error` ou `pending_execution_status=error`, mais la
+  garde writer-side les rejetait encore avec `observability_payload_rejected`.
+- Correction Lot 4D.3.1: allowlist schema-first et bornee des champs Agenda
+  content-free reels (`agent.validation.plan`, hashes/listes, timestamps,
+  `read_execution`, `pending_execution`, `pending_state`, `redacted`), sans
+  suffixes generiques ni acceptation URL/DAV/ICS/secret/payload provider.
+- Preuve Lot 4D.3.1: probe sur payloads reels read/proposal acceptes par
+  `guard_payload(...)`, test de faux payload dangereux toujours refuse.
+- Lot cible: Lot 4D.3.1.
+
+### P2-CEL-AGENDA-READMODEL-CHILD-ERROR-MASKED-01
+
+- Statut courant: closed_by_lot_4D_3_1.
+- Severite finale: P2.
+- Classe: `P2_observability_projection_masking`.
+- Fichier touche: `app/agenda/observability_read_model.py`.
+- Constat valide Lot 4D.3.1: la projection admin lisait d'abord
+  `payload.status` / `payload.reason_code`, donc un payload
+  `status=active_ready` avec `read_execution_status=error` ou
+  `pending_execution_status=error` pouvait etre projete comme
+  `active_ready/agenda_agent_active_validated`.
+- Correction Lot 4D.3.1: la projection admin prefere maintenant les statuts
+  enfants `error` / `failed` read, pending ou write avec leurs reason codes,
+  tout en preservant l'ordre existant pour les cas normaux.
+- Preuve Lot 4D.3.1: tests read-model et probe sur payloads reels read/proposal
+  projetes en `error` avec le reason code enfant attendu.
+- Lot cible: Lot 4D.3.1.
+
 ### P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01
 
 - Statut courant: needs_targeted_validation.
@@ -1664,6 +1702,8 @@ Resultat Lot 4B:
 - [x] Lot 4D.2: valider/corriger `P2-CEL-MEMORY-INPUT-FAIL-OPEN-01`.
 - [x] Lot 4D.3: valider/corriger Agenda runtime client unavailable et wording
   dormant.
+- [x] Lot 4D.3.1: corriger les effets de bord observabilite Agenda
+  guard/read-model.
 
 Resultat Lot 4D:
 
@@ -1707,6 +1747,17 @@ Resultat Lot 4D.3:
   volontairement absent -> `agenda_readonly_client_unavailable`.
 - Non absorbe: capacites Agenda riches, CalDAV live smoke, provider live,
   mutations utilisateur reelles et Lot 6 observabilite generale.
+
+Resultat Lot 4D.3.1:
+
+- Corrige: les payloads reels Agenda read/proposal avec erreur de resolution
+  client sont acceptes par la garde writer-side tout en restant content-free.
+- Corrige: la projection admin Agenda ne masque plus un statut enfant
+  `error` / `failed` derriere `active_ready`.
+- Preserve: faux payload dangereux avec URL, DAV path, ICS, secret/token,
+  payload provider ou texte brut reste refuse.
+- Non absorbe: CalDAV live smoke, provider live, migration DB, chantier Agenda
+  riche et Lot 6 observabilite generale.
 
 #### Lot 4E - Decision gros fichiers/orchestration sans refactor massif
 

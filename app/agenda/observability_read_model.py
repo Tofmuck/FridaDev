@@ -183,10 +183,16 @@ def project_observability_payload(payload: Any) -> dict[str, Any]:
     pending_execution = _mapping(data.get('pending_execution'))
     write_execution = _mapping(data.get('write_execution') or pending_execution.get('write_execution'))
     read_execution = _mapping(data.get('read_execution'))
+    status, reason_code = _project_execution_status_and_reason(
+        data,
+        read_execution=read_execution,
+        pending_execution=pending_execution,
+        write_execution=write_execution,
+    )
     return {
         'schema_version': _safe_token(data.get('schema_version'), max_chars=96),
-        'status': _first_token(data, 'status', 'read_execution_status', 'pending_execution_status', 'write_execution_status'),
-        'reason_code': _first_token(data, 'reason_code', 'read_execution_reason_code', 'pending_execution_reason_code', 'write_execution_reason_code'),
+        'status': status,
+        'reason_code': reason_code,
         'mode': _safe_token(data.get('mode'), max_chars=32),
         'product_method': _safe_token(data.get('product_method'), max_chars=96),
         'tool_names': _safe_token_list(
@@ -223,6 +229,35 @@ def project_observability_payload(payload: Any) -> dict[str, Any]:
         'final_response_override': bool(data.get('final_response_override')),
         'content_free': bool(data.get('content_free', False) or read_execution.get('content_free') or write_execution.get('content_free')),
     }
+
+
+def _project_execution_status_and_reason(
+    data: Mapping[str, Any],
+    *,
+    read_execution: Mapping[str, Any],
+    pending_execution: Mapping[str, Any],
+    write_execution: Mapping[str, Any],
+) -> tuple[str, str]:
+    for status, reason_code in (
+        (
+            _safe_token(data.get('read_execution_status') or read_execution.get('status'), max_chars=96),
+            _safe_token(data.get('read_execution_reason_code') or read_execution.get('reason_code'), max_chars=96),
+        ),
+        (
+            _safe_token(data.get('pending_execution_status') or pending_execution.get('status'), max_chars=96),
+            _safe_token(data.get('pending_execution_reason_code') or pending_execution.get('reason_code'), max_chars=96),
+        ),
+        (
+            _safe_token(data.get('write_execution_status') or write_execution.get('status'), max_chars=96),
+            _safe_token(data.get('write_execution_reason_code') or write_execution.get('reason_code'), max_chars=96),
+        ),
+    ):
+        if status in {'error', 'failed'}:
+            return status, reason_code
+    return (
+        _first_token(data, 'status', 'read_execution_status', 'pending_execution_status', 'write_execution_status'),
+        _first_token(data, 'reason_code', 'read_execution_reason_code', 'pending_execution_reason_code', 'write_execution_reason_code'),
+    )
 
 
 def _project_pending_action(action: pending_store.AgendaPendingAction) -> dict[str, Any]:
