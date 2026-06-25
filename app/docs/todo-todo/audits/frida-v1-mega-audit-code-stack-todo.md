@@ -33,6 +33,9 @@ Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-c
   les pannes de lecture atteignent les inputs primaires comme `error`.
 - Post Lot 4D.2: les echecs larges observes hors correction ciblee sont
   traces comme findings ouverts, sans correction runtime ni reouverture 4D.2.
+- Lot 5A: audit/triage admin/security/app routes execute docs-only; aucun
+  patch runtime, corrections eventuelles decoupees en sous-lots 5B/5C/5D ou
+  reportees Lot 6/7/9 selon surface.
 
 ## Doctrine securite plateforme avant audit code
 
@@ -1085,10 +1088,21 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-CEL-ADMIN-COMPAT-KNOBS-01
 
 - Statut initial: open.
+- Statut courant: triaged_by_lot_5A_needs_targeted_validation.
 - Severite: P2.
 - Fichiers suspects: tests admin mentionnant `FRIDA_ADMIN_TOKEN` /
   `FRIDA_ADMIN_LAN_ONLY`, `app/server.py`.
 - Lot cible: Lot 5.
+- Audit Lot 5A: `app/server.py` garde `/api/admin/*` via loopback conteneur ou
+  proxy de confiance Caddy/Authelia avec identite `Remote-User`; le code source
+  du guard ne rebranche pas `FRIDA_ADMIN_TOKEN`, `FRIDA_ADMIN_LAN_ONLY`,
+  `FRIDA_ADMIN_ALLOWED_CIDRS` ni `X-Admin-Token`.
+- Preuve Lot 5A: introspection Flask conteneur: 122 routes, toutes les routes
+  admin API observees sont sous `/api/admin/*`; `/api/tools/image-generation`
+  est une surface outil sensible guardee separement par `_GUARDED_TOOLS_PATHS`.
+- Reste ouvert: quelques suites de tests/config mentionnent encore les knobs
+  obsoletes comme fixtures/compat; besoin d'un sous-lot de nettoyage tests/docs
+  pour eviter toute ambiguite future, sans reintroduire de token humain.
 - Critere de cloture: tests admin alignes sur loopback/proxy `Remote-User`,
   knobs obsoletes marques compat si conserves.
 - Preuve minimale: tests admin conteneur, refus lateral direct.
@@ -1097,11 +1111,20 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-CEL-ADMIN-PROMPTS-DOM-01
 
 - Statut initial: open.
+- Statut courant: validated_by_lot_5A_needs_operator_decision.
 - Severite: P2.
 - Fichiers suspects: `app/admin/runtime_settings_api_view.py`,
   `app/web/admin_section_main_model.js`, `app/web/admin_ui_common.js`,
   `app/web/admin.html`, tests admin.
 - Lot cible: Lot 5 ou 6.
+- Audit Lot 5A: valide. `runtime_settings_api_view.py` expose des prompts
+  complets dans `readonly_info.*.system_prompt.value` et champs equivalents;
+  `admin_section_main_model.js` et `admin_ui_common.js` les rendent dans des
+  blocs readonly/textarea cote admin.
+- Decision ouverte: serveur solo derriere Authelia peut accepter une exception
+  operateur explicite, mais la TODO doit trancher entre exception documentee +
+  content gate admin, ou remplacement par metadonnees/statuts sans prompt brut
+  DOM/JSON.
 - Critere de cloture: decision explicite: exception operateur assumee avec
   content gate, ou remplacement par metadonnees/statuts sans prompt brut DOM.
 - Preuve minimale: test admin DOM/JSON avec sentinelle prompt brut; scan
@@ -1147,9 +1170,16 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-CEL-NOTES-UI-GAP-01
 
 - Statut initial: open.
+- Statut courant: validated_by_lot_5A_needs_product_decision.
 - Severite: P2.
 - Fichiers suspects: routes Notes folder-scoped, panels frontend workspace.
 - Lot cible: Lot 5.
+- Audit Lot 5A: valide. Les routes Notes folder-scoped existent
+  (`/api/workspace-folders/<folder_id>/notes`, lookup, get, append, prepare,
+  create) et le prompt/context Notes est cable cote runtime, mais aucune UI
+  Notes dediee n'a ete trouvee dans `app/web`.
+- Decision ouverte: soit declarer Notes API-only acceptable pour ce cycle, soit
+  creer une UI minimale, soit reporter explicitement la surface UI post-audit.
 - Critere de cloture: decision produit UI Notes minimale ou statut
   API-only/post-V1 explicite.
 - Preuve minimale: audit frontend/route, test UI si implementation future.
@@ -1158,10 +1188,18 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-CEL-FRONTEND-EMPTY-ON-ERROR-01
 
 - Statut initial: open.
+- Statut courant: validated_by_lot_5A_needs_targeted_tests.
 - Severite: P2.
 - Fichiers suspects: `app/web/chat_threads_sidebar.js`, panels
   Documents/Exports/Images.
 - Lot cible: Lot 5 ou 7.
+- Audit Lot 5A: valide partiellement. Plusieurs chemins frontend affichent deja
+  un statut d'erreur, mais des fetch/listes workspace peuvent encore convertir
+  une erreur amont en tableau vide ou etat visuel vide; sans tests par panel, on
+  ne peut pas declarer que chaque erreur API est distinguee d'une vraie liste
+  vide.
+- Decision ouverte: sous-lot Lot 5C pour tests/micro-corrections par panel, ou
+  Lot 7 si le choix est d'abord une matrice smoke frontend.
 - Critere de cloture: erreurs API panels visibles comme erreur, pas comme
   liste vide.
 - Preuve minimale: tests 500/payload invalide par panel.
@@ -1537,9 +1575,14 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P3-CEL-LOG-FRONTEND-DENYLIST-01
 
 - Statut initial: open.
+- Statut courant: validated_by_lot_5A_report_lot_7.
 - Severite: P3.
 - Fichier suspect: `app/web/log/log.js`.
 - Lot cible: Lot 5 ou 7.
+- Audit Lot 5A: valide. La UI `/log` utilise des listes de cles/labels bloques
+  (`BLOCKED_PAYLOAD_KEYS`, `BLOCKED_METRIC_LABELS`) et non une allowlist stricte
+  par shape d'evenement. Aucune fuite n'est confirmee par Lot 5A, mais le modele
+  denylist doit etre prouve par test sentinelle ou remplace plus tard.
 - Critere de cloture: UI `/log` utilise allowlist explicite ou test sentinelle
   champ inconnu.
 - Preuve minimale: test frontend/log render.
@@ -1824,6 +1867,7 @@ Decisions Lot 4E:
 
 ### Lot 5 - Admin/security/app routes
 
+- [x] Lot 5A: audit/triage admin/security/app routes docs-only.
 - [ ] Aligner tests admin sur contrat proxy/loopback.
 - [ ] Verifier routes admin registerees par modules.
 - [ ] Verifier admin HTML/public host vs API guard.
@@ -1832,6 +1876,70 @@ Decisions Lot 4E:
 - [ ] Traiter panels frontend qui rendent les erreurs comme listes vides.
 - [ ] Traiter `/log` UI denylist si Lot 7 confirme le besoin.
 - [ ] Garder Authelia comme frontiere publique.
+
+#### Lot 5A - Audit/triage admin/security/app routes
+
+Statut: execute docs-only le 2026-06-25.
+Runtime modifie: non.
+Plateforme modifiee: non.
+Correction appliquee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le Lot 5 parent est
+trop large pour patch runtime direct; le meilleur plan est un triage docs-only,
+puis des sous-lots de correction bornes.
+
+- [x] Inventorier les routes Flask depuis le conteneur runtime sans secret.
+- [x] Verifier le contrat `/api/admin/*`: loopback conteneur ou proxy de
+  confiance Caddy/Authelia avec `Remote-User`.
+- [x] Distinguer pages HTML admin publiques et API admin applicatives.
+- [x] Valider/requalifier les prompts complets dans DOM admin.
+- [x] Valider/requalifier le gap UI Notes.
+- [x] Valider/requalifier les panels frontend qui peuvent rendre erreur comme
+  liste vide.
+- [x] Valider/requalifier la UI `/log` denylist.
+- [x] Ne pas absorber Lot 6/7/9.
+
+Resultat Lot 5A:
+
+- Routes Flask: `122` routes inventoriees via conteneur. Les routes API admin
+  observees sont sous `/api/admin/*`: logs/chat logs, dashboard, biblio
+  observability, agenda observability, memory dashboard, restart, settings,
+  identity et hermeneutics.
+- Guard applicatif: `before_request` protege `/api/admin/*` avec loopback local
+  ou proxy de confiance + `Remote-User`; aucun retour au token humain comme
+  garde d'acces active.
+- Surface outil sensible hors `/api/admin/*`: `/api/tools/image-generation` est
+  guardee separement par `_GUARDED_TOOLS_PATHS`; a garder dans les tests routes.
+- Pages HTML admin: `/admin`, `/log`, `/dashboard`, `/hermeneutic-admin`,
+  `/identity`, `/memory-admin` sont des routes HTML statiques cote app. Leur
+  frontiere publique releve de Caddy/Authelia, pas du guard `/api/admin/*`.
+- Verification publique bornee: `HEAD https://fridadev.frida-system.fr/admin`
+  et `/api/admin/logs` repondent `302` vers Authelia via Caddy; cookies non
+  recopies.
+- `P2-CEL-ADMIN-COMPAT-KNOBS-01`: pas de bypass runtime confirme, mais les
+  fixtures/tests mentionnant encore les knobs obsoletes doivent etre nettoyes ou
+  marques compat dans un sous-lot.
+- `P2-CEL-ADMIN-PROMPTS-DOM-01`: valide; prompts complets presents dans admin
+  JSON/DOM readonly. Decision operateur requise avant correction.
+- `P2-CEL-NOTES-UI-GAP-01`: valide; backend/runtime Notes existe, UI dediee
+  absente. Decision produit requise.
+- `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01`: valide partiellement; besoin de tests par
+  panel avant correction.
+- `P3-CEL-LOG-FRONTEND-DENYLIST-01`: valide comme dette de preuve; a traiter en
+  Lot 7 sauf decision d'allowlist UI dediee.
+
+Decoupage apres Lot 5A:
+
+- Lot 5B: decision/correction admin prompts DOM et statut Notes UI
+  API-only/UI minimale/post-audit.
+- Lot 5C: tests et micro-corrections frontend erreur-vs-vide par panel, sans
+  redesign UI.
+- Lot 5D: nettoyage tests/docs admin compat knobs et preuve route guard
+  loopback/proxy/lateral direct.
+- Lot 7: test `/log` champ inconnu si denylist conservee; matrice frontend
+  smoke si les panels ne sont pas corriges en Lot 5C.
+- Lot 6: surfaces raw/`str(exc)`, 400 admin, logs/payloads et prompt/raw
+  observability; non absorbe par Lot 5A.
 
 ### Lot 6 - Observabilite/logs applicatifs
 
