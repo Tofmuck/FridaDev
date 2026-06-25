@@ -232,11 +232,11 @@ def load_json_conversation_file(
                 backup = None
 
         logger.error(
-            "conv_read_error id=%s path=%s backup=%s err=%s",
+            "conv_read_error id=%s path=%s backup=%s err_class=%s",
             conversation_id,
             path,
             backup,
-            exc,
+            exc.__class__.__name__,
         )
         admin_log_event_func(
             "conv_read_error",
@@ -244,7 +244,10 @@ def load_json_conversation_file(
             conversation_id=conversation_id,
             path=str(path),
             backup=str(backup) if backup else None,
-            error=str(exc),
+            error_code="conversation_json_read_error",
+            reason_code="conversation_json_read_error",
+            error_class=exc.__class__.__name__,
+            raw_error_message_included=False,
         )
         return None
 

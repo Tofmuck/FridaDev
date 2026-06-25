@@ -150,7 +150,7 @@ def _section_with_fallback(
     label: str,
     builder: Callable[[], dict[str, Any]],
     default: dict[str, Any],
-    read_errors: list[dict[str, str]],
+    read_errors: list[dict[str, Any]],
 ) -> dict[str, Any]:
     try:
         return builder()
@@ -158,8 +158,10 @@ def _section_with_fallback(
         read_errors.append(
             {
                 'section': label,
+                'error_code': 'admin_memory_section_read_error',
+                'reason_code': 'admin_memory_section_read_error',
                 'error_class': exc.__class__.__name__,
-                'message': str(exc),
+                'raw_error_message_included': False,
             }
         )
         return default

@@ -212,7 +212,7 @@ def identity_governance_update_response(
         response = _failed_validation_payload(
             identity_module=identity_module,
             validation_error='governance_patch_invalid',
-            error=str(exc),
+            error='validation gouvernance invalide',
         )
         return _audit_and_return(
             admin_logs_module=admin_logs_module,
@@ -281,7 +281,7 @@ def identity_governance_update_response(
         response = _failed_validation_payload(
             identity_module=identity_module,
             validation_error='governance_patch_invalid',
-            error=str(exc),
+            error='validation gouvernance invalide',
         )
         return _audit_and_return(
             admin_logs_module=admin_logs_module,
@@ -301,7 +301,7 @@ def identity_governance_update_response(
             changed_keys=[],
             editable_via=identity_governance.UPDATE_ROUTE,
             source_of_truth=identity_governance.SOURCE_OF_TRUTH,
-            error=str(exc),
+            error='configuration governance indisponible',
         )
         return _audit_and_return(
             admin_logs_module=admin_logs_module,

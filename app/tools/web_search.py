@@ -2087,7 +2087,7 @@ def _emit_web_search_runtime_event(
         chat_turn_logger.emit_error(
             error_code=reason_code or 'upstream_error',
             error_class=error_class,
-            message_short=str(message_short or query_preview),
+            message_short=str(message_short or reason_code or 'web_search_error'),
         )
 
 
@@ -2449,7 +2449,7 @@ def build_context_payload(
             context_block='',
             sources=[],
             error_class=exc.__class__.__name__,
-            message_short=str(exc),
+            message_short=str(error_payload.get('reason_code') or 'upstream_error'),
             prompt_kind=str(error_payload['prompt_kind']),
             explicit_url_detected=bool(error_payload['explicit_url_detected']),
             explicit_url=str(error_payload['explicit_url'] or ''),
@@ -2638,7 +2638,7 @@ def build_context(
             context_block='',
             sources=[],
             error_class=exc.__class__.__name__,
-            message_short=str(exc),
+            message_short='upstream_error',
             prompt_kind='chat_web_reformulation',
             explicit_url_detected=False,
             explicit_url='',

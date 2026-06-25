@@ -529,12 +529,15 @@ def delete_conversation(
 
             conn.commit()
     except Exception as exc:
-        logger.error("conv_delete_db_failed id=%s err=%s", conv_id, exc)
+        logger.error("conv_delete_db_failed id=%s err_class=%s", conv_id, exc.__class__.__name__)
         admin_log_event_func(
             "conv_delete_db_failed",
             level="ERROR",
             conversation_id=conv_id,
-            error=str(exc),
+            error_code="conversation_delete_db_failed",
+            reason_code="conversation_delete_db_failed",
+            error_class=exc.__class__.__name__,
+            raw_error_message_included=False,
         )
         return False
 

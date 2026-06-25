@@ -1293,14 +1293,21 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-EXCEPTION-RAW-SURFACE-01
 
-- Statut courant: validated_broad_by_lot_6A.
+- Statut courant: closed_by_lot_6I.
 - Severite: P2.
 - Fichiers suspects: `app/server.py`, `app/tools/web_search.py`,
   `app/core/*`, `app/memory/*`, `app/observability/*`, `app/biblio/*`.
-- Lot cible: Lots 6B/6C/6D/6E et sous-lots dedies par surface.
+- Lot cible: Lots 6B/6C/6D/6E puis Lot 6I pour les surfaces restantes.
 - Preuve Lot 6A: le scan `str(exc)` / `repr(exc)` / `exc_info` / `traceback` /
   `print(` trouve plusieurs familles independantes; elles ne doivent pas etre
   remplacees globalement sans validation surface par surface.
+- Preuve Lot 6I: les surfaces restantes confirmees ont ete corrigees sans
+  remplacement global: `/api/chat` catch-all, Web Search `message_short`,
+  reponses settings/admin validation, `read_errors` Memory Admin, logs admin
+  conversations/restart et reponses governance identity. Les autres hits du
+  scan sont requalifies comme propagation interne sanitisee en aval, compat
+  test-double, exceptions internes a reason codes bornes, ou warnings internes
+  stables.
 - Critere de cloture: surfaces qualifiees; corrections bornees uniquement.
 - Preuve minimale: tests content-free/fail-closed par surface.
 - Hors-scope: remplacement massif aveugle de `str(exc)`.
@@ -2294,7 +2301,7 @@ Decision:
 ### Lot 6 - Observabilite/logs applicatifs
 
 - [x] Lot 6A: audit/triage observabilite/logs applicatifs, docs-only.
-- [ ] Qualifier `str(exc)`, raw, payload, traceback, print.
+- [x] Qualifier `str(exc)`, raw, payload, traceback, print.
 - [x] Lot 6B: traiter erreurs LLM brutes.
 - [x] Lot 6C: traiter erreurs 400/404 admin brutes sur logs/dashboard/export.
 - [x] Lot 6D: traiter dashboard web legacy URL/hash raw.
@@ -2303,8 +2310,8 @@ Decision:
   libelle runtime et specs actives.
 - [x] Lot 6E.2: aligner versions de projection identity apres retrait des
   hashes courts.
-- [ ] Corriger seulement surfaces qui exposent ou masquent une panne.
-- [ ] Conserver diagnostics content-free.
+- [x] Corriger seulement surfaces qui exposent ou masquent une panne.
+- [x] Conserver diagnostics content-free.
 - [x] Lot 6F: traiter `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01`
   apres separation garde observabilite / contrat stale / runtime identity.
 - [x] Lot 6F.1: traiter le rejet de garde du payload arbiter compact
@@ -2312,6 +2319,8 @@ Decision:
 - [x] Lot 6G: traiter `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
 - [x] Lot 6H: requalifier `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01`
   comme test stale et aligner le contrat compact.
+- [x] Lot 6I: requalifier/corriger les surfaces restantes
+  `P2-CEL-EXCEPTION-RAW-SURFACE-01`.
 
 #### Lot 6A - Audit/triage observabilite/logs applicatifs
 
@@ -2709,6 +2718,61 @@ Resultat Lot 6H:
   nombre initial de messages retourne par la fixture `build_prompt_messages`.
 - `summary.status=missing` est confirme comme comportement attendu en absence
   normale de summary.
+
+#### Lot 6I - Exception raw surfaces restantes
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne aux surfaces exception raw restantes.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le meilleur plan etait
+de rescanner les hits `str(exc)` / `repr(exc)` / `message_short`, corriger
+uniquement les sorties confirmees, et requalifier explicitement les usages
+internes sans remplacement global.
+
+- [x] Valider les surfaces confirmees restantes:
+  `/api/chat` catch-all, Web Search `message_short`, settings admin,
+  Memory Admin `read_errors`, admin logs conversations/restart et governance
+  identity.
+- [x] Remplacer les textes d'exception bruts par `error_code`, `reason_code`,
+  `error_class`, messages stables et flags `raw_error_message_included=false`.
+- [x] Durcir les details de validation runtime secrets: les checks admin
+  exposent le champ et la classe d'erreur, pas le texte brut.
+- [x] Ajouter tests sentinelles URL/token synthetiques pour settings,
+  governance, conversations, Memory Admin et Web Search.
+- [x] Requalifier les hits restants du scan sans patch:
+  `runtime_settings_repo.py` / `runtime_settings_write_path.py` /
+  `runtime_secrets.py` sont des propagations internes maintenant sanitisees
+  par les responses settings et les checks de validation; les probes
+  `purpose not in str(exc)` et `unexpected keyword` sont des compatibilites
+  test-double; `validation_agent.py` / `stimmung_agent.py` bornent les
+  exceptions JSON/payload en reason codes internes; `active_document_text_extraction.py`
+  n'utilise que des exceptions internes avec warnings stables
+  (`pdf_page_without_text`, `pypdf_unavailable`) ou la classe d'erreur.
+- [x] Ne pas traiter Lot 7 `/log` denylist ni Lot 9 refactors.
+
+Resultat Lot 6I:
+
+| Surface | Decision |
+|---|---|
+| `app/server.py:823` | Corrige: `emit_error()` recoit un message stable, plus `str(exc)`. |
+| `app/tools/web_search.py:2452,2641` | Corrige: les erreurs Web utilisent le reason code stable; fallback `emit_error()` ne derive plus de la query. |
+| `app/admin/admin_settings_service.py` | Corrige: 400/503 settings exposent `runtime_settings_validation_error` / `runtime_settings_unavailable`, pas `str(exc)`. |
+| `app/admin/runtime_settings_validation.py` | Corrige: details de secret runtime content-free par champ + classe. |
+| `app/admin/admin_memory_service.py` | Corrige: `read_errors` garde section, codes et classe, sans message brut. |
+| `app/core/conversations_store.py` / `app/core/conversations_maintenance.py` / `app/admin/admin_actions.py` | Corrige: logs admin et logs applicatifs remplacent l'erreur brute par codes + classe. |
+| `app/admin/admin_identity_governance_service.py` | Corrige: reponses governance identity stables sans exception brute. |
+| Hits internes restants | Invalides pour Lot 6I: propagation interne, compat, ou reason codes/warnings bornes sans surface brute confirmee. |
+
+Decision:
+
+- `P2-CEL-EXCEPTION-RAW-SURFACE-01` est clos apres Lot 6I.
+- Lot 6B a traite LLM; Lot 6C admin 400/404; Lot 6D dashboard Web; Lot 6E
+  hashes identity; Lot 6F/6F.1/6G/6H observabilite compacte/garde. Lot 6I
+  ferme le reliquat `str(exc)` / `message_short` sans absorber Lot 7 ni Lot 9.
+- Des warnings observabilite preexistants `chat_turn_log_payload_rejected`
+  vus dans les suites stream LLM restent hors scope Lot 6I sauf reouverture
+  explicite; ils ne correspondent pas aux surfaces `str(exc)` corrigees ici.
 
 ### Lot 7 - Tests/smokes/artefacts
 

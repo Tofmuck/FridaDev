@@ -64,6 +64,35 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         finally:
             response.close()
 
+    def test_section_fallback_records_content_free_read_error(self) -> None:
+        read_errors = []
+        raw_error = (
+            "synthetic memory read failure "
+            "https://example.invalid/private?token=ARTIFICIAL_MEMORY_SECRET"
+        )
+
+        result = admin_memory_service._section_with_fallback(
+            label="durable_state",
+            builder=lambda: (_ for _ in ()).throw(RuntimeError(raw_error)),
+            default={"source_kind": "fallback"},
+            read_errors=read_errors,
+        )
+
+        self.assertEqual(result, {"source_kind": "fallback"})
+        self.assertEqual(
+            read_errors,
+            [
+                {
+                    "section": "durable_state",
+                    "error_code": "admin_memory_section_read_error",
+                    "reason_code": "admin_memory_section_read_error",
+                    "error_class": "RuntimeError",
+                    "raw_error_message_included": False,
+                }
+            ],
+        )
+        self.assertNotIn("ARTIFICIAL_MEMORY_SECRET", str(read_errors))
+
     def test_memory_dashboard_route_wires_dedicated_service(self) -> None:
         observed = {"called": False}
         original_dashboard_response = self.server.admin_memory_service.dashboard_response

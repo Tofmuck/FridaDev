@@ -196,9 +196,14 @@ class ServerAdminIdentityGovernancePhase5Tests(unittest.TestCase):
                 'checks': [{'name': 'CONTEXT_HINTS_MAX_ITEMS', 'ok': True, 'detail': 'ok'}],
             }
 
+        raw_error = (
+            'db unavailable for governance patch '
+            'https://example.invalid/private?token=ARTIFICIAL_GOVERNANCE_SECRET'
+        )
+
         def failing_update_runtime_section(section: str, patch_payload, *, updated_by='admin_api', fetcher=None):
             self.assertEqual(section, 'identity_governance')
-            raise self.server.runtime_settings.RuntimeSettingsDbUnavailableError('db unavailable for governance patch')
+            raise self.server.runtime_settings.RuntimeSettingsDbUnavailableError(raw_error)
 
         self.server.runtime_settings.get_runtime_section = fake_get_runtime_section
         self.server.runtime_settings.get_identity_governance_settings = fake_get_identity_governance_settings
@@ -227,8 +232,11 @@ class ServerAdminIdentityGovernancePhase5Tests(unittest.TestCase):
         self.assertFalse(payload['ok'])
         self.assertEqual(payload['reason_code'], 'governance_store_unavailable')
         self.assertEqual(payload['validation_error'], 'governance_store_unavailable')
+        self.assertEqual(payload['error'], 'configuration governance indisponible')
+        self.assertNotIn('ARTIFICIAL_GOVERNANCE_SECRET', response.get_data(as_text=True))
         self.assertEqual(observed_logs[0][0], 'identity_governance_admin_edit')
         self.assertNotIn('content', observed_logs[0][1])
+        self.assertNotIn('ARTIFICIAL_GOVERNANCE_SECRET', str(observed_logs[0][1]))
 
     def test_identity_governance_routes_are_available_without_admin_token(self) -> None:
         current_payload = self._governance_view({'CONTEXT_HINTS_MAX_ITEMS': 2})

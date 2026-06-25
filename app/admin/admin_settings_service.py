@@ -100,6 +100,24 @@ def _validation_failure_response(section: str, validation: Mapping[str, Any]) ->
     }
 
 
+def _runtime_settings_error_response(
+    *,
+    section: str,
+    error: str,
+    reason_code: str,
+    exc: Exception,
+) -> Dict[str, Any]:
+    return {
+        'ok': False,
+        'error': error,
+        'section': section,
+        'error_code': reason_code,
+        'reason_code': reason_code,
+        'error_class': exc.__class__.__name__,
+        'raw_error_message_included': False,
+    }
+
+
 def patch_section_response(
     section: str,
     data: Any,
@@ -125,9 +143,19 @@ def patch_section_response(
             updated_by=updated_by,
         )
     except runtime_settings_module.RuntimeSettingsValidationError as exc:
-        return {'ok': False, 'error': str(exc)}, 400
+        return _runtime_settings_error_response(
+            section=section,
+            error='runtime settings validation failed',
+            reason_code='runtime_settings_validation_error',
+            exc=exc,
+        ), 400
     except runtime_settings_module.RuntimeSettingsDbUnavailableError as exc:
-        return {'ok': False, 'error': str(exc)}, 503
+        return _runtime_settings_error_response(
+            section=section,
+            error='runtime settings unavailable',
+            reason_code='runtime_settings_unavailable',
+            exc=exc,
+        ), 503
 
     secret_sources = runtime_settings_module.describe_secret_sources(section, view.payload)
     response = {
@@ -167,6 +195,11 @@ def validate_section_response(
     try:
         result = runtime_settings_module.validate_runtime_section(section, patch_payload=patch_payload)
     except runtime_settings_module.RuntimeSettingsValidationError as exc:
-        return {'ok': False, 'error': str(exc)}, 400
+        return _runtime_settings_error_response(
+            section=section,
+            error='runtime settings validation failed',
+            reason_code='runtime_settings_validation_error',
+            exc=exc,
+        ), 400
 
     return {'ok': True, **result}, 200

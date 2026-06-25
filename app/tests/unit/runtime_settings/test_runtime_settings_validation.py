@@ -336,6 +336,44 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         self.assertTrue(checks['api_key_runtime']['ok'])
         self.assertIn('db_encrypted', checks['api_key_runtime']['detail'])
 
+    def test_validate_runtime_section_secret_resolution_detail_is_content_free(self) -> None:
+        original_decrypt = runtime_settings.runtime_secrets.decrypt_runtime_secret_value
+        original_api_key = config.OR_KEY
+        raw_error = (
+            'decrypt failed for https://example.invalid/private?'
+            'token=ARTIFICIAL_RUNTIME_SETTINGS_SECRET'
+        )
+        config.OR_KEY = ''
+
+        def fake_decrypt_runtime_secret_value(_value: str) -> str:
+            raise runtime_settings.runtime_secrets.RuntimeSettingsCryptoEngineError(raw_error)
+
+        stored_payload = runtime_settings.normalize_stored_payload(
+            'main_model',
+            {
+                'base_url': {'value': 'https://openrouter.ai/api/v1'},
+                'model': {'value': 'openai/gpt-5.1'},
+                'api_key': {'value_encrypted': 'cipher-main-model', 'origin': 'db'},
+            },
+        )
+        runtime_settings.runtime_secrets.decrypt_runtime_secret_value = fake_decrypt_runtime_secret_value
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'main_model',
+                fetcher=lambda: {'main_model': stored_payload},
+            )
+        finally:
+            runtime_settings.runtime_secrets.decrypt_runtime_secret_value = original_decrypt
+            config.OR_KEY = original_api_key
+
+        checks = {check['name']: check for check in result['checks']}
+        self.assertFalse(checks['api_key_runtime']['ok'])
+        self.assertEqual(
+            checks['api_key_runtime']['detail'],
+            'main_model.api_key unavailable (RuntimeSettingsSecretResolutionError)',
+        )
+        self.assertNotIn('ARTIFICIAL_RUNTIME_SETTINGS_SECRET', repr(result))
+
     def test_validate_runtime_section_accepts_candidate_stimmung_agent_model_payload(self) -> None:
         original_api_key = config.OR_KEY
         config.OR_KEY = 'sk-phase5-stimmung'

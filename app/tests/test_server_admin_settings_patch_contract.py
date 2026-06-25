@@ -190,7 +190,11 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
         self.assertFalse(data['ok'])
-        self.assertIn('ambiguous secret patch payload', data['error'])
+        self.assertEqual(data['error'], 'runtime settings validation failed')
+        self.assertEqual(data['error_code'], 'runtime_settings_validation_error')
+        self.assertEqual(data['reason_code'], 'runtime_settings_validation_error')
+        self.assertEqual(data['error_class'], 'RuntimeSettingsValidationError')
+        self.assertNotIn('sk-secret', response.get_data(as_text=True))
 
     def test_patch_admin_settings_main_model_rejects_top_level_readonly_info(self) -> None:
         response = self.client.patch(
@@ -236,7 +240,12 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         data = response.get_json()
         self.assertFalse(data['ok'])
-        self.assertEqual(data['error'], 'db unavailable for patch')
+        self.assertEqual(data['error'], 'runtime settings unavailable')
+        self.assertEqual(data['error_code'], 'runtime_settings_unavailable')
+        self.assertEqual(data['reason_code'], 'runtime_settings_unavailable')
+        self.assertEqual(data['error_class'], 'RuntimeSettingsDbUnavailableError')
+        self.assertFalse(data['raw_error_message_included'])
+        self.assertNotIn('db unavailable for patch', response.get_data(as_text=True))
 
     def test_patch_admin_settings_main_model_rejects_payload_readonly_info(self) -> None:
         response = self.client.patch(
@@ -436,7 +445,11 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
         self.assertFalse(data['ok'])
-        self.assertIn('unknown runtime settings field: main_model.system_prompt', data['error'])
+        self.assertEqual(data['error'], 'runtime settings validation failed')
+        self.assertEqual(data['error_code'], 'runtime_settings_validation_error')
+        self.assertEqual(data['reason_code'], 'runtime_settings_validation_error')
+        self.assertEqual(data['error_class'], 'RuntimeSettingsValidationError')
+        self.assertNotIn('main_model.system_prompt', response.get_data(as_text=True))
 
     def test_patch_admin_settings_services_rejects_readonly_budget_field(self) -> None:
         response = self.client.patch(
@@ -451,10 +464,11 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
         self.assertFalse(data['ok'])
-        self.assertIn(
-            'unknown runtime settings field: services.web_reformulation_max_tokens',
-            data['error'],
-        )
+        self.assertEqual(data['error'], 'runtime settings validation failed')
+        self.assertEqual(data['error_code'], 'runtime_settings_validation_error')
+        self.assertEqual(data['reason_code'], 'runtime_settings_validation_error')
+        self.assertEqual(data['error_class'], 'RuntimeSettingsValidationError')
+        self.assertNotIn('services.web_reformulation_max_tokens', response.get_data(as_text=True))
 
     def test_patch_admin_settings_main_model_updates_response_max_tokens(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
@@ -1275,10 +1289,7 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 400, msg=path)
                 body = response.get_data(as_text=True)
                 self.assertNotIn(secret_value, body, msg=path)
-                self.assertTrue(
-                    'ambiguous secret patch payload' in body or 'missing runtime settings crypto key' in body,
-                    msg=body,
-                )
+                self.assertIn('runtime_settings_validation_error', body, msg=body)
         finally:
             for logger in target_loggers:
                 logger.removeHandler(capture)
@@ -1330,7 +1341,7 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         body = response.get_data(as_text=True)
-        self.assertIn('failed to encrypt secret for main_model.api_key', body)
+        self.assertIn('runtime_settings_validation_error', body)
         self.assertNotIn(secret_value, body)
         if self.server.admin_logs.LOG_PATH.exists():
             admin_log_text = self.server.admin_logs.LOG_PATH.read_text(encoding='utf-8')

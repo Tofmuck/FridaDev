@@ -285,10 +285,14 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
     def test_update_response_maps_store_unavailable_to_http_500_with_compact_audit(self) -> None:
         runtime_module = _FakeRuntimeSettings()
         observed_logs: list[tuple[str, dict[str, Any]]] = []
+        raw_error = (
+            'db unavailable for governance patch '
+            'https://example.invalid/private?token=ARTIFICIAL_GOVERNANCE_SECRET'
+        )
 
         def failing_update_runtime_section(section: str, patch_payload, *, updated_by='admin_api', fetcher=None):
             runtime_module._assert_section(section)
-            raise runtime_settings.RuntimeSettingsDbUnavailableError('db unavailable for governance patch')
+            raise runtime_settings.RuntimeSettingsDbUnavailableError(raw_error)
 
         runtime_module.update_runtime_section = failing_update_runtime_section
 
@@ -306,12 +310,15 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertFalse(payload['ok'])
         self.assertEqual(payload['reason_code'], 'governance_store_unavailable')
         self.assertEqual(payload['validation_error'], 'governance_store_unavailable')
+        self.assertEqual(payload['error'], 'configuration governance indisponible')
+        self.assertNotIn('ARTIFICIAL_GOVERNANCE_SECRET', str(payload))
         event_name, event_payload = observed_logs[0]
         self.assertEqual(event_name, 'identity_governance_admin_edit')
         self.assertEqual(event_payload['reason_code'], 'governance_store_unavailable')
         self.assertEqual(event_payload['validation_error'], 'governance_store_unavailable')
         self.assertNotIn('content', event_payload)
         self.assertNotIn('reason', event_payload)
+        self.assertNotIn('ARTIFICIAL_GOVERNANCE_SECRET', str(event_payload))
 
 
 if __name__ == '__main__':

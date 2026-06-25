@@ -20,6 +20,50 @@ from core import conversations_store
 
 
 class ConversationsStoreSaveResultTests(unittest.TestCase):
+    def test_load_json_conversation_file_logs_read_error_without_raw_exception(self) -> None:
+        raw_error = 'ARTIFICIAL_CONVERSATION_SECRET from corrupt json'
+        admin_events = []
+        logger_events = []
+
+        class Logger:
+            def error(self, *args, **_kwargs):
+                logger_events.append(args)
+
+        def fake_open(*_args, **_kwargs):
+            raise RuntimeError(raw_error)
+
+        class FakePath:
+            def open(self, *_args, **_kwargs):
+                return fake_open()
+
+            def exists(self):
+                return False
+
+            def __str__(self):
+                return '/tmp/synthetic-conversation.json'
+
+        result = conversations_store.load_json_conversation_file(
+            FakePath(),
+            'conv-corrupt',
+            'SYSTEM',
+            backup_on_error=False,
+            now_compact_func=lambda: '20260625T000000Z',
+            normalize_conversation_func=lambda *_args: self.fail('normalize must not run after read error'),
+            logger=Logger(),
+            admin_log_event_func=lambda event, **kwargs: admin_events.append((event, kwargs)),
+        )
+
+        self.assertIsNone(result)
+        self.assertEqual(admin_events[0][0], 'conv_read_error')
+        payload = admin_events[0][1]
+        self.assertEqual(payload['error_code'], 'conversation_json_read_error')
+        self.assertEqual(payload['reason_code'], 'conversation_json_read_error')
+        self.assertEqual(payload['error_class'], 'RuntimeError')
+        self.assertFalse(payload['raw_error_message_included'])
+        self.assertNotIn('error', payload)
+        self.assertNotIn(raw_error, str(payload))
+        self.assertNotIn(raw_error, str(logger_events))
+
     def test_ts_to_iso_rejects_invalid_timestamp_without_calling_now(self) -> None:
         with self.assertRaisesRegex(conversations_store.InvalidTimestampError, 'invalid_timestamp'):
             conversations_store.ts_to_iso(

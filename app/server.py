@@ -820,7 +820,7 @@ def api_chat():
         chat_turn_logger.emit_error(
             error_code='upstream_error',
             error_class=exc.__class__.__name__,
-            message_short=str(exc),
+            message_short='chat route unhandled error',
         )
         _finish_chat_turn_and_refresh_dashboard(turn_token, final_status='error')
         raise

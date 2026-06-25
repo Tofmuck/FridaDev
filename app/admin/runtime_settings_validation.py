@@ -20,6 +20,10 @@ def _validation_check(name: str, ok: bool, detail: str) -> dict[str, Any]:
     }
 
 
+def _secret_runtime_unavailable_detail(field_ref: str, exc: Exception) -> str:
+    return f'{field_ref} unavailable ({exc.__class__.__name__})'
+
+
 def _runtime_text_value(view: Any, field: str) -> str:
     payload = view.payload.get(field) or {}
     return str(payload.get('value') or '').strip()
@@ -111,7 +115,7 @@ def validate_runtime_section(
             api_key_detail = f'main_model.api_key available from {api_key_secret.source}'
         except (secret_required_error_cls, secret_resolution_error_cls) as exc:
             api_key_ok = False
-            api_key_detail = str(exc)
+            api_key_detail = _secret_runtime_unavailable_detail('main_model.api_key', exc)
         checks.extend(
             (
                 _validation_check('base_url', _is_http_url(base_url), f'base_url={base_url or "missing"}'),
@@ -225,7 +229,7 @@ def validate_runtime_section(
             )
         except (secret_required_error_cls, secret_resolution_error_cls) as exc:
             shared_transport_ok = False
-            shared_transport_detail = str(exc)
+            shared_transport_detail = _secret_runtime_unavailable_detail('main_model.api_key', exc)
         checks.extend(
             (
                 _validation_check('model', bool(model), f'model={model or "missing"}'),
@@ -286,7 +290,7 @@ def validate_runtime_section(
             )
         except (secret_required_error_cls, secret_resolution_error_cls) as exc:
             shared_transport_ok = False
-            shared_transport_detail = str(exc)
+            shared_transport_detail = _secret_runtime_unavailable_detail('main_model.api_key', exc)
         checks.extend(
             (
                 _validation_check('model', bool(model), f'model={model or "missing"}'),
@@ -325,7 +329,7 @@ def validate_runtime_section(
             )
         except (secret_required_error_cls, secret_resolution_error_cls) as exc:
             shared_transport_ok = False
-            shared_transport_detail = str(exc)
+            shared_transport_detail = _secret_runtime_unavailable_detail('main_model.api_key', exc)
         checks.extend(
             (
                 _validation_check('model', bool(model), f'model={model or "missing"}'),
@@ -367,7 +371,7 @@ def validate_runtime_section(
             )
         except (secret_required_error_cls, secret_resolution_error_cls) as exc:
             shared_transport_ok = False
-            shared_transport_detail = str(exc)
+            shared_transport_detail = _secret_runtime_unavailable_detail('main_model.api_key', exc)
         checks.extend(
             (
                 _validation_check('primary_model', bool(primary_model), f'primary_model={primary_model or "missing"}'),
@@ -409,7 +413,7 @@ def validate_runtime_section(
             )
         except (secret_required_error_cls, secret_resolution_error_cls) as exc:
             shared_transport_ok = False
-            shared_transport_detail = str(exc)
+            shared_transport_detail = _secret_runtime_unavailable_detail('main_model.api_key', exc)
         checks.extend(
             (
                 _validation_check('mode', mode in _BIBLIO_AGENT_MODES, f'mode={mode or "missing"}'),
@@ -501,7 +505,7 @@ def validate_runtime_section(
             token_detail = f'embedding.token available from {token_secret.source}'
         except (secret_required_error_cls, secret_resolution_error_cls) as exc:
             token_ok = False
-            token_detail = str(exc)
+            token_detail = _secret_runtime_unavailable_detail('embedding.token', exc)
         checks.extend(
             (
                 _validation_check('endpoint', _is_http_url(endpoint), f'endpoint={endpoint or "missing"}'),
@@ -543,7 +547,7 @@ def validate_runtime_section(
             crawl4ai_token_detail = f'services.crawl4ai_token available from {crawl4ai_token_secret.source}'
         except (secret_required_error_cls, secret_resolution_error_cls) as exc:
             crawl4ai_token_ok = False
-            crawl4ai_token_detail = str(exc)
+            crawl4ai_token_detail = _secret_runtime_unavailable_detail('services.crawl4ai_token', exc)
         checks.extend(
             (
                 _validation_check('searxng_url', _is_http_url(searxng_url), f'searxng_url={searxng_url or "missing"}'),

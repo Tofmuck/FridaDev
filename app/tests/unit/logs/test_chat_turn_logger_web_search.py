@@ -609,10 +609,11 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         self.assertNotIn('results', payload)
         logger_error_event = next(event for event in observed if event['stage'] == 'error' and event['status'] == 'error')
         error_payload = logger_error_event['payload_json']
-        self.assertEqual(error_payload.get('message_short_chars'), len('reformulation boom'))
+        self.assertEqual(error_payload.get('message_short_chars'), len('upstream_error'))
         self.assertFalse(error_payload.get('message_short_included'))
         self.assertFalse(error_payload.get('raw_error_message_included'))
         self.assertNotIn('message_short', error_payload)
+        self.assertNotIn('reformulation boom', str(error_payload))
 
     def test_web_search_payload_upstream_error_logs_content_free(self) -> None:
         observed: list[dict[str, Any]] = []

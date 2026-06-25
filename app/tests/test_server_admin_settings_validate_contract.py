@@ -126,10 +126,34 @@ class ServerAdminSettingsValidateContractTests(unittest.TestCase):
                 self.assertIn('allowed=off,active', checks['mode']['detail'])
 
     def test_post_admin_settings_agenda_agent_validate_rejects_active_without_secret(self) -> None:
-        response = self.client.post(
-            '/api/admin/settings/agenda-agent/validate',
-            json={'payload': {'mode': {'value': 'active'}}},
-        )
+        original_validate = self.server.runtime_settings.validate_runtime_section
+
+        def fake_validate_runtime_section(section, patch_payload=None):
+            self.assertEqual(section, 'agenda_agent')
+            self.assertEqual(patch_payload, {'mode': {'value': 'active'}})
+            return {
+                'section': section,
+                'valid': False,
+                'source': 'candidate',
+                'source_reason': 'validate_payload',
+                'checks': [
+                    {'name': 'mode', 'ok': True, 'detail': 'mode=active'},
+                    {
+                        'name': 'caldav_app_password_presence',
+                        'ok': False,
+                        'detail': 'configured=False; value=redacted',
+                    },
+                ],
+            }
+
+        self.server.runtime_settings.validate_runtime_section = fake_validate_runtime_section
+        try:
+            response = self.client.post(
+                '/api/admin/settings/agenda-agent/validate',
+                json={'payload': {'mode': {'value': 'active'}}},
+            )
+        finally:
+            self.server.runtime_settings.validate_runtime_section = original_validate
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
@@ -226,7 +250,11 @@ class ServerAdminSettingsValidateContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
         self.assertFalse(data['ok'])
-        self.assertIn('ambiguous secret patch payload', data['error'])
+        self.assertEqual(data['error'], 'runtime settings validation failed')
+        self.assertEqual(data['error_code'], 'runtime_settings_validation_error')
+        self.assertEqual(data['reason_code'], 'runtime_settings_validation_error')
+        self.assertEqual(data['error_class'], 'RuntimeSettingsValidationError')
+        self.assertNotIn('sk-secret', response.get_data(as_text=True))
 
     def test_post_admin_settings_validate_rejects_non_mapping_payload(self) -> None:
         response = self.client.post(
@@ -238,6 +266,35 @@ class ServerAdminSettingsValidateContractTests(unittest.TestCase):
         data = response.get_json()
         self.assertFalse(data['ok'])
         self.assertEqual(data['error'], 'validation payload must be a mapping')
+
+    def test_post_admin_settings_validate_sanitizes_validation_exception(self) -> None:
+        raw_error = (
+            'synthetic validation failure https://example.invalid/private?'
+            'token=ARTIFICIAL_SETTINGS_SECRET'
+        )
+        original_validate = self.server.runtime_settings.validate_runtime_section
+
+        def fake_validate_runtime_section(*_args, **_kwargs):
+            raise self.server.runtime_settings.RuntimeSettingsValidationError(raw_error)
+
+        self.server.runtime_settings.validate_runtime_section = fake_validate_runtime_section
+        try:
+            response = self.client.post(
+                '/api/admin/settings/embedding/validate',
+                json={'payload': {'model': {'value': 'fixture-model'}}},
+            )
+        finally:
+            self.server.runtime_settings.validate_runtime_section = original_validate
+
+        self.assertEqual(response.status_code, 400)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['error'], 'runtime settings validation failed')
+        self.assertEqual(data['error_code'], 'runtime_settings_validation_error')
+        self.assertEqual(data['reason_code'], 'runtime_settings_validation_error')
+        self.assertEqual(data['error_class'], 'RuntimeSettingsValidationError')
+        self.assertFalse(data['raw_error_message_included'])
+        self.assertNotIn('ARTIFICIAL_SETTINGS_SECRET', response.get_data(as_text=True))
 
     def test_post_admin_settings_validate_encrypt_error_does_not_echo_secret_value(self) -> None:
         class CaptureHandler(logging.Handler):
@@ -277,7 +334,7 @@ class ServerAdminSettingsValidateContractTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         body = response.get_data(as_text=True)
-        self.assertIn('failed to encrypt secret for embedding.token', body)
+        self.assertIn('runtime_settings_validation_error', body)
         self.assertNotIn(secret_value, body)
         if self.server.admin_logs.LOG_PATH.exists():
             admin_log_text = self.server.admin_logs.LOG_PATH.read_text(encoding='utf-8')

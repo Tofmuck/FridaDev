@@ -32,8 +32,11 @@ def restart_runtime_async(target_name: str = "FridaDev", delay_s: float = 0.5) -
                 "runtime_restart_error",
                 level="ERROR",
                 target=target_name,
-                error=str(exc),
+                error_code="runtime_restart_failed",
+                reason_code="runtime_restart_failed",
+                error_class=exc.__class__.__name__,
+                raw_error_message_included=False,
             )
-            logger.error("runtime_restart_error target=%s err=%s", target_name, exc)
+            logger.error("runtime_restart_error target=%s err_class=%s", target_name, exc.__class__.__name__)
 
     threading.Thread(target=worker, daemon=True).start()
