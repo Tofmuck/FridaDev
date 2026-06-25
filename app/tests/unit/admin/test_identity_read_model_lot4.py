@@ -36,8 +36,6 @@ class _MemoryStore:
             'reason_code': 'clear_applied',
             'old_chars': 74,
             'new_chars': 0,
-            'old_sha256_12': 'a1b2c3d4e5f6',
-            'new_sha256_12': None,
             'source_trace_id': '00000000-0000-0000-0000-000000000011',
             'created_ts': '2026-05-13T15:00:00+00:00',
         }
@@ -108,8 +106,8 @@ class IdentityReadModelLot4Tests(unittest.TestCase):
         self.assertEqual(llm_audit['reason_code'], 'clear_applied')
         self.assertEqual(llm_audit['old_chars'], 74)
         self.assertEqual(llm_audit['new_chars'], 0)
-        self.assertEqual(llm_audit['old_sha256_12'], 'a1b2c3d4e5f6')
-        self.assertIsNone(llm_audit['new_sha256_12'])
+        self.assertNotIn('old_sha256_12', llm_audit)
+        self.assertNotIn('new_sha256_12', llm_audit)
         self.assertNotIn('content', llm_audit)
         self.assertNotIn('prompt', llm_audit)
         self.assertNotIn('messages', llm_audit)

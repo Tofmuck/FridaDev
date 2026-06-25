@@ -204,7 +204,7 @@ class ChatTurnLoggerIdentitiesReadTests(unittest.TestCase):
 
         self.assertTrue(payload['injected'])
         self.assertGreater(payload['identity_block_chars'], 0)
-        self.assertEqual(len(payload['identity_block_sha256_12']), 12)
+        self.assertNotIn('identity_block_sha256_12', payload)
         self.assertFalse(payload['staging_included'])
         self.assertTrue(payload['subjects']['llm']['static']['present'])
         self.assertFalse(payload['subjects']['llm']['mutable']['present'])
@@ -212,6 +212,8 @@ class ChatTurnLoggerIdentitiesReadTests(unittest.TestCase):
         self.assertTrue(payload['subjects']['user']['mutable']['present'])
         self.assertEqual(payload['subjects']['user']['mutable']['updated_by'], 'identity_periodic_agent')
         self.assertTrue(payload['subjects']['user']['mutable']['update_reason_present'])
+        self.assertNotIn('sha256_12', repr(payload))
+        self.assertNotIn('update_reason_sha256_12', repr(payload))
         serialized = repr(payload)
         self.assertNotIn('Frida static', serialized)
         self.assertNotIn('User static', serialized)

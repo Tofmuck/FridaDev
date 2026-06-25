@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import sys
 import unittest
 from pathlib import Path
@@ -20,12 +19,6 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from memory import mutable_identity_apply
-
-
-def _hash(value: str) -> str | None:
-    if not value:
-        return None
-    return hashlib.sha256(value.encode('utf-8')).hexdigest()[:12]
 
 
 def _no_change(subject: str) -> dict[str, Any]:
@@ -143,8 +136,6 @@ class _MutableStore:
                     'reason_code': update.get('audit_reason_code'),
                     'old_chars': len(old_content),
                     'new_chars': len(content),
-                    'old_sha256_12': _hash(old_content),
-                    'new_sha256_12': _hash(content),
                 }
             )
             results.append(copy.deepcopy(payload))

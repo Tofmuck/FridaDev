@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import re
 from typing import Any, Mapping, Sequence
 
@@ -35,13 +34,6 @@ def _list(value: Any) -> list[Any]:
     return []
 
 
-def _short_hash(value: Any) -> str | None:
-    text = _text(value)
-    if not text:
-        return None
-    return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
-
-
 def _split_propositions(text: str) -> list[str]:
     return [_text(line) for line in str(text or '').splitlines() if _text(line)]
 
@@ -58,8 +50,6 @@ def _content_fields(old_content: str, new_content: str) -> dict[str, Any]:
     return {
         'old_chars': len(old_content),
         'new_chars': len(new_content),
-        'old_sha256_12': _short_hash(old_content),
-        'new_sha256_12': _short_hash(new_content),
     }
 
 
@@ -89,7 +79,6 @@ def _outcome(
     }
     if proposition:
         payload['proposition_chars'] = len(proposition)
-        payload['proposition_sha256_12'] = _short_hash(proposition)
     payload.update(extra)
     return payload
 

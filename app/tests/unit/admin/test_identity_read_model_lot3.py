@@ -76,8 +76,6 @@ class _LogStoreWithOkReasonCode:
                                 'reason_code': 'add_applied',
                                 'old_chars': 0,
                                 'new_chars': 42,
-                                'old_sha256_12': None,
-                                'new_sha256_12': '123456789abc',
                                 'continuity_kind': 'limit',
                                 'source_refs_count': 1,
                                 'guard_notes_count': 1,
@@ -110,7 +108,8 @@ class IdentityReadModelLot3Tests(unittest.TestCase):
         self.assertNotIn('operation_kinds', activity)
         self.assertEqual(activity['outcome_count'], 1)
         self.assertEqual(activity['outcome_summaries'][0]['new_chars'], 42)
-        self.assertEqual(activity['outcome_summaries'][0]['new_sha256_12'], '123456789abc')
+        self.assertNotIn('old_sha256_12', activity['outcome_summaries'][0])
+        self.assertNotIn('new_sha256_12', activity['outcome_summaries'][0])
         self.assertNotIn('content', activity['outcome_summaries'][0])
         self.assertNotIn('proposition', activity['outcome_summaries'][0])
         self.assertEqual(staging['last_completed_agent']['reason_code'], 'applied')

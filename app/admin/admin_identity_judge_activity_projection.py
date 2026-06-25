@@ -80,17 +80,6 @@ def _compact_outcome_item(item: Any) -> dict[str, Any]:
         value = _optional_int(payload.get(source_key))
         if value is not None:
             summary.setdefault(target_key, value)
-    for key in (
-        'old_sha256_12',
-        'new_sha256_12',
-        'target_sha256_12',
-    ):
-        text = _optional_text(payload.get(key))
-        if text:
-            summary[key] = text
-    targets = payload.get('target_sha256_12s')
-    if isinstance(targets, list):
-        summary['target_sha256_12s'] = [_optional_text(item) for item in targets if _optional_text(item)]
     return summary
 
 
@@ -134,10 +123,6 @@ def _compact_open_tensions(values: Any) -> list[dict[str, Any]]:
             value = _optional_int(payload.get(key))
             if value is not None:
                 summary[key] = value
-        for key in ('old_sha256_12', 'new_sha256_12'):
-            text = _optional_text(payload.get(key))
-            if text:
-                summary[key] = text
         if summary:
             summary['content_minimized'] = True
             compact.append(summary)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from typing import Any, Callable
 
 _ALLOWED_SUBJECTS = {'llm', 'user'}
@@ -33,18 +32,11 @@ def _serialize_ts(value: Any) -> str | None:
     return str(value)
 
 
-def _sha256_12(text: Any) -> str | None:
-    raw = str(text or '')
-    if not raw:
-        return None
-    return hashlib.sha256(raw.encode('utf-8')).hexdigest()[:12]
-
-
 def _text_stats(text: Any, *, prefix: str) -> dict[str, Any]:
     raw = str(text or '')
     return {
+        f'{prefix}_present': bool(raw),
         f'{prefix}_chars': len(raw),
-        f'{prefix}_sha256_12': _sha256_12(raw),
     }
 
 

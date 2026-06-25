@@ -140,8 +140,6 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             'reason_code': 'periodic_agent',
             'old_chars': 0,
             'new_chars': 24,
-            'old_sha256_12': None,
-            'new_sha256_12': '123456789abc',
             'source_trace_id': '11111111-1111-1111-1111-111111111111',
             'created_ts': '2026-04-06T10:00:00Z',
         }
@@ -229,8 +227,6 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
                                 'guard_notes_count': 1,
                                 'old_chars': 128,
                                 'new_chars': 128,
-                                'old_sha256_12': 'aaaabbbbcccc',
-                                'new_sha256_12': 'aaaabbbbcccc',
                             }
                         ],
                         'promotions': [],
@@ -398,7 +394,8 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         outcome_summary = data['identity_staging']['latest_agent_activity']['outcome_summaries'][0]
         self.assertTrue(outcome_summary['content_minimized'])
         self.assertEqual(outcome_summary['old_chars'], 128)
-        self.assertEqual(outcome_summary['old_sha256_12'], 'aaaabbbbcccc')
+        self.assertNotIn('old_sha256_12', outcome_summary)
+        self.assertNotIn('new_sha256_12', outcome_summary)
         self.assertNotIn('content', outcome_summary)
         self.assertNotIn('proposition', outcome_summary)
         self.assertEqual(
@@ -457,9 +454,9 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertTrue(forbidden_legacy_keys.isdisjoint(llm_evidence.keys()))
         self.assertTrue(forbidden_legacy_keys.isdisjoint(llm_conflict.keys()))
         self.assertEqual(llm_fragment['content_chars'], len('llm legacy fragment'))
-        self.assertEqual(len(llm_fragment['content_sha256_12']), 12)
+        self.assertNotIn('content_sha256_12', llm_fragment)
         self.assertEqual(llm_evidence['content_chars'], len('llm evidence entry'))
-        self.assertEqual(len(llm_evidence['content_sha256_12']), 12)
+        self.assertNotIn('content_sha256_12', llm_evidence)
         self.assertEqual(llm_conflict['content_a_chars'], len('llm conflict a'))
         self.assertEqual(llm_conflict['content_b_chars'], len('llm conflict b'))
         serialized_legacy = str(

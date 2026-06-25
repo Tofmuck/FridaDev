@@ -634,7 +634,6 @@ def _identity_summary(prompt_payload: Mapping[str, Any]) -> dict[str, Any]:
             or fingerprint.get('identity_block_chars')
             or fingerprint.get('identity_chars')
         ),
-        'sha256_12': _sha256_12_from_payload(fingerprint, 'sha256_12', 'identity_block_sha256_12'),
         'used_identity_ids_count': used_count,
         'staging_included': bool(fingerprint.get('staging_included')),
         'reason_code': _reason_code(fingerprint),

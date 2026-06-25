@@ -113,11 +113,14 @@ class IdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(snapshot['limit'], 5)
         item = snapshot['items'][0]
         self.assertEqual(item['identity_id'], 'frag-1')
+        self.assertTrue(item['content_present'])
         self.assertEqual(item['content_chars'], len('Fragment legacy'))
-        self.assertEqual(len(item['content_sha256_12']), 12)
+        self.assertNotIn('content_sha256_12', item)
+        self.assertTrue(item['content_norm_present'])
         self.assertEqual(item['content_norm_chars'], len('fragment legacy'))
-        self.assertEqual(len(item['content_norm_sha256_12']), 12)
+        self.assertNotIn('content_norm_sha256_12', item)
         self.assertEqual(item['last_reason_code'], 'text_reason_present')
+        self.assertTrue(item['last_reason_present'])
         self.assertEqual(item['last_reason_chars'], len('reason'))
         self.assertTrue(_FORBIDDEN_LEGACY_TEXT_KEYS.isdisjoint(item.keys()))
 
@@ -152,10 +155,13 @@ class IdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(snapshot['limit'], 7)
         item = snapshot['items'][0]
         self.assertEqual(item['evidence_id'], 'ev-1')
+        self.assertTrue(item['content_present'])
         self.assertEqual(item['content_chars'], len('Evidence text'))
-        self.assertEqual(len(item['content_sha256_12']), 12)
+        self.assertNotIn('content_sha256_12', item)
+        self.assertTrue(item['content_norm_present'])
         self.assertEqual(item['content_norm_chars'], len('evidence text'))
         self.assertEqual(item['reason_code'], 'text_reason_present')
+        self.assertTrue(item['reason_present'])
         self.assertEqual(item['reason_chars'], len('reason'))
         self.assertTrue(_FORBIDDEN_LEGACY_TEXT_KEYS.isdisjoint(item.keys()))
 
@@ -195,11 +201,14 @@ class IdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(item['conflict_id'], 'conf-1')
         self.assertEqual(item['identity_id_a'], 'frag-a')
         self.assertEqual(item['reason_code'], 'text_reason_present')
+        self.assertTrue(item['reason_present'])
         self.assertEqual(item['reason_chars'], len('contradiction'))
+        self.assertTrue(item['content_a_present'])
         self.assertEqual(item['content_a_chars'], len('Version A'))
-        self.assertEqual(len(item['content_a_sha256_12']), 12)
+        self.assertNotIn('content_a_sha256_12', item)
+        self.assertTrue(item['content_b_present'])
         self.assertEqual(item['content_b_chars'], len('Version B'))
-        self.assertEqual(len(item['content_b_sha256_12']), 12)
+        self.assertNotIn('content_b_sha256_12', item)
         self.assertTrue(_FORBIDDEN_LEGACY_TEXT_KEYS.isdisjoint(item.keys()))
 
 

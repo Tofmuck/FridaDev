@@ -288,7 +288,6 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
                 "injected": False,
                 "identity_block_present": False,
                 "identity_block_chars": 0,
-                "identity_block_sha256_12": None,
                 "used_identity_ids_count": 0,
                 "staging_included": False,
                 "subjects": {"llm": {"selected_count": 0}, "user": {"selected_count": 0}},
@@ -474,6 +473,22 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
 
         self.assertFalse(decision.accepted)
         self.assertIn("unknown_string_key", decision.payload["issue_classes"])
+
+    def test_identity_text_hash_keys_are_rejected(self) -> None:
+        payload = {
+            "identity_prompt_injection": {
+                "injected": True,
+                "identity_block_present": True,
+                "identity_block_chars": 42,
+                "identity_block_sha256_12": "0123456789ab",
+            },
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("identity_text_hash_key", decision.payload["issue_classes"])
 
     def test_valid_main_payload_manifest_passes_writer_guard(self) -> None:
         manifest = main_payload_manifest.build_main_payload_manifest(

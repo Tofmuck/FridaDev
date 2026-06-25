@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from typing import Any, Callable, Mapping, Sequence
 
 _ALLOWED_SUBJECTS = {'llm', 'user'}
@@ -20,12 +19,6 @@ def _serialize_ts(value: Any) -> str | None:
     if hasattr(value, 'isoformat'):
         return str(value.isoformat())
     return str(value)
-
-
-def _short_hash(content: str) -> str | None:
-    if not content:
-        return None
-    return hashlib.sha256(content.encode('utf-8')).hexdigest()[:12]
 
 
 def _row_to_mutable_identity(row: Any) -> dict[str, Any] | None:
@@ -53,8 +46,6 @@ def _row_to_mutable_identity_audit(row: Any) -> dict[str, Any] | None:
         'reason_code': str(row[4]) if row[4] is not None else None,
         'old_chars': int(row[5] or 0),
         'new_chars': int(row[6] or 0),
-        'old_sha256_12': str(row[7]) if row[7] is not None else None,
-        'new_sha256_12': str(row[8]) if row[8] is not None else None,
         'source_trace_id': str(row[9]) if row[9] is not None else None,
         'created_ts': _serialize_ts(row[10]),
     }
@@ -107,8 +98,8 @@ def _record_mutable_identity_audit(
             str(reason_code or mutation_kind)[:500] or None,
             len(old_content),
             len(new_content),
-            _short_hash(old_content),
-            _short_hash(new_content),
+            None,
+            None,
             source_trace_id,
         ),
     )

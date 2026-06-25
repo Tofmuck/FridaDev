@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from typing import Any, Mapping, Tuple
 
 import config
@@ -56,18 +55,11 @@ def _mapping(value: Any) -> Mapping[str, Any]:
     return {}
 
 
-def _sha256_12(text: Any) -> str | None:
-    raw = str(text or '')
-    if not raw:
-        return None
-    return hashlib.sha256(raw.encode('utf-8')).hexdigest()[:12]
-
-
 def _text_stats(text: Any, *, prefix: str) -> dict[str, Any]:
     raw = str(text or '')
     return {
+        f'{prefix}_present': bool(raw),
         f'{prefix}_chars': len(raw),
-        f'{prefix}_sha256_12': _sha256_12(raw),
     }
 
 
@@ -100,8 +92,8 @@ def _ensure_text_projection(
     if raw_key in source:
         target.update(_text_stats(source.get(raw_key), prefix=prefix))
         return
+    target.setdefault(f'{prefix}_present', False)
     target.setdefault(f'{prefix}_chars', 0)
-    target.setdefault(f'{prefix}_sha256_12', None)
 
 
 def _ensure_reason_projection(
@@ -118,8 +110,8 @@ def _ensure_reason_projection(
         target.update(_text_stats(source.get(raw_key), prefix=stats_prefix))
         return
     target.setdefault(code_key, '')
+    target.setdefault(f'{stats_prefix}_present', False)
     target.setdefault(f'{stats_prefix}_chars', 0)
-    target.setdefault(f'{stats_prefix}_sha256_12', None)
 
 
 def _compact_legacy_fragment_item(item: Any) -> dict[str, Any]:
@@ -516,8 +508,6 @@ def _build_latest_mutable_audit(
             'reason_code': None,
             'old_chars': 0,
             'new_chars': 0,
-            'old_sha256_12': None,
-            'new_sha256_12': None,
             'source_trace_id': None,
             'created_ts': None,
         }
@@ -531,8 +521,6 @@ def _build_latest_mutable_audit(
         'reason_code': _optional_text(audit.get('reason_code')),
         'old_chars': int(audit.get('old_chars') or 0),
         'new_chars': int(audit.get('new_chars') or 0),
-        'old_sha256_12': _optional_text(audit.get('old_sha256_12')),
-        'new_sha256_12': _optional_text(audit.get('new_sha256_12')),
         'source_trace_id': _optional_text(audit.get('source_trace_id')),
         'created_ts': _optional_text(audit.get('created_ts')),
     }

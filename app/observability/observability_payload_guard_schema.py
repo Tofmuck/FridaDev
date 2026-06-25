@@ -279,9 +279,9 @@ _GENERAL_TEXT_KEYS = set(
     schema_version scope search_profile searxng_language searxng_profile_params_kind
     searxng_profile_params_policy searxng_safesearch searxng_time_range
     searxng_soft_signal_policy source source_domain source_first_authority source_first_policy_kind
-    identity_block_sha256_12 shift_state source_first_product source_kind source_origin stability status status_schema_version summary_id_sha256_12 summary_usage used_content_kind
+    shift_state source_first_product source_kind source_origin stability status status_schema_version summary_id_sha256_12 summary_usage used_content_kind
     surface_error_hash surface_intro_hash surface_outro_hash
-    target_verification_error_class time_ambiguity time_kind timezone
+    target_side target_verification_error_class time_ambiguity time_kind timezone
     timezone tone upstream_output_regime_proposed upstream_recommendation_posture
     updated_by updated_ts user_display_name_hash user_message_hash validation_decision validation_status web_confidence_level web_confidence_policy_kind web_discovery_external_error_kind
     web_discovery_external_provider web_discovery_provider web_discovery_provider_effective
@@ -522,6 +522,11 @@ def _is_metric_like_key(key: str) -> bool:
 
 def _dangerous_key_class(key: str) -> str:
     lower = key.lower()
+    if lower in {
+        "identity_block_sha256_12",
+        "update_reason_sha256_12",
+    }:
+        return "identity_text_hash_key"
     if lower in _QUALIFIED_RAW_FLAGS:
         return ""
     if lower in _DANGEROUS_EXACT_KEYS:

@@ -280,8 +280,6 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertTrue(subjects['user']['mutable']['present'])
         self.assertEqual(subjects['user']['mutable']['updated_by'], 'identity_periodic_agent')
         self.assertTrue(subjects['user']['mutable']['update_reason_present'])
-        self.assertEqual(len(identity_payload.get('identity_block_sha256_12')), 12)
-        self.assertEqual(len(subjects['user']['mutable']['sha256_12']), 12)
 
         def collect_keys(value: object) -> set[str]:
             if isinstance(value, dict):
@@ -297,7 +295,17 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 return keys
             return set()
 
-        self.assertTrue({'content', 'prompt', 'messages', 'history'}.isdisjoint(collect_keys(identity_payload)))
+        self.assertTrue(
+            {
+                'content',
+                'prompt',
+                'messages',
+                'history',
+                'identity_block_sha256_12',
+                'sha256_12',
+                'update_reason_sha256_12',
+            }.isdisjoint(collect_keys(identity_payload))
+        )
         serialized = repr(identity_payload)
         self.assertNotIn(raw_llm_static, serialized)
         self.assertNotIn(raw_user_static, serialized)

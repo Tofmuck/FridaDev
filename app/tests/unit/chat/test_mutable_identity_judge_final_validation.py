@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import sys
 import unittest
 from pathlib import Path
@@ -44,12 +43,6 @@ def _collect_keys(value: Any) -> set[str]:
             keys.update(_collect_keys(item))
         return keys
     return set()
-
-
-def _sha256_12(text: str) -> str | None:
-    if not text:
-        return None
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
 
 def _mutable_verdict(
@@ -134,8 +127,6 @@ class _ConversationCrashStore:
                         "reason_code": str(update.get("audit_reason_code") or ""),
                         "old_chars": len(old_content),
                         "new_chars": len(content),
-                        "old_sha256_12": _sha256_12(old_content),
-                        "new_sha256_12": _sha256_12(content),
                     }
                 )
                 results.append(copy.deepcopy(payload))
@@ -152,8 +143,6 @@ class _ConversationCrashStore:
                         "reason_code": str(update.get("audit_reason_code") or ""),
                         "old_chars": len(old_content),
                         "new_chars": 0,
-                        "old_sha256_12": _sha256_12(old_content),
-                        "new_sha256_12": None,
                     }
                 )
                 results.append(copy.deepcopy(old))

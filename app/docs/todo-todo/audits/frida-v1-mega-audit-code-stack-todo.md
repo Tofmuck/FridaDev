@@ -1186,7 +1186,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-IDENTITY-HASH-POLICY-01
 
-- Statut courant: validated_policy_gap_by_lot_6A.
+- Statut courant: closed_by_lot_6E.
 - Severite: P2.
 - Fichiers suspects: `app/observability/identity_observability.py`,
   projection pipeline identity.
@@ -1194,9 +1194,25 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 - Preuve Lot 6A: policy gap confirme sur les hashes courts identity; aucun
   patch runtime avant doctrine explicite sur suppression, HMAC/salt ou
   exception justifiee.
+- Decision Lot 6E: doctrine tranchee. Les surfaces observabilite/admin identity
+  ne doivent plus exposer de hash court stable derive de texte identity,
+  mutable, proposition ou reason/update_reason. Les diagnostics retenus sont
+  presence, longueurs, compteurs, statuts/reason codes et IDs opaques non
+  derives du texte.
+- Correction Lot 6E: suppression des hashes courts identity dans le writer
+  `identity_prompt_injection`, la projection dashboard identity, les outcomes
+  mutable identity, les projections admin identity legacy et les annotations
+  textuelles libres du juge mutable. Les colonnes SQL historiques
+  `old_sha256_12` / `new_sha256_12` restent conservees pour compatibilite,
+  mais les nouveaux audits ecrivent `NULL` et les read-models ne les exposent
+  plus.
 - Critere de cloture: doctrine explicite sur hashes courts identity:
   suppression, HMAC/salt, ou exception justifiee.
 - Preuve minimale: spec/docs + tests projection.
+- Preuve Lot 6E: tests sentinelles guard/dashboard/admin/read-model prouvent que
+  les anciens champs `identity_block_sha256_12`, `update_reason_sha256_12`,
+  `old_sha256_12`, `new_sha256_12`, `proposition_sha256_12` et les hashes de
+  contenu legacy identity ne ressortent plus dans les surfaces traitees.
 - Hors-scope: modifier contenu identity.
 
 ### P2-CEL-NOTES-UI-GAP-01
@@ -2244,7 +2260,7 @@ Decision:
 - [x] Lot 6B: traiter erreurs LLM brutes.
 - [x] Lot 6C: traiter erreurs 400/404 admin brutes sur logs/dashboard/export.
 - [x] Lot 6D: traiter dashboard web legacy URL/hash raw.
-- [ ] Trancher doctrine hashes courts identity.
+- [x] Lot 6E: trancher doctrine hashes courts identity.
 - [ ] Corriger seulement surfaces qui exposent ou masquent une panne.
 - [ ] Conserver diagnostics content-free.
 - [ ] Lot 6F: traiter `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01`
@@ -2404,6 +2420,47 @@ Resultat Lot 6D:
 - Le test `test_dashboard_web_projection_drops_legacy_url_query_and_hash_values`
   couvre le cas historique avec sentinelles synthetiques et verifie l'absence
   de fuite dans le JSON dashboard projete.
+
+#### Lot 6E - Doctrine hashes courts identity
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne aux surfaces identity observabilite/admin/read-model.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le finding etait
+valide et les surfaces confirmees relevaient toutes de la meme doctrine:
+hashes courts stables sur texte identity/mutable/update_reason. Le patch le
+plus sur etait de supprimer ces empreintes dans les projections traitees et de
+conserver les diagnostics par presence/longueurs/compteurs/statuts.
+
+- [x] Valider `P2-CEL-IDENTITY-HASH-POLICY-01`.
+- [x] Supprimer `identity_block_sha256_12`, les `sha256_12` de couches
+  static/mutable et `update_reason_sha256_12` du payload
+  `identity_prompt_injection`.
+- [x] Supprimer `sha256_12` de la projection dashboard identity.
+- [x] Supprimer `old_sha256_12`, `new_sha256_12` et
+  `proposition_sha256_12` des outcomes/audits/projections mutable identity.
+- [x] Supprimer les hashes courts des fragments/evidence/conflicts identity
+  legacy dans le read-model admin.
+- [x] Remplacer les annotations textuelles libres du juge mutable par
+  `present` + `chars`.
+- [x] Garder les diagnostics content-free: presence, longueurs, compteurs,
+  statuts/reason codes, IDs opaques.
+- [x] Ne pas purger ni migrer l'historique: colonnes SQL historiques conservees
+  pour compatibilite, nouveaux writes a `NULL`, read-models sans exposition.
+- [x] Ne pas traiter Lot 6F/6G/6H, Lot 7 ni Lot 9.
+
+Resultat Lot 6E:
+
+- `P2-CEL-IDENTITY-HASH-POLICY-01` est clos pour les surfaces identity
+  traitees.
+- La garde observabilite refuse explicitement les anciens champs
+  `identity_block_sha256_12` et `update_reason_sha256_12`.
+- Les tests cibles prouvent que les payloads identity reels restent acceptes
+  sans hash court stable et que les anciennes valeurs/hash sentinelles ne
+  ressortent pas dans les projections admin/dashboard concernees.
+- Les surfaces de hash hors identity, par exemple documents actifs,
+  hermeneutique ou memoire durable, restent hors scope de ce lot.
 
 ### Lot 7 - Tests/smokes/artefacts
 

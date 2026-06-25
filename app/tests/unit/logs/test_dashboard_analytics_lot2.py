@@ -129,7 +129,6 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                         'injected': True,
                         'identity_block_present': True,
                         'chars': 12,
-                        'sha256_12': 'a' * 12,
                     },
                     'memory_prompt_injection': {
                         'injected': True,
@@ -406,6 +405,47 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
             self.assertNotIn(forbidden_value, serialized)
         for forbidden_key in ('payload', 'payload_json', 'prompt', 'messages', 'content', 'query', 'context_block'):
             self.assertNotIn(forbidden_key, self._collect_keys(first))
+
+    def test_dashboard_identity_projection_drops_legacy_text_hash_values(self) -> None:
+        dangerous_hash = 'abc123def456'
+        events = [
+            self._event(
+                'prompt_prepared',
+                payload={
+                    'identity_prompt_injection': {
+                        'injected': True,
+                        'identity_block_present': True,
+                        'identity_block_chars': 80,
+                        'sha256_12': dangerous_hash,
+                        'identity_block_sha256_12': dangerous_hash,
+                        'subjects': {
+                            'user': {
+                                'mutable': {
+                                    'present': True,
+                                    'chars': 42,
+                                    'sha256_12': dangerous_hash,
+                                    'update_reason_sha256_12': dangerous_hash,
+                                }
+                            }
+                        },
+                    }
+                },
+                event_id='turn-dashboard-identity:0001:prompt_prepared',
+            ),
+        ]
+
+        fact = dashboard_analytics.build_dashboard_turn_fact(events)
+        serialized = json.dumps(fact, ensure_ascii=False, sort_keys=True)
+
+        self.assertTrue(fact['identity']['block_present'])
+        self.assertEqual(fact['identity']['chars'], 80)
+        self.assertNotIn(dangerous_hash, serialized)
+        for forbidden_key in (
+            'sha256_12',
+            'identity_block_sha256_12',
+            'update_reason_sha256_12',
+        ):
+            self.assertNotIn(forbidden_key, self._collect_keys(fact['identity']))
 
     def test_dashboard_web_projection_drops_legacy_url_query_and_hash_values(self) -> None:
         dangerous_url = 'https://example.invalid/private?to' 'ken=ARTIFICIAL_DASHBOARD_WEB_SECRET'

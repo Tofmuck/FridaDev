@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import re
 from typing import Any, Mapping, Sequence
 
@@ -71,10 +70,6 @@ def list_value(value: Any) -> list[Any]:
     if isinstance(value, list):
         return list(value)
     return []
-
-
-def short_hash(value: str) -> str:
-    return hashlib.sha256(value.encode('utf-8')).hexdigest()[:12]
 
 
 def identity_text(value: Any) -> str:
@@ -150,8 +145,8 @@ def compact_annotation_value(value: Any) -> Any:
     if _CODE_RE.fullmatch(text_value):
         return text_value
     return {
+        'present': True,
         'chars': len(text_value),
-        'sha256_12': short_hash(text_value),
     }
 
 

@@ -87,7 +87,6 @@ class LogStorePhase3Tests(unittest.TestCase):
                         'injected': True,
                         'identity_block_present': True,
                         'chars': 12,
-                        'sha256_12': 'a' * 12,
                     },
                     'memory_prompt_injection': {
                         'injected': False,
@@ -526,7 +525,6 @@ class LogStorePhase3Tests(unittest.TestCase):
             'injected': False,
             'identity_block_present': False,
             'identity_block_chars': 0,
-            'identity_block_sha256_12': None,
         }
 
         degraded = log_store.build_turn_pipeline_item(events)
@@ -924,7 +922,6 @@ class LogStorePhase3Tests(unittest.TestCase):
             'injected': False,
             'identity_block_present': False,
             'identity_block_chars': 0,
-            'identity_block_sha256_12': None,
         }
 
         checklist = log_store.build_turn_observability_checklist(events)

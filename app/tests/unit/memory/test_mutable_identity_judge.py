@@ -143,7 +143,7 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
         self.assertIn('window_too_large', judge_input['judgment_rules']['technical_reason_codes_not_model_output'])
         self.assertTrue({'strength', 'frequency_norm', 'recency_norm', 'support_pairs'}.isdisjoint(_collect_keys(judge_input)))
         self.assertTrue({'memories', 'summaries', 'identity_evidence', 'candidates'}.isdisjoint(_collect_keys(judge_input)))
-        self.assertEqual(set(judge_input['source_annotations']['raw_note'].keys()), {'chars', 'sha256_12'})
+        self.assertEqual(set(judge_input['source_annotations']['raw_note'].keys()), {'present', 'chars'})
 
     def test_v2_contract_accepts_add_only_and_is_content_free(self) -> None:
         validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(_valid_v2_contract())
