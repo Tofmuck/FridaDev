@@ -128,17 +128,30 @@ def read_workspace_folder_notes_for_prompt(
     folder_id = workspace_folder_notes.normalize_workspace_folder_id(
         conversation.get("workspace_folder_id")
     )
-    if notes_mode_active and not folder_id:
-        return WorkspaceFolderNotesPromptRead(
-            status=READ_STATUS_ERROR,
-            reason_code=workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
-            requested_count=1,
-            invalid_requested_count=invalid_count,
-            over_limit_count=len(turn_limit_note_ids),
+    notes_mode_without_selected_note = (
+        notes_mode_active
+        and not note_ids
+        and not over_limit_note_ids
+        and not invalid_count
+    )
+    if notes_mode_without_selected_note and not folder_id:
+        return _notes_mode_without_selected_note_error(
+            workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
         )
 
     if not note_ids and not over_limit_note_ids and not invalid_count:
-        if notes_mode_active:
+        if notes_mode_without_selected_note:
+            folder = _get_folder(
+                workspace_folders_module,
+                folder_id,
+                logger=logger,
+            )
+            if not folder:
+                return _notes_mode_without_selected_note_error(
+                    workspace_folder_notes.REASON_FOLDER_NOT_LINKED,
+                )
+            if folder.get("deleted_at"):
+                return _notes_mode_without_selected_note_error("workspace_folder_deleted")
             return WorkspaceFolderNotesPromptRead(
                 status=READ_STATUS_OK,
                 reason_code=REASON_MODE_ACTIVE_WITHOUT_SELECTION,
@@ -350,6 +363,14 @@ def _blocked_prompt_read(
         requested_count=valid_requested_count,
         invalid_requested_count=invalid_count,
         over_limit_count=len(over_limit_note_ids),
+    )
+
+
+def _notes_mode_without_selected_note_error(reason_code: str) -> WorkspaceFolderNotesPromptRead:
+    return WorkspaceFolderNotesPromptRead(
+        status=READ_STATUS_ERROR,
+        reason_code=reason_code,
+        requested_count=1,
     )
 
 

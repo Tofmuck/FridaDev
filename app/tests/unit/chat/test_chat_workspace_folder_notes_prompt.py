@@ -29,7 +29,11 @@ NOTE_ID = "33333333-3333-4333-8333-333333333333"
 
 
 class _FakeWorkspaceFolders:
+    def __init__(self):
+        self.calls = []
+
     def get_workspace_folder(self, folder_id, *, include_deleted=False):
+        self.calls.append({"folder_id": folder_id, "include_deleted": include_deleted})
         if folder_id != FOLDER_ID:
             return None
         return {
@@ -92,10 +96,11 @@ class _FakeNotesRead:
 class ChatWorkspaceFolderNotesPromptTests(unittest.TestCase):
     def test_workspace_notes_mode_without_selected_note_is_visible_to_backend_prompt(self) -> None:
         reader = _FakeNotesRead("unused markdown should not be read")
+        folders = _FakeWorkspaceFolders()
         result = workspace_folder_notes_prompt_lane.read_workspace_folder_notes_for_prompt(
             data={"workspace_notes_mode": True},
             conversation={"workspace_folder_id": FOLDER_ID},
-            workspace_folders_module=_FakeWorkspaceFolders(),
+            workspace_folders_module=folders,
             workspace_folder_notes_module=workspace_folder_notes,
             workspace_folder_notes_read_module=reader,
         )
@@ -110,6 +115,7 @@ class ChatWorkspaceFolderNotesPromptTests(unittest.TestCase):
         )
 
         self.assertEqual(reader.calls, [])
+        self.assertEqual(folders.calls, [{"folder_id": FOLDER_ID, "include_deleted": True}])
         self.assertEqual(result.status, workspace_folder_notes_prompt_lane.READ_STATUS_OK)
         self.assertEqual(
             result.reason_code,
