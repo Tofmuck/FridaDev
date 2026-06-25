@@ -16,6 +16,7 @@ from agenda.caldav_models import CalendarEvent
 STATUS_OK = 'ok'
 STATUS_BLOCKED = 'blocked'
 STATUS_SKIPPED = 'skipped'
+STATUS_ERROR = 'error'
 
 REASON_PENDING_CREATED = 'agenda_pending_action_created'
 REASON_NOT_PENDING_METHOD = 'agenda_pending_method_not_supported'
@@ -26,6 +27,7 @@ REASON_PENDING_EXPIRED = 'agenda_pending_action_expired'
 REASON_CONFIRMATION_NOT_EXECUTABLE = 'agenda_pending_confirmation_not_executable_lot7'
 REASON_TARGET_NOT_VERIFIED = proposal_target_verification.REASON_TARGET_NOT_VERIFIED
 REASON_PENDING_DRAFT_INVALID = pending_drafts.REASON_PENDING_DRAFT_INVALID
+REASON_READ_CLIENT_RESOLUTION_ERROR = 'agenda_pending_read_client_resolution_error'
 
 
 @dataclass(frozen=True)
@@ -167,6 +169,34 @@ def execute_pending_plan(
     if method.name == product_methods.METHOD_CANCEL_PENDING_AGENDA_ACTION:
         return _cancel_pending(plan, state=state, now_iso=now_iso)
     return _blocked(plan, state=state, reason_code=REASON_NOT_PENDING_METHOD)
+
+
+def client_resolution_error_result(
+    plan: agent_contract.AgendaAgentPlan,
+    *,
+    conversation_state: pending_store.AgendaPendingState | Mapping[str, Any] | None,
+    now_iso: str,
+    error_class: str = '',
+) -> AgendaProposalExecutionResult:
+    state = pending_store.expire_pending_actions(
+        _state_from_input(conversation_state),
+        now_iso=now_iso,
+    )
+    method = product_methods.get_method(plan.product_method)
+    operation = method.mutation_kind if method is not None else ''
+    return AgendaProposalExecutionResult(
+        status=STATUS_ERROR,
+        reason_code=REASON_READ_CLIENT_RESOLUTION_ERROR,
+        product_method=str(plan.product_method or ''),
+        operation=str(operation or ''),
+        state=state,
+        target_clear=False,
+        caldav_access=False,
+        nextcloud_access=False,
+        secret_access=False,
+        target_verification_tool_names=tuple(str(call.tool_name or '') for call in plan.tool_calls),
+        target_verification_error_class=str(error_class or ''),
+    )
 
 
 def _execute_proposal(

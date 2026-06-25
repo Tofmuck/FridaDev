@@ -29,6 +29,7 @@ REASON_EXECUTED = 'agenda_readonly_executed'
 REASON_NOT_READ_METHOD = 'agenda_readonly_method_not_read'
 REASON_NO_TOOL_CALLS = 'agenda_readonly_no_tool_calls'
 REASON_CLIENT_UNAVAILABLE = 'agenda_readonly_client_unavailable'
+REASON_CLIENT_RESOLUTION_ERROR = 'agenda_readonly_client_resolution_error'
 REASON_TOOL_ERROR = 'agenda_readonly_tool_error'
 REASON_TOOL_UNSUPPORTED = 'agenda_readonly_tool_unsupported'
 REASON_CALENDAR_SCOPE_UNRESOLVED = 'agenda_readonly_calendar_scope_unresolved'
@@ -190,6 +191,23 @@ def execute_readonly_plan(
             error_class=exc.__class__.__name__,
             attempted_tool_names=tuple(attempted_tool_names),
         )
+
+
+def client_resolution_error_result(
+    plan: agent_contract.AgendaAgentPlan,
+    *,
+    error_class: str = '',
+) -> AgendaReadExecutionResult:
+    return AgendaReadExecutionResult(
+        status=STATUS_ERROR,
+        reason_code=REASON_CLIENT_RESOLUTION_ERROR,
+        product_method=str(plan.product_method or ''),
+        caldav_access=False,
+        nextcloud_access=False,
+        mutation_attempted=False,
+        error_class=str(error_class or ''),
+        attempted_tool_names=tuple(str(call.tool_name or '') for call in plan.tool_calls),
+    )
 
 
 def _execute_tool_call(

@@ -47,6 +47,19 @@ class AgendaChatResult:
     pending_state: Any = field(default=None, repr=False, compare=False)
 
 
+@dataclass(frozen=True)
+class AgendaClientResolution:
+    client: Any = field(default=None, repr=False, compare=False)
+    live_caldav: bool = False
+    status: str = 'unavailable'
+    reason_code: str = ''
+    error_class: str = ''
+
+    @property
+    def is_error(self) -> bool:
+        return self.status == 'error'
+
+
 def build_lot1_observability_payload(
     *,
     enabled: bool,
@@ -349,7 +362,7 @@ def run_agenda_chat_turn(
     final_lock = None
     if result.validated_plan is not None and result.status == agent_runtime.STATUS_ACTIVE_READY:
         if proposal_execution.plan_needs_pending_store(result.validated_plan):
-            proposal_client, proposal_live_caldav = _resolve_proposal_read_client(
+            proposal_client_resolution = _resolve_proposal_read_client(
                 settings=settings,
                 plan=result.validated_plan,
                 injected_client=read_client,
@@ -357,36 +370,50 @@ def run_agenda_chat_turn(
                 requests_module=requests_module,
                 config_module=config_module,
             )
-            proposal_result = proposal_execution.execute_pending_plan(
-                result.validated_plan,
-                conversation_state=pending_state,
-                now_iso=str(now_iso or ''),
-                id_factory=pending_id_factory,
-                read_client=proposal_client,
-                live_caldav=proposal_live_caldav,
-                write_client=write_client,
-                live_write_caldav=False,
-                uid_factory=write_uid_factory,
-            )
+            if proposal_client_resolution.is_error:
+                proposal_result = proposal_execution.client_resolution_error_result(
+                    result.validated_plan,
+                    conversation_state=pending_state,
+                    now_iso=str(now_iso or ''),
+                    error_class=proposal_client_resolution.error_class,
+                )
+            else:
+                proposal_result = proposal_execution.execute_pending_plan(
+                    result.validated_plan,
+                    conversation_state=pending_state,
+                    now_iso=str(now_iso or ''),
+                    id_factory=pending_id_factory,
+                    read_client=proposal_client_resolution.client,
+                    live_caldav=proposal_client_resolution.live_caldav,
+                    write_client=write_client,
+                    live_write_caldav=False,
+                    uid_factory=write_uid_factory,
+                )
             pending_state = proposal_result.state or pending_state
             final_lock = proposal_rendering.build_proposal_response_lock(
                 plan=result.validated_plan,
                 proposal_result=proposal_result,
             )
         elif read_execution.plan_needs_read_client(result.validated_plan):
-            resolved_client, live_caldav = _resolve_read_client(
+            client_resolution = _resolve_read_client(
                 settings=settings,
                 injected_client=read_client,
                 runtime_settings_module=runtime_settings_module,
                 requests_module=requests_module,
                 config_module=config_module,
             )
-            execution_result = read_execution.execute_readonly_plan(
-                result.validated_plan,
-                client=resolved_client,
-                live_caldav=live_caldav,
-                now_iso=str(now_iso or ''),
-            )
+            if client_resolution.is_error:
+                execution_result = read_execution.client_resolution_error_result(
+                    result.validated_plan,
+                    error_class=client_resolution.error_class,
+                )
+            else:
+                execution_result = read_execution.execute_readonly_plan(
+                    result.validated_plan,
+                    client=client_resolution.client,
+                    live_caldav=client_resolution.live_caldav,
+                    now_iso=str(now_iso or ''),
+                )
             final_lock = response_rendering.build_final_response_lock(
                 plan=result.validated_plan,
                 execution_result=execution_result,
@@ -494,37 +521,42 @@ def _resolve_read_client(
     runtime_settings_module: Any = None,
     requests_module: Any = None,
     config_module: Any = None,
-) -> tuple[Any, bool]:
+) -> AgendaClientResolution:
     if injected_client is not None:
-        return injected_client, False
+        return AgendaClientResolution(client=injected_client, live_caldav=False, status='ok')
     if settings.normalized_mode() != agent_contract.MODE_ACTIVE:
-        return None, False
+        return AgendaClientResolution()
     if not settings.caldav_secret_configured:
-        return None, False
+        return AgendaClientResolution()
     if runtime_settings_module is None or requests_module is None:
-        return None, False
+        return AgendaClientResolution()
     secret_reader = getattr(runtime_settings_module, 'get_runtime_secret_value', None)
     if not callable(secret_reader):
-        return None, False
+        return AgendaClientResolution()
     try:
         secret = secret_reader(
             runtime_config.AGENDA_AGENT_SECTION,
             runtime_config.CALDAV_APP_PASSWORD_FIELD,
         )
-    except Exception:
-        return None, False
-    app_password = str(getattr(secret, 'value', '') or '')
-    if not app_password:
-        return None, False
-    return (
-        caldav_transport.build_live_caldav_read_client(
-            account=settings.caldav_account,
-            app_password=app_password,
-            requests_module=requests_module,
-            config_module=config_module,
-        ),
-        True,
-    )
+        app_password = str(getattr(secret, 'value', '') or '')
+        if not app_password:
+            return AgendaClientResolution()
+        return AgendaClientResolution(
+            client=caldav_transport.build_live_caldav_read_client(
+                account=settings.caldav_account,
+                app_password=app_password,
+                requests_module=requests_module,
+                config_module=config_module,
+            ),
+            live_caldav=True,
+            status='ok',
+        )
+    except Exception as exc:
+        return AgendaClientResolution(
+            status='error',
+            reason_code=read_execution.REASON_CLIENT_RESOLUTION_ERROR,
+            error_class=exc.__class__.__name__,
+        )
 
 
 def _resolve_proposal_read_client(
@@ -535,7 +567,7 @@ def _resolve_proposal_read_client(
     runtime_settings_module: Any = None,
     requests_module: Any = None,
     config_module: Any = None,
-) -> tuple[Any, bool]:
+) -> AgendaClientResolution:
     if not proposal_execution.plan_can_attempt_target_verification(
         plan,
         injected_client=injected_client is not None,
@@ -543,7 +575,7 @@ def _resolve_proposal_read_client(
         injected_client is not None
         and proposal_execution.plan_can_attempt_calendar_classification(plan)
     ):
-        return None, False
+        return AgendaClientResolution()
     return _resolve_read_client(
         settings=settings,
         injected_client=injected_client,

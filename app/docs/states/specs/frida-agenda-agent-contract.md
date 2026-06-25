@@ -5,7 +5,7 @@ Date: 2026-06-08
 Classement: `app/docs/states/specs/`
 TODO produit: `app/docs/todo-todo/product/frida-agenda-agent.md`
 Cloture V1: `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
-Portee: contrat cible du futur agent Agenda Frida. Lots 1-7D.1 livrent toggle
+Portee: contrat cible de l'agent Agenda Frida V1. Lots 1-7D.1 livrent toggle
 no-op, configuration redacted, outils read-only, agent JSON valide,
 branchement applicatif read-only et preuve CalDAV live content-free. Les
 propositions Agenda creent des pending actions temporaires; Lot 7A livre les
@@ -98,8 +98,8 @@ Surfaces existantes a respecter:
 
 - `app/web/chat_biblio_mode.js`: toggle conversationnel frontend
   `biblio_enabled`, persiste localement cote navigateur;
-- `app/web/index.html` et `app/web/app.js`: zone naturelle pour un futur bouton
-  Agenda dans les controles du composer, avec payload ajoute a `/api/chat`;
+- `app/web/index.html` et `app/web/app.js`: surface du toggle Agenda dans les
+  controles du composer, avec payload `agenda_enabled` ajoute a `/api/chat`;
 - `app/admin/runtime_settings_spec.py`: section `biblio_librarian_agent` comme
   modele d'une configuration runtime agent separee du toggle utilisateur;
 - `app/core/chat_service.py`: orchestration du tour, lecture du toggle Biblio,

@@ -1,13 +1,13 @@
 # Frida Agenda Agent - TODO produit
 
-Statut: V1 pragmatiquement clos; TODO maintenue en `todo-todo` comme post-V1
-dormante.
+Statut: runtime Agenda V1 implemente, cable dans le chat et pragmatiquement
+clos; cette TODO large reste en `todo-todo` comme chantier post-V1 dormant.
 Clarification Lot 2B: 2026-06-23
 Spec source: `app/docs/states/specs/frida-agenda-agent-contract.md`
 Baseline Lot 0: `app/docs/states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
 Fixtures Lot 0: `app/docs/states/baselines/agenda-fixtures/`
 Cloture V1: `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
-Portee: roadmap runtime bornee du futur agent Agenda; Lots 1-7D.1 livrent
+Portee: roadmap runtime bornee de l'agent Agenda V1; Lots 1-7D.1 livrent
 toggle no-op, configuration redacted, outils read-only, agent JSON valide sous
 garde-fous, branchement applicatif read-only et preuve CalDAV live content-free,
 propositions/pending store temporaire, confirmations fake Lot 7A et preuve live
@@ -44,16 +44,16 @@ Clarification de statut pour la cloture Frida 1.0:
 
 - Agenda V1 est considere utile et pragmatiquement clos dans le perimetre prouve
   par la note de cloture du 2026-06-09.
-- Cette TODO reste dans `todo-todo` seulement comme support post-V1 dormant,
-  afin de conserver les familles, limites et reprises possibles sans les vendre
-  comme no-go Frida 1.0.
+- Le runtime Agenda existe, reste activable via `agenda_enabled` et la section
+  runtime `agenda_agent`; ce qui demeure post-V1 dormant est le chantier large
+  de nouvelles capacites Agenda conserve dans cette TODO.
 - Les cases ouvertes, l'auto-audit permanent, Lot 9, les disponibilites riches,
   invitations, rappels, recurrences riches et mutations utilisateur reelles sont
   hors cloture Frida 1.0.
 - Toute reprise doit etre explicite: bug reel, besoin utilisateur concret ou GO
   operateur / decision produit dediee.
-- Le present statut n'ouvre aucun runtime Agenda, aucun acces CalDAV, aucun
-  smoke live, aucune mutation et aucun pending store.
+- Le present statut ne rouvre aucun nouveau lot Agenda riche, aucun smoke live,
+  aucune mutation utilisateur reelle et aucun changement de pending store.
 
 Question prealable: existe-t-il un meilleur plan ?
 

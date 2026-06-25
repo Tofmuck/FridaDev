@@ -639,6 +639,80 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('fixture-secret-value', encoded_payload)
         self.assertNotIn('Authorization', encoded_payload)
 
+    def test_active_runtime_secret_reader_error_is_observed_as_read_error(self) -> None:
+        fake_model = _FakeModelClient(_valid_payload())
+        runtime_settings = _SecretExplodingRuntimeSettings()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+            requests_module=SimpleNamespace(),
+        )
+
+        self.assertEqual(result.status, agent_runtime.STATUS_ACTIVE_READY)
+        self.assertFalse(result.used)
+        self.assertIsNone(result.final_response_lock)
+        self.assertIsNotNone(result.read_execution_result)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_ERROR)
+        self.assertEqual(
+            result.read_execution_result.reason_code,
+            read_execution.REASON_CLIENT_RESOLUTION_ERROR,
+        )
+        payload = result.observability_payload
+        self.assertEqual(payload['read_execution_status'], 'error')
+        self.assertEqual(
+            payload['read_execution_reason_code'],
+            read_execution.REASON_CLIENT_RESOLUTION_ERROR,
+        )
+        self.assertEqual(payload['error_class'], 'RuntimeError')
+        self.assertEqual(payload['read_tool_names'], [product_methods.TOOL_EVENT_QUERY_RANGE])
+        self.assertFalse(payload['caldav_access'])
+        self.assertFalse(payload['nextcloud_access'])
+        self.assertFalse(payload['secret_access'])
+        encoded_payload = json.dumps(payload, sort_keys=True)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+        self.assertNotIn('RAW_CALDAV_SECRET_BOOM', encoded_payload)
+
+    def test_active_runtime_empty_secret_value_remains_client_unavailable(self) -> None:
+        fake_model = _FakeModelClient(_valid_payload())
+        runtime_settings = _SecretCountingRuntimeSettings(value='')
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+            requests_module=SimpleNamespace(),
+        )
+
+        self.assertEqual(runtime_settings.secret_reads, 1)
+        self.assertFalse(result.used)
+        self.assertIsNotNone(result.read_execution_result)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_SKIPPED)
+        self.assertEqual(
+            result.read_execution_result.reason_code,
+            read_execution.REASON_CLIENT_UNAVAILABLE,
+        )
+        payload = result.observability_payload
+        self.assertEqual(payload['read_execution_status'], 'skipped')
+        self.assertEqual(payload['read_execution_reason_code'], read_execution.REASON_CLIENT_UNAVAILABLE)
+        self.assertEqual(payload['error_class'], '')
+        self.assertFalse(payload['caldav_access'])
+        self.assertFalse(payload['secret_access'])
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', json.dumps(payload, sort_keys=True))
+
     def test_active_runtime_records_attempted_read_tool_and_error_class_on_caldav_error(self) -> None:
         fake_model = _FakeModelClient(
             _valid_payload(
@@ -1633,6 +1707,70 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('/remote.php/dav', encoded_payload)
         self.assertNotIn('fixture-etag-001', encoded_payload)
         self.assertNotIn('BEGIN:VCALENDAR', encoded_payload)
+
+    def test_proposal_read_client_secret_reader_error_is_observed_as_pending_error(self) -> None:
+        fake_model = _FakeModelClient(
+            _proposal_payload(
+                product_method=product_methods.METHOD_PROPOSE_UPDATE_EVENT,
+                operation='update',
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': {
+                            'start': '2026-06-08T00:00:00Z',
+                            'end': '2026-06-09T00:00:00Z',
+                            'timezone': 'Europe/Paris',
+                        },
+                        'call_id': 'range-1',
+                    },
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_GET,
+                        'method': 'GET',
+                        'params': {'event_id': _live_fixture_event_id()},
+                        'call_id': 'target-1',
+                    },
+                ],
+            )
+        )
+        runtime_settings = _SecretExplodingRuntimeSettings()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='RAW USER MESSAGE MUST NOT LEAK',
+            now_iso='2026-06-08T12:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            runtime_settings_module=runtime_settings,
+            agent_model_client=fake_model,
+            requests_module=SimpleNamespace(),
+            pending_id_factory=lambda: 'agenda-pending-update-caldav-1',
+        )
+
+        self.assertFalse(result.used)
+        self.assertIsNotNone(result.proposal_execution_result)
+        self.assertEqual(result.proposal_execution_result.status, proposal_execution.STATUS_ERROR)
+        self.assertEqual(
+            result.proposal_execution_result.reason_code,
+            proposal_execution.REASON_READ_CLIENT_RESOLUTION_ERROR,
+        )
+        self.assertFalse(result.proposal_execution_result.target_clear)
+        payload = result.observability_payload
+        self.assertEqual(payload['pending_execution_status'], 'error')
+        self.assertEqual(
+            payload['pending_execution_reason_code'],
+            proposal_execution.REASON_READ_CLIENT_RESOLUTION_ERROR,
+        )
+        self.assertEqual(payload['pending_execution']['target_verification_error_class'], 'RuntimeError')
+        self.assertFalse(payload['caldav_access'])
+        self.assertFalse(payload['nextcloud_access'])
+        self.assertFalse(payload['secret_access'])
+        encoded_payload = json.dumps(payload, sort_keys=True)
+        self.assertNotIn('RAW USER MESSAGE MUST NOT LEAK', encoded_payload)
+        self.assertNotIn('RAW_CALDAV_SECRET_BOOM', encoded_payload)
+        self.assertNotIn(_live_fixture_event_id(), encoded_payload)
 
     def test_propose_update_runtime_caldav_fake_transport_allows_search_before_target_get(self) -> None:
         event_id = _live_fixture_event_id()
@@ -3420,6 +3558,12 @@ class _SecretCountingRuntimeSettings:
             (),
             {'section': section, 'field': field, 'value': self.value},
         )()
+
+
+class _SecretExplodingRuntimeSettings:
+    def get_runtime_secret_value(self, section, field):
+        del section, field
+        raise RuntimeError('RAW_CALDAV_SECRET_BOOM')
 
 
 class _FakeHttpResponse:

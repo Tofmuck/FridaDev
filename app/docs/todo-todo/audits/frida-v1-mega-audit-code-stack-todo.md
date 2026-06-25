@@ -73,7 +73,8 @@ backup/rollback et health checks.
   large-files amplified.
 - Invalides/stale: bypass public Authelia, bypass lateral `/api/admin/*`,
   ports publics hors Caddy, JSONL invalides, secrets repo committes non
-  confirmes. Agenda dormant wording reste P3 faible / `needs_targeted_validation`.
+  confirmes. Le wording Agenda est requalifie: runtime Agenda implemente,
+  chantier/TODO large Agenda post-V1 dormant.
 
 ## Lot 1A - Investigation permissions `.env`
 
@@ -1332,24 +1333,39 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 - Hors-scope: changement doctrinal du primary node, refactor memory/identity,
   logs raw Lot 6.
 
-### P3-CEL-AGENDA-CLIENT-UNAVAILABLE-AMBIGUITY-01
+### P2-CEL-AGENDA-CLIENT-UNAVAILABLE-AMBIGUITY-01
 
-- Statut courant: needs_targeted_validation_post_v1.
-- Severite: P3.
-- Classe: `P3_intentional_fallback_needs_doc`.
-- Fichiers suspects: `app/agenda/chat_runtime.py`,
-  `app/agenda/read_execution.py`, `app/agenda/write_execution.py`.
-- Constat Lot 4D: l'execution read/write Agenda distingue correctement les
-  erreurs client/outils avec `status=error` ou `blocked` et reason codes
-  stables. En revanche, la resolution du client live peut retourner `None`
-  sur exception de lecture secret/config, ce qui se projette ensuite comme
-  `agenda_readonly_client_unavailable`.
-- Impact: faible en V1 car Agenda est dormant/pragmatically closed, mais une
-  future reactivation devrait distinguer secret/config indisponible de
-  fonctionnalite volontairement non configuree.
-- Decision Lot 4D: pas de patch runtime Agenda; sujet post-V1/dormant a
-  valider seulement avant reouverture Agenda.
-- Lot cible: post-V1 ou Lot 8 docs si formulation necessaire.
+- Statut courant: closed_by_lot_4D_3.
+- Severite finale: P2.
+- Classe: `P2_error_as_empty`.
+- Fichiers touches: `app/agenda/chat_runtime.py`,
+  `app/agenda/read_execution.py`, `app/agenda/proposal_execution.py`,
+  `app/observability/observability_payload_guard_schema.py`,
+  `app/tests/unit/agenda/test_chat_runtime.py`.
+- Requalification Lot 4D.3: Agenda n'est pas dormant au sens runtime. Le
+  runtime Agenda est implemente, branche dans `chat_service`, activable par
+  toggle utilisateur et section runtime `agenda_agent`; le chantier/TODO large
+  Agenda reste seul post-V1 dormant.
+- Constat valide Lot 4D.3: `_resolve_read_client()` attrapait une exception de
+  lecture secret/config et retournait `(None, False)`. Un plan read sortait
+  ensuite `status=skipped`, `reason_code=agenda_readonly_client_unavailable`;
+  le chemin proposal delegue a `_resolve_read_client()` pouvait de meme perdre
+  le signal de panne.
+- Impact: une panne runtime actuelle de resolution client Agenda pouvait etre
+  lue comme absence volontaire de client ou indisponibilite normale, alors que
+  le mode actif et le secret configure impliquent une vraie erreur operatoire.
+- Correction Lot 4D.3: la resolution client porte maintenant un etat
+  content-free. Client absent volontaire / secret vide reste
+  `agenda_readonly_client_unavailable`; secret non configure reste
+  `agenda_agent_secret_not_configured`; exception secret/config devient
+  `status=error` avec `agenda_readonly_client_resolution_error` sur read, et
+  `agenda_pending_read_client_resolution_error` sur proposal.
+- Preuve Lot 4D.3: tests fake/local secret reader qui leve, secret vide,
+  client absent normal, read plan et proposal plan, sans secret, URL CalDAV ni
+  exception brute dans payload.
+- Lot cible: Lot 4D.3.
+- Hors-scope: pas de CalDAV live, pas de provider live, pas de nouvelles
+  capacites Agenda, pas de modification DB.
 
 ### P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01
 
@@ -1460,13 +1476,17 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P3-CEL-AGENDA-DORMANT-WORDING-01
 
-- Statut initial: needs_targeted_validation.
+- Statut courant: closed_by_lot_4D_3.
 - Severite: P3.
-- Fichier suspect: `app/docs/todo-todo/product/frida-agenda-agent.md`.
-- Lot cible: Lot 8.
-- Critere de cloture: confirmer qu'aucune phrase ne rouvre Agenda runtime, ou
-  micro-correction docs-only.
-- Preuve minimale: grep statut dormant/post-V1.
+- Fichiers touches: `app/docs/todo-todo/product/frida-agenda-agent.md`,
+  `AGENTS.md`, `README.md`, `app/docs/README.md`,
+  `app/docs/states/specs/frida-agenda-agent-contract.md`.
+- Lot cible: Lot 4D.3.
+- Resolution: les docs actives distinguent maintenant le runtime Agenda V1
+  implemente/cable/activable et la roadmap/TODO large Agenda post-V1
+  dormante.
+- Preuve minimale: grep statut dormant/post-V1 qualifie, aucun `futur agent
+  Agenda` ni `futur bouton` actif.
 
 ### P3-CEL-LOG-FRONTEND-DENYLIST-01
 
@@ -1642,8 +1662,8 @@ Resultat Lot 4B:
 - [x] Corriger le fail-open borne `P2-CEL-WEB-DISCOVERY-FAIL-OPEN-01`.
 - [x] Ne pas absorber les sujets Lot 6 `str(exc)` / raw logs.
 - [x] Lot 4D.2: valider/corriger `P2-CEL-MEMORY-INPUT-FAIL-OPEN-01`.
-- [ ] Lot 4D.3: revalider Agenda client unavailable seulement avant
-  reouverture Agenda ou decision produit explicite.
+- [x] Lot 4D.3: valider/corriger Agenda runtime client unavailable et wording
+  dormant.
 
 Resultat Lot 4D:
 
@@ -1672,6 +1692,21 @@ Resultat Lot 4D.2:
   `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01`,
   `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01`,
   `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01`.
+
+Resultat Lot 4D.3:
+
+- Requalifie: Agenda runtime n'est pas dormant; seul le chantier/TODO large
+  Agenda reste post-V1 dormant.
+- Corrige: exception lecture secret/config read client ->
+  `status=error`, `reason_code=agenda_readonly_client_resolution_error`, pas
+  `skipped/client_unavailable`.
+- Corrige: exception resolution read client sur proposal ->
+  `status=error`, `reason_code=agenda_pending_read_client_resolution_error`.
+- Preserve: toggle off -> `disabled/agenda_toggle_off`; secret non configure
+  -> `fallback/agenda_agent_secret_not_configured`; secret vide ou client
+  volontairement absent -> `agenda_readonly_client_unavailable`.
+- Non absorbe: capacites Agenda riches, CalDAV live smoke, provider live,
+  mutations utilisateur reelles et Lot 6 observabilite generale.
 
 #### Lot 4E - Decision gros fichiers/orchestration sans refactor massif
 
@@ -1718,7 +1753,8 @@ Resultat Lot 4D.2:
 - [ ] Reclasser audits superseded encore en `todo-todo/audits`.
 - [ ] Clarifier checkboxes historiques.
 - [ ] Corriger `/opt/platform/AGENTS.md` admin token stale, sans runtime.
-- [ ] Clarifier wording Agenda dormant si encore ambigu.
+- [ ] Maintenir la distinction runtime Agenda implemente / roadmap Agenda
+  post-V1 dormante dans les futurs index docs.
 - [ ] Clarifier commentaires Biblio stale.
 - [ ] Trancher doctrine filenames content-free/metadonnees produit.
 - [ ] Mettre a jour index si chemins bougent.

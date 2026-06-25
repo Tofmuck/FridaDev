@@ -24,7 +24,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat Notes Markdown Frida V1 2026-06-18: `states/specs/frida-v1-folder-markdown-notes-contract.md` pour notes rattachees a `workspace_folders`, cible `/Frida/<dossier>/Notes/<titre_sanitise>.md`, modele local Notes dedie, absence de corps Markdown local, append ETag/If-Match et observabilite content-free. TODO de livraison archivee: `todo-done/product/frida-v1-folder-markdown-notes-todo.md`.
 - Contrat Exports Frida V1 2026-06-18: `states/specs/frida-v1-exports-contract.md` pour exports rattaches a `workspace_folders`, cible `/Frida/<dossier>/Exports`, sources explicites, formats Markdown/TXT/DOCX/PDF, read-model `workspace_folder_exports`, no overwrite, reutilisation bornee et observabilite content-free. TODO de livraison archivee: `todo-done/product/frida-v1-exports-todo.md`.
 - Contrat Images generees Frida V1 2026-06-19: `states/specs/frida-v1-generated-images-contract.md` pour images generees rattachees a `workspace_folders`, cible `/Frida/<dossier>/Images`, read-model `workspace_folder_generated_images`, formats PNG/JPEG/WebP, prompt brut non stocke durablement, separation outil V0 / V1 durable et observabilite content-free. TODO de livraison archivee: `todo-done/product/frida-v1-generated-images-todo.md`.
-- Contrat Observabilite agentique Frida V1 2026-06-20: `states/specs/frida-v1-agentic-observability-contract.md` pour taxonomie status/reason/severity, no-op agentiques, historique vs recent, JSONL content-free, Agenda post-V1 dormant et reset observabilite post-cloture. TODO de livraison archivee: `todo-done/product/frida-v1-agentic-observability-todo.md`.
+- Contrat Observabilite agentique Frida V1 2026-06-20: `states/specs/frida-v1-agentic-observability-contract.md` pour taxonomie status/reason/severity, no-op agentiques, historique vs recent, JSONL content-free, Agenda runtime vs roadmap post-V1 et reset observabilite post-cloture. TODO de livraison archivee: `todo-done/product/frida-v1-agentic-observability-todo.md`.
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit stack locale SearXNG/Crawl4AI vs benchmark web 2026-05-21: `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
@@ -40,7 +40,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat Biblio native / Frida Catalogue 2026-05-28: `states/specs/frida-biblio-native-catalogue-contract.md`
 - Contrat agent bibliothecaire Biblio 2026-05-31: `states/specs/frida-biblio-librarian-agent-contract.md`
 - Contrat agent Agenda Frida 2026-06-08: `states/specs/frida-agenda-agent-contract.md`
-- TODO post-V1 dormant agent Agenda Frida 2026-06-08: `todo-todo/product/frida-agenda-agent.md`
+- TODO runtime Agenda V1 / roadmap post-V1 Frida 2026-06-08: `todo-todo/product/frida-agenda-agent.md`
 - Cartographie des questions Agenda 2026-06-09: `states/audits/frida-agenda-question-cartography-2026-06-09.md`
 - Cloture pragmatique Agenda V1 2026-06-09: `states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
 - Baseline Lot 0 agent Agenda Frida 2026-06-08: `states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md`
@@ -96,7 +96,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
 - Protocole streaming public: `states/specs/streaming-protocol.md`
 - Contrat de surface agentique: `states/specs/agentic-response-surface-contract.md`
-- Contrat source-of-truth du futur agent Agenda: `states/specs/frida-agenda-agent-contract.md`
+- Contrat source-of-truth de l'agent/runtime Agenda V1: `states/specs/frida-agenda-agent-contract.md`
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
 - Contrat Documents ingestion Frida V1: `states/specs/frida-v1-documents-ingestion-contract.md`
 - Contrat Notes Markdown Frida V1: `states/specs/frida-v1-folder-markdown-notes-contract.md`
@@ -234,8 +234,8 @@ But: relire le chantier livre permettant a Frida de consulter explicitement une 
 ### Agent Agenda Frida
 
 Lire d'abord:
-- `states/specs/frida-agenda-agent-contract.md` pour le contrat cible du futur agent Agenda: toggle `agenda_enabled`, agent borne, methodes produit, outils CalDAV, confirmations humaines, pending store temporaire, observabilite content-free et invariants securite.
-- `todo-todo/product/frida-agenda-agent.md` pour la TODO post-V1 dormante: familles lecture, clarification, proposition, ecriture confirmee, contexte/memoire et dettes a rouvrir seulement sur bug reel, besoin concret ou decision explicite.
+- `states/specs/frida-agenda-agent-contract.md` pour le contrat de l'agent/runtime Agenda V1: toggle `agenda_enabled`, agent borne, methodes produit, outils CalDAV, confirmations humaines, pending store temporaire, observabilite content-free et invariants securite.
+- `todo-todo/product/frida-agenda-agent.md` pour la TODO runtime Agenda V1 / roadmap post-V1: familles lecture, clarification, proposition, ecriture confirmee, contexte/memoire et dettes a rouvrir seulement sur bug reel, besoin concret ou decision explicite.
 - `states/audits/frida-agenda-question-cartography-2026-06-09.md` pour la cartographie des familles de questions: disponibilite utilisateur, preuve conservee, limites et prochains tests utiles.
 - `states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md` pour la cloture pragmatique V1: capacites prouvees, limites post-V1 et regle de reouverture par bug reel ou besoin concret.
 - `states/baselines/frida-agenda-agent-lot0-baseline-2026-06-08.md` et `states/baselines/agenda-fixtures/` pour la baseline Lot 0, les fixtures CalDAV anonymes locales et la preuve content-free attendue.
