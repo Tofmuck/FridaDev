@@ -17,7 +17,21 @@ def build_summary_input(
     *,
     active_summary: Mapping[str, Any] | None,
     conversation_id: str | None = None,
+    status: str | None = None,
+    reason_code: str | None = None,
+    error_code: str | None = None,
+    error_class: str | None = None,
 ) -> dict[str, Any]:
+    if status == "error":
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "status": "error",
+            "reason_code": _optional_str(reason_code),
+            "error_code": _optional_str(error_code),
+            "error_class": _optional_str(error_class),
+            "summary": None,
+        }
+
     if not isinstance(active_summary, Mapping):
         return {
             "schema_version": SCHEMA_VERSION,

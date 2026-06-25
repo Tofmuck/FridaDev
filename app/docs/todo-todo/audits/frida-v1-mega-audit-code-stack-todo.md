@@ -29,6 +29,8 @@ Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-c
   `no_data` dans le payload/runtime event content-free.
 - Lot 4D: audit fail-open runtime execute; correction bornee appliquee sur
   discovery web OpenRouter, autres candidats classes sans refactor large.
+- Lot 4D.2: memory/identity/summary input fail-open valide puis corrige;
+  les pannes de lecture atteignent les inputs primaires comme `error`.
 
 ## Doctrine securite plateforme avant audit code
 
@@ -1300,27 +1302,33 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-MEMORY-INPUT-FAIL-OPEN-01
 
-- Statut courant: needs_targeted_validation.
-- Severite: P2 potentiel.
+- Statut courant: closed_by_lot_4D_2.
+- Severite: P2.
 - Classe: `P2_error_as_empty`.
-- Fichiers suspects: `app/core/chat_turn_runtime_inputs.py`,
+- Fichiers touches: `app/core/chat_turn_runtime_inputs.py`,
   `app/core/hermeneutic_node/inputs/identity_input.py`,
   `app/core/hermeneutic_node/inputs/summary_input.py`,
-  `app/memory/memory_context_read.py`, `app/identity/identity.py`.
-- Constat Lot 4D: les lectures identite/memoire emettent parfois un event
-  `status=error`, mais les entrees canoniques `identity_input` et certains
-  resolvers de summary retombent ensuite sur un payload vide/missing sans
-  champ explicite `error` ou `read_error` pour le noeud primaire.
-- Impact possible: une panne store memoire peut devenir indistinguable d'une
-  absence normale d'identite/summary dans le payload de decision, meme si un
-  event d'observabilite existe ailleurs.
-- Decision Lot 4D: pas de correction dans ce lot, car la surface touche le
-  contrat canonique des inputs memoire/identite et exige des tests de prompt
-  payload + primary node.
+  `app/tests/unit/core/test_chat_turn_runtime_inputs.py`.
+- Constat valide Lot 4D.2: `resolve_summary_input()` transformait une
+  exception de lecture summary en `status=missing`, et
+  `resolve_identity_input()` transformait une exception identity en payload
+  `v2` vide sans `status` ni `reason_code`. La retrieval memoire dense et
+  arbitration etaient deja correctes via `memory_retrieved.status=error` et
+  `reason_code=retrieve_error`.
+- Impact: le primary node / validation agent pouvait lire une panne summary ou
+  identity comme absence normale de donnees, tout en perdant le signal
+  content-free de panne dans les canonical inputs.
+- Correction Lot 4D.2: les builders canoniques portent maintenant un statut
+  content-free; absence normale reste `missing`, donnees presentes deviennent
+  `available`, et panne de lecture devient `status=error` avec
+  `reason_code=summary_read_error` ou `identity_read_error`, `error_code`
+  `upstream_error`, `error_class` qualifie.
+- Preuve Lot 4D.2: tests fakes summary/identity read error, absence normale,
+  contenu present, absence de fuite brute, et canonical inputs transmis au
+  hermeneutic node.
 - Lot cible: Lot 4D.2.
-- Critere de cloture: test fake store indisponible montrant si le payload
-  primaire voit `missing` ou `error`; si masque confirme, ajouter statut
-  content-free stable sans exposer contenu memoire.
+- Hors-scope: changement doctrinal du primary node, refactor memory/identity,
+  logs raw Lot 6.
 
 ### P3-CEL-AGENDA-CLIENT-UNAVAILABLE-AMBIGUITY-01
 
@@ -1578,7 +1586,7 @@ Resultat Lot 4B:
   en succes vide.
 - [x] Corriger le fail-open borne `P2-CEL-WEB-DISCOVERY-FAIL-OPEN-01`.
 - [x] Ne pas absorber les sujets Lot 6 `str(exc)` / raw logs.
-- [ ] Lot 4D.2: valider/corriger `P2-CEL-MEMORY-INPUT-FAIL-OPEN-01`.
+- [x] Lot 4D.2: valider/corriger `P2-CEL-MEMORY-INPUT-FAIL-OPEN-01`.
 - [ ] Lot 4D.3: revalider Agenda client unavailable seulement avant
   reouverture Agenda ou decision produit explicite.
 
@@ -1593,6 +1601,18 @@ Resultat Lot 4D:
   state failed sur les lectures locales/Nextcloud bornees; primary node
   fail-open porte `fail_open=True` et reason/error class content-free.
 - Non absorbe: admin/security routes Lot 5 et `str(exc)` / logs raw Lot 6.
+
+Resultat Lot 4D.2:
+
+- Corrige: panne de lecture summary -> `status=error`,
+  `reason_code=summary_read_error`, pas `missing`.
+- Corrige: panne de lecture identity -> `status=error`,
+  `reason_code=identity_read_error`, pas payload vide silencieux.
+- Preserve: absence normale summary/identity -> `missing`; contenu present ->
+  `available`.
+- Deja correct: retrieval memoire dense/arbitration -> `retrieve_error` sur
+  panne amont.
+- Non absorbe: doctrine primary node, refactor memory/identity, Lot 6 logs raw.
 
 #### Lot 4E - Decision gros fichiers/orchestration sans refactor massif
 

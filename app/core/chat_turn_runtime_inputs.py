@@ -15,6 +15,10 @@ from core.hermeneutic_node.inputs import user_turn_input as canonical_user_turn_
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
 from observability import chat_turn_logger
 
+SUMMARY_READ_ERROR_REASON = "summary_read_error"
+IDENTITY_READ_ERROR_REASON = "identity_read_error"
+UPSTREAM_ERROR_CODE = "upstream_error"
+
 
 def _mapping(value: Any) -> dict[str, Any]:
     if isinstance(value, Mapping):
@@ -53,9 +57,17 @@ def resolve_summary_input(
             db_conn_func=db_conn_func,
             ts_to_iso_func=ts_to_iso_func,
             logger=conv_logger,
+            fail_closed=True,
         )
-    except Exception:
-        active_summary = None
+    except Exception as exc:
+        return summary_input.build_summary_input(
+            active_summary=None,
+            conversation_id=conversation_id,
+            status="error",
+            reason_code=SUMMARY_READ_ERROR_REASON,
+            error_code=UPSTREAM_ERROR_CODE,
+            error_class=exc.__class__.__name__,
+        )
     return summary_input.build_summary_input(
         active_summary=active_summary,
         conversation_id=conversation_id,
@@ -71,8 +83,13 @@ def resolve_identity_input(
         return canonical_identity_input.build_identity_input()
     try:
         return build_identity_payload()
-    except Exception:
-        return canonical_identity_input.build_identity_input()
+    except Exception as exc:
+        return canonical_identity_input.build_identity_input(
+            status="error",
+            reason_code=IDENTITY_READ_ERROR_REASON,
+            error_code=UPSTREAM_ERROR_CODE,
+            error_class=exc.__class__.__name__,
+        )
 
 
 def resolve_recent_context_input(

@@ -74,6 +74,7 @@ def get_active_summary(
     db_conn_func: Callable[[], Any],
     ts_to_iso_func: Callable[[Any], str],
     logger: Any,
+    fail_closed: bool = False,
 ) -> Optional[dict[str, Any]]:
     conv_id = normalize_conversation_id_func(conversation_id)
     if not conv_id:
@@ -98,7 +99,9 @@ def get_active_summary(
                 )
                 row = cur.fetchone()
     except Exception as exc:
-        logger.warning("conv_active_summary_read_failed id=%s err=%s", conv_id, exc)
+        logger.warning("conv_active_summary_read_failed id=%s err_class=%s", conv_id, exc.__class__.__name__)
+        if fail_closed:
+            raise RuntimeError("active_summary_read_failed") from exc
         return None
 
     if not row:

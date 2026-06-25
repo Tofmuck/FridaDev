@@ -45,6 +45,18 @@ def _canonical_side(
     }
 
 
+def _payload_status(payload: Mapping[str, Any], explicit_status: str | None) -> str:
+    if explicit_status:
+        return str(explicit_status)
+    for side_name in ("frida", "user"):
+        side = _mapping(payload.get(side_name))
+        static = _mapping(side.get("static"))
+        mutable = _mapping(side.get("mutable"))
+        if str(static.get("content") or "") or str(mutable.get("content") or ""):
+            return "available"
+    return "missing"
+
+
 def build_identity_input(
     *,
     frida_static_content: str = "",
@@ -53,8 +65,12 @@ def build_identity_input(
     user_static_content: str = "",
     user_static_source: str | None = None,
     user_mutable: Mapping[str, Any] | None = None,
+    status: str | None = None,
+    reason_code: str | None = None,
+    error_code: str | None = None,
+    error_class: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    payload = {
         "schema_version": SCHEMA_VERSION,
         "frida": _canonical_side(
             static_content=frida_static_content,
@@ -67,3 +83,11 @@ def build_identity_input(
             mutable=user_mutable,
         ),
     }
+    payload["status"] = _payload_status(payload, status)
+    if reason_code:
+        payload["reason_code"] = _optional_str(reason_code)
+    if error_code:
+        payload["error_code"] = _optional_str(error_code)
+    if error_class:
+        payload["error_class"] = _optional_str(error_class)
+    return payload
