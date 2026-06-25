@@ -165,6 +165,89 @@ class WebSearchDiscoveryTests(unittest.TestCase):
         self.assertEqual(response.observability['web_discovery_external_error_kind'], 'openrouter_config_error')
         self.assertIn('openrouter_exa_discovery_failed', response.observability['web_discovery_reason_codes'])
 
+    def test_build_context_payload_distinguishes_openrouter_discovery_error_from_no_citations(self) -> None:
+        original_runtime_services_value = web_search._runtime_services_value
+        original_reformulate = web_search.reformulate
+        original_emit = web_search._emit_web_search_runtime_event
+
+        observed_events: list[dict[str, object]] = []
+
+        def fake_runtime_services_value(field: str):
+            values = {
+                'searxng_results': 5,
+                'crawl4ai_top_n': 0,
+                'crawl4ai_max_chars': 80,
+            }
+            if field in values:
+                return values[field]
+            return original_runtime_services_value(field)
+
+        class NoCitationResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict[str, object]:
+                return {'choices': [{'message': {'annotations': []}}]}
+
+        def no_citation_post(*_args, **_kwargs):
+            return NoCitationResponse()
+
+        error_llm_module = SimpleNamespace(
+            or_chat_completions_url=lambda: 'https://openrouter.example/chat/completions',
+            or_headers_custom=lambda **_kwargs: (_ for _ in ()).throw(RuntimeError('missing key')),
+            read_openrouter_response_payload=lambda response: response.json(),
+        )
+        no_citation_llm_module = SimpleNamespace(
+            or_chat_completions_url=lambda: 'https://openrouter.example/chat/completions',
+            or_headers_custom=lambda **_kwargs: {'X-Frida-Caller': 'web_discovery'},
+            read_openrouter_response_payload=lambda response: response.json(),
+        )
+
+        web_search._runtime_services_value = fake_runtime_services_value
+        web_search.reformulate = lambda *_args, **_kwargs: 'synthetic discovery query'
+        web_search._emit_web_search_runtime_event = lambda **kwargs: observed_events.append(kwargs)
+        try:
+            error_payload = web_search.build_context_payload(
+                'synthetic user question',
+                requests_module=SimpleNamespace(post=no_citation_post),
+                llm_module=error_llm_module,
+                discovery_provider='openrouter_exa',
+                enable_specialized_queries=False,
+                enable_reranking=False,
+            )
+            error_event = dict(observed_events[-1])
+
+            observed_events.clear()
+            no_citation_payload = web_search.build_context_payload(
+                'synthetic user question',
+                requests_module=SimpleNamespace(post=no_citation_post),
+                llm_module=no_citation_llm_module,
+                discovery_provider='openrouter_exa',
+                enable_specialized_queries=False,
+                enable_reranking=False,
+            )
+            no_citation_event = dict(observed_events[-1])
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search.reformulate = original_reformulate
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(error_payload['status'], 'error')
+        self.assertEqual(error_payload['reason_code'], web_search.WEB_DISCOVERY_UPSTREAM_ERROR_REASON)
+        self.assertEqual(error_payload['error_class'], 'WebDiscoveryUpstreamError')
+        self.assertEqual(error_payload['web_discovery_external_error_kind'], 'openrouter_config_error')
+        self.assertIn('openrouter_exa_discovery_failed', error_payload['web_discovery_reason_codes'])
+        self.assertEqual(error_event['status'], 'error')
+        self.assertEqual(error_event['reason_code'], web_search.WEB_DISCOVERY_UPSTREAM_ERROR_REASON)
+        self.assertEqual(error_event['message_short'], web_search.WEB_DISCOVERY_UPSTREAM_ERROR_REASON)
+
+        self.assertEqual(no_citation_payload['status'], 'skipped')
+        self.assertEqual(no_citation_payload['reason_code'], 'no_data')
+        self.assertEqual(no_citation_payload['web_discovery_external_error_kind'], '')
+        self.assertIn('openrouter_exa_no_url_citations', no_citation_payload['web_discovery_reason_codes'])
+        self.assertEqual(no_citation_event['status'], 'skipped')
+        self.assertEqual(no_citation_event['reason_code'], 'no_data')
+
     def test_explicit_url_forces_local_provider_even_when_openrouter_is_requested(self) -> None:
         self.assertEqual(
             web_search_discovery.effective_provider(

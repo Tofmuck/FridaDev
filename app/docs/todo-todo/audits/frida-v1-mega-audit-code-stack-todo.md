@@ -27,6 +27,8 @@ Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-c
   corrigibles.
 - Lot 4B: web/search fail-open cible corrige; panne SearXNG distinguee de
   `no_data` dans le payload/runtime event content-free.
+- Lot 4D: audit fail-open runtime execute; correction bornee appliquee sur
+  discovery web OpenRouter, autres candidats classes sans refactor large.
 
 ## Doctrine securite plateforme avant audit code
 
@@ -1270,6 +1272,75 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 - Hors-scope: provider live, refonte web_search globale, correction logs
   content-free hors Lot 6.
 
+### P2-CEL-WEB-DISCOVERY-FAIL-OPEN-01
+
+- Statut courant: closed_by_lot_4D.
+- Severite: P2.
+- Classe: `P2_error_as_empty`.
+- Fichiers touches: `app/tools/web_search.py`,
+  `app/tests/unit/web_search/test_web_search_discovery.py`.
+- Constat valide Lot 4D: apres Lot 4B, la recherche locale SearXNG distingue
+  panne et zero resultat, mais le provider de discovery `openrouter_exa`
+  pouvait encore retourner `results=[]` avec
+  `web_discovery_external_error_kind` et finir dans le payload comme
+  `status=skipped`, `reason_code=no_data`.
+- Impact: une panne OpenRouter/config/tool discovery pouvait etre lue comme
+  absence reelle de sources web, alors que le provider amont avait echoue.
+- Correction Lot 4D: si le plan contient
+  `openrouter_exa_discovery_failed` et `web_discovery_external_error_kind`, le
+  payload/runtime event sort maintenant en `status=error`,
+  `reason_code=web_discovery_upstream_error`, `error_class`
+  `WebDiscoveryUpstreamError`; le cas valide sans citation reste
+  `status=skipped`, `reason_code=no_data`.
+- Preuve Lot 4D: test fake OpenRouter config error vs reponse valide sans
+  citation, sans provider live ni query/URL brute.
+- Lot cible: Lot 4D.
+- Hors-scope: changement provider OpenRouter, fallback externe automatique,
+  correction logs raw Lot 6.
+
+### P2-CEL-MEMORY-INPUT-FAIL-OPEN-01
+
+- Statut courant: needs_targeted_validation.
+- Severite: P2 potentiel.
+- Classe: `P2_error_as_empty`.
+- Fichiers suspects: `app/core/chat_turn_runtime_inputs.py`,
+  `app/core/hermeneutic_node/inputs/identity_input.py`,
+  `app/core/hermeneutic_node/inputs/summary_input.py`,
+  `app/memory/memory_context_read.py`, `app/identity/identity.py`.
+- Constat Lot 4D: les lectures identite/memoire emettent parfois un event
+  `status=error`, mais les entrees canoniques `identity_input` et certains
+  resolvers de summary retombent ensuite sur un payload vide/missing sans
+  champ explicite `error` ou `read_error` pour le noeud primaire.
+- Impact possible: une panne store memoire peut devenir indistinguable d'une
+  absence normale d'identite/summary dans le payload de decision, meme si un
+  event d'observabilite existe ailleurs.
+- Decision Lot 4D: pas de correction dans ce lot, car la surface touche le
+  contrat canonique des inputs memoire/identite et exige des tests de prompt
+  payload + primary node.
+- Lot cible: Lot 4D.2.
+- Critere de cloture: test fake store indisponible montrant si le payload
+  primaire voit `missing` ou `error`; si masque confirme, ajouter statut
+  content-free stable sans exposer contenu memoire.
+
+### P3-CEL-AGENDA-CLIENT-UNAVAILABLE-AMBIGUITY-01
+
+- Statut courant: needs_targeted_validation_post_v1.
+- Severite: P3.
+- Classe: `P3_intentional_fallback_needs_doc`.
+- Fichiers suspects: `app/agenda/chat_runtime.py`,
+  `app/agenda/read_execution.py`, `app/agenda/write_execution.py`.
+- Constat Lot 4D: l'execution read/write Agenda distingue correctement les
+  erreurs client/outils avec `status=error` ou `blocked` et reason codes
+  stables. En revanche, la resolution du client live peut retourner `None`
+  sur exception de lecture secret/config, ce qui se projette ensuite comme
+  `agenda_readonly_client_unavailable`.
+- Impact: faible en V1 car Agenda est dormant/pragmatically closed, mais une
+  future reactivation devrait distinguer secret/config indisponible de
+  fonctionnalite volontairement non configuree.
+- Decision Lot 4D: pas de patch runtime Agenda; sujet post-V1/dormant a
+  valider seulement avant reouverture Agenda.
+- Lot cible: post-V1 ou Lot 8 docs si formulation necessaire.
+
 ### P3-CEL-LARGE-FILES-01
 
 - Statut initial: open.
@@ -1503,9 +1574,25 @@ Resultat Lot 4B:
 
 #### Lot 4D - Error handling runtime qui masque une panne
 
-- [ ] Auditer uniquement les fallbacks qui changent le sens produit d'une panne
+- [x] Auditer uniquement les fallbacks qui changent le sens produit d'une panne
   en succes vide.
-- [ ] Ne pas absorber les sujets Lot 6 `str(exc)` / raw logs.
+- [x] Corriger le fail-open borne `P2-CEL-WEB-DISCOVERY-FAIL-OPEN-01`.
+- [x] Ne pas absorber les sujets Lot 6 `str(exc)` / raw logs.
+- [ ] Lot 4D.2: valider/corriger `P2-CEL-MEMORY-INPUT-FAIL-OPEN-01`.
+- [ ] Lot 4D.3: revalider Agenda client unavailable seulement avant
+  reouverture Agenda ou decision produit explicite.
+
+Resultat Lot 4D:
+
+- Corrige: discovery web `openrouter_exa` upstream error ne sort plus comme
+  `no_data`; reason code stable `web_discovery_upstream_error`.
+- Preserve: reponse OpenRouter valide sans citation reste `skipped/no_data`.
+- Invalides/deja distingues: Biblio/Catalogue utilise
+  `catalogue_unavailable`; Agenda read/write utilise reason codes client/tool;
+  Notes/Documents/Exports/Images utilisent `lookup_failed`, status 503 ou
+  state failed sur les lectures locales/Nextcloud bornees; primary node
+  fail-open porte `fail_open=True` et reason/error class content-free.
+- Non absorbe: admin/security routes Lot 5 et `str(exc)` / logs raw Lot 6.
 
 #### Lot 4E - Decision gros fichiers/orchestration sans refactor massif
 

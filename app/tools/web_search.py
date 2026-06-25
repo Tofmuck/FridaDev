@@ -39,6 +39,7 @@ from tools import (
 logger = logging.getLogger("frida.web_search")
 _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
 WEB_SEARCH_UPSTREAM_ERROR_REASON = 'web_search_upstream_error'
+WEB_DISCOVERY_UPSTREAM_ERROR_REASON = 'web_discovery_upstream_error'
 SEARXNG_REQUEST_FAILED_REASON = 'searxng_request_failed'
 _URL_TRAILING_PUNCTUATION = '.,;:!?)]}\'"'
 CRAWL4AI_FILTER_FIT = 'fit'
@@ -1079,6 +1080,18 @@ def _query_plan_has_local_upstream_error(query_plan: dict[str, Any] | None) -> b
     return int(plan.get('local_search_error_count') or 0) > 0
 
 
+def _query_plan_has_discovery_upstream_error(query_plan: dict[str, Any] | None) -> bool:
+    plan = dict(query_plan or {})
+    reason_codes = {
+        str(value or '')
+        for value in plan.get('web_discovery_reason_codes') or []
+    }
+    return (
+        bool(str(plan.get('web_discovery_external_error_kind') or ''))
+        and 'openrouter_exa_discovery_failed' in reason_codes
+    )
+
+
 def _query_plan_error_class(query_plan: dict[str, Any] | None) -> str:
     plan = dict(query_plan or {})
     return str(plan.get('local_search_error_class') or '')
@@ -1093,6 +1106,8 @@ def _web_search_payload_status(
         return 'ok', None, ''
     if _query_plan_has_local_upstream_error(query_plan):
         return 'error', WEB_SEARCH_UPSTREAM_ERROR_REASON, _query_plan_error_class(query_plan)
+    if _query_plan_has_discovery_upstream_error(query_plan):
+        return 'error', WEB_DISCOVERY_UPSTREAM_ERROR_REASON, 'WebDiscoveryUpstreamError'
     return 'skipped', 'no_data', ''
 
 
