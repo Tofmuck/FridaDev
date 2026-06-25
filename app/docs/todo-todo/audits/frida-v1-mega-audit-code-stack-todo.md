@@ -1690,8 +1690,20 @@ Resultat Lot 4B:
 
 #### Lot 4C - Dead paths / NotImplemented runtime confirmes
 
-- [ ] Garder dormant tant qu'aucun hit runtime n'est confirme.
-- [ ] N'ouvrir que sur preuve `NotImplemented`/path mort produit reel.
+- [x] Garder dormant tant qu'aucun hit runtime n'est confirme.
+- [x] N'ouvrir que sur preuve `NotImplemented`/path mort produit reel.
+
+Resultat Lot 4C:
+
+- Statut: `skipped_no_runtime_hit_confirmed`.
+- Lot 4A n'a confirme aucun `NotImplemented`, `NotImplementedError`,
+  `TODO`, `FIXME`, `pass` ou chemin dormant runtime prioritaire necessitant un
+  patch immediat.
+- Agenda n'est pas un dormant runtime: le runtime Agenda est
+  implemente/cable/activable; l'ambiguite documentaire et le fail-open client
+  ont ete traites en Lots 4D.3 et 4D.3.1.
+- Aucun patch runtime Lot 4C. Les vrais sujets restants de cette sequence sont
+  Lot 4E, puis Lots 5/6/7/9 selon leurs scopes propres.
 
 #### Lot 4D - Error handling runtime qui masque une panne
 
