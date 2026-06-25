@@ -25,6 +25,7 @@ function createWorkspaceFolderSidebarRenderer({
   threadsUl,
   getWorkspaceFolders,
   getWorkspaceFiles,
+  getWorkspaceFilesStatus,
   refreshThreadsFromServer,
   refreshWorkspaceFiles,
   renderThreads,
@@ -524,6 +525,20 @@ function createWorkspaceFolderSidebarRenderer({
     const files = typeof getWorkspaceFiles === 'function' ? getWorkspaceFiles(folder.id) : [];
     const li = document.createElement('li');
     li.className = 'workspace-folder-files';
+    const fileStatus = typeof getWorkspaceFilesStatus === 'function'
+      ? getWorkspaceFilesStatus(folder.id)
+      : null;
+    if (fileStatus?.status === 'error') {
+      const error = document.createElement('div');
+      error.className = 'workspace-folder-file-error';
+      error.textContent = 'Chargement des fichiers impossible';
+      if (fileStatus.reason_code) {
+        error.dataset.reasonCode = String(fileStatus.reason_code);
+      }
+      li.appendChild(error);
+      threadsUl.appendChild(li);
+      return;
+    }
     if (!files.length) {
       const empty = document.createElement('div');
       empty.className = 'workspace-folder-file-empty';

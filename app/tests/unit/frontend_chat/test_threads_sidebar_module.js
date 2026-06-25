@@ -21,16 +21,21 @@ function makeElement(tagName = "div") {
     dataset: {},
     className: "",
     textContent: "",
-    innerHTML: "",
     tabIndex: 0,
     draggable: false,
     events: listeners,
     classList: {
       add(name) {
+        for (const existing of String(element.className || "").split(/\s+/).filter(Boolean)) {
+          classes.add(existing);
+        }
         classes.add(name);
         element.className = Array.from(classes).join(" ");
       },
       remove(name) {
+        for (const existing of String(element.className || "").split(/\s+/).filter(Boolean)) {
+          classes.add(existing);
+        }
         classes.delete(name);
         element.className = Array.from(classes).join(" ");
       },
@@ -59,10 +64,29 @@ function makeElement(tagName = "div") {
       current.push(handler);
       listeners.set(key, current);
     },
+    click() {
+      for (const handler of listeners.get("click") || []) {
+        handler({
+          stopPropagation() {},
+          preventDefault() {},
+          target: element,
+        });
+      }
+    },
     setAttribute(name, value) {
       element[name] = value;
     },
   };
+  let html = "";
+  Object.defineProperty(element, "innerHTML", {
+    get() {
+      return html;
+    },
+    set(value) {
+      html = String(value || "");
+      if (!html) element.children = [];
+    },
+  });
   return element;
 }
 
@@ -109,6 +133,37 @@ function buildSidebarWithFetch(fetchFn) {
     };
   }
   return { sidebar, statuses, threadsUl };
+}
+
+function walk(node) {
+  const items = [];
+  const visit = (current) => {
+    if (!current) return;
+    items.push(current);
+    for (const child of current.children || []) visit(child);
+  };
+  visit(node);
+  return items;
+}
+
+function byClass(root, className) {
+  return walk(root).filter((node) =>
+    String(node.className || "").split(/\s+/).includes(className)
+  );
+}
+
+function firstByClass(root, className) {
+  return byClass(root, className)[0] || null;
+}
+
+function visibleText(root) {
+  return walk(root).map((node) => String(node.textContent || "")).join(" ");
+}
+
+function expandFirstFolder(threadsUl) {
+  const toggle = firstByClass(threadsUl, "workspace-folder-toggle");
+  assert.ok(toggle);
+  toggle.click();
 }
 
 test("threads sidebar module exposes the conversations page size contract", () => {
@@ -244,6 +299,223 @@ test("threads sidebar keeps exports and images API errors distinct from empty li
   });
   assert.equal(JSON.stringify(sidebar.getWorkspaceExportsStatus("folder-1")).includes("UNSAFE_TECHNICAL_DETAIL_SENTINEL"), false);
   assert.equal(JSON.stringify(sidebar.getWorkspaceGeneratedImagesStatus("folder-1")).includes("UNSAFE_TECHNICAL_DETAIL_SENTINEL"), false);
+});
+
+test("threads sidebar keeps files API errors distinct from empty lists", async () => {
+  const { sidebar, threadsUl } = buildSidebarWithFetch(async (url) => {
+    const path = String(url || "");
+    if (path.startsWith("/api/conversations?")) {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders") {
+      return response(200, {
+        ok: true,
+        items: [
+          {
+            id: "folder-1",
+            display_name: "Projet",
+            nextcloud_sync_state: "linked",
+            deleted_at: null,
+          },
+        ],
+      });
+    }
+    if (path === "/api/workspace-folders/folder-1/files") {
+      return response(500, {
+        ok: false,
+        reason_code: "workspace_files_lookup_failed",
+        details: "UNSAFE_TECHNICAL_DETAIL_SENTINEL",
+      });
+    }
+    if (path === "/api/workspace-folders/folder-1/exports") {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/generated-images") {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/notes") {
+      return response(200, { ok: true, notes: [] });
+    }
+    throw new Error(`unexpected test url ${path}`);
+  });
+
+  assert.equal(await sidebar.refreshThreadsFromServer(), true);
+  assert.deepEqual(sidebar.getWorkspaceFiles("folder-1"), []);
+  assert.deepEqual(sidebar.getWorkspaceFilesStatus("folder-1"), {
+    status: "error",
+    reason_code: "workspace_files_lookup_failed",
+  });
+  assert.equal(JSON.stringify(sidebar.getWorkspaceFilesStatus("folder-1")).includes("UNSAFE_TECHNICAL_DETAIL_SENTINEL"), false);
+
+  sidebar.renderThreads();
+  expandFirstFolder(threadsUl);
+  assert.equal(firstByClass(threadsUl, "workspace-folder-file-empty"), null);
+  const error = firstByClass(threadsUl, "workspace-folder-file-error");
+  assert.ok(error);
+  assert.equal(error.dataset.reasonCode, "workspace_files_lookup_failed");
+  assert.match(visibleText(threadsUl), /Chargement des fichiers impossible/);
+  assert.equal(visibleText(threadsUl).includes("Aucun fichier"), false);
+  assert.equal(visibleText(threadsUl).includes("UNSAFE_TECHNICAL_DETAIL_SENTINEL"), false);
+});
+
+test("threads sidebar keeps normal empty files state when API returns an empty list", async () => {
+  const { sidebar, threadsUl } = buildSidebarWithFetch(async (url) => {
+    const path = String(url || "");
+    if (path.startsWith("/api/conversations?")) {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders") {
+      return response(200, {
+        ok: true,
+        items: [
+          {
+            id: "folder-1",
+            display_name: "Projet",
+            nextcloud_sync_state: "linked",
+            deleted_at: null,
+          },
+        ],
+      });
+    }
+    if (path === "/api/workspace-folders/folder-1/files") {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/exports") {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/generated-images") {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/notes") {
+      return response(200, { ok: true, notes: [] });
+    }
+    throw new Error(`unexpected test url ${path}`);
+  });
+
+  assert.equal(await sidebar.refreshThreadsFromServer(), true);
+  assert.deepEqual(sidebar.getWorkspaceFilesStatus("folder-1"), {
+    status: "ok",
+    reason_code: "workspace_files_list_ok",
+  });
+  sidebar.renderThreads();
+  expandFirstFolder(threadsUl);
+  assert.equal(firstByClass(threadsUl, "workspace-folder-file-error"), null);
+  const empty = firstByClass(threadsUl, "workspace-folder-file-empty");
+  assert.ok(empty);
+  assert.equal(empty.textContent, "Aucun fichier");
+});
+
+test("threads sidebar treats malformed files payloads as load errors", async () => {
+  const { sidebar, threadsUl } = buildSidebarWithFetch(async (url) => {
+    const path = String(url || "");
+    if (path.startsWith("/api/conversations?")) {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders") {
+      return response(200, {
+        ok: true,
+        items: [
+          {
+            id: "folder-1",
+            display_name: "Projet",
+            nextcloud_sync_state: "linked",
+            deleted_at: null,
+          },
+        ],
+      });
+    }
+    if (path === "/api/workspace-folders/folder-1/files") {
+      return response(200, { ok: true, unexpected: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/exports") {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/generated-images") {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/notes") {
+      return response(200, { ok: true, notes: [] });
+    }
+    throw new Error(`unexpected test url ${path}`);
+  });
+
+  assert.equal(await sidebar.refreshThreadsFromServer(), true);
+  assert.deepEqual(sidebar.getWorkspaceFilesStatus("folder-1"), {
+    status: "error",
+    reason_code: "workspace_files_lookup_failed",
+  });
+  sidebar.renderThreads();
+  expandFirstFolder(threadsUl);
+  assert.equal(firstByClass(threadsUl, "workspace-folder-file-empty"), null);
+  assert.match(visibleText(threadsUl), /Chargement des fichiers impossible/);
+});
+
+test("threads sidebar renders existing file controls when files list is ok", async () => {
+  const { sidebar, threadsUl } = buildSidebarWithFetch(async (url) => {
+    const path = String(url || "");
+    if (path.startsWith("/api/conversations?")) {
+      return response(200, {
+        ok: true,
+        items: [
+          {
+            id: "conv-1",
+            title: "Conversation",
+            workspace_folder_id: "folder-1",
+          },
+        ],
+      });
+    }
+    if (path === "/api/workspace-folders") {
+      return response(200, {
+        ok: true,
+        items: [
+          {
+            id: "folder-1",
+            display_name: "Projet",
+            nextcloud_sync_state: "linked",
+            deleted_at: null,
+          },
+        ],
+      });
+    }
+    if (path === "/api/workspace-folders/folder-1/files") {
+      return response(200, {
+        ok: true,
+        items: [
+          {
+            id: "file-1",
+            workspace_folder_id: "folder-1",
+            display_name: "Document visible",
+            source_extension: ".pdf",
+            status: "active",
+          },
+        ],
+      });
+    }
+    if (path === "/api/workspace-folders/folder-1/exports") {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/generated-images") {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/notes") {
+      return response(200, { ok: true, notes: [] });
+    }
+    if (path === "/api/conversations/conv-1/workspace-file-selections") {
+      return response(200, { ok: true, selections: [] });
+    }
+    throw new Error(`unexpected test url ${path}`);
+  });
+
+  assert.equal(await sidebar.refreshThreadsFromServer(), true);
+  assert.equal(sidebar.getWorkspaceFiles("folder-1").length, 1);
+  assert.equal(sidebar.getWorkspaceFilesStatus("folder-1").status, "ok");
+  sidebar.renderThreads();
+  expandFirstFolder(threadsUl);
+  assert.equal(firstByClass(threadsUl, "workspace-folder-file-error"), null);
+  assert.match(visibleText(threadsUl), /Document visible/);
+  assert.ok(firstByClass(threadsUl, "workspace-folder-file-select"));
+  assert.ok(firstByClass(threadsUl, "workspace-folder-file-delete"));
 });
 
 test("threads sidebar treats malformed exports and images payloads as load errors", async () => {

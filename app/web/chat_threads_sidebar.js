@@ -72,6 +72,7 @@ function createChatThreadsSidebar({
   let threadsState = [];
   let foldersState = [];
   let workspaceFilesState = new Map();
+  let workspaceFilesStatusState = new Map();
   let workspaceExportsState = new Map();
   let workspaceExportsStatusState = new Map();
   let workspaceGeneratedImagesState = new Map();
@@ -120,6 +121,8 @@ function createChatThreadsSidebar({
     foldersState = Array.isArray(arr) ? arr : [];
   };
   const getWorkspaceFiles = (folderId) => workspaceFilesState.get(String(folderId || "")) || [];
+  const getWorkspaceFilesStatus = (folderId) =>
+    workspaceFilesStatusState.get(String(folderId || "")) || { status: "unknown", reason_code: "workspace_files_not_loaded" };
   const getWorkspaceExports = (folderId) => workspaceExportsState.get(String(folderId || "")) || [];
   const getWorkspaceExportsStatus = (folderId) =>
     workspaceExportsStatusState.get(String(folderId || "")) || { status: "unknown", reason_code: "workspace_exports_not_loaded" };
@@ -134,6 +137,9 @@ function createChatThreadsSidebar({
     workspaceFileSelectionsState.get(String(conversationId || "")) || [];
   const saveWorkspaceFilesEntries = (entries) => {
     workspaceFilesState = new Map(Array.isArray(entries) ? entries : []);
+  };
+  const saveWorkspaceFilesStatusEntries = (entries) => {
+    workspaceFilesStatusState = new Map(Array.isArray(entries) ? entries : []);
   };
   const saveWorkspaceExportsEntries = (entries) => {
     workspaceExportsState = new Map(Array.isArray(entries) ? entries : []);
@@ -228,6 +234,9 @@ function createChatThreadsSidebar({
   async function listWorkspaceFilesFromServer(folderId) {
     const res = await httpFetch(`/api/workspace-folders/${encodeURIComponent(folderId)}/files`);
     const data = await parseServerResponse(res);
+    if (!Array.isArray(data?.items)) {
+      throw makeContentFreeListError("workspace_files_lookup_failed");
+    }
     return WorkspaceFolders?.normalizeWorkspaceFilesPayload(data) || [];
   }
 
@@ -550,15 +559,27 @@ function createChatThreadsSidebar({
       }
       saveThreads(mapped);
       saveWorkspaceFolders(folders);
-      const fileEntries = await Promise.all(folders.map(async (folder) => {
+      const fileEntries = [];
+      const fileStatusEntries = [];
+      for (const folder of folders) {
         try {
-          return [folder.id, await listWorkspaceFilesFromServer(folder.id)];
+          fileEntries.push([folder.id, await listWorkspaceFilesFromServer(folder.id)]);
+          fileStatusEntries.push([folder.id, {
+            status: "ok",
+            reason_code: "workspace_files_list_ok",
+          }]);
         } catch (err) {
-          logger.warn("Impossible de charger les fichiers du répertoire", err);
-          return [folder.id, []];
+          const reason = listErrorReason(err, "workspace_files_lookup_failed");
+          logger.warn("Impossible de charger les fichiers du répertoire", { reason_code: reason });
+          fileEntries.push([folder.id, []]);
+          fileStatusEntries.push([folder.id, {
+            status: "error",
+            reason_code: reason,
+          }]);
         }
-      }));
+      }
       saveWorkspaceFilesEntries(fileEntries);
+      saveWorkspaceFilesStatusEntries(fileStatusEntries);
       const exportEntries = [];
       const exportStatusEntries = [];
       for (const folder of folders) {
@@ -729,9 +750,22 @@ function createChatThreadsSidebar({
   const refreshWorkspaceFiles = async (folderId) => {
     const normalized = WorkspaceFolders?.normalizeWorkspaceFolderId(folderId);
     if (!normalized) return [];
-    const files = await listWorkspaceFilesFromServer(normalized);
-    workspaceFilesState.set(normalized, files);
-    return files;
+    try {
+      const files = await listWorkspaceFilesFromServer(normalized);
+      workspaceFilesState.set(normalized, files);
+      workspaceFilesStatusState.set(normalized, {
+        status: "ok",
+        reason_code: "workspace_files_list_ok",
+      });
+      return files;
+    } catch (err) {
+      workspaceFilesState.set(normalized, []);
+      workspaceFilesStatusState.set(normalized, {
+        status: "error",
+        reason_code: listErrorReason(err, "workspace_files_lookup_failed"),
+      });
+      throw err;
+    }
   };
 
   const refreshWorkspaceExports = async (folderId) => {
@@ -843,6 +877,7 @@ function createChatThreadsSidebar({
     threadsUl,
     getWorkspaceFolders,
     getWorkspaceFiles,
+    getWorkspaceFilesStatus,
     getWorkspaceExports,
     getWorkspaceExportsStatus,
     getWorkspaceGeneratedImages,
@@ -1233,6 +1268,7 @@ function createChatThreadsSidebar({
     getWorkspaceFolders,
     saveWorkspaceFolders,
     getWorkspaceFiles,
+    getWorkspaceFilesStatus,
     getWorkspaceExports,
     getWorkspaceExportsStatus,
     getWorkspaceFileSelections,

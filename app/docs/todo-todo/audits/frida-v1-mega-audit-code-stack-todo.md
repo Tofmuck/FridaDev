@@ -1209,7 +1209,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-CEL-FRONTEND-EMPTY-ON-ERROR-01
 
 - Statut initial: open.
-- Statut courant: closed_by_lot_5C_frontend_panel_error_states.
+- Statut courant: closed_by_lot_5C_1_frontend_documents_error_states.
 - Severite: P2.
 - Fichiers suspects: `app/web/chat_threads_sidebar.js`, panels
   Documents/Exports/Images.
@@ -1221,13 +1221,18 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   vide.
 - Decision Lot 5C: tests/micro-corrections par panel, sans attendre une matrice
   smoke frontend globale.
-- Correctif Lot 5C: valide et corrige les surfaces restantes hors Notes.
-  Exports et Images conservent maintenant un `status=error` content-free dans
+- Correctif Lot 5C: valide et corrige Exports/Images hors Notes. Exports et
+  Images conservent maintenant un `status=error` content-free dans
   l'etat central quand le fetch echoue, quand `ok=false`, quand HTTP est non-2xx
   ou quand le payload liste est inattendu; les panels rendent alors une erreur
   visible au lieu de `Aucun export` / `Aucune image`. Le vide normal `ok` + liste
   vide reste affiche comme etat vide normal. Notes reste non regresse par ses
   tests Lot 5B.
+- Correctif Lot 5C.1: valide et corrige le reste Documents/Fichiers. Le
+  chargement `/files` conserve maintenant un statut `error` content-free
+  distinct de la liste vide pour fetch/HTTP/`ok=false`/payload inattendu, et le
+  panneau rend `Chargement des fichiers impossible` au lieu de `Aucun fichier`.
+  Le vide normal et les controles fichier existants restent couverts par tests.
 - Critere de cloture: erreurs API panels visibles comme erreur, pas comme
   liste vide.
 - Preuve minimale: tests 500/payload invalide par panel.
@@ -1908,6 +1913,7 @@ Decisions Lot 4E:
 - [x] Traiter Notes UI gap: UI minimale livree, plus API-only.
 - [x] Lot 5C: traiter panels frontend qui rendaient les erreurs comme listes
   vides.
+- [x] Lot 5C.1: traiter Documents/Fichiers erreur API visible.
 - [ ] Traiter `/log` UI denylist si Lot 7 confirme le besoin.
 - [ ] Garder Authelia comme frontiere publique.
 
@@ -2043,8 +2049,9 @@ Resultat Lot 5B:
 
 Limites conservees:
 
-- `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01` est clos par Lot 5C pour les surfaces
-  ciblees Exports/Images; Notes reste couvert par Lot 5B.
+- `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01` est clos par Lot 5C + Lot 5C.1:
+  Exports/Images corriges en Lot 5C, Documents/Fichiers corriges en Lot 5C.1,
+  Notes couvert par Lot 5B.
 - `P2-CEL-ADMIN-COMPAT-KNOBS-01` reste ouvert pour Lot 5D.
 - `P3-CEL-LOG-FRONTEND-DENYLIST-01` reste cible Lot 7.
 - Lot 6/7/9 restent non coches.
@@ -2081,6 +2088,39 @@ Resultat Lot 5C:
   `folder_generated_image_lookup_failed`.
 - Les tests Node prouvent: vide normal Exports/Images, erreur Exports/Images,
   non-regression Notes, absence de payload brut/detail technique dans le DOM test.
+
+#### Lot 5C.1 - Documents/Fichiers erreur API visible
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne au frontend chat.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le retour Lot 5C avait
+ferme trop largement le finding: Exports/Images etaient corriges, Notes etait
+non regresse, mais Documents/Fichiers gardait encore un `catch -> []`.
+
+- [x] Valider le reste `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01` sur Documents/Fichiers.
+- [x] Corriger `/files`: erreur fetch/HTTP/`ok=false`/payload inattendu rendue
+  comme `Chargement des fichiers impossible`, pas `Aucun fichier`.
+- [x] Conserver le vrai vide normal Documents/Fichiers quand l'API repond `ok`
+  avec une vraie liste vide.
+- [x] Conserver les actions fichier existantes quand la liste est OK:
+  selection, suppression, OCR/edition selon metadata.
+- [x] Revalider Exports/Images/Notes.
+- [x] Ne pas absorber Lot 5D/6/7/9.
+
+Resultat Lot 5C.1:
+
+- `chat_threads_sidebar.js` conserve maintenant une map de statut separee pour
+  Documents/Fichiers, sur le modele Notes/Exports/Images: `ok`, `error` et
+  `reason_code` content-free.
+- `chat_workspace_folders_sidebar.js` consulte ce statut avant de rendre
+  `Aucun fichier`.
+- Un payload `/files` inattendu devient `workspace_files_lookup_failed` au lieu
+  d'une liste vide silencieuse.
+- Les tests Node prouvent: HTTP 500/`ok=false`, payload inattendu, vide normal,
+  rendu erreur visible, actions fichier visibles en cas liste OK, et
+  non-regression Exports/Images/Notes.
 
 ### Lot 6 - Observabilite/logs applicatifs
 
