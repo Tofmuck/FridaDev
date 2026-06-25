@@ -142,6 +142,7 @@ function generatedImage(overrides = {}) {
 function buildPanel({
   folder = linkedFolder(),
   imagesList = [],
+  imagesStatus = { status: "ok", reason_code: "workspace_generated_images_list_ok" },
   prompts = [],
   confirms = [],
 } = {}) {
@@ -156,6 +157,7 @@ function buildPanel({
   const panel = createWorkspaceFolderGeneratedImagesPanelRenderer({
     threadsUl,
     getWorkspaceGeneratedImages: () => imagesList,
+    getWorkspaceGeneratedImagesStatus: () => imagesStatus,
     refreshWorkspaceGeneratedImages: async () => {
       refreshCount += 1;
       return imagesList;
@@ -315,6 +317,37 @@ test("generated images panel open and download use explicit action callbacks onl
 
   assert.deepEqual(rendered.openCalls, [{ folderId: "folder-1", imageId: "image-1" }]);
   assert.deepEqual(rendered.downloadCalls, [{ folderId: "folder-1", imageId: "image-1" }]);
+});
+
+test("generated images panel keeps normal empty state when API returns an empty list", () => {
+  const rendered = buildPanel({
+    imagesList: [],
+    imagesStatus: { status: "ok", reason_code: "workspace_generated_images_list_ok" },
+  });
+
+  assert.equal(firstByClass(rendered.threadsUl, "workspace-folder-generated-image-error"), null);
+  const empty = firstByClass(rendered.threadsUl, "workspace-folder-generated-image-empty");
+  assert.ok(empty);
+  assert.equal(empty.textContent, "Aucune image");
+});
+
+test("generated images panel renders API errors as visible errors instead of empty lists", () => {
+  const rendered = buildPanel({
+    imagesList: [],
+    imagesStatus: {
+      status: "error",
+      reason_code: "folder_generated_image_lookup_failed",
+      details: "UNSAFE_TECHNICAL_DETAIL_SENTINEL",
+    },
+  });
+
+  assert.equal(firstByClass(rendered.threadsUl, "workspace-folder-generated-image-empty"), null);
+  const error = firstByClass(rendered.threadsUl, "workspace-folder-generated-image-error");
+  assert.ok(error);
+  assert.equal(error.dataset.reasonCode, "folder_generated_image_lookup_failed");
+  assert.match(visibleText(rendered.threadsUl), /Chargement des images impossible/);
+  assert.equal(visibleText(rendered.threadsUl).includes("Aucune image"), false);
+  assert.equal(visibleText(rendered.threadsUl).includes("UNSAFE_TECHNICAL_DETAIL_SENTINEL"), false);
 });
 
 test("generated images panel disabled actions do not call callbacks", () => {

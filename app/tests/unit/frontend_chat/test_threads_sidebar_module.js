@@ -7,7 +7,109 @@ const {
   WORKSPACE_CONVERSATION_DRAG_MIME,
   clampThreadTitle,
   normalizeThreadItem,
+  createChatThreadsSidebar,
 } = require("../../../web/chat_threads_sidebar.js");
+
+function makeElement(tagName = "div") {
+  const listeners = new Map();
+  const classes = new Set();
+  const element = {
+    tagName: String(tagName || "div").toUpperCase(),
+    children: [],
+    parentElement: null,
+    style: {},
+    dataset: {},
+    className: "",
+    textContent: "",
+    innerHTML: "",
+    tabIndex: 0,
+    draggable: false,
+    events: listeners,
+    classList: {
+      add(name) {
+        classes.add(name);
+        element.className = Array.from(classes).join(" ");
+      },
+      remove(name) {
+        classes.delete(name);
+        element.className = Array.from(classes).join(" ");
+      },
+      contains(name) {
+        return classes.has(name);
+      },
+    },
+    appendChild(child) {
+      child.parentElement = element;
+      element.children.push(child);
+      return child;
+    },
+    insertBefore(child, before) {
+      child.parentElement = element;
+      const index = element.children.indexOf(before);
+      if (index >= 0) {
+        element.children.splice(index, 0, child);
+      } else {
+        element.children.push(child);
+      }
+      return child;
+    },
+    addEventListener(type, handler) {
+      const key = String(type || "");
+      const current = listeners.get(key) || [];
+      current.push(handler);
+      listeners.set(key, current);
+    },
+    setAttribute(name, value) {
+      element[name] = value;
+    },
+  };
+  return element;
+}
+
+function installDom() {
+  const body = makeElement("body");
+  global.document = {
+    body,
+    createElement: makeElement,
+  };
+  return body;
+}
+
+function response(status, payload) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => payload,
+  };
+}
+
+function buildSidebarWithFetch(fetchFn) {
+  installDom();
+  const wrapper = makeElement("div");
+  const threadsUl = makeElement("ul");
+  wrapper.appendChild(threadsUl);
+  const logEl = makeElement("div");
+  const statuses = [];
+  const sidebar = createChatThreadsSidebar({
+    threadsUl,
+    logEl,
+    fetchFn,
+    setHero: async () => {},
+    closeSidebar: () => {},
+    renderConversationMessage: () => {},
+    scrollToBottom: () => {},
+    notesModeController: {},
+    consoleObj: { warn() {} },
+  });
+  const originalSetStatus = sidebar.setThreadStatus;
+  if (typeof originalSetStatus === "function") {
+    sidebar.setThreadStatus = (message, isError = false) => {
+      statuses.push({ message, isError });
+      originalSetStatus(message, isError);
+    };
+  }
+  return { sidebar, statuses, threadsUl };
+}
 
 test("threads sidebar module exposes the conversations page size contract", () => {
   assert.equal(THREADS_PAGE_SIZE, 200);
@@ -69,4 +171,121 @@ test("normalizeThreadItem keeps nullable workspace folder assignments", () => {
 
 test("normalizeThreadItem rejects malformed conversation identifiers", () => {
   assert.equal(normalizeThreadItem({ title: "sans id" }), null);
+});
+
+test("threads sidebar keeps exports and images API errors distinct from empty lists", async () => {
+  const calls = [];
+  const { sidebar } = buildSidebarWithFetch(async (url) => {
+    const path = String(url || "");
+    calls.push(path);
+    if (path.startsWith("/api/conversations?")) {
+      return response(200, {
+        ok: true,
+        items: [
+          {
+            id: "conv-1",
+            title: "Conversation",
+            workspace_folder_id: "folder-1",
+          },
+        ],
+      });
+    }
+    if (path === "/api/workspace-folders") {
+      return response(200, {
+        ok: true,
+        items: [
+          {
+            id: "folder-1",
+            display_name: "Projet",
+            nextcloud_sync_state: "linked",
+            deleted_at: null,
+          },
+        ],
+      });
+    }
+    if (path === "/api/workspace-folders/folder-1/files") {
+      return response(200, { ok: true, files: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/exports") {
+      return response(503, {
+        ok: false,
+        reason_code: "folder_export_lookup_failed",
+        details: "UNSAFE_TECHNICAL_DETAIL_SENTINEL",
+      });
+    }
+    if (path === "/api/workspace-folders/folder-1/generated-images") {
+      return response(200, {
+        ok: false,
+        reason_code: "folder_generated_image_lookup_failed",
+        details: "UNSAFE_TECHNICAL_DETAIL_SENTINEL",
+      });
+    }
+    if (path === "/api/workspace-folders/folder-1/notes") {
+      return response(200, { ok: true, notes: [] });
+    }
+    if (path === "/api/conversations/conv-1/workspace-file-selections") {
+      return response(200, { ok: true, selections: [] });
+    }
+    throw new Error(`unexpected test url ${path}`);
+  });
+
+  assert.equal(await sidebar.refreshThreadsFromServer(), true);
+  assert.equal(calls.includes("/api/workspace-folders/folder-1/exports"), true);
+  assert.equal(calls.includes("/api/workspace-folders/folder-1/generated-images"), true);
+  assert.deepEqual(sidebar.getWorkspaceExports("folder-1"), []);
+  assert.deepEqual(sidebar.getWorkspaceGeneratedImages("folder-1"), []);
+  assert.deepEqual(sidebar.getWorkspaceExportsStatus("folder-1"), {
+    status: "error",
+    reason_code: "folder_export_lookup_failed",
+  });
+  assert.deepEqual(sidebar.getWorkspaceGeneratedImagesStatus("folder-1"), {
+    status: "error",
+    reason_code: "folder_generated_image_lookup_failed",
+  });
+  assert.equal(JSON.stringify(sidebar.getWorkspaceExportsStatus("folder-1")).includes("UNSAFE_TECHNICAL_DETAIL_SENTINEL"), false);
+  assert.equal(JSON.stringify(sidebar.getWorkspaceGeneratedImagesStatus("folder-1")).includes("UNSAFE_TECHNICAL_DETAIL_SENTINEL"), false);
+});
+
+test("threads sidebar treats malformed exports and images payloads as load errors", async () => {
+  const { sidebar } = buildSidebarWithFetch(async (url) => {
+    const path = String(url || "");
+    if (path.startsWith("/api/conversations?")) {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/workspace-folders") {
+      return response(200, {
+        ok: true,
+        items: [
+          {
+            id: "folder-1",
+            display_name: "Projet",
+            nextcloud_sync_state: "linked",
+            deleted_at: null,
+          },
+        ],
+      });
+    }
+    if (path === "/api/workspace-folders/folder-1/files") {
+      return response(200, { ok: true, files: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/exports") {
+      return response(200, { ok: true, unexpected: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/generated-images") {
+      return response(200, { ok: true, unexpected: [] });
+    }
+    if (path === "/api/workspace-folders/folder-1/notes") {
+      return response(200, { ok: true, notes: [] });
+    }
+    throw new Error(`unexpected test url ${path}`);
+  });
+
+  assert.equal(await sidebar.refreshThreadsFromServer(), true);
+  assert.equal(sidebar.getWorkspaceExportsStatus("folder-1").status, "error");
+  assert.equal(sidebar.getWorkspaceExportsStatus("folder-1").reason_code, "folder_export_lookup_failed");
+  assert.equal(sidebar.getWorkspaceGeneratedImagesStatus("folder-1").status, "error");
+  assert.equal(
+    sidebar.getWorkspaceGeneratedImagesStatus("folder-1").reason_code,
+    "folder_generated_image_lookup_failed",
+  );
 });

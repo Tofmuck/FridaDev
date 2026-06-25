@@ -1209,7 +1209,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-CEL-FRONTEND-EMPTY-ON-ERROR-01
 
 - Statut initial: open.
-- Statut courant: validated_by_lot_5A_needs_targeted_tests.
+- Statut courant: closed_by_lot_5C_frontend_panel_error_states.
 - Severite: P2.
 - Fichiers suspects: `app/web/chat_threads_sidebar.js`, panels
   Documents/Exports/Images.
@@ -1219,8 +1219,15 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   une erreur amont en tableau vide ou etat visuel vide; sans tests par panel, on
   ne peut pas declarer que chaque erreur API est distinguee d'une vraie liste
   vide.
-- Decision ouverte: sous-lot Lot 5C pour tests/micro-corrections par panel, ou
-  Lot 7 si le choix est d'abord une matrice smoke frontend.
+- Decision Lot 5C: tests/micro-corrections par panel, sans attendre une matrice
+  smoke frontend globale.
+- Correctif Lot 5C: valide et corrige les surfaces restantes hors Notes.
+  Exports et Images conservent maintenant un `status=error` content-free dans
+  l'etat central quand le fetch echoue, quand `ok=false`, quand HTTP est non-2xx
+  ou quand le payload liste est inattendu; les panels rendent alors une erreur
+  visible au lieu de `Aucun export` / `Aucune image`. Le vide normal `ok` + liste
+  vide reste affiche comme etat vide normal. Notes reste non regresse par ses
+  tests Lot 5B.
 - Critere de cloture: erreurs API panels visibles comme erreur, pas comme
   liste vide.
 - Preuve minimale: tests 500/payload invalide par panel.
@@ -1899,7 +1906,8 @@ Decisions Lot 4E:
 - [ ] Verifier admin HTML/public host vs API guard.
 - [x] Decider prompts complets dans DOM admin: content gate explicite livre.
 - [x] Traiter Notes UI gap: UI minimale livree, plus API-only.
-- [ ] Traiter panels frontend qui rendent les erreurs comme listes vides.
+- [x] Lot 5C: traiter panels frontend qui rendaient les erreurs comme listes
+  vides.
 - [ ] Traiter `/log` UI denylist si Lot 7 confirme le besoin.
 - [ ] Garder Authelia comme frontiere publique.
 
@@ -1949,8 +1957,8 @@ Resultat Lot 5A:
   JSON/DOM readonly. Decision operateur requise avant correction.
 - `P2-CEL-NOTES-UI-GAP-01`: valide; backend/runtime Notes existe, UI dediee
   absente. Decision produit requise.
-- `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01`: valide partiellement; besoin de tests par
-  panel avant correction.
+- `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01`: valide; corrige en Lot 5C pour les
+  surfaces ciblees Exports/Images, Notes non regresse.
 - `P3-CEL-LOG-FRONTEND-DENYLIST-01`: valide comme dette de preuve; a traiter en
   Lot 7 sauf decision d'allowlist UI dediee.
 
@@ -1959,11 +1967,11 @@ Decoupage apres Lot 5A:
 - Lot 5B: decision/correction admin prompts DOM et statut Notes UI
   API-only/UI minimale/post-audit.
 - Lot 5C: tests et micro-corrections frontend erreur-vs-vide par panel, sans
-  redesign UI.
+  redesign UI; execute le 2026-06-25.
 - Lot 5D: nettoyage tests/docs admin compat knobs et preuve route guard
   loopback/proxy/lateral direct.
 - Lot 7: test `/log` champ inconnu si denylist conservee; matrice frontend
-  smoke si les panels ne sont pas corriges en Lot 5C.
+  smoke globale sans compenser les panels Exports/Images deja corriges en Lot 5C.
 - Lot 6: surfaces raw/`str(exc)`, 400 admin, logs/payloads et prompt/raw
   observability; non absorbe par Lot 5A.
 
@@ -2035,11 +2043,44 @@ Resultat Lot 5B:
 
 Limites conservees:
 
-- `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01` reste ouvert pour Lot 5C sur les autres
-  panels.
+- `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01` est clos par Lot 5C pour les surfaces
+  ciblees Exports/Images; Notes reste couvert par Lot 5B.
 - `P2-CEL-ADMIN-COMPAT-KNOBS-01` reste ouvert pour Lot 5D.
 - `P3-CEL-LOG-FRONTEND-DENYLIST-01` reste cible Lot 7.
 - Lot 6/7/9 restent non coches.
+
+#### Lot 5C - Frontend panels erreur API visible
+
+Statut: execute le 2026-06-25.
+Runtime modifie: oui, borne au frontend chat.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le finding etait
+suffisamment borne: Exports/Images avaient le meme fail-open que Notes avant
+Lot 5B, et la correction minimale etait d'ajouter un statut de chargement
+content-free puis de le rendre dans chaque panel.
+
+- [x] Valider `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01`.
+- [x] Corriger Exports: erreur fetch/HTTP/`ok=false`/payload inattendu rendue
+  comme `Chargement des exports impossible`, pas `Aucun export`.
+- [x] Corriger Images: erreur fetch/HTTP/`ok=false`/payload inattendu rendue
+  comme `Chargement des images impossible`, pas `Aucune image`.
+- [x] Conserver le vide normal Exports/Images quand l'API repond `ok` avec une
+  vraie liste vide.
+- [x] Revalider Notes: erreur Notes reste visible comme erreur, non regresse.
+- [x] Ne pas absorber Lot 5D/6/7/9.
+
+Resultat Lot 5C:
+
+- `chat_threads_sidebar.js` conserve maintenant des maps de statut separees
+  pour Exports et Images, sur le modele Notes: `ok`, `not_applicable`, `error`
+  et `reason_code` content-free.
+- Les panels Exports/Images consultent ce statut avant de rendre l'etat vide.
+- Les payloads inattendus ne sont plus normalises silencieusement en listes
+  vides: ils deviennent `folder_export_lookup_failed` ou
+  `folder_generated_image_lookup_failed`.
+- Les tests Node prouvent: vide normal Exports/Images, erreur Exports/Images,
+  non-regression Notes, absence de payload brut/detail technique dans le DOM test.
 
 ### Lot 6 - Observabilite/logs applicatifs
 

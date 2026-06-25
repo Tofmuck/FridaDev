@@ -14,6 +14,7 @@ const ImageGenerationOptions = (
 function createWorkspaceFolderGeneratedImagesPanelRenderer({
   threadsUl,
   getWorkspaceGeneratedImages,
+  getWorkspaceGeneratedImagesStatus,
   refreshWorkspaceGeneratedImages,
   createWorkspaceGeneratedImageOnServer,
   openWorkspaceGeneratedImage,
@@ -169,6 +170,21 @@ function createWorkspaceFolderGeneratedImagesPanelRenderer({
       empty.className = 'workspace-folder-generated-image-empty';
       empty.textContent = 'Images disponibles après synchronisation Nextcloud.';
       li.appendChild(empty);
+      threadsUl.appendChild(li);
+      return;
+    }
+
+    const imageStatus = typeof getWorkspaceGeneratedImagesStatus === 'function'
+      ? getWorkspaceGeneratedImagesStatus(folder.id)
+      : null;
+    if (imageStatus?.status === 'error') {
+      const error = document.createElement('div');
+      error.className = 'workspace-folder-generated-image-error';
+      error.textContent = 'Chargement des images impossible';
+      if (imageStatus.reason_code) {
+        error.dataset.reasonCode = String(imageStatus.reason_code);
+      }
+      li.appendChild(error);
       threadsUl.appendChild(li);
       return;
     }

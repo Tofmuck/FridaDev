@@ -73,7 +73,9 @@ function createChatThreadsSidebar({
   let foldersState = [];
   let workspaceFilesState = new Map();
   let workspaceExportsState = new Map();
+  let workspaceExportsStatusState = new Map();
   let workspaceGeneratedImagesState = new Map();
+  let workspaceGeneratedImagesStatusState = new Map();
   let workspaceNotesState = new Map();
   let workspaceNotesStatusState = new Map();
   let workspaceFileSelectionsState = new Map();
@@ -119,8 +121,12 @@ function createChatThreadsSidebar({
   };
   const getWorkspaceFiles = (folderId) => workspaceFilesState.get(String(folderId || "")) || [];
   const getWorkspaceExports = (folderId) => workspaceExportsState.get(String(folderId || "")) || [];
+  const getWorkspaceExportsStatus = (folderId) =>
+    workspaceExportsStatusState.get(String(folderId || "")) || { status: "unknown", reason_code: "workspace_exports_not_loaded" };
   const getWorkspaceGeneratedImages = (folderId) =>
     workspaceGeneratedImagesState.get(String(folderId || "")) || [];
+  const getWorkspaceGeneratedImagesStatus = (folderId) =>
+    workspaceGeneratedImagesStatusState.get(String(folderId || "")) || { status: "unknown", reason_code: "workspace_generated_images_not_loaded" };
   const getWorkspaceNotes = (folderId) => workspaceNotesState.get(String(folderId || "")) || [];
   const getWorkspaceNotesStatus = (folderId) =>
     workspaceNotesStatusState.get(String(folderId || "")) || { status: "unknown", reason_code: "workspace_notes_not_loaded" };
@@ -132,8 +138,14 @@ function createChatThreadsSidebar({
   const saveWorkspaceExportsEntries = (entries) => {
     workspaceExportsState = new Map(Array.isArray(entries) ? entries : []);
   };
+  const saveWorkspaceExportsStatusEntries = (entries) => {
+    workspaceExportsStatusState = new Map(Array.isArray(entries) ? entries : []);
+  };
   const saveWorkspaceGeneratedImagesEntries = (entries) => {
     workspaceGeneratedImagesState = new Map(Array.isArray(entries) ? entries : []);
+  };
+  const saveWorkspaceGeneratedImagesStatusEntries = (entries) => {
+    workspaceGeneratedImagesStatusState = new Map(Array.isArray(entries) ? entries : []);
   };
   const saveWorkspaceNotesEntries = (entries) => {
     workspaceNotesState = new Map(Array.isArray(entries) ? entries : []);
@@ -191,6 +203,16 @@ function createChatThreadsSidebar({
     return data;
   }
 
+  function makeContentFreeListError(reasonCode, message = "Réponse liste invalide") {
+    const err = new Error(message);
+    err.payload = { reason_code: String(reasonCode || "list_payload_invalid") };
+    return err;
+  }
+
+  function listErrorReason(err, fallbackReasonCode) {
+    return String(err?.payload?.reason_code || err?.status || fallbackReasonCode || "list_error");
+  }
+
   async function listConversationsFromServer(limit = THREADS_PAGE_SIZE, offset = 0) {
     const res = await httpFetch(`/api/conversations?limit=${encodeURIComponent(String(limit))}&offset=${encodeURIComponent(String(offset))}`);
     const data = await parseServerResponse(res);
@@ -212,6 +234,9 @@ function createChatThreadsSidebar({
   async function listWorkspaceExportsFromServer(folderId) {
     const res = await httpFetch(WorkspaceFolderExports.buildWorkspaceExportsListPath(folderId));
     const data = await parseServerResponse(res);
+    if (!Array.isArray(data?.exports) && !Array.isArray(data?.items)) {
+      throw makeContentFreeListError("folder_export_lookup_failed");
+    }
     return WorkspaceFolderExports?.normalizeWorkspaceExportsPayload(data) || [];
   }
 
@@ -220,6 +245,9 @@ function createChatThreadsSidebar({
       WorkspaceFolderGeneratedImages.buildWorkspaceGeneratedImagesListPath(folderId),
     );
     const data = await parseServerResponse(res);
+    if (!Array.isArray(data?.generated_images) && !Array.isArray(data?.items)) {
+      throw makeContentFreeListError("folder_generated_image_lookup_failed");
+    }
     return WorkspaceFolderGeneratedImages?.normalizeWorkspaceGeneratedImagesPayload(data) || [];
   }
 
@@ -531,30 +559,64 @@ function createChatThreadsSidebar({
         }
       }));
       saveWorkspaceFilesEntries(fileEntries);
-      const exportEntries = await Promise.all(folders.map(async (folder) => {
+      const exportEntries = [];
+      const exportStatusEntries = [];
+      for (const folder of folders) {
         if (!WorkspaceFolderExports?.canLoadWorkspaceExports?.(folder)) {
-          return [folder.id, []];
+          exportEntries.push([folder.id, []]);
+          exportStatusEntries.push([folder.id, {
+            status: "not_applicable",
+            reason_code: "folder_export_folder_not_linked",
+          }]);
+          continue;
         }
         try {
-          return [folder.id, await listWorkspaceExportsFromServer(folder.id)];
+          exportEntries.push([folder.id, await listWorkspaceExportsFromServer(folder.id)]);
+          exportStatusEntries.push([folder.id, {
+            status: "ok",
+            reason_code: "workspace_exports_list_ok",
+          }]);
         } catch (err) {
-          logger.warn("Impossible de charger les exports du répertoire", err);
-          return [folder.id, []];
+          const reason = listErrorReason(err, "folder_export_lookup_failed");
+          logger.warn("Impossible de charger les exports du répertoire", { reason_code: reason });
+          exportEntries.push([folder.id, []]);
+          exportStatusEntries.push([folder.id, {
+            status: "error",
+            reason_code: reason,
+          }]);
         }
-      }));
+      }
       saveWorkspaceExportsEntries(exportEntries);
-      const generatedImageEntries = await Promise.all(folders.map(async (folder) => {
+      saveWorkspaceExportsStatusEntries(exportStatusEntries);
+      const generatedImageEntries = [];
+      const generatedImageStatusEntries = [];
+      for (const folder of folders) {
         if (!WorkspaceFolderGeneratedImages?.canLoadWorkspaceGeneratedImages?.(folder)) {
-          return [folder.id, []];
+          generatedImageEntries.push([folder.id, []]);
+          generatedImageStatusEntries.push([folder.id, {
+            status: "not_applicable",
+            reason_code: "folder_generated_image_folder_not_linked",
+          }]);
+          continue;
         }
         try {
-          return [folder.id, await listWorkspaceGeneratedImagesFromServer(folder.id)];
+          generatedImageEntries.push([folder.id, await listWorkspaceGeneratedImagesFromServer(folder.id)]);
+          generatedImageStatusEntries.push([folder.id, {
+            status: "ok",
+            reason_code: "workspace_generated_images_list_ok",
+          }]);
         } catch (err) {
-          logger.warn("Impossible de charger les images du répertoire", err);
-          return [folder.id, []];
+          const reason = listErrorReason(err, "folder_generated_image_lookup_failed");
+          logger.warn("Impossible de charger les images du répertoire", { reason_code: reason });
+          generatedImageEntries.push([folder.id, []]);
+          generatedImageStatusEntries.push([folder.id, {
+            status: "error",
+            reason_code: reason,
+          }]);
         }
-      }));
+      }
       saveWorkspaceGeneratedImagesEntries(generatedImageEntries);
+      saveWorkspaceGeneratedImagesStatusEntries(generatedImageStatusEntries);
       const noteEntries = [];
       const noteStatusEntries = [];
       for (const folder of folders) {
@@ -678,11 +740,28 @@ function createChatThreadsSidebar({
     const folder = getWorkspaceFolders().find((item) => item.id === normalized);
     if (!WorkspaceFolderExports?.canLoadWorkspaceExports?.(folder)) {
       workspaceExportsState.set(normalized, []);
+      workspaceExportsStatusState.set(normalized, {
+        status: "not_applicable",
+        reason_code: "folder_export_folder_not_linked",
+      });
       return [];
     }
-    const exportsList = await listWorkspaceExportsFromServer(normalized);
-    workspaceExportsState.set(normalized, exportsList);
-    return exportsList;
+    try {
+      const exportsList = await listWorkspaceExportsFromServer(normalized);
+      workspaceExportsState.set(normalized, exportsList);
+      workspaceExportsStatusState.set(normalized, {
+        status: "ok",
+        reason_code: "workspace_exports_list_ok",
+      });
+      return exportsList;
+    } catch (err) {
+      workspaceExportsState.set(normalized, []);
+      workspaceExportsStatusState.set(normalized, {
+        status: "error",
+        reason_code: listErrorReason(err, "folder_export_lookup_failed"),
+      });
+      throw err;
+    }
   };
 
   const refreshWorkspaceGeneratedImages = async (folderId) => {
@@ -691,11 +770,28 @@ function createChatThreadsSidebar({
     const folder = getWorkspaceFolders().find((item) => item.id === normalized);
     if (!WorkspaceFolderGeneratedImages?.canLoadWorkspaceGeneratedImages?.(folder)) {
       workspaceGeneratedImagesState.set(normalized, []);
+      workspaceGeneratedImagesStatusState.set(normalized, {
+        status: "not_applicable",
+        reason_code: "folder_generated_image_folder_not_linked",
+      });
       return [];
     }
-    const images = await listWorkspaceGeneratedImagesFromServer(normalized);
-    workspaceGeneratedImagesState.set(normalized, images);
-    return images;
+    try {
+      const images = await listWorkspaceGeneratedImagesFromServer(normalized);
+      workspaceGeneratedImagesState.set(normalized, images);
+      workspaceGeneratedImagesStatusState.set(normalized, {
+        status: "ok",
+        reason_code: "workspace_generated_images_list_ok",
+      });
+      return images;
+    } catch (err) {
+      workspaceGeneratedImagesState.set(normalized, []);
+      workspaceGeneratedImagesStatusState.set(normalized, {
+        status: "error",
+        reason_code: listErrorReason(err, "folder_generated_image_lookup_failed"),
+      });
+      throw err;
+    }
   };
 
   const refreshWorkspaceNotes = async (folderId) => {
@@ -748,7 +844,9 @@ function createChatThreadsSidebar({
     getWorkspaceFolders,
     getWorkspaceFiles,
     getWorkspaceExports,
+    getWorkspaceExportsStatus,
     getWorkspaceGeneratedImages,
+    getWorkspaceGeneratedImagesStatus,
     getWorkspaceNotes,
     getWorkspaceNotesStatus,
     refreshThreadsFromServer,
@@ -1136,6 +1234,7 @@ function createChatThreadsSidebar({
     saveWorkspaceFolders,
     getWorkspaceFiles,
     getWorkspaceExports,
+    getWorkspaceExportsStatus,
     getWorkspaceFileSelections,
     getWorkspaceNotes,
     getWorkspaceNotesStatus,
@@ -1165,6 +1264,7 @@ function createChatThreadsSidebar({
     openWorkspaceExport,
     downloadWorkspaceExport,
     getWorkspaceGeneratedImages,
+    getWorkspaceGeneratedImagesStatus,
     listWorkspaceGeneratedImagesFromServer,
     createWorkspaceGeneratedImageOnServer,
     openWorkspaceGeneratedImage,

@@ -9,6 +9,7 @@ const WorkspaceFolderExportsPanelUi = (
 function createWorkspaceFolderExportsPanelRenderer({
   threadsUl,
   getWorkspaceExports,
+  getWorkspaceExportsStatus,
   refreshWorkspaceExports,
   createWorkspaceExportOnServer,
   openWorkspaceExport,
@@ -175,6 +176,21 @@ function createWorkspaceFolderExportsPanelRenderer({
       empty.className = 'workspace-folder-export-empty';
       empty.textContent = 'Exports disponibles après synchronisation Nextcloud.';
       li.appendChild(empty);
+      threadsUl.appendChild(li);
+      return;
+    }
+
+    const exportStatus = typeof getWorkspaceExportsStatus === 'function'
+      ? getWorkspaceExportsStatus(folder.id)
+      : null;
+    if (exportStatus?.status === 'error') {
+      const error = document.createElement('div');
+      error.className = 'workspace-folder-export-error';
+      error.textContent = 'Chargement des exports impossible';
+      if (exportStatus.reason_code) {
+        error.dataset.reasonCode = String(exportStatus.reason_code);
+      }
+      li.appendChild(error);
       threadsUl.appendChild(li);
       return;
     }

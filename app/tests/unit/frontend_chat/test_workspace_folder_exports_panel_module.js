@@ -100,6 +100,7 @@ function buildPanel({
   folder = linkedFolder(),
   currentThread = currentConversation(),
   exportsList = [],
+  exportsStatus = { status: "ok", reason_code: "workspace_exports_list_ok" },
   prompts = [],
 } = {}) {
   installDom();
@@ -115,6 +116,7 @@ function buildPanel({
   const panel = createWorkspaceFolderExportsPanelRenderer({
     threadsUl,
     getWorkspaceExports: () => exportsList,
+    getWorkspaceExportsStatus: () => exportsStatus,
     refreshWorkspaceExports: async () => {
       refreshCount += 1;
       return exportsList;
@@ -259,6 +261,37 @@ test("exports panel open and download buttons call only explicit namespaced acti
   assert.deepEqual(rendered.openCalls, [{ folderId: "folder-1", exportId: "export-1" }]);
   assert.deepEqual(rendered.downloadCalls, [{ folderId: "folder-1", exportId: "export-1" }]);
   assert.equal(rendered.createCalls.length, 0);
+});
+
+test("exports panel keeps normal empty state when API returns an empty list", () => {
+  const rendered = buildPanel({
+    exportsList: [],
+    exportsStatus: { status: "ok", reason_code: "workspace_exports_list_ok" },
+  });
+
+  assert.equal(firstByClass(rendered.threadsUl, "workspace-folder-export-error"), null);
+  const empty = firstByClass(rendered.threadsUl, "workspace-folder-export-empty");
+  assert.ok(empty);
+  assert.equal(empty.textContent, "Aucun export");
+});
+
+test("exports panel renders API errors as visible errors instead of empty lists", () => {
+  const rendered = buildPanel({
+    exportsList: [],
+    exportsStatus: {
+      status: "error",
+      reason_code: "folder_export_lookup_failed",
+      details: "UNSAFE_TECHNICAL_DETAIL_SENTINEL",
+    },
+  });
+
+  assert.equal(firstByClass(rendered.threadsUl, "workspace-folder-export-empty"), null);
+  const error = firstByClass(rendered.threadsUl, "workspace-folder-export-error");
+  assert.ok(error);
+  assert.equal(error.dataset.reasonCode, "folder_export_lookup_failed");
+  assert.match(visibleText(rendered.threadsUl), /Chargement des exports impossible/);
+  assert.equal(visibleText(rendered.threadsUl).includes("Aucun export"), false);
+  assert.equal(visibleText(rendered.threadsUl).includes("UNSAFE_TECHNICAL_DETAIL_SENTINEL"), false);
 });
 
 test("exports panel disabled open and download buttons do not call actions", () => {
