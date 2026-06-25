@@ -1914,15 +1914,15 @@ Decisions Lot 4E:
 - [x] Lot 5B.2.2: mode Notes sans dossier courant bloque sans lane mensongere.
 - [x] Lot 5B.2.3: mode Notes valide le dossier reel avant lane sans selection.
 - [x] Lot 5D: aligner compat knobs/tests admin sur contrat proxy/loopback.
-- [ ] Verifier routes admin registerees par modules.
-- [ ] Verifier admin HTML/public host vs API guard.
+- [x] Verifier routes admin registerees par modules: couvert par Lot 5A.
+- [x] Verifier admin HTML/public host vs API guard: couvert par Lots 3/5A/5D.
 - [x] Decider prompts complets dans DOM admin: content gate explicite livre.
 - [x] Traiter Notes UI gap: UI minimale livree, plus API-only.
 - [x] Lot 5C: traiter panels frontend qui rendaient les erreurs comme listes
   vides.
 - [x] Lot 5C.1: traiter Documents/Fichiers erreur API visible.
-- [ ] Traiter `/log` UI denylist si Lot 7 confirme le besoin.
-- [ ] Garder Authelia comme frontiere publique.
+- [ ] Lot 7: traiter `/log` UI denylist si le smoke/matrice confirme le besoin.
+- [x] Garder Authelia comme frontiere publique: invariant verifie par Lot 3/5A/5D.
 
 #### Lot 5A - Audit/triage admin/security/app routes
 
@@ -2168,6 +2168,31 @@ Resultat Lot 5D:
 - Les anciens noms restent visibles uniquement comme compat obsoletes dans
   `config.py` et dans quelques tests historiques qui snapshotent ces constantes;
   ils ne sont pas env-backed et ne sont plus proposes dans `.env.example`.
+
+#### Lot 5 parent checklist validation docs-only
+
+Statut: execute le 2026-06-25.
+Runtime modifie: non.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le Lot 5 parent
+contenait encore des cases ouvertes qui etaient soit deja prouvees par les
+sous-lots, soit a deleguer explicitement a Lot 7.
+
+Validation case par case:
+
+| Case parent | Statut | Preuve | Decision |
+|---|---|---|---|
+| Verifier routes admin registerees par modules | `stale_already_covered` | Lot 5A: inventaire Flask `122` routes, routes API admin observees sous `/api/admin/*`, surface outil sensible separee `/api/tools/image-generation`. | Case cochee comme couverte par Lot 5A. |
+| Verifier admin HTML/public host vs API guard | `stale_already_covered` | Lot 3: Caddy/Authelia frontiere publique; Lot 5A: distinction pages HTML statiques vs API admin; Lot 5D: preuve guard `/api/admin/*`. | Case cochee comme couverte par Lots 3/5A/5D. |
+| Traiter `/log` UI denylist si Lot 7 confirme le besoin | `move_or_delegate_to_later_lot` | Lot 5A qualifie `P3-CEL-LOG-FRONTEND-DENYLIST-01` comme dette de preuve; Lot 7 contient deja le test `/log` champ inconnu. | Case non cochee, reformulee comme delegation explicite Lot 7. |
+| Garder Authelia comme frontiere publique | `stale_already_covered` | Lot 3 verifie Caddy/Authelia comme frontiere publique; Lot 5A verifie les HEAD publics rediriges vers Authelia; Lot 5D maintient le guard proxy `Remote-User`/loopback. | Case cochee comme invariant deja verifie. |
+
+Decision:
+
+- Lot 5 parent n'a plus de tache ouverte propre a Lot 5 hors delegation Lot 7.
+- Lot 7 reste non coche et conserve `/log` UI denylist comme preuve/smoke futur.
+- Lot 6/9 restent non absorbes.
 
 ### Lot 6 - Observabilite/logs applicatifs
 
