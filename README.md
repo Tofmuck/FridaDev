@@ -11,6 +11,8 @@ Primary current-state references:
 
 - Documentation hub: `app/docs/README.md`
 - Frida 1.0 final product roadmap: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Mega-audit Lot 9 refactor TODO: `app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` for the active golden-test-first refactor roadmap.
+- Mega-audit Lot 9 readiness audit: `app/docs/states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md` for the docs-only structural audit that created the Lot 9 roadmap.
 - Frida V1 final audit archive: `app/docs/todo-done/product/frida-v1-final-audit-todo.md` for the closed final audit, P2/P3 register, Lot Z proof, branch/main history, fast-forward integration to `main` on 2026-06-24, durable Capsule activation proof, and Mail spec-only decision.
 - Frida V1 Continuity Payload delivery archive: `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md` for the closed product workstream, Lot Z proof, `main_payload_manifest_v1`, and the bounded runtime Continuity Capsule.
 - Frida V1 Continuity Payload contract: `app/docs/states/specs/frida-v1-continuity-payload-contract.md` for `main_payload_manifest_v1`, the Continuity Capsule, content-free observability, writer-side guardrails, and post-V1 limits.
@@ -230,6 +232,8 @@ References principales pour l'etat courant:
 
 - Hub documentaire: `app/docs/README.md`
 - Roadmap finale produit Frida 1.0: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- TODO refactors Lot 9 du mega-audit: `app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` pour la roadmap active de refactor golden-test-first.
+- Audit readiness Lot 9 du mega-audit: `app/docs/states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md` pour l'audit structurel docs-only qui fonde la roadmap Lot 9.
 - Archive de cloture finale Frida V1: `app/docs/todo-done/product/frida-v1-final-audit-todo.md` pour l'audit final clos, le registre P2/P3, la preuve Lot Z, la decision branche/main sans integration implicite, la preuve Capsule durable et la decision Mail spec-only.
 - Archive de livraison Continuity Payload Frida V1: `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md` pour le chantier cloture en Lot Z, les preuves, `main_payload_manifest_v1` et la Continuity Capsule runtime bornee.
 - Contrat Continuity Payload Frida V1: `app/docs/states/specs/frida-v1-continuity-payload-contract.md` pour `main_payload_manifest_v1`, la Continuity Capsule, l'observabilite content-free, la garde writer-side et les limites post-V1.

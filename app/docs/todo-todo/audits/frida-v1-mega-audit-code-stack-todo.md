@@ -3180,10 +3180,25 @@ Resultat Lot 8:
 
 ### Lot 9 - Refactors cibles
 
-- [ ] Prioriser `server.py` et gros modules.
-- [ ] Prioriser `chat_service.py` orchestration seulement apres golden tests.
-- [ ] Ecrire golden tests avant extraction.
+- [x] Executer readiness audit docs-only Lot 9.
+- [x] Creer TODO canonique dediee:
+  `app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`.
+- [x] Definir `Lot 9.0 - golden test harness / preuve avant refactor`.
+- [x] Decouper les refactors par responsabilite reelle: server routes,
+  chat orchestration, web search, observabilite, frontend, Agenda, Biblio,
+  Memory/Admin.
+- [ ] Executer Lot 9.0 avant toute extraction runtime.
+- [ ] Executer les sous-lots 9A-9H uniquement apres golden tests prealables.
 - [ ] Refuser refactor cosmetique sans reduction de risque.
+
+Resultat readiness Lot 9:
+
+- Audit cree:
+  `app/docs/states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md`.
+- TODO canonique creee:
+  `app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`.
+- Aucun runtime modifie. Lot 9 reste ouvert: seuls l'audit preparatoire et la
+  planification granulaire sont termines.
 
 ### Lot Z - Cloture mega-audit
 

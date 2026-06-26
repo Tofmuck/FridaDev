@@ -16,6 +16,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- TODO refactors Lot 9 du mega-audit: `todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` pour la roadmap active golden-test-first des refactors structurels.
+- Audit readiness Lot 9 du mega-audit: `states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md` pour la preuve docs-only qui fonde la roadmap Lot 9.
 - Archive de cloture finale Frida V1: `todo-done/product/frida-v1-final-audit-todo.md` pour l'audit final clos, le registre P2/P3, la preuve Lot Z, l'historique branche/main, l'integration fast-forward vers `main` du 2026-06-24, la preuve Capsule durable et la decision Mail spec-only.
 - Archive de livraison Continuity Payload Frida V1: `todo-done/product/frida-v1-continuity-payload-todo.md` pour le chantier cloture en Lot Z, les preuves content-free, `main_payload_manifest_v1` et la Continuity Capsule runtime bornee.
 - Contrat Continuity Payload Frida V1: `states/specs/frida-v1-continuity-payload-contract.md` pour `main_payload_manifest_v1`, la Continuity Capsule, l'observabilite content-free, la garde writer-side et les limites post-V1.
@@ -137,13 +139,15 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 ### Cleanup / refactor repo
 
 Lire d'abord:
+- `todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` pour les refactors actifs issus du mega-audit, obligatoirement precedes de golden tests.
+- `states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md` pour l'audit structurel docs-only qui fonde la granularite Lot 9.
 - `todo-done/audits/fridadev-global-audit-remediation-todo.md` pour l'archive de remediation cloturee issue de l'audit global du 2026-05-03.
 - `states/audits/fridadev-global-audit-2026-05-03.md` pour la source de verite des findings.
 - `todo-done/refactors/fridadev-repo-cleanup-prioritized-todo.md`
 - `todo-done/audits/fridadev_repo_audit.md`
 - `states/architecture/fridadev-current-runtime-pipeline.md`
 
-But: relire le cleanup priorise livre et les decisions de sortie sans reouvrir une roadmap terminee.
+But: pour un refactor actif, partir de la TODO Lot 9; pour l'historique, relire le cleanup priorise livre et les decisions de sortie sans reouvrir une roadmap terminee.
 
 ### Runtime courant / chat
 
