@@ -76,10 +76,16 @@ class ServerChatAgenticObservabilityContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         stages = {event['stage']: event for event in observed_events}
         self.assertEqual(stages['chat_response']['status'], 'not_applicable')
+        self.assertEqual(stages['chat_response']['payload_json']['reason_code'], 'not_applicable')
+        self.assertEqual(stages['chat_response']['payload_json']['reason_short_chars'], len('chat status 400'))
+        self.assertFalse(stages['chat_response']['payload_json']['reason_short_included'])
+        self.assertNotIn('reason_short', stages['chat_response']['payload_json'])
+        self.assertFalse(stages['chat_response']['payload_json'].get('rejected_payload', False))
         self.assertEqual(stages['turn_end']['status'], 'not_applicable')
         self.assertNotIn('error', {event['status'] for event in observed_events})
         serialized = json.dumps(observed_events, sort_keys=True)
         self.assertNotIn('redacted product refusal', serialized)
+        self.assertNotIn('chat status 400', serialized)
         self.assertNotIn('hello', serialized)
 
     def test_chat_5xx_response_remains_error(self) -> None:

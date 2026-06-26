@@ -1340,12 +1340,32 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   `stream_terminal` et le champ libre `reason` de `persist_response`. Correctif:
   schema writer-side accepte uniquement les champs stream compacts content-free,
   et `persist_response` projette `reason_code` au lieu de `reason`.
-  Probe apres patch: `stream_rejection_count=0`, `chat_response_rejection_count=2`
-  hors finding stream.
+  Probe Lot 6J: `stream_rejection_count=0`; les rejets `chat_response`
+  non-stream restants sont requalifies en finding dedie Lot 6J.1.
 - Critere de cloture: reproduire le payload stream exact sans contenu brut,
   classer `test_stale` / `projection_drift` / `guard_rejection`, puis corriger
   uniquement la surface confirmee.
 - Hors-scope Lot 6I.1: aucun patch runtime.
+
+### P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-CHAT-RESPONSE-01
+
+- Statut courant: closed_by_lot_6J_1_chat_response_refusal_payload.
+- Severite: P2.
+- Classe: `P2_observability_guard_rejection`.
+- Surface: `chat_turn_logger.emit_refusal()` appele par `/api/chat` pour les
+  refus produit non-stream 4xx.
+- Preuve Lot 6J.1: probe direct de la garde avec
+  `reason_short: "chat status 400"` -> `accepted=False`,
+  `issue_classes=['unsafe_string_value']`. Le payload etait remplace par
+  `observability_payload_rejected`, ce qui masquait le diagnostic compact
+  `chat_response`.
+- Correctif Lot 6J.1: `emit_refusal()` ne stocke plus le texte court libre; il
+  conserve `reason_code`, `reason_short_chars` et
+  `reason_short_included=False`.
+- Critere de cloture: plus de `chat_turn_log_payload_rejected stage=chat_response`
+  dans les tests cibles; aucun message utilisateur, payload brut ni exception
+  brute ajoute.
+- Hors-scope: Lot 7 `/log` denylist, Lot 9 refactors.
 
 ### P2-CEL-ADMIN-400-RAW-01
 
@@ -2361,6 +2381,9 @@ Decision:
 - [x] Lot 6J: valider et corriger
   `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01`
   (`chat_turn_log_payload_rejected` stream LLM).
+- [x] Lot 6J.1: valider et corriger
+  `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-CHAT-RESPONSE-01`
+  (`chat_turn_log_payload_rejected` chat_response non-stream).
 
 #### Lot 6A - Audit/triage observabilite/logs applicatifs
 
@@ -2863,10 +2886,44 @@ Resultat Lot 6J:
   internes/non publics ou hors scope post-V1.
 - `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01` est clos: les rejets
   `llm_call` / `persist_response` stream ne se reproduisent plus apres patch.
-- Probe apres patch: `stream_rejection_count=0`; les deux rejets restants
-  `chat_response` observes dans la suite route sont non-stream et restent hors
-  finding Lot 6J.
+- Probe Lot 6J avant Lot 6J.1: `stream_rejection_count=0`; les deux rejets
+  restants `chat_response` observes dans la suite route sont non-stream et
+  deviennent le finding dedie Lot 6J.1.
 - Lot 7 `/log` denylist et Lot 9 refactors restent non absorbes.
+
+#### Lot 6J.1 - Micro-correctif chat_response payload rejected non-stream
+
+Statut: execute le 2026-06-26.
+Runtime modifie: oui, borne a `chat_turn_logger.emit_refusal()`.
+Plateforme modifiee: non.
+
+- [x] Valider
+  `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-CHAT-RESPONSE-01`.
+- [x] Supprimer le texte libre `reason_short` du payload primaire
+  `chat_response`.
+- [x] Conserver les diagnostics content-free: `reason_code`,
+  `reason_short_chars`, `reason_short_included=False`.
+- [x] Ne pas relacher la garde writer-side et ne pas traiter Lot 7 ou Lot 9.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le rejet est local:
+`emit_refusal()` emettait un texte court libre (`chat status 400`) sous une cle
+que la garde traite comme code safe-only. Le correctif le plus borne est donc
+d'aligner `emit_refusal()` sur la logique `emit_error()` sans allowlist de texte
+libre.
+
+Resultat Lot 6J.1:
+
+- Finding valide: probe pre-patch `accepted=False`,
+  `issue_classes=['unsafe_string_value']` pour le payload
+  `reason_short="chat status 400"`.
+- Correctif: `chat_response` conserve son `status` (`refused` /
+  `not_applicable`) et son `reason_code`, mais ne stocke plus la phrase courte.
+- Preuve apres patch: payload content-free `reason_short_chars` /
+  `reason_short_included=False` accepte par la garde, `has_reason_short=False`,
+  `chat_response_rejection_count=0` sur les tests cibles; le texte
+  `chat status 400` n'est plus present dans les payloads.
+- Limite: Lot 7 `/log` denylist et Lot 9 refactors restent ouverts et non
+  absorbes.
 
 ### Lot 7 - Tests/smokes/artefacts
 

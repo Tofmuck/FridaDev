@@ -196,6 +196,22 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertTrue(decision.accepted)
         self.assertEqual(decision.payload["error_class"], "RuntimeError")
 
+    def test_refusal_payload_passes_without_reason_short_text(self) -> None:
+        payload = {
+            "status_schema_version": "agentic_v1",
+            "reason_code": "not_applicable",
+            "reason_short_chars": len("chat status 400"),
+            "reason_short_included": False,
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.payload["reason_code"], "not_applicable")
+        self.assertEqual(decision.payload["reason_short_chars"], len("chat status 400"))
+        self.assertFalse(decision.payload["reason_short_included"])
+        self.assertNotIn("reason_short", decision.payload)
+
     def test_llm_stream_compact_payload_passes_without_raw_content(self) -> None:
         payload = {
             "mode": "stream",

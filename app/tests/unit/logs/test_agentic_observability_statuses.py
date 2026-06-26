@@ -486,8 +486,15 @@ class AgenticObservabilityStatusTests(unittest.TestCase):
         self.assertEqual(statuses['chat_response'], 'refused')
         self.assertEqual(statuses['turn_end'], 'refused')
         self.assertNotIn('error', statuses.values())
+        chat_response = next(event for event in observed if event['stage'] == 'chat_response')
+        self.assertEqual(chat_response['payload_json']['reason_code'], 'payload_refused')
+        self.assertEqual(chat_response['payload_json']['reason_short_chars'], len('chat status 400'))
+        self.assertFalse(chat_response['payload_json']['reason_short_included'])
+        self.assertNotIn('reason_short', chat_response['payload_json'])
+        self.assertFalse(chat_response['payload_json'].get('rejected_payload', False))
         serialized = json.dumps(observed, sort_keys=True)
         self.assertNotIn('raw message must not be copied', serialized)
+        self.assertNotIn('chat status 400', serialized)
 
     def test_checklist_does_not_degrade_normal_agentic_noops(self) -> None:
         events = self._complete_events()

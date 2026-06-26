@@ -320,13 +320,15 @@ def emit_refusal(*, reason_code: str, reason_short: str, status: str = 'refused'
     status_norm = agentic_status.normalize_status(status, default=agentic_status.STATUS_REFUSED)
     if status_norm == agentic_status.STATUS_ERROR:
         status_norm = agentic_status.STATUS_REFUSED
+    reason_short_chars = len(_normalize_text(reason_short, max_chars=160))
     return emit(
         'chat_response',
         status=status_norm,
         reason_code=reason_code,
         payload={
             'reason_code': reason_code,
-            'reason_short': _normalize_text(reason_short, max_chars=160),
+            'reason_short_chars': reason_short_chars,
+            'reason_short_included': False,
         },
     )
 
