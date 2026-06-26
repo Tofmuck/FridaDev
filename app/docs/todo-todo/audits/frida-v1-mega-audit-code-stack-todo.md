@@ -1818,6 +1818,23 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   `llm_call_ok`) restent acceptes/rendus; valeur token-like synthetique refusee
   ou redacted aux trois frontieres; aucun contenu brut ajoute.
 
+### P2-CEL-LOG-SAFECODE-TOKENLIKE-VARIANTS-01
+
+- Statut courant: closed_by_lot_7_2_tokenlike_safe_code_variants.
+- Severite: P2.
+- Classe: `P2_defense_in_depth_log_projection`.
+- Surfaces: garde writer-side observabilite, projection admin des logs,
+  rendu frontend `/log`.
+- Constat Lot 7.2: audit contradictoire valide que Lot 7.1 couvrait les
+  variantes `sk-*` avec tirets, mais pas les variantes token-like evidentes
+  avec underscore ou prefixes provider synthetiques (`sk_live*`, `sk_or*`,
+  `ghp_*`, `hf_*`, `xoxb-*`) sous champs safe-code.
+- Correction Lot 7.2: detection bornee et prudente de ces prefixes; pas de
+  blocage generique des underscores ni des reason codes normaux.
+- Critere de cloture: toutes les variantes synthetiques listees sont
+  refusees/redacted; `skipped`, `provider_timeout`, `llm_call_ok` et
+  `openai/gpt-5.4-mini` restent acceptes/rendus.
+
 ### P3-CEL-FILENAMES-CONTENT-FREE-DECISION-01
 
 - Statut initial: open.
@@ -3052,6 +3069,28 @@ Resultat Lot 7.1:
   safe-codes token-like evidents.
 - Le contrat `/log` reste content-free: valeurs normales affichees, valeurs
   token-like synthetiques redacted, aucun secret runtime ni prompt brut ajoute.
+
+#### Lot 7.2 - Correction token-like safe-code variants
+
+Statut: execute le 2026-06-26.
+Runtime modifie: oui, borne a la garde observabilite, projection admin logs et
+defense frontend `/log`.
+Plateforme modifiee: non.
+
+- [x] Valider `P2-CEL-LOG-SAFECODE-TOKENLIKE-VARIANTS-01`: les variantes
+  token-like synthetiques avec underscore ou prefixes provider passaient encore
+  sous `reason_code`.
+- [x] Etendre la detection aux variantes `sk_live*`, `sk_or*`, `ghp_*`, `hf_*`
+  et `xoxb-*`, sans bloquer les underscores ordinaires.
+- [x] Prouver que `skipped`, `provider_timeout`, `llm_call_ok` et
+  `openai/gpt-5.4-mini` restent acceptes/rendus.
+- [x] Conserver Lot 9 et Lot Z non coches.
+
+Resultat Lot 7.2:
+
+- `P2-CEL-LOG-SAFECODE-TOKENLIKE-VARIANTS-01` est clos.
+- Garde writer-side, projection admin et `/log` appliquent la meme defense
+  token-like sur les variantes synthetiques confirmees.
 
 ### Lot 8 - Docs/source-of-truth
 

@@ -94,18 +94,47 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertIn("url_value", decision.payload["issue_classes"])
 
     def test_token_like_safe_code_value_is_rejected_without_blocking_normal_codes(self) -> None:
-        sentinel = "sk-live-artificial-lot7-1"
-        decision = observability_payload_guard.guard_payload(
-            {
-                "status_schema_version": "agentic_v1",
-                "reason_code": sentinel,
-            }
+        token_like_values = (
+            "sk-live-artificial-lot7-1",
+            "sk_live_artificial_lot7_1",
+            "sk_or_artificial_lot7_1",
+            "ghp_artificiallot71abcdef",
+            "hf_artificiallot71abcdef",
+            "xoxb-artificial-lot7-1",
         )
-        encoded = _encoded(decision.payload)
 
-        self.assertFalse(decision.accepted)
-        self.assertIn("token_like_value", decision.payload["issue_classes"])
-        self.assertNotIn(sentinel, encoded)
+        for sentinel in token_like_values:
+            with self.subTest(sentinel=sentinel, key="reason_code"):
+                decision = observability_payload_guard.guard_payload(
+                    {
+                        "status_schema_version": "agentic_v1",
+                        "reason_code": sentinel,
+                    }
+                )
+                projected, redaction = admin_log_projection.project_payload({"reason_code": sentinel})
+                encoded = _encoded({"guard": decision.payload, "projection": projected})
+
+                self.assertFalse(decision.accepted)
+                self.assertIn("token_like_value", decision.payload["issue_classes"])
+                self.assertEqual(projected["reason_code"], "[redacted]")
+                self.assertEqual(redaction["redacted_payload_values_count"], 1)
+                self.assertNotIn(sentinel, encoded)
+
+            with self.subTest(sentinel=sentinel, key="model"):
+                decision = observability_payload_guard.guard_payload(
+                    {
+                        "status_schema_version": "agentic_v1",
+                        "model": sentinel,
+                    }
+                )
+                projected, redaction = admin_log_projection.project_payload({"model": sentinel})
+                encoded = _encoded({"guard": decision.payload, "projection": projected})
+
+                self.assertFalse(decision.accepted)
+                self.assertIn("token_like_value", decision.payload["issue_classes"])
+                self.assertEqual(projected["model"], "[redacted]")
+                self.assertEqual(redaction["redacted_payload_values_count"], 1)
+                self.assertNotIn(sentinel, encoded)
 
         for reason_code in ("skipped", "provider_timeout", "llm_call_ok"):
             with self.subTest(reason_code=reason_code):
@@ -117,6 +146,21 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
                 )
                 self.assertTrue(accepted.accepted)
                 self.assertEqual(accepted.payload["reason_code"], reason_code)
+                projected, redaction = admin_log_projection.project_payload({"reason_code": reason_code})
+                self.assertEqual(projected["reason_code"], reason_code)
+                self.assertEqual(redaction["redacted_payload_values_count"], 0)
+
+        accepted = observability_payload_guard.guard_payload(
+            {
+                "status_schema_version": "agentic_v1",
+                "model": "openai/gpt-5.4-mini",
+            }
+        )
+        projected, redaction = admin_log_projection.project_payload({"model": "openai/gpt-5.4-mini"})
+        self.assertTrue(accepted.accepted)
+        self.assertEqual(accepted.payload["model"], "openai/gpt-5.4-mini")
+        self.assertEqual(projected["model"], "openai/gpt-5.4-mini")
+        self.assertEqual(redaction["redacted_payload_values_count"], 0)
 
     def test_agenda_allowlisted_fields_still_reject_sensitive_values(self) -> None:
         payload = {

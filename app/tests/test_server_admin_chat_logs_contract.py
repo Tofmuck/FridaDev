@@ -13,7 +13,7 @@ if str(APP_DIR) not in sys.path:
 from tests.support.server_test_bootstrap import load_server_module_for_tests
 
 
-_TOKEN_LIKE_SAFE_CODE_SENTINEL = 'sk-live-artificial-lot7-1'
+_TOKEN_LIKE_SAFE_CODE_SENTINEL = 'ghp_artificiallot71abcdef'
 
 
 class ServerAdminChatLogsContractTests(unittest.TestCase):

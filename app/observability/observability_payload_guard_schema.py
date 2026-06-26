@@ -12,7 +12,15 @@ _SAFE_TIMEZONE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_./+-]{0,79}$")
 _SAFE_TIMESTAMP_CHARS = set("0123456789T:+-.Z")
 _BASE64_RE = re.compile(r"^[A-Za-z0-9+/]{96,}={0,2}$")
 _SAFE_LANE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_]{0,79}$")
-_TOKEN_LIKE_SAFE_CODE_RE = re.compile(r"^sk-(?:live-|or-)?[a-z0-9][a-z0-9_.-]{5,}$", re.IGNORECASE)
+_TOKEN_LIKE_SAFE_CODE_RE = re.compile(
+    r"^(?:"
+    r"sk[-_](?:live[-_]|or[-_])?[a-z0-9][a-z0-9_.-]{5,}"
+    r"|ghp_[a-z0-9][a-z0-9_]{11,}"
+    r"|hf_[a-z0-9][a-z0-9_]{11,}"
+    r"|xoxb-[a-z0-9][a-z0-9_.-]{5,}"
+    r")$",
+    re.IGNORECASE,
+)
 
 _QUALIFIED_RAW_FLAGS = set(
     """
@@ -578,10 +586,10 @@ def _dangerous_value_class(key: str, value: Any) -> str:
     if not text:
         return ""
     lower = text.lower()
-    if key.lower() == "model" and bool(_SAFE_MODEL_RE.fullmatch(text) or _SAFE_CODE_RE.fullmatch(text)):
-        return ""
     if _TOKEN_LIKE_SAFE_CODE_RE.fullmatch(text):
         return "token_like_value"
+    if key.lower() == "model" and bool(_SAFE_MODEL_RE.fullmatch(text) or _SAFE_CODE_RE.fullmatch(text)):
+        return ""
     if lower.startswith("data:") or "base64," in lower:
         return "data_url_value"
     if _BASE64_RE.fullmatch(text):

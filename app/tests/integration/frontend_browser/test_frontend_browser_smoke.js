@@ -1032,8 +1032,13 @@ function logsMockScript({ metricsMode = 'nominal' } = {}) {
               ts: "2026-05-03T10:00:01Z",
               duration_ms: 13,
               payload: {
-                reason_code: "sk-live-artificial-lot7-1",
+                reason_code: "xoxb-artificial-lot7-1",
                 error_code: "provider_timeout",
+                provider_caller: "ghp_artificiallot71abcdef",
+                runtime_pipeline: "hf_artificiallot71abcdef",
+                source_kind: "sk_live_artificial_lot7_1",
+                event_family: "sk_or_artificial_lot7_1",
+                model: "sk-live-artificial-lot7-1",
               },
             }],
           }), {
@@ -1093,6 +1098,11 @@ test('logs page applies filters from query string and exports scoped markdown in
     await assertTextContains(page.locator('#logGroups'), 'raw_event_payloads_included=false');
     await assertTextContains(page.locator('#logGroups'), 'runtime_source=[redacted]');
     const groupsText = await page.locator('#logGroups').textContent();
+    assert.equal(String(groupsText || '').includes('xoxb-artificial-lot7-1'), false);
+    assert.equal(String(groupsText || '').includes('ghp_artificiallot71abcdef'), false);
+    assert.equal(String(groupsText || '').includes('hf_artificiallot71abcdef'), false);
+    assert.equal(String(groupsText || '').includes('sk_live_artificial_lot7_1'), false);
+    assert.equal(String(groupsText || '').includes('sk_or_artificial_lot7_1'), false);
     assert.equal(String(groupsText || '').includes('sk-live-artificial-lot7-1'), false);
     assert.equal(String(groupsText || '').includes('ARTIFICIAL_LOG_UI_SENTINEL_URL'), false);
     assert.equal(String(groupsText || '').includes('ARTIFICIAL_LOG_UI_SENTINEL_UNKNOWN'), false);
