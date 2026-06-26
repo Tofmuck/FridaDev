@@ -116,6 +116,7 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
         self.assertIn("METRICS_EVENT_LIMIT", source)
         self.assertIn("METRIC_VISUAL_SOURCES", source)
         self.assertIn("sanitizeMetricLabel", source)
+        self.assertIn("sk-(?:live-|or-)?", source)
         self.assertIn("elements.turnId.disabled = true", source)
         self.assertIn("query.set(\"conversation_id\", conversationId)", source)
         self.assertIn("query.set(\"turn_id\", turnId)", source)

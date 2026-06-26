@@ -13,6 +13,9 @@ if str(APP_DIR) not in sys.path:
 from tests.support.server_test_bootstrap import load_server_module_for_tests
 
 
+_TOKEN_LIKE_SAFE_CODE_SENTINEL = 'sk-live-artificial-lot7-1'
+
+
 class ServerAdminChatLogsContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -198,9 +201,28 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
                             'prompt_kind': 'chat_system_augmented',
                         },
                     },
+                    {
+                        'event_id': 'evt-tokenlike-admin',
+                        'conversation_id': 'conv-raw-admin',
+                        'turn_id': 'turn-tokenlike-admin',
+                        'ts': '2026-06-21T11:57:00+00:00',
+                        'stage': 'llm_call',
+                        'status': 'error',
+                        'status_v1': 'error',
+                        'status_schema_version': 'agentic_v1',
+                        'legacy_status': False,
+                        'duration_ms': 44,
+                        'payload': {
+                            'status_schema_version': 'agentic_v1',
+                            'reason_code': _TOKEN_LIKE_SAFE_CODE_SENTINEL,
+                            'error_code': 'upstream_error',
+                            'model': 'openai/gpt-5.4-mini',
+                            'prompt_kind': 'chat_system_augmented',
+                        },
+                    },
                 ],
-                'count': 3,
-                'total': 3,
+                'count': 4,
+                'total': 4,
                 'limit': kwargs.get('limit', 100),
                 'offset': kwargs.get('offset', 0),
                 'next_offset': None,
@@ -226,6 +248,7 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.assertTrue(data['ok'])
         for marker in dangerous_values:
             self.assertNotIn(marker, encoded)
+        self.assertNotIn(_TOKEN_LIKE_SAFE_CODE_SENTINEL, encoded)
         self.assertFalse(data['redaction']['raw_event_payloads_included'])
         self.assertFalse(data['redaction']['raw_content_included'])
         self.assertFalse(data['redaction']['raw_prompt_included'])
@@ -249,6 +272,8 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.assertEqual(data['items'][2]['payload']['runtime_source'], '[redacted]')
         self.assertEqual(data['items'][2]['payload']['model'], 'openai/gpt-5.4-mini')
         self.assertEqual(data['items'][2]['payload']['prompt_kind'], 'chat_system_augmented')
+        self.assertEqual(data['items'][3]['payload']['reason_code'], '[redacted]')
+        self.assertEqual(data['items'][3]['payload']['error_code'], 'upstream_error')
 
     def test_legacy_admin_logs_route_projects_payload_content_free(self) -> None:
         original_read = self.server.admin_logs.read_logs

@@ -16,6 +16,7 @@ _REDACTED = '[redacted]'
 
 _SAFE_CODE_RE = re.compile(r'^[a-z0-9][a-z0-9_.-]{0,159}$')
 _SAFE_MODEL_RE = re.compile(r'^[a-z0-9][a-z0-9_.-]{0,79}/[a-z0-9][a-z0-9_.-]{0,119}$')
+_TOKEN_LIKE_SAFE_CODE_RE = re.compile(r'^sk-(?:live-|or-)?[a-z0-9][a-z0-9_.-]{5,}$', re.IGNORECASE)
 _LEGACY_ADMIN_CORE_KEYS = {'timestamp', 'event', 'level'}
 _LEGACY_ADMIN_SAFE_EVENT_RE = re.compile(r'^[A-Za-z0-9_.-]{1,160}$')
 _LEGACY_ADMIN_SAFE_TIMESTAMP_RE = re.compile(r'^[0-9TZ:+.\-]{1,64}$')
@@ -246,6 +247,8 @@ def _is_safe_text_key(key: str) -> bool:
 
 def _looks_dangerous_text(value: str, *, allow_model_path: bool = False) -> bool:
     lower = value.lower()
+    if _TOKEN_LIKE_SAFE_CODE_RE.fullmatch(value.strip()):
+        return True
     if '://' in lower:
         return True
     if lower.startswith(('http:', 'https:', 'www.')):

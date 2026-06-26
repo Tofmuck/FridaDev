@@ -1023,6 +1023,18 @@ function logsMockScript({ metricsMode = 'nominal' } = {}) {
                 prompt: "ARTIFICIAL_LOG_UI_SENTINEL_PROMPT",
                 content: "ARTIFICIAL_LOG_UI_SENTINEL_CONTENT",
               },
+            }, {
+              event_id: "evt-token-like",
+              conversation_id: "conv-1",
+              turn_id: "turn-1",
+              stage: "validation_agent",
+              status: "error",
+              ts: "2026-05-03T10:00:01Z",
+              duration_ms: 13,
+              payload: {
+                reason_code: "sk-live-artificial-lot7-1",
+                error_code: "provider_timeout",
+              },
             }],
           }), {
             status: 200,
@@ -1076,9 +1088,12 @@ test('logs page applies filters from query string and exports scoped markdown in
     await assertTextContains(page.locator('#logGroups'), 'llm_call');
     await assertTextContains(page.locator('#logGroups'), 'model=test-model');
     await assertTextContains(page.locator('#logGroups'), 'reason_code=llm_call_ok');
+    await assertTextContains(page.locator('#logGroups'), 'reason_code=[redacted]');
+    await assertTextContains(page.locator('#logGroups'), 'error_code=provider_timeout');
     await assertTextContains(page.locator('#logGroups'), 'raw_event_payloads_included=false');
     await assertTextContains(page.locator('#logGroups'), 'runtime_source=[redacted]');
     const groupsText = await page.locator('#logGroups').textContent();
+    assert.equal(String(groupsText || '').includes('sk-live-artificial-lot7-1'), false);
     assert.equal(String(groupsText || '').includes('ARTIFICIAL_LOG_UI_SENTINEL_URL'), false);
     assert.equal(String(groupsText || '').includes('ARTIFICIAL_LOG_UI_SENTINEL_UNKNOWN'), false);
     assert.equal(String(groupsText || '').includes('ARTIFICIAL_LOG_UI_SENTINEL_PROMPT'), false);

@@ -93,6 +93,31 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertFalse(decision.accepted)
         self.assertIn("url_value", decision.payload["issue_classes"])
 
+    def test_token_like_safe_code_value_is_rejected_without_blocking_normal_codes(self) -> None:
+        sentinel = "sk-live-artificial-lot7-1"
+        decision = observability_payload_guard.guard_payload(
+            {
+                "status_schema_version": "agentic_v1",
+                "reason_code": sentinel,
+            }
+        )
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("token_like_value", decision.payload["issue_classes"])
+        self.assertNotIn(sentinel, encoded)
+
+        for reason_code in ("skipped", "provider_timeout", "llm_call_ok"):
+            with self.subTest(reason_code=reason_code):
+                accepted = observability_payload_guard.guard_payload(
+                    {
+                        "status_schema_version": "agentic_v1",
+                        "reason_code": reason_code,
+                    }
+                )
+                self.assertTrue(accepted.accepted)
+                self.assertEqual(accepted.payload["reason_code"], reason_code)
+
     def test_agenda_allowlisted_fields_still_reject_sensitive_values(self) -> None:
         payload = {
             "schema_version": "frida_agenda_lot6_pending_v1",

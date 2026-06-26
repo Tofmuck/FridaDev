@@ -1801,6 +1801,23 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   champ inconnu.
 - Preuve minimale: test frontend/log render.
 
+### P2-CEL-LOG-SAFECODE-TOKENLIKE-01
+
+- Statut courant: closed_by_lot_7_1_tokenlike_safe_code_redaction.
+- Severite: P2.
+- Classe: `P2_defense_in_depth_log_projection`.
+- Surfaces: garde writer-side observabilite, projection admin des logs,
+  rendu frontend `/log`.
+- Constat Lot 7.1: aucune fuite reelle observee, mais une valeur token-like
+  evidente sous une cle normalement safe-code (`reason_code` / `error_code`)
+  passait la garde, la projection admin et le rendu `/log`.
+- Correction Lot 7.1: detection prudente des prefixes token-like evidents
+  `sk-*`, `sk-or-*`, `sk-live-*` avec queue longue; garde writer-side refuse,
+  projection admin redacted et `/log` redacted en defense secondaire.
+- Critere de cloture: reason codes normaux (`skipped`, `provider_timeout`,
+  `llm_call_ok`) restent acceptes/rendus; valeur token-like synthetique refusee
+  ou redacted aux trois frontieres; aucun contenu brut ajoute.
+
 ### P3-CEL-FILENAMES-CONTENT-FREE-DECISION-01
 
 - Statut initial: open.
@@ -3009,6 +3026,32 @@ Resultat Lot 7:
 - `P3-CEL-FINAL-LOCK-CONFLICT-TEST-01` est requalifie vers Lot 9 golden tests
   si refactor orchestration; aucun conflit runtime nouveau confirme par Lot 7.
 - Lot 9 et Lot Z restent non coches.
+
+#### Lot 7.1 - Micro-correctif `/log` token-like safe-code
+
+Statut: execute le 2026-06-26.
+Runtime modifie: oui, borne a la garde observabilite, projection admin logs et
+defense frontend `/log`.
+Plateforme modifiee: non.
+
+- [x] Valider `P2-CEL-LOG-SAFECODE-TOKENLIKE-01`: une valeur token-like
+  synthetique sous `reason_code` passait la garde writer-side, la projection
+  admin et le rendu `/log`.
+- [x] Refuser les safe-codes token-like evidents dans la garde writer-side sans
+  bloquer `skipped`, `provider_timeout` ni les reason codes snake_case normaux.
+- [x] Redacter les valeurs token-like dans la projection admin et dans `/log`
+  comme defense secondaire.
+- [x] Ajouter sentinelles garde/projection/browser prouvant que les champs
+  `prompt`, `content`, URL/query et valeurs token-like synthetiques ne sont pas
+  rendus.
+- [x] Ne pas cocher Lot 9 ni Lot Z.
+
+Resultat Lot 7.1:
+
+- `P2-CEL-LOG-SAFECODE-TOKENLIKE-01` est clos par defense en profondeur sur les
+  safe-codes token-like evidents.
+- Le contrat `/log` reste content-free: valeurs normales affichees, valeurs
+  token-like synthetiques redacted, aucun secret runtime ni prompt brut ajoute.
 
 ### Lot 8 - Docs/source-of-truth
 

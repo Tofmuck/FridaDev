@@ -202,6 +202,7 @@
     const text = toText(value);
     const lower = text.toLowerCase();
     if (!text) return false;
+    if (/^sk-(?:live-|or-)?[a-z0-9][a-z0-9_.-]{5,}$/i.test(text)) return true;
     if (lower.includes("://") || lower.startsWith("www.")) return true;
     if (text.startsWith("/") || text.startsWith("\\")) return true;
     return /[\s?&#=<>\r\n]/.test(text);
