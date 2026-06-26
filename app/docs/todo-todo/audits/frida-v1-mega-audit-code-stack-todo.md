@@ -1293,7 +1293,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-EXCEPTION-RAW-SURFACE-01
 
-- Statut courant: partially_closed_by_lot_6I_needs_log_surface_requalification.
+- Statut courant: closed_by_lot_6J_internal_logs_requalified.
 - Severite: P2.
 - Fichiers suspects: `app/server.py`, `app/tools/web_search.py`,
   `app/core/*`, `app/memory/*`, `app/observability/*`, `app/biblio/*`.
@@ -1311,13 +1311,21 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   complete, notamment `app/server.py`, `app/memory/memory_traces_summaries.py`,
   `app/core/conversations_store.py`, `app/memory/arbiter.py` et autres familles
   runtime detectees par scan.
+- Preuve Lot 6J: scan borne `err=%s` / `str(exc)` / `repr(exc)` /
+  `exc_info=True` / `traceback` sur `app/server.py`, `app/admin`, `app/core`,
+  `app/memory`, `app/observability`, `app/tools`, `app/agenda`, `app/biblio`
+  et `app/identity`: 106 hits qualifies. Aucun hit restant n'est une reponse
+  HTTP utilisateur/admin, un payload observabilite, une projection dashboard ou
+  un export lisible avec exception brute confirme. Les logs restants sont
+  requalifies comme `safe_internal_log` / `content_free_already` /
+  `test_only` / `out_of_scope_post_v1` selon famille.
 - Critere de cloture: surfaces qualifiees; corrections bornees uniquement.
 - Preuve minimale: tests content-free/fail-closed par surface.
 - Hors-scope: remplacement massif aveugle de `str(exc)`.
 
 ### P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01
 
-- Statut courant: needs_targeted_validation.
+- Statut courant: closed_by_lot_6J_stream_payload_schema.
 - Severite: P2.
 - Classe: `P2_observability_guard_rejection`.
 - Surfaces suspectes: suites stream LLM, `chat_turn_log_payload_rejected`,
@@ -1327,6 +1335,13 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 - Preuve Lot 6I.1: les warnings `chat_turn_log_payload_rejected` vus dans les
   suites stream LLM ne doivent plus rester une note volante ni etre caches par
   la cloture partielle de `P2-CEL-EXCEPTION-RAW-SURFACE-01`.
+- Preuve Lot 6J: reproduction conteneur valide les rejets stream sur
+  `llm_call` / `persist_response`. Cause isolee: `stream_chunks`,
+  `stream_terminal` et le champ libre `reason` de `persist_response`. Correctif:
+  schema writer-side accepte uniquement les champs stream compacts content-free,
+  et `persist_response` projette `reason_code` au lieu de `reason`.
+  Probe apres patch: `stream_rejection_count=0`, `chat_response_rejection_count=2`
+  hors finding stream.
 - Critere de cloture: reproduire le payload stream exact sans contenu brut,
   classer `test_stale` / `projection_drift` / `guard_rejection`, puis corriger
   uniquement la surface confirmee.
@@ -2341,9 +2356,9 @@ Decision:
   comme test stale et aligner le contrat compact.
 - [x] Lot 6I: requalifier/corriger les surfaces exposees confirmees restantes
   de `P2-CEL-EXCEPTION-RAW-SURFACE-01`.
-- [ ] Lot 6J: requalifier les logs runtime `err=%s` par famille avant cloture
+- [x] Lot 6J: requalifier les logs runtime `err=%s` par famille avant cloture
   complete de `P2-CEL-EXCEPTION-RAW-SURFACE-01`.
-- [ ] Lot 6J/Lot 7: valider
+- [x] Lot 6J: valider et corriger
   `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01`
   (`chat_turn_log_payload_rejected` stream LLM).
 
@@ -2810,19 +2825,48 @@ Decision:
 
 #### Lot 6J - Requalification logs runtime err=%s et rejets stream
 
-Statut: ouvert.
-Runtime modifie: non.
+Statut: execute le 2026-06-26.
+Runtime modifie: oui, borne a la garde observabilite stream et au payload
+`persist_response`.
 Plateforme modifiee: non.
 
-- [ ] Requalifier par famille les logs runtime `logger.*("... err=%s", exc)`
+- [x] Requalifier par famille les logs runtime `logger.*("... err=%s", exc)`
   encore presents apres Lot 6I.
-- [ ] Distinguer logs internes defensifs acceptables, logs durables lisibles,
+- [x] Distinguer logs internes defensifs acceptables, logs durables lisibles,
   projections admin/dashboard et reponses HTTP.
-- [ ] Corriger uniquement les familles confirmees comme surface brute durable ou
+- [x] Corriger uniquement les familles confirmees comme surface brute durable ou
   visible; conserver `error_class`, `reason_code` et diagnostics content-free.
-- [ ] Valider `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01` ou le deleguer
-  explicitement au Lot 7 si la preuve depend d'une matrice/smoke finale.
-- [ ] Ne pas traiter Lot 7 `/log` denylist ni Lot 9 refactors dans ce lot.
+- [x] Valider `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01`.
+- [x] Ne pas traiter Lot 7 `/log` denylist ni Lot 9 refactors dans ce lot.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le bon plan etait de
+reproduire les rejets stream, isoler les cles refusees par la garde, puis
+qualifier les logs `err=%s` par famille sans remplacement global.
+
+Inventaire Lot 6J:
+
+| Famille | Classification | Decision |
+|---|---|---|
+| `/api/chat` stream `llm_call` | `needs_redaction` confirme | Corrige: `stream_chunks` compteur et `stream_terminal` code compact acceptes par la garde; valeurs dangereuses restent refusees. |
+| `/api/chat` stream `persist_response` | `needs_redaction` confirme | Corrige: `reason` libre remplace par `reason_code` stable dans le payload primaire. |
+| Logs bootstrap/runtime settings `app/server.py` | `safe_internal_log` | Logs operateur internes uniquement; pas de reponse HTTP/admin ni payload observabilite. Pas de patch Lot 6J. |
+| Logs DB/stores conversations/memoire/identity | `safe_internal_log` | Logs applicatifs internes avec identifiants techniques et exceptions; pas de surface publique/projection/export confirmee. Pas de patch global. |
+| Branches deja en `err_class` / reason codes | `content_free_already` | Aucun patch: diagnostics deja bornes, notamment plusieurs chemins LLM, conversations maintenance, prompt lanes et services recents. |
+| Compat tests `purpose not in str(exc)` / `unexpected keyword` | `test_only` | Aucun patch runtime: compatibilites de doubles de tests deja requalifiees par Lot 6I. |
+| Warnings actifs post-V1 hors surfaces exposees | `out_of_scope_post_v1` | Hygiene future possible si l'operateur veut redacter aussi les logs internes conteneur, mais pas bloquant pour le P2 public/admin. |
+
+Resultat Lot 6J:
+
+- `P2-CEL-EXCEPTION-RAW-SURFACE-01` est clos comme
+  `closed_by_lot_6J_internal_logs_requalified`: les surfaces exposees ont ete
+  corrigees en Lots 6B-6I, et les logs `err=%s` restants sont qualifies comme
+  internes/non publics ou hors scope post-V1.
+- `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01` est clos: les rejets
+  `llm_call` / `persist_response` stream ne se reproduisent plus apres patch.
+- Probe apres patch: `stream_rejection_count=0`; les deux rejets restants
+  `chat_response` observes dans la suite route sont non-stream et restent hors
+  finding Lot 6J.
+- Lot 7 `/log` denylist et Lot 9 refactors restent non absorbes.
 
 ### Lot 7 - Tests/smokes/artefacts
 

@@ -196,6 +196,44 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertTrue(decision.accepted)
         self.assertEqual(decision.payload["error_class"], "RuntimeError")
 
+    def test_llm_stream_compact_payload_passes_without_raw_content(self) -> None:
+        payload = {
+            "mode": "stream",
+            "timeout_s": 42,
+            "response_chars": 7,
+            "stream_chunks": 2,
+            "stream_terminal": "done",
+            "provider_caller": "llm",
+            "provider_title": "FridaDev/LLM",
+            "provider_model": "openrouter/runtime-main-model",
+            "provider_generation_id": "gen-stream",
+            "model": "openrouter/runtime-main-model",
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.payload["stream_chunks"], 2)
+        self.assertEqual(decision.payload["stream_terminal"], "done")
+
+    def test_llm_stream_payload_rejects_raw_terminal_or_chunk_values(self) -> None:
+        payload = {
+            "mode": "stream",
+            "stream_chunks": "two",
+            "stream_terminal": "https://example.invalid/private?probe=ARTIFICIAL_STREAM_MARKER",
+            "status_schema_version": "agentic_v1",
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+        encoded = _encoded(decision.payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("unknown_string_key", decision.payload["issue_classes"])
+        self.assertIn("url_value", decision.payload["issue_classes"])
+        self.assertNotIn("ARTIFICIAL_STREAM_MARKER", encoded)
+        self.assertNotIn("example.invalid", encoded)
+
     def test_direct_message_short_is_still_rejected(self) -> None:
         sentinel = "raw error detail should not pass"
         payload = {

@@ -106,6 +106,11 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertGreaterEqual(len(persist_events), 2)
         self.assertEqual(persist_events[0]['payload_json']['persist_phase'], 'conversation_init')
         self.assertEqual(persist_events[-1]['payload_json']['persist_phase'], 'assistant_final')
+        llm_events = [item for item in observed_events if item['stage'] == 'llm_call']
+        self.assertTrue(llm_events)
+        self.assertFalse(any(item['payload_json'].get('rejected_payload') for item in llm_events))
+        self.assertEqual(llm_events[-1]['payload_json']['stream_chunks'], 2)
+        self.assertEqual(llm_events[-1]['payload_json']['stream_terminal'], 'done')
 
     def test_api_chat_stream_normalizes_ordinary_turn_for_first_party_surface(self) -> None:
         conversation = {
@@ -440,6 +445,7 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertEqual(observed_state['save_new_traces_calls'], [])
 
     def test_api_chat_stream_persistence_failure_emits_error_terminal_without_updated_at(self) -> None:
+        observed_events: list[dict] = []
         conversation = {
             'id': 'conv-stream-persist-error-phase14',
             'created_at': '2026-03-26T00:00:00Z',
@@ -478,9 +484,17 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
                 reason='messages_write_failed',
             ),
         )
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
         try:
             response = self.client.post('/api/chat', json={'message': 'Bonjour', 'stream': True}, buffered=True)
         finally:
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
             restore()
 
         text, terminal = self._split_stream_body(response)
@@ -497,6 +511,15 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertEqual(conversation['messages'][-1]['role'], 'user')
         self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
         self.assertEqual(observed_state['save_new_traces_calls'], [])
+        rejected_events = [item for item in observed_events if item['payload_json'].get('rejected_payload')]
+        self.assertEqual(rejected_events, [])
+        persist_events = [item for item in observed_events if item['stage'] == 'persist_response']
+        self.assertTrue(persist_events)
+        self.assertEqual(persist_events[-1]['payload_json']['reason_code'], 'messages_write_failed')
+        self.assertNotIn('reason', persist_events[-1]['payload_json'])
+        llm_events = [item for item in observed_events if item['stage'] == 'llm_call']
+        self.assertTrue(llm_events)
+        self.assertEqual(llm_events[-1]['payload_json']['stream_terminal'], 'error')
 
     def test_api_chat_non_stream_accepts_provider_null_content_without_500(self) -> None:
         conversation = {

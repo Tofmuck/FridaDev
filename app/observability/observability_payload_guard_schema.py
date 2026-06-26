@@ -281,7 +281,7 @@ _GENERAL_TEXT_KEYS = set(
     searxng_soft_signal_policy source source_domain source_first_authority source_first_policy_kind
     shift_state source_first_product source_kind source_origin stability status status_schema_version stimmung_status summary_id_sha256_12 summary_usage used_content_kind
     surface_error_hash surface_intro_hash surface_outro_hash
-    subject target_side target_verification_error_class time_ambiguity time_kind timezone
+    stream_terminal subject target_side target_verification_error_class time_ambiguity time_kind timezone
     timezone tone upstream_output_regime_proposed upstream_recommendation_posture
     updated_by updated_ts user_display_name_hash user_message_hash validation_decision validation_status web_confidence_level web_confidence_policy_kind web_discovery_external_error_kind
     web_discovery_external_provider web_discovery_provider web_discovery_provider_effective
@@ -316,7 +316,7 @@ _GENERAL_SCALAR_KEYS = set(
     has_in_progress_turn legacy_writer_disabled messages_saved mutable_len nextcloud_access now_iso_present
     node_state_read_present node_state_read_valid node_state_write_attempted node_state_write_changed
     node_state_sha256_12 node_state_write_succeeded main_llm_reasoning_hidden max_recent_turns messages_written
-    raw_candidates ranking_available rejected_candidates response_chars runtime_available secret_access state_used strength
+    raw_candidates ranking_available rejected_candidates response_chars runtime_available secret_access state_used stream_chunks strength
     active_document anythingllm final_response_override hermeneutic identity memory_rag ocr_active_documents
     in_prompt kept_candidates raw_catalogue_payload_included raw_locator_included raw_passage_included raw_query_included
     candidate_top_score cancelled expired pending_action_present pending_cancelled pending_expired pending_execution_attempted pending_target_clear

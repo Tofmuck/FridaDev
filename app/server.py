@@ -416,9 +416,9 @@ def _conversation_save_payload(
         'messages_saved': bool(getattr(result, 'messages_saved', False)),
         'message_count': int(getattr(result, 'message_count', 0) or 0),
         'messages_written': _assistant_message_count(conversation) if ok else 0,
-        'reason': str(reason or '').strip() or None,
+        'reason_code': str(reason or '').strip() or None,
     }
-    return ok, payload, payload['reason']
+    return ok, payload, payload['reason_code']
 
 
 class _ConvStoreChatLogProxy:
