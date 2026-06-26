@@ -202,7 +202,8 @@ TODO dediee:
 
 - Cloture pragmatique Agenda V1:
   `app/docs/states/audits/frida-agenda-v1-pragmatic-closure-2026-06-09.md`
-- TODO Agenda V1 post-V1 dormant:
+- TODO Agenda V1: runtime implemente/cable/activable; roadmap large post-V1
+  dormante:
   `app/docs/todo-todo/product/frida-agenda-agent.md`
 - Hub documentation:
   `app/docs/README.md`

@@ -1076,10 +1076,16 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-SAU-AGENTS-ADMIN-TOKEN-STALE-01
 
 - Statut initial: open.
+- Statut courant: closed_by_lot_8_docs_source_of_truth.
 - Severite: P2.
 - Zones suspectes: `/opt/platform/AGENTS.md` vs
   `/opt/platform/fridadev/AGENTS.md`.
 - Lot cible: Lot 8.
+- Correctif Lot 8: `/opt/platform/AGENTS.md` aligne la doctrine Sauron sur
+  Authelia/Caddy comme frontiere publique, `/api/admin/*` accepte uniquement
+  proxy de confiance avec `Remote-User` ou loopback conteneur, et
+  `FRIDA_ADMIN_TOKEN`/knobs legacy ne sont plus presentes comme garde humaine
+  ni knobs operateur actifs. Modification faite hors depot FridaDev.
 - Critere de cloture: instructions Sauron alignees avec contrat OVH courant:
   Authelia + proxy `Remote-User`/loopback, pas de token humain.
 - Preuve minimale: diff docs-only, grep `FRIDA_ADMIN_TOKEN` contextualise.
@@ -1388,9 +1394,14 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-CEL-DOCS-ACTIVE-AUDITS-01
 
 - Statut initial: open.
+- Statut courant: closed_by_lot_8_audit_index.
 - Severite: P2.
 - Fichiers suspects: audits superseded dans `app/docs/todo-todo/audits`.
 - Lot cible: Lot 8.
+- Correctif Lot 8: `app/docs/todo-todo/audits/README.md` classe explicitement
+  les audits superseded conserves provisoirement et renvoie la source active a
+  la TODO canonique. Aucun fichier n'a ete deplace afin de ne pas casser les
+  liens avant l'archive Lot Z.
 - Critere de cloture: aucun audit superseded ambigu comme travail actif.
 - Preuve minimale: grep references, liens mis a jour.
 - Hors-scope: reecrire constats historiques.
@@ -1739,8 +1750,14 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P3-CEL-OPEN-CHECKBOXES-ARCHIVES-01
 
 - Statut initial: open.
+- Statut courant: closed_by_lot_8_audit_index.
 - Severite: P3.
 - Lot cible: Lot 8.
+- Correctif Lot 8: `app/docs/todo-todo/audits/README.md` distingue la TODO
+  canonique active, les pieces source/contre-audit du mega-audit courant et les
+  audits superseded conserves provisoirement. Les checkboxes d'une piece
+  historique ne sont plus executables sans renvoi explicite par la TODO
+  canonique.
 - Critere de cloture: conventions archives vs actifs clarifiees.
 - Preuve minimale: scan checkboxes et index docs.
 
@@ -1760,9 +1777,16 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P3-CEL-BIBLIO-COMMENTS-STALE-01
 
 - Statut initial: open.
+- Statut courant: closed_by_lot_8_docs_doctrine.
 - Severite: P3.
 - Fichiers suspects: `app/config.py`, `app/biblio/librarian_agent_runtime.py`.
 - Lot cible: Lot 8.
+- Validation Lot 8: grep des fichiers suspects sans commentaire runtime stale
+  confirme; l'ambiguite restante etait dans les index/docs actifs. `AGENTS.md`
+  et `app/docs/README.md` ne vendent plus l'agent bibliothecaire comme un futur
+  abstrait et rappellent la doctrine: deterministe = murs/garde-fous,
+  bibliothecaire LLM = travail de bibliotheque, references "18" = cas produit
+  historiques/regression, pas promesse de 18 outils a rouvrir.
 - Critere de cloture: commentaires/config alignes sur agent-first sans
   requalifier Biblio V1.
 - Preuve minimale: diff docs/commentaires, tests non requis si commentaires.
@@ -1838,9 +1862,15 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P3-CEL-FILENAMES-CONTENT-FREE-DECISION-01
 
 - Statut initial: open.
+- Statut courant: closed_by_lot_8_docs_doctrine.
 - Severite: P3.
 - Zones suspectes: dashboard/read-model documents.
 - Lot cible: Lot 8.
+- Decision Lot 8: les filenames sont des metadonnees produit visibles quand le
+  fichier/artefact est l'objet consulte ou admin-projete explicitement. Les logs,
+  JSONL, smokes, payloads d'observabilite et dashboards content-free ne doivent
+  pas stocker ni projeter de filenames bruts par defaut; utiliser presence,
+  compteurs, statuts, reason codes, tailles, extensions ou chemins redacted.
 - Critere de cloture: doctrine explicite sur filenames comme metadonnees
   produit visibles ou content-free limitees.
 - Preuve minimale: spec/docs et test projection si changement runtime.
@@ -3094,14 +3124,31 @@ Resultat Lot 7.2:
 
 ### Lot 8 - Docs/source-of-truth
 
-- [ ] Reclasser audits superseded encore en `todo-todo/audits`.
-- [ ] Clarifier checkboxes historiques.
-- [ ] Corriger `/opt/platform/AGENTS.md` admin token stale, sans runtime.
-- [ ] Maintenir la distinction runtime Agenda implemente / roadmap Agenda
+- [x] Reclasser audits superseded encore en `todo-todo/audits`.
+- [x] Clarifier checkboxes historiques.
+- [x] Corriger `/opt/platform/AGENTS.md` admin token stale, sans runtime.
+- [x] Maintenir la distinction runtime Agenda implemente / roadmap Agenda
   post-V1 dormante dans les futurs index docs.
-- [ ] Clarifier commentaires Biblio stale.
-- [ ] Trancher doctrine filenames content-free/metadonnees produit.
-- [ ] Mettre a jour index si chemins bougent.
+- [x] Clarifier commentaires Biblio stale.
+- [x] Trancher doctrine filenames content-free/metadonnees produit.
+- [x] Mettre a jour index si chemins bougent.
+
+Resultat Lot 8:
+
+- Audit index ajoute: `app/docs/todo-todo/audits/README.md` classe la TODO
+  canonique active, les pieces source/counter du mega-audit courant et les
+  audits superseded conserves provisoirement jusqu'a Lot Z.
+- Aucun deplacement de fichier: les pointeurs ne changent pas; `app/docs/README.md`
+  reference l'index d'audits pour eviter les fausses taches actives.
+- `/opt/platform/AGENTS.md` corrige hors depot FridaDev: plus de ligne
+  presentant un token admin comme requis ni "Authelia + token" comme doctrine
+  admin OVH.
+- Agenda: les index actifs conservent la distinction runtime V1
+  implemente/cable/activable vs roadmap large post-V1 dormante.
+- Biblio: docs/index alignes sur agent bibliothecaire borne et doctrine
+  deterministe-murs / LLM-bibliothecaire, sans reouvrir Biblio ni Lot 9.
+- Filenames: doctrine explicite ajoutee dans `app/docs/README.md`.
+- Lot 9 et Lot Z restent ouverts.
 
 ### Lot 9 - Refactors cibles
 

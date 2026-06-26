@@ -25,6 +25,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat Exports Frida V1 2026-06-18: `states/specs/frida-v1-exports-contract.md` pour exports rattaches a `workspace_folders`, cible `/Frida/<dossier>/Exports`, sources explicites, formats Markdown/TXT/DOCX/PDF, read-model `workspace_folder_exports`, no overwrite, reutilisation bornee et observabilite content-free. TODO de livraison archivee: `todo-done/product/frida-v1-exports-todo.md`.
 - Contrat Images generees Frida V1 2026-06-19: `states/specs/frida-v1-generated-images-contract.md` pour images generees rattachees a `workspace_folders`, cible `/Frida/<dossier>/Images`, read-model `workspace_folder_generated_images`, formats PNG/JPEG/WebP, prompt brut non stocke durablement, separation outil V0 / V1 durable et observabilite content-free. TODO de livraison archivee: `todo-done/product/frida-v1-generated-images-todo.md`.
 - Contrat Observabilite agentique Frida V1 2026-06-20: `states/specs/frida-v1-agentic-observability-contract.md` pour taxonomie status/reason/severity, no-op agentiques, historique vs recent, JSONL content-free, Agenda runtime vs roadmap post-V1 et reset observabilite post-cloture. TODO de livraison archivee: `todo-done/product/frida-v1-agentic-observability-todo.md`.
+- Index des audits actifs et pieces historiques du mega-audit code + stack:
+  `todo-todo/audits/README.md`.
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit stack locale SearXNG/Crawl4AI vs benchmark web 2026-05-21: `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
@@ -218,7 +220,7 @@ Extension livree: l'OCR bornee des PDF scannes est archivee dans `todo-done/prod
 Lire d'abord:
 - `todo-done/product/frida-biblio-last-chance-archive-2026-06-06.md` pour l'archive de cloture BIB: questions canoniques d'une bibliotheque, BIB-01 -> BIB-33 fermees live, artefacts JSONL et abandon du faux Lot 5 sans merge.
 - `states/specs/frida-biblio-native-catalogue-contract.md` pour le contrat source-of-truth: Biblio persistante separee, client FridaDev read-only / GET-only, toggle frontend, lane prompt dediee, observabilite content-free, frontieres avec `active_document`, workspace, Memory/RAG, Identity, Summary, Web, Hermeneutic et AnythingLLM.
-- `states/specs/frida-biblio-librarian-agent-contract.md` pour le contrat source-of-truth du futur agent bibliothecaire: entrees/sorties versionnees, modele runtime-configurable, feature flag/rollback, OpenRouter/JSON gate, outils GET-only, fallback deterministe et observabilite content-free.
+- `states/specs/frida-biblio-librarian-agent-contract.md` pour le contrat source-of-truth de l'agent bibliothecaire Biblio borne: entrees/sorties versionnees, modele runtime-configurable, feature flag/rollback, OpenRouter/JSON gate, outils GET-only, fallback deterministe et observabilite content-free.
 - `states/audits/frida-biblio-librarian-agent-architecture-audit-2026-05-31.md` pour l'audit courant Biblio/Catalogue et la proposition d'agent bibliothecaire borne: cartographie plateforme, repros live, findings P0/P1/P2/P3, routes lourdes/manquantes, et plan de migration depuis les modules existants.
 - `states/baselines/frida-biblio-librarian-agent-lot0-baseline-2026-05-31.md` pour la baseline Lot 0 validee: smoke strict, matrice produit P01-P11 content-free, matrice Catalogue/API/plateforme, counts DB, routes lourdes/interdites et GO Lot 1.
 - `todo-done/product/frida-biblio-librarian-agent-todo-archive-2026-06-06.md` pour l'archive de l'agent bibliothecaire Frida: etat conversationnel Biblio explicite, modele agent runtime-configurable, outils Catalogue GET-only, boucle agentique, OpenRouter/JSON, observabilite content-free et smokes produit.
@@ -229,7 +231,18 @@ Lire d'abord:
 - `todo-done/product/frida-biblio-real-library-passage-search-todo.md` et `todo-done/validations/frida-biblio-real-library-passage-search-validation-2026-05-30.md` pour l'archive technique requalifiee du chantier P1: recherche conceptuelle de passages, ranking de candidats, extraction bornee via `/context`, variantes sans accents et smokes live.
 - `todo-done/product/frida-biblio-real-library-product-gap-todo.md` pour la remediation archivee de l'ecart produit et sa livraison route TOC: liste catalogue complete jusqu'a 100, ouverture de documents, table des matieres via `GET /doc/{id}/chapters` et garde content-free.
 
-But: relire le chantier livre permettant a Frida de consulter explicitement une bibliotheque persistante native, puis la remediation produit qui a ajoute la liste catalogue complete et la table des matieres legere, sans confondre cette capacite avec les documents actifs de conversation.
+But: relire le chantier livre permettant a Frida de consulter explicitement une bibliotheque persistante native, puis la remediation produit qui a ajoute la liste catalogue complete et la table des matieres legere, sans confondre cette capacite avec les documents actifs de conversation. Doctrine active: le deterministe tient les murs et les garde-fous; le bibliothecaire LLM fait le travail de bibliotheque; les "18" references historiques doivent etre lues comme cas produit, pas comme promesse de 18 outils a rouvrir.
+
+### Doctrine filenames / content-free
+
+Les noms de fichiers peuvent etre des metadonnees produit visibles quand le
+fichier ou l'artefact est l'objet consulte: listes Documents, Notes, Exports,
+Images, actions open/download/delete et surfaces admin explicitement projetees.
+Les logs, JSONL, smokes, payloads d'observabilite et dashboards content-free ne
+doivent pas stocker ni projeter de filenames bruts par defaut. Dans ces surfaces,
+utiliser plutot presence, compteurs, statuts, reason codes, tailles, extensions
+ou chemins logiques redacted. Les tests peuvent utiliser des noms synthetiques
+quand le contrat produit visible l'exige.
 
 ### Agent Agenda Frida
 
