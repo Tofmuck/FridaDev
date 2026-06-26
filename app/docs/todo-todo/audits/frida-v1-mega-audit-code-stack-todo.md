@@ -1713,17 +1713,25 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P3-CEL-TEST-PROOF-MAPPING-01
 
-- Statut initial: open.
+- Statut courant: closed_by_lot_7_smoke_matrix.
 - Severite: P3.
 - Lot cible: Lot 7.
+- Preuve Lot 7: matrice finale `met` / `covered_by_tests` /
+  `accepted_with_documented_limit` / `post_v1` ajoutee dans la TODO et artefact
+  JSONL content-free cree sous
+  `app/docs/states/baselines/mega-audit-smokes/`.
 - Critere de cloture: matrice tests/proofs par domaine.
 - Preuve minimale: classification live/fake/mock/covered_by_tests.
 
 ### P3-CEL-SECRET-LIKE-FIXTURES-01
 
-- Statut initial: open.
+- Statut courant: accepted_with_documented_limit_by_lot_7.
 - Severite: P3.
 - Lot cible: Lot 7.
+- Decision Lot 7: les fixtures de tests conservees sont des sentinelles
+  synthetiques explicites; aucune valeur sensible runtime ni payload externe
+  brut n'est ajoute par le lot. La chasse exhaustive des libelles historiques reste
+  post-audit si l'operateur veut une hygienisation cosmetique.
 - Critere de cloture: allowlist fixtures ou remplacement par sentinelles
   clairement synthetiques.
 - Preuve minimale: scan anti-fuite avec forbidden count stable.
@@ -1738,10 +1746,13 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P3-CEL-FINAL-LOCK-CONFLICT-TEST-01
 
-- Statut initial: open.
+- Statut courant: requalified_lot_9_golden_tests_by_lot_7.
 - Severite: P3.
 - Fichiers suspects: `app/core/chat_service.py`.
 - Lot cible: Lot 7.
+- Decision Lot 7: aucun conflit Agenda/Biblio final-lock nouveau n'est confirme
+  par les smokes contractuels disponibles; le vrai verrouillage d'ordre
+  orchestration releve des golden tests Lot 9 avant refactor.
 - Critere de cloture: test integration fake si Agenda et Biblio final locks
   apparaissent simultanement.
 - Preuve minimale: test ordre de priorite ou decision explicite impossible.
@@ -1773,7 +1784,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P3-CEL-LOG-FRONTEND-DENYLIST-01
 
 - Statut initial: open.
-- Statut courant: validated_by_lot_5A_report_lot_7.
+- Statut courant: closed_by_lot_7_log_payload_allowlist.
 - Severite: P3.
 - Fichier suspect: `app/web/log/log.js`.
 - Lot cible: Lot 5 ou 7.
@@ -1781,6 +1792,11 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
   (`BLOCKED_PAYLOAD_KEYS`, `BLOCKED_METRIC_LABELS`) et non une allowlist stricte
   par shape d'evenement. Aucune fuite n'est confirmee par Lot 5A, mais le modele
   denylist doit etre prouve par test sentinelle ou remplace plus tard.
+- Correction Lot 7: le rendu payload `/log` utilise maintenant une allowlist
+  frontend explicite de cles/suffixes content-free, tout en gardant le backend
+  `payload_projection='admin'` et la projection `admin_log_event_projection_v1`.
+  Un test browser sentinelle prouve qu'un champ inconnu et des champs
+  `prompt`/`content` synthetiques ne sont pas rendus.
 - Critere de cloture: UI `/log` utilise allowlist explicite ou test sentinelle
   champ inconnu.
 - Preuve minimale: test frontend/log render.
@@ -2927,16 +2943,72 @@ Resultat Lot 6J.1:
 
 ### Lot 7 - Tests/smokes/artefacts
 
-- [ ] Construire matrice live/fake/mock/covered_by_tests.
-- [ ] Ajouter test conflit final-lock Agenda/Biblio si confirme necessaire.
-- [ ] Ajouter tests panels frontend erreur vs vide.
-- [ ] Ajouter test `/log` champ inconnu si denylist conservee.
-- [ ] Verifier JSONL et anti-fuite.
-- [ ] Gerer fixtures secret-like par allowlist ou sentinelles.
+- [x] Construire matrice live/fake/mock/covered_by_tests.
+- [x] Requalifier le test conflit final-lock Agenda/Biblio: pas de nouveau
+  conflit confirme en Lot 7; golden tests d'ordre a garder en Lot 9 avant
+  refactor orchestration.
+- [x] Revalider tests panels frontend erreur vs vide.
+- [x] Remplacer la denylist payload `/log` par allowlist content-free et ajouter
+  test sentinelle champ inconnu.
+- [x] Verifier JSONL et anti-fuite.
+- [x] Gerer fixtures secret-like par sentinelles synthetiques documentees.
 
 Note Lot 6H: `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01` est revalide
 et clos en Lot 6H; il n'est plus une tache Lot 7 et ne requiert pas de
 smoke/matrice globale.
+
+Statut Lot 7: execute le 2026-06-26.
+Runtime modifie: oui, borne a `app/web/log/log.js`.
+Plateforme modifiee: non.
+
+Question pre-action: existe-t-il un meilleur plan ? Non. Le bon plan etait de
+valider d'abord `/log`: la route admin projette deja les payloads en
+content-free, mais la UI restait en denylist locale. Le correctif minimal est
+donc une allowlist frontend explicite plus une sentinelle browser, sans refactor
+admin logs ni Lot 9.
+
+Inventaire Lot 7:
+
+| Surface | Decision | Preuve |
+|---|---|---|
+| `/log` UI active | `met` | Route `/log` active; endpoints `/api/admin/logs/chat*`; projection backend `admin_log_event_projection_v1`. |
+| `/log` payload entries | `met` | Allowlist frontend content-free; sentinelle browser champ inconnu / `prompt` / `content` non rendue. |
+| Admin logs read/projection | `covered_by_tests` | `tests.test_server_admin_chat_logs_contract`, `tests.integration.frontend_admin.test_frontend_logs_phase5`. |
+| Chat non-stream/stream | `covered_by_tests` | `tests.test_server_chat_agentic_observability_contract`, `tests.test_server_chat_route_transport_contract`, `tests.unit.chat.test_chat_llm_flow`. |
+| Manifest / Continuity Capsule | `covered_by_tests` | `tests.unit.logs.test_main_payload_manifest`. |
+| Panels Notes/Documents/Exports/Images | `covered_by_tests` | `node --test app/tests/unit/frontend_chat/*.js` (118 tests). |
+| Agenda / Biblio | `covered_by_tests` | Suites Agenda/Biblio contractuelles fake/local. |
+| Rejets observabilite inattendus | `met` | `payload_rejected_unexpected_count=0`, `chat_response_rejection_count=0`, `stream_rejection_count=0` sur les suites cibles. |
+| Browser full smoke global | `accepted_with_documented_limit` | Suite globale browser hote bloquee avant `/log` sur timeouts image-generation hors scope; scenario `/log` cible passe. |
+
+Matrice finale Lot 7:
+
+| Domaine | Classification | Decision |
+|---|---|---|
+| Securite plateforme serveur solo | `met` | Lot 3: aucun P0/P1 public; frontiere Caddy/Authelia verifiee. |
+| Updates serveur/services/images | `accepted_with_documented_limit` | Lot 3B: pas d'update securite critique bloquante; updates reelles restent lots separes. |
+| Code runtime P1/P2 | `met` | Lots 4A-4E: P2 bornes corriges/requalifies; dette structurelle reportee Lot 9. |
+| Admin/security/app routes | `met` | Lots 5A-5D: guard admin, prompts, Notes, panels, compat knobs traites. |
+| Observabilite/logs applicatifs | `met` | Lots 6A-6J.1: P2 raw/garde/projection corriges ou requalifies. |
+| `/log` denylist | `met` | Lot 7: allowlist payload frontend + projection backend + sentinelle browser. |
+| Lot 9 refactors | `post_v1` | Refactors structurels ouverts; golden tests requis avant extraction. |
+| Backups stack Sauron | `accepted_with_documented_limit` | Scope Sauron separe; aucun chmod/purge sans nouveau GO operateur. |
+
+Artefact Lot 7:
+
+- `app/docs/states/baselines/mega-audit-smokes/frida-v1-mega-audit-lot7-smoke-20260626T080759Z.jsonl`
+- Format: JSONL content-free, statuts/reason codes/compteurs/commandes, aucun
+  log brut, prompt, payload externe ni valeur sensible runtime.
+
+Resultat Lot 7:
+
+- `P3-CEL-LOG-FRONTEND-DENYLIST-01` est clos par allowlist UI + test sentinelle.
+- `P3-CEL-TEST-PROOF-MAPPING-01` est clos par matrice Lot 7 + artefact JSONL.
+- `P3-CEL-SECRET-LIKE-FIXTURES-01` est accepte avec limite documentee:
+  sentinelles synthetiques explicites, pas de secret runtime ajoute.
+- `P3-CEL-FINAL-LOCK-CONFLICT-TEST-01` est requalifie vers Lot 9 golden tests
+  si refactor orchestration; aucun conflit runtime nouveau confirme par Lot 7.
+- Lot 9 et Lot Z restent non coches.
 
 ### Lot 8 - Docs/source-of-truth
 

@@ -1,0 +1,17 @@
+{"schema_version":"frida_v1_mega_audit_lot7_smoke_v1","generated_at":"2026-06-26T08:07:59Z","base_commit":"7c746b0b","branch":"FridaV1-Mega-Audit-Code-Stack","content_free":true}
+{"kind":"smoke","surface":"public_boundary","check":"admin_head_public","classification":"met","evidence":{"http_status":302,"frontier":"authelia_caddy","sensitive_headers_reported":false}}
+{"kind":"smoke","surface":"runtime","check":"container_health","classification":"met","evidence":{"platform_fridadev":"healthy","services_restarted":"fridadev_only"}}
+{"kind":"smoke","surface":"chat_non_stream_stream","check":"contract_tests","classification":"covered_by_tests","evidence":{"command":"docker exec platform-fridadev python -m unittest tests.test_server_chat_agentic_observability_contract tests.test_server_chat_route_transport_contract tests.unit.chat.test_chat_llm_flow","status":"ok"}}
+{"kind":"smoke","surface":"admin_logs_dashboard","check":"contract_tests","classification":"covered_by_tests","evidence":{"command":"docker exec platform-fridadev python -m unittest tests.test_server_admin_chat_logs_contract tests.test_server_admin_dashboard_contract","status":"ok"}}
+{"kind":"smoke","surface":"log_ui","check":"denylist_to_allowlist_sentinel","classification":"met","evidence":{"command":"node --test --test-name-pattern logs page applies filters app/tests/integration/frontend_browser/test_frontend_browser_smoke.js","status":"ok","unknown_payload_sentinels_rendered":0}}
+{"kind":"smoke","surface":"frontend_panels","check":"frontend_unit_tests","classification":"covered_by_tests","evidence":{"command":"node --test app/tests/unit/frontend_chat/*.js","status":"ok","tests":118}}
+{"kind":"smoke","surface":"continuity_capsule_manifest","check":"main_payload_manifest","classification":"covered_by_tests","evidence":{"command":"docker exec platform-fridadev python -m unittest tests.unit.logs.test_main_payload_manifest","status":"ok"}}
+{"kind":"smoke","surface":"agenda_biblio","check":"contract_tests","classification":"covered_by_tests","evidence":{"command":"docker exec platform-fridadev python -m unittest agenda_biblio_contract_subset","status":"ok","tests":179}}
+{"kind":"smoke","surface":"observability_guard","check":"unexpected_payload_rejections","classification":"met","evidence":{"payload_rejected_unexpected_count":0,"chat_response_rejection_count":0,"stream_rejection_count":0}}
+{"kind":"matrix","surface":"platform_security_solo_server","classification":"met","evidence":{"lot":"3","note":"no_p0_p1_public"}}
+{"kind":"matrix","surface":"platform_updates","classification":"accepted_with_documented_limit","evidence":{"lot":"3B","note":"no_urgent_security_update_blocker"}}
+{"kind":"matrix","surface":"code_runtime_p1_p2","classification":"met","evidence":{"lots":"4A-4E","note":"runtime_findings_closed_or_reported"}}
+{"kind":"matrix","surface":"admin_security_routes","classification":"met","evidence":{"lots":"5A-5D","note":"admin_guard_and_ui_findings_closed_or_delegated"}}
+{"kind":"matrix","surface":"observability_logs","classification":"met","evidence":{"lots":"6A-6J.1","note":"p2_observability_findings_closed"}}
+{"kind":"matrix","surface":"lot9_refactors","classification":"post_v1","evidence":{"note":"structural_debt_requires_golden_tests"}}
+{"kind":"matrix","surface":"sauron_backups_stack","classification":"accepted_with_documented_limit","evidence":{"note":"separate_sauron_scope_no_permission_change_without_operator_go"}}

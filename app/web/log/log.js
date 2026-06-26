@@ -78,6 +78,82 @@
     "raw_identity",
     "raw_query",
   ]);
+  const ALLOWED_QUALIFIED_RAW_FLAGS = new Set([
+    "raw_content_included",
+    "raw_error_message_included",
+    "raw_event_payloads_included",
+    "raw_lane_content_included",
+    "raw_log_included",
+    "raw_message_included",
+    "raw_prompt_included",
+    "raw_provider_payload_included",
+    "raw_secret_included",
+    "raw_webdav_payload_included",
+  ]);
+  const ALLOWED_PAYLOAD_KEYS = new Set([
+    "continuity_kind",
+    "duration_ms",
+    "error_class",
+    "error_code",
+    "estimated_context_tokens",
+    "event_family",
+    "final_status",
+    "injection_class",
+    "memory_prompt_injection",
+    "message_short_chars",
+    "message_short_included",
+    "mode",
+    "model",
+    "persist_phase",
+    "prompt_kind",
+    "provider_caller",
+    "provider_generation_id",
+    "provider_model",
+    "provider_role",
+    "provider_title",
+    "reason_code",
+    "reason_short_chars",
+    "reason_short_included",
+    "response_chars",
+    "runtime_pipeline",
+    "schema_version",
+    "source_kind",
+    "status_schema_version",
+    "stream_chunks",
+    "stream_terminal",
+    "web_search_enabled",
+  ]);
+  const ALLOWED_PAYLOAD_SUFFIXES = [
+    "_bytes",
+    "_chars",
+    "_class",
+    "_code",
+    "_count",
+    "_counts",
+    "_enabled",
+    "_failed",
+    "_included",
+    "_injected",
+    "_kind",
+    "_limit",
+    "_mode",
+    "_ms",
+    "_phase",
+    "_present",
+    "_requested",
+    "_s",
+    "_saved",
+    "_schema_version",
+    "_selected",
+    "_source",
+    "_status",
+    "_terminal",
+    "_tokens",
+    "_total",
+    "_truncated",
+    "_valid",
+    "_version",
+  ];
 
   const toText = (value) => String(value == null ? "" : value).trim();
 
@@ -113,6 +189,33 @@
     return String(value);
   };
 
+  const isAllowedPayloadKey = (key) => {
+    const normalized = toText(key).toLowerCase();
+    if (!normalized) return false;
+    if (BLOCKED_PAYLOAD_KEYS.has(normalized)) return false;
+    if (normalized.startsWith("raw_")) return ALLOWED_QUALIFIED_RAW_FLAGS.has(normalized);
+    if (ALLOWED_PAYLOAD_KEYS.has(normalized)) return true;
+    return ALLOWED_PAYLOAD_SUFFIXES.some((suffix) => normalized.endsWith(suffix));
+  };
+
+  const looksUnsafePayloadText = (value) => {
+    const text = toText(value);
+    const lower = text.toLowerCase();
+    if (!text) return false;
+    if (lower.includes("://") || lower.startsWith("www.")) return true;
+    if (text.startsWith("/") || text.startsWith("\\")) return true;
+    return /[\s?&#=<>\r\n]/.test(text);
+  };
+
+  const compactPayloadValue = (key, value) => {
+    if (typeof value === "string" && looksUnsafePayloadText(value)) {
+      return "[redacted]";
+    }
+    return key === "memory_prompt_injection"
+      ? formatMemoryPromptInjection(value)
+      : compactValue(value);
+  };
+
   const formatMemoryPromptInjection = (value) => {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       return compactValue(value);
@@ -130,15 +233,9 @@
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
     return Object.keys(payload)
       .sort()
-      .filter((key) => !BLOCKED_PAYLOAD_KEYS.has(key))
+      .filter(isAllowedPayloadKey)
       .slice(0, 12)
-      .map((key) =>
-        `${key}=${
-          key === "memory_prompt_injection"
-            ? formatMemoryPromptInjection(payload[key])
-            : compactValue(payload[key])
-        }`
-      );
+      .map((key) => `${key}=${compactPayloadValue(key, payload[key])}`);
   };
 
   const compareEventsChronoAsc = (left, right) => {

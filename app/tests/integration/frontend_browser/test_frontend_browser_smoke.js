@@ -1014,7 +1014,15 @@ function logsMockScript({ metricsMode = 'nominal' } = {}) {
               status: "ok",
               ts: "2026-05-03T10:00:00Z",
               duration_ms: 12,
-              payload: { model: "test-model" },
+              payload: {
+                model: "test-model",
+                reason_code: "llm_call_ok",
+                raw_event_payloads_included: false,
+                runtime_source: "https://example.invalid/path?probe=ARTIFICIAL_LOG_UI_SENTINEL_URL",
+                unexpected_free_text: "ARTIFICIAL_LOG_UI_SENTINEL_UNKNOWN",
+                prompt: "ARTIFICIAL_LOG_UI_SENTINEL_PROMPT",
+                content: "ARTIFICIAL_LOG_UI_SENTINEL_CONTENT",
+              },
             }],
           }), {
             status: 200,
@@ -1066,6 +1074,15 @@ test('logs page applies filters from query string and exports scoped markdown in
     assert.equal(String(cockpitText || '').includes('free form stage label'), false);
     await assertTextContains(page.locator('#logTurns'), 'retrieved=2');
     await assertTextContains(page.locator('#logGroups'), 'llm_call');
+    await assertTextContains(page.locator('#logGroups'), 'model=test-model');
+    await assertTextContains(page.locator('#logGroups'), 'reason_code=llm_call_ok');
+    await assertTextContains(page.locator('#logGroups'), 'raw_event_payloads_included=false');
+    await assertTextContains(page.locator('#logGroups'), 'runtime_source=[redacted]');
+    const groupsText = await page.locator('#logGroups').textContent();
+    assert.equal(String(groupsText || '').includes('ARTIFICIAL_LOG_UI_SENTINEL_URL'), false);
+    assert.equal(String(groupsText || '').includes('ARTIFICIAL_LOG_UI_SENTINEL_UNKNOWN'), false);
+    assert.equal(String(groupsText || '').includes('ARTIFICIAL_LOG_UI_SENTINEL_PROMPT'), false);
+    assert.equal(String(groupsText || '').includes('ARTIFICIAL_LOG_UI_SENTINEL_CONTENT'), false);
     assert.equal(await page.locator('#exportTurnLogs').isDisabled(), false);
 
     await page.click('#exportTurnLogs');
