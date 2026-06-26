@@ -94,8 +94,23 @@ Commandes de verification:
 ```bash
 git diff --check
 python3 -m py_compile app/server.py app/core/*.py app/observability/*.py app/tools/*.py
-docker exec platform-fridadev python -m unittest tests.test_server_chat_route_transport_contract tests.unit.logs.test_main_payload_manifest
+docker exec platform-fridadev python -m unittest tests.test_server_chat_route_transport_contract
 ```
+
+Note d'execution Lot 9.0:
+
+- `docker exec platform-fridadev ...` est OK seulement pour les tests deja
+  presents dans l'image courante.
+- Les nouveaux tests ajoutes en Lot 9.0 ne sont pas visibles dans
+  `platform-fridadev` tant que l'image n'est pas reconstruite.
+- Lot 9.0 restant tests/docs-only, ne pas demander de rebuild pour rendre ces
+  nouveaux tests visibles.
+- Lot 9.0 doit donc valider explicitement une strategie de runner avant de
+  compter les nouveaux tests comme preuve: interpreter hote si les dependances
+  repo sont presentes, ou conteneur ephemere avec code courant monte, ou autre
+  methode prouvee.
+- Si un futur lot modifie du runtime Python/JS, le rebuild applicatif redevient
+  obligatoire comme decrit dans les commandes communes.
 
 Checklist:
 
@@ -786,6 +801,11 @@ Python runtime touche:
 python3 -m py_compile app/server.py app/admin/*.py app/core/*.py app/memory/*.py app/observability/*.py app/tools/*.py app/agenda/*.py app/biblio/*.py
 docker exec platform-fridadev python -m unittest <suites_ciblees>
 ```
+
+Note: `docker exec platform-fridadev` ne prouve que les tests deja embarques
+dans l'image courante. Pour des tests nouvellement ajoutes sans rebuild,
+valider d'abord un runner hote ou ephemere avec le code courant monte; ne pas
+compter une suite absente de l'image comme preuve.
 
 Frontend touche:
 

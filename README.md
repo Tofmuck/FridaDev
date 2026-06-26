@@ -1,7 +1,7 @@
 # Frida
 
-Current repository state as of Wednesday, June 24, 2026.
-Etat courant du depot au mercredi 24 juin 2026.
+Current repository state as of Friday, June 26, 2026.
+Etat courant du depot au vendredi 26 juin 2026.
 
 ## English
 
