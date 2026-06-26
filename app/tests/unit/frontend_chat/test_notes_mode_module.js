@@ -45,6 +45,14 @@ test('notes mode is rendered as a composer mode next to Agenda and loads before 
   assert.ok(indexHtml.indexOf('chat_workspace_folder_notes_panel.js') < indexHtml.indexOf('chat_workspace_folders_sidebar.js'));
 });
 
+test('notes panel global binding is declared by a single browser script', () => {
+  const threadsSource = fs.readFileSync(path.join(__dirname, '../../../web/chat_threads_sidebar.js'), 'utf8');
+  const foldersSource = fs.readFileSync(path.join(__dirname, '../../../web/chat_workspace_folders_sidebar.js'), 'utf8');
+
+  assert.equal(threadsSource.includes('const WorkspaceFolderNotesPanel'), false);
+  assert.equal(foldersSource.includes('const WorkspaceFolderNotesPanel'), true);
+});
+
 test('notes mode controller mirrors active and selected note state', () => {
   const events = [];
   const button = createFakeButton();

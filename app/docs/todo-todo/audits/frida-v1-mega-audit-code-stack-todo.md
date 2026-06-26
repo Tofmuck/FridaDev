@@ -3122,6 +3122,34 @@ Resultat Lot 7.2:
 - Garde writer-side, projection admin et `/log` appliquent la meme defense
   token-like sur les variantes synthetiques confirmees.
 
+
+#### Lot 7.3 - Incident frontend chat / bindings globaux Notes
+
+Statut: hotfix execute le 2026-06-26.
+Runtime modifie: oui, borne au frontend chat.
+Plateforme modifiee: non.
+
+- [x] Reproduire la casse navigateur: plus de sidebar/dossiers/boutons agentiques
+  ni initialisation chat apres erreur JS.
+- [x] Identifier la cause exacte: declaration top-level dupliquee
+  `WorkspaceFolderNotesPanel` dans deux scripts navigateur non-module.
+- [x] Corriger le script inutilement redeclarant le binding global, sans refactor
+  Notes ni changement backend.
+- [x] Ajouter une regression test empechant une double declaration du binding
+  Notes panel.
+- [x] Rejouer le smoke navigateur chat nominal/error/conversations qui avait
+  echoue avant patch.
+
+Resultat Lot 7.3:
+
+- L'initialisation frontend chat est restauree: `chat_threads_sidebar.js` peut
+  de nouveau exposer `window.FridaChatThreadsSidebar`, puis `app.js` charge les
+  dossiers, conversations, modes agentiques et le chat.
+- Tests obligatoires a conserver pour tout futur patch frontend chat/Notes:
+  `node --test app/tests/unit/frontend_chat/*.js` et smoke browser cible
+  `chat stream nominal|chat stream error|conversation`.
+- Aucun service plateforme, DB, Caddy ou Authelia n'est modifie.
+
 ### Lot 8 - Docs/source-of-truth
 
 - [x] Reclasser audits superseded encore en `todo-todo/audits`.

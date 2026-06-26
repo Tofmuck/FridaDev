@@ -25,11 +25,6 @@ const WorkspaceFolderNotes = (
     ? window.FridaNotesMode
     : (typeof require !== "undefined" ? require("./chat_notes_mode.js") : null)
 );
-const WorkspaceFolderNotesPanel = (
-  typeof window !== "undefined" && window.FridaWorkspaceFolderNotesPanel
-    ? window.FridaWorkspaceFolderNotesPanel
-    : (typeof require !== "undefined" ? require("./chat_workspace_folder_notes_panel.js") : null)
-);
 const WORKSPACE_CONVERSATION_DRAG_MIME = "application/x-fridadev-conversation-id";
 
 function clampThreadTitle(value, fallback = "Nouvelle conversation") {
