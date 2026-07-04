@@ -321,14 +321,16 @@ _GENERAL_SCALAR_KEYS = set(
     web_evidence_external_fallback_used web_evidence_requires_caveat web_search_enabled
     web_search_requested
     agent_json_validated ambiguous arbiter_followed_upstream available buffer_target_pairs caldav_access catalog_saved confirmation_required
-    confidence content_free conversation_saved dimensions draft_description_present draft_present draft_private fallback family_calendar
+    confidence content_free conversation_saved current_embedding_blocked current_embedding_calls
+    current_embedding_reused dimensions draft_description_present draft_present draft_private embedding_calls_total fallback family_calendar
     has_in_progress_turn legacy_writer_disabled messages_saved mutable_len nextcloud_access now_iso_present
     node_state_read_present node_state_read_valid node_state_write_attempted node_state_write_changed
     node_state_sha256_12 node_state_write_succeeded main_llm_reasoning_hidden max_recent_turns messages_written
-    raw_candidates ranking_available rejected_candidates response_chars runtime_available secret_access state_used stream_chunks strength
+    open_conflict_skipped raw_candidates ranking_available rejected_candidates response_chars runtime_available same_content_skipped
+    secret_access similarity_comparisons state_used stream_chunks strength
     active_document anythingllm final_response_override hermeneutic identity memory_rag ocr_active_documents
     in_prompt kept_candidates raw_catalogue_payload_included raw_locator_included raw_passage_included raw_query_included
-    candidate_top_score cancelled expired pending_action_present pending_cancelled pending_expired pending_execution_attempted pending_target_clear
+    candidate_embedding_calls candidate_top_score cancelled conflicts_detected expired pending_action_present pending_cancelled pending_expired pending_execution_attempted pending_target_clear
     read_execution_attempted recent_has_in_progress_turn recent_max_turns redacted secret_included score_gap status_code summary summary_generation_observed target_clear top_score fallback_decisions
     user_display_name_present web workspace write_execution_attempted writes_applied
     """.split()

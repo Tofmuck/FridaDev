@@ -71,6 +71,27 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertTrue(decision.accepted)
         self.assertEqual(decision.payload["dimensions"], 384)
 
+    def test_identity_conflict_scan_payload_passes_with_compact_counters(self) -> None:
+        payload = {
+            "status_schema_version": "agentic_v1",
+            "subject": "llm",
+            "candidate_count": 2,
+            "same_content_skipped": 0,
+            "open_conflict_skipped": 0,
+            "similarity_comparisons": 2,
+            "conflicts_detected": 0,
+            "current_embedding_calls": 1,
+            "candidate_embedding_calls": 2,
+            "embedding_calls_total": 3,
+            "current_embedding_reused": True,
+            "current_embedding_blocked": False,
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.payload["embedding_calls_total"], 3)
+
     def test_dangerous_keys_and_nested_values_are_rejected_content_free(self) -> None:
         sentinel = "SENSITIVE_WRITER_SENTINEL_A"
         payload = {
