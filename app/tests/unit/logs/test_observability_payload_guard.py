@@ -57,6 +57,20 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertTrue(decision.accepted)
         self.assertEqual(decision.payload["content_chars"], 42)
 
+    def test_embedding_observability_payload_passes_with_dimensions(self) -> None:
+        payload = {
+            "status_schema_version": "agentic_v1",
+            "mode": "query",
+            "source_kind": "query",
+            "provider": "embed.frida-system.fr",
+            "dimensions": 384,
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.payload["dimensions"], 384)
+
     def test_dangerous_keys_and_nested_values_are_rejected_content_free(self) -> None:
         sentinel = "SENSITIVE_WRITER_SENTINEL_A"
         payload = {

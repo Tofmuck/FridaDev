@@ -321,7 +321,7 @@ _GENERAL_SCALAR_KEYS = set(
     web_evidence_external_fallback_used web_evidence_requires_caveat web_search_enabled
     web_search_requested
     agent_json_validated ambiguous arbiter_followed_upstream available buffer_target_pairs caldav_access catalog_saved confirmation_required
-    confidence content_free conversation_saved draft_description_present draft_present draft_private fallback family_calendar
+    confidence content_free conversation_saved dimensions draft_description_present draft_present draft_private fallback family_calendar
     has_in_progress_turn legacy_writer_disabled messages_saved mutable_len nextcloud_access now_iso_present
     node_state_read_present node_state_read_valid node_state_write_attempted node_state_write_changed
     node_state_sha256_12 node_state_write_succeeded main_llm_reasoning_hidden max_recent_turns messages_written
