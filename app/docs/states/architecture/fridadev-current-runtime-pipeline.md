@@ -18,7 +18,9 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   |- optional voice draft, 300 s max, one final blob
   |    -> /api/chat/transcribe, declared body <= 17 MiB
   |    -> whisper_transcription_service, bounded audio <= 16 MiB
-  |    -> Whisper, input duration tolerance <= 305 s
+  |    -> Whisper platform, known input duration <= 305 s
+  |       or unknown WebM duration -> bounded normalization <= 306 s
+  |       -> normalized WAV duration required and <= 305 s before whisper-cli
   |- optional web_search flag
   |- active documents UI -> /api/conversations/<id>/active-documents
   |- scanned PDF active_document OCR V1 -> platform-stirling-pdf when extractor says document_ocr_required
@@ -142,11 +144,21 @@ refuse le corps declare au-dessus de `17 Mio` avant le parsing multipart, puis
 lit le fichier par blocs jusqu'a `16 Mio + 1 octet` au plus pour accepter
 exactement `16 Mio` ou refuser au-dessus. Les metadonnees de taille et duree du
 client restent informatives.
+Un WebM peut ne pas exposer de duree de conteneur lisible. Cette absence
+autorise uniquement la normalisation `ffmpeg` bornee a `306 s`, jamais un appel
+direct a Whisper. La duree du WAV normalise reste la decision finale: elle doit
+etre connue et inferieure ou egale a `305 s` avant `whisper-cli`; si la
+normalisation echoue dans le cas inconnu, aucun fallback brut n'est permis.
 EN: `MediaRecorder.start()` remains without a `timeslice`; the browser produces
 one blob, performs one upload, and requests one transcription. FridaDev rejects
 a declared body above `17 MiB` before multipart parsing, then reads the file in
 blocks up to `16 MiB + 1 byte` to accept exactly `16 MiB` or reject above it.
 Client size and duration metadata remain informational.
+A WebM container may not expose a readable duration. That absence authorizes
+only `ffmpeg` normalization bounded to `306 s`, never a direct Whisper call.
+The normalized WAV duration remains the final decision: it must be known and
+at most `305 s` before `whisper-cli`; if normalization fails for an unknown
+input duration, no raw fallback is allowed.
 
 ## References
 

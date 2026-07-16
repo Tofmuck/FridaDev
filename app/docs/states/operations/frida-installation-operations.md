@@ -98,6 +98,12 @@ Schema global de base a date (lecture rapide):
   une transcription; fichier audio reel limite a `16 Mio` (`16 777 216`
   octets) dans FridaDev, corps HTTP declare limite a `17 Mio` (`17 825 792`
   octets) sur la route et dans Caddy, tolerance aval Whisper limitee a `305 s`.
+- contrat de normalisation: une duree d'entree connue est validee avant
+  `ffmpeg`; une duree d'entree inconnue autorise uniquement une normalisation
+  provisoire bornee a `306 s`. La duree du WAV normalise doit ensuite etre
+  connue et inferieure ou egale a `305 s` avant `whisper-cli`. Si la
+  normalisation echoue alors que la duree d'entree etait inconnue, aucun
+  fallback brut ni appel Whisper n'est autorise.
 - si le service Whisper amont active une authentification par cle, `FridaDev` doit recevoir la meme `WHISPER_API_KEY` pour que `/api/chat/transcribe` reste utilisable.
 - observabilite: les logs de diagnostic doivent rester content-free (`request_id`, tailles, durees, raison d'arret, latences, `transcript_chars`), sans audio brut ni transcription.
 

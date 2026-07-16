@@ -209,6 +209,19 @@ Statut borne:
   `POST /api/chat/transcribe` a `17 Mio` (`17 825 792` octets). La preuve
   plateforme inclut un rejet HTTP 413 a `17 Mio + 1 octet` et un WAV silence
   synthetique de `300 s` / `9 600 044` octets transcrit en environ `37,5 s`;
+- [x] regression WebM plateforme fermee sur preuve produit reelle: la premiere
+  livraison avait valide un WebM Chromium court dont la duree de conteneur
+  etait lisible, puis un vrai WebM utilisateur court a revele un rejet HTTP 422
+  `audio_duration_unknown` avant normalisation. La correction traite desormais
+  cette duree inconnue comme un etat provisoire autorisant seulement une
+  normalisation bornee a `306 s`; le WAV normalise doit rester connu et
+  inferieur ou egal a `305 s` avant `whisper-cli`, sans fallback brut si cette
+  normalisation echoue. La suite plateforme `19/19` hors reseau couvre
+  notamment un vrai WebM decodable sans `format.duration`; les probes
+  synthetiques WebM et WAV `300 s` ont reussi. Enfin, la preuve utilisateur du
+  16 juillet 2026 a rejoue le vrai WebM navigateur qui avait echoue
+  (`171 527` octets): normalisation a `6,4075 s`, HTTP 200 et transcription
+  terminee, sans restart ni OOM;
 - [x] `SOUS-LOT APPLICATION WHISPER FERME`: la route FridaDev refuse un
   `Content-Length` valide strictement superieur a `17 Mio` avant tout acces a
   `request.files` ou `request.form`, avec
