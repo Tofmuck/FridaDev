@@ -11,6 +11,16 @@ decide ce qui reste executable.
 
 - `frida-v1-mega-audit-code-stack-todo.md`: registre canonique actif du
   mega-audit.
+- `frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md`: sous-TODO
+  active du Lot 10, issue de la seconde passe code-only du 2026-07-15. Elle ne
+  remplace pas le registre canonique; elle decoupe ses findings Celebrimbor.
+
+## Source d'audit code-only du Lot 10
+
+- `../../states/audits/frida-v1-mega-audit-code-only-2026-07-15.md`: audit
+  source de la seconde passe autocritique code-only. Il confirme cinq P2 et
+  trois P3, sans P0/P1, et ne constitue pas une checklist executable sans la
+  sous-TODO de remediation.
 
 ## Pieces d'entree du mega-audit courant
 

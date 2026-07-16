@@ -18,6 +18,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - TODO refactors Lot 9 du mega-audit: `todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` pour la roadmap active golden-test-first des refactors structurels.
 - Audit readiness Lot 9 du mega-audit: `states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md` pour la preuve docs-only qui fonde la roadmap Lot 9.
+- Audit code-only Lot 10 du mega-audit: `states/audits/frida-v1-mega-audit-code-only-2026-07-15.md` pour la seconde passe autocritique, ses cinq P2 et ses trois P3 a revalider dans le HEAD courant.
+- TODO de remediation Lot 10: `todo-todo/audits/frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md` pour les lots Celebrimbor 10A-10H, executes un par un sans extension fonctionnelle.
 - Archive de cloture finale Frida V1: `todo-done/product/frida-v1-final-audit-todo.md` pour l'audit final clos, le registre P2/P3, la preuve Lot Z, l'historique branche/main, l'integration fast-forward vers `main` du 2026-06-24, la preuve Capsule durable et la decision Mail spec-only.
 - Archive de livraison Continuity Payload Frida V1: `todo-done/product/frida-v1-continuity-payload-todo.md` pour le chantier cloture en Lot Z, les preuves content-free, `main_payload_manifest_v1` et la Continuity Capsule runtime bornee.
 - Contrat Continuity Payload Frida V1: `states/specs/frida-v1-continuity-payload-contract.md` pour `main_payload_manifest_v1`, la Continuity Capsule, l'observabilite content-free, la garde writer-side et les limites post-V1.

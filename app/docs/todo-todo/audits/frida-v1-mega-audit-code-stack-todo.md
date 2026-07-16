@@ -3200,6 +3200,41 @@ Resultat readiness Lot 9:
 - Aucun runtime modifie. Lot 9 reste ouvert: seuls l'audit preparatoire et la
   planification granulaire sont termines.
 
+### Lot 10 - Remediation de la seconde passe code-only
+
+Statut: actif, docs-only a l'ouverture le 2026-07-16.
+Agent: Celebrimbor uniquement.
+Audit source:
+`app/docs/states/audits/frida-v1-mega-audit-code-only-2026-07-15.md`.
+TODO dediee:
+`app/docs/todo-todo/audits/frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md`.
+
+La seconde passe revalide cinq P2 et trois P3 dans le code applicatif courant
+au HEAD `afdf19fa54c6a1602232e54e40bb23a6ba33787d`. Elle ne modifie ni runtime
+ni plateforme. Son ordre de correction est code-only et ne rouvre pas Sauron.
+
+- [x] Transferer l'audit source dans `states/audits/`.
+- [x] Creer la TODO granulaire de remediation Celebrimbor.
+- [ ] Lot 10A: garde SSRF URL HTML/Crawl4AI partagee avec la politique PDF.
+- [ ] Lot 10B: plafonds uploads/documents/transcription sur taille reelle.
+- [ ] Lot 10C: suppression du contenu identity brut dans les logs standards.
+- [ ] Lot 10D: frontiere fail-open des effets auxiliaires post-persistence.
+- [ ] Lot 10E: URL runtime commune du LLM principal, stream et non-stream.
+- [ ] Lot 10F: prompts critiques fail-closed.
+- [ ] Lot 10G: requalification contractuelle des exceptions brutes en logs.
+- [ ] Lot 10H: raccord des hotspots de complexite au Lot 9 existant.
+
+Regle Lot 10:
+
+- revalider chaque finding dans le HEAD courant avant patch;
+- un lot ne vaut pas GO pour le suivant;
+- respecter la doctrine de consolidation sans extension fonctionnelle;
+- traiter les P3 logs et complexite comme des revalidations bornees, pas comme
+  des remplacements globaux ou un refactor massif;
+- le constat historique Lot 7 `Code runtime P1/P2 = met` vaut pour son etat de
+  2026-06-26 et est desormais complete par les P2 actifs du Lot 10; il ne
+  constitue pas une cloture actuelle des P2 code.
+
 ### Lot Z - Cloture mega-audit
 
 - [ ] Tous P1/P2 fermes, invalides ou acceptes explicitement.
