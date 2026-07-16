@@ -14,8 +14,9 @@
   };
 
   const DEFAULT_ENDPOINT = "/api/chat/transcribe";
-  const DEFAULT_MAX_RECORDING_MS = 150_000;
-  const MAX_RECORDING_MS_LIMIT = 150_000;
+  const DEFAULT_MAX_RECORDING_MS = 300_000;
+  const MAX_RECORDING_MS_LIMIT = 300_000;
+  const MAX_AUDIO_BLOB_BYTES = 16 * 1024 * 1024;
   const STOP_REASONS = {
     MANUAL: "manual",
     AUTO_LIMIT: "auto_limit",
@@ -186,8 +187,12 @@
 
   async function transcribeBlob(options) {
     const audioBlob = options && options.audioBlob;
-    if (!audioBlob || Number(audioBlob.size || 0) <= 0) {
+    const blobSizeBytes = Number(audioBlob && audioBlob.size ? audioBlob.size : 0);
+    if (!audioBlob || blobSizeBytes <= 0) {
       throw new Error("Aucun audio détecté");
+    }
+    if (blobSizeBytes > MAX_AUDIO_BLOB_BYTES) {
+      throw new Error("Fichier audio trop volumineux");
     }
 
     const endpoint = text(options && options.endpoint) || DEFAULT_ENDPOINT;
@@ -591,6 +596,7 @@
     STOP_REASONS,
     DEFAULT_MAX_RECORDING_MS,
     MAX_RECORDING_MS_LIMIT,
+    MAX_AUDIO_BLOB_BYTES,
     buildTranscriptionMetadata,
     buildUploadFilename,
     createWhisperDictation,

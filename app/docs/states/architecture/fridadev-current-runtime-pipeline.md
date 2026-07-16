@@ -15,7 +15,10 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
 ```text
 [Browser / index.html + app.js]
   |- typed message
-  |- optional voice draft -> /api/chat/transcribe -> whisper_transcription_service
+  |- optional voice draft, 300 s max, one final blob
+  |    -> /api/chat/transcribe, declared body <= 17 MiB
+  |    -> whisper_transcription_service, bounded audio <= 16 MiB
+  |    -> Whisper, input duration tolerance <= 305 s
   |- optional web_search flag
   |- active documents UI -> /api/conversations/<id>/active-documents
   |- scanned PDF active_document OCR V1 -> platform-stirling-pdf when extractor says document_ocr_required
@@ -131,6 +134,19 @@ EN: `/dashboard`, `/log`, `/hermeneutic-admin`, `/identity`, `/memory-admin`, an
 8. La Biblio native reste separee.
 FR: les futurs `library_document` / `catalogue_document` et `passage documentaire` appartiennent au chantier Biblio native / Frida Catalogue. Ils ne reutilisent pas l'etat `active_document`.
 EN: future `library_document` / `catalogue_document` and `passage documentaire` belong to the native Biblio / Frida Catalogue workstream. They do not reuse `active_document` state.
+
+9. La dictee Whisper reste un flux unique et borne.
+FR: `MediaRecorder.start()` reste sans `timeslice`; le navigateur produit un
+seul blob, effectue un seul upload et demande une seule transcription. FridaDev
+refuse le corps declare au-dessus de `17 Mio` avant le parsing multipart, puis
+lit le fichier par blocs jusqu'a `16 Mio + 1 octet` au plus pour accepter
+exactement `16 Mio` ou refuser au-dessus. Les metadonnees de taille et duree du
+client restent informatives.
+EN: `MediaRecorder.start()` remains without a `timeslice`; the browser produces
+one blob, performs one upload, and requests one transcription. FridaDev rejects
+a declared body above `17 MiB` before multipart parsing, then reads the file in
+blocks up to `16 MiB + 1 byte` to accept exactly `16 MiB` or reject above it.
+Client size and duration metadata remain informational.
 
 ## References
 

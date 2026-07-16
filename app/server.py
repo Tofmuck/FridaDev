@@ -761,6 +761,13 @@ class _AdminLogsChatLogProxy:
 
 @app.post("/api/chat/transcribe")
 def api_chat_transcribe():
+    body_guard = whisper_transcription_service.request_body_size_guard_response(
+        request.content_length
+    )
+    if body_guard:
+        payload, status = body_guard
+        return jsonify(payload), status
+
     try:
         payload, status = whisper_transcription_service.transcribe_http_request(
             content_type=request.content_type,

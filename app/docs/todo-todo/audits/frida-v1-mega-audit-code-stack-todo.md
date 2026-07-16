@@ -3226,6 +3226,12 @@ ni plateforme. Son ordre de correction est code-only et ne rouvre pas Sauron.
   Reouvrir seulement sur traceback, exception asynchrone ou `stderr` anormal
   reproduit par ce test; ni Lot 10A ni correction speculative.
 - [ ] Lot 10B: plafonds uploads/documents/transcription sur taille reelle.
+  - [x] Tranche transcription Whisper fermee le 2026-07-16: frontend `300 s`,
+    un blob/upload/transcription, fichier reel FridaDev `16 Mio`, corps declare
+    FridaDev/Caddy `17 Mio`, tolerance Whisper `305 s`, rejets 413/422
+    allowlistes et content-free; preuves plateforme Sauron et suites
+    applicatives sans reseau vertes. `P2-CEL-UPLOAD-LIMITS-01` reste ouvert.
+  - [ ] Reliquat Lot 10B: PDF, documents actifs et workspace.
 - [ ] Lot 10C: suppression du contenu identity brut dans les logs standards.
 - [ ] Lot 10D: frontiere fail-open des effets auxiliaires post-persistence.
 - [ ] Lot 10E: URL runtime commune du LLM principal, stream et non-stream.

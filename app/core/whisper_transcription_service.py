@@ -16,6 +16,16 @@ _DEFAULT_MODEL = 'whisper-1'
 _DEFAULT_RESPONSE_FORMAT = 'json'
 _DEFAULT_TIMEOUT_S = 180
 _DEFAULT_CONTENT_TYPE = 'application/octet-stream'
+MAX_AUDIO_FILE_BYTES = 16 * 1024 * 1024
+MAX_TRANSCRIPTION_REQUEST_BYTES = 17 * 1024 * 1024
+_UPLOAD_READ_CHUNK_BYTES = 64 * 1024
+_REASON_AUDIO_REQUEST_TOO_LARGE = 'audio_request_too_large'
+_REASON_AUDIO_FILE_TOO_LARGE = 'audio_file_too_large'
+_ALLOWED_UPSTREAM_REJECTIONS = {
+    _REASON_AUDIO_FILE_TOO_LARGE: 'fichier audio trop volumineux',
+    'audio_duration_unknown': 'duree audio indeterminable',
+    'audio_duration_too_long': 'duree audio trop longue',
+}
 _ALLOWED_STOP_REASONS = {
     'manual',
     'auto_limit',
@@ -35,13 +45,17 @@ class TranscriptionUpload:
 
 
 class WhisperTranscriptionServiceError(Exception):
-    def __init__(self, *, status_code: int, error: str) -> None:
+    def __init__(self, *, status_code: int, error: str, reason_code: str | None = None) -> None:
         super().__init__(error)
         self.status_code = int(status_code)
         self.error = str(error)
+        self.reason_code = _text(reason_code) or None
 
     def as_response(self) -> tuple[dict[str, Any], int]:
-        return ({'ok': False, 'error': self.error}, self.status_code)
+        payload: dict[str, Any] = {'ok': False, 'error': self.error}
+        if self.reason_code:
+            payload['reason_code'] = self.reason_code
+        return payload, self.status_code
 
 
 def _text(value: Any) -> str:
@@ -108,7 +122,9 @@ def _request_metadata(form: Mapping[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def _error_code(error: str) -> str:
+def _error_code(error: str, *, reason_code: str | None = None) -> str:
+    if reason_code:
+        return reason_code
     normalized = _text(error).lower().replace(' ', '_')
     if normalized in {'transcription_timeout', 'transcription_indisponible'}:
         return normalized
@@ -160,6 +176,70 @@ def _response_json(response: Any) -> Mapping[str, Any]:
     return payload
 
 
+def _allowed_upstream_rejection(response: Any, status_code: int) -> WhisperTranscriptionServiceError | None:
+    if status_code not in {413, 422}:
+        return None
+    try:
+        payload = response.json()
+    except Exception:
+        return None
+    if not isinstance(payload, Mapping):
+        return None
+    if set(payload) != {'detail'}:
+        return None
+    detail = payload.get('detail')
+    if not isinstance(detail, Mapping):
+        return None
+    if set(detail) != {'reason'}:
+        return None
+    reason_code = _text(detail.get('reason'))
+    public_error = _ALLOWED_UPSTREAM_REJECTIONS.get(reason_code)
+    if not public_error:
+        return None
+    return WhisperTranscriptionServiceError(
+        status_code=status_code,
+        error=public_error,
+        reason_code=reason_code,
+    )
+
+
+def request_body_size_guard_response(content_length: Any) -> tuple[dict[str, Any], int] | None:
+    try:
+        body_size = int(content_length)
+    except (TypeError, ValueError):
+        return None
+    if body_size <= MAX_TRANSCRIPTION_REQUEST_BYTES:
+        return None
+    return (
+        {
+            'ok': False,
+            'error': 'requete audio trop volumineuse',
+            'reason_code': _REASON_AUDIO_REQUEST_TOO_LARGE,
+        },
+        413,
+    )
+
+
+def _read_bounded_audio(file_storage: Any) -> bytes:
+    chunks: list[bytes] = []
+    total_bytes = 0
+    observed_limit = MAX_AUDIO_FILE_BYTES + 1
+    while total_bytes < observed_limit:
+        read_size = min(_UPLOAD_READ_CHUNK_BYTES, observed_limit - total_bytes)
+        chunk = bytes(file_storage.read(read_size) or b'')
+        if not chunk:
+            break
+        chunks.append(chunk)
+        total_bytes += len(chunk)
+    if total_bytes > MAX_AUDIO_FILE_BYTES:
+        raise WhisperTranscriptionServiceError(
+            status_code=413,
+            error=_ALLOWED_UPSTREAM_REJECTIONS[_REASON_AUDIO_FILE_TOO_LARGE],
+            reason_code=_REASON_AUDIO_FILE_TOO_LARGE,
+        )
+    return b''.join(chunks)
+
+
 def prepare_upload(
     *,
     content_type: Any,
@@ -178,8 +258,7 @@ def prepare_upload(
             error='file requis',
         )
 
-    raw_data = file_storage.read()
-    data = bytes(raw_data or b'')
+    data = _read_bounded_audio(file_storage)
     if not data:
         raise WhisperTranscriptionServiceError(
             status_code=400,
@@ -269,6 +348,18 @@ def transcribe_upload(
             error='transcription timeout',
         )
     if status_code >= 400 or status_code == 0:
+        rejection = _allowed_upstream_rejection(response, status_code)
+        if rejection is not None:
+            _log(
+                logger_obj,
+                'warning',
+                'whisper_upstream_rejected request_id=%s status=%s timeout_s=%s reason_code=%s',
+                request_id,
+                status_code,
+                timeout_s,
+                rejection.reason_code,
+            )
+            raise rejection
         _log(
             logger_obj,
             'warning',
@@ -349,7 +440,7 @@ def transcribe_http_request(
             ),
             request_id,
             exc.status_code,
-            _error_code(exc.error),
+            _error_code(exc.error, reason_code=exc.reason_code),
             upload_bytes,
             metadata['recording_duration_ms'],
             metadata['recording_stop_reason'],

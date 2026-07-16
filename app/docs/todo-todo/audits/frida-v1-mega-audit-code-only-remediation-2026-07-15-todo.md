@@ -170,7 +170,7 @@ P3 distinct, non bloquant, non confirme, hors cloture P2:
 
 Finding cible: `P2-CEL-UPLOAD-LIMITS-01`.
 
-Faits a revalider:
+Faits revalides au HEAD de depart du sous-lot:
 
 - aucun plafond Flask global n'est configure;
 - workspace et documents actifs font confiance a `Content-Length` avant de
@@ -178,7 +178,37 @@ Faits a revalider:
   comme zero puis lisent integralement le fichier;
 - workspace possede deja un second controle post-lecture, contrairement aux
   documents actifs;
-- transcription lit et duplique le blob audio sans plafond.
+- transcription lisait et dupliquait le blob audio sans plafond.
+
+### Tranche transcription Whisper - fermee le 2026-07-16
+
+Statut borne:
+
+- [x] `SOUS-LOT PLATEFORME WHISPER FERME`: Whisper lit par blocs, accepte
+  exactement `16 Mio` (`16 777 216` octets), refuse au-dessus, borne les
+  durees d'entree et normalisee a `305 s`; Caddy borne le corps de
+  `POST /api/chat/transcribe` a `17 Mio` (`17 825 792` octets). La preuve
+  plateforme inclut un rejet HTTP 413 a `17 Mio + 1 octet` et un WAV silence
+  synthetique de `300 s` / `9 600 044` octets transcrit en environ `37,5 s`;
+- [x] `SOUS-LOT APPLICATION WHISPER FERME`: la route FridaDev refuse un
+  `Content-Length` valide strictement superieur a `17 Mio` avant tout acces a
+  `request.files` ou `request.form`, avec
+  `reason_code=audio_request_too_large`; le service lit par blocs au plus
+  jusqu'a `16 Mio + 1 octet`, accepte exactement `16 Mio` et refuse au-dessus
+  avant tout appel Whisper avec `reason_code=audio_file_too_large`;
+- [x] le frontend s'arrete a `300000 ms`, conserve les valeurs configurees
+  plus basses, plafonne les valeurs superieures, garde
+  `MediaRecorder.start()` sans `timeslice`, un blob, un upload et une
+  transcription, et refuse `16 Mio + 1 octet` avant `FormData` et `fetch`;
+- [x] seuls `audio_file_too_large`, `audio_duration_unknown` et
+  `audio_duration_too_long` sont propages depuis les reponses Whisper 413/422
+  avec statut, message francais stable et `reason_code`; toute autre structure
+  reste une 502 generique sans detail amont;
+- [x] preuves sans reseau: suites ciblees `9` tests Node et `24` tests Python;
+  suites elargies `120` tests frontend Node, `113` unitaires chat, `16`
+  integrations chat et `25` contrats frontend Python, toutes vertes;
+- [ ] `LOT 10B GLOBAL TOUJOURS OUVERT`: PDF, documents actifs et workspace
+  restent hors de cette tranche et ne sont pas requalifies par ces preuves.
 
 Perimetre strict:
 
@@ -199,8 +229,9 @@ Checklist:
   qui materialise encore le contenu en memoire; ne jamais accepter une taille
   inconnue comme zero par defaut.
 - [ ] Ajouter un plafond explicite a la transcription avant lecture complete et
-  avant duplication multipart; preferer lecture bornee/streaming seulement si
-  c'est necessaire pour ne pas empiler une seconde voie.
+  avant duplication multipart. Fait pour la seule tranche Whisper par lecture
+  bornee en blocs, sans chunking, streaming ni seconde voie; le point reste
+  non coche tant que les autres uploads du Lot 10B ne sont pas fermes.
 - [ ] Tester, par route: `Content-Length` absent, invalide, mensonger, limite
   exacte, limite moins un, limite plus un et fichier effectivement trop grand.
 - [ ] Prouver qu'aucun test ne contacte Whisper, OCR ou un service externe.

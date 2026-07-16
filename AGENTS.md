@@ -37,6 +37,14 @@ Refuse explicitement la partie additive d'un lot mixte. Une levee de cet
 invariant exige une decision utilisateur explicite, distincte du lot, et une
 mise a jour de ce fichier.
 
+Exception explicite decidee par l'utilisateur le 16 juillet 2026: la dictee
+Whisper peut passer de 150 a 300 secondes en conservant un blob unique, un
+upload unique et une transcription unique. Le chunking et le streaming restent
+interdits. Cette exception vaut uniquement avec les plafonds deja poses et
+prouves de 16 Mio au niveau applicatif pour le fichier audio, 17 Mio pour le
+corps HTTP et 305 secondes de tolerance Whisper. Elle ne leve aucune autre
+partie de la doctrine de consolidation.
+
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien
 chemin retire quand il est remplace, et invariants utiles verrouilles par des

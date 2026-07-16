@@ -92,7 +92,12 @@ Schema global de base a date (lecture rapide):
 - impact si indisponible: enrichissement web degrade.
 
 4. Dictation vocale Whisper
-- source: `WHISPER_API_URL`, `WHISPER_API_TIMEOUT_S` (defaut applicatif `180 s` pour couvrir une dictee cible de 2 minutes avec marge)
+- source: `WHISPER_API_URL`, `WHISPER_API_TIMEOUT_S` (defaut applicatif
+  inchange de `180 s` pour une dictee bornee a cinq minutes)
+- contrat de taille et duree: arret navigateur a `300 s`, un blob, un upload et
+  une transcription; fichier audio reel limite a `16 Mio` (`16 777 216`
+  octets) dans FridaDev, corps HTTP declare limite a `17 Mio` (`17 825 792`
+  octets) sur la route et dans Caddy, tolerance aval Whisper limitee a `305 s`.
 - si le service Whisper amont active une authentification par cle, `FridaDev` doit recevoir la meme `WHISPER_API_KEY` pour que `/api/chat/transcribe` reste utilisable.
 - observabilite: les logs de diagnostic doivent rester content-free (`request_id`, tailles, durees, raison d'arret, latences, `transcript_chars`), sans audio brut ni transcription.
 

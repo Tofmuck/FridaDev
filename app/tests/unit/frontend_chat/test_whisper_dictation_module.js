@@ -194,12 +194,52 @@ function createTimerHarness() {
   };
 }
 
-test('default long dictation limit is bounded to 150 seconds', () => {
-  assert.equal(whisperDictation.DEFAULT_MAX_RECORDING_MS, 150_000);
-  assert.equal(whisperDictation.MAX_RECORDING_MS_LIMIT, 150_000);
-  assert.equal(whisperDictation.normalizeMaxRecordingMs(undefined), 150_000);
+test('default long dictation limit is bounded to 300 seconds', () => {
+  assert.equal(whisperDictation.DEFAULT_MAX_RECORDING_MS, 300_000);
+  assert.equal(whisperDictation.MAX_RECORDING_MS_LIMIT, 300_000);
+  assert.equal(whisperDictation.MAX_AUDIO_BLOB_BYTES, 16 * 1024 * 1024);
+  assert.equal(whisperDictation.normalizeMaxRecordingMs(undefined), 300_000);
   assert.equal(whisperDictation.normalizeMaxRecordingMs(120_000), 120_000);
-  assert.equal(whisperDictation.normalizeMaxRecordingMs(999_999), 150_000);
+  assert.equal(whisperDictation.normalizeMaxRecordingMs(999_999), 300_000);
+});
+
+test('transcribeBlob accepts 16 MiB and rejects 16 MiB plus one before FormData or fetch', async () => {
+  let formDataConstructions = 0;
+  let fetchCalls = 0;
+
+  class CountingFormData extends FakeFormData {
+    constructor() {
+      super();
+      formDataConstructions += 1;
+    }
+  }
+
+  const transcript = await whisperDictation.transcribeBlob({
+    audioBlob: { size: 16 * 1024 * 1024, type: 'audio/webm' },
+    FormDataCtor: CountingFormData,
+    fetchImpl: async () => {
+      fetchCalls += 1;
+      return jsonResponse(200, { ok: true, text: 'bonjour', input_mode: 'voice' });
+    },
+  });
+
+  assert.equal(transcript, 'bonjour');
+  assert.equal(formDataConstructions, 1);
+  assert.equal(fetchCalls, 1);
+
+  await assert.rejects(
+    whisperDictation.transcribeBlob({
+      audioBlob: { size: (16 * 1024 * 1024) + 1, type: 'audio/webm' },
+      FormDataCtor: CountingFormData,
+      fetchImpl: async () => {
+        fetchCalls += 1;
+        return jsonResponse(200, { ok: true, text: 'ignore', input_mode: 'voice' });
+      },
+    }),
+    { message: 'Fichier audio trop volumineux' },
+  );
+  assert.equal(formDataConstructions, 1);
+  assert.equal(fetchCalls, 1);
 });
 
 test('joinTranscriptToDraft keeps clean paragraph separation', () => {
@@ -279,6 +319,7 @@ test('createWhisperDictation reinjects the transcript into the existing draft', 
   assert.equal(fetchCalls[0].options.method, 'POST');
   assert.equal(fetchCalls[0].options.body.entries[0].name, 'file');
   assert.equal(fetchCalls[0].options.body.entries[0].filename, 'dictation.webm');
+  assert.equal(fetchCalls[0].options.body.entries[0].value.parts.length, 1);
   assert.deepEqual(
     fetchCalls[0].options.body.entries.slice(1),
     [
@@ -374,10 +415,10 @@ test('createWhisperDictation marks duration-limit stops distinctly', async () =>
   buttonEl.click();
   await flushAsync();
   assert.equal(controller.getState(), 'recording');
-  assert.equal(controller.getMaxRecordingMs(), 150_000);
-  assert.equal(timers.calls[0].delay, 150_000);
+  assert.equal(controller.getMaxRecordingMs(), 300_000);
+  assert.equal(timers.calls[0].delay, 300_000);
 
-  now = 150_000;
+  now = 300_000;
   timers.fireLatest();
   await flushAsync();
 
@@ -389,7 +430,7 @@ test('createWhisperDictation marks duration-limit stops distinctly', async () =>
   assert.deepEqual(
     fetchCalls[0].options.body.entries.slice(1),
     [
-      { name: 'recording_duration_ms', value: '150000', filename: undefined },
+      { name: 'recording_duration_ms', value: '300000', filename: undefined },
       { name: 'recording_blob_size_bytes', value: '11', filename: undefined },
       { name: 'recording_chunk_count', value: '1', filename: undefined },
       { name: 'recording_stop_reason', value: 'auto_limit', filename: undefined },
