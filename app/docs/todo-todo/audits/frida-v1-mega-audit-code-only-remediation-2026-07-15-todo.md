@@ -151,11 +151,20 @@ Conclusion de cloture:
 - la cloture vaut pour l'usage Crawl4AI de FridaDev vise par ce finding. Elle
   ne pretend pas etablir un firewall kernel generique pour du code arbitraire.
 
-P3 distinct, non bloquant pour cette cloture P2:
+P3 distinct, non bloquant, non confirme, hors cloture P2:
 
-- la fermeture de socket du faux proxy Chromium releve d'un nettoyage de test
-  plateforme Sauron. Elle ne modifie pas la barriere aval reelle prouvee ici,
-  ne cree aucune feature et ne justifie pas de rouvrir le Lot 10A.
+- `P3-SAU-CRAWL4AI-CHROMIUM-FAKE-PROXY-SOCKET-01`: le
+  `ConnectionResetError` observe historiquement n'a pas ete reproduit dans
+  13 executions isolees du test Chromium, toutes sorties code 0 et `stderr`
+  vide, sans patch;
+- cette non-reproduction borne une hypothese de course dans l'environnement de
+  test actuel. Elle ne qualifie pas le P3 de `stale`, corrige ou clos, et ne
+  permet pas d'affirmer que la course est impossible;
+- le P3 reste non bloquant et distinct de
+  `P2-CEL-WEB-HTML-SSRF-GUARD-01`, qui demeure ferme. Il ne justifie ni la
+  reouverture du Lot 10A ni une correction speculative;
+- seul declencheur de reouverture: traceback, exception asynchrone ou `stderr`
+  anormal reproduit par ce test.
 
 ## Lot 10B - Plafonds coherents des uploads, documents et transcription
 

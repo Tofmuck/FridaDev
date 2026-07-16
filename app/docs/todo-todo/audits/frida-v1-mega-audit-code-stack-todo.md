@@ -3219,9 +3219,12 @@ ni plateforme. Son ordre de correction est code-only et ne rouvre pas Sauron.
   Cloture complete au 2026-07-16: garde URL/DNS amont FridaDev avant `/md` et
   barriere aval Crawl4AI sur la navigation Chromium effective, y compris
   redirections et resolution a la connexion, verifiees independamment par
-  Sauron. `P2-CEL-WEB-HTML-SSRF-GUARD-01` est ferme. Le P3 de fermeture de
-  socket du faux proxy Chromium reste un nettoyage de test plateforme non
-  bloquant, hors cloture P2.
+  Sauron. `P2-CEL-WEB-HTML-SSRF-GUARD-01` est ferme. P3 distinct
+  `P3-SAU-CRAWL4AI-CHROMIUM-FAKE-PROXY-SOCKET-01`: `ConnectionResetError`
+  historique non reproduit dans 13 executions isolees, sorties 0 et `stderr`
+  vide, sans patch; non bloquant, non confirme, ni `stale`, corrige ni clos.
+  Reouvrir seulement sur traceback, exception asynchrone ou `stderr` anormal
+  reproduit par ce test; ni Lot 10A ni correction speculative.
 - [ ] Lot 10B: plafonds uploads/documents/transcription sur taille reelle.
 - [ ] Lot 10C: suppression du contenu identity brut dans les logs standards.
 - [ ] Lot 10D: frontiere fail-open des effets auxiliaires post-persistence.
