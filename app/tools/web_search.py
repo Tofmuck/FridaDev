@@ -34,6 +34,7 @@ from tools import (
     web_search_searxng_params,
     web_search_discovery,
     web_pdf_reader,
+    web_public_url_policy,
 )
 
 logger = logging.getLogger("frida.web_search")
@@ -222,6 +223,18 @@ def _crawl_markdown_with_status(
     normalized_query = str(query or '').strip()
     normalized_filter = str(filter_type or CRAWL4AI_FILTER_FIT)
     normalized_cache_mode = str(cache_mode or web_search_crawl_policy.CACHE_FRESH_WRITE)
+    blocked_reason = web_public_url_policy.blocked_url_reason(url)
+    if blocked_reason:
+        return {
+            'status': 'error',
+            'markdown': '',
+            'error_class': 'crawl_url_blocked',
+            'reason_code': blocked_reason,
+            'filter': normalized_filter,
+            'cache_mode': normalized_cache_mode,
+            'query_sha256_12': _sha256_12(normalized_query),
+            'query_chars': _safe_len(normalized_query),
+        }
     try:
         crawl4ai_url = str(_runtime_services_value('crawl4ai_url')).rstrip('/')
         headers = {
@@ -336,7 +349,7 @@ def _crawl_explicit_url_primary_with_status(url: str) -> dict[str, Any]:
     fit_result = _call_crawl_markdown_with_status(url, filter_type=CRAWL4AI_FILTER_FIT)
     fit_result['raw_fallback_used'] = False
     fit_result['crawl_policy_kind'] = 'explicit_url_direct_fit_then_raw'
-    fit_result['crawl_policy_reason'] = 'explicit_url_fit_primary'
+    fit_result['crawl_policy_reason'] = str(fit_result.get('reason_code') or 'explicit_url_fit_primary')
     fit_result['crawl_filter_requested'] = CRAWL4AI_FILTER_FIT
     fit_result['crawl_primary_filter'] = CRAWL4AI_FILTER_FIT
     fit_result['crawl_fallback_filter'] = CRAWL4AI_FILTER_RAW
@@ -375,7 +388,7 @@ def _annotate_crawl_result(
     result = dict(crawl_result or {})
     query = str(policy.query or '')
     result['crawl_policy_kind'] = str(policy.kind or '')
-    result['crawl_policy_reason'] = str(policy.reason_code or '')
+    result['crawl_policy_reason'] = str(result.get('reason_code') or policy.reason_code or '')
     result['crawl_filter_requested'] = str(requested_filter or policy.primary_filter or CRAWL4AI_FILTER_FIT)
     result['crawl_primary_filter'] = str(policy.primary_filter or CRAWL4AI_FILTER_FIT)
     result['crawl_fallback_filter'] = str(policy.fallback_filter or '')

@@ -8,8 +8,6 @@ pipeline. It does not OCR, store, index, or cache downloaded files.
 """
 
 import io
-import ipaddress
-import socket
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,6 +17,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 
 from core import active_document_text_extraction
+from tools import web_public_url_policy
 
 
 DEFAULT_TIMEOUT_S = 12
@@ -42,19 +41,6 @@ REASON_READ_SUCCESS = "web_pdf_read_success"
 REASON_READ_TRUNCATED = "web_pdf_read_truncated"
 REASON_URL_BLOCKED_INTERNAL = "web_pdf_url_blocked_internal"
 
-_ALLOWED_SCHEMES = {"http", "https"}
-_BLOCKED_HOSTS = {
-    "localhost",
-    "localhost.localdomain",
-    "host.docker.internal",
-    "gateway.docker.internal",
-}
-_BLOCKED_HOST_SUFFIXES = (
-    ".localhost",
-    ".local",
-    ".internal",
-    ".docker",
-)
 _REDIRECT_STATUSES = {301, 302, 303, 307, 308}
 
 
@@ -139,6 +125,7 @@ def read_pdf_url(
             start=start,
         )
 
+    url_candidate = is_pdf_url_candidate(normalized_url)
     blocked_reason = _blocked_url_reason(normalized_url)
     if blocked_reason:
         return _result(
@@ -146,11 +133,10 @@ def read_pdf_url(
             status=STATUS_ERROR,
             reason_code=blocked_reason,
             attempted=False,
-            detected=False,
+            detected=url_candidate,
             start=start,
         )
 
-    url_candidate = is_pdf_url_candidate(normalized_url)
     head_media_type = ""
     head_length = 0
     head_blocked_reason = ""
@@ -489,59 +475,8 @@ def _redirect_url(current_url: str, response: Any) -> str:
 
 
 def _blocked_url_reason(url: str) -> str:
-    parsed = urlparse(str(url or "").strip())
-    if parsed.scheme not in _ALLOWED_SCHEMES:
-        return REASON_URL_BLOCKED_INTERNAL
-
-    host = str(parsed.hostname or "").strip().lower().rstrip(".")
-    if not host:
-        return REASON_URL_BLOCKED_INTERNAL
-    if host in _BLOCKED_HOSTS or any(host.endswith(suffix) for suffix in _BLOCKED_HOST_SUFFIXES):
-        return REASON_URL_BLOCKED_INTERNAL
-
-    try:
-        address = ipaddress.ip_address(host)
-    except ValueError:
-        if "." not in host:
-            return REASON_URL_BLOCKED_INTERNAL
-        return _blocked_hostname_reason(host)
-    return REASON_URL_BLOCKED_INTERNAL if _is_blocked_ip(address) else ""
-
-
-def _blocked_hostname_reason(host: str) -> str:
-    try:
-        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
-    except socket.gaierror:
-        return ""
-    except Exception:
-        return REASON_URL_BLOCKED_INTERNAL
-    resolved: list[str] = []
-    for info in infos or []:
-        try:
-            resolved.append(str(info[4][0]))
-        except (IndexError, TypeError):
-            continue
-    if not resolved:
-        return REASON_URL_BLOCKED_INTERNAL
-    for value in resolved:
-        try:
-            if _is_blocked_ip(ipaddress.ip_address(value)):
-                return REASON_URL_BLOCKED_INTERNAL
-        except ValueError:
-            return REASON_URL_BLOCKED_INTERNAL
-    return ""
-
-
-def _is_blocked_ip(address: ipaddress._BaseAddress) -> bool:
-    return (
-        address.is_loopback
-        or address.is_private
-        or address.is_link_local
-        or address.is_multicast
-        or address.is_unspecified
-        or address.is_reserved
-        or not address.is_global
-    )
+    reason = web_public_url_policy.blocked_url_reason(url)
+    return REASON_URL_BLOCKED_INTERNAL if reason else ""
 
 
 def _is_pdf_media_type(media_type: str) -> bool:

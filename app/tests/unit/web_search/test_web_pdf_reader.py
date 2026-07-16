@@ -18,7 +18,7 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from tools import web_pdf_reader
+from tools import web_pdf_reader, web_public_url_policy
 
 
 def _tiny_pdf(text: str = "Frida web PDF reader fixture") -> bytes:
@@ -130,8 +130,8 @@ class WebPdfReaderTests(unittest.TestCase):
             head=_FakeResponse(headers={"Content-Type": "application/pdf", "Content-Length": "999"}),
             get=_FakeResponse(headers={"Content-Type": "application/pdf"}, content=b""),
         )
-        original_getaddrinfo = web_pdf_reader.socket.getaddrinfo
-        web_pdf_reader.socket.getaddrinfo = _public_getaddrinfo
+        original_getaddrinfo = web_public_url_policy.socket.getaddrinfo
+        web_public_url_policy.socket.getaddrinfo = _public_getaddrinfo
 
         try:
             result = web_pdf_reader.read_pdf_url(
@@ -140,7 +140,7 @@ class WebPdfReaderTests(unittest.TestCase):
                 max_bytes=10,
             )
         finally:
-            web_pdf_reader.socket.getaddrinfo = original_getaddrinfo
+            web_public_url_policy.socket.getaddrinfo = original_getaddrinfo
 
         self.assertEqual(result.status, "error")
         self.assertEqual(result.reason_code, "web_pdf_too_large")
@@ -171,6 +171,7 @@ class WebPdfReaderTests(unittest.TestCase):
                 self.assertEqual(result.status, "error")
                 self.assertEqual(result.reason_code, "web_pdf_url_blocked_internal")
                 self.assertFalse(result.attempted)
+                self.assertEqual(result.detected, web_pdf_reader.is_pdf_url_candidate(url))
                 self.assertEqual(fake.calls, [])
 
     def test_blocks_hostname_that_resolves_to_private_address(self) -> None:
@@ -178,14 +179,14 @@ class WebPdfReaderTests(unittest.TestCase):
             head=AssertionError("head should not be called"),
             get=AssertionError("get should not be called"),
         )
-        original_getaddrinfo = web_pdf_reader.socket.getaddrinfo
-        web_pdf_reader.socket.getaddrinfo = lambda *_args, **_kwargs: [
+        original_getaddrinfo = web_public_url_policy.socket.getaddrinfo
+        web_public_url_policy.socket.getaddrinfo = lambda *_args, **_kwargs: [
             (None, None, None, "", ("172.18.0.5", 0))
         ]
         try:
             result = web_pdf_reader.read_pdf_url("https://public-looking.example/doc.pdf", requests_module=fake)
         finally:
-            web_pdf_reader.socket.getaddrinfo = original_getaddrinfo
+            web_public_url_policy.socket.getaddrinfo = original_getaddrinfo
 
         self.assertEqual(result.status, "error")
         self.assertEqual(result.reason_code, "web_pdf_url_blocked_internal")
@@ -200,15 +201,15 @@ class WebPdfReaderTests(unittest.TestCase):
                 status_code=302,
             ),
         )
-        original_getaddrinfo = web_pdf_reader.socket.getaddrinfo
-        web_pdf_reader.socket.getaddrinfo = _public_getaddrinfo
+        original_getaddrinfo = web_public_url_policy.socket.getaddrinfo
+        web_public_url_policy.socket.getaddrinfo = _public_getaddrinfo
         try:
             result = web_pdf_reader.read_pdf_url(
                 "https://example.com/doc.pdf",
                 requests_module=fake,
             )
         finally:
-            web_pdf_reader.socket.getaddrinfo = original_getaddrinfo
+            web_public_url_policy.socket.getaddrinfo = original_getaddrinfo
 
         self.assertEqual(result.status, "error")
         self.assertEqual(result.reason_code, "web_pdf_url_blocked_internal")
@@ -275,9 +276,9 @@ class WebPdfReaderTests(unittest.TestCase):
         )
         original_page_count = web_pdf_reader._pdf_page_count
         original_extract = web_pdf_reader.active_document_text_extraction.extract_active_document_text
-        original_getaddrinfo = web_pdf_reader.socket.getaddrinfo
+        original_getaddrinfo = web_public_url_policy.socket.getaddrinfo
         web_pdf_reader._pdf_page_count = lambda _data: 1
-        web_pdf_reader.socket.getaddrinfo = _public_getaddrinfo
+        web_public_url_policy.socket.getaddrinfo = _public_getaddrinfo
         web_pdf_reader.active_document_text_extraction.extract_active_document_text = lambda *_args, **_kwargs: SimpleNamespace(
             status=web_pdf_reader.active_document_text_extraction.STATUS_COMPLETE,
             text="content type pdf",
@@ -292,7 +293,7 @@ class WebPdfReaderTests(unittest.TestCase):
             )
         finally:
             web_pdf_reader._pdf_page_count = original_page_count
-            web_pdf_reader.socket.getaddrinfo = original_getaddrinfo
+            web_public_url_policy.socket.getaddrinfo = original_getaddrinfo
             web_pdf_reader.active_document_text_extraction.extract_active_document_text = original_extract
 
         self.assertEqual(result.status, "success")

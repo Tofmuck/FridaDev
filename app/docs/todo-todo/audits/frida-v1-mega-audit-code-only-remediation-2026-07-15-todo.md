@@ -71,25 +71,83 @@ Perimetre strict:
 
 Checklist:
 
-- [ ] Reproduire par test controle que l'URL HTML explicite atteint ou peut
+- [x] Reproduire par test controle que l'URL HTML explicite atteint ou peut
   atteindre le payload crawl sans garde locale.
-- [ ] Identifier la politique PDF reutilisable et verifier ses dependances de
+- [x] Identifier la politique PDF reutilisable et verifier ses dependances de
   resolution DNS et de redirection.
-- [ ] Definir une unique frontiere de validation avant tout appel Crawl4AI.
-- [ ] Prouver le traitement des redirections sous controle de FridaDev. Si
+- [x] Definir une unique frontiere de validation avant tout appel Crawl4AI.
+- [x] Prouver le traitement des redirections sous controle de FridaDev. Si
   Crawl4AI suit une redirection sans que FridaDev puisse la revalider, ne pas
   declarer le finding clos: expliciter la limite et proposer le plus petit plan
   supplementaire necessaire.
-- [ ] Couvrir par fakes: IPv4 privee/loopback/link-local/reservee, IPv6
+- [x] Couvrir par fakes: IPv4 privee/loopback/link-local/reservee, IPv6
   loopback/link-local/unique-local, DNS vers IP non globale, noms internes,
   URL publique, redirection publique puis interne.
-- [ ] Prouver que l'URL rejetee ne produit ni requete crawl ni payload externe,
+- [x] Prouver que l'URL rejetee ne produit ni requete crawl ni payload externe,
   avec reason code stable et content-free.
 
 Critere de sortie:
 une meme politique URL publique borne les voies PDF et HTML avant le crawler et
 sur chaque redirection que FridaDev controle; les tests ne font aucun appel
 reseau reel.
+
+### Validation Lot 10A - 2026-07-16
+
+Statut: **partiel; finding valide et risque reduit, mais non ferme**.
+
+Revalidation au HEAD de depart
+`fbbb056eba5c8ca0b18466f203fe051b277b8228`:
+
+- `app/tools/web_search.py` construisait le payload `/md`, puis appelait
+  Crawl4AI sans garde URL/DNS locale; les voies URL explicite HTML et resultat
+  SearXNG rejoignaient toutes deux cette primitive;
+- `app/tools/web_pdf_reader.py` validait l'URL initiale et chaque redirection
+  HTTP qu'il suivait lui-meme, mais portait seul cette politique;
+- une URL PDF explicite rejetee avant detection pouvait en outre retomber vers
+  Crawl4AI parce que le resultat bloque etait marque `detected=False`.
+
+Correction bornee:
+
+- `app/tools/web_public_url_policy.py` porte maintenant l'unique politique
+  HTTP(S) publique: noms internes, URL ambigues, IP IPv4/IPv6 non globales et
+  toutes les adresses issues de la resolution DNS sont refusees fail-closed;
+- `app/tools/web_pdf_reader.py` reutilise cette politique avant chaque requete
+  et redirection qu'il controle, sans relacher le reason code PDF historique;
+- `app/tools/web_search.py::_crawl_markdown_with_status()` applique la meme
+  politique avant resolution du token, construction du payload et appel `/md`.
+  Cette frontiere couvre donc URL explicite, resultat SearXNG et fallbacks de
+  filtre Crawl4AI;
+- une URL PDF explicite bloquee reste desormais sur la voie PDF et ne retombe
+  plus vers Crawl4AI.
+
+Preuves sans reseau reel:
+
+- `docker run --rm --network none -e OPENROUTER_API_KEY=synthetic-test-key` avec le
+  depot monte en lecture seule, puis `python -m unittest discover -s
+  tests/unit/web_search -p 'test_*.py'`: **162 tests, OK**;
+- les fakes prouvent le rejet IPv4/IPv6/interne, DNS mixte public/non global,
+  resolution en echec, chemin public conserve, resultat SearXNG borne, zero
+  payload et zero appel Crawl4AI pour les refus;
+- `test_web_pdf_reader.py` prouve la redirection publique vers loopback sur la
+  voie PDF effectivement observable par FridaDev.
+
+Limite empechant la cloture:
+
+- le contrat `/md` Crawl4AI courant accepte une URL et retourne le markdown,
+  mais n'expose ni les sauts de redirection ni une URL finale verifiable;
+- le navigateur de Crawl4AI effectue la navigation hors du processus
+  FridaDev. Une redirection publique vers une cible interne ou un changement
+  DNS entre la validation FridaDev et la navigation Crawl4AI ne peut donc pas
+  etre exclu par cette seule garde d'entree;
+- un preflight HEAD cote FridaDev n'est pas une fermeture sure: HEAD et la
+  navigation navigateur peuvent diverger, et la fenetre TOCTOU/DNS demeure.
+
+Plus petite suite necessaire, hors Lot 10A Celebrimbor actuel: appliquer la meme
+politique dans le composant qui effectue chaque navigation et redirection
+Crawl4AI, ou imposer une mediation reseau equivalente avec preuve sur chaque
+saut. Cela requiert un lot explicite cote service/plateforme; aucun changement
+Crawl4AI, Docker ou reseau n'a ete effectue ici. Le Lot 10A et le finding
+`P2-CEL-WEB-HTML-SSRF-GUARD-01` restent donc ouverts en statut partiel.
 
 ## Lot 10B - Plafonds coherents des uploads, documents et transcription
 

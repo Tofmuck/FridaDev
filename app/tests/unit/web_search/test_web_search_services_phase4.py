@@ -162,7 +162,7 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
         web_search.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
         web_search.requests.post = fake_post
         try:
-            content = web_search.crawl('https://source.example')
+            content = web_search.crawl('https://93.184.216.34')
         finally:
             web_search.runtime_settings.get_services_settings = original_get_settings
             web_search.runtime_settings.get_runtime_secret_value = original_get_secret
@@ -173,7 +173,7 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
         self.assertEqual(observed['auth'], 'Bearer crawl-db-token')
         self.assertEqual(
             observed['json'],
-            {'url': 'https://source.example', 'f': 'fit', 'c': '0'},
+            {'url': 'https://93.184.216.34', 'f': 'fit', 'c': '0'},
         )
         self.assertNotIn('only_text', observed['json'])
         self.assertNotIn('cache', observed['json'])
@@ -237,7 +237,7 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
         web_search.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
         web_search.requests.post = fake_post
         try:
-            result = web_search.crawl_with_status('https://source.example')
+            result = web_search.crawl_with_status('https://93.184.216.34')
         finally:
             web_search.runtime_settings.get_services_settings = original_get_settings
             web_search.runtime_settings.get_runtime_secret_value = original_get_secret

@@ -17,7 +17,7 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from tools import web_search
+from tools import web_public_url_policy, web_search
 
 
 class WebSearchLogRedactionTests(unittest.TestCase):
@@ -113,11 +113,15 @@ class WebSearchLogRedactionTests(unittest.TestCase):
         original_post = web_search.requests.post
         original_runtime_services_value = web_search._runtime_services_value
         original_runtime_crawl4ai_token = web_search._runtime_crawl4ai_token
+        original_getaddrinfo = web_public_url_policy.socket.getaddrinfo
 
         def fake_post(*_args: Any, **_kwargs: Any):
             raise RuntimeError('RAW_CRAWL_EXCEPTION_SENTINEL')
 
         web_search.requests.post = fake_post
+        web_public_url_policy.socket.getaddrinfo = lambda *_args, **_kwargs: [
+            (None, None, None, '', ('93.184.216.34', 0))
+        ]
         web_search._runtime_services_value = lambda field: {
             'crawl4ai_url': 'http://crawl4ai.local',
         }[field]
@@ -133,6 +137,7 @@ class WebSearchLogRedactionTests(unittest.TestCase):
             web_search.requests.post = original_post
             web_search._runtime_services_value = original_runtime_services_value
             web_search._runtime_crawl4ai_token = original_runtime_crawl4ai_token
+            web_public_url_policy.socket.getaddrinfo = original_getaddrinfo
 
         self.assertEqual(result['status'], 'error')
         self.assertEqual(result['error_class'], 'RuntimeError')
