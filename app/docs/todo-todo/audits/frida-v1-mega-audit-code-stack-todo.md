@@ -3215,13 +3215,13 @@ ni plateforme. Son ordre de correction est code-only et ne rouvre pas Sauron.
 
 - [x] Transferer l'audit source dans `states/audits/`.
 - [x] Creer la TODO granulaire de remediation Celebrimbor.
-- [ ] Lot 10A: garde SSRF URL HTML/Crawl4AI partagee avec la politique PDF.
-  Statut partiel au 2026-07-16: garde d'entree URL/DNS partagee livree avant
-  tout payload `/md`, chemins URL explicite/resultat SearXNG et PDF bloques par
-  tests sans reseau. Finding valide mais non ferme: les redirections suivies
-  dans Crawl4AI et le TOCTOU DNS ne sont pas observables par FridaDev avec le
-  contrat `/md` courant. Suite service/plateforme explicite requise; aucun
-  changement Crawl4AI/Docker/reseau dans ce lot.
+- [x] Lot 10A: garde SSRF URL HTML/Crawl4AI partagee avec la politique PDF.
+  Cloture complete au 2026-07-16: garde URL/DNS amont FridaDev avant `/md` et
+  barriere aval Crawl4AI sur la navigation Chromium effective, y compris
+  redirections et resolution a la connexion, verifiees independamment par
+  Sauron. `P2-CEL-WEB-HTML-SSRF-GUARD-01` est ferme. Le P3 de fermeture de
+  socket du faux proxy Chromium reste un nettoyage de test plateforme non
+  bloquant, hors cloture P2.
 - [ ] Lot 10B: plafonds uploads/documents/transcription sur taille reelle.
 - [ ] Lot 10C: suppression du contenu identity brut dans les logs standards.
 - [ ] Lot 10D: frontiere fail-open des effets auxiliaires post-persistence.

@@ -54,13 +54,16 @@ confirme par l'audit code-only.
 
 Finding cible: `P2-CEL-WEB-HTML-SSRF-GUARD-01`.
 
-Faits a revalider:
+Faits revalides et clotures:
 
-- `app/tools/web_search.py` envoie les URL HTML explicites vers Crawl4AI sans
-  garde equivalente au lecteur PDF.
-- `app/tools/web_pdf_reader.py` porte deja une politique URL qui bloque les
-  hotes internes et les IP non globales avant requete et redirection.
-- Les resultats de recherche reutilisent la primitive de crawl concernee.
+- au HEAD historique `fbbb056e`, `app/tools/web_search.py` envoyait les URL
+  HTML explicites et les resultats de recherche vers Crawl4AI sans garde URL
+  equivalente au lecteur PDF;
+- le commit Celebrimbor `e616616c` a introduit la politique partagee amont
+  FridaDev avant le payload `/md`, et conserve la garde PDF avant chaque
+  requete et redirection controlee par FridaDev;
+- la preuve Sauron independante du 2026-07-16 couvre maintenant aussi les
+  navigations et redirections effectuees en aval par Crawl4AI.
 
 Perimetre strict:
 
@@ -76,24 +79,23 @@ Checklist:
 - [x] Identifier la politique PDF reutilisable et verifier ses dependances de
   resolution DNS et de redirection.
 - [x] Definir une unique frontiere de validation avant tout appel Crawl4AI.
-- [x] Prouver le traitement des redirections sous controle de FridaDev. Si
-  Crawl4AI suit une redirection sans que FridaDev puisse la revalider, ne pas
-  declarer le finding clos: expliciter la limite et proposer le plus petit plan
-  supplementaire necessaire.
+- [x] Prouver le traitement des redirections sous controle de FridaDev, puis
+  la barriere aval Crawl4AI verifiee independamment par Sauron au 2026-07-16.
 - [x] Couvrir par fakes: IPv4 privee/loopback/link-local/reservee, IPv6
   loopback/link-local/unique-local, DNS vers IP non globale, noms internes,
   URL publique, redirection publique puis interne.
 - [x] Prouver que l'URL rejetee ne produit ni requete crawl ni payload externe,
   avec reason code stable et content-free.
 
-Critere de sortie:
-une meme politique URL publique borne les voies PDF et HTML avant le crawler et
-sur chaque redirection que FridaDev controle; les tests ne font aucun appel
-reseau reel.
+Critere de sortie atteint:
+la politique URL publique FridaDev borne les voies PDF et HTML avant le crawler,
+et la barriere Crawl4AI reelle borne chaque navigation et redirection aval. Les
+preuves applicatives et plateforme sont content-free et ne necessitent aucune
+nouvelle action runtime dans ce lot documentaire.
 
-### Validation Lot 10A - 2026-07-16
+### Validation et cloture Lot 10A - 2026-07-16
 
-Statut: **partiel; finding valide et risque reduit, mais non ferme**.
+Statut: **clos; `P2-CEL-WEB-HTML-SSRF-GUARD-01` ferme**.
 
 Revalidation au HEAD de depart
 `fbbb056eba5c8ca0b18466f203fe051b277b8228`:
@@ -120,34 +122,40 @@ Correction bornee:
 - une URL PDF explicite bloquee reste desormais sur la voie PDF et ne retombe
   plus vers Crawl4AI.
 
-Preuves sans reseau reel:
+Preuves amont FridaDev au commit `e616616c`:
 
-- `docker run --rm --network none -e OPENROUTER_API_KEY=synthetic-test-key` avec le
-  depot monte en lecture seule, puis `python -m unittest discover -s
-  tests/unit/web_search -p 'test_*.py'`: **162 tests, OK**;
-- les fakes prouvent le rejet IPv4/IPv6/interne, DNS mixte public/non global,
-  resolution en echec, chemin public conserve, resultat SearXNG borne, zero
-  payload et zero appel Crawl4AI pour les refus;
-- `test_web_pdf_reader.py` prouve la redirection publique vers loopback sur la
-  voie PDF effectivement observable par FridaDev.
+- 162 tests unitaires web executes en environnement isole sans reseau reel;
+- fakes couvrant le rejet IPv4/IPv6/interne, DNS mixte public/non global,
+  resolution en echec, URL publique, resultat SearXNG et absence de payload ou
+  appel Crawl4AI pour les refus;
+- test PDF couvrant la redirection publique vers loopback effectivement
+  observable par FridaDev.
 
-Limite empechant la cloture:
+Barriere aval Crawl4AI, preuve Sauron independante du 2026-07-16:
 
-- le contrat `/md` Crawl4AI courant accepte une URL et retourne le markdown,
-  mais n'expose ni les sauts de redirection ni une URL finale verifiable;
-- le navigateur de Crawl4AI effectue la navigation hors du processus
-  FridaDev. Une redirection publique vers une cible interne ou un changement
-  DNS entre la validation FridaDev et la navigation Crawl4AI ne peut donc pas
-  etre exclu par cette seule garde d'entree;
-- un preflight HEAD cote FridaDev n'est pas une fermeture sure: HEAD et la
-  navigation navigateur peuvent diverger, et la fenetre TOCTOU/DNS demeure.
+- image active derivee du digest Crawl4AI 0.8.5 epingle;
+- garde URL initiale, interception Playwright et wrapper Chromium imposant le
+  proxy SOCKS sur la navigation concernee;
+- proxy resolvant chaque destination lors de la connexion, refusant les IP non
+  globales puis se connectant a l'IP validee sans seconde resolution DNS;
+- preuves ciblees couvrant loopback, noms internes, IPv4/IPv6 non globales,
+  redirections Chromium et DNS rebinding;
+- `/md` actif refusant une cible loopback avec erreur et reason code
+  content-free; conteneurs Crawl4AI et FridaDev healthy pendant la verification.
 
-Plus petite suite necessaire, hors Lot 10A Celebrimbor actuel: appliquer la meme
-politique dans le composant qui effectue chaque navigation et redirection
-Crawl4AI, ou imposer une mediation reseau equivalente avec preuve sur chaque
-saut. Cela requiert un lot explicite cote service/plateforme; aucun changement
-Crawl4AI, Docker ou reseau n'a ete effectue ici. Le Lot 10A et le finding
-`P2-CEL-WEB-HTML-SSRF-GUARD-01` restent donc ouverts en statut partiel.
+Conclusion de cloture:
+
+- la garde amont FridaDev limite les URL qui atteignent le transport Crawl4AI;
+- la barriere aval Crawl4AI controle la destination effectivement naviguee,
+  y compris les redirections et la resolution au moment de la connexion;
+- la cloture vaut pour l'usage Crawl4AI de FridaDev vise par ce finding. Elle
+  ne pretend pas etablir un firewall kernel generique pour du code arbitraire.
+
+P3 distinct, non bloquant pour cette cloture P2:
+
+- la fermeture de socket du faux proxy Chromium releve d'un nettoyage de test
+  plateforme Sauron. Elle ne modifie pas la barriere aval reelle prouvee ici,
+  ne cree aucune feature et ne justifie pas de rouvrir le Lot 10A.
 
 ## Lot 10B - Plafonds coherents des uploads, documents et transcription
 
