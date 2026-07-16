@@ -36,19 +36,38 @@ HEAD audite: `afdf19fa54c6a1602232e54e40bb23a6ba33787d`.
   diff utile, tests adaptes, commit/push selon `AGENTS.md`, puis retour au
   demandeur. Aucun enchainement automatique.
 
+## Decision produit - logs prives identity/memory
+
+Le 16 juillet 2026, l'utilisateur a explicite le contexte produit courant:
+FridaDev est mono-utilisateur et Tof en est aussi l'unique operateur. La
+visibilite du contenu identity/memory deja journalise dans les logs prives du
+serveur OVH est intentionnelle et preservee comme outil d'inspection du
+systeme. L'hypothese normative historique
+`P2-CEL-IDENTITY-RAW-LOG-01` est donc requalifiee en **non-finding dans le
+contexte produit courant, par decision explicite de l'utilisateur**. Elle ne
+constitue ni une correction, ni une dette acceptee, ni un lot de remediation.
+
+Cette decision n'autorise aucun nouveau log, aucune augmentation de contenu,
+collecte, telemetrie, projection admin, export ou surface produit. JSONL,
+projections admin, exports, telemetrie externe et retours d'agent restent
+content-free. Les secrets restent interdits; les textes d'exceptions brutes du
+Lot 10F restent un sujet distinct a classifier et ne sont pas autorises
+globalement.
+
 ## Ordre de traitement
 
 1. Lot 10A - garde SSRF HTML/Crawl4AI.
 2. Lot 10B - plafonds uploads/documents/transcription.
-3. Lot 10C - fuite certaine de contenu identity dans les logs.
-4. Lot 10D - frontiere post-persistence du chat.
-5. Lot 10E - URL runtime du LLM principal.
-6. Lot 10F - prompts critiques fail-closed.
-7. Lot 10G - requalification contractuelle des exceptions brutes en logs.
-8. Lot 10H - raccord de complexite au Lot 9, sans extraction anticipee.
+3. Lot 10C - frontiere post-persistence du chat.
+4. Lot 10D - URL runtime du LLM principal.
+5. Lot 10E - prompts critiques fail-closed.
+6. Lot 10F - requalification contractuelle des exceptions brutes en logs.
+7. Lot 10G - raccord de complexite au Lot 9, sans extraction anticipee.
 
-Les Lots 10A a 10E sont P2. Les Lots 10F a 10H sont P3. Aucun P0/P1 n'est
-confirme par l'audit code-only.
+L'audit historique a initialement rapporte cinq P2 et trois P3. Apres la
+decision produit ci-dessus, la remediation courante contient quatre P2 et trois
+P3: les Lots 10A a 10D sont P2 et les Lots 10E a 10G sont P3. Aucun P0/P1
+n'est confirme par l'audit code-only.
 
 ## Lot 10A - Garde URL publique partagee pour HTML/Crawl4AI
 
@@ -241,42 +260,7 @@ aucune voie d'upload auditee ne consomme sans borne le corps effectif; les
 erreurs sont stables et les limites sont testees sur la taille reelle, pas
 seulement sur l'en-tete client.
 
-## Lot 10C - Suppression du contenu identity brut des logs
-
-Finding cible: `P2-CEL-IDENTITY-RAW-LOG-01`.
-
-Faits a revalider:
-
-- `app/memory/memory_identity_write.py` journalise `content=%.60s` apres une
-  ecriture identity;
-- le contrat d'observabilite interdit le contenu brut et privilegie classes,
-  compteurs et hashes bornes;
-- aucun test ne garantit aujourd'hui l'absence de contenu dans `identity_saved`.
-
-Perimetre strict:
-
-- chemin d'ecriture identity et tests de logs standards uniquement;
-- ce lot traite la fuite certaine `content=%.60s`, pas les 81 exceptions du
-  Lot 10G;
-- aucun nouveau stockage, champ admin ou collecte d'identite.
-
-Checklist:
-
-- [ ] Capturer le log actuel avec une sentinelle synthetique sans contenu reel.
-- [ ] Remplacer le contenu par les metadonnees minimales deja utiles au
-  diagnostic, strictement content-free.
-- [ ] Verifier que la valeur conservee ne reintroduit ni texte identity, ni
-  hash reidentifiant, ni identifiant utilisateur sensible.
-- [ ] Ajouter une sentinelle qui echoue si le log standard contient la chaine
-  synthetique, une URL ou un texte identity brut.
-- [ ] Conserver l'information actionnable: statut/raison/classe selon le
-  contrat, sans texte libre.
-
-Critere de sortie:
-une ecriture identity reussie reste observable sans qu'aucun fragment de son
-contenu soit ecrit dans le logger standard.
-
-## Lot 10D - Frontiere de succes apres persistence du chat
+## Lot 10C - Frontiere de succes apres persistence du chat
 
 Finding cible: `P2-CEL-CHAT-POST-PERSIST-AUX-01`.
 
@@ -315,7 +299,7 @@ apres persistence reussie de la reponse assistant, une panne auxiliaire ne
 change plus le succes utilisateur. Une panne avant persistence reste une vraie
 erreur et n'est pas masquee.
 
-## Lot 10E - URL runtime commune du LLM principal
+## Lot 10D - URL runtime commune du LLM principal
 
 Finding cible: `P2-CEL-MAIN-LLM-BASE-URL-01`.
 
@@ -350,7 +334,7 @@ Critere de sortie:
 le chat principal suit la meme source runtime que le client LLM partage dans
 les deux modes de transport, par tests differenciants.
 
-## Lot 10F - Prompts critiques fail-closed
+## Lot 10E - Prompts critiques fail-closed
 
 Finding cible: `P3-CEL-PROMPT-FAIL-OPEN-01`.
 
@@ -385,7 +369,7 @@ une installation incompletement packagee ne peut plus lancer un chat sans son
 contexte critique, tandis que les absences explicitement facultatives restent
 traitees selon leur contrat.
 
-## Lot 10G - Requalification contractuelle des exceptions brutes en logs
+## Lot 10F - Requalification contractuelle des exceptions brutes en logs
 
 Finding cible: `P3-CEL-RAW-EXCEPTION-LOGS-01`.
 
@@ -405,7 +389,9 @@ Perimetre strict:
   confirmees non conformes;
 - ne pas remplacer mecaniquement chaque `err=%s` et ne pas supprimer les
   diagnostics utiles;
-- ne pas absorber la fuite certaine identity du Lot 10C, deja independante.
+- la decision produit sur les logs prives identity/memory ne requalifie pas les
+  textes d'exceptions brutes; ce lot reste distinct et doit les classifier sans
+  les autoriser globalement.
 
 Checklist:
 
@@ -428,7 +414,7 @@ couverts par le contrat ne peuvent plus interpoler un texte d'exception
 susceptible de contenir du contenu, et aucun remplacement global aveugle n'est
 introduit.
 
-## Lot 10H - Raccord de la complexite au Lot 9
+## Lot 10G - Raccord de la complexite au Lot 9
 
 Finding cible: `P3-CEL-COMPLEXITY-HOTSPOTS-01`.
 
@@ -443,7 +429,7 @@ Faits a revalider:
 
 Perimetre strict:
 
-- documentation et priorisation seulement dans ce Lot 10H;
+- documentation et priorisation seulement dans ce Lot 10G;
 - aucune extraction, aucun renommage, aucun deplacement runtime;
 - le travail de code reste exclusivement dans les sous-lots 9.0 puis 9A-9H.
 
@@ -468,7 +454,7 @@ sans faux refactor ni multiplication de roadmaps.
   preuves datees.
 - [ ] Mettre a jour le registre canonique du mega-audit apres chaque lot.
 - [ ] Archiver cette TODO sous `app/docs/todo-done/audits/` seulement quand les
-  Lots 10A-10H sont tous resolus ou requalifies avec preuve.
+  Lots 10A-10G sont tous resolus ou requalifies avec preuve.
 
 ## Preuve minimale par lot
 

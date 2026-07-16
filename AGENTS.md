@@ -123,9 +123,26 @@ voisin sans que le scope l'impose.
 
 ## Securite et invariants operateurs
 
-Ne jamais afficher, committer ou loguer un secret, token, mot de passe, cookie,
-DSN complet, cle privee, credential GitHub, contenu personnel brut, prompt brut,
-markdown utilisateur ou URL sensible complete.
+Ne jamais afficher dans une reponse ni committer un secret, token, mot de
+passe, cookie, DSN complet, cle privee, credential GitHub, contenu personnel
+brut, prompt brut, markdown utilisateur ou URL sensible complete. Aucun secret
+ne doit etre journalise.
+
+Decision operateur explicite du 16 juillet 2026, strictement bornee aux logs
+serveur prives identity/memory:
+
+- FridaDev est actuellement mono-utilisateur et Tof en est l'unique operateur;
+  la visibilite du contenu identity/memory deja journalise dans les logs prives
+  du serveur OVH est intentionnelle et preservee comme outil d'inspection de la
+  construction et de la transformation de l'identite et de la memoire;
+- cette decision preserve l'observabilite existante seulement; elle n'autorise
+  aucun nouveau log, aucune augmentation de contenu, collecte, telemetrie,
+  projection admin, export ou surface produit;
+- JSONL, projections admin, exports, telemetrie externe et retours d'agent
+  restent content-free selon leurs contrats;
+- token, mot de passe, cookie, cle, DSN, credential et autre secret restent
+  interdits. Les textes d'exceptions brutes restent un sujet distinct a
+  classifier; cette decision ne les autorise pas globalement.
 
 Le contrat admin OVH est le suivant:
 

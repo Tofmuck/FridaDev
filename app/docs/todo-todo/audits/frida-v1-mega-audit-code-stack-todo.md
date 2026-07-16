@@ -3209,9 +3209,16 @@ Audit source:
 TODO dediee:
 `app/docs/todo-todo/audits/frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md`.
 
-La seconde passe revalide cinq P2 et trois P3 dans le code applicatif courant
-au HEAD `afdf19fa54c6a1602232e54e40bb23a6ba33787d`. Elle ne modifie ni runtime
-ni plateforme. Son ordre de correction est code-only et ne rouvre pas Sauron.
+La seconde passe historique a initialement rapporte cinq P2 et trois P3 dans le
+code applicatif au HEAD `afdf19fa54c6a1602232e54e40bb23a6ba33787d`. La
+decision produit explicite du 2026-07-16 requalifie ensuite le signal sur les
+logs serveur prives identity/memory en non-finding dans le contexte courant:
+leur visibilite existante est intentionnelle pour l'unique
+utilisateur-operateur. Cette decision n'est pas un lot, n'autorise aucun nouveau
+log, contenu, export, collecte ou surface, ne couvre aucun secret et ne
+requalifie pas les exceptions brutes. La remediation active contient donc
+quatre P2 et trois P3, ordonnes en Lots 10A a 10G. Elle ne modifie ni runtime ni
+plateforme et ne rouvre pas Sauron.
 
 - [x] Transferer l'audit source dans `states/audits/`.
 - [x] Creer la TODO granulaire de remediation Celebrimbor.
@@ -3232,12 +3239,12 @@ ni plateforme. Son ordre de correction est code-only et ne rouvre pas Sauron.
     allowlistes et content-free; preuves plateforme Sauron et suites
     applicatives sans reseau vertes. `P2-CEL-UPLOAD-LIMITS-01` reste ouvert.
   - [ ] Reliquat Lot 10B: PDF, documents actifs et workspace.
-- [ ] Lot 10C: suppression du contenu identity brut dans les logs standards.
-- [ ] Lot 10D: frontiere fail-open des effets auxiliaires post-persistence.
-- [ ] Lot 10E: URL runtime commune du LLM principal, stream et non-stream.
-- [ ] Lot 10F: prompts critiques fail-closed.
-- [ ] Lot 10G: requalification contractuelle des exceptions brutes en logs.
-- [ ] Lot 10H: raccord des hotspots de complexite au Lot 9 existant.
+- [ ] Lot 10C: frontiere fail-open des effets auxiliaires post-persistence.
+- [ ] Lot 10D: URL runtime commune du LLM principal, stream et non-stream.
+- [ ] Lot 10E: prompts critiques fail-closed.
+- [ ] Lot 10F: requalification contractuelle des exceptions brutes en logs,
+  distincte de la politique bornee des logs prives identity/memory.
+- [ ] Lot 10G: raccord des hotspots de complexite au Lot 9 existant.
 
 Regle Lot 10:
 

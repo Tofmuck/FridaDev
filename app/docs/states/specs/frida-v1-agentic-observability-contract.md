@@ -84,6 +84,27 @@ Hors scope:
 - purge ou backfill historique en Lot 1;
 - exposition de contenu utilisateur.
 
+### Decision operateur - logs serveur prives identity/memory
+
+Decision explicite du 16 juillet 2026:
+
+- FridaDev est actuellement mono-utilisateur et Tof en est l'unique operateur;
+- la visibilite du contenu identity/memory deja journalise dans les logs prives
+  du serveur OVH est intentionnelle et preservee comme outil d'inspection de la
+  construction et de la transformation de l'identite et de la memoire;
+- cette exception ne s'applique pas aux JSONL, projections admin, exports,
+  telemetrie externe ni retours d'agent, qui restent content-free selon leurs
+  contrats;
+- elle n'autorise aucun nouveau log, aucune augmentation de contenu, collecte,
+  telemetrie, export ou surface produit;
+- les secrets restent interdits et les textes d'exceptions brutes restent une
+  famille distincte a classifier; cette decision ne les autorise pas
+  globalement.
+
+Cette decision requalifie la norme applicable aux seuls logs serveur prives
+identity/memory existants. Elle ne modifie pas les contrats des surfaces
+techniques partagees ou exportees.
+
 ## 4. Taxonomie `status`
 
 Les statuts V1 autorises sont:
@@ -309,7 +330,13 @@ Interdits dans JSONL/projections techniques:
 - URL externe brute quand elle peut porter du contenu sensible;
 - identifiant client invalide brut.
 
-## 11. Politique content-free transversale
+## 11. Politique content-free transversale et exception bornee
+
+La politique ci-dessous reste transversale aux surfaces techniques, dont les
+JSONL, projections admin, exports, telemetrie externe, retours d'agent et logs
+applicatifs. Sa seule exception concerne le contenu identity/memory deja
+journalise dans les logs serveur prives vises par la decision operateur bornee
+de la section 3; aucune autre famille de log ni surface n'est exemptee.
 
 Les surfaces techniques autorisees exposent uniquement:
 
@@ -816,6 +843,10 @@ Preuves Lot Z:
   absent.
 
 ## 16. Interdits permanents
+
+Hors la seule visibilite identity/memory existante dans les logs serveur prives
+explicitement bornee par la section 3, restent interdits sur toute surface
+technique:
 
 - Masquer une vraie panne en succes;
 - transformer un refus produit en `error`;
