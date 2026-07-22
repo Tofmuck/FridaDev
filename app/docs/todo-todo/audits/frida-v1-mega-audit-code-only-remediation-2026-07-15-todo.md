@@ -434,13 +434,15 @@ erreur et n'est pas masquee.
 
 Finding cible: `P2-CEL-MAIN-LLM-BASE-URL-01`.
 
-Faits a revalider:
+Faits revalides le 2026-07-22:
 
 - `app/core/llm_client.py` expose `or_chat_completions_url()` a partir des
-  settings runtime;
-- `app/core/chat_llm_flow.py` construit encore une URL depuis
-  `config_module.OR_BASE` pour le chat principal;
-- stream et non-stream reutilisent cette divergence.
+  settings runtime, normalise le slash final et centralise le fallback
+  historique vers `config.OR_BASE`;
+- au HEAD initial, `app/core/chat_llm_flow.py` construisait encore une URL
+  concurrente depuis `config_module.OR_BASE` pour le chat principal;
+- stream et non-stream reutilisaient cette divergence; les overrides ne
+  resolvaient aucune URL et ne contactaient aucun provider.
 
 Perimetre strict:
 
@@ -450,20 +452,23 @@ Perimetre strict:
 
 Checklist:
 
-- [ ] Revalider les appelants stream et non-stream ainsi que le point
+- [x] Revalider les appelants stream et non-stream ainsi que le point
   d'injection runtime.
-- [ ] Faire converger le chat principal vers l'abstraction URL partagee, sans
+- [x] Faire converger le chat principal vers l'abstraction URL partagee, sans
   dupliquer la logique de normalisation.
-- [ ] Tester avec `config_module.OR_BASE` et `main_model.base_url` dirigeant
+- [x] Tester avec `config_module.OR_BASE` et `main_model.base_url` dirigeant
   volontairement vers deux hotes synthetiques distincts.
-- [ ] Prouver, avec transport fake, que stream et non-stream choisissent la
+- [x] Prouver, avec transport fake, que stream et non-stream choisissent la
   valeur runtime et ne contactent aucun provider reel.
-- [ ] Verifier les sous-agents voisins pour eviter une nouvelle divergence de
+- [x] Verifier les sous-agents voisins pour eviter une nouvelle divergence de
   configuration, sans les refactorer hors besoin prouve.
 
-Critere de sortie:
-le chat principal suit la meme source runtime que le client LLM partage dans
-les deux modes de transport, par tests differenciants.
+Critere de sortie atteint le 2026-07-22: le chat principal appelle directement
+`llm_module.or_chat_completions_url()` dans les deux modes de transport. Les
+tests differenciants imposent une base runtime distincte de la base legacy,
+verifient un appel unique du resolver par appel provider et aucun appel pour
+les overrides. Aucun provider, reglage ni fallback produit n'a ete ajoute.
+`P2-CEL-MAIN-LLM-BASE-URL-01` et le Lot 10D sont fermes.
 
 ## Lot 10E - Prompts critiques fail-closed
 

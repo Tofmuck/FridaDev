@@ -64,6 +64,7 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
             observed["identity_turn_pair"] = [dict(message) for message in turn_pair]
 
         llm_module = SimpleNamespace(
+            or_chat_completions_url=lambda: "https://runtime-main.invalid/v1/chat/completions",
             or_headers=lambda caller="llm": {"X-Caller": caller},
             build_payload=lambda messages, temperature, top_p, max_tokens, stream=False: {
                 "model": "model-test",
@@ -253,6 +254,7 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
             observed["identity_turn_pair"] = [dict(message) for message in turn_pair]
 
         llm_module = SimpleNamespace(
+            or_chat_completions_url=lambda: "https://runtime-main.invalid/v1/chat/completions",
             or_headers=lambda caller="llm": {"X-Caller": caller},
             build_payload=lambda messages, temperature, top_p, max_tokens, stream=False: {
                 "model": "model-test",
@@ -391,6 +393,7 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
             observed["identity_turn_pair"] = [dict(message) for message in turn_pair]
 
         llm_module = SimpleNamespace(
+            or_chat_completions_url=lambda: "https://runtime-main.invalid/v1/chat/completions",
             or_headers=lambda caller="llm": {"X-Caller": caller},
             build_payload=lambda messages, temperature, top_p, max_tokens, stream=False: {
                 "model": "model-test",

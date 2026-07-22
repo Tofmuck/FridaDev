@@ -70,6 +70,9 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   v
 [Main LLM call / chat_llm_flow + llm_client]
   |- OpenRouter caller=llm
+  |- final URL resolved by llm_client from runtime main_model.base_url
+  |  (central config.OR_BASE fallback only when the runtime value is absent)
+  |- chat_llm_flow consumes that final URL without rebuilding its suffix
   |- JSON response OR text/plain streaming response
   v
 [Streaming contract]

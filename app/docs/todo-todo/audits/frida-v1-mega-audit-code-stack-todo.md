@@ -3262,7 +3262,14 @@ plateforme et ne rouvre pas Sauron.
   elle-meme `never raises`. Les pannes injectees conservent HTTP 200 ou le
   terminal `done`, un unique message durable et aucun second save.
   `P2-CEL-CHAT-POST-PERSIST-AUX-01` est ferme.
-- [ ] Lot 10D: URL runtime commune du LLM principal, stream et non-stream.
+- [x] Lot 10D ferme le 2026-07-22: `chat_llm_flow` consomme directement l'URL
+  finale de `llm_client.or_chat_completions_url()` pour les appels principaux
+  stream et non-stream. Les preuves a transports fakes opposent une base
+  runtime synthetique a `config_module.OR_BASE`, imposent un unique appel du
+  resolver par appel provider et aucun appel pour les overrides. La
+  normalisation et le fallback historique restent centralises dans
+  `llm_client`; aucun provider, reglage ni fallback produit n'a ete ajoute.
+  `P2-CEL-MAIN-LLM-BASE-URL-01` est ferme.
 - [ ] Lot 10E: prompts critiques fail-closed.
 - [ ] Lot 10F: requalification contractuelle des exceptions brutes en logs,
   distincte de la politique bornee des logs prives identity/memory.

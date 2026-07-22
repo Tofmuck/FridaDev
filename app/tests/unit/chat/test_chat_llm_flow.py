@@ -83,6 +83,10 @@ def _collect_stream_parts(stream) -> list[str]:
     return parts
 
 
+def _synthetic_chat_completions_url() -> str:
+    return 'https://runtime-main.invalid/v1/chat/completions'
+
+
 class ChatLlmFlowTests(unittest.TestCase):
     def _exercise_post_persistence_surface(
         self,
@@ -120,6 +124,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             'post_effect_sequence': [],
             'save_calls': 0,
             'secret_calls': 0,
+            'url_calls': 0,
         }
 
         def raise_synthetic_failure() -> None:
@@ -229,6 +234,12 @@ class ChatLlmFlowTests(unittest.TestCase):
                 raise AssertionError('secret lookup forbidden for override')
             return SimpleNamespace(value='synthetic-key')
 
+        def or_chat_completions_url():
+            observed['url_calls'] += 1
+            if is_override:
+                raise AssertionError('URL resolution forbidden for override')
+            return 'https://runtime-main.invalid/v1/chat/completions'
+
         runtime_settings_module = SimpleNamespace(
             get_runtime_secret_value=get_runtime_secret_value,
             RuntimeSettingsSecretRequiredError=KeyError,
@@ -243,6 +254,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_conversation=save_conversation,
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=or_chat_completions_url,
             or_headers=lambda *, caller: {},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'synthetic-main-model'},
@@ -429,6 +441,7 @@ class ChatLlmFlowTests(unittest.TestCase):
                         )
                     self.assertEqual(observed['post_calls'], 0 if case['is_override'] else 1)
                     self.assertEqual(observed['secret_calls'], 0 if case['is_override'] else 1)
+                    self.assertEqual(observed['url_calls'], 0 if case['is_override'] else 1)
 
                     failure_events = _event_payloads(
                         observed['admin_events'],
@@ -546,8 +559,10 @@ class ChatLlmFlowTests(unittest.TestCase):
             'save_calls': [],
             'secret_calls': 0,
             'provider_log_calls': [],
+            'post_calls': 0,
             'sanitize_calls': [],
             'sequence': [],
+            'url_helper_calls': 0,
         }
         conversation = {
             'id': 'conv-sync',
@@ -567,12 +582,18 @@ class ChatLlmFlowTests(unittest.TestCase):
                     'choices': [{'message': {'content': 'reponse test'}}],
                 }
 
-        def fake_post(_url, *, json, headers, timeout):
+        def fake_post(url, *, json, headers, timeout):
+            observed['post_calls'] += 1
+            observed['request_url'] = url
             observed['request_stream_flag'] = None
             observed['request_payload'] = dict(json)
             observed['request_headers'] = dict(headers)
             observed['request_timeout'] = timeout
             return FakeResponse()
+
+        def fake_or_chat_completions_url():
+            observed['url_helper_calls'] += 1
+            return 'https://runtime-main.invalid/v1/chat/completions'
 
         def fake_build_payload(_messages, _temperature, _top_p, _max_tokens, *, stream=False):
             observed['payload_stream_flag'] = stream
@@ -609,6 +630,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_conversation=fake_save_conversation,
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=fake_or_chat_completions_url,
             or_headers=lambda *, caller: observed.update({'headers_called_with': caller}) or {'Authorization': 'Bearer token'},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=fake_build_payload,
@@ -657,7 +679,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             events.append((event, kwargs))
 
         admin_logs_module = SimpleNamespace(log_event=fake_log_event)
-        config_module = SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42)
+        config_module = SimpleNamespace(OR_BASE='https://legacy-env.invalid/v1', TIMEOUT_S=42)
         logger = SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None)
 
         result = chat_llm_flow.run_llm_exchange(
@@ -714,6 +736,13 @@ class ChatLlmFlowTests(unittest.TestCase):
         )
         self.assertEqual(result['headers']['X-Conversation-Id'], 'conv-sync')
         self.assertEqual(observed['headers_called_with'], 'llm')
+        self.assertEqual(observed['request_url'], 'https://runtime-main.invalid/v1/chat/completions')
+        self.assertNotIn('legacy-env.invalid', observed['request_url'])
+        self.assertEqual(observed['url_helper_calls'], 1)
+        self.assertEqual(observed['post_calls'], 1)
+        self.assertEqual(observed['request_payload'], {'model': 'openrouter/runtime-main-model'})
+        self.assertEqual(observed['request_headers'], {'Authorization': 'Bearer token'})
+        self.assertEqual(observed['request_timeout'], 42)
         self.assertFalse(observed['payload_stream_flag'])
         self.assertEqual(observed['secret_calls'], 1)
         self.assertEqual(observed['sanitize_calls'], [])
@@ -789,6 +818,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         observed = {
             'secret_calls': 0,
             'post_calls': 0,
+            'url_calls': 0,
             'save_new_traces_calls': [],
             'identity_callback_called': False,
             'reactivate_called': False,
@@ -812,6 +842,10 @@ class ChatLlmFlowTests(unittest.TestCase):
         def forbidden_post(*_args, **_kwargs):
             observed['post_calls'] += 1
             raise AssertionError('LLM must not be called for an authorized override')
+
+        def forbidden_url_resolution():
+            observed['url_calls'] += 1
+            raise AssertionError('LLM URL must not be resolved for an authorized override')
 
         def fake_save_new_traces(saved_conversation):
             observed['save_new_traces_calls'].append([dict(message) for message in saved_conversation['messages']])
@@ -850,7 +884,7 @@ class ChatLlmFlowTests(unittest.TestCase):
                 ),
                 save_conversation=fake_save_conversation,
             ),
-            llm_module=SimpleNamespace(),
+            llm_module=SimpleNamespace(or_chat_completions_url=forbidden_url_resolution),
             requests_module=SimpleNamespace(
                 post=forbidden_post,
                 exceptions=SimpleNamespace(RequestException=_RequestException),
@@ -893,6 +927,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(conversation['messages'][-1]['meta']['source'], 'biblio_rendered_answer')
         self.assertEqual(observed['secret_calls'], 0)
         self.assertEqual(observed['post_calls'], 0)
+        self.assertEqual(observed['url_calls'], 0)
         self.assertTrue(observed['identity_callback_called'])
         self.assertTrue(observed['reactivate_called'])
         self.assertEqual(observed['save_new_traces_calls'][-1][-1]['content'], final_text)
@@ -908,6 +943,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         observed = {
             'secret_calls': 0,
             'post_calls': 0,
+            'url_calls': 0,
             'save_new_traces_calls': [],
             'identity_callback_called': False,
             'reactivate_called': False,
@@ -931,6 +967,10 @@ class ChatLlmFlowTests(unittest.TestCase):
         def forbidden_post(*_args, **_kwargs):
             observed['post_calls'] += 1
             raise AssertionError('LLM must not be called for a streaming override')
+
+        def forbidden_url_resolution():
+            observed['url_calls'] += 1
+            raise AssertionError('LLM URL must not be resolved for a streaming override')
 
         def fake_save_new_traces(saved_conversation):
             observed['save_new_traces_calls'].append([dict(message) for message in saved_conversation['messages']])
@@ -969,7 +1009,7 @@ class ChatLlmFlowTests(unittest.TestCase):
                 ),
                 save_conversation=fake_save_conversation,
             ),
-            llm_module=SimpleNamespace(),
+            llm_module=SimpleNamespace(or_chat_completions_url=forbidden_url_resolution),
             requests_module=SimpleNamespace(
                 post=forbidden_post,
                 exceptions=SimpleNamespace(RequestException=_RequestException),
@@ -1022,6 +1062,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(conversation['messages'][-1]['meta']['biblio_exact_text_hash'], 'fedcba654321')
         self.assertEqual(observed['secret_calls'], 0)
         self.assertEqual(observed['post_calls'], 0)
+        self.assertEqual(observed['url_calls'], 0)
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-06-04T00:12:00Z')
         self.assertEqual(observed['save_new_traces_calls'][-1][-1]['content'], final_text)
         self.assertEqual(
@@ -1087,6 +1128,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_conversation=fake_save_conversation,
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=_synthetic_chat_completions_url,
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
@@ -1160,9 +1202,11 @@ class ChatLlmFlowTests(unittest.TestCase):
             'identity_callback_called': False,
             'reactivate_called': False,
             'provider_log_calls': [],
+            'post_calls': 0,
             'stream_completed': False,
             'now_iso_flags': [],
             'sanitize_calls': [],
+            'url_helper_calls': 0,
         }
         conversation = {
             'id': 'conv-stream',
@@ -1189,9 +1233,18 @@ class ChatLlmFlowTests(unittest.TestCase):
                 observed['stream_completed'] = True
                 yield 'data: [DONE]'
 
-        def fake_post(_url, *, json, headers, timeout, stream=False):
+        def fake_post(url, *, json, headers, timeout, stream=False):
+            observed['post_calls'] += 1
+            observed['request_url'] = url
             observed['request_stream_flag'] = stream
+            observed['request_payload'] = dict(json)
+            observed['request_headers'] = dict(headers)
+            observed['request_timeout'] = timeout
             return FakeStreamResponse()
+
+        def fake_or_chat_completions_url():
+            observed['url_helper_calls'] += 1
+            return 'https://runtime-main.invalid/v1/chat/completions'
 
         runtime_settings_module = SimpleNamespace(
             get_runtime_secret_value=lambda *_args, **_kwargs: SimpleNamespace(value='sk-test'),
@@ -1209,6 +1262,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_conversation=lambda _conversation, **kwargs: observed['save_calls'].append(dict(kwargs)),
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=fake_or_chat_completions_url,
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
@@ -1246,7 +1300,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         )
         token_utils_module = SimpleNamespace(estimate_tokens=lambda _messages, _model: 3)
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
-        config_module = SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42)
+        config_module = SimpleNamespace(OR_BASE='https://legacy-env.invalid/v1', TIMEOUT_S=42)
         logger = SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None)
 
         def fake_now_iso():
@@ -1313,6 +1367,13 @@ class ChatLlmFlowTests(unittest.TestCase):
             },
         )
         self.assertTrue(observed['request_stream_flag'])
+        self.assertEqual(observed['request_url'], 'https://runtime-main.invalid/v1/chat/completions')
+        self.assertNotIn('legacy-env.invalid', observed['request_url'])
+        self.assertEqual(observed['url_helper_calls'], 1)
+        self.assertEqual(observed['post_calls'], 1)
+        self.assertEqual(observed['request_payload'], {'model': 'openrouter/runtime-main-model'})
+        self.assertEqual(observed['request_headers'], {'Authorization': 'Bearer token'})
+        self.assertEqual(observed['request_timeout'], 42)
         self.assertEqual(conversation['messages'][-1]['role'], 'assistant')
         self.assertEqual(conversation['messages'][-1]['content'], 'Intro stream\n\nBonjour\n\nOutro stream')
         self.assertEqual(conversation['messages'][-1]['timestamp'], '2026-03-26T00:11:59Z')
@@ -1417,6 +1478,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_conversation=lambda *_args, **_kwargs: None,
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=_synthetic_chat_completions_url,
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
@@ -1542,6 +1604,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_conversation=lambda *_args, **_kwargs: None,
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=_synthetic_chat_completions_url,
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
@@ -1646,6 +1709,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_conversation=fake_save_conversation,
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=_synthetic_chat_completions_url,
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
@@ -1769,6 +1833,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_conversation=fake_save_conversation,
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=_synthetic_chat_completions_url,
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
@@ -1876,6 +1941,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_conversation=lambda _conversation, **kwargs: observed['save_calls'].append(dict(kwargs)),
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=_synthetic_chat_completions_url,
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
@@ -2029,6 +2095,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_conversation=fake_save_conversation,
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=_synthetic_chat_completions_url,
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
@@ -2147,6 +2214,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_conversation=lambda *_args, **_kwargs: observed.update({'save_calls': observed['save_calls'] + 1}),
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=_synthetic_chat_completions_url,
             or_headers=lambda **_kwargs: {},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
@@ -2230,6 +2298,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             RuntimeSettingsSecretResolutionError=ValueError,
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=_synthetic_chat_completions_url,
             or_headers=lambda **_kwargs: {},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: observed.update({'build_payload_called': True}) or {},

@@ -442,7 +442,7 @@ def run_llm_exchange(
         if callable(reasoning_observability_builder)
         else {}
     )
-    url = f'{config_module.OR_BASE}/chat/completions'
+    url = llm_module.or_chat_completions_url()
 
     admin_logs_module.log_event(
         'llm_payload',

@@ -77,6 +77,7 @@ class ServerPhase4BehaviorTests(unittest.TestCase):
             save_conversation=lambda _conversation, **_kwargs: None,
         )
         llm_module = SimpleNamespace(
+            or_chat_completions_url=lambda: 'https://runtime-main.invalid/v1/chat/completions',
             or_headers=lambda **_kwargs: {'Authorization': 'Bearer test'},
             build_payload=lambda _messages, _temperature, _top_p, _max_tokens, *, stream=False: {
                 'model': 'openrouter/request-model',

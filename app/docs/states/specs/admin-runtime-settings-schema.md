@@ -141,6 +141,11 @@ Valeurs d'`origin` retenues :
 Notes:
 
 - Decision operateur du 2026-05-20: le modele principal quotidien cible est `openai/gpt-5.1`, en conservant `base_url`, `api_key`, `temperature=0.7`, `top_p=1.0`, `response_max_tokens=8192`, `referer_llm` et `title_llm`.
+- `main_model.base_url` est la source de verite runtime de la destination du
+  chat principal, stream et non-stream. `llm_client.or_chat_completions_url()`
+  resout l'URL finale, normalise le slash et porte seul le fallback historique
+  vers `config.OR_BASE` lorsque la valeur runtime est absente ou vide;
+  `chat_llm_flow` consomme cette URL sans reconstruire `/chat/completions`.
 - Pour la surface chat principale first-party (`/`), `main_model.response_max_tokens` est la source de verite du budget de reponse.
 - Le frontend principal n'envoie plus de surcharge silencieuse `max_tokens`.
 - L'override `max_tokens` de `/api/chat` reste un contrat d'API de compatibilite pour les clients externes explicites.

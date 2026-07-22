@@ -18,6 +18,55 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
     def setUp(self) -> None:
         runtime_settings.invalidate_runtime_settings_cache()
 
+    def test_or_chat_completions_url_uses_runtime_base_and_normalizes_trailing_slash(self) -> None:
+        original_view = llm_client.runtime_settings.get_main_model_settings
+
+        try:
+            for runtime_base in (
+                'https://runtime-main.invalid/v1',
+                'https://runtime-main.invalid/v1/',
+            ):
+                with self.subTest(runtime_base=runtime_base):
+                    llm_client.runtime_settings.get_main_model_settings = lambda: runtime_settings.RuntimeSectionView(
+                        section='main_model',
+                        payload={'base_url': {'value': runtime_base, 'origin': 'db'}},
+                        source='db',
+                        source_reason='db_row',
+                    )
+
+                    self.assertEqual(
+                        llm_client.or_chat_completions_url(),
+                        'https://runtime-main.invalid/v1/chat/completions',
+                    )
+        finally:
+            llm_client.runtime_settings.get_main_model_settings = original_view
+
+    def test_or_chat_completions_url_keeps_config_fallback_for_missing_runtime_base(self) -> None:
+        original_view = llm_client.runtime_settings.get_main_model_settings
+        original_base = config.OR_BASE
+
+        try:
+            config.OR_BASE = 'https://legacy-env.invalid/v1/'
+            for payload in (
+                {},
+                {'base_url': {'value': '', 'origin': 'db'}},
+            ):
+                with self.subTest(payload=payload):
+                    llm_client.runtime_settings.get_main_model_settings = lambda: runtime_settings.RuntimeSectionView(
+                        section='main_model',
+                        payload=payload,
+                        source='db',
+                        source_reason='db_row',
+                    )
+
+                    self.assertEqual(
+                        llm_client.or_chat_completions_url(),
+                        'https://legacy-env.invalid/v1/chat/completions',
+                    )
+        finally:
+            config.OR_BASE = original_base
+            llm_client.runtime_settings.get_main_model_settings = original_view
+
     def test_or_headers_uses_decrypted_db_api_key_when_available(self) -> None:
         original = llm_client.runtime_settings.get_runtime_secret_value
         original_view = llm_client.runtime_settings.get_main_model_settings
