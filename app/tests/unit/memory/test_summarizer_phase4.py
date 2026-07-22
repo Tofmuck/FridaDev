@@ -189,6 +189,54 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
         self.assertIn('prompt_id=summary_system', rendered_logs)
         self.assertNotIn('summary provider must not run', rendered_logs)
 
+    def test_transport_failure_log_omits_exception_text_and_preserves_fallback(self) -> None:
+        marker = 'SYNTHETIC_SUMMARY_TRANSPORT_DETAIL'
+        conversation = self._conversation()
+        before = copy.deepcopy(conversation)
+
+        with (
+            patch.object(summarizer, 'estimate_tokens', return_value=999),
+            patch.object(config, 'SUMMARY_THRESHOLD_TOKENS', 1),
+            patch.object(config, 'SUMMARY_KEEP_TURNS', 1),
+            patch.object(
+                summarizer,
+                'summarize_conversation',
+                side_effect=summarizer.requests.exceptions.InvalidHeader(marker),
+            ),
+            self.assertLogs('frida.summarizer', level='ERROR') as captured,
+        ):
+            changed = summarizer.maybe_summarize(conversation, 'token-model')
+
+        rendered_logs = '\n'.join(captured.output)
+        self.assertFalse(changed)
+        self.assertEqual(conversation, before)
+        self.assertIn('reason=provider_transport_error', rendered_logs)
+        self.assertIn('err_class=InvalidHeader', rendered_logs)
+        self.assertNotIn(marker, rendered_logs)
+
+    def test_local_persistence_failure_keeps_existing_private_diagnostic(self) -> None:
+        marker = 'SYNTHETIC_PRIVATE_DB_DIAGNOSTIC'
+        conversation = self._conversation()
+
+        import memory.memory_store as memory_store
+
+        with (
+            patch.object(summarizer, 'estimate_tokens', return_value=999),
+            patch.object(config, 'SUMMARY_THRESHOLD_TOKENS', 1),
+            patch.object(config, 'SUMMARY_KEEP_TURNS', 1),
+            patch.object(summarizer, 'summarize_conversation', return_value='synthetic summary'),
+            patch.object(memory_store, 'save_summary', side_effect=RuntimeError(marker)),
+            patch.object(memory_store, 'update_traces_summary_id') as update_summary_id,
+            self.assertLogs('frida.summarizer', level='ERROR') as captured,
+        ):
+            changed = summarizer.maybe_summarize(conversation, 'token-model')
+
+        rendered_logs = '\n'.join(captured.output)
+        self.assertTrue(changed)
+        update_summary_id.assert_not_called()
+        self.assertIn('summary_db_save_failed', rendered_logs)
+        self.assertIn(marker, rendered_logs)
+
     def test_summarize_conversation_logs_provider_metadata_and_uses_runtime_summary_slot(self) -> None:
         observed = {'url': None, 'payload': None, 'headers': None, 'timeout': None, 'provider_logs': []}
         original_post = summarizer.requests.post

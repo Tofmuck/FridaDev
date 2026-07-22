@@ -144,6 +144,24 @@ serveur prives identity/memory:
   interdits. Les textes d'exceptions brutes restent un sujet distinct a
   classifier; cette decision ne les autorise pas globalement.
 
+Decision operateur complementaire du 22 juillet 2026, issue de la
+revalidation du Lot 10F:
+
+- les logs serveur standards exclusivement prives de FridaDev sont un outil de
+  diagnostic de l'unique utilisateur-operateur; une famille existante peut y
+  conserver le texte d'une exception quand son sink prive est prouve, qu'aucun
+  secret plausible ne peut l'atteindre et que le texte apporte un diagnostic
+  reel;
+- cette acceptation est decidee famille par famille. Elle ne cree aucune
+  politique de contenu libre par defaut et n'autorise aucun nouveau log, aucune
+  collecte supplementaire ni aucune augmentation de contenu;
+- HTTP, projections admin, JSONL, exports, telemetrie et retours d'agent
+  restent content-free selon leurs contrats; la redaction doit se faire a leur
+  frontiere sans supprimer inutilement le diagnostic prive source;
+- un secret reste interdit sur toute destination, y compris dans les logs
+  serveur prives. Une exception de transport susceptible de recopier un header
+  sensible doit etre bornee avant tout sink textuel.
+
 Le contrat admin OVH est le suivant:
 
 - Authelia protege le hostname public `fridadev.frida-system.fr`.

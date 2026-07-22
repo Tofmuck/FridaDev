@@ -473,6 +473,15 @@ def filter_traces_with_diagnostics(
     except requests.exceptions.Timeout:
         logger.warning('arbiter_timeout model=%s', arbiter_model)
         return _deterministic_fallback(traces, 'timeout', arbiter_model)
+    except requests.exceptions.RequestException as exc:
+        parse_count = _inc_metric('arbiter_parse_error_count')
+        logger.error(
+            'arbiter_parse_or_runtime_error reason=provider_transport_error '
+            'err_class=%s parse_error_count=%s',
+            exc.__class__.__name__,
+            parse_count,
+        )
+        return _deterministic_fallback(traces, 'parse_or_runtime_error', arbiter_model)
     except Exception as exc:
         parse_count = _inc_metric('arbiter_parse_error_count')
         logger.error('arbiter_parse_or_runtime_error err=%s parse_error_count=%s', exc, parse_count)
@@ -731,6 +740,15 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
         return entries
     except requests.exceptions.Timeout:
         logger.warning('identity_extractor_timeout model=%s', identity_model)
+        return []
+    except requests.exceptions.RequestException as exc:
+        parse_count = _inc_metric('identity_parse_error_count')
+        logger.error(
+            'identity_extractor_error reason=provider_transport_error '
+            'err_class=%s parse_error_count=%s',
+            exc.__class__.__name__,
+            parse_count,
+        )
         return []
     except Exception as exc:
         parse_count = _inc_metric('identity_parse_error_count')

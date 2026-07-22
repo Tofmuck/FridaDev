@@ -519,10 +519,13 @@ fichier de prompt, modele, provider ou politique metier n'a change.
 
 Finding cible: `P3-CEL-RAW-EXCEPTION-LOGS-01`.
 
-Conflit a resoudre avant tout patch:
+Conflit revalide:
 
-- l'audit du 2026-07-15 trouve 81 interpolations d'exception brute dans les
-  loggers standards et cite le contrat content-free;
+- l'audit du 2026-07-15 trouvait 81 interpolations d'exception brute dans les
+  loggers standards et citait le contrat content-free; ce nombre historique
+  n'a pas ete reutilise: le scan Lot 10F reconstruit compte 82 rendus textuels
+  au HEAD courant, 47 usages classe-only apres correction et 2 attributs de
+  prompt stables;
 - le Lot 6J precedent a classe une partie des logs DB/stores/memoire comme
   internes/non publics, donc hors correction alors attendue.
 
@@ -535,23 +538,23 @@ Perimetre strict:
   confirmees non conformes;
 - ne pas remplacer mecaniquement chaque `err=%s` et ne pas supprimer les
   diagnostics utiles;
-- la decision produit sur les logs prives identity/memory ne requalifie pas les
-  textes d'exceptions brutes; ce lot reste distinct et doit les classifier sans
-  les autoriser globalement.
+- la decision du 2026-07-22 accepte, famille par famille, les diagnostics
+  d'exception exclusivement prives, utiles et sans secret plausible. Elle ne
+  les autorise pas globalement et ne change aucune frontiere partagee.
 
 Checklist:
 
-- [ ] Reexecuter le scan sur le HEAD courant et produire un inventaire
+- [x] Reexecuter le scan sur le HEAD courant et produire un inventaire
   content-free par famille, fichier, surface, type d'exception et potentiel de
   contenu/secret/URL/chemin/payload.
-- [ ] Lire les clauses pertinentes du contrat et decider, par preuve, si les
+- [x] Lire les clauses pertinentes du contrat et decider, par preuve, si les
   logs standards internes sont dans son champ normatif ou une limite explicite.
-- [ ] Revalider les decisions Lot 6J, sans les traiter comme intouchables.
-- [ ] Si une famille est non conforme, la convertir vers `err_class` et reason
+- [x] Revalider les decisions Lot 6J, sans les traiter comme intouchables.
+- [x] Si une famille est non conforme, la convertir vers `err_class` et reason
   code en conservant une panne actionnable; ajouter une sentinelle synthetique.
-- [ ] Si une famille est hors champ, documenter la requalification `stale` ou
+- [x] Si une famille est hors champ, documenter la requalification `stale` ou
   `accepted` avec fichiers, appelants et raison precise dans cette TODO.
-- [ ] Ne fermer le finding qu'apres classification complete des hits actuels,
+- [x] Ne fermer le finding qu'apres classification complete des hits actuels,
   pas sur le nombre 81 historique.
 
 Critere de sortie:
@@ -559,6 +562,22 @@ le champ du contrat et le statut de chaque famille sont explicites. Les logs
 couverts par le contrat ne peuvent plus interpoler un texte d'exception
 susceptible de contenir du contenu, et aucun remplacement global aveugle n'est
 introduit.
+
+Critere de sortie atteint le 2026-07-22. La matrice durable du contrat
+d'observabilite reconcilie toutes les familles sans `UNKNOWN`. Les logs
+standards prives DB, stockage, workspace, Identity et Memory restent lisibles
+par decision explicite, sans nouveau log. Deux risques credential ont ete
+confirmes avec des headers synthetiques puis bornes: resume/arbitre/extracteur
+OpenRouter journalisent classe/reason, et le transport embedding remplace la
+cause avant ses callers textuels. `_run_check()` ne place plus le texte brut
+dans ses sorties JSON/texte. Les sentinelles sont absentes apres correction,
+les diagnostics structurels et les replis restent presents.
+Les preuves hermetiques `--network none` couvrent 6/6 regressions Lot 10F,
+88/88 tests d'observabilite voisins, 137/137 tests de frontieres
+admin/JSONL/export/settings et 85/85 tests de sinks Whisper/Documents/Web/
+Workspace. Les deux erreurs des 41 tests proprietaires et l'unique echec du
+groupe chat compact se reproduisent au HEAD initial sans le patch.
+`P3-CEL-RAW-EXCEPTION-LOGS-01` et le Lot 10F sont fermes.
 
 ## Lot 10G - Raccord de la complexite au Lot 9
 

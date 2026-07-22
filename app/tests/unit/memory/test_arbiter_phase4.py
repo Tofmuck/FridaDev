@@ -90,6 +90,67 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         provider_post.assert_not_called()
         self.assertEqual(identities, [])
 
+    def test_provider_transport_logs_are_content_free_for_arbiter_and_extractor(self) -> None:
+        marker = 'SYNTHETIC_ARBITER_TRANSPORT_DETAIL'
+        settings = {
+            'model': 'synthetic-model',
+            'temperature': 0.0,
+            'top_p': 1.0,
+            'max_tokens': 8,
+            'timeout_s': 1,
+        }
+        traces = [
+            {
+                'candidate_id': 'candidate-1',
+                'role': 'user',
+                'content': 'synthetic candidate',
+                'timestamp': '2026-07-22T00:00:00Z',
+                'retrieval_score': 0.8,
+                'semantic_score': 0.8,
+            }
+        ]
+        recent_turns = [
+            {
+                'role': 'user',
+                'content': 'synthetic turn',
+                'timestamp': '2026-07-22T00:00:00Z',
+            }
+        ]
+
+        with (
+            patch.object(arbiter, '_runtime_memory_arbiter_settings', return_value=settings),
+            patch.object(arbiter, '_runtime_identity_extractor_settings', return_value=settings),
+            patch.object(arbiter, '_load_prompt', return_value='synthetic prompt'),
+            patch.object(
+                arbiter.llm_client,
+                'with_provider_attribution',
+                side_effect=lambda payload, caller: payload,
+            ),
+            patch.object(
+                arbiter.llm_client,
+                'or_chat_completions_url',
+                return_value='https://synthetic.invalid/chat/completions',
+            ),
+            patch.object(arbiter.llm_client, 'or_headers', return_value={'Authorization': 'synthetic'}),
+            patch.object(
+                arbiter.requests,
+                'post',
+                side_effect=arbiter.requests.exceptions.InvalidHeader(marker),
+            ),
+            self.assertLogs('frida.arbiter', level='ERROR') as captured,
+        ):
+            kept, decisions = arbiter.filter_traces_with_diagnostics(traces, recent_turns)
+            identities = arbiter.extract_identities(recent_turns)
+
+        rendered_logs = '\n'.join(captured.output)
+        self.assertEqual(kept, traces)
+        self.assertEqual(decisions[0]['decision_source'], 'fallback')
+        self.assertEqual(decisions[0]['reason'], 'fallback:parse_or_runtime_error')
+        self.assertEqual(identities, [])
+        self.assertEqual(rendered_logs.count('reason=provider_transport_error'), 2)
+        self.assertEqual(rendered_logs.count('err_class=InvalidHeader'), 2)
+        self.assertNotIn(marker, rendered_logs)
+
     def test_deterministic_fallback_uses_explicit_semantic_score_when_available(self) -> None:
         traces = [
             {

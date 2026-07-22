@@ -134,7 +134,46 @@ class MinimalValidationPhase11Tests(unittest.TestCase):
         self.assertEqual(exit_code, 1)
         self.assertIn('"name": "db_schema"', output)
         self.assertIn('"ok": false', output)
-        self.assertIn("table absente: runtime_settings", output)
+        self.assertIn('"reason_code": "check_exception"', output)
+        self.assertIn('"error_class": "RuntimeError"', output)
+        self.assertIn('"raw_error_message_included": false', output)
+        self.assertNotIn("table absente: runtime_settings", output)
+
+    def test_run_check_keeps_serialized_failure_content_free(self) -> None:
+        marker = "SYNTHETIC_VALIDATION_EXCEPTION_DETAIL"
+        results: list[dict[str, object]] = []
+
+        minimal_validation._run_check(
+            results,
+            "synthetic_check",
+            lambda: (_ for _ in ()).throw(RuntimeError(marker)),
+        )
+
+        self.assertEqual(
+            results,
+            [
+                {
+                    "name": "synthetic_check",
+                    "ok": False,
+                    "error": "validation check failed",
+                    "reason_code": "check_exception",
+                    "error_class": "RuntimeError",
+                    "raw_error_message_included": False,
+                }
+            ],
+        )
+        self.assertNotIn(marker, str(results))
+        rendered_text = minimal_validation._format_text(
+            {
+                "ok": False,
+                "passed": 0,
+                "total": 1,
+                "results": results,
+            }
+        )
+        self.assertIn("reason=check_exception", rendered_text)
+        self.assertIn("error_class=RuntimeError", rendered_text)
+        self.assertNotIn(marker, rendered_text)
 
     def test_assert_no_env_fallback_for_persisted_non_secret_fields_accepts_db_seed(self) -> None:
         section_payloads = {

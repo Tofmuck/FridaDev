@@ -35,6 +35,17 @@ from memory import memory_traces_summaries
 
 logger = logging.getLogger('frida.memory_store')
 
+
+class EmbeddingTransportError(RuntimeError):
+    """Content-free error propagated beyond the credential-bearing transport."""
+
+    def __init__(self, source_error_class: str) -> None:
+        self.source_error_class = str(source_error_class or 'RequestException')
+        super().__init__(
+            f'embedding_transport_error source_error_class={self.source_error_class}'
+        )
+
+
 __all__ = [
     'init_db',
     'embed',
@@ -189,6 +200,7 @@ def embed(text: str, mode: str = 'passage', purpose: str | None = None) -> list[
             requests_module=requests,
         )
     except Exception as exc:
+        error_class = exc.__class__.__name__
         chat_turn_logger.emit(
             'embedding',
             status='error',
@@ -199,9 +211,11 @@ def embed(text: str, mode: str = 'passage', purpose: str | None = None) -> list[
                 'source_kind': source_kind,
                 'provider': provider,
                 'dimensions': dimensions,
-                'error_class': exc.__class__.__name__,
+                'error_class': error_class,
             },
         )
+        if isinstance(exc, requests.exceptions.RequestException):
+            raise EmbeddingTransportError(error_class) from None
         raise
 
     chat_turn_logger.emit(

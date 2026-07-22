@@ -3280,8 +3280,15 @@ plateforme et ne rouvre pas Sauron.
   locaux. Les prompts legacy ne bloquent ni le runtime ni la validation
   offline. `P3-CEL-PROMPT-FAIL-OPEN-01` est ferme sans modifier un texte de
   prompt, un modele ou une politique produit.
-- [ ] Lot 10F: requalification contractuelle des exceptions brutes en logs,
-  distincte de la politique bornee des logs prives identity/memory.
+- [x] Lot 10F ferme le 2026-07-22: l'inventaire courant reconcilie chaque
+  famille par destination sans `UNKNOWN`. Les diagnostics existants
+  exclusivement emis dans les logs standards prives restent lisibles quand
+  aucun secret plausible n'est en jeu; HTTP, admin, JSONL, exports, telemetrie
+  et retours d'agent restent content-free. Les exceptions de transport
+  OpenRouter et embedding capables de recopier un header synthetique sont
+  desormais bornees avant tout sink textuel, et la validation minimale ne
+  serialise plus sa cause brute. Aucun remplacement global ni nouveau log n'a
+  ete introduit. `P3-CEL-RAW-EXCEPTION-LOGS-01` est ferme.
 - [ ] Lot 10G: raccord des hotspots de complexite au Lot 9 existant.
 
 Regle Lot 10:

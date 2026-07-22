@@ -97,6 +97,63 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         self.assertEqual(observed['json']['model'], 'intfloat/multilingual-e5-small')
         self.assertEqual(observed['json']['inputs'], ['query: bonjour'])
 
+    def test_embedding_transport_error_is_sanitized_before_private_callers(self) -> None:
+        marker = 'SYNTHETIC_EMBEDDING_TRANSPORT_DETAIL'
+        observed_events: list[dict[str, object]] = []
+        observed_logs: list[str] = []
+        original_get_settings = memory_store.runtime_settings.get_embedding_settings
+        original_get_secret = memory_store.runtime_settings.get_runtime_secret_value
+        original_post = memory_store.requests.post
+        original_emit = memory_store.chat_turn_logger.emit
+
+        class CaptureLogger:
+            def warning(self, message, *args) -> None:
+                observed_logs.append(message % args)
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            self.assertEqual((section, field), ('embedding', 'token'))
+            return runtime_settings.RuntimeSecretValue(
+                section='embedding',
+                field='token',
+                value='synthetic-token',
+                source='db_encrypted',
+                source_reason='db_row',
+            )
+
+        memory_store.runtime_settings.get_embedding_settings = self._db_embedding_view
+        memory_store.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
+        memory_store.requests.post = lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            memory_store.requests.exceptions.InvalidHeader(marker)
+        )
+        memory_store.chat_turn_logger.emit = (
+            lambda stage, **kwargs: observed_events.append({'stage': stage, **kwargs}) or True
+        )
+        try:
+            vector = memory_store.memory_identity_dynamics._embed_identity_conflict_vector(
+                'synthetic input',
+                purpose='identity_conflict_current',
+                embed_fn=memory_store.embed,
+                logger=CaptureLogger(),
+            )
+        finally:
+            memory_store.runtime_settings.get_embedding_settings = original_get_settings
+            memory_store.runtime_settings.get_runtime_secret_value = original_get_secret
+            memory_store.requests.post = original_post
+            memory_store.chat_turn_logger.emit = original_emit
+
+        self.assertIsNone(vector)
+        self.assertEqual(len(observed_logs), 1)
+        self.assertIn('embedding_transport_error', observed_logs[0])
+        self.assertIn('source_error_class=InvalidHeader', observed_logs[0])
+        self.assertNotIn(marker, observed_logs[0])
+        self.assertEqual(len(observed_events), 1)
+        event = observed_events[0]
+        self.assertEqual(event['stage'], 'embedding')
+        self.assertEqual(event['status'], 'error')
+        self.assertEqual(event['error_code'], 'upstream_error')
+        self.assertEqual(event['payload']['error_class'], 'InvalidHeader')
+        self.assertNotIn(marker, str(event))
+
     def test_retrieve_uses_runtime_embedding_top_k_by_default(self) -> None:
         observed = {'dense_limit': None, 'lexical_limit': None, 'merge_top_k': None}
         original_get_settings = memory_store.runtime_settings.get_embedding_settings

@@ -133,6 +133,13 @@ def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
             exc.prompt_id,
         )
         return False
+    except requests.exceptions.RequestException as exc:
+        logger.error(
+            "summarize_failed conv_id=%s reason=provider_transport_error err_class=%s",
+            conversation.get("id"),
+            exc.__class__.__name__,
+        )
+        return False
     except Exception as exc:
         logger.error("summarize_failed conv_id=%s err=%s", conversation.get("id"), exc)
         return False

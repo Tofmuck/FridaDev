@@ -84,7 +84,7 @@ Hors scope:
 - purge ou backfill historique en Lot 1;
 - exposition de contenu utilisateur.
 
-### Decision operateur - logs serveur prives identity/memory
+### Decisions operateur - logs serveur prives
 
 Decision explicite du 16 juillet 2026:
 
@@ -104,6 +104,21 @@ Decision explicite du 16 juillet 2026:
 Cette decision requalifie la norme applicable aux seuls logs serveur prives
 identity/memory existants. Elle ne modifie pas les contrats des surfaces
 techniques partagees ou exportees.
+
+Decision complementaire du 22 juillet 2026, apres inventaire Lot 10F:
+
+- les logs standards Python exclusivement emis vers les sorties serveur
+  privees peuvent conserver un texte d'exception existant, famille par
+  famille, si aucun chemin de projection n'existe, aucun secret plausible ne
+  peut atteindre ce texte et le diagnostic serait degrade par la seule classe;
+- le contexte mono-utilisateur et mono-operateur ne vaut jamais autorisation de
+  journaliser un token, cookie, mot de passe, cle, DSN complet, header
+  d'autorisation ou credential;
+- aucun nouveau log de contenu, aucune nouvelle collecte et aucune nouvelle
+  surface ne sont autorises par cette decision;
+- HTTP, admin, JSONL, exports, telemetrie et retours d'agent restent des
+  frontieres content-free. Une redaction locale a ces frontieres ne commande
+  pas la suppression d'un diagnostic prive source conforme.
 
 ## 4. Taxonomie `status`
 
@@ -330,13 +345,14 @@ Interdits dans JSONL/projections techniques:
 - URL externe brute quand elle peut porter du contenu sensible;
 - identifiant client invalide brut.
 
-## 11. Politique content-free transversale et exception bornee
+## 11. Frontieres content-free et matrice des exceptions
 
-La politique ci-dessous reste transversale aux surfaces techniques, dont les
-JSONL, projections admin, exports, telemetrie externe, retours d'agent et logs
-applicatifs. Sa seule exception concerne le contenu identity/memory deja
-journalise dans les logs serveur prives vises par la decision operateur bornee
-de la section 3; aucune autre famille de log ni surface n'est exemptee.
+La politique ci-dessous reste transversale aux surfaces partagees: HTTP,
+JSONL, projections admin, exports, telemetrie externe et retours d'agent. Les
+logs standards Python exclusivement emis vers les sorties serveur privees ne
+sont pas une surface partagee par simple usage d'un logger. Ils suivent la
+decision bornee et par famille de la section 3. Les writers JSONL/admin restent
+distincts de `logging.basicConfig` et ne consomment pas ces sorties standards.
 
 Les surfaces techniques autorisees exposent uniquement:
 
@@ -354,8 +370,53 @@ Les surfaces techniques autorisees exposent uniquement:
 
 Les exceptions doivent etre observees par `err_class`, reason code, et hash
 court d'une cause redacted quand un diagnostic stable est necessaire. Le texte
-brut d'une exception ne doit pas etre logge quand il peut contenir contenu,
-prompt, URL, chemin, payload ou secret.
+brut d'une exception ne doit jamais franchir une surface partagee. Il ne peut
+rester dans un log serveur prive que lorsque la matrice ci-dessous classe
+explicitement sa famille `PRIVATE_OPERATOR_LOG_ACCEPTED`. Les secrets sont
+interdits dans tous les cas.
+
+### Matrice Lot 10F - revalidation du 22 juillet 2026
+
+Le scan a ete reconstruit sur la base
+`bdffc8e50125fe6d1a91105f3758dad6346d3c0b`, sans reutiliser le nombre
+historique. Apres correction, il compte 131 appels de logger situes dans un
+handler et referencant l'exception capturee: 82 rendent encore son texte, 47
+n'exposent que sa classe et 2 un identifiant de prompt stable. Aucun appel
+`logger.exception`, `exc_info=True`, `traceback`, `format_exc` ou `print_exc`
+n'est present dans le code runtime. Les 82 rendus textuels sont reconciles
+ci-dessous par fichier et par sink; les branches transport a secret sont
+traitees separement meme lorsqu'elles rejoignaient auparavant un de ces sinks.
+
+| famille | fichier/appelant | destination reelle | donnees plausibles dans l'exception | statut | justification |
+| --- | --- | --- | --- | --- | --- |
+| bootstrap runtime (3) | `app/server.py`, initialisation, bootstrap et backfill settings | log standard serveur prive | classe/reason DB ou crypto, noms de champs techniques | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Aucun writer admin/JSONL ne lit le logger standard; des DSN synthetiques ont confirme que la valeur credential n'est pas rendue par les erreurs psycopg couvertes. |
+| init document actif (1) | `app/core/active_conversation_documents.py::init_db` | log standard serveur prive | diagnostic SQL/DB | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Diagnostic de demarrage local, sans projection. |
+| lecture/decision documents du tour (3) | `app/core/chat_service.py`: `_active_documents_for_prompt`, `_workspace_files_for_prompt`, `_record_active_document_prompt_decisions` | log standard serveur prive; le resultat applicatif ne garde que reason code/classe | diagnostic DB du reader/writer | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Le texte reste au sink prive; les objets `ActiveDocumentsPromptRead` sont bornes. |
+| conversations (12) | `conversations_maintenance.py`: `init_catalog_db`, `init_messages_db`, `compute_storage_counts`; `conversations_store.py`: `upsert_conversation_messages`, `conversation_message_row_count`, `load_messages_from_db`, `upsert_conversation_catalog`, `get_conversation_summary`, `list_conversations`, `rename_conversation`, `set_conversation_workspace_folder`, `soft_delete_conversation` | log standard serveur prive | DB, migration legacy, chemin interne ou identifiant | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Les evenements admin voisins utilisent classe/reason; aucune projection du texte standard. |
+| dossiers workspace (6) | `workspace_folders_store.py`: `list_workspace_folders`, `get_workspace_folder`, `next_sort_order`, `create_workspace_folder`, `update_workspace_folder`, `soft_delete_workspace_folder` | log standard serveur prive | diagnostic DB/stockage | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Store local uniquement; les services HTTP/Nextcloud projettent type et reason codes. |
+| facade et contenu Identity (7) | `identity.py`: `_safe_static_identity_source`, `_get_identities`, `_get_mutable_identity`, `_estimate_tokens`; `static_identity_content.py`: `_read_write_metadata`, `read_static_identity_snapshot`, `write_static_identity_content` | log standard serveur prive | diagnostic fichier, tokenisation ou DB; contenu Identity possible | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Visibilite privee explicitement acceptee; aucun secret ni projection demontre. |
+| arbitre hors transport (3) | `arbiter.py`: `_load_prompt`, `filter_traces_with_diagnostics`, `extract_identities` | log standard serveur prive | fichier prompt, position de parsing ou erreur runtime non transport | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Les erreurs `requests` sont interceptees avant ces branches textuelles; le repli deterministe reste inchange. |
+| etat hermeneutique (3) | `hermeneutic_node_state.py`: `read_node_state` (2), `write_node_state` | log standard serveur prive | diagnostic DB/etat | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Lecture/ecriture locale sans projection du texte. |
+| audit/contexte Memory (5) | `memory_arbiter_audit.py`: `get_hermeneutic_kpis`, `get_arbiter_decisions`, `record_arbiter_decisions`; `memory_context_read.py`: `get_identities`, `get_recent_context_hints` | log standard serveur prive | diagnostic DB et contexte interne | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Les retours structurels restent bornes et les erreurs admin sont projetees separement. |
+| dynamique Identity (11) | `memory_identity_dynamics.py`: `_embedding_similarity_safe`, `_embed_identity_conflict_vector` (3), `_has_open_strong_conflict`, `detect_and_record_conflicts`, `_list_recent_evidence`, `_apply_defer_policy_for_content`, `_expire_stale_deferred_global`, `decay_identities`, `reactivate_identities` | log standard serveur prive | diagnostic DB, similarite ou embedding | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Les exceptions transport embedding sont desormais remplacees en amont par une erreur ne contenant que operation et classe source. |
+| stores Identity (18) | `memory_identity_mutables.py`: `get_mutable_identity`, `list_mutable_identities`, `get_latest_mutable_identity_audit`, `apply_mutable_identity_subject_updates`, `upsert_mutable_identity`, `clear_mutable_identity`; `memory_identity_read_model.py`: `list_identity_fragments`, `list_identity_evidence`, `list_identity_conflicts`; `memory_identity_staging.py`: `get_identity_staging_state`, `get_latest_identity_staging_state`, `append_identity_staging_pair`, `mark_identity_staging_status`, `clear_identity_staging_buffer`; `memory_identity_write.py`: `set_identity_override`, `relabel_identity`, `record_identity_evidence`, `add_identity` | log standard serveur prive | diagnostic DB et contenu Identity possible | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Logs prives existants necessaires au diagnostic; les read-models admin exposent classe/reason seulement. |
+| init Memory (1) | `app/memory/memory_store_infra.py::init_db` | log standard serveur prive | diagnostic SQL/DB | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Initialisation locale sans projection. |
+| traces et resumes (7) | `memory_traces_summaries.py`: `_trace_exists_for_message`, `save_new_traces` (2), `save_summary` (2), `update_traces_summary_id`, `get_summary_for_trace` | log standard serveur prive | DB, contenu Memory possible ou erreur embedding deja bornee | `PRIVATE_OPERATOR_LOG_ACCEPTED` | Les resultats de retrieval et evenements JSONL n'exposent que codes/classes; le texte prive reste utile. |
+| resume hors transport (2) | `summarizer.py::maybe_summarize`: runtime non transport et persistence DB | log standard serveur prive | parsing/runtime non transport et persistence DB | `PRIVATE_OPERATOR_LOG_ACCEPTED` | La panne DB locale conserve son diagnostic; les `RequestException` ont une branche classe/reason sans texte. |
+| transports OpenRouter avec header sensible | `app/memory/summarizer.py::maybe_summarize`, `app/memory/arbiter.py::filter_traces_with_diagnostics`, `extract_identities` | log standard serveur prive | une `InvalidHeader` peut recopier une valeur de header | `SECRET_RISK_REQUIRES_FIX` | Confirme par valeur synthetique puis corrige: les trois branches journalisent operation, reason et classe seulement; les replis restent identiques. |
+| transport embedding avec header sensible | `app/memory/memory_store.py::embed` vers les callers Memory/Identity | evenement JSONL classe-only puis logs standards prives aval | une `InvalidHeader` peut recopier le token d'embedding | `SECRET_RISK_REQUIRES_FIX` | Confirme puis corrige au point commun transport: l'erreur propagee ne contient que l'operation et la classe source; aucun caller ne recoit le texte original. |
+| validation minimale | `app/minimal_validation.py::_run_check` | stdout texte/JSON et artefact de smoke | tout texte de l'exception du check | `CONTENT_FREE_BOUNDARY_REQUIRED` | Fuite synthetique confirmee puis corrigee au serializer: message public generique, reason code, classe et `raw_error_message_included=false`. |
+| admin, JSONL, dashboard et export | `app/admin/admin_actions.py`, `admin_logs.py`, `app/observability/*` | JSONL, HTTP admin, dashboard, export Markdown | panne writer/read-model | `CONTENT_FREE_BOUNDARY_REQUIRED` | 30 branches logger n'exposent que classe/reason; les projections et tests anti-fuite restent la frontiere. |
+| chat, Web, juge mutable et notes workspace | `app/core/conversations_*`, `workspace_folder_notes_prompt_lane.py`, `mutable_identity_judge_v2.py`, `web_search.py` | log prive et/ou resultat applicatif borne | panne provider, prompt ou DB | `CONTENT_FREE_BOUNDARY_REQUIRED` | Les 14 autres branches classe-only et les 2 attributs `prompt_id` ne propagent aucun texte arbitraire. |
+| HTTP/API et retours d'agents | services admin Identity/Memory/settings, flows Agenda/Biblio, uploads/Whisper/workspace, chat et agents hermeneutiques | HTTP, observabilite ou retour d'agent | exception provider, stockage, DB ou validation | `CONTENT_FREE_BOUNDARY_REQUIRED` | Les sinks utilisent classe, statut, reason code et champs techniques allowlistes; les exceptions Biblio internes sont `repr=False` et projetees par `to_observability()`. |
+| reemballage settings/crypto | `runtime_settings_repo.py`, `runtime_settings_write_path.py`, `runtime_secrets.py` | exception interne typee, ensuite log prive ou mapping HTTP classe-only | diagnostic DB/crypto | `NOT_A_LOG_SINK` | `str(exc)` ne sort pas directement; la destination terminale determine la politique. |
+| compatibilite de signatures | services admin Identity et helpers embedding `purpose` | comparaison interne seulement | texte de `TypeError` | `NOT_A_LOG_SINK` | Le texte sert a choisir une branche de compatibilite et n'est pas retourne. |
+| codes internes stables | extraction documentaire, Stimmung et Validation | warning/reason code applicatif | valeurs fixes de types internes (`prompt_missing`, parsing/validation, OCR) | `CONTENT_FREE_BOUNDARY_REQUIRED` | Ces `str(exc)` ne portent que des codes bornes construits localement; aucune exception arbitraire ne les alimente. |
+
+Aucune famille ne reste `UNKNOWN`. `PRIVATE_OPERATOR_LOG_ACCEPTED` est une
+decision explicite de conservation, pas une correction fictive. Les familles
+`SECRET_RISK_REQUIRES_FIX` de la matrice ont ete fermees dans ce lot; leur
+statut rappelle la classification qui imposait le patch.
 
 ## 12. Statut documentaire Agenda
 
@@ -844,9 +905,9 @@ Preuves Lot Z:
 
 ## 16. Interdits permanents
 
-Hors la seule visibilite identity/memory existante dans les logs serveur prives
-explicitement bornee par la section 3, restent interdits sur toute surface
-technique:
+Hors les diagnostics existants explicitement classes
+`PRIVATE_OPERATOR_LOG_ACCEPTED` pour les logs serveur prives par les sections 3
+et 11, restent interdits sur toute surface technique:
 
 - Masquer une vraie panne en succes;
 - transformer un refus produit en `error`;

@@ -139,7 +139,16 @@ def _run_check(
         details = fn()
         results.append({"name": name, "ok": True, "details": details})
     except Exception as exc:
-        results.append({"name": name, "ok": False, "error": str(exc)})
+        results.append(
+            {
+                "name": name,
+                "ok": False,
+                "error": "validation check failed",
+                "reason_code": "check_exception",
+                "error_class": exc.__class__.__name__,
+                "raw_error_message_included": False,
+            }
+        )
 
 
 def _check_startup_import() -> Dict[str, Any]:
@@ -1652,7 +1661,17 @@ def _format_text(summary: Dict[str, Any]) -> str:
     for item in summary["results"]:
         prefix = "[OK]" if item["ok"] else "[KO]"
         lines.append(f"{prefix} {item['name']}")
-        details = item.get("details") or item.get("error")
+        details = item.get("details")
+        if not details and not item["ok"]:
+            details = " ".join(
+                value
+                for value in (
+                    str(item.get("error") or "").strip(),
+                    f"reason={item['reason_code']}" if item.get("reason_code") else "",
+                    f"error_class={item['error_class']}" if item.get("error_class") else "",
+                )
+                if value
+            )
         if details:
             lines.append(f"  {details}")
     return "\n".join(lines)
