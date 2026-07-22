@@ -47,6 +47,7 @@ LLM_RUNTIME_SECRET_ERROR_CODE = "llm_secret_resolution_error"
 LLM_UPSTREAM_USER_MESSAGE = "Connexion au LLM impossible"
 LLM_INTERNAL_USER_MESSAGE = "Erreur LLM interne"
 LLM_CONFIG_USER_MESSAGE = "Configuration LLM indisponible"
+POST_PERSISTENCE_AUX_ERROR_EVENT = "chat_post_persistence_aux_error"
 
 
 def _exception_class(exc: BaseException) -> str:
@@ -150,6 +151,106 @@ def _latest_completed_identity_pair(messages: Sequence[Mapping[str, Any]]) -> li
     return []
 
 
+def _run_chat_post_persistence_effects(
+    *,
+    conversation: dict[str, Any],
+    assistant_text: str | None,
+    assistant_timestamp: str | None,
+    runtime_main_model: str,
+    current_mode: str,
+    identity_ids: Sequence[str],
+    web_input: Mapping[str, Any] | None,
+    memory_store_module: Any,
+    token_utils_module: Any,
+    admin_logs_module: Any,
+    logger: Any,
+    arbiter_module: Any,
+    record_identity_entries_for_mode: Callable[..., None],
+    mode_enforces_identity: Callable[[str], bool],
+    traces_after_identity: bool,
+) -> None:
+    def record_assistant_text_observability() -> None:
+        if assistant_text is None:
+            return
+        estimated_assistant_tokens = token_utils_module.estimate_tokens(
+            [{'content': assistant_text}],
+            runtime_main_model,
+        )
+        admin_logs_module.log_event(
+            'AssistantText',
+            conversation_id=conversation['id'],
+            estimated_assistant_tokens=estimated_assistant_tokens,
+            message_timestamp=assistant_timestamp,
+        )
+
+    def save_memory_traces() -> None:
+        memory_store_module.save_new_traces(conversation)
+
+    def record_identity_entries() -> None:
+        completed_turn_pair = _latest_completed_identity_pair(conversation.get('messages', []))
+        record_identity_entries_for_mode(
+            conversation['id'],
+            completed_turn_pair,
+            mode=current_mode,
+            web_input=web_input,
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+    def reactivate_identities() -> None:
+        if not identity_ids or not mode_enforces_identity(current_mode):
+            return
+        memory_store_module.reactivate_identities(identity_ids)
+
+    effects = {
+        'assistant_text_observability': record_assistant_text_observability,
+        'memory_traces': save_memory_traces,
+        'identity_entries': record_identity_entries,
+        'identity_reactivation': reactivate_identities,
+    }
+    if traces_after_identity:
+        effect_order = (
+            'assistant_text_observability',
+            'identity_entries',
+            'identity_reactivation',
+            'memory_traces',
+        )
+    else:
+        effect_order = (
+            'assistant_text_observability',
+            'memory_traces',
+            'identity_entries',
+            'identity_reactivation',
+        )
+
+    for effect_name in effect_order:
+        try:
+            effects[effect_name]()
+        except Exception as exc:
+            error_class = _exception_class(exc)[:80]
+            try:
+                logger.error(
+                    'chat_post_persistence_aux_error effect=%s id=%s error_class=%s',
+                    effect_name,
+                    conversation['id'],
+                    error_class,
+                )
+            except Exception:
+                pass
+            try:
+                admin_logs_module.log_event(
+                    POST_PERSISTENCE_AUX_ERROR_EVENT,
+                    level='ERROR',
+                    conversation_id=conversation['id'],
+                    effect_name=effect_name,
+                    error_class=error_class,
+                    reason_code=POST_PERSISTENCE_AUX_ERROR_EVENT,
+                )
+            except Exception:
+                pass
+
+
 def _run_assistant_response_override(
     *,
     override: AssistantResponseOverride,
@@ -163,6 +264,7 @@ def _run_assistant_response_override(
     conv_store_module: Any,
     token_utils_module: Any,
     admin_logs_module: Any,
+    logger: Any,
     arbiter_module: Any,
     now_iso_func: Callable[[], str],
     record_identity_entries_for_mode: Callable[..., None],
@@ -203,26 +305,23 @@ def _run_assistant_response_override(
                     messages.pop()
             return False, updated_at, _persistence_failure_payload(save_result)
         persisted_at = _save_result_updated_at(save_result, updated_at)
-        estimated_assistant_tokens = token_utils_module.estimate_tokens([{"content": text}], runtime_main_model)
-        admin_logs_module.log_event(
-            "AssistantText",
-            conversation_id=conversation["id"],
-            estimated_assistant_tokens=estimated_assistant_tokens,
-            message_timestamp=persisted_at,
-        )
-        memory_store_module.save_new_traces(conversation)
-        completed_turn_pair = _latest_completed_identity_pair(conversation.get("messages", []))
-        record_identity_entries_for_mode(
-            conversation["id"],
-            completed_turn_pair,
-            mode=current_mode,
+        _run_chat_post_persistence_effects(
+            conversation=conversation,
+            assistant_text=text,
+            assistant_timestamp=persisted_at,
+            runtime_main_model=runtime_main_model,
+            current_mode=current_mode,
+            identity_ids=identity_ids,
             web_input=web_input,
-            arbiter_module=arbiter_module,
             memory_store_module=memory_store_module,
+            token_utils_module=token_utils_module,
             admin_logs_module=admin_logs_module,
+            logger=logger,
+            arbiter_module=arbiter_module,
+            record_identity_entries_for_mode=record_identity_entries_for_mode,
+            mode_enforces_identity=mode_enforces_identity,
+            traces_after_identity=False,
         )
-        if identity_ids and mode_enforces_identity(current_mode):
-            memory_store_module.reactivate_identities(identity_ids)
         return True, persisted_at, None
 
     if not stream_req:
@@ -308,6 +407,7 @@ def run_llm_exchange(
             conv_store_module=conv_store_module,
             token_utils_module=token_utils_module,
             admin_logs_module=admin_logs_module,
+            logger=logger,
             arbiter_module=arbiter_module,
             now_iso_func=now_iso_func,
             record_identity_entries_for_mode=record_identity_entries_for_mode,
@@ -406,26 +506,23 @@ def run_llm_exchange(
             save_result = conv_store_module.save_conversation(conversation, updated_at=updated_at)
             if not _save_result_ok(save_result):
                 return _json_result(_persistence_failure_payload(save_result), 503)
-            estimated_assistant_tokens = token_utils_module.estimate_tokens([{'content': text}], runtime_main_model)
-            admin_logs_module.log_event(
-                'AssistantText',
-                conversation_id=conversation['id'],
-                estimated_assistant_tokens=estimated_assistant_tokens,
-                message_timestamp=updated_at,
-            )
-            memory_store_module.save_new_traces(conversation)
-            completed_turn_pair = _latest_completed_identity_pair(conversation.get('messages', []))
-            record_identity_entries_for_mode(
-                conversation['id'],
-                completed_turn_pair,
-                mode=current_mode,
+            _run_chat_post_persistence_effects(
+                conversation=conversation,
+                assistant_text=text,
+                assistant_timestamp=updated_at,
+                runtime_main_model=runtime_main_model,
+                current_mode=current_mode,
+                identity_ids=identity_ids,
                 web_input=web_input,
-                arbiter_module=arbiter_module,
                 memory_store_module=memory_store_module,
+                token_utils_module=token_utils_module,
                 admin_logs_module=admin_logs_module,
+                logger=logger,
+                arbiter_module=arbiter_module,
+                record_identity_entries_for_mode=record_identity_entries_for_mode,
+                mode_enforces_identity=mode_enforces_identity,
+                traces_after_identity=False,
             )
-            if identity_ids and mode_enforces_identity(current_mode):
-                memory_store_module.reactivate_identities(identity_ids)
             return _json_result(
                 {
                     'ok': True,
@@ -532,61 +629,6 @@ def run_llm_exchange(
                 appended_assistant_content = content
                 appended_assistant_timestamp = timestamp
                 assistant_appended = True
-
-            def _save_new_traces_safely() -> None:
-                try:
-                    memory_store_module.save_new_traces(conversation)
-                except Exception as exc:
-                    logger.error(
-                        'llm_stream_trace_persist_error id=%s error_class=%s',
-                        conversation['id'],
-                        _exception_class(exc),
-                    )
-
-            def _record_identity_entries_safely() -> None:
-                try:
-                    completed_turn_pair = _latest_completed_identity_pair(conversation.get('messages', []))
-                    record_identity_entries_for_mode(
-                        conversation['id'],
-                        completed_turn_pair,
-                        mode=current_mode,
-                        web_input=web_input,
-                        arbiter_module=arbiter_module,
-                        memory_store_module=memory_store_module,
-                        admin_logs_module=admin_logs_module,
-                    )
-                except Exception as exc:
-                    logger.error(
-                        'llm_stream_identity_persist_error id=%s error_class=%s',
-                        conversation['id'],
-                        _exception_class(exc),
-                    )
-                    admin_logs_module.log_event(
-                        'llm_stream_identity_persist_error',
-                        level='ERROR',
-                        conversation_id=conversation['id'],
-                        model=call_model,
-                        error_class=_exception_class(exc),
-                    )
-
-            def _reactivate_identities_safely() -> None:
-                if not identity_ids or not mode_enforces_identity(current_mode):
-                    return
-                try:
-                    memory_store_module.reactivate_identities(identity_ids)
-                except Exception as exc:
-                    logger.error(
-                        'llm_stream_identity_reactivate_error id=%s error_class=%s',
-                        conversation['id'],
-                        _exception_class(exc),
-                    )
-                    admin_logs_module.log_event(
-                        'llm_stream_identity_reactivate_error',
-                        level='ERROR',
-                        conversation_id=conversation['id'],
-                        model=call_model,
-                        error_class=_exception_class(exc),
-                    )
 
             try:
                 with requests_module.post(
@@ -800,20 +842,23 @@ def run_llm_exchange(
                         reason_code=CONVERSATION_PERSIST_ERROR_CODE,
                     )
             if persistence_ok and terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
-                if assistant_appended and assistant_text:
-                    estimated_assistant_tokens = token_utils_module.estimate_tokens(
-                        [{'content': assistant_text}],
-                        runtime_main_model,
-                    )
-                    admin_logs_module.log_event(
-                        'AssistantText',
-                        conversation_id=conversation['id'],
-                        estimated_assistant_tokens=estimated_assistant_tokens,
-                        message_timestamp=persisted_updated_at or final_updated_at,
-                    )
-                _record_identity_entries_safely()
-                _reactivate_identities_safely()
-                _save_new_traces_safely()
+                _run_chat_post_persistence_effects(
+                    conversation=conversation,
+                    assistant_text=assistant_text if assistant_appended and assistant_text else None,
+                    assistant_timestamp=persisted_updated_at or final_updated_at,
+                    runtime_main_model=runtime_main_model,
+                    current_mode=current_mode,
+                    identity_ids=identity_ids,
+                    web_input=web_input,
+                    memory_store_module=memory_store_module,
+                    token_utils_module=token_utils_module,
+                    admin_logs_module=admin_logs_module,
+                    logger=logger,
+                    arbiter_module=arbiter_module,
+                    record_identity_entries_for_mode=record_identity_entries_for_mode,
+                    mode_enforces_identity=mode_enforces_identity,
+                    traces_after_identity=True,
+                )
             yield chat_stream_control.build_terminal_chunk(
                 terminal_event,
                 error_code=terminal_error_code,

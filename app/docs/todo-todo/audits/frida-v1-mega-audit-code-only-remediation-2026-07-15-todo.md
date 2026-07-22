@@ -363,12 +363,17 @@ seulement sur l'en-tete client.
 
 Finding cible: `P2-CEL-CHAT-POST-PERSIST-AUX-01`.
 
-Faits a revalider:
+Statut: **clos le 2026-07-22; finding ferme**.
+
+Faits revalides au HEAD de depart
+`7703e2de2c9726b1f325136b13f059f466234d18`:
 
 - les voies non-stream et final-lock persistent la reponse assistant puis
   executent traces, identity et reactivation sans frontiere fail-open commune;
 - une exception tardive peut retourner HTTP 500 apres persistence reussie;
-- le streaming possede deja des wrappers post-persistence explicites.
+- le streaming possede des wrappers post-persistence pour traces, Identity et
+  reactivation, mais pas pour l'estimation/log `AssistantText`; les logs de
+  panne de ces wrappers peuvent eux-memes remonter.
 
 Perimetre strict:
 
@@ -380,20 +385,47 @@ Perimetre strict:
 
 Checklist:
 
-- [ ] Tracer les trois voies jusqu'au point de persistence et nommer la
+- [x] Tracer les quatre surfaces jusqu'au point de persistence et nommer la
   frontiere exacte entre succes produit et effets auxiliaires.
-- [ ] Comparer les wrappers stream aux voies non-stream/final-lock sans copier
+- [x] Comparer les wrappers stream aux voies non-stream/final-lock sans copier
   aveuglement une abstraction de taille excessive.
-- [ ] Rendre fail-open apres commit uniquement traces, identity, reactivation
+- [x] Rendre fail-open apres commit uniquement traces, identity, reactivation
   et observabilite auxiliaire; conserver une trace content-free de la panne.
-- [ ] Injecter une panne dans chaque effet auxiliaire apres persistence pour
-  non-stream et final-lock/override.
-- [ ] Prouver HTTP/terminal de succes, reponse assistant unique et durable,
+- [x] Injecter une panne dans chaque effet auxiliaire apres persistence pour
+  normal non-stream, normal stream et final-lock/override dans les deux modes.
+- [x] Prouver HTTP/terminal de succes, reponse assistant unique et durable,
   absence de second save semantique et absence de duplication au retry.
-- [ ] Rejouer les contrats stream pour prouver que les garanties existantes ne
+- [x] Rejouer les contrats stream pour prouver que les garanties existantes ne
   regressent pas.
 
-Critere de sortie:
+Correction bornee:
+
+- `chat_llm_flow.py` conserve `save_conversation()` hors de la primitive
+  fail-open et n'execute les derives qu'apres `_save_result_ok()` positif;
+- une primitive locale commune tente independamment `AssistantText`, traces,
+  ecritures Identity et decision/reactivation Identity, dans l'ordre utile de
+  chaque voie;
+- une panne produit seulement l'evenement content-free stable
+  `chat_post_persistence_aux_error` avec nom d'effet, `conversation_id`, classe
+  d'erreur et reason code; le logger standard et le journal admin sont chacun
+  proteges contre leur propre panne;
+- aucun retry, second save, second message assistant, changement de timestamp,
+  queue ou mecanisme de rattrapage n'est introduit;
+- les resultats de sauvegarde negatifs et les exceptions de persistence
+  primaire restent des erreurs et n'appellent aucun derive.
+
+Preuves sans reseau:
+
+- la matrice ajoutee reproduit avant correction `28` echecs controles, puis
+  passe `17/17` tests apres raccord;
+- `44/44` tests obligatoires flux, protocole, route, input mode et final locks
+  Biblio/Agenda passent;
+- la decouverte unitaire chat passe `117/117`;
+- `50/50` contrats serveur chat voisins passent en modules isoles; les quatre
+  familles restantes reproduisent exactement au HEAD initial et apres patch
+  les memes `14` echecs et `2` erreurs sur `18` tests, hors Lot 10C.
+
+Critere de sortie atteint:
 apres persistence reussie de la reponse assistant, une panne auxiliaire ne
 change plus le succes utilisateur. Une panne avant persistence reste une vraie
 erreur et n'est pas masquee.

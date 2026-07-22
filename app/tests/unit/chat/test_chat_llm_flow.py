@@ -84,6 +84,458 @@ def _collect_stream_parts(stream) -> list[str]:
 
 
 class ChatLlmFlowTests(unittest.TestCase):
+    def _exercise_post_persistence_surface(
+        self,
+        *,
+        surface: str,
+        fail_at: str | None = None,
+        fail_failure_observability: bool = False,
+        persistence: str = 'success',
+    ) -> dict[str, object]:
+        surface_flags = {
+            'normal_non_stream': (False, False),
+            'normal_stream': (False, True),
+            'override_non_stream': (True, False),
+            'override_stream': (True, True),
+        }
+        is_override, stream_req = surface_flags[surface]
+        assistant_text = 'Artificial assistant turn marker.'
+        user_text = 'Artificial user turn marker.'
+        assistant_meta = {
+            'source': 'synthetic_final_lock' if is_override else 'synthetic_provider',
+            'final_lock': is_override,
+        }
+        timestamp = '2026-07-22T10:00:00Z'
+        conversation = {
+            'id': f'conv-{surface}',
+            'created_at': '2026-07-22T09:00:00Z',
+            'messages': [{'role': 'user', 'content': user_text}],
+        }
+        observed: dict[str, object] = {
+            'admin_events': [],
+            'durable_snapshots': [],
+            'failure_admin_log_calls': 0,
+            'logger_error_calls': [],
+            'post_calls': 0,
+            'post_effect_sequence': [],
+            'save_calls': 0,
+            'secret_calls': 0,
+        }
+
+        def raise_synthetic_failure() -> None:
+            raise RuntimeError(_dangerous_exception_message())
+
+        def fail_if(point: str) -> None:
+            if fail_at == point:
+                raise_synthetic_failure()
+
+        def append_message(conv, role, content, timestamp=None, meta=None):
+            message = {'role': role, 'content': content, 'timestamp': timestamp}
+            if meta is not None:
+                message['meta'] = dict(meta)
+            conv['messages'].append(message)
+
+        def save_conversation(conv, **kwargs):
+            observed['save_calls'] += 1
+            if persistence == 'raises':
+                raise_synthetic_failure()
+            if persistence == 'negative':
+                return SimpleNamespace(
+                    ok=False,
+                    updated_at=kwargs.get('updated_at'),
+                    reason='messages_write_failed',
+                )
+            observed['durable_snapshots'].append(
+                [dict(message) for message in conv.get('messages', [])]
+            )
+            return SimpleNamespace(
+                ok=True,
+                updated_at=kwargs.get('updated_at'),
+                reason='',
+            )
+
+        def estimate_tokens(_messages, _model):
+            observed['post_effect_sequence'].append('assistant_text_estimation')
+            fail_if('assistant_text_estimation')
+            return 7
+
+        def save_new_traces(_conversation):
+            observed['post_effect_sequence'].append('memory_traces')
+            fail_if('memory_traces')
+
+        def record_identity_entries(*_args, **_kwargs):
+            observed['post_effect_sequence'].append('identity_entries')
+            fail_if('identity_entries')
+
+        def mode_enforces_identity(_mode):
+            observed['post_effect_sequence'].append('identity_mode_decision')
+            fail_if('identity_mode_decision')
+            return True
+
+        def reactivate_identities(_identity_ids):
+            observed['post_effect_sequence'].append('identity_reactivation')
+            fail_if('identity_reactivation')
+
+        def log_event(event, **kwargs):
+            observed['admin_events'].append((event, dict(kwargs)))
+            if event == 'AssistantText':
+                observed['post_effect_sequence'].append('assistant_text_log')
+                fail_if('assistant_text_log')
+            if event == 'chat_post_persistence_aux_error':
+                observed['failure_admin_log_calls'] += 1
+                if fail_failure_observability:
+                    raise_synthetic_failure()
+
+        def logger_error(*args, **kwargs):
+            observed['logger_error_calls'].append((args, dict(kwargs)))
+            if fail_failure_observability:
+                raise_synthetic_failure()
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': assistant_text}}]}
+
+        class FakeStreamResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: ' + json.dumps(
+                    {'choices': [{'delta': {'content': assistant_text}}]},
+                    ensure_ascii=False,
+                )
+                yield 'data: [DONE]'
+
+        def requests_post(*_args, **kwargs):
+            observed['post_calls'] += 1
+            if is_override:
+                raise AssertionError('provider call forbidden for override')
+            return FakeStreamResponse() if kwargs.get('stream') else FakeResponse()
+
+        def get_runtime_secret_value(*_args, **_kwargs):
+            observed['secret_calls'] += 1
+            if is_override:
+                raise AssertionError('secret lookup forbidden for override')
+            return SimpleNamespace(value='synthetic-key')
+
+        runtime_settings_module = SimpleNamespace(
+            get_runtime_secret_value=get_runtime_secret_value,
+            RuntimeSettingsSecretRequiredError=KeyError,
+            RuntimeSettingsSecretResolutionError=LookupError,
+        )
+        memory_store_module = SimpleNamespace(
+            save_new_traces=save_new_traces,
+            reactivate_identities=reactivate_identities,
+        )
+        conv_store_module = SimpleNamespace(
+            append_message=append_message,
+            save_conversation=save_conversation,
+        )
+        llm_module = SimpleNamespace(
+            or_headers=lambda *, caller: {},
+            resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
+            build_payload=lambda *_args, **_kwargs: {'model': 'synthetic-main-model'},
+            read_openrouter_response_payload=lambda response: response.json(),
+            extract_openrouter_provider_metadata=lambda _payload, *, requested_model=None: {
+                'provider_model': requested_model,
+            },
+            build_provider_observability_fields=lambda *, caller, provider_metadata: {
+                'provider_caller': caller,
+                **dict(provider_metadata),
+            },
+            merge_openrouter_provider_metadata=lambda current, _payload, *, requested_model=None: {
+                **dict(current or {}),
+                'provider_model': requested_model,
+            },
+            log_provider_metadata=lambda *_args, **_kwargs: None,
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
+            sanitize_provider_text=lambda text: text,
+        )
+        assistant_response_override = None
+        if is_override:
+            assistant_response_override = chat_llm_flow.AssistantResponseOverride(
+                content=assistant_text,
+                source='synthetic_final_lock',
+                reason_code='synthetic_final_lock_authorized',
+                meta=assistant_meta,
+                observability={'content_present': True, 'content_chars': len(assistant_text)},
+            )
+
+        result = None
+        visible_text = None
+        terminal = None
+        raised_exception = None
+        try:
+            result = chat_llm_flow.run_llm_exchange(
+                conversation=conversation,
+                prompt_messages=[{'role': 'user', 'content': user_text}],
+                runtime_main_model='synthetic-main-model',
+                temperature=0.4,
+                top_p=1.0,
+                max_tokens=256,
+                stream_req=stream_req,
+                current_mode='enforced_all',
+                identity_ids=['synthetic-identity-id'],
+                web_input=None,
+                runtime_settings_module=runtime_settings_module,
+                memory_store_module=memory_store_module,
+                conv_store_module=conv_store_module,
+                llm_module=llm_module,
+                requests_module=SimpleNamespace(
+                    post=requests_post,
+                    exceptions=SimpleNamespace(RequestException=_RequestException),
+                ),
+                token_utils_module=SimpleNamespace(estimate_tokens=estimate_tokens),
+                admin_logs_module=SimpleNamespace(log_event=log_event),
+                config_module=SimpleNamespace(OR_BASE='https://synthetic.invalid', TIMEOUT_S=42),
+                logger=SimpleNamespace(
+                    info=lambda *_args, **_kwargs: None,
+                    error=logger_error,
+                ),
+                arbiter_module=SimpleNamespace(),
+                now_iso_func=lambda: timestamp,
+                record_identity_entries_for_mode=record_identity_entries,
+                mode_enforces_identity=mode_enforces_identity,
+                conversation_headers_func=lambda _conversation, updated_at: {
+                    'X-Conversation-Id': conversation['id'],
+                    'X-Conversation-Updated-At': updated_at,
+                },
+                conversation_stream_headers_func=lambda _conversation: {
+                    'X-Conversation-Id': conversation['id'],
+                    'X-Conversation-Created-At': conversation['created_at'],
+                },
+                assistant_response_override=assistant_response_override,
+                assistant_response_meta=assistant_meta,
+            )
+            if stream_req:
+                visible_text, terminal = _collect_stream_output(result['stream'])
+        except Exception as exc:
+            raised_exception = exc
+
+        return {
+            'assistant_meta': assistant_meta,
+            'assistant_text': assistant_text,
+            'conversation': conversation,
+            'is_override': is_override,
+            'observed': observed,
+            'raised_exception': raised_exception,
+            'result': result,
+            'stream_req': stream_req,
+            'terminal': terminal,
+            'timestamp': timestamp,
+            'user_text': user_text,
+            'visible_text': visible_text,
+        }
+
+    def _expected_post_persistence_sequence(
+        self,
+        *,
+        surface: str,
+        fail_at: str,
+    ) -> list[str]:
+        assistant_effect = ['assistant_text_estimation']
+        if fail_at != 'assistant_text_estimation':
+            assistant_effect.append('assistant_text_log')
+        identity_effects = ['identity_entries', 'identity_mode_decision']
+        if fail_at != 'identity_mode_decision':
+            identity_effects.append('identity_reactivation')
+        if surface == 'normal_stream':
+            return assistant_effect + identity_effects + ['memory_traces']
+        return assistant_effect + ['memory_traces'] + identity_effects
+
+    def test_post_persistence_auxiliary_failure_matrix_preserves_success_on_all_surfaces(self) -> None:
+        effect_to_observed_name = {
+            'assistant_text_estimation': 'assistant_text_observability',
+            'assistant_text_log': 'assistant_text_observability',
+            'memory_traces': 'memory_traces',
+            'identity_entries': 'identity_entries',
+            'identity_mode_decision': 'identity_reactivation',
+            'identity_reactivation': 'identity_reactivation',
+        }
+        surfaces = (
+            'normal_non_stream',
+            'normal_stream',
+            'override_non_stream',
+            'override_stream',
+        )
+        for surface in surfaces:
+            for fail_at, observed_effect_name in effect_to_observed_name.items():
+                with self.subTest(surface=surface, fail_at=fail_at):
+                    case = self._exercise_post_persistence_surface(
+                        surface=surface,
+                        fail_at=fail_at,
+                    )
+                    observed = case['observed']
+                    result = case['result']
+                    conversation = case['conversation']
+
+                    self.assertIsNone(case['raised_exception'])
+                    self.assertEqual(observed['save_calls'], 1)
+                    self.assertEqual(len(observed['durable_snapshots']), 1)
+                    self.assertEqual(
+                        observed['post_effect_sequence'],
+                        self._expected_post_persistence_sequence(
+                            surface=surface,
+                            fail_at=fail_at,
+                        ),
+                    )
+                    assistant_messages = [
+                        message
+                        for message in conversation['messages']
+                        if message.get('role') == 'assistant'
+                    ]
+                    self.assertEqual(len(assistant_messages), 1)
+                    self.assertEqual(assistant_messages[0]['content'], case['assistant_text'])
+                    self.assertEqual(assistant_messages[0]['meta'], case['assistant_meta'])
+                    self.assertEqual(
+                        observed['durable_snapshots'][0][-1],
+                        assistant_messages[0],
+                    )
+                    if case['stream_req']:
+                        self.assertEqual(case['visible_text'], case['assistant_text'])
+                        self.assertEqual(
+                            case['terminal'],
+                            {'event': 'done', 'updated_at': case['timestamp']},
+                        )
+                        self.assertEqual(
+                            result['headers'],
+                            {
+                                'X-Conversation-Id': conversation['id'],
+                                'X-Conversation-Created-At': conversation['created_at'],
+                            },
+                        )
+                    else:
+                        self.assertEqual(result['kind'], 'json')
+                        self.assertEqual(result['status'], 200)
+                        self.assertTrue(result['payload']['ok'])
+                        self.assertEqual(result['payload']['text'], case['assistant_text'])
+                        self.assertEqual(
+                            result['headers'],
+                            {
+                                'X-Conversation-Id': conversation['id'],
+                                'X-Conversation-Updated-At': case['timestamp'],
+                            },
+                        )
+                    self.assertEqual(observed['post_calls'], 0 if case['is_override'] else 1)
+                    self.assertEqual(observed['secret_calls'], 0 if case['is_override'] else 1)
+
+                    failure_events = _event_payloads(
+                        observed['admin_events'],
+                        'chat_post_persistence_aux_error',
+                    )
+                    self.assertEqual(len(failure_events), 1)
+                    self.assertEqual(failure_events[0]['effect_name'], observed_effect_name)
+                    self.assertEqual(
+                        failure_events[0]['reason_code'],
+                        'chat_post_persistence_aux_error',
+                    )
+                    self.assertEqual(failure_events[0]['error_class'], 'RuntimeError')
+                    self.assertEqual(len(observed['logger_error_calls']), 1)
+                    failure_observability = (
+                        failure_events,
+                        observed['logger_error_calls'],
+                    )
+                    _assert_content_free(self, failure_observability)
+                    failure_blob = json.dumps(failure_observability, default=str)
+                    self.assertNotIn(case['assistant_text'], failure_blob)
+                    self.assertNotIn(case['user_text'], failure_blob)
+
+    def test_post_persistence_failure_observability_is_never_raises_on_all_surfaces(self) -> None:
+        for surface in (
+            'normal_non_stream',
+            'normal_stream',
+            'override_non_stream',
+            'override_stream',
+        ):
+            with self.subTest(surface=surface):
+                case = self._exercise_post_persistence_surface(
+                    surface=surface,
+                    fail_at='memory_traces',
+                    fail_failure_observability=True,
+                )
+                observed = case['observed']
+
+                self.assertIsNone(case['raised_exception'])
+                self.assertEqual(observed['save_calls'], 1)
+                self.assertEqual(observed['failure_admin_log_calls'], 1)
+                self.assertEqual(len(observed['logger_error_calls']), 1)
+                if case['stream_req']:
+                    self.assertEqual(case['terminal']['event'], 'done')
+                else:
+                    self.assertEqual(case['result']['status'], 200)
+
+    def test_primary_persistence_negative_result_stays_fail_closed_on_all_surfaces(self) -> None:
+        for surface in (
+            'normal_non_stream',
+            'normal_stream',
+            'override_non_stream',
+            'override_stream',
+        ):
+            with self.subTest(surface=surface):
+                case = self._exercise_post_persistence_surface(
+                    surface=surface,
+                    persistence='negative',
+                )
+                observed = case['observed']
+
+                self.assertIsNone(case['raised_exception'])
+                self.assertEqual(observed['save_calls'], 1)
+                self.assertEqual(observed['post_effect_sequence'], [])
+                self.assertEqual(observed['durable_snapshots'], [])
+                if case['stream_req']:
+                    self.assertEqual(
+                        case['terminal'],
+                        {
+                            'event': 'error',
+                            'error_code': 'conversation_persist_failed',
+                        },
+                    )
+                else:
+                    self.assertEqual(case['result']['status'], 503)
+                    self.assertFalse(case['result']['payload']['ok'])
+
+    def test_primary_persistence_exception_stays_fail_closed_on_all_surfaces(self) -> None:
+        for surface in (
+            'normal_non_stream',
+            'normal_stream',
+            'override_non_stream',
+            'override_stream',
+        ):
+            with self.subTest(surface=surface):
+                case = self._exercise_post_persistence_surface(
+                    surface=surface,
+                    persistence='raises',
+                )
+                observed = case['observed']
+
+                self.assertEqual(observed['post_effect_sequence'], [])
+                self.assertEqual(observed['durable_snapshots'], [])
+                if surface == 'normal_stream':
+                    self.assertIsNone(case['raised_exception'])
+                    self.assertEqual(
+                        case['terminal'],
+                        {
+                            'event': 'error',
+                            'error_code': 'conversation_persist_failed',
+                        },
+                    )
+                    self.assertEqual(observed['save_calls'], 2)
+                else:
+                    self.assertIsInstance(case['raised_exception'], RuntimeError)
+                    expected_save_calls = 2 if surface == 'normal_non_stream' else 1
+                    self.assertEqual(observed['save_calls'], expected_save_calls)
+
     def test_run_llm_exchange_sync_success_keeps_json_contract(self) -> None:
         events = []
         observed = {

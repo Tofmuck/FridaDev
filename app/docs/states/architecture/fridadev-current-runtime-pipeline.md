@@ -81,7 +81,8 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
 [Canonical persistence]
   |- save_conversation() returns atomic catalog/messages proof
   |- done  -> full assistant message + verified save_conversation(updated_at)
-  |- done  -> traces, identity writes and reactivation only after verified canonical save
+  |- done  -> post-save AssistantText, traces and identity effects attempted independently
+  |           and fail-open only after verified canonical save
   |- error -> assistant_turn interrupted marker only when the marker save is verified
   |- persist failure -> terminal error conversation_persist_failed without updated_at
   |- interrupted turns excluded from prompt window and traces
@@ -121,8 +122,29 @@ FR: seules les fins `done` canonisees et verifiees peuvent alimenter les traces 
 EN: only verified canonical `done` turns are allowed to feed derived memory traces; derived identity writes use the same barrier.
 
 5. La barriere post-save est commune a JSON et streaming.
-FR: sur le chemin JSON nominal, la sauvegarde assistant finale precede `AssistantText`, les traces, les ecritures identitaires et les reactivations. Sur le chemin streaming nominal, la sauvegarde assistant finale precede aussi ces derivations et le terminal `done(updated_at)`. L'ordre relatif entre traces et identite peut differer apres cette barriere; il ne doit pas etre interprete comme une difference de canonisation.
-EN: on the nominal JSON path, the final assistant save precedes `AssistantText`, traces, identity writes, and reactivations. On the nominal streaming path, the final assistant save also precedes these derivations and the `done(updated_at)` terminal. The relative order between traces and identity can differ after that barrier; it must not be interpreted as a canonicalization difference.
+FR: sur les chemins JSON et streaming, normaux ou
+`AssistantResponseOverride`, la sauvegarde assistant finale precede
+`AssistantText`, les traces, les ecritures identitaires et les reactivations.
+Une sauvegarde absente, negative ou levee reste fail-closed et n'ouvre aucun de
+ces derives. Apres preuve positive, chaque derive est tente une fois et isole:
+sa panne, comme celle du logger ou du journal admin qui tente de l'observer, ne
+change plus le succes JSON ou le terminal `done`, ne declenche aucun second
+save et ne modifie pas le message canonique. L'observation reste bornee a un
+nom d'effet stable, au `conversation_id`, a la classe d'erreur et a un reason
+code content-free. L'ordre relatif entre traces et identite peut differer apres
+cette barriere; il ne doit pas etre interprete comme une difference de
+canonisation.
+EN: on JSON and streaming paths, whether normal or
+`AssistantResponseOverride`, the final assistant save precedes
+`AssistantText`, traces, identity writes, and reactivations. A missing,
+negative, or raised save remains fail-closed and starts none of these derived
+effects. After positive proof, each derived effect is attempted once and
+isolated: its failure, like a failure of the logger or admin journal used to
+observe it, no longer changes JSON success or the `done` terminal, triggers no
+second save, and does not alter the canonical message. Observation is bounded
+to a stable effect name, `conversation_id`, error class, and content-free
+reason code. The relative order between traces and identity may differ after
+that barrier; it must not be interpreted as a canonicalization difference.
 
 6. Les documents actifs de conversation ne sont pas de la memoire.
 FR: `active_document` est un etat serveur temporaire scope conversation. Il accepte les formats textuels supportes et certains PDF scannes apres OCR V1 bornee via Stirling (`document_ocr_required` -> PDF OCRise -> extracteur FridaDev -> `complete`). Il est injecte dans une lane prompt dediee apres la decision de resume, entier ou absent. Il ne compte pas dans le seuil de resume, ne cree pas de traces memoire, n'alimente pas Identity et n'est pas Biblio.

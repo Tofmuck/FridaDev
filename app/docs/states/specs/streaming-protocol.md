@@ -116,6 +116,11 @@ Les invariants suivants sont normatifs:
 - `done` et `error` sont mutuellement exclusifs pour un meme flux;
 - `updated_at` est une metadata terminale post-stream, pas un signal inline pre-body;
 - le frontend ne DOIT pas inventer une cause plus precise que celle observable localement.
+- la preuve positive de `save_conversation()` fixe la frontiere de succes du
+  tour: les derives executes ensuite ne peuvent plus remplacer `done` par
+  `error`;
+- l'echec de la sauvegarde canonique elle-meme reste fail-closed et ne peut pas
+  etre absorbe par la politique fail-open des derives.
 
 ## 6. Taxonomie minimale d'erreurs
 
@@ -264,6 +269,14 @@ Si le stream se termine en `done`:
 - la conversation est sauvegardee avec ce meme `updated_at`;
 - le terminal `done` ne porte `updated_at` que si `save_conversation()` retourne une preuve positive atomique catalog/messages;
 - `save_new_traces()`, les ecritures identitaires derivees et les reactivations identitaires ne peuvent ensuite s'executer qu'apres cette preuve.
+- apres cette preuve, `AssistantText`, les traces, les ecritures identitaires
+  et les reactivations sont tentees une fois et independamment; l'echec de
+  l'une n'empeche pas les suivantes et ne change ni le message assistant deja
+  persiste, ni son timestamp, ni le terminal `done`;
+- l'observation d'un tel echec reste content-free et fail-open: elle porte au
+  plus le nom stable de l'effet, le `conversation_id`, la classe d'erreur et
+  un reason code; une panne du logger ou du journal admin ne remonte pas dans
+  le flux.
 
 ### 10.2 `error`
 
@@ -306,8 +319,10 @@ Les marqueurs `assistant_turn.status="interrupted"`:
 Sequence attendue:
 1. contenu visible zero ou plusieurs fois;
 2. persistance prouvee du message assistant complet;
-3. terminal `done` avec `updated_at`;
-4. `updated_at` exploitable cote frontend.
+3. tentative independante des derives post-persistence, sans effet sur le
+   statut public en cas de panne;
+4. terminal `done` avec `updated_at`;
+5. `updated_at` exploitable cote frontend.
 
 ### 11.2 Erreur upstream mid-stream
 

@@ -3255,7 +3255,13 @@ plateforme et ne rouvre pas Sauron.
     `P2-CEL-UPLOAD-LIMITS-01` reste ferme;
     `P3-CEL-DOCUMENT-MULTIPART-EXACT-LIMIT-CONTRACT-01` est ferme par la
     correction docs/tests du 2026-07-22.
-- [ ] Lot 10C: frontiere fail-open des effets auxiliaires post-persistence.
+- [x] Lot 10C ferme le 2026-07-22: la persistence assistant canonique reste
+  fail-closed sur les quatre surfaces normal/override et JSON/stream. Apres sa
+  preuve positive, `AssistantText`, traces, ecritures et reactivations Identity
+  sont tentees independamment et fail-open; leur observation content-free est
+  elle-meme `never raises`. Les pannes injectees conservent HTTP 200 ou le
+  terminal `done`, un unique message durable et aucun second save.
+  `P2-CEL-CHAT-POST-PERSIST-AUX-01` est ferme.
 - [ ] Lot 10D: URL runtime commune du LLM principal, stream et non-stream.
 - [ ] Lot 10E: prompts critiques fail-closed.
 - [ ] Lot 10F: requalification contractuelle des exceptions brutes en logs,
