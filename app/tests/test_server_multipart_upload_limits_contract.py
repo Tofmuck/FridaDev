@@ -40,7 +40,7 @@ class _TrackingInput(io.BytesIO):
         return count
 
 
-def _multipart_body(total_size: int) -> tuple[bytes, str]:
+def _multipart_file_body(file_size: int) -> tuple[bytes, str]:
     boundary = "lot10b-boundary"
     header = (
         f"--{boundary}\r\n"
@@ -48,10 +48,18 @@ def _multipart_body(total_size: int) -> tuple[bytes, str]:
         "Content-Type: text/plain\r\n\r\n"
     ).encode("ascii")
     footer = f"\r\n--{boundary}--\r\n".encode("ascii")
-    payload_size = int(total_size) - len(header) - len(footer)
+    payload_size = int(file_size)
+    if payload_size < 0:
+        raise AssertionError("test multipart file size must be non-negative")
+    return header + (b"x" * payload_size) + footer, f"multipart/form-data; boundary={boundary}"
+
+
+def _multipart_body(total_size: int) -> tuple[bytes, str]:
+    envelope, _content_type = _multipart_file_body(0)
+    payload_size = int(total_size) - len(envelope)
     if payload_size < 1:
         raise AssertionError("test multipart limit is too small")
-    return header + (b"x" * payload_size) + footer, f"multipart/form-data; boundary={boundary}"
+    return _multipart_file_body(payload_size)
 
 
 class ServerMultipartUploadLimitsContractTests(unittest.TestCase):
@@ -135,6 +143,10 @@ class ServerMultipartUploadLimitsContractTests(unittest.TestCase):
             observed["file_present"] = file_obj is not None
             if file_obj is None:
                 return {"ok": False, "error": "fichier requis"}, 400
+            file_stream = getattr(file_obj, "stream", None)
+            getbuffer = getattr(file_stream, "getbuffer", None)
+            if callable(getbuffer):
+                observed["file_bytes"] = len(getbuffer())
             close = getattr(file_obj, "close", None)
             if callable(close):
                 close()
@@ -192,6 +204,70 @@ class ServerMultipartUploadLimitsContractTests(unittest.TestCase):
                     self.assertTrue(observed.get("called"))
                     self.assertTrue(observed.get("file_present"))
                     self.assertEqual(stream.bytes_read, body_size)
+
+    def test_document_file_equal_to_body_cap_is_rejected_because_multipart_envelope_counts(self) -> None:
+        limit = 1024
+        file_at_limit_body, content_type = _multipart_file_body(limit)
+        body_at_limit, _ = _multipart_body(limit)
+        envelope_bytes = len(file_at_limit_body) - limit
+        self.assertGreater(envelope_bytes, 0)
+        self.assertGreater(len(file_at_limit_body), limit)
+
+        for route_name, path, module, function_name, reason_code in self._route_cases()[:2]:
+            with self.subTest(route=route_name, case="file_at_limit"):
+                observed: dict[str, object] = {}
+                with ExitStack() as stack:
+                    stack.enter_context(mock.patch.dict(self.server.app.config, {"MAX_CONTENT_LENGTH": limit}))
+                    stack.enter_context(
+                        mock.patch.object(
+                            self.server.active_document_upload_service,
+                            "ACTIVE_DOCUMENT_UPLOAD_MAX_CONTENT_LENGTH",
+                            limit,
+                        )
+                    )
+                    stack.enter_context(
+                        mock.patch.object(
+                            self.server.workspace_files_service,
+                            "WORKSPACE_FILE_UPLOAD_MAX_CONTENT_LENGTH",
+                            limit,
+                        )
+                    )
+                    stack.enter_context(
+                        mock.patch.object(module, function_name, side_effect=self._fake_upload(route_name, observed))
+                    )
+                    response, stream = self._dispatch(
+                        path,
+                        file_at_limit_body,
+                        content_type,
+                        content_length=str(len(file_at_limit_body)),
+                        input_terminated=False,
+                    )
+
+                self.assertEqual(response.status_code, 413)
+                self.assertEqual(response.get_json()["reason_code"], reason_code)
+                self.assertFalse(observed.get("called", False))
+                self.assertEqual(stream.bytes_read, 0)
+
+            with self.subTest(route=route_name, case="body_at_limit"):
+                observed = {}
+                with ExitStack() as stack:
+                    stack.enter_context(mock.patch.dict(self.server.app.config, {"MAX_CONTENT_LENGTH": limit}))
+                    stack.enter_context(
+                        mock.patch.object(module, function_name, side_effect=self._fake_upload(route_name, observed))
+                    )
+                    response, stream = self._dispatch(
+                        path,
+                        body_at_limit,
+                        content_type,
+                        content_length=str(limit),
+                        input_terminated=False,
+                    )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(observed.get("called"))
+                self.assertEqual(observed.get("file_bytes"), limit - envelope_bytes)
+                self.assertLess(observed["file_bytes"], limit)
+                self.assertEqual(stream.bytes_read, limit)
 
     def test_wsgi_boundary_rejects_limit_plus_one_with_route_specific_errors(self) -> None:
         limit = 1024

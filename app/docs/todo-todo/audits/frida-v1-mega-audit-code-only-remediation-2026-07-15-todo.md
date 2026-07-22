@@ -299,9 +299,13 @@ Correction bornee:
 - `app/core/document_upload_reader.py` lit seulement les uploads documents
   actifs/workspace, par blocs, jusqu'a la limite pertinente plus un octet;
   Whisper reste sur sa lecture bornee historique et n'est pas modifie;
-- les deux services acceptent la limite exacte, refusent `limite + 1`, ne
-  retournent jamais le prefixe observe et n'appellent aucun effet aval apres
-  refus;
+- les deux lecteurs defensifs acceptent leur limite exacte lorsqu'ils sont
+  testes seuls, refusent `limite + 1`, ne retournent jamais le prefixe
+  observe et n'appellent aucun effet aval apres refus;
+- le plafond du corps et le plafond lecteur portent sur deux objets distincts:
+  l'enveloppe multipart compte dans les `40 MiB` du corps, donc un fichier de
+  `40 MiB` est refuse avant service et la taille fichier uploadable de bout en
+  bout est strictement inferieure d'une quantite dependant de l'enveloppe;
 - le controle workspace post-materialisation devenu mort est supprime.
 
 Integrite preservee:
@@ -324,19 +328,31 @@ Preuves sans reseau:
 - controle Flask/Werkzeug apres configuration: les memes cas s'arretent au
   plafond et rendent HTTP 413; une longueur mensongere plus petite ne permet
   pas de lire au-dela de la longueur exposee par WSGI;
-- suite ciblee nouvelle: `12/12` tests;
-- suites obligatoires routes/services/extracteur/lanes: `121/121` tests;
+- suite ciblee nouvelle, preuve de composition incluse: `13/13` tests;
+- suites obligatoires routes/services/extracteur/lanes: `122/122` tests;
 - revalidation Whisper inchange: `24/24` tests;
 - suite documentaire elargie: `54/56` tests; les deux erreurs
   d'observabilite image active sont reproduites a l'identique au HEAD initial
   et ne traversent ni l'upload corrige ni les lanes textuelles;
-- decouverte Python complete comparee: HEAD initial `2465` tests, patch `2477`
+- decouverte Python complete comparee: HEAD initial `2465` tests, patch `2478`
   tests, avec exactement les memes `22` echecs et `16` erreurs hors Lot 10B;
-  les `12` tests ajoutes expliquent seuls l'augmentation et sont tous verts;
+  les `13` tests ajoutes expliquent seuls l'augmentation et sont tous verts;
 - streams instrumentes: au plus `limite + 1` octet lu et reste du flux non
   consomme apres refus;
 - aucun reseau externe, aucun contenu utilisateur et aucune donnee persistante
   operateur utilises.
+
+Correction P3 de composition multipart - 2026-07-22:
+
+- l'audit read-only a valide la fermeture P2 et identifie la confusion
+  documentaire entre le corps multipart total et le fichier isole;
+- les contrats distinguent desormais le plafond du corps et le plafond
+  defensif du lecteur sans creer de nouvelle valeur produit;
+- une preuve WSGI composee montre qu'un fichier egal au plafond produit un
+  corps superieur, est refuse avant service, tandis qu'un corps total egal au
+  plafond ne contient qu'un fichier strictement plus petit;
+- `P3-CEL-DOCUMENT-MULTIPART-EXACT-LIMIT-CONTRACT-01` est ferme par correction
+  docs/tests only; `P2-CEL-UPLOAD-LIMITS-01` et le Lot 10B restent fermes.
 
 Critere de sortie:
 aucune voie d'upload auditee ne consomme sans borne le corps effectif; les

@@ -388,10 +388,15 @@ Regles runtime:
 - `app/server.py` borne le corps multipart a `40 MiB` (`41943040` octets)
   avec `MAX_CONTENT_LENGTH` Flask avant materialisation non bornee, y compris
   pour un flux WSGI termine sans `Content-Length` exploitable;
-- le service workspace lit ensuite le fichier par blocs jusqu'a `40 MiB + 1
-  octet` au plus: `40 MiB` exacts sont acceptes, `40 MiB + 1 octet` est refuse
-  avant extraction, validation, ecriture disque, persistence locale ou appel
+- le service workspace applique ensuite un plafond defensif propre au lecteur
+  fichier: il lit par blocs jusqu'a `40 MiB + 1 octet` au plus, accepte `40
+  MiB` exacts lorsqu'il est teste seul et refuse `limite + 1` avant
+  extraction, validation, ecriture disque, persistence locale ou appel
   Nextcloud;
+- ce bord lecteur n'est pas atteignable par un fichier de `40 MiB` dans une
+  requete reelle: l'enveloppe multipart compte dans le plafond du corps `40
+  MiB`, donc la taille fichier effectivement admissible est strictement
+  inferieure et depend de l'enveloppe;
 - le prefixe observe lors d'un refus n'est jamais transmis comme document;
 - le sous-dossier standard `Documents` est verifie en `PROPFIND` Depth 0 et doit
   etre une collection WebDAV;
@@ -431,11 +436,12 @@ Regles runtime:
   persistance applicative et n'est jamais expose dans les logs, JSONL,
   observabilite technique ou payloads techniques.
 
-Le plafond HTTP/fichier `40 MiB`, le fallback visuel `25 MiB` / `25 pages`,
-les limites OCR et la fenetre de contexte restent distincts. Une selection
-conversationnelle continue d'injecter le document entier ou de l'exclure
-entierement; l'exclusion maintient le tour et permet a Frida de dire honnetement
-qu'elle ne dispose pas du document.
+Le plafond du corps HTTP `40 MiB`, le plafond defensif du lecteur fichier `40
+MiB`, le fallback visuel `25 MiB` / `25 pages`, les limites OCR et la fenetre
+de contexte restent distincts. Une selection conversationnelle continue
+d'injecter le document entier ou de l'exclure entierement; l'exclusion
+maintient le tour et permet a Frida de dire honnetement qu'elle ne dispose pas
+du document.
 
 Preuve Lot 3:
 

@@ -3246,10 +3246,15 @@ plateforme et ne rouvre pas Sauron.
   - [x] Reliquat Lot 10B ferme le 2026-07-22: Flask
     `MAX_CONTENT_LENGTH=40 MiB` borne les corps avant materialisation, y compris
     sans longueur fiable a la frontiere WSGI; documents actifs et workspace
-    lisent par blocs jusqu'a `40 MiB + 1 octet`, acceptent la limite exacte et
-    refusent au-dessus avant extracteur/OCR/activation/stockage/Nextcloud. Les
-    payloads fake prouvent document entier ou absent, tour maintenu et reponse
-    honnete de Frida. `P2-CEL-UPLOAD-LIMITS-01` est ferme.
+    lisent par blocs jusqu'a `40 MiB + 1 octet`. Ce plafond lecteur defensif
+    accepte sa limite exacte lorsqu'il est teste seul; de bout en bout,
+    l'enveloppe multipart compte dans le plafond du corps et rend un fichier de
+    `40 MiB` non uploadable. La preuve composee verrouille cette distinction
+    sans nouveau plafond produit. Les payloads fake prouvent document entier
+    ou absent, tour maintenu et reponse honnete de Frida.
+    `P2-CEL-UPLOAD-LIMITS-01` reste ferme;
+    `P3-CEL-DOCUMENT-MULTIPART-EXACT-LIMIT-CONTRACT-01` est ferme par la
+    correction docs/tests du 2026-07-22.
 - [ ] Lot 10C: frontiere fail-open des effets auxiliaires post-persistence.
 - [ ] Lot 10D: URL runtime commune du LLM principal, stream et non-stream.
 - [ ] Lot 10E: prompts critiques fail-closed.

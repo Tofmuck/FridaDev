@@ -137,20 +137,25 @@ FR: Flask applique `MAX_CONTENT_LENGTH=40 MiB` aux corps applicatifs. Avec
 Flask `3.0.3` et Werkzeug `3.1.8`, un flux WSGI termine sans longueur fiable
 est limite a cette valeur; sans longueur ni signal de terminaison, le flux est
 vide par securite. Les services documents actifs et workspace lisent ensuite
-par blocs jusqu'a `40 MiB + 1 octet` au plus. La limite exacte est acceptee;
-au-dessus, aucun extracteur, OCR, stockage, activation ou Nextcloud n'est
-appele. Cette frontiere ne modifie pas les plafonds image, PDF visuel/OCR,
-provider ou prompt. Le document reste entier ou absent du tour, et le tour
-continue avec un signal d'exclusion honnete.
+par blocs jusqu'a `40 MiB + 1 octet` au plus. Ce plafond lecteur defensif
+accepte sa limite exacte lorsqu'il est teste seul, mais le plafond du
+corps inclut l'enveloppe multipart: un fichier de `40 MiB` n'est donc pas
+uploadable de bout en bout. Au-dessus des bornes applicables, aucun extracteur,
+OCR, stockage, activation ou Nextcloud n'est appele. Cette frontiere ne
+modifie pas les plafonds image, PDF visuel/OCR, provider ou prompt. Le document
+reste entier ou absent du tour, et le tour continue avec un signal d'exclusion
+honnete.
 EN: Flask applies `MAX_CONTENT_LENGTH=40 MiB` to application request bodies.
 With Flask `3.0.3` and Werkzeug `3.1.8`, a terminated WSGI stream without a
 reliable length is limited to that value; without a length or termination
 signal, the safe fallback exposes an empty stream. Active-document and
 workspace services then read in blocks up to `40 MiB + 1 byte`. The exact
-limit is accepted; above it no extractor, OCR, storage, activation, or
-Nextcloud call runs. Image, visual/OCR PDF, provider, and prompt limits remain
-separate. A document remains whole or absent from the turn, which continues
-with an honest exclusion signal.
+reader limit is accepted when that defensive reader is exercised in isolation,
+but the request-body limit includes the multipart envelope: a `40 MiB` file is
+therefore not uploadable end to end. Above the applicable bounds no extractor,
+OCR, storage, activation, or Nextcloud call runs. Image, visual/OCR PDF,
+provider, and prompt limits remain separate. A document remains whole or
+absent from the turn, which continues with an honest exclusion signal.
 
 7. Les surfaces operateur ne sont pas des pipelines paralleles.
 FR: `/dashboard`, `/log`, `/hermeneutic-admin`, `/identity`, `/memory-admin` et `/admin` lisent le runtime et ses derives; elles ne remplacent pas le pipeline principal.

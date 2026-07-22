@@ -369,9 +369,15 @@ Limites source upload V0:
   serveur WSGI signale un flux termine;
 - sans longueur exploitable ni signal WSGI de terminaison, Werkzeug expose un
   flux vide par securite au lieu de lire un corps potentiellement infini;
-- apres parsing borne, le service d'upload lit le fichier par blocs jusqu'a
-  `40 MiB + 1 octet` au plus: la limite exacte est acceptee, `limite + 1` est
-  refusee avant extraction, OCR, activation ou stockage d'etat;
+- apres parsing borne, le service d'upload applique un plafond defensif propre
+  au lecteur fichier: il lit par blocs jusqu'a `40 MiB + 1 octet` au plus; ce
+  lecteur accepte `40 MiB` exacts lorsqu'il est teste seul et refuse
+  `limite + 1` avant extraction, OCR, activation ou stockage d'etat;
+- ce bord lecteur n'est pas une promesse qu'un fichier de `40 MiB` est
+  uploadable de bout en bout: l'enveloppe multipart compte dans le plafond du
+  corps `40 MiB`, donc un tel fichier produit un corps trop grand et est refuse
+  par Flask; la taille fichier effectivement admissible est strictement
+  inferieure a `40 MiB` d'une quantite dependant de l'enveloppe;
 - un refus de taille ne transforme jamais le prefixe lu en document valide;
 - dimensions minimales: `32 x 32 px`;
 - dimension maximale par cote: `16000 px`;
@@ -387,12 +393,14 @@ Limite d'injection provider V0:
 - le chat continue sans l'image et avec un signal compact d'exclusion;
 - aucun downscale, compression, conversion ou URL temporaire n'est produit silencieusement en V0.
 
-Ces limites restent de nature distincte. Le plafond HTTP/fichier `40 MiB` ne
-remplace ni le plafond source image `32 MiB`, ni le plafond provider image/PDF
-visuel `25 MiB`, ni les limites OCR `25 MiB` / `25 pages`, ni la regle
-d'admission prompt. Un fichier accepte est transmis byte pour byte complet a
-l'extracteur ou a l'activation prevue; la lane conserve ensuite la regle
-produit: document entier ou absent, tour maintenu, reponse honnete de Frida.
+Ces limites restent de nature distincte. Le plafond du corps HTTP `40 MiB` et
+le plafond defensif du lecteur fichier `40 MiB` portent sur deux objets
+differents; ils ne remplacent ni le plafond source image `32 MiB`, ni le
+plafond provider image/PDF visuel `25 MiB`, ni les limites OCR `25 MiB` / `25
+pages`, ni la regle d'admission prompt. Un fichier accepte est transmis byte
+pour byte complet a l'extracteur ou a l'activation prevue; la lane conserve
+ensuite la regle produit: document entier ou absent, tour maintenu, reponse
+honnete de Frida.
 
 Reason codes image initiaux:
 

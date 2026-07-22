@@ -501,12 +501,16 @@ Lot 2 livre le 2026-05-20:
 - `storage_key` interne construit avec `workspace_folder.id` + `workspace_file.id`, jamais avec les noms humains;
 - routes `GET/POST/DELETE /api/workspace-folders/<folder_id>/files`;
 - upload multipart d'un fichier de repertoire;
-- reutilisation du plafond d'upload actif `40 MiB`, applique comme
-  `MAX_CONTENT_LENGTH` Flask avant materialisation multipart meme sans longueur
-  fiable, puis comme lecture fichier par blocs jusqu'a `40 MiB + 1 octet`;
-- acceptation de la limite fichier exacte et refus de `limite + 1` avant
-  extraction, ecriture disque, persistence ou Nextcloud, sans reutiliser le
-  prefixe lu;
+- plafond du corps multipart `40 MiB`, applique comme `MAX_CONTENT_LENGTH`
+  Flask avant materialisation meme sans longueur fiable;
+- plafond defensif distinct du lecteur fichier `40 MiB`, observe par blocs
+  jusqu'a `40 MiB + 1 octet`: le lecteur isole accepte sa limite exacte et
+  refuse `limite + 1` avant extraction, ecriture disque, persistence ou
+  Nextcloud, sans reutiliser le prefixe lu;
+- un fichier de `40 MiB` n'est pas uploadable de bout en bout puisque son
+  enveloppe multipart fait depasser le plafond du corps; la taille fichier
+  effectivement admissible est strictement inferieure et depend de
+  l'enveloppe;
 - reutilisation de `active_document_text_extraction` pour `TXT`, `MD`, `PDF`, `DOCX`, `ODT`;
 - reutilisation de `active_document_image_validation` pour `PNG`, `JPEG`, `WEBP`, avec refus GIF V0;
 - stockage metadata content-free: nom logique, MIME, extension, taille, hash court, dimensions image, statut, reason code;
