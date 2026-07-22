@@ -329,6 +329,23 @@ class ValidationAgentTests(unittest.TestCase):
         validation_agent.runtime_settings.get_validation_agent_model_settings = self.original_runtime_settings_getter
         validation_agent.chat_turn_logger.emit = self.original_chat_turn_emit
 
+    def test_missing_prompt_keeps_fail_open_contract_without_provider(self) -> None:
+        validation_agent.prompt_loader.read_prompt_text = lambda _path: ''
+        requests_module = _FakeRequests([])
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(),
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.status, 'error')
+        self.assertEqual(result.decision_source, 'fail_open')
+        self.assertEqual(result.reason_code, 'prompt_missing')
+        self.assertEqual(requests_module.calls, [])
+
     def test_build_validated_output_rejects_invalid_primary_verdict(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid_primary_verdict"):
             validation_agent.build_validated_output(

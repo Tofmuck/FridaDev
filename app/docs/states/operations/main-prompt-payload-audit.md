@@ -10,12 +10,39 @@ Il distingue trois niveaux:
 
 Le prompt effectif n'est donc pas seulement `app/prompts/*.txt`: c'est le résultat ordonné du pipeline de chat, des sélections documentaires et des garde-fous injectés au tour.
 
+## Disponibilité et criticité des prompts
+
+`app/core/prompt_loader.py` classe une lecture comme `available`,
+`unavailable`, `undecodable` ou `empty`. Le lecteur historique utilisé par les
+surfaces admin reste souple et retourne un texte vide lorsque le fichier n'est
+pas utilisable. La criticité est appliquée au consommateur, pas au démarrage
+global de FridaDev.
+
+| Prompt | Consommateur runtime actif | Criticité | Comportement si absent, illisible ou vide | Provider appelé |
+| --- | --- | --- | --- | --- |
+| `main_system` | `/api/chat`; création `/api/conversations` | Constitutif du chat | `503 critical_prompt_unavailable` avant résolution ou création de conversation; identifiant stable `main_system` | Non |
+| `main_hermeneutical` | `/api/chat` | Constitutif du chat | Même refus avant résolution de session; non requis par la simple création de conversation | Non |
+| `summary_system` | `summarizer.maybe_summarize()` | Requis pour le résumé seulement | Résumé ignoré avec `False`; aucun faux résumé ni marquage de messages | Non |
+| `web_reformulation` | `web_search.reformulate()` | Requis pour la reformulation seulement | Requête utilisateur originale conservée à l'identique; la recherche peut poursuivre son repli local | Non |
+| `identity_mutable_judge_v2` | juge Identity mutable | Requis pour le juge seulement | Résultat technique local `runtime_safety_violation`; aucune écriture Identity | Non |
+| `stimmung_agent` | agent Stimmung | Secondaire fail-open local | Résultat local `prompt_missing`; le chat continue | Non |
+| `validation_agent` | agent Validation | Secondaire fail-open local | Validation fail-open `prompt_missing`; le chat continue | Non |
+| `arbiter` | arbitre Memory | Secondaire fail-open local | Sélection déterministe `prompt_missing` | Non |
+| `identity_extractor` | extracteur Identity | Secondaire fail-open local | Liste vide | Non |
+| `identity_periodic_agent` | Aucun consommateur de prompt actif | Legacy pré-refactor | Aucun blocage import, validation offline ou chat | Non |
+| `identity_mutable_rewriter` | Aucun consommateur de prompt actif; rewriter retiré | Legacy | Aucun blocage import, validation offline ou chat | Non |
+| `identity_mutable_judge` v1 | Aucun consommateur actif | Legacy | Aucun blocage import, validation offline ou chat | Non |
+
+Aucun consommateur modèle actif n'accepte donc légitimement un prompt fichier
+vide. Les trois artefacts legacy ne sont pas réactivés et ne sont pas des
+conditions de disponibilité.
+
 ## Ordre du pipeline effectif
 
 | Ordre | Source | Responsable | Condition | Forme finale OpenRouter | Contenu / persistance |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Requête utilisateur et conversation courante | `app/core/chat_service.py::chat_response` | Toujours | Le message utilisateur est ajouté à la conversation avant construction du prompt | Contient le texte utilisateur; persisté comme message de conversation après le tour |
-| 2 | Prompts sources | `app/core/chat_prompt_context.py::resolve_backend_prompts`, `app/prompts/main_system.txt`, `app/prompts/main_hermeneutical.txt` | Toujours | Premier message `role=system` après augmentation | Source stable du dépôt; pas du contenu utilisateur |
+| 1 | Prompts sources constitutifs | `app/core/chat_service.py::chat_response`, `app/core/chat_prompt_context.py::resolve_backend_prompts` | Les deux fichiers doivent être utilisables | Refus `503` avant `resolve_chat_session()` sinon; premier message `role=system` après augmentation sur le chemin nominal | Source stable du dépôt; aucune mutation de conversation avant la preuve de disponibilité |
+| 2 | Requête utilisateur et conversation courante | `app/core/chat_session_flow.py`, puis `chat_service` | Après validation des prompts constitutifs | Le message utilisateur est ajouté à la conversation avant construction du payload | Contient le texte utilisateur; persisté comme message de conversation après le tour |
 | 3 | Bloc temps `NOW` / timezone | `app/core/chat_prompt_context.py::build_augmented_system`, `app/core/hermeneutic_node/inputs/time_input.py` | Toujours | Ajouté au message `system` principal | Runtime content-free; Frida reçoit une référence temporelle, elle ne "sent" pas le temps |
 | 4 | Identité | `app/core/chat_prompt_context.py::build_augmented_system`, module `identity` injecté par `chat_service` | Toujours si bloc identité disponible | Ajoutée au message `system` principal | Contient identité statique/mutable sélectionnée; issue du stockage identité, pas du tour brut |
 | 5 | Résumé conversationnel potentiel | `app/memory/summarizer.py::maybe_summarize`, puis `app/core/conversations_prompt_window.py::build_prompt_messages` | Si un résumé actif existe après éventuelle mise à jour | Message séparé `role=system` | Contient résumé conversationnel persisté; le prompt n'inclut que le résumé actif utile |

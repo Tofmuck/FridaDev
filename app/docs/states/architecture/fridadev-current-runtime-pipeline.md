@@ -31,6 +31,11 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
 [server.py / /api/chat]
   |- begin_turn + public chat entrypoint
   v
+[Required main prompt gate / chat_service]
+  |- main_system and main_hermeneutical must be readable, decodable and non-empty
+  |- failure -> JSON 503 critical_prompt_unavailable
+  |- failure -> no resolve_chat_session, conversation mutation, secret or provider call
+  v
 [chat_session_flow]
   |- validate message / conversation_id / input_mode
   |- create or reload thread
@@ -58,6 +63,7 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   |- stimmung_agent
   |- primary_node
   |- validation_agent
+  |- missing secondary prompt -> local fail-open result, no secondary provider call
   |- build [JUGEMENT HERMENEUTIQUE]
   v
 [Prompt guards + optional context lanes]
@@ -124,7 +130,20 @@ EN: `done` stores a full canonical assistant message only when atomic catalog/me
 FR: seules les fins `done` canonisees et verifiees peuvent alimenter les traces memoire derivees; les ecritures identitaires derivees suivent la meme barriere.
 EN: only verified canonical `done` turns are allowed to feed derived memory traces; derived identity writes use the same barrier.
 
-5. La barriere post-save est commune a JSON et streaming.
+5. La disponibilite des prompts est verifiee a leur frontiere d'usage.
+FR: les deux prompts constitutifs refusent `/api/chat` avant toute resolution de
+session; `main_system` refuse aussi la creation `/api/conversations` avant
+`new_conversation()`. Les prompts de resume, reformulation Web et juge Identity
+mutable ne bloquent que leur fonction et n'appellent aucun provider lorsqu'ils
+sont indisponibles. Les prompts legacy ne sont pas des preconditions de
+demarrage ou de validation offline.
+EN: the two constitutive prompts reject `/api/chat` before session resolution;
+`main_system` also rejects `/api/conversations` before `new_conversation()`.
+Summary, Web reformulation and mutable Identity judge prompts only gate their
+own function and never call a provider when unavailable. Legacy prompts are
+not startup or offline-validation preconditions.
+
+6. La barriere post-save est commune a JSON et streaming.
 FR: sur les chemins JSON et streaming, normaux ou
 `AssistantResponseOverride`, la sauvegarde assistant finale precede
 `AssistantText`, les traces, les ecritures identitaires et les reactivations.
@@ -149,7 +168,7 @@ to a stable effect name, `conversation_id`, error class, and content-free
 reason code. The relative order between traces and identity may differ after
 that barrier; it must not be interpreted as a canonicalization difference.
 
-6. Les documents actifs de conversation ne sont pas de la memoire.
+7. Les documents actifs de conversation ne sont pas de la memoire.
 FR: `active_document` est un etat serveur temporaire scope conversation. Il accepte les formats textuels supportes et certains PDF scannes apres OCR V1 bornee via Stirling (`document_ocr_required` -> PDF OCRise -> extracteur FridaDev -> `complete`). Il est injecte dans une lane prompt dediee apres la decision de resume, entier ou absent. Il ne compte pas dans le seuil de resume, ne cree pas de traces memoire, n'alimente pas Identity et n'est pas Biblio.
 EN: `active_document` is temporary conversation-scoped server state. It accepts supported textual formats and eligible scanned PDFs after bounded OCR V1 through Stirling (`document_ocr_required` -> OCRized PDF -> FridaDev extractor -> `complete`). It is injected into a dedicated prompt lane after the summary decision, whole or absent. It does not count toward the summary threshold, does not create memory traces, does not feed Identity, and is not Biblio.
 
@@ -182,15 +201,15 @@ OCR, storage, activation, or Nextcloud call runs. Image, visual/OCR PDF,
 provider, and prompt limits remain separate. A document remains whole or
 absent from the turn, which continues with an honest exclusion signal.
 
-7. Les surfaces operateur ne sont pas des pipelines paralleles.
+8. Les surfaces operateur ne sont pas des pipelines paralleles.
 FR: `/dashboard`, `/log`, `/hermeneutic-admin`, `/identity`, `/memory-admin` et `/admin` lisent le runtime et ses derives; elles ne remplacent pas le pipeline principal.
 EN: `/dashboard`, `/log`, `/hermeneutic-admin`, `/identity`, `/memory-admin`, and `/admin` inspect runtime state and derivatives; they do not replace the main pipeline.
 
-8. La Biblio native reste separee.
+9. La Biblio native reste separee.
 FR: les futurs `library_document` / `catalogue_document` et `passage documentaire` appartiennent au chantier Biblio native / Frida Catalogue. Ils ne reutilisent pas l'etat `active_document`.
 EN: future `library_document` / `catalogue_document` and `passage documentaire` belong to the native Biblio / Frida Catalogue workstream. They do not reuse `active_document` state.
 
-9. La dictee Whisper reste un flux unique et borne.
+10. La dictee Whisper reste un flux unique et borne.
 FR: `MediaRecorder.start()` reste sans `timeslice`; le navigateur produit un
 seul blob, effectue un seul upload et demande une seule transcription. FridaDev
 refuse le corps declare au-dessus de `17 Mio` avant le parsing multipart, puis

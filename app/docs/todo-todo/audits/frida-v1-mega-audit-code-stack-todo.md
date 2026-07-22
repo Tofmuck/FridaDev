@@ -3270,7 +3270,16 @@ plateforme et ne rouvre pas Sauron.
   normalisation et le fallback historique restent centralises dans
   `llm_client`; aucun provider, reglage ni fallback produit n'a ete ajoute.
   `P2-CEL-MAIN-LLM-BASE-URL-01` est ferme.
-- [ ] Lot 10E: prompts critiques fail-closed.
+- [x] Lot 10E ferme le 2026-07-22: les prompts constitutifs `main_system` et
+  `main_hermeneutical` sont verifies a l'entree du chat avant toute resolution
+  ou mutation de conversation; leur indisponibilite produit le refus borne
+  `503 critical_prompt_unavailable`. La creation de conversation exige
+  seulement `main_system`. Les prompts de resume, reformulation Web et juge
+  Identity mutable bornent leur propre fonction sans appel provider, tandis
+  que Stimmung, Validation, arbitre et extracteur conservent leurs replis
+  locaux. Les prompts legacy ne bloquent ni le runtime ni la validation
+  offline. `P3-CEL-PROMPT-FAIL-OPEN-01` est ferme sans modifier un texte de
+  prompt, un modele ou une politique produit.
 - [ ] Lot 10F: requalification contractuelle des exceptions brutes en logs,
   distincte de la politique bornee des logs prives identity/memory.
 - [ ] Lot 10G: raccord des hotspots de complexite au Lot 9 existant.

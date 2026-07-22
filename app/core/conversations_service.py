@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Mapping, Tuple
 
+from core import prompt_loader
+
 
 def list_conversations(
     args: Mapping[str, Any],
@@ -40,6 +42,21 @@ def create_conversation(
 ) -> Tuple[Dict[str, Any], int]:
     title = str(data.get('title') or '').strip()
     system_prompt = get_main_system_prompt()
+    try:
+        system_prompt = prompt_loader.require_usable_prompt_text(
+            system_prompt,
+            prompt_id='main_system',
+        )
+    except prompt_loader.RequiredPromptUnavailable as exc:
+        return (
+            {
+                'ok': False,
+                'error': 'service temporairement indisponible',
+                'reason_code': 'critical_prompt_unavailable',
+                'prompt_id': exc.prompt_id,
+            },
+            503,
+        )
 
     conversation = conv_store_module.new_conversation(system_prompt, title=title)
     conv_store_module.save_conversation(conversation)

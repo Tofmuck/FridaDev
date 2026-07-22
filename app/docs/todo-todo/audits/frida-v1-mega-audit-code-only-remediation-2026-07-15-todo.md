@@ -490,20 +490,30 @@ Perimetre strict:
 
 Checklist:
 
-- [ ] Inventorier les prompts effectivement critiques et facultatifs dans le
+- [x] Inventorier les prompts effectivement critiques et facultatifs dans le
   chemin chat courant, avec sources de verite documentaires.
-- [ ] Choisir le plus petit point de refus fiable: demarrage seulement si la
+- [x] Choisir le plus petit point de refus fiable: demarrage seulement si la
   criticite est globale, sinon avant appel modele.
-- [ ] Produire un reason code stable, content-free et actionnable pour un
+- [x] Produire un reason code stable, content-free et actionnable pour un
   prompt critique absent, illisible ou vide.
-- [ ] Tester prompts critiques absents/vides/illisibles, prompt facultatif
+- [x] Tester prompts critiques absents/vides/illisibles, prompt facultatif
   absent, et chemin nominal.
-- [ ] Prouver qu'aucun appel modele ne part apres le refus d'un prompt critique.
+- [x] Prouver qu'aucun appel modele ne part apres le refus d'un prompt critique.
 
 Critere de sortie:
 une installation incompletement packagee ne peut plus lancer un chat sans son
 contexte critique, tandis que les absences explicitement facultatives restent
 traitees selon leur contrat.
+
+Critere de sortie atteint le 2026-07-22: `main_system` et
+`main_hermeneutical` refusent `/api/chat` avec
+`critical_prompt_unavailable` avant `resolve_chat_session()`; `main_system`
+borne aussi la creation `/api/conversations`. Resume, reformulation Web et
+juge Identity mutable n'appellent aucun provider sans leur prompt et gardent
+leur repli local. Stimmung, Validation, arbitre et extracteur conservent leur
+fail-open local; les prompts legacy restent optionnels et non consommes. Aucun
+fichier de prompt, modele, provider ou politique metier n'a change.
+`P3-CEL-PROMPT-FAIL-OPEN-01` et le Lot 10E sont fermes.
 
 ## Lot 10F - Requalification contractuelle des exceptions brutes en logs
 

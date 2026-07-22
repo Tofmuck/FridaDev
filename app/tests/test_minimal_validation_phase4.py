@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -19,6 +20,50 @@ import minimal_validation
 class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
     def setUp(self) -> None:
         runtime_settings.invalidate_runtime_settings_cache()
+
+    def test_check_prompt_files_keeps_legacy_prompts_optional(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            identity_path = tmp_path / 'identity.txt'
+            identity_path.write_text(
+                'synthetic identity content long enough for offline validation',
+                encoding='utf-8',
+            )
+            resolution = static_identity_paths.StaticIdentityPathResolution(
+                configured_path=str(identity_path),
+                checked_paths=(identity_path,),
+                resolved_path=identity_path,
+                resolution_kind='synthetic_test',
+                within_allowed_roots=True,
+            )
+            missing_periodic = tmp_path / 'missing-periodic.txt'
+            missing_rewriter = tmp_path / 'missing-rewriter.txt'
+
+            with (
+                patch.object(
+                    minimal_validation,
+                    '_runtime_resource_resolution',
+                    return_value=resolution,
+                ),
+                patch.object(
+                    minimal_validation.config,
+                    'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
+                    str(missing_periodic),
+                ),
+                patch.object(
+                    minimal_validation.config,
+                    'IDENTITY_MUTABLE_REWRITER_PROMPT_PATH',
+                    str(missing_rewriter),
+                ),
+            ):
+                details = minimal_validation._check_prompt_files()
+
+        self.assertFalse(details['identity_periodic_agent_prompt_legacy']['required'])
+        self.assertEqual(details['identity_periodic_agent_prompt_legacy']['status'], 'unavailable')
+        self.assertFalse(details['identity_mutable_rewriter_prompt_legacy']['required'])
+        self.assertEqual(details['identity_mutable_rewriter_prompt_legacy']['status'], 'unavailable')
+        self.assertTrue(details['main_system_prompt']['required'])
+        self.assertEqual(details['main_system_prompt']['status'], 'available')
 
     def test_check_prompt_files_uses_runtime_resource_paths_from_db_when_present(self) -> None:
         original_get_resources = minimal_validation.runtime_settings.get_resources_settings

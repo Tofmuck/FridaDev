@@ -21,7 +21,9 @@ class WebSearchPhase13Tests(unittest.TestCase):
     def test_reformulate_reads_system_prompt_from_centralized_file(self) -> None:
         source = (APP_DIR / 'tools' / 'web_search.py').read_text(encoding='utf-8')
 
-        self.assertIn('prompt_loader.get_web_reformulation_prompt().format(today=today)', source)
+        self.assertIn('prompt_loader.get_web_reformulation_prompt()', source)
+        self.assertIn('prompt_loader.require_usable_prompt_text(', source)
+        self.assertIn('system_prompt = prompt_template.format(today=today)', source)
         self.assertNotIn(
             'Tu es un assistant qui transforme un message en requête de recherche web courte et efficace.',
             source,

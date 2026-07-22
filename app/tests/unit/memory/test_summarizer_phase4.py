@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import copy
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 def _resolve_app_dir() -> Path:
@@ -148,6 +150,44 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
         self.assertTrue(changed)
         self.assertEqual(observed['arg_count'], 1)
         self.assertEqual(observed['turn_count'], 2)
+
+    def test_missing_summary_prompt_skips_provider_and_preserves_conversation(self) -> None:
+        conversation = self._conversation()
+        before = copy.deepcopy(conversation)
+
+        with (
+            patch.object(summarizer, 'estimate_tokens', return_value=999),
+            patch.object(config, 'SUMMARY_THRESHOLD_TOKENS', 1),
+            patch.object(config, 'SUMMARY_KEEP_TURNS', 1),
+            patch.object(summarizer.prompt_loader, 'get_summary_system_prompt', return_value='  \n'),
+            patch.object(
+                summarizer,
+                '_runtime_summary_settings',
+                side_effect=AssertionError('runtime settings must not be read'),
+            ) as runtime_settings_read,
+            patch.object(
+                summarizer.llm_client,
+                'or_chat_completions_url',
+                side_effect=AssertionError('provider URL must not be resolved'),
+            ) as provider_url,
+            patch.object(
+                summarizer.requests,
+                'post',
+                side_effect=AssertionError('summary provider must not run'),
+            ) as provider_post,
+            self.assertLogs('frida.summarizer', level='WARNING') as captured,
+        ):
+            changed = summarizer.maybe_summarize(conversation, 'token-model')
+
+        self.assertFalse(changed)
+        provider_post.assert_not_called()
+        provider_url.assert_not_called()
+        runtime_settings_read.assert_not_called()
+        self.assertEqual(conversation, before)
+        rendered_logs = '\n'.join(captured.output)
+        self.assertIn('reason=prompt_missing', rendered_logs)
+        self.assertIn('prompt_id=summary_system', rendered_logs)
+        self.assertNotIn('summary provider must not run', rendered_logs)
 
     def test_summarize_conversation_logs_provider_metadata_and_uses_runtime_summary_slot(self) -> None:
         observed = {'url': None, 'payload': None, 'headers': None, 'timeout': None, 'provider_logs': []}

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -14,6 +16,74 @@ from core import prompt_loader
 
 
 class PromptLoaderPhase13Tests(unittest.TestCase):
+    def test_prompt_load_result_classifies_usable_text_and_preserves_historical_strip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            prompt_path = Path(tmp_dir) / 'prompt.txt'
+            prompt_path.write_text('  SYNTHETIC PROMPT  \n', encoding='utf-8')
+
+            result = prompt_loader.load_prompt_text(str(prompt_path))
+            legacy_text = prompt_loader.read_prompt_text(str(prompt_path))
+
+        self.assertTrue(result.usable)
+        self.assertEqual(result.status, prompt_loader.PROMPT_STATUS_AVAILABLE)
+        self.assertEqual(result.text, 'SYNTHETIC PROMPT')
+        self.assertEqual(legacy_text, 'SYNTHETIC PROMPT')
+
+    def test_prompt_load_result_classifies_missing_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            result = prompt_loader.load_prompt_text(str(Path(tmp_dir) / 'missing.txt'))
+
+        self.assertFalse(result.usable)
+        self.assertEqual(result.status, prompt_loader.PROMPT_STATUS_UNAVAILABLE)
+        self.assertEqual(result.text, '')
+
+    def test_prompt_load_result_classifies_permission_error_without_leaking_exception(self) -> None:
+        with patch.object(Path, 'read_text', side_effect=PermissionError('SYNTHETIC PRIVATE DETAIL')):
+            result = prompt_loader.load_prompt_text('prompts/main_system.txt')
+
+        self.assertFalse(result.usable)
+        self.assertEqual(result.status, prompt_loader.PROMPT_STATUS_UNAVAILABLE)
+        self.assertNotIn('SYNTHETIC PRIVATE DETAIL', repr(result))
+
+    def test_prompt_load_result_classifies_unicode_error(self) -> None:
+        error = UnicodeDecodeError('utf-8', b'x', 0, 1, 'SYNTHETIC PRIVATE DETAIL')
+        with patch.object(Path, 'read_text', side_effect=error):
+            result = prompt_loader.load_prompt_text('prompts/main_system.txt')
+
+        self.assertFalse(result.usable)
+        self.assertEqual(result.status, prompt_loader.PROMPT_STATUS_UNDECODABLE)
+        self.assertNotIn('SYNTHETIC PRIVATE DETAIL', repr(result))
+
+    def test_prompt_load_result_classifies_empty_and_whitespace_only_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            for filename, content in (('empty.txt', ''), ('spaces.txt', '  \n\t')):
+                with self.subTest(filename=filename):
+                    prompt_path = Path(tmp_dir) / filename
+                    prompt_path.write_text(content, encoding='utf-8')
+                    result = prompt_loader.load_prompt_text(str(prompt_path))
+
+                    self.assertFalse(result.usable)
+                    self.assertEqual(result.status, prompt_loader.PROMPT_STATUS_EMPTY)
+                    self.assertEqual(result.text, '')
+
+    def test_prompt_load_result_does_not_catch_unrelated_programming_error(self) -> None:
+        with patch.object(Path, 'read_text', side_effect=RuntimeError('synthetic_programming_error')):
+            with self.assertRaisesRegex(RuntimeError, 'synthetic_programming_error'):
+                prompt_loader.load_prompt_text('prompts/main_system.txt')
+
+    def test_required_prompt_rejects_unusable_result_with_bounded_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            missing_path = Path(tmp_dir) / 'missing.txt'
+            with self.assertRaises(prompt_loader.RequiredPromptUnavailable) as ctx:
+                prompt_loader.read_required_prompt_text(
+                    str(missing_path),
+                    prompt_id='main_system',
+                )
+
+        self.assertEqual(ctx.exception.prompt_id, 'main_system')
+        self.assertEqual(ctx.exception.status, prompt_loader.PROMPT_STATUS_UNAVAILABLE)
+        self.assertEqual(str(ctx.exception), 'required_prompt_unavailable')
+
     def test_main_prompt_paths_follow_phase13_convention(self) -> None:
         self.assertEqual(config.MAIN_SYSTEM_PROMPT_PATH, 'prompts/main_system.txt')
         self.assertEqual(config.MAIN_HERMENEUTICAL_PROMPT_PATH, 'prompts/main_hermeneutical.txt')

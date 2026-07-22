@@ -1678,11 +1678,23 @@ def reformulate(
 ) -> str:
     """Reformule le message utilisateur en requête de recherche web concise."""
     try:
+        prompt_template = prompt_loader.require_usable_prompt_text(
+            prompt_loader.get_web_reformulation_prompt(),
+            prompt_id='web_reformulation',
+        )
+    except prompt_loader.RequiredPromptUnavailable as exc:
+        logger.warning(
+            "reformulate_skipped reason=prompt_missing prompt_id=%s",
+            exc.prompt_id,
+        )
+        return user_msg
+
+    try:
         if llm_module is None:
             from core import llm_client as llm_module
 
         today = _web_temporal_label(now_iso=now_iso)
-        system_prompt = prompt_loader.get_web_reformulation_prompt().format(today=today)
+        system_prompt = prompt_template.format(today=today)
         reformulation_settings = web_reformulation_settings.get_runtime_settings()
         model = reformulation_settings.model
         max_tokens = reformulation_settings.max_tokens

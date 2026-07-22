@@ -20,6 +20,7 @@ from core import chat_session_flow
 from core import chat_turn_runtime_inputs
 from core import continuity_capsule
 from core import conversations_prompt_window
+from core import prompt_loader
 from core import stimmung_agent
 from core.hermeneutic_node.runtime import node_state as runtime_node_state
 from core.hermeneutic_node.runtime import primary_node
@@ -779,6 +780,25 @@ def chat_response(
         return _json_result({'ok': False, 'error': adobe_request.error_code}, 400)
 
     system_prompt, hermeneutical_prompt = chat_prompt_context.resolve_backend_prompts(prompt_loader_module)
+    try:
+        system_prompt = prompt_loader.require_usable_prompt_text(
+            system_prompt,
+            prompt_id='main_system',
+        )
+        hermeneutical_prompt = prompt_loader.require_usable_prompt_text(
+            hermeneutical_prompt,
+            prompt_id='main_hermeneutical',
+        )
+    except prompt_loader.RequiredPromptUnavailable as exc:
+        return _json_result(
+            {
+                'ok': False,
+                'error': 'service temporairement indisponible',
+                'reason_code': 'critical_prompt_unavailable',
+                'prompt_id': exc.prompt_id,
+            },
+            503,
+        )
     session, session_error = chat_session_flow.resolve_chat_session(
         data,
         system_prompt=system_prompt,

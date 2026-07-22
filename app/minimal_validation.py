@@ -20,6 +20,7 @@ if str(APP_DIR) not in sys.path:
 import config
 from admin import runtime_settings
 from core import conv_store
+from core import prompt_loader
 from core import runtime_db_bootstrap
 from identity import static_identity_paths
 
@@ -375,10 +376,20 @@ def _check_prompt_files() -> Dict[str, Any]:
         "arbiter_prompt": _resolve_app_path(config.ARBITER_PROMPT_PATH),
         "identity_extractor_prompt": _resolve_app_path(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
         "identity_mutable_judge_prompt": _resolve_app_path(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH),
+        "stimmung_agent_prompt": _resolve_app_path('prompts/stimmung_agent.txt'),
+        "validation_agent_prompt": _resolve_app_path('prompts/validation_agent.txt'),
+    }
+    optional_legacy_files = {
+        "identity_mutable_judge_v1_prompt_legacy": _resolve_app_path('prompts/identity_mutable_judge.txt'),
+        "identity_mutable_rewriter_prompt_legacy": _resolve_app_path(config.IDENTITY_MUTABLE_REWRITER_PROMPT_PATH),
         "identity_periodic_agent_prompt_legacy": _resolve_app_path(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
     }
     required_file_roles = {
         "identity_mutable_judge_prompt": "active_runtime_mutable_judge",
+    }
+    optional_file_roles = {
+        "identity_mutable_judge_v1_prompt_legacy": "legacy_v1_mutable_judge",
+        "identity_mutable_rewriter_prompt_legacy": "legacy_retired_mutable_rewriter",
         "identity_periodic_agent_prompt_legacy": "legacy_pre_refactor_periodic_agent",
     }
 
@@ -435,14 +446,29 @@ def _check_prompt_files() -> Dict[str, Any]:
             "chars": len(content),
         }
     for name, path in required_files.items():
-        if not path.exists():
+        result = prompt_loader.load_prompt_text(str(path))
+        if not result.usable:
             raise RuntimeError(f"fichier prompt/identity absent: {path}")
-        content = path.read_text(encoding="utf-8").strip()
+        content = result.text
         if len(content) < 20:
             raise RuntimeError(f"fichier trop court ou vide: {path}")
-        details[name] = {"path": str(path), "chars": len(content)}
+        details[name] = {
+            "path": str(path),
+            "chars": len(content),
+            "status": result.status,
+            "required": True,
+        }
         if name in required_file_roles:
             details[name]["role"] = required_file_roles[name]
+    for name, path in optional_legacy_files.items():
+        result = prompt_loader.load_prompt_text(str(path))
+        details[name] = {
+            "path": str(path),
+            "chars": len(result.text),
+            "status": result.status,
+            "required": False,
+            "role": optional_file_roles[name],
+        }
 
     return details
 

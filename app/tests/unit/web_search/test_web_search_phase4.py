@@ -5,6 +5,7 @@ import os
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 
 def _resolve_app_dir() -> Path:
@@ -36,10 +37,46 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         else:
             os.environ['WEB_SEARCH_DISCOVERY_PROVIDER'] = self._old_web_search_discovery_provider
 
+    def test_reformulate_without_prompt_keeps_original_query_without_provider(self) -> None:
+        fake_llm_module = SimpleNamespace(
+            or_chat_completions_url=lambda: (_ for _ in ()).throw(
+                AssertionError('provider URL must not be resolved')
+            ),
+            or_headers=lambda **_kwargs: (_ for _ in ()).throw(
+                AssertionError('provider headers must not be resolved')
+            ),
+        )
+        requests_module = SimpleNamespace(
+            post=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError('web reformulation provider must not run')
+            )
+        )
+
+        with (
+            patch.object(web_search.prompt_loader, 'get_web_reformulation_prompt', return_value=' \n '),
+            patch.object(
+                web_search.web_reformulation_settings,
+                'get_runtime_settings',
+                side_effect=AssertionError('runtime settings must not be read'),
+            ) as runtime_settings_read,
+            self.assertLogs('frida.web_search', level='WARNING') as captured,
+        ):
+            query = web_search.reformulate(
+                'SYNTHETIC ORIGINAL QUERY',
+                requests_module=requests_module,
+                llm_module=fake_llm_module,
+            )
+
+        self.assertEqual(query, 'SYNTHETIC ORIGINAL QUERY')
+        runtime_settings_read.assert_not_called()
+        rendered_logs = '\n'.join(captured.output)
+        self.assertIn('reason=prompt_missing', rendered_logs)
+        self.assertIn('prompt_id=web_reformulation', rendered_logs)
+        self.assertNotIn('SYNTHETIC ORIGINAL QUERY', rendered_logs)
+
     def test_reformulate_uses_runtime_web_reformulation_model_from_db_when_present(self) -> None:
         observed = {'model': None, 'temperature': None, 'max_tokens': None, 'timeout': None, 'metadata': None, 'trace': None}
         original_get_settings = web_search.web_reformulation_settings.runtime_settings.get_web_reformulation_model_settings
-        original_post = web_search.requests.post
 
         def fake_get_web_reformulation_model_settings():
             return runtime_settings.RuntimeSectionView(
@@ -65,6 +102,7 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
                 return {"choices": [{"message": {"content": "requete test"}}]}
 
         def fake_post(url, json, headers, timeout):
+            _ = url, headers
             observed['model'] = json['model']
             observed['temperature'] = json['temperature']
             observed['max_tokens'] = json['max_tokens']
@@ -73,13 +111,27 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
             observed['timeout'] = timeout
             return FakeResponse()
 
+        fake_llm_module = SimpleNamespace(
+            or_chat_completions_url=lambda: 'https://openrouter.example/chat/completions',
+            or_headers=lambda **_kwargs: {},
+            with_provider_attribution=lambda payload, *, caller='llm': {
+                **payload,
+                'metadata': {'frida_caller': caller, 'frida_slot': 'web_reformulation_model'},
+                'trace': {'trace_name': 'FridaDev', 'generation_name': 'FridaDev/WebReformulation'},
+            },
+            read_openrouter_response_payload=lambda response: response.json(),
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
+        )
+
         web_search.web_reformulation_settings.runtime_settings.get_web_reformulation_model_settings = fake_get_web_reformulation_model_settings
-        web_search.requests.post = fake_post
         try:
-            query = web_search.reformulate('actualites ia')
+            query = web_search.reformulate(
+                'actualites ia',
+                requests_module=SimpleNamespace(post=fake_post),
+                llm_module=fake_llm_module,
+            )
         finally:
             web_search.web_reformulation_settings.runtime_settings.get_web_reformulation_model_settings = original_get_settings
-            web_search.requests.post = original_post
 
         self.assertEqual(query, 'requete test')
         self.assertEqual(observed['model'], 'openai/gpt-5.4-mini')

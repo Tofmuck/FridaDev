@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 
 def _resolve_app_dir() -> Path:
@@ -102,6 +103,49 @@ def _collect_keys(value: Any) -> set[str]:
 
 
 class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
+    def test_run_v2_rejects_missing_or_blank_prompt_before_provider(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            prompt_cases = {
+                'missing': Path(tmp_dir) / 'missing.txt',
+                'empty': Path(tmp_dir) / 'empty.txt',
+                'whitespace': Path(tmp_dir) / 'whitespace.txt',
+            }
+            prompt_cases['empty'].write_text('', encoding='utf-8')
+            prompt_cases['whitespace'].write_text(' \n\t', encoding='utf-8')
+
+            for label, prompt_path in prompt_cases.items():
+                with self.subTest(label=label):
+                    with (
+                        patch.object(
+                            mutable_identity_judge_v2.judge_common,
+                            'runtime_model_settings',
+                            side_effect=AssertionError('runtime settings must not be read'),
+                        ) as runtime_settings_read,
+                        patch.object(
+                            mutable_identity_judge_v2.config,
+                            'IDENTITY_MUTABLE_JUDGE_PROMPT_PATH',
+                            str(prompt_path),
+                        ),
+                        patch.object(
+                            mutable_identity_judge_v2.requests,
+                            'post',
+                            side_effect=AssertionError('mutable judge provider must not run'),
+                        ) as provider_post,
+                        patch.object(
+                            mutable_identity_judge_v2.llm_client,
+                            'or_chat_completions_url',
+                            side_effect=AssertionError('provider URL must not be resolved'),
+                        ) as provider_url,
+                    ):
+                        result = mutable_identity_judge_v2.run_mutable_identity_judge_v2({})
+
+                    provider_post.assert_not_called()
+                    provider_url.assert_not_called()
+                    runtime_settings_read.assert_not_called()
+                    self.assertEqual(result['status'], 'skipped')
+                    self.assertEqual(result['reason_code'], 'runtime_safety_violation')
+                    self.assertNotIn(str(prompt_path), json.dumps(result, ensure_ascii=True))
+
     def test_v1_module_is_disabled_compatibility_shim(self) -> None:
         result = mutable_identity_judge.run_mutable_identity_judge({})
 

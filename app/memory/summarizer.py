@@ -52,6 +52,10 @@ def _raw_dialogue(conversation: dict[str, Any]) -> list[dict[str, Any]]:
 
 def summarize_conversation(turns: list[dict[str, Any]]) -> str:
     """Appelle un LLM cheap via OpenRouter pour résumer une liste de tours de dialogue."""
+    system = prompt_loader.require_usable_prompt_text(
+        prompt_loader.get_summary_system_prompt(),
+        prompt_id='summary_system',
+    )
     summary_settings = _runtime_summary_settings()
     summary_model = str(summary_settings['model'])
     parts = []
@@ -65,7 +69,6 @@ def summarize_conversation(turns: list[dict[str, Any]]) -> str:
         parts.append(f"{prefix}{role} : {turn.get('content', '')}")
     dialogue_text = "\n\n".join(parts)
 
-    system = prompt_loader.get_summary_system_prompt()
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": f"Voici le dialogue à résumer :\n\n{dialogue_text}"},
@@ -123,6 +126,13 @@ def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
 
     try:
         summary_text = summarize_conversation(to_summarize)
+    except prompt_loader.RequiredPromptUnavailable as exc:
+        logger.warning(
+            "summarize_skipped conv_id=%s reason=prompt_missing prompt_id=%s",
+            conversation.get("id"),
+            exc.prompt_id,
+        )
+        return False
     except Exception as exc:
         logger.error("summarize_failed conv_id=%s err=%s", conversation.get("id"), exc)
         return False

@@ -99,6 +99,20 @@ class StimmungAgentTests(unittest.TestCase):
         stimmung_agent.llm_client.log_provider_metadata = self.original_log_provider_metadata
         stimmung_agent.runtime_settings.get_stimmung_agent_model_settings = self.original_runtime_settings_getter
 
+    def test_missing_prompt_keeps_fail_open_contract_without_provider(self) -> None:
+        stimmung_agent.prompt_loader.read_prompt_text = lambda _path: ''
+        requests_module = _FakeRequests([])
+
+        result = stimmung_agent.build_affective_turn_signal(
+            user_msg='SYNTHETIC USER TURN',
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.status, 'error')
+        self.assertEqual(result.decision_source, 'fail_open')
+        self.assertEqual(result.reason_code, 'prompt_missing')
+        self.assertEqual(requests_module.calls, [])
+
     def test_build_affective_turn_signal_returns_primary_validated_signal(self) -> None:
         requests_module = _FakeRequests(
             [

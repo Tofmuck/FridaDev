@@ -3,13 +3,12 @@ from __future__ import annotations
 import json
 import logging
 import re
-from pathlib import Path
 from typing import Any, Mapping
 
 import requests
 
 import config
-from core import llm_client
+from core import llm_client, prompt_loader
 from memory import mutable_identity_judge_common as judge_common
 from memory import mutable_identity_judge_schema
 from memory import mutable_identity_subject_names
@@ -145,10 +144,10 @@ def build_judge_input(
 
 def load_prompt_v2(prompt_path: str | None = None) -> str:
     raw_path = _text(prompt_path or PROMPT_PATH)
-    path = Path(raw_path)
-    if not path.is_absolute():
-        path = Path(__file__).resolve().parents[1] / path
-    return path.read_text(encoding='utf-8').strip()
+    return prompt_loader.read_required_prompt_text(
+        raw_path,
+        prompt_id='identity_mutable_judge_v2',
+    )
 
 
 def build_judge_messages_v2(judge_input: Mapping[str, Any], *, system_prompt: str) -> list[dict[str, str]]:
@@ -564,11 +563,13 @@ def build_judge_observability_v2(contract: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def run_mutable_identity_judge_v2(judge_input: Mapping[str, Any]) -> dict[str, Any]:
-    settings = judge_common.runtime_model_settings()
     try:
         system_prompt = load_prompt_v2(config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH)
+    except prompt_loader.RequiredPromptUnavailable:
+        return _failure_result('runtime_safety_violation')
     except Exception:
         return _failure_result('runtime_safety_violation')
+    settings = judge_common.runtime_model_settings()
     model_input_json = json.dumps(dict(judge_input), ensure_ascii=False, indent=2)
     size_guard = _judge_size_guard(
         judge_input=judge_input,

@@ -4,6 +4,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 def _resolve_app_dir() -> Path:
@@ -25,6 +26,69 @@ import config
 class ArbiterPhase4ModelTests(unittest.TestCase):
     def setUp(self) -> None:
         runtime_settings.invalidate_runtime_settings_cache()
+
+    def test_missing_arbiter_prompt_uses_deterministic_fallback_without_provider(self) -> None:
+        traces = [
+            {
+                'role': 'user',
+                'content': 'SYNTHETIC TRACE',
+                'timestamp': '2026-07-22T00:00:00Z',
+                'retrieval_score': 0.8,
+                'semantic_score': 0.8,
+            }
+        ]
+        settings = runtime_settings.RuntimeSectionView(
+            section='memory_arbiter_model',
+            payload=runtime_settings.build_env_seed_bundle('memory_arbiter_model').payload,
+            source='env',
+            source_reason='test',
+        )
+
+        with (
+            patch.object(arbiter.runtime_settings, 'get_memory_arbiter_model_settings', return_value=settings),
+            patch.object(arbiter, '_load_prompt', return_value=''),
+            patch.object(
+                arbiter.requests,
+                'post',
+                side_effect=AssertionError('arbiter provider must not run'),
+            ) as provider_post,
+        ):
+            kept, decisions = arbiter.filter_traces_with_diagnostics(traces, [])
+
+        provider_post.assert_not_called()
+        self.assertEqual(kept, traces)
+        self.assertEqual(decisions[0]['decision_source'], 'fallback')
+        self.assertEqual(decisions[0]['reason'], 'fallback:prompt_missing')
+
+    def test_missing_identity_extractor_prompt_returns_empty_without_provider(self) -> None:
+        settings = runtime_settings.RuntimeSectionView(
+            section='identity_extractor_model',
+            payload=runtime_settings.build_env_seed_bundle('identity_extractor_model').payload,
+            source='env',
+            source_reason='test',
+        )
+
+        with (
+            patch.object(arbiter.runtime_settings, 'get_identity_extractor_model_settings', return_value=settings),
+            patch.object(arbiter, '_load_prompt', return_value=''),
+            patch.object(
+                arbiter.requests,
+                'post',
+                side_effect=AssertionError('identity extractor provider must not run'),
+            ) as provider_post,
+        ):
+            identities = arbiter.extract_identities(
+                [
+                    {
+                        'role': 'user',
+                        'content': 'SYNTHETIC TURN',
+                        'timestamp': '2026-07-22T00:00:00Z',
+                    }
+                ]
+            )
+
+        provider_post.assert_not_called()
+        self.assertEqual(identities, [])
 
     def test_deterministic_fallback_uses_explicit_semantic_score_when_available(self) -> None:
         traces = [
