@@ -1,6 +1,6 @@
 # Frida V1 - Mega-audit code-only 2026-07-15 - TODO de remediation
 
-Statut: actif, docs-only a la creation.
+Statut: archive le 2026-07-22; docs-only a la creation.
 Agent cible: Celebrimbor, racine `/opt/platform/fridadev`.
 Branche de reference au moment de l'audit: `FridaV1-Mega-Audit-Code-Stack`.
 HEAD audite: `afdf19fa54c6a1602232e54e40bb23a6ba33787d`.
@@ -600,26 +600,42 @@ Perimetre strict:
 
 Checklist:
 
-- [ ] Comparer les hotspots de l'audit au decoupage 9A-9H existant.
-- [ ] Marquer les recouvrements et les absences, sans creer de deuxieme
+- [x] Comparer les hotspots de l'audit au decoupage 9A-9H existant.
+- [x] Marquer les recouvrements et les absences, sans creer de deuxieme
   roadmap de refactor concurrente.
-- [ ] Definir le premier candidat seulement apres Lot 9.0, selon criticite,
+- [x] Definir le premier candidat seulement apres Lot 9.0, selon criticite,
   couverture golden et reduction de responsabilite demontrable.
-- [ ] Si un bug P2 apparait pendant un refactor futur, stopper et ouvrir un lot
+- [x] Si un bug P2 apparait pendant un refactor futur, stopper et ouvrir un lot
   correctif autonome.
 
 Critere de sortie:
 la dette structurelle nouvellement mesuree est absorbee par le Lot 9 existant,
 sans faux refactor ni multiplication de roadmaps.
 
+Critere atteint le 2026-07-22. Le scan statique read-only du HEAD
+`04e22eb04e8d4c39c22ca36966e1d430ee3047d8` recalcule lignes utiles, spans,
+noeuds AST, appelants, responsabilites et tests voisins. La matrice durable de
+la TODO Lot 9 donne a chaque module et fonction du finding une destination
+principale unique, un prerequisite golden et une condition de reduction de
+responsabilite. Les absences `chat_llm_flow`, validateur UI, validation
+hermeneutique, projections dashboard et emission Web sont absorbees dans les
+familles 9B, 9E, 9D et 9C sans Lot 9I, Lot 11 ou seconde roadmap. Aucun
+`UNKNOWN` ne subsiste. `P3-CEL-COMPLEXITY-HOTSPOTS-01` est absorbe dans le Lot
+9 et le Lot 10G est ferme. Le seul prochain lot executable est 9.0; aucun
+premier refactor 9A-9H n'est choisi.
+
 ## Cloture de cette TODO
 
-- [ ] Revalider chaque finding avant son lot.
-- [ ] Fermer, requalifier `stale` ou accepter explicitement chaque P2/P3 avec
+- [x] Revalider chaque finding avant son lot.
+- [x] Fermer, requalifier `stale` ou accepter explicitement chaque P2/P3 avec
   preuves datees.
-- [ ] Mettre a jour le registre canonique du mega-audit apres chaque lot.
-- [ ] Archiver cette TODO sous `app/docs/todo-done/audits/` seulement quand les
+- [x] Mettre a jour le registre canonique du mega-audit apres chaque lot.
+- [x] Archiver cette TODO sous `app/docs/todo-done/audits/` seulement quand les
   Lots 10A-10G sont tous resolus ou requalifies avec preuve.
+
+Statut final le 2026-07-22: Lots 10A-10G fermes ou requalifies avec preuve,
+aucun finding Lot 10 ouvert, archive autorisee. Le Lot 9 demeure l'unique
+backlog de refactor et reste ouvert a son gate 9.0.
 
 ## Preuve minimale par lot
 

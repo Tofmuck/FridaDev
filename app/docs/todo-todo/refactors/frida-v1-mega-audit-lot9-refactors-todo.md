@@ -29,21 +29,109 @@ faire un grand rangement cosmetique.
   utilisateur, payload de provider, identifiant sensible, secret, URL avec
   query ou log brut.
 
-## Ordre recommande
+## Gate de priorite et familles de destination
 
-1. Lot 9.0 - Golden test harness / preuve avant refactor.
-2. Lot 9A - `server.py` route families.
-3. Lot 9B - `chat_service.py` orchestration boundaries.
-4. Lot 9C - `web_search.py` clients/status/context.
-5. Lot 9D - Observabilite guard/read-models.
-6. Lot 9E - Frontend chat scripts/load-order/panels.
-7. Lot 9F - Agenda runtime structure, fake/local only.
-8. Lot 9G - Biblio runtime structure, fake/local only.
-9. Lot 9H - Memory/Admin structure.
-10. Lot 9Z - Stop point, archive and no-infinite-refactor decision.
+Le seul prochain lot executable est `Lot 9.0 - Golden test harness / preuve
+avant refactor`. Les numeros 9A-9H classent les destinations de la dette; ils
+ne fixent pas l'ordre d'execution apres 9.0:
 
-Ne pas enchainer automatiquement ces lots. Chaque lot doit etre valide,
-committe et pousse separement.
+- Lot 9A - `server.py` route families;
+- Lot 9B - orchestration chat, echange LLM et frontiere hermeneutique;
+- Lot 9C - `web_search.py` clients/status/context/observabilite;
+- Lot 9D - observabilite guard/read-models;
+- Lot 9E - frontend chat scripts/load-order/panels et validation de ces assets;
+- Lot 9F - Agenda runtime structure, fake/local only;
+- Lot 9G - Biblio runtime structure, fake/local only;
+- Lot 9H - Memory/Admin structure;
+- Lot 9Z - stop point, archive and no-infinite-refactor decision.
+
+Apres fermeture de 9.0, choisir un seul premier candidat selon, dans cet
+ordre:
+
+1. criticite et blast radius;
+2. golden tests effectivement verts;
+3. responsabilite extractible nette;
+4. reduction mesurable de couplage ou de branches;
+5. absence de changement produit.
+
+Ne pas choisir ce candidat avant la preuve 9.0 et ne pas enchainer
+automatiquement les lots. Chaque lot doit etre valide, committe et pousse
+separement. Si un P1/P2 comportemental apparait, stopper le refactor et ouvrir
+un lot correctif autonome.
+
+## Baseline statique absorbee depuis le Lot 10G
+
+Revalidation read-only au HEAD
+`04e22eb04e8d4c39c22ca36966e1d430ee3047d8`, le 2026-07-22. Une ligne utile
+est une ligne non vide et non commentaire. `ast_nodes` compte tous les noeuds
+descendants de la fonction; `structural_nodes` compte les branches, boucles,
+`try`, context managers, expressions conditionnelles, comprehensions et
+operateurs booleens. Ces mesures sont une photographie, pas des seuils
+automatiques.
+
+Modules revalides:
+
+| module | lignes physiques | lignes utiles | appelants directs / wiring courant |
+| --- | ---: | ---: | --- |
+| `app/tools/web_search.py` | 2680 | 2495 | `server.api_chat` injecte le module dans le tour; `chat_prompt_context` et `chat_turn_runtime_inputs` consomment son payload. |
+| `app/server.py` | 1915 | 1628 | dispatcher Flask/WSGI; les routes deleguent notamment au chat et aux read-models admin. |
+| `app/minimal_validation.py` | 1728 | 1607 | le runner CLI appelle `_check_ui_assets` via `_run_check`; l'addition est bornee a cette responsabilite UI. |
+| `app/observability/dashboard_read_model.py` | 1688 | 1577 | cinq routes dashboard de `server.py`. |
+| `app/observability/turn_pipeline_read_model.py` | 1391 | 1274 | `dashboard_analytics_projection.py` et `log_store.py`. |
+| `app/observability/dashboard_observable_modules.py` | 1268 | 1155 | analytics, projection et stockage dashboard. |
+| `app/core/chat_service.py` | 1275 | 1180 | `server.api_chat` et l'export synthetique du payload principal. |
+| `app/biblio/librarian_tools.py` | 1187 | 1059 | registre partage par chat runtime, agent, planificateurs, methodes et objets de reponse Biblio. |
+| `app/biblio/librarian_method_runtime.py` | 1176 | 1055 | `librarian_agent_first` appelle `complete_product_method_loop`. |
+| `app/core/hermeneutic_node/validation/validation_agent.py` | 1128 | 996 | insertion hermeneutique de `chat_service` et validation des reglages runtime. |
+
+Fonctions revalidees:
+
+| fonction | longueur | ast_nodes | structural_nodes | appelant direct principal |
+| --- | ---: | ---: | ---: | --- |
+| `minimal_validation._check_ui_assets` | 957 | 3131 | 64 | runner `_run_check(..., "ui_assets", ...)`. |
+| `runtime_settings_validation.validate_runtime_section` | 638 | 3626 | 136 | facade settings, write path, services admin settings et governance Identity. |
+| `chat_llm_flow.run_llm_exchange` | 565 | 2563 | 74 | `chat_service.chat_response`. |
+| `chat_service.chat_response` | 526 | 2147 | 20 | `server.api_chat`. |
+| `chat_llm_flow.run_llm_exchange.event_stream` | 328 | 1506 | 62 | construction du resultat stream dans `run_llm_exchange`. |
+| `web_search.build_context_payload` | 228 | 2126 | 130 | context prompt, resolution runtime du tour et facade legacy `build_context`. |
+| `web_search._emit_web_search_runtime_event` | 273 | 1983 | 105 | `build_context_payload` et `build_context`. |
+| `server.api_chat` | 199 | 1072 | 43 | dispatcher Flask de `POST /api/chat`. |
+
+Les frontieres deja extraites restent utilisees: `chat_session_flow`,
+`chat_turn_runtime_inputs`, `chat_prompt_context`, `chat_memory_flow` et
+`chat_llm_flow` autour de `chat_service`; PDF reader et modules de policy autour
+du Web; projection turn, analytics et registre observable autour du dashboard;
+registry, agent-first, planners, passage extraction et answer objects autour de
+Biblio. La taille seule ne justifie aucun autre lot. Le scan borne des modules
+voisins ne revele aucune responsabilite nouvelle hors 9A-9H; les autres gros
+modules observes restent couverts par 9D, 9G ou 9H selon leur domaine.
+
+## Matrice hotspots courants vers Lot 9
+
+| hotspot courant | responsabilites observees | destination Lot 9 | golden prerequisite | recouvrement ou absence | condition de sortie future |
+| --- | --- | --- | --- | --- | --- |
+| `app/tools/web_search.py` | discovery locale/externe, crawl/PDF, plans de requete, materiau de contexte, evidence et emission d'evenements | 9C | 9.0 puis 9C.0; tests Web phase 4, discovery et observabilite | deja nomme; emission detaillee absorbee par 9C.4 | facades publiques stables, clients/contexte/evenements separes et appels inter-responsabilites reduits sans changer status/reason. |
+| `app/server.py` | bootstrap Flask, routes, guards, proxies chat logs et delegation aux services/read-models | 9A | 9.0 puis 9A.0; contrats routes server/admin/workspace/chat | deja nomme; aucun nouveau lot | route map et guards identiques; chaque extraction retire une famille de handlers sans logique metier ajoutee. |
+| `app/minimal_validation.py` | checks startup/DB/prompts/UI/API et serialization du resultat; le hotspot cible est le check UI | 9E.3 | 9.0 et 9E.0; `test_minimal_validation_phase9.py`, phase 11 et smokes frontend | module additionnel justifie par 1607 lignes utiles; scope limite a `_check_ui_assets` | scan UI separe du runner generique, meme schema de resultat et moins de branches/couplage dans `_check_ui_assets`. |
+| `app/observability/dashboard_read_model.py` | fenetres, overview, conversations, turns, inspection traduite et content gate | 9D.3 | 9.0 et 9D.0; dashboard read-model Lot 4 et contrat serveur dashboard | absence de la TODO initiale absorbee par 9D.3 | cinq facades publiques stables; builders/query/content gate separes et projection toujours content-free. |
+| `app/observability/turn_pipeline_read_model.py` | syntheses persistence/providers/RAG/hermeneutique/Web/Documents/Biblio/erreurs | 9D.2 | 9.0 et 9D.0; snapshots multi-domaines, statuts agentiques et log store | deja nomme dans 9D.2 | `build_turn_pipeline_item` reste facade; builders de domaine extraits avec moins de branches croisees. |
+| `app/observability/dashboard_observable_modules.py` | registre de modules, reducers, resume par domaine et projection publique | 9D.4 | 9.0 et 9D.0; `test_dashboard_observable_modules_lot3.py` et analytics projection | absence de la TODO initiale absorbee par 9D.4 | registre unique conserve; reducers et serialization separes sans deuxieme taxonomie. |
+| `app/core/chat_service.py` | resolution session, persistance user, composition lanes/guards, hermeneutique, capsule/manifest et handoff LLM | 9B | 9.0 puis 9B.0; contrats chat/session/lanes/final locks | deja nomme; coordinateur explicite absorbe par 9B.4 | ordre produit inchange et `chat_response` reduit a un coordinateur de frontieres nommees. |
+| `app/biblio/librarian_tools.py` | registry GET-only, validation des outils, appels Catalogue, observations et resultats bornes | 9G.1 | 9.0 puis 9G.0; `test_librarian_tools.py` et contrats Biblio | deja nomme dans 9G.1 | registry reste GET-only; validation/dispatch/resultats separes avec surface publique et reason codes inchanges. |
+| `app/biblio/librarian_method_runtime.py` | boucle des methodes produit, navigation, extraction canonique et reparations bornees | 9G.2 | 9.0 puis 9G.0; `test_librarian_agent_first.py` et contrat final-lock serveur | deja nomme dans 9G.2 | planner, navigation et execution mecanique ne partagent plus un flow monolithique; aucune methode produit ajoutee. |
+| `app/core/hermeneutic_node/validation/validation_agent.py` | validation d'entrees, hard guards, construction messages, appel modele, fallback et observabilite | 9B.6 | 9.0 puis 9B.0; tests unitaires validation, insertion hermeneutique et logs synthetiques | absence explicite absorbee par 9B.6 | contrat `build_validated_output` identique; validation pure, transport et fallback separes avec prompts inchanges. |
+| `minimal_validation._check_ui_assets` | inventaire assets, liens HTML, load-order, globals, IDs et marqueurs interdits | 9E.3 | 9.0 et 9E.0; tests minimal validation phase 9/11 et frontend load-order | absence relation 9.0/9E absorbee | meme verdict detaille, mais inventaires/checks separes et reduction constatee du span, des branches et dependances. |
+| `runtime_settings_validation.validate_runtime_section` | validation par section, secrets redacted, URLs, ressources, Identity et caps modeles | 9H.3 | 9.0 puis 9H.0; tests runtime settings validation et contrats admin validate/patch | deja nomme dans 9H.3 | facade et details content-free stables; validateurs de sections isoles et branches croisees reduites. |
+| `chat_llm_flow.run_llm_exchange` | override, provider sync/stream, normalisation, persistence canonique, rollback et derives post-save | 9B.5 | 9.0 puis 9B.0; `test_chat_llm_flow.py`, stream control et transport route | absence explicite absorbee par 9B.5 | provider/persistence/finalisation deviennent des frontieres testables; stream/non-stream et Lot 10C restent identiques. |
+| `chat_service.chat_response` | coordinateur du tour avant handoff LLM: session, user save, lanes, prompt, manifest et final locks | 9B.4 | 9.0 puis 9B.0; fixture lane-order/final-lock/capsule/persistence | aucun sous-lot initial; absorbe par 9B.4 | une orchestration lisible appelle des frontieres existantes; ordre, messages et metas inchanges avec reduction de couplage. |
+| `chat_llm_flow.run_llm_exchange.event_stream` | lecture stream, accumulation, terminal, persistence, rollback et finalisation | 9B.5 | 9.0 puis 9B.0; tests stream success/error/persist-failed/post-persist | absent mais inseparable du meme refactor 9B.5 | terminal et `updated_at` contractuels inchanges; lecture provider et finalisation persistante deviennent separables. |
+| `web_search.build_context_payload` | choix explicit URL/search, collecte, payload contexte, confidence/evidence et statut | 9C.3 | 9.0 puis 9C.0; tests phase 4, discovery et runtime inputs | deja nomme dans 9C.3 | builder de materiau distinct de la collecte et de l'emission; contrat source-first et fallback inchanges. |
+| `web_search._emit_web_search_runtime_event` | derive summaries/counters, evaluation evidence/confidence et emission content-free | 9C.4 | 9.0 puis 9C.0; tests observabilite Web et logger | absence explicite absorbee par 9C.4 | projection d'evenement pure/testable, sans requete ni contenu, avec moins de branches dans l'emetteur. |
+| `server.api_chat` | validation transport, proxies, stream decoding/terminal, finalisation du turn et mapping HTTP | 9A.3 | 9.0 puis 9A.0; transport route, input mode et stream fakes | deja nomme dans 9A.3 | endpoint et protocole identiques; transport Flask separe de la finalisation sans toucher `chat_response`. |
+
+Aucune ligne ne reste `UNKNOWN` et chaque hotspot a une destination principale
+unique. Les recouvrements secondaires servent uniquement de golden tests; ils
+ne dupliquent pas la tache dans une autre famille.
 
 ## Lot 9.0 - Golden test harness / preuve avant refactor
 
@@ -273,6 +361,8 @@ final locks, manifest ou persistence.
 Fichiers vises:
 
 - `app/core/chat_service.py`
+- `app/core/chat_llm_flow.py`
+- `app/core/hermeneutic_node/validation/validation_agent.py`
 - modules `app/core/chat_*` existants si responsabilite claire
 - tests chat/server/support
 
@@ -377,6 +467,69 @@ Checklist:
 - [ ] Verifier observability compact.
 - [ ] Verifier aucun prompt ou payload brut.
 
+### Lot 9B.4 - Chat turn coordinator boundary
+
+Golden tests prealables:
+
+- Lot 9B.0 ferme avec lane-order, final locks, capsule/manifest et persistence;
+- contrats chat session, prompt lanes et refus avant mutation;
+- stream et non-stream raccordes au meme handoff LLM.
+
+Patch attendu:
+
+- reduire `chat_service.chat_response` a un coordinateur des frontieres deja
+  nommees, une responsabilite a la fois;
+- ne changer ni ordre des lanes, ni messages, ni metas, ni final locks.
+
+Critere de sortie:
+
+- reduction mesuree du span, des branches ou des dependances directes du
+  coordinateur;
+- aucune nouvelle facade concurrente et aucun changement produit.
+
+### Lot 9B.5 - LLM exchange, stream and persistence boundaries
+
+Golden tests prealables:
+
+- `app/tests/unit/chat/test_chat_llm_flow.py`;
+- `app/tests/unit/chat/test_chat_stream_control.py`;
+- `app/tests/test_server_chat_route_transport_contract.py`;
+- matrice Lot 10C des quatre surfaces et de la persistence fail-closed.
+
+Patch attendu:
+
+- separer dans `run_llm_exchange` la preparation/lecture provider, la
+  finalisation persistante et les derives post-persistence;
+- traiter son `event_stream` comme partie du meme sous-lot, pas comme tache
+  concurrente.
+
+Critere de sortie:
+
+- URL, headers, payloads, timeouts, terminaux, rollback et persistence
+  inchanges;
+- stream et non-stream partagent des frontieres explicites avec moins de
+  duplication et de branches croisees.
+
+### Lot 9B.6 - Validation agent internal boundaries
+
+Golden tests prealables:
+
+- `app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py`;
+- `app/tests/test_server_chat_hermeneutic_insertion_contract.py`;
+- `app/tests/test_server_chat_synthetic_logs_contract.py`;
+- contrat prompt/fallback et hard guards inchanges.
+
+Patch attendu:
+
+- separer validation pure, construction du message, transport et fallback
+  interne sans modifier le prompt ou le verdict produit;
+- conserver `build_validated_output` comme facade contractuelle.
+
+Critere de sortie:
+
+- moins de responsabilites par fonction et tests identiques sur verdict,
+  fail-open local, observabilite et bornes payload.
+
 ## Lot 9C - `web_search.py` clients/status/context
 
 Objectif:
@@ -471,6 +624,25 @@ Checklist:
 - [ ] Extraire evidence summary.
 - [ ] Verifier source-first contracts.
 
+### Lot 9C.4 - Runtime event projection boundary
+
+Golden tests prealables:
+
+- matrice 9C.0;
+- tests Web observability et `chat_turn_logger`;
+- payloads synthetiques prouvant l'absence de query, URL ou contenu brut.
+
+Patch attendu:
+
+- isoler les summaries/counters et la projection content-free de
+  `_emit_web_search_runtime_event`;
+- ne changer ni collecte, ni evidence/confidence, ni status/reason codes.
+
+Critere de sortie:
+
+- emetteur sans responsabilite de requete ou de crawl;
+- schema observable identique et branches de projection reduites.
+
 ## Lot 9D - Observabilite guard/read-models
 
 Objectif:
@@ -481,6 +653,8 @@ Fichiers vises:
 
 - `app/observability/observability_payload_guard_schema.py`
 - `app/observability/turn_pipeline_read_model.py`
+- `app/observability/dashboard_read_model.py`
+- `app/observability/dashboard_observable_modules.py`
 - `app/observability/admin_log_projection.py`
 - tests `app/tests/unit/logs/*`, dashboard contracts
 
@@ -553,6 +727,42 @@ Checklist:
 - [ ] Extraire Biblio/Agenda summary.
 - [ ] Verifier content-free snapshots.
 
+### Lot 9D.3 - Dashboard read-model boundaries
+
+Golden tests prealables:
+
+- `app/tests/unit/logs/test_dashboard_read_model_lot4.py`;
+- `app/tests/test_server_admin_dashboard_contract.py`;
+- content gate explicite et erreurs routes content-free.
+
+Patch attendu:
+
+- separer query/window, overview/conversations, inspection/story et content
+  gate en conservant les cinq facades publiques du read-model.
+
+Critere de sortie:
+
+- payloads et routes identiques;
+- builders de domaine testables sans couplage aux requetes des autres vues.
+
+### Lot 9D.4 - Observable module registry boundaries
+
+Golden tests prealables:
+
+- `app/tests/unit/logs/test_dashboard_observable_modules_lot3.py`;
+- analytics projection/storage et ordre stable des modules;
+- labels et explications content-free.
+
+Patch attendu:
+
+- isoler reducers et serialization publique autour d'un registre unique;
+- ne creer ni seconde taxonomie, ni second catalogue de modules.
+
+Critere de sortie:
+
+- cles, ordre, labels et payloads inchanges;
+- reducers de domaine separes et couplage au registre reduit.
+
 ## Lot 9E - Frontend chat scripts/load-order/panels
 
 Objectif:
@@ -564,6 +774,7 @@ Fichiers vises:
 - `app/web/app.js`
 - `app/web/chat_workspace_folders_sidebar.js`
 - `app/web/chat_workspace_folder_*`
+- `app/minimal_validation.py`, uniquement `_check_ui_assets`
 - tests frontend Node/browser
 
 Hors scope:
@@ -624,6 +835,26 @@ Checklist:
 - [ ] Extraire file rows.
 - [ ] Extraire artifact panel hooks.
 - [ ] Verifier error visible.
+
+### Lot 9E.3 - UI asset validator boundaries
+
+Golden tests prealables:
+
+- Lot 9.0 et 9E.0 fermes;
+- `app/tests/test_minimal_validation_phase9.py` et phase 11;
+- smoke frontend load-order et inventaire des assets/globals/IDs.
+
+Patch attendu:
+
+- decomposer `_check_ui_assets` par responsabilite UI dans des modules de
+  validation nommes, sans modifier le runner global ni son schema de resultat;
+- ne pas transformer `minimal_validation.py` en condition de demarrage.
+
+Critere de sortie:
+
+- verdict et details identiques;
+- span, branches et dependances directes de `_check_ui_assets` reduits sans
+  nouveau seuil automatique.
 
 ## Lot 9F - Agenda runtime structure
 

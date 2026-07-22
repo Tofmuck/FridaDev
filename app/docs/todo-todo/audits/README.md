@@ -11,9 +11,13 @@ decide ce qui reste executable.
 
 - `frida-v1-mega-audit-code-stack-todo.md`: registre canonique actif du
   mega-audit.
-- `frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md`: sous-TODO
-  active du Lot 10, issue de la seconde passe code-only du 2026-07-15. Elle ne
-  remplace pas le registre canonique; elle decoupe ses findings Celebrimbor.
+
+## Archive de remediation Lot 10
+
+- `../../todo-done/audits/frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md`:
+  sous-TODO Lot 10 archivee le 2026-07-22 apres fermeture ou requalification
+  prouvee des lots 10A-10G. Elle ne remplace pas le registre canonique; la
+  dette de complexite reste uniquement dans la roadmap Lot 9 ouverte.
 
 ## Source d'audit code-only du Lot 10
 

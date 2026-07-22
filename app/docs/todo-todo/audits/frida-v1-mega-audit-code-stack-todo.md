@@ -1713,13 +1713,20 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P3-CEL-LARGE-FILES-01
 
-- Statut courant: confirmed_by_lot_4E_report_lot_9.
+- Statut courant: superseded_and_absorbed_by_lot_10G_into_lot_9.
 - Severite: P3.
-- Alias/fusion: `P3-CEL-LARGE-FILES-AMPLIFIED-01`.
+- Alias/fusion: `P3-CEL-LARGE-FILES-AMPLIFIED-01`; la seconde passe le
+  supersede par `P3-CEL-COMPLEXITY-HOTSPOTS-01`.
 - Lot cible: Lot 9.
 - Decision Lot 4E: dette structurelle confirmee; pas de correction runtime
   immediate, pas de split cosmetique, golden tests requis avant extraction.
-- Critere de cloture: lots de refactor cibles, pas cosmetiques.
+- Resolution Lot 10G: matrice courante module/fonction/appelants/tests vers
+  9A-9H, sans `UNKNOWN`; chaque hotspot a une destination principale, un gate
+  golden et une condition de reduction de responsabilite. La dette reste dans
+  l'unique roadmap Lot 9; le finding de seconde passe est absorbe, pas simule
+  comme refactor execute.
+- Critere de sortie future: lots de refactor cibles, pas cosmetiques, apres
+  Lot 9.0.
 - Preuve minimale: lignes avant/apres, tests inchanges.
 
 ### P3-CEL-TEST-PROOF-MAPPING-01
@@ -3199,15 +3206,18 @@ Resultat readiness Lot 9:
   `app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`.
 - Aucun runtime modifie. Lot 9 reste ouvert: seuls l'audit preparatoire et la
   planification granulaire sont termines.
+- Le Lot 10G ajoute au meme backlog la baseline statique courante et la matrice
+  exhaustive des hotspots de la seconde passe. Il ne lance aucun sous-lot et
+  confirme 9.0 comme seul prochain lot executable.
 
 ### Lot 10 - Remediation de la seconde passe code-only
 
-Statut: actif, docs-only a l'ouverture le 2026-07-16.
+Statut: ferme le 2026-07-22; TODO dediee archivee apres Lot 10G.
 Agent: Celebrimbor uniquement.
 Audit source:
 `app/docs/states/audits/frida-v1-mega-audit-code-only-2026-07-15.md`.
-TODO dediee:
-`app/docs/todo-todo/audits/frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md`.
+Archive dediee:
+`app/docs/todo-done/audits/frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md`.
 
 La seconde passe historique a initialement rapporte cinq P2 et trois P3 dans le
 code applicatif au HEAD `afdf19fa54c6a1602232e54e40bb23a6ba33787d`. La
@@ -3289,7 +3299,16 @@ plateforme et ne rouvre pas Sauron.
   desormais bornees avant tout sink textuel, et la validation minimale ne
   serialise plus sa cause brute. Aucun remplacement global ni nouveau log n'a
   ete introduit. `P3-CEL-RAW-EXCEPTION-LOGS-01` est ferme.
-- [ ] Lot 10G: raccord des hotspots de complexite au Lot 9 existant.
+- [x] Lot 10G ferme le 2026-07-22: le scan statique courant recalcule lignes
+  utiles, spans/noeuds AST, appelants, responsabilites et tests de chaque
+  hotspot. La TODO Lot 9 porte la matrice complete vers une destination
+  principale unique 9A-9H, avec golden prerequisite et condition de reduction
+  de responsabilite. Les absences chat LLM/stream, validation hermeneutique,
+  validateur UI, dashboard read-models et emission Web sont absorbees dans les
+  familles existantes, sans `UNKNOWN`, nouveau backlog ou refactor anticipe.
+  `P3-CEL-COMPLEXITY-HOTSPOTS-01` est absorbe dans le Lot 9; le Lot 10 est
+  ferme et sa TODO archivee. Lot 9 reste ouvert et 9.0 est le seul prochain
+  lot executable.
 
 Regle Lot 10:
 
