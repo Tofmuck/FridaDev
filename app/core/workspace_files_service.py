@@ -5,6 +5,7 @@ from typing import Any, Mapping, Tuple
 from . import active_document_image_validation
 from . import active_document_text_extraction
 from . import active_document_upload_service
+from . import document_upload_reader
 from . import workspace_folder_documents
 from . import workspace_folder_document_list
 from . import workspace_document_nextcloud_client
@@ -33,21 +34,31 @@ REASON_DOCUMENT_NAME_INVALID = workspace_document_nextcloud_client.REASON_NAME_I
 
 def upload_body_size_guard_response(content_length: Any) -> Tuple[dict[str, Any], int] | None:
     try:
-        body_size = int(content_length or 0)
+        body_size = int(content_length)
     except (TypeError, ValueError):
-        body_size = 0
+        return None
     if body_size <= WORKSPACE_FILE_UPLOAD_MAX_CONTENT_LENGTH:
         return None
+    return upload_body_too_large_response(body_size)
+
+
+def upload_body_too_large_response(content_length: Any = None) -> Tuple[dict[str, Any], int]:
+    file_meta = {
+        "status": "too_large",
+        "reason_code": REASON_DOCUMENT_TOO_LARGE,
+        "max_body_bytes": WORKSPACE_FILE_UPLOAD_MAX_CONTENT_LENGTH,
+    }
+    try:
+        body_size = int(content_length)
+    except (TypeError, ValueError):
+        body_size = None
+    if body_size is not None and body_size >= 0:
+        file_meta["byte_size"] = body_size
     return {
         "ok": False,
         "error": _human_workspace_file_error(REASON_DOCUMENT_TOO_LARGE),
         "reason_code": REASON_DOCUMENT_TOO_LARGE,
-        "file": {
-            "status": "too_large",
-            "reason_code": REASON_DOCUMENT_TOO_LARGE,
-            "byte_size": body_size,
-            "max_body_bytes": WORKSPACE_FILE_UPLOAD_MAX_CONTENT_LENGTH,
-        },
+        "file": file_meta,
     }, 413
 
 
@@ -103,7 +114,28 @@ def upload_workspace_file_response(
     filename = str(getattr(file_obj, "filename", "") or "fichier").strip() or "fichier"
     media_type = str(getattr(file_obj, "mimetype", "") or "").strip()
     try:
-        content = bytes(file_obj.read() or b"")
+        content = document_upload_reader.read_document_upload_bytes(
+            file_obj,
+            max_bytes=WORKSPACE_FILE_UPLOAD_MAX_CONTENT_LENGTH,
+        )
+    except document_upload_reader.DocumentUploadTooLargeError as exc:
+        _log_workspace_file_event(
+            workspace_files_module,
+            "upload_failed",
+            folder_id=normalized,
+            mime_type=media_type,
+            byte_size=exc.observed_bytes,
+            reason_code=REASON_DOCUMENT_TOO_LARGE,
+            status="too_large",
+        )
+        return _workspace_file_failure(
+            REASON_DOCUMENT_TOO_LARGE,
+            filename=filename,
+            media_type=media_type,
+            status="too_large",
+            status_code=413,
+            extra={"byte_size": exc.observed_bytes, "max_file_bytes": exc.max_bytes},
+        )
     except Exception:
         _log_workspace_file_event(
             workspace_files_module,
@@ -119,25 +151,6 @@ def upload_workspace_file_response(
             media_type=media_type,
             status="parse_error",
             status_code=400,
-        )
-
-    if len(content) > WORKSPACE_FILE_UPLOAD_MAX_CONTENT_LENGTH:
-        _log_workspace_file_event(
-            workspace_files_module,
-            "upload_failed",
-            folder_id=normalized,
-            mime_type=media_type,
-            byte_size=len(content),
-            reason_code=REASON_DOCUMENT_TOO_LARGE,
-            status="too_large",
-        )
-        return _workspace_file_failure(
-            REASON_DOCUMENT_TOO_LARGE,
-            filename=filename,
-            media_type=media_type,
-            status="too_large",
-            status_code=413,
-            extra={"byte_size": len(content), "max_body_bytes": WORKSPACE_FILE_UPLOAD_MAX_CONTENT_LENGTH},
         )
 
     metadata, validation_error = _workspace_upload_metadata(

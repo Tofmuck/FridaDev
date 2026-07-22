@@ -385,6 +385,14 @@ Decision technique Lot 3:
 Regles runtime:
 
 - un dossier non `linked` bloque le depot avant lecture du contenu;
+- `app/server.py` borne le corps multipart a `40 MiB` (`41943040` octets)
+  avec `MAX_CONTENT_LENGTH` Flask avant materialisation non bornee, y compris
+  pour un flux WSGI termine sans `Content-Length` exploitable;
+- le service workspace lit ensuite le fichier par blocs jusqu'a `40 MiB + 1
+  octet` au plus: `40 MiB` exacts sont acceptes, `40 MiB + 1 octet` est refuse
+  avant extraction, validation, ecriture disque, persistence locale ou appel
+  Nextcloud;
+- le prefixe observe lors d'un refus n'est jamais transmis comme document;
 - le sous-dossier standard `Documents` est verifie en `PROPFIND` Depth 0 et doit
   etre une collection WebDAV;
 - une cible `Documents` absente, non-collection, conflictuelle ou indisponible
@@ -422,6 +430,12 @@ Regles runtime:
   classes HTTP et reason codes; le nom distant brut reste interne a la
   persistance applicative et n'est jamais expose dans les logs, JSONL,
   observabilite technique ou payloads techniques.
+
+Le plafond HTTP/fichier `40 MiB`, le fallback visuel `25 MiB` / `25 pages`,
+les limites OCR et la fenetre de contexte restent distincts. Une selection
+conversationnelle continue d'injecter le document entier ou de l'exclure
+entierement; l'exclusion maintient le tour et permet a Frida de dire honnetement
+qu'elle ne dispose pas du document.
 
 Preuve Lot 3:
 

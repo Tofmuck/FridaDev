@@ -239,8 +239,9 @@ Statut borne:
 - [x] preuves sans reseau: suites ciblees `9` tests Node et `24` tests Python;
   suites elargies `120` tests frontend Node, `113` unitaires chat, `16`
   integrations chat et `25` contrats frontend Python, toutes vertes;
-- [ ] `LOT 10B GLOBAL TOUJOURS OUVERT`: PDF, documents actifs et workspace
-  restent hors de cette tranche et ne sont pas requalifies par ces preuves.
+- [x] `LOT 10B GLOBAL FERME LE 2026-07-22`: les voies documents actifs et
+  workspace sont maintenant bornees avant et apres parsing; la tranche Whisper
+  precedente reste inchangee et revalidee.
 
 Perimetre strict:
 
@@ -251,22 +252,91 @@ Perimetre strict:
 
 Checklist:
 
-- [ ] Inventorier les routes multipart et leurs limites existantes; conserver
+- [x] Inventorier les routes multipart et leurs limites existantes; conserver
   les valeurs produit deja decidees ou justifier toute borne avec contrat et
   effets de bord.
-- [ ] Poser une premiere barriere Flask coherente avec les plafonds metier et
+- [x] Poser une premiere barriere Flask coherente avec les plafonds metier et
   une erreur HTTP stable, sans masquer les erreurs de validation propres a une
   route.
-- [ ] Conserver ou ajouter un controle de taille apres lecture pour chaque voie
+- [x] Conserver ou ajouter un controle de taille apres lecture pour chaque voie
   qui materialise encore le contenu en memoire; ne jamais accepter une taille
   inconnue comme zero par defaut.
-- [ ] Ajouter un plafond explicite a la transcription avant lecture complete et
+- [x] Ajouter un plafond explicite a la transcription avant lecture complete et
   avant duplication multipart. Fait pour la seule tranche Whisper par lecture
-  bornee en blocs, sans chunking, streaming ni seconde voie; le point reste
-  non coche tant que les autres uploads du Lot 10B ne sont pas fermes.
-- [ ] Tester, par route: `Content-Length` absent, invalide, mensonger, limite
+  bornee en blocs, sans chunking, streaming ni seconde voie; les autres uploads
+  du Lot 10B sont maintenant fermes par la meme exigence, sans raccorder
+  Whisper a leur primitive.
+- [x] Tester, par route: `Content-Length` absent, invalide, mensonger, limite
   exacte, limite moins un, limite plus un et fichier effectivement trop grand.
-- [ ] Prouver qu'aucun test ne contacte Whisper, OCR ou un service externe.
+- [x] Prouver qu'aucun test ne contacte Whisper, OCR ou un service externe.
+
+### Validation et cloture Lot 10B - 2026-07-22
+
+Statut: **clos; `P2-CEL-UPLOAD-LIMITS-01` ferme**.
+
+Revalidation au HEAD de depart
+`804ff5fb907b600c0c5d4a8c399034d8b6fb8503`:
+
+- les trois seules voies `request.files` / `request.form` de `app/server.py`
+  etaient Whisper, workspace et documents actifs;
+- Flask `3.0.3` / Werkzeug `3.1.8` etaient executes avec
+  `MAX_CONTENT_LENGTH=None` avant correction;
+- sans longueur fiable et avec `wsgi.input_terminated`, la vraie frontiere
+  WSGI materialisait un multipart au-dela du plafond simule sur documents
+  actifs et workspace;
+- les deux services documentaires appelaient `file_obj.read()` sans borne;
+- le runtime conservait `ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS=0`; cette valeur
+  n'a pas ete modifiee.
+
+Correction bornee:
+
+- `app/server.py` pose `MAX_CONTENT_LENGTH=41943040` (`40 MiB`) sans nouvelle
+  option runtime; Werkzeug borne ainsi les flux termines sans longueur fiable,
+  tandis que son safe fallback ne consomme rien sans longueur ni signal WSGI;
+- le handler 413 conserve les reason codes de chaque route identifiable:
+  `active_document_upload_too_large`, `folder_document_too_large` et
+  `audio_request_too_large`;
+- `app/core/document_upload_reader.py` lit seulement les uploads documents
+  actifs/workspace, par blocs, jusqu'a la limite pertinente plus un octet;
+  Whisper reste sur sa lecture bornee historique et n'est pas modifie;
+- les deux services acceptent la limite exacte, refusent `limite + 1`, ne
+  retournent jamais le prefixe observe et n'appellent aucun effet aval apres
+  refus;
+- le controle workspace post-materialisation devenu mort est supprime.
+
+Integrite preservee:
+
+- les octets acceptes atteignent sans alteration l'extracteur ou le stockage;
+- l'extracteur textuel `complete` conserve les sentinelles synthetiques de
+  debut, milieu et fin;
+- les lanes active-document et workspace injectent les trois sentinelles dans
+  le payload modele fake quand le document est admissible;
+- en exclusion, aucun fragment sentinelle n'atteint le modele, l'appel modele
+  continue, le signal compact est present et Frida peut repondre honnetement
+  qu'elle ne dispose pas du document;
+- aucune troncature, chunking, resume automatique ou echec global du chat n'est
+  introduit.
+
+Preuves sans reseau:
+
+- reproduction pre-correctif a la frontiere WSGI: longueur absente, invalide et
+  negative consommaient le multipart complet au-dela du plafond simule;
+- controle Flask/Werkzeug apres configuration: les memes cas s'arretent au
+  plafond et rendent HTTP 413; une longueur mensongere plus petite ne permet
+  pas de lire au-dela de la longueur exposee par WSGI;
+- suite ciblee nouvelle: `12/12` tests;
+- suites obligatoires routes/services/extracteur/lanes: `121/121` tests;
+- revalidation Whisper inchange: `24/24` tests;
+- suite documentaire elargie: `54/56` tests; les deux erreurs
+  d'observabilite image active sont reproduites a l'identique au HEAD initial
+  et ne traversent ni l'upload corrige ni les lanes textuelles;
+- decouverte Python complete comparee: HEAD initial `2465` tests, patch `2477`
+  tests, avec exactement les memes `22` echecs et `16` erreurs hors Lot 10B;
+  les `12` tests ajoutes expliquent seuls l'augmentation et sont tous verts;
+- streams instrumentes: au plus `limite + 1` octet lu et reste du flux non
+  consomme apres refus;
+- aucun reseau externe, aucun contenu utilisateur et aucune donnee persistante
+  operateur utilises.
 
 Critere de sortie:
 aucune voie d'upload auditee ne consomme sans borne le corps effectif; les

@@ -297,8 +297,8 @@ class _UploadFile:
         self.filename = filename
         self.mimetype = mimetype
 
-    def read(self):
-        return self._stream.read()
+    def read(self, size=-1):
+        return self._stream.read(size)
 
 
 class _FakeConvStore:

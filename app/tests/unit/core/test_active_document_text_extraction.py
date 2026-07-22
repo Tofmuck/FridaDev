@@ -9,17 +9,21 @@ from core import active_document_text_extraction as extraction
 
 class ActiveDocumentTextExtractionTest(unittest.TestCase):
     def test_txt_success_extracts_normalized_text_and_metadata(self):
+        sentinels = ("LOT10B-BEGIN", "LOT10B-MIDDLE", "LOT10B-END")
+        raw_text = f"  {sentinels[0]}\r\n{sentinels[1]}  \n{sentinels[2]}\n"
         result = extraction.extract_active_document_text(
-            b"  Ligne une\r\nLigne deux  \n",
+            raw_text.encode("utf-8"),
             filename="note.txt",
             media_type="text/plain",
         )
 
         self.assertEqual(result.status, "complete")
         self.assertEqual(result.parser, "txt")
-        self.assertEqual(result.text, "Ligne une\nLigne deux")
+        self.assertEqual(result.text, "LOT10B-BEGIN\nLOT10B-MIDDLE\nLOT10B-END")
+        for sentinel in sentinels:
+            self.assertIn(sentinel, result.text)
         self.assertEqual(result.chars, len(result.text))
-        self.assertEqual(result.bytes, len(b"  Ligne une\r\nLigne deux  \n"))
+        self.assertEqual(result.bytes, len(raw_text.encode("utf-8")))
         self.assertGreater(result.token_estimate, 0)
         self.assertEqual(len(result.sha256_12), 12)
         self.assertEqual(result.to_dict()["text_chars"], result.chars)

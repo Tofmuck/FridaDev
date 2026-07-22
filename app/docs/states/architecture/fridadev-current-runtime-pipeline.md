@@ -23,6 +23,9 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   |       -> normalized WAV duration required and <= 305 s before whisper-cli
   |- optional web_search flag
   |- active documents UI -> /api/conversations/<id>/active-documents
+  |    -> Flask body <= 40 MiB, bounded file read <= 40 MiB + 1 byte observed
+  |- workspace file upload -> /api/workspace-folders/<id>/files
+  |    -> Flask body <= 40 MiB, bounded file read <= 40 MiB + 1 byte observed
   |- scanned PDF active_document OCR V1 -> platform-stirling-pdf when extractor says document_ocr_required
   v
 [server.py / /api/chat]
@@ -129,6 +132,26 @@ EN: `active_document` is temporary conversation-scoped server state. It accepts 
 FR: l'OCR des documents actifs est synchrone, limitee a `25 pages`, `25 Mo`, `180` secondes et `fra+eng+deu`. Elle n'est pas une OCR generale, pas une modalite image, pas Biblio, et n'utilise ni n8n ni doc-pipeline dans le chemin nominal. Les surfaces ordinaires ne publient pas le texte OCR brut.
 EN: active document OCR is synchronous and bounded by `25 pages`, `25 Mo`, `180` seconds, and `fra+eng+deu`. It is not general OCR, not image multimodality, not Biblio, and does not use n8n or doc-pipeline in the nominal path. Ordinary surfaces do not publish raw OCR text.
 
+6ter. La frontiere multipart documentaire est bornee avant et apres parsing.
+FR: Flask applique `MAX_CONTENT_LENGTH=40 MiB` aux corps applicatifs. Avec
+Flask `3.0.3` et Werkzeug `3.1.8`, un flux WSGI termine sans longueur fiable
+est limite a cette valeur; sans longueur ni signal de terminaison, le flux est
+vide par securite. Les services documents actifs et workspace lisent ensuite
+par blocs jusqu'a `40 MiB + 1 octet` au plus. La limite exacte est acceptee;
+au-dessus, aucun extracteur, OCR, stockage, activation ou Nextcloud n'est
+appele. Cette frontiere ne modifie pas les plafonds image, PDF visuel/OCR,
+provider ou prompt. Le document reste entier ou absent du tour, et le tour
+continue avec un signal d'exclusion honnete.
+EN: Flask applies `MAX_CONTENT_LENGTH=40 MiB` to application request bodies.
+With Flask `3.0.3` and Werkzeug `3.1.8`, a terminated WSGI stream without a
+reliable length is limited to that value; without a length or termination
+signal, the safe fallback exposes an empty stream. Active-document and
+workspace services then read in blocks up to `40 MiB + 1 byte`. The exact
+limit is accepted; above it no extractor, OCR, storage, activation, or
+Nextcloud call runs. Image, visual/OCR PDF, provider, and prompt limits remain
+separate. A document remains whole or absent from the turn, which continues
+with an honest exclusion signal.
+
 7. Les surfaces operateur ne sont pas des pipelines paralleles.
 FR: `/dashboard`, `/log`, `/hermeneutic-admin`, `/identity`, `/memory-admin` et `/admin` lisent le runtime et ses derives; elles ne remplacent pas le pipeline principal.
 EN: `/dashboard`, `/log`, `/hermeneutic-admin`, `/identity`, `/memory-admin`, and `/admin` inspect runtime state and derivatives; they do not replace the main pipeline.
@@ -176,6 +199,7 @@ input duration, no raw fallback is allowed.
 - `app/core/active_document_ocr_client.py`
 - `app/core/active_document_prompt_lane.py`
 - `app/core/active_document_upload_service.py`
+- `app/core/document_upload_reader.py`
 - `app/memory/memory_store.py`
 - `app/memory/memory_traces_summaries.py`
 - `app/observability/hermeneutic_node_logger.py`

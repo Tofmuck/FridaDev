@@ -3232,7 +3232,7 @@ plateforme et ne rouvre pas Sauron.
   vide, sans patch; non bloquant, non confirme, ni `stale`, corrige ni clos.
   Reouvrir seulement sur traceback, exception asynchrone ou `stderr` anormal
   reproduit par ce test; ni Lot 10A ni correction speculative.
-- [ ] Lot 10B: plafonds uploads/documents/transcription sur taille reelle.
+- [x] Lot 10B: plafonds uploads/documents/transcription sur taille reelle.
   - [x] Tranche transcription Whisper fermee le 2026-07-16: frontend `300 s`,
     un blob/upload/transcription, fichier reel FridaDev `16 Mio`, corps declare
     FridaDev/Caddy `17 Mio`, tolerance Whisper `305 s`, rejets 413/422
@@ -3242,8 +3242,14 @@ plateforme et ne rouvre pas Sauron.
     normalisation bornee a `306 s` est permise, la duree WAV connue et
     `<= 305 s` reste obligatoire avant `whisper-cli`, sans fallback brut en cas
     d'echec; le vrai WebM auparavant refuse a ensuite ete transcrit avec HTTP
-    200. `P2-CEL-UPLOAD-LIMITS-01` reste ouvert.
-  - [ ] Reliquat Lot 10B: PDF, documents actifs et workspace.
+    200.
+  - [x] Reliquat Lot 10B ferme le 2026-07-22: Flask
+    `MAX_CONTENT_LENGTH=40 MiB` borne les corps avant materialisation, y compris
+    sans longueur fiable a la frontiere WSGI; documents actifs et workspace
+    lisent par blocs jusqu'a `40 MiB + 1 octet`, acceptent la limite exacte et
+    refusent au-dessus avant extracteur/OCR/activation/stockage/Nextcloud. Les
+    payloads fake prouvent document entier ou absent, tour maintenu et reponse
+    honnete de Frida. `P2-CEL-UPLOAD-LIMITS-01` est ferme.
 - [ ] Lot 10C: frontiere fail-open des effets auxiliaires post-persistence.
 - [ ] Lot 10D: URL runtime commune du LLM principal, stream et non-stream.
 - [ ] Lot 10E: prompts critiques fail-closed.

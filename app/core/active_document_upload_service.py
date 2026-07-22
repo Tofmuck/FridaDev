@@ -14,6 +14,7 @@ from . import active_document_image_validation
 from . import active_document_ocr_client
 from . import active_document_text_extraction
 from . import active_document_visual_limits
+from . import document_upload_reader
 from observability import active_documents_observability
 
 
@@ -28,21 +29,31 @@ def upload_body_size_guard_response(content_length: Any) -> Tuple[dict[str, Any]
     """Reject obviously oversized multipart bodies before Flask parses files."""
 
     try:
-        body_size = int(content_length or 0)
+        body_size = int(content_length)
     except (TypeError, ValueError):
-        body_size = 0
+        return None
     if body_size <= ACTIVE_DOCUMENT_UPLOAD_MAX_CONTENT_LENGTH:
         return None
+    return upload_body_too_large_response(body_size)
+
+
+def upload_body_too_large_response(content_length: Any = None) -> Tuple[dict[str, Any], int]:
+    document = {
+        "status": "too_large",
+        "reason_code": REASON_UPLOAD_BODY_TOO_LARGE,
+        "max_body_bytes": ACTIVE_DOCUMENT_UPLOAD_MAX_CONTENT_LENGTH,
+    }
+    try:
+        body_size = int(content_length)
+    except (TypeError, ValueError):
+        body_size = None
+    if body_size is not None and body_size >= 0:
+        document["byte_size"] = body_size
     return {
         "ok": False,
         "error": _human_upload_error(REASON_UPLOAD_BODY_TOO_LARGE),
         "reason_code": REASON_UPLOAD_BODY_TOO_LARGE,
-        "document": {
-            "status": "too_large",
-            "reason_code": REASON_UPLOAD_BODY_TOO_LARGE,
-            "byte_size": body_size,
-            "max_body_bytes": ACTIVE_DOCUMENT_UPLOAD_MAX_CONTENT_LENGTH,
-        },
+        "document": document,
     }, 413
 
 
@@ -87,7 +98,30 @@ def upload_active_document_response(
     filename = str(getattr(file_obj, "filename", "") or "document").strip() or "document"
     media_type = str(getattr(file_obj, "mimetype", "") or "").strip()
     try:
-        content = bytes(file_obj.read() or b"")
+        content = document_upload_reader.read_document_upload_bytes(
+            file_obj,
+            max_bytes=ACTIVE_DOCUMENT_UPLOAD_MAX_CONTENT_LENGTH,
+        )
+    except document_upload_reader.DocumentUploadTooLargeError as exc:
+        failure = {
+            "filename": filename,
+            "media_type": media_type,
+            "status": "too_large",
+            "reason_code": REASON_UPLOAD_BODY_TOO_LARGE,
+            "byte_size": exc.observed_bytes,
+            "max_file_bytes": exc.max_bytes,
+        }
+        active_documents_observability.log_activation_failure(
+            admin_logs_module,
+            conversation_id=conv_id,
+            extraction=failure,
+        )
+        return {
+            "ok": False,
+            "error": _human_upload_error(REASON_UPLOAD_BODY_TOO_LARGE),
+            "reason_code": REASON_UPLOAD_BODY_TOO_LARGE,
+            "document": failure,
+        }, 413
     except Exception:
         active_documents_observability.log_activation_failure(
             admin_logs_module,

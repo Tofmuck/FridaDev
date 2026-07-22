@@ -14,6 +14,7 @@ from typing import Any
 
 import requests
 from flask import Flask, Response, jsonify, request, send_from_directory, stream_with_context
+from werkzeug.exceptions import RequestEntityTooLarge
 
 import config
 from core import llm_client as llm
@@ -167,6 +168,7 @@ def _admin_not_found_response(reason_code: str) -> tuple[Response, int]:
 
 
 app = Flask(__name__, static_folder="web", static_url_path="")
+app.config["MAX_CONTENT_LENGTH"] = active_document_upload_service.ACTIVE_DOCUMENT_UPLOAD_MAX_CONTENT_LENGTH
 logging.basicConfig(level="INFO")
 logger = logging.getLogger("frida.server")
 config.log_hermeneutic_effective_config(logger)
@@ -217,6 +219,28 @@ logger.info(
     _RUNTIME_FINGERPRINT['conv_dir'],
     _RUNTIME_FINGERPRINT['logs_path'],
 )
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def _request_entity_too_large(error: RequestEntityTooLarge):
+    if request.endpoint == "api_upload_active_conversation_document":
+        payload, status = active_document_upload_service.upload_body_too_large_response(
+            request.content_length
+        )
+        return jsonify(payload), status
+    if request.endpoint == "api_upload_workspace_folder_file":
+        payload, status = workspace_files_service.upload_body_too_large_response(
+            request.content_length
+        )
+        return jsonify(payload), status
+    if request.endpoint == "api_chat_transcribe":
+        body_guard = whisper_transcription_service.request_body_size_guard_response(
+            whisper_transcription_service.MAX_TRANSCRIPTION_REQUEST_BYTES + 1
+        )
+        if body_guard:
+            payload, status = body_guard
+            return jsonify(payload), status
+    return error
 
 
 _TRUSTED_ADMIN_PROXY_HOSTS = ('platform-caddy', 'caddy')

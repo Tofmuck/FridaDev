@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import unittest
 from types import SimpleNamespace
 
@@ -15,14 +16,14 @@ FILE_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
 
 class _UploadFile:
     def __init__(self, data: bytes, filename: str, mimetype: str = "text/plain"):
-        self._data = data
+        self._stream = io.BytesIO(data)
         self.filename = filename
         self.mimetype = mimetype
         self.read_called = False
 
-    def read(self):
+    def read(self, size=-1):
         self.read_called = True
-        return self._data
+        return self._stream.read(size)
 
 
 class _Files:

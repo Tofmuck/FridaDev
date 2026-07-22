@@ -501,7 +501,12 @@ Lot 2 livre le 2026-05-20:
 - `storage_key` interne construit avec `workspace_folder.id` + `workspace_file.id`, jamais avec les noms humains;
 - routes `GET/POST/DELETE /api/workspace-folders/<folder_id>/files`;
 - upload multipart d'un fichier de repertoire;
-- reutilisation du plafond d'upload actif `40 MiB`;
+- reutilisation du plafond d'upload actif `40 MiB`, applique comme
+  `MAX_CONTENT_LENGTH` Flask avant materialisation multipart meme sans longueur
+  fiable, puis comme lecture fichier par blocs jusqu'a `40 MiB + 1 octet`;
+- acceptation de la limite fichier exacte et refus de `limite + 1` avant
+  extraction, ecriture disque, persistence ou Nextcloud, sans reutiliser le
+  prefixe lu;
 - reutilisation de `active_document_text_extraction` pour `TXT`, `MD`, `PDF`, `DOCX`, `ODT`;
 - reutilisation de `active_document_image_validation` pour `PNG`, `JPEG`, `WEBP`, avec refus GIF V0;
 - stockage metadata content-free: nom logique, MIME, extension, taille, hash court, dimensions image, statut, reason code;
@@ -525,3 +530,6 @@ Decision Lot 2:
 - les PDF scannes peuvent etre conserves comme fichiers de repertoire avec statut `ocr_required` / reason code `workspace_file_ocr_required`; s'ils sont explicitement selectionnes, la preparation de tour peut tenter un payload visuel PDF `text` puis `file`;
 - le derive `.ocr.md` reste le chemin OCR durable separe: il n'est cree que par action OCR explicite et non par la selection du PDF;
 - les fichiers de repertoire ne nourrissent ni memoire, ni identity, ni summary, ni Biblio, ni RAG documentaire par repertoire.
+- leur usage conversationnel reste document entier ou absent: aucune
+  troncature, le tour continue apres exclusion et Frida recoit le signal qui lui
+  permet de dire honnetement que le fichier n'a pas ete injecte.

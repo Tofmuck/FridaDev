@@ -310,8 +310,8 @@ class _UploadFile:
         self.filename = "scan.pdf"
         self.mimetype = "application/pdf"
 
-    def read(self):
-        return self._stream.read()
+    def read(self, size=-1):
+        return self._stream.read(size)
 
 
 @dataclass(frozen=True)

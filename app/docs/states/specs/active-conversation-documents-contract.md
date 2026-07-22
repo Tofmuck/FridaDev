@@ -363,6 +363,16 @@ Limites source upload V0:
 
 - taille maximale source: `32 MiB` (`33554432` bytes);
 - taille maximale du body multipart active-documents avant parsing: `40 MiB` (`41943040` bytes);
+- `app/server.py` applique ce plafond `40 MiB` comme
+  `MAX_CONTENT_LENGTH` Flask avant toute materialisation multipart non bornee,
+  y compris lorsque `Content-Length` est absent, invalide ou negatif et que le
+  serveur WSGI signale un flux termine;
+- sans longueur exploitable ni signal WSGI de terminaison, Werkzeug expose un
+  flux vide par securite au lieu de lire un corps potentiellement infini;
+- apres parsing borne, le service d'upload lit le fichier par blocs jusqu'a
+  `40 MiB + 1 octet` au plus: la limite exacte est acceptee, `limite + 1` est
+  refusee avant extraction, OCR, activation ou stockage d'etat;
+- un refus de taille ne transforme jamais le prefixe lu en document valide;
 - dimensions minimales: `32 x 32 px`;
 - dimension maximale par cote: `16000 px`;
 - surface maximale: `100 megapixels`;
@@ -376,6 +386,13 @@ Limite d'injection provider V0:
 - une image source acceptee entre `25 MiB` et `32 MiB` reste document actif mais est exclue du payload OpenRouter principal avec `reason_code=image_too_large_for_provider_payload`;
 - le chat continue sans l'image et avec un signal compact d'exclusion;
 - aucun downscale, compression, conversion ou URL temporaire n'est produit silencieusement en V0.
+
+Ces limites restent de nature distincte. Le plafond HTTP/fichier `40 MiB` ne
+remplace ni le plafond source image `32 MiB`, ni le plafond provider image/PDF
+visuel `25 MiB`, ni les limites OCR `25 MiB` / `25 pages`, ni la regle
+d'admission prompt. Un fichier accepte est transmis byte pour byte complet a
+l'extracteur ou a l'activation prevue; la lane conserve ensuite la regle
+produit: document entier ou absent, tour maintenu, reponse honnete de Frida.
 
 Reason codes image initiaux:
 
