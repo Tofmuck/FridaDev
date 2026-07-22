@@ -379,8 +379,8 @@ interdits dans tous les cas.
 
 Le scan a ete reconstruit sur la base
 `bdffc8e50125fe6d1a91105f3758dad6346d3c0b`, sans reutiliser le nombre
-historique. Apres correction, il compte 131 appels de logger situes dans un
-handler et referencant l'exception capturee: 82 rendent encore son texte, 47
+historique. Apres correction, il compte 132 appels de logger situes dans un
+handler et referencant l'exception capturee: 82 rendent encore son texte, 48
 n'exposent que sa classe et 2 un identifiant de prompt stable. Aucun appel
 `logger.exception`, `exc_info=True`, `traceback`, `format_exc` ou `print_exc`
 n'est present dans le code runtime. Les 82 rendus textuels sont reconciles
@@ -407,7 +407,7 @@ traitees separement meme lorsqu'elles rejoignaient auparavant un de ces sinks.
 | transport embedding avec header sensible | `app/memory/memory_store.py::embed` vers les callers Memory/Identity | evenement JSONL classe-only puis logs standards prives aval | une `InvalidHeader` peut recopier le token d'embedding | `SECRET_RISK_REQUIRES_FIX` | Confirme puis corrige au point commun transport: l'erreur propagee ne contient que l'operation et la classe source; aucun caller ne recoit le texte original. |
 | validation minimale | `app/minimal_validation.py::_run_check` | stdout texte/JSON et artefact de smoke | tout texte de l'exception du check | `CONTENT_FREE_BOUNDARY_REQUIRED` | Fuite synthetique confirmee puis corrigee au serializer: message public generique, reason code, classe et `raw_error_message_included=false`. |
 | admin, JSONL, dashboard et export | `app/admin/admin_actions.py`, `admin_logs.py`, `app/observability/*` | JSONL, HTTP admin, dashboard, export Markdown | panne writer/read-model | `CONTENT_FREE_BOUNDARY_REQUIRED` | 30 branches logger n'exposent que classe/reason; les projections et tests anti-fuite restent la frontiere. |
-| chat, Web, juge mutable et notes workspace | `app/core/conversations_*`, `workspace_folder_notes_prompt_lane.py`, `mutable_identity_judge_v2.py`, `web_search.py` | log prive et/ou resultat applicatif borne | panne provider, prompt ou DB | `CONTENT_FREE_BOUNDARY_REQUIRED` | Les 14 autres branches classe-only et les 2 attributs `prompt_id` ne propagent aucun texte arbitraire. |
+| chat, Web, juge mutable et notes workspace | `app/core/conversations_*`, `workspace_folder_notes_prompt_lane.py`, `mutable_identity_judge_v2.py`, `web_search.py` | log prive et/ou resultat applicatif borne | panne provider, prompt ou DB | `CONTENT_FREE_BOUNDARY_REQUIRED` | Les 15 autres branches classe-only, dont le log `web_search.search_error` deja conforme via `type(e).__name__`, et les 2 attributs `prompt_id` ne propagent aucun texte arbitraire. |
 | HTTP/API et retours d'agents | services admin Identity/Memory/settings, flows Agenda/Biblio, uploads/Whisper/workspace, chat et agents hermeneutiques | HTTP, observabilite ou retour d'agent | exception provider, stockage, DB ou validation | `CONTENT_FREE_BOUNDARY_REQUIRED` | Les sinks utilisent classe, statut, reason code et champs techniques allowlistes; les exceptions Biblio internes sont `repr=False` et projetees par `to_observability()`. |
 | reemballage settings/crypto | `runtime_settings_repo.py`, `runtime_settings_write_path.py`, `runtime_secrets.py` | exception interne typee, ensuite log prive ou mapping HTTP classe-only | diagnostic DB/crypto | `NOT_A_LOG_SINK` | `str(exc)` ne sort pas directement; la destination terminale determine la politique. |
 | compatibilite de signatures | services admin Identity et helpers embedding `purpose` | comparaison interne seulement | texte de `TypeError` | `NOT_A_LOG_SINK` | Le texte sert a choisir une branche de compatibilite et n'est pas retourne. |

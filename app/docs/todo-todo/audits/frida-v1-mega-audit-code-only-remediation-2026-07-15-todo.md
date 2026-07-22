@@ -524,7 +524,7 @@ Conflit revalide:
 - l'audit du 2026-07-15 trouvait 81 interpolations d'exception brute dans les
   loggers standards et citait le contrat content-free; ce nombre historique
   n'a pas ete reutilise: le scan Lot 10F reconstruit compte 82 rendus textuels
-  au HEAD courant, 47 usages classe-only apres correction et 2 attributs de
+  au HEAD courant, 48 usages classe-only apres correction et 2 attributs de
   prompt stables;
 - le Lot 6J precedent a classe une partie des logs DB/stores/memoire comme
   internes/non publics, donc hors correction alors attendue.
