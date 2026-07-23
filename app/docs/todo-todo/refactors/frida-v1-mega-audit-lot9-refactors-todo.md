@@ -434,7 +434,7 @@ Checklist:
 
 Statut:
 
-`OUVERT - MICRO-LOTS 9A.2A, 9A.2B ET 9A.2C FERMES LE 23 JUILLET 2026`
+`FERME - MICRO-LOTS 9A.2A, 9A.2B, 9A.2C ET 9A.2D FERMES LE 23 JUILLET 2026`
 
 #### Lot 9A.2a - Dossiers, fichiers et OCR
 
@@ -511,6 +511,46 @@ Preuves de fermeture 9A.2c:
 - aucune route dossiers/fichiers/OCR, Notes ou generated-images modifiee;
   9A.2d reste ouvert et non commence.
 
+#### Lot 9A.2d - Images generees
+
+`app/workspace_folder_generated_image_routes.py` enregistre les six routes
+Images generees. `app/server.py` injecte le service liste/creation existant et
+quatre getters explicites qui resolvent a chaque requete les modules folders,
+read-model Images, runtime Nextcloud et content-service. Le content-service
+reste ainsi remplacable integralement par les contrats serveur existants.
+
+Preuves de fermeture 9A.2d:
+
+- route maps simple et riche strictement identiques avant/apres: `122` routes,
+  hash riche content-free
+  `e59cebe6485334027640b166a936fc585b6fa6042afba96179b43ab6d7c21aae`;
+- comparaison AST des six handlers identique apres normalisation des seuls noms
+  injectes, affectations getters et variables locales;
+- six registrations, six endpoint strings uniques, zero handler cible et un
+  seul appel de registre dans `server.py`;
+- `download` et `open` conservent leurs dispositions, bytes et headers; delete
+  conserve son appel unique remote-first et son retour JSON;
+- contrats serveur, services Images et golden: `58 tests`, `OK`; quatre suites
+  frontend Images/sidebar: `33 tests`, `33 pass`;
+- decouverte elargie `test_server_workspace*.py`: `75 tests`, `OK`;
+- decouverte complete differentielle parent/patch: `2533 tests`, `22 echecs`
+  et `16 erreurs` historiques, avec les memes `38` identifiants et l'empreinte
+  triee `3cba67198a772d52769947237cda5d9e285037e488a1ef5e3c40c6927e940364`;
+- aucune route globale `/api/generated-images*` ou `/api/images*`; l'outil V0
+  `/api/tools/image-generation` reste separe et inchange;
+- aucune route dossiers/fichiers/OCR, Notes ou Exports modifiee; 9A.3 reste
+  ouvert et non commence.
+
+Fermeture transversale 9A.2:
+
+- DELETE fichier workspace namespaced inchange;
+- Exports open/download namespaced, bytes et headers inchanges;
+- Images generees open/download/delete namespaced et inchanges;
+- aucune route globale concurrente ni melange Documents, Notes, Exports et
+  Images;
+- les cinq cases 9A.2 sont fermees par la route map golden, les contrats
+  existants et la decouverte workspace `75/75`.
+
 Golden tests prealables:
 
 - `tests.test_server_workspace_folders_contract`;
@@ -539,8 +579,8 @@ Checklist:
 - [x] Extraire folders/files routes.
 - [x] Extraire notes routes.
 - [x] Extraire exports routes.
-- [ ] Extraire generated-images routes.
-- [ ] Verifier actions open/download/delete.
+- [x] Extraire generated-images routes.
+- [x] Verifier actions open/download/delete.
 
 ### Lot 9A.3 - Chat transport route isolation
 

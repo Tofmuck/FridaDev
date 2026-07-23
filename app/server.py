@@ -17,6 +17,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 import config
 import workspace_folder_export_routes
 import workspace_folder_file_routes
+import workspace_folder_generated_image_routes
 import workspace_folder_note_routes
 from core import llm_client as llm
 from core import prompt_loader
@@ -1091,77 +1092,22 @@ workspace_folder_export_routes.register_workspace_folder_export_routes(
 
 # ── /api/workspace-folders/<id>/generated-images* ────────────────────────────
 
-@app.get('/api/workspace-folders/<folder_id>/generated-images')
-def api_list_workspace_folder_generated_images(folder_id: str):
-    payload, status = workspace_folder_generated_images_service.list_workspace_folder_generated_images_response(
-        folder_id,
-        workspace_folders_module=workspace_folders,
-        generated_images_module=workspace_folder_generated_images,
-    )
-    return jsonify(payload), status
-
-
-@app.get('/api/workspace-folders/<folder_id>/generated-images/<image_id>')
-def api_get_workspace_folder_generated_image(folder_id: str, image_id: str):
-    payload, status = workspace_folder_generated_images_service.get_workspace_folder_generated_image_response(
-        folder_id,
-        image_id,
-        workspace_folders_module=workspace_folders,
-        generated_images_module=workspace_folder_generated_images,
-    )
-    return jsonify(payload), status
-
-
-@app.get('/api/workspace-folders/<folder_id>/generated-images/<image_id>/download')
-def api_download_workspace_folder_generated_image(folder_id: str, image_id: str):
-    result = workspace_folder_generated_image_content_service.download_workspace_folder_generated_image_response(
-        folder_id,
-        image_id,
-        workspace_folders_module=workspace_folders,
-        generated_images_module=workspace_folder_generated_images,
-        disposition="attachment",
-    )
-    if result.ok:
-        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
-    return jsonify(dict(result.payload or {})), result.status
-
-
-@app.get('/api/workspace-folders/<folder_id>/generated-images/<image_id>/open')
-def api_open_workspace_folder_generated_image(folder_id: str, image_id: str):
-    result = workspace_folder_generated_image_content_service.download_workspace_folder_generated_image_response(
-        folder_id,
-        image_id,
-        workspace_folders_module=workspace_folders,
-        generated_images_module=workspace_folder_generated_images,
-        disposition="inline",
-    )
-    if result.ok:
-        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
-    return jsonify(dict(result.payload or {})), result.status
-
-
-@app.delete('/api/workspace-folders/<folder_id>/generated-images/<image_id>')
-def api_delete_workspace_folder_generated_image(folder_id: str, image_id: str):
-    payload, status = workspace_folder_generated_image_content_service.delete_workspace_folder_generated_image_response(
-        folder_id,
-        image_id,
-        workspace_folders_module=workspace_folders,
-        generated_images_module=workspace_folder_generated_images,
-    )
-    return jsonify(payload), status
-
-
-@app.post('/api/workspace-folders/<folder_id>/generated-images')
-def api_create_workspace_folder_generated_image(folder_id: str):
-    data = request.get_json(silent=True) or {}
-    payload, status = workspace_folder_generated_images_service.create_workspace_folder_generated_image_response(
-        folder_id,
-        data,
-        workspace_folders_module=workspace_folders,
-        generated_images_module=workspace_folder_generated_images,
-        generated_images_runtime_module=workspace_folder_generated_image_nextcloud_runtime,
-    )
-    return jsonify(payload), status
+workspace_folder_generated_image_routes.register_workspace_folder_generated_image_routes(
+    app,
+    workspace_folder_generated_images_service_module=(
+        workspace_folder_generated_images_service
+    ),
+    get_workspace_folders_module=lambda: workspace_folders,
+    get_workspace_folder_generated_images_module=(
+        lambda: workspace_folder_generated_images
+    ),
+    get_workspace_folder_generated_image_nextcloud_runtime_module=(
+        lambda: workspace_folder_generated_image_nextcloud_runtime
+    ),
+    get_workspace_folder_generated_image_content_service_module=(
+        lambda: workspace_folder_generated_image_content_service
+    ),
+)
 
 
 # ── /api/conversations* ───────────────────────────────────────────────────────
