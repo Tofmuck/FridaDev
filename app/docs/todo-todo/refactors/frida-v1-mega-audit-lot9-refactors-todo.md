@@ -329,6 +329,24 @@ Sous-lots:
 
 ### Lot 9A.0 - Golden route map
 
+Statut:
+
+`FERME LE 23 JUILLET 2026 - PREUVES ABSORBEES DU LOT 9.0`
+
+Cette fermeture reutilise sans les dupliquer les preuves livrees par le commit
+Lot 9.0 `54f661193f410b3ef9ac65a82c2864a3dda41d2d`:
+
+- `EXPECTED_ROUTE_CONTRACTS` decrit exactement les `122` routes Flask non
+  statiques du HEAD avec chemin, methodes, endpoint, famille et classe de
+  garde;
+- les mutants retrait, ajout, methode, famille et garde sont rejetes;
+- une source synthetique distante est refusee avec `403` sous
+  `/api/admin/*` et sur `/api/tools/image-generation`;
+- `/api/tools/image-generation` est l'unique route sensible hors
+  `/api/admin/*` actuellement declaree dans `_GUARDED_TOOLS_PATHS`.
+
+Aucun second lot de tests n'est ajoute et aucun travail 9A.1 n'est commence.
+
 Golden tests prealables:
 
 - snapshot `url_map` triee: route, methods, endpoint, famille;
@@ -347,9 +365,9 @@ Critere de sortie:
 
 Checklist:
 
-- [ ] Ajouter snapshot route map.
-- [ ] Ajouter assertion guard families.
-- [ ] Documenter routes hors `/api/admin/*` mais sensibles.
+- [x] Ajouter snapshot route map.
+- [x] Ajouter assertion guard families.
+- [x] Documenter routes hors `/api/admin/*` mais sensibles.
 
 ### Lot 9A.1 - Admin logs/dashboard route extraction
 
