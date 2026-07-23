@@ -493,7 +493,9 @@ Le Lot 4 expose une API admin dediee au futur dashboard, sans demander au naviga
 Implementation v1:
 
 - module de lecture: `app/observability/dashboard_read_model.py`;
-- routes HTTP minces dans `app/server.py`;
+- routes HTTP minces dans `app/admin/admin_logs_dashboard_routes.py`,
+  enregistrees par `app/server.py`, avec le guard admin global maintenu dans
+  `app/server.py`;
 - source principale: tables analytiques persistantes `observability.dashboard_*`;
 - catalogue modules: `build_dashboard_module_catalog()`;
 - pas d'endpoint contenu complet dans ce lot.
